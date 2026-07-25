@@ -51,6 +51,12 @@ describe('TextEditor focus treatment', () => {
   })
 
   it('uses the compact table date editor instead of the native datetime picker', async () => {
+    const value = '2026-07-23T04:14:47Z'
+    const localDate = new Date(value)
+    const pad = (part: number) => String(part).padStart(2, '0')
+    const expectedDate = `${localDate.getFullYear()}-${pad(localDate.getMonth() + 1)}-${pad(localDate.getDate())}`
+    const expectedTime = `${pad(localDate.getHours())}:${pad(localDate.getMinutes())}`
+
     container = document.createElement('div')
     document.body.appendChild(container)
     root = createRoot(container)
@@ -60,7 +66,7 @@ describe('TextEditor focus treatment', () => {
         createElement(TextEditor, {
           cell: {
             type: CellType.Text,
-            data: '2026-07-23T04:14:47Z',
+            data: value,
             displayData: '2026/07/23 12:14',
             inputType: 'datetime-local',
           } as ITextCell,
@@ -74,8 +80,8 @@ describe('TextEditor focus treatment', () => {
 
     const editor = container.querySelector('[data-testid="table-date-cell-editor"]')
     expect(editor).not.toBeNull()
-    expect(editor?.textContent).toContain('2026-07-23')
-    expect(editor?.textContent).toContain('12:14')
+    expect(editor?.textContent).toContain(expectedDate)
+    expect(editor?.textContent).toContain(expectedTime)
     expect(container.querySelector('input[type="datetime-local"]')).toBeNull()
     expect(document.querySelector('[data-testid="table-date-calendar"]')).not.toBeNull()
   })

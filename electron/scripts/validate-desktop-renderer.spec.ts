@@ -18,6 +18,7 @@ async function createFixture(indexHtml: string) {
   await fs.writeFile(path.join(rootDir, 'dist', 'index.html'), indexHtml)
   await fs.writeFile(path.join(rootDir, 'dist', 'assets', 'app.js'), 'export {}')
   await fs.writeFile(path.join(rootDir, 'dist', 'assets', 'app.css'), '')
+  await fs.writeFile(path.join(rootDir, 'dist', 'logo-mark.png'), '')
   return rootDir
 }
 
@@ -47,6 +48,18 @@ describe('validateDesktopRenderer', () => {
 
     await expect(validateDesktopRenderer({ rootDir })).rejects.toThrow(
       'references missing assets: ./assets/missing.js',
+    )
+  })
+
+  it('rejects a root-relative logo reference hidden inside a JavaScript bundle', async () => {
+    const rootDir = await createFixture('<script type="module" src="./assets/app.js"></script>')
+    await fs.writeFile(
+      path.join(rootDir, 'dist', 'assets', 'app.js'),
+      'export const logo = "/logo-mark.png"',
+    )
+
+    await expect(validateDesktopRenderer({ rootDir })).rejects.toThrow(
+      'root-relative logo-mark.png reference',
     )
   })
 })

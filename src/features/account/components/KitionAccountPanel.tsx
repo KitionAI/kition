@@ -7,11 +7,11 @@ import {
   LoaderCircle,
   LogOut,
   ShieldCheck,
-  UserRound,
   WalletCards,
 } from 'lucide-react'
 
 import { CreditUsageBadge } from '@/components/CreditUsageBadge'
+import { KitionLogoMark } from '@/components/KitionLogoMark'
 import { Button } from '@/components/ui'
 import { useKitionAccount } from '@/features/account/hooks/useKitionAccount'
 import { getKitionAccountLinks } from '@/features/account/lib/accountLinks'
@@ -130,7 +130,7 @@ export function KitionAccountPanel() {
     >
       <header className="kition-account-panel__header">
         <div className="kition-account-panel__icon" aria-hidden="true">
-          {busy ? <LoaderCircle className="size-5 animate-spin" /> : connected ? <UserRound className="size-5" /> : <ShieldCheck className="size-5" />}
+          {busy ? <LoaderCircle className="size-5 animate-spin" /> : <KitionLogoMark alt="" className="size-5" />}
         </div>
         <div className="min-w-0">
           <p className="kition-account-panel__eyebrow">{t('account.eyebrow')}</p>
