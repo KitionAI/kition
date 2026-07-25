@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import {
   applyAgentMentionSelection,
+  buildAgentDraftWithDocumentMentions,
   buildAgentDocumentMentionPromptContext,
   extractAgentDocumentMentionTokens,
   findAgentMentionQuery,
   flattenMentionableWorkspaceDocuments,
+  getUniqueAgentDocumentMentionPaths,
   parseAgentMentionSegments,
+  removeAgentDocumentMention,
   resolveAgentDocumentMentions,
+  stripAgentDocumentMentions,
 } from './documentMentions'
 
 describe('documentMentions', () => {
@@ -44,6 +48,13 @@ describe('documentMentions', () => {
         name: 'Plan.md',
         title: 'Plan',
         format: 'markdown',
+      },
+      {
+        kind: 'file',
+        path: 'Docs/Data.kitable',
+        name: 'Data.kitable',
+        title: 'Data',
+        format: 'data',
       },
     ])
   })
@@ -105,6 +116,22 @@ describe('documentMentions', () => {
     })
   })
 
+  it('stores document mentions separately from visible composer text', () => {
+    const draft = buildAgentDraftWithDocumentMentions('Analyze this file', [
+      'Getting Started/Guides/Product Content/Product Content Studio.kitable',
+      'Notes/Todo.md',
+    ])
+
+    expect(stripAgentDocumentMentions(draft)).toBe('Analyze this file')
+    expect(getUniqueAgentDocumentMentionPaths(draft)).toEqual([
+      'Getting Started/Guides/Product Content/Product Content Studio.kitable',
+      'Notes/Todo.md',
+    ])
+    expect(removeAgentDocumentMention(draft, 'Notes/Todo.md')).toBe(
+      'Analyze this file\n@{Getting Started/Guides/Product Content/Product Content Studio.kitable}',
+    )
+  })
+
   it('builds explicit prompt context for referenced docs', () => {
     expect(buildAgentDocumentMentionPromptContext({
       referencedDocuments: [
@@ -118,6 +145,19 @@ describe('documentMentions', () => {
       ],
       unresolvedTokens: ['Unknown'],
     })).toContain('Referenced workspace documents in this turn:')
+  })
+
+  it('requires analysis of the current document without an explicit mention', () => {
+    const context = buildAgentDocumentMentionPromptContext({
+      activeDocumentPath: 'Docs/Current.md',
+      activeDocumentFormat: 'markdown',
+      referencedDocuments: [],
+    })
+
+    expect(context).toContain('Current workspace document for this turn:')
+    expect(context).toContain('Docs/Current.md')
+    expect(context).toContain('Read this exact path with document_read and analyze it before responding')
+    expect(context).toContain('Do not ask which document the user means')
   })
 
   it('builds a folders block instructing document_list for referenced folders', () => {

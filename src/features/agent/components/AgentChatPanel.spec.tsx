@@ -375,3 +375,76 @@ describe('AgentChatPanel Kition Account readiness', () => {
     expect((container.querySelector('[aria-label="Send"]') as HTMLButtonElement).disabled).toBe(true)
   })
 })
+
+describe('AgentChatPanel document references', () => {
+  beforeEach(async () => {
+    await unmount()
+  })
+
+  const longPath = 'Getting Started/Guides/Product Content/Product Content Studio.kitable'
+
+  it('hides mention tokens and shows only the removable file name', async () => {
+    const onDraftChange = vi.fn()
+    await mount(createElement(AgentChatPanel, makeMinimalProps({
+      draft: `Analyze this document\n@{${longPath}}`,
+      mentionableDocuments: [{
+        kind: 'file',
+        path: longPath,
+        name: 'Product Content Studio.kitable',
+        title: 'Product Content Studio',
+        format: 'data',
+      }],
+      onDraftChange,
+    })))
+
+    const textarea = container.querySelector('textarea') as HTMLTextAreaElement
+    expect(textarea.value).toBe('Analyze this document')
+    expect(container.textContent).toContain('Product Content Studio.kitable')
+    expect(container.textContent).not.toContain('@{')
+    expect(container.textContent).not.toContain('Getting Started/Guides')
+
+    const remove = container.querySelector(
+      '[aria-label="Remove Product Content Studio.kitable"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      remove.click()
+    })
+    expect(onDraftChange).toHaveBeenCalledWith('Analyze this document')
+  })
+
+  it('collapses multiple references into a select-style control', async () => {
+    await mount(createElement(AgentChatPanel, makeMinimalProps({
+      draft: 'Compare these\n@{Docs/Plan.md} @{Notes/Todo.md}',
+      mentionableDocuments: [
+        { kind: 'file', path: 'Docs/Plan.md', name: 'Plan.md', title: 'Plan', format: 'markdown' },
+        { kind: 'file', path: 'Notes/Todo.md', name: 'Todo.md', title: 'Todo', format: 'markdown' },
+      ],
+    })))
+
+    const select = container.querySelector(
+      '[data-testid="agent-document-reference-select"]',
+    ) as HTMLElement
+    expect(select).not.toBeNull()
+    expect(select.textContent).toContain('2 files')
+  })
+
+  it('renders sent messages without raw mention syntax or folder paths', async () => {
+    await mount(createElement(AgentChatPanel, makeMinimalProps({
+      messages: [{
+        id: 41,
+        session_id: 1,
+        user_id: 1,
+        role: 'user',
+        content: `Summarize it\n@{${longPath}}`,
+        status: 'completed',
+        created_at: new Date().toISOString(),
+      }],
+    })))
+
+    const userMessage = container.querySelector('[data-role="user"]') as HTMLElement
+    expect(userMessage.textContent).toContain('Summarize it')
+    expect(userMessage.textContent).toContain('Product Content Studio.kitable')
+    expect(userMessage.textContent).not.toContain('@{')
+    expect(userMessage.textContent).not.toContain('Getting Started/Guides')
+  })
+})

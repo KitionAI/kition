@@ -3618,18 +3618,72 @@
     @apply max-w-full truncate text-xs text-muted-foreground;
   }
 
-  .agent-mention-chip-row {
-    @apply mt-2 flex flex-wrap gap-2;
+  .agent-document-references {
+    @apply mt-2 max-w-full;
   }
 
-  .agent-mention-chip,
-  .agent-inline-mention {
-    @apply inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-800;
+  .agent-document-reference {
+    @apply flex h-8 w-fit max-w-full items-center overflow-hidden rounded-md border bg-secondary text-xs text-foreground;
+    border-color: var(--document-border, hsl(var(--border)));
   }
 
-  .agent-inline-mention--button,
-  .agent-inline-mention[type='button'] {
-    @apply cursor-pointer transition-colors hover:bg-sky-100;
+  .agent-document-reference__main {
+    @apply flex min-w-0 max-w-full items-center gap-1.5 px-2.5 text-left;
+  }
+
+  button.agent-document-reference__main {
+    @apply h-full transition-colors hover:bg-muted;
+  }
+
+  .agent-document-reference__name {
+    @apply min-w-0 truncate font-medium;
+  }
+
+  .agent-document-reference__remove {
+    @apply inline-grid h-full w-8 shrink-0 place-items-center border-l text-muted-foreground transition-colors hover:bg-muted hover:text-foreground;
+    border-left-color: var(--document-border, hsl(var(--border)));
+  }
+
+  .agent-document-references--select {
+    @apply relative w-full;
+  }
+
+  .agent-document-references--select > summary {
+    @apply flex h-8 w-full cursor-pointer list-none items-center gap-1.5 rounded-md border bg-secondary px-2.5 text-xs font-medium text-foreground transition-colors hover:bg-muted;
+    border-color: var(--document-border, hsl(var(--border)));
+  }
+
+  .agent-document-references--select > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .agent-document-references__chevron {
+    @apply ml-auto text-muted-foreground transition-transform;
+  }
+
+  .agent-document-references--select[open] .agent-document-references__chevron {
+    transform: rotate(180deg);
+  }
+
+  .agent-document-references__menu {
+    @apply absolute bottom-[calc(100%+0.375rem)] left-0 z-30 grid w-full gap-1 rounded-lg border bg-popover p-1 shadow-floating;
+    border-color: var(--document-border, hsl(var(--border)));
+  }
+
+  .agent-document-references__menu .agent-document-reference {
+    @apply w-full border-0 bg-transparent;
+  }
+
+  .agent-document-references__menu .agent-document-reference__main {
+    @apply flex-1;
+  }
+
+  .agent-document-references--message {
+    @apply max-w-full;
+  }
+
+  .agent-document-references--message .agent-document-references__menu {
+    @apply bottom-auto top-[calc(100%+0.375rem)];
   }
 
   .agent-inline-path {

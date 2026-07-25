@@ -79,7 +79,10 @@ import {
   type WorkspaceTab,
   type WorkspaceTreeNode,
 } from '@/features/workspace/lib/workspace'
-import { deriveAgentPaneContext } from '@/features/workspace/lib/agentPaneContext'
+import {
+  deriveAgentPaneContext,
+  resolveAgentActiveDocument,
+} from '@/features/workspace/lib/agentPaneContext'
 import { moveWorkspaceTreeBranchMetadata } from '@/features/workspace/lib/workspaceTree'
 import {
   readWorkspaceAgentActiveSessionId,
@@ -364,6 +367,7 @@ export function WorkspaceScreen({
     modifiedPaths: new Set<string>(),
   })
   const agentTurnContextRef = useRef<AgentTurnContext>({
+    activeDocumentPath: '',
     activeDataDocumentId: 0,
     activeDataTableId: 0,
     taskMode: 'auto',
@@ -783,7 +787,10 @@ export function WorkspaceScreen({
     : null
   tableAgentRefreshRef.current = tableAgentContext?.onTableChanged ?? null
   const hasTableAgentTarget = Boolean(tableAgentDocumentPath)
+  const agentActiveDocument = resolveAgentActiveDocument(activeWorkspaceTab)
   agentTurnContextRef.current = buildAgentTurnContext({
+    activeDocumentPath: agentActiveDocument.path,
+    activeDocumentFormat: agentActiveDocument.format,
     activeDocument: tableAgentContext?.activeDocument,
     activeTable: tableAgentContext?.activeTable,
     browserContext: activeBrowserTab
