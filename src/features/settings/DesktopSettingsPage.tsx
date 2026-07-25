@@ -1270,8 +1270,12 @@ export function DesktopSettingsPage({ initialSection, onClose }: DesktopSettings
     return (
       <button
         key={section.key}
+        type="button"
         className={cn('settings-nav-button', child && 'is-child', active && 'is-active')}
-        onClick={() => switchSection(section.key)}
+        onClick={(event) => {
+          event.stopPropagation()
+          switchSection(section.key)
+        }}
         aria-current={active ? 'page' : undefined}
       >
         <SectionIcon className="size-4" />

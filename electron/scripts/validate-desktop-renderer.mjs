@@ -20,6 +20,7 @@ function collectLocalAssetReferences(html) {
 export async function validateDesktopRenderer({ rootDir = appDir } = {}) {
   const distDir = path.join(rootDir, 'dist')
   const indexPath = path.join(distDir, 'index.html')
+  const logoMarkPath = path.join(distDir, 'logo-mark.png')
   const html = await fs.readFile(indexPath, 'utf8')
   const references = collectLocalAssetReferences(html)
   const absoluteReferences = references.filter((value) => value.startsWith('/'))
@@ -48,6 +49,24 @@ export async function validateDesktopRenderer({ rootDir = appDir } = {}) {
 
   if (!references.some((value) => /\.m?js(?:[?#]|$)/.test(value))) {
     throw new Error('desktop renderer does not reference a JavaScript entry asset')
+  }
+
+  try {
+    const logoMark = await fs.stat(logoMarkPath)
+    if (!logoMark.isFile()) throw new Error('not a file')
+  } catch {
+    throw new Error('desktop renderer is missing logo-mark.png')
+  }
+
+  const assetEntries = await fs.readdir(path.join(distDir, 'assets'), { withFileTypes: true })
+  const rendererBundles = assetEntries
+    .filter((entry) => entry.isFile() && /\.(?:css|m?js)$/.test(entry.name))
+    .map((entry) => path.join(distDir, 'assets', entry.name))
+  for (const bundlePath of rendererBundles) {
+    const bundle = await fs.readFile(bundlePath, 'utf8')
+    if (/["'`]\/logo-mark\.png(?:[?#][^"'`]*)?["'`]/.test(bundle)) {
+      throw new Error('desktop renderer contains a root-relative logo-mark.png reference')
+    }
   }
 
   console.log(`[desktop-renderer] verified ${references.length} relative asset references`)
