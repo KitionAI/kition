@@ -1,0 +1,175 @@
+{
+  "contextCards": {
+    "writeComplete": "Write complete",
+    "writePlan": "Write plan",
+    "noChanges": "No changes",
+    "writeResult": "write result",
+    "writeToTable": "Write to table"
+  },
+  "awaitInput": {
+    "waitingForReply": "Agent is waiting for your reply",
+    "replyPlaceholder": "Enter your reply, press Cmd/Ctrl+Enter to submit",
+    "send": "Send",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "buildProgress": {
+    "buildingBase": "Building base...",
+    "buildingInProgress": "Building in progress",
+    "progressLabel": "Build progress: {{percent}}%",
+    "stepRunning": "{{label}} running",
+    "subtasks": {
+      "generateFields": "Generate fields",
+      "generateAiFields": "Generate AI fields",
+      "generateRecords": "Generate records",
+      "generateViews": "Generate views"
+    }
+  },
+  "planCard": {
+    "title": "Plan",
+    "summary": "{{total}} steps · {{completed}} done · {{inProgress}} in progress · {{pending}} pending"
+  },
+  "shellApproval": {
+    "eyebrow": "Shell execution requires approval",
+    "parseFailed": "Parse failed: {{error}}",
+    "allowOnce": "Allow once",
+    "rememberTitle": "Allow and remember prefix \"{{prefix}}\"",
+    "alwaysAllow": "Always allow \"{{target}}\"",
+    "deny": "Deny"
+  },
+  "applyPatch": {
+    "preview": "Patch preview",
+    "applied": "Patch applied",
+    "stats_one": "{{count}} file · +{{added}} −{{removed}}",
+    "stats_other": "{{count}} files · +{{added}} −{{removed}}",
+    "kind": {
+      "add": "Add",
+      "delete": "Delete",
+      "update": "Update"
+    },
+    "reject": "Reject",
+    "apply": "Apply"
+  },
+  "modelPicker": {
+    "noModelConfigured": "No model configured",
+    "chooseModel": "Choose AI model",
+    "modelLabel": "Model",
+    "searchPlaceholder": "Search models",
+    "noMatches": "No models match \"{{query}}\""
+  },
+  "emptyState": {
+    "needsModelConfig": {
+      "label": "Configure a model"
+    },
+    "kitionAccount": {
+      "checking": "Checking Kition Account…",
+      "signIn": "Sign in to use Kition Cloud",
+      "signInAgain": "Sign in again",
+      "cancel": "Cancel sign-in",
+      "retry": "Retry Kition Account",
+      "topUp": "Top up credits"
+    },
+    "document": {
+      "description": "Ask the agent to research, write, or organize this document.",
+      "suggestions": {
+        "summarize": {
+          "label": "Summarize this document",
+          "prompt": "Summarize the current document into a Markdown brief"
+        },
+        "launchPlan": {
+          "label": "Draft a launch plan",
+          "prompt": "Draft a launch plan from this document"
+        },
+        "checklist": {
+          "label": "Create a checklist",
+          "prompt": "Create a checklist and save it as Markdown"
+        }
+      }
+    },
+    "workflow": {
+      "description": "Describe the workflow you want and the agent will draft the trigger + action.",
+      "suggestions": {
+        "emailOnRecord": {
+          "label": "Email me on every new record",
+          "prompt": "When a record is created in this table, email me a summary of the record."
+        },
+        "remindOnDate": {
+          "label": "Remind on a date field",
+          "prompt": "When today matches the deadline column on this table, send a reminder."
+        },
+        "refine": {
+          "label": "Refine this workflow",
+          "prompt": "Look at the current workflow and suggest the next refinement."
+        }
+      }
+    },
+    "table": {
+      "description": "Ask the agent to summarise, add columns, or query this table.",
+      "suggestions": {
+        "addStatusColumn": {
+          "label": "Add a status column",
+          "prompt": "Add a single-select status column with options Not started, In progress, Done."
+        },
+        "summarizeTable": {
+          "label": "Summarise this table",
+          "prompt": "Summarise the current table — column types, primary field, row count."
+        },
+        "fillCells": {
+          "label": "Fill empty cells",
+          "prompt": "For each empty cell in the active column, suggest a value based on the other columns."
+        }
+      }
+    },
+    "browser": {
+      "description": "Ask the agent to read, summarise, or capture from this page.",
+      "suggestions": {
+        "summarizePage": {
+          "label": "Summarise this page",
+          "prompt": "Summarise the current web page into bullet points."
+        },
+        "extractTable": {
+          "label": "Extract a table",
+          "prompt": "Extract the main data table on this page as Markdown."
+        },
+        "saveAsNote": {
+          "label": "Save as a note",
+          "prompt": "Capture the key points from this page into a new Markdown note."
+        }
+      }
+    },
+    "browserSites": {
+      "description": "Ask the agent to help you discover, configure, or sign in to browser sessions.",
+      "suggestions": {
+        "addSite": {
+          "label": "Add a site",
+          "prompt": "Walk me through adding a new browser site so the agent can use it."
+        },
+        "showConnected": {
+          "label": "Show connected",
+          "prompt": "Summarise which browser sites are signed in and which still need authentication."
+        },
+        "setupCustom": {
+          "label": "Set up custom",
+          "prompt": "Help me configure a custom adapter for a website that isn't built in."
+        }
+      }
+    },
+    "gallery": {
+      "description": "Ask the agent to organise, describe, or repurpose the media in this gallery.",
+      "suggestions": {
+        "describeEach": {
+          "label": "Describe each item",
+          "prompt": "Describe what is in each item in this gallery."
+        },
+        "groupByTopic": {
+          "label": "Group by topic",
+          "prompt": "Group these media files by visual topic."
+        },
+        "pickHero": {
+          "label": "Pick the hero",
+          "prompt": "Pick the strongest hero asset for a landing page."
+        }
+      }
+    }
+  }
+}

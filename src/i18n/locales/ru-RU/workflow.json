@@ -1,0 +1,678 @@
+{
+  "common": {
+    "workspace": "Рабочая область",
+    "status": "Статус",
+    "name": "Название"
+  },
+  "canvas": {
+    "workflowCanvas": "Холст рабочего процесса",
+    "zoomIn": "Приблизить",
+    "zoomOut": "Отдалить",
+    "fitToView": "Вписать в экран",
+    "insertPoint": {
+      "insertStep": "Вставить шаг",
+      "addAction": "Добавить действие",
+      "addFilter": "Добавить фильтр"
+    },
+    "nodeCard": {
+      "statusAria": "статус {{status}}",
+      "moreActions": "Другие действия с узлом",
+      "duplicate": "Дублировать",
+      "enableStep": "Включить этот шаг",
+      "disableStep": "Отключить этот шаг",
+      "delete": "Удалить",
+      "fix": "Исправить",
+      "askAi": "Спросить ИИ"
+    }
+  },
+  "triggerPicker": {
+    "selectPrompt": "Выберите триггер:",
+    "recordCreated": "При создании записи",
+    "recordCreatedOrUpdated": "При создании или обновлении записи",
+    "recordUpdated": "При обновлении записи",
+    "recordTriggerTime": "В момент триггера записи",
+    "scheduledTime": "В запланированное время",
+    "buttonClicked": "При нажатии кнопки"
+  },
+  "buttons": {
+    "create": "Новый рабочий процесс"
+  },
+  "templates": {
+    "emailMeOnRecord": {
+      "name": "Письмо при каждой новой записи",
+      "description": "Уведомляйте кого-либо каждый раз, когда в этой таблице появляется новая строка."
+    },
+    "dailyFollowupReminder": {
+      "name": "Напоминание о повторном контакте",
+      "description": "Свяжитесь с новыми лидами с напоминанием о повторном контакте."
+    },
+    "emailOnRecordUpdated": {
+      "name": "Письмо при каждом обновлении записи",
+      "description": "Отправляйте письмо при каждом изменении записи."
+    },
+    "emailOnRecordDate": {
+      "name": "Письмо в дату записи",
+      "description": "Отправляйте письмо-напоминание при наступлении даты в поле записи."
+    },
+    "addRecordDailyMorning": {
+      "name": "Добавлять строку каждое утро",
+      "description": "По ежедневному расписанию добавляйте новую строку в выбранную таблицу."
+    },
+    "contentIdeaToQueue": {
+      "name": "Добавлять новые идеи в очередь публикации",
+      "description": "Работает локально без настройки. Копирует заполненные строки Content Ideas в Publishing Queue и сразу включается."
+    },
+    "archiveCompletedTasks": {
+      "name": "Архивировать завершённые задачи",
+      "description": "Когда задача получает статус Done, фильтрует её и копирует снимок в Completed Tasks."
+    },
+    "weekdayPriorityPlanning": {
+      "name": "Создавать задачу планирования по будням",
+      "description": "Каждый будний день в 09:00 добавляет в Tasks задачу планирования приоритетов."
+    },
+    "readingProgressJournal": {
+      "name": "Вести журнал прогресса чтения",
+      "description": "При создании или обновлении записи добавляет её текущий статус в Reading Journal."
+    },
+    "bodyFallbacks": {
+      "unnamed": "(без названия)",
+      "there": "уважаемый пользователь"
+    },
+    "expenseHighValueReview": {
+      "name": "Flag high-value expenses for review",
+      "description": "When Amount is above 1000, update the same expense row to Needs review."
+    },
+    "orderCatalogEnrichment": {
+      "name": "Fill orders from the product catalog",
+      "description": "Find a matching SKU and write product name, unit price, and category back to the order."
+    },
+    "normalizeContactDetails": {
+      "name": "Normalize contact details",
+      "description": "Extract the email domain and keep phone numbers as digits using local transforms."
+    }
+  },
+  "launcher": {
+    "home": {
+      "heroTitleWithScope": "Автоматизируйте {{scope}}",
+      "heroTitleDefault": "Автоматизируйте любую задачу с помощью рабочих процессов",
+      "heroSubtitleWithScope": "Для {{scope}} ещё нет рабочих процессов. Создайте его с помощью ИИ или шаблонов, либо начните с нуля.",
+      "heroSubtitleDefault": "Создайте рабочий процесс с помощью ИИ или шаблонов, либо начните с нуля"
+    },
+    "hero": {
+      "galleryTitle": "Автоматизируйте любую задачу с помощью рабочих процессов",
+      "gallerySubtitle": "Создайте рабочий процесс с помощью ИИ или шаблонов, либо начните с нуля",
+      "ctaGenerateAi": "Создать с помощью ИИ",
+      "ctaStartFromScratch": "Начать с нуля",
+      "aiPromptBack": "Назад к галерее",
+      "aiPromptTitle": "Опишите автоматизацию рабочего процесса",
+      "aiPromptTableLabel": "Таблица",
+      "aiPromptTablePickerPlaceholder": "— выберите таблицу для привязки рабочего процесса —",
+      "aiPromptTablePickerHint": "ИИ нужно знать, за какой таблицей следит рабочий процесс.",
+      "aiPromptTableEmptyTitle": "В этой рабочей области ещё нет таблиц",
+      "aiPromptTableEmptyBody": "Рабочие процессы следят за записями в таблице — создайте первую, чтобы ИИ мог привязать к ней рабочий процесс.",
+      "aiPromptTableEmptyCta": "Создать таблицу",
+      "aiPromptModelMissing": "Модель ИИ не настроена. Откройте Настройки → Модели, чтобы выбрать модель для генерации.",
+      "aiPromptModelMissingCta": "Настроить",
+      "aiPromptLabel": "Запрос",
+      "aiPromptPlaceholder": "Создать рабочий процесс: когда отправлена новая запись и определённые поля не пусты, отправить полные данные записи на sales@example.com",
+      "aiPromptSubmit": "Запустить"
+    },
+    "templateGrid": {
+      "exploreMore": "Больше шаблонов",
+      "viewAll": "Показать все"
+    },
+    "agentCard": {
+      "title": "ИИ-агент уже здесь",
+      "openAskAi": "Открыть «Спросить ИИ»"
+    },
+    "templateSheet": {
+      "title": "Все шаблоны",
+      "searchPlaceholder": "Поиск шаблонов",
+      "closeAria": "Закрыть шаблоны"
+    },
+    "createModeDialog": {
+      "title": "Создать рабочий процесс",
+      "titleTemplateView": "Выберите отправную точку",
+      "descriptionWithScope": "Новый рабочий процесс для «{{scope}}». Выберите способ начала.",
+      "descriptionDefault": "Выберите способ начала. Триггер и действие можно уточнить позже.",
+      "descriptionTemplateView": "Выберите отправную точку. Мы заранее заполним триггер и действие.",
+      "sourceTableLabel": "Таблица-триггер",
+      "modeTemplate": {
+        "title": "Выберите отправную точку",
+        "subtitle": "Шаблоны и пустой процесс — мы заранее заполним триггер и действие.",
+        "badge": "{{count}} шаблонов"
+      },
+      "modeChat": {
+        "title": "Общение с ИИ",
+        "subtitle": "Опишите, что вам нужно, и агент составит рабочий процесс за вас."
+      },
+      "scratchCard": {
+        "title": "Создать с нуля",
+        "description": "Начните с пустого рабочего процесса."
+      },
+      "aiCta": "Или опишите это — пусть ИИ создаст рабочий процесс",
+      "back": "Назад",
+      "cancel": "Отмена"
+    }
+  },
+  "errors": {
+    "createWorkflow": "Не удалось создать рабочий процесс",
+    "applyTemplate": "Не удалось применить шаблон",
+    "deleteWorkflow": "Не удалось удалить рабочий процесс",
+    "renameWorkflow": "Не удалось переименовать рабочий процесс",
+    "primaryActionLocked": "Основное действие отправки письма нельзя удалить в этой версии. Вместо этого отключите его."
+  },
+  "feedback": {
+    "renamed": "Переименовано",
+    "workflowDeleted": "Рабочий процесс удалён"
+  },
+  "kitableLeaf": {
+    "deleteConfirm": "Удалить рабочий процесс «{{name}}»? Это навсегда удалит рабочий процесс и историю его запусков.",
+    "nameFallback": "Безымянный рабочий процесс"
+  },
+  "confirms": {
+    "cancel": "Отмена",
+    "fallbackLabel": "Подтвердить",
+    "discardChangesSwitch": {
+      "title": "Отменить несохранённые изменения?",
+      "message": "В этом рабочем процессе есть несохранённые правки. Переключение отменит их.",
+      "confirm": "Отменить изменения"
+    },
+    "discardChangesClose": {
+      "title": "Отменить несохранённые изменения?",
+      "message": "У вас есть несохранённые правки. Закрытие отменит их.",
+      "confirm": "Отменить и закрыть"
+    },
+    "switchTriggerTable": {
+      "title": "Переключиться на {{tableName}}?",
+      "tableFallback": "эту таблицу",
+      "message_one": "{{count}} ссылка на поле в теле действия не существует в новой таблице. Удалить её и продолжить?",
+      "message_other": "{{count}} ссылок на поля в теле действия не существуют в новой таблице. Удалить их и продолжить?",
+      "confirm": "Удалить и переключить"
+    },
+    "deleteWorkflow": {
+      "title": "Удалить этот рабочий процесс?",
+      "message": "«{{name}}» будет удалён. Это действие нельзя отменить.",
+      "nameFallback": "Безымянный рабочий процесс",
+      "confirm": "Удалить"
+    },
+    "deleteTriggerWorkflow": {
+      "title": "Удалить весь рабочий процесс?",
+      "message": "Удаление триггера удаляет весь рабочий процесс. Это действие нельзя отменить.",
+      "confirm": "Удалить рабочий процесс"
+    },
+    "deleteFilter": {
+      "title": "Удалить этот фильтр?",
+      "message": "Последующие действия снова будут выполняться для каждой строки.",
+      "confirm": "Удалить"
+    }
+  },
+  "panels": {
+    "addRecord": {
+      "section": "Добавить запись",
+      "targetTableLabel": "Целевая таблица",
+      "targetTableHint": "выберите таблицу для записи",
+      "targetTableDraftLabel": "— Нет цели — выберите таблицу —",
+      "loopWarningBold": "Запись в таблицу триггера создаст цикл.",
+      "loopWarningBody": "Выберите другую цель — каждая строка, созданная этим действием, повторно запустит триггер и снова выполнит этот рабочий процесс.",
+      "noFields": "В этой таблице пока нет полей.",
+      "loadingFields": "Загрузка полей…",
+      "testSection": "Тест с реальными данными",
+      "testDescription": "Выберите существующую строку. Реальное действие создаст запись в {{target}}.",
+      "scheduledTestDescription": "Запустите действие по расписанию сейчас и создайте реальную запись в {{target}}.",
+      "runNow": "Запустить сейчас",
+      "testTargetFallback": "целевой таблице",
+      "saveBeforeTest": "Сохраните изменения перед тестом.",
+      "testCreated": "Запись {{recordId}} создана в {{target}}."
+    },
+    "schedule": {
+      "section": "Расписание",
+      "frequencyLabel": "Частота",
+      "timeOfDayLabel": "Время суток",
+      "timeOfDayHint": "в {{tz}}",
+      "timezoneLabel": "Часовой пояс",
+      "timezoneHint": "по умолчанию {{tz}} (локальное время сервера)",
+      "cronLabel": "Выражение cron",
+      "cronHintCustom": "редактировать напрямую",
+      "cronHintPreview": "предпросмотр",
+      "previewIdle": "Измените частоту, чтобы увидеть время следующего запуска.",
+      "previewLoading": "Расчёт следующего запуска…",
+      "previewError": "Не удаётся показать предпросмотр — исправьте cron или часовой пояс выше.",
+      "previewNextRun": "Следующий запуск:",
+      "previewThenPrefix": "затем ",
+      "frequencyOptions": {
+        "daily": "Каждый день",
+        "weekdays": "По будням (Пн–Пт)",
+        "weekly_monday": "Каждый понедельник",
+        "hourly": "Каждый час (в начале часа)",
+        "custom": "Настраиваемое (расширенное)"
+      }
+    },
+    "triggerRequiredFields": {
+      "emptyNoSchema": "Выберите таблицу выше, чтобы указать, какие поля должны быть непустыми для срабатывания рабочего процесса.",
+      "headerPre": "Триггер срабатывает только когда ",
+      "headerBold": "все",
+      "headerPost": " отмеченные поля непусты.",
+      "badgeOptional": "Необязательно · 0 отмечено",
+      "badgeRequired_one": "{{count}} обязательное",
+      "badgeRequired_other": "{{count}} обязательных",
+      "caption": "Оставьте пустым, чтобы срабатывать на каждой записи. (0 и false считаются непустыми.)",
+      "noFields": "В этой таблице пока нет полей — добавьте столбец для условия.",
+      "staleHeader_one": "Обязательное поле больше не существует в этой таблице:",
+      "staleHeader_other": "{{count}} обязательных полей больше не существуют в этой таблице:",
+      "staleRemovedTag": "(удалено)",
+      "staleRemoveButton": "Удалить условие"
+    },
+    "drawer": {
+      "kindTrigger": "Триггер",
+      "kindAction": "Действие",
+      "kindFilter": "Фильтр",
+      "closeAria": "Закрыть панель свойств",
+      "titles": {
+        "whenRecordCreated": "При создании записи",
+        "whenRecordUpdated": "При обновлении записи",
+        "whenRecordCreatedOrUpdated": "При создании или обновлении записи",
+        "whenScheduledTime": "В запланированное время",
+        "whenRecordDateReached": "При наступлении даты записи",
+        "addRecord": "Добавить запись",
+        "sendEmail": "Отправить письмо"
+      },
+      "saveBar": {
+        "validationErrors_one": "{{count}} ошибка в поле",
+        "validationErrors_other": "{{count}} ошибок в полях",
+        "unsavedEdits": "Несохранённые правки",
+        "discard": "Отменить",
+        "save": "Сохранить"
+      },
+      "trigger": {
+        "section": "Триггер",
+        "eventLabel": "Событие",
+        "tableLabel": "Таблица",
+        "tableHint": "выберите, чтобы активировать этот рабочий процесс",
+        "requiredFieldsLabel": "Обязательные поля",
+        "requiredFieldsHint": "необязательно — и / не пусто"
+      },
+      "channel": {
+        "section": "Канал",
+        "connectionLabel": "Подключение",
+        "newConnection": "Новое подключение",
+        "legacySmtpOption": "Устаревшая конфигурация SMTP",
+        "editConnection": "Редактировать подключение"
+      },
+      "email": {
+        "section": "Письмо",
+        "toLabel": "Кому",
+        "sendTestEmail": "Отправить тестовое письмо",
+        "testDelivered": "Тестовое письмо доставлено на {{to}}",
+        "subjectLabel": "Тема",
+        "bodyLabel": "Текст",
+        "bodyHint": "Вставляйте поля как токены; они сохраняются как части field_ref.",
+        "pickTableFirstHint": "Выберите таблицу триггера выше, чтобы включить токены полей.",
+        "pickTableFirstPlaceholder": "Сначала выберите таблицу триггера…"
+      },
+      "testStep": {
+        "section": "Тест шага",
+        "descriptionPre": "Выполните это действие на примере записи ",
+        "descriptionMid": " . Тест использует выбранное подключение и помечает запуск как ",
+        "descriptionPost": " , чтобы он не попал в обычную историю запусков.",
+        "runWithSample": "Запустить с примером",
+        "testDelivered": "Тест доставлен на {{to}}"
+      },
+      "pageSaveBar": {
+        "messagePrefix": "У вас есть несохранённые изменения в {{fields}}",
+        "discard": "Отменить",
+        "save": "Сохранить изменения"
+      }
+    },
+    "home": {
+      "workspaceFallback": "Рабочая область",
+      "untitledWorkflowFallback": "Безымянный рабочий процесс",
+      "breadcrumb": "Рабочие процессы",
+      "closeAria": "Закрыть рабочие процессы",
+      "h1": "Рабочие процессы",
+      "stats": "{{total}} всего · {{active}} активных",
+      "refreshAria": "Обновить рабочие процессы",
+      "create": "Создать",
+      "objectLabel": "Объект:",
+      "triggerLabel": "Триггер:",
+      "tableLabelUnbound": "Не привязано",
+      "tableLabelWorkspace": "Рабочая область",
+      "failingLastRun": "Сбой — последний запуск завершился неудачей",
+      "runTest": "Запустить тест",
+      "moreActions": "Другие действия с рабочим процессом",
+      "delete": "Удалить",
+      "testEmailDelivered": "Тестовое письмо доставлено",
+      "detailTo": "Кому",
+      "detailSubject": "Тема",
+      "detailBody": "Текст",
+      "tabConfiguration": "Настройка",
+      "tabRunHistory": "История запусков",
+      "tabLogs": "Логи",
+      "unresolvedTitle_one": "Не удалось сопоставить 1 поле шаблона",
+      "unresolvedTitle_other": "Не удалось сопоставить {{count}} полей шаблона",
+      "unresolvedBody": " в этой таблице: {{names}}. Пока в тексте используется запасной текст — откройте действие ниже, чтобы исправить привязки.",
+      "unresolvedDismiss": "Скрыть",
+      "emptyCreateTitle": "Создайте свой первый рабочий процесс",
+      "emptyCreateHint": "Запускайте по изменению записи, затем отправляйте письмо или выполняйте последующее действие.",
+      "emptyCreateButton": "Создать рабочий процесс",
+      "emptyPickTitle": "Рабочие процессы",
+      "emptyPickHint": "Выберите рабочий процесс из списка, чтобы просмотреть его детали.",
+      "validation": {
+        "nameRequired": "Название обязательно",
+        "recipientRequired": "Получатель обязателен",
+        "recipientInvalid": "Введите корректный адрес эл. почты",
+        "subjectRequired": "Тема обязательна",
+        "bodyRequired": "Текст обязателен",
+        "addRecordTargetRequired": "Выберите целевую таблицу",
+        "connectionRequired": "Подключение не выбрано",
+        "updateRecordFieldsRequired": "Add at least one field update",
+        "lookupRecordConfigRequired": "Complete the lookup and add a write-back mapping",
+        "transformRecordOperationsRequired": "Add at least one transform operation"
+      },
+      "statusBanner": {
+        "enableNow": "Включить сейчас",
+        "fixConnection": "Исправить подключение",
+        "finishConfiguration": "Завершить настройку",
+        "lastRunFailedLeading": "Последний запуск завершился неудачей —",
+        "lastRunFailedFallback": "исправьте действие для повторного включения.",
+        "validationFailedLeading": "Проверка не пройдена —",
+        "notConfiguredOne": "Завершите настройку перед включением этого рабочего процесса.",
+        "notConfiguredOther": "{{count}} полей требуют внимания перед включением этого рабочего процесса.",
+        "configuredDisabled": "Настройка выглядит корректно. Включите этот рабочий процесс, чтобы начать его выполнение.",
+        "fixAction": "Fix action"
+      },
+      "triggerVerb": {
+        "recordCreated": "Запись создана",
+        "recordUpdated": "Запись обновлена",
+        "recordCreatedOrUpdated": "Запись создана или обновлена",
+        "recordDateReached": "Дата записи наступила",
+        "scheduledTime": "В запланированное время"
+      },
+      "nodeCard": {
+        "stepLabel": "Шаг {{index}}",
+        "stepActionEmail": "Шаг {{index}} · Письмо",
+        "stepActionAddRecord": "Шаг {{index}} · Добавить запись",
+        "stepFilter": "Шаг {{index}} · Фильтр",
+        "triggerLabel": "Шаг 1",
+        "actionSendEmail": "Отправить письмо",
+        "actionAddRecord": "Добавить запись",
+        "drawerKindAction": "Действие",
+        "drawerKindFilter": "Фильтр",
+        "drawerKindTrigger": "Триггер",
+        "noConnectionSelected": "Подключение не выбрано",
+        "noRecipient": "нет получателя",
+        "noTarget": "нет цели",
+        "legacySmtp": "Устаревшая конфигурация SMTP",
+        "sendEmailDescription": "через {{channel}} · для {{recipient}}",
+        "addRecordDescription_one": "в {{target}} · 1 поле",
+        "addRecordDescription_other": "в {{target}} · {{count}} полей",
+        "unknownTable": "Неизвестная таблица",
+        "noSchedule": "(нет расписания)",
+        "newFilter": "Новый фильтр",
+        "stepActionGeneric": "Step {{index}} · Action",
+        "actionUpdateRecord": "Update record",
+        "actionLookupRecord": "Find and fill record",
+        "actionTransformRecord": "Transform record data",
+        "updateRecordDescription_one": "update trigger row · 1 field",
+        "updateRecordDescription_other": "update trigger row · {{count}} fields",
+        "lookupRecordDescription": "find a match in {{target}} and fill this row",
+        "transformRecordDescription_one": "1 local transform",
+        "transformRecordDescription_other": "{{count}} local transforms"
+      },
+      "list": {
+        "searchPlaceholder": "Поиск рабочих процессов...",
+        "filterAll": "Все",
+        "filterActive": "Активные",
+        "filterFailing": "Сбойные · {{count}}",
+        "filterDisabled": "Отключённые",
+        "loading": "Загрузка рабочих процессов",
+        "emptyFiltered": "Нет рабочих процессов, соответствующих этому виду.",
+        "emptyNone": "Рабочих процессов пока нет",
+        "flowWhen": "КОГДА",
+        "flowThen": "ТОГДА",
+        "actionSendEmail": "Отправить письмо",
+        "lastRunFailed": "Последний запуск завершился неудачей",
+        "ranSuccessfully": "Выполнено успешно",
+        "noRunsYet": "Запусков пока нет",
+        "viewError": "Показать ошибку",
+        "history": "История",
+        "streamingChip": "Генерация",
+        "streamingPlaceholder": "ИИ пишет…",
+        "trigger": "Триггер",
+        "action": "Действие",
+        "table": "Таблица",
+        "lastRun": "Последний запуск",
+        "sortBy": "Сортировать по",
+        "statusActive": "Активен",
+        "statusDisabled": "Отключён",
+        "statusFailing": "Сбойный"
+      },
+      "streamingBanner": {
+        "title": "ИИ генерирует ваш рабочий процесс",
+        "errorTitle": "Не удалось сгенерировать с помощью ИИ",
+        "errorRetry": "Повторить",
+        "errorDiscard": "Отменить"
+      }
+    },
+    "filter": {
+      "matchSection": "Совпадение",
+      "modeAll": "Все из (и)",
+      "modeAny": "Любое из (или)",
+      "joinAnd": "И",
+      "joinOr": "ИЛИ",
+      "chooseField": "Выберите поле…",
+      "removeCondition": "Удалить условие",
+      "addCondition": "+ Добавить условие",
+      "noMatchSection": "Когда условие не выполнено",
+      "noMatchBodyPre": "Запуск останавливается и помечается как ",
+      "noMatchBodySkipped": "пропущен",
+      "noMatchBodyPost": ". Последующие действия не выполняются. Режим «ветвления» (разделение true/false) в планах.",
+      "previewSection": "Предпросмотр выражения",
+      "previewLabel": "DSL",
+      "previewEmpty": "— пустой фильтр совпадает с каждой строкой —",
+      "drySection": "Пробный запуск с примером строки",
+      "dryRunning": "Выполнение…",
+      "dryRunButton": "▶ Запустить с примером строки",
+      "dryMatched": "✓ Совпадение — эта строка продолжит выполнение",
+      "dryNotMatched": "⊘ Нет совпадения — запуск будет помечен как пропущенный"
+    },
+    "bodyEditor": {
+      "noFieldsAvailable": "Нет доступных полей",
+      "addText": "Добавить текст",
+      "addNewline": "Добавить перенос строки",
+      "insertField": "Вставить поле",
+      "emptyHint": "Добавьте текст или вставьте поле, чтобы составить текст письма.",
+      "typeBodyText": "Введите текст письма",
+      "newLineChip": "Новая строка",
+      "missingField": "отсутствует поле {{id}}",
+      "missingFieldPreview": "⚠ отсутствует поле {{id}}",
+      "fieldsUsed_one": "{{count}} поле использовано",
+      "fieldsUsed_other": "{{count}} полей использовано",
+      "previewSampleData": "Предпросмотр с примером данных",
+      "removeBodyPartAria": "Удалить часть текста",
+      "remove": "Удалить"
+    },
+    "triggerTable": {
+      "draftLabel": "— Не привязано (черновик) —",
+      "selectAria": "Выбрать таблицу",
+      "emptyInScope": "Нет таблиц в области видимости."
+    },
+    "sampleRow": {
+      "noTableBound": "Таблица не привязана",
+      "useExisting": "Использовать существующую строку",
+      "tooltipReady": "Выберите реальную запись для рендеринга теста",
+      "tooltipNotReady": "Сначала привяжите таблицу к триггеру",
+      "recentRows": "Недавние строки",
+      "refreshAria": "Обновить список строк",
+      "loading": "Загрузка…",
+      "empty": "В этой таблице пока нет строк. Сначала добавьте запись.",
+      "rowFallback": "Строка №{{id}}"
+    },
+    "build": {
+      "backToWorkflowsAria": "Назад к рабочим процессам",
+      "breadcrumbWorkflows": "Рабочие процессы",
+      "newWorkflow": "Новый рабочий процесс",
+      "runHistory": "История запусков",
+      "streamGenerating": "Генерация триггера…",
+      "streamWaiting": "Ожидание триггера…",
+      "triggerWhenRecordCreated": "При создании записи",
+      "triggerWhenFormSubmitted": "При отправке формы",
+      "actionSendEmail": "Отправить письмо",
+      "triggerSubtitle": "При создании записи в {{table}}",
+      "actionSubtitle": "Отправить письмо на {{to}}",
+      "drawerTitleScoped": "Создать рабочий процесс писем для {{table}}",
+      "drawerTitle": "Создать рабочий процесс писем"
+    },
+    "action": {
+      "panelAria": "Свойства действия",
+      "headerTitle": "Предпросмотр действия",
+      "closeAria": "Закрыть",
+      "previewNote": "Эта панель показывает предпросмотр того, что сгенерировал ИИ. Правки вносятся в списке рабочих процессов.",
+      "openInList": "Открыть в «Рабочих процессах» для редактирования",
+      "sectionConfig": "Настройка",
+      "sectionTest": "Тест шага",
+      "sectionPreviewResult": "Результат предпросмотра",
+      "sectionTestSent": "Тестовое письмо отправлено",
+      "labelTo": "Кому",
+      "labelSubject": "Тема",
+      "labelBody": "Текст",
+      "noRecipient": "Получатель не настроен",
+      "noSubject": "Тема не настроена",
+      "testIntro": "Предпросмотр рендерит синтетическую запись через шаблон текста — письмо не отправляется. Используйте «Отправить реальное тестовое письмо», чтобы действительно доставить его через SMTP.",
+      "previewing": "Генерация предпросмотра…",
+      "previewBtn": "Предпросмотр действия (письмо не отправляется)",
+      "sendToLabel": "Отправить реальное тестовое письмо на",
+      "sendToPlaceholder": "recipient@example.com",
+      "invalidEmail": "Введите корректный адрес эл. почты или оставьте пустым, чтобы использовать настроенного получателя.",
+      "blankHint": "Оставьте пустым, чтобы использовать «{{to}}». К теме добавляется префикс [TEST].",
+      "sending": "Отправка…",
+      "sendBtn": "Отправить реальное тестовое письмо",
+      "previewGenerated": "Предпросмотр сгенерирован",
+      "previewNoEmail": "(письмо не отправлено)",
+      "renderedJustNow": "Отрендерено несколько секунд назад",
+      "renderedInput": "Отрендеренные входные данные",
+      "testDelivered": "✓ Тестовое письмо доставлено",
+      "sentJustNow": "Отправлено несколько секунд назад на {{to}}"
+    },
+    "progress": {
+      "title": "Создать рабочий процесс",
+      "stepWorkflow": "Сгенерировать рабочий процесс",
+      "stepTrigger": "Сгенерировать триггер",
+      "stepAction": "Сгенерировать узел действия"
+    },
+    "recordActions": {
+      "triggerRecord": "Trigger record",
+      "remove": "Remove",
+      "testSection": "Test action",
+      "testDescription": "Pick an existing row. Kition runs the real action and persists the result in the table.",
+      "testUpdated": "The selected row was updated successfully.",
+      "noMatch": "No matching row was found; the source row was left unchanged.",
+      "update": {
+        "section": "Update current record",
+        "description": "Only populated fields below are changed. Unchanged values are preserved."
+      },
+      "lookup": {
+        "section": "Find record and write back",
+        "table": "Lookup table",
+        "tablePlaceholder": "Choose a table",
+        "matchField": "Match field",
+        "fieldPlaceholder": "Choose a field",
+        "matchValue": "Value from the trigger record",
+        "sourceField": "Field to read",
+        "targetField": "Field to fill",
+        "addMapping": "Add write-back mapping"
+      },
+      "transform": {
+        "section": "Transform record data",
+        "operation": "Operation {{index}}",
+        "argument": "Argument",
+        "targetField": "Choose output field",
+        "addOperation": "Add transform",
+        "operations": {
+          "trim": "Trim whitespace",
+          "lowercase": "Lowercase",
+          "uppercase": "Uppercase",
+          "digits_only": "Keep digits only",
+          "domain_from_email": "Extract email domain",
+          "concat": "Append text",
+          "number_add": "Add number",
+          "number_multiply": "Multiply number"
+        }
+      }
+    }
+  },
+  "runs": {
+    "filters": {
+      "all": "Все",
+      "sent": "✓ Отправлено",
+      "failed": "✕ Не удалось",
+      "skipped": "⊘ Пропущено"
+    },
+    "rowLabel": {
+      "sent": "✓ Отправлено",
+      "skipped": "⊘ Пропущено",
+      "failed": "✕ Не удалось"
+    },
+    "loading": "Загрузка…",
+    "loadingLogs": "Загрузка логов…",
+    "empty": "Запусков пока нет",
+    "emptyLogs": "Логов пока нет",
+    "pruneHint": "Старые запуски удаляются автоматически: ok > 14 дн. · error > 30 дн.",
+    "retry": "↻ Повторить",
+    "failedAt": "Сбой в",
+    "viewNode": "Показать узел {{nodeId}}",
+    "detailRecord": "Запись",
+    "detailWhen": "Когда",
+    "detailError": "Ошибка",
+    "detailBody": "Текст",
+    "panel": {
+      "title": "История запусков",
+      "refreshAria": "Обновить",
+      "pauseAria": "Приостановить автообновление",
+      "resumeAria": "Возобновить автообновление",
+      "closeAria": "Закрыть",
+      "panelAria": "История запусков",
+      "loadMore": "Загрузить ещё {{n}} ({{hidden}} скрыто)"
+    },
+    "time": {
+      "justNow": "только что",
+      "minutesAgo": "{{n}} мин назад",
+      "hoursAgo": "{{n}} ч назад",
+      "daysAgo": "{{n}} дн назад"
+    }
+  },
+  "nodePicker": {
+    "search": "Search nodes",
+    "results": "Search results",
+    "planned": "Planned",
+    "tabs": {
+      "common": "Common",
+      "ai": "AI",
+      "connectors": "Connectors",
+      "utilities": "Utilities"
+    },
+    "items": {
+      "updateRecord": "Update record",
+      "updateRecordDesc": "Change fields on the triggering row",
+      "lookupRecord": "Find record",
+      "lookupRecordDesc": "Match a row in another table and write fields back",
+      "addRecord": "Add record",
+      "addRecordDesc": "Create a row in another table",
+      "transformRecord": "Data transformer",
+      "transformRecordDesc": "Clean text and calculate values locally",
+      "sendEmail": "Send email",
+      "sendEmailDesc": "Deliver through an SMTP connection",
+      "ifElse": "Condition (If/Else)",
+      "ifElseDesc": "Route the workflow into true and false branches",
+      "aiText": "AI generate text",
+      "aiTextDesc": "Generate or analyze text with a configured model",
+      "aiClassify": "AI classify",
+      "aiClassifyDesc": "Assign a category from model output",
+      "webhook": "Webhook / group robot",
+      "webhookDesc": "Send to Feishu, DingTalk, WeCom, or a custom endpoint",
+      "javascript": "JavaScript",
+      "javascriptDesc": "Run a sandboxed script"
+    },
+    "close": "Close node picker"
+  }
+}

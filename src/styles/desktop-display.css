@@ -1,0 +1,52 @@
+:root {
+  --app-zoom: 1;
+  --app-code-font-family: 'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace;
+  --app-code-font-size: 13px;
+  --app-agent-line-height: 1.55;
+}
+
+html {
+  font-size: calc(16px * var(--app-zoom));
+}
+
+code,
+pre,
+kbd,
+samp {
+  font-family: var(--app-code-font-family);
+  font-size: var(--app-code-font-size);
+}
+
+[data-density='compact'] .settings-detail-row,
+[data-density='compact'] .settings-stack-surface > * + * {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+[data-density='compact'] .settings-shortcut-row,
+[data-density='compact'] .settings-runtime-row,
+[data-density='compact'] .settings-provider-card {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+[data-density='relaxed'] .settings-detail-row,
+[data-density='relaxed'] .settings-stack-surface > * + * {
+  padding-top: 22px;
+  padding-bottom: 22px;
+}
+
+[data-density='relaxed'] .settings-shortcut-row,
+[data-density='relaxed'] .settings-runtime-row,
+[data-density='relaxed'] .settings-provider-card {
+  padding-top: 22px;
+  padding-bottom: 22px;
+}
+
+[data-reduce-motion='1'] *,
+[data-reduce-motion='1'] *::before,
+[data-reduce-motion='1'] *::after {
+  transition: none !important;
+  animation: none !important;
+  scroll-behavior: auto !important;
+}

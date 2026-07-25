@@ -1,0 +1,138 @@
+name: Publish Existing Desktop Artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: SemVer without the v prefix
+        required: true
+        type: string
+      run_id:
+        description: Workflow run containing verified desktop artifacts
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: write
+
+env:
+  RELEASE_TAG: v${{ inputs.version }}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - name: Download verified desktop artifacts
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.run_id }}
+          path: desktop-artifacts
+
+      - name: Verify release asset names
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          expected=(
+            "Kition-${VERSION}-macos-arm64.dmg"
+            "Kition-${VERSION}-macos-arm64.dmg.blockmap"
+            "Kition-${VERSION}-macos-x64.dmg"
+            "Kition-${VERSION}-macos-x64.dmg.blockmap"
+            "Kition-${VERSION}-windows-x64-setup.exe"
+            "Kition-${VERSION}-windows-x64-setup.exe.blockmap"
+            "Kition-${VERSION}-linux-x86_64.AppImage"
+          )
+          for name in "${expected[@]}"; do
+            count="$(find desktop-artifacts -type f -name "$name" | wc -l | tr -d ' ')"
+            if [[ "$count" != "1" ]]; then
+              echo "Expected exactly one release asset named $name, found $count" >&2
+              exit 1
+            fi
+          done
+
+      - name: Generate combined macOS update metadata
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { createHash } from 'node:crypto'
+          import fs from 'node:fs'
+          import path from 'node:path'
+
+          const walk = (root) => fs.readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
+            const fullPath = path.join(root, entry.name)
+            return entry.isDirectory() ? walk(fullPath) : [fullPath]
+          })
+          const files = walk('desktop-artifacts')
+          const dmgs = files.filter((file) => file.endsWith('.dmg'))
+          if (dmgs.length !== 2) throw new Error(`Expected two macOS DMGs, found ${dmgs.length}`)
+          const x64Dmg = dmgs.find((file) => path.basename(file).includes('-macos-x64.dmg'))
+          if (!x64Dmg) throw new Error('Unable to identify the macOS x64 DMG')
+          const describe = (file) => {
+            const contents = fs.readFileSync(file)
+            return {
+              url: path.basename(file),
+              sha512: createHash('sha512').update(contents).digest('base64'),
+              size: contents.byteLength,
+            }
+          }
+          for (const file of files.filter((file) => path.basename(file) === 'latest-mac.yml')) {
+            fs.rmSync(file)
+          }
+          const primary = describe(x64Dmg)
+          fs.writeFileSync('desktop-artifacts/latest-mac.yml', `${JSON.stringify({
+            version: process.env.VERSION,
+            files: dmgs.map(describe),
+            path: primary.url,
+            sha512: primary.sha512,
+            releaseDate: new Date().toISOString(),
+          }, null, 2)}\n`)
+          NODE
+
+      - name: Upload installers to draft Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mapfile -d '' files < <(find desktop-artifacts -type f -print0)
+          if [[ "${#files[@]}" -eq 0 ]]; then
+            echo "No desktop artifacts were downloaded" >&2
+            exit 1
+          fi
+          gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --clobber "${files[@]}"
+
+      - name: Verify and publish Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          releases_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100")"
+          release_json="$(jq -e -c --arg tag "$RELEASE_TAG" '
+            map(select(.tag_name == $tag))
+            | if length == 1 then .[0] else empty end
+          ' <<<"$releases_json")"
+          if [[ "$(jq -r '.draft' <<<"$release_json")" != "true" ]]; then
+            echo "Release $RELEASE_TAG was published before verification" >&2
+            exit 1
+          fi
+          assets="$(jq -r '.assets[].name' <<<"$release_json")"
+          while IFS= read -r file; do
+            name="$(basename "$file")"
+            if ! grep -Fxq "$name" <<<"$assets"; then
+              echo "Missing uploaded desktop asset: $name" >&2
+              exit 1
+            fi
+          done < <(find desktop-artifacts -type f -print | sort)
+          gh release edit "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --draft=false \
+            --prerelease=false

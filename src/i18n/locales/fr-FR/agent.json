@@ -1,0 +1,175 @@
+{
+  "contextCards": {
+    "writeComplete": "Écriture terminée",
+    "writePlan": "Plan d'écriture",
+    "noChanges": "Aucune modification",
+    "writeResult": "résultat de l'écriture",
+    "writeToTable": "Écrire dans la table"
+  },
+  "awaitInput": {
+    "waitingForReply": "L'agent attend votre réponse",
+    "replyPlaceholder": "Saisissez votre réponse, appuyez sur Cmd/Ctrl+Entrée pour envoyer",
+    "send": "Envoyer",
+    "yes": "Oui",
+    "no": "Non"
+  },
+  "buildProgress": {
+    "buildingBase": "Construction de la base…",
+    "buildingInProgress": "Construction en cours",
+    "progressLabel": "Progression de la construction : {{percent}} %",
+    "stepRunning": "{{label}} en cours",
+    "subtasks": {
+      "generateFields": "Générer les champs",
+      "generateAiFields": "Générer les champs IA",
+      "generateRecords": "Générer les enregistrements",
+      "generateViews": "Générer les vues"
+    }
+  },
+  "planCard": {
+    "title": "Plan",
+    "summary": "{{total}} étapes · {{completed}} terminées · {{inProgress}} en cours · {{pending}} en attente"
+  },
+  "shellApproval": {
+    "eyebrow": "L'exécution shell nécessite une approbation",
+    "parseFailed": "Échec de l'analyse : {{error}}",
+    "allowOnce": "Autoriser une fois",
+    "rememberTitle": "Autoriser et mémoriser le préfixe « {{prefix}} »",
+    "alwaysAllow": "Toujours autoriser « {{target}} »",
+    "deny": "Refuser"
+  },
+  "applyPatch": {
+    "preview": "Aperçu du correctif",
+    "applied": "Correctif appliqué",
+    "stats_one": "{{count}} fichier · +{{added}} −{{removed}}",
+    "stats_other": "{{count}} fichiers · +{{added}} −{{removed}}",
+    "kind": {
+      "add": "Ajouter",
+      "delete": "Supprimer",
+      "update": "Mettre à jour"
+    },
+    "reject": "Rejeter",
+    "apply": "Appliquer"
+  },
+  "modelPicker": {
+    "noModelConfigured": "Aucun modèle configuré",
+    "chooseModel": "Choisir un modèle IA",
+    "modelLabel": "Modèle",
+    "searchPlaceholder": "Rechercher des modèles",
+    "noMatches": "Aucun modèle ne correspond à « {{query}} »"
+  },
+  "emptyState": {
+    "needsModelConfig": {
+      "label": "Configurer un modèle"
+    },
+    "kitionAccount": {
+      "checking": "Vérification du compte Kition…",
+      "signIn": "Connectez-vous pour utiliser Kition Cloud",
+      "signInAgain": "Se reconnecter",
+      "cancel": "Annuler la connexion",
+      "retry": "Réessayer avec le compte Kition",
+      "topUp": "Recharger les crédits"
+    },
+    "document": {
+      "description": "Demandez à l'agent de rechercher, rédiger ou organiser cette page.",
+      "suggestions": {
+        "summarize": {
+          "label": "Résumer ce document",
+          "prompt": "Résume le document actuel sous forme de synthèse Markdown"
+        },
+        "launchPlan": {
+          "label": "Rédiger un plan de lancement",
+          "prompt": "Rédige un plan de lancement à partir de cette page"
+        },
+        "checklist": {
+          "label": "Créer une liste de contrôle",
+          "prompt": "Crée une liste de contrôle et enregistre-la au format Markdown"
+        }
+      }
+    },
+    "workflow": {
+      "description": "Décrivez le workflow souhaité et l'agent rédigera le déclencheur + l'action.",
+      "suggestions": {
+        "emailOnRecord": {
+          "label": "M'envoyer un e-mail à chaque nouvel enregistrement",
+          "prompt": "Lorsqu'un enregistrement est créé dans cette table, envoie-moi un résumé de l'enregistrement par e-mail."
+        },
+        "remindOnDate": {
+          "label": "Rappeler sur un champ de date",
+          "prompt": "Lorsque la date du jour correspond à la colonne d'échéance de cette table, envoie un rappel."
+        },
+        "refine": {
+          "label": "Affiner ce workflow",
+          "prompt": "Examine le workflow actuel et suggère le prochain ajustement."
+        }
+      }
+    },
+    "table": {
+      "description": "Demandez à l'agent de résumer, d'ajouter des colonnes ou d'interroger cette table.",
+      "suggestions": {
+        "addStatusColumn": {
+          "label": "Ajouter une colonne de statut",
+          "prompt": "Ajoute une colonne de statut à sélection unique avec les options Non commencé, En cours, Terminé."
+        },
+        "summarizeTable": {
+          "label": "Résumer cette table",
+          "prompt": "Résume la table actuelle — types de colonnes, champ principal, nombre de lignes."
+        },
+        "fillCells": {
+          "label": "Remplir les cellules vides",
+          "prompt": "Pour chaque cellule vide de la colonne active, suggère une valeur basée sur les autres colonnes."
+        }
+      }
+    },
+    "browser": {
+      "description": "Demandez à l'agent de lire, résumer ou capturer depuis cette page.",
+      "suggestions": {
+        "summarizePage": {
+          "label": "Résumer cette page",
+          "prompt": "Résume la page web actuelle sous forme de points clés."
+        },
+        "extractTable": {
+          "label": "Extraire une table",
+          "prompt": "Extrais la table de données principale de cette page au format Markdown."
+        },
+        "saveAsNote": {
+          "label": "Enregistrer comme note",
+          "prompt": "Capture les points clés de cette page dans une nouvelle note Markdown."
+        }
+      }
+    },
+    "browserSites": {
+      "description": "Demandez à l'agent de vous aider à découvrir, configurer ou vous connecter à des sessions de navigateur.",
+      "suggestions": {
+        "addSite": {
+          "label": "Ajouter un site",
+          "prompt": "Guide-moi pour ajouter un nouveau site de navigateur afin que l'agent puisse l'utiliser."
+        },
+        "showConnected": {
+          "label": "Afficher les connectés",
+          "prompt": "Résume quels sites de navigateur sont connectés et lesquels nécessitent encore une authentification."
+        },
+        "setupCustom": {
+          "label": "Configurer un site personnalisé",
+          "prompt": "Aide-moi à configurer un adaptateur personnalisé pour un site web qui n'est pas intégré."
+        }
+      }
+    },
+    "gallery": {
+      "description": "Demandez à l'agent d'organiser, de décrire ou de réutiliser les médias de cette galerie.",
+      "suggestions": {
+        "describeEach": {
+          "label": "Décrire chaque élément",
+          "prompt": "Décris ce que contient chaque élément de cette galerie."
+        },
+        "groupByTopic": {
+          "label": "Regrouper par thème",
+          "prompt": "Regroupe ces fichiers multimédias par thème visuel."
+        },
+        "pickHero": {
+          "label": "Choisir l'image phare",
+          "prompt": "Choisis le meilleur visuel phare pour une page de destination."
+        }
+      }
+    }
+  }
+}

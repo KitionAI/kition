@@ -1,0 +1,46 @@
+{
+  "actions": {
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "open": "Open",
+    "retry": "Retry",
+    "copy": "Copy",
+    "rename": "Rename",
+    "remove": "Remove",
+    "loading": "Loading…",
+    "submit": "Submit",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
+  },
+  "statusLabel": {
+    "success": "Success",
+    "failed": "Failed",
+    "pending": "Pending",
+    "completed": "Completed",
+    "unknown": "Unknown"
+  },
+  "status": "Status",
+  "name": "Name",
+  "workspace": "Workspace",
+  "commandPalette": {
+    "badge": "Command",
+    "hint": "Run commands, jump around",
+    "placeholder": "Run commands, jump to settings…",
+    "navigation": "Navigation",
+    "backToWorkspace": "Back to workspace",
+    "backToWorkspaceHint": "Current main view",
+    "openSettings": "Open settings",
+    "openSettingsHint": "Runtime & provider settings",
+    "close": "Close"
+  },
+  "viewport": {
+    "tooNarrow": "The viewport is too narrow. The editor and Workflow canvas may not be fully usable at this size. Consider enlarging the window to at least 480px."
+  },
+  "search": {
+    "fileMissing": "File no longer exists"
+  }
+}

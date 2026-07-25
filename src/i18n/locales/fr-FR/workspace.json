@@ -1,0 +1,236 @@
+{
+  "createMenu": {
+    "format": {
+      "markdown": "Document",
+      "table": "Table",
+      "page": "Page",
+      "note": "Note"
+    },
+    "folder": "Dossier",
+    "importFile": "Importer un fichier",
+    "newTable": "Nouvelle table",
+    "newWorkflow": "Nouveau workflow"
+  },
+  "sidebar": {
+    "tabs": {
+      "files": "Fichiers",
+      "search": "Rechercher",
+      "browser": "Navigateur"
+    },
+    "collapseSection": "Réduire {{name}}",
+    "expandSection": "Développer {{name}}",
+    "newPage": "Nouvelle page",
+    "newPageIn": "Nouvelle page dans {{name}}",
+    "workflows": "Workflows",
+    "openWorkflows": "Ouvrir les workflows",
+    "refresh": "Actualiser l'espace de travail",
+    "collapseSidebar": "Réduire la barre latérale",
+    "loadingDirectory": "Chargement du répertoire local"
+  },
+  "tree": {
+    "collapse": "Réduire",
+    "expand": "Développer",
+    "modifiedByAgent": "Modifié par l'agent",
+    "createInside": "Créer dans cette page",
+    "moreActions": "Plus d'actions",
+    "addToChat": "Ajouter à la discussion",
+    "addToNewChat": "Ajouter à une nouvelle discussion",
+    "changeIcon": "Changer l'icône",
+    "rename": "Renommer",
+    "duplicate": "Dupliquer",
+    "moveTo": "Déplacer vers…",
+    "showInFinder": "Afficher dans le Finder",
+    "delete": "Supprimer",
+    "moveToTitle": "Déplacer vers",
+    "moveToRoot": "Racine",
+    "noDestinations": "Aucune autre destination disponible",
+    "clearIcon": "Effacer",
+    "untitled": "Sans titre"
+  },
+  "itemMenu": {
+    "mode": {
+      "rich": "Texte enrichi",
+      "split": "Fractionné",
+      "source": "Source",
+      "preview": "Aperçu"
+    },
+    "preference": {
+      "smallText": "Petit texte",
+      "fullWidth": "Pleine largeur",
+      "toc": "Plan",
+      "locked": "Verrouiller la page"
+    },
+    "tableAction": {
+      "rename": "Renommer",
+      "duplicate": "Dupliquer",
+      "downloadCsv": "Télécharger le CSV",
+      "importData": "Importer des données",
+      "api": "API",
+      "history": "Historique",
+      "share": "Partager",
+      "delete": "Supprimer"
+    },
+    "markdownMode": {
+      "rich": "Vue édition",
+      "preview": "Vue lecture",
+      "source": "Vue source"
+    },
+    "revertToSaved": "Revenir à la version enregistrée",
+    "importMarkdown": "Importer du Markdown",
+    "exportFile": "Exporter le fichier",
+    "openContainingFolder": "Ouvrir le dossier contenant",
+    "words": "Mots : {{formattedCount}}",
+    "updated": "Mis à jour : {{time}}",
+    "textStyle": {
+      "default": "Par défaut",
+      "serif": "Serif",
+      "mono": "Mono"
+    }
+  },
+  "tabs": {
+    "webBadge": "Web",
+    "closeTab": "Fermer l'onglet",
+    "expandSidebar": "Développer la barre latérale",
+    "previousTab": "Onglet précédent",
+    "nextTab": "Onglet suivant",
+    "showOverflow": "Afficher les onglets supplémentaires",
+    "close": "Fermer",
+    "closeOthers": "Fermer les autres onglets",
+    "closeAll": "Fermer tous les onglets",
+    "closeUnmodified": "Fermer les onglets non modifiés",
+    "closeLeft": "Fermer les onglets à gauche",
+    "closeRight": "Fermer les onglets à droite",
+    "closeReadOnly": "Fermer tous les onglets en lecture seule",
+    "copyReference": "Copier le chemin/la référence",
+    "workflowsTitle": "Workflows",
+    "workflowsScoped": "Workflows · {{name}}",
+    "untitledTable": "Table sans titre",
+    "untitledWorkflow": "Workflow sans titre",
+    "videos": "Vidéos",
+    "workflow": "Workflow"
+  },
+  "agentTabs": {
+    "history": {
+      "today": "Aujourd'hui",
+      "week": "7 derniers jours",
+      "older": "Plus ancien"
+    },
+    "chat": "Discussion",
+    "newChatTitle": "Nouvelle discussion",
+    "openChat": "Ouvrir la discussion IA",
+    "collapseChat": "Réduire la discussion IA",
+    "emptyTitle": "Discussion IA",
+    "newChat": "Nouvelle discussion",
+    "closeChat": "Fermer la discussion",
+    "viewHistory": "Voir l'historique",
+    "agentHistory": "Historique de l'agent",
+    "searchChats": "Rechercher des discussions…",
+    "noMatchingChats": "Aucune discussion correspondante.",
+    "noChatsYet": "Aucune discussion pour l'instant. Commencez-en une.",
+    "chatRef": "Discussion n°{{id}}"
+  },
+  "agentSidebar": {
+    "empty": "Commencez une nouvelle discussion ou ouvrez-en une existante depuis l'historique."
+  },
+  "topbar": {
+    "more": "Plus"
+  },
+  "browserSites": {
+    "title": "Navigateur",
+    "visitedCount": "{{count}} sites visités",
+    "openBrowser": "Ouvrir le navigateur",
+    "openBrowserTitle": "Ouvrir un nouvel onglet de navigateur",
+    "refreshLoginStatus": "Actualiser l'état de connexion",
+    "loading": "Chargement des sites…",
+    "lastVisited": "Dernière visite {{time}}",
+    "signedIn": "Connecté",
+    "signedOut": "Déconnecté",
+    "openSite": "Ouvrir le site",
+    "open": "Ouvrir {{host}}",
+    "forgetSite": "Oublier ce site (effacer la connexion)",
+    "forget": "Oublier {{host}}",
+    "emptyTitle": "Aucun site visité pour l'instant",
+    "emptyDescription": "Visitez et connectez-vous à des sites dans le navigateur intégré. Ils seront répertoriés ici avec leur état de connexion pour permettre une connexion automatique lors de l'extraction ultérieure."
+  },
+  "browserToolbar": {
+    "back": "Précédent",
+    "forward": "Suivant",
+    "stopLoading": "Arrêter le chargement",
+    "reload": "Recharger",
+    "addressPlaceholder": "Saisir une URL ou rechercher…"
+  },
+  "browserTab": {
+    "eyebrow": "Navigateur intégré",
+    "unavailableDescription": "La page du navigateur est rattachée à cette zone d'onglet. Utilisez cet onglet pour la connexion, la recherche et la navigation. La discussion IA reste disponible à droite, vous pouvez donc continuer depuis la page actuelle sans changer de vue.",
+    "emptyText": "Navigateur — Saisissez une URL ci-dessus ou demandez à l'agent de naviguer et d'utiliser le navigateur",
+    "loadingPage": "Chargement de la page…"
+  },
+  "fileViewer": {
+    "openInSystem": "Ouvrir dans le système",
+    "showInFinder": "Afficher dans le Finder",
+    "previewUnsupported": "{{label}} · L'aperçu dans l'application n'est pas encore pris en charge",
+    "previewTip": "Vous pouvez toujours mentionner ce fichier avec @ pour que l'IA l'analyse directement, ou cliquer sur « Ouvrir dans le système » pour le consulter avec une application native."
+  },
+  "folderDialog": {
+    "title": "Nouveau dossier",
+    "description": "Saisissez un nom de dossier.",
+    "placeholder": "Dossier sans titre",
+    "cancel": "Annuler",
+    "create": "Créer"
+  },
+  "media": {
+    "images": "Images",
+    "videos": "Vidéos",
+    "items": "{{count}} éléments",
+    "collapse": "Réduire {{name}}",
+    "expand": "Développer {{name}}",
+    "noImagesTitle": "Aucune image pour l'instant",
+    "noVideosTitle": "Aucune vidéo pour l'instant",
+    "noImagesDescription": "Les images de cet espace de travail apparaîtront ici.",
+    "noVideosDescription": "Les vidéos de cet espace de travail apparaîtront ici."
+  },
+  "editor": {
+    "sourcePlaceholder": "Modifier la source Markdown ici…"
+  },
+  "layout": {
+    "resizeSidebar": "Redimensionner la barre latérale",
+    "resizeChat": "Redimensionner la discussion IA"
+  },
+  "footer": {
+    "switchWorkspace": "Changer d'espace de travail",
+    "switchWorkspaceTitle": "Changer d'espace de travail (⌘⇧O)",
+    "profile": "Profil",
+    "settings": "Paramètres"
+  },
+  "errors": {
+    "kitableNotFound": "Impossible de localiser ce table file sur le disque.",
+    "kitableNoTables": "Ce table file n'a pas encore de tables — créez d'abord une table.",
+    "parentKitableNotFound": "Impossible de localiser le table file parent sur le disque.",
+    "createWorkflowFailed": "Échec de la création du workflow",
+    "documentPathEmpty": "Le chemin du document ne peut pas être vide",
+    "nameEmpty": "Le nom ne peut pas être vide",
+    "saveBeforeRename": "Échec de l'enregistrement du document actuel ; le renommage a été ignoré",
+    "renameFailed": "Échec du renommage du document",
+    "fileTypeNotDeletable": "Ce type de fichier ne peut pas encore être supprimé de la bibliothèque de documents.",
+    "onlyMarkdownPlateMovable": "Seules les pages Markdown et Plate peuvent être déplacées ici. Organisez les fichiers Office/PDF et similaires via votre dossier système.",
+    "onlyMarkdownPlateTableDuplicable": "Seules les pages Markdown, Plate et Table peuvent être dupliquées ici.",
+    "onlyMarkdownPlateTableRenamable": "Seules les pages Markdown, Plate et Table peuvent être renommées ici.",
+    "createDocumentFailed": "Échec de la création du document",
+    "createTableFailed": "Échec de la création de la table",
+    "importMarkdownFailed": "Échec de l'importation du Markdown",
+    "browserDevModeOpenDirectory": "Vous exécutez le mode développement dans le navigateur et ne pouvez pas ouvrir de répertoires natifs. Lancez l'application de bureau via pnpm dev:electron et réessayez.",
+    "browserDevModePickDirectory": "Vous exécutez le mode développement dans le navigateur et ne pouvez pas choisir de répertoire natif. Lancez l'application de bureau via pnpm dev:electron et réessayez.",
+    "browserDevModeSwitchDirectory": "Vous exécutez le mode développement dans le navigateur et ne pouvez pas changer de répertoire natif."
+  },
+  "feedback": {
+    "nameUpdated": "Nom mis à jour",
+    "refreshed": "Espace de travail actualisé",
+    "restoredSavedVersion": "Rétabli à la version enregistrée",
+    "documentCreated": "Document créé",
+    "tableCreated": "Table créée",
+    "folderCreated": "Dossier créé",
+    "renamed": "Renommé",
+    "alreadyInLocation": "Déjà à cet emplacement",
+    "tableDeleted": "Table supprimée"
+  }
+}

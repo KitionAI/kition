@@ -1,0 +1,175 @@
+{
+  "contextCards": {
+    "writeComplete": "Escrita concluída",
+    "writePlan": "Escrever plano",
+    "noChanges": "Sem alterações",
+    "writeResult": "escrever resultado",
+    "writeToTable": "Escrever na tabela"
+  },
+  "awaitInput": {
+    "waitingForReply": "O Agente está aguardando sua resposta",
+    "replyPlaceholder": "Digite sua resposta, pressione Cmd/Ctrl+Enter para enviar",
+    "send": "Enviar",
+    "yes": "Sim",
+    "no": "Não"
+  },
+  "buildProgress": {
+    "buildingBase": "Construindo base...",
+    "buildingInProgress": "Construção em andamento",
+    "progressLabel": "Progresso da construção: {{percent}}%",
+    "stepRunning": "{{label}} em execução",
+    "subtasks": {
+      "generateFields": "Gerar campos",
+      "generateAiFields": "Gerar campos de IA",
+      "generateRecords": "Gerar registros",
+      "generateViews": "Gerar visualizações"
+    }
+  },
+  "planCard": {
+    "title": "Plano",
+    "summary": "{{total}} etapas · {{completed}} concluídas · {{inProgress}} em andamento · {{pending}} pendentes"
+  },
+  "shellApproval": {
+    "eyebrow": "A execução do shell requer aprovação",
+    "parseFailed": "Falha na análise: {{error}}",
+    "allowOnce": "Permitir uma vez",
+    "rememberTitle": "Permitir e lembrar o prefixo \"{{prefix}}\"",
+    "alwaysAllow": "Sempre permitir \"{{target}}\"",
+    "deny": "Negar"
+  },
+  "applyPatch": {
+    "preview": "Visualização do patch",
+    "applied": "Patch aplicado",
+    "stats_one": "{{count}} arquivo · +{{added}} −{{removed}}",
+    "stats_other": "{{count}} arquivos · +{{added}} −{{removed}}",
+    "kind": {
+      "add": "Adicionar",
+      "delete": "Excluir",
+      "update": "Atualizar"
+    },
+    "reject": "Rejeitar",
+    "apply": "Aplicar"
+  },
+  "modelPicker": {
+    "noModelConfigured": "Nenhum modelo configurado",
+    "chooseModel": "Escolher modelo de IA",
+    "modelLabel": "Modelo",
+    "searchPlaceholder": "Pesquisar modelos",
+    "noMatches": "Nenhum modelo corresponde a \"{{query}}\""
+  },
+  "emptyState": {
+    "needsModelConfig": {
+      "label": "Configurar um modelo"
+    },
+    "kitionAccount": {
+      "checking": "Verificando a conta Kition…",
+      "signIn": "Entre para usar o Kition Cloud",
+      "signInAgain": "Entrar novamente",
+      "cancel": "Cancelar login",
+      "retry": "Tentar novamente com a conta Kition",
+      "topUp": "Recarregar créditos"
+    },
+    "document": {
+      "description": "Peça ao agente para pesquisar, escrever ou organizar esta página.",
+      "suggestions": {
+        "summarize": {
+          "label": "Resumir este documento",
+          "prompt": "Resuma o documento atual em um resumo em Markdown"
+        },
+        "launchPlan": {
+          "label": "Esboçar um plano de lançamento",
+          "prompt": "Esboce um plano de lançamento a partir desta página"
+        },
+        "checklist": {
+          "label": "Criar uma lista de verificação",
+          "prompt": "Crie uma lista de verificação e salve-a como Markdown"
+        }
+      }
+    },
+    "workflow": {
+      "description": "Descreva o fluxo de trabalho que você deseja e o agente esboçará o gatilho + a ação.",
+      "suggestions": {
+        "emailOnRecord": {
+          "label": "Enviar e-mail a cada novo registro",
+          "prompt": "Quando um registro for criado nesta tabela, envie-me um resumo do registro por e-mail."
+        },
+        "remindOnDate": {
+          "label": "Lembrar em um campo de data",
+          "prompt": "Quando a data de hoje coincidir com a coluna de prazo desta tabela, envie um lembrete."
+        },
+        "refine": {
+          "label": "Refinar este fluxo de trabalho",
+          "prompt": "Analise o fluxo de trabalho atual e sugira o próximo refinamento."
+        }
+      }
+    },
+    "table": {
+      "description": "Peça ao agente para resumir, adicionar colunas ou consultar esta tabela.",
+      "suggestions": {
+        "addStatusColumn": {
+          "label": "Adicionar uma coluna de status",
+          "prompt": "Adicione uma coluna de status de seleção única com as opções Não iniciado, Em andamento, Concluído."
+        },
+        "summarizeTable": {
+          "label": "Resumir esta tabela",
+          "prompt": "Resuma a tabela atual — tipos de coluna, campo primário, número de linhas."
+        },
+        "fillCells": {
+          "label": "Preencher células vazias",
+          "prompt": "Para cada célula vazia na coluna ativa, sugira um valor com base nas outras colunas."
+        }
+      }
+    },
+    "browser": {
+      "description": "Peça ao agente para ler, resumir ou capturar conteúdo desta página.",
+      "suggestions": {
+        "summarizePage": {
+          "label": "Resumir esta página",
+          "prompt": "Resuma a página web atual em tópicos."
+        },
+        "extractTable": {
+          "label": "Extrair uma tabela",
+          "prompt": "Extraia a tabela de dados principal desta página como Markdown."
+        },
+        "saveAsNote": {
+          "label": "Salvar como nota",
+          "prompt": "Capture os pontos principais desta página em uma nova nota em Markdown."
+        }
+      }
+    },
+    "browserSites": {
+      "description": "Peça ao agente para ajudá-lo a descobrir, configurar ou fazer login em sessões do navegador.",
+      "suggestions": {
+        "addSite": {
+          "label": "Adicionar um site",
+          "prompt": "Guie-me na adição de um novo site do navegador para que o agente possa usá-lo."
+        },
+        "showConnected": {
+          "label": "Mostrar conectados",
+          "prompt": "Resuma quais sites do navegador estão conectados e quais ainda precisam de autenticação."
+        },
+        "setupCustom": {
+          "label": "Configurar personalizado",
+          "prompt": "Ajude-me a configurar um adaptador personalizado para um site que não é integrado."
+        }
+      }
+    },
+    "gallery": {
+      "description": "Peça ao agente para organizar, descrever ou reaproveitar as mídias desta galeria.",
+      "suggestions": {
+        "describeEach": {
+          "label": "Descrever cada item",
+          "prompt": "Descreva o que há em cada item desta galeria."
+        },
+        "groupByTopic": {
+          "label": "Agrupar por tema",
+          "prompt": "Agrupe estes arquivos de mídia por tema visual."
+        },
+        "pickHero": {
+          "label": "Escolher o destaque",
+          "prompt": "Escolha o melhor recurso de destaque para uma landing page."
+        }
+      }
+    }
+  }
+}

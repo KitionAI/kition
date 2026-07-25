@@ -1,0 +1,103 @@
+{
+  "title": "Workspace",
+  "subtitle": "Version {{version}}",
+  "fallbackVersion": "",
+  "actions": {
+    "create": {
+      "title": "New workspace",
+      "description": "Create a new workspace in the folder you choose.",
+      "button": "Create",
+      "nameLabel": "Workspace name",
+      "namePlaceholder": "My workspace",
+      "parentLabel": "Parent folder",
+      "parentPlaceholder": "Pick a folder…",
+      "pick": "Browse…",
+      "confirm": "Create workspace",
+      "cancel": "Cancel"
+    },
+    "open": {
+      "title": "Open local workspace",
+      "description": "Use an existing folder on this machine as a workspace.",
+      "button": "Open"
+    },
+    "sync": {
+      "title": "Sync remote workspace",
+      "description": "Sync a workspace from Kition Sync onto this machine.",
+      "button": "Sign in",
+      "disabledTooltip": "Coming soon"
+    }
+  },
+  "vault": {
+    "menu": {
+      "rename": "Rename",
+      "remove": "Remove from list",
+      "reveal": "Show in Finder"
+    },
+    "renameTitle": "Rename workspace",
+    "renamePlaceholder": "Workspace name",
+    "removeConfirm": "Remove this workspace from the list? The folder on disk stays untouched.",
+    "empty": "No workspaces yet. Create or open one to get started."
+  },
+  "errors": {
+    "missingName": "Please enter a workspace name.",
+    "missingParent": "Please choose a parent folder.",
+    "open": "Failed to open the workspace: {{message}}",
+    "create": "Failed to create the workspace: {{message}}",
+    "switch": "Failed to switch workspace: {{message}}",
+    "missingVault": "The workspace folder no longer exists on disk."
+  },
+  "firstRun": {
+    "seeding": "Setting up your workspace…",
+    "seedError": "Couldn't set up your Getting Started files: {{message}}",
+    "dialogLabel": "Getting started",
+    "eyebrow": "Getting started",
+    "progress": "Step {{step}} of 3",
+    "workspaceTitle": "Choose how to start",
+    "workspaceDescription": "Your workspace is ready. Pick an option now, or skip and start with the files in Getting Started.",
+    "workspaceLocal": "Stored locally on this device",
+    "providerTitle": "Choose how you want to work",
+    "providerDescription": "You can change this later in Settings. Documents, tables, and local workflows work without an account or AI provider.",
+    "choice": {
+      "cloud": "Kition Cloud",
+      "cloudDescription": "Hosted AI with Kition Account sign-in and no separate API key.",
+      "byo": "Bring your own API key",
+      "byoDescription": "Connect OpenAI, Anthropic, DeepSeek, or another compatible provider.",
+      "local": "Continue without AI",
+      "localDescription": "Open a prepared Contacts table and deterministic workflow without an account or API key."
+    },
+    "successTitle": "Complete one useful action",
+    "success": {
+      "cloud": {
+        "title": "Summarize the Welcome document",
+        "description": "Sign in, open Agent, and start with a prepared prompt.",
+        "privacy": "The prompt and selected page context are sent to Kition Cloud. Your workspace files stay on this device."
+      },
+      "byo": {
+        "title": "Connect your AI provider",
+        "description": "Open AI Models and add the provider you already use.",
+        "privacy": "Prompts and selected context are sent directly to the provider you configure."
+      },
+      "local": {
+        "title": "Run the Contacts workflow",
+        "description": "Normalize contact details with a deterministic workflow that needs no AI model.",
+        "privacy": "This workflow runs locally and does not send workspace content to an AI service."
+      }
+    },
+    "scenario": {
+      "eyebrow": "Onboarding scenario",
+      "emailTitle": "Import an email inbox",
+      "emailDescription": "Connect Gmail, 163 Mail, Outlook, or another provider and sync messages into the prepared Inbox table.",
+      "emailAction": "Set up inbox sync"
+    },
+    "continue": "Continue",
+    "back": "Back",
+    "skip": "Skip for now",
+    "startCloud": "Sign in and open Agent",
+    "agentPrompt": "Summarize this welcome page and write a short getting-started checklist below it.",
+    "cancelSignIn": "Cancel sign-in",
+    "configureModels": "Open AI Models",
+    "startLocal": "Open local example",
+    "cloudCreditsEmpty": "Your Kition Cloud credits are empty. Top up from Kition Account before starting this action.",
+    "cloudUnavailable": "Kition Account is temporarily unavailable."
+  }
+}

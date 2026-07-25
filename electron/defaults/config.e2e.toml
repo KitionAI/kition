@@ -1,0 +1,36 @@
+[app]
+name = "Kition Desktop API E2E"
+version = "2.0.0-e2e"
+apiPrefix = "/api/v1"
+jwtSecret = "e2e-secret"
+disableAuth = true
+e2eTestMode = true
+accessTokenExpireMinutes = 120
+refreshTokenExpireDays = 7
+autoMigrate = true
+autoSeed = true
+
+[portal]
+baseURL = "https://kition.ai"
+
+[server]
+  [server.http]
+    port = 18101
+
+[mysql]
+dsn = "root:wrong@tcp(127.0.0.1:3306)/kition?charset=utf8mb4&parseTime=True&loc=Local"
+maxOpenConns = 5
+maxIdleConns = 5
+connMaxLifetime = "60s"
+
+[sqlite]
+path = "./data/desktop-e2e.db"
+
+[storage]
+uploadDir = "./test-uploads-desktop"
+workspaceDir = "./test-workspace-desktop"
+
+[logger.default]
+writer = "stderr"
+async = false
+level = "error"

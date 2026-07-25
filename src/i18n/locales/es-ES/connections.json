@@ -1,0 +1,70 @@
+{
+  "panel": {
+    "eyebrow": "Conexiones",
+    "title": "Envío de correo",
+    "subtitle": "Gestiona credenciales reutilizables para las acciones de workflow.",
+    "refreshAria": "Actualizar conexiones",
+    "newConnection": "Nueva conexión",
+    "loading": "Cargando conexiones",
+    "emptyTitle": "Aún no hay conexiones",
+    "emptyHint": "Añade una conexión SMTP antes de habilitar los workflows de correo.",
+    "emptyCta": "Añadir conexión",
+    "fallbackEmailSmtp": "SMTP de correo",
+    "usedBy": "Usada por {{count}}",
+    "pickPrompt": "Selecciona una conexión para inspeccionarla."
+  },
+  "modal": {
+    "ariaLabel": "Conexión de correo",
+    "titleEdit": "Editar conexión de correo",
+    "titleNew": "Nueva conexión de correo",
+    "subtitle": "«Probar y guardar» verifica el servidor SMTP antes de almacenar los cambios.",
+    "closeAria": "Cerrar el formulario de conexión",
+    "fieldName": "Nombre",
+    "fieldHost": "Host",
+    "fieldPort": "Puerto",
+    "fieldUsername": "Usuario",
+    "fieldPassword": "Contraseña",
+    "fieldTls": "TLS",
+    "fieldFromAddress": "Dirección del remitente",
+    "fieldFromName": "Nombre del remitente",
+    "namePlaceholder": "p. ej. SMTP de la empresa",
+    "hostPlaceholder": "smtp.example.com",
+    "portPlaceholder": "587",
+    "usernamePlaceholder": "you@example.com",
+    "fromPlaceholder": "no-reply@example.com",
+    "fromNamePlaceholder": "p. ej. Notificaciones de Kition",
+    "passwordPlaceholderEdit": "Déjalo en blanco para mantener la contraseña actual",
+    "cancel": "Cancelar",
+    "testAndSave": "Probar y guardar"
+  },
+  "detail": {
+    "eyebrowEmailSmtp": "SMTP de correo",
+    "labelHost": "Host",
+    "labelTls": "TLS",
+    "labelUsername": "Usuario",
+    "labelUsedBy": "Usada por",
+    "usedByWorkflows_one": "{{count}} workflow",
+    "usedByWorkflows_other": "{{count}} workflows",
+    "edit": "Editar",
+    "test": "Probar",
+    "delete": "Eliminar"
+  },
+  "status": {
+    "active": "Activa",
+    "invalid": "La última prueba falló",
+    "pending": "Pendiente"
+  },
+  "confirms": {
+    "deleteWithUsage_one": "«{{name}}» la usa {{count}} workflow.\n\nAl eliminarla, ese workflow dejará de enviar correo hasta que le asignes una conexión nueva.\n\n¿Eliminar de todos modos?",
+    "deleteWithUsage_other": "«{{name}}» la usan {{count}} workflows.\n\nAl eliminarla, esos workflows dejarán de enviar correo hasta que les asignes una conexión nueva.\n\n¿Eliminar de todos modos?",
+    "deleteNoUsage": "¿Eliminar «{{name}}»?"
+  },
+  "errors": {
+    "loadFailed": "No se pudieron cargar las conexiones",
+    "saveFailed": "No se pudo guardar la conexión",
+    "verifyFailedFallback": "La conexión se guardó, pero la verificación falló"
+  },
+  "feedback": {
+    "verified": "Conexión verificada"
+  }
+}

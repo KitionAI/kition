@@ -1,0 +1,236 @@
+{
+  "createMenu": {
+    "format": {
+      "markdown": "Document",
+      "table": "Table",
+      "page": "Page",
+      "note": "Note"
+    },
+    "folder": "Folder",
+    "importFile": "Import file",
+    "newTable": "New table",
+    "newWorkflow": "New Workflow"
+  },
+  "sidebar": {
+    "tabs": {
+      "files": "Files",
+      "search": "Search",
+      "browser": "Browser"
+    },
+    "collapseSection": "Collapse {{name}}",
+    "expandSection": "Expand {{name}}",
+    "newPage": "New page",
+    "newPageIn": "New page in {{name}}",
+    "workflows": "Workflows",
+    "openWorkflows": "Open workflows",
+    "refresh": "Refresh workspace",
+    "collapseSidebar": "Collapse sidebar",
+    "loadingDirectory": "Loading local directory"
+  },
+  "tree": {
+    "collapse": "Collapse",
+    "expand": "Expand",
+    "modifiedByAgent": "Modified by Agent",
+    "createInside": "Create inside this page",
+    "moreActions": "More actions",
+    "addToChat": "Add to chat",
+    "addToNewChat": "Add to new chat",
+    "changeIcon": "Change icon",
+    "rename": "Rename",
+    "duplicate": "Duplicate",
+    "moveTo": "Move to...",
+    "showInFinder": "Show in Finder",
+    "delete": "Delete",
+    "moveToTitle": "Move to",
+    "moveToRoot": "Root",
+    "noDestinations": "No other available destinations",
+    "clearIcon": "Clear",
+    "untitled": "Untitled"
+  },
+  "itemMenu": {
+    "mode": {
+      "rich": "Rich text",
+      "split": "Split",
+      "source": "Source",
+      "preview": "Preview"
+    },
+    "preference": {
+      "smallText": "Small text",
+      "fullWidth": "Full width",
+      "toc": "Outline",
+      "locked": "Lock page"
+    },
+    "tableAction": {
+      "rename": "Rename",
+      "duplicate": "Duplicate",
+      "downloadCsv": "Download CSV",
+      "importData": "Import data",
+      "api": "API",
+      "history": "History",
+      "share": "Share",
+      "delete": "Delete"
+    },
+    "markdownMode": {
+      "rich": "Edit view",
+      "preview": "Reading view",
+      "source": "Source view"
+    },
+    "revertToSaved": "Revert to saved version",
+    "importMarkdown": "Import Markdown",
+    "exportFile": "Export file",
+    "openContainingFolder": "Open containing folder",
+    "words": "Words: {{formattedCount}}",
+    "updated": "Updated: {{time}}",
+    "textStyle": {
+      "default": "Default",
+      "serif": "Serif",
+      "mono": "Mono"
+    }
+  },
+  "tabs": {
+    "webBadge": "Web",
+    "closeTab": "Close tab",
+    "expandSidebar": "Expand sidebar",
+    "previousTab": "Previous tab",
+    "nextTab": "Next tab",
+    "showOverflow": "Show overflow tabs",
+    "close": "Close",
+    "closeOthers": "Close other tabs",
+    "closeAll": "Close all tabs",
+    "closeUnmodified": "Close unmodified tabs",
+    "closeLeft": "Close tabs to the left",
+    "closeRight": "Close tabs to the right",
+    "closeReadOnly": "Close all read-only tabs",
+    "copyReference": "Copy path/reference",
+    "workflowsTitle": "Workflows",
+    "workflowsScoped": "Workflows · {{name}}",
+    "untitledTable": "Untitled table",
+    "untitledWorkflow": "Untitled workflow",
+    "videos": "Videos",
+    "workflow": "Workflow"
+  },
+  "agentTabs": {
+    "history": {
+      "today": "Today",
+      "week": "Previous 7 days",
+      "older": "Older"
+    },
+    "chat": "Chat",
+    "newChatTitle": "New chat",
+    "openChat": "Open AI Chat",
+    "collapseChat": "Collapse AI Chat",
+    "emptyTitle": "AI Chat",
+    "newChat": "New chat",
+    "closeChat": "Close chat",
+    "viewHistory": "View history",
+    "agentHistory": "Agent history",
+    "searchChats": "Search chats...",
+    "noMatchingChats": "No matching chats.",
+    "noChatsYet": "No chats yet. Start a new one.",
+    "chatRef": "Chat #{{id}}"
+  },
+  "agentSidebar": {
+    "empty": "Start a new chat, or open an existing one from history."
+  },
+  "topbar": {
+    "more": "More"
+  },
+  "browserSites": {
+    "title": "Browser",
+    "visitedCount": "{{count}} visited sites",
+    "openBrowser": "Open Browser",
+    "openBrowserTitle": "Open a new browser tab",
+    "refreshLoginStatus": "Refresh login status",
+    "loading": "Loading sites...",
+    "lastVisited": "Last visited {{time}}",
+    "signedIn": "Signed in",
+    "signedOut": "Signed out",
+    "openSite": "Open site",
+    "open": "Open {{host}}",
+    "forgetSite": "Forget this site (clear login)",
+    "forget": "Forget {{host}}",
+    "emptyTitle": "No visited sites yet",
+    "emptyDescription": "Visit and sign in to sites in the built-in browser. They will be listed here along with their login status to enable automatic sign-in for later scraping."
+  },
+  "browserToolbar": {
+    "back": "Back",
+    "forward": "Forward",
+    "stopLoading": "Stop loading",
+    "reload": "Reload",
+    "addressPlaceholder": "Enter URL or search..."
+  },
+  "browserTab": {
+    "eyebrow": "Embedded browser",
+    "unavailableDescription": "The browser page is attached to this tab area. Use this tab for login, search, and navigation. AI Chat stays available on the right, so you can continue from the current page without switching away.",
+    "emptyText": "Browser — Enter a URL above, or instruct the Agent to navigate and use the browser",
+    "loadingPage": "Loading page..."
+  },
+  "fileViewer": {
+    "openInSystem": "Open in system",
+    "showInFinder": "Show in Finder",
+    "previewUnsupported": "{{label}} · In-app preview is not supported yet",
+    "previewTip": "You can still @-mention this file so the AI can parse it directly, or click \"Open in system\" to view it with a native app."
+  },
+  "folderDialog": {
+    "title": "New folder",
+    "description": "Enter a folder name.",
+    "placeholder": "Untitled folder",
+    "cancel": "Cancel",
+    "create": "Create"
+  },
+  "media": {
+    "images": "Images",
+    "videos": "Videos",
+    "items": "{{count}} items",
+    "collapse": "Collapse {{name}}",
+    "expand": "Expand {{name}}",
+    "noImagesTitle": "No images yet",
+    "noVideosTitle": "No videos yet",
+    "noImagesDescription": "Images in this workspace will appear here.",
+    "noVideosDescription": "Videos in this workspace will appear here."
+  },
+  "editor": {
+    "sourcePlaceholder": "Edit Markdown source here..."
+  },
+  "layout": {
+    "resizeSidebar": "Resize sidebar",
+    "resizeChat": "Resize AI Chat"
+  },
+  "footer": {
+    "switchWorkspace": "Switch workspace",
+    "switchWorkspaceTitle": "Switch workspace (⌘⇧O)",
+    "profile": "Profile",
+    "settings": "Settings"
+  },
+  "errors": {
+    "kitableNotFound": "Could not locate this table file on disk.",
+    "kitableNoTables": "This table file has no tables yet — create a table first.",
+    "parentKitableNotFound": "Could not locate the parent table file on disk.",
+    "createWorkflowFailed": "Failed to create workflow",
+    "documentPathEmpty": "Document path cannot be empty",
+    "nameEmpty": "Name cannot be empty",
+    "saveBeforeRename": "Failed to save the current document; rename was skipped",
+    "renameFailed": "Failed to rename document",
+    "fileTypeNotDeletable": "This file type cannot be deleted from the document library yet.",
+    "onlyMarkdownPlateMovable": "Only Markdown and rich-text documents can be moved here. Organize Office/PDF and similar files via your system folder.",
+    "onlyMarkdownPlateTableDuplicable": "Only Markdown, Plate, and Table pages can be duplicated here.",
+    "onlyMarkdownPlateTableRenamable": "Only Markdown, Plate, and Table pages can be renamed here.",
+    "createDocumentFailed": "Failed to create document",
+    "createTableFailed": "Failed to create table",
+    "importMarkdownFailed": "Failed to import Markdown",
+    "browserDevModeOpenDirectory": "You are running in browser dev mode and cannot open native directories. Launch the desktop app via pnpm dev:electron and try again.",
+    "browserDevModePickDirectory": "You are running in browser dev mode and cannot pick a native directory. Launch the desktop app via pnpm dev:electron and try again.",
+    "browserDevModeSwitchDirectory": "You are running in browser dev mode and cannot switch native directories."
+  },
+  "feedback": {
+    "nameUpdated": "Name updated",
+    "refreshed": "Workspace refreshed",
+    "restoredSavedVersion": "Restored to the saved version",
+    "documentCreated": "Document created",
+    "tableCreated": "Table created",
+    "folderCreated": "Folder created",
+    "renamed": "Renamed",
+    "alreadyInLocation": "Already in this location",
+    "tableDeleted": "Table deleted"
+  }
+}
