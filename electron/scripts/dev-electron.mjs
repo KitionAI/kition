@@ -4,7 +4,7 @@ import { promisify } from 'node:util'
 import { execFile, spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { createServer } from 'vite'
-import { shouldTerminateDevProcess } from './dev-processes.mjs'
+import { createDevViteConfig, shouldTerminateDevProcess } from './dev-processes.mjs'
 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url))
 const uiDir = path.resolve(moduleDir, '..', '..')
@@ -102,16 +102,7 @@ async function cleanup(exitCode = 0) {
 try {
   await terminateStaleProcesses()
 
-  viteServer = await createServer({
-    root: uiDir,
-    clearScreen: false,
-    logLevel: 'info',
-    server: {
-      host: '127.0.0.1',
-      port: 3000,
-      strictPort: false,
-    },
-  })
+  viteServer = await createServer(createDevViteConfig(uiDir))
 
   await viteServer.listen()
   viteServer.printUrls()

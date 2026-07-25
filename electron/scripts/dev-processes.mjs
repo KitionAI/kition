@@ -1,3 +1,20 @@
+import path from 'node:path'
+
+export function createDevViteConfig(uiDir) {
+  const root = path.resolve(uiDir)
+  return {
+    root,
+    configFile: path.join(root, 'tooling', 'vite.config.ts'),
+    clearScreen: false,
+    logLevel: 'info',
+    server: {
+      host: '127.0.0.1',
+      port: 3000,
+      strictPort: false,
+    },
+  }
+}
+
 export function shouldTerminateDevProcess(entry, options) {
   const currentPid = Number(options?.currentPid || 0)
   const uiDir = String(options?.uiDir || '').replaceAll('\\', '/')
