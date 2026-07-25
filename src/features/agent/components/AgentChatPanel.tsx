@@ -31,6 +31,7 @@ import type {
   AgentTablePlanContext,
   AgentToolCall,
 } from '@/api/agent'
+import { KitionLogoMark } from '@/components/KitionLogoMark'
 import { Textarea } from '@/components/ui'
 import { AgentModelPicker } from '@/features/agent/components/AgentModelPicker'
 import {
@@ -193,7 +194,7 @@ export function AgentChatPanel({
           // them toward an unblocked state.
           return (
           <AgentPanelEmptyState
-            icon={<img src="/logo-mark.png" alt="Kition" className="size-5 shrink-0" />}
+            icon={<KitionLogoMark className="size-5" />}
             title="Kition"
             description={emptyState.description}
             actions={needsModelConfig ? (
