@@ -1,4 +1,5 @@
 import type { WorkspaceTab } from '@/features/workspace/lib/workspace'
+import type { WorkspaceDocumentFormat } from '@/services/desktop'
 import type { AgentPaneContext } from '@/features/agent/lib/paneEmptyState'
 
 // deriveAgentPaneContext maps a workbench tab to the agent panel's pane
@@ -66,6 +67,41 @@ export function deriveAgentPaneContext(
       const _exhaustive: never = tab
       void _exhaustive
       return 'document'
+    }
+  }
+}
+
+export function resolveAgentActiveDocument(
+  tab: WorkspaceTab | null | undefined,
+): { path: string; format?: WorkspaceDocumentFormat } {
+  if (!tab) {
+    return { path: '' }
+  }
+  switch (tab.type) {
+    case 'document':
+    case 'file-viewer':
+      return { path: tab.path, format: tab.format }
+    case 'table':
+      return { path: tab.kitablePath, format: 'data' }
+    case 'workflow':
+      return {
+        path: tab.kitablePath || '',
+        format: tab.kitablePath ? 'data' : undefined,
+      }
+    case 'browser':
+      return {
+        path: tab.originDocumentPath || '',
+        format: tab.originDocumentPath?.toLowerCase().endsWith('.kitable')
+          ? 'data'
+          : undefined,
+      }
+    case 'browser-sites':
+    case 'gallery':
+      return { path: '' }
+    default: {
+      const _exhaustive: never = tab
+      void _exhaustive
+      return { path: '' }
     }
   }
 }

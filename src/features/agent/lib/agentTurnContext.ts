@@ -2,10 +2,13 @@ import type { AgentBrowserContext, AgentPaneContext, AgentTaskMode } from '@/api
 import type {
   BrowserPageContext,
   BrowserSessionProvider,
+  WorkspaceDocumentFormat,
 } from '@/services/desktop'
 import type { DataDocument, DataTable } from '@/types/dataDocument'
 
 export type AgentTurnContext = {
+  activeDocumentPath: string
+  activeDocumentFormat?: WorkspaceDocumentFormat
   activeDataDocumentId: number
   activeDataTableId: number
   browserContext?: AgentBrowserContext
@@ -70,6 +73,8 @@ export function buildActiveBrowserTabContext(input: {
 }
 
 export function buildAgentTurnContext(input: {
+  activeDocumentPath?: string
+  activeDocumentFormat?: WorkspaceDocumentFormat
   activeDocument?: DataDocument | null
   activeTable?: DataTable | null
   browserContext?: AgentBrowserContext
@@ -77,6 +82,8 @@ export function buildAgentTurnContext(input: {
   activeWorkflowId?: string
 }): AgentTurnContext {
   return {
+    activeDocumentPath: String(input.activeDocumentPath || '').trim(),
+    activeDocumentFormat: input.activeDocumentFormat,
     activeDataDocumentId: input.activeDocument?.id ?? 0,
     activeDataTableId: input.activeTable?.id ?? 0,
     browserContext: input.browserContext,
