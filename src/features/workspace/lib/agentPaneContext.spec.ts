@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { WorkspaceTab } from '@/features/workspace/lib/workspace'
 
-import { deriveAgentPaneContext } from './agentPaneContext'
+import { deriveAgentPaneContext, resolveAgentActiveDocument } from './agentPaneContext'
 
 describe('deriveAgentPaneContext', () => {
   it('returns document when no tab is active so the empty state has sensible default copy', () => {
@@ -117,5 +117,36 @@ describe('deriveAgentPaneContext', () => {
       kind: 'images',
     }
     expect(deriveAgentPaneContext(tab)).toBe('gallery')
+  })
+})
+
+describe('resolveAgentActiveDocument', () => {
+  it('returns the path and format for document and file viewer tabs', () => {
+    expect(resolveAgentActiveDocument({
+      id: 'document:Docs/Plan.md',
+      type: 'document',
+      title: 'Plan',
+      path: 'Docs/Plan.md',
+      format: 'markdown',
+    })).toEqual({ path: 'Docs/Plan.md', format: 'markdown' })
+
+    expect(resolveAgentActiveDocument({
+      id: 'file:Reports/Quarter.pdf',
+      type: 'file-viewer',
+      title: 'Quarter',
+      path: 'Reports/Quarter.pdf',
+      format: 'pdf',
+    })).toEqual({ path: 'Reports/Quarter.pdf', format: 'pdf' })
+  })
+
+  it('keeps a table bound to its kitable document', () => {
+    expect(resolveAgentActiveDocument({
+      id: 'table:Leads.kitable#7',
+      type: 'table',
+      title: 'Leads',
+      kitablePath: 'Sales/Leads.kitable',
+      tableId: 7,
+      format: 'data',
+    })).toEqual({ path: 'Sales/Leads.kitable', format: 'data' })
   })
 })
