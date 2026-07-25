@@ -31,7 +31,7 @@ describe('buildSidecar', () => {
     const result = await buildSidecar(output, 'darwin', 'arm64')
 
     expect(result.source).toBe('explicit')
-    expect(result.runtimeVersion).toBe('0.1.0')
+    expect(result.runtimeVersion).toBe('0.1.1')
     expect(result.protocolVersion).toBe(1)
     expect(await fs.readFile(result.outputPath, 'utf8')).toContain('exit 0')
     expect(result.sha256).toBe(createHash('sha256').update(await fs.readFile(result.outputPath)).digest('hex'))
