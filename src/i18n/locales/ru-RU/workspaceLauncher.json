@@ -1,0 +1,97 @@
+{
+  "title": "Рабочая область",
+  "subtitle": "Версия {{version}}",
+  "fallbackVersion": "",
+  "actions": {
+    "create": {
+      "title": "Новая рабочая область",
+      "description": "Создайте новую рабочую область в выбранной папке.",
+      "button": "Создать",
+      "nameLabel": "Имя рабочей области",
+      "namePlaceholder": "Моя рабочая область",
+      "parentLabel": "Родительская папка",
+      "parentPlaceholder": "Выберите папку…",
+      "pick": "Обзор…",
+      "confirm": "Создать рабочую область",
+      "cancel": "Отмена"
+    },
+    "open": {
+      "title": "Открыть локальную рабочую область",
+      "description": "Использовать существующую папку на этом компьютере как рабочую область.",
+      "button": "Открыть"
+    },
+    "sync": {
+      "title": "Синхронизировать удалённую рабочую область",
+      "description": "Синхронизировать рабочую область из Kition Sync на этот компьютер.",
+      "button": "Войти",
+      "disabledTooltip": "Скоро"
+    }
+  },
+  "vault": {
+    "menu": {
+      "rename": "Переименовать",
+      "remove": "Удалить из списка",
+      "reveal": "Показать в Finder"
+    },
+    "renameTitle": "Переименовать рабочую область",
+    "renamePlaceholder": "Имя рабочей области",
+    "removeConfirm": "Удалить эту рабочую область из списка? Папка на диске останется нетронутой.",
+    "empty": "Пока нет рабочих областей. Создайте или откройте одну, чтобы начать."
+  },
+  "errors": {
+    "missingName": "Введите имя рабочей области.",
+    "missingParent": "Выберите родительскую папку.",
+    "open": "Не удалось открыть рабочую область: {{message}}",
+    "create": "Не удалось создать рабочую область: {{message}}",
+    "switch": "Не удалось сменить рабочую область: {{message}}",
+    "missingVault": "Папка рабочей области больше не существует на диске."
+  },
+  "firstRun": {
+    "seeding": "Настраиваем рабочую область…",
+    "seedError": "Не удалось подготовить стартовые файлы: {{message}}",
+    "dialogLabel": "Начало работы",
+    "eyebrow": "Начало работы",
+    "progress": "Шаг {{step}} из 3",
+    "workspaceTitle": "Рабочая область готова",
+    "workspaceDescription": "Kition хранит документы и файлы table file в выбранной вами папке.",
+    "workspaceLocal": "Хранится локально на этом устройстве",
+    "providerTitle": "Выберите режим работы",
+    "providerDescription": "Провайдера можно сменить позже. Локальные workflow работают без аккаунта и API-ключа.",
+    "choice": {
+      "cloud": "Kition Cloud",
+      "cloudDescription": "Облачный AI через Kition Account без отдельного API-ключа.",
+      "byo": "Использовать свой API-ключ",
+      "byoDescription": "Подключите OpenAI, Anthropic, DeepSeek или другого совместимого провайдера.",
+      "local": "Только локально",
+      "localDescription": "Работайте с документами, table file и детерминированными workflow без AI."
+    },
+    "successTitle": "Выполните одно полезное действие",
+    "success": {
+      "cloud": {
+        "title": "Сделать краткое содержание Welcome",
+        "description": "Войдите в аккаунт, откройте Agent и используйте готовый prompt.",
+        "privacy": "Prompt и выбранный контекст отправляются в Kition Cloud. Файлы остаются на этом устройстве."
+      },
+      "byo": {
+        "title": "Подключить AI-провайдера",
+        "description": "Откройте AI Models и добавьте провайдера, которым уже пользуетесь.",
+        "privacy": "Prompts и выбранный контекст отправляются напрямую настроенному провайдеру."
+      },
+      "local": {
+        "title": "Запустить workflow Contacts",
+        "description": "Нормализуйте контакты детерминированным workflow без модели AI.",
+        "privacy": "Этот workflow выполняется локально и не отправляет содержимое в сервис AI."
+      }
+    },
+    "continue": "Продолжить",
+    "back": "Назад",
+    "skip": "Пропустить",
+    "startCloud": "Войти и открыть Agent",
+    "agentPrompt": "Кратко изложи эту страницу приветствия и добавь ниже небольшой список первых шагов.",
+    "cancelSignIn": "Отменить вход",
+    "configureModels": "Настроить AI Models",
+    "startLocal": "Открыть workflow Contacts",
+    "cloudCreditsEmpty": "Кредиты Kition Cloud закончились. Пополните их в Kition Account.",
+    "cloudUnavailable": "Kition Account временно недоступен."
+  }
+}

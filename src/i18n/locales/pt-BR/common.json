@@ -1,0 +1,46 @@
+{
+  "actions": {
+    "confirm": "Confirmar",
+    "cancel": "Cancelar",
+    "save": "Salvar",
+    "delete": "Excluir",
+    "edit": "Editar",
+    "close": "Fechar",
+    "open": "Abrir",
+    "retry": "Tentar novamente",
+    "copy": "Copiar",
+    "rename": "Renomear",
+    "remove": "Remover",
+    "loading": "Carregando…",
+    "submit": "Enviar",
+    "showPassword": "Mostrar senha",
+    "hidePassword": "Ocultar senha"
+  },
+  "statusLabel": {
+    "success": "Sucesso",
+    "failed": "Falhou",
+    "pending": "Pendente",
+    "completed": "Concluído",
+    "unknown": "Desconhecido"
+  },
+  "status": "Status",
+  "name": "Nome",
+  "workspace": "Espaço de trabalho",
+  "commandPalette": {
+    "badge": "Comando",
+    "hint": "Executar comandos, navegar",
+    "placeholder": "Executar comandos, ir para configurações…",
+    "navigation": "Navegação",
+    "backToWorkspace": "Voltar ao espaço de trabalho",
+    "backToWorkspaceHint": "Visualização principal atual",
+    "openSettings": "Abrir configurações",
+    "openSettingsHint": "Configuração de runtime e provedor",
+    "close": "Fechar"
+  },
+  "viewport": {
+    "tooNarrow": "A janela é muito estreita. O editor e o canvas do Workflow podem não ser totalmente utilizáveis neste tamanho. Amplie a janela para pelo menos 480px."
+  },
+  "search": {
+    "fileMissing": "O arquivo não existe mais"
+  }
+}

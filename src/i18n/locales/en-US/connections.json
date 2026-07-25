@@ -1,0 +1,70 @@
+{
+  "panel": {
+    "eyebrow": "Outgoing mail",
+    "title": "Email delivery",
+    "subtitle": "Manage reusable credentials for workflow actions.",
+    "refreshAria": "Refresh connections",
+    "newConnection": "Add sender",
+    "loading": "Loading connections",
+    "emptyTitle": "No delivery accounts yet",
+    "emptyHint": "Connect an email provider before enabling send-email workflows.",
+    "emptyCta": "Add sender",
+    "fallbackEmailSmtp": "Email SMTP",
+    "usedBy": "Used by {{count}}",
+    "pickPrompt": "Select a connection to inspect it."
+  },
+  "modal": {
+    "ariaLabel": "Email connection",
+    "titleEdit": "Edit delivery account",
+    "titleNew": "Add delivery account",
+    "subtitle": "Choose a provider, then enter the account and provider credential.",
+    "closeAria": "Close connection form",
+    "fieldName": "Name",
+    "fieldHost": "Host",
+    "fieldPort": "Port",
+    "fieldUsername": "Username",
+    "fieldPassword": "Password",
+    "fieldTls": "TLS",
+    "fieldFromAddress": "From address",
+    "fieldFromName": "From name",
+    "namePlaceholder": "e.g. Company SMTP",
+    "hostPlaceholder": "smtp.example.com",
+    "portPlaceholder": "587",
+    "usernamePlaceholder": "you@example.com",
+    "fromPlaceholder": "no-reply@example.com",
+    "fromNamePlaceholder": "e.g. Kition Notifications",
+    "passwordPlaceholderEdit": "Leave blank to keep existing password",
+    "cancel": "Cancel",
+    "testAndSave": "Test & Save"
+  },
+  "detail": {
+    "eyebrowEmailSmtp": "Email SMTP",
+    "labelHost": "Host",
+    "labelTls": "TLS",
+    "labelUsername": "Username",
+    "labelUsedBy": "Used by",
+    "usedByWorkflows_one": "{{count}} workflow",
+    "usedByWorkflows_other": "{{count}} workflows",
+    "edit": "Edit",
+    "test": "Test",
+    "delete": "Delete"
+  },
+  "status": {
+    "active": "Active",
+    "invalid": "Last test failed",
+    "pending": "Pending"
+  },
+  "confirms": {
+    "deleteWithUsage_one": "\"{{name}}\" is used by {{count}} workflow.\n\nDeleting it will cause that workflow to stop sending email until you assign it a new connection.\n\nDelete anyway?",
+    "deleteWithUsage_other": "\"{{name}}\" is used by {{count}} workflows.\n\nDeleting them will cause those workflows to stop sending email until you assign them a new connection.\n\nDelete anyway?",
+    "deleteNoUsage": "Delete \"{{name}}\"?"
+  },
+  "errors": {
+    "loadFailed": "Failed to load connections",
+    "saveFailed": "Failed to save connection",
+    "verifyFailedFallback": "Connection saved but verification failed"
+  },
+  "feedback": {
+    "verified": "Connection verified"
+  }
+}

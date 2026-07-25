@@ -1,0 +1,173 @@
+name: Prepare Unified Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: SemVer without the v prefix
+        required: true
+        type: string
+      source_ref:
+        description: Public client ref to release
+        required: true
+        default: main
+        type: string
+      runtime_ref:
+        description: Private runtime ref to build
+        required: true
+        default: main
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  RUNTIME_REPOSITORY: KitionAI/kition-dev
+
+concurrency:
+  group: prepare-release-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - name: Checkout public client source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_ref }}
+          fetch-depth: 0
+
+      - name: Validate version and runtime lock
+        id: version
+        shell: bash
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$INPUT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid SemVer: $INPUT_VERSION" >&2
+            exit 1
+          fi
+          node <<'NODE'
+          const fs = require('node:fs')
+          const version = process.env.INPUT_VERSION
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'))
+          const lock = JSON.parse(fs.readFileSync('electron/runtime.lock.json', 'utf8'))
+          if (pkg.version !== version) throw new Error(`package version ${pkg.version} does not match ${version}`)
+          if (lock.runtimeVersion !== version) throw new Error(`runtime version ${lock.runtimeVersion} does not match ${version}`)
+          if (lock.releaseTag !== `v${version}`) throw new Error(`runtime release tag ${lock.releaseTag} does not match v${version}`)
+          if (lock.repository !== process.env.RUNTIME_REPOSITORY) throw new Error(`unexpected runtime repository ${lock.repository}`)
+          if (!Number.isInteger(lock.protocolVersion) || lock.protocolVersion < 1) throw new Error('invalid protocol version')
+          console.log(`protocol=${lock.protocolVersion}`)
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `protocol=${lock.protocolVersion}\n`)
+          NODE
+          echo "tag=v$INPUT_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Create or validate immutable release tag
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          git fetch origin --tags --force
+          if git show-ref --verify --quiet "refs/tags/$TAG"; then
+            tagged_commit="$(git rev-list -n 1 "$TAG")"
+            if [[ "$tagged_commit" != "$GITHUB_SHA" ]]; then
+              echo "Tag $TAG points to $tagged_commit instead of $GITHUB_SHA" >&2
+              exit 1
+            fi
+          else
+            gh api \
+              --method POST \
+              "repos/${GITHUB_REPOSITORY}/git/refs" \
+              -f "ref=refs/tags/$TAG" \
+              -f "sha=$GITHUB_SHA"
+          fi
+
+      - name: Create or validate draft Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            releases_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100")"
+            draft="$(jq -e -r --arg tag "$TAG" '
+              map(select(.tag_name == $tag))
+              | if length == 1 then (.[0].draft | tostring) else empty end
+            ' <<<"$releases_json")"
+            if [[ "$draft" != "true" ]]; then
+              echo "Release $TAG is already published; tags are immutable" >&2
+              exit 1
+            fi
+          else
+            gh release create "$TAG" \
+              --draft \
+              --target "$GITHUB_SHA" \
+              --title "Kition ${TAG#v}" \
+              --generate-notes
+          fi
+
+      - name: Create or validate runtime draft Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.KITION_RUNTIME_DISPATCH_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$GH_TOKEN" ]]; then
+            echo "KITION_RUNTIME_DISPATCH_TOKEN is required" >&2
+            exit 1
+          fi
+          releases_json="$(gh api "repos/${RUNTIME_REPOSITORY}/releases?per_page=100")"
+          release_count="$(jq --arg tag "$TAG" 'map(select(.tag_name == $tag)) | length' <<<"$releases_json")"
+          if [[ "$release_count" == "1" ]]; then
+            draft="$(jq -r --arg tag "$TAG" 'map(select(.tag_name == $tag))[0].draft' <<<"$releases_json")"
+            if [[ "$draft" != "true" ]]; then
+              echo "Runtime Release $TAG is already published; runtime releases are immutable" >&2
+              exit 1
+            fi
+          elif [[ "$release_count" == "0" ]]; then
+            gh release create "$TAG" \
+              --repo "$RUNTIME_REPOSITORY" \
+              --draft \
+              --title "Kition Runtime ${TAG#v}" \
+              --notes "Developer runtime binaries for Kition ${TAG#v}. Runtime source is not included."
+          else
+            echo "Expected at most one runtime Release for $TAG, found $release_count" >&2
+            exit 1
+          fi
+
+      - name: Dispatch private runtime build
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.KITION_RUNTIME_DISPATCH_TOKEN }}
+          VERSION: ${{ inputs.version }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+          PROTOCOL_VERSION: ${{ steps.version.outputs.protocol }}
+          RUNTIME_REF: ${{ inputs.runtime_ref }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$GH_TOKEN" ]]; then
+            echo "KITION_RUNTIME_DISPATCH_TOKEN is required" >&2
+            exit 1
+          fi
+          gh api \
+            --method POST \
+            repos/KitionAI/kition-runtime/actions/workflows/build-release-assets.yml/dispatches \
+            -f "ref=${RUNTIME_REF}" \
+            -f "inputs[version]=${VERSION}" \
+            -f "inputs[release_tag]=${RELEASE_TAG}" \
+            -f "inputs[protocol_version]=${PROTOCOL_VERSION}" \
+            -f "inputs[public_repository]=${RUNTIME_REPOSITORY}"
+
+      - name: Report next step
+        shell: bash
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          echo "Draft installer and runtime Releases for $TAG are prepared. Wait for the private runtime workflow to publish the runtime Release, then run Publish Unified Release."

@@ -1,0 +1,24 @@
+{
+  "common": {
+    "unknown": "Unknown error",
+    "createFailed": "Create failed",
+    "saveFailed": "Save failed",
+    "loadFailed": "Load failed",
+    "deleteFailed": "Delete failed",
+    "renameFailed": "Rename failed",
+    "copyFailed": "Copy failed",
+    "operationFailed": "Operation failed",
+    "networkError": "Network error",
+    "permissionDenied": "Permission denied"
+  },
+  "document": {
+    "extractFailed": "Extract failed",
+    "selectContentToExtract": "Select the content you want to extract into a new note first",
+    "selectionEmpty": "Selection is empty",
+    "notOnHeading": "Current line is not a heading",
+    "notFoundCreatePrompt": "{{target}} not found. Create a new note?"
+  },
+  "agent": {},
+  "table": {},
+  "workspace": {}
+}

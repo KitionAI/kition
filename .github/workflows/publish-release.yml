@@ -1,0 +1,466 @@
+name: Publish Unified Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: SemVer without the v prefix
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-release-${{ inputs.version }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '22.19.0'
+  PNPM_VERSION: '10.33.0'
+  RELEASE_TAG: v${{ inputs.version }}
+  RUNTIME_REPOSITORY: KitionAI/kition-dev
+
+jobs:
+  validate-runtime-assets:
+    runs-on: ubuntu-latest
+    environment: release
+    outputs:
+      build_identity: ${{ steps.classify.outputs.build_identity }}
+      prerelease: ${{ steps.classify.outputs.prerelease }}
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
+      - name: Validate source version
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('node:fs')
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'))
+          const lock = JSON.parse(fs.readFileSync('electron/runtime.lock.json', 'utf8'))
+          const version = process.env.RELEASE_TAG.slice(1)
+          if (pkg.version !== version || lock.runtimeVersion !== version || lock.releaseTag !== process.env.RELEASE_TAG) {
+            throw new Error('release tag, package version, and runtime lock are not aligned')
+          }
+          if (lock.repository !== process.env.RUNTIME_REPOSITORY) {
+            throw new Error(`runtime repository must be ${process.env.RUNTIME_REPOSITORY}`)
+          }
+          NODE
+
+      - name: Classify immutable release tag
+        id: classify
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs'
+          import { classifyReleaseTag } from './electron/scripts/build-identity.mjs'
+
+          const result = classifyReleaseTag(process.env.RELEASE_TAG)
+          fs.appendFileSync(
+            process.env.GITHUB_OUTPUT,
+            `build_identity=${result.buildIdentity}\nprerelease=${result.prerelease}\n`,
+          )
+          NODE
+
+      - name: Verify installer draft Release and published runtime assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          releases_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100")"
+          draft="$(jq -e -r --arg tag "$RELEASE_TAG" '
+            map(select(.tag_name == $tag))
+            | if length == 1 then (.[0].draft | tostring) else empty end
+          ' <<<"$releases_json")"
+          if [[ "$draft" != "true" ]]; then
+            echo "Release $RELEASE_TAG must still be a draft" >&2
+            exit 1
+          fi
+          runtime_releases_json="$(gh api "repos/${RUNTIME_REPOSITORY}/releases?per_page=100")"
+          runtime_release_json="$(jq -e -c --arg tag "$RELEASE_TAG" '
+            map(select(.tag_name == $tag))
+            | if length == 1 then .[0] else empty end
+          ' <<<"$runtime_releases_json")"
+          if [[ "$(jq -r '.draft' <<<"$runtime_release_json")" != "false" ]]; then
+            echo "Runtime Release $RELEASE_TAG in $RUNTIME_REPOSITORY must be published" >&2
+            exit 1
+          fi
+          assets="$(jq -r '.assets[].name' <<<"$runtime_release_json")"
+          for required in \
+            runtime-manifest.json \
+            runtime-SHA256SUMS.txt \
+            runtime-provenance.json \
+            "kition-runtime-${{ inputs.version }}-darwin-arm64.tar.gz" \
+            "kition-runtime-${{ inputs.version }}-darwin-x64.tar.gz" \
+            "kition-runtime-${{ inputs.version }}-windows-x64.zip" \
+            "kition-runtime-${{ inputs.version }}-linux-x64.tar.gz"; do
+            if ! grep -Fxq "$required" <<<"$assets"; then
+              echo "Missing runtime asset: $required" >&2
+              exit 1
+            fi
+          done
+
+  build-desktop:
+    needs: validate-runtime-assets
+    environment: release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            target: darwin-arm64
+            platform: darwin
+            arch: arm64
+            archive: kition-runtime-${{ inputs.version }}-darwin-arm64.tar.gz
+            artifact: desktop-darwin-arm64
+          - os: macos-15-intel
+            target: darwin-x64
+            platform: darwin
+            arch: x64
+            archive: kition-runtime-${{ inputs.version }}-darwin-x64.tar.gz
+            artifact: desktop-darwin-x64
+          - os: windows-2022
+            target: windows-x64
+            platform: win32
+            arch: x64
+            archive: kition-runtime-${{ inputs.version }}-windows-x64.zip
+            artifact: desktop-windows-x64
+          - os: ubuntu-24.04
+            target: linux-x64
+            platform: linux
+            arch: x64
+            archive: kition-runtime-${{ inputs.version }}-linux-x64.tar.gz
+            artifact: desktop-linux-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install client dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Download runtime assets from developer Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARCHIVE: ${{ matrix.archive }}
+        run: |
+          set -euo pipefail
+          mkdir -p runtime-download
+          gh release download "$RELEASE_TAG" \
+            --repo "$RUNTIME_REPOSITORY" \
+            --dir runtime-download \
+            --pattern runtime-manifest.json \
+            --pattern "$ARCHIVE"
+
+      - name: Verify and prepare runtime binary
+        shell: bash
+        env:
+          ARCHIVE: ${{ matrix.archive }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          platform="${TARGET%%-*}"
+          if [[ "$platform" == "windows" ]]; then platform="win32"; fi
+          node electron/scripts/prepare-runtime-asset.mjs \
+            --manifest runtime-download/runtime-manifest.json \
+            --archive "runtime-download/$ARCHIVE" \
+            --output runtime-prepared \
+            --target "$TARGET" \
+            --platform "$platform"
+
+      - name: Configure macOS signing and notarization
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          MACOS_CSC_P12_BASE64: ${{ secrets.MACOS_CSC_P12_BASE64 }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+          APPLE_API_KEY_ID_VALUE: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER_VALUE: ${{ secrets.APPLE_API_ISSUER }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$MACOS_CSC_P12_BASE64" || -z "$APPLE_API_KEY_P8" || -z "$APPLE_API_KEY_ID_VALUE" || -z "$APPLE_API_ISSUER_VALUE" ]]; then
+            echo "macOS signing and App Store Connect API key secrets are required" >&2
+            exit 1
+          fi
+          certificate="$RUNNER_TEMP/kition-signing.p12"
+          api_key="$RUNNER_TEMP/AuthKey.p8"
+          node -e "require('node:fs').writeFileSync(process.argv[1], Buffer.from(process.env.MACOS_CSC_P12_BASE64, 'base64'))" "$certificate"
+          printf '%s' "$APPLE_API_KEY_P8" > "$api_key"
+          echo "CSC_LINK=$certificate" >> "$GITHUB_ENV"
+          echo "APPLE_API_KEY=$api_key" >> "$GITHUB_ENV"
+          echo "APPLE_API_KEY_ID=$APPLE_API_KEY_ID_VALUE" >> "$GITHUB_ENV"
+          echo "APPLE_API_ISSUER=$APPLE_API_ISSUER_VALUE" >> "$GITHUB_ENV"
+
+      - name: Build desktop installer
+        env:
+          KITION_BUILD_IDENTITY: ${{ needs.validate-runtime-assets.outputs.build_identity }}
+          KITION_RUNTIME_ASSET_DIR: ${{ github.workspace }}/runtime-prepared
+          CSC_KEY_PASSWORD: ${{ secrets.MACOS_CSC_KEY_PASSWORD }}
+        run: pnpm run dist:electron -- --${{ matrix.arch }}
+
+      - name: Verify packaged runtime and installer
+        shell: bash
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { execFileSync } from 'node:child_process'
+          import { createHash } from 'node:crypto'
+          import fs from 'node:fs'
+          import os from 'node:os'
+          import path from 'node:path'
+
+          const digest = (data) => createHash('sha256').update(data).digest('hex')
+          const hash = (file) => digest(fs.readFileSync(file))
+          const comparableHash = (file) => {
+            if (process.env.PLATFORM !== 'darwin') return hash(file)
+            const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'kition-runtime-verify-'))
+            const copy = path.join(directory, path.basename(file))
+            try {
+              fs.copyFileSync(file, copy)
+              execFileSync('codesign', ['--remove-signature', copy])
+              const data = fs.readFileSync(copy)
+              if (data.readUInt32LE(0) !== 0xfeedfacf) {
+                throw new Error(`${file} is not a thin 64-bit little-endian Mach-O binary`)
+              }
+              const commandCount = data.readUInt32LE(16)
+              let offset = 32
+              let normalizedLinkedit = false
+              for (let index = 0; index < commandCount; index += 1) {
+                const command = data.readUInt32LE(offset)
+                const commandSize = data.readUInt32LE(offset + 4)
+                if (commandSize < 8 || offset + commandSize > data.length) {
+                  throw new Error(`${file} contains an invalid Mach-O load command`)
+                }
+                if (command === 0x19) {
+                  const segment = data.subarray(offset + 8, offset + 24)
+                    .toString('ascii').replace(/\0.*$/, '')
+                  if (segment === '__LINKEDIT') {
+                    // Re-signing changes the signature blob and its aligned virtual size.
+                    data.writeBigUInt64LE(0n, offset + 32)
+                    normalizedLinkedit = true
+                  }
+                }
+                offset += commandSize
+              }
+              if (!normalizedLinkedit) {
+                throw new Error(`${file} does not contain a __LINKEDIT segment`)
+              }
+              return digest(data)
+            } finally {
+              fs.rmSync(directory, { recursive: true, force: true })
+            }
+          }
+          const walk = (root) => fs.readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
+            const fullPath = path.join(root, entry.name)
+            return entry.isDirectory() ? walk(fullPath) : [fullPath]
+          })
+
+          const binaryName = process.env.PLATFORM === 'win32' ? 'kition-api.exe' : 'kition-api'
+          const expected = path.join('runtime-prepared', binaryName)
+          const packagedRuntimeSuffix = path.join('resources', 'bin', binaryName).toLowerCase()
+          const packaged = walk('dist-electron').filter((file) =>
+            file.toLowerCase().endsWith(packagedRuntimeSuffix),
+          )
+          if (packaged.length !== 1) {
+            throw new Error(`Expected one packaged ${binaryName}, found ${packaged.length}`)
+          }
+          if (comparableHash(expected) !== comparableHash(packaged[0])) {
+            throw new Error(`Packaged runtime executable content does not match ${expected}`)
+          }
+
+          const installerExtensions = {
+            darwin: ['.dmg'],
+            win32: ['.exe'],
+            linux: ['.AppImage'],
+          }[process.env.PLATFORM]
+          const installers = fs.readdirSync('dist-electron')
+            .filter((name) => installerExtensions.some((extension) => name.endsWith(extension)))
+          if (installers.length < 1) {
+            throw new Error(`No ${process.env.PLATFORM} installer was generated`)
+          }
+          console.log(JSON.stringify({ packagedRuntime: packaged[0], installers }))
+          NODE
+
+      - name: Verify macOS code signatures
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          apps=(dist-electron/mac*/Kition.app)
+          if [[ "${#apps[@]}" -ne 1 ]]; then
+            echo "Expected one packaged Kition.app, found ${#apps[@]}" >&2
+            exit 1
+          fi
+          app="${apps[0]}"
+          runtime="$app/Contents/Resources/bin/kition-api"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          codesign --verify --strict --verbose=2 "$runtime"
+          details="$(codesign --display --verbose=4 "$app" 2>&1)"
+          grep -Fq 'Authority=Developer ID Application: Heartie Technology Limited' <<<"$details"
+          grep -Fq 'TeamIdentifier=X3FLP9863V' <<<"$details"
+          printf '%s\n' "$details" | grep -E '^(Authority|TeamIdentifier)='
+
+      - name: Upload desktop build outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            dist-electron/*.dmg
+            dist-electron/*.dmg.blockmap
+            dist-electron/latest-mac.yml
+            dist-electron/*.exe
+            dist-electron/*.exe.blockmap
+            dist-electron/latest.yml
+            dist-electron/*.AppImage
+            dist-electron/*.AppImage.blockmap
+            dist-electron/latest-linux.yml
+          if-no-files-found: error
+
+  publish:
+    needs:
+      - validate-runtime-assets
+      - build-desktop
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - name: Download desktop artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: desktop-artifacts
+
+      - name: Verify release asset names
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          expected=(
+            "Kition-${VERSION}-macos-arm64.dmg"
+            "Kition-${VERSION}-macos-arm64.dmg.blockmap"
+            "Kition-${VERSION}-macos-x64.dmg"
+            "Kition-${VERSION}-macos-x64.dmg.blockmap"
+            "Kition-${VERSION}-windows-x64-setup.exe"
+            "Kition-${VERSION}-windows-x64-setup.exe.blockmap"
+            "Kition-${VERSION}-linux-x86_64.AppImage"
+          )
+          for name in "${expected[@]}"; do
+            count="$(find desktop-artifacts -type f -name "$name" | wc -l | tr -d ' ')"
+            if [[ "$count" != "1" ]]; then
+              echo "Expected exactly one release asset named $name, found $count" >&2
+              exit 1
+            fi
+          done
+
+      - name: Generate combined macOS update metadata
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { createHash } from 'node:crypto'
+          import fs from 'node:fs'
+          import path from 'node:path'
+
+          const walk = (root) => fs.readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
+            const fullPath = path.join(root, entry.name)
+            return entry.isDirectory() ? walk(fullPath) : [fullPath]
+          })
+          const files = walk('desktop-artifacts')
+          const dmgs = files.filter((file) => file.endsWith('.dmg'))
+          if (dmgs.length !== 2) throw new Error(`Expected two macOS DMGs, found ${dmgs.length}`)
+          const x64Dmg = dmgs.find((file) => path.basename(file).includes('-macos-x64.dmg'))
+          if (!x64Dmg) throw new Error('Unable to identify the macOS x64 DMG')
+          const describe = (file) => {
+            const contents = fs.readFileSync(file)
+            return {
+              url: path.basename(file),
+              sha512: createHash('sha512').update(contents).digest('base64'),
+              size: contents.byteLength,
+            }
+          }
+          for (const file of files.filter((file) => path.basename(file) === 'latest-mac.yml')) {
+            fs.rmSync(file)
+          }
+          const primary = describe(x64Dmg)
+          fs.writeFileSync('desktop-artifacts/latest-mac.yml', `${JSON.stringify({
+            version: process.env.VERSION,
+            files: dmgs.map(describe),
+            path: primary.url,
+            sha512: primary.sha512,
+            releaseDate: new Date().toISOString(),
+          }, null, 2)}\n`)
+          NODE
+
+      - name: Upload installers to draft Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mapfile -d '' files < <(find desktop-artifacts -type f -print0)
+          if [[ "${#files[@]}" -eq 0 ]]; then
+            echo "No desktop artifacts were downloaded" >&2
+            exit 1
+          fi
+          gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --clobber "${files[@]}"
+
+      - name: Verify draft Release assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          releases_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100")"
+          release_json="$(jq -e -c --arg tag "$RELEASE_TAG" '
+            map(select(.tag_name == $tag))
+            | if length == 1 then .[0] else empty end
+          ' <<<"$releases_json")"
+          if [[ "$(jq -r '.draft' <<<"$release_json")" != "true" ]]; then
+            echo "Release $RELEASE_TAG was published before verification" >&2
+            exit 1
+          fi
+          assets="$(jq -r '.assets[].name' <<<"$release_json")"
+          while IFS= read -r file; do
+            name="$(basename "$file")"
+            if ! grep -Fxq "$name" <<<"$assets"; then
+              echo "Missing uploaded desktop asset: $name" >&2
+              exit 1
+            fi
+          done < <(find desktop-artifacts -type f -print | sort)
+
+      - name: Publish verified Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRERELEASE: ${{ needs.validate-runtime-assets.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+          gh release edit "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --draft=false \
+            --prerelease="$PRERELEASE"

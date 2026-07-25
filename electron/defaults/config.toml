@@ -1,0 +1,26 @@
+[app]
+name = "Kition Desktop API"
+version = "2.0.0-go"
+apiPrefix = "/api/v1"
+jwtSecret = "desktop-secret-change-in-production"
+disableAuth = true
+accessTokenExpireMinutes = 120
+refreshTokenExpireDays = 7
+autoMigrate = true
+autoSeed = true
+
+[server]
+  [server.http]
+    port = 18101
+
+[sqlite]
+path = "desktop.db"
+
+[storage]
+uploadDir = "uploads"
+workspaceDir = "workspace"
+
+[logger.default]
+writer = "stderr"
+async = false
+level = "info"

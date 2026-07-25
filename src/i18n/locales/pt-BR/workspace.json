@@ -1,0 +1,236 @@
+{
+  "createMenu": {
+    "format": {
+      "markdown": "Documento",
+      "table": "Tabela",
+      "page": "Página",
+      "note": "Nota"
+    },
+    "folder": "Pasta",
+    "importFile": "Importar arquivo",
+    "newTable": "Nova tabela",
+    "newWorkflow": "Novo fluxo de trabalho"
+  },
+  "sidebar": {
+    "tabs": {
+      "files": "Arquivos",
+      "search": "Pesquisar",
+      "browser": "Navegador"
+    },
+    "collapseSection": "Recolher {{name}}",
+    "expandSection": "Expandir {{name}}",
+    "newPage": "Nova página",
+    "newPageIn": "Nova página em {{name}}",
+    "workflows": "Fluxos de trabalho",
+    "openWorkflows": "Abrir fluxos de trabalho",
+    "refresh": "Atualizar espaço de trabalho",
+    "collapseSidebar": "Recolher barra lateral",
+    "loadingDirectory": "Carregando diretório local"
+  },
+  "tree": {
+    "collapse": "Recolher",
+    "expand": "Expandir",
+    "modifiedByAgent": "Modificado pelo Agente",
+    "createInside": "Criar dentro desta página",
+    "moreActions": "Mais ações",
+    "addToChat": "Adicionar ao chat",
+    "addToNewChat": "Adicionar a um novo chat",
+    "changeIcon": "Alterar ícone",
+    "rename": "Renomear",
+    "duplicate": "Duplicar",
+    "moveTo": "Mover para...",
+    "showInFinder": "Mostrar no Finder",
+    "delete": "Excluir",
+    "moveToTitle": "Mover para",
+    "moveToRoot": "Raiz",
+    "noDestinations": "Nenhum outro destino disponível",
+    "clearIcon": "Limpar",
+    "untitled": "Sem título"
+  },
+  "itemMenu": {
+    "mode": {
+      "rich": "Texto formatado",
+      "split": "Dividido",
+      "source": "Fonte",
+      "preview": "Visualização"
+    },
+    "preference": {
+      "smallText": "Texto pequeno",
+      "fullWidth": "Largura total",
+      "toc": "Estrutura de tópicos",
+      "locked": "Bloquear página"
+    },
+    "tableAction": {
+      "rename": "Renomear",
+      "duplicate": "Duplicar",
+      "downloadCsv": "Baixar CSV",
+      "importData": "Importar dados",
+      "api": "API",
+      "history": "Histórico",
+      "share": "Compartilhar",
+      "delete": "Excluir"
+    },
+    "markdownMode": {
+      "rich": "Modo de edição",
+      "preview": "Modo de leitura",
+      "source": "Modo de fonte"
+    },
+    "revertToSaved": "Reverter para a versão salva",
+    "importMarkdown": "Importar Markdown",
+    "exportFile": "Exportar arquivo",
+    "openContainingFolder": "Abrir pasta que contém o arquivo",
+    "words": "Palavras: {{formattedCount}}",
+    "updated": "Atualizado: {{time}}",
+    "textStyle": {
+      "default": "Padrão",
+      "serif": "Serifa",
+      "mono": "Monoespaçada"
+    }
+  },
+  "tabs": {
+    "webBadge": "Web",
+    "closeTab": "Fechar aba",
+    "expandSidebar": "Expandir barra lateral",
+    "previousTab": "Aba anterior",
+    "nextTab": "Próxima aba",
+    "showOverflow": "Mostrar abas excedentes",
+    "close": "Fechar",
+    "closeOthers": "Fechar outras abas",
+    "closeAll": "Fechar todas as abas",
+    "closeUnmodified": "Fechar abas não modificadas",
+    "closeLeft": "Fechar abas à esquerda",
+    "closeRight": "Fechar abas à direita",
+    "closeReadOnly": "Fechar todas as abas somente leitura",
+    "copyReference": "Copiar caminho/referência",
+    "workflowsTitle": "Fluxos de trabalho",
+    "workflowsScoped": "Fluxos de trabalho · {{name}}",
+    "untitledTable": "Tabela sem título",
+    "untitledWorkflow": "Fluxo de trabalho sem título",
+    "videos": "Vídeos",
+    "workflow": "Fluxo de trabalho"
+  },
+  "agentTabs": {
+    "history": {
+      "today": "Hoje",
+      "week": "Últimos 7 dias",
+      "older": "Mais antigos"
+    },
+    "chat": "Chat",
+    "newChatTitle": "Novo chat",
+    "openChat": "Abrir Chat de IA",
+    "collapseChat": "Recolher Chat de IA",
+    "emptyTitle": "Chat de IA",
+    "newChat": "Novo chat",
+    "closeChat": "Fechar chat",
+    "viewHistory": "Ver histórico",
+    "agentHistory": "Histórico do agente",
+    "searchChats": "Pesquisar chats...",
+    "noMatchingChats": "Nenhum chat correspondente.",
+    "noChatsYet": "Nenhum chat ainda. Inicie um novo.",
+    "chatRef": "Chat #{{id}}"
+  },
+  "agentSidebar": {
+    "empty": "Inicie um novo chat ou abra um existente a partir do histórico."
+  },
+  "topbar": {
+    "more": "Mais"
+  },
+  "browserSites": {
+    "title": "Navegador",
+    "visitedCount": "{{count}} sites visitados",
+    "openBrowser": "Abrir Navegador",
+    "openBrowserTitle": "Abrir uma nova aba do navegador",
+    "refreshLoginStatus": "Atualizar status de login",
+    "loading": "Carregando sites...",
+    "lastVisited": "Última visita {{time}}",
+    "signedIn": "Conectado",
+    "signedOut": "Desconectado",
+    "openSite": "Abrir site",
+    "open": "Abrir {{host}}",
+    "forgetSite": "Esquecer este site (limpar login)",
+    "forget": "Esquecer {{host}}",
+    "emptyTitle": "Nenhum site visitado ainda",
+    "emptyDescription": "Visite e faça login em sites no navegador integrado. Eles serão listados aqui junto com o status de login para permitir a conexão automática em coletas futuras."
+  },
+  "browserToolbar": {
+    "back": "Voltar",
+    "forward": "Avançar",
+    "stopLoading": "Parar de carregar",
+    "reload": "Recarregar",
+    "addressPlaceholder": "Digite a URL ou pesquise..."
+  },
+  "browserTab": {
+    "eyebrow": "Navegador integrado",
+    "unavailableDescription": "A página do navegador está anexada a esta área de aba. Use esta aba para login, pesquisa e navegação. O Chat de IA permanece disponível à direita, para que você possa continuar a partir da página atual sem sair dela.",
+    "emptyText": "Navegador — Digite uma URL acima ou instrua o Agente a navegar e usar o navegador",
+    "loadingPage": "Carregando página..."
+  },
+  "fileViewer": {
+    "openInSystem": "Abrir no sistema",
+    "showInFinder": "Mostrar no Finder",
+    "previewUnsupported": "{{label}} · A visualização no app ainda não é suportada",
+    "previewTip": "Você ainda pode usar @ para mencionar este arquivo e a IA analisá-lo diretamente, ou clicar em \"Abrir no sistema\" para visualizá-lo com um aplicativo nativo."
+  },
+  "folderDialog": {
+    "title": "Nova pasta",
+    "description": "Digite um nome para a pasta.",
+    "placeholder": "Pasta sem título",
+    "cancel": "Cancelar",
+    "create": "Criar"
+  },
+  "media": {
+    "images": "Imagens",
+    "videos": "Vídeos",
+    "items": "{{count}} itens",
+    "collapse": "Recolher {{name}}",
+    "expand": "Expandir {{name}}",
+    "noImagesTitle": "Nenhuma imagem ainda",
+    "noVideosTitle": "Nenhum vídeo ainda",
+    "noImagesDescription": "As imagens deste espaço de trabalho aparecerão aqui.",
+    "noVideosDescription": "Os vídeos deste espaço de trabalho aparecerão aqui."
+  },
+  "editor": {
+    "sourcePlaceholder": "Edite a fonte Markdown aqui..."
+  },
+  "layout": {
+    "resizeSidebar": "Redimensionar barra lateral",
+    "resizeChat": "Redimensionar Chat de IA"
+  },
+  "footer": {
+    "switchWorkspace": "Trocar de espaço de trabalho",
+    "switchWorkspaceTitle": "Trocar de espaço de trabalho (⌘⇧O)",
+    "profile": "Perfil",
+    "settings": "Configurações"
+  },
+  "errors": {
+    "kitableNotFound": "Não foi possível localizar este table file no disco.",
+    "kitableNoTables": "Este table file ainda não tem tabelas — crie uma tabela primeiro.",
+    "parentKitableNotFound": "Não foi possível localizar o table file pai no disco.",
+    "createWorkflowFailed": "Falha ao criar o fluxo de trabalho",
+    "documentPathEmpty": "O caminho do documento não pode estar vazio",
+    "nameEmpty": "O nome não pode estar vazio",
+    "saveBeforeRename": "Falha ao salvar o documento atual; a renomeação foi ignorada",
+    "renameFailed": "Falha ao renomear o documento",
+    "fileTypeNotDeletable": "Este tipo de arquivo ainda não pode ser excluído da biblioteca de documentos.",
+    "onlyMarkdownPlateMovable": "Somente páginas Markdown e Plate podem ser movidas para cá. Organize arquivos do Office/PDF e semelhantes pela pasta do seu sistema.",
+    "onlyMarkdownPlateTableDuplicable": "Somente páginas Markdown, Plate e Tabela podem ser duplicadas aqui.",
+    "onlyMarkdownPlateTableRenamable": "Somente páginas Markdown, Plate e Tabela podem ser renomeadas aqui.",
+    "createDocumentFailed": "Falha ao criar o documento",
+    "createTableFailed": "Falha ao criar a tabela",
+    "importMarkdownFailed": "Falha ao importar Markdown",
+    "browserDevModeOpenDirectory": "Você está executando no modo de desenvolvimento do navegador e não pode abrir diretórios nativos. Inicie o app de desktop via pnpm dev:electron e tente novamente.",
+    "browserDevModePickDirectory": "Você está executando no modo de desenvolvimento do navegador e não pode selecionar um diretório nativo. Inicie o app de desktop via pnpm dev:electron e tente novamente.",
+    "browserDevModeSwitchDirectory": "Você está executando no modo de desenvolvimento do navegador e não pode trocar de diretórios nativos."
+  },
+  "feedback": {
+    "nameUpdated": "Nome atualizado",
+    "refreshed": "Espaço de trabalho atualizado",
+    "restoredSavedVersion": "Restaurado para a versão salva",
+    "documentCreated": "Documento criado",
+    "tableCreated": "Tabela criada",
+    "folderCreated": "Pasta criada",
+    "renamed": "Renomeado",
+    "alreadyInLocation": "Já está neste local",
+    "tableDeleted": "Tabela excluída"
+  }
+}

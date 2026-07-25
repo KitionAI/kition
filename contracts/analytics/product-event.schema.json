@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kition.ai/contracts/analytics/product-event.schema.json",
+  "title": "Kition Product Analytics Event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "name",
+    "occurred_at",
+    "app_version",
+    "build_identity",
+    "platform",
+    "installation_id"
+  ],
+  "properties": {
+    "schema": { "const": "kition-product-event/v1" },
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{7,79}$" },
+    "name": {
+      "enum": [
+        "app_started",
+        "workspace_opened",
+        "onboarding_started",
+        "onboarding_completed",
+        "provider_choice_selected",
+        "account_sign_in_started",
+        "account_sign_in_completed",
+        "account_sign_in_failed",
+        "account_state_refreshed",
+        "agent_first_request_started",
+        "agent_first_request_completed",
+        "workflow_first_run_completed",
+        "credits_low_seen",
+        "credits_exhausted_seen",
+        "billing_opened",
+        "update_check_completed",
+        "update_install_completed",
+        "support_opened"
+      ]
+    },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "app_version": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]{0,79}$" },
+    "build_identity": { "enum": ["dev", "rc", "stable"] },
+    "platform": { "enum": ["macos", "windows", "linux", "web", "unknown"] },
+    "installation_id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{7,79}$" },
+    "result": { "enum": ["success", "failure", "canceled", "offline", "unavailable"] },
+    "provider_choice": { "enum": ["cloud", "byo", "local"] },
+    "account_state": {
+      "enum": [
+        "loading",
+        "signed_out",
+        "connecting",
+        "ready",
+        "expired",
+        "credits_low",
+        "credits_empty",
+        "temporary_error"
+      ]
+    },
+    "subscription_state": {
+      "enum": ["unknown", "trial", "active", "payment_required", "canceled", "inactive"]
+    },
+    "update_state": {
+      "enum": [
+        "idle",
+        "unsupported",
+        "checking",
+        "up-to-date",
+        "available",
+        "downloading",
+        "downloaded",
+        "error"
+      ]
+    }
+  }
+}

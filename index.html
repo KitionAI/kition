@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b0812" />
+    <title>Kition</title>
+    <script data-theme-bootstrap>
+      (() => {
+        const root = document.documentElement
+        let themeMode = 'dark'
+
+        try {
+          const cachedTheme = localStorage.getItem('kition.desktop.theme.bootstrap.v1')
+          if (cachedTheme === 'light' || cachedTheme === 'dark' || cachedTheme === 'auto') {
+            themeMode = cachedTheme
+          } else {
+            const backup = JSON.parse(localStorage.getItem('kition.desktop.settings.backup.v1') || 'null')
+            const backupTheme = backup && backup.general && backup.general.theme
+            if (backupTheme === 'light' || backupTheme === 'dark' || backupTheme === 'auto') {
+              themeMode = backupTheme
+            }
+          }
+        } catch {
+          // A blocked or malformed local cache falls back to the product default.
+        }
+
+        const resolvedTheme = themeMode === 'auto'
+          ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+          : themeMode
+
+        root.dataset.desktopThemeMode = themeMode
+        root.dataset.desktopTheme = resolvedTheme
+        root.classList.toggle('dark', resolvedTheme === 'dark')
+        root.style.colorScheme = resolvedTheme
+        document.querySelector('meta[name="theme-color"]')?.setAttribute(
+          'content',
+          resolvedTheme === 'dark' ? '#1b1e22' : '#ffffff',
+        )
+      })()
+    </script>
+    <style>
+      html,
+      body,
+      #app {
+        min-height: 100%;
+        background: #ffffff;
+      }
+
+      html.dark,
+      html.dark body,
+      html.dark #app {
+        background: hsl(220 13% 12%);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
