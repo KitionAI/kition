@@ -90,6 +90,9 @@ describe('DesktopSettingsPage information architecture', () => {
     expect(container.textContent).not.toContain('Hooks')
     expect(container.textContent).not.toContain('Notifications')
     expect(container.querySelectorAll('.settings-nav-button.is-active')).toHaveLength(1)
+    for (const button of container.querySelectorAll<HTMLButtonElement>('.settings-nav-button')) {
+      expect(button.type).toBe('button')
+    }
 
     clickButton('Advanced')
     expect(container.textContent).toContain('Network')

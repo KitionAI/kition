@@ -55,6 +55,12 @@ export default defineConfig(({ mode }) => ({
       '@': resolve(repositoryDir, 'src'),
     },
   },
+  optimizeDeps: {
+    // Search runs in a worker and starts on idle, so Vite's cold-start scanner
+    // cannot discover these dependencies from index.html. Pre-bundle them to
+    // prevent a full-page reload when the worker starts during renderer E2E.
+    include: ['@orama/orama', 'idb'],
+  },
   css: {
     postcss: resolve(repositoryDir, 'tooling'),
   },

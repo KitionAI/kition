@@ -6,6 +6,7 @@ import {
   X,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { KitionLogoMark } from '@/components/KitionLogoMark'
 import { Button, Card, CardContent, Input } from '@/components/ui'
 import { useConfirm } from '@/components/confirm'
 import { useDismissableLayer } from '@/registry/hooks/use-on-click-outside'
@@ -218,7 +219,7 @@ export function WorkspaceLauncherScreen({
 
         <section className="flex flex-1 flex-col items-center justify-center bg-background px-12 py-10 text-foreground">
           <div className="flex flex-col items-center pb-8 text-center">
-            <img src="/logo-mark.png" alt="Kition" className="size-20" draggable={false} />
+            <KitionLogoMark className="size-20" />
             <h1 className="mt-4 text-3xl font-semibold text-foreground">Kition</h1>
             {appVersion ? (
               <p className="mt-1 text-xs text-muted-foreground">{t('subtitle', { version: appVersion })}</p>

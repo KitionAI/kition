@@ -9,6 +9,12 @@ const outputPath = path.join(repositoryDir, 'docs/legal/THIRD_PARTY_NOTICES.txt'
 const packageManager = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
 const divider = '='.repeat(80)
 
+function compareText(left, right) {
+  if (left < right) return -1
+  if (left > right) return 1
+  return 0
+}
+
 function loadLicenseInventory() {
   const result = spawnSync(packageManager, ['licenses', 'list', '--no-optional', '--json'], {
     cwd: repositoryDir,
@@ -21,8 +27,67 @@ function loadLicenseInventory() {
   return JSON.parse(result.stdout)
 }
 
-function packageFallbackPath(name) {
-  return path.join(repositoryDir, 'node_modules', ...name.split('/'))
+function packageIndexKey(name, version) {
+  return `${name}\0${version}`
+}
+
+function readPackageIdentity(packagePath) {
+  try {
+    const manifest = JSON.parse(fs.readFileSync(path.join(packagePath, 'package.json'), 'utf8'))
+    if (typeof manifest.name !== 'string' || typeof manifest.version !== 'string') return null
+    return { name: manifest.name, version: manifest.version }
+  } catch {
+    return null
+  }
+}
+
+function listPackagePaths(nodeModulesPath) {
+  if (!fs.existsSync(nodeModulesPath)) return []
+  const packagePaths = []
+  for (const entry of fs.readdirSync(nodeModulesPath, { withFileTypes: true })) {
+    if (entry.name.startsWith('.')) continue
+    const entryPath = path.join(nodeModulesPath, entry.name)
+    if (entry.name.startsWith('@')) {
+      if (!fs.existsSync(entryPath)) continue
+      for (const scopedEntry of fs.readdirSync(entryPath, { withFileTypes: true })) {
+        packagePaths.push(path.join(entryPath, scopedEntry.name))
+      }
+      continue
+    }
+    packagePaths.push(entryPath)
+  }
+  return packagePaths
+}
+
+function buildInstalledPackageIndex() {
+  const index = new Map()
+  const pendingNodeModules = [path.join(repositoryDir, 'node_modules')]
+  const visitedNodeModules = new Set()
+
+  while (pendingNodeModules.length) {
+    const nodeModulesPath = pendingNodeModules.pop()
+    if (!nodeModulesPath || !fs.existsSync(nodeModulesPath)) continue
+    let realNodeModulesPath
+    try {
+      realNodeModulesPath = fs.realpathSync(nodeModulesPath)
+    } catch {
+      continue
+    }
+    if (visitedNodeModules.has(realNodeModulesPath)) continue
+    visitedNodeModules.add(realNodeModulesPath)
+
+    for (const packagePath of listPackagePaths(nodeModulesPath)) {
+      const identity = readPackageIdentity(packagePath)
+      if (!identity) continue
+      const key = packageIndexKey(identity.name, identity.version)
+      const paths = index.get(key) || []
+      paths.push(packagePath)
+      index.set(key, paths)
+      pendingNodeModules.push(path.join(packagePath, 'node_modules'))
+    }
+  }
+
+  return index
 }
 
 function findLicenseFiles(packagePath) {
@@ -33,29 +98,32 @@ function findLicenseFiles(packagePath) {
     .readdirSync(packagePath, { withFileTypes: true })
     .filter((entry) => entry.isFile() && /^(licen[cs]e|copying|copyright|notice)(?:[._-].*)?$/i.test(entry.name))
     .map((entry) => path.join(packagePath, entry.name))
-    .sort((left, right) => left.localeCompare(right))
+    .sort(compareText)
 }
 
-function readLicenseTexts(entry) {
-  const packagePaths = [...new Set([...(entry.paths || []), packageFallbackPath(entry.name)])]
-  const texts = []
+function readLicenseTexts(entry, installedPackageIndex) {
+  const packagePaths = entry.versions.flatMap((version) => (
+    installedPackageIndex.get(packageIndexKey(entry.name, version)) || []
+  ))
   const seen = new Set()
   for (const packagePath of packagePaths) {
     for (const licensePath of findLicenseFiles(packagePath)) {
-      const text = fs.readFileSync(licensePath, 'utf8').replace(/\r\n?/g, '\n').trim()
-      if (text && !seen.has(text)) {
-        seen.add(text)
-        texts.push(text)
-      }
+      const text = fs.readFileSync(licensePath, 'utf8')
+        .replace(/\r\n?/g, '\n')
+        .split('\n')
+        .map((line) => line.trimEnd())
+        .join('\n')
+        .trim()
+      if (text) seen.add(text)
     }
   }
-  return texts
+  return [...seen].sort(compareText)
 }
 
-function renderNotices(inventory) {
+function renderNotices(inventory, installedPackageIndex) {
   const entries = Object.entries(inventory)
     .flatMap(([license, packages]) => packages.map((entry) => ({ ...entry, license })))
-    .sort((left, right) => left.name.localeCompare(right.name) || left.versions.join(',').localeCompare(right.versions.join(',')))
+    .sort((left, right) => compareText(left.name, right.name) || compareText(left.versions.join(','), right.versions.join(',')))
 
   const licenseTexts = []
   const textIndexes = new Map()
@@ -68,7 +136,7 @@ function renderNotices(inventory) {
     if (entry.homepage) {
       lines.push(`Homepage: ${entry.homepage}`)
     }
-    const texts = readLicenseTexts(entry)
+    const texts = readLicenseTexts(entry, installedPackageIndex)
     if (texts.length === 0) {
       lines.push('License text: not present in the installed package')
     } else {
@@ -123,11 +191,33 @@ function renderNotices(inventory) {
   ].join('\n')
 }
 
-const rendered = renderNotices(loadLicenseInventory())
+function firstDifference(current, rendered) {
+  const currentLines = current.split('\n')
+  const renderedLines = rendered.split('\n')
+  const lineCount = Math.max(currentLines.length, renderedLines.length)
+  for (let index = 0; index < lineCount; index += 1) {
+    if (currentLines[index] !== renderedLines[index]) {
+      return {
+        line: index + 1,
+        current: currentLines[index] ?? '<end of file>',
+        rendered: renderedLines[index] ?? '<end of file>',
+      }
+    }
+  }
+  return null
+}
+
+const rendered = renderNotices(loadLicenseInventory(), buildInstalledPackageIndex())
 if (process.argv.includes('--check')) {
   const current = fs.existsSync(outputPath) ? fs.readFileSync(outputPath, 'utf8') : ''
   if (current !== rendered) {
     console.error('[third-party-notices] docs/legal/THIRD_PARTY_NOTICES.txt is stale; run pnpm notices:generate')
+    const difference = firstDifference(current, rendered)
+    if (difference) {
+      console.error(`[third-party-notices] first difference at line ${difference.line}`)
+      console.error(`[third-party-notices] current: ${JSON.stringify(difference.current)}`)
+      console.error(`[third-party-notices] generated: ${JSON.stringify(difference.rendered)}`)
+    }
     process.exit(1)
   }
   console.log('[third-party-notices] docs/legal/THIRD_PARTY_NOTICES.txt is current')
