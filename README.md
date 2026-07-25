@@ -10,12 +10,21 @@
 <p align="center">
   <a href="https://github.com/KitionAI/kition/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/KitionAI/kition/ci.yml?branch=main&amp;style=flat-square&amp;logo=githubactions&amp;logoColor=white&amp;label=CI" alt="CI status" /></a>
   <a href="https://github.com/KitionAI/kition/releases/latest"><img src="https://img.shields.io/github/v/release/KitionAI/kition?include_prereleases&amp;sort=semver&amp;style=flat-square&amp;color=5645d4" alt="Latest release" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/KitionAI/kition?style=flat-square&amp;color=5645d4" alt="License: GNU AGPLv3" /></a>
   <img src="https://img.shields.io/badge/status-beta-f5d75e?style=flat-square" alt="Project status: beta" />
   <img src="https://img.shields.io/badge/macOS-supported-5645d4?style=flat-square&amp;logo=apple&amp;logoColor=white" alt="macOS supported" />
   <img src="https://img.shields.io/badge/Windows-supported-5645d4?style=flat-square&amp;logo=windows11&amp;logoColor=white" alt="Windows supported" />
 </p>
 
 <h3 align="center"><a href="https://github.com/KitionAI/kition/releases/latest"><ins>Download Kition</ins></a></h3>
+
+<p align="center">
+  <a href="https://kition.ai">Website</a> ·
+  <a href="https://github.com/KitionAI/kition/releases">Releases</a> ·
+  <a href="CONTRIBUTING.md">Contributing</a> ·
+  <a href=".github/SUPPORT.md">Support</a> ·
+  <a href=".github/SECURITY.md">Security</a>
+</p>
 
 <p align="center">
   <img src="docs/readme/kition-overview.webp" alt="Kition product overview showing documents, structured data tables, Agent research, and visual workflows" width="100%" />
@@ -167,6 +176,16 @@ in [`contracts/runtime/`](contracts/runtime/).
 There is no Go source, Go module, or runtime source-build fallback in this
 repository.
 
+## Technology
+
+| Area | Stack |
+| --- | --- |
+| Desktop | Electron |
+| Interface | React, TypeScript, Vite |
+| Documents | CodeMirror, Marked, Mermaid, KaTeX |
+| Data and state | IndexedDB, Jotai, Zod |
+| Testing | Vitest, Playwright |
+
 ## Contributing
 
 Issues and pull requests for the public client are welcome.
@@ -177,6 +196,9 @@ Issues and pull requests for the public client are welcome.
 3. Keep changes inside the public client/runtime contract boundary.
 4. Report security-sensitive issues through
    [.github/SECURITY.md](.github/SECURITY.md), not a public issue.
+
+For product questions, account help, and private workspace concerns, see
+[.github/SUPPORT.md](.github/SUPPORT.md).
 
 ## Repository Layout
 
