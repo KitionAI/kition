@@ -23,6 +23,7 @@ import {
 import { getCurrentLocale, getLanguageNameForLocale } from '@/i18n'
 import {
   buildAgentDocumentMentionPromptContext,
+  extractAgentDocumentMentionTokens,
   flattenMentionableWorkspaceDocuments,
   isBinaryAttachmentMention,
   resolveAgentDocumentMentions,
@@ -36,7 +37,11 @@ import {
 import { ensurePortalAccountSessionRestored } from '@/services/portalAccount'
 import { formatAgentToolName } from '@/features/agent/lib/agentTimeline'
 import { getAgentTimelineDict } from '@/features/agent/lib/agentTimelineI18n'
-import { isDesktopRuntime, listWorkspaceDocuments } from '@/services/desktop'
+import {
+  isDesktopRuntime,
+  listWorkspaceDocuments,
+  type WorkspaceDocumentFormat,
+} from '@/services/desktop'
 import { saveDesktopSettings } from '@/services/desktopSettings'
 import { notifyFromAgentEvent } from '@/services/desktopNotifications'
 import type { DesktopSettingsState } from '@/types/desktopSettings'
@@ -44,6 +49,8 @@ import { trackProductEventOnce } from '@/features/analytics/lib/productAnalytics
 import { isWebPreviewMode } from '@/lib/runtimeMode'
 
 type WorkspaceAgentTurnContext = {
+  activeDocumentPath?: string
+  activeDocumentFormat?: WorkspaceDocumentFormat
   activeDataDocumentId?: number | null
   activeDataTableId?: number | null
   browserContext?: AgentBrowserContext
@@ -243,7 +250,8 @@ export function useWorkspaceAgent({
       return
     }
     void refreshAgentSessions(undefined, { silent: silentInitialSessionLoad })
-  }, [refreshAgentSessions, rootPath, silentInitialSessionLoad])
+    void refreshMentionableDocuments()
+  }, [refreshAgentSessions, refreshMentionableDocuments, rootPath, silentInitialSessionLoad])
 
   const openAgentSession = useCallback(async (session: AgentSession) => {
     if (!agentMessages[session.id]) {
@@ -365,23 +373,6 @@ export function useWorkspaceAgent({
       return
     }
     agentSendInFlightSessions.current.add(sessionId)
-    if (selectedAgentModel.providerKind === 'kition_console') {
-      try {
-        if (ensureHostedAccountReady) {
-          const ready = await ensureHostedAccountReady()
-          if (!ready) {
-            agentSendInFlightSessions.current.delete(sessionId)
-            return
-          }
-        } else {
-          await ensurePortalAccountSessionRestored()
-        }
-      } catch (error) {
-        agentSendInFlightSessions.current.delete(sessionId)
-        onError(error instanceof Error ? error.message : 'Sign in to Kition before using Kition Cloud models.')
-        return
-      }
-    }
 
     const optimisticUserMessage: AgentMessage = {
       id: Date.now() * -1,
@@ -404,47 +395,100 @@ export function useWorkspaceAgent({
         : [...(current[sessionId] || []), optimisticUserMessage],
     }))
     setAgentStreamingText((current) => ({ ...current, [sessionId]: '' }))
-    markSessionBusy(sessionId, true)
-    trackProductEventOnce('agent_first_request_started')
     onError('')
     onFeedback('')
 
-    const abortController = new AbortController()
-    agentAbortControllers.current[sessionId] = abortController
-    let availableMentionableDocuments = mentionableDocuments
-    if (!availableMentionableDocuments.length) {
-      try {
-        const response = await listWorkspaceDocuments()
-        availableMentionableDocuments = flattenMentionableWorkspaceDocuments(response.items || [])
-        setMentionableDocuments(availableMentionableDocuments)
-      } catch {
-        availableMentionableDocuments = []
+    const rollbackPendingSend = () => {
+      if (!followup?.hideUserMessage) {
+        setAgentMessages((current) => {
+          const remaining = (current[sessionId] || []).filter(
+            (message) => message.id !== optimisticUserMessage.id,
+          )
+          if (remaining.length) {
+            return { ...current, [sessionId]: remaining }
+          }
+          const next = { ...current }
+          delete next[sessionId]
+          return next
+        })
+      }
+      if (followup?.content === undefined) {
+        setAgentDrafts((current) => ({
+          ...current,
+          [sessionId]: current[sessionId]?.trim() ? current[sessionId] : content,
+        }))
       }
     }
-    const mentionResolution = resolveAgentDocumentMentions({
-      content,
-      documents: availableMentionableDocuments,
-    })
-    const promptContext = buildAgentDocumentMentionPromptContext({
-      referencedDocuments: mentionResolution.resolved,
-      unresolvedTokens: mentionResolution.unresolved,
-    })
-    const attachmentPaths = mentionResolution.resolved
-      .filter((document) => document.kind !== 'folder' && isBinaryAttachmentMention(document.format, document.path))
-      .map((document) => document.path)
-    const { requestActiveDocumentPath, saveMarkdown } =
-      resolveAgentDocumentTarget({
-        currentDocumentPath: '',
-        referencedDocuments: mentionResolution.resolved,
-        bindDocumentContext: false,
-        allowSaveMarkdown: true,
-      })
 
-    const turnContext = (await getTurnContext?.()) || undefined
+    if (selectedAgentModel.providerKind === 'kition_console') {
+      try {
+        if (ensureHostedAccountReady) {
+          const ready = await ensureHostedAccountReady()
+          if (!ready) {
+            agentSendInFlightSessions.current.delete(sessionId)
+            rollbackPendingSend()
+            return
+          }
+        } else {
+          await ensurePortalAccountSessionRestored()
+        }
+      } catch (error) {
+        agentSendInFlightSessions.current.delete(sessionId)
+        rollbackPendingSend()
+        onError(error instanceof Error ? error.message : 'Sign in to Kition before using Kition Cloud models.')
+        return
+      }
+    }
+    markSessionBusy(sessionId, true)
+    trackProductEventOnce('agent_first_request_started')
 
+    const abortController = new AbortController()
+    agentAbortControllers.current[sessionId] = abortController
     let tableMutated = false
 
     try {
+      const turnContext = (await getTurnContext?.()) || undefined
+      const activeDocumentPath = String(turnContext?.activeDocumentPath || '').trim()
+      const mentionTokens = extractAgentDocumentMentionTokens(content)
+      let availableMentionableDocuments = mentionableDocuments
+      if (mentionTokens.length && !availableMentionableDocuments.length) {
+        try {
+          const response = await listWorkspaceDocuments()
+          availableMentionableDocuments = flattenMentionableWorkspaceDocuments(response.items || [])
+          setMentionableDocuments(availableMentionableDocuments)
+        } catch {
+          availableMentionableDocuments = []
+        }
+      }
+      const mentionResolution = resolveAgentDocumentMentions({
+        content,
+        documents: availableMentionableDocuments,
+      })
+      const promptContext = buildAgentDocumentMentionPromptContext({
+        activeDocumentPath,
+        activeDocumentFormat: turnContext?.activeDocumentFormat,
+        referencedDocuments: mentionResolution.resolved,
+        unresolvedTokens: mentionResolution.unresolved,
+      })
+      const attachmentPaths = Array.from(new Set([
+        ...(isBinaryAttachmentMention(turnContext?.activeDocumentFormat, activeDocumentPath)
+          ? [activeDocumentPath]
+          : []),
+        ...mentionResolution.resolved
+          .filter(
+            (document) => document.kind !== 'folder'
+              && isBinaryAttachmentMention(document.format, document.path),
+          )
+          .map((document) => document.path),
+      ]))
+      const { requestActiveDocumentPath, saveMarkdown } =
+        resolveAgentDocumentTarget({
+          currentDocumentPath: activeDocumentPath,
+          referencedDocuments: mentionResolution.resolved,
+          bindDocumentContext: Boolean(activeDocumentPath),
+          allowSaveMarkdown: true,
+        })
+
       const done = await streamAgentMessage({
         sessionId,
         content,

@@ -1,5 +1,4 @@
 import {
-  ArrowUp,
   Check,
   ChevronDown,
   ChevronRight,
@@ -9,8 +8,6 @@ import {
   FileText,
   FileType2,
   FileVideo2,
-  Folder,
-  Globe,
   LoaderCircle,
   Presentation,
   Sparkles,
@@ -32,8 +29,8 @@ import type {
   AgentToolCall,
 } from '@/api/agent'
 import { KitionLogoMark } from '@/components/KitionLogoMark'
-import { Textarea } from '@/components/ui'
-import { AgentModelPicker } from '@/features/agent/components/AgentModelPicker'
+import { AgentAiComposer } from '@/features/agent/components/AgentAiComposer'
+import { AgentDocumentReferences } from '@/features/agent/components/AgentDocumentReferences'
 import {
   AgentContextCards,
 } from '@/features/agent/components/AgentContextCards'
@@ -46,9 +43,8 @@ import type { KitionAccountStatus } from '@/features/account/hooks/useKitionAcco
 import { isKitionAccountUsable } from '@/features/account/lib/accountState'
 import type { AgentMentionableDocument } from '@/features/agent/lib/documentMentions'
 import {
-  applyAgentMentionSelection,
-  findAgentMentionQuery,
-  parseAgentMentionSegments,
+  getUniqueAgentDocumentMentionPaths,
+  stripAgentDocumentMentions,
 } from '@/features/agent/lib/documentMentions'
 import {
   type AgentPaneContext,
@@ -59,7 +55,6 @@ import { resolveAgentImageURL } from '@/services/workspaceFiles'
 import {
   type AgentModelOption,
 } from '@/features/agent/lib/agentConfig'
-import { WEB_BROWSER_ENABLED } from '@/lib/productFeatures'
 import { PlanCard, readLatestPlanSnapshot } from '@/features/agent/components/PlanCard'
 import {
   AwaitUserInputModal,
@@ -301,311 +296,6 @@ export function AgentChatPanel({
           onStop={onStop}
           onBrowserEnabledChange={onBrowserEnabledChange}
         />
-      </div>
-    </div>
-  )
-}
-
-function AgentAiComposer({
-  busy,
-  canSend,
-  compact = false,
-  draft,
-  mentionableDocuments,
-  modelOptions,
-  needsModelConfig,
-  hostedAccountStatus,
-  selectedModelKey,
-  browserEnabled,
-  onConfigureModel,
-  onHostedAccountConnect,
-  onHostedAccountCancel,
-  onHostedAccountBilling,
-  onDraftChange,
-  onImportFiles,
-  onKeyDown,
-  onModelChange,
-  onSend,
-  onStop,
-  onBrowserEnabledChange,
-}: {
-  busy: boolean
-  canSend: boolean
-  compact?: boolean
-  draft: string
-  mentionableDocuments: AgentMentionableDocument[]
-  modelOptions: AgentModelOption[]
-  needsModelConfig: boolean
-  hostedAccountStatus?: KitionAccountStatus
-  selectedModelKey: string
-  browserEnabled: boolean
-  onConfigureModel: () => void
-  onHostedAccountConnect?: () => void
-  onHostedAccountCancel?: () => void
-  onHostedAccountBilling?: () => void
-  onDraftChange: (value: string) => void
-  onImportFiles?: (files: File[]) => Promise<string[]>
-  onKeyDown: (event: ReactKeyboardEvent<HTMLTextAreaElement>) => void
-  onModelChange: (value: string) => void
-  onSend: () => void
-  onStop: () => void
-  onBrowserEnabledChange: (next: boolean) => void
-}) {
-  const { t } = useTranslation('agent')
-  const [highlightedMentionIndex, setHighlightedMentionIndex] = useState(0)
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null)
-
-  useEffect(() => {
-    function handle() {
-      requestAnimationFrame(() => {
-        const el = textareaRef.current
-        if (!el) return
-        el.focus()
-        const end = el.value.length
-        el.setSelectionRange(end, end)
-      })
-    }
-    window.addEventListener('kition:agent:focus-composer', handle)
-    return () => {
-      window.removeEventListener('kition:agent:focus-composer', handle)
-    }
-  }, [])
-
-  const mentionQuery = findAgentMentionQuery(
-    draft,
-    textareaRef.current?.selectionStart ?? draft.length,
-  )
-  const filteredMentions = mentionQuery
-    ? mentionableDocuments
-        .filter((document) => {
-          const keyword = `${document.title} ${document.name} ${document.path}`.toLowerCase()
-          return keyword.includes(mentionQuery.query.trim().toLowerCase())
-        })
-        .slice(0, 8)
-    : []
-  const mentionedDocuments = parseAgentMentionSegments(draft)
-    .filter((segment) => segment.type === 'mention')
-    .map((segment) => segment.path)
-  const mentionKindByPath = new Map(
-    mentionableDocuments.map((document) => [document.path, document.kind]),
-  )
-
-  useEffect(() => {
-    setHighlightedMentionIndex(0)
-  }, [mentionQuery?.query])
-
-  async function handleImportedFiles(files: File[]) {
-    if (!onImportFiles || !files.length) {
-      return
-    }
-    const importedPaths = await onImportFiles(files)
-    if (!importedPaths.length) {
-      return
-    }
-    const textarea = textareaRef.current
-    const insertionPoint = textarea?.selectionStart ?? draft.length
-    const head = draft.slice(0, insertionPoint)
-    const tail = draft.slice(insertionPoint)
-    const mentionTokens = importedPaths.map((path) => `@{${path}}`).join(' ')
-    const prefixSeparator = head && !head.endsWith(' ') && !head.endsWith('\n') ? ' ' : ''
-    const suffixSeparator = tail.startsWith(' ') || tail.startsWith('\n') ? '' : ' '
-    const insertion = `${prefixSeparator}${mentionTokens}${suffixSeparator}`
-    const nextContent = `${head}${insertion}${tail}`
-    onDraftChange(nextContent)
-    const nextCaret = head.length + insertion.length
-    window.requestAnimationFrame(() => {
-      textareaRef.current?.focus()
-      textareaRef.current?.setSelectionRange(nextCaret, nextCaret)
-    })
-  }
-
-  return (
-    <div className={cn('agent-ai-composer', compact && 'is-compact')}>
-      <Textarea
-        ref={textareaRef}
-        value={draft}
-        onChange={(event) => onDraftChange(event.target.value)}
-        onDragOver={onImportFiles ? (event) => {
-          if (event.dataTransfer?.types?.includes('Files')) {
-            event.preventDefault()
-            event.dataTransfer.dropEffect = 'copy'
-          }
-        } : undefined}
-        onDrop={onImportFiles ? (event) => {
-          const files = Array.from(event.dataTransfer?.files || [])
-          if (!files.length) {
-            return
-          }
-          event.preventDefault()
-          void handleImportedFiles(files)
-        } : undefined}
-        onPaste={onImportFiles ? (event) => {
-          const files = Array.from(event.clipboardData?.files || [])
-          if (!files.length) {
-            return
-          }
-          event.preventDefault()
-          void handleImportedFiles(files)
-        } : undefined}
-        onKeyDown={(event) => {
-          if (mentionQuery && filteredMentions.length) {
-            if (event.key === 'ArrowDown') {
-              event.preventDefault()
-              setHighlightedMentionIndex((current) =>
-                Math.min(filteredMentions.length - 1, current + 1),
-              )
-              return
-            }
-            if (event.key === 'ArrowUp') {
-              event.preventDefault()
-              setHighlightedMentionIndex((current) => Math.max(0, current - 1))
-              return
-            }
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.preventDefault()
-              const selectedMention =
-                filteredMentions[highlightedMentionIndex] || filteredMentions[0]
-              if (selectedMention) {
-                const next = applyAgentMentionSelection({
-                  content: draft,
-                  mention: mentionQuery,
-                  path: selectedMention.path,
-                })
-                onDraftChange(next.content)
-                window.requestAnimationFrame(() => {
-                  textareaRef.current?.focus()
-                  textareaRef.current?.setSelectionRange(next.caret, next.caret)
-                })
-              }
-              return
-            }
-          }
-          onKeyDown(event)
-        }}
-        placeholder="Plan, write, or ask anything…"
-        disabled={busy}
-      />
-      {mentionQuery && filteredMentions.length ? (
-        <div className="agent-mention-menu">
-          {filteredMentions.map((document, index) => (
-            <button
-              key={document.path}
-              type="button"
-              className={cn(
-                'agent-mention-menu__item',
-                index === highlightedMentionIndex && 'is-active',
-              )}
-              onMouseDown={(event) => {
-                event.preventDefault()
-                const next = applyAgentMentionSelection({
-                  content: draft,
-                  mention: mentionQuery,
-                  path: document.path,
-                })
-                onDraftChange(next.content)
-                window.requestAnimationFrame(() => {
-                  textareaRef.current?.focus()
-                  textareaRef.current?.setSelectionRange(next.caret, next.caret)
-                })
-              }}
-            >
-              {document.kind === 'folder' ? (
-                <Folder className="agent-mention-menu__icon size-4 shrink-0" />
-              ) : (
-                <FileText className="agent-mention-menu__icon size-4 shrink-0" />
-              )}
-              <span className="agent-mention-menu__text">
-                <strong>{document.title}</strong>
-                <span>{document.path}</span>
-              </span>
-            </button>
-          ))}
-        </div>
-      ) : null}
-      {mentionedDocuments.length ? (
-        <div className="agent-mention-chip-row">
-          {mentionedDocuments.map((path) => (
-            <span
-              key={path}
-              className="agent-mention-chip max-w-full min-w-0"
-              title={path}
-            >
-              {mentionKindByPath.get(path) === 'folder' ? (
-                <Folder className="size-3.5 shrink-0" />
-              ) : (
-                <FileText className="size-3.5 shrink-0" />
-              )}
-              <span className="min-w-0 truncate">{path}</span>
-            </span>
-          ))}
-        </div>
-      ) : null}
-      <div className="agent-ai-footer">
-        <AgentModelPicker
-          className="agent-ai-model-picker"
-          variant="compact"
-          menuPlacement="top"
-          value={selectedModelKey}
-          options={modelOptions}
-          onChange={onModelChange}
-          disabled={busy || !modelOptions.length}
-        />
-        {WEB_BROWSER_ENABLED ? (
-          <button
-            type="button"
-            className={cn('agent-ai-browser-toggle', browserEnabled && 'is-active')}
-            aria-pressed={browserEnabled}
-            disabled={busy}
-            title={
-              browserEnabled
-                ? 'Browser search enabled: model can call browser_search in the embedded browser'
-                : 'Browser search disabled: model uses AI-native web_search'
-            }
-            onClick={() => onBrowserEnabledChange(!browserEnabled)}
-          >
-            <Globe className="size-3.5" />
-            <span>Browser</span>
-          </button>
-        ) : null}
-        {needsModelConfig ? (
-          <button type="button" className="agent-ai-configure" onClick={onConfigureModel}>
-            Configure
-          </button>
-        ) : hostedAccountStatus && hostedAccountStatus !== 'ready' ? (
-          <button
-            type="button"
-            className="agent-ai-configure"
-            onClick={hostedAccountStatus === 'credits_empty'
-              ? onHostedAccountBilling
-              : hostedAccountStatus === 'connecting'
-                ? onHostedAccountCancel
-                : onHostedAccountConnect}
-            disabled={hostedAccountStatus === 'loading'}
-            data-testid="agent-composer-kition-account"
-          >
-            {hostedAccountStatus === 'credits_empty'
-              ? t('emptyState.kitionAccount.topUp')
-              : hostedAccountStatus === 'loading'
-              ? t('emptyState.kitionAccount.checking')
-              : hostedAccountStatus === 'connecting'
-                ? t('emptyState.kitionAccount.cancel')
-                : hostedAccountStatus === 'temporary_error'
-                  ? t('emptyState.kitionAccount.retry')
-                  : hostedAccountStatus === 'expired'
-                    ? t('emptyState.kitionAccount.signInAgain')
-                  : t('emptyState.kitionAccount.signIn')}
-          </button>
-        ) : null}
-        <button
-          type="button"
-          className="agent-ai-send"
-          aria-label={busy ? 'Stop' : 'Send'}
-          title={busy ? 'Stop' : 'Send'}
-          onClick={busy ? onStop : onSend}
-          disabled={busy ? false : (!canSend || needsModelConfig)}
-        >
-          {busy ? <X className="size-4" /> : <ArrowUp className="size-4" />}
-        </button>
       </div>
     </div>
   )
@@ -876,21 +566,18 @@ function renderAgentUserMessageContent(
   content: string,
   onOpenPath: (path: string) => void,
 ) {
-  return parseAgentMentionSegments(content).map((segment, index) => {
-    if (segment.type === 'text') {
-      return <Fragment key={`text:${index}`}>{segment.value}</Fragment>
-    }
-    return (
-      <button
-        key={`mention:${segment.path}:${index}`}
-        type="button"
-        className="agent-inline-mention agent-inline-mention--button"
-        onClick={() => onOpenPath(segment.path)}
-      >
-        @{segment.path}
-      </button>
-    )
-  })
+  const visibleContent = stripAgentDocumentMentions(content)
+  const references = getUniqueAgentDocumentMentionPaths(content).map((path) => ({ path }))
+  return (
+    <>
+      {visibleContent ? <span>{visibleContent}</span> : null}
+      <AgentDocumentReferences
+        className="agent-document-references--message"
+        references={references}
+        onOpen={onOpenPath}
+      />
+    </>
+  )
 }
 
 function AgentRunLog({

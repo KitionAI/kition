@@ -112,7 +112,7 @@ describe('useWorkspaceAgent hosted console restore', () => {
     mocks.isDesktopRuntime.mockReturnValue(true)
   })
 
-  it('waits for portal restore before streaming hosted console messages', async () => {
+  it('shows the user message immediately while portal restore is pending', async () => {
     const { useWorkspaceAgent } = await import('./useWorkspaceAgent')
     const settings = createHostedConsoleSettings()
     const onError = vi.fn()
@@ -145,6 +145,10 @@ describe('useWorkspaceAgent hosted console restore', () => {
     })
     expect(mocks.ensurePortalAccountSessionRestored).toHaveBeenCalledTimes(1)
     expect(mocks.streamAgentMessage).not.toHaveBeenCalled()
+    expect(latest.agentDrafts[10]).toBe('')
+    expect(latest.agentMessages[10]).toEqual([
+      expect.objectContaining({ role: 'user', content: 'hello hosted console' }),
+    ])
 
     await act(async () => {
       resolveRestore({ access_token: 'portal-token' })
@@ -281,6 +285,9 @@ describe('useWorkspaceAgent hosted console restore', () => {
     expect(ensureHostedAccountReady).toHaveBeenCalledTimes(1)
     expect(mocks.ensurePortalAccountSessionRestored).not.toHaveBeenCalled()
     expect(mocks.streamAgentMessage).not.toHaveBeenCalled()
+    expect(latest.agentMessages[12]).toEqual([
+      expect.objectContaining({ role: 'user', content: 'resume after sign-in' }),
+    ])
 
     await act(async () => {
       resolveReady(true)
@@ -371,6 +378,96 @@ describe('useWorkspaceAgent hosted console restore', () => {
 
     expect(ensureHostedAccountReady).not.toHaveBeenCalled()
     expect(mocks.streamAgentMessage).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      root?.unmount()
+    })
+    container.remove()
+  })
+
+  it('does not wait for workspace document discovery when a message has no mentions', async () => {
+    const { useWorkspaceAgent } = await import('./useWorkspaceAgent')
+    mocks.listWorkspaceDocuments.mockImplementation(() => new Promise(() => {}))
+    let latest: any = null
+
+    function Harness() {
+      latest = useWorkspaceAgent({
+        settings: createOpenAISettings(),
+        rootPath: '/test/workspace',
+        onError: vi.fn(),
+        onFeedback: vi.fn(),
+      })
+      return null
+    }
+
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    let root: Root | null = null
+    await act(async () => {
+      root = createRoot(container)
+      root.render(createElement(Harness))
+    })
+    await act(async () => {
+      latest.setAgentDraft(16, 'hello')
+    })
+    await act(async () => {
+      latest.sendAiComposerMessage(16)
+      await flushAsyncWork()
+    })
+
+    expect(mocks.streamAgentMessage).toHaveBeenCalledTimes(1)
+    expect(mocks.streamAgentMessage.mock.calls[0][0].content).toBe('hello')
+
+    await act(async () => {
+      root?.unmount()
+    })
+    container.remove()
+  })
+
+  it('binds every turn to the current document without requiring an explicit mention', async () => {
+    const { useWorkspaceAgent } = await import('./useWorkspaceAgent')
+    let latest: any = null
+
+    function Harness() {
+      latest = useWorkspaceAgent({
+        settings: createOpenAISettings(),
+        rootPath: '/test/workspace',
+        onError: vi.fn(),
+        onFeedback: vi.fn(),
+        getTurnContext: () => ({
+          activeDocumentPath: 'Docs/Current.md',
+          activeDocumentFormat: 'markdown',
+          activeDataDocumentId: 0,
+          activeDataTableId: 0,
+        }),
+      })
+      return null
+    }
+
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    let root: Root | null = null
+    await act(async () => {
+      root = createRoot(container)
+      root.render(createElement(Harness))
+    })
+    await act(async () => {
+      latest.setAgentDraft(15, 'What should I improve?')
+    })
+    await act(async () => {
+      latest.sendAiComposerMessage(15)
+      await flushAsyncWork()
+    })
+
+    expect(mocks.streamAgentMessage).toHaveBeenCalledTimes(1)
+    expect(mocks.streamAgentMessage).toHaveBeenCalledWith(expect.objectContaining({
+      activeDocumentPath: 'Docs/Current.md',
+      content: 'What should I improve?',
+      promptContext: expect.stringContaining(
+        'Read this exact path with document_read and analyze it before responding',
+      ),
+      saveMarkdown: false,
+    }))
 
     await act(async () => {
       root?.unmount()
