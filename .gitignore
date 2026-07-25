@@ -1,0 +1,77 @@
+# Root-level ignore rules.
+
+# Local environment
+.env
+.env.*
+!.env.example
+!.env.*.example
+.envrc
+.python-version
+*.p8
+*.p12
+/docs/license/
+/.kition/
+/UITest/
+
+# Editor and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Logs and temporary files
+*.log
+*.pid
+*.pid.lock
+*.seed
+*.tmp
+*.temp
+.cache/
+
+# Local Python tooling
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+openspec/*
+!openspec/specs/
+openspec/specs/*
+!openspec/specs/branding/
+!openspec/specs/branding/**
+
+# Local/performance data files
+/workspace/perf-*.kitable
+
+logs
+
+kition-extension.pem
+electron/resources/bin/
+electron/build-info.json
+.kitable
+test-workspace
+
+# JavaScript dependencies and build output
+node_modules/
+.vite/
+dist/
+dist-ssr/
+dist-electron/
+playwright-report/
+test-results/
+/e2e/title-body-alignment.png
+.runtime-e2e/
+data/
+test-uploads-desktop/
+test-workspace-desktop/
+*.tsbuildinfo
+
+.agents
+/build/*
+!/build/entitlements.mac.plist

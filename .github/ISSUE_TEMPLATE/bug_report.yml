@@ -1,0 +1,57 @@
+name: Bug report
+description: Report a reproducible problem in the public Kition client.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Describe the problem and its user impact.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Kition version
+      placeholder: 1.0.0-beta.3 or commit SHA
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - macOS Apple Silicon
+        - macOS Intel
+        - Windows x64
+        - Linux
+        - Renderer-only development
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      placeholder: Provide the smallest reliable sequence that reproduces the issue.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Remove workspace content, API keys, tokens, and private runtime details.
+  - type: checkboxes
+    id: security
+    attributes:
+      label: Security confirmation
+      options:
+        - label: This report does not contain credentials, private user data, or a security vulnerability.
+          required: true

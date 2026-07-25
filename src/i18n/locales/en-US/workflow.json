@@ -1,0 +1,679 @@
+{
+  "common": {
+    "workspace": "Workspace",
+    "status": "Status",
+    "name": "Name"
+  },
+  "canvas": {
+    "workflowCanvas": "Workflow canvas",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "fitToView": "Fit to view",
+    "insertPoint": {
+      "insertStep": "Insert step",
+      "addAction": "Add action",
+      "addFilter": "Add filter"
+    },
+    "nodeCard": {
+      "statusAria": "status {{status}}",
+      "moreActions": "More node actions",
+      "duplicate": "Duplicate",
+      "enableStep": "Enable this step",
+      "disableStep": "Disable this step",
+      "delete": "Delete",
+      "fix": "Fix",
+      "askAi": "Ask AI"
+    }
+  },
+  "triggerPicker": {
+    "selectPrompt": "Select a trigger:",
+    "recordCreated": "When record created",
+    "recordCreatedOrUpdated": "When record created or updated",
+    "recordUpdated": "When record updated",
+    "recordTriggerTime": "At record's trigger time",
+    "scheduledTime": "At scheduled time",
+    "buttonClicked": "When button clicked"
+  },
+  "nodePicker": {
+    "search": "Search nodes",
+    "close": "Close node picker",
+    "results": "Search results",
+    "planned": "Planned",
+    "tabs": {
+      "common": "Common",
+      "ai": "AI",
+      "connectors": "Connectors",
+      "utilities": "Utilities"
+    },
+    "items": {
+      "updateRecord": "Update record",
+      "updateRecordDesc": "Change fields on the triggering row",
+      "lookupRecord": "Find record",
+      "lookupRecordDesc": "Match a row in another table and write fields back",
+      "addRecord": "Add record",
+      "addRecordDesc": "Create a row in another table",
+      "transformRecord": "Data transformer",
+      "transformRecordDesc": "Clean text and calculate values locally",
+      "sendEmail": "Send email",
+      "sendEmailDesc": "Deliver through an SMTP connection",
+      "ifElse": "Condition (If/Else)",
+      "ifElseDesc": "Route the workflow into true and false branches",
+      "aiText": "AI generate text",
+      "aiTextDesc": "Generate or analyze text with a configured model",
+      "aiClassify": "AI classify",
+      "aiClassifyDesc": "Assign a category from model output",
+      "webhook": "Webhook / group robot",
+      "webhookDesc": "Send to Feishu, DingTalk, WeCom, or a custom endpoint",
+      "javascript": "JavaScript",
+      "javascriptDesc": "Run a sandboxed script"
+    }
+  },
+  "buttons": {
+    "create": "New Workflow"
+  },
+  "templates": {
+    "emailMeOnRecord": {
+      "name": "Email someone on every new record",
+      "description": "Ping someone any time a new row lands in this table."
+    },
+    "dailyFollowupReminder": {
+      "name": "Follow-up reminder",
+      "description": "Reach out to new leads with a follow-up note."
+    },
+    "emailOnRecordUpdated": {
+      "name": "Email someone on every updated record",
+      "description": "Send an email whenever a record changes."
+    },
+    "emailOnRecordDate": {
+      "name": "Email on the record's date",
+      "description": "Send an email reminder when a date field on a record arrives."
+    },
+    "addRecordDailyMorning": {
+      "name": "Append a row every morning",
+      "description": "On a daily schedule, append a new row to a table you pick."
+    },
+    "contentIdeaToQueue": {
+      "name": "Add new ideas to the publishing queue",
+      "description": "Works locally with no setup. Copies complete Content Ideas rows into Publishing Queue and starts enabled."
+    },
+    "archiveCompletedTasks": {
+      "name": "Archive completed tasks",
+      "description": "When a task changes to Done, pass it through a Status filter and copy a snapshot into Completed Tasks."
+    },
+    "weekdayPriorityPlanning": {
+      "name": "Create a weekday planning task",
+      "description": "Every weekday at 09:00, add a fresh priority-planning task to Tasks."
+    },
+    "readingProgressJournal": {
+      "name": "Keep a reading progress journal",
+      "description": "Whenever a reading item is created or updated, append its current status to Reading Journal."
+    },
+    "expenseHighValueReview": {
+      "name": "Flag high-value expenses for review",
+      "description": "When Amount is above 1000, update the same expense row to Needs review."
+    },
+    "orderCatalogEnrichment": {
+      "name": "Fill orders from the product catalog",
+      "description": "Find a matching SKU and write product name, unit price, and category back to the order."
+    },
+    "normalizeContactDetails": {
+      "name": "Normalize contact details",
+      "description": "Extract the email domain and keep phone numbers as digits using local transforms."
+    },
+    "bodyFallbacks": {
+      "unnamed": "(unnamed)",
+      "there": "there"
+    }
+  },
+  "launcher": {
+    "home": {
+      "heroTitleWithScope": "Automate {{scope}}",
+      "heroTitleDefault": "Automate any task with workflows",
+      "heroSubtitleWithScope": "No workflows yet for {{scope}}. Build one with AI or templates, or start from scratch.",
+      "heroSubtitleDefault": "Build a workflow with AI or templates, or start from scratch"
+    },
+    "hero": {
+      "galleryTitle": "Automate any task with workflows",
+      "gallerySubtitle": "Build a workflow with AI or templates, or start from scratch",
+      "ctaGenerateAi": "Generate With AI",
+      "ctaStartFromScratch": "Start From Scratch",
+      "aiPromptBack": "Back to gallery",
+      "aiPromptTitle": "Talk to automate workflow",
+      "aiPromptTableLabel": "Table",
+      "aiPromptTablePickerPlaceholder": "— pick a table to anchor this workflow —",
+      "aiPromptTablePickerHint": "AI needs to know which table the workflow watches.",
+      "aiPromptTableEmptyTitle": "No tables yet in this workspace",
+      "aiPromptTableEmptyBody": "Workflows watch records on a table — create your first one so AI has something to anchor the workflow on.",
+      "aiPromptTableEmptyCta": "Create a table",
+      "aiPromptModelMissing": "AI model not configured. Open Settings → Models to pick a writing model.",
+      "aiPromptModelMissingCta": "Configure",
+      "aiPromptLabel": "Prompt",
+      "aiPromptPlaceholder": "Create a workflow: when a new record is submitted and certain fields are not empty, send the full record details to sales@example.com",
+      "aiPromptSubmit": "Start it"
+    },
+    "templateGrid": {
+      "exploreMore": "Explore more templates",
+      "viewAll": "View All"
+    },
+    "agentCard": {
+      "title": "AI Agent is Here",
+      "openAskAi": "Open Ask AI"
+    },
+    "templateSheet": {
+      "title": "All templates",
+      "searchPlaceholder": "Search templates",
+      "closeAria": "Close templates"
+    },
+    "createModeDialog": {
+      "title": "Create workflow",
+      "titleTemplateView": "Pick a starting point",
+      "descriptionWithScope": "New workflow for \"{{scope}}\". Pick how to start.",
+      "descriptionDefault": "Pick how to start. You can refine the trigger and action afterwards.",
+      "descriptionTemplateView": "Pick a starting point. We will pre-fill the trigger and action.",
+      "sourceTableLabel": "Trigger table",
+      "modeTemplate": {
+        "title": "Pick a starting point",
+        "subtitle": "Templates and blank — we'll pre-fill the trigger and action.",
+        "badge": "{{count}} templates"
+      },
+      "modeChat": {
+        "title": "Chat with AI",
+        "subtitle": "Describe what you want and the agent will draft the workflow for you."
+      },
+      "scratchCard": {
+        "title": "Create From Scratch",
+        "description": "Start with an empty workflow."
+      },
+      "aiCta": "Or describe it — let AI build the workflow",
+      "back": "Back",
+      "cancel": "Cancel"
+    }
+  },
+  "errors": {
+    "createWorkflow": "Failed to create workflow",
+    "applyTemplate": "Failed to apply template",
+    "deleteWorkflow": "Failed to delete workflow",
+    "renameWorkflow": "Failed to rename workflow",
+    "primaryActionLocked": "The primary email action cannot be deleted in this release. Disable it instead."
+  },
+  "feedback": {
+    "renamed": "Renamed",
+    "workflowDeleted": "Workflow deleted"
+  },
+  "kitableLeaf": {
+    "deleteConfirm": "Delete workflow \"{{name}}\"? This permanently removes the workflow and its run history.",
+    "nameFallback": "Untitled workflow"
+  },
+  "confirms": {
+    "cancel": "Cancel",
+    "fallbackLabel": "Confirm",
+    "discardChangesSwitch": {
+      "title": "Discard unsaved changes?",
+      "message": "You have unsaved edits on this workflow. Switching will discard them.",
+      "confirm": "Discard changes"
+    },
+    "discardChangesClose": {
+      "title": "Discard unsaved changes?",
+      "message": "You have unsaved edits. Closing will discard them.",
+      "confirm": "Discard and close"
+    },
+    "switchTriggerTable": {
+      "title": "Switch to {{tableName}}?",
+      "tableFallback": "this table",
+      "message_one": "{{count}} field reference in the action body doesn't exist on the new table. Remove it and continue?",
+      "message_other": "{{count}} field references in the action body don't exist on the new table. Remove them and continue?",
+      "confirm": "Remove & switch"
+    },
+    "deleteWorkflow": {
+      "title": "Delete this workflow?",
+      "message": "\"{{name}}\" will be removed. This cannot be undone.",
+      "nameFallback": "Untitled workflow",
+      "confirm": "Delete"
+    },
+    "deleteTriggerWorkflow": {
+      "title": "Delete entire workflow?",
+      "message": "Deleting the trigger removes the whole workflow. This cannot be undone.",
+      "confirm": "Delete workflow"
+    },
+    "deleteFilter": {
+      "title": "Delete this filter?",
+      "message": "The downstream actions will run on every row again.",
+      "confirm": "Delete"
+    }
+  },
+  "panels": {
+    "addRecord": {
+      "section": "Add record",
+      "targetTableLabel": "Target table",
+      "targetTableHint": "pick a table to write into",
+      "targetTableDraftLabel": "— No target — select a table —",
+      "loopWarningBold": "Writing to the trigger table will loop.",
+      "loopWarningBody": "Pick a different target — each row this action creates would re-fire the trigger and run this workflow again.",
+      "noFields": "No fields on this table yet.",
+      "loadingFields": "Loading fields…",
+      "testSection": "Test with real data",
+      "testDescription": "Choose an existing trigger row. This runs the real action and creates a record in {{target}}.",
+      "scheduledTestDescription": "Run the scheduled action now and create a real record in {{target}}.",
+      "runNow": "Run now",
+      "testTargetFallback": "the target table",
+      "saveBeforeTest": "Save changes before testing.",
+      "testCreated": "Created record {{recordId}} in {{target}}."
+    },
+    "schedule": {
+      "section": "Schedule",
+      "frequencyLabel": "Frequency",
+      "timeOfDayLabel": "Time of day",
+      "timeOfDayHint": "in {{tz}}",
+      "timezoneLabel": "Timezone",
+      "timezoneHint": "defaulting to {{tz}} (server local)",
+      "cronLabel": "Cron expression",
+      "cronHintCustom": "edit directly",
+      "cronHintPreview": "preview",
+      "previewIdle": "Edit a frequency to see when it will fire next.",
+      "previewLoading": "Calculating next fire…",
+      "previewError": "Can't preview — fix the cron or timezone above.",
+      "previewNextRun": "Next run:",
+      "previewThenPrefix": "then ",
+      "frequencyOptions": {
+        "daily": "Every day",
+        "weekdays": "Every weekday (Mon–Fri)",
+        "weekly_monday": "Every Monday",
+        "hourly": "Every hour (top of hour)",
+        "custom": "Custom (advanced)"
+      }
+    },
+    "triggerRequiredFields": {
+      "emptyNoSchema": "Pick a table above to choose which fields must be non-empty for the workflow to fire.",
+      "headerPre": "Trigger fires only when ",
+      "headerBold": "all",
+      "headerPost": " ticked fields are non-empty.",
+      "badgeOptional": "Optional · 0 ticked",
+      "badgeRequired_one": "{{count}} required",
+      "badgeRequired_other": "{{count}} required",
+      "caption": "Leave empty to fire on every record. (0 and false count as non-empty.)",
+      "noFields": "This table has no fields yet — add a column to gate on.",
+      "staleHeader_one": "A required field no longer exists on this table:",
+      "staleHeader_other": "{{count}} required fields no longer exist on this table:",
+      "staleRemovedTag": "(removed)",
+      "staleRemoveButton": "Remove gate"
+    },
+    "drawer": {
+      "kindTrigger": "Trigger",
+      "kindAction": "Action",
+      "kindFilter": "Filter",
+      "closeAria": "Close settings drawer",
+      "titles": {
+        "whenRecordCreated": "When a record is created",
+        "whenRecordUpdated": "When a record is updated",
+        "whenRecordCreatedOrUpdated": "When a record is created or updated",
+        "whenScheduledTime": "At scheduled time",
+        "whenRecordDateReached": "When a record's date is reached",
+        "addRecord": "Add record",
+        "sendEmail": "Send email"
+      },
+      "saveBar": {
+        "validationErrors_one": "{{count}} field error",
+        "validationErrors_other": "{{count}} field errors",
+        "unsavedEdits": "Unsaved edits",
+        "discard": "Discard",
+        "save": "Save"
+      },
+      "trigger": {
+        "section": "Trigger",
+        "eventLabel": "Event",
+        "tableLabel": "Table",
+        "tableHint": "pick to activate this workflow",
+        "requiredFieldsLabel": "Required fields",
+        "requiredFieldsHint": "optional — and / not empty"
+      },
+      "channel": {
+        "section": "Channel",
+        "connectionLabel": "Connection",
+        "newConnection": "New connection",
+        "legacySmtpOption": "Legacy SMTP config",
+        "editConnection": "Edit connection"
+      },
+      "email": {
+        "section": "Email",
+        "toLabel": "To",
+        "sendTestEmail": "Send test email",
+        "testDelivered": "Test email delivered to {{to}}",
+        "subjectLabel": "Subject",
+        "bodyLabel": "Body",
+        "bodyHint": "Insert fields as tokens; they are saved as field_ref parts.",
+        "pickTableFirstHint": "Pick a trigger table above to enable field tokens.",
+        "pickTableFirstPlaceholder": "Pick a trigger table first…"
+      },
+      "testStep": {
+        "section": "Test step",
+        "descriptionPre": "Run this action against a sample ",
+        "descriptionMid": " record. The test uses the selected connection and tags the run as ",
+        "descriptionPost": " so it stays out of the regular run history.",
+        "runWithSample": "Run with sample",
+        "testDelivered": "Test delivered to {{to}}"
+      },
+      "pageSaveBar": {
+        "messagePrefix": "You have unsaved changes to {{fields}}",
+        "discard": "Discard",
+        "save": "Save changes"
+      }
+    },
+    "home": {
+      "workspaceFallback": "Workspace",
+      "untitledWorkflowFallback": "Untitled workflow",
+      "breadcrumb": "Workflows",
+      "closeAria": "Close workflows",
+      "h1": "Workflows",
+      "stats": "{{total}} total · {{active}} active",
+      "refreshAria": "Refresh workflows",
+      "create": "Create",
+      "objectLabel": "Object:",
+      "triggerLabel": "Trigger:",
+      "tableLabelUnbound": "Not bound",
+      "tableLabelWorkspace": "Workspace",
+      "failingLastRun": "Failing — last run failed",
+      "runTest": "Run test",
+      "save": "Save",
+      "moreActions": "More workflow actions",
+      "delete": "Delete",
+      "testEmailDelivered": "Test email delivered",
+      "detailTo": "To",
+      "detailSubject": "Subject",
+      "detailBody": "Body",
+      "tabConfiguration": "Configuration",
+      "tabRunHistory": "Run History",
+      "tabLogs": "Logs",
+      "unresolvedTitle_one": "1 template field couldn't be matched",
+      "unresolvedTitle_other": "{{count}} template fields couldn't be matched",
+      "unresolvedBody": " on this table: {{names}}. The body uses fallback text for now — open the action below to fix the bindings.",
+      "unresolvedDismiss": "Dismiss",
+      "emptyCreateTitle": "Create your first workflow",
+      "emptyCreateHint": "Trigger from a record change, then send an email or run a follow-up action.",
+      "emptyCreateButton": "Create workflow",
+      "emptyPickTitle": "Workflows",
+      "emptyPickHint": "Pick a workflow from the list to view its details.",
+      "validation": {
+        "nameRequired": "Name is required",
+        "recipientRequired": "Recipient is required",
+        "recipientInvalid": "Enter a valid email address",
+        "subjectRequired": "Subject is required",
+        "bodyRequired": "Body is required",
+        "addRecordTargetRequired": "Pick a target table",
+        "updateRecordFieldsRequired": "Add at least one field update",
+        "lookupRecordConfigRequired": "Complete the lookup and add a write-back mapping",
+        "transformRecordOperationsRequired": "Add at least one transform operation",
+        "connectionRequired": "No connection selected"
+      },
+      "statusBanner": {
+        "enableNow": "Enable now",
+        "fixConnection": "Fix connection",
+        "fixAction": "Fix action",
+        "finishConfiguration": "Finish configuration",
+        "lastRunFailedLeading": "Last run failed —",
+        "lastRunFailedFallback": "fix the action to re-enable.",
+        "validationFailedLeading": "Validation failed —",
+        "notConfiguredOne": "Finish configuration before enabling this workflow.",
+        "notConfiguredOther": "{{count}} fields need attention before this workflow can be enabled.",
+        "configuredDisabled": "Configuration looks good. Enable this workflow to start running it."
+      },
+      "triggerVerb": {
+        "recordCreated": "Record created",
+        "recordUpdated": "Record updated",
+        "recordCreatedOrUpdated": "Record created or updated",
+        "recordDateReached": "Record date reached",
+        "scheduledTime": "At scheduled time"
+      },
+      "nodeCard": {
+        "stepLabel": "Step {{index}}",
+        "stepActionEmail": "Step {{index}} · Email",
+        "stepActionAddRecord": "Step {{index}} · Add record",
+        "stepActionGeneric": "Step {{index}} · Action",
+        "stepFilter": "Step {{index}} · Filter",
+        "triggerLabel": "Step 1",
+        "actionSendEmail": "Send email",
+        "actionAddRecord": "Add record",
+        "actionUpdateRecord": "Update record",
+        "actionLookupRecord": "Find and fill record",
+        "actionTransformRecord": "Transform record data",
+        "drawerKindAction": "Action",
+        "drawerKindFilter": "Filter",
+        "drawerKindTrigger": "Trigger",
+        "noConnectionSelected": "No connection selected",
+        "noRecipient": "no recipient",
+        "noTarget": "no target",
+        "legacySmtp": "Legacy SMTP config",
+        "sendEmailDescription": "via {{channel}} · to {{recipient}}",
+        "addRecordDescription_one": "into {{target}} · 1 field",
+        "addRecordDescription_other": "into {{target}} · {{count}} fields",
+        "updateRecordDescription_one": "update trigger row · 1 field",
+        "updateRecordDescription_other": "update trigger row · {{count}} fields",
+        "lookupRecordDescription": "find a match in {{target}} and fill this row",
+        "transformRecordDescription_one": "1 local transform",
+        "transformRecordDescription_other": "{{count}} local transforms",
+        "unknownTable": "Unknown table",
+        "noSchedule": "(no schedule)",
+        "newFilter": "New filter"
+      },
+      "list": {
+        "searchPlaceholder": "Search workflows...",
+        "filterAll": "All",
+        "filterActive": "Active",
+        "filterFailing": "Failing · {{count}}",
+        "filterDisabled": "Disabled",
+        "loading": "Loading workflows",
+        "emptyFiltered": "No workflows match this view.",
+        "emptyNone": "No workflows yet",
+        "flowWhen": "WHEN",
+        "flowThen": "THEN",
+        "actionSendEmail": "Send email",
+        "lastRunFailed": "Last run failed",
+        "ranSuccessfully": "Ran successfully",
+        "noRunsYet": "No runs yet",
+        "viewError": "View error",
+        "history": "History",
+        "streamingChip": "Generating",
+        "streamingPlaceholder": "AI is writing…",
+        "trigger": "Trigger",
+        "action": "Action",
+        "table": "Table",
+        "lastRun": "Last run",
+        "sortBy": "Sort by",
+        "statusActive": "Active",
+        "statusDisabled": "Disabled",
+        "statusFailing": "Failing"
+      },
+      "streamingBanner": {
+        "title": "AI is generating your workflow",
+        "errorTitle": "AI generation failed",
+        "errorRetry": "Retry",
+        "errorDiscard": "Discard"
+      }
+    },
+    "filter": {
+      "matchSection": "Match",
+      "modeAll": "All of (and)",
+      "modeAny": "Any of (or)",
+      "joinAnd": "AND",
+      "joinOr": "OR",
+      "chooseField": "Choose field…",
+      "removeCondition": "Remove condition",
+      "addCondition": "+ Add condition",
+      "noMatchSection": "When the condition is not matched",
+      "noMatchBodyPre": "The run stops and is marked ",
+      "noMatchBodySkipped": "skipped",
+      "noMatchBodyPost": ". Downstream actions are not executed. The \"branch\" mode (true/false split) is on the roadmap.",
+      "previewSection": "Expression preview",
+      "previewLabel": "DSL",
+      "previewEmpty": "— empty filter matches every row —",
+      "drySection": "Dry-run with sample row",
+      "dryRunning": "Running…",
+      "dryRunButton": "▶ Run with sample row",
+      "dryMatched": "✓ Match — this row would continue downstream",
+      "dryNotMatched": "⊘ No match — the run would be marked skipped"
+    },
+    "recordActions": {
+      "triggerRecord": "Trigger record",
+      "remove": "Remove",
+      "testSection": "Test action",
+      "testDescription": "Pick an existing row. Kition runs the real action and persists the result in the table.",
+      "testUpdated": "The selected row was updated successfully.",
+      "noMatch": "No matching row was found; the source row was left unchanged.",
+      "update": {
+        "section": "Update current record",
+        "description": "Only populated fields below are changed. Unchanged values are preserved."
+      },
+      "lookup": {
+        "section": "Find record and write back",
+        "table": "Lookup table",
+        "tablePlaceholder": "Choose a table",
+        "matchField": "Match field",
+        "fieldPlaceholder": "Choose a field",
+        "matchValue": "Value from the trigger record",
+        "sourceField": "Field to read",
+        "targetField": "Field to fill",
+        "addMapping": "Add write-back mapping"
+      },
+      "transform": {
+        "section": "Transform record data",
+        "operation": "Operation {{index}}",
+        "argument": "Argument",
+        "targetField": "Choose output field",
+        "addOperation": "Add transform",
+        "operations": {
+          "trim": "Trim whitespace",
+          "lowercase": "Lowercase",
+          "uppercase": "Uppercase",
+          "digits_only": "Keep digits only",
+          "domain_from_email": "Extract email domain",
+          "concat": "Append text",
+          "number_add": "Add number",
+          "number_multiply": "Multiply number"
+        }
+      }
+    },
+    "bodyEditor": {
+      "noFieldsAvailable": "No fields available",
+      "addText": "Add text",
+      "addNewline": "Add newline",
+      "insertField": "Insert field",
+      "emptyHint": "Add text or insert a field to build the email body.",
+      "typeBodyText": "Type body text",
+      "newLineChip": "New line",
+      "missingField": "missing field {{id}}",
+      "missingFieldPreview": "⚠ missing field {{id}}",
+      "fieldsUsed_one": "{{count}} field used",
+      "fieldsUsed_other": "{{count}} fields used",
+      "previewSampleData": "Preview with sample data",
+      "removeBodyPartAria": "Remove body part",
+      "remove": "Remove"
+    },
+    "triggerTable": {
+      "draftLabel": "— Not bound (draft) —",
+      "selectAria": "Select table",
+      "emptyInScope": "No tables in scope."
+    },
+    "sampleRow": {
+      "noTableBound": "No table bound",
+      "useExisting": "Use existing row",
+      "tooltipReady": "Pick a real record to render the test against",
+      "tooltipNotReady": "Bind a table to the trigger first",
+      "recentRows": "Recent rows",
+      "refreshAria": "Refresh row list",
+      "loading": "Loading…",
+      "empty": "No rows in this table yet. Add a record first.",
+      "rowFallback": "Row #{{id}}"
+    },
+    "build": {
+      "backToWorkflowsAria": "Back to workflows",
+      "breadcrumbWorkflows": "Workflows",
+      "newWorkflow": "New workflow",
+      "runHistory": "Run History",
+      "streamGenerating": "Generating trigger…",
+      "streamWaiting": "Waiting for trigger…",
+      "triggerWhenRecordCreated": "When record created",
+      "triggerWhenFormSubmitted": "When form submitted",
+      "actionSendEmail": "Send email",
+      "triggerSubtitle": "When a record is created in {{table}}",
+      "actionSubtitle": "Send email to {{to}}",
+      "drawerTitleScoped": "Create email workflow for {{table}}",
+      "drawerTitle": "Create email workflow"
+    },
+    "action": {
+      "panelAria": "Action settings",
+      "headerTitle": "Action preview",
+      "closeAria": "Close",
+      "previewNote": "This panel previews what the AI generated. Edits happen in the Workflows list.",
+      "openInList": "Open in Workflows to edit",
+      "sectionConfig": "Configuration",
+      "sectionTest": "Test step",
+      "sectionPreviewResult": "Preview result",
+      "sectionTestSent": "Test email sent",
+      "labelTo": "To",
+      "labelSubject": "Subject",
+      "labelBody": "Body",
+      "noRecipient": "No recipient configured",
+      "noSubject": "No subject configured",
+      "testIntro": "Preview renders a synthetic record through the body template — no email is sent. Use \"Send real test email\" to actually deliver through SMTP.",
+      "previewing": "Generating preview…",
+      "previewBtn": "Preview action (no email sent)",
+      "sendToLabel": "Send real test email to",
+      "sendToPlaceholder": "recipient@example.com",
+      "invalidEmail": "Enter a valid email or leave blank to use the configured recipient.",
+      "blankHint": "Leave blank to use \"{{to}}\". Subject gets a [TEST] prefix.",
+      "sending": "Sending…",
+      "sendBtn": "Send real test email",
+      "previewGenerated": "Preview generated",
+      "previewNoEmail": "(no email sent)",
+      "renderedJustNow": "Rendered a few seconds ago",
+      "renderedInput": "Rendered input",
+      "testDelivered": "✓ Test email delivered",
+      "sentJustNow": "Sent a few seconds ago to {{to}}"
+    },
+    "progress": {
+      "title": "Build workflow",
+      "stepWorkflow": "Generate workflow",
+      "stepTrigger": "Generate trigger",
+      "stepAction": "Generate action node"
+    }
+  },
+  "runs": {
+    "filters": {
+      "all": "All",
+      "sent": "✓ Sent",
+      "failed": "✕ Failed",
+      "skipped": "⊘ Skipped"
+    },
+    "rowLabel": {
+      "sent": "✓ Sent",
+      "skipped": "⊘ Skipped",
+      "failed": "✕ Failed"
+    },
+    "loading": "Loading…",
+    "loadingLogs": "Loading logs…",
+    "empty": "No runs yet",
+    "emptyLogs": "No logs yet",
+    "pruneHint": "Older runs auto-pruned: ok > 14d · error > 30d",
+    "retry": "↻ Retry",
+    "failedAt": "Failed at",
+    "viewNode": "View node {{nodeId}}",
+    "detailRecord": "Record",
+    "detailWhen": "When",
+    "detailError": "Error",
+    "detailBody": "Body",
+    "panel": {
+      "title": "Run History",
+      "refreshAria": "Refresh",
+      "pauseAria": "Pause auto-refresh",
+      "resumeAria": "Resume auto-refresh",
+      "closeAria": "Close",
+      "panelAria": "Run history",
+      "loadMore": "Load {{n}} more ({{hidden}} hidden)"
+    },
+    "time": {
+      "justNow": "just now",
+      "minutesAgo": "{{n}}m ago",
+      "hoursAgo": "{{n}}h ago",
+      "daysAgo": "{{n}}d ago"
+    }
+  }
+}

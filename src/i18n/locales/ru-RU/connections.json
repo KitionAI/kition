@@ -1,0 +1,70 @@
+{
+  "panel": {
+    "eyebrow": "Подключения",
+    "title": "Доставка почты",
+    "subtitle": "Управляйте многоразовыми учётными данными для действий процессов.",
+    "refreshAria": "Обновить подключения",
+    "newConnection": "Новое подключение",
+    "loading": "Загрузка подключений",
+    "emptyTitle": "Пока нет подключений",
+    "emptyHint": "Добавьте SMTP-подключение, прежде чем включать почтовые процессы.",
+    "emptyCta": "Добавить подключение",
+    "fallbackEmailSmtp": "Email SMTP",
+    "usedBy": "Используется: {{count}}",
+    "pickPrompt": "Выберите подключение для просмотра."
+  },
+  "modal": {
+    "ariaLabel": "Почтовое подключение",
+    "titleEdit": "Изменить почтовое подключение",
+    "titleNew": "Новое почтовое подключение",
+    "subtitle": "«Проверить и сохранить» проверяет SMTP-сервер перед сохранением изменений.",
+    "closeAria": "Закрыть форму подключения",
+    "fieldName": "Имя",
+    "fieldHost": "Хост",
+    "fieldPort": "Порт",
+    "fieldUsername": "Имя пользователя",
+    "fieldPassword": "Пароль",
+    "fieldTls": "TLS",
+    "fieldFromAddress": "Адрес отправителя",
+    "fieldFromName": "Имя отправителя",
+    "namePlaceholder": "напр. SMTP компании",
+    "hostPlaceholder": "smtp.example.com",
+    "portPlaceholder": "587",
+    "usernamePlaceholder": "you@example.com",
+    "fromPlaceholder": "no-reply@example.com",
+    "fromNamePlaceholder": "напр. Уведомления Kition",
+    "passwordPlaceholderEdit": "Оставьте пустым, чтобы сохранить текущий пароль",
+    "cancel": "Отмена",
+    "testAndSave": "Проверить и сохранить"
+  },
+  "detail": {
+    "eyebrowEmailSmtp": "Email SMTP",
+    "labelHost": "Хост",
+    "labelTls": "TLS",
+    "labelUsername": "Имя пользователя",
+    "labelUsedBy": "Используется",
+    "usedByWorkflows_one": "{{count}} процесс",
+    "usedByWorkflows_other": "{{count}} процессов",
+    "edit": "Изменить",
+    "test": "Проверить",
+    "delete": "Удалить"
+  },
+  "status": {
+    "active": "Активно",
+    "invalid": "Последняя проверка не удалась",
+    "pending": "В ожидании"
+  },
+  "confirms": {
+    "deleteWithUsage_one": "«{{name}}» используется в {{count}} процессе.\n\nЕго удаление приведёт к тому, что этот процесс перестанет отправлять почту, пока вы не назначите ему новое подключение.\n\nВсё равно удалить?",
+    "deleteWithUsage_other": "«{{name}}» используется в {{count}} процессах.\n\nЕго удаление приведёт к тому, что эти процессы перестанут отправлять почту, пока вы не назначите им новое подключение.\n\nВсё равно удалить?",
+    "deleteNoUsage": "Удалить «{{name}}»?"
+  },
+  "errors": {
+    "loadFailed": "Не удалось загрузить подключения",
+    "saveFailed": "Не удалось сохранить подключение",
+    "verifyFailedFallback": "Подключение сохранено, но проверка не удалась"
+  },
+  "feedback": {
+    "verified": "Подключение проверено"
+  }
+}

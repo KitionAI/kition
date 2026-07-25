@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kition.ai/contracts/runtime/email-sync.schema.json",
+  "title": "Kition Email Sync Workflow",
+  "$ref": "#/$defs/workflow",
+  "$defs": {
+    "tlsMode": {
+      "type": "string",
+      "enum": ["tls", "starttls", "plain"]
+    },
+    "connection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["host", "port", "tls_mode", "username", "mailbox"],
+      "properties": {
+        "host": { "type": "string", "minLength": 1 },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "tls_mode": { "$ref": "#/$defs/tlsMode" },
+        "username": { "type": "string", "minLength": 1 },
+        "mailbox": { "type": "string", "minLength": 1 }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["table_path", "content_folder", "attachment_folder"],
+      "properties": {
+        "table_path": { "type": "string", "pattern": "^[^/].*\\.kitable$" },
+        "table_id": { "type": "integer", "minimum": 1 },
+        "content_folder": { "type": "string", "minLength": 1 },
+        "attachment_folder": { "type": "string", "minLength": 1 }
+      }
+    },
+    "schedule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "interval_minutes"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "interval_minutes": { "type": "integer", "minimum": 5, "maximum": 1440 }
+      }
+    },
+    "workflow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "connection",
+        "target",
+        "schedule",
+        "include_attachments",
+        "status",
+        "synced_messages",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "connection": { "$ref": "#/$defs/connection" },
+        "target": { "$ref": "#/$defs/target" },
+        "schedule": { "$ref": "#/$defs/schedule" },
+        "include_attachments": { "type": "boolean" },
+        "status": {
+          "type": "string",
+          "enum": ["active", "paused", "syncing", "error"]
+        },
+        "last_sync_at": { "type": "string", "format": "date-time" },
+        "last_error": { "type": "string" },
+        "synced_messages": { "type": "integer", "minimum": 0 },
+        "created_at": { "type": "string", "format": "date-time" },
+        "updated_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "saveInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "connection", "target", "schedule", "include_attachments"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "connection": { "$ref": "#/$defs/connection" },
+        "password": { "type": "string" },
+        "target": { "$ref": "#/$defs/target" },
+        "schedule": { "$ref": "#/$defs/schedule" },
+        "include_attachments": { "type": "boolean" }
+      }
+    },
+    "syncResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workflow_id", "imported", "updated", "skipped", "failed", "table_path", "started_at", "finished_at"],
+      "properties": {
+        "workflow_id": { "type": "string", "minLength": 1 },
+        "imported": { "type": "integer", "minimum": 0 },
+        "updated": { "type": "integer", "minimum": 0 },
+        "skipped": { "type": "integer", "minimum": 0 },
+        "failed": { "type": "integer", "minimum": 0 },
+        "table_path": { "type": "string", "minLength": 1 },
+        "started_at": { "type": "string", "format": "date-time" },
+        "finished_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "syncRun": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "workflow_id",
+        "mode",
+        "status",
+        "discovered_messages",
+        "processed_messages",
+        "imported",
+        "updated",
+        "skipped",
+        "failed",
+        "current_batch",
+        "table_path",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "workflow_id": { "type": "string", "minLength": 1 },
+        "mode": { "type": "string", "enum": ["incremental", "full", "scheduled"] },
+        "status": {
+          "type": "string",
+          "enum": ["queued", "scanning", "running", "completed", "failed", "canceling", "canceled", "interrupted"]
+        },
+        "discovered_messages": { "type": "integer", "minimum": 0 },
+        "processed_messages": { "type": "integer", "minimum": 0 },
+        "imported": { "type": "integer", "minimum": 0 },
+        "updated": { "type": "integer", "minimum": 0 },
+        "skipped": { "type": "integer", "minimum": 0 },
+        "failed": { "type": "integer", "minimum": 0 },
+        "current_batch": { "type": "integer", "minimum": 0 },
+        "table_path": { "type": "string", "minLength": 1 },
+        "error": { "type": "string" },
+        "started_at": { "type": "string", "format": "date-time" },
+        "finished_at": { "type": "string", "format": "date-time" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "updated_at": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "x-endpoints": {
+    "sync": "POST /api/v1/email-sync/workflows/{id}/sync",
+    "syncAll": "POST /api/v1/email-sync/workflows/{id}/sync-all",
+    "createRun": "POST /api/v1/email-sync/workflows/{id}/runs",
+    "listRuns": "GET /api/v1/email-sync/runs",
+    "getRun": "GET /api/v1/email-sync/runs/{id}",
+    "cancelRun": "POST /api/v1/email-sync/runs/{id}/cancel",
+    "retryRun": "POST /api/v1/email-sync/runs/{id}/retry"
+  },
+  "x-imported-document": {
+    "format": "gfm",
+    "metadata_layout": "two_column_table",
+    "multipart_preference": ["text/html", "text/plain"],
+    "heading_style": "atx",
+    "preserve": ["headings", "links", "lists", "semantic_tables"],
+    "remove": ["scripts", "styles", "forms", "event_handlers", "hidden_content", "remote_images"]
+  }
+}

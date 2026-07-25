@@ -1,0 +1,260 @@
+{
+  "name": "kition",
+  "version": "1.0.0-beta.3",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "description": "Kition — documents, structured tables, AI agents, and visual workflows",
+  "homepage": "https://kition.ai",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KitionAI/kition.git"
+  },
+  "author": {
+    "name": "Heartie Technology Limited",
+    "email": "support@kition.ai"
+  },
+  "bugs": {
+    "url": "https://github.com/KitionAI/kition/issues",
+    "email": "support@kition.ai"
+  },
+  "engines": {
+    "node": ">=22.19.0 <23",
+    "pnpm": ">=10.16.0 <11"
+  },
+  "packageManager": "pnpm@10.33.0",
+  "keywords": [
+    "kition",
+    "ai-workspace",
+    "automation",
+    "electron",
+    "documents",
+    "tables",
+    "agents"
+  ],
+  "type": "module",
+  "scripts": {
+    "dev": "node electron/scripts/dev-runtime.mjs",
+    "dev:web": "vite --config tooling/vite.config.ts --mode web-preview",
+    "dev:electron": "node electron/scripts/dev-electron.mjs",
+    "dev:runtime": "node electron/scripts/dev-runtime.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "pnpm run test:unit",
+    "check:branding": "python3 scripts/check-branding.py",
+    "check:product-language": "python3 scripts/check-product-language.py",
+    "check:i18n": "python3 scripts/check-i18n.py",
+    "check": "pnpm run check:branding && pnpm run check:product-language && pnpm run check:i18n && pnpm run lint && pnpm run check:security && pnpm run build:check && pnpm test",
+    "build": "vite build --config tooling/vite.config.ts",
+    "build:check": "pnpm run check:runtime-lock && pnpm run check:desktop-assets && pnpm run check:notices && pnpm run typecheck && pnpm run build",
+    "check:runtime-lock": "node electron/scripts/validate-runtime-lock.mjs",
+    "check:desktop-assets": "node electron/scripts/validate-desktop-assets.mjs",
+    "check:notices": "node scripts/generate-third-party-notices.mjs --check",
+    "check:security": "python3 scripts/check-secrets.py && pnpm audit --audit-level high",
+    "notices:generate": "node scripts/generate-third-party-notices.mjs",
+    "build:perf": "pnpm run build && pnpm perf:budget",
+    "build:electron": "node electron/scripts/build-electron.mjs",
+    "build:unpack": "pnpm run build:electron -- --dir",
+    "dist:electron": "node electron/scripts/build-electron.mjs --publish never",
+    "test:agent:unit": "vitest run --config tooling/vitest.config.ts src/features/agent/hooks/useTableAgentSession.spec.ts src/features/agent/lib/tableAgentShared.spec.ts src/features/workspace/lib/browserTabs.spec.ts src/features/workspace/lib/workspacePersistence.spec.ts",
+    "test:agent:e2e": "playwright test --config tooling/playwright.config.ts e2e/table-agent-browser-flow.spec.ts e2e/table-agent-document-flow.spec.ts --workers=1",
+    "test:agent:stable": "pnpm run test:agent:unit && pnpm run test:agent:e2e",
+    "test:desktop:unit": "vitest run --config tooling/vitest.config.ts src/services/desktop.spec.ts src/services/desktopBootstrap.spec.ts src/services/portalAccount.spec.ts electron/menu.spec.ts electron/secure-store.spec.ts electron/backend-supervisor.spec.ts electron/external-url.spec.ts electron/local-runtime.spec.ts electron/runtime-label.spec.ts electron/runtime-manager.spec.ts electron/scripts/build-identity.spec.ts electron/scripts/build-sidecar.spec.ts electron/scripts/electron-builder-args.spec.ts electron/scripts/validate-desktop-assets.spec.ts electron/scripts/validate-runtime-lock.spec.ts",
+    "test:desktop:e2e": "playwright test --config tooling/playwright.config.ts e2e/desktop-shortcuts.spec.ts --workers=1 && playwright test --config tooling/playwright.config.ts e2e/settings-desktop.spec.ts --workers=1 && playwright test --config tooling/playwright.config.ts e2e/table-agent-browser-flow.spec.ts --workers=1",
+    "lint": "eslint . --config tooling/eslint.cjs --no-eslintrc --ext .js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --quiet --ignore-path .gitignore",
+    "lint:fix": "eslint . --config tooling/eslint.cjs --no-eslintrc --ext .js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
+    "perf:budget": "node scripts/check-performance-budget.mjs",
+    "test:unit": "vitest run --config tooling/vitest.config.ts",
+    "test:unit:watch": "vitest --config tooling/vitest.config.ts",
+    "test:e2e": "playwright test --config tooling/playwright.config.ts e2e/app-shell.spec.ts e2e/table-widget.spec.ts --workers=1",
+    "test:e2e:headed": "playwright test --config tooling/playwright.config.ts --headed",
+    "capture:readme:assets": "KITION_CAPTURE_README_ASSETS=1 playwright test --config tooling/playwright.config.ts e2e/readme-assets.spec.ts --workers=1 && magick docs/readme/documents.png -quality 88 -define webp:method=6 docs/readme/documents.webp && magick docs/readme/agent.png -quality 88 -define webp:method=6 docs/readme/agent.webp && rm docs/readme/documents.png docs/readme/agent.png",
+    "test:table:e2e": "bash scripts/inspect-table-widget.sh",
+    "test:kitable:e2e": "bash scripts/inspect-kitable.sh",
+    "test:scenario:e2e": "bash scripts/inspect-scenario.sh",
+    "test:workflow:e2e": "bash scripts/inspect-workflow.sh",
+    "test:workflow:onboarding:e2e": "bash scripts/inspect-workflow-onboarding.sh"
+  },
+  "dependencies": {
+    "chokidar": "^4.0.3",
+    "electron-log": "^5.4.4",
+    "electron-updater": "^6.6.10"
+  },
+  "devDependencies": {
+    "@codemirror/autocomplete": "^6.20.3",
+    "@codemirror/commands": "^6.10.3",
+    "@codemirror/lang-markdown": "^6.5.0",
+    "@codemirror/language": "^6.12.3",
+    "@codemirror/language-data": "^6.5.2",
+    "@codemirror/search": "^6.7.0",
+    "@codemirror/state": "^6.6.0",
+    "@codemirror/view": "^6.43.0",
+    "@lezer/common": "^1.5.2",
+    "@lezer/highlight": "^1.2.3",
+    "@orama/orama": "^3.1.18",
+    "@playwright/test": "^1.54.2",
+    "@types/hammerjs": "^2.0.46",
+    "@types/lodash-es": "^4.17.12",
+    "@types/node": "^22.20.1",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@types/scroller": "^0.1.5",
+    "@typescript-eslint/eslint-plugin": "^8.61.0",
+    "@typescript-eslint/parser": "^8.61.0",
+    "@uiw/react-codemirror": "^4.25.10",
+    "@vitejs/plugin-react": "^6.0.1",
+    "autoprefixer": "^10.5.0",
+    "axios": "^1.18.1",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "cmdk": "1.1.1",
+    "codemirror": "^6.0.2",
+    "docx": "^9.7.1",
+    "electron": "^43.1.1",
+    "electron-builder": "^26.15.3",
+    "electron-builder-squirrel-windows": "26.15.3",
+    "eslint": "^8.56.0",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "eslint-plugin-sonarjs": "^1.0.4",
+    "fake-indexeddb": "^6.2.5",
+    "i18next": "^26.3.1",
+    "idb": "^8.0.3",
+    "jotai": "2.15.2",
+    "jotai-x": "2.3.3",
+    "jsdom": "^29.1.1",
+    "katex": "^0.17.0",
+    "lodash-es": "^4.17.21",
+    "lru-cache": "10.2.0",
+    "lucide-react": "^1.14.0",
+    "marked": "^12.0.0",
+    "mermaid": "^11.15.0",
+    "nanoid": "^5.1.11",
+    "postcss": "^8.5.14",
+    "prop-types": "15.8.1",
+    "radix-ui": "1.4.3",
+    "react": "^19.2.5",
+    "react-dnd": "16.0.1",
+    "react-dnd-html5-backend": "16.0.1",
+    "react-dom": "^19.2.5",
+    "react-hammerjs": "1.0.1",
+    "react-hotkeys-hook": "^5.3.2",
+    "react-i18next": "^17.0.8",
+    "react-textarea-autosize": "8.5.3",
+    "sass": "^1.69.7",
+    "scroller": "0.0.3",
+    "sonner": "2.0.7",
+    "tailwind-merge": "^3.5.0",
+    "tailwindcss": "^3.4.19",
+    "tailwindcss-animate": "^1.0.7",
+    "ts-key-enum": "2.0.12",
+    "ts-keycode-enum": "1.0.6",
+    "typescript": "6.0.3",
+    "vaul": "1.1.2",
+    "vite": "^8.1.5",
+    "vitest": "^4.1.10",
+    "zod": "4.1.13"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "electron",
+      "electron-winstaller"
+    ],
+    "overrides": {
+      "brace-expansion@1.1.14": "1.1.16",
+      "brace-expansion@2.1.0": "2.1.2",
+      "brace-expansion@5.0.6": "5.0.7",
+      "dompurify": "3.4.12",
+      "fast-uri": "3.1.4",
+      "form-data": "4.0.6",
+      "immutable": "5.1.8",
+      "js-yaml": "4.3.0",
+      "tmp": "0.2.7"
+    }
+  },
+  "main": "electron/main.mjs",
+  "build": {
+    "appId": "com.kition.desktop",
+    "productName": "Kition",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "KitionAI",
+        "repo": "kition",
+        "releaseType": "release"
+      }
+    ],
+    "copyright": "Copyright © 2026 Heartie Technology Limited",
+    "npmRebuild": false,
+    "compression": "maximum",
+    "electronLanguages": [
+      "zh_CN",
+      "en_US"
+    ],
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "electron/defaults/config.toml",
+      "!**/*.{spec,test}.{ts,js,mjs,cjs,tsx,jsx}",
+      "!**/node_modules/**/*.{map,md,markdown,d.ts}",
+      "!**/node_modules/**/{CHANGELOG,README,readme,HISTORY,SECURITY,CONTRIBUTING,LICENSE}*",
+      "!**/node_modules/**/{__tests__,test,tests,__mocks__,e2e,example,examples,demo,demos,docs,doc,.github,.vscode,.idea,.bin,.cache}/**"
+    ],
+    "extraResources": [
+      {
+        "from": "electron/resources/bin",
+        "to": "bin",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "LICENSE",
+        "to": "LICENSE.kition.txt"
+      },
+      {
+        "from": "docs/legal/THIRD_PARTY_NOTICES.txt",
+        "to": "THIRD_PARTY_NOTICES.txt"
+      },
+      {
+        "from": "node_modules/electron/dist/LICENSE",
+        "to": "LICENSE.electron.txt"
+      },
+      {
+        "from": "node_modules/electron/dist/LICENSES.chromium.html",
+        "to": "LICENSES.chromium.html"
+      }
+    ],
+    "mac": {
+      "icon": "electron/icon.icns",
+      "category": "public.app-category.productivity",
+      "target": [
+        "dmg"
+      ],
+      "identity": "Heartie Technology Limited (X3FLP9863V)",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "notarize": true
+    },
+    "win": {
+      "icon": "electron/icon.png",
+      "signtoolOptions": {
+        "publisherName": "Heartie Technology Limited"
+      },
+      "target": [
+        "nsis"
+      ]
+    },
+    "linux": {
+      "icon": "electron/icon.png",
+      "category": "Office",
+      "maintainer": "Heartie Technology Limited <support@kition.ai>",
+      "target": [
+        "AppImage"
+      ]
+    }
+  }
+}

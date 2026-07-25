@@ -1,0 +1,97 @@
+{
+  "title": "Espacio de trabajo",
+  "subtitle": "Versión {{version}}",
+  "fallbackVersion": "",
+  "actions": {
+    "create": {
+      "title": "Nuevo espacio de trabajo",
+      "description": "Crea un nuevo espacio de trabajo en la carpeta que elijas.",
+      "button": "Crear",
+      "nameLabel": "Nombre del espacio de trabajo",
+      "namePlaceholder": "Mi espacio de trabajo",
+      "parentLabel": "Carpeta principal",
+      "parentPlaceholder": "Elige una carpeta…",
+      "pick": "Examinar…",
+      "confirm": "Crear espacio de trabajo",
+      "cancel": "Cancelar"
+    },
+    "open": {
+      "title": "Abrir espacio de trabajo local",
+      "description": "Usa una carpeta existente de este equipo como espacio de trabajo.",
+      "button": "Abrir"
+    },
+    "sync": {
+      "title": "Sincronizar espacio de trabajo remoto",
+      "description": "Sincroniza un espacio de trabajo desde Kition Sync en este equipo.",
+      "button": "Iniciar sesión",
+      "disabledTooltip": "Próximamente"
+    }
+  },
+  "vault": {
+    "menu": {
+      "rename": "Renombrar",
+      "remove": "Quitar de la lista",
+      "reveal": "Mostrar en el Finder"
+    },
+    "renameTitle": "Renombrar espacio de trabajo",
+    "renamePlaceholder": "Nombre del espacio de trabajo",
+    "removeConfirm": "¿Quitar este espacio de trabajo de la lista? La carpeta en el disco permanece intacta.",
+    "empty": "Aún no hay espacios de trabajo. Crea o abre uno para empezar."
+  },
+  "errors": {
+    "missingName": "Introduce un nombre para el espacio de trabajo.",
+    "missingParent": "Elige una carpeta principal.",
+    "open": "No se pudo abrir el espacio de trabajo: {{message}}",
+    "create": "No se pudo crear el espacio de trabajo: {{message}}",
+    "switch": "No se pudo cambiar de espacio de trabajo: {{message}}",
+    "missingVault": "La carpeta del espacio de trabajo ya no existe en el disco."
+  },
+  "firstRun": {
+    "seeding": "Configurando tu espacio de trabajo…",
+    "seedError": "No se pudieron preparar los archivos iniciales: {{message}}",
+    "dialogLabel": "Primeros pasos",
+    "eyebrow": "Primeros pasos",
+    "progress": "Paso {{step}} de 3",
+    "workspaceTitle": "Tu espacio de trabajo está listo",
+    "workspaceDescription": "Kition guarda los documentos y archivos table file en la carpeta que seleccionaste.",
+    "workspaceLocal": "Guardado localmente en este dispositivo",
+    "providerTitle": "Elige cómo quieres trabajar",
+    "providerDescription": "Puedes cambiar de proveedor más adelante. Los flujos locales funcionan sin cuenta ni clave de API.",
+    "choice": {
+      "cloud": "Kition Cloud",
+      "cloudDescription": "IA alojada con Kition Account y sin una clave de API independiente.",
+      "byo": "Usar tu propia clave de API",
+      "byoDescription": "Conecta OpenAI, Anthropic, DeepSeek u otro proveedor compatible.",
+      "local": "Solo local",
+      "localDescription": "Usa documentos, table files y flujos deterministas sin IA."
+    },
+    "successTitle": "Completa una acción útil",
+    "success": {
+      "cloud": {
+        "title": "Resume la página de bienvenida",
+        "description": "Inicia sesión, abre Agent y usa un prompt preparado.",
+        "privacy": "El prompt y el contexto seleccionado se envían a Kition Cloud. Los archivos permanecen en este dispositivo."
+      },
+      "byo": {
+        "title": "Conecta tu proveedor de IA",
+        "description": "Abre AI Models y añade el proveedor que ya utilizas.",
+        "privacy": "Los prompts y el contexto seleccionado se envían directamente al proveedor configurado."
+      },
+      "local": {
+        "title": "Ejecuta el workflow de Contacts",
+        "description": "Normaliza contactos con un flujo determinista que no necesita IA.",
+        "privacy": "Este flujo se ejecuta localmente y no envía contenido a un servicio de IA."
+      }
+    },
+    "continue": "Continuar",
+    "back": "Atrás",
+    "skip": "Omitir por ahora",
+    "startCloud": "Iniciar sesión y abrir Agent",
+    "agentPrompt": "Resume esta página de bienvenida y escribe debajo una lista breve de primeros pasos.",
+    "cancelSignIn": "Cancelar inicio de sesión",
+    "configureModels": "Configurar AI Models",
+    "startLocal": "Abrir workflow de Contacts",
+    "cloudCreditsEmpty": "Tus créditos de Kition Cloud se agotaron. Recárgalos desde Kition Account.",
+    "cloudUnavailable": "Kition Account no está disponible temporalmente."
+  }
+}

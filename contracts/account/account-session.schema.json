@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kition.ai/contracts/account/account-session.schema.json",
+  "title": "Kition Desktop Account Session",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "access_token",
+    "token_prefix",
+    "user_id",
+    "user_email",
+    "expires_at"
+  ],
+  "properties": {
+    "access_token": { "type": "string", "minLength": 1 },
+    "token_prefix": { "type": "string" },
+    "user_id": { "type": "integer", "minimum": 1 },
+    "user_email": { "type": "string" },
+    "expires_at": { "type": "string" },
+    "credit_total": { "type": "number", "minimum": 0 },
+    "credit_balance": { "type": "number", "minimum": 0 },
+    "credit_spent": { "type": "number", "minimum": 0 },
+    "period_credit_total": { "type": "number", "minimum": 0 },
+    "period_credit_balance": { "type": "number", "minimum": 0 },
+    "period_credit_spent": { "type": "number", "minimum": 0 },
+    "wallet_credit_total": { "type": "number", "minimum": 0 },
+    "wallet_credit_balance": { "type": "number", "minimum": 0 },
+    "wallet_credit_spent": { "type": "number", "minimum": 0 },
+    "plan_code": { "type": "string" },
+    "plan_display_name": { "type": "string" },
+    "plan_type": { "type": "string" },
+    "subscription_status": { "type": "string" },
+    "credit_purchased_total": { "type": "number", "minimum": 0 },
+    "credit_granted_total": { "type": "number", "minimum": 0 },
+    "lifetime_credit_total": { "type": "number", "minimum": 0 },
+    "credit_reset_cycle": { "type": "string" },
+    "credit_reset_at": { "type": ["string", "null"] },
+    "billing_url": { "type": "string", "format": "uri" },
+    "topup_url": { "type": "string", "format": "uri" },
+    "support_url": { "type": "string", "format": "uri" },
+    "terms_url": { "type": "string", "format": "uri" },
+    "privacy_url": { "type": "string", "format": "uri" },
+    "credit_summary": { "$ref": "#/$defs/creditSummary" }
+  },
+  "$defs": {
+    "creditSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "credit_total": { "type": "number", "minimum": 0 },
+        "credit_balance": { "type": "number", "minimum": 0 },
+        "credit_spent": { "type": "number", "minimum": 0 },
+        "period_credit_total": { "type": "number", "minimum": 0 },
+        "period_credit_balance": { "type": "number", "minimum": 0 },
+        "period_credit_spent": { "type": "number", "minimum": 0 },
+        "wallet_credit_total": { "type": "number", "minimum": 0 },
+        "wallet_credit_balance": { "type": "number", "minimum": 0 },
+        "wallet_credit_spent": { "type": "number", "minimum": 0 },
+        "plan_code": { "type": "string" },
+        "plan_display_name": { "type": "string" },
+        "plan_type": { "type": "string" },
+        "subscription_status": { "type": "string" },
+        "credit_purchased_total": { "type": "number", "minimum": 0 },
+        "credit_granted_total": { "type": "number", "minimum": 0 },
+        "lifetime_credit_total": { "type": "number", "minimum": 0 },
+        "credit_reset_cycle": { "type": "string" },
+        "credit_reset_at": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

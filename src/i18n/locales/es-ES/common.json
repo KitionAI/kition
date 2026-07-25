@@ -1,0 +1,46 @@
+{
+  "actions": {
+    "confirm": "Confirmar",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "close": "Cerrar",
+    "open": "Abrir",
+    "retry": "Reintentar",
+    "copy": "Copiar",
+    "rename": "Renombrar",
+    "remove": "Quitar",
+    "loading": "Cargando…",
+    "submit": "Enviar",
+    "showPassword": "Mostrar contraseña",
+    "hidePassword": "Ocultar contraseña"
+  },
+  "statusLabel": {
+    "success": "Correcto",
+    "failed": "Con errores",
+    "pending": "Pendiente",
+    "completed": "Completado",
+    "unknown": "Desconocido"
+  },
+  "status": "Estado",
+  "name": "Nombre",
+  "workspace": "Espacio de trabajo",
+  "commandPalette": {
+    "badge": "Comando",
+    "hint": "Ejecuta comandos, navega",
+    "placeholder": "Ejecuta comandos, ir a ajustes…",
+    "navigation": "Navegación",
+    "backToWorkspace": "Volver al espacio de trabajo",
+    "backToWorkspaceHint": "Vista principal actual",
+    "openSettings": "Abrir ajustes",
+    "openSettingsHint": "Configuración de runtime y proveedor",
+    "close": "Cerrar"
+  },
+  "viewport": {
+    "tooNarrow": "La ventana es demasiado estrecha. Es posible que el editor y el lienzo de Workflow no se puedan usar por completo en este tamaño. Amplía la ventana a al menos 480px."
+  },
+  "search": {
+    "fileMissing": "El archivo ya no existe"
+  }
+}

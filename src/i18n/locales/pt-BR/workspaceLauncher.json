@@ -1,0 +1,97 @@
+{
+  "title": "Espaço de trabalho",
+  "subtitle": "Versão {{version}}",
+  "fallbackVersion": "",
+  "actions": {
+    "create": {
+      "title": "Novo espaço de trabalho",
+      "description": "Crie um novo espaço de trabalho na pasta que você escolher.",
+      "button": "Criar",
+      "nameLabel": "Nome do espaço de trabalho",
+      "namePlaceholder": "Meu espaço de trabalho",
+      "parentLabel": "Pasta pai",
+      "parentPlaceholder": "Escolha uma pasta…",
+      "pick": "Procurar…",
+      "confirm": "Criar espaço de trabalho",
+      "cancel": "Cancelar"
+    },
+    "open": {
+      "title": "Abrir espaço de trabalho local",
+      "description": "Use uma pasta existente nesta máquina como espaço de trabalho.",
+      "button": "Abrir"
+    },
+    "sync": {
+      "title": "Sincronizar espaço de trabalho remoto",
+      "description": "Sincronize um espaço de trabalho do Kition Sync nesta máquina.",
+      "button": "Entrar",
+      "disabledTooltip": "Em breve"
+    }
+  },
+  "vault": {
+    "menu": {
+      "rename": "Renomear",
+      "remove": "Remover da lista",
+      "reveal": "Mostrar no Finder"
+    },
+    "renameTitle": "Renomear espaço de trabalho",
+    "renamePlaceholder": "Nome do espaço de trabalho",
+    "removeConfirm": "Remover este espaço de trabalho da lista? A pasta no disco permanece intacta.",
+    "empty": "Nenhum espaço de trabalho ainda. Crie ou abra um para começar."
+  },
+  "errors": {
+    "missingName": "Por favor, insira um nome para o espaço de trabalho.",
+    "missingParent": "Por favor, escolha uma pasta pai.",
+    "open": "Falha ao abrir o espaço de trabalho: {{message}}",
+    "create": "Falha ao criar o espaço de trabalho: {{message}}",
+    "switch": "Falha ao trocar de espaço de trabalho: {{message}}",
+    "missingVault": "A pasta do espaço de trabalho não existe mais no disco."
+  },
+  "firstRun": {
+    "seeding": "Configurando seu workspace…",
+    "seedError": "Não foi possível preparar os arquivos iniciais: {{message}}",
+    "dialogLabel": "Primeiros passos",
+    "eyebrow": "Primeiros passos",
+    "progress": "Etapa {{step}} de 3",
+    "workspaceTitle": "Seu workspace está pronto",
+    "workspaceDescription": "Kition mantém documentos e arquivos table file na pasta que você selecionou.",
+    "workspaceLocal": "Armazenado localmente neste dispositivo",
+    "providerTitle": "Escolha como você quer trabalhar",
+    "providerDescription": "Você pode mudar de provedor depois. Workflows locais funcionam sem conta ou chave de API.",
+    "choice": {
+      "cloud": "Kition Cloud",
+      "cloudDescription": "IA hospedada com Kition Account e sem chave de API separada.",
+      "byo": "Usar sua própria chave de API",
+      "byoDescription": "Conecte OpenAI, Anthropic, DeepSeek ou outro provedor compatível.",
+      "local": "Somente local",
+      "localDescription": "Use documentos, table files e workflows determinísticos sem IA."
+    },
+    "successTitle": "Conclua uma ação útil",
+    "success": {
+      "cloud": {
+        "title": "Resumir a página de boas-vindas",
+        "description": "Entre na conta, abra o Agent e use um prompt preparado.",
+        "privacy": "O prompt e o contexto selecionado são enviados ao Kition Cloud. Seus arquivos ficam neste dispositivo."
+      },
+      "byo": {
+        "title": "Conectar seu provedor de IA",
+        "description": "Abra AI Models e adicione o provedor que você já usa.",
+        "privacy": "Prompts e contexto selecionado são enviados diretamente ao provedor configurado."
+      },
+      "local": {
+        "title": "Executar o workflow Contacts",
+        "description": "Normalize contatos com um workflow determinístico que não precisa de IA.",
+        "privacy": "Este workflow roda localmente e não envia conteúdo a um serviço de IA."
+      }
+    },
+    "continue": "Continuar",
+    "back": "Voltar",
+    "skip": "Pular por enquanto",
+    "startCloud": "Entrar e abrir o Agent",
+    "agentPrompt": "Resuma esta página de boas-vindas e escreva abaixo uma lista curta de primeiros passos.",
+    "cancelSignIn": "Cancelar entrada",
+    "configureModels": "Configurar AI Models",
+    "startLocal": "Abrir workflow Contacts",
+    "cloudCreditsEmpty": "Seus créditos do Kition Cloud acabaram. Recarregue em Kition Account.",
+    "cloudUnavailable": "Kition Account está temporariamente indisponível."
+  }
+}

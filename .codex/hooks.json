@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$(git rev-parse --show-toplevel)/scripts/post-task-e2e.sh\"",
+            "timeout": 120
+          }
+        ]
+      }
+    ]
+  }
+}

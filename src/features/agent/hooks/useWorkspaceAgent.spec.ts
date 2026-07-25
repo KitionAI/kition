@@ -1,0 +1,453 @@
+import { act, createElement } from 'react'
+import { createRoot, type Root } from 'react-dom/client'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true
+
+const mocks = vi.hoisted(() => ({
+  createAgentSession: vi.fn(),
+  deleteAgentSession: vi.fn(),
+  listAgentEvents: vi.fn(),
+  listAgentMessages: vi.fn(),
+  listAgentSessions: vi.fn(),
+  listAgentToolCalls: vi.fn(),
+  streamAgentMessage: vi.fn(),
+  ensurePortalAccountSessionRestored: vi.fn(),
+  isDesktopRuntime: vi.fn(),
+  listWorkspaceDocuments: vi.fn(),
+  notifyFromAgentEvent: vi.fn(),
+  trackProductEventOnce: vi.fn(),
+}))
+
+vi.mock('@/api/agent', () => ({
+  createAgentSession: mocks.createAgentSession,
+  deleteAgentSession: mocks.deleteAgentSession,
+  listAgentEvents: mocks.listAgentEvents,
+  listAgentMessages: mocks.listAgentMessages,
+  listAgentSessions: mocks.listAgentSessions,
+  listAgentToolCalls: mocks.listAgentToolCalls,
+  streamAgentMessage: mocks.streamAgentMessage,
+}))
+
+vi.mock('@/services/portalAccount', () => ({
+  ensurePortalAccountSessionRestored: mocks.ensurePortalAccountSessionRestored,
+}))
+
+vi.mock('@/services/desktop', () => ({
+  isDesktopRuntime: mocks.isDesktopRuntime,
+  listWorkspaceDocuments: mocks.listWorkspaceDocuments,
+}))
+
+vi.mock('@/services/desktopNotifications', () => ({
+  notifyFromAgentEvent: mocks.notifyFromAgentEvent,
+}))
+
+vi.mock('@/features/analytics/lib/productAnalytics', () => ({
+  trackProductEventOnce: mocks.trackProductEventOnce,
+}))
+
+vi.mock('@/i18n', () => ({
+  getCurrentLocale: () => 'en-US',
+  getLanguageNameForLocale: () => 'English',
+}))
+
+function createHostedConsoleSettings() {
+  return {
+    providers: {
+      kition_console: {
+        enabled: true,
+        label: 'Kition Cloud',
+        baseUrl: '',
+        apiKey: '',
+        discoveredModels: ['gpt-5.5'],
+      },
+    },
+    models: {
+      activeProvider: 'kition_console',
+      selectedModelByProvider: {
+        kition_console: 'gpt-5.5',
+      },
+      preferredChatModel: '',
+      preferredWritingModel: '',
+    },
+  } as any
+}
+
+function createOpenAISettings() {
+  return {
+    providers: {
+      openai: {
+        enabled: true,
+        label: 'OpenAI',
+        baseUrl: 'https://api.openai.com/v1',
+        apiKey: 'sk-test',
+        discoveredModels: ['gpt-4.1'],
+      },
+    },
+    models: {
+      activeProvider: 'openai',
+      selectedModelByProvider: {
+        openai: 'gpt-4.1',
+      },
+      preferredChatModel: '',
+      preferredWritingModel: '',
+    },
+  } as any
+}
+
+async function flushAsyncWork() {
+  await Promise.resolve()
+  await Promise.resolve()
+}
+
+describe('useWorkspaceAgent hosted console restore', () => {
+  beforeEach(() => {
+    vi.resetModules()
+    for (const mock of Object.values(mocks)) {
+      mock.mockReset()
+    }
+    mocks.listWorkspaceDocuments.mockResolvedValue({ items: [] })
+    mocks.listAgentSessions.mockResolvedValue({ items: [] })
+    mocks.streamAgentMessage.mockResolvedValue({ extra_data: {} })
+    mocks.isDesktopRuntime.mockReturnValue(true)
+  })
+
+  it('waits for portal restore before streaming hosted console messages', async () => {
+    const { useWorkspaceAgent } = await import('./useWorkspaceAgent')
+    const settings = createHostedConsoleSettings()
+    const onError = vi.fn()
+    const onFeedback = vi.fn()
+    let latest: any = null
+    let resolveRestore: (value: unknown) => void = () => {}
+    mocks.ensurePortalAccountSessionRestored.mockImplementation(() => new Promise((resolve) => {
+      resolveRestore = resolve
+    }))
+
+    function Harness() {
+      latest = useWorkspaceAgent({ settings, rootPath: '/test/workspace', onError, onFeedback })
+      return null
+    }
+
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    let root: Root | null = null
+    await act(async () => {
+      root = createRoot(container)
+      root.render(createElement(Harness))
+    })
+    await act(async () => {
+      latest.setAgentDraft(10, 'hello hosted console')
+    })
+
+    await act(async () => {
+      latest.sendAiComposerMessage(10)
+      await flushAsyncWork()
+    })
+    expect(mocks.ensurePortalAccountSessionRestored).toHaveBeenCalledTimes(1)
+    expect(mocks.streamAgentMessage).not.toHaveBeenCalled()
+
+    await act(async () => {
+      resolveRestore({ access_token: 'portal-token' })
+      await flushAsyncWork()
+    })
+    expect(mocks.streamAgentMessage).toHaveBeenCalledTimes(1)
+    expect(onError).toHaveBeenLastCalledWith('')
+    expect(mocks.trackProductEventOnce).toHaveBeenCalledWith('agent_first_request_started')
+    expect(mocks.trackProductEventOnce).toHaveBeenCalledWith('agent_first_request_completed', { result: 'success' })
+
+    await act(async () => {
+      root?.unmount()
+    })
+    container.remove()
+  })
+
+  it('does not stream or insert an optimistic user message when portal restore fails', async () => {
+    const { useWorkspaceAgent } = await import('./useWorkspaceAgent')
+    const settings = createHostedConsoleSettings()
+    const onError = vi.fn()
+    const onFeedback = vi.fn()
+    let latest: any = null
+    mocks.ensurePortalAccountSessionRestored.mockRejectedValue(new Error('Kition Account could not be restored. Please try again.'))
+
+    function Harness() {
+      latest = useWorkspaceAgent({ settings, rootPath: '/test/workspace', onError, onFeedback })
+      return null
+    }
+
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    let root: Root | null = null
+    await act(async () => {
+      root = createRoot(container)
+      root.render(createElement(Harness))
+    })
+    await act(async () => {
+      latest.setAgentDraft(11, 'hello hosted console')
+    })
+    await act(async () => {
+      latest.sendAiComposerMessage(11)
+      await flushAsyncWork()
+    })
+
+    expect(mocks.ensurePortalAccountSessionRestored).toHaveBeenCalledTimes(1)
+    expect(mocks.streamAgentMessage).not.toHaveBeenCalled()
+    expect(onError).toHaveBeenCalledWith('Kition Account could not be restored. Please try again.')
+    expect(latest.agentMessages[11]).toBeUndefined()
+
+    await act(async () => {
+      root?.unmount()
+    })
+    container.remove()
+  })
+
+  it('silences only the optional initial session load in web preview mode', async () => {
+    const { useWorkspaceAgent } = await import('./useWorkspaceAgent')
+    const onError = vi.fn()
+    let latest: any = null
+    mocks.listAgentSessions.mockRejectedValue(new Error('runtime unavailable'))
+
+    function Harness() {
+      latest = useWorkspaceAgent({
+        settings: createOpenAISettings(),
+        rootPath: '/test/workspace',
+        onError,
+        onFeedback: vi.fn(),
+        silentInitialSessionLoad: true,
+      })
+      return null
+    }
+
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    let root: Root | null = null
+    await act(async () => {
+      root = createRoot(container)
+      root.render(createElement(Harness))
+      await flushAsyncWork()
+    })
+
+    expect(mocks.listAgentSessions).toHaveBeenCalledTimes(1)
+    expect(onError).not.toHaveBeenCalled()
+
+    await act(async () => {
+      await latest.refreshAgentSessions()
+      await flushAsyncWork()
+    })
+    expect(onError).toHaveBeenCalledWith('runtime unavailable')
+
+    await act(async () => {
+      root?.unmount()
+    })
+    container.remove()
+  })
+
+  it('waits for the hosted account callback before streaming and resumes once', async () => {
+    const { useWorkspaceAgent } = await import('./useWorkspaceAgent')
+    const settings = createHostedConsoleSettings()
+    const ensureHostedAccountReady = vi.fn()
+    let resolveReady: (ready: boolean) => void = () => {}
+    ensureHostedAccountReady.mockImplementation(() => new Promise<boolean>((resolve) => {
+      resolveReady = resolve
+    }))
+    let latest: any = null
+
+    function Harness() {
+      latest = useWorkspaceAgent({
+        settings,
+        rootPath: '/test/workspace',
+        onError: vi.fn(),
+        onFeedback: vi.fn(),
+        ensureHostedAccountReady,
+      })
+      return null
+    }
+
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    let root: Root | null = null
+    await act(async () => {
+      root = createRoot(container)
+      root.render(createElement(Harness))
+    })
+    await act(async () => {
+      latest.setAgentDraft(12, 'resume after sign-in')
+    })
+    await act(async () => {
+      latest.sendAiComposerMessage(12)
+      latest.sendAiComposerMessage(12)
+      await flushAsyncWork()
+    })
+
+    expect(ensureHostedAccountReady).toHaveBeenCalledTimes(1)
+    expect(mocks.ensurePortalAccountSessionRestored).not.toHaveBeenCalled()
+    expect(mocks.streamAgentMessage).not.toHaveBeenCalled()
+
+    await act(async () => {
+      resolveReady(true)
+      await flushAsyncWork()
+    })
+
+    expect(mocks.streamAgentMessage).toHaveBeenCalledTimes(1)
+    expect(mocks.streamAgentMessage.mock.calls[0][0].content).toBe('resume after sign-in')
+
+    await act(async () => {
+      root?.unmount()
+    })
+    container.remove()
+  })
+
+  it('preserves the draft and does not stream when hosted sign-in is cancelled', async () => {
+    const { useWorkspaceAgent } = await import('./useWorkspaceAgent')
+    const settings = createHostedConsoleSettings()
+    const ensureHostedAccountReady = vi.fn().mockResolvedValue(false)
+    let latest: any = null
+
+    function Harness() {
+      latest = useWorkspaceAgent({
+        settings,
+        rootPath: '/test/workspace',
+        onError: vi.fn(),
+        onFeedback: vi.fn(),
+        ensureHostedAccountReady,
+      })
+      return null
+    }
+
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    let root: Root | null = null
+    await act(async () => {
+      root = createRoot(container)
+      root.render(createElement(Harness))
+    })
+    await act(async () => {
+      latest.setAgentDraft(13, 'keep this draft')
+    })
+    await act(async () => {
+      latest.sendAiComposerMessage(13)
+      await flushAsyncWork()
+    })
+
+    expect(mocks.streamAgentMessage).not.toHaveBeenCalled()
+    expect(latest.agentDrafts[13]).toBe('keep this draft')
+    expect(latest.agentMessages[13]).toBeUndefined()
+
+    await act(async () => {
+      root?.unmount()
+    })
+    container.remove()
+  })
+
+  it('does not check the hosted account for bring-your-own providers', async () => {
+    const { useWorkspaceAgent } = await import('./useWorkspaceAgent')
+    const ensureHostedAccountReady = vi.fn().mockResolvedValue(true)
+    let latest: any = null
+
+    function Harness() {
+      latest = useWorkspaceAgent({
+        settings: createOpenAISettings(),
+        rootPath: '/test/workspace',
+        onError: vi.fn(),
+        onFeedback: vi.fn(),
+        ensureHostedAccountReady,
+      })
+      return null
+    }
+
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    let root: Root | null = null
+    await act(async () => {
+      root = createRoot(container)
+      root.render(createElement(Harness))
+    })
+    await act(async () => {
+      latest.setAgentDraft(14, 'use my provider')
+    })
+    await act(async () => {
+      latest.sendAiComposerMessage(14)
+      await flushAsyncWork()
+    })
+
+    expect(ensureHostedAccountReady).not.toHaveBeenCalled()
+    expect(mocks.streamAgentMessage).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      root?.unmount()
+    })
+    container.remove()
+  })
+
+  // Regression: agentBusySessionId used to be a single number, so a stuck
+  // busy flag from session A made session B's Send silently no-op (no POST
+  // and no toast — see the user report). Tracking per-session must let an
+  // independent session fire concurrently while still blocking double-send
+  // of the same session.
+  it('allows a second session to send while another session is mid-stream', async () => {
+    const { useWorkspaceAgent } = await import('./useWorkspaceAgent')
+    const settings = createHostedConsoleSettings()
+    const onError = vi.fn()
+    const onFeedback = vi.fn()
+    let latest: any = null
+    // First call hangs (session A stays busy); second call resolves so
+    // session B's send progresses normally.
+    let releaseA: ((value: unknown) => void) | null = null
+    mocks.ensurePortalAccountSessionRestored.mockResolvedValue({ access_token: 'token' })
+    mocks.streamAgentMessage.mockImplementation((args: any) => {
+      if (args.sessionId === 20) {
+        return new Promise((resolve) => { releaseA = resolve })
+      }
+      return Promise.resolve({ extra_data: {} })
+    })
+
+    function Harness() {
+      latest = useWorkspaceAgent({ settings, rootPath: '/test/workspace', onError, onFeedback })
+      return null
+    }
+
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    let root: Root | null = null
+    await act(async () => {
+      root = createRoot(container)
+      root.render(createElement(Harness))
+    })
+
+    // Kick off session A's send — it hangs in streamAgentMessage.
+    await act(async () => {
+      latest.setAgentDraft(20, 'long-running A')
+      latest.setAgentDraft(21, 'follow-up on B')
+    })
+    await act(async () => {
+      latest.sendAiComposerMessage(20)
+      await flushAsyncWork()
+    })
+    expect(mocks.streamAgentMessage).toHaveBeenCalledTimes(1)
+    expect(latest.agentBusySessions.has(20)).toBe(true)
+    expect(latest.agentBusySessions.has(21)).toBe(false)
+
+    // Now session B sends while A is still busy. Pre-fix this was a
+    // silent skip; the fix lets B's call land normally.
+    await act(async () => {
+      latest.sendAiComposerMessage(21)
+      await flushAsyncWork()
+    })
+    expect(mocks.streamAgentMessage).toHaveBeenCalledTimes(2)
+    expect(mocks.streamAgentMessage.mock.calls[1][0].sessionId).toBe(21)
+
+    // Session A still busy; B finished.
+    expect(latest.agentBusySessions.has(20)).toBe(true)
+    expect(latest.agentBusySessions.has(21)).toBe(false)
+
+    // Drain A so the test doesn't leak a pending promise.
+    await act(async () => {
+      releaseA?.({ extra_data: {} })
+      await flushAsyncWork()
+    })
+
+    await act(async () => {
+      root?.unmount()
+    })
+    container.remove()
+  })
+})

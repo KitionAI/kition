@@ -1,0 +1,46 @@
+{
+  "actions": {
+    "confirm": "Confirmer",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "close": "Fermer",
+    "open": "Ouvrir",
+    "retry": "Réessayer",
+    "copy": "Copier",
+    "rename": "Renommer",
+    "remove": "Retirer",
+    "loading": "Chargement…",
+    "submit": "Envoyer",
+    "showPassword": "Afficher le mot de passe",
+    "hidePassword": "Masquer le mot de passe"
+  },
+  "statusLabel": {
+    "success": "Réussi",
+    "failed": "Échoué",
+    "pending": "En attente",
+    "completed": "Terminé",
+    "unknown": "Inconnu"
+  },
+  "status": "Statut",
+  "name": "Nom",
+  "workspace": "Espace de travail",
+  "commandPalette": {
+    "badge": "Commande",
+    "hint": "Exécuter des commandes, naviguer",
+    "placeholder": "Exécuter des commandes, aller aux paramètres…",
+    "navigation": "Navigation",
+    "backToWorkspace": "Retour à l'espace de travail",
+    "backToWorkspaceHint": "Vue principale actuelle",
+    "openSettings": "Ouvrir les paramètres",
+    "openSettingsHint": "Configuration du runtime et du fournisseur",
+    "close": "Fermer"
+  },
+  "viewport": {
+    "tooNarrow": "La fenêtre est trop étroite. L'éditeur et le canevas Workflow peuvent ne pas être pleinement utilisables à cette taille. Agrandissez la fenêtre à au moins 480px."
+  },
+  "search": {
+    "fileMissing": "Le fichier n'existe plus"
+  }
+}

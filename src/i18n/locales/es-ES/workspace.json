@@ -1,0 +1,236 @@
+{
+  "createMenu": {
+    "format": {
+      "markdown": "Documento",
+      "table": "Tabla",
+      "page": "Página",
+      "note": "Nota"
+    },
+    "folder": "Carpeta",
+    "importFile": "Importar archivo",
+    "newTable": "Nueva tabla",
+    "newWorkflow": "Nuevo flujo de trabajo"
+  },
+  "sidebar": {
+    "tabs": {
+      "files": "Archivos",
+      "search": "Buscar",
+      "browser": "Navegador"
+    },
+    "collapseSection": "Contraer {{name}}",
+    "expandSection": "Expandir {{name}}",
+    "newPage": "Nueva página",
+    "newPageIn": "Nueva página en {{name}}",
+    "workflows": "Flujos de trabajo",
+    "openWorkflows": "Abrir flujos de trabajo",
+    "refresh": "Actualizar espacio de trabajo",
+    "collapseSidebar": "Contraer barra lateral",
+    "loadingDirectory": "Cargando directorio local"
+  },
+  "tree": {
+    "collapse": "Contraer",
+    "expand": "Expandir",
+    "modifiedByAgent": "Modificado por el agente",
+    "createInside": "Crear dentro de esta página",
+    "moreActions": "Más acciones",
+    "addToChat": "Añadir al chat",
+    "addToNewChat": "Añadir a un nuevo chat",
+    "changeIcon": "Cambiar icono",
+    "rename": "Cambiar nombre",
+    "duplicate": "Duplicar",
+    "moveTo": "Mover a...",
+    "showInFinder": "Mostrar en Finder",
+    "delete": "Eliminar",
+    "moveToTitle": "Mover a",
+    "moveToRoot": "Raíz",
+    "noDestinations": "No hay otros destinos disponibles",
+    "clearIcon": "Borrar",
+    "untitled": "Sin título"
+  },
+  "itemMenu": {
+    "mode": {
+      "rich": "Texto enriquecido",
+      "split": "Dividido",
+      "source": "Código fuente",
+      "preview": "Vista previa"
+    },
+    "preference": {
+      "smallText": "Texto pequeño",
+      "fullWidth": "Ancho completo",
+      "toc": "Esquema",
+      "locked": "Bloquear página"
+    },
+    "tableAction": {
+      "rename": "Cambiar nombre",
+      "duplicate": "Duplicar",
+      "downloadCsv": "Descargar CSV",
+      "importData": "Importar datos",
+      "api": "API",
+      "history": "Historial",
+      "share": "Compartir",
+      "delete": "Eliminar"
+    },
+    "markdownMode": {
+      "rich": "Vista de edición",
+      "preview": "Vista de lectura",
+      "source": "Vista de código"
+    },
+    "revertToSaved": "Volver a la versión guardada",
+    "importMarkdown": "Importar Markdown",
+    "exportFile": "Exportar archivo",
+    "openContainingFolder": "Abrir carpeta contenedora",
+    "words": "Palabras: {{formattedCount}}",
+    "updated": "Actualizado: {{time}}",
+    "textStyle": {
+      "default": "Predeterminado",
+      "serif": "Serif",
+      "mono": "Monoespaciado"
+    }
+  },
+  "tabs": {
+    "webBadge": "Web",
+    "closeTab": "Cerrar pestaña",
+    "expandSidebar": "Expandir barra lateral",
+    "previousTab": "Pestaña anterior",
+    "nextTab": "Pestaña siguiente",
+    "showOverflow": "Mostrar pestañas ocultas",
+    "close": "Cerrar",
+    "closeOthers": "Cerrar otras pestañas",
+    "closeAll": "Cerrar todas las pestañas",
+    "closeUnmodified": "Cerrar pestañas sin cambios",
+    "closeLeft": "Cerrar pestañas a la izquierda",
+    "closeRight": "Cerrar pestañas a la derecha",
+    "closeReadOnly": "Cerrar todas las pestañas de solo lectura",
+    "copyReference": "Copiar ruta/referencia",
+    "workflowsTitle": "Flujos de trabajo",
+    "workflowsScoped": "Flujos de trabajo · {{name}}",
+    "untitledTable": "Tabla sin título",
+    "untitledWorkflow": "Flujo de trabajo sin título",
+    "videos": "Vídeos",
+    "workflow": "Flujo de trabajo"
+  },
+  "agentTabs": {
+    "history": {
+      "today": "Hoy",
+      "week": "Últimos 7 días",
+      "older": "Más antiguos"
+    },
+    "chat": "Chat",
+    "newChatTitle": "Nuevo chat",
+    "openChat": "Abrir chat de IA",
+    "collapseChat": "Contraer chat de IA",
+    "emptyTitle": "Chat de IA",
+    "newChat": "Nuevo chat",
+    "closeChat": "Cerrar chat",
+    "viewHistory": "Ver historial",
+    "agentHistory": "Historial del agente",
+    "searchChats": "Buscar chats...",
+    "noMatchingChats": "No hay chats coincidentes.",
+    "noChatsYet": "Aún no hay chats. Empieza uno nuevo.",
+    "chatRef": "Chat n.º {{id}}"
+  },
+  "agentSidebar": {
+    "empty": "Empieza un nuevo chat o abre uno existente desde el historial."
+  },
+  "topbar": {
+    "more": "Más"
+  },
+  "browserSites": {
+    "title": "Navegador",
+    "visitedCount": "{{count}} sitios visitados",
+    "openBrowser": "Abrir navegador",
+    "openBrowserTitle": "Abrir una nueva pestaña del navegador",
+    "refreshLoginStatus": "Actualizar estado de inicio de sesión",
+    "loading": "Cargando sitios...",
+    "lastVisited": "Última visita {{time}}",
+    "signedIn": "Sesión iniciada",
+    "signedOut": "Sesión cerrada",
+    "openSite": "Abrir sitio",
+    "open": "Abrir {{host}}",
+    "forgetSite": "Olvidar este sitio (borrar inicio de sesión)",
+    "forget": "Olvidar {{host}}",
+    "emptyTitle": "Aún no hay sitios visitados",
+    "emptyDescription": "Visita e inicia sesión en sitios en el navegador integrado. Se mostrarán aquí junto con su estado de inicio de sesión para permitir el inicio de sesión automático en extracciones posteriores."
+  },
+  "browserToolbar": {
+    "back": "Atrás",
+    "forward": "Adelante",
+    "stopLoading": "Detener carga",
+    "reload": "Recargar",
+    "addressPlaceholder": "Introduce una URL o busca..."
+  },
+  "browserTab": {
+    "eyebrow": "Navegador integrado",
+    "unavailableDescription": "La página del navegador está adjunta a esta área de pestaña. Usa esta pestaña para iniciar sesión, buscar y navegar. El chat de IA sigue disponible a la derecha, así que puedes continuar desde la página actual sin cambiar de vista.",
+    "emptyText": "Navegador — Introduce una URL arriba o indica al agente que navegue y use el navegador",
+    "loadingPage": "Cargando página..."
+  },
+  "fileViewer": {
+    "openInSystem": "Abrir en el sistema",
+    "showInFinder": "Mostrar en Finder",
+    "previewUnsupported": "{{label}} · La vista previa en la aplicación aún no es compatible",
+    "previewTip": "Aún puedes mencionar este archivo con @ para que la IA lo analice directamente, o hacer clic en \"Abrir en el sistema\" para verlo con una aplicación nativa."
+  },
+  "folderDialog": {
+    "title": "Nueva carpeta",
+    "description": "Introduce un nombre de carpeta.",
+    "placeholder": "Carpeta sin título",
+    "cancel": "Cancelar",
+    "create": "Crear"
+  },
+  "media": {
+    "images": "Imágenes",
+    "videos": "Vídeos",
+    "items": "{{count}} elementos",
+    "collapse": "Contraer {{name}}",
+    "expand": "Expandir {{name}}",
+    "noImagesTitle": "Aún no hay imágenes",
+    "noVideosTitle": "Aún no hay vídeos",
+    "noImagesDescription": "Las imágenes de este espacio de trabajo aparecerán aquí.",
+    "noVideosDescription": "Los vídeos de este espacio de trabajo aparecerán aquí."
+  },
+  "editor": {
+    "sourcePlaceholder": "Edita el código Markdown aquí..."
+  },
+  "layout": {
+    "resizeSidebar": "Redimensionar barra lateral",
+    "resizeChat": "Redimensionar chat de IA"
+  },
+  "footer": {
+    "switchWorkspace": "Cambiar de espacio de trabajo",
+    "switchWorkspaceTitle": "Cambiar de espacio de trabajo (⌘⇧O)",
+    "profile": "Perfil",
+    "settings": "Configuración"
+  },
+  "errors": {
+    "kitableNotFound": "No se pudo localizar este table file en el disco.",
+    "kitableNoTables": "Este table file aún no tiene tablas — crea una tabla primero.",
+    "parentKitableNotFound": "No se pudo localizar el table file superior en el disco.",
+    "createWorkflowFailed": "No se pudo crear el flujo de trabajo",
+    "documentPathEmpty": "La ruta del documento no puede estar vacía",
+    "nameEmpty": "El nombre no puede estar vacío",
+    "saveBeforeRename": "No se pudo guardar el documento actual; se omitió el cambio de nombre",
+    "renameFailed": "No se pudo cambiar el nombre del documento",
+    "fileTypeNotDeletable": "Este tipo de archivo aún no se puede eliminar de la biblioteca de documentos.",
+    "onlyMarkdownPlateMovable": "Aquí solo se pueden mover páginas Markdown y Plate. Organiza los archivos de Office/PDF y similares mediante la carpeta del sistema.",
+    "onlyMarkdownPlateTableDuplicable": "Aquí solo se pueden duplicar páginas Markdown, Plate y Tabla.",
+    "onlyMarkdownPlateTableRenamable": "Aquí solo se pueden renombrar páginas Markdown, Plate y Tabla.",
+    "createDocumentFailed": "No se pudo crear el documento",
+    "createTableFailed": "No se pudo crear la tabla",
+    "importMarkdownFailed": "No se pudo importar Markdown",
+    "browserDevModeOpenDirectory": "Estás en modo de desarrollo del navegador y no puedes abrir directorios nativos. Inicia la aplicación de escritorio con pnpm dev:electron e inténtalo de nuevo.",
+    "browserDevModePickDirectory": "Estás en modo de desarrollo del navegador y no puedes elegir un directorio nativo. Inicia la aplicación de escritorio con pnpm dev:electron e inténtalo de nuevo.",
+    "browserDevModeSwitchDirectory": "Estás en modo de desarrollo del navegador y no puedes cambiar de directorio nativo."
+  },
+  "feedback": {
+    "nameUpdated": "Nombre actualizado",
+    "refreshed": "Espacio de trabajo actualizado",
+    "restoredSavedVersion": "Restaurado a la versión guardada",
+    "documentCreated": "Documento creado",
+    "tableCreated": "Tabla creada",
+    "folderCreated": "Carpeta creada",
+    "renamed": "Renombrado",
+    "alreadyInLocation": "Ya está en esta ubicación",
+    "tableDeleted": "Tabla eliminada"
+  }
+}

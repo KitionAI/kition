@@ -1,0 +1,236 @@
+{
+  "createMenu": {
+    "format": {
+      "markdown": "Документ",
+      "table": "Таблица",
+      "page": "Страница",
+      "note": "Заметка"
+    },
+    "folder": "Папка",
+    "importFile": "Импорт файла",
+    "newTable": "Новая таблица",
+    "newWorkflow": "Новый процесс"
+  },
+  "sidebar": {
+    "tabs": {
+      "files": "Файлы",
+      "search": "Поиск",
+      "browser": "Браузер"
+    },
+    "collapseSection": "Свернуть {{name}}",
+    "expandSection": "Развернуть {{name}}",
+    "newPage": "Новая страница",
+    "newPageIn": "Новая страница в {{name}}",
+    "workflows": "Процессы",
+    "openWorkflows": "Открыть процессы",
+    "refresh": "Обновить рабочую область",
+    "collapseSidebar": "Свернуть боковую панель",
+    "loadingDirectory": "Загрузка локального каталога"
+  },
+  "tree": {
+    "collapse": "Свернуть",
+    "expand": "Развернуть",
+    "modifiedByAgent": "Изменено Агентом",
+    "createInside": "Создать внутри этой страницы",
+    "moreActions": "Ещё действия",
+    "addToChat": "Добавить в чат",
+    "addToNewChat": "Добавить в новый чат",
+    "changeIcon": "Изменить значок",
+    "rename": "Переименовать",
+    "duplicate": "Дублировать",
+    "moveTo": "Переместить в...",
+    "showInFinder": "Показать в Finder",
+    "delete": "Удалить",
+    "moveToTitle": "Переместить в",
+    "moveToRoot": "Корень",
+    "noDestinations": "Нет других доступных мест назначения",
+    "clearIcon": "Очистить",
+    "untitled": "Без названия"
+  },
+  "itemMenu": {
+    "mode": {
+      "rich": "Форматированный текст",
+      "split": "Разделённый вид",
+      "source": "Исходный код",
+      "preview": "Предпросмотр"
+    },
+    "preference": {
+      "smallText": "Мелкий текст",
+      "fullWidth": "Во всю ширину",
+      "toc": "Оглавление",
+      "locked": "Заблокировать страницу"
+    },
+    "tableAction": {
+      "rename": "Переименовать",
+      "duplicate": "Дублировать",
+      "downloadCsv": "Скачать CSV",
+      "importData": "Импорт данных",
+      "api": "API",
+      "history": "История",
+      "share": "Поделиться",
+      "delete": "Удалить"
+    },
+    "markdownMode": {
+      "rich": "Режим редактирования",
+      "preview": "Режим чтения",
+      "source": "Исходный код"
+    },
+    "revertToSaved": "Вернуться к сохранённой версии",
+    "importMarkdown": "Импорт Markdown",
+    "exportFile": "Экспорт файла",
+    "openContainingFolder": "Открыть содержащую папку",
+    "words": "Слов: {{formattedCount}}",
+    "updated": "Обновлено: {{time}}",
+    "textStyle": {
+      "default": "По умолчанию",
+      "serif": "С засечками",
+      "mono": "Моноширинный"
+    }
+  },
+  "tabs": {
+    "webBadge": "Веб",
+    "closeTab": "Закрыть вкладку",
+    "expandSidebar": "Развернуть боковую панель",
+    "previousTab": "Предыдущая вкладка",
+    "nextTab": "Следующая вкладка",
+    "showOverflow": "Показать скрытые вкладки",
+    "close": "Закрыть",
+    "closeOthers": "Закрыть другие вкладки",
+    "closeAll": "Закрыть все вкладки",
+    "closeUnmodified": "Закрыть неизменённые вкладки",
+    "closeLeft": "Закрыть вкладки слева",
+    "closeRight": "Закрыть вкладки справа",
+    "closeReadOnly": "Закрыть все вкладки только для чтения",
+    "copyReference": "Копировать путь/ссылку",
+    "workflowsTitle": "Процессы",
+    "workflowsScoped": "Процессы · {{name}}",
+    "untitledTable": "Таблица без названия",
+    "untitledWorkflow": "Процесс без названия",
+    "videos": "Видео",
+    "workflow": "Процесс"
+  },
+  "agentTabs": {
+    "history": {
+      "today": "Сегодня",
+      "week": "Предыдущие 7 дней",
+      "older": "Ранее"
+    },
+    "chat": "Чат",
+    "newChatTitle": "Новый чат",
+    "openChat": "Открыть чат с ИИ",
+    "collapseChat": "Свернуть чат с ИИ",
+    "emptyTitle": "Чат с ИИ",
+    "newChat": "Новый чат",
+    "closeChat": "Закрыть чат",
+    "viewHistory": "Просмотр истории",
+    "agentHistory": "История агента",
+    "searchChats": "Поиск чатов...",
+    "noMatchingChats": "Нет подходящих чатов.",
+    "noChatsYet": "Пока нет чатов. Начните новый.",
+    "chatRef": "Чат №{{id}}"
+  },
+  "agentSidebar": {
+    "empty": "Начните новый чат или откройте существующий из истории."
+  },
+  "topbar": {
+    "more": "Ещё"
+  },
+  "browserSites": {
+    "title": "Браузер",
+    "visitedCount": "Посещённых сайтов: {{count}}",
+    "openBrowser": "Открыть браузер",
+    "openBrowserTitle": "Открыть новую вкладку браузера",
+    "refreshLoginStatus": "Обновить статус входа",
+    "loading": "Загрузка сайтов...",
+    "lastVisited": "Последнее посещение {{time}}",
+    "signedIn": "Выполнен вход",
+    "signedOut": "Выход выполнен",
+    "openSite": "Открыть сайт",
+    "open": "Открыть {{host}}",
+    "forgetSite": "Забыть этот сайт (сбросить вход)",
+    "forget": "Забыть {{host}}",
+    "emptyTitle": "Пока нет посещённых сайтов",
+    "emptyDescription": "Посещайте сайты и входите в них во встроенном браузере. Они появятся здесь вместе со статусом входа, чтобы обеспечить автоматический вход для последующего сбора данных."
+  },
+  "browserToolbar": {
+    "back": "Назад",
+    "forward": "Вперёд",
+    "stopLoading": "Остановить загрузку",
+    "reload": "Обновить",
+    "addressPlaceholder": "Введите URL или запрос..."
+  },
+  "browserTab": {
+    "eyebrow": "Встроенный браузер",
+    "unavailableDescription": "Страница браузера прикреплена к этой области вкладок. Используйте эту вкладку для входа, поиска и навигации. Чат с ИИ остаётся доступным справа, чтобы вы могли продолжить работу с текущей страницы, не переключаясь.",
+    "emptyText": "Браузер — введите URL выше или попросите Агента перейти и воспользоваться браузером",
+    "loadingPage": "Загрузка страницы..."
+  },
+  "fileViewer": {
+    "openInSystem": "Открыть в системе",
+    "showInFinder": "Показать в Finder",
+    "previewUnsupported": "{{label}} · Предпросмотр в приложении пока не поддерживается",
+    "previewTip": "Вы всё равно можете упомянуть этот файл через @, чтобы ИИ разобрал его напрямую, или нажать «Открыть в системе», чтобы просмотреть его в стандартном приложении."
+  },
+  "folderDialog": {
+    "title": "Новая папка",
+    "description": "Введите имя папки.",
+    "placeholder": "Папка без названия",
+    "cancel": "Отмена",
+    "create": "Создать"
+  },
+  "media": {
+    "images": "Изображения",
+    "videos": "Видео",
+    "items": "Элементов: {{count}}",
+    "collapse": "Свернуть {{name}}",
+    "expand": "Развернуть {{name}}",
+    "noImagesTitle": "Пока нет изображений",
+    "noVideosTitle": "Пока нет видео",
+    "noImagesDescription": "Изображения из этой рабочей области появятся здесь.",
+    "noVideosDescription": "Видео из этой рабочей области появятся здесь."
+  },
+  "editor": {
+    "sourcePlaceholder": "Редактируйте исходный код Markdown здесь..."
+  },
+  "layout": {
+    "resizeSidebar": "Изменить размер боковой панели",
+    "resizeChat": "Изменить размер чата с ИИ"
+  },
+  "footer": {
+    "switchWorkspace": "Сменить рабочую область",
+    "switchWorkspaceTitle": "Сменить рабочую область (⌘⇧O)",
+    "profile": "Профиль",
+    "settings": "Настройки"
+  },
+  "errors": {
+    "kitableNotFound": "Не удалось найти этот table file на диске.",
+    "kitableNoTables": "В этом table file пока нет таблиц — сначала создайте таблицу.",
+    "parentKitableNotFound": "Не удалось найти родительский table file на диске.",
+    "createWorkflowFailed": "Не удалось создать процесс",
+    "documentPathEmpty": "Путь к документу не может быть пустым",
+    "nameEmpty": "Имя не может быть пустым",
+    "saveBeforeRename": "Не удалось сохранить текущий документ; переименование пропущено",
+    "renameFailed": "Не удалось переименовать документ",
+    "fileTypeNotDeletable": "Этот тип файла пока нельзя удалить из библиотеки документов.",
+    "onlyMarkdownPlateMovable": "Сюда можно перемещать только страницы Markdown и Plate. Управляйте файлами Office/PDF и подобными через системную папку.",
+    "onlyMarkdownPlateTableDuplicable": "Сюда можно дублировать только страницы Markdown, Plate и Таблицы.",
+    "onlyMarkdownPlateTableRenamable": "Сюда можно переименовывать только страницы Markdown, Plate и Таблицы.",
+    "createDocumentFailed": "Не удалось создать документ",
+    "createTableFailed": "Не удалось создать таблицу",
+    "importMarkdownFailed": "Не удалось импортировать Markdown",
+    "browserDevModeOpenDirectory": "Вы работаете в режиме разработки в браузере и не можете открывать нативные каталоги. Запустите настольное приложение через pnpm dev:electron и повторите попытку.",
+    "browserDevModePickDirectory": "Вы работаете в режиме разработки в браузере и не можете выбрать нативный каталог. Запустите настольное приложение через pnpm dev:electron и повторите попытку.",
+    "browserDevModeSwitchDirectory": "Вы работаете в режиме разработки в браузере и не можете переключать нативные каталоги."
+  },
+  "feedback": {
+    "nameUpdated": "Имя обновлено",
+    "refreshed": "Рабочая область обновлена",
+    "restoredSavedVersion": "Восстановлено до сохранённой версии",
+    "documentCreated": "Документ создан",
+    "tableCreated": "Таблица создана",
+    "folderCreated": "Папка создана",
+    "renamed": "Переименовано",
+    "alreadyInLocation": "Уже находится в этом месте",
+    "tableDeleted": "Таблица удалена"
+  }
+}

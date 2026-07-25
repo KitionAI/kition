@@ -1,0 +1,70 @@
+{
+  "panel": {
+    "eyebrow": "Conexões",
+    "title": "Envio de e-mail",
+    "subtitle": "Gerencie credenciais reutilizáveis para ações de fluxo de trabalho.",
+    "refreshAria": "Atualizar conexões",
+    "newConnection": "Nova conexão",
+    "loading": "Carregando conexões",
+    "emptyTitle": "Nenhuma conexão ainda",
+    "emptyHint": "Adicione uma conexão SMTP antes de habilitar fluxos de trabalho de e-mail.",
+    "emptyCta": "Adicionar conexão",
+    "fallbackEmailSmtp": "SMTP de e-mail",
+    "usedBy": "Usada por {{count}}",
+    "pickPrompt": "Selecione uma conexão para inspecioná-la."
+  },
+  "modal": {
+    "ariaLabel": "Conexão de e-mail",
+    "titleEdit": "Editar conexão de e-mail",
+    "titleNew": "Nova conexão de e-mail",
+    "subtitle": "Testar e Salvar verifica o servidor SMTP antes de armazenar as alterações.",
+    "closeAria": "Fechar formulário de conexão",
+    "fieldName": "Nome",
+    "fieldHost": "Host",
+    "fieldPort": "Porta",
+    "fieldUsername": "Nome de usuário",
+    "fieldPassword": "Senha",
+    "fieldTls": "TLS",
+    "fieldFromAddress": "Endereço do remetente",
+    "fieldFromName": "Nome do remetente",
+    "namePlaceholder": "ex.: SMTP da empresa",
+    "hostPlaceholder": "smtp.example.com",
+    "portPlaceholder": "587",
+    "usernamePlaceholder": "you@example.com",
+    "fromPlaceholder": "no-reply@example.com",
+    "fromNamePlaceholder": "ex.: Notificações do Kition",
+    "passwordPlaceholderEdit": "Deixe em branco para manter a senha existente",
+    "cancel": "Cancelar",
+    "testAndSave": "Testar e Salvar"
+  },
+  "detail": {
+    "eyebrowEmailSmtp": "SMTP de e-mail",
+    "labelHost": "Host",
+    "labelTls": "TLS",
+    "labelUsername": "Nome de usuário",
+    "labelUsedBy": "Usada por",
+    "usedByWorkflows_one": "{{count}} fluxo de trabalho",
+    "usedByWorkflows_other": "{{count}} fluxos de trabalho",
+    "edit": "Editar",
+    "test": "Testar",
+    "delete": "Excluir"
+  },
+  "status": {
+    "active": "Ativa",
+    "invalid": "Último teste falhou",
+    "pending": "Pendente"
+  },
+  "confirms": {
+    "deleteWithUsage_one": "\"{{name}}\" é usada por {{count}} fluxo de trabalho.\n\nExcluí-la fará com que esse fluxo de trabalho pare de enviar e-mails até que você atribua uma nova conexão.\n\nExcluir mesmo assim?",
+    "deleteWithUsage_other": "\"{{name}}\" é usada por {{count}} fluxos de trabalho.\n\nExcluí-la fará com que esses fluxos de trabalho parem de enviar e-mails até que você atribua uma nova conexão.\n\nExcluir mesmo assim?",
+    "deleteNoUsage": "Excluir \"{{name}}\"?"
+  },
+  "errors": {
+    "loadFailed": "Falha ao carregar as conexões",
+    "saveFailed": "Falha ao salvar a conexão",
+    "verifyFailedFallback": "Conexão salva, mas a verificação falhou"
+  },
+  "feedback": {
+    "verified": "Conexão verificada"
+  }
+}

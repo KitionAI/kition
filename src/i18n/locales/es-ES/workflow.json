@@ -1,0 +1,678 @@
+{
+  "common": {
+    "workspace": "Espacio de trabajo",
+    "status": "Estado",
+    "name": "Nombre"
+  },
+  "canvas": {
+    "workflowCanvas": "Lienzo del flujo de trabajo",
+    "zoomIn": "Acercar",
+    "zoomOut": "Alejar",
+    "fitToView": "Ajustar a la vista",
+    "insertPoint": {
+      "insertStep": "Insertar paso",
+      "addAction": "Añadir acción",
+      "addFilter": "Añadir filtro"
+    },
+    "nodeCard": {
+      "statusAria": "estado {{status}}",
+      "moreActions": "Más acciones del nodo",
+      "duplicate": "Duplicar",
+      "enableStep": "Activar este paso",
+      "disableStep": "Desactivar este paso",
+      "delete": "Eliminar",
+      "fix": "Corregir",
+      "askAi": "Preguntar a la IA"
+    }
+  },
+  "triggerPicker": {
+    "selectPrompt": "Selecciona un disparador:",
+    "recordCreated": "Cuando se crea un registro",
+    "recordCreatedOrUpdated": "Cuando se crea o se actualiza un registro",
+    "recordUpdated": "Cuando se actualiza un registro",
+    "recordTriggerTime": "A la hora de disparo del registro",
+    "scheduledTime": "A la hora programada",
+    "buttonClicked": "Cuando se pulsa el botón"
+  },
+  "buttons": {
+    "create": "Nuevo flujo de trabajo"
+  },
+  "templates": {
+    "emailMeOnRecord": {
+      "name": "Enviar un correo a alguien con cada nuevo registro",
+      "description": "Avisa a alguien cada vez que se añada una fila a esta tabla."
+    },
+    "dailyFollowupReminder": {
+      "name": "Recordatorio de seguimiento",
+      "description": "Contacta con nuevos clientes potenciales con una nota de seguimiento."
+    },
+    "emailOnRecordUpdated": {
+      "name": "Enviar un correo a alguien con cada registro actualizado",
+      "description": "Envía un correo cada vez que cambie un registro."
+    },
+    "emailOnRecordDate": {
+      "name": "Enviar un correo en la fecha del registro",
+      "description": "Envía un recordatorio por correo cuando llegue la fecha de un campo de fecha de un registro."
+    },
+    "addRecordDailyMorning": {
+      "name": "Añadir una fila cada mañana",
+      "description": "Según una programación diaria, añade una nueva fila a la tabla que elijas."
+    },
+    "contentIdeaToQueue": {
+      "name": "Añadir nuevas ideas a la cola de publicación",
+      "description": "Funciona localmente sin configuración. Copia filas completas de Content Ideas a Publishing Queue y se activa al crearse."
+    },
+    "archiveCompletedTasks": {
+      "name": "Archivar tareas completadas",
+      "description": "Cuando una tarea cambia a Done, aplica un filtro de estado y copia una instantánea en Completed Tasks."
+    },
+    "weekdayPriorityPlanning": {
+      "name": "Crear una tarea de planificación entre semana",
+      "description": "Cada día laborable a las 09:00, añade una tarea de planificación de prioridades a Tasks."
+    },
+    "readingProgressJournal": {
+      "name": "Mantener un diario de progreso de lectura",
+      "description": "Cuando un elemento se crea o actualiza, añade su estado actual a Reading Journal."
+    },
+    "bodyFallbacks": {
+      "unnamed": "(sin nombre)",
+      "there": "hola"
+    },
+    "expenseHighValueReview": {
+      "name": "Flag high-value expenses for review",
+      "description": "When Amount is above 1000, update the same expense row to Needs review."
+    },
+    "orderCatalogEnrichment": {
+      "name": "Fill orders from the product catalog",
+      "description": "Find a matching SKU and write product name, unit price, and category back to the order."
+    },
+    "normalizeContactDetails": {
+      "name": "Normalize contact details",
+      "description": "Extract the email domain and keep phone numbers as digits using local transforms."
+    }
+  },
+  "launcher": {
+    "home": {
+      "heroTitleWithScope": "Automatiza {{scope}}",
+      "heroTitleDefault": "Automatiza cualquier tarea con flujos de trabajo",
+      "heroSubtitleWithScope": "Aún no hay flujos de trabajo para {{scope}}. Crea uno con IA o plantillas, o empieza desde cero.",
+      "heroSubtitleDefault": "Crea un flujo de trabajo con IA o plantillas, o empieza desde cero"
+    },
+    "hero": {
+      "galleryTitle": "Automatiza cualquier tarea con flujos de trabajo",
+      "gallerySubtitle": "Crea un flujo de trabajo con IA o plantillas, o empieza desde cero",
+      "ctaGenerateAi": "Generar con IA",
+      "ctaStartFromScratch": "Empezar desde cero",
+      "aiPromptBack": "Volver a la galería",
+      "aiPromptTitle": "Habla para automatizar el flujo de trabajo",
+      "aiPromptTableLabel": "Tabla",
+      "aiPromptTablePickerPlaceholder": "— elige una tabla para anclar este flujo de trabajo —",
+      "aiPromptTablePickerHint": "La IA necesita saber qué tabla vigila el flujo de trabajo.",
+      "aiPromptTableEmptyTitle": "Aún no hay tablas en este espacio de trabajo",
+      "aiPromptTableEmptyBody": "Los flujos de trabajo vigilan registros en una tabla; crea la primera para que la IA tenga algo en lo que anclar el flujo de trabajo.",
+      "aiPromptTableEmptyCta": "Crear una tabla",
+      "aiPromptModelMissing": "Modelo de IA no configurado. Abre Ajustes → Modelos para elegir un modelo de escritura.",
+      "aiPromptModelMissingCta": "Configurar",
+      "aiPromptLabel": "Instrucción",
+      "aiPromptPlaceholder": "Crea un flujo de trabajo: cuando se envíe un nuevo registro y ciertos campos no estén vacíos, envía los datos completos del registro a sales@example.com",
+      "aiPromptSubmit": "Iniciar"
+    },
+    "templateGrid": {
+      "exploreMore": "Explorar más plantillas",
+      "viewAll": "Ver todo"
+    },
+    "agentCard": {
+      "title": "El agente de IA ya está aquí",
+      "openAskAi": "Abrir Preguntar a la IA"
+    },
+    "templateSheet": {
+      "title": "Todas las plantillas",
+      "searchPlaceholder": "Buscar plantillas",
+      "closeAria": "Cerrar plantillas"
+    },
+    "createModeDialog": {
+      "title": "Crear flujo de trabajo",
+      "titleTemplateView": "Elige un punto de partida",
+      "descriptionWithScope": "Nuevo flujo de trabajo para \"{{scope}}\". Elige cómo empezar.",
+      "descriptionDefault": "Elige cómo empezar. Puedes ajustar el desencadenante y la acción después.",
+      "descriptionTemplateView": "Elige un punto de partida. Rellenaremos el desencadenante y la acción.",
+      "sourceTableLabel": "Tabla desencadenante",
+      "modeTemplate": {
+        "title": "Elige un punto de partida",
+        "subtitle": "Plantillas y en blanco: rellenaremos el desencadenante y la acción.",
+        "badge": "{{count}} plantillas"
+      },
+      "modeChat": {
+        "title": "Chatear con la IA",
+        "subtitle": "Describe lo que quieres y el agente redactará el flujo de trabajo por ti."
+      },
+      "scratchCard": {
+        "title": "Crear desde cero",
+        "description": "Empieza con un flujo de trabajo vacío."
+      },
+      "aiCta": "O descríbelo: deja que la IA cree el flujo de trabajo",
+      "back": "Atrás",
+      "cancel": "Cancelar"
+    }
+  },
+  "errors": {
+    "createWorkflow": "No se pudo crear el flujo de trabajo",
+    "applyTemplate": "No se pudo aplicar la plantilla",
+    "deleteWorkflow": "No se pudo eliminar el flujo de trabajo",
+    "renameWorkflow": "No se pudo cambiar el nombre del flujo de trabajo",
+    "primaryActionLocked": "La acción de correo principal no se puede eliminar en esta versión. Desactívala en su lugar."
+  },
+  "feedback": {
+    "renamed": "Nombre cambiado",
+    "workflowDeleted": "Flujo de trabajo eliminado"
+  },
+  "kitableLeaf": {
+    "deleteConfirm": "¿Eliminar el flujo de trabajo \"{{name}}\"? Esto elimina permanentemente el flujo de trabajo y su historial de ejecuciones.",
+    "nameFallback": "Flujo de trabajo sin título"
+  },
+  "confirms": {
+    "cancel": "Cancelar",
+    "fallbackLabel": "Confirmar",
+    "discardChangesSwitch": {
+      "title": "¿Descartar los cambios sin guardar?",
+      "message": "Tienes ediciones sin guardar en este flujo de trabajo. Si cambias, se descartarán.",
+      "confirm": "Descartar cambios"
+    },
+    "discardChangesClose": {
+      "title": "¿Descartar los cambios sin guardar?",
+      "message": "Tienes ediciones sin guardar. Si cierras, se descartarán.",
+      "confirm": "Descartar y cerrar"
+    },
+    "switchTriggerTable": {
+      "title": "¿Cambiar a {{tableName}}?",
+      "tableFallback": "esta tabla",
+      "message_one": "{{count}} referencia de campo en el cuerpo de la acción no existe en la nueva tabla. ¿Eliminarla y continuar?",
+      "message_other": "{{count}} referencias de campo en el cuerpo de la acción no existen en la nueva tabla. ¿Eliminarlas y continuar?",
+      "confirm": "Eliminar y cambiar"
+    },
+    "deleteWorkflow": {
+      "title": "¿Eliminar este flujo de trabajo?",
+      "message": "Se eliminará \"{{name}}\". Esto no se puede deshacer.",
+      "nameFallback": "Flujo de trabajo sin título",
+      "confirm": "Eliminar"
+    },
+    "deleteTriggerWorkflow": {
+      "title": "¿Eliminar todo el flujo de trabajo?",
+      "message": "Eliminar el desencadenante elimina todo el flujo de trabajo. Esto no se puede deshacer.",
+      "confirm": "Eliminar flujo de trabajo"
+    },
+    "deleteFilter": {
+      "title": "¿Eliminar este filtro?",
+      "message": "Las acciones posteriores se ejecutarán de nuevo en cada fila.",
+      "confirm": "Eliminar"
+    }
+  },
+  "panels": {
+    "addRecord": {
+      "section": "Añadir registro",
+      "targetTableLabel": "Tabla de destino",
+      "targetTableHint": "elige una tabla en la que escribir",
+      "targetTableDraftLabel": "— Sin destino — selecciona una tabla —",
+      "loopWarningBold": "Escribir en la tabla del desencadenante creará un bucle.",
+      "loopWarningBody": "Elige un destino distinto: cada fila que cree esta acción volvería a activar el desencadenante y a ejecutar este flujo de trabajo de nuevo.",
+      "noFields": "Aún no hay campos en esta tabla.",
+      "loadingFields": "Cargando campos…",
+      "testSection": "Probar con datos reales",
+      "testDescription": "Elige una fila existente. Esto ejecuta la acción real y crea un registro en {{target}}.",
+      "scheduledTestDescription": "Ejecuta ahora la acción programada y crea un registro real en {{target}}.",
+      "runNow": "Ejecutar ahora",
+      "testTargetFallback": "la tabla de destino",
+      "saveBeforeTest": "Guarda los cambios antes de probar.",
+      "testCreated": "Registro {{recordId}} creado en {{target}}."
+    },
+    "schedule": {
+      "section": "Programación",
+      "frequencyLabel": "Frecuencia",
+      "timeOfDayLabel": "Hora del día",
+      "timeOfDayHint": "en {{tz}}",
+      "timezoneLabel": "Zona horaria",
+      "timezoneHint": "por defecto {{tz}} (hora local del servidor)",
+      "cronLabel": "Expresión cron",
+      "cronHintCustom": "editar directamente",
+      "cronHintPreview": "vista previa",
+      "previewIdle": "Edita una frecuencia para ver cuándo se activará la próxima vez.",
+      "previewLoading": "Calculando la próxima activación…",
+      "previewError": "No se puede mostrar la vista previa: corrige el cron o la zona horaria de arriba.",
+      "previewNextRun": "Próxima ejecución:",
+      "previewThenPrefix": "luego ",
+      "frequencyOptions": {
+        "daily": "Cada día",
+        "weekdays": "Cada día laborable (lun–vie)",
+        "weekly_monday": "Cada lunes",
+        "hourly": "Cada hora (en punto)",
+        "custom": "Personalizado (avanzado)"
+      }
+    },
+    "triggerRequiredFields": {
+      "emptyNoSchema": "Elige una tabla arriba para escoger qué campos deben tener valor para que se active el flujo de trabajo.",
+      "headerPre": "El desencadenante se activa solo cuando ",
+      "headerBold": "todos",
+      "headerPost": " los campos marcados tienen valor.",
+      "badgeOptional": "Opcional · 0 marcados",
+      "badgeRequired_one": "{{count}} obligatorio",
+      "badgeRequired_other": "{{count}} obligatorios",
+      "caption": "Déjalo vacío para activarse en cada registro. (0 y false cuentan como con valor.)",
+      "noFields": "Esta tabla aún no tiene campos: añade una columna para condicionar.",
+      "staleHeader_one": "Un campo obligatorio ya no existe en esta tabla:",
+      "staleHeader_other": "{{count}} campos obligatorios ya no existen en esta tabla:",
+      "staleRemovedTag": "(eliminado)",
+      "staleRemoveButton": "Eliminar condición"
+    },
+    "drawer": {
+      "kindTrigger": "Desencadenante",
+      "kindAction": "Acción",
+      "kindFilter": "Filtro",
+      "closeAria": "Cerrar el panel de propiedades",
+      "titles": {
+        "whenRecordCreated": "Cuando se crea un registro",
+        "whenRecordUpdated": "Cuando se actualiza un registro",
+        "whenRecordCreatedOrUpdated": "Cuando se crea o se actualiza un registro",
+        "whenScheduledTime": "A la hora programada",
+        "whenRecordDateReached": "Cuando se alcanza la fecha de un registro",
+        "addRecord": "Añadir registro",
+        "sendEmail": "Enviar correo"
+      },
+      "saveBar": {
+        "validationErrors_one": "{{count}} error de campo",
+        "validationErrors_other": "{{count}} errores de campo",
+        "unsavedEdits": "Ediciones sin guardar",
+        "discard": "Descartar",
+        "save": "Guardar"
+      },
+      "trigger": {
+        "section": "Desencadenante",
+        "eventLabel": "Evento",
+        "tableLabel": "Tabla",
+        "tableHint": "elige para activar este flujo de trabajo",
+        "requiredFieldsLabel": "Campos obligatorios",
+        "requiredFieldsHint": "opcional — y / con valor"
+      },
+      "channel": {
+        "section": "Canal",
+        "connectionLabel": "Conexión",
+        "newConnection": "Nueva conexión",
+        "legacySmtpOption": "Configuración SMTP heredada",
+        "editConnection": "Editar conexión"
+      },
+      "email": {
+        "section": "Correo",
+        "toLabel": "Para",
+        "sendTestEmail": "Enviar correo de prueba",
+        "testDelivered": "Correo de prueba entregado a {{to}}",
+        "subjectLabel": "Asunto",
+        "bodyLabel": "Cuerpo",
+        "bodyHint": "Inserta campos como tokens; se guardan como partes field_ref.",
+        "pickTableFirstHint": "Elige una tabla de desencadenante arriba para habilitar los tokens de campo.",
+        "pickTableFirstPlaceholder": "Elige primero una tabla de desencadenante…"
+      },
+      "testStep": {
+        "section": "Probar paso",
+        "descriptionPre": "Ejecuta esta acción con un registro de muestra de ",
+        "descriptionMid": ". La prueba usa la conexión seleccionada y etiqueta la ejecución como ",
+        "descriptionPost": " para que se mantenga fuera del historial de ejecuciones habitual.",
+        "runWithSample": "Ejecutar con muestra",
+        "testDelivered": "Prueba entregada a {{to}}"
+      },
+      "pageSaveBar": {
+        "messagePrefix": "Tienes cambios sin guardar en {{fields}}",
+        "discard": "Descartar",
+        "save": "Guardar cambios"
+      }
+    },
+    "home": {
+      "workspaceFallback": "Espacio de trabajo",
+      "untitledWorkflowFallback": "Flujo de trabajo sin título",
+      "breadcrumb": "Flujos de trabajo",
+      "closeAria": "Cerrar flujos de trabajo",
+      "h1": "Flujos de trabajo",
+      "stats": "{{total}} en total · {{active}} activos",
+      "refreshAria": "Actualizar flujos de trabajo",
+      "create": "Crear",
+      "objectLabel": "Objeto:",
+      "triggerLabel": "Desencadenante:",
+      "tableLabelUnbound": "Sin vincular",
+      "tableLabelWorkspace": "Espacio de trabajo",
+      "failingLastRun": "Con errores — la última ejecución falló",
+      "runTest": "Ejecutar prueba",
+      "moreActions": "Más acciones del flujo de trabajo",
+      "delete": "Eliminar",
+      "testEmailDelivered": "Correo de prueba entregado",
+      "detailTo": "Para",
+      "detailSubject": "Asunto",
+      "detailBody": "Cuerpo",
+      "tabConfiguration": "Configuración",
+      "tabRunHistory": "Historial de ejecuciones",
+      "tabLogs": "Registros",
+      "unresolvedTitle_one": "No se pudo emparejar 1 campo de la plantilla",
+      "unresolvedTitle_other": "No se pudieron emparejar {{count}} campos de la plantilla",
+      "unresolvedBody": " en esta tabla: {{names}}. El cuerpo usa texto alternativo por ahora; abre la acción de abajo para corregir las vinculaciones.",
+      "unresolvedDismiss": "Descartar",
+      "emptyCreateTitle": "Crea tu primer flujo de trabajo",
+      "emptyCreateHint": "Actívalo con un cambio en un registro y luego envía un correo o ejecuta una acción de seguimiento.",
+      "emptyCreateButton": "Crear flujo de trabajo",
+      "emptyPickTitle": "Flujos de trabajo",
+      "emptyPickHint": "Elige un flujo de trabajo de la lista para ver sus detalles.",
+      "validation": {
+        "nameRequired": "El nombre es obligatorio",
+        "recipientRequired": "El destinatario es obligatorio",
+        "recipientInvalid": "Introduce una dirección de correo válida",
+        "subjectRequired": "El asunto es obligatorio",
+        "bodyRequired": "El cuerpo es obligatorio",
+        "addRecordTargetRequired": "Elige una tabla de destino",
+        "connectionRequired": "No hay ninguna conexión seleccionada",
+        "updateRecordFieldsRequired": "Add at least one field update",
+        "lookupRecordConfigRequired": "Complete the lookup and add a write-back mapping",
+        "transformRecordOperationsRequired": "Add at least one transform operation"
+      },
+      "statusBanner": {
+        "enableNow": "Activar ahora",
+        "fixConnection": "Corregir conexión",
+        "finishConfiguration": "Terminar la configuración",
+        "lastRunFailedLeading": "La última ejecución falló —",
+        "lastRunFailedFallback": "corrige la acción para volver a activarlo.",
+        "validationFailedLeading": "La validación falló —",
+        "notConfiguredOne": "Termina la configuración antes de activar este flujo de trabajo.",
+        "notConfiguredOther": "{{count}} campos necesitan atención antes de poder activar este flujo de trabajo.",
+        "configuredDisabled": "La configuración tiene buen aspecto. Activa este flujo de trabajo para empezar a ejecutarlo.",
+        "fixAction": "Fix action"
+      },
+      "triggerVerb": {
+        "recordCreated": "Registro creado",
+        "recordUpdated": "Registro actualizado",
+        "recordCreatedOrUpdated": "Registro creado o actualizado",
+        "recordDateReached": "Fecha del registro alcanzada",
+        "scheduledTime": "A la hora programada"
+      },
+      "nodeCard": {
+        "stepLabel": "Paso {{index}}",
+        "stepActionEmail": "Paso {{index}} · Correo",
+        "stepActionAddRecord": "Paso {{index}} · Añadir registro",
+        "stepFilter": "Paso {{index}} · Filtro",
+        "triggerLabel": "Paso 1",
+        "actionSendEmail": "Enviar correo",
+        "actionAddRecord": "Añadir registro",
+        "drawerKindAction": "Acción",
+        "drawerKindFilter": "Filtro",
+        "drawerKindTrigger": "Desencadenante",
+        "noConnectionSelected": "No hay ninguna conexión seleccionada",
+        "noRecipient": "sin destinatario",
+        "noTarget": "sin destino",
+        "legacySmtp": "Configuración SMTP heredada",
+        "sendEmailDescription": "mediante {{channel}} · a {{recipient}}",
+        "addRecordDescription_one": "en {{target}} · 1 campo",
+        "addRecordDescription_other": "en {{target}} · {{count}} campos",
+        "unknownTable": "Tabla desconocida",
+        "noSchedule": "(sin programación)",
+        "newFilter": "Nuevo filtro",
+        "stepActionGeneric": "Step {{index}} · Action",
+        "actionUpdateRecord": "Update record",
+        "actionLookupRecord": "Find and fill record",
+        "actionTransformRecord": "Transform record data",
+        "updateRecordDescription_one": "update trigger row · 1 field",
+        "updateRecordDescription_other": "update trigger row · {{count}} fields",
+        "lookupRecordDescription": "find a match in {{target}} and fill this row",
+        "transformRecordDescription_one": "1 local transform",
+        "transformRecordDescription_other": "{{count}} local transforms"
+      },
+      "list": {
+        "searchPlaceholder": "Buscar flujos de trabajo...",
+        "filterAll": "Todos",
+        "filterActive": "Activos",
+        "filterFailing": "Con errores · {{count}}",
+        "filterDisabled": "Desactivados",
+        "loading": "Cargando flujos de trabajo",
+        "emptyFiltered": "Ningún flujo de trabajo coincide con esta vista.",
+        "emptyNone": "Aún no hay flujos de trabajo",
+        "flowWhen": "CUANDO",
+        "flowThen": "ENTONCES",
+        "actionSendEmail": "Enviar correo",
+        "lastRunFailed": "La última ejecución falló",
+        "ranSuccessfully": "Se ejecutó correctamente",
+        "noRunsYet": "Aún no hay ejecuciones",
+        "viewError": "Ver error",
+        "history": "Historial",
+        "streamingChip": "Generando",
+        "streamingPlaceholder": "La IA está escribiendo…",
+        "trigger": "Desencadenante",
+        "action": "Acción",
+        "table": "Tabla",
+        "lastRun": "Última ejecución",
+        "sortBy": "Ordenar por",
+        "statusActive": "Activo",
+        "statusDisabled": "Desactivado",
+        "statusFailing": "Con errores"
+      },
+      "streamingBanner": {
+        "title": "La IA está generando tu flujo de trabajo",
+        "errorTitle": "La generación con IA falló",
+        "errorRetry": "Reintentar",
+        "errorDiscard": "Descartar"
+      }
+    },
+    "filter": {
+      "matchSection": "Coincidencia",
+      "modeAll": "Todas las de (y)",
+      "modeAny": "Cualquiera de (o)",
+      "joinAnd": "Y",
+      "joinOr": "O",
+      "chooseField": "Elegir campo…",
+      "removeCondition": "Eliminar condición",
+      "addCondition": "+ Añadir condición",
+      "noMatchSection": "Cuando la condición no coincide",
+      "noMatchBodyPre": "La ejecución se detiene y se marca como ",
+      "noMatchBodySkipped": "omitida",
+      "noMatchBodyPost": ". Las acciones posteriores no se ejecutan. El modo \"rama\" (división verdadero/falso) está en la hoja de ruta.",
+      "previewSection": "Vista previa de la expresión",
+      "previewLabel": "DSL",
+      "previewEmpty": "— un filtro vacío coincide con cada fila —",
+      "drySection": "Ejecución de prueba con fila de muestra",
+      "dryRunning": "Ejecutando…",
+      "dryRunButton": "▶ Ejecutar con fila de muestra",
+      "dryMatched": "✓ Coincide — esta fila continuaría hacia las acciones posteriores",
+      "dryNotMatched": "⊘ Sin coincidencia — la ejecución se marcaría como omitida"
+    },
+    "bodyEditor": {
+      "noFieldsAvailable": "No hay campos disponibles",
+      "addText": "Añadir texto",
+      "addNewline": "Añadir salto de línea",
+      "insertField": "Insertar campo",
+      "emptyHint": "Añade texto o inserta un campo para crear el cuerpo del correo.",
+      "typeBodyText": "Escribe el texto del cuerpo",
+      "newLineChip": "Nueva línea",
+      "missingField": "campo ausente {{id}}",
+      "missingFieldPreview": "⚠ campo ausente {{id}}",
+      "fieldsUsed_one": "{{count}} campo usado",
+      "fieldsUsed_other": "{{count}} campos usados",
+      "previewSampleData": "Vista previa con datos de muestra",
+      "removeBodyPartAria": "Eliminar parte del cuerpo",
+      "remove": "Eliminar"
+    },
+    "triggerTable": {
+      "draftLabel": "— Sin vincular (borrador) —",
+      "selectAria": "Seleccionar tabla",
+      "emptyInScope": "No hay tablas en el ámbito."
+    },
+    "sampleRow": {
+      "noTableBound": "Ninguna tabla vinculada",
+      "useExisting": "Usar fila existente",
+      "tooltipReady": "Elige un registro real para renderizar la prueba",
+      "tooltipNotReady": "Vincula primero una tabla al desencadenante",
+      "recentRows": "Filas recientes",
+      "refreshAria": "Actualizar lista de filas",
+      "loading": "Cargando…",
+      "empty": "Aún no hay filas en esta tabla. Añade primero un registro.",
+      "rowFallback": "Fila n.º {{id}}"
+    },
+    "build": {
+      "backToWorkflowsAria": "Volver a los flujos de trabajo",
+      "breadcrumbWorkflows": "Flujos de trabajo",
+      "newWorkflow": "Nuevo flujo de trabajo",
+      "runHistory": "Historial de ejecuciones",
+      "streamGenerating": "Generando desencadenante…",
+      "streamWaiting": "Esperando el desencadenante…",
+      "triggerWhenRecordCreated": "Cuando se crea un registro",
+      "triggerWhenFormSubmitted": "Cuando se envía un formulario",
+      "actionSendEmail": "Enviar correo",
+      "triggerSubtitle": "Cuando se crea un registro en {{table}}",
+      "actionSubtitle": "Enviar correo a {{to}}",
+      "drawerTitleScoped": "Crear flujo de trabajo de correo para {{table}}",
+      "drawerTitle": "Crear flujo de trabajo de correo"
+    },
+    "action": {
+      "panelAria": "Propiedades de la acción",
+      "headerTitle": "Vista previa de la acción",
+      "closeAria": "Cerrar",
+      "previewNote": "Este panel muestra una vista previa de lo que generó la IA. Las ediciones se hacen en la lista de flujos de trabajo.",
+      "openInList": "Abrir en Flujos de trabajo para editar",
+      "sectionConfig": "Configuración",
+      "sectionTest": "Probar paso",
+      "sectionPreviewResult": "Resultado de la vista previa",
+      "sectionTestSent": "Correo de prueba enviado",
+      "labelTo": "Para",
+      "labelSubject": "Asunto",
+      "labelBody": "Cuerpo",
+      "noRecipient": "No hay destinatario configurado",
+      "noSubject": "No hay asunto configurado",
+      "testIntro": "La vista previa renderiza un registro sintético a través de la plantilla del cuerpo; no se envía ningún correo. Usa \"Enviar correo de prueba real\" para entregarlo realmente mediante SMTP.",
+      "previewing": "Generando vista previa…",
+      "previewBtn": "Vista previa de la acción (no se envía correo)",
+      "sendToLabel": "Enviar correo de prueba real a",
+      "sendToPlaceholder": "destinatario@example.com",
+      "invalidEmail": "Introduce un correo válido o déjalo en blanco para usar el destinatario configurado.",
+      "blankHint": "Déjalo en blanco para usar \"{{to}}\". El asunto recibe un prefijo [TEST].",
+      "sending": "Enviando…",
+      "sendBtn": "Enviar correo de prueba real",
+      "previewGenerated": "Vista previa generada",
+      "previewNoEmail": "(no se envió correo)",
+      "renderedJustNow": "Renderizado hace unos segundos",
+      "renderedInput": "Entrada renderizada",
+      "testDelivered": "✓ Correo de prueba entregado",
+      "sentJustNow": "Enviado hace unos segundos a {{to}}"
+    },
+    "progress": {
+      "title": "Crear flujo de trabajo",
+      "stepWorkflow": "Generar flujo de trabajo",
+      "stepTrigger": "Generar desencadenante",
+      "stepAction": "Generar nodo de acción"
+    },
+    "recordActions": {
+      "triggerRecord": "Trigger record",
+      "remove": "Remove",
+      "testSection": "Test action",
+      "testDescription": "Pick an existing row. Kition runs the real action and persists the result in the table.",
+      "testUpdated": "The selected row was updated successfully.",
+      "noMatch": "No matching row was found; the source row was left unchanged.",
+      "update": {
+        "section": "Update current record",
+        "description": "Only populated fields below are changed. Unchanged values are preserved."
+      },
+      "lookup": {
+        "section": "Find record and write back",
+        "table": "Lookup table",
+        "tablePlaceholder": "Choose a table",
+        "matchField": "Match field",
+        "fieldPlaceholder": "Choose a field",
+        "matchValue": "Value from the trigger record",
+        "sourceField": "Field to read",
+        "targetField": "Field to fill",
+        "addMapping": "Add write-back mapping"
+      },
+      "transform": {
+        "section": "Transform record data",
+        "operation": "Operation {{index}}",
+        "argument": "Argument",
+        "targetField": "Choose output field",
+        "addOperation": "Add transform",
+        "operations": {
+          "trim": "Trim whitespace",
+          "lowercase": "Lowercase",
+          "uppercase": "Uppercase",
+          "digits_only": "Keep digits only",
+          "domain_from_email": "Extract email domain",
+          "concat": "Append text",
+          "number_add": "Add number",
+          "number_multiply": "Multiply number"
+        }
+      }
+    }
+  },
+  "runs": {
+    "filters": {
+      "all": "Todas",
+      "sent": "✓ Enviadas",
+      "failed": "✕ Fallidas",
+      "skipped": "⊘ Omitidas"
+    },
+    "rowLabel": {
+      "sent": "✓ Enviada",
+      "skipped": "⊘ Omitida",
+      "failed": "✕ Fallida"
+    },
+    "loading": "Cargando…",
+    "loadingLogs": "Cargando registros…",
+    "empty": "Aún no hay ejecuciones",
+    "emptyLogs": "Aún no hay registros",
+    "pruneHint": "Las ejecuciones antiguas se eliminan automáticamente: ok > 14 d · error > 30 d",
+    "retry": "↻ Reintentar",
+    "failedAt": "Falló en",
+    "viewNode": "Ver nodo {{nodeId}}",
+    "detailRecord": "Registro",
+    "detailWhen": "Cuándo",
+    "detailError": "Error",
+    "detailBody": "Cuerpo",
+    "panel": {
+      "title": "Historial de ejecuciones",
+      "refreshAria": "Actualizar",
+      "pauseAria": "Pausar actualización automática",
+      "resumeAria": "Reanudar actualización automática",
+      "closeAria": "Cerrar",
+      "panelAria": "Historial de ejecuciones",
+      "loadMore": "Cargar {{n}} más ({{hidden}} ocultas)"
+    },
+    "time": {
+      "justNow": "ahora mismo",
+      "minutesAgo": "hace {{n}} min",
+      "hoursAgo": "hace {{n}} h",
+      "daysAgo": "hace {{n}} d"
+    }
+  },
+  "nodePicker": {
+    "search": "Search nodes",
+    "results": "Search results",
+    "planned": "Planned",
+    "tabs": {
+      "common": "Common",
+      "ai": "AI",
+      "connectors": "Connectors",
+      "utilities": "Utilities"
+    },
+    "items": {
+      "updateRecord": "Update record",
+      "updateRecordDesc": "Change fields on the triggering row",
+      "lookupRecord": "Find record",
+      "lookupRecordDesc": "Match a row in another table and write fields back",
+      "addRecord": "Add record",
+      "addRecordDesc": "Create a row in another table",
+      "transformRecord": "Data transformer",
+      "transformRecordDesc": "Clean text and calculate values locally",
+      "sendEmail": "Send email",
+      "sendEmailDesc": "Deliver through an SMTP connection",
+      "ifElse": "Condition (If/Else)",
+      "ifElseDesc": "Route the workflow into true and false branches",
+      "aiText": "AI generate text",
+      "aiTextDesc": "Generate or analyze text with a configured model",
+      "aiClassify": "AI classify",
+      "aiClassifyDesc": "Assign a category from model output",
+      "webhook": "Webhook / group robot",
+      "webhookDesc": "Send to Feishu, DingTalk, WeCom, or a custom endpoint",
+      "javascript": "JavaScript",
+      "javascriptDesc": "Run a sandboxed script"
+    },
+    "close": "Close node picker"
+  }
+}

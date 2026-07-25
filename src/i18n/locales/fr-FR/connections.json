@@ -1,0 +1,70 @@
+{
+  "panel": {
+    "eyebrow": "Connexions",
+    "title": "Envoi d'e-mails",
+    "subtitle": "Gérez des identifiants réutilisables pour les actions de workflow.",
+    "refreshAria": "Actualiser les connexions",
+    "newConnection": "Nouvelle connexion",
+    "loading": "Chargement des connexions",
+    "emptyTitle": "Aucune connexion pour l'instant",
+    "emptyHint": "Ajoutez une connexion SMTP avant d'activer les workflows d'e-mail.",
+    "emptyCta": "Ajouter une connexion",
+    "fallbackEmailSmtp": "SMTP e-mail",
+    "usedBy": "Utilisée par {{count}}",
+    "pickPrompt": "Sélectionnez une connexion pour l'examiner."
+  },
+  "modal": {
+    "ariaLabel": "Connexion e-mail",
+    "titleEdit": "Modifier la connexion e-mail",
+    "titleNew": "Nouvelle connexion e-mail",
+    "subtitle": "Tester et enregistrer vérifie le serveur SMTP avant d'enregistrer les modifications.",
+    "closeAria": "Fermer le formulaire de connexion",
+    "fieldName": "Nom",
+    "fieldHost": "Hôte",
+    "fieldPort": "Port",
+    "fieldUsername": "Nom d'utilisateur",
+    "fieldPassword": "Mot de passe",
+    "fieldTls": "TLS",
+    "fieldFromAddress": "Adresse d'expédition",
+    "fieldFromName": "Nom d'expéditeur",
+    "namePlaceholder": "ex. SMTP de l'entreprise",
+    "hostPlaceholder": "smtp.example.com",
+    "portPlaceholder": "587",
+    "usernamePlaceholder": "you@example.com",
+    "fromPlaceholder": "no-reply@example.com",
+    "fromNamePlaceholder": "ex. Notifications Kition",
+    "passwordPlaceholderEdit": "Laisser vide pour conserver le mot de passe existant",
+    "cancel": "Annuler",
+    "testAndSave": "Tester et enregistrer"
+  },
+  "detail": {
+    "eyebrowEmailSmtp": "SMTP e-mail",
+    "labelHost": "Hôte",
+    "labelTls": "TLS",
+    "labelUsername": "Nom d'utilisateur",
+    "labelUsedBy": "Utilisée par",
+    "usedByWorkflows_one": "{{count}} workflow",
+    "usedByWorkflows_other": "{{count}} workflows",
+    "edit": "Modifier",
+    "test": "Tester",
+    "delete": "Supprimer"
+  },
+  "status": {
+    "active": "Active",
+    "invalid": "Dernier test échoué",
+    "pending": "En attente"
+  },
+  "confirms": {
+    "deleteWithUsage_one": "« {{name}} » est utilisée par {{count}} workflow.\n\nLa supprimer empêchera ce workflow d'envoyer des e-mails jusqu'à ce que vous lui attribuiez une nouvelle connexion.\n\nSupprimer quand même ?",
+    "deleteWithUsage_other": "« {{name}} » est utilisée par {{count}} workflows.\n\nLes supprimer empêchera ces workflows d'envoyer des e-mails jusqu'à ce que vous leur attribuiez une nouvelle connexion.\n\nSupprimer quand même ?",
+    "deleteNoUsage": "Supprimer « {{name}} » ?"
+  },
+  "errors": {
+    "loadFailed": "Échec du chargement des connexions",
+    "saveFailed": "Échec de l'enregistrement de la connexion",
+    "verifyFailedFallback": "Connexion enregistrée mais la vérification a échoué"
+  },
+  "feedback": {
+    "verified": "Connexion vérifiée"
+  }
+}
