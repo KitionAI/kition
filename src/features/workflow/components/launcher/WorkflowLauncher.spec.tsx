@@ -15,6 +15,8 @@ import * as router from '@/features/workflow/lib/openWorkflowRoute'
 import { WorkflowLauncher } from './WorkflowLauncher'
 import type { WorkflowLauncherProps } from './WorkflowLauncher'
 
+;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
 const tableContext = {
   documentId: 'doc1',
   tableId: 't1',
@@ -55,8 +57,11 @@ beforeEach(() => {
   vi.mocked(router.openWorkflowHome).mockReset()
 })
 
-afterEach(() => {
-  root?.unmount()
+afterEach(async () => {
+  await act(async () => {
+    root?.unmount()
+  })
+  root = null
   container.remove()
 })
 
