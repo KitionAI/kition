@@ -503,10 +503,15 @@ describe('generic browser search workflow', () => {
 
   it('creates a live session without attaching the CDP debugger', async () => {
     const mod = await import('./generic-browser-session.mjs')
-    const manager = new mod.GenericBrowserSessionManager(null, () => null)
+    const configureSession = vi.fn(async () => {})
+    const manager = new mod.GenericBrowserSessionManager(null, () => null, {
+      configureSession,
+    })
     const setUserAgent = vi.fn()
+    const partitionSession = {}
     const fakeWebContents = {
       isDestroyed: () => false,
+      session: partitionSession,
       setWindowOpenHandler: vi.fn(),
       setUserAgent,
       on: vi.fn(),
@@ -524,6 +529,7 @@ describe('generic browser search workflow', () => {
     const session = await manager.ensureSession('default')
 
     expect(session.view).toBe(fakeView)
+    expect(configureSession).toHaveBeenCalledWith(partitionSession)
     expect(setUserAgent).toHaveBeenCalledTimes(1)
     expect(manager.configureSessionDebugger).not.toHaveBeenCalled()
   })

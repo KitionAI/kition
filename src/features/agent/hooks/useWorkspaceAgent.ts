@@ -30,6 +30,7 @@ import {
   type AgentMentionableDocument,
 } from '@/features/agent/lib/documentMentions'
 import { resolveAgentDocumentTarget } from '@/features/agent/lib/agentDocumentTargeting'
+import { analyzeAgentBrowserIntent } from '@/features/agent/lib/agentBrowserIntent'
 import {
   buildAgentModelOptions,
   resolveAgentModelKey,
@@ -76,6 +77,7 @@ type UseWorkspaceAgentOptions = {
   onSettingsSaved?: (settings: DesktopSettingsState) => void
   onWorkspaceArtifactsSaved?: (sessionId: number) => Promise<void>
   onTableMutated?: () => void | Promise<void>
+  prepareBrowserContext?: (content: string) => Promise<AgentBrowserContext | undefined>
   silentInitialSessionLoad?: boolean
   getTurnContext?: () =>
     | WorkspaceAgentTurnContext
@@ -110,6 +112,7 @@ export function useWorkspaceAgent({
   onSettingsSaved,
   onWorkspaceArtifactsSaved,
   onTableMutated,
+  prepareBrowserContext,
   silentInitialSessionLoad = !isDesktopRuntime(),
   getTurnContext,
 }: UseWorkspaceAgentOptions) {
@@ -352,9 +355,11 @@ export function useWorkspaceAgent({
       hideUserMessage?: boolean
       executionMode?: AgentExecutionMode
       tablePlanContext?: AgentTablePlanContext
+      browserAutoContinue?: boolean
     },
   ) => {
     const content = (followup?.content ?? agentDrafts[sessionId] ?? '').trim()
+    const browserIntent = analyzeAgentBrowserIntent(content)
     // Block double-sends for THIS session only — other sessions remain
     // free to run independently. The bare `if (agentBusySessionId)`
     // form was the cross-session silent-skip bug; a click on another
@@ -447,6 +452,14 @@ export function useWorkspaceAgent({
     let tableMutated = false
 
     try {
+      let preparedBrowserContext: AgentBrowserContext | undefined
+      if (
+        browserIntent.browserEnabled &&
+        followup?.browserAutoContinue !== true &&
+        prepareBrowserContext
+      ) {
+        preparedBrowserContext = await prepareBrowserContext(content).catch(() => undefined)
+      }
       const turnContext = (await getTurnContext?.()) || undefined
       const activeDocumentPath = String(turnContext?.activeDocumentPath || '').trim()
       const mentionTokens = extractAgentDocumentMentionTokens(content)
@@ -500,8 +513,9 @@ export function useWorkspaceAgent({
         activeWorkflowId: turnContext?.activeWorkflowId,
         paneContext: turnContext?.paneContext,
         taskMode: turnContext?.taskMode,
-        browserEnabled: turnContext?.browserEnabled === true,
-        browserContext: turnContext?.browserContext,
+        browserEnabled:
+          turnContext?.browserEnabled === true || browserIntent.browserEnabled,
+        browserContext: preparedBrowserContext || turnContext?.browserContext,
         executionMode: followup?.executionMode,
         tablePlanContext: followup?.tablePlanContext,
         hideUserMessage: followup?.hideUserMessage === true,
@@ -663,11 +677,24 @@ export function useWorkspaceAgent({
           }
 
           if (event.type === 'agent_event' && event.event) {
+            const nextEvent =
+              event.event.event_type === 'browser.open_required' &&
+              browserIntent.continueAfterOpen &&
+              followup?.browserAutoContinue !== true
+                ? {
+                    ...event.event,
+                    data: {
+                      ...(event.event.data || {}),
+                      client_auto_continue: true,
+                      client_original_request: content,
+                    },
+                  }
+                : event.event
             setAgentEvents((current) => {
               const existing = current[sessionId] || []
-              const next = existing.some((item) => item.id === event.event!.id)
-                ? existing.map((item) => item.id === event.event!.id ? event.event! : item)
-                : [...existing, event.event!]
+              const next = existing.some((item) => item.id === nextEvent.id)
+                ? existing.map((item) => item.id === nextEvent.id ? nextEvent : item)
+                : [...existing, nextEvent]
               return { ...current, [sessionId]: next }
             })
             void notifyFromAgentEvent({
@@ -735,6 +762,7 @@ export function useWorkspaceAgent({
     onFeedback,
     onWorkspaceArtifactsSaved,
     onTableMutated,
+    prepareBrowserContext,
     refreshMentionableDocuments,
     selectedAgentModel,
     markSessionBusy,
@@ -750,6 +778,7 @@ export function useWorkspaceAgent({
       content: string
       executionMode?: AgentExecutionMode
       tablePlanContext?: AgentTablePlanContext
+      browserAutoContinue?: boolean
     },
   ) => {
     void sendAgentMessage(sessionId, {
@@ -757,6 +786,7 @@ export function useWorkspaceAgent({
       hideUserMessage: true,
       executionMode: input.executionMode,
       tablePlanContext: input.tablePlanContext,
+      browserAutoContinue: input.browserAutoContinue,
     })
   }, [sendAgentMessage])
 

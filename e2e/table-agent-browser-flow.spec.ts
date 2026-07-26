@@ -152,7 +152,7 @@ async function openUnifiedAgentChat(page: Page) {
   }
 }
 
-test.skip('table agent keeps chat visible while opening youtube.com and syncing rows into the table', async ({ baseURL }) => {
+test('table agent opens youtube.com and automatically resumes a combined capture task', async ({ baseURL }) => {
   test.setTimeout(90_000)
   expect(baseURL).toBeTruthy()
 
@@ -289,6 +289,12 @@ test.skip('table agent keeps chat visible while opening youtube.com and syncing 
 
     const documentPath = String(createdDocument.path || '').trim()
     const now = '2026-05-20T12:00:00.000Z'
+    const capturePrompt = [
+      'Open youtube.com in the built-in browser, collect every video card currently loaded on the homepage, and write the results into a new structured table file.',
+      'Include Title, Video URL, Channel or Author, Views, Duration, Published At, Thumbnail or Cover, Source Page, Captured At, and Summary or Notes.',
+      'Use Video URL as the unique key. Continue automatically after the browser opens, and do not mark the task complete until the rows are saved.',
+      'If browser access or extraction is unavailable, report the blocker instead of creating an empty completed table.',
+    ].join(' ')
     const browserEntities = [
       {
         entity_type: 'video',
@@ -426,56 +432,15 @@ test.skip('table agent keeps chat visible while opening youtube.com and syncing 
     }
 
     let streamRequestCount = 0
+    const streamRequests: Array<Record<string, unknown>> = []
 
     await page.route('**/api/v1/agent/capabilities', async (route) => {
       await fulfillJson(route, {
         code: 200,
         data: {
-          tools: [
-            {
-              name: 'browser_open',
-              description: 'Open a browser page',
-              category: 'browser',
-              permission: 'desktop',
-              enabled: true,
-            },
-            {
-              name: 'browser_navigate',
-              description: 'Navigate in the browser',
-              category: 'browser',
-              permission: 'desktop',
-              enabled: true,
-            },
-            {
-              name: 'browser_search',
-              description: 'Search within the browser',
-              category: 'browser',
-              permission: 'desktop',
-              enabled: true,
-            },
-          ],
+          tools: [],
           skills: [],
-          adapters: [
-            {
-              adapter: 'youtube',
-              label: 'YouTube',
-              description: 'YouTube video feed',
-              transport: 'browser',
-              session_provider: 'generic-web',
-              primary_host: 'youtube.com',
-              host_patterns: ['www.youtube.com'],
-              commands: [
-                {
-                  name: 'feed',
-                  description: 'Read the main feed',
-                  mode: 'browser',
-                  entity_type: 'video',
-                  auth_required: true,
-                  supports_table_ingest: true,
-                },
-              ],
-            },
-          ],
+          adapters: [],
           governance: {
             permission_mode: 'workspace-write',
             sandbox_enabled: true,
@@ -493,27 +458,7 @@ test.skip('table agent keeps chat visible while opening youtube.com and syncing 
       await fulfillJson(route, {
         code: 200,
         data: {
-          items: [
-            {
-              adapter: 'youtube',
-              label: 'YouTube',
-              description: 'YouTube video feed',
-              transport: 'browser',
-              session_provider: 'generic-web',
-              primary_host: 'youtube.com',
-              host_patterns: ['www.youtube.com'],
-              commands: [
-                {
-                  name: 'feed',
-                  description: 'Read the main feed',
-                  mode: 'browser',
-                  entity_type: 'video',
-                  auth_required: true,
-                  supports_table_ingest: true,
-                },
-              ],
-            },
-          ],
+          items: [],
         },
       })
     })
@@ -551,7 +496,12 @@ test.skip('table agent keeps chat visible while opening youtube.com and syncing 
 
     await page.route('**/api/v1/agent/sessions/*/messages/stream', async (route) => {
       streamRequestCount += 1
-      if (streamRequestCount === 1) {
+      const requestBody = route.request().postDataJSON() as Record<string, unknown>
+      streamRequests.push(requestBody)
+      const prefetchedEntities = (
+        requestBody.browser_context as { extracted_entities?: unknown[] } | undefined
+      )?.extracted_entities
+      if (!prefetchedEntities?.length) {
         await fulfillNdjson(route, [
           {
             type: 'user_message',
@@ -560,7 +510,7 @@ test.skip('table agent keeps chat visible while opening youtube.com and syncing 
               session_id: 701,
               user_id: 1,
               role: 'user',
-              content: 'Open youtube.com and sync the data into the table',
+              content: capturePrompt,
               status: 'completed',
               created_at: now,
             },
@@ -770,27 +720,30 @@ test.skip('table agent keeps chat visible while opening youtube.com and syncing 
       .last()
       .click()
     const { sidebar, composer, sendButton } = await openUnifiedAgentChat(page)
-    await composer.fill('Open youtube.com')
+    await composer.fill(capturePrompt)
     await sendButton.click()
 
     const userMessages = sidebar.locator('.agent-message[data-role="user"]')
     await expect(userMessages).toHaveCount(1)
-    await expect(userMessages.nth(0)).toContainText('Open youtube.com')
+    await expect(userMessages.nth(0)).toContainText('collect every video card')
     await expect(page.locator('.document-tab.is-browser').filter({ hasText: 'youtube.com' })).toBeVisible()
     await expect(sidebar).toBeVisible()
-    await expect(sidebar.getByText('Open browser tab')).toBeVisible()
-
-    await composer.fill('Write the data into the table')
-    await sendButton.click()
-
-    await expect(userMessages).toHaveCount(2)
-    await expect(userMessages.nth(0)).toContainText('Open youtube.com')
-    await expect(sidebar.getByText('Open browser tab')).toBeVisible()
-    await expect(userMessages.nth(1)).toContainText('Write the data into the table')
 
     await expect(
       sidebar.getByText('Synced 6 records from youtube.com into the current table.'),
     ).toBeVisible()
+    await expect(userMessages).toHaveCount(1)
+    expect(streamRequests).toHaveLength(1)
+    expect(streamRequests[0]).toMatchObject({
+      content: capturePrompt,
+      browser_enabled: true,
+      hide_user_message: false,
+      browser_context: {
+        host: 'youtube.com',
+        page_url: 'https://www.youtube.com/feed/trending',
+        extracted_entities: browserEntities,
+      },
+    })
     await expect(page.getByText('The agent updated the current table.')).toHaveCount(0)
     await expect(page.locator('.document-tab.is-browser .document-tab-badge')).toHaveCount(1)
     expect(documentState.records).toHaveLength(6)
@@ -806,7 +759,7 @@ test.skip('table agent keeps chat visible while opening youtube.com and syncing 
   }
 })
 
-test.skip('table agent treats open-site requests as browser-only work', async ({ baseURL }) => {
+test('table agent treats open-site requests as browser-only work', async ({ baseURL }) => {
   test.setTimeout(90_000)
   expect(baseURL).toBeTruthy()
 
@@ -1115,7 +1068,11 @@ test.skip('table agent treats open-site requests as browser-only work', async ({
       await route.fallback()
     })
 
+    let streamRequestCount = 0
+    const streamRequests: Array<Record<string, unknown>> = []
     await page.route('**/api/v1/agent/sessions/*/messages/stream', async (route) => {
+      streamRequestCount += 1
+      streamRequests.push(route.request().postDataJSON() as Record<string, unknown>)
       await fulfillNdjson(route, [
         {
           type: 'user_message',
@@ -1203,6 +1160,12 @@ test.skip('table agent treats open-site requests as browser-only work', async ({
     await expect(page.locator('.workspace-browser-tab')).toBeVisible()
     await expect(sidebar.getByText('Opened youtube.com. Waiting for your next instruction.')).toBeVisible()
     await expect(page.getByText('Inspect table')).toHaveCount(0)
+    expect(streamRequestCount).toBe(1)
+    expect(streamRequests[0]).toMatchObject({
+      content: 'Open youtube.com',
+      browser_enabled: true,
+      hide_user_message: false,
+    })
     expect(documentState.records).toHaveLength(0)
   } finally {
     await app.close()

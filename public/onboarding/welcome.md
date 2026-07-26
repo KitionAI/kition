@@ -13,6 +13,7 @@ Kition brings Markdown documents, structured tables, visual workflows, and an AI
 - **Organize**: open [[Essentials/Task Tracker.kitable]] and switch between Grid, Kanban, and Calendar.
 - **Automate**: open [[Essentials/Contact Directory.kitable]], select **Workflows**, and run the contact cleanup flow.
 - **Connect**: follow [[Guides/Email Automation/intro.md]] to import an inbox into a structured table and open full messages as Markdown.
+- **Research**: copy or adapt a prompt from [[Guides/Web Research/info.md]] to open a website and continue the requested browser task automatically.
 - **Ask**: open the Agent and ask it to summarize this page or update the active document.
 
 ## How Kition fits together
@@ -151,6 +152,7 @@ Everything included in Getting Started is indexed below. The folders are named f
 | [[Guides/Receipt Extraction/Receipt Archive.kitable]] | Filter and review completed receipt records. | None to inspect |
 | [[Guides/Product Content/intro.md]] | Configure image and copy generation fields. | Image-capable AI provider to run again |
 | [[Guides/Product Content/Product Content Studio.kitable]] | Inspect configured product content fields. | None to inspect |
+| [[Guides/Web Research/info.md]] | Test a reusable one-turn browser handoff for page research, capture, summaries, downloads, or structured output. | Desktop browser and AI provider |
 
 ## Recommended first session
 
@@ -158,6 +160,7 @@ Everything included in Getting Started is indexed below. The folders are named f
 - [ ] Add a row to **Task Tracker** and change the active view.
 - [ ] Run the cleanup workflow in **Contact Directory**.
 - [ ] Open **Email Automation** and review the inbox-to-table output structure.
+- [ ] Copy or adapt a prompt from **Web Research** and verify that the requested result exists before the Agent reports completion.
 - [ ] Ask the Agent to summarize one active file.
 - [ ] Open one guide that matches your work and adapt its table.
 

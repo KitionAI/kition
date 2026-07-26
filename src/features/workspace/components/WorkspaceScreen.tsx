@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useKitableChildrenIndex } from '@/features/workspace/hooks/useKitableChildrenIndex'
 import { buildKitableWorkflowVirtualPath, buildKitableTableVirtualPath, buildPrivateSectionTreeNodes, parseKitableWorkflowVirtualPath, parseKitableTableVirtualPath } from '@/features/workspace/lib/workspaceTree'
 import { routeKitableOpenPath } from './workspaceScreenTabRouting'
-import type { AgentEvent } from '@/api/agent'
+import type { AgentBrowserContext, AgentEvent } from '@/api/agent'
 import { openDataDocumentByPath, renameDataDocumentByPath } from '@/api/dataDocuments'
 import { openWorkflowHome, openWorkflowRoute, type WorkflowRouteContext } from '@/features/workflow/lib/openWorkflowRoute'
 import { createWorkflow, type WorkflowDefinition } from '@/features/workflow/api'
@@ -21,6 +21,12 @@ import {
   buildAgentBrowserTabPayload,
   dispatchOpenWorkspaceBrowserTab,
 } from '@/features/agent/lib/agentBrowserTab'
+import {
+  buildBrowserAutoContinuePrompt,
+  buildBrowserUnavailablePrompt,
+  extractAgentWebTarget,
+} from '@/features/agent/lib/agentBrowserIntent'
+import { preflightAgentBrowserContext } from '@/features/agent/lib/agentBrowserPreflight'
 import {
   type AgentTurnContext,
   buildActiveBrowserTabContext,
@@ -63,6 +69,7 @@ import {
   findWorkspaceBrowserTabIdsForSnapshot,
   OPEN_WORKSPACE_BROWSER_TAB_EVENT,
   resolveWorkspaceBrowserTabOrigin,
+  resolveWorkspaceBrowserHost,
   resolveWorkspaceBrowserTabNavigationURL,
   type WorkspaceBrowserTabPayload,
 } from '@/features/workspace/lib/browserTabs'
@@ -373,6 +380,13 @@ export function WorkspaceScreen({
     taskMode: 'auto',
     browserEnabled: false,
   })
+  const prepareAgentBrowserContextRef = useRef<
+    (content: string) => Promise<AgentBrowserContext | undefined>
+  >(async () => undefined)
+  const prepareAgentBrowserContextForTurn = useCallback(
+    (content: string) => prepareAgentBrowserContextRef.current(content),
+    [],
+  )
   const setAgentBrowserEnabled = useCallback((next: boolean) => {
     setAgentBrowserEnabledState(next)
     agentTurnContextRef.current = {
@@ -538,6 +552,7 @@ export function WorkspaceScreen({
       await tableAgentRefreshRef.current?.()
     },
     getTurnContext: getAgentTurnContext,
+    prepareBrowserContext: prepareAgentBrowserContextForTurn,
   })
   agentDocumentStateRef.current = {
     clearModifiedPath: clearModifiedDocumentPath,
@@ -801,6 +816,7 @@ export function WorkspaceScreen({
           title: activeBrowserTab.title,
         })
       : undefined,
+    browserEnabled: agentBrowserEnabled,
     // Same mapping as AgentChatPanel.paneContext (empty-state copy) so
     // the agent's system prompt addendum matches what the user sees on
     // the empty-state card. Browser pane is implicit when an
@@ -1967,6 +1983,39 @@ export function WorkspaceScreen({
     [tableAgentContext, tableAgentDocumentPath],
   )
 
+  const runAgentBrowserPreflight = useCallback(async (content: string) => {
+    if (!WEB_BROWSER_ENABLED) {
+      return undefined
+    }
+    const target = extractAgentWebTarget(content)
+    if (!target) {
+      return undefined
+    }
+
+    const provider: BrowserSessionProvider = 'generic-web'
+    setAgentBrowserEnabled(true)
+    setBrowserPanelPhase('loading')
+    dispatchOpenWorkspaceBrowserTab(
+      buildAgentBrowserTabPayload({
+        provider,
+        taskMode: agentTurnContextRef.current.taskMode,
+        host: target.host,
+        url: target.url,
+        activeDocument: tableAgentContext?.activeDocument ?? null,
+        documentPath: tableAgentDocumentPath,
+        activeTable: tableAgentContext?.activeTable ?? null,
+      }),
+    )
+
+    const context = await preflightAgentBrowserContext({
+      target,
+      provider,
+    })
+    setBrowserPanelPhase('ready')
+    return context
+  }, [setAgentBrowserEnabled, tableAgentContext, tableAgentDocumentPath])
+  prepareAgentBrowserContextRef.current = runAgentBrowserPreflight
+
   const browserAutoOpenSessionRef = useRef<number | null>(null)
   const browserAutoOpenEventIdRef = useRef<number | null>(null)
   useEffect(() => {
@@ -1994,6 +2043,65 @@ export function WorkspaceScreen({
     browserAutoOpenEventIdRef.current = latestId
     openWorkspaceBrowserFromRequest(readBrowserOpenRequest(latest))
   }, [activeWorkspaceAgentSession, agentEvents, openWorkspaceBrowserFromRequest])
+
+  const browserAutoContinueEventKeysRef = useRef(new Set<string>())
+  useEffect(() => {
+    if (
+      !activeWorkspaceAgentSession ||
+      !activeBrowserTab ||
+      (browserPanelPhase !== 'ready' && browserPanelPhase !== 'unavailable') ||
+      agentBusySessions.has(activeWorkspaceAgentSession.id)
+    ) {
+      return
+    }
+
+    const sessionId = activeWorkspaceAgentSession.id
+    let latestRequest: AgentBrowserOpenRequest | null = null
+    let latestEventId: number | null = null
+    for (const event of agentEvents[sessionId] || []) {
+      if (event.event_type !== 'browser.open_required') {
+        continue
+      }
+      const request = readBrowserOpenRequest(event)
+      if (request.autoContinue) {
+        latestRequest = request
+        latestEventId = event.id
+      }
+    }
+    if (!latestRequest || latestEventId === null) {
+      return
+    }
+
+    const eventKey = `${sessionId}:${latestEventId}`
+    if (browserAutoContinueEventKeysRef.current.has(eventKey)) {
+      return
+    }
+    const requestedHost = resolveWorkspaceBrowserHost({
+      host: latestRequest.host,
+      url: latestRequest.url,
+    })
+    const activeHost = resolveWorkspaceBrowserHost(activeBrowserTab)
+    if (requestedHost && requestedHost !== activeHost) {
+      return
+    }
+
+    browserAutoContinueEventKeysRef.current.add(eventKey)
+    setAgentBrowserEnabled(true)
+    sendAgentContextAction(sessionId, {
+      content: browserPanelPhase === 'ready'
+        ? buildBrowserAutoContinuePrompt(latestRequest.originalRequest || '')
+        : buildBrowserUnavailablePrompt(latestRequest.originalRequest || ''),
+      browserAutoContinue: true,
+    })
+  }, [
+    activeBrowserTab,
+    activeWorkspaceAgentSession,
+    agentBusySessions,
+    agentEvents,
+    browserPanelPhase,
+    sendAgentContextAction,
+    setAgentBrowserEnabled,
+  ])
 
   function toggleActiveAgentPanel() {
     setWorkspaceAgentOpen((current) => {

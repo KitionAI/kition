@@ -10,7 +10,7 @@ const guideManifest: OnboardingGuideManifest = {
       slug: 'lead-workflow',
       displayName: 'Lead workflow',
       summary: 'Build a workflow from a prompt.',
-      intro: 'intro.md',
+      intro: 'info.md',
       seeds: ['leads.csv'],
       assets: ['reference.jpg'],
       tableFile: 'Lead Follow-up.kitable',
@@ -70,7 +70,7 @@ describe('seedOnboardingPack', () => {
       name: 'Lead workflow',
     })
     expect(deps.writeDocument).toHaveBeenCalledWith(
-      'Getting Started/Guides/Lead workflow/intro.md',
+      'Getting Started/Guides/Lead workflow/info.md',
       '# hi',
     )
     expect(deps.importFile).toHaveBeenCalledWith(expect.objectContaining({

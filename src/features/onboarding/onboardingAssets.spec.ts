@@ -7,7 +7,7 @@ const dir = resolve(__dirname, '../../../public/onboarding')
 describe('onboarding static assets', () => {
   it('manifest references files that all exist on disk', () => {
     const manifest = JSON.parse(readFileSync(resolve(dir, 'manifest.json'), 'utf8'))
-    expect(manifest.version).toBe(14)
+    expect(manifest.version).toBe(15)
     expect(manifest.folder).toBe('Getting Started')
     expect(typeof manifest.welcome.filename).toBe('string')
     expect(manifest.welcome.asset).toBe('welcome.md')
@@ -65,8 +65,16 @@ describe('onboarding static assets', () => {
     const emailGuide = manifest.guides.find(
       (guide: { slug: string }) => guide.slug === 'email-automation',
     )
+    const webResearchGuide = manifest.guides.find(
+      (guide: { slug: string }) => guide.slug === 'web-research',
+    )
     expect(receiptGuide?.assets).toBeUndefined()
     expect(emailGuide?.tableFile).toBe('Inbox.kitable')
+    expect(webResearchGuide).toEqual(expect.objectContaining({
+      displayName: 'Web Research',
+      intro: 'info.md',
+      tableFile: null,
+    }))
     const inboxTable = readFileSync(resolve(dir, 'email-automation/Inbox.kitable'))
     expect(inboxTable.subarray(0, 16).toString('utf8')).toBe('SQLite format 3\u0000')
     expect(inboxTable.byteLength).toBeGreaterThan(100_000)
@@ -75,6 +83,7 @@ describe('onboarding static assets', () => {
       'Lead Automation',
       'Receipt Extraction',
       'Product Content',
+      'Web Research',
     ])
 
     for (const guide of manifest.guides) {
@@ -120,6 +129,7 @@ describe('onboarding static assets', () => {
       'Guides/Email Automation/intro.md',
       'Guides/Receipt Extraction/Receipt Archive.kitable',
       'Guides/Product Content/Product Content Studio.kitable',
+      'Guides/Web Research/info.md',
     ]) {
       expect(english).toContain(value)
     }
@@ -131,5 +141,11 @@ describe('onboarding static assets', () => {
     expect(emailAutomation).toContain('imap.163.com')
     expect(emailAutomation).toContain('Select the **Document** value')
     expect(emailAutomation).toContain('`Scheduled trigger` followed by `Sync email inbox`')
+
+    const webResearch = readFileSync(resolve(dir, 'web-research/info.md'), 'utf8')
+    expect(webResearch).toContain('# Web Research')
+    expect(webResearch).toContain('Open youtube.com in the built-in browser')
+    expect(webResearch).toContain('Replace them to reuse the same flow with another site')
+    expect(webResearch).toContain('every browser task writes a table')
   })
 })

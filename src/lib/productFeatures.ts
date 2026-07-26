@@ -1,3 +1,3 @@
-// The embedded web browser is intentionally disabled until its product
-// experience is rebuilt. Keep this as the single switch for restoring it.
-export const WEB_BROWSER_ENABLED = false
+// The embedded browser is available to explicit browser tasks and Agent
+// handoffs. Keep this as the single product switch for the browser surface.
+export const WEB_BROWSER_ENABLED = true

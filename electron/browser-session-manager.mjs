@@ -6,7 +6,7 @@ function normalizeHost(value) {
 }
 
 export class BrowserSessionManager {
-  constructor(desktopEnv, getMainWindow) {
+  constructor(desktopEnv, getMainWindow, options = {}) {
     this.siteRegistry = new BrowserSiteRegistry(desktopEnv)
     void this.siteRegistry.load()
     this.providers = new Map()
@@ -15,6 +15,7 @@ export class BrowserSessionManager {
       new GenericBrowserSessionManager(desktopEnv, getMainWindow, {
         siteRegistry: this.siteRegistry,
         providerKey: 'generic-web',
+        configureSession: options.configureSession,
       }),
     )
   }

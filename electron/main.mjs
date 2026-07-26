@@ -207,7 +207,7 @@ async function handleBrowserSessionStatus(request = {}) {
 
 async function handleEnsureBrowserSessionWindow(request = {}) {
   const mockedStatus = buildBrowserSessionTestMockStatus(request, {
-    message: 'Opened youtube.com',
+    message: `Opened ${String(request.host || request.url || 'browser page')}`,
     panel_visible: true,
     panel_width: 420,
   })
@@ -1913,7 +1913,9 @@ async function bootstrapElectron() {
   // spawn — that's how `https_proxy` / `KITION_SMTP_PROXY` propagate into the
   // Go API subprocess after the user changes the proxy and we restart.
   backendSupervisor.extraEnvProvider = () => proxyManager.envOverrides()
-  browserSessions = new BrowserSessionManager(desktopEnv, () => mainWindow)
+  browserSessions = new BrowserSessionManager(desktopEnv, () => mainWindow, {
+    configureSession: (browserSession) => proxyManager.applyToSession(browserSession),
+  })
   updateManager = new UpdateManager({
     getMainWindow: () => mainWindow,
     getBetaChannel: () => cachedBetaChannel,

@@ -8,6 +8,8 @@ export type AgentBrowserOpenRequest = {
   url?: string
   query?: string
   message?: string
+  autoContinue?: boolean
+  originalRequest?: string
 }
 
 export function readBrowserOpenRequest(event: AgentEvent): AgentBrowserOpenRequest {
@@ -18,6 +20,11 @@ export function readBrowserOpenRequest(event: AgentEvent): AgentBrowserOpenReque
     host: typeof data.host === 'string' ? data.host : undefined,
     url: typeof data.url === 'string' ? data.url : undefined,
     query: typeof data.query === 'string' ? data.query : undefined,
+    autoContinue: data.client_auto_continue === true,
+    originalRequest:
+      typeof data.client_original_request === 'string'
+        ? data.client_original_request
+        : undefined,
     message:
       typeof event.message === 'string' && event.message
         ? event.message

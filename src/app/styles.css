@@ -3586,7 +3586,7 @@
   }
 
   .agent-ai-composer.is-compact textarea {
-    @apply min-h-[60px] text-sm;
+    @apply min-h-[60px] p-0 text-sm;
   }
 
   .agent-mention-menu {

@@ -4,7 +4,7 @@ export type OnboardingGuide = {
   slug: string
   displayName: string
   summary: string
-  intro: 'intro.md'
+  intro: string
   seeds: string[]
   assets?: string[]
   tableFile: string | null

@@ -802,6 +802,9 @@ export class GenericBrowserSessionManager {
     this.getMainWindow = getMainWindow
     this.siteRegistry = options.siteRegistry || null
     this.providerKey = String(options.providerKey || 'generic-web')
+    this.configureSession = typeof options.configureSession === 'function'
+      ? options.configureSession
+      : async () => {}
     this.sessions = new Map()
     this.activeProfileId = defaultProfileId
     this.panelVisible = false
@@ -1110,6 +1113,7 @@ export class GenericBrowserSessionManager {
     session.view = surface.view
     session.surfaceType = surface.surfaceType
     const surfaceWebContents = session.view.webContents
+    await this.configureSession(surfaceWebContents.session)
     surfaceWebContents.setWindowOpenHandler(({ url }) => {
       // Keep target=_blank / window.open navigations inside the embedded
       // session so pages stay scrapable instead of escaping to the OS browser.

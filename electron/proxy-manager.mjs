@@ -128,6 +128,7 @@ export class ProxyManager {
     this.passwordCache = ''
     this.loaded = false
     this.applied = false
+    this.additionalSessions = new Set()
   }
 
   async load() {
@@ -234,10 +235,32 @@ export class ProxyManager {
     }
   }
 
+  async applyToSession(targetSession, { register = true } = {}) {
+    if (!targetSession || typeof targetSession.setProxy !== 'function') {
+      return
+    }
+    await this.load()
+    if (register) {
+      this.additionalSessions.add(targetSession)
+    }
+    try {
+      if (this.config.enabled && this.config.host) {
+        await targetSession.setProxy({
+          proxyRules: buildElectronProxyRules(this.config, this.passwordCache),
+          proxyBypassRules: buildElectronBypassRules(this.config.noProxy),
+        })
+      } else {
+        await targetSession.setProxy({ mode: 'direct' })
+      }
+    } catch (error) {
+      console.warn('proxy config: session.setProxy failed', error)
+    }
+  }
+
   /**
    * Apply the loaded config to:
    *   1. process.env (so electron-updater honors it on next check)
-   *   2. session.defaultSession.setProxy (so the renderer's fetch goes through)
+   *   2. Electron's default session and registered embedded-browser sessions
    *
    * Does NOT restart the Go API — caller decides whether to restart based on
    * whether the URL actually changed (and after the user confirms).
@@ -255,20 +278,13 @@ export class ProxyManager {
       }
     }
 
-    const session = this.getSession?.()
-    if (session && typeof session.setProxy === 'function') {
-      try {
-        if (this.config.enabled && this.config.host) {
-          await session.setProxy({
-            proxyRules: buildElectronProxyRules(this.config, this.passwordCache),
-            proxyBypassRules: buildElectronBypassRules(this.config.noProxy),
-          })
-        } else {
-          await session.setProxy({ mode: 'direct' })
-        }
-      } catch (error) {
-        console.warn('proxy config: session.setProxy failed', error)
-      }
+    const sessions = new Set(this.additionalSessions)
+    const defaultSession = this.getSession?.()
+    if (defaultSession) {
+      sessions.add(defaultSession)
+    }
+    for (const targetSession of sessions) {
+      await this.applyToSession(targetSession, { register: false })
     }
     this.applied = true
   }

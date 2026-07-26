@@ -78,6 +78,7 @@ export function buildAgentTurnContext(input: {
   activeDocument?: DataDocument | null
   activeTable?: DataTable | null
   browserContext?: AgentBrowserContext
+  browserEnabled?: boolean
   paneContext?: AgentPaneContext
   activeWorkflowId?: string
 }): AgentTurnContext {
@@ -90,6 +91,6 @@ export function buildAgentTurnContext(input: {
     paneContext: input.paneContext,
     activeWorkflowId: input.activeWorkflowId,
     taskMode: 'auto',
-    browserEnabled: false,
+    browserEnabled: input.browserEnabled === true,
   }
 }

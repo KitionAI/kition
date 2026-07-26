@@ -32,6 +32,14 @@
       "intro": "intro.md",
       "seeds": [],
       "tableFile": "Product Content Studio.kitable"
+    },
+    {
+      "slug": "web-research",
+      "displayName": "Web Research",
+      "summary": "Open any supported website in the embedded browser and continue the requested research, capture, or output task with one Agent prompt.",
+      "intro": "info.md",
+      "seeds": [],
+      "tableFile": null
     }
   ]
 }
