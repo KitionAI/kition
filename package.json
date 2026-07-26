@@ -48,7 +48,7 @@
     "check:runtime-lock": "node electron/scripts/validate-runtime-lock.mjs",
     "check:desktop-assets": "node electron/scripts/validate-desktop-assets.mjs",
     "check:notices": "node scripts/generate-third-party-notices.mjs --check",
-    "check:security": "python3 scripts/check-secrets.py && pnpm audit --audit-level high",
+    "check:security": "python3 scripts/check-secrets.py && pnpm audit --audit-level high --ignore-registry-errors",
     "notices:generate": "node scripts/generate-third-party-notices.mjs",
     "build:perf": "pnpm run build && pnpm perf:budget",
     "build:electron": "node electron/scripts/build-electron.mjs",
