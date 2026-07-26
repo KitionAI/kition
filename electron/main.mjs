@@ -22,6 +22,7 @@ import { WorkspaceRegistry } from './workspace-registry.mjs'
 import { createWorkspaceWatcher } from './workspace-watcher.mjs'
 import { isTrustedWindowNavigation, normalizeExternalURL } from './external-url.mjs'
 import { createBeforeQuitHandler } from './quit-lifecycle.mjs'
+import { findKitionDeepLink, KITION_PROTOCOL_SCHEME, normalizeKitionDeepLink } from './deep-link.mjs'
 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url))
 const DARK_WINDOW_BACKGROUND = '#1b1e22'
@@ -83,6 +84,57 @@ let workspaceWatcher = null
 let updateManager = null
 let cachedBetaChannel = false
 let cachedAutoCheck = true
+let pendingKitionDeepLink = findKitionDeepLink(process.argv)
+
+const hasSingleInstanceLock = app.requestSingleInstanceLock()
+if (!hasSingleInstanceLock) {
+  app.quit()
+}
+
+function registerKitionProtocolClient() {
+  if (process.defaultApp && process.argv[1]) {
+    return app.setAsDefaultProtocolClient(
+      KITION_PROTOCOL_SCHEME,
+      process.execPath,
+      [path.resolve(process.argv[1])],
+    )
+  }
+  return app.setAsDefaultProtocolClient(KITION_PROTOCOL_SCHEME)
+}
+
+async function focusKitionWindow(rawURL) {
+  const deepLink = normalizeKitionDeepLink(rawURL)
+  if (!deepLink) return
+
+  pendingKitionDeepLink = deepLink
+  if (!app.isReady()) return
+
+  await showKitionWindow()
+  pendingKitionDeepLink = ''
+}
+
+async function showKitionWindow() {
+  const win = await createMainWindow()
+  if (win.isMinimized()) win.restore()
+  win.show()
+  win.focus()
+}
+
+if (hasSingleInstanceLock) {
+  app.on('second-instance', (_event, commandLine) => {
+    const deepLink = findKitionDeepLink(commandLine)
+    if (deepLink) {
+      void focusKitionWindow(deepLink)
+      return
+    }
+    void showKitionWindow()
+  })
+}
+
+app.on('open-url', (event, rawURL) => {
+  event.preventDefault()
+  void focusKitionWindow(rawURL)
+})
 
 function buildBrowserSessionTestMockStatus(request = {}, overrides = {}) {
   if (!browserSessionTestMock || typeof browserSessionTestMock !== 'object') {
@@ -1907,11 +1959,15 @@ app.on('before-quit', createBeforeQuitHandler({
   },
 }))
 
-app.whenReady().then(() => {
+if (hasSingleInstanceLock) app.whenReady().then(async () => {
   if (process.platform === 'darwin' && app.dock?.setIcon) {
     try {
       app.dock.setIcon(path.join(moduleDir, 'icon.png'))
     } catch {}
   }
-  void bootstrapElectron()
+  registerKitionProtocolClient()
+  await bootstrapElectron()
+  if (pendingKitionDeepLink) {
+    await focusKitionWindow(pendingKitionDeepLink)
+  }
 })
