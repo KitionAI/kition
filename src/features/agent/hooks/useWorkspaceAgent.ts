@@ -525,7 +525,11 @@ export function useWorkspaceAgent({
         language: getLanguageNameForLocale(getCurrentLocale()),
         signal: abortController.signal,
         onEvent: (event) => {
-          if (event.type === 'user_message' && event.chat_message) {
+          if (
+            event.type === 'user_message' &&
+            event.chat_message &&
+            followup?.hideUserMessage !== true
+          ) {
             setAgentMessages((current) => ({
               ...current,
               [sessionId]: [...(current[sessionId] || []).filter((item) => item.id !== optimisticUserMessage.id), event.chat_message!],

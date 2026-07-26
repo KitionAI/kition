@@ -424,6 +424,61 @@ describe('useWorkspaceAgent hosted console restore', () => {
     container.remove()
   })
 
+  it('does not expose a hidden browser continuation when the runtime echoes it', async () => {
+    const { useWorkspaceAgent } = await import('./useWorkspaceAgent')
+    let latest: any = null
+    mocks.streamAgentMessage.mockImplementation(async (args: any) => {
+      args.onEvent?.({
+        type: 'user_message',
+        chat_message: {
+          id: 1701,
+          session_id: 17,
+          user_id: 1,
+          role: 'user',
+          content: args.content,
+          status: 'completed',
+          created_at: '2026-07-26T00:00:00.000Z',
+        },
+      })
+      return { extra_data: {} }
+    })
+
+    function Harness() {
+      latest = useWorkspaceAgent({
+        settings: createOpenAISettings(),
+        rootPath: '/test/workspace',
+        onError: vi.fn(),
+        onFeedback: vi.fn(),
+      })
+      return null
+    }
+
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    let root: Root | null = null
+    await act(async () => {
+      root = createRoot(container)
+      root.render(createElement(Harness))
+    })
+    await act(async () => {
+      latest.sendAgentContextAction(17, {
+        content: 'Continue the original browser task.',
+        browserAutoContinue: true,
+      })
+      await flushAsyncWork()
+    })
+
+    expect(mocks.streamAgentMessage).toHaveBeenCalledWith(expect.objectContaining({
+      hideUserMessage: true,
+    }))
+    expect(latest.agentMessages[17]).toEqual([])
+
+    await act(async () => {
+      root?.unmount()
+    })
+    container.remove()
+  })
+
   it('binds every turn to the current document without requiring an explicit mention', async () => {
     const { useWorkspaceAgent } = await import('./useWorkspaceAgent')
     let latest: any = null
