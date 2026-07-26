@@ -1,8 +1,10 @@
 import { expect, test, type Page } from '@playwright/test'
+import { readFileSync } from 'node:fs'
 
 import { mockLocalWorkspaceApi } from './helpers/mockApi'
 import { getWorkspaceStorageKey } from '../src/features/onboarding/workspaceStorageKey'
 
+const APP_VERSION = (JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string }).version
 const SYSTEM_THEME_VAULT_PATH = '/tmp/kition-system-theme-vault'
 const SYSTEM_THEME_DOC_PATH = 'complex-document-template.md'
 
@@ -522,7 +524,7 @@ test.describe('app shell navigation', () => {
     expect(enabledState.installationId).toMatch(/^anon_/)
     expect(enabledState.queue).toContainEqual(expect.objectContaining({
       name: 'app_started',
-      app_version: '0.1.0',
+      app_version: APP_VERSION,
       build_identity: 'dev',
       platform: 'web',
     }))
