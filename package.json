@@ -1,6 +1,6 @@
 {
   "name": "kition",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "license": "AGPL-3.0-only",
   "description": "Kition — documents, structured tables, AI agents, and visual workflows",
@@ -54,6 +54,7 @@
     "build:electron": "node electron/scripts/build-electron.mjs",
     "build:unpack": "pnpm run build:electron -- --dir",
     "dist:electron": "node electron/scripts/build-electron.mjs --publish never",
+    "release:github": "node scripts/release-github.mjs",
     "test:agent:unit": "vitest run --config tooling/vitest.config.ts src/features/agent/hooks/useTableAgentSession.spec.ts src/features/agent/lib/tableAgentShared.spec.ts src/features/workspace/lib/browserTabs.spec.ts src/features/workspace/lib/workspacePersistence.spec.ts",
     "test:agent:e2e": "playwright test --config tooling/playwright.config.ts e2e/table-agent-browser-flow.spec.ts e2e/table-agent-document-flow.spec.ts --workers=1",
     "test:agent:stable": "pnpm run test:agent:unit && pnpm run test:agent:e2e",

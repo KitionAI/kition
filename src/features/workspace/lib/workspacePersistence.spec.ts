@@ -27,10 +27,15 @@ describe('workspacePersistence browser tabs', () => {
     window.localStorage.clear()
   })
 
-  it('drops persisted browser tabs while the feature is deferred', () => {
+  it('restores persisted browser tabs when the feature is enabled', () => {
     writeWorkspaceTabs(ROOT_A, [browserTab])
 
-    expect(readWorkspaceTabs(ROOT_A)).toEqual([])
+    expect(readWorkspaceTabs(ROOT_A)).toEqual([
+      expect.objectContaining({
+        ...browserTab,
+        title: 'youtube.com · Travel Leads · San Diego travel',
+      }),
+    ])
   })
 
   it('keeps each workspace tab list isolated under its own rootPath', () => {
@@ -44,7 +49,12 @@ describe('workspacePersistence browser tabs', () => {
       },
     ])
 
-    expect(readWorkspaceTabs(ROOT_A)).toEqual([])
+    expect(readWorkspaceTabs(ROOT_A)).toEqual([
+      expect.objectContaining({
+        ...browserTab,
+        title: 'youtube.com · Travel Leads · San Diego travel',
+      }),
+    ])
     expect(readWorkspaceTabs(ROOT_B)).toEqual([
       {
         id: 'document:notes.md',
@@ -70,7 +80,12 @@ describe('workspacePersistence browser tabs', () => {
       },
     ])
 
-    expect(readWorkspaceTabs(ROOT_A)).toEqual([])
+    expect(readWorkspaceTabs(ROOT_A)).toEqual([
+      expect.objectContaining({
+        ...browserTab,
+        title: 'youtube.com · Travel Leads · San Diego travel',
+      }),
+    ])
   })
 
   it('writing an empty list removes that workspace’s slot', () => {
@@ -89,7 +104,12 @@ describe('workspacePersistence browser tabs', () => {
       JSON.stringify([browserTab]),
     )
 
-    expect(readWorkspaceTabs(ROOT_A)).toEqual([])
+    expect(readWorkspaceTabs(ROOT_A)).toEqual([
+      expect.objectContaining({
+        ...browserTab,
+        title: 'youtube.com · Travel Leads · San Diego travel',
+      }),
+    ])
     // Legacy key gets cleaned up.
     expect(window.localStorage.getItem('kition.document.workspace-tabs.v1')).toBeNull()
     // Subsequent reads from other workspaces do not see the migrated data.

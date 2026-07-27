@@ -163,6 +163,20 @@ prepares the runtime locally, packages the desktop clients without private
 source access, uploads only end-user installers and updater metadata to the
 `KitionAI/kition` Release, and publishes it.
 
+Maintainers can run the complete guarded release sequence from the repository
+root with:
+
+```bash
+pnpm release:github 0.1.3
+```
+
+The command aligns the client and runtime-lock versions, runs the full local
+repository checks and mandatory table E2E gate, commits and pushes the release
+version, waits for CI, dispatches both unified release workflows, waits for the
+private runtime assets, and verifies the published installer assets. Use
+`--dry-run` to validate the local release context without changing files or
+remote state. Non-interactive environments must pass `--yes`.
+
 The public `release` environment requires:
 
 ```text

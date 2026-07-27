@@ -3,6 +3,7 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
+import { readRuntimeLock } from '../runtime-manager.mjs'
 import { buildSidecar } from './build-sidecar.mjs'
 
 const cleanupPaths: string[] = []
@@ -29,10 +30,11 @@ describe('buildSidecar', () => {
     delete process.env.KITION_RUNTIME_ASSET_DIR
 
     const result = await buildSidecar(output, 'darwin', 'arm64')
+    const lock = await readRuntimeLock()
 
     expect(result.source).toBe('explicit')
-    expect(result.runtimeVersion).toBe('0.1.2')
-    expect(result.protocolVersion).toBe(1)
+    expect(result.runtimeVersion).toBe(lock.runtimeVersion)
+    expect(result.protocolVersion).toBe(lock.protocolVersion)
     expect(await fs.readFile(result.outputPath, 'utf8')).toContain('exit 0')
     expect(result.sha256).toBe(createHash('sha256').update(await fs.readFile(result.outputPath)).digest('hex'))
   })

@@ -112,7 +112,6 @@ describe('AgentChatPanel progressCard slot', () => {
     expect(panel).not.toBeNull()
     // No sentinel present when prop is not passed
     expect(container.querySelector('[data-testid="pc-sentinel"]')).toBeNull()
-    expect(container.querySelector('.agent-ai-browser-toggle')).toBeNull()
   })
 
   it('renders progressCard when provided and positions it after messages container', async () => {

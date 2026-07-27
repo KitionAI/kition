@@ -46,13 +46,14 @@ afterEach(() => {
 })
 
 describe('WorkspaceSidebar', () => {
-  it('keeps the deferred Browser tab out of the sidebar', async () => {
+  it('shows the Browser tab when the feature is enabled', async () => {
     await mount(defaultProps({ showBrowserTab: true }))
 
     const tabs = Array.from(container.querySelectorAll('.workspace-sidebar-tabs button'))
     expect(tabs.map((tab) => tab.getAttribute('aria-label'))).toEqual([
       'Files',
       'Search',
+      'Browser',
     ])
     expect(container.querySelector('[data-testid="workspace-sidebar-workflows-button"]')).toBeNull()
   })
