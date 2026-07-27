@@ -158,11 +158,12 @@ public_repository
 
 It checks out the selected private `KitionAI/kition-runtime` revision with a
 secret-backed credential and produces a short-lived Actions artifact containing
-the manifest, checksums, SBOM/provenance, and all platform archives. The
-maintainer CLI downloads that artifact, verifies its allowlisted filenames,
-stages it on the installer draft, uploads it to the `KitionAI/kition-dev`
-runtime draft, and publishes the runtime Release. Private source is never
-uploaded as an artifact or stored in either public repository.
+the manifest, checksums, SBOM/provenance, and all platform archives. After
+verification, the workflow uploads those files to the `KitionAI/kition-dev`
+runtime draft, stages them on the installer draft, and publishes the runtime
+Release. The maintainer CLI waits for and verifies both Release states before
+dispatching desktop packaging. Private source is never uploaded as an artifact
+or stored in either public repository.
 
 `Publish Unified Release` verifies the published developer runtime assets,
 prepares the runtime locally, packages the desktop clients without private

@@ -413,25 +413,6 @@ function dispatchRuntime(options) {
   ])
 }
 
-function releaseAssetFiles(directory, version, requireArtifacts) {
-  const entries = fs.readdirSync(directory, { withFileTypes: true })
-  if (entries.some((entry) => !entry.isFile())) {
-    throw new Error('Runtime artifact must contain files at its root only')
-  }
-  const names = entries.map((entry) => entry.name).sort()
-  const allowed = new Set(runtimeArtifactNames(version))
-  const unexpected = names.filter((name) => !allowed.has(name))
-  if (unexpected.length) {
-    throw new Error(`Runtime artifact contains unexpected files: ${unexpected.join(', ')}`)
-  }
-  const required = requireArtifacts ? runtimeArtifactNames(version) : runtimeAssetNames(version)
-  const missing = required.filter((name) => !names.includes(name))
-  if (missing.length) {
-    throw new Error(`Runtime artifact is missing files: ${missing.join(', ')}`)
-  }
-  return names.map((name) => path.join(directory, name))
-}
-
 function uploadReleaseFiles(repository, tag, files) {
   const release = viewRelease(repository, tag)
   if (!release?.isDraft) {
@@ -457,11 +438,15 @@ function downloadReleaseAssets(repository, version, directory) {
   ]
   for (const name of runtimeAssetNames(version)) args.push('--pattern', name)
   run('gh', args)
-  return releaseAssetFiles(directory, version, false)
+  const files = runtimeAssetNames(version).map((name) => path.join(directory, name))
+  const missing = files.filter((filePath) => !fs.existsSync(filePath))
+  if (missing.length) {
+    throw new Error(`Downloaded runtime Release is missing files: ${missing.map((filePath) => path.basename(filePath)).join(', ')}`)
+  }
+  return files
 }
 
 async function buildAndStageRuntime(options, timeoutAt) {
-  const tag = `v${options.version}`
   ensureRuntimeDraft(options.version)
   const dispatchedAfter = new Date().toISOString()
   const runtimeCommit = repositoryRefSha(RUNTIME_SOURCE_REPOSITORY, options.runtimeRef)
@@ -469,28 +454,13 @@ async function buildAndStageRuntime(options, timeoutAt) {
   console.log(`[release] runtime source ${options.runtimeRef} resolves to ${runtimeCommit.slice(0, 12)}`)
   console.log(`[release] dispatching ${RUNTIME_BUILD_REPOSITORY}/${RUNTIME_WORKFLOW}`)
   dispatchRuntime(options)
-  const runInfo = await watchWorkflow({
+  await watchWorkflow({
     repository: RUNTIME_BUILD_REPOSITORY,
     workflow: RUNTIME_WORKFLOW,
     headSha,
     dispatchedAfter,
     timeoutAt,
   })
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'kition-runtime-release-'))
-  try {
-    run('gh', [
-      'run', 'download', String(runInfo.databaseId),
-      '--repo', RUNTIME_BUILD_REPOSITORY,
-      '--name', `runtime-release-assets-${options.version}`,
-      '--dir', directory,
-    ])
-    const files = releaseAssetFiles(directory, options.version, true)
-    uploadReleaseFiles(RUNTIME_REPOSITORY, tag, files)
-    uploadReleaseFiles(PUBLIC_REPOSITORY, tag, files)
-    publishRuntimeRelease(options.version)
-  } finally {
-    fs.rmSync(directory, { recursive: true, force: true })
-  }
 }
 
 function copyRuntimeAssets(sourceRepository, targetRepository, version) {
