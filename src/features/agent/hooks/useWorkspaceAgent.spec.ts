@@ -479,6 +479,104 @@ describe('useWorkspaceAgent hosted console restore', () => {
     container.remove()
   })
 
+  it('bounds repeated browser handoffs and preserves the original request', async () => {
+    const { useWorkspaceAgent } = await import('./useWorkspaceAgent')
+    let latest: any = null
+    let eventId = 1800
+
+    mocks.streamAgentMessage.mockImplementation(async (args: any) => {
+      eventId += 1
+      args.onEvent?.({
+        type: 'agent_event',
+        event: {
+          id: eventId,
+          session_id: 18,
+          user_id: 1,
+          event_type: 'browser.open_required',
+          stage: 'browser',
+          status: 'completed',
+          label: 'Browser required',
+          message: 'Use the current page.',
+          data: {
+            action: 'open_embedded_browser',
+            adapter: 'youtube',
+            command: 'extract-list',
+            entity_type: 'video',
+            host: 'youtube.com',
+          },
+          created_at: '2026-07-26T00:00:00.000Z',
+        },
+      })
+      return { extra_data: {} }
+    })
+
+    function Harness() {
+      latest = useWorkspaceAgent({
+        settings: createOpenAISettings(),
+        rootPath: '/test/workspace',
+        onError: vi.fn(),
+        onFeedback: vi.fn(),
+      })
+      return null
+    }
+
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    let root: Root | null = null
+    await act(async () => {
+      root = createRoot(container)
+      root.render(createElement(Harness))
+    })
+
+    const originalRequest = 'Open youtube.com and collect every loaded video card.'
+    await act(async () => {
+      latest.setAgentDraft(18, originalRequest)
+    })
+    await act(async () => {
+      latest.sendAiComposerMessage(18)
+      await flushAsyncWork()
+    })
+    expect(latest.agentEvents[18].at(-1)?.data).toMatchObject({
+      client_auto_continue: true,
+      client_auto_continue_attempt: 1,
+      client_auto_continue_exhausted: false,
+      client_original_request: originalRequest,
+    })
+
+    await act(async () => {
+      latest.sendAgentContextAction(18, {
+        content: 'Continue the current browser task.',
+        browserAutoContinue: true,
+        browserAutoContinueAttempt: 3,
+        browserOriginalRequest: originalRequest,
+      })
+      await flushAsyncWork()
+    })
+    expect(latest.agentEvents[18].at(-1)?.data).toMatchObject({
+      client_auto_continue: false,
+      client_auto_continue_attempt: 3,
+      client_auto_continue_exhausted: true,
+      client_original_request: originalRequest,
+    })
+
+    await act(async () => {
+      latest.sendAgentContextAction(18, {
+        content: 'Report browser extraction as blocked.',
+        browserAutoContinue: true,
+        browserAutoContinueAttempt: 3,
+        browserAutoContinueFinal: true,
+        browserOriginalRequest: originalRequest,
+      })
+      await flushAsyncWork()
+    })
+    expect(latest.agentEvents[18].at(-1)?.data).not.toHaveProperty('client_auto_continue')
+
+    await act(async () => {
+      root?.unmount()
+    })
+    container.remove()
+  })
+
   it('binds every turn to the current document without requiring an explicit mention', async () => {
     const { useWorkspaceAgent } = await import('./useWorkspaceAgent')
     let latest: any = null

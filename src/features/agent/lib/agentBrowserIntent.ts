@@ -5,6 +5,8 @@ const FOLLOWUP_TASK_PATTERN = /\b(?:analyze|capture|check|click|collect|compare|
 const EXPLICIT_URL_PATTERN = /https?:\/\/[^\s<>"'`]+/i
 const BARE_WEB_TARGET_PATTERN = /(?:www\.[a-z0-9.-]+|localhost(?::\d+)?|(?:\d{1,3}\.){3}\d{1,3}|[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?)+)(?:\/[^\s<>"'`]*)?/i
 
+export const MAX_BROWSER_AUTO_CONTINUE_ATTEMPTS = 3
+
 export type AgentBrowserIntent = {
   browserEnabled: boolean
   continueAfterOpen: boolean

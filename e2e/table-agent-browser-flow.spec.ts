@@ -121,7 +121,7 @@ async function installMockBrowserBridge(page: Page, options: MockBrowserBridgeOp
     })
   }, {
     entities: options.entities,
-    pageUrl: options.pageUrl ?? 'https://www.youtube.com/feed/trending',
+    pageUrl: options.pageUrl ?? 'https://www.youtube.com/',
     pageTitle: options.pageTitle ?? 'YouTube',
     host: options.host ?? 'youtube.com',
     heading: options.heading ?? 'Videos',
@@ -498,19 +498,28 @@ test('table agent opens youtube.com and automatically resumes a combined capture
       streamRequestCount += 1
       const requestBody = route.request().postDataJSON() as Record<string, unknown>
       streamRequests.push(requestBody)
-      const prefetchedEntities = (
-        requestBody.browser_context as { extracted_entities?: unknown[] } | undefined
-      )?.extracted_entities
-      if (!prefetchedEntities?.length) {
+      const browserContext = requestBody.browser_context as {
+        adapter?: string
+        command?: string
+        entity_type?: string
+        extracted_entities?: unknown[]
+      } | undefined
+      const hasRequestedExtraction =
+        browserContext?.adapter === 'youtube' &&
+        browserContext.command === 'extract-list' &&
+        browserContext.entity_type === 'video' &&
+        Boolean(browserContext.extracted_entities?.length)
+      if (streamRequestCount <= 2) {
+        const eventBaseId = 9200 + (streamRequestCount * 10)
         await fulfillNdjson(route, [
           {
             type: 'user_message',
             chat_message: {
-              id: 9201,
+              id: eventBaseId + 1,
               session_id: 701,
               user_id: 1,
               role: 'user',
-              content: capturePrompt,
+              content: String(requestBody.content || ''),
               status: 'completed',
               created_at: now,
             },
@@ -518,7 +527,7 @@ test('table agent opens youtube.com and automatically resumes a combined capture
           {
             type: 'agent_event',
             event: {
-              id: 9202,
+              id: eventBaseId + 2,
               session_id: 701,
               user_id: 1,
               event_type: 'browser.open_required',
@@ -526,17 +535,17 @@ test('table agent opens youtube.com and automatically resumes a combined capture
               status: 'completed',
               label: 'Open browser tab',
               message: 'Open youtube.com in the browser tab first.',
-	              data: {
-	                action: 'open_embedded_browser',
-	                provider: 'generic-web',
-	                adapter: 'youtube',
-	                command: 'feed',
-	                entity_type: 'video',
-	                host: 'youtube.com',
-	                url: 'https://www.youtube.com/feed/trending',
-	                task_hint: 'open_site',
-	                followup_mode: 'wait',
-	              },
+              data: {
+                action: 'open_embedded_browser',
+                provider: 'generic-web',
+                adapter: 'youtube',
+                command: 'extract-list',
+                entity_type: 'video',
+                host: 'youtube.com',
+                url: 'https://www.youtube.com/',
+                task_hint: 'open_site',
+                followup_mode: 'wait',
+              },
               created_at: now,
             },
           },
@@ -553,6 +562,27 @@ test('table agent opens youtube.com and automatically resumes a combined capture
                 status: 'idle',
                 created_at: now,
                 updated_at: now,
+              },
+            },
+          },
+        ])
+        return
+      }
+
+      if (!hasRequestedExtraction) {
+        await fulfillNdjson(route, [
+          {
+            type: 'done',
+            done: true,
+            extra_data: {
+              message: {
+                id: 9250,
+                session_id: 701,
+                user_id: 1,
+                role: 'assistant',
+                content: 'Browser extraction metadata was missing.',
+                status: 'failed',
+                created_at: now,
               },
             },
           },
@@ -733,14 +763,36 @@ test('table agent opens youtube.com and automatically resumes a combined capture
       sidebar.getByText('Synced 6 records from youtube.com into the current table.'),
     ).toBeVisible()
     await expect(userMessages).toHaveCount(1)
-    expect(streamRequests).toHaveLength(1)
+    expect(streamRequests).toHaveLength(3)
     expect(streamRequests[0]).toMatchObject({
       content: capturePrompt,
       browser_enabled: true,
       hide_user_message: false,
       browser_context: {
         host: 'youtube.com',
-        page_url: 'https://www.youtube.com/feed/trending',
+        page_url: 'https://www.youtube.com/',
+        extracted_entities: browserEntities,
+      },
+    })
+    expect(streamRequests[1]).toMatchObject({
+      browser_enabled: true,
+      hide_user_message: true,
+      browser_context: {
+        adapter: 'youtube',
+        command: 'extract-list',
+        entity_type: 'video',
+        host: 'youtube.com',
+        extracted_entities: browserEntities,
+      },
+    })
+    expect(streamRequests[2]).toMatchObject({
+      browser_enabled: true,
+      hide_user_message: true,
+      browser_context: {
+        adapter: 'youtube',
+        command: 'extract-list',
+        entity_type: 'video',
+        host: 'youtube.com',
         extracted_entities: browserEntities,
       },
     })

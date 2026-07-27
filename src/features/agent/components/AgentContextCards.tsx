@@ -1,37 +1,6 @@
 import type { AgentEvent, AgentTablePlanContext } from '@/api/agent'
 import { useTranslation } from 'react-i18next'
 
-export type AgentBrowserOpenRequest = {
-  action: string
-  provider?: string
-  host?: string
-  url?: string
-  query?: string
-  message?: string
-  autoContinue?: boolean
-  originalRequest?: string
-}
-
-export function readBrowserOpenRequest(event: AgentEvent): AgentBrowserOpenRequest {
-  const data = (event.data && typeof event.data === 'object' ? event.data : {}) as Record<string, unknown>
-  return {
-    action: String(data.action || '').trim() || 'open_embedded_browser',
-    provider: typeof data.provider === 'string' ? data.provider : undefined,
-    host: typeof data.host === 'string' ? data.host : undefined,
-    url: typeof data.url === 'string' ? data.url : undefined,
-    query: typeof data.query === 'string' ? data.query : undefined,
-    autoContinue: data.client_auto_continue === true,
-    originalRequest:
-      typeof data.client_original_request === 'string'
-        ? data.client_original_request
-        : undefined,
-    message:
-      typeof event.message === 'string' && event.message
-        ? event.message
-        : 'The agent needs you to open the page in the browser before continuing.',
-  }
-}
-
 function readTablePlan(event: AgentEvent): AgentTablePlanContext | null {
   if (!event.data || typeof event.data !== 'object') {
     return null

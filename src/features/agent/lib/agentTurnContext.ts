@@ -25,6 +25,13 @@ export type AgentTurnContext = {
 export function mapBrowserPageContextToAgentBrowserContext(
   pageContext: BrowserPageContext | null | undefined,
   provider?: BrowserSessionProvider,
+  extraction?: {
+    action?: string
+    adapter?: string
+    command?: string
+    entityType?: string
+    host?: string
+  },
 ): AgentBrowserContext | undefined {
   if (!pageContext) {
     return undefined
@@ -32,7 +39,11 @@ export function mapBrowserPageContextToAgentBrowserContext(
   return {
     source: 'desktop_embedded_browser',
     platform: provider || pageContext.provider,
-    host: pageContext.hostname,
+    action: extraction?.action,
+    adapter: extraction?.adapter,
+    command: extraction?.command,
+    entity_type: extraction?.entityType,
+    host: pageContext.hostname || extraction?.host,
     page_url: pageContext.page_url,
     page_title: pageContext.page_title,
     logged_in: pageContext.logged_in,

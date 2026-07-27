@@ -15,8 +15,10 @@ import { getKitionAccountLinks } from '@/features/account/lib/accountLinks'
 import { isKitionAccountSessionUsable } from '@/features/account/lib/accountState'
 import {
   type AgentBrowserOpenRequest,
+  extractAgentBrowserContinuationContext,
+  findLatestBrowserContinuationRequest,
   readBrowserOpenRequest,
-} from '@/features/agent/components/AgentContextCards'
+} from '@/features/agent/lib/agentBrowserContinuation'
 import {
   buildAgentBrowserTabPayload,
   dispatchOpenWorkspaceBrowserTab,
@@ -25,6 +27,7 @@ import {
   buildBrowserAutoContinuePrompt,
   buildBrowserUnavailablePrompt,
   extractAgentWebTarget,
+  MAX_BROWSER_AUTO_CONTINUE_ATTEMPTS,
 } from '@/features/agent/lib/agentBrowserIntent'
 import { preflightAgentBrowserContext } from '@/features/agent/lib/agentBrowserPreflight'
 import {
@@ -2056,21 +2059,13 @@ export function WorkspaceScreen({
     }
 
     const sessionId = activeWorkspaceAgentSession.id
-    let latestRequest: AgentBrowserOpenRequest | null = null
-    let latestEventId: number | null = null
-    for (const event of agentEvents[sessionId] || []) {
-      if (event.event_type !== 'browser.open_required') {
-        continue
-      }
-      const request = readBrowserOpenRequest(event)
-      if (request.autoContinue) {
-        latestRequest = request
-        latestEventId = event.id
-      }
-    }
-    if (!latestRequest || latestEventId === null) {
+    const continuation = findLatestBrowserContinuationRequest(
+      agentEvents[sessionId] || [],
+    )
+    if (!continuation) {
       return
     }
+    const { eventId: latestEventId, request: latestRequest } = continuation
 
     const eventKey = `${sessionId}:${latestEventId}`
     if (browserAutoContinueEventKeysRef.current.has(eventKey)) {
@@ -2087,11 +2082,46 @@ export function WorkspaceScreen({
 
     browserAutoContinueEventKeysRef.current.add(eventKey)
     setAgentBrowserEnabled(true)
-    sendAgentContextAction(sessionId, {
-      content: browserPanelPhase === 'ready'
-        ? buildBrowserAutoContinuePrompt(latestRequest.originalRequest || '')
-        : buildBrowserUnavailablePrompt(latestRequest.originalRequest || ''),
-      browserAutoContinue: true,
+    const originalRequest = latestRequest.originalRequest || ''
+    const attempt = latestRequest.autoContinueAttempt || 1
+    if (
+      browserPanelPhase !== 'ready' ||
+      latestRequest.autoContinueExhausted ||
+      attempt > MAX_BROWSER_AUTO_CONTINUE_ATTEMPTS
+    ) {
+      sendAgentContextAction(sessionId, {
+        content: buildBrowserUnavailablePrompt(originalRequest),
+        browserAutoContinue: true,
+        browserAutoContinueAttempt: attempt,
+        browserAutoContinueFinal: true,
+        browserOriginalRequest: originalRequest,
+      })
+      return
+    }
+
+    void extractAgentBrowserContinuationContext({
+      target: {
+        provider: activeBrowserTab.provider,
+        profileId: activeBrowserTab.profileId,
+        host: activeBrowserTab.host,
+      },
+      request: latestRequest,
+    }).then((browserContext) => {
+      sendAgentContextAction(sessionId, {
+        content: buildBrowserAutoContinuePrompt(originalRequest),
+        browserAutoContinue: true,
+        browserAutoContinueAttempt: attempt,
+        browserOriginalRequest: originalRequest,
+        browserContext,
+      })
+    }).catch(() => {
+      sendAgentContextAction(sessionId, {
+        content: buildBrowserUnavailablePrompt(originalRequest),
+        browserAutoContinue: true,
+        browserAutoContinueAttempt: attempt,
+        browserAutoContinueFinal: true,
+        browserOriginalRequest: originalRequest,
+      })
     })
   }, [
     activeBrowserTab,

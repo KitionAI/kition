@@ -30,7 +30,10 @@ import {
   type AgentMentionableDocument,
 } from '@/features/agent/lib/documentMentions'
 import { resolveAgentDocumentTarget } from '@/features/agent/lib/agentDocumentTargeting'
-import { analyzeAgentBrowserIntent } from '@/features/agent/lib/agentBrowserIntent'
+import {
+  analyzeAgentBrowserIntent,
+  MAX_BROWSER_AUTO_CONTINUE_ATTEMPTS,
+} from '@/features/agent/lib/agentBrowserIntent'
 import {
   buildAgentModelOptions,
   resolveAgentModelKey,
@@ -356,6 +359,10 @@ export function useWorkspaceAgent({
       executionMode?: AgentExecutionMode
       tablePlanContext?: AgentTablePlanContext
       browserAutoContinue?: boolean
+      browserAutoContinueAttempt?: number
+      browserAutoContinueFinal?: boolean
+      browserOriginalRequest?: string
+      browserContext?: AgentBrowserContext
     },
   ) => {
     const content = (followup?.content ?? agentDrafts[sessionId] ?? '').trim()
@@ -515,7 +522,8 @@ export function useWorkspaceAgent({
         taskMode: turnContext?.taskMode,
         browserEnabled:
           turnContext?.browserEnabled === true || browserIntent.browserEnabled,
-        browserContext: preparedBrowserContext || turnContext?.browserContext,
+        browserContext:
+          followup?.browserContext || preparedBrowserContext || turnContext?.browserContext,
         executionMode: followup?.executionMode,
         tablePlanContext: followup?.tablePlanContext,
         hideUserMessage: followup?.hideUserMessage === true,
@@ -681,19 +689,36 @@ export function useWorkspaceAgent({
           }
 
           if (event.type === 'agent_event' && event.event) {
-            const nextEvent =
+            const currentBrowserAttempt = Math.max(
+              0,
+              Math.floor(followup?.browserAutoContinueAttempt || 0),
+            )
+            const isContinuableBrowserOpen =
               event.event.event_type === 'browser.open_required' &&
-              browserIntent.continueAfterOpen &&
-              followup?.browserAutoContinue !== true
-                ? {
-                    ...event.event,
-                    data: {
-                      ...(event.event.data || {}),
-                      client_auto_continue: true,
-                      client_original_request: content,
-                    },
-                  }
-                : event.event
+              followup?.browserAutoContinueFinal !== true &&
+              (browserIntent.continueAfterOpen || followup?.browserAutoContinue === true)
+            const shouldAutoContinue =
+              isContinuableBrowserOpen &&
+              currentBrowserAttempt < MAX_BROWSER_AUTO_CONTINUE_ATTEMPTS
+            const autoContinueExhausted =
+              isContinuableBrowserOpen &&
+              followup?.browserAutoContinue === true &&
+              currentBrowserAttempt >= MAX_BROWSER_AUTO_CONTINUE_ATTEMPTS
+            const nextEvent = shouldAutoContinue || autoContinueExhausted
+              ? {
+                  ...event.event,
+                  data: {
+                    ...(event.event.data || {}),
+                    client_auto_continue: shouldAutoContinue,
+                    client_auto_continue_attempt: shouldAutoContinue
+                      ? currentBrowserAttempt + 1
+                      : currentBrowserAttempt,
+                    client_auto_continue_exhausted: autoContinueExhausted,
+                    client_original_request:
+                      followup?.browserOriginalRequest || content,
+                  },
+                }
+              : event.event
             setAgentEvents((current) => {
               const existing = current[sessionId] || []
               const next = existing.some((item) => item.id === nextEvent.id)
@@ -783,6 +808,10 @@ export function useWorkspaceAgent({
       executionMode?: AgentExecutionMode
       tablePlanContext?: AgentTablePlanContext
       browserAutoContinue?: boolean
+      browserAutoContinueAttempt?: number
+      browserAutoContinueFinal?: boolean
+      browserOriginalRequest?: string
+      browserContext?: AgentBrowserContext
     },
   ) => {
     void sendAgentMessage(sessionId, {
@@ -791,6 +820,10 @@ export function useWorkspaceAgent({
       executionMode: input.executionMode,
       tablePlanContext: input.tablePlanContext,
       browserAutoContinue: input.browserAutoContinue,
+      browserAutoContinueAttempt: input.browserAutoContinueAttempt,
+      browserAutoContinueFinal: input.browserAutoContinueFinal,
+      browserOriginalRequest: input.browserOriginalRequest,
+      browserContext: input.browserContext,
     })
   }, [sendAgentMessage])
 
