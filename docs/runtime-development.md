@@ -139,9 +139,11 @@ Only CI injects an official `rc` or `stable` identity. Local commands do not
 expose environment-specific build targets. Local full-stack development can
 still override the Portal endpoint explicitly with `KITION_PORTAL_BASE_URL`.
 
-`Prepare Unified Release` validates the package/runtime lock, creates separate
-draft Releases in `KitionAI/kition` and `KitionAI/kition-dev`, and dispatches
-the private runtime workflow.
+`Prepare Unified Release` validates the package/runtime lock and creates the
+immutable public tag and installer draft. When an optional cross-repository
+dispatch token is configured, it can also create the runtime draft and start
+the private build. The maintainer CLI does not require that token because it
+uses the maintainer's existing `gh` authentication for cross-repository work.
 
 The private `KitionAI/kition-runtime` workflow must be named
 `build-release-assets.yml` and accept these `workflow_dispatch` inputs:
@@ -153,10 +155,11 @@ protocol_version
 public_repository
 ```
 
-It uploads the manifest, checksums, SBOM/provenance, and platform archives to
-the existing `KitionAI/kition-dev` draft Release and publishes it after
-verification. Its upload credential must be a GitHub App or fine-grained token
-restricted to Release contents in `KitionAI/kition-dev`.
+It produces a short-lived Actions artifact containing the manifest, checksums,
+SBOM/provenance, and all platform archives. The maintainer CLI downloads that
+artifact, verifies its allowlisted filenames, stages it on the installer draft,
+uploads it to the `KitionAI/kition-dev` runtime draft, and publishes the runtime
+Release. Private source never enters either public repository.
 
 `Publish Unified Release` verifies the published developer runtime assets,
 prepares the runtime locally, packages the desktop clients without private
@@ -172,18 +175,31 @@ pnpm release:github 0.1.3
 
 The command aligns the client and runtime-lock versions, runs the full local
 repository checks and mandatory table E2E gate, commits and pushes the release
-version, waits for CI, dispatches both unified release workflows, waits for the
-private runtime assets, and verifies the published installer assets. Use
+version, waits for CI, dispatches the private runtime and public packaging
+workflows, waits for the runtime assets, and verifies the published installer
+assets. Use
 `--dry-run` to validate the local release context without changing files or
-remote state. Non-interactive environments must pass `--yes`.
+remote state. If a release stops after its version commit, tag, draft, or
+runtime build, resume it without repeating local checks using:
+
+```bash
+pnpm release:github 0.1.3 --resume
+```
+
+Non-interactive environments must pass `--yes`. The authenticated `gh` account
+must have Actions access to `KitionAI/kition-runtime` and Release write access
+to `KitionAI/kition` and `KitionAI/kition-dev`.
 
 The public `release` environment requires:
 
 ```text
-KITION_RUNTIME_DISPATCH_TOKEN
 MACOS_CSC_P12_BASE64
 MACOS_CSC_KEY_PASSWORD
 APPLE_API_KEY_ID
 APPLE_API_ISSUER
 APPLE_API_KEY_P8
 ```
+
+`KITION_RUNTIME_DISPATCH_TOKEN` is optional and is used only when maintainers
+want the manual `Prepare Unified Release` workflow to dispatch the private
+runtime build without the CLI.

@@ -3,6 +3,7 @@ import {
   alignReleaseVersion,
   desktopAssetNames,
   parseReleaseArguments,
+  runtimeArtifactNames,
   runtimeAssetNames,
   selectWorkflowRun,
   validateRef,
@@ -14,6 +15,7 @@ describe('release-github CLI', () => {
     expect(parseReleaseArguments([
       '0.1.3',
       '--yes',
+      '--resume',
       '--runtime-ref',
       'release/runtime-0.1.3',
       '--timeout-minutes',
@@ -25,6 +27,7 @@ describe('release-github CLI', () => {
       timeoutMinutes: 120,
       yes: true,
       dryRun: false,
+      resume: true,
       forcePrepare: false,
       help: false,
     })
@@ -61,6 +64,7 @@ describe('release-github CLI', () => {
 
   it('builds the required runtime and desktop asset lists', () => {
     expect(runtimeAssetNames('0.1.3')).toContain('kition-runtime-0.1.3-darwin-arm64.tar.gz')
+    expect(runtimeArtifactNames('0.1.3')).toContain('runtime-sbom-linux-x64.spdx.json')
     expect(desktopAssetNames('0.1.3')).toContain('Kition-0.1.3-windows-x64-setup.exe')
     expect(desktopAssetNames('0.1.3')).toContain('latest-mac.yml')
   })

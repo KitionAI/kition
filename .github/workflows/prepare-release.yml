@@ -120,8 +120,8 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -z "$GH_TOKEN" ]]; then
-            echo "KITION_RUNTIME_DISPATCH_TOKEN is required" >&2
-            exit 1
+            echo "KITION_RUNTIME_DISPATCH_TOKEN is not configured; the maintainer CLI will create the runtime draft."
+            exit 0
           fi
           releases_json="$(gh api "repos/${RUNTIME_REPOSITORY}/releases?per_page=100")"
           release_count="$(jq --arg tag "$TAG" 'map(select(.tag_name == $tag)) | length' <<<"$releases_json")"
@@ -153,8 +153,8 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -z "$GH_TOKEN" ]]; then
-            echo "KITION_RUNTIME_DISPATCH_TOKEN is required" >&2
-            exit 1
+            echo "KITION_RUNTIME_DISPATCH_TOKEN is not configured; the maintainer CLI will dispatch the runtime build."
+            exit 0
           fi
           gh api \
             --method POST \
@@ -163,11 +163,11 @@ jobs:
             -f "inputs[version]=${VERSION}" \
             -f "inputs[release_tag]=${RELEASE_TAG}" \
             -f "inputs[protocol_version]=${PROTOCOL_VERSION}" \
-            -f "inputs[public_repository]=${RUNTIME_REPOSITORY}"
+            -f "inputs[public_repository]=${GITHUB_REPOSITORY}"
 
       - name: Report next step
         shell: bash
         env:
           TAG: ${{ steps.version.outputs.tag }}
         run: |
-          echo "Draft installer and runtime Releases for $TAG are prepared. Wait for the private runtime workflow to publish the runtime Release, then run Publish Unified Release."
+          echo "The installer draft for $TAG is prepared. The maintainer CLI stages the private runtime artifacts and dispatches Publish Unified Release."
