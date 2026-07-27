@@ -145,21 +145,24 @@ dispatch token is configured, it can also create the runtime draft and start
 the private build. The maintainer CLI does not require that token because it
 uses the maintainer's existing `gh` authentication for cross-repository work.
 
-The private `KitionAI/kition-runtime` workflow must be named
+The public `KitionAI/kition-dev` workflow must be named
 `build-release-assets.yml` and accept these `workflow_dispatch` inputs:
 
 ```text
 version
 release_tag
 protocol_version
+runtime_ref
 public_repository
 ```
 
-It produces a short-lived Actions artifact containing the manifest, checksums,
-SBOM/provenance, and all platform archives. The maintainer CLI downloads that
-artifact, verifies its allowlisted filenames, stages it on the installer draft,
-uploads it to the `KitionAI/kition-dev` runtime draft, and publishes the runtime
-Release. Private source never enters either public repository.
+It checks out the selected private `KitionAI/kition-runtime` revision with a
+secret-backed credential and produces a short-lived Actions artifact containing
+the manifest, checksums, SBOM/provenance, and all platform archives. The
+maintainer CLI downloads that artifact, verifies its allowlisted filenames,
+stages it on the installer draft, uploads it to the `KitionAI/kition-dev`
+runtime draft, and publishes the runtime Release. Private source is never
+uploaded as an artifact or stored in either public repository.
 
 `Publish Unified Release` verifies the published developer runtime assets,
 prepares the runtime locally, packages the desktop clients without private
@@ -187,7 +190,8 @@ pnpm release:github 0.1.3 --resume
 ```
 
 Non-interactive environments must pass `--yes`. The authenticated `gh` account
-must have Actions access to `KitionAI/kition-runtime` and Release write access
+must have Actions access to `KitionAI/kition-dev`, source read access to
+`KitionAI/kition-runtime`, and Release write access
 to `KitionAI/kition` and `KitionAI/kition-dev`.
 
 The public `release` environment requires:

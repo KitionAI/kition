@@ -10,7 +10,8 @@ import { fileURLToPath } from 'node:url'
 
 const PUBLIC_REPOSITORY = 'KitionAI/kition'
 const RUNTIME_REPOSITORY = 'KitionAI/kition-dev'
-const PRIVATE_RUNTIME_REPOSITORY = 'KitionAI/kition-runtime'
+const RUNTIME_BUILD_REPOSITORY = 'KitionAI/kition-dev'
+const RUNTIME_SOURCE_REPOSITORY = 'KitionAI/kition-runtime'
 const PUBLISH_WORKFLOW = 'publish-release.yml'
 const RUNTIME_WORKFLOW = 'build-release-assets.yml'
 const CI_WORKFLOW = 'ci.yml'
@@ -390,9 +391,9 @@ function ensureRuntimeDraft(version) {
   return viewRelease(RUNTIME_REPOSITORY, tag)
 }
 
-function runtimeRefSha(ref) {
+function repositoryRefSha(repository, ref) {
   return capture('gh', [
-    'api', '--method', 'GET', `repos/${PRIVATE_RUNTIME_REPOSITORY}/commits`,
+    'api', '--method', 'GET', `repos/${repository}/commits`,
     '-f', `sha=${ref}`,
     '-f', 'per_page=1',
     '--jq', '.[0].sha',
@@ -402,11 +403,12 @@ function runtimeRefSha(ref) {
 function dispatchRuntime(options) {
   run('gh', [
     'workflow', 'run', RUNTIME_WORKFLOW,
-    '--repo', PRIVATE_RUNTIME_REPOSITORY,
-    '--ref', options.runtimeRef,
+    '--repo', RUNTIME_BUILD_REPOSITORY,
+    '--ref', DEFAULT_SOURCE_REF,
     '-f', `version=${options.version}`,
     '-f', `release_tag=v${options.version}`,
     '-f', `protocol_version=${options.protocolVersion}`,
+    '-f', `runtime_ref=${options.runtimeRef}`,
     '-f', `public_repository=${PUBLIC_REPOSITORY}`,
   ])
 }
@@ -462,11 +464,13 @@ async function buildAndStageRuntime(options, timeoutAt) {
   const tag = `v${options.version}`
   ensureRuntimeDraft(options.version)
   const dispatchedAfter = new Date().toISOString()
-  const headSha = runtimeRefSha(options.runtimeRef)
-  console.log(`[release] dispatching ${PRIVATE_RUNTIME_REPOSITORY}/${RUNTIME_WORKFLOW}`)
+  const runtimeCommit = repositoryRefSha(RUNTIME_SOURCE_REPOSITORY, options.runtimeRef)
+  const headSha = repositoryRefSha(RUNTIME_BUILD_REPOSITORY, DEFAULT_SOURCE_REF)
+  console.log(`[release] runtime source ${options.runtimeRef} resolves to ${runtimeCommit.slice(0, 12)}`)
+  console.log(`[release] dispatching ${RUNTIME_BUILD_REPOSITORY}/${RUNTIME_WORKFLOW}`)
   dispatchRuntime(options)
   const runInfo = await watchWorkflow({
-    repository: PRIVATE_RUNTIME_REPOSITORY,
+    repository: RUNTIME_BUILD_REPOSITORY,
     workflow: RUNTIME_WORKFLOW,
     headSha,
     dispatchedAfter,
@@ -476,7 +480,7 @@ async function buildAndStageRuntime(options, timeoutAt) {
   try {
     run('gh', [
       'run', 'download', String(runInfo.databaseId),
-      '--repo', PRIVATE_RUNTIME_REPOSITORY,
+      '--repo', RUNTIME_BUILD_REPOSITORY,
       '--name', `runtime-release-assets-${options.version}`,
       '--dir', directory,
     ])
@@ -521,7 +525,7 @@ async function waitForRuntimeAssets(version, timeoutAt) {
     }
     await sleep(POLL_INTERVAL_MS)
   }
-  throw new Error(`Timed out waiting for runtime assets for ${tag}. Re-run with --force-prepare after checking the private runtime workflow.`)
+  throw new Error(`Timed out waiting for runtime assets for ${tag}. Re-run with --force-prepare after checking the runtime build workflow.`)
 }
 
 function dispatchPublish(options) {

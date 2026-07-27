@@ -158,11 +158,12 @@ jobs:
           fi
           gh api \
             --method POST \
-            repos/KitionAI/kition-runtime/actions/workflows/build-release-assets.yml/dispatches \
-            -f "ref=${RUNTIME_REF}" \
+            repos/KitionAI/kition-dev/actions/workflows/build-release-assets.yml/dispatches \
+            -f "ref=main" \
             -f "inputs[version]=${VERSION}" \
             -f "inputs[release_tag]=${RELEASE_TAG}" \
             -f "inputs[protocol_version]=${PROTOCOL_VERSION}" \
+            -f "inputs[runtime_ref]=${RUNTIME_REF}" \
             -f "inputs[public_repository]=${GITHUB_REPOSITORY}"
 
       - name: Report next step
