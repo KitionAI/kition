@@ -9,7 +9,6 @@ import {
   type WorkflowTemplate,
 } from '@/features/workflow/templates'
 import type { WorkflowRouteContext } from '@/features/workflow/lib/openWorkflowRoute'
-import { useEmailSyncCapability } from '@/features/emailSync/useTableEmailSyncWorkflows'
 import {
   Dialog,
   DialogContent,
@@ -46,7 +45,7 @@ type WorkspaceWorkflowCreateModeDialogProps = {
   busyTemplateId?: string
   errorMessage?: string | null
   emailSyncTablePath?: string
-  onSelectEmailSync?: (tablePath: string) => void
+  onSelectEmailSync?: (tablePath: string, runAfterSave: 'full') => void
 }
 
 const EMPTY_TABLE_OPTIONS: WorkflowRouteContext[] = []
@@ -100,8 +99,7 @@ export function WorkspaceWorkflowCreateModeDialog({
     () => getBuiltinTemplates(t, { tableName: effectiveContext?.tableName }),
     [effectiveContext?.tableName, t],
   )
-  const emailSyncAvailable = useEmailSyncCapability(open && Boolean(emailSyncTablePath))
-  const showEmailSyncTemplate = Boolean(emailSyncTablePath && onSelectEmailSync && emailSyncAvailable)
+  const showEmailSyncTemplate = Boolean(emailSyncTablePath && onSelectEmailSync)
   const templateCount = templates.length + (showEmailSyncTemplate ? 1 : 0)
   const disabled = Boolean(busyKind)
 
@@ -250,7 +248,7 @@ export function WorkspaceWorkflowCreateModeDialog({
                 <button
                   type="button"
                   data-testid="email-sync-workflow-template"
-                  onClick={() => onSelectEmailSync(emailSyncTablePath!)}
+                  onClick={() => onSelectEmailSync(emailSyncTablePath!, 'full')}
                   className="group flex h-full w-full flex-col items-stretch gap-3 rounded-xl border border-border bg-card p-4 text-left card-interactive hover:border-primary/30 hover:shadow-soft"
                 >
                   <div className="flex items-center">
@@ -261,9 +259,9 @@ export function WorkspaceWorkflowCreateModeDialog({
                       <Table2 className="size-4" />
                     </span>
                   </div>
-                  <span className="block text-sm font-medium text-foreground">Sync an email inbox</span>
+                  <span className="block text-sm font-medium text-foreground">Full email inbox sync</span>
                   <span className="-mt-1 block text-xs leading-relaxed text-muted-foreground">
-                    Import IMAP messages into this table and save full content as Markdown.
+                    Import every message from the selected IMAP mailbox into this table, then keep later runs incremental.
                   </span>
                 </button>
               ) : null}

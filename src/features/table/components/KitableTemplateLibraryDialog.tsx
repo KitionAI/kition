@@ -9,12 +9,14 @@ import {
   Database,
   Eye,
   Flame,
+  Inbox,
   ListChecks,
   LayoutDashboard,
   LoaderCircle,
   Plus,
   RotateCcw,
   Rocket,
+  RefreshCw,
   Sparkles,
   Tags,
   UserRoundSearch,
@@ -531,6 +533,29 @@ function KitableTemplatePreviewCard({
 
 function renderPreview(preview: KitableTemplatePreview) {
   switch (preview) {
+    case 'email-inbox':
+      return (
+        <span className="absolute inset-0 bg-gradient-to-br from-tint-lavender via-background to-tint-sky p-4">
+          <span className="flex items-center justify-between text-foreground">
+            <span>
+              <span className="block text-base font-semibold">Email Inbox Sync</span>
+              <span className="mt-0.5 block text-[10px] text-muted-foreground">Full history first · incremental updates later</span>
+            </span>
+            <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground shadow-sm">
+              <Inbox className="size-4" />
+            </span>
+          </span>
+          <span className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+            <span className="rounded-md border border-border bg-background p-2 shadow-sm">
+              <span className="block text-[9px] font-semibold text-foreground">IMAP mailbox</span>
+              <span className="mt-2 block h-1.5 w-full rounded bg-foreground/15" />
+              <span className="mt-1 block h-1.5 w-3/4 rounded bg-foreground/10" />
+            </span>
+            <RefreshCw className="size-4 text-primary" />
+            <MiniTable rows={3} />
+          </span>
+        </span>
+      )
     case 'task-tracker':
       return (
         <span className="absolute inset-0 bg-tint-gray p-4">

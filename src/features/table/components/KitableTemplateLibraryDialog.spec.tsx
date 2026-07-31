@@ -45,9 +45,27 @@ describe('KitableTemplateLibraryDialog', () => {
     expect(document.body.textContent).toContain('New table workspace')
     expect(document.querySelectorAll('button[data-testid^="workspace-template-category-"]').length).toBe(8)
     expect(document.querySelector('[data-testid="kitable-template-task-tracker"]')).not.toBeNull()
+    expect(document.querySelector('[data-testid="kitable-template-email-inbox-sync"]')).not.toBeNull()
     expect(document.querySelector('[data-testid="kitable-template-product-launch-website"]')).not.toBeNull()
     expect(document.querySelector('[data-testid="kitable-template-blank"]')).not.toBeNull()
     expect(document.querySelector('textarea')).toBeNull()
+  })
+
+  it('shows the email inbox template with its full-sync automation resource', async () => {
+    await mount()
+
+    const card = document.querySelector('[data-testid="kitable-template-email-inbox-sync"]') as HTMLButtonElement
+    expect(card.textContent).toContain('Email Inbox Sync')
+    expect(card.textContent).toContain('Full history first')
+
+    await act(async () => {
+      card.click()
+      await Promise.resolve()
+    })
+
+    expect(document.querySelector('[data-testid="kitable-template-resource-inbox"]')).not.toBeNull()
+    expect(document.querySelector('[data-testid="kitable-template-resource-full-inbox-sync"]')).not.toBeNull()
+    expect(document.body.textContent).toContain('Structure only')
   })
 
   it('filters the catalog by the selected operational category', async () => {

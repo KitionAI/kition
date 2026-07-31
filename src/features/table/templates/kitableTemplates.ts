@@ -11,6 +11,7 @@ import { createBatchProductDesignerTemplate } from './batchProductDesignerTempla
 import { getOperationalKitableTemplates } from './kitableOperationalTemplates'
 import { createTaskTrackerTemplate } from './taskTrackerTemplate'
 import { createThumbnailGeneratorTemplate } from './thumbnailGeneratorTemplate'
+import { EMAIL_INBOX_SYNC_TEMPLATE_ID } from '@/features/emailSync/templateSetup'
 
 export type KitableTemplateCategory =
   | 'recommended'
@@ -32,6 +33,7 @@ export type KitableTemplatePreview =
   | 'call-queue'
   | 'crm'
   | 'designer'
+  | 'email-inbox'
   | 'landing-page'
   | 'product-launch'
   | 'restaurant'
@@ -111,6 +113,11 @@ export type KitableTemplateDefinition = {
   tables: KitableTemplateTable[]
   dashboards?: DataDashboardSeed[]
   assetManifestPath?: string
+  localOnly?: boolean
+  afterCreate?: {
+    type: 'email-sync'
+    runAfterSave: 'full'
+  }
 }
 
 const gridView: DataViewSeed = { title: 'Grid', type: 'grid' }
@@ -179,6 +186,13 @@ const solutionResources: Record<string, Omit<KitableTemplateSnapshot, 'version' 
       { id: 'guest-confirmations', kind: 'automation', title: 'Guest confirmations', description: 'Coordinates reservation and event confirmations.' },
     ],
   },
+  [EMAIL_INBOX_SYNC_TEMPLATE_ID]: {
+    defaultResourceId: 'inbox',
+    resources: [
+      { id: 'inbox', kind: 'table', title: 'Inbox', description: 'Mailbox messages, metadata, and local Markdown links.', tableTitle: 'Inbox' },
+      { id: 'full-inbox-sync', kind: 'automation', title: 'Full inbox sync', description: 'Imports the selected mailbox history first, then keeps later runs incremental.' },
+    ],
+  },
 }
 
 const solutionCategories: Record<string, KitableTemplateCategory[]> = {
@@ -190,6 +204,7 @@ const solutionCategories: Record<string, KitableTemplateCategory[]> = {
   'batch-product-designer': ['popular', 'ai-workflows', 'commerce'],
   'simple-client-crm': ['recommended', 'popular', 'sales'],
   'lumiere-restaurant': ['popular', 'commerce'],
+  [EMAIL_INBOX_SYNC_TEMPLATE_ID]: ['recommended', 'ai-workflows'],
 }
 
 export function getBuiltinKitableTemplates(
@@ -198,6 +213,36 @@ export function getBuiltinKitableTemplates(
   const templates: KitableTemplateSeed[] = [
     createTaskTrackerTemplate(t),
     createThumbnailGeneratorTemplate(t),
+    {
+      id: EMAIL_INBOX_SYNC_TEMPLATE_ID,
+      title: t('templateLibrary.templates.emailInboxSync.title'),
+      description: t('templateLibrary.templates.emailInboxSync.description'),
+      documentDescription: 'Import a complete IMAP mailbox into a structured Inbox table with Markdown-backed message records.',
+      usageCount: 628,
+      preview: 'email-inbox',
+      icon: 'mail',
+      color: 'violet',
+      localOnly: true,
+      afterCreate: { type: 'email-sync', runAfterSave: 'full' },
+      tables: [{
+        title: 'Inbox',
+        description: 'Synchronized mailbox messages and local document links.',
+        fields: [
+          { title: 'Subject', type: 'text', primary: true, readonly: true },
+          { title: 'From', type: 'text', readonly: true },
+          { title: 'To', type: 'long_text', readonly: true },
+          { title: 'Received At', type: 'datetime', readonly: true },
+          { title: 'Mailbox', type: 'single_select', readonly: true, options: { choices: ['INBOX'] } },
+          { title: 'Preview', type: 'long_text', readonly: true },
+          { title: 'Has Attachments', type: 'checkbox', readonly: true },
+          { title: 'Status', type: 'single_select', readonly: true, options: { choices: ['Imported', 'Updated', 'Error'] } },
+          { title: 'Message ID', type: 'text', readonly: true },
+          { title: 'Document', type: 'document_link', readonly: true },
+        ],
+        views: [gridView],
+        records: [],
+      }],
+    },
     {
       id: 'leads-landing-page',
       title: t('templateLibrary.templates.leadsLandingPage.title'),
@@ -441,7 +486,7 @@ export function getBuiltinKitableTemplates(
           : template.id === 'task-tracker'
             ? 2
             : 1,
-      includeData: true,
+      includeData: template.id !== EMAIL_INBOX_SYNC_TEMPLATE_ID,
       ...solutionResources[template.id],
     },
   }))

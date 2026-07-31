@@ -87,6 +87,7 @@ export async function createTableWorkspaceEntry({
   )
   const supportsTemplatePackages = Boolean(
     template
+    && !template.localOnly
     && runtimeCapabilities.includes('template_packages')
     && (!template.dashboards?.length || runtimeCapabilities.includes('template_dashboards'))
     && (!template.assetManifestPath || runtimeCapabilities.includes('template_assets'))

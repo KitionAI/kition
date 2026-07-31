@@ -25,6 +25,7 @@ export function EmailSyncWorkflowEditor({
   showSchedule = true,
   enableByDefault = false,
   defaultIntervalMinutes = 15,
+  runAfterSave,
 }: {
   tablePath: string
   workflow?: EmailSyncWorkflow | null
@@ -34,6 +35,7 @@ export function EmailSyncWorkflowEditor({
   showSchedule?: boolean
   enableByDefault?: boolean
   defaultIntervalMinutes?: number
+  runAfterSave?: 'full'
 }) {
   const initialProviderId = workflow
     ? resolveEmailProviderId('imap', workflow.connection.host, workflow.connection.username)
@@ -165,6 +167,7 @@ export function EmailSyncWorkflowEditor({
           showSchedule={showSchedule}
           enableByDefault={enableByDefault}
           defaultIntervalMinutes={defaultIntervalMinutes}
+          runAfterSave={runAfterSave}
         />
       </main>
     </div>

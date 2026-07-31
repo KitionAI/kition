@@ -195,6 +195,19 @@ describe('createTableWorkspaceEntry', () => {
     expect(result.tableId).toBe(11)
   })
 
+  it('creates local-only templates in the client even when runtime packages are available', async () => {
+    vi.mocked(getDesktopBackendStatus).mockResolvedValue({ capabilities: ['template_packages'] } as never)
+
+    await createTableWorkspaceEntry({
+      rootPath: '/workspace',
+      template: { ...template, localOnly: true },
+    })
+
+    expect(instantiateTemplatePackage).not.toHaveBeenCalled()
+    expect(createDataDocument).toHaveBeenCalled()
+    expect(createDataRecord).toHaveBeenCalledTimes(2)
+  })
+
   it('resolves template AI source fields after runtime IDs are assigned', async () => {
     const aiTemplate: KitableTemplateDefinition = {
       ...template,

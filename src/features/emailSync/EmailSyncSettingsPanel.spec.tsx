@@ -10,7 +10,6 @@ import {
   startEmailSyncRun,
 } from './api'
 import { EmailSyncSettingsPanel, runtimeSupportsEmailSync } from './EmailSyncSettingsPanel'
-import { requestEmailSyncSetup } from './setupRequest'
 import type { EmailProviderId } from '@/features/emailProviders/emailProviderCatalog'
 
 vi.mock('@/services/desktop', () => ({
@@ -157,9 +156,32 @@ describe('EmailSyncSettingsPanel', () => {
     }))
   })
 
+  it('starts a full sync after saving the full inbox template', async () => {
+    const onSaved = vi.fn()
+    await mount('163', { runAfterSave: 'full', onSaved })
+    await act(async () => {
+      Array.from(container.querySelectorAll('button')).find((button) => button.textContent?.includes('Advanced'))?.click()
+    })
+    setValue('email-sync-username', 'person@163.com')
+    setValue('email-sync-password', 'app-password')
+
+    const saveButton = container.querySelector<HTMLButtonElement>('[data-testid="email-sync-save"]')
+    expect(saveButton?.textContent).toContain('Save and sync all')
+    await act(async () => {
+      saveButton?.click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    await flush()
+
+    expect(startEmailSyncRun).toHaveBeenCalledWith('mail_1', 'full')
+    expect(onSaved).toHaveBeenCalledWith(workflow)
+  })
+
   it('opens a prefilled setup form requested from a table workflow tab', async () => {
-    requestEmailSyncSetup('Getting Started/Guides/Email Automation/Inbox.kitable')
-    await mount()
+    await mount('gmail', {
+      requestedTablePath: 'Getting Started/Guides/Email Automation/Inbox.kitable',
+    })
 
     expect(container.querySelector('[data-testid="email-sync-table-select"]')?.textContent).toContain('Inbox')
     expect(container.textContent).toContain('Current Kitable: Getting Started/Guides/Email Automation/Inbox.kitable')
@@ -167,8 +189,7 @@ describe('EmailSyncSettingsPanel', () => {
 
   it('keeps a requested table in create mode when the provider has another destination', async () => {
     vi.mocked(listEmailSyncWorkflows).mockResolvedValue([workflow as never])
-    requestEmailSyncSetup('Projects/Customer Requests.kitable')
-    await mount('163')
+    await mount('163', { requestedTablePath: 'Projects/Customer Requests.kitable' })
 
     expect(container.textContent).toContain('Current Kitable: Projects/Customer Requests.kitable')
     expect(container.querySelector('[data-testid="email-sync-status-summary"]')).toBeNull()
@@ -181,8 +202,7 @@ describe('EmailSyncSettingsPanel', () => {
         { id: 13, name: 'touchpoints', title: 'Touchpoints' },
       ],
     } as never)
-    requestEmailSyncSetup('Projects/Sales.kitable')
-    await mount('163')
+    await mount('163', { requestedTablePath: 'Projects/Sales.kitable' })
     await flush()
 
     await act(async () => {

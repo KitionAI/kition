@@ -9,10 +9,11 @@ describe('getBuiltinKitableTemplates', () => {
   it('provides a categorized template catalog with seeded records', () => {
     const templates = getBuiltinKitableTemplates(t)
 
-    expect(templates).toHaveLength(12)
+    expect(templates).toHaveLength(13)
     expect(templates.map((template) => template.id)).toEqual([
       'task-tracker',
       'thumbnail-generator',
+      'email-inbox-sync',
       'leads-landing-page',
       'sdr-cold-call-manager',
       'product-launch-website',
@@ -24,10 +25,39 @@ describe('getBuiltinKitableTemplates', () => {
       'recruitment-pipeline',
       'project-gantt',
     ])
-    expect(templates.every((template) => template.tables.every((table) => table.records.length > 0))).toBe(true)
-    expect(templates.every((template) => template.snapshot.includeData)).toBe(true)
+    expect(templates
+      .filter((template) => template.id !== 'email-inbox-sync')
+      .every((template) => template.tables.every((table) => table.records.length > 0))).toBe(true)
     expect(templates.every((template) => template.categories?.length)).toBe(true)
     expect(templates.every((template) => template.snapshot.resources.some((resource) => resource.id === template.snapshot.defaultResourceId))).toBe(true)
+  })
+
+  it('ships a visible structure-only inbox template that starts with a full sync', () => {
+    const template = getBuiltinKitableTemplates(t).find((item) => item.id === 'email-inbox-sync')
+
+    expect(template).toMatchObject({
+      localOnly: true,
+      afterCreate: { type: 'email-sync', runAfterSave: 'full' },
+      snapshot: {
+        includeData: false,
+        defaultResourceId: 'inbox',
+      },
+    })
+    expect(template?.snapshot.resources.map((resource) => resource.kind)).toEqual(['table', 'automation'])
+    expect(template?.tables[0]?.title).toBe('Inbox')
+    expect(template?.tables[0]?.records).toEqual([])
+    expect(template?.tables[0]?.fields.map((field) => field.title)).toEqual([
+      'Subject',
+      'From',
+      'To',
+      'Received At',
+      'Mailbox',
+      'Preview',
+      'Has Attachments',
+      'Status',
+      'Message ID',
+      'Document',
+    ])
   })
 
   it('keeps every sample value aligned with a declared field title', () => {

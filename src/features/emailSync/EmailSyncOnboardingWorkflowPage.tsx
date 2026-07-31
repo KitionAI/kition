@@ -12,9 +12,11 @@ import { EmailSyncWorkflowEditor } from './EmailSyncWorkflowEditor'
 export function EmailSyncOnboardingWorkflowPage({
   tablePath,
   onSaved,
+  runAfterSave,
 }: {
   tablePath: string
   onSaved: (workflow: EmailSyncWorkflow) => void
+  runAfterSave?: 'full'
 }) {
   const [activePanel, setActivePanel] = useState<'trigger' | 'action' | null>(null)
   const [schedule, setSchedule] = useState({ enabled: true, intervalMinutes: 15 })
@@ -93,6 +95,7 @@ export function EmailSyncOnboardingWorkflowPage({
               enableByDefault={schedule.enabled}
               defaultIntervalMinutes={schedule.intervalMinutes}
               tablePath={tablePath}
+              runAfterSave={runAfterSave}
               onCancel={() => setActivePanel(null)}
               onSaved={onSaved}
             />

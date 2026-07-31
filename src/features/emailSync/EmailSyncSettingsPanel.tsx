@@ -31,7 +31,6 @@ import {
   type EmailSyncWorkflow,
   type SaveEmailSyncWorkflowInput,
 } from './api'
-import { consumeEmailSyncSetupRequest } from './setupRequest'
 import type { SharedEmailProviderAccount } from '@/features/emailProviders/emailProviderAccount'
 import { normalizeEmailSyncTablePath } from './useTableEmailSyncWorkflows'
 import { EmailSyncTableSelect } from './EmailSyncTableSelect'
@@ -69,6 +68,7 @@ type EmailSyncSettingsPanelProps = {
   showHeader?: boolean
   showRunActions?: boolean
   showSchedule?: boolean
+  runAfterSave?: 'full'
 }
 
 export function runtimeSupportsEmailSync(status: DesktopBackendStatus | null): boolean {
@@ -87,6 +87,7 @@ export function EmailSyncSettingsPanel({
   showHeader = true,
   showRunActions = true,
   showSchedule = true,
+  runAfterSave,
 }: EmailSyncSettingsPanelProps) {
   const confirm = useConfirm()
   const provider = getEmailProvider(providerId)
@@ -97,7 +98,7 @@ export function EmailSyncSettingsPanel({
   const [busy, setBusy] = useState('')
   const [feedback, setFeedback] = useState('')
   const [requestedTablePath] = useState(() => (
-    requestedTablePathProp || consumeEmailSyncSetupRequest()?.tablePath || ''
+    requestedTablePathProp || ''
   ))
   const [form, setForm] = useState<FormState>(() => (
     emptyForm(providerId, requestedTablePath, enableByDefault, defaultIntervalMinutes)
@@ -214,7 +215,19 @@ export function EmailSyncSettingsPanel({
         ? await updateEmailSyncWorkflow(form.id, input)
         : await createEmailSyncWorkflow(input)
       await sharedAccount?.onCredentialAccepted()
-      setFeedback(`Connected ${saved.connection.username}.`)
+      if (runAfterSave) {
+        try {
+          await startEmailSyncRun(saved.id, runAfterSave)
+        } catch (runError) {
+          await refresh()
+          const detail = runError instanceof Error ? runError.message : 'Full sync could not start'
+          setError(`Workflow saved, but full sync could not start. ${detail}`)
+          return
+        }
+      }
+      setFeedback(runAfterSave
+        ? `Connected ${saved.connection.username}. Full sync started.`
+        : `Connected ${saved.connection.username}.`)
       await refresh()
       onSaved?.(saved)
     } catch (requestError) {
@@ -441,7 +454,7 @@ export function EmailSyncSettingsPanel({
       <footer className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
         <Button disabled={!canSubmit || busy !== ''} onClick={() => void save()} data-testid="email-sync-save">
           {busy === 'save' ? <LoaderCircle className="size-4 animate-spin" /> : null}
-          Save workflow
+          {runAfterSave ? 'Save and sync all' : 'Save workflow'}
         </Button>
         {workflow && showRunActions ? (
           <>

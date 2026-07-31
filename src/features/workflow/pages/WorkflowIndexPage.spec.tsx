@@ -7,6 +7,8 @@ import { useWorkflowLauncherState } from '@/features/workflow/hooks/useWorkflowL
 import { useWorkflowTableLabels } from '@/features/workflow/hooks/useWorkflowTableLabels'
 import { ensureOnboardingWorkflow } from '@/features/workflow/lib/ensureOnboardingWorkflow'
 import { useTableEmailSyncWorkflows } from '@/features/emailSync/useTableEmailSyncWorkflows'
+import { requestEmailSyncSetup } from '@/features/emailSync/setupRequest'
+import { isEmailInboxSyncTemplateTable } from '@/features/emailSync/templateSetup'
 import { WorkflowIndexPage } from './WorkflowIndexPage'
 
 ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true
@@ -32,9 +34,18 @@ vi.mock('@/features/emailSync/useTableEmailSyncWorkflows', () => ({
   normalizeEmailSyncTablePath: (path: string) => path.replaceAll('\\', '/').replace(/^\/+/, '').replace(/\/+$/, ''),
   useTableEmailSyncWorkflows: vi.fn(),
 }))
+vi.mock('@/features/emailSync/templateSetup', () => ({
+  isEmailInboxSyncTemplateTable: vi.fn(),
+}))
 vi.mock('@/features/emailSync/EmailSyncOnboardingWorkflowPage', () => ({
-  EmailSyncOnboardingWorkflowPage: ({ tablePath }: { tablePath: string }) => (
-    <div data-testid="mock-email-sync-onboarding-workflow">{tablePath}</div>
+  EmailSyncOnboardingWorkflowPage: ({ tablePath, runAfterSave }: { tablePath: string; runAfterSave?: string }) => (
+    <div
+      data-testid="mock-email-sync-onboarding-workflow"
+      data-table-path={tablePath}
+      data-run-after-save={runAfterSave || ''}
+    >
+      {tablePath}
+    </div>
   ),
 }))
 vi.mock('@/features/emailSync/EmailSyncWorkflowPage', () => ({
@@ -93,15 +104,42 @@ beforeEach(() => {
     latestRuns: {},
     error: '',
   })
+  vi.mocked(isEmailInboxSyncTemplateTable).mockResolvedValue(false)
+  sessionStorage.clear()
 })
 
 afterEach(() => {
   root?.unmount()
   root = null
   container.remove()
+  sessionStorage.clear()
 })
 
 describe('WorkflowIndexPage onboarding workflow preparation', () => {
+  it('opens the email sync workflow canvas when the page mounts after template navigation', async () => {
+    vi.mocked(ensureOnboardingWorkflow).mockResolvedValueOnce({ created: [], existing: [] })
+    requestEmailSyncSetup('Projects/Email Inbox Sync.kitable', { runAfterSave: 'full' })
+
+    await mount('Projects/Email Inbox Sync.kitable')
+
+    const canvas = container.querySelector('[data-testid="mock-email-sync-onboarding-workflow"]')
+    expect(canvas?.getAttribute('data-table-path')).toBe('Projects/Email Inbox Sync.kitable')
+    expect(canvas?.getAttribute('data-run-after-save')).toBe('full')
+    expect(container.querySelector('[data-testid="workflow-index-empty"]')).toBeNull()
+  })
+
+  it('recovers the email sync workflow canvas for an existing template table after navigation was lost', async () => {
+    vi.mocked(ensureOnboardingWorkflow).mockResolvedValueOnce({ created: [], existing: [] })
+    vi.mocked(isEmailInboxSyncTemplateTable).mockResolvedValueOnce(true)
+
+    await mount('Projects/Email Inbox Sync.kitable')
+
+    const canvas = container.querySelector('[data-testid="mock-email-sync-onboarding-workflow"]')
+    expect(canvas?.getAttribute('data-table-path')).toBe('Projects/Email Inbox Sync.kitable')
+    expect(canvas?.getAttribute('data-run-after-save')).toBe('full')
+    expect(container.querySelector('[data-testid="workflow-index-empty"]')).toBeNull()
+  })
+
   it('materializes and opens the lead email workflow for its scoped Kitable', async () => {
     const onSelectWorkflow = await mount()
 

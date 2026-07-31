@@ -25,7 +25,6 @@ import { EMAIL_AUTOMATION_TABLE_PATH } from '@/features/onboarding/onboardingGui
 import { EmailSyncOnboardingWorkflowPage } from '@/features/emailSync/EmailSyncOnboardingWorkflowPage'
 import { EmailSyncWorkflowPage } from '@/features/emailSync/EmailSyncWorkflowPage'
 import { EmailSyncWorkflowTableRow } from '@/features/emailSync/EmailSyncWorkflowTableRow'
-import { EmailSyncWorkflowEditor } from '@/features/emailSync/EmailSyncWorkflowEditor'
 import {
   consumeEmailSyncSetupRequest,
   EMAIL_SYNC_SETUP_REQUEST_EVENT,
@@ -35,6 +34,7 @@ import {
   useTableEmailSyncWorkflows,
 } from '@/features/emailSync/useTableEmailSyncWorkflows'
 import type { EmailSyncRun, EmailSyncWorkflow } from '@/features/emailSync/api'
+import { isEmailInboxSyncTemplateTable } from '@/features/emailSync/templateSetup'
 
 export interface WorkflowIndexPageProps {
   /** Scope to a specific kitable. Filters list and query to workflows bound
@@ -59,6 +59,11 @@ interface IndexPageState {
   latestRuns: Record<string, WorkflowRunRecord | null>
   status: 'loading' | 'done' | 'error'
   error: string
+}
+
+type EmailSyncCanvasRequest = {
+  tablePath: string
+  runAfterSave?: 'full'
 }
 
 const timeStrings: RelativeTimeStrings = {
@@ -86,7 +91,10 @@ export function WorkflowIndexPage({
     error: '',
   })
   const [modeDialogOpen, setModeDialogOpen] = useState(initialModeDialogOpen)
-  const [emailSyncEditorPath, setEmailSyncEditorPath] = useState('')
+  const [emailSyncCanvasRequest, setEmailSyncCanvasRequest] = useState<EmailSyncCanvasRequest | null>(() => (
+    scopedKitablePath ? consumeEmailSyncSetupRequest(scopedKitablePath) : null
+  ))
+  const [emailSyncTemplateTable, setEmailSyncTemplateTable] = useState(false)
   const emailSync = useTableEmailSyncWorkflows(scopedKitablePath)
   const [onboardingPreparation, setOnboardingPreparation] = useState<{
     key: string
@@ -95,6 +103,7 @@ export function WorkflowIndexPage({
   const onboardingKey = scopedKitablePath ? `${rootPath || ''}\u0000${scopedKitablePath}` : ''
   const loadVersionRef = useRef(0)
   const onboardingAttemptRef = useRef('')
+  const emailTemplateSetupAttemptRef = useRef('')
   const onboardingScopeKeyRef = useRef(onboardingKey)
   const mountedRef = useRef(true)
   const onSelectWorkflowRef = useRef(onSelectWorkflow)
@@ -168,20 +177,51 @@ export function WorkflowIndexPage({
     const pendingRequest = scopedKitablePath
       ? consumeEmailSyncSetupRequest(scopedKitablePath)
       : null
-    if (pendingRequest) setEmailSyncEditorPath(pendingRequest.tablePath)
+    if (pendingRequest) setEmailSyncCanvasRequest(pendingRequest)
 
     function handleEmailSyncSetup(event: Event) {
-      const tablePath = String(
-        (event as CustomEvent<{ tablePath?: string }>).detail?.tablePath || '',
-      ).trim()
-      if (tablePath && tablePath === scopedKitablePath) {
+      const detail = (event as CustomEvent<EmailSyncCanvasRequest>).detail
+      const tablePath = String(detail?.tablePath || '').trim()
+      const pendingRequest = scopedKitablePath
+        ? consumeEmailSyncSetupRequest(scopedKitablePath)
+        : null
+      const detailMatches = Boolean(
+        tablePath
+        && scopedKitablePath
+        && normalizeEmailSyncTablePath(tablePath) === normalizeEmailSyncTablePath(scopedKitablePath),
+      )
+      const request = pendingRequest || (detailMatches ? detail : null)
+      if (request && scopedKitablePath) {
         setModeDialogOpen(false)
-        setEmailSyncEditorPath(tablePath)
+        setEmailSyncCanvasRequest({
+          tablePath: scopedKitablePath,
+          ...(request.runAfterSave === 'full' ? { runAfterSave: 'full' } : {}),
+        })
       }
     }
     window.addEventListener(EMAIL_SYNC_SETUP_REQUEST_EVENT, handleEmailSyncSetup)
     return () => window.removeEventListener(EMAIL_SYNC_SETUP_REQUEST_EVENT, handleEmailSyncSetup)
   }, [scopedKitablePath])
+
+  useEffect(() => {
+    if (
+      !scopedKitablePath
+      || emailSync.status !== 'ready'
+      || emailSync.workflows.length > 0
+    ) return
+    const key = `${rootPath || ''}\u0000${normalizeEmailSyncTablePath(scopedKitablePath)}`
+    if (emailTemplateSetupAttemptRef.current === key) return
+    emailTemplateSetupAttemptRef.current = key
+    setEmailSyncTemplateTable(false)
+    let active = true
+    void isEmailInboxSyncTemplateTable(scopedKitablePath, rootPath).then((matches) => {
+      if (!active || !matches) return
+      setEmailSyncTemplateTable(true)
+    })
+    return () => {
+      active = false
+    }
+  }, [emailSync.status, emailSync.workflows.length, rootPath, scopedKitablePath])
 
   // Onboarding table files ship runnable scenarios, not just gallery cards. A
   // single new scenario opens directly; table files with several stay on the
@@ -264,20 +304,11 @@ export function WorkflowIndexPage({
     onSelectWorkflow(workflowId, kitablePath || undefined)
   }
 
-  if (emailSyncEditorPath) {
-    return (
-      <EmailSyncWorkflowEditor
-        tablePath={emailSyncEditorPath}
-        onCancel={() => setEmailSyncEditorPath('')}
-        onSaved={(workflow) => {
-          setEmailSyncEditorPath('')
-          onSelectWorkflow(workflow.id, workflow.target.table_path)
-        }}
-      />
-    )
-  }
+  const usesEmailSyncCanvas = isEmailAutomationOnboardingTable
+    || emailSyncTemplateTable
+    || Boolean(emailSyncCanvasRequest)
 
-  const showEmailSyncOnboardingWorkflow = isEmailAutomationOnboardingTable
+  const showEmailSyncOnboardingWorkflow = usesEmailSyncCanvas
     && state.status === 'done'
     && tableLabelsStatus === 'done'
     && !onboardingPending
@@ -285,7 +316,7 @@ export function WorkflowIndexPage({
     && scopedWorkflows.length === 0
     && emailSync.workflows.length === 0
 
-  const configuredEmailOnboardingWorkflow = isEmailAutomationOnboardingTable
+  const configuredEmailOnboardingWorkflow = usesEmailSyncCanvas
     && state.status === 'done'
     && tableLabelsStatus === 'done'
     && !onboardingPending
@@ -303,7 +334,11 @@ export function WorkflowIndexPage({
     return (
       <EmailSyncOnboardingWorkflowPage
         tablePath={scopedKitablePath!}
-        onSaved={(workflow) => onSelectWorkflow(workflow.id, workflow.target.table_path)}
+        runAfterSave={emailSyncCanvasRequest?.runAfterSave || (emailSyncTemplateTable ? 'full' : undefined)}
+        onSaved={(workflow) => {
+          setEmailSyncCanvasRequest(null)
+          onSelectWorkflow(workflow.id, workflow.target.table_path)
+        }}
       />
     )
   }
@@ -357,9 +392,9 @@ export function WorkflowIndexPage({
           busyTemplateId={launcher.busyTemplateId}
           errorMessage={launcher.error}
           emailSyncTablePath={scopedKitablePath}
-          onSelectEmailSync={(tablePath) => {
+          onSelectEmailSync={(tablePath, runAfterSave) => {
             setModeDialogOpen(false)
-            setEmailSyncEditorPath(tablePath)
+            setEmailSyncCanvasRequest({ tablePath, runAfterSave })
           }}
         />
       )}

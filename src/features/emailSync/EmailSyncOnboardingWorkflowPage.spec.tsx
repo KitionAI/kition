@@ -9,11 +9,13 @@ vi.mock('./EmailSyncWorkflowEditor', () => ({
     enableByDefault: boolean
     defaultIntervalMinutes: number
     tablePath: string
+    runAfterSave?: string
   }) => (
     <div
       data-testid="mock-email-sync-workflow-editor"
       data-enabled={String(props.enableByDefault)}
       data-interval={String(props.defaultIntervalMinutes)}
+      data-run-after-save={props.runAfterSave || ''}
     >
       {props.tablePath}
     </div>
@@ -36,11 +38,12 @@ afterEach(() => {
   container.remove()
 })
 
-async function mount() {
+async function mount(runAfterSave?: 'full') {
   await act(async () => {
     root = createRoot(container)
     root.render(createElement(EmailSyncOnboardingWorkflowPage, {
       tablePath: 'Getting Started/Guides/Email Automation/Inbox.kitable',
+      runAfterSave,
       onSaved: vi.fn(),
     }))
     await Promise.resolve()
@@ -60,7 +63,7 @@ describe('EmailSyncOnboardingWorkflowPage', () => {
   })
 
   it('opens the action configuration with the onboarding schedule defaults', async () => {
-    await mount()
+    await mount('full')
 
     await act(async () => {
       container.querySelector<HTMLElement>('[data-node-role="action"]')?.click()
@@ -70,6 +73,7 @@ describe('EmailSyncOnboardingWorkflowPage', () => {
     const editor = container.querySelector('[data-testid="mock-email-sync-workflow-editor"]')
     expect(editor?.getAttribute('data-enabled')).toBe('true')
     expect(editor?.getAttribute('data-interval')).toBe('15')
+    expect(editor?.getAttribute('data-run-after-save')).toBe('full')
     expect(editor?.textContent).toContain('Getting Started/Guides/Email Automation/Inbox.kitable')
   })
 })

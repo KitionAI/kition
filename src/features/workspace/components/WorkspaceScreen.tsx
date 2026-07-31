@@ -1004,6 +1004,11 @@ export function WorkspaceScreen({
     }
     setKitableTemplateDialogState(null)
     void kitableChildrenIndex.refresh()
+    if (template?.afterCreate?.type === 'email-sync') {
+      requestEmailSyncSetup(result.kitablePath, {
+        runAfterSave: template.afterCreate.runAfterSave,
+      })
+    }
     return true
   }, [
     createTable,
@@ -3031,9 +3036,9 @@ export function WorkspaceScreen({
             busyTemplateId={autoCreateModeBusyTemplateId}
             errorMessage={autoCreateModeError}
             emailSyncTablePath={autoCreateModeState.kitablePath || undefined}
-            onSelectEmailSync={(tablePath) => {
+            onSelectEmailSync={(tablePath, runAfterSave) => {
               closeWorkflowCreateModeDialog()
-              requestEmailSyncSetup(tablePath)
+              requestEmailSyncSetup(tablePath, { runAfterSave })
             }}
           />
         </Suspense>
