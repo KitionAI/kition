@@ -1,5 +1,5 @@
 import type { RuntimeWritingModel } from '@/types'
-import { KITION_CONSOLE_DEFAULT_TEXT_MODELS } from '@/services/desktopSettings'
+import { isLikelyTextGenerationModel } from '@/services/modelCapabilities'
 import type { DesktopProviderKind, DesktopSettingsState } from '@/types/desktopSettings'
 
 export type AgentModelOption = {
@@ -56,7 +56,7 @@ export function buildAgentModelOptions(settings: DesktopSettingsState): AgentMod
     }
 
     for (const modelName of provider.discoveredModels || []) {
-      if (providerKind === 'kition_console' && !KITION_CONSOLE_DEFAULT_TEXT_MODELS.includes(modelName)) {
+      if (providerKind === 'kition_console' && !isLikelyTextGenerationModel(modelName)) {
         continue
       }
 

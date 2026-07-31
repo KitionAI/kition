@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { DataDateFormat, DataField, DataFieldType } from '@/types/dataDocument'
-import type { AnyAIConfig } from '@/types/aiConfig'
+import { normalizeAIConfig, type AnyAIConfig } from '@/types/aiConfig'
 import { Button } from '@/components/ui'
 import { RightSheet } from '@/components/RightSheet'
 import {
@@ -61,7 +61,7 @@ function draftFromField(field: DataField): Draft {
     choices: normalizeChoiceList(field),
     choiceTones: getChoiceToneMap(field),
     formula: field.formula || '',
-    aiConfig: field.ai_config ?? undefined,
+    aiConfig: normalizeAIConfig(field.ai_config) ?? undefined,
     columnTone: getFieldTone(field),
     longTextShowAs,
     dateFormat: getTableDateFormat(field),

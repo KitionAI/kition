@@ -8,8 +8,33 @@
     },
     "folder": "Pasta",
     "importFile": "Importar arquivo",
+    "newDashboard": "New dashboard",
     "newTable": "Nova tabela",
     "newWorkflow": "Novo fluxo de trabalho"
+  },
+  "emptyState": {
+    "title": "Turn ideas into organized work",
+    "description": "Open something from the sidebar, start from a blank canvas, or let Kition AI help shape your next document, table, or workflow.",
+    "prompt": {
+      "title": "Describe what you want to build",
+      "description": "Plan, research, write, and organize with Kition AI.",
+      "action": "Open AI Chat"
+    },
+    "quickStart": "Quick start",
+    "actions": {
+      "document": {
+        "title": "New document",
+        "description": "Capture notes, plans, and knowledge."
+      },
+      "table": {
+        "title": "New table",
+        "description": "Structure projects, records, and research."
+      },
+      "workflow": {
+        "title": "Workflows",
+        "description": "Automate repeatable work across your tables."
+      }
+    }
   },
   "sidebar": {
     "tabs": {
@@ -216,6 +241,7 @@
     "onlyMarkdownPlateTableDuplicable": "Somente páginas Markdown, Plate e Tabela podem ser duplicadas aqui.",
     "onlyMarkdownPlateTableRenamable": "Somente páginas Markdown, Plate e Tabela podem ser renomeadas aqui.",
     "createDocumentFailed": "Falha ao criar o documento",
+    "createDashboardFailed": "Failed to create dashboard",
     "createTableFailed": "Falha ao criar a tabela",
     "importMarkdownFailed": "Falha ao importar Markdown",
     "browserDevModeOpenDirectory": "Você está executando no modo de desenvolvimento do navegador e não pode abrir diretórios nativos. Inicie o app de desktop via pnpm dev:electron e tente novamente.",
@@ -227,6 +253,7 @@
     "refreshed": "Espaço de trabalho atualizado",
     "restoredSavedVersion": "Restaurado para a versão salva",
     "documentCreated": "Documento criado",
+    "dashboardCreated": "Dashboard created",
     "tableCreated": "Tabela criada",
     "folderCreated": "Pasta criada",
     "renamed": "Renomeado",

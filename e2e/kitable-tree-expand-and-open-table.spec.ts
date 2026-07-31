@@ -34,7 +34,54 @@ const FIXTURE_DOCUMENT = {
   description: '',
   icon: '',
   color: '',
-  meta: null,
+  meta: {
+    dashboards: [{
+      id: 'task-dashboard',
+      title: 'Task Dashboard',
+      order: 0,
+      source_table_id: 12,
+      layout: [
+        { widget_id: 'total', x: 0, y: 0, w: 3, h: 2 },
+        { widget_id: 'completed', x: 3, y: 0, w: 3, h: 2 },
+        { widget_id: 'important', x: 6, y: 0, w: 3, h: 2 },
+        { widget_id: 'not-started', x: 9, y: 0, w: 3, h: 2 },
+        { widget_id: 'progress', x: 0, y: 2, w: 5, h: 4 },
+      ],
+      widgets: [
+        { id: 'total', title: 'Total tasks', type: 'metric', query: { aggregation: 'count' } },
+        {
+          id: 'completed',
+          title: 'Completed',
+          type: 'metric',
+          query: {
+            aggregation: 'count',
+            filters: [{ field_name: 'progress', operator: 'equals', value: 'Completed' }],
+          },
+        },
+        {
+          id: 'important',
+          title: 'Important',
+          type: 'metric',
+          query: { aggregation: 'count_true', field_name: 'important' },
+        },
+        {
+          id: 'not-started',
+          title: 'Not started',
+          type: 'metric',
+          query: {
+            aggregation: 'count',
+            filters: [{ field_name: 'progress', operator: 'equals', value: 'Not Started' }],
+          },
+        },
+        {
+          id: 'progress',
+          title: 'Progress distribution',
+          type: 'pie',
+          query: { aggregation: 'count', group_by_field_name: 'progress' },
+        },
+      ],
+    }],
+  },
   created_at: '2026-06-01T00:00:00.000Z',
   updated_at: '2026-06-01T00:00:00.000Z',
   tables: [
@@ -62,6 +109,40 @@ const FIXTURE_DOCUMENT = {
           readonly: false,
           is_primary: true,
           order: 0,
+          options: null,
+          created_at: '2026-06-01T00:00:00.000Z',
+          updated_at: '2026-06-01T00:00:00.000Z',
+        },
+        {
+          id: 204,
+          user_id: 1,
+          document_id: 1,
+          table_id: 12,
+          name: 'progress',
+          title: 'Progress',
+          type: 'single_select',
+          required: false,
+          unique: false,
+          readonly: false,
+          is_primary: false,
+          order: 1,
+          options: { choices: ['Completed', 'In Progress', 'Not Started'] },
+          created_at: '2026-06-01T00:00:00.000Z',
+          updated_at: '2026-06-01T00:00:00.000Z',
+        },
+        {
+          id: 205,
+          user_id: 1,
+          document_id: 1,
+          table_id: 12,
+          name: 'important',
+          title: 'Important',
+          type: 'checkbox',
+          required: false,
+          unique: false,
+          readonly: false,
+          is_primary: false,
+          order: 2,
           options: null,
           created_at: '2026-06-01T00:00:00.000Z',
           updated_at: '2026-06-01T00:00:00.000Z',
@@ -183,6 +264,21 @@ const FIXTURE_DOCUMENT = {
 }
 
 const EMPTY_RECORDS = { items: [], total: 0, offset: 0, limit: 200 }
+const TASK_RECORDS = [
+  ...Array.from({ length: 7 }, (_, index) => ({ progress: 'Completed', important: index < 3 })),
+  ...Array.from({ length: 9 }, (_, index) => ({ progress: 'In Progress', important: index < 4 })),
+  ...Array.from({ length: 4 }, (_, index) => ({ progress: 'Not Started', important: index < 1 })),
+].map((values, index) => ({
+  id: index + 1,
+  user_id: 1,
+  document_id: 1,
+  table_id: 12,
+  row_key: `task-${index + 1}`,
+  order: index,
+  values: { name: `Task ${index + 1}`, ...values },
+  created_at: '2026-06-01T00:00:00.000Z',
+  updated_at: '2026-06-01T00:00:00.000Z',
+}))
 
 function buildWorkflow(id: string, name: string, enabled: boolean, tableId: string) {
   return {
@@ -394,6 +490,12 @@ async function mockKitableTreeDataDocumentApi(page: Page) {
       return fulfillJson(route, { code: 200, data: document })
     }
 
+    if (method === 'PATCH' && /^\/api\/v1\/data-documents\/\d+$/.test(path)) {
+      const payload = await request.postDataJSON() as { meta?: typeof document.meta }
+      if (payload.meta) document.meta = payload.meta
+      return fulfillJson(route, { code: 200, data: document })
+    }
+
     const tableMatch = path.match(/^\/api\/v1\/data-documents\/\d+\/tables\/(\d+)$/)
     if (method === 'PATCH' && tableMatch) {
       const table = document.tables.find((item) => item.id === Number(tableMatch[1]))
@@ -413,7 +515,11 @@ async function mockKitableTreeDataDocumentApi(page: Page) {
 
     // GET /data-documents/1/tables/:tableId/records
     if (method === 'GET' && /^\/api\/v1\/data-documents\/\d+\/tables\/\d+\/records$/.test(path)) {
-      return fulfillJson(route, { code: 200, data: EMPTY_RECORDS })
+      const tableId = Number(path.split('/').at(-2))
+      const records = tableId === 12
+        ? { items: TASK_RECORDS, total: TASK_RECORDS.length, offset: 0, limit: 200 }
+        : EMPTY_RECORDS
+      return fulfillJson(route, { code: 200, data: records })
     }
 
     // Fallback — empty success for PATCH view etc.
@@ -470,7 +576,8 @@ test.describe('kitable inner navigation and file-level tabs', () => {
     }).toBeLessThanOrEqual(1)
 
     await page.getByTestId('workspace-kitable-create').click()
-    await expect(page.locator('.document-create-option')).toHaveCount(2)
+    await expect(page.locator('.document-create-option')).toHaveCount(3)
+    await expect(page.getByTestId('kitable-action-create-dashboard')).toHaveText('New dashboard')
     await page.keyboard.press('Escape')
 
     await page.getByTestId('workspace-kitable-collapse').click()
@@ -643,6 +750,67 @@ test.describe('kitable inner navigation and file-level tabs', () => {
     await expect(
       page.locator('.document-data-editor-stack__pane.is-active [data-testid="kitable-editor"]'),
     ).toBeVisible({ timeout: 15_000 })
+  })
+
+  test('opens a dashboard resource with live task metrics', async ({ page }) => {
+    await page.goto('/')
+
+    const kitableRow = page.locator('.document-tree-row.document-tree-page', { hasText: 'Leads.kitable' })
+    await expect(kitableRow).toBeVisible({ timeout: 15_000 })
+    await kitableRow.click()
+    await page.getByTestId('workspace-kitable-expand').click()
+
+    const dashboardButton = page.getByTestId('workspace-kitable-dashboard-task-dashboard')
+    await expect(dashboardButton).toHaveText('Task Dashboard')
+    await dashboardButton.click()
+
+    await expect.poll(() => page.evaluate(() => {
+      const raw = window.localStorage.getItem('kition.document.workspace-tabs.v2')
+      if (!raw) return null
+      try {
+        const parsed = JSON.parse(raw) as Record<string, unknown[]>
+        const tabs = Object.values(parsed)[0] || []
+        return tabs.find((tab) => (
+          (tab as { id?: string }).id === 'kitable:Leads.kitable'
+          && (tab as { type?: string }).type === 'dashboard'
+          && (tab as { dashboardId?: string }).dashboardId === 'task-dashboard'
+        )) ?? null
+      } catch {
+        return null
+      }
+    }), { timeout: 5_000 }).not.toBeNull()
+
+    await expect(page.getByTestId('dashboard-editor-pane')).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByTestId('dashboard-editor-pane')).toContainText('20 records')
+    await expect(page.getByTestId('dashboard-widget-total')).toContainText('20')
+    await expect(page.getByTestId('dashboard-widget-completed')).toContainText('7')
+    await expect(page.getByTestId('dashboard-widget-important')).toContainText('8')
+    await expect(page.getByTestId('dashboard-widget-not-started')).toContainText('4')
+    await expect(page.getByTestId('dashboard-widget-progress')).toBeVisible()
+  })
+
+  test('creates a generated dashboard from the active table', async ({ page }) => {
+    await page.goto('/')
+
+    const kitableRow = page.locator('.document-tree-row.document-tree-page', { hasText: 'Leads.kitable' })
+    await expect(kitableRow).toBeVisible({ timeout: 15_000 })
+    await kitableRow.click()
+    await page.getByTestId('workspace-kitable-expand').click()
+    await page.getByTestId('workspace-kitable-create').click()
+
+    const createDashboard = page.getByTestId('kitable-action-create-dashboard')
+    await expect(createDashboard).toHaveText('New dashboard')
+    await createDashboard.click()
+
+    const dashboardButton = page.getByTestId('workspace-kitable-dashboard-prospects-dashboard')
+    await expect(dashboardButton).toHaveText('Prospects Dashboard')
+    await expect(dashboardButton).toHaveAttribute('aria-current', 'page')
+    await expect(page.getByTestId('dashboard-editor-pane')).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByTestId('dashboard-editor-pane')).toContainText('Live from Prospects')
+    await expect(page.getByTestId('dashboard-widget-total-records')).toContainText('20')
+    await expect(page.getByTestId('dashboard-widget-checked-important')).toContainText('8')
+    await expect(page.getByTestId('dashboard-widget-progress-distribution')).toBeVisible()
+    await expect(page.getByTestId('dashboard-widget-records')).toBeVisible()
   })
 
   test('collapsed workflow uses the same flat selector and exposes its enabled switch', async ({ page }) => {

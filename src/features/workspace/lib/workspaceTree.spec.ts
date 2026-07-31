@@ -3,17 +3,20 @@ import { describe, expect, it } from 'vitest'
 import {
   KITABLE_WORKFLOWS_PREFIX,
   KITABLE_WORKFLOW_PREFIX,
+  KITABLE_DASHBOARD_PREFIX,
   KITABLE_TABLE_PREFIX,
+  buildKitableDashboardVirtualPath,
   buildKitableWorkflowsVirtualPath,
   buildKitableWorkflowVirtualPath,
   buildKitableTableVirtualPath,
   buildPrivateSectionTreeNodes,
   insertWorkspaceTreeDocumentItem,
   parseKitableWorkflowsVirtualPath,
+  parseKitableDashboardVirtualPath,
   parseKitableWorkflowVirtualPath,
   parseKitableTableVirtualPath,
 } from './workspaceTree'
-import type { KitableWorkflowSummary, KitableTableSummary } from './workspaceTree'
+import type { KitableDashboardSummary, KitableWorkflowSummary, KitableTableSummary } from './workspaceTree'
 import type { WorkspaceDocumentTreeItem, WorkspaceDocumentFormat } from '@/services/desktop'
 import type { WorkspaceTreeMetadata } from './workspacePersistence'
 
@@ -139,6 +142,33 @@ describe('parseKitableTableVirtualPath', () => {
   })
 })
 
+describe('kitable dashboard virtual nodes', () => {
+  const dashboards: KitableDashboardSummary[] = [
+    { id: 'task-dashboard', title: 'Task Dashboard', order: 0 },
+  ]
+
+  it('round-trips dashboard virtual paths', () => {
+    const path = buildKitableDashboardVirtualPath('Tasks.kitable', 'task-dashboard')
+    expect(path).toBe('dashboard://Tasks.kitable#task-dashboard')
+    expect(parseKitableDashboardVirtualPath(path)).toEqual({
+      kitablePath: 'Tasks.kitable',
+      dashboardId: 'task-dashboard',
+    })
+    expect(KITABLE_DASHBOARD_PREFIX).toBe('dashboard://')
+  })
+
+  it('places dashboards after tables in a kitable tree', () => {
+    const nodes = buildPrivateSectionTreeNodes(
+      [file('Tasks.kitable')],
+      emptyMetadata,
+      { 'Tasks.kitable': [{ id: 7, title: 'Tasks', order: 0, primaryFieldId: null }] },
+      { 'Tasks.kitable': dashboards },
+    )
+    expect(nodes[0].children.map((child) => child.title)).toEqual(['Tasks', 'Task Dashboard'])
+    expect(nodes[0].children[1].path).toBe('dashboard://Tasks.kitable#task-dashboard')
+  })
+})
+
 describe('buildPrivateSectionTreeNodes kitable table virtual nodes', () => {
   const leadsTables: KitableTableSummary[] = [
     { id: 7, title: 'Leads', order: 10, primaryFieldId: null },
@@ -237,6 +267,7 @@ describe('buildPrivateSectionTreeNodes kitable workflow virtual children', () =>
       [file('Leads.kitable')],
       emptyMetadata,
       {},
+      {},
       { 'Leads.kitable': leadsWorkflows },
     )
     const leads = nodes.find((n) => n.name === 'Leads.kitable')!
@@ -253,6 +284,7 @@ describe('buildPrivateSectionTreeNodes kitable workflow virtual children', () =>
     const nodes = buildPrivateSectionTreeNodes(
       [file('plain.md')],
       emptyMetadata,
+      {},
       {},
       { 'plain.md': leadsWorkflows },
     )
@@ -275,6 +307,7 @@ describe('buildPrivateSectionTreeNodes kitable workflow virtual children', () =>
       ],
       emptyMetadata,
       { 'Leads.kitable': tables },
+      {},
       { 'Leads.kitable': leadsWorkflows },
     )
     const leads = nodes.find((n) => n.name === 'Leads.kitable')!

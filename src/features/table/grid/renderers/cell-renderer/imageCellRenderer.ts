@@ -41,14 +41,20 @@ const drawImagePlaceholder = (
   });
 };
 
-const generateCacheKey = (data: IImageData[], width: number) => {
-  return `${String(width)}-${data.map(({ id }) => id).join(',')}`;
+const generateCacheKey = (
+  data: IImageData[],
+  width: number,
+  height: number,
+  imageAspectRatio?: number,
+) => {
+  return `${String(width)}-${String(height)}-${String(imageAspectRatio ?? 'auto')}-${data.map(({ id }) => id).join(',')}`;
 };
 
-const getImageWidth = (
+export const getImageWidth = (
   imageItem: IImageData,
   img: HTMLImageElement | ImageBitmap | undefined,
-  imgHeight: number
+  imgHeight: number,
+  imageAspectRatio?: number,
 ) => {
   const imageRatio = img?.height ? img.width / img.height : undefined;
   const { width, height } = imageItem;
@@ -56,8 +62,27 @@ const getImageWidth = (
     typeof width === 'number' && typeof height === 'number' && width > 0 && height > 0
       ? width / height
       : undefined;
-  const ratio = imageRatio ?? metadataRatio ?? 1;
+  const ratio = imageAspectRatio ?? imageRatio ?? metadataRatio ?? 1;
   return imgHeight * ratio;
+};
+
+export const getCoverCrop = (
+  sourceWidth: number,
+  sourceHeight: number,
+  targetWidth: number,
+  targetHeight: number,
+) => {
+  if (sourceWidth <= 0 || sourceHeight <= 0 || targetWidth <= 0 || targetHeight <= 0) {
+    return { sx: 0, sy: 0, sw: sourceWidth, sh: sourceHeight };
+  }
+  const sourceRatio = sourceWidth / sourceHeight;
+  const targetRatio = targetWidth / targetHeight;
+  if (sourceRatio > targetRatio) {
+    const sw = sourceHeight * targetRatio;
+    return { sx: (sourceWidth - sw) / 2, sy: 0, sw, sh: sourceHeight };
+  }
+  const sh = sourceWidth / targetRatio;
+  return { sx: 0, sy: (sourceHeight - sh) / 2, sw: sourceWidth, sh };
 };
 
 export const imageCellRenderer: IInternalCellRenderer<IImageCell> = {
@@ -68,7 +93,7 @@ export const imageCellRenderer: IInternalCellRenderer<IImageCell> = {
     const { rect, columnIndex, rowIndex, theme, ctx, imageManager, isActive, spriteManager } =
       props;
     const { iconSizeSM, cellLineColor, cellOptionBgHighlight } = theme;
-    const { data, readonly, contentAlign = 'left' } = cell;
+    const { data, readonly, contentAlign = 'left', imageAspectRatio } = cell;
     const { x, y, width, height } = rect;
     const editable = !readonly && isActive;
     const initPadding = editable ? iconSizeSM + 2 : 0;
@@ -91,7 +116,7 @@ export const imageCellRenderer: IInternalCellRenderer<IImageCell> = {
     ctx.rect(x, y, width - 0.5, height);
     ctx.clip();
 
-    const cacheKey = generateCacheKey(data, width);
+    const cacheKey = generateCacheKey(data, width, height, imageAspectRatio);
     const positions: (IRectangle & { id: string })[] = [];
 
     const imageItems = data.map((imageItem) => {
@@ -99,7 +124,7 @@ export const imageCellRenderer: IInternalCellRenderer<IImageCell> = {
       return {
         imageItem,
         image,
-        width: getImageWidth(imageItem, image, imgHeight),
+        width: getImageWidth(imageItem, image, imgHeight, imageAspectRatio),
       };
     });
     const totalImageWidth = imageItems.reduce(
@@ -128,6 +153,7 @@ export const imageCellRenderer: IInternalCellRenderer<IImageCell> = {
       });
 
       if (img) {
+        const crop = getCoverCrop(img.width, img.height, imgWidth, imgHeight);
         ctx.save();
         drawRect(ctx, {
           x: drawX,
@@ -137,7 +163,17 @@ export const imageCellRenderer: IInternalCellRenderer<IImageCell> = {
           radius: INNER_PADDING,
         });
         ctx.clip();
-        ctx.drawImage(img, drawX, y + cellVerticalPaddingXS, imgWidth, imgHeight);
+        ctx.drawImage(
+          img,
+          crop.sx,
+          crop.sy,
+          crop.sw,
+          crop.sh,
+          drawX,
+          y + cellVerticalPaddingXS,
+          imgWidth,
+          imgHeight,
+        );
         ctx.restore();
       } else {
         drawImagePlaceholder(
@@ -185,7 +221,7 @@ export const imageCellRenderer: IInternalCellRenderer<IImageCell> = {
       return { type: CellRegionType.ToggleEditing, data: null };
     }
 
-    const cacheKey = generateCacheKey(data, width);
+    const cacheKey = generateCacheKey(data, width, height, cell.imageAspectRatio);
     const imagePositions = imagePositionCache.get(cacheKey);
 
     if (imagePositions == null) return { type: CellRegionType.Blank };

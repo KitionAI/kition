@@ -227,7 +227,7 @@
     "kitionAccountCancel": "Отменить вход",
     "kitionAccountRetry": "Повторить",
     "kitionAccountTopup": "Пополнить кредиты",
-    "kitionHostedModelsReady": "Доступно размещённых моделей: {{count}}",
+    "kitionHostedModelsReady": "Доступные размещённые модели",
     "kitionHostedModelsSignIn": "Войдите, чтобы использовать модели Kition Cloud.",
     "kitionHostedModelsTopup": "Пополните кредиты, чтобы использовать модели Kition Cloud.",
     "modelsEndpoint": "Эндпоинт моделей",

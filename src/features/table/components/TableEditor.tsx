@@ -325,6 +325,7 @@ export function TableEditor({
     moveKanbanRecord,
     openAttachmentPreview,
     renameView,
+    reorderField,
     removeField,
     removeRecord,
     removeSelectedRecords,
@@ -586,6 +587,7 @@ export function TableEditor({
         <TableEditorContent
           documentId={document.id}
           tableId={activeTable.id}
+          viewId={activeView.id}
           viewMode={viewMode}
           fields={fields}
           visibleFields={visibleFields}
@@ -646,6 +648,9 @@ export function TableEditor({
           onSelectCell={setSelectedGridCell}
           onOpenRecordContextMenu={openRecordContextMenu}
           onOpenColumnHeaderMenu={openColumnHeaderMenu}
+          onReorderField={(field, fromIndex, dropIndex) => {
+            void reorderField(field, fromIndex, dropIndex, visibleFields)
+          }}
           onReorderRecords={(sourceRecordId, targetRecordId, position) =>
             void reorderRecords(sourceRecordId, targetRecordId, position)
           }

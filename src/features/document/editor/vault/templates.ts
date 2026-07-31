@@ -12,6 +12,7 @@
 import { EditorSelection } from '@codemirror/state'
 import type { EditorView } from '@codemirror/view'
 
+import { renderDocumentTemplatePlaceholders } from '@/features/document/lib/documentTemplates'
 import { readWorkspaceDocument } from '@/services/desktop'
 
 import { loadVaultMarkdownFiles } from './vault-files'
@@ -23,26 +24,21 @@ export type TemplateEntry = {
   name: string
 }
 
-function pad(n: number, w = 2): string {
-  return n.toString().padStart(w, '0')
-}
-
-function renderPlaceholders(body: string, title: string): string {
-  const now = new Date()
-  const date = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
-  const time = `${pad(now.getHours())}:${pad(now.getMinutes())}`
-  return body
-    .replace(/\{\{date\}\}/g, date)
-    .replace(/\{\{time\}\}/g, time)
-    .replace(/\{\{title\}\}/g, title)
-}
-
 export async function listTemplates(): Promise<TemplateEntry[]> {
   const files = await loadVaultMarkdownFiles()
   return files
     .filter((f) => f.path.startsWith(TEMPLATE_DIR_PREFIX))
     .map((f) => ({ path: f.path, name: f.name.replace(/\.md$/i, '') }))
     .sort((a, b) => a.name.localeCompare(b.name))
+}
+
+export async function loadTemplateContent(templatePath: string, title: string): Promise<string | null> {
+  try {
+    const document = await readWorkspaceDocument(templatePath)
+    return renderDocumentTemplatePlaceholders(document.content ?? '', title).replace('{{cursor}}', '')
+  } catch {
+    return null
+  }
 }
 
 export async function applyTemplate(view: EditorView, templatePath: string, currentPath?: string): Promise<boolean> {
@@ -56,7 +52,7 @@ export async function applyTemplate(view: EditorView, templatePath: string, curr
   const title = currentPath
     ? (currentPath.split('/').pop() ?? '').replace(/\.md$/i, '')
     : ''
-  const rendered = renderPlaceholders(body, title)
+  const rendered = renderDocumentTemplatePlaceholders(body, title)
   const cursorMarker = '{{cursor}}'
   const cursorIdx = rendered.indexOf(cursorMarker)
   const finalText = cursorIdx < 0 ? rendered : rendered.replace(cursorMarker, '')

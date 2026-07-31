@@ -220,4 +220,52 @@ describe('FieldConfigPanel', () => {
 
     expect(onSave.mock.calls[0][0].options.date_format).toBe('day_month_year_slash')
   })
+
+  it('removes a legacy image customization size when saving field changes', async () => {
+    const legacyImageField = {
+      ...baseField,
+      id: 4,
+      name: 'thumbnail',
+      title: 'Thumbnail',
+      type: 'attachment',
+      is_primary: false,
+      ai_config: {
+        type: 'image_customization',
+        enabled: true,
+        auto_update: true,
+        source_field_id: secondField.id,
+        prompt: 'Create a thumbnail for {{desc}}',
+        size: '1792x1024',
+        n: 3,
+        quality: 'medium',
+        aspect_ratio: '16:9',
+        resolution: '1K',
+        image_use_case: 'cover_illustration',
+      },
+    } as unknown as DataField
+    const onSave = vi.fn().mockResolvedValue(undefined)
+    await mount(
+      createElement(FieldConfigPanel, {
+        field: legacyImageField,
+        fields: [secondField, legacyImageField],
+        busy: false,
+        onClose: () => {},
+        onSave,
+      }),
+    )
+
+    const nameInput = container.querySelector('input') as HTMLInputElement
+    await act(async () => {
+      const nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+      nativeSetter?.call(nameInput, 'Generated Thumbnail')
+      nameInput.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    const save = Array.from(container.querySelectorAll('button')).find(
+      (button) => button.textContent?.trim() === 'Save',
+    ) as HTMLButtonElement
+    await act(async () => { save.click() })
+
+    expect(onSave).toHaveBeenCalledTimes(1)
+    expect(onSave.mock.calls[0][0].options.ai_config).not.toHaveProperty('size')
+  })
 })

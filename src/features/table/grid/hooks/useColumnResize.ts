@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { DEFAULT_COLUMN_RESIZE_STATE, GRID_DEFAULT } from '../configs';
 import type { IMouseState, IColumnResizeState, IScrollState } from '../interface';
 import { RegionType } from '../interface';
@@ -10,6 +10,7 @@ export const useColumnResize = (coordInstance: CoordinateManager, scrollState: I
   const [columnResizeState, setColumnResizeState] = useState<IColumnResizeState>(
     DEFAULT_COLUMN_RESIZE_STATE
   );
+  const columnResizeOriginRef = useRef<IColumnResizeState>(DEFAULT_COLUMN_RESIZE_STATE);
 
   const onColumnResizeStart = (mouseState: IMouseState) => {
     const { scrollLeft } = scrollState;
@@ -22,11 +23,13 @@ export const useColumnResize = (coordInstance: CoordinateManager, scrollState: I
         ? columnIndex - 1
         : columnIndex;
 
-      setColumnResizeState({
+      const origin = {
         x,
         columnIndex: realColumnIndex,
         width: coordInstance.getColumnWidth(realColumnIndex),
-      });
+      };
+      columnResizeOriginRef.current = origin;
+      setColumnResizeState(origin);
     }
   };
 
@@ -36,10 +39,13 @@ export const useColumnResize = (coordInstance: CoordinateManager, scrollState: I
   ) => {
     const { scrollLeft } = scrollState;
     const { type, x, columnIndex } = mouseState;
-    const { columnIndex: resizeColumnIndex, x: resizeX } = columnResizeState;
+    const {
+      columnIndex: resizeColumnIndex,
+      x: resizeX,
+      width: resizeWidth,
+    } = columnResizeOriginRef.current;
     if (resizeColumnIndex > -1) {
-      const columnWidth = coordInstance.getColumnWidth(resizeColumnIndex);
-      const newWidth = Math.max(100, Math.round(columnWidth + x - resizeX));
+      const newWidth = Math.max(100, Math.round(resizeWidth + x - resizeX));
       setColumnResizeState({
         x,
         columnIndex: resizeColumnIndex,
@@ -62,6 +68,7 @@ export const useColumnResize = (coordInstance: CoordinateManager, scrollState: I
   };
 
   const onColumnResizeEnd = () => {
+    columnResizeOriginRef.current = DEFAULT_COLUMN_RESIZE_STATE;
     setColumnResizeState(DEFAULT_COLUMN_RESIZE_STATE);
   };
 

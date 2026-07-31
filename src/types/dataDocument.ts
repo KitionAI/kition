@@ -168,6 +168,59 @@ export type DataTable = {
   updated_at: string
 }
 
+export type DashboardWidgetType = 'metric' | 'bar' | 'line' | 'pie' | 'table'
+
+export type DashboardQueryFilter = {
+  field_name: string
+  operator: 'equals' | 'not_equals' | 'truthy' | 'falsy'
+  value?: DataRecordValue
+}
+
+export type DashboardQuery = {
+  aggregation: 'count' | 'count_true'
+  field_name?: string
+  group_by_field_name?: string
+  filters?: DashboardQueryFilter[]
+  columns?: string[]
+  limit?: number
+}
+
+export type DashboardLayoutItem = {
+  widget_id: string
+  x: number
+  y: number
+  w: number
+  h: number
+  min_w?: number
+  min_h?: number
+}
+
+export type DataDashboardWidget = {
+  id: string
+  title: string
+  description?: string
+  type: DashboardWidgetType
+  query: DashboardQuery
+  config?: {
+    value_label?: string
+    color?: string
+    category_order?: string[]
+  }
+}
+
+export type DataDashboard = {
+  id: string
+  title: string
+  order: number
+  source_table_id: number
+  layout: DashboardLayoutItem[]
+  widgets: DataDashboardWidget[]
+}
+
+export type DataDashboardSeed = Omit<DataDashboard, 'source_table_id'> & {
+  source_table_name: string
+}
+
 export type DataDocument = {
   id: number
   user_id: number

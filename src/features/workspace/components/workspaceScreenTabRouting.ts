@@ -1,4 +1,7 @@
-import { parseKitableTableVirtualPath } from '@/features/workspace/lib/workspaceTree'
+import {
+  parseKitableDashboardVirtualPath,
+  parseKitableTableVirtualPath,
+} from '@/features/workspace/lib/workspaceTree'
 import {
   buildKitableWorkspaceTabId,
   getKitableWorkspaceTabTitle,
@@ -10,21 +13,34 @@ type IndexSnapshot = {
   tablesByKitablePath: Record<string, KitableTableSummary[]>
 }
 
-type TableTab = Extract<WorkspaceTab, { type: 'table' }>
+type KitableResourceTab = Extract<WorkspaceTab, { type: 'dashboard' | 'table' }>
 
 export function routeKitableOpenPath(
   path: string,
   index: IndexSnapshot,
-  upsertWorkspaceTab: (tab: TableTab) => void,
+  upsertWorkspaceTab: (tab: KitableResourceTab) => void,
 ): boolean {
   const parsed = parseKitableTableVirtualPath(path)
-  if (!parsed) return false
+  if (parsed) {
+    upsertWorkspaceTab({
+      id: buildKitableWorkspaceTabId(parsed.kitablePath),
+      type: 'table',
+      title: getKitableWorkspaceTabTitle(parsed.kitablePath),
+      kitablePath: parsed.kitablePath,
+      tableId: parsed.tableId,
+      format: 'data',
+    })
+    return true
+  }
+
+  const dashboard = parseKitableDashboardVirtualPath(path)
+  if (!dashboard) return false
   upsertWorkspaceTab({
-    id: buildKitableWorkspaceTabId(parsed.kitablePath),
-    type: 'table',
-    title: getKitableWorkspaceTabTitle(parsed.kitablePath),
-    kitablePath: parsed.kitablePath,
-    tableId: parsed.tableId,
+    id: buildKitableWorkspaceTabId(dashboard.kitablePath),
+    type: 'dashboard',
+    title: getKitableWorkspaceTabTitle(dashboard.kitablePath),
+    kitablePath: dashboard.kitablePath,
+    dashboardId: dashboard.dashboardId,
     format: 'data',
   })
   return true

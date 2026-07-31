@@ -153,6 +153,25 @@ describe('desktopSettings provider secret persistence', () => {
   })
 })
 
+describe('desktopSettings AI provider catalog', () => {
+  it('keeps Kition Cloud first and includes DeepSeek and Kimi presets', async () => {
+    const {
+      createDefaultDesktopSettings,
+      desktopProviderCatalog,
+      normalizeProviderBaseURL,
+    } = await import('./desktopSettings')
+
+    expect(desktopProviderCatalog[0]?.kind).toBe('kition_console')
+    expect(desktopProviderCatalog.map((provider) => provider.kind)).toContain('deepseek')
+    expect(desktopProviderCatalog.map((provider) => provider.kind)).toContain('kimi')
+
+    const settings = createDefaultDesktopSettings()
+    expect(settings.providers.deepseek.baseUrl).toBe('https://api.deepseek.com/v1')
+    expect(settings.providers.kimi.baseUrl).toBe('https://api.moonshot.cn/v1')
+    expect(normalizeProviderBaseURL('kimi', 'https://api.moonshot.cn')).toBe('https://api.moonshot.cn/v1')
+  })
+})
+
 describe('desktopSettings display / notifications / hooks normalization', () => {
   beforeEach(() => {
     secureValues.clear()
@@ -222,13 +241,13 @@ describe('desktopSettings display / notifications / hooks normalization', () => 
     expect(settings.general.theme).toBe('light')
   })
 
-  it('migrates hosted console text model selection to the codex 5.5 default', async () => {
+  it('preserves the discovered Kition Cloud catalog and selects an available text model', async () => {
     const { normalizeDesktopSettings } = await import('./desktopSettings')
     const result = normalizeDesktopSettings({
       providers: {
         kition_console: {
           enabled: true,
-          discoveredModels: ['gpt-4.1', 'gpt-4o'],
+          discoveredModels: ['gpt-5.5', 'gpt-image-2'],
         },
       } as any,
       models: {
@@ -240,9 +259,36 @@ describe('desktopSettings display / notifications / hooks normalization', () => 
     })
 
     expect(result.providers.kition_console.enabled).toBe(true)
-    expect(result.providers.kition_console.discoveredModels).toContain('gpt-5.5')
-    expect(result.providers.kition_console.discoveredModels).not.toContain('gpt-4.1')
+    expect(result.providers.kition_console.discoveredModels).toEqual(['gpt-5.5', 'gpt-image-2'])
     expect(result.models.selectedModelByProvider.kition_console).toBe('gpt-5.5')
+  })
+
+  it('does not invent a Kition Cloud catalog before discovery', async () => {
+    const { normalizeDesktopSettings } = await import('./desktopSettings')
+    const result = normalizeDesktopSettings()
+
+    expect(result.providers.kition_console.discoveredModels).toEqual([])
+  })
+
+  it('purges the legacy hard-coded Kition Cloud catalog', async () => {
+    const { normalizeDesktopSettings } = await import('./desktopSettings')
+    const result = normalizeDesktopSettings({
+      providers: {
+        kition_console: {
+          enabled: true,
+          discoveredModels: ['gpt-5.5', 'gpt-image-1', 'dall-e-3'],
+        },
+      } as any,
+      models: {
+        activeProvider: 'kition_console',
+        selectedModelByProvider: {
+          kition_console: 'gpt-image-1',
+        },
+      } as any,
+    })
+
+    expect(result.providers.kition_console.discoveredModels).toEqual([])
+    expect(result.models.selectedModelByProvider.kition_console).toBeUndefined()
   })
 
   it('preserves provided display value and falls back others to defaults', async () => {

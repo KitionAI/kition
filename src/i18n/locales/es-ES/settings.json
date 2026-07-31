@@ -269,7 +269,7 @@
     "kitionAccountCancel": "Cancelar inicio de sesión",
     "kitionAccountRetry": "Reintentar",
     "kitionAccountTopup": "Recargar créditos",
-    "kitionHostedModelsReady": "{{count}} modelos alojados disponibles",
+    "kitionHostedModelsReady": "Modelos alojados disponibles",
     "kitionHostedModelsSignIn": "Inicia sesión para usar los modelos de Kition Cloud.",
     "kitionHostedModelsTopup": "Recarga créditos para usar los modelos de Kition Cloud.",
     "modelsEndpoint": "Endpoint de modelos",

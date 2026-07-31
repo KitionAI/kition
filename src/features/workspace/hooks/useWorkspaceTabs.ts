@@ -17,6 +17,7 @@ type UseWorkspaceTabsOptions = {
 
 function getTabKitablePath(tab: WorkspaceTab) {
   if (tab.type === 'table') return tab.kitablePath
+  if (tab.type === 'dashboard') return tab.kitablePath
   if (tab.type === 'workflow') return tab.kitablePath || ''
   if (tab.type === 'document' && tab.path.toLowerCase().endsWith('.kitable')) return tab.path
   return ''
@@ -236,6 +237,15 @@ export function useWorkspaceTabs({
       let changed = false
       const remapped = current.map((tab) => {
         if (tab.type === 'table' && tab.kitablePath === fromPath) {
+          changed = true
+          return {
+            ...tab,
+            kitablePath: toPath,
+            id: buildKitableWorkspaceTabId(toPath),
+            title: getKitableWorkspaceTabTitle(toPath),
+          }
+        }
+        if (tab.type === 'dashboard' && tab.kitablePath === fromPath) {
           changed = true
           return {
             ...tab,

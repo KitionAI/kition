@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import type { DataField } from '@/types/dataDocument'
 import type { AttachmentAIConfig, DataFieldAIImageUseCase } from '@/types/aiConfig'
-import { useCaseSchema } from '@/types/aiConfig'
+import { MAX_AI_IMAGE_VARIANTS, useCaseSchema } from '@/types/aiConfig'
 import { SourceFieldPicker } from './sourceFieldPicker'
 
 type ImageCustomizationConfig = Extract<AttachmentAIConfig, { type: 'image_customization' }>
@@ -95,9 +95,9 @@ export function ImageCustomizationForm({
           aria-label={t('aiConfig.variants')}
           type="number"
           min={1}
-          max={10}
+          max={MAX_AI_IMAGE_VARIANTS}
           value={value.n}
-          onChange={(event) => patch({ n: Math.max(1, Math.min(10, Number(event.target.value) || 1)) })}
+          onChange={(event) => patch({ n: Math.max(1, Math.min(MAX_AI_IMAGE_VARIANTS, Number(event.target.value) || 1)) })}
         />
       </label>
       <label className="data-inline-ai-config-checkbox">

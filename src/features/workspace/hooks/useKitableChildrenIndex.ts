@@ -1,13 +1,19 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { listDataDocuments } from '@/api/dataDocuments'
+import { readDataDashboards } from '@/features/dashboard/lib/dashboardMetadata'
 import { listWorkflows } from '@/features/workflow/api'
-import type { KitableWorkflowSummary, KitableTableSummary } from '@/features/workspace/lib/workspaceTree'
+import type {
+  KitableDashboardSummary,
+  KitableWorkflowSummary,
+  KitableTableSummary,
+} from '@/features/workspace/lib/workspaceTree'
 import { isWebPreviewMode } from '@/lib/runtimeMode'
 
 export type KitableChildrenIndex = {
   status: 'idle' | 'loading' | 'done' | 'error'
   tablesByKitablePath: Record<string, KitableTableSummary[]>
+  dashboardsByKitablePath: Record<string, KitableDashboardSummary[]>
   workflowsByKitablePath: Record<string, KitableWorkflowSummary[]>
   docIdByKitablePath: Record<string, string>
   error: string | null
@@ -23,6 +29,7 @@ export type KitableChildrenIndex = {
 export function useKitableChildrenIndex(rootPath?: string): KitableChildrenIndex {
   const [status, setStatus] = useState<KitableChildrenIndex['status']>('idle')
   const [tablesByKitablePath, setTables] = useState<Record<string, KitableTableSummary[]>>({})
+  const [dashboardsByKitablePath, setDashboards] = useState<Record<string, KitableDashboardSummary[]>>({})
   const [workflowsByKitablePath, setWorkflows] = useState<Record<string, KitableWorkflowSummary[]>>({})
   const [docIdByKitablePath, setDocIds] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
@@ -30,6 +37,7 @@ export function useKitableChildrenIndex(rootPath?: string): KitableChildrenIndex
   const refresh = useCallback(async () => {
     if (isWebPreviewMode()) {
       setTables({})
+      setDashboards({})
       setWorkflows({})
       setDocIds({})
       setError(null)
@@ -51,6 +59,7 @@ export function useKitableChildrenIndex(rootPath?: string): KitableChildrenIndex
         workflowsPromise,
       ])
       const nextTables: Record<string, KitableTableSummary[]> = {}
+      const nextDashboards: Record<string, KitableDashboardSummary[]> = {}
       const kitablePathByDocId: Record<string, string> = {}
       const nextDocIds: Record<string, string> = {}
       for (const doc of docs.items || []) {
@@ -65,6 +74,11 @@ export function useKitableChildrenIndex(rootPath?: string): KitableChildrenIndex
           title: String(t.title ?? ''),
           order: Number(t.order ?? 0),
           primaryFieldId: t.primary_field_id != null ? Number(t.primary_field_id) : null,
+        }))
+        nextDashboards[path] = readDataDashboards(doc.meta).map((dashboard) => ({
+          id: dashboard.id,
+          title: dashboard.title,
+          order: dashboard.order,
         }))
       }
       const nextWorkflows: Record<string, KitableWorkflowSummary[]> = {}
@@ -84,6 +98,7 @@ export function useKitableChildrenIndex(rootPath?: string): KitableChildrenIndex
         })
       }
       setTables(nextTables)
+      setDashboards(nextDashboards)
       setWorkflows(nextWorkflows)
       setDocIds(nextDocIds)
       setStatus('done')
@@ -102,6 +117,11 @@ export function useKitableChildrenIndex(rootPath?: string): KitableChildrenIndex
       return
     }
     setTables((current) => {
+      if (!(fromPath in current)) return current
+      const { [fromPath]: moved, ...rest } = current
+      return { ...rest, [toPath]: moved }
+    })
+    setDashboards((current) => {
       if (!(fromPath in current)) return current
       const { [fromPath]: moved, ...rest } = current
       return { ...rest, [toPath]: moved }
@@ -149,5 +169,14 @@ export function useKitableChildrenIndex(rootPath?: string): KitableChildrenIndex
     return () => window.removeEventListener('kition:data-document:table:rename', handleTableRename)
   }, [])
 
-  return { status, tablesByKitablePath, workflowsByKitablePath, docIdByKitablePath, error, refresh, renameKitablePath }
+  return {
+    status,
+    tablesByKitablePath,
+    dashboardsByKitablePath,
+    workflowsByKitablePath,
+    docIdByKitablePath,
+    error,
+    refresh,
+    renameKitablePath,
+  }
 }

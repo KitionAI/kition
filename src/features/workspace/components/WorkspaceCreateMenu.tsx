@@ -1,4 +1,4 @@
-import { FileSpreadsheet, FileText, FolderPlus, Upload, Zap } from 'lucide-react'
+import { FileSpreadsheet, FileText, FolderPlus, LayoutDashboard, Upload, Zap } from 'lucide-react'
 import { type CSSProperties, type ReactNode, useLayoutEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
@@ -19,6 +19,7 @@ export function WorkspaceCreateMenu({
   anchorEl,
   onCreateFolder,
   onCreateDocument,
+  onCreateDashboard,
   onCreateTable,
   onCreateWorkflow,
   onImportFromDialog,
@@ -33,6 +34,7 @@ export function WorkspaceCreateMenu({
   anchorEl?: HTMLElement | null
   onCreateFolder: () => void
   onCreateDocument: (format: DocumentCreateFormat) => void
+  onCreateDashboard?: () => void
   onCreateTable: () => void
   /** Kitable variant only — adds a "Create Workflow" entry that defers to
    *  the table picker / mode dialog the same way the legacy "..." menu
@@ -50,9 +52,9 @@ export function WorkspaceCreateMenu({
 
   const content: ReactNode = variant === 'kitable' ? (
     // Inside a .kitable the inline `+` menu creates tables and — when the
-    // caller wires onCreateWorkflow — also defers to the workflow table
-    // picker / mode dialog, so all "spawn something inside this kitable"
-    // affordances live on the same trigger.
+    // caller wires the optional handlers — also creates dashboards and defers
+    // workflows to the table picker / mode dialog, so all resources spawned
+    // inside this kitable live on the same trigger.
     <>
       <button
         type="button"
@@ -62,6 +64,17 @@ export function WorkspaceCreateMenu({
         <FileSpreadsheet className="size-4" />
         <span>{t('createMenu.newTable')}</span>
       </button>
+      {onCreateDashboard ? (
+        <button
+          type="button"
+          className="document-create-option"
+          data-testid="kitable-action-create-dashboard"
+          onClick={onCreateDashboard}
+        >
+          <LayoutDashboard className="size-4" />
+          <span>{t('createMenu.newDashboard')}</span>
+        </button>
+      ) : null}
       {onCreateWorkflow ? (
         <button
           type="button"

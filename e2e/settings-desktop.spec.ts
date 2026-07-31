@@ -65,6 +65,11 @@ async function mockDesktopBridge(page: Page) {
   })
 }
 
+async function selectOpenAIProvider(page: Page) {
+  await page.getByRole('button', { name: /OpenAI/ }).click()
+  await expect(page.getByLabel('API key')).toBeVisible()
+}
+
 test.beforeEach(async ({ page }) => {
   await mockLocalWorkspaceApi(page, {
     discoverModelsByProvider: {
@@ -82,6 +87,7 @@ test('desktop settings manage providers and synced models', async ({ page }) => 
   await expect(page.getByRole('button', { name: 'AI Providers' })).toBeVisible()
   await expect(page.getByText('Default model', { exact: true })).toHaveCount(0)
 
+  await selectOpenAIProvider(page)
   await page.getByLabel('API key').fill('desktop-test-key')
 
   await page.getByRole('button', { name: 'Save provider', exact: true }).click()
@@ -99,6 +105,7 @@ test('removed writing editor route returns to the workspace', async ({ page }) =
   await mockDesktopBridge(page)
 
   await page.goto('/settings?section=models')
+  await selectOpenAIProvider(page)
   await page.getByLabel('API key').fill('desktop-test-key')
   await page.getByRole('button', { name: 'Sync now', exact: true }).click()
   await expect(page.locator('.settings-provider-metadata')).toContainText('2')
@@ -300,6 +307,7 @@ test('desktop settings keep a live light-theme preview after syncing provider mo
   await expect(page.locator('html')).toHaveAttribute('data-desktop-theme', 'light')
   await expect(page.locator('html')).toHaveAttribute('data-desktop-theme-mode', 'light')
   await expect(page).toHaveURL(/section=models/)
+  await selectOpenAIProvider(page)
   await page.getByLabel('API key').fill('desktop-test-key')
   await page.getByRole('button', { name: 'Sync now', exact: true }).click()
 

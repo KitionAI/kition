@@ -24,6 +24,7 @@ import type { AgentPaneContext } from '@/features/agent/lib/paneEmptyState'
 //                                      show next to a discovery UI)
 //   workflow        → 'workflow'  (workflow editor)
 //   table           → 'table'     (data-table editor)
+//   dashboard       → 'table'     (data reporting over a table)
 //   gallery         → 'gallery'   (image gallery)
 //   null/undefined  → 'document'  (no tab open — fall back to general assistance)
 export function deriveAgentPaneContext(
@@ -56,6 +57,7 @@ export function deriveAgentPaneContext(
     case 'workflow':
       return 'workflow'
     case 'table':
+    case 'dashboard':
       return 'table'
     case 'gallery':
       return 'gallery'
@@ -82,6 +84,7 @@ export function resolveAgentActiveDocument(
     case 'file-viewer':
       return { path: tab.path, format: tab.format }
     case 'table':
+    case 'dashboard':
       return { path: tab.kitablePath, format: 'data' }
     case 'workflow':
       return {

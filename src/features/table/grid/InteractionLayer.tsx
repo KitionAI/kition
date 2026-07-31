@@ -271,9 +271,10 @@ export const InteractionLayerBase: ForwardRefRenderFunction<
   const isInteracting = isSelecting || isDragging || isResizing || isFreezing;
   const [activeColumnIndex, activeRowIndex] = activeCell ?? [];
 
-  const getPosition = () => {
-    const x = mousePosition.elX;
-    const y = mousePosition.elY;
+  const getPosition = (event?: Pick<MouseEvent, 'clientX' | 'clientY'>) => {
+    const stageRect = event ? stageRef.current?.getBoundingClientRect() : null;
+    const x = event && stageRect ? event.clientX - stageRect.left : mousePosition.elX;
+    const y = event && stageRect ? event.clientY - stageRect.top : mousePosition.elY;
     const { freezeRegionWidth, totalWidth, rowInitSize, columnInitSize, columnCount } =
       coordInstance;
     const rowIndex =
@@ -330,8 +331,8 @@ export const InteractionLayerBase: ForwardRefRenderFunction<
     };
   }, [_activeCellBound, cellScrollTop]);
 
-  const getMouseState = () => {
-    const position = getPosition();
+  const getMouseState = (event?: Pick<MouseEvent, 'clientX' | 'clientY'>) => {
+    const position = getPosition(event);
     const { x, y } = position;
     const { totalHeight, totalWidth } = coordInstance;
     const isOutOfBounds =
@@ -413,6 +414,12 @@ export const InteractionLayerBase: ForwardRefRenderFunction<
         }
         return setCursor('grabbing');
       }
+      case RegionType.ColumnHeader: {
+        if (draggable === DraggableType.Row || draggable === DraggableType.None) {
+          return setCursor('default');
+        }
+        return setCursor('grab');
+      }
       case RegionType.ColumnResizeHandler:
         return setCursor('ew-resize');
       case RegionType.FillHandler:
@@ -424,7 +431,7 @@ export const InteractionLayerBase: ForwardRefRenderFunction<
 
   // eslint-disable-next-line sonarjs/cognitive-complexity
   const onClick = (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
-    const mouseState = getMouseState();
+    const mouseState = getMouseState(event);
     onSelectionClick(event, mouseState);
     const { type, rowIndex: hoverRowIndex, columnIndex } = mouseState;
     if (regionType !== type) return;
@@ -530,8 +537,8 @@ export const InteractionLayerBase: ForwardRefRenderFunction<
     onItemClick?.(clickRegionType, rest, [columnIndex, rowIndex]);
   };
 
-  const onDblClick = () => {
-    const mouseState = getMouseState();
+  const onDblClick = (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+    const mouseState = getMouseState(event);
     const { type, rowIndex, columnIndex } = mouseState;
     const { realIndex } = getLinearRow(rowIndex);
     if (
@@ -564,14 +571,14 @@ export const InteractionLayerBase: ForwardRefRenderFunction<
     }
 
     if (eventDetail === 2) {
-      onDblClick();
+      onDblClick(event);
     }
   };
 
   const onMouseDown = (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
     event.preventDefault();
     if (event.button === MouseButtonType.Right) return;
-    const mouseState = getMouseState();
+    const mouseState = getMouseState(event);
     setMouseState(mouseState);
     const { rowIndex: hoverRowIndex, columnIndex, type } = mouseState;
     const { realIndex: rowIndex } = getLinearRow(hoverRowIndex);
@@ -657,8 +664,8 @@ export const InteractionLayerBase: ForwardRefRenderFunction<
     }
   };
 
-  const onMouseMove = () => {
-    const mouseState = getMouseState();
+  const onMouseMove = (event: MouseEvent) => {
+    const mouseState = getMouseState(event);
     const hoverCellPosition = getHoverCellPosition(mouseState);
     setHoverCellPosition(() => hoverCellPosition);
     setMouseState(() => mouseState);
@@ -681,8 +688,8 @@ export const InteractionLayerBase: ForwardRefRenderFunction<
     previousHoveredRegionRef.current = { ...hoveredRegionRef.current };
   };
 
-  const onMouseUp = () => {
-    const mouseState = getMouseState();
+  const onMouseUp = (event: MouseEvent) => {
+    const mouseState = getMouseState(event);
     setMouseState(mouseState);
     onAutoScrollStop();
     let didFill = false;
@@ -745,6 +752,11 @@ export const InteractionLayerBase: ForwardRefRenderFunction<
       setMouseState(DEFAULT_MOUSE_STATE);
     });
     onSelectionEnd();
+    if (isResizing) {
+      onColumnResizeChange(mouseState, (newWidth, columnIndex) => {
+        onColumnResize?.(columns[columnIndex], newWidth, columnIndex);
+      });
+    }
     onColumnResizeEnd();
   };
 
@@ -758,7 +770,7 @@ export const InteractionLayerBase: ForwardRefRenderFunction<
 
   const onContextMenuInner = (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
     if (event.cancelable) event.preventDefault();
-    const mouseState = getMouseState();
+    const mouseState = getMouseState(event);
     const { type, x, y, rowIndex } = mouseState;
 
     if (type === RegionType.RowGroupHeader || type === RegionType.RowGroupControl) {

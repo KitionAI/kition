@@ -5,6 +5,8 @@ import {
   getAIConfigSchemaForField,
   isAttachmentAIConfig,
   isTextAIConfig,
+  normalizeAIConfig,
+  type AnyAIConfig,
 } from './aiConfig'
 
 describe('attachmentAIConfigSchema', () => {
@@ -51,6 +53,25 @@ describe('attachmentAIConfigSchema', () => {
     expect(result.success).toBe(true)
   })
 
+  it('limits image variants to five', () => {
+    const valid = attachmentAIConfigSchema.safeParse({
+      type: 'image_customization',
+      enabled: true,
+      auto_update: false,
+      prompt: 'Create five variants',
+      n: 5,
+    })
+    const invalid = attachmentAIConfigSchema.safeParse({
+      type: 'image_customization',
+      enabled: true,
+      auto_update: false,
+      prompt: 'Create six variants',
+      n: 6,
+    })
+    expect(valid.success).toBe(true)
+    expect(invalid.success).toBe(false)
+  })
+
   it('rejects image_customization with empty prompt', () => {
     const result = attachmentAIConfigSchema.safeParse({
       type: 'image_customization',
@@ -59,6 +80,43 @@ describe('attachmentAIConfigSchema', () => {
       prompt: '',
     })
     expect(result.success).toBe(false)
+  })
+})
+
+describe('normalizeAIConfig', () => {
+  it('strips a legacy size from image customization configs', () => {
+    const config = {
+      type: 'image_customization',
+      enabled: true,
+      auto_update: false,
+      prompt: 'Create a thumbnail',
+      size: '1792x1024',
+    } as unknown as AnyAIConfig
+    expect(normalizeAIConfig(config)).not.toHaveProperty('size')
+  })
+
+  it('strips a legacy size from image generation configs so aspect ratio wins', () => {
+    const config = {
+      type: 'image_generation',
+      enabled: true,
+      auto_update: false,
+      source_field_id: 1,
+      size: '1024x1024',
+      n: 1,
+      quality: 'medium',
+      aspect_ratio: '1:1',
+      resolution: '1K',
+      image_use_case: 'inline_illustration',
+    } as const
+
+    expect(normalizeAIConfig(config)).not.toBe(config)
+    expect(normalizeAIConfig(config)).not.toHaveProperty('size')
+    expect(normalizeAIConfig(config)).toMatchObject({ aspect_ratio: '1:1', resolution: '1K' })
+  })
+
+  it('accepts null and undefined configs', () => {
+    expect(normalizeAIConfig(null)).toBeNull()
+    expect(normalizeAIConfig(undefined)).toBeUndefined()
   })
 })
 

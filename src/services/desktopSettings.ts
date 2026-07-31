@@ -15,6 +15,7 @@ import type {
   DesktopThemeMode,
   DesktopUiDensity,
 } from '@/types/desktopSettings'
+import { isLikelyTextGenerationModel } from '@/services/modelCapabilities'
 
 const SETTINGS_STORAGE_KEY = 'kition.desktop.settings.v1'
 const SETTINGS_BACKUP_STORAGE_KEY = 'kition.desktop.settings.backup.v1'
@@ -25,20 +26,22 @@ const THEME_DARK_DEFAULT_MIGRATION_KEY = 'kition.desktop.theme.darkDefaultMigrat
 const SETTINGS_UPDATED_EVENT = 'desktop-settings-updated'
 const SYSTEM_THEME_MEDIA_QUERY = '(prefers-color-scheme: dark)'
 const PROVIDER_SECRET_FIELDS = ['apiKey', 'accessToken', 'refreshToken'] as const
-
-// KitionAI Console proxies a fixed roster of upstream models — there is no
-// per-user discovery step, so we seed sensible defaults on the client and let
-// the server enforce the canonical list via the credit-aware proxy.
-export const KITION_CONSOLE_DEFAULT_TEXT_MODELS = ['gpt-5.5']
-const KITION_CONSOLE_DEFAULT_IMAGE_MODELS = ['gpt-image-1', 'dall-e-3']
-export const KITION_CONSOLE_DEFAULT_MODELS = [
-  ...KITION_CONSOLE_DEFAULT_TEXT_MODELS,
-  ...KITION_CONSOLE_DEFAULT_IMAGE_MODELS,
-]
+const LEGACY_KITION_CLOUD_MODELS = new Set(['gpt-5.5', 'gpt-image-1', 'dall-e-3'])
 
 let removeSystemThemeListener: (() => void) | null = null
 
 export const desktopProviderCatalog: DesktopProviderDescriptor[] = [
+  {
+    kind: 'kition_console',
+    label: 'Kition Cloud',
+    sublabel: 'Hosted AI',
+    descriptor: 'Kition Cloud · hosted models',
+    description: 'Use hosted models through your Kition Account. No separate API key is required, and usage is deducted from your Kition credits.',
+    badge: 'Hosted Cloud',
+    defaultBaseUrl: '',
+    defaultModelsPath: '/models',
+    authLabel: 'Kition Account',
+  },
   {
     kind: 'openai',
     label: 'OpenAI',
@@ -73,6 +76,17 @@ export const desktopProviderCatalog: DesktopProviderDescriptor[] = [
     authLabel: 'DeepSeek API Key',
   },
   {
+    kind: 'kimi',
+    label: 'Kimi',
+    sublabel: 'K2.5 · K2',
+    descriptor: 'Kimi · Moonshot AI models',
+    description: 'Connect to the Moonshot AI OpenAI-compatible API using a Kimi API Key. Supports Kimi and Moonshot model families.',
+    badge: 'OpenAI-compatible',
+    defaultBaseUrl: 'https://api.moonshot.cn/v1',
+    defaultModelsPath: '/models',
+    authLabel: 'Kimi API Key',
+  },
+  {
     kind: 'custom',
     label: 'Custom',
     sublabel: 'Self-hosted',
@@ -82,17 +96,6 @@ export const desktopProviderCatalog: DesktopProviderDescriptor[] = [
     defaultBaseUrl: '',
     defaultModelsPath: '/models',
     authLabel: 'Token',
-  },
-  {
-    kind: 'kition_console',
-    label: 'Kition Cloud',
-    sublabel: 'Hosted AI',
-    descriptor: 'Kition Cloud · hosted models',
-    description: 'Use hosted models through your Kition Account. No separate API key is required, and usage is deducted from your Kition credits.',
-    badge: 'Hosted Cloud',
-    defaultBaseUrl: '',
-    defaultModelsPath: '/models',
-    authLabel: 'Kition Account',
   },
 ]
 
@@ -158,8 +161,8 @@ export function normalizeProviderBaseURL(kind: DesktopProviderKind, baseUrl?: st
 
   try {
     const parsed = new URL(raw)
-    // openai / deepseek / custom providers given a bare host need /v1 appended; an explicit path is kept as-is.
-    if ((kind === 'openai' || kind === 'deepseek' || kind === 'custom') && (!parsed.pathname || parsed.pathname === '/')) {
+    // OpenAI-compatible providers given a bare host need /v1 appended; an explicit path is kept as-is.
+    if ((kind === 'openai' || kind === 'deepseek' || kind === 'kimi' || kind === 'custom') && (!parsed.pathname || parsed.pathname === '/')) {
       parsed.pathname = '/v1'
       return parsed.toString().replace(/\/$/, '')
     }
@@ -199,6 +202,7 @@ function createProviderMap() {
     openai: createProviderConfig('openai'),
     anthropic: createProviderConfig('anthropic'),
     deepseek: createProviderConfig('deepseek'),
+    kimi: createProviderConfig('kimi'),
     custom: createProviderConfig('custom'),
     kition_console: createProviderConfig('kition_console'),
   } satisfies Record<DesktopProviderKind, DesktopProviderConfig>
@@ -289,14 +293,12 @@ export function normalizeDesktopSettings(input?: Partial<DesktopSettingsState>):
   for (const descriptor of desktopProviderCatalog) {
     const current = inputProviders[descriptor.kind]
     const rawDiscovered = Array.isArray(current?.discoveredModels)
-      ? current!.discoveredModels.filter(Boolean)
+      ? Array.from(new Set(current.discoveredModels.map((model) => String(model || '').trim()).filter(Boolean)))
       : []
-    // KitionAI Console does not require the user to run a discovery step —
-    // its model list is curated server-side. Seed a fallback default list so
-    // the agent / media pickers always have at least one option once the
-    // user signs in.
     const discoveredModels = descriptor.kind === 'kition_console'
-      ? [...KITION_CONSOLE_DEFAULT_MODELS]
+      && rawDiscovered.length === LEGACY_KITION_CLOUD_MODELS.size
+      && rawDiscovered.every((model) => LEGACY_KITION_CLOUD_MODELS.has(model))
+      ? []
       : rawDiscovered
     providerMap[descriptor.kind] = {
       ...providerMap[descriptor.kind],
@@ -324,8 +326,14 @@ export function normalizeDesktopSettings(input?: Partial<DesktopSettingsState>):
   }
   if (activeProvider === 'kition_console') {
     providerMap.kition_console.enabled = true
-    if (!KITION_CONSOLE_DEFAULT_TEXT_MODELS.includes(selectedModelByProvider.kition_console || '')) {
-      selectedModelByProvider.kition_console = KITION_CONSOLE_DEFAULT_TEXT_MODELS[0]
+    const cloudModels = providerMap.kition_console.discoveredModels
+    const selectedCloudModel = selectedModelByProvider.kition_console || ''
+    if (selectedCloudModel && !cloudModels.includes(selectedCloudModel)) {
+      delete selectedModelByProvider.kition_console
+    }
+    if (!selectedModelByProvider.kition_console) {
+      const discoveredTextModel = cloudModels.find(isLikelyTextGenerationModel)
+      if (discoveredTextModel) selectedModelByProvider.kition_console = discoveredTextModel
     }
   }
 

@@ -38,6 +38,24 @@ describe('routeKitableOpenPath', () => {
     expect(upsert.mock.calls[0][0].title).toBe('Leads')
   })
 
+  it('returns a dashboard-tab payload for a valid dashboard:// sentinel', () => {
+    const upsert = vi.fn()
+    const result = routeKitableOpenPath(
+      'dashboard://Tasks.kitable#task-dashboard',
+      { tablesByKitablePath: {} },
+      upsert,
+    )
+    expect(result).toBe(true)
+    expect(upsert).toHaveBeenCalledWith({
+      id: 'kitable:Tasks.kitable',
+      type: 'dashboard',
+      title: 'Tasks',
+      kitablePath: 'Tasks.kitable',
+      dashboardId: 'task-dashboard',
+      format: 'data',
+    })
+  })
+
   it('is a no-op for garbage paths (no upsert, no throw)', () => {
     const upsert = vi.fn()
     expect(routeKitableOpenPath('table://garbage', { tablesByKitablePath: {} }, upsert)).toBe(false)
@@ -45,7 +63,7 @@ describe('routeKitableOpenPath', () => {
     expect(upsert).not.toHaveBeenCalled()
   })
 
-  it('returns false for non-table:// paths (caller falls through to the next branch)', () => {
+  it('returns false for unrelated paths (caller falls through to the next branch)', () => {
     const upsert = vi.fn()
     expect(routeKitableOpenPath('workflows://X.kitable', { tablesByKitablePath: {} }, upsert)).toBe(false)
     expect(routeKitableOpenPath('note.md', { tablesByKitablePath: {} }, upsert)).toBe(false)

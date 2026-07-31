@@ -31,6 +31,7 @@ import {
   type DataInlineViewMode,
   type DataRecordWindow,
 } from '@/features/table/lib/tableEditorShared'
+import { reorderTableFields } from '@/features/table/lib/tableColumnOrdering'
 import type { TableAction } from '@/features/table/lib/tableActions'
 
 type UseTableStructureActionsArgs = {
@@ -361,6 +362,47 @@ export function useTableStructureActions({
     }
   }
 
+  async function reorderField(
+    field: DataField,
+    fromIndex: number,
+    dropIndex: number,
+    visibleFields: DataField[],
+  ) {
+    if (!document || !activeTable || visibleFields[fromIndex]?.id !== field.id) return
+    const reorderedFields = reorderTableFields(fields, visibleFields, field.id, dropIndex)
+    if (reorderedFields === fields) return
+
+    const currentOrderById = new Map(fields.map((item) => [item.id, item.order]))
+    const changedFields = reorderedFields.filter((item) => (
+      currentOrderById.get(item.id) !== item.order
+    ))
+    if (!changedFields.length) return
+
+    setBusy(true)
+    setDocument((current) => current ? {
+      ...current,
+      tables: current.tables?.map((table) => table.id === activeTable.id ? {
+        ...table,
+        fields: reorderedFields,
+      } : table),
+    } : current)
+
+    try {
+      for (const item of changedFields) {
+        await updateDataField(document.id, activeTable.id, item.id, { order: item.order })
+      }
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Failed to reorder field')
+      try {
+        await refreshDocument(activeTable.id)
+      } catch {
+        // Keep the original request error visible if recovery also fails.
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function removeField(field: DataField) {
     if (!document || !activeTable || field.is_primary) return
     setBusy(true)
@@ -385,6 +427,7 @@ export function useTableStructureActions({
     createView,
     importCSVFile,
     renameView,
+    reorderField,
     removeField,
     runTableAction,
     saveField,

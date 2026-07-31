@@ -3,23 +3,17 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { TFunction } from 'i18next'
 import {
   getDesktopInfo,
-  isDesktopRuntime,
   openExternalURL,
   openRuntimePath,
-  retryDesktopBackendStart,
   type DesktopInfo,
 } from '@/services/desktop'
-import { discoverProviderModels } from '@/api/desktop'
 import {
   applyDesktopAppearance,
   applyDesktopDisplay,
   createDefaultDesktopDisplaySettings,
   createDefaultDesktopSettings,
   desktopProviderCatalog,
-  KITION_CONSOLE_DEFAULT_MODELS,
-  KITION_CONSOLE_DEFAULT_TEXT_MODELS,
   loadDesktopSettings,
-  normalizeProviderBaseURL,
   saveDesktopSettings,
 } from '@/services/desktopSettings'
 import { checkForUpdates, downloadUpdate, installUpdate, setAutoCheckUpdates, setBetaChannel, type UpdateState } from '@/services/desktopUpdates'
@@ -135,21 +129,6 @@ function collectSearchableStrings(node: unknown, out: string[]) {
   }
 }
 
-function formatSettingsDateTime(value?: string) {
-  if (!value) {
-    return 'Not synced yet'
-  }
-
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return value
-  }
-
-  return date.toLocaleString(getCurrentLocale(), {
-    hour12: false,
-  })
-}
-
 function formatSettingsDateTimeParts(value?: string) {
   if (!value) {
     return null
@@ -164,46 +143,6 @@ function formatSettingsDateTimeParts(value?: string) {
     date: date.toLocaleDateString(getCurrentLocale()),
     time: date.toLocaleTimeString(getCurrentLocale(), { hour12: false }),
   }
-}
-
-function resolveActiveProviderModelSelection(settings: DesktopSettingsState) {
-  const activeProviderKind = settings.providers[settings.models.activeProvider]?.enabled
-    ? settings.models.activeProvider
-    : (desktopProviderCatalog.find((item) => settings.providers[item.kind]?.enabled)?.kind || settings.models.activeProvider)
-  const activeProvider = settings.providers[activeProviderKind]
-  const currentModels = activeProvider?.discoveredModels || []
-  const selectedModel = settings.models.selectedModelByProvider[activeProviderKind]
-  const resolvedModel = selectedModel && currentModels.includes(selectedModel)
-    ? selectedModel
-    : currentModels[0] || ''
-
-  return {
-    activeProviderKind,
-    activeProvider,
-    currentModels,
-    selectedModel: resolvedModel,
-  }
-}
-
-function validateDesktopProvider(settings: DesktopSettingsState, kind: DesktopProviderKind) {
-  const provider = settings.providers[kind]
-  if (!provider.baseUrl && kind !== 'custom') {
-    provider.baseUrl = desktopProviderCatalog.find((item) => item.kind === kind)?.defaultBaseUrl || provider.baseUrl
-  }
-
-  if ((kind === 'openai' || kind === 'anthropic') && !provider.apiKey) {
-    return 'Please enter an API Key first'
-  }
-  if (kind === 'custom') {
-    if (!provider.baseUrl) {
-      return 'Please enter the custom Provider URL first'
-    }
-    if (!provider.apiKey && !provider.accessToken) {
-      return 'Please enter the custom Provider token first'
-    }
-  }
-
-  return ''
 }
 
 function preserveLiveThemePreview(settings: DesktopSettingsState): DesktopSettingsState {
@@ -239,105 +178,6 @@ function preserveLiveThemePreview(settings: DesktopSettingsState): DesktopSettin
       theme: resolved,
     },
   }
-}
-
-async function discoverDesktopProviderModels(settings: DesktopSettingsState, kind: DesktopProviderKind) {
-  const provider = settings.providers[kind]
-  return discoverProviderModels({
-    provider_type: kind,
-    base_url: provider.baseUrl || undefined,
-    api_key: provider.apiKey || undefined,
-    access_token: provider.accessToken || undefined,
-    models_path: provider.modelsPath || undefined,
-    auth_header: provider.authHeader || undefined,
-    auth_scheme: provider.authScheme,
-  })
-}
-
-function shouldRetryProviderModelDiscovery(error: unknown) {
-  const message = String((error as { message?: string })?.message || '').trim().toLowerCase()
-  if (!message) {
-    return false
-  }
-  return (
-    message.includes('network error') ||
-    message.includes('network error') ||
-    message.includes('request failed') ||
-    message.includes('service unavailable') ||
-    message.includes('service unavailable') ||
-    message.includes('desktop local service not ready')
-  )
-}
-
-async function syncDesktopProviderModels(settings: DesktopSettingsState, kind: DesktopProviderKind) {
-  const next = preserveLiveThemePreview(structuredClone(settings))
-  const provider = next.providers[kind]
-  provider.baseUrl = normalizeProviderBaseURL(kind, provider.baseUrl)
-
-  const validationError = validateDesktopProvider(next, kind)
-  if (validationError) {
-    throw new Error(validationError)
-  }
-
-  if (kind === 'kition_console') {
-    const models = [...KITION_CONSOLE_DEFAULT_MODELS]
-    provider.enabled = true
-    provider.discoveredModels = models
-    provider.lastSyncedAt = new Date().toISOString()
-    next.models.activeProvider = kind
-    if (!next.models.selectedModelByProvider[kind] || !KITION_CONSOLE_DEFAULT_TEXT_MODELS.includes(next.models.selectedModelByProvider[kind] || '')) {
-      next.models.selectedModelByProvider[kind] = KITION_CONSOLE_DEFAULT_TEXT_MODELS[0]
-    }
-    const selectedModel = next.models.selectedModelByProvider[kind] || KITION_CONSOLE_DEFAULT_TEXT_MODELS[0]
-    if (!next.models.preferredDefaultModel || !models.includes(next.models.preferredDefaultModel)) {
-      next.models.preferredDefaultModel = selectedModel
-    }
-    if (!next.models.preferredChatModel || !models.includes(next.models.preferredChatModel)) {
-      next.models.preferredChatModel = selectedModel
-    }
-    if (!next.models.preferredWritingModel || !models.includes(next.models.preferredWritingModel)) {
-      next.models.preferredWritingModel = selectedModel
-    }
-    return saveDesktopSettings(next)
-  }
-
-  let response: { models?: string[]; fetched_at?: string }
-  try {
-    response = await discoverDesktopProviderModels(next, kind)
-  } catch (error) {
-    if (!isDesktopRuntime() || !shouldRetryProviderModelDiscovery(error)) {
-      throw error
-    }
-    await retryDesktopBackendStart().catch(() => null)
-    response = await discoverDesktopProviderModels(next, kind)
-  }
-
-  const models = Array.isArray(response?.models) ? response.models.filter(Boolean) : []
-  if (!models.length) {
-    throw new Error('No usable models returned from the provider endpoint')
-  }
-
-  provider.enabled = true
-  provider.discoveredModels = models
-  provider.lastSyncedAt = response.fetched_at || new Date().toISOString()
-  next.models.activeProvider = kind
-
-  if (!next.models.selectedModelByProvider[kind]) {
-    next.models.selectedModelByProvider[kind] = models[0]
-  }
-
-  const selectedModel = next.models.selectedModelByProvider[kind] || models[0]
-  if (!next.models.preferredDefaultModel || !models.includes(next.models.preferredDefaultModel)) {
-    next.models.preferredDefaultModel = selectedModel
-  }
-  if (!next.models.preferredChatModel || !models.includes(next.models.preferredChatModel)) {
-    next.models.preferredChatModel = selectedModel
-  }
-  if (!next.models.preferredWritingModel || !models.includes(next.models.preferredWritingModel)) {
-    next.models.preferredWritingModel = selectedModel
-  }
-
-  return saveDesktopSettings(next)
 }
 
 function Label({ title, children }: { title: string; children: ReactNode }) {

@@ -18,7 +18,7 @@ export type DesktopSettingsSection =
 
 export type DesktopThemeMode = 'auto' | 'light' | 'dark'
 
-export type DesktopProviderKind = 'openai' | 'anthropic' | 'deepseek' | 'custom' | 'kition_console'
+export type DesktopProviderKind = 'openai' | 'anthropic' | 'deepseek' | 'kimi' | 'custom' | 'kition_console'
 
 export type DesktopUiDensity = 'compact' | 'normal' | 'relaxed'
 export type DesktopAgentTimelineLineHeight = 'tight' | 'normal' | 'loose'

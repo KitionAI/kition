@@ -26,7 +26,6 @@ import { extractNoteDocs } from '@/features/search/sources/noteSource'
 import type { NavigateAdapters } from '@/features/search/ui/navigateToHit'
 import { navigateToHit } from '@/features/search/ui/navigateToHit'
 import { maybeSeedOnboardingPack } from '@/features/onboarding/maybeSeedOnboardingPack'
-import { upgradeOnboardingPack } from '@/features/onboarding/upgradeOnboardingPack'
 import { FirstRunActivationPanel } from '@/features/onboarding/components/FirstRunActivationPanel'
 import {
   trackProductEvent,
@@ -362,18 +361,10 @@ export function AppShell() {
     seedAttemptedRef.current.add(activeVaultPath)
     void (async () => {
       const welcomePath = await seedFirstRun(activeVaultPath)
-      let upgradedPath = ''
-      try {
-        upgradedPath = await upgradeOnboardingPack()
-      } catch (err) {
-        toast.error(tLauncher('firstRun.seedError', { message: (err as Error).message }))
-      }
       if (welcomePath) {
         markWorkspaceOnboardingPending(activeVaultPath)
         notifyWorkspaceReload(welcomePath)
         setOnboardingOpen(true)
-      } else if (upgradedPath) {
-        notifyWorkspaceReload()
       }
     })()
   }, [vaultsLoaded, activeVaultPath, seedFirstRun, notifyWorkspaceReload])

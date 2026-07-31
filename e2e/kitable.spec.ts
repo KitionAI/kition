@@ -287,6 +287,34 @@ async function mockKitableDataDocumentApi(page: Page) {
       return fulfillJson(route, { code: 200, data: FIXTURE_RECORDS })
     }
 
+    if (method === 'GET' && /\/views\/\d+\/view-fields$/.test(path)) {
+      return fulfillJson(route, {
+        code: 200,
+        data: {
+          items: [
+            { view_id: 201, field_id: 101, visible: true, width: 200, position: 0, frozen: true },
+            { view_id: 201, field_id: 102, visible: true, width: 200, position: 1, frozen: false },
+            { view_id: 201, field_id: 103, visible: true, width: 200, position: 2, frozen: false },
+          ],
+        },
+      })
+    }
+
+    if (method === 'PATCH' && /\/views\/\d+\/view-fields\/\d+$/.test(path)) {
+      const fieldId = Number(path.split('/').pop())
+      return fulfillJson(route, {
+        code: 200,
+        data: {
+          view_id: 201,
+          field_id: fieldId,
+          visible: true,
+          width: Number(request.postDataJSON()?.width || 200),
+          position: 0,
+          frozen: fieldId === 101,
+        },
+      })
+    }
+
     // Fallback for anything else under data-documents (PATCH view, etc.) — empty success.
     return fulfillJson(route, { code: 200, data: {} })
   })
@@ -476,6 +504,86 @@ test.describe('kitable editor — toolbar interactions', () => {
     }))
     expect(scrollRange.maximum).toBeGreaterThan(0)
     expect(scrollRange.scrollLeft).toBe(0)
+  })
+
+  test('resizes a grid column by dragging its header boundary and saves the width', async ({ page }) => {
+    await mockKitableDesktopBridge(page)
+    await page.goto('/')
+    await waitForKitableEditor(page)
+
+    const gridStage = page.locator('.data-inline-grid-canvas [data-t-grid-stage="true"]')
+    await expect(gridStage).toBeVisible()
+    const box = await gridStage.boundingBox()
+    expect(box).not.toBeNull()
+
+    // The fixture has three 24px row controls and starts every field at 200px.
+    const expectedBoundaryX = box!.x + 72 + 200
+    const headerY = box!.y + 16
+    let firstColumnBoundaryX: number | null = null
+    for (let delta = -12; delta <= 12; delta++) {
+      const candidateX = expectedBoundaryX + delta
+      await page.mouse.move(candidateX, headerY)
+      const cursor = await gridStage.evaluate(async (node) => {
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+        return node.parentElement?.style.cursor
+      })
+      if (cursor === 'ew-resize') {
+        firstColumnBoundaryX = candidateX
+        break
+      }
+    }
+    expect(firstColumnBoundaryX).not.toBeNull()
+
+    const resizedBoundaryX = firstColumnBoundaryX! + 80
+    const resizeRequestPromise = page.waitForRequest((request) => (
+      request.method() === 'PATCH'
+      && /\/views\/201\/view-fields\/101$/.test(new URL(request.url()).pathname)
+    ))
+
+    await page.mouse.down()
+    await page.mouse.move(resizedBoundaryX, headerY, { steps: 8 })
+    await page.mouse.up()
+
+    const resizeRequest = await resizeRequestPromise
+    expect(resizeRequest.postDataJSON()).toEqual({ width: 280 })
+
+    await page.mouse.move(resizedBoundaryX, headerY)
+    await expect.poll(
+      () => gridStage.evaluate((node) => node.parentElement?.style.cursor),
+    ).toBe('ew-resize')
+  })
+
+  test('drags a grid column and persists the reordered field positions', async ({ page }) => {
+    const fieldOrderPatches: Array<{ fieldId: number; order?: number }> = []
+    page.on('request', (request) => {
+      const match = request.url().match(
+        /\/api\/v1\/data-documents\/1\/tables\/11\/fields\/(\d+)$/,
+      )
+      if (request.method() !== 'PATCH' || !match) return
+      fieldOrderPatches.push({
+        fieldId: Number(match[1]),
+        ...(request.postDataJSON() as { order?: number }),
+      })
+    })
+
+    await mockKitableDesktopBridge(page)
+    await page.goto('/')
+    await waitForKitableEditor(page)
+
+    const gridStage = page.locator('.data-inline-grid-canvas [data-t-grid-stage="true"]')
+    await expect(gridStage).toBeVisible()
+    const box = await gridStage.boundingBox()
+    expect(box).not.toBeNull()
+
+    await page.mouse.move(box!.x + 345, box!.y + 16)
+    await page.mouse.down()
+    await page.mouse.move(box!.x + 85, box!.y + 16, { steps: 8 })
+    await page.mouse.up()
+
+    await expect.poll(() => fieldOrderPatches).toEqual([
+      { fieldId: 102, order: 0 },
+      { fieldId: 101, order: 1 },
+    ])
   })
 
   test('text cell editing uses one brand-purple focus border', async ({ page }) => {

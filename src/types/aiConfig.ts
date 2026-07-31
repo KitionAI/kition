@@ -11,6 +11,8 @@ const aspectRatioSchema = z.enum(['1:1', '16:9', '9:16', '4:3', '3:4', '21:9', '
 const resolutionSchema = z.enum(['1K', '2K', '4K'])
 const qualitySchema = z.enum(['low', 'medium', 'high'])
 
+export const MAX_AI_IMAGE_VARIANTS = 5
+
 export const useCaseSchema = z.enum([
   'cover_illustration',
   'inline_illustration',
@@ -24,8 +26,7 @@ export type DataFieldAIImageUseCase = z.infer<typeof useCaseSchema>
 const imageGenerationConfig = aiConfigBase.extend({
   type: z.literal('image_generation'),
   source_field_id: z.number().int().positive(),
-  n: z.number().int().min(1).max(10).default(1),
-  size: z.string().regex(/^\d+x\d+$/).optional(),
+  n: z.number().int().min(1).max(MAX_AI_IMAGE_VARIANTS).default(1),
   quality: qualitySchema.default('medium'),
   aspect_ratio: aspectRatioSchema.default('1:1'),
   resolution: resolutionSchema.default('1K'),
@@ -36,7 +37,7 @@ const imageCustomizationConfig = aiConfigBase.extend({
   type: z.literal('image_customization'),
   prompt: z.string().min(1),
   source_field_id: z.number().int().positive().optional(),
-  n: z.number().int().min(1).max(10).default(1),
+  n: z.number().int().min(1).max(MAX_AI_IMAGE_VARIANTS).default(1),
   quality: qualitySchema.default('medium'),
   aspect_ratio: aspectRatioSchema.default('1:1'),
   resolution: resolutionSchema.default('1K'),
@@ -94,6 +95,17 @@ export const textAIConfigSchema = z.discriminatedUnion('type', [
 export type TextAIConfig = z.infer<typeof textAIConfigSchema>
 
 export type AnyAIConfig = AttachmentAIConfig | TextAIConfig
+
+export function normalizeAIConfig<T extends AnyAIConfig | null | undefined>(config: T): T {
+  if (
+    !config
+    || (config.type !== 'image_generation' && config.type !== 'image_customization')
+    || !('size' in config)
+  ) return config
+  const normalized = { ...config } as T & { size?: unknown }
+  delete normalized.size
+  return normalized
+}
 
 export function getAIConfigSchemaForField(
   fieldType: DataFieldType,

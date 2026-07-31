@@ -422,6 +422,47 @@
       "other": "Autre"
     }
   },
+  "templateLibrary": {
+    "title": "Discover templates",
+    "description": "Production-ready table workspaces with realistic sample data.",
+    "blank": "Start with a blank table",
+    "cancel": "Cancel",
+    "createFailed": "The table workspace could not be created.",
+    "templates": {
+      "taskTracker": {
+        "title": "Task Tracker",
+        "description": "Manage tasks, owners, progress, priorities, and delivery dates."
+      },
+      "thumbnailGenerator": {
+        "title": "YouTube & TikTok Thumbnail Generator",
+        "description": "Upload one portrait, generate concise titles, and create two original 16:9 plus two 9:16 image variants."
+      },
+      "leadsLandingPage": {
+        "title": "Leads Landing Page",
+        "description": "Capture form submissions and move qualified prospects through follow-up."
+      },
+      "sdrColdCallManager": {
+        "title": "SDR Cold Call Manager",
+        "description": "Prioritize outbound calls, record attempts, and schedule the next action."
+      },
+      "productLaunchWebsite": {
+        "title": "Product Launch Website",
+        "description": "Coordinate website sections, assets, owners, and launch readiness."
+      },
+      "batchProductDesigner": {
+        "title": "Batch Product Designer",
+        "description": "Turn product briefs into a repeatable concept, asset, and copy pipeline."
+      },
+      "simpleClientCrm": {
+        "title": "Simple Client CRM",
+        "description": "Track prospects, quotes, active clients, revenue, and follow-up."
+      },
+      "lumiereRestaurant": {
+        "title": "Lumière Restaurant",
+        "description": "Manage dining reservations, guest preferences, and private events."
+      }
+    }
+  },
   "feedback": {
     "tableDuplicated": "Table dupliquée",
     "csvDownloaded": "CSV téléchargé",

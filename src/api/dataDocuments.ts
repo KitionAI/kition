@@ -28,7 +28,7 @@ import type {
   ViewSortsResponse,
 } from '@/types/dataDocument'
 import type { RuntimeWritingModel } from '@/types'
-import type { AnyAIConfig } from '@/types/aiConfig'
+import { normalizeAIConfig, type AnyAIConfig } from '@/types/aiConfig'
 import { statWorkspaceDocument } from '@/services/desktop'
 
 function unwrapResponseData<T>(response: T | { data?: T }) {
@@ -41,12 +41,16 @@ function unwrapResponseData<T>(response: T | { data?: T }) {
 function normalizeField(field: DataField | undefined | null): DataField {
   if (!field) return field as DataField
   const options = (field.options ?? {}) as Record<string, unknown>
-  if (!('ai_config' in options)) return field
-  const { ai_config, ...rest } = options
+  const hasLegacyConfig = 'ai_config' in options
+  const rawConfig = hasLegacyConfig ? options.ai_config : field.ai_config
+  const aiConfig = normalizeAIConfig(rawConfig as AnyAIConfig | null | undefined)
+  if (!hasLegacyConfig && aiConfig === field.ai_config) return field
+  const rest = { ...options }
+  delete rest.ai_config
   return {
     ...field,
-    options: rest,
-    ai_config: (ai_config as AnyAIConfig | null | undefined) ?? null,
+    options: hasLegacyConfig ? rest : field.options,
+    ai_config: aiConfig ?? null,
   }
 }
 

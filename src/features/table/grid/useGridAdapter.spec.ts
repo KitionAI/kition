@@ -2,7 +2,13 @@ import { describe, expect, it, vi } from 'vitest'
 
 import type { DataField, DataRecord } from '@/types/dataDocument'
 
-import { buildCellForField, readCellValue } from './useGridAdapter'
+import {
+  buildCellForField,
+  buildGridColumn,
+  parseImageAspectRatio,
+  readCellValue,
+} from './useGridAdapter'
+import { GridInnerIcon } from './managers'
 import { CellType } from './renderers'
 import type { IInnerCell } from './renderers'
 
@@ -42,6 +48,23 @@ function makeRecord(values: Record<string, unknown>): DataRecord {
 }
 
 describe('useGridAdapter — phase 2 field types', () => {
+  it('marks AI-enabled fields in the grid header', () => {
+    const column = buildGridColumn(makeField({
+      ai_config: {
+        type: 'summarize',
+        enabled: true,
+        auto_update: false,
+        source_field_id: 2,
+      },
+    }))
+
+    expect(column.icon).toBe(GridInnerIcon.AI)
+  })
+
+  it('does not mark regular fields as AI columns', () => {
+    expect(buildGridColumn(makeField({})).icon).toBeUndefined()
+  })
+
   it('rating field renders a Rating cell with bounded data', () => {
     const cell = buildCellForField(
       makeField({ type: 'rating', options: { max: 5, icon: 'heart' } }),
@@ -140,6 +163,56 @@ describe('useGridAdapter — phase 2 field types', () => {
     if (cell.type === CellType.Text) {
       expect(cell.readonly).toBe(false)
       expect(cell.contentAlign).toBe('center')
+    }
+  })
+
+  it('resolves relative attachment URLs against the desktop backend origin', () => {
+    const previousBridge = window.kitionDesktop
+    window.kitionDesktop = {
+      backendOrigin: 'http://127.0.0.1:18101',
+    } as typeof window.kitionDesktop
+    try {
+      const cell = buildCellForField(
+        makeField({ type: 'attachment' }),
+        makeRecord({
+          name: [{ name: 'preview.png', url: '/uploads/preview.png' }],
+        }),
+      )
+      expect(cell.type).toBe(CellType.Image)
+      if (cell.type === CellType.Image) {
+        expect(cell.data).toEqual([{
+          id: '1-0',
+          url: 'http://127.0.0.1:18101/uploads/preview.png',
+        }])
+      }
+    } finally {
+      window.kitionDesktop = previousBridge
+    }
+  })
+
+  it('carries the configured AI image aspect ratio into attachment cells', () => {
+    const cell = buildCellForField(
+      makeField({
+        type: 'attachment',
+        ai_config: {
+          type: 'image_generation',
+          enabled: true,
+          auto_update: false,
+          source_field_id: 2,
+          n: 3,
+          quality: 'medium',
+          aspect_ratio: '4:3',
+          resolution: '1K',
+          image_use_case: 'product_showcase',
+        },
+      }),
+      makeRecord({ name: [{ name: 'preview.png', url: '/preview.png' }] }),
+    )
+
+    expect(parseImageAspectRatio('4:3')).toBeCloseTo(4 / 3)
+    expect(cell.type).toBe(CellType.Image)
+    if (cell.type === CellType.Image) {
+      expect(cell.imageAspectRatio).toBeCloseTo(4 / 3)
     }
   })
 

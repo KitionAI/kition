@@ -146,6 +146,336 @@ describe('useTableRecordActions auto-update via ai_config.source_field_id', () =
     )
   })
 
+  it('strips a legacy image customization size before running one cell', async () => {
+    const legacyImageField = {
+      ...aiField,
+      ai_config: {
+        type: 'image_customization',
+        enabled: true,
+        auto_update: true,
+        source_field_id: 1,
+        prompt: 'Create a thumbnail for {{description}}',
+        size: '1792x1024',
+        n: 3,
+        quality: 'medium',
+        aspect_ratio: '16:9',
+        resolution: '1K',
+        image_use_case: 'cover_illustration',
+      },
+    } as unknown as DataField
+    const updatedRecord = {
+      ...record,
+      values: { ...record.values, image: [{ name: 'thumbnail.png', url: '/thumbnail.png' }] },
+    } as unknown as DataRecord
+    const runCell = vi.spyOn(api, 'runDataAIFieldCell')
+      .mockResolvedValue({ record: updatedRecord, field: legacyImageField })
+    vi.spyOn(api, 'updateDataRecord').mockResolvedValue(updatedRecord)
+
+    const actions = await mountRecordActions({
+      document: { id: 1 } as any,
+      activeTable: { id: 2 } as any,
+      fields: [descriptionField, legacyImageField],
+      records: [record],
+      groupField: null,
+      canReorderRows: false,
+      canMoveKanbanCards: false,
+      selectedRecordIds: new Set(),
+      setBusy: vi.fn(),
+      setError: vi.fn(),
+      setRecords: vi.fn(),
+      setSelectedRecord: vi.fn(),
+      setSelectedRecordIds: vi.fn(),
+      setRecordContextMenu: vi.fn(),
+      loadRecords: vi.fn().mockResolvedValue(undefined),
+      setStatus: vi.fn(),
+      copyTextToClipboard: vi.fn().mockResolvedValue(undefined),
+    })
+
+    await actions.updateCell(record, descriptionField, 'new value')
+
+    expect(runCell.mock.calls[0]?.[4].config).toMatchObject({
+      type: 'image_customization',
+      aspect_ratio: '16:9',
+      prompt: 'Create a thumbnail for new value',
+    })
+    expect(runCell.mock.calls[0]?.[4].config).not.toHaveProperty('size')
+  })
+
+  it('materializes per-record placeholders before running a prompt batch', async () => {
+    const legacyImageField = {
+      ...aiField,
+      ai_config: {
+        type: 'image_customization',
+        enabled: true,
+        auto_update: true,
+        source_field_id: 1,
+        prompt: 'Create a thumbnail for {{description}}',
+        size: '1792x1024',
+        n: 3,
+        quality: 'medium',
+        aspect_ratio: '16:9',
+        resolution: '1K',
+        image_use_case: 'cover_illustration',
+      },
+    } as unknown as DataField
+    const runCell = vi.spyOn(api, 'runDataAIFieldCell').mockResolvedValue({
+      record,
+      field: legacyImageField,
+    })
+    const runBatch = vi.spyOn(api, 'runDataAIFieldBatch')
+
+    const actions = await mountRecordActions({
+      document: { id: 1 } as any,
+      activeTable: { id: 2 } as any,
+      fields: [descriptionField, legacyImageField],
+      records: [record],
+      groupField: null,
+      canReorderRows: false,
+      canMoveKanbanCards: false,
+      selectedRecordIds: new Set([record.id]),
+      setBusy: vi.fn(),
+      setError: vi.fn(),
+      setRecords: vi.fn(),
+      setSelectedRecord: vi.fn(),
+      setSelectedRecordIds: vi.fn(),
+      setRecordContextMenu: vi.fn(),
+      loadRecords: vi.fn().mockResolvedValue(undefined),
+      setStatus: vi.fn(),
+      copyTextToClipboard: vi.fn().mockResolvedValue(undefined),
+    })
+
+    await actions.runAIFieldBatchForRecords(legacyImageField, [record.id], 'selected')
+
+    expect(runCell.mock.calls[0]?.[4].config).toMatchObject({
+      type: 'image_customization',
+      aspect_ratio: '16:9',
+      prompt: 'Create a thumbnail for old',
+    })
+    expect(runCell.mock.calls[0]?.[4].config).not.toHaveProperty('size')
+    expect(runBatch).not.toHaveBeenCalled()
+  })
+
+  it('resolves a selected Kition Cloud image model without local provider credentials', async () => {
+    const cloudImageField = {
+      ...aiField,
+      ai_config: {
+        ...(aiField as any).ai_config,
+        runtime_model: 'desktop:kition_console:gpt-image-2',
+      },
+    } as unknown as DataField
+    vi.mocked(desktopSettings.loadDesktopSettings).mockResolvedValue({
+      models: {
+        activeProvider: 'kition_console',
+        selectedModelByProvider: { kition_console: 'gpt-5.5' },
+        preferredWritingModel: 'gpt-5.5',
+        preferredChatModel: 'gpt-5.5',
+        preferredDefaultModel: 'gpt-5.5',
+      },
+      providers: {
+        kition_console: {
+          enabled: true,
+          label: 'Kition Cloud',
+          baseUrl: '',
+          apiKey: '',
+          accessToken: '',
+          discoveredModels: ['gpt-5.5', 'gpt-image-2'],
+        },
+      },
+    } as any)
+    const runCell = vi.spyOn(api, 'runDataAIFieldCell')
+      .mockResolvedValue({ record, field: cloudImageField })
+
+    const actions = await mountRecordActions({
+      document: { id: 1 } as any,
+      activeTable: { id: 2 } as any,
+      fields: [descriptionField, cloudImageField],
+      records: [record],
+      groupField: null,
+      canReorderRows: false,
+      canMoveKanbanCards: false,
+      selectedRecordIds: new Set(),
+      setBusy: vi.fn(),
+      setError: vi.fn(),
+      setRecords: vi.fn(),
+      setSelectedRecord: vi.fn(),
+      setSelectedRecordIds: vi.fn(),
+      setRecordContextMenu: vi.fn(),
+      loadRecords: vi.fn().mockResolvedValue(undefined),
+      setStatus: vi.fn(),
+      copyTextToClipboard: vi.fn().mockResolvedValue(undefined),
+    })
+
+    await actions.runAIField(record, cloudImageField)
+
+    expect(runCell.mock.calls[0]?.[4].runtime_model).toMatchObject({
+      provider_type: 'kition_console',
+      provider_label: 'Kition Cloud',
+      model_name: 'gpt-image-2',
+    })
+  })
+
+  it('sends image prompts with live row values instead of template placeholders', async () => {
+    const keyMessageField = {
+      id: 10,
+      name: 'key_message',
+      title: 'Key Message',
+      type: 'long_text',
+    } as DataField
+    const faceField = {
+      id: 11,
+      name: 'face_photo',
+      title: 'Face Photo',
+      type: 'attachment',
+    } as DataField
+    const titleField = {
+      id: 12,
+      name: 'thumbnail_title_16_9',
+      title: 'Thumbnail Title (16:9)',
+      type: 'long_text',
+    } as DataField
+    const thumbnailField = {
+      id: 13,
+      name: 'thumbnail_16_9',
+      title: 'Thumbnail (16:9)',
+      type: 'attachment',
+      ai_config: {
+        type: 'image_customization',
+        enabled: true,
+        auto_update: false,
+        source_field_id: faceField.id,
+        prompt: 'Message: {{key_message}}. Title: {{thumbnail_title_16_9}}. Identity: {{face_photo}}.',
+        n: 3,
+        quality: 'high',
+        aspect_ratio: '16:9',
+        resolution: '1K',
+        image_use_case: 'cover_illustration',
+      },
+    } as DataField
+    const thumbnailRecord = {
+      id: 101,
+      values: {
+        key_message: 'I survived 50 hours in a desert',
+        face_photo: [{ name: 'face.png', url: '/face.png' }],
+        thumbnail_title_16_9: '50 Hours Desert Survival',
+      },
+    } as unknown as DataRecord
+    const runCell = vi.spyOn(api, 'runDataAIFieldCell').mockResolvedValue({
+      record: thumbnailRecord,
+      field: thumbnailField,
+    })
+
+    const actions = await mountRecordActions({
+      document: { id: 1 } as any,
+      activeTable: { id: 2 } as any,
+      fields: [keyMessageField, faceField, titleField, thumbnailField],
+      records: [thumbnailRecord],
+      groupField: null,
+      canReorderRows: false,
+      canMoveKanbanCards: false,
+      selectedRecordIds: new Set(),
+      setBusy: vi.fn(),
+      setError: vi.fn(),
+      setRecords: vi.fn(),
+      setSelectedRecord: vi.fn(),
+      setSelectedRecordIds: vi.fn(),
+      setRecordContextMenu: vi.fn(),
+      loadRecords: vi.fn().mockResolvedValue(undefined),
+      setStatus: vi.fn(),
+      copyTextToClipboard: vi.fn().mockResolvedValue(undefined),
+    })
+
+    await actions.runAIField(thumbnailRecord, thumbnailField)
+
+    const sentConfig = runCell.mock.calls[0]?.[4].config
+    expect(sentConfig && 'prompt' in sentConfig ? sentConfig.prompt : '').toBe(
+      'Message: I survived 50 hours in a desert. Title: 50 Hours Desert Survival. Identity: the attached reference image.',
+    )
+    expect(sentConfig && 'prompt' in sentConfig ? sentConfig.prompt : '').not.toContain('{{')
+  })
+
+  it('runs upstream text AI before its dependent image AI', async () => {
+    const titleField = {
+      id: 2,
+      name: 'title',
+      title: 'Title',
+      type: 'long_text',
+      order: 2,
+      is_primary: false,
+      readonly: false,
+      options: {},
+      ai_config: {
+        type: 'customize',
+        enabled: true,
+        auto_update: true,
+        prompt: 'Write a title for {{description}}',
+      },
+    } as unknown as DataField
+    const dependentImageField = {
+      ...aiField,
+      id: 3,
+      order: 3,
+      ai_config: {
+        type: 'image_customization',
+        enabled: true,
+        auto_update: true,
+        source_field_id: 1,
+        prompt: 'Use {{description}} and {{title}}',
+        n: 3,
+        quality: 'medium',
+        aspect_ratio: '16:9',
+        resolution: '1K',
+        image_use_case: 'cover_illustration',
+      },
+    } as unknown as DataField
+    const titledRecord = {
+      ...record,
+      values: { description: 'new value', title: 'Generated title' },
+    } as unknown as DataRecord
+    const imagedRecord = {
+      ...titledRecord,
+      values: {
+        ...titledRecord.values,
+        image: [{ name: 'generated.png', url: '/generated.png' }],
+      },
+    } as unknown as DataRecord
+    const runCell = vi.spyOn(api, 'runDataAIFieldCell')
+      .mockImplementation(async (_documentId, _tableId, _recordId, fieldId) => ({
+        record: fieldId === titleField.id ? titledRecord : imagedRecord,
+        field: fieldId === titleField.id ? titleField : dependentImageField,
+      }))
+    vi.spyOn(api, 'updateDataRecord').mockResolvedValue(titledRecord)
+
+    const actions = await mountRecordActions({
+      document: { id: 1 } as any,
+      activeTable: { id: 2 } as any,
+      fields: [descriptionField, titleField, dependentImageField],
+      records: [record],
+      groupField: null,
+      canReorderRows: false,
+      canMoveKanbanCards: false,
+      selectedRecordIds: new Set(),
+      setBusy: vi.fn(),
+      setError: vi.fn(),
+      setRecords: vi.fn(),
+      setSelectedRecord: vi.fn(),
+      setSelectedRecordIds: vi.fn(),
+      setRecordContextMenu: vi.fn(),
+      loadRecords: vi.fn().mockResolvedValue(undefined),
+      setStatus: vi.fn(),
+      copyTextToClipboard: vi.fn().mockResolvedValue(undefined),
+    })
+
+    await actions.updateCell(record, descriptionField, 'new value')
+
+    expect(runCell.mock.calls.map((call) => call[3])).toEqual([2, 3])
+    expect(runCell.mock.calls[0]?.[4].config).toMatchObject({
+      prompt: 'Write a title for new value',
+    })
+    expect(runCell.mock.calls[1]?.[4].config).toMatchObject({
+      prompt: 'Use new value and Generated title',
+    })
+  })
+
   it('does NOT trigger runAIField when auto_update is false', async () => {
     const noAutoField = {
       ...aiField,

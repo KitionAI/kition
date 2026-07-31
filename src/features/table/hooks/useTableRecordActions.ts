@@ -17,6 +17,7 @@ import type {
   DataRecordValue,
   DataTable,
 } from '@/types/dataDocument'
+import { normalizeAIConfig } from '@/types/aiConfig'
 import {
   coerceValue,
   displayValue,
@@ -30,6 +31,15 @@ import {
   type RowDropPosition,
 } from '@/features/table/lib/tableEditorShared'
 import { aiCellStore, buildCellKey } from '@/features/table/store/aiCellGenerationStore'
+import {
+  canRunAutoAIField,
+  getAutoUpdateAIFieldPlan,
+  getCreateTimeAIFieldPlan,
+} from '@/features/table/lib/aiFieldDependencies'
+import {
+  hasAIFieldPromptPlaceholders,
+  materializeAIFieldPrompt,
+} from '@/features/table/lib/aiPromptInterpolation'
 
                                                                                
                                                                  
@@ -47,20 +57,29 @@ const NON_CLEARABLE_FIELD_TYPES = new Set<string>([
   'button',
 ])
 
+async function mapWithConcurrency<Input, Output>(
+  values: Input[],
+  concurrency: number,
+  mapper: (value: Input) => Promise<Output>,
+) {
+  const queue = [...values]
+  const output: Output[] = []
+  const workers = Array.from(
+    { length: Math.max(1, Math.min(concurrency, values.length || 1)) },
+    async () => {
+      while (queue.length) {
+        const value = queue.shift() as Input
+        output.push(await mapper(value))
+      }
+    },
+  )
+  await Promise.all(workers)
+  return output
+}
+
 function isClearableField(field: DataField) {
   if (field.readonly) return false
   return !NON_CLEARABLE_FIELD_TYPES.has(field.type)
-}
-
-// isEmptyRecordValue reports whether a cell value carries no usable content,
-// used to decide whether a freshly created row has enough source data to run
-// its auto-update AI columns.
-function isEmptyRecordValue(value: unknown): boolean {
-  if (value === null || value === undefined) return true
-  if (typeof value === 'string') return value.trim() === ''
-  if (Array.isArray(value)) return value.length === 0
-  if (typeof value === 'object') return Object.keys(value as object).length === 0
-  return false
 }
 
 type UseTableRecordActionsArgs = {
@@ -127,26 +146,16 @@ export function useTableRecordActions({
   // (addRecord with no values) leave every source empty, so nothing fires.
   async function runCreateTimeAIFields(record: DataRecord) {
     if (!document || !activeTable) return
-    const targets = fields.filter((field) => {
-      const config = field.ai_config
-      if (!config?.enabled || !config.auto_update) return false
-      if ('source_field_id' in config && config.source_field_id) {
-        const sourceField = fields.find((item) => item.id === config.source_field_id)
-        if (!sourceField) return false
-        return !isEmptyRecordValue(record.values?.[sourceField.name])
-      }
-      if ('prompt' in config) {
-        return fields.some(
-          (item) =>
-            item.id !== field.id &&
-            config.prompt.includes(`{{${item.name}}}`) &&
-            !isEmptyRecordValue(record.values?.[item.name]),
-        )
-      }
-      return false
-    })
-    for (const field of targets) {
-      await runAIField(record, field)
+    const plan = getCreateTimeAIFieldPlan(fields)
+    if (plan.cyclicFieldIds.length) {
+      setError('AI field dependency cycle detected')
+      return
+    }
+    let currentRecord = record
+    for (const field of plan.fields) {
+      if (!canRunAutoAIField(currentRecord, field, fields)) continue
+      const updatedRecord = await executeAIField(currentRecord, field)
+      if (updatedRecord) currentRecord = updatedRecord
     }
   }
 
@@ -250,18 +259,19 @@ export function useTableRecordActions({
     record: DataRecord,
     changedField: DataField,
   ) {
-    if (!document || !activeTable) return
-    const dependents = fields.filter((field) => {
-      if (field.id === changedField.id) return false
-      const config = field.ai_config
-      if (!config?.enabled || !config.auto_update) return false
-      if ('source_field_id' in config && config.source_field_id === changedField.id) return true
-      if ('prompt' in config && config.prompt.includes(`{{${changedField.name}}}`)) return true
-      return false
-    })
-    for (const field of dependents) {
-      await runAIField(record, field)
+    if (!document || !activeTable) return record
+    const plan = getAutoUpdateAIFieldPlan(fields, [changedField.id])
+    if (plan.cyclicFieldIds.length) {
+      setError('AI field dependency cycle detected')
+      return record
     }
+    let currentRecord = record
+    for (const field of plan.fields) {
+      if (!canRunAutoAIField(currentRecord, field, fields)) continue
+      const updatedRecord = await executeAIField(currentRecord, field)
+      if (updatedRecord) currentRecord = updatedRecord
+    }
+    return currentRecord
   }
 
   async function updateCell(
@@ -271,16 +281,20 @@ export function useTableRecordActions({
   ) {
     if (!document || !activeTable || field.readonly) return false
     const nextValue = coerceValue(field, raw)
+    const updatedRecord = {
+      ...record,
+      values: { ...record.values, [field.name]: nextValue },
+    }
     setRecords((items) =>
       items.map((item) =>
         item.id === record.id
-          ? { ...item, values: { ...item.values, [field.name]: nextValue } }
+          ? updatedRecord
           : item,
       ),
     )
     setSelectedRecord((current) =>
       current?.id === record.id
-        ? { ...current, values: { ...current.values, [field.name]: nextValue } }
+        ? updatedRecord
         : current,
     )
     try {
@@ -290,7 +304,7 @@ export function useTableRecordActions({
       window.dispatchEvent(new CustomEvent('kition:data-document:record:upsert', {
         detail: { vaultPath: document.path, tableId: activeTable.id, recordIds: [record.id] },
       }))
-      await runAutoUpdateAIFields(record, field)
+      await runAutoUpdateAIFields(updatedRecord, field)
       return true
     } catch (requestError) {
       setError(
@@ -302,22 +316,30 @@ export function useTableRecordActions({
   }
 
   async function runAIField(record: DataRecord, field: DataField) {
-    if (!document || !activeTable || !field.ai_config?.enabled) return
-    const config = field.ai_config
+    const updatedRecord = await executeAIField(record, field)
+    if (!updatedRecord) return null
+    return runAutoUpdateAIFields(updatedRecord, field)
+  }
+
+  async function executeAIField(record: DataRecord, field: DataField) {
+    if (!document || !activeTable) return
+    const config = normalizeAIConfig(field.ai_config)
+    if (!config?.enabled) return
     const controller = new AbortController()
     const cellKey = buildCellKey(activeTable.id, record.id, field.id)
     aiCellStore.cancel(cellKey)
     aiCellStore.start(cellKey, config.type, controller)
     try {
       const runtimeModel = await resolveAIConfigRuntimeModel(config)
+      const executionConfig = materializeAIFieldPrompt(config, record, fields)
       const result = await runDataAIFieldCell(
         document.id,
         activeTable.id,
         record.id,
         field.id,
         {
-          action: config.type,
-          config,
+          action: executionConfig.type,
+          config: executionConfig,
           force: true,
           runtime_model: runtimeModel,
         },
@@ -331,6 +353,7 @@ export function useTableRecordActions({
       )
       aiCellStore.complete(cellKey)
       setStatus(`${field.title} generated`)
+      return result.record
     } catch (requestError) {
       if (requestError instanceof DOMException && requestError.name === 'AbortError') {
         aiCellStore.complete(cellKey)
@@ -339,6 +362,7 @@ export function useTableRecordActions({
       const message = requestError instanceof Error ? requestError.message : 'AI generation failed'
       aiCellStore.fail(cellKey, message)
       setError(`${field.title}: ${message}`)
+      return null
     }
   }
 
@@ -347,8 +371,9 @@ export function useTableRecordActions({
     recordIds: number[],
     scope: string,
   ) {
-    if (!document || !activeTable || !field.ai_config?.enabled) return
-    const config = field.ai_config
+    if (!document || !activeTable) return
+    const config = normalizeAIConfig(field.ai_config)
+    if (!config?.enabled) return
     const ids = Array.from(
       new Set(recordIds.filter((recordId) => Number.isFinite(recordId) && recordId > 0)),
     ).slice(0, 100)
@@ -365,6 +390,61 @@ export function useTableRecordActions({
     }
     setStatus(`${field.title}: generating ${ids.length} record${ids.length === 1 ? '' : 's'}…`)
     try {
+      const runtimeModel = await resolveAIConfigRuntimeModel(config)
+      if (hasAIFieldPromptPlaceholders(config)) {
+        const generated = await mapWithConcurrency(ids, 3, async (recordId) => {
+          const record = records.find((item) => item.id === recordId)
+          if (!record) return { recordId, error: 'Record is not loaded' } as const
+          try {
+            const executionConfig = materializeAIFieldPrompt(config, record, fields)
+            const result = await runDataAIFieldCell(
+              document.id,
+              activeTable.id,
+              record.id,
+              field.id,
+              {
+                action: executionConfig.type,
+                config: executionConfig,
+                force: true,
+                runtime_model: runtimeModel,
+              },
+              { signal: controller.signal },
+            )
+            return { recordId, record: result.record } as const
+          } catch (requestError) {
+            return {
+              recordId,
+              error: requestError instanceof Error
+                ? requestError.message
+                : 'AI generation failed',
+            } as const
+          }
+        })
+        const successful = generated.flatMap((item) => ('record' in item ? [item.record] : []))
+        const failures = generated.flatMap((item) => ('error' in item ? [item] : []))
+        if (successful.length) {
+          const updatedById = new Map(successful.map((record) => [record.id, record]))
+          setRecords((items) => items.map((item) => updatedById.get(item.id) || item))
+          setSelectedRecord((current) => (current ? updatedById.get(current.id) || current : current))
+          for (const record of successful) {
+            await runAutoUpdateAIFields(record, field)
+          }
+        }
+        for (const id of ids) {
+          const key = buildCellKey(activeTable.id, id, field.id)
+          const failure = failures.find((item) => item.recordId === id)
+          if (failure) aiCellStore.fail(key, failure.error)
+          else aiCellStore.complete(key)
+        }
+        if (failures.length) {
+          setError(
+            `${field.title}: ${successful.length} generated, ${failures.length} failed. ${failures[0].error}`,
+          )
+        } else {
+          setStatus(`${field.title}: ${successful.length} generated`)
+        }
+        return
+      }
       const result = await runDataAIFieldBatch(
         document.id,
         activeTable.id,
@@ -376,6 +456,7 @@ export function useTableRecordActions({
           scope,
           force: true,
           limit: 100,
+          runtime_model: runtimeModel,
         },
         { signal: controller.signal },
       )
@@ -383,6 +464,9 @@ export function useTableRecordActions({
         const updatedById = new Map(result.items.map((item) => [item.record.id, item.record]))
         setRecords((items) => items.map((item) => updatedById.get(item.id) || item))
         setSelectedRecord((current) => (current ? updatedById.get(current.id) || current : current))
+        for (const item of result.items) {
+          await runAutoUpdateAIFields(item.record, field)
+        }
       }
       for (const id of ids) {
         const key = buildCellKey(activeTable.id, id, field.id)

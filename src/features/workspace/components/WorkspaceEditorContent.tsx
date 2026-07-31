@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/registry/ui/button'
 import type { OpenedDocumentDraftCacheEntry } from '@/features/document/lib/openedDocumentDrafts'
 import { WorkspaceDocumentInlineTitle } from '@/features/workspace/components/WorkspaceDocumentInlineTitle'
+import { WorkspaceEmptyState } from '@/features/workspace/components/WorkspaceEmptyState'
 import { openWorkflowDetail } from '@/features/workflow/lib/openWorkflowRoute'
 import { WorkspaceBrowserToolbar } from '@/features/workspace/components/WorkspaceBrowserToolbar'
 import type { WorkspaceTab } from '@/features/workspace/lib/workspace'
@@ -29,6 +30,9 @@ const MarkdownSourceEditor = lazy(() =>
 )
 const TableEditorPane = lazy(() =>
   import('@/features/table/components/TableEditorPane').then((module) => ({ default: module.TableEditorPane })),
+)
+const DashboardEditorPane = lazy(() =>
+  import('@/features/dashboard/components/DashboardEditorPane').then((module) => ({ default: module.DashboardEditorPane })),
 )
 const WorkspaceMediaPanel = lazy(() =>
   import('@/features/workspace/components/WorkspaceMediaPanel').then((module) => ({ default: module.WorkspaceMediaPanel })),
@@ -74,6 +78,7 @@ type WorkspaceEditorContentProps = {
   editorMode: 'rich' | 'split' | 'source' | 'preview'
   editorPreviewHtml: string
   editorResetVersions: Record<string, number>
+  documentEditorFocusRequest?: number
   galleryPanelProps: ComponentProps<typeof WorkspaceMediaPanel> | null
   browserOriginDocumentPath?: string
   browserPanelPhase: 'loading' | 'ready' | 'unavailable' | 'empty'
@@ -91,6 +96,10 @@ type WorkspaceEditorContentProps = {
   onCreateWorkflow?: (kitablePath: string) => void
   onOpenWorkflow?: (kitablePath: string, workflowId: string) => void
   onOpenGlobalWorkflow?: (workflowId: string) => void
+  onOpenWorkflows: () => void
+  onCreateDocument: () => void
+  onCreateTable: () => void
+  onOpenAgent: () => void
   onSaveDocumentTitle: (nextTitle: string) => void
   onSplitEditorChange: (value: string) => void
      
@@ -125,6 +134,7 @@ export function WorkspaceEditorContent({
   editorMode,
   editorPreviewHtml,
   editorResetVersions,
+  documentEditorFocusRequest = 0,
   galleryPanelProps,
   browserOriginDocumentPath,
   browserPanelPhase,
@@ -139,6 +149,10 @@ export function WorkspaceEditorContent({
   onCreateWorkflow,
   onOpenWorkflow,
   onOpenGlobalWorkflow,
+  onOpenWorkflows,
+  onCreateDocument,
+  onCreateTable,
+  onOpenAgent,
   onSaveDocumentTitle,
   onSplitEditorChange,
   onOpenDocument,
@@ -174,6 +188,14 @@ export function WorkspaceEditorContent({
 
   return (
     <>
+      {!activeWorkspaceTab ? (
+        <WorkspaceEmptyState
+          onCreateDocument={onCreateDocument}
+          onCreateTable={onCreateTable}
+          onOpenAgent={onOpenAgent}
+          onOpenWorkflows={onOpenWorkflows}
+        />
+      ) : null}
       {activeWorkspaceTab?.type === 'gallery' && galleryPanelProps ? (
         <div className="document-editor-view is-active">
           <Suspense fallback={<EditorPaneFallback />}>
@@ -319,12 +341,13 @@ export function WorkspaceEditorContent({
           </div>
         </div>
       ) : null}
-      {/* 'table' tab variant hardcodes format:'data', so it doesn't need the activeDocumentFormat guard */}
+      {/* Table and dashboard tabs hardcode format:'data', so they don't need the activeDocumentFormat guard. */}
       <div
         className={cn(
           'document-keepalive-view document-data-editor-stack',
           (
             activeWorkspaceTab?.type === 'table' ||
+            activeWorkspaceTab?.type === 'dashboard' ||
             (
               (activeWorkspaceTab?.type === 'document' || showTableAgentAlongsideBrowser) &&
               activeDocumentFormat === 'data'
@@ -388,6 +411,25 @@ export function WorkspaceEditorContent({
                     onOpenDocument={onOpenDocument}
                     onAgentContextChange={onTableAgentContextChange}
                     onAgentOpenChange={onTableAgentOpenChange}
+                  />
+                </Suspense>
+              </div>
+            )
+          })}
+        {workspaceTabs
+          .filter((tab): tab is Extract<WorkspaceTab, { type: 'dashboard' }> => tab.type === 'dashboard')
+          .map((tab) => {
+            const isActiveDashboardTab =
+              activeWorkspaceTabId === tab.id && activeWorkspaceTab?.type === 'dashboard'
+            return (
+              <div
+                key={tab.id}
+                className={cn('document-data-editor-stack__pane', isActiveDashboardTab && 'is-active')}
+              >
+                <Suspense fallback={<EditorPaneFallback />}>
+                  <DashboardEditorPane
+                    documentPath={tab.kitablePath}
+                    dashboardId={tab.dashboardId}
                   />
                 </Suspense>
               </div>
@@ -494,6 +536,7 @@ export function WorkspaceEditorContent({
                           onNavigate={onOpenDocument}
                           inlineTitleSlot={inlineTitleElement}
                           onToolbarMount={onToolbarMount}
+                          focusRequest={documentEditorFocusRequest}
                           readingView={editorMode === 'preview'}
                           onSetReadingView={(next) => onSetEditorMode(next ? 'preview' : 'rich')}
                         />

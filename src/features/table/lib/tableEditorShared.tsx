@@ -27,7 +27,12 @@ import type {
   DataViewType,
 } from '@/types/dataDocument'
 import type { DesktopProviderKind } from '@/types/desktopSettings'
-import type { AnyAIConfig } from '@/types/aiConfig'
+import { isAttachmentAIConfig, type AnyAIConfig } from '@/types/aiConfig'
+import {
+  buildDesktopRuntimeModel,
+  canUseDesktopProvider,
+  resolvePreferredDesktopMediaModel,
+} from '@/services/mediaModels'
 export {
   createEmptyFilterCondition,
   createEmptyFilterGroup,
@@ -408,11 +413,13 @@ export async function resolveAIConfigRuntimeModel(
   if (modelKey && !match) return undefined
   const settings = await loadDesktopSettings()
   if (match) {
-    return buildAIFieldDesktopRuntimeModel(
-      settings.providers[match[1] as DesktopProviderKind],
-      match[1] as DesktopProviderKind,
-      match[2],
-    )
+    const providerKind = match[1] as DesktopProviderKind
+    const provider = settings.providers[providerKind]
+    if (!provider || !canUseDesktopProvider(providerKind, provider)) return undefined
+    return buildDesktopRuntimeModel(providerKind, provider, match[2])
+  }
+  if (isAttachmentAIConfig(config)) {
+    return resolvePreferredDesktopMediaModel(settings, 'image')
   }
   const providerKind = settings.models.activeProvider
   const provider = settings.providers[providerKind]
@@ -422,32 +429,17 @@ export async function resolveAIConfigRuntimeModel(
     || settings.models.preferredDefaultModel
     || provider?.discoveredModels?.[0]
     || ''
-  return buildAIFieldDesktopRuntimeModel(provider, providerKind, modelName)
-}
-
-function buildAIFieldDesktopRuntimeModel(
-  provider: Awaited<ReturnType<typeof loadDesktopSettings>>['providers'][DesktopProviderKind] | undefined,
-  providerKind: DesktopProviderKind,
-  modelName: string,
-): RuntimeWritingModel | undefined {
+  if (!provider) return undefined
   const token = provider?.apiKey || provider?.accessToken
-  if (!provider?.enabled || !provider.baseUrl || !token || !modelName) {
+  const isHostedConsole = providerKind === 'kition_console'
+  if (
+    !provider?.enabled
+    || !modelName
+    || (!isHostedConsole && (!provider.baseUrl || !token))
+  ) {
     return undefined
   }
-  return {
-    provider_type: providerKind,
-    provider_label: provider.label || providerKind,
-    model_name: modelName,
-    base_url: provider.baseUrl,
-    api_key: provider.apiKey,
-    access_token: provider.accessToken || undefined,
-    auth_header: provider.authHeader || undefined,
-    auth_scheme: provider.authScheme,
-    wire_api: provider.wireApi,
-    reasoning_effort: provider.reasoningEffort,
-    hosted_web_search_version: provider.hostedWebSearchVersion,
-    disable_response_storage: provider.disableResponseStorage,
-  }
+  return buildDesktopRuntimeModel(providerKind, provider, modelName)
 }
 
 export function getSelectTone(value: string) {

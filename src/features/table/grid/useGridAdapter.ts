@@ -2,7 +2,9 @@ import { useCallback, useMemo } from 'react';
 import type { DataField, DataRecord, DataRecordValue } from '@/types/dataDocument';
 import { displayValue, normalizeAttachmentValue } from '@/features/table/lib/tableEditorShared';
 import { formatTableFieldValue } from '@/features/table/lib/dateFormatting';
+import { resolvePublicFileURL } from '@/services/desktop';
 import type { IGridColumn, ICellItem } from './interface';
+import { GridInnerIcon } from './managers';
 import { CellType } from './renderers';
 import type { ICell, IInnerCell } from './renderers';
 
@@ -52,10 +54,20 @@ function valuesToDisplayList(value: DataRecordValue | unknown): string[] {
   return text ? [text] : [];
 }
 
-function fieldToColumn(field: DataField, width: number): IGridColumn {
+export function parseImageAspectRatio(value: unknown): number | undefined {
+  if (typeof value !== 'string') return undefined;
+  const [width, height] = value.split(':').map(Number);
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    return undefined;
+  }
+  return width / height;
+}
+
+export function buildGridColumn(field: DataField, width = DEFAULT_COLUMN_WIDTH): IGridColumn {
   return {
     id: String(field.id),
     name: field.title || field.name,
+    icon: field.ai_config?.enabled ? GridInnerIcon.AI : undefined,
     width,
     hasMenu: true,
     readonly: field.readonly,
@@ -126,14 +138,18 @@ export function buildCellForField(
     }
     case 'attachment': {
       const attachments = normalizeAttachmentValue(raw);
+      const imageAspectRatio = field.ai_config && 'aspect_ratio' in field.ai_config
+        ? parseImageAspectRatio(field.ai_config.aspect_ratio)
+        : undefined;
       const data = attachments.map((item, index) => ({
         id: `${field.id}-${index}`,
-        url: item.url,
+        url: resolvePublicFileURL(item.url),
       }));
       return {
         type: CellType.Image,
         data,
         displayData: attachments.map((item) => item.name),
+        imageAspectRatio,
         contentAlign: 'center',
         readonly: field.readonly,
         onPreview: onPreviewAttachmentIndex
@@ -340,7 +356,7 @@ export function useGridAdapter(args: IGridAdapterArgs) {
 
   const columns = useMemo<IGridColumn[]>(() => {
     return visibleFields.map((field) =>
-      fieldToColumn(field, columnWidths?.[String(field.id)] ?? DEFAULT_COLUMN_WIDTH)
+      buildGridColumn(field, columnWidths?.[String(field.id)] ?? DEFAULT_COLUMN_WIDTH)
     );
   }, [visibleFields, columnWidths]);
 

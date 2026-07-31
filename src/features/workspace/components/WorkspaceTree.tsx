@@ -1,4 +1,4 @@
-import { ChevronRight, Copy, CornerUpRight, FilePlus2, FileText, FolderOpen, GripVertical, MessageSquareDashed, MessageSquarePlus, MoreHorizontal, Pencil, Plus, Smile, Trash2, Zap } from 'lucide-react'
+import { ChevronRight, Copy, CornerUpRight, FilePlus2, FileText, FolderOpen, GripVertical, LayoutDashboard, MessageSquareDashed, MessageSquarePlus, MoreHorizontal, Pencil, Plus, Smile, Trash2, Zap } from 'lucide-react'
 import type { DragEvent as ReactDragEvent, ReactNode } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -17,7 +17,12 @@ import {
   type WorkspaceTreeNode,
 } from '@/features/workspace/lib/workspace'
 import { useDraftTitleForPath } from '@/features/workspace/lib/draftTitleStore'
-import { getChildFolderPathForNode, parseKitableWorkflowVirtualPath, parseKitableTableVirtualPath } from '@/features/workspace/lib/workspaceTree'
+import {
+  getChildFolderPathForNode,
+  parseKitableDashboardVirtualPath,
+  parseKitableWorkflowVirtualPath,
+  parseKitableTableVirtualPath,
+} from '@/features/workspace/lib/workspaceTree'
 import { cn } from '@/lib/utils'
 import { useDismissableLayer } from '@/registry/hooks/use-on-click-outside'
 
@@ -211,8 +216,13 @@ export function WorkspaceTree({
         const isModified = node.type === 'file' && modifiedPaths.has(node.path)
         const isWorkflowsVirtual = node.virtual && node.path.startsWith('workflows://')
         const isWorkflowVirtual = node.virtual && node.path.startsWith('workflow://')
-        const FormatIcon = isWorkflowsVirtual || isWorkflowVirtual ? Zap : getWorkspaceItemIcon(node.format)
-        const formatIconColorClass = isWorkflowsVirtual || isWorkflowVirtual
+        const isDashboardVirtual = node.virtual && node.path.startsWith('dashboard://')
+        const FormatIcon = isDashboardVirtual
+          ? LayoutDashboard
+          : isWorkflowsVirtual || isWorkflowVirtual
+            ? Zap
+            : getWorkspaceItemIcon(node.format)
+        const formatIconColorClass = isWorkflowsVirtual || isWorkflowVirtual || isDashboardVirtual
           ? 'text-brand'
           : getWorkspaceItemIconColorClass(node.format)
         const isEditable = isEditableWorkspaceFormat(node.format)
@@ -230,6 +240,7 @@ export function WorkspaceTree({
         // them (routed to data-document API) and spawn an workflow scoped
         // to the table without going through a picker.
         const isKitableTableLeaf = node.virtual && parseKitableTableVirtualPath(node.path) != null
+        const isKitableDashboardLeaf = node.virtual && parseKitableDashboardVirtualPath(node.path) != null
         // Virtual leaf representing an individual workflow under a .kitable.
         // Not a real file either — delete is routed through the workflow
         // API by useKitableWorkflowLeafActions.
@@ -240,10 +251,12 @@ export function WorkspaceTree({
         const hasDisclosure = visibleChildren.length > 0 || node.type === 'folder'
         const canCreateInside = !node.virtual && (node.type === 'folder' || isEditable || isKitableContainer)
         const canDelete = isKitableTableLeaf
+          || isKitableDashboardLeaf
           || isKitableWorkflowLeaf
           || (!node.virtual && (node.type === 'folder' || isSupportedWorkspaceFormat(node.format || inferWorkspaceItemFormat(node.path))))
         const canSetIcon = !node.virtual
         const canRename = isKitableTableLeaf
+          || isKitableDashboardLeaf
           || isKitableWorkflowLeaf
           || (!node.virtual && (node.type === 'folder' || isEditable))
         const canDuplicate = !node.virtual && node.type === 'file' && isEditable
@@ -342,7 +355,11 @@ export function WorkspaceTree({
                   currentDraggingPath === node.path && 'is-dragging',
                   dropPosition === 'inside' && 'is-drop-target',
                 )}
-                data-testid={isKitableWorkflowLeaf ? 'kitable-workflow-leaf' : undefined}
+                data-testid={isKitableWorkflowLeaf
+                  ? 'kitable-workflow-leaf'
+                  : isKitableDashboardLeaf
+                    ? 'kitable-dashboard-leaf'
+                    : undefined}
                 data-workflow-id={isKitableWorkflowLeaf ? (parseKitableWorkflowVirtualPath(node.path)?.workflowId ?? '') : undefined}
                 style={{ paddingLeft: `${paddingLeft}px` }}
                 onClick={(event) => {
@@ -553,6 +570,8 @@ export function WorkspaceTree({
                                 data-testid={
                                   isKitableTableLeaf
                                     ? 'kitable-table-action-rename'
+                                    : isKitableDashboardLeaf
+                                      ? 'kitable-dashboard-action-rename'
                                     : isKitableWorkflowLeaf
                                       ? 'kitable-workflow-action-rename'
                                       : undefined
@@ -609,6 +628,8 @@ export function WorkspaceTree({
                                 data-testid={
                                   isKitableTableLeaf
                                     ? 'kitable-table-action-delete'
+                                    : isKitableDashboardLeaf
+                                      ? 'kitable-dashboard-action-delete'
                                     : isKitableWorkflowLeaf
                                       ? 'kitable-workflow-action-delete'
                                       : undefined

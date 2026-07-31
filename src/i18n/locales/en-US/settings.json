@@ -269,7 +269,7 @@
     "kitionAccountCancel": "Cancel sign-in",
     "kitionAccountRetry": "Retry",
     "kitionAccountTopup": "Top up credits",
-    "kitionHostedModelsReady": "{{count}} hosted models available",
+    "kitionHostedModelsReady": "Available hosted models",
     "kitionHostedModelsSignIn": "Sign in to use Kition Cloud models.",
     "kitionHostedModelsTopup": "Top up credits to use Kition Cloud models.",
     "modelsEndpoint": "Models endpoint",

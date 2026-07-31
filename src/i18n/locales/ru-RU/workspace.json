@@ -8,8 +8,33 @@
     },
     "folder": "Папка",
     "importFile": "Импорт файла",
+    "newDashboard": "New dashboard",
     "newTable": "Новая таблица",
     "newWorkflow": "Новый процесс"
+  },
+  "emptyState": {
+    "title": "Turn ideas into organized work",
+    "description": "Open something from the sidebar, start from a blank canvas, or let Kition AI help shape your next document, table, or workflow.",
+    "prompt": {
+      "title": "Describe what you want to build",
+      "description": "Plan, research, write, and organize with Kition AI.",
+      "action": "Open AI Chat"
+    },
+    "quickStart": "Quick start",
+    "actions": {
+      "document": {
+        "title": "New document",
+        "description": "Capture notes, plans, and knowledge."
+      },
+      "table": {
+        "title": "New table",
+        "description": "Structure projects, records, and research."
+      },
+      "workflow": {
+        "title": "Workflows",
+        "description": "Automate repeatable work across your tables."
+      }
+    }
   },
   "sidebar": {
     "tabs": {
@@ -216,6 +241,7 @@
     "onlyMarkdownPlateTableDuplicable": "Сюда можно дублировать только страницы Markdown, Plate и Таблицы.",
     "onlyMarkdownPlateTableRenamable": "Сюда можно переименовывать только страницы Markdown, Plate и Таблицы.",
     "createDocumentFailed": "Не удалось создать документ",
+    "createDashboardFailed": "Failed to create dashboard",
     "createTableFailed": "Не удалось создать таблицу",
     "importMarkdownFailed": "Не удалось импортировать Markdown",
     "browserDevModeOpenDirectory": "Вы работаете в режиме разработки в браузере и не можете открывать нативные каталоги. Запустите настольное приложение через pnpm dev:electron и повторите попытку.",
@@ -227,6 +253,7 @@
     "refreshed": "Рабочая область обновлена",
     "restoredSavedVersion": "Восстановлено до сохранённой версии",
     "documentCreated": "Документ создан",
+    "dashboardCreated": "Dashboard created",
     "tableCreated": "Таблица создана",
     "folderCreated": "Папка создана",
     "renamed": "Переименовано",

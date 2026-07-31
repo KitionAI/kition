@@ -29,12 +29,14 @@ import {
   type IRowControlItem,
 } from '@/features/table/grid'
 import { useGridAdapter } from '@/features/table/grid/useGridAdapter'
+import { useTableColumnWidths } from '@/features/table/hooks/useTableColumnWidths'
 import { buildCellKey } from '@/features/table/store/aiCellGenerationStore'
 import { serializeTableSelection } from '@/features/table/lib/tableClipboard'
 
 type GridViewProps = {
   documentId: number
   tableId: number
+  viewId?: number
   fields: DataField[]
   visibleFields: DataField[]
   groupedRecords: Array<[string, DataRecord[]]>
@@ -74,6 +76,7 @@ type GridViewProps = {
     event: Pick<ReactMouseEvent, 'clientX' | 'clientY' | 'preventDefault' | 'stopPropagation'>
   ) => void
   onOpenColumnHeaderMenu?: (field: DataField, position: { x: number; y: number }) => void
+  onReorderField: (field: DataField, fromIndex: number, dropIndex: number) => void
   onReorderRecords: (sourceRecordId: number, targetRecordId: number, position: RowDropPosition) => void
   onRegenerate?: (record: DataRecord, field: DataField) => void
   onUpdateCell: (record: DataRecord, field: DataField, value: DataRecordValue) => void
@@ -89,6 +92,7 @@ type GridViewProps = {
 export const GridView = forwardRef<IGridRef, GridViewProps>(function GridView(props, gridRef) {
   const {
     tableId,
+    viewId,
     visibleFields,
     selectedRecordIds,
     sortedAndFilteredRecords,
@@ -103,6 +107,7 @@ export const GridView = forwardRef<IGridRef, GridViewProps>(function GridView(pr
     onOpenDocument,
     onOpenRecordContextMenu,
     onOpenColumnHeaderMenu,
+    onReorderField,
     onReorderRecords,
     onRegenerate,
     onUpdateCell,
@@ -120,9 +125,16 @@ export const GridView = forwardRef<IGridRef, GridViewProps>(function GridView(pr
     onCollapsedGroupChanged,
   } = props
 
+  const { columnWidths, resizeColumn } = useTableColumnWidths({
+    documentId: props.documentId,
+    tableId,
+    viewId,
+  })
+
   const adapter = useGridAdapter({
     visibleFields,
     sortedAndFilteredRecords,
+    columnWidths,
     tableId,
     onCellEdited: (record, field, value) => onUpdateCell(record, field, value),
     onRowExpand: (record) => onOpenRecord(record),
@@ -141,6 +153,8 @@ export const GridView = forwardRef<IGridRef, GridViewProps>(function GridView(pr
       onAddRecord(initialValues)
     },
     onColumnAppend: () => onOpenFieldCreator(),
+    onColumnResize: resizeColumn,
+    onColumnOrdered: onReorderField,
     onRowOrdered: (sourceRecords, targetRecord) => {
       if (!canReorderRows || !targetRecord || !sourceRecords.length) return
       onReorderRecords(sourceRecords[0].id, targetRecord.id, 'before')

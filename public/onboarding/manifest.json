@@ -1,5 +1,5 @@
 {
-  "version": 15,
+  "version": 16,
   "folder": "Getting Started",
   "welcome": {
     "filename": "Welcome to Kition.md",
@@ -10,15 +10,6 @@
     { "asset": "logo.png", "filename": "logo.png" }
   ],
   "tables": [
-    { "asset": "TaskTracker.kitable", "filename": "Task Tracker.kitable", "folder": "Essentials" },
-    { "asset": "ReadingTracker.kitable", "filename": "Reading Tracker.kitable", "folder": "Essentials" },
-    { "asset": "ContactDirectory.kitable", "filename": "Contact Directory.kitable", "folder": "Essentials" },
-    { "asset": "ContentPipeline.kitable", "filename": "Content Pipeline.kitable", "folder": "Workflow Examples" },
-    { "asset": "ExpenseReview.kitable", "filename": "Expense Review.kitable", "folder": "Workflow Examples" },
-    { "asset": "OrderFulfillment.kitable", "filename": "Order Fulfillment.kitable", "folder": "Workflow Examples" }
-  ],
-  "guides": {
-    "manifest": "guides.json",
-    "folder": "Guides"
-  }
+    { "asset": "ContactDirectory.kitable", "filename": "Contact Directory.kitable" }
+  ]
 }

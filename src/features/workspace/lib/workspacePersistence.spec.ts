@@ -162,6 +162,24 @@ describe('workspacePersistence browser tabs', () => {
     expect(readWorkspaceTabs(ROOT_A).map((t) => t.id)).toEqual(['kitable:Leads.kitable'])
   })
 
+  it('restores dashboard tabs scoped to their kitable', () => {
+    const dashboardTab = {
+      id: 'dashboard:Tasks.kitable#task-dashboard',
+      type: 'dashboard' as const,
+      title: 'Task Dashboard',
+      kitablePath: 'Tasks.kitable',
+      dashboardId: 'task-dashboard',
+      format: 'data' as const,
+    }
+    writeWorkspaceTabs(ROOT_A, [dashboardTab])
+
+    expect(readWorkspaceTabs(ROOT_A)).toEqual([{
+      ...dashboardTab,
+      id: 'kitable:Tasks.kitable',
+      title: 'Tasks',
+    }])
+  })
+
   it('restores workflow tabs including optional kitablePath/workflowId', () => {
     const scoped = {
       id: 'workflow:Leads.kitable',

@@ -17,6 +17,7 @@ import {
   loadDesktopSettings,
   saveDesktopSettings,
 } from '@/services/desktopSettings'
+import { isLikelyTextGenerationModel } from '@/services/modelCapabilities'
 import type { DesktopProviderKind, DesktopSettingsState } from '@/types/desktopSettings'
 import { getCurrentLocale, useTranslation } from '@/i18n'
 import { openExternalURL } from '@/services/desktop'
@@ -72,6 +73,7 @@ function ProviderConnectionFields({
     case 'openai':
     case 'anthropic':
     case 'deepseek':
+    case 'kimi':
       return (
         <SettingsRow title={t('models.apiKey')} description={t('models.apiKeyDescription')}>
           <PasswordInput
@@ -267,15 +269,117 @@ function ProviderMetadataRow({ count, lastSyncedAt, syncing, error, onSync, onRe
   )
 }
 
+function normalizeDiscoveredModels(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return Array.from(new Set(value.map((model) => String(model || '').trim()).filter(Boolean)))
+}
+
+async function syncProviderModelCatalog(
+  settings: DesktopSettingsState,
+  kind: DesktopProviderKind,
+  emptyMessage: string,
+  activateProvider: boolean,
+) {
+  const provider = settings.providers[kind]
+  const response = await discoverProviderModels({
+    provider_type: kind,
+    base_url: provider.baseUrl || undefined,
+    api_key: provider.apiKey || undefined,
+    access_token: provider.accessToken || undefined,
+    models_path: provider.modelsPath || undefined,
+    auth_header: provider.authHeader || undefined,
+    auth_scheme: provider.authScheme,
+  })
+  const models = normalizeDiscoveredModels(response?.models)
+  if (!models.length) throw new Error(emptyMessage)
+
+  const selectedModelByProvider = { ...settings.models.selectedModelByProvider }
+  const currentSelection = selectedModelByProvider[kind] || ''
+  const fallbackSelection = kind === 'kition_console'
+    ? models.find(isLikelyTextGenerationModel) || ''
+    : models[0]
+  if (!currentSelection || !models.includes(currentSelection)) {
+    if (fallbackSelection) selectedModelByProvider[kind] = fallbackSelection
+    else delete selectedModelByProvider[kind]
+  }
+  const selectedModel = selectedModelByProvider[kind] || fallbackSelection
+  const nextModels = {
+    ...settings.models,
+    activeProvider: activateProvider ? kind : settings.models.activeProvider,
+    selectedModelByProvider,
+  }
+  if (activateProvider && selectedModel) {
+    nextModels.preferredDefaultModel = !settings.models.preferredDefaultModel || !models.includes(settings.models.preferredDefaultModel)
+      ? selectedModel
+      : settings.models.preferredDefaultModel
+    nextModels.preferredChatModel = !settings.models.preferredChatModel || !models.includes(settings.models.preferredChatModel)
+      ? selectedModel
+      : settings.models.preferredChatModel
+    nextModels.preferredWritingModel = !settings.models.preferredWritingModel || !models.includes(settings.models.preferredWritingModel)
+      ? selectedModel
+      : settings.models.preferredWritingModel
+  }
+
+  return saveDesktopSettings({
+    ...settings,
+    providers: {
+      ...settings.providers,
+      [kind]: {
+        ...provider,
+        enabled: true,
+        discoveredModels: models,
+        lastSyncedAt: response.fetched_at || new Date().toISOString(),
+      },
+    },
+    models: nextModels,
+  })
+}
+
+function KitionCloudModelCatalog({
+  models,
+  syncing,
+  error,
+  onSync,
+}: {
+  models: string[]
+  syncing: boolean
+  error?: string
+  onSync: () => void
+}) {
+  const { t } = useTranslation('settings')
+  return (
+    <div className="settings-provider-model-catalog">
+      <div className={cn('settings-provider-metadata', error && 'is-error')} role={error ? 'alert' : undefined}>
+        <span>{error
+          ? <><AlertTriangle className="mr-2 inline size-4" />{t('models.syncFailed', { error })}</>
+          : t('models.kitionHostedModelsReady')}</span>
+        <Button size="sm" variant="outline" onClick={onSync} disabled={syncing}>
+          <RefreshCcw className={cn('mr-2 size-4', syncing && 'animate-spin')} />
+          {syncing ? t('models.syncing') : error ? t('models.retry') : t('models.syncNow')}
+        </Button>
+      </div>
+      {models.length ? (
+        <ul className="settings-provider-model-list" data-testid="kition-cloud-model-list">
+          {models.map((model) => <li key={model}>{model}</li>)}
+        </ul>
+      ) : syncing ? null : (
+        <p className="settings-provider-model-empty">{t('models.noModelsReturned')}</p>
+      )}
+    </div>
+  )
+}
+
 export function AiModelsPane() {
   const { t } = useTranslation('settings')
   const kitionAccount = useKitionAccount()
   const kitionAccountLinks = getKitionAccountLinks(kitionAccount.state.session)
   const [settings, setSettings] = useState<DesktopSettingsState | null>(null)
   const [pristineSettings, setPristineSettings] = useState<DesktopSettingsState | null>(null)
-  const [activeKind, setActiveKind] = useState<DesktopProviderKind>('openai')
+  const [activeKind, setActiveKind] = useState<DesktopProviderKind>('kition_console')
   const [syncing, setSyncing] = useState(false)
   const [syncError, setSyncError] = useState<string | undefined>(undefined)
+  const [cloudSyncing, setCloudSyncing] = useState(false)
+  const [cloudSyncError, setCloudSyncError] = useState<string | undefined>(undefined)
   const [confirmDisconnect, setConfirmDisconnect] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
   const [disconnectError, setDisconnectError] = useState<string | undefined>(undefined)
@@ -285,6 +389,7 @@ export function AiModelsPane() {
     loadDesktopSettings().then((value) => {
       setSettings(value)
       setPristineSettings(value)
+      setActiveKind(value.models.activeProvider)
     })
   }, [])
 
@@ -292,6 +397,36 @@ export function AiModelsPane() {
     setSyncing(false)
     setSyncError(undefined)
   }, [activeKind])
+
+  const settingsLoaded = Boolean(settings)
+  const accountStatus = kitionAccount.state.status
+  useEffect(() => {
+    if (!settingsLoaded || !isKitionAccountUsable(accountStatus)) return
+    let cancelled = false
+    setCloudSyncing(true)
+    setCloudSyncError(undefined)
+    loadDesktopSettings()
+      .then((current) => syncProviderModelCatalog(
+        current,
+        'kition_console',
+        t('models.noModelsReturned'),
+        false,
+      ))
+      .then((persisted) => {
+        if (cancelled) return
+        setSettings(persisted)
+        setPristineSettings(persisted)
+      })
+      .catch((error) => {
+        if (!cancelled) setCloudSyncError(error instanceof Error ? error.message : t('models.unknownError'))
+      })
+      .finally(() => {
+        if (!cancelled) setCloudSyncing(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [accountStatus, settingsLoaded, t])
 
   if (!settings || !pristineSettings) {
     return <div className="settings-pane"><p className="text-sm text-muted-foreground">{t('models.loading')}</p></div>
@@ -330,64 +465,37 @@ export function AiModelsPane() {
     setSyncing(true)
     setSyncError(undefined)
     try {
-      const response = await discoverProviderModels({
-        provider_type: activeKind,
-        base_url: activeProvider.baseUrl || undefined,
-        api_key: activeProvider.apiKey || undefined,
-        access_token: activeProvider.accessToken || undefined,
-        models_path: activeProvider.modelsPath || undefined,
-        auth_header: activeProvider.authHeader || undefined,
-        auth_scheme: activeProvider.authScheme,
-      })
-      const models = Array.isArray(response?.models) ? response.models.filter(Boolean) : []
-      if (!models.length) {
-        throw new Error(t('models.noModelsReturned'))
-      }
-      const lastSyncedAt = response.fetched_at || new Date().toISOString()
-
-      const selectedModelByProvider = { ...settings.models.selectedModelByProvider }
-      const currentSelection = selectedModelByProvider[activeKind] || ''
-      if (!currentSelection || !models.includes(currentSelection)) {
-        selectedModelByProvider[activeKind] = models[0]
-      }
-      const selectedModel = selectedModelByProvider[activeKind] || models[0]
-
-      const next: DesktopSettingsState = {
-        ...settings,
-        providers: {
-          ...settings.providers,
-          [activeKind]: {
-            ...activeProvider,
-            enabled: true,
-            discoveredModels: models,
-            lastSyncedAt,
-          },
-        },
-        models: {
-          ...settings.models,
-          activeProvider: activeKind,
-          selectedModelByProvider,
-          preferredDefaultModel:
-            !settings.models.preferredDefaultModel || !models.includes(settings.models.preferredDefaultModel)
-              ? selectedModel
-              : settings.models.preferredDefaultModel,
-          preferredChatModel:
-            !settings.models.preferredChatModel || !models.includes(settings.models.preferredChatModel)
-              ? selectedModel
-              : settings.models.preferredChatModel,
-          preferredWritingModel:
-            !settings.models.preferredWritingModel || !models.includes(settings.models.preferredWritingModel)
-              ? selectedModel
-              : settings.models.preferredWritingModel,
-        },
-      }
-      const persisted = await saveDesktopSettings(next)
+      const persisted = await syncProviderModelCatalog(
+        settings,
+        activeKind,
+        t('models.noModelsReturned'),
+        true,
+      )
       setSettings(persisted)
       setPristineSettings(persisted)
     } catch (err) {
       setSyncError(err instanceof Error ? err.message : t('models.unknownError'))
     } finally {
       setSyncing(false)
+    }
+  }
+
+  async function handleCloudSync() {
+    setCloudSyncing(true)
+    setCloudSyncError(undefined)
+    try {
+      const persisted = await syncProviderModelCatalog(
+        settings,
+        'kition_console',
+        t('models.noModelsReturned'),
+        false,
+      )
+      setSettings(persisted)
+      setPristineSettings(persisted)
+    } catch (error) {
+      setCloudSyncError(error instanceof Error ? error.message : t('models.unknownError'))
+    } finally {
+      setCloudSyncing(false)
     }
   }
 
@@ -488,13 +596,20 @@ export function AiModelsPane() {
               </Disclosure>
             )}
             {activeKind === 'kition_console' ? (
-              <div className="settings-provider-metadata">
-                <span>{isKitionAccountUsable(kitionAccount.state.status)
-                  ? t('models.kitionHostedModelsReady', { count: activeProvider.discoveredModels?.length ?? 0 })
-                  : kitionAccount.state.status === 'credits_empty'
+              isKitionAccountUsable(kitionAccount.state.status) ? (
+                <KitionCloudModelCatalog
+                  models={activeProvider.discoveredModels || []}
+                  syncing={cloudSyncing}
+                  error={cloudSyncError}
+                  onSync={() => void handleCloudSync()}
+                />
+              ) : (
+                <div className="settings-provider-metadata">
+                  <span>{kitionAccount.state.status === 'credits_empty'
                     ? t('models.kitionHostedModelsTopup')
                     : t('models.kitionHostedModelsSignIn')}</span>
-              </div>
+                </div>
+              )
             ) : (
               <ProviderMetadataRow
                 count={activeProvider.discoveredModels?.length ?? 0}

@@ -21,7 +21,7 @@ import { useWorkflowTableLabels } from '@/features/workflow/hooks/useWorkflowTab
 import { openWorkflowRoute, openWorkflowDetail } from '@/features/workflow/lib/openWorkflowRoute'
 import type { WorkflowRunRecord } from '@/features/workflow/hooks/useWorkflowRuns'
 import { ensureOnboardingWorkflow } from '@/features/workflow/lib/ensureOnboardingWorkflow'
-import { EMAIL_AUTOMATION_TABLE_PATH } from '@/features/onboarding/upgradeOnboardingPack'
+import { EMAIL_AUTOMATION_TABLE_PATH } from '@/features/onboarding/onboardingGuideManifest'
 import { EmailSyncOnboardingWorkflowPage } from '@/features/emailSync/EmailSyncOnboardingWorkflowPage'
 import { EmailSyncWorkflowPage } from '@/features/emailSync/EmailSyncWorkflowPage'
 import { EmailSyncWorkflowTableRow } from '@/features/emailSync/EmailSyncWorkflowTableRow'

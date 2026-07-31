@@ -2,9 +2,11 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   createDocumentWorkspaceEntry,
+  type DocumentCreationPreset,
   type DocumentPlatform,
 } from '@/features/document/lib/documentCreation'
 import { createTableWorkspaceEntry, DEFAULT_NEW_TABLE_FIELDS, DEFAULT_NEW_TABLE_VIEWS, seedDefaultEmptyRows } from '@/features/table/lib/tableCreation'
+import type { KitableTemplateDefinition } from '@/features/table/templates/kitableTemplates'
 import type { ApplyWorkspaceDocument } from '@/features/workspace/hooks/workspaceTreeActionShared'
 import type { UseWorkspaceTreeStateResult } from '@/features/workspace/hooks/useWorkspaceTreeState'
 import { getChildFolderPathForNode, insertWorkspaceTreeDocumentItem } from '@/features/workspace/lib/workspaceTree'
@@ -48,7 +50,8 @@ export function useWorkspaceTreeCreateActions({
   const createDocument = useCallback(async (
     platform: DocumentPlatform,
     folderOverride?: string,
-  ) => {
+    preset?: DocumentCreationPreset,
+  ): Promise<boolean> => {
     setSaving(true)
     setError('')
     setFeedback('')
@@ -59,6 +62,7 @@ export function useWorkspaceTreeCreateActions({
         activeDocumentPath,
         folderOverride,
         platform,
+        preset,
       })
       setSelectedPlatform(platform)
       applyWorkspaceDocument(document)
@@ -70,8 +74,10 @@ export function useWorkspaceTreeCreateActions({
                                                    
                                                         
       setTreeItems((current) => insertWorkspaceTreeDocumentItem(current, document))
+      return true
     } catch (requestError: any) {
       setError(requestError?.message || t('errors.createDocumentFailed'))
+      return false
     } finally {
       setSaving(false)
     }
@@ -90,7 +96,10 @@ export function useWorkspaceTreeCreateActions({
     t,
   ])
 
-  const createTable = useCallback(async (folderOverride?: string): Promise<
+  const createTable = useCallback(async (
+    folderOverride?: string,
+    template?: KitableTemplateDefinition,
+  ): Promise<
     { kitablePath: string; tableId: number | null; tableTitle: string } | null
   > => {
     setSaving(true)
@@ -103,6 +112,7 @@ export function useWorkspaceTreeCreateActions({
         activeDocumentPath,
         folderOverride,
         rootPath,
+        template,
       })
       setFeedback(t('workspace:feedback.tableCreated'))
       expandFolders(getAncestorFolderPaths(document.path))

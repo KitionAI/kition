@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { supportsDiscoveredDesktopModelCapability } from './mediaModels'
+import { isLikelyTextGenerationModel } from './modelCapabilities'
+import {
+  resolvePreferredDesktopMediaModel,
+  supportsDiscoveredDesktopModelCapability,
+} from './mediaModels'
 
 describe('supportsDiscoveredDesktopModelCapability', () => {
   describe('text capability', () => {
@@ -84,5 +88,91 @@ describe('supportsDiscoveredDesktopModelCapability', () => {
       expect(supportsDiscoveredDesktopModelCapability('gpt-5.4', 'audio')).toBe(false)
       expect(supportsDiscoveredDesktopModelCapability('dall-e-3', 'audio')).toBe(false)
     })
+  })
+})
+
+describe('isLikelyTextGenerationModel', () => {
+  it('keeps text models and excludes generated-media models', () => {
+    expect(isLikelyTextGenerationModel('gpt-5.5')).toBe(true)
+    expect(isLikelyTextGenerationModel('claude-sonnet-4-6')).toBe(true)
+    expect(isLikelyTextGenerationModel('image2')).toBe(false)
+    expect(isLikelyTextGenerationModel('dall-e-3')).toBe(false)
+    expect(isLikelyTextGenerationModel('sora-2')).toBe(false)
+  })
+})
+
+describe('resolvePreferredDesktopMediaModel', () => {
+  it('selects an image-capable model instead of the active text model', () => {
+    const result = resolvePreferredDesktopMediaModel({
+      models: {
+        activeProvider: 'kition_console',
+        selectedModelByProvider: { kition_console: 'gpt-5.5' },
+      },
+      providers: {
+        kition_console: {
+          enabled: true,
+          label: 'Kition Cloud',
+          baseUrl: '',
+          apiKey: '',
+          discoveredModels: ['gpt-5.5', 'gpt-image-2'],
+        },
+      },
+    } as any, 'image')
+
+    expect(result).toMatchObject({
+      provider_type: 'kition_console',
+      provider_label: 'Kition Cloud',
+      model_name: 'gpt-image-2',
+    })
+  })
+
+  it('falls back to another enabled provider with an image model', () => {
+    const result = resolvePreferredDesktopMediaModel({
+      models: {
+        activeProvider: 'deepseek',
+        selectedModelByProvider: {
+          deepseek: 'deepseek-chat',
+          kition_console: 'gpt-5.5',
+        },
+      },
+      providers: {
+        deepseek: {
+          enabled: true,
+          label: 'DeepSeek',
+          baseUrl: 'https://api.deepseek.com/v1',
+          apiKey: 'test-key',
+          discoveredModels: ['deepseek-chat'],
+        },
+        kition_console: {
+          enabled: true,
+          label: 'Kition Cloud',
+          baseUrl: '',
+          apiKey: '',
+          discoveredModels: ['gpt-5.5', 'gpt-image-2'],
+        },
+      },
+    } as any, 'image')
+
+    expect(result?.model_name).toBe('gpt-image-2')
+  })
+
+  it('returns undefined when no configured provider supports image generation', () => {
+    const result = resolvePreferredDesktopMediaModel({
+      models: {
+        activeProvider: 'openai',
+        selectedModelByProvider: { openai: 'gpt-5.5' },
+      },
+      providers: {
+        openai: {
+          enabled: true,
+          label: 'OpenAI',
+          baseUrl: 'https://api.openai.com/v1',
+          apiKey: 'test-key',
+          discoveredModels: ['gpt-5.5'],
+        },
+      },
+    } as any, 'image')
+
+    expect(result).toBeUndefined()
   })
 })

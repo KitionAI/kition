@@ -17,7 +17,7 @@ import {
   resolveEmailProviderId,
   type EmailProviderId,
 } from '@/features/emailProviders/emailProviderCatalog'
-import { EMAIL_AUTOMATION_TABLE_PATH } from '@/features/onboarding/upgradeOnboardingPack'
+import { EMAIL_AUTOMATION_TABLE_PATH } from '@/features/onboarding/onboardingGuideManifest'
 import { getDesktopBackendStatus, type DesktopBackendStatus } from '@/services/desktop'
 import {
   createEmailSyncWorkflow,

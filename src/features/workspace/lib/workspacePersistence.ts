@@ -428,6 +428,23 @@ function parseWorkspaceTabList(items: unknown[]): WorkspaceTab[] {
         format: 'data',
       }]
     }
+    if (item.type === 'dashboard'
+      && typeof item.id === 'string'
+      && typeof item.title === 'string'
+      && typeof item.kitablePath === 'string'
+      && item.kitablePath.length > 0
+      && typeof item.dashboardId === 'string'
+      && item.dashboardId.length > 0
+    ) {
+      return [{
+        id: buildKitableWorkspaceTabId(item.kitablePath),
+        type: 'dashboard',
+        title: getKitableWorkspaceTabTitle(item.kitablePath),
+        kitablePath: item.kitablePath,
+        dashboardId: item.dashboardId,
+        format: 'data',
+      }]
+    }
     if (item.type === 'workflow' && typeof item.id === 'string' && typeof item.title === 'string') {
       const kitablePath = typeof item.kitablePath === 'string' && item.kitablePath.length > 0
         ? item.kitablePath

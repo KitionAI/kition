@@ -23,7 +23,14 @@ export type KitableWorkflowSummary = {
   enabled: boolean
 }
 
+export type KitableDashboardSummary = {
+  id: string
+  title: string
+  order: number
+}
+
 export type KitableChildrenLookup = Record<string, KitableTableSummary[]>
+export type KitableDashboardsLookup = Record<string, KitableDashboardSummary[]>
 export type KitableWorkflowsLookup = Record<string, KitableWorkflowSummary[]>
 
 export function flattenWorkspaceDocumentItems(items: WorkspaceDocumentTreeItem[]) {
@@ -90,6 +97,7 @@ function buildWorkspaceTreeNodes(
   metadata: WorkspaceTreeMetadata,
   parentPath = '',
   kitableChildren: KitableChildrenLookup = {},
+  kitableDashboards: KitableDashboardsLookup = {},
   kitableWorkflows: KitableWorkflowsLookup = {},
 ): WorkspaceTreeNode[] {
   const folders = new Map<string, WorkspaceDocumentTreeItem>()
@@ -124,13 +132,21 @@ function buildWorkspaceTreeNodes(
 
     const isKitable = file.name.toLowerCase().endsWith('.kitable')
     const baseChildren = nestedFolder?.children?.length
-      ? buildWorkspaceTreeNodes(nestedFolder.children, metadata, file.path, kitableChildren, kitableWorkflows)
+      ? buildWorkspaceTreeNodes(
+          nestedFolder.children,
+          metadata,
+          file.path,
+          kitableChildren,
+          kitableDashboards,
+          kitableWorkflows,
+        )
       : []
     const childrenWithVirtuals = isKitable
       ? appendKitableVirtualChildren(
           baseChildren,
           file.path,
           kitableChildren[file.path] ?? [],
+          kitableDashboards[file.path] ?? [],
           kitableWorkflows[file.path] ?? [],
         )
       : baseChildren
@@ -163,7 +179,14 @@ function buildWorkspaceTreeNodes(
       title: folder.name,
       parentPath,
       updated_at: folder.updated_at,
-      children: buildWorkspaceTreeNodes(folder.children || [], metadata, folder.path, kitableChildren, kitableWorkflows),
+      children: buildWorkspaceTreeNodes(
+        folder.children || [],
+        metadata,
+        folder.path,
+        kitableChildren,
+        kitableDashboards,
+        kitableWorkflows,
+      ),
     })
   })
 
@@ -203,6 +226,25 @@ export function parseKitableTableVirtualPath(
   return { kitablePath, tableId: Number(tableIdRaw) }
 }
 
+export const KITABLE_DASHBOARD_PREFIX = 'dashboard://'
+
+export function buildKitableDashboardVirtualPath(kitablePath: string, dashboardId: string): string {
+  return `${KITABLE_DASHBOARD_PREFIX}${kitablePath}#${dashboardId}`
+}
+
+export function parseKitableDashboardVirtualPath(
+  path: string,
+): { kitablePath: string; dashboardId: string } | null {
+  if (!path.startsWith(KITABLE_DASHBOARD_PREFIX)) return null
+  const rest = path.slice(KITABLE_DASHBOARD_PREFIX.length)
+  const hashIndex = rest.lastIndexOf('#')
+  if (hashIndex <= 0) return null
+  const kitablePath = rest.slice(0, hashIndex)
+  const dashboardId = rest.slice(hashIndex + 1)
+  if (!dashboardId) return null
+  return { kitablePath, dashboardId }
+}
+
 export const KITABLE_WORKFLOW_PREFIX = 'workflow://'
 
 export function buildKitableWorkflowVirtualPath(kitablePath: string, workflowId: string): string {
@@ -226,6 +268,7 @@ function appendKitableVirtualChildren(
   existingChildren: WorkspaceTreeNode[],
   kitablePath: string,
   tables: KitableTableSummary[],
+  dashboards: KitableDashboardSummary[],
   workflows: KitableWorkflowSummary[],
 ): WorkspaceTreeNode[] {
   const tableNodes: WorkspaceTreeNode[] = [...tables]
@@ -236,6 +279,18 @@ function appendKitableVirtualChildren(
       path: buildKitableTableVirtualPath(kitablePath, table.id),
       name: table.title,
       title: table.title,
+      format: 'data' as const,
+      parentPath: kitablePath,
+      children: [],
+    }))
+  const dashboardNodes: WorkspaceTreeNode[] = [...dashboards]
+    .sort((a, b) => a.order - b.order || a.title.localeCompare(b.title, getCurrentLocale()))
+    .map((dashboard) => ({
+      type: 'file' as const,
+      virtual: true,
+      path: buildKitableDashboardVirtualPath(kitablePath, dashboard.id),
+      name: dashboard.title,
+      title: dashboard.title,
       format: 'data' as const,
       parentPath: kitablePath,
       children: [],
@@ -254,7 +309,7 @@ function appendKitableVirtualChildren(
   // No aggregator "Workflows" virtual child is synthesized — the kitable
   // subtree stays compact. The Workflows home tab is reached via the
   // sidebar header lightning-bolt icon (workflows:// sentinel).
-  return [...tableNodes, ...existingChildren, ...workflowNodes]
+  return [...tableNodes, ...dashboardNodes, ...existingChildren, ...workflowNodes]
 }
 
 export const WORKSPACE_WORKFLOWS_ROOT_PATH = 'workflows://'
@@ -269,6 +324,7 @@ export function buildPrivateSectionTreeNodes(
   items: WorkspaceDocumentTreeItem[],
   metadata: WorkspaceTreeMetadata,
   kitableChildren: KitableChildrenLookup = {},
+  kitableDashboards: KitableDashboardsLookup = {},
   kitableWorkflows: KitableWorkflowsLookup = {},
 ): WorkspaceTreeNode[] {
   // Include media (images, videos) in the main tree so AI-generated artifacts
@@ -281,7 +337,14 @@ export function buildPrivateSectionTreeNodes(
   // (between the New Page + and Refresh buttons). The routing path
   // (`workflows://` with empty kitable suffix) is unchanged — the icon
   // dispatches it through the same WorkspaceScreen.onOpen handler.
-  return buildWorkspaceTreeNodes(items, metadata, '', kitableChildren, kitableWorkflows)
+  return buildWorkspaceTreeNodes(
+    items,
+    metadata,
+    '',
+    kitableChildren,
+    kitableDashboards,
+    kitableWorkflows,
+  )
 }
 
 export function updateWorkspaceTreeDocumentItem(

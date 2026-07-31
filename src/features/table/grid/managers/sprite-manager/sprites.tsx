@@ -8,6 +8,7 @@ import {
   Lock,
   EyeOff,
   Info,
+  Sparkles,
 } from 'lucide-react';
 import { renderToString } from 'react-dom/server';
 
@@ -56,6 +57,11 @@ const lock = (props: ISpriteProps) => {
   return renderToString(<Lock style={{ color: fgColor }} />);
 };
 
+const ai = (props: ISpriteProps) => {
+  const { fgColor } = props;
+  return renderToString(<Sparkles style={{ color: fgColor }} />);
+};
+
 export const eyeOff = (props: ISpriteProps) => {
   const { fgColor } = props;
   return renderToString(<EyeOff style={{ color: fgColor }} />);
@@ -70,6 +76,7 @@ export const sprites = {
   expand,
   collapse,
   lock,
+  ai,
   eyeOff,
 };
 
@@ -82,5 +89,6 @@ export enum GridInnerIcon {
   Expand = 'expand',
   Collapse = 'collapse',
   Lock = 'lock',
+  AI = 'ai',
   EyeOff = 'eyeOff',
 }

@@ -75,6 +75,8 @@ export type DocumentMarkdownEditorPaneProps = {
   inlineTitleSlot?: ReactNode
                                                  
   onToolbarMount?: (node: HTMLElement | null) => void
+  /** Increment to place the caret at the start of the mounted editor. */
+  focusRequest?: number
                                         
   readingView?: boolean
                                                
@@ -127,6 +129,7 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
   onNavigate,
   inlineTitleSlot,
   onToolbarMount,
+  focusRequest = 0,
   readingView = false,
   onSetReadingView,
 }: DocumentMarkdownEditorPaneProps) {
@@ -295,6 +298,25 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
     window.addEventListener('kition:document:focus-editor', handler)
     return () => window.removeEventListener('kition:document:focus-editor', handler)
   }, [])
+
+  useEffect(() => {
+    if (!focusRequest || readingView) return
+    let animationFrame = 0
+    let attempts = 0
+    const focusEditor = () => {
+      const view = editorRef.current?.view
+      if (!view && attempts < 4) {
+        attempts += 1
+        animationFrame = window.requestAnimationFrame(focusEditor)
+        return
+      }
+      if (!view) return
+      view.dispatch({ selection: { anchor: 0, head: 0 } })
+      view.focus()
+    }
+    animationFrame = window.requestAnimationFrame(focusEditor)
+    return () => window.cancelAnimationFrame(animationFrame)
+  }, [focusRequest, readingView])
 
   const stats = useMemo(() => {
     const lines = value ? value.split(/\r?\n/).length : 0

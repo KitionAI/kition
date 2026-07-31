@@ -7,19 +7,14 @@ const dir = resolve(__dirname, '../../../public/onboarding')
 describe('onboarding static assets', () => {
   it('manifest references files that all exist on disk', () => {
     const manifest = JSON.parse(readFileSync(resolve(dir, 'manifest.json'), 'utf8'))
-    expect(manifest.version).toBe(15)
+    expect(manifest.version).toBe(16)
     expect(manifest.folder).toBe('Getting Started')
     expect(typeof manifest.welcome.filename).toBe('string')
     expect(manifest.welcome.asset).toBe('welcome.md')
     expect(existsSync(resolve(dir, manifest.welcome.asset))).toBe(true)
     expect(manifest.documents).toEqual([])
-    expect(manifest.tables.map((table: { filename: string; folder: string }) => [table.folder, table.filename])).toEqual([
-      ['Essentials', 'Task Tracker.kitable'],
-      ['Essentials', 'Reading Tracker.kitable'],
-      ['Essentials', 'Contact Directory.kitable'],
-      ['Workflow Examples', 'Content Pipeline.kitable'],
-      ['Workflow Examples', 'Expense Review.kitable'],
-      ['Workflow Examples', 'Order Fulfillment.kitable'],
+    expect(manifest.tables.map((table: { filename: string; folder?: string }) => [table.folder, table.filename])).toEqual([
+      [undefined, 'Contact Directory.kitable'],
     ])
     for (const table of manifest.tables) {
       expect(existsSync(resolve(dir, table.asset))).toBe(true)
@@ -29,8 +24,7 @@ describe('onboarding static assets', () => {
       { asset: 'logo.png', filename: 'logo.png' },
     ])
     expect(existsSync(resolve(dir, manifest.images[0].asset))).toBe(true)
-    expect(manifest.guides).toEqual({ manifest: 'guides.json', folder: 'Guides' })
-    expect(existsSync(resolve(dir, manifest.guides.manifest))).toBe(true)
+    expect(manifest.guides).toBeUndefined()
     expect(existsSync(resolve(dir, 'demos'))).toBe(false)
   })
 
@@ -47,15 +41,13 @@ describe('onboarding static assets', () => {
     for (const image of manifest.images ?? []) rootEntries.add(image.filename)
 
     expect([...rootEntries].sort()).toEqual([
-      'Essentials',
-      'Guides',
+      'Contact Directory.kitable',
       'Welcome to Kition.md',
-      'Workflow Examples',
       'logo.png',
     ])
   })
 
-  it('lists every onboarding guide directly under the onboarding root', () => {
+  it('keeps every optional onboarding guide valid for on-demand import', () => {
     const manifest = JSON.parse(readFileSync(resolve(dir, 'guides.json'), 'utf8'))
     const referenced = new Set(['guides.json'])
 
@@ -106,33 +98,23 @@ describe('onboarding static assets', () => {
     expect(actual.sort()).toEqual([...referenced].sort())
   })
 
-  it('ships a rich English welcome guide with a complete onboarding directory index', () => {
+  it('ships a rich English welcome guide focused on the starter files', () => {
     const english = readFileSync(resolve(dir, 'welcome.md'), 'utf8')
+    expect(english).toContain('# Welcome to Kition')
     expect(english).toContain('![Kition](logo.png)')
     expect(english).toContain('```mermaid')
     expect(english).toContain('V_n = V_0(1 + r)^n')
-    expect(english).toContain('| Included table | What to explore | Included pattern |')
-    expect(english).toContain('## Getting Started directory')
+    expect(english).toContain('[[Contact Directory.kitable]]')
+    expect(english).toContain('Settings > Onboarding Guides')
+    expect(english).toContain('```text')
+    expect(english).toContain('| Capability | What it means | What to try |')
     expect(english).toContain('> [!tip]')
     expect(english).toContain('> [!note]')
-    expect(english.split('\n').length).toBeGreaterThan(150)
-
-    for (const value of [
-      'Essentials/Task Tracker.kitable',
-      'Essentials/Reading Tracker.kitable',
-      'Essentials/Contact Directory.kitable',
-      'Workflow Examples/Content Pipeline.kitable',
-      'Workflow Examples/Expense Review.kitable',
-      'Workflow Examples/Order Fulfillment.kitable',
-      'Guides/Email Automation/Inbox.kitable',
-      'Guides/Lead Automation/Lead Follow-up.kitable',
-      'Guides/Email Automation/intro.md',
-      'Guides/Receipt Extraction/Receipt Archive.kitable',
-      'Guides/Product Content/Product Content Studio.kitable',
-      'Guides/Web Research/info.md',
-    ]) {
-      expect(english).toContain(value)
-    }
+    expect(english).toContain('- [ ] Edit this page and save it.')
+    expect(english.split('\n').length).toBeGreaterThan(120)
+    expect(english).not.toContain('Task Tracker.kitable')
+    expect(english).not.toContain('Workflow Examples/')
+    expect(english).not.toContain('Guides/Email Automation/')
 
     expect(readdirSync(dir).filter((name) => /^welcome\..+\.md$/.test(name))).toEqual([])
     const emailAutomation = readFileSync(resolve(dir, 'email-automation/intro.md'), 'utf8')

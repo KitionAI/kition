@@ -148,6 +148,7 @@ export interface IImageCell extends IEditableCell {
   type: CellType.Image;
   data: IImageData[];
   displayData: string[];
+  imageAspectRatio?: number;
   onPreview?: (activeId: string) => void;
   aiConfigEnabled?: boolean;
 }

@@ -136,10 +136,10 @@ async function mockDesktopBridge(
       requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number
       cancelIdleCallback?: (id: number) => void
     }
-    // Search indexing is unrelated to table-widget behavior and can consume
-    // the idle window before CodeMirror finishes mounting on loaded machines.
-    idleWindow.requestIdleCallback = () => 1
-    idleWindow.cancelIdleCallback = () => undefined
+    // Keep idle work deterministic without suppressing CodeMirror's background
+    // parser, which must finish before live-preview table widgets can mount.
+    idleWindow.requestIdleCallback = (callback) => window.setTimeout(callback, 0)
+    idleWindow.cancelIdleCallback = (id) => window.clearTimeout(id)
     window.localStorage.removeItem('kition.document.last-active-path.v1')
     window.localStorage.removeItem('kition.document.workspace-tabs.v1')
     window.localStorage.removeItem('kition.document.tree.metadata.v1')

@@ -24,6 +24,12 @@ vi.mock('@/features/emailSync/EmailSyncWorkflowPage', () => ({
   EmailSyncWorkflowPage: ({ workflowId }: { workflowId: string }) => <div data-testid="mock-email-sync-workflow-detail">{workflowId}</div>,
 }))
 
+vi.mock('@/features/document/components/DocumentMarkdownEditorPane', () => ({
+  DocumentMarkdownEditorPane: ({ focusRequest }: { focusRequest?: number }) => (
+    <div data-testid="mock-document-editor" data-focus-request={focusRequest} />
+  ),
+}))
+
 let container: HTMLDivElement
 let root: Root | null = null
 
@@ -55,6 +61,10 @@ function baseProps() {
     getOpenedDocumentDraftEntry: vi.fn(() => null),
     onSaveDocumentTitle: vi.fn(),
     onSplitEditorChange: vi.fn(),
+    onOpenWorkflows: vi.fn(),
+    onCreateDocument: vi.fn(),
+    onCreateTable: vi.fn(),
+    onOpenAgent: vi.fn(),
     onTableAgentOpenChange: vi.fn(),
     onSetEditorMode: vi.fn(),
     tableAgentOpen: false,
@@ -83,6 +93,66 @@ afterEach(async () => {
 })
 
 describe('WorkspaceEditorContent workflow routing', () => {
+  it('forwards a blank-document focus request to the Markdown editor', async () => {
+    const document = {
+      path: 'Notes/Untitled note.md',
+      name: 'Untitled note.md',
+      content: '',
+      format: 'markdown' as const,
+    }
+    const tab = {
+      id: 'document:Notes/Untitled note.md',
+      uid: 'document-1',
+      type: 'document' as const,
+      title: 'Untitled note',
+      path: document.path,
+      format: 'markdown' as const,
+    }
+    await render({
+      ...baseProps(),
+      activeDocument: document,
+      activeWorkspaceTab: tab,
+      activeWorkspaceTabId: tab.id,
+      workspaceTabs: [tab],
+      hasActiveDocument: true,
+      documentEditorFocusRequest: 1,
+      getOpenedDocumentDraftEntry: vi.fn(() => ({ document, format: 'markdown' })),
+    })
+
+    expect(container.querySelector('[data-testid="mock-document-editor"]')?.getAttribute('data-focus-request')).toBe('1')
+  })
+
+  it('renders functional quick starts when no workspace tab is active', async () => {
+    const onCreateDocument = vi.fn()
+    const onCreateTable = vi.fn()
+    const onOpenAgent = vi.fn()
+    const onOpenWorkflows = vi.fn()
+    await render({
+      ...baseProps(),
+      activeWorkspaceTab: undefined,
+      activeWorkspaceTabId: '',
+      workspaceTabs: [],
+      onCreateDocument,
+      onCreateTable,
+      onOpenAgent,
+      onOpenWorkflows,
+    })
+
+    expect(container.querySelector('[data-testid="workspace-empty-state"]')).not.toBeNull()
+
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('.workspace-empty-state__prompt')?.click()
+      container.querySelectorAll<HTMLButtonElement>('.workspace-empty-state__action-card')[0]?.click()
+      container.querySelectorAll<HTMLButtonElement>('.workspace-empty-state__action-card')[1]?.click()
+      container.querySelectorAll<HTMLButtonElement>('.workspace-empty-state__action-card')[2]?.click()
+    })
+
+    expect(onOpenAgent).toHaveBeenCalledOnce()
+    expect(onCreateDocument).toHaveBeenCalledOnce()
+    expect(onCreateTable).toHaveBeenCalledOnce()
+    expect(onOpenWorkflows).toHaveBeenCalledOnce()
+  })
+
   it('renders email sync IDs with the email workflow detail surface', async () => {
     const tab = {
       id: 'kitable:Mail/Emails.kitable',

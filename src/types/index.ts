@@ -78,7 +78,7 @@ export interface AIModelForm {
 
 // Creation
 export interface RuntimeWritingModel {
-  provider_type: 'openai' | 'anthropic' | 'deepseek' | 'custom' | 'kition_console'
+  provider_type: 'openai' | 'anthropic' | 'deepseek' | 'kimi' | 'custom' | 'kition_console'
   provider_label: string
   model_name: string
   base_url: string

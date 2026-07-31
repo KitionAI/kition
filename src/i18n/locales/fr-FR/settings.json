@@ -227,7 +227,7 @@
     "kitionAccountCancel": "Annuler la connexion",
     "kitionAccountRetry": "Réessayer",
     "kitionAccountTopup": "Recharger les crédits",
-    "kitionHostedModelsReady": "{{count}} modèles hébergés disponibles",
+    "kitionHostedModelsReady": "Modèles hébergés disponibles",
     "kitionHostedModelsSignIn": "Connectez-vous pour utiliser les modèles Kition Cloud.",
     "kitionHostedModelsTopup": "Rechargez vos crédits pour utiliser les modèles Kition Cloud.",
     "modelsEndpoint": "Point de terminaison des modèles",

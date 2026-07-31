@@ -2,19 +2,17 @@
 
 # Welcome to Kition
 
-Kition brings Markdown documents, structured tables, visual workflows, and an AI agent together inside one focused workspace. Start with a real project, then write, organize, research, and automate without switching tools.
+Kition brings Markdown documents, structured tables, visual workflows, and AI Chat together inside one focused workspace. Start with a real project, then write, organize, research, and automate without switching tools.
 
 > [!tip] Everything here is editable
-> This document is a plain Markdown file. Click anywhere and start typing. The tables and guides beside it are ordinary workspace files too. Keep what is useful, adapt it to your work, and remove the rest.
+> This page is a plain Markdown file and a tour of the elements Kition can render. Click anywhere and start typing. Keep what is useful, adapt it to your work, and remove the rest.
 
 ## Start with one useful action
 
-- **Write**: edit this document, add a checklist, and create an `[[internal link]]`.
-- **Organize**: open [[Essentials/Task Tracker.kitable]] and switch between Grid, Kanban, and Calendar.
-- **Automate**: open [[Essentials/Contact Directory.kitable]], select **Workflows**, and run the contact cleanup flow.
-- **Connect**: follow [[Guides/Email Automation/intro.md]] to import an inbox into a structured table and open full messages as Markdown.
-- **Research**: copy or adapt a prompt from [[Guides/Web Research/info.md]] to open a website and continue the requested browser task automatically.
-- **Ask**: open the Agent and ask it to summarize this page or update the active document.
+- **Write**: edit this document, add a checklist item, and create an `[[internal link]]`.
+- **Organize**: open [[Contact Directory.kitable]] and change a record.
+- **Automate**: select **Workflows** in Contact Directory and inspect the deterministic cleanup flow.
+- **Ask**: open AI Chat and ask Kition to summarize this page or help organize the table.
 
 ## How Kition fits together
 
@@ -22,10 +20,10 @@ Kition brings Markdown documents, structured tables, visual workflows, and an AI
 flowchart LR
     You([You]) --> Docs[Markdown documents]
     You --> Tables[Structured tables]
-    You --> Agent[AI Agent]
-    Agent --> Docs
-    Agent --> Tables
-    Agent --> Tools[Connected tools]
+    You --> Chat[AI Chat]
+    Chat --> Docs
+    Chat --> Tables
+    Chat --> Tools[Connected tools]
     Docs --> Workspace[(Project workspace)]
     Tables --> Workspace
     Tools --> Files[Files]
@@ -33,18 +31,16 @@ flowchart LR
     Tools --> MCP[MCP servers]
 ```
 
-The Agent works with the document or table you are viewing. It can use connected tools, browse through a controlled browser, and call MCP servers that you configure.
+AI Chat works with the document or table you are viewing. It can use connected tools, browse through a controlled browser, and call MCP servers that you configure.
 
 ## What makes Kition different
 
 | Capability | What it means | What to try |
 | --- | --- | --- |
 | Portable documents | Notes remain readable `.md` files. | Edit this page and inspect it outside Kition. |
-| Structured data | Each table is stored as a portable table file. | Add a row to **Task Tracker**. |
-| Multiple views | One dataset can power several layouts. | Switch Task Tracker between Grid, Kanban, and Calendar. |
-| Visual workflows | Records can trigger deterministic actions. | Run the Contact Directory cleanup workflow. |
-| Inbox automation | IMAP messages become table rows linked to local Markdown. | Open the **Email Automation** guide. |
-| AI fields | Generated values come from selected source fields. | Inspect the AI Summary field in **Reading Tracker**. |
+| Structured data | Tables keep related records and field types together. | Add a row to Contact Directory. |
+| Visual workflows | Records can trigger deterministic actions. | Inspect the Contact Directory workflow. |
+| Rich Markdown | One file can contain tables, diagrams, math, code, and callouts. | Explore every section on this page. |
 | Model choice | Use Kition Cloud or a compatible provider. | Open **Settings > AI Models**. |
 
 ## Write rich documents
@@ -74,94 +70,61 @@ Table fields can hold text, numbers, dates, choices, checkboxes, attachments, fo
 quantity * unit_price
 ```
 
-| Included table | What to explore | Included pattern |
+The starter table demonstrates a compact, local workflow:
+
+| Included file | What to explore | Included pattern |
 | --- | --- | --- |
-| [[Essentials/Task Tracker.kitable]] | Status, priority, due dates, and views | Personal work tracking |
-| [[Essentials/Reading Tracker.kitable]] | Progress and AI-generated summaries | On-demand AI fields |
-| [[Essentials/Contact Directory.kitable]] | Contact fields and workflow runs | Deterministic cleanup |
-| [[Workflow Examples/Content Pipeline.kitable]] | Editorial planning | Create records in another table |
-| [[Workflow Examples/Expense Review.kitable]] | Numbers and review states | Conditional record updates |
-| [[Workflow Examples/Order Fulfillment.kitable]] | Product and order data | Cross-table lookup and write-back |
+| `Welcome to Kition.md` | Rich Markdown and AI Chat context | Portable documents |
+| [[Contact Directory.kitable]] | Contact fields, records, and workflow runs | Deterministic cleanup |
+| `logo.png` | Relative image embedding | Workspace media |
 
-> [!note] AI fields run on demand
-> Open **Reading Tracker** and inspect the **AI Summary** column. Generated fields run only when you request them, so you control when a model receives selected context.
+## Try a deterministic workflow
 
-## Try three deterministic workflows
+Open [[Contact Directory.kitable]], select **Workflows**, and inspect how the sample flow normalizes contact details. It demonstrates repeatable actions without requiring an email account, an AI model, or another external service.
 
-These examples require no email account, AI model, or external service.
+1. Review the trigger and its input fields.
+2. Run the workflow against a sample record.
+3. Compare the updated email domain and phone number with the original values.
 
-1. **Flag high-value expenses**: open [[Workflow Examples/Expense Review.kitable]], test a large expense, and inspect the status update.
-2. **Fill orders from a catalog**: open [[Workflow Examples/Order Fulfillment.kitable]], match an SKU, and write product details back to the order.
-3. **Normalize contact details**: open [[Essentials/Contact Directory.kitable]], extract an email domain, and reduce a formatted phone number to digits.
+## Work with AI Chat
 
-Together they demonstrate conditions, same-record updates, cross-table lookup, write-back, and deterministic transforms.
+Useful first prompts are concrete and scoped to the active file.
 
-## Work with the Agent
-
-Useful first prompts are concrete and scoped to the active file:
+With this page active:
 
 ```text
 Summarize this page in five bullets and add a checklist for my first Kition session.
 ```
 
+With Contact Directory active:
+
 ```text
-Review the active table, identify missing values, and propose a cleanup workflow without running it.
+Review this table, identify missing values, and propose a cleanup plan without changing any records yet.
 ```
 
-The Agent should explain planned changes before modifying workspace content. You remain in control of tool access, provider settings, and the files it can reach.
+AI Chat should explain planned changes before modifying workspace content. You remain in control of tool access, provider settings, and the files it can reach.
 
-## Getting Started directory
+## Explore optional guides
 
-Everything included in Getting Started is indexed below. The folders are named for product functions, not internal sample categories.
+Open **Settings > Onboarding Guides** when you want a larger example. Import only the guide that matches your work.
 
-### Root
-
-| Path | Purpose |
-| --- | --- |
-| `Welcome to Kition.md` | This product overview and complete onboarding index. |
-| `logo.png` | The image displayed at the top of this page. |
-| `Essentials/` | Small tables for core document, data, and workflow features. |
-| `Workflow Examples/` | Deterministic automation patterns that need no external service. |
-| `Guides/` | End-to-end setup and product walkthroughs. |
-
-### Essentials
-
-| Path | Purpose |
-| --- | --- |
-| [[Essentials/Task Tracker.kitable]] | Table views, status tracking, dates, and task workflows. |
-| [[Essentials/Reading Tracker.kitable]] | AI-generated fields driven by structured source columns. |
-| [[Essentials/Contact Directory.kitable]] | A deterministic workflow that normalizes email and phone data. |
-
-### Workflow Examples
-
-| Path | Purpose |
-| --- | --- |
-| [[Workflow Examples/Content Pipeline.kitable]] | Create records in a publishing queue from another table. |
-| [[Workflow Examples/Expense Review.kitable]] | Filter high-value records and update the triggering row. |
-| [[Workflow Examples/Order Fulfillment.kitable]] | Look up product data and write matching fields back to an order. |
-
-### Guides
-
-| Path | Purpose | Requirement |
+| Guide | What it demonstrates | Requirement |
 | --- | --- | --- |
-| [[Guides/Email Automation/intro.md]] | Import an IMAP inbox into a `.kitable`, open messages as Markdown, and configure SMTP delivery. | Email provider credentials |
-| [[Guides/Email Automation/Inbox.kitable]] | The schema-complete inbox table filled by the Email Automation sync workflow. | Email provider credentials to populate |
-| [[Guides/Lead Automation/intro.md]] | Walk through a record-created lead workflow. | None to inspect |
-| [[Guides/Lead Automation/Lead Follow-up.kitable]] | Inspect a workflow with bound email fields. | Email connection to send |
-| [[Guides/Receipt Extraction/intro.md]] | Learn a prompt pattern for receipt extraction. | AI provider to run again |
-| [[Guides/Receipt Extraction/Receipt Archive.kitable]] | Filter and review completed receipt records. | None to inspect |
-| [[Guides/Product Content/intro.md]] | Configure image and copy generation fields. | Image-capable AI provider to run again |
-| [[Guides/Product Content/Product Content Studio.kitable]] | Inspect configured product content fields. | None to inspect |
-| [[Guides/Web Research/info.md]] | Test a reusable one-turn browser handoff for page research, capture, summaries, downloads, or structured output. | Desktop browser and AI provider |
+| Email Automation | Inbox sync, Markdown messages, and SMTP delivery | Email provider credentials |
+| Lead Automation | A record-created follow-up workflow | None to inspect |
+| Receipt Extraction | A reusable structured extraction prompt | AI provider to run again |
+| Product Content | Image and copy generation fields | Image-capable AI provider to run again |
+| Web Research | A reusable browser task handoff | Desktop browser and AI provider |
+
+> [!note] Optional guides stay optional
+> The first-run workspace contains only this page, its logo, and Contact Directory. Guides are added only when you choose to import them.
 
 ## Recommended first session
 
 - [ ] Edit this page and save it.
-- [ ] Add a row to **Task Tracker** and change the active view.
-- [ ] Run the cleanup workflow in **Contact Directory**.
-- [ ] Open **Email Automation** and review the inbox-to-table output structure.
-- [ ] Copy or adapt a prompt from **Web Research** and verify that the requested result exists before the Agent reports completion.
-- [ ] Ask the Agent to summarize one active file.
-- [ ] Open one guide that matches your work and adapt its table.
+- [ ] Add a row to Contact Directory.
+- [ ] Inspect the contact cleanup workflow.
+- [ ] Ask AI Chat to summarize one active file.
+- [ ] Import one optional guide that matches your work.
 
 These onboarding files are yours to change. Build the workspace around real work, and keep your source files under your own control.

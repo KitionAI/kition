@@ -109,6 +109,22 @@ describe('deriveAgentPaneContext', () => {
     expect(deriveAgentPaneContext(tab)).toBe('table')
   })
 
+  it('dashboard tab → table because it reports on kitable data', () => {
+    const tab: WorkspaceTab = {
+      id: 'dash-1',
+      type: 'dashboard',
+      title: 'Task Dashboard',
+      kitablePath: 'Tasks.kitable',
+      dashboardId: 'task-dashboard',
+      format: 'data',
+    }
+    expect(deriveAgentPaneContext(tab)).toBe('table')
+    expect(resolveAgentActiveDocument(tab)).toEqual({
+      path: 'Tasks.kitable',
+      format: 'data',
+    })
+  })
+
   it('gallery tab → gallery', () => {
     const tab: WorkspaceTab = {
       id: 'g1',

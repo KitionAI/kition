@@ -35,6 +35,7 @@ export type TableEditorHandle = {
 type TableEditorContentProps = {
   documentId: number
   tableId: number
+  viewId?: number
   viewMode: DataViewType
   fields: DataField[]
   visibleFields: DataField[]
@@ -105,6 +106,11 @@ type TableEditorContentProps = {
     field: DataField,
     position: { x: number; y: number },
   ) => void
+  onReorderField: (
+    field: DataField,
+    fromIndex: number,
+    dropIndex: number,
+  ) => void
   onReorderRecords: (
     sourceRecordId: number,
     targetRecordId: number,
@@ -128,6 +134,7 @@ export const TableEditorContent = forwardRef<TableEditorHandle, TableEditorConte
     {
       documentId,
       tableId,
+      viewId,
       viewMode,
       fields,
       visibleFields,
@@ -181,6 +188,7 @@ export const TableEditorContent = forwardRef<TableEditorHandle, TableEditorConte
       onSelectCell,
       onOpenRecordContextMenu,
       onOpenColumnHeaderMenu,
+      onReorderField,
       onReorderRecords,
       onUpdateCell,
       onClearCells,
@@ -298,6 +306,7 @@ export const TableEditorContent = forwardRef<TableEditorHandle, TableEditorConte
         ref={gridRef}
         documentId={documentId}
         tableId={tableId}
+        viewId={viewId}
         fields={fields}
         visibleFields={visibleFields}
         groupedRecords={groupedRecords}
@@ -334,6 +343,7 @@ export const TableEditorContent = forwardRef<TableEditorHandle, TableEditorConte
         onOpenDocument={onOpenDocument}
         onOpenRecordContextMenu={onOpenRecordContextMenu}
         onOpenColumnHeaderMenu={onOpenColumnHeaderMenu}
+        onReorderField={onReorderField}
         onReorderRecords={onReorderRecords}
         onRegenerate={onRegenerate}
         onUpdateCell={onUpdateCell}

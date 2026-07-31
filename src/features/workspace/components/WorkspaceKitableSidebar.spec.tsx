@@ -26,12 +26,15 @@ describe('WorkspaceKitableSidebar', () => {
       root.render(createElement(WorkspaceKitableSidebar, {
         mode: 'table',
         activeTableId: 7,
+        dashboards: [],
         tables: [
           { id: 7, title: 'Prospects', order: 0, primaryFieldId: null },
         ],
         workflows: [],
+        onCreateDashboard: vi.fn(),
         onCreateTable: vi.fn(),
         onCreateWorkflow: vi.fn(),
+        onOpenDashboard: vi.fn(),
         onOpenTable: vi.fn(),
         onOpenWorkflow: vi.fn(),
       }))
@@ -47,6 +50,8 @@ describe('WorkspaceKitableSidebar', () => {
   it('shows table titles and routes table/workflow clicks', () => {
     const onOpenTable = vi.fn()
     const onOpenWorkflow = vi.fn()
+    const onOpenDashboard = vi.fn()
+    const onCreateDashboard = vi.fn()
     const onCreateTable = vi.fn()
     const onCreateWorkflow = vi.fn()
     const onRenameTable = vi.fn()
@@ -57,6 +62,7 @@ describe('WorkspaceKitableSidebar', () => {
         defaultCollapsed: false,
         mode: 'table',
         activeTableId: 7,
+        dashboards: [{ id: 'task-dashboard', title: 'Task Dashboard', order: 0 }],
         tables: [
           { id: 7, title: 'Prospects', order: 0, primaryFieldId: null },
           { id: 8, title: 'Companies', order: 1, primaryFieldId: null },
@@ -65,8 +71,10 @@ describe('WorkspaceKitableSidebar', () => {
           { id: 'auto_leads', name: 'Lead routing', enabled: true },
           { id: 'auto_followup', name: 'Follow-up', enabled: false },
         ],
+        onCreateDashboard,
         onCreateTable,
         onCreateWorkflow,
+        onOpenDashboard,
         onOpenTable,
         onOpenWorkflow,
         onRenameTable,
@@ -103,6 +111,12 @@ describe('WorkspaceKitableSidebar', () => {
     act(() => { workflow.click() })
     expect(onOpenWorkflow).toHaveBeenCalledWith('auto_leads')
 
+    const dashboard = container.querySelector(
+      '[data-testid="workspace-kitable-dashboard-task-dashboard"]',
+    ) as HTMLButtonElement
+    act(() => { dashboard.click() })
+    expect(onOpenDashboard).toHaveBeenCalledWith('task-dashboard')
+
     const followUp = container.querySelector(
       '[data-testid="workspace-kitable-workflow-auto_followup"]',
     ) as HTMLButtonElement
@@ -129,6 +143,14 @@ describe('WorkspaceKitableSidebar', () => {
 
     const create = container.querySelector('[data-testid="workspace-kitable-create"]') as HTMLButtonElement
     act(() => { create.click() })
+    const createDashboard = container.querySelector(
+      '[data-testid="kitable-action-create-dashboard"]',
+    ) as HTMLButtonElement
+    expect(createDashboard.textContent).toContain('New dashboard')
+    act(() => { createDashboard.click() })
+    expect(onCreateDashboard).toHaveBeenCalledTimes(1)
+
+    act(() => { create.click() })
     const createTable = container.querySelector('.document-create-option') as HTMLButtonElement
     expect(createTable).toBeTruthy()
     act(() => { createTable.click() })
@@ -149,6 +171,7 @@ describe('WorkspaceKitableSidebar', () => {
     expect(collapsedMenu.textContent).toContain('Prospects')
     expect(collapsedMenu.textContent).toContain('Companies')
     expect(collapsedMenu.textContent).toContain('Workflow')
+    expect(collapsedMenu.textContent).toContain('Task Dashboard')
     expect(collapsedMenu.textContent).not.toContain('Lead routing')
     expect(collapsedMenu.textContent).toContain('Follow-up')
 
@@ -186,6 +209,7 @@ describe('WorkspaceKitableSidebar', () => {
         defaultCollapsed: false,
         mode: 'workflow',
         activeWorkflowId: 'auto_leads',
+        dashboards: [],
         tables: [
           { id: 7, title: 'Prospects', order: 0, primaryFieldId: null },
         ],
@@ -193,8 +217,10 @@ describe('WorkspaceKitableSidebar', () => {
           { id: 'auto_leads', name: 'Lead routing', enabled: true },
           { id: 'auto_followup', name: 'Follow-up', enabled: false },
         ],
+        onCreateDashboard: vi.fn(),
         onCreateTable: vi.fn(),
         onCreateWorkflow: vi.fn(),
+        onOpenDashboard: vi.fn(),
         onOpenTable: vi.fn(),
         onOpenWorkflow,
       }))

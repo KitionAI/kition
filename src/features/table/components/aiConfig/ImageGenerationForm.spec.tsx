@@ -112,6 +112,36 @@ describe('ImageGenerationForm', () => {
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ source_field_id: 2 }))
   })
 
+  it('caps image variants at five', async () => {
+    const onChange = vi.fn()
+    const config: AttachmentAIConfig = {
+      type: 'image_generation',
+      enabled: true,
+      auto_update: false,
+      source_field_id: 2,
+      n: 1,
+      quality: 'medium',
+      aspect_ratio: '1:1',
+      resolution: '1K',
+      image_use_case: 'inline_illustration',
+    }
+    await mount(
+      createElement(ImageGenerationForm, {
+        fields,
+        currentFieldId: 1,
+        value: config,
+        onChange,
+      }),
+    )
+    const input = container.querySelector('input[aria-label="Variants"]') as HTMLInputElement
+    expect(input.max).toBe('5')
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, '9')
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ n: 5 }))
+  })
+
   it('renders all 6 use case options', async () => {
     const onChange = vi.fn()
     const config: AttachmentAIConfig = {

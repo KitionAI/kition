@@ -1,10 +1,11 @@
-import { ChevronDown, ChevronsLeft, ChevronsRight, Database, MoreHorizontal, Pencil, Plus, Search, Workflow } from 'lucide-react'
+import { ChevronDown, ChevronsLeft, ChevronsRight, Database, LayoutDashboard, MoreHorizontal, Pencil, Plus, Search, Workflow } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { WorkspaceCreateMenu } from '@/features/workspace/components/WorkspaceCreateMenu'
 import { WorkflowStatusToggle } from '@/features/workflow/components/WorkflowStatusToggle'
 import { useWorkflowEnabled } from '@/features/workflow/hooks/useWorkflowEnabled'
 import type {
+  KitableDashboardSummary,
   KitableTableSummary,
   KitableWorkflowSummary,
 } from '@/features/workspace/lib/workspaceTree'
@@ -13,13 +14,17 @@ import { useDismissableLayer } from '@/registry/hooks/use-on-click-outside'
 
 type WorkspaceKitableSidebarProps = {
   defaultCollapsed?: boolean
+  activeDashboardId?: string
   activeTableId?: number
   activeWorkflowId?: string
-  mode: 'table' | 'workflow'
+  mode: 'dashboard' | 'table' | 'workflow'
+  dashboards: KitableDashboardSummary[]
   tables: KitableTableSummary[]
   workflows: KitableWorkflowSummary[]
+  onCreateDashboard: () => void
   onCreateTable: () => void
   onCreateWorkflow: () => void
+  onOpenDashboard: (dashboardId: string) => void
   onOpenTable: (tableId: number) => void
   onOpenWorkflow: (workflowId?: string) => void
   onRenameTable?: (tableId: number, currentTitle: string, nextTitle: string) => void
@@ -27,13 +32,17 @@ type WorkspaceKitableSidebarProps = {
 
 export function WorkspaceKitableSidebar({
   defaultCollapsed = true,
+  activeDashboardId,
   activeTableId,
   activeWorkflowId,
   mode,
+  dashboards,
   tables,
   workflows,
+  onCreateDashboard,
   onCreateTable,
   onCreateWorkflow,
+  onOpenDashboard,
   onOpenTable,
   onOpenWorkflow,
   onRenameTable,
@@ -52,6 +61,10 @@ export function WorkspaceKitableSidebar({
     () => [...tables].sort((left, right) => left.order - right.order),
     [tables],
   )
+  const sortedDashboards = useMemo(
+    () => [...dashboards].sort((left, right) => left.order - right.order),
+    [dashboards],
+  )
   const sortedWorkflows = useMemo(
     () => [...workflows],
     [workflows],
@@ -61,6 +74,9 @@ export function WorkspaceKitableSidebar({
   const defaultWorkflowId = sortedWorkflows[0]?.id
   const orderedAdditionalTables = sortedTables.slice(1).filter(
     (table) => !normalizedQuery || table.title.toLowerCase().includes(normalizedQuery),
+  )
+  const orderedDashboards = sortedDashboards.filter(
+    (dashboard) => !normalizedQuery || dashboard.title.toLowerCase().includes(normalizedQuery),
   )
   const orderedAdditionalWorkflows = sortedWorkflows.slice(1).filter(
     (workflow) => !normalizedQuery || workflow.name.toLowerCase().includes(normalizedQuery),
@@ -72,6 +88,9 @@ export function WorkspaceKitableSidebar({
   const activeTableTitle = activeTableId != null
     ? tableDisplayTitle(sortedTables.find((table) => table.id === activeTableId))
     : undefined
+  const activeDashboardTitle = activeDashboardId
+    ? sortedDashboards.find((dashboard) => dashboard.id === activeDashboardId)?.title
+    : undefined
   const activeWorkflowTitle = activeWorkflowId
     ? sortedWorkflows.find((workflow) => workflow.id === activeWorkflowId)?.name
     : undefined
@@ -81,7 +100,9 @@ export function WorkspaceKitableSidebar({
   const workflowEnabled = useWorkflowEnabled(activeWorkflowId || null, activeWorkflow?.enabled)
   const collapsedLabel = mode === 'workflow'
     ? isDefaultWorkflowActive ? 'Workflow' : activeWorkflowTitle || 'Workflow'
-    : isDefaultTableActive ? tableDisplayTitle(defaultTable) : activeTableTitle || 'Data table'
+    : mode === 'dashboard'
+      ? activeDashboardTitle || 'Dashboard'
+      : isDefaultTableActive ? tableDisplayTitle(defaultTable) : activeTableTitle || 'Data table'
 
   if (collapsed) {
     return (
@@ -150,6 +171,23 @@ export function WorkspaceKitableSidebar({
                     <span>{tableDisplayTitle(table)}</span>
                   </button>
                 ))}
+                {sortedDashboards.map((dashboard) => (
+                  <button
+                    key={dashboard.id}
+                    type="button"
+                    className={cn(
+                      'workspace-kitable-sidebar__collapsed-menu-item',
+                      mode === 'dashboard' && activeDashboardId === dashboard.id && 'is-active',
+                    )}
+                    onClick={() => {
+                      setCollapsedMenuOpen(false)
+                      onOpenDashboard(dashboard.id)
+                    }}
+                  >
+                    <LayoutDashboard className="size-4" />
+                    <span>{dashboard.title}</span>
+                  </button>
+                ))}
                 <button
                   type="button"
                   className={cn(
@@ -207,7 +245,7 @@ export function WorkspaceKitableSidebar({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search"
-            aria-label="Search tables and workflows"
+            aria-label="Search tables, dashboards, and workflows"
             data-testid="workspace-kitable-search"
           />
         </label>
@@ -228,6 +266,10 @@ export function WorkspaceKitableSidebar({
             variant="kitable"
             onCreateFolder={() => undefined}
             onCreateDocument={() => undefined}
+            onCreateDashboard={() => {
+              setCreateMenuOpen(false)
+              onCreateDashboard()
+            }}
             onCreateTable={() => {
               setCreateMenuOpen(false)
               onCreateTable()
@@ -259,6 +301,24 @@ export function WorkspaceKitableSidebar({
             onRename={onRenameTable}
           />
         ) : null}
+
+        {orderedDashboards.map((dashboard) => (
+          <button
+            key={dashboard.id}
+            type="button"
+            className={cn(
+              'workspace-kitable-sidebar__item',
+              mode === 'dashboard' && activeDashboardId === dashboard.id && 'is-active',
+            )}
+            onClick={() => onOpenDashboard(dashboard.id)}
+            title={dashboard.title}
+            aria-current={mode === 'dashboard' && activeDashboardId === dashboard.id ? 'page' : undefined}
+            data-testid={`workspace-kitable-dashboard-${dashboard.id}`}
+          >
+            <LayoutDashboard className="size-4" />
+            <span>{dashboard.title}</span>
+          </button>
+        ))}
 
         <button
           type="button"

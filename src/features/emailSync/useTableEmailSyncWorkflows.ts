@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 
-import { EMAIL_AUTOMATION_TABLE_PATH } from '@/features/onboarding/upgradeOnboardingPack'
+import { EMAIL_AUTOMATION_TABLE_PATH } from '@/features/onboarding/onboardingGuideManifest'
 import { getDesktopBackendStatus } from '@/services/desktop'
 import {
   EMAIL_SYNC_CHANGED_EVENT,

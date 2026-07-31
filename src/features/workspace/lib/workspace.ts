@@ -77,6 +77,14 @@ export type WorkspaceTab =
       tableId: number
       format: 'data'  // existing format===data branches keep working
     }
+  | {
+      id: string
+      type: 'dashboard'
+      title: string
+      kitablePath: string
+      dashboardId: string
+      format: 'data'
+    }
 
 export type WorkspaceTreeNode = {
   type: 'folder' | 'file'

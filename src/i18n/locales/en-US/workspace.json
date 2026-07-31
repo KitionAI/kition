@@ -8,8 +8,33 @@
     },
     "folder": "Folder",
     "importFile": "Import file",
+    "newDashboard": "New dashboard",
     "newTable": "New table",
     "newWorkflow": "New Workflow"
+  },
+  "emptyState": {
+    "title": "Turn ideas into organized work",
+    "description": "Open something from the sidebar, start from a blank canvas, or let Kition AI help shape your next document, table, or workflow.",
+    "prompt": {
+      "title": "Describe what you want to build",
+      "description": "Plan, research, write, and organize with Kition AI.",
+      "action": "Open AI Chat"
+    },
+    "quickStart": "Quick start",
+    "actions": {
+      "document": {
+        "title": "New document",
+        "description": "Capture notes, plans, and knowledge."
+      },
+      "table": {
+        "title": "New table",
+        "description": "Structure projects, records, and research."
+      },
+      "workflow": {
+        "title": "Workflows",
+        "description": "Automate repeatable work across your tables."
+      }
+    }
   },
   "sidebar": {
     "tabs": {
@@ -216,6 +241,7 @@
     "onlyMarkdownPlateTableDuplicable": "Only Markdown, Plate, and Table pages can be duplicated here.",
     "onlyMarkdownPlateTableRenamable": "Only Markdown, Plate, and Table pages can be renamed here.",
     "createDocumentFailed": "Failed to create document",
+    "createDashboardFailed": "Failed to create dashboard",
     "createTableFailed": "Failed to create table",
     "importMarkdownFailed": "Failed to import Markdown",
     "browserDevModeOpenDirectory": "You are running in browser dev mode and cannot open native directories. Launch the desktop app via pnpm dev:electron and try again.",
@@ -227,6 +253,7 @@
     "refreshed": "Workspace refreshed",
     "restoredSavedVersion": "Restored to the saved version",
     "documentCreated": "Document created",
+    "dashboardCreated": "Dashboard created",
     "tableCreated": "Table created",
     "folderCreated": "Folder created",
     "renamed": "Renamed",

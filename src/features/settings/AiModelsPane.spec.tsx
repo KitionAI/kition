@@ -5,9 +5,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const accountMock = vi.hoisted(() => ({
   current: {} as any,
 }))
+const apiMocks = vi.hoisted(() => ({
+  discoverProviderModels: vi.fn(),
+}))
 
 vi.mock('@/features/account/hooks/useKitionAccount', () => ({
   useKitionAccount: () => accountMock.current,
+}))
+
+vi.mock('@/api/desktop', () => ({
+  discoverProviderModels: apiMocks.discoverProviderModels,
 }))
 
 vi.mock('@/services/desktopSettings', async () => {
@@ -15,7 +22,7 @@ vi.mock('@/services/desktopSettings', async () => {
   return {
     ...actual,
     loadDesktopSettings: vi.fn(async () => actual.createDefaultDesktopSettings()),
-    saveDesktopSettings: vi.fn(async () => {}),
+    saveDesktopSettings: vi.fn(async (settings) => settings),
   }
 })
 
@@ -35,6 +42,7 @@ async function mount(node: ReturnType<typeof createElement>) {
     root.render(node)
     await Promise.resolve()
     await Promise.resolve()
+    await new Promise((resolve) => window.setTimeout(resolve, 0))
   })
 }
 
@@ -49,12 +57,31 @@ describe('AiModelsPane', () => {
       cancelConnect: vi.fn(),
       logout: vi.fn().mockResolvedValue(undefined),
     }
+    apiMocks.discoverProviderModels.mockReset()
+    apiMocks.discoverProviderModels.mockResolvedValue({
+      models: ['gpt-5.5', 'gpt-image-2'],
+      fetched_at: '2026-07-29T10:00:00Z',
+    })
   })
 
   it('renders every configured provider in the rail', async () => {
     await mount(createElement(AiModelsPane))
     const rows = container.querySelectorAll('.settings-provider-row')
     expect(rows.length).toBe(desktopProviderCatalog.length)
+    expect(rows[0]?.textContent).toContain('Kition Cloud')
+    expect(Array.from(rows).some((row) => row.textContent?.includes('DeepSeek'))).toBe(true)
+    expect(Array.from(rows).some((row) => row.textContent?.includes('Kimi'))).toBe(true)
+  })
+
+  it('shows the Kimi API key configuration', async () => {
+    await mount(createElement(AiModelsPane))
+    const kimiRow = Array.from(container.querySelectorAll<HTMLButtonElement>('.settings-provider-row'))
+      .find((row) => row.textContent?.includes('Kimi'))!
+
+    await act(async () => { kimiRow.click() })
+
+    expect(container.querySelector('.settings-provider-editor-head')?.textContent).toContain('Moonshot AI models')
+    expect(container.querySelector<HTMLInputElement>('input[aria-label="API key"]')).not.toBeNull()
   })
 
   it('does not render the placeholder default model section', async () => {
@@ -93,6 +120,14 @@ describe('AiModelsPane', () => {
 
     expect(cloudRow.querySelector('.settings-provider-dot')?.classList.contains('is-on')).toBe(true)
     expect(container.querySelector('[data-testid="kition-account-connect"]')).toBeNull()
+    expect(container.querySelector('[data-testid="kition-cloud-model-list"]')?.textContent).toContain('gpt-5.5')
+    expect(container.querySelector('[data-testid="kition-cloud-model-list"]')?.textContent).toContain('gpt-image-2')
+    expect(container.querySelector('[data-testid="kition-cloud-model-list"]')?.textContent).not.toContain('gpt-image-1')
+    expect(container.querySelector('[data-testid="kition-cloud-model-list"]')?.textContent).not.toContain('dall-e-3')
+    expect(container.textContent).not.toContain('3 hosted models available')
+    expect(apiMocks.discoverProviderModels).toHaveBeenCalledWith(expect.objectContaining({
+      provider_type: 'kition_console',
+    }))
     expect(Array.from(container.querySelectorAll('button')).some((button) => button.textContent?.trim() === 'Disconnect')).toBe(true)
   })
 
