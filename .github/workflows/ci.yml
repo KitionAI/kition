@@ -38,6 +38,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+        with:
+          lfs: true
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6

@@ -134,6 +134,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ env.RELEASE_TAG }}
+          lfs: true
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
