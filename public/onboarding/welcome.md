@@ -70,7 +70,7 @@ Table fields can hold text, numbers, dates, choices, checkboxes, attachments, fo
 quantity * unit_price
 ```
 
-The starter table demonstrates a compact, local workflow:
+The included table demonstrates a compact, local workflow:
 
 | Included file | What to explore | Included pattern |
 | --- | --- | --- |
