@@ -35,6 +35,7 @@ test('desktop provider inputs keep native select-all and paste shortcuts', async
     })
     await page.waitForLoadState('domcontentloaded')
     await dismissFirstRunActivation(page)
+    await page.getByRole('button', { name: /OpenAI/ }).click()
     const providerInput = page.getByLabel('API key').first()
     await expect(providerInput).toBeVisible({ timeout: 30_000 })
 
