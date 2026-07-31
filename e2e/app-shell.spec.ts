@@ -328,7 +328,7 @@ test.describe('app shell navigation', () => {
     await expect(page.getByRole('button', { name: 'Hooks', exact: true })).toHaveCount(0)
     await expect(page.locator('.settings-nav-button.is-active')).toHaveCount(1)
     await page.getByRole('button', { name: 'AI Providers' }).click()
-    await expect(page.getByLabel('API key').first()).toBeVisible()
+    await expect(page.getByRole('searchbox', { name: 'Search AI providers' })).toBeVisible()
     await page.getByRole('button', { name: 'Email Providers' }).click()
     await expect(page.getByTestId('email-providers-pane')).toBeVisible()
     await expect(page.getByText('Adjust theme, language, and update strategy in one place')).toHaveCount(0)
