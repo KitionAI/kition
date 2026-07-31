@@ -8,9 +8,13 @@ import { AttachmentCell } from './AttachmentCell'
 
 ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true
 
-vi.mock('@/services/desktop', () => ({
-  resolvePublicFileURL: (path: string) => path,
-}))
+vi.mock('@/services/desktop', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/services/desktop')>()
+  return {
+    ...actual,
+    resolvePublicFileURL: (path: string) => path,
+  }
+})
 
 let container: HTMLDivElement
 let root: Root | null = null
