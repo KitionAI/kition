@@ -185,6 +185,22 @@ export function selectWorkflowRun(runs, { headSha, dispatchedAfter }) {
     .sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt))[0] || null
 }
 
+export function parseStatusPaths(output) {
+  const records = String(output || '').split('\0')
+  const paths = []
+  for (let index = 0; index < records.length; index += 1) {
+    const record = records[index]
+    if (!record) continue
+    const status = record.slice(0, 2)
+    paths.push(record.slice(3))
+    if (/[RC]/.test(status) && records[index + 1]) {
+      paths.push(records[index + 1])
+      index += 1
+    }
+  }
+  return paths.filter(Boolean)
+}
+
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
     cwd: options.cwd,
@@ -225,9 +241,11 @@ function getRepositoryRoot() {
 }
 
 function getStatusPaths(rootDir) {
-  const output = capture('git', ['status', '--porcelain=v1'], { cwd: rootDir })
-  if (!output) return []
-  return output.split('\n').map((line) => line.slice(3).trim()).filter(Boolean)
+  const result = run('git', ['status', '--porcelain=v1', '-z'], {
+    cwd: rootDir,
+    capture: true,
+  })
+  return parseStatusPaths(result.stdout)
 }
 
 function assertAllowedChanges(rootDir, allowedPaths) {

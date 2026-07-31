@@ -3,6 +3,7 @@ import {
   alignReleaseVersion,
   desktopAssetNames,
   parseReleaseArguments,
+  parseStatusPaths,
   runtimeArtifactNames,
   runtimeAssetNames,
   selectWorkflowRun,
@@ -92,5 +93,16 @@ describe('release-github CLI', () => {
     })
 
     expect(run?.databaseId).toBe(2)
+  })
+
+  it('parses porcelain status without dropping the first path character', () => {
+    expect(parseStatusPaths(
+      ' M electron/runtime.lock.json\0 M package.json\0R  docs/new.md\0docs/old.md\0',
+    )).toEqual([
+      'electron/runtime.lock.json',
+      'package.json',
+      'docs/new.md',
+      'docs/old.md',
+    ])
   })
 })
