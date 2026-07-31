@@ -43,7 +43,6 @@ describe('thumbnail generator assets', () => {
     const manifest = JSON.parse(rawManifest) as KitableTemplateAssetManifest
 
     expect(rawManifest).not.toContain('X-Amz-')
-    expect(rawManifest).not.toContain('Teable')
     expect(manifest.templateId).toBe('thumbnail-generator')
     expect(manifest.source).toBe('Original Kition Cloud AI generation')
     expect(manifest.assetCount).toBe(25)

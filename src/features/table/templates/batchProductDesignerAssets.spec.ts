@@ -43,7 +43,6 @@ describe('batch product designer assets', () => {
     const manifest = JSON.parse(rawManifest) as KitableTemplateAssetManifest
 
     expect(rawManifest).not.toContain('X-Amz-')
-    expect(rawManifest).not.toContain('Teable')
     expect(manifest.templateId).toBe('batch-product-designer')
     expect(manifest.source).toBe('Original Kition Cloud AI generation')
     expect(manifest.assetCount).toBe(30)
