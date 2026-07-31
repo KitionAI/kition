@@ -9,6 +9,7 @@ import {
   selectWorkflowRun,
   validateRef,
   validateVersion,
+  workflowRunOutcome,
 } from './release-github.mjs'
 
 describe('release-github CLI', () => {
@@ -93,6 +94,13 @@ describe('release-github CLI', () => {
     })
 
     expect(run?.databaseId).toBe(2)
+  })
+
+  it('classifies workflow completion without treating pending runs as failures', () => {
+    expect(workflowRunOutcome({ status: 'queued', conclusion: '' })).toBe('pending')
+    expect(workflowRunOutcome({ status: 'in_progress', conclusion: '' })).toBe('pending')
+    expect(workflowRunOutcome({ status: 'completed', conclusion: 'success' })).toBe('success')
+    expect(workflowRunOutcome({ status: 'completed', conclusion: 'failure' })).toBe('failure')
   })
 
   it('parses porcelain status without dropping the first path character', () => {

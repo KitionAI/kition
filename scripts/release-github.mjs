@@ -185,6 +185,11 @@ export function selectWorkflowRun(runs, { headSha, dispatchedAfter }) {
     .sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt))[0] || null
 }
 
+export function workflowRunOutcome(runInfo) {
+  if (runInfo?.status !== 'completed') return 'pending'
+  return runInfo.conclusion === 'success' ? 'success' : 'failure'
+}
+
 export function parseStatusPaths(output) {
   const records = String(output || '').split('\0')
   const paths = []
@@ -354,8 +359,31 @@ async function waitForWorkflowRun({ repository, workflow, headSha, dispatchedAft
 async function watchWorkflow({ repository = PUBLIC_REPOSITORY, workflow, headSha, dispatchedAfter, timeoutAt }) {
   const runInfo = await waitForWorkflowRun({ repository, workflow, headSha, dispatchedAfter, timeoutAt })
   console.log(`[release] watching ${workflow}: ${runInfo.url}`)
-  run('gh', ['run', 'watch', String(runInfo.databaseId), '--repo', repository, '--exit-status'])
-  return runInfo
+  let lastReport = 0
+  while (Date.now() < timeoutAt) {
+    const result = run('gh', [
+      'run', 'view', String(runInfo.databaseId),
+      '--repo', repository,
+      '--json', 'status,conclusion,url',
+    ], { capture: true, allowFailure: true })
+    if (result.status === 0) {
+      const current = JSON.parse(String(result.stdout || '{}'))
+      const outcome = workflowRunOutcome(current)
+      if (outcome === 'success') return { ...runInfo, ...current }
+      if (outcome === 'failure') {
+        throw new Error(`${workflow} concluded with ${current.conclusion || 'failure'}: ${current.url || runInfo.url}`)
+      }
+    }
+    if (Date.now() - lastReport >= 60_000) {
+      const detail = result.status === 0
+        ? 'still running'
+        : 'GitHub status request failed; retrying'
+      console.log(`[release] ${workflow} ${detail}`)
+      lastReport = Date.now()
+    }
+    await sleep(POLL_INTERVAL_MS)
+  }
+  throw new Error(`Timed out waiting for ${workflow} to complete: ${runInfo.url}`)
 }
 
 async function waitForCi(headSha, timeoutAt) {
