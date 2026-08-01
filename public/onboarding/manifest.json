@@ -1,5 +1,5 @@
 {
-  "version": 16,
+  "version": 17,
   "folder": "Getting Started",
   "welcome": {
     "filename": "Welcome to Kition.md",
@@ -9,7 +9,5 @@
   "images": [
     { "asset": "logo.png", "filename": "logo.png" }
   ],
-  "tables": [
-    { "asset": "ContactDirectory.kitable", "filename": "Contact Directory.kitable" }
-  ]
+  "tables": []
 }

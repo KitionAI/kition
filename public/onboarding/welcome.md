@@ -2,17 +2,18 @@
 
 # Welcome to Kition
 
-Kition brings Markdown documents, structured tables, visual workflows, and AI Chat together inside one focused workspace. Start with a real project, then write, organize, research, and automate without switching tools.
+Kition brings Markdown documents, structured tables, visual workflows, forms, and AI Chat together in one focused workspace. Use this folder as a compact starting point, then organize the rest of the workspace around real projects.
 
 > [!tip] Everything here is editable
-> This page is a plain Markdown file and a tour of the elements Kition can render. Click anywhere and start typing. Keep what is useful, adapt it to your work, and remove the rest.
+> This page is a plain Markdown file. Keep the sections that help, rewrite them for your team, or delete the page after you are comfortable with the workspace.
 
 ## Start with one useful action
 
-- **Write**: edit this document, add a checklist item, and create an `[[internal link]]`.
-- **Organize**: open [[Contact Directory.kitable]] and change a record.
-- **Automate**: select **Workflows** in Contact Directory and inspect the deterministic cleanup flow.
-- **Ask**: open AI Chat and ask Kition to summarize this page or help organize the table.
+- **Write**: edit this document, add a checklist item, or create an `[[internal link]]`.
+- **Organize**: create a folder and move related documents or tables into it.
+- **Use a template**: open **Template Center** and choose a starting structure.
+- **Collect data**: add a form view to a table and publish it when remote submissions are needed.
+- **Ask**: open AI Chat and ask Kition to summarize the active document or table.
 
 ## How Kition fits together
 
@@ -20,34 +21,80 @@ Kition brings Markdown documents, structured tables, visual workflows, and AI Ch
 flowchart LR
     You([You]) --> Docs[Markdown documents]
     You --> Tables[Structured tables]
+    You --> Forms[Published forms]
     You --> Chat[AI Chat]
+    Forms --> Tables
     Chat --> Docs
     Chat --> Tables
-    Chat --> Tools[Connected tools]
-    Docs --> Workspace[(Project workspace)]
+    Tables --> Workflows[Visual workflows]
+    Docs --> Workspace[(Local workspace)]
     Tables --> Workspace
-    Tools --> Files[Files]
-    Tools --> Browser[Browser]
-    Tools --> MCP[MCP servers]
 ```
 
-AI Chat works with the document or table you are viewing. It can use connected tools, browse through a controlled browser, and call MCP servers that you configure.
+Documents remain portable files. Tables keep typed fields, views, records, forms, and workflow configuration together. Published forms can collect submissions remotely and synchronize them back into the matching table.
 
-## What makes Kition different
+## What makes Kition useful
 
 | Capability | What it means | What to try |
 | --- | --- | --- |
 | Portable documents | Notes remain readable `.md` files. | Edit this page and inspect it outside Kition. |
-| Structured data | Tables keep related records and field types together. | Add a row to Contact Directory. |
-| Visual workflows | Records can trigger deterministic actions. | Inspect the Contact Directory workflow. |
-| Rich Markdown | One file can contain tables, diagrams, math, code, and callouts. | Explore every section on this page. |
-| Model choice | Use Kition Cloud or a compatible provider. | Open **Settings > AI Models**. |
+| Structured data | Related records and field types stay together. | Create a table from Template Center. |
+| Multiple views | One table can use grid, kanban, calendar, gallery, or form views. | Add a second view to a table. |
+| Published forms | A configured form can collect remote submissions. | Publish a form and submit one test response. |
+| Visual workflows | Record events can trigger repeatable actions. | Inspect the workflow area of a template. |
+| AI fields and chat | AI can work with selected fields or active workspace context. | Ask for a summary before requesting changes. |
 
-## Write rich documents
+## Explore the template library
 
-Use `#` for headings, `-` for lists, and `[[` to create an internal document link. Live preview renders callouts, code, diagrams, tables, and math while the file on disk stays clean Markdown.
+Open **Template Center** from the workspace create menu. Each template creates an independent `.kitable` file, so you can safely change fields, views, records, forms, and workflows without modifying the original template.
 
-For example, compound growth can be written as:
+The built-in templates cover different kinds of work:
+
+| Template | Best for | Notable structure |
+| --- | --- | --- |
+| Task Tracker | Delivery planning and ownership | Status, priority, assignee, and due-date views |
+| Simple Client CRM | Prospects, clients, quotes, and follow-up | Relationship and pipeline fields |
+| Recruitment Pipeline | Candidates, interviews, decisions, and offers | Hiring stages and calendar-ready dates |
+| Product Launch Website | Coordinating a site from concept to publication | Content, assets, owners, and launch stages |
+| Business Analytics Dashboard | Revenue, cost, margin, and collections | Metric-oriented records and summaries |
+| Email Inbox Sync | Importing an IMAP mailbox into structured records | Message metadata with Markdown-backed content |
+| Receipt OCR Database | Turning receipt images into searchable data | Attachments, OCR text, structured JSON, and review status |
+| YouTube & TikTok Thumbnail Generator | Creating distinct social cover concepts | Portrait input, story brief, prompt, and generated image fields |
+| Lumière Restaurant | Reservations, guest preferences, and private events | Calendar, kanban, and publishable form views |
+
+> [!note] Template copies are independent
+> If a filename ends in `2`, `3`, or another number, it is a separate copy. Keep the version you are using and remove extra experiments when you no longer need them.
+
+## Keep starter templates together
+
+For an evaluation workspace, placing template-created `.kitable` files in **Getting Started** keeps the root clean and makes the examples easy to find. For ongoing work, create project folders and move active tables closer to their related documents.
+
+A simple organization can look like this:
+
+```text
+Getting Started/
+  Welcome to Kition.md
+  Task Tracker.kitable
+  Receipt OCR Database.kitable
+Projects/
+  Product launch/
+  Customer research/
+Archive/
+```
+
+Normal Markdown notes, imported images, and project files do not need to move into Getting Started. Use the folder for the welcome guide and template examples, not as a permanent home for everything.
+
+## Build structured tables
+
+Table fields can hold text, numbers, dates, choices, checkboxes, attachments, formulas, relations, lookups, and AI-generated values.
+
+A formula can turn quantity and unit price into a total without changing either source field:
+
+```text
+quantity * unit_price
+```
+
+For general compound growth, Markdown math remains available in documents:
 
 $$
 V_n = V_0(1 + r)^n
@@ -59,32 +106,31 @@ $$
 V_5 = 100(1.08)^5 \approx 146.93
 $$
 
-> [!note] You choose where workspace files live
-> Documents, tables, and workflow data remain in the folder you select. Kition sends prompts and selected context to an AI provider only when you choose an AI action. Deterministic workflows do not require an AI service.
+## Configure and publish a form
 
-## Build structured tables
+Form views let you choose which table fields are visible, required, or read-only for respondents.
 
-Table fields can hold text, numbers, dates, choices, checkboxes, attachments, formulas, relations, lookups, and AI-generated values. A formula can turn quantity and unit price into a total without changing the source fields:
+1. Open a `.kitable` file and select the target table.
+2. Add or open a **Form** view.
+3. Set the title, description, field order, visibility, and required fields.
+4. Preview the form and submit a local test response.
+5. Publish the form to Kition Cloud when a public or remote link is needed.
+6. Confirm that the response appears in the source table.
 
-```text
-quantity * unit_price
-```
+> [!note] The table remains the source of truth
+> A published form is an input surface for one table. New submissions should synchronize into that table instead of creating a disconnected dataset.
 
-The included table demonstrates a compact, local workflow:
+## Work with workflows
 
-| Included file | What to explore | Included pattern |
-| --- | --- | --- |
-| `Welcome to Kition.md` | Rich Markdown and AI Chat context | Portable documents |
-| [[Contact Directory.kitable]] | Contact fields, records, and workflow runs | Deterministic cleanup |
-| `logo.png` | Relative image embedding | Workspace media |
+Use a workflow when a record change should trigger deterministic follow-up, such as normalizing text, assigning a status, copying a record, or sending data to an approved integration.
 
-## Try a deterministic workflow
+Before enabling a workflow:
 
-Open [[Contact Directory.kitable]], select **Workflows**, and inspect how the sample flow normalizes contact details. It demonstrates repeatable actions without requiring an email account, an AI model, or another external service.
-
-1. Review the trigger and its input fields.
-2. Run the workflow against a sample record.
-3. Compare the updated email domain and phone number with the original values.
+- verify the trigger;
+- review every mapped input field;
+- test against one sample record;
+- confirm the result in the destination table or service;
+- enable automation only after the test behaves as expected.
 
 ## Work with AI Chat
 
@@ -93,20 +139,26 @@ Useful first prompts are concrete and scoped to the active file.
 With this page active:
 
 ```text
-Summarize this page in five bullets and add a checklist for my first Kition session.
+Summarize this guide in five bullets and add a checklist for my first Kition session.
 ```
 
-With Contact Directory active:
+With a template table active:
 
 ```text
 Review this table, identify missing values, and propose a cleanup plan without changing any records yet.
 ```
 
-AI Chat should explain planned changes before modifying workspace content. You remain in control of tool access, provider settings, and the files it can reach.
+With Receipt OCR Database active:
 
-## Explore optional guides
+```text
+Explain the extraction fields and suggest a validation checklist for newly uploaded receipts.
+```
 
-Open **Settings > Onboarding Guides** when you want a larger example. Import only the guide that matches your work.
+AI Chat should explain planned changes before modifying workspace content. You remain in control of provider settings, tool access, and the files it can reach.
+
+## Explore optional onboarding guides
+
+Open **Settings > Onboarding Guides** when you want a larger, guided example. Import only the guide that matches the work you want to test.
 
 | Guide | What it demonstrates | Requirement |
 | --- | --- | --- |
@@ -117,14 +169,15 @@ Open **Settings > Onboarding Guides** when you want a larger example. Import onl
 | Web Research | A reusable browser task handoff | Desktop browser and AI provider |
 
 > [!note] Optional guides stay optional
-> The first-run workspace contains only this page, its logo, and Contact Directory. Guides are added only when you choose to import them.
+> The first-run workspace contains only this welcome page and its logo. Template files appear when you choose them from Template Center, and optional guides appear only when you import them.
 
 ## Recommended first session
 
 - [ ] Edit this page and save it.
-- [ ] Add a row to Contact Directory.
-- [ ] Inspect the contact cleanup workflow.
+- [ ] Open Template Center and inspect two different templates.
+- [ ] Create one template copy and rename it for a real project.
+- [ ] Add or preview a form view.
 - [ ] Ask AI Chat to summarize one active file.
-- [ ] Import one optional guide that matches your work.
+- [ ] Remove unused template copies after testing.
 
 These onboarding files are yours to change. Build the workspace around real work, and keep your source files under your own control.

@@ -268,8 +268,8 @@ describe('ensureOnboardingWorkflow', () => {
       actionType: 'lookup_record',
     },
     {
-      label: 'Contacts deterministic transforms',
-      path: 'Getting Started/Contact Directory.kitable',
+      label: 'CRM contact deterministic transforms',
+      path: 'Getting Started/Simple Client CRM.kitable',
       sourceName: 'Contacts',
       tables: [{ id: 12, title: 'Contacts', name: 'contacts' }],
       schemas: {

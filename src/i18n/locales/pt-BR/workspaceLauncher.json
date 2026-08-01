@@ -63,7 +63,7 @@
       "byo": "Usar sua própria chave de API",
       "byoDescription": "Conecte OpenAI, Anthropic, DeepSeek ou outro provedor compatível.",
       "local": "Somente local",
-      "localDescription": "Use documentos, table files e workflows determinísticos sem IA."
+      "localDescription": "Open the welcome guide and explore local documents, tables, and workflows without an account or API key."
     },
     "successTitle": "Conclua uma ação útil",
     "success": {
@@ -90,7 +90,7 @@
     "agentPrompt": "Resuma esta página de boas-vindas e escreva abaixo uma lista curta de primeiros passos.",
     "cancelSignIn": "Cancelar entrada",
     "configureModels": "Configurar AI Models",
-    "startLocal": "Abrir workflow Contacts",
+    "startLocal": "Open welcome guide",
     "cloudCreditsEmpty": "Seus créditos do Kition Cloud acabaram. Recarregue em Kition Account.",
     "cloudUnavailable": "Kition Account está temporariamente indisponível."
   }

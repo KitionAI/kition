@@ -63,7 +63,7 @@
       "byo": "Использовать свой API-ключ",
       "byoDescription": "Подключите OpenAI, Anthropic, DeepSeek или другого совместимого провайдера.",
       "local": "Только локально",
-      "localDescription": "Работайте с документами, table file и детерминированными workflow без AI."
+      "localDescription": "Open the welcome guide and explore local documents, tables, and workflows without an account or API key."
     },
     "successTitle": "Выполните одно полезное действие",
     "success": {
@@ -90,7 +90,7 @@
     "agentPrompt": "Кратко изложи эту страницу приветствия и добавь ниже небольшой список первых шагов.",
     "cancelSignIn": "Отменить вход",
     "configureModels": "Настроить AI Models",
-    "startLocal": "Открыть workflow Contacts",
+    "startLocal": "Open welcome guide",
     "cloudCreditsEmpty": "Кредиты Kition Cloud закончились. Пополните их в Kition Account.",
     "cloudUnavailable": "Kition Account временно недоступен."
   }

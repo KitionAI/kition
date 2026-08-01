@@ -1037,7 +1037,7 @@ test.describe('app shell navigation', () => {
     await expect.poll(() => secureStore.get('kition.desktop.settings.v1') || '').toContain('"activeProvider":"kition_console"')
   })
 
-  test('starts the local example directly from first-run onboarding', async ({ page }) => {
+  test('opens the welcome guide directly from local first-run onboarding', async ({ page }) => {
     const onboardingKey = getWorkspaceStorageKey('browser-local-workspace', 'onboarding.v1')
     await page.addInitScript(({ key }) => {
       localStorage.setItem(key, JSON.stringify({
@@ -1045,6 +1045,13 @@ test.describe('app shell navigation', () => {
         status: 'pending',
         updatedAt: '2026-07-22T00:00:00.000Z',
       }))
+      localStorage.setItem('kition.workspace.documents.v1', JSON.stringify({
+        'Getting Started/Welcome to Kition.md': {
+          content: '# Welcome to Kition\n\nChoose a template and make it your own.',
+          updated_at: '2026-07-22T00:00:00.000Z',
+        },
+      }))
+      localStorage.setItem('kition.workspace.folders.v1', JSON.stringify(['Getting Started']))
     }, { key: onboardingKey })
 
     await page.goto('/')
@@ -1052,7 +1059,7 @@ test.describe('app shell navigation', () => {
     await page.getByTestId('first-run-start-local').click()
 
     await expect(page.getByTestId('first-run-activation')).toHaveCount(0)
-    await expect(page.getByText('Contact Directory', { exact: true }).first()).toBeVisible()
+    await expect(page.getByText('Welcome to Kition', { exact: true }).first()).toBeVisible()
     await expect.poll(() => page.evaluate((key) => localStorage.getItem(key), onboardingKey)).toContain('"providerChoice":"local"')
   })
 

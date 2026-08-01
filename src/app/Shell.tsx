@@ -39,7 +39,7 @@ import {
   skipWorkspaceOnboarding,
   type OnboardingProviderChoice,
 } from '@/features/onboarding/onboardingState'
-import { ONBOARDING_CONTACT_DIRECTORY_PATH, ONBOARDING_WELCOME_PATH } from '@/features/onboarding/onboardingManifest'
+import { ONBOARDING_WELCOME_PATH } from '@/features/onboarding/onboardingManifest'
 
 const CommandPalette = lazy(() =>
   import('@/app/components/CommandPalette').then((module) => ({ default: module.CommandPalette })),
@@ -483,12 +483,7 @@ export function AppShell() {
 
   const startLocalOnboarding = useCallback(() => {
     completeOnboarding('local')
-    notifyWorkspaceReload(ONBOARDING_CONTACT_DIRECTORY_PATH)
-    window.setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('kition:onboarding:open-local-workflow', {
-        detail: { kitablePath: ONBOARDING_CONTACT_DIRECTORY_PATH },
-      }))
-    }, 0)
+    notifyWorkspaceReload(ONBOARDING_WELCOME_PATH)
   }, [completeOnboarding, notifyWorkspaceReload])
 
   const skipOnboarding = useCallback(() => {

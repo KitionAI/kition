@@ -7,15 +7,13 @@ const dir = resolve(__dirname, '../../../public/onboarding')
 describe('onboarding static assets', () => {
   it('manifest references files that all exist on disk', () => {
     const manifest = JSON.parse(readFileSync(resolve(dir, 'manifest.json'), 'utf8'))
-    expect(manifest.version).toBe(16)
+    expect(manifest.version).toBe(17)
     expect(manifest.folder).toBe('Getting Started')
     expect(typeof manifest.welcome.filename).toBe('string')
     expect(manifest.welcome.asset).toBe('welcome.md')
     expect(existsSync(resolve(dir, manifest.welcome.asset))).toBe(true)
     expect(manifest.documents).toEqual([])
-    expect(manifest.tables.map((table: { filename: string; folder?: string }) => [table.folder, table.filename])).toEqual([
-      [undefined, 'Contact Directory.kitable'],
-    ])
+    expect(manifest.tables).toEqual([])
     for (const table of manifest.tables) {
       expect(existsSync(resolve(dir, table.asset))).toBe(true)
       expect(typeof table.filename).toBe('string')
@@ -41,7 +39,6 @@ describe('onboarding static assets', () => {
     for (const image of manifest.images ?? []) rootEntries.add(image.filename)
 
     expect([...rootEntries].sort()).toEqual([
-      'Contact Directory.kitable',
       'Welcome to Kition.md',
       'logo.png',
     ])
@@ -104,15 +101,18 @@ describe('onboarding static assets', () => {
     expect(english).toContain('![Kition](logo.png)')
     expect(english).toContain('```mermaid')
     expect(english).toContain('V_n = V_0(1 + r)^n')
-    expect(english).toContain('[[Contact Directory.kitable]]')
+    expect(english).toContain('Template Center')
+    expect(english).toContain('Receipt OCR Database')
+    expect(english).toContain('Lumière Restaurant')
     expect(english).toContain('Settings > Onboarding Guides')
     expect(english).toContain('```text')
     expect(english).toContain('| Capability | What it means | What to try |')
     expect(english).toContain('> [!tip]')
     expect(english).toContain('> [!note]')
     expect(english).toContain('- [ ] Edit this page and save it.')
-    expect(english.split('\n').length).toBeGreaterThan(120)
-    expect(english).not.toContain('Task Tracker.kitable')
+    expect(english.split('\n').length).toBeGreaterThan(100)
+    expect(english).not.toContain('Contact Directory')
+    expect(english).not.toContain('[[Task Tracker.kitable]]')
     expect(english).not.toContain('Workflow Examples/')
     expect(english).not.toContain('Guides/Email Automation/')
 
