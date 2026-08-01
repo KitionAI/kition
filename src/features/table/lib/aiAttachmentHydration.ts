@@ -17,7 +17,7 @@ type AttachmentHydrationDependencies = {
 }
 
 const defaultDependencies: AttachmentHydrationDependencies = {
-  fetchAsset: fetch,
+  fetchAsset: (input, init) => globalThis.fetch(input, init),
   updateRecord: updateDataRecord,
   uploadAttachment: uploadDataAttachment,
 }

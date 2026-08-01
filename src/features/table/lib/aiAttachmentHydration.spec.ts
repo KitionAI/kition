@@ -1,9 +1,16 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { AnyAIConfig } from '@/types/aiConfig'
 import type { DataField, DataRecord } from '@/types/dataDocument'
 
 import { hydrateBundledAIFieldAttachments } from './aiAttachmentHydration'
+
+const dataDocumentMocks = vi.hoisted(() => ({
+  updateDataRecord: vi.fn(),
+  uploadDataAttachment: vi.fn(),
+}))
+
+vi.mock('@/api/dataDocuments', () => dataDocumentMocks)
 
 const sourceField = {
   id: 11,
@@ -21,6 +28,57 @@ const config = {
 } as AnyAIConfig
 
 describe('hydrateBundledAIFieldAttachments', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.clearAllMocks()
+  })
+
+  it('calls the browser fetch implementation with its global context', async () => {
+    const record = {
+      id: 31,
+      values: {
+        receipt_image: [{
+          name: 'receipt.png',
+          mimeType: 'image/png',
+          sizeBytes: 3,
+          url: 'kition-bundled:/templates/receipt-ocr-database/records/record-03/receipt.png',
+        }],
+      },
+    } as unknown as DataRecord
+    const uploaded = {
+      name: 'receipt.png',
+      mimeType: 'image/png',
+      sizeBytes: 3,
+      url: '/uploads/receipts/receipt.png',
+    }
+    const updatedRecord = {
+      ...record,
+      values: { receipt_image: [uploaded] },
+    } as DataRecord
+    const fetchAsset = vi.fn(function (this: typeof globalThis) {
+      expect(this).toBe(globalThis)
+      return Promise.resolve(new Response(new Uint8Array([1, 2, 3]), {
+        headers: { 'content-type': 'image/png' },
+      }))
+    })
+    vi.stubGlobal('fetch', fetchAsset)
+    dataDocumentMocks.uploadDataAttachment.mockResolvedValue(uploaded)
+    dataDocumentMocks.updateDataRecord.mockResolvedValue(updatedRecord)
+
+    await expect(hydrateBundledAIFieldAttachments({
+      documentId: 7,
+      tableId: 9,
+      record,
+      config,
+      fields: [sourceField],
+    })).resolves.toBe(updatedRecord)
+
+    expect(fetchAsset).toHaveBeenCalledWith(
+      '/templates/receipt-ocr-database/records/record-03/receipt.png',
+      { signal: undefined },
+    )
+  })
+
   it('uploads bundled assets and persists runtime-accessible attachment URLs', async () => {
     const record = {
       id: 31,
