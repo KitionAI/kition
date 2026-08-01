@@ -7,8 +7,18 @@ const requestMock = vi.hoisted(() => ({
   patch: vi.fn(),
   post: vi.fn(),
 }))
+const dataDocumentMock = vi.hoisted(() => ({
+  get: vi.fn(),
+  list: vi.fn(),
+  update: vi.fn(),
+}))
 
 vi.mock('@/api/request', () => ({ default: requestMock }))
+vi.mock('@/api/dataDocuments', () => ({
+  getDataDocument: dataDocumentMock.get,
+  listDataDocuments: dataDocumentMock.list,
+  updateDataDocument: dataDocumentMock.update,
+}))
 
 import {
   createFormSyncWorkflow,
@@ -17,6 +27,10 @@ import {
   updateFormSyncWorkflow,
   type CreateFormSyncWorkflowInput,
 } from './api'
+import {
+  FORM_SYNC_WORKFLOWS_META_KEY,
+  type LocalFormSyncWorkflow,
+} from './localDrafts'
 
 const input: CreateFormSyncWorkflowInput = {
   name: 'Private Event Inquiry',
@@ -30,44 +44,166 @@ const input: CreateFormSyncWorkflowInput = {
   schedule: { enabled: true, interval_minutes: 5 },
 }
 
+function workflow(overrides: Partial<LocalFormSyncWorkflow> = {}): LocalFormSyncWorkflow {
+  return {
+    id: 'formsync_1',
+    name: input.name,
+    template_id: input.template_id,
+    remote_source_id: '',
+    public_url: '',
+    published: false,
+    fields: input.fields,
+    target: input.target,
+    schedule: input.schedule,
+    status: 'paused',
+    synced_submissions: 0,
+    created_at: '2026-08-01T00:00:00.000Z',
+    updated_at: '2026-08-01T00:00:00.000Z',
+    ...overrides,
+  }
+}
+
 describe('form sync api', () => {
-  beforeEach(() => vi.clearAllMocks())
-
-  it('lists workflows', async () => {
-    requestMock.get.mockResolvedValue({ items: [{ id: 'form_1' }] })
-
-    await expect(listFormSyncWorkflows()).resolves.toEqual([{ id: 'form_1' }])
-    expect(requestMock.get).toHaveBeenCalledWith('/v1/form-sync/workflows')
+  beforeEach(() => {
+    vi.clearAllMocks()
+    dataDocumentMock.list.mockResolvedValue({ items: [] })
+    dataDocumentMock.get.mockResolvedValue({ id: 7, meta: { dashboards: [] } })
+    dataDocumentMock.update.mockResolvedValue({ id: 7 })
   })
 
-  it('creates a workflow', async () => {
-    requestMock.post.mockResolvedValue({ id: 'form_1' })
+  it('lists remote workflows together with local document drafts', async () => {
+    const local = workflow({ id: 'formsync_local_1', name: 'Local draft' })
+    dataDocumentMock.list.mockResolvedValue({
+      items: [{ id: 7, meta: { [FORM_SYNC_WORKFLOWS_META_KEY]: [local] } }],
+    })
+    requestMock.get.mockResolvedValue({ items: [workflow()] })
 
-    await createFormSyncWorkflow(input)
-
-    expect(requestMock.post).toHaveBeenCalledWith('/v1/form-sync/workflows', input)
+    await expect(listFormSyncWorkflows()).resolves.toEqual([workflow(), local])
+    expect(requestMock.get).toHaveBeenCalledWith('/v1/form-sync/workflows', {
+      suppressErrorMessage: true,
+    })
   })
 
-  it('starts an incremental sync', async () => {
-    requestMock.post.mockResolvedValue({ workflow_id: 'form_1', imported: 1 })
+  it('still lists local drafts when the runtime route is unavailable', async () => {
+    const local = workflow({ id: 'formsync_local_1' })
+    dataDocumentMock.list.mockResolvedValue({
+      items: [{ id: 7, meta: { [FORM_SYNC_WORKFLOWS_META_KEY]: [local] } }],
+    })
+    requestMock.get.mockRejectedValue(new Error('The requested resource was not found'))
 
-    await syncFormSyncWorkflow('form_1')
-
-    expect(requestMock.post).toHaveBeenCalledWith('/v1/form-sync/workflows/form_1/sync', {})
+    await expect(listFormSyncWorkflows()).resolves.toEqual([local])
   })
 
-  it('updates a draft and emits a refresh event', async () => {
-    const listener = vi.fn()
-    window.addEventListener('kition:form-sync:changed', listener)
-    requestMock.patch.mockResolvedValue({ id: 'form_1', name: 'Published form' })
+  it('creates an unpublished draft in document metadata without calling the runtime route', async () => {
+    const created = await createFormSyncWorkflow({ ...input, published: false })
 
-    await updateFormSyncWorkflow('form_1', { name: 'Published form', published: true })
+    expect(created.id).toMatch(/^formsync_local_/)
+    expect(created.published).toBe(false)
+    expect(requestMock.post).not.toHaveBeenCalled()
+    expect(dataDocumentMock.update).toHaveBeenCalledWith(7, {
+      meta: expect.objectContaining({
+        dashboards: [],
+        [FORM_SYNC_WORKFLOWS_META_KEY]: [expect.objectContaining({
+          id: created.id,
+          name: input.name,
+        })],
+      }),
+    })
+  })
 
-    expect(requestMock.patch).toHaveBeenCalledWith('/v1/form-sync/workflows/form_1', {
+  it('updates a local draft without calling the runtime route', async () => {
+    const local = workflow({ id: 'formsync_local_1' })
+    dataDocumentMock.list.mockResolvedValue({
+      items: [{ id: 7, meta: { [FORM_SYNC_WORKFLOWS_META_KEY]: [local] } }],
+    })
+    dataDocumentMock.get.mockResolvedValue({
+      id: 7,
+      meta: { [FORM_SYNC_WORKFLOWS_META_KEY]: [local] },
+    })
+
+    const updated = await updateFormSyncWorkflow(local.id, { name: 'Updated draft' })
+
+    expect(updated.name).toBe('Updated draft')
+    expect(requestMock.patch).not.toHaveBeenCalled()
+    expect(requestMock.post).not.toHaveBeenCalled()
+    expect(dataDocumentMock.update).toHaveBeenCalledWith(7, {
+      meta: expect.objectContaining({
+        [FORM_SYNC_WORKFLOWS_META_KEY]: [expect.objectContaining({
+          id: local.id,
+          name: 'Updated draft',
+        })],
+      }),
+    })
+  })
+
+  it('publishes a local draft remotely while preserving its local navigation id', async () => {
+    const local = workflow({ id: 'formsync_local_1' })
+    const remote = workflow({
+      id: 'formsync_remote_1',
+      published: true,
+      public_url: 'https://kition.ai/forms/form_1',
+      status: 'active',
+    })
+    dataDocumentMock.list.mockResolvedValue({
+      items: [{ id: 7, meta: { [FORM_SYNC_WORKFLOWS_META_KEY]: [local] } }],
+    })
+    dataDocumentMock.get.mockResolvedValue({
+      id: 7,
+      meta: { [FORM_SYNC_WORKFLOWS_META_KEY]: [local] },
+    })
+    requestMock.post.mockResolvedValue(remote)
+
+    const published = await updateFormSyncWorkflow(local.id, { published: true })
+
+    expect(requestMock.post).toHaveBeenCalledWith('/v1/form-sync/workflows', {
+      ...input,
+      published: true,
+    })
+    expect(published).toEqual(expect.objectContaining({
+      id: local.id,
+      remote_workflow_id: remote.id,
+      published: true,
+      public_url: remote.public_url,
+    }))
+  })
+
+  it('keeps the local draft and explains when the publish route is unavailable', async () => {
+    const local = workflow({ id: 'formsync_local_1' })
+    dataDocumentMock.list.mockResolvedValue({
+      items: [{ id: 7, meta: { [FORM_SYNC_WORKFLOWS_META_KEY]: [local] } }],
+    })
+    requestMock.post.mockRejectedValue(new Error('The requested resource was not found'))
+
+    await expect(updateFormSyncWorkflow(local.id, { published: true })).rejects.toThrow(
+      'Publishing forms requires a runtime with form sync support. Your local draft is safe.',
+    )
+    expect(dataDocumentMock.update).not.toHaveBeenCalled()
+  })
+
+  it('starts an incremental sync with the remote id behind a local alias', async () => {
+    const local = workflow({
+      id: 'formsync_local_1',
+      remote_workflow_id: 'formsync_remote_1',
+      published: true,
+    })
+    dataDocumentMock.list.mockResolvedValue({
+      items: [{ id: 7, meta: { [FORM_SYNC_WORKFLOWS_META_KEY]: [local] } }],
+    })
+    requestMock.post.mockResolvedValue({ workflow_id: 'formsync_remote_1', imported: 1 })
+
+    await syncFormSyncWorkflow(local.id)
+
+    expect(requestMock.post).toHaveBeenCalledWith('/v1/form-sync/workflows/formsync_remote_1/sync', {})
+  })
+
+  it('updates a remote workflow directly when no local draft exists', async () => {
+    requestMock.patch.mockResolvedValue(workflow({ name: 'Published form' }))
+
+    await updateFormSyncWorkflow('formsync_1', { name: 'Published form', published: true })
+
+    expect(requestMock.patch).toHaveBeenCalledWith('/v1/form-sync/workflows/formsync_1', {
       name: 'Published form',
       published: true,
     })
-    expect(listener).toHaveBeenCalledOnce()
-    window.removeEventListener('kition:form-sync:changed', listener)
   })
 })

@@ -25,7 +25,6 @@ export function WorkspaceSidebar({
   onCreateFolder,
   onCreateDocument,
   onCreateTable,
-  onImportFromDialog,
   onPasteFiles,
   showBrowserTab,
   onRefresh,
@@ -48,7 +47,6 @@ export function WorkspaceSidebar({
   onCreateFolder: () => void
   onCreateDocument: (format: DocumentCreateFormat) => void
   onCreateTable: () => void
-  onImportFromDialog?: () => void
   onPasteFiles?: (entries: WorkspaceImportEntry[]) => void
   showBrowserTab?: boolean
   onRefresh?: () => void
@@ -238,7 +236,6 @@ export function WorkspaceSidebar({
                   onCreateFolder={onCreateFolder}
                   onCreateTable={onCreateTable}
                   onCreateDocument={onCreateDocument}
-                  onImportFromDialog={onImportFromDialog}
                 />
               </span>
               {onOpenWorkflows ? (

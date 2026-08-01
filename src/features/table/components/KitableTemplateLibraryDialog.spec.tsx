@@ -19,6 +19,7 @@ afterEach(() => {
   root = null
   container.remove()
   vi.clearAllMocks()
+  vi.unstubAllGlobals()
 })
 
 async function mount(onSelect = vi.fn().mockResolvedValue(true)) {
@@ -84,6 +85,27 @@ describe('KitableTemplateLibraryDialog', () => {
   })
 
   it('shows the generated thumbnail template cover and only the source table resource', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        templateId: 'thumbnail-generator',
+        source: 'Test assets',
+        assetCount: 1,
+        totalSizeBytes: 128,
+        assets: [{
+          id: 'record-01-face-photo-01',
+          record: 1,
+          field: 'Face Photo',
+          sourceName: 'face-photo-01.png',
+          mimeType: 'image/png',
+          sizeBytes: 128,
+          width: 1024,
+          height: 1536,
+          sha256: 'test-sha256',
+          path: '/templates/youtube-tiktok-thumbnail-generator/records/record-01/face-photo-01.png',
+        }],
+      }),
+    }))
     await mount()
 
     const card = document.querySelector('[data-testid="kitable-template-thumbnail-generator"]') as HTMLButtonElement
@@ -99,6 +121,14 @@ describe('KitableTemplateLibraryDialog', () => {
 
     expect(document.querySelector('[data-testid="kitable-template-resource-thumbnail-workbench"]')).not.toBeNull()
     expect(document.body.textContent).not.toContain('Thumbnail generation')
+    expect(document.querySelector('[data-testid="kitable-template-back"] .lucide-arrow-left')).not.toBeNull()
+    await vi.waitFor(() => {
+      const image = document.querySelector('[data-testid="kitable-template-preview-asset-record-01-face-photo-01"]')
+      expect(image?.getAttribute('src')).toBe(
+        '/templates/youtube-tiktok-thumbnail-generator/records/record-01/face-photo-01.png',
+      )
+    })
+    expect(document.body.textContent).not.toContain('[object Object]')
   })
 
   it('shows the generated product design template cover', async () => {

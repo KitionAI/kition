@@ -63,7 +63,6 @@ export function WorkspaceTree({
   onCreateFolder,
   onCreateDocument,
   onCreateTable,
-  onImportFromDialog,
   depth = 0,
 }: {
   nodes: WorkspaceTreeNode[]
@@ -106,7 +105,6 @@ export function WorkspaceTree({
   onCreateFolder?: () => void
   onCreateDocument?: (format: DocumentCreateFormat) => void
   onCreateTable?: () => void
-  onImportFromDialog?: () => void
   depth?: number
 }) {
   const [localActionMenuPath, setLocalActionMenuPath] = useState('')
@@ -486,7 +484,6 @@ export function WorkspaceTree({
                             onCreateDocument={onCreateDocument ?? (() => undefined)}
                             onCreateTable={onCreateTable ?? (() => undefined)}
                             onCreateWorkflow={canCreateWorkflowForTable ? () => onCreateWorkflowForTable?.(node) : undefined}
-                            onImportFromDialog={onImportFromDialog}
                           />
                         ) : null}
                       </span>
@@ -740,7 +737,6 @@ export function WorkspaceTree({
                 onCreateFolder={onCreateFolder}
                 onCreateDocument={onCreateDocument}
                 onCreateTable={onCreateTable}
-                onImportFromDialog={onImportFromDialog}
                 depth={depth + 1}
               />
             ) : null}

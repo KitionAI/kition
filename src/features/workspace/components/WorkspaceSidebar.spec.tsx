@@ -99,4 +99,16 @@ describe('WorkspaceSidebar', () => {
 
     expect(onOpenCreateMenu).toHaveBeenCalledTimes(1)
   })
+
+  it('omits file import from the header create menu', async () => {
+    await mount(defaultProps({
+      createMenuOpen: true,
+      createMenuTriggerPath: '',
+    }))
+
+    const options = Array.from(document.body.querySelectorAll('.document-create-option'))
+      .map((option) => option.textContent?.trim())
+    expect(options).toEqual(['Document', 'Table', 'Folder'])
+    expect(document.body.textContent).not.toContain('Import file')
+  })
 })

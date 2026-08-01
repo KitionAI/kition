@@ -27,7 +27,7 @@ export type KitableTemplateAssetManifest = {
 }
 
 export function isKitableTemplateAssetReference(
-  value: KitableTemplateRecordValue,
+  value: unknown,
 ): value is KitableTemplateAssetReference {
   return Boolean(
     value

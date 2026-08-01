@@ -11,7 +11,7 @@ import type { ApplyWorkspaceDocument } from '@/features/workspace/hooks/workspac
 import type { UseWorkspaceTreeStateResult } from '@/features/workspace/hooks/useWorkspaceTreeState'
 import { getChildFolderPathForNode, insertWorkspaceTreeDocumentItem } from '@/features/workspace/lib/workspaceTree'
 import type { WorkspaceTreeNode } from '@/features/workspace/lib/workspace'
-import { chooseFilesToImport, createWorkspaceFolder, importWorkspaceFile, type WorkspaceDocument } from '@/services/desktop'
+import { createWorkspaceFolder, importWorkspaceFile, type WorkspaceDocument } from '@/services/desktop'
 import { listDataDocuments, createDataTable } from '@/api/dataDocuments'
 
 type UseWorkspaceTreeCreateActionsOptions = {
@@ -285,61 +285,6 @@ export function useWorkspaceTreeCreateActions({
     setSaving,
   ])
 
-  const importFilesFromDialog = useCallback(async (folder?: string): Promise<string[]> => {
-    let chosen
-    try {
-      chosen = await chooseFilesToImport()
-    } catch (requestError: any) {
-      setError(requestError?.message || 'Failed to open file picker')
-      return []
-    }
-    if (chosen.canceled || !chosen.paths.length) {
-      return []
-    }
-    setSaving(true)
-    setError('')
-    setFeedback('')
-    setCreateMenuOpen(false)
-
-    const importedPaths: string[] = []
-    try {
-      for (const sourcePath of chosen.paths) {
-        const filename = extractBasename(sourcePath)
-        if (!filename) {
-          continue
-        }
-        const response = await importWorkspaceFile({
-          folder,
-          filename,
-          source_path: sourcePath,
-        })
-        if (response?.imported_path) {
-          importedPaths.push(response.imported_path)
-        }
-      }
-      if (importedPaths.length) {
-        setFeedback(`Imported ${importedPaths.length} ${importedPaths.length === 1 ? 'file' : 'files'}`)
-        if (folder) {
-          expandFolders([folder])
-        }
-        await refreshWorkspaceDocuments(undefined, { silent: true })
-      }
-      return importedPaths
-    } catch (requestError: any) {
-      setError(requestError?.message || 'Failed to import files')
-      return importedPaths
-    } finally {
-      setSaving(false)
-    }
-  }, [
-    expandFolders,
-    refreshWorkspaceDocuments,
-    setCreateMenuOpen,
-    setError,
-    setFeedback,
-    setSaving,
-  ])
-
   return {
     createDocument,
     createDocumentInside,
@@ -347,7 +292,6 @@ export function useWorkspaceTreeCreateActions({
     createTable,
     createTableInsideKitable,
     importBrowserFiles,
-    importFilesFromDialog,
   }
 }
 
@@ -424,17 +368,6 @@ function joinWorkspaceFolderPath(base: string | undefined, sub: string): string 
   return [...baseSegments, ...subSegments].join('/')
 }
 
-function extractBasename(sourcePath: string) {
-  if (!sourcePath) {
-    return ''
-  }
-  const normalized = sourcePath.replace(/\\+/g, '/')
-  const segment = normalized.split('/').filter(Boolean).pop()
-  return segment || ''
-}
-
-                             
-                                     
 function getAncestorFolderPaths(filePath: string): string[] {
   const segments = String(filePath || '').replace(/\\+/g, '/').split('/').filter(Boolean)
   if (segments.length <= 1) return []

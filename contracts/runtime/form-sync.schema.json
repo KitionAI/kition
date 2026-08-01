@@ -172,6 +172,7 @@
   },
   "x-cloud-flow": {
     "authentication": "Kition desktop OAuth bearer session",
+    "draft_storage": "Drafts remain in client-local document metadata until publish",
     "delivery": "incremental pull by remote submission id",
     "offline_behavior": "submissions remain queued in Kition Cloud until a desktop sync succeeds",
     "idempotency": "remote submission id is persisted locally and written to the target table"

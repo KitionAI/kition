@@ -944,7 +944,6 @@ export function WorkspaceScreen({
     dropWorkspaceNode,
     duplicateDocumentNode,
     importBrowserFiles,
-    importFilesFromDialog,
     moveWorkspaceNodeToFolder,
     openWorkspaceFolder,
     refreshWorkspaceDocuments,
@@ -3278,9 +3277,6 @@ export function WorkspaceScreen({
                 void dropWorkspaceNode(draggedPath, targetPath, position),
               onImportFiles: isDesktopRuntime()
                 ? (files, folder) => void importBrowserFiles(files, folder)
-                : undefined,
-              onImportFromDialog: isDesktopRuntime()
-                ? (folder) => void importFilesFromDialog(folder)
                 : undefined,
               onPasteFiles: isDesktopRuntime()
                 ? (entries) => void importBrowserFiles(entries)

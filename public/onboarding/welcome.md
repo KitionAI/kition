@@ -52,15 +52,18 @@ The built-in templates cover different kinds of work:
 
 | Template | Best for | Notable structure |
 | --- | --- | --- |
-| Task Tracker | Delivery planning and ownership | Status, priority, assignee, and due-date views |
-| Simple Client CRM | Prospects, clients, quotes, and follow-up | Relationship and pipeline fields |
-| Recruitment Pipeline | Candidates, interviews, decisions, and offers | Hiring stages and calendar-ready dates |
-| Product Launch Website | Coordinating a site from concept to publication | Content, assets, owners, and launch stages |
-| Business Analytics Dashboard | Revenue, cost, margin, and collections | Metric-oriented records and summaries |
-| Email Inbox Sync | Importing an IMAP mailbox into structured records | Message metadata with Markdown-backed content |
-| Receipt OCR Database | Turning receipt images into searchable data | Attachments, OCR text, structured JSON, and review status |
-| YouTube & TikTok Thumbnail Generator | Creating distinct social cover concepts | Portrait input, story brief, prompt, and generated image fields |
-| Lumière Restaurant | Reservations, guest preferences, and private events | Calendar, kanban, and publishable form views |
+| [[Task Tracker.kitable]] | Delivery planning and ownership | Status, priority, assignee, and due-date views |
+| [[Simple Client CRM.kitable]] | Prospects, clients, quotes, and follow-up | Relationship and pipeline fields |
+| [[Leads Landing Page.kitable]] | Capturing and qualifying inbound leads | Form, pipeline, source, and estimated-value fields |
+| [[SDR Cold Call Manager.kitable]] | Prioritizing outbound calls and follow-up | Call stages, attempts, calendar, and ownership |
+| [[Product Launch Website.kitable]] | Coordinating a site from concept to publication | Content, assets, owners, and launch stages |
+| [[Project Gantt Planner.kitable]] | Planning project dependencies and delivery dates | Timeline-ready dates, progress, status, and owners |
+| [[Business Analytics Dashboard.kitable]] | Revenue, cost, margin, and collections | Metric-oriented records and summaries |
+| [[Email Inbox Sync.kitable]] | Importing an IMAP mailbox into structured records | Message metadata with Markdown-backed content |
+| [[Receipt OCR Database.kitable]] | Turning receipt images into searchable data | Attachments, OCR text, structured JSON, and review status |
+| [[YouTube & TikTok Thumbnail Generator.kitable]] | Creating distinct social cover concepts | Portrait input, story brief, prompt, and generated image fields |
+| [[Batch Product Designer.kitable]] | Developing product concepts and campaign assets | Creative briefs, image fields, and social copy |
+| [[Restaurant Operations.kitable]] | Reservations, guest preferences, and private events | Calendar, kanban, and publishable form views |
 
 > [!note] Template copies are independent
 > If a filename ends in `2`, `3`, or another number, it is a separate copy. Keep the version you are using and remove extra experiments when you no longer need them.
@@ -76,6 +79,7 @@ Getting Started/
   Welcome to Kition.md
   Task Tracker.kitable
   Receipt OCR Database.kitable
+  Restaurant Operations.kitable
 Projects/
   Product launch/
   Customer research/
@@ -169,13 +173,13 @@ Open **Settings > Onboarding Guides** when you want a larger, guided example. Im
 | Web Research | A reusable browser task handoff | Desktop browser and AI provider |
 
 > [!note] Optional guides stay optional
-> The first-run workspace contains only this welcome page and its logo. Template files appear when you choose them from Template Center, and optional guides appear only when you import them.
+> The first-run workspace contains this welcome page, its logo, and one ready-to-open copy of each featured template. Optional guides appear only when you import them.
 
 ## Recommended first session
 
 - [ ] Edit this page and save it.
-- [ ] Open Template Center and inspect two different templates.
-- [ ] Create one template copy and rename it for a real project.
+- [ ] Open two templates from this folder and compare their views.
+- [ ] Rename the template copy you want to use for a real project.
 - [ ] Add or preview a form view.
 - [ ] Ask AI Chat to summarize one active file.
 - [ ] Remove unused template copies after testing.

@@ -42,7 +42,6 @@ type WorkspaceSidebarPanelProps = {
   onToggleSidebar?: () => void
   onTreeDrop: (draggedPath: string, targetPath: string, position: WorkspaceTreeDropPosition) => void
   onImportFiles?: (files: File[], folder?: string) => void
-  onImportFromDialog?: (folder?: string) => void
   onPasteFiles?: (entries: WorkspaceImportEntry[]) => void
   privateExpanded: boolean
   rootPath: string
@@ -85,7 +84,6 @@ export function WorkspaceSidebarPanel({
   onAddToNewChat,
   onRevealInOS,
   onImportFiles,
-  onImportFromDialog,
   onPasteFiles,
   onCreateWorkflowForTable,
   privateExpanded,
@@ -112,7 +110,6 @@ export function WorkspaceSidebarPanel({
       onCreateFolder={onCreateFolder}
       onCreateTable={onCreateTable}
       onCreateDocument={onCreateDocument}
-      onImportFromDialog={onImportFromDialog ? () => onImportFromDialog() : undefined}
       onPasteFiles={onPasteFiles}
       showBrowserTab={showBrowserTab}
       onRefresh={onRefresh}
@@ -148,7 +145,6 @@ export function WorkspaceSidebarPanel({
             onCreateFolder={onCreateFolder}
             onCreateDocument={onCreateDocument}
             onCreateTable={onCreateTable}
-            onImportFromDialog={onImportFromDialog ? () => onImportFromDialog() : undefined}
           />
         </>
       )}

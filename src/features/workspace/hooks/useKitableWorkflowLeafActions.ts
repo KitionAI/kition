@@ -2,7 +2,7 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { deleteWorkflow, patchWorkflow } from '@/features/workflow/api'
-import { updateFormSyncWorkflow } from '@/features/formSync/api'
+import { deleteFormSyncWorkflow, updateFormSyncWorkflow } from '@/features/formSync/api'
 import { useConfirm } from '@/components/confirm'
 import type { KitableChildrenIndex } from '@/features/workspace/hooks/useKitableChildrenIndex'
 import type { WorkspaceTreeNode } from '@/features/workspace/lib/workspace'
@@ -84,7 +84,11 @@ export function useKitableWorkflowLeafActions({
     setError('')
     setFeedback('')
     try {
-      await deleteWorkflow(parsed.workflowId)
+      if (parsed.workflowId.startsWith('formsync_')) {
+        await deleteFormSyncWorkflow(parsed.workflowId)
+      } else {
+        await deleteWorkflow(parsed.workflowId)
+      }
       onWorkflowDeleted?.(parsed.kitablePath, parsed.workflowId)
       if (activeResourcePath === node.path) {
         setActiveResourcePath('')

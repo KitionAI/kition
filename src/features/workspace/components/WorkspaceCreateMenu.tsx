@@ -1,4 +1,4 @@
-import { FileInput, FileSpreadsheet, FileText, FolderPlus, LayoutDashboard, Upload, Zap } from 'lucide-react'
+import { FileInput, FileSpreadsheet, FileText, FolderPlus, LayoutDashboard, Zap } from 'lucide-react'
 import { type CSSProperties, type ReactNode, useLayoutEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
@@ -23,7 +23,6 @@ export function WorkspaceCreateMenu({
   onCreateTable,
   onCreateForm,
   onCreateWorkflow,
-  onImportFromDialog,
 }: {
   open: boolean
   variant?: WorkspaceCreateMenuVariant
@@ -43,7 +42,6 @@ export function WorkspaceCreateMenu({
    *  entry did. Undefined hides the option so non-kitable callers stay
    *  unchanged. */
   onCreateWorkflow?: () => void
-  onImportFromDialog?: () => void
 }) {
   const { t } = useTranslation('workspace')
   const coords = useAnchoredMenuCoords(open, anchorEl ?? null)
@@ -130,16 +128,6 @@ export function WorkspaceCreateMenu({
         <FolderPlus className="size-4" />
         <span>{t('createMenu.folder')}</span>
       </button>
-      {onImportFromDialog ? (
-        <button
-          type="button"
-          className="document-create-option"
-          onClick={onImportFromDialog}
-        >
-          <Upload className="size-4" />
-          <span>{t('createMenu.importFile')}</span>
-        </button>
-      ) : null}
     </>
   )
 

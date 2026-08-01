@@ -1,4 +1,5 @@
 import {
+  ArrowLeft,
   ArrowRight,
   Bot,
   BriefcaseBusiness,
@@ -8,12 +9,11 @@ import {
   LayoutDashboard,
   LoaderCircle,
   Plus,
-  RotateCcw,
   Sparkles,
   Users,
   Workflow,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui'
@@ -21,8 +21,14 @@ import {
   getBuiltinKitableTemplates,
   type KitableTemplateCategory,
   type KitableTemplateDefinition,
+  type KitableTemplateRecordValue,
   type KitableTemplateResource,
 } from '@/features/table/templates/kitableTemplates'
+import {
+  isKitableTemplateAssetReference,
+  loadKitableTemplateAssetManifest,
+  type KitableTemplateAssetManifestItem,
+} from '@/features/table/lib/templateAssets'
 import { cn } from '@/lib/utils'
 import {
   WORKSPACE_TEMPLATE_LIBRARY_DIALOG_CLASSNAME,
@@ -281,8 +287,15 @@ function TemplateDetail({
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-testid="kitable-template-detail">
       <div className="flex items-start gap-4 border-b px-6 py-4">
-        <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={onBack}>
-          <RotateCcw className="size-4" />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={disabled}
+          onClick={onBack}
+          data-testid="kitable-template-back"
+        >
+          <ArrowLeft className="size-4" />
           All templates
         </Button>
         <div className="min-w-0 flex-1">
@@ -363,6 +376,36 @@ function TemplateResourcePreview({
   template: KitableTemplateDefinition
   resource?: KitableTemplateResource
 }) {
+  const [assetById, setAssetById] = useState<Map<string, KitableTemplateAssetManifestItem>>(() => new Map())
+  const [assetManifestStatus, setAssetManifestStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
+
+  useEffect(() => {
+    const manifestPath = template.assetManifestPath
+    if (!manifestPath) {
+      setAssetById(new Map())
+      setAssetManifestStatus('idle')
+      return
+    }
+
+    let cancelled = false
+    setAssetById(new Map())
+    setAssetManifestStatus('loading')
+    void loadKitableTemplateAssetManifest(manifestPath)
+      .then((manifest) => {
+        if (cancelled) return
+        setAssetById(new Map(manifest.assets.map((asset) => [asset.id, asset])))
+        setAssetManifestStatus('ready')
+      })
+      .catch(() => {
+        if (cancelled) return
+        setAssetManifestStatus('error')
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [template.assetManifestPath])
+
   if (!resource) return null
 
   if (resource.kind === 'automation') {
@@ -407,11 +450,21 @@ function TemplateResourcePreview({
             <tbody>
               {table.records.slice(0, 10).map((record, rowIndex) => (
                 <tr key={rowIndex} className="text-foreground">
-                  {table.fields.slice(0, 7).map((field) => (
-                    <td key={field.title} className="max-w-56 truncate border-b border-r px-3 py-2.5 last:border-r-0">
-                      {formatPreviewValue(record[field.title])}
-                    </td>
-                  ))}
+                  {table.fields.slice(0, 7).map((field) => {
+                    const value = record[field.title]
+                    const isAsset = isKitableTemplateAssetReference(value)
+                    return (
+                      <td
+                        key={field.title}
+                        className={cn(
+                          'border-b border-r px-3 py-2.5 last:border-r-0',
+                          isAsset ? 'min-w-36' : 'max-w-56 truncate',
+                        )}
+                      >
+                        {renderPreviewValue(value, field.title, assetById, assetManifestStatus)}
+                      </td>
+                    )
+                  })}
                 </tr>
               ))}
             </tbody>
@@ -491,7 +544,44 @@ function PreviewStep({ label }: { label: string }) {
   )
 }
 
-function formatPreviewValue(value: unknown) {
+function renderPreviewValue(
+  value: KitableTemplateRecordValue | undefined,
+  fieldTitle: string,
+  assetById: Map<string, KitableTemplateAssetManifestItem>,
+  assetManifestStatus: 'idle' | 'loading' | 'ready' | 'error',
+) {
+  if (isKitableTemplateAssetReference(value)) {
+    const assets = value.assetIds
+      .map((assetId) => assetById.get(assetId))
+      .filter((asset): asset is KitableTemplateAssetManifestItem => Boolean(asset))
+    if (assets.length) {
+      return (
+        <span className="flex items-center gap-1.5">
+          {assets.slice(0, 2).map((asset, index) => (
+            asset.mimeType.startsWith('image/') ? (
+              <img
+                key={asset.id}
+                alt={`${fieldTitle} preview ${index + 1}`}
+                className="h-12 w-16 shrink-0 rounded-md border bg-muted object-cover"
+                loading="lazy"
+                src={asset.path}
+                data-testid={`kitable-template-preview-asset-${asset.id}`}
+              />
+            ) : (
+              <span key={asset.id} className="max-w-32 truncate text-xs text-muted-foreground">
+                {asset.sourceName}
+              </span>
+            )
+          ))}
+          {assets.length > 2 ? <span className="text-[11px] text-muted-foreground">+{assets.length - 2}</span> : null}
+        </span>
+      )
+    }
+    if (assetManifestStatus === 'loading') {
+      return <LoaderCircle className="size-4 animate-spin text-muted-foreground" aria-label="Loading image preview" />
+    }
+    return <span className="text-xs text-muted-foreground">Image preview unavailable</span>
+  }
   if (Array.isArray(value)) return value.join(', ')
   if (typeof value === 'boolean') return value ? 'Yes' : 'No'
   return value == null ? '' : String(value)
