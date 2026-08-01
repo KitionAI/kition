@@ -13,7 +13,7 @@ export type OnboardingManifest = {
 }
 
 export const ONBOARDING_BASE = '/onboarding'
-export const ONBOARDING_WELCOME_PATH = 'Welcome to Kition.md'
+export const ONBOARDING_WELCOME_PATH = 'Getting Started/Welcome to Kition.md'
 export const ONBOARDING_EMAIL_INBOX_SYNC_PATH = 'Getting Started/Operations & Analytics/Email Inbox Sync.kitable'
 
 export async function fetchOnboardingManifest(

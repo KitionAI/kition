@@ -4,7 +4,7 @@ import { maybeSeedOnboardingPack, type FirstRunDeps } from './maybeSeedOnboardin
 function makeDeps(overrides: Partial<FirstRunDeps> = {}): FirstRunDeps {
   return {
     listDocuments: vi.fn(async () => ({ items: [] as unknown[] })),
-    seed: vi.fn(async () => 'Welcome to Kition.md'),
+    seed: vi.fn(async () => 'Getting Started/Welcome to Kition.md'),
     isSeeded: vi.fn(() => false),
     markSeeded: vi.fn(),
     ...overrides,
@@ -19,7 +19,7 @@ describe('maybeSeedOnboardingPack', () => {
     const welcomePath = await maybeSeedOnboardingPack('/workspace/a', deps)
     expect(deps.seed).toHaveBeenCalledWith()
     expect(deps.markSeeded).toHaveBeenCalledWith('/workspace/a')
-    expect(welcomePath).toBe('Welcome to Kition.md')
+    expect(welcomePath).toBe('Getting Started/Welcome to Kition.md')
   })
 
   it('marks without seeding and returns empty when the workspace already has content', async () => {

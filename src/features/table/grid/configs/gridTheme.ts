@@ -126,7 +126,7 @@ export const lightGridTheme: IGridTheme = {
   columnHeaderBgSelected: colors.zinc[200],
   columnHeaderNameColor: colors.zinc[900],
   columnResizeHandlerBg: colors.blue[500],
-  columnFreezeHandlerBg: colors.zinc[400],
+  columnFreezeHandlerBg: '#5645d4',
   columnDraggingPlaceholderBg: hexToRGBA(colors.black, 0.2),
 
   // Row Header
@@ -237,7 +237,7 @@ function buildDarkGridTheme(): IGridTheme {
     columnHeaderBgSelected:   dark.accent,
     columnHeaderNameColor:    dark.foreground,
     columnResizeHandlerBg:    dark.primary,
-    columnFreezeHandlerBg:    dark.hairlineSoft,
+    columnFreezeHandlerBg:    dark.primary,
     columnDraggingPlaceholderBg: 'hsla(0, 0%, 100%, 0.18)',
 
     // Row Header

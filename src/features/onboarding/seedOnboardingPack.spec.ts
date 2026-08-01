@@ -24,7 +24,7 @@ const manifest: OnboardingManifest = {
   welcome: {
     filename: 'Welcome to Kition.md',
     asset: 'welcome.md',
-    folder: '',
+    folder: 'Getting Started',
   },
   documents: [
     { asset: 'email-setup.md', filename: 'Email Setup.md', folder: 'Guides' },
@@ -57,7 +57,7 @@ describe('seedOnboardingPack', () => {
     const welcomePath = await seedOnboardingPack(deps)
 
     expect(deps.createFolder).toHaveBeenCalledWith({ parent_folder: '', name: 'Getting Started' })
-    expect(deps.writeDocument).toHaveBeenCalledWith('Welcome to Kition.md', '# hi')
+    expect(deps.writeDocument).toHaveBeenCalledWith('Getting Started/Welcome to Kition.md', '# hi')
     expect(deps.writeDocument).toHaveBeenCalledWith('Getting Started/Guides/Email Setup.md', '# hi')
     expect(deps.importFile).toHaveBeenCalledTimes(5)
     expect(deps.importFile).toHaveBeenCalledWith(
@@ -78,7 +78,7 @@ describe('seedOnboardingPack', () => {
       folder: 'Getting Started/Guides/Lead workflow/assets',
       filename: 'reference.jpg',
     }))
-    expect(welcomePath).toBe('Welcome to Kition.md')
+    expect(welcomePath).toBe('Getting Started/Welcome to Kition.md')
   })
 
   it('fetches the single English welcome body and document assets', async () => {
@@ -92,6 +92,6 @@ describe('seedOnboardingPack', () => {
 
     expect(fetchText).toHaveBeenCalledWith('/onboarding/welcome.md')
     expect(fetchText).toHaveBeenCalledWith('/onboarding/email-setup.md')
-    expect(deps.writeDocument).toHaveBeenCalledWith('Welcome to Kition.md', '# Hello')
+    expect(deps.writeDocument).toHaveBeenCalledWith('Getting Started/Welcome to Kition.md', '# Hello')
   })
 })

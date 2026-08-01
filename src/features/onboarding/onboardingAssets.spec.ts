@@ -7,11 +7,11 @@ const dir = resolve(__dirname, '../../../public/onboarding')
 describe('onboarding static assets', () => {
   it('manifest references files that all exist on disk', () => {
     const manifest = JSON.parse(readFileSync(resolve(dir, 'manifest.json'), 'utf8'))
-    expect(manifest.version).toBe(19)
+    expect(manifest.version).toBe(20)
     expect(manifest.folder).toBe('Getting Started')
     expect(typeof manifest.welcome.filename).toBe('string')
     expect(manifest.welcome.asset).toBe('welcome.md')
-    expect(manifest.welcome.folder).toBe('')
+    expect(manifest.welcome.folder).toBe('Getting Started')
     expect(existsSync(resolve(dir, manifest.welcome.asset))).toBe(true)
     expect(manifest.documents).toEqual([])
     expect(manifest.tables.map((table: { filename: string }) => table.filename)).toEqual([
@@ -63,12 +63,13 @@ describe('onboarding static assets', () => {
     expect(existsSync(resolve(dir, 'demos'))).toBe(false)
   })
 
-  it('keeps the first-run root limited to product-facing entries', () => {
+  it('keeps every first-run file inside Getting Started', () => {
     const manifest = JSON.parse(readFileSync(resolve(dir, 'manifest.json'), 'utf8'))
-    expect([manifest.folder, manifest.welcome.filename].sort()).toEqual([
-      'Getting Started',
-      'Welcome to Kition.md',
-    ])
+    expect(manifest.folder).toBe('Getting Started')
+    expect(manifest.welcome).toMatchObject({
+      filename: 'Welcome to Kition.md',
+      folder: 'Getting Started',
+    })
     expect([...new Set(manifest.tables.map((table: { folder: string }) => table.folder))].sort()).toEqual([
       'AI & Creative',
       'Operations & Analytics',
@@ -131,7 +132,7 @@ describe('onboarding static assets', () => {
   it('ships a rich English welcome guide focused on the starter files', () => {
     const english = readFileSync(resolve(dir, 'welcome.md'), 'utf8')
     expect(english).toContain('# Welcome to Kition')
-    expect(english).toContain('![Kition](Getting Started/logo.png)')
+    expect(english).toContain('![Kition](logo.png)')
     expect(english).toContain('```mermaid')
     expect(english).toContain('V_n = V_0(1 + r)^n')
     expect(english).toContain('Template Center')

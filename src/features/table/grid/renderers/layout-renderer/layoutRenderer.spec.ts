@@ -13,10 +13,12 @@ describe('getColumnFreezeVisibleHeight', () => {
     expect(getColumnFreezeVisibleHeight(700, 56, 280, 400)).toBe(56)
   })
 
-  it('uses a neutral freeze guide instead of the highlighted interaction color', () => {
+  it('uses the primary color for the freeze handle while keeping the guide neutral', () => {
     const darkTheme = getGridTheme(true)
 
-    expect(lightGridTheme.columnFreezeHandlerBg).not.toBe(lightGridTheme.interactionLineColorHighlight)
-    expect(darkTheme.columnFreezeHandlerBg).not.toBe(darkTheme.interactionLineColorHighlight)
+    expect(lightGridTheme.columnFreezeHandlerBg).toBe(lightGridTheme.cellLineColorActived)
+    expect(darkTheme.columnFreezeHandlerBg).toBe(darkTheme.cellLineColorActived)
+    expect(lightGridTheme.interactionLineColorCommon).not.toBe(lightGridTheme.columnFreezeHandlerBg)
+    expect(darkTheme.interactionLineColorCommon).not.toBe(darkTheme.columnFreezeHandlerBg)
   })
 })

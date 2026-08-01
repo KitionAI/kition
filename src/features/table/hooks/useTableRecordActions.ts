@@ -40,6 +40,7 @@ import {
   hasAIFieldPromptPlaceholders,
   materializeAIFieldPrompt,
 } from '@/features/table/lib/aiPromptInterpolation'
+import { hydrateBundledAIFieldAttachments } from '@/features/table/lib/aiAttachmentHydration'
 
                                                                                
                                                                  
@@ -321,6 +322,26 @@ export function useTableRecordActions({
     return runAutoUpdateAIFields(updatedRecord, field)
   }
 
+  async function prepareAIFieldRecord(
+    record: DataRecord,
+    config: NonNullable<DataField['ai_config']>,
+    signal?: AbortSignal,
+  ) {
+    if (!document || !activeTable) return record
+    const hydrated = await hydrateBundledAIFieldAttachments({
+      documentId: document.id,
+      tableId: activeTable.id,
+      record,
+      config,
+      fields,
+      signal,
+    })
+    if (hydrated === record) return record
+    setRecords((items) => items.map((item) => item.id === hydrated.id ? hydrated : item))
+    setSelectedRecord((current) => current?.id === hydrated.id ? hydrated : current)
+    return hydrated
+  }
+
   async function executeAIField(record: DataRecord, field: DataField) {
     if (!document || !activeTable) return
     const config = normalizeAIConfig(field.ai_config)
@@ -331,7 +352,8 @@ export function useTableRecordActions({
     aiCellStore.start(cellKey, config.type, controller)
     try {
       const runtimeModel = await resolveAIConfigRuntimeModel(config)
-      const executionConfig = materializeAIFieldPrompt(config, record, fields)
+      const preparedRecord = await prepareAIFieldRecord(record, config, controller.signal)
+      const executionConfig = materializeAIFieldPrompt(config, preparedRecord, fields)
       const result = await runDataAIFieldCell(
         document.id,
         activeTable.id,
@@ -396,7 +418,8 @@ export function useTableRecordActions({
           const record = records.find((item) => item.id === recordId)
           if (!record) return { recordId, error: 'Record is not loaded' } as const
           try {
-            const executionConfig = materializeAIFieldPrompt(config, record, fields)
+            const preparedRecord = await prepareAIFieldRecord(record, config, controller.signal)
+            const executionConfig = materializeAIFieldPrompt(config, preparedRecord, fields)
             const result = await runDataAIFieldCell(
               document.id,
               activeTable.id,
@@ -445,6 +468,11 @@ export function useTableRecordActions({
         }
         return
       }
+      await mapWithConcurrency(ids, 3, async (recordId) => {
+        const record = records.find((item) => item.id === recordId)
+        if (!record) throw new Error('Record is not loaded')
+        return prepareAIFieldRecord(record, config, controller.signal)
+      })
       const result = await runDataAIFieldBatch(
         document.id,
         activeTable.id,

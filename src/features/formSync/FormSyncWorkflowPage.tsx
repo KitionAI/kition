@@ -388,32 +388,46 @@ function FormFieldEditor({
 function FormPreview({ name, fields, published }: { name: string; fields: FormSyncBuilderField[]; published: boolean }) {
   return (
     <aside className="xl:sticky xl:top-5 xl:self-start">
-      <div className="overflow-hidden rounded-xl border bg-[#f6f5f4] shadow-sm">
+      <div className="overflow-hidden rounded-xl border bg-background shadow-[var(--shadow-soft)]">
         <div className="flex items-center justify-between border-b bg-background px-4 py-3">
           <span className="text-sm font-medium">Live preview</span>
           <span className="text-xs text-muted-foreground">{published ? 'Public' : 'Local draft'}</span>
         </div>
-        <div className="p-5">
-          <div className="rounded-xl border bg-white p-6 shadow-sm">
-            <h2 className="text-xl font-semibold text-[#1a1a1a]">{name.trim() || 'Untitled form'}</h2>
-            <p className="mt-1 text-sm text-[#787671]">Complete the form below and submit your details.</p>
+        <div className="bg-muted/35 p-5">
+          <div
+            className="rounded-xl border bg-background p-6 shadow-[var(--shadow-soft)]"
+            data-testid="form-sync-preview-card"
+          >
+            <h2 className="text-xl font-semibold text-foreground">{name.trim() || 'Untitled form'}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Complete the form below and submit your details.</p>
             <div className="mt-6 grid gap-4">
               {fields.map((field) => (
-                <label key={field.key} className="grid gap-1.5 text-sm font-medium text-[#37352f]">
+                <label key={field.key} className="grid gap-1.5 text-sm font-medium text-foreground">
                   <span>{field.label || 'Untitled field'}{field.required ? ' *' : ''}</span>
                   {field.type === 'long_text' ? (
-                    <textarea disabled className="min-h-24 rounded-lg border border-[#c8c4be] bg-white p-2" />
+                    <textarea disabled className="min-h-24 rounded-lg border border-input bg-background p-2 text-foreground disabled:opacity-100" />
                   ) : field.type === 'select' ? (
-                    <select disabled className="h-10 rounded-lg border border-[#c8c4be] bg-white px-2">
+                    <select disabled className="h-10 rounded-lg border border-input bg-background px-2 text-foreground disabled:opacity-100">
                       <option>Select an option</option>
                       {(field.options || []).filter(Boolean).map((option) => <option key={option}>{option}</option>)}
                     </select>
                   ) : (
-                    <input disabled type={previewInputType(field.type)} className="h-10 rounded-lg border border-[#c8c4be] bg-white px-2" />
+                    <input
+                      disabled
+                      type={previewInputType(field.type)}
+                      placeholder={previewInputPlaceholder(field.type)}
+                      className="h-10 rounded-lg border border-input bg-background px-2 text-foreground placeholder:text-muted-foreground disabled:opacity-100"
+                    />
                   )}
                 </label>
               ))}
-              <button type="button" disabled className="mt-1 h-10 rounded-lg bg-[#5645d4] text-sm font-medium text-white opacity-90">Submit</button>
+              <button
+                type="button"
+                disabled
+                className="mt-1 h-10 rounded-lg bg-primary text-sm font-medium text-primary-foreground disabled:cursor-default disabled:opacity-100"
+              >
+                Submit
+              </button>
             </div>
           </div>
         </div>
@@ -425,8 +439,11 @@ function FormPreview({ name, fields, published }: { name: string; fields: FormSy
 function previewInputType(type: FormSyncFieldType) {
   if (type === 'email' || type === 'number') return type
   if (type === 'phone') return 'tel'
-  if (type === 'datetime') return 'datetime-local'
   return 'text'
+}
+
+function previewInputPlaceholder(type: FormSyncFieldType) {
+  return type === 'datetime' ? 'YYYY-MM-DD HH:MM' : undefined
 }
 
 function validateFields(fields: FormSyncBuilderField[]) {

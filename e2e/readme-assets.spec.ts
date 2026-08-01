@@ -6,7 +6,7 @@ import { getWorkspaceStorageKey } from '../src/features/onboarding/workspaceStor
 
 const CAPTURE_ENABLED = process.env.KITION_CAPTURE_README_ASSETS === '1'
 const VAULT_PATH = '/tmp/Kition Demo'
-const WELCOME_PATH = 'Welcome to Kition.md'
+const WELCOME_PATH = 'Getting Started/Welcome to Kition.md'
 const TABLE_PATH = 'Content Pipeline.kitable'
 const WELCOME_CONTENT = readFileSync(new URL('../public/onboarding/welcome.md', import.meta.url), 'utf8')
 const LOGO_CONTENT = readFileSync(new URL('../public/onboarding/logo.png', import.meta.url))
@@ -160,7 +160,7 @@ test('captures README product screenshots from the onboarding source', async ({ 
 
   await mockLocalWorkspaceApi(page)
   await mockReadmeWorkspace(page)
-  await page.route('**/workspace-files/logo.png', async (route) => {
+  await page.route('**/workspace-files/Getting%20Started/logo.png', async (route) => {
     await route.fulfill({ body: LOGO_CONTENT, contentType: 'image/png' })
   })
   await page.emulateMedia({ colorScheme: 'dark' })

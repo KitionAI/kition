@@ -1,10 +1,10 @@
 {
-  "version": 19,
+  "version": 20,
   "folder": "Getting Started",
   "welcome": {
     "filename": "Welcome to Kition.md",
     "asset": "welcome.md",
-    "folder": ""
+    "folder": "Getting Started"
   },
   "documents": [],
   "images": [

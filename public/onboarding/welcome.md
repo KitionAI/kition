@@ -1,8 +1,8 @@
-![Kition](Getting Started/logo.png)
+![Kition](logo.png)
 
 # Welcome to Kition
 
-Kition brings Markdown documents, structured tables, visual workflows, forms, and AI Chat together in one focused workspace. This welcome document stays at the workspace root, while ready-to-open examples are grouped inside **Getting Started**.
+Kition brings Markdown documents, structured tables, visual workflows, forms, and AI Chat together in one focused workspace. This welcome document and the ready-to-open examples are grouped inside **Getting Started**.
 
 > [!tip] Everything here is editable
 > This page is a plain Markdown file. Keep the sections that help, rewrite them for your team, or delete the page after you are comfortable with the workspace.
@@ -75,8 +75,9 @@ The **Getting Started** folder is divided by purpose so the workspace root stays
 A simple organization can look like this:
 
 ```text
-Welcome to Kition.md
 Getting Started/
+  Welcome to Kition.md
+  logo.png
   AI & Creative/
     Batch Product Designer.kitable
     Receipt OCR Table.kitable

@@ -26,4 +26,17 @@ describe('workspace image file URLs', () => {
     expect(resolved).toContain('http://127.0.0.1:18101/workspace-files/%E7%81%B5%E6%84%9F%E7%AC%94%E8%AE%B0/images/%E4%B8%80%E5%B9%B4%E7%BA%A7%E8%AF%AD%E6%96%87-%E6%97%A5%E6%9C%88%E6%B0%B4%E7%81%AB%E5%B1%B1%E7%94%B0%E9%85%8D%E5%9B%BE.png')
     expect(resolved).not.toContain('%25E4%25B8')
   })
+
+  it('resolves the onboarding logo relative to the welcome document folder', async () => {
+    const workspaceFiles = await loadWorkspaceFilesModule()
+
+    const resolved = workspaceFiles.resolveWorkspaceImageSources(
+      '<p><img src="logo.png" alt="Kition"></p>',
+      'Getting Started/Welcome to Kition.md',
+    )
+
+    expect(resolved).toContain(
+      'http://127.0.0.1:18101/workspace-files/Getting%20Started/logo.png',
+    )
+  })
 })

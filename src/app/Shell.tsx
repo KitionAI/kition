@@ -26,6 +26,7 @@ import { extractNoteDocs } from '@/features/search/sources/noteSource'
 import type { NavigateAdapters } from '@/features/search/ui/navigateToHit'
 import { navigateToHit } from '@/features/search/ui/navigateToHit'
 import { maybeSeedOnboardingPack } from '@/features/onboarding/maybeSeedOnboardingPack'
+import { reconcileOnboardingWelcome } from '@/features/onboarding/reconcileOnboardingWelcome'
 import { FirstRunActivationPanel } from '@/features/onboarding/components/FirstRunActivationPanel'
 import {
   trackProductEvent,
@@ -354,20 +355,35 @@ export function AppShell() {
     }
   }, [tLauncher])
 
+  const prepareFirstRun = useCallback(async (path: string) => {
+    let migratedPath = ''
+    try {
+      migratedPath = await reconcileOnboardingWelcome()
+    } catch (err) {
+      toast.error(tLauncher('firstRun.seedError', { message: (err as Error).message }))
+    }
+    return {
+      migratedPath,
+      welcomePath: await seedFirstRun(path),
+    }
+  }, [seedFirstRun, tLauncher])
+
   const seedAttemptedRef = useRef<Set<string>>(new Set())
   useEffect(() => {
     if (!vaultsLoaded || !activeVaultPath) return
     if (seedAttemptedRef.current.has(activeVaultPath)) return
     seedAttemptedRef.current.add(activeVaultPath)
     void (async () => {
-      const welcomePath = await seedFirstRun(activeVaultPath)
+      const { migratedPath, welcomePath } = await prepareFirstRun(activeVaultPath)
       if (welcomePath) {
         markWorkspaceOnboardingPending(activeVaultPath)
         notifyWorkspaceReload(welcomePath)
         setOnboardingOpen(true)
+      } else if (migratedPath) {
+        notifyWorkspaceReload(migratedPath)
       }
     })()
-  }, [vaultsLoaded, activeVaultPath, seedFirstRun, notifyWorkspaceReload])
+  }, [vaultsLoaded, activeVaultPath, prepareFirstRun, notifyWorkspaceReload])
 
   useEffect(() => {
     if (!vaultsLoaded || !activeVaultPath) {

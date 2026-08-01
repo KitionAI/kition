@@ -1787,7 +1787,7 @@ export const drawColumnFreezeHandler = (
   if (type !== RegionType.ColumnFreezeHandler && !isFreezing) return;
 
   const { scrollLeft, scrollTop } = scrollState;
-  const { columnFreezeHandlerBg } = theme;
+  const { columnFreezeHandlerBg, interactionLineColorCommon } = theme;
   const { containerHeight, freezeRegionWidth, rowInitSize, totalHeight } = coordInstance;
   const visibleGridHeight = getColumnFreezeVisibleHeight(
     containerHeight,
@@ -1809,7 +1809,7 @@ export const drawColumnFreezeHandler = (
       y: 0,
       width: 1,
       height: visibleGridHeight,
-      fill: columnFreezeHandlerBg,
+      fill: interactionLineColorCommon,
     });
   }
 
@@ -1826,7 +1826,7 @@ export const drawColumnFreezeHandler = (
     y: 0,
     width: 1,
     height: visibleGridHeight,
-    fill: columnFreezeHandlerBg,
+    fill: interactionLineColorCommon,
   });
 };
 
