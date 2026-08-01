@@ -117,8 +117,13 @@ describe('getBuiltinKitableTemplates', () => {
 
   it('connects the restaurant private-event table to a Kition Cloud form inbox', () => {
     const template = getBuiltinKitableTemplates(t).find((item) => item.id === 'lumiere-restaurant')
+    const reservations = template?.tables.find((item) => item.title === 'Reservations')
     const table = template?.tables.find((item) => item.title === 'Private Events')
 
+    expect(template).toMatchObject({
+      title: 'templateLibrary.templates.lumiereRestaurant.title',
+      usageCount: 2874,
+    })
     expect(template?.snapshot.version).toBe(2)
     expect(template?.afterCreate).toMatchObject({
       type: 'form-sync',
@@ -141,6 +146,16 @@ describe('getBuiltinKitableTemplates', () => {
       'Source',
       'Submission ID',
     ]))
+    expect(reservations?.records[0]).toMatchObject({
+      Guest: 'Aisha Morgan',
+      Status: 'Confirmed',
+      Table: 'T3',
+    })
+    expect(table?.records[0]).toMatchObject({
+      Event: 'Northstar quarterly dinner',
+      Host: 'Maya Collins',
+      Status: 'Confirmed',
+    })
   })
 
   it('keeps every sample value aligned with a declared field title', () => {

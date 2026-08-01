@@ -1,15 +1,29 @@
 import type { TFunction } from 'i18next'
 
-export type DocumentTemplateCategory = 'work' | 'planning' | 'customer' | 'personal'
+import { getExtendedDocumentTemplates } from './extendedDocumentTemplates'
+
+export type DocumentTemplateCategory = 'work' | 'planning' | 'personal'
 export type DocumentTemplateIcon =
+  | 'action'
+  | 'analytics'
+  | 'architecture'
+  | 'brainstorm'
   | 'brief'
   | 'calendar'
   | 'checklist'
   | 'client'
+  | 'daily'
+  | 'flowchart'
   | 'launch'
   | 'meeting'
+  | 'okr'
+  | 'organization'
+  | 'product'
   | 'research'
+  | 'report'
   | 'review'
+  | 'swimlane'
+  | 'timeline'
 export type DocumentTemplateTone =
   | 'cream'
   | 'gray'
@@ -20,6 +34,28 @@ export type DocumentTemplateTone =
   | 'sky'
   | 'yellow'
 
+export type DocumentTemplatePreview =
+  | 'action-list'
+  | 'analytics'
+  | 'architecture'
+  | 'brainstorm'
+  | 'client-profile'
+  | 'daily-report'
+  | 'flowchart'
+  | 'meeting-notes'
+  | 'okr'
+  | 'organization'
+  | 'product-brief'
+  | 'product-launch'
+  | 'project-brief'
+  | 'research'
+  | 'swimlane'
+  | 'task-table'
+  | 'team-report'
+  | 'timeline'
+  | 'weekly-plan'
+  | 'weekly-review'
+
 export type BuiltinDocumentTemplate = {
   id: string
   title: string
@@ -27,8 +63,12 @@ export type BuiltinDocumentTemplate = {
   category: DocumentTemplateCategory
   icon: DocumentTemplateIcon
   tone: DocumentTemplateTone
+  preview: DocumentTemplatePreview
+  coverImage: string
   content: string
 }
+
+export type BuiltinDocumentTemplateSeed = Omit<BuiltinDocumentTemplate, 'coverImage'>
 
 export function renderDocumentTemplatePlaceholders(
   body: string,
@@ -48,7 +88,7 @@ export function renderDocumentTemplatePlaceholders(
 export function getBuiltinDocumentTemplates(
   t: TFunction<'document'>,
 ): BuiltinDocumentTemplate[] {
-  return [
+  const templates: BuiltinDocumentTemplateSeed[] = [
     {
       id: 'project-brief',
       title: t('templateLibrary.templates.projectBrief.title'),
@@ -56,6 +96,7 @@ export function getBuiltinDocumentTemplates(
       category: 'work',
       icon: 'brief',
       tone: 'lavender',
+      preview: 'project-brief',
       content: `# {{title}}
 
 > Created {{date}}
@@ -104,6 +145,7 @@ Describe the problem, the opportunity, and the outcome this project should creat
       category: 'work',
       icon: 'meeting',
       tone: 'sky',
+      preview: 'meeting-notes',
       content: `# {{title}}
 
 **Date:** {{date}}<br>
@@ -138,6 +180,7 @@ Describe the problem, the opportunity, and the outcome this project should creat
       category: 'planning',
       icon: 'checklist',
       tone: 'mint',
+      preview: 'task-table',
       content: `# {{title}}
 
 ## This week
@@ -167,6 +210,7 @@ Describe the problem, the opportunity, and the outcome this project should creat
       category: 'planning',
       icon: 'calendar',
       tone: 'yellow',
+      preview: 'weekly-plan',
       content: `# {{title}}
 
 **Week of:** {{date}}
@@ -203,6 +247,7 @@ Describe the problem, the opportunity, and the outcome this project should creat
       category: 'planning',
       icon: 'launch',
       tone: 'peach',
+      preview: 'product-launch',
       content: `# {{title}}
 
 ## Launch summary
@@ -241,9 +286,10 @@ Describe the problem, the opportunity, and the outcome this project should creat
       id: 'client-brief',
       title: t('templateLibrary.templates.clientBrief.title'),
       description: t('templateLibrary.templates.clientBrief.description'),
-      category: 'customer',
+      category: 'work',
       icon: 'client',
       tone: 'rose',
+      preview: 'client-profile',
       content: `# {{title}}
 
 ## Account overview
@@ -287,6 +333,7 @@ Describe the problem, the opportunity, and the outcome this project should creat
       category: 'personal',
       icon: 'research',
       tone: 'cream',
+      preview: 'research',
       content: `# {{title}}
 
 ## Research question
@@ -325,6 +372,7 @@ Describe the problem, the opportunity, and the outcome this project should creat
       category: 'personal',
       icon: 'review',
       tone: 'gray',
+      preview: 'weekly-review',
       content: `# {{title}}
 
 **Review date:** {{date}}
@@ -359,4 +407,8 @@ Describe the problem, the opportunity, and the outcome this project should creat
 `,
     },
   ]
+  return [...templates, ...getExtendedDocumentTemplates(t)].map((template) => ({
+    ...template,
+    coverImage: `/templates/document-covers/${template.id}.webp`,
+  }))
 }

@@ -1,0 +1,32 @@
+{
+  "source": "Original Kition Cloud gpt-image-2 generation",
+  "provider": "Kition Cloud",
+  "model": "gpt-image-2",
+  "generated_at": "2026-08-01",
+  "format": "webp",
+  "width": 960,
+  "height": 540,
+  "style": "Modern editorial 3D workspace illustrations with light neutral surfaces and restrained Kition purple accents",
+  "templates": [
+    "project-brief",
+    "meeting-notes",
+    "task-tracker",
+    "weekly-plan",
+    "product-launch",
+    "client-brief",
+    "research-notes",
+    "weekly-review",
+    "team-daily-report",
+    "personal-daily-report",
+    "brainstorming-session",
+    "quarterly-business-review",
+    "meeting-action-tracker",
+    "okr-plan",
+    "product-requirements",
+    "flowchart",
+    "project-timeline",
+    "organization-chart",
+    "system-architecture",
+    "product-development-swimlane"
+  ]
+}

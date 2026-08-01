@@ -50,12 +50,17 @@ describe('DocumentTemplateLibraryDialog', () => {
     const dialog = document.querySelector('[data-testid="document-template-library-dialog"]')
     expect(dialog?.className).toContain('md:w-[min(1040px')
     expect(dialog?.className).not.toContain('md:w-full')
-    expect(document.body.textContent).toContain('New Markdown document')
-    expect(document.querySelectorAll('button[data-testid^="workspace-template-category-"]').length).toBe(5)
+    expect(document.body.textContent).not.toContain('New Markdown document')
+    expect(document.querySelectorAll('button[data-testid^="workspace-template-category-"]').length).toBe(4)
     expect(document.querySelector('[data-testid="document-template-blank"]')).not.toBeNull()
     expect(document.querySelector('[data-testid="document-template-project-brief"]')).not.toBeNull()
     expect(document.querySelector('[data-testid="document-template-task-tracker"]')).not.toBeNull()
     expect(document.querySelector('[data-testid="document-template-weekly-review"]')).not.toBeNull()
+    expect(document.querySelector('[data-testid="document-template-flowchart"]')?.getAttribute('data-preview')).toBe('flowchart')
+    expect(document.querySelector('[data-testid="document-template-flowchart"]')?.getAttribute('data-cover-image')).toBe('/templates/document-covers/flowchart.webp')
+    expect(document.querySelector('[data-testid="document-template-flowchart"] img')?.getAttribute('src')).toBe('/templates/document-covers/flowchart.webp')
+    expect(document.querySelector('[data-testid="document-template-system-architecture"]')).not.toBeNull()
+    expect(document.querySelector('[data-testid="document-template-product-development-swimlane"]')).not.toBeNull()
   })
 
   it('creates a blank document without a template preset', async () => {
@@ -83,6 +88,22 @@ describe('DocumentTemplateLibraryDialog', () => {
       title: 'Task tracker',
       templateId: 'task-tracker',
       content: expect.stringContaining('| Task | Owner | Priority | Due date | Status |'),
+    }))
+  })
+
+  it('creates an editable Mermaid flowchart document', async () => {
+    const onCreate = await mount()
+
+    await act(async () => {
+      const templateButton = document.querySelector('[data-testid="document-template-flowchart"]') as HTMLButtonElement
+      templateButton.click()
+      await Promise.resolve()
+    })
+
+    expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({
+      title: 'Flowchart',
+      templateId: 'flowchart',
+      content: expect.stringContaining('account{Existing account?}'),
     }))
   })
 

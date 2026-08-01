@@ -466,8 +466,8 @@
         "description": "Track prospects, quotes, active clients, revenue, and follow-up."
       },
       "lumiereRestaurant": {
-        "title": "Lumière Restaurant",
-        "description": "Manage dining reservations, guest preferences, and private events."
+        "title": "Restaurant Operations",
+        "description": "Coordinate reservations, guest preferences, private events, and service follow-up."
       }
     }
   },

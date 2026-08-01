@@ -1,16 +1,28 @@
 import {
+  Blocks,
+  BookOpenText,
   Briefcase,
   CalendarDays,
+  ChartGantt,
+  ChartNoAxesCombined,
   CheckSquare,
+  ClipboardList,
   Contact,
   FilePlus2,
   FileText,
   FlaskConical,
+  GitBranch,
+  Lightbulb,
+  ListChecks,
   LoaderCircle,
   Megaphone,
+  Network,
   NotebookPen,
+  PanelsTopLeft,
   RotateCcw,
   Rocket,
+  Target,
+  Workflow,
 } from 'lucide-react'
 import { useEffect, useMemo, useState, type ComponentType } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -24,6 +36,7 @@ import {
   type BuiltinDocumentTemplate,
   type DocumentTemplateCategory,
   type DocumentTemplateIcon,
+  type DocumentTemplatePreview,
   type DocumentTemplateTone,
 } from '@/features/document/lib/documentTemplates'
 import { cn } from '@/lib/utils'
@@ -46,14 +59,26 @@ type DocumentTemplateLibraryDialogProps = {
 }
 
 const iconByKind: Record<DocumentTemplateIcon, ComponentType<{ className?: string }>> = {
+  action: ListChecks,
+  analytics: ChartNoAxesCombined,
+  architecture: Blocks,
+  brainstorm: Lightbulb,
   brief: Briefcase,
   calendar: CalendarDays,
   checklist: CheckSquare,
   client: Contact,
+  daily: BookOpenText,
+  flowchart: GitBranch,
   launch: Megaphone,
   meeting: NotebookPen,
+  okr: Target,
+  organization: Network,
+  product: PanelsTopLeft,
   research: FlaskConical,
+  report: ClipboardList,
   review: RotateCcw,
+  swimlane: Workflow,
+  timeline: ChartGantt,
 }
 
 const previewToneClass: Record<DocumentTemplateTone, string> = {
@@ -124,7 +149,6 @@ export function DocumentTemplateLibraryDialog({
     { id: 'all', label: t('templateLibrary.categories.all'), icon: Rocket },
     { id: 'work', label: t('templateLibrary.categories.work'), icon: Briefcase },
     { id: 'planning', label: t('templateLibrary.categories.planning'), icon: CalendarDays },
-    { id: 'customer', label: t('templateLibrary.categories.customer'), icon: Contact },
     { id: 'personal', label: t('templateLibrary.categories.personal'), icon: NotebookPen },
     ...(workspaceTemplates?.length
       ? [{ id: 'workspace' as const, label: t('templateLibrary.categories.workspace'), icon: FileText }]
@@ -183,11 +207,11 @@ export function DocumentTemplateLibraryDialog({
         size="none"
         className={WORKSPACE_TEMPLATE_LIBRARY_DIALOG_CLASSNAME}
         data-testid="document-template-library-dialog"
+        disableAutoFocus
       >
         <WorkspaceTemplateLibraryFrame
           title="Template Center"
           description="Choose a template or a blank document to create a new Markdown document."
-          resourceLabel="New Markdown document"
           icon={FileText}
           query={query}
           onQueryChange={setQuery}
@@ -231,6 +255,8 @@ export function DocumentTemplateLibraryDialog({
                     description={template.description}
                     icon={iconByKind[template.icon]}
                     previewClassName={previewToneClass[template.tone]}
+                    preview={template.preview}
+                    coverImage={template.coverImage}
                     busy={pendingId === template.id}
                     disabled={disabled}
                     onClick={() => void createFromBuiltin(template)}
@@ -279,6 +305,8 @@ function TemplateCard({
   description,
   icon: Icon,
   previewClassName,
+  preview,
+  coverImage,
   busy,
   disabled,
   onClick,
@@ -288,6 +316,8 @@ function TemplateCard({
   description: string
   icon: ComponentType<{ className?: string }>
   previewClassName: string
+  preview?: DocumentTemplatePreview
+  coverImage?: string
   busy: boolean
   disabled: boolean
   onClick: () => void
@@ -298,17 +328,31 @@ function TemplateCard({
       <div className="relative">
         <button
           type="button"
-          className={cn('relative block aspect-[16/9] w-full overflow-hidden rounded-xl border border-border p-3 text-left transition hover:border-primary/35 hover:shadow-soft disabled:opacity-60', previewClassName)}
+          className={cn('relative block aspect-[16/9] w-full overflow-hidden rounded-xl border border-border text-left transition hover:border-primary/35 hover:shadow-soft disabled:opacity-60', previewClassName)}
           onClick={onClick}
           disabled={disabled}
           data-testid={testId}
+          data-preview={preview}
+          data-cover-image={coverImage}
         >
+          {coverImage ? (
+            <img
+              alt=""
+              className="absolute inset-0 size-full object-cover"
+              loading="lazy"
+              src={coverImage}
+            />
+          ) : null}
           <span className="absolute left-4 top-4 grid size-9 place-items-center rounded-lg border border-border/50 bg-background/85 text-foreground shadow-sm">
             {busy ? <LoaderCircle className="size-4 animate-spin" /> : <Icon className="size-4" />}
           </span>
-          <span className="absolute left-4 right-14 top-[4.25rem] h-2 rounded-sm bg-foreground/20" />
-          <span className="absolute left-4 right-8 top-[5.4rem] h-1.5 rounded-sm bg-foreground/10" />
-          <span className="absolute left-4 right-20 top-[6.4rem] h-1.5 rounded-sm bg-foreground/10" />
+          {!coverImage ? (
+            <>
+              <span className="absolute left-4 right-14 top-[4.25rem] h-2 rounded-sm bg-foreground/20" />
+              <span className="absolute left-4 right-8 top-[5.4rem] h-1.5 rounded-sm bg-foreground/10" />
+              <span className="absolute left-4 right-20 top-[6.4rem] h-1.5 rounded-sm bg-foreground/10" />
+            </>
+          ) : null}
         </button>
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-xl bg-foreground/0 opacity-0 transition group-hover:bg-foreground/10 group-hover:opacity-100 group-focus-within:opacity-100">
           <Button type="button" size="sm" className="pointer-events-auto" disabled={disabled} onClick={onClick}>

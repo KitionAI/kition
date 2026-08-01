@@ -111,6 +111,7 @@ export function KitableTemplateLibraryDialog({
         size="none"
         className={WORKSPACE_TEMPLATE_LIBRARY_DIALOG_CLASSNAME}
         data-testid="kitable-template-library-dialog"
+        disableAutoFocus
       >
         {selectedTemplate ? (
           <TemplateDetail
@@ -126,7 +127,6 @@ export function KitableTemplateLibraryDialog({
           <WorkspaceTemplateLibraryFrame
             title="Template Center"
             description="Choose a template or a blank workspace to create a new table workspace."
-            resourceLabel="New table workspace"
             icon={Sparkles}
             query={query}
             onQueryChange={setQuery}
