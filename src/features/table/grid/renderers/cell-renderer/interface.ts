@@ -115,6 +115,7 @@ export interface IRatingCell extends IEditableCell {
 export interface ISelectChoice {
   id: string;
   name: string;
+  tone?: string;
   color?: string;
   backgroundColor?: string;
 }

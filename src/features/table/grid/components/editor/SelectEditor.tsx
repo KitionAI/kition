@@ -13,6 +13,7 @@ import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import type { ForwardRefRenderFunction } from 'react';
 import type { ISelectCell } from '../../renderers';
 import type { IEditorProps, IEditorRef } from './EditorContainer';
+import { resolveSelectChoiceColors } from '../../utils/selectChoiceColors';
 
 const SelectEditorBase: ForwardRefRenderFunction<
   IEditorRef<ISelectCell>,
@@ -23,7 +24,6 @@ const SelectEditorBase: ForwardRefRenderFunction<
   const { data, isMultiple, choiceSorted = [], choiceMap = {} } = cell;
   const [values, setValues] = useState(data);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const { cellOptionBg, cellOptionTextColor } = theme;
 
   useImperativeHandle(ref, () => ({
     focus: () => inputRef.current?.focus(),
@@ -62,26 +62,28 @@ const SelectEditorBase: ForwardRefRenderFunction<
         <CommandEmpty>{t('selectEditor.notFound')}</CommandEmpty>
         <CommandGroup aria-valuetext="name">
           {isEditing &&
-            choiceSorted.map(({ name, id }) => (
-              <CommandItem
-                className="justify-between data-[selected=true]:bg-brand data-[selected=true]:text-brand-foreground"
-                key={name}
-                value={name}
-                onSelect={() => onSelect(name, id)}
-              >
-                <div
-                  className="text-ellipsis whitespace-nowrap rounded-[6px] px-2 text-[12px]"
-                  style={{
-                    backgroundColor:
-                      (choiceMap?.[id] ?? choiceMap?.[name])?.backgroundColor ?? cellOptionBg,
-                    color: (choiceMap?.[id] ?? choiceMap?.[name])?.color ?? cellOptionTextColor,
-                  }}
+            choiceSorted.map(({ name, id }) => {
+              const choiceColors = resolveSelectChoiceColors(
+                choiceMap?.[id] ?? choiceMap?.[name],
+                theme,
+              );
+              return (
+                <CommandItem
+                  className="justify-between data-[selected=true]:bg-brand data-[selected=true]:text-brand-foreground"
+                  key={name}
+                  value={name}
+                  onSelect={() => onSelect(name, id)}
                 >
-                  {name}
-                </div>
-                {values?.includes(name) && <Check className={'ml-2 size-4'} />}
-              </CommandItem>
-            ))}
+                  <div
+                    className="text-ellipsis whitespace-nowrap rounded-[6px] px-2 text-[12px]"
+                    style={choiceColors}
+                  >
+                    {name}
+                  </div>
+                  {values?.includes(name) && <Check className={'ml-2 size-4'} />}
+                </CommandItem>
+              );
+            })}
         </CommandGroup>
       </CommandList>
     </Command>

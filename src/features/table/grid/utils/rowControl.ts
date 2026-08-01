@@ -17,6 +17,10 @@ export const getRowControlLayoutWidth = (
   return Math.max(width - getRowControlExtraWidth(theme, rowControlPaddingX) * 2, 0);
 };
 
+export const getRowControlOffsetY = (height: number, iconSize: number) => {
+  return Math.max((height - iconSize) / 2, 0);
+};
+
 export const getRowControlOffsetX = (
   width: number,
   theme: IGridTheme,

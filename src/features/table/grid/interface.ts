@@ -44,7 +44,6 @@ export enum RegionType {
   ColumnStatistic = 'ColumnStatistic',
   ColumnHeaderMenu = 'ColumnHeaderMenu',
   ColumnPrimaryIcon = 'ColumnPrimaryIcon',
-  ColumnDescription = 'ColumnDescription',
   ColumnResizeHandler = 'ColumnResizeHandler',
   ColumnFreezeHandler = 'ColumnFreezeHandler',
   RowHeaderDragHandler = 'RowHeaderDragHandler',
@@ -162,10 +161,6 @@ export enum DraggableType {
   None = 'none',
   Column = 'column',
   Row = 'row',
-}
-
-export enum GridCustomIcon {
-  Description = 'description',
 }
 
 export enum SelectableType {

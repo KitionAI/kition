@@ -17,6 +17,7 @@ import type {
   ICellClickCallback,
 } from './interface';
 import { getAlignedContentStart, getCenteredBlockTop } from './alignment';
+import { resolveSelectChoiceColors } from '../../utils/selectChoiceColors';
 
 enum ISelectRegionType {
   Content = 'Content',
@@ -257,8 +258,10 @@ export const selectCellRenderer: IInternalCellRenderer<ISelectCell> = {
 
     for (const text of displayData) {
       const choice = choiceMap?.[text];
-      const bgColor = choice?.backgroundColor || cellOptionBg;
-      const textColor = choice?.color || cellOptionTextColor;
+      const { backgroundColor: bgColor, color: textColor } = resolveSelectChoiceColors(
+        choice,
+        theme,
+      );
 
       // Use different max width for first row
       const currentMaxTextWidth = row === 1 ? firstRowMaxTextWidth : maxTextWidth;

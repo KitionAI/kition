@@ -7,7 +7,6 @@ import {
   ChevronRight,
   Lock,
   EyeOff,
-  Info,
   Sparkles,
 } from 'lucide-react';
 import { renderToString } from 'react-dom/server';
@@ -30,11 +29,6 @@ const detail = (props: ISpriteProps) => {
 const add = (props: ISpriteProps) => {
   const { fgColor } = props;
   return renderToString(<Plus style={{ color: fgColor }} />);
-};
-
-const description = (props: ISpriteProps) => {
-  const { fgColor } = props;
-  return renderToString(<Info style={{ color: fgColor }} />);
 };
 
 const close = (props: ISpriteProps) => {
@@ -71,7 +65,6 @@ export const sprites = {
   add,
   drag,
   detail,
-  description,
   close,
   expand,
   collapse,
@@ -84,7 +77,6 @@ export enum GridInnerIcon {
   Add = 'add',
   Drag = 'drag',
   Detail = 'detail',
-  Description = 'description',
   Close = 'close',
   Expand = 'expand',
   Collapse = 'collapse',

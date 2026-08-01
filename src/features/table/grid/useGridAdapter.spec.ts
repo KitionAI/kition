@@ -65,6 +65,25 @@ describe('useGridAdapter — phase 2 field types', () => {
     expect(buildGridColumn(makeField({})).icon).toBeUndefined()
   })
 
+  it('passes configured select tones to the grid renderer', () => {
+    const cell = buildCellForField(
+      makeField({
+        type: 'single_select',
+        options: {
+          choices: ['Draft', 'Ready'],
+          choice_tones: { Draft: 'purple', Ready: 'red' },
+        },
+      }),
+      makeRecord({ name: 'Ready' }),
+    )
+
+    expect(cell.type).toBe(CellType.Select)
+    if (cell.type === CellType.Select) {
+      expect(cell.choiceMap?.Draft?.tone).toBe('purple')
+      expect(cell.choiceMap?.Ready?.tone).toBe('red')
+    }
+  })
+
   it('rating field renders a Rating cell with bounded data', () => {
     const cell = buildCellForField(
       makeField({ type: 'rating', options: { max: 5, icon: 'heart' } }),

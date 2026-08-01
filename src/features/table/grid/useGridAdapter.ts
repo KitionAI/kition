@@ -1,6 +1,11 @@
 import { useCallback, useMemo } from 'react';
 import type { DataField, DataRecord, DataRecordValue } from '@/types/dataDocument';
-import { displayValue, normalizeAttachmentValue } from '@/features/table/lib/tableEditorShared';
+import {
+  displayValue,
+  getSelectChoiceTone,
+  normalizeAttachmentValue,
+  normalizeChoiceList,
+} from '@/features/table/lib/tableEditorShared';
 import { formatTableFieldValue } from '@/features/table/lib/dateFormatting';
 import { resolvePublicFileURL } from '@/services/desktop';
 import type { IGridColumn, ICellItem } from './interface';
@@ -44,8 +49,11 @@ export interface IGridAdapterArgs {
 }
 
 function toSelectChoices(field: DataField) {
-  const choices = Array.isArray(field.options?.choices) ? field.options!.choices! : [];
-  return choices.map((name) => ({ id: name, name }));
+  return normalizeChoiceList(field).map((name) => ({
+    id: name,
+    name,
+    tone: getSelectChoiceTone(field, name),
+  }));
 }
 
 function valuesToDisplayList(value: DataRecordValue | unknown): string[] {
@@ -107,7 +115,7 @@ export function buildCellForField(
     case 'single_select': {
       const list = valuesToDisplayList(raw).slice(0, 1);
       const choices = toSelectChoices(field);
-      const choiceMap: Record<string, { id: string; name: string }> = {};
+      const choiceMap: Record<string, (typeof choices)[number]> = {};
       for (const choice of choices) choiceMap[choice.id] = choice;
       return {
         type: CellType.Select,
@@ -123,7 +131,7 @@ export function buildCellForField(
     case 'multi_select': {
       const list = valuesToDisplayList(raw);
       const choices = toSelectChoices(field);
-      const choiceMap: Record<string, { id: string; name: string }> = {};
+      const choiceMap: Record<string, (typeof choices)[number]> = {};
       for (const choice of choices) choiceMap[choice.id] = choice;
       return {
         type: CellType.Select,

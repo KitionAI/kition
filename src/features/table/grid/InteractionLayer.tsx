@@ -390,7 +390,6 @@ export const InteractionLayerBase: ForwardRefRenderFunction<
       case RegionType.GroupStatistic:
       case RegionType.ColumnStatistic:
       case RegionType.ColumnHeaderMenu:
-      case RegionType.ColumnDescription:
       case RegionType.ColumnPrimaryIcon:
       case RegionType.RowGroupControl:
       case RegionType.RowHeaderExpandHandler:

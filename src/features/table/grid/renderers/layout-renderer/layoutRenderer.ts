@@ -13,6 +13,7 @@ import {
   calculateMaxRange,
   getRowControlCheckboxOffsetX,
   getRowControlOffsetX,
+  getRowControlOffsetY,
   hexToRGBA,
 } from '../../utils';
 import type { ISingleLineTextProps } from '../base-renderer';
@@ -47,7 +48,6 @@ const spriteIconMap = {
 const {
   fillHandlerSize,
   cellTextLineHeight,
-  rowHeadIconPaddingTop,
   columnStatisticHeight,
   columnHeadHeight,
   columnHeadPadding,
@@ -1239,14 +1239,16 @@ export const drawRowHeader = (ctx: CanvasRenderingContext2D, props: IRowHeaderDr
     stroke: cellLineColor,
   });
   const halfSize = iconSizeXS / 2;
+  const iconOffsetY = getRowControlOffsetY(height, iconSizeXS);
+  const rowHeaderFontSize = 10;
 
-  ctx.font = `${10}px ${theme.fontFamily}`;
+  ctx.font = `${rowHeaderFontSize}px ${theme.fontFamily}`;
 
   if (commentCount) {
     const offsetX = getRowControlOffsetX(width, theme, rowControlPaddingX, rowControls.length, 2);
     drawCommentCount(ctx, {
       x: x + offsetX - halfSize,
-      y: y + rowHeadIconPaddingTop,
+      y: y + iconOffsetY,
       count: commentCount,
       theme,
     });
@@ -1262,7 +1264,7 @@ export const drawRowHeader = (ctx: CanvasRenderingContext2D, props: IRowHeaderDr
       if (type === RowControlType.Checkbox) {
         drawCheckbox(ctx, {
           x: x + offsetX - halfSize,
-          y: y + rowHeadIconPaddingTop,
+          y: y + iconOffsetY,
           size: iconSizeXS,
           stroke: isChecked ? staticWhite : rowHeaderTextColor,
           fill: isChecked ? iconBgSelected : undefined,
@@ -1274,7 +1276,7 @@ export const drawRowHeader = (ctx: CanvasRenderingContext2D, props: IRowHeaderDr
           spriteManager.drawSprite(ctx, {
             sprite: icon || spriteIconMap[type],
             x: x + offsetX - halfSize,
-            y: y + rowHeadIconPaddingTop,
+            y: y + iconOffsetY,
             size: iconSizeXS,
             theme,
           });
@@ -1286,9 +1288,10 @@ export const drawRowHeader = (ctx: CanvasRenderingContext2D, props: IRowHeaderDr
 
   drawSingleLineText(ctx, {
     x: x + width / 2,
-    y: y + cellVerticalPaddingMD + 1,
+    y: y + getRowControlOffsetY(height, rowHeaderFontSize),
     text: displayIndex,
     textAlign: 'center',
+    fontSize: rowHeaderFontSize,
     fill: rowHeaderTextColor,
   });
 };
@@ -1329,7 +1332,7 @@ export const drawCommentCount = (
 
 export const drawColumnHeader = (ctx: CanvasRenderingContext2D, props: IFieldHeadDrawerProps) => {
   const { x, y, width, height, theme, fill, column, hasMenu, spriteManager } = props;
-  const { name, icon, description, hasMenu: hasColumnMenu, isPrimary } = column;
+  const { name, icon, hasMenu: hasColumnMenu, isPrimary } = column;
   const {
     cellLineColor,
     columnHeaderBg,
@@ -1400,20 +1403,6 @@ export const drawColumnHeader = (ctx: CanvasRenderingContext2D, props: IFieldHea
       radiusAll: 1,
       fill: iconFgCommon,
     });
-  }
-
-  if (description) {
-    spriteManager.drawSprite(ctx, {
-      sprite: GridInnerIcon.Description,
-      x: hasMenuInner
-        ? x + width - 2 * iconSizeXS - columnHeadPadding
-        : x + width - iconSizeXS - columnHeadPadding,
-      y: y + (columnHeadHeight - iconSizeXS) / 2,
-      size: iconSizeXS,
-      theme,
-    });
-
-    maxTextWidth = maxTextWidth - iconSizeXS - columnHeadPadding;
   }
 
   drawMultiLineText(ctx, {

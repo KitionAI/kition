@@ -10,7 +10,11 @@ import type {
 } from '../interface';
 import type { IRenderLayerProps } from '../RenderLayer';
 import { inRange } from './range';
-import { getRowControlCheckboxOffsetX, getRowControlOffsetX } from './rowControl';
+import {
+  getRowControlCheckboxOffsetX,
+  getRowControlOffsetX,
+  getRowControlOffsetY,
+} from './rowControl';
 
 interface ICheckRegionProps
   extends Pick<
@@ -69,7 +73,6 @@ const {
   groupHeaderHeight,
   columnHeadPadding,
   columnResizeHandlerWidth,
-  rowHeadIconPaddingTop,
   columnStatisticHeight,
   columnFreezeHandlerWidth,
   minColumnStatisticWidth,
@@ -328,6 +331,8 @@ const checkIsRowHeader = (props: ICheckRegionProps): IRegionData | null => {
   const { columnInitSize } = coordInstance;
   const halfIconSize = iconSizeXS / 2;
   const offsetY = coordInstance.getRowOffset(rowIndex) - scrollTop;
+  const rowHeight = coordInstance.getRowHeight(rowIndex);
+  const controlOffsetY = getRowControlOffsetY(rowHeight, iconSizeXS);
 
   for (let i = 0; i < rowControls.length; i++) {
     const type = rowControls[i].type;
@@ -341,7 +346,7 @@ const checkIsRowHeader = (props: ICheckRegionProps): IRegionData | null => {
       i
     );
     const minX = offsetX - halfIconSize;
-    const minY = offsetY + rowHeadIconPaddingTop;
+    const minY = offsetY + controlOffsetY;
     const inControlXRange = inRange(x, minX, minX + iconSizeXS);
     const inYRangeRowHeader = inRange(y, minY, minY + iconSizeXS);
 
@@ -475,7 +480,7 @@ const checkIsColumnHeader = (props: ICheckRegionProps): IRegionData | null => {
   if (rowIndex === -1 && columnIndex > -1) {
     const { scrollLeft } = scrollState;
     const { rowInitSize } = coordInstance;
-    const { isPrimary, description, hasMenu: hasColumnMenu } = columns[columnIndex];
+    const { isPrimary, hasMenu: hasColumnMenu } = columns[columnIndex];
     const hasMenu = hasColumnMenu && isColumnHeaderMenuVisible;
     const width = coordInstance.getColumnWidth(columnIndex);
     const startOffsetX = coordInstance.getColumnRelativeOffset(columnIndex, scrollLeft);
@@ -489,22 +494,6 @@ const checkIsColumnHeader = (props: ICheckRegionProps): IRegionData | null => {
         y: 0,
         width: iconSizeXS,
         height: rowInitSize,
-      };
-    }
-
-    const descriptionX = columnMenuX - iconSizeXS - columnHeadPadding / 2;
-    const descriptionY = (rowInitSize - iconSizeXS) / 2;
-    if (
-      description &&
-      inRange(x, descriptionX, descriptionX + iconSizeXS) &&
-      inRange(y, descriptionY, descriptionY + iconSizeXS)
-    ) {
-      return {
-        type: RegionType.ColumnDescription,
-        x: descriptionX,
-        y: descriptionY,
-        width: iconSizeXS,
-        height: iconSizeXS,
       };
     }
 
