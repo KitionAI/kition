@@ -19,6 +19,7 @@ import {
   type DataInlineSortItem,
   type ToolbarPanel,
 } from '@/features/table/lib/tableEditorShared'
+import { resolvePublicFileURL } from '@/services/desktop'
 
 type UseTableColumnHeaderActionsArgs = {
   document: DataDocument | null
@@ -111,7 +112,7 @@ export function useTableColumnHeaderActions({
       for (const attachment of attachments) {
         if (!attachment.url) continue
         const anchor = window.document.createElement('a')
-        anchor.href = attachment.url
+        anchor.href = resolvePublicFileURL(attachment.url)
         anchor.download = attachment.name || ''
         anchor.rel = 'noreferrer'
         window.document.body.appendChild(anchor)

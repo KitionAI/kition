@@ -1046,7 +1046,7 @@ test.describe('app shell navigation', () => {
         updatedAt: '2026-07-22T00:00:00.000Z',
       }))
       localStorage.setItem('kition.workspace.documents.v1', JSON.stringify({
-        'Getting Started/Welcome to Kition.md': {
+        'Welcome to Kition.md': {
           content: '# Welcome to Kition\n\nChoose a template and make it your own.',
           updated_at: '2026-07-22T00:00:00.000Z',
         },

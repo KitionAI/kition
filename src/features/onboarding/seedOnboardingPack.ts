@@ -119,7 +119,12 @@ export async function seedOnboardingPack(deps: SeedDeps = defaultDeps): Promise<
   await deps.createFolder({ parent_folder: '', name: folder })
 
   const welcomeBody = await deps.fetchText(`${ONBOARDING_BASE}/${manifest.welcome.asset}`)
-  const welcomePath = `${folder}/${manifest.welcome.filename}`
+  const welcomeFolder = manifest.welcome.folder === undefined
+    ? folder
+    : manifest.welcome.folder.trim()
+  const welcomePath = welcomeFolder
+    ? `${welcomeFolder}/${manifest.welcome.filename}`
+    : manifest.welcome.filename
   await deps.writeDocument(welcomePath, welcomeBody)
 
   for (const image of manifest.images ?? []) {

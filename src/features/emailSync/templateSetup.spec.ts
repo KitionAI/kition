@@ -5,12 +5,19 @@ import {
   EMAIL_INBOX_SYNC_TEMPLATE_ID,
   isEmailInboxSyncTemplateTable,
 } from './templateSetup'
+import { ONBOARDING_EMAIL_INBOX_SYNC_PATH } from '@/features/onboarding/onboardingManifest'
 
 vi.mock('@/api/dataDocuments', () => ({
   openDataDocumentByPath: vi.fn(),
 }))
 
 describe('email inbox sync template setup', () => {
+  it('recognizes the categorized onboarding inbox even when runtime metadata was not preserved', async () => {
+    await expect(isEmailInboxSyncTemplateTable(ONBOARDING_EMAIL_INBOX_SYNC_PATH, '/workspace'))
+      .resolves.toBe(true)
+    expect(openDataDocumentByPath).not.toHaveBeenCalled()
+  })
+
   it('recognizes a Kitable created from the email inbox template', async () => {
     vi.mocked(openDataDocumentByPath).mockResolvedValue({
       meta: { template_id: EMAIL_INBOX_SYNC_TEMPLATE_ID },

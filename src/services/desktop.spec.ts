@@ -27,6 +27,16 @@ describe('desktop service helpers', () => {
     expect(resolveApiURL('/v1/auth/me')).toBe('/api/v1/auth/me')
   })
 
+  it('resolves bundled template assets against the renderer instead of the runtime API', async () => {
+    ;(window as typeof window & { kitionDesktop?: unknown }).kitionDesktop = { shell: 'electron' }
+    const { resolvePublicFileURL } = await loadDesktopModule()
+
+    expect(resolvePublicFileURL('kition-bundled:/templates/example/image.png'))
+      .toBe('/templates/example/image.png')
+    expect(resolvePublicFileURL('/uploads/example/image.png'))
+      .toBe('http://127.0.0.1:18101/uploads/example/image.png')
+  })
+
   it('switches API base URLs for desktop runtime', async () => {
     const { getApiBaseURL } = await loadDesktopModule()
     expect(getApiBaseURL()).toBe('/api')

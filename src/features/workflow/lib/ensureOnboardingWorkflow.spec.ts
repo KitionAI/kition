@@ -184,7 +184,7 @@ describe('ensureOnboardingWorkflow', () => {
       listDocuments: vi.fn().mockResolvedValue({
         items: [{
           id: 7,
-          path: 'Getting Started/Task Tracker.kitable',
+          path: 'Getting Started/Projects & Planning/Task Tracker.kitable',
           tables: [{ id: 12, title: 'Tasks', name: 'tasks' }],
         }],
       }),
@@ -209,7 +209,7 @@ describe('ensureOnboardingWorkflow', () => {
       })),
     })
     const result = await ensureOnboardingWorkflow({
-      scopedKitablePath: 'Getting Started/Task Tracker.kitable',
+      scopedKitablePath: 'Getting Started/Projects & Planning/Task Tracker.kitable',
       rootPath: '/vault',
       workflows: [],
       translate,
@@ -269,7 +269,7 @@ describe('ensureOnboardingWorkflow', () => {
     },
     {
       label: 'CRM contact deterministic transforms',
-      path: 'Getting Started/Simple Client CRM.kitable',
+      path: 'Getting Started/Sales & Customer/Simple Client CRM.kitable',
       sourceName: 'Contacts',
       tables: [{ id: 12, title: 'Contacts', name: 'contacts' }],
       schemas: {

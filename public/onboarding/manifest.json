@@ -1,26 +1,27 @@
 {
-  "version": 18,
+  "version": 19,
   "folder": "Getting Started",
   "welcome": {
     "filename": "Welcome to Kition.md",
-    "asset": "welcome.md"
+    "asset": "welcome.md",
+    "folder": ""
   },
   "documents": [],
   "images": [
     { "asset": "logo.png", "filename": "logo.png" }
   ],
   "tables": [
-    { "asset": "templates/task-tracker.kitable", "filename": "Task Tracker.kitable" },
-    { "asset": "templates/thumbnail-generator.kitable", "filename": "YouTube & TikTok Thumbnail Generator.kitable" },
-    { "asset": "templates/receipt-ocr-database.kitable", "filename": "Receipt OCR Database.kitable" },
-    { "asset": "templates/email-inbox-sync.kitable", "filename": "Email Inbox Sync.kitable" },
-    { "asset": "templates/leads-landing-page.kitable", "filename": "Leads Landing Page.kitable" },
-    { "asset": "templates/sdr-cold-call-manager.kitable", "filename": "SDR Cold Call Manager.kitable" },
-    { "asset": "templates/product-launch-website.kitable", "filename": "Product Launch Website.kitable" },
-    { "asset": "templates/batch-product-designer.kitable", "filename": "Batch Product Designer.kitable" },
-    { "asset": "templates/simple-client-crm.kitable", "filename": "Simple Client CRM.kitable" },
-    { "asset": "templates/restaurant-operations.kitable", "filename": "Restaurant Operations.kitable" },
-    { "asset": "templates/business-analytics-dashboard.kitable", "filename": "Business Analytics Dashboard.kitable" },
-    { "asset": "templates/project-gantt-planner.kitable", "filename": "Project Gantt Planner.kitable" }
+    { "asset": "templates/task-tracker.kitable", "filename": "Task Tracker.kitable", "folder": "Projects & Planning" },
+    { "asset": "templates/thumbnail-generator.kitable", "filename": "YouTube & TikTok Thumbnail Generator.kitable", "folder": "AI & Creative" },
+    { "asset": "templates/receipt-ocr-database.kitable", "filename": "Receipt OCR Database.kitable", "folder": "AI & Creative" },
+    { "asset": "templates/email-inbox-sync.kitable", "filename": "Email Inbox Sync.kitable", "folder": "Operations & Analytics" },
+    { "asset": "templates/leads-landing-page.kitable", "filename": "Leads Landing Page.kitable", "folder": "Sales & Customer" },
+    { "asset": "templates/sdr-cold-call-manager.kitable", "filename": "SDR Cold Call Manager.kitable", "folder": "Sales & Customer" },
+    { "asset": "templates/product-launch-website.kitable", "filename": "Product Launch Website.kitable", "folder": "Projects & Planning" },
+    { "asset": "templates/batch-product-designer.kitable", "filename": "Batch Product Designer.kitable", "folder": "AI & Creative" },
+    { "asset": "templates/simple-client-crm.kitable", "filename": "Simple Client CRM.kitable", "folder": "Sales & Customer" },
+    { "asset": "templates/restaurant-operations.kitable", "filename": "Restaurant Operations.kitable", "folder": "Operations & Analytics" },
+    { "asset": "templates/business-analytics-dashboard.kitable", "filename": "Business Analytics Dashboard.kitable", "folder": "Operations & Analytics" },
+    { "asset": "templates/project-gantt-planner.kitable", "filename": "Project Gantt Planner.kitable", "folder": "Projects & Planning" }
   ]
 }

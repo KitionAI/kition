@@ -1,8 +1,8 @@
-![Kition](logo.png)
+![Kition](Getting Started/logo.png)
 
 # Welcome to Kition
 
-Kition brings Markdown documents, structured tables, visual workflows, forms, and AI Chat together in one focused workspace. Use this folder as a compact starting point, then organize the rest of the workspace around real projects.
+Kition brings Markdown documents, structured tables, visual workflows, forms, and AI Chat together in one focused workspace. This welcome document stays at the workspace root, while ready-to-open examples are grouped inside **Getting Started**.
 
 > [!tip] Everything here is editable
 > This page is a plain Markdown file. Keep the sections that help, rewrite them for your team, or delete the page after you are comfortable with the workspace.
@@ -52,34 +52,47 @@ The built-in templates cover different kinds of work:
 
 | Template | Best for | Notable structure |
 | --- | --- | --- |
-| [[Task Tracker.kitable]] | Delivery planning and ownership | Status, priority, assignee, and due-date views |
-| [[Simple Client CRM.kitable]] | Prospects, clients, quotes, and follow-up | Relationship and pipeline fields |
-| [[Leads Landing Page.kitable]] | Capturing and qualifying inbound leads | Form, pipeline, source, and estimated-value fields |
-| [[SDR Cold Call Manager.kitable]] | Prioritizing outbound calls and follow-up | Call stages, attempts, calendar, and ownership |
-| [[Product Launch Website.kitable]] | Coordinating a site from concept to publication | Content, assets, owners, and launch stages |
-| [[Project Gantt Planner.kitable]] | Planning project dependencies and delivery dates | Timeline-ready dates, progress, status, and owners |
-| [[Business Analytics Dashboard.kitable]] | Revenue, cost, margin, and collections | Metric-oriented records and summaries |
-| [[Email Inbox Sync.kitable]] | Importing an IMAP mailbox into structured records | Message metadata with Markdown-backed content |
-| [[Receipt OCR Database.kitable]] | Turning receipt images into searchable data | Attachments, OCR text, structured JSON, and review status |
-| [[YouTube & TikTok Thumbnail Generator.kitable]] | Creating distinct social cover concepts | Portrait input, story brief, prompt, and generated image fields |
-| [[Batch Product Designer.kitable]] | Developing product concepts and campaign assets | Creative briefs, image fields, and social copy |
-| [[Restaurant Operations.kitable]] | Reservations, guest preferences, and private events | Calendar, kanban, and publishable form views |
+| [[Getting Started/Projects & Planning/Task Tracker.kitable]] | Delivery planning and ownership | Status, priority, assignee, and due-date views |
+| [[Getting Started/Sales & Customer/Simple Client CRM.kitable]] | Prospects, clients, quotes, and follow-up | Relationship and pipeline fields |
+| [[Getting Started/Sales & Customer/Leads Landing Page.kitable]] | Capturing and qualifying inbound leads | Form, pipeline, source, and estimated-value fields |
+| [[Getting Started/Sales & Customer/SDR Cold Call Manager.kitable]] | Prioritizing outbound calls and follow-up | Call stages, attempts, calendar, and ownership |
+| [[Getting Started/Projects & Planning/Product Launch Website.kitable]] | Coordinating a site from concept to publication | Content, assets, owners, and launch stages |
+| [[Getting Started/Projects & Planning/Project Gantt Planner.kitable]] | Planning project dependencies and delivery dates | Timeline-ready dates, progress, status, and owners |
+| [[Getting Started/Operations & Analytics/Business Analytics Dashboard.kitable]] | Revenue, cost, margin, and collections | Metric-oriented records and summaries |
+| [[Getting Started/Operations & Analytics/Email Inbox Sync.kitable]] | Importing an IMAP mailbox into structured records | Message metadata with Markdown-backed content |
+| [[Getting Started/AI & Creative/Receipt OCR Database.kitable]] | Turning receipt images into searchable data | Attachments, OCR text, structured JSON, and review status |
+| [[Getting Started/AI & Creative/YouTube & TikTok Thumbnail Generator.kitable]] | Creating distinct social cover concepts | Portrait input, story brief, prompt, and generated image fields |
+| [[Getting Started/AI & Creative/Batch Product Designer.kitable]] | Developing product concepts and campaign assets | Creative briefs, image fields, and social copy |
+| [[Getting Started/Operations & Analytics/Restaurant Operations.kitable]] | Reservations, guest preferences, and private events | Calendar, kanban, and publishable form views |
 
 > [!note] Template copies are independent
 > If a filename ends in `2`, `3`, or another number, it is a separate copy. Keep the version you are using and remove extra experiments when you no longer need them.
 
 ## Keep starter templates together
 
-For an evaluation workspace, placing template-created `.kitable` files in **Getting Started** keeps the root clean and makes the examples easy to find. For ongoing work, create project folders and move active tables closer to their related documents.
+The **Getting Started** folder is divided by purpose so the workspace root stays calm and each example is easy to find. For ongoing work, create project folders and move active tables closer to their related documents.
 
 A simple organization can look like this:
 
 ```text
+Welcome to Kition.md
 Getting Started/
-  Welcome to Kition.md
-  Task Tracker.kitable
-  Receipt OCR Database.kitable
-  Restaurant Operations.kitable
+  AI & Creative/
+    Batch Product Designer.kitable
+    Receipt OCR Database.kitable
+    YouTube & TikTok Thumbnail Generator.kitable
+  Sales & Customer/
+    Leads Landing Page.kitable
+    SDR Cold Call Manager.kitable
+    Simple Client CRM.kitable
+  Projects & Planning/
+    Product Launch Website.kitable
+    Project Gantt Planner.kitable
+    Task Tracker.kitable
+  Operations & Analytics/
+    Business Analytics Dashboard.kitable
+    Email Inbox Sync.kitable
+    Restaurant Operations.kitable
 Projects/
   Product launch/
   Customer research/
@@ -173,7 +186,7 @@ Open **Settings > Onboarding Guides** when you want a larger, guided example. Im
 | Web Research | A reusable browser task handoff | Desktop browser and AI provider |
 
 > [!note] Optional guides stay optional
-> The first-run workspace contains this welcome page, its logo, and one ready-to-open copy of each featured template. Optional guides appear only when you import them.
+> The first-run workspace contains this root-level welcome page plus categorized, ready-to-open templates inside Getting Started. Optional guides appear only when you import them.
 
 ## Recommended first session
 

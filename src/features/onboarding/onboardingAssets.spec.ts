@@ -7,10 +7,11 @@ const dir = resolve(__dirname, '../../../public/onboarding')
 describe('onboarding static assets', () => {
   it('manifest references files that all exist on disk', () => {
     const manifest = JSON.parse(readFileSync(resolve(dir, 'manifest.json'), 'utf8'))
-    expect(manifest.version).toBe(18)
+    expect(manifest.version).toBe(19)
     expect(manifest.folder).toBe('Getting Started')
     expect(typeof manifest.welcome.filename).toBe('string')
     expect(manifest.welcome.asset).toBe('welcome.md')
+    expect(manifest.welcome.folder).toBe('')
     expect(existsSync(resolve(dir, manifest.welcome.asset))).toBe(true)
     expect(manifest.documents).toEqual([])
     expect(manifest.tables.map((table: { filename: string }) => table.filename)).toEqual([
@@ -27,11 +28,32 @@ describe('onboarding static assets', () => {
       'Business Analytics Dashboard.kitable',
       'Project Gantt Planner.kitable',
     ])
+    expect(manifest.tables.map((table: { folder?: string }) => table.folder)).toEqual([
+      'Projects & Planning',
+      'AI & Creative',
+      'AI & Creative',
+      'Operations & Analytics',
+      'Sales & Customer',
+      'Sales & Customer',
+      'Projects & Planning',
+      'AI & Creative',
+      'Sales & Customer',
+      'Operations & Analytics',
+      'Operations & Analytics',
+      'Projects & Planning',
+    ])
     for (const table of manifest.tables) {
       const bytes = readFileSync(resolve(dir, table.asset))
       expect(bytes.subarray(0, 16).toString('utf8')).toBe('SQLite format 3\u0000')
       expect(bytes.byteLength).toBeGreaterThan(100_000)
       expect(typeof table.filename).toBe('string')
+      if ([
+        'Batch Product Designer.kitable',
+        'Receipt OCR Database.kitable',
+        'YouTube & TikTok Thumbnail Generator.kitable',
+      ].includes(table.filename)) {
+        expect(bytes.includes(Buffer.from('kition-bundled:/templates/'))).toBe(true)
+      }
     }
     expect(manifest.images).toEqual([
       { asset: 'logo.png', filename: 'logo.png' },
@@ -43,31 +65,15 @@ describe('onboarding static assets', () => {
 
   it('keeps the first-run root limited to product-facing entries', () => {
     const manifest = JSON.parse(readFileSync(resolve(dir, 'manifest.json'), 'utf8'))
-    const rootEntries = new Set<string>([manifest.welcome.filename])
-    for (const table of manifest.tables) {
-      rootEntries.add(table.folder || table.filename)
-    }
-    for (const document of manifest.documents) {
-      rootEntries.add(document.folder || document.filename)
-    }
-    if (manifest.guides?.folder) rootEntries.add(manifest.guides.folder)
-    for (const image of manifest.images ?? []) rootEntries.add(image.filename)
-
-    expect([...rootEntries].sort()).toEqual([
-      'Batch Product Designer.kitable',
-      'Business Analytics Dashboard.kitable',
-      'Email Inbox Sync.kitable',
-      'Leads Landing Page.kitable',
-      'Product Launch Website.kitable',
-      'Project Gantt Planner.kitable',
-      'Receipt OCR Database.kitable',
-      'Restaurant Operations.kitable',
-      'SDR Cold Call Manager.kitable',
-      'Simple Client CRM.kitable',
-      'Task Tracker.kitable',
+    expect([manifest.folder, manifest.welcome.filename].sort()).toEqual([
+      'Getting Started',
       'Welcome to Kition.md',
-      'YouTube & TikTok Thumbnail Generator.kitable',
-      'logo.png',
+    ])
+    expect([...new Set(manifest.tables.map((table: { folder: string }) => table.folder))].sort()).toEqual([
+      'AI & Creative',
+      'Operations & Analytics',
+      'Projects & Planning',
+      'Sales & Customer',
     ])
   })
 
@@ -125,12 +131,12 @@ describe('onboarding static assets', () => {
   it('ships a rich English welcome guide focused on the starter files', () => {
     const english = readFileSync(resolve(dir, 'welcome.md'), 'utf8')
     expect(english).toContain('# Welcome to Kition')
-    expect(english).toContain('![Kition](logo.png)')
+    expect(english).toContain('![Kition](Getting Started/logo.png)')
     expect(english).toContain('```mermaid')
     expect(english).toContain('V_n = V_0(1 + r)^n')
     expect(english).toContain('Template Center')
     expect(english).toContain('Receipt OCR Database')
-    expect(english).toContain('[[Restaurant Operations.kitable]]')
+    expect(english).toContain('[[Getting Started/Operations & Analytics/Restaurant Operations.kitable]]')
     expect(english).toContain('Settings > Onboarding Guides')
     expect(english).toContain('```text')
     expect(english).toContain('| Capability | What it means | What to try |')
@@ -139,7 +145,7 @@ describe('onboarding static assets', () => {
     expect(english).toContain('- [ ] Edit this page and save it.')
     expect(english.split('\n').length).toBeGreaterThan(100)
     expect(english).not.toContain('Contact Directory')
-    expect(english).toContain('[[Task Tracker.kitable]]')
+    expect(english).toContain('[[Getting Started/Projects & Planning/Task Tracker.kitable]]')
     expect(english).not.toContain('Workflow Examples/')
     expect(english).not.toContain('Guides/Email Automation/')
 
