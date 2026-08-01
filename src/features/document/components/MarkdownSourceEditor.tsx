@@ -2,6 +2,7 @@ import { markdown as markdownLanguage } from '@codemirror/lang-markdown'
 import { EditorView } from '@codemirror/view'
 import CodeMirror, { type ReactCodeMirrorRef } from '@uiw/react-codemirror'
 import { forwardRef, useMemo } from 'react'
+import { useBufferedCodeMirrorValue } from '@/features/document/editor/hooks/useBufferedCodeMirrorValue'
 import { cn } from '@/lib/utils'
 
 const basicSetup = {
@@ -87,9 +88,16 @@ export const MarkdownSourceEditor = forwardRef<ReactCodeMirrorRef, MarkdownSourc
     { value, readOnly, onChange, placeholder, className, onCreateEditor },
     ref,
   ) {
+    const {
+      compositionExtension,
+      editorValue,
+      handleEditorChange,
+    } = useBufferedCodeMirrorValue({ value, onChange })
+
     const extensions = useMemo(
       () => [
         markdownLanguage(),
+        compositionExtension,
         EditorView.lineWrapping,
         imagePasteExtension,
         EditorView.theme({
@@ -118,14 +126,14 @@ export const MarkdownSourceEditor = forwardRef<ReactCodeMirrorRef, MarkdownSourc
           },
         }),
       ],
-      [],
+      [compositionExtension],
     )
 
     return (
       <CodeMirror
         ref={ref}
-        value={value}
-        onChange={onChange}
+        value={editorValue}
+        onChange={handleEditorChange}
         readOnly={readOnly}
         extensions={extensions}
         basicSetup={basicSetup}

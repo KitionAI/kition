@@ -17,6 +17,7 @@ import { forwardRef, useMemo } from 'react'
 
 import { cn } from '@/lib/utils'
 
+import { useBufferedCodeMirrorValue } from '../hooks/useBufferedCodeMirrorValue'
 import type { WikilinkParsed } from '../lib/wikilink-parser'
 import type { TagParsed } from '../lib/tag-parser'
 import {
@@ -205,9 +206,16 @@ export const DocumentEditor = forwardRef<ReactCodeMirrorRef, DocumentEditorProps
     },
     ref,
   ) {
+    const {
+      compositionExtension,
+      editorValue,
+      handleEditorChange,
+    } = useBufferedCodeMirrorValue({ value, onChange })
+
     const extensions = useMemo(
       () => [
         markdownExtension,
+        compositionExtension,
         preserveHighlightExtension(),
         clickPositionFixExtension(),
         documentSearchExtension(),
@@ -267,14 +275,14 @@ export const DocumentEditor = forwardRef<ReactCodeMirrorRef, DocumentEditorProps
         ...(extraExtensions ?? []),
         editorTheme,
       ],
-      [sourcePath, resolveWikilink, onWikilinkNavigate, onCreateMissingNote, onTagNavigate, onCursorLineChange, onCursorChange, suggestProviders, loadEmbed, onEmbedNavigate, extraExtensions],
+      [compositionExtension, sourcePath, resolveWikilink, onWikilinkNavigate, onCreateMissingNote, onTagNavigate, onCursorLineChange, onCursorChange, suggestProviders, loadEmbed, onEmbedNavigate, extraExtensions],
     )
 
     return (
       <CodeMirror
         ref={ref}
-        value={value}
-        onChange={onChange}
+        value={editorValue}
+        onChange={handleEditorChange}
         readOnly={readOnly}
         editable={editable}
         extensions={extensions}
