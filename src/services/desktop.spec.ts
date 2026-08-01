@@ -28,7 +28,8 @@ describe('desktop service helpers', () => {
   })
 
   it('resolves bundled template assets against the renderer instead of the runtime API', async () => {
-    ;(window as typeof window & { kitionDesktop?: unknown }).kitionDesktop = { shell: 'electron' }
+    const desktopWindow = window as typeof window & { kitionDesktop?: unknown }
+    desktopWindow.kitionDesktop = { shell: 'electron' }
     const { resolvePublicFileURL } = await loadDesktopModule()
 
     expect(resolvePublicFileURL('kition-bundled:/templates/example/image.png'))
