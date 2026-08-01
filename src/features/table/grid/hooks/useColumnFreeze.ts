@@ -1,9 +1,30 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { DEFAULT_FREEZE_COLUMN_STATE } from '../configs';
 import { RegionType } from '../interface';
 import type { IScrollState, IColumnFreezeState, IMouseState } from '../interface';
 import type { CoordinateManager } from '../managers';
 import { inRange } from '../utils';
+
+export const COLUMN_FREEZE_HOVER_DELAY_MS = 200;
+
+export const useDelayedColumnFreezeHover = (isHovered: boolean, isFreezing: boolean) => {
+  const [isVisibleAfterDelay, setIsVisibleAfterDelay] = useState(false);
+
+  useEffect(() => {
+    if (isFreezing) return;
+    if (!isHovered) {
+      setIsVisibleAfterDelay(false);
+      return;
+    }
+    setIsVisibleAfterDelay(false);
+    const timeout = window.setTimeout(() => {
+      setIsVisibleAfterDelay(true);
+    }, COLUMN_FREEZE_HOVER_DELAY_MS);
+    return () => window.clearTimeout(timeout);
+  }, [isFreezing, isHovered]);
+
+  return isFreezing || (isHovered && isVisibleAfterDelay);
+};
 
 export const useColumnFreeze = (coordInstance: CoordinateManager, scrollState: IScrollState) => {
   const [columnFreezeState, setColumnFreezeState] = useState<IColumnFreezeState>(

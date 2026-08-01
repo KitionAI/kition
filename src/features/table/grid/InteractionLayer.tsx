@@ -29,6 +29,7 @@ import {
   useAutoScroll,
   useColumnResize,
   useColumnFreeze,
+  useDelayedColumnFreezeHover,
   useEventListener,
 } from './hooks';
 import { useDrag } from './hooks/useDrag';
@@ -266,6 +267,20 @@ export const InteractionLayerBase: ForwardRefRenderFunction<
 
   const { isDragging, type: dragType } = dragState;
   const { isFreezing } = columnFreezeState;
+  const isColumnFreezeHandlerVisible = useDelayedColumnFreezeHover(
+    regionType === RegionType.ColumnFreezeHandler,
+    isFreezing
+  );
+  const renderMouseState = useMemo(() => {
+    if (
+      regionType === RegionType.ColumnFreezeHandler &&
+      !isFreezing &&
+      !isColumnFreezeHandlerVisible
+    ) {
+      return { ...mouseState, type: RegionType.None };
+    }
+    return mouseState;
+  }, [isColumnFreezeHandlerVisible, isFreezing, mouseState, regionType]);
   const isResizing = columnResizeState.columnIndex > -1;
   const { isCellSelection, ranges: selectionRanges } = selection;
   const isInteracting = isSelecting || isDragging || isResizing || isFreezing;
@@ -864,7 +879,7 @@ export const InteractionLayerBase: ForwardRefRenderFunction<
           searchHitIndex={searchHitIndex}
           activeCellBound={activeCellBound}
           activeCell={activeCell}
-          mouseState={mouseState}
+          mouseState={renderMouseState}
           scrollState={scrollState}
           dragState={dragState}
           selection={selection}

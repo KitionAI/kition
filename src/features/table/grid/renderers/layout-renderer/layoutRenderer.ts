@@ -1786,38 +1786,56 @@ export const drawColumnFreezeHandler = (
 
   if (type !== RegionType.ColumnFreezeHandler && !isFreezing) return;
 
-  const { scrollLeft } = scrollState;
-  const { interactionLineColorHighlight } = theme;
-  const { containerHeight, freezeRegionWidth } = coordInstance;
+  const { scrollLeft, scrollTop } = scrollState;
+  const { columnFreezeHandlerBg } = theme;
+  const { containerHeight, freezeRegionWidth, rowInitSize, totalHeight } = coordInstance;
+  const visibleGridHeight = getColumnFreezeVisibleHeight(
+    containerHeight,
+    rowInitSize,
+    totalHeight,
+    scrollTop
+  );
   const hoverX = isFreezing ? x : freezeRegionWidth;
+  const halfHandlerHeight = columnFreezeHandlerHeight / 2;
+  const handlerY = Math.min(
+    Math.max(y, rowInitSize + halfHandlerHeight),
+    Math.max(rowInitSize + halfHandlerHeight, visibleGridHeight - halfHandlerHeight)
+  );
 
   if (isFreezing) {
     const targetX = coordInstance.getColumnRelativeOffset(targetIndex + 1, scrollLeft);
     drawRect(ctx, {
-      x: targetX - 1,
+      x: targetX - 0.5,
       y: 0,
-      width: 2,
-      height: containerHeight,
-      fill: interactionLineColorHighlight,
+      width: 1,
+      height: visibleGridHeight,
+      fill: columnFreezeHandlerBg,
     });
   }
 
   drawRect(ctx, {
     x: hoverX - columnFreezeHandlerWidth / 2,
-    y: y - columnFreezeHandlerHeight / 2,
+    y: handlerY - halfHandlerHeight,
     width: columnFreezeHandlerWidth,
     height: columnFreezeHandlerHeight,
-    fill: interactionLineColorHighlight,
+    fill: columnFreezeHandlerBg,
     radius: 4,
   });
   drawRect(ctx, {
-    x: hoverX - 1,
+    x: hoverX - 0.5,
     y: 0,
-    width: 2,
-    height: containerHeight,
-    fill: interactionLineColorHighlight,
+    width: 1,
+    height: visibleGridHeight,
+    fill: columnFreezeHandlerBg,
   });
 };
+
+export const getColumnFreezeVisibleHeight = (
+  containerHeight: number,
+  rowInitSize: number,
+  totalHeight: number,
+  scrollTop: number
+) => Math.min(containerHeight, Math.max(rowInitSize, totalHeight - scrollTop));
 
 const setVisibleImageRegion = (props: ILayoutDrawerProps) => {
   const { imageManager, coordInstance, visibleRegion, getLinearRow } = props;
