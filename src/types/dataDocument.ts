@@ -241,6 +241,9 @@ export type DataAttachment = {
   url: string
   mimeType?: string
   sizeBytes?: number
+  assetId?: string
+  sha256?: string
+  workspacePath?: string
 }
 
 export type DataRecordValue =

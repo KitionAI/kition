@@ -1,6 +1,9 @@
 import { EventEmitter } from 'node:events'
+import fs from 'node:fs/promises'
+import os from 'node:os'
+import path from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { BackendSupervisor, validateRuntimeInfo, workspaceIDFromPath } from './backend-supervisor.mjs'
+import { BackendSupervisor, validateRuntimeInfo, workspaceIDFromDirectory, workspaceIDFromPath } from './backend-supervisor.mjs'
 
 afterEach(() => {
   vi.useRealTimers()
@@ -10,6 +13,18 @@ describe('backend runtime compatibility', () => {
   it('derives the same stable short workspace hash contract as the Go runtime', () => {
     expect(workspaceIDFromPath('/Users/alice/Documents/kition-workspace')).toBe('e3b07878c7578421')
     expect(workspaceIDFromPath('/Users/alice/Documents/kition-workspace')).toHaveLength(16)
+  })
+
+  it('prefers the portable workspace manifest identity', async () => {
+    const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'kition-workspace-'))
+    await fs.mkdir(path.join(workspace, '.kition'), { recursive: true })
+    await fs.writeFile(path.join(workspace, '.kition', 'workspace.json'), JSON.stringify({
+      schema_version: 1,
+      storage_version: 1,
+      workspace_id: '0123456789abcdef',
+    }))
+    await expect(workspaceIDFromDirectory(workspace)).resolves.toBe('0123456789abcdef')
+    await fs.rm(workspace, { recursive: true, force: true })
   })
 
   it('accepts a compatible runtime info payload', () => {

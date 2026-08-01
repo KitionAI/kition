@@ -1,0 +1,244 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kition.ai/contracts/runtime/workspace-storage.schema.json",
+  "title": "Kition Portable Workspace Storage",
+  "$ref": "#/$defs/status",
+  "$defs": {
+    "portablePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+    },
+    "assetReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "asset_id",
+        "name",
+        "mime_type",
+        "size_bytes",
+        "sha256",
+        "workspace_path"
+      ],
+      "properties": {
+        "asset_id": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mime_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "workspace_path": {
+          "$ref": "#/$defs/portablePath"
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "documents",
+        "kitables",
+        "assets",
+        "workflows",
+        "agent_sessions",
+        "sync_states",
+        "total_bytes"
+      ],
+      "properties": {
+        "documents": { "type": "integer", "minimum": 0 },
+        "kitables": { "type": "integer", "minimum": 0 },
+        "assets": { "type": "integer", "minimum": 0 },
+        "workflows": { "type": "integer", "minimum": 0 },
+        "agent_sessions": { "type": "integer", "minimum": 0 },
+        "sync_states": { "type": "integer", "minimum": 0 },
+        "total_bytes": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "issue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "severity", "message"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "legacy_upload_url",
+            "absolute_path",
+            "missing_asset",
+            "hash_mismatch",
+            "external_workspace_state",
+            "migration_incomplete",
+            "orphan_asset",
+            "invalid_manifest",
+            "secret_material_present"
+          ]
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["info", "warning", "error"]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "workspace_path": {
+          "$ref": "#/$defs/portablePath"
+        },
+        "reference": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "storage_version",
+        "workspace_id",
+        "capability",
+        "migration_state",
+        "portable",
+        "summary",
+        "issues"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "storage_version": { "type": "integer", "minimum": 1 },
+        "workspace_id": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{16}$"
+        },
+        "capability": {
+          "const": "workspace_portable_storage_v1"
+        },
+        "migration_state": {
+          "type": "string",
+          "enum": ["ready", "required", "running", "failed"]
+        },
+        "portable": { "type": "boolean" },
+        "summary": { "$ref": "#/$defs/summary" },
+        "issues": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/issue" }
+        }
+      }
+    },
+    "inventoryItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "workspace_path", "size_bytes"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "document",
+            "kitable",
+            "asset",
+            "workflow",
+            "workflow_run",
+            "agent_session",
+            "agent_message",
+            "agent_event",
+            "sync_state",
+            "workspace_metadata"
+          ]
+        },
+        "workspace_path": { "$ref": "#/$defs/portablePath" },
+        "size_bytes": { "type": "integer", "minimum": 0 },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "items"],
+      "properties": {
+        "status": { "$ref": "#/$defs/status" },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/inventoryItem" }
+        }
+      }
+    },
+    "verifyResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verified_at", "valid", "status"],
+      "properties": {
+        "verified_at": { "type": "string", "format": "date-time" },
+        "valid": { "type": "boolean" },
+        "status": { "$ref": "#/$defs/status" }
+      }
+    },
+    "migrationInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dry_run": { "type": "boolean", "default": false },
+        "include_workspace_state": { "type": "boolean", "default": true }
+      }
+    },
+    "migrationResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dry_run",
+        "migrated_assets",
+        "updated_references",
+        "migrated_state_records",
+        "status"
+      ],
+      "properties": {
+        "dry_run": { "type": "boolean" },
+        "migrated_assets": { "type": "integer", "minimum": 0 },
+        "updated_references": { "type": "integer", "minimum": 0 },
+        "migrated_state_records": { "type": "integer", "minimum": 0 },
+        "status": { "$ref": "#/$defs/status" }
+      }
+    }
+  },
+  "x-endpoints": {
+    "status": "GET /api/v1/workspace/storage",
+    "inventory": "GET /api/v1/workspace/storage/inventory",
+    "verify": "POST /api/v1/workspace/storage/verify",
+    "migrate": "POST /api/v1/workspace/storage/migrate"
+  },
+  "x-storage-boundary": {
+    "portable": [
+      "documents",
+      "kitables",
+      "assets",
+      "workflow definitions and runs",
+      "agent sessions and events",
+      "sync state",
+      "workspace metadata"
+    ],
+    "device_local": [
+      "credentials",
+      "OAuth tokens",
+      "account sessions",
+      "logs",
+      "caches",
+      "window and device preferences"
+    ]
+  }
+}

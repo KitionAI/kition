@@ -165,6 +165,23 @@ export function workspaceIDFromPath(value) {
   return createHash('sha256').update(normalized).digest('hex').slice(0, 16)
 }
 
+export async function workspaceIDFromDirectory(value) {
+  const normalized = normalizeWorkspacePath(value)
+  if (!normalized) {
+    return ''
+  }
+  try {
+    const manifestPath = path.join(normalized, '.kition', 'workspace.json')
+    const manifest = JSON.parse(await fsp.readFile(manifestPath, 'utf8'))
+    if (manifest?.schema_version === 1 && /^[a-f0-9]{16}$/.test(String(manifest.workspace_id || ''))) {
+      return manifest.workspace_id
+    }
+  } catch {
+    // Older workspaces receive a manifest when the runtime starts.
+  }
+  return workspaceIDFromPath(normalized)
+}
+
 export function validateRuntimeInfo(info, expectedProtocol = expectedProtocolVersion) {
   if (!info || typeof info !== 'object') {
     throw new Error('runtime info endpoint returned no data')
@@ -351,7 +368,7 @@ export class BackendSupervisor {
 
   async adoptOrReplaceExistingRuntime() {
     const forceRestart = String(process.env.KITION_DESKTOP_FORCE_RESTART || '').toLowerCase() === 'true'
-    const expectedWorkspaceID = workspaceIDFromPath(this.env.workspace_dir)
+    const expectedWorkspaceID = await workspaceIDFromDirectory(this.env.workspace_dir)
     const info = await fetchRuntimeInfo(this.runtimeURL, 1500)
     if (!info) {
       this.appendLog(`Detected existing API on ${this.baseURL} without /desktop/runtime support; cannot verify workspace, replacing.\n`)
