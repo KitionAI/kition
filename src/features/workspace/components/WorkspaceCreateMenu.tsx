@@ -1,4 +1,4 @@
-import { FileSpreadsheet, FileText, FolderPlus, LayoutDashboard, Upload, Zap } from 'lucide-react'
+import { FileInput, FileSpreadsheet, FileText, FolderPlus, LayoutDashboard, Upload, Zap } from 'lucide-react'
 import { type CSSProperties, type ReactNode, useLayoutEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
@@ -21,6 +21,7 @@ export function WorkspaceCreateMenu({
   onCreateDocument,
   onCreateDashboard,
   onCreateTable,
+  onCreateForm,
   onCreateWorkflow,
   onImportFromDialog,
 }: {
@@ -36,6 +37,7 @@ export function WorkspaceCreateMenu({
   onCreateDocument: (format: DocumentCreateFormat) => void
   onCreateDashboard?: () => void
   onCreateTable: () => void
+  onCreateForm?: () => void
   /** Kitable variant only — adds a "Create Workflow" entry that defers to
    *  the table picker / mode dialog the same way the legacy "..." menu
    *  entry did. Undefined hides the option so non-kitable callers stay
@@ -73,6 +75,17 @@ export function WorkspaceCreateMenu({
         >
           <LayoutDashboard className="size-4" />
           <span>{t('createMenu.newDashboard')}</span>
+        </button>
+      ) : null}
+      {onCreateForm ? (
+        <button
+          type="button"
+          className="document-create-option"
+          data-testid="kitable-action-create-form"
+          onClick={onCreateForm}
+        >
+          <FileInput className="size-4" />
+          <span>{t('createMenu.newForm')}</span>
         </button>
       ) : null}
       {onCreateWorkflow ? (

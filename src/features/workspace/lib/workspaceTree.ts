@@ -21,6 +21,7 @@ export type KitableWorkflowSummary = {
   id: string
   name: string
   enabled: boolean
+  kind?: 'workflow' | 'form_sync'
 }
 
 export type KitableDashboardSummary = {

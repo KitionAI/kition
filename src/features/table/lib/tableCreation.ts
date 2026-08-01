@@ -65,8 +65,10 @@ export async function createTableWorkspaceEntry({
   template?: KitableTemplateDefinition
 }): Promise<{
   document: WorkspaceDocument
+  documentId: number
   successMessage: string
   tableId: number | null
+  tableIdsByTitle: Record<string, number>
   tableTitle: string
 }> {
   const folder = folderOverride ?? (getDocumentParentPath(activeDocumentPath) || '')
@@ -163,8 +165,14 @@ export async function createTableWorkspaceEntry({
       format: 'data',
       updated_at: new Date().toISOString(),
     },
+    documentId: dataDocument.id,
     successMessage: 'Table created',
     tableId: seededTable?.id != null ? Number(seededTable.id) : null,
+    tableIdsByTitle: Object.fromEntries(
+      (dataDocument.tables || []).flatMap((table) => (
+        table.id != null ? [[String(table.title || table.name || ''), Number(table.id)]] : []
+      )),
+    ),
     tableTitle: String(seededTable?.title || 'Table'),
   }
 }

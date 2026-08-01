@@ -9,10 +9,11 @@ describe('getBuiltinKitableTemplates', () => {
   it('provides a categorized template catalog with seeded records', () => {
     const templates = getBuiltinKitableTemplates(t)
 
-    expect(templates).toHaveLength(13)
+    expect(templates).toHaveLength(12)
     expect(templates.map((template) => template.id)).toEqual([
       'task-tracker',
       'thumbnail-generator',
+      'receipt-ocr-database',
       'email-inbox-sync',
       'leads-landing-page',
       'sdr-cold-call-manager',
@@ -21,15 +22,69 @@ describe('getBuiltinKitableTemplates', () => {
       'simple-client-crm',
       'lumiere-restaurant',
       'business-analytics-dashboard',
-      'ecommerce-orders-returns',
-      'recruitment-pipeline',
       'project-gantt',
     ])
     expect(templates
       .filter((template) => template.id !== 'email-inbox-sync')
       .every((template) => template.tables.every((table) => table.records.length > 0))).toBe(true)
     expect(templates.every((template) => template.categories?.length)).toBe(true)
+    expect(templates.every((template) => template.coverImage === `/templates/table-covers/${template.id}.webp`)).toBe(true)
     expect(templates.every((template) => template.snapshot.resources.some((resource) => resource.id === template.snapshot.defaultResourceId))).toBe(true)
+  })
+
+  it('ships a receipt OCR template with image-driven structured and plain-text extraction', () => {
+    const template = getBuiltinKitableTemplates(t).find((item) => item.id === 'receipt-ocr-database')
+    const table = template?.tables[0]
+    const aiFields = table?.fields.filter((field) => field.aiConfig) || []
+
+    expect(template).toMatchObject({
+      localOnly: true,
+      coverImage: '/templates/table-covers/receipt-ocr-database.webp',
+      assetManifestPath: '/templates/receipt-ocr-database/manifest.json',
+      snapshot: {
+        includeData: true,
+        defaultResourceId: 'receipt-database',
+      },
+    })
+    expect(table?.title).toBe('Receipts')
+    expect(table?.fields.map((field) => field.title)).toEqual([
+      'File Name',
+      'Receipt Image',
+      'Vendor Name',
+      'Address',
+      'Category',
+      'Structured Data',
+      'Plain Text',
+    ])
+    expect(aiFields).toHaveLength(5)
+    expect(aiFields.every((field) => field.aiConfig?.sourceFieldTitle === 'Receipt Image')).toBe(true)
+    expect(table?.fields.find((field) => field.title === 'Category')?.aiConfig).toMatchObject({
+      type: 'classify',
+      categories: ['Food', 'Fuel', 'Software', 'Travel', 'Office supplies', 'Healthcare', 'Others'],
+      auto_update: true,
+    })
+    expect(table?.fields.find((field) => field.title === 'Structured Data')?.aiConfig).toMatchObject({
+      type: 'extract',
+      auto_update: true,
+    })
+    expect(table?.fields.find((field) => field.title === 'Plain Text')?.aiConfig).toMatchObject({
+      type: 'extract',
+      auto_update: true,
+    })
+    expect(table?.views[0]).toMatchObject({
+      title: 'Overall',
+      config: { row_height: 'tall', frozen_column_count: 1 },
+    })
+    expect(table?.records).toHaveLength(10)
+    expect(table?.records.every((record) => {
+      const value = record['Receipt Image']
+      return Boolean(value && typeof value === 'object' && 'assetIds' in value)
+    })).toBe(true)
+    expect(table?.records[2]).toMatchObject({
+      'File Name': 'openai.png',
+      'Vendor Name': 'OpenAI, LLC',
+      Category: 'Software',
+    })
   })
 
   it('ships a visible structure-only inbox template that starts with a full sync', () => {
@@ -58,6 +113,34 @@ describe('getBuiltinKitableTemplates', () => {
       'Message ID',
       'Document',
     ])
+  })
+
+  it('connects the restaurant private-event table to a Kition Cloud form inbox', () => {
+    const template = getBuiltinKitableTemplates(t).find((item) => item.id === 'lumiere-restaurant')
+    const table = template?.tables.find((item) => item.title === 'Private Events')
+
+    expect(template?.snapshot.version).toBe(2)
+    expect(template?.afterCreate).toMatchObject({
+      type: 'form-sync',
+      name: 'Private Event Inquiry',
+      templateId: 'lumiere-restaurant',
+      tableTitle: 'Private Events',
+      submissionIdFieldTitle: 'Submission ID',
+      submittedAtFieldTitle: 'Submitted At',
+      intervalMinutes: 5,
+    })
+    expect(template?.snapshot.resources).toContainEqual(expect.objectContaining({
+      id: 'private-event-intake',
+      kind: 'automation',
+    }))
+    expect(table?.views.map((view) => view.title)).toContain('Event inquiry form')
+    expect(table?.fields.map((field) => field.title)).toEqual(expect.arrayContaining([
+      'Email',
+      'Phone',
+      'Submitted At',
+      'Source',
+      'Submission ID',
+    ]))
   })
 
   it('keeps every sample value aligned with a declared field title', () => {

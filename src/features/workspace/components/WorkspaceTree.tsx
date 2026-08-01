@@ -244,7 +244,9 @@ export function WorkspaceTree({
         // Virtual leaf representing an individual workflow under a .kitable.
         // Not a real file either — delete is routed through the workflow
         // API by useKitableWorkflowLeafActions.
-        const isKitableWorkflowLeaf = node.virtual && parseKitableWorkflowVirtualPath(node.path) != null
+        const parsedKitableWorkflow = node.virtual ? parseKitableWorkflowVirtualPath(node.path) : null
+        const isKitableWorkflowLeaf = parsedKitableWorkflow != null
+        const isFormSyncWorkflowLeaf = parsedKitableWorkflow?.workflowId.startsWith('formsync_') || false
         const visibleChildren = isKitableContainer
           ? node.children.filter((child) => !child.virtual)
           : node.children
@@ -252,7 +254,7 @@ export function WorkspaceTree({
         const canCreateInside = !node.virtual && (node.type === 'folder' || isEditable || isKitableContainer)
         const canDelete = isKitableTableLeaf
           || isKitableDashboardLeaf
-          || isKitableWorkflowLeaf
+          || (isKitableWorkflowLeaf && !isFormSyncWorkflowLeaf)
           || (!node.virtual && (node.type === 'folder' || isSupportedWorkspaceFormat(node.format || inferWorkspaceItemFormat(node.path))))
         const canSetIcon = !node.virtual
         const canRename = isKitableTableLeaf

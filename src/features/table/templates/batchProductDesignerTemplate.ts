@@ -65,7 +65,6 @@ export function createBatchProductDesignerTemplate(
     description: t('templateLibrary.templates.batchProductDesigner.description'),
     documentDescription: 'Turn original product concepts into consistent design studies, campaign imagery, and launch copy.',
     usageCount: 0,
-    preview: 'designer',
     icon: 'palette',
     color: 'amber',
     assetManifestPath: '/templates/batch-product-designer/manifest.json',

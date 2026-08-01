@@ -53,6 +53,7 @@ describe('WorkspaceKitableSidebar', () => {
     const onOpenDashboard = vi.fn()
     const onCreateDashboard = vi.fn()
     const onCreateTable = vi.fn()
+    const onCreateForm = vi.fn()
     const onCreateWorkflow = vi.fn()
     const onRenameTable = vi.fn()
 
@@ -73,6 +74,7 @@ describe('WorkspaceKitableSidebar', () => {
         ],
         onCreateDashboard,
         onCreateTable,
+        onCreateForm,
         onCreateWorkflow,
         onOpenDashboard,
         onOpenTable,
@@ -149,6 +151,14 @@ describe('WorkspaceKitableSidebar', () => {
     expect(createDashboard.textContent).toContain('New dashboard')
     act(() => { createDashboard.click() })
     expect(onCreateDashboard).toHaveBeenCalledTimes(1)
+
+    act(() => { create.click() })
+    const createForm = container.querySelector(
+      '[data-testid="kitable-action-create-form"]',
+    ) as HTMLButtonElement
+    expect(createForm.textContent).toContain('New form')
+    act(() => { createForm.click() })
+    expect(onCreateForm).toHaveBeenCalledTimes(1)
 
     act(() => { create.click() })
     const createTable = container.querySelector('.document-create-option') as HTMLButtonElement

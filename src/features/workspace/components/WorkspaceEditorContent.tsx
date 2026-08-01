@@ -49,6 +49,9 @@ const WorkflowIndexPage = lazy(() =>
 const EmailSyncWorkflowPage = lazy(() =>
   import('@/features/emailSync/EmailSyncWorkflowPage').then((module) => ({ default: module.EmailSyncWorkflowPage })),
 )
+const FormSyncWorkflowPage = lazy(() =>
+  import('@/features/formSync/FormSyncWorkflowPage').then((module) => ({ default: module.FormSyncWorkflowPage })),
+)
 
 function EditorPaneFallback() {
   const { t } = useTranslation('common')
@@ -224,7 +227,9 @@ export function WorkspaceEditorContent({
             {tab.workflowId ? (
               // Detail mode: show single workflow editor
               <Suspense fallback={null}>
-                {tab.workflowId.startsWith('mail_') ? (
+                {tab.workflowId.startsWith('formsync_') ? (
+                  <FormSyncWorkflowPage workflowId={tab.workflowId} />
+                ) : tab.workflowId.startsWith('mail_') ? (
                   <EmailSyncWorkflowPage workflowId={tab.workflowId} />
                 ) : (
                   <WorkflowHomePage

@@ -127,7 +127,6 @@ export function createThumbnailGeneratorTemplate(
     description: t('templateLibrary.templates.thumbnailGenerator.description'),
     documentDescription: 'Create original YouTube thumbnails and TikTok covers from a portrait and a structured story brief.',
     usageCount: 0,
-    preview: 'thumbnail-generator',
     icon: 'image',
     color: 'rose',
     assetManifestPath: '/templates/youtube-tiktok-thumbnail-generator/manifest.json',

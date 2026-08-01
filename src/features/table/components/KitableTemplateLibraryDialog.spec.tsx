@@ -43,7 +43,7 @@ describe('KitableTemplateLibraryDialog', () => {
     expect(dialog?.className).toContain('md:w-[min(1040px')
     expect(dialog?.className).not.toContain('md:w-full')
     expect(document.body.textContent).toContain('New table workspace')
-    expect(document.querySelectorAll('button[data-testid^="workspace-template-category-"]').length).toBe(8)
+    expect(document.querySelectorAll('button[data-testid^="workspace-template-category-"]').length).toBe(4)
     expect(document.querySelector('[data-testid="kitable-template-task-tracker"]')).not.toBeNull()
     expect(document.querySelector('[data-testid="kitable-template-email-inbox-sync"]')).not.toBeNull()
     expect(document.querySelector('[data-testid="kitable-template-product-launch-website"]')).not.toBeNull()
@@ -55,8 +55,9 @@ describe('KitableTemplateLibraryDialog', () => {
     await mount()
 
     const card = document.querySelector('[data-testid="kitable-template-email-inbox-sync"]') as HTMLButtonElement
-    expect(card.textContent).toContain('Email Inbox Sync')
-    expect(card.textContent).toContain('Full history first')
+    expect(card.closest('article')?.textContent).toContain('Email Inbox Sync')
+    expect(card.closest('article')?.textContent).toContain('complete history')
+    expect(card.querySelector('img')?.getAttribute('src')).toBe('/templates/table-covers/email-inbox-sync.webp')
 
     await act(async () => {
       card.click()
@@ -68,27 +69,27 @@ describe('KitableTemplateLibraryDialog', () => {
     expect(document.body.textContent).toContain('Structure only')
   })
 
-  it('filters the catalog by the selected operational category', async () => {
+  it('keeps the business catalog focused on active templates', async () => {
     await mount()
 
     await act(async () => {
-      const category = document.querySelector('[data-testid="workspace-template-category-human-resources"]') as HTMLButtonElement
+      const category = document.querySelector('[data-testid="workspace-template-category-business"]') as HTMLButtonElement
       category.click()
       await Promise.resolve()
     })
 
-    expect(document.querySelector('[data-testid="kitable-template-recruitment-pipeline"]')).not.toBeNull()
-    expect(document.querySelector('[data-testid="kitable-template-employee-attendance"]')).toBeNull()
-    expect(document.querySelector('[data-testid="kitable-template-task-tracker"]')).toBeNull()
+    expect(document.querySelector('[data-testid="kitable-template-ecommerce-orders-returns"]')).toBeNull()
+    expect(document.querySelector('[data-testid="kitable-template-recruitment-pipeline"]')).toBeNull()
+    expect(document.querySelector('[data-testid="kitable-template-product-launch-website"]')).not.toBeNull()
   })
 
-  it('shows the bundled thumbnail output and only the source table resource', async () => {
+  it('shows the generated thumbnail template cover and only the source table resource', async () => {
     await mount()
 
     const card = document.querySelector('[data-testid="kitable-template-thumbnail-generator"]') as HTMLButtonElement
     const preview = card.querySelector('img')
     expect(preview?.getAttribute('src')).toBe(
-      '/templates/youtube-tiktok-thumbnail-generator/records/record-01/thumbnail-16x9-01.png',
+      '/templates/table-covers/thumbnail-generator.webp',
     )
 
     await act(async () => {
@@ -100,11 +101,11 @@ describe('KitableTemplateLibraryDialog', () => {
     expect(document.body.textContent).not.toContain('Thumbnail generation')
   })
 
-  it('shows an original bundled product design image in the designer preview', async () => {
+  it('shows the generated product design template cover', async () => {
     await mount()
 
     await act(async () => {
-      const category = document.querySelector('[data-testid="workspace-template-category-popular"]') as HTMLButtonElement
+      const category = document.querySelector('[data-testid="workspace-template-category-business"]') as HTMLButtonElement
       category.click()
       await Promise.resolve()
     })
@@ -112,7 +113,7 @@ describe('KitableTemplateLibraryDialog', () => {
     const card = document.querySelector('[data-testid="kitable-template-batch-product-designer"]') as HTMLButtonElement
     const preview = card.querySelector('img')
     expect(preview?.getAttribute('src')).toBe(
-      '/templates/batch-product-designer/records/record-01/style-board-01.png',
+      '/templates/table-covers/batch-product-designer.webp',
     )
   })
 

@@ -100,7 +100,7 @@ export function useWorkspaceTreeCreateActions({
     folderOverride?: string,
     template?: KitableTemplateDefinition,
   ): Promise<
-    { kitablePath: string; tableId: number | null; tableTitle: string } | null
+    { documentId: number; kitablePath: string; tableId: number | null; tableIdsByTitle: Record<string, number>; tableTitle: string } | null
   > => {
     setSaving(true)
     setError('')
@@ -108,7 +108,7 @@ export function useWorkspaceTreeCreateActions({
     setCreateMenuOpen(false)
 
     try {
-      const { document, tableId, tableTitle } = await createTableWorkspaceEntry({
+      const { document, documentId, tableId, tableIdsByTitle, tableTitle } = await createTableWorkspaceEntry({
         activeDocumentPath,
         folderOverride,
         rootPath,
@@ -127,7 +127,7 @@ export function useWorkspaceTreeCreateActions({
           detail: { vaultPath: document.path, tableId },
         }))
       }
-      return { kitablePath: document.path, tableId, tableTitle }
+      return { documentId, kitablePath: document.path, tableId, tableIdsByTitle, tableTitle }
     } catch (requestError: any) {
       setError(requestError?.message || 'Failed to create table document')
       return null

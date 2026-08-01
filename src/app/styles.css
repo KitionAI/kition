@@ -1546,6 +1546,10 @@
     padding-left: 12rem;
   }
 
+  .workspace-editor-frame:has(.workspace-kitable-sidebar.is-collapsed) .dashboard-editor-topbar {
+    padding-left: 12rem;
+  }
+
   .workspace-editor-frame:has(.workspace-kitable-sidebar.is-collapsed[data-mode='workflow']) [data-testid='workflow-home-topbar'] {
     padding-left: 14.5rem;
   }

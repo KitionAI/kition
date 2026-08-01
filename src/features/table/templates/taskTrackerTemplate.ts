@@ -11,7 +11,6 @@ export function createTaskTrackerTemplate(
     description: t('templateLibrary.templates.taskTracker.description'),
     documentDescription: 'Track delivery progress, ownership, important work, and completion dates.',
     usageCount: 8228,
-    preview: 'task-tracker',
     icon: 'check-square',
     color: 'violet',
     tables: [{

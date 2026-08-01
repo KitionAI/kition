@@ -10,8 +10,13 @@ vi.mock('@/features/workflow/api', () => ({
   listWorkflows: vi.fn(),
 }))
 
+vi.mock('@/features/formSync/api', () => ({
+  listFormSyncWorkflows: vi.fn(),
+}))
+
 import { listDataDocuments } from '@/api/dataDocuments'
 import { listWorkflows } from '@/features/workflow/api'
+import { listFormSyncWorkflows } from '@/features/formSync/api'
 
 import { useKitableChildrenIndex } from './useKitableChildrenIndex'
 
@@ -30,6 +35,8 @@ beforeEach(() => {
   vi.mocked(listDataDocuments).mockReset()
   vi.mocked(listWorkflows).mockReset()
   vi.mocked(listWorkflows).mockResolvedValue([])
+  vi.mocked(listFormSyncWorkflows).mockReset()
+  vi.mocked(listFormSyncWorkflows).mockResolvedValue([])
 })
 
 afterEach(() => {
@@ -53,6 +60,28 @@ async function mountAndSettle(): Promise<ReturnType<typeof useKitableChildrenInd
 }
 
 describe('useKitableChildrenIndex', () => {
+  it('groups local form drafts under their destination kitable', async () => {
+    vi.mocked(listDataDocuments).mockResolvedValueOnce({
+      items: [{ id: 7, path: 'Events.kitable', tables: [{ id: 11, title: 'Private Events', order: 0 }] }],
+    } as any)
+    vi.mocked(listFormSyncWorkflows).mockResolvedValueOnce([{
+      id: 'formsync_1',
+      name: 'Event inquiry',
+      published: false,
+      schedule: { enabled: true, interval_minutes: 5 },
+      target: { document_id: '7', table_id: '11', field_mappings: [] },
+    }] as any)
+
+    const result = await mountAndSettle()
+
+    expect(result.workflowsByKitablePath['Events.kitable']).toEqual([{
+      id: 'formsync_1',
+      name: 'Event inquiry',
+      enabled: false,
+      kind: 'form_sync',
+    }])
+  })
+
   it('builds tablesByKitablePath keyed by kitable file path, with table.order preserved', async () => {
     vi.mocked(listDataDocuments).mockResolvedValueOnce({
       items: [

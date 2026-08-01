@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { listDataDocuments } from '@/api/dataDocuments'
 import { readDataDashboards } from '@/features/dashboard/lib/dashboardMetadata'
 import { listWorkflows } from '@/features/workflow/api'
+import { listFormSyncWorkflows } from '@/features/formSync/api'
 import type {
   KitableDashboardSummary,
   KitableWorkflowSummary,
@@ -54,9 +55,17 @@ export function useKitableChildrenIndex(rootPath?: string): KitableChildrenIndex
           return []
         }
       })()
-      const [docs, workflows] = await Promise.all([
+      const formWorkflowsPromise = (async () => {
+        try {
+          return await listFormSyncWorkflows()
+        } catch {
+          return []
+        }
+      })()
+      const [docs, workflows, formWorkflows] = await Promise.all([
         listDataDocuments(rootPath ? { workspace_root: rootPath } : undefined),
         workflowsPromise,
+        formWorkflowsPromise,
       ])
       const nextTables: Record<string, KitableTableSummary[]> = {}
       const nextDashboards: Record<string, KitableDashboardSummary[]> = {}
@@ -95,6 +104,17 @@ export function useKitableChildrenIndex(rootPath?: string): KitableChildrenIndex
           id: String(workflow.id),
           name: String(workflow.name || 'Untitled workflow'),
           enabled: Boolean(workflow.enabled),
+        })
+      }
+      for (const workflow of formWorkflows) {
+        const kitablePath = kitablePathByDocId[String(workflow.target.document_id)]
+        if (!kitablePath) continue
+        if (!nextWorkflows[kitablePath]) nextWorkflows[kitablePath] = []
+        nextWorkflows[kitablePath].push({
+          id: workflow.id,
+          name: workflow.name || 'Untitled form',
+          enabled: workflow.published && workflow.schedule.enabled,
+          kind: 'form_sync',
         })
       }
       setTables(nextTables)

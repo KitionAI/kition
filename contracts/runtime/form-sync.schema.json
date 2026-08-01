@@ -1,0 +1,179 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kition.ai/contracts/runtime/form-sync.schema.json",
+  "title": "Kition Cloud Form Sync",
+  "$ref": "#/$defs/workflow",
+  "$defs": {
+    "formFieldType": {
+      "type": "string",
+      "enum": ["text", "email", "phone", "number", "datetime", "select", "long_text"]
+    },
+    "formField": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "label", "type", "required"],
+      "properties": {
+        "key": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+        "label": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "type": { "$ref": "#/$defs/formFieldType" },
+        "required": { "type": "boolean" },
+        "options": {
+          "type": "array",
+          "maxItems": 50,
+          "items": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "uniqueItems": true
+        }
+      }
+    },
+    "fieldMapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_key", "target_field_title"],
+      "properties": {
+        "source_key": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+        "target_field_title": { "type": "string", "minLength": 1 }
+      }
+    },
+    "defaultValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target_field_title", "value"],
+      "properties": {
+        "target_field_title": { "type": "string", "minLength": 1 },
+        "value": {}
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["document_id", "table_id", "field_mappings"],
+      "properties": {
+        "document_id": { "type": "string", "minLength": 1 },
+        "table_id": { "type": "string", "minLength": 1 },
+        "field_mappings": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/fieldMapping" }
+        },
+        "defaults": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/defaultValue" }
+        },
+        "submission_id_field_title": { "type": "string", "minLength": 1 },
+        "submitted_at_field_title": { "type": "string", "minLength": 1 }
+      }
+    },
+    "schedule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "interval_minutes"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "interval_minutes": { "type": "integer", "minimum": 1, "maximum": 1440 }
+      }
+    },
+    "workflow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "template_id",
+        "remote_source_id",
+        "public_url",
+        "published",
+        "fields",
+        "target",
+        "schedule",
+        "status",
+        "synced_submissions",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "template_id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+        "remote_source_id": { "type": "string" },
+        "public_url": {
+          "anyOf": [
+            { "type": "string", "format": "uri" },
+            { "const": "" }
+          ]
+        },
+        "published": { "type": "boolean" },
+        "fields": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/formField" }
+        },
+        "target": { "$ref": "#/$defs/target" },
+        "schedule": { "$ref": "#/$defs/schedule" },
+        "status": { "type": "string", "enum": ["active", "paused", "syncing", "error"] },
+        "last_sync_at": { "type": "string", "format": "date-time" },
+        "last_error": { "type": "string" },
+        "synced_submissions": { "type": "integer", "minimum": 0 },
+        "created_at": { "type": "string", "format": "date-time" },
+        "updated_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "createInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "template_id", "fields", "target", "schedule"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "template_id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+        "fields": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/formField" }
+        },
+        "target": { "$ref": "#/$defs/target" },
+        "schedule": { "$ref": "#/$defs/schedule" },
+        "published": { "type": "boolean" }
+      }
+    },
+    "updateInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "fields": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/formField" }
+        },
+        "target": { "$ref": "#/$defs/target" },
+        "schedule": { "$ref": "#/$defs/schedule" },
+        "published": { "type": "boolean" }
+      }
+    },
+    "syncResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workflow_id", "imported", "skipped", "failed", "started_at", "finished_at"],
+      "properties": {
+        "workflow_id": { "type": "string", "minLength": 1 },
+        "imported": { "type": "integer", "minimum": 0 },
+        "skipped": { "type": "integer", "minimum": 0 },
+        "failed": { "type": "integer", "minimum": 0 },
+        "started_at": { "type": "string", "format": "date-time" },
+        "finished_at": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "x-endpoints": {
+    "list": "GET /api/v1/form-sync/workflows",
+    "create": "POST /api/v1/form-sync/workflows",
+    "update": "PATCH /api/v1/form-sync/workflows/{id}",
+    "sync": "POST /api/v1/form-sync/workflows/{id}/sync"
+  },
+  "x-cloud-flow": {
+    "authentication": "Kition desktop OAuth bearer session",
+    "delivery": "incremental pull by remote submission id",
+    "offline_behavior": "submissions remain queued in Kition Cloud until a desktop sync succeeds",
+    "idempotency": "remote submission id is persisted locally and written to the target table"
+  }
+}

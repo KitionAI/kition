@@ -55,6 +55,8 @@ import { WorkspaceScreenEditor } from '@/features/workspace/components/Workspace
 import { WorkspaceKitableSidebar } from '@/features/workspace/components/WorkspaceKitableSidebar'
 import type { WorkspaceWorkflowCreateModeChoice } from '@/features/workspace/components/WorkspaceWorkflowCreateModeDialog'
 import { requestEmailSyncSetup } from '@/features/emailSync/setupRequest'
+import { FORM_SYNC_CHANGED_EVENT, type FormSyncWorkflow } from '@/features/formSync/api'
+import { setupTemplateFormSync } from '@/features/formSync/templateSetup'
 import { useKitableTableLeafActions } from '@/features/workspace/hooks/useKitableTableLeafActions'
 import { useKitableDashboardLeafActions } from '@/features/workspace/hooks/useKitableDashboardLeafActions'
 import { useKitableWorkflowLeafActions } from '@/features/workspace/hooks/useKitableWorkflowLeafActions'
@@ -154,6 +156,9 @@ const WorkspaceFolderCreateDialog = lazy(() =>
 )
 const WorkspaceWorkflowCreateModeDialog = lazy(() =>
   import('@/features/workspace/components/WorkspaceWorkflowCreateModeDialog').then((module) => ({ default: module.WorkspaceWorkflowCreateModeDialog })),
+)
+const FormSyncCreateDialog = lazy(() =>
+  import('@/features/formSync/FormSyncCreateDialog').then((module) => ({ default: module.FormSyncCreateDialog })),
 )
 const WorkspaceAgentSidebar = lazy(() =>
   import('@/features/workspace/components/WorkspaceAgentSidebar').then((module) => ({ default: module.WorkspaceAgentSidebar })),
@@ -335,6 +340,11 @@ export function WorkspaceScreen({
     folderOverride?: string
   } | null>(null)
   const [kitableCreateContext, setKitableCreateContext] = useState<string | null>(null)
+  const [formSyncCreateState, setFormSyncCreateState] = useState<{
+    kitablePath: string
+    documentId: string
+    initialTableId?: number
+  } | null>(null)
   const createMenuVariant: 'workspace' | 'kitable' = kitableCreateContext ? 'kitable' : 'workspace'
   // Group A: when the user picks "Create Workflow" from a kitable table
   // leaf's "..." menu, we surface a mode chooser (template vs AI). The dialog
@@ -386,8 +396,10 @@ export function WorkspaceScreen({
       void kitableChildrenIndex.refresh()
     }
     window.addEventListener('kition:workflow:changed', onWorkflowChanged)
+    window.addEventListener(FORM_SYNC_CHANGED_EVENT, onWorkflowChanged)
     return () => {
       window.removeEventListener('kition:workflow:changed', onWorkflowChanged)
+      window.removeEventListener(FORM_SYNC_CHANGED_EVENT, onWorkflowChanged)
     }
   }, [kitableChildrenIndex])
   const openDocumentTabRef = useRef<(document: WorkspaceDocument) => void>(
@@ -1009,11 +1021,27 @@ export function WorkspaceScreen({
         runAfterSave: template.afterCreate.runAfterSave,
       })
     }
+    if (template?.afterCreate?.type === 'form-sync') {
+      try {
+        const workflow = await setupTemplateFormSync({
+          documentId: result.documentId,
+          tableIdsByTitle: result.tableIdsByTitle,
+          setup: template.afterCreate,
+        })
+        setFeedback(workflow.published
+          ? `Private event form connected: ${workflow.public_url}`
+          : 'Private event form draft created')
+      } catch (requestError) {
+        setError(requestError instanceof Error ? requestError.message : 'Failed to connect the private event form')
+      }
+    }
     return true
   }, [
     createTable,
     kitableChildrenIndex,
     kitableTemplateDialogState,
+    setError,
+    setFeedback,
     setActiveResourcePath,
     upsertWorkspaceTab,
     workspaceTree,
@@ -1310,6 +1338,27 @@ export function WorkspaceScreen({
       children: [],
     })
   }, [openWorkflowCreateModeDialog])
+
+  const createFormFromKitableSidebar = useCallback((kitablePath: string) => {
+    const documentId = kitableChildrenIndex.docIdByKitablePath[kitablePath]
+    if (!documentId) {
+      setError(t('errors.kitableNotFound'))
+      return
+    }
+    const initialTableId = activeWorkspaceTab?.type === 'table'
+      && activeWorkspaceTab.kitablePath === kitablePath
+      ? activeWorkspaceTab.tableId
+      : kitableChildrenIndex.tablesByKitablePath[kitablePath]?.[0]?.id
+    setFormSyncCreateState({ kitablePath, documentId, initialTableId })
+  }, [activeWorkspaceTab, kitableChildrenIndex, setError, t])
+
+  const handleFormSyncCreated = useCallback((workflow: FormSyncWorkflow) => {
+    const state = formSyncCreateState
+    if (!state) return
+    void kitableChildrenIndex.refresh()
+    openKitableWorkflow(state.kitablePath, workflow.id)
+    setFormSyncCreateState(null)
+  }, [formSyncCreateState, kitableChildrenIndex, openKitableWorkflow])
 
   const closeWorkflowCreateModeDialog = useCallback(() => {
     setAutoCreateModeState(null)
@@ -3022,6 +3071,19 @@ export function WorkspaceScreen({
           />
         </Suspense>
       ) : null}
+      {formSyncCreateState ? (
+        <Suspense fallback={null}>
+          <FormSyncCreateDialog
+            open
+            documentId={formSyncCreateState.documentId}
+            initialTableId={formSyncCreateState.initialTableId}
+            onOpenChange={(open) => {
+              if (!open) setFormSyncCreateState(null)
+            }}
+            onCreated={handleFormSyncCreated}
+          />
+        </Suspense>
+      ) : null}
       {autoCreateModeState ? (
         <Suspense fallback={null}>
           <WorkspaceWorkflowCreateModeDialog
@@ -3258,6 +3320,7 @@ export function WorkspaceScreen({
                 workflows={kitableChildrenIndex.workflowsByKitablePath[activeKitablePath] || []}
                 onCreateDashboard={() => void createDashboardFromKitableSidebar(activeKitablePath)}
                 onCreateTable={() => void createTableFromKitableSidebar(activeKitablePath)}
+                onCreateForm={() => createFormFromKitableSidebar(activeKitablePath)}
                 onCreateWorkflow={() => createWorkflowFromKitableSidebar(activeKitablePath)}
                 onOpenDashboard={(dashboardId) => openKitableDashboard(activeKitablePath, dashboardId)}
                 onOpenTable={(tableId) => openKitableTable(activeKitablePath, tableId)}

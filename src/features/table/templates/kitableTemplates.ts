@@ -7,38 +7,19 @@ import type {
   DataViewSeed,
 } from '@/types/dataDocument'
 import type { AnyAIConfig } from '@/types/aiConfig'
+import type { FormSyncTemplateSetup } from '@/features/formSync/templateSetup'
 import { createBatchProductDesignerTemplate } from './batchProductDesignerTemplate'
 import { getOperationalKitableTemplates } from './kitableOperationalTemplates'
+import { createReceiptOcrTemplate } from './receiptOcrTemplate'
 import { createTaskTrackerTemplate } from './taskTrackerTemplate'
 import { createThumbnailGeneratorTemplate } from './thumbnailGeneratorTemplate'
 import { EMAIL_INBOX_SYNC_TEMPLATE_ID } from '@/features/emailSync/templateSetup'
 
 export type KitableTemplateCategory =
   | 'recommended'
-  | 'popular'
   | 'ai-workflows'
-  | 'information-collection'
-  | 'data-analysis'
-  | 'commerce'
-  | 'sales'
-  | 'performance'
-  | 'administration'
-  | 'human-resources'
-  | 'project-management'
-  | 'collaboration'
-  | 'marketing'
-  | 'personal-growth'
-
-export type KitableTemplatePreview =
-  | 'call-queue'
-  | 'crm'
-  | 'designer'
-  | 'email-inbox'
-  | 'landing-page'
-  | 'product-launch'
-  | 'restaurant'
-  | 'task-tracker'
-  | 'thumbnail-generator'
+  | 'business'
+  | 'projects'
 
 type KitableTemplateAIConfigFor<Config extends AnyAIConfig> =
   Config extends { source_field_id: number }
@@ -105,7 +86,7 @@ export type KitableTemplateDefinition = {
   description: string
   documentDescription: string
   usageCount: number
-  preview: KitableTemplatePreview
+  coverImage: string
   icon: string
   color: string
   categories?: KitableTemplateCategory[]
@@ -114,15 +95,17 @@ export type KitableTemplateDefinition = {
   dashboards?: DataDashboardSeed[]
   assetManifestPath?: string
   localOnly?: boolean
-  afterCreate?: {
-    type: 'email-sync'
-    runAfterSave: 'full'
-  }
+  afterCreate?:
+    | {
+        type: 'email-sync'
+        runAfterSave: 'full'
+      }
+    | FormSyncTemplateSetup
 }
 
 const gridView: DataViewSeed = { title: 'Grid', type: 'grid' }
 
-export type KitableTemplateSeed = Omit<KitableTemplateDefinition, 'snapshot'>
+export type KitableTemplateSeed = Omit<KitableTemplateDefinition, 'coverImage' | 'snapshot'>
 
 const solutionResources: Record<string, Omit<KitableTemplateSnapshot, 'version' | 'includeData'>> = {
   'task-tracker': {
@@ -136,6 +119,12 @@ const solutionResources: Record<string, Omit<KitableTemplateSnapshot, 'version' 
     defaultResourceId: 'thumbnail-workbench',
     resources: [
       { id: 'thumbnail-workbench', kind: 'table', title: 'Video Thumbnails Generator', description: 'Structured creative inputs and generated 16:9 and 9:16 outputs.', tableTitle: 'Video Thumbnails Generator' },
+    ],
+  },
+  'receipt-ocr-database': {
+    defaultResourceId: 'receipt-database',
+    resources: [
+      { id: 'receipt-database', kind: 'table', title: 'Receipts', description: 'Receipt images with searchable fields, structured JSON, and plain OCR text.', tableTitle: 'Receipts' },
     ],
   },
   'leads-landing-page': {
@@ -183,7 +172,7 @@ const solutionResources: Record<string, Omit<KitableTemplateSnapshot, 'version' 
       { id: 'restaurant-site', kind: 'app', title: 'Restaurant Website', description: 'Guest-facing dining and private-event experience.' },
       { id: 'reservations', kind: 'table', title: 'Reservations', description: 'Service schedule, guest preferences, and dining status.', tableTitle: 'Reservations' },
       { id: 'private-events', kind: 'table', title: 'Private Events', description: 'Private dining inquiries and delivery details.', tableTitle: 'Private Events' },
-      { id: 'guest-confirmations', kind: 'automation', title: 'Guest confirmations', description: 'Coordinates reservation and event confirmations.' },
+      { id: 'private-event-intake', kind: 'automation', title: 'Private event intake', description: 'Pulls public event inquiries from Kition Cloud into the Private Events table.' },
     ],
   },
   [EMAIL_INBOX_SYNC_TEMPLATE_ID]: {
@@ -196,14 +185,15 @@ const solutionResources: Record<string, Omit<KitableTemplateSnapshot, 'version' 
 }
 
 const solutionCategories: Record<string, KitableTemplateCategory[]> = {
-  'task-tracker': ['recommended', 'project-management', 'collaboration'],
-  'thumbnail-generator': ['recommended', 'ai-workflows', 'marketing'],
-  'leads-landing-page': ['recommended', 'information-collection', 'sales'],
-  'sdr-cold-call-manager': ['ai-workflows', 'sales'],
-  'product-launch-website': ['recommended', 'popular', 'marketing'],
-  'batch-product-designer': ['popular', 'ai-workflows', 'commerce'],
-  'simple-client-crm': ['recommended', 'popular', 'sales'],
-  'lumiere-restaurant': ['popular', 'commerce'],
+  'task-tracker': ['recommended', 'projects'],
+  'thumbnail-generator': ['recommended', 'ai-workflows'],
+  'receipt-ocr-database': ['recommended', 'ai-workflows'],
+  'leads-landing-page': ['recommended', 'business'],
+  'sdr-cold-call-manager': ['ai-workflows', 'business'],
+  'product-launch-website': ['recommended', 'business', 'projects'],
+  'batch-product-designer': ['ai-workflows', 'business'],
+  'simple-client-crm': ['recommended', 'business'],
+  'lumiere-restaurant': ['business'],
   [EMAIL_INBOX_SYNC_TEMPLATE_ID]: ['recommended', 'ai-workflows'],
 }
 
@@ -213,13 +203,13 @@ export function getBuiltinKitableTemplates(
   const templates: KitableTemplateSeed[] = [
     createTaskTrackerTemplate(t),
     createThumbnailGeneratorTemplate(t),
+    createReceiptOcrTemplate(t),
     {
       id: EMAIL_INBOX_SYNC_TEMPLATE_ID,
       title: t('templateLibrary.templates.emailInboxSync.title'),
       description: t('templateLibrary.templates.emailInboxSync.description'),
       documentDescription: 'Import a complete IMAP mailbox into a structured Inbox table with Markdown-backed message records.',
       usageCount: 628,
-      preview: 'email-inbox',
       icon: 'mail',
       color: 'violet',
       localOnly: true,
@@ -249,7 +239,6 @@ export function getBuiltinKitableTemplates(
       description: t('templateLibrary.templates.leadsLandingPage.description'),
       documentDescription: 'Capture qualified leads from a public form and manage follow-up.',
       usageCount: 1307,
-      preview: 'landing-page',
       icon: 'contact',
       color: 'sky',
       tables: [{
@@ -286,7 +275,6 @@ export function getBuiltinKitableTemplates(
       description: t('templateLibrary.templates.sdrColdCallManager.description'),
       documentDescription: 'Manage SDR call queues, attempts, outcomes, and next steps.',
       usageCount: 2289,
-      preview: 'call-queue',
       icon: 'phone',
       color: 'violet',
       tables: [{
@@ -324,7 +312,6 @@ export function getBuiltinKitableTemplates(
       description: t('templateLibrary.templates.productLaunchWebsite.description'),
       documentDescription: 'Coordinate a premium product launch site from concept through publication.',
       usageCount: 1051,
-      preview: 'product-launch',
       icon: 'rocket',
       color: 'slate',
       tables: [{
@@ -360,7 +347,6 @@ export function getBuiltinKitableTemplates(
       description: t('templateLibrary.templates.simpleClientCrm.description'),
       documentDescription: 'Track prospects, active clients, quotes, and follow-up in one workspace.',
       usageCount: 3695,
-      preview: 'crm',
       icon: 'handshake',
       color: 'sky',
       tables: [
@@ -419,9 +405,43 @@ export function getBuiltinKitableTemplates(
       description: t('templateLibrary.templates.lumiereRestaurant.description'),
       documentDescription: 'Coordinate reservations, private events, and guest notes for a fine-dining team.',
       usageCount: 1426,
-      preview: 'restaurant',
       icon: 'utensils',
       color: 'amber',
+      afterCreate: {
+        type: 'form-sync',
+        name: 'Private Event Inquiry',
+        templateId: 'lumiere-restaurant',
+        tableTitle: 'Private Events',
+        fields: [
+          { key: 'event', label: 'Event', type: 'text', required: true },
+          { key: 'host', label: 'Host', type: 'text', required: true },
+          { key: 'email', label: 'Email', type: 'email', required: true },
+          { key: 'phone', label: 'Phone', type: 'phone', required: false },
+          { key: 'event_date', label: 'Event date', type: 'datetime', required: true },
+          { key: 'guests', label: 'Guests', type: 'number', required: true },
+          { key: 'room', label: 'Preferred room', type: 'select', required: false, options: ['Salon', 'Terrace', 'Full venue'] },
+          { key: 'budget', label: 'Budget', type: 'number', required: false },
+          { key: 'menu_notes', label: 'Menu notes', type: 'long_text', required: false },
+        ],
+        fieldMappings: [
+          { sourceKey: 'event', targetFieldTitle: 'Event' },
+          { sourceKey: 'host', targetFieldTitle: 'Host' },
+          { sourceKey: 'email', targetFieldTitle: 'Email' },
+          { sourceKey: 'phone', targetFieldTitle: 'Phone' },
+          { sourceKey: 'event_date', targetFieldTitle: 'Event date' },
+          { sourceKey: 'guests', targetFieldTitle: 'Guests' },
+          { sourceKey: 'room', targetFieldTitle: 'Room' },
+          { sourceKey: 'budget', targetFieldTitle: 'Budget' },
+          { sourceKey: 'menu_notes', targetFieldTitle: 'Menu notes' },
+        ],
+        defaults: [
+          { targetFieldTitle: 'Status', value: 'Inquiry' },
+          { targetFieldTitle: 'Source', value: 'Kition Cloud form' },
+        ],
+        submissionIdFieldTitle: 'Submission ID',
+        submittedAtFieldTitle: 'Submitted At',
+        intervalMinutes: 5,
+      },
       tables: [
         {
           title: 'Reservations',
@@ -456,14 +476,19 @@ export function getBuiltinKitableTemplates(
           fields: [
             { title: 'Event', type: 'text', primary: true },
             { title: 'Host', type: 'text' },
+            { title: 'Email', type: 'text' },
+            { title: 'Phone', type: 'text' },
             { title: 'Event date', type: 'datetime' },
             { title: 'Guests', type: 'number' },
             { title: 'Room', type: 'single_select', options: { choices: ['Salon', 'Terrace', 'Full venue'] } },
-            { title: 'Status', type: 'single_select', options: { choices: ['Inquiry', 'Proposal', 'Confirmed', 'Completed'] } },
+            { title: 'Status', type: 'single_select', options: { choices: ['Inquiry', 'Qualified', 'Proposal', 'Confirmed', 'Completed', 'Declined'] } },
             { title: 'Budget', type: 'number' },
             { title: 'Menu notes', type: 'long_text' },
+            { title: 'Submitted At', type: 'datetime', readonly: true },
+            { title: 'Source', type: 'single_select', readonly: true, options: { choices: ['Kition Cloud form', 'Manual'] } },
+            { title: 'Submission ID', type: 'text', readonly: true },
           ],
-          views: [gridView, { title: 'Event calendar', type: 'calendar' }, { title: 'Event pipeline', type: 'kanban' }],
+          views: [gridView, { title: 'Event inquiry form', type: 'form' }, { title: 'Event calendar', type: 'calendar' }, { title: 'Event pipeline', type: 'kanban' }],
           records: [
             { Event: 'Aster Labs leadership dinner', Host: 'Megan Price', 'Event date': '2026-08-12T18:00:00Z', Guests: 18, Room: 'Salon', Status: 'Confirmed', Budget: 5400, 'Menu notes': 'Seasonal tasting menu with non-alcoholic pairing.' },
             { Event: 'Summer design showcase', Host: 'Leo Grant', 'Event date': '2026-08-21T17:30:00Z', Guests: 42, Room: 'Terrace', Status: 'Proposal', Budget: 11000, 'Menu notes': 'Passed plates and two signature cocktails.' },
@@ -477,12 +502,15 @@ export function getBuiltinKitableTemplates(
 
   const builtInTemplates: KitableTemplateDefinition[] = templates.map((template) => ({
     ...template,
+    coverImage: `/templates/table-covers/${template.id}.webp`,
     categories: solutionCategories[template.id] || ['recommended'],
     snapshot: {
       version: template.id === 'thumbnail-generator'
         ? 5
         : template.id === 'batch-product-designer'
           ? 3
+          : template.id === 'lumiere-restaurant'
+            ? 2
           : template.id === 'task-tracker'
             ? 2
             : 1,

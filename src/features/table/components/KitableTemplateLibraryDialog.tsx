@@ -1,27 +1,16 @@
 import {
   ArrowRight,
-  BadgeDollarSign,
-  BarChart3,
   Bot,
-  ChartNoAxesCombined,
-  CheckSquare,
-  CircleUserRound,
+  BriefcaseBusiness,
   Database,
   Eye,
-  Flame,
-  Inbox,
   ListChecks,
   LayoutDashboard,
   LoaderCircle,
   Plus,
   RotateCcw,
-  Rocket,
-  RefreshCw,
   Sparkles,
-  Tags,
-  UserRoundSearch,
   Users,
-  Utensils,
   Workflow,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
@@ -32,7 +21,6 @@ import {
   getBuiltinKitableTemplates,
   type KitableTemplateCategory,
   type KitableTemplateDefinition,
-  type KitableTemplatePreview,
   type KitableTemplateResource,
 } from '@/features/table/templates/kitableTemplates'
 import { cn } from '@/lib/utils'
@@ -57,16 +45,12 @@ type KitableTemplateLibraryDialogProps = {
 const TEMPLATE_CATEGORIES: Array<{
   id: KitableTemplateCategory
   label: string
-  icon: typeof Rocket
+  icon: typeof Sparkles
 }> = [
-  { id: 'recommended', label: 'Recommended', icon: Rocket },
-  { id: 'popular', label: 'Popular apps', icon: Flame },
+  { id: 'recommended', label: 'Recommended', icon: Sparkles },
   { id: 'ai-workflows', label: 'AI workflows', icon: Workflow },
-  { id: 'data-analysis', label: 'Data analysis', icon: ChartNoAxesCombined },
-  { id: 'commerce', label: 'Commerce operations', icon: Tags },
-  { id: 'sales', label: 'Sales management', icon: BadgeDollarSign },
-  { id: 'human-resources', label: 'Human resources', icon: UserRoundSearch },
-  { id: 'project-management', label: 'Project management', icon: ListChecks },
+  { id: 'business', label: 'Business', icon: BriefcaseBusiness },
+  { id: 'projects', label: 'Projects', icon: ListChecks },
 ]
 
 export function KitableTemplateLibraryDialog({
@@ -252,7 +236,7 @@ function TemplateGalleryCard({
           onClick={onPreview}
           data-testid={`kitable-template-${template.id}`}
         >
-          <KitableTemplatePreviewCard preview={template.preview} busy={busy} />
+          <KitableTemplatePreviewCard template={template} busy={busy} />
         </button>
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-2 rounded-xl bg-foreground/0 opacity-0 transition group-hover:bg-foreground/10 group-hover:opacity-100 group-focus-within:opacity-100">
           <Button type="button" size="sm" variant="outline" className="pointer-events-auto bg-background" disabled={disabled} onClick={onPreview}>
@@ -382,6 +366,7 @@ function TemplateResourcePreview({
   if (!resource) return null
 
   if (resource.kind === 'automation') {
+    const isCloudFormIntake = resource.id === 'private-event-intake'
     return (
       <div className="flex min-h-[520px] items-center justify-center bg-muted/30 p-8">
         <div className="w-full max-w-2xl rounded-xl border bg-background p-6 shadow-soft">
@@ -393,9 +378,9 @@ function TemplateResourcePreview({
             </div>
           </div>
           <div className="mt-6 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-            <PreviewStep label="When a record changes" />
+            <PreviewStep label={isCloudFormIntake ? 'When a Cloud form is submitted' : 'When a record changes'} />
             <ArrowRight className="size-5 text-muted-foreground" />
-            <PreviewStep label="Run the template action" />
+            <PreviewStep label={isCloudFormIntake ? 'Create a Private Events record' : 'Run the template action'} />
           </div>
         </div>
       </div>
@@ -488,7 +473,7 @@ function TemplateResourcePreview({
 
   return (
     <div className="relative min-h-[520px] overflow-hidden">
-      <div className="absolute inset-0 scale-[1.35]">{renderPreview(template.preview)}</div>
+      <img alt="" className="absolute inset-0 size-full object-cover" src={template.coverImage} />
       <div className="absolute inset-x-6 bottom-6 rounded-xl border bg-background/95 p-5 shadow-floating backdrop-blur">
         <h3 className="text-lg font-semibold text-foreground">{resource.title}</h3>
         <p className="mt-1 text-sm text-muted-foreground">{resource.description}</p>
@@ -513,213 +498,24 @@ function formatPreviewValue(value: unknown) {
 }
 
 function KitableTemplatePreviewCard({
-  preview,
+  template,
   busy,
 }: {
-  preview: KitableTemplatePreview
+  template: KitableTemplateDefinition
   busy: boolean
 }) {
   return (
     <span className="relative block aspect-[16/9] overflow-hidden rounded-xl border border-border bg-muted/40 transition group-hover:border-primary/35 group-hover:shadow-soft">
-      {renderPreview(preview)}
+      <img
+        alt=""
+        className="size-full object-cover transition duration-300 group-hover:scale-[1.02]"
+        src={template.coverImage}
+      />
       {busy ? (
         <span className="absolute inset-0 grid place-items-center bg-background/70 backdrop-blur-[1px]">
           <LoaderCircle className="size-6 animate-spin text-primary" />
         </span>
       ) : null}
-    </span>
-  )
-}
-
-function renderPreview(preview: KitableTemplatePreview) {
-  switch (preview) {
-    case 'email-inbox':
-      return (
-        <span className="absolute inset-0 bg-gradient-to-br from-tint-lavender via-background to-tint-sky p-4">
-          <span className="flex items-center justify-between text-foreground">
-            <span>
-              <span className="block text-base font-semibold">Email Inbox Sync</span>
-              <span className="mt-0.5 block text-[10px] text-muted-foreground">Full history first · incremental updates later</span>
-            </span>
-            <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground shadow-sm">
-              <Inbox className="size-4" />
-            </span>
-          </span>
-          <span className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-            <span className="rounded-md border border-border bg-background p-2 shadow-sm">
-              <span className="block text-[9px] font-semibold text-foreground">IMAP mailbox</span>
-              <span className="mt-2 block h-1.5 w-full rounded bg-foreground/15" />
-              <span className="mt-1 block h-1.5 w-3/4 rounded bg-foreground/10" />
-            </span>
-            <RefreshCw className="size-4 text-primary" />
-            <MiniTable rows={3} />
-          </span>
-        </span>
-      )
-    case 'task-tracker':
-      return (
-        <span className="absolute inset-0 bg-tint-gray p-4">
-          <span className="flex items-center justify-between text-foreground">
-            <span className="text-base font-semibold">Task Tracker</span>
-            <CheckSquare className="size-5 text-primary" />
-          </span>
-          <span className="mt-3 grid grid-cols-[0.8fr_1.5fr] gap-2">
-            <span className="rounded-md border border-border/70 bg-background p-2">
-              <span className="mb-2 block h-1.5 w-12 rounded bg-foreground/20" />
-              <span className="flex h-12 items-end gap-1">
-                {[35, 65, 45, 80, 58].map((height) => (
-                  <span key={height} className="flex-1 rounded-sm bg-primary/55" style={{ height: `${height}%` }} />
-                ))}
-              </span>
-            </span>
-            <MiniTable rows={4} />
-          </span>
-        </span>
-      )
-    case 'thumbnail-generator':
-      return (
-        <span className="absolute inset-0 bg-foreground">
-          <img
-            alt=""
-            className="size-full object-cover"
-            src="/templates/youtube-tiktok-thumbnail-generator/records/record-01/thumbnail-16x9-01.png"
-          />
-          <span className="absolute inset-x-0 bottom-0 flex items-end justify-between bg-gradient-to-t from-foreground/90 to-transparent px-3 pb-3 pt-10 text-background">
-            <span>
-              <span className="block text-sm font-semibold">YouTube & TikTok</span>
-              <span className="block text-[10px] text-background/75">AI titles · 3 variants per format</span>
-            </span>
-            <Sparkles className="size-4" />
-          </span>
-        </span>
-      )
-    case 'landing-page':
-      return (
-        <span className="absolute inset-0 bg-tint-sky p-4">
-          <span className="block text-base font-bold text-foreground">Leads Landing Page</span>
-          <span className="mt-3 grid grid-cols-[1.2fr_0.8fr] gap-2 rounded-md border border-border/70 bg-background p-2 shadow-sm">
-            <span>
-              <span className="block h-2 w-20 rounded bg-foreground/70" />
-              <span className="mt-2 block h-1.5 w-full rounded bg-foreground/15" />
-              <span className="mt-1 block h-1.5 w-3/4 rounded bg-foreground/10" />
-              <span className="mt-3 block h-5 w-16 rounded bg-foreground" />
-            </span>
-            <span className="space-y-1 rounded border border-border bg-muted/50 p-1.5">
-              <span className="block h-2 rounded bg-background" />
-              <span className="block h-2 rounded bg-background" />
-              <span className="block h-4 rounded bg-primary/70" />
-            </span>
-          </span>
-        </span>
-      )
-    case 'call-queue':
-      return (
-        <span className="absolute inset-0 bg-gradient-to-br from-tint-lavender to-tint-sky p-4">
-          <span className="block text-center text-base font-bold text-foreground">SDR Cold Call Manager</span>
-          <span className="mt-3 flex items-center gap-2">
-            {[['1', 'Access key'], ['2', 'Open dashboard'], ['3', 'Start calling']].map(([step, label]) => (
-              <span key={step} className="flex-1 rounded-md border border-primary/25 bg-background p-2 shadow-sm">
-                <span className="grid size-5 place-items-center rounded bg-primary text-[10px] font-bold text-primary-foreground">{step}</span>
-                <span className="mt-2 block truncate text-[9px] font-semibold text-foreground">{label}</span>
-              </span>
-            ))}
-          </span>
-        </span>
-      )
-    case 'product-launch':
-      return (
-        <span className="absolute inset-0 bg-background p-3">
-          <span className="flex items-center justify-between text-[8px] text-muted-foreground">
-            <span className="font-semibold text-foreground">NOVA</span>
-            <span>Features · Design · Buy</span>
-          </span>
-          <span className="mt-2 grid h-[calc(100%-1rem)] grid-cols-[1fr_0.9fr] items-center gap-2 rounded-md bg-muted/35 px-3">
-            <span>
-              <span className="block text-sm font-medium text-foreground">See what powers clean</span>
-              <span className="mt-2 block h-1.5 w-4/5 rounded bg-foreground/10" />
-              <span className="mt-3 block h-4 w-14 rounded bg-foreground" />
-            </span>
-            <span className="relative mx-auto size-20 rounded-[45%] border border-border bg-gradient-to-b from-background to-muted shadow-soft">
-              <span className="absolute inset-x-3 top-5 h-4 rounded bg-foreground/10" />
-              <span className="absolute inset-x-5 bottom-3 h-2 rounded bg-foreground/20" />
-            </span>
-          </span>
-        </span>
-      )
-    case 'designer':
-      return (
-        <span className="absolute inset-0 bg-foreground">
-          <img
-            alt=""
-            className="size-full object-cover"
-            src="/templates/batch-product-designer/records/record-01/style-board-01.png"
-          />
-          <span className="absolute inset-x-0 bottom-0 flex items-end justify-between bg-gradient-to-t from-foreground/90 to-transparent px-3 pb-3 pt-10 text-background">
-            <span>
-              <span className="block text-sm font-semibold">Batch Product Designer</span>
-              <span className="block text-[10px] text-background/75">Designs · product imagery · social copy</span>
-            </span>
-            <Sparkles className="size-4" />
-          </span>
-        </span>
-      )
-    case 'crm':
-      return (
-        <span className="absolute inset-0 bg-gradient-to-br from-tint-sky via-tint-lavender to-background p-4">
-          <span className="block text-base font-bold leading-tight text-foreground">Sales CRM &amp;<br />Quote Generator</span>
-          <span className="absolute bottom-4 right-4 grid w-3/5 grid-cols-3 gap-1.5">
-            {['Leads', 'Quotes', 'Pipeline'].map((label) => (
-              <span key={label} className="rounded-md border border-border bg-background p-2 shadow-sm">
-                <BarChart3 className="size-3 text-primary" />
-                <span className="mt-1 block text-[8px] text-muted-foreground">{label}</span>
-              </span>
-            ))}
-          </span>
-        </span>
-      )
-    case 'restaurant':
-      return (
-        <span className="absolute inset-0 bg-foreground p-4 text-background">
-          <span className="flex items-center justify-center gap-2">
-            <Utensils className="size-4 text-tint-yellow-bold" />
-            <span className="font-serif text-base font-semibold tracking-wide">LUMIÈRE</span>
-          </span>
-          <span className="mt-3 grid grid-cols-[1.2fr_0.8fr] gap-2">
-            <span className="rounded-md border border-background/20 bg-background/10 p-2">
-              <span className="block h-2 w-20 rounded bg-tint-yellow-bold/70" />
-              <span className="mt-2 grid grid-cols-3 gap-1">
-                {Array.from({ length: 6 }, (_, index) => (
-                  <span key={index} className="h-5 rounded-sm bg-background/10" />
-                ))}
-              </span>
-            </span>
-            <span className="rounded-md border border-background/20 bg-background/10 p-2">
-              <CircleUserRound className="size-5 text-tint-yellow-bold" />
-              <span className="mt-2 block h-1.5 rounded bg-background/20" />
-              <span className="mt-1 block h-1.5 w-3/4 rounded bg-background/15" />
-              <span className="mt-2 block h-4 rounded bg-tint-yellow-bold/60" />
-            </span>
-          </span>
-        </span>
-      )
-  }
-}
-
-function MiniTable({ rows }: { rows: number }) {
-  return (
-    <span className="rounded-md border border-border/70 bg-background p-2">
-      <span className="grid grid-cols-3 gap-1 border-b border-border pb-1">
-        <span className="h-1.5 rounded bg-foreground/25" />
-        <span className="h-1.5 rounded bg-foreground/15" />
-        <span className="h-1.5 rounded bg-foreground/15" />
-      </span>
-      {Array.from({ length: rows }, (_, index) => (
-        <span key={index} className="mt-1 grid grid-cols-3 gap-1">
-          <span className="h-1.5 rounded bg-foreground/15" />
-          <span className="h-1.5 rounded bg-primary/15" />
-          <span className="h-1.5 rounded bg-foreground/10" />
-        </span>
-      ))}
     </span>
   )
 }

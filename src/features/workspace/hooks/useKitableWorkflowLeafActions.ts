@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { deleteWorkflow, patchWorkflow } from '@/features/workflow/api'
+import { updateFormSyncWorkflow } from '@/features/formSync/api'
 import { useConfirm } from '@/components/confirm'
 import type { KitableChildrenIndex } from '@/features/workspace/hooks/useKitableChildrenIndex'
 import type { WorkspaceTreeNode } from '@/features/workspace/lib/workspace'
@@ -50,7 +51,11 @@ export function useKitableWorkflowLeafActions({
     setError('')
     setFeedback('')
     try {
-      await patchWorkflow(parsed.workflowId, { name: trimmed })
+      if (parsed.workflowId.startsWith('formsync_')) {
+        await updateFormSyncWorkflow(parsed.workflowId, { name: trimmed })
+      } else {
+        await patchWorkflow(parsed.workflowId, { name: trimmed })
+      }
       setFeedback(t('feedback.renamed'))
     } catch (err) {
       setError(err instanceof Error ? err.message : t('errors.renameWorkflow'))

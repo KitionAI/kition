@@ -42,7 +42,7 @@ const template: KitableTemplateDefinition = {
   description: 'Test template',
   documentDescription: 'Seeded project tracker',
   usageCount: 1,
-  preview: 'task-tracker',
+  coverImage: '/templates/table-covers/test-template.webp',
   icon: 'check-square',
   color: 'violet',
   snapshot: {
@@ -158,7 +158,9 @@ describe('createTableWorkspaceEntry', () => {
       status: 'Done',
     })
     expect(result).toMatchObject({
+      documentId: 7,
       tableId: 11,
+      tableIdsByTitle: { Projects: 11 },
       tableTitle: 'Projects',
     })
     expect(result.document.path).toBe('Project tracker.kitable')

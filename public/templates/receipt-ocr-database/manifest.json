@@ -1,0 +1,128 @@
+{
+  "templateId": "receipt-ocr-database",
+  "source": "Original Kition Cloud gpt-image-2 generation",
+  "assetCount": 10,
+  "totalSizeBytes": 24697506,
+  "assets": [
+    {
+      "id": "record-01-receipt-image",
+      "record": 1,
+      "field": "Receipt Image",
+      "sourceName": "strong flour.png",
+      "mimeType": "image/png",
+      "sizeBytes": 2703632,
+      "width": 1024,
+      "height": 1536,
+      "sha256": "923aa7c90bfc9cded9c7e1bb8edef4d167223084e43a6e56bfeef7c1d7df7fb5",
+      "path": "/templates/receipt-ocr-database/records/record-01/receipt.png"
+    },
+    {
+      "id": "record-02-receipt-image",
+      "record": 2,
+      "field": "Receipt Image",
+      "sourceName": "Receipt_California.png",
+      "mimeType": "image/png",
+      "sizeBytes": 2503798,
+      "width": 1024,
+      "height": 1536,
+      "sha256": "70a0048614d2065036e4ec89d06b47642ecec67adf714499aca3622de7825491",
+      "path": "/templates/receipt-ocr-database/records/record-02/receipt.png"
+    },
+    {
+      "id": "record-03-receipt-image",
+      "record": 3,
+      "field": "Receipt Image",
+      "sourceName": "openai.png",
+      "mimeType": "image/png",
+      "sizeBytes": 2238738,
+      "width": 1024,
+      "height": 1536,
+      "sha256": "2f669c78c9361b4aeab83675b326ae1972522c69c3d23fb125e6d4876e2a2880",
+      "path": "/templates/receipt-ocr-database/records/record-03/receipt.png"
+    },
+    {
+      "id": "record-04-receipt-image",
+      "record": 4,
+      "field": "Receipt Image",
+      "sourceName": "food business center.png",
+      "mimeType": "image/png",
+      "sizeBytes": 2161413,
+      "width": 1024,
+      "height": 1536,
+      "sha256": "5c0cfcb31e1faecf5de381ab8ce5200d12b73fff91ec4b82fc8cbba060b96f07",
+      "path": "/templates/receipt-ocr-database/records/record-04/receipt.png"
+    },
+    {
+      "id": "record-05-receipt-image",
+      "record": 5,
+      "field": "Receipt Image",
+      "sourceName": "Mcdonalds receipt.png",
+      "mimeType": "image/png",
+      "sizeBytes": 2485408,
+      "width": 1024,
+      "height": 1536,
+      "sha256": "c12d315e3680d3ee186746391f824a729df23e56a5823161959811ceb01cb32a",
+      "path": "/templates/receipt-ocr-database/records/record-05/receipt.png"
+    },
+    {
+      "id": "record-06-receipt-image",
+      "record": 6,
+      "field": "Receipt Image",
+      "sourceName": "gas_prices.png",
+      "mimeType": "image/png",
+      "sizeBytes": 2138667,
+      "width": 1024,
+      "height": 1536,
+      "sha256": "125ebfe44260087bd68d986f36c1208b678398de0898906cdc621b0303a65999",
+      "path": "/templates/receipt-ocr-database/records/record-06/receipt.png"
+    },
+    {
+      "id": "record-07-receipt-image",
+      "record": 7,
+      "field": "Receipt Image",
+      "sourceName": "homedepot_receipt3.png",
+      "mimeType": "image/png",
+      "sizeBytes": 2816075,
+      "width": 1024,
+      "height": 1536,
+      "sha256": "2f4bc3cc54fe4d5cd427c818f47dd2ea3b1a017f2dd7410e77d99f7ec790012a",
+      "path": "/templates/receipt-ocr-database/records/record-07/receipt.png"
+    },
+    {
+      "id": "record-08-receipt-image",
+      "record": 8,
+      "field": "Receipt Image",
+      "sourceName": "starbucks_receipt.png",
+      "mimeType": "image/png",
+      "sizeBytes": 2054260,
+      "width": 1024,
+      "height": 1536,
+      "sha256": "b19c3bfe2715bd6c40ff6a09588ef950392d7ba335d41e6d358f0181965c3361",
+      "path": "/templates/receipt-ocr-database/records/record-08/receipt.png"
+    },
+    {
+      "id": "record-09-receipt-image",
+      "record": 9,
+      "field": "Receipt Image",
+      "sourceName": "shell_gas.png",
+      "mimeType": "image/png",
+      "sizeBytes": 2002432,
+      "width": 1536,
+      "height": 1024,
+      "sha256": "5f9c4ead24ee052668ff33a535cb29be5776054ba9cf15f325d45daf7f88e958",
+      "path": "/templates/receipt-ocr-database/records/record-09/receipt.png"
+    },
+    {
+      "id": "record-10-receipt-image",
+      "record": 10,
+      "field": "Receipt Image",
+      "sourceName": "Arco gasoline.png",
+      "mimeType": "image/png",
+      "sizeBytes": 3593083,
+      "width": 1024,
+      "height": 1536,
+      "sha256": "2f7c69f57956283f1ad815f3b1b7761f6a0f93cdb68ebe04ad86733132d44fff",
+      "path": "/templates/receipt-ocr-database/records/record-10/receipt.png"
+    }
+  ]
+}

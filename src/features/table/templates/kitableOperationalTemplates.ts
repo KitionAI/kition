@@ -4,7 +4,6 @@ import type {
   KitableTemplateCategory,
   KitableTemplateDefinition,
   KitableTemplateField,
-  KitableTemplatePreview,
 } from './kitableTemplates'
 
 type OperationalTemplateInput = {
@@ -12,7 +11,6 @@ type OperationalTemplateInput = {
   title: string
   description: string
   categories: KitableTemplateCategory[]
-  preview: KitableTemplatePreview
   icon: string
   color: string
   tableTitle: string
@@ -31,7 +29,7 @@ function operationalTemplate(input: OperationalTemplateInput): KitableTemplateDe
     description: input.description,
     documentDescription: input.description,
     usageCount: 320 + input.records.length * 137,
-    preview: input.preview,
+    coverImage: `/templates/table-covers/${input.id}.webp`,
     icon: input.icon,
     color: input.color,
     categories: input.categories,
@@ -63,8 +61,7 @@ export function getOperationalKitableTemplates(): KitableTemplateDefinition[] {
       id: 'business-analytics-dashboard',
       title: 'Business Analytics Dashboard',
       description: 'Monitor revenue, cost, margin, and collection performance by period.',
-      categories: ['data-analysis', 'administration'],
-      preview: 'task-tracker',
+      categories: ['business'],
       icon: 'chart-no-axes-combined',
       color: 'sky',
       tableTitle: 'Business Metrics',
@@ -84,62 +81,10 @@ export function getOperationalKitableTemplates(): KitableTemplateDefinition[] {
       ],
     }),
     operationalTemplate({
-      id: 'ecommerce-orders-returns',
-      title: 'Ecommerce Orders & Returns',
-      description: 'Track orders, fulfillment, returns, refunds, and after-sales issues.',
-      categories: ['commerce', 'popular'],
-      preview: 'crm',
-      icon: 'shopping-bag',
-      color: 'amber',
-      tableTitle: 'Orders',
-      fields: [
-        { title: 'Order', type: 'text', primary: true },
-        { title: 'Customer', type: 'text' },
-        { title: 'Channel', type: 'single_select', options: { choices: ['Marketplace', 'Retail', 'Social', 'Website'] } },
-        { title: 'Amount', type: 'number' },
-        { title: 'Order status', type: 'single_select', options: { choices: ['New', 'Packed', 'Shipped', 'Delivered', 'Returned'] } },
-        { title: 'After-sales status', type: 'single_select', options: { choices: ['None', 'Requested', 'Approved', 'Refunded'] } },
-        { title: 'Order date', type: 'date' },
-      ],
-      views: [gridView, { title: 'Fulfillment board', type: 'kanban' }],
-      records: [
-        { Order: 'ORD-20481', Customer: 'Customer 1', Channel: 'Website', Amount: 142, 'Order status': 'Delivered', 'After-sales status': 'None', 'Order date': '2026-07-24' },
-        { Order: 'ORD-20482', Customer: 'Customer 2', Channel: 'Marketplace', Amount: 86, 'Order status': 'Returned', 'After-sales status': 'Requested', 'Order date': '2026-07-25' },
-        { Order: 'ORD-20483', Customer: 'Customer 3', Channel: 'Social', Amount: 219, 'Order status': 'Shipped', 'After-sales status': 'None', 'Order date': '2026-07-27' },
-      ],
-    }),
-    operationalTemplate({
-      id: 'recruitment-pipeline',
-      title: 'Recruitment Pipeline',
-      description: 'Track hiring demand, candidates, interviews, decisions, and offers.',
-      categories: ['human-resources', 'popular'],
-      preview: 'crm',
-      icon: 'user-round-search',
-      color: 'rose',
-      tableTitle: 'Candidates',
-      fields: [
-        { title: 'Candidate', type: 'text', primary: true },
-        { title: 'Role', type: 'text' },
-        { title: 'Stage', type: 'single_select', options: { choices: ['Applied', 'Screen', 'Interview', 'Offer', 'Hired', 'Rejected'] } },
-        { title: 'Recruiter', type: 'text' },
-        { title: 'Hiring manager', type: 'text' },
-        { title: 'Interview date', type: 'datetime' },
-        { title: 'Score', type: 'rating', options: { max: 5 } },
-        { title: 'Notes', type: 'long_text' },
-      ],
-      views: [gridView, { title: 'Hiring pipeline', type: 'kanban' }],
-      records: [
-        { Candidate: 'Alex Morgan', Role: 'Product Designer', Stage: 'Interview', Recruiter: 'Nina Cole', 'Hiring manager': 'Maya Chen', 'Interview date': '2026-07-30T08:00:00Z', Score: 4, Notes: 'Strong portfolio and clear systems thinking.' },
-        { Candidate: 'Jamie Park', Role: 'Frontend Engineer', Stage: 'Screen', Recruiter: 'Nina Cole', 'Hiring manager': 'Eli Brooks', Score: 4 },
-        { Candidate: 'Taylor Reed', Role: 'Account Executive', Stage: 'Offer', Recruiter: 'Omar Lewis', 'Hiring manager': 'Robin Fox', Score: 5, Notes: 'References completed.' },
-      ],
-    }),
-    operationalTemplate({
       id: 'project-gantt',
       title: 'Project Gantt Planner',
       description: 'Plan project tasks, dependencies, ownership, and delivery dates.',
-      categories: ['project-management', 'collaboration'],
-      preview: 'task-tracker',
+      categories: ['projects'],
       icon: 'gantt-chart',
       color: 'violet',
       tableTitle: 'Project Plan',

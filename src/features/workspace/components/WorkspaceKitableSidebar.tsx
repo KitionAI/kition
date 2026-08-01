@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronsLeft, ChevronsRight, Database, LayoutDashboard, MoreHorizontal, Pencil, Plus, Search, Workflow } from 'lucide-react'
+import { ChevronDown, ChevronsLeft, ChevronsRight, Database, FileInput, LayoutDashboard, MoreHorizontal, Pencil, Plus, Search, Workflow } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { WorkspaceCreateMenu } from '@/features/workspace/components/WorkspaceCreateMenu'
@@ -23,6 +23,7 @@ type WorkspaceKitableSidebarProps = {
   workflows: KitableWorkflowSummary[]
   onCreateDashboard: () => void
   onCreateTable: () => void
+  onCreateForm?: () => void
   onCreateWorkflow: () => void
   onOpenDashboard: (dashboardId: string) => void
   onOpenTable: (tableId: number) => void
@@ -41,6 +42,7 @@ export function WorkspaceKitableSidebar({
   workflows,
   onCreateDashboard,
   onCreateTable,
+  onCreateForm,
   onCreateWorkflow,
   onOpenDashboard,
   onOpenTable,
@@ -71,7 +73,8 @@ export function WorkspaceKitableSidebar({
   )
   const defaultTable = sortedTables[0]
   const defaultTableId = defaultTable?.id
-  const defaultWorkflowId = sortedWorkflows[0]?.id
+  const defaultWorkflow = sortedWorkflows[0]
+  const defaultWorkflowId = defaultWorkflow?.id
   const orderedAdditionalTables = sortedTables.slice(1).filter(
     (table) => !normalizedQuery || table.title.toLowerCase().includes(normalizedQuery),
   )
@@ -99,7 +102,9 @@ export function WorkspaceKitableSidebar({
     : undefined
   const workflowEnabled = useWorkflowEnabled(activeWorkflowId || null, activeWorkflow?.enabled)
   const collapsedLabel = mode === 'workflow'
-    ? isDefaultWorkflowActive ? 'Workflow' : activeWorkflowTitle || 'Workflow'
+    ? isDefaultWorkflowActive
+      ? defaultWorkflow?.kind === 'form_sync' ? defaultWorkflow.name : 'Workflow'
+      : activeWorkflowTitle || 'Workflow'
     : mode === 'dashboard'
       ? activeDashboardTitle || 'Dashboard'
       : isDefaultTableActive ? tableDisplayTitle(defaultTable) : activeTableTitle || 'Data table'
@@ -199,8 +204,8 @@ export function WorkspaceKitableSidebar({
                     onOpenWorkflow(defaultWorkflowId)
                   }}
                 >
-                  <Workflow className="size-4" />
-                  <span>Workflow</span>
+                  {defaultWorkflow?.kind === 'form_sync' ? <FileInput className="size-4" /> : <Workflow className="size-4" />}
+                  <span>{defaultWorkflow?.kind === 'form_sync' ? defaultWorkflow.name : 'Workflow'}</span>
                 </button>
                 {sortedWorkflows.slice(1).map((workflow) => (
                   <button
@@ -215,14 +220,14 @@ export function WorkspaceKitableSidebar({
                       onOpenWorkflow(workflow.id)
                     }}
                   >
-                    <Workflow className="size-4" />
+                    {workflow.kind === 'form_sync' ? <FileInput className="size-4" /> : <Workflow className="size-4" />}
                     <span>{workflow.name}</span>
                   </button>
                 ))}
               </div>
             ) : null}
           </div>
-          {mode === 'workflow' && activeWorkflowId && activeWorkflow ? (
+          {mode === 'workflow' && activeWorkflowId && activeWorkflow && activeWorkflow.kind !== 'form_sync' ? (
             <WorkflowStatusToggle
               enabled={workflowEnabled.enabled}
               saving={workflowEnabled.status === 'saving'}
@@ -274,6 +279,10 @@ export function WorkspaceKitableSidebar({
               setCreateMenuOpen(false)
               onCreateTable()
             }}
+            onCreateForm={onCreateForm ? () => {
+              setCreateMenuOpen(false)
+              onCreateForm()
+            } : undefined}
             onCreateWorkflow={() => {
               setCreateMenuOpen(false)
               onCreateWorkflow()
@@ -330,8 +339,8 @@ export function WorkspaceKitableSidebar({
           aria-current={isDefaultWorkflowActive ? 'page' : undefined}
           data-testid="workspace-kitable-workflow"
         >
-          <Workflow className="size-4" />
-          <span>Workflow</span>
+          {defaultWorkflow?.kind === 'form_sync' ? <FileInput className="size-4" /> : <Workflow className="size-4" />}
+          <span>{defaultWorkflow?.kind === 'form_sync' ? defaultWorkflow.name : 'Workflow'}</span>
         </button>
 
         {orderedAdditionalTables.map((table) => (
@@ -357,7 +366,7 @@ export function WorkspaceKitableSidebar({
             title={workflow.name}
             data-testid={`workspace-kitable-workflow-${workflow.id}`}
           >
-            <Workflow className="size-4" />
+            {workflow.kind === 'form_sync' ? <FileInput className="size-4" /> : <Workflow className="size-4" />}
             <span>{workflow.name}</span>
           </button>
         ))}

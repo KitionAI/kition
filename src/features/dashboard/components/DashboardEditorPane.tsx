@@ -157,7 +157,7 @@ export function DashboardEditorPane({
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-muted/30" data-testid="dashboard-editor-pane">
-      <header className="flex min-h-14 shrink-0 items-center gap-3 border-b border-border bg-background px-5 py-3">
+      <header className="dashboard-editor-topbar flex min-h-14 shrink-0 items-center gap-3 border-b border-border bg-background px-5 py-3">
         <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
           <LayoutDashboard className="size-4" />
         </div>
