@@ -13,7 +13,7 @@
   "tables": [
     { "asset": "templates/task-tracker.kitable", "filename": "Task Tracker.kitable", "folder": "Projects & Planning" },
     { "asset": "templates/thumbnail-generator.kitable", "filename": "YouTube & TikTok Thumbnail Generator.kitable", "folder": "AI & Creative" },
-    { "asset": "templates/receipt-ocr-database.kitable", "filename": "Receipt OCR Database.kitable", "folder": "AI & Creative" },
+    { "asset": "templates/receipt-ocr-table.kitable", "filename": "Receipt OCR Table.kitable", "folder": "AI & Creative" },
     { "asset": "templates/email-inbox-sync.kitable", "filename": "Email Inbox Sync.kitable", "folder": "Operations & Analytics" },
     { "asset": "templates/leads-landing-page.kitable", "filename": "Leads Landing Page.kitable", "folder": "Sales & Customer" },
     { "asset": "templates/sdr-cold-call-manager.kitable", "filename": "SDR Cold Call Manager.kitable", "folder": "Sales & Customer" },

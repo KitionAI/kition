@@ -60,7 +60,7 @@ The built-in templates cover different kinds of work:
 | [[Getting Started/Projects & Planning/Project Gantt Planner.kitable]] | Planning project dependencies and delivery dates | Timeline-ready dates, progress, status, and owners |
 | [[Getting Started/Operations & Analytics/Business Analytics Dashboard.kitable]] | Revenue, cost, margin, and collections | Metric-oriented records and summaries |
 | [[Getting Started/Operations & Analytics/Email Inbox Sync.kitable]] | Importing an IMAP mailbox into structured records | Message metadata with Markdown-backed content |
-| [[Getting Started/AI & Creative/Receipt OCR Database.kitable]] | Turning receipt images into searchable data | Attachments, OCR text, structured JSON, and review status |
+| [[Getting Started/AI & Creative/Receipt OCR Table.kitable]] | Turning receipt images into searchable data | Attachments, OCR text, structured JSON, and review status |
 | [[Getting Started/AI & Creative/YouTube & TikTok Thumbnail Generator.kitable]] | Creating distinct social cover concepts | Portrait input, story brief, prompt, and generated image fields |
 | [[Getting Started/AI & Creative/Batch Product Designer.kitable]] | Developing product concepts and campaign assets | Creative briefs, image fields, and social copy |
 | [[Getting Started/Operations & Analytics/Restaurant Operations.kitable]] | Reservations, guest preferences, and private events | Calendar, kanban, and publishable form views |
@@ -68,7 +68,7 @@ The built-in templates cover different kinds of work:
 > [!note] Template copies are independent
 > If a filename ends in `2`, `3`, or another number, it is a separate copy. Keep the version you are using and remove extra experiments when you no longer need them.
 
-## Keep starter templates together
+## Keep example templates together
 
 The **Getting Started** folder is divided by purpose so the workspace root stays calm and each example is easy to find. For ongoing work, create project folders and move active tables closer to their related documents.
 
@@ -79,7 +79,7 @@ Welcome to Kition.md
 Getting Started/
   AI & Creative/
     Batch Product Designer.kitable
-    Receipt OCR Database.kitable
+    Receipt OCR Table.kitable
     YouTube & TikTok Thumbnail Generator.kitable
   Sales & Customer/
     Leads Landing Page.kitable
@@ -165,7 +165,7 @@ With a template table active:
 Review this table, identify missing values, and propose a cleanup plan without changing any records yet.
 ```
 
-With Receipt OCR Database active:
+With Receipt OCR Table active:
 
 ```text
 Explain the extraction fields and suggest a validation checklist for newly uploaded receipts.

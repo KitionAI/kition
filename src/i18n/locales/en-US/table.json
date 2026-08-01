@@ -443,7 +443,7 @@
         "description": "Upload one portrait, generate concise titles, and create two original 16:9 plus two 9:16 image variants."
       },
       "receiptOcrDatabase": {
-        "title": "Receipt OCR Database",
+        "title": "Receipt OCR Table",
         "description": "Upload receipt images and turn them into searchable fields, structured JSON, and plain text."
       },
       "emailInboxSync": {

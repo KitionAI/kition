@@ -17,7 +17,7 @@ describe('onboarding static assets', () => {
     expect(manifest.tables.map((table: { filename: string }) => table.filename)).toEqual([
       'Task Tracker.kitable',
       'YouTube & TikTok Thumbnail Generator.kitable',
-      'Receipt OCR Database.kitable',
+      'Receipt OCR Table.kitable',
       'Email Inbox Sync.kitable',
       'Leads Landing Page.kitable',
       'SDR Cold Call Manager.kitable',
@@ -49,7 +49,7 @@ describe('onboarding static assets', () => {
       expect(typeof table.filename).toBe('string')
       if ([
         'Batch Product Designer.kitable',
-        'Receipt OCR Database.kitable',
+        'Receipt OCR Table.kitable',
         'YouTube & TikTok Thumbnail Generator.kitable',
       ].includes(table.filename)) {
         expect(bytes.includes(Buffer.from('kition-bundled:/templates/'))).toBe(true)
@@ -135,7 +135,7 @@ describe('onboarding static assets', () => {
     expect(english).toContain('```mermaid')
     expect(english).toContain('V_n = V_0(1 + r)^n')
     expect(english).toContain('Template Center')
-    expect(english).toContain('Receipt OCR Database')
+    expect(english).toContain('Receipt OCR Table')
     expect(english).toContain('[[Getting Started/Operations & Analytics/Restaurant Operations.kitable]]')
     expect(english).toContain('Settings > Onboarding Guides')
     expect(english).toContain('```text')
