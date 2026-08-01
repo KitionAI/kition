@@ -15,7 +15,7 @@ import { openExternalURL } from '@/services/desktop'
 import type { UpdateState } from '@/services/desktopUpdates'
 import { trackProductEvent } from '@/features/analytics/lib/productAnalytics'
 
-const KITION_FEEDBACK_URL = 'mailto:support@kition.ai?subject=Kition%20Feedback'
+const KITION_FEEDBACK_URL = 'mailto:karodong.2026@hotmail.com?subject=Kition%20Feedback'
 const KITION_CONTACT_SUPPORT_URL = `${KITION_SUPPORT_URL}?subject=Kition%20Support`
 
 export function SupportAndTrustSettings({

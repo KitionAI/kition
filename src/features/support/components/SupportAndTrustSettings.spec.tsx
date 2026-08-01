@@ -83,7 +83,7 @@ describe('SupportAndTrustSettings', () => {
 
     expect(openExternalURL.mock.calls).toEqual([
       ['mailto:support@kition.ai?subject=Kition%20Support'],
-      ['mailto:support@kition.ai?subject=Kition%20Feedback'],
+      ['mailto:karodong.2026@hotmail.com?subject=Kition%20Feedback'],
       ['https://kition.ai/privacy'],
       ['https://kition.ai/terms'],
     ])
