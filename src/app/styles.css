@@ -8722,9 +8722,8 @@
 :root[data-update-banner='1'] .document-workspace {
   height: calc(100vh - var(--desktop-titlebar-offset) - 36px);
 }
-.kition-update-banner--info { background: #eef4ff; color: #1f3b8c; }
+.kition-update-banner--info { background: #f1efff; color: #3a2a99; }
 .kition-update-banner--success { background: #e8f7ee; color: #1f6b3c; }
-.kition-update-banner--error { background: #fdecec; color: #8c1f1f; }
 .kition-update-banner__progress {
   flex: 1;
   height: 4px;

@@ -6,6 +6,8 @@ describe('classifyUpdateError', () => {
     expect(classifyUpdateError(new Error('getaddrinfo ENOTFOUND github.com')).kind).toBe('network')
     expect(classifyUpdateError(new Error('connect ETIMEDOUT 140.82.114.4:443')).kind).toBe('network')
     expect(classifyUpdateError(new Error('net::ERR_INTERNET_DISCONNECTED')).kind).toBe('network')
+    expect(classifyUpdateError(new Error('net::ERR_CONNECTION_CLOSED')).kind).toBe('network')
+    expect(classifyUpdateError(new Error('net::ERR_NETWORK_CHANGED')).kind).toBe('network')
     expect(classifyUpdateError(new Error('getaddrinfo EAI_AGAIN api.github.com')).kind).toBe('network')
   })
 

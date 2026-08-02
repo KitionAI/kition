@@ -3,6 +3,12 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true
+;(globalThis as any).__APP_VERSION__ = 'test'
+;(globalThis as any).__APP_COMMIT__ = 'test'
+;(globalThis as any).__APP_BUILD_IDENTITY__ = 'test'
+;(globalThis as any).__APP_BUILD_AT__ = '2026-08-02T00:00:00.000Z'
+
+const updateStateMock = vi.hoisted(() => vi.fn<() => any>(() => ({ phase: 'idle' })))
 
 vi.mock('@/features/emailProviders/EmailProvidersPane', () => ({
   EmailProvidersPane: () => <div data-testid="mock-email-providers-pane">Email providers pane</div>,
@@ -39,7 +45,7 @@ vi.mock('@/services/desktopUpdates', () => ({
 }))
 
 vi.mock('@/features/updates/useUpdateState', () => ({
-  useUpdateState: () => ({ phase: 'idle' }),
+  useUpdateState: () => updateStateMock(),
 }))
 vi.mock('@/features/settings/OnboardingGuidesPanel', () => ({ OnboardingGuidesPanel: () => null }))
 
@@ -48,6 +54,7 @@ let root: Root | null = null
 
 beforeEach(() => {
   vi.clearAllMocks()
+  updateStateMock.mockReturnValue({ phase: 'idle' })
   container = document.createElement('div')
   document.body.appendChild(container)
 })
@@ -58,7 +65,7 @@ afterEach(() => {
   container.remove()
 })
 
-async function renderSettings(initialSection: 'general' | 'connections' | 'account' = 'connections') {
+async function renderSettings(initialSection: 'general' | 'connections' | 'account' | 'about' = 'connections') {
   const { DesktopSettingsPage } = await import('./DesktopSettingsPage')
   await act(async () => {
     root = createRoot(container)
@@ -129,5 +136,19 @@ describe('DesktopSettingsPage information architecture', () => {
     await renderSettings('account')
     expect(container.querySelector('[data-testid="mock-account-panel"]')?.textContent).toContain('Account panel')
     expect(container.querySelector('.settings-nav-button.is-active')?.textContent).toContain('Account')
+  })
+
+  it('shows a safe update message instead of a raw network error', async () => {
+    updateStateMock.mockReturnValue({
+      phase: 'error',
+      message: 'net::ERR_CONNECTION_CLOSED',
+      errorKind: 'network',
+      phaseAtError: 'checking',
+    })
+
+    await renderSettings('about')
+
+    expect(container.textContent).toContain('Network unavailable')
+    expect(container.textContent).not.toContain('ERR_CONNECTION_CLOSED')
   })
 })

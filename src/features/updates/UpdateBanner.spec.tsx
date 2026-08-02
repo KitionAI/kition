@@ -5,11 +5,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const useUpdateState = vi.fn()
 const downloadUpdate = vi.fn()
 const installUpdate = vi.fn()
-const checkForUpdates = vi.fn()
 const openExternalURL = vi.fn()
 
 vi.mock('./useUpdateState', () => ({ useUpdateState }))
-vi.mock('@/services/desktopUpdates', () => ({ downloadUpdate, installUpdate, checkForUpdates }))
+vi.mock('@/services/desktopUpdates', () => ({ downloadUpdate, installUpdate }))
 vi.mock('@/services/desktop', () => ({ openExternalURL }))
 
 ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true
@@ -21,7 +20,6 @@ beforeEach(() => {
   useUpdateState.mockReset()
   downloadUpdate.mockReset()
   installUpdate.mockReset()
-  checkForUpdates.mockReset()
   openExternalURL.mockReset()
   window.localStorage.clear()
 })
@@ -110,12 +108,16 @@ describe('UpdateBanner', () => {
     expect(installUpdate).toHaveBeenCalled()
   })
 
-  it('renders error and Retry calls checkForUpdates', async () => {
-    useUpdateState.mockReturnValue({ phase: 'error', message: 'oops', errorKind: 'network', phaseAtError: 'checking' })
+  it('keeps background update errors out of the global workspace banner', async () => {
+    useUpdateState.mockReturnValue({
+      phase: 'error',
+      message: 'net::ERR_CONNECTION_CLOSED',
+      errorKind: 'network',
+      phaseAtError: 'checking',
+    })
     const c = await mountBanner()
-    expect(c.textContent).toMatch(/network/i)
-    await click(findButton(/retry/i))
-    expect(checkForUpdates).toHaveBeenCalled()
+    expect(c.textContent).toBe('')
+    expect(document.documentElement.dataset.updateBanner).toBeUndefined()
   })
 
   it('Later dismisses the available banner for that version', async () => {

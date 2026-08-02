@@ -990,7 +990,13 @@ function renderUpdateDescription(t: TFunction, state: UpdateState, lastCheckedAt
     case 'downloaded':
       return t('about.update.downloaded', { version: state.version ?? '?' })
     case 'error':
-      return state.message
+      if (state.errorKind === 'network') return t('updates.errorNetwork')
+      if (state.errorKind === 'verification') return t('updates.errorVerification')
+      if (state.errorKind === 'disk') return t('updates.errorDisk')
+      if (state.errorKind === 'rate-limit') return t('updates.errorRateLimit')
+      return state.phaseAtError === 'downloading'
+        ? t('about.update.downloadFailed')
+        : t('about.update.checkFailed')
     case 'up-to-date':
     case 'idle':
     default:

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui'
 import { openExternalURL } from '@/services/desktop'
-import { checkForUpdates, downloadUpdate, installUpdate } from '@/services/desktopUpdates'
+import { downloadUpdate, installUpdate } from '@/services/desktopUpdates'
 import { dismissVersion, isVersionDismissed } from './dismissedVersion'
 import { useUpdateState } from './useUpdateState'
 
@@ -30,19 +30,18 @@ function useUpdateBannerVisibilityFlag(visible: boolean) {
 }
 
 export function UpdateBanner() {
-  const { t } = useTranslation(['settings', 'common'])
+  const { t } = useTranslation('settings')
   const state = useUpdateState()
   const [tick, setTick] = useState(0)
 
   const phase = state.phase
   const dismissed =
     phase === 'available' && isVersionDismissed((state as any).version)
-  const visible =
-    phase !== 'idle' &&
-    phase !== 'checking' &&
-    phase !== 'up-to-date' &&
-    phase !== 'unsupported' &&
-    !dismissed
+  const visible = (
+    phase === 'available' ||
+    phase === 'downloading' ||
+    phase === 'downloaded'
+  ) && !dismissed
   useUpdateBannerVisibilityFlag(visible)
 
   if (!visible) {
@@ -90,22 +89,6 @@ export function UpdateBanner() {
       <div className="kition-update-banner kition-update-banner--success" role="status">
         <span>{t('updates.readyToInstall', { version: s.version })}</span>
         <Button variant="default" size="sm" onClick={() => void installUpdate()}>{t('updates.restartAndInstall')}</Button>
-      </div>
-    )
-  }
-
-  if (phase === 'error') {
-    const s = state as Extract<typeof state, { phase: 'error' }>
-    const copy =
-      s.errorKind === 'network' ? t('updates.errorNetwork') :
-      s.errorKind === 'verification' ? t('updates.errorVerification') :
-      s.errorKind === 'disk' ? t('updates.errorDisk') :
-      s.errorKind === 'rate-limit' ? t('updates.errorRateLimit') :
-      s.message
-    return (
-      <div className="kition-update-banner kition-update-banner--error" role="alert">
-        <span>{copy}</span>
-        <Button variant="default" size="sm" onClick={() => void checkForUpdates()}>{t('common:actions.retry')}</Button>
       </div>
     )
   }
