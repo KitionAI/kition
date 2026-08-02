@@ -8,6 +8,10 @@ const mocks = vi.hoisted(() => ({
   restorePortalAccountSession: vi.fn(),
   getDesktopInfo: vi.fn(),
   getDesktopBackendStatus: vi.fn(),
+  listWorkspaceDocuments: vi.fn(),
+  moveWorkspaceDocument: vi.fn(),
+  readWorkspaceDocument: vi.fn(),
+  writeWorkspaceDocument: vi.fn(),
   chooseParentDirectory: vi.fn(),
   addVault: vi.fn(),
   removeVault: vi.fn(),
@@ -23,6 +27,10 @@ vi.mock('@/services/portalAccount', () => ({
 vi.mock('@/services/desktop', () => ({
   getDesktopInfo: mocks.getDesktopInfo,
   getDesktopBackendStatus: mocks.getDesktopBackendStatus,
+  listWorkspaceDocuments: mocks.listWorkspaceDocuments,
+  moveWorkspaceDocument: mocks.moveWorkspaceDocument,
+  readWorkspaceDocument: mocks.readWorkspaceDocument,
+  writeWorkspaceDocument: mocks.writeWorkspaceDocument,
   // Shell pulls in ScenarioRoute → TableEditor → @/api/dataDocuments,
   // which calls getApiBaseURL() at module-evaluation time. With
   // vi.resetModules() we need to surface enough of the desktop module
@@ -127,6 +135,11 @@ describe('AppShell portal restore', () => {
     mocks.getDesktopInfo.mockResolvedValue({ platform: 'darwin', app_version: '1.0.0' })
     mocks.getDesktopBackendStatus.mockReset()
     mocks.getDesktopBackendStatus.mockResolvedValue({ runtime_label: '' })
+    mocks.listWorkspaceDocuments.mockReset()
+    mocks.listWorkspaceDocuments.mockResolvedValue({ items: [] })
+    mocks.moveWorkspaceDocument.mockReset()
+    mocks.readWorkspaceDocument.mockReset()
+    mocks.writeWorkspaceDocument.mockReset()
     mocks.WorkspaceScreen.mockClear()
     window.history.replaceState(null, '', '/documents')
   })
