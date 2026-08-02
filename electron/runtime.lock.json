@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "runtimeVersion": "0.1.8",
+  "runtimeVersion": "0.1.9",
   "protocolVersion": 1,
-  "releaseTag": "v0.1.8",
+  "releaseTag": "v0.1.9",
   "repository": "KitionAI/kition-dev"
 }
