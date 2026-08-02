@@ -10,6 +10,11 @@ const expectedArtifactNames = {
   win: '${productName}-${version}-windows-${arch}-setup.${ext}',
   linux: '${productName}-${version}-linux-${arch}.${ext}',
 }
+const expectedElectronLanguages = {
+  mac: ['zh_CN', 'en'],
+  win: ['zh-CN', 'en-US'],
+  linux: ['zh-CN', 'en-US'],
+}
 
 function collectConfiguredAssetPaths(packagePayload) {
   const build = packagePayload?.build || {}
@@ -27,10 +32,19 @@ export async function validateDesktopAssets({ rootDir = appDir, packagePayload }
     || JSON.parse(await fs.readFile(path.join(rootDir, 'package.json'), 'utf8'))
   const assets = collectConfiguredAssetPaths(payload)
   const missing = []
+  if (payload?.build?.electronLanguages != null) {
+    missing.push('Electron locales must be configured per platform')
+  }
   for (const [platform, expectedName] of Object.entries(expectedArtifactNames)) {
     const configuredName = payload?.build?.[platform]?.artifactName
     if (configuredName !== expectedName) {
       missing.push(`${platform} artifact name must be ${expectedName}`)
+    }
+  }
+  for (const [platform, expectedLanguages] of Object.entries(expectedElectronLanguages)) {
+    const configuredLanguages = payload?.build?.[platform]?.electronLanguages
+    if (JSON.stringify(configuredLanguages) !== JSON.stringify(expectedLanguages)) {
+      missing.push(`${platform} Electron locales must be ${expectedLanguages.join(', ')}`)
     }
   }
   for (const [label, configuredPath] of assets) {

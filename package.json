@@ -197,10 +197,6 @@
     ],
     "npmRebuild": false,
     "compression": "maximum",
-    "electronLanguages": [
-      "zh_CN",
-      "en_US"
-    ],
     "directories": {
       "output": "dist-electron"
     },
@@ -241,6 +237,10 @@
     "mac": {
       "artifactName": "${productName}-${version}-macos-${arch}.${ext}",
       "icon": "electron/icon.icns",
+      "electronLanguages": [
+        "zh_CN",
+        "en"
+      ],
       "category": "public.app-category.productivity",
       "target": [
         "dmg",
@@ -256,6 +256,10 @@
     "win": {
       "artifactName": "${productName}-${version}-windows-${arch}-setup.${ext}",
       "icon": "electron/icon.png",
+      "electronLanguages": [
+        "zh-CN",
+        "en-US"
+      ],
       "signtoolOptions": {
         "publisherName": "Heartie Technology Limited"
       },
@@ -266,6 +270,10 @@
     "linux": {
       "artifactName": "${productName}-${version}-linux-${arch}.${ext}",
       "icon": "electron/icon.png",
+      "electronLanguages": [
+        "zh-CN",
+        "en-US"
+      ],
       "category": "Office",
       "maintainer": "Heartie Technology Limited <support@kition.ai>",
       "target": [

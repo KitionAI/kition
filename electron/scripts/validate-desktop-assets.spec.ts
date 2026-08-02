@@ -20,19 +20,23 @@ async function createFixture() {
     rootDir,
     packagePayload: {
       build: {
+        electronLanguages: undefined as string[] | undefined,
         mac: {
           artifactName: '${productName}-${version}-macos-${arch}.${ext}',
           icon: 'mac.icns',
+          electronLanguages: ['zh_CN', 'en'],
           entitlements: 'entitlements.plist',
           entitlementsInherit: 'entitlements.plist',
         },
         win: {
           artifactName: '${productName}-${version}-windows-${arch}-setup.${ext}',
           icon: 'win.png',
+          electronLanguages: ['zh-CN', 'en-US'],
         },
         linux: {
           artifactName: '${productName}-${version}-linux-${arch}.${ext}',
           icon: 'linux.png',
+          electronLanguages: ['zh-CN', 'en-US'],
         },
       },
     },
@@ -57,6 +61,24 @@ describe('validateDesktopAssets', () => {
 
     await expect(validateDesktopAssets(fixture)).rejects.toThrow(
       'mac artifact name must be ${productName}-${version}-macos-${arch}.${ext}',
+    )
+  })
+
+  it('rejects Windows locale names that use macOS separators', async () => {
+    const fixture = await createFixture()
+    fixture.packagePayload.build.win.electronLanguages = ['zh_CN', 'en_US']
+
+    await expect(validateDesktopAssets(fixture)).rejects.toThrow(
+      'win Electron locales must be zh-CN, en-US',
+    )
+  })
+
+  it('requires platform-specific Electron locale configuration', async () => {
+    const fixture = await createFixture()
+    fixture.packagePayload.build.electronLanguages = ['zh-CN', 'en-US']
+
+    await expect(validateDesktopAssets(fixture)).rejects.toThrow(
+      'Electron locales must be configured per platform',
     )
   })
 })
