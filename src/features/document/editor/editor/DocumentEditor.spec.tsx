@@ -79,19 +79,20 @@ describe('DocumentEditor IME input', () => {
     })
 
     await renderEditor(intermediateValue, onChange)
-    await act(async () => {
-      await new Promise((resolve) => window.setTimeout(resolve, 250))
+    await vi.waitFor(() => {
+      expect(editorView.state.doc.toString()).toBe(finalValue)
+      expect(editorView.state.selection.main.head).toBe(finalValue.length)
+      expect(onChange).toHaveBeenLastCalledWith(finalValue)
+    }, {
+      timeout: 3000,
     })
-
-    expect(editorView.state.doc.toString()).toBe(finalValue)
-    expect(editorView.state.selection.main.head).toBe(finalValue.length)
-    expect(onChange).toHaveBeenLastCalledWith(finalValue)
 
     await renderEditor(finalValue, onChange)
     await renderEditor('External replacement', onChange)
-    await act(async () => {
-      await new Promise((resolve) => window.setTimeout(resolve, 250))
+    await vi.waitFor(() => {
+      expect(editorView.state.doc.toString()).toBe('External replacement')
+    }, {
+      timeout: 3000,
     })
-    expect(editorView.state.doc.toString()).toBe('External replacement')
   })
 })
