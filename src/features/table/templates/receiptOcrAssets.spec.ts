@@ -32,7 +32,7 @@ describe('receipt OCR assets', () => {
     expect(readPngDimensions(coverBytes)).toEqual({ width: 1672, height: 941 })
 
     for (const asset of manifest.assets) {
-      const filePath = resolve(repositoryRoot, 'public', asset.path.replace(/^\//, ''))
+      const filePath = resolve(repositoryRoot, 'public', asset.path.replace(/^kition-bundled:\//, ''))
       const bytes = readFileSync(filePath)
       expect(statSync(filePath).size, asset.id).toBe(asset.sizeBytes)
       expect(createHash('sha256').update(bytes).digest('hex'), asset.id).toBe(asset.sha256)

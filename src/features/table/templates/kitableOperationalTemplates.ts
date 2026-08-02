@@ -29,7 +29,7 @@ function operationalTemplate(input: OperationalTemplateInput): KitableTemplateDe
     description: input.description,
     documentDescription: input.description,
     usageCount: 320 + input.records.length * 137,
-    coverImage: `/templates/table-covers/${input.id}.webp`,
+    coverImage: `kition-bundled:/templates/table-covers/${input.id}.webp`,
     icon: input.icon,
     color: input.color,
     categories: input.categories,

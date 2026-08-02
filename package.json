@@ -243,7 +243,8 @@
       "icon": "electron/icon.icns",
       "category": "public.app-category.productivity",
       "target": [
-        "dmg"
+        "dmg",
+        "zip"
       ],
       "identity": "Heartie Technology Limited (X3FLP9863V)",
       "hardenedRuntime": true,

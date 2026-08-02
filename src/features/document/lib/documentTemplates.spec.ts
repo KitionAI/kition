@@ -14,7 +14,7 @@ describe('built-in document templates', () => {
     expect(new Set(templates.map((template) => template.preview)).size).toBe(20)
     expect(new Set(templates.map((template) => template.coverImage)).size).toBe(20)
     expect(templates.every((template) => (
-      template.coverImage === `/templates/document-covers/${template.id}.webp`
+      template.coverImage === `kition-bundled:/templates/document-covers/${template.id}.webp`
     ))).toBe(true)
     expect(new Set(templates.map((template) => template.category))).toEqual(
       new Set(['work', 'planning', 'personal']),

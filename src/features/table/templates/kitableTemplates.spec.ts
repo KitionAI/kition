@@ -28,7 +28,7 @@ describe('getBuiltinKitableTemplates', () => {
       .filter((template) => template.id !== 'email-inbox-sync')
       .every((template) => template.tables.every((table) => table.records.length > 0))).toBe(true)
     expect(templates.every((template) => template.categories?.length)).toBe(true)
-    expect(templates.every((template) => template.coverImage === `/templates/table-covers/${template.id}.webp`)).toBe(true)
+    expect(templates.every((template) => template.coverImage === `kition-bundled:/templates/table-covers/${template.id}.webp`)).toBe(true)
     expect(templates.every((template) => template.snapshot.resources.some((resource) => resource.id === template.snapshot.defaultResourceId))).toBe(true)
   })
 
@@ -39,8 +39,8 @@ describe('getBuiltinKitableTemplates', () => {
 
     expect(template).toMatchObject({
       localOnly: true,
-      coverImage: '/templates/table-covers/receipt-ocr-database.webp',
-      assetManifestPath: '/templates/receipt-ocr-database/manifest.json',
+      coverImage: 'kition-bundled:/templates/table-covers/receipt-ocr-database.webp',
+      assetManifestPath: 'kition-bundled:/templates/receipt-ocr-database/manifest.json',
       snapshot: {
         includeData: true,
         defaultResourceId: 'receipt-database',
@@ -224,7 +224,7 @@ describe('getBuiltinKitableTemplates', () => {
 
     expect(template?.snapshot.version).toBe(5)
     expect(template?.snapshot.resources.map((resource) => resource.kind)).toEqual(['table'])
-    expect(template?.assetManifestPath).toBe('/templates/youtube-tiktok-thumbnail-generator/manifest.json')
+    expect(template?.assetManifestPath).toBe('kition-bundled:/templates/youtube-tiktok-thumbnail-generator/manifest.json')
     expect(table?.title).toBe('Video Thumbnail Studio')
     expect(table?.fields.map((field) => field.title)).toEqual([
       'Key Message',
@@ -321,7 +321,7 @@ describe('getBuiltinKitableTemplates', () => {
 
     expect(template?.snapshot.version).toBe(3)
     expect(template?.snapshot.resources.map((resource) => resource.kind)).toEqual(['table'])
-    expect(template?.assetManifestPath).toBe('/templates/batch-product-designer/manifest.json')
+    expect(template?.assetManifestPath).toBe('kition-bundled:/templates/batch-product-designer/manifest.json')
     expect(table?.title).toBe('Product Concepts')
     expect(table?.fields.map((field) => field.title)).toEqual([
       'Concept',

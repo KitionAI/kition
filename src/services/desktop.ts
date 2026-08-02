@@ -1,4 +1,5 @@
 import { getCurrentLocale } from '@/i18n'
+import { resolveBundledAssetURL } from '@/lib/bundledAssets'
 
 type KitionDesktopBridge = {
   shell?: string
@@ -556,11 +557,7 @@ export function resolveApiURL(path: string) {
 export function resolvePublicFileURL(path: string) {
   const bundledAssetPath = path.match(/^kition-bundled:(\/?[^?#]+(?:[?#].*)?)$/i)?.[1]
   if (bundledAssetPath) {
-    const normalizedAssetPath = bundledAssetPath.replace(/^\/+/, '')
-    if (typeof window !== 'undefined' && window.location.protocol === 'file:') {
-      return new URL(`./${normalizedAssetPath}`, window.location.href).toString()
-    }
-    return `/${normalizedAssetPath}`
+    return resolveBundledAssetURL(bundledAssetPath)
   }
   if (/^(https?:|data:|blob:|kition-workspace:)/i.test(path)) {
     return path

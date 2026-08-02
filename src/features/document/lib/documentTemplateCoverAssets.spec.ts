@@ -11,7 +11,7 @@ const t = ((key: string) => key) as TFunction<'document'>
 describe('document template cover assets', () => {
   it('ships a generated 960 by 540 WebP cover for every built-in template', () => {
     for (const template of getBuiltinDocumentTemplates(t)) {
-      const bytes = readFileSync(resolve('public', template.coverImage.replace(/^\//, '')))
+      const bytes = readFileSync(resolve('public', template.coverImage.replace(/^kition-bundled:\//, '')))
 
       expect(bytes.byteLength).toBeGreaterThan(10_000)
       expect(bytes.subarray(0, 4).toString('ascii')).toBe('RIFF')

@@ -409,6 +409,6 @@ Describe the problem, the opportunity, and the outcome this project should creat
   ]
   return [...templates, ...getExtendedDocumentTemplates(t)].map((template) => ({
     ...template,
-    coverImage: `/templates/document-covers/${template.id}.webp`,
+    coverImage: `kition-bundled:/templates/document-covers/${template.id}.webp`,
   }))
 }

@@ -4,6 +4,7 @@ import type {
   KitableTemplateRecordValue,
 } from '@/features/table/templates/kitableTemplates'
 import type { DataAttachment, DataRecordValue } from '@/types/dataDocument'
+import { resolveBundledAssetURL } from '@/lib/bundledAssets'
 
 export type KitableTemplateAssetManifestItem = {
   id: string
@@ -53,7 +54,7 @@ export function collectKitableTemplateAssetIds(
 export async function loadKitableTemplateAssetManifest(
   manifestPath: string,
 ): Promise<KitableTemplateAssetManifest> {
-  const response = await fetch(manifestPath)
+  const response = await fetch(resolveBundledAssetURL(manifestPath))
   if (!response.ok) {
     throw new Error(`Template asset manifest could not be loaded: ${manifestPath}`)
   }
@@ -103,7 +104,7 @@ export async function uploadKitableTemplateAssets({
 
   const uploaded = await mapWithConcurrency(assetIds, 4, async (assetId) => {
     const asset = manifestAssetById.get(assetId) as KitableTemplateAssetManifestItem
-    const response = await fetch(asset.path)
+    const response = await fetch(resolveBundledAssetURL(asset.path))
     if (!response.ok) {
       throw new Error(`Template asset could not be loaded: ${asset.path}`)
     }

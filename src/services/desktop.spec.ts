@@ -33,7 +33,7 @@ describe('desktop service helpers', () => {
     const { resolvePublicFileURL } = await loadDesktopModule()
 
     expect(resolvePublicFileURL('kition-bundled:/templates/example/image.png'))
-      .toBe('/templates/example/image.png')
+      .toBe('kition-bundled://assets/templates/example/image.png')
     expect(resolvePublicFileURL('/uploads/example/image.png'))
       .toBe('http://127.0.0.1:18101/uploads/example/image.png')
   })

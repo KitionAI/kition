@@ -124,6 +124,27 @@ describe('UpdateManager event bindings', () => {
     expect(mgr.state).toEqual({ phase: 'downloaded', version: '1.0.1' })
   })
 
+  it('runs the user-driven 0.1.7 update sequence', async () => {
+    const { build } = makeManager()
+    const mgr = await build()
+
+    fire('checking-for-update', undefined)
+    fire('update-available', { version: '0.1.7', releaseNotes: 'Desktop fixes' })
+    await mgr.download()
+    fire('download-progress', {
+      percent: 100,
+      transferred: 1024,
+      total: 1024,
+      bytesPerSecond: 1024,
+    })
+    fire('update-downloaded', { version: '0.1.7' })
+    mgr.quitAndInstall()
+
+    expect(autoUpdaterMock.downloadUpdate).toHaveBeenCalledTimes(1)
+    expect(autoUpdaterMock.quitAndInstall).toHaveBeenCalledWith(false, true)
+    expect(mgr.state).toEqual({ phase: 'downloaded', version: '0.1.7' })
+  })
+
   it('classifies error and stores phaseAtError', async () => {
     const { build } = makeManager()
     const mgr = await build()

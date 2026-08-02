@@ -1,8 +1,9 @@
 import type { ImgHTMLAttributes } from 'react'
 
+import { resolveBundledAssetURL } from '@/lib/bundledAssets'
 import { cn } from '@/lib/utils'
 
-export const KITION_LOGO_MARK_URL = `${import.meta.env.BASE_URL}logo-mark.png`
+export const KITION_LOGO_MARK_URL = resolveBundledAssetURL('logo-mark.png')
 
 export function KitionLogoMark({
   alt = 'Kition',

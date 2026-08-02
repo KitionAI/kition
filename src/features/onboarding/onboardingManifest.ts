@@ -1,3 +1,5 @@
+import { resolveBundledAssetURL } from '@/lib/bundledAssets'
+
 export type OnboardingManifest = {
   version: number
   folder: string
@@ -12,7 +14,7 @@ export type OnboardingManifest = {
   guides?: { manifest: string; folder?: string }
 }
 
-export const ONBOARDING_BASE = '/onboarding'
+export const ONBOARDING_BASE = resolveBundledAssetURL('onboarding')
 export const ONBOARDING_WELCOME_PATH = 'Getting Started/Welcome to Kition.md'
 export const ONBOARDING_EMAIL_INBOX_SYNC_PATH = 'Getting Started/Operations & Analytics/Email Inbox Sync.kitable'
 

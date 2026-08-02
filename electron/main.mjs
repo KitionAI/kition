@@ -8,6 +8,10 @@ import { CommunityBootstrap } from './bootstrap.mjs'
 import { BackendSupervisor } from './backend-supervisor.mjs'
 import { BrowserSessionManager } from './browser-session-manager.mjs'
 import {
+  createBundledAssetResponse,
+  KITION_BUNDLED_ASSET_SCHEME,
+} from './bundled-assets.mjs'
+import {
   DESKTOP_BROWSER_SESSION_EVENT,
   DESKTOP_DOCUMENT_EXTERNAL_CHANGE_EVENT,
   DESKTOP_UPDATES_EVENT,
@@ -60,6 +64,15 @@ if (process.platform === 'darwin') {
 }
 
 protocol.registerSchemesAsPrivileged([
+  {
+    scheme: KITION_BUNDLED_ASSET_SCHEME,
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+    },
+  },
   {
     scheme: 'kition-workspace',
     privileges: {
@@ -1739,6 +1752,14 @@ function registerWorkspaceProtocolHandler() {
   })
 }
 
+function registerBundledAssetProtocolHandler() {
+  const distDir = path.resolve(moduleDir, '..', 'dist')
+  protocol.handle(
+    KITION_BUNDLED_ASSET_SCHEME,
+    (request) => createBundledAssetResponse(request.url, distDir),
+  )
+}
+
 async function handleRevealWorkspaceFolder(_event, request) {
   await ensureWorkspaceInitialized()
   if (request?.path) {
@@ -1869,6 +1890,7 @@ async function registerIpcHandlers() {
 
 async function bootstrapElectron() {
   desktopEnv = await resolveDesktopEnvironment()
+  registerBundledAssetProtocolHandler()
   registerWorkspaceProtocolHandler()
   secureStore = new SecureStore(desktopEnv)
   await secureStore.initialize()

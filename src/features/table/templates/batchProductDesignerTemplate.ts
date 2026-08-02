@@ -67,7 +67,7 @@ export function createBatchProductDesignerTemplate(
     usageCount: 0,
     icon: 'palette',
     color: 'amber',
-    assetManifestPath: '/templates/batch-product-designer/manifest.json',
+    assetManifestPath: 'kition-bundled:/templates/batch-product-designer/manifest.json',
     tables: [{
       title: 'Product Concepts',
       description: 'Original product briefs, generated design assets, campaign imagery, and social copy.',

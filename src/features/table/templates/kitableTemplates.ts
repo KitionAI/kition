@@ -502,7 +502,7 @@ export function getBuiltinKitableTemplates(
 
   const builtInTemplates: KitableTemplateDefinition[] = templates.map((template) => ({
     ...template,
-    coverImage: `/templates/table-covers/${template.id}.webp`,
+    coverImage: `kition-bundled:/templates/table-covers/${template.id}.webp`,
     categories: solutionCategories[template.id] || ['recommended'],
     snapshot: {
       version: template.id === 'thumbnail-generator'

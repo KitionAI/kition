@@ -129,7 +129,7 @@ export function createThumbnailGeneratorTemplate(
     usageCount: 0,
     icon: 'image',
     color: 'rose',
-    assetManifestPath: '/templates/youtube-tiktok-thumbnail-generator/manifest.json',
+    assetManifestPath: 'kition-bundled:/templates/youtube-tiktok-thumbnail-generator/manifest.json',
     tables: [{
       title: 'Video Thumbnail Studio',
       description: 'Original landscape thumbnails and vertical covers built around a consistent creator identity.',

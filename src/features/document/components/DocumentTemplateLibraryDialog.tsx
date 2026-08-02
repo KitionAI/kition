@@ -40,6 +40,7 @@ import {
   type DocumentTemplateTone,
 } from '@/features/document/lib/documentTemplates'
 import { cn } from '@/lib/utils'
+import { resolveBundledAssetURL } from '@/lib/bundledAssets'
 import {
   WORKSPACE_TEMPLATE_LIBRARY_DIALOG_CLASSNAME,
   WorkspaceTemplateLibraryFrame,
@@ -340,7 +341,7 @@ function TemplateCard({
               alt=""
               className="absolute inset-0 size-full object-cover"
               loading="lazy"
-              src={coverImage}
+              src={resolveBundledAssetURL(coverImage)}
             />
           ) : null}
           <span className="absolute left-4 top-4 grid size-9 place-items-center rounded-lg border border-border/50 bg-background/85 text-foreground shadow-sm">

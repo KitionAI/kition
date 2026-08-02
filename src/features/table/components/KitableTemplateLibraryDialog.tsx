@@ -30,6 +30,7 @@ import {
   type KitableTemplateAssetManifestItem,
 } from '@/features/table/lib/templateAssets'
 import { cn } from '@/lib/utils'
+import { resolveBundledAssetURL } from '@/lib/bundledAssets'
 import {
   WORKSPACE_TEMPLATE_LIBRARY_DIALOG_CLASSNAME,
   WorkspaceTemplateLibraryFrame,
@@ -526,7 +527,7 @@ function TemplateResourcePreview({
 
   return (
     <div className="relative min-h-[520px] overflow-hidden">
-      <img alt="" className="absolute inset-0 size-full object-cover" src={template.coverImage} />
+      <img alt="" className="absolute inset-0 size-full object-cover" src={resolveBundledAssetURL(template.coverImage)} />
       <div className="absolute inset-x-6 bottom-6 rounded-xl border bg-background/95 p-5 shadow-floating backdrop-blur">
         <h3 className="text-lg font-semibold text-foreground">{resource.title}</h3>
         <p className="mt-1 text-sm text-muted-foreground">{resource.description}</p>
@@ -564,7 +565,7 @@ function renderPreviewValue(
                 alt={`${fieldTitle} preview ${index + 1}`}
                 className="h-12 w-16 shrink-0 rounded-md border bg-muted object-cover"
                 loading="lazy"
-                src={asset.path}
+                src={resolveBundledAssetURL(asset.path)}
                 data-testid={`kitable-template-preview-asset-${asset.id}`}
               />
             ) : (
@@ -599,7 +600,7 @@ function KitableTemplatePreviewCard({
       <img
         alt=""
         className="size-full object-cover transition duration-300 group-hover:scale-[1.02]"
-        src={template.coverImage}
+        src={resolveBundledAssetURL(template.coverImage)}
       />
       {busy ? (
         <span className="absolute inset-0 grid place-items-center bg-background/70 backdrop-blur-[1px]">

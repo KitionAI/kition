@@ -11,7 +11,7 @@ const t = ((key: string) => key) as TFunction<'table'>
 describe('table template cover assets', () => {
   it('ships a generated WebP cover for every built-in template', () => {
     for (const template of getBuiltinKitableTemplates(t)) {
-      const bytes = readFileSync(resolve('public', template.coverImage.replace(/^\//, '')))
+      const bytes = readFileSync(resolve('public', template.coverImage.replace(/^kition-bundled:\//, '')))
 
       expect(bytes.byteLength).toBeGreaterThan(10_000)
       expect(bytes.subarray(0, 4).toString('ascii')).toBe('RIFF')

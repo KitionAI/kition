@@ -40,7 +40,7 @@ const assets = sourceNames.map((sourceName, index) => {
     sizeBytes: bytes.byteLength,
     ...dimensions,
     sha256: createHash('sha256').update(bytes).digest('hex'),
-    path: `/templates/receipt-ocr-database/${relativePath}`,
+    path: `kition-bundled:/templates/receipt-ocr-database/${relativePath}`,
   }
 })
 

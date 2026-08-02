@@ -68,6 +68,8 @@ describe('release-github CLI', () => {
     expect(runtimeAssetNames('0.1.3')).toContain('kition-runtime-0.1.3-darwin-arm64.tar.gz')
     expect(runtimeArtifactNames('0.1.3')).toContain('runtime-sbom-linux-x64.spdx.json')
     expect(desktopAssetNames('0.1.3')).toContain('Kition-0.1.3-windows-x64-setup.exe')
+    expect(desktopAssetNames('0.1.3')).toContain('Kition-0.1.3-macos-arm64.zip')
+    expect(desktopAssetNames('0.1.3')).toContain('Kition-0.1.3-macos-x64.zip.blockmap')
     expect(desktopAssetNames('0.1.3')).toContain('latest-mac.yml')
   })
 

@@ -49,7 +49,7 @@ export function createReceiptOcrTemplate(t: TFunction<'table'>): KitableTemplate
     icon: 'receipt-text',
     color: 'violet',
     localOnly: true,
-    assetManifestPath: '/templates/receipt-ocr-database/manifest.json',
+    assetManifestPath: 'kition-bundled:/templates/receipt-ocr-database/manifest.json',
     tables: [{
       title: 'Receipts',
       description: 'Receipt images with vision-based extraction for vendor details, categories, JSON, and plain text.',

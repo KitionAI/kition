@@ -166,8 +166,12 @@ export function desktopAssetNames(version) {
   return [
     `Kition-${version}-macos-arm64.dmg`,
     `Kition-${version}-macos-arm64.dmg.blockmap`,
+    `Kition-${version}-macos-arm64.zip`,
+    `Kition-${version}-macos-arm64.zip.blockmap`,
     `Kition-${version}-macos-x64.dmg`,
     `Kition-${version}-macos-x64.dmg.blockmap`,
+    `Kition-${version}-macos-x64.zip`,
+    `Kition-${version}-macos-x64.zip.blockmap`,
     `Kition-${version}-windows-x64-setup.exe`,
     `Kition-${version}-windows-x64-setup.exe.blockmap`,
     `Kition-${version}-linux-x86_64.AppImage`,
