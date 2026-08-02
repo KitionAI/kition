@@ -92,6 +92,13 @@ export class UpdateManager {
     if (this.state.phase !== 'available') {
       throw new Error('no update to download')
     }
+    this.set({
+      phase: 'downloading',
+      percent: 0,
+      transferred: 0,
+      total: 0,
+      bytesPerSecond: 0,
+    })
     await autoUpdater.downloadUpdate()
   }
 

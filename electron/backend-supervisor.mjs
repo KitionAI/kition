@@ -294,7 +294,7 @@ export class BackendSupervisor {
     }
   }
 
-  async start() {
+  async start({ replaceExisting = false } = {}) {
     if (String(process.env.KITION_DESKTOP_SKIP_API || '').toLowerCase() === 'true') {
       this.lastError = ''
       this.launchMode = 'skip_api'
@@ -304,7 +304,7 @@ export class BackendSupervisor {
       return this.status()
     }
     if (await fetchHealth(this.healthURL, 1500)) {
-      if (await this.adoptOrReplaceExistingRuntime()) {
+      if (await this.adoptOrReplaceExistingRuntime({ replaceExisting })) {
         this.lastError = ''
         return this.status()
       }
@@ -363,11 +363,14 @@ export class BackendSupervisor {
 
   async retry() {
     await this.stop()
-    return this.start()
+    // A healthy runtime may have been adopted from an earlier desktop process,
+    // leaving `this.child` empty. Explicit retries must replace that process
+    // instead of immediately adopting it again.
+    return this.start({ replaceExisting: true })
   }
 
-  async adoptOrReplaceExistingRuntime() {
-    const forceRestart = String(process.env.KITION_DESKTOP_FORCE_RESTART || '').toLowerCase() === 'true'
+  async adoptOrReplaceExistingRuntime({ replaceExisting = false } = {}) {
+    const forceRestart = replaceExisting || String(process.env.KITION_DESKTOP_FORCE_RESTART || '').toLowerCase() === 'true'
     const expectedWorkspaceID = await workspaceIDFromDirectory(this.env.workspace_dir)
     const info = await fetchRuntimeInfo(this.runtimeURL, 1500)
     if (!info) {

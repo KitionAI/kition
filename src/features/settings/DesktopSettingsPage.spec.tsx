@@ -151,4 +151,21 @@ describe('DesktopSettingsPage information architecture', () => {
     expect(container.textContent).toContain('Network unavailable')
     expect(container.textContent).not.toContain('ERR_CONNECTION_CLOSED')
   })
+
+  it('shows byte progress while an update is downloading', async () => {
+    updateStateMock.mockReturnValue({
+      phase: 'downloading',
+      percent: 42.4,
+      transferred: 5 * 1024 * 1024,
+      total: 20 * 1024 * 1024,
+      bytesPerSecond: 2 * 1024 * 1024,
+    })
+
+    await renderSettings('about')
+
+    const progress = container.querySelector('[role="progressbar"]')
+    expect(progress?.getAttribute('aria-valuenow')).toBe('42')
+    expect(container.textContent).toContain('5.0 MB / 20.0 MB')
+    expect(container.textContent).toContain('2.0 MB/s')
+  })
 })

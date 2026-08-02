@@ -211,6 +211,27 @@ describe('UpdateManager commands', () => {
     expect(autoUpdaterMock.checkForUpdates).not.toHaveBeenCalled()
   })
 
+  it('enters downloading state before the first updater progress event', async () => {
+    let finishDownload: (() => void) | undefined
+    autoUpdaterMock.downloadUpdate.mockImplementation(() => new Promise<void>((resolve) => {
+      finishDownload = resolve
+    }))
+    const mgr = await makeManager()
+    mgr.set({ phase: 'available', version: '1.0.1' })
+
+    const downloading = mgr.download()
+
+    expect(mgr.state).toEqual({
+      phase: 'downloading',
+      percent: 0,
+      transferred: 0,
+      total: 0,
+      bytesPerSecond: 0,
+    })
+    finishDownload?.()
+    await downloading
+  })
+
   it('check() refreshes allowPrerelease from getBetaChannel before each call', async () => {
     let beta = false
     const { UpdateManager } = await loadModule()

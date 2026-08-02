@@ -89,4 +89,18 @@ describe('backend runtime shutdown', () => {
     expect(child.signalCode).toBe('SIGKILL')
     expect(supervisor.child).toBeNull()
   })
+
+  it('forces retry to replace an adopted runtime instead of reusing it', async () => {
+    const supervisor = new BackendSupervisor({
+      backend_url: 'http://127.0.0.1:18101',
+      log_file: '',
+    })
+    supervisor.stop = vi.fn().mockResolvedValue(undefined)
+    supervisor.start = vi.fn().mockResolvedValue({ running: true })
+
+    await supervisor.retry()
+
+    expect(supervisor.stop).toHaveBeenCalledTimes(1)
+    expect(supervisor.start).toHaveBeenCalledWith({ replaceExisting: true })
+  })
 })

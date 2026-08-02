@@ -73,4 +73,50 @@ describe('NetworkSettings', () => {
     expect(state.hasPassword).toBe(false)
     expect(state.noProxy).toContain('localhost')
   })
+
+  it('restarts the backend after the user confirms a proxy change', async () => {
+    const nextState = {
+      ...createDefaultDesktopProxyState(),
+      noProxy: 'localhost, 127.0.0.1, ::1, example.test',
+    }
+    vi.mocked(desktopProxy.saveProxyState).mockResolvedValueOnce({
+      state: nextState,
+      requiresRestart: true,
+    })
+    vi.mocked(desktopProxy.restartBackend).mockResolvedValueOnce({ ok: true })
+    await mount(createElement(NetworkSettings))
+
+    const noProxyInput = Array.from(container.querySelectorAll('input')).find(
+      (input) => input.value.includes('localhost'),
+    ) as HTMLInputElement
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(
+        noProxyInput,
+        nextState.noProxy,
+      )
+      noProxyInput.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+
+    const saveButton = Array.from(container.querySelectorAll('button')).find(
+      (button) => button.textContent?.trim() === 'Save',
+    ) as HTMLButtonElement
+    await act(async () => {
+      saveButton.click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(container.querySelector('[role="dialog"]')).toBeTruthy()
+    const restartButton = Array.from(container.querySelectorAll('button')).find(
+      (button) => button.textContent?.trim() === 'Save and restart',
+    ) as HTMLButtonElement
+    await act(async () => {
+      restartButton.click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(desktopProxy.restartBackend).toHaveBeenCalledTimes(1)
+    expect(container.textContent).toContain('Background service restarted.')
+  })
 })

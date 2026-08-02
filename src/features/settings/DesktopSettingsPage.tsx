@@ -18,6 +18,7 @@ import {
 } from '@/services/desktopSettings'
 import { checkForUpdates, downloadUpdate, installUpdate, setAutoCheckUpdates, setBetaChannel, type UpdateState } from '@/services/desktopUpdates'
 import { useUpdateState } from '@/features/updates/useUpdateState'
+import { UpdateDownloadProgress } from '@/features/updates/UpdateDownloadProgress'
 import type {
   DesktopDisplaySettings,
   DesktopProviderKind,
@@ -1017,7 +1018,12 @@ function renderUpdateAction(
     case 'available':
       return <Button variant="default" disabled={busy} onClick={onDownload}>{t('about.update.actionDownload', { version: state.version ?? '?' })}</Button>
     case 'downloading':
-      return <Button variant="outline" disabled>{t('about.update.actionDownloading')}</Button>
+      return (
+        <UpdateDownloadProgress
+          state={state}
+          label={t('about.update.downloading', { percent: Math.round(state.percent) })}
+        />
+      )
     case 'downloaded':
       return <Button variant="default" disabled={busy} onClick={onInstall}>{t('about.update.actionInstall')}</Button>
     case 'error':

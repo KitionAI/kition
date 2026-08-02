@@ -208,6 +208,15 @@ export function NetworkSettings() {
           message: t('network.proxy.restart.restartFailed', { message: result.message || '' }),
         })
       }
+    } catch (error) {
+      if (mountedRef.current) {
+        setFeedback({
+          tone: 'error',
+          message: t('network.proxy.restart.restartFailed', {
+            message: (error as Error)?.message || String(error),
+          }),
+        })
+      }
     } finally {
       if (mountedRef.current) {
         setRestarting(false)
