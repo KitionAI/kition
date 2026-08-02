@@ -32,9 +32,11 @@
 </p>
 
 Kition brings Markdown documents, structured table files, a tool-using AI
-agent, browser research, and visual workflows into one desktop workspace. It
-is built for people who want to move from raw knowledge to organized,
-repeatable work without handing context between disconnected tools.
+agent, browser research, and visual workflows into one desktop workspace.
+Instead of making every task begin in a blank chat, Kition gives the Agent
+editable project files, typed records, attachments, and visible processes to
+work with. This makes powerful AI operations easier to inspect, correct, and
+repeat without handing context between disconnected tools.
 
 > Kition is currently in beta. Back up important workspaces and review agent
 > changes before relying on them in production workflows.
@@ -49,6 +51,54 @@ repeatable work without handing context between disconnected tools.
   table schemas, update content, and save useful output into the active project.
 - **Visible automation.** Assemble trigger-and-action workflows, test steps,
   inspect run history, and resolve missing inputs before enabling a process.
+
+## Start With Work, Not a Blank Prompt
+
+A capable Agent is useful, but a blank prompt still asks the user to design the
+task, describe every input, choose an output format, and recover when a step
+goes wrong. Kition moves that complexity into familiar work surfaces:
+documents, table fields, records, templates, and workflows.
+
+The built-in scenarios below are ordinary `.kitable` files. Their prompts,
+field relationships, generated assets, and review states stay visible and can
+be adapted to a real project.
+
+### Generate campaign assets in batches
+
+Start with a key message and a face photo. Typed fields keep the content type
+and intended emotion explicit, while AI fields generate linked 16:9 and 9:16
+thumbnail variants for every record. The table becomes both the batch queue and
+the review surface.
+
+<p align="center">
+  <img src="docs/readme/scenarios/thumbnail-generator.webp" alt="Kition table generating 16:9 and 9:16 video thumbnails from messages, portraits, content types, and emotions" width="100%" />
+</p>
+
+### Turn receipt images into searchable records
+
+Drop receipt photos into an attachment field. Vision-powered fields extract
+the vendor, address, category, structured JSON, and plain OCR text directly
+into the same row. The results can then be filtered, corrected, summarized by
+the Agent, or passed into a review workflow.
+
+<p align="center">
+  <img src="docs/readme/scenarios/receipt-ocr.webp" alt="Kition receipt OCR table extracting vendor, address, category, structured data, and plain text from images" width="100%" />
+</p>
+
+### Expand one product brief into a complete asset pipeline
+
+One product concept can drive multiple design candidates, orthographic views,
+a feature image, a lifestyle shot, a style board, and launch copy. Each result
+remains attached to the source record, so the full chain is easier to compare,
+regenerate, and hand off than a collection of disconnected chat outputs.
+
+<p align="center">
+  <img src="docs/readme/scenarios/batch-product-designer.webp" alt="Kition batch product design table with generated designs, orthographic views, feature images, lifestyle shots, style boards, and launch copy" width="100%" />
+</p>
+
+These scenarios show the intended Kition loop: use documents for narrative
+context, tables for structured state, the Agent for uncertain work, and
+Workflows for steps that should become repeatable.
 
 ## Product Tour
 
