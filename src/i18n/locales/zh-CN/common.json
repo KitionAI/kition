@@ -1,0 +1,46 @@
+{
+  "actions": {
+    "confirm": "确认",
+    "cancel": "取消",
+    "save": "保存",
+    "delete": "删除",
+    "edit": "编辑",
+    "close": "关闭",
+    "open": "打开",
+    "retry": "重试",
+    "copy": "复制",
+    "rename": "重命名",
+    "remove": "移除",
+    "loading": "加载中…",
+    "submit": "提交",
+    "showPassword": "显示密码",
+    "hidePassword": "隐藏密码"
+  },
+  "statusLabel": {
+    "success": "成功",
+    "failed": "失败",
+    "pending": "等待中",
+    "completed": "已完成",
+    "unknown": "未知"
+  },
+  "status": "状态",
+  "name": "名称",
+  "workspace": "工作区",
+  "commandPalette": {
+    "badge": "命令",
+    "hint": "运行命令、跳转",
+    "placeholder": "运行命令、跳转设置…",
+    "navigation": "导航",
+    "backToWorkspace": "回到工作区",
+    "backToWorkspaceHint": "当前主视图",
+    "openSettings": "打开设置",
+    "openSettingsHint": "运行时与 Provider 配置",
+    "close": "关闭"
+  },
+  "viewport": {
+    "tooNarrow": "视口过窄，编辑器和 Workflow 画布在此尺寸下可能无法完整使用，建议放大窗口至 480px 以上。"
+  },
+  "search": {
+    "fileMissing": "文件已不存在"
+  }
+}

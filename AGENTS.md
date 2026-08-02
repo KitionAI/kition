@@ -5,13 +5,17 @@
 > database name, or dotfile directory into code or documentation. The canonical
 > identity contract lives in `openspec/specs/branding/`.
 
-## English-Only Repository (Mandatory)
+## English-First Repository And Localization Boundaries (Mandatory)
 
-- Every tracked filename and every tracked text file must use English for
-  documentation, UI copy, examples, fixtures, tests, comments, commit-facing
-  templates, and generated reports.
-- Translate user-facing content into natural English. Never hide non-English
+- English remains mandatory for filenames, source code, comments, examples,
+  fixtures, tests, commit-facing templates, generated reports, and general
+  documentation.
+- Approved localized content is limited to `src/i18n/locales/<locale>/`, root
+  `README.<locale>.md` files, and the language switcher in `README.md`.
+- Keep localized prose inside those approved files. Never hide non-English
   prose behind Unicode escape sequences.
+- Localized filenames must remain portable ASCII locale identifiers, such as
+  `README.zh-CN.md` or `src/i18n/locales/zh-CN/settings.json`.
 - Multilingual document parsing may use Unicode Script properties or clearly
   named `String.fromCodePoint(...)` constants when the behavior is required.
 - Run `python3 scripts/check-i18n.py` before completion. The command must exit 0.

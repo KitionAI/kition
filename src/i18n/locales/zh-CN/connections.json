@@ -1,0 +1,70 @@
+{
+  "panel": {
+    "eyebrow": "连接",
+    "title": "邮件发送",
+    "subtitle": "管理工作流动作复用的发送凭据。",
+    "refreshAria": "刷新连接列表",
+    "newConnection": "新建连接",
+    "loading": "正在加载连接",
+    "emptyTitle": "暂无连接",
+    "emptyHint": "在启用邮件类工作流前，请先添加一个 SMTP 连接。",
+    "emptyCta": "添加连接",
+    "fallbackEmailSmtp": "Email SMTP",
+    "usedBy": "已被 {{count}} 个使用",
+    "pickPrompt": "在左侧选择一个连接以查看详情。"
+  },
+  "modal": {
+    "ariaLabel": "邮件连接",
+    "titleEdit": "编辑邮件连接",
+    "titleNew": "新建邮件连接",
+    "subtitle": "保存前会先用 Test & Save 验证 SMTP 服务器。",
+    "closeAria": "关闭连接表单",
+    "fieldName": "名称",
+    "fieldHost": "主机",
+    "fieldPort": "端口",
+    "fieldUsername": "用户名",
+    "fieldPassword": "密码",
+    "fieldTls": "TLS",
+    "fieldFromAddress": "发件地址",
+    "fieldFromName": "发件人名",
+    "namePlaceholder": "例如：公司 SMTP",
+    "hostPlaceholder": "smtp.example.com",
+    "portPlaceholder": "587",
+    "usernamePlaceholder": "you@example.com",
+    "fromPlaceholder": "no-reply@example.com",
+    "fromNamePlaceholder": "例如：Kition 通知",
+    "passwordPlaceholderEdit": "留空则保留原密码",
+    "cancel": "取消",
+    "testAndSave": "测试并保存"
+  },
+  "detail": {
+    "eyebrowEmailSmtp": "Email SMTP",
+    "labelHost": "主机",
+    "labelTls": "TLS",
+    "labelUsername": "用户名",
+    "labelUsedBy": "被使用",
+    "usedByWorkflows_one": "{{count}} 个工作流",
+    "usedByWorkflows_other": "{{count}} 个工作流",
+    "edit": "编辑",
+    "test": "测试",
+    "delete": "删除"
+  },
+  "status": {
+    "active": "正常",
+    "invalid": "上次测试失败",
+    "pending": "待验证"
+  },
+  "confirms": {
+    "deleteWithUsage_one": "“{{name}}”当前被 {{count}} 个工作流使用。\n\n删除后这些工作流将无法发送邮件，直到你为它们指定新的连接。\n\n仍然删除？",
+    "deleteWithUsage_other": "“{{name}}”当前被 {{count}} 个工作流使用。\n\n删除后这些工作流将无法发送邮件，直到你为它们指定新的连接。\n\n仍然删除？",
+    "deleteNoUsage": "删除“{{name}}”？"
+  },
+  "errors": {
+    "loadFailed": "加载连接列表失败",
+    "saveFailed": "保存连接失败",
+    "verifyFailedFallback": "连接已保存，但验证未通过"
+  },
+  "feedback": {
+    "verified": "连接已验证"
+  }
+}

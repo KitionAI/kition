@@ -13,6 +13,19 @@ import enErrors from './locales/en-US/errors.json'
 import enWorkflow from './locales/en-US/workflow.json'
 import enConnections from './locales/en-US/connections.json'
 
+import zhCommon from './locales/zh-CN/common.json'
+import zhSettings from './locales/zh-CN/settings.json'
+import zhWorkspace from './locales/zh-CN/workspace.json'
+import zhWorkspaceLauncher from './locales/zh-CN/workspaceLauncher.json'
+import zhAgent from './locales/zh-CN/agent.json'
+import zhDocument from './locales/zh-CN/document.json'
+import zhTable from './locales/zh-CN/table.json'
+import zhElectron from './locales/zh-CN/electron.json'
+import zhErrors from './locales/zh-CN/errors.json'
+import zhWorkflow from './locales/zh-CN/workflow.json'
+import zhConnections from './locales/zh-CN/connections.json'
+import zhMetadata from './locales/zh-CN/metadata.json'
+
 import esCommon from './locales/es-ES/common.json'
 import esSettings from './locales/es-ES/settings.json'
 import esWorkspace from './locales/es-ES/workspace.json'
@@ -85,6 +98,19 @@ const resources = {
     errors: enErrors,
     workflow: enWorkflow,
     connections: enConnections,
+  },
+  'zh-CN': {
+    common: zhCommon,
+    settings: zhSettings,
+    workspace: zhWorkspace,
+    workspaceLauncher: zhWorkspaceLauncher,
+    agent: zhAgent,
+    document: zhDocument,
+    table: zhTable,
+    electron: zhElectron,
+    errors: zhErrors,
+    workflow: zhWorkflow,
+    connections: zhConnections,
   },
   'es-ES': {
     common: esCommon,
@@ -188,14 +214,28 @@ export function getCurrentLocale(): Locale {
 
 const LOCALE_LANGUAGE_NAMES: Record<Locale, string> = {
   'en-US': 'English',
+  'zh-CN': 'Simplified Chinese',
   'es-ES': 'Spanish',
   'fr-FR': 'French',
   'pt-BR': 'Portuguese',
   'ru-RU': 'Russian',
 }
 
+const LOCALE_ENDONYMS: Record<Locale, string> = {
+  'en-US': 'English',
+  'zh-CN': zhMetadata.endonym,
+  'es-ES': 'Español',
+  'fr-FR': 'Français',
+  'pt-BR': 'Português (Brasil)',
+  'ru-RU': 'Русский',
+}
+
 export function getLanguageNameForLocale(locale: Locale | string | null | undefined): string {
   return LOCALE_LANGUAGE_NAMES[resolveLocale(locale)]
+}
+
+export function getLocaleEndonym(locale: Locale): string {
+  return LOCALE_ENDONYMS[locale]
 }
 
 export function setCurrentLocale(next: Locale | string | null | undefined) {

@@ -1,0 +1,263 @@
+{
+  "createMenu": {
+    "format": {
+      "markdown": "文档",
+      "table": "表格",
+      "page": "页面",
+      "note": "笔记"
+    },
+    "folder": "文件夹",
+    "newDashboard": "新仪表板",
+    "newForm": "新表单",
+    "newTable": "新建表格",
+    "newWorkflow": "新建工作流"
+  },
+  "emptyState": {
+    "title": "将创意转化为有组织的工作",
+    "description": "从侧边栏打开内容，从空白画布开始，或让 Kition AI 帮你构建下一个文档、表格或工作流。",
+    "prompt": {
+      "title": "描述您想要构建的内容",
+      "description": "使用 Kition AI 进行规划、研究、写作和整理。",
+      "action": "打开 AI 对话"
+    },
+    "quickStart": "快速入门",
+    "actions": {
+      "document": {
+        "title": "新文档",
+        "description": "记录笔记、计划和知识。"
+      },
+      "table": {
+        "title": "新建表格",
+        "description": "构建项目、记录和研究。"
+      },
+      "workflow": {
+        "title": "工作流",
+        "description": "在表格之间自动执行可重复的工作。"
+      }
+    }
+  },
+  "sidebar": {
+    "tabs": {
+      "files": "文件",
+      "search": "搜索",
+      "browser": "浏览器"
+    },
+    "collapseSection": "折叠 {{name}}",
+    "expandSection": "展开 {{name}}",
+    "newPage": "新建页面",
+    "newPageIn": "在 {{name}} 中新建页面",
+    "workflows": "工作流",
+    "openWorkflows": "打开工作流",
+    "refresh": "刷新工作区",
+    "collapseSidebar": "折叠侧边栏",
+    "loadingDirectory": "正在加载本地目录"
+  },
+  "tree": {
+    "collapse": "折叠",
+    "expand": "展开",
+    "modifiedByAgent": "已被 Agent 修改",
+    "createInside": "在此页面内创建",
+    "moreActions": "更多操作",
+    "addToChat": "添加到对话",
+    "addToNewChat": "添加到新对话",
+    "changeIcon": "更换图标",
+    "rename": "重命名",
+    "duplicate": "复制",
+    "moveTo": "移动到…",
+    "showInFinder": "在访达中显示",
+    "delete": "删除",
+    "moveToTitle": "移动到",
+    "moveToRoot": "根目录",
+    "noDestinations": "没有其他可用目标",
+    "clearIcon": "清除",
+    "untitled": "未命名"
+  },
+  "itemMenu": {
+    "mode": {
+      "rich": "富文本",
+      "split": "分栏",
+      "source": "源码",
+      "preview": "预览"
+    },
+    "preference": {
+      "smallText": "小号字体",
+      "fullWidth": "整页宽度",
+      "toc": "大纲",
+      "locked": "锁定页面"
+    },
+    "tableAction": {
+      "rename": "重命名",
+      "duplicate": "复制",
+      "downloadCsv": "下载 CSV",
+      "importData": "导入数据",
+      "api": "API",
+      "history": "历史",
+      "share": "分享",
+      "delete": "删除"
+    },
+    "markdownMode": {
+      "rich": "编辑视图",
+      "preview": "阅读视图",
+      "source": "源码视图"
+    },
+    "revertToSaved": "还原到已保存版本",
+    "importMarkdown": "导入 Markdown",
+    "exportFile": "导出文件",
+    "openContainingFolder": "打开所在文件夹",
+    "words": "字数：{{formattedCount}}",
+    "updated": "更新时间：{{time}}",
+    "textStyle": {
+      "default": "默认",
+      "serif": "衬线",
+      "mono": "等宽"
+    }
+  },
+  "tabs": {
+    "webBadge": "网页",
+    "closeTab": "关闭标签页",
+    "expandSidebar": "展开侧边栏",
+    "previousTab": "上一个标签页",
+    "nextTab": "下一个标签页",
+    "showOverflow": "显示更多标签页",
+    "close": "关闭",
+    "closeOthers": "关闭其他标签页",
+    "closeAll": "关闭所有标签页",
+    "closeUnmodified": "关闭未修改的标签页",
+    "closeLeft": "关闭左侧标签页",
+    "closeRight": "关闭右侧标签页",
+    "closeReadOnly": "关闭所有只读标签页",
+    "copyReference": "复制路径/引用",
+    "workflowsTitle": "工作流",
+    "workflowsScoped": "工作流 · {{name}}",
+    "untitledTable": "未命名表格",
+    "untitledWorkflow": "未命名工作流",
+    "videos": "视频",
+    "workflow": "工作流"
+  },
+  "agentTabs": {
+    "history": {
+      "today": "今天",
+      "week": "过去 7 天",
+      "older": "更早"
+    },
+    "chat": "对话",
+    "newChatTitle": "新对话",
+    "openChat": "打开 AI 对话",
+    "collapseChat": "收起 AI 对话",
+    "emptyTitle": "AI 对话",
+    "newChat": "新对话",
+    "closeChat": "关闭对话",
+    "viewHistory": "查看历史",
+    "agentHistory": "Agent 历史",
+    "searchChats": "搜索对话…",
+    "noMatchingChats": "没有匹配的对话。",
+    "noChatsYet": "还没有对话，开始一个新的吧。",
+    "chatRef": "对话 #{{id}}"
+  },
+  "agentSidebar": {
+    "empty": "开始新对话，或从历史中打开已有对话。"
+  },
+  "topbar": {
+    "more": "更多"
+  },
+  "browserSites": {
+    "title": "浏览器",
+    "visitedCount": "{{count}} 个已访问站点",
+    "openBrowser": "打开浏览器",
+    "openBrowserTitle": "打开新的浏览器标签页",
+    "refreshLoginStatus": "刷新登录状态",
+    "loading": "正在加载站点…",
+    "lastVisited": "上次访问 {{time}}",
+    "signedIn": "已登录",
+    "signedOut": "未登录",
+    "openSite": "打开站点",
+    "open": "打开 {{host}}",
+    "forgetSite": "忘记此站点（清除登录）",
+    "forget": "忘记 {{host}}",
+    "emptyTitle": "暂无已访问站点",
+    "emptyDescription": "在内置浏览器中访问并登录站点，它们会连同登录状态显示在这里，以便后续抓取时自动登录。"
+  },
+  "browserToolbar": {
+    "back": "后退",
+    "forward": "前进",
+    "stopLoading": "停止加载",
+    "reload": "刷新",
+    "addressPlaceholder": "输入网址或搜索…"
+  },
+  "browserTab": {
+    "eyebrow": "内置浏览器",
+    "unavailableDescription": "浏览器页面已附加到此标签区域。可在此标签中进行登录、搜索和导航。AI 对话始终显示在右侧，你可以从当前页面继续操作而无需切换。",
+    "emptyText": "浏览器 — 在上方输入网址，或让 Agent 导航并使用浏览器",
+    "loadingPage": "正在加载页面…"
+  },
+  "fileViewer": {
+    "openInSystem": "用系统应用打开",
+    "showInFinder": "在访达中显示",
+    "previewUnsupported": "{{label}} · 暂不支持应用内预览",
+    "previewTip": "你仍可以用 @ 提及此文件，让 AI 直接解析，或点击“用系统应用打开”使用原生应用查看。"
+  },
+  "folderDialog": {
+    "title": "新建文件夹",
+    "description": "请输入文件夹名称。",
+    "placeholder": "未命名文件夹",
+    "cancel": "取消",
+    "create": "创建"
+  },
+  "media": {
+    "images": "图片",
+    "videos": "视频",
+    "items": "{{count}} 项",
+    "collapse": "折叠 {{name}}",
+    "expand": "展开 {{name}}",
+    "noImagesTitle": "暂无图片",
+    "noVideosTitle": "暂无视频",
+    "noImagesDescription": "此工作区中的图片将显示在这里。",
+    "noVideosDescription": "此工作区中的视频将显示在这里。"
+  },
+  "editor": {
+    "sourcePlaceholder": "在此编辑 Markdown 源码…"
+  },
+  "layout": {
+    "resizeSidebar": "调整侧边栏大小",
+    "resizeChat": "调整 AI 对话大小"
+  },
+  "footer": {
+    "switchWorkspace": "切换工作区",
+    "switchWorkspaceTitle": "切换工作区 (⌘⇧O)",
+    "profile": "个人资料",
+    "settings": "设置"
+  },
+  "errors": {
+    "kitableNotFound": "无法在磁盘上定位此 kitable。",
+    "kitableNoTables": "此 kitable 还没有表格 — 请先创建一个表格。",
+    "parentKitableNotFound": "无法在磁盘上定位父级 kitable。",
+    "createWorkflowFailed": "创建工作流失败",
+    "documentPathEmpty": "文档路径不能为空",
+    "nameEmpty": "名称不能为空",
+    "saveBeforeRename": "保存当前文档失败，已跳过重命名",
+    "renameFailed": "重命名文档失败",
+    "fileTypeNotDeletable": "此类文件暂时无法从文档库中删除。",
+    "onlyMarkdownPlateMovable": "此处仅支持移动 Markdown 和 Plate 页面。Office/PDF 等文件请通过系统文件夹整理。",
+    "onlyMarkdownPlateTableDuplicable": "此处仅支持复制 Markdown、Plate 和表格页面。",
+    "onlyMarkdownPlateTableRenamable": "此处仅支持重命名 Markdown、Plate 和表格页面。",
+    "createDocumentFailed": "创建文档失败",
+    "createDashboardFailed": "创建仪表盘失败",
+    "createTableFailed": "创建表格失败",
+    "importMarkdownFailed": "导入 Markdown 失败",
+    "browserDevModeOpenDirectory": "你正在浏览器开发模式下运行，无法打开原生目录。请通过 pnpm dev:electron 启动桌面应用后重试。",
+    "browserDevModePickDirectory": "你正在浏览器开发模式下运行，无法选择原生目录。请通过 pnpm dev:electron 启动桌面应用后重试。",
+    "browserDevModeSwitchDirectory": "你正在浏览器开发模式下运行，无法切换原生目录。"
+  },
+  "feedback": {
+    "nameUpdated": "名称已更新",
+    "refreshed": "已刷新工作区",
+    "restoredSavedVersion": "已还原到保存的版本",
+    "documentCreated": "文档已创建",
+    "dashboardCreated": "仪表板已创建",
+    "tableCreated": "表格已创建",
+    "folderCreated": "文件夹已创建",
+    "renamed": "已重命名",
+    "alreadyInLocation": "已在当前位置",
+    "tableDeleted": "表格已删除"
+  }
+}

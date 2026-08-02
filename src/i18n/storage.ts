@@ -34,6 +34,7 @@ export function detectBrowserLocale(): Locale | null {
     if (!candidate) continue
     const normalized = candidate.toLowerCase()
     if (normalized.startsWith('en')) return 'en-US'
+    if (normalized.startsWith('zh')) return 'zh-CN'
     if (normalized.startsWith('es')) return 'es-ES'
     if (normalized.startsWith('fr')) return 'fr-FR'
     if (normalized.startsWith('pt')) return 'pt-BR'

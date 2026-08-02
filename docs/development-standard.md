@@ -88,7 +88,8 @@ Out of scope:
 Constraints:
 - Read and follow AGENTS.md.
 - Preserve unrelated worktree changes.
-- Keep all tracked text and filenames in English.
+- Keep tracked text and filenames in English except for the approved
+  localization paths defined in `AGENTS.md`.
 - Do not cross the public client/runtime boundary.
 - Add a regression test for changed behavior.
 

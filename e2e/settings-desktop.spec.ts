@@ -177,6 +177,29 @@ test('desktop settings persist general preferences after save and reload', async
   await expect(reloadedRestoreWorkspaceSwitch.getByRole('switch')).toHaveAttribute('aria-checked', 'false')
 })
 
+test('desktop settings expose and persist the Simplified Chinese locale', async ({ page }) => {
+  const secureStore = new Map<string, string>()
+  await page.exposeFunction('__desktopWriteSecureValue', async (key: string, value: string) => {
+    secureStore.set(key, value)
+  })
+  await page.exposeFunction('__desktopReadSecureValue', async (key: string) => secureStore.get(key) || '')
+  await mockDesktopBridge(page)
+
+  await page.goto('/settings?section=general')
+
+  const languageSelect = page.locator('select[aria-label="Language"]')
+  await expect(languageSelect.locator('option[value="zh-CN"]')).toHaveCount(1)
+  await languageSelect.selectOption('zh-CN')
+  await expect(page.locator('html')).toHaveAttribute('lang', 'zh-CN')
+
+  await page.locator('.settings-action-bar-right button').last().click()
+  await expect(page.getByTestId('settings-action-bar-saved')).toBeVisible()
+  await expect.poll(() => secureStore.get('kition.desktop.settings.v1') || '').toContain('"language":"zh-CN"')
+
+  await page.reload()
+  await expect(page.locator('html')).toHaveAttribute('lang', 'zh-CN')
+})
+
 test('desktop settings persist a dark theme after reload', async ({ page }) => {
   const secureStore = new Map<string, string>([
     ['kition.desktop.settings.v1', JSON.stringify({ general: { theme: 'light' } })],

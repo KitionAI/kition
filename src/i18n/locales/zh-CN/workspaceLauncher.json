@@ -1,0 +1,103 @@
+{
+  "title": "工作区",
+  "subtitle": "版本 {{version}}",
+  "fallbackVersion": "",
+  "actions": {
+    "create": {
+      "title": "新建工作区",
+      "description": "在指定文件夹下创建一个新的工作区。",
+      "button": "创建",
+      "nameLabel": "工作区名称",
+      "namePlaceholder": "我的工作区",
+      "parentLabel": "上层文件夹",
+      "parentPlaceholder": "选择一个文件夹…",
+      "pick": "选择…",
+      "confirm": "创建工作区",
+      "cancel": "取消"
+    },
+    "open": {
+      "title": "打开本地工作区",
+      "description": "将一个本地文件夹作为工作区打开。",
+      "button": "打开"
+    },
+    "sync": {
+      "title": "同步远程工作区",
+      "description": "将 Kition Sync 中的远程工作区同步到本地。",
+      "button": "登录",
+      "disabledTooltip": "即将推出"
+    }
+  },
+  "vault": {
+    "menu": {
+      "rename": "重命名",
+      "remove": "从列表移除",
+      "reveal": "在 Finder 中显示"
+    },
+    "renameTitle": "重命名工作区",
+    "renamePlaceholder": "工作区名称",
+    "removeConfirm": "确定从列表中移除此工作区？磁盘上的文件夹不会被删除。",
+    "empty": "暂无工作区，新建或打开一个开始使用。"
+  },
+  "errors": {
+    "missingName": "请填写工作区名称。",
+    "missingParent": "请选择上层文件夹。",
+    "open": "打开工作区失败：{{message}}",
+    "create": "创建工作区失败：{{message}}",
+    "switch": "切换工作区失败：{{message}}",
+    "missingVault": "工作区目录已不存在。"
+  },
+  "firstRun": {
+    "seeding": "正在为你准备工作区…",
+    "seedError": "示例文件准备失败：{{message}}",
+    "dialogLabel": "入门指南",
+    "eyebrow": "入门指南",
+    "progress": "第 {{step}} 步，共 3 步",
+    "workspaceTitle": "选择开始方式",
+    "workspaceDescription": "工作区已准备就绪。现在选择一个选项，或跳过并从“入门”文件开始。",
+    "workspaceLocal": "本地存储在此设备上",
+    "providerTitle": "选择您的工作方式",
+    "providerDescription": "稍后可以在“设置”中更改。文档、表格和本地工作流无需账户或 AI 服务商即可使用。",
+    "choice": {
+      "cloud": "Kition Cloud",
+      "cloudDescription": "登录 Kition 账户即可使用托管 AI，无需单独的 API 密钥。",
+      "byo": "使用自己的 API 密钥",
+      "byoDescription": "连接OpenAI、Anthropic、DeepSeek或其他兼容的提供商。",
+      "local": "不使用 AI 继续",
+      "localDescription": "打开欢迎指南，无需账户或 API 密钥即可浏览本地文档、表格和工作流。"
+    },
+    "successTitle": "完成一个有用的操作",
+    "success": {
+      "cloud": {
+        "title": "总结欢迎文档",
+        "description": "登录并打开智能体，然后使用准备好的提示词开始。",
+        "privacy": "提示词和所选页面上下文将发送到 Kition Cloud。工作区文件仍保留在此设备上。"
+      },
+      "byo": {
+        "title": "连接 AI 服务商",
+        "description": "打开“AI 模型”并添加你正在使用的服务商。",
+        "privacy": "提示词和所选上下文将直接发送到你配置的服务商。"
+      },
+      "local": {
+        "title": "运行联系人工作流",
+        "description": "通过无需 AI 模型的确定性工作流规范联系人信息。",
+        "privacy": "此工作流在本地运行，不会将工作区内容发送到 AI 服务。"
+      }
+    },
+    "scenario": {
+      "eyebrow": "入门场景",
+      "emailTitle": "导入电子邮件收件箱",
+      "emailDescription": "连接Gmail、163 Mail、Outlook或其他提供商，并将邮件同步到准备好的收件箱表中。",
+      "emailAction": "设置收件箱同步"
+    },
+    "continue": "继续",
+    "back": "返回",
+    "skip": "暂时跳过",
+    "startCloud": "登录并打开智能体",
+    "agentPrompt": "总结此欢迎页面，并在其下方写下简短的入门清单。",
+    "cancelSignIn": "取消登录",
+    "configureModels": "打开 AI 模型",
+    "startLocal": "打开欢迎指南",
+    "cloudCreditsEmpty": "Kition Cloud 积分已用完。开始前请在 Kition 账户中充值。",
+    "cloudUnavailable": "Kition 账户暂时不可用。"
+  }
+}

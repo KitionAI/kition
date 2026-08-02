@@ -43,7 +43,14 @@ import {
   SettingsSidebarHeader,
 } from '@/features/settings/primitives'
 import { isPristine } from '@/features/settings/dirty'
-import { getCurrentLocale, setCurrentLocale, SUPPORTED_LOCALES, useTranslation, type Locale } from '@/i18n'
+import {
+  getCurrentLocale,
+  getLocaleEndonym,
+  setCurrentLocale,
+  SUPPORTED_LOCALES,
+  useTranslation,
+  type Locale,
+} from '@/i18n'
 import { cn } from '@/lib/utils'
 import {
   Bot,
@@ -76,14 +83,6 @@ const settingsSections = [
 
 const primarySettingsSections = settingsSections.filter((section) => section.group === 'primary')
 const advancedSettingsSections = settingsSections.filter((section) => section.group === 'advanced')
-
-const languageEndonyms: Record<Locale, string> = {
-  'en-US': 'English',
-  'es-ES': 'Español',
-  'fr-FR': 'Français',
-  'pt-BR': 'Português (Brasil)',
-  'ru-RU': 'Русский',
-}
 
 const themeModeOptions: Array<{ value: DesktopThemeMode }> = [
   { value: 'light' },
@@ -273,7 +272,7 @@ function GeneralSettings() {
           >
             {SUPPORTED_LOCALES.map((locale) => (
               <option key={locale} value={locale}>
-                {languageEndonyms[locale]}
+                {getLocaleEndonym(locale)}
               </option>
             ))}
           </Select>

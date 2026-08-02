@@ -1,0 +1,488 @@
+{
+  "fieldTypes": {
+    "text": "单行文本",
+    "longText": "多行文本",
+    "url": "URL",
+    "number": "数字",
+    "rating": "评分",
+    "checkbox": "复选框",
+    "singleSelect": "单选",
+    "multiSelect": "多选",
+    "date": "日期",
+    "datetime": "日期和时间",
+    "user": "用户",
+    "attachment": "附件",
+    "formula": "公式",
+    "rollup": "汇总",
+    "lookup": "查找引用",
+    "linkToRecord": "关联记录",
+    "documentLink": "文档链接",
+    "button": "按钮",
+    "autoNumber": "自动编号",
+    "createdTime": "创建时间",
+    "lastModifiedTime": "最后修改时间",
+    "createdBy": "创建人",
+    "lastModifiedBy": "最后修改人"
+  },
+  "fieldTypeSubtitles": {
+    "attachment": "存储文件和图片",
+    "text": "单行文本",
+    "longText": "多行格式化文本",
+    "number": "数字值",
+    "singleSelect": "从列表中选择一个选项",
+    "multiSelect": "从列表中选择多个选项",
+    "date": "日历日期",
+    "formula": "根据其他字段计算值"
+  },
+  "colorTones": {
+    "slate": "石板灰",
+    "blue": "蓝色",
+    "sky": "天蓝",
+    "cyan": "青色",
+    "emerald": "翠绿",
+    "amber": "琥珀",
+    "rose": "玫红",
+    "violet": "紫罗兰"
+  },
+  "viewTypes": {
+    "grid": "表格",
+    "kanban": "看板",
+    "calendar": "日历",
+    "gallery": "画廊",
+    "form": "表单"
+  },
+  "sortDirection": {
+    "textAsc": "A → Z",
+    "textDesc": "Z → A",
+    "numberAsc": "1 → 9",
+    "numberDesc": "9 → 1",
+    "dateAsc": "最早 → 最晚",
+    "dateDesc": "最晚 → 最早",
+    "checkboxAsc": "未勾选 → 已勾选",
+    "checkboxDesc": "已勾选 → 未勾选",
+    "ascending": "升序",
+    "descending": "降序"
+  },
+  "footer": {
+    "showingRange": "显示 {{start}}–{{end}}",
+    "recordsCount": "{{count}} 条记录",
+    "aggregate": "{{title}}：总和 {{sum}} · 平均 {{avg}}",
+    "selectedCount": "已选 {{count}} 项",
+    "editHint": "双击单元格可编辑"
+  },
+  "recordMenu": {
+    "insert": "插入",
+    "insertAboveCount": "在上方插入的记录数",
+    "recordAbove": "条记录（上方）",
+    "insertBelowCount": "在下方插入的记录数",
+    "recordBelow": "条记录（下方）",
+    "duplicateRecord": "复制记录",
+    "copyRecordUrl": "复制记录链接",
+    "showHistory": "查看历史",
+    "addComment": "添加评论",
+    "addToChat": "添加到对话",
+    "regenerateAiFields": "重新生成 AI 字段",
+    "deleteRecord": "删除记录",
+    "historyUnavailable": "历史记录不可用",
+    "commentsHint": "评论功能即将推出"
+  },
+  "toolbar": {
+    "moreActions": "更多操作",
+    "editField": "编辑字段",
+    "duplicateField": "复制字段",
+    "hideField": "隐藏字段",
+    "showField": "显示字段",
+    "deleteField": "删除字段",
+    "customizeField": "自定义字段",
+    "customizeFieldHidden": "自定义字段（已隐藏 {{count}} 个）",
+    "searchPlaceholder": "搜索字段",
+    "showAll": "全部显示",
+    "noFields": "暂无字段",
+    "primaryField": "主字段",
+    "addField": "添加字段",
+    "hiddenCount": "已隐藏 {{count}} 个",
+    "hideFields": "隐藏字段",
+    "fieldVisibility": "字段可见性",
+    "primary": "主字段",
+    "sort": "排序",
+    "sortRecords": "排序记录",
+    "clear": "清除",
+    "chooseField": "选择字段",
+    "groupedBy": "按 {{title}} 分组",
+    "group": "分组",
+    "groupRecords": "分组记录",
+    "noGroup": "不分组",
+    "groupHint": "按字段对记录分组",
+    "coverWithField": "以 {{title}} 作为封面",
+    "coverField": "封面字段",
+    "galleryCover": "画廊封面",
+    "auto": "自动",
+    "autoCover": "自动封面",
+    "coverHint": "选择用作封面的字段",
+    "addProperty": "添加属性",
+    "close": "关闭",
+    "propertyName": "属性名称",
+    "rowHeightLabel": "行高",
+    "rowHeight": {
+      "short": "矮",
+      "medium": "中",
+      "tall": "高",
+      "extraTall": "超高"
+    },
+    "freezeColumns": "冻结列",
+    "freezeNone": "不冻结",
+    "freezeColumnsCount": "冻结 {{count}} 列",
+    "sortCount": "排序（{{count}}）",
+    "clearAll": "全部清除",
+    "sortField": "排序字段",
+    "sortDirection": "排序方向",
+    "removeSort": "移除排序",
+    "addAnotherSort": "添加排序",
+    "groupBy": "分组依据",
+    "groupByCount": "分组（{{count}}）",
+    "groupField": "分组字段",
+    "groupDirection": "分组方向",
+    "removeGroup": "移除分组",
+    "addAnotherGroup": "添加分组"
+  },
+  "header": {
+    "addView": "添加视图"
+  },
+  "propertyBar": {
+    "addRecord": "添加记录",
+    "duplicateCount": "复制 {{count}}",
+    "deleteCount": "删除 {{count}}",
+    "searchRecords": "搜索记录",
+    "undo": "撤销",
+    "redo": "重做"
+  },
+  "views": {
+    "dragCard": "拖动卡片",
+    "dragCardDisabled": "拖动已禁用",
+    "untitled": "无标题",
+    "new": "新建",
+    "calendarByField": "按 {{title}} 显示日历",
+    "calendarNeedsDate": "日历需要一个日期字段",
+    "scheduledRecords": "{{count}} 条已排期记录",
+    "noDate": "无日期",
+    "galleryCover": "画廊封面",
+    "cover": "封面",
+    "empty": "空",
+    "newRecordForm": "新建记录",
+    "newRecordFormHint": "填写字段以创建记录",
+    "createRecord": "创建记录"
+  },
+  "fieldConfigPanel": {
+    "editField": "编辑字段",
+    "saveChangesTitle": "保存更改？",
+    "unsavedChanges": "你有未保存的更改。",
+    "continueEditing": "继续编辑",
+    "discard": "放弃"
+  },
+  "drawer": {
+    "untitled": "无标题",
+    "recordId": "记录 ID：{{id}}",
+    "previousRecord": "上一条记录",
+    "nextRecord": "下一条记录",
+    "copyRecordLink": "复制记录链接",
+    "copied": "已复制",
+    "close": "关闭",
+    "history": "历史",
+    "deleteRecord": "删除记录",
+    "loadHistoryFailed": "加载历史失败",
+    "loadingHistory": "正在加载历史…",
+    "noHistory": "暂无历史",
+    "fieldId": "字段 ID：{{id}}",
+    "historyAction": {
+      "create": "已创建",
+      "update": "已更新",
+      "delete": "已删除"
+    }
+  },
+  "editor": {
+    "createRecordFailed": "创建记录失败",
+    "loadingTable": "正在加载数据表…",
+    "recordCopiedForChat": "已复制记录用于对话",
+    "replaceLinksFailed": "替换链接失败",
+    "tableNotFound": "未找到数据表"
+  },
+  "selectEditor": {
+    "search": "搜索",
+    "notFound": "未找到选项"
+  },
+  "datePicker": {
+    "clear": "清除",
+    "today": "今天"
+  },
+  "aiOverlay": {
+    "regenerate": "重新生成"
+  },
+  "filter": {
+    "filter": "筛选",
+    "filterByField": "按 {{title}} 筛选",
+    "filterByFields": "按 {{count}} 个字段筛选",
+    "filterCount": "筛选（{{count}}）",
+    "removeCondition": "移除条件",
+    "removeGroup": "移除条件组",
+    "addCondition": "添加条件",
+    "addConditionGroup": "添加条件组",
+    "chooseField": "选择字段",
+    "noFilterableFields": "无可筛选字段",
+    "chooseOption": "选择一个选项",
+    "chooseOptions": "选择选项",
+    "noOptions": "暂无选项",
+    "checked": "已勾选",
+    "unchecked": "未勾选",
+    "valueContains": "值包含…",
+    "exactValue": "精确值",
+    "userName": "用户名",
+    "userNamesCommaSeparated": "用户名，以逗号分隔",
+    "conjunction": {
+      "and": "并且",
+      "or": "或者"
+    },
+    "operators": {
+      "is": "等于",
+      "isNot": "不等于",
+      "contains": "包含",
+      "doesNotContain": "不包含",
+      "isEmpty": "为空",
+      "isNotEmpty": "不为空",
+      "isGreater": ">",
+      "isGreaterEqual": "≥",
+      "isLess": "<",
+      "isLessEqual": "≤",
+      "isAnyOf": "是其中之一",
+      "isNoneOf": "都不是",
+      "hasAnyOf": "包含任一",
+      "hasAllOf": "包含全部",
+      "isExactly": "完全等于",
+      "isNotExactly": "不完全等于",
+      "hasNoneOf": "均不包含",
+      "isWithIn": "在范围内",
+      "isBefore": "早于",
+      "isAfter": "晚于",
+      "isOnOrBefore": "不晚于",
+      "isOnOrAfter": "不早于"
+    }
+  },
+  "columnMenu": {
+    "editField": "编辑字段",
+    "duplicateField": "复制字段",
+    "insertLeft": "向左插入",
+    "insertRight": "向右插入",
+    "sortByField": "按此字段排序",
+    "groupByField": "按此字段分组",
+    "filterByField": "按此字段筛选",
+    "freezeUpToField": "冻结至此字段",
+    "hideField": "隐藏字段",
+    "deleteField": "删除字段",
+    "generate": "生成",
+    "addToChat": "添加到对话",
+    "downloadAllFiles": "下载全部文件"
+  },
+  "cell": {
+    "empty": "空",
+    "untitled": "无标题",
+    "generating": "生成中…",
+    "notGenerated": "尚未生成",
+    "regenerate": "重新生成",
+    "runButton": "运行",
+    "rate": "评 {{step}} 分",
+    "user": "用户",
+    "noLinks": "无关联",
+    "noLinksExpand": "无关联 — 展开以添加",
+    "removeLink": "移除关联",
+    "openLinkNewTab": "在新标签页打开链接",
+    "noUsersExpand": "无用户 — 展开以添加",
+    "noMatches": "无匹配项",
+    "searchPlaceholder": "搜索",
+    "openUrl": "打开 {{label}}",
+    "pasteOrUpload": "粘贴或上传",
+    "removeAttachment": "移除附件",
+    "previewImage": "预览图片",
+    "attachmentPreviewHint": "预览 {{name}}",
+    "uploadFailed": "上传失败"
+  },
+  "attachment": {
+    "title": "附件",
+    "preview": "预览",
+    "previewLabel": "预览 {{name}}",
+    "showAttachment": "显示第 {{index}} 个附件",
+    "download": "下载",
+    "closePreview": "关闭预览",
+    "expandPreview": "展开预览",
+    "nextAttachment": "下一个附件",
+    "previousAttachment": "上一个附件",
+    "zoomIn": "放大",
+    "zoomOut": "缩小",
+    "reset": "重置",
+    "rotateCw": "顺时针旋转",
+    "rotateCcw": "逆时针旋转",
+    "moreCount": "+{{count}}",
+    "imageAlt": "附件",
+    "imageAltIndex": "附件 {{index}}"
+  },
+  "fieldConfig": {
+    "name": "名称",
+    "type": "类型",
+    "fieldId": "字段 ID",
+    "fieldNamePlaceholder": "字段名称",
+    "addDescription": "添加描述",
+    "descriptionPlaceholder": "描述此字段",
+    "columnColor": "列颜色",
+    "required": "必填",
+    "readonly": "只读",
+    "advancedProperties": "高级属性",
+    "validationRules": "校验规则",
+    "aiConfig": "AI 配置",
+    "formula": "公式",
+    "formulaPlaceholder": "输入公式",
+    "showAs": "显示为",
+    "showAsText": "文本",
+    "showAsMarkdown": "Markdown",
+    "dateFormat": "日期格式",
+    "removeConfig": "移除配置"
+  },
+  "fieldChoices": {
+    "options": "选项",
+    "addOption": "添加选项",
+    "optionName": "选项名称",
+    "optionColor": "选项颜色",
+    "optionDefault": "选项 {{index}}",
+    "colors": {
+      "green": "绿色",
+      "blue": "蓝色",
+      "yellow": "黄色",
+      "red": "红色",
+      "purple": "紫色",
+      "gray": "灰色"
+    }
+  },
+  "aiConfig": {
+    "languages": {
+      "zh": "中文",
+      "en": "英语",
+      "ja": "日语",
+      "ko": "韩语",
+      "es": "西班牙语",
+      "fr": "法语",
+      "de": "德语"
+    },
+    "actions": {
+      "imageGeneration": "生成图片",
+      "imageCustomization": "自定义图片",
+      "textGeneration": "生成文本",
+      "summarize": "摘要",
+      "extract": "提取",
+      "translate": "翻译",
+      "classify": "分类",
+      "customize": "自定义"
+    },
+    "title": "AI",
+    "enable": "启用 AI",
+    "action": "操作",
+    "chooseAction": "选择操作",
+    "prompt": "提示词",
+    "promptSupports": "支持",
+    "promptSupportsSuffix": "占位符",
+    "schema": "结构",
+    "outputSchema": "输出结构",
+    "maxWords": "最大字数",
+    "targetLanguage": "目标语言",
+    "categories": "分类",
+    "categoriesLabel": "分类（每行一个）",
+    "sourceField": "来源字段",
+    "selectSourceField": "选择来源字段",
+    "sourceImageField": "来源图片字段",
+    "useCase": "使用场景",
+    "aspectRatio": "宽高比",
+    "resolution": "分辨率",
+    "quality": "质量",
+    "variants": "生成数量",
+    "runtimeModelOverride": "模型覆盖",
+    "visionModelHint": "此操作需要支持视觉的模型。",
+    "autoRegenerateColumns": "自动重新生成列",
+    "autoRegenerateSource": "来源变化时自动重新生成",
+    "autoRegenerateSourceField": "用于自动重新生成的来源字段",
+    "model": {
+      "default": "默认模型",
+      "defaultNoDesktop": "默认模型（桌面端不可用）",
+      "defaultWithError": "默认模型（{{error}}）",
+      "loading": "正在加载模型…",
+      "loadFailed": "加载模型失败",
+      "unavailable": "不可用：{{model}}"
+    },
+    "qualities": {
+      "low": "低",
+      "medium": "中",
+      "high": "高"
+    },
+    "useCases": {
+      "inline_illustration": "内嵌插图",
+      "cover_illustration": "封面插图",
+      "icon_brand": "图标 / 品牌",
+      "product_showcase": "产品展示",
+      "infographic_diagram": "信息图 / 图表",
+      "other": "其他"
+    }
+  },
+  "templateLibrary": {
+    "title": "探索模板",
+    "description": "包含真实示例数据、可直接使用的表格工作区。",
+    "blank": "从空白表格开始",
+    "cancel": "取消",
+    "createFailed": "无法创建表工作区。",
+    "templates": {
+      "taskTracker": {
+        "title": "任务跟踪器",
+        "description": "管理任务、所有者、进度、优先级和交付日期。"
+      },
+      "thumbnailGenerator": {
+        "title": "YouTube 和 TikTok 缩略图生成器",
+        "description": "上传一张人物照片，生成精简标题，并创建两张原创 16:9 和两张 9:16 图片。"
+      },
+      "receiptOcrDatabase": {
+        "title": "票据 OCR 表格",
+        "description": "上传票据图片，并将其转换为可搜索字段、结构化 JSON 和纯文本。"
+      },
+      "emailInboxSync": {
+        "title": "电子邮件收件箱同步",
+        "description": "导入 IMAP 邮箱的完整历史记录，将每封邮件保存为 Markdown，并让后续运行保持增量同步。"
+      },
+      "leadsLandingPage": {
+        "title": "潜在客户落地页",
+        "description": "接收表单提交，并推进合格潜在客户的后续跟进。"
+      },
+      "sdrColdCallManager": {
+        "title": "SDR 外呼管理",
+        "description": "确定外呼优先级、记录联系尝试并安排下一步行动。"
+      },
+      "productLaunchWebsite": {
+        "title": "产品发布网站",
+        "description": "协调网站部分、资产、所有者和发布准备。"
+      },
+      "batchProductDesigner": {
+        "title": "批量产品设计师",
+        "description": "将产品简介转化为可重复的概念、素材和文案流程。"
+      },
+      "simpleClientCrm": {
+        "title": "简单客户CRM",
+        "description": "跟踪潜在客户、报价、活跃客户、收入和后续行动。"
+      },
+      "lumiereRestaurant": {
+        "title": "餐厅运营",
+        "description": "协调预订、宾客偏好、私人活动和服务跟进。"
+      }
+    }
+  },
+  "feedback": {
+    "tableDuplicated": "表格已复制",
+    "csvDownloaded": "CSV 已下载",
+    "tableDeleted": "表格已删除",
+    "historyUnavailable": "表格暂不支持历史记录",
+    "fieldDuplicated": "字段已复制",
+    "noFilesToDownload": "此列没有可下载的文件",
+    "selectRecordsToGenerate": "请选择要生成的记录"
+  }
+}

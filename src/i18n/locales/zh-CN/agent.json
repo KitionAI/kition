@@ -1,0 +1,175 @@
+{
+  "contextCards": {
+    "writeComplete": "写入完成",
+    "writePlan": "写入计划",
+    "noChanges": "无变化",
+    "writeResult": "写入结果",
+    "writeToTable": "写入表格"
+  },
+  "awaitInput": {
+    "waitingForReply": "智能体正在等待你的回复",
+    "replyPlaceholder": "输入你的回复，按 Cmd/Ctrl+Enter 提交",
+    "send": "发送",
+    "yes": "是",
+    "no": "否"
+  },
+  "buildProgress": {
+    "buildingBase": "正在构建数据库…",
+    "buildingInProgress": "构建进行中",
+    "progressLabel": "构建进度：{{percent}}%",
+    "stepRunning": "{{label}}进行中",
+    "subtasks": {
+      "generateFields": "生成字段",
+      "generateAiFields": "生成 AI 字段",
+      "generateRecords": "生成记录",
+      "generateViews": "生成视图"
+    }
+  },
+  "planCard": {
+    "title": "计划",
+    "summary": "{{total}} 步 · 已完成 {{completed}} · 进行中 {{inProgress}} · 待处理 {{pending}}"
+  },
+  "shellApproval": {
+    "eyebrow": "执行 Shell 命令需要授权",
+    "parseFailed": "解析失败：{{error}}",
+    "allowOnce": "允许一次",
+    "rememberTitle": "允许并记住前缀“{{prefix}}”",
+    "alwaysAllow": "始终允许“{{target}}”",
+    "deny": "拒绝"
+  },
+  "applyPatch": {
+    "preview": "补丁预览",
+    "applied": "补丁已应用",
+    "stats_one": "{{count}} 个文件 · +{{added}} −{{removed}}",
+    "stats_other": "{{count}} 个文件 · +{{added}} −{{removed}}",
+    "kind": {
+      "add": "新增",
+      "delete": "删除",
+      "update": "更新"
+    },
+    "reject": "拒绝",
+    "apply": "应用"
+  },
+  "modelPicker": {
+    "noModelConfigured": "未配置模型",
+    "chooseModel": "选择 AI 模型",
+    "modelLabel": "模型",
+    "searchPlaceholder": "搜索模型",
+    "noMatches": "没有匹配“{{query}}”的模型"
+  },
+  "emptyState": {
+    "needsModelConfig": {
+      "label": "去配置模型"
+    },
+    "kitionAccount": {
+      "checking": "正在检查 Kition 账户…",
+      "signIn": "登录后使用 Kition Cloud",
+      "signInAgain": "重新登录",
+      "cancel": "取消登录",
+      "retry": "重试 Kition 账户",
+      "topUp": "充值积分"
+    },
+    "document": {
+      "description": "让 agent 帮你研究、撰写或整理当前页面。",
+      "suggestions": {
+        "summarize": {
+          "label": "总结当前文档",
+          "prompt": "把当前文档总结成一份 Markdown 简报"
+        },
+        "launchPlan": {
+          "label": "起草上线计划",
+          "prompt": "基于当前页面起草一份上线计划"
+        },
+        "checklist": {
+          "label": "生成清单",
+          "prompt": "生成一份清单并保存为 Markdown"
+        }
+      }
+    },
+    "workflow": {
+      "description": "描述你想要的工作流，agent 会替你起草触发器 + 动作。",
+      "suggestions": {
+        "emailOnRecord": {
+          "label": "新记录时给我发邮件",
+          "prompt": "当这张表新增一条记录时，给我发一封记录摘要邮件。"
+        },
+        "remindOnDate": {
+          "label": "到日期字段时提醒",
+          "prompt": "当今天等于这张表的截止日期字段时，发送一条提醒。"
+        },
+        "refine": {
+          "label": "优化当前工作流",
+          "prompt": "看一下当前工作流，给出下一步可以怎么优化。"
+        }
+      }
+    },
+    "table": {
+      "description": "让 agent 帮你总结、加列或查询这张表。",
+      "suggestions": {
+        "addStatusColumn": {
+          "label": "加一个状态列",
+          "prompt": "添加一个单选状态列，选项是 未开始、进行中、已完成。"
+        },
+        "summarizeTable": {
+          "label": "总结当前表",
+          "prompt": "总结当前表的列类型、主字段、行数。"
+        },
+        "fillCells": {
+          "label": "补全空单元格",
+          "prompt": "对当前列中每个空单元格，根据其它列的内容给出建议值。"
+        }
+      }
+    },
+    "browser": {
+      "description": "让 agent 帮你阅读、总结或抓取当前页面。",
+      "suggestions": {
+        "summarizePage": {
+          "label": "总结当前页面",
+          "prompt": "把当前网页总结成要点列表。"
+        },
+        "extractTable": {
+          "label": "提取页面中的表格",
+          "prompt": "把当前页面里主要的数据表提取成 Markdown。"
+        },
+        "saveAsNote": {
+          "label": "保存为笔记",
+          "prompt": "把当前页面的要点保存到一份新的 Markdown 笔记里。"
+        }
+      }
+    },
+    "browserSites": {
+      "description": "让 agent 帮你发现、配置或登录浏览器会话。",
+      "suggestions": {
+        "addSite": {
+          "label": "新增一个站点",
+          "prompt": "带我把一个新的浏览器站点加进来，让 agent 可以使用它。"
+        },
+        "showConnected": {
+          "label": "查看已连接站点",
+          "prompt": "总结一下哪些浏览器站点已经登录，哪些还没有授权。"
+        },
+        "setupCustom": {
+          "label": "配置自定义适配",
+          "prompt": "帮我为一个内置不支持的网站配置自定义适配器。"
+        }
+      }
+    },
+    "gallery": {
+      "description": "让 agent 帮你整理、描述或复用当前画廊里的素材。",
+      "suggestions": {
+        "describeEach": {
+          "label": "逐个描述",
+          "prompt": "描述当前画廊中每个素材的内容。"
+        },
+        "groupByTopic": {
+          "label": "按主题分组",
+          "prompt": "把这些媒体文件按视觉主题分组。"
+        },
+        "pickHero": {
+          "label": "挑选主视觉",
+          "prompt": "从里面挑出最适合做落地页主视觉的那一份素材。"
+        }
+      }
+    }
+  }
+}

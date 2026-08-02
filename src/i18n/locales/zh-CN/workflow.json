@@ -1,0 +1,679 @@
+{
+  "common": {
+    "workspace": "工作区",
+    "status": "状态",
+    "name": "名称"
+  },
+  "canvas": {
+    "workflowCanvas": "工作流画布",
+    "zoomIn": "放大",
+    "zoomOut": "缩小",
+    "fitToView": "适应视图",
+    "insertPoint": {
+      "insertStep": "插入步骤",
+      "addAction": "添加动作",
+      "addFilter": "添加筛选"
+    },
+    "nodeCard": {
+      "statusAria": "状态 {{status}}",
+      "moreActions": "更多节点操作",
+      "duplicate": "复制",
+      "enableStep": "启用此步骤",
+      "disableStep": "禁用此步骤",
+      "delete": "删除",
+      "fix": "修复",
+      "askAi": "询问 AI"
+    }
+  },
+  "triggerPicker": {
+    "selectPrompt": "选择一个触发器：",
+    "recordCreated": "记录创建时",
+    "recordCreatedOrUpdated": "记录创建或更新时",
+    "recordUpdated": "记录更新时",
+    "recordTriggerTime": "在记录的触发时间",
+    "scheduledTime": "按时间表",
+    "buttonClicked": "按钮点击时"
+  },
+  "nodePicker": {
+    "search": "搜索节点",
+    "close": "关闭节点选择器",
+    "results": "搜索结果",
+    "planned": "规划中",
+    "tabs": {
+      "common": "常用",
+      "ai": "AI",
+      "connectors": "连接器",
+      "utilities": "工具"
+    },
+    "items": {
+      "updateRecord": "修改记录",
+      "updateRecordDesc": "修改触发当前工作流的记录字段",
+      "lookupRecord": "查找记录",
+      "lookupRecordDesc": "在另一张表中匹配记录并回填字段",
+      "addRecord": "新增记录",
+      "addRecordDesc": "在目标表中创建一条新记录",
+      "transformRecord": "数据转换器",
+      "transformRecordDesc": "本地清洗文本或计算数值",
+      "sendEmail": "发送邮件",
+      "sendEmailDesc": "通过 SMTP 连接发送邮件",
+      "ifElse": "条件判断（If/Else）",
+      "ifElseDesc": "把工作流分流到成立和不成立分支",
+      "aiText": "AI 生成文本",
+      "aiTextDesc": "使用已配置模型生成或分析文本",
+      "aiClassify": "AI 分类",
+      "aiClassifyDesc": "根据模型结果写入分类",
+      "webhook": "Webhook / 群机器人",
+      "webhookDesc": "发送到飞书、钉钉、企业微信或自定义地址",
+      "javascript": "JavaScript",
+      "javascriptDesc": "在沙箱中运行脚本"
+    }
+  },
+  "buttons": {
+    "create": "新建工作流"
+  },
+  "templates": {
+    "emailMeOnRecord": {
+      "name": "新记录创建时给某人发邮件",
+      "description": "每当表里新增一行，就给某人发一条邮件提醒。"
+    },
+    "dailyFollowupReminder": {
+      "name": "新线索跟进提醒",
+      "description": "给新线索发一封跟进邮件。"
+    },
+    "emailOnRecordUpdated": {
+      "name": "记录更新时给某人发邮件",
+      "description": "每当记录被修改，就发一封邮件。"
+    },
+    "emailOnRecordDate": {
+      "name": "到记录日期时发邮件",
+      "description": "当记录上某个日期字段到期时，发一封邮件提醒。"
+    },
+    "addRecordDailyMorning": {
+      "name": "每天早晨追加一行",
+      "description": "按每日时间安排，往你选定的表里追加一条新记录。"
+    },
+    "contentIdeaToQueue": {
+      "name": "新内容创意自动加入发布队列",
+      "description": "无需配置外部服务。把填写完整的 Content Ideas 记录复制到 Publishing Queue，并在创建后直接启用。"
+    },
+    "archiveCompletedTasks": {
+      "name": "自动归档已完成任务",
+      "description": "任务状态更新为 Done 后，通过状态筛选并把快照写入 Completed Tasks。"
+    },
+    "weekdayPriorityPlanning": {
+      "name": "工作日自动创建优先级规划任务",
+      "description": "每个工作日 09:00 自动向 Tasks 新增一条今日优先级规划任务。"
+    },
+    "readingProgressJournal": {
+      "name": "自动记录阅读进度日志",
+      "description": "Reading List 新增或更新时，把当前阅读状态追加到 Reading Journal。"
+    },
+    "expenseHighValueReview": {
+      "name": "高额报销自动标记审核",
+      "description": "金额超过 1000 时，直接把当前报销记录更新为“需要审核”。"
+    },
+    "orderCatalogEnrichment": {
+      "name": "根据商品目录自动补全订单",
+      "description": "按 SKU 查找商品，并把名称、单价和分类回填到订单。"
+    },
+    "normalizeContactDetails": {
+      "name": "自动清洗联系人信息",
+      "description": "本地提取邮箱域名，并把电话号码统一转换为纯数字。"
+    },
+    "bodyFallbacks": {
+      "unnamed": "（未命名）",
+      "there": "你好"
+    }
+  },
+  "launcher": {
+    "home": {
+      "heroTitleWithScope": "为 {{scope}} 创建自动化",
+      "heroTitleDefault": "用工作流自动化任意任务",
+      "heroSubtitleWithScope": "{{scope}} 还没有工作流。用 AI、模板，或从零开始构建一个。",
+      "heroSubtitleDefault": "用 AI、模板，或从零开始构建一个工作流"
+    },
+    "hero": {
+      "galleryTitle": "用工作流自动化任意任务",
+      "gallerySubtitle": "用 AI、模板，或从零开始构建一个工作流",
+      "ctaGenerateAi": "用 AI 生成",
+      "ctaStartFromScratch": "从零开始",
+      "aiPromptBack": "返回模板库",
+      "aiPromptTitle": "对话生成自动化工作流",
+      "aiPromptTableLabel": "表",
+      "aiPromptTablePickerPlaceholder": "— 请选择工作流所属的表 —",
+      "aiPromptTablePickerHint": "AI 需要知道工作流监听的是哪张表。",
+      "aiPromptTableEmptyTitle": "当前工作区还没有任何表",
+      "aiPromptTableEmptyBody": "工作流监听的是表里的记录变化 — 先建一张表，AI 才能基于它来生成工作流。",
+      "aiPromptTableEmptyCta": "新建一张表",
+      "aiPromptModelMissing": "尚未配置 AI 模型。请到 设置 → 模型 选一个写作模型。",
+      "aiPromptModelMissingCta": "去配置",
+      "aiPromptLabel": "提示词",
+      "aiPromptPlaceholder": "新建一个工作流：新记录提交，并且某些字段不为空时，把新建记录的完整信息发送到 sales@example.com",
+      "aiPromptSubmit": "开始"
+    },
+    "templateGrid": {
+      "exploreMore": "探索更多模板",
+      "viewAll": "查看全部"
+    },
+    "agentCard": {
+      "title": "AI 助手在这里",
+      "openAskAi": "打开 Ask AI"
+    },
+    "templateSheet": {
+      "title": "全部模板",
+      "searchPlaceholder": "搜索模板",
+      "closeAria": "关闭模板列表"
+    },
+    "createModeDialog": {
+      "title": "新建工作流",
+      "titleTemplateView": "选一个起点",
+      "descriptionWithScope": "为「{{scope}}」新建工作流，选一个起步方式。",
+      "descriptionDefault": "选一个起步方式，触发器和动作之后可以再调。",
+      "descriptionTemplateView": "选一个起点，触发器和动作会预填好。",
+      "sourceTableLabel": "触发表",
+      "modeTemplate": {
+        "title": "选一个起点",
+        "subtitle": "模板或空白起步，会预填好触发器和动作。",
+        "badge": "{{count}} 个模板"
+      },
+      "modeChat": {
+        "title": "AI 对话生成",
+        "subtitle": "描述你想要的，由 AI 起草整个工作流。"
+      },
+      "scratchCard": {
+        "title": "从零开始",
+        "description": "空白工作流，自己来配。"
+      },
+      "aiCta": "或者描述一下 — 让 AI 帮你搭建",
+      "back": "返回",
+      "cancel": "取消"
+    }
+  },
+  "errors": {
+    "createWorkflow": "创建工作流失败",
+    "applyTemplate": "应用模板失败",
+    "deleteWorkflow": "删除工作流失败",
+    "renameWorkflow": "重命名工作流失败",
+    "primaryActionLocked": "当前版本不允许删除主邮件动作，请改为停用它。"
+  },
+  "feedback": {
+    "renamed": "已重命名",
+    "workflowDeleted": "工作流已删除"
+  },
+  "kitableLeaf": {
+    "deleteConfirm": "确定要删除工作流“{{name}}”吗？这将永久移除该工作流及其运行历史。",
+    "nameFallback": "未命名工作流"
+  },
+  "confirms": {
+    "cancel": "取消",
+    "fallbackLabel": "确认",
+    "discardChangesSwitch": {
+      "title": "放弃未保存的更改？",
+      "message": "当前工作流有未保存的修改，切换将会丢弃它们。",
+      "confirm": "放弃更改"
+    },
+    "discardChangesClose": {
+      "title": "放弃未保存的更改？",
+      "message": "有未保存的修改，关闭将会丢弃它们。",
+      "confirm": "放弃并关闭"
+    },
+    "switchTriggerTable": {
+      "title": "切换到 {{tableName}}？",
+      "tableFallback": "新表",
+      "message_one": "动作正文里有 {{count}} 个字段引用在新表上不存在，要移除并继续吗？",
+      "message_other": "动作正文里有 {{count}} 个字段引用在新表上不存在，要全部移除并继续吗？",
+      "confirm": "移除并切换"
+    },
+    "deleteWorkflow": {
+      "title": "删除这个工作流？",
+      "message": "“{{name}}”将被移除，且无法恢复。",
+      "nameFallback": "未命名工作流",
+      "confirm": "删除"
+    },
+    "deleteTriggerWorkflow": {
+      "title": "删除整个工作流？",
+      "message": "删除触发器会移除整个工作流，且无法恢复。",
+      "confirm": "删除工作流"
+    },
+    "deleteFilter": {
+      "title": "删除这个筛选器？",
+      "message": "下游动作将再次对每条记录执行。",
+      "confirm": "删除"
+    }
+  },
+  "panels": {
+    "addRecord": {
+      "section": "新增记录",
+      "targetTableLabel": "目标表",
+      "targetTableHint": "选择写入的目标表",
+      "targetTableDraftLabel": "— 未选择 — 请选择目标表 —",
+      "loopWarningBold": "写入触发器所在的表会形成循环。",
+      "loopWarningBody": "请选择其他目标表 — 该动作新建的每一行都会重新触发此工作流。",
+      "noFields": "该表还没有字段。",
+      "loadingFields": "正在加载字段…",
+      "testSection": "使用真实数据测试",
+      "testDescription": "选择一条已有的触发记录。测试会真实执行动作，并在 {{target}} 中新增记录。",
+      "scheduledTestDescription": "立即执行一次定时动作，并在 {{target}} 中真实新增记录。",
+      "runNow": "立即运行",
+      "testTargetFallback": "目标表",
+      "saveBeforeTest": "请先保存改动再测试。",
+      "testCreated": "已在 {{target}} 中创建记录 {{recordId}}。"
+    },
+    "schedule": {
+      "section": "时间安排",
+      "frequencyLabel": "频率",
+      "timeOfDayLabel": "执行时间",
+      "timeOfDayHint": "时区：{{tz}}",
+      "timezoneLabel": "时区",
+      "timezoneHint": "默认使用 {{tz}}（服务器本地时间）",
+      "cronLabel": "Cron 表达式",
+      "cronHintCustom": "可直接编辑",
+      "cronHintPreview": "预览",
+      "previewIdle": "调整频率即可查看下次执行时间。",
+      "previewLoading": "正在计算下次执行时间…",
+      "previewError": "无法预览 — 请修正上方的 cron 或时区。",
+      "previewNextRun": "下次执行：",
+      "previewThenPrefix": "随后 ",
+      "frequencyOptions": {
+        "daily": "每天",
+        "weekdays": "每个工作日（周一至周五）",
+        "weekly_monday": "每周一",
+        "hourly": "每小时（整点）",
+        "custom": "自定义（高级）"
+      }
+    },
+    "triggerRequiredFields": {
+      "emptyNoSchema": "请先在上方选择一个表，再选择哪些字段必须非空才会触发工作流。",
+      "headerPre": "仅当 ",
+      "headerBold": "所有",
+      "headerPost": " 勾选的字段都非空时触发器才会触发。",
+      "badgeOptional": "可选 · 已勾选 0 个",
+      "badgeRequired_one": "{{count}} 个必填",
+      "badgeRequired_other": "{{count}} 个必填",
+      "caption": "留空则每条记录都会触发。（0 和 false 视为非空。）",
+      "noFields": "该表还没有字段 — 先去添加一列再来设置。",
+      "staleHeader_one": "有 1 个必填字段在表上已不存在：",
+      "staleHeader_other": "有 {{count}} 个必填字段在表上已不存在：",
+      "staleRemovedTag": "已移除",
+      "staleRemoveButton": "移除该限制"
+    },
+    "drawer": {
+      "kindTrigger": "触发器",
+      "kindAction": "动作",
+      "kindFilter": "筛选",
+      "closeAria": "关闭属性面板",
+      "titles": {
+        "whenRecordCreated": "新记录创建时",
+        "whenRecordUpdated": "记录更新时",
+        "whenRecordCreatedOrUpdated": "记录创建或更新时",
+        "whenScheduledTime": "按时间表",
+        "whenRecordDateReached": "记录日期到达时",
+        "addRecord": "新增记录",
+        "sendEmail": "发送邮件"
+      },
+      "saveBar": {
+        "validationErrors_one": "{{count}} 个字段错误",
+        "validationErrors_other": "{{count}} 个字段错误",
+        "unsavedEdits": "未保存的改动",
+        "discard": "放弃",
+        "save": "保存"
+      },
+      "trigger": {
+        "section": "触发器",
+        "eventLabel": "事件",
+        "tableLabel": "表",
+        "tableHint": "选择目标表以启用工作流",
+        "requiredFieldsLabel": "必填字段",
+        "requiredFieldsHint": "可选 — 且 / 非空"
+      },
+      "channel": {
+        "section": "渠道",
+        "connectionLabel": "连接",
+        "newConnection": "新建连接",
+        "legacySmtpOption": "旧版 SMTP 配置",
+        "editConnection": "编辑连接"
+      },
+      "email": {
+        "section": "邮件",
+        "toLabel": "收件人",
+        "sendTestEmail": "发送测试邮件",
+        "testDelivered": "测试邮件已发送至 {{to}}",
+        "subjectLabel": "主题",
+        "bodyLabel": "正文",
+        "bodyHint": "字段以 token 形式插入，保存为 field_ref 部分。",
+        "pickTableFirstHint": "请先在上方选择触发表才能使用字段 token。",
+        "pickTableFirstPlaceholder": "请先选择触发表…"
+      },
+      "testStep": {
+        "section": "测试此步骤",
+        "descriptionPre": "对一条样例 ",
+        "descriptionMid": " 记录执行此动作。测试会使用选中的连接，并将运行标记为 ",
+        "descriptionPost": "，因此不会进入正式的执行历史。",
+        "runWithSample": "用样例数据运行",
+        "testDelivered": "测试已发送至 {{to}}"
+      },
+      "pageSaveBar": {
+        "messagePrefix": "你有未保存的改动：{{fields}}",
+        "discard": "放弃",
+        "save": "保存更改"
+      }
+    },
+    "home": {
+      "workspaceFallback": "工作区",
+      "untitledWorkflowFallback": "未命名工作流",
+      "breadcrumb": "工作流",
+      "closeAria": "关闭工作流",
+      "h1": "工作流",
+      "stats": "共 {{total}} 个 · 启用 {{active}} 个",
+      "refreshAria": "刷新工作流列表",
+      "create": "新建",
+      "objectLabel": "对象：",
+      "triggerLabel": "触发：",
+      "tableLabelUnbound": "未绑定",
+      "tableLabelWorkspace": "工作区",
+      "failingLastRun": "上次运行失败",
+      "runTest": "运行测试",
+      "save": "保存",
+      "moreActions": "更多操作",
+      "delete": "删除",
+      "testEmailDelivered": "测试邮件已发送",
+      "detailTo": "收件人",
+      "detailSubject": "主题",
+      "detailBody": "正文",
+      "tabConfiguration": "配置",
+      "tabRunHistory": "运行历史",
+      "tabLogs": "日志",
+      "unresolvedTitle_one": "有 1 个模板字段无法匹配",
+      "unresolvedTitle_other": "有 {{count}} 个模板字段无法匹配",
+      "unresolvedBody": "（表：{{names}}）。正文暂时使用兜底文本 — 请打开下方的动作面板修正绑定。",
+      "unresolvedDismiss": "知道了",
+      "emptyCreateTitle": "创建第一个工作流",
+      "emptyCreateHint": "从一条记录的变化开始触发，然后发邮件或执行后续动作。",
+      "emptyCreateButton": "创建工作流",
+      "emptyPickTitle": "工作流",
+      "emptyPickHint": "从列表中选择一个工作流以查看详情。",
+      "validation": {
+        "nameRequired": "请填写名称",
+        "recipientRequired": "请填写收件人",
+        "recipientInvalid": "请输入有效的邮箱地址",
+        "subjectRequired": "请填写主题",
+        "bodyRequired": "请填写正文",
+        "addRecordTargetRequired": "请选择目标表",
+        "updateRecordFieldsRequired": "请至少配置一个要修改的字段",
+        "lookupRecordConfigRequired": "请完成查找条件并添加回填字段",
+        "transformRecordOperationsRequired": "请至少添加一个数据转换操作",
+        "connectionRequired": "未选择连接"
+      },
+      "statusBanner": {
+        "enableNow": "立即启用",
+        "fixConnection": "修复连接",
+        "fixAction": "修复动作",
+        "finishConfiguration": "完成配置",
+        "lastRunFailedLeading": "上次运行失败 —",
+        "lastRunFailedFallback": "请修复动作以重新启用。",
+        "validationFailedLeading": "校验失败 —",
+        "notConfiguredOne": "完成配置后即可启用工作流。",
+        "notConfiguredOther": "还有 {{count}} 项需要补齐才能启用工作流。",
+        "configuredDisabled": "配置看起来没问题，启用即可开始运行。"
+      },
+      "triggerVerb": {
+        "recordCreated": "新记录创建",
+        "recordUpdated": "记录更新",
+        "recordCreatedOrUpdated": "记录创建或更新",
+        "recordDateReached": "记录日期到达",
+        "scheduledTime": "按时间表"
+      },
+      "nodeCard": {
+        "stepLabel": "第 {{index}} 步",
+        "stepActionEmail": "第 {{index}} 步 · 邮件",
+        "stepActionAddRecord": "第 {{index}} 步 · 新增记录",
+        "stepActionGeneric": "第 {{index}} 步 · 动作",
+        "stepFilter": "第 {{index}} 步 · 筛选",
+        "triggerLabel": "第 1 步",
+        "actionSendEmail": "发送邮件",
+        "actionAddRecord": "新增记录",
+        "actionUpdateRecord": "修改记录",
+        "actionLookupRecord": "查找并回填记录",
+        "actionTransformRecord": "数据转换",
+        "drawerKindAction": "动作",
+        "drawerKindFilter": "筛选",
+        "drawerKindTrigger": "触发器",
+        "noConnectionSelected": "未选择连接",
+        "noRecipient": "无收件人",
+        "noTarget": "未选择目标",
+        "legacySmtp": "旧版 SMTP 配置",
+        "sendEmailDescription": "通过 {{channel}} · 发送至 {{recipient}}",
+        "addRecordDescription_one": "写入 {{target}} · 1 个字段",
+        "addRecordDescription_other": "写入 {{target}} · {{count}} 个字段",
+        "updateRecordDescription_one": "修改触发记录 · 1 个字段",
+        "updateRecordDescription_other": "修改触发记录 · {{count}} 个字段",
+        "lookupRecordDescription": "在 {{target}} 中查找并回填当前记录",
+        "transformRecordDescription_one": "1 个本地转换",
+        "transformRecordDescription_other": "{{count}} 个本地转换",
+        "unknownTable": "未知的表",
+        "noSchedule": "（未设置）",
+        "newFilter": "新筛选条件"
+      },
+      "list": {
+        "searchPlaceholder": "搜索工作流…",
+        "filterAll": "全部",
+        "filterActive": "启用",
+        "filterFailing": "失败 · {{count}}",
+        "filterDisabled": "已停用",
+        "loading": "正在加载工作流",
+        "emptyFiltered": "当前筛选下没有匹配的工作流。",
+        "emptyNone": "暂无工作流",
+        "flowWhen": "当",
+        "flowThen": "则",
+        "actionSendEmail": "发送邮件",
+        "lastRunFailed": "上次运行失败",
+        "ranSuccessfully": "成功运行",
+        "noRunsYet": "暂无运行记录",
+        "viewError": "查看错误",
+        "history": "历史",
+        "streamingChip": "生成中",
+        "streamingPlaceholder": "AI 正在写入…",
+        "trigger": "触发器",
+        "action": "动作",
+        "table": "数据表",
+        "lastRun": "上次运行",
+        "sortBy": "排序方式",
+        "statusActive": "已启用",
+        "statusDisabled": "已停用",
+        "statusFailing": "失败"
+      },
+      "streamingBanner": {
+        "title": "AI 正在生成工作流",
+        "errorTitle": "AI 生成失败",
+        "errorRetry": "重试",
+        "errorDiscard": "丢弃"
+      }
+    },
+    "filter": {
+      "matchSection": "匹配",
+      "modeAll": "全部满足（与）",
+      "modeAny": "任意满足（或）",
+      "joinAnd": "且",
+      "joinOr": "或",
+      "chooseField": "选择字段…",
+      "removeCondition": "删除条件",
+      "addCondition": "+ 添加条件",
+      "noMatchSection": "未命中条件时",
+      "noMatchBodyPre": "此次运行停止并标记为 ",
+      "noMatchBodySkipped": "已跳过",
+      "noMatchBodyPost": "。下游动作不会执行。\"分支\"模式（true/false 分流）在规划中。",
+      "previewSection": "表达式预览",
+      "previewLabel": "DSL",
+      "previewEmpty": "— 空筛选器会匹配所有行 —",
+      "drySection": "用样例行试跑",
+      "dryRunning": "运行中…",
+      "dryRunButton": "▶ 用样例行运行",
+      "dryMatched": "✓ 命中 — 该行将继续到下游",
+      "dryNotMatched": "⊘ 未命中 — 本次运行将被标记为跳过"
+    },
+    "recordActions": {
+      "triggerRecord": "触发记录",
+      "remove": "删除",
+      "testSection": "测试动作",
+      "testDescription": "选择一条已有记录，Kition 会执行真实动作并把结果写回数据表。",
+      "testUpdated": "所选记录已成功更新。",
+      "noMatch": "没有找到匹配记录，原记录保持不变。",
+      "update": {
+        "section": "修改当前记录",
+        "description": "只修改下面已填写的字段，其余值保持不变。"
+      },
+      "lookup": {
+        "section": "查找记录并回填",
+        "table": "查找数据表",
+        "tablePlaceholder": "选择数据表",
+        "matchField": "匹配字段",
+        "fieldPlaceholder": "选择字段",
+        "matchValue": "来自触发记录的值",
+        "sourceField": "读取字段",
+        "targetField": "回填字段",
+        "addMapping": "添加回填映射"
+      },
+      "transform": {
+        "section": "转换记录数据",
+        "operation": "转换 {{index}}",
+        "argument": "参数",
+        "targetField": "选择输出字段",
+        "addOperation": "添加转换",
+        "operations": {
+          "trim": "去除首尾空格",
+          "lowercase": "转换为小写",
+          "uppercase": "转换为大写",
+          "digits_only": "仅保留数字",
+          "domain_from_email": "提取邮箱域名",
+          "concat": "追加文本",
+          "number_add": "数字相加",
+          "number_multiply": "数字相乘"
+        }
+      }
+    },
+    "bodyEditor": {
+      "noFieldsAvailable": "没有可用的字段",
+      "addText": "添加文本",
+      "addNewline": "添加换行",
+      "insertField": "插入字段",
+      "emptyHint": "添加文本或插入字段来构建邮件正文。",
+      "typeBodyText": "输入正文",
+      "newLineChip": "换行",
+      "missingField": "缺失字段 {{id}}",
+      "missingFieldPreview": "⚠ 缺失字段 {{id}}",
+      "fieldsUsed_one": "已使用 {{count}} 个字段",
+      "fieldsUsed_other": "已使用 {{count}} 个字段",
+      "previewSampleData": "用样例数据预览",
+      "removeBodyPartAria": "移除该部分",
+      "remove": "移除"
+    },
+    "triggerTable": {
+      "draftLabel": "— 未绑定（草稿）—",
+      "selectAria": "选择表",
+      "emptyInScope": "当前范围下没有表。"
+    },
+    "sampleRow": {
+      "noTableBound": "未绑定表",
+      "useExisting": "使用已有记录",
+      "tooltipReady": "选择真实记录用于渲染测试",
+      "tooltipNotReady": "请先为触发器绑定一个表",
+      "recentRows": "最近记录",
+      "refreshAria": "刷新记录列表",
+      "loading": "加载中…",
+      "empty": "该表暂无记录，请先添加一条。",
+      "rowFallback": "第 {{id}} 行"
+    },
+    "build": {
+      "backToWorkflowsAria": "返回工作流列表",
+      "breadcrumbWorkflows": "工作流",
+      "newWorkflow": "新工作流",
+      "runHistory": "运行历史",
+      "streamGenerating": "正在生成触发器…",
+      "streamWaiting": "等待触发器…",
+      "triggerWhenRecordCreated": "记录创建时",
+      "triggerWhenFormSubmitted": "表单提交时",
+      "actionSendEmail": "发送邮件",
+      "triggerSubtitle": "在 {{table}} 中创建记录时",
+      "actionSubtitle": "向 {{to}} 发送邮件",
+      "drawerTitleScoped": "为 {{table}} 创建邮件工作流",
+      "drawerTitle": "创建邮件工作流"
+    },
+    "action": {
+      "panelAria": "动作属性",
+      "headerTitle": "动作预览",
+      "closeAria": "关闭",
+      "previewNote": "此面板预览 AI 生成的内容。编辑请到工作流列表中进行。",
+      "openInList": "前往工作流列表编辑",
+      "sectionConfig": "配置",
+      "sectionTest": "测试此步骤",
+      "sectionPreviewResult": "预览结果",
+      "sectionTestSent": "测试邮件已发送",
+      "labelTo": "收件人",
+      "labelSubject": "主题",
+      "labelBody": "正文",
+      "noRecipient": "未配置收件人",
+      "noSubject": "未配置主题",
+      "testIntro": "预览会用合成记录走一遍正文模板 — 不会真正发邮件。点 \"发送真实测试邮件\" 才会通过 SMTP 实际发送。",
+      "previewing": "正在生成预览…",
+      "previewBtn": "预览动作（不发送邮件）",
+      "sendToLabel": "发送真实测试邮件至",
+      "sendToPlaceholder": "recipient@example.com",
+      "invalidEmail": "请输入有效邮箱，或留空以使用配置的收件人。",
+      "blankHint": "留空将使用 \"{{to}}\"。主题会带上 [TEST] 前缀。",
+      "sending": "发送中…",
+      "sendBtn": "发送真实测试邮件",
+      "previewGenerated": "预览已生成",
+      "previewNoEmail": "（未发送邮件）",
+      "renderedJustNow": "刚刚生成",
+      "renderedInput": "渲染后的内容",
+      "testDelivered": "✓ 测试邮件已发送",
+      "sentJustNow": "刚刚发送至 {{to}}"
+    },
+    "progress": {
+      "title": "构建工作流",
+      "stepWorkflow": "生成工作流",
+      "stepTrigger": "生成触发器",
+      "stepAction": "生成动作节点"
+    }
+  },
+  "runs": {
+    "filters": {
+      "all": "全部",
+      "sent": "✓ 已发送",
+      "failed": "✕ 失败",
+      "skipped": "⊘ 跳过"
+    },
+    "rowLabel": {
+      "sent": "✓ 已发送",
+      "skipped": "⊘ 跳过",
+      "failed": "✕ 失败"
+    },
+    "loading": "加载中…",
+    "loadingLogs": "正在加载日志…",
+    "empty": "暂无运行记录",
+    "emptyLogs": "暂无日志",
+    "pruneHint": "旧运行记录自动清理：成功 > 14 天 · 失败 > 30 天",
+    "retry": "↻ 重试",
+    "failedAt": "失败于",
+    "viewNode": "查看节点 {{nodeId}}",
+    "detailRecord": "记录",
+    "detailWhen": "时间",
+    "detailError": "错误",
+    "detailBody": "正文",
+    "panel": {
+      "title": "运行历史",
+      "refreshAria": "刷新",
+      "pauseAria": "暂停自动刷新",
+      "resumeAria": "恢复自动刷新",
+      "closeAria": "关闭",
+      "panelAria": "运行历史",
+      "loadMore": "加载 {{n}} 条（还有 {{hidden}} 条）"
+    },
+    "time": {
+      "justNow": "刚刚",
+      "minutesAgo": "{{n}} 分钟前",
+      "hoursAgo": "{{n}} 小时前",
+      "daysAgo": "{{n}} 天前"
+    }
+  }
+}
