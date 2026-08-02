@@ -6,6 +6,7 @@ const startPortalConnect = vi.fn()
 const getPortalConnectResult = vi.fn()
 const getPortalSessionStatus = vi.fn()
 const logoutPortalSession = vi.fn()
+const syncProviderModelCatalog = vi.fn()
 const openExternalURL = vi.fn()
 
 vi.mock('@/api/desktop', () => ({
@@ -13,6 +14,10 @@ vi.mock('@/api/desktop', () => ({
   getPortalConnectResult,
   getPortalSessionStatus,
   logoutPortalSession,
+}))
+
+vi.mock('@/services/providerModelCatalog', () => ({
+  syncProviderModelCatalog,
 }))
 
 vi.mock('@/services/desktop', () => ({
@@ -40,10 +45,13 @@ describe('portal account service', () => {
   beforeEach(() => {
     vi.resetModules()
     secureValues.clear()
+    localStorage.clear()
     startPortalConnect.mockReset()
     getPortalConnectResult.mockReset()
     getPortalSessionStatus.mockReset()
     logoutPortalSession.mockReset()
+    syncProviderModelCatalog.mockReset()
+    syncProviderModelCatalog.mockImplementation(async (settings) => settings)
     openExternalURL.mockReset()
     vi.useRealTimers()
   })
@@ -137,7 +145,16 @@ describe('portal account service', () => {
     expect(secureValues.get('kition.portal.account.session.v1') || '').toContain('"wallet_credit_balance":27')
     const settings = JSON.parse(secureValues.get('kition.desktop.settings.v1') || '{}')
     expect(settings.providers.kition_console.enabled).toBe(true)
+    expect(secureValues.get('desktop.provider.kition_console.accessToken.v1')).toBe('portal-token')
     expect(settings.models.activeProvider).toBe('kition_console')
+    expect(syncProviderModelCatalog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        models: expect.objectContaining({ activeProvider: 'kition_console' }),
+      }),
+      'kition_console',
+      'Kition Cloud did not return an available text model.',
+      true,
+    )
   })
 
   it('clears the persisted session when portal rejects the token', async () => {
@@ -342,6 +359,15 @@ describe('portal account service', () => {
       credit_granted_total: 100,
       lifetime_credit_total: 150,
     })
+    expect(syncProviderModelCatalog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        models: expect.objectContaining({ activeProvider: 'kition_console' }),
+      }),
+      'kition_console',
+      'Kition Cloud did not return an available text model.',
+      true,
+    )
+    expect(secureValues.get('desktop.provider.kition_console.accessToken.v1')).toBe('portal-token')
   })
 
   it('clears local persistence after logout even when portal logout succeeds', async () => {
@@ -362,5 +388,6 @@ describe('portal account service', () => {
 
     expect(logoutPortalSession).toHaveBeenCalledWith('portal-token')
     expect(secureValues.get('kition.portal.account.session.v1') || '').toBe('')
+    expect(secureValues.get('desktop.provider.kition_console.accessToken.v1') || '').toBe('')
   })
 })

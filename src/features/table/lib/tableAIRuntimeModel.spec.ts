@@ -1,10 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { loadDesktopSettings } from '@/services/desktopSettings'
-import type { AttachmentAIConfig } from '@/types/aiConfig'
+import { ensurePortalAccountSessionRestored } from '@/services/portalAccount'
+import type { AttachmentAIConfig, TextAIConfig } from '@/types/aiConfig'
 
 vi.mock('@/services/desktopSettings', () => ({
   loadDesktopSettings: vi.fn(),
+}))
+
+vi.mock('@/services/portalAccount', () => ({
+  ensurePortalAccountSessionRestored: vi.fn(),
 }))
 
 import { resolveAIConfigRuntimeModel } from './tableEditorShared'
@@ -21,8 +26,18 @@ const imageConfig: AttachmentAIConfig = {
   image_use_case: 'cover_illustration',
 }
 
+const extractConfig: TextAIConfig = {
+  type: 'extract',
+  enabled: true,
+  auto_update: true,
+  source_field_id: 1,
+}
+
 describe('resolveAIConfigRuntimeModel for image fields', () => {
   beforeEach(() => {
+    vi.mocked(ensurePortalAccountSessionRestored).mockResolvedValue({
+      access_token: 'portal-token',
+    } as any)
     vi.mocked(loadDesktopSettings).mockResolvedValue({
       models: {
         activeProvider: 'kition_console',
@@ -32,8 +47,9 @@ describe('resolveAIConfigRuntimeModel for image fields', () => {
         kition_console: {
           enabled: true,
           label: 'Kition Cloud',
-          baseUrl: '',
+          baseUrl: 'https://kition.ai/api/llm/v1',
           apiKey: '',
+          accessToken: 'portal-token',
           discoveredModels: ['gpt-5.5', 'gpt-image-2'],
         },
       },
@@ -45,7 +61,55 @@ describe('resolveAIConfigRuntimeModel for image fields', () => {
       provider_type: 'kition_console',
       provider_label: 'Kition Cloud',
       model_name: 'gpt-image-2',
+      base_url: 'https://kition.ai/api/llm/v1',
+      access_token: 'portal-token',
     })
+    expect(ensurePortalAccountSessionRestored).toHaveBeenCalledTimes(1)
+  })
+
+  it('waits for account restoration before resolving a text model from stale cloud settings', async () => {
+    vi.mocked(loadDesktopSettings)
+      .mockResolvedValueOnce({
+        models: {
+          activeProvider: 'kition_console',
+          selectedModelByProvider: {},
+        },
+        providers: {
+          kition_console: {
+            enabled: true,
+            label: 'Kition Cloud',
+            baseUrl: '',
+            apiKey: '',
+            accessToken: '',
+            discoveredModels: [],
+          },
+        },
+      } as any)
+      .mockResolvedValue({
+        models: {
+          activeProvider: 'kition_console',
+          selectedModelByProvider: { kition_console: 'gpt-5.5' },
+        },
+        providers: {
+          kition_console: {
+            enabled: true,
+            label: 'Kition Cloud',
+            baseUrl: 'https://kition.ai/api/llm/v1',
+            apiKey: '',
+            accessToken: 'portal-token',
+            discoveredModels: ['gpt-5.5', 'gpt-image-2'],
+          },
+        },
+      } as any)
+
+    await expect(resolveAIConfigRuntimeModel(extractConfig)).resolves.toMatchObject({
+      provider_type: 'kition_console',
+      model_name: 'gpt-5.5',
+      base_url: 'https://kition.ai/api/llm/v1',
+      access_token: 'portal-token',
+    })
+    expect(ensurePortalAccountSessionRestored).toHaveBeenCalledTimes(1)
+    expect(loadDesktopSettings).toHaveBeenCalledTimes(2)
   })
 
   it('keeps an explicit image-model override', async () => {
@@ -76,5 +140,28 @@ describe('resolveAIConfigRuntimeModel for image fields', () => {
     } as any)
 
     await expect(resolveAIConfigRuntimeModel(imageConfig)).resolves.toBeUndefined()
+  })
+
+  it('reports a clear error when cloud model discovery remains empty', async () => {
+    vi.mocked(loadDesktopSettings).mockResolvedValue({
+      models: {
+        activeProvider: 'kition_console',
+        selectedModelByProvider: {},
+      },
+      providers: {
+        kition_console: {
+          enabled: true,
+          label: 'Kition Cloud',
+          baseUrl: 'https://kition.ai/api/llm/v1',
+          apiKey: '',
+          accessToken: 'portal-token',
+          discoveredModels: [],
+        },
+      },
+    } as any)
+
+    await expect(resolveAIConfigRuntimeModel(extractConfig)).rejects.toThrow(
+      'No Kition Cloud text model is available. Refresh models in Settings and try again.',
+    )
   })
 })

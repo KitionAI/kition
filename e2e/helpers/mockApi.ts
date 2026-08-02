@@ -613,6 +613,9 @@ export async function mockLocalWorkspaceApi(page: Page, options: MockLocalWorksp
       return fulfill(route, {
         code: 200,
         data: {
+          endpoint: providerType === 'kition_console'
+            ? 'https://kition.ai/api/llm/v1/models'
+            : '/models',
           models,
           fetched_at: '2026-04-21T01:23:45Z',
         },

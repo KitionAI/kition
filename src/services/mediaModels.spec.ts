@@ -112,8 +112,9 @@ describe('resolvePreferredDesktopMediaModel', () => {
         kition_console: {
           enabled: true,
           label: 'Kition Cloud',
-          baseUrl: '',
+          baseUrl: 'https://kition.ai/api/llm/v1',
           apiKey: '',
+          accessToken: 'portal-token',
           discoveredModels: ['gpt-5.5', 'gpt-image-2'],
         },
       },
@@ -146,8 +147,9 @@ describe('resolvePreferredDesktopMediaModel', () => {
         kition_console: {
           enabled: true,
           label: 'Kition Cloud',
-          baseUrl: '',
+          baseUrl: 'https://kition.ai/api/llm/v1',
           apiKey: '',
+          accessToken: 'portal-token',
           discoveredModels: ['gpt-5.5', 'gpt-image-2'],
         },
       },
@@ -169,6 +171,27 @@ describe('resolvePreferredDesktopMediaModel', () => {
           baseUrl: 'https://api.openai.com/v1',
           apiKey: 'test-key',
           discoveredModels: ['gpt-5.5'],
+        },
+      },
+    } as any, 'image')
+
+    expect(result).toBeUndefined()
+  })
+
+  it('does not use Kition Cloud without a restored portal token', () => {
+    const result = resolvePreferredDesktopMediaModel({
+      models: {
+        activeProvider: 'kition_console',
+        selectedModelByProvider: { kition_console: 'gpt-5.5' },
+      },
+      providers: {
+        kition_console: {
+          enabled: true,
+          label: 'Kition Cloud',
+          baseUrl: 'https://kition.ai/api/llm/v1',
+          apiKey: '',
+          accessToken: '',
+          discoveredModels: ['gpt-5.5', 'gpt-image-2'],
         },
       },
     } as any, 'image')

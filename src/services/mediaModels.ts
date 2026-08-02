@@ -63,7 +63,7 @@ export function canUseDesktopProvider(
   provider: DesktopProviderConfig,
 ): boolean {
   if (!provider.enabled) return false
-  if (kind === 'kition_console') return true
+  if (kind === 'kition_console') return Boolean(provider.baseUrl && provider.accessToken)
   return Boolean(provider.baseUrl && (provider.apiKey || provider.accessToken))
 }
 
@@ -111,9 +111,8 @@ export async function loadMediaModelOptions(capability: ModelCapability): Promis
 
   const desktopOptions: MediaModelOption[] = []
   for (const [kind, provider] of Object.entries(desktopSettings.providers) as Array<[DesktopProviderKind, DesktopProviderConfig]>) {
-    // Kition Cloud resolves its baseUrl and access token server-side from
-    // the active portal session, so we do not gate it on locally-stored
-    // credentials. Every other provider must have user-supplied credentials.
+    // Kition Cloud receives its access token from the securely stored portal
+    // session during sign-in. Every other provider uses user-supplied credentials.
     if (!canUseDesktopProvider(kind, provider)) continue
     if (!provider.discoveredModels?.length) {
       continue

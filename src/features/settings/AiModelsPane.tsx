@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { AlertTriangle, Plus, RefreshCcw, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button, Disclosure, Input, PasswordInput, Select } from '@/components/ui'
-import { discoverProviderModels } from '@/api/desktop'
 import {
   type KitionAccountState,
   useKitionAccount,
@@ -17,7 +16,7 @@ import {
   loadDesktopSettings,
   saveDesktopSettings,
 } from '@/services/desktopSettings'
-import { isLikelyTextGenerationModel } from '@/services/modelCapabilities'
+import { syncProviderModelCatalog } from '@/services/providerModelCatalog'
 import type { DesktopProviderKind, DesktopSettingsState } from '@/types/desktopSettings'
 import { getCurrentLocale, useTranslation } from '@/i18n'
 import { openExternalURL } from '@/services/desktop'
@@ -267,72 +266,6 @@ function ProviderMetadataRow({ count, lastSyncedAt, syncing, error, onSync, onRe
       </Button>
     </div>
   )
-}
-
-function normalizeDiscoveredModels(value: unknown): string[] {
-  if (!Array.isArray(value)) return []
-  return Array.from(new Set(value.map((model) => String(model || '').trim()).filter(Boolean)))
-}
-
-async function syncProviderModelCatalog(
-  settings: DesktopSettingsState,
-  kind: DesktopProviderKind,
-  emptyMessage: string,
-  activateProvider: boolean,
-) {
-  const provider = settings.providers[kind]
-  const response = await discoverProviderModels({
-    provider_type: kind,
-    base_url: provider.baseUrl || undefined,
-    api_key: provider.apiKey || undefined,
-    access_token: provider.accessToken || undefined,
-    models_path: provider.modelsPath || undefined,
-    auth_header: provider.authHeader || undefined,
-    auth_scheme: provider.authScheme,
-  })
-  const models = normalizeDiscoveredModels(response?.models)
-  if (!models.length) throw new Error(emptyMessage)
-
-  const selectedModelByProvider = { ...settings.models.selectedModelByProvider }
-  const currentSelection = selectedModelByProvider[kind] || ''
-  const fallbackSelection = kind === 'kition_console'
-    ? models.find(isLikelyTextGenerationModel) || ''
-    : models[0]
-  if (!currentSelection || !models.includes(currentSelection)) {
-    if (fallbackSelection) selectedModelByProvider[kind] = fallbackSelection
-    else delete selectedModelByProvider[kind]
-  }
-  const selectedModel = selectedModelByProvider[kind] || fallbackSelection
-  const nextModels = {
-    ...settings.models,
-    activeProvider: activateProvider ? kind : settings.models.activeProvider,
-    selectedModelByProvider,
-  }
-  if (activateProvider && selectedModel) {
-    nextModels.preferredDefaultModel = !settings.models.preferredDefaultModel || !models.includes(settings.models.preferredDefaultModel)
-      ? selectedModel
-      : settings.models.preferredDefaultModel
-    nextModels.preferredChatModel = !settings.models.preferredChatModel || !models.includes(settings.models.preferredChatModel)
-      ? selectedModel
-      : settings.models.preferredChatModel
-    nextModels.preferredWritingModel = !settings.models.preferredWritingModel || !models.includes(settings.models.preferredWritingModel)
-      ? selectedModel
-      : settings.models.preferredWritingModel
-  }
-
-  return saveDesktopSettings({
-    ...settings,
-    providers: {
-      ...settings.providers,
-      [kind]: {
-        ...provider,
-        enabled: true,
-        discoveredModels: models,
-        lastSyncedAt: response.fetched_at || new Date().toISOString(),
-      },
-    },
-    models: nextModels,
-  })
 }
 
 function KitionCloudModelCatalog({

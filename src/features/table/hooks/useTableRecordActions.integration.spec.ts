@@ -11,6 +11,12 @@ vi.mock('@/services/desktopSettings', () => ({
   loadDesktopSettings: vi.fn(),
 }))
 
+vi.mock('@/services/portalAccount', () => ({
+  ensurePortalAccountSessionRestored: vi.fn(async () => ({
+    access_token: 'portal-token',
+  })),
+}))
+
 import { useTableRecordActions } from './useTableRecordActions'
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean })
@@ -275,9 +281,9 @@ describe('useTableRecordActions auto-update via ai_config.source_field_id', () =
         kition_console: {
           enabled: true,
           label: 'Kition Cloud',
-          baseUrl: '',
+          baseUrl: 'https://kition.ai/api/llm/v1',
           apiKey: '',
-          accessToken: '',
+          accessToken: 'portal-token',
           discoveredModels: ['gpt-5.5', 'gpt-image-2'],
         },
       },
@@ -311,6 +317,76 @@ describe('useTableRecordActions auto-update via ai_config.source_field_id', () =
       provider_type: 'kition_console',
       provider_label: 'Kition Cloud',
       model_name: 'gpt-image-2',
+      base_url: 'https://kition.ai/api/llm/v1',
+      access_token: 'portal-token',
+    })
+  })
+
+  it('sends the discovered Kition Cloud base URL for text AI fields', async () => {
+    const addressField = {
+      id: 3,
+      name: 'address',
+      title: 'Address',
+      type: 'long_text',
+      is_primary: false,
+      readonly: false,
+      options: {},
+      ai_config: {
+        type: 'extract',
+        enabled: true,
+        auto_update: false,
+        source_field_id: descriptionField.id,
+      },
+    } as unknown as DataField
+    vi.mocked(desktopSettings.loadDesktopSettings).mockResolvedValue({
+      models: {
+        activeProvider: 'kition_console',
+        selectedModelByProvider: { kition_console: 'gpt-5.5' },
+        preferredWritingModel: 'gpt-5.5',
+        preferredChatModel: 'gpt-5.5',
+        preferredDefaultModel: 'gpt-5.5',
+      },
+      providers: {
+        kition_console: {
+          enabled: true,
+          label: 'Kition Cloud',
+          baseUrl: 'https://kition.ai/api/llm/v1',
+          apiKey: '',
+          accessToken: 'portal-token',
+          discoveredModels: ['gpt-5.5', 'gpt-image-2'],
+        },
+      },
+    } as any)
+    const runCell = vi.spyOn(api, 'runDataAIFieldCell')
+      .mockResolvedValue({ record, field: addressField })
+
+    const actions = await mountRecordActions({
+      document: { id: 1 } as any,
+      activeTable: { id: 2 } as any,
+      fields: [descriptionField, addressField],
+      records: [record],
+      groupField: null,
+      canReorderRows: false,
+      canMoveKanbanCards: false,
+      selectedRecordIds: new Set(),
+      setBusy: vi.fn(),
+      setError: vi.fn(),
+      setRecords: vi.fn(),
+      setSelectedRecord: vi.fn(),
+      setSelectedRecordIds: vi.fn(),
+      setRecordContextMenu: vi.fn(),
+      loadRecords: vi.fn().mockResolvedValue(undefined),
+      setStatus: vi.fn(),
+      copyTextToClipboard: vi.fn().mockResolvedValue(undefined),
+    })
+
+    await actions.runAIField(record, addressField)
+
+    expect(runCell.mock.calls[0]?.[4].runtime_model).toMatchObject({
+      provider_type: 'kition_console',
+      model_name: 'gpt-5.5',
+      base_url: 'https://kition.ai/api/llm/v1',
+      access_token: 'portal-token',
     })
   })
 

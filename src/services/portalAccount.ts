@@ -11,6 +11,7 @@ import {
   loadDesktopSettings,
   saveDesktopSettings,
 } from '@/services/desktopSettings'
+import { syncProviderModelCatalog } from '@/services/providerModelCatalog'
 import type { DesktopProviderKind } from '@/types/desktopSettings'
 
 export const PORTAL_ACCOUNT_STORAGE_KEY = 'kition.portal.account.session.v1'
@@ -37,37 +38,42 @@ function isKnownProviderKind(value: string): value is DesktopProviderKind {
   return desktopProviderCatalog.some((descriptor) => descriptor.kind === value)
 }
 
-async function activateKitionConsoleProvider() {
+async function activateKitionConsoleProvider(accessToken: string) {
   try {
     const settings = await loadDesktopSettings()
-    if (settings.models.activeProvider === 'kition_console') {
-      // Already routed through console; make sure the provider entry is enabled.
-      if (!settings.providers.kition_console?.enabled) {
-        await saveDesktopSettings({
-          ...settings,
-          providers: {
-            ...settings.providers,
-            kition_console: { ...settings.providers.kition_console, enabled: true },
-          },
-        })
+    let activatedSettings = settings
+    if (
+      settings.models.activeProvider !== 'kition_console'
+      || !settings.providers.kition_console?.enabled
+      || settings.providers.kition_console.accessToken !== accessToken
+    ) {
+      const previousActive = settings.models.activeProvider
+      if (previousActive && previousActive !== 'kition_console') {
+        await setSecureValue(PORTAL_PREVIOUS_ACTIVE_PROVIDER_KEY, previousActive).catch(() => {})
       }
-      return
+      activatedSettings = await saveDesktopSettings({
+        ...settings,
+        providers: {
+          ...settings.providers,
+          kition_console: {
+            ...settings.providers.kition_console,
+            enabled: true,
+            accessToken,
+          },
+        },
+        models: {
+          ...settings.models,
+          activeProvider: 'kition_console',
+        },
+      })
     }
-    const previousActive = settings.models.activeProvider
-    if (previousActive) {
-      await setSecureValue(PORTAL_PREVIOUS_ACTIVE_PROVIDER_KEY, previousActive).catch(() => {})
-    }
-    await saveDesktopSettings({
-      ...settings,
-      providers: {
-        ...settings.providers,
-        kition_console: { ...settings.providers.kition_console, enabled: true },
-      },
-      models: {
-        ...settings.models,
-        activeProvider: 'kition_console',
-      },
-    })
+
+    await syncProviderModelCatalog(
+      activatedSettings,
+      'kition_console',
+      'Kition Cloud did not return an available text model.',
+      true,
+    )
   } catch {
     // Settings store may be unavailable (e.g. tests). Failing to activate the
     // kition_console provider should never block the portal sign-in flow.
@@ -90,13 +96,17 @@ async function restorePreviousActiveProvider() {
       ...settings,
       providers: {
         ...settings.providers,
-        kition_console: { ...settings.providers.kition_console, enabled: false },
+        kition_console: {
+          ...settings.providers.kition_console,
+          enabled: false,
+          accessToken: '',
+        },
       },
       models: {
         ...settings.models,
         activeProvider: fallback,
       },
-    })
+    }, { clearProviderSecrets: ['kition_console'] })
     await deleteSecureValue(PORTAL_PREVIOUS_ACTIVE_PROVIDER_KEY).catch(() => {})
   } catch {
     // Same rationale as activateKitionConsoleProvider; never block logout.
@@ -313,7 +323,7 @@ export async function loadStoredPortalAccountSession() {
 
 export async function savePortalAccountSession(session: PortalAccountSession) {
   await setSecureValue(PORTAL_ACCOUNT_STORAGE_KEY, JSON.stringify(session))
-  await activateKitionConsoleProvider()
+  await activateKitionConsoleProvider(session.access_token)
   emitPortalAccountSessionChanged()
   return session
 }
