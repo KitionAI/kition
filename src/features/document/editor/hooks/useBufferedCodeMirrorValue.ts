@@ -10,25 +10,28 @@ export function useBufferedCodeMirrorValue({ value, onChange }: BufferedCodeMirr
   const [editorValue, setEditorValue] = useState(value)
   const editorValueRef = useRef(value)
   const composingRef = useRef(false)
-  const awaitingControlledEchoRef = useRef(false)
+  const pendingControlledEchoesRef = useRef(new Set<string>())
 
   useEffect(() => {
     if (value === editorValueRef.current) {
-      awaitingControlledEchoRef.current = false
+      pendingControlledEchoesRef.current.clear()
       return
     }
 
-    if (composingRef.current || awaitingControlledEchoRef.current) {
+    if (composingRef.current) {
       return
     }
 
+    if (pendingControlledEchoesRef.current.delete(value)) return
+
+    pendingControlledEchoesRef.current.clear()
     editorValueRef.current = value
     setEditorValue(value)
   }, [value])
 
   const handleEditorChange = useCallback((nextValue: string) => {
     editorValueRef.current = nextValue
-    awaitingControlledEchoRef.current = true
+    pendingControlledEchoesRef.current.add(nextValue)
     setEditorValue(nextValue)
     onChange(nextValue)
   }, [onChange])
