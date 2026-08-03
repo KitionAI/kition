@@ -1,3 +1,3 @@
-public/templates/youtube-tiktok-thumbnail-generator/**/*.png filter=lfs diff=lfs merge=lfs -text
-public/templates/batch-product-designer/**/*.png filter=lfs diff=lfs merge=lfs -text
-public/templates/batch-product-designer/**/*.jpg filter=lfs diff=lfs merge=lfs -text
+public/templates/youtube-tiktok-thumbnail-generator/**/*.webp filter=lfs diff=lfs merge=lfs -text
+public/templates/batch-product-designer/**/*.webp filter=lfs diff=lfs merge=lfs -text
+public/templates/receipt-ocr-database/**/*.webp filter=lfs diff=lfs merge=lfs -text

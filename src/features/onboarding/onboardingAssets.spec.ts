@@ -53,6 +53,8 @@ describe('onboarding static assets', () => {
         'YouTube & TikTok Thumbnail Generator.kitable',
       ].includes(table.filename)) {
         expect(bytes.includes(Buffer.from('kition-bundled:/templates/'))).toBe(true)
+        expect(bytes.includes(Buffer.from('image/webp'))).toBe(true)
+        expect(bytes.includes(Buffer.from('image/png'))).toBe(false)
       }
     }
     expect(manifest.images).toEqual([

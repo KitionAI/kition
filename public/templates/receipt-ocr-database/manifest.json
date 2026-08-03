@@ -2,127 +2,127 @@
   "templateId": "receipt-ocr-database",
   "source": "Original Kition Cloud gpt-image-2 generation",
   "assetCount": 10,
-  "totalSizeBytes": 24697506,
+  "totalSizeBytes": 3495124,
   "assets": [
     {
       "id": "record-01-receipt-image",
       "record": 1,
       "field": "Receipt Image",
-      "sourceName": "strong flour.png",
-      "mimeType": "image/png",
-      "sizeBytes": 2703632,
+      "sourceName": "strong flour.webp",
+      "mimeType": "image/webp",
+      "sizeBytes": 418242,
       "width": 1024,
       "height": 1536,
-      "sha256": "923aa7c90bfc9cded9c7e1bb8edef4d167223084e43a6e56bfeef7c1d7df7fb5",
-      "path": "kition-bundled:/templates/receipt-ocr-database/records/record-01/receipt.png"
+      "sha256": "bb77b021662ed1d6688aa90751b7a94a700a98c61092ea22d7317fc3846e8466",
+      "path": "kition-bundled:/templates/receipt-ocr-database/records/record-01/receipt.webp"
     },
     {
       "id": "record-02-receipt-image",
       "record": 2,
       "field": "Receipt Image",
-      "sourceName": "Receipt_California.png",
-      "mimeType": "image/png",
-      "sizeBytes": 2503798,
+      "sourceName": "Receipt_California.webp",
+      "mimeType": "image/webp",
+      "sizeBytes": 409258,
       "width": 1024,
       "height": 1536,
-      "sha256": "70a0048614d2065036e4ec89d06b47642ecec67adf714499aca3622de7825491",
-      "path": "kition-bundled:/templates/receipt-ocr-database/records/record-02/receipt.png"
+      "sha256": "1b13316dca4752a2ac25070152fda67afee1f3d680b97ca0a7296b3f9ad2390e",
+      "path": "kition-bundled:/templates/receipt-ocr-database/records/record-02/receipt.webp"
     },
     {
       "id": "record-03-receipt-image",
       "record": 3,
       "field": "Receipt Image",
-      "sourceName": "openai.png",
-      "mimeType": "image/png",
-      "sizeBytes": 2238738,
+      "sourceName": "openai.webp",
+      "mimeType": "image/webp",
+      "sizeBytes": 191274,
       "width": 1024,
       "height": 1536,
-      "sha256": "2f669c78c9361b4aeab83675b326ae1972522c69c3d23fb125e6d4876e2a2880",
-      "path": "kition-bundled:/templates/receipt-ocr-database/records/record-03/receipt.png"
+      "sha256": "9fd3430436ed036efd2ead4876f4d7dd5080ec67b5e02f27b34f806b5409155d",
+      "path": "kition-bundled:/templates/receipt-ocr-database/records/record-03/receipt.webp"
     },
     {
       "id": "record-04-receipt-image",
       "record": 4,
       "field": "Receipt Image",
-      "sourceName": "food business center.png",
-      "mimeType": "image/png",
-      "sizeBytes": 2161413,
+      "sourceName": "food business center.webp",
+      "mimeType": "image/webp",
+      "sizeBytes": 250740,
       "width": 1024,
       "height": 1536,
-      "sha256": "5c0cfcb31e1faecf5de381ab8ce5200d12b73fff91ec4b82fc8cbba060b96f07",
-      "path": "kition-bundled:/templates/receipt-ocr-database/records/record-04/receipt.png"
+      "sha256": "57ed527dc87d599b51311f017fc94a475113f77b2bbbcd4b2ab2db307e1c100a",
+      "path": "kition-bundled:/templates/receipt-ocr-database/records/record-04/receipt.webp"
     },
     {
       "id": "record-05-receipt-image",
       "record": 5,
       "field": "Receipt Image",
-      "sourceName": "Mcdonalds receipt.png",
-      "mimeType": "image/png",
-      "sizeBytes": 2485408,
+      "sourceName": "Mcdonalds receipt.webp",
+      "mimeType": "image/webp",
+      "sizeBytes": 340226,
       "width": 1024,
       "height": 1536,
-      "sha256": "c12d315e3680d3ee186746391f824a729df23e56a5823161959811ceb01cb32a",
-      "path": "kition-bundled:/templates/receipt-ocr-database/records/record-05/receipt.png"
+      "sha256": "28e16c9a5bacc23e6289bc05e73d06bbebf19fcee167404f52c2d424573c705e",
+      "path": "kition-bundled:/templates/receipt-ocr-database/records/record-05/receipt.webp"
     },
     {
       "id": "record-06-receipt-image",
       "record": 6,
       "field": "Receipt Image",
-      "sourceName": "gas_prices.png",
-      "mimeType": "image/png",
-      "sizeBytes": 2138667,
+      "sourceName": "gas_prices.webp",
+      "mimeType": "image/webp",
+      "sizeBytes": 212094,
       "width": 1024,
       "height": 1536,
-      "sha256": "125ebfe44260087bd68d986f36c1208b678398de0898906cdc621b0303a65999",
-      "path": "kition-bundled:/templates/receipt-ocr-database/records/record-06/receipt.png"
+      "sha256": "12f44ec8ad8ca40ba0d0b3c4aba7aed1029f0c4c0e1610f90d1079f7da748ae2",
+      "path": "kition-bundled:/templates/receipt-ocr-database/records/record-06/receipt.webp"
     },
     {
       "id": "record-07-receipt-image",
       "record": 7,
       "field": "Receipt Image",
-      "sourceName": "homedepot_receipt3.png",
-      "mimeType": "image/png",
-      "sizeBytes": 2816075,
+      "sourceName": "homedepot_receipt3.webp",
+      "mimeType": "image/webp",
+      "sizeBytes": 496000,
       "width": 1024,
       "height": 1536,
-      "sha256": "2f4bc3cc54fe4d5cd427c818f47dd2ea3b1a017f2dd7410e77d99f7ec790012a",
-      "path": "kition-bundled:/templates/receipt-ocr-database/records/record-07/receipt.png"
+      "sha256": "3acc7a0f2ba447e0e5eeebb91a5217f9aedbd1ee5cedfd79b7aabb1b8d71b395",
+      "path": "kition-bundled:/templates/receipt-ocr-database/records/record-07/receipt.webp"
     },
     {
       "id": "record-08-receipt-image",
       "record": 8,
       "field": "Receipt Image",
-      "sourceName": "starbucks_receipt.png",
-      "mimeType": "image/png",
-      "sizeBytes": 2054260,
+      "sourceName": "starbucks_receipt.webp",
+      "mimeType": "image/webp",
+      "sizeBytes": 190498,
       "width": 1024,
       "height": 1536,
-      "sha256": "b19c3bfe2715bd6c40ff6a09588ef950392d7ba335d41e6d358f0181965c3361",
-      "path": "kition-bundled:/templates/receipt-ocr-database/records/record-08/receipt.png"
+      "sha256": "baae5562832cc979393a1e15a30a19cccb664a69a1faa531b779246f686c3e21",
+      "path": "kition-bundled:/templates/receipt-ocr-database/records/record-08/receipt.webp"
     },
     {
       "id": "record-09-receipt-image",
       "record": 9,
       "field": "Receipt Image",
-      "sourceName": "shell_gas.png",
-      "mimeType": "image/png",
-      "sizeBytes": 2002432,
+      "sourceName": "shell_gas.webp",
+      "mimeType": "image/webp",
+      "sizeBytes": 255052,
       "width": 1536,
       "height": 1024,
-      "sha256": "5f9c4ead24ee052668ff33a535cb29be5776054ba9cf15f325d45daf7f88e958",
-      "path": "kition-bundled:/templates/receipt-ocr-database/records/record-09/receipt.png"
+      "sha256": "628d15ef927701cef8eb7c3b86cb94fab4393c2c60b8b63bcb212a51897c3534",
+      "path": "kition-bundled:/templates/receipt-ocr-database/records/record-09/receipt.webp"
     },
     {
       "id": "record-10-receipt-image",
       "record": 10,
       "field": "Receipt Image",
-      "sourceName": "Arco gasoline.png",
-      "mimeType": "image/png",
-      "sizeBytes": 3593083,
+      "sourceName": "Arco gasoline.webp",
+      "mimeType": "image/webp",
+      "sizeBytes": 731740,
       "width": 1024,
       "height": 1536,
-      "sha256": "2f7c69f57956283f1ad815f3b1b7761f6a0f93cdb68ebe04ad86733132d44fff",
-      "path": "kition-bundled:/templates/receipt-ocr-database/records/record-10/receipt.png"
+      "sha256": "d0f5a7cfc921eb91a1986cc776c9b5a3535bcf2962a53fd8fa96ea6189e5022a",
+      "path": "kition-bundled:/templates/receipt-ocr-database/records/record-10/receipt.webp"
     }
   ]
 }

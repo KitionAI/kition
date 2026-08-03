@@ -18,25 +18,49 @@ const sourceNames = [
   'Arco gasoline.png',
 ]
 
-function readPngDimensions(bytes) {
-  if (bytes.subarray(1, 4).toString('ascii') !== 'PNG') {
-    throw new Error('Receipt template assets must be PNG files')
+function readWebPDimensions(bytes) {
+  if (
+    bytes.subarray(0, 4).toString('ascii') !== 'RIFF'
+    || bytes.subarray(8, 12).toString('ascii') !== 'WEBP'
+  ) {
+    throw new Error('Receipt template assets must be WebP files')
   }
-  return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) }
+  const chunkType = bytes.subarray(12, 16).toString('ascii')
+  if (chunkType === 'VP8 ') {
+    return {
+      width: bytes.readUInt16LE(26) & 0x3fff,
+      height: bytes.readUInt16LE(28) & 0x3fff,
+    }
+  }
+  if (chunkType === 'VP8L') {
+    const bits = bytes.readUInt32LE(21)
+    return {
+      width: (bits & 0x3fff) + 1,
+      height: ((bits >> 14) & 0x3fff) + 1,
+    }
+  }
+  if (chunkType === 'VP8X') {
+    const readUint24LE = (offset) => bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16)
+    return {
+      width: readUint24LE(24) + 1,
+      height: readUint24LE(27) + 1,
+    }
+  }
+  throw new Error(`Unsupported WebP chunk: ${chunkType}`)
 }
 
 const assets = sourceNames.map((sourceName, index) => {
   const recordNumber = index + 1
   const recordFolder = `record-${String(recordNumber).padStart(2, '0')}`
-  const relativePath = `records/${recordFolder}/receipt.png`
+  const relativePath = `records/${recordFolder}/receipt.webp`
   const bytes = readFileSync(path.join(templateRoot, relativePath))
-  const dimensions = readPngDimensions(bytes)
+  const dimensions = readWebPDimensions(bytes)
   return {
     id: `${recordFolder}-receipt-image`,
     record: recordNumber,
     field: 'Receipt Image',
-    sourceName,
-    mimeType: 'image/png',
+    sourceName: sourceName.replace(/\.[^.]+$/, '.webp'),
+    mimeType: 'image/webp',
     sizeBytes: bytes.byteLength,
     ...dimensions,
     sha256: createHash('sha256').update(bytes).digest('hex'),
