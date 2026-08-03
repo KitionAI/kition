@@ -490,7 +490,7 @@
     "sheet": "Sheet",
     "notApplicable": "N/A",
     "selectSheet": "Sheet to import",
-    "destinationPath": "Destination Kitable path",
+    "destinationPath": "Destination table path",
     "destinationPathPlaceholder": "For example: Imports/issues.kitable",
     "writeMode": "Write mode",
     "append": "Append to current table",

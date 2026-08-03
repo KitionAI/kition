@@ -256,7 +256,7 @@
     "documentCreated": "Document created",
     "dashboardCreated": "Dashboard created",
     "tableCreated": "Table created",
-    "spreadsheetImported": "Spreadsheet imported as a Kitable",
+    "spreadsheetImported": "Spreadsheet imported as a table",
     "folderCreated": "Folder created",
     "renamed": "Renamed",
     "alreadyInLocation": "Already in this location",
