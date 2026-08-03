@@ -9,7 +9,6 @@ import {
   deleteDataField,
   deleteDataTable,
   exportDataTableCSV,
-  importDataTableCSV,
   updateDataField,
   updateDataTable,
   updateDataView,
@@ -167,22 +166,6 @@ export function useTableStructureActions({
       setError(requestError instanceof Error ? requestError.message : 'Failed to export CSV')
     } finally {
       setBusy(false)
-    }
-  }
-
-  async function importCSVFile(file?: File) {
-    if (!file || !document || !activeTable) return
-    setBusy(true)
-    try {
-      const content = await file.text()
-      const result = await importDataTableCSV(document.id, activeTable.id, content)
-      await loadRecords()
-      setStatus(`Imported ${result.created} records`)
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Failed to import CSV')
-    } finally {
-      setBusy(false)
-      if (importInputRef.current) importInputRef.current.value = ''
     }
   }
 
@@ -425,7 +408,6 @@ export function useTableStructureActions({
     addField,
     addDefaultField,
     createView,
-    importCSVFile,
     renameView,
     reorderField,
     removeField,

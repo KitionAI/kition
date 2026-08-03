@@ -7,6 +7,7 @@
       "note": "Nota"
     },
     "folder": "Pasta",
+    "importSpreadsheet": "Importar planilha",
     "newDashboard": "New dashboard",
     "newForm": "New form",
     "newTable": "Nova tabela",
@@ -255,6 +256,7 @@
     "documentCreated": "Documento criado",
     "dashboardCreated": "Dashboard created",
     "tableCreated": "Tabela criada",
+    "spreadsheetImported": "Planilha importada como Kitable",
     "folderCreated": "Pasta criada",
     "renamed": "Renomeado",
     "alreadyInLocation": "Já está neste local",

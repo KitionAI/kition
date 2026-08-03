@@ -7,6 +7,7 @@
       "note": "Note"
     },
     "folder": "Dossier",
+    "importSpreadsheet": "Importer une feuille de calcul",
     "newDashboard": "New dashboard",
     "newForm": "New form",
     "newTable": "Nouvelle table",
@@ -255,6 +256,7 @@
     "documentCreated": "Document créé",
     "dashboardCreated": "Dashboard created",
     "tableCreated": "Table créée",
+    "spreadsheetImported": "Feuille de calcul importée comme Kitable",
     "folderCreated": "Dossier créé",
     "renamed": "Renommé",
     "alreadyInLocation": "Déjà à cet emplacement",

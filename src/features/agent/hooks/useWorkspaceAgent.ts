@@ -51,6 +51,11 @@ import { notifyFromAgentEvent } from '@/services/desktopNotifications'
 import type { DesktopSettingsState } from '@/types/desktopSettings'
 import { trackProductEventOnce } from '@/features/analytics/lib/productAnalytics'
 import { isWebPreviewMode } from '@/lib/runtimeMode'
+import {
+  buildCompletedTableFileImportPromptContext,
+  isTableFileImportRequest,
+} from '@/features/agent/lib/tableFileImportIntent'
+import { importWorkspaceFileIntoDataTable } from '@/features/table/lib/importWorkspaceFileIntoDataTable'
 
 type WorkspaceAgentTurnContext = {
   activeDocumentPath?: string
@@ -484,12 +489,44 @@ export function useWorkspaceAgent({
         content,
         documents: availableMentionableDocuments,
       })
-      const promptContext = buildAgentDocumentMentionPromptContext({
+      const referencedImportFile = mentionResolution.resolved.find((document) => (
+        document.kind === 'file'
+        && /\.(?:csv|tsv|xlsx|xls)$/i.test(document.path)
+      ))
+      const shouldImportReferencedFile = followup?.hideUserMessage !== true
+        && turnContext?.paneContext === 'table'
+        && Number(turnContext.activeDataDocumentId) > 0
+        && Number(turnContext.activeDataTableId) > 0
+        && referencedImportFile
+        && isTableFileImportRequest(content)
+      let promptContext = buildAgentDocumentMentionPromptContext({
         activeDocumentPath,
         activeDocumentFormat: turnContext?.activeDocumentFormat,
-        referencedDocuments: mentionResolution.resolved,
+        referencedDocuments: shouldImportReferencedFile
+          ? mentionResolution.resolved.filter((document) => document.path !== referencedImportFile.path)
+          : mentionResolution.resolved,
         unresolvedTokens: mentionResolution.unresolved,
       })
+      let executionMode = followup?.executionMode
+      if (shouldImportReferencedFile && referencedImportFile) {
+        const imported = await importWorkspaceFileIntoDataTable({
+          documentId: Number(turnContext?.activeDataDocumentId),
+          path: referencedImportFile.path,
+          tableId: Number(turnContext?.activeDataTableId),
+        })
+        tableMutated = true
+        executionMode = 'preview'
+        promptContext = [
+          promptContext,
+          buildCompletedTableFileImportPromptContext({
+            fieldCount: imported.fieldCount,
+            fields: imported.inferredFields,
+            path: referencedImportFile.path,
+            recordCount: imported.created,
+          }),
+        ].filter(Boolean).join('\n\n')
+        onFeedback(`Imported ${imported.created} records with ${imported.fieldCount} fields`)
+      }
       const attachmentPaths = Array.from(new Set([
         ...(isBinaryAttachmentMention(turnContext?.activeDocumentFormat, activeDocumentPath)
           ? [activeDocumentPath]
@@ -497,7 +534,8 @@ export function useWorkspaceAgent({
         ...mentionResolution.resolved
           .filter(
             (document) => document.kind !== 'folder'
-              && isBinaryAttachmentMention(document.format, document.path),
+              && isBinaryAttachmentMention(document.format, document.path)
+              && document.path !== referencedImportFile?.path,
           )
           .map((document) => document.path),
       ]))
@@ -524,7 +562,7 @@ export function useWorkspaceAgent({
           turnContext?.browserEnabled === true || browserIntent.browserEnabled,
         browserContext:
           followup?.browserContext || preparedBrowserContext || turnContext?.browserContext,
-        executionMode: followup?.executionMode,
+        executionMode,
         tablePlanContext: followup?.tablePlanContext,
         hideUserMessage: followup?.hideUserMessage === true,
         modelId: selectedAgentModel.key,

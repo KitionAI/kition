@@ -108,3 +108,28 @@ export function resolveAgentActiveDocument(
     }
   }
 }
+
+export function resolveAgentDataTableTarget(
+  tab: WorkspaceTab | null | undefined,
+): { documentPath: string; tableId: number | null } | null {
+  if (!tab) {
+    return null
+  }
+  if (tab.type === 'table') {
+    return {
+      documentPath: String(tab.kitablePath || '').trim(),
+      tableId: tab.tableId,
+    }
+  }
+  if (
+    tab.type === 'document'
+    && tab.format === 'data'
+    && tab.path.toLowerCase().endsWith('.kitable')
+  ) {
+    return {
+      documentPath: String(tab.path || '').trim(),
+      tableId: null,
+    }
+  }
+  return null
+}

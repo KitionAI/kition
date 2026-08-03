@@ -7,6 +7,7 @@
       "note": "笔记"
     },
     "folder": "文件夹",
+    "importSpreadsheet": "导入电子表格",
     "newDashboard": "新仪表板",
     "newForm": "新表单",
     "newTable": "新建表格",
@@ -255,6 +256,7 @@
     "documentCreated": "文档已创建",
     "dashboardCreated": "仪表板已创建",
     "tableCreated": "表格已创建",
+    "spreadsheetImported": "电子表格已导入为 Kitable",
     "folderCreated": "文件夹已创建",
     "renamed": "已重命名",
     "alreadyInLocation": "已在当前位置",

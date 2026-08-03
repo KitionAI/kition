@@ -25,6 +25,7 @@ export function WorkspaceSidebar({
   onCreateFolder,
   onCreateDocument,
   onCreateTable,
+  onImportTableFile,
   onPasteFiles,
   showBrowserTab,
   onRefresh,
@@ -47,6 +48,7 @@ export function WorkspaceSidebar({
   onCreateFolder: () => void
   onCreateDocument: (format: DocumentCreateFormat) => void
   onCreateTable: () => void
+  onImportTableFile?: () => void
   onPasteFiles?: (entries: WorkspaceImportEntry[]) => void
   showBrowserTab?: boolean
   onRefresh?: () => void
@@ -235,6 +237,7 @@ export function WorkspaceSidebar({
                   anchorEl={headerCreateAnchor}
                   onCreateFolder={onCreateFolder}
                   onCreateTable={onCreateTable}
+                  onImportTableFile={onImportTableFile}
                   onCreateDocument={onCreateDocument}
                 />
               </span>

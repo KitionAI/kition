@@ -88,6 +88,8 @@ export function buildAgentTurnContext(input: {
   activeDocumentFormat?: WorkspaceDocumentFormat
   activeDocument?: DataDocument | null
   activeTable?: DataTable | null
+  activeDataDocumentId?: number | null
+  activeDataTableId?: number | null
   browserContext?: AgentBrowserContext
   browserEnabled?: boolean
   paneContext?: AgentPaneContext
@@ -96,8 +98,8 @@ export function buildAgentTurnContext(input: {
   return {
     activeDocumentPath: String(input.activeDocumentPath || '').trim(),
     activeDocumentFormat: input.activeDocumentFormat,
-    activeDataDocumentId: input.activeDocument?.id ?? 0,
-    activeDataTableId: input.activeTable?.id ?? 0,
+    activeDataDocumentId: input.activeDocument?.id ?? input.activeDataDocumentId ?? 0,
+    activeDataTableId: input.activeTable?.id ?? input.activeDataTableId ?? 0,
     browserContext: input.browserContext,
     paneContext: input.paneContext,
     activeWorkflowId: input.activeWorkflowId,

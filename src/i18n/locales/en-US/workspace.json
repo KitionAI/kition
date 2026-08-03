@@ -7,6 +7,7 @@
       "note": "Note"
     },
     "folder": "Folder",
+    "importSpreadsheet": "Import spreadsheet",
     "newDashboard": "New dashboard",
     "newForm": "New form",
     "newTable": "New table",
@@ -255,6 +256,7 @@
     "documentCreated": "Document created",
     "dashboardCreated": "Dashboard created",
     "tableCreated": "Table created",
+    "spreadsheetImported": "Spreadsheet imported as a Kitable",
     "folderCreated": "Folder created",
     "renamed": "Renamed",
     "alreadyInLocation": "Already in this location",

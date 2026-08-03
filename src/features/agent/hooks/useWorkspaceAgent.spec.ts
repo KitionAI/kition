@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   ensurePortalAccountSessionRestored: vi.fn(),
   isDesktopRuntime: vi.fn(),
   listWorkspaceDocuments: vi.fn(),
+  importWorkspaceFileIntoDataTable: vi.fn(),
   notifyFromAgentEvent: vi.fn(),
   trackProductEventOnce: vi.fn(),
 }))
@@ -36,6 +37,10 @@ vi.mock('@/services/portalAccount', () => ({
 vi.mock('@/services/desktop', () => ({
   isDesktopRuntime: mocks.isDesktopRuntime,
   listWorkspaceDocuments: mocks.listWorkspaceDocuments,
+}))
+
+vi.mock('@/features/table/lib/importWorkspaceFileIntoDataTable', () => ({
+  importWorkspaceFileIntoDataTable: mocks.importWorkspaceFileIntoDataTable,
 }))
 
 vi.mock('@/services/desktopNotifications', () => ({
@@ -109,6 +114,11 @@ describe('useWorkspaceAgent hosted console restore', () => {
     mocks.listWorkspaceDocuments.mockResolvedValue({ items: [] })
     mocks.listAgentSessions.mockResolvedValue({ items: [] })
     mocks.streamAgentMessage.mockResolvedValue({ extra_data: {} })
+    mocks.importWorkspaceFileIntoDataTable.mockResolvedValue({
+      created: 0,
+      fieldCount: 0,
+      inferredFields: [],
+    })
     mocks.isDesktopRuntime.mockReturnValue(true)
   })
 
@@ -621,6 +631,80 @@ describe('useWorkspaceAgent hosted console restore', () => {
       ),
       saveMarkdown: false,
     }))
+
+    await act(async () => {
+      root?.unmount()
+    })
+    container.remove()
+  })
+
+  it('imports a referenced spreadsheet deterministically before the table agent responds', async () => {
+    const { useWorkspaceAgent } = await import('./useWorkspaceAgent')
+    const onTableMutated = vi.fn()
+    let latest: any = null
+    mocks.listWorkspaceDocuments.mockResolvedValue({
+      items: [{
+        type: 'file',
+        path: 'Reports/issues.xlsx',
+        name: 'issues.xlsx',
+        format: 'xlsx',
+      }],
+    })
+    mocks.importWorkspaceFileIntoDataTable.mockResolvedValue({
+      created: 7247,
+      fieldCount: 16,
+      inferredFields: [
+        { title: 'Owner', type: 'text' },
+        { title: 'Hours', type: 'number' },
+      ],
+    })
+
+    function Harness() {
+      latest = useWorkspaceAgent({
+        settings: createOpenAISettings(),
+        rootPath: '/test/workspace',
+        onError: vi.fn(),
+        onFeedback: vi.fn(),
+        onTableMutated,
+        getTurnContext: () => ({
+          activeDocumentPath: 'Issues.kitable',
+          activeDocumentFormat: 'data',
+          activeDataDocumentId: 12,
+          activeDataTableId: 34,
+          paneContext: 'table',
+          taskMode: 'table',
+        }),
+      })
+      return null
+    }
+
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    let root: Root | null = null
+    await act(async () => {
+      root = createRoot(container)
+      root.render(createElement(Harness))
+      await flushAsyncWork()
+    })
+    await act(async () => {
+      latest.setAgentDraft(16, 'Import @{Reports/issues.xlsx} into this table')
+    })
+    await act(async () => {
+      latest.sendAiComposerMessage(16)
+      await flushAsyncWork()
+    })
+
+    expect(mocks.importWorkspaceFileIntoDataTable).toHaveBeenCalledWith({
+      documentId: 12,
+      path: 'Reports/issues.xlsx',
+      tableId: 34,
+    })
+    expect(mocks.streamAgentMessage).toHaveBeenCalledWith(expect.objectContaining({
+      executionMode: 'preview',
+      attachmentPaths: [],
+      promptContext: expect.stringContaining('Imported records: 7247'),
+    }))
+    expect(onTableMutated).toHaveBeenCalledTimes(1)
 
     await act(async () => {
       root?.unmount()

@@ -105,6 +105,7 @@ import {
 import {
   deriveAgentPaneContext,
   resolveAgentActiveDocument,
+  resolveAgentDataTableTarget,
 } from '@/features/workspace/lib/agentPaneContext'
 import { moveWorkspaceTreeBranchMetadata } from '@/features/workspace/lib/workspaceTree'
 import {
@@ -150,6 +151,9 @@ const DocumentTemplateLibraryDialog = lazy(() =>
 )
 const KitableTemplateLibraryDialog = lazy(() =>
   import('@/features/table/components/KitableTemplateLibraryDialog').then((module) => ({ default: module.KitableTemplateLibraryDialog })),
+)
+const TableFileImportDialog = lazy(() =>
+  import('@/features/table/components/TableFileImportDialog').then((module) => ({ default: module.TableFileImportDialog })),
 )
 const WorkspaceFolderCreateDialog = lazy(() =>
   import('@/features/workspace/components/WorkspaceFolderCreateDialog').then((module) => ({ default: module.WorkspaceFolderCreateDialog })),
@@ -339,6 +343,12 @@ export function WorkspaceScreen({
   const [kitableTemplateDialogState, setKitableTemplateDialogState] = useState<{
     folderOverride?: string
   } | null>(null)
+  const [tableFileImportState, setTableFileImportState] = useState<{
+    file: File
+    folder?: string
+  } | null>(null)
+  const tableFileImportFolderRef = useRef('')
+  const tableFileImportInputRef = useRef<HTMLInputElement | null>(null)
   const [kitableCreateContext, setKitableCreateContext] = useState<string | null>(null)
   const [formSyncCreateState, setFormSyncCreateState] = useState<{
     kitablePath: string
@@ -845,27 +855,22 @@ export function WorkspaceScreen({
     browserOriginDocumentPath || lastTableAgentTarget.documentPath
   const browserResolvedTableId =
     browserOriginTableId ?? lastTableAgentTarget.tableId
-  const activeDataWorkspaceTabPath =
-    activeWorkspaceTab?.type === 'document' &&
-    activeWorkspaceTab.format === 'data'
-      ? String(activeWorkspaceTab.path || '').trim()
-      : ''
+  const activeDataTableTarget = resolveAgentDataTableTarget(activeWorkspaceTab)
+  const activeDataWorkspaceTabPath = activeDataTableTarget?.documentPath || ''
+  const activeDataWorkspaceTableId = activeDataTableTarget?.tableId ?? null
   const activeDataWorkspaceTabPathRef = useRef('')
   activeDataWorkspaceTabPathRef.current = activeDataWorkspaceTabPath
   const lastTableAgentTargetRef = useRef(lastTableAgentTarget)
   lastTableAgentTargetRef.current = lastTableAgentTarget
   const tableAgentDocumentPath = useMemo(() => {
-    if (
-      activeWorkspaceTab?.type === 'document' &&
-      activeWorkspaceTab.format === 'data'
-    ) {
-      return String(activeWorkspaceTab.path || '').trim()
+    if (activeDataWorkspaceTabPath) {
+      return activeDataWorkspaceTabPath
     }
     if (activeWorkspaceTab?.type === 'browser') {
       return browserResolvedDocumentPath
     }
     return ''
-  }, [activeWorkspaceTab, browserResolvedDocumentPath])
+  }, [activeDataWorkspaceTabPath, activeWorkspaceTab?.type, browserResolvedDocumentPath])
   const tableAgentContext = tableAgentDocumentPath
     ? tableAgentContextByPath[tableAgentDocumentPath] || null
     : null
@@ -877,6 +882,14 @@ export function WorkspaceScreen({
     activeDocumentFormat: agentActiveDocument.format,
     activeDocument: tableAgentContext?.activeDocument,
     activeTable: tableAgentContext?.activeTable,
+    activeDataDocumentId: Number(
+      tableAgentDocumentPath
+        ? kitableChildrenIndex.docIdByKitablePath[tableAgentDocumentPath]
+        : 0,
+    ) || 0,
+    activeDataTableId: activeWorkspaceTab?.type === 'browser'
+      ? browserResolvedTableId
+      : activeDataWorkspaceTableId,
     browserContext: activeBrowserTab
       ? buildActiveBrowserTabContext({
           provider: activeBrowserTab.provider,
@@ -1554,7 +1567,8 @@ export function WorkspaceScreen({
       return
     }
     const nextTableId =
-      tableAgentContextByPath[activeDataWorkspaceTabPath]?.activeTable?.id ?? null
+      tableAgentContextByPath[activeDataWorkspaceTabPath]?.activeTable?.id
+      ?? activeDataWorkspaceTableId
     const nextOriginLabel = String(
       tableAgentContextByPath[activeDataWorkspaceTabPath]?.activeTable?.title ||
         tableAgentContextByPath[activeDataWorkspaceTabPath]?.activeDocument
@@ -1575,7 +1589,7 @@ export function WorkspaceScreen({
         originLabel: nextOriginLabel,
       }
     })
-  }, [activeDataWorkspaceTabPath, tableAgentContextByPath])
+  }, [activeDataWorkspaceTabPath, activeDataWorkspaceTableId, tableAgentContextByPath])
 
   useEffect(() => {
     if (!browserResolvedDocumentPath) {
@@ -2091,7 +2105,7 @@ export function WorkspaceScreen({
       tableAgentDocumentPath,
       activeWorkspaceTab?.type === 'browser'
         ? browserResolvedTableId
-        : tableAgentContext?.activeTable?.id || null,
+        : activeDataWorkspaceTableId || tableAgentContext?.activeTable?.id || null,
     ).catch(() => {
       if (!cancelled) {
         // Keep the current workspace usable even if lazy table-agent hydration fails.
@@ -2103,6 +2117,7 @@ export function WorkspaceScreen({
     }
   }, [
     activeWorkspaceTab?.type,
+    activeDataWorkspaceTableId,
     browserResolvedTableId,
     hasTableAgentTarget,
     refreshTableAgentContextByPath,
@@ -3104,6 +3119,40 @@ export function WorkspaceScreen({
           />
         </Suspense>
       ) : null}
+      <input
+        ref={tableFileImportInputRef}
+        type="file"
+        accept=".csv,.tsv,.xlsx,text/csv,text/tab-separated-values,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0]
+          if (file) {
+            setTableFileImportState({ file, folder: tableFileImportFolderRef.current || undefined })
+          }
+          event.currentTarget.value = ''
+        }}
+      />
+      {tableFileImportState ? (
+        <Suspense fallback={null}>
+          <TableFileImportDialog
+            open
+            file={tableFileImportState.file}
+            target={{ kind: 'new_document', folder: tableFileImportState.folder }}
+            onOpenChange={(open) => {
+              if (!open) setTableFileImportState(null)
+            }}
+            onCompleted={async (result) => {
+              const path = result.path
+              await refreshWorkspaceDocuments(path, { silent: true, treeOnly: true })
+              await kitableChildrenIndex.refresh()
+              if (path) {
+                openKitableContainer(path)
+              }
+              notify.success(t('feedback.spreadsheetImported'))
+            }}
+          />
+        </Suspense>
+      ) : null}
       <WorkspaceLayout
         sidebarWidth={effectiveSidebarWidth}
         rightPane={workspaceRightPane}
@@ -3185,6 +3234,13 @@ export function WorkspaceScreen({
                 workspaceTree.setCreateMenuOpen(false)
                 setKitableTemplateDialogState({ folderOverride: createMenuFolder })
               },
+              onImportTableFile: createMenuVariant === 'workspace'
+                ? () => {
+                    workspaceTree.setCreateMenuOpen(false)
+                    tableFileImportFolderRef.current = createMenuFolder
+                    tableFileImportInputRef.current?.click()
+                  }
+                : undefined,
               createMenuVariant,
               onDelete: handleTreeNodeDelete,
               onDuplicate: (node) => void duplicateDocumentNode(node),

@@ -27,6 +27,7 @@ import { TableEditorContent } from './TableEditorContent'
 import { TableEditorFooter } from './TableEditorFooter'
 import { AttachmentPreviewModal } from './AttachmentPreviewModal'
 import { TableEditorToolbar } from './TableEditorToolbar'
+import { TableFileImportDialog } from './TableFileImportDialog'
 import { FieldConfigPanel } from './TableFieldConfigPanel'
 import { TableRecordContextMenu } from './TableRecordContextMenu'
 import { RecordDetailDrawer } from './TableRecordDetailDrawer'
@@ -84,6 +85,7 @@ export function TableEditor({
 }) {
   const { t } = useTranslation('table')
   const importInputRef = useRef<HTMLInputElement | null>(null)
+  const [importFile, setImportFile] = useState<File | null>(null)
   const {
     clearKanbanDrag,
     closeColumnHeaderMenu,
@@ -320,7 +322,6 @@ export function TableEditor({
     copyRecordURL,
     createView,
     duplicateRecord,
-    importCSVFile,
     insertRecordsNear,
     moveKanbanRecord,
     openAttachmentPreview,
@@ -509,9 +510,28 @@ export function TableEditor({
       <input
         ref={importInputRef}
         type="file"
-        accept=".csv,text/csv,text/plain"
+        accept=".csv,.tsv,.xlsx,text/csv,text/tab-separated-values,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         className="hidden"
-        onChange={(event) => void importCSVFile(event.target.files?.[0])}
+        onChange={(event) => {
+          setImportFile(event.target.files?.[0] || null)
+          event.currentTarget.value = ''
+        }}
+      />
+      <TableFileImportDialog
+        open={Boolean(importFile)}
+        file={importFile}
+        target={{ kind: 'existing_table', documentId: document.id, table: activeTable }}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setImportFile(null)
+        }}
+        onCompleted={async (result) => {
+          await refreshDocument(activeTable.id)
+          await loadRecords()
+          notify.success(t('fileImport.completedSummary', {
+            fields: result.fields_created + result.fields_updated,
+            rows: result.rows_created + result.rows_updated,
+          }))
+        }}
       />
       <div className="data-inline-editor">
         <TableEditorToolbar

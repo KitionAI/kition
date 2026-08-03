@@ -244,6 +244,8 @@ export async function mockLocalWorkspaceApi(page: Page, options: MockLocalWorksp
 
   const agentSessions: any[] = []
   let nextAgentSessionId = 701
+  const dataImportJobs = new Map<string, any>()
+  let nextDataImportJobId = 1
 
   await page.route('**/health', async (route) => {
     await route.fulfill({
@@ -312,6 +314,74 @@ export async function mockLocalWorkspaceApi(page: Page, options: MockLocalWorksp
           },
         },
       })
+    }
+
+    if (method === 'POST' && path === '/api/v1/data-imports/preview') {
+      return fulfill(route, {
+        code: 200,
+        data: {
+          import_token: 'mock-import-token',
+          source: { kind: 'upload', upload_name: 'issues.csv' },
+          filename: 'issues.csv',
+          format: 'csv',
+          encoding: 'utf-8',
+          delimiter: ',',
+          row_count: 2,
+          field_count: 3,
+          fields: [
+            { index: 0, title: 'Owner', type: 'text', nullable: false, sample_values: ['alice', 'bob'] },
+            { index: 1, title: 'Status', type: 'single_select', nullable: false, options: { choices: ['Open', 'Done'] }, sample_values: ['Open', 'Done'] },
+            { index: 2, title: 'Hours', type: 'number', nullable: false, sample_values: [2.5, 1] },
+          ],
+          sample_rows: [['alice', 'Open', 2.5], ['bob', 'Done', 1]],
+          warnings: [],
+          sheets: [],
+        },
+      })
+    }
+
+    if (method === 'POST' && path === '/api/v1/data-imports') {
+      const id = `mock-import-${nextDataImportJobId++}`
+      const now = '2026-04-21T04:20:00Z'
+      const job = {
+        id,
+        status: 'completed',
+        stage: 'completed',
+        processed_rows: 2,
+        total_rows: 2,
+        result: {
+          document_id: 1,
+          table_id: 1,
+          rows_total: 2,
+          rows_created: 2,
+          rows_updated: 0,
+          rows_skipped: 0,
+          fields_created: 3,
+          fields_updated: 0,
+          warnings: [],
+        },
+        created_at: now,
+        updated_at: now,
+      }
+      dataImportJobs.set(id, job)
+      return fulfill(route, { code: 200, data: job })
+    }
+
+    const dataImportJobMatch = path.match(/^\/api\/v1\/data-imports\/([^/]+)$/)
+    if (dataImportJobMatch && method === 'GET') {
+      const job = dataImportJobs.get(decodeURIComponent(dataImportJobMatch[1]))
+      return fulfill(route, job
+        ? { code: 200, data: job }
+        : { code: 404, message: 'Import job not found' }, job ? 200 : 404)
+    }
+    if (dataImportJobMatch && method === 'DELETE') {
+      const id = decodeURIComponent(dataImportJobMatch[1])
+      const current = dataImportJobs.get(id)
+      const canceled = current ? { ...current, status: 'canceled', stage: 'canceled' } : null
+      if (canceled) dataImportJobs.set(id, canceled)
+      return fulfill(route, canceled
+        ? { code: 200, data: canceled }
+        : { code: 404, message: 'Import job not found' }, canceled ? 200 : 404)
     }
 
     if (method === 'GET' && path === '/api/v1/agent/sessions') {

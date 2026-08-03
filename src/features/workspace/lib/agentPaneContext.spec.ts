@@ -9,7 +9,11 @@ import { describe, expect, it } from 'vitest'
 
 import type { WorkspaceTab } from '@/features/workspace/lib/workspace'
 
-import { deriveAgentPaneContext, resolveAgentActiveDocument } from './agentPaneContext'
+import {
+  deriveAgentPaneContext,
+  resolveAgentActiveDocument,
+  resolveAgentDataTableTarget,
+} from './agentPaneContext'
 
 describe('deriveAgentPaneContext', () => {
   it('returns document when no tab is active so the empty state has sensible default copy', () => {
@@ -164,5 +168,44 @@ describe('resolveAgentActiveDocument', () => {
       tableId: 7,
       format: 'data',
     })).toEqual({ path: 'Sales/Leads.kitable', format: 'data' })
+  })
+})
+
+describe('resolveAgentDataTableTarget', () => {
+  it('resolves the active Kitable table tab to its document path and table id', () => {
+    expect(resolveAgentDataTableTarget({
+      id: 'kitable:Reports/Jira.kitable',
+      type: 'table',
+      title: 'Jira',
+      kitablePath: 'Reports/Jira.kitable',
+      tableId: 17,
+      format: 'data',
+    })).toEqual({
+      documentPath: 'Reports/Jira.kitable',
+      tableId: 17,
+    })
+  })
+
+  it('keeps compatibility with legacy data-document tabs', () => {
+    expect(resolveAgentDataTableTarget({
+      id: 'document:Reports/Jira.kitable',
+      type: 'document',
+      title: 'Jira',
+      path: 'Reports/Jira.kitable',
+      format: 'data',
+    })).toEqual({
+      documentPath: 'Reports/Jira.kitable',
+      tableId: null,
+    })
+  })
+
+  it('does not treat ordinary documents as data-table targets', () => {
+    expect(resolveAgentDataTableTarget({
+      id: 'document:Notes.md',
+      type: 'document',
+      title: 'Notes',
+      path: 'Notes.md',
+      format: 'markdown',
+    })).toBeNull()
   })
 })

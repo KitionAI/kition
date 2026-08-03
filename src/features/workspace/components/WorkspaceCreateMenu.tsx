@@ -1,4 +1,4 @@
-import { FileInput, FileSpreadsheet, FileText, FolderPlus, LayoutDashboard, Zap } from 'lucide-react'
+import { FileInput, FileSpreadsheet, FileText, FolderPlus, LayoutDashboard, Upload, Zap } from 'lucide-react'
 import { type CSSProperties, type ReactNode, useLayoutEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
@@ -21,6 +21,7 @@ export function WorkspaceCreateMenu({
   onCreateDocument,
   onCreateDashboard,
   onCreateTable,
+  onImportTableFile,
   onCreateForm,
   onCreateWorkflow,
 }: {
@@ -36,6 +37,7 @@ export function WorkspaceCreateMenu({
   onCreateDocument: (format: DocumentCreateFormat) => void
   onCreateDashboard?: () => void
   onCreateTable: () => void
+  onImportTableFile?: () => void
   onCreateForm?: () => void
   /** Kitable variant only — adds a "Create Workflow" entry that defers to
    *  the table picker / mode dialog the same way the legacy "..." menu
@@ -120,6 +122,16 @@ export function WorkspaceCreateMenu({
           </button>
         )
       })}
+      {onImportTableFile ? (
+        <button
+          type="button"
+          className="document-create-option"
+          onClick={onImportTableFile}
+        >
+          <Upload className="size-4" />
+          <span>{t('createMenu.importSpreadsheet')}</span>
+        </button>
+      ) : null}
       <button
         type="button"
         className="document-create-option"
