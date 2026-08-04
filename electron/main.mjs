@@ -2,7 +2,7 @@ import fs from 'node:fs/promises'
 import crypto from 'node:crypto'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, net, Notification, protocol, session, shell } from 'electron'
+import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeTheme, net, Notification, protocol, session, shell } from 'electron'
 import * as chokidar from 'chokidar'
 import { CommunityBootstrap } from './bootstrap.mjs'
 import { BackendSupervisor } from './backend-supervisor.mjs'
@@ -640,6 +640,13 @@ function stripURLSuffix(value) {
   return String(value || '').replace(/[?#].*$/, '')
 }
 
+function unwrapMarkdownDestination(value) {
+  const raw = String(value || '').trim()
+  return raw.startsWith('<') && raw.endsWith('>')
+    ? raw.slice(1, -1).trim()
+    : raw
+}
+
 function parentWorkspacePath(documentPath) {
   const normalized = String(documentPath || '').replace(/\\/g, '/')
   const index = normalized.lastIndexOf('/')
@@ -648,6 +655,11 @@ function parentWorkspacePath(documentPath) {
 
 function isImagePath(value) {
   return /\.(png|jpe?g|gif|webp|svg|avif)$/i.test(stripURLSuffix(value))
+}
+
+function isWorkspaceRootImagePath(value) {
+  const [root = ''] = String(value || '').replace(/\\/g, '/').replace(/^\/+/, '').split('/')
+  return root.toLowerCase() === 'agent' || root.toLowerCase() === '.kition'
 }
 
 function imageMimeTypeFromPath(filePath) {
@@ -691,7 +703,7 @@ function workspaceRelativePathFromPublicURL(raw) {
 }
 
 function exportImageFilePath(src, documentPath = '') {
-  const raw = String(src || '').trim()
+  const raw = unwrapMarkdownDestination(src)
   if (!raw || (/^(data:|blob:|https?:\/\/)/i.test(raw) && !workspaceRelativePathFromPublicURL(raw))) {
     return ''
   }
@@ -715,7 +727,9 @@ function exportImageFilePath(src, documentPath = '') {
 
     if (isImagePath(raw)) {
       const relativePath = stripURLSuffix(raw).replace(/^\/+/, '')
-      const basePath = parentWorkspacePath(documentPath)
+      const basePath = isWorkspaceRootImagePath(relativePath)
+        ? ''
+        : parentWorkspacePath(documentPath)
       return resolveWorkspacePath(basePath ? `${basePath}/${relativePath}` : relativePath).absolutePath
     }
   } catch (error) {
@@ -790,6 +804,34 @@ async function inlineExportImages(html, documentPath = '') {
     }
     return tag.replace(`${quote}${rawValue}${quote}`, `${quote}${escapeHtmlAttribute(dataURL)}${quote}`)
   })
+}
+
+function unresolvedClipboardImageSources(html) {
+  const sources = []
+  const imageSourcePattern = /<img\b[^>]*?\bsrc=(["'])(.*?)\1[^>]*>/gi
+  for (const match of String(html || '').matchAll(imageSourcePattern)) {
+    const source = decodeHtmlAttribute(match[2])
+    if (source && !/^data:image\//i.test(source)) {
+      sources.push(source)
+    }
+  }
+  return sources
+}
+
+async function handleCopyDocumentHtml(_event, request) {
+  const html = await inlineExportImages(
+    String(request?.html || ''),
+    String(request?.document_path || ''),
+  )
+  const unresolvedSources = unresolvedClipboardImageSources(html)
+  if (unresolvedSources.length) {
+    throw new Error(`failed to embed ${unresolvedSources.length} clipboard image(s)`)
+  }
+  clipboard.write({
+    html,
+    text: String(request?.text || ''),
+  })
+  return true
 }
 
 async function handleSavePdfFile(_event, request) {
@@ -1806,6 +1848,7 @@ async function registerIpcHandlers() {
   ipcMain.handle(IPC_CHANNELS.saveTextFile, handleSaveTextFile)
   ipcMain.handle(IPC_CHANNELS.saveBinaryFile, handleSaveBinaryFile)
   ipcMain.handle(IPC_CHANNELS.savePdfFile, handleSavePdfFile)
+  ipcMain.handle(IPC_CHANNELS.copyDocumentHtml, handleCopyDocumentHtml)
   ipcMain.handle(IPC_CHANNELS.listWorkspaceDocuments, handleListWorkspaceDocuments)
   ipcMain.handle(IPC_CHANNELS.readWorkspaceDocument, handleReadWorkspaceDocument)
   ipcMain.handle(IPC_CHANNELS.statWorkspaceDocument, handleStatWorkspaceDocument)

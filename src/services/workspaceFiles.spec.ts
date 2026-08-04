@@ -39,4 +39,30 @@ describe('workspace image file URLs', () => {
       'http://127.0.0.1:18101/workspace-files/Getting%20Started/logo.png',
     )
   })
+
+  it('resolves generated Agent images from the workspace root for nested documents', async () => {
+    const workspaceFiles = await loadWorkspaceFilesModule()
+
+    const resolved = workspaceFiles.resolveWorkspaceImageURL(
+      'Agent/images/9/ig_generated.png',
+      'Articles/AI/Attention residue.md',
+    )
+
+    expect(resolved).toBe(
+      'http://127.0.0.1:18101/workspace-files/Agent/images/9/ig_generated.png',
+    )
+  })
+
+  it('unwraps angle-bracket Markdown destinations for generated Agent images', async () => {
+    const workspaceFiles = await loadWorkspaceFilesModule()
+
+    const resolved = workspaceFiles.resolveWorkspaceImageURL(
+      '<Agent/images/9/ig_generated.png>',
+      'Articles/AI/Attention residue.md',
+    )
+
+    expect(resolved).toBe(
+      'http://127.0.0.1:18101/workspace-files/Agent/images/9/ig_generated.png',
+    )
+  })
 })

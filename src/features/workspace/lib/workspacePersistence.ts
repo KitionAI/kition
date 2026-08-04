@@ -11,6 +11,7 @@ export type WorkspaceTreeMetadata = {
   icons: Record<string, string>
   order: Record<string, string[]>
   collapsed: string[]
+  expandedFolders: string[]
 }
 
 export type WorkspaceTreeMetadataMap = Record<string, WorkspaceTreeMetadata>
@@ -38,7 +39,7 @@ const splitEditorMinRatio = 0.15
 const splitEditorMaxRatio = 0.85
 
 export function getDefaultWorkspaceTreeMetadata(): WorkspaceTreeMetadata {
-  return { icons: {}, order: {}, collapsed: [] }
+  return { icons: {}, order: {}, collapsed: [], expandedFolders: [] }
 }
 
 function normalizeWorkspaceTreeMetadata(raw: unknown): WorkspaceTreeMetadata {
@@ -51,6 +52,9 @@ function normalizeWorkspaceTreeMetadata(raw: unknown): WorkspaceTreeMetadata {
     order: candidate.order && typeof candidate.order === 'object' ? candidate.order as Record<string, string[]> : {},
     collapsed: Array.isArray(candidate.collapsed)
       ? candidate.collapsed.filter((item): item is string => typeof item === 'string')
+      : [],
+    expandedFolders: Array.isArray(candidate.expandedFolders)
+      ? candidate.expandedFolders.filter((item): item is string => typeof item === 'string')
       : [],
   }
 }

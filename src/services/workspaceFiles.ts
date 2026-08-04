@@ -1,7 +1,9 @@
 import { isDesktopRuntime, resolvePublicFileURL } from './desktop'
 
+const workspaceRootImageFolders = new Set(['agent', '.kition'])
+
 export function resolveAgentImageURL(value?: string) {
-  const raw = String(value || '').trim()
+  const raw = unwrapMarkdownDestination(value)
   if (!raw) {
     return ''
   }
@@ -19,7 +21,7 @@ export function resolveAgentImageURL(value?: string) {
 }
 
 export function resolveWorkspaceImageURL(value: string | undefined, documentPath: string) {
-  const raw = String(value || '').trim()
+  const raw = unwrapMarkdownDestination(value)
   if (!raw) {
     return ''
   }
@@ -73,7 +75,10 @@ export function resolveWorkspaceMarkdownImagePath(path: string, documentFolder: 
   const imageParts = decoded.split('/').filter(Boolean)
   const documentRoot = folderParts[0] || ''
   const imageRoot = imageParts[0] || ''
-  if (documentRoot && imageRoot === documentRoot) {
+  if (
+    workspaceRootImageFolders.has(imageRoot.toLowerCase())
+    || (documentRoot && imageRoot === documentRoot)
+  ) {
     return imageParts.join('/')
   }
   return normalizeWorkspacePath([...folderParts, ...imageParts].join('/')).join('/')
@@ -99,7 +104,7 @@ export function normalizeWorkspacePath(path: string) {
 }
 
 export function isWorkspaceImagePath(path: string) {
-  const raw = String(path || '').trim()
+  const raw = unwrapMarkdownDestination(path)
   if (!raw || isPublicOrExternalFileURL(raw)) {
     return false
   }
@@ -122,6 +127,13 @@ function splitPathSuffix(path: string) {
     path: match?.[1] || '',
     suffix: match?.[2] || '',
   }
+}
+
+function unwrapMarkdownDestination(value: string | undefined) {
+  const raw = String(value || '').trim()
+  return raw.startsWith('<') && raw.endsWith('>')
+    ? raw.slice(1, -1).trim()
+    : raw
 }
 
 function resolveKitionWorkspaceURL(path: string) {

@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react'
 import { startTransition, useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 import { useWorkspaceDocumentAutosave } from '@/features/document/hooks/useWorkspaceDocumentAutosave'
 import {
   getWorkspaceDocumentStoredContent,
@@ -19,21 +20,50 @@ import {
   type OpenedDocumentDraftCacheEntry,
 } from '@/features/document/lib/openedDocumentDrafts'
 import {
+  applyDocumentRevisionDecisions,
+  createDocumentRevisionComparison,
+  remapPendingDocumentRevision,
+  type DocumentRevisionDecision,
+  type PendingDocumentRevision,
+} from '@/features/document/lib/documentRevision'
+import {
   inferWorkspaceItemFormat,
   isEditableWorkspaceFormat,
   isPreviewableWorkspaceFormat,
   remapWorkspaceBranchPath,
 } from '@/features/workspace/lib/workspace'
+import { updateWorkspaceTreeDocumentItem } from '@/features/workspace/lib/workspaceTree'
 import { writeLastActiveDocumentPath } from '@/features/workspace/lib/workspacePersistence'
 import {
+  listWorkspaceDocuments,
   openWorkspaceFile,
   readWorkspaceDocument,
+  subscribeWorkspaceDocumentExternalChanges,
+  writeWorkspaceDocument,
   type WorkspaceDocument,
   type WorkspaceDocumentFormat,
   type WorkspaceDocumentTreeItem,
 } from '@/services/desktop'
 
 type EditorMode = 'rich' | 'split' | 'source' | 'preview'
+
+function normalizeDocumentRevisionPath(path: string) {
+  return String(path || '').replace(/\\/g, '/').replace(/^\.\/+/, '')
+}
+
+function documentRevisionPathsMatch(firstPath: string, secondPath: string) {
+  const first = normalizeDocumentRevisionPath(firstPath)
+  const second = normalizeDocumentRevisionPath(secondPath)
+  return Boolean(
+    first
+    && second
+    && (
+      first === second
+      || first.endsWith(`/${second}`)
+      || second.endsWith(`/${first}`)
+    )
+  )
+}
 
 type UseWorkspaceDocumentSessionOptions = {
   editorLocked: boolean
@@ -66,6 +96,7 @@ export function useWorkspaceDocumentSession({
   onRequireMarkdownMode,
   setTreeItems,
 }: UseWorkspaceDocumentSessionOptions) {
+  const { t } = useTranslation('document')
   const [activeDocument, setActiveDocument] = useState<WorkspaceDocument | null>(null)
   const [activeResourcePath, setActiveResourcePath] = useState('')
   const [activeDocumentFormat, setActiveDocumentFormat] = useState<WorkspaceDocumentFormat>('markdown')
@@ -74,6 +105,8 @@ export function useWorkspaceDocumentSession({
   const [editorResetVersions, setEditorResetVersions] = useState<Record<string, number>>({})
   const [snapshots, setSnapshots] = useState<DocumentSnapshot[]>(() => readDocumentSnapshots())
   const [saving, setSaving] = useState(false)
+  const [documentRevisions, setDocumentRevisions] = useState<Record<string, PendingDocumentRevision>>({})
+  const [revisionSavingPath, setRevisionSavingPath] = useState('')
 
   const activeDocumentRef = useRef<WorkspaceDocument | null>(null)
   const activeDocumentFormatRef = useRef<WorkspaceDocumentFormat>('markdown')
@@ -84,6 +117,9 @@ export function useWorkspaceDocumentSession({
   const draftStateFlushTimerRef = useRef<number | null>(null)
   const openedDocumentDraftsRef = useRef<Record<string, OpenedDocumentDraftCacheEntry>>({})
   const autoSnapshotAtRef = useRef<Record<string, number>>({})
+  const externalRefreshVersionRef = useRef(0)
+  const documentRevisionsRef = useRef<Record<string, PendingDocumentRevision>>({})
+  const revisionSavingPathRef = useRef('')
 
   const draftStoredContent = useMemo(
     () => getWorkspaceDocumentStoredContent({
@@ -94,9 +130,14 @@ export function useWorkspaceDocumentSession({
     [activeDocument, activeDocumentFormat, draftContent],
   )
   const hasUnsavedChanges = Boolean(activeDocument && draftStoredContent !== activeDocument.content)
+  const activeDocumentRevision = activeDocument
+    ? documentRevisions[activeDocument.path] || null
+    : null
 
   activeDocumentRef.current = activeDocument
   activeDocumentFormatRef.current = activeDocumentFormat
+  documentRevisionsRef.current = documentRevisions
+  revisionSavingPathRef.current = revisionSavingPath
                                                                    
                                                                      
                                                         
@@ -184,12 +225,25 @@ export function useWorkspaceDocumentSession({
     delete openedDocumentDraftsRef.current[path]
   }
 
+  function updateDocumentRevisions(
+    update: (current: Record<string, PendingDocumentRevision>) => Record<string, PendingDocumentRevision>,
+  ) {
+    setDocumentRevisions((current) => {
+      const next = update(current)
+      documentRevisionsRef.current = next
+      return next
+    })
+  }
+
   function pruneOpenedDocumentDrafts(predicate: (path: string) => boolean) {
     for (const path of Object.keys(openedDocumentDraftsRef.current)) {
       if (predicate(path)) {
         delete openedDocumentDraftsRef.current[path]
       }
     }
+    updateDocumentRevisions((current) => Object.fromEntries(
+      Object.entries(current).filter(([path]) => !predicate(path)),
+    ))
   }
 
      
@@ -228,6 +282,19 @@ export function useWorkspaceDocumentSession({
     if (draftsChanged) {
       openedDocumentDraftsRef.current = remappedDrafts
     }
+
+    updateDocumentRevisions((current) => {
+      let revisionsChanged = false
+      const next: Record<string, PendingDocumentRevision> = {}
+      for (const [path, revision] of Object.entries(current)) {
+        const nextPath = remapWorkspaceBranchPath(path, sourcePath, targetPath)
+        if (nextPath !== path) revisionsChanged = true
+        next[nextPath] = nextPath === path
+          ? revision
+          : remapPendingDocumentRevision(revision, nextPath)
+      }
+      return revisionsChanged ? next : current
+    })
 
     setEditorResetVersions((current) => {
       let changed = false
@@ -352,8 +419,233 @@ export function useWorkspaceDocumentSession({
     setActiveResourcePath('')
     setActiveDocumentFormat('markdown')
     replaceDraftContent('')
+    updateDocumentRevisions(() => ({}))
+    revisionSavingPathRef.current = ''
+    setRevisionSavingPath('')
     writeLastActiveDocumentPath('')
   }
+
+  async function finalizeDocumentRevision(
+    revision: PendingDocumentRevision,
+    decisions: Record<string, DocumentRevisionDecision>,
+    feedbackKey:
+      | 'revision.acceptedFeedback'
+      | 'revision.rejectedFeedback'
+      | 'revision.appliedFeedback',
+  ) {
+    if (revisionSavingPathRef.current) return
+
+    revisionSavingPathRef.current = revision.path
+    setRevisionSavingPath(revision.path)
+    updateDocumentRevisions((current) => ({
+      ...current,
+      [revision.path]: { ...revision, decisions },
+    }))
+
+    try {
+      const finalContent = applyDocumentRevisionDecisions(revision.comparison, decisions)
+      const finalDocument = finalContent === revision.proposedDocument.content
+        ? revision.proposedDocument
+        : await writeWorkspaceDocument(revision.path, finalContent)
+
+      updateDocumentRevisions((current) => {
+        const next = { ...current }
+        delete next[revision.path]
+        return next
+      })
+      removeOpenedDocumentDraft(revision.path)
+      if (activeDocumentRef.current?.path === revision.path) {
+        applyWorkspaceDocument(finalDocument, { restoreFromCache: false })
+      }
+      setTreeItems((items) => updateWorkspaceTreeDocumentItem(items, finalDocument))
+      onClearModifiedDocumentPath(revision.path)
+      onFeedback(t(feedbackKey))
+    } catch (requestError: any) {
+      onError(requestError?.message || t('revision.saveFailed'))
+    } finally {
+      revisionSavingPathRef.current = ''
+      setRevisionSavingPath('')
+    }
+  }
+
+  function decideDocumentRevisionChange(
+    path: string,
+    changeId: string,
+    decision: DocumentRevisionDecision,
+  ) {
+    if (revisionSavingPathRef.current) return
+    const revision = documentRevisionsRef.current[path]
+    if (!revision || !revision.comparison.changes.some((change) => change.id === changeId)) {
+      return
+    }
+
+    const decisions = { ...revision.decisions, [changeId]: decision }
+    const isComplete = revision.comparison.changes.every((change) => Boolean(decisions[change.id]))
+    if (isComplete) {
+      void finalizeDocumentRevision(
+        revision,
+        decisions,
+        'revision.appliedFeedback',
+      )
+      return
+    }
+
+    updateDocumentRevisions((current) => ({
+      ...current,
+      [path]: { ...revision, decisions },
+    }))
+  }
+
+  function resolveAllDocumentRevisionChanges(
+    path: string,
+    decision: DocumentRevisionDecision,
+  ) {
+    if (revisionSavingPathRef.current) return
+    const revision = documentRevisionsRef.current[path]
+    if (!revision) return
+    const decisions = Object.fromEntries(
+      revision.comparison.changes.map((change) => [change.id, decision]),
+    ) as Record<string, DocumentRevisionDecision>
+    void finalizeDocumentRevision(
+      revision,
+      decisions,
+      decision === 'accepted' ? 'revision.acceptedFeedback' : 'revision.rejectedFeedback',
+    )
+  }
+
+  async function refreshDocumentRevision(path: string) {
+    const normalizedPath = normalizeDocumentRevisionPath(path)
+    const currentDocument = activeDocumentRef.current
+    if (!normalizedPath || currentDocument?.path !== normalizedPath) {
+      return
+    }
+
+    if (isDirtyByRef()) {
+      cancelPendingAutoSave()
+      onFeedback(t('revision.dirtyExternalChange'))
+      return
+    }
+
+    const refreshVersion = ++externalRefreshVersionRef.current
+    const revisionBeforeRead = documentRevisionsRef.current[normalizedPath]
+    const documentContentBeforeRead = revisionBeforeRead?.proposedDocument.content
+      || currentDocument.content
+
+    try {
+      const nextDocument = await readWorkspaceDocument(normalizedPath)
+      if (externalRefreshVersionRef.current !== refreshVersion) {
+        return
+      }
+
+      const latestDocument = activeDocumentRef.current
+      const latestRevision = documentRevisionsRef.current[normalizedPath]
+      const latestComparedContent = latestRevision?.proposedDocument.content
+        || latestDocument?.content
+      if (
+        latestDocument?.path !== normalizedPath
+        || latestComparedContent !== documentContentBeforeRead
+        || isDirtyByRef()
+      ) {
+        return
+      }
+
+      if (latestRevision?.proposedDocument.content === nextDocument.content) {
+        return
+      }
+
+      if (activeDocumentFormatRef.current === 'data') {
+        removeOpenedDocumentDraft(normalizedPath)
+        applyWorkspaceDocument(nextDocument, { restoreFromCache: false })
+        setTreeItems((items) => updateWorkspaceTreeDocumentItem(items, nextDocument))
+        onClearModifiedDocumentPath(normalizedPath)
+        return
+      }
+
+      const originalDocument = latestRevision?.originalDocument || latestDocument
+      const comparison = createDocumentRevisionComparison(
+        originalDocument.content,
+        nextDocument.content,
+      )
+      if (!comparison.changes.length) {
+        updateDocumentRevisions((current) => {
+          const next = { ...current }
+          delete next[normalizedPath]
+          return next
+        })
+        removeOpenedDocumentDraft(normalizedPath)
+        applyWorkspaceDocument(nextDocument, { restoreFromCache: false })
+        onClearModifiedDocumentPath(normalizedPath)
+      } else {
+        updateDocumentRevisions((current) => ({
+          ...current,
+          [normalizedPath]: {
+            path: normalizedPath,
+            originalDocument,
+            proposedDocument: nextDocument,
+            comparison,
+            decisions: {},
+          },
+        }))
+        onFeedback(t('revision.externalChangeReady', { count: comparison.changes.length }))
+      }
+      setTreeItems((items) => updateWorkspaceTreeDocumentItem(items, nextDocument))
+    } catch (requestError: any) {
+      if (externalRefreshVersionRef.current === refreshVersion) {
+        onError(requestError?.message || t('revision.refreshFailed'))
+      }
+    }
+  }
+
+  function reviewModifiedDocuments(paths: string[]) {
+    const activePath = activeDocumentRef.current?.path || ''
+    const hasActivePath = paths
+      .some((path) => documentRevisionPathsMatch(path, activePath))
+    if (!activePath || !hasActivePath) {
+      return Promise.resolve()
+    }
+    return refreshDocumentRevision(activePath)
+  }
+
+  async function openModifiedDocumentReview(path: string) {
+    const normalizedPath = normalizeDocumentRevisionPath(path)
+    if (!normalizedPath) {
+      return
+    }
+
+    const activePath = activeDocumentRef.current?.path || ''
+    if (documentRevisionPathsMatch(normalizedPath, activePath)) {
+      await refreshDocumentRevision(activePath)
+      return
+    }
+
+    const pendingRevision = Object.values(documentRevisionsRef.current)
+      .find((revision) => documentRevisionPathsMatch(revision.path, normalizedPath))
+    if (pendingRevision) {
+      applyWorkspaceDocument(pendingRevision.originalDocument, { restoreFromCache: false })
+      return
+    }
+
+    const workspacePath = files.find((item) => (
+      documentRevisionPathsMatch(item.path, normalizedPath)
+    ))?.path || normalizedPath
+    await openDocument(workspacePath)
+  }
+
+  useEffect(() => subscribeWorkspaceDocumentExternalChanges((change) => {
+    if (change.eventType === 'add' || change.eventType === 'unlink') {
+      void listWorkspaceDocuments()
+        .then((workspace) => setTreeItems(workspace.items || []))
+        .catch(() => {})
+    }
+
+    if (change.eventType === 'unlink') {
+      return
+    }
+    void refreshDocumentRevision(change.path)
+  }), [
+    refreshDocumentRevision,
+    setTreeItems,
+  ])
 
   useEffect(() => {
     cacheOpenedDocumentDraft(activeDocument, activeDocumentFormat, draftContent)
@@ -462,11 +754,18 @@ export function useWorkspaceDocumentSession({
       }
 
       const cachedDraft = openedDocumentDraftsRef.current[path]
+      const pendingRevision = documentRevisionsRef.current[path]
       console.warn('[KITION/open] cacheHit=%s draftLen=%d isModified=%s',
         Boolean(cachedDraft),
         cachedDraft?.markdown?.length ?? -1,
         isModifiedDocumentPath(path),
       )
+      if (pendingRevision) {
+        applyWorkspaceDocument(pendingRevision.originalDocument, {
+          restoreFromCache: false,
+        })
+        return
+      }
       if (cachedDraft && !isModifiedDocumentPath(path)) {
         applyWorkspaceDocument(cachedDraft.document, {
           resetEditor: false,
@@ -492,6 +791,7 @@ export function useWorkspaceDocumentSession({
   return {
     activeDocument,
     activeDocumentFormat,
+    activeDocumentRevision,
     activeResourcePath,
     applyWorkspaceDocument,
     autoSaveStatus,
@@ -499,17 +799,24 @@ export function useWorkspaceDocumentSession({
     clearActiveDocumentSession,
     draftContent,
     draftStoredContent,
+    documentRevisionSaving: Boolean(
+      activeDocumentRevision && revisionSavingPath === activeDocumentRevision.path
+    ),
+    decideDocumentRevisionChange,
     editorResetVersions,
     ensureActiveDocumentSaved,
     getOpenedDocumentDraftEntry,
     hasUnsavedChanges,
     handleDraftContentChange,
+    openModifiedDocumentReview,
     openDocument,
     persistActiveDocument,
     pruneOpenedDocumentDrafts,
     remapOpenedDocumentDrafts,
     removeOpenedDocumentDraft,
     rememberDocumentSnapshot,
+    reviewModifiedDocuments,
+    resolveAllDocumentRevisionChanges,
     saving,
     selectedPlatform,
     setActiveResourcePath,

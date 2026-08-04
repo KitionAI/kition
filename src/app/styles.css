@@ -1842,6 +1842,200 @@
     @apply flex h-full min-h-0 flex-col;
   }
 
+  .document-revision-review {
+    @apply flex h-full min-h-0 flex-col bg-background;
+  }
+
+  .document-revision-toolbar {
+    @apply z-20 flex min-h-14 shrink-0 items-center justify-between gap-4 border-b border-border bg-card px-4 py-2;
+    box-shadow: var(--shadow-soft);
+  }
+
+  .document-revision-toolbar__summary {
+    @apply flex min-w-0 items-center gap-3;
+  }
+
+  .document-revision-toolbar__icon {
+    @apply flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent text-primary;
+  }
+
+  .document-revision-toolbar__icon svg {
+    @apply size-4;
+  }
+
+  .document-revision-toolbar__summary strong,
+  .document-revision-toolbar__summary span span {
+    @apply block;
+  }
+
+  .document-revision-toolbar__summary strong {
+    @apply truncate text-sm font-semibold text-foreground;
+  }
+
+  .document-revision-toolbar__summary span span {
+    @apply truncate text-xs text-muted-foreground;
+  }
+
+  .document-revision-toolbar__actions {
+    @apply flex shrink-0 items-center gap-2;
+  }
+
+  .document-revision-toolbar__pending {
+    @apply mr-1 text-xs tabular-nums text-muted-foreground;
+  }
+
+  .document-revision-review__scroller {
+    @apply min-h-0 flex-1 overflow-y-auto;
+    background: var(--document-main-surface, hsl(var(--background)));
+  }
+
+  .document-revision-title-row {
+    @apply pb-2;
+  }
+
+  .document-revision-content {
+    @apply mx-auto mb-24 mt-4 overflow-hidden rounded-xl border border-border bg-card text-sm text-foreground;
+    width: calc(100% - 2rem);
+    max-width: 1120px;
+    box-shadow: var(--shadow-soft);
+  }
+
+  .document-revision-lines {
+    @apply min-w-0;
+  }
+
+  .document-revision-change-block {
+    @apply relative min-w-0;
+    box-shadow:
+      inset 0 1px 0 hsl(var(--border)),
+      inset 0 -1px 0 hsl(var(--border));
+  }
+
+  .document-revision-line {
+    @apply grid min-h-7 min-w-0 items-stretch;
+    grid-template-columns: 3.25rem 1.5rem minmax(0, 1fr);
+  }
+
+  .document-revision-line__number {
+    @apply select-none border-r border-border/70 bg-muted/25 px-2 py-1 text-right font-mono text-[11px] leading-5 tabular-nums text-muted-foreground/70;
+  }
+
+  .document-revision-line__marker {
+    @apply select-none py-1 text-center font-mono text-xs font-semibold leading-5 text-muted-foreground;
+  }
+
+  .document-revision-line__text {
+    @apply min-w-0 whitespace-pre-wrap break-words px-3 py-1 font-mono text-[13px] leading-5 text-foreground;
+  }
+
+  .document-revision-line.is-removed {
+    background: hsl(var(--destructive-background));
+  }
+
+  .document-revision-line.is-added {
+    background: hsl(var(--success-background));
+  }
+
+  .document-revision-line.is-removed .document-revision-line__marker,
+  .document-revision-line.is-removed .document-revision-line__text {
+    color: hsl(var(--destructive));
+  }
+
+  .document-revision-line.is-added .document-revision-line__marker,
+  .document-revision-line.is-added .document-revision-line__text {
+    color: hsl(var(--success-foreground));
+  }
+
+  .document-revision-change-block.is-accepted .document-revision-line {
+    background: hsl(var(--success-background) / 0.45);
+  }
+
+  .document-revision-change-block.is-rejected .document-revision-line {
+    background: hsl(var(--destructive-background) / 0.45);
+  }
+
+  .document-revision-change-actions {
+    @apply absolute right-2 top-1 z-10 flex h-7 items-center gap-1 rounded-lg border border-border bg-card/95 px-1.5 shadow-[var(--shadow-floating)] backdrop-blur;
+  }
+
+  .document-revision-change-actions__label {
+    @apply mr-1 text-[11px] font-semibold text-foreground;
+  }
+
+  .document-revision-change-actions__status {
+    @apply mr-1 rounded-md border px-1.5 py-0.5 text-[10px] font-medium;
+  }
+
+  .document-revision-change-actions__status.is-accepted {
+    color: hsl(var(--success-foreground));
+    border-color: hsl(var(--success-border));
+    background: hsl(var(--success-background));
+  }
+
+  .document-revision-change-actions__status.is-rejected {
+    color: hsl(var(--destructive));
+    border-color: hsl(var(--destructive-border));
+    background: hsl(var(--destructive-background));
+  }
+
+  .document-revision-change-actions__metrics {
+    @apply mr-1 flex items-center gap-1.5 text-[10px] font-semibold tabular-nums;
+  }
+
+  .document-revision-change-actions__metrics .is-added {
+    color: hsl(var(--success-foreground));
+  }
+
+  .document-revision-change-actions__metrics .is-removed {
+    color: hsl(var(--destructive));
+  }
+
+  .document-revision-change-actions .is-selected-accept {
+    color: hsl(var(--success-foreground));
+    border-color: hsl(var(--success-border));
+    background: hsl(var(--success-background));
+  }
+
+  .document-revision-change-actions .is-selected-reject {
+    color: hsl(var(--destructive));
+    border-color: hsl(var(--destructive-border));
+    background: hsl(var(--destructive-background));
+  }
+
+  .document-revision-change-block .document-revision-line:first-child .document-revision-line__text {
+    padding-right: 17rem;
+  }
+
+  @media (max-width: 900px) {
+    .document-revision-toolbar {
+      @apply flex-wrap items-start;
+    }
+
+    .document-revision-toolbar__actions {
+      @apply w-full overflow-x-auto;
+    }
+
+    .document-revision-toolbar__pending {
+      @apply mr-auto;
+    }
+
+    .document-revision-content {
+      @apply w-full rounded-none border-x-0;
+    }
+
+    .document-revision-line {
+      grid-template-columns: 2.5rem 1.25rem minmax(0, 1fr);
+    }
+
+    .document-revision-change-actions {
+      @apply static h-9 justify-end rounded-none border-x-0 border-t-0 shadow-none;
+    }
+
+    .document-revision-change-block .document-revision-line:first-child .document-revision-line__text {
+      padding-right: 0.75rem;
+    }
+  }
+
   .workspace-browser-pane {
     @apply flex h-full min-h-0 flex-col;
   }
@@ -3722,7 +3916,7 @@
   }
 
   .agent-changed-files {
-    @apply overflow-hidden rounded-xl border bg-card;
+    @apply pointer-events-auto relative z-[1] overflow-hidden rounded-xl border bg-card;
     border-color: var(--document-border, hsl(var(--border)));
   }
 
@@ -3736,7 +3930,7 @@
   }
 
   .agent-changed-file {
-    @apply flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted;
+    @apply pointer-events-auto relative flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-foreground outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/35;
   }
 
   .agent-changed-file-name {
@@ -3744,7 +3938,11 @@
   }
 
   .agent-changed-file-action {
-    @apply shrink-0 text-xs font-medium text-primary;
+    @apply inline-flex h-6 shrink-0 items-center rounded-lg border border-primary/20 bg-primary/5 px-2 text-xs font-medium text-primary transition-colors;
+  }
+
+  .agent-changed-file:hover .agent-changed-file-action {
+    @apply border-primary/30 bg-primary/10;
   }
 
   .agent-ai-composer textarea {

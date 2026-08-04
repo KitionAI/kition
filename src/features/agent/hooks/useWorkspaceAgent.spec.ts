@@ -631,6 +631,9 @@ describe('useWorkspaceAgent hosted console restore', () => {
       ),
       saveMarkdown: false,
     }))
+    expect(mocks.streamAgentMessage.mock.calls[0][0].promptContext).toContain(
+      'order all hunks from top to bottom',
+    )
 
     await act(async () => {
       root?.unmount()

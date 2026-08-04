@@ -228,8 +228,8 @@ export function WorkspaceTree({
           && !node.virtual
           && node.name.toLowerCase().endsWith('.kitable')
         // A plain file that has absorbed a same-named sibling folder tracks its
-        // expansion under the FOLDER path (which is what expandedPaths / the
-        // collapsed metadata key on), not the file path. Folders and kitables
+        // expansion under the FOLDER path (which is what expandedPaths and
+        // persisted tree metadata key on), not the file path. Folders and kitables
         // already key on node.path, so fall back to it for them.
         const disclosureKey = isKitableContainer ? node.path : (node.folderPath ?? node.path)
         const expanded = expandedPaths.has(disclosureKey)

@@ -102,6 +102,7 @@ type AgentChatPanelProps = {
   onHostedAccountBilling?: () => void
   onModelChange: (value: string) => void
   onOpenArtifact: (path: string) => void
+  onReviewModifiedArtifact?: (path: string) => void
   onApplyPlan?: (plan: AgentTablePlanContext) => void
   onImportFiles?: (files: File[]) => Promise<string[]>
   onBrowserEnabledChange: (next: boolean) => void
@@ -140,6 +141,7 @@ export function AgentChatPanel({
   onHostedAccountBilling,
   onModelChange,
   onOpenArtifact,
+  onReviewModifiedArtifact,
   onApplyPlan,
   onImportFiles,
   onBrowserEnabledChange,
@@ -271,7 +273,7 @@ export function AgentChatPanel({
         <AgentChangedFilesCard
           toolCalls={toolCalls}
           artifacts={artifacts}
-          onOpen={onOpenArtifact}
+          onOpen={onReviewModifiedArtifact || onOpenArtifact}
         />
         <AgentAiComposer
           busy={busy}
@@ -334,6 +336,7 @@ function AgentChangedFilesCard({
               className="agent-changed-file"
               onClick={() => onOpen(path)}
               title={path}
+              aria-label={`View changes in ${resolveName(path)}`}
             >
               <FileIcon className="size-4 shrink-0" />
               <span className="agent-changed-file-name">{resolveName(path)}</span>

@@ -345,6 +345,22 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
     setCursorLine(view.state.doc.lineAt(view.state.selection.main.head).number)
   }, [])
 
+  const handleCopySelection = useCallback((markdown: string) => {
+    const containsMarkdownImage = /!\[[^\]]*]\(\s*(?:<[^>\r\n]+>|[^)\r\n]+)\s*\)/m.test(markdown)
+    const containsHtmlImage = /<img\b[^>]*\bsrc\s*=/i.test(markdown)
+    if (!containsMarkdownImage && !containsHtmlImage) {
+      return false
+    }
+
+    void import('@/features/document/lib/documentPublishingClipboard')
+      .then(({ copyDocumentMarkdownForPublishing }) => (
+        copyDocumentMarkdownForPublishing(markdown, documentPath)
+      ))
+      .then(() => notify.success(td('publishingClipboard.copied')))
+      .catch(() => notify.error(td('publishingClipboard.failed')))
+    return true
+  }, [documentPath, td])
+
   const handleSelectHeading = useCallback((line: number) => {
     const view = editorRef.current?.view
     if (!view) return
@@ -839,13 +855,15 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
               ref={editorRef}
               value={value}
               readOnly={readOnly || readingView}
-              editable={!readingView}
               onChange={handleChange}
               sourcePath={documentPath}
+              revealSourceOnFocus={!readingView}
+              drawSelection={!readingView}
               className="h-full"
               onCreateEditor={handleCreateEditor}
               onCursorLineChange={setCursorLine}
               onCursorChange={setCursorInfo}
+              onCopySelection={handleCopySelection}
               suggestProviders={effectiveProviders}
               resolveWikilink={wikilinkResolver.resolve}
               onWikilinkNavigate={handleWikilinkNavigate}

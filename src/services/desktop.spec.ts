@@ -57,6 +57,38 @@ describe('desktop service helpers', () => {
     expect(isElectronDesktopRuntime()).toBe(true)
   })
 
+  it('subscribes to normalized workspace document external changes', async () => {
+    const off = vi.fn()
+    let eventCallback: ((payload: unknown) => void) | undefined
+    const eventsOn = vi.fn((_eventName: string, callback: (payload: unknown) => void) => {
+      eventCallback = callback
+      return off
+    })
+    ;(window as typeof window & { kitionDesktop?: any }).kitionDesktop = {
+      shell: 'electron',
+      documentExternalChangeEvent: 'desktop:document:external-change',
+      EventsOn: eventsOn,
+    }
+
+    const { subscribeWorkspaceDocumentExternalChanges } = await loadDesktopModule()
+    const handler = vi.fn()
+    const unsubscribe = subscribeWorkspaceDocumentExternalChanges(handler)
+
+    expect(eventsOn).toHaveBeenCalledWith(
+      'desktop:document:external-change',
+      expect.any(Function),
+    )
+    eventCallback?.({ path: 'notes\\today.md', eventType: 'change', mtimeMs: 42 })
+    expect(handler).toHaveBeenCalledWith({
+      path: 'notes/today.md',
+      eventType: 'change',
+      mtimeMs: 42,
+    })
+
+    unsubscribe()
+    expect(off).toHaveBeenCalledTimes(1)
+  })
+
   it('waits for the embedded desktop backend health endpoint', async () => {
     vi.useFakeTimers()
     ;(window as typeof window & { kitionDesktop?: unknown }).kitionDesktop = { shell: 'electron' }
@@ -529,6 +561,7 @@ describe('desktop service helpers', () => {
       SaveTextFile: vi.fn().mockResolvedValue('/tmp/exports/doc.md'),
       SaveBinaryFile: vi.fn().mockResolvedValue('/tmp/exports/doc.docx'),
       SavePdfFile: vi.fn().mockResolvedValue('/tmp/exports/doc.pdf'),
+      CopyDocumentHtml: vi.fn().mockResolvedValue(true),
     }
 
     const desktopModule = await loadDesktopModule()
@@ -559,6 +592,13 @@ describe('desktop service helpers', () => {
         scaleFactor: 80,
       }),
     ).resolves.toBe('/tmp/exports/doc.pdf')
+    await expect(
+      desktopModule.copyDocumentHtmlToClipboard({
+        html: '<article><p>Doc</p></article>',
+        text: 'Doc',
+        documentPath: 'docs/doc.md',
+      }),
+    ).resolves.toBe(true)
 
     const bridge = (window as typeof window & { kitionDesktop?: any }).kitionDesktop
     expect(bridge.SaveTextFile).toHaveBeenCalledWith('Export Markdown', 'doc.md', '# Doc')
@@ -576,6 +616,11 @@ describe('desktop service helpers', () => {
       landscape: true,
       margins_type: 2,
       scale_factor: 80,
+    })
+    expect(bridge.CopyDocumentHtml).toHaveBeenCalledWith({
+      document_path: 'docs/doc.md',
+      html: '<article><p>Doc</p></article>',
+      text: 'Doc',
     })
   })
 

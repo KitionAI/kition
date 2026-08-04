@@ -492,12 +492,16 @@ export function removeWorkspaceTreeBranchMetadata(
   const nextCollapsed = metadata.collapsed.filter(
     (path) => path !== nodePath && !path.startsWith(childPrefix),
   )
+  const nextExpandedFolders = metadata.expandedFolders.filter(
+    (path) => path !== nodePath && !path.startsWith(childPrefix),
+  )
 
   return {
     ...metadata,
     icons: nextIcons,
     order: nextOrder,
     collapsed: nextCollapsed,
+    expandedFolders: nextExpandedFolders,
   }
 }
 
@@ -528,11 +532,15 @@ export function moveWorkspaceTreeBranchMetadata(
   const nextCollapsed = metadata.collapsed.map((path) =>
     remapWorkspaceBranchPath(path, draggedNode.path, movedPath),
   )
+  const nextExpandedFolders = metadata.expandedFolders.map((path) =>
+    remapWorkspaceBranchPath(path, draggedNode.path, movedPath),
+  )
 
   return {
     icons: nextIcons,
     order: nextOrder,
     collapsed: nextCollapsed,
+    expandedFolders: nextExpandedFolders,
   }
 }
 
@@ -554,9 +562,7 @@ export function collectAllFolderPaths(items: WorkspaceDocumentTreeItem[]) {
 }
 
 /** Collect paths of all .kitable files in the tree items. Used to compute
- *  kitable expansion state independently from the folder expansion state —
- *  kitables default to COLLAPSED (inverted from folders) and flip via the
- *  same `collapsed` metadata set. */
+ *  kitable expansion state independently from folder expansion state. */
 export function collectAllKitableFilePaths(items: WorkspaceDocumentTreeItem[]) {
   const paths = new Set<string>()
 

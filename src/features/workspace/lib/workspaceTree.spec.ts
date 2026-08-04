@@ -20,7 +20,7 @@ import type { KitableDashboardSummary, KitableWorkflowSummary, KitableTableSumma
 import type { WorkspaceDocumentTreeItem, WorkspaceDocumentFormat } from '@/services/desktop'
 import type { WorkspaceTreeMetadata } from './workspacePersistence'
 
-const emptyMetadata: WorkspaceTreeMetadata = { order: {}, icons: {}, collapsed: [] }
+const emptyMetadata: WorkspaceTreeMetadata = { order: {}, icons: {}, collapsed: [], expandedFolders: [] }
 
 function file(path: string, name = path): WorkspaceDocumentTreeItem {
   return { type: 'file', path, name, format: 'md' as never, size: 0, updated_at: '' } as WorkspaceDocumentTreeItem

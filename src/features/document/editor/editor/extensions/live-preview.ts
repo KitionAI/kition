@@ -47,6 +47,10 @@ const livePreviewSourcePathFacet = Facet.define<string, string>({
   combine: (values) => values[0] ?? '',
 })
 
+const livePreviewRevealSourceFacet = Facet.define<boolean, boolean>({
+  combine: (values) => values[0] ?? true,
+})
+
 import {
   buildSelectionContext,
   editorFocusEffect,
@@ -258,6 +262,11 @@ const revealedImageSourceField = StateField.define<RevealedImageSource>({
 const IMAGE_SOURCE_ICON_SVG =
   '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>'
 
+// CM6 uses this height while standalone image widgets are outside the rendered
+// viewport. Keep the loading placeholder in sync so rapid scrolling does not
+// replace a one-line estimate with a several-hundred-pixel image all at once.
+const BLOCK_IMAGE_ESTIMATED_HEIGHT = 320
+
 class ImageWidget extends WidgetType {
   constructor(
     readonly url: string,
@@ -273,15 +282,23 @@ class ImageWidget extends WidgetType {
   toDOM(view: EditorView) {
     const wrap = document.createElement(this.block ? 'div' : 'span')
     wrap.className = 'cm-md-image'
-    if (this.block) wrap.classList.add('cm-md-image-block')
+    if (this.block) wrap.classList.add('cm-md-image-block', 'is-loading')
     if (this.sourceVisible) wrap.classList.add('is-source-visible')
     const img = document.createElement('img')
-    img.src = resolveWorkspaceImageURL(this.url, this.sourcePath) || this.url
     img.alt = this.alt
-    img.loading = 'lazy'
+    // CM6 only creates widget DOM near the viewport, so eager loading here does
+    // not fetch every image in the document.
+    img.loading = 'eager'
     img.decoding = 'async'
     img.draggable = false
     img.addEventListener('mousedown', (e) => e.preventDefault())
+    const finishLoading = () => {
+      wrap.classList.remove('is-loading')
+      view.requestMeasure()
+    }
+    img.addEventListener('load', finishLoading, { once: true })
+    img.addEventListener('error', finishLoading, { once: true })
+    img.src = resolveWorkspaceImageURL(this.url, this.sourcePath) || this.url
     wrap.appendChild(img)
 
     const sourceToggle = document.createElement('button')
@@ -326,6 +343,9 @@ class ImageWidget extends WidgetType {
       && other.sourceTo === this.sourceTo
       && other.block === this.block
       && other.sourceVisible === this.sourceVisible
+  }
+  get estimatedHeight(): number {
+    return this.block ? BLOCK_IMAGE_ESTIMATED_HEIGHT : -1
   }
   destroy(dom: HTMLElement): void {
     detachResizeMeasure(dom)
@@ -874,7 +894,9 @@ function buildLivePreviewDecorations(state: EditorState): DecorationSet {
   const decos: Range<Decoration>[] = []
   const revealedImageSource = state.field(revealedImageSourceField, false)
 
-  const selCtx = buildSelectionContext(state)
+  const selCtx = state.facet(livePreviewRevealSourceFacet)
+    ? buildSelectionContext(state)
+    : { activeLines: new Set<number>(), ranges: [] }
                                              
   const cursorLines = selCtx.activeLines
                                                               
@@ -1809,6 +1831,10 @@ const livePreviewTheme = EditorView.baseTheme({
     width: 'fit-content',
     margin: '0.5em 0',
   },
+  '.cm-md-image-block.is-loading': {
+    width: '100%',
+    height: `${BLOCK_IMAGE_ESTIMATED_HEIGHT}px`,
+  },
   '.cm-md-image img': {
     display: 'block',
     maxWidth: '100%',
@@ -2273,10 +2299,14 @@ const livePreviewTheme = EditorView.baseTheme({
   },
 })
 
-export function livePreviewExtension(options: { sourcePath?: string } = {}) {
+export function livePreviewExtension(options: {
+  sourcePath?: string
+  revealSourceOnFocus?: boolean
+} = {}) {
   return [
     editorFocusField,
     revealedImageSourceField,
+    livePreviewRevealSourceFacet.of(options.revealSourceOnFocus !== false),
                                                            
                                                                     
                                                                 

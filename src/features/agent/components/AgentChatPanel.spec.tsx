@@ -1,6 +1,5 @@
 /**
- * Minimal spec for AgentChatPanel covering ONLY the new `progressCard` slot.
- * We mock all heavy dependencies so this test stays focused and fast.
+ * Focused AgentChatPanel specs with heavy dependencies mocked for speed.
  */
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
@@ -139,6 +138,41 @@ describe('AgentChatPanel progressCard slot', () => {
 
     expect(messagesIdx).toBeLessThan(sentinelIdx)
     expect(sentinelIdx).toBeLessThan(composerIdx)
+  })
+})
+
+describe('AgentChatPanel changed files', () => {
+  beforeEach(async () => {
+    await unmount()
+  })
+
+  it('opens the revision review when a modified file is clicked', async () => {
+    const onOpenArtifact = vi.fn()
+    const onReviewModifiedArtifact = vi.fn()
+    await mount(createElement(AgentChatPanel, makeMinimalProps({
+      onOpenArtifact,
+      onReviewModifiedArtifact,
+      toolCalls: [{
+        id: 91,
+        session_id: 1,
+        user_id: 1,
+        tool_name: 'apply_patch',
+        status: 'completed',
+        input_data: {},
+        output_data: { file_ops: [{ path: 'Docs/Article.md' }] },
+        created_at: '2026-08-04T00:00:00.000Z',
+        updated_at: '2026-08-04T00:00:01.000Z',
+      }],
+    })))
+
+    const changedFile = container.querySelector<HTMLButtonElement>('.agent-changed-file')
+    expect(changedFile).not.toBeNull()
+    await act(async () => {
+      changedFile?.click()
+    })
+
+    expect(onReviewModifiedArtifact).toHaveBeenCalledWith('Docs/Article.md')
+    expect(onOpenArtifact).not.toHaveBeenCalled()
   })
 })
 

@@ -1131,6 +1131,34 @@
       "failed": "导出失败"
     }
   },
+  "publishingClipboard": {
+    "copied": "已复制，图片已内嵌",
+    "failed": "复制包含图片的内容失败"
+  },
+  "revision": {
+    "title": "审阅修改",
+    "summary_one": "编辑器外有 {{count}} 处修改",
+    "summary_other": "编辑器外有 {{count}} 处修改",
+    "pending_one": "剩余 {{count}} 处",
+    "pending_other": "剩余 {{count}} 处",
+    "previous": "上一处修改",
+    "next": "下一处修改",
+    "changeLabel": "修改 {{index}}",
+    "accept": "接受此修改",
+    "reject": "拒绝此修改",
+    "acceptAll": "全部接受",
+    "rejectAll": "全部拒绝",
+    "accepted": "已接受",
+    "rejected": "已拒绝",
+    "externalChangeReady_one": "应用前请审阅 {{count}} 处外部修改。",
+    "externalChangeReady_other": "应用前请审阅 {{count}} 处外部修改。",
+    "dirtyExternalChange": "磁盘文件已更改，编辑器中未保存的内容已保留。",
+    "acceptedFeedback": "已接受审阅的修改。",
+    "rejectedFeedback": "已拒绝审阅的修改。",
+    "appliedFeedback": "已应用审阅结果。",
+    "refreshFailed": "无法加载修改后的文档进行审阅。",
+    "saveFailed": "无法应用审阅后的修改。"
+  },
   "splitEditor": {
     "sourcePlaceholder": "在此编辑 Markdown 源文…",
     "dividerAriaLabel": "拖动调整窗格大小（双击重置）"

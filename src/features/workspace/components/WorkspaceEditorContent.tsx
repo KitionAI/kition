@@ -4,6 +4,10 @@ import { BookOpen, Globe } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/registry/ui/button'
 import type { OpenedDocumentDraftCacheEntry } from '@/features/document/lib/openedDocumentDrafts'
+import type {
+  DocumentRevisionDecision,
+  PendingDocumentRevision,
+} from '@/features/document/lib/documentRevision'
 import { WorkspaceDocumentInlineTitle } from '@/features/workspace/components/WorkspaceDocumentInlineTitle'
 import { WorkspaceEmptyState } from '@/features/workspace/components/WorkspaceEmptyState'
 import { openWorkflowDetail } from '@/features/workflow/lib/openWorkflowRoute'
@@ -24,6 +28,9 @@ const DocumentMarkdownEditorPane = lazy(() =>
 )
 const DocumentSplitEditorPane = lazy(() =>
   import('@/features/document/components/DocumentSplitEditorPane').then((module) => ({ default: module.DocumentSplitEditorPane })),
+)
+const DocumentRevisionReview = lazy(() =>
+  import('@/features/document/components/DocumentRevisionReview').then((module) => ({ default: module.DocumentRevisionReview })),
 )
 const MarkdownSourceEditor = lazy(() =>
   import('@/features/document/components/MarkdownSourceEditor').then((module) => ({ default: module.MarkdownSourceEditor })),
@@ -72,6 +79,7 @@ function EditorPaneFallback() {
 type WorkspaceEditorContentProps = {
   activeDocument: WorkspaceDocument | null
   activeDocumentFormat: WorkspaceDocumentFormat
+  activeDocumentRevision: PendingDocumentRevision | null
   activeWorkspaceTab: WorkspaceTab | undefined
   activeWorkspaceTabId: string
   documentTitle: string
@@ -81,6 +89,7 @@ type WorkspaceEditorContentProps = {
   editorMode: 'rich' | 'split' | 'source' | 'preview'
   editorPreviewHtml: string
   editorResetVersions: Record<string, number>
+  documentRevisionSaving: boolean
   documentEditorFocusRequest?: number
   galleryPanelProps: ComponentProps<typeof WorkspaceMediaPanel> | null
   browserOriginDocumentPath?: string
@@ -104,6 +113,8 @@ type WorkspaceEditorContentProps = {
   onCreateTable: () => void
   onOpenAgent: () => void
   onSaveDocumentTitle: (nextTitle: string) => void
+  onDecideDocumentRevisionChange: (changeId: string, decision: DocumentRevisionDecision) => void
+  onResolveAllDocumentRevisionChanges: (decision: DocumentRevisionDecision) => void
   onSplitEditorChange: (value: string) => void
      
                                            
@@ -128,6 +139,7 @@ type WorkspaceEditorContentProps = {
 export function WorkspaceEditorContent({
   activeDocument,
   activeDocumentFormat,
+  activeDocumentRevision,
   activeWorkspaceTab,
   activeWorkspaceTabId,
   documentTitle,
@@ -137,6 +149,7 @@ export function WorkspaceEditorContent({
   editorMode,
   editorPreviewHtml,
   editorResetVersions,
+  documentRevisionSaving,
   documentEditorFocusRequest = 0,
   galleryPanelProps,
   browserOriginDocumentPath,
@@ -157,6 +170,8 @@ export function WorkspaceEditorContent({
   onCreateTable,
   onOpenAgent,
   onSaveDocumentTitle,
+  onDecideDocumentRevisionChange,
+  onResolveAllDocumentRevisionChanges,
   onSplitEditorChange,
   onOpenDocument,
   onTableAgentOpenChange,
@@ -441,12 +456,28 @@ export function WorkspaceEditorContent({
             )
           })}
       </div>
-      {activeWorkspaceTab?.type === 'document' && activeDocumentFormat === 'html' ? (
+      {activeWorkspaceTab?.type === 'document'
+      && activeDocumentFormat === 'html'
+      && !activeDocumentRevision ? (
         <Suspense fallback={<EditorPaneFallback />}>
           <DocumentHtmlPreviewPane html={draftContent} title={documentTitle} />
         </Suspense>
       ) : null}
+      {activeWorkspaceTab?.type === 'document' && activeDocumentRevision ? (
+        <div className="workspace-document-shell">
+          <Suspense fallback={<EditorPaneFallback />}>
+            <DocumentRevisionReview
+              revision={activeDocumentRevision}
+              saving={documentRevisionSaving}
+              titleSlot={inlineTitleElement}
+              onDecideChange={onDecideDocumentRevisionChange}
+              onResolveAll={onResolveAllDocumentRevisionChanges}
+            />
+          </Suspense>
+        </div>
+      ) : null}
       {activeWorkspaceTab?.type === 'document'
+      && !activeDocumentRevision
       && activeDocumentFormat !== 'data'
       && activeDocumentFormat !== 'html' ? (
         <div className="workspace-document-shell">

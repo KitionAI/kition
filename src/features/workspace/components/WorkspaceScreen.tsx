@@ -486,17 +486,21 @@ export function WorkspaceScreen({
   const {
     activeDocument,
     activeDocumentFormat,
+    activeDocumentRevision,
     activeResourcePath,
     applyWorkspaceDocument,
     autoSaveStatus,
     bumpEditorReset,
     clearActiveDocumentSession,
     draftContent,
+    documentRevisionSaving,
+    decideDocumentRevisionChange,
     editorResetVersions,
     ensureActiveDocumentSaved,
     getOpenedDocumentDraftEntry,
     hasUnsavedChanges,
     handleDraftContentChange,
+    openModifiedDocumentReview,
     openDocument,
     persistActiveDocument,
     pruneOpenedDocumentDrafts,
@@ -510,6 +514,8 @@ export function WorkspaceScreen({
     snapshots,
     updateSnapshots,
     rememberDocumentSnapshot,
+    reviewModifiedDocuments,
+    resolveAllDocumentRevisionChanges,
   } = useWorkspaceDocumentSession({
     editorLocked: editorView.locked,
     editorMode: editorView.editorMode,
@@ -601,12 +607,19 @@ export function WorkspaceScreen({
     onFeedback: setFeedback,
     ensureHostedAccountReady,
     onSettingsSaved: setSettings,
-    onWorkspaceArtifactsSaved: async (sessionId) => {
-      await refreshWorkspaceDocumentsRef.current()
+    onWorkspaceArtifactsSaved: async () => {
+      await refreshWorkspaceDocumentsRef.current(undefined, { silent: true, treeOnly: true })
+    },
+    onWorkspaceDocumentsModified: async (paths) => {
+      await Promise.all([
+        reviewModifiedDocuments(paths),
+        refreshWorkspaceDocumentsRef.current(undefined, { silent: true, treeOnly: true }),
+      ])
     },
     onTableMutated: async () => {
       await tableAgentRefreshRef.current?.()
     },
+    prepareActiveDocument: ensureActiveDocumentSaved,
     getTurnContext: getAgentTurnContext,
     prepareBrowserContext: prepareAgentBrowserContextForTurn,
   })
@@ -2771,6 +2784,10 @@ export function WorkspaceScreen({
     }
   }
 
+  async function reviewAgentModifiedDocument(path: string) {
+    await openModifiedDocumentReview(path)
+  }
+
   const workspaceRightPane = workspaceAgentOpen ? (
     <Suspense fallback={null}>
       <WorkspaceAgentSidebar
@@ -2814,6 +2831,7 @@ export function WorkspaceScreen({
               onModelChange: (value: string) =>
                 void handleAgentModelChange(value),
               onOpenArtifact: (path: string) => void openDocument(path),
+              onReviewModifiedArtifact: (path: string) => void reviewAgentModifiedDocument(path),
               onImportFiles: isDesktopRuntime()
                 ? (files) => importBrowserFiles(files, 'attachments')
                 : undefined,
@@ -3395,6 +3413,7 @@ export function WorkspaceScreen({
                   editorContentProps={{
                     activeDocument,
                     activeDocumentFormat,
+                    activeDocumentRevision,
                     activeWorkspaceTab,
                     activeWorkspaceTabId,
                     documentTitle: activeDocument ? getWorkspaceItemTitle(activeDocument.name) : '',
@@ -3404,6 +3423,7 @@ export function WorkspaceScreen({
                     editorMode: editorView.editorMode,
                     editorPreviewHtml,
                     editorResetVersions,
+                    documentRevisionSaving,
                     documentEditorFocusRequest,
                     galleryPanelProps,
                     browserOriginDocumentPath,
@@ -3432,6 +3452,16 @@ export function WorkspaceScreen({
                       window.dispatchEvent(new CustomEvent('kition:agent:focus-composer'))
                     },
                     onSaveDocumentTitle: (nextTitle: string) => void saveDocumentTitle(nextTitle),
+                    onDecideDocumentRevisionChange: (changeId, decision) => {
+                      if (activeDocumentRevision) {
+                        decideDocumentRevisionChange(activeDocumentRevision.path, changeId, decision)
+                      }
+                    },
+                    onResolveAllDocumentRevisionChanges: (decision) => {
+                      if (activeDocumentRevision) {
+                        resolveAllDocumentRevisionChanges(activeDocumentRevision.path, decision)
+                      }
+                    },
                     onSplitEditorChange: (value) => {
                       handleDraftContentChange(value)
                       setFeedback('')

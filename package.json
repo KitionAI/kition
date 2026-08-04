@@ -162,16 +162,17 @@
       "electron-winstaller"
     ],
     "overrides": {
-      "brace-expansion": "5.0.8",
+      "brace-expansion": "5.0.9",
       "dompurify": "3.4.12",
-      "fast-uri": "3.1.4",
+      "fast-uri": "3.1.5",
       "form-data": "4.0.6",
       "immutable": "5.1.8",
       "js-yaml": "4.3.0",
-      "tmp": "0.2.7"
+      "tmp": "0.2.7",
+      "undici@>=7.0.0 <7.29.0": "7.29.0"
     },
     "patchedDependencies": {
-      "brace-expansion@5.0.8": "patches/brace-expansion@5.0.8.patch"
+      "brace-expansion@5.0.9": "patches/brace-expansion@5.0.9.patch"
     }
   },
   "main": "electron/main.mjs",

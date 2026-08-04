@@ -55,7 +55,7 @@ describe('createWorkspaceWatcher', () => {
     // Wait for debounce to drain
     await new Promise((r) => setTimeout(r, 150))
     expect(onEvent).toHaveBeenCalledWith({
-      path: '/vault/foo.md',
+      path: 'foo.md',
       eventType: 'change',
       mtimeMs: 123,
     })
@@ -80,9 +80,31 @@ describe('createWorkspaceWatcher', () => {
     await new Promise((r) => setTimeout(r, 100))
     expect(onEvent).toHaveBeenCalledTimes(1)
     expect(onEvent).toHaveBeenCalledWith({
-      path: '/vault/foo.md',
+      path: 'foo.md',
       eventType: 'change',
       mtimeMs: 3,
+    })
+  })
+
+  it('normalizes nested paths for the renderer document model', async () => {
+    const fake = makeFakeChokidar()
+    const onEvent = vi.fn()
+    await createWorkspaceWatcher({
+      rootPath: '/vault',
+      onEvent,
+      chokidar: fake.api,
+      now: () => now,
+      debounceMs: 10,
+    })
+    fake.emit('ready')
+
+    fake.emit('change', '/vault/notes/foo.md', { mtimeMs: 7 })
+
+    await new Promise((r) => setTimeout(r, 30))
+    expect(onEvent).toHaveBeenCalledWith({
+      path: 'notes/foo.md',
+      eventType: 'change',
+      mtimeMs: 7,
     })
   })
 

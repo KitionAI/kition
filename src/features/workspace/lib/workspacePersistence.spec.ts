@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import {
+  readWorkspaceTreeMetadataMap,
   readWorkspaceTabs,
   writeWorkspaceTabs,
 } from './workspacePersistence'
@@ -220,5 +221,31 @@ describe('workspacePersistence browser tabs', () => {
       kitablePath: 'Leads.kitable',
       workflowId: 'auto-99',
     }])
+  })
+})
+
+describe('workspacePersistence tree metadata', () => {
+  beforeEach(() => {
+    window.localStorage.clear()
+  })
+
+  it('migrates legacy folder state to the new collapsed-by-default behavior', () => {
+    window.localStorage.setItem(
+      'kition.document.tree.metadata.v2',
+      JSON.stringify({
+        [ROOT_A]: {
+          icons: {},
+          order: {},
+          collapsed: ['Previously closed'],
+        },
+      }),
+    )
+
+    expect(readWorkspaceTreeMetadataMap()[ROOT_A]).toEqual({
+      icons: {},
+      order: {},
+      collapsed: ['Previously closed'],
+      expandedFolders: [],
+    })
   })
 })

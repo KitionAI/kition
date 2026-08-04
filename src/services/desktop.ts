@@ -17,6 +17,7 @@ type KitionDesktopBridge = {
   SaveTextFile?: (dialogTitle: string, defaultFilename: string, content: string) => Promise<string>
   SaveBinaryFile?: (request: SaveFileRequest) => Promise<string>
   SavePdfFile?: (request: SavePdfFileRequest) => Promise<string>
+  CopyDocumentHtml?: (request: CopyDocumentHtmlRequest) => Promise<boolean>
   ListWorkspaceDocuments?: () => Promise<WorkspaceDocumentListResponse>
   ReadWorkspaceDocument?: (request: WorkspaceDocumentPathRequest) => Promise<WorkspaceDocument>
   StatWorkspaceDocument?: (request: { path: string }) => Promise<{ mtime_ms: number; size: number } | null>
@@ -56,7 +57,8 @@ type KitionDesktopBridge = {
   ListBrowserSites?: () => Promise<BrowserSiteListResponse>
   ForgetBrowserSite?: (request: BrowserSiteForgetRequest) => Promise<BrowserSiteListResponse>
   RefreshBrowserSiteLoginStatus?: (request: BrowserSiteRefreshRequest) => Promise<BrowserSiteListResponse>
-  EventsOn?: (eventName: string, callback: (payload: any) => void) => void
+  EventsOn?: (eventName: string, callback: (payload: any) => void) => (() => void) | void
+  documentExternalChangeEvent?: string
   BrowserOpenURL?: (url: string) => void
 }
 
@@ -97,6 +99,12 @@ export type WorkspaceDocument = {
   updated_at?: string
   size?: number
   mtime_ms?: number
+}
+
+export type WorkspaceDocumentExternalChange = {
+  path: string
+  eventType: 'add' | 'change' | 'unlink'
+  mtimeMs?: number
 }
 
 export type WorkspaceDocumentFormat =
@@ -466,6 +474,12 @@ type SavePdfFileRequest = {
   landscape?: boolean
   margins_type?: 0 | 1 | 2
   scale_factor?: number
+}
+
+type CopyDocumentHtmlRequest = {
+  html: string
+  text: string
+  document_path?: string
 }
 
 declare global {
@@ -1339,6 +1353,29 @@ export async function readWorkspaceDocument(path: string): Promise<WorkspaceDocu
   }
 }
 
+export function subscribeWorkspaceDocumentExternalChanges(
+  handler: (change: WorkspaceDocumentExternalChange) => void,
+): () => void {
+  const bridge = getDesktopBridge()
+  const eventName = bridge?.documentExternalChangeEvent
+  if (!bridge?.EventsOn || !eventName) {
+    return () => {}
+  }
+
+  return bridge.EventsOn(eventName, (payload: Partial<WorkspaceDocumentExternalChange>) => {
+    const path = normalizeWorkspaceDocumentPath(String(payload?.path || ''))
+    const eventType = payload?.eventType
+    if (!path || (eventType !== 'add' && eventType !== 'change' && eventType !== 'unlink')) {
+      return
+    }
+    handler({
+      path,
+      eventType,
+      mtimeMs: typeof payload.mtimeMs === 'number' ? payload.mtimeMs : undefined,
+    })
+  }) || (() => {})
+}
+
 export async function statWorkspaceDocument(
   path: string,
 ): Promise<{ mtime_ms: number; size: number } | null> {
@@ -1922,6 +1959,36 @@ export async function savePdfFile(options: {
   }
 
   return bridge.SavePdfFile(request)
+}
+
+export async function copyDocumentHtmlToClipboard(options: {
+  html: string
+  text: string
+  documentPath?: string
+}) {
+  const bridge = getDesktopBridge()
+  if (bridge?.CopyDocumentHtml) {
+    const request: CopyDocumentHtmlRequest = {
+      html: options.html,
+      text: options.text,
+    }
+    if (options.documentPath) {
+      request.document_path = options.documentPath
+    }
+    return bridge.CopyDocumentHtml(request)
+  }
+
+  if (typeof navigator === 'undefined' || !navigator.clipboard?.write || typeof ClipboardItem === 'undefined') {
+    throw new Error('rich clipboard is unavailable')
+  }
+
+  await navigator.clipboard.write([
+    new ClipboardItem({
+      'text/html': new Blob([options.html], { type: 'text/html' }),
+      'text/plain': new Blob([options.text], { type: 'text/plain' }),
+    }),
+  ])
+  return true
 }
 
 export async function saveRemoteFile(url: string, defaultFilename: string, dialogTitle: string) {

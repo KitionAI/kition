@@ -17,6 +17,7 @@ export const IPC_CHANNELS = {
   saveTextFile: 'desktop:file:save-text',
   saveBinaryFile: 'desktop:file:save-binary',
   savePdfFile: 'desktop:file:save-pdf',
+  copyDocumentHtml: 'desktop:clipboard:copy-document-html',
   listWorkspaceDocuments: 'desktop:workspace:list-documents',
   readWorkspaceDocument: 'desktop:workspace:read-document',
   statWorkspaceDocument: 'desktop:workspace:stat-document',

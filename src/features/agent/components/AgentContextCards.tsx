@@ -26,7 +26,20 @@ export function AgentContextCards({
 
   const plan = planIndex >= 0 ? readTablePlan(events[planIndex]) : null
 
-  if (!plan) {
+  const appliedMetrics = plan?.applied === true
+    ? [plan.actual_created, plan.actual_updated, plan.actual_skipped]
+    : []
+  const hasAppliedMetrics = appliedMetrics.some((value) => typeof value === 'number')
+  const hasAppliedChanges = appliedMetrics.some((value) => typeof value === 'number' && value !== 0)
+  const isEmptyAppliedResult = Boolean(
+    plan?.applied === true
+    && hasAppliedMetrics
+    && !hasAppliedChanges
+    && !plan.summary
+    && !plan.risks?.length,
+  )
+
+  if (!plan || isEmptyAppliedResult) {
     return null
   }
 
@@ -61,16 +74,12 @@ function TablePlanCard({
     <div className="data-agent-plan-card">
       <div className="data-agent-card-head">
         <span className="data-agent-card-eyebrow">{eyebrow}</span>
-        {hasMetrics ? (
-          allZero ? (
-            <span className="data-agent-result-empty">{t('contextCards.noChanges')}</span>
-          ) : (
+        {hasMetrics && !allZero ? (
             <span className="data-agent-result-inline" aria-label={t('contextCards.writeResult')}>
               <span className="data-agent-result-tag data-agent-result-tag--new">+{created ?? 0}</span>
               <span className="data-agent-result-tag data-agent-result-tag--updated">~{updated ?? 0}</span>
               <span className="data-agent-result-tag data-agent-result-tag--skipped">−{skipped ?? 0}</span>
             </span>
-          )
         ) : null}
         {plan.summary ? <strong className="data-agent-card-title">{plan.summary}</strong> : null}
       </div>

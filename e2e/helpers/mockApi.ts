@@ -301,7 +301,19 @@ export async function mockLocalWorkspaceApi(page: Page, options: MockLocalWorksp
       return fulfill(route, {
         code: 200,
         data: {
-          tools: [],
+          tools: [{
+            name: 'image_generation',
+            description: 'Generate an image and save it as a workspace artifact.',
+            category: 'artifact',
+            input_schema: {
+              type: 'object',
+              properties: {
+                prompt: { type: 'string' },
+              },
+            },
+            permission: 'workspace-write',
+            enabled: true,
+          }],
           skills: [],
           governance: {
             permission_mode: 'workspace-write',

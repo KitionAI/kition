@@ -55,7 +55,9 @@ export async function createWorkspaceWatcher({
     if (!raw) return
     const absolute = path.isAbsolute(raw) ? raw : path.join(rootPath, raw)
     if (isSelfWrite(absolute)) return
-    scheduleEmit(absolute, eventType, stats)
+    const relative = path.relative(rootPath, absolute).split(path.sep).join('/')
+    if (!relative || relative === '..' || relative.startsWith('../')) return
+    scheduleEmit(relative, eventType, stats)
   }
 
   const watcher = chokidar.watch(rootPath, {

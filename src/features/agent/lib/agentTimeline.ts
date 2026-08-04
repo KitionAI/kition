@@ -404,18 +404,34 @@ export function formatAgentRunLogExpandedDetail(
 export function getAgentModifiedDocumentPaths(toolCalls: AgentToolCall[]) {
   const paths = new Set<string>()
   toolCalls.forEach((toolCall) => {
-    if (toolCall.tool_name !== 'document_write' || toolCall.status !== 'completed') {
+    if (toolCall.status !== 'completed') {
       return
     }
 
-    const path = typeof toolCall.output_data?.path === 'string'
-      ? toolCall.output_data.path
-      : typeof toolCall.input_data?.path === 'string'
-        ? toolCall.input_data.path
-        : ''
+    if (toolCall.tool_name === 'document_write') {
+      const path = typeof toolCall.output_data?.path === 'string'
+        ? toolCall.output_data.path
+        : typeof toolCall.input_data?.path === 'string'
+          ? toolCall.input_data.path
+          : ''
 
-    if (path) {
-      paths.add(path)
+      if (path) {
+        paths.add(path)
+      }
+      return
+    }
+
+    if (toolCall.tool_name === 'apply_patch') {
+      const output = toolCall.output_data || {}
+      const operations = [
+        ...(Array.isArray(output.file_ops) ? output.file_ops : []),
+        ...(Array.isArray(output.changes) ? output.changes : []),
+      ]
+      operations.forEach((operation: any) => {
+        if (typeof operation?.path === 'string' && operation.path) {
+          paths.add(operation.path)
+        }
+      })
     }
   })
   return paths

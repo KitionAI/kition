@@ -1131,6 +1131,34 @@
       "failed": "Export failed"
     }
   },
+  "publishingClipboard": {
+    "copied": "Copied with images embedded",
+    "failed": "Failed to copy content with embedded images"
+  },
+  "revision": {
+    "title": "Review changes",
+    "summary_one": "{{count}} change was made outside the editor",
+    "summary_other": "{{count}} changes were made outside the editor",
+    "pending_one": "{{count}} remaining",
+    "pending_other": "{{count}} remaining",
+    "previous": "Previous change",
+    "next": "Next change",
+    "changeLabel": "Change {{index}}",
+    "accept": "Accept change",
+    "reject": "Reject change",
+    "acceptAll": "Accept all",
+    "rejectAll": "Reject all",
+    "accepted": "Accepted",
+    "rejected": "Rejected",
+    "externalChangeReady_one": "Review {{count}} external change before applying it.",
+    "externalChangeReady_other": "Review {{count}} external changes before applying them.",
+    "dirtyExternalChange": "File changed on disk. Your unsaved editor content was kept.",
+    "acceptedFeedback": "Reviewed changes accepted.",
+    "rejectedFeedback": "Reviewed changes rejected.",
+    "appliedFeedback": "Reviewed decisions applied.",
+    "refreshFailed": "Failed to load the modified document for review.",
+    "saveFailed": "Failed to apply reviewed changes."
+  },
   "splitEditor": {
     "sourcePlaceholder": "Edit Markdown source here...",
     "dividerAriaLabel": "Drag to resize panes (double-click to reset)"

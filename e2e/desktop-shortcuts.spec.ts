@@ -52,6 +52,77 @@ test('desktop provider inputs keep native select-all and paste shortcuts', async
     await providerInput.press(`${shortcutModifier}+A`)
     await providerInput.press(`${shortcutModifier}+V`)
     await expect(providerInput).toHaveValue('PASTED-BY-CMD-V')
+
+    const desktopInfo = await page.evaluate(() => window.kitionDesktop?.DesktopInfo?.())
+    expect(desktopInfo?.workspace_dir).toBeTruthy()
+    const generatedImagePath = path.join(
+      desktopInfo!.workspace_dir!,
+      'Agent',
+      'images',
+      'clipboard-test.png',
+    )
+    await fs.mkdir(path.dirname(generatedImagePath), { recursive: true })
+    await fs.writeFile(generatedImagePath, Buffer.from([0x89, 0x50, 0x4e, 0x47]))
+
+    await page.evaluate(async () => {
+      await window.kitionDesktop?.CopyDocumentHtml?.({
+        document_path: 'Articles/Publishing/article.md',
+        html: '<article><img src="Agent/images/clipboard-test.png" alt="Generated"></article>',
+        text: 'Generated',
+      })
+    })
+    const publishingClipboard = await app.evaluate(({ clipboard }) => ({
+      html: clipboard.readHTML(),
+      text: clipboard.readText(),
+    }))
+    expect(publishingClipboard.html).toContain('src="data:image/png;base64,iVBORw=="')
+    expect(publishingClipboard.html).not.toContain('Agent/images/clipboard-test.png')
+    expect(publishingClipboard.text).toBe('Generated')
+
+    await page.evaluate(() => {
+      const pasteTarget = document.createElement('div')
+      pasteTarget.contentEditable = 'true'
+      pasteTarget.dataset.testid = 'publishing-paste-target'
+      document.body.appendChild(pasteTarget)
+      pasteTarget.focus()
+    })
+    await page.locator('[data-testid="publishing-paste-target"]').press(`${shortcutModifier}+V`)
+    await expect(page.locator('[data-testid="publishing-paste-target"] img')).toHaveAttribute(
+      'src',
+      'data:image/png;base64,iVBORw==',
+    )
+
+    const publishingCopyMarkdown = 'Before\n\n![Generated](<Agent/images/clipboard-test.png>)\n\nAfter\n'
+    await fs.writeFile(
+      path.join(desktopInfo!.workspace_dir!, 'Publishing copy.md'),
+      publishingCopyMarkdown,
+    )
+    await page.goto(new URL('/documents', baseURL as string).toString(), {
+      waitUntil: 'commit',
+    })
+    await page.waitForLoadState('domcontentloaded')
+    await expect(page.getByTestId('document-tree')).toBeVisible({ timeout: 30_000 })
+    await page.locator('.document-tree-row', { hasText: 'Publishing copy' }).first().click()
+    await page.getByRole('button', { name: 'Reading view' }).click()
+    await expect(page.getByRole('button', { name: 'Edit' })).toBeVisible()
+    await expect(page.locator('.document-editor .cm-selectionLayer')).toHaveCount(0)
+    const editorContent = page.locator('.document-editor .cm-content').first()
+    await expect(editorContent).toContainText('Before')
+    await editorContent.click()
+    await editorContent.press(`${shortcutModifier}+A`)
+    await editorContent.press(`${shortcutModifier}+C`)
+
+    await expect.poll(() => app.evaluate(({ clipboard }) => clipboard.readHTML()))
+      .toContain('src="data:image/png;base64,iVBORw=="')
+    const copiedArticle = await app.evaluate(({ clipboard }) => ({
+      html: clipboard.readHTML(),
+      text: clipboard.readText(),
+    }))
+    expect(copiedArticle.html).toContain('Before')
+    expect(copiedArticle.html).toContain('After')
+    expect(copiedArticle.html).not.toContain('![Generated]')
+    expect(copiedArticle.html).not.toContain('Agent/images/clipboard-test.png')
+    expect(copiedArticle.text).toBe(publishingCopyMarkdown)
   } finally {
     await app.close()
     await fs.rm(tempHome, { recursive: true, force: true })

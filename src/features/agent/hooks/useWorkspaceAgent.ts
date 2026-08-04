@@ -38,8 +38,15 @@ import {
   buildAgentModelOptions,
   resolveAgentModelKey,
 } from '@/features/agent/lib/agentConfig'
+import {
+  buildAgentDocumentEditingPromptContext,
+  prepareAgentDocumentForTurn,
+} from '@/features/agent/lib/agentDocumentEditing'
 import { ensurePortalAccountSessionRestored } from '@/services/portalAccount'
-import { formatAgentToolName } from '@/features/agent/lib/agentTimeline'
+import {
+  formatAgentToolName,
+  getAgentModifiedDocumentPaths,
+} from '@/features/agent/lib/agentTimeline'
 import { getAgentTimelineDict } from '@/features/agent/lib/agentTimelineI18n'
 import {
   isDesktopRuntime,
@@ -84,7 +91,9 @@ type UseWorkspaceAgentOptions = {
   ensureHostedAccountReady?: () => Promise<boolean>
   onSettingsSaved?: (settings: DesktopSettingsState) => void
   onWorkspaceArtifactsSaved?: (sessionId: number) => Promise<void>
+  onWorkspaceDocumentsModified?: (paths: string[], sessionId: number) => void | Promise<void>
   onTableMutated?: () => void | Promise<void>
+  prepareActiveDocument?: () => Promise<boolean>
   prepareBrowserContext?: (content: string) => Promise<AgentBrowserContext | undefined>
   silentInitialSessionLoad?: boolean
   getTurnContext?: () =>
@@ -99,18 +108,6 @@ const TABLE_MUTATION_TOOL_NAMES = new Set([
   'data_table_add_records',
 ])
 
-function getAgentModifiedPath(toolCall: AgentToolCall) {
-  if (toolCall.tool_name !== 'document_write' || toolCall.status !== 'completed') {
-    return ''
-  }
-
-  if (typeof toolCall.output_data?.path === 'string') {
-    return toolCall.output_data.path
-  }
-
-  return typeof toolCall.input_data?.path === 'string' ? toolCall.input_data.path : ''
-}
-
 export function useWorkspaceAgent({
   settings,
   rootPath,
@@ -119,7 +116,9 @@ export function useWorkspaceAgent({
   ensureHostedAccountReady,
   onSettingsSaved,
   onWorkspaceArtifactsSaved,
+  onWorkspaceDocumentsModified,
   onTableMutated,
+  prepareActiveDocument,
   prepareBrowserContext,
   silentInitialSessionLoad = !isDesktopRuntime(),
   getTurnContext,
@@ -343,18 +342,19 @@ export function useWorkspaceAgent({
     markSessionBusy(sessionId, false)
   }, [markSessionBusy, onError])
 
-  const markAgentModifiedDocument = useCallback((toolCall: AgentToolCall) => {
-    const path = getAgentModifiedPath(toolCall)
-    if (!path) {
+  const markAgentModifiedDocument = useCallback((toolCall: AgentToolCall, sessionId: number) => {
+    const paths = getAgentModifiedDocumentPaths([toolCall])
+    if (!paths.size) {
       return
     }
 
     setAgentModifiedDocumentPaths((current) => {
       const next = new Set(current)
-      next.add(path)
+      paths.forEach((path) => next.add(path))
       return next
     })
-  }, [])
+    void onWorkspaceDocumentsModified?.(Array.from(paths), sessionId)
+  }, [onWorkspaceDocumentsModified])
 
   const sendAgentMessage = useCallback(async (
     sessionId: number,
@@ -390,6 +390,15 @@ export function useWorkspaceAgent({
       return
     }
     agentSendInFlightSessions.current.add(sessionId)
+
+    const documentPrepared = await prepareAgentDocumentForTurn({
+      prepare: prepareActiveDocument,
+      onError,
+    })
+    if (!documentPrepared) {
+      agentSendInFlightSessions.current.delete(sessionId)
+      return
+    }
 
     const optimisticUserMessage: AgentMessage = {
       id: Date.now() * -1,
@@ -507,6 +516,13 @@ export function useWorkspaceAgent({
           : mentionResolution.resolved,
         unresolvedTokens: mentionResolution.unresolved,
       })
+      promptContext = [
+        promptContext,
+        buildAgentDocumentEditingPromptContext({
+          activeDocumentPath,
+          activeDocumentFormat: turnContext?.activeDocumentFormat,
+        }),
+      ].filter(Boolean).join('\n\n')
       let executionMode = followup?.executionMode
       if (shouldImportReferencedFile && referencedImportFile) {
         const imported = await importWorkspaceFileIntoDataTable({
@@ -682,7 +698,7 @@ export function useWorkspaceAgent({
           }
 
           if ((event.type === 'tool_call' || event.type === 'tool_error' || event.type === 'artifact') && event.tool_call) {
-            markAgentModifiedDocument(event.tool_call)
+            markAgentModifiedDocument(event.tool_call, sessionId)
             if (
               event.tool_call.status === 'completed' &&
               TABLE_MUTATION_TOOL_NAMES.has(event.tool_call.tool_name)
@@ -828,7 +844,9 @@ export function useWorkspaceAgent({
     onError,
     onFeedback,
     onWorkspaceArtifactsSaved,
+    onWorkspaceDocumentsModified,
     onTableMutated,
+    prepareActiveDocument,
     prepareBrowserContext,
     refreshMentionableDocuments,
     selectedAgentModel,

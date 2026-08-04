@@ -1,5 +1,10 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import { DESKTOP_MENU_EVENT, DESKTOP_UPDATES_EVENT, IPC_CHANNELS } from './channels.mjs'
+import {
+  DESKTOP_DOCUMENT_EXTERNAL_CHANGE_EVENT,
+  DESKTOP_MENU_EVENT,
+  DESKTOP_UPDATES_EVENT,
+  IPC_CHANNELS,
+} from './channels.mjs'
 
 const BACKEND_ORIGIN_FLAG = '--kition-backend-origin='
 const backendOrigin =
@@ -23,6 +28,7 @@ const desktopBridge = {
     ipcRenderer.invoke(IPC_CHANNELS.saveTextFile, { dialogTitle, defaultFilename, content }),
   SaveBinaryFile: (request) => ipcRenderer.invoke(IPC_CHANNELS.saveBinaryFile, request),
   SavePdfFile: (request) => ipcRenderer.invoke(IPC_CHANNELS.savePdfFile, request),
+  CopyDocumentHtml: (request) => ipcRenderer.invoke(IPC_CHANNELS.copyDocumentHtml, request),
   ListWorkspaceDocuments: () => ipcRenderer.invoke(IPC_CHANNELS.listWorkspaceDocuments),
   ReadWorkspaceDocument: (request) => ipcRenderer.invoke(IPC_CHANNELS.readWorkspaceDocument, request),
   StatWorkspaceDocument: (request) => ipcRenderer.invoke(IPC_CHANNELS.statWorkspaceDocument, request),
@@ -85,4 +91,5 @@ contextBridge.exposeInMainWorld('kitionDesktop', {
   ...desktopBridge,
   menuEvent: DESKTOP_MENU_EVENT,
   updatesEvent: DESKTOP_UPDATES_EVENT,
+  documentExternalChangeEvent: DESKTOP_DOCUMENT_EXTERNAL_CHANGE_EVENT,
 })

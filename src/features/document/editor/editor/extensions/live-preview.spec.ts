@@ -25,7 +25,12 @@ afterEach(() => {
   while (mounts.length) mounts.pop()!()
 })
 
-const mountEditor = (doc: string, cursorPos?: number, sourcePath = '') => {
+const mountEditor = (
+  doc: string,
+  cursorPos?: number,
+  sourcePath = '',
+  revealSourceOnFocus = true,
+) => {
   const host = document.createElement('div')
   document.body.appendChild(host)
   const view = new EditorView({
@@ -35,7 +40,7 @@ const mountEditor = (doc: string, cursorPos?: number, sourcePath = '') => {
       selection: cursorPos != null ? EditorSelection.cursor(cursorPos) : undefined,
       extensions: [
         markdown({ base: markdownLanguage }),
-        livePreviewExtension({ sourcePath }),
+        livePreviewExtension({ sourcePath, revealSourceOnFocus }),
       ],
     }),
   })
@@ -55,6 +60,55 @@ describe('livePreviewExtension — images', () => {
   const sourceToggle = (view: EditorView) => (
     view.dom.querySelector('.cm-md-image-source-toggle') as HTMLButtonElement | null
   )
+  const imageWidgetEstimatedHeight = (view: EditorView): number | null => {
+    let height: number | null = null
+    view.state.field(livePreviewField).between(0, view.state.doc.length, (_from, _to, value) => {
+      const widget = (value as unknown as { widget?: { estimatedHeight?: number } }).widget
+      if (widget && typeof widget.estimatedHeight === 'number') {
+        height = widget.estimatedHeight
+      }
+    })
+    return height
+  }
+
+  it('reserves height for standalone images before their DOM is measured', () => {
+    const view = mountEditor('![diagram](Attachments/diagram.png)', 0, 'Notes/demo.md')
+    const block = view.dom.querySelector('.cm-md-image-block')
+    const img = image(view) as HTMLImageElement | null
+
+    expect(imageWidgetEstimatedHeight(view)).toBe(320)
+    expect(block?.classList.contains('is-loading')).toBe(true)
+    expect(img?.loading).toBe('eager')
+
+    img?.dispatchEvent(new Event('load'))
+
+    expect(block?.classList.contains('is-loading')).toBe(false)
+  })
+
+  it('does not add a block-height estimate to inline images', () => {
+    const view = mountEditor('Before ![diagram](Attachments/diagram.png) after', 0, 'Notes/demo.md')
+
+    expect(imageWidgetEstimatedHeight(view)).toBe(-1)
+    expect(view.dom.querySelector('.cm-md-image-block')).toBeNull()
+  })
+
+  it('resolves angle-bracket generated image destinations from the workspace root', () => {
+    const desktopWindow = window as typeof window & { kitionDesktop?: unknown }
+    const previousDesktopBridge = desktopWindow.kitionDesktop
+    desktopWindow.kitionDesktop = { shell: 'electron' }
+    mounts.push(() => {
+      desktopWindow.kitionDesktop = previousDesktopBridge
+    })
+    const view = mountEditor(
+      '![Generated image](<Agent/images/9/ig_generated.png>)',
+      0,
+      'Articles/AI/Attention residue.md',
+    )
+
+    expect((image(view) as HTMLImageElement | null)?.src).toBe(
+      'http://127.0.0.1:18101/workspace-files/Agent/images/9/ig_generated.png',
+    )
+  })
 
   it('keeps a pasted wikilink image rendered when the cursor moves beside or into its source range', () => {
     const source = '![[Attachments/Pasted image 20260718005317.png]]\nafter'
@@ -98,6 +152,18 @@ describe('livePreviewExtension — images', () => {
 
     expect(view.dom.querySelector('.cm-md-image-src')?.textContent).toContain('![diagram]')
     expect(image(view)).not.toBeNull()
+  })
+})
+
+describe('livePreviewExtension — reading selection', () => {
+  it('keeps Markdown markers hidden while a read-only document is focused', () => {
+    const source = '# Heading\n\n**Bold text**'
+    const view = mountEditor(source, source.length - 2, '', false)
+
+    view.focus()
+
+    expect(view.dom.querySelector('.cm-md-h-mark-hidden')).not.toBeNull()
+    expect(view.dom.textContent).not.toContain('**')
   })
 })
 

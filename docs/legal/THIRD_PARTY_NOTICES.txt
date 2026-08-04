@@ -1438,7 +1438,7 @@ License: MIT
 Homepage: https://github.com/petkaantonov/bluebird
 License text: 101
 
-brace-expansion 5.0.8
+brace-expansion 5.0.9
 License: MIT
 Homepage: https://github.com/juliangruber/brace-expansion#readme
 License text: 102
@@ -2213,7 +2213,7 @@ License: MIT
 Homepage: https://github.com/hiddentao/fast-levenshtein#readme
 License text: 204
 
-fast-uri 3.1.4
+fast-uri 3.1.5
 License: BSD-3-Clause
 Homepage: https://github.com/fastify/fast-uri
 License text: 205
@@ -3972,7 +3972,7 @@ License: MIT
 Homepage: https://github.com/ljharb/unbox-primitive#readme
 License text: 220
 
-undici 6.27.0, 7.28.0
+undici 6.27.0, 7.29.0
 License: MIT
 Homepage: https://undici.nodejs.org
 License text: 413
@@ -7995,7 +7995,7 @@ THE SOFTWARE.
 ================================================================================
 
 License text 102
-Packages: brace-expansion 5.0.8
+Packages: brace-expansion 5.0.9
 
 MIT License
 
@@ -12800,7 +12800,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 ================================================================================
 
 License text 205
-Packages: fast-uri 3.1.4
+Packages: fast-uri 3.1.5
 
 Copyright (c) 2011-2021, Gary Court until https://github.com/garycourt/uri-js/commit/a1acf730b4bba3f1097c9f52e7d9d3aba8cdcaae
 Copyright (c) 2021-present The Fastify team <https://github.com/fastify/fastify#team>
@@ -21327,7 +21327,7 @@ END OF TERMS AND CONDITIONS
 ================================================================================
 
 License text 413
-Packages: undici 6.27.0, 7.28.0; undici-types 6.21.0, 7.18.2, 7.24.6, 8.3.0
+Packages: undici 6.27.0, 7.29.0; undici-types 6.21.0, 7.18.2, 7.24.6, 8.3.0
 
 MIT License
 

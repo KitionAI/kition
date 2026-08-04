@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
 import type { AgentEvent, AgentToolCall } from '@/api/agent'
-import { buildAgentRunLogItems, formatAgentRunLogExpandedDetail } from './agentTimeline'
+import {
+  buildAgentRunLogItems,
+  formatAgentRunLogExpandedDetail,
+  getAgentModifiedDocumentPaths,
+} from './agentTimeline'
 
 function event(eventType: string, overrides: Partial<AgentEvent> = {}): AgentEvent {
   return {
@@ -27,6 +31,37 @@ function toolCall(overrides: Partial<AgentToolCall> = {}): AgentToolCall {
     ...overrides,
   }
 }
+
+describe('getAgentModifiedDocumentPaths', () => {
+  it('collects every file changed by a completed patch', () => {
+    const paths = getAgentModifiedDocumentPaths([
+      toolCall({
+        tool_name: 'apply_patch',
+        output_data: {
+          file_ops: [{ path: 'Docs/Article.md' }],
+          changes: [
+            { path: 'Docs/Article.md' },
+            { path: 'Docs/Notes.md' },
+          ],
+        },
+      }),
+    ])
+
+    expect(Array.from(paths)).toEqual(['Docs/Article.md', 'Docs/Notes.md'])
+  })
+
+  it('ignores failed patches so stale drafts are not discarded', () => {
+    const paths = getAgentModifiedDocumentPaths([
+      toolCall({
+        tool_name: 'apply_patch',
+        status: 'failed',
+        output_data: { file_ops: [{ path: 'Docs/Article.md' }] },
+      }),
+    ])
+
+    expect(paths.size).toBe(0)
+  })
+})
 
 describe('buildAgentRunLogItems debug filtering', () => {
   const events: AgentEvent[] = [

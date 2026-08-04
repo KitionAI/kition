@@ -141,18 +141,17 @@ export type CursorInfo = {
 export type DocumentEditorProps = {
   value: string
   readOnly?: boolean
-  /**
-   * Whether the content DOM is focusable/editable. Default true.
-   * When false, CodeMirror is non-focusable, so live-preview never reveals raw
-   * markdown syntax (its active-line logic keys off focus/selection) — the editor
-   * renders every node fully, which is exactly what a reading view needs.
-   */
+  /** Whether the content DOM is focusable/editable. Default true. */
   editable?: boolean
   onChange: (value: string) => void
   placeholder?: string
   className?: string
                          
   sourcePath?: string
+  /** Keep live-preview source markers hidden even while focused. */
+  revealSourceOnFocus?: boolean
+  /** Use CodeMirror's custom selection layer. Disable for rendered reading views. */
+  drawSelection?: boolean
                                    
   resolveWikilink?: WikilinkExtensionOptions['resolve']
                               
@@ -172,6 +171,8 @@ export type DocumentEditorProps = {
                          
   onEmbedNavigate?: (target: string, section?: string) => void
   onCreateEditor?: (view: EditorView) => void
+  /** Return true to replace the native copy for the selected Markdown. */
+  onCopySelection?: (markdown: string) => boolean
   /**
    * Extensions composed by the consuming pane; spread after every built-in
    * except `editorTheme`, which stays last so the base styles anchor the cascade.
@@ -192,6 +193,8 @@ export const DocumentEditor = forwardRef<ReactCodeMirrorRef, DocumentEditorProps
       placeholder,
       className,
       sourcePath,
+      revealSourceOnFocus = true,
+      drawSelection = true,
       resolveWikilink,
       onWikilinkNavigate,
       onCreateMissingNote,
@@ -202,6 +205,7 @@ export const DocumentEditor = forwardRef<ReactCodeMirrorRef, DocumentEditorProps
       loadEmbed,
       onEmbedNavigate,
       onCreateEditor,
+      onCopySelection,
       extraExtensions,
     },
     ref,
@@ -230,7 +234,23 @@ export const DocumentEditor = forwardRef<ReactCodeMirrorRef, DocumentEditorProps
         autoBracketExtension(),
         slashCommandExtension(suggestProviders ?? {}),
         snippetExpandExtension({ sourcePath }),
-        livePreviewExtension({ sourcePath }),
+        livePreviewExtension({ sourcePath, revealSourceOnFocus }),
+        ...(onCopySelection
+          ? [EditorView.domEventHandlers({
+              copy(event, view) {
+                const selectedMarkdown = view.state.selection.ranges
+                  .filter((range) => !range.empty)
+                  .map((range) => view.state.doc.sliceString(range.from, range.to))
+                  .join('\n')
+                if (!selectedMarkdown || !onCopySelection(selectedMarkdown)) {
+                  return false
+                }
+                event.preventDefault()
+                event.clipboardData?.setData('text/plain', selectedMarkdown)
+                return true
+              },
+            })]
+          : []),
         pasteImageExtension(),
         pasteLinkExtension(),
         wikilinkExtension({
@@ -275,7 +295,12 @@ export const DocumentEditor = forwardRef<ReactCodeMirrorRef, DocumentEditorProps
         ...(extraExtensions ?? []),
         editorTheme,
       ],
-      [compositionExtension, sourcePath, resolveWikilink, onWikilinkNavigate, onCreateMissingNote, onTagNavigate, onCursorLineChange, onCursorChange, suggestProviders, loadEmbed, onEmbedNavigate, extraExtensions],
+      [compositionExtension, sourcePath, revealSourceOnFocus, resolveWikilink, onWikilinkNavigate, onCreateMissingNote, onTagNavigate, onCursorLineChange, onCursorChange, suggestProviders, loadEmbed, onEmbedNavigate, onCopySelection, extraExtensions],
+    )
+
+    const effectiveBasicSetup = useMemo(
+      () => ({ ...basicSetup, drawSelection }),
+      [drawSelection],
     )
 
     return (
@@ -286,7 +311,7 @@ export const DocumentEditor = forwardRef<ReactCodeMirrorRef, DocumentEditorProps
         readOnly={readOnly}
         editable={editable}
         extensions={extensions}
-        basicSetup={basicSetup}
+        basicSetup={effectiveBasicSetup}
         placeholder={placeholder}
         height="100%"
         className={cn('document-editor', className)}
