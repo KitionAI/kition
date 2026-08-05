@@ -103,11 +103,14 @@ describe('DocumentEditor IME input', () => {
 })
 
 describe('DocumentEditor publishing copy', () => {
-  it('lets the document pane replace native copy for image selections', async () => {
+  it('lets the document pane replace native copy with Markdown and HTML clipboard data', async () => {
     container = document.createElement('div')
     document.body.appendChild(container)
-    const source = 'Before\n\n![Generated](<Agent/images/example.png>)\n\nAfter'
-    const onCopySelection = vi.fn(() => true)
+    const source = '# Heading\n\nFirst paragraph.\n\nSecond **bold** paragraph.'
+    const onCopySelection = vi.fn((_markdown: string, clipboardData: DataTransfer | null) => {
+      clipboardData?.setData('text/html', '<article><h1>Heading</h1></article>')
+      return true
+    })
     let view: EditorView | null = null
 
     await renderEditor(source, vi.fn(), (nextView) => {
@@ -127,9 +130,11 @@ describe('DocumentEditor publishing copy', () => {
 
     editorView.contentDOM.dispatchEvent(copyEvent)
 
-    expect(onCopySelection).toHaveBeenCalledWith(source)
+    expect(onCopySelection).toHaveBeenCalledWith(source, (copyEvent as ClipboardEvent).clipboardData)
     expect(copyEvent.defaultPrevented).toBe(true)
+    expect(setData).toHaveBeenCalledWith('text/html', '<article><h1>Heading</h1></article>')
     expect(setData).toHaveBeenCalledWith('text/plain', source)
+    expect(setData).toHaveBeenCalledWith('text/markdown', source)
   })
 
   it('keeps a read-only document focusable so Mod-A selects the whole document', async () => {

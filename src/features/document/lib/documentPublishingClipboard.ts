@@ -8,14 +8,49 @@ export type DocumentPublishingClipboardContent = {
   text: string
 }
 
+const publishingElementStyles: ReadonlyArray<readonly [string, string]> = [
+  ['h1', 'margin: 0 0 0.7em; font-size: 2em; line-height: 1.25; font-weight: 700;'],
+  ['h2', 'margin: 1.4em 0 0.55em; font-size: 1.5em; line-height: 1.25; font-weight: 700;'],
+  ['h3', 'margin: 1.35em 0 0.5em; font-size: 1.25em; line-height: 1.3; font-weight: 700;'],
+  ['h4, h5, h6', 'margin: 1.25em 0 0.45em; line-height: 1.35; font-weight: 700;'],
+  ['p', 'margin: 0 0 1em;'],
+  ['ul, ol', 'margin: 0 0 1em; padding-left: 1.6em;'],
+  ['li', 'margin: 0.25em 0;'],
+  ['blockquote', 'margin: 0 0 1em; padding-left: 1em; border-left: 4px solid #e5e3df; color: #5d5b54;'],
+  ['pre', 'margin: 0 0 1em; padding: 1em; white-space: pre-wrap; background: #f6f5f4; border-radius: 8px;'],
+  ['table', 'width: 100%; margin: 0 0 1em; border-collapse: collapse;'],
+  ['th, td', 'padding: 0.5em 0.65em; border: 1px solid #e5e3df; text-align: left; vertical-align: top;'],
+  ['hr', 'margin: 1.5em 0; border: 0; border-top: 1px solid #e5e3df;'],
+  ['img', 'max-width: 100%; height: auto;'],
+]
+
+export function buildDocumentPublishingClipboardHtml(
+  markdown: string,
+  documentPath: string,
+): string {
+  const renderedHtml = resolveDocumentImageSources(markdownToHtml(markdown), documentPath)
+  const parsed = new DOMParser().parseFromString(`<article>${renderedHtml}</article>`, 'text/html')
+  const article = parsed.body.querySelector('article')
+  if (!article) {
+    return `<article>${renderedHtml}</article>`
+  }
+
+  article.setAttribute('style', 'line-height: 1.7;')
+  publishingElementStyles.forEach(([selector, style]) => {
+    article.querySelectorAll(selector).forEach((element) => {
+      element.setAttribute('style', style)
+    })
+  })
+  return article.outerHTML
+}
+
 export async function buildDocumentPublishingClipboardContent(
   markdown: string,
   documentPath: string,
 ): Promise<DocumentPublishingClipboardContent> {
-  const renderedHtml = resolveDocumentImageSources(markdownToHtml(markdown), documentPath)
-  const bodyHtml = await inlineMermaidBlocksInHtml(renderedHtml)
+  const html = buildDocumentPublishingClipboardHtml(markdown, documentPath)
   return {
-    html: `<article>${bodyHtml}</article>`,
+    html: await inlineMermaidBlocksInHtml(html),
     text: markdown,
   }
 }
@@ -23,8 +58,11 @@ export async function buildDocumentPublishingClipboardContent(
 export async function copyDocumentMarkdownForPublishing(
   markdown: string,
   documentPath: string,
+  initialHtml?: string,
 ) {
-  const content = await buildDocumentPublishingClipboardContent(markdown, documentPath)
+  const content = initialHtml
+    ? { html: await inlineMermaidBlocksInHtml(initialHtml), text: markdown }
+    : await buildDocumentPublishingClipboardContent(markdown, documentPath)
   const html = isDesktopRuntime()
     ? content.html
     : await inlineBrowserClipboardImages(content.html)

@@ -68,7 +68,9 @@ describe('KitionAccountPanel', () => {
     expect(container.textContent).toContain('Use Kition Cloud models')
     expect(container.textContent).toContain('No separate API key required')
     expect(container.querySelector('[data-testid="portal-account-button"]')).not.toBeNull()
-    expect(container.querySelector('.kition-account-panel__icon img')?.getAttribute('src')).toContain('logo-mark.png')
+    const logo = container.querySelector('.kition-account-panel__icon img')
+    expect(logo?.getAttribute('src')).toContain('logo-mark.png')
+    expect(logo?.classList.contains('size-full')).toBe(true)
   })
 
   it.each([

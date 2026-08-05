@@ -130,7 +130,7 @@ export function KitionAccountPanel() {
     >
       <header className="kition-account-panel__header">
         <div className="kition-account-panel__icon" aria-hidden="true">
-          {busy ? <LoaderCircle className="size-5 animate-spin" /> : <KitionLogoMark alt="" className="size-5" />}
+          {busy ? <LoaderCircle className="size-5 animate-spin" /> : <KitionLogoMark alt="" className="size-full" />}
         </div>
         <div className="min-w-0">
           <p className="kition-account-panel__eyebrow">{t('account.eyebrow')}</p>

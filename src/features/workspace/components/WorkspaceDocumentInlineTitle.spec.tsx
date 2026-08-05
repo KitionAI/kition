@@ -161,6 +161,43 @@ describe('WorkspaceDocumentInlineTitle', () => {
     expect(getDraftTitleSnapshot()).toEqual({ path: 'notes/a.md', draft: `orig${String.fromCodePoint(0x4f60)}` })
   })
 
+  it('does not commit or focus the editor when Enter confirms IME composition', async () => {
+    const onCommit = vi.fn()
+    const onFocusEditor = vi.fn()
+    await mount(createElement(WorkspaceDocumentInlineTitle, {
+      documentPath: 'notes/a.md',
+      value: 'orig',
+      onCommit,
+      onFocusEditor,
+    }))
+    const el = titleEl()
+    const composedTitle = `orig${String.fromCodePoint(0x4e2d)}`
+
+    await act(async () => {
+      el.focus()
+      el.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }))
+      el.textContent = composedTitle
+      el.dispatchEvent(new InputEvent('input', { bubbles: true }))
+      el.dispatchEvent(new KeyboardEvent('keydown', {
+        key: 'Enter',
+        bubbles: true,
+        cancelable: true,
+        isComposing: true,
+        keyCode: 229,
+      }))
+    })
+
+    expect(onCommit).not.toHaveBeenCalled()
+    expect(onFocusEditor).not.toHaveBeenCalled()
+    expect(document.activeElement).toBe(el)
+
+    await act(async () => {
+      el.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }))
+      await Promise.resolve()
+    })
+    expect(getDraftTitleSnapshot()).toEqual({ path: 'notes/a.md', draft: composedTitle })
+  })
+
   it('syncs value prop changes when not focused', async () => {
     let renderCount = 0
     const Wrapper = ({ value }: { value: string }) => {

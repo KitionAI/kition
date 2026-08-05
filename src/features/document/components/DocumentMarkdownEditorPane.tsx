@@ -60,6 +60,10 @@ import { clearVaultFileCache } from '@/features/document/editor/vault/vault-file
 import { writeWorkspaceDocument } from '@/services/desktop'
 import { DocumentEditorToolbar } from '@/features/document/editor/editor/DocumentEditorToolbar'
 import { DocumentTitleHostPortal } from '@/features/document/components/DocumentTitleHostPortal'
+import {
+  buildDocumentPublishingClipboardHtml,
+  copyDocumentMarkdownForPublishing,
+} from '@/features/document/lib/documentPublishingClipboard'
 import { notify } from '@/lib/notify'
 import { cn } from '@/lib/utils'
 
@@ -345,19 +349,28 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
     setCursorLine(view.state.doc.lineAt(view.state.selection.main.head).number)
   }, [])
 
-  const handleCopySelection = useCallback((markdown: string) => {
+  const handleCopySelection = useCallback((markdown: string, clipboardData: DataTransfer | null) => {
     const containsMarkdownImage = /!\[[^\]]*]\(\s*(?:<[^>\r\n]+>|[^)\r\n]+)\s*\)/m.test(markdown)
     const containsHtmlImage = /<img\b[^>]*\bsrc\s*=/i.test(markdown)
-    if (!containsMarkdownImage && !containsHtmlImage) {
-      return false
+    const containsMermaid = /```mermaid(?:\s|$)/i.test(markdown)
+    const html = buildDocumentPublishingClipboardHtml(markdown, documentPath)
+    clipboardData?.setData('text/html', html)
+
+    if (!containsMarkdownImage && !containsHtmlImage && !containsMermaid) {
+      return Boolean(clipboardData)
     }
 
-    void import('@/features/document/lib/documentPublishingClipboard')
-      .then(({ copyDocumentMarkdownForPublishing }) => (
-        copyDocumentMarkdownForPublishing(markdown, documentPath)
-      ))
-      .then(() => notify.success(td('publishingClipboard.copied')))
-      .catch(() => notify.error(td('publishingClipboard.failed')))
+    void copyDocumentMarkdownForPublishing(markdown, documentPath, html)
+      .then(() => {
+        if (containsMarkdownImage || containsHtmlImage) {
+          notify.success(td('publishingClipboard.copied'))
+        }
+      })
+      .catch(() => {
+        if (containsMarkdownImage || containsHtmlImage) {
+          notify.error(td('publishingClipboard.failed'))
+        }
+      })
     return true
   }, [documentPath, td])
 

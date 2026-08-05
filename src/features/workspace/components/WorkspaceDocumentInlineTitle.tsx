@@ -126,6 +126,11 @@ export function WorkspaceDocumentInlineTitle({
       }}
       onBlur={commit}
       onKeyDown={(event) => {
+        event.stopPropagation()
+        const nativeEvent = event.nativeEvent
+        if (composingRef.current || nativeEvent.isComposing || nativeEvent.keyCode === 229) {
+          return
+        }
         if (event.key === 'Enter') {
           event.preventDefault()
           commit()

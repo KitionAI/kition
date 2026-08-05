@@ -904,6 +904,13 @@ test.describe('app shell navigation', () => {
     await profileNavButton.click()
 
     await expect(page.getByTestId('portal-profile-page')).toBeVisible()
+    const accountLogoFrame = await page.locator('.kition-account-panel__icon').boundingBox()
+    const accountLogo = await page.locator('.kition-account-panel__icon img').boundingBox()
+    expect(accountLogoFrame).not.toBeNull()
+    expect(accountLogo).not.toBeNull()
+    expect(accountLogoFrame!.width).toBeCloseTo(48, 0)
+    expect(accountLogo!.width).toBeCloseTo(accountLogoFrame!.width, 1)
+    expect(accountLogo!.height).toBeCloseTo(accountLogoFrame!.height, 1)
     const portalButton = page.getByTestId('portal-account-button')
     await expect(portalButton).toHaveText('Sign in to Kition')
 

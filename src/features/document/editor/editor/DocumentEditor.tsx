@@ -172,7 +172,7 @@ export type DocumentEditorProps = {
   onEmbedNavigate?: (target: string, section?: string) => void
   onCreateEditor?: (view: EditorView) => void
   /** Return true to replace the native copy for the selected Markdown. */
-  onCopySelection?: (markdown: string) => boolean
+  onCopySelection?: (markdown: string, clipboardData: DataTransfer | null) => boolean
   /**
    * Extensions composed by the consuming pane; spread after every built-in
    * except `editorTheme`, which stays last so the base styles anchor the cascade.
@@ -242,11 +242,12 @@ export const DocumentEditor = forwardRef<ReactCodeMirrorRef, DocumentEditorProps
                   .filter((range) => !range.empty)
                   .map((range) => view.state.doc.sliceString(range.from, range.to))
                   .join('\n')
-                if (!selectedMarkdown || !onCopySelection(selectedMarkdown)) {
+                if (!selectedMarkdown || !onCopySelection(selectedMarkdown, event.clipboardData)) {
                   return false
                 }
                 event.preventDefault()
                 event.clipboardData?.setData('text/plain', selectedMarkdown)
+                event.clipboardData?.setData('text/markdown', selectedMarkdown)
                 return true
               },
             })]

@@ -110,6 +110,38 @@ test('click title → type → Enter commits and moves focus to cm-content', asy
   expect(focused).toBe(true)
 })
 
+test('IME Enter in the title does not move composition text into the document body', async ({ page }) => {
+  await mockLocalWorkspaceApi(page)
+  await mockDesktop(page)
+  await page.setViewportSize({ width: 1400, height: 900 })
+  await page.goto('/document')
+  const title = page.locator('[data-testid="workspace-document-inline-title"]')
+  const editorContent = page.locator('.document-editor .cm-content')
+  await title.waitFor({ timeout: 10_000 })
+
+  const composedTitle = String.fromCodePoint(0x4e2d, 0x6587)
+  await title.click()
+  await title.evaluate((element, nextTitle) => {
+    const titleElement = element as HTMLElement
+    titleElement.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }))
+    titleElement.textContent = nextTitle
+    titleElement.dispatchEvent(new InputEvent('input', { bubbles: true }))
+    titleElement.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'Enter',
+      bubbles: true,
+      cancelable: true,
+      isComposing: true,
+      keyCode: 229,
+    }))
+    titleElement.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }))
+  }, composedTitle)
+
+  await expect(title).toHaveText(composedTitle)
+  await expect(editorContent).toContainText('body after image')
+  await expect(editorContent).not.toContainText(composedTitle)
+  await expect(title).toBeFocused()
+})
+
 test('Escape restores the previous title without committing', async ({ page }) => {
   await mockLocalWorkspaceApi(page)
   await mockDesktop(page)

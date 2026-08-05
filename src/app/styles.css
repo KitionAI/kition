@@ -797,9 +797,7 @@
   }
 
   .kition-account-panel__icon {
-    @apply grid size-10 shrink-0 place-items-center rounded-lg text-primary-foreground;
-    background: hsl(var(--primary));
-    box-shadow: 0 8px 20px hsl(var(--primary) / 0.2);
+    @apply grid size-12 shrink-0 place-items-center text-primary;
   }
 
   .kition-account-panel__eyebrow {
@@ -9315,8 +9313,8 @@
   }
 
   .settings-account-pane .kition-account-panel__icon {
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
   }
 
   .settings-account-pane .kition-account-identity {
