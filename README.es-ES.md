@@ -45,7 +45,24 @@ Kition reúne documentos Markdown, tablas estructuradas, un agente de IA capaz d
 - **Documentos conectados.** Markdown con vista previa, enlaces internos, backlinks, código, matemáticas, diagramas, notas diarias, búsqueda y exportación.
 - **Datos estructurados junto al conocimiento.** Campos tipados, fórmulas, filtros, grupos, vistas, adjuntos y campos de IA.
 - **Un agente que puede actuar.** Investiga en el navegador, lee y actualiza documentos y tablas, y guarda resultados en el proyecto.
+- **Cambios de documentos revisables.** Deja que el agente edite el documento activo, revisa cada adición y eliminación, y acepta o rechaza los cambios de forma individual.
 - **Automatización visible.** Combina disparadores y acciones, prueba pasos y revisa el historial de ejecución.
+
+## Deja que el agente edite sin perder el control
+
+En lugar de devolver otra sugerencia para copiar y pegar, el agente de Kition puede leer el documento Markdown activo, realizar cambios concretos y escribir el resultado de nuevo en el espacio de trabajo. El documento y el historial completo de la tarea permanecen visibles mientras el agente trabaja.
+
+<p align="center">
+  <img src="docs/readme/agent-document-edit.webp" alt="El agente de IA de código abierto Kition lee y edita el documento Markdown activo junto al registro visible de ejecución de herramientas" width="100%" />
+</p>
+
+Cuando un archivo cambia fuera del editor, Kition abre una vista de revisión que resalta las adiciones, eliminaciones y reescrituras. Cada cambio se puede aceptar o rechazar por separado, o toda la edición se puede revisar como un único conjunto.
+
+<p align="center">
+  <img src="docs/readme/agent-document-diff-review.webp" alt="Revisión de diferencias de documentos en Kition con adiciones y eliminaciones de la IA y controles para aceptar o rechazar cada cambio" width="100%" />
+</p>
+
+Así se crea un flujo documental controlado: describe el objetivo en lenguaje natural, deja que el agente edite el archivo real, revisa las diferencias y decide exactamente qué permanece en el documento final.
 
 ## Empieza con el trabajo, no con un mensaje vacío
 

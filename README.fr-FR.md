@@ -45,7 +45,24 @@ Kition réunit des documents Markdown, des tableaux structurés, un agent IA cap
 - **Documents reliés.** Markdown avec aperçu en direct, liens internes, backlinks, code, mathématiques, diagrammes, notes quotidiennes, recherche et export.
 - **Données structurées à côté des connaissances.** Champs typés, formules, filtres, groupes, vues, pièces jointes et champs IA.
 - **Un agent qui peut agir.** Il recherche dans le navigateur, lit et modifie les documents et tableaux, puis enregistre les résultats dans le projet.
+- **Modifications de documents contrôlables.** Laissez l’agent modifier le document actif, examinez chaque ajout et suppression, puis acceptez ou refusez les changements individuellement.
 - **Automatisation visible.** Assemblez des déclencheurs et des actions, testez les étapes et consultez l’historique d’exécution.
+
+## Laissez l’agent modifier, gardez le dernier mot
+
+Au lieu de renvoyer une nouvelle suggestion à copier-coller, l’agent Kition peut lire le document Markdown actif, effectuer des changements ciblés et réécrire le résultat dans l’espace de travail. Le document et le déroulement complet de la tâche restent visibles pendant son intervention.
+
+<p align="center">
+  <img src="docs/readme/agent-document-edit.webp" alt="L’agent IA open source Kition lit et modifie le document Markdown actif à côté de la trace visible d’exécution des outils" width="100%" />
+</p>
+
+Lorsqu’un fichier change en dehors de l’éditeur, Kition ouvre une interface de révision qui met en évidence les ajouts, les suppressions et les réécritures. Chaque changement peut être accepté ou refusé séparément, ou l’ensemble de la modification peut être examiné en une seule fois.
+
+<p align="center">
+  <img src="docs/readme/agent-document-diff-review.webp" alt="Révision des différences d’un document dans Kition avec les ajouts et suppressions de l’IA et les commandes pour accepter ou refuser chaque changement" width="100%" />
+</p>
+
+Le travail documentaire devient ainsi contrôlable : décrivez l’objectif en langage naturel, laissez l’agent modifier le vrai fichier, examinez les différences et décidez précisément de ce qui restera dans le document final.
 
 ## Commencez par le travail, pas par une invite vide
 

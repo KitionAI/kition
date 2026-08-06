@@ -45,7 +45,24 @@ Kition kết hợp tài liệu Markdown, bảng có cấu trúc, tác nhân AI c
 - **Tài liệu liên kết.** Markdown với xem trước trực tiếp, liên kết nội bộ, backlink, mã, công thức, sơ đồ, ghi chú hằng ngày, tìm kiếm và xuất tệp.
 - **Dữ liệu có cấu trúc bên cạnh tri thức.** Trường có kiểu, công thức, bộ lọc, nhóm, chế độ xem, tệp đính kèm và trường AI.
 - **Tác nhân có thể hành động.** Nghiên cứu trong trình duyệt, đọc và cập nhật tài liệu hoặc bảng, rồi lưu kết quả vào dự án.
+- **Chỉnh sửa tài liệu có thể xem xét.** Cho phép tác nhân sửa tài liệu đang mở, kiểm tra từng phần thêm hoặc xóa, rồi chấp nhận hay từ chối từng thay đổi.
 - **Tự động hóa có thể quan sát.** Ghép trình kích hoạt với hành động, kiểm thử từng bước và xem lịch sử chạy.
+
+## Để tác nhân chỉnh sửa — bạn vẫn là người quyết định
+
+Tác nhân Kition không chỉ trả về một gợi ý cần sao chép và dán. Nó có thể đọc tài liệu Markdown đang mở, thực hiện các thay đổi đúng phạm vi và ghi kết quả trở lại không gian làm việc. Tài liệu cùng toàn bộ quá trình thực hiện tác vụ vẫn hiển thị trong khi tác nhân làm việc.
+
+<p align="center">
+  <img src="docs/readme/agent-document-edit.webp" alt="Tác nhân AI mã nguồn mở Kition đọc và chỉnh sửa tài liệu Markdown đang mở bên cạnh nhật ký thực thi công cụ" width="100%" />
+</p>
+
+Khi tệp được thay đổi bên ngoài trình chỉnh sửa, Kition mở giao diện xem xét tài liệu, làm nổi bật nội dung thêm, xóa và viết lại. Bạn có thể chấp nhận hoặc từ chối từng thay đổi, hoặc xem xét toàn bộ lần chỉnh sửa cùng lúc.
+
+<p align="center">
+  <img src="docs/readme/agent-document-diff-review.webp" alt="Giao diện xem xét khác biệt tài liệu của Kition hiển thị phần AI thêm và xóa cùng nút chấp nhận hoặc từ chối từng thay đổi" width="100%" />
+</p>
+
+Quy trình tài liệu trở nên có kiểm soát: mô tả mục tiêu bằng ngôn ngữ tự nhiên, để tác nhân sửa tệp thật, xem lại phần khác biệt và quyết định chính xác nội dung nào được giữ trong tài liệu cuối cùng.
 
 ## Bắt đầu từ công việc, không phải lời nhắc trống
 

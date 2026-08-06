@@ -60,8 +60,33 @@ repeat without handing context between disconnected tools.
   typed records, formulas, filters, groups, views, attachments, and AI fields.
 - **An Agent that can act.** Research in browser tabs, inspect documents and
   table schemas, update content, and save useful output into the active project.
+- **Reviewable document edits.** Let the Agent edit the active document, inspect
+  every addition and deletion, then accept or reject individual changes.
 - **Visible automation.** Assemble trigger-and-action workflows, test steps,
   inspect run history, and resolve missing inputs before enabling a process.
+
+## Let the Agent Edit—Keep the Final Say
+
+Instead of returning another suggestion to copy and paste, the Kition Agent can
+read the active Markdown document, make scoped changes, and write the result
+back into the workspace. The document and the complete task trace remain
+visible together while the Agent works.
+
+<p align="center">
+  <img src="docs/readme/agent-document-edit.webp" alt="Kition open source AI Agent reading and editing the active Markdown document beside a visible tool execution trace" width="100%" />
+</p>
+
+When a file changes outside the editor, Kition opens a document review surface
+that highlights additions, deletions, and rewrites. Each change can be accepted
+or rejected individually, or the complete edit can be reviewed as one set.
+
+<p align="center">
+  <img src="docs/readme/agent-document-diff-review.webp" alt="Kition document diff review showing AI additions and deletions with controls to accept or reject each change" width="100%" />
+</p>
+
+This creates a controlled document workflow: describe the goal in natural
+language, let the Agent edit the real file, inspect the diff, and decide exactly
+what remains in the final document.
 
 ## Start With Work, Not a Blank Prompt
 

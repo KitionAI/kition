@@ -45,7 +45,24 @@ Kition vereint Markdown-Dokumente, strukturierte Tabellen, einen werkzeugfähige
 - **Vernetzte Dokumente.** Markdown mit Live-Vorschau, internen Links, Backlinks, Code, Mathematik, Diagrammen, täglichen Notizen, Suche und Export.
 - **Strukturierte Daten neben dem Wissen.** Typisierte Felder, Formeln, Filter, Gruppen, Ansichten, Anhänge und KI-Felder.
 - **Ein Agent, der handeln kann.** Er recherchiert im Browser, liest und aktualisiert Dokumente und Tabellen und speichert Ergebnisse im Projekt.
+- **Prüfbare Dokumentänderungen.** Lassen Sie den Agenten das aktive Dokument bearbeiten, prüfen Sie jede Ergänzung und Löschung und nehmen Sie einzelne Änderungen an oder lehnen Sie sie ab.
 - **Sichtbare Automatisierung.** Kombinieren Sie Auslöser und Aktionen, testen Sie Schritte und prüfen Sie den Ausführungsverlauf.
+
+## Den Agenten bearbeiten lassen – die Entscheidung bleibt bei Ihnen
+
+Statt einen weiteren Vorschlag zum Kopieren und Einfügen zurückzugeben, kann der Kition-Agent das aktive Markdown-Dokument lesen, gezielte Änderungen vornehmen und das Ergebnis in den Arbeitsbereich zurückschreiben. Dokument und vollständiger Aufgabenverlauf bleiben während der Bearbeitung gemeinsam sichtbar.
+
+<p align="center">
+  <img src="docs/readme/agent-document-edit.webp" alt="Der quelloffene Kition-KI-Agent liest und bearbeitet das aktive Markdown-Dokument neben der sichtbaren Werkzeugausführung" width="100%" />
+</p>
+
+Wenn eine Datei außerhalb des Editors geändert wird, öffnet Kition eine Dokumentprüfung, die Ergänzungen, Löschungen und umgeschriebene Stellen hervorhebt. Jede Änderung lässt sich einzeln annehmen oder ablehnen; alternativ kann die gesamte Bearbeitung als Einheit geprüft werden.
+
+<p align="center">
+  <img src="docs/readme/agent-document-diff-review.webp" alt="Kition-Dokumentvergleich mit KI-Ergänzungen und Löschungen sowie Steuerelementen zum Annehmen oder Ablehnen jeder Änderung" width="100%" />
+</p>
+
+So entsteht ein kontrollierter Dokumentablauf: Beschreiben Sie das Ziel in natürlicher Sprache, lassen Sie den Agenten die echte Datei bearbeiten, prüfen Sie den Unterschied und entscheiden Sie genau, was im endgültigen Dokument verbleibt.
 
 ## Mit der Arbeit beginnen, nicht mit einer leeren Eingabe
 
