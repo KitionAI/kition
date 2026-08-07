@@ -3913,6 +3913,19 @@
     @apply bg-accent/70 text-foreground;
   }
 
+  .agent-ai-hosted-search-status {
+    @apply flex h-7 shrink-0 items-center gap-1.5 rounded-md border px-2 text-xs font-medium;
+    border-color: var(--document-border, hsl(var(--border)));
+  }
+
+  .agent-ai-hosted-search-status.is-available {
+    @apply border-primary/20 bg-primary/10 text-primary;
+  }
+
+  .agent-ai-hosted-search-status.is-unavailable {
+    @apply bg-muted/40 text-muted-foreground;
+  }
+
   .agent-changed-files {
     @apply pointer-events-auto relative z-[1] overflow-hidden rounded-xl border bg-card;
     border-color: var(--document-border, hsl(var(--border)));

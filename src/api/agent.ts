@@ -136,6 +136,17 @@ export type AgentToolCall = {
   updated_at: string
 }
 
+export type AgentToolAvailability = {
+  available: boolean
+  reason: string
+}
+
+export type AgentTurnCapabilities = {
+  available_tools: string[]
+  hosted_web_search: AgentToolAvailability
+  browser_search: AgentToolAvailability
+}
+
 export type AgentEvent = {
   id: number
   session_id: number
@@ -148,7 +159,10 @@ export type AgentEvent = {
   status?: 'pending' | 'running' | 'completed' | 'failed' | string
   label?: string
   message?: string
-  data?: any
+  data?: {
+    turn_capabilities?: AgentTurnCapabilities
+    [key: string]: any
+  }
   created_at: string
 }
 

@@ -338,17 +338,120 @@ test('workspace chat can auto-open saved docs and target @{mentions} without a b
         return
       }
 
+      if (streamRequestCount === 2) {
+        await fulfillNdjson(route, [
+          {
+            type: 'user_message',
+            chat_message: {
+              id: 9911,
+              session_id: 901,
+              user_id: 1,
+              role: 'user',
+              content: `Use @{${createdDocs.mentionPath}} and summarize it`,
+              status: 'completed',
+              created_at: now,
+            },
+          },
+          {
+            type: 'done',
+            done: true,
+            extra_data: {
+              message: {
+                id: 9912,
+                session_id: 901,
+                user_id: 1,
+                role: 'assistant',
+                content: `Summarized the referenced \`${createdDocs.mentionPath}\` document.`,
+                status: 'completed',
+                created_at: now,
+              },
+              session: {
+                id: streamSessionId,
+                user_id: 1,
+                title: 'Chat',
+                workspace_root: 'browser-local-workspace',
+                active_document_path: createdDocs.artifactPath,
+                status: 'completed',
+                created_at: now,
+                updated_at: now,
+              },
+            },
+          },
+        ])
+        return
+      }
+
       await fulfillNdjson(route, [
         {
           type: 'user_message',
           chat_message: {
-            id: 9911,
+            id: 9921,
             session_id: 901,
             user_id: 1,
             role: 'user',
-            content: `Use @{${createdDocs.mentionPath}} and summarize it`,
+            content: 'Search the web for current admissions guidance, cite sources, and update this document',
             status: 'completed',
             created_at: now,
+          },
+        },
+        {
+          type: 'agent_event',
+          event: {
+            id: 9922,
+            session_id: 901,
+            user_id: 1,
+            event_type: 'prompt.sent',
+            stage: 'intent',
+            status: 'completed',
+            label: 'Send model request',
+            message: 'Sent the user goal, session context, and available tools to the model',
+            data: {
+              model_id: 'openai:gpt-test',
+              turn_capabilities: {
+                available_tools: ['apply_patch', 'document_read', 'web_search'],
+                hosted_web_search: { available: true, reason: 'available' },
+                browser_search: { available: false, reason: 'browser_disabled' },
+              },
+            },
+            created_at: now,
+          },
+        },
+        {
+          type: 'tool_call',
+          tool_call: {
+            id: 9923,
+            session_id: 901,
+            message_id: 9921,
+            user_id: 1,
+            tool_name: 'web_search',
+            input_data: { query: 'current university admissions guidance' },
+            output_data: {
+              query: 'current university admissions guidance',
+              results: [{
+                title: 'Official admissions source',
+                url: 'https://example.edu/admissions',
+              }],
+            },
+            status: 'completed',
+            created_at: now,
+            updated_at: now,
+          },
+        },
+        {
+          type: 'tool_call',
+          tool_call: {
+            id: 9924,
+            session_id: 901,
+            message_id: 9921,
+            user_id: 1,
+            tool_name: 'apply_patch',
+            input_data: { path: createdDocs.mentionPath },
+            output_data: {
+              file_ops: [{ kind: 'update', path: createdDocs.mentionPath }],
+            },
+            status: 'completed',
+            created_at: now,
+            updated_at: now,
           },
         },
         {
@@ -356,11 +459,11 @@ test('workspace chat can auto-open saved docs and target @{mentions} without a b
           done: true,
           extra_data: {
             message: {
-              id: 9912,
+              id: 9925,
               session_id: 901,
               user_id: 1,
               role: 'assistant',
-              content: `Summarized the referenced \`${createdDocs.mentionPath}\` document.`,
+              content: 'Updated the active document with current guidance. Source: [Official admissions source](https://example.edu/admissions).',
               status: 'completed',
               created_at: now,
             },
@@ -369,7 +472,7 @@ test('workspace chat can auto-open saved docs and target @{mentions} without a b
               user_id: 1,
               title: 'Chat',
               workspace_root: 'browser-local-workspace',
-              active_document_path: createdDocs.artifactPath,
+              active_document_path: createdDocs.mentionPath,
               status: 'completed',
               created_at: now,
               updated_at: now,
@@ -408,10 +511,10 @@ test('workspace chat can auto-open saved docs and target @{mentions} without a b
     await expect(page.locator('.agent-artifact').filter({ hasText: artifactTitle })).toBeVisible()
 
     expect(requestBodies[0]).toMatchObject({
-      active_document_path: '',
+      active_document_path: createdDocs.mentionPath,
       active_data_document_id: 0,
       active_data_table_id: 0,
-      save_markdown: true,
+      save_markdown: false,
     })
 
     await composer.fill(`Use @{${createdDocs.mentionPath}} and summarize it`)
@@ -419,23 +522,10 @@ test('workspace chat can auto-open saved docs and target @{mentions} without a b
 
     await expect(userMessages).toHaveCount(2)
     await expect(
-      userMessages.nth(1).getByRole('button', {
-        name: `@${createdDocs.mentionPath}`,
-        exact: true,
-      }),
-    ).toBeVisible()
-    await expect(
       assistantMessages.nth(1).getByRole('button', {
         name: createdDocs.mentionPath,
         exact: true,
       }),
-    ).toBeVisible()
-    await userMessages.nth(1).getByRole('button', {
-      name: `@${createdDocs.mentionPath}`,
-      exact: true,
-    }).click()
-    await expect(
-      page.locator('.document-tab.is-active').filter({ hasText: mentionTitle }),
     ).toBeVisible()
     await assistantMessages.nth(1).getByRole('button', {
       name: createdDocs.mentionPath,
@@ -452,6 +542,25 @@ test('workspace chat can auto-open saved docs and target @{mentions} without a b
       save_markdown: false,
     })
     expect(String(requestBodies[1].prompt_context || '')).toContain(createdDocs.mentionPath)
+
+    await composer.fill('Search the web for current admissions guidance, cite sources, and update this document')
+    await sendButton.click()
+
+    await expect(userMessages).toHaveCount(3)
+    await expect(assistantMessages.nth(2)).toContainText('Official admissions source')
+    await expect(page.getByTestId('agent-hosted-web-search-status')).toHaveAttribute('data-state', 'available')
+    await expect(page.locator('.agent-changed-file').filter({ hasText: mentionTitle })).toBeVisible()
+    expect(requestBodies[2]).toMatchObject({
+      active_document_path: createdDocs.mentionPath,
+      active_data_document_id: 0,
+      active_data_table_id: 0,
+      runtime_model: {
+        provider_type: 'openai',
+        model_name: 'gpt-test',
+        wire_api: 'responses',
+      },
+    })
+    expect(typeof requestBodies[2].browser_enabled).toBe('boolean')
   } finally {
     await app.close()
     await fs.rm(tempHome, { recursive: true, force: true })

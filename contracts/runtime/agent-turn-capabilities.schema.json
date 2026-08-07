@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kition.ai/contracts/runtime/agent-turn-capabilities.schema.json",
+  "title": "Kition Agent Turn Capabilities",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "available_tools",
+    "hosted_web_search",
+    "browser_search"
+  ],
+  "properties": {
+    "available_tools": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "uniqueItems": true
+    },
+    "hosted_web_search": {
+      "$ref": "#/$defs/toolAvailability"
+    },
+    "browser_search": {
+      "$ref": "#/$defs/toolAvailability"
+    }
+  },
+  "$defs": {
+    "toolAvailability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "available",
+        "reason"
+      ],
+      "properties": {
+        "available": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        }
+      }
+    }
+  }
+}

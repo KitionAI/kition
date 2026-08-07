@@ -55,6 +55,10 @@ import { resolveAgentImageURL } from '@/services/workspaceFiles'
 import {
   type AgentModelOption,
 } from '@/features/agent/lib/agentConfig'
+import {
+  readLatestAgentTurnCapabilities,
+  resolveAgentHostedWebSearchState,
+} from '@/features/agent/lib/agentTurnCapabilities'
 import { PlanCard, readLatestPlanSnapshot } from '@/features/agent/components/PlanCard'
 import {
   AwaitUserInputModal,
@@ -152,6 +156,11 @@ export function AgentChatPanel({
   const hostedAccountBlocked = Boolean(hostedAccountStatus && !isKitionAccountUsable(hostedAccountStatus))
   const hostedAccountCreditsEmpty = hostedAccountStatus === 'credits_empty'
   const canSend = draft.trim().length > 0 && !busy && !hostedAccountBusy && !hostedAccountCreditsEmpty
+  const selectedModel = modelOptions.find((option) => option.key === selectedModelKey) || null
+  const hostedWebSearchState = resolveAgentHostedWebSearchState({
+    capabilities: readLatestAgentTurnCapabilities(events, selectedModelKey),
+    model: selectedModel,
+  })
 
   function handleKeyDown(event: ReactKeyboardEvent<HTMLTextAreaElement>) {
     const nativeEvent = event.nativeEvent as KeyboardEvent
@@ -286,6 +295,7 @@ export function AgentChatPanel({
           hostedAccountStatus={hostedAccountStatus}
           selectedModelKey={selectedModelKey}
           browserEnabled={browserEnabled}
+          hostedWebSearchState={hostedWebSearchState}
           onConfigureModel={onConfigureModel}
           onHostedAccountConnect={onHostedAccountConnect}
           onHostedAccountCancel={onHostedAccountCancel}

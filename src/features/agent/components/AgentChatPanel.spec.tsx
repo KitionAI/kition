@@ -141,6 +141,78 @@ describe('AgentChatPanel progressCard slot', () => {
   })
 })
 
+describe('AgentChatPanel hosted web search status', () => {
+  beforeEach(async () => {
+    await unmount()
+  })
+
+  it('shows model-supported hosted web search before the first turn', async () => {
+    const modelOption = {
+      key: 'kition_console:gpt-test',
+      providerKind: 'kition_console',
+      providerLabel: 'Kition Cloud',
+      modelName: 'gpt-test',
+      runtimeModel: {
+        provider_type: 'kition_console',
+        provider_label: 'Kition Cloud',
+        model_name: 'gpt-test',
+        base_url: '',
+        api_key: '',
+        wire_api: 'responses',
+      },
+    }
+
+    await mount(createElement(AgentChatPanel, makeMinimalProps({
+      modelOptions: [modelOption],
+      selectedModelKey: modelOption.key,
+    })))
+
+    expect(container.querySelector('[data-testid="agent-hosted-web-search-status"]')?.getAttribute('data-state'))
+      .toBe('available')
+  })
+
+  it('uses the runtime turn result over model inference', async () => {
+    const modelOption = {
+      key: 'openai:gpt-test',
+      providerKind: 'openai',
+      providerLabel: 'OpenAI',
+      modelName: 'gpt-test',
+      runtimeModel: {
+        provider_type: 'openai',
+        provider_label: 'OpenAI',
+        model_name: 'gpt-test',
+        base_url: '',
+        api_key: '',
+        wire_api: 'responses',
+      },
+    }
+    const events = [{
+      id: 1,
+      session_id: 1,
+      user_id: 1,
+      event_type: 'prompt.sent',
+      data: {
+        turn_capabilities: {
+          available_tools: ['document_read'],
+          hosted_web_search: { available: false, reason: 'task_mode_restricted' },
+          browser_search: { available: false, reason: 'browser_disabled' },
+        },
+      },
+      created_at: new Date().toISOString(),
+    }]
+
+    await mount(createElement(AgentChatPanel, makeMinimalProps({
+      events,
+      modelOptions: [modelOption],
+      selectedModelKey: modelOption.key,
+    })))
+
+    const status = container.querySelector('[data-testid="agent-hosted-web-search-status"]')
+    expect(status?.getAttribute('data-state')).toBe('unavailable')
+    expect(status?.getAttribute('title')).toContain('task mode')
+  })
+})
+
 describe('AgentChatPanel changed files', () => {
   beforeEach(async () => {
     await unmount()
