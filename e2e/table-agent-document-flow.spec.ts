@@ -549,7 +549,10 @@ test('workspace chat can auto-open saved docs and target @{mentions} without a b
     await expect(userMessages).toHaveCount(3)
     await expect(assistantMessages.nth(2)).toContainText('Official admissions source')
     await expect(page.getByTestId('agent-hosted-web-search-status')).toHaveAttribute('data-state', 'available')
-    await expect(page.locator('.agent-changed-file').filter({ hasText: mentionTitle })).toBeVisible()
+    const changedFilesCard = page.locator('.agent-changed-files').filter({ hasText: mentionTitle })
+    await expect(changedFilesCard).toBeVisible()
+    await changedFilesCard.locator('.agent-changed-files-head').click()
+    await expect(changedFilesCard.locator('.agent-changed-file').filter({ hasText: mentionTitle })).toBeVisible()
     expect(requestBodies[2]).toMatchObject({
       active_document_path: createdDocs.mentionPath,
       active_data_document_id: 0,
