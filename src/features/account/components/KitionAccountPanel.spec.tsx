@@ -73,6 +73,21 @@ describe('KitionAccountPanel', () => {
     expect(logo?.classList.contains('size-full')).toBe(true)
   })
 
+  it('keeps account credentials on the hosted authorization page', async () => {
+    await mount()
+
+    expect(container.querySelector('input[type="password"]')).toBeNull()
+    expect(container.querySelector('input[type="email"]')).toBeNull()
+
+    await act(async () => {
+      const button = container.querySelector('[data-testid="portal-account-button"]') as HTMLButtonElement
+      button.click()
+      await Promise.resolve()
+    })
+
+    expect(accountMock.current.ensureReady).toHaveBeenCalledTimes(1)
+  })
+
   it.each([
     ['loading', 'Checking account', true],
     ['expired', 'Sign in again', false],
