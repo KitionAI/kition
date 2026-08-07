@@ -3932,8 +3932,28 @@
   }
 
   .agent-changed-files-head {
-    @apply flex items-center gap-1.5 border-b px-3 py-2 text-xs font-medium text-muted-foreground;
+    @apply flex cursor-pointer list-none items-center gap-1.5 border-b px-3 py-2 text-xs font-medium text-muted-foreground outline-none transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/35;
     border-bottom-color: var(--document-border, hsl(var(--border)));
+  }
+
+  .agent-changed-files-head::-webkit-details-marker {
+    display: none;
+  }
+
+  .agent-changed-files-head::marker {
+    content: '';
+  }
+
+  .agent-changed-files:not([open]) .agent-changed-files-head {
+    border-bottom-color: transparent;
+  }
+
+  .agent-changed-files-chevron {
+    @apply transition-transform;
+  }
+
+  .agent-changed-files[open] .agent-changed-files-chevron {
+    transform: rotate(90deg);
   }
 
   .agent-changed-files-list {

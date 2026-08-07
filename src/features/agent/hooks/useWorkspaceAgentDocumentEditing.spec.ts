@@ -195,4 +195,77 @@ describe('useWorkspaceAgent document editing reliability', () => {
     expect(onWorkspaceDocumentsModified).toHaveBeenCalledWith(['Docs/Article.md'], 21)
     await harness.unmount()
   })
+
+  it('publishes a created kitable path so the workspace tree refreshes immediately', async () => {
+    const onWorkspaceDocumentsModified = vi.fn()
+    const onTableMutated = vi.fn()
+    mocks.streamAgentMessage.mockImplementation(async ({ onEvent }: any) => {
+      onEvent?.({
+        type: 'tool_call',
+        tool_call: {
+          id: 92,
+          session_id: 22,
+          user_id: 1,
+          tool_name: 'data_table_create',
+          status: 'completed',
+          input_data: {},
+          output_data: {
+            path: 'Admissions/Low-threshold samples.kitable',
+            document_id: 42,
+            table_id: 7,
+          },
+          created_at: '2026-08-04T00:00:00.000Z',
+          updated_at: '2026-08-04T00:00:01.000Z',
+        },
+      })
+      return { extra_data: {} }
+    })
+    const harness = await mountAgent({ onWorkspaceDocumentsModified, onTableMutated })
+
+    await act(async () => harness.getLatest().setAgentDraft(22, 'Create a structured table'))
+    await act(async () => {
+      harness.getLatest().sendAiComposerMessage(22)
+      await flushAsyncWork()
+    })
+
+    expect(Array.from(harness.getLatest().agentModifiedDocumentPaths)).toEqual([
+      'Admissions/Low-threshold samples.kitable',
+    ])
+    expect(onWorkspaceDocumentsModified).toHaveBeenCalledWith([
+      'Admissions/Low-threshold samples.kitable',
+    ], 22)
+    expect(onTableMutated).toHaveBeenCalledTimes(1)
+    await harness.unmount()
+  })
+
+  it('still refreshes the workspace tree when table creation omits its path', async () => {
+    const onWorkspaceArtifactsSaved = vi.fn()
+    mocks.streamAgentMessage.mockImplementation(async ({ onEvent }: any) => {
+      onEvent?.({
+        type: 'tool_call',
+        tool_call: {
+          id: 93,
+          session_id: 23,
+          user_id: 1,
+          tool_name: 'data_table_create',
+          status: 'completed',
+          input_data: { title: 'Low-threshold samples' },
+          output_data: { document_id: 42, table_id: 7 },
+          created_at: '2026-08-04T00:00:00.000Z',
+          updated_at: '2026-08-04T00:00:01.000Z',
+        },
+      })
+      return { extra_data: {} }
+    })
+    const harness = await mountAgent({ onWorkspaceArtifactsSaved })
+
+    await act(async () => harness.getLatest().setAgentDraft(23, 'Create a structured table'))
+    await act(async () => {
+      harness.getLatest().sendAiComposerMessage(23)
+      await flushAsyncWork()
+    })
+
+    expect(onWorkspaceArtifactsSaved).toHaveBeenCalledWith(23)
+    await harness.unmount()
+  })
 })

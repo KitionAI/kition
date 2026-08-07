@@ -331,11 +331,12 @@ function AgentChangedFilesCard({
     artifacts.find((artifact) => artifact.path === path)?.title || path.split('/').pop() || path
 
   return (
-    <div className="agent-changed-files">
-      <div className="agent-changed-files-head">
+    <details className="agent-changed-files">
+      <summary className="agent-changed-files-head">
         <FileText className="size-3.5" />
-        <span>{paths.length} file(s) modified</span>
-      </div>
+        <span className="min-w-0 flex-1">{paths.length} file(s) modified</span>
+        <ChevronRight className="agent-changed-files-chevron size-4 shrink-0" />
+      </summary>
       <div className="agent-changed-files-list">
         {paths.map((path) => {
           const FileIcon = resolveAgentArtifactIcon(path)
@@ -355,7 +356,7 @@ function AgentChangedFilesCard({
           )
         })}
       </div>
-    </div>
+    </details>
   )
 }
 

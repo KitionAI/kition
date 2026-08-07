@@ -104,6 +104,7 @@ type UseWorkspaceAgentOptions = {
 }
 
 const TABLE_MUTATION_TOOL_NAMES = new Set([
+  'data_table_create',
   'data_table_add_fields',
   'data_table_add_records',
 ])
@@ -345,7 +346,7 @@ export function useWorkspaceAgent({
   const markAgentModifiedDocument = useCallback((toolCall: AgentToolCall, sessionId: number) => {
     const paths = getAgentModifiedDocumentPaths([toolCall])
     if (!paths.size) {
-      return
+      return false
     }
 
     setAgentModifiedDocumentPaths((current) => {
@@ -354,6 +355,7 @@ export function useWorkspaceAgent({
       return next
     })
     void onWorkspaceDocumentsModified?.(Array.from(paths), sessionId)
+    return true
   }, [onWorkspaceDocumentsModified])
 
   const sendAgentMessage = useCallback(async (
@@ -698,12 +700,21 @@ export function useWorkspaceAgent({
           }
 
           if ((event.type === 'tool_call' || event.type === 'tool_error' || event.type === 'artifact') && event.tool_call) {
-            markAgentModifiedDocument(event.tool_call, sessionId)
+            const trackedWorkspacePath = markAgentModifiedDocument(event.tool_call, sessionId)
             if (
               event.tool_call.status === 'completed' &&
               TABLE_MUTATION_TOOL_NAMES.has(event.tool_call.tool_name)
             ) {
               tableMutated = true
+            }
+            if (
+              event.tool_call.status === 'completed'
+              && event.tool_call.tool_name === 'data_table_create'
+            ) {
+              if (!trackedWorkspacePath || !onWorkspaceDocumentsModified) {
+                void onWorkspaceArtifactsSaved?.(sessionId)
+              }
+              void refreshMentionableDocuments()
             }
             // Broadcast a connections-changed signal whenever the SMTP
             // configure tool completes so the WorkflowHomePage drawer can

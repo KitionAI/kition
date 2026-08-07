@@ -53,7 +53,7 @@ describe('AgentContextCards', () => {
     expect(container.innerHTML).toBe('')
   })
 
-  it('keeps an applied table plan when it contains real result metrics', () => {
+  it('hides an applied table plan even when it contains result metrics', () => {
     act(() => {
       root = createRoot(container)
       root.render(createElement(AgentContextCards, {
@@ -67,7 +67,27 @@ describe('AgentContextCards', () => {
       }))
     })
 
-    expect(container.textContent).toContain('Write complete')
-    expect(container.textContent).toContain('+1')
+    expect(container.innerHTML).toBe('')
+  })
+
+  it('keeps an unapplied table plan available for confirmation', () => {
+    act(() => {
+      root = createRoot(container)
+      root.render(createElement(AgentContextCards, {
+        events: [tablePlanEvent({
+          applied: false,
+          estimated_create: 5,
+          estimated_update: 0,
+          estimated_skip: 0,
+          requires_apply_confirmation: true,
+        })],
+        busy: false,
+        onApplyPlan: () => {},
+      }))
+    })
+
+    expect(container.textContent).toContain('Write plan')
+    expect(container.textContent).toContain('+5')
+    expect(container.textContent).toContain('Write to table')
   })
 })

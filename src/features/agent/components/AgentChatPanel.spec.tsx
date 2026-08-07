@@ -237,6 +237,13 @@ describe('AgentChatPanel changed files', () => {
       }],
     })))
 
+    const changedFiles = container.querySelector<HTMLDetailsElement>('.agent-changed-files')
+    expect(changedFiles?.open).toBe(false)
+    await act(async () => {
+      container.querySelector<HTMLElement>('.agent-changed-files-head')?.click()
+    })
+    expect(changedFiles?.open).toBe(true)
+
     const changedFile = container.querySelector<HTMLButtonElement>('.agent-changed-file')
     expect(changedFile).not.toBeNull()
     await act(async () => {
@@ -245,6 +252,46 @@ describe('AgentChatPanel changed files', () => {
 
     expect(onReviewModifiedArtifact).toHaveBeenCalledWith('Docs/Article.md')
     expect(onOpenArtifact).not.toHaveBeenCalled()
+  })
+
+  it('shows a created kitable in the same bottom changed-files card as documents', async () => {
+    await mount(createElement(AgentChatPanel, makeMinimalProps({
+      toolCalls: [
+        {
+          id: 92,
+          session_id: 1,
+          user_id: 1,
+          tool_name: 'apply_patch',
+          status: 'completed',
+          input_data: {},
+          output_data: { file_ops: [{ path: 'Docs/Admissions guide.md' }] },
+          created_at: '2026-08-04T00:00:00.000Z',
+          updated_at: '2026-08-04T00:00:01.000Z',
+        },
+        {
+          id: 93,
+          session_id: 1,
+          user_id: 1,
+          tool_name: 'data_table_create',
+          status: 'completed',
+          input_data: {},
+          output_data: { path: 'Admissions/Low-threshold samples.kitable' },
+          created_at: '2026-08-04T00:00:02.000Z',
+          updated_at: '2026-08-04T00:00:03.000Z',
+        },
+      ],
+    })))
+
+    const changedFiles = Array.from(container.querySelectorAll('.agent-changed-file-name'))
+      .map((node) => node.textContent)
+    const disclosure = container.querySelector<HTMLDetailsElement>('.agent-changed-files')
+
+    expect(container.querySelector('.agent-changed-files-head')?.textContent).toContain('2 file(s) modified')
+    expect(disclosure?.open).toBe(false)
+    expect(changedFiles).toEqual([
+      'Admissions guide.md',
+      'Low-threshold samples.kitable',
+    ])
   })
 })
 

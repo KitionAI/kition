@@ -421,6 +421,28 @@ export function getAgentModifiedDocumentPaths(toolCalls: AgentToolCall[]) {
       return
     }
 
+    if (toolCall.tool_name === 'data_table_create') {
+      const output = toolCall.output_data || {}
+      const input = toolCall.input_data || {}
+      const path = [
+        output.path,
+        output.document_path,
+        output.kitable_path,
+        output.vault_path,
+        output.document?.path,
+        output.data?.path,
+        input.path,
+        input.document_path,
+        input.kitable_path,
+        input.vault_path,
+      ].find((value) => typeof value === 'string' && value.trim())
+
+      if (typeof path === 'string') {
+        paths.add(path)
+      }
+      return
+    }
+
     if (toolCall.tool_name === 'apply_patch') {
       const output = toolCall.output_data || {}
       const operations = [

@@ -61,6 +61,21 @@ describe('getAgentModifiedDocumentPaths', () => {
 
     expect(paths.size).toBe(0)
   })
+
+  it('collects a kitable created by the table creation tool', () => {
+    const paths = getAgentModifiedDocumentPaths([
+      toolCall({
+        tool_name: 'data_table_create',
+        output_data: {
+          path: 'Admissions/Low-threshold samples.kitable',
+          document_id: 42,
+          table_id: 7,
+        },
+      }),
+    ])
+
+    expect(Array.from(paths)).toEqual(['Admissions/Low-threshold samples.kitable'])
+  })
 })
 
 describe('buildAgentRunLogItems debug filtering', () => {
