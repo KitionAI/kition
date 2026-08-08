@@ -1,4 +1,4 @@
-import { ArrowUp, FileText, Folder, Globe, Search, X } from 'lucide-react'
+import { ArrowUp, FileText, Folder, X } from 'lucide-react'
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -8,7 +8,6 @@ import { AgentDocumentReferences } from '@/features/agent/components/AgentDocume
 import { AgentModelPicker } from '@/features/agent/components/AgentModelPicker'
 import type { KitionAccountStatus } from '@/features/account/hooks/useKitionAccount'
 import type { AgentModelOption } from '@/features/agent/lib/agentConfig'
-import type { AgentHostedWebSearchState } from '@/features/agent/lib/agentTurnCapabilities'
 import {
   buildAgentDraftWithDocumentMentions,
   findAgentMentionQuery,
@@ -17,7 +16,6 @@ import {
   stripAgentDocumentMentions,
   type AgentMentionableDocument,
 } from '@/features/agent/lib/documentMentions'
-import { WEB_BROWSER_ENABLED } from '@/lib/productFeatures'
 import { cn } from '@/lib/utils'
 
 type AgentAiComposerProps = {
@@ -30,8 +28,6 @@ type AgentAiComposerProps = {
   needsModelConfig: boolean
   hostedAccountStatus?: KitionAccountStatus
   selectedModelKey: string
-  browserEnabled: boolean
-  hostedWebSearchState: AgentHostedWebSearchState
   onConfigureModel: () => void
   onHostedAccountConnect?: () => void
   onHostedAccountCancel?: () => void
@@ -42,7 +38,6 @@ type AgentAiComposerProps = {
   onModelChange: (value: string) => void
   onSend: () => void
   onStop: () => void
-  onBrowserEnabledChange: (next: boolean) => void
 }
 
 export function AgentAiComposer({
@@ -55,8 +50,6 @@ export function AgentAiComposer({
   needsModelConfig,
   hostedAccountStatus,
   selectedModelKey,
-  browserEnabled,
-  hostedWebSearchState,
   onConfigureModel,
   onHostedAccountConnect,
   onHostedAccountCancel,
@@ -67,7 +60,6 @@ export function AgentAiComposer({
   onModelChange,
   onSend,
   onStop,
-  onBrowserEnabledChange,
 }: AgentAiComposerProps) {
   const { t } = useTranslation('agent')
   const [highlightedMentionIndex, setHighlightedMentionIndex] = useState(0)
@@ -81,16 +73,6 @@ export function AgentAiComposer({
     path,
     kind: documentsByPath.get(path)?.kind,
   }))
-  const hostedWebSearchTitle = hostedWebSearchState.available
-    ? hostedWebSearchState.source === 'runtime'
-      ? 'Hosted web search is available for this turn'
-      : 'Hosted web search is supported by the selected model'
-    : hostedWebSearchState.reason === 'task_mode_restricted'
-      ? 'Hosted web search is unavailable in the current task mode'
-      : hostedWebSearchState.reason === 'provider_unsupported'
-        ? 'Hosted web search is not supported by the selected model provider'
-        : 'Hosted web search was not exposed for the latest turn'
-
   useEffect(() => {
     function handle() {
       requestAnimationFrame(() => {
@@ -266,41 +248,6 @@ export function AgentAiComposer({
           onChange={onModelChange}
           disabled={busy || !modelOptions.length}
         />
-        <span
-          className={cn(
-            'agent-ai-hosted-search-status',
-            hostedWebSearchState.available ? 'is-available' : 'is-unavailable',
-          )}
-          data-testid="agent-hosted-web-search-status"
-          data-state={hostedWebSearchState.available ? 'available' : 'unavailable'}
-          title={hostedWebSearchTitle}
-          aria-label={hostedWebSearchTitle}
-          role="status"
-        >
-          <Search className="size-3.5" />
-          <span>Web</span>
-        </span>
-        {WEB_BROWSER_ENABLED ? (
-          <button
-            type="button"
-            className={cn('agent-ai-browser-toggle', browserEnabled && 'is-active')}
-            aria-pressed={browserEnabled}
-            disabled={busy}
-            title={
-              browserEnabled
-                ? hostedWebSearchState.available
-                  ? 'Embedded browser search enabled; hosted web search is also available'
-                  : 'Embedded browser search enabled; hosted web search is unavailable'
-                : hostedWebSearchState.available
-                  ? 'Embedded browser search disabled; hosted web search remains available'
-                  : 'Embedded browser search disabled; hosted web search is unavailable'
-            }
-            onClick={() => onBrowserEnabledChange(!browserEnabled)}
-          >
-            <Globe className="size-3.5" />
-            <span>Browser</span>
-          </button>
-        ) : null}
         {needsModelConfig ? (
           <button type="button" className="agent-ai-configure" onClick={onConfigureModel}>
             Configure

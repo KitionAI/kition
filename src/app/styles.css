@@ -3426,9 +3426,7 @@
   }
 
   .agent-chat-empty-icon {
-    @apply grid size-10 shrink-0 place-items-center rounded-xl border;
-    background: hsl(var(--tint-lavender));
-    border-color: hsl(var(--brand) / 0.14);
+    @apply grid size-10 shrink-0 place-items-center;
   }
 
   .agent-chat-empty strong {
@@ -3903,27 +3901,6 @@
   .agent-ai-composer.is-compact {
     @apply max-w-none rounded-xl border bg-card p-3.5 shadow-none;
     border-color: var(--document-border, hsl(var(--border)));
-  }
-
-  .agent-ai-browser-toggle {
-    @apply flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-60;
-  }
-
-  .agent-ai-browser-toggle.is-active {
-    @apply bg-accent/70 text-foreground;
-  }
-
-  .agent-ai-hosted-search-status {
-    @apply flex h-7 shrink-0 items-center gap-1.5 rounded-md border px-2 text-xs font-medium;
-    border-color: var(--document-border, hsl(var(--border)));
-  }
-
-  .agent-ai-hosted-search-status.is-available {
-    @apply border-primary/20 bg-primary/10 text-primary;
-  }
-
-  .agent-ai-hosted-search-status.is-unavailable {
-    @apply bg-muted/40 text-muted-foreground;
   }
 
   .agent-changed-files {

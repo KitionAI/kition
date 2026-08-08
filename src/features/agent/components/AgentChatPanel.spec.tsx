@@ -84,7 +84,6 @@ function makeMinimalProps(extra: Record<string, unknown> = {}) {
     modelOptions: [],
     selectedModelKey: 'gpt-4o',
     needsModelConfig: false,
-    browserEnabled: false,
     formatTime: () => '',
     onDraftChange: vi.fn(),
     onSend: vi.fn(),
@@ -92,7 +91,6 @@ function makeMinimalProps(extra: Record<string, unknown> = {}) {
     onConfigureModel: vi.fn(),
     onModelChange: vi.fn(),
     onOpenArtifact: vi.fn(),
-    onBrowserEnabledChange: vi.fn(),
     ...extra,
   } as any
 }
@@ -141,12 +139,12 @@ describe('AgentChatPanel progressCard slot', () => {
   })
 })
 
-describe('AgentChatPanel hosted web search status', () => {
+describe('AgentChatPanel composer controls', () => {
   beforeEach(async () => {
     await unmount()
   })
 
-  it('shows model-supported hosted web search before the first turn', async () => {
+  it('keeps web search and browser capability controls out of the composer', async () => {
     const modelOption = {
       key: 'kition_console:gpt-test',
       providerKind: 'kition_console',
@@ -167,49 +165,10 @@ describe('AgentChatPanel hosted web search status', () => {
       selectedModelKey: modelOption.key,
     })))
 
-    expect(container.querySelector('[data-testid="agent-hosted-web-search-status"]')?.getAttribute('data-state'))
-      .toBe('available')
-  })
-
-  it('uses the runtime turn result over model inference', async () => {
-    const modelOption = {
-      key: 'openai:gpt-test',
-      providerKind: 'openai',
-      providerLabel: 'OpenAI',
-      modelName: 'gpt-test',
-      runtimeModel: {
-        provider_type: 'openai',
-        provider_label: 'OpenAI',
-        model_name: 'gpt-test',
-        base_url: '',
-        api_key: '',
-        wire_api: 'responses',
-      },
-    }
-    const events = [{
-      id: 1,
-      session_id: 1,
-      user_id: 1,
-      event_type: 'prompt.sent',
-      data: {
-        turn_capabilities: {
-          available_tools: ['document_read'],
-          hosted_web_search: { available: false, reason: 'task_mode_restricted' },
-          browser_search: { available: false, reason: 'browser_disabled' },
-        },
-      },
-      created_at: new Date().toISOString(),
-    }]
-
-    await mount(createElement(AgentChatPanel, makeMinimalProps({
-      events,
-      modelOptions: [modelOption],
-      selectedModelKey: modelOption.key,
-    })))
-
-    const status = container.querySelector('[data-testid="agent-hosted-web-search-status"]')
-    expect(status?.getAttribute('data-state')).toBe('unavailable')
-    expect(status?.getAttribute('title')).toContain('task mode')
+    expect(container.querySelector('.agent-ai-model-picker')).not.toBeNull()
+    expect(container.querySelector('.agent-ai-send')).not.toBeNull()
+    expect(container.querySelector('[data-testid="agent-hosted-web-search-status"]')).toBeNull()
+    expect(container.querySelector('.agent-ai-browser-toggle')).toBeNull()
   })
 })
 

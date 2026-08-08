@@ -55,10 +55,6 @@ import { resolveAgentImageURL } from '@/services/workspaceFiles'
 import {
   type AgentModelOption,
 } from '@/features/agent/lib/agentConfig'
-import {
-  readLatestAgentTurnCapabilities,
-  resolveAgentHostedWebSearchState,
-} from '@/features/agent/lib/agentTurnCapabilities'
 import { PlanCard, readLatestPlanSnapshot } from '@/features/agent/components/PlanCard'
 import {
   AwaitUserInputModal,
@@ -95,7 +91,6 @@ type AgentChatPanelProps = {
   needsModelConfig: boolean
   hostedAccountStatus?: KitionAccountStatus
   mentionableDocuments?: AgentMentionableDocument[]
-  browserEnabled: boolean
   formatTime: (value?: string | null) => string
   onDraftChange: (value: string) => void
   onSend: () => void
@@ -109,7 +104,6 @@ type AgentChatPanelProps = {
   onReviewModifiedArtifact?: (path: string) => void
   onApplyPlan?: (plan: AgentTablePlanContext) => void
   onImportFiles?: (files: File[]) => Promise<string[]>
-  onBrowserEnabledChange: (next: boolean) => void
   /** Active workbench pane the agent sits next to. Drives the
    *  empty-state copy so the suggestion prompts match what the user is
    *  actually looking at — "Summarize this document" makes no sense
@@ -134,7 +128,6 @@ export function AgentChatPanel({
   needsModelConfig,
   hostedAccountStatus,
   mentionableDocuments = [],
-  browserEnabled,
   formatTime,
   onDraftChange,
   onSend,
@@ -148,7 +141,6 @@ export function AgentChatPanel({
   onReviewModifiedArtifact,
   onApplyPlan,
   onImportFiles,
-  onBrowserEnabledChange,
   paneContext = 'document',
   progressCard,
 }: AgentChatPanelProps) {
@@ -156,12 +148,6 @@ export function AgentChatPanel({
   const hostedAccountBlocked = Boolean(hostedAccountStatus && !isKitionAccountUsable(hostedAccountStatus))
   const hostedAccountCreditsEmpty = hostedAccountStatus === 'credits_empty'
   const canSend = draft.trim().length > 0 && !busy && !hostedAccountBusy && !hostedAccountCreditsEmpty
-  const selectedModel = modelOptions.find((option) => option.key === selectedModelKey) || null
-  const hostedWebSearchState = resolveAgentHostedWebSearchState({
-    capabilities: readLatestAgentTurnCapabilities(events, selectedModelKey),
-    model: selectedModel,
-  })
-
   function handleKeyDown(event: ReactKeyboardEvent<HTMLTextAreaElement>) {
     const nativeEvent = event.nativeEvent as KeyboardEvent
     if (nativeEvent.isComposing || nativeEvent.keyCode === 229) {
@@ -200,7 +186,7 @@ export function AgentChatPanel({
           // them toward an unblocked state.
           return (
           <AgentPanelEmptyState
-            icon={<KitionLogoMark className="size-5" />}
+            icon={<KitionLogoMark className="size-10" />}
             title="Kition"
             description={emptyState.description}
             actions={needsModelConfig ? (
@@ -294,8 +280,6 @@ export function AgentChatPanel({
           needsModelConfig={needsModelConfig}
           hostedAccountStatus={hostedAccountStatus}
           selectedModelKey={selectedModelKey}
-          browserEnabled={browserEnabled}
-          hostedWebSearchState={hostedWebSearchState}
           onConfigureModel={onConfigureModel}
           onHostedAccountConnect={onHostedAccountConnect}
           onHostedAccountCancel={onHostedAccountCancel}
@@ -306,7 +290,6 @@ export function AgentChatPanel({
           onModelChange={onModelChange}
           onSend={() => onSend()}
           onStop={onStop}
-          onBrowserEnabledChange={onBrowserEnabledChange}
         />
       </div>
     </div>

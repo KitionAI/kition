@@ -2813,7 +2813,6 @@ export function WorkspaceScreen({
                 ? kitionAccount.state.status
                 : undefined,
               mentionableDocuments,
-              browserEnabled: agentBrowserEnabled,
               formatTime: formatWorkspaceTime,
               onDraftChange: (value: string) =>
                 setAgentDraft(activeWorkspaceAgentSession.id, value),
@@ -2835,7 +2834,6 @@ export function WorkspaceScreen({
               onImportFiles: isDesktopRuntime()
                 ? (files) => importBrowserFiles(files, 'attachments')
                 : undefined,
-              onBrowserEnabledChange: setAgentBrowserEnabled,
               onApplyPlan: (plan) =>
                 sendAgentContextAction(activeWorkspaceAgentSession.id, {
                   content:
