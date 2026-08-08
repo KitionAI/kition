@@ -492,6 +492,7 @@ async function createMainWindow() {
     }
   })
   registerMainWindowShortcuts(mainWindow)
+  refreshApplicationMenu()
 
   await mainWindow.loadURL(initialWindowURL)
   if (!mainWindow.isDestroyed()) {
@@ -505,8 +506,6 @@ async function createMainWindow() {
     browserSessions?.hidePanels?.()
     mainWindow = null
   })
-
-  refreshApplicationMenu()
 
   return mainWindow
 }

@@ -17,6 +17,10 @@ export function getDevToolsAccelerator(platform = process.platform) {
 }
 
 export function buildApplicationMenu(win, handlers, platform = process.platform) {
+  if (platform === 'win32') {
+    return null
+  }
+
   const template = [
     ...(platform === 'darwin'
       ? [

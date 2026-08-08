@@ -50,4 +50,21 @@ describe('application menu window shortcuts', () => {
     expect(minimizeItem?.accelerator).toBe('Command+M')
     expect(devToolsItem?.accelerator).toBe('Alt+Command+I')
   })
+
+  it('removes the application menu on Windows', async () => {
+    const { buildApplicationMenu } = await loadMenuModule()
+
+    const menu = buildApplicationMenu(
+      null,
+      {
+        windowAction: vi.fn(),
+        openRuntimePath: vi.fn(),
+        showAboutDialog: vi.fn(),
+      },
+      'win32',
+    )
+
+    expect(menu).toBeNull()
+    expect(buildFromTemplate).not.toHaveBeenCalled()
+  })
 })
