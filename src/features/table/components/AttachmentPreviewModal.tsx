@@ -10,6 +10,7 @@ import { createPortal } from 'react-dom'
 import {
   ChevronLeft,
   ChevronRight,
+  Copy,
   Download,
   RefreshCcw,
   RotateCw,
@@ -18,9 +19,10 @@ import {
   ZoomOut,
 } from 'lucide-react'
 import type { DataAttachment } from '@/types/dataDocument'
-import { resolvePublicFileURL } from '@/services/desktop'
+import { copyImageToClipboard, resolvePublicFileURL } from '@/services/desktop'
 import { findImageLikeString } from '@/features/table/lib/tableEditorShared'
 import { cn } from '@/lib/utils'
+import { notify } from '@/lib/notify'
 
 const MIN_SCALE = 0.25
 const MAX_SCALE = 5
@@ -55,6 +57,7 @@ export function AttachmentPreviewModal({
   const [position, setPosition] = useState({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
   const [imgSize, setImgSize] = useState({ width: 0, height: 0 })
+  const [imageContextMenu, setImageContextMenu] = useState<{ x: number; y: number } | null>(null)
   const dragStartRef = useRef({ x: 0, y: 0 })
   const stageRef = useRef<HTMLDivElement>(null)
   const imageRef = useRef<HTMLImageElement>(null)
@@ -64,6 +67,7 @@ export function AttachmentPreviewModal({
     setScale(1)
     setRotation(0)
     setPosition({ x: 0, y: 0 })
+    setImageContextMenu(null)
   }, [safeIndex, open])
 
   // Track displayed image size for pan bounds
@@ -123,6 +127,10 @@ export function AttachmentPreviewModal({
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
         event.preventDefault()
+        if (imageContextMenu) {
+          setImageContextMenu(null)
+          return
+        }
         onClose()
         return
       }
@@ -147,7 +155,7 @@ export function AttachmentPreviewModal({
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [open, total, safeIndex, onClose, onIndexChange])
+  }, [imageContextMenu, open, total, safeIndex, onClose, onIndexChange])
 
   if (!open || !active || typeof document === 'undefined') return null
 
@@ -181,6 +189,19 @@ export function AttachmentPreviewModal({
     document.body.appendChild(link)
     link.click()
     link.remove()
+  }
+
+  async function handleCopyImage() {
+    if (!resolvedSrc) return
+    setImageContextMenu(null)
+    try {
+      await copyImageToClipboard(resolvedSrc)
+      notify.success(t('attachment.imageCopied'))
+    } catch (error) {
+      notify.error(t('attachment.imageCopyFailed'), {
+        description: error instanceof Error ? error.message : String(error),
+      })
+    }
   }
 
   function onMouseDown(event: ReactMouseEvent<HTMLDivElement>) {
@@ -263,6 +284,7 @@ export function AttachmentPreviewModal({
           <div
             ref={stageRef}
             className="relative flex flex-1 select-none items-center justify-center overflow-hidden px-16"
+            onMouseDown={() => setImageContextMenu(null)}
           >
             {total > 1 ? (
               <button
@@ -295,6 +317,14 @@ export function AttachmentPreviewModal({
                   draggable={false}
                   data-testid="attachment-preview-image"
                   className="max-h-full max-w-full select-none"
+                  onContextMenu={(event) => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    setImageContextMenu({
+                      x: Math.min(event.clientX, Math.max(8, window.innerWidth - 180)),
+                      y: Math.min(event.clientY, Math.max(8, window.innerHeight - 56)),
+                    })
+                  }}
                   style={{
                     transform: `translate(${position.x}px, ${position.y}px) scale(${scale}) rotate(${rotation}deg)`,
                     transition: isDragging ? 'none' : 'transform 0.2s ease-out',
@@ -306,6 +336,28 @@ export function AttachmentPreviewModal({
                 </div>
               )}
             </div>
+
+            {imageContextMenu ? (
+              <div
+                className="fixed z-[110] min-w-40 rounded-lg border border-white/15 bg-neutral-900 p-1 shadow-xl"
+                style={{ left: imageContextMenu.x, top: imageContextMenu.y }}
+                data-testid="attachment-preview-context-menu"
+                role="menu"
+                onMouseDown={(event) => event.stopPropagation()}
+                onContextMenu={(event) => event.preventDefault()}
+              >
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-white hover:bg-white/10"
+                  data-testid="attachment-preview-copy-image"
+                  role="menuitem"
+                  onClick={() => void handleCopyImage()}
+                >
+                  <Copy className="size-4" aria-hidden />
+                  {t('attachment.copyImage')}
+                </button>
+              </div>
+            ) : null}
 
             {total > 1 ? (
               <button

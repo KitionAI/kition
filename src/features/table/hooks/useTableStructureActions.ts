@@ -90,7 +90,7 @@ export function useTableStructureActions({
       name: field.name,
       type: field.type,
       primary: field.is_primary,
-      required: field.required,
+      required: false,
       readonly: field.readonly,
       options: field.options,
       formula: field.formula,
@@ -282,6 +282,7 @@ export function useTableStructureActions({
       await createDataField(document.id, activeTable.id, {
         title: newFieldTitle.trim(),
         type: newFieldType,
+        required: false,
         readonly: newFieldType === 'formula',
         options: newFieldType === 'single_select' || newFieldType === 'multi_select'
           ? { choices: ['Not started', 'In progress', 'Done'] }
@@ -309,6 +310,7 @@ export function useTableStructureActions({
       await createDataField(document.id, activeTable.id, {
         title,
         type: 'text',
+        required: false,
       })
       await refreshDocument(activeTable.id)
     } catch (requestError) {
@@ -321,14 +323,16 @@ export function useTableStructureActions({
   async function saveField(field: DataField, updates: {
     title?: string
     type?: DataFieldType
-    required?: boolean
     readonly?: boolean
     options?: DataFieldOptions | null
     formula?: string
   }) {
     if (!document || !activeTable) return
     try {
-      const updated = await updateDataField(document.id, activeTable.id, field.id, updates)
+      const updated = await updateDataField(document.id, activeTable.id, field.id, {
+        ...updates,
+        required: false,
+      })
       setDocument((current) => current ? {
         ...current,
         tables: current.tables?.map((table) => table.id === activeTable.id ? {

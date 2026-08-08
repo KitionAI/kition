@@ -694,6 +694,12 @@ export function TableEditor({
           busy={busy}
           canInsert={canReorderRows}
           fields={fields}
+          selectedFieldName={
+            selectedGridCell && contextMenuRecord
+            && selectedGridCell.recordId === contextMenuRecord.id
+              ? selectedGridCell.fieldName
+              : null
+          }
           onClose={closeRecordContextMenu}
           onInsertRecords={(record, count, position) =>
             insertRecordsNear(record, count, position)

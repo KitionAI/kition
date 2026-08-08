@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ArrowDown, ArrowUp, Copy, History, Link2, MessageSquare, Send, Sparkles, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, Copy, History, Image as ImageIcon, Link2, MessageSquare, Send, Sparkles, Trash2 } from 'lucide-react'
 import type { DataRecord } from '@/types/dataDocument'
 import { cn } from '@/lib/utils'
 
@@ -79,6 +79,7 @@ export function DataRecordContextMenu({
   onInsertBelow,
   onDuplicate,
   onCopyURL,
+  onCopyImage,
   onHistory,
   onComment,
   onAddToChat,
@@ -95,6 +96,7 @@ export function DataRecordContextMenu({
   onInsertBelow: (count: number) => void
   onDuplicate: () => void
   onCopyURL: () => void
+  onCopyImage?: () => void
   onHistory: () => void
   onComment: () => void
   onAddToChat: () => void
@@ -185,6 +187,12 @@ export function DataRecordContextMenu({
           <Link2 className="size-4" />
           {t('recordMenu.copyRecordUrl')}
         </button>
+        {onCopyImage ? (
+          <button type="button" className="data-inline-record-menu-item" onClick={onCopyImage} disabled={busy}>
+            <ImageIcon className="size-4" />
+            {t('recordMenu.copyImage')}
+          </button>
+        ) : null}
       </div>
       <div className="data-inline-record-menu-section">
         <button type="button" className="data-inline-record-menu-item" onClick={onHistory} disabled={busy}>

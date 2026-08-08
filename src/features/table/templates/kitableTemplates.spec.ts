@@ -30,6 +30,11 @@ describe('getBuiltinKitableTemplates', () => {
     expect(templates.every((template) => template.categories?.length)).toBe(true)
     expect(templates.every((template) => template.coverImage === `kition-bundled:/templates/table-covers/${template.id}.webp`)).toBe(true)
     expect(templates.every((template) => template.snapshot.resources.some((resource) => resource.id === template.snapshot.defaultResourceId))).toBe(true)
+    expect(templates.every((template) =>
+      template.tables.every((table) =>
+        table.fields.every((field) => field.required !== true),
+      ),
+    )).toBe(true)
   })
 
   it('ships a receipt OCR template with image-driven structured and plain-text extraction', () => {

@@ -18,6 +18,7 @@ type KitionDesktopBridge = {
   SaveBinaryFile?: (request: SaveFileRequest) => Promise<string>
   SavePdfFile?: (request: SavePdfFileRequest) => Promise<string>
   CopyDocumentHtml?: (request: CopyDocumentHtmlRequest) => Promise<boolean>
+  CopyImage?: (request: { url: string }) => Promise<boolean>
   ListWorkspaceDocuments?: () => Promise<WorkspaceDocumentListResponse>
   ReadWorkspaceDocument?: (request: WorkspaceDocumentPathRequest) => Promise<WorkspaceDocument>
   StatWorkspaceDocument?: (request: { path: string }) => Promise<{ mtime_ms: number; size: number } | null>
@@ -1988,6 +1989,46 @@ export async function copyDocumentHtmlToClipboard(options: {
       'text/plain': new Blob([options.text], { type: 'text/plain' }),
     }),
   ])
+  return true
+}
+
+async function imageBlobToPng(blob: Blob) {
+  if (blob.type === 'image/png') return blob
+  const bitmap = await createImageBitmap(blob)
+  try {
+    const canvas = document.createElement('canvas')
+    canvas.width = bitmap.width
+    canvas.height = bitmap.height
+    const context = canvas.getContext('2d')
+    if (!context) throw new Error('image canvas is unavailable')
+    context.drawImage(bitmap, 0, 0)
+    return await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((png) => {
+        if (png) resolve(png)
+        else reject(new Error('image conversion failed'))
+      }, 'image/png')
+    })
+  } finally {
+    bitmap.close()
+  }
+}
+
+export async function copyImageToClipboard(url: string) {
+  const source = String(url || '').trim()
+  if (!source) throw new Error('image URL is required')
+
+  const bridge = getDesktopBridge()
+  if (bridge?.CopyImage) {
+    return bridge.CopyImage({ url: source })
+  }
+
+  if (typeof navigator === 'undefined' || !navigator.clipboard?.write || typeof ClipboardItem === 'undefined') {
+    throw new Error('image clipboard is unavailable')
+  }
+  const response = await fetch(source)
+  if (!response.ok) throw new Error(`image download failed: ${response.status}`)
+  const png = await imageBlobToPng(await response.blob())
+  await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })])
   return true
 }
 

@@ -59,6 +59,7 @@ async function replaceDefaultTableSchema(
     await updateDataField(documentId, tableId, fields[index].id, {
       title: inferred.title,
       type: inferred.type,
+      required: false,
       options: inferred.options || {},
       order: index + 1,
     })
@@ -68,6 +69,7 @@ async function replaceDefaultTableSchema(
     await createDataField(documentId, tableId, {
       title: inferred.title,
       type: inferred.type,
+      required: false,
       options: inferred.options,
       order: index + 1,
     })
@@ -92,6 +94,7 @@ async function addMissingFields(
     await createDataField(documentId, tableId, {
       title: inferred.title,
       type: inferred.type,
+      required: false,
       options: inferred.options,
       order: fields.length + added + 1,
     })

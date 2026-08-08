@@ -4,9 +4,37 @@ import {
   listDataDocuments,
   listDataRecords,
   openDataDocumentByPath,
+  updateDataField,
 } from '@/api/dataDocuments'
 import type { DataDocument, DataRecord } from '@/types/dataDocument'
 import { parseMarker, type DataRecordWindow } from '@/features/table/lib/tableEditorShared'
+
+async function removeRequiredFieldConstraints(document: DataDocument) {
+  const requiredFields = (document.tables || []).flatMap((table) =>
+    (table.fields || [])
+      .filter((field) => field.required)
+      .map((field) => ({ tableId: table.id, field })),
+  )
+  if (!requiredFields.length) return document
+
+  await Promise.all(requiredFields.map(({ tableId, field }) =>
+    updateDataField(document.id, tableId, field.id, { required: false }),
+  ))
+  const requiredKeys = new Set(
+    requiredFields.map(({ tableId, field }) => `${tableId}:${field.id}`),
+  )
+  return {
+    ...document,
+    tables: document.tables?.map((table) => ({
+      ...table,
+      fields: table.fields?.map((field) => (
+        requiredKeys.has(`${table.id}:${field.id}`)
+          ? { ...field, required: false }
+          : field
+      )),
+    })),
+  }
+}
 
 export function useTableEditorData({
   documentPath,
@@ -50,6 +78,9 @@ export function useTableEditorData({
           nextDocument = result.items.find((item) => item.path === documentPath) || null
         }
       }
+      if (nextDocument) {
+        nextDocument = await removeRequiredFieldConstraints(nextDocument)
+      }
       setDocument(nextDocument)
       setResolvedActiveTableId((current) => {
         const tables = nextDocument?.tables ?? []
@@ -70,7 +101,9 @@ export function useTableEditorData({
 
   async function refreshDocument(preferredTableId = resolvedActiveTableId, preferredViewId = resolvedActiveViewId) {
     if (!document) return
-    const nextDocument = await getDataDocument(document.id)
+    const nextDocument = await removeRequiredFieldConstraints(
+      await getDataDocument(document.id),
+    )
     setDocument(nextDocument)
     const tables = nextDocument?.tables ?? []
     const resolvedId = pinnedTableId != null

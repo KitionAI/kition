@@ -562,6 +562,7 @@ describe('desktop service helpers', () => {
       SaveBinaryFile: vi.fn().mockResolvedValue('/tmp/exports/doc.docx'),
       SavePdfFile: vi.fn().mockResolvedValue('/tmp/exports/doc.pdf'),
       CopyDocumentHtml: vi.fn().mockResolvedValue(true),
+      CopyImage: vi.fn().mockResolvedValue(true),
     }
 
     const desktopModule = await loadDesktopModule()
@@ -599,6 +600,9 @@ describe('desktop service helpers', () => {
         documentPath: 'docs/doc.md',
       }),
     ).resolves.toBe(true)
+    await expect(
+      desktopModule.copyImageToClipboard('http://127.0.0.1:18101/uploads/image.png'),
+    ).resolves.toBe(true)
 
     const bridge = (window as typeof window & { kitionDesktop?: any }).kitionDesktop
     expect(bridge.SaveTextFile).toHaveBeenCalledWith('Export Markdown', 'doc.md', '# Doc')
@@ -621,6 +625,9 @@ describe('desktop service helpers', () => {
       document_path: 'docs/doc.md',
       html: '<article><p>Doc</p></article>',
       text: 'Doc',
+    })
+    expect(bridge.CopyImage).toHaveBeenCalledWith({
+      url: 'http://127.0.0.1:18101/uploads/image.png',
     })
   })
 

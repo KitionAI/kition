@@ -1,4 +1,5 @@
 import { forwardRef, useCallback, useMemo, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import type {
   ClipboardEvent as ReactClipboardEvent,
   CSSProperties,
@@ -32,6 +33,8 @@ import { useGridAdapter } from '@/features/table/grid/useGridAdapter'
 import { useTableColumnWidths } from '@/features/table/hooks/useTableColumnWidths'
 import { buildCellKey } from '@/features/table/store/aiCellGenerationStore'
 import { serializeTableSelection } from '@/features/table/lib/tableClipboard'
+import { uploadDataAttachment } from '@/api/dataDocuments'
+import { notify } from '@/lib/notify'
 
 type GridViewProps = {
   documentId: number
@@ -90,6 +93,7 @@ type GridViewProps = {
 }
 
 export const GridView = forwardRef<IGridRef, GridViewProps>(function GridView(props, gridRef) {
+  const { t } = useTranslation('table')
   const {
     tableId,
     viewId,
@@ -130,6 +134,35 @@ export const GridView = forwardRef<IGridRef, GridViewProps>(function GridView(pr
     tableId,
     viewId,
   })
+  const attachmentInputRef = useRef<HTMLInputElement | null>(null)
+  const attachmentTargetRef = useRef<{ record: DataRecord; field: DataField } | null>(null)
+  const attachmentUploadInProgressRef = useRef(false)
+
+  const openAttachmentPicker = useCallback((record: DataRecord, field: DataField) => {
+    if (field.readonly || attachmentUploadInProgressRef.current) return
+    attachmentTargetRef.current = { record, field }
+    attachmentInputRef.current?.click()
+  }, [])
+
+  const handleAttachmentFiles = useCallback(async (files: File[]) => {
+    const target = attachmentTargetRef.current
+    attachmentTargetRef.current = null
+    if (!target || !files.length || attachmentUploadInProgressRef.current) return
+    attachmentUploadInProgressRef.current = true
+    try {
+      const uploaded = await Promise.all(
+        files.map((file) => uploadDataAttachment(props.documentId, tableId, file)),
+      )
+      const current = normalizeAttachmentValue(target.record.values?.[target.field.name] ?? null)
+      onUpdateCell(target.record, target.field, [...current, ...uploaded])
+    } catch (error) {
+      notify.error(t('cell.uploadFailed'), {
+        description: error instanceof Error ? error.message : String(error),
+      })
+    } finally {
+      attachmentUploadInProgressRef.current = false
+    }
+  }, [onUpdateCell, props.documentId, t, tableId])
 
   const adapter = useGridAdapter({
     visibleFields,
@@ -163,6 +196,7 @@ export const GridView = forwardRef<IGridRef, GridViewProps>(function GridView(pr
       const attachments = normalizeAttachmentValue(record.values?.[field.name] ?? null)
       if (attachments.length) onPreviewAttachments(attachments, index)
     },
+    onAddAttachment: openAttachmentPicker,
     onCellAIAction: onRegenerate ? (record, field) => onRegenerate(record, field) : undefined,
   })
 
@@ -232,6 +266,10 @@ export const GridView = forwardRef<IGridRef, GridViewProps>(function GridView(pr
       const rowIndex = selection.isCellSelection ? range[1] : range[0]
       const record = sortedAndFilteredRecords[rowIndex]
       if (!record) return
+      if (selection.isCellSelection) {
+        const field = visibleFields[range[0]]
+        if (field) onSelectCell({ recordId: record.id, fieldName: field.name })
+      }
       onOpenRecordContextMenu(record, {
         clientX: position.x,
         clientY: position.y,
@@ -239,7 +277,7 @@ export const GridView = forwardRef<IGridRef, GridViewProps>(function GridView(pr
         stopPropagation: () => undefined,
       })
     },
-    [sortedAndFilteredRecords, onOpenRecordContextMenu]
+    [sortedAndFilteredRecords, visibleFields, onOpenRecordContextMenu, onSelectCell]
   )
 
                                                                     
@@ -387,6 +425,18 @@ export const GridView = forwardRef<IGridRef, GridViewProps>(function GridView(pr
         onUndo={onUndo}
         onRedo={onRedo}
         onColumnHeaderMenuClick={onOpenColumnHeaderMenu ? handleColumnHeaderMenuClick : undefined}
+      />
+      <input
+        ref={attachmentInputRef}
+        type="file"
+        multiple
+        hidden
+        data-testid="table-grid-attachment-input"
+        onChange={(event) => {
+          const files = Array.from(event.target.files || [])
+          event.target.value = ''
+          void handleAttachmentFiles(files)
+        }}
       />
     </div>
   )

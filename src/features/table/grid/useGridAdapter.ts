@@ -28,6 +28,7 @@ type RowOrderedHandler = (
   insertIndex: number
 ) => void;
 type AttachmentPreviewHandler = (record: DataRecord, field: DataField, attachmentIndex: number) => void;
+type AttachmentAddHandler = (record: DataRecord, field: DataField) => void;
 type CellAIActionHandler = (record: DataRecord, field: DataField) => void;
 type DocumentOpenHandler = (path: string) => void;
 
@@ -44,6 +45,7 @@ export interface IGridAdapterArgs {
   onColumnOrdered?: ColumnOrderedHandler;
   onRowOrdered?: RowOrderedHandler;
   onPreviewAttachment?: AttachmentPreviewHandler;
+  onAddAttachment?: AttachmentAddHandler;
   onCellAIAction?: CellAIActionHandler;
   onOpenDocument?: DocumentOpenHandler;
 }
@@ -89,6 +91,7 @@ export function buildCellForField(
   record: DataRecord,
   onPreviewAttachmentIndex?: (index: number) => void,
   onOpenDocument?: DocumentOpenHandler,
+  onAddAttachment?: () => void,
 ): ICell {
   const raw = record.values?.[field.name] ?? null;
   const display = displayValue(raw);
@@ -160,6 +163,7 @@ export function buildCellForField(
         imageAspectRatio,
         contentAlign: 'center',
         readonly: field.readonly,
+        onAdd: field.readonly ? undefined : onAddAttachment,
         onPreview: onPreviewAttachmentIndex
           ? (activeId: string) => {
               const idx = data.findIndex((item) => item.id === activeId);
@@ -358,6 +362,7 @@ export function useGridAdapter(args: IGridAdapterArgs) {
     onColumnOrdered,
     onRowOrdered,
     onPreviewAttachment,
+    onAddAttachment,
     onCellAIAction,
     onOpenDocument,
   } = args;
@@ -380,9 +385,13 @@ export function useGridAdapter(args: IGridAdapterArgs) {
         field.type === 'attachment' && onPreviewAttachment
           ? (index: number) => onPreviewAttachment(record, field, index)
           : undefined;
-      return buildCellForField(field, record, previewHook, onOpenDocument);
+      const addHook =
+        field.type === 'attachment' && !field.readonly && onAddAttachment
+          ? () => onAddAttachment(record, field)
+          : undefined;
+      return buildCellForField(field, record, previewHook, onOpenDocument, addHook);
     },
-    [visibleFields, sortedAndFilteredRecords, onPreviewAttachment, onOpenDocument]
+    [visibleFields, sortedAndFilteredRecords, onPreviewAttachment, onAddAttachment, onOpenDocument]
   );
 
   const handleCellEdited = useCallback(

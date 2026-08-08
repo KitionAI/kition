@@ -8,13 +8,23 @@ import { AttachmentPreviewModal } from './AttachmentPreviewModal'
 
 ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true
 
+const copyImageToClipboard = vi.hoisted(() => vi.fn().mockResolvedValue(true))
+
 vi.mock('@/services/desktop', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/services/desktop')>()
   return {
     ...actual,
     resolvePublicFileURL: (path: string) => path,
+    copyImageToClipboard,
   }
 })
+
+vi.mock('@/lib/notify', () => ({
+  notify: {
+    success: vi.fn(),
+    error: vi.fn(),
+  },
+}))
 
 let container: HTMLDivElement
 let root: Root | null = null
@@ -66,6 +76,7 @@ function pressKey(key: string) {
 describe('AttachmentPreviewModal', () => {
   beforeEach(async () => {
     await unmount()
+    copyImageToClipboard.mockClear()
   })
 
   it('does not render when closed', async () => {
@@ -432,5 +443,37 @@ describe('AttachmentPreviewModal', () => {
     expect(
       document.querySelector('[data-testid="attachment-preview-download"]'),
     ).not.toBeNull()
+  })
+
+  it('copies the active image from its right-click menu', async () => {
+    await mount(
+      createElement(AttachmentPreviewModal, {
+        open: true,
+        items: makeAttachments(1),
+        index: 0,
+        onClose: vi.fn(),
+        onIndexChange: vi.fn(),
+      }),
+    )
+    const image = document.querySelector(
+      '[data-testid="attachment-preview-image"]',
+    ) as HTMLImageElement
+    await act(async () => {
+      image.dispatchEvent(new MouseEvent('contextmenu', {
+        bubbles: true,
+        cancelable: true,
+        clientX: 40,
+        clientY: 60,
+      }))
+    })
+    const copyButton = document.querySelector(
+      '[data-testid="attachment-preview-copy-image"]',
+    ) as HTMLButtonElement
+    expect(copyButton).not.toBeNull()
+    await act(async () => {
+      copyButton.click()
+      await Promise.resolve()
+    })
+    expect(copyImageToClipboard).toHaveBeenCalledWith('/uploads/image-0.png')
   })
 })

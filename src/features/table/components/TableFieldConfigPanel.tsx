@@ -37,7 +37,6 @@ interface Draft {
   title: string
   description: string
   type: DataFieldType
-  required: boolean
   readonly: boolean
   choices: string[]
   choiceTones: Record<string, string>
@@ -56,7 +55,6 @@ function draftFromField(field: DataField): Draft {
     title: field.title,
     description: typeof field.options?.description === 'string' ? field.options.description : '',
     type: field.type,
-    required: field.required,
     readonly: field.readonly,
     choices: normalizeChoiceList(field),
     choiceTones: getChoiceToneMap(field),
@@ -131,7 +129,6 @@ export function FieldConfigPanel({
     return {
       title: draft.title.trim() || field.title,
       type: draft.type,
-      required: draft.required,
       readonly: draft.readonly || isFormulaType,
       options: {
         ...(field.options || {}),
@@ -213,10 +210,8 @@ export function FieldConfigPanel({
           ) : null}
           <hr className="border-border" />
           <FieldValidationSection
-            required={draft.required}
             readonly={draft.readonly}
             readonlyLocked={isFormulaType}
-            onRequiredChange={(next) => patch({ required: next })}
             onReadonlyChange={(next) => patch({ readonly: next })}
           />
           {isSelectType ? (

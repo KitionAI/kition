@@ -246,6 +246,10 @@ export const imageCellRenderer: IInternalCellRenderer<IImageCell> = {
       cell?.onPreview?.(cellRegion.data as string);
       return callback(cellRegion);
     }
+    if (cellRegion.type === CellRegionType.ToggleEditing && cell.onAdd) {
+      cell.onAdd();
+      return;
+    }
     callback(cellRegion);
   },
 };

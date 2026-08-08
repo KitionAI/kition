@@ -74,6 +74,20 @@ describe('FieldConfigPanel', () => {
     expect(save?.disabled).toBe(true)
   })
 
+  it('does not expose the legacy required-field switch', async () => {
+    await mount(
+      createElement(FieldConfigPanel, {
+        field: { ...baseField, required: true },
+        fields: [{ ...baseField, required: true }, secondField],
+        busy: false,
+        onClose: () => {},
+        onSave: () => {},
+      }),
+    )
+
+    expect(container.querySelector('[data-testid="field-required-switch"]')).toBeNull()
+  })
+
   it('typing in name enables Save and calls onSave with new title', async () => {
     const onSave = vi.fn().mockResolvedValue(undefined)
     const onClose = vi.fn()

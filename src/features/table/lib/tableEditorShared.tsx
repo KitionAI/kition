@@ -603,7 +603,6 @@ export function recordMatchesSearch(record: DataRecord, fields: DataField[], que
 export type FieldSaveUpdates = {
   title?: string
   type?: DataFieldType
-  required?: boolean
   readonly?: boolean
   options?: DataFieldOptions | null
   formula?: string

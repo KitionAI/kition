@@ -139,21 +139,18 @@ export function createThumbnailGeneratorTemplate(
           name: 'key_message',
           type: 'long_text',
           primary: true,
-          required: true,
           options: { description: 'Describe the specific story the video delivers.' },
         },
         {
           title: 'Face Photo',
           name: 'face_photo',
           type: 'attachment',
-          required: true,
           options: { description: 'Upload one clear portrait. Generated images must preserve this identity.' },
         },
         {
           title: 'Content Type',
           name: 'content_type',
           type: 'single_select',
-          required: true,
           options: {
             choices: CONTENT_TYPES,
             description: 'Choose the category that best matches the video.',
@@ -163,7 +160,6 @@ export function createThumbnailGeneratorTemplate(
           title: 'Core Emotion',
           name: 'core_emotion',
           type: 'single_select',
-          required: true,
           options: {
             choices: CORE_EMOTIONS,
             description: 'Choose the main emotion the image should communicate.',

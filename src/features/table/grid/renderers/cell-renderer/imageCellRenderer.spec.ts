@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
-import { getCoverCrop, getImageWidth } from './imageCellRenderer'
+import { getCoverCrop, getImageWidth, imageCellRenderer } from './imageCellRenderer'
+import { CellType } from './interface'
 
 describe('imageCellRenderer image framing', () => {
   it('uses the configured field aspect ratio for every thumbnail width', () => {
@@ -25,5 +26,32 @@ describe('imageCellRenderer image framing', () => {
       sw: 1200,
       sh: 900,
     })
+  })
+
+  it('opens the attachment picker when the active-cell add icon is clicked', () => {
+    const onAdd = vi.fn()
+    const callback = vi.fn()
+
+    imageCellRenderer.onClick?.(
+      {
+        type: CellType.Image,
+        data: [],
+        displayData: [],
+        readonly: false,
+        onAdd,
+      },
+      {
+        width: 200,
+        height: 32,
+        theme: { iconSizeSM: 20 },
+        hoverCellPosition: [10, 16],
+        activeCellBound: null,
+        isActive: true,
+      } as never,
+      callback,
+    )
+
+    expect(onAdd).toHaveBeenCalledTimes(1)
+    expect(callback).not.toHaveBeenCalled()
   })
 })

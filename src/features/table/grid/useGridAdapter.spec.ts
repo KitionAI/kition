@@ -209,6 +209,38 @@ describe('useGridAdapter — phase 2 field types', () => {
     }
   })
 
+  it('exposes the attachment picker callback for editable image cells', () => {
+    const onAdd = vi.fn()
+    const cell = buildCellForField(
+      makeField({ type: 'attachment' }),
+      makeRecord({ name: [] }),
+      undefined,
+      undefined,
+      onAdd,
+    )
+
+    expect(cell.type).toBe(CellType.Image)
+    if (cell.type === CellType.Image) {
+      cell.onAdd?.()
+      expect(onAdd).toHaveBeenCalledTimes(1)
+    }
+  })
+
+  it('does not expose the attachment picker callback for readonly image cells', () => {
+    const cell = buildCellForField(
+      makeField({ type: 'attachment', readonly: true }),
+      makeRecord({ name: [] }),
+      undefined,
+      undefined,
+      vi.fn(),
+    )
+
+    expect(cell.type).toBe(CellType.Image)
+    if (cell.type === CellType.Image) {
+      expect(cell.onAdd).toBeUndefined()
+    }
+  })
+
   it('carries the configured AI image aspect ratio into attachment cells', () => {
     const cell = buildCellForField(
       makeField({

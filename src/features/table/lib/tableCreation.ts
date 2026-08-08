@@ -33,8 +33,8 @@ export const DEFAULT_EMPTY_ROW_COUNT = 3
 
 export const DEFAULT_NEW_TABLE_FIELDS: DataFieldSeed[] = [
   { title: 'Title', type: 'text', primary: true, required: false },
-  { title: 'Status', type: 'single_select', options: { choices: ['Not started', 'In progress', 'Done'] } },
-  { title: 'Notes', type: 'long_text' },
+  { title: 'Status', type: 'single_select', required: false, options: { choices: ['Not started', 'In progress', 'Done'] } },
+  { title: 'Notes', type: 'long_text', required: false },
 ]
 
 export const DEFAULT_NEW_TABLE_VIEWS: DataViewSeed[] = [
@@ -118,7 +118,10 @@ export async function createTableWorkspaceEntry({
     tables: template
       ? template.tables.map(({ records: _records, fields, views, ...table }) => ({
           ...table,
-          fields: fields.map(({ aiConfig: _aiConfig, ...field }) => field),
+          fields: fields.map(({ aiConfig: _aiConfig, ...field }) => ({
+            ...field,
+            required: false,
+          })),
           views: views.map(({ hiddenFieldTitles: _hiddenFieldTitles, fieldLayouts: _fieldLayouts, ...view }) => view),
         }))
       : [{

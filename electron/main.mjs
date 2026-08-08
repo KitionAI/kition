@@ -2,7 +2,7 @@ import fs from 'node:fs/promises'
 import crypto from 'node:crypto'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeTheme, net, Notification, protocol, session, shell } from 'electron'
+import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeImage, nativeTheme, net, Notification, protocol, session, shell } from 'electron'
 import * as chokidar from 'chokidar'
 import { CommunityBootstrap } from './bootstrap.mjs'
 import { BackendSupervisor } from './backend-supervisor.mjs'
@@ -830,6 +830,29 @@ async function handleCopyDocumentHtml(_event, request) {
     html,
     text: String(request?.text || ''),
   })
+  return true
+}
+
+async function handleCopyImage(_event, request) {
+  const source = String(request?.url || '').trim()
+  if (!source) {
+    throw new Error('image URL is required')
+  }
+
+  let image
+  if (/^data:image\//i.test(source)) {
+    image = nativeImage.createFromDataURL(source)
+  } else {
+    const response = await net.fetch(source)
+    if (!response.ok) {
+      throw new Error(`image download failed: ${response.status}`)
+    }
+    image = nativeImage.createFromBuffer(Buffer.from(await response.arrayBuffer()))
+  }
+  if (image.isEmpty()) {
+    throw new Error('image data is empty')
+  }
+  clipboard.writeImage(image)
   return true
 }
 
@@ -1848,6 +1871,7 @@ async function registerIpcHandlers() {
   ipcMain.handle(IPC_CHANNELS.saveBinaryFile, handleSaveBinaryFile)
   ipcMain.handle(IPC_CHANNELS.savePdfFile, handleSavePdfFile)
   ipcMain.handle(IPC_CHANNELS.copyDocumentHtml, handleCopyDocumentHtml)
+  ipcMain.handle(IPC_CHANNELS.copyImage, handleCopyImage)
   ipcMain.handle(IPC_CHANNELS.listWorkspaceDocuments, handleListWorkspaceDocuments)
   ipcMain.handle(IPC_CHANNELS.readWorkspaceDocument, handleReadWorkspaceDocument)
   ipcMain.handle(IPC_CHANNELS.statWorkspaceDocument, handleStatWorkspaceDocument)

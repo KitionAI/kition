@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import {
   createDataField,
   duplicateDataField,
+  updateDataField,
 } from '@/api/dataDocuments'
 import type {
   DataDocument,
@@ -65,7 +66,10 @@ export function useTableColumnHeaderActions({
     if (!document || !activeTable) return
     setBusy(true)
     try {
-      const created = await duplicateDataField(document.id, activeTable.id, field.id)
+      const duplicated = await duplicateDataField(document.id, activeTable.id, field.id)
+      const created = duplicated.required
+        ? await updateDataField(document.id, activeTable.id, duplicated.id, { required: false })
+        : duplicated
       await refreshDocument(activeTable.id)
       setStatus(t('feedback.fieldDuplicated'))
       setEditingField(created)
@@ -84,6 +88,7 @@ export function useTableColumnHeaderActions({
       const created = await createDataField(document.id, activeTable.id, {
         title: 'New field',
         type: 'text',
+        required: false,
         order: insertOrder,
       })
       await refreshDocument(activeTable.id)
