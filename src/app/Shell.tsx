@@ -7,7 +7,6 @@ import { ConsoleCreditsExhaustedBanner } from '@/app/ConsoleCreditsExhaustedBann
 import type { TableSchema } from '@/features/workflow/components/BodyTemplateEditor.types'
 import type { SettingsSectionKey } from '@/features/settings/DesktopSettingsPage'
 import { useGlobalShortcuts } from '@/features/settings/useGlobalShortcuts'
-import { UpdateBanner } from '@/features/updates/UpdateBanner'
 import { WorkspaceScreen } from '@/features/workspace/components/WorkspaceScreen'
 import { WorkspaceLauncherScreen } from '@/features/workspace/components/WorkspaceLauncherScreen'
 import { useWorkspaceVaults } from '@/features/workspace/hooks/useWorkspaceVaults'
@@ -724,8 +723,6 @@ export function AppShell() {
           <div ref={topbarActionsPortalRef} className="flex h-full min-w-0 flex-1 items-center gap-2" data-testid="document-topbar-actions" />
         </div>
       </header>
-      <UpdateBanner />
-
       {isNarrowShell && sidebarDrawerOpen ? (
         <div
           data-testid="shell-sidebar-drawer-backdrop"

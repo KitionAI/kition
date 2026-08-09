@@ -6,6 +6,7 @@ import { CreditUsageBadge } from '@/components/CreditUsageBadge'
 import { useKitionAccount } from '@/features/account/hooks/useKitionAccount'
 import { getKitionAccountLinks } from '@/features/account/lib/accountLinks'
 import { isKitionAccountAuthenticated } from '@/features/account/lib/accountState'
+import { UpdateBanner } from '@/features/updates/UpdateBanner'
 import { cn } from '@/lib/utils'
 import { openExternalURL } from '@/services/desktop'
 
@@ -43,53 +44,56 @@ export function WorkspaceScreenSidebarFooter({
   const showCredits = Number.isFinite(creditTotal) && Number.isFinite(creditBalance)
 
   return (
-    <div className="document-agent-nav">
-      {onOpenVaultLauncher ? (
+    <div className="workspace-sidebar-footer">
+      <UpdateBanner />
+      <div className="document-agent-nav">
+        {onOpenVaultLauncher ? (
+          <button
+            type="button"
+            className="document-agent-settings"
+            onClick={onOpenVaultLauncher}
+            aria-label={t('footer.switchWorkspace')}
+            title={t('footer.switchWorkspaceTitle')}
+            data-testid="workspace-launcher-nav-button"
+          >
+            <FolderOpen className="size-4" />
+          </button>
+        ) : null}
+        {onOpenProfile ? (
+          <button
+            type="button"
+            className={cn('document-agent-settings', activeItem === 'profile' && 'is-active')}
+            onClick={onOpenProfile}
+            aria-label={t('footer.profile')}
+            title={t('footer.profile')}
+            data-testid="profile-nav-button"
+          >
+            <UserRound className="size-4" />
+          </button>
+        ) : null}
+        {showCredits ? (
+          <CreditUsageBadge
+            className="document-agent-credit"
+            creditBalance={creditBalance}
+            creditTotal={creditTotal}
+            creditResetAt={portalSession?.credit_reset_at}
+            topupUrl={accountLinks.topup}
+            onViewCredits={onOpenProfile}
+            onTopup={() => void openExternalURL(accountLinks.topup)}
+            variant="compact"
+            data-testid="portal-credit-summary"
+          />
+        ) : null}
         <button
           type="button"
           className="document-agent-settings"
-          onClick={onOpenVaultLauncher}
-          aria-label={t('footer.switchWorkspace')}
-          title={t('footer.switchWorkspaceTitle')}
-          data-testid="workspace-launcher-nav-button"
+          onClick={onOpenSettings}
+          aria-label={t('footer.settings')}
+          title={t('footer.settings')}
         >
-          <FolderOpen className="size-4" />
+          <Settings2 className="size-4" />
         </button>
-      ) : null}
-      {onOpenProfile ? (
-        <button
-          type="button"
-          className={cn('document-agent-settings', activeItem === 'profile' && 'is-active')}
-          onClick={onOpenProfile}
-          aria-label={t('footer.profile')}
-          title={t('footer.profile')}
-          data-testid="profile-nav-button"
-        >
-          <UserRound className="size-4" />
-        </button>
-      ) : null}
-      {showCredits ? (
-        <CreditUsageBadge
-          className="document-agent-credit"
-          creditBalance={creditBalance}
-          creditTotal={creditTotal}
-          creditResetAt={portalSession?.credit_reset_at}
-          topupUrl={accountLinks.topup}
-          onViewCredits={onOpenProfile}
-          onTopup={() => void openExternalURL(accountLinks.topup)}
-          variant="compact"
-          data-testid="portal-credit-summary"
-        />
-      ) : null}
-      <button
-        type="button"
-        className="document-agent-settings"
-        onClick={onOpenSettings}
-        aria-label={t('footer.settings')}
-        title={t('footer.settings')}
-      >
-        <Settings2 className="size-4" />
-      </button>
+      </div>
     </div>
   )
 }

@@ -95,10 +95,12 @@ describe('UpdateBanner', () => {
     expect(openExternalURL).toHaveBeenCalledWith('https://github.com/KitionAI/kition/releases/tag/v1.0.1')
   })
 
-  it('renders downloading percent', async () => {
+  it('renders downloading percent and compact progress details', async () => {
     useUpdateState.mockReturnValue({ phase: 'downloading', percent: 42, transferred: 100, total: 1000, bytesPerSecond: 10 })
     const c = await mountBanner()
     expect(c.textContent).toMatch(/42/)
+    expect(c.querySelector('.kition-update-banner__progress > span')?.getAttribute('style')).toContain('42%')
+    expect(c.querySelector('.kition-update-banner__meta')?.textContent).toContain('/')
   })
 
   it('renders downloaded with Restart and install', async () => {
@@ -117,7 +119,6 @@ describe('UpdateBanner', () => {
     })
     const c = await mountBanner()
     expect(c.textContent).toBe('')
-    expect(document.documentElement.dataset.updateBanner).toBeUndefined()
   })
 
   it('Later dismisses the available banner for that version', async () => {
