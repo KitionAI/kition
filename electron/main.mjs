@@ -5,7 +5,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeImage, nativeTheme, net, Notification, protocol, session, shell } from 'electron'
 import * as chokidar from 'chokidar'
 import { CommunityBootstrap } from './bootstrap.mjs'
-import { BackendSupervisor } from './backend-supervisor.mjs'
+import { BackendSupervisor, resolvePortalBaseURL } from './backend-supervisor.mjs'
 import { BrowserSessionManager } from './browser-session-manager.mjs'
 import {
   createBundledAssetResponse,
@@ -27,6 +27,7 @@ import { createWorkspaceWatcher } from './workspace-watcher.mjs'
 import { isTrustedWindowNavigation, normalizeExternalURL } from './external-url.mjs'
 import { createBeforeQuitHandler } from './quit-lifecycle.mjs'
 import { findKitionDeepLink, KITION_PROTOCOL_SCHEME, normalizeKitionDeepLink } from './deep-link.mjs'
+import { submitFeedbackToConsole } from './feedback-client.mjs'
 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url))
 const DARK_WINDOW_BACKGROUND = '#1b1e22'
@@ -854,6 +855,14 @@ async function handleCopyImage(_event, request) {
   }
   clipboard.writeImage(image)
   return true
+}
+
+async function handleSubmitFeedback(_event, request) {
+  return submitFeedbackToConsole({
+    fetchImpl: (input, init) => net.fetch(input, init),
+    portalBaseURL: resolvePortalBaseURL(),
+    request,
+  })
 }
 
 async function handleSavePdfFile(_event, request) {
@@ -1872,6 +1881,7 @@ async function registerIpcHandlers() {
   ipcMain.handle(IPC_CHANNELS.savePdfFile, handleSavePdfFile)
   ipcMain.handle(IPC_CHANNELS.copyDocumentHtml, handleCopyDocumentHtml)
   ipcMain.handle(IPC_CHANNELS.copyImage, handleCopyImage)
+  ipcMain.handle(IPC_CHANNELS.submitFeedback, handleSubmitFeedback)
   ipcMain.handle(IPC_CHANNELS.listWorkspaceDocuments, handleListWorkspaceDocuments)
   ipcMain.handle(IPC_CHANNELS.readWorkspaceDocument, handleReadWorkspaceDocument)
   ipcMain.handle(IPC_CHANNELS.statWorkspaceDocument, handleStatWorkspaceDocument)

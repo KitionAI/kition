@@ -4,6 +4,7 @@ import { ClipboardCheck, LifeBuoy, MessageSquareText, Scale, ShieldCheck } from 
 import { Button } from '@/components/ui'
 import { useKitionAccount } from '@/features/account/hooks/useKitionAccount'
 import { KITION_PRIVACY_URL, KITION_SUPPORT_URL, KITION_TERMS_URL } from '@/features/account/lib/accountLinks'
+import { FeedbackForm } from '@/features/support/components/FeedbackForm'
 import {
   collectSupportDiagnostics,
   copyTextToClipboard,
@@ -15,7 +16,6 @@ import { openExternalURL } from '@/services/desktop'
 import type { UpdateState } from '@/services/desktopUpdates'
 import { trackProductEvent } from '@/features/analytics/lib/productAnalytics'
 
-const KITION_FEEDBACK_URL = 'mailto:karodong.2026@hotmail.com?subject=Kition%20Feedback'
 const KITION_CONTACT_SUPPORT_URL = `${KITION_SUPPORT_URL}?subject=Kition%20Support`
 
 export function SupportAndTrustSettings({
@@ -35,6 +35,7 @@ export function SupportAndTrustSettings({
   const account = useKitionAccount()
   const [copying, setCopying] = useState(false)
   const [feedback, setFeedback] = useState('')
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
 
   async function copyDiagnostics() {
     setCopying(true)
@@ -62,6 +63,11 @@ export function SupportAndTrustSettings({
     void openExternalURL(url)
   }
 
+  function openFeedback() {
+    trackProductEvent('support_opened', { account_state: account.state.status })
+    setFeedbackOpen(true)
+  }
+
   return (
     <>
       <SettingsSection title={t('about.supportSection')} description={t('about.supportSectionDescription')}>
@@ -72,11 +78,23 @@ export function SupportAndTrustSettings({
           </Button>
         </SettingsRow>
         <SettingsRow title={t('about.sendFeedback')} description={t('about.sendFeedbackDescription')}>
-          <Button variant="outline" onClick={() => openSupport(KITION_FEEDBACK_URL)}>
+          <Button
+            variant="outline"
+            onClick={openFeedback}
+            aria-expanded={feedbackOpen}
+            data-testid="open-feedback-form"
+          >
             <MessageSquareText className="size-4" />
             {t('about.sendFeedbackAction')}
           </Button>
         </SettingsRow>
+        {feedbackOpen ? (
+          <FeedbackForm
+            accessToken={account.state.session?.access_token}
+            initialEmail={account.state.session?.user_email}
+            onClose={() => setFeedbackOpen(false)}
+          />
+        ) : null}
         <SettingsRow title={t('about.copyDiagnostics')} description={t('about.copyDiagnosticsDescription')}>
           <Button variant="outline" onClick={() => void copyDiagnostics()} disabled={copying} data-testid="copy-support-diagnostics">
             <ClipboardCheck className="size-4" />

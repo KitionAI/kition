@@ -19,6 +19,7 @@ type KitionDesktopBridge = {
   SavePdfFile?: (request: SavePdfFileRequest) => Promise<string>
   CopyDocumentHtml?: (request: CopyDocumentHtmlRequest) => Promise<boolean>
   CopyImage?: (request: { url: string }) => Promise<boolean>
+  SubmitFeedback?: (request: FeedbackReportSubmissionRequest) => Promise<FeedbackReportSubmissionResponse>
   ListWorkspaceDocuments?: () => Promise<WorkspaceDocumentListResponse>
   ReadWorkspaceDocument?: (request: WorkspaceDocumentPathRequest) => Promise<WorkspaceDocument>
   StatWorkspaceDocument?: (request: { path: string }) => Promise<{ mtime_ms: number; size: number } | null>
@@ -481,6 +482,17 @@ type CopyDocumentHtmlRequest = {
   html: string
   text: string
   document_path?: string
+}
+
+export type FeedbackReportSubmissionRequest = {
+  description: string
+  contact_email?: string
+  access_token?: string
+}
+
+export type FeedbackReportSubmissionResponse = {
+  ticket_id: string
+  accepted_at: string
 }
 
 declare global {
@@ -980,6 +992,51 @@ export async function openExternalURL(url: string) {
   }
 
   window.open(url, '_blank', 'noopener,noreferrer')
+}
+
+export async function submitFeedbackReport(request: FeedbackReportSubmissionRequest) {
+  const bridge = getDesktopBridge()
+  if (bridge?.SubmitFeedback) {
+    return bridge.SubmitFeedback(request)
+  }
+
+  const accessToken = String(request.access_token || '').trim()
+  const path = accessToken ? '/api/issue-reports' : '/api/issue-reports/anonymous'
+  const headers: Record<string, string> = { 'content-type': 'application/json' }
+  if (accessToken) {
+    headers.authorization = `Bearer ${accessToken}`
+  }
+  const response = await fetch(`https://kition.ai${path}`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      schema_version: 1,
+      requestId: '',
+      taskId: '',
+      runtimeMode: 'hosted',
+      errorCode: '',
+      errorMessage: '',
+      description: request.description,
+      contactEmail: request.contact_email || '',
+      timestamp: new Date().toISOString(),
+      via: 'web',
+    }),
+  })
+  const body = await response.json().catch(() => ({})) as {
+    data?: { ticketId?: string; accepted_at?: string }
+    error?: string
+  }
+  if (!response.ok) {
+    throw new Error(body.error || `feedback submission failed (${response.status})`)
+  }
+  const ticketId = String(body.data?.ticketId || '').trim()
+  if (!ticketId) {
+    throw new Error('feedback service returned an invalid response')
+  }
+  return {
+    ticket_id: ticketId,
+    accepted_at: String(body.data?.accepted_at || ''),
+  }
 }
 
 export async function showDesktopNotification(title: string, message: string) {

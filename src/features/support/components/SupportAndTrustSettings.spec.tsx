@@ -11,6 +11,7 @@ const diagnosticsMocks = vi.hoisted(() => ({
   format: vi.fn(),
 }))
 const openExternalURL = vi.hoisted(() => vi.fn())
+const submitFeedbackReport = vi.hoisted(() => vi.fn())
 const trackProductEvent = vi.hoisted(() => vi.fn())
 
 vi.mock('@/features/account/hooks/useKitionAccount', () => ({
@@ -23,7 +24,7 @@ vi.mock('@/features/support/lib/supportDiagnostics', () => ({
   formatSupportDiagnostics: diagnosticsMocks.format,
 }))
 
-vi.mock('@/services/desktop', () => ({ openExternalURL }))
+vi.mock('@/services/desktop', () => ({ openExternalURL, submitFeedbackReport }))
 vi.mock('@/features/analytics/lib/productAnalytics', () => ({ trackProductEvent }))
 
 import { SupportAndTrustSettings } from './SupportAndTrustSettings'
@@ -57,6 +58,10 @@ async function mount() {
 
 beforeEach(() => {
   openExternalURL.mockReset()
+  submitFeedbackReport.mockReset().mockResolvedValue({
+    ticket_id: 'ticket-123',
+    accepted_at: '2026-08-09T12:00:00Z',
+  })
   trackProductEvent.mockReset()
   diagnosticsMocks.collect.mockReset().mockResolvedValue({ schema: 'kition-support-diagnostics/v1' })
   diagnosticsMocks.format.mockReset().mockReturnValue('redacted diagnostics')
@@ -71,7 +76,7 @@ afterEach(async () => {
 })
 
 describe('SupportAndTrustSettings', () => {
-  it('opens customer support, feedback, privacy, and terms destinations', async () => {
+  it('opens customer support, the feedback form, privacy, and terms destinations', async () => {
     await mount()
 
     await act(async () => {
@@ -83,12 +88,37 @@ describe('SupportAndTrustSettings', () => {
 
     expect(openExternalURL.mock.calls).toEqual([
       ['mailto:support@kition.ai?subject=Kition%20Support'],
-      ['mailto:karodong.2026@hotmail.com?subject=Kition%20Feedback'],
       ['https://kition.ai/privacy'],
       ['https://kition.ai/terms'],
     ])
+    expect(container.querySelector('[data-testid="feedback-form"]')).not.toBeNull()
     expect(trackProductEvent).toHaveBeenNthCalledWith(1, 'support_opened', { account_state: 'credits_low' })
     expect(trackProductEvent).toHaveBeenNthCalledWith(2, 'support_opened', { account_state: 'credits_low' })
+  })
+
+  it('submits feedback through the Console issue-report bridge', async () => {
+    await mount()
+
+    await act(async () => {
+      button('Send feedback').click()
+    })
+    const textarea = container.querySelector('[data-testid="feedback-message"]') as HTMLTextAreaElement
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set
+      setter?.call(textarea, 'Please make feedback available directly in the app.')
+      textarea.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await act(async () => {
+      button('Submit feedback').click()
+      await Promise.resolve()
+    })
+
+    expect(submitFeedbackReport).toHaveBeenCalledWith({
+      description: 'Please make feedback available directly in the app.',
+      contact_email: '',
+      access_token: undefined,
+    })
+    expect(container.textContent).toContain('Ticket ID: ticket-123')
   })
 
   it('passes account and update categories into a redacted diagnostics copy', async () => {

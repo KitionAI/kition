@@ -563,6 +563,10 @@ describe('desktop service helpers', () => {
       SavePdfFile: vi.fn().mockResolvedValue('/tmp/exports/doc.pdf'),
       CopyDocumentHtml: vi.fn().mockResolvedValue(true),
       CopyImage: vi.fn().mockResolvedValue(true),
+      SubmitFeedback: vi.fn().mockResolvedValue({
+        ticket_id: 'ticket-123',
+        accepted_at: '2026-08-09T12:00:00Z',
+      }),
     }
 
     const desktopModule = await loadDesktopModule()
@@ -603,6 +607,14 @@ describe('desktop service helpers', () => {
     await expect(
       desktopModule.copyImageToClipboard('http://127.0.0.1:18101/uploads/image.png'),
     ).resolves.toBe(true)
+    await expect(desktopModule.submitFeedbackReport({
+      description: 'Please improve the feedback workflow.',
+      contact_email: 'user@example.com',
+      access_token: 'portal-token',
+    })).resolves.toEqual({
+      ticket_id: 'ticket-123',
+      accepted_at: '2026-08-09T12:00:00Z',
+    })
 
     const bridge = (window as typeof window & { kitionDesktop?: any }).kitionDesktop
     expect(bridge.SaveTextFile).toHaveBeenCalledWith('Export Markdown', 'doc.md', '# Doc')
@@ -628,6 +640,11 @@ describe('desktop service helpers', () => {
     })
     expect(bridge.CopyImage).toHaveBeenCalledWith({
       url: 'http://127.0.0.1:18101/uploads/image.png',
+    })
+    expect(bridge.SubmitFeedback).toHaveBeenCalledWith({
+      description: 'Please improve the feedback workflow.',
+      contact_email: 'user@example.com',
+      access_token: 'portal-token',
     })
   })
 

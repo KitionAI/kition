@@ -30,6 +30,7 @@ const desktopBridge = {
   SavePdfFile: (request) => ipcRenderer.invoke(IPC_CHANNELS.savePdfFile, request),
   CopyDocumentHtml: (request) => ipcRenderer.invoke(IPC_CHANNELS.copyDocumentHtml, request),
   CopyImage: (request) => ipcRenderer.invoke(IPC_CHANNELS.copyImage, request),
+  SubmitFeedback: (request) => ipcRenderer.invoke(IPC_CHANNELS.submitFeedback, request),
   ListWorkspaceDocuments: () => ipcRenderer.invoke(IPC_CHANNELS.listWorkspaceDocuments),
   ReadWorkspaceDocument: (request) => ipcRenderer.invoke(IPC_CHANNELS.readWorkspaceDocument, request),
   StatWorkspaceDocument: (request) => ipcRenderer.invoke(IPC_CHANNELS.statWorkspaceDocument, request),

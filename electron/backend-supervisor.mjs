@@ -46,7 +46,7 @@ function loadExpectedProtocolVersion() {
 
 const expectedProtocolVersion = loadExpectedProtocolVersion()
 
-function resolvePortalBaseURL() {
+export function resolvePortalBaseURL() {
   const explicit = String(process.env.KITION_PORTAL_BASE_URL || '').trim()
   if (explicit) {
     return explicit
