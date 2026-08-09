@@ -321,7 +321,9 @@ export function TableEditor({
     copyTextToClipboard,
     copyRecordURL,
     createView,
+    deleteView,
     duplicateRecord,
+    duplicateView,
     insertRecordsNear,
     moveKanbanRecord,
     openAttachmentPreview,
@@ -546,6 +548,8 @@ export function TableEditor({
           onCloseViewCreate={() => setViewCreateOpen(false)}
           onCreateView={(type) => void createView(type)}
           onRenameView={(viewId, nextTitle) => void renameView(viewId, nextTitle)}
+          onDuplicateView={(viewId) => void duplicateView(viewId)}
+          onDeleteView={(viewId) => void deleteView(viewId)}
           busy={busy || historyBusy}
           fields={fields}
           hiddenFieldNames={hiddenFieldNames}

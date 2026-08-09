@@ -20,6 +20,8 @@ export function TableEditorToolbar({
   onCloseViewCreate,
   onCreateView,
   onRenameView,
+  onDuplicateView,
+  onDeleteView,
   busy,
   fields,
   hiddenFieldNames,
@@ -75,6 +77,8 @@ export function TableEditorToolbar({
   onCloseViewCreate: () => void
   onCreateView: (type: DataInlineViewMode) => void
   onRenameView: (viewId: number, nextTitle: string) => void
+  onDuplicateView: (viewId: number) => void
+  onDeleteView: (viewId: number) => void
   busy: boolean
   fields: DataField[]
   hiddenFieldNames: Set<string>
@@ -133,6 +137,8 @@ export function TableEditorToolbar({
         onCloseViewCreate={onCloseViewCreate}
         onCreateView={onCreateView}
         onRenameView={onRenameView}
+        onDuplicateView={onDuplicateView}
+        onDeleteView={onDeleteView}
         busy={busy}
       />
       <TableEditorToolbarPropertyBar

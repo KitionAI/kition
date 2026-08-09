@@ -151,6 +151,16 @@
   "header": {
     "addView": "添加视图"
   },
+  "viewMenu": {
+    "open": "打开视图菜单",
+    "optionsFor": "{{title}} 的视图选项",
+    "rename": "重命名视图",
+    "duplicate": "复制视图",
+    "delete": "删除视图",
+    "keepOne": "表格至少需要保留一个视图",
+    "copyTitle": "{{title}} 副本",
+    "deleteConfirm": "确定删除视图“{{title}}”吗？"
+  },
   "propertyBar": {
     "addRecord": "添加记录",
     "duplicateCount": "复制 {{count}}",
@@ -537,6 +547,8 @@
   },
   "feedback": {
     "tableDuplicated": "表格已复制",
+    "viewDuplicated": "视图已复制",
+    "viewDeleted": "视图已删除",
     "csvDownloaded": "CSV 已下载",
     "tableDeleted": "表格已删除",
     "historyUnavailable": "表格暂不支持历史记录",

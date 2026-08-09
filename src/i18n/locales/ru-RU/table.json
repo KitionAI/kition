@@ -151,6 +151,16 @@
   "header": {
     "addView": "Добавить представление"
   },
+  "viewMenu": {
+    "open": "Открыть меню представления",
+    "optionsFor": "Параметры представления {{title}}",
+    "rename": "Переименовать представление",
+    "duplicate": "Дублировать представление",
+    "delete": "Удалить представление",
+    "keepOne": "В таблице должно остаться хотя бы одно представление",
+    "copyTitle": "Копия {{title}}",
+    "deleteConfirm": "Удалить представление «{{title}}»?"
+  },
   "propertyBar": {
     "addRecord": "Добавить запись",
     "duplicateCount": "Дублировать {{count}}",
@@ -532,6 +542,8 @@
   },
   "feedback": {
     "tableDuplicated": "Таблица продублирована",
+    "viewDuplicated": "Представление продублировано",
+    "viewDeleted": "Представление удалено",
     "csvDownloaded": "CSV скачан",
     "tableDeleted": "Таблица удалена",
     "historyUnavailable": "История для таблиц пока недоступна",

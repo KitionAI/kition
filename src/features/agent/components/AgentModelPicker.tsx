@@ -21,6 +21,12 @@ type AgentModelGroup = {
   options: AgentModelOption[]
 }
 
+function selectedModelLabel(option: AgentModelOption) {
+  return option.providerKind === 'kition_console'
+    ? option.modelName
+    : `${option.modelName} · ${option.providerLabel}`
+}
+
 export function AgentModelPicker({
   className,
   disabled = false,
@@ -179,7 +185,7 @@ export function AgentModelPicker({
           onClick={() => setOpen((current) => !current)}
         >
           <span className="truncate">
-            {selectedOption ? `${selectedOption.modelName} · ${selectedOption.providerLabel}` : resolvedEmptyLabel}
+            {selectedOption ? selectedModelLabel(selectedOption) : resolvedEmptyLabel}
           </span>
           <ChevronDown className={cn('size-3.5 shrink-0 transition-transform duration-200', open && 'rotate-180')} />
         </button>
@@ -208,7 +214,7 @@ export function AgentModelPicker({
                 selectedOption ? 'text-foreground' : 'text-muted-foreground',
               )}
             >
-              {selectedOption ? `${selectedOption.modelName} · ${selectedOption.providerLabel}` : resolvedEmptyLabel}
+              {selectedOption ? selectedModelLabel(selectedOption) : resolvedEmptyLabel}
             </span>
           </span>
           <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-muted/70 text-muted-foreground">
@@ -246,10 +252,12 @@ export function AgentModelPicker({
             {groupedOptions.length ? (
               groupedOptions.map((group) => (
                 <div key={group.providerLabel} className="pb-2 last:pb-0">
-                  <div className="px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                    {group.providerLabel}
-                  </div>
-                  <div className="mt-1 grid gap-1">
+                  {group.options[0]?.providerKind !== 'kition_console' ? (
+                    <div className="px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                      {group.providerLabel}
+                    </div>
+                  ) : null}
+                  <div className={cn('grid gap-1', group.options[0]?.providerKind !== 'kition_console' && 'mt-1')}>
                     {group.options.map((option) => {
                       const isSelected = option.key === value
                       const isHighlighted = option.key === highlightedOption?.key
@@ -274,7 +282,9 @@ export function AgentModelPicker({
                         >
                           <span className="min-w-0">
                             <span className="block truncate text-sm font-medium">{option.modelName}</span>
-                            <span className="block truncate text-xs text-muted-foreground">{option.providerLabel}</span>
+                            {option.providerKind !== 'kition_console' ? (
+                              <span className="block truncate text-xs text-muted-foreground">{option.providerLabel}</span>
+                            ) : null}
                           </span>
                           <span className={cn('shrink-0 text-accent-foreground', !isSelected && 'opacity-0')}>
                             <Check className="size-4" />

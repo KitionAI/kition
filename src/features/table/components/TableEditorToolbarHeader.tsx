@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MoreHorizontal, Pencil, Plus } from 'lucide-react'
+import { Copy, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
 import type { DataView } from '@/types/dataDocument'
 import {
   getViewIcon,
@@ -10,6 +10,11 @@ import {
   viewTypeOptions,
 } from '@/features/table/lib/tableEditorShared'
 import { cn } from '@/lib/utils'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/registry/ui/popover'
 import { useDismissableLayer } from '@/registry/hooks/use-on-click-outside'
 
 export function TableEditorToolbarHeader({
@@ -21,6 +26,8 @@ export function TableEditorToolbarHeader({
   onCloseViewCreate,
   onCreateView,
   onRenameView,
+  onDuplicateView,
+  onDeleteView,
   busy,
 }: {
   tableViews: DataView[]
@@ -31,6 +38,8 @@ export function TableEditorToolbarHeader({
   onCloseViewCreate: () => void
   onCreateView: (type: DataInlineViewMode) => void
   onRenameView: (viewId: number, nextTitle: string) => void
+  onDuplicateView: (viewId: number) => void
+  onDeleteView: (viewId: number) => void
   busy: boolean
 }) {
   const { t } = useTranslation('table')
@@ -49,6 +58,10 @@ export function TableEditorToolbarHeader({
               label={normalizeLegacyViewTitle(view) || t(getViewTypeLabelKey(view.type))}
               onSelect={() => onSelectView(view.id)}
               onRename={onRenameView}
+              onDuplicate={onDuplicateView}
+              onDelete={onDeleteView}
+              canDelete={tableViews.length > 1}
+              busy={busy}
             />
           ))}
         </div>
@@ -88,19 +101,26 @@ function ViewTab({
   label,
   onSelect,
   onRename,
+  onDuplicate,
+  onDelete,
+  canDelete,
+  busy,
 }: {
   view: DataView
   active: boolean
   label: string
   onSelect: () => void
   onRename: (viewId: number, nextTitle: string) => void
+  onDuplicate: (viewId: number) => void
+  onDelete: (viewId: number) => void
+  canDelete: boolean
+  busy: boolean
 }) {
+  const { t } = useTranslation('table')
   const [menuOpen, setMenuOpen] = useState(false)
   const [renaming, setRenaming] = useState(false)
   const [draftTitle, setDraftTitle] = useState(label)
-  const menuRef = useRef<HTMLDivElement | null>(null)
   const renameInputRef = useRef<HTMLInputElement | null>(null)
-  useDismissableLayer(menuRef, menuOpen, () => setMenuOpen(false))
 
   useEffect(() => {
     if (!renaming) return
@@ -115,7 +135,7 @@ function ViewTab({
   }
 
   return (
-    <div ref={menuRef} className={cn('data-inline-view-tab', active && 'is-active')}>
+    <div className={cn('data-inline-view-tab', active && 'is-active')}>
       {renaming ? (
         <div className="data-inline-view-tab-rename">
           {getViewIcon(view.type)}
@@ -144,33 +164,68 @@ function ViewTab({
         </button>
       )}
       {active && !renaming ? (
-        <button
-          type="button"
-          className="data-inline-view-tab-menu-trigger"
-          aria-label="Open view menu"
-          title={`View options for ${label}`}
-          aria-expanded={menuOpen}
-          onClick={() => setMenuOpen((open) => !open)}
-          data-testid={`data-view-menu-${view.id}`}
-        >
-          <MoreHorizontal className="size-4" />
-        </button>
-      ) : null}
-      {menuOpen ? (
-        <div className="data-inline-view-tab-menu" role="menu">
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              setMenuOpen(false)
-              setDraftTitle(label)
-              setRenaming(true)
-            }}
+        <Popover open={menuOpen} onOpenChange={setMenuOpen}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="data-inline-view-tab-menu-trigger"
+              aria-label={t('viewMenu.open')}
+              title={t('viewMenu.optionsFor', { title: label })}
+              aria-expanded={menuOpen}
+              disabled={busy}
+              data-testid={`data-view-menu-${view.id}`}
+            >
+              <MoreHorizontal className="size-4" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            align="start"
+            sideOffset={6}
+            className="data-inline-view-tab-menu"
+            role="menu"
+            onCloseAutoFocus={(event) => event.preventDefault()}
           >
-            <Pencil className="size-4" />
-            <span>Rename view</span>
-          </button>
-        </div>
+            <button
+              type="button"
+              role="menuitem"
+              disabled={busy || view.locked}
+              onClick={() => {
+                setMenuOpen(false)
+                setDraftTitle(label)
+                setRenaming(true)
+              }}
+            >
+              <Pencil className="size-4" />
+              <span>{t('viewMenu.rename')}</span>
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              disabled={busy}
+              onClick={() => {
+                setMenuOpen(false)
+                onDuplicate(view.id)
+              }}
+            >
+              <Copy className="size-4" />
+              <span>{t('viewMenu.duplicate')}</span>
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className="is-destructive"
+              disabled={busy || view.locked || !canDelete}
+              title={!canDelete ? t('viewMenu.keepOne') : undefined}
+              onClick={() => {
+                setMenuOpen(false)
+                onDelete(view.id)
+              }}
+            >
+              <Trash2 className="size-4" />
+              <span>{t('viewMenu.delete')}</span>
+            </button>
+          </PopoverContent>
+        </Popover>
       ) : null}
     </div>
   )

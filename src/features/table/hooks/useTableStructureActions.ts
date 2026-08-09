@@ -8,7 +8,10 @@ import {
   createDataView,
   deleteDataField,
   deleteDataTable,
+  deleteDataView,
   exportDataTableCSV,
+  listViewFields,
+  patchViewField,
   updateDataField,
   updateDataTable,
   updateDataView,
@@ -26,7 +29,9 @@ import type {
   DataViewSeed,
 } from '@/types/dataDocument'
 import {
+  getViewTypeLabelKey,
   nextViewTitle,
+  normalizeLegacyViewTitle,
   type DataInlineViewMode,
   type DataRecordWindow,
 } from '@/features/table/lib/tableEditorShared'
@@ -275,6 +280,95 @@ export function useTableStructureActions({
     }
   }
 
+  async function duplicateView(viewId: number) {
+    if (!document || !activeTable) return
+    const view = tableViews.find((item) => item.id === viewId)
+    if (!view) return
+    const sourceTitle = normalizeLegacyViewTitle(view) || t(getViewTypeLabelKey(view.type))
+    const baseTitle = t('viewMenu.copyTitle', { title: sourceTitle })
+    const existingTitles = new Set(tableViews.map((item) => item.title.trim().toLowerCase()))
+    let nextTitle = baseTitle
+    let copyIndex = 2
+    while (existingTitles.has(nextTitle.toLowerCase())) {
+      nextTitle = `${baseTitle} ${copyIndex++}`
+    }
+
+    setBusy(true)
+    try {
+      const sourceFields = await listViewFields(document.id, activeTable.id, view.id)
+        .catch(() => ({ items: [] }))
+      const created = await createDataView(document.id, activeTable.id, {
+        title: nextTitle,
+        type: view.type,
+        config: view.config ? structuredClone(view.config) : view.config,
+      })
+      await Promise.allSettled(sourceFields.items.map((field) => patchViewField(
+        document.id,
+        activeTable.id,
+        created.id,
+        field.field_id,
+        {
+          visible: field.visible,
+          width: field.width,
+          position: field.position,
+          frozen: field.frozen,
+        },
+      )))
+      setDocument((current) => current ? {
+        ...current,
+        tables: current.tables?.map((table) => table.id === activeTable.id ? {
+          ...table,
+          views: [...(table.views || []), created]
+            .sort((first, second) => first.order - second.order || first.id - second.id),
+        } : table),
+      } : current)
+      setActiveViewId(created.id)
+      window.dispatchEvent(new CustomEvent('kition:data-document:view:upsert', {
+        detail: { vaultPath: documentPath, tableId: activeTable.id, viewId: created.id },
+      }))
+      setStatus(t('feedback.viewDuplicated'))
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Failed to duplicate view')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function deleteView(viewId: number) {
+    if (!document || !activeTable || tableViews.length <= 1) return
+    const viewIndex = tableViews.findIndex((item) => item.id === viewId)
+    const view = tableViews[viewIndex]
+    if (!view || view.locked) return
+    const viewTitle = normalizeLegacyViewTitle(view) || t(getViewTypeLabelKey(view.type))
+    if (!(await confirm({
+      message: t('viewMenu.deleteConfirm', { title: viewTitle }),
+      variant: 'destructive',
+    }))) return
+
+    setBusy(true)
+    try {
+      await deleteDataView(document.id, activeTable.id, view.id)
+      const remainingViews = tableViews.filter((item) => item.id !== view.id)
+      const nextView = remainingViews[Math.min(viewIndex, remainingViews.length - 1)] || remainingViews[0]
+      setDocument((current) => current ? {
+        ...current,
+        tables: current.tables?.map((table) => table.id === activeTable.id ? {
+          ...table,
+          views: table.views?.filter((item) => item.id !== view.id),
+        } : table),
+      } : current)
+      setActiveViewId(nextView?.id ?? null)
+      window.dispatchEvent(new CustomEvent('kition:data-document:view:delete', {
+        detail: { vaultPath: documentPath, tableId: activeTable.id, viewId: view.id },
+      }))
+      setStatus(t('feedback.viewDeleted'))
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Failed to delete view')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function addField() {
     if (!document || !activeTable || !newFieldTitle.trim()) return
     setBusy(true)
@@ -412,6 +506,8 @@ export function useTableStructureActions({
     addField,
     addDefaultField,
     createView,
+    deleteView,
+    duplicateView,
     renameView,
     reorderField,
     removeField,

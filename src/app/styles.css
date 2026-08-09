@@ -634,10 +634,6 @@
     font-variant-numeric: tabular-nums;
   }
 
-  .credit-usage-card__unit {
-    @apply text-sm font-normal text-muted-foreground;
-  }
-
   .credit-usage-card__spacer {
     @apply ml-auto;
   }
@@ -720,10 +716,6 @@
 
   .credit-usage-card--compact .credit-usage-card__amount {
     @apply min-w-0 flex-1 truncate text-sm leading-5;
-  }
-
-  .credit-usage-card--compact .credit-usage-card__unit {
-    @apply text-xs;
   }
 
   .credit-usage-card--compact .credit-usage-card__percent {
@@ -6865,6 +6857,11 @@
 
   .data-inline-view-tabs {
     @apply flex min-w-0 shrink items-center gap-1 overflow-x-auto;
+    scrollbar-width: none;
+  }
+
+  .data-inline-view-tabs::-webkit-scrollbar {
+    display: none;
   }
 
   .data-inline-view-tab {
@@ -6900,11 +6897,15 @@
   }
 
   .data-inline-view-tab-menu {
-    @apply absolute left-0 top-[calc(100%+0.45rem)] z-50 w-44 rounded-lg border border-border bg-popover p-1 text-foreground shadow-lg;
+    @apply z-50 w-48 rounded-lg border border-border bg-popover p-1 text-foreground shadow-lg;
   }
 
   .data-inline-view-tab-menu button {
-    @apply flex h-9 w-full items-center gap-2 rounded-md px-2.5 text-left text-sm hover:bg-muted;
+    @apply flex h-9 w-full items-center gap-2 rounded-md px-2.5 text-left text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-45;
+  }
+
+  .data-inline-view-tab-menu button.is-destructive:not(:disabled) {
+    @apply text-destructive hover:bg-destructive/10;
   }
 
   .data-inline-add-view {

@@ -151,6 +151,16 @@
   "header": {
     "addView": "Add view"
   },
+  "viewMenu": {
+    "open": "Open view menu",
+    "optionsFor": "View options for {{title}}",
+    "rename": "Rename view",
+    "duplicate": "Duplicate view",
+    "delete": "Delete view",
+    "keepOne": "A table must keep at least one view",
+    "copyTitle": "{{title}} copy",
+    "deleteConfirm": "Delete view “{{title}}”?"
+  },
   "propertyBar": {
     "addRecord": "Add record",
     "duplicateCount": "Duplicate {{count}}",
@@ -537,6 +547,8 @@
   },
   "feedback": {
     "tableDuplicated": "Table duplicated",
+    "viewDuplicated": "View duplicated",
+    "viewDeleted": "View deleted",
     "csvDownloaded": "CSV downloaded",
     "tableDeleted": "Table deleted",
     "historyUnavailable": "History is not available for tables yet",

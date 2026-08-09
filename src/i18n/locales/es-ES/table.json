@@ -151,6 +151,16 @@
   "header": {
     "addView": "Añadir vista"
   },
+  "viewMenu": {
+    "open": "Abrir menú de vista",
+    "optionsFor": "Opciones de vista para {{title}}",
+    "rename": "Renombrar vista",
+    "duplicate": "Duplicar vista",
+    "delete": "Eliminar vista",
+    "keepOne": "La tabla debe conservar al menos una vista",
+    "copyTitle": "Copia de {{title}}",
+    "deleteConfirm": "¿Eliminar la vista «{{title}}»?"
+  },
   "propertyBar": {
     "addRecord": "Añadir registro",
     "duplicateCount": "Duplicar {{count}}",
@@ -532,6 +542,8 @@
   },
   "feedback": {
     "tableDuplicated": "Tabla duplicada",
+    "viewDuplicated": "Vista duplicada",
+    "viewDeleted": "Vista eliminada",
     "csvDownloaded": "CSV descargado",
     "tableDeleted": "Tabla eliminada",
     "historyUnavailable": "El historial aún no está disponible para las tablas",

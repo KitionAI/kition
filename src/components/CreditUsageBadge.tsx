@@ -125,10 +125,7 @@ export function CreditUsageBadge({
         <Icon className="credit-usage-card__icon" aria-hidden="true" />
         <span className="credit-usage-card__label">Credits</span>
         {compact ? (
-          <span className="credit-usage-card__amount">
-            {balanceLabel}
-            <span className="credit-usage-card__unit"> credits</span>
-          </span>
+          <span className="credit-usage-card__amount">{balanceLabel}</span>
         ) : (
           <>
             <span className="credit-usage-card__amount">{amountLabel}</span>

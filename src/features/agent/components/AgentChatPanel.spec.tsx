@@ -145,6 +145,7 @@ describe('AgentChatPanel composer controls', () => {
   })
 
   it('keeps web search and browser capability controls out of the composer', async () => {
+    Element.prototype.scrollIntoView = vi.fn()
     const modelOption = {
       key: 'kition_console:gpt-test',
       providerKind: 'kition_console',
@@ -165,7 +166,15 @@ describe('AgentChatPanel composer controls', () => {
       selectedModelKey: modelOption.key,
     })))
 
-    expect(container.querySelector('.agent-ai-model-picker')).not.toBeNull()
+    const modelPicker = container.querySelector('.agent-ai-model-picker') as HTMLElement
+    expect(modelPicker).not.toBeNull()
+    expect(modelPicker.textContent).toContain('gpt-test')
+    expect(modelPicker.textContent).not.toContain('Kition Cloud')
+    await act(async () => {
+      modelPicker.querySelector<HTMLButtonElement>('button')?.click()
+      await Promise.resolve()
+    })
+    expect(modelPicker.textContent).not.toContain('Kition Cloud')
     expect(container.querySelector('.agent-ai-send')).not.toBeNull()
     expect(container.querySelector('[data-testid="agent-hosted-web-search-status"]')).toBeNull()
     expect(container.querySelector('.agent-ai-browser-toggle')).toBeNull()

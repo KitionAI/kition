@@ -151,6 +151,16 @@
   "header": {
     "addView": "Adicionar visualização"
   },
+  "viewMenu": {
+    "open": "Abrir menu da visualização",
+    "optionsFor": "Opções da visualização {{title}}",
+    "rename": "Renomear visualização",
+    "duplicate": "Duplicar visualização",
+    "delete": "Excluir visualização",
+    "keepOne": "A tabela deve manter pelo menos uma visualização",
+    "copyTitle": "Cópia de {{title}}",
+    "deleteConfirm": "Excluir a visualização “{{title}}”?"
+  },
   "propertyBar": {
     "addRecord": "Adicionar registro",
     "duplicateCount": "Duplicar {{count}}",
@@ -532,6 +542,8 @@
   },
   "feedback": {
     "tableDuplicated": "Tabela duplicada",
+    "viewDuplicated": "Visualização duplicada",
+    "viewDeleted": "Visualização excluída",
     "csvDownloaded": "CSV baixado",
     "tableDeleted": "Tabela excluída",
     "historyUnavailable": "O histórico ainda não está disponível para tabelas",

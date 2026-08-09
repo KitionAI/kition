@@ -151,6 +151,16 @@
   "header": {
     "addView": "Ajouter une vue"
   },
+  "viewMenu": {
+    "open": "Ouvrir le menu de la vue",
+    "optionsFor": "Options de la vue {{title}}",
+    "rename": "Renommer la vue",
+    "duplicate": "Dupliquer la vue",
+    "delete": "Supprimer la vue",
+    "keepOne": "La table doit conserver au moins une vue",
+    "copyTitle": "Copie de {{title}}",
+    "deleteConfirm": "Supprimer la vue « {{title}} » ?"
+  },
   "propertyBar": {
     "addRecord": "Ajouter un enregistrement",
     "duplicateCount": "Dupliquer {{count}}",
@@ -532,6 +542,8 @@
   },
   "feedback": {
     "tableDuplicated": "Table dupliquée",
+    "viewDuplicated": "Vue dupliquée",
+    "viewDeleted": "Vue supprimée",
     "csvDownloaded": "CSV téléchargé",
     "tableDeleted": "Table supprimée",
     "historyUnavailable": "L'historique n'est pas encore disponible pour les tables",
