@@ -149,7 +149,7 @@ function CommandSeparator({
 }
 
 export const commandItemVariants = cva(
-  'relative mx-1 flex h-[28px] cursor-default select-none items-center rounded-sm px-2 text-sm outline-none data-[disabled=true]:pointer-events-none data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground data-[disabled=true]:opacity-50',
+  'relative mx-1 flex h-[28px] cursor-pointer select-none items-center rounded-sm px-2 text-sm outline-none data-[disabled=true]:pointer-events-none data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground data-[disabled=true]:opacity-50',
   {
     defaultVariants: {
       variant: 'default',

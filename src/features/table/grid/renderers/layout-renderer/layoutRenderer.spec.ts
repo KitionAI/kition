@@ -21,4 +21,12 @@ describe('getColumnFreezeVisibleHeight', () => {
     expect(lightGridTheme.interactionLineColorCommon).not.toBe(lightGridTheme.columnFreezeHandlerBg)
     expect(darkTheme.interactionLineColorCommon).not.toBe(darkTheme.columnFreezeHandlerBg)
   })
+
+  it('uses the primary color for checked table controls in both themes', () => {
+    const darkTheme = getGridTheme(true)
+
+    expect(lightGridTheme.iconBgSelected).toBe(lightGridTheme.cellLineColorActived)
+    expect(darkTheme.iconBgSelected).toBe(darkTheme.cellLineColorActived)
+    expect(darkTheme.iconBgSelected).not.toBe(darkTheme.cellTextColor)
+  })
 })

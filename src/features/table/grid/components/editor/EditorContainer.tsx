@@ -242,6 +242,7 @@ export const EditorContainerBase: ForwardRefRenderFunction<
             style={editorStyle}
             cell={cellContent}
             isEditing={isEditing}
+            setEditing={setEditing}
             onChange={onChangeInner}
           />
         );

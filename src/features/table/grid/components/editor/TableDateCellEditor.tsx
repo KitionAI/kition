@@ -68,6 +68,14 @@ function editorValueFromDate(inputType: 'date' | 'datetime-local', date: Date): 
   return toDateInputValue(inputType, date.toISOString())
 }
 
+function calendarDateKey(date: Date): string {
+  return [
+    String(date.getFullYear()),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-')
+}
+
 export const TableDateCellEditor = forwardRef<HTMLDivElement, TableDateCellEditorProps>(
   function TableDateCellEditor({
     active,
@@ -157,7 +165,6 @@ export const TableDateCellEditor = forwardRef<HTMLDivElement, TableDateCellEdito
       >
         <Popover
           open={picker === 'date'}
-          onOpenChange={(open) => setPicker(open ? 'date' : null)}
         >
           <PopoverTrigger asChild>
             <button
@@ -165,7 +172,7 @@ export const TableDateCellEditor = forwardRef<HTMLDivElement, TableDateCellEdito
               data-testid="table-date-trigger"
               onClick={() => setPicker('date')}
               className={cn(
-                'flex h-full min-w-0 flex-1 items-center gap-1.5 px-2 text-left outline-none transition-colors hover:bg-accent/50',
+                'flex h-full min-w-0 flex-1 cursor-pointer items-center gap-1.5 px-2 text-left outline-none transition-colors hover:bg-accent/50',
                 picker === 'date' && 'bg-accent/45',
               )}
             >
@@ -191,7 +198,7 @@ export const TableDateCellEditor = forwardRef<HTMLDivElement, TableDateCellEdito
                   type="button"
                   onClick={() => moveMonth(-1)}
                   aria-label="Previous month"
-                  className="grid size-7 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+                  className="grid size-7 cursor-pointer place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
                 >
                   <ChevronLeft className="size-4" />
                 </button>
@@ -199,7 +206,7 @@ export const TableDateCellEditor = forwardRef<HTMLDivElement, TableDateCellEdito
                   type="button"
                   onClick={() => moveMonth(1)}
                   aria-label="Next month"
-                  className="grid size-7 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+                  className="grid size-7 cursor-pointer place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
                 >
                   <ChevronRight className="size-4" />
                 </button>
@@ -217,9 +224,16 @@ export const TableDateCellEditor = forwardRef<HTMLDivElement, TableDateCellEdito
                   <button
                     key={`${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`}
                     type="button"
-                    onClick={() => chooseDate(date)}
+                    data-date={calendarDateKey(date)}
+                    onPointerDown={(event) => {
+                      event.preventDefault()
+                      chooseDate(date)
+                    }}
+                    onClick={(event) => {
+                      if (event.detail === 0) chooseDate(date)
+                    }}
                     className={cn(
-                      'mx-auto grid size-8 place-items-center rounded-full text-xs tabular-nums transition-colors',
+                      'mx-auto grid size-8 cursor-pointer place-items-center rounded-full text-xs tabular-nums transition-colors',
                       inMonth ? 'text-foreground' : 'text-muted-foreground/45',
                       !selected && 'hover:bg-accent',
                       currentDay && !selected && 'ring-1 ring-inset ring-primary/70 text-primary',
@@ -235,14 +249,14 @@ export const TableDateCellEditor = forwardRef<HTMLDivElement, TableDateCellEdito
               <button
                 type="button"
                 onClick={() => commit('')}
-                className="rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+                className="cursor-pointer rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
               >
                 {t('datePicker.clear', { defaultValue: 'Clear' })}
               </button>
               <button
                 type="button"
                 onClick={() => commit(editorValueFromDate(inputType, new Date()))}
-                className="rounded-md px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10"
+                className="cursor-pointer rounded-md px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10"
               >
                 {t('datePicker.today', { defaultValue: 'Today' })}
               </button>
@@ -253,7 +267,6 @@ export const TableDateCellEditor = forwardRef<HTMLDivElement, TableDateCellEdito
         {inputType === 'datetime-local' ? (
           <Popover
             open={picker === 'time'}
-            onOpenChange={(open) => setPicker(open ? 'time' : null)}
           >
             <PopoverTrigger asChild>
               <button
@@ -261,7 +274,7 @@ export const TableDateCellEditor = forwardRef<HTMLDivElement, TableDateCellEdito
                 data-testid="table-date-time-trigger"
                 onClick={() => setPicker('time')}
                 className={cn(
-                  'flex h-full w-[78px] shrink-0 items-center gap-1 border-l border-border px-2 outline-none transition-colors hover:bg-accent/50',
+                  'flex h-full w-[78px] shrink-0 cursor-pointer items-center gap-1 border-l border-border px-2 outline-none transition-colors hover:bg-accent/50',
                   picker === 'time' && 'bg-accent/45',
                 )}
               >
@@ -285,9 +298,15 @@ export const TableDateCellEditor = forwardRef<HTMLDivElement, TableDateCellEdito
                     key={time}
                     ref={selected ? selectedTimeRef : undefined}
                     type="button"
-                    onClick={() => chooseTime(time)}
+                    onPointerDown={(event) => {
+                      event.preventDefault()
+                      chooseTime(time)
+                    }}
+                    onClick={(event) => {
+                      if (event.detail === 0) chooseTime(time)
+                    }}
                     className={cn(
-                      'flex h-8 w-full items-center justify-center rounded-md text-xs tabular-nums transition-colors',
+                      'flex h-8 w-full cursor-pointer items-center justify-center rounded-md text-xs tabular-nums transition-colors',
                       selected
                         ? 'bg-primary font-semibold text-primary-foreground'
                         : 'text-foreground hover:bg-accent',

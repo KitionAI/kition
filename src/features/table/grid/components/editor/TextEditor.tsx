@@ -95,7 +95,7 @@ const TextEditorBase: ForwardRefRenderFunction<
         onValueChange={setValueInner}
         onCommit={(next) => {
           onChange?.(fromDateInputValue(inputType, next));
-          setEditing?.(false);
+          setTimeout(() => setEditing?.(false));
         }}
       />
     );

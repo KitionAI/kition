@@ -83,8 +83,8 @@ export const lightGridTheme: IGridTheme = {
   iconBgCommon: colors.transparent,
   iconFgHighlight: colors.yellow[400],
   iconBgHighlight: colors.yellow[400],
-  iconFgSelected: colors.blue[50],
-  iconBgSelected: colors.black,
+  iconFgSelected: '#FFFFFF',
+  iconBgSelected: '#5645d4',
   iconSizeXS: 16,
   iconSizeSM: 20,
   iconSizeMD: 24,
@@ -269,7 +269,7 @@ function buildDarkGridTheme(): IGridTheme {
     // Static icon contrasts — dark theme prefers light icon foreground
     iconFgCommon:    dark.mutedFg,
     iconFgSelected:  dark.background,
-    iconBgSelected:  dark.foreground,
+    iconBgSelected:  dark.primary,
   }
 }
 

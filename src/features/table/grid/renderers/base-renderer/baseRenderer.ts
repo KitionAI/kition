@@ -351,6 +351,7 @@ export const drawRoundPoly = (ctx: CanvasRenderingContext2D, props: IRoundPolyPr
 export const drawCheckbox = (ctx: CanvasRenderingContext2D, props: ICheckboxProps) => {
   const { x, y, size, radius = 4, fill, stroke, isChecked = false } = props;
   const dynamicSize = isChecked ? size : size - 1;
+  const borderStroke = isChecked && fill ? fill : stroke;
 
   ctx.beginPath();
   drawRect(ctx, {
@@ -360,7 +361,7 @@ export const drawCheckbox = (ctx: CanvasRenderingContext2D, props: ICheckboxProp
     height: dynamicSize,
     radius,
     fill,
-    stroke,
+    stroke: borderStroke,
   });
 
   if (stroke) ctx.strokeStyle = stroke;

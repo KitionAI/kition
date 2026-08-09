@@ -673,6 +673,15 @@ test.describe('kitable editor — toolbar interactions', () => {
   })
 
   test('opens date fields with compact calendar and time popovers', async ({ page }) => {
+    const recordPatches: Array<{ values?: Record<string, unknown> }> = []
+    page.on('request', (request) => {
+      if (
+        request.method() === 'PATCH'
+        && /\/api\/v1\/data-documents\/1\/tables\/11\/records\/1001$/.test(request.url())
+      ) {
+        recordPatches.push(request.postDataJSON() as { values?: Record<string, unknown> })
+      }
+    })
     await mockKitableDesktopBridge(page)
     await page.goto('/')
     await waitForKitableEditor(page)
@@ -692,6 +701,24 @@ test.describe('kitable editor — toolbar interactions', () => {
     const calendarBox = await calendar.boundingBox()
     expect(calendarBox?.width).toBeLessThanOrEqual(290)
     expect(calendarBox?.height).toBeLessThanOrEqual(390)
+
+    const nextDate = await page.evaluate(() => {
+      const next = new Date('2026-07-23T04:14:47Z')
+      next.setDate(next.getDate() + 1)
+      const pad = (value: number) => String(value).padStart(2, '0')
+      return {
+        key: `${next.getFullYear()}-${pad(next.getMonth() + 1)}-${pad(next.getDate())}`,
+        stored: next.toISOString(),
+      }
+    })
+    await calendar.locator(`[data-date="${nextDate.key}"]`).click()
+    await expect(calendar).toBeHidden()
+    await expect.poll(() => recordPatches).toContainEqual({
+      values: { received_at: nextDate.stored },
+    })
+
+    await gridStage.click({ position: { x: 545, y: 48 } })
+    await expect(calendar).toBeVisible()
 
     await editor.getByTestId('table-date-time-trigger').click()
     const timeMenu = page.getByTestId('table-date-time-menu')
