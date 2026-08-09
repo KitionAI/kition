@@ -140,7 +140,7 @@ export function completeBootstrap(payload: BootstrapCompleteRequest) {
 export type PortalConnectStartResponse = {
   session_id: string
   authorize_url: string
-  expires_at: string
+  expires_at: number
   poll_interval_ms: number
 }
 
@@ -149,7 +149,7 @@ export type PortalAccountSession = {
   token_prefix: string
   user_id: number
   user_email: string
-  expires_at: string
+  expires_at: number
   credit_total?: number
   credit_balance?: number
   credit_spent?: number
@@ -167,7 +167,7 @@ export type PortalAccountSession = {
   credit_granted_total?: number
   lifetime_credit_total?: number
   credit_reset_cycle?: string
-  credit_reset_at?: string | null
+  credit_reset_at?: number | null
   billing_url?: string
   topup_url?: string
   support_url?: string
@@ -194,12 +194,12 @@ export type PortalCreditSummary = {
   credit_granted_total?: number
   lifetime_credit_total?: number
   credit_reset_cycle?: string
-  credit_reset_at?: string | null
+  credit_reset_at?: number | null
 }
 
 export type PortalConnectResultResponse = {
   status: 'pending' | 'completed' | 'error' | 'expired'
-  expires_at: string
+  expires_at: number
   session?: PortalAccountSession
   error_message?: string
 }
@@ -209,7 +209,7 @@ export type PortalSessionStatusResponse = {
   user_id?: number
   user_email?: string
   token_prefix?: string
-  expires_at?: string
+  expires_at?: number
   credit_total?: number
   credit_balance?: number
   credit_spent?: number
@@ -227,7 +227,7 @@ export type PortalSessionStatusResponse = {
   credit_granted_total?: number
   lifetime_credit_total?: number
   credit_reset_cycle?: string
-  credit_reset_at?: string | null
+  credit_reset_at?: number | null
   billing_url?: string
   topup_url?: string
   support_url?: string

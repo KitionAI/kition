@@ -56,6 +56,23 @@ describe('portal account service', () => {
     vi.useRealTimers()
   })
 
+  it('rejects a persisted RFC3339 account session', async () => {
+    secureValues.set(
+      'kition.portal.account.session.v1',
+      JSON.stringify({
+        access_token: 'legacy-token',
+        token_prefix: 'legacy',
+        user_id: 7,
+        user_email: 'legacy@example.com',
+        expires_at: '2026-06-05T00:00:00Z',
+      }),
+    )
+
+    const { loadStoredPortalAccountSession } = await import('./portalAccount')
+    await expect(loadStoredPortalAccountSession()).resolves.toBeNull()
+    expect(secureValues.get('kition.portal.account.session.v1') || '').toBe('')
+  })
+
   it('restores a persisted session when portal still authenticates the token', async () => {
     secureValues.set(
       'kition.portal.account.session.v1',
@@ -64,7 +81,7 @@ describe('portal account service', () => {
         token_prefix: 'portal-toke',
         user_id: 7,
         user_email: 'old@example.com',
-        expires_at: '2026-06-05T00:00:00Z',
+        expires_at: 1_780_617_600_000,
       }),
     )
     secureValues.set(
@@ -85,7 +102,7 @@ describe('portal account service', () => {
       user_id: 7,
       user_email: 'portal@example.com',
       token_prefix: 'portal-token',
-      expires_at: '2026-06-06T00:00:00Z',
+      expires_at: 1_780_704_000_000,
       credit_total: 150,
       credit_balance: 87,
       credit_spent: 63,
@@ -117,7 +134,7 @@ describe('portal account service', () => {
     expect(session).toMatchObject({
       access_token: 'portal-token',
       user_email: 'portal@example.com',
-      expires_at: '2026-06-06T00:00:00Z',
+      expires_at: 1_780_704_000_000,
       credit_total: 150,
       credit_balance: 87,
       credit_spent: 63,
@@ -165,7 +182,7 @@ describe('portal account service', () => {
         token_prefix: 'portal-toke',
         user_id: 7,
         user_email: 'portal@example.com',
-        expires_at: '2026-06-05T00:00:00Z',
+        expires_at: 1_780_617_600_000,
       }),
     )
     secureValues.set('kition.desktop.previousActiveProvider.v1', 'openai')
@@ -206,7 +223,7 @@ describe('portal account service', () => {
         token_prefix: 'portal-toke',
         user_id: 7,
         user_email: 'portal@example.com',
-        expires_at: '2026-06-05T00:00:00Z',
+        expires_at: 1_780_617_600_000,
       }),
     )
     getPortalSessionStatus.mockRejectedValue(new Error('portal unavailable'))
@@ -228,7 +245,7 @@ describe('portal account service', () => {
         token_prefix: 'portal-token',
         user_id: 7,
         user_email: 'portal@example.com',
-        expires_at: '2026-06-05T00:00:00Z',
+        expires_at: 1_780_617_600_000,
         credit_total: 100,
         credit_balance: 20,
         credit_summary: {
@@ -242,7 +259,7 @@ describe('portal account service', () => {
       user_id: 7,
       user_email: 'portal@example.com',
       token_prefix: 'portal-token',
-      expires_at: '2026-06-06T00:00:00Z',
+      expires_at: 1_780_704_000_000,
       credit_total: 100,
       credit_balance: 75,
     })
@@ -263,7 +280,7 @@ describe('portal account service', () => {
         token_prefix: 'portal-toke',
         user_id: 7,
         user_email: 'portal@example.com',
-        expires_at: '2026-06-05T00:00:00Z',
+        expires_at: 1_780_617_600_000,
       }),
     )
     let resolveStatus: (value: any) => void = () => {}
@@ -282,7 +299,7 @@ describe('portal account service', () => {
       user_id: 7,
       user_email: 'portal@example.com',
       token_prefix: 'portal-token',
-      expires_at: '2026-06-06T00:00:00Z',
+      expires_at: 1_780_704_000_000,
     })
 
     await expect(Promise.all([first, second])).resolves.toEqual([
@@ -296,23 +313,23 @@ describe('portal account service', () => {
     startPortalConnect.mockResolvedValue({
       session_id: 'portal-session',
       authorize_url: 'https://portal.example.com/oauth/start',
-      expires_at: '2026-06-05T00:00:00Z',
+      expires_at: 1_780_617_600_000,
       poll_interval_ms: 1,
     })
     getPortalConnectResult
       .mockResolvedValueOnce({
         status: 'pending',
-        expires_at: '2026-06-05T00:00:00Z',
+        expires_at: 1_780_617_600_000,
       })
       .mockResolvedValueOnce({
         status: 'completed',
-        expires_at: '2026-06-05T00:00:00Z',
+        expires_at: 1_780_617_600_000,
         session: {
           access_token: 'portal-token',
           token_prefix: 'portal-token',
           user_id: 7,
           user_email: 'portal@example.com',
-          expires_at: '2026-06-06T00:00:00Z',
+          expires_at: 1_780_704_000_000,
           credit_total: 150,
           credit_balance: 87,
           credit_spent: 63,
@@ -378,7 +395,7 @@ describe('portal account service', () => {
         token_prefix: 'portal-token',
         user_id: 7,
         user_email: 'portal@example.com',
-        expires_at: '2026-06-06T00:00:00Z',
+        expires_at: 1_780_704_000_000,
       }),
     )
     logoutPortalSession.mockResolvedValue({ success: true })

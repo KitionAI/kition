@@ -16,8 +16,8 @@ type CreditTone = 'ok' | 'warn' | 'danger' | 'neutral'
 type CreditUsageBadgeProps = SharedAttrs & {
   creditBalance: number
   creditTotal: number
-  /** ISO timestamp for next credit reset. Drives the "Resets in Nd" hint. */
-  creditResetAt?: string | null
+  /** Unix milliseconds for the next credit reset. Drives the "Resets in Nd" hint. */
+  creditResetAt?: number | null
   /** When provided + tone is critical, an inline "Top up" CTA appears. */
   topupUrl?: string
   /** Outer click target opens billing / profile detail. */
@@ -55,10 +55,9 @@ function classifyTone(balance: number, total: number): CreditTone {
  * secondary line under the balance. Suppresses anything more than ~60 days
  * out (too distant to matter) and anything already in the past.
  */
-function describeReset(resetAt: string | null | undefined): string | null {
-  if (!resetAt) return null
-  const ts = Date.parse(resetAt)
-  if (!Number.isFinite(ts)) return null
+function describeReset(resetAt: number | null | undefined): string | null {
+  if (!Number.isSafeInteger(resetAt) || resetAt <= 0) return null
+  const ts = resetAt
   const diffMs = ts - Date.now()
   if (diffMs <= 0) return null
   if (diffMs > 60 * MS_PER_DAY) return null

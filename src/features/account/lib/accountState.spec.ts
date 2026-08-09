@@ -13,7 +13,7 @@ function session(creditBalance?: number, creditTotal?: number) {
     token_prefix: 'prefix',
     user_id: 1,
     user_email: 'user@kition.ai',
-    expires_at: '2026-08-01T00:00:00Z',
+    expires_at: 1_785_542_400_000,
     credit_balance: creditBalance,
     credit_total: creditTotal,
   }

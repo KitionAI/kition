@@ -4,6 +4,9 @@
 Kition. The private account and billing service owns authentication, plan
 entitlements, the credit ledger, and hosted-model routing.
 
+All account timestamps use Unix milliseconds encoded as JSON integers. The
+desktop contract does not accept formatted timestamp strings.
+
 The desktop client may persist the complete session in secure storage, but it
 must never display access tokens, refresh tokens, token prefixes, or internal
 session identifiers. Customer-facing account surfaces consume only identity,

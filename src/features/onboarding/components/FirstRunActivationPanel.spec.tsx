@@ -91,7 +91,7 @@ describe('FirstRunActivationPanel', () => {
       token_prefix: 'prefix',
       user_id: 7,
       user_email: 'member@kition.ai',
-      expires_at: '2026-08-01T00:00:00Z',
+      expires_at: 1_785_542_400_000,
       credit_total: 100,
       credit_balance: 80,
     })

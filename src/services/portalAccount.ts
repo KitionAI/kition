@@ -137,6 +137,16 @@ function optionalNumber(value: unknown): number | undefined {
   return Number.isFinite(numeric) ? numeric : undefined
 }
 
+function optionalUnixMilliseconds(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0
+    ? value
+    : undefined
+}
+
+function optionalUnixMillisecondsOrNull(value: unknown): number | null | undefined {
+  return value === null ? null : optionalUnixMilliseconds(value)
+}
+
 function optionalStringOrNull(value: unknown): string | null | undefined {
   if (value === null) {
     return null
@@ -191,13 +201,17 @@ function normalizePortalAccountSession(value: unknown): PortalAccountSession | n
   if (!accessToken) {
     return null
   }
+  const expiresAt = optionalUnixMilliseconds(record.expires_at)
+  if (expiresAt === undefined) {
+    return null
+  }
 
   const session: PortalAccountSession = {
     access_token: accessToken,
     token_prefix: String(record.token_prefix || '').trim(),
     user_id: Number(record.user_id || 0),
     user_email: String(record.user_email || '').trim(),
-    expires_at: String(record.expires_at || '').trim(),
+    expires_at: expiresAt,
   }
   const summary = record.credit_summary && typeof record.credit_summary === 'object' ? (record.credit_summary as Record<string, unknown>) : {}
   const creditTotal = optionalNumber(summary.credit_total ?? record.credit_total)
@@ -217,7 +231,7 @@ function normalizePortalAccountSession(value: unknown): PortalAccountSession | n
   const creditGrantedTotal = optionalNumber(summary.credit_granted_total ?? record.credit_granted_total)
   const lifetimeCreditTotal = optionalNumber(summary.lifetime_credit_total ?? record.lifetime_credit_total)
   const creditResetCycle = optionalStringOrNull(summary.credit_reset_cycle ?? record.credit_reset_cycle)
-  const creditResetAt = optionalStringOrNull(summary.credit_reset_at ?? record.credit_reset_at)
+  const creditResetAt = optionalUnixMillisecondsOrNull(summary.credit_reset_at ?? record.credit_reset_at)
   const billingUrl = optionalStringOrNull(record.billing_url)
   const topupUrl = optionalStringOrNull(record.topup_url)
   const supportUrl = optionalStringOrNull(record.support_url)
@@ -314,7 +328,11 @@ export async function loadStoredPortalAccountSession() {
   }
 
   try {
-    return normalizePortalAccountSession(JSON.parse(raw))
+    const session = normalizePortalAccountSession(JSON.parse(raw))
+    if (!session) {
+      await deleteSecureValue(PORTAL_ACCOUNT_STORAGE_KEY)
+    }
+    return session
   } catch {
     await deleteSecureValue(PORTAL_ACCOUNT_STORAGE_KEY)
     return null
@@ -343,7 +361,7 @@ function hydrateStoredPortalSession(
     token_prefix: status.token_prefix || stored.token_prefix,
     user_id: status.user_id || stored.user_id,
     user_email: status.user_email || stored.user_email,
-    expires_at: status.expires_at || stored.expires_at,
+    expires_at: status.expires_at ?? stored.expires_at,
     credit_total: status.credit_total ?? stored.credit_total,
     credit_balance: status.credit_balance ?? stored.credit_balance,
     credit_spent: status.credit_spent ?? stored.credit_spent,

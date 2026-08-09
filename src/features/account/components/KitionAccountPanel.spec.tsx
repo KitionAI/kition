@@ -108,7 +108,7 @@ describe('KitionAccountPanel', () => {
       token_prefix: 'prefix',
       user_id: 7,
       user_email: 'member@kition.ai',
-      expires_at: '2026-08-01T00:00:00Z',
+      expires_at: 1_785_542_400_000,
       plan_display_name: 'Founders Plan',
       subscription_status: 'active',
       credit_total: 150,
@@ -141,7 +141,7 @@ describe('KitionAccountPanel', () => {
       token_prefix: 'prefix',
       user_id: 7,
       user_email: 'member@kition.ai',
-      expires_at: '2026-08-01T00:00:00Z',
+      expires_at: 1_785_542_400_000,
       subscription_status: subscriptionStatus,
     })
     await mount()
@@ -155,7 +155,7 @@ describe('KitionAccountPanel', () => {
       token_prefix: 'prefix',
       user_id: 7,
       user_email: 'member@kition.ai',
-      expires_at: '2026-08-01T00:00:00Z',
+      expires_at: 1_785_542_400_000,
       credit_total: 100,
       credit_balance: 20,
       topup_url: 'https://billing.kition.ai/topup',
@@ -174,7 +174,7 @@ describe('KitionAccountPanel', () => {
       token_prefix: 'prefix',
       user_id: 7,
       user_email: 'member@kition.ai',
-      expires_at: '2026-08-01T00:00:00Z',
+      expires_at: 1_785_542_400_000,
       credit_total: 100,
       credit_balance: 0,
       topup_url: 'https://billing.kition.ai/topup',
@@ -199,7 +199,7 @@ describe('KitionAccountPanel', () => {
       token_prefix: 'prefix',
       user_id: 7,
       user_email: 'member@kition.ai',
-      expires_at: '2026-08-01T00:00:00Z',
+      expires_at: 1_785_542_400_000,
       billing_url: 'https://billing.kition.ai/manage',
     })
     await mount()

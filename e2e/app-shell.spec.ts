@@ -774,7 +774,7 @@ test.describe('app shell navigation', () => {
           data: {
             session_id: 'portal-session',
             authorize_url: 'https://platform.example.com/api/oauth/desktop/authorize?challenge_id=portal-session',
-            expires_at: '2026-06-05T00:00:00Z',
+            expires_at: 1_780_617_600_000,
             poll_interval_ms: 10,
           },
         }),
@@ -788,20 +788,20 @@ test.describe('app shell navigation', () => {
             code: 200,
             data: {
               status: 'pending',
-              expires_at: '2026-06-05T00:00:00Z',
+              expires_at: 1_780_617_600_000,
             },
           }
         : {
             code: 200,
             data: {
               status: 'completed',
-              expires_at: '2026-06-05T00:00:00Z',
+              expires_at: 1_780_617_600_000,
               session: {
                 access_token: 'portal-token',
                 token_prefix: 'portal-token',
                 user_id: 7,
                 user_email: 'portal@example.com',
-                expires_at: '2026-06-06T00:00:00Z',
+                expires_at: 1_780_704_000_000,
                 credit_total: 150,
                 credit_balance: 87,
                 credit_spent: 63,
@@ -850,7 +850,7 @@ test.describe('app shell navigation', () => {
               user_id: 7,
               user_email: 'portal@example.com',
               token_prefix: 'portal-token',
-              expires_at: '2026-06-06T00:00:00Z',
+              expires_at: 1_780_704_000_000,
               credit_total: 150,
               credit_balance: billingOpened ? 99 : 87,
               credit_spent: billingOpened ? 51 : 63,
@@ -988,7 +988,7 @@ test.describe('app shell navigation', () => {
           token_prefix: 'startup',
           user_id: 7,
           user_email: 'old@example.com',
-          expires_at: '2026-06-05T00:00:00Z',
+          expires_at: 1_780_617_600_000,
         }),
       ],
       [
@@ -1031,7 +1031,7 @@ test.describe('app shell navigation', () => {
             user_id: 7,
             user_email: 'startup@example.com',
             token_prefix: 'startup',
-            expires_at: '2026-06-06T00:00:00Z',
+            expires_at: 1_780_704_000_000,
             credit_total: 150,
             credit_balance: 87,
             credit_spent: 63,

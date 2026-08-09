@@ -16,7 +16,7 @@
     "token_prefix": { "type": "string" },
     "user_id": { "type": "integer", "minimum": 1 },
     "user_email": { "type": "string" },
-    "expires_at": { "type": "string" },
+    "expires_at": { "type": "integer", "minimum": 1 },
     "credit_total": { "type": "number", "minimum": 0 },
     "credit_balance": { "type": "number", "minimum": 0 },
     "credit_spent": { "type": "number", "minimum": 0 },
@@ -34,7 +34,7 @@
     "credit_granted_total": { "type": "number", "minimum": 0 },
     "lifetime_credit_total": { "type": "number", "minimum": 0 },
     "credit_reset_cycle": { "type": "string" },
-    "credit_reset_at": { "type": ["string", "null"] },
+    "credit_reset_at": { "type": ["integer", "null"], "minimum": 1 },
     "billing_url": { "type": "string", "format": "uri" },
     "topup_url": { "type": "string", "format": "uri" },
     "support_url": { "type": "string", "format": "uri" },
@@ -64,7 +64,7 @@
         "credit_granted_total": { "type": "number", "minimum": 0 },
         "lifetime_credit_total": { "type": "number", "minimum": 0 },
         "credit_reset_cycle": { "type": "string" },
-        "credit_reset_at": { "type": ["string", "null"] }
+        "credit_reset_at": { "type": ["integer", "null"], "minimum": 1 }
       }
     }
   }
