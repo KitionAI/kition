@@ -941,10 +941,13 @@ test.describe('app shell navigation', () => {
     // Compact badge in the workspace sidebar is single-row to match the height
     // of the sibling icon buttons; the X / Y and percentage move into the
     // `title` attribute for hover-discoverable detail.
-    await expect(page.getByTestId('portal-credit-summary')).toContainText('87')
-    await expect(page.getByTestId('portal-credit-summary')).toContainText('credits')
-    await expect(page.getByTestId('portal-credit-summary')).toHaveAttribute('title', /87 \/ 150/)
-    await expect(page.getByTestId('portal-credit-summary')).toHaveAttribute('title', /58% remaining/)
+    const compactCreditSummary = page.getByTestId('portal-credit-summary')
+    const compactCreditLabel = compactCreditSummary.locator('.credit-usage-card__label')
+    await expect(compactCreditLabel).toHaveCSS('position', 'absolute')
+    await expect(compactCreditLabel).toHaveCSS('width', '1px')
+    await expect(compactCreditSummary.locator('.credit-usage-card__amount')).toHaveText('87')
+    await expect(compactCreditSummary).toHaveAttribute('title', /87 \/ 150/)
+    await expect(compactCreditSummary).toHaveAttribute('title', /58% remaining/)
     await expect.poll(() => secureStore.get('kition.portal.account.session.v1') || '').toContain('"portal@example.com"')
     await expect.poll(() => secureStore.get('kition.portal.account.session.v1') || '').toContain('"credit_total":150')
 
@@ -965,9 +968,8 @@ test.describe('app shell navigation', () => {
     await expect.poll(() => portalStatusCalls).toBeGreaterThan(statusCallsBeforeReload)
     await expect.poll(() => portalStatusBalances.at(-1)).toBe(99)
     await expect.poll(() => secureStore.get('kition.portal.account.session.v1') || '').toContain('"credit_balance":99')
-    await expect(page.getByTestId('portal-credit-summary')).toContainText('99')
-    await expect(page.getByTestId('portal-credit-summary')).toContainText('credits')
-    await expect(page.getByTestId('portal-credit-summary')).toHaveAttribute('title', /66% remaining/)
+    await expect(compactCreditSummary.locator('.credit-usage-card__amount')).toHaveText('99')
+    await expect(compactCreditSummary).toHaveAttribute('title', /66% remaining/)
     await page.getByTestId('profile-nav-button').click()
     await expect(page.getByTestId('portal-account-summary')).toContainText('portal@example.com')
 
