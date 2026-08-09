@@ -2076,7 +2076,14 @@ export async function copyImageToClipboard(url: string) {
 
   const bridge = getDesktopBridge()
   if (bridge?.CopyImage) {
-    return bridge.CopyImage({ url: source })
+    try {
+      return await bridge.CopyImage({ url: source })
+    } catch {
+      const response = await fetch(source)
+      if (!response.ok) throw new Error(`image download failed: ${response.status}`)
+      const png = await imageBlobToPng(await response.blob())
+      return bridge.CopyImage({ url: await blobToDataURL(png) })
+    }
   }
 
   if (typeof navigator === 'undefined' || !navigator.clipboard?.write || typeof ClipboardItem === 'undefined') {

@@ -8,6 +8,7 @@ let container: HTMLDivElement
 let root: Root | null = null
 
 beforeEach(() => {
+  window.localStorage.clear()
   container = document.createElement('div')
   document.body.appendChild(container)
 })
@@ -16,6 +17,7 @@ afterEach(() => {
   root?.unmount()
   root = null
   container.remove()
+  window.localStorage.clear()
   vi.unstubAllGlobals()
 })
 
@@ -45,6 +47,45 @@ describe('WorkspaceKitableSidebar', () => {
     ).toBe('true')
     expect(container.querySelector('[data-testid="workspace-kitable-expand"]')).toBeTruthy()
     expect(container.querySelector('[data-testid="workspace-kitable-search"]')).toBeNull()
+  })
+
+  it('keeps the global collapsed state when switching between kitables', () => {
+    const renderSidebar = (tableId: number, title: string) => {
+      act(() => {
+        root?.unmount()
+        root = createRoot(container)
+        root.render(createElement(WorkspaceKitableSidebar, {
+          mode: 'table',
+          activeTableId: tableId,
+          dashboards: [],
+          tables: [
+            { id: tableId, title, order: 0, primaryFieldId: null },
+          ],
+          workflows: [],
+          onCreateDashboard: vi.fn(),
+          onCreateTable: vi.fn(),
+          onCreateWorkflow: vi.fn(),
+          onOpenDashboard: vi.fn(),
+          onOpenTable: vi.fn(),
+          onOpenWorkflow: vi.fn(),
+        }))
+      })
+    }
+
+    renderSidebar(7, 'Prospects')
+    act(() => {
+      container.querySelector<HTMLButtonElement>('[data-testid="workspace-kitable-expand"]')?.click()
+    })
+    renderSidebar(8, 'Companies')
+    expect(container.querySelector('[data-testid="workspace-kitable-search"]')).toBeTruthy()
+
+    act(() => {
+      container.querySelector<HTMLButtonElement>('[data-testid="workspace-kitable-collapse"]')?.click()
+    })
+    renderSidebar(9, 'Contacts')
+    expect(
+      container.querySelector('[data-testid="workspace-kitable-sidebar"]')?.getAttribute('data-collapsed'),
+    ).toBe('true')
   })
 
   it('shows table titles and routes table/workflow clicks', () => {
@@ -262,5 +303,53 @@ describe('WorkspaceKitableSidebar', () => {
     )
     expect(onWorkflowChanged).toHaveBeenCalledTimes(1)
     window.removeEventListener('kition:workflow:changed', onWorkflowChanged)
+  })
+
+  it('keeps the Workflow entry when a form is the only workflow child', () => {
+    const onOpenWorkflow = vi.fn()
+
+    act(() => {
+      root = createRoot(container)
+      root.render(createElement(WorkspaceKitableSidebar, {
+        defaultCollapsed: false,
+        mode: 'workflow',
+        activeWorkflowId: 'formsync_task',
+        dashboards: [],
+        tables: [
+          { id: 7, title: 'Task Management', order: 0, primaryFieldId: null },
+        ],
+        workflows: [
+          {
+            id: 'formsync_task',
+            name: 'Task Management form',
+            enabled: false,
+            kind: 'form_sync',
+          },
+        ],
+        onCreateDashboard: vi.fn(),
+        onCreateTable: vi.fn(),
+        onCreateWorkflow: vi.fn(),
+        onOpenDashboard: vi.fn(),
+        onOpenTable: vi.fn(),
+        onOpenWorkflow,
+      }))
+    })
+
+    const workflow = container.querySelector(
+      '[data-testid="workspace-kitable-workflow"]',
+    ) as HTMLButtonElement
+    const form = container.querySelector(
+      '[data-testid="workspace-kitable-workflow-formsync_task"]',
+    ) as HTMLButtonElement
+
+    expect(workflow.textContent).toBe('Workflow')
+    expect(workflow.classList.contains('is-active')).toBe(false)
+    expect(form.textContent).toBe('Task Management form')
+    expect(form.classList.contains('is-active')).toBe(true)
+
+    act(() => { workflow.click() })
+    expect(onOpenWorkflow).toHaveBeenCalledWith(undefined)
+    act(() => { form.click() })
+    expect(onOpenWorkflow).toHaveBeenLastCalledWith('formsync_task')
   })
 })

@@ -172,140 +172,142 @@ export function FormSyncWorkflowPage({ workflowId }: { workflowId: string }) {
   }
 
   return (
-    <div className="h-full min-h-0 overflow-auto bg-muted/25" data-testid="form-sync-workflow-page">
-      <div className="mx-auto grid max-w-[1440px] gap-5 p-5 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <section className="min-w-0 space-y-5">
-          <header className="rounded-xl border bg-background p-5 shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="flex min-w-0 items-start gap-3">
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <FileInput className="size-5" />
-                </span>
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h1 className="text-lg font-semibold">Form builder</h1>
-                    <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${workflow.published ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' : 'bg-muted text-muted-foreground'}`}>
-                      {workflow.published ? 'Published' : 'Draft'}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Submissions create records in {targetTable?.title || 'the destination table'}.
-                  </p>
+    <div className="flex h-full min-h-0 flex-col bg-muted/25" data-testid="form-sync-workflow-page">
+      <header
+        className="form-sync-workflow-topbar flex h-14 shrink-0 items-center gap-3 border-b border-border bg-background px-4"
+        data-testid="form-sync-workflow-topbar"
+      >
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <FileInput className="size-4" />
+        </span>
+        <div className="flex min-w-0 items-center gap-2">
+          <h1 className="truncate text-base font-semibold">Form builder</h1>
+          <span className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-medium ${workflow.published ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' : 'bg-muted text-muted-foreground'}`}>
+            {workflow.published ? 'Published' : 'Draft'}
+          </span>
+        </div>
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          {workflow.published ? (
+            <Button variant="outline" onClick={() => void persist(false)} disabled={status !== 'idle'}>
+              <CloudOff /> Unpublish
+            </Button>
+          ) : (
+            <Button onClick={() => void persist(true)} disabled={status !== 'idle'}>
+              <CloudUpload /> Publish
+            </Button>
+          )}
+          <Button variant="outline" onClick={() => void persist()} disabled={status !== 'idle'}>
+            <Save /> Save changes
+          </Button>
+        </div>
+      </header>
+
+      <div className="min-h-0 flex-1 overflow-auto">
+        <div className="mx-auto grid max-w-[1440px] gap-5 p-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+          <section className="min-w-0 space-y-5">
+            <section className="rounded-xl border bg-background p-4 shadow-sm">
+              <p className="text-sm text-muted-foreground">
+                Submissions create records in {targetTable?.title || 'the destination table'}.
+              </p>
+              {workflow.public_url ? (
+                <div className="mt-3 flex min-w-0 items-center gap-2 rounded-lg border bg-muted/30 p-2">
+                  <code className="min-w-0 flex-1 truncate px-2 text-xs">{workflow.public_url}</code>
+                  <Button size="iconSm" variant="ghost" label="Copy public link" onClick={() => void copyPublicURL()}><Copy /></Button>
+                  <Button
+                    size="iconSm"
+                    variant="ghost"
+                    label="Open public form"
+                    onClick={() => window.open(workflow.public_url, '_blank', 'noopener,noreferrer')}
+                  >
+                    <ExternalLink />
+                  </Button>
+                </div>
+              ) : (
+                <div className="mt-3 rounded-lg border border-dashed bg-muted/20 p-3 text-sm text-muted-foreground">
+                  Configure the draft locally. A public URL will be created only when you publish.
+                </div>
+              )}
+            </section>
+
+            <section className="rounded-xl border bg-background shadow-sm">
+              <div className="border-b p-5">
+                <h2 className="font-semibold">Form details</h2>
+                <p className="mt-1 text-sm text-muted-foreground">Set the public title and destination field mapping.</p>
+              </div>
+              <div className="grid gap-4 p-5">
+                <label className="grid gap-2 text-sm font-medium">
+                  Form title
+                  <Input value={name} onChange={(event) => setName(event.target.value)} />
+                </label>
+                <div className="grid gap-3">
+                  {fields.map((field, index) => (
+                    <FormFieldEditor
+                      key={field.key}
+                      field={field}
+                      index={index}
+                      total={fields.length}
+                      targetFields={targetFields}
+                      onChange={(patch) => updateField(index, patch)}
+                      onMove={(direction) => moveField(index, direction)}
+                      onDelete={() => setFields((current) => current.filter((_, fieldIndex) => fieldIndex !== index))}
+                    />
+                  ))}
+                  <Button
+                    variant="outline"
+                    className="w-full border-dashed"
+                    onClick={() => setFields((current) => [
+                      ...current,
+                      createBuilderField(current, targetFields[0]?.title || ''),
+                    ])}
+                    disabled={targetFields.length === 0}
+                  >
+                    <Plus /> Add field
+                  </Button>
                 </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {workflow.published ? (
-                  <Button variant="outline" onClick={() => void persist(false)} disabled={status !== 'idle'}>
-                    <CloudOff /> Unpublish
-                  </Button>
-                ) : (
-                  <Button onClick={() => void persist(true)} disabled={status !== 'idle'}>
-                    <CloudUpload /> Publish
-                  </Button>
-                )}
-                <Button variant="outline" onClick={() => void persist()} disabled={status !== 'idle'}>
-                  <Save /> Save changes
-                </Button>
-              </div>
-            </div>
-            {workflow.public_url ? (
-              <div className="mt-4 flex min-w-0 items-center gap-2 rounded-lg border bg-muted/30 p-2">
-                <code className="min-w-0 flex-1 truncate px-2 text-xs">{workflow.public_url}</code>
-                <Button size="iconSm" variant="ghost" label="Copy public link" onClick={() => void copyPublicURL()}><Copy /></Button>
-                <Button
-                  size="iconSm"
-                  variant="ghost"
-                  label="Open public form"
-                  onClick={() => window.open(workflow.public_url, '_blank', 'noopener,noreferrer')}
-                >
-                  <ExternalLink />
-                </Button>
-              </div>
-            ) : (
-              <div className="mt-4 rounded-lg border border-dashed bg-muted/20 p-3 text-sm text-muted-foreground">
-                Configure the draft locally. A public URL will be created only when you publish.
-              </div>
-            )}
-          </header>
+            </section>
 
-          <section className="rounded-xl border bg-background shadow-sm">
-            <div className="border-b p-5">
-              <h2 className="font-semibold">Form details</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Set the public title and destination field mapping.</p>
-            </div>
-            <div className="grid gap-4 p-5">
-              <label className="grid gap-2 text-sm font-medium">
-                Form title
-                <Input value={name} onChange={(event) => setName(event.target.value)} />
-              </label>
-              <div className="grid gap-3">
-                {fields.map((field, index) => (
-                  <FormFieldEditor
-                    key={field.key}
-                    field={field}
-                    index={index}
-                    total={fields.length}
-                    targetFields={targetFields}
-                    onChange={(patch) => updateField(index, patch)}
-                    onMove={(direction) => moveField(index, direction)}
-                    onDelete={() => setFields((current) => current.filter((_, fieldIndex) => fieldIndex !== index))}
-                  />
-                ))}
-                <Button
-                  variant="outline"
-                  className="w-full border-dashed"
-                  onClick={() => setFields((current) => [
-                    ...current,
-                    createBuilderField(current, targetFields[0]?.title || ''),
-                  ])}
-                  disabled={targetFields.length === 0}
-                >
-                  <Plus /> Add field
+            <section className="rounded-xl border bg-background p-5 shadow-sm">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <h2 className="font-semibold">Automatic import</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">Pull published submissions into the desktop table.</p>
+                </div>
+                <Switch checked={scheduleEnabled} onCheckedChange={setScheduleEnabled} aria-label="Automatic import" />
+              </div>
+              <div className="mt-4 flex flex-wrap items-end gap-3">
+                <label className="grid gap-2 text-sm font-medium">
+                  Sync every
+                  <span className="flex items-center gap-2">
+                    <Input
+                      className="w-24"
+                      type="number"
+                      min={1}
+                      max={1440}
+                      value={intervalMinutes}
+                      onChange={(event) => setIntervalMinutes(Number(event.target.value))}
+                      disabled={!scheduleEnabled}
+                    />
+                    <span className="font-normal text-muted-foreground">minutes</span>
+                  </span>
+                </label>
+                <Button variant="outline" onClick={() => void syncNow()} disabled={!workflow.published || status !== 'idle'}>
+                  <RefreshCw className={status === 'syncing' ? 'animate-spin' : ''} /> Sync now
                 </Button>
               </div>
-            </div>
+              <div className="mt-4 grid gap-1 text-xs text-muted-foreground">
+                <span>{workflow.synced_submissions} submissions processed</span>
+                <span>Last sync: {workflow.last_sync_at ? new Date(workflow.last_sync_at).toLocaleString() : 'Never'}</span>
+                {workflow.last_error ? <span className="text-destructive">{workflow.last_error}</span> : null}
+              </div>
+            </section>
+
+            {error ? <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive" role="alert">{error}</p> : null}
+            {feedback ? <p className="flex items-center gap-2 rounded-lg border bg-background p-3 text-sm"><Check className="size-4 text-emerald-600" />{feedback}</p> : null}
           </section>
 
-          <section className="rounded-xl border bg-background p-5 shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <h2 className="font-semibold">Automatic import</h2>
-                <p className="mt-1 text-sm text-muted-foreground">Pull published submissions into the desktop table.</p>
-              </div>
-              <Switch checked={scheduleEnabled} onCheckedChange={setScheduleEnabled} aria-label="Automatic import" />
-            </div>
-            <div className="mt-4 flex flex-wrap items-end gap-3">
-              <label className="grid gap-2 text-sm font-medium">
-                Sync every
-                <span className="flex items-center gap-2">
-                  <Input
-                    className="w-24"
-                    type="number"
-                    min={1}
-                    max={1440}
-                    value={intervalMinutes}
-                    onChange={(event) => setIntervalMinutes(Number(event.target.value))}
-                    disabled={!scheduleEnabled}
-                  />
-                  <span className="font-normal text-muted-foreground">minutes</span>
-                </span>
-              </label>
-              <Button variant="outline" onClick={() => void syncNow()} disabled={!workflow.published || status !== 'idle'}>
-                <RefreshCw className={status === 'syncing' ? 'animate-spin' : ''} /> Sync now
-              </Button>
-            </div>
-            <div className="mt-4 grid gap-1 text-xs text-muted-foreground">
-              <span>{workflow.synced_submissions} submissions processed</span>
-              <span>Last sync: {workflow.last_sync_at ? new Date(workflow.last_sync_at).toLocaleString() : 'Never'}</span>
-              {workflow.last_error ? <span className="text-destructive">{workflow.last_error}</span> : null}
-            </div>
-          </section>
-
-          {error ? <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive" role="alert">{error}</p> : null}
-          {feedback ? <p className="flex items-center gap-2 rounded-lg border bg-background p-3 text-sm"><Check className="size-4 text-emerald-600" />{feedback}</p> : null}
-        </section>
-
-        <FormPreview name={name} fields={fields} published={workflow.published} />
+          <FormPreview name={name} fields={fields} published={workflow.published} />
+        </div>
       </div>
     </div>
   )

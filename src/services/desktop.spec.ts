@@ -16,6 +16,7 @@ describe('desktop service helpers', () => {
     (window as typeof window & { kitionDesktop?: unknown }).kitionDesktop = undefined
     window.localStorage.clear()
     vi.useRealTimers()
+    vi.restoreAllMocks()
   })
 
   it('normalizes API paths consistently', async () => {
@@ -646,6 +647,45 @@ describe('desktop service helpers', () => {
       contact_email: 'user@example.com',
       access_token: 'portal-token',
     })
+  })
+
+  it('converts unsupported desktop images to PNG before retrying clipboard copy', async () => {
+    const copyImage = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('image data is empty'))
+      .mockResolvedValueOnce(true)
+    const closeBitmap = vi.fn()
+    const drawImage = vi.fn()
+
+    ;(window as typeof window & { kitionDesktop?: any }).kitionDesktop = {
+      shell: 'electron',
+      CopyImage: copyImage,
+    }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      blob: async () => new Blob(['webp-image'], { type: 'image/webp' }),
+    }))
+    vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue({
+      width: 2,
+      height: 3,
+      close: closeBitmap,
+    }))
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ drawImage } as any)
+    vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((callback) => {
+      callback(new Blob(['png-image'], { type: 'image/png' }))
+    })
+
+    const { copyImageToClipboard } = await loadDesktopModule()
+
+    await expect(copyImageToClipboard('kition-bundled://assets/example.webp')).resolves.toBe(true)
+    expect(copyImage).toHaveBeenNthCalledWith(1, {
+      url: 'kition-bundled://assets/example.webp',
+    })
+    expect(copyImage).toHaveBeenNthCalledWith(2, {
+      url: expect.stringMatching(/^data:image\/png;base64,/),
+    })
+    expect(drawImage).toHaveBeenCalledTimes(1)
+    expect(closeBitmap).toHaveBeenCalledTimes(1)
   })
 
   it('proxies workspace document helpers through the desktop bridge when available', async () => {

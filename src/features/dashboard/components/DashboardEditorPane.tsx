@@ -158,11 +158,11 @@ export function DashboardEditorPane({
   return (
     <div className="flex h-full min-h-0 flex-col bg-muted/30" data-testid="dashboard-editor-pane">
       <header className="dashboard-editor-topbar flex min-h-14 shrink-0 items-center gap-3 border-b border-border bg-background px-5 py-3">
-        <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+        <div className="dashboard-editor-topbar__icon flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
           <LayoutDashboard className="size-4" />
         </div>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-base font-semibold text-foreground">{dashboard.title}</h1>
+          <h1 className="dashboard-editor-topbar__title truncate text-base font-semibold text-foreground">{dashboard.title}</h1>
           <p className="truncate text-xs text-muted-foreground">
             Live from {sourceTable.title} · {records.length.toLocaleString()} records
           </p>

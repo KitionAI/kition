@@ -120,6 +120,7 @@ describe('DashboardEditorPane', () => {
     expect(container.textContent).toContain('Task Dashboard')
     expect(container.textContent).toContain('3 records')
     expect(container.querySelector('.dashboard-editor-topbar')).toBeTruthy()
+    expect(container.querySelector('.dashboard-editor-topbar__title')?.textContent).toBe('Task Dashboard')
     expect(container.querySelector('[data-testid="dashboard-widget-total"]')?.textContent).toContain('3')
     expect(container.querySelector('[data-testid="dashboard-widget-completed"]')?.textContent).toContain('1')
   })

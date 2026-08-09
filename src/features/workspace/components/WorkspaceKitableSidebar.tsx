@@ -2,6 +2,10 @@ import { ChevronDown, ChevronsLeft, ChevronsRight, Database, FileInput, LayoutDa
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { WorkspaceCreateMenu } from '@/features/workspace/components/WorkspaceCreateMenu'
+import {
+  readKitableSidebarCollapsed,
+  writeKitableSidebarCollapsed,
+} from '@/features/workspace/lib/kitableSidebarPersistence'
 import { WorkflowStatusToggle } from '@/features/workflow/components/WorkflowStatusToggle'
 import { useWorkflowEnabled } from '@/features/workflow/hooks/useWorkflowEnabled'
 import type {
@@ -49,7 +53,7 @@ export function WorkspaceKitableSidebar({
   onOpenWorkflow,
   onRenameTable,
 }: WorkspaceKitableSidebarProps) {
-  const [collapsed, setCollapsed] = useState(defaultCollapsed)
+  const [collapsed, setCollapsed] = useState(() => readKitableSidebarCollapsed(defaultCollapsed))
   const [collapsedMenuOpen, setCollapsedMenuOpen] = useState(false)
   const [createMenuOpen, setCreateMenuOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -57,6 +61,11 @@ export function WorkspaceKitableSidebar({
   const createMenuRef = useRef<HTMLSpanElement | null>(null)
   useDismissableLayer(collapsedMenuRef, collapsedMenuOpen, () => setCollapsedMenuOpen(false))
   useDismissableLayer(createMenuRef, createMenuOpen, () => setCreateMenuOpen(false))
+
+  function updateCollapsed(nextCollapsed: boolean) {
+    writeKitableSidebarCollapsed(nextCollapsed)
+    setCollapsed(nextCollapsed)
+  }
 
   const normalizedQuery = query.trim().toLowerCase()
   const sortedTables = useMemo(
@@ -73,15 +82,16 @@ export function WorkspaceKitableSidebar({
   )
   const defaultTable = sortedTables[0]
   const defaultTableId = defaultTable?.id
-  const defaultWorkflow = sortedWorkflows[0]
+  const defaultWorkflow = sortedWorkflows.find((workflow) => workflow.kind !== 'form_sync')
   const defaultWorkflowId = defaultWorkflow?.id
+  const additionalWorkflows = sortedWorkflows.filter((workflow) => workflow.id !== defaultWorkflowId)
   const orderedAdditionalTables = sortedTables.slice(1).filter(
     (table) => !normalizedQuery || table.title.toLowerCase().includes(normalizedQuery),
   )
   const orderedDashboards = sortedDashboards.filter(
     (dashboard) => !normalizedQuery || dashboard.title.toLowerCase().includes(normalizedQuery),
   )
-  const orderedAdditionalWorkflows = sortedWorkflows.slice(1).filter(
+  const orderedAdditionalWorkflows = additionalWorkflows.filter(
     (workflow) => !normalizedQuery || workflow.name.toLowerCase().includes(normalizedQuery),
   )
   const isDefaultTableActive = mode === 'table'
@@ -103,7 +113,7 @@ export function WorkspaceKitableSidebar({
   const workflowEnabled = useWorkflowEnabled(activeWorkflowId || null, activeWorkflow?.enabled)
   const collapsedLabel = mode === 'workflow'
     ? isDefaultWorkflowActive
-      ? defaultWorkflow?.kind === 'form_sync' ? defaultWorkflow.name : 'Workflow'
+      ? 'Workflow'
       : activeWorkflowTitle || 'Workflow'
     : mode === 'dashboard'
       ? activeDashboardTitle || 'Dashboard'
@@ -123,7 +133,7 @@ export function WorkspaceKitableSidebar({
             className="workspace-kitable-sidebar__expand"
             onClick={() => {
               setCollapsedMenuOpen(false)
-              setCollapsed(false)
+              updateCollapsed(false)
             }}
             aria-label="Expand kitable sidebar"
             title="Expand kitable sidebar"
@@ -204,10 +214,10 @@ export function WorkspaceKitableSidebar({
                     onOpenWorkflow(defaultWorkflowId)
                   }}
                 >
-                  {defaultWorkflow?.kind === 'form_sync' ? <FileInput className="size-4" /> : <Workflow className="size-4" />}
-                  <span>{defaultWorkflow?.kind === 'form_sync' ? defaultWorkflow.name : 'Workflow'}</span>
+                  <Workflow className="size-4" />
+                  <span>Workflow</span>
                 </button>
-                {sortedWorkflows.slice(1).map((workflow) => (
+                {additionalWorkflows.map((workflow) => (
                   <button
                     key={workflow.id}
                     type="button"
@@ -292,7 +302,7 @@ export function WorkspaceKitableSidebar({
         <button
           type="button"
           className="workspace-kitable-sidebar__header-button"
-          onClick={() => setCollapsed(true)}
+          onClick={() => updateCollapsed(true)}
           aria-label="Collapse kitable sidebar"
           title="Collapse kitable sidebar"
           data-testid="workspace-kitable-collapse"
@@ -339,8 +349,8 @@ export function WorkspaceKitableSidebar({
           aria-current={isDefaultWorkflowActive ? 'page' : undefined}
           data-testid="workspace-kitable-workflow"
         >
-          {defaultWorkflow?.kind === 'form_sync' ? <FileInput className="size-4" /> : <Workflow className="size-4" />}
-          <span>{defaultWorkflow?.kind === 'form_sync' ? defaultWorkflow.name : 'Workflow'}</span>
+          <Workflow className="size-4" />
+          <span>Workflow</span>
         </button>
 
         {orderedAdditionalTables.map((table) => (
