@@ -917,7 +917,7 @@ function formatAgentToolRunTitle(toolCall: AgentToolCall, locale: AgentTimelineL
 function formatAgentToolRunDetail(toolCall: AgentToolCall, locale: AgentTimelineLocale) {
   const dict = getAgentTimelineDict(locale)
   if (toolCall.error_message) {
-    return compactAgentRunDetail(toolCall.error_message, locale)
+    return formatAgentErrorSummary(toolCall.error_message, locale)
   }
   const input = toolCall.input_data || {}
   const output = toolCall.output_data || {}
@@ -990,6 +990,71 @@ function formatAgentToolRunDetail(toolCall: AgentToolCall, locale: AgentTimeline
     formatAgentToolPayload(output, locale) || formatAgentToolPayload(input, locale),
     locale,
   )
+}
+
+function extractAgentErrorMessage(value: unknown, depth = 0): string {
+  if (depth > 4 || value == null) {
+    return ''
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed) {
+      return ''
+    }
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        const nested = extractAgentErrorMessage(JSON.parse(trimmed), depth + 1)
+        if (nested) {
+          return nested
+        }
+      } catch {
+        // Keep the original text when the payload only resembles JSON.
+      }
+    }
+    return trimmed
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const nested = extractAgentErrorMessage(item, depth + 1)
+      if (nested) {
+        return nested
+      }
+    }
+    return ''
+  }
+  if (typeof value === 'object') {
+    const record = value as Record<string, unknown>
+    for (const key of ['message', 'detail', 'reason', 'error_description', 'error']) {
+      const nested = extractAgentErrorMessage(record[key], depth + 1)
+      if (nested) {
+        return nested
+      }
+    }
+  }
+  return ''
+}
+
+export function formatAgentErrorSummary(
+  value: string,
+  locale: AgentTimelineLocale = DEFAULT_AGENT_TIMELINE_LOCALE,
+) {
+  const extracted = extractAgentErrorMessage(value) || value
+  const firstUsefulBlock = extracted
+    .split(/\n\s*(?:at\s|stack(?:trace)?\s*:|goroutine\s|caused by\s*:)/i, 1)[0]
+  const normalized = sanitizeAgentVisibleDetail(firstUsefulBlock, locale)
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/^\s*(?:error|axioserror)\s*:\s*/i, '')
+    .replace(/^\s*tool\s+(?:call|execution)\s+failed\s*[:\-]?\s*/i, '')
+    .replace(/^\s*(?:error|axioserror)\s*:\s*/i, '')
+    .replace(/^\s*rpc error\s*:\s*code\s*=\s*\w+\s*desc\s*=\s*/i, '')
+    .replace(/\s*(?:trace|request|correlation)[-_ ]?id\s*[:=]\s*\S+.*$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  if (!normalized) {
+    return getAgentTimelineDict(locale).status.failed
+  }
+  return normalized.length > 120 ? `${normalized.slice(0, 120)}...` : normalized
 }
 
 function compactAgentRunDetail(value: string, locale: AgentTimelineLocale) {

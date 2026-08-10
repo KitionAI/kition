@@ -10,7 +10,10 @@ import { act, createElement, useEffect } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { useWorkspaceTreeNodeActions } from './useWorkspaceTreeNodeActions'
+import {
+  getWorkspaceDeleteConfirmationMessage,
+  useWorkspaceTreeNodeActions,
+} from './useWorkspaceTreeNodeActions'
 import type { WorkspaceTreeNode } from '@/features/workspace/lib/workspace'
 
 // ── Service mocks ──────────────────────────────────────────────────────────
@@ -136,5 +139,25 @@ describe('useWorkspaceTreeNodeActions — kitable rename integration', () => {
     expect(renameWorkspaceTabPath).toHaveBeenCalledWith('Leads.kitable', 'Customers.kitable')
     // remapWorkspaceTabPaths is still called for document: tabs
     expect(remapWorkspaceTabPaths).toHaveBeenCalledWith('Leads.kitable', 'Customers.kitable')
+  })
+})
+
+describe('getWorkspaceDeleteConfirmationMessage', () => {
+  it('describes folder deletion as permanent instead of removing it from the workspace', () => {
+    expect(getWorkspaceDeleteConfirmationMessage({
+      title: 'campaigns',
+      type: 'folder',
+    }, 11)).toBe(
+      'Permanently delete folder "campaigns" and its 11 pages? This action cannot be undone.',
+    )
+  })
+
+  it('includes child pages when permanently deleting a document', () => {
+    expect(getWorkspaceDeleteConfirmationMessage({
+      title: 'Campaign.md',
+      type: 'file',
+    }, 1)).toBe(
+      'Permanently delete "Campaign.md" and its 1 child page? This action cannot be undone.',
+    )
   })
 })

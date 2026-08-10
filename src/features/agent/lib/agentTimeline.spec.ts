@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { AgentEvent, AgentToolCall } from '@/api/agent'
 import {
   buildAgentRunLogItems,
+  formatAgentErrorSummary,
   formatAgentRunLogExpandedDetail,
   getAgentModifiedDocumentPaths,
 } from './agentTimeline'
@@ -197,5 +198,25 @@ describe('formatAgentRunLogExpandedDetail', () => {
     expect(expanded).toContain('Tool')
     expect(expanded).toContain('Input')
     expect(expanded).toContain('Output')
+  })
+})
+
+describe('formatAgentErrorSummary', () => {
+  it('extracts a concise message from a structured error payload', () => {
+    expect(formatAgentErrorSummary(JSON.stringify({
+      error: {
+        message: 'The requested document could not be found.',
+        type: 'not_found',
+        trace_id: 'internal-trace',
+      },
+    }))).toBe('The requested document could not be found.')
+  })
+
+  it('removes technical prefixes, stack traces, and request identifiers', () => {
+    expect(formatAgentErrorSummary([
+      'Tool execution failed: Error: Permission denied',
+      '    at readDocument (internal/tool.js:42:7)',
+      'request_id=req_internal',
+    ].join('\n'))).toBe('Permission denied')
   })
 })

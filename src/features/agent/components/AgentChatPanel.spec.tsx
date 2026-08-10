@@ -52,6 +52,13 @@ async function mount(node: ReturnType<typeof createElement>) {
   })
 }
 
+async function render(node: ReturnType<typeof createElement>) {
+  await act(async () => {
+    root?.render(node)
+    await Promise.resolve()
+  })
+}
+
 async function unmount() {
   await act(async () => {
     root?.unmount()
@@ -260,6 +267,105 @@ describe('AgentChatPanel changed files', () => {
       'Admissions guide.md',
       'Low-threshold samples.kitable',
     ])
+  })
+})
+
+describe('AgentChatPanel activity updates', () => {
+  beforeEach(async () => {
+    await unmount()
+  })
+
+  const userMessage = {
+    id: 51,
+    session_id: 1,
+    user_id: 1,
+    role: 'user' as const,
+    content: 'Read the document',
+    status: 'completed',
+    created_at: '2026-08-10T00:00:00.000Z',
+  }
+
+  it('keeps running tool details collapsed until the user opens them', async () => {
+    await mount(createElement(AgentChatPanel, makeMinimalProps({
+      messages: [userMessage],
+      busy: true,
+      toolCalls: [{
+        id: 61,
+        session_id: 1,
+        user_id: 1,
+        message_id: userMessage.id,
+        tool_name: 'document_read',
+        status: 'running',
+        input_data: { path: 'Docs/Plan.md' },
+        output_data: {},
+        created_at: '2026-08-10T00:00:01.000Z',
+        updated_at: '2026-08-10T00:00:01.000Z',
+      }],
+    })))
+
+    const row = container.querySelector<HTMLButtonElement>('.agent-run-log-row')
+    expect(row?.getAttribute('aria-expanded')).toBe('false')
+    expect(container.querySelector('.agent-run-log-detail')).toBeNull()
+
+    await act(async () => {
+      row?.click()
+    })
+
+    expect(row?.getAttribute('aria-expanded')).toBe('true')
+    expect(container.querySelector('.agent-run-log-detail')).not.toBeNull()
+  })
+
+  it('follows new execution updates while the conversation remains at the bottom', async () => {
+    await mount(createElement(AgentChatPanel, makeMinimalProps({
+      messages: [userMessage],
+    })))
+
+    const messagesContainer = container.querySelector<HTMLElement>('[data-testid="agent-chat-messages"]')
+    expect(messagesContainer).not.toBeNull()
+    Object.defineProperty(messagesContainer, 'scrollHeight', { configurable: true, value: 640 })
+    Object.defineProperty(messagesContainer, 'clientHeight', { configurable: true, value: 320 })
+    messagesContainer!.scrollTop = 320
+
+    await render(createElement(AgentChatPanel, makeMinimalProps({
+      messages: [userMessage],
+      busy: true,
+      toolCalls: [{
+        id: 62,
+        session_id: 1,
+        user_id: 1,
+        message_id: userMessage.id,
+        tool_name: 'document_read',
+        status: 'completed',
+        input_data: { path: 'Docs/Plan.md' },
+        output_data: { path: 'Docs/Plan.md', chars: 120 },
+        created_at: '2026-08-10T00:00:01.000Z',
+        updated_at: '2026-08-10T00:00:02.000Z',
+      }],
+    })))
+
+    expect(messagesContainer!.scrollTop).toBe(640)
+  })
+
+  it('does not pull the conversation down after the user scrolls up', async () => {
+    await mount(createElement(AgentChatPanel, makeMinimalProps({
+      messages: [userMessage],
+    })))
+
+    const messagesContainer = container.querySelector<HTMLElement>('[data-testid="agent-chat-messages"]')
+    Object.defineProperty(messagesContainer, 'scrollHeight', { configurable: true, value: 640 })
+    Object.defineProperty(messagesContainer, 'clientHeight', { configurable: true, value: 320 })
+    messagesContainer!.scrollTop = 80
+    await act(async () => {
+      messagesContainer!.dispatchEvent(new Event('scroll', { bubbles: true }))
+    })
+
+    await render(createElement(AgentChatPanel, makeMinimalProps({
+      messages: [userMessage],
+      busy: true,
+      streamingText: 'Working on the next step',
+    })))
+
+    expect(messagesContainer!.scrollTop).toBe(80)
   })
 })
 

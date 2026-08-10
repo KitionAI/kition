@@ -1319,7 +1319,7 @@
   }
 
   .document-tab-nav-btn {
-    @apply grid size-7 place-items-center rounded-md text-muted-foreground transition-[background-color,color,transform] duration-fast ease-standard hover:bg-muted hover:text-foreground active:scale-95;
+    @apply grid size-7 cursor-pointer place-items-center rounded-md text-muted-foreground transition-[background-color,color,transform] duration-fast ease-standard hover:bg-muted hover:text-foreground active:scale-95;
   }
 
   .document-tab-nav-btn:disabled {

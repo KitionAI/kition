@@ -343,6 +343,27 @@ test.describe('app shell navigation', () => {
     await expect(page.getByRole('dialog', { name: 'Settings' })).toHaveCount(0)
   })
 
+  test('restores the sidebar from the empty workspace home', async ({ page }) => {
+    await page.goto('/documents')
+    await expect(page.getByTestId('document-editor')).toBeVisible()
+
+    const closeTabButtons = page.locator('.document-tab-list .document-tab-close')
+    await expect(closeTabButtons).toHaveCount(1)
+    await closeTabButtons.click()
+    await expect(page.locator('.document-tab-list .document-tab')).toHaveCount(0)
+
+    await page.getByRole('button', { name: 'Collapse sidebar' }).click()
+    await expect(page.locator('html')).toHaveAttribute('data-sidebar-collapsed', 'true')
+
+    const expandButton = page.getByTestId('workspace-sidebar-expand')
+    await expect(expandButton).toBeVisible()
+    await expect(expandButton).toHaveAttribute('data-window-drag-exclude', 'true')
+    await expandButton.click()
+
+    await expect(page.locator('html')).toHaveAttribute('data-sidebar-collapsed', 'false')
+    await expect(page.getByRole('button', { name: 'Collapse sidebar' })).toBeVisible()
+  })
+
   test('loads command and search palettes on first use', async ({ page }) => {
     await mockDesktopWorkspaceBridge(page)
     await page.goto('/documents', { waitUntil: 'networkidle' })

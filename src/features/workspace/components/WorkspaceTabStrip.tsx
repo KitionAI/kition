@@ -306,30 +306,36 @@ export function WorkspaceTabStrip({
             onClick={onToggleSidebar}
             aria-label={t('tabs.expandSidebar')}
             title={t('tabs.expandSidebar')}
+            data-testid="workspace-sidebar-expand"
+            data-window-drag-exclude="true"
           >
             <PanelLeftOpen className="size-4" />
           </button>
         ) : null}
-        <button
-          type="button"
-          className="document-tab-nav-btn"
-          onClick={() => prevTab && activateTab(prevTab)}
-          disabled={!prevTab}
-          aria-label={t('tabs.previousTab')}
-          title={t('tabs.previousTab')}
-        >
-          <ChevronLeft className="size-4" />
-        </button>
-        <button
-          type="button"
-          className="document-tab-nav-btn"
-          onClick={() => nextTab && activateTab(nextTab)}
-          disabled={!nextTab}
-          aria-label={t('tabs.nextTab')}
-          title={t('tabs.nextTab')}
-        >
-          <ChevronRight className="size-4" />
-        </button>
+        {tabs.length ? (
+          <>
+            <button
+              type="button"
+              className="document-tab-nav-btn"
+              onClick={() => prevTab && activateTab(prevTab)}
+              disabled={!prevTab}
+              aria-label={t('tabs.previousTab')}
+              title={t('tabs.previousTab')}
+            >
+              <ChevronLeft className="size-4" />
+            </button>
+            <button
+              type="button"
+              className="document-tab-nav-btn"
+              onClick={() => nextTab && activateTab(nextTab)}
+              disabled={!nextTab}
+              aria-label={t('tabs.nextTab')}
+              title={t('tabs.nextTab')}
+            >
+              <ChevronRight className="size-4" />
+            </button>
+          </>
+        ) : null}
       </div>
       <div className="document-tab-list">
         {visibleTabs.map(renderTab)}

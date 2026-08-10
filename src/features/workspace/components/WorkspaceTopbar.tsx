@@ -76,7 +76,7 @@ export function WorkspaceTopbar({
 
   return (
     <>
-      {tabsPortal && tabStripProps.tabs.length
+      {tabsPortal && (tabStripProps.tabs.length > 0 || tabStripProps.sidebarCollapsed)
         ? createPortal(<WorkspaceTabStrip {...tabStripProps} />, tabsPortal)
         : null}
       {documentToolbarPortal ? createPortal(

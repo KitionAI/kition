@@ -28,6 +28,10 @@ import { isTrustedWindowNavigation, normalizeExternalURL } from './external-url.
 import { createBeforeQuitHandler } from './quit-lifecycle.mjs'
 import { findKitionDeepLink, KITION_PROTOCOL_SCHEME, normalizeKitionDeepLink } from './deep-link.mjs'
 import { submitFeedbackToConsole } from './feedback-client.mjs'
+import {
+  deleteWorkspaceDocumentPermanently,
+  deleteWorkspaceFolderPermanently,
+} from './workspace-delete.mjs'
 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url))
 const DARK_WINDOW_BACKGROUND = '#1b1e22'
@@ -1647,18 +1651,10 @@ async function handleDeleteWorkspaceDocument(_event, request) {
   const sourceChildFolderRelativePath = sourceParentPath ? `${sourceParentPath}/${sourceStem}` : sourceStem
   const sourceChildFolder = resolveWorkspacePath(sourceChildFolderRelativePath, { allowRoot: true })
 
-  await shell.trashItem(source.absolutePath)
-
-  try {
-    const childStat = await fs.stat(sourceChildFolder.absolutePath)
-    if (childStat.isDirectory()) {
-      await shell.trashItem(sourceChildFolder.absolutePath)
-    }
-  } catch (error) {
-    if (error?.code !== 'ENOENT') {
-      throw error
-    }
-  }
+  await deleteWorkspaceDocumentPermanently(
+    source.absolutePath,
+    sourceChildFolder.absolutePath,
+  )
 
   return getWorkspaceDocumentListResponse()
 }
@@ -1675,7 +1671,7 @@ async function handleDeleteWorkspaceFolder(_event, request) {
     throw new Error('only folders can be deleted here')
   }
 
-  await shell.trashItem(source.absolutePath)
+  await deleteWorkspaceFolderPermanently(source.absolutePath)
 
   return getWorkspaceDocumentListResponse()
 }

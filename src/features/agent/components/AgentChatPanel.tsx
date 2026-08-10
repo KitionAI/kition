@@ -148,6 +148,39 @@ export function AgentChatPanel({
   const hostedAccountBlocked = Boolean(hostedAccountStatus && !isKitionAccountUsable(hostedAccountStatus))
   const hostedAccountCreditsEmpty = hostedAccountStatus === 'credits_empty'
   const canSend = draft.trim().length > 0 && !busy && !hostedAccountBusy && !hostedAccountCreditsEmpty
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null)
+  const followLatestRef = useRef(true)
+  const previousLatestMessageIdRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    const latestMessage = messages[messages.length - 1]
+    if (
+      latestMessage?.role === 'user'
+      && latestMessage.id !== previousLatestMessageIdRef.current
+    ) {
+      followLatestRef.current = true
+    }
+    previousLatestMessageIdRef.current = latestMessage?.id ?? null
+
+    if (!followLatestRef.current) {
+      return
+    }
+    const container = messagesContainerRef.current
+    if (!container) {
+      return
+    }
+    container.scrollTop = container.scrollHeight
+  }, [artifacts, busy, events, messages, streamingText, toolCalls])
+
+  function handleMessagesScroll() {
+    const container = messagesContainerRef.current
+    if (!container) {
+      return
+    }
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight
+    followLatestRef.current = distanceFromBottom <= 48
+  }
+
   function handleKeyDown(event: ReactKeyboardEvent<HTMLTextAreaElement>) {
     const nativeEvent = event.nativeEvent as KeyboardEvent
     if (nativeEvent.isComposing || nativeEvent.keyCode === 229) {
@@ -175,7 +208,12 @@ export function AgentChatPanel({
 
   return (
     <div className={cn('agent-chat-panel', isEmptyChat && 'is-empty')}>
-      <div className={cn('agent-chat-messages', isEmptyChat && 'is-empty')}>
+      <div
+        ref={messagesContainerRef}
+        className={cn('agent-chat-messages', isEmptyChat && 'is-empty')}
+        data-testid="agent-chat-messages"
+        onScroll={handleMessagesScroll}
+      >
         {isEmptyChat ? (() => {
           const emptyState = emptyStateForPane(paneContext, t)
           // When no model is configured the send button is disabled, so
@@ -587,20 +625,6 @@ function AgentRunLog({
   dict: ReturnType<typeof getAgentTimelineDict>
 }) {
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() => new Set())
-  const autoExpandedKeys = useRef<Set<string>>(new Set())
-
-  useEffect(() => {
-    const running = [...items].reverse().find((item) => item.status === 'running')
-    if (!running || autoExpandedKeys.current.has(running.key)) {
-      return
-    }
-    autoExpandedKeys.current.add(running.key)
-    setExpandedKeys((current) => {
-      const next = new Set(current)
-      next.add(running.key)
-      return next
-    })
-  }, [items])
 
   if (!items.length) {
     return null

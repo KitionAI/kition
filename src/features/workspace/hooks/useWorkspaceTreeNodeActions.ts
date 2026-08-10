@@ -91,6 +91,20 @@ function syncKitableBackendPath(
     })
 }
 
+export function getWorkspaceDeleteConfirmationMessage(
+  node: Pick<WorkspaceTreeNode, 'title' | 'type'>,
+  childCount: number,
+) {
+  const childPageSummary = childCount > 0
+    ? ` and its ${childCount} ${node.type === 'folder' ? 'page' : 'child page'}${childCount === 1 ? '' : 's'}`
+    : ''
+  const target = node.type === 'folder'
+    ? `folder "${node.title}"`
+    : `"${node.title}"`
+
+  return `Permanently delete ${target}${childPageSummary}? This action cannot be undone.`
+}
+
 export function useWorkspaceTreeNodeActions({
   activeDocumentPath,
   activeResourcePath,
@@ -140,17 +154,12 @@ export function useWorkspaceTreeNodeActions({
     const childCount = flatTreeNodes
       .filter((item) => item.path.startsWith(childPrefix) && item.type === 'file')
       .length
-    let message: string
-    if (isFolder) {
-      message = childCount > 0
-        ? `Delete folder "${node.title}" and its ${childCount} page${childCount === 1 ? '' : 's'}? This removes the folder from the workspace.`
-        : `Delete folder "${node.title}"? This removes the folder from the workspace.`
-    } else {
-      message = childCount > 0
-        ? `Delete "${node.title}" and its ${childCount} child page${childCount === 1 ? '' : 's'}? This removes the files from the workspace folder.`
-        : `Delete "${node.title}"? This removes the file from the workspace folder.`
-    }
-    if (!(await confirm({ message, variant: 'destructive' }))) {
+    const message = getWorkspaceDeleteConfirmationMessage(node, childCount)
+    if (!(await confirm({
+      message,
+      confirmLabel: t('tree.delete'),
+      variant: 'destructive',
+    }))) {
       return
     }
 
@@ -162,7 +171,7 @@ export function useWorkspaceTreeNodeActions({
       const response = isFolder
         ? await deleteWorkspaceFolder(node.path)
         : await deleteWorkspaceDocument(node.path)
-      // For .kitable files, the file-system trash leaves stale DataDocument rows
+      // For .kitable files, the file-system delete leaves stale DataDocument rows
       // and automations bound to that document id behind. Without this cleanup,
       // a new kitable created at the same path inherits the old one's
       // automations via the stale doc-id → path mapping. Best-effort: a failure
