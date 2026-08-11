@@ -3,14 +3,22 @@ import { resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const indexHtml = readFileSync(resolve(process.cwd(), 'index.html'), 'utf8')
-const bootstrapScript = indexHtml.match(/<script data-theme-bootstrap>([\s\S]*?)<\/script>/)?.[1]
+const bootstrapScript = readFileSync(resolve(process.cwd(), 'public/theme-bootstrap.js'), 'utf8')
 
 function runThemeBootstrap() {
   expect(bootstrapScript).toBeTruthy()
-  Function(bootstrapScript!)()
+  Function(bootstrapScript)()
 }
 
 describe('theme bootstrap', () => {
+  it('loads the bootstrap from an external script allowed by the CSP', () => {
+    expect(indexHtml).toContain('http-equiv="Content-Security-Policy"')
+    expect(indexHtml).toContain("script-src 'self'")
+    expect(indexHtml).toContain("script-src-attr 'none'")
+    expect(indexHtml).toContain('<script src="/theme-bootstrap.js" data-theme-bootstrap></script>')
+    expect(indexHtml).not.toMatch(/<script data-theme-bootstrap>[\s\S]*?<\/script>/)
+  })
+
   beforeEach(() => {
     localStorage.clear()
     document.documentElement.className = ''

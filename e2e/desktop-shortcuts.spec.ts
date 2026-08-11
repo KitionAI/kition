@@ -79,6 +79,23 @@ test('desktop provider inputs keep native select-all and paste shortcuts', async
     expect(publishingClipboard.html).not.toContain('Agent/images/clipboard-test.png')
     expect(publishingClipboard.text).toBe('Generated')
 
+    const backendPublicOrigin = desktopInfo!.backend_base_url.replace(/\/api\/?$/, '')
+    await page.evaluate(async ({ imageUrl }) => {
+      await window.kitionDesktop?.CopyDocumentHtml?.({
+        document_path: 'Articles/Publishing/article.md',
+        html: `<article><img src="${imageUrl}" alt="Generated"></article>`,
+        text: 'Generated from workspace URL',
+      })
+    }, {
+      imageUrl: `${backendPublicOrigin}/workspace-files/Agent/images/clipboard-test.png`,
+    })
+    const publicUrlClipboard = await app.evaluate(({ clipboard }) => ({
+      html: clipboard.readHTML(),
+      text: clipboard.readText(),
+    }))
+    expect(publicUrlClipboard.html).toContain('src="data:image/png;base64,iVBORw=="')
+    expect(publicUrlClipboard.text).toBe('Generated from workspace URL')
+
     await page.evaluate(() => {
       const pasteTarget = document.createElement('div')
       pasteTarget.contentEditable = 'true'
@@ -112,6 +129,7 @@ test('desktop provider inputs keep native select-all and paste shortcuts', async
     await editorContent.press(`${shortcutModifier}+A`)
     await editorContent.press(`${shortcutModifier}+C`)
 
+    await expect(page.getByText('Copied with images embedded')).toBeVisible({ timeout: 5_000 })
     await expect.poll(() => app.evaluate(({ clipboard }) => clipboard.readHTML()))
       .toContain('src="data:image/png;base64,iVBORw=="')
     const copiedArticle = await app.evaluate(({ clipboard }) => ({

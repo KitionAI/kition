@@ -163,6 +163,13 @@ describe('renderCellHtml', () => {
     expect(renderCellHtml('**bold**')).toContain('<strong>bold</strong>')
   })
 
+  it('removes executable HTML from table cell markdown', () => {
+    const html = renderCellHtml('<img src="missing.png" onerror="window.__kition_xss = true">')
+
+    expect(html).toContain('src="missing.png"')
+    expect(html).not.toContain('onerror')
+  })
+
   it('leaves plain text untouched (modulo marked inline transforms)', () => {
     expect(renderCellHtml('plain text')).toContain('plain text')
   })

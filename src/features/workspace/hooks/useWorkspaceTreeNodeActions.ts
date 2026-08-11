@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { deleteDataDocumentByPath, renameDataDocumentByPath } from '@/api/dataDocuments'
+import { renameDataDocumentByPath } from '@/api/dataDocuments'
 import { useConfirm } from '@/components/confirm'
 import { getDocumentParentPath } from '@/features/document/lib/documentCreation'
 import { readDocumentSnapshots } from '@/features/document/lib/documentSnapshots'
@@ -102,7 +102,7 @@ export function getWorkspaceDeleteConfirmationMessage(
     ? `folder "${node.title}"`
     : `"${node.title}"`
 
-  return `Permanently delete ${target}${childPageSummary}? This action cannot be undone.`
+  return `Move ${target}${childPageSummary} to the system Trash? You can restore it from there.`
 }
 
 export function useWorkspaceTreeNodeActions({
@@ -171,16 +171,8 @@ export function useWorkspaceTreeNodeActions({
       const response = isFolder
         ? await deleteWorkspaceFolder(node.path)
         : await deleteWorkspaceDocument(node.path)
-      // For .kitable files, the file-system delete leaves stale DataDocument rows
-      // and automations bound to that document id behind. Without this cleanup,
-      // a new kitable created at the same path inherits the old one's
-      // automations via the stale doc-id → path mapping. Best-effort: a failure
-      // here mustn't roll back the UI delete.
-      if (!isFolder && node.path.toLowerCase().endsWith('.kitable')) {
-        deleteDataDocumentByPath({ path: node.path, workspace_root: rootPath }).catch((cleanupError) => {
-          console.warn('[workspace] failed to clean kitable backend index', cleanupError)
-        })
-      }
+      // Keep the DataDocument mapping for .kitable files so restoring the file
+      // from the system Trash also restores its records and workflows.
       updateTreeMetadata((current) => removeWorkspaceTreeBranchMetadata(current, node.path, childFolderPath))
       updateSnapshots(
         readDocumentSnapshots().filter(
@@ -208,9 +200,9 @@ export function useWorkspaceTreeNodeActions({
       }
 
       await applyWorkspaceDocumentList(response)
-      setFeedback(isFolder ? 'Folder deleted' : 'Document deleted')
+      setFeedback(isFolder ? 'Folder moved to Trash' : 'Document moved to Trash')
     } catch (requestError: any) {
-      setError(requestError?.message || (isFolder ? 'Failed to delete folder' : 'Failed to delete document'))
+      setError(requestError?.message || (isFolder ? 'Failed to move folder to Trash' : 'Failed to move document to Trash'))
     } finally {
       setSaving(false)
     }

@@ -64,6 +64,7 @@ export async function createWorkspaceWatcher({
     ignored: IGNORED_GLOBS,
     ignoreInitial: true,
     persistent: true,
+    followSymlinks: false,
     awaitWriteFinish: { stabilityThreshold: 50, pollInterval: 25 },
     alwaysStat: true,
   })

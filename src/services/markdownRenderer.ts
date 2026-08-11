@@ -6,6 +6,7 @@
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import { marked, Renderer } from 'marked'
+import { sanitizeRenderedHtml } from '@/services/htmlSanitizer'
 import { buildMermaidPlaceholderHtml } from '@/services/mermaid'
 
 // Configure marked
@@ -140,7 +141,8 @@ function stripEmptyParagraphs(html: string): string {
  */
 export function markdownToHtml(markdown: string): string {
   if (!markdown) return ''
-  return stripEmptyParagraphs(applyAsyncImageAttributes(marked.parse(markdown) as string))
+  const renderedHtml = marked.parse(markdown) as string
+  return stripEmptyParagraphs(applyAsyncImageAttributes(sanitizeRenderedHtml(renderedHtml)))
 }
 
 const workspacePathExtensionPattern = /\.(?:md|markdown|kitable|txt|html|htm|json|csv|tsv|docx|xlsx|xls|pptx|ppt|pdf|png|jpe?g|gif|webp|svg|mp4|mov|webm|mp3|wav|m4a)$/i

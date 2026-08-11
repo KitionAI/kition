@@ -1,6 +1,7 @@
 import type { EditorView } from '@codemirror/view'
 import { marked } from 'marked'
 
+import { sanitizeRenderedHtml } from '@/services/htmlSanitizer'
 import '@/services/markdownRenderer'
 
 import { parseWikilinks, type WikilinkParsed } from '../../lib/wikilink-parser'
@@ -52,7 +53,7 @@ export function renderCellHtml(text: string): string {
       const link = links[index]
       markdown = markdown.slice(0, link.from) + renderWikilinkHtml(link) + markdown.slice(link.to)
     }
-    return marked.parseInline(markdown) as string
+    return sanitizeRenderedHtml(marked.parseInline(markdown) as string)
   } catch {
     return escapeHtml(text)
   }

@@ -29,9 +29,11 @@ import { createBeforeQuitHandler } from './quit-lifecycle.mjs'
 import { findKitionDeepLink, KITION_PROTOCOL_SCHEME, normalizeKitionDeepLink } from './deep-link.mjs'
 import { submitFeedbackToConsole } from './feedback-client.mjs'
 import {
-  deleteWorkspaceDocumentPermanently,
-  deleteWorkspaceFolderPermanently,
-} from './workspace-delete.mjs'
+  assertWorkspacePathSafe,
+  trashWorkspaceDocument,
+  trashWorkspaceFolder,
+  writeFileAtomically,
+} from './workspace-file-operations.mjs'
 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url))
 const DARK_WINDOW_BACKGROUND = '#1b1e22'
@@ -471,9 +473,9 @@ async function createMainWindow() {
     title: 'Kition Desktop',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     webPreferences: {
-      preload: path.join(moduleDir, 'preload.mjs'),
+      preload: path.join(moduleDir, 'preload.cjs'),
       contextIsolation: true,
-      sandbox: false,
+      sandbox: true,
       nodeIntegration: false,
       additionalArguments: [`--kition-backend-origin=${desktopEnv?.backend_url || ''}`],
     },
@@ -567,7 +569,7 @@ async function handleSaveTextFile(_event, request) {
   if (result.canceled || !result.filePath) {
     return ''
   }
-  await fs.writeFile(result.filePath, request.content, 'utf8')
+  await writeFileAtomically(result.filePath, request.content, 'utf8')
   return result.filePath
 }
 
@@ -580,7 +582,7 @@ async function handleSaveBinaryFile(_event, request) {
   if (result.canceled || !result.filePath) {
     return ''
   }
-  await fs.writeFile(result.filePath, Buffer.from(request.base64_content, 'base64'))
+  await writeFileAtomically(result.filePath, Buffer.from(request.base64_content, 'base64'))
   return result.filePath
 }
 
@@ -706,7 +708,7 @@ function workspaceRelativePathFromPublicURL(raw) {
   return ''
 }
 
-function exportImageFilePath(src, documentPath = '') {
+async function exportImageFilePath(src, documentPath = '') {
   const raw = unwrapMarkdownDestination(src)
   if (!raw || (/^(data:|blob:|https?:\/\/)/i.test(raw) && !workspaceRelativePathFromPublicURL(raw))) {
     return ''
@@ -714,19 +716,22 @@ function exportImageFilePath(src, documentPath = '') {
 
   try {
     if (/^kition-workspace:/i.test(raw)) {
-      return resolveWorkspaceProtocolPath(raw).absolutePath
+      return (await resolveSafeWorkspaceProtocolPath(raw)).absolutePath
     }
 
     if (/^file:/i.test(raw)) {
       const absolutePath = fileURLToPath(stripURLSuffix(raw))
       const resolvedRoot = path.resolve(getWorkspaceRoot())
       const resolvedTarget = path.resolve(absolutePath)
-      return resolvedTarget === resolvedRoot || resolvedTarget.startsWith(`${resolvedRoot}${path.sep}`) ? resolvedTarget : ''
+      if (resolvedTarget !== resolvedRoot && !resolvedTarget.startsWith(`${resolvedRoot}${path.sep}`)) {
+        return ''
+      }
+      return await assertWorkspacePathSafe(resolvedRoot, resolvedTarget)
     }
 
     const publicWorkspacePath = workspaceRelativePathFromPublicURL(raw)
     if (publicWorkspacePath) {
-      return resolveWorkspacePath(publicWorkspacePath).absolutePath
+      return (await resolveSafeWorkspacePath(publicWorkspacePath)).absolutePath
     }
 
     if (isImagePath(raw)) {
@@ -734,7 +739,9 @@ function exportImageFilePath(src, documentPath = '') {
       const basePath = isWorkspaceRootImagePath(relativePath)
         ? ''
         : parentWorkspacePath(documentPath)
-      return resolveWorkspacePath(basePath ? `${basePath}/${relativePath}` : relativePath).absolutePath
+      return (await resolveSafeWorkspacePath(
+        basePath ? `${basePath}/${relativePath}` : relativePath,
+      )).absolutePath
     }
   } catch (error) {
     console.warn('failed to resolve export image file:', raw, error)
@@ -757,7 +764,7 @@ async function imageFileToDataURL(filePath) {
 }
 
 async function imageSourceToDataURL(src, documentPath = '') {
-  const localDataURL = await imageFileToDataURL(exportImageFilePath(src, documentPath))
+  const localDataURL = await imageFileToDataURL(await exportImageFilePath(src, documentPath))
   if (localDataURL) {
     return localDataURL
   }
@@ -932,7 +939,7 @@ async function handleSavePdfFile(_event, request) {
       printOpts.scale = Math.min(2, Math.max(0.1, scalePercent / 100))
     }
     const pdfBuffer = await printWindow.webContents.printToPDF(printOpts)
-    await fs.writeFile(result.filePath, pdfBuffer)
+    await writeFileAtomically(result.filePath, pdfBuffer)
     void shell.openPath(result.filePath)
     return result.filePath
   } finally {
@@ -990,6 +997,18 @@ function resolveWorkspacePath(rawPath, options) {
     relativePath,
     absolutePath: resolvedTarget,
   }
+}
+
+async function validateResolvedWorkspacePath(resolved, safetyOptions) {
+  await assertWorkspacePathSafe(getWorkspaceRoot(), resolved.absolutePath, safetyOptions)
+  return resolved
+}
+
+async function resolveSafeWorkspacePath(rawPath, pathOptions, safetyOptions) {
+  return validateResolvedWorkspacePath(
+    resolveWorkspacePath(rawPath, pathOptions),
+    safetyOptions,
+  )
 }
 
 function sanitizeWorkspaceFilename(title) {
@@ -1226,12 +1245,15 @@ async function ensureWorkspaceInitialized() {
 }
 
 async function readWorkspaceTree(parentPath = '') {
-  const { relativePath, absolutePath } = resolveWorkspacePath(parentPath, { allowRoot: true })
+  const { relativePath, absolutePath } = await resolveSafeWorkspacePath(parentPath, { allowRoot: true })
   const entries = await fs.readdir(absolutePath, { withFileTypes: true })
   const items = []
 
   for (const entry of entries) {
     if (entry.name.startsWith('.')) {
+      continue
+    }
+    if (entry.isSymbolicLink()) {
       continue
     }
 
@@ -1453,7 +1475,7 @@ async function handleSetActiveVault(_event, request) {
 
 async function handleReadWorkspaceDocument(_event, request) {
   await ensureWorkspaceInitialized()
-  const { relativePath, absolutePath } = resolveWorkspacePath(request?.path)
+  const { relativePath, absolutePath } = await resolveSafeWorkspacePath(request?.path)
   if (!isTextWorkspaceDocument(relativePath) && inferWorkspaceDocumentFormat(relativePath) !== 'data') {
     throw new Error('this workspace file is not text-editable')
   }
@@ -1463,7 +1485,7 @@ async function handleReadWorkspaceDocument(_event, request) {
 async function handleStatWorkspaceDocument(_event, request) {
   await ensureWorkspaceInitialized()
   try {
-    const { absolutePath } = resolveWorkspacePath(request?.path)
+    const { absolutePath } = await resolveSafeWorkspacePath(request?.path)
     const stats = await fs.stat(absolutePath)
     return { mtime_ms: stats.mtimeMs, size: stats.size }
   } catch (err) {
@@ -1474,20 +1496,23 @@ async function handleStatWorkspaceDocument(_event, request) {
 
 async function handleWriteWorkspaceDocument(_event, request) {
   await ensureWorkspaceInitialized()
-  const { relativePath, absolutePath } = resolveWorkspacePath(request?.path)
+  const { relativePath, absolutePath } = await resolveSafeWorkspacePath(
+    request?.path,
+    undefined,
+    { allowMissing: true },
+  )
   if (!isEditableWorkspaceDocument(relativePath)) {
     throw new Error('only markdown and Plate documents can be saved as text')
   }
-  await fs.mkdir(path.dirname(absolutePath), { recursive: true })
   workspaceWatcher?.markSelfWrite?.(absolutePath)
-  await fs.writeFile(absolutePath, String(request?.content || ''), 'utf8')
+  await writeFileAtomically(absolutePath, String(request?.content || ''), 'utf8')
   return buildWorkspaceDocumentResponse(relativePath, absolutePath)
 }
 
 async function handleCreateWorkspaceDocument(_event, request) {
   await ensureWorkspaceInitialized()
   const folderPath = normalizeWorkspacePath(request?.folder || '', { allowRoot: true })
-  const { absolutePath: folderAbsolutePath } = resolveWorkspacePath(folderPath, { allowRoot: true })
+  const { absolutePath: folderAbsolutePath } = await resolveSafeWorkspacePath(folderPath, { allowRoot: true })
   await fs.mkdir(folderAbsolutePath, { recursive: true })
 
   const format = request?.format === 'plate' ? 'plate' : request?.format === 'data' ? 'data' : 'markdown'
@@ -1506,7 +1531,8 @@ async function handleCreateWorkspaceDocument(_event, request) {
 
   const relativePath = folderPath ? `${folderPath}/${finalFilename}` : finalFilename
   const absolutePath = path.join(folderAbsolutePath, finalFilename)
-  await fs.writeFile(absolutePath, content, 'utf8')
+  await assertWorkspacePathSafe(getWorkspaceRoot(), absolutePath, { allowMissing: true })
+  await writeFileAtomically(absolutePath, content, 'utf8')
   return buildWorkspaceDocumentResponse(relativePath, absolutePath)
 }
 
@@ -1514,7 +1540,10 @@ async function handleCreateWorkspaceFolder(_event, request) {
   await ensureWorkspaceInitialized()
 
   const parentFolderPath = normalizeWorkspacePath(request?.parent_folder || '', { allowRoot: true })
-  const { absolutePath: parentFolderAbsolutePath } = resolveWorkspacePath(parentFolderPath, { allowRoot: true })
+  const { absolutePath: parentFolderAbsolutePath } = await resolveSafeWorkspacePath(
+    parentFolderPath,
+    { allowRoot: true },
+  )
   await fs.mkdir(parentFolderAbsolutePath, { recursive: true })
 
   const finalFolderName = await pickUniqueWorkspaceFolderTarget(
@@ -1523,7 +1552,9 @@ async function handleCreateWorkspaceFolder(_event, request) {
   )
   const relativePath = parentFolderPath ? `${parentFolderPath}/${finalFolderName}` : finalFolderName
   const absolutePath = path.join(parentFolderAbsolutePath, finalFolderName)
+  await assertWorkspacePathSafe(getWorkspaceRoot(), absolutePath, { allowMissing: true })
   await fs.mkdir(absolutePath, { recursive: true })
+  await assertWorkspacePathSafe(getWorkspaceRoot(), absolutePath)
 
   return {
     root_path: getWorkspaceRoot(),
@@ -1535,7 +1566,7 @@ async function handleCreateWorkspaceFolder(_event, request) {
 async function handleMoveWorkspaceDocument(_event, request) {
   await ensureWorkspaceInitialized()
 
-  const source = resolveWorkspacePath(request?.path)
+  const source = await resolveSafeWorkspacePath(request?.path)
   const sourceStat = await fs.stat(source.absolutePath)
   if (!sourceStat.isFile() || !isEditableWorkspaceDocument(source.relativePath)) {
     throw new Error('only editable workspace documents can be moved')
@@ -1551,7 +1582,10 @@ async function handleMoveWorkspaceDocument(_event, request) {
     return buildWorkspaceDocumentResponse(source.relativePath, source.absolutePath)
   }
 
-  const { absolutePath: targetFolderAbsolutePath } = resolveWorkspacePath(targetFolderPath, { allowRoot: true })
+  const { absolutePath: targetFolderAbsolutePath } = await resolveSafeWorkspacePath(
+    targetFolderPath,
+    { allowRoot: true },
+  )
   await fs.mkdir(targetFolderAbsolutePath, { recursive: true })
 
   const finalFilename = await pickUniqueWorkspaceDocumentTarget(
@@ -1565,8 +1599,18 @@ async function handleMoveWorkspaceDocument(_event, request) {
   const targetStem = path.basename(finalFilename, path.extname(finalFilename))
   const sourceChildFolderRelativePath = sourceParentPath ? `${sourceParentPath}/${sourceStem}` : sourceStem
   const targetChildFolderRelativePath = targetFolderPath ? `${targetFolderPath}/${targetStem}` : targetStem
-  const sourceChildFolder = resolveWorkspacePath(sourceChildFolderRelativePath, { allowRoot: true })
-  const targetChildFolder = resolveWorkspacePath(targetChildFolderRelativePath, { allowRoot: true })
+  const sourceChildFolder = await resolveSafeWorkspacePath(
+    sourceChildFolderRelativePath,
+    { allowRoot: true },
+    { allowMissing: true },
+  )
+  const targetChildFolder = await resolveSafeWorkspacePath(
+    targetChildFolderRelativePath,
+    { allowRoot: true },
+    { allowMissing: true },
+  )
+
+  await assertWorkspacePathSafe(getWorkspaceRoot(), targetAbsolutePath, { allowMissing: true })
 
   await fs.rename(source.absolutePath, targetAbsolutePath)
 
@@ -1589,7 +1633,7 @@ async function handleMoveWorkspaceDocument(_event, request) {
 async function handleMoveWorkspaceFolder(_event, request) {
   await ensureWorkspaceInitialized()
 
-  const source = resolveWorkspacePath(request?.path, { allowRoot: true })
+  const source = await resolveSafeWorkspacePath(request?.path, { allowRoot: true })
   if (!source.relativePath) {
     throw new Error('root folder cannot be moved')
   }
@@ -1611,7 +1655,10 @@ async function handleMoveWorkspaceFolder(_event, request) {
     throw new Error('folder cannot be moved into itself')
   }
 
-  const { absolutePath: targetFolderAbsolutePath } = resolveWorkspacePath(targetFolderPath, { allowRoot: true })
+  const { absolutePath: targetFolderAbsolutePath } = await resolveSafeWorkspacePath(
+    targetFolderPath,
+    { allowRoot: true },
+  )
   await fs.mkdir(targetFolderAbsolutePath, { recursive: true })
 
   const finalName = (targetFolderPath === sourceParentPath && requestedName === sourceName)
@@ -1619,6 +1666,7 @@ async function handleMoveWorkspaceFolder(_event, request) {
     : await pickUniqueWorkspaceFolderTarget(targetFolderAbsolutePath, requestedName)
   const finalRelativePath = targetFolderPath ? `${targetFolderPath}/${finalName}` : finalName
   const finalAbsolutePath = path.join(targetFolderAbsolutePath, finalName)
+  await assertWorkspacePathSafe(getWorkspaceRoot(), finalAbsolutePath, { allowMissing: true })
 
   if (finalRelativePath === source.relativePath) {
     return {
@@ -1640,7 +1688,7 @@ async function handleMoveWorkspaceFolder(_event, request) {
 async function handleDeleteWorkspaceDocument(_event, request) {
   await ensureWorkspaceInitialized()
 
-  const source = resolveWorkspacePath(request?.path)
+  const source = await resolveSafeWorkspacePath(request?.path)
   const sourceStat = await fs.stat(source.absolutePath)
   if (!sourceStat.isFile() || !isSupportedWorkspaceDocument(source.relativePath)) {
     throw new Error('only workspace files can be deleted')
@@ -1649,9 +1697,14 @@ async function handleDeleteWorkspaceDocument(_event, request) {
   const sourceParentPath = path.posix.dirname(source.relativePath) === '.' ? '' : path.posix.dirname(source.relativePath)
   const sourceStem = path.basename(source.relativePath, path.extname(source.relativePath))
   const sourceChildFolderRelativePath = sourceParentPath ? `${sourceParentPath}/${sourceStem}` : sourceStem
-  const sourceChildFolder = resolveWorkspacePath(sourceChildFolderRelativePath, { allowRoot: true })
+  const sourceChildFolder = await resolveSafeWorkspacePath(
+    sourceChildFolderRelativePath,
+    { allowRoot: true },
+    { allowMissing: true },
+  )
 
-  await deleteWorkspaceDocumentPermanently(
+  await trashWorkspaceDocument(
+    shell,
     source.absolutePath,
     sourceChildFolder.absolutePath,
   )
@@ -1662,7 +1715,7 @@ async function handleDeleteWorkspaceDocument(_event, request) {
 async function handleDeleteWorkspaceFolder(_event, request) {
   await ensureWorkspaceInitialized()
 
-  const source = resolveWorkspacePath(request?.path)
+  const source = await resolveSafeWorkspacePath(request?.path)
   if (!source.relativePath) {
     throw new Error('the workspace root cannot be deleted')
   }
@@ -1671,14 +1724,14 @@ async function handleDeleteWorkspaceFolder(_event, request) {
     throw new Error('only folders can be deleted here')
   }
 
-  await deleteWorkspaceFolderPermanently(source.absolutePath)
+  await trashWorkspaceFolder(shell, source.absolutePath)
 
   return getWorkspaceDocumentListResponse()
 }
 
 async function handleOpenWorkspaceFile(_event, request) {
   await ensureWorkspaceInitialized()
-  const { relativePath, absolutePath } = resolveWorkspacePath(request?.path)
+  const { relativePath, absolutePath } = await resolveSafeWorkspacePath(request?.path)
   if (!isSupportedWorkspaceDocument(relativePath)) {
     throw new Error('unsupported workspace file')
   }
@@ -1694,7 +1747,9 @@ async function handleSaveWorkspaceAsset(_event, request) {
   }
 
   const assetsDir = path.join(getWorkspaceRoot(), 'assets')
+  await assertWorkspacePathSafe(getWorkspaceRoot(), assetsDir, { allowMissing: true })
   await fs.mkdir(assetsDir, { recursive: true })
+  await assertWorkspacePathSafe(getWorkspaceRoot(), assetsDir)
 
   const requestedName = sanitizeWorkspaceAssetName(request?.filename || '', extensionFromMimeType(mimeType))
   const extension = path.extname(requestedName) || extensionFromMimeType(mimeType)
@@ -1702,7 +1757,11 @@ async function handleSaveWorkspaceAsset(_event, request) {
   const finalFilename = `${Date.now()}-${crypto.randomUUID()}-${stem}${extension}`
   const absolutePath = path.join(assetsDir, finalFilename)
 
-  await fs.writeFile(absolutePath, Buffer.from(String(request?.base64_content || ''), 'base64'))
+  await assertWorkspacePathSafe(getWorkspaceRoot(), absolutePath, { allowMissing: true })
+  await writeFileAtomically(
+    absolutePath,
+    Buffer.from(String(request?.base64_content || ''), 'base64'),
+  )
 
   const relativePath = `assets/${finalFilename}`
   return {
@@ -1760,12 +1819,13 @@ async function handleImportWorkspaceFile(_event, request) {
   }
 
   const { absolutePath: folderAbsolutePath } = folderRelativePath
-    ? resolveWorkspacePath(folderRelativePath, { allowRoot: true })
-    : { absolutePath: getWorkspaceRoot() }
+    ? await resolveSafeWorkspacePath(folderRelativePath, { allowRoot: true })
+    : await resolveSafeWorkspacePath('', { allowRoot: true })
   await fs.mkdir(folderAbsolutePath, { recursive: true })
 
   const finalFilename = await pickUniqueImportedFileTarget(folderAbsolutePath, requestedName)
   const targetAbsolutePath = path.join(folderAbsolutePath, finalFilename)
+  await assertWorkspacePathSafe(getWorkspaceRoot(), targetAbsolutePath, { allowMissing: true })
 
   if (request?.source_path) {
     const sourcePath = String(request.source_path)
@@ -1776,13 +1836,13 @@ async function handleImportWorkspaceFile(_event, request) {
     if (stat.size > maxImportFileBytes) {
       throw new Error('file exceeds 50 MB import limit')
     }
-    await fs.copyFile(sourcePath, targetAbsolutePath)
+    await writeFileAtomically(targetAbsolutePath, await fs.readFile(sourcePath))
   } else if (typeof request?.base64_content === 'string' && request.base64_content) {
     const buffer = Buffer.from(request.base64_content, 'base64')
     if (buffer.byteLength > maxImportFileBytes) {
       throw new Error('file exceeds 50 MB import limit')
     }
-    await fs.writeFile(targetAbsolutePath, buffer)
+    await writeFileAtomically(targetAbsolutePath, buffer)
   } else {
     throw new Error('missing source_path or base64_content')
   }
@@ -1814,9 +1874,13 @@ function resolveWorkspaceProtocolPath(requestURL) {
   return resolveWorkspacePath(relativePath)
 }
 
+async function resolveSafeWorkspaceProtocolPath(requestURL) {
+  return validateResolvedWorkspacePath(resolveWorkspaceProtocolPath(requestURL))
+}
+
 function registerWorkspaceProtocolHandler() {
-  protocol.handle('kition-workspace', (request) => {
-    const { absolutePath } = resolveWorkspaceProtocolPath(request.url)
+  protocol.handle('kition-workspace', async (request) => {
+    const { absolutePath } = await resolveSafeWorkspaceProtocolPath(request.url)
     return net.fetch(fileURLFromPath(absolutePath))
   })
 }
@@ -1832,7 +1896,7 @@ function registerBundledAssetProtocolHandler() {
 async function handleRevealWorkspaceFolder(_event, request) {
   await ensureWorkspaceInitialized()
   if (request?.path) {
-    const { absolutePath } = resolveWorkspacePath(request.path, { allowRoot: true })
+    const { absolutePath } = await resolveSafeWorkspacePath(request.path, { allowRoot: true })
     const itemStat = await fs.stat(absolutePath)
     if (itemStat.isDirectory()) {
       return shell.openPath(absolutePath)

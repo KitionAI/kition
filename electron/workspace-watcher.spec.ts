@@ -133,6 +133,7 @@ describe('createWorkspaceWatcher', () => {
     })
     expect(fake.api.watch).toHaveBeenCalledWith('/vault', expect.objectContaining({
       ignored: expect.arrayContaining(['**/.git/**', '**/node_modules/**', '**/.DS_Store']),
+      followSymlinks: false,
     }))
   })
 })

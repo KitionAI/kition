@@ -92,17 +92,25 @@ export default defineConfig(({ mode }) => ({
     sourcemap: false,
     rollupOptions: {
       output: {
-        manualChunks(id) {
-          const normalizedId = id.replaceAll('\\', '/')
-          if (!normalizedId.includes('/node_modules/')) return undefined
-          if (/\/node_modules\/(?:react|react-dom|react-router|react-router-dom|scheduler)\//.test(normalizedId)) {
-            return 'react-vendor'
-          }
-          if (/\/node_modules\/lucide-react\//.test(normalizedId)) return 'icons'
-          // Let Rolldown keep dependencies that are only reachable through a
-          // dynamic import out of the initial graph. A catch-all vendor chunk
-          // would make optional editors and Mermaid dependencies preload again.
-          return undefined
+        codeSplitting: {
+          groups: [
+            {
+              name: 'react-vendor',
+              test: /\/node_modules\/(?:react|react-dom|react-router|react-router-dom|scheduler)\//,
+              priority: 30,
+            },
+            {
+              name: 'icons',
+              test: /\/node_modules\/lucide-react\//,
+              priority: 20,
+            },
+            {
+              name: 'initial',
+              tags: ['$initial'],
+              priority: 10,
+              includeDependenciesRecursively: false,
+            },
+          ],
         },
       },
     },

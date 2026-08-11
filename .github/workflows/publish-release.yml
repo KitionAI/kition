@@ -97,8 +97,59 @@ jobs:
             fi
           done
 
+  verify-client:
+    name: Verify release client
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          lfs: true
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Run repository, security, build, and unit checks
+        run: pnpm run check
+
+      - name: Enforce the production performance budget
+        run: pnpm run perf:budget
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run renderer end-to-end tests
+        run: pnpm run test:e2e
+
+      - name: Run desktop integration end-to-end tests
+        run: xvfb-run -a pnpm run test:desktop:e2e
+
+      - name: Run the table regression completion gate
+        run: pnpm run test:table:e2e
+
   build-desktop:
-    needs: validate-runtime-assets
+    needs:
+      - validate-runtime-assets
+      - verify-client
     environment: release
     strategy:
       fail-fast: false

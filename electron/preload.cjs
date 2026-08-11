@@ -1,10 +1,81 @@
-import { contextBridge, ipcRenderer } from 'electron'
-import {
-  DESKTOP_DOCUMENT_EXTERNAL_CHANGE_EVENT,
-  DESKTOP_MENU_EVENT,
-  DESKTOP_UPDATES_EVENT,
-  IPC_CHANNELS,
-} from './channels.mjs'
+// Sandboxed Electron preloads only expose the built-in CommonJS loader.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { contextBridge, ipcRenderer } = require('electron')
+
+// Sandboxed preload scripts cannot load local modules. Keep these values in
+// sync with channels.mjs; preload.spec.ts enforces the shared contract.
+const DESKTOP_MENU_EVENT = 'desktop:menu'
+const DESKTOP_UPDATES_EVENT = 'desktop:updates:state'
+const DESKTOP_DOCUMENT_EXTERNAL_CHANGE_EVENT = 'desktop:document:external-change'
+
+const IPC_CHANNELS = {
+  desktopInfo: 'desktop:get-info',
+  backendStatus: 'desktop:get-backend-status',
+  retryBackendStart: 'desktop:retry-backend-start',
+  openExternalURL: 'desktop:open-external-url',
+  showNotification: 'desktop:show-notification',
+  windowAction: 'desktop:window-action',
+  openRuntimePath: 'desktop:open-runtime-path',
+  bootstrapInitialize: 'desktop:bootstrap:initialize',
+  bootstrapCreateAttestation: 'desktop:bootstrap:create-attestation',
+  bootstrapStatus: 'desktop:bootstrap:status',
+  saveTextFile: 'desktop:file:save-text',
+  saveBinaryFile: 'desktop:file:save-binary',
+  savePdfFile: 'desktop:file:save-pdf',
+  copyDocumentHtml: 'desktop:clipboard:copy-document-html',
+  copyImage: 'desktop:clipboard:copy-image',
+  submitFeedback: 'desktop:feedback:submit',
+  listWorkspaceDocuments: 'desktop:workspace:list-documents',
+  readWorkspaceDocument: 'desktop:workspace:read-document',
+  statWorkspaceDocument: 'desktop:workspace:stat-document',
+  writeWorkspaceDocument: 'desktop:workspace:write-document',
+  createWorkspaceDocument: 'desktop:workspace:create-document',
+  createWorkspaceFolder: 'desktop:workspace:create-folder',
+  moveWorkspaceDocument: 'desktop:workspace:move-document',
+  moveWorkspaceFolder: 'desktop:workspace:move-folder',
+  deleteWorkspaceDocument: 'desktop:workspace:delete-document',
+  deleteWorkspaceFolder: 'desktop:workspace:delete-folder',
+  openWorkspaceFile: 'desktop:workspace:open-file',
+  saveWorkspaceAsset: 'desktop:workspace:save-asset',
+  importWorkspaceFile: 'desktop:workspace:import-file',
+  chooseFilesToImport: 'desktop:workspace:choose-files-to-import',
+  revealWorkspaceFolder: 'desktop:workspace:reveal-folder',
+  chooseWorkspaceFolder: 'desktop:workspace:choose-folder',
+  setWorkspaceFolder: 'desktop:workspace:set-folder',
+  listVaults: 'desktop:workspace:list-vaults',
+  addVault: 'desktop:workspace:add-vault',
+  removeVault: 'desktop:workspace:remove-vault',
+  renameVault: 'desktop:workspace:rename-vault',
+  setActiveVault: 'desktop:workspace:set-active-vault',
+  chooseDirectory: 'desktop:workspace:choose-directory',
+  storeSecureValue: 'desktop:secure-store:set',
+  readSecureValue: 'desktop:secure-store:get',
+  deleteSecureValue: 'desktop:secure-store:delete',
+  browserSessionStatus: 'desktop:browser:status',
+  ensureBrowserSessionWindow: 'desktop:browser:ensure-window',
+  openBrowserSessionHome: 'desktop:browser:open-home',
+  hideBrowserSessionPanel: 'desktop:browser:hide-panel',
+  goBackBrowserSession: 'desktop:browser:go-back',
+  goForwardBrowserSession: 'desktop:browser:go-forward',
+  reloadBrowserSession: 'desktop:browser:reload',
+  stopBrowserSession: 'desktop:browser:stop',
+  setBrowserSessionHostLayout: 'desktop:browser:set-host-layout',
+  extractBrowserPageContext: 'desktop:browser:extract-page-context',
+  setBrowserSessionTestMock: 'desktop:browser:set-test-mock',
+  listBrowserSites: 'desktop:browser:list-sites',
+  forgetBrowserSite: 'desktop:browser:forget-site',
+  refreshBrowserSiteLoginStatus: 'desktop:browser:refresh-site-login-status',
+  updatesGetState: 'desktop:updates:get-state',
+  updatesCheck: 'desktop:updates:check',
+  updatesDownload: 'desktop:updates:download',
+  updatesInstall: 'desktop:updates:install',
+  updatesSetBetaChannel: 'desktop:updates:set-beta-channel',
+  updatesSetAutoCheck: 'desktop:updates:set-auto-check',
+  proxyGet: 'desktop:proxy:get',
+  proxySave: 'desktop:proxy:save',
+  proxyTest: 'desktop:proxy:test',
+  proxyRestartBackend: 'desktop:proxy:restart-backend',
+}
 
 const BACKEND_ORIGIN_FLAG = '--kition-backend-origin='
 const backendOrigin =
@@ -71,16 +142,16 @@ const desktopBridge = {
   ListBrowserSites: () => ipcRenderer.invoke(IPC_CHANNELS.listBrowserSites),
   ForgetBrowserSite: (request) => ipcRenderer.invoke(IPC_CHANNELS.forgetBrowserSite, request),
   RefreshBrowserSiteLoginStatus: (request) => ipcRenderer.invoke(IPC_CHANNELS.refreshBrowserSiteLoginStatus, request),
-  UpdatesGetState:       ()        => ipcRenderer.invoke(IPC_CHANNELS.updatesGetState),
-  UpdatesCheck:          ()        => ipcRenderer.invoke(IPC_CHANNELS.updatesCheck),
-  UpdatesDownload:       ()        => ipcRenderer.invoke(IPC_CHANNELS.updatesDownload),
-  UpdatesInstall:        ()        => ipcRenderer.invoke(IPC_CHANNELS.updatesInstall),
+  UpdatesGetState: () => ipcRenderer.invoke(IPC_CHANNELS.updatesGetState),
+  UpdatesCheck: () => ipcRenderer.invoke(IPC_CHANNELS.updatesCheck),
+  UpdatesDownload: () => ipcRenderer.invoke(IPC_CHANNELS.updatesDownload),
+  UpdatesInstall: () => ipcRenderer.invoke(IPC_CHANNELS.updatesInstall),
   UpdatesSetBetaChannel: (enabled) => ipcRenderer.invoke(IPC_CHANNELS.updatesSetBetaChannel, Boolean(enabled)),
-  UpdatesSetAutoCheck:   (enabled) => ipcRenderer.invoke(IPC_CHANNELS.updatesSetAutoCheck, Boolean(enabled)),
-  ProxyGet:              ()        => ipcRenderer.invoke(IPC_CHANNELS.proxyGet),
-  ProxySave:             (payload) => ipcRenderer.invoke(IPC_CHANNELS.proxySave, payload),
-  ProxyTest:             (payload) => ipcRenderer.invoke(IPC_CHANNELS.proxyTest, payload),
-  ProxyRestartBackend:   ()        => ipcRenderer.invoke(IPC_CHANNELS.proxyRestartBackend),
+  UpdatesSetAutoCheck: (enabled) => ipcRenderer.invoke(IPC_CHANNELS.updatesSetAutoCheck, Boolean(enabled)),
+  ProxyGet: () => ipcRenderer.invoke(IPC_CHANNELS.proxyGet),
+  ProxySave: (payload) => ipcRenderer.invoke(IPC_CHANNELS.proxySave, payload),
+  ProxyTest: (payload) => ipcRenderer.invoke(IPC_CHANNELS.proxyTest, payload),
+  ProxyRestartBackend: () => ipcRenderer.invoke(IPC_CHANNELS.proxyRestartBackend),
   EventsOn: (eventName, callback) => {
     const wrapper = (_event, payload) => callback(payload)
     ipcRenderer.on(eventName, wrapper)

@@ -11,9 +11,34 @@ describe('markdownRenderer', () => {
   it('adds async image loading hints to markdown images', () => {
     const html = markdownToHtml('![Cover](images/example.png)')
 
+    expect(html).toContain('src="images/example.png"')
     expect(html).toContain('loading="lazy"')
     expect(html).toContain('decoding="async"')
     expect(html).toContain('fetchpriority="low"')
+  })
+
+  it('removes executable HTML from untrusted markdown', () => {
+    const html = markdownToHtml([
+      '<img src="missing.png" onerror="window.__kition_xss = true">',
+      '<script>window.__kition_xss = true</script>',
+      '<iframe srcdoc="<script>alert(1)</script>"></iframe>',
+    ].join('\n'))
+
+    expect(html).toContain('src="missing.png"')
+    expect(html).not.toContain('onerror')
+    expect(html).not.toContain('<script')
+    expect(html).not.toContain('<iframe')
+    expect(html).not.toContain('srcdoc')
+  })
+
+  it('removes unsafe link protocols while keeping workspace links', () => {
+    const html = markdownToHtml([
+      '<a href="javascript:alert(1)">Unsafe</a>',
+      '<img src="kition-workspace://assets/cover.png" alt="Cover">',
+    ].join('\n'))
+
+    expect(html).not.toContain('javascript:')
+    expect(html).toContain('kition-workspace://assets/cover.png')
   })
 
   it('does not override explicit image loading attributes', () => {

@@ -4,15 +4,18 @@ import { gzipSync } from 'node:zlib'
 
 const DIST_DIR = resolve(process.cwd(), 'dist')
 const html = readFileSync(resolve(DIST_DIR, 'index.html'), 'utf8')
-const entry = html.match(/<script[^>]+src="([^"]+\.js)"/)?.[1]
+const scripts = Array.from(
+  html.matchAll(/<script[^>]+src="([^"]+\.js)"/g),
+  (match) => match[1],
+)
 const preloads = Array.from(html.matchAll(/<link[^>]+rel="modulepreload"[^>]+href="([^"]+\.js)"/g), (match) => match[1])
-const initialAssets = Array.from(new Set([entry, ...preloads].filter(Boolean)))
+const initialAssets = Array.from(new Set([...scripts, ...preloads].filter(Boolean)))
 const stylesheets = Array.from(
   html.matchAll(/<link[^>]+rel="stylesheet"[^>]+href="([^"]+\.css)"/g),
   (match) => match[1],
 )
 
-if (!entry || initialAssets.length === 0) {
+if (scripts.length === 0 || initialAssets.length === 0) {
   throw new Error('Unable to resolve initial JavaScript assets from dist/index.html')
 }
 
@@ -73,7 +76,7 @@ if (totalCssBytes > limits.initialCssBytes) {
 if (totalCssGzipBytes > limits.initialCssGzipBytes) {
   failures.push(`gzip initial CSS ${format(totalCssGzipBytes)} exceeds ${format(limits.initialCssGzipBytes)}`)
 }
-if (assets.some((asset) => /mermaid|cytoscape|workflowroute|desktopsettings|scenarioroute|documentdocument|tableeditor|katex|marked|workspaceagentsidebar|documentexport/i.test(asset.asset))) {
+if (assets.some((asset) => /mermaid|cytoscape|workflowroute|desktopsettingspage|scenarioroute|documentdocument|tableeditor|katex|marked|workspaceagentsidebar|documentexport/i.test(asset.asset))) {
   failures.push('an optional heavy feature leaked into the initial preload graph')
 }
 

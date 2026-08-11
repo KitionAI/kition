@@ -143,21 +143,21 @@ describe('useWorkspaceTreeNodeActions — kitable rename integration', () => {
 })
 
 describe('getWorkspaceDeleteConfirmationMessage', () => {
-  it('describes folder deletion as permanent instead of removing it from the workspace', () => {
+  it('describes folder deletion as recoverable from the system Trash', () => {
     expect(getWorkspaceDeleteConfirmationMessage({
       title: 'campaigns',
       type: 'folder',
     }, 11)).toBe(
-      'Permanently delete folder "campaigns" and its 11 pages? This action cannot be undone.',
+      'Move folder "campaigns" and its 11 pages to the system Trash? You can restore it from there.',
     )
   })
 
-  it('includes child pages when permanently deleting a document', () => {
+  it('includes child pages when moving a document to the system Trash', () => {
     expect(getWorkspaceDeleteConfirmationMessage({
       title: 'Campaign.md',
       type: 'file',
     }, 1)).toBe(
-      'Permanently delete "Campaign.md" and its 1 child page? This action cannot be undone.',
+      'Move "Campaign.md" and its 1 child page to the system Trash? You can restore it from there.',
     )
   })
 })
