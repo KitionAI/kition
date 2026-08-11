@@ -8,6 +8,7 @@ import {
 
 describe('email sync setup requests', () => {
   afterEach(() => {
+    vi.unstubAllGlobals()
     sessionStorage.clear()
     vi.useRealTimers()
   })
@@ -32,5 +33,14 @@ describe('email sync setup requests', () => {
     })
 
     window.removeEventListener(EMAIL_SYNC_SETUP_REQUEST_EVENT, listener)
+  })
+
+  it('ignores retry callbacks after the browser environment is gone', () => {
+    vi.useFakeTimers()
+
+    requestEmailSyncSetup('Projects/Inbox.kitable')
+    vi.stubGlobal('window', undefined)
+
+    expect(() => vi.runAllTimers()).not.toThrow()
   })
 })

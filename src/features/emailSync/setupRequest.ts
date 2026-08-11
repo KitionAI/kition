@@ -22,6 +22,7 @@ export function requestEmailSyncSetup(
   }))
   for (const delay of SETUP_EVENT_RETRY_DELAYS) {
     window.setTimeout(() => {
+      if (typeof window === 'undefined') return
       window.dispatchEvent(new CustomEvent(EMAIL_SYNC_SETUP_REQUEST_EVENT, {
         detail: request,
       }))
