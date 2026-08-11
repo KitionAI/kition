@@ -55,3 +55,17 @@ describe('workspace tab contrast', () => {
     )
   })
 })
+
+describe('document completion contrast', () => {
+  it('uses themed surfaces and brand selection colors for autocomplete results', () => {
+    expect(styles).toMatch(
+      /\.document-editor \.cm-editor \.cm-tooltip\.cm-tooltip-autocomplete\s*\{[\s\S]*?bg-popover text-popover-foreground;/,
+    )
+    expect(styles).toMatch(
+      /\.document-editor \.cm-tooltip-autocomplete > ul > li\[aria-selected\]\s*\{[\s\S]*?background: hsl\(var\(--primary\)\) !important;[\s\S]*?color: hsl\(var\(--primary-foreground\)\) !important;/,
+    )
+    expect(styles).toMatch(
+      /\.document-editor \.cm-tooltip-autocomplete \.cm-completionDetail,[\s\S]*?color: hsl\(var\(--muted-foreground\)\);/,
+    )
+  })
+})

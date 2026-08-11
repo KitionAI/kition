@@ -15,7 +15,7 @@
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { EditorSelection, EditorState } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { livePreviewExtension, livePreviewField, scanATXHeadings, scanFencedCodeBlocks } from './live-preview'
 
@@ -30,6 +30,7 @@ const mountEditor = (
   cursorPos?: number,
   sourcePath = '',
   revealSourceOnFocus = true,
+  onMarkdownLinkNavigate?: (href: string) => boolean,
 ) => {
   const host = document.createElement('div')
   document.body.appendChild(host)
@@ -40,7 +41,7 @@ const mountEditor = (
       selection: cursorPos != null ? EditorSelection.cursor(cursorPos) : undefined,
       extensions: [
         markdown({ base: markdownLanguage }),
-        livePreviewExtension({ sourcePath, revealSourceOnFocus }),
+        livePreviewExtension({ sourcePath, revealSourceOnFocus, onMarkdownLinkNavigate }),
       ],
     }),
   })
@@ -164,6 +165,29 @@ describe('livePreviewExtension — reading selection', () => {
 
     expect(view.dom.querySelector('.cm-md-h-mark-hidden')).not.toBeNull()
     expect(view.dom.textContent).not.toContain('**')
+  })
+})
+
+describe('livePreviewExtension — links', () => {
+  it('delegates rendered Markdown links to workspace navigation before opening a window', () => {
+    const onMarkdownLinkNavigate = vi.fn(() => true)
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null)
+    mounts.push(() => open.mockRestore())
+    const href = 'campaigns/2026-08-x-open-source/README.md'
+    const view = mountEditor(
+      `Before [campaign](${href})`,
+      0,
+      'README.md',
+      true,
+      onMarkdownLinkNavigate,
+    )
+    const link = view.dom.querySelector('.cm-md-link[data-href]') as HTMLElement | null
+
+    expect(link).not.toBeNull()
+    link?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0 }))
+
+    expect(onMarkdownLinkNavigate).toHaveBeenCalledWith(href)
+    expect(open).not.toHaveBeenCalled()
   })
 })
 

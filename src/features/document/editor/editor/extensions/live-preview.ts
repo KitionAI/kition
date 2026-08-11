@@ -2302,6 +2302,7 @@ const livePreviewTheme = EditorView.baseTheme({
 export function livePreviewExtension(options: {
   sourcePath?: string
   revealSourceOnFocus?: boolean
+  onMarkdownLinkNavigate?: (href: string) => boolean
 } = {}) {
   return [
     editorFocusField,
@@ -2363,6 +2364,9 @@ export function livePreviewExtension(options: {
         }
         event.preventDefault()
         event.stopPropagation()
+        if (options.onMarkdownLinkNavigate?.(href)) {
+          return true
+        }
         window.open(href, '_blank', 'noopener,noreferrer')
         return true
       },

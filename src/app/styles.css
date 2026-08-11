@@ -2642,6 +2642,38 @@
     color: var(--document-muted-text, hsl(var(--muted-foreground)));
   }
 
+  .document-editor .cm-editor .cm-tooltip.cm-tooltip-autocomplete {
+    @apply overflow-hidden rounded-lg border bg-popover text-popover-foreground;
+    border-color: var(--document-border, hsl(var(--border)));
+    box-shadow: var(--shadow-floating);
+  }
+
+  .document-editor .cm-tooltip-autocomplete > ul {
+    @apply py-1;
+    font-family: inherit;
+  }
+
+  .document-editor .cm-tooltip-autocomplete > ul > li {
+    @apply px-3 py-2 text-sm text-popover-foreground;
+    line-height: 1.35;
+  }
+
+  .document-editor .cm-tooltip-autocomplete > ul > li[aria-selected] {
+    background: hsl(var(--primary)) !important;
+    color: hsl(var(--primary-foreground)) !important;
+  }
+
+  .document-editor .cm-tooltip-autocomplete .cm-completionDetail,
+  .document-editor .cm-tooltip-autocomplete .cm-completionIcon {
+    color: hsl(var(--muted-foreground));
+  }
+
+  .document-editor .cm-tooltip-autocomplete > ul > li[aria-selected] .cm-completionDetail,
+  .document-editor .cm-tooltip-autocomplete > ul > li[aria-selected] .cm-completionIcon {
+    color: hsl(var(--primary-foreground));
+    opacity: 0.82;
+  }
+
   .document-editor .cm-panels.cm-panels-top {
     @apply pointer-events-none absolute left-auto right-5 top-4 z-50 w-auto border-0 bg-transparent text-foreground;
   }

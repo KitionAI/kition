@@ -64,6 +64,7 @@ import {
   buildDocumentPublishingClipboardHtml,
   copyDocumentMarkdownForPublishing,
 } from '@/features/document/lib/documentPublishingClipboard'
+import { resolveMarkdownLinkTarget } from '@/features/document/lib/markdownLinkNavigation'
 import { notify } from '@/lib/notify'
 import { cn } from '@/lib/utils'
 
@@ -454,6 +455,17 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
       const path = wikilinkResolver.resolvePath(target, documentPath)
       if (!path) return
       onNavigate?.(path, section ? { section } : undefined)
+    },
+    [documentPath, onNavigate, wikilinkResolver],
+  )
+
+  const handleMarkdownLinkNavigate = useCallback(
+    (href: string) => {
+      if (!onNavigate) return false
+      const target = resolveMarkdownLinkTarget(href, documentPath, wikilinkResolver.resolvePath)
+      if (!target) return false
+      onNavigate(target.path, target.section ? { section: target.section } : undefined)
+      return true
     },
     [documentPath, onNavigate, wikilinkResolver],
   )
@@ -883,6 +895,7 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
               onCreateMissingNote={handleCreateMissingNote}
               loadEmbed={embedLoader}
               onEmbedNavigate={handleEmbedNavigate}
+              onMarkdownLinkNavigate={handleMarkdownLinkNavigate}
               extraExtensions={extraExtensions}
             />
           </div>

@@ -170,6 +170,8 @@ export type DocumentEditorProps = {
   loadEmbed?: EmbedLoader
                          
   onEmbedNavigate?: (target: string, section?: string) => void
+  /** Handle a rendered Markdown link inside the workspace. Return true when handled. */
+  onMarkdownLinkNavigate?: (href: string) => boolean
   onCreateEditor?: (view: EditorView) => void
   /** Return true to replace the native copy for the selected Markdown. */
   onCopySelection?: (markdown: string, clipboardData: DataTransfer | null) => boolean
@@ -204,6 +206,7 @@ export const DocumentEditor = forwardRef<ReactCodeMirrorRef, DocumentEditorProps
       suggestProviders,
       loadEmbed,
       onEmbedNavigate,
+      onMarkdownLinkNavigate,
       onCreateEditor,
       onCopySelection,
       extraExtensions,
@@ -234,7 +237,7 @@ export const DocumentEditor = forwardRef<ReactCodeMirrorRef, DocumentEditorProps
         autoBracketExtension(),
         slashCommandExtension(suggestProviders ?? {}),
         snippetExpandExtension({ sourcePath }),
-        livePreviewExtension({ sourcePath, revealSourceOnFocus }),
+        livePreviewExtension({ sourcePath, revealSourceOnFocus, onMarkdownLinkNavigate }),
         ...(onCopySelection
           ? [EditorView.domEventHandlers({
               copy(event, view) {
@@ -296,7 +299,7 @@ export const DocumentEditor = forwardRef<ReactCodeMirrorRef, DocumentEditorProps
         ...(extraExtensions ?? []),
         editorTheme,
       ],
-      [compositionExtension, sourcePath, revealSourceOnFocus, resolveWikilink, onWikilinkNavigate, onCreateMissingNote, onTagNavigate, onCursorLineChange, onCursorChange, suggestProviders, loadEmbed, onEmbedNavigate, onCopySelection, extraExtensions],
+      [compositionExtension, sourcePath, revealSourceOnFocus, resolveWikilink, onWikilinkNavigate, onCreateMissingNote, onTagNavigate, onCursorLineChange, onCursorChange, suggestProviders, loadEmbed, onEmbedNavigate, onMarkdownLinkNavigate, onCopySelection, extraExtensions],
     )
 
     const effectiveBasicSetup = useMemo(

@@ -658,7 +658,7 @@ test.describe('app shell navigation', () => {
     })
   })
 
-  test('keeps default dark document editor surfaces readable', async ({ page }) => {
+  test('keeps default dark document editor surfaces and completion results readable', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'dark' })
     await mockDesktopWorkspaceBridge(page)
     await page.goto('/documents')
@@ -673,7 +673,25 @@ test.describe('app shell navigation', () => {
       '.cm-content',
     ].join(', ')).first().waitFor({ state: 'visible', timeout: 15_000 })
 
-    const contrastReport = await page.evaluate(() => {
+    await page.locator('.document-editor .cm-editor').evaluate((editor) => {
+      const menu = document.createElement('div')
+      menu.className = 'cm-tooltip cm-tooltip-autocomplete'
+      menu.dataset.testid = 'completion-contrast-probe'
+      menu.style.position = 'absolute'
+      menu.style.left = '24px'
+      menu.style.top = '24px'
+      menu.innerHTML = [
+        '<ul role="listbox">',
+        '<li><span class="cm-completionLabel">Reference</span><span class="cm-completionDetail">docs/reference</span></li>',
+        '<li aria-selected="true"><span class="cm-completionLabel">README</span><span class="cm-completionDetail">docs/README</span></li>',
+        '</ul>',
+      ].join('')
+      editor.append(menu)
+    })
+
+    const completionMenu = page.getByTestId('completion-contrast-probe')
+    await expect(completionMenu).toBeVisible()
+    const { surfaceContrastReport, completionContrastReport } = await page.evaluate(() => {
       const parseRgb = (value: string) => {
         const match = value.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/)
         if (!match) return null
@@ -706,8 +724,7 @@ test.describe('app shell navigation', () => {
         }
         return { r: 255, g: 255, b: 255 }
       }
-
-      return [
+      const surfaceContrastReport = [
         '.document-editor-panel',
         '.document-rich-editor .kition-rich-editor__content',
         '.document-markdown-preview',
@@ -726,12 +743,55 @@ test.describe('app shell navigation', () => {
           contrast: contrast(foreground, background),
         }]
       })
+      const menu = document.querySelector<HTMLElement>('[data-testid="completion-contrast-probe"]')
+      if (!menu) return { surfaceContrastReport, completionContrastReport: [] }
+      const menuBackground = parseRgb(getComputedStyle(menu).backgroundColor)
+      if (!menuBackground) return { surfaceContrastReport, completionContrastReport: [] }
+
+      const completionContrastReport = Array.from(menu.querySelectorAll<HTMLElement>('li')).map((row) => {
+        const rowStyle = getComputedStyle(row)
+        const rowBackgroundCandidate = parseRgb(rowStyle.backgroundColor)
+        const rowBackground = rowBackgroundCandidate && rowBackgroundCandidate.a > 0
+          ? rowBackgroundCandidate
+          : menuBackground
+        const rowForeground = parseRgb(rowStyle.color)
+        const detail = row.querySelector<HTMLElement>('.cm-completionDetail')
+        const detailStyle = detail ? getComputedStyle(detail) : null
+        const detailForeground = detailStyle ? parseRgb(detailStyle.color) : null
+        const detailOpacity = detailStyle ? Number(detailStyle.opacity) : 1
+        const visibleDetailForeground = detailForeground
+          ? {
+              r: detailForeground.r * detailOpacity + rowBackground.r * (1 - detailOpacity),
+              g: detailForeground.g * detailOpacity + rowBackground.g * (1 - detailOpacity),
+              b: detailForeground.b * detailOpacity + rowBackground.b * (1 - detailOpacity),
+            }
+          : null
+
+        return {
+          selected: row.hasAttribute('aria-selected'),
+          backgroundColor: rowBackgroundCandidate && rowBackgroundCandidate.a > 0
+            ? rowStyle.backgroundColor
+            : getComputedStyle(menu).backgroundColor,
+          textContrast: rowForeground ? contrast(rowForeground, rowBackground) : 0,
+          detailContrast: visibleDetailForeground ? contrast(visibleDetailForeground, rowBackground) : null,
+        }
+      })
+
+      return { surfaceContrastReport, completionContrastReport }
     })
 
-    expect(contrastReport.length).toBeGreaterThan(1)
-    for (const item of contrastReport) {
+    expect(surfaceContrastReport.length).toBeGreaterThan(1)
+    for (const item of surfaceContrastReport) {
       expect(item.contrast, `${item.selector}: ${item.color} on ${item.backgroundColor}`).toBeGreaterThanOrEqual(4.5)
     }
+    expect(completionContrastReport.length).toBeGreaterThan(1)
+    for (const item of completionContrastReport) {
+      expect(item.textContrast).toBeGreaterThanOrEqual(4.5)
+      if (item.detailContrast != null) {
+        expect(item.detailContrast).toBeGreaterThanOrEqual(4.5)
+      }
+    }
+    expect(completionContrastReport.find((item) => item.selected)?.backgroundColor).toBe('rgb(86, 69, 212)')
   })
 
   test('opens a new agent chat from the current document workspace', async ({ page }) => {
