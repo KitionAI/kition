@@ -58,6 +58,24 @@ describe('desktop service helpers', () => {
     expect(isElectronDesktopRuntime()).toBe(true)
   })
 
+  it('selects a read-only local analysis source through the desktop bridge', async () => {
+    const source = {
+      id: 'source-project',
+      label: 'project',
+      root_path: '/example/project',
+      access: 'read',
+    }
+    ;(window as typeof window & { kitionDesktop?: any }).kitionDesktop = {
+      shell: 'electron',
+      ChooseAgentAnalysisDirectory: vi.fn().mockResolvedValue(source),
+    }
+
+    const desktopModule = await loadDesktopModule()
+    await expect(desktopModule.chooseAgentAnalysisDirectory('../project')).resolves.toEqual(source)
+    expect((window as any).kitionDesktop.ChooseAgentAnalysisDirectory)
+      .toHaveBeenCalledWith({ suggested_path: '../project' })
+  })
+
   it('subscribes to normalized workspace document external changes', async () => {
     const off = vi.fn()
     let eventCallback: ((payload: unknown) => void) | undefined

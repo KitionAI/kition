@@ -11,6 +11,10 @@ import {
 } from '@/features/workspace/lib/workspaceTree'
 import { routeKitableOpenPath } from './workspaceScreenTabRouting'
 import type { AgentBrowserContext, AgentEvent } from '@/api/agent'
+import {
+  appendAgentLocalSource,
+  extractAgentLocalPathReference,
+} from '@/features/agent/lib/agentLocalSources'
 import { createDataDashboardByPath } from '@/api/dashboards'
 import { openDataDocumentByPath, renameDataDocumentByPath } from '@/api/dataDocuments'
 import { openWorkflowHome, openWorkflowRoute, type WorkflowRouteContext } from '@/features/workflow/lib/openWorkflowRoute'
@@ -116,6 +120,7 @@ import { notify } from '@/lib/notify'
 import { cn } from '@/lib/utils'
 import {
   ensureBrowserSessionWindow,
+  chooseAgentAnalysisDirectory,
   extractBrowserPageContext,
   getBrowserSessionPanelState,
   getBrowserSessionStatus,
@@ -579,6 +584,7 @@ export function WorkspaceScreen({
     agentDrafts,
     agentEvents,
     agentMessages,
+    agentLocalSources,
     agentModelOptions,
     agentModifiedDocumentPaths,
     agentSessions,
@@ -587,13 +593,18 @@ export function WorkspaceScreen({
     clearPendingFocusedSessionId,
     clearModifiedDocumentPath,
     createNewAgentChat,
+    addAgentDocumentContext,
+    addAgentLocalSource,
     deleteAgentChat,
     handleAgentModelChange,
     mentionableDocuments,
     openAgentSession,
     pendingFocusedSessionId,
     refreshAgentSessions,
+    removeAgentDocumentContext,
     resolvedAgentModelKey,
+    resolveAgentDocumentContexts,
+    removeAgentLocalSource,
     selectedAgentModel,
     sendAgentContextAction,
     sendAiComposerMessage,
@@ -928,6 +939,13 @@ export function WorkspaceScreen({
   const activeWorkspaceAgentSession = activeWorkspaceAgentSessionId
     ? agentSessions.find((session) => session.id === activeWorkspaceAgentSessionId) || null
     : null
+  const activeWorkspaceDocumentPath = resolveAgentActiveDocument(activeWorkspaceTab).path
+  const activeAgentDocumentContextPaths = activeWorkspaceAgentSession
+    ? resolveAgentDocumentContexts(
+      activeWorkspaceAgentSession.id,
+      activeWorkspaceDocumentPath,
+    )
+    : []
 
   const refreshTableAgentContextByPath = useCallback(async (
     path: string,
@@ -2160,12 +2178,16 @@ export function WorkspaceScreen({
       return
     }
     autoCreatedAgentChatRef.current = true
-    void createNewAgentChat({ focusTab: true })
+    void createNewAgentChat({
+      focusTab: true,
+      documentPaths: activeWorkspaceDocumentPath ? [activeWorkspaceDocumentPath] : [],
+    })
   }, [
     workspaceAgentOpen,
     activeWorkspaceAgentSession,
     agentSessions.length,
     createNewAgentChat,
+    activeWorkspaceDocumentPath,
   ])
 
   useEffect(() => {
@@ -2407,7 +2429,10 @@ export function WorkspaceScreen({
   async function handleCreateWorkspaceAgentChat() {
     setWorkspaceAgentOpen(true)
     setWorkspaceAgentHistoryOpen(false)
-    await createNewAgentChat({ focusTab: true })
+    await createNewAgentChat({
+      focusTab: true,
+      documentPaths: activeWorkspaceDocumentPath ? [activeWorkspaceDocumentPath] : [],
+    })
   }
 
   useEffect(() => {
@@ -2421,7 +2446,10 @@ export function WorkspaceScreen({
         }
         setWorkspaceAgentOpen(true)
         setWorkspaceAgentHistoryOpen(false)
-        const session = await createNewAgentChat({ focusTab: true })
+        const session = await createNewAgentChat({
+          focusTab: true,
+          documentPaths: documentPath ? [documentPath] : [],
+        })
         if (!session?.id) return
         setActiveWorkspaceAgentSessionId(session.id)
         if (prompt) {
@@ -2443,7 +2471,10 @@ export function WorkspaceScreen({
 
     let sessionId = forceNew ? null : activeWorkspaceAgentSession?.id ?? null
     if (!sessionId) {
-      const session = await createNewAgentChat({ focusTab: true })
+      const session = await createNewAgentChat({
+        focusTab: true,
+        documentPaths: [node.path],
+      })
       sessionId = session?.id ?? null
       if (sessionId) {
         setActiveWorkspaceAgentSessionId(sessionId)
@@ -2453,9 +2484,9 @@ export function WorkspaceScreen({
       return
     }
 
-    const current = forceNew ? '' : agentDrafts[sessionId] || ''
-    const separator = current && !/\s$/.test(current) ? ' ' : ''
-    setAgentDraft(sessionId, `${current}${separator}@{${node.path}} `)
+    if (!forceNew) {
+      addAgentDocumentContext(sessionId, node.path, activeWorkspaceDocumentPath)
+    }
 
     window.dispatchEvent(new CustomEvent('kition:agent:focus-composer'))
   }
@@ -2788,6 +2819,36 @@ export function WorkspaceScreen({
     await openModifiedDocumentReview(path)
   }
 
+  async function addLocalAnalysisSource(suggestedPath = '') {
+    if (!activeWorkspaceAgentSession) {
+      return null
+    }
+    try {
+      const source = await chooseAgentAnalysisDirectory(suggestedPath)
+      if (source) {
+        addAgentLocalSource(activeWorkspaceAgentSession.id, source)
+      }
+      return source
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to select an analysis folder')
+      return null
+    }
+  }
+
+  async function sendWorkspaceAgentMessage(sessionId: number) {
+    const sources = agentLocalSources[sessionId] || []
+    const pathReference = extractAgentLocalPathReference(agentDrafts[sessionId] || '')
+    if (!sources.length && pathReference) {
+      const source = await addLocalAnalysisSource(pathReference)
+      if (!source) {
+        return
+      }
+      sendAiComposerMessage(sessionId, appendAgentLocalSource(sources, source))
+      return
+    }
+    sendAiComposerMessage(sessionId)
+  }
+
   const workspaceRightPane = workspaceAgentOpen ? (
     <Suspense fallback={null}>
       <WorkspaceAgentSidebar
@@ -2813,13 +2874,26 @@ export function WorkspaceScreen({
                 ? kitionAccount.state.status
                 : undefined,
               mentionableDocuments,
+              documentContextPaths: activeAgentDocumentContextPaths,
+              localSources: agentLocalSources[activeWorkspaceAgentSession.id] || [],
               formatTime: formatWorkspaceTime,
               onDraftChange: (value: string) =>
                 setAgentDraft(activeWorkspaceAgentSession.id, value),
-              onSend: () =>
-                sendAiComposerMessage(
-                  activeWorkspaceAgentSession.id,
-                ),
+              onAddLocalSource: () => void addLocalAnalysisSource(),
+              onAddDocumentContext: (path: string) => addAgentDocumentContext(
+                activeWorkspaceAgentSession.id,
+                path,
+                activeWorkspaceDocumentPath,
+              ),
+              onRemoveDocumentContext: (path: string) => removeAgentDocumentContext(
+                activeWorkspaceAgentSession.id,
+                path,
+              ),
+              onRemoveLocalSource: (sourceId: string) => removeAgentLocalSource(
+                activeWorkspaceAgentSession.id,
+                sourceId,
+              ),
+              onSend: () => void sendWorkspaceAgentMessage(activeWorkspaceAgentSession.id),
               onStop: () => stopAgentMessage(activeWorkspaceAgentSession.id),
               onConfigureModel: onOpenSettingsSection
                 ? () => onOpenSettingsSection('models')

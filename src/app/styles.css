@@ -1522,6 +1522,10 @@
     @apply relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden;
   }
 
+  .workspace-screen-editor {
+    @apply flex h-full min-h-0 min-w-0 flex-col overflow-hidden;
+  }
+
   .workspace-kitable-sidebar {
     @apply flex h-full min-h-0 w-[216px] shrink-0 flex-col overflow-hidden border-r;
     background: var(--document-sidebar-surface, hsl(var(--surface-soft)));
@@ -3940,6 +3944,99 @@
     border-color: var(--document-border, hsl(var(--border)));
   }
 
+  .agent-context-tray {
+    @apply mb-2 flex flex-col gap-1 border-b pb-2;
+    border-bottom-color: var(--document-border, hsl(var(--border)));
+  }
+
+  .agent-context-tray__header {
+    @apply flex min-h-6 items-center gap-2;
+  }
+
+  .agent-context-tray__header > span {
+    @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground;
+  }
+
+  .agent-context-add {
+    @apply relative shrink-0;
+  }
+
+  .agent-context-add__trigger {
+    @apply inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-45;
+  }
+
+  .agent-context-add__menu {
+    @apply absolute bottom-[calc(100%+8px)] left-0 z-30 w-60 overflow-hidden rounded-xl border bg-card p-1 shadow-lg;
+    border-color: var(--document-border, hsl(var(--border)));
+  }
+
+  .agent-context-add__menu > button {
+    @apply flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-foreground transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-45;
+  }
+
+  .agent-context-add__menu > button > svg {
+    @apply shrink-0 text-muted-foreground;
+  }
+
+  .agent-context-add__menu > button > span {
+    @apply flex min-w-0 flex-1 flex-col;
+  }
+
+  .agent-context-add__menu strong {
+    @apply text-xs font-medium text-foreground;
+  }
+
+  .agent-context-add__menu small {
+    @apply text-[11px] text-muted-foreground;
+  }
+
+  .agent-context-tray__items {
+    @apply flex min-w-0 flex-wrap content-start gap-1.5 overflow-y-auto pr-1;
+    max-height: 3.875rem;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.28) transparent;
+  }
+
+  .agent-context-tray__items::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .agent-context-tray__items::-webkit-scrollbar-thumb {
+    @apply rounded-full;
+    background: hsl(var(--muted-foreground) / 0.28);
+  }
+
+  .agent-context-chip {
+    @apply flex h-7 min-w-0 max-w-[14rem] items-center overflow-hidden rounded-md border bg-secondary text-xs text-foreground;
+    border-color: var(--document-border, hsl(var(--border)));
+  }
+
+  .agent-context-chip.is-document {
+    @apply bg-card;
+  }
+
+  .agent-context-chip.is-source {
+    @apply bg-card;
+  }
+
+  .agent-context-chip__main {
+    @apply flex h-full min-w-0 items-center gap-1.5 px-2 text-left;
+  }
+
+  button.agent-context-chip__main {
+    @apply transition-colors hover:bg-muted/60;
+  }
+
+  .agent-context-chip__main > span {
+    @apply min-w-0 truncate font-medium;
+  }
+
+  .agent-context-chip__remove {
+    @apply grid h-full w-7 shrink-0 place-items-center border-l text-muted-foreground transition-colors hover:bg-muted hover:text-foreground;
+    border-left-color: var(--document-border, hsl(var(--border)));
+  }
+
   .agent-changed-files {
     @apply pointer-events-auto relative z-[1] overflow-hidden rounded-xl border bg-card;
     border-color: var(--document-border, hsl(var(--border)));
@@ -4086,14 +4183,6 @@
 
   .agent-document-references__menu .agent-document-reference__main {
     @apply flex-1;
-  }
-
-  .agent-document-references--message {
-    @apply max-w-full;
-  }
-
-  .agent-document-references--message .agent-document-references__menu {
-    @apply bottom-auto top-[calc(100%+0.375rem)];
   }
 
   .agent-inline-path {

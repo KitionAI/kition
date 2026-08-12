@@ -15,6 +15,7 @@ describe('theme bootstrap', () => {
     expect(indexHtml).toContain('http-equiv="Content-Security-Policy"')
     expect(indexHtml).toContain("script-src 'self'")
     expect(indexHtml).toContain("script-src-attr 'none'")
+    expect(indexHtml).toMatch(/connect-src[^;]*kition-bundled:/)
     expect(indexHtml).toContain('<script src="/theme-bootstrap.js" data-theme-bootstrap></script>')
     expect(indexHtml).not.toMatch(/<script data-theme-bootstrap>[\s\S]*?<\/script>/)
   })

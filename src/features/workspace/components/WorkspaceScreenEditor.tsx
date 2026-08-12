@@ -11,8 +11,10 @@ export function WorkspaceScreenEditor({
   editorContentProps,
 }: WorkspaceScreenEditorProps) {
   return (
-    <WorkspaceEditorPane>
-      <WorkspaceEditorContent {...editorContentProps} />
-    </WorkspaceEditorPane>
+    <div className="workspace-screen-editor">
+      <WorkspaceEditorPane>
+        <WorkspaceEditorContent {...editorContentProps} />
+      </WorkspaceEditorPane>
+    </div>
   )
 }

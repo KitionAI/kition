@@ -57,6 +57,19 @@
     "searchPlaceholder": "搜索模型",
     "noMatches": "没有匹配“{{query}}”的模型"
   },
+  "analysisWorkspace": {
+    "contextTitle": "上下文",
+    "addContext": "添加上下文",
+    "localFolder": "本机目录",
+    "workspaceDocument": "工作区文档",
+    "referenceDocument": "在本轮中引用",
+    "current": "当前",
+    "readOnlySource": "只读分析目录",
+    "removeReference": "移除 {{name}}",
+    "removeCurrentDocument": "移除当前文档 {{name}}",
+    "readOnly": "只读",
+    "removeSource": "移除 {{name}}"
+  },
   "emptyState": {
     "needsModelConfig": {
       "label": "去配置模型"

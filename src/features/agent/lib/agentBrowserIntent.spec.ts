@@ -48,6 +48,15 @@ describe('analyzeAgentBrowserIntent', () => {
       continueAfterOpen: false,
     })
   })
+
+  it('does not treat an attached workspace document as a website', () => {
+    expect(
+      analyzeAgentBrowserIntent('Review this document\n@{campaigns/02-second-promotion.md}'),
+    ).toEqual({
+      browserEnabled: false,
+      continueAfterOpen: false,
+    })
+  })
 })
 
 describe('extractAgentWebTarget', () => {
@@ -67,6 +76,15 @@ describe('extractAgentWebTarget', () => {
 
   it('returns null when the prompt has no website target', () => {
     expect(extractAgentWebTarget('Summarize the active document')).toBeNull()
+  })
+
+  it('rejects workspace filenames while preserving document paths on real sites', () => {
+    expect(extractAgentWebTarget('Review 02-second-promotion.md')).toBeNull()
+    expect(extractAgentWebTarget('Review @{campaigns/02-second-promotion.md}')).toBeNull()
+    expect(extractAgentWebTarget('Open docs.example.org/guide/start.md')).toEqual({
+      host: 'docs.example.org',
+      url: 'https://docs.example.org/guide/start.md',
+    })
   })
 })
 

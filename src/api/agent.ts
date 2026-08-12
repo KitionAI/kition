@@ -5,6 +5,13 @@ import type { RuntimeWritingModel } from '@/types'
 export type AgentExecutionMode = 'research' | 'preview' | 'apply'
 export type AgentTaskMode = 'auto' | 'browse' | 'table'
 
+export type AgentLocalSource = {
+  id: string
+  label: string
+  root_path: string
+  access: 'read'
+}
+
 // AgentPaneContext mirrors the workbench tab the user has open when the
 // turn is sent. The runtime echoes it back into the agent context, tool
 // filter, and skill-context blocks. Wire format = literal lower/camelCase string; canonical
@@ -218,6 +225,7 @@ export type AgentCapabilities = {
   surfaces: {
     http: boolean
     ndjson_stream: boolean
+    local_source_access?: boolean
   }
 }
 
@@ -364,6 +372,7 @@ export async function streamAgentMessage(options: {
   content: string
   promptContext?: string
   attachmentPaths?: string[]
+  localSources?: AgentLocalSource[]
   activeDocumentPath?: string
   activeDataDocumentId?: number | null
   activeDataTableId?: number | null
@@ -403,6 +412,7 @@ export async function streamAgentMessage(options: {
       content: options.content,
       prompt_context: options.promptContext || '',
       attachment_paths: options.attachmentPaths || [],
+      local_sources: options.localSources || [],
       active_document_path: options.activeDocumentPath || '',
       active_data_document_id: options.activeDataDocumentId || 0,
       active_data_table_id: options.activeDataTableId || 0,
