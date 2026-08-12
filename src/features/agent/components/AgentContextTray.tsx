@@ -35,12 +35,26 @@ export function AgentContextTray({
   }
 
   return (
-    <div className="agent-context-tray" data-testid="agent-context-tray">
-      <div className="agent-context-tray__header">
-        <span>{t('analysisWorkspace.contextTitle')}</span>
+    <div
+      className="agent-context-tray mb-2 flex flex-col gap-1 border-b pb-2"
+      data-testid="agent-context-tray"
+      style={{ borderColor: 'var(--document-border, hsl(var(--border)))' }}
+    >
+      <div className="agent-context-tray__header flex min-h-6 items-center gap-2">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          {t('analysisWorkspace.contextTitle')}
+        </span>
       </div>
 
-      <div className="agent-context-tray__items">
+      <div
+        className="agent-context-tray__items flex min-w-0 flex-wrap content-start gap-1.5 overflow-y-auto pr-1"
+        style={{
+          maxHeight: '3.875rem',
+          overscrollBehavior: 'contain',
+          scrollbarColor: 'hsl(var(--muted-foreground) / 0.28) transparent',
+          scrollbarWidth: 'thin',
+        }}
+      >
         {documents.map((document) => (
           <ContextChip
             key={document.path}
@@ -95,25 +109,39 @@ function ContextChip({
   const content = (
     <>
       {icon}
-      <span>{label}</span>
+      <span className="min-w-0 truncate font-medium">{label}</span>
     </>
   )
   return (
-    <div className={cn('agent-context-chip', className)} title={title}>
+    <div
+      className={cn(
+        'agent-context-chip flex h-7 min-w-0 max-w-[14rem] items-center overflow-hidden rounded-md border bg-card text-xs text-foreground',
+        className,
+      )}
+      title={title}
+      style={{ borderColor: 'var(--document-border, hsl(var(--border)))' }}
+    >
       {onOpen ? (
-        <button type="button" className="agent-context-chip__main" onClick={onOpen}>
+        <button
+          type="button"
+          className="agent-context-chip__main flex h-full min-w-0 items-center gap-1.5 px-2 text-left transition-colors hover:bg-muted/60"
+          onClick={onOpen}
+        >
           {content}
         </button>
       ) : (
-        <span className="agent-context-chip__main">{content}</span>
+        <span className="agent-context-chip__main flex h-full min-w-0 items-center gap-1.5 px-2 text-left">
+          {content}
+        </span>
       )}
       {onRemove ? (
         <button
           type="button"
-          className="agent-context-chip__remove"
+          className="agent-context-chip__remove grid h-full w-7 shrink-0 place-items-center border-l text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           onClick={onRemove}
           aria-label={removeLabel}
           title={removeLabel}
+          style={{ borderColor: 'var(--document-border, hsl(var(--border)))' }}
         >
           <X className="size-3" aria-hidden="true" />
         </button>

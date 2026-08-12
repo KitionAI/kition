@@ -11,7 +11,7 @@ export function WorkspaceScreenEditor({
   editorContentProps,
 }: WorkspaceScreenEditorProps) {
   return (
-    <div className="workspace-screen-editor">
+    <div className="workspace-screen-editor flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
       <WorkspaceEditorPane>
         <WorkspaceEditorContent {...editorContentProps} />
       </WorkspaceEditorPane>
