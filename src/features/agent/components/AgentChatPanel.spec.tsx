@@ -186,6 +186,71 @@ describe('AgentChatPanel composer controls', () => {
     expect(container.querySelector('[data-testid="agent-hosted-web-search-status"]')).toBeNull()
     expect(container.querySelector('.agent-ai-browser-toggle')).toBeNull()
   })
+
+  it('uses one composer context tray for the write target and local folders', async () => {
+    const onRemoveDocumentContext = vi.fn()
+    await mount(createElement(AgentChatPanel, makeMinimalProps({
+      documentContextPaths: ['Campaigns/X launch.md'],
+      onRemoveDocumentContext,
+      localSources: [{
+        id: 'source-project',
+        label: 'project',
+        root_path: '/example/project',
+        access: 'read',
+      }],
+    })))
+
+    const tray = container.querySelector('.agent-context-tray')
+    expect(tray?.textContent).toContain('X launch.md')
+    expect(tray?.textContent).not.toContain('Current ·')
+    expect(tray?.textContent).toContain('project')
+    expect(container.querySelector('.agent-turn-context-summary')).toBeNull()
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>(
+        '.agent-context-chip.is-document .agent-context-chip__remove',
+      )?.click()
+    })
+    expect(onRemoveDocumentContext).toHaveBeenCalledWith('Campaigns/X launch.md')
+  })
+
+  it('offers context actions from a plus button before the model picker', async () => {
+    const onAddLocalSource = vi.fn()
+    await mount(createElement(AgentChatPanel, makeMinimalProps({
+      onAddLocalSource,
+      onRemoveLocalSource: vi.fn(),
+    })))
+
+    const addButton = container.querySelector<HTMLButtonElement>('.agent-context-add__trigger')
+    const footer = container.querySelector('.agent-ai-footer')
+    const modelPicker = container.querySelector('.agent-ai-model-picker')
+    expect(addButton?.getAttribute('aria-label')).toBe('Add context')
+    expect(container.querySelector('.agent-context-tray')).toBeNull()
+    expect(footer?.firstElementChild).toBe(addButton?.parentElement)
+    expect(addButton?.parentElement?.nextElementSibling).toBe(modelPicker)
+    await act(async () => addButton?.click())
+    const localFolder = Array.from(container.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'))
+      .find((button) => button.textContent?.includes('Local folder'))
+    await act(async () => localFolder?.click())
+    expect(onAddLocalSource).toHaveBeenCalledOnce()
+  })
+
+  it('keeps attached documents outside the visible draft', async () => {
+    await mount(createElement(AgentChatPanel, makeMinimalProps({
+      documentContextPaths: ['Docs/Current.md'],
+      draft: 'Improve this',
+      mentionableDocuments: [{
+        kind: 'file',
+        path: 'Docs/Current.md',
+        name: 'Current.md',
+        title: 'Current',
+        format: 'markdown',
+      }],
+    })))
+
+    expect(container.querySelectorAll('.agent-context-chip')).toHaveLength(1)
+    expect(container.querySelector('.agent-context-chip.is-document')?.textContent).toContain('Current.md')
+    expect((container.querySelector('textarea') as HTMLTextAreaElement).value).toBe('Improve this')
+  })
 })
 
 describe('AgentChatPanel changed files', () => {
@@ -609,10 +674,11 @@ describe('AgentChatPanel document references', () => {
 
   const longPath = 'Getting Started/Guides/Product Content/Product Content Studio.kitable'
 
-  it('hides mention tokens and shows only the removable file name', async () => {
-    const onDraftChange = vi.fn()
+  it('shows an attached document as a removable context chip', async () => {
+    const onRemoveDocumentContext = vi.fn()
     await mount(createElement(AgentChatPanel, makeMinimalProps({
-      draft: `Analyze this document\n@{${longPath}}`,
+      draft: 'Analyze this document',
+      documentContextPaths: [longPath],
       mentionableDocuments: [{
         kind: 'file',
         path: longPath,
@@ -620,7 +686,7 @@ describe('AgentChatPanel document references', () => {
         title: 'Product Content Studio',
         format: 'data',
       }],
-      onDraftChange,
+      onRemoveDocumentContext,
     })))
 
     const textarea = container.querySelector('textarea') as HTMLTextAreaElement
@@ -635,33 +701,57 @@ describe('AgentChatPanel document references', () => {
     await act(async () => {
       remove.click()
     })
-    expect(onDraftChange).toHaveBeenCalledWith('Analyze this document')
+    expect(onRemoveDocumentContext).toHaveBeenCalledWith(longPath)
   })
 
-  it('collapses multiple references into a select-style control', async () => {
+  it('shows multiple references as consistent context chips', async () => {
     await mount(createElement(AgentChatPanel, makeMinimalProps({
-      draft: 'Compare these\n@{Docs/Plan.md} @{Notes/Todo.md}',
+      draft: 'Compare these',
+      documentContextPaths: ['Docs/Plan.md', 'Notes/Todo.md'],
       mentionableDocuments: [
         { kind: 'file', path: 'Docs/Plan.md', name: 'Plan.md', title: 'Plan', format: 'markdown' },
         { kind: 'file', path: 'Notes/Todo.md', name: 'Todo.md', title: 'Todo', format: 'markdown' },
       ],
     })))
 
-    const select = container.querySelector(
-      '[data-testid="agent-document-reference-select"]',
-    ) as HTMLElement
-    expect(select).not.toBeNull()
-    expect(select.textContent).toContain('2 files')
+    const chips = container.querySelectorAll('.agent-context-chip')
+    expect(chips).toHaveLength(2)
+    expect(chips[0]?.textContent).toContain('Plan.md')
+    expect(chips[1]?.textContent).toContain('Todo.md')
   })
 
-  it('renders sent messages without raw mention syntax or folder paths', async () => {
+  it('moves a selected mention into persistent document context', async () => {
+    const onDraftChange = vi.fn()
+    const onAddDocumentContext = vi.fn()
+    await mount(createElement(AgentChatPanel, makeMinimalProps({
+      draft: 'Compare @pla',
+      documentContextPaths: ['Docs/Current.md'],
+      mentionableDocuments: [
+        { kind: 'file', path: 'Docs/Current.md', name: 'Current.md', title: 'Current', format: 'markdown' },
+        { kind: 'file', path: 'Docs/Plan.md', name: 'Plan.md', title: 'Plan', format: 'markdown' },
+      ],
+      onDraftChange,
+      onAddDocumentContext,
+    })))
+
+    const planMention = container.querySelector<HTMLButtonElement>('.agent-mention-menu__item')
+    expect(planMention?.textContent).toContain('Plan')
+    await act(async () => {
+      planMention?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+    })
+
+    expect(onDraftChange).toHaveBeenCalledWith('Compare ')
+    expect(onAddDocumentContext).toHaveBeenCalledWith('Docs/Plan.md')
+  })
+
+  it('renders sent messages without repeating document attachment chips', async () => {
     await mount(createElement(AgentChatPanel, makeMinimalProps({
       messages: [{
         id: 41,
         session_id: 1,
         user_id: 1,
         role: 'user',
-        content: `Summarize it\n@{${longPath}}`,
+        content: 'Summarize it',
         status: 'completed',
         created_at: new Date().toISOString(),
       }],
@@ -669,8 +759,9 @@ describe('AgentChatPanel document references', () => {
 
     const userMessage = container.querySelector('[data-role="user"]') as HTMLElement
     expect(userMessage.textContent).toContain('Summarize it')
-    expect(userMessage.textContent).toContain('Product Content Studio.kitable')
+    expect(userMessage.textContent).not.toContain('Product Content Studio.kitable')
     expect(userMessage.textContent).not.toContain('@{')
     expect(userMessage.textContent).not.toContain('Getting Started/Guides')
+    expect(userMessage.querySelector('.agent-document-reference')).toBeNull()
   })
 })

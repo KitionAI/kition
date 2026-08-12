@@ -1425,6 +1425,44 @@ async function handleChooseDirectory(_event, request) {
   return { canceled: false, path: result.filePaths[0] }
 }
 
+async function handleChooseAgentAnalysisDirectory(_event, request) {
+  const suggestedPath = String(request?.suggested_path || '').trim()
+  let defaultPath
+  if (suggestedPath && !suggestedPath.includes('\0')) {
+    const candidate = path.isAbsolute(suggestedPath)
+      ? path.resolve(suggestedPath)
+      : path.resolve(getWorkspaceRoot(), suggestedPath)
+    try {
+      const candidateInfo = await fs.stat(candidate)
+      if (candidateInfo.isDirectory()) {
+        defaultPath = candidate
+      }
+    } catch {
+      // The consent dialog still opens when a prompt path cannot be resolved.
+    }
+  }
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: 'Choose a read-only analysis folder',
+    ...(defaultPath ? { defaultPath } : {}),
+    properties: ['openDirectory'],
+  })
+  if (result.canceled || !result.filePaths?.[0]) {
+    return null
+  }
+
+  const rootPath = await fs.realpath(result.filePaths[0])
+  const info = await fs.stat(rootPath)
+  if (!info.isDirectory()) {
+    throw new Error('the selected analysis source must be a directory')
+  }
+  return {
+    id: `source-${crypto.randomUUID().replaceAll('-', '')}`,
+    label: path.basename(rootPath) || 'Local folder',
+    root_path: rootPath,
+    access: 'read',
+  }
+}
+
 async function handleListVaults() {
   if (!workspaceRegistry) {
     return { vaults: [], active_vault_path: '' }
@@ -1512,8 +1550,13 @@ async function handleWriteWorkspaceDocument(_event, request) {
 async function handleCreateWorkspaceDocument(_event, request) {
   await ensureWorkspaceInitialized()
   const folderPath = normalizeWorkspacePath(request?.folder || '', { allowRoot: true })
-  const { absolutePath: folderAbsolutePath } = await resolveSafeWorkspacePath(folderPath, { allowRoot: true })
+  const { absolutePath: folderAbsolutePath } = await resolveSafeWorkspacePath(
+    folderPath,
+    { allowRoot: true },
+    { allowMissing: true },
+  )
   await fs.mkdir(folderAbsolutePath, { recursive: true })
+  await assertWorkspacePathSafe(getWorkspaceRoot(), folderAbsolutePath)
 
   const format = request?.format === 'plate' ? 'plate' : request?.format === 'data' ? 'data' : 'markdown'
   const finalFilename = await pickUniqueWorkspaceDocumentTarget(folderAbsolutePath, sanitizeWorkspaceDocumentFilename(request?.title, format))
@@ -1965,6 +2008,7 @@ async function registerIpcHandlers() {
   ipcMain.handle(IPC_CHANNELS.renameVault, handleRenameVault)
   ipcMain.handle(IPC_CHANNELS.setActiveVault, handleSetActiveVault)
   ipcMain.handle(IPC_CHANNELS.chooseDirectory, handleChooseDirectory)
+  ipcMain.handle(IPC_CHANNELS.chooseAgentAnalysisDirectory, handleChooseAgentAnalysisDirectory)
   ipcMain.handle(IPC_CHANNELS.storeSecureValue, (_event, key, value) => secureStore.set(key, value))
   ipcMain.handle(IPC_CHANNELS.readSecureValue, (_event, key) => secureStore.get(key))
   ipcMain.handle(IPC_CHANNELS.deleteSecureValue, (_event, key) => secureStore.delete(key))

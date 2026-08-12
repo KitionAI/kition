@@ -1,9 +1,9 @@
-const WEB_TARGET_PATTERN = /(?:https?:\/\/|www\.|\blocalhost(?::\d+)?\b|\b(?:\d{1,3}\.){3}\d{1,3}\b|\b[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?)+(?:\b|\/))/i
-
 const BROWSER_ACTION_PATTERN = /\b(?:browse|browser|navigate|open|search|visit|view)\b/i
 const FOLLOWUP_TASK_PATTERN = /\b(?:analyze|capture|check|click|collect|compare|copy|crawl|describe|download|extract|fetch|fill|gather|inspect|monitor|read|report|research|save|scrape|screenshot|submit|summarize|sync|upload|verify|write)\b/i
 const EXPLICIT_URL_PATTERN = /https?:\/\/[^\s<>"'`]+/i
 const BARE_WEB_TARGET_PATTERN = /(?:www\.[a-z0-9.-]+|localhost(?::\d+)?|(?:\d{1,3}\.){3}\d{1,3}|[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?)+)(?:\/[^\s<>"'`]*)?/i
+const WORKSPACE_FILE_HOST_PATTERN = /\.(?:csv|docx?|gif|html?|jpe?g|json|kitable|markdown|md|pdf|png|pptx?|svg|tsv|txt|webp|xlsx?)$/i
+const DOCUMENT_MENTION_PATTERN = /@\{[^}\n]+\}/g
 
 export const MAX_BROWSER_AUTO_CONTINUE_ATTEMPTS = 3
 
@@ -18,11 +18,10 @@ export type AgentWebTarget = {
 }
 
 export function extractAgentWebTarget(content: string): AgentWebTarget | null {
-  const prompt = String(content || '').trim()
+  const prompt = stripAgentDocumentReferences(content)
+  const explicitTarget = prompt.match(EXPLICIT_URL_PATTERN)?.[0] || ''
   const rawTarget = (
-    prompt.match(EXPLICIT_URL_PATTERN)?.[0] ||
-    prompt.match(BARE_WEB_TARGET_PATTERN)?.[0] ||
-    ''
+    explicitTarget || prompt.match(BARE_WEB_TARGET_PATTERN)?.[0] || ''
   ).replace(/[),.;!?]+$/g, '')
   if (!rawTarget) {
     return null
@@ -30,6 +29,9 @@ export function extractAgentWebTarget(content: string): AgentWebTarget | null {
 
   try {
     const url = new URL(/^https?:\/\//i.test(rawTarget) ? rawTarget : `https://${rawTarget}`)
+    if (!explicitTarget && WORKSPACE_FILE_HOST_PATTERN.test(url.hostname)) {
+      return null
+    }
     return {
       host: url.hostname.replace(/^www\./i, ''),
       url: url.toString(),
@@ -40,8 +42,8 @@ export function extractAgentWebTarget(content: string): AgentWebTarget | null {
 }
 
 export function analyzeAgentBrowserIntent(content: string): AgentBrowserIntent {
-  const prompt = String(content || '').trim()
-  const hasWebTarget = WEB_TARGET_PATTERN.test(prompt)
+  const prompt = stripAgentDocumentReferences(content)
+  const hasWebTarget = extractAgentWebTarget(prompt) !== null
   const hasBrowserAction = BROWSER_ACTION_PATTERN.test(prompt)
   const hasFollowupTask = FOLLOWUP_TASK_PATTERN.test(prompt)
   const browserEnabled = hasWebTarget && (hasBrowserAction || hasFollowupTask)
@@ -51,6 +53,10 @@ export function analyzeAgentBrowserIntent(content: string): AgentBrowserIntent {
     browserEnabled,
     continueAfterOpen,
   }
+}
+
+function stripAgentDocumentReferences(content: string) {
+  return String(content || '').replace(DOCUMENT_MENTION_PATTERN, ' ').trim()
 }
 
 export function buildBrowserAutoContinuePrompt(originalRequest: string) {

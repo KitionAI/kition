@@ -1,5 +1,6 @@
 import { getCurrentLocale } from '@/i18n'
 import { resolveBundledAssetURL } from '@/lib/bundledAssets'
+import type { AgentLocalSource } from '@/api/agent'
 
 type KitionDesktopBridge = {
   shell?: string
@@ -43,6 +44,7 @@ type KitionDesktopBridge = {
   RenameVault?: (request: VaultRenameRequest) => Promise<VaultMutationResponse>
   SetActiveVault?: (request: VaultPathRequest) => Promise<SetActiveVaultResponse>
   ChooseDirectory?: (request?: ChooseDirectoryRequest) => Promise<ChooseDirectoryResponse>
+  ChooseAgentAnalysisDirectory?: (request?: AgentAnalysisDirectoryRequest) => Promise<AgentLocalSource | null>
   StoreSecureValue?: (key: string, value: string) => Promise<void>
   ReadSecureValue?: (key: string) => Promise<string>
   DeleteSecureValue?: (key: string) => Promise<void>
@@ -178,6 +180,10 @@ export type ChooseDirectoryRequest = {
 export type ChooseDirectoryResponse = {
   canceled: boolean
   path: string
+}
+
+export type AgentAnalysisDirectoryRequest = {
+  suggested_path?: string
 }
 
 export type WorkspaceDocumentWriteRequest = {
@@ -1958,6 +1964,14 @@ export async function chooseDirectory(title?: string): Promise<ChooseDirectoryRe
     return { canceled: true, path: '' }
   }
   return bridge.ChooseDirectory({ title })
+}
+
+export async function chooseAgentAnalysisDirectory(suggestedPath = ''): Promise<AgentLocalSource | null> {
+  const bridge = getDesktopBridge()
+  if (!bridge?.ChooseAgentAnalysisDirectory) {
+    throw new Error('local analysis folders are available in the desktop app')
+  }
+  return bridge.ChooseAgentAnalysisDirectory({ suggested_path: suggestedPath })
 }
 
 export async function saveTextFile(options: { dialogTitle: string; defaultFilename: string; content: string }) {

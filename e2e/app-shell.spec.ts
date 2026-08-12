@@ -811,7 +811,62 @@ test.describe('app shell navigation', () => {
 
     await expect(page.getByRole('tab', { name: 'New chat', selected: true })).toBeVisible()
     await expect(page.getByPlaceholder('Plan, write, or ask anything…')).toBeVisible()
+    const defaultDocumentChip = page.locator('.agent-context-chip.is-document')
+    await expect(defaultDocumentChip).toHaveCount(1)
+    await expect(defaultDocumentChip).not.toContainText('Current ·')
+    await expect(page.getByText('Analysis sources', { exact: true })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Add context' })).toBeVisible()
     expect(sessionRequests.at(-1)).toMatchObject({ language: 'English' })
+  })
+
+  test('removes the current document from agent context without closing the editor', async ({ page }) => {
+    const streamRequests: Array<Record<string, unknown>> = []
+    await page.addInitScript(() => {
+      window.localStorage.setItem('kition.desktop.settings.backup.v1', JSON.stringify({
+        providers: {
+          openai: {
+            enabled: true,
+            label: 'OpenAI',
+            baseUrl: 'https://api.openai.com/v1',
+            apiKey: 'test-key',
+            wireApi: 'responses',
+            discoveredModels: ['gpt-test'],
+          },
+        },
+        models: {
+          activeProvider: 'openai',
+          selectedModelByProvider: { openai: 'gpt-test' },
+        },
+      }))
+    })
+    await page.route('**/api/v1/agent/sessions/*/messages/stream', async (route) => {
+      streamRequests.push(route.request().postDataJSON() as Record<string, unknown>)
+      await route.fulfill({
+        status: 200,
+        headers: { 'content-type': 'application/x-ndjson' },
+        body: `${JSON.stringify({ type: 'done', done: true, extra_data: {} })}\n`,
+      })
+    })
+
+    await page.goto('/documents')
+    await expect(page.getByTestId('document-editor')).toBeVisible()
+    await page.getByRole('button', { name: 'Open AI Chat' }).click()
+    await page.getByRole('button', { name: 'New chat' }).click()
+
+    const currentDocumentChip = page.locator('.agent-context-chip.is-document')
+    await expect(currentDocumentChip).toBeVisible()
+    await currentDocumentChip.locator('.agent-context-chip__remove').click()
+
+    await expect(currentDocumentChip).toHaveCount(0)
+    await expect(page.getByTestId('document-editor')).toBeVisible()
+
+    await page.getByPlaceholder('Plan, write, or ask anything…').fill('Answer without document context')
+    await page.getByRole('button', { name: 'Send' }).click()
+    await expect.poll(() => streamRequests.length).toBe(1)
+    expect(streamRequests[0]).toMatchObject({
+      active_document_path: '',
+      content: 'Answer without document context',
+    })
   })
 
   test('removed workspace and admin routes return to documents', async ({ page }) => {

@@ -26,6 +26,21 @@ describe('agent turn capabilities contract', () => {
     expect(JSON.stringify(schema)).not.toContain('access_token')
   })
 
+  it('defines turn-scoped read-only local analysis folders', () => {
+    const schema = JSON.parse(readFileSync(
+      resolve('contracts/runtime/agent-local-sources.schema.json'),
+      'utf8',
+    ))
+
+    expect(schema.$id).toBe('https://kition.ai/contracts/runtime/agent-local-sources.schema.json')
+    expect(schema.maxItems).toBe(8)
+    expect(schema.items.properties.access.const).toBe('read')
+    expect(schema.items.required).toContain('root_path')
+    expect(JSON.stringify(schema)).not.toContain('write_root')
+    expect(schema.description).toContain('read-only Git history')
+    expect(schema.description).toContain('must not be persisted')
+  })
+
   it('reads the latest authoritative runtime capability event', () => {
     const events = [
       event(1, false),

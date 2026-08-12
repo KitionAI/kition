@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next'
 import type {
   AgentArtifact,
   AgentEvent,
+  AgentLocalSource,
   AgentMessage,
   AgentSession,
   AgentSkillSpec,
@@ -30,7 +31,6 @@ import type {
 } from '@/api/agent'
 import { KitionLogoMark } from '@/components/KitionLogoMark'
 import { AgentAiComposer } from '@/features/agent/components/AgentAiComposer'
-import { AgentDocumentReferences } from '@/features/agent/components/AgentDocumentReferences'
 import {
   AgentContextCards,
 } from '@/features/agent/components/AgentContextCards'
@@ -43,7 +43,6 @@ import type { KitionAccountStatus } from '@/features/account/hooks/useKitionAcco
 import { isKitionAccountUsable } from '@/features/account/lib/accountState'
 import type { AgentMentionableDocument } from '@/features/agent/lib/documentMentions'
 import {
-  getUniqueAgentDocumentMentionPaths,
   stripAgentDocumentMentions,
 } from '@/features/agent/lib/documentMentions'
 import {
@@ -91,8 +90,14 @@ type AgentChatPanelProps = {
   needsModelConfig: boolean
   hostedAccountStatus?: KitionAccountStatus
   mentionableDocuments?: AgentMentionableDocument[]
+  documentContextPaths?: string[]
+  localSources?: AgentLocalSource[]
   formatTime: (value?: string | null) => string
   onDraftChange: (value: string) => void
+  onAddLocalSource?: () => void
+  onAddDocumentContext?: (path: string) => void
+  onRemoveDocumentContext?: (path: string) => void
+  onRemoveLocalSource?: (sourceId: string) => void
   onSend: () => void
   onStop: () => void
   onConfigureModel: () => void
@@ -128,8 +133,14 @@ export function AgentChatPanel({
   needsModelConfig,
   hostedAccountStatus,
   mentionableDocuments = [],
+  documentContextPaths = [],
+  localSources = [],
   formatTime,
   onDraftChange,
+  onAddLocalSource,
+  onAddDocumentContext,
+  onRemoveDocumentContext,
+  onRemoveLocalSource,
   onSend,
   onStop,
   onConfigureModel,
@@ -312,7 +323,9 @@ export function AgentChatPanel({
           busy={busy}
           canSend={canSend}
           compact
+          documentContextPaths={documentContextPaths}
           draft={draft}
+          localSources={localSources}
           mentionableDocuments={mentionableDocuments}
           modelOptions={modelOptions}
           needsModelConfig={needsModelConfig}
@@ -323,7 +336,12 @@ export function AgentChatPanel({
           onHostedAccountCancel={onHostedAccountCancel}
           onHostedAccountBilling={onHostedAccountBilling}
           onDraftChange={onDraftChange}
+          onAddLocalSource={onAddLocalSource}
+          onAddDocumentContext={onAddDocumentContext}
           onImportFiles={onImportFiles}
+          onOpenPath={onOpenArtifact}
+          onRemoveDocumentContext={onRemoveDocumentContext}
+          onRemoveLocalSource={onRemoveLocalSource}
           onKeyDown={handleKeyDown}
           onModelChange={onModelChange}
           onSend={() => onSend()}
@@ -573,7 +591,7 @@ function AgentMessageBubble({
     >
       {isUser ? (
         <div className="agent-message-content whitespace-pre-wrap">
-          {renderAgentUserMessageContent(message.content, onOpenPath)}
+          {renderAgentUserMessageContent(message.content)}
         </div>
       ) : (
         <InteractiveAgentMarkdown
@@ -599,20 +617,9 @@ function AgentStreamingMessageBubble({ content }: { content: string }) {
 
 function renderAgentUserMessageContent(
   content: string,
-  onOpenPath: (path: string) => void,
 ) {
   const visibleContent = stripAgentDocumentMentions(content)
-  const references = getUniqueAgentDocumentMentionPaths(content).map((path) => ({ path }))
-  return (
-    <>
-      {visibleContent ? <span>{visibleContent}</span> : null}
-      <AgentDocumentReferences
-        className="agent-document-references--message"
-        references={references}
-        onOpen={onOpenPath}
-      />
-    </>
-  )
+  return visibleContent ? <span>{visibleContent}</span> : null
 }
 
 function AgentRunLog({

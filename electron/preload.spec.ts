@@ -44,6 +44,12 @@ describe('sandboxed desktop preload', () => {
     await bridge.DesktopInfo()
     expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.desktopInfo)
 
+    await bridge.ChooseAgentAnalysisDirectory({ suggested_path: '../project' })
+    expect(invoke).toHaveBeenCalledWith(
+      IPC_CHANNELS.chooseAgentAnalysisDirectory,
+      { suggested_path: '../project' },
+    )
+
     for (const channel of Object.values(IPC_CHANNELS)) {
       expect(preloadSource).toContain(`'${channel}'`)
     }

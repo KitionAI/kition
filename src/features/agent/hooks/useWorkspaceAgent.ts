@@ -5,6 +5,7 @@ import type {
   AgentEvent,
   AgentExecutionMode,
   AgentMessage,
+  AgentLocalSource,
   AgentSession,
   AgentTablePlanContext,
   AgentPaneContext,
@@ -30,6 +31,18 @@ import {
   type AgentMentionableDocument,
 } from '@/features/agent/lib/documentMentions'
 import { resolveAgentDocumentTarget } from '@/features/agent/lib/agentDocumentTargeting'
+import {
+  normalizeAgentDocumentContextPaths,
+  readAgentDocumentContextsForWorkspace,
+  resolveAgentDocumentContextPath,
+  resolveAgentDocumentContextPaths,
+  writeAgentDocumentContextsForSession,
+  type AgentDocumentContextPaths,
+} from '@/features/agent/lib/agentDocumentContexts'
+import {
+  readAgentLocalSourcesForWorkspace,
+  writeAgentLocalSourcesForSession,
+} from '@/features/agent/lib/agentLocalSources'
 import {
   analyzeAgentBrowserIntent,
   MAX_BROWSER_AUTO_CONTINUE_ATTEMPTS,
@@ -154,6 +167,11 @@ export function useWorkspaceAgent({
   const [pendingFocusedSessionId, setPendingFocusedSessionId] = useState<number | null>(null)
   const [selectedAgentModelKey, setSelectedAgentModelKey] = useState('')
   const [mentionableDocuments, setMentionableDocuments] = useState<AgentMentionableDocument[]>([])
+  const [agentLocalSources, setAgentLocalSources] = useState<Record<number, AgentLocalSource[]>>({})
+  const [agentDocumentContexts, setAgentDocumentContexts] = useState<
+    Record<number, AgentDocumentContextPaths>
+  >({})
+  const agentDocumentContextsRef = useRef<Record<number, AgentDocumentContextPaths>>({})
   const agentAbortControllers = useRef<Record<number, AbortController>>({})
   const agentSendInFlightSessions = useRef<Set<number>>(new Set())
 
@@ -167,6 +185,76 @@ export function useWorkspaceAgent({
   const setAgentDraft = useCallback((sessionId: number, value: string) => {
     setAgentDrafts((current) => ({ ...current, [sessionId]: value }))
   }, [])
+
+  const addAgentDocumentContext = useCallback((
+    sessionId: number,
+    path: string,
+    automaticPath = '',
+  ) => {
+    const normalizedPath = String(path || '').trim()
+    if (!normalizedPath) {
+      return
+    }
+    const existing = Object.prototype.hasOwnProperty.call(
+      agentDocumentContextsRef.current,
+      sessionId,
+    )
+      ? agentDocumentContextsRef.current[sessionId] || []
+      : normalizeAgentDocumentContextPaths([automaticPath])
+    const nextPaths = normalizeAgentDocumentContextPaths([...existing, normalizedPath])
+    const next = { ...agentDocumentContextsRef.current, [sessionId]: nextPaths }
+    agentDocumentContextsRef.current = next
+    setAgentDocumentContexts(next)
+    writeAgentDocumentContextsForSession(rootPath, sessionId, nextPaths)
+  }, [rootPath])
+
+  const removeAgentDocumentContext = useCallback((sessionId: number, path: string) => {
+    const normalizedPath = String(path || '').trim()
+    const nextPaths = (agentDocumentContextsRef.current[sessionId] || []).filter(
+      (candidate) => candidate !== normalizedPath,
+    )
+    const next = { ...agentDocumentContextsRef.current, [sessionId]: nextPaths }
+    agentDocumentContextsRef.current = next
+    setAgentDocumentContexts(next)
+    writeAgentDocumentContextsForSession(rootPath, sessionId, nextPaths)
+  }, [rootPath])
+
+  const resolveAgentDocumentContext = useCallback((sessionId: number, automaticPath: string) => (
+    resolveAgentDocumentContextPath(agentDocumentContexts, sessionId, automaticPath)
+  ), [agentDocumentContexts])
+
+  const resolveAgentDocumentContexts = useCallback((sessionId: number, automaticPath: string) => (
+    resolveAgentDocumentContextPaths(agentDocumentContexts, sessionId, automaticPath)
+  ), [agentDocumentContexts])
+
+  const addAgentLocalSource = useCallback((sessionId: number, source: AgentLocalSource) => {
+    setAgentLocalSources((current) => {
+      const existing = current[sessionId] || []
+      if (existing.some((item) => item.root_path === source.root_path)) {
+        return current
+      }
+      const nextSources = [...existing, source].slice(0, 8)
+      writeAgentLocalSourcesForSession(rootPath, sessionId, nextSources)
+      return { ...current, [sessionId]: nextSources }
+    })
+  }, [rootPath])
+
+  const removeAgentLocalSource = useCallback((sessionId: number, sourceId: string) => {
+    setAgentLocalSources((current) => {
+      const nextSources = (current[sessionId] || []).filter((item) => item.id !== sourceId)
+      if (nextSources.length === (current[sessionId] || []).length) {
+        return current
+      }
+      if (nextSources.length) {
+        writeAgentLocalSourcesForSession(rootPath, sessionId, nextSources)
+        return { ...current, [sessionId]: nextSources }
+      }
+      writeAgentLocalSourcesForSession(rootPath, sessionId, [])
+      const next = { ...current }
+      delete next[sessionId]
+      return next
+    })
+  }, [rootPath])
 
   const refreshMentionableDocuments = useCallback(async () => {
     try {
@@ -256,6 +344,10 @@ export function useWorkspaceAgent({
     setAgentBusySessions(new Set())
     setPendingFocusedSessionId(null)
     setMentionableDocuments([])
+    setAgentLocalSources(readAgentLocalSourcesForWorkspace(nextRoot))
+    const nextDocumentContexts = readAgentDocumentContextsForWorkspace(nextRoot)
+    agentDocumentContextsRef.current = nextDocumentContexts
+    setAgentDocumentContexts(nextDocumentContexts)
 
     if (!nextRoot || isWebPreviewMode()) {
       return
@@ -293,7 +385,10 @@ export function useWorkspaceAgent({
     }
   }, [agentEvents, agentMessages, agentToolCalls, onError])
 
-  const createNewAgentChat = useCallback(async (options?: { focusTab?: boolean }) => {
+  const createNewAgentChat = useCallback(async (options?: {
+    focusTab?: boolean
+    documentPaths?: string[]
+  }) => {
     onError('')
     onFeedback('')
 
@@ -303,6 +398,16 @@ export function useWorkspaceAgent({
       setAgentMessages((current) => ({ ...current, [session.id]: [] }))
       setAgentToolCalls((current) => ({ ...current, [session.id]: [] }))
       setAgentEvents((current) => ({ ...current, [session.id]: [] }))
+      const initialDocumentPaths = normalizeAgentDocumentContextPaths(options?.documentPaths || [])
+      if (initialDocumentPaths.length) {
+        const next = {
+          ...agentDocumentContextsRef.current,
+          [session.id]: initialDocumentPaths,
+        }
+        agentDocumentContextsRef.current = next
+        setAgentDocumentContexts(next)
+        writeAgentDocumentContextsForSession(rootPath, session.id, initialDocumentPaths)
+      }
       if (options?.focusTab) {
         setPendingFocusedSessionId(session.id)
       }
@@ -311,7 +416,7 @@ export function useWorkspaceAgent({
       onError(requestError?.message || 'Failed to create agent session')
       return null
     }
-  }, [onError, onFeedback])
+  }, [onError, onFeedback, rootPath])
 
   const deleteAgentChat = useCallback(async (sessionId: number) => {
     agentAbortControllers.current[sessionId]?.abort()
@@ -339,9 +444,17 @@ export function useWorkspaceAgent({
     setAgentDrafts(dropSession)
     setAgentStreamingText(dropSession)
     setAgentArtifacts(dropSession)
+    setAgentLocalSources(dropSession)
+    setAgentDocumentContexts((current) => {
+      const next = dropSession(current)
+      agentDocumentContextsRef.current = next
+      return next
+    })
+    writeAgentLocalSourcesForSession(rootPath, sessionId, [])
+    writeAgentDocumentContextsForSession(rootPath, sessionId, undefined)
     agentSendInFlightSessions.current.delete(sessionId)
     markSessionBusy(sessionId, false)
-  }, [markSessionBusy, onError])
+  }, [markSessionBusy, onError, rootPath])
 
   const markAgentModifiedDocument = useCallback((toolCall: AgentToolCall, sessionId: number) => {
     const paths = getAgentModifiedDocumentPaths([toolCall])
@@ -370,6 +483,7 @@ export function useWorkspaceAgent({
       browserAutoContinueFinal?: boolean
       browserOriginalRequest?: string
       browserContext?: AgentBrowserContext
+      localSources?: AgentLocalSource[]
     },
   ) => {
     const content = (followup?.content ?? agentDrafts[sessionId] ?? '').trim()
@@ -394,7 +508,9 @@ export function useWorkspaceAgent({
     agentSendInFlightSessions.current.add(sessionId)
 
     const documentPrepared = await prepareAgentDocumentForTurn({
-      prepare: prepareActiveDocument,
+      prepare: agentDocumentContextsRef.current[sessionId]?.length === 0
+        ? undefined
+        : prepareActiveDocument,
       onError,
     })
     if (!documentPrepared) {
@@ -484,8 +600,17 @@ export function useWorkspaceAgent({
         preparedBrowserContext = await prepareBrowserContext(content).catch(() => undefined)
       }
       const turnContext = (await getTurnContext?.()) || undefined
-      const activeDocumentPath = String(turnContext?.activeDocumentPath || '').trim()
-      const mentionTokens = extractAgentDocumentMentionTokens(content)
+      const automaticActiveDocumentPath = String(turnContext?.activeDocumentPath || '').trim()
+      const documentContextPaths = resolveAgentDocumentContextPaths(
+        agentDocumentContextsRef.current,
+        sessionId,
+        automaticActiveDocumentPath,
+      )
+      const draftMentionTokens = extractAgentDocumentMentionTokens(content)
+      const mentionTokens = Array.from(new Set([
+        ...draftMentionTokens,
+        ...documentContextPaths,
+      ]))
       let availableMentionableDocuments = mentionableDocuments
       if (mentionTokens.length && !availableMentionableDocuments.length) {
         try {
@@ -496,8 +621,23 @@ export function useWorkspaceAgent({
           availableMentionableDocuments = []
         }
       }
+      const documentsByPath = new Map(
+        availableMentionableDocuments.map((document) => [document.path, document]),
+      )
+      const activeDocumentPath = documentContextPaths.find((path) => (
+        path === automaticActiveDocumentPath || documentsByPath.get(path)?.kind !== 'folder'
+      )) || ''
+      const contextReferencePaths = documentContextPaths.filter(
+        (path) => path !== activeDocumentPath,
+      )
+      const activeDocumentFormat = activeDocumentPath === automaticActiveDocumentPath
+        ? turnContext?.activeDocumentFormat
+        : documentsByPath.get(activeDocumentPath)?.format
       const mentionResolution = resolveAgentDocumentMentions({
-        content,
+        content: [
+          content,
+          ...contextReferencePaths.map((path) => `@{${path}}`),
+        ].join('\n'),
         documents: availableMentionableDocuments,
       })
       const referencedImportFile = mentionResolution.resolved.find((document) => (
@@ -512,7 +652,7 @@ export function useWorkspaceAgent({
         && isTableFileImportRequest(content)
       let promptContext = buildAgentDocumentMentionPromptContext({
         activeDocumentPath,
-        activeDocumentFormat: turnContext?.activeDocumentFormat,
+        activeDocumentFormat,
         referencedDocuments: shouldImportReferencedFile
           ? mentionResolution.resolved.filter((document) => document.path !== referencedImportFile.path)
           : mentionResolution.resolved,
@@ -522,7 +662,7 @@ export function useWorkspaceAgent({
         promptContext,
         buildAgentDocumentEditingPromptContext({
           activeDocumentPath,
-          activeDocumentFormat: turnContext?.activeDocumentFormat,
+          activeDocumentFormat,
         }),
       ].filter(Boolean).join('\n\n')
       let executionMode = followup?.executionMode
@@ -546,7 +686,7 @@ export function useWorkspaceAgent({
         onFeedback(`Imported ${imported.created} records with ${imported.fieldCount} fields`)
       }
       const attachmentPaths = Array.from(new Set([
-        ...(isBinaryAttachmentMention(turnContext?.activeDocumentFormat, activeDocumentPath)
+        ...(isBinaryAttachmentMention(activeDocumentFormat, activeDocumentPath)
           ? [activeDocumentPath]
           : []),
         ...mentionResolution.resolved
@@ -564,22 +704,28 @@ export function useWorkspaceAgent({
           bindDocumentContext: Boolean(activeDocumentPath),
           allowSaveMarkdown: true,
         })
+      const browserEnabledForTurn =
+        followup?.browserAutoContinue === true ||
+        browserIntent.browserEnabled ||
+        turnContext?.paneContext === 'browser'
+      const browserContextForTurn = browserEnabledForTurn
+        ? followup?.browserContext || preparedBrowserContext || turnContext?.browserContext
+        : undefined
 
       const done = await streamAgentMessage({
         sessionId,
         content,
         promptContext,
         attachmentPaths,
+        localSources: followup?.localSources ?? agentLocalSources[sessionId] ?? [],
         activeDocumentPath: requestActiveDocumentPath,
         activeDataDocumentId: turnContext?.activeDataDocumentId ?? 0,
         activeDataTableId: turnContext?.activeDataTableId ?? 0,
         activeWorkflowId: turnContext?.activeWorkflowId,
         paneContext: turnContext?.paneContext,
         taskMode: turnContext?.taskMode,
-        browserEnabled:
-          turnContext?.browserEnabled === true || browserIntent.browserEnabled,
-        browserContext:
-          followup?.browserContext || preparedBrowserContext || turnContext?.browserContext,
+        browserEnabled: browserEnabledForTurn,
+        browserContext: browserContextForTurn,
         executionMode,
         tablePlanContext: followup?.tablePlanContext,
         hideUserMessage: followup?.hideUserMessage === true,
@@ -754,6 +900,12 @@ export function useWorkspaceAgent({
           }
 
           if (event.type === 'agent_event' && event.event) {
+            const isUnexpectedBrowserOpen =
+              event.event.event_type === 'browser.open_required' &&
+              !browserEnabledForTurn
+            if (isUnexpectedBrowserOpen) {
+              return
+            }
             const currentBrowserAttempt = Math.max(
               0,
               Math.floor(followup?.browserAutoContinueAttempt || 0),
@@ -851,6 +1003,7 @@ export function useWorkspaceAgent({
     ensureHostedAccountReady,
     getTurnContext,
     mentionableDocuments,
+    agentLocalSources,
     markAgentModifiedDocument,
     onError,
     onFeedback,
@@ -864,8 +1017,11 @@ export function useWorkspaceAgent({
     markSessionBusy,
   ])
 
-  const sendAiComposerMessage = useCallback((sessionId: number) => {
-    void sendAgentMessage(sessionId)
+  const sendAiComposerMessage = useCallback((
+    sessionId: number,
+    localSources?: AgentLocalSource[],
+  ) => {
+    void sendAgentMessage(sessionId, { localSources })
   }, [sendAgentMessage])
 
   const sendAgentContextAction = useCallback((
@@ -908,6 +1064,8 @@ export function useWorkspaceAgent({
     agentDrafts,
     agentEvents,
     agentMessages,
+    agentDocumentContexts,
+    agentLocalSources,
     mentionableDocuments,
     agentModelOptions,
     agentModifiedDocumentPaths,
@@ -916,16 +1074,22 @@ export function useWorkspaceAgent({
     agentToolCalls,
     clearPendingFocusedSessionId: () => setPendingFocusedSessionId(null),
     createNewAgentChat,
+    addAgentLocalSource,
     clearModifiedDocumentPath,
     deleteAgentChat,
     handleAgentModelChange,
     openAgentSession,
     pendingFocusedSessionId,
     refreshAgentSessions,
+    removeAgentDocumentContext,
     resolvedAgentModelKey,
+    resolveAgentDocumentContext,
+    resolveAgentDocumentContexts,
+    removeAgentLocalSource,
     selectedAgentModel,
     sendAiComposerMessage,
     sendAgentContextAction,
+    addAgentDocumentContext,
     setAgentDraft,
     setAgentModifiedDocumentPaths,
     stopAgentMessage,

@@ -4,15 +4,14 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Textarea } from '@/components/ui'
-import { AgentDocumentReferences } from '@/features/agent/components/AgentDocumentReferences'
+import type { AgentLocalSource } from '@/api/agent'
+import { AgentContextAddMenu } from '@/features/agent/components/AgentContextAddMenu'
+import { AgentContextTray } from '@/features/agent/components/AgentContextTray'
 import { AgentModelPicker } from '@/features/agent/components/AgentModelPicker'
 import type { KitionAccountStatus } from '@/features/account/hooks/useKitionAccount'
 import type { AgentModelOption } from '@/features/agent/lib/agentConfig'
 import {
-  buildAgentDraftWithDocumentMentions,
   findAgentMentionQuery,
-  getUniqueAgentDocumentMentionPaths,
-  removeAgentDocumentMention,
   stripAgentDocumentMentions,
   type AgentMentionableDocument,
 } from '@/features/agent/lib/documentMentions'
@@ -22,7 +21,9 @@ type AgentAiComposerProps = {
   busy: boolean
   canSend: boolean
   compact?: boolean
+  documentContextPaths?: string[]
   draft: string
+  localSources?: AgentLocalSource[]
   mentionableDocuments: AgentMentionableDocument[]
   modelOptions: AgentModelOption[]
   needsModelConfig: boolean
@@ -33,7 +34,12 @@ type AgentAiComposerProps = {
   onHostedAccountCancel?: () => void
   onHostedAccountBilling?: () => void
   onDraftChange: (value: string) => void
+  onAddLocalSource?: () => void
   onImportFiles?: (files: File[]) => Promise<string[]>
+  onOpenPath?: (path: string) => void
+  onAddDocumentContext?: (path: string) => void
+  onRemoveDocumentContext?: (path: string) => void
+  onRemoveLocalSource?: (sourceId: string) => void
   onKeyDown: (event: ReactKeyboardEvent<HTMLTextAreaElement>) => void
   onModelChange: (value: string) => void
   onSend: () => void
@@ -44,7 +50,9 @@ export function AgentAiComposer({
   busy,
   canSend,
   compact = false,
+  documentContextPaths = [],
   draft,
+  localSources = [],
   mentionableDocuments,
   modelOptions,
   needsModelConfig,
@@ -55,7 +63,12 @@ export function AgentAiComposer({
   onHostedAccountCancel,
   onHostedAccountBilling,
   onDraftChange,
+  onAddLocalSource,
   onImportFiles,
+  onOpenPath,
+  onAddDocumentContext,
+  onRemoveDocumentContext,
+  onRemoveLocalSource,
   onKeyDown,
   onModelChange,
   onSend,
@@ -65,11 +78,10 @@ export function AgentAiComposer({
   const [highlightedMentionIndex, setHighlightedMentionIndex] = useState(0)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const visibleDraft = stripAgentDocumentMentions(draft)
-  const referencedPaths = getUniqueAgentDocumentMentionPaths(draft)
   const documentsByPath = new Map(
     mentionableDocuments.map((document) => [document.path, document]),
   )
-  const references = referencedPaths.map((path) => ({
+  const contextDocuments = documentContextPaths.map((path) => ({
     path,
     kind: documentsByPath.get(path)?.kind,
   }))
@@ -96,6 +108,9 @@ export function AgentAiComposer({
   const filteredMentions = mentionQuery
     ? mentionableDocuments
         .filter((document) => {
+          if (documentContextPaths.includes(document.path)) {
+            return false
+          }
           const keyword = `${document.title} ${document.name} ${document.path}`.toLowerCase()
           return keyword.includes(mentionQuery.query.trim().toLowerCase())
         })
@@ -107,9 +122,7 @@ export function AgentAiComposer({
   }, [mentionQuery?.query])
 
   function updateVisibleDraft(nextVisibleDraft: string) {
-    onDraftChange(
-      buildAgentDraftWithDocumentMentions(nextVisibleDraft, referencedPaths),
-    )
+    onDraftChange(nextVisibleDraft)
   }
 
   function selectMention(document: AgentMentionableDocument) {
@@ -122,10 +135,8 @@ export function AgentAiComposer({
       ? rawTail.replace(/^\s+/, '')
       : rawTail
     const nextVisibleDraft = `${head}${tail}`
-    onDraftChange(buildAgentDraftWithDocumentMentions(
-      nextVisibleDraft,
-      [...referencedPaths, document.path],
-    ))
+    onDraftChange(nextVisibleDraft)
+    onAddDocumentContext?.(document.path)
     window.requestAnimationFrame(() => {
       textareaRef.current?.focus()
       textareaRef.current?.setSelectionRange(head.length, head.length)
@@ -140,17 +151,37 @@ export function AgentAiComposer({
     if (!importedPaths.length) {
       return
     }
-    onDraftChange(buildAgentDraftWithDocumentMentions(
-      visibleDraft,
-      [...referencedPaths, ...importedPaths],
-    ))
+    onDraftChange(visibleDraft)
+    importedPaths.forEach((path) => onAddDocumentContext?.(path))
     window.requestAnimationFrame(() => {
       textareaRef.current?.focus()
     })
   }
 
+  function requestDocumentReference() {
+    const spacer = visibleDraft && !/\s$/.test(visibleDraft) ? ' ' : ''
+    const nextVisibleDraft = `${visibleDraft}${spacer}@`
+    updateVisibleDraft(nextVisibleDraft)
+    window.requestAnimationFrame(() => {
+      const textarea = textareaRef.current
+      if (!textarea) {
+        return
+      }
+      textarea.focus()
+      textarea.setSelectionRange(nextVisibleDraft.length, nextVisibleDraft.length)
+    })
+  }
+
   return (
     <div className={cn('agent-ai-composer', compact && 'is-compact')}>
+      <AgentContextTray
+        documents={contextDocuments}
+        sources={localSources}
+        disabled={busy}
+        onOpenPath={onOpenPath}
+        onRemoveDocument={(path) => onRemoveDocumentContext?.(path)}
+        onRemoveSource={onRemoveLocalSource}
+      />
       <Textarea
         ref={textareaRef}
         value={visibleDraft}
@@ -234,11 +265,13 @@ export function AgentAiComposer({
           ))}
         </div>
       ) : null}
-      <AgentDocumentReferences
-        references={references}
-        onRemove={(path) => onDraftChange(removeAgentDocumentMention(draft, path))}
-      />
       <div className="agent-ai-footer">
+        <AgentContextAddMenu
+          disabled={busy}
+          localSourceCount={localSources.length}
+          onAddLocalSource={onAddLocalSource}
+          onRequestDocumentReference={requestDocumentReference}
+        />
         <AgentModelPicker
           className="agent-ai-model-picker"
           variant="compact"

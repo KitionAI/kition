@@ -43,6 +43,7 @@ export const IPC_CHANNELS = {
   renameVault: 'desktop:workspace:rename-vault',
   setActiveVault: 'desktop:workspace:set-active-vault',
   chooseDirectory: 'desktop:workspace:choose-directory',
+  chooseAgentAnalysisDirectory: 'desktop:agent:choose-analysis-directory',
   storeSecureValue: 'desktop:secure-store:set',
   readSecureValue: 'desktop:secure-store:get',
   deleteSecureValue: 'desktop:secure-store:delete',

@@ -303,6 +303,49 @@ export async function mockLocalWorkspaceApi(page: Page, options: MockLocalWorksp
         data: {
           tools: [
             {
+              name: 'source_file_search',
+              description: 'Fuzzy-search read-only local analysis paths.',
+              category: 'context',
+              input_schema: {
+                type: 'object',
+                properties: {
+                  query: { type: 'string' },
+                },
+              },
+              permission: 'read-only',
+              enabled: true,
+            },
+            {
+              name: 'source_search',
+              description: 'Search local analysis content with line-level evidence.',
+              category: 'context',
+              input_schema: {
+                type: 'object',
+                properties: {
+                  query: { type: 'string' },
+                  mode: { type: 'string', enum: ['literal', 'regex'] },
+                },
+              },
+              permission: 'read-only',
+              enabled: true,
+            },
+            {
+              name: 'source_read',
+              description: 'Read a bounded line range from a local analysis source.',
+              category: 'context',
+              input_schema: {
+                type: 'object',
+                properties: {
+                  source_id: { type: 'string' },
+                  path: { type: 'string' },
+                  start_line: { type: 'integer' },
+                  line_count: { type: 'integer' },
+                },
+              },
+              permission: 'read-only',
+              enabled: true,
+            },
+            {
               name: 'web_search',
               description: 'Search the public web with the selected model hosted search tool.',
               category: 'research',
@@ -338,6 +381,7 @@ export async function mockLocalWorkspaceApi(page: Page, options: MockLocalWorksp
           surfaces: {
             http: true,
             ndjson_stream: true,
+            local_source_access: true,
           },
         },
       })

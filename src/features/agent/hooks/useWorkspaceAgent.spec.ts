@@ -175,6 +175,91 @@ describe('useWorkspaceAgent hosted console restore', () => {
     container.remove()
   })
 
+  it('sends session-scoped local analysis sources with the agent turn', async () => {
+    const { useWorkspaceAgent } = await import('./useWorkspaceAgent')
+    let latest: any = null
+
+    function Harness() {
+      latest = useWorkspaceAgent({
+        settings: createOpenAISettings(),
+        rootPath: '/test/workspace',
+        onError: vi.fn(),
+        onFeedback: vi.fn(),
+      })
+      return null
+    }
+
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const root = createRoot(container)
+    await act(async () => root.render(createElement(Harness)))
+    await act(async () => {
+      latest.addAgentLocalSource(41, {
+        id: 'source-project',
+        label: 'project',
+        root_path: '/example/project',
+        access: 'read',
+      })
+      latest.setAgentDraft(41, 'Analyze the selected folder')
+    })
+    await act(async () => {
+      latest.sendAiComposerMessage(41)
+      await flushAsyncWork()
+    })
+
+    expect(mocks.streamAgentMessage).toHaveBeenCalledWith(expect.objectContaining({
+      sessionId: 41,
+      localSources: [{
+        id: 'source-project',
+        label: 'project',
+        root_path: '/example/project',
+        access: 'read',
+      }],
+    }))
+
+    await act(async () => root.unmount())
+    container.remove()
+  })
+
+  it('can send a newly consented folder on the same turn before state rerenders', async () => {
+    const { useWorkspaceAgent } = await import('./useWorkspaceAgent')
+    let latest: any = null
+    const source = {
+      id: 'source-project',
+      label: 'project',
+      root_path: '/example/project',
+      access: 'read',
+    }
+
+    function Harness() {
+      latest = useWorkspaceAgent({
+        settings: createOpenAISettings(),
+        rootPath: '/test/workspace',
+        onError: vi.fn(),
+        onFeedback: vi.fn(),
+      })
+      return null
+    }
+
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const root = createRoot(container)
+    await act(async () => root.render(createElement(Harness)))
+    await act(async () => latest.setAgentDraft(42, 'Analyze ../project'))
+    await act(async () => {
+      latest.sendAiComposerMessage(42, [source])
+      await flushAsyncWork()
+    })
+
+    expect(mocks.streamAgentMessage).toHaveBeenCalledWith(expect.objectContaining({
+      sessionId: 42,
+      localSources: [source],
+    }))
+
+    await act(async () => root.unmount())
+    container.remove()
+  })
+
   it('does not stream or insert an optimistic user message when portal restore fails', async () => {
     const { useWorkspaceAgent } = await import('./useWorkspaceAgent')
     const settings = createHostedConsoleSettings()
@@ -638,6 +723,218 @@ describe('useWorkspaceAgent hosted console restore', () => {
     await act(async () => {
       root?.unmount()
     })
+    container.remove()
+  })
+
+  it('keeps a removed current document detached until the session explicitly reattaches it', async () => {
+    const { useWorkspaceAgent } = await import('./useWorkspaceAgent')
+    let latest: any = null
+    const prepareActiveDocument = vi.fn().mockResolvedValue(true)
+
+    function Harness() {
+      latest = useWorkspaceAgent({
+        settings: createOpenAISettings(),
+        rootPath: '/test/workspace',
+        onError: vi.fn(),
+        onFeedback: vi.fn(),
+        prepareActiveDocument,
+        getTurnContext: () => ({
+          activeDocumentPath: 'Docs/Current.md',
+          activeDocumentFormat: 'markdown',
+          activeDataDocumentId: 0,
+          activeDataTableId: 0,
+        }),
+      })
+      return null
+    }
+
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const root = createRoot(container)
+    await act(async () => root.render(createElement(Harness)))
+    await act(async () => {
+      latest.removeAgentDocumentContext(19, 'Docs/Current.md')
+      latest.setAgentDraft(19, 'Answer without the open document')
+    })
+    await act(async () => {
+      latest.sendAiComposerMessage(19)
+      await flushAsyncWork()
+    })
+
+    expect(latest.resolveAgentDocumentContext(19, 'Docs/Current.md')).toBe('')
+    expect(mocks.streamAgentMessage).toHaveBeenLastCalledWith(expect.objectContaining({
+      activeDocumentPath: '',
+      content: 'Answer without the open document',
+      saveMarkdown: true,
+    }))
+    expect(mocks.streamAgentMessage.mock.calls.at(-1)?.[0].promptContext).not.toContain(
+      'Current workspace document for this turn',
+    )
+    expect(prepareActiveDocument).not.toHaveBeenCalled()
+
+    await act(async () => {
+      latest.addAgentDocumentContext(19, 'Docs/Current.md')
+      latest.setAgentDraft(19, 'Use the document again')
+    })
+    await act(async () => {
+      latest.sendAiComposerMessage(19)
+      await flushAsyncWork()
+    })
+
+    expect(latest.resolveAgentDocumentContext(19, 'Docs/Current.md')).toBe('Docs/Current.md')
+    expect(mocks.streamAgentMessage).toHaveBeenLastCalledWith(expect.objectContaining({
+      activeDocumentPath: 'Docs/Current.md',
+      content: 'Use the document again',
+      saveMarkdown: false,
+    }))
+    expect(prepareActiveDocument).toHaveBeenCalledOnce()
+
+    await act(async () => root.unmount())
+    container.remove()
+  })
+
+  it('does not open or attach browser context for a referenced workspace filename', async () => {
+    const { useWorkspaceAgent } = await import('./useWorkspaceAgent')
+    let latest: any = null
+    const prepareBrowserContext = vi.fn()
+    mocks.listWorkspaceDocuments.mockResolvedValue({
+      items: [{
+        type: 'file',
+        path: 'campaigns/02-second-promotion.md',
+        name: '02-second-promotion.md',
+        format: 'markdown',
+      }],
+    })
+    mocks.streamAgentMessage.mockImplementation(async (args: any) => {
+      args.onEvent?.({
+        type: 'agent_event',
+        event: {
+          id: 2001,
+          session_id: 20,
+          user_id: 1,
+          event_type: 'browser.open_required',
+          stage: 'browser',
+          status: 'completed',
+          label: 'Browser required',
+          message: 'Open the guessed filename host.',
+          data: {
+            action: 'open_embedded_browser',
+            host: '02-second-promotion.md',
+            url: 'https://02-second-promotion.md/',
+          },
+          created_at: '2026-08-12T00:00:00.000Z',
+        },
+      })
+      return { extra_data: {} }
+    })
+
+    function Harness() {
+      latest = useWorkspaceAgent({
+        settings: createOpenAISettings(),
+        rootPath: '/test/workspace',
+        onError: vi.fn(),
+        onFeedback: vi.fn(),
+        prepareBrowserContext,
+        getTurnContext: () => ({
+          activeDocumentPath: '',
+          activeDataDocumentId: 0,
+          activeDataTableId: 0,
+          browserEnabled: true,
+          browserContext: {
+            source: 'desktop_embedded_browser',
+            page_url: 'https://previous.example.org/',
+          },
+          paneContext: 'document',
+        }),
+      })
+      return null
+    }
+
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const root = createRoot(container)
+    await act(async () => {
+      root.render(createElement(Harness))
+      await flushAsyncWork()
+    })
+    await act(async () => {
+      latest.addAgentDocumentContext(20, 'campaigns/02-second-promotion.md')
+      latest.setAgentDraft(20, 'Review this document')
+    })
+    await act(async () => {
+      latest.sendAiComposerMessage(20)
+      await flushAsyncWork()
+    })
+
+    expect(prepareBrowserContext).not.toHaveBeenCalled()
+    expect(mocks.streamAgentMessage).toHaveBeenCalledWith(expect.objectContaining({
+      activeDocumentPath: 'campaigns/02-second-promotion.md',
+      browserEnabled: false,
+      browserContext: undefined,
+    }))
+    expect(latest.resolveAgentDocumentContexts(20, '')).toEqual([
+      'campaigns/02-second-promotion.md',
+    ])
+    expect(latest.agentEvents[20] || []).toEqual([])
+
+    await act(async () => root.unmount())
+    container.remove()
+  })
+
+  it('retains manually attached document contexts after sending a turn', async () => {
+    const { useWorkspaceAgent } = await import('./useWorkspaceAgent')
+    let latest: any = null
+    mocks.listWorkspaceDocuments.mockResolvedValue({
+      items: [
+        { type: 'file', path: 'Docs/Current.md', name: 'Current.md', format: 'markdown' },
+        { type: 'file', path: 'Notes/Brief.md', name: 'Brief.md', format: 'markdown' },
+      ],
+    })
+
+    function Harness() {
+      latest = useWorkspaceAgent({
+        settings: createOpenAISettings(),
+        rootPath: '/test/workspace',
+        onError: vi.fn(),
+        onFeedback: vi.fn(),
+        getTurnContext: () => ({
+          activeDocumentPath: 'Docs/Current.md',
+          activeDocumentFormat: 'markdown',
+          activeDataDocumentId: 0,
+          activeDataTableId: 0,
+        }),
+      })
+      return null
+    }
+
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const root = createRoot(container)
+    await act(async () => {
+      root.render(createElement(Harness))
+      await flushAsyncWork()
+    })
+    await act(async () => {
+      latest.addAgentDocumentContext(21, 'Notes/Brief.md', 'Docs/Current.md')
+      latest.setAgentDraft(21, 'Compare these documents')
+    })
+    await act(async () => {
+      latest.sendAiComposerMessage(21)
+      await flushAsyncWork()
+    })
+
+    expect(latest.resolveAgentDocumentContexts(21, 'Docs/Current.md')).toEqual([
+      'Docs/Current.md',
+      'Notes/Brief.md',
+    ])
+    expect(latest.agentDrafts[21] || '').toBe('')
+    expect(mocks.streamAgentMessage).toHaveBeenCalledWith(expect.objectContaining({
+      activeDocumentPath: 'Docs/Current.md',
+      content: 'Compare these documents',
+      promptContext: expect.stringContaining('Notes/Brief.md'),
+    }))
+
+    await act(async () => root.unmount())
     container.remove()
   })
 

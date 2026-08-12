@@ -57,6 +57,19 @@
     "searchPlaceholder": "Поиск моделей",
     "noMatches": "Нет моделей, соответствующих «{{query}}»"
   },
+  "analysisWorkspace": {
+    "contextTitle": "Context",
+    "addContext": "Add context",
+    "localFolder": "Local folder",
+    "workspaceDocument": "Workspace document",
+    "referenceDocument": "Reference in this turn",
+    "current": "Current",
+    "readOnlySource": "Read-only analysis source",
+    "removeReference": "Remove {{name}}",
+    "removeCurrentDocument": "Remove current document {{name}}",
+    "readOnly": "Read only",
+    "removeSource": "Remove {{name}}"
+  },
   "emptyState": {
     "needsModelConfig": {
       "label": "Настроить модель"
