@@ -85,27 +85,27 @@ describe('KitableTemplateLibraryDialog', () => {
   })
 
   it('shows the generated thumbnail template cover and only the source table resource', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        templateId: 'thumbnail-generator',
-        source: 'Test assets',
-        assetCount: 1,
-        totalSizeBytes: 128,
-        assets: [{
-          id: 'record-01-face-photo-01',
-          record: 1,
-          field: 'Face Photo',
-          sourceName: 'face-photo-01.png',
-          mimeType: 'image/png',
-          sizeBytes: 128,
-          width: 1024,
-          height: 1536,
-          sha256: 'test-sha256',
-          path: '/templates/youtube-tiktok-thumbnail-generator/records/record-01/face-photo-01.png',
-        }],
-      }),
-    }))
+    const manifest = {
+      templateId: 'thumbnail-generator',
+      source: 'Test assets',
+      assetCount: 1,
+      totalSizeBytes: 128,
+      assets: [{
+        id: 'record-01-face-photo-01',
+        record: 1,
+        field: 'Face Photo',
+        sourceName: 'face-photo-01.png',
+        mimeType: 'image/png',
+        sizeBytes: 128,
+        width: 1024,
+        height: 1536,
+        sha256: 'test-sha256',
+        path: '/templates/youtube-tiktok-thumbnail-generator/records/record-01/face-photo-01.png',
+      }],
+    }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(manifest), {
+      headers: { 'content-type': 'application/json' },
+    })))
     await mount()
 
     const card = document.querySelector('[data-testid="kitable-template-thumbnail-generator"]') as HTMLButtonElement

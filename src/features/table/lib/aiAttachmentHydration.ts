@@ -3,6 +3,7 @@ import {
   uploadDataAttachment,
 } from '@/api/dataDocuments'
 import { resolvePublicFileURL } from '@/services/desktop'
+import { bundledAssetArrayBuffer, readBundledAssetBytes } from '@/lib/bundledAssets'
 import type { AnyAIConfig } from '@/types/aiConfig'
 import type {
   DataAttachment,
@@ -17,7 +18,12 @@ type AttachmentHydrationDependencies = {
 }
 
 const defaultDependencies: AttachmentHydrationDependencies = {
-  fetchAsset: (input, init) => globalThis.fetch(input, init),
+  fetchAsset: async (input, init) => {
+    const bytes = await readBundledAssetBytes(String(input), {
+      signal: init?.signal ?? undefined,
+    })
+    return new Response(bundledAssetArrayBuffer(bytes))
+  },
   updateRecord: updateDataRecord,
   uploadAttachment: uploadDataAttachment,
 }

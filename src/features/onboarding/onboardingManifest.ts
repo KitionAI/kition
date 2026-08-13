@@ -1,4 +1,4 @@
-import { resolveBundledAssetURL } from '@/lib/bundledAssets'
+import { readBundledAssetText, resolveBundledAssetURL } from '@/lib/bundledAssets'
 
 export type OnboardingManifest = {
   version: number
@@ -26,7 +26,5 @@ export async function fetchOnboardingManifest(
 }
 
 async function defaultFetchText(url: string): Promise<string> {
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`fetch ${url} failed (${res.status})`)
-  return res.text()
+  return readBundledAssetText(url)
 }

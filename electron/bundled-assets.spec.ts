@@ -4,7 +4,9 @@ import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import {
+  bundledAssetURLFromPath,
   createBundledAssetResponse,
+  readBundledAsset,
   resolveBundledAssetPath,
 } from './bundled-assets.mjs'
 
@@ -35,6 +37,15 @@ describe('bundled asset protocol', () => {
     await expect(response.text()).resolves.toBe('{"version":1}')
   })
 
+  it('reads packaged bytes for the sandboxed renderer bridge', async () => {
+    const root = await createFixture()
+
+    await expect(readBundledAsset('onboarding/manifest.json', root))
+      .resolves.toEqual(Buffer.from('{"version":1}'))
+    expect(bundledAssetURLFromPath('kition-bundled://assets/onboarding/manifest.json'))
+      .toBe('kition-bundled://assets/onboarding/manifest.json')
+  })
+
   it('rejects unknown hosts and paths outside the renderer bundle', async () => {
     const root = await createFixture()
 
@@ -45,5 +56,6 @@ describe('bundled asset protocol', () => {
       root,
     )
     expect(response.status).toBe(404)
+    await expect(readBundledAsset('../../secret.txt', root)).rejects.toThrow()
   })
 })

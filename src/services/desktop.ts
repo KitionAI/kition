@@ -6,6 +6,10 @@ type KitionDesktopBridge = {
   shell?: string
   backendOrigin?: string
   DesktopInfo?: () => Promise<DesktopInfo>
+  ReadBundledAsset?: (request: { path: string }) => Promise<{
+    base64_content: string
+    size_bytes: number
+  }>
   BackendStatus?: () => Promise<DesktopBackendStatus>
   RetryBackendStart?: () => Promise<DesktopBackendStatus>
   OpenExternalURL?: (url: string) => Promise<void>

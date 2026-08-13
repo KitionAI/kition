@@ -367,6 +367,26 @@ jobs:
           grep -Fq 'TeamIdentifier=X3FLP9863V' <<<"$details"
           printf '%s\n' "$details" | grep -E '^(Authority|TeamIdentifier)='
 
+      - name: Verify packaged bundled assets and first-run seeding
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          KITION_DESKTOP_API_PORT: '48124'
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          apps=(dist-electron/mac*/Kition.app)
+          if [[ "${#apps[@]}" -ne 1 ]]; then
+            echo "Expected one packaged Kition.app, found ${#apps[@]}" >&2
+            exit 1
+          fi
+          KITION_PACKAGED_APP_EXECUTABLE="${apps[0]}/Contents/MacOS/Kition" \
+            pnpm exec playwright test \
+              --config tooling/playwright.config.ts \
+              e2e/desktop-bundled-assets.spec.ts \
+              --workers=1 \
+              --reporter=list
+
       - name: Upload desktop build outputs
         uses: actions/upload-artifact@v7
         with:

@@ -33,7 +33,7 @@ describe('hydrateBundledAIFieldAttachments', () => {
     vi.clearAllMocks()
   })
 
-  it('calls the browser fetch implementation with its global context', async () => {
+  it('loads bundled attachments through the shared asset reader', async () => {
     const record = {
       id: 31,
       values: {

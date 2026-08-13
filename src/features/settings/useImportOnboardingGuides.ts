@@ -11,6 +11,7 @@ import {
   type OnboardingGuide,
   type OnboardingGuideManifest,
 } from '@/features/onboarding/onboardingGuideManifest'
+import { readBundledAssetBytes, readBundledAssetText } from '@/lib/bundledAssets'
 
 export type { OnboardingGuide, OnboardingGuideManifest } from '@/features/onboarding/onboardingGuideManifest'
 
@@ -27,17 +28,8 @@ export type ImportDeps = {
 }
 
 const defaultDeps: ImportDeps = {
-  fetchText: async (url) => {
-    const res = await fetch(url)
-    if (!res.ok) throw new Error(`fetch ${url} failed (${res.status})`)
-    return res.text()
-  },
-  fetchBinary: async (url) => {
-    const res = await fetch(url)
-    if (!res.ok) throw new Error(`fetch ${url} failed (${res.status})`)
-    const buf = await res.arrayBuffer()
-    return new Uint8Array(buf)
-  },
+  fetchText: readBundledAssetText,
+  fetchBinary: readBundledAssetBytes,
 }
 
 function uint8ToBase64(bytes: Uint8Array): string {
