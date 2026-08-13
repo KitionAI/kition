@@ -5,6 +5,7 @@ export const DESKTOP_DOCUMENT_EXTERNAL_CHANGE_EVENT = 'desktop:document:external
 
 export const IPC_CHANNELS = {
   desktopInfo: 'desktop:get-info',
+  readBundledAsset: 'desktop:bundled-asset:read',
   backendStatus: 'desktop:get-backend-status',
   retryBackendStart: 'desktop:retry-backend-start',
   openExternalURL: 'desktop:open-external-url',

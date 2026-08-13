@@ -10,6 +10,7 @@ import { BrowserSessionManager } from './browser-session-manager.mjs'
 import {
   createBundledAssetResponse,
   KITION_BUNDLED_ASSET_SCHEME,
+  readBundledAsset,
 } from './bundled-assets.mjs'
 import {
   DESKTOP_BROWSER_SESSION_EVENT,
@@ -1964,6 +1965,14 @@ async function registerIpcHandlers() {
     app_version: app.getVersion(),
     supports_secure_storage: true,
   }))
+  ipcMain.handle(IPC_CHANNELS.readBundledAsset, async (_event, request) => {
+    const distDir = path.resolve(moduleDir, '..', 'dist')
+    const bytes = await readBundledAsset(request?.path, distDir)
+    return {
+      base64_content: bytes.toString('base64'),
+      size_bytes: bytes.byteLength,
+    }
+  })
   ipcMain.handle(IPC_CHANNELS.backendStatus, () => backendSupervisor.status())
   ipcMain.handle(IPC_CHANNELS.retryBackendStart, async () => backendSupervisor.retry())
   ipcMain.handle(IPC_CHANNELS.openExternalURL, async (_event, url) => {

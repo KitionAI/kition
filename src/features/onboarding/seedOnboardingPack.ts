@@ -4,6 +4,7 @@ import {
   writeWorkspaceDocument,
 } from '@/services/desktop'
 import type { OnboardingGuide, OnboardingGuideManifest } from './onboardingGuideManifest'
+import { readBundledAssetBytes, readBundledAssetText } from '@/lib/bundledAssets'
 import {
   ONBOARDING_BASE,
   fetchOnboardingManifest,
@@ -18,16 +19,8 @@ export type SeedDeps = {
 }
 
 const defaultDeps: SeedDeps = {
-  fetchText: async (url) => {
-    const res = await fetch(url)
-    if (!res.ok) throw new Error(`fetch ${url} failed (${res.status})`)
-    return res.text()
-  },
-  fetchBinary: async (url) => {
-    const res = await fetch(url)
-    if (!res.ok) throw new Error(`fetch ${url} failed (${res.status})`)
-    return new Uint8Array(await res.arrayBuffer())
-  },
+  fetchText: readBundledAssetText,
+  fetchBinary: readBundledAssetBytes,
   createFolder: (req) => createWorkspaceFolder(req),
   writeDocument: (path, content) => writeWorkspaceDocument(path, content),
   importFile: (req) => importWorkspaceFile(req),

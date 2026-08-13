@@ -40,6 +40,27 @@ export function resolveBundledAssetPath(requestURL, distDir) {
   return absolutePath
 }
 
+export function bundledAssetURLFromPath(assetPath) {
+  const normalizedPath = String(assetPath || '')
+    .trim()
+    .replace(/^kition-bundled:\/\/(?:assets)?\/?/i, '')
+    .replace(/^kition-bundled:\/?/i, '')
+    .replace(/^\/+/, '')
+  if (!normalizedPath) {
+    throw new Error('bundled asset path is invalid')
+  }
+  return `${KITION_BUNDLED_ASSET_SCHEME}://${KITION_BUNDLED_ASSET_HOST}/${normalizedPath}`
+}
+
+export async function readBundledAsset(assetPath, distDir) {
+  const absolutePath = resolveBundledAssetPath(bundledAssetURLFromPath(assetPath), distDir)
+  const stat = await fs.stat(absolutePath)
+  if (!stat.isFile()) {
+    throw new Error('bundled asset is not a file')
+  }
+  return fs.readFile(absolutePath)
+}
+
 export async function createBundledAssetResponse(requestURL, distDir) {
   try {
     const absolutePath = resolveBundledAssetPath(requestURL, distDir)

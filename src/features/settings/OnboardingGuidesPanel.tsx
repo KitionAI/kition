@@ -10,6 +10,7 @@ import { Download, FolderCheck, Loader2, RefreshCw, Sparkles, X } from 'lucide-r
 import { useTranslation } from '@/i18n'
 import { SettingsPaneHeader } from './primitives'
 import { ONBOARDING_GUIDE_MANIFEST_URL } from '@/features/onboarding/onboardingGuideManifest'
+import { readBundledAssetText } from '@/lib/bundledAssets'
 
 type LoadState =
   | { kind: 'loading' }
@@ -24,10 +25,8 @@ export function OnboardingGuidesPanel({ onClose }: { onClose?: () => void } = {}
     setState({ kind: 'loading' })
     try {
       const [manifest, ws] = await Promise.all([
-        fetch(ONBOARDING_GUIDE_MANIFEST_URL).then(async (r) => {
-          if (!r.ok) throw new Error(`manifest http ${r.status}`)
-          return r.json() as Promise<OnboardingGuideManifest>
-        }),
+        readBundledAssetText(ONBOARDING_GUIDE_MANIFEST_URL)
+          .then((text) => JSON.parse(text) as OnboardingGuideManifest),
         listWorkspaceDocuments(),
       ])
       setState({ kind: 'ready', manifest, items: ws.items, rootPath: ws.root_path })

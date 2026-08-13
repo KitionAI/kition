@@ -10,6 +10,7 @@ const DESKTOP_DOCUMENT_EXTERNAL_CHANGE_EVENT = 'desktop:document:external-change
 
 const IPC_CHANNELS = {
   desktopInfo: 'desktop:get-info',
+  readBundledAsset: 'desktop:bundled-asset:read',
   backendStatus: 'desktop:get-backend-status',
   retryBackendStart: 'desktop:retry-backend-start',
   openExternalURL: 'desktop:open-external-url',
@@ -87,6 +88,7 @@ const desktopBridge = {
   shell: 'electron',
   backendOrigin,
   DesktopInfo: () => ipcRenderer.invoke(IPC_CHANNELS.desktopInfo),
+  ReadBundledAsset: (request) => ipcRenderer.invoke(IPC_CHANNELS.readBundledAsset, request),
   BackendStatus: () => ipcRenderer.invoke(IPC_CHANNELS.backendStatus),
   RetryBackendStart: () => ipcRenderer.invoke(IPC_CHANNELS.retryBackendStart),
   OpenExternalURL: (url) => ipcRenderer.invoke(IPC_CHANNELS.openExternalURL, url),

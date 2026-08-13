@@ -4,7 +4,11 @@ import type {
   KitableTemplateRecordValue,
 } from '@/features/table/templates/kitableTemplates'
 import type { DataAttachment, DataRecordValue } from '@/types/dataDocument'
-import { resolveBundledAssetURL } from '@/lib/bundledAssets'
+import {
+  bundledAssetArrayBuffer,
+  readBundledAssetBytes,
+  readBundledAssetText,
+} from '@/lib/bundledAssets'
 
 export type KitableTemplateAssetManifestItem = {
   id: string
@@ -54,11 +58,9 @@ export function collectKitableTemplateAssetIds(
 export async function loadKitableTemplateAssetManifest(
   manifestPath: string,
 ): Promise<KitableTemplateAssetManifest> {
-  const response = await fetch(resolveBundledAssetURL(manifestPath))
-  if (!response.ok) {
-    throw new Error(`Template asset manifest could not be loaded: ${manifestPath}`)
-  }
-  const manifest = await response.json() as KitableTemplateAssetManifest
+  const manifest = JSON.parse(
+    await readBundledAssetText(manifestPath),
+  ) as KitableTemplateAssetManifest
   if (!Array.isArray(manifest.assets) || manifest.assetCount !== manifest.assets.length) {
     throw new Error(`Template asset manifest is invalid: ${manifestPath}`)
   }
@@ -104,15 +106,13 @@ export async function uploadKitableTemplateAssets({
 
   const uploaded = await mapWithConcurrency(assetIds, 4, async (assetId) => {
     const asset = manifestAssetById.get(assetId) as KitableTemplateAssetManifestItem
-    const response = await fetch(resolveBundledAssetURL(asset.path))
-    if (!response.ok) {
-      throw new Error(`Template asset could not be loaded: ${asset.path}`)
-    }
-    const bytes = await response.arrayBuffer()
+    const bytes = await readBundledAssetBytes(asset.path)
     if (bytes.byteLength !== asset.sizeBytes) {
       throw new Error(`Template asset size mismatch: ${asset.path}`)
     }
-    const file = new File([bytes], asset.sourceName, { type: asset.mimeType })
+    const file = new File([bundledAssetArrayBuffer(bytes)], asset.sourceName, {
+      type: asset.mimeType,
+    })
     const attachment = await uploadDataAttachment(documentId, tableId, file)
     return [assetId, attachment] as const
   })

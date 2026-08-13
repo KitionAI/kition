@@ -44,6 +44,12 @@ describe('sandboxed desktop preload', () => {
     await bridge.DesktopInfo()
     expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.desktopInfo)
 
+    await bridge.ReadBundledAsset({ path: 'onboarding/manifest.json' })
+    expect(invoke).toHaveBeenCalledWith(
+      IPC_CHANNELS.readBundledAsset,
+      { path: 'onboarding/manifest.json' },
+    )
+
     await bridge.ChooseAgentAnalysisDirectory({ suggested_path: '../project' })
     expect(invoke).toHaveBeenCalledWith(
       IPC_CHANNELS.chooseAgentAnalysisDirectory,
