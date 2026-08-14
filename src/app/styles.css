@@ -4162,6 +4162,102 @@
     @apply relative z-20 flex h-full min-h-0 w-full min-w-[340px] max-w-full flex-col overflow-hidden border-l bg-card;
     border-left-color: var(--document-border, hsl(var(--border)));
     isolation: isolate;
+    animation: workspace-agent-sidebar-enter 180ms ease-out;
+  }
+
+  .agent-floating-launcher {
+    @apply fixed z-[70] grid size-14 place-items-center border-0 bg-transparent p-0 text-foreground outline-none;
+    right: max(1.25rem, env(safe-area-inset-right));
+    bottom: max(4rem, env(safe-area-inset-bottom));
+    animation: agent-floating-launcher-enter 220ms ease-out;
+    transition:
+      transform 180ms ease,
+      filter 180ms ease;
+  }
+
+  .agent-floating-launcher:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.08);
+  }
+
+  .agent-floating-launcher:active {
+    transform: translateY(0) scale(0.94);
+  }
+
+  .agent-floating-launcher:focus-visible {
+    border-radius: 18px;
+    box-shadow:
+      0 0 0 3px hsl(var(--ring) / 0.35);
+  }
+
+  .agent-floating-launcher__icon {
+    @apply pointer-events-none block size-full select-none overflow-visible;
+    filter: drop-shadow(0 5px 8px hsl(var(--foreground) / 0.16));
+    animation: agent-floating-icon-idle 4.2s ease-in-out infinite;
+  }
+
+  .agent-floating-launcher__eyes {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: agent-floating-icon-blink 4.8s ease-in-out infinite;
+  }
+
+  @keyframes workspace-agent-sidebar-enter {
+    from {
+      opacity: 0;
+      transform: translateX(18px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes agent-floating-launcher-enter {
+    from {
+      opacity: 0;
+      transform: translateY(12px) scale(0.72);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes agent-floating-icon-idle {
+    0%, 50%, 100% {
+      transform: translateY(0) rotate(0deg);
+    }
+    25% {
+      transform: translateY(-1px);
+    }
+    84% {
+      transform: rotate(0deg);
+    }
+    89% {
+      transform: rotate(-1.5deg);
+    }
+    94% {
+      transform: rotate(1deg);
+    }
+  }
+
+  @keyframes agent-floating-icon-blink {
+    0%, 42%, 46%, 48%, 100% {
+      transform: scaleY(1);
+    }
+    44%, 47% {
+      transform: scaleY(0.06);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .workspace-agent-sidebar,
+    .agent-floating-launcher,
+    .agent-floating-launcher__icon,
+    .agent-floating-launcher__eyes {
+      animation: none;
+    }
   }
 
   .workspace-agent-topbar {
@@ -4170,10 +4266,6 @@
 
   .workspace-agent-topbar-actions {
     @apply ml-auto flex h-9 shrink-0 items-center gap-0.5 self-end;
-  }
-
-  .workspace-agent-topbar-reopen {
-    @apply mb-0.5 inline-grid size-8 self-end place-items-center rounded-md text-muted-foreground transition-[background-color,color,transform] duration-fast ease-standard hover:bg-muted hover:text-foreground active:scale-95;
   }
 
   .workspace-agent-topbar .workspace-agent-tabs {

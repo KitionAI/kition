@@ -485,8 +485,19 @@ test('workspace chat can auto-open saved docs and target @{mentions} without a b
     await page.reload({ waitUntil: 'domcontentloaded' })
     await expect(page.getByTestId('document-tree')).toBeVisible()
 
-    await page.locator('.workspace-agent-topbar-reopen').click()
+    const floatingLauncher = page.getByTestId('agent-floating-launcher')
+    await expect(floatingLauncher).toBeVisible()
+    await expect(floatingLauncher).toHaveCSS('width', '56px')
+    await expect(floatingLauncher).toHaveCSS('height', '56px')
+    await expect(floatingLauncher).toHaveCSS('bottom', '64px')
+    await expect(floatingLauncher.locator('.agent-floating-launcher__icon')).toBeVisible()
+    await floatingLauncher.click()
     await page.locator('button[aria-label="New chat"]').click()
+    await expect(page.locator('.agent-chat-panel')).toBeVisible()
+    await page.getByTestId('workspace-agent-collapse').click()
+    await expect(page.locator('.agent-chat-panel')).toBeHidden()
+    await expect(floatingLauncher).toBeVisible()
+    await floatingLauncher.click()
     await expect(page.locator('.agent-chat-panel')).toBeVisible()
 
     const composer = page.locator('.agent-ai-composer textarea')
@@ -872,7 +883,7 @@ test.skip('workspace chat can continue from the current browser page and save a 
     })
     expect(patchedBridge).toEqual({ enabled: true })
 
-    await page.locator('.workspace-agent-topbar-reopen').click()
+    await page.getByTestId('agent-floating-launcher').click()
     await page.locator('button[aria-label="New chat"]').click()
     await expect(page.locator('.agent-chat-panel')).toBeVisible()
 

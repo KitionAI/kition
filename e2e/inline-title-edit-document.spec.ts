@@ -106,8 +106,29 @@ test('click title → type → Enter commits and moves focus to cm-content', asy
   await page.keyboard.press('Enter')
 
   await expect(title).toHaveText('renamed-via-enter')
+  await expect(page.locator('.document-tree-row.is-active')).toContainText('renamed-via-enter.md')
   const focused = await page.evaluate(() => document.activeElement?.classList.contains('cm-content'))
   expect(focused).toBe(true)
+})
+
+test('clicking the document body commits the title without rolling back the tree label', async ({ page }) => {
+  await mockLocalWorkspaceApi(page)
+  await mockDesktop(page)
+  await page.setViewportSize({ width: 1400, height: 900 })
+  await page.goto('/document')
+  const title = page.locator('[data-testid="workspace-document-inline-title"]')
+  await title.waitFor({ timeout: 10_000 })
+
+  await title.click()
+  await page.evaluate(() => {
+    const el = document.querySelector('[data-testid="workspace-document-inline-title"]') as HTMLElement
+    el.textContent = 'renamed-via-blur'
+    el.dispatchEvent(new InputEvent('input', { bubbles: true }))
+  })
+  await page.locator('.document-editor .cm-content').click()
+
+  await expect(title).toHaveText('renamed-via-blur')
+  await expect(page.locator('.document-tree-row.is-active')).toContainText('renamed-via-blur.md')
 })
 
 test('IME Enter in the title does not move composition text into the document body', async ({ page }) => {

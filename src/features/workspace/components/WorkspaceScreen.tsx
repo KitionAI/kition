@@ -8,6 +8,9 @@ import {
   parseKitableDashboardVirtualPath,
   parseKitableWorkflowVirtualPath,
   parseKitableTableVirtualPath,
+  moveWorkspaceTreeBranchMetadata,
+  replaceWorkspaceTreeDocumentItem,
+  updateWorkspaceTreeDocumentItem,
 } from '@/features/workspace/lib/workspaceTree'
 import { routeKitableOpenPath } from './workspaceScreenTabRouting'
 import type { AgentBrowserContext, AgentEvent } from '@/api/agent'
@@ -51,6 +54,7 @@ import {
 import { useDocumentExport } from '@/features/document/hooks/useDocumentExport'
 import { useWorkspaceDocumentSession } from '@/features/document/hooks/useWorkspaceDocumentSession'
 import type { DocumentCreationPreset } from '@/features/document/lib/documentCreation'
+import { AgentFloatingLauncher } from '@/features/agent/components/AgentFloatingLauncher'
 import type { SettingsSectionKey } from '@/features/settings/DesktopSettingsPage'
 import { useDesktopSettings } from '@/features/settings/hooks/useDesktopSettings'
 import type { DataDocument, DataTable } from '@/types/dataDocument'
@@ -111,7 +115,6 @@ import {
   resolveAgentActiveDocument,
   resolveAgentDataTableTarget,
 } from '@/features/workspace/lib/agentPaneContext'
-import { moveWorkspaceTreeBranchMetadata } from '@/features/workspace/lib/workspaceTree'
 import {
   readWorkspaceAgentActiveSessionId,
   writeWorkspaceAgentActiveSessionId,
@@ -2731,6 +2734,10 @@ export function WorkspaceScreen({
         ))
       }
 
+      workspaceTree.setTreeItems((current) => (
+        replaceWorkspaceTreeDocumentItem(current, path, movedDocument)
+      ))
+
       updateSnapshots(
         snapshots.map((snapshot) => {
           const nextPath = remapWorkspaceBranchPath(snapshot.path, path, movedDocument.path)
@@ -2804,14 +2811,20 @@ export function WorkspaceScreen({
       return
     }
 
+    const targetPath = renameWorkspaceDocumentPath(activeDocument.path, nextTitle)
+    const targetName = targetPath.split('/').pop() || activeDocument.name
+    workspaceTree.setTreeItems((current) => updateWorkspaceTreeDocumentItem(current, {
+      ...activeDocument,
+      name: targetName,
+    }))
+
     try {
       await renameActiveWorkspaceDocument({
         path: activeDocument.path,
         title: nextTitle,
       })
     } catch {
-      // Rename failed; activeDocument.name stays unchanged so the inline title
-      // display will fall back to it automatically — nothing to reset here.
+      workspaceTree.setTreeItems((current) => updateWorkspaceTreeDocumentItem(current, activeDocument))
     }
   }
 
@@ -3109,6 +3122,10 @@ export function WorkspaceScreen({
         onToggleHistory={() =>
           setWorkspaceAgentHistoryOpen((current) => !current)
         }
+      />
+      <AgentFloatingLauncher
+        visible={!workspaceAgentOpen}
+        onOpen={toggleActiveAgentPanel}
       />
       {exportDialogOpen ? (
         <Suspense fallback={null}>

@@ -374,6 +374,46 @@ export function updateWorkspaceTreeDocumentItem(
   })
 }
 
+export function replaceWorkspaceTreeDocumentItem(
+  items: WorkspaceDocumentTreeItem[],
+  previousPath: string,
+  document: WorkspaceDocument,
+): WorkspaceDocumentTreeItem[] {
+  const containsPreviousPath = flattenWorkspaceDocumentItems(items)
+    .some((item) => item.path === previousPath)
+  const pathToReplace = containsPreviousPath ? previousPath : document.path
+
+  return replaceWorkspaceTreeDocumentItemAtPath(items, pathToReplace, document)
+}
+
+function replaceWorkspaceTreeDocumentItemAtPath(
+  items: WorkspaceDocumentTreeItem[],
+  pathToReplace: string,
+  document: WorkspaceDocument,
+): WorkspaceDocumentTreeItem[] {
+  return items.map((item) => {
+    if (item.type === 'file' && item.path === pathToReplace) {
+      return {
+        ...item,
+        path: document.path,
+        name: document.name,
+        format: document.format || inferWorkspaceItemFormat(document.path, document.content),
+        size: document.size ?? document.content.length,
+        updated_at: document.updated_at,
+      }
+    }
+
+    if (item.children?.length) {
+      return {
+        ...item,
+        children: replaceWorkspaceTreeDocumentItemAtPath(item.children, pathToReplace, document),
+      }
+    }
+
+    return item
+  })
+}
+
 // Splice a freshly-created document into the raw tree without a full
 // listWorkspaceDocuments() refetch. The render layer (buildWorkspaceTreeNodes)
 // re-sorts every level, so we only need to drop the item under the right parent

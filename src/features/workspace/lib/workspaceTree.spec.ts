@@ -15,6 +15,7 @@ import {
   parseKitableDashboardVirtualPath,
   parseKitableWorkflowVirtualPath,
   parseKitableTableVirtualPath,
+  replaceWorkspaceTreeDocumentItem,
 } from './workspaceTree'
 import type { KitableDashboardSummary, KitableWorkflowSummary, KitableTableSummary } from './workspaceTree'
 import type { WorkspaceDocumentTreeItem, WorkspaceDocumentFormat } from '@/services/desktop'
@@ -367,5 +368,69 @@ describe('insertWorkspaceTreeDocumentItem', () => {
     const next = insertWorkspaceTreeDocumentItem(items, doc('note.md', 'note.md'))
     expect(next.filter((i) => i.path === 'note.md')).toHaveLength(1)
     expect(next).toHaveLength(2)
+  })
+})
+
+describe('replaceWorkspaceTreeDocumentItem', () => {
+  const document = (path: string, name: string) => ({
+    path,
+    name,
+    content: 'Body',
+    format: 'markdown' as WorkspaceDocumentFormat,
+    size: 4,
+    updated_at: '2026-08-14T00:00:00Z',
+  })
+
+  it('replaces the previous path and name after a document rename', () => {
+    const items = [file('Untitled note 2.md')]
+    const next = replaceWorkspaceTreeDocumentItem(
+      items,
+      'Untitled note 2.md',
+      document('Untitled444 note 2.md', 'Untitled444 note 2.md'),
+    )
+
+    expect(next).toEqual([expect.objectContaining({
+      path: 'Untitled444 note 2.md',
+      name: 'Untitled444 note 2.md',
+      size: 4,
+    })])
+    expect(items[0].path).toBe('Untitled note 2.md')
+  })
+
+  it('updates a nested document without disturbing sibling files', () => {
+    const items: WorkspaceDocumentTreeItem[] = [
+      {
+        type: 'folder',
+        path: 'notes',
+        name: 'notes',
+        children: [file('notes/a.md', 'a.md'), file('notes/b.md', 'b.md')],
+      },
+    ]
+    const next = replaceWorkspaceTreeDocumentItem(
+      items,
+      'notes/a.md',
+      document('notes/renamed.md', 'renamed.md'),
+    )
+
+    expect(next[0].children?.map((item) => item.path)).toEqual([
+      'notes/renamed.md',
+      'notes/b.md',
+    ])
+  })
+
+  it('finalizes an optimistic rename when the tree already has the new path', () => {
+    const items = [file('renamed.md', 'renamed.md')]
+    const next = replaceWorkspaceTreeDocumentItem(
+      items,
+      'original.md',
+      document('renamed.md', 'renamed.md'),
+    )
+
+    expect(next).toEqual([expect.objectContaining({
+      path: 'renamed.md',
+      name: 'renamed.md',
+      size: 4,
+      updated_at: '2026-08-14T00:00:00Z',
+    })])
   })
 })

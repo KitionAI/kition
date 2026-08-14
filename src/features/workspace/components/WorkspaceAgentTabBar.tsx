@@ -1,4 +1,4 @@
-import { Bot, History, PanelRightClose, Plus, Search, X } from 'lucide-react'
+import { Bot, ChevronsRight, History, Plus, Search, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
@@ -227,18 +227,7 @@ export function WorkspaceAgentTabBar({
   }
 
   if (!open) {
-    return createPortal(
-      <button
-        type="button"
-        className="workspace-agent-topbar-reopen"
-        onClick={onToggleOpen}
-        title={t('agentTabs.openChat')}
-        aria-label={t('agentTabs.openChat')}
-      >
-        <Bot className="size-4" />
-      </button>,
-      portal,
-    )
+    return null
   }
 
   return createPortal(
@@ -308,8 +297,9 @@ export function WorkspaceAgentTabBar({
           onClick={onToggleOpen}
           title={t('agentTabs.collapseChat')}
           aria-label={t('agentTabs.collapseChat')}
+          data-testid="workspace-agent-collapse"
         >
-          <PanelRightClose className="size-4" />
+          <ChevronsRight className="size-4" />
         </button>
       </div>
 
