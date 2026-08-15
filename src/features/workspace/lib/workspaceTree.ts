@@ -584,6 +584,30 @@ export function moveWorkspaceTreeBranchMetadata(
   }
 }
 
+export function renameWorkspaceTreeBranchMetadata(
+  metadata: WorkspaceTreeMetadata,
+  flatTreeNodes: WorkspaceTreeNode[],
+  renamedNode: WorkspaceTreeNode,
+  movedPath: string,
+) {
+  const movedMetadata = moveWorkspaceTreeBranchMetadata(metadata, renamedNode, movedPath)
+  const siblingOrder = flatTreeNodes
+    .filter((node) => node.parentPath === renamedNode.parentPath)
+    .map((node) => node.path === renamedNode.path ? movedPath : node.path)
+
+  if (!siblingOrder.includes(movedPath)) {
+    return movedMetadata
+  }
+
+  return {
+    ...movedMetadata,
+    order: {
+      ...movedMetadata.order,
+      [renamedNode.parentPath]: siblingOrder,
+    },
+  }
+}
+
 export function collectAllFolderPaths(items: WorkspaceDocumentTreeItem[]) {
   const paths = new Set<string>()
 

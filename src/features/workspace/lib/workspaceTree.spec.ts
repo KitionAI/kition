@@ -15,6 +15,7 @@ import {
   parseKitableDashboardVirtualPath,
   parseKitableWorkflowVirtualPath,
   parseKitableTableVirtualPath,
+  renameWorkspaceTreeBranchMetadata,
   replaceWorkspaceTreeDocumentItem,
 } from './workspaceTree'
 import type { KitableDashboardSummary, KitableWorkflowSummary, KitableTableSummary } from './workspaceTree'
@@ -432,5 +433,55 @@ describe('replaceWorkspaceTreeDocumentItem', () => {
       size: 4,
       updated_at: '2026-08-14T00:00:00Z',
     })])
+  })
+})
+
+describe('renameWorkspaceTreeBranchMetadata', () => {
+  const renamedDocument = {
+    path: 'aardvark.md',
+    name: 'aardvark.md',
+    content: 'Renamed',
+    format: 'markdown' as WorkspaceDocumentFormat,
+    size: 7,
+    updated_at: '2026-08-15T00:00:00Z',
+  }
+
+  it('keeps a renamed document at its current visible sibling position', () => {
+    const items = [file('alpha.md'), file('middle.md'), file('zulu.md')]
+    const initialNodes = buildPrivateSectionTreeNodes(items, emptyMetadata)
+    const middleNode = initialNodes.find((node) => node.path === 'middle.md')!
+    const metadata = renameWorkspaceTreeBranchMetadata(
+      emptyMetadata,
+      initialNodes,
+      middleNode,
+      renamedDocument.path,
+    )
+    const renamedItems = replaceWorkspaceTreeDocumentItem(items, middleNode.path, renamedDocument)
+    const nextNodes = buildPrivateSectionTreeNodes(renamedItems, metadata)
+
+    expect(nextNodes.map((node) => node.path)).toEqual([
+      'alpha.md',
+      'aardvark.md',
+      'zulu.md',
+    ])
+    expect(metadata.order['']).toEqual(['alpha.md', 'aardvark.md', 'zulu.md'])
+  })
+
+  it('preserves an existing custom sibling order while replacing the renamed path', () => {
+    const metadata: WorkspaceTreeMetadata = {
+      ...emptyMetadata,
+      order: { '': ['zulu.md', 'middle.md', 'alpha.md'] },
+    }
+    const items = [file('alpha.md'), file('middle.md'), file('zulu.md')]
+    const initialNodes = buildPrivateSectionTreeNodes(items, metadata)
+    const middleNode = initialNodes.find((node) => node.path === 'middle.md')!
+    const nextMetadata = renameWorkspaceTreeBranchMetadata(
+      metadata,
+      initialNodes,
+      middleNode,
+      renamedDocument.path,
+    )
+
+    expect(nextMetadata.order['']).toEqual(['zulu.md', 'aardvark.md', 'alpha.md'])
   })
 })

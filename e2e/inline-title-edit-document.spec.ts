@@ -12,9 +12,20 @@ async function mockDesktop(page: Page) {
   await page.addInitScript(
     ({ vaultPath, docPath, docContent }) => {
       const stateWindow = window as typeof window & Record<string, unknown>
-      const docs = new Map<string, { content: string; updated_at: string }>([
+      const documentsStorageKey = 'kition.e2e.title-edit.documents'
+      const initialDocuments: Array<[string, { content: string; updated_at: string }]> = [
+        ['alpha.md', { content: 'Alpha body', updated_at: '2026-06-18T00:00:00.000Z' }],
         [docPath, { content: docContent, updated_at: '2026-06-19T00:00:00.000Z' }],
-      ])
+        ['zulu.md', { content: 'Zulu body', updated_at: '2026-06-20T00:00:00.000Z' }],
+      ]
+      const storedDocuments = window.localStorage.getItem(documentsStorageKey)
+      const docs = new Map<string, { content: string; updated_at: string }>(
+        storedDocuments ? JSON.parse(storedDocuments) : initialDocuments,
+      )
+      const persistDocuments = () => {
+        window.localStorage.setItem(documentsStorageKey, JSON.stringify(Array.from(docs.entries())))
+      }
+      persistDocuments()
       const vault = { path: vaultPath, name: 'Edit Vault', added_at: '2026-06-19T00:00:00.000Z', last_opened_at: '2026-06-19T00:00:00.000Z' }
       const makeRegistry = () => ({ vaults: [vault], active_vault_path: vaultPath })
       const makeListResponse = () => ({
@@ -57,6 +68,7 @@ async function mockDesktop(page: Page) {
         WriteWorkspaceDocument: async (req: { path: string; content: string }) => {
           const updated_at = new Date().toISOString()
           docs.set(req.path, { content: req.content, updated_at })
+          persistDocuments()
           return { path: req.path, name: req.path.split('/').pop()!, content: req.content, format: 'markdown', updated_at, size: req.content.length }
         },
         MoveWorkspaceDocument: async (req: { path: string; target_folder?: string; target_name?: string }) => {
@@ -67,6 +79,7 @@ async function mockDesktop(page: Page) {
           const updated_at = new Date().toISOString()
           docs.delete(req.path)
           docs.set(newPath, { content: existing?.content ?? '', updated_at })
+          persistDocuments()
           return { path: newPath, name, content: existing?.content ?? '', format: 'markdown', updated_at, size: existing?.content.length ?? 0 }
         },
       }
@@ -87,6 +100,15 @@ async function mockImageAsset(page: Page) {
       body: IMAGE_SVG,
     })
   })
+}
+
+async function readDocumentTreeOrder(page: Page, labels: string[]) {
+  return page.locator('[data-testid="document-tree"] .document-tree-row').evaluateAll(
+    (rows, expectedLabels) => rows
+      .map((row) => row.textContent?.trim() || '')
+      .filter((label) => expectedLabels.includes(label)),
+    labels,
+  )
 }
 
 test('click title → type → Enter commits and moves focus to cm-content', async ({ page }) => {
@@ -129,6 +151,43 @@ test('clicking the document body commits the title without rolling back the tree
 
   await expect(title).toHaveText('renamed-via-blur')
   await expect(page.locator('.document-tree-row.is-active')).toContainText('renamed-via-blur.md')
+})
+
+test('renaming a document preserves its visible tree position after reload', async ({ page }) => {
+  await mockLocalWorkspaceApi(page)
+  await mockDesktop(page)
+  await page.setViewportSize({ width: 1400, height: 900 })
+  await page.goto('/document')
+  const title = page.locator('[data-testid="workspace-document-inline-title"]')
+  await title.waitFor({ timeout: 10_000 })
+
+  await expect.poll(() => readDocumentTreeOrder(page, [
+    'alpha.md',
+    'original.md',
+    'zulu.md',
+  ])).toEqual(['alpha.md', 'original.md', 'zulu.md'])
+
+  await title.click()
+  await page.evaluate(() => {
+    const element = document.querySelector('[data-testid="workspace-document-inline-title"]') as HTMLElement
+    element.textContent = 'aardvark'
+    element.dispatchEvent(new InputEvent('input', { bubbles: true }))
+  })
+  await page.keyboard.press('Enter')
+
+  await expect.poll(() => readDocumentTreeOrder(page, [
+    'alpha.md',
+    'aardvark.md',
+    'zulu.md',
+  ])).toEqual(['alpha.md', 'aardvark.md', 'zulu.md'])
+
+  await page.reload({ waitUntil: 'domcontentloaded' })
+  await expect(page.getByTestId('document-tree')).toBeVisible()
+  await expect.poll(() => readDocumentTreeOrder(page, [
+    'alpha.md',
+    'aardvark.md',
+    'zulu.md',
+  ])).toEqual(['alpha.md', 'aardvark.md', 'zulu.md'])
 })
 
 test('IME Enter in the title does not move composition text into the document body', async ({ page }) => {

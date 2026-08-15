@@ -21,6 +21,7 @@ import type { WorkspaceTreeMetadata } from '@/features/workspace/lib/workspacePe
 import {
   getChildFolderPathForNode,
   moveWorkspaceTreeBranchMetadata,
+  renameWorkspaceTreeBranchMetadata,
   removeWorkspaceTreeBranchMetadata,
   reorderWorkspaceTreeMetadata,
 } from '@/features/workspace/lib/workspaceTree'
@@ -441,7 +442,9 @@ export function useWorkspaceTreeNodeActions({
       if (node.type === 'folder') {
         const response = await moveWorkspaceFolder({ path: node.path, target_name: trimmed })
         const movedPath = response.moved_path
-        updateTreeMetadata((current) => moveWorkspaceTreeBranchMetadata(current, node, movedPath))
+        updateTreeMetadata((current) => (
+          renameWorkspaceTreeBranchMetadata(current, flatTreeNodes, node, movedPath)
+        ))
         remapWorkspaceTabPaths(node.path, movedPath)
         await applyWorkspaceDocumentList(
           response,
@@ -468,7 +471,9 @@ export function useWorkspaceTreeNodeActions({
       const targetName = renameWorkspaceDocumentPath(node.path, trimmed).split('/').pop() || ''
       const moved = await moveWorkspaceDocument({ path: node.path, target_name: targetName })
       syncKitableBackendPath(node.path, moved.path, rootPath, renameKitableChildrenIndexPath)
-      updateTreeMetadata((current) => moveWorkspaceTreeBranchMetadata(current, node, moved.path))
+      updateTreeMetadata((current) => (
+        renameWorkspaceTreeBranchMetadata(current, flatTreeNodes, node, moved.path)
+      ))
       remapWorkspaceTabPaths(node.path, moved.path)
       // For .kitable files also remap table:// and workflow:// tab ids whose
       // kitablePath still points at the old file path (Option A: file branch only).

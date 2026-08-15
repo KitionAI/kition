@@ -8,7 +8,7 @@ import {
   parseKitableDashboardVirtualPath,
   parseKitableWorkflowVirtualPath,
   parseKitableTableVirtualPath,
-  moveWorkspaceTreeBranchMetadata,
+  renameWorkspaceTreeBranchMetadata,
   replaceWorkspaceTreeDocumentItem,
   updateWorkspaceTreeDocumentItem,
 } from '@/features/workspace/lib/workspaceTree'
@@ -2730,7 +2730,12 @@ export function WorkspaceScreen({
 
       if (draggedNode) {
         workspaceTree.updateTreeMetadata((current) => (
-          moveWorkspaceTreeBranchMetadata(current, draggedNode, movedDocument.path)
+          renameWorkspaceTreeBranchMetadata(
+            current,
+            workspaceTree.flatTreeNodes,
+            draggedNode,
+            movedDocument.path,
+          )
         ))
       }
 
