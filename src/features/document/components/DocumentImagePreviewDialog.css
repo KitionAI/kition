@@ -1,0 +1,83 @@
+.document-image-preview-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 220;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 80%);
+  backdrop-filter: blur(4px);
+}
+
+.document-image-preview-dialog {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  flex-direction: column;
+  color: white;
+}
+
+.document-image-preview-dialog header {
+  position: relative;
+  display: flex;
+  height: 56px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 64px;
+}
+
+.document-image-preview-dialog header span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.document-image-preview-dialog header button {
+  position: absolute;
+  right: 16px;
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 8px;
+  color: rgb(255 255 255 / 75%);
+  transition: color 150ms ease, background-color 150ms ease;
+}
+
+.document-image-preview-dialog header button:hover {
+  background: rgb(255 255 255 / 10%);
+  color: white;
+}
+
+.document-image-preview-dialog header button:focus-visible {
+  outline: 2px solid rgb(255 255 255 / 30%);
+  outline-offset: 2px;
+}
+
+.document-image-preview-dialog header button svg {
+  width: 20px;
+  height: 20px;
+}
+
+.document-image-preview-stage {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  padding: 0 24px 24px;
+}
+
+.document-image-preview-stage img {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 8px;
+  object-fit: contain;
+  user-select: none;
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 45%);
+}

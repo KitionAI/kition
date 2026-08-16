@@ -4,6 +4,7 @@ import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import type { DocumentImagePreviewRequest } from '@/features/document/editor/editor/extensions/image-widget-actions'
+import './DocumentImagePreviewDialog.css'
 
 export function DocumentImagePreviewDialog({
   image,
