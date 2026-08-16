@@ -22,6 +22,13 @@ export type AgentMentionQuery = {
   end: number
 }
 
+export type AgentMentionSearchInput = {
+  documents: AgentMentionableDocument[]
+  query: string
+  currentDocumentPath?: string
+  contextPaths?: string[]
+}
+
 const mentionableFormats = new Set<WorkspaceDocumentFormat>([
   'markdown',
   'data',
@@ -186,14 +193,14 @@ export function findAgentMentionQuery(
 ): AgentMentionQuery | null {
   const safeCaret = Math.max(0, Math.min(content.length, caret))
   const prefix = content.slice(0, safeCaret)
-  let tokenStart = safeCaret
-  while (tokenStart > 0 && !/\s/.test(prefix[tokenStart - 1])) {
-    tokenStart -= 1
-  }
-  const candidate = prefix.slice(tokenStart)
-  if (!candidate.startsWith('@')) {
+  const tokenStart = prefix.lastIndexOf('@')
+  if (tokenStart < 0 || prefix.slice(tokenStart).includes('\n')) {
     return null
   }
+  if (tokenStart > 0 && !/[\s([{]/.test(prefix[tokenStart - 1])) {
+    return null
+  }
+  const candidate = prefix.slice(tokenStart)
   if (candidate.startsWith('@{')) {
     if (candidate.includes('}')) {
       return null
@@ -216,6 +223,68 @@ export function findAgentMentionQuery(
     start: tokenStart,
     end: safeCaret,
   }
+}
+
+function normalizeMentionSearchValue(value: string) {
+  return value.normalize('NFKC').trim().toLocaleLowerCase()
+}
+
+function withoutMentionableExtension(value: string) {
+  return value.replace(/\.(?:md|markdown|kitable|txt|html?|json|csv|tsv|pdf|pptx?|docx?|xlsx?|png|jpe?g|gif|webp|svg)$/i, '')
+}
+
+function scoreMentionDocument(document: AgentMentionableDocument, query: string) {
+  if (!query) {
+    return 100
+  }
+  const title = normalizeMentionSearchValue(document.title)
+  const name = normalizeMentionSearchValue(document.name)
+  const nameWithoutExtension = normalizeMentionSearchValue(withoutMentionableExtension(document.name))
+  const path = normalizeMentionSearchValue(document.path)
+  const pathParts = path.split('/').filter(Boolean)
+  if (title === query || nameWithoutExtension === query || name === query) return 0
+  if (title.startsWith(query)) return 10
+  if (nameWithoutExtension.startsWith(query) || name.startsWith(query)) return 20
+  if (pathParts.some((part) => part.startsWith(query))) return 30
+  if (title.includes(query)) return 40
+  if (nameWithoutExtension.includes(query) || name.includes(query)) return 50
+  if (path.includes(query)) return 60
+  const terms = query.split(/\s+/).filter(Boolean)
+  if (terms.length > 1 && terms.every((term) => `${title} ${name} ${path}`.includes(term))) {
+    return 70
+  }
+  return Number.POSITIVE_INFINITY
+}
+
+export function searchAgentMentionableDocuments({
+  documents,
+  query,
+  currentDocumentPath = '',
+  contextPaths = [],
+}: AgentMentionSearchInput) {
+  const normalizedQuery = normalizeMentionSearchValue(query)
+  const contextOrder = new Map(contextPaths.map((path, index) => [path, index]))
+  return documents
+    .map((document, index) => ({
+      document,
+      index,
+      score: scoreMentionDocument(document, normalizedQuery),
+    }))
+    .filter((candidate) => Number.isFinite(candidate.score))
+    .sort((left, right) => {
+      const leftCurrent = left.document.path === currentDocumentPath ? 0 : 1
+      const rightCurrent = right.document.path === currentDocumentPath ? 0 : 1
+      if (leftCurrent !== rightCurrent) return leftCurrent - rightCurrent
+      const leftContext = contextOrder.get(left.document.path) ?? Number.POSITIVE_INFINITY
+      const rightContext = contextOrder.get(right.document.path) ?? Number.POSITIVE_INFINITY
+      if (leftContext !== rightContext) return leftContext - rightContext
+      if (left.score !== right.score) return left.score - right.score
+      if (left.document.kind !== right.document.kind) {
+        return left.document.kind === 'file' ? -1 : 1
+      }
+      return left.index - right.index
+    })
+    .map((candidate) => candidate.document)
 }
 
 export function applyAgentMentionSelection(input: {

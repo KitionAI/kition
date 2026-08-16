@@ -1,6 +1,6 @@
-import { ArrowUp, FileText, Folder, X } from 'lucide-react'
+import { ArrowUp, Check, FileText, Folder, X } from 'lucide-react'
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Textarea } from '@/components/ui'
@@ -12,6 +12,7 @@ import type { KitionAccountStatus } from '@/features/account/hooks/useKitionAcco
 import type { AgentModelOption } from '@/features/agent/lib/agentConfig'
 import {
   findAgentMentionQuery,
+  searchAgentMentionableDocuments,
   stripAgentDocumentMentions,
   type AgentMentionableDocument,
 } from '@/features/agent/lib/documentMentions'
@@ -21,6 +22,7 @@ type AgentAiComposerProps = {
   busy: boolean
   canSend: boolean
   compact?: boolean
+  currentDocumentPath?: string
   documentContextPaths?: string[]
   draft: string
   localSources?: AgentLocalSource[]
@@ -50,6 +52,7 @@ export function AgentAiComposer({
   busy,
   canSend,
   compact = false,
+  currentDocumentPath = '',
   documentContextPaths = [],
   draft,
   localSources = [],
@@ -76,7 +79,9 @@ export function AgentAiComposer({
 }: AgentAiComposerProps) {
   const { t } = useTranslation('agent')
   const [highlightedMentionIndex, setHighlightedMentionIndex] = useState(0)
+  const [mentionMenuDismissed, setMentionMenuDismissed] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const mentionMenuRef = useRef<HTMLDivElement | null>(null)
   const visibleDraft = stripAgentDocumentMentions(draft)
   const documentsByPath = new Map(
     mentionableDocuments.map((document) => [document.path, document]),
@@ -84,7 +89,9 @@ export function AgentAiComposer({
   const contextDocuments = documentContextPaths.map((path) => ({
     path,
     kind: documentsByPath.get(path)?.kind,
+    current: path === currentDocumentPath,
   }))
+  const currentDocument = documentsByPath.get(currentDocumentPath)
   useEffect(() => {
     function handle() {
       requestAnimationFrame(() => {
@@ -105,21 +112,39 @@ export function AgentAiComposer({
     visibleDraft,
     textareaRef.current?.selectionStart ?? visibleDraft.length,
   )
-  const filteredMentions = mentionQuery
-    ? mentionableDocuments
-        .filter((document) => {
-          if (documentContextPaths.includes(document.path)) {
-            return false
-          }
-          const keyword = `${document.title} ${document.name} ${document.path}`.toLowerCase()
-          return keyword.includes(mentionQuery.query.trim().toLowerCase())
+  const matchingMentions = useMemo(
+    () => mentionQuery
+      ? searchAgentMentionableDocuments({
+          documents: mentionableDocuments,
+          query: mentionQuery.query,
+          currentDocumentPath,
+          contextPaths: documentContextPaths,
         })
-        .slice(0, 8)
-    : []
+      : [],
+    [currentDocumentPath, documentContextPaths, mentionQuery?.query, mentionableDocuments],
+  )
+  const visibleMentions = matchingMentions.slice(
+    0,
+    mentionQuery?.query.trim() ? 50 : 16,
+  )
+  const selectableMentions = visibleMentions.filter(
+    (document) => !documentContextPaths.includes(document.path),
+  )
+  const highlightedMention = selectableMentions[highlightedMentionIndex]
+  const mentionMenuOpen = Boolean(mentionQuery && !mentionMenuDismissed)
 
   useEffect(() => {
     setHighlightedMentionIndex(0)
+    setMentionMenuDismissed(false)
   }, [mentionQuery?.query])
+
+  useEffect(() => {
+    if (!highlightedMention) return
+    const highlightedElement = Array.from(
+      mentionMenuRef.current?.querySelectorAll<HTMLElement>('[data-mention-path]') || [],
+    ).find((element) => element.dataset.mentionPath === highlightedMention.path)
+    highlightedElement?.scrollIntoView?.({ block: 'nearest' })
+  }, [highlightedMention])
 
   function updateVisibleDraft(nextVisibleDraft: string) {
     onDraftChange(nextVisibleDraft)
@@ -127,6 +152,9 @@ export function AgentAiComposer({
 
   function selectMention(document: AgentMentionableDocument) {
     if (!mentionQuery) {
+      return
+    }
+    if (documentContextPaths.includes(document.path)) {
       return
     }
     const head = visibleDraft.slice(0, mentionQuery.start)
@@ -209,11 +237,11 @@ export function AgentAiComposer({
           void handleImportedFiles(files)
         } : undefined}
         onKeyDown={(event) => {
-          if (mentionQuery && filteredMentions.length) {
+          if (mentionMenuOpen) {
             if (event.key === 'ArrowDown') {
               event.preventDefault()
               setHighlightedMentionIndex((current) =>
-                Math.min(filteredMentions.length - 1, current + 1),
+                Math.min(Math.max(0, selectableMentions.length - 1), current + 1),
               )
               return
             }
@@ -223,12 +251,16 @@ export function AgentAiComposer({
               return
             }
             if (event.key === 'Enter' && !event.shiftKey) {
-              event.preventDefault()
-              const selectedMention =
-                filteredMentions[highlightedMentionIndex] || filteredMentions[0]
+              const selectedMention = highlightedMention || selectableMentions[0]
               if (selectedMention) {
+                event.preventDefault()
                 selectMention(selectedMention)
+                return
               }
+            }
+            if (event.key === 'Escape') {
+              event.preventDefault()
+              setMentionMenuDismissed(true)
               return
             }
           }
@@ -237,38 +269,79 @@ export function AgentAiComposer({
         placeholder="Plan, write, or ask anything…"
         disabled={busy}
       />
-      {mentionQuery && filteredMentions.length ? (
-        <div className="agent-mention-menu">
-          {filteredMentions.map((document, index) => (
-            <button
-              key={document.path}
-              type="button"
-              className={cn(
-                'agent-mention-menu__item',
-                index === highlightedMentionIndex && 'is-active',
-              )}
-              onMouseDown={(event) => {
-                event.preventDefault()
-                selectMention(document)
-              }}
-            >
-              {document.kind === 'folder' ? (
-                <Folder className="agent-mention-menu__icon size-4 shrink-0" />
-              ) : (
-                <FileText className="agent-mention-menu__icon size-4 shrink-0" />
-              )}
-              <span className="agent-mention-menu__text">
-                <strong>{document.title}</strong>
-                <span>{document.path}</span>
-              </span>
-            </button>
-          ))}
+      {mentionMenuOpen ? (
+        <div className="agent-mention-menu" ref={mentionMenuRef} role="listbox">
+          <div className="agent-mention-menu__header">
+            {mentionQuery?.query.trim()
+              ? t('mentions.resultCount', { count: matchingMentions.length })
+              : t('mentions.searchHint')}
+          </div>
+          {visibleMentions.length ? visibleMentions.map((document) => {
+            const attached = documentContextPaths.includes(document.path)
+            const current = document.path === currentDocumentPath
+            const active = highlightedMention?.path === document.path
+            const content = (
+              <>
+                {document.kind === 'folder' ? (
+                  <Folder className="agent-mention-menu__icon size-4 shrink-0" />
+                ) : (
+                  <FileText className="agent-mention-menu__icon size-4 shrink-0" />
+                )}
+                <span className="agent-mention-menu__text">
+                  <strong>{document.title}</strong>
+                  <span>{document.path}</span>
+                </span>
+                {current ? <small>{t('analysisWorkspace.current')}</small> : null}
+                {attached ? (
+                  <span className="agent-mention-menu__attached">
+                    <Check className="size-3" aria-hidden="true" />
+                    {t('mentions.attached')}
+                  </span>
+                ) : null}
+              </>
+            )
+            return attached ? (
+              <div
+                key={document.path}
+                className="agent-mention-menu__item is-attached"
+                data-mention-path={document.path}
+                role="option"
+                aria-disabled="true"
+              >
+                {content}
+              </div>
+            ) : (
+              <button
+                key={document.path}
+                type="button"
+                className={cn('agent-mention-menu__item', active && 'is-active')}
+                data-mention-path={document.path}
+                role="option"
+                aria-selected={active}
+                onMouseDown={(event) => {
+                  event.preventDefault()
+                  selectMention(document)
+                }}
+              >
+                {content}
+              </button>
+            )
+          }) : (
+            <div className="agent-mention-menu__empty">{t('mentions.noMatches')}</div>
+          )}
         </div>
       ) : null}
       <div className="agent-ai-footer">
         <AgentContextAddMenu
           disabled={busy}
+          currentDocumentTitle={currentDocument?.title}
+          currentDocumentAttached={Boolean(
+            currentDocumentPath && documentContextPaths.includes(currentDocumentPath),
+          )}
           localSourceCount={localSources.length}
+          onAddCurrentDocument={currentDocument && onAddDocumentContext
+            ? () => onAddDocumentContext(currentDocument.path)
+            : undefined}
           onAddLocalSource={onAddLocalSource}
           onRequestDocumentReference={requestDocumentReference}
         />

@@ -57,9 +57,16 @@
     "searchPlaceholder": "搜索模型",
     "noMatches": "没有匹配“{{query}}”的模型"
   },
+  "mentions": {
+    "searchHint": "在 @ 后输入关键词，搜索整个工作区",
+    "resultCount": "找到 {{count}} 个引用",
+    "attached": "已在上下文",
+    "noMatches": "没有匹配的工作区文档"
+  },
   "analysisWorkspace": {
     "contextTitle": "上下文",
     "addContext": "添加上下文",
+    "addCurrentDocument": "添加当前文档 · {{name}}",
     "localFolder": "本机目录",
     "workspaceDocument": "工作区文档",
     "referenceDocument": "在本轮中引用",

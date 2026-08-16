@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { AgentMentionableDocument } from './documentMentions'
 import {
   applyAgentMentionSelection,
   buildAgentDraftWithDocumentMentions,
@@ -10,6 +11,7 @@ import {
   parseAgentMentionSegments,
   removeAgentDocumentMention,
   resolveAgentDocumentMentions,
+  searchAgentMentionableDocuments,
   stripAgentDocumentMentions,
 } from './documentMentions'
 
@@ -114,6 +116,39 @@ describe('documentMentions', () => {
       content: 'Compare @{Docs/Plan.md}  now',
       caret: 24,
     })
+  })
+
+  it('keeps mention search open for document names containing spaces', () => {
+    expect(findAgentMentionQuery('Compare @project intro', 'Compare @project intro'.length)).toEqual({
+      query: 'project intro',
+      start: 8,
+      end: 22,
+    })
+  })
+
+  it('searches the full document set and ranks current and exact title matches first', () => {
+    const documents: AgentMentionableDocument[] = [
+      { kind: 'file', path: 'Archive/Project notes.md', name: 'Project notes.md', title: 'Project notes', format: 'markdown' },
+      { kind: 'file', path: 'Agent/Project intro.md', name: 'Project intro.md', title: 'Project intro', format: 'markdown' },
+      { kind: 'folder', path: 'Projects', name: 'Projects', title: 'Projects' },
+    ]
+    expect(searchAgentMentionableDocuments({
+      documents,
+      query: 'project intro',
+      currentDocumentPath: 'Agent/Project intro.md',
+    }).map((document) => document.path)).toEqual([
+      'Agent/Project intro.md',
+    ])
+    expect(searchAgentMentionableDocuments({
+      documents,
+      query: 'project',
+      currentDocumentPath: 'Agent/Project intro.md',
+      contextPaths: ['Archive/Project notes.md'],
+    }).map((document) => document.path)).toEqual([
+      'Agent/Project intro.md',
+      'Archive/Project notes.md',
+      'Projects',
+    ])
   })
 
   it('stores document mentions separately from visible composer text', () => {

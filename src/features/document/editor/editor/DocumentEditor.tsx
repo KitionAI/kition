@@ -16,6 +16,7 @@ import CodeMirror, { type ReactCodeMirrorRef } from '@uiw/react-codemirror'
 import { forwardRef, useMemo } from 'react'
 
 import { cn } from '@/lib/utils'
+import type { DocumentAgentActionRequest } from '@/features/document/lib/documentAgentActions'
 
 import { useBufferedCodeMirrorValue } from '../hooks/useBufferedCodeMirrorValue'
 import type { WikilinkParsed } from '../lib/wikilink-parser'
@@ -175,6 +176,7 @@ export type DocumentEditorProps = {
   onCreateEditor?: (view: EditorView) => void
   /** Return true to replace the native copy for the selected Markdown. */
   onCopySelection?: (markdown: string, clipboardData: DataTransfer | null) => boolean
+  onAskAgent?: (request: DocumentAgentActionRequest) => void
   /**
    * Extensions composed by the consuming pane; spread after every built-in
    * except `editorTheme`, which stays last so the base styles anchor the cascade.
@@ -209,6 +211,7 @@ export const DocumentEditor = forwardRef<ReactCodeMirrorRef, DocumentEditorProps
       onMarkdownLinkNavigate,
       onCreateEditor,
       onCopySelection,
+      onAskAgent,
       extraExtensions,
     },
     ref,
@@ -271,7 +274,7 @@ export const DocumentEditor = forwardRef<ReactCodeMirrorRef, DocumentEditorProps
         blockIdExtension(),
         footnotePreviewExtension(),
         spellcheckExtension(),
-        editorContextMenuExtension(),
+        editorContextMenuExtension({ onAskAgent }),
         headingFoldIndicatorExtension(),
         ...(loadEmbed
           ? [embedTransclusionExtension({ sourcePath, load: loadEmbed, onNavigate: onEmbedNavigate })]
@@ -299,7 +302,7 @@ export const DocumentEditor = forwardRef<ReactCodeMirrorRef, DocumentEditorProps
         ...(extraExtensions ?? []),
         editorTheme,
       ],
-      [compositionExtension, sourcePath, revealSourceOnFocus, resolveWikilink, onWikilinkNavigate, onCreateMissingNote, onTagNavigate, onCursorLineChange, onCursorChange, suggestProviders, loadEmbed, onEmbedNavigate, onMarkdownLinkNavigate, onCopySelection, extraExtensions],
+      [compositionExtension, sourcePath, revealSourceOnFocus, resolveWikilink, onWikilinkNavigate, onCreateMissingNote, onTagNavigate, onCursorLineChange, onCursorChange, suggestProviders, loadEmbed, onEmbedNavigate, onMarkdownLinkNavigate, onCopySelection, onAskAgent, extraExtensions],
     )
 
     const effectiveBasicSetup = useMemo(

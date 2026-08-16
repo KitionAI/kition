@@ -36,6 +36,7 @@ import {
   Redo2,
   Search,
   Sigma,
+  Sparkles,
   Strikethrough,
   Table as TableIcon,
   TextQuote,
@@ -84,6 +85,7 @@ export type DocumentEditorToolbarProps = {
   readingView?: boolean
                                                 
   onSetReadingView?: (next: boolean) => void
+  onAskAgent?: () => void
                                                        
   actionsSlot?: ReactNode
 }
@@ -97,6 +99,7 @@ export function DocumentEditorToolbar({
   outlineOpen,
   readingView,
   onSetReadingView,
+  onAskAgent,
   actionsSlot,
 }: DocumentEditorToolbarProps) {
   const { t } = useTranslation('document')
@@ -196,10 +199,18 @@ export function DocumentEditorToolbar({
         </>
       ) : null}
 
-      {onSetReadingView || onToggleOutline || actionsSlot ? (
+      {onSetReadingView || onToggleOutline || onAskAgent || actionsSlot ? (
         <>
           {barMode ? <div className="ml-auto" /> : null}
           <div className={cn('flex items-center gap-0.5', !barMode && 'pointer-events-auto')}>
+            {onAskAgent ? (
+              <IconBtn
+                label={t('editor.toolbar.askAi')}
+                onClick={onAskAgent}
+                icon={<Sparkles />}
+                className="text-primary hover:bg-primary/10 hover:text-primary"
+              />
+            ) : null}
             {onSetReadingView ? (
               <div className="pointer-events-auto flex items-center gap-0.5">
                 <IconBtn

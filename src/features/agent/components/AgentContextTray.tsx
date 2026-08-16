@@ -64,6 +64,7 @@ export function AgentContextTray({
               : <FileText className="size-3.5" aria-hidden="true" />}
             label={getPathBasename(document.path)}
             title={document.path}
+            badge={document.current ? t('analysisWorkspace.current') : undefined}
             onOpen={onOpenPath ? () => onOpenPath(document.path) : undefined}
             onRemove={() => onRemoveDocument(document.path)}
             removeLabel={t('analysisWorkspace.removeReference', {
@@ -97,6 +98,7 @@ function ContextChip({
   onOpen,
   onRemove,
   removeLabel,
+  badge,
 }: {
   className?: string
   icon: ReactNode
@@ -105,11 +107,13 @@ function ContextChip({
   onOpen?: () => void
   onRemove?: () => void
   removeLabel?: string
+  badge?: string
 }) {
   const content = (
     <>
       {icon}
       <span className="min-w-0 truncate font-medium">{label}</span>
+      {badge ? <span className="agent-context-chip__badge">{badge}</span> : null}
     </>
   )
   return (

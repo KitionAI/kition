@@ -85,6 +85,7 @@ type AgentChatPanelProps = {
   streamingText: string
   artifacts: AgentArtifact[]
   busy: boolean
+  currentDocumentPath?: string
   modelOptions: AgentModelOption[]
   selectedModelKey: string
   needsModelConfig: boolean
@@ -128,6 +129,7 @@ export function AgentChatPanel({
   streamingText,
   artifacts,
   busy,
+  currentDocumentPath = '',
   modelOptions,
   selectedModelKey,
   needsModelConfig,
@@ -323,6 +325,7 @@ export function AgentChatPanel({
           busy={busy}
           canSend={canSend}
           compact
+          currentDocumentPath={currentDocumentPath}
           documentContextPaths={documentContextPaths}
           draft={draft}
           localSources={localSources}

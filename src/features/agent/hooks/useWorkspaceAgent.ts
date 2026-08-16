@@ -65,6 +65,7 @@ import {
   isDesktopRuntime,
   listWorkspaceDocuments,
   type WorkspaceDocumentFormat,
+  type WorkspaceDocumentTreeItem,
 } from '@/services/desktop'
 import { saveDesktopSettings } from '@/services/desktopSettings'
 import { notifyFromAgentEvent } from '@/services/desktopNotifications'
@@ -99,6 +100,7 @@ type WorkspaceAgentTurnContext = {
 type UseWorkspaceAgentOptions = {
   settings: DesktopSettingsState
   rootPath: string
+  workspaceTreeItems?: WorkspaceDocumentTreeItem[]
   onError: (message: string) => void
   onFeedback: (message: string) => void
   ensureHostedAccountReady?: () => Promise<boolean>
@@ -125,6 +127,7 @@ const TABLE_MUTATION_TOOL_NAMES = new Set([
 export function useWorkspaceAgent({
   settings,
   rootPath,
+  workspaceTreeItems,
   onError,
   onFeedback,
   ensureHostedAccountReady,
@@ -166,7 +169,16 @@ export function useWorkspaceAgent({
   }, [])
   const [pendingFocusedSessionId, setPendingFocusedSessionId] = useState<number | null>(null)
   const [selectedAgentModelKey, setSelectedAgentModelKey] = useState('')
-  const [mentionableDocuments, setMentionableDocuments] = useState<AgentMentionableDocument[]>([])
+  const [fallbackMentionableDocuments, setFallbackMentionableDocuments] = useState<AgentMentionableDocument[]>([])
+  const liveMentionableDocuments = useMemo(
+    () => workspaceTreeItems === undefined
+      ? []
+      : flattenMentionableWorkspaceDocuments(workspaceTreeItems),
+    [workspaceTreeItems],
+  )
+  const mentionableDocuments = workspaceTreeItems === undefined
+    ? fallbackMentionableDocuments
+    : liveMentionableDocuments
   const [agentLocalSources, setAgentLocalSources] = useState<Record<number, AgentLocalSource[]>>({})
   const [agentDocumentContexts, setAgentDocumentContexts] = useState<
     Record<number, AgentDocumentContextPaths>
@@ -259,9 +271,9 @@ export function useWorkspaceAgent({
   const refreshMentionableDocuments = useCallback(async () => {
     try {
       const response = await listWorkspaceDocuments()
-      setMentionableDocuments(flattenMentionableWorkspaceDocuments(response.items || []))
+      setFallbackMentionableDocuments(flattenMentionableWorkspaceDocuments(response.items || []))
     } catch {
-      setMentionableDocuments([])
+      setFallbackMentionableDocuments([])
     }
   }, [])
 
@@ -343,7 +355,7 @@ export function useWorkspaceAgent({
     setAgentModifiedDocumentPaths(new Set())
     setAgentBusySessions(new Set())
     setPendingFocusedSessionId(null)
-    setMentionableDocuments([])
+    setFallbackMentionableDocuments([])
     setAgentLocalSources(readAgentLocalSourcesForWorkspace(nextRoot))
     const nextDocumentContexts = readAgentDocumentContextsForWorkspace(nextRoot)
     agentDocumentContextsRef.current = nextDocumentContexts
@@ -353,8 +365,10 @@ export function useWorkspaceAgent({
       return
     }
     void refreshAgentSessions(undefined, { silent: silentInitialSessionLoad })
-    void refreshMentionableDocuments()
-  }, [refreshAgentSessions, refreshMentionableDocuments, rootPath, silentInitialSessionLoad])
+    if (workspaceTreeItems === undefined) {
+      void refreshMentionableDocuments()
+    }
+  }, [refreshAgentSessions, refreshMentionableDocuments, rootPath, silentInitialSessionLoad, workspaceTreeItems])
 
   const openAgentSession = useCallback(async (session: AgentSession) => {
     if (!agentMessages[session.id]) {
@@ -616,7 +630,7 @@ export function useWorkspaceAgent({
         try {
           const response = await listWorkspaceDocuments()
           availableMentionableDocuments = flattenMentionableWorkspaceDocuments(response.items || [])
-          setMentionableDocuments(availableMentionableDocuments)
+          setFallbackMentionableDocuments(availableMentionableDocuments)
         } catch {
           availableMentionableDocuments = []
         }

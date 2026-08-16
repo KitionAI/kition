@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next'
 
 import { useConfirm } from '@/components/confirm'
 import { useDesktopSettings } from '@/features/settings/hooks/useDesktopSettings'
+import { DocumentAgentSelectionToolbar } from '@/features/document/components/DocumentAgentSelectionToolbar'
 import { DocumentBacklinksPanel } from '@/features/document/editor/components/DocumentBacklinksPanel'
 import { DocumentBookmarksPanel } from '@/features/document/editor/components/DocumentBookmarksPanel'
 import { DocumentExplorerPanel } from '@/features/document/editor/components/DocumentExplorerPanel'
@@ -55,6 +56,7 @@ import { useBookmarksActions, useIsBookmarked } from '@/features/document/editor
 import { togglePinTab, isTabPinned } from '@/features/document/editor/hooks/usePinnedTabs'
 import { clearRecentFiles, pushRecentFile } from '@/features/document/editor/hooks/useRecentFiles'
 import { useWordGoal } from '@/features/document/editor/hooks/useWordGoal'
+import { useDocumentAgentActions } from '@/features/document/hooks/useDocumentAgentActions'
 import { pickRandomMarkdownFile } from '@/features/document/editor/vault/vault-files'
 import { clearVaultFileCache } from '@/features/document/editor/vault/vault-files'
 import { writeWorkspaceDocument } from '@/services/desktop'
@@ -65,6 +67,7 @@ import {
   copyDocumentMarkdownForPublishing,
 } from '@/features/document/lib/documentPublishingClipboard'
 import { resolveMarkdownLinkTarget } from '@/features/document/lib/markdownLinkNavigation'
+import type { DocumentAskAgentRequest } from '@/features/document/lib/documentAgentActions'
 import { notify } from '@/lib/notify'
 import { cn } from '@/lib/utils'
 
@@ -86,6 +89,7 @@ export type DocumentMarkdownEditorPaneProps = {
   readingView?: boolean
                                                
   onSetReadingView?: (next: boolean) => void
+  onAskAgent?: (request: DocumentAskAgentRequest) => void
 }
 
 type SideTab = 'outline' | 'backlinks' | 'outgoing' | 'tags' | 'recents' | 'bookmarks' | 'explorer'
@@ -137,6 +141,7 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
   focusRequest = 0,
   readingView = false,
   onSetReadingView,
+  onAskAgent,
 }: DocumentMarkdownEditorPaneProps) {
   const { t } = useTranslation('errors')
   const { t: td } = useTranslation('document')
@@ -344,6 +349,8 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
     }
   }, [cursorInfo])
 
+  const requestAgentAction = useDocumentAgentActions({ documentPath, getView, onAskAgent })
+
   const headings = useMemo(() => parseOutlineHeadings(value), [value])
 
   const handleCreateEditor = useCallback((view: EditorView) => {
@@ -544,6 +551,38 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
 
   const paletteExtras = useMemo<PaletteExtra[]>(() => {
     const list: PaletteExtra[] = []
+    if (onAskAgent) {
+      list.push({
+        id: 'ask-ai',
+        group: td('pane.palette.groupAi'),
+        label: cursorInfo?.selectionLength
+          ? td('pane.palette.askAiSelection')
+          : td('pane.palette.askAiDocument'),
+        run: () => requestAgentAction({ action: 'custom', selection: null }),
+      })
+      if (cursorInfo?.selectionLength) {
+        list.push(
+          {
+            id: 'ask-ai-improve',
+            group: td('pane.palette.groupAi'),
+            label: td('pane.palette.askAiImprove'),
+            run: () => requestAgentAction({ action: 'improve', selection: null }),
+          },
+          {
+            id: 'ask-ai-shorten',
+            group: td('pane.palette.groupAi'),
+            label: td('pane.palette.askAiShorten'),
+            run: () => requestAgentAction({ action: 'shorten', selection: null }),
+          },
+          {
+            id: 'ask-ai-expand',
+            group: td('pane.palette.groupAi'),
+            label: td('pane.palette.askAiExpand'),
+            run: () => requestAgentAction({ action: 'expand', selection: null }),
+          },
+        )
+      }
+    }
     list.push({
       id: 'toggle-reading-view',
       group: td('pane.palette.groupView'),
@@ -839,8 +878,11 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
     handleOpenDailyNoteOffset,
     handleToggleBookmark,
     onNavigate,
+    onAskAgent,
     onSetReadingView,
+    cursorInfo,
     readingView,
+    requestAgentAction,
     sideOpen,
     t,
     wordGoal,
@@ -856,6 +898,7 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
         outlineOpen={sideOpen && sideTab === 'outline'}
         readingView={readingView}
         onSetReadingView={onSetReadingView}
+        onAskAgent={onAskAgent ? () => requestAgentAction({ action: 'custom', selection: null }) : undefined}
         actionsSlot={
           onToolbarMount ? (
             <span
@@ -875,7 +918,7 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
           {inlineTitleSlot ? (
             <DocumentTitleHostPortal host={titleHost}>{inlineTitleSlot}</DocumentTitleHostPortal>
           ) : null}
-          <div className="min-h-0 min-w-0 flex-1">
+          <div className="relative min-h-0 min-w-0 flex-1">
             <DocumentEditor
               ref={editorRef}
               value={value}
@@ -889,6 +932,7 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
               onCursorLineChange={setCursorLine}
               onCursorChange={setCursorInfo}
               onCopySelection={handleCopySelection}
+              onAskAgent={onAskAgent ? requestAgentAction : undefined}
               suggestProviders={effectiveProviders}
               resolveWikilink={wikilinkResolver.resolve}
               onWikilinkNavigate={handleWikilinkNavigate}
@@ -898,6 +942,11 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
               onMarkdownLinkNavigate={handleMarkdownLinkNavigate}
               extraExtensions={extraExtensions}
             />
+            {onAskAgent && selectionStats && !readOnly && !readingView ? (
+              <DocumentAgentSelectionToolbar
+                onAction={(action) => requestAgentAction({ action, selection: null })}
+              />
+            ) : null}
           </div>
         </div>
         {sideOpen ? (
@@ -1099,6 +1148,7 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
   && prev.onToolbarMount === next.onToolbarMount
   && prev.readingView === next.readingView
   && prev.onSetReadingView === next.onSetReadingView
+  && prev.onAskAgent === next.onAskAgent
   && prev.onNavigate === next.onNavigate
   && prev.onChange === next.onChange
   && prev.suggestProviders === next.suggestProviders)

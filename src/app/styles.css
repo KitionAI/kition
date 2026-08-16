@@ -2556,6 +2556,11 @@
     color: inherit;
   }
 
+  .document-ai-selection-toolbar {
+    @apply absolute bottom-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-0.5 rounded-xl border bg-card/95 p-1 shadow-[var(--shadow-toolbar)] backdrop-blur;
+    border-color: var(--document-border, hsl(var(--border)));
+  }
+
                                                                           
                                                     
                            
@@ -4000,16 +4005,28 @@
   }
 
   .agent-mention-menu {
-    @apply mt-2 overflow-hidden rounded-xl border bg-card;
+    @apply mt-2 max-h-[22rem] overflow-y-auto rounded-xl border bg-card;
     border-color: var(--document-border, hsl(var(--border)));
+    overscroll-behavior: contain;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.28) transparent;
+    scrollbar-width: thin;
+  }
+
+  .agent-mention-menu__header {
+    @apply sticky top-0 z-[1] border-b bg-card/95 px-4 py-2 text-[11px] text-muted-foreground backdrop-blur;
+    border-bottom-color: var(--document-border, hsl(var(--border)));
   }
 
   .agent-mention-menu__item {
-    @apply flex w-full flex-row items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-soft;
+    @apply flex w-full flex-row items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-surface-soft;
   }
 
   .agent-mention-menu__item.is-active {
     @apply bg-surface-soft;
+  }
+
+  .agent-mention-menu__item.is-attached {
+    @apply cursor-default bg-muted/25;
   }
 
   .agent-mention-menu__icon {
@@ -4017,15 +4034,31 @@
   }
 
   .agent-mention-menu__text {
-    @apply flex min-w-0 flex-1 flex-col items-start gap-0.5;
+    @apply flex min-w-0 flex-1 flex-col items-start;
   }
 
-  .agent-mention-menu__item strong {
-    @apply max-w-full truncate text-sm font-semibold text-foreground;
+  .agent-mention-menu__text > strong {
+    @apply max-w-full truncate text-[13px] font-medium leading-4 text-foreground;
   }
 
-  .agent-mention-menu__item span {
-    @apply max-w-full truncate text-xs text-muted-foreground;
+  .agent-mention-menu__text > span {
+    @apply max-w-full truncate text-[11px] leading-4 text-muted-foreground;
+  }
+
+  .agent-mention-menu__item > small {
+    @apply shrink-0 rounded-md bg-accent px-1.5 py-0.5 text-[10px] font-medium text-accent-foreground;
+  }
+
+  .agent-mention-menu__attached {
+    @apply inline-flex shrink-0 items-center gap-1 text-[10px] font-medium text-muted-foreground;
+  }
+
+  .agent-mention-menu__empty {
+    @apply px-4 py-6 text-center text-xs text-muted-foreground;
+  }
+
+  .agent-context-chip__badge {
+    @apply shrink-0 rounded bg-accent px-1 py-0.5 text-[9px] font-semibold text-accent-foreground;
   }
 
   .agent-document-references {

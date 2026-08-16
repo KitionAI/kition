@@ -57,6 +57,48 @@ describe('buildEditorContextMenu', () => {
       'Code block', 'Math block', 'Table', 'Footnote', 'Divider',
     ])
   })
+
+  it('adds Ask AI actions only when an Agent handler is available', () => {
+    const view = new EditorView({ state: EditorState.create({ doc: 'hello' }) })
+    const onAskAgent = vi.fn()
+    const menu = buildEditorContextMenu(view, { onAskAgent })
+    const askAi = menu.items.find((entry) => entry.kind === 'item' && entry.title === 'Ask AI')
+    if (!askAi || askAi.kind !== 'item' || !askAi.submenu) throw new Error('Ask AI missing')
+
+    expect(askAi.submenu.items.map((entry) => entry.kind === 'item'
+      ? { title: entry.title, disabled: Boolean(entry.disabled) }
+      : { title: '---', disabled: false })).toEqual([
+      { title: 'Ask about current document…', disabled: false },
+      { title: 'Improve selection', disabled: true },
+      { title: 'Shorten selection', disabled: true },
+      { title: 'Expand selection', disabled: true },
+    ])
+
+    const currentDocument = askAi.submenu.items[0]
+    if (currentDocument.kind !== 'item' || !currentDocument.onSelect) throw new Error('Current document action missing')
+    currentDocument.onSelect()
+    expect(onAskAgent).toHaveBeenCalledWith({ action: 'custom', selection: null })
+  })
+
+  it('forwards the selected passage to Ask AI editing actions', () => {
+    const view = new EditorView({
+      state: EditorState.create({ doc: 'hello world', selection: { anchor: 0, head: 5 } }),
+    })
+    const onAskAgent = vi.fn()
+    const menu = buildEditorContextMenu(view, { onAskAgent })
+    const askAi = menu.items.find((entry) => entry.kind === 'item' && entry.title === 'Ask AI')
+    if (!askAi || askAi.kind !== 'item' || !askAi.submenu) throw new Error('Ask AI missing')
+
+    const actions = askAi.submenu.items.filter((entry) => entry.kind === 'item')
+    expect(actions.map((entry) => entry.disabled)).toEqual([undefined, false, false, false])
+    const improve = actions[1]
+    if (improve.kind !== 'item' || !improve.onSelect) throw new Error('Improve action missing')
+    improve.onSelect()
+    expect(onAskAgent).toHaveBeenCalledWith({
+      action: 'improve',
+      selection: { text: 'hello', from: 0, to: 5, line: 1 },
+    })
+  })
 })
 
 describe('buildEditorContextMenu clipboard wiring', () => {

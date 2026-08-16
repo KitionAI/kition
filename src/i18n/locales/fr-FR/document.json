@@ -40,6 +40,7 @@
     "palette": {
       "groupView": "Affichage",
       "groupTools": "Outils",
+      "groupAi": "IA",
       "groupNav": "Naviguer",
       "groupFile": "Fichier",
       "groupMaint": "Maintenance",
@@ -57,6 +58,11 @@
       "jumpToHeading": "Aller à un titre dans ce document…",
       "jumpToBlock": "Aller à un ID de bloc dans ce document…",
       "openRandomNote": "Ouvrir une note aléatoire",
+      "askAiSelection": "Interroger l’IA sur la sélection…",
+      "askAiDocument": "Interroger l’IA sur le document actuel…",
+      "askAiImprove": "Améliorer la sélection avec l’IA",
+      "askAiShorten": "Raccourcir la sélection avec l’IA",
+      "askAiExpand": "Développer la sélection avec l’IA",
       "insertTemplate": "Insérer un modèle…",
       "extractSelection": "Extraire la sélection vers une nouvelle note…",
       "manageSnippets": "Gérer les extraits…",
@@ -239,6 +245,12 @@
       "table": "Tableau",
       "footnote": "Note de bas de page",
       "divider": "Séparateur",
+      "askAi": "Interroger l’IA",
+      "askAiCustomSelection": "Interroger sur la sélection…",
+      "askAiCurrentDocument": "Interroger sur le document actuel…",
+      "askAiImprove": "Améliorer la sélection",
+      "askAiShorten": "Raccourcir la sélection",
+      "askAiExpand": "Développer la sélection",
       "cut": "Couper",
       "copy": "Copier",
       "paste": "Coller",
@@ -273,10 +285,25 @@
       "tag": "Étiquette #tag",
       "highlight": "Surligner ==…==",
       "inlineMath": "Formule en ligne $…$",
+      "askAi": "Interroger l’IA",
       "openOutline": "Afficher le plan",
       "closeOutline": "Masquer le plan",
       "editMode": "Éditer",
       "previewMode": "Vue lecture"
+    },
+    "askAi": {
+      "selectionToolbar": "Interroger l’IA sur la sélection",
+      "custom": "Interroger l’IA…",
+      "improve": "Améliorer",
+      "shorten": "Raccourcir",
+      "expand": "Développer",
+      "prompts": {
+        "document": "Modifiez le document actuel.\n\nInstructions : ",
+        "custom": "Modifiez le passage sélectionné dans le document actuel.\n\nPassage sélectionné :\n{{selection}}\n\nInstructions : ",
+        "improve": "Améliorez la clarté et la formulation de ce passage sélectionné tout en conservant son sens. Appliquez directement la modification au document actuel.\n\nPassage sélectionné :\n{{selection}}",
+        "shorten": "Rendez ce passage sélectionné plus concis tout en conservant les informations essentielles. Appliquez directement la modification au document actuel.\n\nPassage sélectionné :\n{{selection}}",
+        "expand": "Développez ce passage sélectionné avec des détails utiles tout en conservant son ton et son intention. Appliquez directement la modification au document actuel.\n\nPassage sélectionné :\n{{selection}}"
+      }
     },
     "prompts": {
       "linkUrl": "URL du lien",

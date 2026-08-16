@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 export type AgentDocumentReference = {
   path: string
   kind?: 'file' | 'folder'
+  current?: boolean
 }
 
 type AgentDocumentReferencesProps = {

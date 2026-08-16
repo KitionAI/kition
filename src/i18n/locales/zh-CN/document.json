@@ -40,6 +40,7 @@
     "palette": {
       "groupView": "视图",
       "groupTools": "工具",
+      "groupAi": "AI",
       "groupNav": "导航",
       "groupFile": "文件",
       "groupMaint": "维护",
@@ -57,6 +58,11 @@
       "jumpToHeading": "跳转到本文档标题…",
       "jumpToBlock": "跳转到本文档块 ID…",
       "openRandomNote": "随机打开一篇笔记",
+      "askAiSelection": "向 AI 询问选中内容…",
+      "askAiDocument": "向 AI 询问当前文档…",
+      "askAiImprove": "用 AI 优化选中内容",
+      "askAiShorten": "用 AI 精简选中内容",
+      "askAiExpand": "用 AI 扩写选中内容",
       "insertTemplate": "插入模板…",
       "extractSelection": "把选区抽取为新笔记…",
       "manageSnippets": "管理 Snippets…",
@@ -239,6 +245,12 @@
       "table": "表格",
       "footnote": "脚注",
       "divider": "分隔线",
+      "askAi": "询问 AI",
+      "askAiCustomSelection": "询问选中内容…",
+      "askAiCurrentDocument": "询问当前文档…",
+      "askAiImprove": "优化选中内容",
+      "askAiShorten": "精简选中内容",
+      "askAiExpand": "扩写选中内容",
       "cut": "剪切",
       "copy": "复制",
       "paste": "粘贴",
@@ -273,10 +285,25 @@
       "tag": "标签 #tag",
       "highlight": "高亮 ==…==",
       "inlineMath": "行内数学 $…$",
+      "askAi": "询问 AI",
       "openOutline": "打开大纲",
       "closeOutline": "关闭大纲",
       "editMode": "编辑",
       "previewMode": "阅读视图"
+    },
+    "askAi": {
+      "selectionToolbar": "向 AI 询问选中内容",
+      "custom": "询问 AI…",
+      "improve": "优化",
+      "shorten": "精简",
+      "expand": "扩写",
+      "prompts": {
+        "document": "修改当前文档。\n\n要求：",
+        "custom": "修改当前文档中选中的段落。\n\n选中内容：\n{{selection}}\n\n要求：",
+        "improve": "在保留原意的前提下，优化以下选中段落的表达和清晰度，并将修改直接应用到当前文档。\n\n选中内容：\n{{selection}}",
+        "shorten": "在保留关键信息的前提下，精简以下选中段落，并将修改直接应用到当前文档。\n\n选中内容：\n{{selection}}",
+        "expand": "在保留语气和意图的前提下，为以下选中段落补充有用细节，并将修改直接应用到当前文档。\n\n选中内容：\n{{selection}}"
+      }
     },
     "prompts": {
       "linkUrl": "链接 URL",

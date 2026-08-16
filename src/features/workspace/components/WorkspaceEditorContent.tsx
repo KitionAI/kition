@@ -8,6 +8,7 @@ import type {
   DocumentRevisionDecision,
   PendingDocumentRevision,
 } from '@/features/document/lib/documentRevision'
+import type { DocumentAskAgentRequest } from '@/features/document/lib/documentAgentActions'
 import { WorkspaceDocumentInlineTitle } from '@/features/workspace/components/WorkspaceDocumentInlineTitle'
 import { WorkspaceEmptyState } from '@/features/workspace/components/WorkspaceEmptyState'
 import { openWorkflowDetail } from '@/features/workflow/lib/openWorkflowRoute'
@@ -112,6 +113,7 @@ type WorkspaceEditorContentProps = {
   onCreateDocument: () => void
   onCreateTable: () => void
   onOpenAgent: () => void
+  onAskDocumentAgent?: (request: DocumentAskAgentRequest) => void
   onSaveDocumentTitle: (nextTitle: string) => void
   onDecideDocumentRevisionChange: (changeId: string, decision: DocumentRevisionDecision) => void
   onResolveAllDocumentRevisionChanges: (decision: DocumentRevisionDecision) => void
@@ -169,6 +171,7 @@ export function WorkspaceEditorContent({
   onCreateDocument,
   onCreateTable,
   onOpenAgent,
+  onAskDocumentAgent,
   onSaveDocumentTitle,
   onDecideDocumentRevisionChange,
   onResolveAllDocumentRevisionChanges,
@@ -575,6 +578,7 @@ export function WorkspaceEditorContent({
                           focusRequest={documentEditorFocusRequest}
                           readingView={editorMode === 'preview'}
                           onSetReadingView={(next) => onSetEditorMode(next ? 'preview' : 'rich')}
+                          onAskAgent={onAskDocumentAgent}
                         />
                       </Suspense>
                     </div>

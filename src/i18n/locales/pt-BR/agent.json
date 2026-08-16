@@ -57,9 +57,16 @@
     "searchPlaceholder": "Pesquisar modelos",
     "noMatches": "Nenhum modelo corresponde a \"{{query}}\""
   },
+  "mentions": {
+    "searchHint": "Digite após @ para pesquisar em todo o espaço de trabalho",
+    "resultCount": "{{count}} referências correspondentes",
+    "attached": "Anexado",
+    "noMatches": "Nenhum documento correspondente"
+  },
   "analysisWorkspace": {
     "contextTitle": "Context",
     "addContext": "Add context",
+    "addCurrentDocument": "Adicionar documento atual · {{name}}",
     "localFolder": "Local folder",
     "workspaceDocument": "Workspace document",
     "referenceDocument": "Reference in this turn",

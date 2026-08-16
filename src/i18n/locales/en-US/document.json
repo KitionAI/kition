@@ -40,6 +40,7 @@
     "palette": {
       "groupView": "View",
       "groupTools": "Tools",
+      "groupAi": "AI",
       "groupNav": "Navigate",
       "groupFile": "File",
       "groupMaint": "Maintenance",
@@ -57,6 +58,11 @@
       "jumpToHeading": "Jump to heading in this document…",
       "jumpToBlock": "Jump to reference ID in this document…",
       "openRandomNote": "Open a random note",
+      "askAiSelection": "Ask AI about the selection…",
+      "askAiDocument": "Ask AI about the current document…",
+      "askAiImprove": "Improve selection with AI",
+      "askAiShorten": "Shorten selection with AI",
+      "askAiExpand": "Expand selection with AI",
       "insertTemplate": "Insert template…",
       "extractSelection": "Extract selection to new note…",
       "manageSnippets": "Manage snippets…",
@@ -239,6 +245,12 @@
       "table": "Table",
       "footnote": "Footnote",
       "divider": "Divider",
+      "askAi": "Ask AI",
+      "askAiCustomSelection": "Ask about selection…",
+      "askAiCurrentDocument": "Ask about current document…",
+      "askAiImprove": "Improve selection",
+      "askAiShorten": "Shorten selection",
+      "askAiExpand": "Expand selection",
       "cut": "Cut",
       "copy": "Copy",
       "paste": "Paste",
@@ -273,10 +285,25 @@
       "tag": "Tag #tag",
       "highlight": "Highlight ==…==",
       "inlineMath": "Inline math $…$",
+      "askAi": "Ask AI",
       "openOutline": "Show outline",
       "closeOutline": "Hide outline",
       "editMode": "Edit",
       "previewMode": "Reading view"
+    },
+    "askAi": {
+      "selectionToolbar": "Ask AI about selection",
+      "custom": "Ask AI…",
+      "improve": "Improve",
+      "shorten": "Shorten",
+      "expand": "Expand",
+      "prompts": {
+        "document": "Modify the current document.\n\nInstructions: ",
+        "custom": "Modify the selected passage in the current document.\n\nSelected passage:\n{{selection}}\n\nInstructions: ",
+        "improve": "Improve the clarity and wording of this selected passage while preserving its meaning. Apply the change directly to the current document.\n\nSelected passage:\n{{selection}}",
+        "shorten": "Make this selected passage more concise while preserving the key information. Apply the change directly to the current document.\n\nSelected passage:\n{{selection}}",
+        "expand": "Expand this selected passage with useful detail while preserving its tone and intent. Apply the change directly to the current document.\n\nSelected passage:\n{{selection}}"
+      }
     },
     "prompts": {
       "linkUrl": "Link URL",

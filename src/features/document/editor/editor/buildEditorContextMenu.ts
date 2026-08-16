@@ -1,6 +1,7 @@
 import { selectAll } from '@codemirror/commands'
 import type { EditorView } from '@codemirror/view'
 import i18next from 'i18next'
+import type { DocumentAgentActionRequest } from '@/features/document/lib/documentAgentActions'
 import { Menu } from '../menu'
 import {
   toggleBold,
@@ -24,7 +25,10 @@ import {
   insertWikilink,
 } from './commands'
 
-export function buildEditorContextMenu(view: EditorView): Menu {
+export function buildEditorContextMenu(
+  view: EditorView,
+  options: { onAskAgent?: (request: DocumentAgentActionRequest) => void } = {},
+): Menu {
   const menu = new Menu()
   const t = i18next.getFixedT(null, 'document')
 
@@ -83,6 +87,33 @@ export function buildEditorContextMenu(view: EditorView): Menu {
     sub.addItem((s) => s.setTitle(t('editor.contextMenu.divider')).setIcon('minus').onSelect(() => insertHorizontalRule()(view)))
   })
 
+  if (options.onAskAgent) {
+    const selection = readAgentSelection(view)
+    menu.addItem((i) => {
+      i.setTitle(t('editor.contextMenu.askAi')).setIcon('sparkles')
+      const sub = i.setSubmenu()
+      sub.addItem((s) => s
+        .setTitle(selection ? t('editor.contextMenu.askAiCustomSelection') : t('editor.contextMenu.askAiCurrentDocument'))
+        .setIcon('sparkles')
+        .onSelect(() => options.onAskAgent?.({ action: 'custom', selection })))
+      sub.addItem((s) => s
+        .setTitle(t('editor.contextMenu.askAiImprove'))
+        .setIcon('wand')
+        .setDisabled(!selection)
+        .onSelect(() => options.onAskAgent?.({ action: 'improve', selection })))
+      sub.addItem((s) => s
+        .setTitle(t('editor.contextMenu.askAiShorten'))
+        .setIcon('minimize')
+        .setDisabled(!selection)
+        .onSelect(() => options.onAskAgent?.({ action: 'shorten', selection })))
+      sub.addItem((s) => s
+        .setTitle(t('editor.contextMenu.askAiExpand'))
+        .setIcon('maximize')
+        .setDisabled(!selection)
+        .onSelect(() => options.onAskAgent?.({ action: 'expand', selection })))
+    })
+  }
+
   menu.addSeparator()
 
   const sel = view.state.selection.main
@@ -128,4 +159,17 @@ export function buildEditorContextMenu(view: EditorView): Menu {
   )
 
   return menu
+}
+
+function readAgentSelection(view: EditorView) {
+  const selection = view.state.selection.main
+  if (selection.empty) return null
+  const text = view.state.doc.sliceString(selection.from, selection.to).trim()
+  if (!text) return null
+  return {
+    text,
+    from: selection.from,
+    to: selection.to,
+    line: view.state.doc.lineAt(selection.from).number,
+  }
 }

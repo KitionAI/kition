@@ -34,7 +34,7 @@ describe('AgentContextTray', () => {
 
     await act(async () => root.render(createElement(AgentContextTray, {
       documents: [
-        { path: 'Campaigns/Current.md', kind: 'file' },
+        { path: 'Campaigns/Current.md', kind: 'file', current: true },
         { path: 'Notes/Brief.md', kind: 'file' },
       ],
       sources: [{
@@ -48,7 +48,7 @@ describe('AgentContextTray', () => {
     })))
 
     expect(container.textContent).toContain('Current.md')
-    expect(container.textContent).not.toContain('Current ·')
+    expect(container.querySelector('.agent-context-chip__badge')?.textContent).toBe('Current')
     expect(container.textContent).toContain('Brief.md')
     expect(container.textContent).toContain('project')
     expect(container.textContent).not.toContain('Analysis folder · 1')

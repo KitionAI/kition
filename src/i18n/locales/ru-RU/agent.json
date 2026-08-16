@@ -57,9 +57,16 @@
     "searchPlaceholder": "Поиск моделей",
     "noMatches": "Нет моделей, соответствующих «{{query}}»"
   },
+  "mentions": {
+    "searchHint": "Введите текст после @ для поиска по рабочей области",
+    "resultCount": "Совпадений: {{count}}",
+    "attached": "Прикреплено",
+    "noMatches": "Подходящие документы не найдены"
+  },
   "analysisWorkspace": {
     "contextTitle": "Context",
     "addContext": "Add context",
+    "addCurrentDocument": "Добавить текущий документ · {{name}}",
     "localFolder": "Local folder",
     "workspaceDocument": "Workspace document",
     "referenceDocument": "Reference in this turn",

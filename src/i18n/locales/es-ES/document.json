@@ -40,6 +40,7 @@
     "palette": {
       "groupView": "Ver",
       "groupTools": "Herramientas",
+      "groupAi": "IA",
       "groupNav": "Navegar",
       "groupFile": "Archivo",
       "groupMaint": "Mantenimiento",
@@ -57,6 +58,11 @@
       "jumpToHeading": "Ir a un encabezado de este documento…",
       "jumpToBlock": "Ir a un ID de bloque de este documento…",
       "openRandomNote": "Abrir una nota aleatoria",
+      "askAiSelection": "Preguntar a la IA sobre la selección…",
+      "askAiDocument": "Preguntar a la IA sobre el documento actual…",
+      "askAiImprove": "Mejorar la selección con IA",
+      "askAiShorten": "Acortar la selección con IA",
+      "askAiExpand": "Ampliar la selección con IA",
       "insertTemplate": "Insertar plantilla…",
       "extractSelection": "Extraer selección a una nota nueva…",
       "manageSnippets": "Gestionar fragmentos…",
@@ -239,6 +245,12 @@
       "table": "Tabla",
       "footnote": "Nota al pie",
       "divider": "Separador",
+      "askAi": "Preguntar a la IA",
+      "askAiCustomSelection": "Preguntar sobre la selección…",
+      "askAiCurrentDocument": "Preguntar sobre el documento actual…",
+      "askAiImprove": "Mejorar la selección",
+      "askAiShorten": "Acortar la selección",
+      "askAiExpand": "Ampliar la selección",
       "cut": "Cortar",
       "copy": "Copiar",
       "paste": "Pegar",
@@ -273,10 +285,25 @@
       "tag": "Etiqueta #tag",
       "highlight": "Resaltado ==…==",
       "inlineMath": "Fórmula en línea $…$",
+      "askAi": "Preguntar a la IA",
       "openOutline": "Mostrar esquema",
       "closeOutline": "Ocultar esquema",
       "editMode": "Editar",
       "previewMode": "Vista de lectura"
+    },
+    "askAi": {
+      "selectionToolbar": "Preguntar a la IA sobre la selección",
+      "custom": "Preguntar a la IA…",
+      "improve": "Mejorar",
+      "shorten": "Acortar",
+      "expand": "Ampliar",
+      "prompts": {
+        "document": "Modifica el documento actual.\n\nInstrucciones: ",
+        "custom": "Modifica el fragmento seleccionado del documento actual.\n\nFragmento seleccionado:\n{{selection}}\n\nInstrucciones: ",
+        "improve": "Mejora la claridad y la redacción de este fragmento seleccionado sin cambiar su significado. Aplica el cambio directamente al documento actual.\n\nFragmento seleccionado:\n{{selection}}",
+        "shorten": "Haz que este fragmento seleccionado sea más conciso sin perder la información clave. Aplica el cambio directamente al documento actual.\n\nFragmento seleccionado:\n{{selection}}",
+        "expand": "Amplía este fragmento seleccionado con detalles útiles, conservando su tono e intención. Aplica el cambio directamente al documento actual.\n\nFragmento seleccionado:\n{{selection}}"
+      }
     },
     "prompts": {
       "linkUrl": "URL del enlace",

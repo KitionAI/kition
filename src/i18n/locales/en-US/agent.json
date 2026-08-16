@@ -57,9 +57,16 @@
     "searchPlaceholder": "Search models",
     "noMatches": "No models match \"{{query}}\""
   },
+  "mentions": {
+    "searchHint": "Type after @ to search every workspace document",
+    "resultCount": "{{count}} matching references",
+    "attached": "Attached",
+    "noMatches": "No matching workspace documents"
+  },
   "analysisWorkspace": {
     "contextTitle": "Context",
     "addContext": "Add context",
+    "addCurrentDocument": "Add current document · {{name}}",
     "localFolder": "Local folder",
     "workspaceDocument": "Workspace document",
     "referenceDocument": "Reference in this turn",

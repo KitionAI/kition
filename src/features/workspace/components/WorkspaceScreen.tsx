@@ -54,6 +54,7 @@ import {
 import { useDocumentExport } from '@/features/document/hooks/useDocumentExport'
 import { useWorkspaceDocumentSession } from '@/features/document/hooks/useWorkspaceDocumentSession'
 import type { DocumentCreationPreset } from '@/features/document/lib/documentCreation'
+import type { DocumentAskAgentRequest } from '@/features/document/lib/documentAgentActions'
 import { AgentFloatingLauncher } from '@/features/agent/components/AgentFloatingLauncher'
 import type { SettingsSectionKey } from '@/features/settings/DesktopSettingsPage'
 import { useDesktopSettings } from '@/features/settings/hooks/useDesktopSettings'
@@ -617,6 +618,7 @@ export function WorkspaceScreen({
   } = useWorkspaceAgent({
     settings,
     rootPath,
+    workspaceTreeItems: treeItems,
     onError: setError,
     onFeedback: setFeedback,
     ensureHostedAccountReady,
@@ -2438,6 +2440,34 @@ export function WorkspaceScreen({
     })
   }
 
+  async function handleDocumentAskAgent(request: DocumentAskAgentRequest) {
+    setWorkspaceAgentOpen(true)
+    setWorkspaceAgentHistoryOpen(false)
+
+    let sessionId = activeWorkspaceAgentSession?.id ?? null
+    const shouldCreateSession = !sessionId
+      || agentBusySessions.has(sessionId)
+      || Boolean(agentDrafts[sessionId]?.trim())
+    if (shouldCreateSession) {
+      const session = await createNewAgentChat({
+        focusTab: true,
+        documentPaths: request.documentPath ? [request.documentPath] : [],
+      })
+      sessionId = session?.id ?? null
+      if (sessionId) {
+        setActiveWorkspaceAgentSessionId(sessionId)
+      }
+    } else if (sessionId && request.documentPath) {
+      addAgentDocumentContext(sessionId, request.documentPath, activeWorkspaceDocumentPath)
+    }
+    if (!sessionId) return
+
+    setAgentDraft(sessionId, request.prompt)
+    window.requestAnimationFrame(() => {
+      window.dispatchEvent(new CustomEvent('kition:agent:focus-composer'))
+    })
+  }
+
   useEffect(() => {
     function startOnboardingAgent(event: Event) {
       const detail = (event as CustomEvent<{ documentPath?: string; prompt?: string }>).detail
@@ -2885,6 +2915,7 @@ export function WorkspaceScreen({
               artifacts:
                 agentArtifacts[activeWorkspaceAgentSession.id] || [],
               busy: agentBusySessions.has(activeWorkspaceAgentSession.id),
+              currentDocumentPath: activeWorkspaceDocumentPath,
               modelOptions: agentModelOptions,
               selectedModelKey: resolvedAgentModelKey,
               needsModelConfig: !selectedAgentModel?.runtimeModel,
@@ -3545,6 +3576,7 @@ export function WorkspaceScreen({
                       setWorkspaceAgentHistoryOpen(false)
                       window.dispatchEvent(new CustomEvent('kition:agent:focus-composer'))
                     },
+                    onAskDocumentAgent: (request) => void handleDocumentAskAgent(request),
                     onSaveDocumentTitle: (nextTitle: string) => void saveDocumentTitle(nextTitle),
                     onDecideDocumentRevisionChange: (changeId, decision) => {
                       if (activeDocumentRevision) {

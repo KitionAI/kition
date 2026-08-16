@@ -40,6 +40,7 @@
     "palette": {
       "groupView": "Exibir",
       "groupTools": "Ferramentas",
+      "groupAi": "IA",
       "groupNav": "Navegar",
       "groupFile": "Arquivo",
       "groupMaint": "Manutenção",
@@ -57,6 +58,11 @@
       "jumpToHeading": "Ir para um título neste documento…",
       "jumpToBlock": "Ir para um ID de bloco neste documento…",
       "openRandomNote": "Abrir uma nota aleatória",
+      "askAiSelection": "Perguntar à IA sobre a seleção…",
+      "askAiDocument": "Perguntar à IA sobre o documento atual…",
+      "askAiImprove": "Melhorar a seleção com IA",
+      "askAiShorten": "Encurtar a seleção com IA",
+      "askAiExpand": "Expandir a seleção com IA",
       "insertTemplate": "Inserir modelo…",
       "extractSelection": "Extrair seleção para nova nota…",
       "manageSnippets": "Gerenciar snippets…",
@@ -239,6 +245,12 @@
       "table": "Tabela",
       "footnote": "Nota de rodapé",
       "divider": "Divisor",
+      "askAi": "Perguntar à IA",
+      "askAiCustomSelection": "Perguntar sobre a seleção…",
+      "askAiCurrentDocument": "Perguntar sobre o documento atual…",
+      "askAiImprove": "Melhorar a seleção",
+      "askAiShorten": "Encurtar a seleção",
+      "askAiExpand": "Expandir a seleção",
       "cut": "Recortar",
       "copy": "Copiar",
       "paste": "Colar",
@@ -273,10 +285,25 @@
       "tag": "Tag #tag",
       "highlight": "Destacar ==…==",
       "inlineMath": "Fórmula em linha $…$",
+      "askAi": "Perguntar à IA",
       "openOutline": "Mostrar sumário",
       "closeOutline": "Ocultar sumário",
       "editMode": "Editar",
       "previewMode": "Modo de leitura"
+    },
+    "askAi": {
+      "selectionToolbar": "Perguntar à IA sobre a seleção",
+      "custom": "Perguntar à IA…",
+      "improve": "Melhorar",
+      "shorten": "Encurtar",
+      "expand": "Expandir",
+      "prompts": {
+        "document": "Modifique o documento atual.\n\nInstruções: ",
+        "custom": "Modifique o trecho selecionado no documento atual.\n\nTrecho selecionado:\n{{selection}}\n\nInstruções: ",
+        "improve": "Melhore a clareza e a redação deste trecho selecionado sem alterar seu significado. Aplique a alteração diretamente ao documento atual.\n\nTrecho selecionado:\n{{selection}}",
+        "shorten": "Deixe este trecho selecionado mais conciso sem perder as informações principais. Aplique a alteração diretamente ao documento atual.\n\nTrecho selecionado:\n{{selection}}",
+        "expand": "Expanda este trecho selecionado com detalhes úteis, preservando seu tom e intenção. Aplique a alteração diretamente ao documento atual.\n\nTrecho selecionado:\n{{selection}}"
+      }
     },
     "prompts": {
       "linkUrl": "URL do link",
