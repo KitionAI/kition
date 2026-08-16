@@ -1013,7 +1013,7 @@ async function resolveSafeWorkspacePath(rawPath, pathOptions, safetyOptions) {
 }
 
 function sanitizeWorkspaceFilename(title) {
-  const fallback = 'Untitled document'
+  const fallback = 'Untitled note'
   const baseName = String(title || fallback)
     .trim()
     .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '-')
@@ -1089,7 +1089,7 @@ function isSupportedWorkspaceDocument(relativePath) {
 
 function sanitizeWorkspaceDocumentFilename(title, format = 'markdown') {
   const extension = format === 'plate' ? '.kinote' : format === 'data' ? '.kitable' : '.md'
-  const fallback = 'Untitled document'
+  const fallback = format === 'data' ? 'Untitled table' : 'Untitled note'
   const baseName = String(title || fallback)
     .trim()
     .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '-')

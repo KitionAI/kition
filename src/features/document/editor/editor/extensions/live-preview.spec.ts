@@ -31,6 +31,7 @@ const mountEditor = (
   sourcePath = '',
   revealSourceOnFocus = true,
   onMarkdownLinkNavigate?: (href: string) => boolean,
+  onImagePreview?: (request: { src: string; alt: string }) => void,
 ) => {
   const host = document.createElement('div')
   document.body.appendChild(host)
@@ -41,7 +42,12 @@ const mountEditor = (
       selection: cursorPos != null ? EditorSelection.cursor(cursorPos) : undefined,
       extensions: [
         markdown({ base: markdownLanguage }),
-        livePreviewExtension({ sourcePath, revealSourceOnFocus, onMarkdownLinkNavigate }),
+        livePreviewExtension({
+          sourcePath,
+          revealSourceOnFocus,
+          onMarkdownLinkNavigate,
+          onImagePreview,
+        }),
       ],
     }),
   })
@@ -58,6 +64,9 @@ const codeBlockActions = (view: EditorView): Element | null =>
 
 describe('livePreviewExtension — images', () => {
   const image = (view: EditorView) => view.dom.querySelector('.cm-md-image img')
+  const zoomButton = (view: EditorView) => (
+    view.dom.querySelector('.cm-md-image-zoom') as HTMLButtonElement | null
+  )
   const sourceToggle = (view: EditorView) => (
     view.dom.querySelector('.cm-md-image-source-toggle') as HTMLButtonElement | null
   )
@@ -153,6 +162,55 @@ describe('livePreviewExtension — images', () => {
 
     expect(view.dom.querySelector('.cm-md-image-src')?.textContent).toContain('![diagram]')
     expect(image(view)).not.toBeNull()
+  })
+
+  it('opens the image preview from the hover action button', () => {
+    const onImagePreview = vi.fn()
+    const view = mountEditor(
+      '![Diagram](https://example.com/diagram.png)',
+      0,
+      '',
+      true,
+      undefined,
+      onImagePreview,
+    )
+
+    zoomButton(view)?.click()
+
+    expect(onImagePreview).toHaveBeenCalledWith({
+      src: 'https://example.com/diagram.png',
+      alt: 'Diagram',
+    })
+  })
+
+  it('shows the image-specific context menu and removes the image source', () => {
+    const source = '![Diagram](https://example.com/diagram.png)\nafter'
+    const imageSource = source.slice(0, source.indexOf('\n'))
+    const view = mountEditor(source, 0)
+    const contextEvent = new MouseEvent('contextmenu', {
+      clientX: 120,
+      clientY: 160,
+      bubbles: true,
+      cancelable: true,
+    })
+
+    image(view)?.dispatchEvent(contextEvent)
+
+    expect(contextEvent.defaultPrevented).toBe(true)
+    const items = Array.from(document.querySelectorAll<HTMLElement>('.document-menu-item'))
+    expect(items.map((item) => item.textContent)).toEqual([
+      'Copy image',
+      'Remove image',
+      'Reset size',
+    ])
+    items.find((item) => item.textContent === 'Remove image')?.click()
+    expect(view.state.doc.toString()).toBe(source.slice(imageSource.length + 1))
+  })
+
+  it('applies an Obsidian-style custom image width', () => {
+    const view = mountEditor('![[Attachments/diagram.png|320]]', 0, 'Notes/demo.md')
+
+    expect((image(view) as HTMLImageElement | null)?.style.width).toBe('320px')
   })
 })
 

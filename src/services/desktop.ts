@@ -1486,7 +1486,8 @@ export async function createWorkspaceDocument(request: WorkspaceDocumentCreateRe
   const records = loadBrowserWorkspaceDocuments()
   const folder = normalizeWorkspaceDocumentPath(request.folder || '')
   const format = request.format === 'data' ? 'data' : 'markdown'
-  const title = String(request.title || 'Untitled document').trim() || 'Untitled document'
+  const fallbackTitle = format === 'data' ? 'Untitled table' : 'Untitled note'
+  const title = String(request.title || fallbackTitle).trim() || fallbackTitle
   const extension = format === 'data' ? '.kitable' : '.md'
   const filename = /\.(md|kitable)$/i.test(title) ? title.replace(/\.(md|kitable)$/i, extension) : `${title}${extension}`
   let documentPath = folder ? `${folder}/${filename}` : filename

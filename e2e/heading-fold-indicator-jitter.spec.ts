@@ -25,7 +25,7 @@ const DOC_PATH = 'jitter.md'
                                                          
                                            
 const DOC_CONTENT = [
-  '# Untitled knowledge page 2',
+  '# Untitled note 2',
   '',
   'Platform: Knowledge page',
   'Status: draft',

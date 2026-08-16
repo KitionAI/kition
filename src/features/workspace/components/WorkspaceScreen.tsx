@@ -329,6 +329,8 @@ export function WorkspaceScreen({
   const [workspaceAgentHistoryOpen, setWorkspaceAgentHistoryOpen] = useState(false)
   const [activeWorkspaceAgentSessionId, setActiveWorkspaceAgentSessionId] =
     useState<number | null>(null)
+  const [closedWorkspaceAgentSessionIds, setClosedWorkspaceAgentSessionIds] =
+    useState<Set<number>>(() => new Set())
   const [tableAgentContextByPath, setTableAgentContextByPath] = useState<
     Record<string, WorkspaceTableAgentContext>
   >({})
@@ -599,7 +601,6 @@ export function WorkspaceScreen({
     createNewAgentChat,
     addAgentDocumentContext,
     addAgentLocalSource,
-    deleteAgentChat,
     handleAgentModelChange,
     mentionableDocuments,
     openAgentSession,
@@ -643,6 +644,10 @@ export function WorkspaceScreen({
     clearModifiedPath: clearModifiedDocumentPath,
     modifiedPaths: agentModifiedDocumentPaths,
   }
+  const openWorkspaceAgentSessions = useMemo(
+    () => agentSessions.filter((session) => !closedWorkspaceAgentSessionIds.has(session.id)),
+    [agentSessions, closedWorkspaceAgentSessionIds],
+  )
 
   const {
     activeWorkspaceTab,
@@ -2213,6 +2218,12 @@ export function WorkspaceScreen({
     }
     setWorkspaceAgentOpen(true)
     setWorkspaceAgentHistoryOpen(false)
+    setClosedWorkspaceAgentSessionIds((current) => {
+      if (!current.has(pendingFocusedSessionId)) return current
+      const next = new Set(current)
+      next.delete(pendingFocusedSessionId)
+      return next
+    })
     setActiveWorkspaceAgentSessionId(pendingFocusedSessionId)
     clearPendingFocusedSessionId()
   }, [clearPendingFocusedSessionId, pendingFocusedSessionId])
@@ -2221,6 +2232,7 @@ export function WorkspaceScreen({
     if (typeof window === 'undefined') {
       return
     }
+    setClosedWorkspaceAgentSessionIds(new Set())
     const stored = readWorkspaceAgentActiveSessionId(rootPath)
     setActiveWorkspaceAgentSessionId(stored && stored > 0 ? stored : null)
     // Switch the active chat focus when the workspace root changes so the
@@ -2231,15 +2243,15 @@ export function WorkspaceScreen({
 
   useEffect(() => {
     if (activeWorkspaceAgentSessionId) {
-      const exists = agentSessions.some(
+      const exists = openWorkspaceAgentSessions.some(
         (session) => session.id === activeWorkspaceAgentSessionId,
       )
       if (exists) {
         return
       }
     }
-    setActiveWorkspaceAgentSessionId(agentSessions[0]?.id || null)
-  }, [activeWorkspaceAgentSessionId, agentSessions])
+    setActiveWorkspaceAgentSessionId(openWorkspaceAgentSessions[0]?.id || null)
+  }, [activeWorkspaceAgentSessionId, openWorkspaceAgentSessions])
 
   useEffect(() => {
     writeWorkspaceAgentActiveSessionId(rootPath, activeWorkspaceAgentSessionId)
@@ -2422,13 +2434,26 @@ export function WorkspaceScreen({
   ])
 
   function toggleActiveAgentPanel() {
-    setWorkspaceAgentOpen((current) => {
-      const next = !current
-      if (!next) {
-        setWorkspaceAgentHistoryOpen(false)
-      }
-      return next
-    })
+    if (workspaceAgentOpen) {
+      setWorkspaceAgentOpen(false)
+      setWorkspaceAgentHistoryOpen(false)
+      return
+    }
+
+    const sessionToRestore = activeWorkspaceAgentSession
+      || openWorkspaceAgentSessions[0]
+      || agentSessions[0]
+      || null
+    if (sessionToRestore) {
+      setClosedWorkspaceAgentSessionIds((current) => {
+        if (!current.has(sessionToRestore.id)) return current
+        const next = new Set(current)
+        next.delete(sessionToRestore.id)
+        return next
+      })
+      setActiveWorkspaceAgentSessionId(sessionToRestore.id)
+    }
+    setWorkspaceAgentOpen(true)
   }
 
   async function handleCreateWorkspaceAgentChat() {
@@ -2622,11 +2647,39 @@ export function WorkspaceScreen({
   function handleWorkspaceAgentSessionSelect(sessionId: number) {
     setWorkspaceAgentOpen(true)
     setWorkspaceAgentHistoryOpen(false)
+    setClosedWorkspaceAgentSessionIds((current) => {
+      if (!current.has(sessionId)) return current
+      const next = new Set(current)
+      next.delete(sessionId)
+      return next
+    })
     setActiveWorkspaceAgentSessionId(sessionId)
   }
 
-  async function handleDeleteWorkspaceAgentChat(sessionId: number) {
-    await deleteAgentChat(sessionId)
+  function handleCloseWorkspaceAgentChats(sessionIds: number[]) {
+    const closingIds = new Set(sessionIds)
+    if (!closingIds.size) return
+    const activeIndex = openWorkspaceAgentSessions.findIndex(
+      (session) => session.id === activeWorkspaceAgentSessionId,
+    )
+    const remainingSessions = openWorkspaceAgentSessions.filter(
+      (session) => !closingIds.has(session.id),
+    )
+
+    setClosedWorkspaceAgentSessionIds((current) => {
+      const next = new Set(current)
+      closingIds.forEach((sessionId) => next.add(sessionId))
+      return next
+    })
+
+    if (activeWorkspaceAgentSessionId && closingIds.has(activeWorkspaceAgentSessionId)) {
+      const nextIndex = Math.min(Math.max(activeIndex, 0), remainingSessions.length - 1)
+      setActiveWorkspaceAgentSessionId(remainingSessions[nextIndex]?.id || null)
+    }
+    if (!remainingSessions.length) {
+      setWorkspaceAgentOpen(false)
+      setWorkspaceAgentHistoryOpen(false)
+    }
   }
 
   async function handleSubmitWorkspaceFolder() {
@@ -3112,39 +3165,40 @@ export function WorkspaceScreen({
         open={workspaceAgentOpen}
         activeSessionId={activeWorkspaceAgentSession?.id || null}
         sessions={agentSessions}
+        openSessions={openWorkspaceAgentSessions}
         historyOpen={workspaceAgentHistoryOpen}
         onToggleOpen={toggleActiveAgentPanel}
         onCreateSession={() => void handleCreateWorkspaceAgentChat()}
-        onDeleteSession={(session) =>
-          void handleDeleteWorkspaceAgentChat(session.id)
+        onCloseSession={(session) =>
+          handleCloseWorkspaceAgentChats([session.id])
         }
-        onDeleteOtherSessions={(session) => {
-          agentSessions
-            .filter((other) => other.id !== session.id)
-            .forEach((other) => void handleDeleteWorkspaceAgentChat(other.id))
-        }}
-        onDeleteAllSessions={() => {
-          agentSessions.forEach((session) =>
-            void handleDeleteWorkspaceAgentChat(session.id),
+        onCloseOtherSessions={(session) =>
+          handleCloseWorkspaceAgentChats(
+            openWorkspaceAgentSessions
+              .filter((other) => other.id !== session.id)
+              .map((other) => other.id),
           )
-        }}
-        onDeleteLeftSessions={(session) => {
-          const index = agentSessions.findIndex((item) => item.id === session.id)
+        }
+        onCloseAllSessions={() =>
+          handleCloseWorkspaceAgentChats(openWorkspaceAgentSessions.map((session) => session.id))
+        }
+        onCloseLeftSessions={(session) => {
+          const index = openWorkspaceAgentSessions.findIndex((item) => item.id === session.id)
           if (index <= 0) {
             return
           }
-          agentSessions
-            .slice(0, index)
-            .forEach((other) => void handleDeleteWorkspaceAgentChat(other.id))
+          handleCloseWorkspaceAgentChats(
+            openWorkspaceAgentSessions.slice(0, index).map((other) => other.id),
+          )
         }}
-        onDeleteRightSessions={(session) => {
-          const index = agentSessions.findIndex((item) => item.id === session.id)
+        onCloseRightSessions={(session) => {
+          const index = openWorkspaceAgentSessions.findIndex((item) => item.id === session.id)
           if (index < 0) {
             return
           }
-          agentSessions
-            .slice(index + 1)
-            .forEach((other) => void handleDeleteWorkspaceAgentChat(other.id))
+          handleCloseWorkspaceAgentChats(
+            openWorkspaceAgentSessions.slice(index + 1).map((other) => other.id),
+          )
         }}
         onCopySessionRef={(session) => {
           const text = session.title || `Chat #${session.id}`

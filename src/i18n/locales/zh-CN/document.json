@@ -257,6 +257,19 @@
       "pastePlain": "以纯文本形式粘贴",
       "selectAll": "全选"
     },
+    "image": {
+      "copy": "复制图片",
+      "copied": "图片已复制",
+      "copyFailed": "无法复制图片",
+      "remove": "移除图片",
+      "resetSize": "重置大小",
+      "zoom": "放大查看图片",
+      "showSource": "显示图片源码",
+      "hideSource": "隐藏图片源码",
+      "previewLabel": "图片预览：{{name}}",
+      "closePreview": "关闭图片预览",
+      "fallbackName": "图片"
+    },
     "toolbar": {
       "ariaLabel": "Markdown 编辑工具栏",
       "undo": "撤销",

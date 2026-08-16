@@ -791,6 +791,9 @@ describe('desktop service helpers', () => {
       'index.md',
     ]))
 
+    const untitled = await desktopModule.createWorkspaceDocument()
+    expect(untitled.path).toBe('Untitled note.md')
+
     const created = await desktopModule.createWorkspaceDocument({
       title: 'test-knowledge-page',
       folder: 'knowledge-base',

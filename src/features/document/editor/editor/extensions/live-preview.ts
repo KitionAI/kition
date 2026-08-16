@@ -42,6 +42,11 @@ import { renderMermaid } from '@/services/mermaid'
 import { renderMath } from '@/services/math'
 import { isWorkspaceImagePath, resolveWorkspaceImageURL } from '@/services/workspaceFiles'
 import { parseWikilinks } from '../../lib/wikilink-parser'
+import {
+  buildImageContextMenu,
+  readImageEmbedWidth,
+  type DocumentImagePreviewRequest,
+} from './image-widget-actions'
 
 const livePreviewSourcePathFacet = Facet.define<string, string>({
   combine: (values) => values[0] ?? '',
@@ -49,6 +54,12 @@ const livePreviewSourcePathFacet = Facet.define<string, string>({
 
 const livePreviewRevealSourceFacet = Facet.define<boolean, boolean>({
   combine: (values) => values[0] ?? true,
+})
+
+type ImagePreviewHandler = (request: DocumentImagePreviewRequest) => void
+
+const livePreviewImagePreviewFacet = Facet.define<ImagePreviewHandler | null, ImagePreviewHandler | null>({
+  combine: (values) => values.find((value) => value !== null) ?? null,
 })
 
 import {
@@ -261,6 +272,8 @@ const revealedImageSourceField = StateField.define<RevealedImageSource>({
 
 const IMAGE_SOURCE_ICON_SVG =
   '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>'
+const IMAGE_ZOOM_ICON_SVG =
+  '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><path d="M11 8v6"/><path d="M8 11h6"/></svg>'
 
 // CM6 uses this height while standalone image widgets are outside the rendered
 // viewport. Keep the loading placeholder in sync so rapid scrolling does not
@@ -276,10 +289,13 @@ class ImageWidget extends WidgetType {
     readonly sourceTo: number,
     readonly block: boolean,
     readonly sourceVisible: boolean,
+    readonly displayWidth: number | null,
+    readonly onPreview: ImagePreviewHandler | null,
   ) {
     super()
   }
   toDOM(view: EditorView) {
+    const t = i18next.getFixedT(null, 'document')
     const wrap = document.createElement(this.block ? 'div' : 'span')
     wrap.className = 'cm-md-image'
     if (this.block) wrap.classList.add('cm-md-image-block', 'is-loading')
@@ -291,6 +307,7 @@ class ImageWidget extends WidgetType {
     img.loading = 'eager'
     img.decoding = 'async'
     img.draggable = false
+    if (this.displayWidth) img.style.width = `${this.displayWidth}px`
     img.addEventListener('mousedown', (e) => e.preventDefault())
     const finishLoading = () => {
       wrap.classList.remove('is-loading')
@@ -301,11 +318,47 @@ class ImageWidget extends WidgetType {
     img.src = resolveWorkspaceImageURL(this.url, this.sourcePath) || this.url
     wrap.appendChild(img)
 
+    wrap.addEventListener('contextmenu', (event) => {
+      event.preventDefault()
+      event.stopPropagation()
+      buildImageContextMenu({
+        view,
+        imageSrc: img.currentSrc || img.src,
+        sourceFrom: this.sourceFrom,
+        sourceTo: this.sourceTo,
+        block: this.block,
+      }).showAtMouseEvent(event)
+    })
+
+    const actions = document.createElement('span')
+    actions.className = 'cm-md-image-actions'
+
+    if (this.onPreview) {
+      const zoomButton = document.createElement('button')
+      zoomButton.type = 'button'
+      zoomButton.className = 'cm-md-image-action cm-md-image-zoom'
+      zoomButton.innerHTML = IMAGE_ZOOM_ICON_SVG
+      zoomButton.title = t('editor.image.zoom')
+      zoomButton.setAttribute('aria-label', zoomButton.title)
+      zoomButton.addEventListener('mousedown', (event) => {
+        event.preventDefault()
+        event.stopPropagation()
+      })
+      zoomButton.addEventListener('click', (event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        this.onPreview?.({ src: img.currentSrc || img.src, alt: this.alt })
+      })
+      actions.appendChild(zoomButton)
+    }
+
     const sourceToggle = document.createElement('button')
     sourceToggle.type = 'button'
-    sourceToggle.className = 'cm-md-image-source-toggle'
+    sourceToggle.className = 'cm-md-image-action cm-md-image-source-toggle'
     sourceToggle.innerHTML = IMAGE_SOURCE_ICON_SVG
-    sourceToggle.title = this.sourceVisible ? 'Hide image source' : 'Show image source'
+    sourceToggle.title = this.sourceVisible
+      ? t('editor.image.hideSource')
+      : t('editor.image.showSource')
     sourceToggle.setAttribute('aria-label', sourceToggle.title)
     sourceToggle.setAttribute('aria-pressed', String(this.sourceVisible))
     sourceToggle.addEventListener('mousedown', (event) => {
@@ -328,7 +381,8 @@ class ImageWidget extends WidgetType {
       })
       view.focus()
     })
-    wrap.appendChild(sourceToggle)
+    actions.appendChild(sourceToggle)
+    wrap.appendChild(actions)
                                                     
                                                                
                                           
@@ -343,6 +397,8 @@ class ImageWidget extends WidgetType {
       && other.sourceTo === this.sourceTo
       && other.block === this.block
       && other.sourceVisible === this.sourceVisible
+      && other.displayWidth === this.displayWidth
+      && other.onPreview === this.onPreview
   }
   get estimatedHeight(): number {
     return this.block ? BLOCK_IMAGE_ESTIMATED_HEIGHT : -1
@@ -1372,6 +1428,7 @@ function buildLivePreviewDecorations(state: EditorState): DecorationSet {
           const before = line.text.slice(0, node.from - line.from)
           const after = line.text.slice(node.to - line.from)
           const standalone = !before.trim() && !after.trim()
+          const rawSource = state.doc.sliceString(node.from, node.to)
           const sourceVisible = revealedImageSource?.from === node.from
             && revealedImageSource.to === node.to
           const widget = new ImageWidget(
@@ -1382,6 +1439,8 @@ function buildLivePreviewDecorations(state: EditorState): DecorationSet {
             node.to,
             standalone,
             sourceVisible,
+            readImageEmbedWidth(rawSource),
+            state.facet(livePreviewImagePreviewFacet),
           )
           if (sourceVisible) {
             decos.push(Decoration.mark({ class: 'cm-md-image-src' }).range(node.from, node.to))
@@ -1842,30 +1901,42 @@ const livePreviewTheme = EditorView.baseTheme({
     borderRadius: '0.375rem',
     boxShadow: '0 1px 2px hsl(var(--border, 215 15% 80%) / 0.5)',
   },
-  '.cm-md-image-source-toggle': {
+  '.cm-md-image-actions': {
     appearance: 'none',
     position: 'absolute',
     top: '8px',
     right: '8px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '2px',
+    padding: '3px',
+    border: '1px solid hsl(var(--border, 215 15% 85%))',
+    background: 'hsl(var(--background, 0 0% 100%) / 0.88)',
+    color: 'hsl(var(--muted-foreground, 215 15% 45%))',
+    borderRadius: '8px',
+    boxShadow: '0 1px 3px hsl(var(--foreground, 215 15% 10%) / 0.12)',
+    opacity: '0',
+    transition: 'opacity 120ms ease, background 120ms ease',
+  },
+  '.cm-md-image-action': {
+    appearance: 'none',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
     width: '28px',
     height: '28px',
     padding: '0',
-    border: '1px solid hsl(var(--border, 215 15% 85%))',
-    background: 'hsl(var(--background, 0 0% 100%) / 0.88)',
-    color: 'hsl(var(--muted-foreground, 215 15% 45%))',
+    border: 'none',
+    background: 'transparent',
+    color: 'inherit',
     borderRadius: '6px',
-    boxShadow: '0 1px 3px hsl(var(--foreground, 215 15% 10%) / 0.12)',
     cursor: 'pointer',
-    opacity: '0',
-    transition: 'opacity 120ms ease, color 120ms ease, background 120ms ease',
   },
-  '.cm-md-image:hover .cm-md-image-source-toggle, .cm-md-image.is-source-visible .cm-md-image-source-toggle, .cm-md-image-source-toggle:focus-visible': {
+  '.cm-md-image:hover .cm-md-image-actions, .cm-md-image.is-source-visible .cm-md-image-actions, .cm-md-image-actions:focus-within': {
     opacity: '1',
   },
-  '.cm-md-image-source-toggle:hover': {
+  '.cm-md-image-action:hover': {
     color: 'hsl(var(--foreground, 215 15% 15%))',
     background: 'hsl(var(--muted, 215 15% 90%) / 0.94)',
   },
@@ -2303,11 +2374,13 @@ export function livePreviewExtension(options: {
   sourcePath?: string
   revealSourceOnFocus?: boolean
   onMarkdownLinkNavigate?: (href: string) => boolean
+  onImagePreview?: ImagePreviewHandler
 } = {}) {
   return [
     editorFocusField,
     revealedImageSourceField,
     livePreviewRevealSourceFacet.of(options.revealSourceOnFocus !== false),
+    livePreviewImagePreviewFacet.of(options.onImagePreview ?? null),
                                                            
                                                                     
                                                                 

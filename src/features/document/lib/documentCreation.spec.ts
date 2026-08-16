@@ -51,6 +51,17 @@ describe('createDocumentWorkspaceEntry', () => {
     )
   })
 
+  it.each(['page', 'note'] as const)('uses the shared untitled note name for %s documents', async (platform) => {
+    await createDocumentWorkspaceEntry({
+      folderOverride: '',
+      platform,
+    })
+
+    expect(createWorkspaceDocument).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Untitled note' }),
+    )
+  })
+
   it('creates a named document and writes template content', async () => {
     const result = await createDocumentWorkspaceEntry({
       folderOverride: '',

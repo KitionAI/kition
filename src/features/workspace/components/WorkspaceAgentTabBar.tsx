@@ -38,14 +38,15 @@ export function WorkspaceAgentTabBar({
   open,
   activeSessionId,
   sessions,
+  openSessions,
   historyOpen,
   onToggleOpen,
   onCreateSession,
-  onDeleteSession,
-  onDeleteOtherSessions,
-  onDeleteAllSessions,
-  onDeleteLeftSessions,
-  onDeleteRightSessions,
+  onCloseSession,
+  onCloseOtherSessions,
+  onCloseAllSessions,
+  onCloseLeftSessions,
+  onCloseRightSessions,
   onCopySessionRef,
   onSelectSession,
   onToggleHistory,
@@ -54,14 +55,15 @@ export function WorkspaceAgentTabBar({
   open: boolean
   activeSessionId: number | null
   sessions: AgentSession[]
+  openSessions: AgentSession[]
   historyOpen: boolean
   onToggleOpen: () => void
   onCreateSession: () => void
-  onDeleteSession: (session: AgentSession) => void
-  onDeleteOtherSessions?: (session: AgentSession) => void
-  onDeleteAllSessions?: () => void
-  onDeleteLeftSessions?: (session: AgentSession) => void
-  onDeleteRightSessions?: (session: AgentSession) => void
+  onCloseSession: (session: AgentSession) => void
+  onCloseOtherSessions?: (session: AgentSession) => void
+  onCloseAllSessions?: () => void
+  onCloseLeftSessions?: (session: AgentSession) => void
+  onCloseRightSessions?: (session: AgentSession) => void
   onCopySessionRef?: (session: AgentSession) => void
   onSelectSession: (session: AgentSession) => void
   onToggleHistory: () => void
@@ -167,32 +169,32 @@ export function WorkspaceAgentTabBar({
   }
 
   function buildContextMenuItems(sessionId: number): WorkspaceTabContextMenuItem[] {
-    const session = sessions.find((item) => item.id === sessionId)
+    const session = openSessions.find((item) => item.id === sessionId)
     if (!session) {
       return []
     }
-    const index = sessions.findIndex((item) => item.id === sessionId)
+    const index = openSessions.findIndex((item) => item.id === sessionId)
     const hasLeft = index > 0
-    const hasRight = index >= 0 && index < sessions.length - 1
-    const hasOthers = sessions.length > 1
+    const hasRight = index >= 0 && index < openSessions.length - 1
+    const hasOthers = openSessions.length > 1
     return [
       {
         key: 'close',
         label: t('tabs.close'),
         shortcut: '⌘W',
-        onSelect: () => onDeleteSession(session),
+        onSelect: () => onCloseSession(session),
       },
       {
         key: 'close-others',
         label: t('tabs.closeOthers'),
-        disabled: !hasOthers || !onDeleteOtherSessions,
-        onSelect: () => onDeleteOtherSessions?.(session),
+        disabled: !hasOthers || !onCloseOtherSessions,
+        onSelect: () => onCloseOtherSessions?.(session),
       },
       {
         key: 'close-all',
         label: t('tabs.closeAll'),
-        disabled: !sessions.length || !onDeleteAllSessions,
-        onSelect: () => onDeleteAllSessions?.(),
+        disabled: !openSessions.length || !onCloseAllSessions,
+        onSelect: () => onCloseAllSessions?.(),
       },
       {
         key: 'close-unmodified',
@@ -202,14 +204,14 @@ export function WorkspaceAgentTabBar({
       {
         key: 'close-left',
         label: t('tabs.closeLeft'),
-        disabled: !hasLeft || !onDeleteLeftSessions,
-        onSelect: () => onDeleteLeftSessions?.(session),
+        disabled: !hasLeft || !onCloseLeftSessions,
+        onSelect: () => onCloseLeftSessions?.(session),
       },
       {
         key: 'close-right',
         label: t('tabs.closeRight'),
-        disabled: !hasRight || !onDeleteRightSessions,
-        onSelect: () => onDeleteRightSessions?.(session),
+        disabled: !hasRight || !onCloseRightSessions,
+        onSelect: () => onCloseRightSessions?.(session),
       },
       {
         key: 'close-readonly',
@@ -233,8 +235,8 @@ export function WorkspaceAgentTabBar({
   return createPortal(
     <div className="workspace-agent-topbar">
       <div className="workspace-agent-tabs" role="tablist" ref={tabsRef}>
-        {sessions.length ? (
-          sessions.map((session) => (
+        {openSessions.length ? (
+          openSessions.map((session) => (
             <div
               key={session.id}
               className={cn(
@@ -260,7 +262,7 @@ export function WorkspaceAgentTabBar({
                 aria-label={t('agentTabs.closeChat')}
                 onClick={(event) => {
                   event.stopPropagation()
-                  onDeleteSession(session)
+                  onCloseSession(session)
                 }}
               >
                 <X className="size-3" />

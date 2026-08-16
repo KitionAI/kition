@@ -2,6 +2,7 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import type { AgentSession } from '@/api/agent'
 import { WorkspaceAgentTabBar } from './WorkspaceAgentTabBar'
 
 let container: HTMLDivElement
@@ -29,10 +30,11 @@ function renderTabBar(open: boolean, onToggleOpen = vi.fn()) {
       open,
       activeSessionId: null,
       sessions: [],
+      openSessions: [],
       historyOpen: false,
       onToggleOpen,
       onCreateSession: vi.fn(),
-      onDeleteSession: vi.fn(),
+      onCloseSession: vi.fn(),
       onSelectSession: vi.fn(),
       onToggleHistory: vi.fn(),
     }))
@@ -55,5 +57,71 @@ describe('WorkspaceAgentTabBar', () => {
 
     act(() => collapse?.click())
     expect(onToggleOpen).toHaveBeenCalledTimes(1)
+  })
+
+  it('closes a chat tab without requesting session deletion', () => {
+    const onCloseSession = vi.fn()
+    const session: AgentSession = {
+      id: 7,
+      user_id: 1,
+      title: 'Saved chat',
+      status: 'idle',
+      created_at: '2026-08-16T10:00:00.000Z',
+      updated_at: '2026-08-16T10:00:00.000Z',
+    }
+
+    act(() => {
+      root = createRoot(container)
+      root.render(createElement(WorkspaceAgentTabBar, {
+        portal,
+        open: true,
+        activeSessionId: session.id,
+        sessions: [session],
+        openSessions: [session],
+        historyOpen: false,
+        onToggleOpen: vi.fn(),
+        onCreateSession: vi.fn(),
+        onCloseSession,
+        onSelectSession: vi.fn(),
+        onToggleHistory: vi.fn(),
+      }))
+    })
+
+    const close = portal.querySelector<HTMLButtonElement>('.workspace-agent-tab-close')
+    act(() => close?.click())
+
+    expect(onCloseSession).toHaveBeenCalledWith(session)
+  })
+
+  it('keeps a closed tab available in chat history', () => {
+    const session: AgentSession = {
+      id: 8,
+      user_id: 1,
+      title: 'Retained chat',
+      status: 'idle',
+      created_at: '2026-08-16T10:00:00.000Z',
+      updated_at: new Date().toISOString(),
+    }
+
+    act(() => {
+      root = createRoot(container)
+      root.render(createElement(WorkspaceAgentTabBar, {
+        portal,
+        open: true,
+        activeSessionId: null,
+        sessions: [session],
+        openSessions: [],
+        historyOpen: true,
+        onToggleOpen: vi.fn(),
+        onCreateSession: vi.fn(),
+        onCloseSession: vi.fn(),
+        onSelectSession: vi.fn(),
+        onToggleHistory: vi.fn(),
+      }))
+    })
+
+    expect(portal.querySelector('[role="tab"]')).toBeNull()
+    expect(portal.querySelector('.workspace-agent-sidebar-history-item')?.textContent)
+      .toContain('Retained chat')
   })
 })

@@ -45,7 +45,7 @@ export async function createDocumentWorkspaceEntry({
   const option = documentPlatformOptions.find((item) => item.value === platform) || documentPlatformOptions[0]
   const folder = folderOverride ?? (getDocumentParentPath(activeDocumentPath) || option.folder)
   const createdDocument = await createWorkspaceDocument({
-    title: preset?.title || (platform === 'note' ? 'Untitled note' : 'Untitled knowledge page'),
+    title: preset?.title || 'Untitled note',
     folder,
     platform: option.label,
     format: 'markdown',

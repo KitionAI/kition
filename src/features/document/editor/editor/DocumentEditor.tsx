@@ -51,6 +51,7 @@ import {
   wikilinkHoverPreviewExtension,
   wikilinkResolverFacet,
   type EmbedLoader,
+  type DocumentImagePreviewRequest,
   type SuggestProviders,
   type WikilinkCreate,
   type WikilinkExtensionOptions,
@@ -173,6 +174,7 @@ export type DocumentEditorProps = {
   onEmbedNavigate?: (target: string, section?: string) => void
   /** Handle a rendered Markdown link inside the workspace. Return true when handled. */
   onMarkdownLinkNavigate?: (href: string) => boolean
+  onImagePreview?: (request: DocumentImagePreviewRequest) => void
   onCreateEditor?: (view: EditorView) => void
   /** Return true to replace the native copy for the selected Markdown. */
   onCopySelection?: (markdown: string, clipboardData: DataTransfer | null) => boolean
@@ -209,6 +211,7 @@ export const DocumentEditor = forwardRef<ReactCodeMirrorRef, DocumentEditorProps
       loadEmbed,
       onEmbedNavigate,
       onMarkdownLinkNavigate,
+      onImagePreview,
       onCreateEditor,
       onCopySelection,
       onAskAgent,
@@ -240,7 +243,7 @@ export const DocumentEditor = forwardRef<ReactCodeMirrorRef, DocumentEditorProps
         autoBracketExtension(),
         slashCommandExtension(suggestProviders ?? {}),
         snippetExpandExtension({ sourcePath }),
-        livePreviewExtension({ sourcePath, revealSourceOnFocus, onMarkdownLinkNavigate }),
+        livePreviewExtension({ sourcePath, revealSourceOnFocus, onMarkdownLinkNavigate, onImagePreview }),
         ...(onCopySelection
           ? [EditorView.domEventHandlers({
               copy(event, view) {
@@ -302,7 +305,7 @@ export const DocumentEditor = forwardRef<ReactCodeMirrorRef, DocumentEditorProps
         ...(extraExtensions ?? []),
         editorTheme,
       ],
-      [compositionExtension, sourcePath, revealSourceOnFocus, resolveWikilink, onWikilinkNavigate, onCreateMissingNote, onTagNavigate, onCursorLineChange, onCursorChange, suggestProviders, loadEmbed, onEmbedNavigate, onMarkdownLinkNavigate, onCopySelection, onAskAgent, extraExtensions],
+      [compositionExtension, sourcePath, revealSourceOnFocus, resolveWikilink, onWikilinkNavigate, onCreateMissingNote, onTagNavigate, onCursorLineChange, onCursorChange, suggestProviders, loadEmbed, onEmbedNavigate, onMarkdownLinkNavigate, onImagePreview, onCopySelection, onAskAgent, extraExtensions],
     )
 
     const effectiveBasicSetup = useMemo(

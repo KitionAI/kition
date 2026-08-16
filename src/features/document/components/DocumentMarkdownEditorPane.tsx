@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next'
 import { useConfirm } from '@/components/confirm'
 import { useDesktopSettings } from '@/features/settings/hooks/useDesktopSettings'
 import { DocumentAgentSelectionToolbar } from '@/features/document/components/DocumentAgentSelectionToolbar'
+import { DocumentImagePreviewDialog } from '@/features/document/components/DocumentImagePreviewDialog'
 import { DocumentBacklinksPanel } from '@/features/document/editor/components/DocumentBacklinksPanel'
 import { DocumentBookmarksPanel } from '@/features/document/editor/components/DocumentBookmarksPanel'
 import { DocumentExplorerPanel } from '@/features/document/editor/components/DocumentExplorerPanel'
@@ -44,7 +45,10 @@ import { DocumentHeadingOutlineDialog } from '@/features/document/editor/editor/
 import { DocumentMarkdownLintDialog } from '@/features/document/editor/editor/DocumentMarkdownLintDialog'
 import { DocumentQuickSwitcher } from '@/features/document/editor/editor/DocumentQuickSwitcher'
 import { DocumentWordFrequencyDialog } from '@/features/document/editor/editor/DocumentWordFrequencyDialog'
-import type { SuggestProviders } from '@/features/document/editor/editor/extensions'
+import type {
+  DocumentImagePreviewRequest,
+  SuggestProviders,
+} from '@/features/document/editor/editor/extensions'
 import { documentTitleHostExtension } from '@/features/document/editor/editor/extensions'
 import { useVaultSuggestProviders } from '@/features/document/editor/hooks/useVaultSuggestProviders'
 import { useVaultEmbedLoader } from '@/features/document/editor/hooks/useVaultEmbedLoader'
@@ -170,6 +174,7 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
   const [wordFreqOpen, setWordFreqOpen] = useState(false)
   const [docTagsOpen, setDocTagsOpen] = useState(false)
   const [outlineOpen, setOutlineOpen] = useState(false)
+  const [imagePreview, setImagePreview] = useState<DocumentImagePreviewRequest | null>(null)
   const [cursorLine, setCursorLine] = useState<number | null>(null)
   const [cursorInfo, setCursorInfo] = useState<CursorInfo | null>(null)
   // Portal target for the inline-title; populated by documentTitleHostExtension once the
@@ -940,6 +945,7 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
               loadEmbed={embedLoader}
               onEmbedNavigate={handleEmbedNavigate}
               onMarkdownLinkNavigate={handleMarkdownLinkNavigate}
+              onImagePreview={setImagePreview}
               extraExtensions={extraExtensions}
             />
             {onAskAgent && selectionStats && !readOnly && !readingView ? (
@@ -1137,6 +1143,10 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
         onOpenChange={setOutlineOpen}
         source={value}
         getView={getView}
+      />
+      <DocumentImagePreviewDialog
+        image={imagePreview}
+        onClose={() => setImagePreview(null)}
       />
     </div>
   )

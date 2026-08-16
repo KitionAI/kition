@@ -819,6 +819,38 @@ test.describe('app shell navigation', () => {
     expect(sessionRequests.at(-1)).toMatchObject({ language: 'English' })
   })
 
+  test('keeps an agent chat after its tab is closed and reopened', async ({ page }) => {
+    const deletedSessionUrls: string[] = []
+    page.on('request', (request) => {
+      if (
+        request.method() === 'DELETE'
+        && /\/api\/v1\/agent\/sessions\/\d+$/.test(new URL(request.url()).pathname)
+      ) {
+        deletedSessionUrls.push(request.url())
+      }
+    })
+
+    await page.goto('/documents')
+    await expect(page.getByTestId('document-editor')).toBeVisible()
+
+    await page.getByRole('button', { name: 'Open AI Chat' }).click()
+    await expect(page.getByRole('tab', { name: 'New chat', selected: true })).toBeVisible()
+
+    await page.locator('.workspace-agent-tab-close').click()
+
+    await expect(page.getByTestId('agent-floating-launcher')).toBeVisible()
+    await expect(page.getByPlaceholder('Plan, write, or ask anything…')).toHaveCount(0)
+    expect(deletedSessionUrls).toEqual([])
+
+    await page.getByTestId('agent-floating-launcher').click()
+
+    await expect(page.getByRole('tab', { name: 'New chat', selected: true })).toBeVisible()
+    await page.getByRole('button', { name: 'View history' }).click()
+    await expect(page.getByRole('dialog', { name: 'Agent history' }))
+      .toContainText('New chat')
+    expect(deletedSessionUrls).toEqual([])
+  })
+
   test('removes the current document from agent context without closing the editor', async ({ page }) => {
     const streamRequests: Array<Record<string, unknown>> = []
     await page.addInitScript(() => {

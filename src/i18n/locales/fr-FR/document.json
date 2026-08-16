@@ -257,6 +257,19 @@
       "pastePlain": "Coller comme texte brut",
       "selectAll": "Tout sélectionner"
     },
+    "image": {
+      "copy": "Copier l’image",
+      "copied": "Image copiée",
+      "copyFailed": "Impossible de copier l’image",
+      "remove": "Supprimer l’image",
+      "resetSize": "Réinitialiser la taille",
+      "zoom": "Ouvrir l’aperçu de l’image",
+      "showSource": "Afficher la source de l’image",
+      "hideSource": "Masquer la source de l’image",
+      "previewLabel": "Aperçu de l’image : {{name}}",
+      "closePreview": "Fermer l’aperçu de l’image",
+      "fallbackName": "Image"
+    },
     "toolbar": {
       "ariaLabel": "Barre d'outils de l'éditeur Markdown",
       "undo": "Annuler",

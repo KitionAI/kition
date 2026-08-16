@@ -257,6 +257,19 @@
       "pastePlain": "Paste as plain text",
       "selectAll": "Select all"
     },
+    "image": {
+      "copy": "Copy image",
+      "copied": "Image copied",
+      "copyFailed": "Could not copy image",
+      "remove": "Remove image",
+      "resetSize": "Reset size",
+      "zoom": "Open image preview",
+      "showSource": "Show image source",
+      "hideSource": "Hide image source",
+      "previewLabel": "Image preview: {{name}}",
+      "closePreview": "Close image preview",
+      "fallbackName": "Image"
+    },
     "toolbar": {
       "ariaLabel": "Markdown editor toolbar",
       "undo": "Undo",

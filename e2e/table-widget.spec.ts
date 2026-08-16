@@ -187,7 +187,10 @@ test.describe('table widget - internal links', () => {
     await expect(link).toHaveText(targetPath)
     await expect(link).toHaveAttribute('role', 'link')
 
-    await link.click()
+    // The widget navigates on mousedown and unmounts the source document.
+    // Dispatch that event directly so Playwright does not wait to finish a
+    // click sequence against an element that navigation has already removed.
+    await link.dispatchEvent('mousedown', { button: 0 })
 
     await expect(page.getByTestId('document-editor')).toContainText('Opened from the table cell.')
   })

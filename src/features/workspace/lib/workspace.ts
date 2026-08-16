@@ -237,7 +237,8 @@ export function renameWorkspaceDocumentPath(path: string, title: string) {
 
   const filename = normalizedPath.split('/').pop() || normalizedPath
   const extension = filename.match(workspaceEditableExtensionPattern)?.[0] || ''
-  const nextFilename = `${trimmedTitle || getWorkspaceItemTitle(filename) || 'Untitled document'}${extension}`
+  const fallbackTitle = extension.toLowerCase() === '.kitable' ? 'Untitled table' : 'Untitled note'
+  const nextFilename = `${trimmedTitle || getWorkspaceItemTitle(filename) || fallbackTitle}${extension}`
   const parentPath = normalizedPath.includes('/')
     ? normalizedPath.slice(0, normalizedPath.lastIndexOf('/'))
     : ''

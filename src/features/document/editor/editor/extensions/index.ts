@@ -2,6 +2,7 @@ export { wikilinkExtension, type WikilinkExtensionOptions, type WikilinkNavigate
 export { tagExtension, type TagExtensionOptions } from './tag'
 export { highlightExtension, commentExtension, blockIdExtension } from './inline-syntax'
 export { livePreviewExtension } from './live-preview'
+export type { DocumentImagePreviewRequest } from './image-widget-actions'
 export { documentKeymap } from './keymap'
 export { slashCommandExtension } from './slash'
 export { pasteLinkExtension } from './paste-link'
