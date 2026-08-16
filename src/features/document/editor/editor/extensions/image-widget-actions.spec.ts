@@ -27,7 +27,7 @@ afterEach(() => {
 })
 
 describe('image widget actions', () => {
-  it('reads Obsidian-style width and width-by-height values', () => {
+  it('reads embedded width and width-by-height values', () => {
     expect(readImageEmbedWidth('![[image.png|320]]')).toBe(320)
     expect(readImageEmbedWidth('![[image.png|Diagram|640x480]]')).toBe(640)
     expect(readImageEmbedWidth('![Diagram](image.png)')).toBeNull()

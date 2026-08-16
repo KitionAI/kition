@@ -207,7 +207,7 @@ describe('livePreviewExtension — images', () => {
     expect(view.state.doc.toString()).toBe(source.slice(imageSource.length + 1))
   })
 
-  it('applies an Obsidian-style custom image width', () => {
+  it('applies a custom embedded image width', () => {
     const view = mountEditor('![[Attachments/diagram.png|320]]', 0, 'Notes/demo.md')
 
     expect((image(view) as HTMLImageElement | null)?.style.width).toBe('320px')
