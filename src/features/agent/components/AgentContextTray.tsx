@@ -113,7 +113,11 @@ function ContextChip({
     <>
       {icon}
       <span className="min-w-0 truncate font-medium">{label}</span>
-      {badge ? <span className="agent-context-chip__badge">{badge}</span> : null}
+      {badge ? (
+        <span className="agent-context-chip__badge shrink-0 rounded bg-accent px-1 py-0.5 text-[9px] font-semibold text-accent-foreground">
+          {badge}
+        </span>
+      ) : null}
     </>
   )
   return (

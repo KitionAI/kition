@@ -17,9 +17,10 @@ export function DocumentAgentSelectionToolbar({
 
   return (
     <div
-      className="document-ai-selection-toolbar"
+      className="document-ai-selection-toolbar absolute bottom-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-0.5 rounded-xl border bg-card/95 p-1 shadow-[var(--shadow-toolbar)] backdrop-blur"
       role="toolbar"
       aria-label={t('editor.askAi.selectionToolbar')}
+      style={{ borderColor: 'var(--document-border, hsl(var(--border)))' }}
     >
       <SelectionAgentButton
         label={t('editor.askAi.custom')}

@@ -270,8 +270,17 @@ export function AgentAiComposer({
         disabled={busy}
       />
       {mentionMenuOpen ? (
-        <div className="agent-mention-menu" ref={mentionMenuRef} role="listbox">
-          <div className="agent-mention-menu__header">
+        <div
+          className="agent-mention-menu max-h-[22rem] overflow-y-auto"
+          ref={mentionMenuRef}
+          role="listbox"
+          style={{
+            overscrollBehavior: 'contain',
+            scrollbarColor: 'hsl(var(--muted-foreground) / 0.28) transparent',
+            scrollbarWidth: 'thin',
+          }}
+        >
+          <div className="agent-mention-menu__header sticky top-0 z-[1] border-b bg-card/95 px-4 py-2 text-[11px] text-muted-foreground backdrop-blur">
             {mentionQuery?.query.trim()
               ? t('mentions.resultCount', { count: matchingMentions.length })
               : t('mentions.searchHint')}
@@ -291,9 +300,13 @@ export function AgentAiComposer({
                   <strong>{document.title}</strong>
                   <span>{document.path}</span>
                 </span>
-                {current ? <small>{t('analysisWorkspace.current')}</small> : null}
+                {current ? (
+                  <small className="shrink-0 rounded-md bg-accent px-1.5 py-0.5 text-[10px] font-medium text-accent-foreground">
+                    {t('analysisWorkspace.current')}
+                  </small>
+                ) : null}
                 {attached ? (
-                  <span className="agent-mention-menu__attached">
+                  <span className="agent-mention-menu__attached inline-flex shrink-0 items-center gap-1 text-[10px] font-medium text-muted-foreground">
                     <Check className="size-3" aria-hidden="true" />
                     {t('mentions.attached')}
                   </span>
@@ -303,7 +316,7 @@ export function AgentAiComposer({
             return attached ? (
               <div
                 key={document.path}
-                className="agent-mention-menu__item is-attached"
+                className="agent-mention-menu__item is-attached cursor-default bg-muted/25"
                 data-mention-path={document.path}
                 role="option"
                 aria-disabled="true"
@@ -327,7 +340,9 @@ export function AgentAiComposer({
               </button>
             )
           }) : (
-            <div className="agent-mention-menu__empty">{t('mentions.noMatches')}</div>
+            <div className="agent-mention-menu__empty px-4 py-6 text-center text-xs text-muted-foreground">
+              {t('mentions.noMatches')}
+            </div>
           )}
         </div>
       ) : null}
