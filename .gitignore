@@ -12,6 +12,7 @@
 /docs/license/
 /.kition/
 /UITest/
+/heartie/
 
 # Editor and OS files
 .idea/
