@@ -41,6 +41,22 @@ describe('agent turn capabilities contract', () => {
     expect(schema.description).toContain('must not be persisted')
   })
 
+  it('defines bounded privacy-safe model reconnect progress', () => {
+    const schema = JSON.parse(readFileSync(
+      resolve('contracts/runtime/agent-model-reconnect.schema.json'),
+      'utf8',
+    ))
+
+    expect(schema.$id).toBe('https://kition.ai/contracts/runtime/agent-model-reconnect.schema.json')
+    expect(schema.properties.max_retries.const).toBe(5)
+    expect(schema.properties.attempt.maximum).toBe(5)
+    expect(schema.properties.delay_ms.maximum).toBe(8000)
+    expect(schema.required).toEqual(['turn', 'attempt', 'max_retries', 'delay_ms', 'reason'])
+    expect(JSON.stringify(schema)).not.toContain('base_url')
+    expect(JSON.stringify(schema)).not.toContain('endpoint')
+    expect(JSON.stringify(schema)).not.toContain('access_token')
+  })
+
   it('reads the latest authoritative runtime capability event', () => {
     const events = [
       event(1, false),

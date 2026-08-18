@@ -160,12 +160,23 @@ export function buildAgentRunLogItems({
       .map((event) => agentEventTurn(event))
       .filter((turn): turn is number => turn > 0),
   )
+  const latestReconnectAttemptByTurn = new Map<number, number>()
+  events.forEach((event) => {
+    if (event.event_type !== 'model.reconnecting') {
+      return
+    }
+    const turn = agentEventTurn(event)
+    const attempt = agentReconnectAttempt(event)
+    if (turn > 0 && attempt > (latestReconnectAttemptByTurn.get(turn) || 0)) {
+      latestReconnectAttemptByTurn.set(turn, attempt)
+    }
+  })
 
   events
     .filter((event) => !event.event_type.startsWith('tool.'))
     .filter((event) => debug || !AGENT_DEBUG_EVENT_TYPES.has(event.event_type))
     .forEach((event) => {
-      const item = formatAgentRunLogEvent(event, busy, completedModelTurns, locale)
+      const item = formatAgentRunLogEvent(event, busy, completedModelTurns, latestReconnectAttemptByTurn, locale)
       if (item) {
         items.push(item)
       }
@@ -296,6 +307,9 @@ export function formatCurrentAgentActivity({
   }
 
   const latestEvent = events[events.length - 1]
+  if (latestEvent?.event_type === 'model.reconnecting' && latestEvent.message) {
+    return latestEvent.message
+  }
   if (latestEvent?.label) {
     return latestEvent.label
   }
@@ -731,9 +745,10 @@ function formatAgentRunLogEvent(
   event: AgentEvent,
   busy: boolean,
   completedModelTurns: Set<number>,
+  latestReconnectAttemptByTurn: Map<number, number>,
   locale: AgentTimelineLocale,
 ): AgentRunLogItem | null {
-  const status = normalizeAgentEventStatus(event, busy, completedModelTurns)
+  const status = normalizeAgentEventStatus(event, busy, completedModelTurns, latestReconnectAttemptByTurn)
   const title = formatAgentRunLogEventTitle(event, status, locale)
   if (!title) {
     return null
@@ -753,8 +768,18 @@ function normalizeAgentEventStatus(
   event: AgentEvent,
   busy: boolean,
   completedModelTurns: Set<number>,
+  latestReconnectAttemptByTurn: Map<number, number>,
 ): AgentTaskStep['status'] {
   const turn = agentEventTurn(event)
+  if (event.event_type === 'model.reconnecting') {
+    if (!busy || completedModelTurns.has(turn)) {
+      return 'completed'
+    }
+    const latestAttempt = latestReconnectAttemptByTurn.get(turn) || 0
+    if (agentReconnectAttempt(event) < latestAttempt) {
+      return 'completed'
+    }
+  }
   if (
     turn > 0
     && completedModelTurns.has(turn)
@@ -796,6 +821,14 @@ function formatAgentRunLogEventTitle(
   }
   if (event.event_type === 'model.turn.started') {
     return status === 'running' ? dict.event.callingBackend : dict.event.backendCalled
+  }
+  if (event.event_type === 'model.reconnecting') {
+    const attempt = agentReconnectAttempt(event)
+    const maxRetries = agentReconnectMaxRetries(event)
+    if (attempt > 0 && maxRetries > 0) {
+      return dict.event.reconnecting(attempt, maxRetries)
+    }
+    return event.message || event.label || dict.event.reconnecting(1, 5)
   }
   if (event.event_type === 'model.delta') {
     return status === 'running' ? dict.event.backendStreaming : dict.event.backendReturned
@@ -851,6 +884,15 @@ function formatAgentRunLogEventDetail(
     }
     return event.message || (turn > 0 ? dict.event.requestingModelTurn(turn) : dict.event.requestingModel)
   }
+  if (event.event_type === 'model.reconnecting') {
+    const delayMS = typeof event.data?.delay_ms === 'number' ? Math.max(0, event.data.delay_ms) : 0
+    const seconds = Math.ceil(delayMS / 1000)
+    const delay = seconds > 0 ? dict.event.reconnectingInSeconds(seconds) : dict.event.reconnectingNow
+    const reason = typeof event.data?.reason === 'string'
+      ? dict.event.reconnectReason[event.data.reason]
+      : ''
+    return reason ? `${delay} · ${reason}` : delay
+  }
   if (event.event_type === 'model.delta') {
     const chars = typeof event.data?.chars === 'number'
       ? event.data.chars
@@ -885,6 +927,16 @@ function agentEventTurn(event: AgentEvent) {
     return Number.isFinite(parsed) ? parsed : 0
   }
   return 0
+}
+
+function agentReconnectAttempt(event: AgentEvent) {
+  const raw = event.data?.attempt
+  return typeof raw === 'number' && Number.isFinite(raw) ? Math.max(0, Math.floor(raw)) : 0
+}
+
+function agentReconnectMaxRetries(event: AgentEvent) {
+  const raw = event.data?.max_retries
+  return typeof raw === 'number' && Number.isFinite(raw) ? Math.max(0, Math.floor(raw)) : 0
 }
 
 function formatAgentRunLogEventPayload(event: AgentEvent) {

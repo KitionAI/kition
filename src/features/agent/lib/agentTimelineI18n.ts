@@ -74,6 +74,10 @@ type AgentTimelineDict = {
     modelRequestedNTools: (count: number) => string
     modelReturnedChars: (chars: number) => string
     thisTurnCompleted: string
+    reconnecting: (attempt: number, maxRetries: number) => string
+    reconnectingNow: string
+    reconnectingInSeconds: (seconds: number) => string
+    reconnectReason: Record<string, string>
   }
   tool: {
     inProgress: (label: string) => string
@@ -166,6 +170,20 @@ const EN_US_DICT: AgentTimelineDict = {
     modelRequestedNTools: (count) => `The model requested ${count} tools`,
     modelReturnedChars: (chars) => `The model returned ${chars} characters of final content`,
     thisTurnCompleted: 'This model turn completed',
+    reconnecting: (attempt, maxRetries) => `Reconnecting... ${attempt}/${maxRetries}`,
+    reconnectingNow: 'Retrying now',
+    reconnectingInSeconds: (seconds) => `Retrying in ${seconds} second${seconds === 1 ? '' : 's'}`,
+    reconnectReason: {
+      tls_handshake_timeout: 'Secure connection timed out',
+      connection_timeout: 'Connection timed out',
+      connection_closed: 'Connection closed unexpectedly',
+      connection_reset: 'Connection was reset',
+      dns_failure: 'Network address lookup failed',
+      network_error: 'Temporary network error',
+      request_timeout: 'AI backend request timed out',
+      rate_limited: 'AI backend is temporarily busy',
+      server_unavailable: 'AI backend is temporarily unavailable',
+    },
   },
   tool: {
     inProgress: (label) => `${label} in progress`,

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { AgentEvent, AgentToolCall } from '@/api/agent'
 import {
   buildAgentRunLogItems,
+  formatCurrentAgentActivity,
   formatAgentErrorSummary,
   formatAgentRunLogExpandedDetail,
   getAgentModifiedDocumentPaths,
@@ -124,6 +125,65 @@ describe('buildAgentRunLogItems debug filtering', () => {
     expect(titles).toContain('Task understood')
     expect(titles).toContain('Send model request')
     expect(titles).toContain('AI backend called')
+  })
+})
+
+describe('buildAgentRunLogItems reconnect progress', () => {
+  it('keeps reconnect progress visible outside debug mode', () => {
+    const items = buildAgentRunLogItems({
+      events: [
+        event('model.reconnecting', {
+          id: 10,
+          status: 'running',
+          message: 'Reconnecting... 2/5',
+          data: {
+            turn: 1,
+            attempt: 2,
+            max_retries: 5,
+            delay_ms: 2000,
+            reason: 'tls_handshake_timeout',
+          },
+        }),
+      ],
+      toolCalls: [],
+      artifacts: [],
+      busy: true,
+      streamingText: '',
+      locale: 'en-US',
+    })
+
+    const reconnect = items.find((item) => item.key === 'event-10')
+    expect(reconnect?.title).toBe('Reconnecting... 2/5')
+    expect(reconnect?.detail).toBe('Retrying in 2 seconds · Secure connection timed out')
+    expect(reconnect?.status).toBe('running')
+  })
+
+  it('marks earlier reconnect attempts complete while the latest remains active', () => {
+    const items = buildAgentRunLogItems({
+      events: [
+        event('model.reconnecting', { id: 11, status: 'running', data: { turn: 1, attempt: 1, max_retries: 5 } }),
+        event('model.reconnecting', { id: 12, status: 'running', data: { turn: 1, attempt: 2, max_retries: 5 } }),
+      ],
+      toolCalls: [],
+      artifacts: [],
+      busy: true,
+      streamingText: '',
+    })
+
+    expect(items.find((item) => item.key === 'event-11')?.status).toBe('completed')
+    expect(items.find((item) => item.key === 'event-12')?.status).toBe('running')
+  })
+
+  it('uses reconnect progress as the current activity', () => {
+    expect(formatCurrentAgentActivity({
+      events: [event('model.reconnecting', {
+        message: 'Reconnecting... 3/5',
+        status: 'running',
+      })],
+      toolCalls: [],
+      busy: true,
+      streamingText: '',
+    })).toBe('Reconnecting... 3/5')
   })
 })
 

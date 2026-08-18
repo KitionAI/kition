@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kition.ai/contracts/runtime/agent-model-reconnect.schema.json",
+  "title": "Kition Agent Model Reconnect Data",
+  "description": "Privacy-safe retry progress emitted in model.reconnecting Agent events.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "turn",
+    "attempt",
+    "max_retries",
+    "delay_ms",
+    "reason"
+  ],
+  "properties": {
+    "turn": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "attempt": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "max_retries": {
+      "const": 5
+    },
+    "delay_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 8000
+    },
+    "reason": {
+      "type": "string",
+      "enum": [
+        "tls_handshake_timeout",
+        "connection_timeout",
+        "connection_closed",
+        "connection_reset",
+        "dns_failure",
+        "network_error",
+        "request_timeout",
+        "rate_limited",
+        "server_unavailable"
+      ]
+    }
+  }
+}

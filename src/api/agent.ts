@@ -154,6 +154,23 @@ export type AgentTurnCapabilities = {
   browser_search: AgentToolAvailability
 }
 
+export type AgentModelReconnectData = {
+  turn: number
+  attempt: number
+  max_retries: 5
+  delay_ms: number
+  reason:
+    | 'tls_handshake_timeout'
+    | 'connection_timeout'
+    | 'connection_closed'
+    | 'connection_reset'
+    | 'dns_failure'
+    | 'network_error'
+    | 'request_timeout'
+    | 'rate_limited'
+    | 'server_unavailable'
+}
+
 export type AgentEvent = {
   id: number
   session_id: number
@@ -168,6 +185,11 @@ export type AgentEvent = {
   message?: string
   data?: {
     turn_capabilities?: AgentTurnCapabilities
+    turn?: number
+    attempt?: number
+    max_retries?: number
+    delay_ms?: number
+    reason?: string
     [key: string]: any
   }
   created_at: string
