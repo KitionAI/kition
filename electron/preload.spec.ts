@@ -50,6 +50,9 @@ describe('sandboxed desktop preload', () => {
       { path: 'onboarding/manifest.json' },
     )
 
+    await bridge.ReadClipboardImage()
+    expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.readClipboardImage)
+
     await bridge.ChooseAgentAnalysisDirectory({ suggested_path: '../project' })
     expect(invoke).toHaveBeenCalledWith(
       IPC_CHANNELS.chooseAgentAnalysisDirectory,

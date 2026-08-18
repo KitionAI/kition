@@ -29,6 +29,7 @@ import { isTrustedWindowNavigation, normalizeExternalURL } from './external-url.
 import { createBeforeQuitHandler } from './quit-lifecycle.mjs'
 import { findKitionDeepLink, KITION_PROTOCOL_SCHEME, normalizeKitionDeepLink } from './deep-link.mjs'
 import { submitFeedbackToConsole } from './feedback-client.mjs'
+import { readClipboardImagePayload } from './clipboard-image.mjs'
 import {
   assertWorkspacePathSafe,
   trashWorkspaceDocument,
@@ -666,7 +667,7 @@ function isImagePath(value) {
 
 function isWorkspaceRootImagePath(value) {
   const [root = ''] = String(value || '').replace(/\\/g, '/').replace(/^\/+/, '').split('/')
-  return root.toLowerCase() === 'agent' || root.toLowerCase() === '.kition'
+  return ['agent', 'attachments', '.kition'].includes(root.toLowerCase())
 }
 
 function imageMimeTypeFromPath(filePath) {
@@ -1863,9 +1864,14 @@ async function handleImportWorkspaceFile(_event, request) {
   }
 
   const { absolutePath: folderAbsolutePath } = folderRelativePath
-    ? await resolveSafeWorkspacePath(folderRelativePath, { allowRoot: true })
+    ? await resolveSafeWorkspacePath(
+        folderRelativePath,
+        { allowRoot: true },
+        { allowMissing: true },
+      )
     : await resolveSafeWorkspacePath('', { allowRoot: true })
   await fs.mkdir(folderAbsolutePath, { recursive: true })
+  await assertWorkspacePathSafe(getWorkspaceRoot(), folderAbsolutePath)
 
   const finalFilename = await pickUniqueImportedFileTarget(folderAbsolutePath, requestedName)
   const targetAbsolutePath = path.join(folderAbsolutePath, finalFilename)
@@ -1993,6 +1999,7 @@ async function registerIpcHandlers() {
   ipcMain.handle(IPC_CHANNELS.savePdfFile, handleSavePdfFile)
   ipcMain.handle(IPC_CHANNELS.copyDocumentHtml, handleCopyDocumentHtml)
   ipcMain.handle(IPC_CHANNELS.copyImage, handleCopyImage)
+  ipcMain.handle(IPC_CHANNELS.readClipboardImage, () => readClipboardImagePayload(clipboard))
   ipcMain.handle(IPC_CHANNELS.submitFeedback, handleSubmitFeedback)
   ipcMain.handle(IPC_CHANNELS.listWorkspaceDocuments, handleListWorkspaceDocuments)
   ipcMain.handle(IPC_CHANNELS.readWorkspaceDocument, handleReadWorkspaceDocument)

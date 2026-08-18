@@ -1,6 +1,6 @@
 import { isDesktopRuntime, resolvePublicFileURL } from './desktop'
 
-const workspaceRootImageFolders = new Set(['agent', '.kition'])
+const workspaceRootImageFolders = new Set(['agent', 'attachments', '.kition'])
 
 export function resolveAgentImageURL(value?: string) {
   const raw = unwrapMarkdownDestination(value)

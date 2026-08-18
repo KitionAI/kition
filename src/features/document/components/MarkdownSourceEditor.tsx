@@ -3,6 +3,12 @@ import { EditorView } from '@codemirror/view'
 import CodeMirror, { type ReactCodeMirrorRef } from '@uiw/react-codemirror'
 import { forwardRef, useMemo } from 'react'
 import { useBufferedCodeMirrorValue } from '@/features/document/editor/hooks/useBufferedCodeMirrorValue'
+import {
+  canPasteNativeDocumentClipboardImage,
+  collectDocumentClipboardImages,
+  documentClipboardImagesFromFiles,
+  importDocumentClipboardImages,
+} from '@/features/document/lib/documentImagePaste'
 import { cn } from '@/lib/utils'
 
 const basicSetup = {
@@ -24,34 +30,8 @@ type MarkdownSourceEditorProps = {
   onCreateEditor?: (view: EditorView) => void
 }
 
-function collectImageFiles(list: DataTransferItemList | FileList | null | undefined): File[] {
-  if (!list) return []
-  const files: File[] = []
-  if ('length' in list) {
-    for (let i = 0; i < list.length; i += 1) {
-      const entry = list[i]
-      if (!entry) continue
-      if (entry instanceof File) {
-        if (entry.type.startsWith('image/')) files.push(entry)
-        continue
-      }
-      const item = entry as DataTransferItem
-      if (item.kind === 'file' && item.type.startsWith('image/')) {
-        const f = item.getAsFile()
-        if (f) files.push(f)
-      }
-    }
-  }
-  return files
-}
-
-function insertImagesAtCursor(view: EditorView, files: File[]) {
-  if (!files.length) return
-  const snippets = files.map((file) => {
-    const url = URL.createObjectURL(file)
-    const baseName = (file.name || '').replace(/\.[^.]+$/, '') || 'image'
-    return `![${baseName}](${url})`
-  })
+function insertImagesAtCursor(view: EditorView, snippets: string[]) {
+  if (!snippets.length) return
   const insert = snippets.join('\n\n')
   const { from, to } = view.state.selection.main
   view.dispatch({
@@ -65,20 +45,24 @@ function insertImagesAtCursor(view: EditorView, files: File[]) {
 const imagePasteExtension = EditorView.domEventHandlers({
   paste: (event, view) => {
     if (view.state.readOnly) return false
-    const files = collectImageFiles(event.clipboardData?.items)
-    if (!files.length) return false
+    const images = collectDocumentClipboardImages(event.clipboardData)
+    if (!images.length && !canPasteNativeDocumentClipboardImage(event.clipboardData)) return false
     event.preventDefault()
-    insertImagesAtCursor(view, files)
+    void importDocumentClipboardImages(images, { preferNativeClipboard: true }).then((snippets) => {
+      insertImagesAtCursor(view, snippets)
+    })
     return true
   },
   drop: (event, view) => {
     if (view.state.readOnly) return false
-    const files = collectImageFiles(event.dataTransfer?.files)
-    if (!files.length) return false
+    const images = documentClipboardImagesFromFiles(event.dataTransfer?.files)
+    if (!images.length) return false
     event.preventDefault()
     const pos = view.posAtCoords({ x: event.clientX, y: event.clientY }) ?? view.state.selection.main.head
     view.dispatch({ selection: { anchor: pos } })
-    insertImagesAtCursor(view, files)
+    void importDocumentClipboardImages(images).then((snippets) => {
+      insertImagesAtCursor(view, snippets)
+    })
     return true
   },
 })

@@ -24,6 +24,7 @@ type KitionDesktopBridge = {
   SavePdfFile?: (request: SavePdfFileRequest) => Promise<string>
   CopyDocumentHtml?: (request: CopyDocumentHtmlRequest) => Promise<boolean>
   CopyImage?: (request: { url: string }) => Promise<boolean>
+  ReadClipboardImage?: () => Promise<DesktopClipboardImage | null>
   SubmitFeedback?: (request: FeedbackReportSubmissionRequest) => Promise<FeedbackReportSubmissionResponse>
   ListWorkspaceDocuments?: () => Promise<WorkspaceDocumentListResponse>
   ReadWorkspaceDocument?: (request: WorkspaceDocumentPathRequest) => Promise<WorkspaceDocument>
@@ -238,6 +239,11 @@ export type WorkspaceAsset = {
   path: string
   url: string
   mime_type: string
+}
+
+export type DesktopClipboardImage = {
+  mime_type: string
+  base64_content: string
 }
 
 export type WorkspaceFileImportRequest = {
@@ -1870,6 +1876,31 @@ export async function importWorkspaceImageFromBlobURL(options: {
   }
 
   const blob = await response.blob()
+  return importWorkspaceImageFromBlob({
+    blob,
+    folder: options.folder,
+    index: options.index,
+  })
+}
+
+export async function importWorkspaceImageFromFile(options: {
+  file: File
+  folder?: string
+  index?: number
+}): Promise<{ importedPath: string; relativePath: string }> {
+  return importWorkspaceImageFromBlob({
+    blob: options.file,
+    folder: options.folder,
+    index: options.index,
+  })
+}
+
+async function importWorkspaceImageFromBlob(options: {
+  blob: Blob
+  folder?: string
+  index?: number
+}) {
+  const blob = options.blob
   const mimeType = blob.type || 'image/png'
   const base64 = await blobToBase64(blob)
   const stamp = `${Date.now().toString(36)}-${(options.index || 1).toString(36)}`
@@ -1887,6 +1918,37 @@ export async function importWorkspaceImageFromBlobURL(options: {
     ? normalizedImported.slice(folder.length + 1)
     : normalizedImported
   return { importedPath: normalizedImported, relativePath }
+}
+
+export function canImportWorkspaceImageFromClipboard() {
+  return Boolean(getDesktopBridge()?.ReadClipboardImage)
+}
+
+export async function importWorkspaceImageFromClipboard(options: {
+  folder?: string
+  index?: number
+}): Promise<{ importedPath: string; relativePath: string } | null> {
+  const bridge = getDesktopBridge()
+  if (!bridge?.ReadClipboardImage) {
+    return null
+  }
+  const image = await bridge.ReadClipboardImage()
+  if (!image?.base64_content) {
+    return null
+  }
+
+  const folder = String(options.folder || '').replace(/\\/g, '/').replace(/^\/+|\/+$/g, '')
+  const stamp = `${Date.now().toString(36)}-${(options.index || 1).toString(36)}`
+  const result = await importWorkspaceFile({
+    folder,
+    filename: `pasted-${stamp}.png`,
+    base64_content: image.base64_content,
+  })
+  const importedPath = String(result?.imported_path || '').replace(/\\/g, '/').replace(/^\/+/, '')
+  const relativePath = folder && importedPath.startsWith(`${folder}/`)
+    ? importedPath.slice(folder.length + 1)
+    : importedPath
+  return { importedPath, relativePath }
 }
 
 export async function revealWorkspaceFolder(path?: string) {

@@ -48,6 +48,17 @@ describe('workspace file operations', () => {
     )).resolves.toBe(path.join(folderPath, 'New.md'))
   })
 
+  it('allows a missing import directory under a real workspace root', async () => {
+    const root = await makeTemporaryRoot()
+    const importFolderPath = path.join(root, 'Attachments')
+
+    await expect(assertWorkspacePathSafe(
+      root,
+      importFolderPath,
+      { allowMissing: true },
+    )).resolves.toBe(importFolderPath)
+  })
+
   it.skipIf(process.platform === 'win32')('rejects a symbolic-link file that resolves outside the workspace', async () => {
     const root = await makeTemporaryRoot()
     const outside = await makeTemporaryRoot()

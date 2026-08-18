@@ -739,6 +739,14 @@ describe('desktop service helpers', () => {
         url: 'kition-workspace://assets/image.png',
         mime_type: 'image/png',
       }),
+      ReadClipboardImage: vi.fn().mockResolvedValue({
+        mime_type: 'image/png',
+        base64_content: 'AQID',
+      }),
+      ImportWorkspaceFile: vi.fn().mockResolvedValue({
+        ...listResponse,
+        imported_path: 'Attachments/pasted-native.png',
+      }),
       RevealWorkspaceFolder: vi.fn().mockResolvedValue(''),
     }
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
@@ -767,6 +775,21 @@ describe('desktop service helpers', () => {
     ).resolves.toMatchObject({
       url: 'kition-workspace://assets/image.png',
     })
+    await expect(desktopModule.importWorkspaceImageFromClipboard({
+      folder: 'Attachments',
+      index: 1,
+    })).resolves.toEqual({
+      importedPath: 'Attachments/pasted-native.png',
+      relativePath: 'pasted-native.png',
+    })
+    await expect(desktopModule.importWorkspaceImageFromFile({
+      file: new File([new Uint8Array([1, 2, 3])], 'image.png', { type: 'image/png' }),
+      folder: 'Attachments',
+      index: 2,
+    })).resolves.toEqual({
+      importedPath: 'Attachments/pasted-native.png',
+      relativePath: 'pasted-native.png',
+    })
     await expect(desktopModule.revealWorkspaceFolder()).resolves.toBe('')
     expect((window as typeof window & { kitionDesktop?: any }).kitionDesktop.ReadWorkspaceDocument).toHaveBeenCalledWith({ path: 'Home.md' })
     expect((window as typeof window & { kitionDesktop?: any }).kitionDesktop.WriteWorkspaceDocument).toHaveBeenCalledWith({ path: 'Home.md', content: '# Updated' })
@@ -776,6 +799,16 @@ describe('desktop service helpers', () => {
     expect((window as typeof window & { kitionDesktop?: any }).kitionDesktop.SaveWorkspaceAsset).toHaveBeenCalledWith(expect.objectContaining({
       document_path: 'Home.md',
       mime_type: 'image/png',
+    }))
+    expect((window as typeof window & { kitionDesktop?: any }).kitionDesktop.ImportWorkspaceFile).toHaveBeenCalledWith(expect.objectContaining({
+      folder: 'Attachments',
+      filename: expect.stringMatching(/^pasted-[a-z0-9]+-1\.png$/),
+      base64_content: 'AQID',
+    }))
+    expect((window as typeof window & { kitionDesktop?: any }).kitionDesktop.ImportWorkspaceFile).toHaveBeenCalledWith(expect.objectContaining({
+      folder: 'Attachments',
+      filename: expect.stringMatching(/^pasted-[a-z0-9]+-2\.png$/),
+      base64_content: 'AQID',
     }))
   })
 

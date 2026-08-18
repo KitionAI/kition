@@ -20,6 +20,7 @@ export const IPC_CHANNELS = {
   savePdfFile: 'desktop:file:save-pdf',
   copyDocumentHtml: 'desktop:clipboard:copy-document-html',
   copyImage: 'desktop:clipboard:copy-image',
+  readClipboardImage: 'desktop:clipboard:read-image',
   submitFeedback: 'desktop:feedback:submit',
   listWorkspaceDocuments: 'desktop:workspace:list-documents',
   readWorkspaceDocument: 'desktop:workspace:read-document',

@@ -53,6 +53,19 @@ describe('workspace image file URLs', () => {
     )
   })
 
+  it('resolves pasted Attachments images from the workspace root for nested documents', async () => {
+    const workspaceFiles = await loadWorkspaceFilesModule()
+
+    const resolved = workspaceFiles.resolveWorkspaceImageURL(
+      'Attachments/pasted-image.png',
+      'Articles/AI/Attention residue.md',
+    )
+
+    expect(resolved).toBe(
+      'http://127.0.0.1:18101/workspace-files/Attachments/pasted-image.png',
+    )
+  })
+
   it('unwraps angle-bracket Markdown destinations for generated Agent images', async () => {
     const workspaceFiles = await loadWorkspaceFilesModule()
 
