@@ -7,6 +7,9 @@ import type {
   AgentMessage,
   AgentLocalSource,
   AgentSession,
+  AgentShellApprovalDecision,
+  AgentShellApprovalRequest,
+  AgentShellApprovalResponse,
   AgentTablePlanContext,
   AgentPaneContext,
   AgentTaskMode,
@@ -77,6 +80,7 @@ import {
   isTableFileImportRequest,
 } from '@/features/agent/lib/tableFileImportIntent'
 import { importWorkspaceFileIntoDataTable } from '@/features/table/lib/importWorkspaceFileIntoDataTable'
+import { buildAgentShellApprovalFollowup } from '@/features/agent/lib/agentShellApproval'
 
 type WorkspaceAgentTurnContext = {
   activeDocumentPath?: string
@@ -498,6 +502,7 @@ export function useWorkspaceAgent({
       browserOriginalRequest?: string
       browserContext?: AgentBrowserContext
       localSources?: AgentLocalSource[]
+      shellApproval?: AgentShellApprovalResponse
     },
   ) => {
     const content = (followup?.content ?? agentDrafts[sessionId] ?? '').trim()
@@ -742,6 +747,7 @@ export function useWorkspaceAgent({
         browserContext: browserContextForTurn,
         executionMode,
         tablePlanContext: followup?.tablePlanContext,
+        shellApproval: followup?.shellApproval,
         hideUserMessage: followup?.hideUserMessage === true,
         modelId: selectedAgentModel.key,
         runtimeModel,
@@ -1038,6 +1044,21 @@ export function useWorkspaceAgent({
     void sendAgentMessage(sessionId, { localSources })
   }, [sendAgentMessage])
 
+  const respondToAgentShellApproval = useCallback((
+    sessionId: number,
+    request: AgentShellApprovalRequest,
+    decision: AgentShellApprovalDecision,
+  ) => {
+    void sendAgentMessage(sessionId, {
+      content: buildAgentShellApprovalFollowup(decision, request.command),
+      hideUserMessage: true,
+      shellApproval: {
+        tool_call_id: request.tool_call_id,
+        decision,
+      },
+    })
+  }, [sendAgentMessage])
+
   const sendAgentContextAction = useCallback((
     sessionId: number,
     input: {
@@ -1100,6 +1121,7 @@ export function useWorkspaceAgent({
     resolveAgentDocumentContext,
     resolveAgentDocumentContexts,
     removeAgentLocalSource,
+    respondToAgentShellApproval,
     selectedAgentModel,
     sendAiComposerMessage,
     sendAgentContextAction,

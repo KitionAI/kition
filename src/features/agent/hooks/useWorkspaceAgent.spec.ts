@@ -122,6 +122,50 @@ describe('useWorkspaceAgent hosted console restore', () => {
     mocks.isDesktopRuntime.mockReturnValue(true)
   })
 
+  it('resumes a blocked shell command with the selected approval decision', async () => {
+    const { useWorkspaceAgent } = await import('./useWorkspaceAgent')
+    let latest: any = null
+
+    function Harness() {
+      latest = useWorkspaceAgent({
+        settings: createOpenAISettings(),
+        rootPath: '/test/workspace',
+        onError: vi.fn(),
+        onFeedback: vi.fn(),
+      })
+      return null
+    }
+
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const root = createRoot(container)
+    await act(async () => root.render(createElement(Harness)))
+
+    await act(async () => {
+      latest.respondToAgentShellApproval(41, {
+        tool_call_id: 21,
+        command: 'git push',
+        suggested: { prefix: ['git'], decision: 'allow' },
+      }, 'allow_once')
+      await flushAsyncWork()
+    })
+
+    expect(mocks.streamAgentMessage).toHaveBeenCalledWith(expect.objectContaining({
+      sessionId: 41,
+      hideUserMessage: true,
+      shellApproval: {
+        tool_call_id: 21,
+        decision: 'allow_once',
+      },
+    }))
+    expect(mocks.streamAgentMessage.mock.calls[0][0].content).toContain(
+      'Retry this exact command now: git push',
+    )
+
+    await act(async () => root.unmount())
+    container.remove()
+  })
+
   it('shows the user message immediately while portal restore is pending', async () => {
     const { useWorkspaceAgent } = await import('./useWorkspaceAgent')
     const settings = createHostedConsoleSettings()

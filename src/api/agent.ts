@@ -154,6 +154,25 @@ export type AgentTurnCapabilities = {
   browser_search: AgentToolAvailability
 }
 
+export type AgentShellApprovalDecision = 'allow_once' | 'allow_always' | 'deny'
+
+export type AgentShellApprovalRule = {
+  prefix: string[]
+  decision: 'allow'
+}
+
+export type AgentShellApprovalRequest = {
+  tool_call_id: number
+  command: string
+  reason?: string
+  suggested?: AgentShellApprovalRule
+}
+
+export type AgentShellApprovalResponse = {
+  tool_call_id: number
+  decision: AgentShellApprovalDecision
+}
+
 export type AgentModelReconnectData = {
   turn: number
   attempt: number
@@ -415,6 +434,7 @@ export async function streamAgentMessage(options: {
   browserEnabled?: boolean
   browserContext?: AgentBrowserContext
   tablePlanContext?: AgentTablePlanContext
+  shellApproval?: AgentShellApprovalResponse
   modelId?: string
   runtimeModel?: RuntimeWritingModel
   saveMarkdown?: boolean
@@ -445,6 +465,7 @@ export async function streamAgentMessage(options: {
       browser_enabled: options.browserEnabled === true,
       browser_context: options.browserContext || undefined,
       table_plan_context: options.tablePlanContext || undefined,
+      shell_approval: options.shellApproval || undefined,
       model_id: options.modelId || '',
       runtime_model: options.runtimeModel || undefined,
       save_markdown: options.saveMarkdown,

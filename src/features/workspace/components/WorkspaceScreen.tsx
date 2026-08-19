@@ -610,6 +610,7 @@ export function WorkspaceScreen({
     resolvedAgentModelKey,
     resolveAgentDocumentContexts,
     removeAgentLocalSource,
+    respondToAgentShellApproval,
     selectedAgentModel,
     sendAgentContextAction,
     sendAiComposerMessage,
@@ -3007,6 +3008,11 @@ export function WorkspaceScreen({
                 void handleAgentModelChange(value),
               onOpenArtifact: (path: string) => void openDocument(path),
               onReviewModifiedArtifact: (path: string) => void reviewAgentModifiedDocument(path),
+              onShellApprovalDecision: (request, decision) => respondToAgentShellApproval(
+                activeWorkspaceAgentSession.id,
+                request,
+                decision,
+              ),
               onImportFiles: isDesktopRuntime()
                 ? (files) => importBrowserFiles(files, 'attachments')
                 : undefined,

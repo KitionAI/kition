@@ -25,6 +25,8 @@ import type {
   AgentLocalSource,
   AgentMessage,
   AgentSession,
+  AgentShellApprovalDecision,
+  AgentShellApprovalRequest,
   AgentSkillSpec,
   AgentTablePlanContext,
   AgentToolCall,
@@ -59,6 +61,7 @@ import {
   AwaitUserInputModal,
   readLatestAwaitUserInputRequest,
 } from '@/features/agent/components/AwaitUserInputModal'
+import { AgentShellApprovalCard } from '@/features/agent/components/AgentShellApprovalCard'
 import {
   buildAgentConversationTurns,
   buildAgentRunLogItems,
@@ -75,6 +78,7 @@ import {
   type AgentToolImageResult,
 } from '@/features/agent/lib/agentTimeline'
 import { getAgentTimelineDict } from '@/features/agent/lib/agentTimelineI18n'
+import { readLatestAgentShellApprovalRequest } from '@/features/agent/lib/agentShellApproval'
 
 type AgentChatPanelProps = {
   session: AgentSession
@@ -109,6 +113,10 @@ type AgentChatPanelProps = {
   onOpenArtifact: (path: string) => void
   onReviewModifiedArtifact?: (path: string) => void
   onApplyPlan?: (plan: AgentTablePlanContext) => void
+  onShellApprovalDecision?: (
+    request: AgentShellApprovalRequest,
+    decision: AgentShellApprovalDecision,
+  ) => void
   onImportFiles?: (files: File[]) => Promise<string[]>
   /** Active workbench pane the agent sits next to. Drives the
    *  empty-state copy so the suggestion prompts match what the user is
@@ -153,6 +161,7 @@ export function AgentChatPanel({
   onOpenArtifact,
   onReviewModifiedArtifact,
   onApplyPlan,
+  onShellApprovalDecision,
   onImportFiles,
   paneContext = 'document',
   progressCard,
@@ -304,6 +313,7 @@ export function AgentChatPanel({
             onOpenPath={onOpenArtifact}
             onOpenArtifact={onOpenArtifact}
             onAwaitUserInputSubmit={handleAwaitUserInputSubmit}
+            onShellApprovalDecision={onShellApprovalDecision}
           />
         )}
         {!isEmptyChat ? (
@@ -412,6 +422,7 @@ function AgentConversation({
   onOpenPath,
   onOpenArtifact,
   onAwaitUserInputSubmit,
+  onShellApprovalDecision,
 }: {
   messages: AgentMessage[]
   toolCalls: AgentToolCall[]
@@ -422,9 +433,14 @@ function AgentConversation({
   onOpenPath: (path: string) => void
   onOpenArtifact: (path: string) => void
   onAwaitUserInputSubmit?: (answer: string) => void
+  onShellApprovalDecision?: (
+    request: AgentShellApprovalRequest,
+    decision: AgentShellApprovalDecision,
+  ) => void
 }) {
   const turns = buildAgentConversationTurns(messages)
   const shouldRenderStreaming = Boolean(streamingText)
+  const shellApprovalRequest = readLatestAgentShellApprovalRequest(toolCalls, messages)
 
   if (!turns.length) {
     const shouldRenderActivity = busy || toolCalls.length > 0 || events.length > 0 || artifacts.length > 0
@@ -442,6 +458,8 @@ function AgentConversation({
             streamingText={streamingText}
             onOpenArtifact={onOpenArtifact}
             onAwaitUserInputSubmit={onAwaitUserInputSubmit}
+            shellApprovalRequest={shellApprovalRequest}
+            onShellApprovalDecision={onShellApprovalDecision}
           />
         ) : null}
         {shouldRenderStreaming ? <AgentStreamingMessageBubble content={streamingText} /> : null}
@@ -483,6 +501,8 @@ function AgentConversation({
                 streamingText={turnStreaming}
                 onOpenArtifact={onOpenArtifact}
                 onAwaitUserInputSubmit={isActiveTurn ? onAwaitUserInputSubmit : undefined}
+                shellApprovalRequest={isActiveTurn ? shellApprovalRequest : null}
+                onShellApprovalDecision={isActiveTurn ? onShellApprovalDecision : undefined}
               />
             ) : null}
             {turn.replies.map((reply) => (
@@ -506,6 +526,8 @@ function AgentInlineActivity({
   streamingText,
   onOpenArtifact,
   onAwaitUserInputSubmit,
+  shellApprovalRequest,
+  onShellApprovalDecision,
 }: {
   toolCalls: AgentToolCall[]
   events: AgentEvent[]
@@ -514,6 +536,11 @@ function AgentInlineActivity({
   streamingText: string
   onOpenArtifact: (path: string) => void
   onAwaitUserInputSubmit?: (answer: string) => void
+  shellApprovalRequest?: AgentShellApprovalRequest | null
+  onShellApprovalDecision?: (
+    request: AgentShellApprovalRequest,
+    decision: AgentShellApprovalDecision,
+  ) => void
 }) {
   const { settings } = useDesktopSettings()
   const locale = resolveAgentTimelineLocale(settings.general.language)
@@ -548,6 +575,13 @@ function AgentInlineActivity({
           request={awaitRequest}
           onSubmit={onAwaitUserInputSubmit}
           busy={busy}
+        />
+      ) : null}
+      {shellApprovalRequest ? (
+        <AgentShellApprovalCard
+          request={shellApprovalRequest}
+          busy={busy}
+          onDecision={onShellApprovalDecision}
         />
       ) : null}
       <AgentRunLog items={runLogItems} locale={locale} dict={localeDict} />

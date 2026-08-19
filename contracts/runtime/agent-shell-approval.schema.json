@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kition.ai/contracts/runtime/agent-shell-approval.schema.json",
+  "title": "Kition Agent Shell Approval",
+  "description": "A resumable approval contract for an Agent shell command that was blocked by the execution policy.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tool_call_id", "command", "requires", "decision"],
+  "properties": {
+    "tool_call_id": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "command": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reason": {
+      "type": "string"
+    },
+    "requires": {
+      "const": "approval"
+    },
+    "decision": {
+      "const": "prompt"
+    },
+    "suggested": {
+      "$ref": "#/$defs/rule"
+    }
+  },
+  "$defs": {
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prefix", "decision"],
+      "properties": {
+        "prefix": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "decision": {
+          "const": "allow"
+        }
+      }
+    }
+  }
+}

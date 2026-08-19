@@ -253,6 +253,77 @@ describe('AgentChatPanel composer controls', () => {
   })
 })
 
+describe('AgentChatPanel shell approval', () => {
+  beforeEach(async () => {
+    await unmount()
+  })
+
+  it('lets the user approve once, remember a prefix, or deny', async () => {
+    const onShellApprovalDecision = vi.fn()
+    const requestToolCall = {
+      id: 21,
+      session_id: 1,
+      message_id: 10,
+      user_id: 1,
+      tool_name: 'exec_command',
+      input_data: { cmd: ['git', 'push'] },
+      output_data: {
+        tool_call_id: 21,
+        command: 'git push',
+        reason: 'Command not covered by any rule; user approval required.',
+        requires: 'approval',
+        decision: 'prompt',
+        suggested: { prefix: ['git'], decision: 'allow' },
+      },
+      status: 'completed',
+      created_at: '2026-08-19T12:00:00.000Z',
+      updated_at: '2026-08-19T12:00:00.000Z',
+    }
+    await mount(createElement(AgentChatPanel, makeMinimalProps({
+      messages: [{
+        id: 10,
+        session_id: 1,
+        user_id: 1,
+        role: 'user',
+        content: 'Push the changes',
+        status: 'completed',
+        created_at: '2026-08-19T12:00:00.000Z',
+      }],
+      toolCalls: [requestToolCall],
+      onShellApprovalDecision,
+    })))
+
+    const card = container.querySelector('[data-testid="agent-shell-approval"]')
+    expect(card?.textContent).toContain('git push')
+    const buttons = Array.from(card?.querySelectorAll('button') || [])
+    expect(buttons.map((button) => button.textContent)).toEqual([
+      'Allow once',
+      'Always allow "git"',
+      'Deny',
+    ])
+
+    await act(async () => buttons[0]?.click())
+    await act(async () => buttons[1]?.click())
+    await act(async () => buttons[2]?.click())
+
+    expect(onShellApprovalDecision).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ tool_call_id: 21, command: 'git push' }),
+      'allow_once',
+    )
+    expect(onShellApprovalDecision).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ tool_call_id: 21 }),
+      'allow_always',
+    )
+    expect(onShellApprovalDecision).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({ tool_call_id: 21 }),
+      'deny',
+    )
+  })
+})
+
 describe('AgentChatPanel changed files', () => {
   beforeEach(async () => {
     await unmount()
