@@ -52,6 +52,7 @@ export function removeImageSource(
   sourceFrom: number,
   sourceTo: number,
   block: boolean,
+  userEvent = 'delete.image.context-menu',
 ): void {
   let from = sourceFrom
   let to = sourceTo
@@ -68,7 +69,7 @@ export function removeImageSource(
   view.dispatch({
     changes: { from, to, insert: '' },
     selection: { anchor: from },
-    userEvent: 'delete.image.context-menu',
+    userEvent,
   })
   view.focus()
 }

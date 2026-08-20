@@ -45,6 +45,7 @@ import { parseWikilinks } from '../../lib/wikilink-parser'
 import {
   buildImageContextMenu,
   readImageEmbedWidth,
+  removeImageSource,
   type DocumentImagePreviewRequest,
 } from './image-widget-actions'
 
@@ -246,6 +247,7 @@ class ExternalLinkIconWidget extends WidgetType {
 }
 
 type RevealedImageSource = { from: number; to: number } | null
+type SelectedImageSource = { from: number; to: number; block: boolean } | null
 
 const revealImageSourceEffect = StateEffect.define<RevealedImageSource>()
 
@@ -270,6 +272,44 @@ const revealedImageSourceField = StateField.define<RevealedImageSource>({
   },
 })
 
+function isStandaloneImageSource(state: EditorState, from: number, to: number) {
+  const line = state.doc.lineAt(from)
+  const before = line.text.slice(0, from - line.from)
+  const after = line.text.slice(to - line.from)
+  return !before.trim() && !after.trim()
+}
+
+function readSelectedImageSource(state: EditorState): SelectedImageSource {
+  if (state.selection.ranges.length !== 1) return null
+  const selection = state.selection.main
+  if (selection.empty) return null
+
+  let selected: SelectedImageSource = null
+  syntaxTree(state).iterate({
+    from: selection.from,
+    to: selection.to,
+    enter(node) {
+      if (node.name !== 'Image' || node.from !== selection.from || node.to !== selection.to) {
+        return
+      }
+      selected = {
+        from: node.from,
+        to: node.to,
+        block: isStandaloneImageSource(state, node.from, node.to),
+      }
+    },
+  })
+  return selected
+}
+
+function deleteSelectedImage(view: EditorView) {
+  if (view.state.readOnly) return false
+  const selected = readSelectedImageSource(view.state)
+  if (!selected) return false
+  removeImageSource(view, selected.from, selected.to, selected.block, 'delete.image.keyboard')
+  return true
+}
+
 const IMAGE_SOURCE_ICON_SVG =
   '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>'
 const IMAGE_ZOOM_ICON_SVG =
@@ -289,6 +329,7 @@ class ImageWidget extends WidgetType {
     readonly sourceTo: number,
     readonly block: boolean,
     readonly sourceVisible: boolean,
+    readonly selected: boolean,
     readonly displayWidth: number | null,
     readonly onPreview: ImagePreviewHandler | null,
   ) {
@@ -300,6 +341,7 @@ class ImageWidget extends WidgetType {
     wrap.className = 'cm-md-image'
     if (this.block) wrap.classList.add('cm-md-image-block', 'is-loading')
     if (this.sourceVisible) wrap.classList.add('is-source-visible')
+    if (this.selected) wrap.classList.add('is-selected')
     const img = document.createElement('img')
     img.alt = this.alt
     // CM6 only creates widget DOM near the viewport, so eager loading here does
@@ -308,7 +350,17 @@ class ImageWidget extends WidgetType {
     img.decoding = 'async'
     img.draggable = false
     if (this.displayWidth) img.style.width = `${this.displayWidth}px`
-    img.addEventListener('mousedown', (e) => e.preventDefault())
+    img.addEventListener('mousedown', (event) => {
+      if (event.button !== 0) return
+      event.preventDefault()
+      event.stopPropagation()
+      view.dispatch({
+        effects: revealImageSourceEffect.of(null),
+        selection: { anchor: this.sourceFrom, head: this.sourceTo },
+        scrollIntoView: true,
+      })
+      view.focus()
+    })
     const finishLoading = () => {
       wrap.classList.remove('is-loading')
       view.requestMeasure()
@@ -397,6 +449,7 @@ class ImageWidget extends WidgetType {
       && other.sourceTo === this.sourceTo
       && other.block === this.block
       && other.sourceVisible === this.sourceVisible
+      && other.selected === this.selected
       && other.displayWidth === this.displayWidth
       && other.onPreview === this.onPreview
   }
@@ -1425,12 +1478,15 @@ function buildLivePreviewDecorations(state: EditorState): DecorationSet {
           if (!url) return false
 
           const line = state.doc.lineAt(node.from)
-          const before = line.text.slice(0, node.from - line.from)
-          const after = line.text.slice(node.to - line.from)
-          const standalone = !before.trim() && !after.trim()
+          const standalone = isStandaloneImageSource(state, node.from, node.to)
           const rawSource = state.doc.sliceString(node.from, node.to)
           const sourceVisible = revealedImageSource?.from === node.from
             && revealedImageSource.to === node.to
+          const selection = state.selection.main
+          const selected = state.selection.ranges.length === 1
+            && !selection.empty
+            && selection.from === node.from
+            && selection.to === node.to
           const widget = new ImageWidget(
             url,
             altText,
@@ -1439,6 +1495,7 @@ function buildLivePreviewDecorations(state: EditorState): DecorationSet {
             node.to,
             standalone,
             sourceVisible,
+            selected,
             readImageEmbedWidth(rawSource),
             state.facet(livePreviewImagePreviewFacet),
           )
@@ -1901,6 +1958,11 @@ const livePreviewTheme = EditorView.baseTheme({
     borderRadius: '0.375rem',
     boxShadow: '0 1px 2px hsl(var(--border, 215 15% 80%) / 0.5)',
   },
+  '.cm-md-image.is-selected img': {
+    outline: '2px solid hsl(var(--primary, 248 63% 55%))',
+    outlineOffset: '2px',
+    boxShadow: '0 0 0 4px hsl(var(--primary, 248 63% 55%) / 0.14)',
+  },
   '.cm-md-image-actions': {
     appearance: 'none',
     position: 'absolute',
@@ -1933,7 +1995,7 @@ const livePreviewTheme = EditorView.baseTheme({
     borderRadius: '6px',
     cursor: 'pointer',
   },
-  '.cm-md-image:hover .cm-md-image-actions, .cm-md-image.is-source-visible .cm-md-image-actions, .cm-md-image-actions:focus-within': {
+  '.cm-md-image:hover .cm-md-image-actions, .cm-md-image.is-selected .cm-md-image-actions, .cm-md-image.is-source-visible .cm-md-image-actions, .cm-md-image-actions:focus-within': {
     opacity: '1',
   },
   '.cm-md-image-action:hover': {
@@ -2393,6 +2455,12 @@ export function livePreviewExtension(options: {
       blur(_e, view) {
         if (!view.state.field(editorFocusField, false)) return
         view.dispatch({ effects: editorFocusEffect.of(false) })
+      },
+      keydown(event, view) {
+        if (event.key !== 'Backspace' && event.key !== 'Delete') return false
+        if (!deleteSelectedImage(view)) return false
+        event.preventDefault()
+        return true
       },
                                                                       
                                                                         

@@ -183,6 +183,59 @@ describe('livePreviewExtension — images', () => {
     })
   })
 
+  it('selects a rendered image with the primary mouse button', () => {
+    const source = '![Diagram](https://example.com/diagram.png)\nafter'
+    const imageSource = source.slice(0, source.indexOf('\n'))
+    const view = mountEditor(source, source.length)
+    const event = new MouseEvent('mousedown', {
+      button: 0,
+      bubbles: true,
+      cancelable: true,
+    })
+
+    image(view)?.dispatchEvent(event)
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(view.state.selection.main.from).toBe(0)
+    expect(view.state.selection.main.to).toBe(imageSource.length)
+    expect(view.dom.querySelector('.cm-md-image')?.classList.contains('is-selected')).toBe(true)
+  })
+
+  it.each(['Backspace', 'Delete'])('removes a selected standalone image with %s', (key) => {
+    const source = '![Diagram](https://example.com/diagram.png)\nafter'
+    const view = mountEditor(source, source.length)
+
+    image(view)?.dispatchEvent(new MouseEvent('mousedown', {
+      button: 0,
+      bubbles: true,
+      cancelable: true,
+    }))
+    view.contentDOM.dispatchEvent(new KeyboardEvent('keydown', {
+      key,
+      bubbles: true,
+      cancelable: true,
+    }))
+
+    expect(view.state.doc.toString()).toBe('after')
+  })
+
+  it('removes only a selected inline image', () => {
+    const view = mountEditor('Before ![Diagram](diagram.png) after', 0)
+
+    image(view)?.dispatchEvent(new MouseEvent('mousedown', {
+      button: 0,
+      bubbles: true,
+      cancelable: true,
+    }))
+    view.contentDOM.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'Delete',
+      bubbles: true,
+      cancelable: true,
+    }))
+
+    expect(view.state.doc.toString()).toBe('Before  after')
+  })
+
   it('shows the image-specific context menu and removes the image source', () => {
     const source = '![Diagram](https://example.com/diagram.png)\nafter'
     const imageSource = source.slice(0, source.indexOf('\n'))
