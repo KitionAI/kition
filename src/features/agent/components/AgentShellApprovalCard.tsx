@@ -4,6 +4,7 @@ import type {
   AgentShellApprovalDecision,
   AgentShellApprovalRequest,
 } from '@/api/agent'
+import './AgentShellApprovalCard.css'
 
 export function AgentShellApprovalCard({
   request,

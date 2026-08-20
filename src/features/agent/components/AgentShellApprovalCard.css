@@ -1,0 +1,50 @@
+.agent-shell-approval {
+  @apply rounded-xl border px-3 py-3;
+  border-color: hsl(var(--warning-border));
+  background: hsl(var(--warning-background));
+  box-shadow: var(--shadow-soft);
+}
+
+.agent-shell-approval__header {
+  @apply flex items-center gap-2 text-xs font-semibold text-warning-foreground;
+}
+
+.agent-shell-approval__icon {
+  @apply grid size-7 shrink-0 place-items-center rounded-md border;
+  border-color: hsl(var(--warning-border));
+  background: hsl(var(--background) / 0.7);
+}
+
+.agent-shell-approval__command {
+  @apply mt-2.5 flex min-w-0 items-start gap-2 rounded-lg border bg-background px-3 py-2 text-foreground;
+  border-color: hsl(var(--border));
+}
+
+.agent-shell-approval__command code {
+  @apply min-w-0 flex-1 whitespace-pre-wrap break-words font-mono text-xs leading-5;
+  overflow-wrap: anywhere;
+}
+
+.agent-shell-approval__reason {
+  @apply mt-2 text-xs leading-5 text-warning-foreground;
+}
+
+.agent-shell-approval__actions {
+  @apply mt-3 flex flex-wrap items-center gap-2;
+}
+
+.agent-shell-approval__actions button {
+  @apply inline-flex min-h-8 items-center justify-center rounded-lg px-3 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+.agent-shell-approval__allow {
+  @apply bg-primary text-primary-foreground hover:bg-primary/90;
+}
+
+.agent-shell-approval__remember {
+  @apply border border-border bg-background text-foreground hover:bg-muted;
+}
+
+.agent-shell-approval__deny {
+  @apply text-muted-foreground hover:bg-background/70 hover:text-foreground;
+}
