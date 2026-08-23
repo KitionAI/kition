@@ -161,6 +161,7 @@ export function useWorkspaceAgent({
   getTurnContext,
 }: UseWorkspaceAgentOptions) {
   const [agentSessions, setAgentSessions] = useState<AgentSession[]>([])
+  const agentSessionsRevisionRef = useRef(0)
   const [agentMessages, setAgentMessages] = useState<Record<number, AgentMessage[]>>({})
   const [agentToolCalls, setAgentToolCalls] = useState<Record<number, AgentToolCall[]>>({})
   const [agentEvents, setAgentEvents] = useState<Record<number, AgentEvent[]>>({})
@@ -330,8 +331,12 @@ export function useWorkspaceAgent({
     preferredSessionId?: number,
     options: { silent?: boolean } = {},
   ) => {
+    const revisionAtStart = agentSessionsRevisionRef.current
     try {
       const response = await listAgentSessions()
+      if (agentSessionsRevisionRef.current !== revisionAtStart) {
+        return
+      }
       const sessions = response.items || []
       setAgentSessions(sessions)
       if (preferredSessionId) {
@@ -358,6 +363,7 @@ export function useWorkspaceAgent({
       return
     }
     lastLoadedRootPathRef.current = nextRoot
+    agentSessionsRevisionRef.current += 1
 
     for (const controller of Object.values(agentAbortControllers.current)) {
       controller?.abort()
@@ -428,6 +434,7 @@ export function useWorkspaceAgent({
 
     try {
       const session = await createAgentSession({ language: getLanguageNameForLocale(getCurrentLocale()) })
+      agentSessionsRevisionRef.current += 1
       setAgentSessions((current) => [session, ...current.filter((item) => item.id !== session.id)])
       setAgentMessages((current) => ({ ...current, [session.id]: [] }))
       setAgentToolCalls((current) => ({ ...current, [session.id]: [] }))
@@ -463,6 +470,7 @@ export function useWorkspaceAgent({
       return
     }
 
+    agentSessionsRevisionRef.current += 1
     setAgentSessions((current) => current.filter((item) => item.id !== sessionId))
     const dropSession = <T,>(current: Record<number, T>) => {
       if (!(sessionId in current)) {
@@ -1027,6 +1035,7 @@ export function useWorkspaceAgent({
       }
 
       if (nextSession) {
+        agentSessionsRevisionRef.current += 1
         setAgentSessions((current) => [nextSession, ...current.filter((item) => item.id !== nextSession.id)])
         setPendingFocusedSessionId(nextSession.id)
       }
