@@ -1,6 +1,6 @@
 {
   "name": "kition",
-  "version": "0.1.35",
+  "version": "0.1.36",
   "private": true,
   "license": "AGPL-3.0-only",
   "description": "Kition — documents, structured tables, AI agents, and visual workflows",
