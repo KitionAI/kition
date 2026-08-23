@@ -28,11 +28,11 @@ describe('whiteboardGeometry', () => {
 
   it('translates every point of a freehand stroke', () => {
     expect(translateWhiteboardElement({
-      id: 'stroke-1',
+      id: 'board-stroke-one',
       kind: 'stroke',
       points: [{ x: 0, y: 1 }, { x: 2, y: 3 }],
     }, { x: 10, y: -1 })).toEqual({
-      id: 'stroke-1',
+      id: 'board-stroke-one',
       kind: 'stroke',
       points: [{ x: 10, y: 0 }, { x: 12, y: 2 }],
     })

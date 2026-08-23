@@ -87,7 +87,7 @@ export function WhiteboardStylePanel({
 
       <StyleSection label={`${t('board.style.opacity')} ${opacity}%`}>
         <input
-          className="w-full accent-brand"
+          className="whiteboard-opacity-input"
           type="range"
           min="5"
           max="100"
@@ -175,7 +175,7 @@ function StyleSection({
   last?: boolean
 }) {
   return (
-    <section className={cn('border-b py-2.5 first:pt-0', last && 'border-b-0 pb-0')}>
+    <section className={cn('whiteboard-style-section border-b py-2.5', last && 'is-last')}>
       <div className="mb-2 text-[11px] font-semibold text-muted-foreground">{label}</div>
       {children}
     </section>
@@ -195,14 +195,14 @@ function ColorRow({
 }) {
   const { t } = useTranslation('workspace')
   return (
-    <div className="grid grid-cols-9 gap-1">
+    <div className="whiteboard-color-grid grid gap-1">
       {WHITEBOARD_COLOR_TOKENS.map((token) => (
         <button
           key={token}
           type="button"
           className={cn(
-            'flex size-4 items-center justify-center rounded-sm border border-hairline-strong disabled:opacity-40',
-            selected === token && 'ring-2 ring-ring ring-offset-1 ring-offset-background',
+            'whiteboard-color-swatch flex size-4 items-center justify-center rounded-sm border disabled:opacity-40',
+            selected === token && 'is-selected',
           )}
           style={{ backgroundColor: resolveWhiteboardColor(token, role) }}
           disabled={!enabled}
@@ -255,5 +255,5 @@ function DashPreview({ dashStyle }: { dashStyle: WhiteboardDashStyle }) {
     : dashStyle === 'dashed'
       ? 'dashed'
       : 'dotted'
-  return <span className="w-8 border-t-2 border-current" style={{ borderTopStyle: borderStyle }} />
+  return <span className="whiteboard-dash-preview" style={{ borderTopStyle: borderStyle }} />
 }

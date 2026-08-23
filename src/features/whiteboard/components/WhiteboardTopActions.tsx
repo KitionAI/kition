@@ -38,7 +38,7 @@ export function WhiteboardTopActions({
       <div className="relative">
         <button
           type="button"
-          className="flex h-8 max-w-52 items-center gap-2 rounded-md px-2.5 text-sm font-semibold text-foreground hover:bg-muted"
+          className="whiteboard-page-trigger flex h-8 items-center gap-2 rounded-md px-2.5 text-sm font-semibold text-foreground hover:bg-muted"
           onClick={() => setPageOpen((open) => !open)}
           aria-expanded={pageOpen}
           title={title}
@@ -48,7 +48,7 @@ export function WhiteboardTopActions({
         </button>
         {pageOpen ? (
           <div
-            className="absolute left-0 top-full mt-2 w-56 rounded-xl border bg-popover p-2 shadow-[var(--shadow-floating)]"
+            className="whiteboard-page-menu absolute left-0 mt-2 rounded-xl border bg-popover p-2"
             data-testid="whiteboard-page-menu"
           >
             <div className="px-2 py-1 text-[11px] font-semibold text-muted-foreground">
@@ -61,7 +61,7 @@ export function WhiteboardTopActions({
           </div>
         ) : null}
       </div>
-      <span className="mx-0.5 h-5 w-px bg-border" aria-hidden="true" />
+      <span className="whiteboard-toolbar-separator" aria-hidden="true" />
       <ActionButton
         disabled={!controller.canUndo}
         label={t('board.toolbar.undo')}
@@ -111,7 +111,7 @@ export function WhiteboardTopActions({
           <MoreHorizontal className="size-4" />
         </ActionButton>
         {moreOpen ? (
-          <div className="absolute right-0 top-full mt-2 w-48 rounded-xl border bg-popover p-1.5 shadow-[var(--shadow-floating)]">
+          <div className="whiteboard-more-menu absolute right-0 mt-2 w-48 rounded-xl border bg-popover p-1.5">
             <MenuButton label={t('board.topActions.selectAll')} onClick={controller.selectAll}>
               <Rows3 className="size-4" />
             </MenuButton>

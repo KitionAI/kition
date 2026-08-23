@@ -276,10 +276,10 @@ export function WhiteboardCanvas({
       <svg
         ref={svgRef}
         className={cn(
-          'h-full w-full touch-none bg-background outline-none',
-          controller.tool === 'hand' && 'cursor-grab active:cursor-grabbing',
+          'whiteboard-canvas-surface h-full w-full bg-background outline-none',
+          controller.tool === 'hand' && 'is-hand cursor-grab',
           controller.tool === 'select' && (movingSelection ? 'cursor-move' : 'cursor-default'),
-          controller.tool !== 'hand' && controller.tool !== 'select' && 'cursor-crosshair',
+          controller.tool !== 'hand' && controller.tool !== 'select' && 'is-drawing',
         )}
         role="application"
         aria-label={t('board.canvasTitle', { title })}

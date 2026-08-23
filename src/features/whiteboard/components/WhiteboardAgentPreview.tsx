@@ -45,7 +45,7 @@ export function WhiteboardAgentPreviewControls({
 
   return (
     <section
-      className="absolute right-4 top-4 z-30 w-[min(360px,calc(100%-32px))] rounded-xl border bg-background/95 p-3 shadow-[var(--shadow-floating)] backdrop-blur"
+      className="whiteboard-agent-preview-panel absolute right-4 top-4 z-30 rounded-xl border bg-background/95 p-3 backdrop-blur"
       aria-live="polite"
       data-testid="whiteboard-agent-preview-controls"
     >
@@ -91,7 +91,7 @@ export function WhiteboardAgentPreviewControls({
             {state.status === 'ready' ? (
               <button
                 type="button"
-                className="inline-flex h-8 items-center gap-1.5 rounded-md bg-brand px-3 text-xs font-semibold text-brand-foreground hover:bg-brand-active"
+                className="whiteboard-agent-accept inline-flex h-8 items-center gap-1.5 rounded-md bg-brand px-3 text-xs font-semibold text-brand-foreground"
                 onClick={onAccept}
                 data-testid="whiteboard-agent-accept"
               >

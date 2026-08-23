@@ -106,7 +106,7 @@ export function WhiteboardToolbar({
             </ToolButton>
           )
         })}
-        <span className="mx-0.5 h-5 w-px bg-border" aria-hidden="true" />
+        <span className="whiteboard-toolbar-separator" aria-hidden="true" />
         <ToolButton
           active={false}
           disabled={importingImage}
@@ -152,7 +152,7 @@ export function WhiteboardToolbar({
 
       {importError ? (
         <div
-          className="absolute bottom-16 left-1/2 z-30 max-w-sm -translate-x-1/2 rounded-lg border border-destructive-border bg-destructive-background px-3 py-2 text-xs text-destructive shadow-[var(--shadow-toolbar)]"
+          className="whiteboard-image-import-error absolute left-1/2 z-30 -translate-x-1/2 rounded-lg border border-destructive-border bg-destructive-background px-3 py-2 text-xs text-destructive shadow-[var(--shadow-toolbar)]"
           role="alert"
         >
           {t('board.imageImport.error')}: {importError}
@@ -218,13 +218,13 @@ function WhiteboardZoomControls({
       <ZoomButton label={t('board.toolbar.zoomOut')} onClick={() => controller.zoomBy(1 / 1.2, center)}>
         <Minus className="size-4" />
       </ZoomButton>
-      <span className="min-w-12 text-center text-xs font-medium text-muted-foreground">
+      <span className="whiteboard-zoom-label text-center text-xs font-medium text-muted-foreground">
         {Math.round(controller.viewport.zoom * 100)}%
       </span>
       <ZoomButton label={t('board.toolbar.zoomIn')} onClick={() => controller.zoomBy(1.2, center)}>
         <Plus className="size-4" />
       </ZoomButton>
-      <span className="mx-0.5 h-5 w-px bg-border" aria-hidden="true" />
+      <span className="whiteboard-toolbar-separator" aria-hidden="true" />
       <ZoomButton
         label={t('board.toolbar.fit')}
         onClick={() => controller.fitToContent(canvasSize)}

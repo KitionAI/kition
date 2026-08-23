@@ -37,7 +37,7 @@ export function WhiteboardShapePalette({
   const patternId = useId().replace(/:/g, '')
   return (
     <div
-      className="absolute bottom-full right-0 mb-2 w-72 rounded-xl border bg-popover p-3 text-popover-foreground shadow-[var(--shadow-floating)]"
+      className="whiteboard-shape-palette absolute right-0 mb-2 w-72 rounded-xl border bg-popover p-3 text-popover-foreground"
       role="menu"
       aria-label={t('board.shapePalette.label')}
       data-testid="whiteboard-shape-palette"

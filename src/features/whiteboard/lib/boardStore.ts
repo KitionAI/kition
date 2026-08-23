@@ -475,9 +475,9 @@ export function squashBoardRecordDiffs(
     removed: [],
   }
   for (const transition of transitions.values()) {
-    if (!transition.before && transition.after) {
+    if (transition.before === undefined && transition.after) {
       squashed.added.push(cloneBoardRecord(transition.after))
-    } else if (transition.before && !transition.after) {
+    } else if (transition.before && transition.after === undefined) {
       squashed.removed.push(cloneBoardRecord(transition.before))
     } else if (
       transition.before

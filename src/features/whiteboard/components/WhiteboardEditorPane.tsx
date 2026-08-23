@@ -14,6 +14,8 @@ import type { WhiteboardAgentBridge } from '@/features/whiteboard/lib/whiteboard
 import type { WhiteboardPoint } from '@/features/whiteboard/lib/whiteboardTypes'
 import { useTranslation } from 'react-i18next'
 
+import './whiteboard.css'
+
 export function WhiteboardEditorPane({
   agentAvailable = false,
   agentBusy = false,
