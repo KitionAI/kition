@@ -3,6 +3,7 @@
     "format": {
       "markdown": "文档",
       "table": "表格",
+      "board": "画板",
       "page": "页面",
       "note": "笔记"
     },
@@ -129,6 +130,7 @@
     "closeReadOnly": "关闭所有只读标签页",
     "copyReference": "复制路径/引用",
     "workflowsTitle": "工作流",
+    "boardTitle": "画板",
     "workflowsScoped": "工作流 · {{name}}",
     "untitledTable": "未命名表格",
     "untitledWorkflow": "未命名工作流",
@@ -218,6 +220,100 @@
   "editor": {
     "sourcePlaceholder": "在此编辑 Markdown 源码…"
   },
+  "board": {
+    "canvasTitle": "{{title}}画板画布",
+    "canvasDescription": "一个带有绘图和图表工具的交互式原生 SVG 画板。",
+    "textPlaceholder": "输入文字",
+    "agentScope": {
+      "label": "AI 上下文范围",
+      "description": "选择 AI 可以查看的画板范围。",
+      "unavailable": "请更新运行时以启用 AI 画板操作。",
+      "selection": "选中内容",
+      "viewport": "可见区域",
+      "board": "整个画板"
+    },
+    "agentPreview": {
+      "generating": "AI 正在生成画板预览",
+      "ready": "AI 画板改动已就绪",
+      "invalid": "AI 画板预览已被拒绝",
+      "description": "应用前请检查 {{count}} 项建议改动。",
+      "accept": "接受",
+      "reject": "拒绝",
+      "cancel": "取消"
+    },
+    "status": {
+      "loading": "正在加载…",
+      "ready": "已保存",
+      "saving": "正在保存…",
+      "error": "保存失败"
+    },
+    "toolbar": {
+      "label": "画板工具",
+      "select": "选择",
+      "hand": "平移",
+      "eraser": "橡皮擦",
+      "rectangle": "矩形",
+      "note": "便签",
+      "text": "文字",
+      "pen": "画笔",
+      "connector": "连线",
+      "image": "插入图片",
+      "undo": "撤销",
+      "redo": "重做",
+      "lock": "锁定选中内容",
+      "unlock": "解锁选中内容",
+      "delete": "删除选中内容",
+      "zoomOut": "缩小",
+      "zoomIn": "放大",
+      "fit": "适应内容"
+    },
+    "shapePalette": {
+      "label": "图形"
+    },
+    "shapes": {
+      "rectangle": "矩形",
+      "ellipse": "椭圆",
+      "triangle": "三角形",
+      "diamond": "菱形",
+      "hexagon": "六边形",
+      "pill": "胶囊形",
+      "parallelogram": "平行四边形",
+      "star": "星形",
+      "cloud": "云朵",
+      "heart": "心形",
+      "check": "对勾",
+      "arrow-left": "左箭头",
+      "arrow-right": "右箭头",
+      "arrow-up": "上箭头",
+      "arrow-down": "下箭头",
+      "line": "直线",
+      "frame": "框架"
+    },
+    "style": {
+      "label": "样式",
+      "selection": "选中内容",
+      "defaults": "新建元素",
+      "strokeColor": "线条颜色",
+      "fillColor": "填充颜色",
+      "opacity": "透明度",
+      "fill": "填充方式",
+      "line": "线条样式",
+      "size": "线条粗细",
+      "fillStyles": { "none": "无填充", "solid": "实色填充", "semi": "半透明填充", "pattern": "纹理填充" },
+      "dashStyles": { "solid": "实线", "dashed": "虚线", "dotted": "点线" },
+      "sizes": { "s": "小", "m": "中", "l": "大", "xl": "特大" },
+      "colors": { "ink": "墨色", "gray": "灰色", "purple": "紫色", "green": "绿色", "orange": "橙色", "red": "红色", "yellow": "黄色", "blue": "蓝色", "white": "白色" }
+    },
+    "topActions": {
+      "pages": "页面",
+      "duplicate": "复制选中内容",
+      "more": "更多操作",
+      "selectAll": "全选"
+    },
+    "imageImport": {
+      "error": "无法插入图片"
+    }
+  },
   "layout": {
     "resizeSidebar": "调整侧边栏大小",
     "resizeChat": "调整 AI 对话大小"
@@ -238,10 +334,11 @@
     "saveBeforeRename": "保存当前文档失败，已跳过重命名",
     "renameFailed": "重命名文档失败",
     "fileTypeNotDeletable": "此类文件暂时无法从文档库中删除。",
-    "onlyMarkdownPlateMovable": "此处仅支持移动 Markdown 和 Plate 页面。Office/PDF 等文件请通过系统文件夹整理。",
-    "onlyMarkdownPlateTableDuplicable": "此处仅支持复制 Markdown、Plate 和表格页面。",
-    "onlyMarkdownPlateTableRenamable": "此处仅支持重命名 Markdown、Plate 和表格页面。",
+    "onlyWorkspaceItemsMovable": "此处仅支持移动文档、表格和画板。Office/PDF 等文件请通过系统文件夹整理。",
+    "onlyWorkspaceItemsDuplicable": "此处仅支持复制文档、表格和画板。",
+    "onlyWorkspaceItemsRenamable": "此处仅支持重命名文档、表格和画板。",
     "createDocumentFailed": "创建文档失败",
+    "createBoardFailed": "创建画板失败",
     "createDashboardFailed": "创建仪表盘失败",
     "createTableFailed": "创建表格失败",
     "importMarkdownFailed": "导入 Markdown 失败",
@@ -254,6 +351,7 @@
     "refreshed": "已刷新工作区",
     "restoredSavedVersion": "已还原到保存的版本",
     "documentCreated": "文档已创建",
+    "boardCreated": "画板已创建",
     "dashboardCreated": "仪表板已创建",
     "tableCreated": "表格已创建",
     "spreadsheetImported": "电子表格已导入为 Kitable",

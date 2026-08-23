@@ -10,6 +10,7 @@ import {
   getWorkspaceItemIconColorClass,
   inferWorkspaceItemFormat,
   isEditableWorkspaceFormat,
+  isOrganizableWorkspaceFormat,
   isSupportedWorkspaceFormat,
   workspaceEmojiOptions,
   workspaceFolderIconColorClass,
@@ -63,6 +64,7 @@ export function WorkspaceTree({
   onCreateFolder,
   onCreateDocument,
   onCreateTable,
+  onCreateBoard,
   depth = 0,
 }: {
   nodes: WorkspaceTreeNode[]
@@ -105,6 +107,7 @@ export function WorkspaceTree({
   onCreateFolder?: () => void
   onCreateDocument?: (format: DocumentCreateFormat) => void
   onCreateTable?: () => void
+  onCreateBoard?: () => void
   depth?: number
 }) {
   const [localActionMenuPath, setLocalActionMenuPath] = useState('')
@@ -224,6 +227,7 @@ export function WorkspaceTree({
           ? 'text-brand'
           : getWorkspaceItemIconColorClass(node.format)
         const isEditable = isEditableWorkspaceFormat(node.format)
+        const isOrganizable = isOrganizableWorkspaceFormat(node.format)
         const isKitableContainer = node.type === 'file'
           && !node.virtual
           && node.name.toLowerCase().endsWith('.kitable')
@@ -258,9 +262,9 @@ export function WorkspaceTree({
         const canRename = isKitableTableLeaf
           || isKitableDashboardLeaf
           || isKitableWorkflowLeaf
-          || (!node.virtual && (node.type === 'folder' || isEditable))
-        const canDuplicate = !node.virtual && node.type === 'file' && isEditable
-        const canMove = !node.virtual && (node.type === 'folder' || isEditable)
+          || (!node.virtual && (node.type === 'folder' || isOrganizable))
+        const canDuplicate = !node.virtual && node.type === 'file' && isOrganizable
+        const canMove = !node.virtual && (node.type === 'folder' || isOrganizable)
         const canAddToChat = !node.virtual && Boolean(onAddToChat)
         const canAddToNewChat = !node.virtual && Boolean(onAddToNewChat)
         const canRevealInOS = !node.virtual && Boolean(onRevealInOS)
@@ -483,6 +487,7 @@ export function WorkspaceTree({
                             onCreateFolder={onCreateFolder ?? (() => undefined)}
                             onCreateDocument={onCreateDocument ?? (() => undefined)}
                             onCreateTable={onCreateTable ?? (() => undefined)}
+                            onCreateBoard={onCreateBoard}
                             onCreateWorkflow={canCreateWorkflowForTable ? () => onCreateWorkflowForTable?.(node) : undefined}
                           />
                         ) : null}
@@ -737,6 +742,7 @@ export function WorkspaceTree({
                 onCreateFolder={onCreateFolder}
                 onCreateDocument={onCreateDocument}
                 onCreateTable={onCreateTable}
+                onCreateBoard={onCreateBoard}
                 depth={depth + 1}
               />
             ) : null}

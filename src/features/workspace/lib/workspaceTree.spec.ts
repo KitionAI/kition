@@ -65,6 +65,25 @@ describe('buildPrivateSectionTreeNodes hidden workflow storage', () => {
   })
 })
 
+describe('buildPrivateSectionTreeNodes Board files', () => {
+  it('keeps .kiboard files visible as Board even when the bridge reports binary', () => {
+    const nodes = buildPrivateSectionTreeNodes([{
+      type: 'file',
+      path: 'Planning.kiboard',
+      name: 'Planning.kiboard',
+      format: 'binary',
+    }], emptyMetadata)
+
+    expect(nodes).toEqual([
+      expect.objectContaining({
+        path: 'Planning.kiboard',
+        title: 'Planning',
+        format: 'board',
+      }),
+    ])
+  })
+})
+
 describe('buildPrivateSectionTreeNodes kitable Workflows entry point', () => {
   it('does not synthesize a virtual Workflows child node on .kitable files', () => {
     // Keeps the kitable subtree compact — the Workflows home tab is

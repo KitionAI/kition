@@ -66,6 +66,7 @@ variables.
 | Success soft | `#d9f3e1` | `--success-background` (border `--success-border`, text `--success-foreground`) | `bg-success-background` |
 | Warning soft | `#ffe8d4` | `--warning-background` (border `--warning-border`, text `--warning-foreground`) | `bg-warning-background` |
 | Info soft | `#dcecfa` | `--tint-sky` | `bg-tint-sky` |
+| Info accent | – | `--info` | SVG/editor information accents |
 | Destructive soft | – | `--destructive-background` (border `--destructive-border`) | `bg-destructive-background` |
 | Card / dialog elevation | – | `--shadow-soft`, `--shadow-floating`, `--shadow-toolbar`, `--shadow-elevated` | `shadow-[var(--shadow-soft)]` etc. |
 

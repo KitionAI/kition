@@ -29,4 +29,27 @@ describe('buildAgentTurnContext', () => {
       activeDataTableId: 78,
     })
   })
+
+  it('forwards compact Whiteboard context without expanding it in the client', () => {
+    const whiteboardContext = {
+      type: 'whiteboard.context' as const,
+      schema_version: 1 as const,
+      board: { id: 'home', path: 'Whiteboards/Home.kiboard', title: 'Home' },
+      scope: 'selection' as const,
+      viewport: { x: 0, y: 0, width: 1200, height: 800, zoom: 1 },
+      selected_element_ids: ['node-1'],
+      elements: [],
+      clusters: [],
+      recent_operations: [],
+      source_refs: [],
+    }
+
+    expect(buildAgentTurnContext({
+      paneContext: 'whiteboard',
+      whiteboardContext,
+    })).toMatchObject({
+      paneContext: 'whiteboard',
+      whiteboardContext,
+    })
+  })
 })

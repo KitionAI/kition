@@ -190,6 +190,23 @@
           "prompt": "Pick the strongest hero asset for a landing page."
         }
       }
+    },
+    "whiteboard": {
+      "description": "Ask the agent to map ideas, organize the board, or create visual assets.",
+      "suggestions": {
+        "generateMindMap": {
+          "label": "Generate a mind map",
+          "prompt": "Turn my idea into a clear mind map on this Board."
+        },
+        "organizeBoard": {
+          "label": "Organize this board",
+          "prompt": "Organize the current Board into clear groups and improve its layout."
+        },
+        "generateImage": {
+          "label": "Generate an image",
+          "prompt": "Generate a visual for the selected idea and place it on this Board."
+        }
+      }
     }
   }
 }

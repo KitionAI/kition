@@ -3,6 +3,7 @@
     "format": {
       "markdown": "Документ",
       "table": "Таблица",
+      "board": "Доска",
       "page": "Страница",
       "note": "Заметка"
     },
@@ -129,6 +130,7 @@
     "closeReadOnly": "Закрыть все вкладки только для чтения",
     "copyReference": "Копировать путь/ссылку",
     "workflowsTitle": "Процессы",
+    "boardTitle": "Доска",
     "workflowsScoped": "Процессы · {{name}}",
     "untitledTable": "Таблица без названия",
     "untitledWorkflow": "Процесс без названия",
@@ -218,6 +220,67 @@
   "editor": {
     "sourcePlaceholder": "Редактируйте исходный код Markdown здесь..."
   },
+  "board": {
+    "canvasTitle": "Холст доски {{title}}",
+    "canvasDescription": "Интерактивная нативная SVG-доска с инструментами рисования и диаграмм.",
+    "textPlaceholder": "Введите текст",
+    "agentScope": {
+      "label": "Область контекста ИИ",
+      "description": "Выберите часть доски, которую может видеть ИИ.",
+      "unavailable": "Обновите среду выполнения, чтобы включить действия ИИ на доске.",
+      "selection": "Выделение",
+      "viewport": "Видимая область",
+      "board": "Вся доска"
+    },
+    "agentPreview": {
+      "generating": "ИИ создаёт предварительный просмотр доски",
+      "ready": "Изменения ИИ для доски готовы",
+      "invalid": "Предварительный просмотр ИИ отклонён",
+      "description": "Проверьте {{count}} предложенных изменений перед применением.",
+      "accept": "Принять",
+      "reject": "Отклонить",
+      "cancel": "Отмена"
+    },
+    "status": {
+      "loading": "Загрузка…",
+      "ready": "Сохранено",
+      "saving": "Сохранение…",
+      "error": "Ошибка сохранения"
+    },
+    "toolbar": {
+      "label": "Инструменты доски",
+      "select": "Выбор",
+      "hand": "Перемещение",
+      "eraser": "Ластик",
+      "rectangle": "Прямоугольник",
+      "note": "Стикер",
+      "text": "Текст",
+      "pen": "Перо",
+      "connector": "Соединитель",
+      "image": "Вставить изображение",
+      "undo": "Отменить",
+      "redo": "Повторить",
+      "lock": "Заблокировать выбранное",
+      "unlock": "Разблокировать выбранное",
+      "delete": "Удалить выбранное",
+      "zoomOut": "Уменьшить",
+      "zoomIn": "Увеличить",
+      "fit": "Вписать содержимое"
+    },
+    "shapePalette": { "label": "Фигуры" },
+    "shapes": {
+      "rectangle": "Прямоугольник", "ellipse": "Эллипс", "triangle": "Треугольник", "diamond": "Ромб", "hexagon": "Шестиугольник", "pill": "Капсула", "parallelogram": "Параллелограмм", "star": "Звезда", "cloud": "Облако", "heart": "Сердце", "check": "Галочка", "arrow-left": "Стрелка влево", "arrow-right": "Стрелка вправо", "arrow-up": "Стрелка вверх", "arrow-down": "Стрелка вниз", "line": "Линия", "frame": "Рамка"
+    },
+    "style": {
+      "label": "Стиль", "selection": "Выделение", "defaults": "Новые элементы", "strokeColor": "Цвет линии", "fillColor": "Цвет заливки", "opacity": "Прозрачность", "fill": "Заливка", "line": "Стиль линии", "size": "Толщина линии",
+      "fillStyles": { "none": "Без заливки", "solid": "Сплошная заливка", "semi": "Полупрозрачная заливка", "pattern": "Узорная заливка" },
+      "dashStyles": { "solid": "Сплошная линия", "dashed": "Штриховая линия", "dotted": "Точечная линия" },
+      "sizes": { "s": "Маленький", "m": "Средний", "l": "Большой", "xl": "Очень большой" },
+      "colors": { "ink": "Черный", "gray": "Серый", "purple": "Фиолетовый", "green": "Зеленый", "orange": "Оранжевый", "red": "Красный", "yellow": "Желтый", "blue": "Синий", "white": "Белый" }
+    },
+    "topActions": { "pages": "Страницы", "duplicate": "Дублировать выделение", "more": "Дополнительные действия", "selectAll": "Выбрать все" },
+    "imageImport": { "error": "Не удалось вставить изображение" }
+  },
   "layout": {
     "resizeSidebar": "Изменить размер боковой панели",
     "resizeChat": "Изменить размер чата с ИИ"
@@ -238,10 +301,11 @@
     "saveBeforeRename": "Не удалось сохранить текущий документ; переименование пропущено",
     "renameFailed": "Не удалось переименовать документ",
     "fileTypeNotDeletable": "Этот тип файла пока нельзя удалить из библиотеки документов.",
-    "onlyMarkdownPlateMovable": "Сюда можно перемещать только страницы Markdown и Plate. Управляйте файлами Office/PDF и подобными через системную папку.",
-    "onlyMarkdownPlateTableDuplicable": "Сюда можно дублировать только страницы Markdown, Plate и Таблицы.",
-    "onlyMarkdownPlateTableRenamable": "Сюда можно переименовывать только страницы Markdown, Plate и Таблицы.",
+    "onlyWorkspaceItemsMovable": "Сюда можно перемещать только документы, таблицы и доски. Управляйте файлами Office/PDF и подобными через системную папку.",
+    "onlyWorkspaceItemsDuplicable": "Сюда можно дублировать только документы, таблицы и доски.",
+    "onlyWorkspaceItemsRenamable": "Сюда можно переименовывать только документы, таблицы и доски.",
     "createDocumentFailed": "Не удалось создать документ",
+    "createBoardFailed": "Не удалось создать доску",
     "createDashboardFailed": "Failed to create dashboard",
     "createTableFailed": "Не удалось создать таблицу",
     "importMarkdownFailed": "Не удалось импортировать Markdown",
@@ -254,6 +318,7 @@
     "refreshed": "Рабочая область обновлена",
     "restoredSavedVersion": "Восстановлено до сохранённой версии",
     "documentCreated": "Документ создан",
+    "boardCreated": "Доска создана",
     "dashboardCreated": "Dashboard created",
     "tableCreated": "Таблица создана",
     "spreadsheetImported": "Таблица импортирована как Kitable",

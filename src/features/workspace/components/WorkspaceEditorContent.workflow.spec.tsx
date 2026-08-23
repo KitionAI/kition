@@ -34,6 +34,12 @@ vi.mock('@/features/document/components/DocumentMarkdownEditorPane', () => ({
   ),
 }))
 
+vi.mock('@/features/whiteboard/components/WhiteboardEditorPane', () => ({
+  WhiteboardEditorPane: () => (
+    <svg data-testid="whiteboard-svg-scene" role="img" aria-label="Board" />
+  ),
+}))
+
 let container: HTMLDivElement
 let root: Root | null = null
 
@@ -155,6 +161,23 @@ describe('WorkspaceEditorContent workflow routing', () => {
     expect(onCreateDocument).toHaveBeenCalledOnce()
     expect(onCreateTable).toHaveBeenCalledOnce()
     expect(onOpenWorkflows).toHaveBeenCalledOnce()
+  })
+
+  it('mounts the native SVG Board even when AI runtime support is unavailable', async () => {
+    const tab = {
+      id: 'board:Planning.kiboard',
+      type: 'board' as const,
+      title: 'Planning',
+      path: 'Planning.kiboard',
+    }
+    await render({
+      ...baseProps(),
+      activeWorkspaceTab: tab,
+      activeWorkspaceTabId: tab.id,
+      workspaceTabs: [tab],
+    })
+    expect(container.querySelector('[data-testid="whiteboard-svg-scene"]')).not.toBeNull()
+    expect(container.querySelector('canvas')).toBeNull()
   })
 
   it('renders email sync IDs with the email workflow detail surface', async () => {

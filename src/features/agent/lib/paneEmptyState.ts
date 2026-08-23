@@ -32,6 +32,7 @@ export const PANE_SUGGESTIONS: Record<AgentPaneContext, readonly string[]> = {
   // These suggestions are about discovering / managing browser sessions.
   browserSites: ['addSite', 'showConnected', 'setupCustom'],
   gallery: ['describeEach', 'groupByTopic', 'pickHero'],
+  whiteboard: ['generateMindMap', 'organizeBoard', 'generateImage'],
 }
 
 export function emptyStateForPane(

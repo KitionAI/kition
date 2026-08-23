@@ -1,4 +1,4 @@
-import { FileInput, FileSpreadsheet, FileText, FolderPlus, LayoutDashboard, Upload, Zap } from 'lucide-react'
+import { FileInput, FileSpreadsheet, FileText, FolderPlus, LayoutDashboard, PenTool, Upload, Zap } from 'lucide-react'
 import { type CSSProperties, type ReactNode, useLayoutEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
@@ -10,7 +10,7 @@ type WorkspaceCreateMenuPlacement = 'top' | 'bottom'
 // Estimated dimensions for off-screen detection. Real menu size depends on
 // content/fonts but these are close enough to pick a side without flicker.
 const ESTIMATED_MENU_WIDTH = 192
-const ESTIMATED_MENU_HEIGHT = 200
+const ESTIMATED_MENU_HEIGHT = 240
 
 export function WorkspaceCreateMenu({
   open,
@@ -21,6 +21,7 @@ export function WorkspaceCreateMenu({
   onCreateDocument,
   onCreateDashboard,
   onCreateTable,
+  onCreateBoard,
   onImportTableFile,
   onCreateForm,
   onCreateWorkflow,
@@ -37,6 +38,7 @@ export function WorkspaceCreateMenu({
   onCreateDocument: (format: DocumentCreateFormat) => void
   onCreateDashboard?: () => void
   onCreateTable: () => void
+  onCreateBoard?: () => void
   onImportTableFile?: () => void
   onCreateForm?: () => void
   /** Kitable variant only — adds a "Create Workflow" entry that defers to
@@ -122,6 +124,17 @@ export function WorkspaceCreateMenu({
           </button>
         )
       })}
+      {onCreateBoard ? (
+        <button
+          type="button"
+          className="document-create-option"
+          data-testid="workspace-create-board"
+          onClick={onCreateBoard}
+        >
+          <PenTool className="size-4" />
+          <span>{t('createMenu.format.board')}</span>
+        </button>
+      ) : null}
       {onImportTableFile ? (
         <button
           type="button"

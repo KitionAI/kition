@@ -268,4 +268,77 @@ describe('useWorkspaceAgent document editing reliability', () => {
     expect(onWorkspaceArtifactsSaved).toHaveBeenCalledWith(23)
     await harness.unmount()
   })
+
+  it('forwards scoped Board context and streamed preview patches to the active Board bridge', async () => {
+    const onWhiteboardPatch = vi.fn()
+    const whiteboardContext = {
+      type: 'whiteboard.context' as const,
+      schema_version: 1 as const,
+      board: { id: 'board:planning', path: 'Boards/Planning.kiboard', title: 'Planning' },
+      scope: 'viewport' as const,
+      viewport: { x: 0, y: 0, width: 800, height: 600, zoom: 1 },
+      selected_element_ids: [],
+      elements: [],
+      clusters: [],
+      recent_operations: [],
+      source_refs: [],
+    }
+    const patch = {
+      type: 'whiteboard.patch' as const,
+      schema_version: 1 as const,
+      summary: 'Add a node',
+      operations: [{
+        op: 'element.create' as const,
+        element: {
+          id: 'node-1',
+          kind: 'mind_node' as const,
+          bounds: { x: 20, y: 30, width: 140, height: 70 },
+          text: 'Idea',
+        },
+      }],
+    }
+    mocks.streamAgentMessage.mockImplementation(async (options: any) => {
+      expect(options.whiteboardContext).toEqual(whiteboardContext)
+      options.onEvent?.({
+        type: 'whiteboard_patch_provisional',
+        provisional: true,
+        whiteboard_patch: patch,
+      })
+      options.onEvent?.({
+        type: 'whiteboard_patch',
+        whiteboard_patch: patch,
+      })
+      return { extra_data: {} }
+    })
+    const harness = await mountAgent({
+      getTurnContext: () => ({
+        activeDocumentPath: 'Boards/Planning.kiboard',
+        activeDataDocumentId: 0,
+        activeDataTableId: 0,
+        paneContext: 'whiteboard',
+        whiteboardContext,
+      }),
+      onWhiteboardPatch,
+    })
+
+    await act(async () => harness.getLatest().setAgentDraft(24, 'Build a mind map'))
+    await act(async () => {
+      harness.getLatest().sendAiComposerMessage(24)
+      await flushAsyncWork()
+    })
+
+    expect(onWhiteboardPatch).toHaveBeenNthCalledWith(1, {
+      boardPath: 'Boards/Planning.kiboard',
+      patch,
+      provisional: true,
+      sessionId: 24,
+    })
+    expect(onWhiteboardPatch).toHaveBeenNthCalledWith(2, {
+      boardPath: 'Boards/Planning.kiboard',
+      patch,
+      provisional: false,
+      sessionId: 24,
+    })
+    await harness.unmount()
+  })
 })

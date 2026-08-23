@@ -26,6 +26,7 @@ import type { AgentPaneContext } from '@/features/agent/lib/paneEmptyState'
 //   table           → 'table'     (data-table editor)
 //   dashboard       → 'table'     (data reporting over a table)
 //   gallery         → 'gallery'   (image gallery)
+//   board           → 'whiteboard' (native SVG board)
 //   null/undefined  → 'document'  (no tab open — fall back to general assistance)
 export function deriveAgentPaneContext(
   tab: WorkspaceTab | null | undefined,
@@ -61,6 +62,8 @@ export function deriveAgentPaneContext(
       return 'table'
     case 'gallery':
       return 'gallery'
+    case 'board':
+      return 'whiteboard'
     default: {
       // Exhaustiveness check — adding a new WorkspaceTab variant without
       // teaching this switch about it surfaces here as a tsc error,
@@ -98,6 +101,8 @@ export function resolveAgentActiveDocument(
           ? 'data'
           : undefined,
       }
+    case 'board':
+      return { path: tab.path, format: 'board' }
     case 'browser-sites':
     case 'gallery':
       return { path: '' }

@@ -20,6 +20,7 @@ import type {
   WorkspaceDocument,
   WorkspaceDocumentFormat,
 } from '@/services/desktop'
+import type { WhiteboardAgentBridge } from '@/features/whiteboard/lib/whiteboardAgentBridge'
 
 const DocumentHtmlPreviewPane = lazy(() =>
   import('@/features/document/components/DocumentHtmlPreviewPane').then((module) => ({ default: module.DocumentHtmlPreviewPane })),
@@ -47,6 +48,9 @@ const WorkspaceMediaPanel = lazy(() =>
 )
 const WorkspaceFileViewerPane = lazy(() =>
   import('@/features/workspace/components/WorkspaceFileViewerPane').then((module) => ({ default: module.WorkspaceFileViewerPane })),
+)
+const WhiteboardEditorPane = lazy(() =>
+  import('@/features/whiteboard/components/WhiteboardEditorPane').then((module) => ({ default: module.WhiteboardEditorPane })),
 )
 const WorkflowHomePage = lazy(() =>
   import('@/features/workflow/pages/WorkflowHomePage').then((module) => ({ default: module.WorkflowHomePage })),
@@ -105,6 +109,10 @@ type WorkspaceEditorContentProps = {
   onBrowserReload: () => void
   onBrowserStop: () => void
   getOpenedDocumentDraftEntry: (path: string) => OpenedDocumentDraftCacheEntry | null
+  whiteboardAgentAvailable?: boolean
+  whiteboardAgentBusy?: boolean
+  onWhiteboardAgentBridgeChange?: (path: string, bridge: WhiteboardAgentBridge | null) => void
+  onCancelWhiteboardAgent?: () => void
   onTableAgentContextChange?: ComponentProps<typeof TableEditorPane>['onAgentContextChange']
   onCreateWorkflow?: (kitablePath: string) => void
   onOpenWorkflow?: (kitablePath: string, workflowId: string) => void
@@ -163,6 +171,10 @@ export function WorkspaceEditorContent({
   onBrowserReload,
   onBrowserStop,
   getOpenedDocumentDraftEntry,
+  whiteboardAgentAvailable = false,
+  whiteboardAgentBusy = false,
+  onWhiteboardAgentBridgeChange,
+  onCancelWhiteboardAgent,
   onTableAgentContextChange,
   onCreateWorkflow,
   onOpenWorkflow,
@@ -295,6 +307,30 @@ export function WorkspaceEditorContent({
                 path={tab.path}
                 format={tab.format}
                 active={activeWorkspaceTabId === tab.id}
+              />
+            </Suspense>
+          </div>
+        ))}
+      {workspaceTabs
+        .filter((tab): tab is Extract<WorkspaceTab, { type: 'board' }> => tab.type === 'board')
+        .map((tab) => (
+          <div
+            key={tab.id}
+            className={cn(
+              'document-editor-view',
+              activeWorkspaceTabId === tab.id
+                && activeWorkspaceTab?.type === 'board'
+                && 'is-active',
+            )}
+          >
+            <Suspense fallback={<EditorPaneFallback />}>
+              <WhiteboardEditorPane
+                agentAvailable={whiteboardAgentAvailable}
+                agentBusy={whiteboardAgentBusy}
+                onAgentBridgeChange={onWhiteboardAgentBridgeChange}
+                onCancelAgent={onCancelWhiteboardAgent}
+                path={tab.path}
+                title={tab.title}
               />
             </Suspense>
           </div>

@@ -190,6 +190,23 @@
           "prompt": "Choisis le meilleur visuel phare pour une page de destination."
         }
       }
+    },
+    "whiteboard": {
+      "description": "Demandez à l'agent de relier des idées, d'organiser le tableau ou de créer des visuels.",
+      "suggestions": {
+        "generateMindMap": {
+          "label": "Générer une carte mentale",
+          "prompt": "Transforme mon idée en une carte mentale claire sur ce tableau."
+        },
+        "organizeBoard": {
+          "label": "Organiser ce tableau",
+          "prompt": "Organise le tableau actuel en groupes clairs et améliore sa mise en page."
+        },
+        "generateImage": {
+          "label": "Générer une image",
+          "prompt": "Génère un visuel pour l'idée sélectionnée et place-le sur ce tableau."
+        }
+      }
     }
   }
 }

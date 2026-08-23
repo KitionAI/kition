@@ -55,6 +55,16 @@ function getWorkspaceItemStem(name: string) {
   return getWorkspaceItemTitle(name)
 }
 
+function resolveWorkspaceTreeFormat(
+  path: string,
+  format?: WorkspaceDocument['format'],
+  content?: string,
+) {
+  return path.toLowerCase().endsWith('.kiboard')
+    ? 'board' as const
+    : format || inferWorkspaceItemFormat(path, content)
+}
+
 export function getChildFolderPathForNode(node: WorkspaceTreeNode) {
   if (node.type === 'folder') {
     return node.path
@@ -159,7 +169,7 @@ function buildWorkspaceTreeNodes(
       folderPath: nestedFolder?.path,
       name: file.name,
       title,
-      format: file.format || inferWorkspaceItemFormat(file.path),
+      format: resolveWorkspaceTreeFormat(file.path, file.format),
       parentPath,
       size: file.size,
       updated_at: file.updated_at,
@@ -357,7 +367,7 @@ export function updateWorkspaceTreeDocumentItem(
       return {
         ...item,
         name: document.name,
-        format: document.format || inferWorkspaceItemFormat(document.path, document.content),
+        format: resolveWorkspaceTreeFormat(document.path, document.format, document.content),
         size: document.size ?? document.content.length,
         updated_at: document.updated_at,
       }
@@ -397,7 +407,7 @@ function replaceWorkspaceTreeDocumentItemAtPath(
         ...item,
         path: document.path,
         name: document.name,
-        format: document.format || inferWorkspaceItemFormat(document.path, document.content),
+        format: resolveWorkspaceTreeFormat(document.path, document.format, document.content),
         size: document.size ?? document.content.length,
         updated_at: document.updated_at,
       }
@@ -426,7 +436,7 @@ export function insertWorkspaceTreeDocumentItem(
     type: 'file',
     path: document.path,
     name: document.name,
-    format: document.format || inferWorkspaceItemFormat(document.path, document.content),
+    format: resolveWorkspaceTreeFormat(document.path, document.format, document.content),
     size: document.size ?? document.content.length,
     updated_at: document.updated_at,
   }

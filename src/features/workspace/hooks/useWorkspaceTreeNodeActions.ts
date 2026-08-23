@@ -8,7 +8,7 @@ import type { UseWorkspaceTreeStateResult } from '@/features/workspace/hooks/use
 import type { WorkspaceTab, WorkspaceTreeDropPosition, WorkspaceTreeNode } from '@/features/workspace/lib/workspace'
 import {
   inferWorkspaceItemFormat,
-  isEditableWorkspaceFormat,
+  isOrganizableWorkspaceFormat,
   remapWorkspaceBranchPath,
   renameWorkspaceDocumentPath,
   isSupportedWorkspaceFormat,
@@ -184,7 +184,10 @@ export function useWorkspaceTreeNodeActions({
         (current) => new Set([...current].filter((path) => path !== node.path && !path.startsWith(childPrefix))),
       )
       filterWorkspaceTabs(
-        (tab) => tab.type !== 'document' || (tab.path !== node.path && !tab.path.startsWith(childPrefix)),
+        (tab) => (
+          (tab.type !== 'document' && tab.type !== 'board')
+          || (tab.path !== node.path && !tab.path.startsWith(childPrefix))
+        ),
       )
       pruneOpenedDocumentDrafts((path) => path === node.path || path.startsWith(childPrefix))
 
@@ -328,8 +331,8 @@ export function useWorkspaceTreeNodeActions({
       return
     }
 
-    if (!isEditableWorkspaceFormat(draggedNode.format)) {
-      setError(t('errors.onlyMarkdownPlateMovable'))
+    if (!isOrganizableWorkspaceFormat(draggedNode.format)) {
+      setError(t('errors.onlyWorkspaceItemsMovable'))
       return
     }
 
@@ -388,8 +391,8 @@ export function useWorkspaceTreeNodeActions({
   ])
 
   const duplicateDocumentNode = useCallback(async (node: WorkspaceTreeNode) => {
-    if (node.virtual || node.type !== 'file' || !isEditableWorkspaceFormat(node.format)) {
-      setError(t('errors.onlyMarkdownPlateTableDuplicable'))
+    if (node.virtual || node.type !== 'file' || !isOrganizableWorkspaceFormat(node.format)) {
+      setError(t('errors.onlyWorkspaceItemsDuplicable'))
       return
     }
 
@@ -456,8 +459,8 @@ export function useWorkspaceTreeNodeActions({
         return
       }
 
-      if (!isEditableWorkspaceFormat(node.format)) {
-        setError(t('errors.onlyMarkdownPlateTableRenamable'))
+      if (!isOrganizableWorkspaceFormat(node.format)) {
+        setError(t('errors.onlyWorkspaceItemsRenamable'))
         return
       }
 
@@ -553,8 +556,8 @@ export function useWorkspaceTreeNodeActions({
       return
     }
 
-    if (!isEditableWorkspaceFormat(node.format)) {
-      setError(t('errors.onlyMarkdownPlateMovable'))
+    if (!isOrganizableWorkspaceFormat(node.format)) {
+      setError(t('errors.onlyWorkspaceItemsMovable'))
       return
     }
 

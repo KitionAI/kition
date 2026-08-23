@@ -3,6 +3,7 @@ import type { WorkspaceMediaKind, WorkspaceTab } from '@/features/workspace/lib/
 import {
   buildKitableWorkspaceTabId,
   getKitableWorkspaceTabTitle,
+  getWorkspaceItemTitle,
   remapWorkspaceBranchPath,
 } from '@/features/workspace/lib/workspace'
 import { readWorkspaceTabs, writeWorkspaceTabs } from '@/features/workspace/lib/workspacePersistence'
@@ -179,8 +180,16 @@ export function useWorkspaceTabs({
   }, [activeWorkspaceTabId, onCloseDocumentTab])
 
   const filterWorkspaceTabs = useCallback((predicate: (tab: WorkspaceTab) => boolean) => {
-    setWorkspaceTabs((current) => current.filter(predicate))
-  }, [])
+    setWorkspaceTabs((current) => {
+      const activeIndex = current.findIndex((tab) => tab.id === activeWorkspaceTabId)
+      const next = current.filter(predicate)
+      if (activeWorkspaceTabId && !next.some((tab) => tab.id === activeWorkspaceTabId)) {
+        const fallback = next[Math.max(0, activeIndex - 1)] || next[0]
+        setActiveWorkspaceTabId(fallback?.id || '')
+      }
+      return next
+    })
+  }, [activeWorkspaceTabId])
 
   // After a move/rename, the on-disk path changes: remap any open tabs still
   // pointing at the old path to the new one. Otherwise clicking those tabs
@@ -192,13 +201,20 @@ export function useWorkspaceTabs({
     setWorkspaceTabs((current) => {
       let changed = false
       const next = current.map((tab) => {
-        if (tab.type === 'document') {
+        if (tab.type === 'document' || tab.type === 'board') {
           const nextPath = remapWorkspaceBranchPath(tab.path, sourcePath, targetPath)
           if (nextPath === tab.path) {
             return tab
           }
           changed = true
-          return { ...tab, id: `document:${nextPath}`, path: nextPath }
+          const prefix = tab.type === 'board' ? 'board' : 'document'
+          const filename = nextPath.split('/').pop() || nextPath
+          return {
+            ...tab,
+            id: `${prefix}:${nextPath}`,
+            path: nextPath,
+            ...(tab.type === 'board' ? { title: getWorkspaceItemTitle(filename) } : {}),
+          }
         }
         if (tab.type === 'browser' && tab.originDocumentPath) {
           const nextOrigin = remapWorkspaceBranchPath(tab.originDocumentPath, sourcePath, targetPath)
@@ -219,12 +235,17 @@ export function useWorkspaceTabs({
       return changed ? next : current
     })
     setActiveWorkspaceTabId((activeId) => {
-      if (!activeId.startsWith('document:')) {
+      const prefix = activeId.startsWith('board:')
+        ? 'board:'
+        : activeId.startsWith('document:')
+          ? 'document:'
+          : ''
+      if (!prefix) {
         return activeId
       }
-      const activePath = activeId.slice('document:'.length)
+      const activePath = activeId.slice(prefix.length)
       const nextPath = remapWorkspaceBranchPath(activePath, sourcePath, targetPath)
-      return nextPath === activePath ? activeId : `document:${nextPath}`
+      return nextPath === activePath ? activeId : `${prefix}${nextPath}`
     })
   }, [])
 

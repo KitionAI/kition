@@ -138,6 +138,18 @@ describe('deriveAgentPaneContext', () => {
     }
     expect(deriveAgentPaneContext(tab)).toBe('gallery')
   })
+
+  it('Board tab → whiteboard agent pane', () => {
+    const tab: WorkspaceTab = {
+      id: 'board:Planning.kiboard',
+      type: 'board',
+      title: 'Planning',
+      path: 'Planning.kiboard',
+    }
+    expect(deriveAgentPaneContext(tab)).toBe('whiteboard')
+    expect(resolveAgentActiveDocument(tab)).toEqual({ path: 'Planning.kiboard', format: 'board' })
+    expect(resolveAgentDataTableTarget(tab)).toBeNull()
+  })
 })
 
 describe('resolveAgentActiveDocument', () => {

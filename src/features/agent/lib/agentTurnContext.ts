@@ -5,6 +5,7 @@ import type {
   WorkspaceDocumentFormat,
 } from '@/services/desktop'
 import type { DataDocument, DataTable } from '@/types/dataDocument'
+import type { AgentWhiteboardContext } from '@/types/whiteboardAgent'
 
 export type AgentTurnContext = {
   activeDocumentPath: string
@@ -20,6 +21,8 @@ export type AgentTurnContext = {
   /** Workflow id when paneContext === 'workflow'. Drives the backend's
    *  active-workflow context block. */
   activeWorkflowId?: string
+  /** Compact selection, viewport, or board context for AI Whiteboard turns. */
+  whiteboardContext?: AgentWhiteboardContext
 }
 
 export function mapBrowserPageContextToAgentBrowserContext(
@@ -94,6 +97,7 @@ export function buildAgentTurnContext(input: {
   browserEnabled?: boolean
   paneContext?: AgentPaneContext
   activeWorkflowId?: string
+  whiteboardContext?: AgentWhiteboardContext
 }): AgentTurnContext {
   return {
     activeDocumentPath: String(input.activeDocumentPath || '').trim(),
@@ -103,6 +107,7 @@ export function buildAgentTurnContext(input: {
     browserContext: input.browserContext,
     paneContext: input.paneContext,
     activeWorkflowId: input.activeWorkflowId,
+    whiteboardContext: input.whiteboardContext,
     taskMode: 'auto',
     browserEnabled: input.browserEnabled === true,
   }
