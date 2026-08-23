@@ -139,13 +139,6 @@ async function openUnifiedAgentChat(page: Page) {
   }
   const sidebar = page.locator('.workspace-agent-sidebar')
   await expect(sidebar).toBeVisible({ timeout: AGENT_UI_TIMEOUT_MS })
-  const tabs = page.getByRole('tab')
-  const selectedTab = page.getByRole('tab', { selected: true })
-  if ((await tabs.count()) === 0 || !(await selectedTab.isVisible().catch(() => false))) {
-    const previousTabCount = await tabs.count()
-    await page.getByRole('button', { name: 'New chat' }).click()
-    await expect(tabs).toHaveCount(previousTabCount + 1, { timeout: AGENT_UI_TIMEOUT_MS })
-  }
   await expect(page.getByRole('tab', { name: 'New chat', selected: true }))
     .toBeVisible({ timeout: AGENT_UI_TIMEOUT_MS })
   return {

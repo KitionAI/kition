@@ -384,6 +384,65 @@ describe('useWorkspaceAgent hosted console restore', () => {
     container.remove()
   })
 
+  it('keeps a newly created session when an older list request resolves later', async () => {
+    const { useWorkspaceAgent } = await import('./useWorkspaceAgent')
+    let latest: any = null
+    let resolveSessions: (value: unknown) => void = () => {}
+    const session = {
+      id: 42,
+      user_id: 1,
+      title: 'New chat',
+      status: 'idle',
+      created_at: '2026-08-23T00:00:00.000Z',
+      updated_at: '2026-08-23T00:00:00.000Z',
+    }
+    mocks.listAgentSessions.mockImplementationOnce(() => new Promise((resolve) => {
+      resolveSessions = resolve
+    }))
+    mocks.createAgentSession.mockResolvedValue(session)
+
+    function Harness() {
+      latest = useWorkspaceAgent({
+        settings: createOpenAISettings(),
+        rootPath: '',
+        onError: vi.fn(),
+        onFeedback: vi.fn(),
+      })
+      return null
+    }
+
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    let root: Root | null = null
+    await act(async () => {
+      root = createRoot(container)
+      root.render(createElement(Harness))
+    })
+
+    let refreshPromise: Promise<void> | undefined
+    await act(async () => {
+      refreshPromise = latest.refreshAgentSessions()
+      await flushAsyncWork()
+    })
+    await act(async () => {
+      await latest.createNewAgentChat({ focusTab: true })
+      await flushAsyncWork()
+    })
+    await act(async () => {
+      resolveSessions({ items: [] })
+      await refreshPromise
+      await flushAsyncWork()
+    })
+
+    expect(latest.agentSessions).toEqual([session])
+    expect(latest.pendingFocusedSessionId).toBe(session.id)
+
+    await act(async () => {
+      root?.unmount()
+    })
+    container.remove()
+  })
+
   it('waits for the hosted account callback before streaming and resumes once', async () => {
     const { useWorkspaceAgent } = await import('./useWorkspaceAgent')
     const settings = createHostedConsoleSettings()
