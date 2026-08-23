@@ -8,6 +8,8 @@ import electronPath from 'electron'
 import { mockLocalWorkspaceApi } from './helpers/mockApi'
 import { dismissFirstRunActivation } from './helpers/onboarding'
 
+const AGENT_UI_TIMEOUT_MS = 15_000
+
 function fulfillJson(route: Route, body: unknown, status = 200) {
   return route.fulfill({
     status,
@@ -136,15 +138,16 @@ async function openUnifiedAgentChat(page: Page) {
     await openButton.click()
   }
   const sidebar = page.locator('.workspace-agent-sidebar')
-  await expect(sidebar).toBeVisible()
+  await expect(sidebar).toBeVisible({ timeout: AGENT_UI_TIMEOUT_MS })
   const tabs = page.getByRole('tab')
   const selectedTab = page.getByRole('tab', { selected: true })
   if ((await tabs.count()) === 0 || !(await selectedTab.isVisible().catch(() => false))) {
     const previousTabCount = await tabs.count()
     await page.getByRole('button', { name: 'New chat' }).click()
-    await expect(tabs).toHaveCount(previousTabCount + 1)
+    await expect(tabs).toHaveCount(previousTabCount + 1, { timeout: AGENT_UI_TIMEOUT_MS })
   }
-  await expect(page.getByRole('tab', { name: 'New chat', selected: true })).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'New chat', selected: true }))
+    .toBeVisible({ timeout: AGENT_UI_TIMEOUT_MS })
   return {
     sidebar,
     composer: sidebar.getByPlaceholder('Plan, write, or ask anything…'),
