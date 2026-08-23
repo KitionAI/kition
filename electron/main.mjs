@@ -1031,8 +1031,6 @@ function inferWorkspaceDocumentFormat(relativePath) {
   switch (extension) {
     case '.kitable':
       return 'data'
-    case '.kinote':
-      return 'plate'
     case '.md':
     case '.markdown':
       return 'markdown'
@@ -1077,19 +1075,19 @@ function inferWorkspaceDocumentFormat(relativePath) {
 }
 
 function isEditableWorkspaceDocument(relativePath) {
-  return /\.(md|markdown|kinote|kitable)$/i.test(String(relativePath || ''))
+  return /\.(md|markdown|kitable)$/i.test(String(relativePath || ''))
 }
 
 function isTextWorkspaceDocument(relativePath) {
-  return /\.(md|markdown|kinote|txt|csv|tsv|json|html|htm)$/i.test(String(relativePath || ''))
+  return /\.(md|markdown|txt|csv|tsv|json|html|htm)$/i.test(String(relativePath || ''))
 }
 
 function isSupportedWorkspaceDocument(relativePath) {
-  return /\.(md|markdown|kinote|kitable|txt|csv|tsv|json|html|htm|pdf|docx|xlsx|xls|pptx|ppt|png|jpe?g|gif|webp|svg|mp4|mov|webm|mp3|wav|m4a)$/i.test(String(relativePath || ''))
+  return /\.(md|markdown|kitable|txt|csv|tsv|json|html|htm|pdf|docx|xlsx|xls|pptx|ppt|png|jpe?g|gif|webp|svg|mp4|mov|webm|mp3|wav|m4a)$/i.test(String(relativePath || ''))
 }
 
 function sanitizeWorkspaceDocumentFilename(title, format = 'markdown') {
-  const extension = format === 'plate' ? '.kinote' : format === 'data' ? '.kitable' : '.md'
+  const extension = format === 'data' ? '.kitable' : '.md'
   const fallback = format === 'data' ? 'Untitled table' : 'Untitled note'
   const baseName = String(title || fallback)
     .trim()
@@ -1099,7 +1097,7 @@ function sanitizeWorkspaceDocumentFilename(title, format = 'markdown') {
     .slice(0, 80)
     .trim() || fallback
 
-  return /\.(md|kinote|kitable)$/i.test(baseName) ? baseName.replace(/\.(md|kinote|kitable)$/i, extension) : `${baseName}${extension}`
+  return /\.(md|kitable)$/i.test(baseName) ? baseName.replace(/\.(md|kitable)$/i, extension) : `${baseName}${extension}`
 }
 
 async function pickUniqueWorkspaceDocumentTarget(folderAbsolutePath, requestedFilename) {
@@ -1542,7 +1540,7 @@ async function handleWriteWorkspaceDocument(_event, request) {
     { allowMissing: true },
   )
   if (!isEditableWorkspaceDocument(relativePath)) {
-    throw new Error('only markdown and Plate documents can be saved as text')
+    throw new Error('only editable workspace documents can be saved as text')
   }
   workspaceWatcher?.markSelfWrite?.(absolutePath)
   await writeFileAtomically(absolutePath, String(request?.content || ''), 'utf8')
@@ -1560,24 +1558,13 @@ async function handleCreateWorkspaceDocument(_event, request) {
   await fs.mkdir(folderAbsolutePath, { recursive: true })
   await assertWorkspacePathSafe(getWorkspaceRoot(), folderAbsolutePath)
 
-  const format = request?.format === 'plate' ? 'plate' : request?.format === 'data' ? 'data' : 'markdown'
+  const format = request?.format === 'data' ? 'data' : 'markdown'
   const finalFilename = await pickUniqueWorkspaceDocumentTarget(folderAbsolutePath, sanitizeWorkspaceDocumentFilename(request?.title, format))
-
-  const title = path.basename(finalFilename, path.extname(finalFilename))
-  const content = format === 'plate'
-    ? JSON.stringify({
-      version: 1,
-      format: 'kition-plate',
-      title,
-      markdown: '',
-      value: [{ type: 'p', children: [{ text: '' }] }],
-    }, null, 2)
-    : ''
 
   const relativePath = folderPath ? `${folderPath}/${finalFilename}` : finalFilename
   const absolutePath = path.join(folderAbsolutePath, finalFilename)
   await assertWorkspacePathSafe(getWorkspaceRoot(), absolutePath, { allowMissing: true })
-  await writeFileAtomically(absolutePath, content, 'utf8')
+  await writeFileAtomically(absolutePath, '', 'utf8')
   return buildWorkspaceDocumentResponse(relativePath, absolutePath)
 }
 

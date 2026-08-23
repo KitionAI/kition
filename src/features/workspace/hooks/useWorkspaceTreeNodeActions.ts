@@ -329,7 +329,7 @@ export function useWorkspaceTreeNodeActions({
     }
 
     if (!isEditableWorkspaceFormat(draggedNode.format)) {
-      setError(t('errors.onlyMarkdownPlateMovable'))
+      setError(t('errors.onlyWorkspaceItemsMovable'))
       return
     }
 
@@ -389,7 +389,7 @@ export function useWorkspaceTreeNodeActions({
 
   const duplicateDocumentNode = useCallback(async (node: WorkspaceTreeNode) => {
     if (node.virtual || node.type !== 'file' || !isEditableWorkspaceFormat(node.format)) {
-      setError(t('errors.onlyMarkdownPlateTableDuplicable'))
+      setError(t('errors.onlyWorkspaceItemsDuplicable'))
       return
     }
 
@@ -457,7 +457,7 @@ export function useWorkspaceTreeNodeActions({
       }
 
       if (!isEditableWorkspaceFormat(node.format)) {
-        setError(t('errors.onlyMarkdownPlateTableRenamable'))
+        setError(t('errors.onlyWorkspaceItemsRenamable'))
         return
       }
 
@@ -554,7 +554,7 @@ export function useWorkspaceTreeNodeActions({
     }
 
     if (!isEditableWorkspaceFormat(node.format)) {
-      setError(t('errors.onlyMarkdownPlateMovable'))
+      setError(t('errors.onlyWorkspaceItemsMovable'))
       return
     }
 
