@@ -100,6 +100,32 @@ describe('WorkspaceSidebar', () => {
     expect(onOpenCreateMenu).toHaveBeenCalledTimes(1)
   })
 
+  it('shows Board in the create menu only when the create callback is provided', async () => {
+    const onCreateBoard = vi.fn()
+    await mount(defaultProps({
+      createMenuOpen: true,
+      onCreateBoard,
+    }))
+
+    const button = document.body.querySelector(
+      '[data-testid="workspace-create-board"]',
+    ) as HTMLButtonElement
+    expect(button).not.toBeNull()
+    await act(async () => {
+      button.click()
+      await Promise.resolve()
+    })
+    expect(onCreateBoard).toHaveBeenCalledOnce()
+
+    await act(async () => {
+      root?.render(createElement(WorkspaceSidebar, defaultProps({
+        createMenuOpen: true,
+      })))
+      await Promise.resolve()
+    })
+    expect(document.body.querySelector('[data-testid="workspace-create-board"]')).toBeNull()
+  })
+
   it('omits file import from the header create menu', async () => {
     await mount(defaultProps({
       createMenuOpen: true,

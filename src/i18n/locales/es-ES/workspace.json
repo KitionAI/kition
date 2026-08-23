@@ -3,6 +3,7 @@
     "format": {
       "markdown": "Documento",
       "table": "Tabla",
+      "board": "Tablero",
       "page": "Página",
       "note": "Nota"
     },
@@ -129,6 +130,7 @@
     "closeReadOnly": "Cerrar todas las pestañas de solo lectura",
     "copyReference": "Copiar ruta/referencia",
     "workflowsTitle": "Flujos de trabajo",
+    "boardTitle": "Tablero",
     "workflowsScoped": "Flujos de trabajo · {{name}}",
     "untitledTable": "Tabla sin título",
     "untitledWorkflow": "Flujo de trabajo sin título",
@@ -218,6 +220,67 @@
   "editor": {
     "sourcePlaceholder": "Edita el código Markdown aquí..."
   },
+  "board": {
+    "canvasTitle": "Lienzo del tablero {{title}}",
+    "canvasDescription": "Un tablero SVG nativo interactivo con herramientas de dibujo y diagramas.",
+    "textPlaceholder": "Escribe texto",
+    "agentScope": {
+      "label": "Alcance del contexto de IA",
+      "description": "Elige qué parte del tablero puede ver la IA.",
+      "unavailable": "Actualiza el entorno de ejecución para habilitar las acciones de IA en el tablero.",
+      "selection": "Selección",
+      "viewport": "Área visible",
+      "board": "Tablero completo"
+    },
+    "agentPreview": {
+      "generating": "La IA está creando una vista previa del tablero",
+      "ready": "Los cambios de IA en el tablero están listos",
+      "invalid": "La vista previa de IA fue rechazada",
+      "description": "Revisa {{count}} cambios propuestos antes de aplicarlos.",
+      "accept": "Aceptar",
+      "reject": "Rechazar",
+      "cancel": "Cancelar"
+    },
+    "status": {
+      "loading": "Cargando…",
+      "ready": "Guardado",
+      "saving": "Guardando…",
+      "error": "Error al guardar"
+    },
+    "toolbar": {
+      "label": "Herramientas del tablero",
+      "select": "Seleccionar",
+      "hand": "Desplazar",
+      "eraser": "Borrador",
+      "rectangle": "Rectángulo",
+      "note": "Nota adhesiva",
+      "text": "Texto",
+      "pen": "Lápiz",
+      "connector": "Conector",
+      "image": "Insertar imagen",
+      "undo": "Deshacer",
+      "redo": "Rehacer",
+      "lock": "Bloquear selección",
+      "unlock": "Desbloquear selección",
+      "delete": "Eliminar selección",
+      "zoomOut": "Alejar",
+      "zoomIn": "Acercar",
+      "fit": "Ajustar al contenido"
+    },
+    "shapePalette": { "label": "Formas" },
+    "shapes": {
+      "rectangle": "Rectángulo", "ellipse": "Elipse", "triangle": "Triángulo", "diamond": "Rombo", "hexagon": "Hexágono", "pill": "Cápsula", "parallelogram": "Paralelogramo", "star": "Estrella", "cloud": "Nube", "heart": "Corazón", "check": "Marca de verificación", "arrow-left": "Flecha izquierda", "arrow-right": "Flecha derecha", "arrow-up": "Flecha arriba", "arrow-down": "Flecha abajo", "line": "Línea", "frame": "Marco"
+    },
+    "style": {
+      "label": "Estilo", "selection": "Selección", "defaults": "Elementos nuevos", "strokeColor": "Color de línea", "fillColor": "Color de relleno", "opacity": "Opacidad", "fill": "Relleno", "line": "Estilo de línea", "size": "Grosor de línea",
+      "fillStyles": { "none": "Sin relleno", "solid": "Relleno sólido", "semi": "Relleno semitransparente", "pattern": "Relleno con patrón" },
+      "dashStyles": { "solid": "Línea sólida", "dashed": "Línea discontinua", "dotted": "Línea de puntos" },
+      "sizes": { "s": "Pequeño", "m": "Mediano", "l": "Grande", "xl": "Extra grande" },
+      "colors": { "ink": "Tinta", "gray": "Gris", "purple": "Morado", "green": "Verde", "orange": "Naranja", "red": "Rojo", "yellow": "Amarillo", "blue": "Azul", "white": "Blanco" }
+    },
+    "topActions": { "pages": "Páginas", "duplicate": "Duplicar selección", "more": "Más acciones", "selectAll": "Seleccionar todo" },
+    "imageImport": { "error": "No se pudo insertar la imagen" }
+  },
   "layout": {
     "resizeSidebar": "Redimensionar barra lateral",
     "resizeChat": "Redimensionar chat de IA"
@@ -238,10 +301,11 @@
     "saveBeforeRename": "No se pudo guardar el documento actual; se omitió el cambio de nombre",
     "renameFailed": "No se pudo cambiar el nombre del documento",
     "fileTypeNotDeletable": "Este tipo de archivo aún no se puede eliminar de la biblioteca de documentos.",
-    "onlyWorkspaceItemsMovable": "Aquí solo se pueden mover documentos y tablas. Organiza los archivos de Office/PDF y similares mediante la carpeta del sistema.",
-    "onlyWorkspaceItemsDuplicable": "Aquí solo se pueden duplicar documentos y tablas.",
-    "onlyWorkspaceItemsRenamable": "Aquí solo se pueden renombrar documentos y tablas.",
+    "onlyWorkspaceItemsMovable": "Solo se pueden mover documentos, tablas y pizarras aquí. Organiza los archivos de Office/PDF y similares mediante la carpeta del sistema.",
+    "onlyWorkspaceItemsDuplicable": "Solo se pueden duplicar documentos, tablas y pizarras aquí.",
+    "onlyWorkspaceItemsRenamable": "Solo se pueden renombrar documentos, tablas y pizarras aquí.",
     "createDocumentFailed": "No se pudo crear el documento",
+    "createBoardFailed": "No se pudo crear el tablero",
     "createDashboardFailed": "Failed to create dashboard",
     "createTableFailed": "No se pudo crear la tabla",
     "importMarkdownFailed": "No se pudo importar Markdown",
@@ -254,6 +318,7 @@
     "refreshed": "Espacio de trabajo actualizado",
     "restoredSavedVersion": "Restaurado a la versión guardada",
     "documentCreated": "Documento creado",
+    "boardCreated": "Tablero creado",
     "dashboardCreated": "Dashboard created",
     "tableCreated": "Tabla creada",
     "spreadsheetImported": "Hoja de cálculo importada como Kitable",

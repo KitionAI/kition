@@ -464,6 +464,20 @@ function parseWorkspaceTabList(items: unknown[]): WorkspaceTab[] {
         ...(workflowId ? { workflowId } : {}),
       }]
     }
+    if (
+      item.type === 'board'
+      && typeof item.id === 'string'
+      && typeof item.title === 'string'
+      && typeof item.path === 'string'
+      && item.path.toLowerCase().endsWith('.kiboard')
+    ) {
+      return [{
+        id: `board:${item.path}`,
+        type: 'board',
+        title: item.title,
+        path: item.path,
+      }]
+    }
     if (item.type === 'browser-sites') {
       // Browser sites is rendered inside the sidebar tab now; drop any legacy persisted tab.
       return []

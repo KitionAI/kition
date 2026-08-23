@@ -1,0 +1,252 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kition.ai/contracts/runtime/agent-whiteboard.schema.json",
+  "title": "Kition Agent Whiteboard Context And Patch",
+  "description": "Bounded semantic Whiteboard context and typed preview patches. Payloads must not contain credentials, host root paths, or unrelated workspace content.",
+  "x-runtime-capability": "agent_whiteboard_v1",
+  "oneOf": [
+    { "$ref": "#/$defs/context" },
+    { "$ref": "#/$defs/patch" }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "portablePath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "pattern": "^(?!/)(?![A-Za-z]:[\\\\/])(?!.*(?:^|[\\\\/])\\.\\.(?:[\\\\/]|$)).+$"
+    },
+    "bounds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": { "type": "number", "minimum": -10000000, "maximum": 10000000 },
+        "y": { "type": "number", "minimum": -10000000, "maximum": 10000000 },
+        "width": { "type": "number", "minimum": 0, "maximum": 10000000 },
+        "height": { "type": "number", "minimum": 0, "maximum": 10000000 }
+      }
+    },
+    "viewport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "width", "height", "zoom"],
+      "properties": {
+        "x": { "type": "number", "minimum": -10000000, "maximum": 10000000 },
+        "y": { "type": "number", "minimum": -10000000, "maximum": 10000000 },
+        "width": { "type": "number", "minimum": 0, "maximum": 10000000 },
+        "height": { "type": "number", "minimum": 0, "maximum": 10000000 },
+        "zoom": { "type": "number", "exclusiveMinimum": 0, "maximum": 64 }
+      }
+    },
+    "elementKind": {
+      "type": "string",
+      "enum": [
+        "shape",
+        "text",
+        "sticky",
+        "image",
+        "connector",
+        "freehand",
+        "mind_node",
+        "flow_node",
+        "frame",
+        "group"
+      ]
+    },
+    "element": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "bounds"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "kind": { "$ref": "#/$defs/elementKind" },
+        "bounds": { "$ref": "#/$defs/bounds" },
+        "text": { "type": "string", "maxLength": 2000 },
+        "parent_id": { "$ref": "#/$defs/identifier" },
+        "source_ref_ids": {
+          "type": "array",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        }
+      }
+    },
+    "cluster": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "bounds", "element_count", "summary"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "bounds": { "$ref": "#/$defs/bounds" },
+        "element_count": { "type": "integer", "minimum": 1, "maximum": 100000 },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 1000 }
+      }
+    },
+    "sourceReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "label"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "kind": {
+          "type": "string",
+          "enum": ["document", "heading", "table_record", "research_source"]
+        },
+        "label": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "workspace_path": { "$ref": "#/$defs/portablePath" },
+        "record_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "url": { "type": "string", "format": "uri", "maxLength": 2048 }
+      }
+    },
+    "boardReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "path", "title"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "path": { "$ref": "#/$defs/portablePath" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 500 }
+      }
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "schema_version",
+        "board",
+        "scope",
+        "viewport",
+        "selected_element_ids",
+        "elements",
+        "clusters",
+        "recent_operations",
+        "source_refs"
+      ],
+      "properties": {
+        "type": { "const": "whiteboard.context" },
+        "schema_version": { "const": 1 },
+        "board": { "$ref": "#/$defs/boardReference" },
+        "scope": { "type": "string", "enum": ["selection", "viewport", "board"] },
+        "viewport": { "$ref": "#/$defs/viewport" },
+        "selected_element_ids": {
+          "type": "array",
+          "maxItems": 100,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "elements": {
+          "type": "array",
+          "maxItems": 500,
+          "items": { "$ref": "#/$defs/element" }
+        },
+        "clusters": {
+          "type": "array",
+          "maxItems": 64,
+          "items": { "$ref": "#/$defs/cluster" }
+        },
+        "recent_operations": {
+          "type": "array",
+          "maxItems": 50,
+          "items": { "type": "string", "minLength": 1, "maxLength": 500 }
+        },
+        "source_refs": {
+          "type": "array",
+          "maxItems": 100,
+          "items": { "$ref": "#/$defs/sourceReference" }
+        }
+      }
+    },
+    "elementChanges": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "kind": { "$ref": "#/$defs/elementKind" },
+        "bounds": { "$ref": "#/$defs/bounds" },
+        "text": { "type": "string", "maxLength": 2000 },
+        "parent_id": {
+          "oneOf": [
+            { "$ref": "#/$defs/identifier" },
+            { "type": "null" }
+          ]
+        },
+        "source_ref_ids": {
+          "type": "array",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        }
+      }
+    },
+    "patchOperation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "element"],
+          "properties": {
+            "op": { "const": "element.create" },
+            "element": { "$ref": "#/$defs/element" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "element_id", "changes"],
+          "properties": {
+            "op": { "const": "element.update" },
+            "element_id": { "$ref": "#/$defs/identifier" },
+            "changes": { "$ref": "#/$defs/elementChanges" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "element_id"],
+          "properties": {
+            "op": { "const": "element.delete" },
+            "element_id": { "$ref": "#/$defs/identifier" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "element_id", "after_element_id"],
+          "properties": {
+            "op": { "const": "element.reorder" },
+            "element_id": { "$ref": "#/$defs/identifier" },
+            "after_element_id": {
+              "oneOf": [
+                { "$ref": "#/$defs/identifier" },
+                { "type": "null" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "patch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "schema_version", "summary", "operations"],
+      "properties": {
+        "type": { "const": "whiteboard.patch" },
+        "schema_version": { "const": 1 },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "operations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 250,
+          "items": { "$ref": "#/$defs/patchOperation" }
+        }
+      }
+    }
+  }
+}

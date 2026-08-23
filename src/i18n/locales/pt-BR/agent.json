@@ -190,6 +190,23 @@
           "prompt": "Escolha o melhor recurso de destaque para uma landing page."
         }
       }
+    },
+    "whiteboard": {
+      "description": "Peça ao agente para conectar ideias, organizar o quadro ou criar recursos visuais.",
+      "suggestions": {
+        "generateMindMap": {
+          "label": "Gerar um mapa mental",
+          "prompt": "Transforme minha ideia em um mapa mental claro neste quadro."
+        },
+        "organizeBoard": {
+          "label": "Organizar este quadro",
+          "prompt": "Organize o quadro atual em grupos claros e melhore o layout."
+        },
+        "generateImage": {
+          "label": "Gerar uma imagem",
+          "prompt": "Gere um visual para a ideia selecionada e coloque-o neste quadro."
+        }
+      }
     }
   }
 }

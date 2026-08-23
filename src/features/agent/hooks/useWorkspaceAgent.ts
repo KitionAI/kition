@@ -73,6 +73,8 @@ import {
 import { saveDesktopSettings } from '@/services/desktopSettings'
 import { notifyFromAgentEvent } from '@/services/desktopNotifications'
 import type { DesktopSettingsState } from '@/types/desktopSettings'
+import type { AgentWhiteboardContext } from '@/types/whiteboardAgent'
+import type { AgentWhiteboardPatch } from '@/types/whiteboardAgent'
 import { trackProductEventOnce } from '@/features/analytics/lib/productAnalytics'
 import { isWebPreviewMode } from '@/lib/runtimeMode'
 import {
@@ -81,6 +83,7 @@ import {
 } from '@/features/agent/lib/tableFileImportIntent'
 import { importWorkspaceFileIntoDataTable } from '@/features/table/lib/importWorkspaceFileIntoDataTable'
 import { buildAgentShellApprovalFollowup } from '@/features/agent/lib/agentShellApproval'
+import { readAgentWhiteboardPatchFrame } from '@/features/agent/lib/agentWhiteboardStream'
 
 type WorkspaceAgentTurnContext = {
   activeDocumentPath?: string
@@ -99,6 +102,7 @@ type WorkspaceAgentTurnContext = {
    *  compact trigger/action/bound-table summary into the skill
    *  context. Frontend reads this from the active workflow tab. */
   activeWorkflowId?: string
+  whiteboardContext?: AgentWhiteboardContext
 }
 
 type UseWorkspaceAgentOptions = {
@@ -112,6 +116,16 @@ type UseWorkspaceAgentOptions = {
   onWorkspaceArtifactsSaved?: (sessionId: number) => Promise<void>
   onWorkspaceDocumentsModified?: (paths: string[], sessionId: number) => void | Promise<void>
   onTableMutated?: () => void | Promise<void>
+  onWhiteboardPatch?: (input: {
+    boardPath: string
+    patch: AgentWhiteboardPatch
+    provisional: boolean
+    sessionId: number
+  }) => void
+  onWhiteboardPatchCancelled?: (input: {
+    boardPath: string
+    sessionId: number
+  }) => void
   prepareActiveDocument?: () => Promise<boolean>
   prepareBrowserContext?: (content: string) => Promise<AgentBrowserContext | undefined>
   silentInitialSessionLoad?: boolean
@@ -139,6 +153,8 @@ export function useWorkspaceAgent({
   onWorkspaceArtifactsSaved,
   onWorkspaceDocumentsModified,
   onTableMutated,
+  onWhiteboardPatch,
+  onWhiteboardPatchCancelled,
   prepareActiveDocument,
   prepareBrowserContext,
   silentInitialSessionLoad = !isDesktopRuntime(),
@@ -608,6 +624,7 @@ export function useWorkspaceAgent({
     const abortController = new AbortController()
     agentAbortControllers.current[sessionId] = abortController
     let tableMutated = false
+    let whiteboardPathForTurn = ''
 
     try {
       let preparedBrowserContext: AgentBrowserContext | undefined
@@ -619,6 +636,9 @@ export function useWorkspaceAgent({
         preparedBrowserContext = await prepareBrowserContext(content).catch(() => undefined)
       }
       const turnContext = (await getTurnContext?.()) || undefined
+      whiteboardPathForTurn = String(
+        turnContext?.whiteboardContext?.board.path || '',
+      ).trim()
       const automaticActiveDocumentPath = String(turnContext?.activeDocumentPath || '').trim()
       const documentContextPaths = resolveAgentDocumentContextPaths(
         agentDocumentContextsRef.current,
@@ -742,6 +762,7 @@ export function useWorkspaceAgent({
         activeDataTableId: turnContext?.activeDataTableId ?? 0,
         activeWorkflowId: turnContext?.activeWorkflowId,
         paneContext: turnContext?.paneContext,
+        whiteboardContext: turnContext?.whiteboardContext,
         taskMode: turnContext?.taskMode,
         browserEnabled: browserEnabledForTurn,
         browserContext: browserContextForTurn,
@@ -755,6 +776,16 @@ export function useWorkspaceAgent({
         language: getLanguageNameForLocale(getCurrentLocale()),
         signal: abortController.signal,
         onEvent: (event) => {
+          const whiteboardFrame = readAgentWhiteboardPatchFrame(event)
+          if (whiteboardFrame && whiteboardPathForTurn) {
+            onWhiteboardPatch?.({
+              boardPath: whiteboardPathForTurn,
+              patch: whiteboardFrame.patch,
+              provisional: whiteboardFrame.provisional,
+              sessionId,
+            })
+          }
+
           if (
             event.type === 'user_message' &&
             event.chat_message &&
@@ -1005,6 +1036,9 @@ export function useWorkspaceAgent({
       }
       trackProductEventOnce('agent_first_request_completed', { result: 'success' })
     } catch (requestError: any) {
+      if (whiteboardPathForTurn) {
+        onWhiteboardPatchCancelled?.({ boardPath: whiteboardPathForTurn, sessionId })
+      }
       if (requestError?.name === 'AbortError') {
         onFeedback('Agent task stopped')
       } else {
@@ -1030,6 +1064,8 @@ export function useWorkspaceAgent({
     onWorkspaceArtifactsSaved,
     onWorkspaceDocumentsModified,
     onTableMutated,
+    onWhiteboardPatch,
+    onWhiteboardPatchCancelled,
     prepareActiveDocument,
     prepareBrowserContext,
     refreshMentionableDocuments,

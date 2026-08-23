@@ -190,6 +190,23 @@
           "prompt": "从里面挑出最适合做落地页主视觉的那一份素材。"
         }
       }
+    },
+    "whiteboard": {
+      "description": "让 Agent 帮你梳理想法、整理画板或创建视觉素材。",
+      "suggestions": {
+        "generateMindMap": {
+          "label": "生成思维导图",
+          "prompt": "把我的想法整理成一份清晰的思维导图，并放到当前画板上。"
+        },
+        "organizeBoard": {
+          "label": "整理当前画板",
+          "prompt": "把当前画板整理成清晰的分组，并优化整体布局。"
+        },
+        "generateImage": {
+          "label": "生成图片",
+          "prompt": "为选中的想法生成一张视觉图片，并放到当前画板上。"
+        }
+      }
     }
   }
 }

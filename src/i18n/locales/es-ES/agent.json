@@ -190,6 +190,23 @@
           "prompt": "Elige el mejor recurso destacado para una página de aterrizaje."
         }
       }
+    },
+    "whiteboard": {
+      "description": "Pide al agente que conecte ideas, organice el tablero o cree recursos visuales.",
+      "suggestions": {
+        "generateMindMap": {
+          "label": "Generar un mapa mental",
+          "prompt": "Convierte mi idea en un mapa mental claro en este tablero."
+        },
+        "organizeBoard": {
+          "label": "Organizar este tablero",
+          "prompt": "Organiza el tablero actual en grupos claros y mejora su distribución."
+        },
+        "generateImage": {
+          "label": "Generar una imagen",
+          "prompt": "Genera un recurso visual para la idea seleccionada y colócalo en este tablero."
+        }
+      }
     }
   }
 }

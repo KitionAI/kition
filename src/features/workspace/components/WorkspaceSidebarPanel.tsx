@@ -36,6 +36,7 @@ type WorkspaceSidebarPanelProps = {
    *  icon in the sidebar header — replaces the old root-level virtual
    *  "Workflows" node so the tree stays clean. */
   onOpenWorkflows?: () => void
+  onCreateBoard?: () => void
   onRename: (node: WorkspaceTreeNode, nextTitle: string) => void
   onSetIcon: (path: string, icon: string | null) => void
   onToggleFolder: (path: string) => void
@@ -76,6 +77,7 @@ export function WorkspaceSidebarPanel({
   showBrowserTab,
   onRefresh,
   onOpenWorkflows,
+  onCreateBoard,
   onRename,
   onSetIcon,
   onToggleFolder,
@@ -117,6 +119,7 @@ export function WorkspaceSidebarPanel({
       showBrowserTab={showBrowserTab}
       onRefresh={onRefresh}
       onOpenWorkflows={onOpenWorkflows}
+      onCreateBoard={onCreateBoard}
       onOpenSearch={onOpenSearch}
       treeContent={(
         <>
@@ -148,6 +151,7 @@ export function WorkspaceSidebarPanel({
             onCreateFolder={onCreateFolder}
             onCreateDocument={onCreateDocument}
             onCreateTable={onCreateTable}
+            onCreateBoard={onCreateBoard}
           />
         </>
       )}

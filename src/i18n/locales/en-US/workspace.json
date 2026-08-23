@@ -3,6 +3,7 @@
     "format": {
       "markdown": "Document",
       "table": "Table",
+      "board": "Board",
       "page": "Page",
       "note": "Note"
     },
@@ -129,6 +130,7 @@
     "closeReadOnly": "Close all read-only tabs",
     "copyReference": "Copy path/reference",
     "workflowsTitle": "Workflows",
+    "boardTitle": "Board",
     "workflowsScoped": "Workflows · {{name}}",
     "untitledTable": "Untitled table",
     "untitledWorkflow": "Untitled workflow",
@@ -218,6 +220,100 @@
   "editor": {
     "sourcePlaceholder": "Edit Markdown source here..."
   },
+  "board": {
+    "canvasTitle": "{{title}} Board canvas",
+    "canvasDescription": "An interactive native SVG Board with drawing and diagram tools.",
+    "textPlaceholder": "Type text",
+    "agentScope": {
+      "label": "AI context scope",
+      "description": "Choose which part of this Board the AI can see.",
+      "unavailable": "Update the runtime to enable AI Board actions.",
+      "selection": "Selection",
+      "viewport": "Visible area",
+      "board": "Whole Board"
+    },
+    "agentPreview": {
+      "generating": "AI is building a Board preview",
+      "ready": "AI Board changes are ready",
+      "invalid": "AI Board preview was rejected",
+      "description": "Review {{count}} proposed changes before applying them.",
+      "accept": "Accept",
+      "reject": "Reject",
+      "cancel": "Cancel"
+    },
+    "status": {
+      "loading": "Loading…",
+      "ready": "Saved",
+      "saving": "Saving…",
+      "error": "Save failed"
+    },
+    "toolbar": {
+      "label": "Board tools",
+      "select": "Select",
+      "hand": "Pan",
+      "eraser": "Eraser",
+      "rectangle": "Rectangle",
+      "note": "Sticky note",
+      "text": "Text",
+      "pen": "Pen",
+      "connector": "Connector",
+      "image": "Insert image",
+      "undo": "Undo",
+      "redo": "Redo",
+      "lock": "Lock selection",
+      "unlock": "Unlock selection",
+      "delete": "Delete selection",
+      "zoomOut": "Zoom out",
+      "zoomIn": "Zoom in",
+      "fit": "Fit to content"
+    },
+    "shapePalette": {
+      "label": "Shapes"
+    },
+    "shapes": {
+      "rectangle": "Rectangle",
+      "ellipse": "Ellipse",
+      "triangle": "Triangle",
+      "diamond": "Diamond",
+      "hexagon": "Hexagon",
+      "pill": "Pill",
+      "parallelogram": "Parallelogram",
+      "star": "Star",
+      "cloud": "Cloud",
+      "heart": "Heart",
+      "check": "Check mark",
+      "arrow-left": "Left arrow",
+      "arrow-right": "Right arrow",
+      "arrow-up": "Up arrow",
+      "arrow-down": "Down arrow",
+      "line": "Line",
+      "frame": "Frame"
+    },
+    "style": {
+      "label": "Style",
+      "selection": "Selection",
+      "defaults": "New elements",
+      "strokeColor": "Stroke color",
+      "fillColor": "Fill color",
+      "opacity": "Opacity",
+      "fill": "Fill",
+      "line": "Line style",
+      "size": "Stroke size",
+      "fillStyles": { "none": "No fill", "solid": "Solid fill", "semi": "Semi-transparent fill", "pattern": "Pattern fill" },
+      "dashStyles": { "solid": "Solid line", "dashed": "Dashed line", "dotted": "Dotted line" },
+      "sizes": { "s": "Small", "m": "Medium", "l": "Large", "xl": "Extra large" },
+      "colors": { "ink": "Ink", "gray": "Gray", "purple": "Purple", "green": "Green", "orange": "Orange", "red": "Red", "yellow": "Yellow", "blue": "Blue", "white": "White" }
+    },
+    "topActions": {
+      "pages": "Pages",
+      "duplicate": "Duplicate selection",
+      "more": "More actions",
+      "selectAll": "Select all"
+    },
+    "imageImport": {
+      "error": "Could not insert image"
+    }
+  },
   "layout": {
     "resizeSidebar": "Resize sidebar",
     "resizeChat": "Resize AI Chat"
@@ -238,10 +334,11 @@
     "saveBeforeRename": "Failed to save the current document; rename was skipped",
     "renameFailed": "Failed to rename document",
     "fileTypeNotDeletable": "This file type cannot be deleted from the document library yet.",
-    "onlyWorkspaceItemsMovable": "Only documents and tables can be moved here. Organize Office/PDF and similar files via your system folder.",
-    "onlyWorkspaceItemsDuplicable": "Only documents and tables can be duplicated here.",
-    "onlyWorkspaceItemsRenamable": "Only documents and tables can be renamed here.",
+    "onlyWorkspaceItemsMovable": "Only documents, tables, and boards can be moved here. Organize Office/PDF and similar files via your system folder.",
+    "onlyWorkspaceItemsDuplicable": "Only documents, tables, and boards can be duplicated here.",
+    "onlyWorkspaceItemsRenamable": "Only documents, tables, and boards can be renamed here.",
     "createDocumentFailed": "Failed to create document",
+    "createBoardFailed": "Failed to create Board",
     "createDashboardFailed": "Failed to create dashboard",
     "createTableFailed": "Failed to create table",
     "importMarkdownFailed": "Failed to import Markdown",
@@ -254,6 +351,7 @@
     "refreshed": "Workspace refreshed",
     "restoredSavedVersion": "Restored to the saved version",
     "documentCreated": "Document created",
+    "boardCreated": "Board created",
     "dashboardCreated": "Dashboard created",
     "tableCreated": "Table created",
     "spreadsheetImported": "Spreadsheet imported as a table",

@@ -5,6 +5,7 @@ import {
   FileText,
   FileType2,
   FileVideo2,
+  PenTool,
   Presentation,
   Volume2,
 } from 'lucide-react'
@@ -57,6 +58,7 @@ export type WorkspaceTab =
     }
   | { id: string; type: 'gallery'; title: string; kind: WorkspaceMediaKind }
   | { id: string; type: 'browser-sites'; title: string }
+  | { id: string; type: 'board'; title: string; path: string }
   | {
       id: string
       type: 'workflow'
@@ -104,8 +106,8 @@ export type WorkspaceTreeNode = {
 export type WorkspaceTreeDropPosition = 'before' | 'inside' | 'after'
 
 export const workspaceEmojiOptions = ['📄', '🧠', '📚', '✍️', '💡', '🗂️', '✅', '🚧', '⭐', '🔖', '🧩', '📌']
-const workspaceTitleExtensionPattern = /\.(md|markdown|kitable|docx|xlsx|xls|pptx|ppt|pdf|csv|tsv|json|txt|html|htm|png|jpe?g|gif|webp|svg|mp4|mov|webm|mp3|wav|m4a)$/i
-const workspaceEditableExtensionPattern = /\.(md|markdown|kitable)$/i
+const workspaceTitleExtensionPattern = /\.(md|markdown|kitable|kiboard|docx|xlsx|xls|pptx|ppt|pdf|csv|tsv|json|txt|html|htm|png|jpe?g|gif|webp|svg|mp4|mov|webm|mp3|wav|m4a)$/i
+const workspaceEditableExtensionPattern = /\.(md|markdown|kitable|kiboard)$/i
 
 export function formatCompactNumber(value: number) {
   return new Intl.NumberFormat(getCurrentLocale()).format(value)
@@ -161,6 +163,9 @@ export function inferWorkspaceItemFormat(path: string, content?: string): Worksp
   }
   if (path.toLowerCase().endsWith('.kitable')) {
     return 'data'
+  }
+  if (path.toLowerCase().endsWith('.kiboard')) {
+    return 'board'
   }
   if (path.toLowerCase().endsWith('.docx')) {
     return 'docx'
@@ -237,7 +242,11 @@ export function renameWorkspaceDocumentPath(path: string, title: string) {
 
   const filename = normalizedPath.split('/').pop() || normalizedPath
   const extension = filename.match(workspaceEditableExtensionPattern)?.[0] || ''
-  const fallbackTitle = extension.toLowerCase() === '.kitable' ? 'Untitled table' : 'Untitled note'
+  const fallbackTitle = extension.toLowerCase() === '.kitable'
+    ? 'Untitled table'
+    : extension.toLowerCase() === '.kiboard'
+      ? 'Untitled board'
+      : 'Untitled note'
   const nextFilename = `${trimmedTitle || getWorkspaceItemTitle(filename) || fallbackTitle}${extension}`
   const parentPath = normalizedPath.includes('/')
     ? normalizedPath.slice(0, normalizedPath.lastIndexOf('/'))
@@ -284,6 +293,8 @@ export function getWorkspaceItemIcon(format?: WorkspaceDocumentFormat): LucideIc
       return FileVideo2
     case 'audio':
       return Volume2
+    case 'board':
+      return PenTool
     default:
       return FileText
   }
@@ -311,6 +322,8 @@ export function getWorkspaceItemIconColorClass(format?: WorkspaceDocumentFormat)
     case 'html':
       return 'text-orange-600'
     case 'image':
+      return 'text-violet-500'
+    case 'board':
       return 'text-violet-500'
     case 'video':
       return 'text-pink-500'
@@ -340,6 +353,7 @@ export function getWorkspaceItemFormatLabel(format?: WorkspaceDocumentFormat) {
     video: 'Video',
     audio: 'Audio',
     binary: 'File',
+    board: 'Board',
   }
 
   return labels[format || 'markdown']
@@ -383,6 +397,10 @@ export function filterWorkspaceTreeItems(
 
 export function isEditableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
   return format === 'markdown' || format === 'data' || format === 'html'
+}
+
+export function isOrganizableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
+  return isEditableWorkspaceFormat(format) || format === 'board'
 }
 
 export function isPreviewableWorkspaceFormat(format?: WorkspaceDocumentFormat) {

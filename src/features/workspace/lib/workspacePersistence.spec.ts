@@ -222,6 +222,18 @@ describe('workspacePersistence browser tabs', () => {
       workflowId: 'auto-99',
     }])
   })
+
+  it('restores a native Board tab with its durable .kiboard path', () => {
+    const boardTab = {
+      id: 'board:Planning.kiboard',
+      type: 'board' as const,
+      title: 'Planning',
+      path: 'Planning.kiboard',
+    }
+    writeWorkspaceTabs(ROOT_A, [boardTab])
+
+    expect(readWorkspaceTabs(ROOT_A)).toEqual([boardTab])
+  })
 })
 
 describe('workspacePersistence tree metadata', () => {

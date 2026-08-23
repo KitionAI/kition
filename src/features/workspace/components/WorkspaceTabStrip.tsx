@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronLeft, ChevronRight, FileSpreadsheet, FileText, FileVideo2, Globe, Image as ImageIcon, LayoutDashboard, PanelLeftOpen, X, Zap } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, FileSpreadsheet, FileText, FileVideo2, Globe, Image as ImageIcon, LayoutDashboard, PanelLeftOpen, PenTool, X, Zap } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkspaceTabContextMenu, type WorkspaceTabContextMenuItem } from '@/features/workspace/components/WorkspaceTabContextMenu'
@@ -458,6 +458,9 @@ function WorkspaceTabIcon({ tab }: { tab: WorkspaceTab }) {
   }
   if (tab.type === 'dashboard') {
     return <LayoutDashboard className="size-3.5 text-brand" />
+  }
+  if (tab.type === 'board') {
+    return <PenTool className="size-3.5 text-brand" />
   }
   return tab.format === 'data'
     ? <FileSpreadsheet className={cn('size-3.5', getWorkspaceItemIconColorClass('data'))} />

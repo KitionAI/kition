@@ -49,6 +49,7 @@
     --warning-border: 28 68% 82%;
     --warning-background: 28 100% 95%;
     --warning-foreground: 28 100% 28%;
+    --info: 207 71% 44%;
     --destructive-border: 2 42% 82%;
     --destructive-background: 2 72% 96%;
     --tint-peach: 26 100% 92%;
@@ -120,6 +121,7 @@
     --warning-border: 28 34% 30%;
     --warning-background: 28 40% 14%;
     --warning-foreground: 28 80% 82%;
+    --info: 207 71% 66%;
     --tint-peach: 26 32% 18%;
     --tint-rose: 333 24% 20%;
     --tint-mint: 134 22% 17%;

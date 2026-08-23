@@ -132,6 +132,7 @@ export type WorkspaceDocumentFormat =
   | 'audio'
   | 'binary'
   | 'table'
+  | 'board'
 
 export type WorkspaceDocumentPathRequest = {
   path: string
@@ -1089,6 +1090,7 @@ type BrowserWorkspaceRecord = {
 function inferWorkspaceDocumentFormat(path: string): WorkspaceDocumentFormat {
   const lower = path.toLowerCase()
   if (lower.endsWith('.kitable')) return 'data'
+  if (lower.endsWith('.kiboard')) return 'board'
   if (lower.endsWith('.md') || lower.endsWith('.markdown')) return 'markdown'
   if (lower.endsWith('.docx')) return 'docx'
   if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) return 'xlsx'

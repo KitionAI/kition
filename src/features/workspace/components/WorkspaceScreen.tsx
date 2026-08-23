@@ -55,6 +55,9 @@ import { useDocumentExport } from '@/features/document/hooks/useDocumentExport'
 import { useWorkspaceDocumentSession } from '@/features/document/hooks/useWorkspaceDocumentSession'
 import type { DocumentCreationPreset } from '@/features/document/lib/documentCreation'
 import type { DocumentAskAgentRequest } from '@/features/document/lib/documentAgentActions'
+import { createBoardWorkspaceFile } from '@/features/whiteboard/lib/boardFile'
+import type { WhiteboardAgentBridge } from '@/features/whiteboard/lib/whiteboardAgentBridge'
+import { runtimeSupportsWhiteboard } from '@/features/whiteboard/lib/whiteboardCapabilities'
 import { AgentFloatingLauncher } from '@/features/agent/components/AgentFloatingLauncher'
 import type { SettingsSectionKey } from '@/features/settings/DesktopSettingsPage'
 import { useDesktopSettings } from '@/features/settings/hooks/useDesktopSettings'
@@ -128,6 +131,7 @@ import {
   extractBrowserPageContext,
   getBrowserSessionPanelState,
   getBrowserSessionStatus,
+  getDesktopBackendStatus,
   hideBrowserSessionPanel,
   isDesktopRuntime,
   moveWorkspaceDocument,
@@ -386,6 +390,7 @@ export function WorkspaceScreen({
   const [autoCreateModeBusyTemplateId, setAutoCreateModeBusyTemplateId] = useState<string | undefined>(undefined)
   const [autoCreateModeError, setAutoCreateModeError] = useState<string | null>(null)
   const [agentBrowserEnabled, setAgentBrowserEnabledState] = useState(false)
+  const [whiteboardAgentAvailable, setWhiteboardAgentAvailable] = useState(false)
   const [documentToolbarPortal, setDocumentToolbarPortal] =
     useState<HTMLElement | null>(null)
   const handleDocumentToolbarMount = useCallback(
@@ -447,6 +452,8 @@ export function WorkspaceScreen({
     taskMode: 'auto',
     browserEnabled: false,
   })
+  const activeWhiteboardPathRef = useRef('')
+  const whiteboardAgentBridgesRef = useRef<Record<string, WhiteboardAgentBridge>>({})
   const prepareAgentBrowserContextRef = useRef<
     (content: string) => Promise<AgentBrowserContext | undefined>
   >(async () => undefined)
@@ -470,9 +477,14 @@ export function WorkspaceScreen({
   const getAgentTurnContext = useCallback(
     async (): Promise<AgentTurnContext> => {
       const base = agentTurnContextRef.current
+      const whiteboardPath = activeWhiteboardPathRef.current
+      const whiteboardContext = base.paneContext === 'whiteboard'
+        ? whiteboardAgentBridgesRef.current[whiteboardPath]?.buildContext()
+        : undefined
+      const scopedBase = { ...base, whiteboardContext }
       const tab = activeBrowserTabRef.current
       if (!tab) {
-        return base
+        return scopedBase
       }
       try {
         const pageContext = await extractBrowserPageContext({
@@ -483,16 +495,43 @@ export function WorkspaceScreen({
           tab.provider,
         )
         if (enriched) {
-          return { ...base, browserContext: enriched }
+          return { ...scopedBase, browserContext: enriched }
         }
       } catch {
         // The embedded browser may be unavailable (e.g. dev browser build);
         // fall back to the thin tab metadata already in the base context.
       }
-      return base
+      return scopedBase
     },
     [],
   )
+
+  useEffect(() => {
+    let cancelled = false
+    void getDesktopBackendStatus()
+      .then((status) => {
+        if (!cancelled) {
+          setWhiteboardAgentAvailable(runtimeSupportsWhiteboard(status?.capabilities))
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setWhiteboardAgentAvailable(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [rootPath])
+
+  const handleWhiteboardAgentBridgeChange = useCallback((
+    path: string,
+    bridge: WhiteboardAgentBridge | null,
+  ) => {
+    if (bridge) {
+      whiteboardAgentBridgesRef.current[path] = bridge
+    } else {
+      delete whiteboardAgentBridgesRef.current[path]
+    }
+  }, [])
 
   const {
     activeDocument,
@@ -544,18 +583,6 @@ export function WorkspaceScreen({
       setEditorView((current) => ({ ...current, editorMode: 'rich' })),
     setTreeItems: workspaceTree.setTreeItems,
   })
-
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { path?: string; vaultPath?: string }
-      const vaultPath = detail?.path || detail?.vaultPath
-      if (vaultPath) {
-        void openDocument(vaultPath)
-      }
-    }
-    window.addEventListener('kition:search:open-path', handler)
-    return () => window.removeEventListener('kition:search:open-path', handler)
-  }, [openDocument])
 
   const {
     exportCurrentDocument,
@@ -636,6 +663,13 @@ export function WorkspaceScreen({
     },
     onTableMutated: async () => {
       await tableAgentRefreshRef.current?.()
+    },
+    onWhiteboardPatch: ({ boardPath, patch, provisional }) => {
+      if (!whiteboardAgentAvailable) return
+      whiteboardAgentBridgesRef.current[boardPath]?.receivePatch(patch, provisional)
+    },
+    onWhiteboardPatchCancelled: ({ boardPath }) => {
+      whiteboardAgentBridgesRef.current[boardPath]?.cancelPreview()
     },
     prepareActiveDocument: ensureActiveDocumentSaved,
     getTurnContext: getAgentTurnContext,
@@ -742,6 +776,10 @@ export function WorkspaceScreen({
       setActiveResourcePath(activeWorkspaceTab.kitablePath)
       return
     }
+    if (activeWorkspaceTab.type === 'board') {
+      setActiveResourcePath(activeWorkspaceTab.path)
+      return
+    }
     if (activeWorkspaceTab.type === 'workflow' && activeWorkspaceTab.kitablePath) {
       setActiveResourcePath(activeWorkspaceTab.kitablePath)
     }
@@ -799,6 +837,46 @@ export function WorkspaceScreen({
       workflowId,
     })
   }, [onCloseWorkflow, t, upsertWorkspaceTab, workflowOpen])
+
+  const openBoard = useCallback((path: string) => {
+    const normalizedPath = String(path || '').trim()
+    if (!normalizedPath) {
+      return
+    }
+    if (workflowOpen) {
+      onCloseWorkflow?.()
+    }
+    const filename = normalizedPath.split('/').pop() || normalizedPath
+    upsertWorkspaceTab({
+      id: `board:${normalizedPath}`,
+      type: 'board',
+      title: getWorkspaceItemTitle(filename),
+      path: normalizedPath,
+    })
+    setActiveResourcePath(normalizedPath)
+  }, [
+    onCloseWorkflow,
+    setActiveResourcePath,
+    upsertWorkspaceTab,
+    workflowOpen,
+  ])
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent).detail as { path?: string; vaultPath?: string }
+      const path = detail?.path || detail?.vaultPath
+      if (!path) {
+        return
+      }
+      if (path.toLowerCase().endsWith('.kiboard')) {
+        openBoard(path)
+        return
+      }
+      void openDocument(path)
+    }
+    window.addEventListener('kition:search:open-path', handler)
+    return () => window.removeEventListener('kition:search:open-path', handler)
+  }, [openBoard, openDocument])
 
   useEffect(() => {
     function openLocalWorkflow(event: Event) {
@@ -912,6 +990,9 @@ export function WorkspaceScreen({
   tableAgentRefreshRef.current = tableAgentContext?.onTableChanged ?? null
   const hasTableAgentTarget = Boolean(tableAgentDocumentPath)
   const agentActiveDocument = resolveAgentActiveDocument(activeWorkspaceTab)
+  activeWhiteboardPathRef.current = activeWorkspaceTab?.type === 'board'
+    ? activeWorkspaceTab.path
+    : ''
   agentTurnContextRef.current = buildAgentTurnContext({
     activeDocumentPath: agentActiveDocument.path,
     activeDocumentFormat: agentActiveDocument.format,
@@ -1029,6 +1110,34 @@ export function WorkspaceScreen({
     treeState: workspaceTree,
     updateSnapshots,
   })
+
+  const handleCreateBoard = useCallback(async () => {
+    workspaceTree.setCreateMenuOpen(false)
+    setSaving(true)
+    setError('')
+    setFeedback('')
+
+    try {
+      const created = await createBoardWorkspaceFile({ folder: createMenuFolder })
+      if (createMenuFolder) {
+        workspaceTree.expandFolders([createMenuFolder])
+      }
+      await refreshWorkspaceDocuments(undefined, { silent: true, treeOnly: true })
+      openBoard(created.path)
+      notify.success(t('feedback.boardCreated'))
+    } catch (requestError: any) {
+      setError(requestError?.message || t('errors.createBoardFailed'))
+    } finally {
+      setSaving(false)
+    }
+  }, [
+    createMenuFolder,
+    openBoard,
+    refreshWorkspaceDocuments,
+    setSaving,
+    t,
+    workspaceTree,
+  ])
   refreshWorkspaceDocumentsRef.current = refreshWorkspaceDocuments
 
   const handleCreateDocumentFromTemplate = useCallback(async (
@@ -3463,6 +3572,10 @@ export function WorkspaceScreen({
                 onCloseProfile?.()
                 openWorkspaceWorkflow()
               },
+              onCreateBoard: () => {
+                onCloseProfile?.()
+                void handleCreateBoard()
+              },
               onOpen: (path) => {
                 onCloseProfile?.()
                 // Mirror the tab strip's onActivate: when the full-screen
@@ -3473,6 +3586,10 @@ export function WorkspaceScreen({
                 const opensWorkflowTab = path.startsWith('workflows://') || path.startsWith('workflow://')
                 if (workflowOpen && !opensWorkflowTab) {
                   onCloseWorkflow?.()
+                }
+                if (path.toLowerCase().endsWith('.kiboard')) {
+                  openBoard(path)
+                  return
                 }
                 if (path.toLowerCase().endsWith('.kitable')) {
                   openKitableContainer(path)
@@ -3620,6 +3737,14 @@ export function WorkspaceScreen({
                     onBrowserReload: handleBrowserReload,
                     onBrowserStop: handleBrowserStop,
                     getOpenedDocumentDraftEntry,
+                    whiteboardAgentAvailable,
+                    whiteboardAgentBusy: activeWorkspaceAgentSession
+                      ? agentBusySessions.has(activeWorkspaceAgentSession.id)
+                      : false,
+                    onWhiteboardAgentBridgeChange: handleWhiteboardAgentBridgeChange,
+                    onCancelWhiteboardAgent: activeWorkspaceAgentSession
+                      ? () => stopAgentMessage(activeWorkspaceAgentSession.id)
+                      : undefined,
                     onTableAgentContextChange: handleTableAgentContextChange,
                     onCreateWorkflow: createWorkflowFromKitableSidebar,
                     onOpenWorkflow: openKitableWorkflow,

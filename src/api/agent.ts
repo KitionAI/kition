@@ -1,6 +1,10 @@
 import request from './request'
 import { resolveApiURL } from '@/services/desktop'
 import type { RuntimeWritingModel } from '@/types'
+import type {
+  AgentWhiteboardContext,
+  AgentWhiteboardPatch,
+} from '@/types/whiteboardAgent'
 
 export type AgentExecutionMode = 'research' | 'preview' | 'apply'
 export type AgentTaskMode = 'auto' | 'browse' | 'table'
@@ -24,6 +28,7 @@ export type AgentPaneContext =
   | 'browser'
   | 'browserSites'
   | 'gallery'
+  | 'whiteboard'
 
 export type AgentBrowserContextLink = {
   text: string
@@ -279,6 +284,8 @@ export type AgentStreamEvent = {
   artifact?: AgentArtifact
   tool_call?: AgentToolCall
   event?: AgentEvent
+  whiteboard_patch?: AgentWhiteboardPatch
+  provisional?: boolean
   done?: boolean
   extra_data?: {
     message?: AgentMessage
@@ -433,6 +440,7 @@ export async function streamAgentMessage(options: {
   taskMode?: AgentTaskMode
   browserEnabled?: boolean
   browserContext?: AgentBrowserContext
+  whiteboardContext?: AgentWhiteboardContext
   tablePlanContext?: AgentTablePlanContext
   shellApproval?: AgentShellApprovalResponse
   modelId?: string
@@ -464,6 +472,7 @@ export async function streamAgentMessage(options: {
       task_mode: options.taskMode || 'auto',
       browser_enabled: options.browserEnabled === true,
       browser_context: options.browserContext || undefined,
+      whiteboard_context: options.whiteboardContext || undefined,
       table_plan_context: options.tablePlanContext || undefined,
       shell_approval: options.shellApproval || undefined,
       model_id: options.modelId || '',

@@ -14,7 +14,15 @@ import {
   emptyStateForPane,
 } from './paneEmptyState'
 
-const PANES: AgentPaneContext[] = ['document', 'workflow', 'table', 'browser', 'browserSites', 'gallery']
+const PANES: AgentPaneContext[] = [
+  'document',
+  'workflow',
+  'table',
+  'browser',
+  'browserSites',
+  'gallery',
+  'whiteboard',
+]
 
 describe('PANE_SUGGESTIONS', () => {
   it('covers every pane the panel can render', () => {
