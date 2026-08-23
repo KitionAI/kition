@@ -1,0 +1,89 @@
+.whiteboard-toolbar-separator {
+  width: 1px;
+  height: 1.25rem;
+  margin-inline: 0.125rem;
+  background: hsl(var(--border));
+}
+
+.whiteboard-image-import-error {
+  bottom: 4rem;
+  max-width: 24rem;
+}
+
+.whiteboard-zoom-label {
+  min-width: 3rem;
+}
+
+.whiteboard-canvas-surface {
+  touch-action: none;
+}
+
+.whiteboard-canvas-surface.is-hand:active {
+  cursor: grabbing;
+}
+
+.whiteboard-canvas-surface.is-drawing {
+  cursor: crosshair;
+}
+
+.whiteboard-shape-palette {
+  bottom: 100%;
+  box-shadow: var(--shadow-floating);
+}
+
+.whiteboard-page-trigger {
+  max-width: 13rem;
+}
+
+.whiteboard-page-menu {
+  top: 100%;
+  width: 14rem;
+  box-shadow: var(--shadow-floating);
+}
+
+.whiteboard-more-menu {
+  top: 100%;
+  box-shadow: var(--shadow-floating);
+}
+
+.whiteboard-opacity-input {
+  width: 100%;
+  accent-color: hsl(var(--brand));
+}
+
+.whiteboard-style-section:first-child {
+  padding-top: 0;
+}
+
+.whiteboard-style-section.is-last {
+  padding-bottom: 0;
+  border-bottom-width: 0;
+}
+
+.whiteboard-color-grid {
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+}
+
+.whiteboard-color-swatch {
+  border-color: hsl(var(--hairline-strong));
+}
+
+.whiteboard-color-swatch.is-selected {
+  box-shadow:
+    0 0 0 1px hsl(var(--background)),
+    0 0 0 3px hsl(var(--ring));
+}
+
+.whiteboard-dash-preview {
+  width: 2rem;
+  border-top: 2px solid currentColor;
+}
+
+.whiteboard-agent-preview-panel {
+  width: min(360px, calc(100% - 32px));
+  box-shadow: var(--shadow-floating);
+}
+
+.whiteboard-agent-accept:hover {
+  background: hsl(var(--brand-active));
+}

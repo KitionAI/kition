@@ -189,7 +189,7 @@ describe('WhiteboardEditorPane', () => {
         title: 'Planning',
         viewport: { x: 0, y: 0, zoom: 1 },
         records: createBoardRecordsFromElements([{
-          id: 'stroke-1',
+          id: 'board-stroke-one',
           kind: 'stroke',
           points: [{ x: 80, y: 80 }, { x: 140, y: 180 }, { x: 220, y: 240 }],
         }], 'Planning'),
@@ -230,7 +230,7 @@ describe('WhiteboardEditorPane', () => {
       }),
     })
 
-    const stroke = container.querySelector('[data-element-id="stroke-1"]') as SVGGElement
+    const stroke = container.querySelector('[data-element-id="board-stroke-one"]') as SVGGElement
     await act(async () => {
       stroke.dispatchEvent(new MouseEvent('pointerover', { bubbles: true }))
     })
