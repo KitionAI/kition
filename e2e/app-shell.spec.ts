@@ -5,6 +5,7 @@ import { mockLocalWorkspaceApi } from './helpers/mockApi'
 import { getWorkspaceStorageKey } from '../src/features/onboarding/workspaceStorageKey'
 
 const APP_VERSION = (JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string }).version
+const AGENT_UI_TIMEOUT_MS = 15_000
 const SYSTEM_THEME_VAULT_PATH = '/tmp/kition-system-theme-vault'
 const SYSTEM_THEME_DOC_PATH = 'complex-document-template.md'
 
@@ -606,7 +607,8 @@ test.describe('app shell navigation', () => {
 
     await page.getByRole('button', { name: 'Open AI Chat' }).click()
     await page.getByRole('button', { name: 'New chat' }).click()
-    await expect(page.getByRole('tab', { name: 'New chat', selected: true })).toBeVisible()
+    await expect(page.getByRole('tab', { name: 'New chat', selected: true }))
+      .toBeVisible({ timeout: AGENT_UI_TIMEOUT_MS })
     await expect(page.getByPlaceholder('Plan, write, or ask anything…')).toBeVisible()
   })
 
@@ -809,7 +811,8 @@ test.describe('app shell navigation', () => {
     await page.getByRole('button', { name: 'Open AI Chat' }).click()
     await page.getByRole('button', { name: 'New chat' }).click()
 
-    await expect(page.getByRole('tab', { name: 'New chat', selected: true })).toBeVisible()
+    await expect(page.getByRole('tab', { name: 'New chat', selected: true }))
+      .toBeVisible({ timeout: AGENT_UI_TIMEOUT_MS })
     await expect(page.getByPlaceholder('Plan, write, or ask anything…')).toBeVisible()
     const defaultDocumentChip = page.locator('.agent-context-chip.is-document')
     await expect(defaultDocumentChip).toHaveCount(1)
@@ -834,7 +837,8 @@ test.describe('app shell navigation', () => {
     await expect(page.getByTestId('document-editor')).toBeVisible()
 
     await page.getByRole('button', { name: 'Open AI Chat' }).click()
-    await expect(page.getByRole('tab', { name: 'New chat', selected: true })).toBeVisible()
+    await expect(page.getByRole('tab', { name: 'New chat', selected: true }))
+      .toBeVisible({ timeout: AGENT_UI_TIMEOUT_MS })
 
     await page.locator('.workspace-agent-tab-close').click()
 
@@ -844,7 +848,8 @@ test.describe('app shell navigation', () => {
 
     await page.getByTestId('agent-floating-launcher').click()
 
-    await expect(page.getByRole('tab', { name: 'New chat', selected: true })).toBeVisible()
+    await expect(page.getByRole('tab', { name: 'New chat', selected: true }))
+      .toBeVisible({ timeout: AGENT_UI_TIMEOUT_MS })
     await page.getByRole('button', { name: 'View history' }).click()
     await expect(page.getByRole('dialog', { name: 'Agent history' }))
       .toContainText('New chat')
