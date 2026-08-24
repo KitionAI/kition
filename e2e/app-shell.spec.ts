@@ -822,6 +822,22 @@ test.describe('app shell navigation', () => {
     expect(sessionRequests.at(-1)).toMatchObject({ language: 'English' })
   })
 
+  test('inserts a newline in the agent composer with Shift+Enter', async ({ page }) => {
+    await page.goto('/documents')
+    await expect(page.getByTestId('document-editor')).toBeVisible()
+
+    await page.getByRole('button', { name: 'Open AI Chat' }).click()
+    await expect(page.getByRole('tab', { name: 'New chat', selected: true }))
+      .toBeVisible({ timeout: AGENT_UI_TIMEOUT_MS })
+
+    const composer = page.getByPlaceholder('Plan, write, or ask anything…')
+    await composer.fill('First line')
+    await composer.press('Shift+Enter')
+    await composer.type('Second line')
+
+    await expect(composer).toHaveValue('First line\nSecond line')
+  })
+
   test('keeps an agent chat after its tab is closed and reopened', async ({ page }) => {
     const deletedSessionUrls: string[] = []
     page.on('request', (request) => {

@@ -126,11 +126,14 @@ export function getUniqueAgentDocumentMentionPaths(content: string) {
 }
 
 export function stripAgentDocumentMentions(content: string) {
-  return content
+  const contentWithoutTrailingMentionLine = content.replace(
+    /(?:^|\n)[ \t]*(?:@\{[^}\n]+\}[ \t]*)+$/,
+    '',
+  )
+  return contentWithoutTrailingMentionLine
     .replace(/@\{([^}\n]+)\}/g, '')
     .replace(/[ \t]+(?=\n)/g, '')
     .replace(/[ \t]{2,}/g, ' ')
-    .replace(/\n[ \t]*$/, '')
 }
 
 export function buildAgentDraftWithDocumentMentions(

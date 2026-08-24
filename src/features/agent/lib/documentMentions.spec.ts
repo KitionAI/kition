@@ -167,6 +167,12 @@ describe('documentMentions', () => {
     )
   })
 
+  it('preserves user-authored trailing newlines while removing a trailing mention line', () => {
+    expect(stripAgentDocumentMentions('First line\n')).toBe('First line\n')
+    expect(stripAgentDocumentMentions('First line\n@{Docs/Plan.md}')).toBe('First line')
+    expect(stripAgentDocumentMentions('First line\n\n@{Docs/Plan.md}')).toBe('First line\n')
+  })
+
   it('builds explicit prompt context for referenced docs', () => {
     expect(buildAgentDocumentMentionPromptContext({
       referencedDocuments: [

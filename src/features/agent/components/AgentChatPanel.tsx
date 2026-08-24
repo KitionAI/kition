@@ -208,11 +208,29 @@ export function AgentChatPanel({
     if (nativeEvent.isComposing || nativeEvent.keyCode === 229) {
       return
     }
-    if (event.key === 'Enter' && !event.shiftKey) {
+    if (event.key !== 'Enter') {
+      return
+    }
+    if (event.shiftKey) {
       event.preventDefault()
-      if (canSend) {
-        onSend()
-      }
+      event.stopPropagation()
+      const textarea = event.currentTarget
+      const selectionStart = textarea.selectionStart
+      const selectionEnd = textarea.selectionEnd
+      const nextDraft = [
+        textarea.value.slice(0, selectionStart),
+        textarea.value.slice(selectionEnd),
+      ].join('\n')
+      onDraftChange(nextDraft)
+      window.requestAnimationFrame(() => {
+        textarea.focus()
+        textarea.setSelectionRange(selectionStart + 1, selectionStart + 1)
+      })
+      return
+    }
+    event.preventDefault()
+    if (canSend) {
+      onSend()
     }
   }
 

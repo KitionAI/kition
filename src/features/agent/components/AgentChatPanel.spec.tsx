@@ -151,6 +151,44 @@ describe('AgentChatPanel composer controls', () => {
     await unmount()
   })
 
+  it('sends with Enter and keeps Shift+Enter available for a newline', async () => {
+    const onSend = vi.fn()
+    const onDraftChange = vi.fn()
+    await mount(createElement(AgentChatPanel, makeMinimalProps({
+      draft: 'First line',
+      onDraftChange,
+      onSend,
+    })))
+
+    const textarea = container.querySelector('textarea') as HTMLTextAreaElement
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length)
+    let shiftEnterAllowed = false
+    await act(async () => {
+      shiftEnterAllowed = textarea.dispatchEvent(new KeyboardEvent('keydown', {
+        key: 'Enter',
+        shiftKey: true,
+        bubbles: true,
+        cancelable: true,
+      }))
+    })
+
+    expect(shiftEnterAllowed).toBe(false)
+    expect(onDraftChange).toHaveBeenCalledWith('First line\n')
+    expect(onSend).not.toHaveBeenCalled()
+
+    let enterAllowed = true
+    await act(async () => {
+      enterAllowed = textarea.dispatchEvent(new KeyboardEvent('keydown', {
+        key: 'Enter',
+        bubbles: true,
+        cancelable: true,
+      }))
+    })
+
+    expect(enterAllowed).toBe(false)
+    expect(onSend).toHaveBeenCalledOnce()
+  })
+
   it('keeps web search and browser capability controls out of the composer', async () => {
     Element.prototype.scrollIntoView = vi.fn()
     const modelOption = {
