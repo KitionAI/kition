@@ -14,8 +14,8 @@
 </p>
 
 <p align="center">
-  <strong>Documents, Tables, Agents, and Workflows in one desktop workspace.</strong><br />
-  Write connected knowledge, build data tools, research in the browser, and automate repeatable work.
+  <strong>Documents, Tables, Whiteboards, Agents, and Workflows in one desktop workspace.</strong><br />
+  Write connected knowledge, think visually, build data tools, research in the browser, and automate repeatable work.
 </p>
 
 <p align="center">
@@ -39,11 +39,12 @@
 </p>
 
 <p align="center">
-  <img src="docs/readme/kition-overview.webp" alt="Kition product overview showing documents, structured data tables, Agent research, and visual workflows" width="100%" />
+  <img src="docs/readme/kition-overview.webp" alt="Kition product overview showing documents, structured data tables, the dark Whiteboard workspace, Agent research, and visual workflows" width="100%" />
 </p>
 
-Kition brings Markdown documents, structured table files, a tool-using AI
-agent, browser research, and visual workflows into one desktop workspace.
+Kition brings Markdown documents, structured table files, an infinite
+Whiteboard, a tool-using AI agent, browser research, and visual workflows into
+one desktop workspace.
 Instead of making every task begin in a blank chat, Kition gives the Agent
 editable project files, typed records, attachments, and visible processes to
 work with. This makes powerful AI operations easier to inspect, correct, and
@@ -58,6 +59,9 @@ repeat without handing context between disconnected tools.
   callouts, code, math, diagrams, daily notes, search, and export.
 - **Structured data beside the knowledge.** Turn research and content into
   typed records, formulas, filters, groups, views, attachments, and AI fields.
+- **Visual thinking with reviewable AI changes.** Build diagrams, mind maps,
+  flows, and freeform sketches, then review Agent proposals before applying
+  them to the Whiteboard.
 - **An Agent that can act.** Research in browser tabs, inspect documents and
   table schemas, update content, and save useful output into the active project.
 - **Reviewable document edits.** Let the Agent edit the active document, inspect
@@ -133,8 +137,9 @@ regenerate, and hand off than a collection of disconnected chat outputs.
 </p>
 
 These scenarios show the intended Kition loop: use documents for narrative
-context, tables for structured state, the Agent for uncertain work, and
-Workflows for steps that should become repeatable.
+context, tables for structured state, Whiteboards for visual thinking, the
+Agent for uncertain work, and Workflows for steps that should become
+repeatable.
 
 ## Product Tour
 
@@ -184,8 +189,20 @@ plan. Agent output can be written back into the active workspace.
 </tr>
 <tr>
 <td width="58%">
-  <img src="docs/readme/workflows.webp" alt="Kition visual workflow canvas with a trigger, action, configuration, and test controls" width="100%" />
+  <img src="docs/readme/whiteboards.webp" alt="Kition dark Whiteboard workspace with connected nodes, a selected launch strategy, style controls, and drawing tools" width="100%" />
 </td>
+<td width="42%" valign="middle">
+
+### Think and plan visually
+
+Build diagrams, mind maps, flowcharts, sticky-note clusters, and freeform
+sketches on an infinite canvas. The Agent can inspect the board, propose typed
+changes, and let you accept or reject the preview before it becomes part of the
+workspace.
+
+</td>
+</tr>
+<tr>
 <td width="42%" valign="middle">
 
 ### Automate repeatable work
@@ -194,6 +211,9 @@ Build trigger-and-action workflows on a visual canvas. Start from a template,
 assemble a workflow manually, test individual steps, inspect run history, and
 resolve missing inputs before enabling it.
 
+</td>
+<td width="58%">
+  <img src="docs/readme/workflows.webp" alt="Kition visual workflow canvas with a trigger, action, configuration, and test controls" width="100%" />
 </td>
 </tr>
 </table>
@@ -250,7 +270,8 @@ most client-side contributions. More options are documented in
 
 This repository contains the public React and Electron client:
 
-- document, table, Agent, browser, settings, email, scenario, and workflow UI;
+- document, table, Whiteboard, Agent, browser, settings, email, scenario, and
+  workflow UI;
 - the Electron shell and desktop integration;
 - public runtime contracts, mocks, fixtures, and black-box tests;
 - packaging and unified release workflows.

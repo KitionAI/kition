@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title description">
-  <title id="title">Kition product overview</title>
-  <description id="description">Kition brings documents, data tables, agent research, and visual workflows into one desktop workspace.</description>
+  <title id="title">Kition product overview with the dark whiteboard workspace</title>
+  <description id="description">Kition brings documents, data tables, the real dark-mode whiteboard, agent research, and visual workflows into one desktop workspace.</description>
   <defs>
     <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#111116" />
@@ -8,12 +8,16 @@
       <stop offset="1" stop-color="#0c0c10" />
     </linearGradient>
     <radialGradient id="purpleGlow">
-      <stop offset="0" stop-color="#5645d4" stop-opacity="0.42" />
+      <stop offset="0" stop-color="#5645d4" stop-opacity="0.44" />
       <stop offset="1" stop-color="#5645d4" stop-opacity="0" />
     </radialGradient>
     <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#34343b" />
       <stop offset="1" stop-color="#29292f" />
+    </linearGradient>
+    <linearGradient id="whiteboardCard" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a3947" />
+      <stop offset="1" stop-color="#2b2a34" />
     </linearGradient>
     <linearGradient id="input" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#ffffff" />
@@ -28,14 +32,18 @@
     <filter id="softShadow" x="-15%" y="-20%" width="130%" height="150%">
       <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity="0.36" />
     </filter>
-    <clipPath id="documentClip"><rect x="79" y="733" width="386" height="248" rx="10" /></clipPath>
-    <clipPath id="tableClip"><rect x="537" y="733" width="386" height="248" rx="10" /></clipPath>
-    <clipPath id="agentClip"><rect x="995" y="733" width="386" height="248" rx="10" /></clipPath>
-    <clipPath id="workflowClip"><rect x="1453" y="733" width="386" height="248" rx="10" /></clipPath>
+    <filter id="whiteboardShadow" x="-20%" y="-25%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#5645d4" flood-opacity="0.22" />
+    </filter>
+    <clipPath id="documentClip"><rect x="66" y="733" width="298" height="248" rx="10" /></clipPath>
+    <clipPath id="tableClip"><rect x="439" y="733" width="298" height="248" rx="10" /></clipPath>
+    <clipPath id="whiteboardClip"><rect x="812" y="733" width="298" height="248" rx="10" /></clipPath>
+    <clipPath id="agentClip"><rect x="1185" y="733" width="298" height="248" rx="10" /></clipPath>
+    <clipPath id="workflowClip"><rect x="1558" y="733" width="298" height="248" rx="10" /></clipPath>
   </defs>
 
   <rect width="1920" height="1080" fill="url(#background)" />
-  <ellipse cx="960" cy="275" rx="760" ry="440" fill="url(#purpleGlow)" opacity="0.34" />
+  <ellipse cx="960" cy="275" rx="760" ry="440" fill="url(#purpleGlow)" opacity="0.36" />
   <rect width="1920" height="1080" fill="url(#dots)" />
 
   <g fill="none" stroke="#ffffff" stroke-opacity="0.07" stroke-width="2">
@@ -44,7 +52,6 @@
     <rect x="86" y="157" width="20" height="20" rx="4" />
     <path d="M123 167h88M86 217h20v20H86zM123 227h132M86 277h20v20H86zM123 287h102" />
     <path d="M218 168h322M218 209h270M218 250h342M218 291h235M218 332h300" stroke-width="7" stroke-linecap="round" />
-
     <rect x="1472" y="50" width="390" height="292" rx="22" stroke-dasharray="9 10" />
     <rect x="1512" y="92" width="308" height="64" rx="14" />
     <rect x="1512" y="174" width="308" height="64" rx="14" />
@@ -54,7 +61,6 @@
     <rect x="1532" y="192" width="22" height="22" rx="5" />
     <circle cx="1871" cy="198" r="18" />
     <path d="M1820 198h33M1889 198h31" stroke-dasharray="8 9" />
-
     <rect x="1088" y="266" width="760" height="316" rx="22" />
     <path d="M1088 344h760M1218 344v238M1374 344v238M1560 344v238M1724 344v238" />
     <path d="M1114 386h704M1114 430h704M1114 474h704M1114 518h704" />
@@ -64,83 +70,96 @@
     <image href="kition-logo-mark.png" x="58" y="42" width="62" height="62" />
     <text x="136" y="87" fill="#ffffff" font-size="42" font-weight="700" letter-spacing="-1.4">Kition</text>
     <text x="1780" y="78" fill="#c7c2ff" font-size="18" font-weight="600" text-anchor="end" letter-spacing="2.8">AI WORKSPACE</text>
-
-    <text x="960" y="176" fill="#ffffff" font-size="72" font-weight="700" text-anchor="middle" letter-spacing="-2.2" word-spacing="8">Documents, Tables, Agents &amp; Workflows</text>
-    <text x="960" y="222" fill="#b9b8c2" font-size="25" font-weight="400" text-anchor="middle">Turn knowledge into structured, repeatable work without switching tools.</text>
+    <text x="960" y="171" fill="#ffffff" font-size="57" font-weight="700" text-anchor="middle" letter-spacing="-1.8">Documents, Tables, Whiteboards, Agents &amp; Workflows</text>
+    <text x="960" y="218" fill="#b9b8c2" font-size="25" font-weight="400" text-anchor="middle">Turn ideas into structured, repeatable work without switching tools.</text>
 
     <g filter="url(#shadow)">
-      <rect x="458" y="284" width="1004" height="226" rx="24" fill="url(#input)" />
-      <text x="504" y="344" fill="#1c1b22" font-size="26" font-weight="600">Research AI workspace trends and build an editorial pipeline</text>
+      <rect x="390" y="276" width="1140" height="234" rx="24" fill="url(#input)" />
+      <text x="438" y="340" fill="#1c1b22" font-size="26" font-weight="600">Plan a product launch from research to visual strategy</text>
       <g>
-        <rect x="504" y="374" width="218" height="42" rx="9" fill="#ece9ff" stroke="#d9d3ff" />
-        <circle cx="528" cy="395" r="9" fill="#5645d4" />
-        <text x="547" y="402" fill="#37323f" font-size="18" font-weight="500">Browser research</text>
+        <rect x="438" y="372" width="218" height="42" rx="9" fill="#ece9ff" stroke="#d9d3ff" />
+        <circle cx="462" cy="393" r="9" fill="#5645d4" />
+        <text x="481" y="400" fill="#37323f" font-size="18" font-weight="500">Browser research</text>
       </g>
       <g>
-        <rect x="738" y="374" width="200" height="42" rx="9" fill="#f0eff3" stroke="#dddae2" />
-        <rect x="758" y="386" width="17" height="17" rx="3" fill="none" stroke="#5645d4" stroke-width="2" />
-        <text x="786" y="402" fill="#37323f" font-size="18" font-weight="500">Editorial table</text>
+        <rect x="672" y="372" width="200" height="42" rx="9" fill="#f0eff3" stroke="#dddae2" />
+        <rect x="692" y="384" width="17" height="17" rx="3" fill="none" stroke="#5645d4" stroke-width="2" />
+        <text x="720" y="400" fill="#37323f" font-size="18" font-weight="500">Editorial table</text>
       </g>
-      <rect x="504" y="446" width="46" height="42" rx="9" fill="#ffffff" stroke="#d7d4dc" />
-      <path d="M527 457v20M517 467h20" stroke="#6a6670" stroke-width="3" stroke-linecap="round" />
-      <rect x="1196" y="438" width="226" height="52" rx="10" fill="#1b1a1f" />
-      <path d="M1224 471v-19M1216 460l8-8 8 8" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-      <text x="1248" y="472" fill="#ffffff" font-size="21" font-weight="600">Run with Agent</text>
+      <g>
+        <rect x="888" y="372" width="250" height="42" rx="9" fill="#f5f0ff" stroke="#ddd4ff" />
+        <path d="M910 386h17v15h-17zM913 390h11M913 394h7" fill="none" stroke="#5645d4" stroke-width="2" stroke-linejoin="round" />
+        <text x="940" y="400" fill="#37323f" font-size="18" font-weight="500">Campaign whiteboard</text>
+      </g>
+      <rect x="438" y="448" width="46" height="42" rx="9" fill="#ffffff" stroke="#d7d4dc" />
+      <path d="M461 459v20M451 469h20" stroke="#6a6670" stroke-width="3" stroke-linecap="round" />
+      <rect x="1254" y="438" width="226" height="52" rx="8" fill="#5645d4" />
+      <path d="M1282 471v-19M1274 460l8-8 8 8" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+      <text x="1306" y="472" fill="#ffffff" font-size="21" font-weight="600">Run with Agent</text>
     </g>
 
     <g fill="none" stroke="#a9a1ea" stroke-opacity="0.55" stroke-width="2" stroke-dasharray="8 9">
-      <path d="M680 510v46q0 20-20 20H271v28" />
-      <path d="M872 510v46q0 20-20 20H729v28" />
-      <path d="M1048 510v46q0 20 20 20h120v28" />
-      <path d="M1240 510v46q0 20 20 20h386v28" />
+      <path d="M664 510v46q0 20-20 20H215v28" />
+      <path d="M812 510v46q0 20-20 20H588v28" />
+      <path d="M960 510v94" />
+      <path d="M1108 510v46q0 20 20 20h204v28" />
+      <path d="M1256 510v46q0 20 20 20h429v28" />
     </g>
     <g fill="#a9a1ea" fill-opacity="0.8">
-      <path d="M263 596l8 10 8-10z" />
-      <path d="M721 596l8 10 8-10z" />
-      <path d="M1180 596l8 10 8-10z" />
-      <path d="M1638 596l8 10 8-10z" />
+      <path d="M207 596l8 10 8-10z" />
+      <path d="M580 596l8 10 8-10z" />
+      <path d="M952 596l8 10 8-10z" />
+      <path d="M1324 596l8 10 8-10z" />
+      <path d="M1697 596l8 10 8-10z" />
     </g>
 
     <g filter="url(#softShadow)">
-      <rect x="58" y="610" width="428" height="410" rx="18" fill="url(#card)" stroke="#ffffff" stroke-opacity="0.08" />
-      <rect x="516" y="610" width="428" height="410" rx="18" fill="url(#card)" stroke="#ffffff" stroke-opacity="0.08" />
-      <rect x="974" y="610" width="428" height="410" rx="18" fill="url(#card)" stroke="#ffffff" stroke-opacity="0.08" />
-      <rect x="1432" y="610" width="428" height="410" rx="18" fill="url(#card)" stroke="#ffffff" stroke-opacity="0.08" />
+      <rect x="44" y="610" width="342" height="410" rx="18" fill="url(#card)" stroke="#ffffff" stroke-opacity="0.08" />
+      <rect x="417" y="610" width="342" height="410" rx="18" fill="url(#card)" stroke="#ffffff" stroke-opacity="0.08" />
+      <rect x="790" y="610" width="342" height="410" rx="18" fill="url(#whiteboardCard)" stroke="#8e82ec" stroke-opacity="0.64" filter="url(#whiteboardShadow)" />
+      <rect x="1163" y="610" width="342" height="410" rx="18" fill="url(#card)" stroke="#ffffff" stroke-opacity="0.08" />
+      <rect x="1536" y="610" width="342" height="410" rx="18" fill="url(#card)" stroke="#ffffff" stroke-opacity="0.08" />
     </g>
 
     <g fill="#ffffff">
-      <g transform="translate(82 641)">
+      <g transform="translate(66 641)">
         <path d="M0 3h18l7 7v23H0zM18 3v8h7" fill="none" stroke="#c7c2ff" stroke-width="2.4" stroke-linejoin="round" />
-        <text x="39" y="25" font-size="27" font-weight="700">Documents</text>
-        <text x="0" y="61" fill="#c8c6cf" font-size="18">Write and connect durable knowledge</text>
+        <text x="38" y="25" font-size="25" font-weight="700">Documents</text>
+        <text x="0" y="61" fill="#c8c6cf" font-size="16">Write and connect durable knowledge</text>
       </g>
-      <g transform="translate(540 641)">
+      <g transform="translate(439 641)">
         <rect x="0" y="4" width="28" height="27" rx="4" fill="none" stroke="#c7c2ff" stroke-width="2.4" />
         <path d="M0 13h28M9 4v27" stroke="#c7c2ff" stroke-width="2.4" />
-        <text x="39" y="25" font-size="27" font-weight="700">Data Tables</text>
-        <text x="0" y="61" fill="#c8c6cf" font-size="18">Shape records into useful tools</text>
+        <text x="38" y="25" font-size="25" font-weight="700">Data Tables</text>
+        <text x="0" y="61" fill="#c8c6cf" font-size="16">Shape records into useful tools</text>
       </g>
-      <g transform="translate(998 641)">
+      <g transform="translate(812 641)">
+        <rect x="0" y="3" width="29" height="28" rx="5" fill="none" stroke="#d8d3ff" stroke-width="2.4" />
+        <path d="M6 22l5-6 4 4 4-5 4 7M5 9h4M20 9h4" fill="none" stroke="#d8d3ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+        <text x="38" y="25" font-size="25" font-weight="700">Whiteboards</text>
+        <text x="0" y="61" fill="#d6d2e4" font-size="16">Think visually with AI</text>
+      </g>
+      <g transform="translate(1185 641)">
         <rect x="0" y="5" width="28" height="24" rx="7" fill="none" stroke="#c7c2ff" stroke-width="2.4" />
         <path d="M7 5V0M21 5V0M9 16h2M18 16h2M9 23h10" stroke="#c7c2ff" stroke-width="2.4" stroke-linecap="round" />
-        <text x="39" y="25" font-size="27" font-weight="700">Agent Research</text>
-        <text x="0" y="61" fill="#c8c6cf" font-size="18">Research, plan, and update the work</text>
+        <text x="38" y="25" font-size="25" font-weight="700">Agent Research</text>
+        <text x="0" y="61" fill="#c8c6cf" font-size="16">Research, plan, and update the work</text>
       </g>
-      <g transform="translate(1456 641)">
+      <g transform="translate(1558 641)">
         <circle cx="5" cy="7" r="4" fill="none" stroke="#c7c2ff" stroke-width="2.4" />
         <circle cx="24" cy="17" r="4" fill="none" stroke="#c7c2ff" stroke-width="2.4" />
         <circle cx="5" cy="28" r="4" fill="none" stroke="#c7c2ff" stroke-width="2.4" />
         <path d="M9 8l11 7M9 27l11-8" stroke="#c7c2ff" stroke-width="2.4" />
-        <text x="39" y="25" font-size="27" font-weight="700">Workflows</text>
-        <text x="0" y="61" fill="#c8c6cf" font-size="18">Automate repeatable processes visibly</text>
+        <text x="38" y="25" font-size="25" font-weight="700">Workflows</text>
+        <text x="0" y="61" fill="#c8c6cf" font-size="16">Automate repeatable processes</text>
       </g>
     </g>
 
-    <image href="documents.webp" x="79" y="733" width="386" height="248" preserveAspectRatio="xMidYMid slice" clip-path="url(#documentClip)" />
-    <image href="tables.webp" x="537" y="733" width="386" height="248" preserveAspectRatio="xMidYMid slice" clip-path="url(#tableClip)" />
-    <image href="agent.webp" x="995" y="733" width="386" height="248" preserveAspectRatio="xMidYMid slice" clip-path="url(#agentClip)" />
-    <image href="workflows.webp" x="1453" y="733" width="386" height="248" preserveAspectRatio="xMidYMid slice" clip-path="url(#workflowClip)" />
-
-    <text x="960" y="1056" fill="#8e8b97" font-size="15" text-anchor="middle" letter-spacing="1.2">WRITE · STRUCTURE · RESEARCH · AUTOMATE</text>
+    <image href="documents.webp" x="66" y="733" width="298" height="248" preserveAspectRatio="xMidYMid slice" clip-path="url(#documentClip)" />
+    <image href="tables.webp" x="439" y="733" width="298" height="248" preserveAspectRatio="xMidYMid slice" clip-path="url(#tableClip)" />
+    <image href="whiteboards.webp" x="812" y="733" width="298" height="248" preserveAspectRatio="xMaxYMid slice" clip-path="url(#whiteboardClip)" />
+    <image href="agent.webp" x="1185" y="733" width="298" height="248" preserveAspectRatio="xMidYMid slice" clip-path="url(#agentClip)" />
+    <image href="workflows.webp" x="1558" y="733" width="298" height="248" preserveAspectRatio="xMidYMid slice" clip-path="url(#workflowClip)" />
+    <text x="960" y="1056" fill="#8e8b97" font-size="15" text-anchor="middle" letter-spacing="1.2">WRITE · STRUCTURE · THINK · RESEARCH · AUTOMATE</text>
   </g>
 </svg>
