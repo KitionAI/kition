@@ -277,6 +277,7 @@ export type AgentCapabilities = {
 
 export type AgentStreamEvent = {
   type: string
+  board_path?: string
   delta?: string
   message?: string
   session?: AgentSession

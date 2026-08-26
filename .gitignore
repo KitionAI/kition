@@ -76,3 +76,6 @@ test-workspace-desktop/
 .agents
 /build/*
 !/build/entitlements.mac.plist
+
+# Generated README capture intermediates
+docs/readme/whiteboards.png

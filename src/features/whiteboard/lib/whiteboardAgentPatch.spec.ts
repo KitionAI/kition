@@ -92,4 +92,64 @@ describe('AI Board patches', () => {
       }],
     })).toThrow('generated area is too large')
   })
+
+  it('creates bound connectors between AI mind-map nodes', () => {
+    const store = new BoardStore()
+    const patch = parseAgentWhiteboardPatch({
+      type: 'whiteboard.patch',
+      schema_version: 1,
+      summary: 'Build a connected mind map',
+      operations: [
+        {
+          op: 'element.create',
+          element: {
+            id: 'root',
+            kind: 'mind_node',
+            bounds: { x: 100, y: 100, width: 160, height: 80 },
+            text: 'Root',
+          },
+        },
+        {
+          op: 'element.create',
+          element: {
+            id: 'branch',
+            kind: 'mind_node',
+            bounds: { x: 400, y: 220, width: 160, height: 80 },
+            text: 'Branch',
+          },
+        },
+        {
+          op: 'connector.create',
+          connector: { id: 'root-branch', from_id: 'root', to_id: 'branch' },
+        },
+      ],
+    })
+
+    const diff = translateAgentWhiteboardPatch({ patch, store })
+    expect(diff.added).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        record_type: 'element',
+        id: 'root-branch',
+        kind: 'connector',
+        start: expect.any(Object),
+        end: expect.any(Object),
+      }),
+      expect.objectContaining({
+        record_type: 'binding',
+        id: 'binding:root-branch:start',
+        from_id: 'root-branch',
+        to_id: 'root',
+      }),
+      expect.objectContaining({
+        record_type: 'binding',
+        id: 'binding:root-branch:end',
+        from_id: 'root-branch',
+        to_id: 'branch',
+      }),
+    ]))
+
+    new BoardCommandRegistry(store).applyAgentDiff(patch.summary, diff)
+    expect(store.getCurrentPageElements().find((element) => element.id === 'root-branch'))
+      .toMatchObject({ kind: 'connector' })
+  })
 })

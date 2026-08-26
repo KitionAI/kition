@@ -1,13 +1,35 @@
 import {
+  createBoardConnectorBindingRecord,
+  removeBoardConnectorBindings,
+  syncBoardConnectorBindings,
+  type BoardConnectorAnchor,
+  type BoardConnectorTerminal,
+} from './boardBindingEngine'
+import {
   createBoardElementRecord,
+  boardElementFromRecord,
+  type BoardBindingRecord,
   type BoardElementRecord,
 } from './boardRecords'
+import {
+  getBoardElementsWithDescendants,
+  getBoardSelectionRootIds,
+  isBoardContainerElement,
+  type BoardContainerKind,
+} from './boardHierarchy'
 import {
   BoardStore,
   type BoardRecordDiff,
   type BoardTransaction,
 } from './boardStore'
+import { getWhiteboardSelectionBounds } from './whiteboardGeometry'
 import type { WhiteboardElement } from './whiteboardTypes'
+
+export type BoardElementReorderPlacement =
+  | 'front'
+  | 'forward'
+  | 'backward'
+  | 'back'
 
 export type BoardCommand =
   | {
@@ -22,11 +44,44 @@ export type BoardCommand =
       type: 'element.delete'
       elementIds: string[]
     }
+  | {
+      type: 'element.reorder'
+      elementIds: string[]
+      placement: BoardElementReorderPlacement
+    }
+  | {
+      type: 'connector.create'
+      element: Extract<WhiteboardElement, { kind: 'connector' }>
+      bindings: Array<{
+        anchor: BoardConnectorAnchor
+        terminal: BoardConnectorTerminal
+      }>
+    }
+  | {
+      type: 'element.paste'
+      bindings: BoardBindingRecord[]
+      elements: WhiteboardElement[]
+    }
+  | {
+      type: 'element.group'
+      containerId: string
+      containerKind: BoardContainerKind
+      elementIds: string[]
+    }
+  | {
+      type: 'element.ungroup'
+      containerIds: string[]
+    }
 
 const BOARD_COMMAND_LABELS: Record<BoardCommand['type'], string> = {
   'element.create': 'Create element',
   'element.update': 'Update element',
   'element.delete': 'Delete element',
+  'element.reorder': 'Reorder elements',
+  'connector.create': 'Create connector',
+  'element.paste': 'Paste elements',
+  'element.group': 'Group elements',
+  'element.ungroup': 'Ungroup elements',
 }
 
 export class BoardCommandRegistry {
@@ -79,11 +134,14 @@ export class BoardElementUpdateSession {
   ) {}
 
   update(elements: readonly WhiteboardElement[]) {
+    const changedElementIds = new Set<string>()
     for (const element of elements) {
       const record = this.store.getElementRecord(element.id)
       if (!record) continue
       this.transaction.put(updateElementRecord(record, element))
+      changedElementIds.add(element.id)
     }
+    syncBoardConnectorBindings(this.store, this.transaction, changedElementIds)
     return this
   }
 
@@ -111,16 +169,224 @@ function applyBoardCommand(
       }
       break
     }
-    case 'element.update':
+    case 'element.update': {
+      const changedElementIds = new Set<string>()
       for (const element of command.elements) {
         const record = store.getElementRecord(element.id)
-        if (record) transaction.put(updateElementRecord(record, element))
+        if (record) {
+          transaction.put(updateElementRecord(record, element))
+          changedElementIds.add(element.id)
+        }
+      }
+      syncBoardConnectorBindings(store, transaction, changedElementIds)
+      break
+    }
+    case 'element.delete': {
+      const elementIds = new Set(getBoardElementsWithDescendants(
+        store.getCurrentPageElements(),
+        command.elementIds,
+      ).map((element) => element.id))
+      removeBoardConnectorBindings(store, transaction, elementIds)
+      for (const id of elementIds) transaction.remove(id)
+      break
+    }
+    case 'element.reorder':
+      reorderBoardElements(store, transaction, command.elementIds, command.placement)
+      break
+    case 'connector.create': {
+      const pageId = store.getCurrentPageId()
+      transaction.put(createBoardElementRecord({
+        element: command.element,
+        index: store.getNextElementIndex(pageId),
+        pageId,
+      }))
+      const terminals = new Set<BoardConnectorTerminal>()
+      for (const binding of command.bindings) {
+        if (terminals.has(binding.terminal)) continue
+        if (!store.getElementRecord(binding.anchor.targetElementId)) continue
+        terminals.add(binding.terminal)
+        transaction.put(createBoardConnectorBindingRecord({
+          anchor: binding.anchor,
+          connectorId: command.element.id,
+          terminal: binding.terminal,
+        }))
       }
       break
-    case 'element.delete':
-      for (const id of command.elementIds) transaction.remove(id)
+    }
+    case 'element.paste': {
+      const pageId = store.getCurrentPageId()
+      let index = store.getNextElementIndex(pageId)
+      for (const element of command.elements) {
+        transaction.put(createBoardElementRecord({ element, index, pageId }))
+        index += 1
+      }
+      for (const binding of command.bindings) {
+        const connector = store.getElementRecord(binding.from_id)
+        const target = store.getElementRecord(binding.to_id)
+        if (
+          connector?.kind !== 'connector'
+          || !target
+          || (binding.terminal !== 'start' && binding.terminal !== 'end')
+        ) continue
+        transaction.put(binding)
+      }
+      break
+    }
+    case 'element.group':
+      groupBoardElements(store, transaction, command)
+      break
+    case 'element.ungroup':
+      ungroupBoardElements(store, transaction, command.containerIds)
       break
   }
+}
+
+function groupBoardElements(
+  store: BoardStore,
+  transaction: BoardTransaction,
+  command: Extract<BoardCommand, { type: 'element.group' }>,
+) {
+  const pageId = store.getCurrentPageId()
+  const elements = store.getCurrentPageElements()
+  const rootIds = getBoardSelectionRootIds(elements, command.elementIds)
+  const rootIdSet = new Set(rootIds)
+  const roots = elements.filter((element) => rootIdSet.has(element.id) && !element.locked)
+  const minimumCount = command.containerKind === 'group' ? 2 : 1
+  const bounds = getWhiteboardSelectionBounds(roots)
+  if (!bounds || roots.length < minimumCount || store.getRecord(command.containerId)) return
+
+  const commonParentId = roots.every((element) => element.parentId === roots[0].parentId)
+    ? roots[0].parentId
+    : undefined
+  const horizontalPadding = command.containerKind === 'frame' ? 32 : 8
+  const topPadding = command.containerKind === 'frame' ? 52 : 8
+  const bottomPadding = command.containerKind === 'frame' ? 32 : 8
+  const container: Extract<WhiteboardElement, { kind: 'rectangle' }> = {
+    id: command.containerId,
+    kind: 'rectangle',
+    locked: false,
+    parentId: commonParentId,
+    rotation: 0,
+    shapeStyle: command.containerKind,
+    shapeType: command.containerKind === 'frame' ? 'frame' : 'rectangle',
+    x: bounds.x - horizontalPadding,
+    y: bounds.y - topPadding,
+    width: bounds.width + horizontalPadding * 2,
+    height: bounds.height + topPadding + bottomPadding,
+  }
+  const pageRecords = store.getRecords().filter((record): record is BoardElementRecord => (
+    record.record_type === 'element' && record.page_id === pageId
+  ))
+  const updatedRoots = new Map(roots.map((element) => {
+    const record = store.getElementRecord(element.id)!
+    return [element.id, updateElementRecord(record, { ...element, parentId: container.id })]
+  }))
+  const ordered = pageRecords.map((record) => updatedRoots.get(record.id) || record)
+  const insertionIndex = Math.max(0, ordered.findIndex((record) => rootIdSet.has(record.id)))
+  ordered.splice(insertionIndex, 0, createBoardElementRecord({
+    element: container,
+    index: insertionIndex,
+    pageId,
+  }))
+  ordered.forEach((record, index) => transaction.put({ ...record, index }))
+}
+
+function ungroupBoardElements(
+  store: BoardStore,
+  transaction: BoardTransaction,
+  containerIds: readonly string[],
+) {
+  const pageId = store.getCurrentPageId()
+  const elements = store.getCurrentPageElements()
+  const rootIds = new Set(getBoardSelectionRootIds(elements, containerIds))
+  const containers = elements.filter((element) => (
+    rootIds.has(element.id) && isBoardContainerElement(element) && !element.locked
+  ))
+  if (containers.length === 0) return
+  const containerIdsToRemove = new Set(containers.map((element) => element.id))
+  const parentByContainer = new Map(containers.map((element) => [
+    element.id,
+    element.parentId,
+  ]))
+  const pageRecords = store.getRecords().filter((record): record is BoardElementRecord => (
+    record.record_type === 'element' && record.page_id === pageId
+  ))
+  removeBoardConnectorBindings(store, transaction, containerIdsToRemove)
+  const remaining = pageRecords.flatMap((record): BoardElementRecord[] => {
+    if (containerIdsToRemove.has(record.id)) {
+      transaction.remove(record.id)
+      return []
+    }
+    if (!record.parentId || !containerIdsToRemove.has(record.parentId)) return [record]
+    return [updateElementRecord(record, {
+      ...boardElementFromRecord(record),
+      parentId: parentByContainer.get(record.parentId),
+    })]
+  })
+  remaining.forEach((record, index) => transaction.put({ ...record, index }))
+}
+
+function reorderBoardElements(
+  store: BoardStore,
+  transaction: BoardTransaction,
+  elementIds: readonly string[],
+  placement: BoardElementReorderPlacement,
+) {
+  const pageId = store.getCurrentPageId()
+  const selectedIds = new Set(getBoardElementsWithDescendants(
+    store.getCurrentPageElements(),
+    elementIds,
+  ).map((element) => element.id))
+  const records = store.getRecords().filter((record): record is BoardElementRecord => (
+    record.record_type === 'element' && record.page_id === pageId
+  ))
+  if (!records.some((record) => selectedIds.has(record.id))) return
+
+  const reordered = reorderElementRecords(records, selectedIds, placement)
+  reordered.forEach((record, index) => {
+    if (record.index !== index) transaction.put({ ...record, index })
+  })
+}
+
+function reorderElementRecords(
+  records: readonly BoardElementRecord[],
+  selectedIds: ReadonlySet<string>,
+  placement: BoardElementReorderPlacement,
+) {
+  const reordered = [...records]
+  if (placement === 'front' || placement === 'back') {
+    const selected = reordered.filter((record) => selectedIds.has(record.id))
+    const unselected = reordered.filter((record) => !selectedIds.has(record.id))
+    return placement === 'front'
+      ? [...unselected, ...selected]
+      : [...selected, ...unselected]
+  }
+
+  if (placement === 'forward') {
+    for (let index = reordered.length - 2; index >= 0; index -= 1) {
+      if (
+        selectedIds.has(reordered[index].id)
+        && !selectedIds.has(reordered[index + 1].id)
+      ) {
+        const next = reordered[index + 1]
+        reordered[index + 1] = reordered[index]
+        reordered[index] = next
+      }
+    }
+    return reordered
+  }
+
+  for (let index = 1; index < reordered.length; index += 1) {
+    if (
+      selectedIds.has(reordered[index].id)
+      && !selectedIds.has(reordered[index - 1].id)
+    ) {
+      const previous = reordered[index - 1]
+      reordered[index - 1] = reordered[index]
+      reordered[index] = previous
+    }
+  }
+  return reordered
 }
 
 function updateElementRecord(

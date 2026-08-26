@@ -4,11 +4,11 @@ import type {
   AgentWhiteboardElement,
 } from '@/types/whiteboardAgent'
 
+import { getBoardAgentElementKind } from './boardElementDefinitions'
 import type { BoardStore } from './boardStore'
 import {
   getWhiteboardElementBounds,
   unionWhiteboardBounds,
-  whiteboardBoundsIntersect,
 } from './whiteboardGeometry'
 import type {
   WhiteboardBounds,
@@ -43,9 +43,7 @@ export function buildWhiteboardAgentContext(input: {
     .filter((id) => elements.some((element) => element.id === id))
     .slice(0, MAX_SELECTED_ELEMENTS)
   const selectedSet = new Set(selectedIds)
-  const visible = elements.filter((element) => (
-    whiteboardBoundsIntersect(viewport, getWhiteboardElementBounds(element))
-  ))
+  const visible = input.store.queryCurrentPageElements(viewport)
 
   let included: readonly WhiteboardElement[]
   if (input.scope === 'selection') {
@@ -90,7 +88,7 @@ export function whiteboardElementToAgentElement(
 ): AgentWhiteboardElement {
   const result: AgentWhiteboardElement = {
     id: element.id,
-    kind: resolveAgentElementKind(element),
+    kind: getBoardAgentElementKind(element),
     bounds: getWhiteboardElementBounds(element),
   }
   const text = element.kind === 'text' || element.kind === 'rectangle'
@@ -102,24 +100,6 @@ export function whiteboardElementToAgentElement(
     result.source_ref_ids = [...new Set(element.sourceRefIds)].slice(0, 16)
   }
   return result
-}
-
-function resolveAgentElementKind(
-  element: WhiteboardElement,
-): AgentWhiteboardElement['kind'] {
-  if (element.kind === 'text') return 'text'
-  if (element.kind === 'connector') return 'connector'
-  if (element.kind === 'stroke') return 'freehand'
-  if (element.kind === 'image') return 'image'
-  switch (element.shapeStyle) {
-    case 'sticky': return 'sticky'
-    case 'mind-node': return 'mind_node'
-    case 'flow-node': return 'flow_node'
-    case 'frame': return 'frame'
-    case 'group': return 'group'
-    case 'image-placeholder': return 'image'
-    default: return 'shape'
-  }
 }
 
 function buildViewportBounds(

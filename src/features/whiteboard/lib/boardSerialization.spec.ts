@@ -153,6 +153,60 @@ describe('Board .kiboard serialization', () => {
     ]))
   })
 
+  it('round-trips optional connector binding terminals without changing the Board version', () => {
+    const document = parseBoardDocument(serializeBoardDocument(buildBoardDocument({
+      title: 'Connected board',
+      viewport: { x: 0, y: 0, zoom: 1 },
+      records: [
+        ...createBoardRecordsFromElements([
+          { id: 'target', kind: 'rectangle', x: 0, y: 0, width: 100, height: 80 },
+          {
+            id: 'connector',
+            kind: 'connector',
+            start: { x: 100, y: 40 },
+            end: { x: 220, y: 40 },
+          },
+        ], 'Connected board'),
+        {
+          record_type: 'binding',
+          id: 'binding:connector:start',
+          binding_type: 'connector',
+          from_id: 'connector',
+          to_id: 'target',
+          terminal: 'start',
+          to_anchor: { x: 1, y: 0.5 },
+        },
+      ],
+    })))
+
+    expect(document.version).toBe(1)
+    expect(document.records).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'binding:connector:start',
+        terminal: 'start',
+        to_anchor: { x: 1, y: 0.5 },
+      }),
+    ]))
+  })
+
+  it('round-trips checkbox shapes while keeping legacy check marks readable', () => {
+    const document = parseBoardDocument(serializeBoardDocument(buildBoardDocument({
+      title: 'Checklist',
+      viewport: { x: 0, y: 0, zoom: 1 },
+      records: createBoardRecordsFromElements([
+        { id: 'x-box', kind: 'rectangle', x: 0, y: 0, width: 80, height: 80, shapeType: 'x-box' },
+        { id: 'check-box', kind: 'rectangle', x: 100, y: 0, width: 80, height: 80, shapeType: 'check-box' },
+        { id: 'legacy-check', kind: 'rectangle', x: 200, y: 0, width: 80, height: 80, shapeType: 'check' },
+      ], 'Checklist'),
+    })))
+
+    expect(document.records).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'x-box', shapeType: 'x-box' }),
+      expect.objectContaining({ id: 'check-box', shapeType: 'check-box' }),
+      expect.objectContaining({ id: 'legacy-check', shapeType: 'check' }),
+    ]))
+  })
+
   it('drops image elements that contain host or traversal paths', () => {
     const unsafe = buildBoardDocument({
       title: 'Unsafe',

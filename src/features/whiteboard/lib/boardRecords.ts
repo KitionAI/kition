@@ -35,6 +35,7 @@ export type BoardBindingRecord = {
   binding_type: 'connector'
   from_id: string
   to_id: string
+  terminal?: 'start' | 'end'
   from_anchor?: WhiteboardPoint
   to_anchor?: WhiteboardPoint
 }

@@ -5,6 +5,7 @@ import type {
   WhiteboardResizeHandle,
   WhiteboardViewport,
 } from './whiteboardTypes'
+import { getBoardElementUnrotatedBounds } from './boardElementDefinitions'
 
 export const WHITEBOARD_MIN_ZOOM = 0.25
 export const WHITEBOARD_MAX_ZOOM = 4
@@ -203,29 +204,7 @@ export function whiteboardPointsToPath(points: readonly WhiteboardPoint[]) {
 function getWhiteboardElementUnrotatedBounds(
   element: WhiteboardElement,
 ): WhiteboardBounds {
-  switch (element.kind) {
-    case 'rectangle':
-    case 'image':
-      return {
-        x: element.x,
-        y: element.y,
-        width: element.width,
-        height: element.height,
-      }
-    case 'text': {
-      const fontSize = element.fontSize ?? 22
-      return {
-        x: element.x,
-        y: element.y - fontSize,
-        width: Math.max(72, Array.from(element.text).length * fontSize * 0.55),
-        height: fontSize + 8,
-      }
-    }
-    case 'stroke':
-      return boundsForPoints(element.points)
-    case 'connector':
-      return boundsForPoints([element.start, element.end])
-  }
+  return getBoardElementUnrotatedBounds(element)
 }
 
 function getResizedBounds(input: {

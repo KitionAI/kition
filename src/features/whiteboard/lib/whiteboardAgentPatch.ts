@@ -11,6 +11,10 @@ import {
 } from '@/types/whiteboardAgent'
 
 import {
+  createBoardConnectorBindingRecord,
+  getBoardConnectorAnchor,
+} from './boardBindingEngine'
+import {
   boardElementFromRecord,
   cloneBoardRecord,
   compareBoardRecords,
@@ -61,6 +65,10 @@ const elementSchema = z.object({
   parent_id: identifierSchema.optional(),
   source_ref_ids: sourceRefIdsSchema.optional(),
 }).strict()
+const creatableElementSchema = elementSchema.refine(
+  (element) => element.kind !== 'connector',
+  'Use connector.create for connectors',
+)
 const elementChangesSchema = z.object({
   kind: elementKindSchema.optional(),
   bounds: boundsSchema.optional(),
@@ -68,8 +76,17 @@ const elementChangesSchema = z.object({
   parent_id: identifierSchema.nullable().optional(),
   source_ref_ids: sourceRefIdsSchema.optional(),
 }).strict().refine((changes) => Object.keys(changes).length > 0, 'Changes cannot be empty')
+const connectorSchema = z.object({
+  id: identifierSchema,
+  from_id: identifierSchema,
+  to_id: identifierSchema,
+}).strict().refine(
+  (connector) => connector.from_id !== connector.to_id,
+  'Connector endpoints must be different',
+)
 const operationSchema = z.discriminatedUnion('op', [
-  z.object({ op: z.literal('element.create'), element: elementSchema }).strict(),
+  z.object({ op: z.literal('element.create'), element: creatableElementSchema }).strict(),
+  z.object({ op: z.literal('connector.create'), connector: connectorSchema }).strict(),
   z.object({
     op: z.literal('element.update'),
     element_id: identifierSchema,
@@ -118,6 +135,9 @@ export function translateAgentWhiteboardPatch(input: {
   const originalById = new Map(originalRecords.map((record) => [record.id, record]))
   const working = new Map(originalRecords.map((record) => [record.id, cloneBoardRecord(record) as BoardElementRecord]))
   const order = originalRecords.map((record) => record.id)
+  const connectorOperations: Array<Extract<AgentWhiteboardPatch['operations'][number], {
+    op: 'connector.create'
+  }>> = []
 
   for (const operation of input.patch.operations) {
     switch (operation.op) {
@@ -134,6 +154,9 @@ export function translateAgentWhiteboardPatch(input: {
         order.push(element.id)
         break
       }
+      case 'connector.create':
+        connectorOperations.push(operation)
+        break
       case 'element.update': {
         const current = requireEditableElement(working, operation.element_id)
         const semantic = boardRecordToAgentElement(current)
@@ -180,6 +203,56 @@ export function translateAgentWhiteboardPatch(input: {
     }
   }
 
+  const addedBindings = connectorOperations.flatMap((operation) => {
+    const connector = operation.connector
+    if (input.store.getRecord(connector.id) || working.has(connector.id)) {
+      throw new Error(`AI Board patch reuses an existing id: ${connector.id}`)
+    }
+    const fromRecord = requireConnectorTarget(working, connector.from_id)
+    const toRecord = requireConnectorTarget(working, connector.to_id)
+    const fromElement = boardElementFromRecord(fromRecord)
+    const toElement = boardElementFromRecord(toRecord)
+    const fromBounds = getWhiteboardElementBounds(fromElement)
+    const toBounds = getWhiteboardElementBounds(toElement)
+    const fromAnchor = getBoardConnectorAnchor(fromElement, {
+      x: toBounds.x + toBounds.width / 2,
+      y: toBounds.y + toBounds.height / 2,
+    })
+    const toAnchor = getBoardConnectorAnchor(toElement, {
+      x: fromBounds.x + fromBounds.width / 2,
+      y: fromBounds.y + fromBounds.height / 2,
+    })
+    if (!fromAnchor || !toAnchor) {
+      throw new Error(`AI Board connector has invalid endpoints: ${connector.id}`)
+    }
+    const element: Extract<WhiteboardElement, { kind: 'connector' }> = {
+      id: connector.id,
+      kind: 'connector',
+      locked: false,
+      rotation: 0,
+      start: fromAnchor.point,
+      end: toAnchor.point,
+    }
+    working.set(element.id, createBoardElementRecord({
+      element,
+      index: order.length,
+      pageId,
+    }))
+    order.push(element.id)
+    return [
+      createBoardConnectorBindingRecord({
+        anchor: fromAnchor,
+        connectorId: connector.id,
+        terminal: 'start',
+      }),
+      createBoardConnectorBindingRecord({
+        anchor: toAnchor,
+        connectorId: connector.id,
+        terminal: 'end',
+      }),
+    ]
+  })
+
   for (const record of working.values()) {
     const parentId = record.parentId
     if (!parentId) continue
@@ -207,10 +280,23 @@ export function translateAgentWhiteboardPatch(input: {
   for (const record of working.values()) {
     if (!originalById.has(record.id)) diff.added.push(cloneBoardRecord(record))
   }
+  diff.added.push(...addedBindings.map(cloneBoardRecord))
   diff.added.sort(compareBoardRecords)
   diff.removed.sort(compareBoardRecords)
   diff.updated.sort((left, right) => compareBoardRecords(left.after, right.after))
   return diff
+}
+
+function requireConnectorTarget(
+  records: Map<string, BoardElementRecord>,
+  id: string,
+) {
+  const record = records.get(id)
+  if (!record) throw new Error(`AI Board connector references a missing element: ${id}`)
+  if (record.kind === 'connector' || record.kind === 'stroke') {
+    throw new Error(`AI Board connector references an unsupported target: ${id}`)
+  }
+  return record
 }
 
 export function buildWhiteboardAgentPatchPreview(

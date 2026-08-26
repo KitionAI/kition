@@ -256,8 +256,10 @@
       "note": "Note adhésive",
       "text": "Texte",
       "pen": "Crayon",
+      "highlight": "Surligneur",
       "connector": "Connecteur",
       "image": "Insérer une image",
+      "moreShapes": "Plus de formes",
       "undo": "Annuler",
       "redo": "Rétablir",
       "lock": "Verrouiller la sélection",
@@ -268,8 +270,9 @@
       "fit": "Ajuster au contenu"
     },
     "shapePalette": { "label": "Formes" },
+    "selectionToolbar": { "label": "Disposition de la sélection", "alignLeft": "Aligner à gauche", "alignCenterHorizontal": "Centrer horizontalement", "alignRight": "Aligner à droite", "alignTop": "Aligner en haut", "alignCenterVertical": "Centrer verticalement", "alignBottom": "Aligner en bas", "distributeHorizontal": "Répartir horizontalement", "distributeVertical": "Répartir verticalement", "askAI": "Interroger l’IA sur la sélection", "group": "Grouper la sélection", "frame": "Encadrer la sélection", "ungroup": "Dissocier la sélection" },
     "shapes": {
-      "rectangle": "Rectangle", "ellipse": "Ellipse", "triangle": "Triangle", "diamond": "Losange", "hexagon": "Hexagone", "pill": "Capsule", "parallelogram": "Parallélogramme", "star": "Étoile", "cloud": "Nuage", "heart": "Cœur", "check": "Coche", "arrow-left": "Flèche gauche", "arrow-right": "Flèche droite", "arrow-up": "Flèche haut", "arrow-down": "Flèche bas", "line": "Ligne", "frame": "Cadre"
+      "rectangle": "Rectangle", "ellipse": "Ellipse", "triangle": "Triangle", "diamond": "Losange", "hexagon": "Hexagone", "pill": "Capsule", "parallelogram": "Parallélogramme", "star": "Étoile", "cloud": "Nuage", "heart": "Cœur", "x-box": "Case avec X", "check-box": "Case cochée", "check": "Coche", "arrow-left": "Flèche gauche", "arrow-right": "Flèche droite", "arrow-up": "Flèche haut", "arrow-down": "Flèche bas", "line": "Ligne", "frame": "Cadre"
     },
     "style": {
       "label": "Style", "selection": "Sélection", "defaults": "Nouveaux éléments", "strokeColor": "Couleur du trait", "fillColor": "Couleur de remplissage", "opacity": "Opacité", "fill": "Remplissage", "line": "Style de ligne", "size": "Épaisseur du trait",
@@ -278,7 +281,8 @@
       "sizes": { "s": "Petit", "m": "Moyen", "l": "Grand", "xl": "Très grand" },
       "colors": { "ink": "Encre", "gray": "Gris", "purple": "Violet", "green": "Vert", "orange": "Orange", "red": "Rouge", "yellow": "Jaune", "blue": "Bleu", "white": "Blanc" }
     },
-    "topActions": { "pages": "Pages", "duplicate": "Dupliquer la sélection", "more": "Plus d’actions", "selectAll": "Tout sélectionner" },
+    "topActions": { "pages": "Pages", "duplicate": "Dupliquer la sélection", "more": "Plus d’actions", "selectAll": "Tout sélectionner", "copy": "Copier", "cut": "Couper", "paste": "Coller", "bringToFront": "Mettre au premier plan", "bringForward": "Avancer d’un plan", "sendBackward": "Reculer d’un plan", "sendToBack": "Mettre à l’arrière-plan", "zoomToSelection": "Zoomer sur la sélection", "actualSize": "Taille réelle", "cameraBack": "Vue précédente du canevas", "cameraForward": "Vue suivante du canevas", "exportSvg": "Exporter en SVG", "exportPng": "Exporter en PNG" },
+    "minimap": { "label": "Mini-carte du Board" },
     "imageImport": { "error": "Impossible d’insérer l’image" }
   },
   "layout": {

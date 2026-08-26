@@ -78,10 +78,20 @@ export type AgentWhiteboardElementChanges = {
   source_ref_ids?: string[]
 }
 
+export type AgentWhiteboardConnector = {
+  id: string
+  from_id: string
+  to_id: string
+}
+
 export type AgentWhiteboardPatchOperation =
   | {
       op: 'element.create'
       element: AgentWhiteboardElement
+    }
+  | {
+      op: 'connector.create'
+      connector: AgentWhiteboardConnector
     }
   | {
       op: 'element.update'

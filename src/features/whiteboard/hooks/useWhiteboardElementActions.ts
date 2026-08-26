@@ -1,9 +1,26 @@
 import { useCallback, useRef } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 
-import type { BoardCommandRegistry } from '../lib/boardCommands'
+import type {
+  BoardCommandRegistry,
+  BoardElementReorderPlacement,
+} from '../lib/boardCommands'
 import { cloneBoardElement } from '../lib/boardRecords'
 import type { BoardHistoryMark, BoardStore } from '../lib/boardStore'
+import {
+  applyBoardRootTranslations,
+  cloneBoardElementTrees,
+  getBoardFrameAtPoint,
+  getBoardSelectionRootIds,
+  isBoardContainerElement,
+  type BoardContainerKind,
+} from '../lib/boardHierarchy'
+import {
+  alignBoardElements,
+  distributeBoardElements,
+  type BoardAlignment,
+  type BoardDistribution,
+} from '../lib/boardLayout'
 import { createWhiteboardElementId } from '../lib/whiteboardElementId'
 import { translateWhiteboardElement } from '../lib/whiteboardGeometry'
 import {
@@ -27,6 +44,7 @@ export function useWhiteboardElementActions(input: {
   selectedElementIds: string[]
   selectedElements: readonly WhiteboardElement[]
   setDefaultStyle: Dispatch<SetStateAction<WhiteboardElementStyle>>
+  setHighlightStyle: Dispatch<SetStateAction<WhiteboardElementStyle>>
   setTool: Dispatch<SetStateAction<WhiteboardTool>>
   store: BoardStore
   tool: WhiteboardTool
@@ -35,22 +53,27 @@ export function useWhiteboardElementActions(input: {
   const eraseMarkRef = useRef<BoardHistoryMark | null>(null)
 
   const duplicateSelection = useCallback(() => {
-    const duplicable = input.selectedElements.filter((element) => !element.locked)
-    if (duplicable.length === 0) return false
-    const duplicates = duplicable.map((element) => translateWhiteboardElement({
-      ...cloneBoardElement(element),
-      id: createWhiteboardElementId(element.kind),
-      locked: false,
-    }, { x: 24, y: 24 }))
+    const rootIds = getBoardSelectionRootIds(
+      input.elements,
+      input.selectedElements.filter((element) => !element.locked).map((element) => element.id),
+    )
+    if (rootIds.length === 0) return false
+    const cloned = cloneBoardElementTrees(input.elements, rootIds)
+    const duplicates = cloned.elements.map((element) => (
+      translateWhiteboardElement(element, { x: 24, y: 24 })
+    ))
     input.commands.execute({ type: 'element.create', elements: duplicates })
-    input.replaceSelection(duplicates.map((element) => element.id))
+    input.replaceSelection(cloned.rootIds)
     return true
-  }, [input.commands, input.replaceSelection, input.selectedElements])
+  }, [input.commands, input.elements, input.replaceSelection, input.selectedElements])
 
   const applyStyle = useCallback((patch: Partial<WhiteboardElementStyle>) => {
     const editable = input.selectedElements.filter((element) => !element.locked)
     if (editable.length === 0) {
-      input.setDefaultStyle((current) => normalizeWhiteboardStyle({ ...current, ...patch }))
+      const setStyle = input.tool === 'highlight'
+        ? input.setHighlightStyle
+        : input.setDefaultStyle
+      setStyle((current) => normalizeWhiteboardStyle({ ...current, ...patch }))
       return
     }
     input.commands.execute({
@@ -63,7 +86,78 @@ export function useWhiteboardElementActions(input: {
         }),
       })),
     })
-  }, [input.commands, input.selectedElements, input.setDefaultStyle])
+  }, [
+    input.commands,
+    input.selectedElements,
+    input.setDefaultStyle,
+    input.setHighlightStyle,
+    input.tool,
+  ])
+
+  const reorderSelection = useCallback((placement: BoardElementReorderPlacement) => {
+    const reorderableIds = input.selectedElements
+      .filter((element) => !element.locked)
+      .map((element) => element.id)
+    if (reorderableIds.length === 0) return false
+    return Boolean(input.commands.execute({
+      type: 'element.reorder',
+      elementIds: reorderableIds,
+      placement,
+    }))
+  }, [input.commands, input.selectedElements])
+
+  const alignSelection = useCallback((alignment: BoardAlignment) => {
+    const roots = input.selectedElements.filter((element) => !element.locked)
+    if (roots.length < 2) return false
+    const alignedRoots = alignBoardElements(roots, alignment)
+    return Boolean(input.commands.execute({
+      type: 'element.update',
+      elements: applyBoardRootTranslations(input.elements, roots, alignedRoots),
+    }))
+  }, [input.commands, input.elements, input.selectedElements])
+
+  const distributeSelection = useCallback((distribution: BoardDistribution) => {
+    const roots = input.selectedElements.filter((element) => !element.locked)
+    if (roots.length < 3) return false
+    const distributedRoots = distributeBoardElements(roots, distribution)
+    return Boolean(input.commands.execute({
+      type: 'element.update',
+      elements: applyBoardRootTranslations(input.elements, roots, distributedRoots),
+    }))
+  }, [input.commands, input.elements, input.selectedElements])
+
+  const groupSelection = useCallback((containerKind: BoardContainerKind) => {
+    const rootIds = getBoardSelectionRootIds(
+      input.elements,
+      input.selectedElements.filter((element) => !element.locked).map((element) => element.id),
+    )
+    if (rootIds.length < (containerKind === 'group' ? 2 : 1)) return false
+    const containerId = createWhiteboardElementId('rectangle')
+    const diff = input.commands.execute({
+      type: 'element.group',
+      containerId,
+      containerKind,
+      elementIds: rootIds,
+    })
+    if (!diff) return false
+    input.replaceSelection([containerId])
+    return true
+  }, [input.commands, input.elements, input.replaceSelection, input.selectedElements])
+
+  const ungroupSelection = useCallback(() => {
+    const containerIds = input.selectedElements
+      .filter((element) => isBoardContainerElement(element) && !element.locked)
+      .map((element) => element.id)
+    if (containerIds.length === 0) return false
+    const containerIdSet = new Set(containerIds)
+    const childIds = input.elements
+      .filter((element) => element.parentId && containerIdSet.has(element.parentId))
+      .map((element) => element.id)
+    const diff = input.commands.execute({ type: 'element.ungroup', containerIds })
+    if (!diff) return false
+    input.replaceSelection(childIds)
+    return true
+  }, [input.commands, input.elements, input.replaceSelection, input.selectedElements])
 
   const beginErase = useCallback((elementId?: string) => {
     if (input.tool !== 'eraser') return false
@@ -120,6 +214,7 @@ export function useWhiteboardElementActions(input: {
       x: input.viewport.x + image.canvasSize.x / input.viewport.zoom / 2,
       y: input.viewport.y + image.canvasSize.y / input.viewport.zoom / 2,
     }
+    const frame = getBoardFrameAtPoint(input.elements, center)
     const element: WhiteboardElement = {
       id: createWhiteboardElementId('image'),
       kind: 'image',
@@ -127,6 +222,7 @@ export function useWhiteboardElementActions(input: {
       y: center.y - height / 2,
       width,
       height,
+      parentId: frame?.id,
       workspacePath: image.workspacePath,
       alt: image.alt,
       locked: false,
@@ -140,6 +236,7 @@ export function useWhiteboardElementActions(input: {
   }, [
     input.commands,
     input.defaultStyle,
+    input.elements,
     input.replaceSelection,
     input.setTool,
     input.viewport,
@@ -147,10 +244,15 @@ export function useWhiteboardElementActions(input: {
 
   return {
     applyStyle,
+    alignSelection,
     beginErase,
     continueErase,
     duplicateSelection,
+    distributeSelection,
     endErase,
     insertImage,
+    groupSelection,
+    reorderSelection,
+    ungroupSelection,
   }
 }

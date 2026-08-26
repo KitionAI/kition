@@ -6,6 +6,7 @@ import type {
   WhiteboardFillStyle,
   WhiteboardStrokeSize,
 } from './whiteboardTypes'
+import { getBoardElementSemanticStyle } from './boardElementDefinitions'
 
 export const DEFAULT_WHITEBOARD_STYLE: WhiteboardElementStyle = {
   strokeColor: 'ink',
@@ -14,6 +15,15 @@ export const DEFAULT_WHITEBOARD_STYLE: WhiteboardElementStyle = {
   fillStyle: 'solid',
   dashStyle: 'solid',
   strokeSize: 'm',
+}
+
+export const DEFAULT_WHITEBOARD_HIGHLIGHT_STYLE: WhiteboardElementStyle = {
+  ...DEFAULT_WHITEBOARD_STYLE,
+  strokeColor: 'yellow',
+  fillColor: 'yellow',
+  opacity: 0.45,
+  dashStyle: 'solid',
+  strokeSize: 'xl',
 }
 
 export const WHITEBOARD_COLOR_TOKENS: readonly WhiteboardColorToken[] = [
@@ -135,19 +145,7 @@ export function getWhiteboardDashArray(
 function getSemanticStyle(
   element: WhiteboardElement | undefined,
 ): Partial<WhiteboardElementStyle> {
-  if (element?.kind !== 'rectangle') return {}
-  if (element.shapeType === 'frame') {
-    return { fillStyle: 'none', dashStyle: 'dashed' }
-  }
-  switch (element.shapeStyle) {
-    case 'sticky': return { fillColor: 'yellow' }
-    case 'mind-node': return { fillColor: 'purple' }
-    case 'image-placeholder': return { fillColor: 'blue' }
-    case 'frame':
-    case 'group':
-      return { fillStyle: 'none', dashStyle: 'dashed' }
-    default: return {}
-  }
+  return element ? getBoardElementSemanticStyle(element) : {}
 }
 
 function clampOpacity(value: number | undefined) {

@@ -329,6 +329,7 @@ export function WorkspaceEditorContent({
                 agentBusy={whiteboardAgentBusy}
                 onAgentBridgeChange={onWhiteboardAgentBridgeChange}
                 onCancelAgent={onCancelWhiteboardAgent}
+                onOpenAgent={onOpenAgent}
                 path={tab.path}
                 title={tab.title}
               />

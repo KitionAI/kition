@@ -142,6 +142,9 @@ function parseBoardRecord(value: unknown): BoardRecord[] {
         from_id: fromId,
         to_id: toId,
       }
+      if (value.terminal === 'start' || value.terminal === 'end') {
+        record.terminal = value.terminal
+      }
       const fromAnchor = parsePoint(value.from_anchor)[0]
       const toAnchor = parsePoint(value.to_anchor)[0]
       if (fromAnchor) record.from_anchor = fromAnchor
@@ -297,6 +300,8 @@ function parseShapeType(value: unknown): WhiteboardShapeType | undefined {
     case 'star':
     case 'cloud':
     case 'heart':
+    case 'x-box':
+    case 'check-box':
     case 'check':
     case 'arrow-left':
     case 'arrow-right':

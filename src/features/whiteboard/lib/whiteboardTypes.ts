@@ -20,6 +20,7 @@ export type WhiteboardTool =
   | 'note'
   | 'text'
   | 'pen'
+  | 'highlight'
   | 'connector'
 
 export type WhiteboardShapeType =
@@ -33,6 +34,8 @@ export type WhiteboardShapeType =
   | 'star'
   | 'cloud'
   | 'heart'
+  | 'x-box'
+  | 'check-box'
   | 'check'
   | 'arrow-left'
   | 'arrow-right'
@@ -169,6 +172,7 @@ export type WhiteboardDraft =
 export type WhiteboardTextEditingState = {
   elementId: string
   elementKind: 'rectangle' | 'text'
+  parentId?: string
   x: number
   y: number
   value: string

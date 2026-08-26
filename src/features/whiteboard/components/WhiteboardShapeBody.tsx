@@ -4,6 +4,7 @@ import {
   getWhiteboardStrokeWidth,
   resolveWhiteboardColor,
 } from '../lib/whiteboardStyle'
+import { getBoardShapeDefinition } from '../lib/boardElementDefinitions'
 import type { WhiteboardRectangleElement } from '../lib/whiteboardTypes'
 
 export function WhiteboardShapeBody({
@@ -17,21 +18,27 @@ export function WhiteboardShapeBody({
   onDoubleClick?: () => void
   patternId: string
 }) {
-  const shapeType = element.shapeType || 'rectangle'
+  const definition = getBoardShapeDefinition(element.shapeType)
+  const shapeType = definition.shapeType
   const style = getWhiteboardElementStyle(element)
   const baseStrokeWidth = getWhiteboardStrokeWidth(style.strokeSize)
   const strokeWidth = highlighted ? Math.max(baseStrokeWidth, 3) : baseStrokeWidth
-  const stroke = highlighted
-    ? 'hsl(var(--brand))'
-    : resolveWhiteboardColor(style.strokeColor, 'stroke')
-  const fill = shapeType === 'line' || shapeType === 'check' || style.fillStyle === 'none'
+  const group = element.shapeStyle === 'group'
+  const stroke = group && !highlighted
+    ? 'transparent'
+    : highlighted
+      ? 'hsl(var(--brand))'
+      : resolveWhiteboardColor(style.strokeColor, 'stroke')
+  const fill = group
+    ? 'transparent'
+    : !definition.supportsFill || style.fillStyle === 'none'
     ? 'none'
     : style.fillStyle === 'pattern'
       ? `url(#${patternId})`
       : resolveWhiteboardColor(style.fillColor, 'fill')
   const shapeProps: WhiteboardShapeGeometryProps = {
     fill,
-    fillOpacity: style.fillStyle === 'semi' ? 0.48 : 1,
+    fillOpacity: !group && style.fillStyle === 'semi' ? 0.48 : 1,
     stroke,
     strokeDasharray: getWhiteboardDashArray(style.dashStyle, strokeWidth),
     strokeLinecap: style.dashStyle === 'dotted' ? 'round' : 'round',
@@ -61,7 +68,7 @@ function WhiteboardShapeGeometry({
   const bottom = y + height
   const centerX = x + width / 2
   const centerY = y + height / 2
-  const shapeType = element.shapeType || 'rectangle'
+  const shapeType = getBoardShapeDefinition(element.shapeType).geometry
 
   switch (shapeType) {
     case 'ellipse':
@@ -84,6 +91,50 @@ function WhiteboardShapeGeometry({
       return <path {...shapeProps} d={createCloudPath(x, y, width, height)} />
     case 'heart':
       return <path {...shapeProps} d={createHeartPath(x, y, width, height)} />
+    case 'x-box': {
+      const internalStrokeProps = getInternalStrokeProps(shapeProps)
+      const inset = Math.min(shapeProps.strokeWidth * 0.5, width / 2, height / 2)
+      return (
+        <g onDoubleClick={shapeProps.onDoubleClick}>
+          <rect
+            {...shapeProps}
+            onDoubleClick={undefined}
+            x={x}
+            y={y}
+            width={width}
+            height={height}
+          />
+          <path
+            {...internalStrokeProps}
+            d={`M ${x + inset} ${y + inset} L ${right - inset} ${bottom - inset} M ${right - inset} ${y + inset} L ${x + inset} ${bottom - inset}`}
+            fill="none"
+          />
+        </g>
+      )
+    }
+    case 'check-box': {
+      const internalStrokeProps = getInternalStrokeProps(shapeProps)
+      const size = Math.min(width, height) * 0.82
+      const offsetX = x + (width - size) / 2
+      const offsetY = y + (height - size) / 2
+      return (
+        <g onDoubleClick={shapeProps.onDoubleClick}>
+          <rect
+            {...shapeProps}
+            onDoubleClick={undefined}
+            x={x}
+            y={y}
+            width={width}
+            height={height}
+          />
+          <path
+            {...internalStrokeProps}
+            d={`M ${offsetX + size * 0.25} ${offsetY + size * 0.52} L ${offsetX + size * 0.45} ${offsetY + size * 0.82} L ${offsetX + size * 0.82} ${offsetY + size * 0.22}`}
+            fill="none"
+          />
+        </g>
+      )
+    }
     case 'check':
       return <path {...shapeProps} d={`M ${x + width * 0.14} ${y + height * 0.53} L ${x + width * 0.4} ${y + height * 0.8} L ${x + width * 0.87} ${y + height * 0.2}`} />
     case 'arrow-left':
@@ -129,9 +180,21 @@ type WhiteboardShapeGeometryProps = {
   vectorEffect: 'non-scaling-stroke'
 }
 
+function getInternalStrokeProps(shapeProps: WhiteboardShapeGeometryProps) {
+  return {
+    stroke: shapeProps.stroke,
+    strokeDasharray: shapeProps.strokeDasharray,
+    strokeLinecap: shapeProps.strokeLinecap,
+    strokeLinejoin: shapeProps.strokeLinejoin,
+    strokeWidth: shapeProps.strokeWidth,
+    vectorEffect: shapeProps.vectorEffect,
+  }
+}
+
 function WhiteboardShapeLabel({ element }: { element: WhiteboardRectangleElement }) {
+  const definition = getBoardShapeDefinition(element.shapeType)
   const lines = splitWhiteboardLabel(element.text || '', element.width)
-  if (!lines.length || element.shapeType === 'line' || element.shapeType === 'check') return null
+  if (!lines.length || !definition.supportsLabel) return null
   const lineHeight = 18
   const firstLineY = element.y + element.height / 2 - ((lines.length - 1) * lineHeight) / 2
   return (

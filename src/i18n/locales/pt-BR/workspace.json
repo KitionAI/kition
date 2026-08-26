@@ -256,8 +256,10 @@
       "note": "Nota adesiva",
       "text": "Texto",
       "pen": "Caneta",
+      "highlight": "Marca-texto",
       "connector": "Conector",
       "image": "Inserir imagem",
+      "moreShapes": "Mais formas",
       "undo": "Desfazer",
       "redo": "Refazer",
       "lock": "Bloquear seleção",
@@ -268,8 +270,9 @@
       "fit": "Ajustar ao conteúdo"
     },
     "shapePalette": { "label": "Formas" },
+    "selectionToolbar": { "label": "Layout da seleção", "alignLeft": "Alinhar à esquerda", "alignCenterHorizontal": "Centralizar horizontalmente", "alignRight": "Alinhar à direita", "alignTop": "Alinhar ao topo", "alignCenterVertical": "Centralizar verticalmente", "alignBottom": "Alinhar à base", "distributeHorizontal": "Distribuir horizontalmente", "distributeVertical": "Distribuir verticalmente", "askAI": "Perguntar à IA sobre a seleção", "group": "Agrupar seleção", "frame": "Enquadrar seleção", "ungroup": "Desagrupar seleção" },
     "shapes": {
-      "rectangle": "Retângulo", "ellipse": "Elipse", "triangle": "Triângulo", "diamond": "Losango", "hexagon": "Hexágono", "pill": "Cápsula", "parallelogram": "Paralelogramo", "star": "Estrela", "cloud": "Nuvem", "heart": "Coração", "check": "Marca de seleção", "arrow-left": "Seta para esquerda", "arrow-right": "Seta para direita", "arrow-up": "Seta para cima", "arrow-down": "Seta para baixo", "line": "Linha", "frame": "Quadro"
+      "rectangle": "Retângulo", "ellipse": "Elipse", "triangle": "Triângulo", "diamond": "Losango", "hexagon": "Hexágono", "pill": "Cápsula", "parallelogram": "Paralelogramo", "star": "Estrela", "cloud": "Nuvem", "heart": "Coração", "x-box": "Caixa com X", "check-box": "Caixa marcada", "check": "Marca de seleção", "arrow-left": "Seta para esquerda", "arrow-right": "Seta para direita", "arrow-up": "Seta para cima", "arrow-down": "Seta para baixo", "line": "Linha", "frame": "Quadro"
     },
     "style": {
       "label": "Estilo", "selection": "Seleção", "defaults": "Novos elementos", "strokeColor": "Cor do traço", "fillColor": "Cor do preenchimento", "opacity": "Opacidade", "fill": "Preenchimento", "line": "Estilo de linha", "size": "Espessura do traço",
@@ -278,7 +281,8 @@
       "sizes": { "s": "Pequeno", "m": "Médio", "l": "Grande", "xl": "Extra grande" },
       "colors": { "ink": "Tinta", "gray": "Cinza", "purple": "Roxo", "green": "Verde", "orange": "Laranja", "red": "Vermelho", "yellow": "Amarelo", "blue": "Azul", "white": "Branco" }
     },
-    "topActions": { "pages": "Páginas", "duplicate": "Duplicar seleção", "more": "Mais ações", "selectAll": "Selecionar tudo" },
+    "topActions": { "pages": "Páginas", "duplicate": "Duplicar seleção", "more": "Mais ações", "selectAll": "Selecionar tudo", "copy": "Copiar", "cut": "Recortar", "paste": "Colar", "bringToFront": "Trazer para a frente", "bringForward": "Avançar", "sendBackward": "Recuar", "sendToBack": "Enviar para trás", "zoomToSelection": "Ampliar para a seleção", "actualSize": "Tamanho real", "cameraBack": "Vista anterior do quadro", "cameraForward": "Próxima vista do quadro", "exportSvg": "Exportar SVG", "exportPng": "Exportar PNG" },
+    "minimap": { "label": "Minimapa do Board" },
     "imageImport": { "error": "Não foi possível inserir a imagem" }
   },
   "layout": {

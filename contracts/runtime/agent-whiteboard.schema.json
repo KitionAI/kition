@@ -77,6 +77,16 @@
         }
       }
     },
+    "creatableElement": {
+      "allOf": [
+        { "$ref": "#/$defs/element" },
+        {
+          "properties": {
+            "kind": { "not": { "const": "connector" } }
+          }
+        }
+      ]
+    },
     "cluster": {
       "type": "object",
       "additionalProperties": false,
@@ -185,6 +195,16 @@
         }
       }
     },
+    "connector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "from_id", "to_id"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "from_id": { "$ref": "#/$defs/identifier" },
+        "to_id": { "$ref": "#/$defs/identifier" }
+      }
+    },
     "patchOperation": {
       "oneOf": [
         {
@@ -193,7 +213,16 @@
           "required": ["op", "element"],
           "properties": {
             "op": { "const": "element.create" },
-            "element": { "$ref": "#/$defs/element" }
+            "element": { "$ref": "#/$defs/creatableElement" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "connector"],
+          "properties": {
+            "op": { "const": "connector.create" },
+            "connector": { "$ref": "#/$defs/connector" }
           }
         },
         {

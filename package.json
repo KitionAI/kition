@@ -67,7 +67,7 @@
     "test:unit:watch": "vitest --config tooling/vitest.config.ts",
     "test:e2e": "playwright test --config tooling/playwright.config.ts e2e/app-shell.spec.ts e2e/table-widget.spec.ts --workers=1",
     "test:e2e:headed": "playwright test --config tooling/playwright.config.ts --headed",
-    "capture:readme:assets": "KITION_CAPTURE_README_ASSETS=1 playwright test --config tooling/playwright.config.ts e2e/readme-assets.spec.ts --workers=1 && magick docs/readme/documents.png -quality 88 -define webp:method=6 docs/readme/documents.webp && magick docs/readme/agent.png -quality 88 -define webp:method=6 docs/readme/agent.webp && rm docs/readme/documents.png docs/readme/agent.png",
+    "capture:readme:assets": "KITION_CAPTURE_README_ASSETS=1 playwright test --config tooling/playwright.config.ts e2e/readme-assets.spec.ts --workers=1 && magick docs/readme/documents.png -quality 88 -define webp:method=6 docs/readme/documents.webp && magick docs/readme/agent.png -quality 88 -define webp:method=6 docs/readme/agent.webp && magick docs/readme/whiteboards.png -quality 88 -define webp:method=6 docs/readme/whiteboards.webp && magick docs/readme/kition-overview.png -quality 88 -define webp:method=6 docs/readme/kition-overview.webp && rm docs/readme/documents.png docs/readme/agent.png docs/readme/whiteboards.png",
     "test:table:e2e": "bash scripts/inspect-table-widget.sh",
     "test:kitable:e2e": "bash scripts/inspect-kitable.sh",
     "test:scenario:e2e": "bash scripts/inspect-scenario.sh",

@@ -256,8 +256,10 @@
       "note": "Sticky note",
       "text": "Text",
       "pen": "Pen",
+      "highlight": "Highlighter",
       "connector": "Connector",
       "image": "Insert image",
+      "moreShapes": "More shapes",
       "undo": "Undo",
       "redo": "Redo",
       "lock": "Lock selection",
@@ -270,6 +272,21 @@
     "shapePalette": {
       "label": "Shapes"
     },
+    "selectionToolbar": {
+      "label": "Selection layout",
+      "alignLeft": "Align left",
+      "alignCenterHorizontal": "Align horizontal centers",
+      "alignRight": "Align right",
+      "alignTop": "Align top",
+      "alignCenterVertical": "Align vertical centers",
+      "alignBottom": "Align bottom",
+      "distributeHorizontal": "Distribute horizontally",
+      "distributeVertical": "Distribute vertically",
+      "askAI": "Ask AI about selection",
+      "group": "Group selection",
+      "frame": "Frame selection",
+      "ungroup": "Ungroup selection"
+    },
     "shapes": {
       "rectangle": "Rectangle",
       "ellipse": "Ellipse",
@@ -281,6 +298,8 @@
       "star": "Star",
       "cloud": "Cloud",
       "heart": "Heart",
+      "x-box": "X box",
+      "check-box": "Check box",
       "check": "Check mark",
       "arrow-left": "Left arrow",
       "arrow-right": "Right arrow",
@@ -308,7 +327,23 @@
       "pages": "Pages",
       "duplicate": "Duplicate selection",
       "more": "More actions",
-      "selectAll": "Select all"
+      "selectAll": "Select all",
+      "copy": "Copy",
+      "cut": "Cut",
+      "paste": "Paste",
+      "bringToFront": "Bring to front",
+      "bringForward": "Bring forward",
+      "sendBackward": "Send backward",
+      "sendToBack": "Send to back",
+      "zoomToSelection": "Zoom to selection",
+      "actualSize": "Actual size",
+      "cameraBack": "Previous camera view",
+      "cameraForward": "Next camera view",
+      "exportSvg": "Export SVG",
+      "exportPng": "Export PNG"
+    },
+    "minimap": {
+      "label": "Board minimap"
     },
     "imageImport": {
       "error": "Could not insert image"

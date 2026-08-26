@@ -256,8 +256,10 @@
       "note": "便签",
       "text": "文字",
       "pen": "画笔",
+      "highlight": "荧光笔",
       "connector": "连线",
       "image": "插入图片",
+      "moreShapes": "更多图形",
       "undo": "撤销",
       "redo": "重做",
       "lock": "锁定选中内容",
@@ -270,6 +272,21 @@
     "shapePalette": {
       "label": "图形"
     },
+    "selectionToolbar": {
+      "label": "选中内容布局",
+      "alignLeft": "左对齐",
+      "alignCenterHorizontal": "水平居中对齐",
+      "alignRight": "右对齐",
+      "alignTop": "顶部对齐",
+      "alignCenterVertical": "垂直居中对齐",
+      "alignBottom": "底部对齐",
+      "distributeHorizontal": "水平分布",
+      "distributeVertical": "垂直分布",
+      "askAI": "询问 AI 选中内容",
+      "group": "组合选中内容",
+      "frame": "为选中内容创建框架",
+      "ungroup": "取消组合"
+    },
     "shapes": {
       "rectangle": "矩形",
       "ellipse": "椭圆",
@@ -281,6 +298,8 @@
       "star": "星形",
       "cloud": "云朵",
       "heart": "心形",
+      "x-box": "叉选框",
+      "check-box": "勾选框",
       "check": "对勾",
       "arrow-left": "左箭头",
       "arrow-right": "右箭头",
@@ -308,7 +327,23 @@
       "pages": "页面",
       "duplicate": "复制选中内容",
       "more": "更多操作",
-      "selectAll": "全选"
+      "selectAll": "全选",
+      "copy": "复制",
+      "cut": "剪切",
+      "paste": "粘贴",
+      "bringToFront": "置于顶层",
+      "bringForward": "上移一层",
+      "sendBackward": "下移一层",
+      "sendToBack": "置于底层",
+      "zoomToSelection": "缩放到选中内容",
+      "actualSize": "实际大小",
+      "cameraBack": "上一个画布视图",
+      "cameraForward": "下一个画布视图",
+      "exportSvg": "导出 SVG",
+      "exportPng": "导出 PNG"
+    },
+    "minimap": {
+      "label": "画板小地图"
     },
     "imageImport": {
       "error": "无法插入图片"

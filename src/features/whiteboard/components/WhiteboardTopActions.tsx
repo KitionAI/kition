@@ -1,11 +1,24 @@
 import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
   ChevronDown,
+  ChevronsDown,
+  ChevronsUp,
+  ClipboardCopy,
+  ClipboardPaste,
   Copy,
+  Download,
+  Focus,
+  FileImage,
   Lock,
   Maximize2,
   MoreHorizontal,
   Redo2,
+  Ratio,
   Rows3,
+  Scissors,
   Trash2,
   Undo2,
   Unlock,
@@ -116,10 +129,112 @@ export function WhiteboardTopActions({
               <Rows3 className="size-4" />
             </MenuButton>
             <MenuButton
+              disabled={!controller.hasSelection}
+              label={t('board.topActions.copy')}
+              onClick={() => controller.copySelection()}
+              testId="whiteboard-copy"
+            >
+              <ClipboardCopy className="size-4" />
+            </MenuButton>
+            <MenuButton
+              disabled={!controller.hasUnlockedSelection}
+              label={t('board.topActions.cut')}
+              onClick={() => controller.cutSelection()}
+              testId="whiteboard-cut"
+            >
+              <Scissors className="size-4" />
+            </MenuButton>
+            <MenuButton
+              label={t('board.topActions.paste')}
+              onClick={() => void controller.pasteFromClipboard()}
+              testId="whiteboard-paste"
+            >
+              <ClipboardPaste className="size-4" />
+            </MenuButton>
+            <MenuButton
+              disabled={!controller.hasUnlockedSelection}
+              label={t('board.topActions.bringToFront')}
+              onClick={() => controller.reorderSelection('front')}
+              testId="whiteboard-bring-to-front"
+            >
+              <ChevronsUp className="size-4" />
+            </MenuButton>
+            <MenuButton
+              disabled={!controller.hasUnlockedSelection}
+              label={t('board.topActions.bringForward')}
+              onClick={() => controller.reorderSelection('forward')}
+              testId="whiteboard-bring-forward"
+            >
+              <ArrowUp className="size-4" />
+            </MenuButton>
+            <MenuButton
+              disabled={!controller.hasUnlockedSelection}
+              label={t('board.topActions.sendBackward')}
+              onClick={() => controller.reorderSelection('backward')}
+              testId="whiteboard-send-backward"
+            >
+              <ArrowDown className="size-4" />
+            </MenuButton>
+            <MenuButton
+              disabled={!controller.hasUnlockedSelection}
+              label={t('board.topActions.sendToBack')}
+              onClick={() => controller.reorderSelection('back')}
+              testId="whiteboard-send-to-back"
+            >
+              <ChevronsDown className="size-4" />
+            </MenuButton>
+            <MenuButton
               label={t('board.toolbar.fit')}
               onClick={() => controller.fitToContent(canvasSize)}
             >
               <Maximize2 className="size-4" />
+            </MenuButton>
+            <MenuButton
+              disabled={!controller.canCameraBack}
+              label={t('board.topActions.cameraBack')}
+              onClick={controller.cameraBack}
+              testId="whiteboard-camera-back"
+            >
+              <ArrowLeft className="size-4" />
+            </MenuButton>
+            <MenuButton
+              disabled={!controller.canCameraForward}
+              label={t('board.topActions.cameraForward')}
+              onClick={controller.cameraForward}
+              testId="whiteboard-camera-forward"
+            >
+              <ArrowRight className="size-4" />
+            </MenuButton>
+            <MenuButton
+              disabled={!controller.hasSelection}
+              label={t('board.topActions.zoomToSelection')}
+              onClick={() => controller.zoomToSelection(canvasSize)}
+              testId="whiteboard-zoom-to-selection"
+            >
+              <Focus className="size-4" />
+            </MenuButton>
+            <MenuButton
+              label={t('board.topActions.actualSize')}
+              onClick={() => controller.actualSize(canvasSize)}
+              testId="whiteboard-actual-size"
+            >
+              <Ratio className="size-4" />
+            </MenuButton>
+            <MenuButton
+              disabled={controller.elements.length === 0}
+              label={t('board.topActions.exportSvg')}
+              onClick={() => void controller.exportSvg(title)}
+              testId="whiteboard-export-svg"
+            >
+              <Download className="size-4" />
+            </MenuButton>
+            <MenuButton
+              disabled={controller.elements.length === 0}
+              label={t('board.topActions.exportPng')}
+              onClick={() => void controller.exportPng(title)}
+              testId="whiteboard-export-png"
+            >
+              <FileImage className="size-4" />
             </MenuButton>
           </div>
         ) : null}
@@ -158,18 +273,24 @@ function ActionButton({
 
 function MenuButton({
   children,
+  disabled = false,
   label,
   onClick,
+  testId,
 }: {
   children: ReactNode
+  disabled?: boolean
   label: string
   onClick: () => void
+  testId?: string
 }) {
   return (
     <button
       type="button"
-      className={cn('flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm text-foreground hover:bg-muted')}
+      className={cn('flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm text-foreground hover:bg-muted disabled:text-muted-foreground')}
+      disabled={disabled}
       onClick={onClick}
+      data-testid={testId}
     >
       {children}
       {label}

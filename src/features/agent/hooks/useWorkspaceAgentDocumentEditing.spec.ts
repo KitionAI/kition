@@ -300,13 +300,20 @@ describe('useWorkspaceAgent document editing reliability', () => {
     mocks.streamAgentMessage.mockImplementation(async (options: any) => {
       expect(options.whiteboardContext).toEqual(whiteboardContext)
       options.onEvent?.({
-        type: 'whiteboard_patch_provisional',
-        provisional: true,
-        whiteboard_patch: patch,
-      })
-      options.onEvent?.({
-        type: 'whiteboard_patch',
-        whiteboard_patch: patch,
+        type: 'tool_call',
+        tool_call: {
+          id: 100,
+          session_id: 24,
+          user_id: 1,
+          tool_name: 'whiteboard_propose_patch',
+          status: 'completed',
+          output_data: {
+            board_path: 'Boards/Planning.kiboard',
+            whiteboard_patch: patch,
+          },
+          created_at: new Date(0).toISOString(),
+          updated_at: new Date(0).toISOString(),
+        },
       })
       return { extra_data: {} }
     })
@@ -327,13 +334,8 @@ describe('useWorkspaceAgent document editing reliability', () => {
       await flushAsyncWork()
     })
 
-    expect(onWhiteboardPatch).toHaveBeenNthCalledWith(1, {
-      boardPath: 'Boards/Planning.kiboard',
-      patch,
-      provisional: true,
-      sessionId: 24,
-    })
-    expect(onWhiteboardPatch).toHaveBeenNthCalledWith(2, {
+    expect(onWhiteboardPatch).toHaveBeenCalledTimes(1)
+    expect(onWhiteboardPatch).toHaveBeenCalledWith({
       boardPath: 'Boards/Planning.kiboard',
       patch,
       provisional: false,

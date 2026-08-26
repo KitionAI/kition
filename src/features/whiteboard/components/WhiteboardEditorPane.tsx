@@ -3,6 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { WhiteboardAgentPreviewControls } from '@/features/whiteboard/components/WhiteboardAgentPreview'
 import { WhiteboardAgentScopeControl } from '@/features/whiteboard/components/WhiteboardAgentScopeControl'
 import { WhiteboardCanvas } from '@/features/whiteboard/components/WhiteboardCanvas'
+import { WhiteboardSelectionToolbar } from '@/features/whiteboard/components/WhiteboardSelectionToolbar'
+import { WhiteboardMinimap } from '@/features/whiteboard/components/WhiteboardMinimap'
 import { WhiteboardToolbar } from '@/features/whiteboard/components/WhiteboardToolbar'
 import { WhiteboardStylePanel } from '@/features/whiteboard/components/WhiteboardStylePanel'
 import { WhiteboardTopActions } from '@/features/whiteboard/components/WhiteboardTopActions'
@@ -21,6 +23,7 @@ export function WhiteboardEditorPane({
   agentBusy = false,
   onAgentBridgeChange,
   onCancelAgent,
+  onOpenAgent,
   path,
   title,
 }: {
@@ -28,6 +31,7 @@ export function WhiteboardEditorPane({
   agentBusy?: boolean
   onAgentBridgeChange?: (path: string, bridge: WhiteboardAgentBridge | null) => void
   onCancelAgent?: () => void
+  onOpenAgent?: () => void
   path: string
   title: string
 }) {
@@ -98,6 +102,10 @@ export function WhiteboardEditorPane({
     agentPatch.cancel()
     if (agentBusy) onCancelAgent?.()
   }, [agentBusy, agentPatch, onCancelAgent])
+  const askAgentAboutSelection = useCallback(() => {
+    setAgentScope('selection')
+    onOpenAgent?.()
+  }, [onOpenAgent])
 
   return (
     <div
@@ -107,6 +115,7 @@ export function WhiteboardEditorPane({
     >
       <WhiteboardCanvas
         agentPreview={agentPatch.state.preview}
+        canvasSize={canvasSize}
         controller={controller}
         onSizeChange={handleSizeChange}
         title={title}
@@ -117,6 +126,12 @@ export function WhiteboardEditorPane({
         title={title}
       />
       <WhiteboardToolbar controller={controller} canvasSize={canvasSize} />
+      <WhiteboardSelectionToolbar
+        agentAvailable={agentAvailable}
+        controller={controller}
+        onAskAgent={askAgentAboutSelection}
+      />
+      <WhiteboardMinimap canvasSize={canvasSize} controller={controller} />
       <WhiteboardStylePanel controller={controller} />
       <WhiteboardAgentScopeControl
         available={agentAvailable}

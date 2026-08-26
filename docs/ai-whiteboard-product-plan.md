@@ -1,10 +1,9 @@
 # Kition AI Board Native Development Plan
 
-Status: tldraw editor and Agent study completed; PR 4 normalized Board store
-and typed command history implemented; PR 5 multi-selection, brush selection,
-resize, rotation, locking, duplicate-drag, and keyboard nudging implemented;
-PR 10 and PR 11 client gates implemented for scoped context, validated typed
-patches, streamed purple preview, accept, reject, cancel, and one-step undo
+> Active direction: Kition continues with a native clean-room Board. The
+> focused next-stage execution plan is
+> [AI-Enabled Canvas Clean-Room Replication Plan](ai-enabled-canvas-replication-plan.md).
+
 
 Research snapshot: 2026-08-23
 
@@ -42,52 +41,29 @@ The first shippable AI Board includes the native SVG canvas, semantic mind
 maps and flowcharts, Agent patch preview, and prompt-to-image with variants.
 Cross-surface Workflow conversion is a follow-up hardening step.
 
-## 2. Primary competitor to study
+## 2. Native implementation contract
 
-The single best AI-whiteboard competitor for this project is
-**[tldraw Agent](https://github.com/tldraw/tldraw/tree/main/templates/agent)**.
+Kition Board is a clean-room, product-owned implementation. It does not depend
+on a third-party whiteboard SDK, scene model, record format, renderer, UI kit,
+cloud service, or marketplace asset.
 
-Main repository: [tldraw/tldraw](https://github.com/tldraw/tldraw)
-
-This recommendation is about product and Agent behavior, not dependency
-selection. Kition will not integrate the tldraw SDK.
-
-Reference baseline:
-
-- repository: `tldraw/tldraw`;
-- reviewed revision: `91878fe` from 2026-08-22;
-- local checkout: a sibling reference directory outside the Kition repository;
-- SDK license: the tldraw editor and default shape packages are not MIT and
-  must not be copied into Kition;
-- Agent template license: MIT, but Kition will still reimplement the behavior
-  against its own scene model and Agent lifecycle.
-
-### Clean-room parity contract
-
-"Replicate tldraw" means product-capability and interaction parity for the
-single-user editor and AI Agent experience. It does not mean copying source,
-styles, icons, assets, trademarks, package APIs, record names, or file formats.
-
-The reference checkout is read-only research material and must remain outside
-the Kition repository. Kition code must not import it, vendor it, patch it, or
-depend on it at build or runtime. Implementation work follows this sequence:
+Implementation work follows this sequence:
 
 1. Record the observed behavior as an English Kition requirement and test.
 2. Design the behavior against the Kition Board schema and design system.
 3. Implement the behavior from scratch inside the owning Kition feature.
 4. Verify the behavior using Kition fixtures and black-box interaction tests.
 
-The parity target excludes tldraw-specific cloud services, multiplayer sync,
-SDK extensibility contracts, license enforcement, watermark behavior, live
-website embeds, branding, and marketplace assets. Kition equivalents replace
-these where the product needs the same user outcome.
+Multiplayer sync, public SDK extensibility, live website embeds, and marketplace
+assets are outside the current delivery scope. Kition-owned capabilities replace
+them only where the product requires the same user outcome.
 
-### Architecture findings from the reference
+### Architecture boundaries
 
 The useful reference is not one canvas component. It is a set of separable
 editor subsystems:
 
-| tldraw pattern | Observed responsibility | Kition native equivalent |
+| Editor subsystem | Responsibility | Kition native implementation |
 |---|---|---|
 | Reactive record store | Normalized shapes, bindings, assets, pages, migrations, and record diffs | `BoardStore` with versioned `.kiboard` records and typed diffs |
 | `ShapeUtil` registry | Geometry, rendering, handles, resize rules, text, hit testing, and export per shape | `BoardElementDefinition` registry under `src/features/whiteboard/lib` |
@@ -106,18 +82,6 @@ The central design decision is to separate the Board model, interaction engine,
 renderer, command history, and Agent protocol. The current `useWhiteboardEditor`
 hook combines all five and must be split before commercial parity work grows.
 
-### Why tldraw Agent is the best AI reference
-
-Its Agent is not limited to generating a one-shot diagram. It operates as a
-continuing canvas participant that can:
-
-- create, update, and delete shapes;
-- draw freehand strokes;
-- rotate, resize, align, distribute, stack, and reorder multiple shapes;
-- move its viewport to inspect different parts of the canvas;
-- count and query shapes;
-- maintain a task list and schedule follow-up work;
-- expose its actions and messages in a persistent right-side chat panel.
 
 The Agent combines several context channels before acting:
 
@@ -548,12 +512,12 @@ The PR boundaries below remain independently reviewable and releasable behind
 capability flags. Each PR must preserve `.kiboard` compatibility or include a
 tested migration.
 
-### Phase 0: Plan and competitor study
+### Phase 0: Plan and architecture study
 
 Deliverables:
 
 - approve this plan;
-- study the tldraw Agent context and action architecture;
+- study mature Agent context and action architecture patterns;
 - record the Kition interaction states and native schema;
 - confirm the workspace file extension and creation entry point.
 
@@ -1005,8 +969,7 @@ release evidence requirements.
 ### Repository quality
 
 - No new third-party whiteboard or diagram dependency.
-- No tldraw source, package API, icon, style, asset, trademark, or file format is
-  copied into Kition.
+
 - The sibling reference checkout remains untracked and outside the repository.
 - Whiteboard business logic stays inside `src/features/whiteboard`.
 - Workspace integration stays inside `src/features/workspace`.

@@ -11,16 +11,22 @@ import {
   normalizeWhiteboardBounds,
   screenToWhiteboardPoint,
   whiteboardPointsToPath,
-  whiteboardToScreenPoint,
 } from '../lib/whiteboardGeometry'
 import type {
   WhiteboardElement,
   WhiteboardPoint,
   WhiteboardResizeHandle,
 } from '../lib/whiteboardTypes'
+import {
+  getWhiteboardDashArray,
+  getWhiteboardElementStyle,
+  getWhiteboardStrokeWidth,
+  resolveWhiteboardColor,
+} from '../lib/whiteboardStyle'
 import { WhiteboardAgentPreviewLayer } from './WhiteboardAgentPreview'
 import { WhiteboardElementRenderer } from './WhiteboardElementRenderer'
 import { WhiteboardShapeBody } from './WhiteboardShapeBody'
+import { WhiteboardTextEditor } from './WhiteboardTextEditor'
 import type { WhiteboardAgentPreviewState } from '../hooks/useWhiteboardAgentPatch'
 import { cn } from '@/lib/utils'
 
@@ -48,6 +54,7 @@ type PendingSelectionPress = {
   elementId: string
   latestScreen: WhiteboardPoint
   latestWorld: WhiteboardPoint
+  pointerId: number
   shiftKey: boolean
   startWorld: WhiteboardPoint
   timer?: ReturnType<typeof setTimeout>
@@ -55,22 +62,22 @@ type PendingSelectionPress = {
 
 export function WhiteboardCanvas({
   agentPreview,
+  canvasSize,
   controller,
   onSizeChange,
   title,
 }: {
   agentPreview?: WhiteboardAgentPreviewState['preview']
+  canvasSize: WhiteboardPoint
   controller: WhiteboardEditorController
   onSizeChange: (size: WhiteboardPoint) => void
   title: string
 }) {
   const { t } = useTranslation('workspace')
   const svgRef = useRef<SVGSVGElement | null>(null)
-  const textInputRef = useRef<HTMLInputElement | null>(null)
   const selectionPressRef = useRef<PendingSelectionPress | null>(null)
   const eraserActiveRef = useRef(false)
   const [hoveredElementId, setHoveredElementId] = useState('')
-  const [movingSelection, setMovingSelection] = useState(false)
   const gridId = useId().replace(/:/g, '')
   const arrowId = useId().replace(/:/g, '')
   const fillPatternId = useId().replace(/:/g, '')
@@ -87,12 +94,6 @@ export function WhiteboardCanvas({
     observer.observe(node)
     return () => observer.disconnect()
   }, [onSizeChange])
-
-  useEffect(() => {
-    if (!controller.editingText) return
-    textInputRef.current?.focus()
-    textInputRef.current?.select()
-  }, [controller.editingText?.elementId])
 
   useEffect(() => () => {
     const pending = selectionPressRef.current
@@ -155,14 +156,18 @@ export function WhiteboardCanvas({
   function handlePointerUp(event: ReactPointerEvent<SVGSVGElement>) {
     const pending = selectionPressRef.current
     const { world } = eventPoints(event)
+    const targetElementId = controller.tool === 'connector'
+      ? document.elementFromPoint(event.clientX, event.clientY)
+          ?.closest<SVGElement>('[data-element-id]')
+          ?.dataset.elementId
+      : undefined
     clearSelectionPress()
     if (eraserActiveRef.current) {
       eraserActiveRef.current = false
       controller.endErase()
     }
-    if (pending?.activated) controller.endPointer(world)
-    else if (!pending) controller.endPointer(world)
-    setMovingSelection(false)
+    if (pending?.activated) controller.endPointer(world, targetElementId)
+    else if (!pending) controller.endPointer(world, targetElementId)
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId)
     }
@@ -176,7 +181,6 @@ export function WhiteboardCanvas({
       controller.endErase()
     }
     if (!pending || pending.activated) controller.cancelInteraction()
-    setMovingSelection(false)
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId)
     }
@@ -192,6 +196,15 @@ export function WhiteboardCanvas({
       eraserActiveRef.current = controller.beginErase(elementId)
       return
     }
+    if (controller.tool === 'connector') {
+      event.stopPropagation()
+      capturePointer(event.pointerId)
+      controller.beginCanvasPointer({
+        ...eventPoints(event),
+        targetElementId: elementId,
+      })
+      return
+    }
     if (controller.tool !== 'select') return
     event.stopPropagation()
     controller.selectElement(elementId, {
@@ -205,13 +218,13 @@ export function WhiteboardCanvas({
     const elementId = controller.selectedElementIds[0]
     if (!elementId) return
     const points = eventPoints(event)
-    capturePointer(event.pointerId)
     const pending: PendingSelectionPress = {
       activated: false,
       duplicate: event.altKey,
       elementId,
       latestScreen: points.screen,
       latestWorld: points.world,
+      pointerId: event.pointerId,
       shiftKey: event.shiftKey,
       startWorld: points.world,
     }
@@ -226,7 +239,7 @@ export function WhiteboardCanvas({
         clearSelectionPress()
         return
       }
-      setMovingSelection(true)
+      capturePointer(pending.pointerId)
       controller.movePointer({
         world: pending.latestWorld,
         screen: pending.latestScreen,
@@ -264,12 +277,17 @@ export function WhiteboardCanvas({
   }
 
   const transform = `translate(${-controller.viewport.x * controller.viewport.zoom} ${-controller.viewport.y * controller.viewport.zoom}) scale(${controller.viewport.zoom})`
-  const editingScreenPoint = controller.editingText
-    ? whiteboardToScreenPoint(controller.editingText, controller.viewport)
-    : null
   const editingElement = controller.editingText
     ? controller.elements.find((element) => element.id === controller.editingText?.elementId)
     : null
+  const visibleElements = controller.getViewportElements(canvasSize)
+  const interactionCursor = controller.interactionState === 'rotating'
+    ? 'grabbing'
+    : controller.interactionState === 'resizing' && controller.activeResizeHandle
+      ? RESIZE_HANDLES.find((item) => item.handle === controller.activeResizeHandle)?.cursor
+      : controller.interactionState === 'translating'
+        ? 'move'
+        : undefined
 
   return (
     <div className="relative h-full min-h-0 w-full overflow-hidden bg-background">
@@ -278,12 +296,16 @@ export function WhiteboardCanvas({
         className={cn(
           'whiteboard-canvas-surface h-full w-full bg-background outline-none',
           controller.tool === 'hand' && 'is-hand cursor-grab',
-          controller.tool === 'select' && (movingSelection ? 'cursor-move' : 'cursor-default'),
+          controller.tool === 'select' && (
+            controller.interactionState === 'translating' ? 'cursor-move' : 'cursor-default'
+          ),
           controller.tool !== 'hand' && controller.tool !== 'select' && 'is-drawing',
         )}
         role="application"
         aria-label={t('board.canvasTitle', { title })}
         data-testid="whiteboard-svg-scene"
+        data-rendered-element-count={visibleElements.length}
+        style={{ cursor: interactionCursor }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -329,7 +351,7 @@ export function WhiteboardCanvas({
             height="100000"
             fill={`url(#${gridId})`}
           />
-          {controller.elements.map((element) => (
+          {visibleElements.map((element) => (
             <WhiteboardElementRenderer
               key={element.id}
               element={element}
@@ -354,6 +376,9 @@ export function WhiteboardCanvas({
               patternId={fillPatternId}
             />
           ) : null}
+          {controller.snapGuides.length > 0 ? (
+            <WhiteboardSnapGuides guides={controller.snapGuides} />
+          ) : null}
           {agentPreview ? (
             <WhiteboardAgentPreviewLayer preview={agentPreview} />
           ) : null}
@@ -361,7 +386,7 @@ export function WhiteboardCanvas({
             <WhiteboardSelection
               allLocked={controller.allSelectedLocked}
               elements={controller.selectedElements}
-              moving={movingSelection}
+              moving={controller.interactionState === 'translating'}
               onDoubleClick={() => {
                 if (controller.selectedElements.length === 1) {
                   controller.beginTextEdit(controller.selectedElements[0])
@@ -375,44 +400,42 @@ export function WhiteboardCanvas({
           ) : null}
         </g>
       </svg>
-      {controller.editingText && editingScreenPoint ? (
-        <input
-          ref={textInputRef}
-          className="absolute z-10 rounded-md border border-input bg-background px-2 py-1 text-foreground shadow-[var(--shadow-toolbar)] outline-none ring-2 ring-ring"
-          style={{
-            left: editingScreenPoint.x,
-            top: editingScreenPoint.y,
-            width: Math.min(360, Math.max(180, 220 * controller.viewport.zoom)),
-            fontSize: Math.min(
-              48,
-              Math.max(
-                14,
-                (editingElement?.kind === 'text' ? editingElement.fontSize ?? 22 : 22)
-                  * controller.viewport.zoom,
-              ),
-            ),
-            transform: `translateY(-80%) rotate(${editingElement?.rotation ?? 0}deg)`,
-            transformOrigin: 'left bottom',
-          }}
-          value={controller.editingText.value}
-          placeholder={t('board.textPlaceholder')}
-          aria-label={t('board.textPlaceholder')}
-          onChange={(event) => controller.updateEditingText(event.target.value)}
-          onBlur={controller.commitEditingText}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.preventDefault()
-              controller.commitEditingText()
-            }
-            if (event.key === 'Escape') {
-              event.preventDefault()
-              controller.cancelEditingText()
-            }
-          }}
-          data-testid="whiteboard-text-editor"
+      {controller.editingText ? (
+        <WhiteboardTextEditor
+          editingText={controller.editingText}
+          element={editingElement}
+          onCancel={controller.cancelEditingText}
+          onChange={controller.updateEditingText}
+          onCommit={controller.commitEditingText}
+          viewport={controller.viewport}
         />
       ) : null}
     </div>
+  )
+}
+
+function WhiteboardSnapGuides({
+  guides,
+}: {
+  guides: WhiteboardEditorController['snapGuides']
+}) {
+  return (
+    <g pointerEvents="none" aria-hidden="true">
+      {guides.map((guide, index) => (
+        <line
+          key={`${guide.axis}:${guide.position}:${index}`}
+          x1={guide.axis === 'x' ? guide.position : guide.start}
+          y1={guide.axis === 'y' ? guide.position : guide.start}
+          x2={guide.axis === 'x' ? guide.position : guide.end}
+          y2={guide.axis === 'y' ? guide.position : guide.end}
+          stroke="hsl(var(--brand))"
+          strokeWidth="1"
+          strokeDasharray="3 3"
+          vectorEffect="non-scaling-stroke"
+          data-testid="whiteboard-snap-guide"
+        />
+      ))}
+    </g>
   )
 }
 
@@ -462,27 +485,47 @@ function WhiteboardSvgDraft({
     )
   }
   if (draft.kind === 'connector') {
+    const element = {
+      id: 'draft:connector',
+      kind: 'connector' as const,
+      start: draft.start,
+      end: draft.current,
+      style: draft.style,
+    }
+    const style = getWhiteboardElementStyle(element)
+    const strokeWidth = getWhiteboardStrokeWidth(style.strokeSize)
     return (
       <line
         x1={draft.start.x}
         y1={draft.start.y}
         x2={draft.current.x}
         y2={draft.current.y}
-        stroke="hsl(var(--brand))"
-        strokeWidth="2"
-        strokeDasharray="6 4"
+        opacity={style.opacity}
+        stroke={resolveWhiteboardColor(style.strokeColor, 'stroke')}
+        strokeWidth={strokeWidth}
+        strokeDasharray={getWhiteboardDashArray(style.dashStyle, strokeWidth)}
         markerEnd={`url(#${arrowId})`}
         vectorEffect="non-scaling-stroke"
         pointerEvents="none"
       />
     )
   }
+  const element = {
+    id: 'draft:stroke',
+    kind: 'stroke' as const,
+    points: draft.points,
+    style: draft.style,
+  }
+  const style = getWhiteboardElementStyle(element)
+  const strokeWidth = getWhiteboardStrokeWidth(style.strokeSize)
   return (
     <path
       d={whiteboardPointsToPath(draft.points)}
       fill="none"
-      stroke="hsl(var(--brand))"
-      strokeWidth="3"
+      opacity={style.opacity}
+      stroke={resolveWhiteboardColor(style.strokeColor, 'stroke')}
+      strokeDasharray={getWhiteboardDashArray(style.dashStyle, strokeWidth)}
+      strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
       vectorEffect="non-scaling-stroke"
@@ -563,8 +606,11 @@ function WhiteboardSelection({
             y2={y - rotationOffset}
             stroke="hsl(var(--brand))"
             strokeWidth="1.5"
+            strokeDasharray="4 4"
+            opacity="0.72"
             vectorEffect="non-scaling-stroke"
             pointerEvents="none"
+            data-testid="whiteboard-rotation-guide"
           />
           <circle
             cx={centerX}

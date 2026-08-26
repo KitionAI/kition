@@ -36,6 +36,7 @@ export function WhiteboardStylePanel({
     'rectangle',
     'note',
     'pen',
+    'highlight',
     'connector',
     'text',
   ].includes(controller.tool)

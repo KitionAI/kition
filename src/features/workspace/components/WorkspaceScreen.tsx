@@ -666,7 +666,10 @@ export function WorkspaceScreen({
     },
     onWhiteboardPatch: ({ boardPath, patch, provisional }) => {
       if (!whiteboardAgentAvailable) return
-      whiteboardAgentBridgesRef.current[boardPath]?.receivePatch(patch, provisional)
+      const activeBoardPath = activeWhiteboardPathRef.current
+      const bridge = whiteboardAgentBridgesRef.current[boardPath]
+        || whiteboardAgentBridgesRef.current[activeBoardPath]
+      bridge?.receivePatch(patch, provisional)
     },
     onWhiteboardPatchCancelled: ({ boardPath }) => {
       whiteboardAgentBridgesRef.current[boardPath]?.cancelPreview()

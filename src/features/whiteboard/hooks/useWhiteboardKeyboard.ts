@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 
+import type { BoardElementReorderPlacement } from '../lib/boardCommands'
 import type { WhiteboardTool } from '../lib/whiteboardTypes'
 
 export function useWhiteboardKeyboard(options: {
@@ -8,6 +9,7 @@ export function useWhiteboardKeyboard(options: {
   escape: () => void
   nudgeSelection: (delta: { x: number; y: number }) => boolean
   redo: () => void
+  reorderSelection: (placement: BoardElementReorderPlacement) => boolean
   selectAll: () => void
   setTool: (tool: WhiteboardTool) => void
   undo: () => void
@@ -18,6 +20,7 @@ export function useWhiteboardKeyboard(options: {
     escape,
     nudgeSelection,
     redo,
+    reorderSelection,
     selectAll,
     setTool,
     undo,
@@ -49,6 +52,13 @@ export function useWhiteboardKeyboard(options: {
         if (duplicateSelection()) event.preventDefault()
         return
       }
+      if (key === '[' || key === ']') {
+        const placement = key === ']'
+          ? event.metaKey || event.ctrlKey ? 'front' : 'forward'
+          : event.metaKey || event.ctrlKey ? 'back' : 'backward'
+        if (reorderSelection(placement)) event.preventDefault()
+        return
+      }
       if (key === 'backspace' || key === 'delete') {
         event.preventDefault()
         deleteSelection()
@@ -77,6 +87,7 @@ export function useWhiteboardKeyboard(options: {
         r: 'rectangle',
         t: 'text',
         p: 'pen',
+        l: 'highlight',
         c: 'connector',
       }
       const nextTool = shortcut[key]
@@ -90,6 +101,7 @@ export function useWhiteboardKeyboard(options: {
     escape,
     nudgeSelection,
     redo,
+    reorderSelection,
     selectAll,
     setTool,
     undo,

@@ -1,97 +1,38 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
-import type { BoardElementUpdateSession } from '../lib/boardCommands'
 import {
   cloneBoardElement,
   type BoardRecord,
 } from '../lib/boardRecords'
-import type { BoardHistoryMark } from '../lib/boardStore'
 import {
-  getWhiteboardElementBounds,
-  getWhiteboardSelectionBounds,
-  normalizeWhiteboardBounds,
-  resizeWhiteboardElements,
-  rotateWhiteboardElements,
-  translateWhiteboardElement,
-  whiteboardBoundsIntersect,
-} from '../lib/whiteboardGeometry'
+  getBoardElementsWithDescendants,
+  getBoardFrameAtPoint,
+  getBoardSelectionRootIds,
+} from '../lib/boardHierarchy'
+import { translateWhiteboardElement } from '../lib/whiteboardGeometry'
+import { lintWhiteboard } from '../lib/whiteboardLint'
 import {
+  DEFAULT_WHITEBOARD_HIGHLIGHT_STYLE,
   DEFAULT_WHITEBOARD_STYLE,
   getWhiteboardElementStyle,
 } from '../lib/whiteboardStyle'
-import { createWhiteboardElementId } from '../lib/whiteboardElementId'
 import type {
   WhiteboardBounds,
-  WhiteboardDraft,
-  WhiteboardElement,
   WhiteboardElementStyle,
   WhiteboardPoint,
-  WhiteboardResizeHandle,
   WhiteboardShapeType,
-  WhiteboardTextEditingState,
   WhiteboardTool,
   WhiteboardViewport,
 } from '../lib/whiteboardTypes'
 import { useBoardEditorStore } from './useBoardEditorStore'
 import { useWhiteboardCamera } from './useWhiteboardCamera'
+import { useWhiteboardClipboard } from './useWhiteboardClipboard'
 import { useWhiteboardElementActions } from './useWhiteboardElementActions'
+import { useWhiteboardExport } from './useWhiteboardExport'
+import { useWhiteboardInteractionMachine } from './useWhiteboardInteractionMachine'
 import { useWhiteboardKeyboard } from './useWhiteboardKeyboard'
 import { useWhiteboardSelection } from './useWhiteboardSelection'
-
-type WhiteboardTransformInteraction = {
-  before: WhiteboardElement[]
-  session: BoardElementUpdateSession
-}
-
-type WhiteboardInteraction =
-  | {
-      type: 'pan'
-      startScreen: WhiteboardPoint
-      viewport: WhiteboardViewport
-    }
-  | (WhiteboardTransformInteraction & {
-      type: 'move'
-      startWorld: WhiteboardPoint
-      duplicateMark?: BoardHistoryMark
-      moved: boolean
-    })
-  | (WhiteboardTransformInteraction & {
-      type: 'resize'
-      handle: WhiteboardResizeHandle
-      selectionBounds: WhiteboardBounds
-    })
-  | (WhiteboardTransformInteraction & {
-      type: 'rotate'
-      origin: WhiteboardPoint
-      startWorld: WhiteboardPoint
-    })
-  | {
-      type: 'brush'
-      additive: boolean
-      initialSelection: string[]
-      startWorld: WhiteboardPoint
-    }
-  | {
-      type: 'rectangle'
-      startWorld: WhiteboardPoint
-      shapeStyle?: Extract<WhiteboardElement, { kind: 'rectangle' }>['shapeStyle']
-      shapeType: WhiteboardShapeType
-      style: WhiteboardElementStyle
-      placement: 'shape' | 'note'
-    }
-  | {
-      type: 'connector'
-      startWorld: WhiteboardPoint
-      style: WhiteboardElementStyle
-    }
-  | {
-      type: 'stroke'
-      points: WhiteboardPoint[]
-      style: WhiteboardElementStyle
-    }
-
-const MIN_DRAW_SIZE = 6
-const MIN_BRUSH_SIZE = 3
+import { useWhiteboardTextEditing } from './useWhiteboardTextEditing'
 
 export function useWhiteboardEditor() {
   const {
@@ -102,8 +43,16 @@ export function useWhiteboardEditor() {
     store,
   } = useBoardEditorStore()
   const {
+    actualSize,
+    cameraBack,
+    cameraForward,
+    canCameraBack,
+    canCameraForward,
+    centerViewportAt,
     fitToContent,
+    fitToElements,
     replaceViewport,
+    recordViewportHistory,
     setViewport,
     viewport,
     zoomBy,
@@ -115,53 +64,133 @@ export function useWhiteboardEditor() {
     selectedElementIds,
     selectedElements,
     setSelectedElementIds,
-    toggleSelection,
   } = useWhiteboardSelection(elements)
   const [tool, setTool] = useState<WhiteboardTool>('select')
   const [shapeType, setShapeTypeState] = useState<WhiteboardShapeType>('rectangle')
   const [defaultStyle, setDefaultStyle] = useState<WhiteboardElementStyle>({
     ...DEFAULT_WHITEBOARD_STYLE,
   })
-  const [draft, setDraft] = useState<WhiteboardDraft | null>(null)
-  const [editingText, setEditingText] = useState<WhiteboardTextEditingState | null>(null)
-  const interactionRef = useRef<WhiteboardInteraction | null>(null)
+  const [highlightStyle, setHighlightStyle] = useState<WhiteboardElementStyle>({
+    ...DEFAULT_WHITEBOARD_HIGHLIGHT_STYLE,
+  })
+  const { exportPng, exportSvg } = useWhiteboardExport(elements)
+  const lintFindings = useMemo(() => lintWhiteboard({
+    bindings: records.filter((record) => record.record_type === 'binding'),
+    elements,
+  }), [elements, records])
+  const queryElements = useCallback((bounds: WhiteboardBounds) => (
+    store.queryCurrentPageElements(bounds)
+  ), [store])
+  const getViewportElements = useCallback((size: WhiteboardPoint, overscan = 160) => {
+    const worldOverscan = Math.max(0, overscan) / viewport.zoom
+    return queryElements({
+      x: viewport.x - worldOverscan,
+      y: viewport.y - worldOverscan,
+      width: size.x / viewport.zoom + worldOverscan * 2,
+      height: size.y / viewport.zoom + worldOverscan * 2,
+    })
+  }, [queryElements, viewport])
 
-  const cancelInteraction = useCallback(() => {
-    const interaction = interactionRef.current
-    interactionRef.current = null
-    if (
-      interaction?.type === 'move'
-      || interaction?.type === 'resize'
-      || interaction?.type === 'rotate'
-    ) {
-      interaction.session.cancel()
-      if (interaction.type === 'move' && interaction.duplicateMark) {
-        store.bailToMark(interaction.duplicateMark)
-      }
+  const {
+    activeResizeHandle,
+    beginCanvasPointer: beginPointerInteraction,
+    beginElementPointer,
+    beginResizePointer,
+    beginRotatePointer,
+    cancelInteraction,
+    draft,
+    endPointer: finishPointerInteraction,
+    interactionState: pointerInteractionState,
+    movePointer,
+    selectElement,
+    snapGuides,
+  } = useWhiteboardInteractionMachine({
+    clearSelection,
+    commands,
+    defaultStyle,
+    elements,
+    highlightStyle,
+    queryElements,
+    replaceSelection,
+    recordViewportHistory,
+    selectedElementIds,
+    selectedElements,
+    setSelectedElementIds,
+    setTool,
+    setViewport,
+    shapeType,
+    store,
+    tool,
+    viewport,
+  })
+
+  const {
+    beginNewTextEdit,
+    beginTextEdit,
+    cancelEditingText,
+    commitEditingText,
+    dismissEditingText,
+    editingText,
+    updateEditingText,
+  } = useWhiteboardTextEditing({
+    cancelInteraction,
+    commands,
+    defaultStyle,
+    elements,
+    replaceSelection,
+    setTool,
+  })
+
+  const beginCanvasPointer = useCallback((input: {
+    world: WhiteboardPoint
+    screen: WhiteboardPoint
+    additive?: boolean
+    targetElementId?: string
+  }) => {
+    dismissEditingText()
+    if (tool === 'text') {
+      cancelInteraction()
+      beginNewTextEdit(
+        input.world,
+        getBoardFrameAtPoint(elements, input.world)?.id,
+      )
+      return
     }
-    setDraft(null)
-  }, [store])
+    beginPointerInteraction(input)
+  }, [
+    beginNewTextEdit,
+    beginPointerInteraction,
+    cancelInteraction,
+    dismissEditingText,
+    elements,
+    tool,
+  ])
+
+  const endPointer = useCallback((world: WhiteboardPoint, targetElementId?: string) => {
+    const result = finishPointerInteraction(world, targetElementId)
+    if (result.editElement) beginTextEdit(result.editElement)
+  }, [beginTextEdit, finishPointerInteraction])
 
   const clearTransientState = useCallback(() => {
     cancelInteraction()
     clearSelection()
-    setEditingText(null)
+    dismissEditingText()
     setTool('select')
-  }, [cancelInteraction, clearSelection])
+  }, [cancelInteraction, clearSelection, dismissEditingText])
 
   const undo = useCallback(() => {
     cancelInteraction()
     store.undo()
     clearSelection()
-    setEditingText(null)
-  }, [cancelInteraction, clearSelection, store])
+    dismissEditingText()
+  }, [cancelInteraction, clearSelection, dismissEditingText, store])
 
   const redo = useCallback(() => {
     cancelInteraction()
     store.redo()
     clearSelection()
-    setEditingText(null)
-  }, [cancelInteraction, clearSelection, store])
+    dismissEditingText()
+  }, [cancelInteraction, clearSelection, dismissEditingText, store])
 
   const deleteSelection = useCallback(() => {
     const deletableIds = selectedElements
@@ -173,12 +202,17 @@ export function useWhiteboardEditor() {
   }, [clearSelection, commands, selectedElements])
 
   const {
+    alignSelection,
     applyStyle,
     beginErase,
     continueErase,
     duplicateSelection,
+    distributeSelection,
     endErase,
+    groupSelection,
     insertImage,
+    reorderSelection,
+    ungroupSelection,
   } = useWhiteboardElementActions({
     clearSelection,
     commands,
@@ -188,6 +222,7 @@ export function useWhiteboardEditor() {
     selectedElementIds,
     selectedElements,
     setDefaultStyle,
+    setHighlightStyle,
     setTool,
     store,
     tool,
@@ -199,516 +234,60 @@ export function useWhiteboardEditor() {
     setTool('rectangle')
   }, [])
 
-  const beginCanvasPointer = useCallback((input: {
-    world: WhiteboardPoint
-    screen: WhiteboardPoint
-    additive?: boolean
-  }) => {
-    setEditingText(null)
-    switch (tool) {
-      case 'select': {
-        const additive = Boolean(input.additive)
-        interactionRef.current = {
-          type: 'brush',
-          additive,
-          initialSelection: additive ? selectedElementIds : [],
-          startWorld: input.world,
-        }
-        if (!additive) clearSelection()
-        setDraft({
-          kind: 'selection',
-          start: input.world,
-          current: input.world,
-        })
-        break
-      }
-      case 'hand':
-        interactionRef.current = {
-          type: 'pan',
-          startScreen: input.screen,
-          viewport,
-        }
-        break
-      case 'rectangle':
-        interactionRef.current = {
-          type: 'rectangle',
-          placement: 'shape',
-          shapeType,
-          startWorld: input.world,
-          style: { ...defaultStyle },
-        }
-        setDraft({
-          kind: 'rectangle',
-          start: input.world,
-          current: input.world,
-          shapeType,
-          style: { ...defaultStyle },
-        })
-        break
-      case 'note': {
-        const noteStyle = { ...defaultStyle, fillColor: 'yellow' as const }
-        interactionRef.current = {
-          type: 'rectangle',
-          placement: 'note',
-          shapeStyle: 'sticky',
-          shapeType: 'rectangle',
-          startWorld: input.world,
-          style: noteStyle,
-        }
-        setDraft({
-          kind: 'rectangle',
-          start: input.world,
-          current: input.world,
-          shapeStyle: 'sticky',
-          shapeType: 'rectangle',
-          style: noteStyle,
-        })
-        break
-      }
-      case 'connector':
-        interactionRef.current = {
-          type: 'connector',
-          startWorld: input.world,
-          style: { ...defaultStyle },
-        }
-        setDraft({
-          kind: 'connector',
-          start: input.world,
-          current: input.world,
-          style: { ...defaultStyle },
-        })
-        break
-      case 'pen':
-        interactionRef.current = {
-          type: 'stroke',
-          points: [input.world],
-          style: { ...defaultStyle },
-        }
-        setDraft({ kind: 'stroke', points: [input.world], style: { ...defaultStyle } })
-        break
-      case 'text':
-        setEditingText({
-          elementId: createWhiteboardElementId('text'),
-          elementKind: 'text',
-          x: input.world.x,
-          y: input.world.y,
-          value: '',
-          isNew: true,
-        })
-        interactionRef.current = null
-        break
-      case 'eraser':
-        interactionRef.current = null
-        break
-    }
-  }, [clearSelection, defaultStyle, selectedElementIds, shapeType, tool, viewport])
-
-  const beginElementPointer = useCallback((
-    elementId: string,
-    world: WhiteboardPoint,
-    options: { additive?: boolean; duplicate?: boolean } = {},
-  ) => {
-    if (tool !== 'select') return false
-    const element = elements.find((item) => item.id === elementId)
-    if (!element) return false
-    cancelInteraction()
-
-    if (options.additive && selectedElementIds.includes(elementId)) {
-      toggleSelection(elementId)
-      return false
-    }
-
-    const nextSelection = options.additive
-      ? [...selectedElementIds, elementId]
-      : selectedElementIds.includes(elementId)
-        ? selectedElementIds
-        : [elementId]
-    replaceSelection(nextSelection)
-
-    const editableElements = elements.filter((item) => (
-      nextSelection.includes(item.id) && !item.locked
-    ))
-    if (editableElements.length === 0) return false
-
-    let before = editableElements.map(cloneBoardElement)
-    let duplicateMark: BoardHistoryMark | undefined
-    if (options.duplicate) {
-      duplicateMark = store.markHistory()
-      before = editableElements.map((item) => ({
-        ...cloneBoardElement(item),
-        id: createWhiteboardElementId(item.kind),
-        locked: false,
-      }))
-      commands.execute({ type: 'element.create', elements: before })
-      replaceSelection(before.map((item) => item.id))
-    }
-
-    interactionRef.current = {
-      type: 'move',
-      before,
-      duplicateMark,
-      moved: false,
-      session: commands.beginElementUpdate('Move elements'),
-      startWorld: world,
-    }
-    return true
-  }, [
-    cancelInteraction,
+  const {
+    copySelection,
+    cutSelection,
+    pasteClipboardText,
+    pasteFromClipboard,
+  } = useWhiteboardClipboard({
+    clearSelection,
     commands,
-    elements,
+    records,
     replaceSelection,
-    selectedElementIds,
-    store,
-    toggleSelection,
-    tool,
-  ])
-
-  const selectElement = useCallback((
-    elementId: string,
-    options: { additive?: boolean } = {},
-  ) => {
-    if (tool !== 'select') return false
-    const element = elements.find((item) => item.id === elementId)
-    if (!element) return false
-    cancelInteraction()
-
-    if (options.additive && selectedElementIds.includes(elementId)) {
-      toggleSelection(elementId)
-      return false
-    }
-
-    replaceSelection(options.additive
-      ? [...selectedElementIds, elementId]
-      : [elementId])
-    return true
-  }, [
-    cancelInteraction,
-    elements,
-    replaceSelection,
-    selectedElementIds,
-    toggleSelection,
-    tool,
-  ])
-
-  const beginResizePointer = useCallback((
-    handle: WhiteboardResizeHandle,
-  ) => {
-    const editableElements = selectedElements.filter((element) => !element.locked)
-    const selectionBounds = getWhiteboardSelectionBounds(editableElements)
-    if (!selectionBounds || editableElements.length === 0) return false
-    cancelInteraction()
-    interactionRef.current = {
-      type: 'resize',
-      before: editableElements.map(cloneBoardElement),
-      handle,
-      selectionBounds,
-      session: commands.beginElementUpdate('Resize elements'),
-    }
-    return true
-  }, [cancelInteraction, commands, selectedElements])
-
-  const beginRotatePointer = useCallback((world: WhiteboardPoint) => {
-    const editableElements = selectedElements.filter((element) => !element.locked)
-    const selectionBounds = getWhiteboardSelectionBounds(editableElements)
-    if (!selectionBounds || editableElements.length === 0) return false
-    cancelInteraction()
-    interactionRef.current = {
-      type: 'rotate',
-      before: editableElements.map(cloneBoardElement),
-      origin: {
-        x: selectionBounds.x + selectionBounds.width / 2,
-        y: selectionBounds.y + selectionBounds.height / 2,
-      },
-      session: commands.beginElementUpdate('Rotate elements'),
-      startWorld: world,
-    }
-    return true
-  }, [cancelInteraction, commands, selectedElements])
-
-  const movePointer = useCallback((input: {
-    world: WhiteboardPoint
-    screen: WhiteboardPoint
-    altKey?: boolean
-    shiftKey?: boolean
-  }) => {
-    const interaction = interactionRef.current
-    if (!interaction) return
-    switch (interaction.type) {
-      case 'pan': {
-        const delta = {
-          x: input.screen.x - interaction.startScreen.x,
-          y: input.screen.y - interaction.startScreen.y,
-        }
-        setViewport({
-          ...interaction.viewport,
-          x: interaction.viewport.x - delta.x / interaction.viewport.zoom,
-          y: interaction.viewport.y - delta.y / interaction.viewport.zoom,
-        })
-        break
-      }
-      case 'move': {
-        const delta = {
-          x: input.world.x - interaction.startWorld.x,
-          y: input.world.y - interaction.startWorld.y,
-        }
-        interaction.moved = interaction.moved
-          || Math.abs(delta.x) > 0.5
-          || Math.abs(delta.y) > 0.5
-        interaction.session.update(interaction.before.map((element) => (
-          translateWhiteboardElement(element, delta)
-        )))
-        break
-      }
-      case 'resize':
-        interaction.session.update(resizeWhiteboardElements({
-          elements: interaction.before,
-          fromCenter: input.altKey,
-          handle: interaction.handle,
-          lockAspectRatio: input.shiftKey,
-          point: input.world,
-          selectionBounds: interaction.selectionBounds,
-        }))
-        break
-      case 'rotate':
-        interaction.session.update(rotateWhiteboardElements({
-          elements: interaction.before,
-          origin: interaction.origin,
-          point: input.world,
-          snap: input.shiftKey,
-          start: interaction.startWorld,
-        }))
-        break
-      case 'brush':
-        setDraft({
-          kind: 'selection',
-          start: interaction.startWorld,
-          current: input.world,
-        })
-        break
-      case 'rectangle':
-        setDraft({
-          kind: 'rectangle',
-          start: interaction.startWorld,
-          current: input.world,
-          shapeStyle: interaction.shapeStyle,
-          shapeType: interaction.shapeType,
-          style: interaction.style,
-        })
-        break
-      case 'connector':
-        setDraft({
-          kind: 'connector',
-          start: interaction.startWorld,
-          current: input.world,
-          style: interaction.style,
-        })
-        break
-      case 'stroke': {
-        const previous = interaction.points.at(-1)
-        if (!previous || Math.hypot(
-          input.world.x - previous.x,
-          input.world.y - previous.y,
-        ) >= 1.5 / viewport.zoom) {
-          interaction.points.push(input.world)
-          setDraft({
-            kind: 'stroke',
-            points: [...interaction.points],
-            style: interaction.style,
-          })
-        }
-        break
-      }
-    }
-  }, [setViewport, viewport.zoom])
-
-  const endPointer = useCallback((world: WhiteboardPoint) => {
-    const interaction = interactionRef.current
-    interactionRef.current = null
-    setDraft(null)
-    if (!interaction) return
-
-    switch (interaction.type) {
-      case 'move':
-        if (interaction.moved) interaction.session.commit()
-        else interaction.session.cancel()
-        if (interaction.duplicateMark) {
-          store.squashToMark(interaction.duplicateMark, 'Duplicate elements')
-        }
-        break
-      case 'resize':
-      case 'rotate':
-        interaction.session.commit()
-        break
-      case 'brush': {
-        const bounds = normalizeWhiteboardBounds(interaction.startWorld, world)
-        if (bounds.width < MIN_BRUSH_SIZE && bounds.height < MIN_BRUSH_SIZE) break
-        const selected = elements
-          .filter((element) => whiteboardBoundsIntersect(
-            bounds,
-            getWhiteboardElementBounds(element),
-          ))
-          .map((element) => element.id)
-        setSelectedElementIds([
-          ...new Set([...interaction.initialSelection, ...selected]),
-        ])
-        break
-      }
-      case 'rectangle': {
-        let bounds = normalizeWhiteboardBounds(interaction.startWorld, world)
-        if (bounds.width < MIN_DRAW_SIZE || bounds.height < MIN_DRAW_SIZE) {
-          const defaultSize = interaction.placement === 'note'
-            ? { width: 180, height: 140 }
-            : { width: 160, height: interaction.shapeType === 'line' ? 32 : 100 }
-          bounds = {
-            x: interaction.startWorld.x,
-            y: interaction.startWorld.y,
-            ...defaultSize,
-          }
-        }
-        if (bounds.width >= MIN_DRAW_SIZE && bounds.height >= MIN_DRAW_SIZE) {
-          const element: WhiteboardElement = {
-            id: createWhiteboardElementId('rectangle'),
-            kind: 'rectangle',
-            locked: false,
-            rotation: 0,
-            shapeStyle: interaction.shapeStyle,
-            shapeType: interaction.shapeType,
-            style: interaction.style,
-            ...bounds,
-          }
-          commands.execute({ type: 'element.create', elements: [element] })
-          replaceSelection([element.id])
-          if (interaction.placement === 'note') {
-            setEditingText({
-              elementId: element.id,
-              elementKind: 'rectangle',
-              x: element.x + 12,
-              y: element.y + element.height / 2,
-              value: '',
-              isNew: false,
-            })
-          }
-        }
-        setTool('select')
-        break
-      }
-      case 'connector':
-        if (Math.hypot(
-          world.x - interaction.startWorld.x,
-          world.y - interaction.startWorld.y,
-        ) >= MIN_DRAW_SIZE) {
-          const element: WhiteboardElement = {
-            id: createWhiteboardElementId('connector'),
-            kind: 'connector',
-            locked: false,
-            rotation: 0,
-            start: interaction.startWorld,
-            end: world,
-            style: interaction.style,
-          }
-          commands.execute({ type: 'element.create', elements: [element] })
-          replaceSelection([element.id])
-        }
-        setTool('select')
-        break
-      case 'stroke':
-        if (interaction.points.length > 1) {
-          const element: WhiteboardElement = {
-            id: createWhiteboardElementId('stroke'),
-            kind: 'stroke',
-            locked: false,
-            rotation: 0,
-            points: interaction.points,
-            style: interaction.style,
-          }
-          commands.execute({ type: 'element.create', elements: [element] })
-          replaceSelection([element.id])
-        }
-        break
-      case 'pan':
-        break
-    }
-  }, [commands, elements, replaceSelection, setSelectedElementIds, store])
-
-  const beginTextEdit = useCallback((element: WhiteboardElement) => {
-    if ((element.kind !== 'text' && element.kind !== 'rectangle') || element.locked) return
-    cancelInteraction()
-    replaceSelection([element.id])
-    setEditingText({
-      elementId: element.id,
-      elementKind: element.kind,
-      x: element.kind === 'rectangle' ? element.x + 12 : element.x,
-      y: element.kind === 'rectangle' ? element.y + element.height / 2 : element.y,
-      value: element.text || '',
-      isNew: false,
-    })
-  }, [cancelInteraction, replaceSelection])
-
-  const updateEditingText = useCallback((value: string) => {
-    setEditingText((current) => current ? { ...current, value } : current)
-  }, [])
-
-  const commitEditingText = useCallback(() => {
-    if (!editingText) return
-    const value = editingText.value.trim()
-    if (value) {
-      const current = elements.find((element) => element.id === editingText.elementId)
-      const element: WhiteboardElement = current?.kind === 'rectangle'
-        ? { ...current, text: value }
-        : {
-            ...(current?.kind === 'text' ? current : {}),
-            id: editingText.elementId,
-            kind: 'text',
-            x: editingText.x,
-            y: editingText.y,
-            text: value,
-            fontSize: current?.kind === 'text' ? current.fontSize ?? 22 : 22,
-            locked: current?.locked ?? false,
-            rotation: current?.rotation ?? 0,
-            style: current?.kind === 'text' && current.style
-              ? { ...current.style }
-              : { ...defaultStyle },
-          }
-      commands.execute({
-        type: editingText.isNew ? 'element.create' : 'element.update',
-        elements: [element],
-      })
-      replaceSelection([element.id])
-    }
-    setEditingText(null)
-    setTool('select')
-  }, [commands, defaultStyle, editingText, elements, replaceSelection])
-
-  const cancelEditingText = useCallback(() => {
-    setEditingText(null)
-    setTool('select')
-  }, [])
+    selectedElements,
+  })
 
   const toggleSelectionLock = useCallback(() => {
     if (selectedElements.length === 0) return
     const shouldLock = !selectedElements.every((element) => element.locked)
+    const lockable = getBoardElementsWithDescendants(
+      elements,
+      selectedElements.map((element) => element.id),
+    )
     commands.execute({
       type: 'element.update',
-      elements: selectedElements.map((element) => ({
+      elements: lockable.map((element) => ({
         ...cloneBoardElement(element),
         locked: shouldLock,
       })),
     })
-  }, [commands, selectedElements])
+  }, [commands, elements, selectedElements])
 
   const nudgeSelection = useCallback((delta: WhiteboardPoint) => {
-    const movable = selectedElements.filter((element) => !element.locked)
+    const movable = getBoardElementsWithDescendants(
+      elements,
+      selectedElements.filter((element) => !element.locked).map((element) => element.id),
+    )
     if (movable.length === 0) return false
     commands.execute({
       type: 'element.update',
       elements: movable.map((element) => translateWhiteboardElement(element, delta)),
     })
     return true
-  }, [commands, selectedElements])
+  }, [commands, elements, selectedElements])
 
   const selectAll = useCallback(() => {
-    replaceSelection(elements.map((element) => element.id))
+    replaceSelection(getBoardSelectionRootIds(
+      elements,
+      elements.map((element) => element.id),
+    ))
   }, [elements, replaceSelection])
+
+  const zoomToSelection = useCallback((size: WhiteboardPoint) => {
+    if (selectedElements.length === 0) return false
+    fitToElements(selectedElements, size)
+    return true
+  }, [fitToElements, selectedElements])
 
   const replaceDocument = useCallback((input: {
     records: readonly BoardRecord[]
@@ -718,10 +297,9 @@ export function useWhiteboardEditor() {
     store.replaceRecords(input.records)
     replaceViewport(input.viewport)
     clearSelection()
-    setDraft(null)
-    setEditingText(null)
+    dismissEditingText()
     setTool('select')
-  }, [cancelInteraction, clearSelection, replaceViewport, store])
+  }, [cancelInteraction, clearSelection, dismissEditingText, replaceViewport, store])
 
   useWhiteboardKeyboard({
     deleteSelection,
@@ -729,17 +307,21 @@ export function useWhiteboardEditor() {
     escape: clearTransientState,
     nudgeSelection,
     redo,
+    reorderSelection,
     selectAll,
     setTool,
     undo,
   })
 
   return {
+    activeResizeHandle,
     allSelectedLocked: selectedElements.length > 0
       && selectedElements.every((element) => element.locked),
     activeStyle: selectedElements[0]
       ? getWhiteboardElementStyle(selectedElements[0])
-      : defaultStyle,
+      : tool === 'highlight' ? highlightStyle : defaultStyle,
+    actualSize,
+    alignSelection,
     applyStyle,
     beginCanvasPointer,
     beginErase,
@@ -747,28 +329,45 @@ export function useWhiteboardEditor() {
     beginResizePointer,
     beginRotatePointer,
     beginTextEdit,
+    cameraBack,
+    cameraForward,
     canRedo: snapshot.canRedo,
+    canCameraBack,
+    canCameraForward,
     canUndo: snapshot.canUndo,
     cancelInteraction,
     cancelEditingText,
     commitEditingText,
     commands,
+    centerViewportAt,
     continueErase,
+    copySelection,
+    cutSelection,
     deleteSelection,
     duplicateSelection,
+    distributeSelection,
     draft,
     editingText,
     elements,
     endErase,
     endPointer,
+    exportPng,
+    exportSvg,
     fitToContent,
+    getViewportElements,
+    groupSelection,
     hasSelection: selectedElementIds.length > 0,
     hasUnlockedSelection: selectedElements.some((element) => !element.locked),
     insertImage,
+    interactionState: editingText ? 'editing-text' as const : pointerInteractionState,
     isTransacting: snapshot.isTransacting,
+    lintFindings,
     movePointer,
+    pasteClipboardText,
+    pasteFromClipboard,
     records,
     replaceDocument,
+    reorderSelection,
     redo,
     selectedElementId,
     selectedElementIds,
@@ -777,14 +376,17 @@ export function useWhiteboardEditor() {
     selectAll,
     selectShapeType,
     shapeType,
+    snapGuides,
     setTool,
     store,
     toggleSelectionLock,
     tool,
+    ungroupSelection,
     undo,
     updateEditingText,
     viewport,
     zoomBy,
+    zoomToSelection,
   }
 }
 
