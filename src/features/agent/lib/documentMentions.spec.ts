@@ -170,6 +170,38 @@ describe('documentMentions', () => {
     ])
   })
 
+  it('prefers an exact active path when case-folded paths are ambiguous', () => {
+    const documents: AgentMentionableDocument[] = [
+      { kind: 'file', path: 'Docs/current.md', name: 'current.md', title: 'lowercase', format: 'markdown' },
+      { kind: 'file', path: 'Docs/Current.md', name: 'Current.md', title: 'Current', format: 'markdown' },
+    ]
+
+    expect(searchAgentMentionableDocuments({
+      documents,
+      query: '',
+      currentDocumentPath: 'Docs/Current.md',
+    }).map((document) => document.path)).toEqual([
+      'Docs/Current.md',
+      'Docs/current.md',
+    ])
+  })
+
+  it('does not collapse compatibility characters when identifying the active path', () => {
+    const documents: AgentMentionableDocument[] = [
+      { kind: 'file', path: 'Docs/1.md', name: '1.md', title: 'One', format: 'markdown' },
+      { kind: 'file', path: 'Docs/①.md', name: '①.md', title: 'Circled one', format: 'markdown' },
+    ]
+
+    expect(searchAgentMentionableDocuments({
+      documents,
+      query: '',
+      currentDocumentPath: 'Docs/①.md',
+    }).map((document) => document.path)).toEqual([
+      'Docs/①.md',
+      'Docs/1.md',
+    ])
+  })
+
   it('stores document mentions separately from visible composer text', () => {
     const draft = buildAgentDraftWithDocumentMentions('Analyze this file', [
       'Getting Started/Guides/Product Content/Product Content Studio.kitable',
