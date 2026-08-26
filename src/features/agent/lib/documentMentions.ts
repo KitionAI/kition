@@ -229,6 +229,12 @@ function normalizeMentionSearchValue(value: string) {
   return value.normalize('NFKC').trim().toLocaleLowerCase()
 }
 
+function normalizeMentionDocumentPath(value: string) {
+  return normalizeMentionSearchValue(value)
+    .replace(/\\/g, '/')
+    .replace(/^\.\//, '')
+}
+
 function withoutMentionableExtension(value: string) {
   return value.replace(/\.(?:md|markdown|kitable|txt|html?|json|csv|tsv|pdf|pptx?|docx?|xlsx?|png|jpe?g|gif|webp|svg)$/i, '')
 }
@@ -263,20 +269,25 @@ export function searchAgentMentionableDocuments({
   contextPaths = [],
 }: AgentMentionSearchInput) {
   const normalizedQuery = normalizeMentionSearchValue(query)
-  const contextOrder = new Map(contextPaths.map((path, index) => [path, index]))
+  const normalizedCurrentDocumentPath = normalizeMentionDocumentPath(currentDocumentPath)
+  const contextOrder = new Map(contextPaths.map((path, index) => [
+    normalizeMentionDocumentPath(path),
+    index,
+  ]))
   return documents
     .map((document, index) => ({
       document,
       index,
+      normalizedPath: normalizeMentionDocumentPath(document.path),
       score: scoreMentionDocument(document, normalizedQuery),
     }))
     .filter((candidate) => Number.isFinite(candidate.score))
     .sort((left, right) => {
-      const leftCurrent = left.document.path === currentDocumentPath ? 0 : 1
-      const rightCurrent = right.document.path === currentDocumentPath ? 0 : 1
+      const leftCurrent = left.normalizedPath === normalizedCurrentDocumentPath ? 0 : 1
+      const rightCurrent = right.normalizedPath === normalizedCurrentDocumentPath ? 0 : 1
       if (leftCurrent !== rightCurrent) return leftCurrent - rightCurrent
-      const leftContext = contextOrder.get(left.document.path) ?? Number.POSITIVE_INFINITY
-      const rightContext = contextOrder.get(right.document.path) ?? Number.POSITIVE_INFINITY
+      const leftContext = contextOrder.get(left.normalizedPath) ?? Number.POSITIVE_INFINITY
+      const rightContext = contextOrder.get(right.normalizedPath) ?? Number.POSITIVE_INFINITY
       if (leftContext !== rightContext) return leftContext - rightContext
       if (left.score !== right.score) return left.score - right.score
       if (left.document.kind !== right.document.kind) {
