@@ -151,6 +151,57 @@ describe('documentMentions', () => {
     ])
   })
 
+  it('ranks the active tab first when its path uses equivalent separators and casing', () => {
+    const documents: AgentMentionableDocument[] = [
+      { kind: 'file', path: 'Docs/Other.md', name: 'Other.md', title: 'Other', format: 'markdown' },
+      { kind: 'file', path: 'Docs/Current.md', name: 'Current.md', title: 'Current', format: 'markdown' },
+      { kind: 'file', path: 'Docs/Recent.md', name: 'Recent.md', title: 'Recent', format: 'markdown' },
+    ]
+
+    expect(searchAgentMentionableDocuments({
+      documents,
+      query: '',
+      currentDocumentPath: 'docs\\current.md',
+      contextPaths: ['Docs/Recent.md'],
+    }).map((document) => document.path)).toEqual([
+      'Docs/Current.md',
+      'Docs/Recent.md',
+      'Docs/Other.md',
+    ])
+  })
+
+  it('prefers an exact active path when case-folded paths are ambiguous', () => {
+    const documents: AgentMentionableDocument[] = [
+      { kind: 'file', path: 'Docs/current.md', name: 'current.md', title: 'lowercase', format: 'markdown' },
+      { kind: 'file', path: 'Docs/Current.md', name: 'Current.md', title: 'Current', format: 'markdown' },
+    ]
+
+    expect(searchAgentMentionableDocuments({
+      documents,
+      query: '',
+      currentDocumentPath: 'Docs/Current.md',
+    }).map((document) => document.path)).toEqual([
+      'Docs/Current.md',
+      'Docs/current.md',
+    ])
+  })
+
+  it('does not collapse compatibility characters when identifying the active path', () => {
+    const documents: AgentMentionableDocument[] = [
+      { kind: 'file', path: 'Docs/1.md', name: '1.md', title: 'One', format: 'markdown' },
+      { kind: 'file', path: 'Docs/①.md', name: '①.md', title: 'Circled one', format: 'markdown' },
+    ]
+
+    expect(searchAgentMentionableDocuments({
+      documents,
+      query: '',
+      currentDocumentPath: 'Docs/①.md',
+    }).map((document) => document.path)).toEqual([
+      'Docs/①.md',
+      'Docs/1.md',
+    ])
+  })
+
   it('stores document mentions separately from visible composer text', () => {
     const draft = buildAgentDraftWithDocumentMentions('Analyze this file', [
       'Getting Started/Guides/Product Content/Product Content Studio.kitable',

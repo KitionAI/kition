@@ -12,6 +12,7 @@ import type { KitionAccountStatus } from '@/features/account/hooks/useKitionAcco
 import type { AgentModelOption } from '@/features/agent/lib/agentConfig'
 import {
   findAgentMentionQuery,
+  resolveAgentMentionDocumentPath,
   searchAgentMentionableDocuments,
   stripAgentDocumentMentions,
   type AgentMentionableDocument,
@@ -86,12 +87,25 @@ export function AgentAiComposer({
   const documentsByPath = new Map(
     mentionableDocuments.map((document) => [document.path, document]),
   )
-  const contextDocuments = documentContextPaths.map((path) => ({
-    path,
-    kind: documentsByPath.get(path)?.kind,
-    current: path === currentDocumentPath,
-  }))
-  const currentDocument = documentsByPath.get(currentDocumentPath)
+  const resolvedCurrentDocumentPath = resolveAgentMentionDocumentPath(
+    mentionableDocuments,
+    currentDocumentPath,
+  )
+  const resolvedContextDocumentPaths = documentContextPaths.map((path) => (
+    resolveAgentMentionDocumentPath(mentionableDocuments, path)
+  ))
+  const attachedDocumentPaths = new Set(resolvedContextDocumentPaths)
+  const contextDocuments = documentContextPaths.map((path, index) => {
+    const resolvedPath = resolvedContextDocumentPaths[index]
+    return {
+      path,
+      kind: documentsByPath.get(resolvedPath)?.kind,
+      current: Boolean(
+        resolvedCurrentDocumentPath && resolvedPath === resolvedCurrentDocumentPath,
+      ),
+    }
+  })
+  const currentDocument = documentsByPath.get(resolvedCurrentDocumentPath)
   useEffect(() => {
     function handle() {
       requestAnimationFrame(() => {
@@ -128,7 +142,7 @@ export function AgentAiComposer({
     mentionQuery?.query.trim() ? 50 : 16,
   )
   const selectableMentions = visibleMentions.filter(
-    (document) => !documentContextPaths.includes(document.path),
+    (document) => !attachedDocumentPaths.has(document.path),
   )
   const highlightedMention = selectableMentions[highlightedMentionIndex]
   const mentionMenuOpen = Boolean(mentionQuery && !mentionMenuDismissed)
@@ -154,7 +168,7 @@ export function AgentAiComposer({
     if (!mentionQuery) {
       return
     }
-    if (documentContextPaths.includes(document.path)) {
+    if (attachedDocumentPaths.has(document.path)) {
       return
     }
     const head = visibleDraft.slice(0, mentionQuery.start)
@@ -286,8 +300,8 @@ export function AgentAiComposer({
               : t('mentions.searchHint')}
           </div>
           {visibleMentions.length ? visibleMentions.map((document) => {
-            const attached = documentContextPaths.includes(document.path)
-            const current = document.path === currentDocumentPath
+            const attached = attachedDocumentPaths.has(document.path)
+            const current = document.path === resolvedCurrentDocumentPath
             const active = highlightedMention?.path === document.path
             const content = (
               <>
@@ -351,7 +365,7 @@ export function AgentAiComposer({
           disabled={busy}
           currentDocumentTitle={currentDocument?.title}
           currentDocumentAttached={Boolean(
-            currentDocumentPath && documentContextPaths.includes(currentDocumentPath),
+            resolvedCurrentDocumentPath && attachedDocumentPaths.has(resolvedCurrentDocumentPath),
           )}
           localSourceCount={localSources.length}
           onAddCurrentDocument={currentDocument && onAddDocumentContext
