@@ -75,6 +75,31 @@ describe('AgentAiComposer document mentions', () => {
     expect(currentRow?.textContent).toContain('Attached')
   })
 
+  it('marks an equivalent active tab path as current and attached beyond the initial limit', async () => {
+    const current = makeDocument('Docs/Current.md', 'Current')
+    const documents = [
+      ...Array.from({ length: 20 }, (_, index) => makeDocument(
+        `Docs/Document-${index + 1}.md`,
+        `Document ${index + 1}`,
+      )),
+      current,
+    ]
+    await mount(makeProps({
+      currentDocumentPath: 'docs\\current.md',
+      documentContextPaths: ['docs\\current.md'],
+      draft: '@',
+      mentionableDocuments: documents,
+    }))
+
+    const mentionRows = Array.from(
+      container.querySelectorAll<HTMLElement>('[data-mention-path]'),
+    )
+    expect(mentionRows[0]?.dataset.mentionPath).toBe(current.path)
+    expect(mentionRows[0]?.classList.contains('is-attached')).toBe(true)
+    expect(mentionRows[0]?.textContent).toContain('Current')
+    expect(mentionRows[0]?.textContent).toContain('Attached')
+  })
+
   it('searches documents beyond the initial suggestion limit and adds the highlighted result', async () => {
     Element.prototype.scrollIntoView = vi.fn()
     const target = makeDocument('Archive/Needle.md', 'Needle')
