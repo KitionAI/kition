@@ -1,7 +1,7 @@
 import { markdown as markdownLanguage } from '@codemirror/lang-markdown'
 import { EditorView } from '@codemirror/view'
 import CodeMirror, { type ReactCodeMirrorRef } from '@uiw/react-codemirror'
-import { forwardRef, useMemo } from 'react'
+import { forwardRef, useCallback, useMemo } from 'react'
 import { useBufferedCodeMirrorValue } from '@/features/document/editor/hooks/useBufferedCodeMirrorValue'
 import {
   canPasteNativeDocumentClipboardImage,
@@ -21,6 +21,11 @@ const basicSetup = {
   searchKeymap: false,
 } as const
 
+export type MarkdownCursorSnapshot = {
+  markdown: string
+  cursorOffset: number
+}
+
 type MarkdownSourceEditorProps = {
   value: string
   readOnly: boolean
@@ -28,6 +33,7 @@ type MarkdownSourceEditorProps = {
   placeholder?: string
   className?: string
   onCreateEditor?: (view: EditorView) => void
+  onCursorChange?: (snapshot: MarkdownCursorSnapshot) => void
 }
 
 function insertImagesAtCursor(view: EditorView, snippets: string[]) {
@@ -69,7 +75,7 @@ const imagePasteExtension = EditorView.domEventHandlers({
 
 export const MarkdownSourceEditor = forwardRef<ReactCodeMirrorRef, MarkdownSourceEditorProps>(
   function MarkdownSourceEditor(
-    { value, readOnly, onChange, placeholder, className, onCreateEditor },
+    { value, readOnly, onChange, placeholder, className, onCreateEditor, onCursorChange },
     ref,
   ) {
     const {
@@ -84,6 +90,15 @@ export const MarkdownSourceEditor = forwardRef<ReactCodeMirrorRef, MarkdownSourc
         compositionExtension,
         EditorView.lineWrapping,
         imagePasteExtension,
+        ...(onCursorChange
+          ? [EditorView.updateListener.of((update) => {
+            if (!update.selectionSet && !update.docChanged) return
+            onCursorChange({
+              markdown: update.state.doc.toString(),
+              cursorOffset: update.state.selection.main.head,
+            })
+          })]
+          : []),
         EditorView.theme({
           '&': {
             height: '100%',
@@ -110,8 +125,16 @@ export const MarkdownSourceEditor = forwardRef<ReactCodeMirrorRef, MarkdownSourc
           },
         }),
       ],
-      [compositionExtension],
+      [compositionExtension, onCursorChange],
     )
+
+    const handleCreateEditor = useCallback((view: EditorView) => {
+      onCreateEditor?.(view)
+      onCursorChange?.({
+        markdown: view.state.doc.toString(),
+        cursorOffset: view.state.selection.main.head,
+      })
+    }, [onCreateEditor, onCursorChange])
 
     return (
       <CodeMirror
@@ -124,7 +147,7 @@ export const MarkdownSourceEditor = forwardRef<ReactCodeMirrorRef, MarkdownSourc
         placeholder={placeholder}
         height="100%"
         className={cn('document-markdown-source', className)}
-        onCreateEditor={onCreateEditor}
+        onCreateEditor={handleCreateEditor}
       />
     )
   },

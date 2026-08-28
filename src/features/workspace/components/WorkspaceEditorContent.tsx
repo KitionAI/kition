@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react'
-import { lazy, Suspense, useMemo } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo } from 'react'
 import { BookOpen, Globe } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/registry/ui/button'
@@ -9,6 +9,8 @@ import type {
   PendingDocumentRevision,
 } from '@/features/document/lib/documentRevision'
 import type { DocumentAskAgentRequest } from '@/features/document/lib/documentAgentActions'
+import type { MarkdownImageInsertionSnapshot } from '@/features/document/editor/editor/markdown-image-insertion'
+import type { MarkdownCursorSnapshot } from '@/features/document/components/MarkdownSourceEditor'
 import { WorkspaceDocumentInlineTitle } from '@/features/workspace/components/WorkspaceDocumentInlineTitle'
 import { WorkspaceEmptyState } from '@/features/workspace/components/WorkspaceEmptyState'
 import { openWorkflowDetail } from '@/features/workflow/lib/openWorkflowRoute'
@@ -122,6 +124,10 @@ type WorkspaceEditorContentProps = {
   onCreateTable: () => void
   onOpenAgent: () => void
   onAskDocumentAgent?: (request: DocumentAskAgentRequest) => void
+  onAgentInsertionContextChange?: (
+    documentPath: string,
+    context: MarkdownImageInsertionSnapshot | null,
+  ) => void
   onSaveDocumentTitle: (nextTitle: string) => void
   onDecideDocumentRevisionChange: (changeId: string, decision: DocumentRevisionDecision) => void
   onResolveAllDocumentRevisionChanges: (decision: DocumentRevisionDecision) => void
@@ -184,6 +190,7 @@ export function WorkspaceEditorContent({
   onCreateTable,
   onOpenAgent,
   onAskDocumentAgent,
+  onAgentInsertionContextChange,
   onSaveDocumentTitle,
   onDecideDocumentRevisionChange,
   onResolveAllDocumentRevisionChanges,
@@ -204,6 +211,25 @@ export function WorkspaceEditorContent({
     activeWorkspaceTab.taskMode !== 'browse' &&
     Boolean(browserOriginDocumentPath) &&
     tableAgentOpen
+  const handleMarkdownCursorChange = useCallback((snapshot: MarkdownCursorSnapshot) => {
+    const documentPath = activeDocument?.path || ''
+    if (!documentPath || !onAgentInsertionContextChange) return
+    onAgentInsertionContextChange(documentPath, {
+      documentPath,
+      markdown: snapshot.markdown,
+      cursorOffset: snapshot.cursorOffset,
+    })
+  }, [activeDocument?.path, onAgentInsertionContextChange])
+  const sourceCursorSurfaceActive = Boolean(
+    activeWorkspaceTab?.type === 'document'
+    && !activeDocumentRevision
+    && (editorMode === 'source' || editorMode === 'split'),
+  )
+  useEffect(() => {
+    const documentPath = activeDocument?.path || ''
+    if (!sourceCursorSurfaceActive || !documentPath || !onAgentInsertionContextChange) return
+    return () => onAgentInsertionContextChange(documentPath, null)
+  }, [activeDocument?.path, onAgentInsertionContextChange, sourceCursorSurfaceActive])
 
   const inlineTitleElement = useMemo(
     () => (
@@ -556,6 +582,7 @@ export function WorkspaceEditorContent({
                   previewHtml={editorPreviewHtml}
                   readOnly={!hasActiveDocument || editorLocked}
                   onChange={onSplitEditorChange}
+                  onCursorChange={handleMarkdownCursorChange}
                 />
               </Suspense>
             ) : null}
@@ -569,6 +596,7 @@ export function WorkspaceEditorContent({
                         readOnly={!hasActiveDocument || editorLocked}
                         onChange={onSplitEditorChange}
                         placeholder={t('editor.sourcePlaceholder')}
+                        onCursorChange={handleMarkdownCursorChange}
                       />
                     </Suspense>
                   </div>
@@ -615,6 +643,7 @@ export function WorkspaceEditorContent({
                           readingView={editorMode === 'preview'}
                           onSetReadingView={(next) => onSetEditorMode(next ? 'preview' : 'rich')}
                           onAskAgent={onAskDocumentAgent}
+                          onAgentInsertionContextChange={onAgentInsertionContextChange}
                         />
                       </Suspense>
                     </div>

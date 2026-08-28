@@ -130,6 +130,8 @@ const editorTheme = EditorView.theme({
 })
 
 export type CursorInfo = {
+  /** 0-based document offset */
+  offset: number
   /** 1-based line */
   line: number
   /** 1-based column */
@@ -295,6 +297,7 @@ export const DocumentEditor = forwardRef<ReactCodeMirrorRef, DocumentEditorProps
             let selectionLength = 0
             for (const r of state.selection.ranges) selectionLength += r.to - r.from
             onCursorChange({
+              offset: head,
               line: lineObj.number,
               col: head - lineObj.from + 1,
               selectionLength,

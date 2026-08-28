@@ -84,6 +84,7 @@ import {
 import { importWorkspaceFileIntoDataTable } from '@/features/table/lib/importWorkspaceFileIntoDataTable'
 import { buildAgentShellApprovalFollowup } from '@/features/agent/lib/agentShellApproval'
 import { readAgentWhiteboardPatchFrame } from '@/features/agent/lib/agentWhiteboardStream'
+import type { MarkdownImageInsertionContext } from '@/features/document/editor/editor/markdown-image-insertion'
 
 type WorkspaceAgentTurnContext = {
   activeDocumentPath?: string
@@ -103,6 +104,7 @@ type WorkspaceAgentTurnContext = {
    *  context. Frontend reads this from the active workflow tab. */
   activeWorkflowId?: string
   whiteboardContext?: AgentWhiteboardContext
+  markdownImageInsertionContext?: MarkdownImageInsertionContext
 }
 
 type UseWorkspaceAgentOptions = {
@@ -710,6 +712,7 @@ export function useWorkspaceAgent({
         buildAgentDocumentEditingPromptContext({
           activeDocumentPath,
           activeDocumentFormat,
+          markdownImageInsertionContext: turnContext?.markdownImageInsertionContext,
         }),
       ].filter(Boolean).join('\n\n')
       let executionMode = followup?.executionMode

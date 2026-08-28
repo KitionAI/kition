@@ -72,6 +72,7 @@ import {
 } from '@/features/document/lib/documentPublishingClipboard'
 import { resolveMarkdownLinkTarget } from '@/features/document/lib/markdownLinkNavigation'
 import type { DocumentAskAgentRequest } from '@/features/document/lib/documentAgentActions'
+import type { MarkdownImageInsertionSnapshot } from '@/features/document/editor/editor/markdown-image-insertion'
 import { notify } from '@/lib/notify'
 import { cn } from '@/lib/utils'
 
@@ -94,6 +95,10 @@ export type DocumentMarkdownEditorPaneProps = {
                                                
   onSetReadingView?: (next: boolean) => void
   onAskAgent?: (request: DocumentAskAgentRequest) => void
+  onAgentInsertionContextChange?: (
+    documentPath: string,
+    context: MarkdownImageInsertionSnapshot | null,
+  ) => void
 }
 
 type SideTab = 'outline' | 'backlinks' | 'outgoing' | 'tags' | 'recents' | 'bookmarks' | 'explorer'
@@ -146,6 +151,7 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
   readingView = false,
   onSetReadingView,
   onAskAgent,
+  onAgentInsertionContextChange,
 }: DocumentMarkdownEditorPaneProps) {
   const { t } = useTranslation('errors')
   const { t: td } = useTranslation('document')
@@ -358,9 +364,37 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
 
   const headings = useMemo(() => parseOutlineHeadings(value), [value])
 
+  const publishAgentInsertionContext = useCallback((view: EditorView) => {
+    onAgentInsertionContextChange?.(documentPath, {
+      documentPath,
+      markdown: view.state.doc.toString(),
+      cursorOffset: view.state.selection.main.head,
+    })
+  }, [documentPath, onAgentInsertionContextChange])
+
   const handleCreateEditor = useCallback((view: EditorView) => {
-    setCursorLine(view.state.doc.lineAt(view.state.selection.main.head).number)
-  }, [])
+    const main = view.state.selection.main
+    const line = view.state.doc.lineAt(main.head)
+    setCursorLine(line.number)
+    setCursorInfo({
+      offset: main.head,
+      line: line.number,
+      col: main.head - line.from + 1,
+      selectionLength: main.to - main.from,
+      selectionText: view.state.doc.sliceString(main.from, main.to),
+    })
+    publishAgentInsertionContext(view)
+  }, [publishAgentInsertionContext])
+
+  const handleCursorChange = useCallback((info: CursorInfo) => {
+    setCursorInfo(info)
+    const view = getView()
+    if (view) publishAgentInsertionContext(view)
+  }, [getView, publishAgentInsertionContext])
+
+  useEffect(() => () => {
+    onAgentInsertionContextChange?.(documentPath, null)
+  }, [documentPath, onAgentInsertionContextChange])
 
   const handleCopySelection = useCallback((markdown: string, clipboardData: DataTransfer | null) => {
     const containsMarkdownImage = /!\[[^\]]*]\(\s*(?:<[^>\r\n]+>|[^)\r\n]+)\s*\)/m.test(markdown)
@@ -935,7 +969,7 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
               className="h-full"
               onCreateEditor={handleCreateEditor}
               onCursorLineChange={setCursorLine}
-              onCursorChange={setCursorInfo}
+              onCursorChange={handleCursorChange}
               onCopySelection={handleCopySelection}
               onAskAgent={onAskAgent ? requestAgentAction : undefined}
               suggestProviders={effectiveProviders}
