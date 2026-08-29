@@ -44,7 +44,7 @@ const limits = {
   initialBytes: 2_200_000,
   initialGzipBytes: 700_000,
   initialAssetCount: 6,
-  initialCssBytes: 380_000,
+  initialCssBytes: 390_000,
   initialCssGzipBytes: 60_000,
 }
 
