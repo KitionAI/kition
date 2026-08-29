@@ -41,6 +41,7 @@ export function WhiteboardStylePanel({
     'text',
   ].includes(controller.tool)
   const enabled = !controller.hasSelection || controller.hasUnlockedSelection
+  const selectedConnector = controller.selectedElements.find((element) => element.kind === 'connector')
 
   useEffect(() => {
     setOpacity(Math.round(controller.activeStyle.opacity * 100))
@@ -140,6 +141,47 @@ export function WhiteboardStylePanel({
           ))}
         </div>
       </StyleSection>
+
+      {selectedConnector?.kind === 'connector' ? (
+        <>
+          <StyleSection label={t('board.style.connectorType')}>
+            <div className="grid grid-cols-3 gap-1">
+              {(['straight', 'elbow', 'curved'] as const).map((connectorType) => (
+                <button
+                  key={connectorType}
+                  type="button"
+                  className={cn(
+                    'h-8 rounded-md text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground',
+                    (selectedConnector.connectorType || 'straight') === connectorType
+                      && 'bg-accent text-accent-foreground',
+                  )}
+                  onClick={() => controller.updateSelectedConnectors({ connectorType })}
+                  aria-label={t(`board.style.connectorTypes.${connectorType}`)}
+                  data-testid={`whiteboard-connector-type-${connectorType}`}
+                >
+                  {t(`board.style.connectorTypeShort.${connectorType}`)}
+                </button>
+              ))}
+            </div>
+          </StyleSection>
+          <StyleSection label={t('board.style.arrowheads')}>
+            <div className="grid grid-cols-2 gap-2">
+              <ArrowheadSelect
+                label={t('board.style.startArrowhead')}
+                value={selectedConnector.startArrowhead || 'none'}
+                onChange={(startArrowhead) => controller.updateSelectedConnectors({ startArrowhead })}
+                testId="whiteboard-connector-start-arrowhead"
+              />
+              <ArrowheadSelect
+                label={t('board.style.endArrowhead')}
+                value={selectedConnector.endArrowhead || 'arrow'}
+                onChange={(endArrowhead) => controller.updateSelectedConnectors({ endArrowhead })}
+                testId="whiteboard-connector-end-arrowhead"
+              />
+            </div>
+          </StyleSection>
+        </>
+      ) : null}
 
       <StyleSection label={t('board.style.size')} last>
         <div className="grid grid-cols-4 gap-1">
@@ -257,4 +299,33 @@ function DashPreview({ dashStyle }: { dashStyle: WhiteboardDashStyle }) {
       ? 'dashed'
       : 'dotted'
   return <span className="whiteboard-dash-preview" style={{ borderTopStyle: borderStyle }} />
+}
+
+function ArrowheadSelect({
+  label,
+  onChange,
+  testId,
+  value,
+}: {
+  label: string
+  onChange: (value: 'none' | 'arrow' | 'dot') => void
+  testId: string
+  value: 'none' | 'arrow' | 'dot'
+}) {
+  const { t } = useTranslation('workspace')
+  return (
+    <label className="grid gap-1 text-[10px] font-medium text-muted-foreground">
+      {label}
+      <select
+        className="h-8 rounded-md border bg-background px-2 text-xs text-foreground outline-none ring-ring focus:ring-2"
+        value={value}
+        onChange={(event) => onChange(event.target.value as 'none' | 'arrow' | 'dot')}
+        data-testid={testId}
+      >
+        {(['none', 'arrow', 'dot'] as const).map((option) => (
+          <option key={option} value={option}>{t(`board.style.arrowheadTypes.${option}`)}</option>
+        ))}
+      </select>
+    </label>
+  )
 }

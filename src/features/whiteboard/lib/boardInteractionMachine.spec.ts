@@ -29,6 +29,7 @@ describe('BoardInteractionMachine', () => {
 
     expect(() => machine.start({
       type: 'connecting',
+      connectorType: 'straight',
       startWorld: { x: 10, y: 10 },
       style: {
         dashStyle: 'solid',

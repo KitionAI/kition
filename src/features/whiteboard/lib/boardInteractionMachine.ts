@@ -1,8 +1,12 @@
 import type { BoardElementUpdateSession } from './boardCommands'
-import type { BoardConnectorAnchor } from './boardBindingEngine'
+import type {
+  BoardConnectorAnchor,
+  BoardConnectorTerminal,
+} from './boardBindingEngine'
 import type { BoardHistoryMark } from './boardStore'
 import type {
   WhiteboardBounds,
+  WhiteboardConnectorType,
   WhiteboardElement,
   WhiteboardElementStyle,
   WhiteboardPoint,
@@ -56,9 +60,15 @@ export type BoardActiveInteractionState =
     }
   | {
       type: 'connecting'
+      connectorType: WhiteboardConnectorType
       startBinding?: BoardConnectorAnchor
       startWorld: WhiteboardPoint
       style: WhiteboardElementStyle
+    }
+  | {
+      type: 'editing-connector'
+      connector: Extract<WhiteboardElement, { kind: 'connector' }>
+      terminal: BoardConnectorTerminal
     }
   | {
       type: 'drawing-stroke'

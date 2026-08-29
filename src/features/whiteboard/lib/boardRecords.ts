@@ -17,6 +17,7 @@ export type BoardPageRecord = {
   record_type: 'page'
   id: string
   name: string
+  index: number
 }
 
 type WithBoardElementMetadata<Element> = Element extends WhiteboardElement
@@ -77,6 +78,7 @@ export function createBoardBaseRecords(title = 'Board'): BoardRecord[] {
       record_type: 'page',
       id: DEFAULT_BOARD_PAGE_ID,
       name: title,
+      index: 0,
     },
   ]
 }
@@ -183,6 +185,10 @@ export function cloneBoardElement(element: WhiteboardElement): WhiteboardElement
 export function compareBoardRecords(left: BoardRecord, right: BoardRecord) {
   const rank = boardRecordRank(left.record_type) - boardRecordRank(right.record_type)
   if (rank !== 0) return rank
+  if (left.record_type === 'page' && right.record_type === 'page') {
+    const index = left.index - right.index
+    if (index !== 0) return index
+  }
   if (left.record_type === 'element' && right.record_type === 'element') {
     const page = left.page_id.localeCompare(right.page_id)
     if (page !== 0) return page

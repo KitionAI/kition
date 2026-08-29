@@ -61,6 +61,22 @@ export function getBoardConnectorAnchor(
   }
 }
 
+export function getBoardConnectorAnchorAt(
+  target: WhiteboardElement | undefined,
+  targetAnchor: WhiteboardPoint,
+): BoardConnectorAnchor | null {
+  if (!target || target.kind === 'connector' || target.kind === 'stroke') return null
+  const normalizedAnchor = {
+    x: clamp(targetAnchor.x, 0, 1),
+    y: clamp(targetAnchor.y, 0, 1),
+  }
+  return {
+    point: resolveBoardConnectorAnchor(target, normalizedAnchor),
+    targetElementId: target.id,
+    targetAnchor: normalizedAnchor,
+  }
+}
+
 export function createBoardConnectorBindingRecord(input: {
   anchor: BoardConnectorAnchor
   connectorId: string

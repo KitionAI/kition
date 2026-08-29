@@ -4,6 +4,7 @@ import type {
   WhiteboardPoint,
   WhiteboardResizeHandle,
   WhiteboardViewport,
+  WhiteboardConnectorElement,
 } from './whiteboardTypes'
 import { getBoardElementUnrotatedBounds } from './boardElementDefinitions'
 
@@ -164,6 +165,80 @@ export function rotateWhiteboardElements(input: {
   ))
 }
 
+export function rotateWhiteboardElementsByDegrees(input: {
+  elements: readonly WhiteboardElement[]
+  origin: WhiteboardPoint
+  degrees: number
+}) {
+  return input.elements.map((element) => (
+    rotateWhiteboardElement(element, input.origin, input.degrees)
+  ))
+}
+
+export function scaleWhiteboardElements(input: {
+  elements: readonly WhiteboardElement[]
+  bounds: WhiteboardBounds
+  scaleX: number
+  scaleY: number
+}) {
+  const center = getBoundsCenter(input.bounds)
+  const after = {
+    x: center.x - input.bounds.width * input.scaleX / 2,
+    y: center.y - input.bounds.height * input.scaleY / 2,
+    width: Math.max(MIN_TRANSFORM_SIZE, input.bounds.width * input.scaleX),
+    height: Math.max(MIN_TRANSFORM_SIZE, input.bounds.height * input.scaleY),
+  }
+  return input.elements.map((element) => resizeWhiteboardElement(element, input.bounds, after))
+}
+
+export function flipWhiteboardElements(input: {
+  elements: readonly WhiteboardElement[]
+  bounds: WhiteboardBounds
+  direction: 'horizontal' | 'vertical'
+}) {
+  const center = getBoundsCenter(input.bounds)
+  const mapPoint = (point: WhiteboardPoint) => input.direction === 'horizontal'
+    ? { x: center.x * 2 - point.x, y: point.y }
+    : { x: point.x, y: center.y * 2 - point.y }
+
+  return input.elements.map((element): WhiteboardElement => {
+    switch (element.kind) {
+      case 'rectangle':
+      case 'image': {
+        const elementCenter = mapPoint(getWhiteboardElementCenter(element))
+        return {
+          ...element,
+          x: elementCenter.x - element.width / 2,
+          y: elementCenter.y - element.height / 2,
+          rotation: normalizeRotation(input.direction === 'horizontal'
+            ? 360 - (element.rotation ?? 0)
+            : 180 - (element.rotation ?? 0)),
+        }
+      }
+      case 'text': {
+        const bounds = getBoardElementUnrotatedBounds(element)
+        const mappedCenter = mapPoint(getBoundsCenter(bounds))
+        return {
+          ...element,
+          x: mappedCenter.x - bounds.width / 2,
+          y: mappedCenter.y + bounds.height / 2 - 4,
+          rotation: normalizeRotation(input.direction === 'horizontal'
+            ? 360 - (element.rotation ?? 0)
+            : 180 - (element.rotation ?? 0)),
+        }
+      }
+      case 'stroke':
+        return { ...element, points: element.points.map(mapPoint) }
+      case 'connector':
+        return {
+          ...element,
+          start: mapPoint(element.start),
+          end: mapPoint(element.end),
+        }
+    }
+  })
+}
+
 export function rotateWhiteboardPoint(
   point: WhiteboardPoint,
   origin: WhiteboardPoint,
@@ -199,6 +274,87 @@ export function whiteboardPointsToPath(points: readonly WhiteboardPoint[]) {
   const last = points[points.length - 1]
   path += ` L ${last.x} ${last.y}`
   return path
+}
+
+export function getWhiteboardConnectorPath(element: WhiteboardConnectorElement) {
+  const { start, end } = element
+  switch (element.connectorType || 'straight') {
+    case 'elbow': {
+      const middleX = (start.x + end.x) / 2
+      return getRoundedOrthogonalPath([
+        start,
+        { x: middleX, y: start.y },
+        { x: middleX, y: end.y },
+        end,
+      ])
+    }
+    case 'curved': {
+      const middleX = (start.x + end.x) / 2
+      return `M ${start.x} ${start.y} C ${middleX} ${start.y} ${middleX} ${end.y} ${end.x} ${end.y}`
+    }
+    default:
+      return `M ${start.x} ${start.y} L ${end.x} ${end.y}`
+  }
+}
+
+function getRoundedOrthogonalPath(points: readonly WhiteboardPoint[]) {
+  const simplified = simplifyOrthogonalPathPoints(points)
+  if (simplified.length === 0) return ''
+  if (simplified.length === 1) return `M ${simplified[0].x} ${simplified[0].y}`
+  if (simplified.length === 2) {
+    return `M ${simplified[0].x} ${simplified[0].y} L ${simplified[1].x} ${simplified[1].y}`
+  }
+
+  let path = `M ${simplified[0].x} ${simplified[0].y}`
+  for (let index = 1; index < simplified.length - 1; index += 1) {
+    const previous = simplified[index - 1]
+    const corner = simplified[index]
+    const next = simplified[index + 1]
+    const incomingLength = distanceBetweenPoints(previous, corner)
+    const outgoingLength = distanceBetweenPoints(corner, next)
+    const radius = Math.min(12, incomingLength / 2, outgoingLength / 2)
+    const before = movePointToward(corner, previous, radius)
+    const after = movePointToward(corner, next, radius)
+    path += ` L ${before.x} ${before.y} Q ${corner.x} ${corner.y} ${after.x} ${after.y}`
+  }
+  const last = simplified[simplified.length - 1]
+  return `${path} L ${last.x} ${last.y}`
+}
+
+function simplifyOrthogonalPathPoints(points: readonly WhiteboardPoint[]) {
+  const unique = points.filter((point, index) => (
+    index === 0 || !pointsEqual(point, points[index - 1])
+  ))
+  return unique.filter((point, index) => {
+    if (index === 0 || index === unique.length - 1) return true
+    const previous = unique[index - 1]
+    const next = unique[index + 1]
+    const sameHorizontalLine = previous.y === point.y && point.y === next.y
+    const sameVerticalLine = previous.x === point.x && point.x === next.x
+    return !sameHorizontalLine && !sameVerticalLine
+  })
+}
+
+function pointsEqual(left: WhiteboardPoint, right: WhiteboardPoint) {
+  return left.x === right.x && left.y === right.y
+}
+
+function distanceBetweenPoints(left: WhiteboardPoint, right: WhiteboardPoint) {
+  return Math.hypot(right.x - left.x, right.y - left.y)
+}
+
+function movePointToward(
+  from: WhiteboardPoint,
+  toward: WhiteboardPoint,
+  distance: number,
+) {
+  const length = distanceBetweenPoints(from, toward)
+  if (length === 0) return { ...from }
+  const ratio = distance / length
+  return {
+    x: from.x + (toward.x - from.x) * ratio,
+    y: from.y + (toward.y - from.y) * ratio,
+  }
 }
 
 function getWhiteboardElementUnrotatedBounds(

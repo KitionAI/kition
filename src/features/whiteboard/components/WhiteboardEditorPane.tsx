@@ -14,6 +14,10 @@ import { useWhiteboardEditor } from '@/features/whiteboard/hooks/useWhiteboardEd
 import { buildWhiteboardAgentContext, type WhiteboardAgentScope } from '@/features/whiteboard/lib/whiteboardAgentContext'
 import type { WhiteboardAgentBridge } from '@/features/whiteboard/lib/whiteboardAgentBridge'
 import type { WhiteboardPoint } from '@/features/whiteboard/lib/whiteboardTypes'
+import {
+  cloneWhiteboardTestRecords,
+  installWhiteboardTestBridge,
+} from '@/features/whiteboard/testing/whiteboardTestBridge'
 import { useTranslation } from 'react-i18next'
 
 import './whiteboard.css'
@@ -67,12 +71,14 @@ export function WhiteboardEditorPane({
     available: agentAvailable,
     buildContext: () => agentAvailable
       ? buildWhiteboardAgentContext({
+          activeStyle: controller.activeStyle,
           canvasSize,
           path,
           scope: agentScope,
           selectedElementIds: controller.selectedElementIds,
           store: controller.store,
           title,
+          tool: controller.tool,
           viewport: controller.viewport,
         }) || undefined
       : undefined,
@@ -85,9 +91,11 @@ export function WhiteboardEditorPane({
     agentPatch.cancel,
     agentPatch.receivePatch,
     agentScope,
+    controller.activeStyle,
     canvasSize,
     controller.selectedElementIds,
     controller.store,
+    controller.tool,
     controller.viewport,
     path,
     title,
@@ -97,6 +105,32 @@ export function WhiteboardEditorPane({
     onAgentBridgeChange?.(path, agentBridge)
     return () => onAgentBridgeChange?.(path, null)
   }, [agentBridge, onAgentBridgeChange, path])
+
+  useEffect(() => installWhiteboardTestBridge(() => ({
+    activeStyle: { ...controller.activeStyle },
+    canRedo: controller.canRedo,
+    canUndo: controller.canUndo,
+    currentPageId: controller.currentPageId,
+    interactionState: controller.interactionState,
+    path,
+    records: cloneWhiteboardTestRecords(controller.records),
+    selectedElementIds: [...controller.selectedElementIds],
+    shapeType: controller.shapeType,
+    tool: controller.tool,
+    viewport: { ...controller.viewport },
+  })), [
+    controller.activeStyle,
+    controller.canRedo,
+    controller.canUndo,
+    controller.currentPageId,
+    controller.interactionState,
+    controller.records,
+    controller.selectedElementIds,
+    controller.shapeType,
+    controller.tool,
+    controller.viewport,
+    path,
+  ])
 
   const cancelAgentPreview = useCallback(() => {
     agentPatch.cancel()

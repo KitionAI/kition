@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   clampWhiteboardZoom,
+  getWhiteboardConnectorPath,
   getWhiteboardElementBounds,
   resizeWhiteboardElements,
   rotateWhiteboardElements,
@@ -56,6 +57,32 @@ describe('whiteboardGeometry', () => {
     ])).toBe('M 0 0 Q 10 10 15 5 L 20 0')
     expect(clampWhiteboardZoom(10)).toBe(4)
     expect(clampWhiteboardZoom(0.1)).toBe(0.25)
+  })
+
+  it('rounds elbow connector corners and shrinks the radius on short segments', () => {
+    expect(getWhiteboardConnectorPath({
+      id: 'elbow',
+      kind: 'connector',
+      connectorType: 'elbow',
+      start: { x: 0, y: 0 },
+      end: { x: 100, y: 80 },
+    })).toBe('M 0 0 L 38 0 Q 50 0 50 12 L 50 68 Q 50 80 62 80 L 100 80')
+
+    expect(getWhiteboardConnectorPath({
+      id: 'short-elbow',
+      kind: 'connector',
+      connectorType: 'elbow',
+      start: { x: 0, y: 0 },
+      end: { x: 20, y: 8 },
+    })).toBe('M 0 0 L 6 0 Q 10 0 10 4 L 10 4 Q 10 8 14 8 L 20 8')
+
+    expect(getWhiteboardConnectorPath({
+      id: 'flat-elbow',
+      kind: 'connector',
+      connectorType: 'elbow',
+      start: { x: 0, y: 20 },
+      end: { x: 100, y: 20 },
+    })).toBe('M 0 20 L 100 20')
   })
 
   it('resizes mixed elements relative to one selection bounds', () => {

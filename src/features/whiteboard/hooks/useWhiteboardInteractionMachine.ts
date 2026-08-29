@@ -2,7 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 
 import type { BoardCommandRegistry } from '../lib/boardCommands'
-import { getBoardConnectorAnchor } from '../lib/boardBindingEngine'
+import {
+  getBoardConnectorAnchor,
+  getBoardConnectorAnchorAt,
+  type BoardConnectorTerminal,
+} from '../lib/boardBindingEngine'
 import { getBoardRectangleDefaultSize } from '../lib/boardElementDefinitions'
 import {
   BoardInteractionMachine,
@@ -21,6 +25,11 @@ import {
 } from '../lib/boardHierarchy'
 import type { BoardStore } from '../lib/boardStore'
 import { createWhiteboardElementId } from '../lib/whiteboardElementId'
+import {
+  getWhiteboardConnectionHandleAnchor,
+  isWhiteboardQuickConnectElement,
+  type WhiteboardConnectionHandleDirection,
+} from '../lib/whiteboardConnectionHandles'
 import { simplifyBoardFreehandPoints } from '../lib/boardFreehand'
 import {
   getBoardResizeSnap,
@@ -57,6 +66,7 @@ type PointerInput = {
   screen: WhiteboardPoint
   altKey?: boolean
   shiftKey?: boolean
+  targetElementId?: string
 }
 
 type PointerEndResult = {
@@ -77,9 +87,11 @@ export function useWhiteboardInteractionMachine(input: {
   setSelectedElementIds: Dispatch<SetStateAction<string[]>>
   setTool: Dispatch<SetStateAction<WhiteboardTool>>
   setViewport: Dispatch<SetStateAction<WhiteboardViewport>>
+  snapEnabled: boolean
   shapeType: WhiteboardShapeType
   store: BoardStore
   tool: WhiteboardTool
+  toolLocked: boolean
   viewport: WhiteboardViewport
 }) {
   const machineRef = useRef<BoardInteractionMachine | null>(null)
@@ -88,6 +100,11 @@ export function useWhiteboardInteractionMachine(input: {
   const [draft, setDraft] = useState<WhiteboardDraft | null>(null)
   const [interactionState, setInteractionState] = useState<BoardInteractionState['type']>('idle')
   const [snapGuides, setSnapGuides] = useState<BoardSnapGuide[]>([])
+  const [connectorTerminalPreview, setConnectorTerminalPreview] = useState<Extract<
+    WhiteboardElement,
+    { kind: 'connector' }
+  > | null>(null)
+  const [connectorTargetElementId, setConnectorTargetElementId] = useState('')
 
   const enterInteraction = useCallback((interaction: BoardActiveInteractionState) => {
     machine.start(interaction)
@@ -99,6 +116,8 @@ export function useWhiteboardInteractionMachine(input: {
     cancelBoardInteraction(interaction, input.store)
     if (interaction.type === 'panning') input.setViewport(interaction.viewport)
     setDraft(null)
+    setConnectorTerminalPreview(null)
+    setConnectorTargetElementId('')
     setSnapGuides([])
     setInteractionState('idle')
   }, [input.store, machine])
@@ -182,6 +201,7 @@ export function useWhiteboardInteractionMachine(input: {
         const startWorld = startBinding?.point || pointer.world
         enterInteraction({
           type: 'connecting',
+          connectorType: 'straight',
           startBinding,
           startWorld,
           style: { ...input.defaultStyle },
@@ -190,6 +210,7 @@ export function useWhiteboardInteractionMachine(input: {
           kind: 'connector',
           start: startWorld,
           current: startWorld,
+          connectorType: 'straight',
           style: { ...input.defaultStyle },
         })
         return true
@@ -353,6 +374,59 @@ export function useWhiteboardInteractionMachine(input: {
     return true
   }, [cancelInteraction, enterInteraction, input.commands, input.elements, input.selectedElements])
 
+  const beginConnectorTerminalPointer = useCallback((
+    connectorId: string,
+    terminal: BoardConnectorTerminal,
+  ) => {
+    const connector = input.elements.find((element): element is Extract<
+      WhiteboardElement,
+      { kind: 'connector' }
+    > => element.id === connectorId && element.kind === 'connector')
+    if (!connector || connector.locked || input.tool !== 'select') return false
+    cancelInteraction()
+    const preview = cloneBoardElement(connector) as Extract<
+      WhiteboardElement,
+      { kind: 'connector' }
+    >
+    enterInteraction({ type: 'editing-connector', connector: preview, terminal })
+    setConnectorTerminalPreview(preview)
+    return true
+  }, [cancelInteraction, enterInteraction, input.elements, input.tool])
+
+  const beginConnectionHandlePointer = useCallback((
+    elementId: string,
+    direction: WhiteboardConnectionHandleDirection,
+  ) => {
+    const element = input.elements.find((candidate) => candidate.id === elementId)
+    const targetAnchor = getWhiteboardConnectionHandleAnchor(direction)
+    if (
+      input.tool !== 'select'
+      || input.selectedElementIds.length !== 1
+      || input.selectedElementIds[0] !== elementId
+      || element?.locked
+      || !targetAnchor
+      || !isWhiteboardQuickConnectElement(element)
+    ) return false
+    const startBinding = getBoardConnectorAnchorAt(element, targetAnchor)
+    if (!startBinding) return false
+    cancelInteraction()
+    enterInteraction({
+      type: 'connecting',
+      connectorType: 'elbow',
+      startBinding,
+      startWorld: startBinding.point,
+      style: { ...input.defaultStyle },
+    })
+    setDraft({
+      kind: 'connector',
+      start: startBinding.point,
+      current: startBinding.point,
+      connectorType: 'elbow',
+      style: { ...input.defaultStyle },
+    })
+    return true
+  }, [cancelInteraction, enterInteraction, input])
+
   const movePointer = useCallback((pointer: PointerInput) => {
     const interaction = machine.getState()
     switch (interaction.type) {
@@ -387,7 +461,7 @@ export function useWhiteboardInteractionMachine(input: {
         const snapCandidates = proposedBounds
           ? input.queryElements(expandWhiteboardBounds(proposedBounds, snapSearchMargin))
           : input.elements
-        const snap = pointer.altKey
+        const snap = pointer.altKey || !input.snapEnabled
           ? { adjustment: { x: 0, y: 0 }, guides: [] }
           : getBoardTranslationSnap({
               movingElements: proposed,
@@ -418,7 +492,7 @@ export function useWhiteboardInteractionMachine(input: {
           }, pointer.world),
           Math.max(128, 512 / input.viewport.zoom),
         )
-        const resizeSnap = getBoardResizeSnap({
+        const resizeSnap = input.snapEnabled && !pointer.altKey ? getBoardResizeSnap({
           handle: interaction.handle,
           point: pointer.world,
           selectionBounds: interaction.selectionBounds,
@@ -428,7 +502,7 @@ export function useWhiteboardInteractionMachine(input: {
             && element.kind !== 'stroke'
           )),
           threshold: 6 / input.viewport.zoom,
-        })
+        }) : { point: pointer.world, guides: [] }
         interaction.session.update(resizeWhiteboardElements({
           elements: interaction.before,
           fromCenter: pointer.altKey,
@@ -466,14 +540,33 @@ export function useWhiteboardInteractionMachine(input: {
           style: interaction.style,
         })
         break
-      case 'connecting':
+      case 'connecting': {
+        const target = pointer.targetElementId === interaction.startBinding?.targetElementId
+          ? undefined
+          : input.elements.find((element) => element.id === pointer.targetElementId)
+        const binding = getBoardConnectorAnchor(target, pointer.world) || undefined
+        setConnectorTargetElementId(binding?.targetElementId || '')
         setDraft({
           kind: 'connector',
           start: interaction.startWorld,
-          current: pointer.world,
+          current: binding?.point || pointer.world,
+          connectorType: interaction.connectorType,
           style: interaction.style,
         })
         break
+      }
+      case 'editing-connector': {
+        const target = input.elements.find((element) => element.id === pointer.targetElementId)
+        const binding = getBoardConnectorAnchor(target, pointer.world) || undefined
+        const connector = {
+          ...interaction.connector,
+          [interaction.terminal]: { ...(binding?.point || pointer.world) },
+        }
+        interaction.connector = connector
+        setConnectorTerminalPreview(connector)
+        setConnectorTargetElementId(binding?.targetElementId || '')
+        break
+      }
       case 'drawing-stroke': {
         const previous = interaction.points.at(-1)
         if (!previous || Math.hypot(
@@ -498,6 +591,8 @@ export function useWhiteboardInteractionMachine(input: {
   ): PointerEndResult => {
     const interaction = machine.reset()
     setDraft(null)
+    setConnectorTerminalPreview(null)
+    setConnectorTargetElementId('')
     setSnapGuides([])
     setInteractionState('idle')
 
@@ -581,17 +676,17 @@ export function useWhiteboardInteractionMachine(input: {
           }
           input.commands.execute({ type: 'element.create', elements: [element] })
           input.replaceSelection([element.id])
-          input.setTool('select')
+          if (!input.toolLocked) input.setTool('select')
           return interaction.placement === 'note' ? { editElement: element } : {}
         }
-        input.setTool('select')
+        if (!input.toolLocked) input.setTool('select')
         break
       }
       case 'connecting': {
-        const endBinding = getBoardConnectorAnchor(
-          input.elements.find((element) => element.id === targetElementId),
-          world,
-        ) || undefined
+        const target = targetElementId === interaction.startBinding?.targetElementId
+          ? undefined
+          : input.elements.find((element) => element.id === targetElementId)
+        const endBinding = getBoardConnectorAnchor(target, world) || undefined
         const endWorld = endBinding?.point || world
         if (Math.hypot(
           endWorld.x - interaction.startWorld.x,
@@ -608,6 +703,9 @@ export function useWhiteboardInteractionMachine(input: {
             rotation: 0,
             start: interaction.startWorld,
             end: endWorld,
+            connectorType: interaction.connectorType,
+            startArrowhead: 'none',
+            endArrowhead: 'arrow',
             style: interaction.style,
           }
           input.commands.execute({
@@ -624,7 +722,19 @@ export function useWhiteboardInteractionMachine(input: {
           })
           input.replaceSelection([element.id])
         }
-        input.setTool('select')
+        if (!input.toolLocked) input.setTool('select')
+        break
+      }
+      case 'editing-connector': {
+        const target = input.elements.find((element) => element.id === targetElementId)
+        const binding = getBoardConnectorAnchor(target, world) || undefined
+        input.commands.execute({
+          type: 'connector.update-terminal',
+          connectorId: interaction.connector.id,
+          terminal: interaction.terminal,
+          point: binding?.point || world,
+          binding,
+        })
         break
       }
       case 'drawing-stroke':
@@ -666,10 +776,14 @@ export function useWhiteboardInteractionMachine(input: {
       ? currentInteraction.handle
       : null,
     beginCanvasPointer,
+    beginConnectionHandlePointer,
+    beginConnectorTerminalPointer,
     beginElementPointer,
     beginResizePointer,
     beginRotatePointer,
     cancelInteraction,
+    connectorTerminalPreview,
+    connectorTargetElementId,
     draft,
     endPointer,
     interactionState,

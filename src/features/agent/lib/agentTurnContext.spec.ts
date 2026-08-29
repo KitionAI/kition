@@ -42,6 +42,10 @@ describe('buildAgentTurnContext', () => {
       clusters: [],
       recent_operations: [],
       source_refs: [],
+      current_page: { id: 'page:main', name: 'Home' },
+      current_tool: 'select',
+      active_style: {},
+      lint_findings: [],
     }
 
     expect(buildAgentTurnContext({

@@ -33,6 +33,23 @@ export type AgentWhiteboardElement = {
   text?: string
   parent_id?: string
   source_ref_ids?: string[]
+  locked?: boolean
+  rotation?: number
+  shape_type?: string
+  shape_style?: string
+  style?: {
+    stroke_color?: 'ink' | 'gray' | 'purple' | 'green' | 'orange' | 'red' | 'yellow' | 'blue' | 'white'
+    fill_color?: 'ink' | 'gray' | 'purple' | 'green' | 'orange' | 'red' | 'yellow' | 'blue' | 'white'
+    opacity?: number
+    fill_style?: 'none' | 'solid' | 'semi' | 'pattern'
+    dash_style?: 'solid' | 'dashed' | 'dotted'
+    stroke_size?: 's' | 'm' | 'l' | 'xl'
+  }
+  connector?: {
+    type: 'straight' | 'elbow' | 'curved'
+    start_arrowhead: 'none' | 'arrow' | 'dot'
+    end_arrowhead: 'none' | 'arrow' | 'dot'
+  }
 }
 
 export type AgentWhiteboardCluster = {
@@ -68,6 +85,18 @@ export type AgentWhiteboardContext = {
   clusters: AgentWhiteboardCluster[]
   recent_operations: string[]
   source_refs: AgentWhiteboardSourceReference[]
+  current_page: { id: string; name: string }
+  current_tool: string
+  active_style: AgentWhiteboardElement['style']
+  viewport_snapshot?: {
+    mime_type: 'image/svg+xml'
+    data_url: string
+  }
+  lint_findings: Array<{
+    code: string
+    element_ids: string[]
+    severity: 'warning'
+  }>
 }
 
 export type AgentWhiteboardElementChanges = {
@@ -77,6 +106,8 @@ export type AgentWhiteboardElementChanges = {
   parent_id?: string | null
   source_ref_ids?: string[]
 }
+
+export type AgentWhiteboardStyleChanges = NonNullable<AgentWhiteboardElement['style']>
 
 export type AgentWhiteboardConnector = {
   id: string
@@ -106,6 +137,53 @@ export type AgentWhiteboardPatchOperation =
       op: 'element.reorder'
       element_id: string
       after_element_id: string | null
+    }
+  | {
+      op: 'element.move'
+      element_ids: string[]
+      delta: { x: number; y: number }
+    }
+  | {
+      op: 'element.rotate'
+      element_ids: string[]
+      degrees: number
+    }
+  | {
+      op: 'element.resize'
+      element_ids: string[]
+      scale_x: number
+      scale_y: number
+    }
+  | {
+      op: 'element.style'
+      element_ids: string[]
+      style: AgentWhiteboardStyleChanges
+    }
+  | {
+      op: 'layout.align'
+      element_ids: string[]
+      alignment: 'left' | 'center-horizontal' | 'right' | 'top' | 'center-vertical' | 'bottom'
+    }
+  | {
+      op: 'layout.distribute'
+      element_ids: string[]
+      direction: 'horizontal' | 'vertical'
+    }
+  | {
+      op: 'layout.stack'
+      element_ids: string[]
+      direction: 'horizontal' | 'vertical'
+      gap?: number
+    }
+  | {
+      op: 'element.group'
+      container_id: string
+      container_kind: 'group' | 'frame'
+      element_ids: string[]
+    }
+  | {
+      op: 'element.ungroup'
+      container_ids: string[]
     }
 
 export type AgentWhiteboardPatch = {

@@ -10,6 +10,7 @@ import type { BoardHistoryMark, BoardStore } from '../lib/boardStore'
 import {
   applyBoardRootTranslations,
   cloneBoardElementTrees,
+  getBoardElementsWithDescendants,
   getBoardFrameAtPoint,
   getBoardSelectionRootIds,
   isBoardContainerElement,
@@ -20,15 +21,26 @@ import {
   distributeBoardElements,
   type BoardAlignment,
   type BoardDistribution,
+  stackBoardElements,
+  type BoardStackDirection,
 } from '../lib/boardLayout'
-import { createWhiteboardElementId } from '../lib/whiteboardElementId'
-import { translateWhiteboardElement } from '../lib/whiteboardGeometry'
+import {
+  createWhiteboardElementId,
+  createWhiteboardPageId,
+} from '../lib/whiteboardElementId'
+import {
+  flipWhiteboardElements,
+  getWhiteboardSelectionBounds,
+  rotateWhiteboardElementsByDegrees,
+  translateWhiteboardElement,
+} from '../lib/whiteboardGeometry'
 import {
   getWhiteboardElementStyle,
   normalizeWhiteboardStyle,
 } from '../lib/whiteboardStyle'
 import type {
   WhiteboardElement,
+  WhiteboardConnectorElement,
   WhiteboardElementStyle,
   WhiteboardPoint,
   WhiteboardTool,
@@ -94,6 +106,20 @@ export function useWhiteboardElementActions(input: {
     input.tool,
   ])
 
+  const updateSelectedConnectors = useCallback((
+    patch: Partial<Pick<WhiteboardConnectorElement,
+      'connectorType' | 'startArrowhead' | 'endArrowhead'>>,
+  ) => {
+    const connectors = input.selectedElements.filter((element): element is WhiteboardConnectorElement => (
+      element.kind === 'connector' && !element.locked
+    ))
+    if (connectors.length === 0) return false
+    return Boolean(input.commands.execute({
+      type: 'element.update',
+      elements: connectors.map((element) => ({ ...element, ...patch })),
+    }))
+  }, [input.commands, input.selectedElements])
+
   const reorderSelection = useCallback((placement: BoardElementReorderPlacement) => {
     const reorderableIds = input.selectedElements
       .filter((element) => !element.locked)
@@ -123,6 +149,49 @@ export function useWhiteboardElementActions(input: {
     return Boolean(input.commands.execute({
       type: 'element.update',
       elements: applyBoardRootTranslations(input.elements, roots, distributedRoots),
+    }))
+  }, [input.commands, input.elements, input.selectedElements])
+
+  const stackSelection = useCallback((direction: BoardStackDirection) => {
+    const roots = input.selectedElements.filter((element) => !element.locked)
+    if (roots.length < 2) return false
+    const stackedRoots = stackBoardElements(roots, direction)
+    return Boolean(input.commands.execute({
+      type: 'element.update',
+      elements: applyBoardRootTranslations(input.elements, roots, stackedRoots),
+    }))
+  }, [input.commands, input.elements, input.selectedElements])
+
+  const rotateSelection = useCallback((degrees: number) => {
+    const rootIds = input.selectedElements
+      .filter((element) => !element.locked)
+      .map((element) => element.id)
+    const elements = getBoardElementsWithDescendants(input.elements, rootIds)
+    const bounds = getWhiteboardSelectionBounds(elements)
+    if (!bounds || elements.length === 0) return false
+    return Boolean(input.commands.execute({
+      type: 'element.update',
+      elements: rotateWhiteboardElementsByDegrees({
+        elements,
+        origin: {
+          x: bounds.x + bounds.width / 2,
+          y: bounds.y + bounds.height / 2,
+        },
+        degrees,
+      }),
+    }))
+  }, [input.commands, input.elements, input.selectedElements])
+
+  const flipSelection = useCallback((direction: 'horizontal' | 'vertical') => {
+    const rootIds = input.selectedElements
+      .filter((element) => !element.locked)
+      .map((element) => element.id)
+    const elements = getBoardElementsWithDescendants(input.elements, rootIds)
+    const bounds = getWhiteboardSelectionBounds(elements)
+    if (!bounds || elements.length === 0) return false
+    return Boolean(input.commands.execute({
+      type: 'element.update',
+      elements: flipWhiteboardElements({ elements, bounds, direction }),
     }))
   }, [input.commands, input.elements, input.selectedElements])
 
@@ -158,6 +227,80 @@ export function useWhiteboardElementActions(input: {
     input.replaceSelection(childIds)
     return true
   }, [input.commands, input.elements, input.replaceSelection, input.selectedElements])
+
+  const fitFramesToContent = useCallback(() => {
+    const updates = input.selectedElements.flatMap((frame): WhiteboardElement[] => {
+      if (!isBoardContainerElement(frame) || frame.shapeStyle !== 'frame' || frame.locked) return []
+      const descendants = getBoardElementsWithDescendants(input.elements, [frame.id])
+        .filter((element) => element.id !== frame.id)
+      const bounds = getWhiteboardSelectionBounds(descendants)
+      if (!bounds) return []
+      return [{
+        ...frame,
+        x: bounds.x - 32,
+        y: bounds.y - 52,
+        width: bounds.width + 64,
+        height: bounds.height + 84,
+      }]
+    })
+    if (updates.length === 0) return false
+    return Boolean(input.commands.execute({ type: 'element.update', elements: updates }))
+  }, [input.commands, input.elements, input.selectedElements])
+
+  const createPage = useCallback(() => {
+    const pageId = createWhiteboardPageId()
+    const pages = input.store.getPages()
+    const diff = input.commands.execute({
+      type: 'page.create',
+      pageId,
+      name: `Page ${pages.length + 1}`,
+    })
+    if (!diff) return false
+    input.clearSelection()
+    return true
+  }, [input.clearSelection, input.commands, input.store])
+
+  const duplicatePage = useCallback((pageId = input.store.getCurrentPageId()) => {
+    const source = input.store.getPages().find((page) => page.id === pageId)
+    if (!source) return false
+    const diff = input.commands.execute({
+      type: 'page.duplicate',
+      sourcePageId: source.id,
+      pageId: createWhiteboardPageId(),
+      name: `${source.name} copy`,
+    })
+    if (!diff) return false
+    input.clearSelection()
+    return true
+  }, [input.clearSelection, input.commands, input.store])
+
+  const activatePage = useCallback((pageId: string) => {
+    if (pageId === input.store.getCurrentPageId()) return false
+    const diff = input.commands.execute({ type: 'page.activate', pageId })
+    if (!diff) return false
+    input.clearSelection()
+    return true
+  }, [input.clearSelection, input.commands, input.store])
+
+  const renamePage = useCallback((pageId: string, name: string) => Boolean(
+    input.commands.execute({ type: 'page.rename', pageId, name }),
+  ), [input.commands])
+
+  const deletePage = useCallback((pageId = input.store.getCurrentPageId()) => {
+    const diff = input.commands.execute({ type: 'page.delete', pageId })
+    if (!diff) return false
+    input.clearSelection()
+    return true
+  }, [input.clearSelection, input.commands, input.store])
+
+  const reorderPage = useCallback((
+    pageId: string,
+    placement: 'previous' | 'next',
+  ) => Boolean(input.commands.execute({
+    type: 'page.reorder',
+    pageId,
+    placement,
+  })), [input.commands])
 
   const beginErase = useCallback((elementId?: string) => {
     if (input.tool !== 'eraser') return false
@@ -243,16 +386,27 @@ export function useWhiteboardElementActions(input: {
   ])
 
   return {
+    activatePage,
     applyStyle,
     alignSelection,
     beginErase,
     continueErase,
+    createPage,
+    deletePage,
     duplicateSelection,
+    duplicatePage,
     distributeSelection,
     endErase,
+    fitFramesToContent,
+    flipSelection,
     insertImage,
     groupSelection,
+    renamePage,
+    reorderPage,
     reorderSelection,
+    rotateSelection,
+    stackSelection,
     ungroupSelection,
+    updateSelectedConnectors,
   }
 }

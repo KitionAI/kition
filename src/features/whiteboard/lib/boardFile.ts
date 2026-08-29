@@ -9,9 +9,15 @@ import {
   createEmptyBoardDocument,
   serializeBoardDocument,
 } from './boardSerialization'
+import {
+  DEFAULT_BOARD_PAGE_ID,
+  createBoardElementRecord,
+} from './boardRecords'
+import type { WhiteboardTemplateInstance } from './whiteboardTemplates'
 
 export async function createBoardWorkspaceFile(options: {
   folder?: string
+  template?: WhiteboardTemplateInstance
   title?: string
 } = {}): Promise<WorkspaceDocument> {
   const title = normalizeTitle(options.title)
@@ -29,6 +35,17 @@ export async function createBoardWorkspaceFile(options: {
   const document = createEmptyBoardDocument(
     path.split('/').pop()?.replace(/\.kiboard$/i, '') || title,
   )
+  if (options.template) {
+    document.records = [
+      ...document.records,
+      ...options.template.elements.map((element, elementIndex) => createBoardElementRecord({
+        element,
+        index: elementIndex,
+        pageId: DEFAULT_BOARD_PAGE_ID,
+      })),
+      ...options.template.bindings,
+    ]
+  }
   const created = await writeWorkspaceDocument(path, serializeBoardDocument(document))
   return { ...created, format: 'board' }
 }

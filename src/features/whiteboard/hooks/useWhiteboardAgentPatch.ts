@@ -38,17 +38,16 @@ export function useWhiteboardAgentPatch(input: {
   const receivePatch = useCallback((value: unknown, provisional: boolean) => {
     try {
       let patch = parseAgentWhiteboardPatch(value)
-      let diff
-      try {
-        diff = translateAgentWhiteboardPatch({ patch, store: input.store })
-      } catch (error) {
-        if (!state.patch || state.status === 'error') throw error
+      if (state.patch && state.status === 'streaming') {
         patch = parseAgentWhiteboardPatch({
           ...patch,
-          operations: [...state.patch.operations, ...patch.operations],
+          operations: mergeAgentPatchOperations(
+            state.patch.operations,
+            patch.operations,
+          ),
         })
-        diff = translateAgentWhiteboardPatch({ patch, store: input.store })
       }
+      const diff = translateAgentWhiteboardPatch({ patch, store: input.store })
       setState({
         diff,
         error: '',
@@ -94,4 +93,38 @@ export function useWhiteboardAgentPatch(input: {
     reject,
     state,
   }), [accept, receivePatch, reject, state])
+}
+
+function mergeAgentPatchOperations(
+  current: AgentWhiteboardPatch['operations'],
+  incoming: AgentWhiteboardPatch['operations'],
+) {
+  const merged = [...current]
+  const serialized = new Set(current.map((operation) => JSON.stringify(operation)))
+  for (const operation of incoming) {
+    const value = JSON.stringify(operation)
+    if (serialized.has(value)) continue
+    const identity = getCreateOperationIdentity(operation)
+    if (identity) {
+      const existingIndex = merged.findIndex((candidate) => (
+        getCreateOperationIdentity(candidate) === identity
+      ))
+      if (existingIndex >= 0) {
+        merged[existingIndex] = operation
+        continue
+      }
+    }
+    merged.push(operation)
+    serialized.add(value)
+  }
+  return merged
+}
+
+function getCreateOperationIdentity(
+  operation: AgentWhiteboardPatch['operations'][number],
+) {
+  if (operation.op === 'element.create') return `${operation.op}:${operation.element.id}`
+  if (operation.op === 'connector.create') return `${operation.op}:${operation.connector.id}`
+  if (operation.op === 'element.group') return `${operation.op}:${operation.container_id}`
+  return ''
 }

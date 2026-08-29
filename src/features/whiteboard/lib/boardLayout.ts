@@ -14,6 +14,7 @@ export type BoardAlignment =
   | 'bottom'
 
 export type BoardDistribution = 'horizontal' | 'vertical'
+export type BoardStackDirection = 'horizontal' | 'vertical'
 
 export function alignBoardElements(
   elements: readonly WhiteboardElement[],
@@ -76,6 +77,30 @@ export function distributeBoardElements(
       : { x: 0, y: cursor - item.bounds.y }
     positioned.set(item.element.id, translateWhiteboardElement(item.element, delta))
     cursor += item.bounds[size] + gap
+  }
+  return elements.map((element) => positioned.get(element.id) || element)
+}
+
+export function stackBoardElements(
+  elements: readonly WhiteboardElement[],
+  direction: BoardStackDirection,
+  gap = 24,
+) {
+  if (elements.length < 2) return [...elements]
+  const axis = direction === 'horizontal' ? 'x' : 'y'
+  const size = direction === 'horizontal' ? 'width' : 'height'
+  const sorted = elements
+    .map((element) => ({ element, bounds: getWhiteboardElementBounds(element) }))
+    .sort((left, right) => left.bounds[axis] - right.bounds[axis])
+  let cursor = sorted[0].bounds[axis]
+  const positioned = new Map<string, WhiteboardElement>()
+
+  for (const item of sorted) {
+    const delta = direction === 'horizontal'
+      ? { x: cursor - item.bounds.x, y: 0 }
+      : { x: 0, y: cursor - item.bounds.y }
+    positioned.set(item.element.id, translateWhiteboardElement(item.element, delta))
+    cursor += item.bounds[size] + Math.max(0, gap)
   }
   return elements.map((element) => positioned.get(element.id) || element)
 }

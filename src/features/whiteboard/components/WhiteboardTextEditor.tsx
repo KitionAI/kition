@@ -24,7 +24,8 @@ export function WhiteboardTextEditor({
   viewport: WhiteboardViewport
 }) {
   const { t } = useTranslation('workspace')
-  const inputRef = useRef<HTMLInputElement | null>(null)
+  const inputRef = useRef<HTMLTextAreaElement | null>(null)
+  const skipBlurRef = useRef(false)
   const screenPoint = whiteboardToScreenPoint(editingText, viewport)
   const isShapeEditor = editingText.elementKind === 'rectangle' && element?.kind === 'rectangle'
   const fontSize = Math.min(
@@ -42,16 +43,18 @@ export function WhiteboardTextEditor({
   useEffect(() => {
     inputRef.current?.focus()
     inputRef.current?.select()
+    skipBlurRef.current = false
   }, [editingText.elementId])
 
   return (
-    <input
+    <textarea
       ref={inputRef}
-      className="absolute z-10 rounded-md border border-input bg-background/95 px-2 py-1 text-foreground shadow-[var(--shadow-toolbar)] outline-none ring-2 ring-ring"
+      className="absolute z-10 resize-none overflow-hidden rounded-md border border-input bg-background/95 px-2 py-1 text-foreground shadow-[var(--shadow-toolbar)] outline-none ring-2 ring-ring"
       style={{
         left: screenPoint.x,
         top: screenPoint.y,
         width,
+        minHeight: Math.max(34, fontSize * 1.55),
         fontSize,
         textAlign: isShapeEditor ? 'center' : 'left',
         transform: isShapeEditor
@@ -63,14 +66,24 @@ export function WhiteboardTextEditor({
       placeholder={t('board.textPlaceholder')}
       aria-label={t('board.textPlaceholder')}
       onChange={(event) => onChange(event.target.value)}
-      onBlur={onCommit}
+      rows={1}
+      onPointerDown={(event) => event.stopPropagation()}
+      onBlur={() => {
+        if (skipBlurRef.current) {
+          skipBlurRef.current = false
+          return
+        }
+        onCommit()
+      }}
       onKeyDown={(event) => {
         if (event.key === 'Enter' && !event.shiftKey) {
           event.preventDefault()
+          skipBlurRef.current = true
           onCommit()
         }
         if (event.key === 'Escape') {
           event.preventDefault()
+          skipBlurRef.current = true
           onCancel()
         }
       }}

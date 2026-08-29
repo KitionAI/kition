@@ -13,7 +13,13 @@ import {
 import {
   createBoardConnectorBindingRecord,
   getBoardConnectorAnchor,
+  resolveBoardConnectorAnchor,
 } from './boardBindingEngine'
+import {
+  alignBoardElements,
+  distributeBoardElements,
+  stackBoardElements,
+} from './boardLayout'
 import {
   boardElementFromRecord,
   cloneBoardRecord,
@@ -23,11 +29,24 @@ import {
   type BoardRecord,
 } from './boardRecords'
 import type { BoardRecordDiff, BoardStore } from './boardStore'
-import { getWhiteboardElementBounds } from './whiteboardGeometry'
+import {
+  getWhiteboardElementBounds,
+  getWhiteboardSelectionBounds,
+  rotateWhiteboardElementsByDegrees,
+  scaleWhiteboardElements,
+  translateWhiteboardElement,
+} from './whiteboardGeometry'
+import {
+  getWhiteboardElementStyle,
+  normalizeWhiteboardStyle,
+} from './whiteboardStyle'
+import { isWhiteboardMindMapNode } from './whiteboardMindMap'
 import type {
   WhiteboardElement,
   WhiteboardRectangleStyle,
+  WhiteboardShapeType,
 } from './whiteboardTypes'
+import { WHITEBOARD_PALETTE_SHAPE_TYPES } from './boardElementDefinitions'
 
 const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/
 const CLIENT_MAX_COORDINATE = 1_000_000
@@ -57,6 +76,14 @@ const sourceRefIdsSchema = z.array(identifierSchema).max(16).refine(
   (ids) => new Set(ids).size === ids.length,
   'Source reference ids must be unique',
 )
+const styleObjectSchema = z.object({
+  stroke_color: z.enum(['ink', 'gray', 'purple', 'green', 'orange', 'red', 'yellow', 'blue', 'white']).optional(),
+  fill_color: z.enum(['ink', 'gray', 'purple', 'green', 'orange', 'red', 'yellow', 'blue', 'white']).optional(),
+  opacity: z.number().finite().min(0.05).max(1).optional(),
+  fill_style: z.enum(['none', 'solid', 'semi', 'pattern']).optional(),
+  dash_style: z.enum(['solid', 'dashed', 'dotted']).optional(),
+  stroke_size: z.enum(['s', 'm', 'l', 'xl']).optional(),
+}).strict()
 const elementSchema = z.object({
   id: identifierSchema,
   kind: elementKindSchema,
@@ -64,6 +91,10 @@ const elementSchema = z.object({
   text: z.string().max(2000).optional(),
   parent_id: identifierSchema.optional(),
   source_ref_ids: sourceRefIdsSchema.optional(),
+  rotation: z.number().finite().min(-3600).max(3600).optional(),
+  shape_type: z.string().max(64).optional(),
+  shape_style: z.string().max(64).optional(),
+  style: styleObjectSchema.optional(),
 }).strict()
 const creatableElementSchema = elementSchema.refine(
   (element) => element.kind !== 'connector',
@@ -84,6 +115,14 @@ const connectorSchema = z.object({
   (connector) => connector.from_id !== connector.to_id,
   'Connector endpoints must be different',
 )
+const elementIdsSchema = z.array(identifierSchema).min(1).max(100).refine(
+  (ids) => new Set(ids).size === ids.length,
+  'Element ids must be unique',
+)
+const styleChangesSchema = styleObjectSchema.refine(
+  (style) => Object.keys(style).length > 0,
+  'Style changes cannot be empty',
+)
 const operationSchema = z.discriminatedUnion('op', [
   z.object({ op: z.literal('element.create'), element: creatableElementSchema }).strict(),
   z.object({ op: z.literal('connector.create'), connector: connectorSchema }).strict(),
@@ -97,6 +136,56 @@ const operationSchema = z.discriminatedUnion('op', [
     op: z.literal('element.reorder'),
     element_id: identifierSchema,
     after_element_id: identifierSchema.nullable(),
+  }).strict(),
+  z.object({
+    op: z.literal('element.move'),
+    element_ids: elementIdsSchema,
+    delta: z.object({
+      x: z.number().finite().min(-CLIENT_MAX_COORDINATE).max(CLIENT_MAX_COORDINATE),
+      y: z.number().finite().min(-CLIENT_MAX_COORDINATE).max(CLIENT_MAX_COORDINATE),
+    }).strict(),
+  }).strict(),
+  z.object({
+    op: z.literal('element.rotate'),
+    element_ids: elementIdsSchema,
+    degrees: z.number().finite().min(-3600).max(3600),
+  }).strict(),
+  z.object({
+    op: z.literal('element.resize'),
+    element_ids: elementIdsSchema,
+    scale_x: z.number().finite().min(0.05).max(20),
+    scale_y: z.number().finite().min(0.05).max(20),
+  }).strict(),
+  z.object({
+    op: z.literal('element.style'),
+    element_ids: elementIdsSchema,
+    style: styleChangesSchema,
+  }).strict(),
+  z.object({
+    op: z.literal('layout.align'),
+    element_ids: elementIdsSchema,
+    alignment: z.enum(['left', 'center-horizontal', 'right', 'top', 'center-vertical', 'bottom']),
+  }).strict(),
+  z.object({
+    op: z.literal('layout.distribute'),
+    element_ids: elementIdsSchema,
+    direction: z.enum(['horizontal', 'vertical']),
+  }).strict(),
+  z.object({
+    op: z.literal('layout.stack'),
+    element_ids: elementIdsSchema,
+    direction: z.enum(['horizontal', 'vertical']),
+    gap: z.number().finite().min(0).max(10000).optional(),
+  }).strict(),
+  z.object({
+    op: z.literal('element.group'),
+    container_id: identifierSchema,
+    container_kind: z.enum(['group', 'frame']),
+    element_ids: elementIdsSchema,
+  }).strict(),
+  z.object({
+    op: z.literal('element.ungroup'),
+    container_ids: elementIdsSchema,
   }).strict(),
 ])
 const patchSchema = z.object({
@@ -133,6 +222,13 @@ export function translateAgentWhiteboardPatch(input: {
       record.record_type === 'element' && record.page_id === pageId
     ))
   const originalById = new Map(originalRecords.map((record) => [record.id, record]))
+  const originalBindings = input.store.getRecords().filter((record): record is Extract<
+    BoardRecord,
+    { record_type: 'binding' }
+  > => (
+    record.record_type === 'binding'
+    && originalById.has(record.from_id)
+  ))
   const working = new Map(originalRecords.map((record) => [record.id, cloneBoardRecord(record) as BoardElementRecord]))
   const order = originalRecords.map((record) => record.id)
   const connectorOperations: Array<Extract<AgentWhiteboardPatch['operations'][number], {
@@ -200,6 +296,83 @@ export function translateAgentWhiteboardPatch(input: {
         order.splice(targetIndex, 0, operation.element_id)
         break
       }
+      case 'element.move': {
+        const elements = requireEditableElements(working, operation.element_ids)
+        putWorkingElements(working, elements.map((element) => (
+          translateWhiteboardElement(element, operation.delta)
+        )), pageId)
+        break
+      }
+      case 'element.rotate': {
+        const elements = requireEditableElements(working, operation.element_ids)
+        const bounds = getWhiteboardSelectionBounds(elements)
+        if (!bounds) throw new Error('AI Board rotate action has no bounds')
+        putWorkingElements(working, rotateWhiteboardElementsByDegrees({
+          elements,
+          origin: {
+            x: bounds.x + bounds.width / 2,
+            y: bounds.y + bounds.height / 2,
+          },
+          degrees: operation.degrees,
+        }), pageId)
+        break
+      }
+      case 'element.resize': {
+        const elements = requireEditableElements(working, operation.element_ids)
+        const bounds = getWhiteboardSelectionBounds(elements)
+        if (!bounds) throw new Error('AI Board resize action has no bounds')
+        putWorkingElements(working, scaleWhiteboardElements({
+          elements,
+          bounds,
+          scaleX: operation.scale_x,
+          scaleY: operation.scale_y,
+        }), pageId)
+        break
+      }
+      case 'element.style': {
+        const elements = requireEditableElements(working, operation.element_ids)
+        const patch = {
+          strokeColor: operation.style.stroke_color,
+          fillColor: operation.style.fill_color,
+          opacity: operation.style.opacity,
+          fillStyle: operation.style.fill_style,
+          dashStyle: operation.style.dash_style,
+          strokeSize: operation.style.stroke_size,
+        }
+        putWorkingElements(working, elements.map((element) => ({
+          ...element,
+          style: normalizeWhiteboardStyle({
+            ...getWhiteboardElementStyle(element),
+            ...Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined)),
+          }),
+        })), pageId)
+        break
+      }
+      case 'layout.align': {
+        const elements = requireEditableElements(working, operation.element_ids)
+        putWorkingElements(working, alignBoardElements(elements, operation.alignment), pageId)
+        break
+      }
+      case 'layout.distribute': {
+        const elements = requireEditableElements(working, operation.element_ids)
+        putWorkingElements(working, distributeBoardElements(elements, operation.direction), pageId)
+        break
+      }
+      case 'layout.stack': {
+        const elements = requireEditableElements(working, operation.element_ids)
+        putWorkingElements(working, stackBoardElements(
+          elements,
+          operation.direction,
+          operation.gap ?? 24,
+        ), pageId)
+        break
+      }
+      case 'element.group':
+        groupWorkingElements({ operation, order, pageId, working })
+        break
+      case 'element.ungroup':
+        ungroupWorkingElements({ containerIds: operation.container_ids, order, pageId, working })
+        break
     }
   }
 
@@ -225,6 +398,8 @@ export function translateAgentWhiteboardPatch(input: {
     if (!fromAnchor || !toAnchor) {
       throw new Error(`AI Board connector has invalid endpoints: ${connector.id}`)
     }
+    const mindMapBranch = isWhiteboardMindMapNode(fromElement)
+      && isWhiteboardMindMapNode(toElement)
     const element: Extract<WhiteboardElement, { kind: 'connector' }> = {
       id: connector.id,
       kind: 'connector',
@@ -232,6 +407,10 @@ export function translateAgentWhiteboardPatch(input: {
       rotation: 0,
       start: fromAnchor.point,
       end: toAnchor.point,
+      connectorRole: mindMapBranch ? 'mind-map-branch' : undefined,
+      connectorType: 'straight',
+      startArrowhead: 'none',
+      endArrowhead: mindMapBranch ? 'none' : 'arrow',
     }
     working.set(element.id, createBoardElementRecord({
       element,
@@ -261,6 +440,30 @@ export function translateAgentWhiteboardPatch(input: {
     }
   }
 
+  const validBindings = [...originalBindings, ...addedBindings].filter((binding) => {
+    const connectorRecord = working.get(binding.from_id)
+    const targetRecord = working.get(binding.to_id)
+    if (
+      connectorRecord?.kind !== 'connector'
+      || !targetRecord
+      || !binding.to_anchor
+      || (binding.terminal !== 'start' && binding.terminal !== 'end')
+    ) return false
+    const connector = boardElementFromRecord(connectorRecord)
+    const target = boardElementFromRecord(targetRecord)
+    if (connector.kind !== 'connector') return false
+    working.set(connector.id, createBoardElementRecord({
+      element: {
+        ...connector,
+        [binding.terminal]: resolveBoardConnectorAnchor(target, binding.to_anchor),
+      },
+      index: connectorRecord.index,
+      pageId,
+    }))
+    return true
+  })
+  const validBindingIds = new Set(validBindings.map((binding) => binding.id))
+
   order.forEach((id, index) => {
     const record = working.get(id)
     if (record && record.index !== index) working.set(id, { ...record, index })
@@ -280,11 +483,112 @@ export function translateAgentWhiteboardPatch(input: {
   for (const record of working.values()) {
     if (!originalById.has(record.id)) diff.added.push(cloneBoardRecord(record))
   }
-  diff.added.push(...addedBindings.map(cloneBoardRecord))
+  diff.added.push(...addedBindings
+    .filter((binding) => validBindingIds.has(binding.id))
+    .map(cloneBoardRecord))
+  diff.removed.push(...originalBindings
+    .filter((binding) => !validBindingIds.has(binding.id))
+    .map(cloneBoardRecord))
   diff.added.sort(compareBoardRecords)
   diff.removed.sort(compareBoardRecords)
   diff.updated.sort((left, right) => compareBoardRecords(left.after, right.after))
   return diff
+}
+
+function requireEditableElements(
+  records: Map<string, BoardElementRecord>,
+  ids: readonly string[],
+) {
+  return ids.map((id) => boardElementFromRecord(requireEditableElement(records, id)))
+}
+
+function putWorkingElements(
+  records: Map<string, BoardElementRecord>,
+  elements: readonly WhiteboardElement[],
+  pageId: string,
+) {
+  for (const element of elements) {
+    const current = records.get(element.id)
+    if (!current) throw new Error(`AI Board action references a missing element: ${element.id}`)
+    records.set(element.id, createBoardElementRecord({
+      element,
+      index: current.index,
+      pageId,
+    }))
+  }
+}
+
+function groupWorkingElements(input: {
+  operation: Extract<AgentWhiteboardPatch['operations'][number], { op: 'element.group' }>
+  order: string[]
+  pageId: string
+  working: Map<string, BoardElementRecord>
+}) {
+  if (input.working.has(input.operation.container_id)) {
+    throw new Error(`AI Board group reuses an existing id: ${input.operation.container_id}`)
+  }
+  const elements = requireEditableElements(input.working, input.operation.element_ids)
+  const minimumCount = input.operation.container_kind === 'group' ? 2 : 1
+  const bounds = getWhiteboardSelectionBounds(elements)
+  if (!bounds || elements.length < minimumCount) {
+    throw new Error('AI Board group action does not have enough elements')
+  }
+  const commonParentId = elements.every((element) => element.parentId === elements[0].parentId)
+    ? elements[0].parentId
+    : undefined
+  const horizontalPadding = input.operation.container_kind === 'frame' ? 32 : 8
+  const topPadding = input.operation.container_kind === 'frame' ? 52 : 8
+  const bottomPadding = input.operation.container_kind === 'frame' ? 32 : 8
+  const container: WhiteboardElement = {
+    id: input.operation.container_id,
+    kind: 'rectangle',
+    locked: false,
+    parentId: commonParentId,
+    rotation: 0,
+    shapeStyle: input.operation.container_kind,
+    shapeType: input.operation.container_kind === 'frame' ? 'frame' : 'rectangle',
+    x: bounds.x - horizontalPadding,
+    y: bounds.y - topPadding,
+    width: bounds.width + horizontalPadding * 2,
+    height: bounds.height + topPadding + bottomPadding,
+  }
+  const insertionIndex = Math.min(...elements.map((element) => input.order.indexOf(element.id)))
+  input.order.splice(Math.max(0, insertionIndex), 0, container.id)
+  input.working.set(container.id, createBoardElementRecord({
+    element: container,
+    index: Math.max(0, insertionIndex),
+    pageId: input.pageId,
+  }))
+  putWorkingElements(input.working, elements.map((element) => ({
+    ...element,
+    parentId: container.id,
+  })), input.pageId)
+}
+
+function ungroupWorkingElements(input: {
+  containerIds: readonly string[]
+  order: string[]
+  pageId: string
+  working: Map<string, BoardElementRecord>
+}) {
+  for (const containerId of input.containerIds) {
+    const record = requireEditableElement(input.working, containerId)
+    const container = boardElementFromRecord(record)
+    if (
+      container.kind !== 'rectangle'
+      || (container.shapeStyle !== 'group' && container.shapeStyle !== 'frame')
+    ) throw new Error(`AI Board cannot ungroup a non-container element: ${containerId}`)
+    const children = [...input.working.values()]
+      .map(boardElementFromRecord)
+      .filter((element) => element.parentId === containerId)
+    putWorkingElements(input.working, children.map((element) => ({
+      ...element,
+      parentId: container.parentId,
+    })), input.pageId)
+    input.working.delete(containerId)
+    const index = input.order.indexOf(containerId)
+    if (index >= 0) input.order.splice(index, 1)
+  }
 }
 
 function requireConnectorTarget(
@@ -341,9 +645,9 @@ function agentElementToWhiteboardElement(
     id: element.id,
     locked: false,
     parentId: element.parent_id,
-    rotation: existing?.rotation || 0,
+    rotation: element.rotation ?? existing?.rotation ?? 0,
     sourceRefIds: element.source_ref_ids ? [...element.source_ref_ids] : undefined,
-    style: existing?.style ? { ...existing.style } : undefined,
+    style: agentStyleToWhiteboardStyle(element.style, existing),
   }
   const bounds = { ...element.bounds }
   switch (element.kind) {
@@ -394,10 +698,48 @@ function agentElementToWhiteboardElement(
         ...metadata,
         ...bounds,
         kind: 'rectangle',
-        shapeStyle: agentKindToRectangleStyle(element.kind),
+        shapeStyle: normalizeAgentRectangleStyle(element.shape_style)
+          || agentKindToRectangleStyle(element.kind),
+        shapeType: normalizeAgentShapeType(element.shape_type),
         text: element.text,
       }
   }
+}
+
+function agentStyleToWhiteboardStyle(
+  style: AgentWhiteboardElement['style'],
+  existing?: WhiteboardElement,
+) {
+  const current = existing ? getWhiteboardElementStyle(existing) : undefined
+  if (!style && !current) return undefined
+  return normalizeWhiteboardStyle({
+    ...current,
+    strokeColor: style?.stroke_color ?? current?.strokeColor,
+    fillColor: style?.fill_color ?? current?.fillColor,
+    opacity: style?.opacity ?? current?.opacity,
+    fillStyle: style?.fill_style ?? current?.fillStyle,
+    dashStyle: style?.dash_style ?? current?.dashStyle,
+    strokeSize: style?.stroke_size ?? current?.strokeSize,
+  })
+}
+
+function normalizeAgentShapeType(value: string | undefined): WhiteboardShapeType | undefined {
+  return WHITEBOARD_PALETTE_SHAPE_TYPES.includes(value as WhiteboardShapeType)
+    ? value as WhiteboardShapeType
+    : undefined
+}
+
+function normalizeAgentRectangleStyle(value: string | undefined): WhiteboardRectangleStyle | undefined {
+  if (
+    value === 'default'
+    || value === 'sticky'
+    || value === 'mind-node'
+    || value === 'flow-node'
+    || value === 'frame'
+    || value === 'group'
+    || value === 'image-placeholder'
+  ) return value
+  return undefined
 }
 
 function internalKindToAgentKind(element: WhiteboardElement): AgentWhiteboardElementKind {

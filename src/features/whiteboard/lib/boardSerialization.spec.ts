@@ -79,6 +79,9 @@ describe('Board .kiboard serialization', () => {
         y: 30,
         width: 160,
         height: 80,
+        mindMapBranchSide: 'right',
+        mindMapCollapsed: true,
+        mindMapDirection: 'down',
         shapeStyle: 'mind-node',
         text: 'Launch plan',
         sourceRefIds: ['document:brief'],
@@ -88,6 +91,9 @@ describe('Board .kiboard serialization', () => {
     expect(document.records).toEqual(expect.arrayContaining([
       expect.objectContaining({
         id: 'mind-1',
+        mindMapBranchSide: 'right',
+        mindMapCollapsed: true,
+        mindMapDirection: 'down',
         shapeStyle: 'mind-node',
         sourceRefIds: ['document:brief'],
         text: 'Launch plan',
@@ -165,6 +171,7 @@ describe('Board .kiboard serialization', () => {
             kind: 'connector',
             start: { x: 100, y: 40 },
             end: { x: 220, y: 40 },
+            connectorRole: 'mind-map-branch',
           },
         ], 'Connected board'),
         {
@@ -181,6 +188,10 @@ describe('Board .kiboard serialization', () => {
 
     expect(document.version).toBe(1)
     expect(document.records).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'connector',
+        connectorRole: 'mind-map-branch',
+      }),
       expect.objectContaining({
         id: 'binding:connector:start',
         terminal: 'start',

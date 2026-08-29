@@ -140,3 +140,36 @@ describe('BoardCommandRegistry hierarchy commands', () => {
     ])
   })
 })
+
+describe('BoardCommandRegistry page commands', () => {
+  it('creates, renames, reorders, duplicates, deletes, and undoes pages', () => {
+    const store = new BoardStore(createBoardRecordsFromElements(ELEMENTS.slice(0, 2), 'Main'))
+    const commands = new BoardCommandRegistry(store)
+
+    commands.execute({ type: 'page.create', pageId: 'page:two', name: 'Second' })
+    expect(store.getCurrentPageId()).toBe('page:two')
+    expect(store.getPages()).toEqual([
+      expect.objectContaining({ id: 'page:main', index: 0 }),
+      expect.objectContaining({ id: 'page:two', index: 1 }),
+    ])
+
+    commands.execute({ type: 'page.rename', pageId: 'page:two', name: 'Ideas' })
+    commands.execute({ type: 'page.reorder', pageId: 'page:two', placement: 'previous' })
+    expect(store.getPages()[0]).toMatchObject({ id: 'page:two', name: 'Ideas' })
+
+    commands.execute({
+      type: 'page.duplicate',
+      sourcePageId: 'page:main',
+      pageId: 'page:copy',
+      name: 'Main copy',
+    })
+    expect(store.getCurrentPageElements()).toHaveLength(2)
+    expect(store.getCurrentPageElements().map((element) => element.id))
+      .not.toEqual(['one', 'two'])
+
+    commands.execute({ type: 'page.delete', pageId: 'page:copy' })
+    expect(store.getPages()).toHaveLength(2)
+    store.undo()
+    expect(store.getPages()).toHaveLength(3)
+  })
+})

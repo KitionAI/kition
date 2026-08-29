@@ -45,10 +45,18 @@ const ELEMENTS: WhiteboardElement[] = [
 ]
 
 describe('boardHierarchy', () => {
-  it('resolves child selection to the outer container and expands transforms', () => {
-    expect(resolveBoardSelectableElementId(ELEMENTS, 'child')).toBe('frame')
+  it('keeps frame children directly selectable while preserving group selection', () => {
+    expect(resolveBoardSelectableElementId(ELEMENTS, 'child')).toBe('group')
+    expect(resolveBoardSelectableElementId(ELEMENTS, 'group')).toBe('group')
     expect(getBoardElementsWithDescendants(ELEMENTS, ['group']).map((element) => element.id))
       .toEqual(['group', 'child'])
+  })
+
+  it('selects a direct frame child instead of the containing frame', () => {
+    expect(resolveBoardSelectableElementId([
+      ELEMENTS[0],
+      { ...ELEMENTS[2], parentId: 'frame' },
+    ], 'child')).toBe('child')
   })
 
   it('clones a tree with remapped internal parents and stable root IDs', () => {

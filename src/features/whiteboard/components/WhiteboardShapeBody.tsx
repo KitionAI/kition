@@ -51,8 +51,35 @@ export function WhiteboardShapeBody({
   return (
     <>
       <WhiteboardShapeGeometry element={element} shapeProps={shapeProps} />
+      {element.shapeStyle === 'mind-node' && element.mindMapDirection ? (
+        <MindMapRootMarker element={element} />
+      ) : null}
       <WhiteboardShapeLabel element={element} />
     </>
+  )
+}
+
+function MindMapRootMarker({ element }: { element: WhiteboardRectangleElement }) {
+  const x = element.x + 17
+  const y = element.y + element.height / 2
+  const color = resolveWhiteboardColor(
+    getWhiteboardElementStyle(element).strokeColor,
+    'stroke',
+  )
+  return (
+    <g pointerEvents="none" aria-hidden="true">
+      <path
+        d={`M ${x - 4} ${y} H ${x + 1} M ${x + 1} ${y - 5} V ${y + 5} M ${x + 1} ${y - 5} H ${x + 5} M ${x + 1} ${y + 5} H ${x + 5}`}
+        fill="none"
+        stroke={color}
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        vectorEffect="non-scaling-stroke"
+      />
+      <circle cx={x - 5} cy={y} r="2" fill={color} />
+      <circle cx={x + 6} cy={y - 5} r="2" fill={color} />
+      <circle cx={x + 6} cy={y + 5} r="2" fill={color} />
+    </g>
   )
 }
 
@@ -256,10 +283,20 @@ function splitWhiteboardLabel(text: string, width: number) {
   const normalized = text.trim()
   if (!normalized) return []
   const maxCharacters = Math.max(6, Math.floor((width - 24) / 8))
-  const words = normalized.split(/\s+/)
+  const explicitLines = normalized.split(/\r?\n/)
+  const words = explicitLines.flatMap((line, index) => [
+    ...line.trim().split(/\s+/).filter(Boolean),
+    ...(index < explicitLines.length - 1 ? ['\n'] : []),
+  ])
   const lines: string[] = []
   let current = ''
   for (const word of words) {
+    if (word === '\n') {
+      if (current) lines.push(current)
+      current = ''
+      if (lines.length === 3) break
+      continue
+    }
     if (!current) current = word
     else if (`${current} ${word}`.length <= maxCharacters) current = `${current} ${word}`
     else {

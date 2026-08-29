@@ -64,6 +64,14 @@ export function useWhiteboardCamera(elements: readonly WhiteboardElement[]) {
     })
   }, [commitViewport])
 
+  const panBy = useCallback((delta: WhiteboardPoint) => {
+    setViewport((current) => ({
+      ...current,
+      x: current.x + delta.x / current.zoom,
+      y: current.y + delta.y / current.zoom,
+    }))
+  }, [setViewport])
+
   const fitToElements = useCallback((
     targetElements: readonly WhiteboardElement[],
     size: WhiteboardPoint,
@@ -164,6 +172,7 @@ export function useWhiteboardCamera(elements: readonly WhiteboardElement[]) {
     centerViewportAt,
     fitToContent,
     fitToElements,
+    panBy,
     replaceViewport,
     recordViewportHistory,
     setViewport,

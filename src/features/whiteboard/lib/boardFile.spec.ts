@@ -5,6 +5,7 @@ import {
   writeWorkspaceDocument,
 } from '@/services/desktop'
 import { createBoardWorkspaceFile } from './boardFile'
+import { instantiateWhiteboardTemplate } from './whiteboardTemplates'
 
 vi.mock('@/services/desktop', () => ({
   listWorkspaceDocuments: vi.fn(),
@@ -47,5 +48,32 @@ describe('createBoardWorkspaceFile', () => {
     })
 
     expect((await createBoardWorkspaceFile()).path).toBe('Untitled board 2.kiboard')
+  })
+
+  it('writes the selected template into the Board before opening it', async () => {
+    const template = instantiateWhiteboardTemplate(
+      'flowchart',
+      { x: 600, y: 380 },
+      (key) => key,
+    )
+
+    const created = await createBoardWorkspaceFile({
+      folder: 'Planning',
+      template,
+      title: 'Flowchart',
+    })
+
+    expect(created.path).toBe('Planning/Flowchart.kiboard')
+    const content = vi.mocked(writeWorkspaceDocument).mock.calls.at(-1)?.[1]
+    const document = JSON.parse(String(content))
+    expect(document.title).toBe('Flowchart')
+    expect(document.records).toEqual(expect.arrayContaining([
+      expect.objectContaining({ record_type: 'element', kind: 'rectangle' }),
+      expect.objectContaining({ record_type: 'element', kind: 'connector' }),
+      expect.objectContaining({ record_type: 'binding', binding_type: 'connector' }),
+    ]))
+    expect(document.records.filter((record: { record_type: string }) => (
+      record.record_type === 'element'
+    ))).toHaveLength(template.elements.length)
   })
 })

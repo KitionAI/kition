@@ -90,7 +90,7 @@ export function resolveBoardSelectableElementId(
   while (current.parentId && !visited.has(current.parentId)) {
     visited.add(current.parentId)
     const parent = byId.get(current.parentId)
-    if (!isBoardContainerElement(parent)) break
+    if (!isBoardGroupElement(parent)) break
     selectableId = parent.id
     current = parent
   }

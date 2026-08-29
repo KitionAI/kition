@@ -131,6 +131,8 @@ describe('AI Board patches', () => {
         record_type: 'element',
         id: 'root-branch',
         kind: 'connector',
+        connectorRole: 'mind-map-branch',
+        endArrowhead: 'none',
         start: expect.any(Object),
         end: expect.any(Object),
       }),
@@ -151,5 +153,56 @@ describe('AI Board patches', () => {
     new BoardCommandRegistry(store).applyAgentDiff(patch.summary, diff)
     expect(store.getCurrentPageElements().find((element) => element.id === 'root-branch'))
       .toMatchObject({ kind: 'connector' })
+  })
+
+  it('sanitizes and previews transform, style, layout, and grouping actions', () => {
+    const store = new BoardStore(createBoardRecordsFromElements([
+      { id: 'one', kind: 'rectangle', x: 0, y: 0, width: 100, height: 60 },
+      { id: 'two', kind: 'rectangle', x: 180, y: 80, width: 100, height: 60 },
+      { id: 'three', kind: 'rectangle', x: 360, y: 160, width: 100, height: 60 },
+    ]))
+    const patch = parseAgentWhiteboardPatch({
+      type: 'whiteboard.patch',
+      schema_version: 1,
+      summary: 'Arrange a framed row',
+      operations: [
+        { op: 'element.move', element_ids: ['one'], delta: { x: 20, y: 30 } },
+        { op: 'element.rotate', element_ids: ['two'], degrees: 90 },
+        { op: 'element.resize', element_ids: ['three'], scale_x: 1.5, scale_y: 1.25 },
+        {
+          op: 'element.style',
+          element_ids: ['one', 'two', 'three'],
+          style: { fill_color: 'purple', dash_style: 'dashed' },
+        },
+        {
+          op: 'layout.stack',
+          element_ids: ['one', 'two', 'three'],
+          direction: 'horizontal',
+          gap: 24,
+        },
+        {
+          op: 'layout.align',
+          element_ids: ['one', 'two', 'three'],
+          alignment: 'center-vertical',
+        },
+        {
+          op: 'element.group',
+          container_id: 'frame',
+          container_kind: 'frame',
+          element_ids: ['one', 'two', 'three'],
+        },
+      ],
+    })
+
+    const diff = translateAgentWhiteboardPatch({ patch, store })
+    const preview = buildWhiteboardAgentPatchPreview(diff)
+    expect(preview.added).toEqual([
+      expect.objectContaining({ id: 'frame', shapeStyle: 'frame' }),
+    ])
+    expect(preview.updated).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'one', parentId: 'frame', style: expect.objectContaining({ fillColor: 'purple' }) }),
+      expect.objectContaining({ id: 'two', parentId: 'frame', rotation: 90 }),
+      expect.objectContaining({ id: 'three', parentId: 'frame', width: 150 }),
+    ]))
   })
 })

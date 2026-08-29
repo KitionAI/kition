@@ -1,5 +1,6 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import type {
+  MouseEvent as ReactMouseEvent,
   PointerEvent as ReactPointerEvent,
   WheelEvent as ReactWheelEvent,
 } from 'react'
@@ -7,16 +8,21 @@ import { useTranslation } from 'react-i18next'
 
 import type { WhiteboardEditorController } from '../hooks/useWhiteboardEditor'
 import {
+  getWhiteboardConnectorPath,
   getWhiteboardSelectionBounds,
   normalizeWhiteboardBounds,
   screenToWhiteboardPoint,
   whiteboardPointsToPath,
 } from '../lib/whiteboardGeometry'
 import type {
-  WhiteboardElement,
   WhiteboardPoint,
   WhiteboardResizeHandle,
 } from '../lib/whiteboardTypes'
+import type { WhiteboardConnectionHandleDirection } from '../lib/whiteboardConnectionHandles'
+import {
+  getWhiteboardMindMapGraph,
+  isWhiteboardMindMapNode,
+} from '../lib/whiteboardMindMap'
 import {
   getWhiteboardDashArray,
   getWhiteboardElementStyle,
@@ -25,37 +31,30 @@ import {
 } from '../lib/whiteboardStyle'
 import { WhiteboardAgentPreviewLayer } from './WhiteboardAgentPreview'
 import { WhiteboardElementRenderer } from './WhiteboardElementRenderer'
+import { WhiteboardMindMapQuickControls } from './WhiteboardMindMapQuickControls'
+import {
+  WHITEBOARD_RESIZE_HANDLES,
+  WhiteboardSelectionOverlay,
+} from './WhiteboardSelectionOverlay'
 import { WhiteboardShapeBody } from './WhiteboardShapeBody'
 import { WhiteboardTextEditor } from './WhiteboardTextEditor'
 import type { WhiteboardAgentPreviewState } from '../hooks/useWhiteboardAgentPatch'
 import { cn } from '@/lib/utils'
-
-const RESIZE_HANDLES: Array<{
-  handle: WhiteboardResizeHandle
-  x: 0 | 0.5 | 1
-  y: 0 | 0.5 | 1
-  cursor: string
-}> = [
-  { handle: 'north-west', x: 0, y: 0, cursor: 'nwse-resize' },
-  { handle: 'north', x: 0.5, y: 0, cursor: 'ns-resize' },
-  { handle: 'north-east', x: 1, y: 0, cursor: 'nesw-resize' },
-  { handle: 'east', x: 1, y: 0.5, cursor: 'ew-resize' },
-  { handle: 'south-east', x: 1, y: 1, cursor: 'nwse-resize' },
-  { handle: 'south', x: 0.5, y: 1, cursor: 'ns-resize' },
-  { handle: 'south-west', x: 0, y: 1, cursor: 'nesw-resize' },
-  { handle: 'west', x: 0, y: 0.5, cursor: 'ew-resize' },
-]
+import { ContextActionMenu } from '@/components/ContextActionMenu'
 
 const SELECTION_LONG_PRESS_MS = 220
+const SELECTION_DRAG_DISTANCE = 4
 
 type PendingSelectionPress = {
   activated: boolean
+  altKey: boolean
   duplicate: boolean
   elementId: string
   latestScreen: WhiteboardPoint
   latestWorld: WhiteboardPoint
   pointerId: number
   shiftKey: boolean
+  startScreen: WhiteboardPoint
   startWorld: WhiteboardPoint
   timer?: ReturnType<typeof setTimeout>
 }
@@ -76,10 +75,13 @@ export function WhiteboardCanvas({
   const { t } = useTranslation('workspace')
   const svgRef = useRef<SVGSVGElement | null>(null)
   const selectionPressRef = useRef<PendingSelectionPress | null>(null)
+  const hoverClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const eraserActiveRef = useRef(false)
   const [hoveredElementId, setHoveredElementId] = useState('')
+  const [contextMenu, setContextMenu] = useState<WhiteboardPoint | null>(null)
   const gridId = useId().replace(/:/g, '')
   const arrowId = useId().replace(/:/g, '')
+  const dotId = useId().replace(/:/g, '')
   const fillPatternId = useId().replace(/:/g, '')
 
   useEffect(() => {
@@ -98,7 +100,23 @@ export function WhiteboardCanvas({
   useEffect(() => () => {
     const pending = selectionPressRef.current
     if (pending) clearTimeout(pending.timer)
+    if (hoverClearTimerRef.current) clearTimeout(hoverClearTimerRef.current)
   }, [])
+
+  function updateElementHover(elementId: string, hovered: boolean) {
+    if (hoverClearTimerRef.current) {
+      clearTimeout(hoverClearTimerRef.current)
+      hoverClearTimerRef.current = null
+    }
+    if (hovered) {
+      setHoveredElementId(elementId)
+      return
+    }
+    hoverClearTimerRef.current = setTimeout(() => {
+      setHoveredElementId((current) => current === elementId ? '' : current)
+      hoverClearTimerRef.current = null
+    }, 90)
+  }
 
   function eventPoints(event: { clientX: number; clientY: number }) {
     const rect = svgRef.current?.getBoundingClientRect()
@@ -116,9 +134,24 @@ export function WhiteboardCanvas({
     svgRef.current?.setPointerCapture(pointerId)
   }
 
+  function pointerTargetElementId(event: { clientX: number; clientY: number }) {
+    return document.elementFromPoint(event.clientX, event.clientY)
+      ?.closest<SVGElement>('[data-element-id]')
+      ?.dataset.elementId
+  }
+
   function handlePointerDown(event: ReactPointerEvent<SVGSVGElement>) {
     if (event.button !== 0) return
+    setContextMenu(null)
     clearSelectionPress()
+    if (controller.tool === 'text') {
+      event.preventDefault()
+      controller.beginCanvasPointer({
+        ...eventPoints(event),
+        additive: event.shiftKey || event.metaKey || event.ctrlKey,
+      })
+      return
+    }
     event.currentTarget.setPointerCapture(event.pointerId)
     if (controller.tool === 'eraser') {
       eraserActiveRef.current = controller.beginErase()
@@ -128,6 +161,44 @@ export function WhiteboardCanvas({
       ...eventPoints(event),
       additive: event.shiftKey || event.metaKey || event.ctrlKey,
     })
+  }
+
+  function handleContextMenu(event: ReactMouseEvent<SVGSVGElement>) {
+    event.preventDefault()
+    const target = event.target as Element
+    const elementId = target
+      .closest<SVGElement>('[data-element-id]')
+      ?.dataset.elementId
+    if (elementId && !controller.selectedElementIds.includes(elementId)) {
+      controller.selectElement(elementId)
+    } else if (!elementId && !target.closest('[data-testid="whiteboard-selection"]')) {
+      controller.clearSelection()
+    }
+    setContextMenu({ x: event.clientX, y: event.clientY })
+  }
+
+  function handleDoubleClick(event: ReactMouseEvent<SVGSVGElement>) {
+    if (controller.tool !== 'select') return
+    const target = event.target as Element
+    if (
+      target.closest('[data-element-id]')
+      || target.closest('[data-testid="whiteboard-selection"]')
+    ) return
+    event.preventDefault()
+    const { world } = eventPoints(event)
+    const selectedBounds = getWhiteboardSelectionBounds(controller.selectedElements)
+    if (
+      controller.selectedElements.length === 1
+      && selectedBounds
+      && world.x >= selectedBounds.x
+      && world.x <= selectedBounds.x + selectedBounds.width
+      && world.y >= selectedBounds.y
+      && world.y <= selectedBounds.y + selectedBounds.height
+    ) {
+      controller.beginTextEdit(controller.selectedElements[0])
+      return
+    }
+    controller.beginCanvasTextEdit(world)
   }
 
   function handlePointerMove(event: ReactPointerEvent<SVGSVGElement>) {
@@ -143,13 +214,24 @@ export function WhiteboardCanvas({
     if (pending && !pending.activated) {
       pending.latestScreen = points.screen
       pending.latestWorld = points.world
+      pending.altKey = event.altKey
       pending.shiftKey = event.shiftKey
+      if (Math.hypot(
+        points.screen.x - pending.startScreen.x,
+        points.screen.y - pending.startScreen.y,
+      ) >= SELECTION_DRAG_DISTANCE) {
+        activateSelectionPress(pending)
+      }
       return
     }
     controller.movePointer({
       ...points,
       altKey: event.altKey,
       shiftKey: event.shiftKey,
+      targetElementId: controller.interactionState === 'connecting'
+        || controller.interactionState === 'editing-connector'
+        ? pointerTargetElementId(event)
+        : undefined,
     })
   }
 
@@ -157,9 +239,9 @@ export function WhiteboardCanvas({
     const pending = selectionPressRef.current
     const { world } = eventPoints(event)
     const targetElementId = controller.tool === 'connector'
-      ? document.elementFromPoint(event.clientX, event.clientY)
-          ?.closest<SVGElement>('[data-element-id]')
-          ?.dataset.elementId
+      || controller.interactionState === 'connecting'
+      || controller.interactionState === 'editing-connector'
+      ? pointerTargetElementId(event)
       : undefined
     clearSelectionPress()
     if (eraserActiveRef.current) {
@@ -207,9 +289,10 @@ export function WhiteboardCanvas({
     }
     if (controller.tool !== 'select') return
     event.stopPropagation()
-    controller.selectElement(elementId, {
-      additive: event.shiftKey || event.metaKey || event.ctrlKey,
-    })
+    const additive = event.shiftKey || event.metaKey || event.ctrlKey
+    const selected = controller.selectElement(elementId, { additive })
+    if (!selected && additive) return
+    beginSelectionPress(event, elementId)
   }
 
   function handleSelectionPointerDown(event: ReactPointerEvent<SVGRectElement>) {
@@ -217,36 +300,54 @@ export function WhiteboardCanvas({
     event.stopPropagation()
     const elementId = controller.selectedElementIds[0]
     if (!elementId) return
+    beginSelectionPress(event, elementId)
+  }
+
+  function beginSelectionPress(
+    event: ReactPointerEvent<SVGElement>,
+    elementId: string,
+  ) {
+    clearSelectionPress()
     const points = eventPoints(event)
     const pending: PendingSelectionPress = {
       activated: false,
+      altKey: event.altKey,
       duplicate: event.altKey,
       elementId,
       latestScreen: points.screen,
       latestWorld: points.world,
       pointerId: event.pointerId,
       shiftKey: event.shiftKey,
+      startScreen: points.screen,
       startWorld: points.world,
     }
-    pending.timer = setTimeout(() => {
-      if (selectionPressRef.current !== pending) return
-      pending.activated = controller.beginElementPointer(
-        pending.elementId,
-        pending.startWorld,
-        { duplicate: pending.duplicate },
-      )
-      if (!pending.activated) {
-        clearSelectionPress()
-        return
-      }
-      capturePointer(pending.pointerId)
-      controller.movePointer({
-        world: pending.latestWorld,
-        screen: pending.latestScreen,
-        shiftKey: pending.shiftKey,
-      })
-    }, SELECTION_LONG_PRESS_MS)
     selectionPressRef.current = pending
+    capturePointer(pending.pointerId)
+    pending.timer = setTimeout(() => activateSelectionPress(pending), SELECTION_LONG_PRESS_MS)
+  }
+
+  function activateSelectionPress(pending: PendingSelectionPress) {
+    if (selectionPressRef.current !== pending || pending.activated) return false
+    if (pending.timer) clearTimeout(pending.timer)
+    pending.timer = undefined
+    pending.activated = controller.beginElementPointer(
+      pending.elementId,
+      pending.startWorld,
+      {
+        duplicate: pending.duplicate,
+      },
+    )
+    if (!pending.activated) {
+      clearSelectionPress()
+      return false
+    }
+    controller.movePointer({
+      world: pending.latestWorld,
+      screen: pending.latestScreen,
+      altKey: pending.altKey,
+      shiftKey: pending.shiftKey,
+    })
+    return true
   }
 
   function clearSelectionPress() {
@@ -270,10 +371,38 @@ export function WhiteboardCanvas({
     if (controller.beginRotatePointer(world)) capturePointer(event.pointerId)
   }
 
+  function handleConnectorTerminalPointerDown(
+    event: ReactPointerEvent<SVGCircleElement>,
+    connectorId: string,
+    terminal: 'start' | 'end',
+  ) {
+    event.stopPropagation()
+    if (controller.beginConnectorTerminalPointer(connectorId, terminal)) {
+      capturePointer(event.pointerId)
+    }
+  }
+
+  function handleConnectionHandlePointerDown(
+    event: ReactPointerEvent<SVGCircleElement>,
+    elementId: string,
+    direction: WhiteboardConnectionHandleDirection,
+  ) {
+    event.preventDefault()
+    event.stopPropagation()
+    clearSelectionPress()
+    if (controller.beginConnectionHandlePointer(elementId, direction)) {
+      capturePointer(event.pointerId)
+    }
+  }
+
   function handleWheel(event: ReactWheelEvent<SVGSVGElement>) {
     event.preventDefault()
-    const { screen } = eventPoints(event)
-    controller.zoomBy(Math.exp(-event.deltaY * 0.0015), screen)
+    if (event.ctrlKey || event.metaKey) {
+      const { screen } = eventPoints(event)
+      controller.zoomBy(Math.exp(-event.deltaY * 0.0015), screen)
+      return
+    }
+    controller.panBy({ x: event.deltaX, y: event.deltaY })
   }
 
   const transform = `translate(${-controller.viewport.x * controller.viewport.zoom} ${-controller.viewport.y * controller.viewport.zoom}) scale(${controller.viewport.zoom})`
@@ -281,10 +410,35 @@ export function WhiteboardCanvas({
     ? controller.elements.find((element) => element.id === controller.editingText?.elementId)
     : null
   const visibleElements = controller.getViewportElements(canvasSize)
+  const mindMapBindings = useMemo(() => controller.records.filter((record) => (
+    record.record_type === 'binding'
+  )), [controller.records])
+  const hoveredElement = controller.elements.find((element) => element.id === hoveredElementId)
+  const hoveredMindMapNode = isWhiteboardMindMapNode(hoveredElement)
+    ? hoveredElement
+    : null
+  const quickControlNode = hoveredMindMapNode || controller.selectedMindMapNode
+  const quickControlGraph = useMemo(() => quickControlNode
+    ? getWhiteboardMindMapGraph({
+        bindings: mindMapBindings,
+        elements: controller.elements,
+        nodeId: quickControlNode.id,
+      })
+    : null, [controller.elements, mindMapBindings, quickControlNode])
+  const showMindMapQuickControls = Boolean(
+    quickControlNode
+      && quickControlGraph
+      && controller.tool === 'select'
+      && controller.interactionState === 'idle'
+      && !controller.editingText
+      && !quickControlNode.locked,
+  )
   const interactionCursor = controller.interactionState === 'rotating'
     ? 'grabbing'
     : controller.interactionState === 'resizing' && controller.activeResizeHandle
-      ? RESIZE_HANDLES.find((item) => item.handle === controller.activeResizeHandle)?.cursor
+      ? WHITEBOARD_RESIZE_HANDLES.find((item) => (
+          item.handle === controller.activeResizeHandle
+        ))?.cursor
       : controller.interactionState === 'translating'
         ? 'move'
         : undefined
@@ -310,6 +464,8 @@ export function WhiteboardCanvas({
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
+        onContextMenu={handleContextMenu}
+        onDoubleClick={handleDoubleClick}
         onWheel={handleWheel}
       >
         <title>{t('board.canvasTitle', { title })}</title>
@@ -334,6 +490,17 @@ export function WhiteboardCanvas({
           >
             <path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke" />
           </marker>
+          <marker
+            id={dotId}
+            viewBox="0 0 10 10"
+            refX="5"
+            refY="5"
+            markerWidth="6"
+            markerHeight="6"
+            orient="auto-start-reverse"
+          >
+            <circle cx="5" cy="5" r="4" fill="context-stroke" />
+          </marker>
           <pattern id={fillPatternId} width="8" height="8" patternUnits="userSpaceOnUse">
             <rect width="8" height="8" fill="hsl(var(--background))" />
             <path
@@ -344,29 +511,37 @@ export function WhiteboardCanvas({
           </pattern>
         </defs>
         <g transform={transform}>
-          <rect
-            x="-50000"
-            y="-50000"
-            width="100000"
-            height="100000"
-            fill={`url(#${gridId})`}
-          />
+          {controller.gridVisible ? (
+            <rect
+              x="-50000"
+              y="-50000"
+              width="100000"
+              height="100000"
+              fill={`url(#${gridId})`}
+              pointerEvents="none"
+              data-testid="whiteboard-grid"
+            />
+          ) : null}
           {visibleElements.map((element) => (
             <WhiteboardElementRenderer
               key={element.id}
               element={element}
               arrowId={arrowId}
+              dotId={dotId}
               patternId={fillPatternId}
               hovered={hoveredElementId === element.id}
+              connectionTarget={controller.connectorTargetElementId === element.id}
               selected={controller.selectedElementIds.includes(element.id)}
               onHoverChange={(hovered) => {
-                setHoveredElementId(hovered ? element.id : '')
+                updateElementHover(element.id, hovered)
                 if (hovered && eraserActiveRef.current) {
                   controller.continueErase(element.id)
                 }
               }}
               onPointerDown={handleElementPointerDown}
               onDoubleClick={() => controller.beginTextEdit(element)}
+              interactive={!controller.mindMapManagedConnectorIds.has(element.id)}
+              selectable={controller.tool === 'select' && !element.locked}
             />
           ))}
           {controller.draft ? (
@@ -379,23 +554,53 @@ export function WhiteboardCanvas({
           {controller.snapGuides.length > 0 ? (
             <WhiteboardSnapGuides guides={controller.snapGuides} />
           ) : null}
+          {controller.connectorTerminalPreview ? (
+            <path
+              d={getWhiteboardConnectorPath(controller.connectorTerminalPreview)}
+              fill="none"
+              stroke="hsl(var(--brand))"
+              strokeWidth="2"
+              strokeDasharray="5 4"
+              markerEnd={`url(#${arrowId})`}
+              vectorEffect="non-scaling-stroke"
+              pointerEvents="none"
+              data-testid="whiteboard-connector-terminal-preview"
+            />
+          ) : null}
           {agentPreview ? (
             <WhiteboardAgentPreviewLayer preview={agentPreview} />
           ) : null}
           {controller.tool === 'select' && controller.selectedElements.length > 0 ? (
-            <WhiteboardSelection
+            <WhiteboardSelectionOverlay
               allLocked={controller.allSelectedLocked}
               elements={controller.selectedElements}
               moving={controller.interactionState === 'translating'}
+              onConnectionHandlePointerDown={handleConnectionHandlePointerDown}
               onDoubleClick={() => {
                 if (controller.selectedElements.length === 1) {
                   controller.beginTextEdit(controller.selectedElements[0])
                 }
               }}
               onMovePointerDown={handleSelectionPointerDown}
+              onConnectorTerminalPointerDown={handleConnectorTerminalPointerDown}
               onResizePointerDown={handleResizePointerDown}
               onRotatePointerDown={handleRotatePointerDown}
+              showConnectionHandles={controller.interactionState === 'idle'}
               zoom={controller.viewport.zoom}
+            />
+          ) : null}
+          {showMindMapQuickControls && quickControlNode && quickControlGraph ? (
+            <WhiteboardMindMapQuickControls
+              graph={quickControlGraph}
+              node={quickControlNode}
+              zoom={controller.viewport.zoom}
+              onAddChild={(side) => {
+                controller.addMindMapChildAt(quickControlNode.id, '', side)
+              }}
+              onHoverChange={(hovered) => updateElementHover(quickControlNode.id, hovered)}
+              onToggleCollapsed={() => {
+                controller.toggleMindMapCollapsed(quickControlNode.id)
+              }}
             />
           ) : null}
         </g>
@@ -408,6 +613,65 @@ export function WhiteboardCanvas({
           onChange={controller.updateEditingText}
           onCommit={controller.commitEditingText}
           viewport={controller.viewport}
+        />
+      ) : null}
+      {contextMenu ? (
+        <ContextActionMenu
+          label={t('board.contextMenu.label')}
+          position={contextMenu}
+          onClose={() => setContextMenu(null)}
+          testId="whiteboard-context-menu"
+          items={[
+            {
+              id: 'copy',
+              label: t('board.topActions.copy'),
+              disabled: !controller.hasSelection,
+              onSelect: () => controller.copySelection(),
+            },
+            {
+              id: 'cut',
+              label: t('board.topActions.cut'),
+              disabled: !controller.hasUnlockedSelection,
+              onSelect: () => controller.cutSelection(),
+            },
+            {
+              id: 'paste',
+              label: t('board.topActions.paste'),
+              onSelect: () => void controller.pasteFromClipboard(),
+            },
+            {
+              id: 'duplicate',
+              label: t('board.topActions.duplicate'),
+              disabled: !controller.hasUnlockedSelection,
+              onSelect: () => controller.duplicateSelection(),
+              separatorBefore: true,
+            },
+            {
+              id: 'lock',
+              label: t(controller.allSelectedLocked ? 'board.toolbar.unlock' : 'board.toolbar.lock'),
+              disabled: !controller.hasSelection,
+              onSelect: controller.toggleSelectionLock,
+            },
+            {
+              id: 'front',
+              label: t('board.topActions.bringToFront'),
+              disabled: !controller.hasUnlockedSelection,
+              onSelect: () => controller.reorderSelection('front'),
+            },
+            {
+              id: 'back',
+              label: t('board.topActions.sendToBack'),
+              disabled: !controller.hasUnlockedSelection,
+              onSelect: () => controller.reorderSelection('back'),
+            },
+            {
+              id: 'delete',
+              label: t('board.toolbar.delete'),
+              disabled: !controller.hasUnlockedSelection,
+              onSelect: controller.deleteSelection,
+              separatorBefore: true,
+            },
+          ]}
         />
       ) : null}
     </div>
@@ -490,16 +754,15 @@ function WhiteboardSvgDraft({
       kind: 'connector' as const,
       start: draft.start,
       end: draft.current,
+      connectorType: draft.connectorType,
       style: draft.style,
     }
     const style = getWhiteboardElementStyle(element)
     const strokeWidth = getWhiteboardStrokeWidth(style.strokeSize)
     return (
-      <line
-        x1={draft.start.x}
-        y1={draft.start.y}
-        x2={draft.current.x}
-        y2={draft.current.y}
+      <path
+        d={getWhiteboardConnectorPath(element)}
+        fill="none"
         opacity={style.opacity}
         stroke={resolveWhiteboardColor(style.strokeColor, 'stroke')}
         strokeWidth={strokeWidth}
@@ -531,116 +794,5 @@ function WhiteboardSvgDraft({
       vectorEffect="non-scaling-stroke"
       pointerEvents="none"
     />
-  )
-}
-
-function WhiteboardSelection({
-  allLocked,
-  elements,
-  moving,
-  onDoubleClick,
-  onMovePointerDown,
-  onResizePointerDown,
-  onRotatePointerDown,
-  zoom,
-}: {
-  allLocked: boolean
-  elements: readonly WhiteboardElement[]
-  moving: boolean
-  onDoubleClick: () => void
-  onMovePointerDown: (event: ReactPointerEvent<SVGRectElement>) => void
-  onResizePointerDown: (
-    event: ReactPointerEvent<SVGCircleElement>,
-    handle: WhiteboardResizeHandle,
-  ) => void
-  onRotatePointerDown: (event: ReactPointerEvent<SVGCircleElement>) => void
-  zoom: number
-}) {
-  const bounds = getWhiteboardSelectionBounds(elements)
-  if (!bounds) return null
-  const padding = 6 / zoom
-  const x = bounds.x - padding
-  const y = bounds.y - padding
-  const width = Math.max(1, bounds.width) + padding * 2
-  const height = Math.max(1, bounds.height) + padding * 2
-  const handleRadius = 5 / zoom
-  const rotationOffset = 28 / zoom
-  const centerX = x + width / 2
-
-  return (
-    <g data-testid="whiteboard-selection">
-      {!allLocked ? (
-        <rect
-          x={x}
-          y={y}
-          width={width}
-          height={height}
-          rx={6 / zoom}
-          fill="transparent"
-          pointerEvents="all"
-          style={{ cursor: moving ? 'move' : 'default' }}
-          onDoubleClick={onDoubleClick}
-          onPointerDown={onMovePointerDown}
-          data-testid="whiteboard-selection-move-area"
-        />
-      ) : null}
-      <rect
-        x={x}
-        y={y}
-        width={width}
-        height={height}
-        rx={6 / zoom}
-        fill="none"
-        stroke="hsl(var(--brand))"
-        strokeWidth="1.5"
-        strokeDasharray={allLocked ? '3 3' : undefined}
-        vectorEffect="non-scaling-stroke"
-        pointerEvents="none"
-      />
-      {!allLocked ? (
-        <>
-          <line
-            x1={centerX}
-            y1={y}
-            x2={centerX}
-            y2={y - rotationOffset}
-            stroke="hsl(var(--brand))"
-            strokeWidth="1.5"
-            strokeDasharray="4 4"
-            opacity="0.72"
-            vectorEffect="non-scaling-stroke"
-            pointerEvents="none"
-            data-testid="whiteboard-rotation-guide"
-          />
-          <circle
-            cx={centerX}
-            cy={y - rotationOffset}
-            r={handleRadius}
-            fill="hsl(var(--background))"
-            stroke="hsl(var(--brand))"
-            strokeWidth="1.5"
-            vectorEffect="non-scaling-stroke"
-            style={{ cursor: 'grab' }}
-            onPointerDown={onRotatePointerDown}
-            data-testid="whiteboard-rotate-handle"
-          />
-          {RESIZE_HANDLES.map((item) => (
-            <circle
-              key={item.handle}
-              cx={x + width * item.x}
-              cy={y + height * item.y}
-              r={handleRadius}
-              fill="hsl(var(--background))"
-              stroke="hsl(var(--brand))"
-              strokeWidth="1.5"
-              vectorEffect="non-scaling-stroke"
-              style={{ cursor: item.cursor }}
-              onPointerDown={(event) => onResizePointerDown(event, item.handle)}
-              data-testid={`whiteboard-resize-${item.handle}`}
-            />
-          ))}
-        </>
-      ) : null}
-    </g>
   )
 }

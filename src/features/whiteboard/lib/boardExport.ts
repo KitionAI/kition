@@ -1,6 +1,7 @@
 import { getBoardShapeDefinition } from './boardElementDefinitions'
 import { isBoardGroupElement } from './boardHierarchy'
 import {
+  getWhiteboardConnectorPath,
   getWhiteboardContentBounds,
   getWhiteboardElementCenter,
   whiteboardPointsToPath,
@@ -66,6 +67,7 @@ export function exportBoardSvg(input: {
     `<title>${escapeXml(input.title)}</title>`,
     '<defs>',
     '<marker id="kition-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke"/></marker>',
+    '<marker id="kition-dot" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><circle cx="5" cy="5" r="4" fill="context-stroke"/></marker>',
     '<pattern id="kition-pattern" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="#ffffff"/><path d="M -2 8 L 8 -2 M 2 10 L 10 2" stroke="#bbb8b1" stroke-width="1.5"/></pattern>',
     '</defs>',
     `<rect x="${number(viewBox.x)}" y="${number(viewBox.y)}" width="${number(viewBox.width)}" height="${number(viewBox.height)}" fill="#ffffff"/>`,
@@ -136,13 +138,21 @@ function exportElementBody(
     case 'stroke':
       return `<path d="${whiteboardPointsToPath(element.points)}" fill="none" ${lineAttributes}/>`
     case 'connector':
-      return `<line x1="${number(element.start.x)}" y1="${number(element.start.y)}" x2="${number(element.end.x)}" y2="${number(element.end.y)}" fill="none" ${lineAttributes} marker-end="url(#kition-arrow)"/>`
+      return `<path d="${getWhiteboardConnectorPath(element)}" fill="none" ${lineAttributes}${exportArrowhead('start', element.startArrowhead || 'none')}${exportArrowhead('end', element.endArrowhead || 'arrow')}/>`
     case 'image':
       return [
         `<rect x="${number(element.x)}" y="${number(element.y)}" width="${number(element.width)}" height="${number(element.height)}" rx="8" fill="#fafaf9" ${lineAttributes}/>`,
         `<image href="${escapeXml(paint.imageHref)}" x="${number(element.x + 1)}" y="${number(element.y + 1)}" width="${number(Math.max(0, element.width - 2))}" height="${number(Math.max(0, element.height - 2))}" preserveAspectRatio="xMidYMid meet"/>`,
       ].join('')
   }
+}
+
+function exportArrowhead(
+  terminal: 'start' | 'end',
+  arrowhead: 'none' | 'arrow' | 'dot',
+) {
+  if (arrowhead === 'none') return ''
+  return ` marker-${terminal}="url(#kition-${arrowhead})"`
 }
 
 function exportRectangle(

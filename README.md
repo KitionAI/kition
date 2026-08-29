@@ -26,6 +26,7 @@
   <img src="https://img.shields.io/badge/status-beta-f5d75e?style=flat-square" alt="Project status: beta" />
   <img src="https://img.shields.io/badge/macOS-supported-5645d4?style=flat-square&amp;logo=apple&amp;logoColor=white" alt="macOS supported" />
   <img src="https://img.shields.io/badge/Windows-supported-5645d4?style=flat-square&amp;logo=windows11&amp;logoColor=white" alt="Windows supported" />
+  <img src="https://img.shields.io/badge/Linux-experimental-f5d75e?style=flat-square&amp;logo=linux&amp;logoColor=111827" alt="Linux experimental" />
 </p>
 
 <h3 align="center"><a href="https://github.com/KitionAI/kition/releases/latest"><ins>Download Kition</ins></a></h3>
@@ -33,6 +34,7 @@
 <p align="center">
   <a href="https://kition.ai">Website</a> ·
   <a href="https://github.com/KitionAI/kition/releases">Releases</a> ·
+  <a href="https://github.com/KitionAI/kition/discussions">Discussions</a> ·
   <a href="CONTRIBUTING.md">Contributing</a> ·
   <a href=".github/SUPPORT.md">Support</a> ·
   <a href=".github/SECURITY.md">Security</a>
@@ -237,6 +239,7 @@ Desktop builds are published through
 
 - **macOS:** download the latest `.dmg`.
 - **Windows:** download the latest installer.
+- **Linux (experimental):** download the latest x86_64 `.AppImage`.
 - **Previous versions:** browse the complete
   [release history](https://github.com/KitionAI/kition/releases).
 

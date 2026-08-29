@@ -16,6 +16,9 @@ import { createBoardRecordsFromElements } from '../lib/boardRecords'
 import { WhiteboardEditorPane } from './WhiteboardEditorPane'
 import type { WhiteboardAgentBridge } from '../lib/whiteboardAgentBridge'
 
+;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean })
+  .IS_REACT_ACT_ENVIRONMENT = true
+
 vi.mock('@/services/desktop', () => ({
   importWorkspaceImageFromFile: vi.fn(),
   isDesktopRuntime: vi.fn(() => true),
@@ -166,6 +169,11 @@ describe('WhiteboardEditorPane', () => {
     expect(container.querySelector('[data-testid="whiteboard-minimap"]')).not.toBeNull()
     expect(container.querySelector('[data-testid="whiteboard-resize-south-east"]')).not.toBeNull()
     expect(container.querySelector('[data-testid="whiteboard-rotate-handle"]')).not.toBeNull()
+    for (const direction of ['north', 'east', 'south', 'west']) {
+      expect(container.querySelector(
+        `[data-testid="whiteboard-connection-handle-${direction}"]`,
+      )).not.toBeNull()
+    }
     expect(container.querySelector('[data-testid="whiteboard-rotation-guide"]')?.getAttribute(
       'stroke-dasharray',
     )).toBe('4 4')
@@ -176,11 +184,16 @@ describe('WhiteboardEditorPane', () => {
     const moreActions = container.querySelector(
       '[data-testid="whiteboard-more-actions"]',
     ) as HTMLButtonElement
-    await act(async () => moreActions.click())
-    expect(container.querySelector('[data-testid="whiteboard-export-svg"]')).not.toBeNull()
-    expect(container.querySelector('[data-testid="whiteboard-export-png"]')).not.toBeNull()
-    expect(container.querySelector('[data-testid="whiteboard-camera-back"]')).not.toBeNull()
-    expect(container.querySelector('[data-testid="whiteboard-camera-forward"]')).not.toBeNull()
+    await act(async () => {
+      moreActions.dispatchEvent(new MouseEvent('pointerdown', {
+        bubbles: true,
+        button: 0,
+      }))
+    })
+    expect(document.querySelector('[data-testid="whiteboard-export-svg"]')).not.toBeNull()
+    expect(document.querySelector('[data-testid="whiteboard-export-png"]')).not.toBeNull()
+    expect(document.querySelector('[data-testid="whiteboard-camera-back"]')).not.toBeNull()
+    expect(document.querySelector('[data-testid="whiteboard-camera-forward"]')).not.toBeNull()
 
     const purpleFill = container.querySelector(
       '[data-testid="whiteboard-fill-color-purple"]',
@@ -195,7 +208,6 @@ describe('WhiteboardEditorPane', () => {
     expect(moveArea.style.cursor).toBe('default')
 
     setPointerCapture.mockClear()
-    vi.useFakeTimers()
     await act(async () => {
       moveArea.dispatchEvent(new MouseEvent('pointerdown', {
         bubbles: true,
@@ -204,14 +216,8 @@ describe('WhiteboardEditorPane', () => {
         clientY: 170,
       }))
     })
-    expect(setPointerCapture).not.toHaveBeenCalled()
-    expect(svg.classList.contains('cursor-move')).toBe(false)
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(220)
-    })
     expect(setPointerCapture).toHaveBeenCalledOnce()
-    expect(svg.classList.contains('cursor-move')).toBe(true)
-
+    expect(svg.classList.contains('cursor-move')).toBe(false)
     await act(async () => {
       svg.dispatchEvent(new MouseEvent('pointermove', {
         bubbles: true,
@@ -219,6 +225,10 @@ describe('WhiteboardEditorPane', () => {
         clientX: 230,
         clientY: 210,
       }))
+    })
+    expect(svg.classList.contains('cursor-move')).toBe(true)
+
+    await act(async () => {
       svg.dispatchEvent(new MouseEvent('pointerup', {
         bubbles: true,
         button: 0,
@@ -231,7 +241,69 @@ describe('WhiteboardEditorPane', () => {
     expect(movedRectangle?.getAttribute('x')).toBe('150')
     expect(movedRectangle?.getAttribute('y')).toBe('160')
     expect(svg.classList.contains('cursor-move')).toBe(false)
-    vi.useRealTimers()
+  })
+
+  it('dismisses top action menus when another menu or an outside surface is used', async () => {
+    await act(async () => {
+      root = createRoot(container)
+      root.render(createElement(WhiteboardEditorPane, {
+        path: 'Planning.kiboard',
+        title: 'Planning',
+      }))
+      await Promise.resolve()
+    })
+
+    const moreTrigger = container.querySelector(
+      '[data-testid="whiteboard-more-actions"]',
+    ) as HTMLButtonElement
+
+    const reopenedPageTrigger = container.querySelector(
+      '[data-testid="whiteboard-page-trigger"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      reopenedPageTrigger.click()
+      await Promise.resolve()
+    })
+    expect(document.querySelector('[data-testid="whiteboard-page-menu"]')).not.toBeNull()
+
+    await act(async () => {
+      moreTrigger.dispatchEvent(new MouseEvent('pointerdown', {
+        bubbles: true,
+        button: 0,
+      }))
+    })
+    expect(document.querySelector('[data-testid="whiteboard-page-menu"]')).toBeNull()
+    expect(document.querySelector('[data-testid="whiteboard-more-menu"]')).not.toBeNull()
+
+    await act(async () => {
+      document.body.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }))
+      await Promise.resolve()
+    })
+    expect(document.querySelector('[data-testid="whiteboard-more-menu"]')).toBeNull()
+  })
+
+  it('dismisses the page menu with Escape', async () => {
+    await act(async () => {
+      root = createRoot(container)
+      root.render(createElement(WhiteboardEditorPane, {
+        path: 'Planning.kiboard',
+        title: 'Planning',
+      }))
+      await Promise.resolve()
+    })
+
+    const escapePageTrigger = container.querySelector(
+      '[data-testid="whiteboard-page-trigger"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      escapePageTrigger.click()
+      await Promise.resolve()
+    })
+    expect(document.querySelector('[data-testid="whiteboard-page-menu"]')).not.toBeNull()
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    })
+    expect(document.querySelector('[data-testid="whiteboard-page-menu"]')).toBeNull()
   })
 
   it('opens Agent with the current selection as Whiteboard context', async () => {
@@ -369,7 +441,7 @@ describe('WhiteboardEditorPane', () => {
       stroke.dispatchEvent(new MouseEvent('pointerover', { bubbles: true }))
     })
     expect(stroke.dataset.hovered).toBe('true')
-    expect(stroke.style.cursor).toBe('default')
+    expect(stroke.style.cursor).toBe('move')
     expect(stroke.querySelectorAll('path')[1]?.getAttribute('stroke')).toBe('hsl(var(--brand))')
 
     await act(async () => {
@@ -643,7 +715,7 @@ describe('WhiteboardEditorPane', () => {
 
     const editor = container.querySelector(
       '[data-testid="whiteboard-text-editor"]',
-    ) as HTMLInputElement
+    ) as HTMLTextAreaElement
     expect(editor.dataset.anchor).toBe('shape-center')
     expect(editor.style.left).toBe('140px')
     expect(editor.style.top).toBe('120px')
@@ -652,7 +724,7 @@ describe('WhiteboardEditorPane', () => {
     expect(editor.style.transform).toBe('translate(-50%, -50%) rotate(30deg)')
 
     const setValue = Object.getOwnPropertyDescriptor(
-      HTMLInputElement.prototype,
+      HTMLTextAreaElement.prototype,
       'value',
     )?.set
     await act(async () => {

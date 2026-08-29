@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 
 import type { BoardCommandRegistry } from '../lib/boardCommands'
@@ -16,17 +16,32 @@ export function useWhiteboardTextEditing(input: {
   commands: BoardCommandRegistry
   defaultStyle: WhiteboardElementStyle
   elements: readonly WhiteboardElement[]
+  onEditingTextFinished?: (result: {
+    committed: boolean
+    elementId: string
+    value: string
+  }) => void
   replaceSelection: (ids: string[]) => void
   setTool: Dispatch<SetStateAction<WhiteboardTool>>
 }) {
   const [editingText, setEditingText] = useState<WhiteboardTextEditingState | null>(null)
+  const editingTextRef = useRef<WhiteboardTextEditingState | null>(null)
 
   const dismissEditingText = useCallback(() => {
+    const current = editingTextRef.current
+    if (current) {
+      input.onEditingTextFinished?.({
+        committed: false,
+        elementId: current.elementId,
+        value: current.value,
+      })
+    }
+    editingTextRef.current = null
     setEditingText(null)
-  }, [])
+  }, [input.onEditingTextFinished])
 
   const beginNewTextEdit = useCallback((point: WhiteboardPoint, parentId?: string) => {
-    setEditingText({
+    const next: WhiteboardTextEditingState = {
       elementId: createWhiteboardElementId('text'),
       elementKind: 'text',
       parentId,
@@ -34,25 +49,32 @@ export function useWhiteboardTextEditing(input: {
       y: point.y,
       value: '',
       isNew: true,
-    })
+    }
+    editingTextRef.current = next
+    setEditingText(next)
   }, [])
 
   const beginTextEdit = useCallback((element: WhiteboardElement) => {
     if ((element.kind !== 'text' && element.kind !== 'rectangle') || element.locked) return
     input.cancelInteraction()
     input.replaceSelection([element.id])
-    setEditingText({
+    const next: WhiteboardTextEditingState = {
       elementId: element.id,
       elementKind: element.kind,
       x: element.kind === 'rectangle' ? element.x + element.width / 2 : element.x,
       y: element.kind === 'rectangle' ? element.y + element.height / 2 : element.y,
       value: element.text || '',
       isNew: false,
-    })
+    }
+    editingTextRef.current = next
+    setEditingText(next)
   }, [input.cancelInteraction, input.replaceSelection])
 
   const updateEditingText = useCallback((value: string) => {
-    setEditingText((current) => current ? { ...current, value } : current)
+    const current = editingTextRef.current
+    const next = current ? { ...current, value } : current
+    editingTextRef.current = next
+    setEditingText(next)
   }, [])
 
   const commitEditingText = useCallback(() => {
@@ -83,14 +105,37 @@ export function useWhiteboardTextEditing(input: {
       })
       input.replaceSelection([element.id])
     }
+    input.onEditingTextFinished?.({
+      committed: Boolean(value),
+      elementId: editingText.elementId,
+      value,
+    })
+    editingTextRef.current = null
     setEditingText(null)
     input.setTool('select')
-  }, [editingText, input.commands, input.defaultStyle, input.elements, input.replaceSelection, input.setTool])
+  }, [
+    editingText,
+    input.commands,
+    input.defaultStyle,
+    input.elements,
+    input.onEditingTextFinished,
+    input.replaceSelection,
+    input.setTool,
+  ])
 
   const cancelEditingText = useCallback(() => {
+    const current = editingTextRef.current
+    if (current) {
+      input.onEditingTextFinished?.({
+        committed: false,
+        elementId: current.elementId,
+        value: current.value,
+      })
+    }
+    editingTextRef.current = null
     setEditingText(null)
     input.setTool('select')
-  }, [input.setTool])
+  }, [input.onEditingTextFinished, input.setTool])
 
   return {
     beginNewTextEdit,

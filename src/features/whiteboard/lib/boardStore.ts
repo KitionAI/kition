@@ -114,6 +114,12 @@ export class BoardStore {
       : DEFAULT_BOARD_PAGE_ID
   }
 
+  getPages() {
+    return this.getRecords().filter((record): record is BoardPageRecord => (
+      record.record_type === 'page'
+    ))
+  }
+
   getCurrentPageElements(): readonly WhiteboardElement[] {
     if (!this.elementsCache) {
       const pageId = this.getCurrentPageId()
@@ -542,6 +548,10 @@ function normalizeBoardRecords(records: Iterable<BoardRecord>) {
     active_page_id: activePageId,
   }
   normalized.set(normalizedMeta.id, normalizedMeta)
+
+  pages
+    .sort((left, right) => left.index - right.index || left.id.localeCompare(right.id))
+    .forEach((page, index) => normalized.set(page.id, { ...page, index }))
 
   for (const record of normalized.values()) {
     if (

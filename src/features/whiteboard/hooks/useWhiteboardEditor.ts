@@ -1,9 +1,11 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 
 import {
   cloneBoardElement,
+  type BoardBindingRecord,
   type BoardRecord,
 } from '../lib/boardRecords'
+import type { BoardHistoryMark } from '../lib/boardStore'
 import {
   getBoardElementsWithDescendants,
   getBoardFrameAtPoint,
@@ -11,6 +13,11 @@ import {
 } from '../lib/boardHierarchy'
 import { translateWhiteboardElement } from '../lib/whiteboardGeometry'
 import { lintWhiteboard } from '../lib/whiteboardLint'
+import { getWhiteboardMindMapPresentation } from '../lib/whiteboardMindMap'
+import {
+  instantiateWhiteboardTemplate,
+  type WhiteboardTemplateId,
+} from '../lib/whiteboardTemplates'
 import {
   DEFAULT_WHITEBOARD_HIGHLIGHT_STYLE,
   DEFAULT_WHITEBOARD_STYLE,
@@ -31,6 +38,7 @@ import { useWhiteboardElementActions } from './useWhiteboardElementActions'
 import { useWhiteboardExport } from './useWhiteboardExport'
 import { useWhiteboardInteractionMachine } from './useWhiteboardInteractionMachine'
 import { useWhiteboardKeyboard } from './useWhiteboardKeyboard'
+import { useWhiteboardMindMapActions } from './useWhiteboardMindMapActions'
 import { useWhiteboardSelection } from './useWhiteboardSelection'
 import { useWhiteboardTextEditing } from './useWhiteboardTextEditing'
 
@@ -42,6 +50,16 @@ export function useWhiteboardEditor() {
     snapshot,
     store,
   } = useBoardEditorStore()
+  const boardBindings = useMemo(() => records.filter((record): record is BoardBindingRecord => (
+    record.record_type === 'binding'
+  )), [records])
+  const mindMapPresentation = useMemo(() => getWhiteboardMindMapPresentation({
+    bindings: boardBindings,
+    elements,
+  }), [boardBindings, elements])
+  const visibleElements = useMemo(() => elements.filter((element) => (
+    !mindMapPresentation.hiddenElementIds.has(element.id)
+  )), [elements, mindMapPresentation.hiddenElementIds])
   const {
     actualSize,
     cameraBack,
@@ -51,12 +69,13 @@ export function useWhiteboardEditor() {
     centerViewportAt,
     fitToContent,
     fitToElements,
+    panBy,
     replaceViewport,
     recordViewportHistory,
     setViewport,
     viewport,
     zoomBy,
-  } = useWhiteboardCamera(elements)
+  } = useWhiteboardCamera(visibleElements)
   const {
     clearSelection,
     replaceSelection,
@@ -66,6 +85,9 @@ export function useWhiteboardEditor() {
     setSelectedElementIds,
   } = useWhiteboardSelection(elements)
   const [tool, setTool] = useState<WhiteboardTool>('select')
+  const [gridVisible, setGridVisible] = useState(true)
+  const [snapEnabled, setSnapEnabled] = useState(true)
+  const [toolLocked, setToolLocked] = useState(false)
   const [shapeType, setShapeTypeState] = useState<WhiteboardShapeType>('rectangle')
   const [defaultStyle, setDefaultStyle] = useState<WhiteboardElementStyle>({
     ...DEFAULT_WHITEBOARD_STYLE,
@@ -73,14 +95,16 @@ export function useWhiteboardEditor() {
   const [highlightStyle, setHighlightStyle] = useState<WhiteboardElementStyle>({
     ...DEFAULT_WHITEBOARD_HIGHLIGHT_STYLE,
   })
-  const { exportPng, exportSvg } = useWhiteboardExport(elements)
+  const { exportPng, exportSvg } = useWhiteboardExport(visibleElements)
   const lintFindings = useMemo(() => lintWhiteboard({
-    bindings: records.filter((record) => record.record_type === 'binding'),
+    bindings: boardBindings,
     elements,
-  }), [elements, records])
+  }), [boardBindings, elements])
   const queryElements = useCallback((bounds: WhiteboardBounds) => (
-    store.queryCurrentPageElements(bounds)
-  ), [store])
+    store.queryCurrentPageElements(bounds).filter((element) => (
+      !mindMapPresentation.hiddenElementIds.has(element.id)
+    ))
+  ), [mindMapPresentation.hiddenElementIds, store])
   const getViewportElements = useCallback((size: WhiteboardPoint, overscan = 160) => {
     const worldOverscan = Math.max(0, overscan) / viewport.zoom
     return queryElements({
@@ -94,10 +118,14 @@ export function useWhiteboardEditor() {
   const {
     activeResizeHandle,
     beginCanvasPointer: beginPointerInteraction,
+    beginConnectionHandlePointer,
+    beginConnectorTerminalPointer,
     beginElementPointer,
     beginResizePointer,
     beginRotatePointer,
     cancelInteraction,
+    connectorTerminalPreview,
+    connectorTargetElementId,
     draft,
     endPointer: finishPointerInteraction,
     interactionState: pointerInteractionState,
@@ -118,11 +146,32 @@ export function useWhiteboardEditor() {
     setSelectedElementIds,
     setTool,
     setViewport,
+    snapEnabled,
     shapeType,
     store,
     tool,
+    toolLocked,
     viewport,
   })
+
+  const pendingMindMapInsertRef = useRef<{
+    elementId: string
+    historyMark: BoardHistoryMark
+  } | null>(null)
+  const handleEditingTextFinished = useCallback((result: {
+    committed: boolean
+    elementId: string
+  }) => {
+    const pending = pendingMindMapInsertRef.current
+    if (!pending || pending.elementId !== result.elementId) return
+    pendingMindMapInsertRef.current = null
+    if (result.committed) {
+      store.squashToMark(pending.historyMark, 'Add mind map node')
+    } else {
+      store.bailToMark(pending.historyMark)
+      clearSelection()
+    }
+  }, [clearSelection, store])
 
   const {
     beginNewTextEdit,
@@ -137,8 +186,27 @@ export function useWhiteboardEditor() {
     commands,
     defaultStyle,
     elements,
+    onEditingTextFinished: handleEditingTextFinished,
     replaceSelection,
     setTool,
+  })
+
+  const beginInsertedNodeTextEdit = useCallback((
+    element: Parameters<typeof beginTextEdit>[0],
+    historyMark: BoardHistoryMark,
+  ) => {
+    pendingMindMapInsertRef.current = { elementId: element.id, historyMark }
+    beginTextEdit(element)
+  }, [beginTextEdit])
+
+  const mindMapActions = useWhiteboardMindMapActions({
+    beginInsertedNodeTextEdit,
+    commands,
+    elements,
+    records,
+    replaceSelection,
+    selectedElements,
+    store,
   })
 
   const beginCanvasPointer = useCallback((input: {
@@ -178,6 +246,21 @@ export function useWhiteboardEditor() {
     setTool('select')
   }, [cancelInteraction, clearSelection, dismissEditingText])
 
+  const beginCanvasTextEdit = useCallback((point: WhiteboardPoint) => {
+    cancelInteraction()
+    dismissEditingText()
+    clearSelection()
+    beginNewTextEdit(point, getBoardFrameAtPoint(elements, point)?.id)
+  }, [beginNewTextEdit, cancelInteraction, clearSelection, dismissEditingText, elements])
+
+  const editSelection = useCallback(() => {
+    if (selectedElements.length !== 1) return false
+    const element = selectedElements[0]
+    if (element.locked || (element.kind !== 'rectangle' && element.kind !== 'text')) return false
+    beginTextEdit(element)
+    return true
+  }, [beginTextEdit, selectedElements])
+
   const undo = useCallback(() => {
     cancelInteraction()
     store.undo()
@@ -202,17 +285,28 @@ export function useWhiteboardEditor() {
   }, [clearSelection, commands, selectedElements])
 
   const {
+    activatePage,
     alignSelection,
     applyStyle,
     beginErase,
     continueErase,
+    createPage,
+    deletePage,
     duplicateSelection,
+    duplicatePage,
     distributeSelection,
     endErase,
+    fitFramesToContent,
+    flipSelection,
     groupSelection,
     insertImage,
+    renamePage,
+    reorderPage,
     reorderSelection,
+    rotateSelection,
+    stackSelection,
     ungroupSelection,
+    updateSelectedConnectors,
   } = useWhiteboardElementActions({
     clearSelection,
     commands,
@@ -278,16 +372,43 @@ export function useWhiteboardEditor() {
 
   const selectAll = useCallback(() => {
     replaceSelection(getBoardSelectionRootIds(
-      elements,
-      elements.map((element) => element.id),
+      visibleElements,
+      visibleElements.map((element) => element.id),
     ))
-  }, [elements, replaceSelection])
+  }, [replaceSelection, visibleElements])
 
   const zoomToSelection = useCallback((size: WhiteboardPoint) => {
     if (selectedElements.length === 0) return false
     fitToElements(selectedElements, size)
     return true
   }, [fitToElements, selectedElements])
+
+  const insertTemplate = useCallback((
+    templateId: WhiteboardTemplateId,
+    canvasSize: WhiteboardPoint,
+    resolveText: (key: string) => string,
+  ) => {
+    cancelInteraction()
+    dismissEditingText()
+    const instance = instantiateWhiteboardTemplate(templateId, {
+      x: viewport.x + canvasSize.x / viewport.zoom / 2,
+      y: viewport.y + canvasSize.y / viewport.zoom / 2,
+    }, resolveText)
+    commands.execute({
+      type: 'element.paste',
+      bindings: instance.bindings,
+      elements: instance.elements,
+    })
+    replaceSelection(instance.rootIds)
+    setTool('select')
+    return instance.rootIds
+  }, [
+    cancelInteraction,
+    commands,
+    dismissEditingText,
+    replaceSelection,
+    viewport,
+  ])
 
   const replaceDocument = useCallback((input: {
     records: readonly BoardRecord[]
@@ -301,20 +422,35 @@ export function useWhiteboardEditor() {
     setTool('select')
   }, [cancelInteraction, clearSelection, dismissEditingText, replaceViewport, store])
 
+  const addMindMapChildFromKeyboard = useCallback(() => (
+    Boolean(mindMapActions.addMindMapChild(''))
+  ), [mindMapActions.addMindMapChild])
+  const addMindMapSiblingFromKeyboard = useCallback(() => (
+    Boolean(mindMapActions.addMindMapSibling(''))
+  ), [mindMapActions.addMindMapSibling])
+
   useWhiteboardKeyboard({
+    addMindMapChild: addMindMapChildFromKeyboard,
+    addMindMapSibling: addMindMapSiblingFromKeyboard,
     deleteSelection,
     duplicateSelection,
+    editSelection,
     escape: clearTransientState,
     nudgeSelection,
     redo,
     reorderSelection,
     selectAll,
     setTool,
+    tool,
     undo,
   })
 
   return {
     activeResizeHandle,
+    activatePage,
+    addMindMapChild: mindMapActions.addMindMapChild,
+    addMindMapChildAt: mindMapActions.addMindMapChildAt,
+    addMindMapSibling: mindMapActions.addMindMapSibling,
     allSelectedLocked: selectedElements.length > 0
       && selectedElements.every((element) => element.locked),
     activeStyle: selectedElements[0]
@@ -324,6 +460,9 @@ export function useWhiteboardEditor() {
     alignSelection,
     applyStyle,
     beginCanvasPointer,
+    beginCanvasTextEdit,
+    beginConnectionHandlePointer,
+    beginConnectorTerminalPointer,
     beginErase,
     beginElementPointer,
     beginResizePointer,
@@ -335,15 +474,24 @@ export function useWhiteboardEditor() {
     canCameraBack,
     canCameraForward,
     canUndo: snapshot.canUndo,
+    canAddMindMapSibling: mindMapActions.canAddMindMapSibling,
+    canEditMindMap: mindMapActions.canEditMindMap,
     cancelInteraction,
     cancelEditingText,
+    clearSelection,
     commitEditingText,
+    connectorTerminalPreview,
+    connectorTargetElementId,
     commands,
     centerViewportAt,
     continueErase,
     copySelection,
+    createPage,
+    currentPageId: store.getCurrentPageId(),
     cutSelection,
+    deletePage,
     deleteSelection,
+    duplicatePage,
     duplicateSelection,
     distributeSelection,
     draft,
@@ -353,38 +501,61 @@ export function useWhiteboardEditor() {
     endPointer,
     exportPng,
     exportSvg,
+    fitFramesToContent,
     fitToContent,
+    flipSelection,
     getViewportElements,
+    gridVisible,
     groupSelection,
     hasSelection: selectedElementIds.length > 0,
     hasUnlockedSelection: selectedElements.some((element) => !element.locked),
     insertImage,
+    insertTemplate,
     interactionState: editingText ? 'editing-text' as const : pointerInteractionState,
     isTransacting: snapshot.isTransacting,
     lintFindings,
+    mindMapDirection: mindMapActions.mindMapDirection,
+    mindMapHiddenElementIds: mindMapPresentation.hiddenElementIds,
+    mindMapManagedConnectorIds: mindMapPresentation.managedConnectorIds,
+    mindMapRootNode: mindMapActions.mindMapRootNode,
     movePointer,
+    panBy,
+    pages: store.getPages(),
     pasteClipboardText,
     pasteFromClipboard,
     records,
+    renamePage,
     replaceDocument,
+    reorderPage,
     reorderSelection,
     redo,
     selectedElementId,
     selectedElementIds,
     selectedElements,
+    selectedMindMapNode: mindMapActions.selectedMindMapNode,
     selectElement,
     selectAll,
     selectShapeType,
     shapeType,
     snapGuides,
+    snapEnabled,
     setTool,
+    setMindMapDirection: mindMapActions.setMindMapDirection,
     store,
+    stackSelection,
     toggleSelectionLock,
     tool,
+    toolLocked,
+    toggleGrid: () => setGridVisible((visible) => !visible),
+    toggleMindMapCollapsed: mindMapActions.toggleMindMapCollapsed,
+    toggleSnap: () => setSnapEnabled((enabled) => !enabled),
+    toggleToolLock: () => setToolLocked((locked) => !locked),
     ungroupSelection,
     undo,
     updateEditingText,
+    updateSelectedConnectors,
     viewport,
+    rotateSelection,
     zoomBy,
     zoomToSelection,
   }

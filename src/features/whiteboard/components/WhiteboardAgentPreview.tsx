@@ -2,7 +2,11 @@ import { Check, Sparkles, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import type { WhiteboardAgentPreviewState } from '../hooks/useWhiteboardAgentPatch'
-import { getWhiteboardElementBounds, whiteboardPointsToPath } from '../lib/whiteboardGeometry'
+import {
+  getWhiteboardConnectorPath,
+  getWhiteboardElementBounds,
+  whiteboardPointsToPath,
+} from '../lib/whiteboardGeometry'
 import type { WhiteboardElement } from '../lib/whiteboardTypes'
 
 export function WhiteboardAgentPreviewLayer({
@@ -66,6 +70,19 @@ export function WhiteboardAgentPreviewControls({
           </p>
         </div>
       </div>
+      {state.patch?.operations.length ? (
+        <ol
+          className="mt-3 max-h-32 space-y-1 overflow-y-auto border-t pt-2 text-xs text-muted-foreground"
+          data-testid="whiteboard-agent-operation-list"
+        >
+          {state.patch.operations.map((operation, index) => (
+            <li key={`${operation.op}:${index}`} className="flex items-center gap-2">
+              <span className="size-1.5 shrink-0 rounded-full bg-brand" />
+              <span>{t(`board.agentPreview.operations.${operation.op}`)}</span>
+            </li>
+          ))}
+        </ol>
+      ) : null}
       <div className="mt-3 flex justify-end gap-2">
         {state.status === 'streaming' ? (
           <button
@@ -168,11 +185,9 @@ function WhiteboardAgentPreviewElement({ element }: { element: WhiteboardElement
       )
     case 'connector':
       return (
-        <line
-          x1={element.start.x}
-          y1={element.start.y}
-          x2={element.end.x}
-          y2={element.end.y}
+        <path
+          d={getWhiteboardConnectorPath(element)}
+          fill="none"
           stroke={stroke}
           strokeWidth="2.5"
           strokeDasharray="7 4"

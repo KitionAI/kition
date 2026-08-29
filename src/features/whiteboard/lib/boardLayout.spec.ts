@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { alignBoardElements, distributeBoardElements } from './boardLayout'
+import {
+  alignBoardElements,
+  distributeBoardElements,
+  stackBoardElements,
+} from './boardLayout'
 import type { WhiteboardElement } from './whiteboardTypes'
 
 const ELEMENTS: WhiteboardElement[] = [
@@ -28,6 +32,14 @@ describe('boardLayout', () => {
       expect.objectContaining({ id: 'one', x: 10 }),
       expect.objectContaining({ id: 'two', x: 165 }),
       expect.objectContaining({ id: 'three', x: 300 }),
+    ])
+  })
+
+  it('stacks elements with a fixed visual gap', () => {
+    expect(stackBoardElements(ELEMENTS, 'horizontal', 20)).toEqual([
+      expect.objectContaining({ id: 'one', x: 10 }),
+      expect.objectContaining({ id: 'two', x: 110 }),
+      expect.objectContaining({ id: 'three', x: 190 }),
     ])
   })
 })

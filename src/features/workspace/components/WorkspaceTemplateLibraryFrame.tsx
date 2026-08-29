@@ -19,6 +19,7 @@ export function WorkspaceTemplateLibraryFrame<CategoryId extends string>({
   icon: Icon,
   query,
   onQueryChange,
+  searchPlaceholder = 'Search templates',
   categories,
   activeCategory,
   onCategoryChange,
@@ -30,6 +31,7 @@ export function WorkspaceTemplateLibraryFrame<CategoryId extends string>({
   icon: ComponentType<{ className?: string }>
   query: string
   onQueryChange: (value: string) => void
+  searchPlaceholder?: string
   categories: Array<WorkspaceTemplateCategoryItem<CategoryId>>
   activeCategory: CategoryId
   onCategoryChange: (category: CategoryId) => void
@@ -54,7 +56,7 @@ export function WorkspaceTemplateLibraryFrame<CategoryId extends string>({
               type="search"
               value={query}
               onChange={(event) => onQueryChange(event.target.value)}
-              placeholder="Search templates"
+              placeholder={searchPlaceholder}
               className="h-9 w-full rounded-lg border border-input bg-background/75 pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
             />
           </label>

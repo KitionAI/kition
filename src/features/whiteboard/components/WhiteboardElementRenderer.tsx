@@ -3,6 +3,7 @@ import type { PointerEvent as ReactPointerEvent } from 'react'
 import { resolveWorkspaceFileURL } from '@/services/workspaceFiles'
 
 import {
+  getWhiteboardConnectorPath,
   getWhiteboardElementCenter,
   whiteboardPointsToPath,
 } from '../lib/whiteboardGeometry'
@@ -17,24 +18,32 @@ import { WhiteboardShapeBody } from './WhiteboardShapeBody'
 
 export function WhiteboardElementRenderer({
   arrowId,
+  connectionTarget,
+  dotId,
   element,
   hovered,
+  interactive,
   onDoubleClick,
   onHoverChange,
   onPointerDown,
   patternId,
+  selectable,
   selected,
 }: {
   arrowId: string
+  connectionTarget: boolean
+  dotId: string
   element: WhiteboardElement
   hovered: boolean
+  interactive: boolean
   onDoubleClick: () => void
   onHoverChange: (hovered: boolean) => void
   onPointerDown: (event: ReactPointerEvent<SVGElement>, elementId: string) => void
   patternId: string
+  selectable: boolean
   selected: boolean
 }) {
-  const highlighted = selected || hovered
+  const highlighted = selected || hovered || connectionTarget
   const center = getWhiteboardElementCenter(element)
   const transform = element.rotation
     ? `rotate(${element.rotation} ${center.x} ${center.y})`
@@ -44,19 +53,25 @@ export function WhiteboardElementRenderer({
       transform={transform}
       opacity={element.locked ? 0.82 : getWhiteboardElementStyle(element).opacity}
       onPointerDown={(event) => onPointerDown(event, element.id)}
+      onDoubleClick={(event) => {
+        event.stopPropagation()
+        onDoubleClick()
+      }}
       onPointerEnter={() => onHoverChange(true)}
       onPointerLeave={() => onHoverChange(false)}
       data-element-id={element.id}
       data-element-kind={element.kind}
+      data-connection-target={connectionTarget ? 'true' : 'false'}
       data-hovered={hovered ? 'true' : 'false'}
       data-locked={element.locked ? 'true' : 'false'}
-      style={{ cursor: 'default' }}
+      pointerEvents={interactive ? undefined : 'none'}
+      style={{ cursor: selectable ? 'move' : element.locked ? 'not-allowed' : 'default' }}
     >
       <WhiteboardElementBody
         arrowId={arrowId}
+        dotId={dotId}
         element={element}
         highlighted={highlighted}
-        onDoubleClick={onDoubleClick}
         patternId={patternId}
       />
     </g>
@@ -65,15 +80,15 @@ export function WhiteboardElementRenderer({
 
 function WhiteboardElementBody({
   arrowId,
+  dotId,
   element,
   highlighted,
-  onDoubleClick,
   patternId,
 }: {
   arrowId: string
+  dotId: string
   element: WhiteboardElement
   highlighted: boolean
-  onDoubleClick: () => void
   patternId: string
 }) {
   const style = getWhiteboardElementStyle(element)
@@ -89,7 +104,6 @@ function WhiteboardElementBody({
         <WhiteboardShapeBody
           element={element}
           highlighted={highlighted}
-          onDoubleClick={onDoubleClick}
           patternId={patternId}
         />
       )
@@ -101,9 +115,16 @@ function WhiteboardElementBody({
           fill={stroke}
           fontSize={element.fontSize ?? 22}
           fontWeight="500"
-          onDoubleClick={onDoubleClick}
         >
-          {element.text}
+          {element.text.split('\n').map((line, index) => (
+            <tspan
+              key={`${index}:${line}`}
+              x={element.x}
+              dy={index === 0 ? 0 : (element.fontSize ?? 22) * 1.25}
+            >
+              {line || ' '}
+            </tspan>
+          ))}
         </text>
       )
     case 'stroke': {
@@ -136,24 +157,21 @@ function WhiteboardElementBody({
     case 'connector':
       return (
         <>
-          <line
-            x1={element.start.x}
-            y1={element.start.y}
-            x2={element.end.x}
-            y2={element.end.y}
+          <path
+            d={getWhiteboardConnectorPath(element)}
+            fill="none"
             stroke="transparent"
             strokeWidth="14"
             vectorEffect="non-scaling-stroke"
           />
-          <line
-            x1={element.start.x}
-            y1={element.start.y}
-            x2={element.end.x}
-            y2={element.end.y}
+          <path
+            d={getWhiteboardConnectorPath(element)}
+            fill="none"
             stroke={stroke}
             strokeDasharray={dashArray}
             strokeWidth={highlighted ? Math.max(3, strokeWidth) : strokeWidth}
-            markerEnd={`url(#${arrowId})`}
+            markerStart={resolveArrowheadMarker(element.startArrowhead || 'none', arrowId, dotId)}
+            markerEnd={resolveArrowheadMarker(element.endArrowhead || 'arrow', arrowId, dotId)}
             vectorEffect="non-scaling-stroke"
             pointerEvents="none"
           />
@@ -187,4 +205,14 @@ function WhiteboardElementBody({
         </>
       )
   }
+}
+
+function resolveArrowheadMarker(
+  arrowhead: 'none' | 'arrow' | 'dot',
+  arrowId: string,
+  dotId: string,
+) {
+  if (arrowhead === 'arrow') return `url(#${arrowId})`
+  if (arrowhead === 'dot') return `url(#${dotId})`
+  return undefined
 }

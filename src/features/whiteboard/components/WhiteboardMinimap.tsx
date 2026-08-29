@@ -20,7 +20,10 @@ export function WhiteboardMinimap({
   controller: WhiteboardEditorController
 }) {
   const { t } = useTranslation('workspace')
-  const contentBounds = getWhiteboardContentBounds(controller.elements)
+  const visibleElements = controller.elements.filter((element) => (
+    !controller.mindMapHiddenElementIds.has(element.id)
+  ))
+  const contentBounds = getWhiteboardContentBounds(visibleElements)
   if (!contentBounds) return null
   const viewBox = {
     x: contentBounds.x - MINIMAP_PADDING,
@@ -69,7 +72,7 @@ export function WhiteboardMinimap({
           if (event.buttons === 1) centerFromPointer(event)
         }}
       >
-        {controller.elements.map((element) => {
+        {visibleElements.map((element) => {
           const bounds = getWhiteboardElementBounds(element)
           const selected = controller.selectedElementIds.includes(element.id)
           const frame = element.kind === 'rectangle'

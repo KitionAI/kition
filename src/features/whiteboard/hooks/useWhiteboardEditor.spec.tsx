@@ -537,6 +537,97 @@ describe('useWhiteboardEditor', () => {
       .toMatchObject({ end: { x: 200, y: 40 } })
   })
 
+  it('creates a bound elbow connector from a selected shape connection handle', async () => {
+    const ref = await renderHook()
+    await replaceElements(ref, [
+      { id: 'left', kind: 'rectangle', x: 0, y: 0, width: 100, height: 80 },
+      { id: 'right', kind: 'rectangle', x: 200, y: 0, width: 100, height: 80 },
+    ])
+    await act(async () => ref.current?.selectElement('left'))
+
+    let started = false
+    await act(async () => {
+      started = Boolean(ref.current?.beginConnectionHandlePointer('left', 'east'))
+    })
+    expect(started).toBe(true)
+    expect(ref.current?.interactionState).toBe('connecting')
+    expect(ref.current?.draft).toMatchObject({
+      kind: 'connector',
+      connectorType: 'elbow',
+      start: { x: 100, y: 40 },
+    })
+
+    await act(async () => {
+      ref.current?.movePointer({
+        world: { x: 200, y: 40 },
+        screen: { x: 200, y: 40 },
+        targetElementId: 'right',
+      })
+    })
+    expect(ref.current?.connectorTargetElementId).toBe('right')
+    expect(ref.current?.draft).toMatchObject({ current: { x: 200, y: 40 } })
+
+    await act(async () => ref.current?.endPointer({ x: 200, y: 40 }, 'right'))
+    const connector = ref.current?.elements.find((element) => element.kind === 'connector')
+    expect(connector).toMatchObject({
+      connectorType: 'elbow',
+      start: { x: 100, y: 40 },
+      end: { x: 200, y: 40 },
+    })
+    expect(ref.current?.records.filter((record) => record.record_type === 'binding'))
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({ terminal: 'start', to_id: 'left' }),
+        expect.objectContaining({ terminal: 'end', to_id: 'right' }),
+      ]))
+    expect(ref.current?.tool).toBe('select')
+    expect(ref.current?.selectedElementIds).toEqual([connector?.id])
+
+    await act(async () => ref.current?.undo())
+    expect(ref.current?.elements.some((element) => element.kind === 'connector')).toBe(false)
+  })
+
+  it('does not create a connector when a connection handle is clicked without dragging', async () => {
+    const ref = await renderHook()
+    await replaceElements(ref, [
+      { id: 'shape', kind: 'rectangle', x: 0, y: 0, width: 100, height: 80 },
+    ])
+    await act(async () => ref.current?.selectElement('shape'))
+    await act(async () => {
+      ref.current?.beginConnectionHandlePointer('shape', 'east')
+      ref.current?.endPointer({ x: 100, y: 40 })
+    })
+
+    expect(ref.current?.elements).toHaveLength(1)
+    expect(ref.current?.records.some((record) => record.record_type === 'binding')).toBe(false)
+  })
+
+  it('keeps the source binding when a quick connector ends on empty canvas', async () => {
+    const ref = await renderHook()
+    await replaceElements(ref, [
+      { id: 'shape', kind: 'rectangle', x: 0, y: 0, width: 100, height: 80 },
+    ])
+    await act(async () => ref.current?.selectElement('shape'))
+    await act(async () => {
+      ref.current?.beginConnectionHandlePointer('shape', 'east')
+      ref.current?.movePointer({
+        world: { x: 220, y: 120 },
+        screen: { x: 220, y: 120 },
+      })
+      ref.current?.endPointer({ x: 220, y: 120 })
+    })
+
+    expect(ref.current?.elements.find((element) => element.kind === 'connector'))
+      .toMatchObject({
+        connectorType: 'elbow',
+        start: { x: 100, y: 40 },
+        end: { x: 220, y: 120 },
+      })
+    expect(ref.current?.records.filter((record) => record.record_type === 'binding'))
+      .toEqual([
+        expect.objectContaining({ terminal: 'start', to_id: 'shape' }),
+      ])
+  })
+
   it('applies a style change to the selection as one undoable command', async () => {
     const ref = await renderHook()
     await replaceElements(ref, [

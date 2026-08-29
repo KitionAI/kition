@@ -239,7 +239,27 @@
       "description": "Review {{count}} proposed changes before applying them.",
       "accept": "Accept",
       "reject": "Reject",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "operations": {
+        "element": {
+          "create": "Create element",
+          "update": "Update element",
+          "delete": "Delete element",
+          "reorder": "Reorder element",
+          "move": "Move elements",
+          "rotate": "Rotate elements",
+          "resize": "Resize elements",
+          "style": "Update styles",
+          "group": "Create container",
+          "ungroup": "Ungroup container"
+        },
+        "connector": { "create": "Create connector" },
+        "layout": {
+          "align": "Align elements",
+          "distribute": "Distribute elements",
+          "stack": "Stack elements"
+        }
+      }
     },
     "status": {
       "loading": "Loading…",
@@ -269,12 +289,155 @@
       "zoomIn": "Zoom in",
       "fit": "Fit to content"
     },
-    "shapePalette": {
-      "label": "Shapes"
+  "shapePalette": {
+    "label": "Shapes"
+  },
+  "templates": {
+    "trigger": "Templates",
+    "title": "Board templates",
+    "description": "Insert an editable starting structure into the center of the current view.",
+    "blank": {
+      "name": "Blank Board",
+      "description": "Start with a clean canvas and build freely."
     },
-    "selectionToolbar": {
-      "label": "Selection layout",
-      "alignLeft": "Align left",
+    "categories": {
+      "recommended": "Recommended",
+      "planning": "Planning and diagrams",
+      "meetings": "Meetings",
+      "presentation": "Presentations"
+    },
+    "creation": {
+      "title": "Board template center",
+      "description": "Choose a template or a blank canvas to create a new Board.",
+      "searchPlaceholder": "Search Board templates",
+      "searchResults": "Search results for “{{query}}”",
+      "hint": "Choose a visual starting point and customize every shape after creation.",
+      "use": "Use template",
+      "noMatches": "No Board templates found",
+      "noMatchesHint": "Try another keyword or category.",
+      "createFailed": "Could not create the Board."
+    },
+    "items": {
+      "mind-map": {
+        "name": "Mind map",
+        "description": "Explore a central topic through connected branches."
+      },
+      "flowchart": {
+        "name": "Flowchart",
+        "description": "Map a process with steps, decisions, and outcomes."
+      },
+      "project-roadmap": {
+        "name": "Project roadmap",
+        "description": "Plan phases and milestones across a four-quarter timeline."
+      },
+      "kanban-board": {
+        "name": "Kanban board",
+        "description": "Track work across to do, in progress, and done."
+      },
+      "meeting-retrospective": {
+        "name": "Meeting retrospective",
+        "description": "Capture wins, improvements, and next actions."
+      },
+      "presentation-storyboard": {
+        "name": "Presentation storyboard",
+        "description": "Outline a six-slide narrative before building a deck."
+      }
+    },
+    "content": {
+      "mindMap": {
+        "title": "Mind map",
+        "topic": "Central topic",
+        "research": "Research",
+        "ideas": "Ideas",
+        "audience": "Audience",
+        "actions": "Actions",
+        "questions": "Open questions"
+      },
+      "flowchart": {
+        "title": "Process flow",
+        "start": "Start",
+        "process": "Collect requirements",
+        "decision": "Ready to proceed?",
+        "revise": "Revise plan",
+        "finish": "Deliver",
+        "yes": "Yes",
+        "no": "No"
+      },
+      "roadmap": {
+        "title": "Project roadmap",
+        "quarter1": "Q1",
+        "quarter2": "Q2",
+        "quarter3": "Q3",
+        "quarter4": "Q4",
+        "discover": "Discover",
+        "prototype": "Prototype",
+        "validate": "Validate",
+        "launch": "Launch",
+        "discoverMilestone": "Problem and audience defined",
+        "prototypeMilestone": "Core experience tested",
+        "validateMilestone": "Beta feedback collected",
+        "launchMilestone": "Release and measure"
+      },
+      "kanban": {
+        "title": "Team kanban",
+        "todo": "To do",
+        "progress": "In progress",
+        "done": "Done",
+        "scope": "Define release scope",
+        "content": "Draft launch content",
+        "prototype": "Build interactive prototype",
+        "testing": "Run user testing",
+        "kickoff": "Project kickoff",
+        "research": "Customer research"
+      },
+      "retrospective": {
+        "title": "Meeting retrospective",
+        "well": "Went well",
+        "improve": "Could improve",
+        "next": "Next steps",
+        "clearGoal": "The goal stayed clear",
+        "feedback": "Feedback arrived quickly",
+        "decisions": "Decisions came too late",
+        "owners": "Some owners were unclear",
+        "assign": "Assign one owner per action",
+        "review": "Review progress next week"
+      },
+      "storyboard": {
+        "title": "Presentation storyboard",
+        "cover": "Opening",
+        "problem": "Problem",
+        "insight": "Key insight",
+        "solution": "Solution",
+        "proof": "Evidence",
+        "nextStep": "Next step",
+        "slide1": "01",
+        "slide2": "02",
+        "slide3": "03",
+        "slide4": "04",
+        "slide5": "05",
+        "slide6": "06",
+        "visual": "Visual placeholder"
+      }
+    }
+  },
+  "selectionToolbar": {
+    "label": "Selection layout",
+    "mindMap": {
+      "label": "Mind map",
+      "addChild": "Add child node (Tab)",
+      "addSibling": "Add sibling node (Enter)",
+      "collapse": "Collapse branch",
+      "expand": "Expand {{count}} hidden nodes",
+      "newNode": "New idea",
+      "direction": "Mind map direction",
+      "directions": {
+        "both": "Both sides",
+        "right": "Grow right",
+        "left": "Grow left",
+        "down": "Grow down"
+      }
+    },
+    "alignLeft": "Align left",
       "alignCenterHorizontal": "Align horizontal centers",
       "alignRight": "Align right",
       "alignTop": "Align top",
@@ -282,10 +445,21 @@
       "alignBottom": "Align bottom",
       "distributeHorizontal": "Distribute horizontally",
       "distributeVertical": "Distribute vertically",
+      "stackHorizontal": "Stack horizontally",
+      "stackVertical": "Stack vertically",
+      "rotateCounterclockwise": "Rotate counter-clockwise",
+      "rotateClockwise": "Rotate clockwise",
+      "flipHorizontal": "Flip horizontally",
+      "flipVertical": "Flip vertically",
       "askAI": "Ask AI about selection",
       "group": "Group selection",
       "frame": "Frame selection",
-      "ungroup": "Ungroup selection"
+      "fitFrame": "Fit frame to content",
+      "ungroup": "Ungroup selection",
+      "more": "More layout actions",
+      "spacing": "Spacing",
+      "transform": "Transform",
+      "containers": "Containers"
     },
     "shapes": {
       "rectangle": "Rectangle",
@@ -318,6 +492,13 @@
       "fill": "Fill",
       "line": "Line style",
       "size": "Stroke size",
+      "connectorType": "Connector type",
+      "connectorTypes": { "straight": "Straight", "elbow": "Elbow", "curved": "Curved" },
+      "connectorTypeShort": { "straight": "S", "elbow": "E", "curved": "C" },
+      "arrowheads": "Arrowheads",
+      "startArrowhead": "Start",
+      "endArrowhead": "End",
+      "arrowheadTypes": { "none": "None", "arrow": "Arrow", "dot": "Dot" },
       "fillStyles": { "none": "No fill", "solid": "Solid fill", "semi": "Semi-transparent fill", "pattern": "Pattern fill" },
       "dashStyles": { "solid": "Solid line", "dashed": "Dashed line", "dotted": "Dotted line" },
       "sizes": { "s": "Small", "m": "Medium", "l": "Large", "xl": "Extra large" },
@@ -325,6 +506,13 @@
     },
     "topActions": {
       "pages": "Pages",
+      "createPage": "Create page",
+      "duplicatePage": "Duplicate",
+      "deletePage": "Delete",
+      "renamePage": "Rename page",
+      "savePageName": "Save page name",
+      "movePagePrevious": "Move page up",
+      "movePageNext": "Move page down",
       "duplicate": "Duplicate selection",
       "more": "More actions",
       "selectAll": "Select all",
@@ -337,10 +525,16 @@
       "sendToBack": "Send to back",
       "zoomToSelection": "Zoom to selection",
       "actualSize": "Actual size",
+      "grid": "Show grid",
+      "snap": "Snap to shapes",
+      "toolLock": "Keep drawing tool active",
       "cameraBack": "Previous camera view",
       "cameraForward": "Next camera view",
       "exportSvg": "Export SVG",
       "exportPng": "Export PNG"
+    },
+    "contextMenu": {
+      "label": "Board actions"
     },
     "minimap": {
       "label": "Board minimap"

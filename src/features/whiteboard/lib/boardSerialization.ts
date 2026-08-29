@@ -115,6 +115,7 @@ function parseBoardRecord(value: unknown): BoardRecord[] {
         record_type: 'page',
         id,
         name: normalizeBoardTitle(value.name, 'Board'),
+        index: Math.max(0, finiteNumber(value.index) ?? 0),
       }
       return [record]
     }
@@ -206,6 +207,9 @@ function parseBoardElement(value: unknown): WhiteboardElement[] {
         height,
         shapeType: parseShapeType(value.shapeType),
         shapeStyle: parseRectangleStyle(value.shapeStyle),
+        mindMapBranchSide: parseMindMapBranchSide(value.mindMapBranchSide),
+        mindMapCollapsed: value.mindMapCollapsed === true ? true : undefined,
+        mindMapDirection: parseMindMapDirection(value.mindMapDirection),
         text: typeof value.text === 'string' ? value.text.slice(0, 10000) : undefined,
         ...parseElementMetadata(value),
       }]
@@ -241,6 +245,18 @@ function parseBoardElement(value: unknown): WhiteboardElement[] {
         kind: 'connector',
         start,
         end,
+        connectorRole: value.connectorRole === 'mind-map-branch'
+          ? value.connectorRole
+          : undefined,
+        connectorType: value.connectorType === 'elbow' || value.connectorType === 'curved'
+          ? value.connectorType
+          : 'straight',
+        startArrowhead: value.startArrowhead === 'arrow' || value.startArrowhead === 'dot'
+          ? value.startArrowhead
+          : 'none',
+        endArrowhead: value.endArrowhead === 'none' || value.endArrowhead === 'dot'
+          ? value.endArrowhead
+          : 'arrow',
         ...parseElementMetadata(value),
       }]
     }
@@ -330,6 +346,28 @@ function parseRectangleStyle(value: unknown) {
   }
 }
 
+function parseMindMapDirection(value: unknown) {
+  switch (value) {
+    case 'both':
+    case 'right':
+    case 'left':
+    case 'down':
+      return value
+    default:
+      return undefined
+  }
+}
+
+function parseMindMapBranchSide(value: unknown) {
+  switch (value) {
+    case 'left':
+    case 'right':
+      return value
+    default:
+      return undefined
+  }
+}
+
 function parseIdentifierArray(value: unknown, limit: number) {
   if (!Array.isArray(value)) return []
   return [...new Set(value.slice(0, limit).map(parseIdentifier).filter(Boolean))]
@@ -352,6 +390,7 @@ function normalizeBoardRecords(
       record_type: 'page',
       id: DEFAULT_BOARD_PAGE_ID,
       name: title,
+      index: 0,
     }
     normalized.set(page.id, page)
     pages.push(page)
@@ -367,6 +406,10 @@ function normalizeBoardRecords(
     id: BOARD_META_RECORD_ID,
     active_page_id: activePageId,
   })
+
+  pages
+    .sort((left, right) => left.index - right.index || left.id.localeCompare(right.id))
+    .forEach((page, index) => normalized.set(page.id, { ...page, index }))
 
   for (const record of normalized.values()) {
     if (
