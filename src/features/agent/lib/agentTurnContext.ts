@@ -6,6 +6,11 @@ import type {
 } from '@/services/desktop'
 import type { DataDocument, DataTable } from '@/types/dataDocument'
 import type { AgentWhiteboardContext } from '@/types/whiteboardAgent'
+import {
+  resolveMarkdownImageInsertionContext,
+  type MarkdownImageInsertionContext,
+  type MarkdownImageInsertionSnapshot,
+} from '@/features/document/editor/editor/markdown-image-insertion'
 
 export type AgentTurnContext = {
   activeDocumentPath: string
@@ -23,6 +28,21 @@ export type AgentTurnContext = {
   activeWorkflowId?: string
   /** Compact selection, viewport, or board context for AI Whiteboard turns. */
   whiteboardContext?: AgentWhiteboardContext
+  markdownImageInsertionContext?: MarkdownImageInsertionContext
+}
+
+export function finalizeAgentTurnContext(input: {
+  baseContext: AgentTurnContext
+  markdownImageInsertionSnapshot?: MarkdownImageInsertionSnapshot | null
+}): AgentTurnContext {
+  const snapshot = input.markdownImageInsertionSnapshot
+  const markdownImageInsertionContext = snapshot?.documentPath === input.baseContext.activeDocumentPath
+    ? resolveMarkdownImageInsertionContext(snapshot)
+    : undefined
+  return {
+    ...input.baseContext,
+    markdownImageInsertionContext,
+  }
 }
 
 export function mapBrowserPageContextToAgentBrowserContext(
@@ -98,9 +118,14 @@ export function buildAgentTurnContext(input: {
   paneContext?: AgentPaneContext
   activeWorkflowId?: string
   whiteboardContext?: AgentWhiteboardContext
+  markdownImageInsertionContext?: MarkdownImageInsertionContext | null
 }): AgentTurnContext {
+  const activeDocumentPath = String(input.activeDocumentPath || '').trim()
+  const markdownImageInsertionContext = input.markdownImageInsertionContext?.documentPath === activeDocumentPath
+    ? input.markdownImageInsertionContext
+    : undefined
   return {
-    activeDocumentPath: String(input.activeDocumentPath || '').trim(),
+    activeDocumentPath,
     activeDocumentFormat: input.activeDocumentFormat,
     activeDataDocumentId: input.activeDocument?.id ?? input.activeDataDocumentId ?? 0,
     activeDataTableId: input.activeTable?.id ?? input.activeDataTableId ?? 0,
@@ -108,6 +133,7 @@ export function buildAgentTurnContext(input: {
     paneContext: input.paneContext,
     activeWorkflowId: input.activeWorkflowId,
     whiteboardContext: input.whiteboardContext,
+    markdownImageInsertionContext,
     taskMode: 'auto',
     browserEnabled: input.browserEnabled === true,
   }

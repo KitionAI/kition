@@ -49,8 +49,10 @@ import {
   type AgentTurnContext,
   buildActiveBrowserTabContext,
   buildAgentTurnContext,
+  finalizeAgentTurnContext,
   mapBrowserPageContextToAgentBrowserContext,
 } from '@/features/agent/lib/agentTurnContext'
+import type { MarkdownImageInsertionSnapshot } from '@/features/document/editor/editor/markdown-image-insertion'
 import { useDocumentExport } from '@/features/document/hooks/useDocumentExport'
 import { useWorkspaceDocumentSession } from '@/features/document/hooks/useWorkspaceDocumentSession'
 import type { DocumentCreationPreset } from '@/features/document/lib/documentCreation'
@@ -455,6 +457,17 @@ export function WorkspaceScreen({
     taskMode: 'auto',
     browserEnabled: false,
   })
+  const markdownImageInsertionSnapshotRef = useRef<MarkdownImageInsertionSnapshot | null>(null)
+  const handleAgentInsertionContextChange = useCallback((
+    documentPath: string,
+    context: MarkdownImageInsertionSnapshot | null,
+  ) => {
+    if (context) {
+      markdownImageInsertionSnapshotRef.current = context
+    } else if (markdownImageInsertionSnapshotRef.current?.documentPath === documentPath) {
+      markdownImageInsertionSnapshotRef.current = null
+    }
+  }, [])
   const activeWhiteboardPathRef = useRef('')
   const whiteboardAgentBridgesRef = useRef<Record<string, WhiteboardAgentBridge>>({})
   const prepareAgentBrowserContextRef = useRef<
@@ -479,7 +492,10 @@ export function WorkspaceScreen({
   > | null>(null)
   const getAgentTurnContext = useCallback(
     async (): Promise<AgentTurnContext> => {
-      const base = agentTurnContextRef.current
+      const base = finalizeAgentTurnContext({
+        baseContext: agentTurnContextRef.current,
+        markdownImageInsertionSnapshot: markdownImageInsertionSnapshotRef.current,
+      })
       const whiteboardPath = activeWhiteboardPathRef.current
       const whiteboardContext = base.paneContext === 'whiteboard'
         ? whiteboardAgentBridgesRef.current[whiteboardPath]?.buildContext()
@@ -3764,6 +3780,7 @@ export function WorkspaceScreen({
                       window.dispatchEvent(new CustomEvent('kition:agent:focus-composer'))
                     },
                     onAskDocumentAgent: (request) => void handleDocumentAskAgent(request),
+                    onAgentInsertionContextChange: handleAgentInsertionContextChange,
                     onSaveDocumentTitle: (nextTitle: string) => void saveDocumentTitle(nextTitle),
                     onDecideDocumentRevisionChange: (changeId, decision) => {
                       if (activeDocumentRevision) {

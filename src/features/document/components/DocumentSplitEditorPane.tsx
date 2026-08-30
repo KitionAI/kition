@@ -1,7 +1,7 @@
 import { EditorView } from '@codemirror/view'
 import { type PointerEvent as ReactPointerEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MarkdownSourceEditor } from './MarkdownSourceEditor'
+import { MarkdownSourceEditor, type MarkdownCursorSnapshot } from './MarkdownSourceEditor'
 import {
   clampSplitEditorRatio,
   readSplitEditorRatio,
@@ -14,11 +14,13 @@ export function DocumentSplitEditorPane({
   previewHtml,
   readOnly,
   onChange,
+  onCursorChange,
 }: {
   value: string
   previewHtml: string
   readOnly: boolean
   onChange: (value: string) => void
+  onCursorChange?: (snapshot: MarkdownCursorSnapshot) => void
 }) {
   const { t } = useTranslation('document')
   const sourceViewRef = useRef<EditorView | null>(null)
@@ -146,6 +148,7 @@ export function DocumentSplitEditorPane({
             onChange={onChange}
             placeholder={t('splitEditor.sourcePlaceholder')}
             onCreateEditor={handleCreateEditor}
+            onCursorChange={onCursorChange}
           />
         </div>
         <button

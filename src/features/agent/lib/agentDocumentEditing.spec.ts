@@ -28,6 +28,40 @@ describe('buildAgentDocumentEditingPromptContext', () => {
       activeDocumentFormat: 'pdf',
     })).toBe('')
   })
+
+  it('provides a cursor-aware safe Markdown image placement contract', () => {
+    const context = buildAgentDocumentEditingPromptContext({
+      activeDocumentPath: 'Docs/Pendant.md',
+      activeDocumentFormat: 'markdown',
+      markdownImageInsertionContext: {
+        documentPath: 'Docs/Pendant.md',
+        cursorOffset: 20,
+        preferredOffset: 30,
+        preferredLine: 6,
+        strategy: 'nearest-blank-line',
+        anchorBefore: '```\n',
+        anchorAfter: '\nAfter',
+      },
+    })
+
+    expect(context).toContain('Preferred safe image insertion: line 6, offset 30')
+    expect(context).toContain('nearest-blank-line')
+    expect(context).toContain('"```\\n"')
+    expect(context).toContain('"\\nAfter"')
+    expect(context).toContain('Never insert a Markdown image inside')
+    expect(context).toContain('nearest top-level blank line')
+    expect(context).toContain('fall back to the document end')
+  })
+
+  it('provides a safe document-end fallback without cursor context', () => {
+    const context = buildAgentDocumentEditingPromptContext({
+      activeDocumentPath: 'Docs/Pendant.md',
+      activeDocumentFormat: 'markdown',
+    })
+
+    expect(context).toContain('No current editor cursor anchor is available')
+    expect(context).toContain('fall back to the document end')
+  })
 })
 
 describe('prepareAgentDocumentForTurn', () => {

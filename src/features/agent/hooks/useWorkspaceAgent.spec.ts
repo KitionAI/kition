@@ -790,6 +790,15 @@ describe('useWorkspaceAgent hosted console restore', () => {
           activeDocumentFormat: 'markdown',
           activeDataDocumentId: 0,
           activeDataTableId: 0,
+          markdownImageInsertionContext: {
+            documentPath: 'Docs/Current.md',
+            cursorOffset: 20,
+            preferredOffset: 30,
+            preferredLine: 6,
+            strategy: 'nearest-blank-line',
+            anchorBefore: 'before-anchor',
+            anchorAfter: 'after-anchor',
+          },
         }),
       })
       return null
@@ -821,6 +830,12 @@ describe('useWorkspaceAgent hosted console restore', () => {
     }))
     expect(mocks.streamAgentMessage.mock.calls[0][0].promptContext).toContain(
       'order all hunks from top to bottom',
+    )
+    expect(mocks.streamAgentMessage.mock.calls[0][0].promptContext).toContain(
+      'Preferred safe image insertion: line 6, offset 30',
+    )
+    expect(mocks.streamAgentMessage.mock.calls[0][0].promptContext).toContain(
+      'before-anchor',
     )
 
     await act(async () => {

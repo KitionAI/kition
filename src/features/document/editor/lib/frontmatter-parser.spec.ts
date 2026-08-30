@@ -4,6 +4,13 @@ import { parseFrontmatter } from './frontmatter-parser'
 import { applyFrontmatter } from './frontmatter-serialize'
 
 describe('parseFrontmatter', () => {
+  it('preserves source offsets for CRLF frontmatter', () => {
+    const source = '---\r\ntitle: Hello\r\n\r\n---\r\nbody'
+    const result = parseFrontmatter(source)
+
+    expect(result?.to).toBe(source.lastIndexOf('---') + 3)
+  })
+
   it('returns null when no frontmatter', () => {
     expect(parseFrontmatter('# hello\n\nbody')).toBeNull()
   })

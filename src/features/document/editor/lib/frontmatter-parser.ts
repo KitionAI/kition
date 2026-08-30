@@ -94,12 +94,12 @@ export function parseFrontmatter(source: string): FrontmatterParsed | null {
     fields.push({ key, value, startLine, endLine })
   }
 
-               
-  let from = 0
-  const head = lines.slice(0, 0).join('\n')
-  void head
-  const to = lines.slice(0, closeIdx + 1).join('\n').length
-  from = 0
+  const lineStarts = [0]
+  for (const match of source.matchAll(/\r?\n/g)) {
+    lineStarts.push((match.index ?? 0) + match[0].length)
+  }
+  const from = 0
+  const to = lineStarts[closeIdx] + lines[closeIdx].length
   const raw = bodyLines.join('\n')
   return { from, to, raw, fields }
 }
