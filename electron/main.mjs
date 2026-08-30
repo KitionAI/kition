@@ -25,6 +25,10 @@ import { SecureStore } from './secure-store.mjs'
 import { ProxyManager } from './proxy-manager.mjs'
 import { WorkspaceRegistry } from './workspace-registry.mjs'
 import { createWorkspaceWatcher } from './workspace-watcher.mjs'
+import {
+  openWorkspaceWindowProcess,
+  readWorkspaceWindowRequest,
+} from './workspace-window.mjs'
 import { isTrustedWindowNavigation, normalizeExternalURL } from './external-url.mjs'
 import { createBeforeQuitHandler } from './quit-lifecycle.mjs'
 import { findKitionDeepLink, KITION_PROTOCOL_SCHEME, normalizeKitionDeepLink } from './deep-link.mjs'
@@ -101,6 +105,8 @@ protocol.registerSchemesAsPrivileged([
 
 let mainWindow = null
 let desktopEnv = null
+let sharedDesktopDataDir = ''
+let activeWorkspacePath = ''
 let secureStore = null
 let proxyManager = null
 let bootstrap = null
@@ -113,6 +119,9 @@ let updateManager = null
 let cachedBetaChannel = false
 let cachedAutoCheck = true
 let pendingKitionDeepLink = findKitionDeepLink(process.argv)
+let pendingWorkspaceWindowPath = ''
+const workspaceWindowRequest = readWorkspaceWindowRequest(process.argv)
+const isWorkspaceWindowProcess = Boolean(workspaceWindowRequest)
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock()
 if (!hasSingleInstanceLock) {
@@ -148,8 +157,34 @@ async function showKitionWindow() {
   win.focus()
 }
 
+async function focusWorkspaceWindow(workspacePath) {
+  const requestedPath = String(workspacePath || '').trim()
+  if (!requestedPath) {
+    return
+  }
+  if (!app.isReady() || !desktopEnv || !backendSupervisor) {
+    pendingWorkspaceWindowPath = requestedPath
+    return
+  }
+  pendingWorkspaceWindowPath = ''
+  if (requestedPath !== activeWorkspacePath) {
+    await applyActiveVault(requestedPath)
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.reload()
+    }
+  }
+  await showKitionWindow()
+}
+
 if (hasSingleInstanceLock) {
   app.on('second-instance', (_event, commandLine) => {
+    const workspaceRequest = readWorkspaceWindowRequest(commandLine)
+    if (workspaceRequest) {
+      void focusWorkspaceWindow(workspaceRequest.workspacePath).catch((error) => {
+        console.error('failed to focus workspace window:', error?.message || error)
+      })
+      return
+    }
     const deepLink = findKitionDeepLink(commandLine)
     if (deepLink) {
       void focusKitionWindow(deepLink)
@@ -440,6 +475,11 @@ function refreshApplicationMenu() {
   )
 }
 
+function getWorkspaceWindowTitle() {
+  const workspaceName = path.basename(activeWorkspacePath.replace(/[\\/]+$/, ''))
+  return workspaceName ? `Kition — ${workspaceName}` : 'Kition Desktop'
+}
+
 function toggleDevTools(win = mainWindow) {
   if (!win || win.isDestroyed() || !win.webContents || win.webContents.isDestroyed()) {
     return
@@ -478,7 +518,7 @@ async function createMainWindow() {
     minHeight: 760,
     show: false,
     backgroundColor,
-    title: 'Kition Desktop',
+    title: getWorkspaceWindowTitle(),
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     webPreferences: {
       preload: path.join(moduleDir, 'preload.cjs'),
@@ -504,6 +544,12 @@ async function createMainWindow() {
       void shell.openExternal(normalizeExternalURL(url))
     } catch {
       // Local files and custom protocols are blocked instead of delegated.
+    }
+  })
+  mainWindow.webContents.on('page-title-updated', (event) => {
+    event.preventDefault()
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.setTitle(getWorkspaceWindowTitle())
     }
   })
   registerMainWindowShortcuts(mainWindow)
@@ -961,10 +1007,6 @@ function getWorkspaceRoot() {
   return desktopEnv?.workspace_dir || path.join(desktopEnv.data_dir, 'workspace')
 }
 
-function hasActiveVault() {
-  return Boolean(workspaceRegistry?.activeVaultPath)
-}
-
 function normalizeWorkspacePath(rawPath, { allowRoot = false } = {}) {
   const value = String(rawPath || '').replace(/\\/g, '/').trim()
 
@@ -1292,6 +1334,10 @@ async function applyActiveVault(vaultPath) {
     if (workspaceRegistry) {
       await workspaceRegistry.clearActiveVault()
     }
+    activeWorkspacePath = ''
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.setTitle(getWorkspaceWindowTitle())
+    }
     return
   }
 
@@ -1304,12 +1350,16 @@ async function applyActiveVault(vaultPath) {
   // setActiveVault). Saves multi-second stalls on a no-op switch.
   const previous = String(desktopEnv?.workspace_dir || '').trim()
   const workspaceChanged = previous !== trimmed
+  activeWorkspacePath = trimmed
   desktopEnv.workspace_dir = trimmed
   if (workspaceRegistry) {
     await workspaceRegistry.setActiveVault(trimmed)
   }
   if (workspaceChanged) {
     await restartBackendForWorkspaceChange()
+  }
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.setTitle(getWorkspaceWindowTitle())
   }
 
   // Tear down any existing watcher when vault path changes (or clears).
@@ -1371,6 +1421,25 @@ async function handleChooseDirectory(_event, request) {
   return { canceled: false, path: result.filePaths[0] }
 }
 
+async function handleOpenWorkspaceWindow(_event, request) {
+  const workspacePath = String(request?.path || '').trim()
+  if (!workspacePath || workspacePath.includes('\0')) {
+    throw new Error('workspace path is required')
+  }
+  const stats = await fs.stat(workspacePath)
+  if (!stats.isDirectory()) {
+    throw new Error('workspace path must be a directory')
+  }
+  if (workspaceRegistry) {
+    await workspaceRegistry.addVault({ path: workspacePath })
+  }
+  await openWorkspaceWindowProcess({
+    workspacePath,
+    sharedDataDir: sharedDesktopDataDir || desktopEnv.data_dir,
+  })
+  return { opened: true }
+}
+
 async function handleChooseAgentAnalysisDirectory(_event, request) {
   const suggestedPath = String(request?.suggested_path || '').trim()
   let defaultPath
@@ -1413,8 +1482,18 @@ async function handleListVaults() {
   if (!workspaceRegistry) {
     return { vaults: [], active_vault_path: '' }
   }
-  await workspaceRegistry.load()
-  return workspaceRegistry.list()
+  await workspaceRegistry.reload()
+  return getCurrentWorkspaceRegistrySnapshot()
+}
+
+function getCurrentWorkspaceRegistrySnapshot() {
+  if (!workspaceRegistry) {
+    return { vaults: [], active_vault_path: '' }
+  }
+  return {
+    ...workspaceRegistry.list(),
+    active_vault_path: activeWorkspacePath,
+  }
 }
 
 async function handleAddVault(_event, request) {
@@ -1422,7 +1501,7 @@ async function handleAddVault(_event, request) {
     throw new Error('workspace registry is unavailable')
   }
   const vault = await workspaceRegistry.addVault(request || {})
-  return { vault, registry: workspaceRegistry.list() }
+  return { vault, registry: getCurrentWorkspaceRegistrySnapshot() }
 }
 
 async function handleRemoveVault(_event, request) {
@@ -1430,7 +1509,8 @@ async function handleRemoveVault(_event, request) {
     return { vaults: [], active_vault_path: '' }
   }
   const path = String(request?.path || '').trim()
-  return workspaceRegistry.removeVault(path)
+  await workspaceRegistry.removeVault(path)
+  return getCurrentWorkspaceRegistrySnapshot()
 }
 
 async function handleRenameVault(_event, request) {
@@ -1443,7 +1523,7 @@ async function handleRenameVault(_event, request) {
     throw new Error('vault path is required')
   }
   const vault = await workspaceRegistry.renameVault(vaultPath, name)
-  return { vault, registry: workspaceRegistry.list() }
+  return { vault, registry: getCurrentWorkspaceRegistrySnapshot() }
 }
 
 async function handleSetActiveVault(_event, request) {
@@ -1453,7 +1533,7 @@ async function handleSetActiveVault(_event, request) {
   }
   await applyActiveVault(vaultPath)
   const listResponse = await getWorkspaceDocumentListResponse()
-  const registry = workspaceRegistry ? workspaceRegistry.list() : { vaults: [], active_vault_path: vaultPath }
+  const registry = workspaceRegistry ? getCurrentWorkspaceRegistrySnapshot() : { vaults: [], active_vault_path: vaultPath }
   return { list: listResponse, registry }
 }
 
@@ -1957,6 +2037,7 @@ async function registerIpcHandlers() {
   ipcMain.handle(IPC_CHANNELS.renameVault, handleRenameVault)
   ipcMain.handle(IPC_CHANNELS.setActiveVault, handleSetActiveVault)
   ipcMain.handle(IPC_CHANNELS.chooseDirectory, handleChooseDirectory)
+  ipcMain.handle(IPC_CHANNELS.openWorkspaceWindow, handleOpenWorkspaceWindow)
   ipcMain.handle(IPC_CHANNELS.chooseAgentAnalysisDirectory, handleChooseAgentAnalysisDirectory)
   ipcMain.handle(IPC_CHANNELS.storeSecureValue, (_event, key, value) => secureStore.set(key, value))
   ipcMain.handle(IPC_CHANNELS.readSecureValue, (_event, key) => secureStore.get(key))
@@ -2019,20 +2100,27 @@ async function registerIpcHandlers() {
 
 async function bootstrapElectron() {
   desktopEnv = await resolveDesktopEnvironment()
+  sharedDesktopDataDir = String(process.env.KITION_DESKTOP_SHARED_DATA_DIR || desktopEnv.data_dir).trim()
+  const sharedDesktopEnv = { ...desktopEnv, data_dir: sharedDesktopDataDir }
   registerBundledAssetProtocolHandler()
   registerWorkspaceProtocolHandler()
-  secureStore = new SecureStore(desktopEnv)
+  secureStore = new SecureStore(sharedDesktopEnv)
   await secureStore.initialize()
-  bootstrap = new CommunityBootstrap(desktopEnv.data_dir)
-  workspaceRegistry = new WorkspaceRegistry(desktopEnv.data_dir)
+  bootstrap = new CommunityBootstrap(sharedDesktopDataDir)
+  workspaceRegistry = new WorkspaceRegistry(sharedDesktopDataDir)
   const registryState = await workspaceRegistry.load()
-  const defaultVaultPath = path.join(desktopEnv.data_dir, 'workspace')
+  const defaultVaultPath = path.join(sharedDesktopDataDir, 'workspace')
   await workspaceRegistry.seedDefaultVault(defaultVaultPath)
-  let activeVaultPath = registryState?.active_vault_path || ''
+  let activeVaultPath = workspaceWindowRequest?.workspacePath || registryState?.active_vault_path || ''
   if (activeVaultPath) {
     try {
       const stats = await fs.stat(activeVaultPath)
       if (stats.isDirectory()) {
+        if (workspaceWindowRequest?.workspacePath) {
+          await workspaceRegistry.addVault({ path: activeVaultPath })
+          await workspaceRegistry.setActiveVault(activeVaultPath)
+        }
+        activeWorkspacePath = activeVaultPath
         desktopEnv.workspace_dir = activeVaultPath
       } else {
         await workspaceRegistry.clearActiveVault()
@@ -2047,6 +2135,7 @@ async function bootstrapElectron() {
     try {
       await fs.mkdir(defaultVaultPath, { recursive: true })
       await workspaceRegistry.setActiveVault(defaultVaultPath)
+      activeWorkspacePath = defaultVaultPath
       desktopEnv.workspace_dir = defaultVaultPath
     } catch (error) {
       console.warn('failed to seed default workspace:', error?.message || error)
@@ -2054,7 +2143,7 @@ async function bootstrapElectron() {
   }
   backendSupervisor = new BackendSupervisor(desktopEnv)
   proxyManager = new ProxyManager({
-    env: desktopEnv,
+    env: sharedDesktopEnv,
     secureStore,
     getSession: () => session.defaultSession,
     getMainWindow: () => mainWindow,
@@ -2081,7 +2170,9 @@ async function bootstrapElectron() {
   await proxyManager.apply()
   await backendSupervisor.start()
   await createMainWindow()
-  void updateManager.start()
+  if (!isWorkspaceWindowProcess) {
+    void updateManager.start()
+  }
 }
 
 app.on('window-all-closed', () => {
@@ -2118,8 +2209,13 @@ if (hasSingleInstanceLock) app.whenReady().then(async () => {
       app.dock.setIcon(path.join(moduleDir, 'icon.png'))
     } catch {}
   }
-  registerKitionProtocolClient()
+  if (!isWorkspaceWindowProcess) {
+    registerKitionProtocolClient()
+  }
   await bootstrapElectron()
+  if (pendingWorkspaceWindowPath) {
+    await focusWorkspaceWindow(pendingWorkspaceWindowPath)
+  }
   if (pendingKitionDeepLink) {
     await focusKitionWindow(pendingKitionDeepLink)
   }

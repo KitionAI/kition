@@ -27,6 +27,21 @@
       "disabledTooltip": "即将推出"
     }
   },
+  "openMode": {
+    "title": "如何打开“{{name}}”？",
+    "description": "保留当前工作区，或在这个窗口中切换工作区。",
+    "current": {
+      "title": "替换当前窗口",
+      "description": "在这个窗口中切换到所选工作区。",
+      "button": "在此处打开"
+    },
+    "new": {
+      "title": "在新窗口中打开",
+      "description": "保留当前工作区，并为所选工作区打开一个独立窗口。",
+      "button": "打开新窗口"
+    },
+    "cancel": "取消"
+  },
   "vault": {
     "menu": {
       "rename": "重命名",
@@ -44,6 +59,7 @@
     "open": "打开工作区失败：{{message}}",
     "create": "创建工作区失败：{{message}}",
     "switch": "切换工作区失败：{{message}}",
+    "newWindow": "打开新的工作区窗口失败。",
     "missingVault": "工作区目录已不存在。"
   },
   "firstRun": {

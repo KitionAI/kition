@@ -9,12 +9,19 @@ import type { SettingsSectionKey } from '@/features/settings/DesktopSettingsPage
 import { useGlobalShortcuts } from '@/features/settings/useGlobalShortcuts'
 import { WorkspaceScreen } from '@/features/workspace/components/WorkspaceScreen'
 import { WorkspaceLauncherScreen } from '@/features/workspace/components/WorkspaceLauncherScreen'
+import { WorkspaceOpenModeDialog } from '@/features/workspace/components/WorkspaceOpenModeDialog'
 import { useWorkspaceVaults } from '@/features/workspace/hooks/useWorkspaceVaults'
+import { getWorkspaceDisplayName } from '@/features/workspace/lib/workspacePersistence'
 import { cn } from '@/lib/utils'
 import { isWebPreviewMode } from '@/lib/runtimeMode'
 import { handleDesktopChromeDoubleClick } from '@/lib/windowChrome'
 import { useMediaQuery } from '@/registry/hooks/use-media-query'
-import { getDesktopBackendStatus, getDesktopInfo, resolveApiURL } from '@/services/desktop'
+import {
+  getDesktopBackendStatus,
+  getDesktopInfo,
+  openWorkspaceWindow,
+  resolveApiURL,
+} from '@/services/desktop'
 import { restorePortalAccountSession } from '@/services/portalAccount'
 import { SearchService } from '@/features/search/service/searchService'
 import { attachEventBridges } from '@/features/search/service/events'
@@ -249,6 +256,8 @@ export function AppShell() {
   const [topbarActionsPortal, setTopbarActionsPortal] = useState<HTMLElement | null>(null)
   const [topbarLeadingPortal, setTopbarLeadingPortal] = useState<HTMLElement | null>(null)
   const [launcherVariant, setLauncherVariant] = useState<'fullscreen' | 'dialog' | null>(null)
+  const [pendingWorkspaceOpen, setPendingWorkspaceOpen] = useState<{ path: string; name: string } | null>(null)
+  const [workspaceOpenError, setWorkspaceOpenError] = useState('')
   const [onboardingOpen, setOnboardingOpen] = useState(false)
   const lastTrackedWorkspaceRef = useRef('')
 
@@ -297,6 +306,7 @@ export function AppShell() {
     activeVaultPath,
     loaded: vaultsLoaded,
     error: vaultsError,
+    refresh: refreshVaults,
     addVault,
     removeVault,
     renameVault,
@@ -329,11 +339,19 @@ export function AppShell() {
     }
   }, [vaultsLoaded, activeVaultPath, launcherVariant])
 
+  useEffect(() => {
+    if (launcherVariant) {
+      void refreshVaults()
+    }
+  }, [launcherVariant, refreshVaults])
+
   const openVaultLauncherDialog = useCallback(() => {
     setLauncherVariant((current) => (current === 'fullscreen' ? current : 'dialog'))
   }, [])
 
   const closeVaultLauncherDialog = useCallback(() => {
+    setPendingWorkspaceOpen(null)
+    setWorkspaceOpenError('')
     setLauncherVariant((current) => (current === 'dialog' ? null : current))
   }, [])
 
@@ -398,21 +416,39 @@ export function AppShell() {
     }
   }, [activeVaultPath, onboardingOpen])
 
+  const openWorkspaceInCurrentWindow = useCallback(async (path: string) => {
+    setLauncherBusy(true)
+    setWorkspaceOpenError('')
+    try {
+      await setActiveVault(path)
+      notifyWorkspaceReload()
+      setPendingWorkspaceOpen(null)
+      setLauncherVariant(null)
+    } finally {
+      setLauncherBusy(false)
+    }
+  }, [setActiveVault, notifyWorkspaceReload])
+
+  const requestWorkspaceOpen = useCallback(async (path: string) => {
+    if (launcherVariant === 'dialog' && activeVaultPath && desktopPlatform) {
+      const vault = vaults.find((candidate) => candidate.path === path)
+      setWorkspaceOpenError('')
+      setPendingWorkspaceOpen({
+        path,
+        name: vault?.name || getWorkspaceDisplayName(path),
+      })
+      return
+    }
+    await openWorkspaceInCurrentWindow(path)
+  }, [activeVaultPath, desktopPlatform, launcherVariant, openWorkspaceInCurrentWindow, vaults])
+
   const handleSelectVault = useCallback(
-    async (path: string) => {
-      setLauncherBusy(true)
-      try {
-        await setActiveVault(path)
-        notifyWorkspaceReload()
-        setLauncherVariant(null)
-      } finally {
-        setLauncherBusy(false)
-      }
-    },
-    [setActiveVault, notifyWorkspaceReload],
+    async (path: string) => requestWorkspaceOpen(path),
+    [requestWorkspaceOpen],
   )
 
   const handleOpenLocalVault = useCallback(async () => {
+    let workspacePath = ''
     setLauncherBusy(true)
     try {
       const parent = await chooseParentDirectory()
@@ -420,13 +456,46 @@ export function AppShell() {
         return
       }
       const vault = await addVault({ path: parent })
-      await setActiveVault(vault.path)
-      notifyWorkspaceReload()
-      setLauncherVariant(null)
+      workspacePath = vault.path
     } finally {
       setLauncherBusy(false)
     }
-  }, [addVault, chooseParentDirectory, setActiveVault, notifyWorkspaceReload])
+    if (workspacePath) {
+      await requestWorkspaceOpen(workspacePath)
+    }
+  }, [addVault, chooseParentDirectory, requestWorkspaceOpen])
+
+  const handleOpenWorkspaceInNewWindow = useCallback(async () => {
+    if (!pendingWorkspaceOpen) {
+      return
+    }
+    setLauncherBusy(true)
+    setWorkspaceOpenError('')
+    try {
+      await openWorkspaceWindow(pendingWorkspaceOpen.path)
+      setPendingWorkspaceOpen(null)
+      setLauncherVariant(null)
+    } catch (requestError) {
+      setWorkspaceOpenError(
+        requestError instanceof Error ? requestError.message : tLauncher('errors.newWindow'),
+      )
+    } finally {
+      setLauncherBusy(false)
+    }
+  }, [pendingWorkspaceOpen, tLauncher])
+
+  const handleOpenWorkspaceInCurrentWindow = useCallback(async () => {
+    if (!pendingWorkspaceOpen) {
+      return
+    }
+    try {
+      await openWorkspaceInCurrentWindow(pendingWorkspaceOpen.path)
+    } catch (requestError) {
+      setWorkspaceOpenError(
+        requestError instanceof Error ? requestError.message : tLauncher('errors.switch'),
+      )
+    }
+  }, [openWorkspaceInCurrentWindow, pendingWorkspaceOpen, tLauncher])
 
   const handleRenameVault = useCallback(
     async (path: string, name: string) => {
@@ -778,6 +847,25 @@ export function AppShell() {
           onClose={launcherVariant === 'dialog' ? closeVaultLauncherDialog : undefined}
         />
       ) : null}
+      <WorkspaceOpenModeDialog
+        open={Boolean(pendingWorkspaceOpen)}
+        workspaceName={pendingWorkspaceOpen?.name || ''}
+        workspacePath={pendingWorkspaceOpen?.path || ''}
+        busy={launcherBusy}
+        errorMessage={workspaceOpenError}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingWorkspaceOpen(null)
+            setWorkspaceOpenError('')
+          }
+        }}
+        onOpenCurrent={() => {
+          void handleOpenWorkspaceInCurrentWindow()
+        }}
+        onOpenNew={() => {
+          void handleOpenWorkspaceInNewWindow()
+        }}
+      />
       {onboardingOpen && activeVaultPath ? (
         <FirstRunActivationPanel
           key={activeVaultPath}

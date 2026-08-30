@@ -90,6 +90,12 @@ export class WorkspaceRegistry {
     return this.state
   }
 
+  async reload() {
+    this.loaded = false
+    this.wasMissing = false
+    return this.load()
+  }
+
   async save() {
     await fs.mkdir(this.dataDir, { recursive: true })
     const payload = {
@@ -97,7 +103,18 @@ export class WorkspaceRegistry {
       active_vault_path: this.state.active_vault_path,
       seeded_default: Boolean(this.state.seeded_default),
     }
-    await fs.writeFile(this.filePath, JSON.stringify(payload, null, 2), 'utf8')
+    const temporaryPath = `${this.filePath}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`
+    await fs.writeFile(temporaryPath, JSON.stringify(payload, null, 2), 'utf8')
+    try {
+      await fs.rename(temporaryPath, this.filePath)
+    } catch (error) {
+      if (error?.code !== 'EEXIST' && error?.code !== 'EPERM') {
+        await fs.rm(temporaryPath, { force: true })
+        throw error
+      }
+      await fs.rm(this.filePath, { force: true })
+      await fs.rename(temporaryPath, this.filePath)
+    }
   }
 
   list() {
@@ -112,7 +129,7 @@ export class WorkspaceRegistry {
   }
 
   async addVault({ path: vaultPath, parent_path: parentPath, name } = {}) {
-    await this.load()
+    await this.reload()
 
     let resolvedPath = normalizePath(vaultPath)
 
@@ -149,7 +166,7 @@ export class WorkspaceRegistry {
   }
 
   async removeVault(vaultPath) {
-    await this.load()
+    await this.reload()
     const target = normalizePath(vaultPath)
     if (!target) {
       return this.list()
@@ -163,7 +180,7 @@ export class WorkspaceRegistry {
   }
 
   async renameVault(vaultPath, name) {
-    await this.load()
+    await this.reload()
     const target = normalizePath(vaultPath)
     const vault = this.state.vaults.find((item) => item.path === target)
     if (!vault) {
@@ -175,7 +192,7 @@ export class WorkspaceRegistry {
   }
 
   async setActiveVault(vaultPath) {
-    await this.load()
+    await this.reload()
     const target = normalizePath(vaultPath)
     if (!target) {
       this.state.active_vault_path = ''
@@ -201,14 +218,14 @@ export class WorkspaceRegistry {
   }
 
   async clearActiveVault() {
-    await this.load()
+    await this.reload()
     this.state.active_vault_path = ''
     await this.save()
     return this.list()
   }
 
   async seedDefaultVault(defaultPath) {
-    await this.load()
+    await this.reload()
     if (this.state.seeded_default) {
       return null
     }

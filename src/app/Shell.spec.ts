@@ -12,11 +12,13 @@ const mocks = vi.hoisted(() => ({
   moveWorkspaceDocument: vi.fn(),
   readWorkspaceDocument: vi.fn(),
   writeWorkspaceDocument: vi.fn(),
+  openWorkspaceWindow: vi.fn(),
   chooseParentDirectory: vi.fn(),
   addVault: vi.fn(),
   removeVault: vi.fn(),
   renameVault: vi.fn(),
   setActiveVault: vi.fn(),
+  refreshVaults: vi.fn(),
   WorkspaceScreen: vi.fn(() => null),
 }))
 
@@ -31,6 +33,7 @@ vi.mock('@/services/desktop', () => ({
   moveWorkspaceDocument: mocks.moveWorkspaceDocument,
   readWorkspaceDocument: mocks.readWorkspaceDocument,
   writeWorkspaceDocument: mocks.writeWorkspaceDocument,
+  openWorkspaceWindow: mocks.openWorkspaceWindow,
   // Shell pulls in ScenarioRoute → TableEditor → @/api/dataDocuments,
   // which calls getApiBaseURL() at module-evaluation time. With
   // vi.resetModules() we need to surface enough of the desktop module
@@ -45,6 +48,7 @@ vi.mock('@/features/workspace/hooks/useWorkspaceVaults', () => ({
     activeVaultPath: '/tmp/kition-vault',
     loaded: true,
     error: '',
+    refresh: mocks.refreshVaults,
     chooseParentDirectory: mocks.chooseParentDirectory,
     addVault: mocks.addVault,
     removeVault: mocks.removeVault,
@@ -75,6 +79,10 @@ vi.mock('@/features/workspace/components/WorkspaceScreen', () => ({
 
 vi.mock('@/features/workspace/components/WorkspaceLauncherScreen', () => ({
   WorkspaceLauncherScreen: () => null,
+}))
+
+vi.mock('@/features/workspace/components/WorkspaceOpenModeDialog', () => ({
+  WorkspaceOpenModeDialog: () => null,
 }))
 
 vi.mock('@/lib/utils', () => ({

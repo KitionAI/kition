@@ -27,6 +27,21 @@
       "disabledTooltip": "Bientôt disponible"
     }
   },
+  "openMode": {
+    "title": "Comment voulez-vous ouvrir {{name}} ?",
+    "description": "Gardez l'espace de travail actuel ouvert ou remplacez-le dans cette fenêtre.",
+    "current": {
+      "title": "Remplacer la fenêtre actuelle",
+      "description": "Basculez cette fenêtre vers l'espace de travail sélectionné.",
+      "button": "Ouvrir ici"
+    },
+    "new": {
+      "title": "Ouvrir dans une nouvelle fenêtre",
+      "description": "Gardez cet espace ouvert et lancez une fenêtre indépendante.",
+      "button": "Ouvrir une nouvelle fenêtre"
+    },
+    "cancel": "Annuler"
+  },
   "vault": {
     "menu": {
       "rename": "Renommer",
@@ -44,6 +59,7 @@
     "open": "Échec de l'ouverture de l'espace de travail : {{message}}",
     "create": "Échec de la création de l'espace de travail : {{message}}",
     "switch": "Échec du changement d'espace de travail : {{message}}",
+    "newWindow": "Impossible d'ouvrir une nouvelle fenêtre d'espace de travail.",
     "missingVault": "Le dossier de l'espace de travail n'existe plus sur le disque."
   },
   "firstRun": {

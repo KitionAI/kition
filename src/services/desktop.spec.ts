@@ -734,6 +734,7 @@ describe('desktop service helpers', () => {
       MoveWorkspaceDocument: vi.fn().mockResolvedValue({ ...document, path: 'knowledge-base/Home.md' }),
       DeleteWorkspaceDocument: vi.fn().mockResolvedValue(listResponse),
       OpenWorkspaceFile: vi.fn().mockResolvedValue(''),
+      OpenWorkspaceWindow: vi.fn().mockResolvedValue({ opened: true }),
       SaveWorkspaceAsset: vi.fn().mockResolvedValue({
         path: 'assets/image.png',
         url: 'kition-workspace://assets/image.png',
@@ -767,6 +768,7 @@ describe('desktop service helpers', () => {
     await expect(desktopModule.moveWorkspaceDocument({ path: 'Home.md', target_name: 'main.md' })).resolves.toMatchObject({ path: 'knowledge-base/Home.md' })
     await expect(desktopModule.deleteWorkspaceDocument('Home.md')).resolves.toEqual(listResponse)
     await expect(desktopModule.openWorkspaceFile('Agent/report.docx')).resolves.toBe('')
+    await expect(desktopModule.openWorkspaceWindow('/Users/alice/projects/notes')).resolves.toEqual({ opened: true })
     await expect(
       desktopModule.saveWorkspaceAssetFromBlobURL({
         blobURL: 'blob:http://127.0.0.1:3000/image-1',
@@ -796,6 +798,7 @@ describe('desktop service helpers', () => {
     expect((window as typeof window & { kitionDesktop?: any }).kitionDesktop.MoveWorkspaceDocument).toHaveBeenCalledWith({ path: 'Home.md', target_name: 'main.md', target_folder: '' })
     expect((window as typeof window & { kitionDesktop?: any }).kitionDesktop.DeleteWorkspaceDocument).toHaveBeenCalledWith({ path: 'Home.md' })
     expect((window as typeof window & { kitionDesktop?: any }).kitionDesktop.OpenWorkspaceFile).toHaveBeenCalledWith({ path: 'Agent/report.docx' })
+    expect((window as typeof window & { kitionDesktop?: any }).kitionDesktop.OpenWorkspaceWindow).toHaveBeenCalledWith({ path: '/Users/alice/projects/notes' })
     expect((window as typeof window & { kitionDesktop?: any }).kitionDesktop.SaveWorkspaceAsset).toHaveBeenCalledWith(expect.objectContaining({
       document_path: 'Home.md',
       mime_type: 'image/png',

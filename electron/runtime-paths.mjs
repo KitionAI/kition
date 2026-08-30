@@ -22,15 +22,19 @@ async function ensureDir(dir) {
 }
 
 export async function resolveDesktopEnvironment() {
+  const dataDir = app.getPath('userData')
+  const workspaceWindowProfile = Boolean(String(process.env.KITION_DESKTOP_SHARED_DATA_DIR || '').trim())
+  const workspaceWindowLogsDir = path.join(dataDir, 'logs')
   // On macOS, app.setAppLogsPath() without args uses NSProcessInfo.processName,
   // which is "Electron" in dev mode regardless of app.setName() — pin it explicitly.
-  if (process.platform === 'darwin') {
+  if (workspaceWindowProfile) {
+    app.setAppLogsPath(workspaceWindowLogsDir)
+  } else if (process.platform === 'darwin') {
     app.setAppLogsPath(path.join(os.homedir(), 'Library', 'Logs', desktopAppName))
   } else {
     app.setAppLogsPath()
   }
 
-  const dataDir = app.getPath('userData')
   const cacheDir = app.getPath('userCache')
   const logsDir = app.getPath('logs') || path.join(os.homedir(), 'Library', 'Logs', desktopAppName)
   const uploadsDir = path.join(dataDir, 'uploads')

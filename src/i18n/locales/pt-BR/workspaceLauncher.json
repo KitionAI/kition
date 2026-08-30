@@ -27,6 +27,21 @@
       "disabledTooltip": "Em breve"
     }
   },
+  "openMode": {
+    "title": "Como você quer abrir {{name}}?",
+    "description": "Mantenha o workspace atual aberto ou substitua-o nesta janela.",
+    "current": {
+      "title": "Substituir a janela atual",
+      "description": "Alterne esta janela para o workspace selecionado.",
+      "button": "Abrir aqui"
+    },
+    "new": {
+      "title": "Abrir em nova janela",
+      "description": "Mantenha este workspace aberto e inicie uma janela independente.",
+      "button": "Abrir nova janela"
+    },
+    "cancel": "Cancelar"
+  },
   "vault": {
     "menu": {
       "rename": "Renomear",
@@ -44,6 +59,7 @@
     "open": "Falha ao abrir o espaço de trabalho: {{message}}",
     "create": "Falha ao criar o espaço de trabalho: {{message}}",
     "switch": "Falha ao trocar de espaço de trabalho: {{message}}",
+    "newWindow": "Não foi possível abrir uma nova janela de workspace.",
     "missingVault": "A pasta do espaço de trabalho não existe mais no disco."
   },
   "firstRun": {

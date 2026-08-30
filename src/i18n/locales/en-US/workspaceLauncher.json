@@ -27,6 +27,21 @@
       "disabledTooltip": "Coming soon"
     }
   },
+  "openMode": {
+    "title": "How do you want to open {{name}}?",
+    "description": "Keep the current workspace open, or replace it in this window.",
+    "current": {
+      "title": "Replace current window",
+      "description": "Switch this window to the selected workspace.",
+      "button": "Open here"
+    },
+    "new": {
+      "title": "Open in new window",
+      "description": "Keep this workspace open and launch an independent workspace window.",
+      "button": "Open new window"
+    },
+    "cancel": "Cancel"
+  },
   "vault": {
     "menu": {
       "rename": "Rename",
@@ -44,6 +59,7 @@
     "open": "Failed to open the workspace: {{message}}",
     "create": "Failed to create the workspace: {{message}}",
     "switch": "Failed to switch workspace: {{message}}",
+    "newWindow": "Failed to open a new workspace window.",
     "missingVault": "The workspace folder no longer exists on disk."
   },
   "firstRun": {

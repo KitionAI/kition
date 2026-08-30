@@ -59,6 +59,12 @@ describe('sandboxed desktop preload', () => {
       { suggested_path: '../project' },
     )
 
+    await bridge.OpenWorkspaceWindow({ path: '/Users/alice/projects/notes' })
+    expect(invoke).toHaveBeenCalledWith(
+      IPC_CHANNELS.openWorkspaceWindow,
+      { path: '/Users/alice/projects/notes' },
+    )
+
     for (const channel of Object.values(IPC_CHANNELS)) {
       expect(preloadSource).toContain(`'${channel}'`)
     }

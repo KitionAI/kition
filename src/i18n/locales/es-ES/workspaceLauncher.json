@@ -27,6 +27,21 @@
       "disabledTooltip": "Próximamente"
     }
   },
+  "openMode": {
+    "title": "¿Cómo quieres abrir {{name}}?",
+    "description": "Mantén abierto el espacio de trabajo actual o reemplázalo en esta ventana.",
+    "current": {
+      "title": "Reemplazar ventana actual",
+      "description": "Cambia esta ventana al espacio de trabajo seleccionado.",
+      "button": "Abrir aquí"
+    },
+    "new": {
+      "title": "Abrir en una ventana nueva",
+      "description": "Mantén este espacio abierto e inicia una ventana independiente.",
+      "button": "Abrir ventana nueva"
+    },
+    "cancel": "Cancelar"
+  },
   "vault": {
     "menu": {
       "rename": "Renombrar",
@@ -44,6 +59,7 @@
     "open": "No se pudo abrir el espacio de trabajo: {{message}}",
     "create": "No se pudo crear el espacio de trabajo: {{message}}",
     "switch": "No se pudo cambiar de espacio de trabajo: {{message}}",
+    "newWindow": "No se pudo abrir una nueva ventana del espacio de trabajo.",
     "missingVault": "La carpeta del espacio de trabajo ya no existe en el disco."
   },
   "firstRun": {

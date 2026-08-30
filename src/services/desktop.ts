@@ -49,6 +49,7 @@ type KitionDesktopBridge = {
   RenameVault?: (request: VaultRenameRequest) => Promise<VaultMutationResponse>
   SetActiveVault?: (request: VaultPathRequest) => Promise<SetActiveVaultResponse>
   ChooseDirectory?: (request?: ChooseDirectoryRequest) => Promise<ChooseDirectoryResponse>
+  OpenWorkspaceWindow?: (request: VaultPathRequest) => Promise<OpenWorkspaceWindowResponse>
   ChooseAgentAnalysisDirectory?: (request?: AgentAnalysisDirectoryRequest) => Promise<AgentLocalSource | null>
   StoreSecureValue?: (key: string, value: string) => Promise<void>
   ReadSecureValue?: (key: string) => Promise<string>
@@ -186,6 +187,10 @@ export type ChooseDirectoryRequest = {
 export type ChooseDirectoryResponse = {
   canceled: boolean
   path: string
+}
+
+export type OpenWorkspaceWindowResponse = {
+  opened: boolean
 }
 
 export type AgentAnalysisDirectoryRequest = {
@@ -2033,6 +2038,18 @@ export async function chooseDirectory(title?: string): Promise<ChooseDirectoryRe
     return { canceled: true, path: '' }
   }
   return bridge.ChooseDirectory({ title })
+}
+
+export async function openWorkspaceWindow(path: string): Promise<OpenWorkspaceWindowResponse> {
+  const normalizedPath = String(path || '').trim()
+  if (!normalizedPath) {
+    throw new Error('workspace path is required')
+  }
+  const bridge = getDesktopBridge()
+  if (!bridge?.OpenWorkspaceWindow) {
+    throw new Error('opening a workspace in a new window is available in the desktop app')
+  }
+  return bridge.OpenWorkspaceWindow({ path: normalizedPath })
 }
 
 export async function chooseAgentAnalysisDirectory(suggestedPath = ''): Promise<AgentLocalSource | null> {
