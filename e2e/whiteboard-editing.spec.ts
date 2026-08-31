@@ -84,6 +84,21 @@ test('opens the Board template center and creates an editable mind map', async (
   if (!connectorBefore || connectorBefore.kind !== 'connector') {
     throw new Error('Mind map research connector was not created')
   }
+  expect(connectorBefore).toMatchObject({
+    connectorRole: 'mind-map-branch',
+    connectorType: 'curved',
+    endArrowhead: 'none',
+    mindMapBranchAxis: 'horizontal',
+  })
+  expect(binding).toMatchObject({ to_anchor: { x: 0, y: 0.5 } })
+  expect(snapshot.records.find((record) => (
+    record.record_type === 'binding'
+      && record.from_id === connectorBefore.id
+      && record.terminal === 'start'
+  ))).toMatchObject({ to_anchor: { x: 1, y: 0.5 } })
+  await expect(page.locator(
+    `[data-board-path="Mind map.kiboard"] [data-element-id="${connectorBefore.id}"] path`,
+  ).last()).toHaveAttribute('d', / C /)
 
   const researchNode = page.locator(
     `[data-board-path="Mind map.kiboard"] [data-element-id="${researchRecord.id}"]`,
@@ -230,6 +245,27 @@ test('opens the Board template center and creates an editable mind map', async (
         && record.shapeStyle === 'mind-node'
         && record.id !== root.id
     )).every((record) => record.y + record.height / 2 > rootCenterY)
+  }).toBe(true)
+  await expect.poll(async () => {
+    const current = await readWhiteboardSnapshot(page)
+    return current.records.filter((record) => (
+      record.record_type === 'element' && record.kind === 'connector'
+    )).every((record) => (
+      record.kind === 'connector'
+        && record.connectorType === 'curved'
+        && record.mindMapBranchAxis === 'vertical'
+        && record.endArrowhead === 'none'
+    ))
+  }).toBe(true)
+  await expect.poll(async () => {
+    const current = await readWhiteboardSnapshot(page)
+    return current.records.filter((record) => (
+      record.record_type === 'binding'
+    )).every((record) => (
+      record.record_type === 'binding'
+        && record.to_anchor?.x === 0.5
+        && record.to_anchor.y === (record.terminal === 'start' ? 1 : 0)
+    ))
   }).toBe(true)
 
   await rootQuickControls.getByTestId('whiteboard-mind-map-add').click()

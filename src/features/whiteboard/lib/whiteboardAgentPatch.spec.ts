@@ -132,7 +132,9 @@ describe('AI Board patches', () => {
         id: 'root-branch',
         kind: 'connector',
         connectorRole: 'mind-map-branch',
+        connectorType: 'curved',
         endArrowhead: 'none',
+        mindMapBranchAxis: 'horizontal',
         start: expect.any(Object),
         end: expect.any(Object),
       }),
@@ -141,12 +143,14 @@ describe('AI Board patches', () => {
         id: 'binding:root-branch:start',
         from_id: 'root-branch',
         to_id: 'root',
+        to_anchor: { x: 1, y: 0.5 },
       }),
       expect.objectContaining({
         record_type: 'binding',
         id: 'binding:root-branch:end',
         from_id: 'root-branch',
         to_id: 'branch',
+        to_anchor: { x: 0, y: 0.5 },
       }),
     ]))
 

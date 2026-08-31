@@ -6,9 +6,17 @@ import {
 } from '@/services/workspaceFiles'
 
 import { exportBoardSvg } from '../lib/boardExport'
-import type { WhiteboardElement } from '../lib/whiteboardTypes'
+import type {
+  WhiteboardConnectorTerminals,
+  WhiteboardElement,
+  WhiteboardMindMapBranchAxis,
+} from '../lib/whiteboardTypes'
 
-export function useWhiteboardExport(elements: readonly WhiteboardElement[]) {
+export function useWhiteboardExport(
+  elements: readonly WhiteboardElement[],
+  mindMapBranchAxisByConnectorId?: ReadonlyMap<string, WhiteboardMindMapBranchAxis>,
+  mindMapBranchTerminalsByConnectorId?: ReadonlyMap<string, WhiteboardConnectorTerminals>,
+) {
   const buildSvg = useCallback(async (
     title: string,
     imageFallback: WhiteboardExportImageFallback = 'portable',
@@ -18,8 +26,14 @@ export function useWhiteboardExport(elements: readonly WhiteboardElement[]) {
       globalThis.fetch,
       imageFallback,
     )
-    return exportBoardSvg({ elements, imageHrefs, title })
-  }, [elements])
+    return exportBoardSvg({
+      elements,
+      imageHrefs,
+      mindMapBranchAxisByConnectorId,
+      mindMapBranchTerminalsByConnectorId,
+      title,
+    })
+  }, [elements, mindMapBranchAxisByConnectorId, mindMapBranchTerminalsByConnectorId])
 
   const exportSvg = useCallback(async (title: string) => {
     const svg = await buildSvg(title)

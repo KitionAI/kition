@@ -85,6 +85,38 @@ describe('whiteboardGeometry', () => {
     })).toBe('M 0 20 L 100 20')
   })
 
+  it('renders mind-map branches as flowing curves on their layout axis', () => {
+    expect(getWhiteboardConnectorPath({
+      id: 'horizontal-mind-map-branch',
+      kind: 'connector',
+      connectorRole: 'mind-map-branch',
+      connectorType: 'straight',
+      mindMapBranchAxis: 'horizontal',
+      start: { x: 100, y: 80 },
+      end: { x: 300, y: 220 },
+    })).toBe('M 100 80 C 190 80 210 220 300 220')
+
+    expect(getWhiteboardConnectorPath({
+      id: 'vertical-mind-map-branch',
+      kind: 'connector',
+      connectorRole: 'mind-map-branch',
+      mindMapBranchAxis: 'vertical',
+      start: { x: 200, y: 100 },
+      end: { x: 80, y: 300 },
+    })).toBe('M 200 100 C 200 190 80 210 80 300')
+
+    expect(getWhiteboardConnectorPath({
+      id: 'legacy-mind-map-branch',
+      kind: 'connector',
+      connectorRole: 'mind-map-branch',
+      start: { x: 100, y: 100 },
+      end: { x: 200, y: 200 },
+    }, 'horizontal', {
+      start: { x: 120, y: 80 },
+      end: { x: 300, y: 220 },
+    })).toBe('M 120 80 C 201 80 219 220 300 220')
+  })
+
   it('resizes mixed elements relative to one selection bounds', () => {
     expect(resizeWhiteboardElements({
       elements: [{

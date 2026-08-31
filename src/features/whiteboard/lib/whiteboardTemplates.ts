@@ -98,13 +98,25 @@ function createMindMapTemplate(
     strokeColor: 'purple',
   })
   board.connect('topic', 'research', 'east', 'west', {
-    connectorRole: 'mind-map-branch', connectorType: 'straight', endArrowhead: 'none', strokeColor: 'purple',
+    connectorRole: 'mind-map-branch',
+    connectorType: 'curved',
+    endArrowhead: 'none',
+    mindMapBranchAxis: 'horizontal',
+    strokeColor: 'purple',
   })
   board.connect('topic', 'ideas', 'east', 'west', {
-    connectorRole: 'mind-map-branch', connectorType: 'straight', endArrowhead: 'none', strokeColor: 'blue',
+    connectorRole: 'mind-map-branch',
+    connectorType: 'curved',
+    endArrowhead: 'none',
+    mindMapBranchAxis: 'horizontal',
+    strokeColor: 'blue',
   })
   board.connect('research', 'questions', 'east', 'west', {
-    connectorRole: 'mind-map-branch', connectorType: 'straight', endArrowhead: 'none', strokeColor: 'purple',
+    connectorRole: 'mind-map-branch',
+    connectorType: 'curved',
+    endArrowhead: 'none',
+    mindMapBranchAxis: 'horizontal',
+    strokeColor: 'purple',
   })
   return {
     ...board.finish({ includeRootFrame: false }),
@@ -439,6 +451,7 @@ function createTemplateBuilder(
       connectorRole?: WhiteboardConnectorElement['connectorRole']
       connectorType?: WhiteboardConnectorType
       endArrowhead?: 'arrow' | 'dot' | 'none'
+      mindMapBranchAxis?: WhiteboardConnectorElement['mindMapBranchAxis']
       strokeColor?: WhiteboardColorToken
     } = {},
   ) {
@@ -457,6 +470,7 @@ function createTemplateBuilder(
       connectorRole: options.connectorRole,
       connectorType: options.connectorType || 'straight',
       endArrowhead: options.endArrowhead || 'arrow',
+      mindMapBranchAxis: options.mindMapBranchAxis,
       style: {
         strokeColor: options.strokeColor || 'gray',
         strokeSize: 's',

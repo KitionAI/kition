@@ -130,6 +130,36 @@ describe('whiteboard mind map layout', () => {
       'root-right',
       'right-grandchild',
     ]))
+    expect(presentation.branchAxisByConnectorId).toEqual(new Map([
+      ['root-left', 'horizontal'],
+      ['root-right', 'horizontal'],
+      ['right-grandchild', 'horizontal'],
+    ]))
+    expect(presentation.branchTerminalsByConnectorId.get('root-right')).toEqual({
+      start: { x: root.x + root.width, y: root.y + root.height / 2 },
+      end: { x: right.x, y: right.y + right.height / 2 },
+    })
+  })
+
+  it('renders down-layout branches on the vertical axis', () => {
+    const presentation = getWhiteboardMindMapPresentation({
+      bindings,
+      elements: elements.map((element) => (
+        element.id === 'root' && element.kind === 'rectangle'
+          ? { ...element, mindMapDirection: 'down' as const }
+          : element
+      )),
+    })
+
+    expect(presentation.branchAxisByConnectorId).toEqual(new Map([
+      ['root-left', 'vertical'],
+      ['root-right', 'vertical'],
+      ['right-grandchild', 'vertical'],
+    ]))
+    expect(presentation.branchTerminalsByConnectorId.get('root-right')).toEqual({
+      start: { x: root.x + root.width / 2, y: root.y + root.height },
+      end: { x: right.x + right.width / 2, y: right.y },
+    })
   })
 
   it('keeps first-level branch sides stable in a bidirectional layout', () => {

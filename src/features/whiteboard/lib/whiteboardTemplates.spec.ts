@@ -102,7 +102,8 @@ describe('whiteboard templates', () => {
     expect(instance.elements.filter((element) => element.kind === 'connector').every((element) => (
       element.kind === 'connector'
         && element.connectorRole === 'mind-map-branch'
-        && element.connectorType === 'straight'
+        && element.connectorType === 'curved'
+        && element.mindMapBranchAxis === 'horizontal'
         && element.endArrowhead === 'none'
     ))).toBe(true)
   })

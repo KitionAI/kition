@@ -245,6 +245,9 @@ function parseBoardElement(value: unknown): WhiteboardElement[] {
         kind: 'connector',
         start,
         end,
+        mindMapBranchAxis: value.mindMapBranchAxis === 'vertical'
+          ? 'vertical'
+          : value.mindMapBranchAxis === 'horizontal' ? 'horizontal' : undefined,
         connectorRole: value.connectorRole === 'mind-map-branch'
           ? value.connectorRole
           : undefined,

@@ -2,7 +2,7 @@ import { useCallback, useMemo } from 'react'
 
 import {
   createBoardConnectorBindingRecord,
-  getBoardConnectorAnchor,
+  getBoardConnectorAnchorAt,
 } from '../lib/boardBindingEngine'
 import type { BoardCommandRegistry } from '../lib/boardCommands'
 import type { BoardBindingRecord, BoardRecord } from '../lib/boardRecords'
@@ -75,6 +75,7 @@ export function useWhiteboardMindMapActions(input: {
     input.commands.execute({ type: 'element.update', elements: layout })
     updateMindMapConnectorTerminals({
       commands: input.commands,
+      direction,
       elements: replaceElements(input.elements, layout),
       graph: selectedGraph,
     })
@@ -140,11 +141,18 @@ export function useWhiteboardMindMapActions(input: {
       start: getWhiteboardElementCenter(parent),
       end: getWhiteboardElementCenter(node),
       connectorRole: 'mind-map-branch',
-      connectorType: 'straight',
+      connectorType: 'curved',
+      mindMapBranchAxis: getMindMapBranchAxis(graph.direction),
       endArrowhead: 'none',
       style: { strokeColor: color, strokeSize: 's' },
     }
-    const initialBindings = createMindMapBindings(parent, node, connector)
+    const initialBindings = createMindMapBindings({
+      child: node,
+      connector,
+      direction: graph.direction,
+      parent,
+      side: placement.side,
+    })
     if (!initialBindings) return false
 
     const mark = input.store.markHistory()
@@ -295,25 +303,26 @@ function getNewNodeBranchColor(
   return MIND_MAP_BRANCH_COLORS[directChildren.length % MIND_MAP_BRANCH_COLORS.length]
 }
 
-function createMindMapBindings(
-  parent: WhiteboardRectangleElement,
-  child: WhiteboardRectangleElement,
-  connector: WhiteboardConnectorElement,
-) {
-  const start = getBoardConnectorAnchor(parent, getWhiteboardElementCenter(child))
-  const end = getBoardConnectorAnchor(child, getWhiteboardElementCenter(parent))
+function createMindMapBindings(input: {
+  child: WhiteboardRectangleElement
+  connector: WhiteboardConnectorElement
+  direction: WhiteboardMindMapDirection
+  parent: WhiteboardRectangleElement
+  side: WhiteboardMindMapBranchSide
+}) {
+  const { start, end } = getMindMapConnectorAnchors(input)
   if (!start || !end) return null
-  connector.start = start.point
-  connector.end = end.point
+  input.connector.start = start.point
+  input.connector.end = end.point
   return [
     createBoardConnectorBindingRecord({
       anchor: start,
-      connectorId: connector.id,
+      connectorId: input.connector.id,
       terminal: 'start',
     }),
     createBoardConnectorBindingRecord({
       anchor: end,
-      connectorId: connector.id,
+      connectorId: input.connector.id,
       terminal: 'end',
     }),
   ]
@@ -321,16 +330,45 @@ function createMindMapBindings(
 
 function updateMindMapConnectorTerminals(input: {
   commands: BoardCommandRegistry
+  direction?: WhiteboardMindMapDirection
   elements: readonly WhiteboardElement[]
   graph: WhiteboardMindMapGraph
 }) {
   const byId = new Map(input.elements.map((element) => [element.id, element]))
+  const direction = input.direction || input.graph.direction
+  const branchAxis = getMindMapBranchAxis(direction)
+  const connectors = input.graph.edges.flatMap((edge) => {
+    const connector = byId.get(edge.connectorId)
+    if (connector?.kind !== 'connector') return []
+    if (
+      connector.connectorType === 'curved'
+      && connector.connectorRole === 'mind-map-branch'
+      && connector.mindMapBranchAxis === branchAxis
+      && connector.endArrowhead === 'none'
+    ) return []
+    return [{
+      ...connector,
+      connectorRole: 'mind-map-branch' as const,
+      connectorType: 'curved' as const,
+      mindMapBranchAxis: branchAxis,
+      endArrowhead: 'none' as const,
+    }]
+  })
+  if (connectors.length) {
+    input.commands.execute({ type: 'element.update', elements: connectors })
+  }
   for (const edge of input.graph.edges) {
     const parent = byId.get(edge.parentId)
     const child = byId.get(edge.childId)
     if (!isWhiteboardMindMapNode(parent) || !isWhiteboardMindMapNode(child)) continue
-    const start = getBoardConnectorAnchor(parent, getWhiteboardElementCenter(child))
-    const end = getBoardConnectorAnchor(child, getWhiteboardElementCenter(parent))
+    const { start, end } = getMindMapConnectorAnchors({
+      child,
+      direction,
+      parent,
+      side: getWhiteboardElementCenter(child).x < getWhiteboardElementCenter(parent).x
+        ? 'left'
+        : 'right',
+    })
     if (!start || !end) continue
     input.commands.execute({
       type: 'connector.update-terminal',
@@ -347,6 +385,35 @@ function updateMindMapConnectorTerminals(input: {
       binding: end,
     })
   }
+}
+
+function getMindMapBranchAxis(direction: WhiteboardMindMapDirection) {
+  return direction === 'down' ? 'vertical' as const : 'horizontal' as const
+}
+
+function getMindMapConnectorAnchors(input: {
+  child: WhiteboardRectangleElement
+  direction: WhiteboardMindMapDirection
+  parent: WhiteboardRectangleElement
+  side: WhiteboardMindMapBranchSide
+}) {
+  if (input.direction === 'down') {
+    return {
+      start: getBoardConnectorAnchorAt(input.parent, { x: 0.5, y: 1 }),
+      end: getBoardConnectorAnchorAt(input.child, { x: 0.5, y: 0 }),
+    }
+  }
+  const opensLeft = input.direction === 'left'
+    || (input.direction === 'both' && input.side === 'left')
+  return opensLeft
+    ? {
+        start: getBoardConnectorAnchorAt(input.parent, { x: 0, y: 0.5 }),
+        end: getBoardConnectorAnchorAt(input.child, { x: 1, y: 0.5 }),
+      }
+    : {
+        start: getBoardConnectorAnchorAt(input.parent, { x: 1, y: 0.5 }),
+        end: getBoardConnectorAnchorAt(input.child, { x: 0, y: 0.5 }),
+      }
 }
 
 function replaceElements(

@@ -3,6 +3,11 @@ export type WhiteboardPoint = {
   y: number
 }
 
+export type WhiteboardConnectorTerminals = {
+  end: WhiteboardPoint
+  start: WhiteboardPoint
+}
+
 export type WhiteboardBounds = WhiteboardPoint & {
   width: number
   height: number
@@ -62,6 +67,7 @@ export type WhiteboardConnectorType = 'straight' | 'elbow' | 'curved'
 export type WhiteboardArrowhead = 'none' | 'arrow' | 'dot'
 export type WhiteboardMindMapDirection = 'both' | 'right' | 'left' | 'down'
 export type WhiteboardMindMapBranchSide = 'left' | 'right'
+export type WhiteboardMindMapBranchAxis = 'horizontal' | 'vertical'
 export type WhiteboardConnectorRole = 'mind-map-branch'
 
 export type WhiteboardElementStyle = {
@@ -132,6 +138,7 @@ export type WhiteboardConnectorElement = WhiteboardElementBase & {
   kind: 'connector'
   start: WhiteboardPoint
   end: WhiteboardPoint
+  mindMapBranchAxis?: WhiteboardMindMapBranchAxis
   connectorRole?: WhiteboardConnectorRole
   connectorType?: WhiteboardConnectorType
   startArrowhead?: WhiteboardArrowhead

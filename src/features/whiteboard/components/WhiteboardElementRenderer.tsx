@@ -13,7 +13,11 @@ import {
   getWhiteboardStrokeWidth,
   resolveWhiteboardColor,
 } from '../lib/whiteboardStyle'
-import type { WhiteboardElement } from '../lib/whiteboardTypes'
+import type {
+  WhiteboardConnectorTerminals,
+  WhiteboardElement,
+  WhiteboardMindMapBranchAxis,
+} from '../lib/whiteboardTypes'
 import { WhiteboardShapeBody } from './WhiteboardShapeBody'
 
 export function WhiteboardElementRenderer({
@@ -23,6 +27,8 @@ export function WhiteboardElementRenderer({
   element,
   hovered,
   interactive,
+  mindMapBranchAxis,
+  mindMapBranchTerminals,
   onDoubleClick,
   onHoverChange,
   onPointerDown,
@@ -36,6 +42,8 @@ export function WhiteboardElementRenderer({
   element: WhiteboardElement
   hovered: boolean
   interactive: boolean
+  mindMapBranchAxis?: WhiteboardMindMapBranchAxis
+  mindMapBranchTerminals?: WhiteboardConnectorTerminals
   onDoubleClick: () => void
   onHoverChange: (hovered: boolean) => void
   onPointerDown: (event: ReactPointerEvent<SVGElement>, elementId: string) => void
@@ -72,6 +80,8 @@ export function WhiteboardElementRenderer({
         dotId={dotId}
         element={element}
         highlighted={highlighted}
+        mindMapBranchAxis={mindMapBranchAxis}
+        mindMapBranchTerminals={mindMapBranchTerminals}
         patternId={patternId}
       />
     </g>
@@ -83,12 +93,16 @@ function WhiteboardElementBody({
   dotId,
   element,
   highlighted,
+  mindMapBranchAxis,
+  mindMapBranchTerminals,
   patternId,
 }: {
   arrowId: string
   dotId: string
   element: WhiteboardElement
   highlighted: boolean
+  mindMapBranchAxis?: WhiteboardMindMapBranchAxis
+  mindMapBranchTerminals?: WhiteboardConnectorTerminals
   patternId: string
 }) {
   const style = getWhiteboardElementStyle(element)
@@ -158,18 +172,22 @@ function WhiteboardElementBody({
       return (
         <>
           <path
-            d={getWhiteboardConnectorPath(element)}
+            d={getWhiteboardConnectorPath(element, mindMapBranchAxis, mindMapBranchTerminals)}
             fill="none"
             stroke="transparent"
             strokeWidth="14"
+            strokeLinecap="round"
+            strokeLinejoin="round"
             vectorEffect="non-scaling-stroke"
           />
           <path
-            d={getWhiteboardConnectorPath(element)}
+            d={getWhiteboardConnectorPath(element, mindMapBranchAxis, mindMapBranchTerminals)}
             fill="none"
             stroke={stroke}
             strokeDasharray={dashArray}
             strokeWidth={highlighted ? Math.max(3, strokeWidth) : strokeWidth}
+            strokeLinecap="round"
+            strokeLinejoin="round"
             markerStart={resolveArrowheadMarker(element.startArrowhead || 'none', arrowId, dotId)}
             markerEnd={resolveArrowheadMarker(element.endArrowhead || 'arrow', arrowId, dotId)}
             vectorEffect="non-scaling-stroke"

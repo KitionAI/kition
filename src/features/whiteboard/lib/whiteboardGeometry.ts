@@ -1,5 +1,6 @@
 import type {
   WhiteboardBounds,
+  WhiteboardConnectorTerminals,
   WhiteboardElement,
   WhiteboardPoint,
   WhiteboardResizeHandle,
@@ -276,8 +277,19 @@ export function whiteboardPointsToPath(points: readonly WhiteboardPoint[]) {
   return path
 }
 
-export function getWhiteboardConnectorPath(element: WhiteboardConnectorElement) {
-  const { start, end } = element
+export function getWhiteboardConnectorPath(
+  element: WhiteboardConnectorElement,
+  mindMapBranchAxis = element.mindMapBranchAxis,
+  terminals?: WhiteboardConnectorTerminals,
+) {
+  const { start, end } = terminals || element
+  if (element.connectorRole === 'mind-map-branch') {
+    return getWhiteboardMindMapBranchPath(
+      start,
+      end,
+      mindMapBranchAxis || 'horizontal',
+    )
+  }
   switch (element.connectorType || 'straight') {
     case 'elbow': {
       const middleX = (start.x + end.x) / 2
@@ -295,6 +307,26 @@ export function getWhiteboardConnectorPath(element: WhiteboardConnectorElement) 
     default:
       return `M ${start.x} ${start.y} L ${end.x} ${end.y}`
   }
+}
+
+function getWhiteboardMindMapBranchPath(
+  start: WhiteboardPoint,
+  end: WhiteboardPoint,
+  axis: 'horizontal' | 'vertical',
+) {
+  if (axis === 'vertical') {
+    const offset = getMindMapCurveOffset(end.y - start.y)
+    return `M ${start.x} ${start.y} C ${start.x} ${start.y + offset} ${end.x} ${end.y - offset} ${end.x} ${end.y}`
+  }
+  const offset = getMindMapCurveOffset(end.x - start.x)
+  return `M ${start.x} ${start.y} C ${start.x + offset} ${start.y} ${end.x - offset} ${end.y} ${end.x} ${end.y}`
+}
+
+function getMindMapCurveOffset(delta: number) {
+  const distance = Math.abs(delta)
+  if (distance === 0) return 0
+  const magnitude = Math.min(distance / 2, Math.max(32, Math.min(140, distance * 0.45)))
+  return Math.sign(delta) * magnitude
 }
 
 function getRoundedOrthogonalPath(points: readonly WhiteboardPoint[]) {

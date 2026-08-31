@@ -66,4 +66,24 @@ describe('exportBoardSvg', () => {
   it('returns an empty string for an empty Board', () => {
     expect(exportBoardSvg({ elements: [], title: 'Empty' })).toBe('')
   })
+
+  it('exports legacy mind-map branches with presentation geometry', () => {
+    const svg = exportBoardSvg({
+      elements: [{
+        id: 'branch',
+        kind: 'connector',
+        connectorRole: 'mind-map-branch',
+        start: { x: 20, y: 20 },
+        end: { x: 40, y: 40 },
+      }],
+      mindMapBranchAxisByConnectorId: new Map([['branch', 'horizontal']]),
+      mindMapBranchTerminalsByConnectorId: new Map([['branch', {
+        start: { x: 100, y: 80 },
+        end: { x: 300, y: 220 },
+      }]]),
+      title: 'Mind map',
+    })
+
+    expect(svg).toContain('d="M 100 80 C 190 80 210 220 300 220"')
+  })
 })

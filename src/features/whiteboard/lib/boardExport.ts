@@ -13,7 +13,9 @@ import {
 } from './whiteboardStyle'
 import type {
   WhiteboardColorToken,
+  WhiteboardConnectorTerminals,
   WhiteboardElement,
+  WhiteboardMindMapBranchAxis,
   WhiteboardRectangleElement,
 } from './whiteboardTypes'
 
@@ -44,6 +46,8 @@ const EXPORT_FILLS: Record<WhiteboardColorToken, string> = {
 export function exportBoardSvg(input: {
   elements: readonly WhiteboardElement[]
   imageHrefs?: ReadonlyMap<string, string>
+  mindMapBranchAxisByConnectorId?: ReadonlyMap<string, WhiteboardMindMapBranchAxis>
+  mindMapBranchTerminalsByConnectorId?: ReadonlyMap<string, WhiteboardConnectorTerminals>
   padding?: number
   title: string
 }) {
@@ -58,7 +62,12 @@ export function exportBoardSvg(input: {
     height: Math.max(1, bounds.height + padding * 2),
   }
   const body = exportableElements
-    .map((element) => exportElement(element, input.imageHrefs))
+    .map((element) => exportElement(
+      element,
+      input.imageHrefs,
+      input.mindMapBranchAxisByConnectorId?.get(element.id),
+      input.mindMapBranchTerminalsByConnectorId?.get(element.id),
+    ))
     .filter(Boolean)
     .join('\n')
   return [
@@ -80,6 +89,8 @@ export function exportBoardSvg(input: {
 function exportElement(
   element: WhiteboardElement,
   imageHrefs: ReadonlyMap<string, string> | undefined,
+  mindMapBranchAxis: WhiteboardMindMapBranchAxis | undefined,
+  mindMapBranchTerminals: WhiteboardConnectorTerminals | undefined,
 ) {
   const style = getWhiteboardElementStyle(element)
   const strokeWidth = getWhiteboardStrokeWidth(style.strokeSize)
@@ -94,7 +105,7 @@ function exportElement(
         )})"`
       : '',
   ].filter(Boolean).join(' ')
-  const content = exportElementBody(element, {
+  const content = exportElementBody(element, mindMapBranchAxis, mindMapBranchTerminals, {
     dash,
     fill: style.fillStyle === 'none'
       ? 'none'
@@ -113,6 +124,8 @@ function exportElement(
 
 function exportElementBody(
   element: WhiteboardElement,
+  mindMapBranchAxis: WhiteboardMindMapBranchAxis | undefined,
+  mindMapBranchTerminals: WhiteboardConnectorTerminals | undefined,
   paint: {
     dash?: string
     fill: string
@@ -138,7 +151,7 @@ function exportElementBody(
     case 'stroke':
       return `<path d="${whiteboardPointsToPath(element.points)}" fill="none" ${lineAttributes}/>`
     case 'connector':
-      return `<path d="${getWhiteboardConnectorPath(element)}" fill="none" ${lineAttributes}${exportArrowhead('start', element.startArrowhead || 'none')}${exportArrowhead('end', element.endArrowhead || 'arrow')}/>`
+      return `<path d="${getWhiteboardConnectorPath(element, mindMapBranchAxis, mindMapBranchTerminals)}" fill="none" ${lineAttributes}${exportArrowhead('start', element.startArrowhead || 'none')}${exportArrowhead('end', element.endArrowhead || 'arrow')}/>`
     case 'image':
       return [
         `<rect x="${number(element.x)}" y="${number(element.y)}" width="${number(element.width)}" height="${number(element.height)}" rx="8" fill="#fafaf9" ${lineAttributes}/>`,

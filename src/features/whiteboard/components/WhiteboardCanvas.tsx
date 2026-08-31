@@ -541,6 +541,8 @@ export function WhiteboardCanvas({
               onPointerDown={handleElementPointerDown}
               onDoubleClick={() => controller.beginTextEdit(element)}
               interactive={!controller.mindMapManagedConnectorIds.has(element.id)}
+              mindMapBranchAxis={controller.mindMapBranchAxisByConnectorId.get(element.id)}
+              mindMapBranchTerminals={controller.mindMapBranchTerminalsByConnectorId.get(element.id)}
               selectable={controller.tool === 'select' && !element.locked}
             />
           ))}

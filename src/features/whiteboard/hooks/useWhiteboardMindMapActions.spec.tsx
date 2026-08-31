@@ -42,6 +42,11 @@ describe('useWhiteboardEditor mind map actions', () => {
     expect(mindNodes(ref.current!)).toHaveLength(initialNodeCount + 1)
     expect(connectors(ref.current!)).toHaveLength(initialConnectorCount + 1)
     expect(bindings(ref.current!)).toHaveLength(initialBindingCount + 2)
+    expect(connectors(ref.current!).every((connector) => (
+      connector.connectorType === 'curved'
+        && connector.mindMapBranchAxis === 'horizontal'
+        && connector.endArrowhead === 'none'
+    ))).toBe(true)
     expect(ref.current?.editingText).toMatchObject({
       elementId: childId,
       value: 'New child',
@@ -81,10 +86,39 @@ describe('useWhiteboardEditor mind map actions', () => {
     expect(mindNodes(ref.current!).filter((node) => node.id !== nextRoot.id).every((node) => (
       node.x + node.width / 2 < rootCenterX
     ))).toBe(true)
+    expect(connectors(ref.current!).every((connector) => (
+      connector.connectorType === 'curved'
+        && connector.mindMapBranchAxis === 'horizontal'
+    ))).toBe(true)
+    expect(bindings(ref.current!).filter((binding) => binding.terminal === 'start').every((binding) => (
+      binding.to_anchor?.x === 0 && binding.to_anchor.y === 0.5
+    ))).toBe(true)
+    expect(bindings(ref.current!).filter((binding) => binding.terminal === 'end').every((binding) => (
+      binding.to_anchor?.x === 1 && binding.to_anchor.y === 0.5
+    ))).toBe(true)
 
     await act(async () => ref.current?.undo())
     expect(findNode(ref.current!, 'mindMap.topic').mindMapDirection).toBe('right')
     expect(nodePositions(ref.current!)).toEqual(beforePositions)
+  })
+
+  it('uses vertical curves and centered edge anchors for a down layout', async () => {
+    const ref = await renderMindMapEditor()
+    const rootNode = findNode(ref.current!, 'mindMap.topic')
+    await act(async () => ref.current?.selectElement(rootNode.id))
+    await act(async () => ref.current?.setMindMapDirection('down'))
+
+    expect(connectors(ref.current!).every((connector) => (
+      connector.connectorType === 'curved'
+        && connector.mindMapBranchAxis === 'vertical'
+        && connector.endArrowhead === 'none'
+    ))).toBe(true)
+    expect(bindings(ref.current!).filter((binding) => binding.terminal === 'start').every((binding) => (
+      binding.to_anchor?.x === 0.5 && binding.to_anchor.y === 1
+    ))).toBe(true)
+    expect(bindings(ref.current!).filter((binding) => binding.terminal === 'end').every((binding) => (
+      binding.to_anchor?.x === 0.5 && binding.to_anchor.y === 0
+    ))).toBe(true)
   })
 
   it('uses Tab for a child and Enter for a sibling', async () => {

@@ -95,7 +95,11 @@ export function useWhiteboardEditor() {
   const [highlightStyle, setHighlightStyle] = useState<WhiteboardElementStyle>({
     ...DEFAULT_WHITEBOARD_HIGHLIGHT_STYLE,
   })
-  const { exportPng, exportSvg } = useWhiteboardExport(visibleElements)
+  const { exportPng, exportSvg } = useWhiteboardExport(
+    visibleElements,
+    mindMapPresentation.branchAxisByConnectorId,
+    mindMapPresentation.branchTerminalsByConnectorId,
+  )
   const lintFindings = useMemo(() => lintWhiteboard({
     bindings: boardBindings,
     elements,
@@ -515,6 +519,8 @@ export function useWhiteboardEditor() {
     isTransacting: snapshot.isTransacting,
     lintFindings,
     mindMapDirection: mindMapActions.mindMapDirection,
+    mindMapBranchAxisByConnectorId: mindMapPresentation.branchAxisByConnectorId,
+    mindMapBranchTerminalsByConnectorId: mindMapPresentation.branchTerminalsByConnectorId,
     mindMapHiddenElementIds: mindMapPresentation.hiddenElementIds,
     mindMapManagedConnectorIds: mindMapPresentation.managedConnectorIds,
     mindMapRootNode: mindMapActions.mindMapRootNode,

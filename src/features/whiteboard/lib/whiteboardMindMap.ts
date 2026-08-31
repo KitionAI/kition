@@ -1,7 +1,9 @@
 import type { BoardBindingRecord } from './boardRecords'
 import { getWhiteboardElementCenter } from './whiteboardGeometry'
 import type {
+  WhiteboardConnectorTerminals,
   WhiteboardElement,
+  WhiteboardMindMapBranchAxis,
   WhiteboardMindMapBranchSide,
   WhiteboardMindMapDirection,
   WhiteboardRectangleElement,
@@ -28,6 +30,8 @@ export type WhiteboardMindMapGraph = {
 }
 
 export type WhiteboardMindMapPresentation = {
+  branchAxisByConnectorId: ReadonlyMap<string, WhiteboardMindMapBranchAxis>
+  branchTerminalsByConnectorId: ReadonlyMap<string, WhiteboardConnectorTerminals>
   hiddenElementIds: ReadonlySet<string>
   managedConnectorIds: ReadonlySet<string>
 }
@@ -87,12 +91,42 @@ export function getWhiteboardMindMapPresentation(input: {
   elements: readonly WhiteboardElement[]
 }): WhiteboardMindMapPresentation {
   const topology = buildWhiteboardMindMapTopology(input)
+  const branchAxisByConnectorId = new Map<string, WhiteboardMindMapBranchAxis>()
+  const branchTerminalsByConnectorId = new Map<string, WhiteboardConnectorTerminals>()
   const hiddenElementIds = new Set<string>()
   const managedConnectorIds = new Set(topology.edges.map((edge) => edge.connectorId))
   const roots = [...topology.nodeById.keys()].filter((id) => !topology.parentById.has(id))
 
-  for (const rootId of roots) visit(rootId, false)
-  return { hiddenElementIds, managedConnectorIds }
+  for (const rootId of roots) {
+    const nodeIds = collectMindMapNodeIds(topology.childrenById, rootId)
+    const root = topology.nodeById.get(rootId)
+    const nodes = [...nodeIds].flatMap((id) => {
+      const node = topology.nodeById.get(id)
+      return node ? [node] : []
+    })
+    const direction = root?.mindMapDirection || (root ? inferMindMapDirection(root, nodes) : 'right')
+    const axis = direction === 'down' ? 'vertical' : 'horizontal'
+    for (const edge of topology.edges) {
+      if (nodeIds.has(edge.parentId) && nodeIds.has(edge.childId)) {
+        branchAxisByConnectorId.set(edge.connectorId, axis)
+        const parent = topology.nodeById.get(edge.parentId)
+        const child = topology.nodeById.get(edge.childId)
+        if (parent && child) {
+          branchTerminalsByConnectorId.set(
+            edge.connectorId,
+            getMindMapBranchTerminals(parent, child, axis),
+          )
+        }
+      }
+    }
+    visit(rootId, false)
+  }
+  return {
+    branchAxisByConnectorId,
+    branchTerminalsByConnectorId,
+    hiddenElementIds,
+    managedConnectorIds,
+  }
 
   function visit(nodeId: string, hiddenByAncestor: boolean) {
     const node = topology.nodeById.get(nodeId)
@@ -116,6 +150,51 @@ export function getWhiteboardMindMapPresentation(input: {
       current = topology.parentById.get(current)!
     }
     return current
+  }
+}
+
+function getMindMapBranchTerminals(
+  parent: WhiteboardRectangleElement,
+  child: WhiteboardRectangleElement,
+  axis: WhiteboardMindMapBranchAxis,
+): WhiteboardConnectorTerminals {
+  if (axis === 'vertical') {
+    return {
+      start: getMindMapNodeAnchorPoint(parent, { x: 0.5, y: 1 }),
+      end: getMindMapNodeAnchorPoint(child, { x: 0.5, y: 0 }),
+    }
+  }
+  const opensLeft = getWhiteboardElementCenter(child).x < getWhiteboardElementCenter(parent).x
+  return opensLeft
+    ? {
+        start: getMindMapNodeAnchorPoint(parent, { x: 0, y: 0.5 }),
+        end: getMindMapNodeAnchorPoint(child, { x: 1, y: 0.5 }),
+      }
+    : {
+        start: getMindMapNodeAnchorPoint(parent, { x: 1, y: 0.5 }),
+        end: getMindMapNodeAnchorPoint(child, { x: 0, y: 0.5 }),
+      }
+}
+
+function getMindMapNodeAnchorPoint(
+  node: WhiteboardRectangleElement,
+  anchor: { x: number; y: number },
+) {
+  const point = {
+    x: node.x + node.width * anchor.x,
+    y: node.y + node.height * anchor.y,
+  }
+  const rotation = node.rotation || 0
+  if (rotation === 0) return point
+  const center = getWhiteboardElementCenter(node)
+  const radians = rotation * Math.PI / 180
+  const cosine = Math.cos(radians)
+  const sine = Math.sin(radians)
+  const deltaX = point.x - center.x
+  const deltaY = point.y - center.y
+  return {
+    x: center.x + deltaX * cosine - deltaY * sine,
+    y: center.y + deltaX * sine + deltaY * cosine,
   }
 }
 

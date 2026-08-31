@@ -172,6 +172,7 @@ describe('Board .kiboard serialization', () => {
             start: { x: 100, y: 40 },
             end: { x: 220, y: 40 },
             connectorRole: 'mind-map-branch',
+            mindMapBranchAxis: 'horizontal',
           },
         ], 'Connected board'),
         {
@@ -191,6 +192,7 @@ describe('Board .kiboard serialization', () => {
       expect.objectContaining({
         id: 'connector',
         connectorRole: 'mind-map-branch',
+        mindMapBranchAxis: 'horizontal',
       }),
       expect.objectContaining({
         id: 'binding:connector:start',

@@ -13,6 +13,7 @@ import {
 import {
   createBoardConnectorBindingRecord,
   getBoardConnectorAnchor,
+  getBoardConnectorAnchorAt,
   resolveBoardConnectorAnchor,
 } from './boardBindingEngine'
 import {
@@ -387,19 +388,37 @@ export function translateAgentWhiteboardPatch(input: {
     const toElement = boardElementFromRecord(toRecord)
     const fromBounds = getWhiteboardElementBounds(fromElement)
     const toBounds = getWhiteboardElementBounds(toElement)
-    const fromAnchor = getBoardConnectorAnchor(fromElement, {
-      x: toBounds.x + toBounds.width / 2,
-      y: toBounds.y + toBounds.height / 2,
-    })
-    const toAnchor = getBoardConnectorAnchor(toElement, {
+    const fromCenter = {
       x: fromBounds.x + fromBounds.width / 2,
       y: fromBounds.y + fromBounds.height / 2,
-    })
-    if (!fromAnchor || !toAnchor) {
-      throw new Error(`AI Board connector has invalid endpoints: ${connector.id}`)
+    }
+    const toCenter = {
+      x: toBounds.x + toBounds.width / 2,
+      y: toBounds.y + toBounds.height / 2,
     }
     const mindMapBranch = isWhiteboardMindMapNode(fromElement)
       && isWhiteboardMindMapNode(toElement)
+    const mindMapBranchAxis = mindMapBranch
+      ? Math.abs(toCenter.x - fromCenter.x) >= Math.abs(toCenter.y - fromCenter.y)
+        ? 'horizontal' as const
+        : 'vertical' as const
+      : undefined
+    const anchors = mindMapBranch && mindMapBranchAxis
+      ? getAgentMindMapConnectorAnchors({
+          axis: mindMapBranchAxis,
+          fromCenter,
+          fromElement,
+          toCenter,
+          toElement,
+        })
+      : {
+          fromAnchor: getBoardConnectorAnchor(fromElement, toCenter),
+          toAnchor: getBoardConnectorAnchor(toElement, fromCenter),
+        }
+    const { fromAnchor, toAnchor } = anchors
+    if (!fromAnchor || !toAnchor) {
+      throw new Error(`AI Board connector has invalid endpoints: ${connector.id}`)
+    }
     const element: Extract<WhiteboardElement, { kind: 'connector' }> = {
       id: connector.id,
       kind: 'connector',
@@ -408,7 +427,8 @@ export function translateAgentWhiteboardPatch(input: {
       start: fromAnchor.point,
       end: toAnchor.point,
       connectorRole: mindMapBranch ? 'mind-map-branch' : undefined,
-      connectorType: 'straight',
+      connectorType: mindMapBranch ? 'curved' : 'straight',
+      mindMapBranchAxis,
       startArrowhead: 'none',
       endArrowhead: mindMapBranch ? 'none' : 'arrow',
     }
@@ -493,6 +513,37 @@ export function translateAgentWhiteboardPatch(input: {
   diff.removed.sort(compareBoardRecords)
   diff.updated.sort((left, right) => compareBoardRecords(left.after, right.after))
   return diff
+}
+
+function getAgentMindMapConnectorAnchors(input: {
+  axis: 'horizontal' | 'vertical'
+  fromCenter: { x: number; y: number }
+  fromElement: WhiteboardElement
+  toCenter: { x: number; y: number }
+  toElement: WhiteboardElement
+}) {
+  if (input.axis === 'vertical') {
+    const opensDown = input.toCenter.y >= input.fromCenter.y
+    return opensDown
+      ? {
+          fromAnchor: getBoardConnectorAnchorAt(input.fromElement, { x: 0.5, y: 1 }),
+          toAnchor: getBoardConnectorAnchorAt(input.toElement, { x: 0.5, y: 0 }),
+        }
+      : {
+          fromAnchor: getBoardConnectorAnchorAt(input.fromElement, { x: 0.5, y: 0 }),
+          toAnchor: getBoardConnectorAnchorAt(input.toElement, { x: 0.5, y: 1 }),
+        }
+  }
+  const opensRight = input.toCenter.x >= input.fromCenter.x
+  return opensRight
+    ? {
+        fromAnchor: getBoardConnectorAnchorAt(input.fromElement, { x: 1, y: 0.5 }),
+        toAnchor: getBoardConnectorAnchorAt(input.toElement, { x: 0, y: 0.5 }),
+      }
+    : {
+        fromAnchor: getBoardConnectorAnchorAt(input.fromElement, { x: 0, y: 0.5 }),
+        toAnchor: getBoardConnectorAnchorAt(input.toElement, { x: 1, y: 0.5 }),
+      }
 }
 
 function requireEditableElements(
