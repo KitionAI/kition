@@ -146,6 +146,57 @@ test('searches and pages the server catalog, then submits a pinned template vers
   expect(sent.image_generation_intent).toMatchObject({ template_id: 'launch', template_version: '2', template_variables: { subject: 'Kition' } })
 })
 
+test('edits an image from ordinary chat without an open editor and changes its aspect ratio', async ({ page }) => {
+  const requests: Array<{ sessionId: number; body: any }> = []
+  await page.route('https://kition.ai/api/media/image-templates**', (route) => route.fulfill({ status: 503 }))
+  await openImageChat(page)
+  await page.getByRole('button', { name: 'Start without a template' }).click()
+  await page.getByRole('button', { name: 'Exit image mode', exact: true }).click()
+  await page.locator('.document-tab-list').getByRole('button', { name: 'Close tab', exact: true }).click()
+  await expect(page.getByTestId('whiteboard-svg-scene')).toHaveCount(0)
+  await page.route('**/api/v1/agent/sessions/*/messages/stream', async (route) => {
+    const body = route.request().postDataJSON()
+    const sessionId = Number(route.request().url().match(/sessions\/(\d+)/)![1])
+    requests.push({ sessionId, body })
+    await fulfillImageStream(route, body, sessionId, requests.length)
+  })
+  const composer = page.getByPlaceholder('Plan, write, or ask anything…')
+  await composer.fill('Create a city travel poster')
+  await composer.press('Enter')
+  await expect(page.getByTestId('agent-image-result')).toBeVisible()
+  expect(requests[0].body.image_generation_intent).toBeUndefined()
+
+  await page.getByRole('button', { name: 'Edit in chat', exact: true }).click()
+  await expect(composer).toBeFocused()
+  await expect(page.getByTestId('agent-image-summary')).not.toContainText('Open a document')
+  await page.getByTestId('agent-image-summary').click()
+  await page.getByRole('combobox', { name: 'Aspect ratio', exact: true }).selectOption('9:16')
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await composer.fill('Update this image to a portrait layout')
+  await expect(page.getByRole('button', { name: 'Send', exact: true })).toBeEnabled()
+  await composer.press('Enter')
+  await expect(page.getByTestId('agent-image-result')).toHaveCount(2)
+  expect(requests[1].sessionId).toBe(requests[0].sessionId)
+  expect(requests[1].body.image_generation_intent).toMatchObject({
+    operation: 'edit', aspect_ratio: '9:16', reference_paths: ['Agent/generated-1.png'],
+    surface: 'document', placement_preference: 'review',
+    target: {
+      type: 'image.target.document', document_path: 'Agent/generated-1.png',
+      document_format: 'image', selected_image_path: 'Agent/generated-1.png',
+    },
+  })
+
+  await page.getByTestId('agent-image-result').last().getByRole('button', { name: 'Edit in chat', exact: true }).click()
+  await composer.fill('Keep the portrait layout and use warmer colors')
+  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  await expect(page.getByTestId('agent-image-result')).toHaveCount(3)
+  expect(requests[2].sessionId).toBe(requests[0].sessionId)
+  expect(requests[2].body.image_generation_intent).toMatchObject({
+    operation: 'edit', aspect_ratio: '9:16', reference_paths: ['Agent/generated-2.png'],
+    target: { document_path: 'Agent/generated-2.png' }, placement_preference: 'review',
+  })
+})
+
 test('exits image mode from the composer and sends the preserved draft as normal chat', async ({ page }) => {
   let sent: any
   await page.route('https://kition.ai/api/media/image-templates**', (route) => route.fulfill({
@@ -339,7 +390,7 @@ async function expectImagePanelLeftOfChat(page: Page) {
 
 async function fulfillImageStream(route: Route, body: any, sessionId: number, turn: number) {
   const createdAt = new Date().toISOString()
-  const requestId = body.image_generation_intent.request_id
+  const requestId = body.image_generation_intent?.request_id || `chat-image-${turn}`
   const imageEvent = { type: 'image_generation.event', schema_version: 1, request_id: requestId }
   const artifact = {
     id: 800 + turn, path: `Agent/generated-${turn}.png`, mime_type: 'image/png', title: 'Launch image',

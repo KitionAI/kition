@@ -140,6 +140,67 @@ describe('Agent image composer', () => {
     await act(async () => mode.send())
     expect(props.onSend).toHaveBeenCalledWith(expect.objectContaining({ operation: 'edit', reference_paths: ['Agent/generated.png'] }))
   })
+
+  it('edits a restored artifact without an open editor and sends the selected aspect ratio', async () => {
+    await setup({ target: undefined, draft: 'Make this poster portrait' })
+    await act(async () => mode.send())
+    expect(props.onSend).not.toHaveBeenCalled()
+    await act(async () => mode.edit({ path: 'Agent/generated.png' } as AgentImageArtifact))
+    await act(async () => mode.setOptions({ ...mode.options, aspect_ratio: '9:16' }))
+    expect(mode.blockedReason).toBe('')
+    await act(async () => mode.send())
+    const intent = vi.mocked(props.onSend).mock.calls[0][0]!
+    expect(intent).toMatchObject({
+      operation: 'edit', instruction: props.draft, aspect_ratio: '9:16',
+      reference_paths: ['Agent/generated.png'], surface: 'document',
+      target: {
+        type: 'image.target.document', document_path: 'Agent/generated.png',
+        document_format: 'image', selected_image_path: 'Agent/generated.png',
+      },
+      placement_preference: 'review',
+    })
+    expect(getImageTemplate).not.toHaveBeenCalled()
+
+    await act(async () => mode.removeReference('Agent/generated.png'))
+    expect(mode.blockedReason).toContain('Open a document')
+    await act(async () => mode.send())
+    expect(props.onSend).toHaveBeenCalledTimes(1)
+
+    await act(async () => mode.retry(intent.request_id))
+    expect(mode.blockedReason).toBe('')
+    await act(async () => mode.send())
+    expect(vi.mocked(props.onSend).mock.calls[1][0]).toMatchObject({
+      operation: 'edit', target: intent.target, reference_paths: intent.reference_paths,
+      aspect_ratio: '9:16',
+    })
+  })
+
+  it('keeps an edit sendable after its editor closes and clears the source on session changes', async () => {
+    await setup({ target: { type: 'image.target.whiteboard', board_path: 'Ideas.kiboard' } })
+    await act(async () => mode.edit({ path: 'Agent/generated.png' } as AgentImageArtifact))
+    props = { ...props, target: undefined }
+    await render()
+    expect(mode.blockedReason).toBe('')
+    await act(async () => mode.send())
+    expect(props.onSend).toHaveBeenCalledWith(expect.objectContaining({
+      operation: 'edit', placement_preference: 'review', reference_paths: ['Agent/generated.png'],
+    }))
+    props = { ...props, sessionId: 26 }
+    await render()
+    await act(async () => mode.setEnabled(true))
+    expect(mode.editReference).toBeUndefined()
+    expect(mode.blockedReason).toContain('Open a document')
+    await act(async () => mode.send())
+    expect(props.onSend).toHaveBeenCalledTimes(1)
+  })
+
+  it('still requires runtime support to edit an artifact without an editor', async () => {
+    await setup({ target: undefined, available: false })
+    await act(async () => mode.edit({ path: 'Agent/generated.png' } as AgentImageArtifact))
+    expect(mode.blockedReason).toContain('updated runtime')
+    await act(async () => mode.send())
+    expect(props.onSend).not.toHaveBeenCalled()
+  })
   it('restores the original references when reusing settings and allows removing them', async () => {
     await setup({ referencePaths: ['Attachments/reference.png'] })
     await act(async () => mode.send())

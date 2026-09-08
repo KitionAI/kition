@@ -35,7 +35,12 @@ export function useAgentImageMode(input: {
   const [preparing, setPreparing] = useState(false)
   const requests = useRef(new Map<string, { intent: AgentImageGenerationIntent; template?: ImageTemplateSummary }>())
   const controller = useRef<AbortController | null>(null)
-  const contextKey = `${input.sessionId}:${JSON.stringify(input.target)}:${input.accessToken || ''}:${input.available}`
+  // A reviewed image is itself a workspace document; editing it needs no open placement destination.
+  const target: AgentImageTarget | undefined = input.target ?? (editReference ? {
+    type: 'image.target.document', document_path: editReference,
+    document_format: 'image', selected_image_path: editReference,
+  } : undefined)
+  const contextKey = `${input.sessionId}:${JSON.stringify(target)}:${input.accessToken || ''}:${input.available}`
   const currentContext = useRef(contextKey)
   currentContext.current = contextKey
   useEffect(() => () => controller.current?.abort(), [])
@@ -76,7 +81,7 @@ export function useAgentImageMode(input: {
     ? [template.title, ...template.variables.map((variable) => variables[variable.key]?.trim()).filter(Boolean)].join('\n').slice(0, 12000)
     : '')
   const blockedReason = !input.available ? t('chat.runtimeUnavailable')
-    : !input.target ? t('chat.targetRequired')
+    : !target ? t('chat.targetRequired')
     : accountRequired ? t('chat.accountRequired')
     : referenceRequired ? t('chat.referenceRequired')
     : missingVariables ? t('chat.variablesRequired') : ''
@@ -98,7 +103,7 @@ export function useAgentImageMode(input: {
 
   async function send() {
     if (!enabled) { input.onSend(); return }
-    if (blockedReason || !instruction || !input.canSend || input.busy || controller.current || !input.target) return
+    if (blockedReason || !instruction || !input.canSend || input.busy || controller.current || !target) return
     const abort = new AbortController()
     controller.current = abort
     setPreparing(true)
@@ -127,9 +132,9 @@ export function useAgentImageMode(input: {
         ...options,
         ...(template ? { template_id: template.id, template_version: template.version, template_variables: variables } : {}),
         reference_paths: referencePaths,
-        surface: input.target.type === 'image.target.table' ? 'table'
-          : input.target.type === 'image.target.whiteboard' ? 'whiteboard' : 'document',
-        target: input.target,
+        surface: target.type === 'image.target.table' ? 'table'
+          : target.type === 'image.target.whiteboard' ? 'whiteboard' : 'document',
+        target,
         placement_preference: 'review',
       }
       requests.current.set(intent.request_id, { intent, template })
@@ -150,6 +155,7 @@ export function useAgentImageMode(input: {
     setEnabled(true)
     setTemplate(undefined)
     setVariables({})
+    setError('')
     setEditReference(artifact.path)
     setReferenceOverrides(undefined)
     setBrowsing(false)
