@@ -5,6 +5,8 @@ export function inferWorkspaceDocumentFormat(relativePath) {
   switch (extension) {
     case '.kitable':
       return 'data'
+    case '.kidesign':
+      return 'design'
     case '.kiboard':
       return 'board'
     case '.md':
@@ -51,13 +53,13 @@ export function inferWorkspaceDocumentFormat(relativePath) {
 }
 
 export function isEditableWorkspaceDocument(relativePath) {
-  return /\.(md|markdown|kitable|kiboard)$/i.test(String(relativePath || ''))
+  return /\.(md|markdown|kitable|kiboard|kidesign)$/i.test(String(relativePath || ''))
 }
 
 export function isTextWorkspaceDocument(relativePath) {
-  return /\.(md|markdown|kiboard|txt|csv|tsv|json|html|htm)$/i.test(String(relativePath || ''))
+  return /\.(md|markdown|kiboard|kidesign|txt|csv|tsv|json|html|htm)$/i.test(String(relativePath || ''))
 }
 
 export function isSupportedWorkspaceDocument(relativePath) {
-  return /\.(md|markdown|kitable|kiboard|txt|csv|tsv|json|html|htm|pdf|docx|xlsx|xls|pptx|ppt|png|jpe?g|gif|webp|svg|mp4|mov|webm|mp3|wav|m4a)$/i.test(String(relativePath || ''))
+  return /\.(md|markdown|kitable|kiboard|kidesign|txt|csv|tsv|json|html|htm|pdf|docx|xlsx|xls|pptx|ppt|png|jpe?g|gif|webp|svg|mp4|mov|webm|mp3|wav|m4a)$/i.test(String(relativePath || ''))
 }

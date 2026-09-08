@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react'
-import { ExternalLink, FileText, FolderOpen } from 'lucide-react'
+import { requestUseImageInDesign } from '@/services/workspaceDesignActions'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Copy, Paintbrush, ExternalLink, FileText, FolderOpen } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { openWorkspaceFile, revealWorkspaceFolder } from '@/services/desktop'
+import { ContextActionMenu } from '@/components/ContextActionMenu'
+import { copyImageToClipboard, openWorkspaceFile, revealWorkspaceFolder } from '@/services/desktop'
 import { resolveWorkspaceFileURL } from '@/services/workspaceFiles'
 import type { WorkspaceDocumentFormat } from '@/services/desktop'
 import {
@@ -11,6 +13,7 @@ import {
   getWorkspaceItemTitle,
 } from '@/features/workspace/lib/workspace'
 import { cn } from '@/lib/utils'
+import { notify } from '@/lib/notify'
 
 type WorkspaceFileViewerPaneProps = {
   path: string
@@ -39,11 +42,34 @@ export function WorkspaceFileViewerPane({ path, format, active }: WorkspaceFileV
   const label = getWorkspaceItemFormatLabel(format)
   const Icon = getWorkspaceItemIcon(format)
   const folderPath = parentFolderFromPath(path)
-  const [busy, setBusy] = useState<'open' | 'reveal' | null>(null)
+  const [busy, setBusy] = useState<'open' | 'reveal' | 'copy' | null>(null)
+  const [imageMenu, setImageMenu] = useState<{ x: number; y: number } | null>(null)
+  const imageRef = useRef<HTMLImageElement>(null)
+  const closeImageMenu = useCallback(() => {
+    setImageMenu(null)
+    imageRef.current?.focus({ preventScroll: true })
+  }, [])
 
   useEffect(() => {
     setBusy(null)
   }, [path])
+
+  useEffect(() => { setImageMenu(null) }, [path, active])
+
+  const handleCopyImage = async () => {
+    try {
+      setBusy('copy')
+      const copied = await copyImageToClipboard(url)
+      if (!copied) throw new Error('Image clipboard write failed')
+      notify.success(t('fileViewer.imageCopied'))
+    } catch (error) {
+      notify.error(t('fileViewer.imageCopyFailed'), {
+        description: error instanceof Error ? error.message : String(error),
+      })
+    } finally {
+      setBusy(null)
+    }
+  }
 
   const handleOpenExternal = async () => {
     try {
@@ -94,10 +120,28 @@ export function WorkspaceFileViewerPane({ path, format, active }: WorkspaceFileV
           </div>
         </div>
       )}
+      {format === 'image' ? <div className="flex justify-end border-b border-border p-2">
+        <button type="button" className="workspace-file-viewer__action" onClick={() => requestUseImageInDesign(path, true)}>
+          <Paintbrush className="size-4" /><span>{t('design:fromImage')}</span>
+        </button>
+      </div> : null}
       <div className="workspace-file-viewer__body">
         {format === 'image' ? (
           <div className="workspace-file-viewer__image">
-            <img src={url} alt={filename} loading="lazy" />
+            <img ref={imageRef} src={url} alt={filename} loading="lazy" tabIndex={active ? 0 : -1}
+              className="outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onContextMenu={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                setImageMenu({ x: event.clientX, y: event.clientY })
+              }}
+              onKeyDown={(event) => {
+                if (event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return
+                event.preventDefault()
+                event.stopPropagation()
+                const bounds = event.currentTarget.getBoundingClientRect()
+                setImageMenu({ x: bounds.left + 16, y: Math.max(8, bounds.top) + 16 })
+              }} />
           </div>
         ) : format === 'pdf' ? (
           <iframe
@@ -118,6 +162,12 @@ export function WorkspaceFileViewerPane({ path, format, active }: WorkspaceFileV
           </div>
         )}
       </div>
+      {active && format === 'image' && imageMenu ? <ContextActionMenu
+        label={t('fileViewer.imageActions')} position={imageMenu} onClose={closeImageMenu}
+        items={[{
+          id: 'copy-image', label: t('fileViewer.copyImage'), icon: <Copy className="size-4" aria-hidden="true" />,
+          disabled: busy === 'copy', onSelect: () => { void handleCopyImage() },
+        }]} /> : null}
     </div>
   )
 }

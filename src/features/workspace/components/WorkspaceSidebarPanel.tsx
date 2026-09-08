@@ -37,6 +37,7 @@ type WorkspaceSidebarPanelProps = {
    *  "Workflows" node so the tree stays clean. */
   onOpenWorkflows?: () => void
   onCreateBoard?: () => void
+  onCreateDesign?: () => void
   onRename: (node: WorkspaceTreeNode, nextTitle: string) => void
   onSetIcon: (path: string, icon: string | null) => void
   onToggleFolder: (path: string) => void
@@ -78,6 +79,7 @@ export function WorkspaceSidebarPanel({
   onRefresh,
   onOpenWorkflows,
   onCreateBoard,
+  onCreateDesign,
   onRename,
   onSetIcon,
   onToggleFolder,
@@ -120,6 +122,7 @@ export function WorkspaceSidebarPanel({
       onRefresh={onRefresh}
       onOpenWorkflows={onOpenWorkflows}
       onCreateBoard={onCreateBoard}
+                  onCreateDesign={onCreateDesign}
       onOpenSearch={onOpenSearch}
       treeContent={(
         <>
@@ -152,6 +155,7 @@ export function WorkspaceSidebarPanel({
             onCreateDocument={onCreateDocument}
             onCreateTable={onCreateTable}
             onCreateBoard={onCreateBoard}
+                  onCreateDesign={onCreateDesign}
           />
         </>
       )}

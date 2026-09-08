@@ -60,6 +60,7 @@ export function deriveAgentPaneContext(
     case 'table':
     case 'dashboard':
       return 'table'
+    case 'design':
     case 'gallery':
       return 'gallery'
     case 'board':
@@ -103,6 +104,8 @@ export function resolveAgentActiveDocument(
       }
     case 'board':
       return { path: tab.path, format: 'board' }
+    // Design placement uses completed images; no Design target is sent to older runtimes.
+    case 'design':
     case 'browser-sites':
     case 'gallery':
       return { path: '' }

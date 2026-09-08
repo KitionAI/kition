@@ -11,6 +11,36 @@ license and is not covered by this notice.
 
 ================================================================================
 
+Bundled Asset Notices
+
+awesome-gpt-image-2 template previews and prompt structures
+Repository: https://github.com/freestylefly/awesome-gpt-image-2
+License: MIT
+
+MIT License
+
+Copyright (c) 2026 freestylefly
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+================================================================================
+
 Package Inventory
 
 @alloc/quick-lru 5.2.0
@@ -1238,7 +1268,7 @@ License: MIT
 Homepage: https://github.com/vitest-dev/vitest/tree/main/packages/utils
 License text: 65
 
-@xmldom/xmldom 0.8.13, 0.9.10
+@xmldom/xmldom 0.8.15, 0.9.12
 License: MIT
 Homepage: https://github.com/xmldom/xmldom
 License text: 66
@@ -1418,7 +1448,7 @@ License: MIT
 Homepage: https://github.com/beatgammit/base64-js
 License text: 98
 
-baseline-browser-mapping 2.10.27
+baseline-browser-mapping 2.11.21
 License: Apache-2.0
 Homepage: https://github.com/web-platform-dx/baseline-browser-mapping#readme
 License text: 10
@@ -1448,7 +1478,7 @@ License: MIT
 Homepage: https://github.com/micromatch/braces
 License text: 103
 
-browserslist 4.28.2
+browserslist 4.28.7
 License: MIT
 Homepage: https://github.com/browserslist/browserslist#readme
 License text: 104
@@ -1508,7 +1538,7 @@ License: MIT
 Homepage: https://github.com/stevenvachon/camelcase-css#readme
 License text: 112
 
-caniuse-lite 1.0.30001791
+caniuse-lite 1.0.30001791, 1.0.30001810
 License: CC-BY-4.0
 Homepage: https://github.com/browserslist/caniuse-lite#readme
 License text: 113
@@ -2013,7 +2043,7 @@ License: MIT
 Homepage: https://github.com/electron-userland/electron-builder
 License text: 106
 
-electron-to-chromium 1.5.350
+electron-to-chromium 1.5.423
 License: ISC
 Homepage: https://github.com/Kilian/electron-to-chromium#readme
 License text: 180
@@ -2213,7 +2243,7 @@ License: MIT
 Homepage: https://github.com/hiddentao/fast-levenshtein#readme
 License text: 204
 
-fast-uri 3.1.5
+fast-uri 3.1.6
 License: BSD-3-Clause
 Homepage: https://github.com/fastify/fast-uri
 License text: 205
@@ -3023,7 +3053,7 @@ License: MIT
 Homepage: https://github.com/broofa/node-int64#readme
 License text: 307
 
-node-releases 2.0.38
+node-releases 2.0.54
 License: MIT
 Homepage: https://github.com/chicoxyzzy/node-releases#readme
 License text: 308
@@ -3248,7 +3278,7 @@ License: MIT
 Homepage: https://github.com/postcss/postcss-nested#readme
 License text: 331
 
-postcss-selector-parser 6.1.2
+postcss-selector-parser 6.1.4
 License: MIT
 Homepage: https://github.com/postcss/postcss-selector-parser
 License text: 332
@@ -4443,7 +4473,7 @@ THE SOFTWARE.
 ================================================================================
 
 License text 10
-Packages: @chevrotain/types 11.1.2; @humanwhocodes/config-array 0.13.0; @humanwhocodes/module-importer 1.0.1; @malept/cross-spawn-promise 2.0.0; baseline-browser-mapping 2.10.27; doctrine 3.0.0; dompurify 3.4.13; ejs 3.1.10; sumchecker 3.0.1
+Packages: @chevrotain/types 11.1.2; @humanwhocodes/config-array 0.13.0; @humanwhocodes/module-importer 1.0.1; @malept/cross-spawn-promise 2.0.0; baseline-browser-mapping 2.11.21; doctrine 3.0.0; dompurify 3.4.13; ejs 3.1.10; sumchecker 3.0.1
 
 Apache License
                            Version 2.0, January 2004
@@ -6254,7 +6284,7 @@ SOFTWARE.
 ================================================================================
 
 License text 66
-Packages: @xmldom/xmldom 0.8.13, 0.9.10
+Packages: @xmldom/xmldom 0.8.15, 0.9.12
 
 Copyright 2019 - present Christopher J. Brody and other contributors, as listed in: https://github.com/xmldom/xmldom/graphs/contributors
 Copyright 2012 - 2017 @jindw <jindw@xidea.org> and other contributors, as listed in: https://github.com/jindw/xmldom/graphs/contributors
@@ -8051,7 +8081,7 @@ THE SOFTWARE.
 ================================================================================
 
 License text 104
-Packages: browserslist 4.28.2
+Packages: browserslist 4.28.7
 
 The MIT License (MIT)
 
@@ -8301,7 +8331,7 @@ THE SOFTWARE.
 ================================================================================
 
 License text 113
-Packages: caniuse-lite 1.0.30001791
+Packages: caniuse-lite 1.0.30001791, 1.0.30001810
 
 Attribution 4.0 International
 
@@ -11314,7 +11344,7 @@ SOFTWARE.
 ================================================================================
 
 License text 180
-Packages: electron-to-chromium 1.5.350
+Packages: electron-to-chromium 1.5.423
 
 Copyright 2018 Kilian Valkhof
 
@@ -12800,7 +12830,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 ================================================================================
 
 License text 205
-Packages: fast-uri 3.1.5
+Packages: fast-uri 3.1.6
 
 Copyright (c) 2011-2021, Gary Court until https://github.com/garycourt/uri-js/commit/a1acf730b4bba3f1097c9f52e7d9d3aba8cdcaae
 Copyright (c) 2021-present The Fastify team <https://github.com/fastify/fastify#team>
@@ -16729,7 +16759,7 @@ THE SOFTWARE.
 ================================================================================
 
 License text 308
-Packages: node-releases 2.0.38
+Packages: node-releases 2.0.54
 
 The MIT License
 
@@ -17428,7 +17458,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ================================================================================
 
 License text 332
-Packages: postcss-selector-parser 6.1.2
+Packages: postcss-selector-parser 6.1.4
 
 Copyright (c) Ben Briggs <beneb.info@gmail.com> (http://beneb.info)
 

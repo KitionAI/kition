@@ -1,3 +1,4 @@
+import { agentArtifactFromImageEvent, readAgentImageGenerationSessionEvent, type AgentImageSessionEvent } from '@/features/agent/lib/agentImageJobs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type {
   AgentArtifact,
@@ -73,6 +74,9 @@ import {
 import { saveDesktopSettings } from '@/services/desktopSettings'
 import { notifyFromAgentEvent } from '@/services/desktopNotifications'
 import type { DesktopSettingsState } from '@/types/desktopSettings'
+import type {
+  AgentImageGenerationIntent,
+} from '@/types/imageGeneration'
 import type { AgentWhiteboardContext } from '@/types/whiteboardAgent'
 import type { AgentWhiteboardPatch } from '@/types/whiteboardAgent'
 import { trackProductEventOnce } from '@/features/analytics/lib/productAnalytics'
@@ -83,6 +87,9 @@ import {
 } from '@/features/agent/lib/tableFileImportIntent'
 import { importWorkspaceFileIntoDataTable } from '@/features/table/lib/importWorkspaceFileIntoDataTable'
 import { buildAgentShellApprovalFollowup } from '@/features/agent/lib/agentShellApproval'
+import {
+  mergeAgentImageGenerationEvents,
+} from '@/features/agent/lib/agentImageGenerationStream'
 import { readAgentWhiteboardPatchFrame } from '@/features/agent/lib/agentWhiteboardStream'
 import type { MarkdownImageInsertionContext } from '@/features/document/editor/editor/markdown-image-insertion'
 
@@ -167,6 +174,7 @@ export function useWorkspaceAgent({
   const [agentMessages, setAgentMessages] = useState<Record<number, AgentMessage[]>>({})
   const [agentToolCalls, setAgentToolCalls] = useState<Record<number, AgentToolCall[]>>({})
   const [agentEvents, setAgentEvents] = useState<Record<number, AgentEvent[]>>({})
+  const [agentImageGenerationEvents, setAgentImageGenerationEvents] = useState<Record<number, AgentImageSessionEvent[]>>({})
   const [agentDrafts, setAgentDrafts] = useState<Record<number, string>>({})
   const [agentStreamingText, setAgentStreamingText] = useState<Record<number, string>>({})
   const [agentArtifacts, setAgentArtifacts] = useState<Record<number, AgentArtifact[]>>({})
@@ -377,6 +385,7 @@ export function useWorkspaceAgent({
     setAgentMessages({})
     setAgentToolCalls({})
     setAgentEvents({})
+    setAgentImageGenerationEvents({})
     setAgentDrafts({})
     setAgentStreamingText({})
     setAgentArtifacts({})
@@ -420,7 +429,15 @@ export function useWorkspaceAgent({
     if (!agentEvents[session.id]) {
       try {
         const response = await listAgentEvents(session.id)
-        setAgentEvents((current) => ({ ...current, [session.id]: response.items || [] }))
+        const events = response.items || []
+        setAgentEvents((current) => ({ ...current, [session.id]: events }))
+        setAgentImageGenerationEvents((current) => ({
+          ...current,
+          [session.id]: events.reduce<AgentImageSessionEvent[]>((items, event) => {
+            const imageEvent = readAgentImageGenerationSessionEvent({ type: 'agent_event', event })
+            return imageEvent ? mergeAgentImageGenerationEvents(items, imageEvent) : items
+          }, []),
+        }))
       } catch (requestError: any) {
         onError(requestError?.message || 'Failed to load agent events')
       }
@@ -441,6 +458,7 @@ export function useWorkspaceAgent({
       setAgentMessages((current) => ({ ...current, [session.id]: [] }))
       setAgentToolCalls((current) => ({ ...current, [session.id]: [] }))
       setAgentEvents((current) => ({ ...current, [session.id]: [] }))
+      setAgentImageGenerationEvents((current) => ({ ...current, [session.id]: [] }))
       const initialDocumentPaths = normalizeAgentDocumentContextPaths(options?.documentPaths || [])
       if (initialDocumentPaths.length) {
         const next = {
@@ -485,6 +503,7 @@ export function useWorkspaceAgent({
     setAgentMessages(dropSession)
     setAgentToolCalls(dropSession)
     setAgentEvents(dropSession)
+    setAgentImageGenerationEvents(dropSession)
     setAgentDrafts(dropSession)
     setAgentStreamingText(dropSession)
     setAgentArtifacts(dropSession)
@@ -527,6 +546,7 @@ export function useWorkspaceAgent({
       browserAutoContinueFinal?: boolean
       browserOriginalRequest?: string
       browserContext?: AgentBrowserContext
+      imageGenerationIntent?: AgentImageGenerationIntent
       localSources?: AgentLocalSource[]
       shellApproval?: AgentShellApprovalResponse
     },
@@ -763,6 +783,7 @@ export function useWorkspaceAgent({
         ? followup?.browserContext || preparedBrowserContext || turnContext?.browserContext
         : undefined
 
+      let imageTurnMessageId = optimisticUserMessage.id
       const done = await streamAgentMessage({
         sessionId,
         content,
@@ -778,6 +799,7 @@ export function useWorkspaceAgent({
         taskMode: turnContext?.taskMode,
         browserEnabled: browserEnabledForTurn,
         browserContext: browserContextForTurn,
+        imageGenerationIntent: followup?.imageGenerationIntent,
         executionMode,
         tablePlanContext: followup?.tablePlanContext,
         shellApproval: followup?.shellApproval,
@@ -788,6 +810,17 @@ export function useWorkspaceAgent({
         language: getLanguageNameForLocale(getCurrentLocale()),
         signal: abortController.signal,
         onEvent: (event) => {
+          if (event.type === 'user_message' && event.chat_message) imageTurnMessageId = event.chat_message.id
+          const imageGenerationEvent = readAgentImageGenerationSessionEvent(event, optimisticUserMessage.created_at, imageTurnMessageId)
+          if (imageGenerationEvent) {
+            setAgentImageGenerationEvents((current) => ({
+              ...current,
+              [sessionId]: mergeAgentImageGenerationEvents(
+                current[sessionId] || [],
+                imageGenerationEvent,
+              ),
+            }))
+          }
           const whiteboardFrame = readAgentWhiteboardPatchFrame(event)
           if (whiteboardFrame && whiteboardPathForTurn) {
             pendingWhiteboardPatch = whiteboardFrame.provisional
@@ -916,10 +949,11 @@ export function useWorkspaceAgent({
             })
           }
 
-          if (event.type === 'artifact' && event.artifact) {
+          const deliveredArtifact = event.artifact || agentArtifactFromImageEvent(imageGenerationEvent, sessionId)
+          if (deliveredArtifact) {
             setAgentArtifacts((current) => ({
               ...current,
-              [sessionId]: [...(current[sessionId] || []), event.artifact!],
+              [sessionId]: [...(current[sessionId] || []).filter((item) => item.id !== deliveredArtifact.id), deliveredArtifact],
             }))
             // Refresh the workspace tree as soon as the artifact is saved, so the
             // sidebar reflects the new file even if the agent later fails (e.g. a
@@ -1117,8 +1151,9 @@ export function useWorkspaceAgent({
   const sendAiComposerMessage = useCallback((
     sessionId: number,
     localSources?: AgentLocalSource[],
+    imageGenerationIntent?: AgentImageGenerationIntent,
   ) => {
-    void sendAgentMessage(sessionId, { localSources })
+    void sendAgentMessage(sessionId, { content: imageGenerationIntent?.instruction, imageGenerationIntent, localSources })
   }, [sendAgentMessage])
 
   const respondToAgentShellApproval = useCallback((
@@ -1147,6 +1182,7 @@ export function useWorkspaceAgent({
       browserAutoContinueFinal?: boolean
       browserOriginalRequest?: string
       browserContext?: AgentBrowserContext
+      imageGenerationIntent?: AgentImageGenerationIntent
     },
   ) => {
     void sendAgentMessage(sessionId, {
@@ -1159,6 +1195,7 @@ export function useWorkspaceAgent({
       browserAutoContinueFinal: input.browserAutoContinueFinal,
       browserOriginalRequest: input.browserOriginalRequest,
       browserContext: input.browserContext,
+      imageGenerationIntent: input.imageGenerationIntent,
     })
   }, [sendAgentMessage])
 
@@ -1175,6 +1212,7 @@ export function useWorkspaceAgent({
     agentBusySessions,
     agentDrafts,
     agentEvents,
+    agentImageGenerationEvents,
     agentMessages,
     agentDocumentContexts,
     agentLocalSources,

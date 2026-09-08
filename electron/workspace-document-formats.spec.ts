@@ -22,3 +22,10 @@ describe('workspace document formats', () => {
     expect(isEditableWorkspaceDocument('tool.bin')).toBe(false)
   })
 })
+
+it('recognizes native Design as an editable, supported text document', () => {
+  expect(inferWorkspaceDocumentFormat('Posters/Launch.KIDESIGN')).toBe('design')
+  expect(isEditableWorkspaceDocument('Posters/Launch.kidesign')).toBe(true)
+  expect(isTextWorkspaceDocument('Posters/Launch.kidesign')).toBe(true)
+  expect(isSupportedWorkspaceDocument('Posters/Launch.kidesign')).toBe(true)
+})

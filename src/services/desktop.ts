@@ -1,3 +1,4 @@
+import { flushWorkspaceEditSessions } from './workspaceEditSessions'
 import { getCurrentLocale } from '@/i18n'
 import { resolveBundledAssetURL } from '@/lib/bundledAssets'
 import type { AgentLocalSource } from '@/api/agent'
@@ -27,6 +28,7 @@ type KitionDesktopBridge = {
   ReadClipboardImage?: () => Promise<DesktopClipboardImage | null>
   SubmitFeedback?: (request: FeedbackReportSubmissionRequest) => Promise<FeedbackReportSubmissionResponse>
   ListWorkspaceDocuments?: () => Promise<WorkspaceDocumentListResponse>
+  ReadWorkspaceImage?: (request: { path: string; expected_root: string }) => Promise<DesktopClipboardImage>
   ReadWorkspaceDocument?: (request: WorkspaceDocumentPathRequest) => Promise<WorkspaceDocument>
   StatWorkspaceDocument?: (request: { path: string }) => Promise<{ mtime_ms: number; size: number } | null>
   WriteWorkspaceDocument?: (request: WorkspaceDocumentWriteRequest) => Promise<WorkspaceDocument>
@@ -134,8 +136,10 @@ export type WorkspaceDocumentFormat =
   | 'binary'
   | 'table'
   | 'board'
+  | 'design'
 
 export type WorkspaceDocumentPathRequest = {
+  expected_root?: string
   path: string
 }
 
@@ -198,6 +202,8 @@ export type AgentAnalysisDirectoryRequest = {
 }
 
 export type WorkspaceDocumentWriteRequest = {
+  expected_root?: string
+  expected_content?: string | null
   path: string
   content: string
 }
@@ -253,6 +259,7 @@ export type DesktopClipboardImage = {
 }
 
 export type WorkspaceFileImportRequest = {
+  expected_root?: string
   folder?: string
   filename: string
   source_path?: string
@@ -1095,6 +1102,7 @@ type BrowserWorkspaceRecord = {
 function inferWorkspaceDocumentFormat(path: string): WorkspaceDocumentFormat {
   const lower = path.toLowerCase()
   if (lower.endsWith('.kitable')) return 'data'
+  if (lower.endsWith('.kidesign')) return 'design'
   if (lower.endsWith('.kiboard')) return 'board'
   if (lower.endsWith('.md') || lower.endsWith('.markdown')) return 'markdown'
   if (lower.endsWith('.docx')) return 'docx'
@@ -1411,11 +1419,11 @@ export async function listWorkspaceDocuments(): Promise<WorkspaceDocumentListRes
   }
 }
 
-export async function readWorkspaceDocument(path: string): Promise<WorkspaceDocument> {
+export async function readWorkspaceDocument(path: string, expectedRoot?: string): Promise<WorkspaceDocument> {
   const normalizedPath = normalizeWorkspaceDocumentPath(path)
   const bridge = getDesktopBridge()
   if (bridge?.ReadWorkspaceDocument) {
-    return bridge.ReadWorkspaceDocument({ path: normalizedPath })
+    return bridge.ReadWorkspaceDocument({ path: normalizedPath, ...(expectedRoot ? { expected_root: expectedRoot } : {}) })
   }
 
   const records = loadBrowserWorkspaceDocuments()
@@ -1468,14 +1476,15 @@ export async function statWorkspaceDocument(
   return null
 }
 
-export async function writeWorkspaceDocument(path: string, content: string): Promise<WorkspaceDocument> {
+export async function writeWorkspaceDocument(path: string, content: string, guard?: { expected_root: string; expected_content: string | null }): Promise<WorkspaceDocument> {
   const normalizedPath = normalizeWorkspaceDocumentPath(path)
   const bridge = getDesktopBridge()
   if (bridge?.WriteWorkspaceDocument) {
-    return bridge.WriteWorkspaceDocument({ path: normalizedPath, content })
+    return bridge.WriteWorkspaceDocument({ path: normalizedPath, content, ...guard })
   }
 
   const records = loadBrowserWorkspaceDocuments()
+  if (guard && (guard.expected_root !== 'browser-local-workspace' || (records[normalizedPath]?.content ?? null) !== guard.expected_content)) throw new Error('DESIGN_SAVE_CONFLICT')
   const updated_at = new Date().toISOString()
   records[normalizedPath] = { content, updated_at }
   saveBrowserWorkspaceDocuments(records)
@@ -1598,6 +1607,7 @@ export async function createWorkspaceFolder(request: WorkspaceFolderCreateReques
 }
 
 export async function moveWorkspaceDocument(request: WorkspaceDocumentMoveRequest): Promise<WorkspaceDocument> {
+  await flushWorkspaceEditSessions(request.path)
   const normalizedPath = normalizeWorkspaceDocumentPath(request.path)
   const sourceParent = getBrowserWorkspaceParentPath(normalizedPath)
   const targetFolder = request.target_folder === undefined
@@ -1660,6 +1670,7 @@ export async function moveWorkspaceDocument(request: WorkspaceDocumentMoveReques
 }
 
 export async function moveWorkspaceFolder(request: WorkspaceFolderMoveRequest): Promise<WorkspaceFolderMoveResponse> {
+  await flushWorkspaceEditSessions(request.path)
   const normalizedPath = normalizeWorkspaceDocumentPath(request.path)
   const sourceParent = getBrowserWorkspaceParentPath(normalizedPath)
   const sourceName = normalizedPath.split('/').pop() || normalizedPath
@@ -1727,6 +1738,7 @@ export async function moveWorkspaceFolder(request: WorkspaceFolderMoveRequest): 
 }
 
 export async function deleteWorkspaceDocument(path: string): Promise<WorkspaceDocumentListResponse> {
+  await flushWorkspaceEditSessions(path)
   const normalizedPath = normalizeWorkspaceDocumentPath(path)
   const bridge = getDesktopBridge()
   if (bridge?.DeleteWorkspaceDocument) {
@@ -1752,6 +1764,7 @@ export async function deleteWorkspaceDocument(path: string): Promise<WorkspaceDo
 }
 
 export async function deleteWorkspaceFolder(path: string): Promise<WorkspaceDocumentListResponse> {
+  await flushWorkspaceEditSessions(path)
   const normalizedPath = normalizeWorkspaceDocumentPath(path)
   if (!normalizedPath) {
     throw new Error('the workspace root cannot be deleted')
@@ -1967,6 +1980,7 @@ export async function revealWorkspaceFolder(path?: string) {
 }
 
 export async function chooseWorkspaceFolder() {
+  await flushWorkspaceEditSessions()
   const bridge = getDesktopBridge()
   if (bridge?.ChooseWorkspaceFolder) {
     return bridge.ChooseWorkspaceFolder()
@@ -1975,6 +1989,7 @@ export async function chooseWorkspaceFolder() {
 }
 
 export async function setWorkspaceFolder(path: string) {
+  await flushWorkspaceEditSessions()
   const bridge = getDesktopBridge()
   if (bridge?.SetWorkspaceFolder) {
     return bridge.SetWorkspaceFolder({ path })
@@ -2025,6 +2040,7 @@ export async function renameVault(path: string, name: string): Promise<VaultMuta
 }
 
 export async function setActiveVault(path: string): Promise<SetActiveVaultResponse> {
+  await flushWorkspaceEditSessions()
   const bridge = getDesktopBridge()
   if (!bridge?.SetActiveVault) {
     throw new Error('desktop vault registry is unavailable')

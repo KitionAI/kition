@@ -2,6 +2,10 @@ import request from './request'
 import { resolveApiURL } from '@/services/desktop'
 import type { RuntimeWritingModel } from '@/types'
 import type {
+  AgentImageGenerationEvent,
+  AgentImageGenerationIntent,
+} from '@/types/imageGeneration'
+import type {
   AgentWhiteboardContext,
   AgentWhiteboardPatch,
 } from '@/types/whiteboardAgent'
@@ -285,6 +289,7 @@ export type AgentStreamEvent = {
   artifact?: AgentArtifact
   tool_call?: AgentToolCall
   event?: AgentEvent
+  image_generation?: AgentImageGenerationEvent
   whiteboard_patch?: AgentWhiteboardPatch
   provisional?: boolean
   done?: boolean
@@ -292,6 +297,7 @@ export type AgentStreamEvent = {
     message?: AgentMessage
     session?: AgentSession
     artifact?: AgentArtifact
+    image_generation?: AgentImageGenerationEvent
     [key: string]: any
   }
 }
@@ -441,6 +447,7 @@ export async function streamAgentMessage(options: {
   taskMode?: AgentTaskMode
   browserEnabled?: boolean
   browserContext?: AgentBrowserContext
+  imageGenerationIntent?: AgentImageGenerationIntent
   whiteboardContext?: AgentWhiteboardContext
   tablePlanContext?: AgentTablePlanContext
   shellApproval?: AgentShellApprovalResponse
@@ -473,6 +480,7 @@ export async function streamAgentMessage(options: {
       task_mode: options.taskMode || 'auto',
       browser_enabled: options.browserEnabled === true,
       browser_context: options.browserContext || undefined,
+      image_generation_intent: options.imageGenerationIntent || undefined,
       whiteboard_context: options.whiteboardContext || undefined,
       table_plan_context: options.tablePlanContext || undefined,
       shell_approval: options.shellApproval || undefined,

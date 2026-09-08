@@ -52,7 +52,7 @@ export function AgentContextAddMenu({
     <div className="agent-context-add relative shrink-0" ref={menuRef}>
       <button
         type="button"
-        className="agent-context-add__trigger inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-45"
+        className="agent-context-add__trigger agent-composer-tool size-8 !p-0"
         onClick={() => setMenuOpen((current) => !current)}
         disabled={disabled}
         aria-label={t('analysisWorkspace.addContext')}

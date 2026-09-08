@@ -31,6 +31,7 @@ export function WorkspaceSidebar({
   onRefresh,
   onOpenWorkflows,
   onCreateBoard,
+  onCreateDesign,
   onToggleSidebar,
   onOpenSearch,
 }: {
@@ -59,6 +60,7 @@ export function WorkspaceSidebar({
   onOpenWorkflows?: () => void
   /** Creates a durable native SVG Board file in the active workspace folder. */
   onCreateBoard?: () => void
+  onCreateDesign?: () => void
   onToggleSidebar?: () => void
   /** Opens the standalone full-text search modal (Codex-style palette). */
   onOpenSearch?: () => void
@@ -241,6 +243,7 @@ export function WorkspaceSidebar({
                   onCreateFolder={onCreateFolder}
                   onCreateTable={onCreateTable}
                   onCreateBoard={onCreateBoard}
+                  onCreateDesign={onCreateDesign}
                   onImportTableFile={onImportTableFile}
                   onCreateDocument={onCreateDocument}
                 />

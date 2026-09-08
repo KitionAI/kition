@@ -814,7 +814,7 @@ test.describe('app shell navigation', () => {
     await expect(page.getByRole('tab', { name: 'New chat', selected: true }))
       .toBeVisible({ timeout: AGENT_UI_TIMEOUT_MS })
     await expect(page.getByPlaceholder('Plan, write, or ask anything…')).toBeVisible()
-    const defaultDocumentChip = page.locator('.agent-context-chip.is-document')
+    const defaultDocumentChip = page.getByTestId('agent-composer-context')
     await expect(defaultDocumentChip).toHaveCount(1)
     await expect(defaultDocumentChip).not.toContainText('Current ·')
     await expect(page.getByText('Analysis sources', { exact: true })).toHaveCount(0)
@@ -906,9 +906,9 @@ test.describe('app shell navigation', () => {
     await page.getByRole('button', { name: 'Open AI Chat' }).click()
     await page.getByRole('button', { name: 'New chat' }).click()
 
-    const currentDocumentChip = page.locator('.agent-context-chip.is-document')
+    const currentDocumentChip = page.getByTestId('agent-composer-context')
     await expect(currentDocumentChip).toBeVisible()
-    await currentDocumentChip.locator('.agent-context-chip__remove').click()
+    await currentDocumentChip.getByRole('button', { name: /^Remove / }).click()
 
     await expect(currentDocumentChip).toHaveCount(0)
     await expect(page.getByTestId('document-editor')).toBeVisible()

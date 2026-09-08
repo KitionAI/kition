@@ -194,6 +194,10 @@
     "loadingPage": "正在加载页面…"
   },
   "fileViewer": {
+    "imageActions": "图片操作",
+    "copyImage": "复制图片",
+    "imageCopied": "图片已复制",
+    "imageCopyFailed": "无法复制图片",
     "openInSystem": "用系统应用打开",
     "showInFinder": "在访达中显示",
     "previewUnsupported": "{{label}} · 暂不支持应用内预览",

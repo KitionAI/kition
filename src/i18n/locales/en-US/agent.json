@@ -75,7 +75,8 @@
     "removeReference": "Remove {{name}}",
     "removeCurrentDocument": "Remove current document {{name}}",
     "readOnly": "Read only",
-    "removeSource": "Remove {{name}}"
+    "removeSource": "Remove {{name}}",
+    "contextCount": "References: {{count}}"
   },
   "emptyState": {
     "needsModelConfig": {

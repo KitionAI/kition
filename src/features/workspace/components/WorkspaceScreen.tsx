@@ -1,3 +1,6 @@
+import { useWorkspaceDesign } from '../hooks/useWorkspaceDesign'
+import { flushWorkspaceEditSessions } from '@/services/workspaceEditSessions'
+import type { AgentImageGenerationIntent } from '@/types/imageGeneration'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useKitableChildrenIndex } from '@/features/workspace/hooks/useKitableChildrenIndex'
@@ -91,6 +94,7 @@ import { useWorkspaceTreeActions } from '@/features/workspace/hooks/useWorkspace
 import { useWorkspaceTreeState } from '@/features/workspace/hooks/useWorkspaceTreeState'
 import { useWorkspaceTabs } from '@/features/workspace/hooks/useWorkspaceTabs'
 import { useWorkspaceBoardCreation } from '@/features/workspace/hooks/useWorkspaceBoardCreation'
+import { useWhiteboardImageGeneration } from '@/features/workspace/hooks/useWhiteboardImageGeneration'
 import { setPinnedTabsWorkspace } from '@/features/document/editor/hooks/usePinnedTabs'
 import {
   applyWorkspaceBrowserSessionSnapshot,
@@ -636,6 +640,7 @@ export function WorkspaceScreen({
     agentDrafts,
     agentEvents,
     agentMessages,
+    agentImageGenerationEvents,
     agentLocalSources,
     agentModelOptions,
     agentModifiedDocumentPaths,
@@ -697,6 +702,18 @@ export function WorkspaceScreen({
     getTurnContext: getAgentTurnContext,
     prepareBrowserContext: prepareAgentBrowserContextForTurn,
   })
+  const handleGenerateWhiteboardImage = useWhiteboardImageGeneration({
+    activeSessionId: activeWorkspaceAgentSessionId,
+    agentArtifacts,
+    agentBusySessions,
+    agentToolCalls,
+    available: whiteboardAgentAvailable,
+    bridgesRef: whiteboardAgentBridgesRef,
+    createAgentChat: createNewAgentChat,
+    modelAvailable: Boolean(selectedAgentModel?.runtimeModel),
+    sendAgentAction: sendAgentContextAction,
+    setActiveSessionId: setActiveWorkspaceAgentSessionId,
+  })
   agentDocumentStateRef.current = {
     clearModifiedPath: clearModifiedDocumentPath,
     modifiedPaths: agentModifiedDocumentPaths,
@@ -756,12 +773,18 @@ export function WorkspaceScreen({
     const tabs = workspaceTabsRef.current
     const closing = tabs.find((t) => t.id === tabId)
     if (!closing) return
+    if (closing.type === 'design') {
+      void flushWorkspaceEditSessions(closing.path)
+        .then(() => closeWorkspaceTab(tabId))
+        .catch(() => notify.error(t('design:errors.save')))
+      return
+    }
     closeWorkspaceTab(tabId)
     if (workflowOpen && closing.type === 'workflow') {
       const remainingWorkflow = tabs.some((t) => t.id !== tabId && t.type === 'workflow')
       if (!remainingWorkflow) onCloseWorkflow?.()
     }
-  }, [closeWorkspaceTab, onCloseWorkflow, workflowOpen])
+  }, [closeWorkspaceTab, onCloseWorkflow, t, workflowOpen])
 
   // Cmd/Ctrl+W closes the active workspace tab. preventDefault avoids
   // the Electron / browser default of closing the window when the
@@ -798,7 +821,7 @@ export function WorkspaceScreen({
       setActiveResourcePath(activeWorkspaceTab.kitablePath)
       return
     }
-    if (activeWorkspaceTab.type === 'board') {
+    if (activeWorkspaceTab.type === 'board' || activeWorkspaceTab.type === 'design') {
       setActiveResourcePath(activeWorkspaceTab.path)
       return
     }
@@ -860,6 +883,18 @@ export function WorkspaceScreen({
     })
   }, [onCloseWorkflow, t, upsertWorkspaceTab, workflowOpen])
 
+  const design = useWorkspaceDesign({
+    root: rootPath,
+    activeTab: activeWorkspaceTab,
+    upsert: upsertWorkspaceTab,
+    refresh: (...args) => refreshWorkspaceDocumentsRef.current(...args),
+    closeCreateMenu: () => workspaceTree.setCreateMenuOpen(false),
+    expandFolder: workspaceTree.expandFolders,
+    beforeOpen: () => {
+      if (workflowOpen) onCloseWorkflow?.()
+    },
+  })
+
   const openBoard = useCallback((path: string) => {
     const normalizedPath = String(path || '').trim()
     if (!normalizedPath) {
@@ -890,6 +925,7 @@ export function WorkspaceScreen({
       if (!path) {
         return
       }
+      if (path.toLowerCase().endsWith('.kidesign')) { design.open(path); return }
       if (path.toLowerCase().endsWith('.kiboard')) {
         openBoard(path)
         return
@@ -898,7 +934,7 @@ export function WorkspaceScreen({
     }
     window.addEventListener('kition:search:open-path', handler)
     return () => window.removeEventListener('kition:search:open-path', handler)
-  }, [openBoard, openDocument])
+  }, [design.open, openBoard, openDocument])
 
   useEffect(() => {
     function openLocalWorkflow(event: Event) {
@@ -1688,6 +1724,7 @@ export function WorkspaceScreen({
 
   function openDocumentTab(document: WorkspaceDocument) {
     const format = inferWorkspaceItemFormat(document.path, document.content)
+    if (format === 'design') { design.open(document.path); return }
     if (format === 'data' && document.path.toLowerCase().endsWith('.kitable')) {
       openKitableContainer(document.path)
       return
@@ -1708,6 +1745,7 @@ export function WorkspaceScreen({
   openDocumentTabRef.current = openDocumentTab
 
   function openFileViewerTab(path: string, format: WorkspaceDocumentFormat) {
+    if (path.toLowerCase().endsWith('.kidesign')) { design.open(path); return }
     const filename = String(path || '').split('/').filter(Boolean).pop() || path
     upsertWorkspaceTab({
       id: `file-viewer:${path}`,
@@ -3052,7 +3090,7 @@ export function WorkspaceScreen({
     }
   }
 
-  async function sendWorkspaceAgentMessage(sessionId: number) {
+  async function sendWorkspaceAgentMessage(sessionId: number, imageIntent?: AgentImageGenerationIntent) {
     const sources = agentLocalSources[sessionId] || []
     const pathReference = extractAgentLocalPathReference(agentDrafts[sessionId] || '')
     if (!sources.length && pathReference) {
@@ -3060,15 +3098,18 @@ export function WorkspaceScreen({
       if (!source) {
         return
       }
-      sendAiComposerMessage(sessionId, appendAgentLocalSource(sources, source))
+      sendAiComposerMessage(sessionId, appendAgentLocalSource(sources, source), imageIntent)
       return
     }
-    sendAiComposerMessage(sessionId)
+    sendAiComposerMessage(sessionId, undefined, imageIntent)
   }
 
   const workspaceRightPane = workspaceAgentOpen ? (
     <Suspense fallback={null}>
       <WorkspaceAgentSidebar
+        rootPath={rootPath}
+        imageContext={agentTurnContextRef.current}
+        imageEvents={agentImageGenerationEvents[activeWorkspaceAgentSession?.id || 0] || []}
         panelProps={
           activeWorkspaceAgentSession
             ? {
@@ -3111,7 +3152,7 @@ export function WorkspaceScreen({
                 activeWorkspaceAgentSession.id,
                 sourceId,
               ),
-              onSend: () => void sendWorkspaceAgentMessage(activeWorkspaceAgentSession.id),
+              onSend: (intent) => void sendWorkspaceAgentMessage(activeWorkspaceAgentSession.id, intent),
               onStop: () => stopAgentMessage(activeWorkspaceAgentSession.id),
               onConfigureModel: onOpenSettingsSection
                 ? () => onOpenSettingsSection('models')
@@ -3144,6 +3185,7 @@ export function WorkspaceScreen({
               // pane-agnostic; this only changes what the user sees
               // BEFORE they send their first message.
               paneContext: deriveAgentPaneContext(activeWorkspaceTab),
+              emptyStateOverride: activeWorkspaceTab?.type === 'design' ? design.chatEmptyState : undefined,
               }
             : null
         }
@@ -3173,14 +3215,14 @@ export function WorkspaceScreen({
           onCloseOthers: (tabId) => {
             workspaceTabs
               .filter((tab) => tab.id !== tabId)
-              .forEach((tab) => closeWorkspaceTab(tab.id))
+              .forEach((tab) => handleCloseWorkspaceTabById(tab.id))
             const keeper = workspaceTabs.find((t) => t.id === tabId)
             if (workflowOpen && keeper && keeper.type !== 'workflow') {
               onCloseWorkflow?.()
             }
           },
           onCloseAll: () => {
-            workspaceTabs.forEach((tab) => closeWorkspaceTab(tab.id))
+            workspaceTabs.forEach((tab) => handleCloseWorkspaceTabById(tab.id))
             if (workflowOpen) onCloseWorkflow?.()
           },
           onCloseUnmodified: () => {
@@ -3193,7 +3235,7 @@ export function WorkspaceScreen({
                   return
                 }
               }
-              closeWorkspaceTab(tab.id)
+              handleCloseWorkspaceTabById(tab.id)
             })
           },
           onCloseLeft: (tabId) => {
@@ -3203,7 +3245,7 @@ export function WorkspaceScreen({
             }
             workspaceTabs
               .slice(0, index)
-              .forEach((tab) => closeWorkspaceTab(tab.id))
+              .forEach((tab) => handleCloseWorkspaceTabById(tab.id))
           },
           onCloseRight: (tabId) => {
             const index = workspaceTabs.findIndex((tab) => tab.id === tabId)
@@ -3212,7 +3254,7 @@ export function WorkspaceScreen({
             }
             workspaceTabs
               .slice(index + 1)
-              .forEach((tab) => closeWorkspaceTab(tab.id))
+              .forEach((tab) => handleCloseWorkspaceTabById(tab.id))
           },
           onCloseReadOnly: () => {
             workspaceTabs.forEach((tab) => {
@@ -3221,7 +3263,7 @@ export function WorkspaceScreen({
                 || tab.type === 'gallery'
                 || tab.type === 'browser-sites'
               ) {
-                closeWorkspaceTab(tab.id)
+                handleCloseWorkspaceTabById(tab.id)
               }
             })
           },
@@ -3590,6 +3632,7 @@ export function WorkspaceScreen({
                 onCloseProfile?.()
                 openWorkspaceWorkflow()
               },
+              onCreateDesign: () => { onCloseProfile?.(); void design.create(createMenuFolder) },
               onCreateBoard: () => {
                 onCloseProfile?.()
                 boardCreation.openTemplateDialog(createMenuFolder)
@@ -3604,6 +3647,10 @@ export function WorkspaceScreen({
                 const opensWorkflowTab = path.startsWith('workflows://') || path.startsWith('workflow://')
                 if (workflowOpen && !opensWorkflowTab) {
                   onCloseWorkflow?.()
+                }
+                if (path.toLowerCase().endsWith('.kidesign')) {
+                  design.open(path)
+                  return
                 }
                 if (path.toLowerCase().endsWith('.kiboard')) {
                   openBoard(path)
@@ -3731,6 +3778,7 @@ export function WorkspaceScreen({
               {workflowWorkbench || (
                 <WorkspaceScreenEditor
                   editorContentProps={{
+                    designRoot: rootPath,
                     activeDocument,
                     activeDocumentFormat,
                     activeDocumentRevision,
@@ -3763,6 +3811,7 @@ export function WorkspaceScreen({
                     onCancelWhiteboardAgent: activeWorkspaceAgentSession
                       ? () => stopAgentMessage(activeWorkspaceAgentSession.id)
                       : undefined,
+                    onGenerateWhiteboardImage: handleGenerateWhiteboardImage,
                     onTableAgentContextChange: handleTableAgentContextChange,
                     onCreateWorkflow: createWorkflowFromKitableSidebar,
                     onOpenWorkflow: openKitableWorkflow,

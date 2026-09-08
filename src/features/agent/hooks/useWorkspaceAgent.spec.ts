@@ -677,6 +677,89 @@ describe('useWorkspaceAgent hosted console restore', () => {
     container.remove()
   })
 
+  it.each(['', 'Create a launch illustration.'])('forwards a typed image intent with draft %j from a visible composer turn', async (draft) => {
+    const { useWorkspaceAgent } = await import('./useWorkspaceAgent')
+    let latest: any = null
+    const imageGenerationIntent = {
+      type: 'image_generation.intent',
+      schema_version: 1,
+      request_id: 'image-request-visible-1',
+      operation: 'generate',
+      instruction: 'Create a launch illustration.',
+      locale: 'en-US',
+      aspect_ratio: '16:9',
+      quality: 'medium',
+      resolution: '1K',
+      variants: 1,
+      text_mode: 'no_text',
+      reference_paths: [],
+      surface: 'document',
+      target: {
+        type: 'image.target.document',
+        document_path: 'Docs/Launch.md',
+      },
+      placement_preference: 'review',
+      client_capability_version: 1,
+    }
+    const progressEvent = {
+      type: 'image_generation.event',
+      schema_version: 1,
+      request_id: imageGenerationIntent.request_id,
+      event: 'image_generation.progress',
+      status: 'generating',
+      progress: 0.4,
+    }
+    mocks.streamAgentMessage.mockImplementation(async (args: any) => {
+      args.onEvent?.({
+        type: 'image_generation_event',
+        image_generation: progressEvent,
+      })
+      return { extra_data: {} }
+    })
+
+    function Harness() {
+      latest = useWorkspaceAgent({
+        settings: createOpenAISettings(),
+        rootPath: '/test/workspace',
+        onError: vi.fn(),
+        onFeedback: vi.fn(),
+        getTurnContext: () => ({
+          activeDocumentPath: 'Docs/Launch.md',
+          paneContext: 'document',
+        }),
+      })
+      return null
+    }
+
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    let root: Root | null = null
+    await act(async () => {
+      root = createRoot(container)
+      root.render(createElement(Harness))
+    })
+    await act(async () => {
+      latest.setAgentDraft(25, draft)
+    })
+    await act(async () => {
+      latest.sendAiComposerMessage(25, undefined, imageGenerationIntent)
+      await flushAsyncWork()
+    })
+
+    expect(mocks.streamAgentMessage).toHaveBeenCalledWith(expect.objectContaining({
+      content: imageGenerationIntent.instruction,
+      hideUserMessage: false,
+      imageGenerationIntent,
+      paneContext: 'document',
+    }))
+    expect(latest.agentImageGenerationEvents[25]).toMatchObject([progressEvent])
+
+    await act(async () => {
+      root?.unmount()
+    })
+    container.remove()
+  })
+
   it('bounds repeated browser handoffs and preserves the original request', async () => {
     const { useWorkspaceAgent } = await import('./useWorkspaceAgent')
     let latest: any = null

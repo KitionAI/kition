@@ -16,6 +16,8 @@ export const SUPPORTED_NAMESPACES = [
   'errors',
   'workflow',
   'connections',
+  'imageGeneration',
+  'design',
 ] as const
 
 export type Namespace = (typeof SUPPORTED_NAMESPACES)[number]

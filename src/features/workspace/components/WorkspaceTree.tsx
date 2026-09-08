@@ -65,6 +65,7 @@ export function WorkspaceTree({
   onCreateDocument,
   onCreateTable,
   onCreateBoard,
+  onCreateDesign,
   depth = 0,
 }: {
   nodes: WorkspaceTreeNode[]
@@ -108,6 +109,7 @@ export function WorkspaceTree({
   onCreateDocument?: (format: DocumentCreateFormat) => void
   onCreateTable?: () => void
   onCreateBoard?: () => void
+  onCreateDesign?: () => void
   depth?: number
 }) {
   const [localActionMenuPath, setLocalActionMenuPath] = useState('')
@@ -488,6 +490,7 @@ export function WorkspaceTree({
                             onCreateDocument={onCreateDocument ?? (() => undefined)}
                             onCreateTable={onCreateTable ?? (() => undefined)}
                             onCreateBoard={onCreateBoard}
+                            onCreateDesign={onCreateDesign}
                             onCreateWorkflow={canCreateWorkflowForTable ? () => onCreateWorkflowForTable?.(node) : undefined}
                           />
                         ) : null}
@@ -743,6 +746,7 @@ export function WorkspaceTree({
                 onCreateDocument={onCreateDocument}
                 onCreateTable={onCreateTable}
                 onCreateBoard={onCreateBoard}
+                            onCreateDesign={onCreateDesign}
                 depth={depth + 1}
               />
             ) : null}

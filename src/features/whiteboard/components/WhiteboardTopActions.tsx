@@ -14,6 +14,7 @@ import {
   Focus,
   Grid3X3,
   FileImage,
+  Images,
   Lock,
   Magnet,
   Maximize2,
@@ -53,13 +54,16 @@ import { WhiteboardTemplateGallery } from './WhiteboardTemplateGallery'
 export function WhiteboardTopActions({
   canvasSize,
   controller,
+  onOpenImageStudio,
   title,
 }: {
   canvasSize: WhiteboardPoint
   controller: WhiteboardEditorController
+  onOpenImageStudio?: () => void
   title: string
 }) {
   const { t } = useTranslation('workspace')
+  const { t: ti } = useTranslation('imageGeneration')
   const [pageOpen, setPageOpen] = useState(false)
   const [templateOpen, setTemplateOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
@@ -230,6 +234,14 @@ export function WhiteboardTopActions({
           }
         }}
       />
+      <ActionButton
+        disabled={!onOpenImageStudio}
+        label={ti('actions.openStudio')}
+        onClick={() => onOpenImageStudio?.()}
+        testId="whiteboard-tool-generate-image"
+      >
+        <Images className="size-4 text-brand" />
+      </ActionButton>
       <span className="whiteboard-toolbar-separator" aria-hidden="true" />
       <ActionButton
         disabled={!controller.canUndo}

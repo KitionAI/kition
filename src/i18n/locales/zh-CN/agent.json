@@ -75,7 +75,8 @@
     "removeReference": "移除 {{name}}",
     "removeCurrentDocument": "移除当前文档 {{name}}",
     "readOnly": "只读",
-    "removeSource": "移除 {{name}}"
+    "removeSource": "移除 {{name}}",
+    "contextCount": "{{count}} 个参考来源"
   },
   "emptyState": {
     "needsModelConfig": {

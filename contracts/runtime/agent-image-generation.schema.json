@@ -1,0 +1,280 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kition.ai/contracts/runtime/agent-image-generation.schema.json",
+  "title": "Kition Agent Image Generation",
+  "description": "Typed image-generation intents and stream events shared by Agent conversations across documents, tables, and Boards.",
+  "x-runtime-capability": "agent_image_generation_v1",
+  "oneOf": [
+    { "$ref": "#/$defs/intent" },
+    { "$ref": "#/$defs/event" }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "portablePath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "pattern": "^(?!/)(?![A-Za-z]:[\\\\/])(?!.*(?:^|[\\\\/])\\.\\.(?:[\\\\/]|$)).+$"
+    },
+    "locale": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 35,
+      "pattern": "^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$"
+    },
+    "aspectRatio": {
+      "type": "string",
+      "enum": ["1:1", "16:9", "9:16", "4:3", "3:4", "2:3", "3:2"]
+    },
+    "documentTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "document_path"],
+      "properties": {
+        "type": { "const": "image.target.document" },
+        "document_path": { "$ref": "#/$defs/portablePath" },
+        "document_format": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "cursor_offset": { "type": "integer", "minimum": 0, "maximum": 1000000000 },
+        "selected_image_path": { "$ref": "#/$defs/portablePath" },
+        "target_revision": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "tableTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "data_document_id", "table_id"],
+      "properties": {
+        "type": { "const": "image.target.table" },
+        "data_document_id": { "type": "integer", "minimum": 1 },
+        "table_id": { "type": "integer", "minimum": 1 },
+        "record_ids": {
+          "type": "array",
+          "maxItems": 100,
+          "uniqueItems": true,
+          "items": { "type": "integer", "minimum": 1 }
+        },
+        "attachment_field_id": { "type": "integer", "minimum": 1 },
+        "target_revision": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "whiteboardTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "board_path"],
+      "properties": {
+        "type": { "const": "image.target.whiteboard" },
+        "board_path": { "$ref": "#/$defs/portablePath" },
+        "selected_element_ids": {
+          "type": "array",
+          "maxItems": 100,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "replace_element_id": { "$ref": "#/$defs/identifier" },
+        "viewport_center": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["x", "y"],
+          "properties": {
+            "x": { "type": "number", "minimum": -10000000, "maximum": 10000000 },
+            "y": { "type": "number", "minimum": -10000000, "maximum": 10000000 }
+          }
+        },
+        "target_revision": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "intent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "schema_version",
+        "request_id",
+        "operation",
+        "instruction",
+        "locale",
+        "aspect_ratio",
+        "quality",
+        "resolution",
+        "variants",
+        "text_mode",
+        "reference_paths",
+        "surface",
+        "target",
+        "placement_preference",
+        "client_capability_version"
+      ],
+      "properties": {
+        "type": { "const": "image_generation.intent" },
+        "schema_version": { "const": 1 },
+        "request_id": { "$ref": "#/$defs/identifier" },
+        "operation": { "type": "string", "enum": ["generate", "edit"] },
+        "instruction": { "type": "string", "minLength": 1, "maxLength": 12000 },
+        "locale": { "$ref": "#/$defs/locale" },
+        "template_id": { "$ref": "#/$defs/identifier" },
+        "template_version": { "$ref": "#/$defs/identifier" },
+        "template_variables": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "maxProperties": 32,
+          "propertyNames": { "$ref": "#/$defs/identifier" }
+        },
+        "aspect_ratio": { "$ref": "#/$defs/aspectRatio" },
+        "quality": { "type": "string", "enum": ["low", "medium", "high"] },
+        "resolution": { "type": "string", "enum": ["1K", "2K", "4K"] },
+        "variants": { "type": "integer", "minimum": 1, "maximum": 5 },
+        "text_mode": {
+          "type": "string",
+          "enum": ["editable_overlay", "baked_text", "no_text"]
+        },
+        "exact_text": { "type": "string", "maxLength": 2000 },
+        "reference_paths": {
+          "type": "array",
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/portablePath" }
+        },
+        "surface": { "type": "string", "enum": ["document", "table", "whiteboard"] },
+        "target": {
+          "oneOf": [
+            { "$ref": "#/$defs/documentTarget" },
+            { "$ref": "#/$defs/tableTarget" },
+            { "$ref": "#/$defs/whiteboardTarget" }
+          ]
+        },
+        "placement_preference": {
+          "type": "string",
+          "enum": ["review", "insert", "replace"]
+        },
+        "client_capability_version": { "const": 1 }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "operation": { "const": "edit" } } },
+          "then": { "properties": { "reference_paths": { "minItems": 1 } } }
+        },
+        {
+          "if": { "properties": { "surface": { "const": "document" } } },
+          "then": { "properties": { "target": { "$ref": "#/$defs/documentTarget" } } }
+        },
+        {
+          "if": { "properties": { "surface": { "const": "table" } } },
+          "then": { "properties": { "target": { "$ref": "#/$defs/tableTarget" } } }
+        },
+        {
+          "if": { "properties": { "surface": { "const": "whiteboard" } } },
+          "then": { "properties": { "target": { "$ref": "#/$defs/whiteboardTarget" } } }
+        }
+      ]
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["request_id"],
+      "properties": {
+        "request_id": { "$ref": "#/$defs/identifier" },
+        "template_id": { "$ref": "#/$defs/identifier" },
+        "template_version": { "$ref": "#/$defs/identifier" },
+        "model_id": { "type": "string", "minLength": 1, "maxLength": 255 },
+        "provider_class": {
+          "type": "string",
+          "enum": ["kition_cloud", "connected_provider", "local_provider"]
+        },
+        "prompt_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "source_paths": {
+          "type": "array",
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/portablePath" }
+        }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "path",
+        "mime_type",
+        "variant_index",
+        "variant_count",
+        "created_at",
+        "provenance"
+      ],
+      "properties": {
+        "id": { "type": "integer", "minimum": 1 },
+        "path": { "$ref": "#/$defs/portablePath" },
+        "mime_type": { "type": "string", "pattern": "^image/[A-Za-z0-9.+-]+$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "width": { "type": "integer", "minimum": 1, "maximum": 65536 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 65536 },
+        "variant_index": { "type": "integer", "minimum": 0, "maximum": 4 },
+        "variant_count": { "type": "integer", "minimum": 1, "maximum": 5 },
+        "created_at": { "type": "string", "format": "date-time" },
+        "provenance": { "$ref": "#/$defs/provenance" }
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "retryable"],
+      "properties": {
+        "code": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+        "message": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "retryable": { "type": "boolean" }
+      }
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "schema_version", "request_id", "event", "status"],
+      "properties": {
+        "type": { "const": "image_generation.event" },
+        "schema_version": { "const": 1 },
+        "request_id": { "$ref": "#/$defs/identifier" },
+        "event": {
+          "type": "string",
+          "enum": [
+            "image_generation.accepted",
+            "image_generation.progress",
+            "image_generation.artifact",
+            "image_generation.completed",
+            "image_generation.failed",
+            "image_generation.canceled"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["queued", "generating", "saving", "completed", "failed", "canceled"]
+        },
+        "progress": { "type": "number", "minimum": 0, "maximum": 1 },
+        "message": { "type": "string", "maxLength": 1000 },
+        "artifact": { "$ref": "#/$defs/artifact" },
+        "artifact_count": { "type": "integer", "minimum": 0, "maximum": 5 },
+        "error": { "$ref": "#/$defs/error" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "event": { "const": "image_generation.progress" } } },
+          "then": { "required": ["progress"] }
+        },
+        {
+          "if": { "properties": { "event": { "const": "image_generation.artifact" } } },
+          "then": { "required": ["artifact"] }
+        },
+        {
+          "if": { "properties": { "event": { "const": "image_generation.failed" } } },
+          "then": { "required": ["error"] }
+        }
+      ]
+    }
+  }
+}

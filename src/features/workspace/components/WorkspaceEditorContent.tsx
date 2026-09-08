@@ -23,6 +23,10 @@ import type {
   WorkspaceDocumentFormat,
 } from '@/services/desktop'
 import type { WhiteboardAgentBridge } from '@/features/whiteboard/lib/whiteboardAgentBridge'
+import type {
+  WhiteboardImageGenerationRequest,
+  WhiteboardImageGenerationStartResult,
+} from '@/features/whiteboard/lib/whiteboardImageGeneration'
 
 const DocumentHtmlPreviewPane = lazy(() =>
   import('@/features/document/components/DocumentHtmlPreviewPane').then((module) => ({ default: module.DocumentHtmlPreviewPane })),
@@ -51,6 +55,7 @@ const WorkspaceMediaPanel = lazy(() =>
 const WorkspaceFileViewerPane = lazy(() =>
   import('@/features/workspace/components/WorkspaceFileViewerPane').then((module) => ({ default: module.WorkspaceFileViewerPane })),
 )
+const DesignEditorPane = lazy(() => import('@/features/design/components/DesignEditorPane').then(module => ({ default: module.DesignEditorPane })))
 const WhiteboardEditorPane = lazy(() =>
   import('@/features/whiteboard/components/WhiteboardEditorPane').then((module) => ({ default: module.WhiteboardEditorPane })),
 )
@@ -115,6 +120,7 @@ type WorkspaceEditorContentProps = {
   whiteboardAgentBusy?: boolean
   onWhiteboardAgentBridgeChange?: (path: string, bridge: WhiteboardAgentBridge | null) => void
   onCancelWhiteboardAgent?: () => void
+  onGenerateWhiteboardImage?: (request: WhiteboardImageGenerationRequest) => Promise<WhiteboardImageGenerationStartResult>
   onTableAgentContextChange?: ComponentProps<typeof TableEditorPane>['onAgentContextChange']
   onCreateWorkflow?: (kitablePath: string) => void
   onOpenWorkflow?: (kitablePath: string, workflowId: string) => void
@@ -144,6 +150,7 @@ type WorkspaceEditorContentProps = {
                                           
   onSetEditorMode: (mode: 'rich' | 'split' | 'source' | 'preview') => void
   tableAgentOpen: boolean
+  designRoot?: string
   workspaceTabs: WorkspaceTab[]
   /** Active workspace root. Forwarded to mounted workbench panes that
    *  need to scope their data fetches to this workspace — without it
@@ -181,6 +188,7 @@ export function WorkspaceEditorContent({
   whiteboardAgentBusy = false,
   onWhiteboardAgentBridgeChange,
   onCancelWhiteboardAgent,
+  onGenerateWhiteboardImage,
   onTableAgentContextChange,
   onCreateWorkflow,
   onOpenWorkflow,
@@ -200,6 +208,7 @@ export function WorkspaceEditorContent({
   onToolbarMount,
   onSetEditorMode,
   tableAgentOpen,
+  designRoot,
   workspaceTabs,
   rootPath,
 }: WorkspaceEditorContentProps) {
@@ -337,6 +346,13 @@ export function WorkspaceEditorContent({
             </Suspense>
           </div>
         ))}
+      {workspaceTabs.filter((tab): tab is Extract<WorkspaceTab, { type: 'design' }> => tab.type === 'design').map(tab => (
+        <div key={`${designRoot}:${tab.id}`} className={cn('document-editor-view', activeWorkspaceTabId === tab.id && 'is-active')}>
+          <Suspense fallback={<EditorPaneFallback />}>
+            <DesignEditorPane root={designRoot || 'browser-local-workspace'} path={tab.path} title={tab.title} active={activeWorkspaceTabId === tab.id} />
+          </Suspense>
+        </div>
+      ))}
       {workspaceTabs
         .filter((tab): tab is Extract<WorkspaceTab, { type: 'board' }> => tab.type === 'board')
         .map((tab) => (
@@ -355,6 +371,7 @@ export function WorkspaceEditorContent({
                 agentBusy={whiteboardAgentBusy}
                 onAgentBridgeChange={onWhiteboardAgentBridgeChange}
                 onCancelAgent={onCancelWhiteboardAgent}
+                onGenerateImage={onGenerateWhiteboardImage}
                 onOpenAgent={onOpenAgent}
                 path={tab.path}
                 title={tab.title}

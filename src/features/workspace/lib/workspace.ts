@@ -6,6 +6,7 @@ import {
   FileType2,
   FileVideo2,
   PenTool,
+  Paintbrush,
   Presentation,
   Volume2,
 } from 'lucide-react'
@@ -59,6 +60,7 @@ export type WorkspaceTab =
   | { id: string; type: 'gallery'; title: string; kind: WorkspaceMediaKind }
   | { id: string; type: 'browser-sites'; title: string }
   | { id: string; type: 'board'; title: string; path: string }
+  | { id: string; type: 'design'; title: string; path: string }
   | {
       id: string
       type: 'workflow'
@@ -106,8 +108,8 @@ export type WorkspaceTreeNode = {
 export type WorkspaceTreeDropPosition = 'before' | 'inside' | 'after'
 
 export const workspaceEmojiOptions = ['📄', '🧠', '📚', '✍️', '💡', '🗂️', '✅', '🚧', '⭐', '🔖', '🧩', '📌']
-const workspaceTitleExtensionPattern = /\.(md|markdown|kitable|kiboard|docx|xlsx|xls|pptx|ppt|pdf|csv|tsv|json|txt|html|htm|png|jpe?g|gif|webp|svg|mp4|mov|webm|mp3|wav|m4a)$/i
-const workspaceEditableExtensionPattern = /\.(md|markdown|kitable|kiboard)$/i
+const workspaceTitleExtensionPattern = /\.(md|markdown|kitable|kiboard|kidesign|docx|xlsx|xls|pptx|ppt|pdf|csv|tsv|json|txt|html|htm|png|jpe?g|gif|webp|svg|mp4|mov|webm|mp3|wav|m4a)$/i
+const workspaceEditableExtensionPattern = /\.(md|markdown|kitable|kiboard|kidesign)$/i
 
 export function formatCompactNumber(value: number) {
   return new Intl.NumberFormat(getCurrentLocale()).format(value)
@@ -164,6 +166,7 @@ export function inferWorkspaceItemFormat(path: string, content?: string): Worksp
   if (path.toLowerCase().endsWith('.kitable')) {
     return 'data'
   }
+  if (path.toLowerCase().endsWith('.kidesign')) return 'design'
   if (path.toLowerCase().endsWith('.kiboard')) {
     return 'board'
   }
@@ -293,6 +296,8 @@ export function getWorkspaceItemIcon(format?: WorkspaceDocumentFormat): LucideIc
       return FileVideo2
     case 'audio':
       return Volume2
+    case 'design':
+      return Paintbrush
     case 'board':
       return PenTool
     default:
@@ -323,6 +328,7 @@ export function getWorkspaceItemIconColorClass(format?: WorkspaceDocumentFormat)
       return 'text-orange-600'
     case 'image':
       return 'text-violet-500'
+    case 'design':
     case 'board':
       return 'text-violet-500'
     case 'video':
@@ -354,6 +360,7 @@ export function getWorkspaceItemFormatLabel(format?: WorkspaceDocumentFormat) {
     audio: 'Audio',
     binary: 'File',
     board: 'Board',
+    design: 'Design',
   }
 
   return labels[format || 'markdown']
@@ -400,7 +407,7 @@ export function isEditableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
 }
 
 export function isOrganizableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
-  return isEditableWorkspaceFormat(format) || format === 'board'
+  return isEditableWorkspaceFormat(format) || format === 'board' || format === 'design'
 }
 
 export function isPreviewableWorkspaceFormat(format?: WorkspaceDocumentFormat) {

@@ -194,6 +194,10 @@
     "loadingPage": "Загрузка страницы..."
   },
   "fileViewer": {
+    "imageActions": "Действия с изображением",
+    "copyImage": "Копировать изображение",
+    "imageCopied": "Изображение скопировано",
+    "imageCopyFailed": "Не удалось скопировать изображение",
     "openInSystem": "Открыть в системе",
     "showInFinder": "Показать в Finder",
     "previewUnsupported": "{{label}} · Предпросмотр в приложении пока не поддерживается",

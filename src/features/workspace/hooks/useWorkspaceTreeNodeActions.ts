@@ -1,3 +1,6 @@
+import { flushWorkspaceEditSessions } from '@/services/workspaceEditSessions'
+import { createDesignFile } from '@/features/design/lib/designFile'
+import { parseDesign } from '@/features/design/lib/designSerialization'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { renameDataDocumentByPath } from '@/api/dataDocuments'
@@ -185,7 +188,7 @@ export function useWorkspaceTreeNodeActions({
       )
       filterWorkspaceTabs(
         (tab) => (
-          (tab.type !== 'document' && tab.type !== 'board')
+          (tab.type !== 'document' && tab.type !== 'board' && tab.type !== 'design')
           || (tab.path !== node.path && !tab.path.startsWith(childPrefix))
         ),
       )
@@ -413,7 +416,15 @@ export function useWorkspaceTreeNodeActions({
     setFeedback('')
 
     try {
+      await flushWorkspaceEditSessions(node.path)
       const source = await readWorkspaceDocument(node.path)
+      if (node.path.toLowerCase().endsWith('.kidesign')) {
+        const design = parseDesign(source.content)
+        const created = await createDesignFile(rootPath, parentFolder, { ...design, title: `${stem} copy` })
+        await refreshWorkspaceDocuments(undefined, { treeOnly: true })
+        window.dispatchEvent(new CustomEvent('kition:search:open-path', { detail: { path: created.path } }))
+        return
+      }
       const created = await writeWorkspaceDocument(copyPath, source.content)
       setFeedback(`Duplicated "${node.title}"`)
       await refreshWorkspaceDocuments(created.path)
@@ -424,6 +435,7 @@ export function useWorkspaceTreeNodeActions({
     }
   }, [
     flatTreeNodes,
+    rootPath,
     refreshWorkspaceDocuments,
     setError,
     setFeedback,

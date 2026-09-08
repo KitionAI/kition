@@ -201,19 +201,19 @@ export function useWorkspaceTabs({
     setWorkspaceTabs((current) => {
       let changed = false
       const next = current.map((tab) => {
-        if (tab.type === 'document' || tab.type === 'board') {
+        if (tab.type === 'document' || tab.type === 'board' || tab.type === 'design') {
           const nextPath = remapWorkspaceBranchPath(tab.path, sourcePath, targetPath)
           if (nextPath === tab.path) {
             return tab
           }
           changed = true
-          const prefix = tab.type === 'board' ? 'board' : 'document'
+          const prefix = tab.type
           const filename = nextPath.split('/').pop() || nextPath
           return {
             ...tab,
             id: `${prefix}:${nextPath}`,
             path: nextPath,
-            ...(tab.type === 'board' ? { title: getWorkspaceItemTitle(filename) } : {}),
+            ...(tab.type !== 'document' ? { title: getWorkspaceItemTitle(filename) } : {}),
           }
         }
         if (tab.type === 'browser' && tab.originDocumentPath) {
@@ -235,7 +235,7 @@ export function useWorkspaceTabs({
       return changed ? next : current
     })
     setActiveWorkspaceTabId((activeId) => {
-      const prefix = activeId.startsWith('board:')
+      const prefix = activeId.startsWith('design:') ? 'design:' : activeId.startsWith('board:')
         ? 'board:'
         : activeId.startsWith('document:')
           ? 'document:'

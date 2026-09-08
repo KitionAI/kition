@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kition.ai/contracts/cloud/image-template-resolution.schema.json",
+  "title": "Kition Image Template Resolution",
+  "description": "Runtime-to-Console compilation of a pinned public template; workspace paths and provider credentials are excluded.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "version",
+    "prompt",
+    "prompt_sha256"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "prompt": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 50000
+    },
+    "prompt_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "$defs": {
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "variables",
+        "instruction",
+        "operation",
+        "has_reference_image"
+      ],
+      "properties": {
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "variables": {
+          "type": "object",
+          "maxProperties": 32,
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 4000
+          }
+        },
+        "instruction": {
+          "type": "string",
+          "maxLength": 12000
+        },
+        "operation": {
+          "enum": [
+            "generate",
+            "edit"
+          ]
+        },
+        "has_reference_image": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

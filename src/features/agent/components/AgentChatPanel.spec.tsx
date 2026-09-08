@@ -225,7 +225,7 @@ describe('AgentChatPanel composer controls', () => {
     expect(container.querySelector('.agent-ai-browser-toggle')).toBeNull()
   })
 
-  it('uses one composer context tray for the write target and local folders', async () => {
+  it('keeps the write target and local folders in the input area', async () => {
     const onRemoveDocumentContext = vi.fn()
     await mount(createElement(AgentChatPanel, makeMinimalProps({
       documentContextPaths: ['Campaigns/X launch.md'],
@@ -238,14 +238,15 @@ describe('AgentChatPanel composer controls', () => {
       }],
     })))
 
-    const tray = container.querySelector('.agent-context-tray')
-    expect(tray?.textContent).toContain('X launch.md')
-    expect(tray?.textContent).not.toContain('Current ·')
-    expect(tray?.textContent).toContain('project')
+    const context = container.querySelector<HTMLElement>('.agent-composer-context')
+    expect(context?.textContent).toContain('X launch.md')
+    expect(context?.textContent).toContain('project')
+    expect(container.querySelector('.agent-ai-footer')?.contains(context)).toBe(false)
+    expect(context?.nextElementSibling?.tagName).toBe('TEXTAREA')
     expect(container.querySelector('.agent-turn-context-summary')).toBeNull()
     await act(async () => {
-      container.querySelector<HTMLButtonElement>(
-        '.agent-context-chip.is-document .agent-context-chip__remove',
+      document.querySelector<HTMLButtonElement>(
+        '[aria-label="Remove X launch.md"]',
       )?.click()
     })
     expect(onRemoveDocumentContext).toHaveBeenCalledWith('Campaigns/X launch.md')
@@ -262,7 +263,7 @@ describe('AgentChatPanel composer controls', () => {
     const footer = container.querySelector('.agent-ai-footer')
     const modelPicker = container.querySelector('.agent-ai-model-picker')
     expect(addButton?.getAttribute('aria-label')).toBe('Add context')
-    expect(container.querySelector('.agent-context-tray')).toBeNull()
+    expect(container.querySelector('.agent-composer-context')).toBeNull()
     expect(footer?.firstElementChild).toBe(addButton?.parentElement)
     expect(addButton?.parentElement?.nextElementSibling).toBe(modelPicker)
     await act(async () => addButton?.click())
@@ -285,8 +286,8 @@ describe('AgentChatPanel composer controls', () => {
       }],
     })))
 
-    expect(container.querySelectorAll('.agent-context-chip')).toHaveLength(1)
-    expect(container.querySelector('.agent-context-chip.is-document')?.textContent).toContain('Current.md')
+    expect(container.querySelectorAll('.agent-composer-context')).toHaveLength(1)
+    expect(container.querySelector('.agent-composer-context')?.textContent).toContain('Current.md')
     expect((container.querySelector('textarea') as HTMLTextAreaElement).value).toBe('Improve this')
   })
 })
@@ -783,7 +784,7 @@ describe('AgentChatPanel document references', () => {
 
   const longPath = 'Getting Started/Guides/Product Content/Product Content Studio.kitable'
 
-  it('shows an attached document as a removable context chip', async () => {
+  it('shows an attached document as a removable inline reference', async () => {
     const onRemoveDocumentContext = vi.fn()
     await mount(createElement(AgentChatPanel, makeMinimalProps({
       draft: 'Analyze this document',
@@ -804,7 +805,7 @@ describe('AgentChatPanel document references', () => {
     expect(container.textContent).not.toContain('@{')
     expect(container.textContent).not.toContain('Getting Started/Guides')
 
-    const remove = container.querySelector(
+    const remove = document.querySelector(
       '[aria-label="Remove Product Content Studio.kitable"]',
     ) as HTMLButtonElement
     await act(async () => {
@@ -813,7 +814,7 @@ describe('AgentChatPanel document references', () => {
     expect(onRemoveDocumentContext).toHaveBeenCalledWith(longPath)
   })
 
-  it('shows multiple references as consistent context chips', async () => {
+  it('shows every attached filename without opening another panel', async () => {
     await mount(createElement(AgentChatPanel, makeMinimalProps({
       draft: 'Compare these',
       documentContextPaths: ['Docs/Plan.md', 'Notes/Todo.md'],
@@ -823,10 +824,11 @@ describe('AgentChatPanel document references', () => {
       ],
     })))
 
-    const chips = container.querySelectorAll('.agent-context-chip')
-    expect(chips).toHaveLength(2)
-    expect(chips[0]?.textContent).toContain('Plan.md')
-    expect(chips[1]?.textContent).toContain('Todo.md')
+    const context = container.querySelector<HTMLElement>('.agent-composer-context')!
+    expect(context.querySelectorAll('[role="listitem"]')).toHaveLength(2)
+    expect(context.textContent).toContain('Plan.md')
+    expect(context.textContent).toContain('Todo.md')
+    expect(container.querySelector('.agent-ai-footer')?.contains(context)).toBe(false)
   })
 
   it('moves a selected mention into persistent document context', async () => {

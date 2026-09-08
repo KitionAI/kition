@@ -18,18 +18,21 @@ import {
   Frame,
   GitBranch,
   Group,
+  Images,
   Maximize2,
   MoreHorizontal,
   RotateCcw,
   RotateCw,
   Rows3,
   Sparkles,
+  Type,
   Ungroup,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { WhiteboardEditorController } from '../hooks/useWhiteboardEditor'
+import { getEditableImageTextOverlay } from '../lib/whiteboardGeneratedImages'
 import type { WhiteboardMindMapDirection } from '../lib/whiteboardTypes'
 import {
   ActionMenu,
@@ -44,12 +47,15 @@ export function WhiteboardSelectionToolbar({
   agentAvailable = false,
   controller,
   onAskAgent,
+  onOpenImageStudio,
 }: {
   agentAvailable?: boolean
   controller: WhiteboardEditorController
   onAskAgent?: () => void
+  onOpenImageStudio?: () => void
 }) {
   const { t } = useTranslation('workspace')
+  const { t: ti } = useTranslation('imageGeneration')
   const unlockedCount = controller.selectedElements.filter((element) => !element.locked).length
   const hasContainer = controller.selectedElements.some((element) => (
     element.kind === 'rectangle'
@@ -60,6 +66,13 @@ export function WhiteboardSelectionToolbar({
   const hasFrame = controller.selectedElements.some((element) => (
     element.kind === 'rectangle' && element.shapeStyle === 'frame'
   ))
+  const selectedImage = controller.selectedElements.length === 1
+    && controller.selectedElements[0]?.kind === 'image'
+    ? controller.selectedElements[0]
+    : null
+  const editableImageText = selectedImage
+    ? getEditableImageTextOverlay(controller.elements, selectedImage.id)
+    : undefined
   const mindMapSelected = Boolean(controller.selectedMindMapNode)
   if (controller.tool !== 'select' || unlockedCount < 1) return null
 
@@ -120,6 +133,25 @@ export function WhiteboardSelectionToolbar({
       >
         <Sparkles className="size-4 text-brand" />
       </SelectionAction>
+      <SelectionAction
+        disabled={!agentAvailable || !onOpenImageStudio}
+        label={controller.selectedElements.some((element) => element.kind === 'image')
+          ? ti('actions.editImage')
+          : ti('actions.openStudio')}
+        onClick={() => onOpenImageStudio?.()}
+        testId="whiteboard-selection-generate-image"
+      >
+        <Images className="size-4 text-brand" />
+      </SelectionAction>
+      {editableImageText ? (
+        <SelectionAction
+          label={ti('actions.editText')}
+          onClick={() => controller.beginTextEdit(editableImageText)}
+          testId="whiteboard-selection-edit-text"
+        >
+          <Type className="size-4 text-brand" />
+        </SelectionAction>
+      ) : null}
       {!mindMapSelected ? (
         <>
           <span className="whiteboard-toolbar-separator" aria-hidden="true" />

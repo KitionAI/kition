@@ -59,7 +59,7 @@
     "test:agent:e2e": "playwright test --config tooling/playwright.config.ts e2e/table-agent-browser-flow.spec.ts e2e/table-agent-document-flow.spec.ts e2e/markdown-image-insertion.spec.ts --workers=1",
     "test:agent:stable": "pnpm run test:agent:unit && pnpm run test:agent:e2e",
     "test:desktop:unit": "vitest run --config tooling/vitest.config.ts src/services/desktop.spec.ts src/services/desktopBootstrap.spec.ts src/services/portalAccount.spec.ts electron/clipboard-image.spec.ts electron/workspace-file-operations.spec.ts electron/workspace-document-formats.spec.ts electron/workspace-registry.spec.ts electron/workspace-window.spec.ts electron/menu.spec.ts electron/secure-store.spec.ts electron/backend-supervisor.spec.ts electron/feedback-client.spec.ts electron/deep-link.spec.ts electron/external-url.spec.ts electron/local-runtime.spec.ts electron/runtime-label.spec.ts electron/runtime-manager.spec.ts electron/scripts/build-identity.spec.ts electron/scripts/build-sidecar.spec.ts electron/scripts/electron-builder-args.spec.ts electron/scripts/validate-desktop-assets.spec.ts electron/scripts/validate-desktop-renderer.spec.ts electron/scripts/validate-runtime-lock.spec.ts",
-    "test:desktop:e2e": "playwright test --config tooling/playwright.config.ts e2e/desktop-bundled-assets.spec.ts --workers=1 && playwright test --config tooling/playwright.config.ts e2e/desktop-shortcuts.spec.ts --workers=1 && playwright test --config tooling/playwright.config.ts e2e/desktop-image-paste.spec.ts --workers=1 && playwright test --config tooling/playwright.config.ts e2e/settings-desktop.spec.ts --workers=1 && playwright test --config tooling/playwright.config.ts e2e/table-agent-browser-flow.spec.ts --workers=1",
+    "test:desktop:e2e": "playwright test --config tooling/playwright.config.ts e2e/desktop-bundled-assets.spec.ts --workers=1 && playwright test --config tooling/playwright.config.ts e2e/desktop-shortcuts.spec.ts --workers=1 && playwright test --config tooling/playwright.config.ts e2e/desktop-image-paste.spec.ts e2e/desktop-image-copy.spec.ts --workers=1 && playwright test --config tooling/playwright.config.ts e2e/settings-desktop.spec.ts --workers=1 && playwright test --config tooling/playwright.config.ts e2e/table-agent-browser-flow.spec.ts --workers=1",
     "lint": "eslint . --config tooling/eslint.cjs --no-eslintrc --ext .js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --quiet --ignore-path .gitignore",
     "lint:fix": "eslint . --config tooling/eslint.cjs --no-eslintrc --ext .js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
     "perf:budget": "node scripts/check-performance-budget.mjs",
@@ -67,7 +67,9 @@
     "test:unit:watch": "vitest --config tooling/vitest.config.ts",
     "test:e2e": "playwright test --config tooling/playwright.config.ts e2e/app-shell.spec.ts e2e/table-widget.spec.ts --workers=1",
     "test:e2e:headed": "playwright test --config tooling/playwright.config.ts --headed",
-    "test:whiteboard:e2e": "playwright test --config tooling/playwright.config.ts e2e/whiteboard-editing.spec.ts e2e/whiteboard-agent.spec.ts --workers=1",
+    "test:design:unit": "vitest run --config tooling/vitest.config.ts src/features/design src/features/workspace/lib/workspaceDesign.spec.ts electron/workspace-guarded-write.spec.ts electron/workspace-image-read.spec.ts electron/workspace-document-formats.spec.ts",
+    "test:design:e2e": "playwright test --config tooling/playwright.config.ts e2e/design-editor.spec.ts e2e/desktop-design.spec.ts e2e/design-performance.spec.ts --workers=1",
+    "test:whiteboard:e2e": "playwright test --config tooling/playwright.config.ts e2e/whiteboard-editing.spec.ts e2e/whiteboard-agent.spec.ts e2e/whiteboard-image-studio.spec.ts --workers=1",
     "test:whiteboard:e2e:headed": "pnpm run test:whiteboard:e2e --headed",
     "capture:readme:assets": "KITION_CAPTURE_README_ASSETS=1 playwright test --config tooling/playwright.config.ts e2e/readme-assets.spec.ts --workers=1 && magick docs/readme/documents.png -quality 88 -define webp:method=6 docs/readme/documents.webp && magick docs/readme/agent.png -quality 88 -define webp:method=6 docs/readme/agent.webp && magick docs/readme/whiteboards.png -quality 88 -define webp:method=6 docs/readme/whiteboards.webp && magick docs/readme/kition-overview.png -quality 88 -define webp:method=6 docs/readme/kition-overview.webp && rm docs/readme/documents.png docs/readme/agent.png docs/readme/whiteboards.png",
     "test:table:e2e": "bash scripts/inspect-table-widget.sh",
@@ -168,14 +170,18 @@
     "overrides": {
       "brace-expansion": "5.0.9",
       "dompurify": "3.4.13",
-      "fast-uri": "3.1.5",
+      "fast-uri": "3.1.6",
       "form-data": "4.0.6",
       "immutable": "5.1.8",
       "js-yaml": "4.3.1",
       "tar@>=7.0.0 <7.5.21": "7.5.21",
       "tmp": "0.2.7",
       "undici@>=6.0.0 <6.28.0": "6.28.0",
-      "undici@>=7.0.0 <7.29.0": "7.29.0"
+      "undici@>=7.0.0 <7.29.0": "7.29.0",
+      "browserslist": "4.28.7",
+      "@xmldom/xmldom@>=0.8.0 <0.8.15": "0.8.15",
+      "@xmldom/xmldom@>=0.9.0 <0.9.12": "0.9.12",
+      "postcss-selector-parser@>=6.0.0 <6.1.4": "6.1.4"
     },
     "patchedDependencies": {
       "brace-expansion@5.0.9": "patches/brace-expansion@5.0.9.patch"

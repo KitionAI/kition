@@ -24,6 +24,7 @@ export const IPC_CHANNELS = {
   submitFeedback: 'desktop:feedback:submit',
   listWorkspaceDocuments: 'desktop:workspace:list-documents',
   readWorkspaceDocument: 'desktop:workspace:read-document',
+  readWorkspaceImage: 'desktop:workspace:read-image',
   statWorkspaceDocument: 'desktop:workspace:stat-document',
   writeWorkspaceDocument: 'desktop:workspace:write-document',
   createWorkspaceDocument: 'desktop:workspace:create-document',

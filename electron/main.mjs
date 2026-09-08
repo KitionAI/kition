@@ -1,3 +1,5 @@
+import { readWorkspaceImage } from './workspace-image-read.mjs'
+import { guardedWorkspaceWrite } from './workspace-guarded-write.mjs'
 import fs from 'node:fs/promises'
 import crypto from 'node:crypto'
 import path from 'node:path'
@@ -1539,6 +1541,7 @@ async function handleSetActiveVault(_event, request) {
 
 async function handleReadWorkspaceDocument(_event, request) {
   await ensureWorkspaceInitialized()
+  if (request?.expected_root && request.expected_root !== getWorkspaceRoot()) throw new Error('DESIGN_WORKSPACE_CHANGED')
   const { relativePath, absolutePath } = await resolveSafeWorkspacePath(request?.path)
   if (!isTextWorkspaceDocument(relativePath) && inferWorkspaceDocumentFormat(relativePath) !== 'data') {
     throw new Error('this workspace file is not text-editable')
@@ -1560,6 +1563,7 @@ async function handleStatWorkspaceDocument(_event, request) {
 
 async function handleWriteWorkspaceDocument(_event, request) {
   await ensureWorkspaceInitialized()
+  if (request?.expected_root && request.expected_root !== getWorkspaceRoot()) throw new Error('DESIGN_WORKSPACE_CHANGED')
   const { relativePath, absolutePath } = await resolveSafeWorkspacePath(
     request?.path,
     undefined,
@@ -1569,8 +1573,10 @@ async function handleWriteWorkspaceDocument(_event, request) {
     throw new Error('only editable workspace documents can be saved as text')
   }
   workspaceWatcher?.markSelfWrite?.(absolutePath)
-  await writeFileAtomically(absolutePath, String(request?.content || ''), 'utf8')
-  return buildWorkspaceDocumentResponse(relativePath, absolutePath)
+  return guardedWorkspaceWrite(absolutePath, request?.expected_content, async () => {
+    await writeFileAtomically(absolutePath, String(request?.content || ''), 'utf8')
+    return buildWorkspaceDocumentResponse(relativePath, absolutePath)
+  })
 }
 
 async function handleCreateWorkspaceDocument(_event, request) {
@@ -1869,6 +1875,7 @@ async function pickUniqueImportedFileTarget(folderAbsolutePath, requestedFilenam
 
 async function handleImportWorkspaceFile(_event, request) {
   await ensureWorkspaceInitialized()
+  if (request?.expected_root && request.expected_root !== getWorkspaceRoot()) throw new Error('DESIGN_WORKSPACE_CHANGED')
 
   const folderRelativePath = String(request?.folder || '').trim()
   const requestedName = sanitizeImportedWorkspaceFilename(request?.filename || '')
@@ -2015,6 +2022,12 @@ async function registerIpcHandlers() {
   ipcMain.handle(IPC_CHANNELS.readClipboardImage, () => readClipboardImagePayload(clipboard))
   ipcMain.handle(IPC_CHANNELS.submitFeedback, handleSubmitFeedback)
   ipcMain.handle(IPC_CHANNELS.listWorkspaceDocuments, handleListWorkspaceDocuments)
+  ipcMain.handle(IPC_CHANNELS.readWorkspaceImage, async (_event, request) => {
+    await ensureWorkspaceInitialized()
+    const root = getWorkspaceRoot()
+    if (request?.expected_root !== root) throw new Error('DESIGN_WORKSPACE_CHANGED')
+    return readWorkspaceImage(root, request?.path)
+  })
   ipcMain.handle(IPC_CHANNELS.readWorkspaceDocument, handleReadWorkspaceDocument)
   ipcMain.handle(IPC_CHANNELS.statWorkspaceDocument, handleStatWorkspaceDocument)
   ipcMain.handle(IPC_CHANNELS.writeWorkspaceDocument, handleWriteWorkspaceDocument)

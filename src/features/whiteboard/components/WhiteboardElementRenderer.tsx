@@ -73,7 +73,11 @@ export function WhiteboardElementRenderer({
       data-hovered={hovered ? 'true' : 'false'}
       data-locked={element.locked ? 'true' : 'false'}
       pointerEvents={interactive ? undefined : 'none'}
-      style={{ cursor: selectable ? 'move' : element.locked ? 'not-allowed' : 'default' }}
+      style={{
+        cursor: selectable
+          ? element.kind === 'text' ? 'text' : 'move'
+          : element.locked ? 'not-allowed' : 'default',
+      }}
     >
       <WhiteboardElementBody
         arrowId={arrowId}

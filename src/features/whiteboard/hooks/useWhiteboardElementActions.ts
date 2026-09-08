@@ -42,6 +42,7 @@ import type {
   WhiteboardElement,
   WhiteboardConnectorElement,
   WhiteboardElementStyle,
+  WhiteboardImageElement,
   WhiteboardPoint,
   WhiteboardTool,
   WhiteboardViewport,
@@ -347,18 +348,49 @@ export function useWhiteboardElementActions(input: {
   const insertImage = useCallback((image: {
     alt?: string
     canvasSize: WhiteboardPoint
+    center?: WhiteboardPoint
     height: number
+    replaceElementId?: string
     width: number
     workspacePath: string
   }) => {
     const width = Math.max(40, Math.min(1200, image.width))
     const height = Math.max(40, Math.min(900, image.height))
-    const center = {
+    const defaultCenter = {
       x: input.viewport.x + image.canvasSize.x / input.viewport.zoom / 2,
       y: input.viewport.y + image.canvasSize.y / input.viewport.zoom / 2,
     }
+    const replacement = image.replaceElementId
+      ? input.elements.find((element) => element.id === image.replaceElementId)
+      : undefined
+    if (
+      replacement
+      && (replacement.kind === 'image'
+        || (replacement.kind === 'rectangle' && replacement.shapeStyle === 'image-placeholder'))
+    ) {
+      const element: WhiteboardImageElement = {
+        id: replacement.id,
+        kind: 'image',
+        x: replacement.x,
+        y: replacement.y,
+        width: replacement.width,
+        height: replacement.height,
+        parentId: replacement.parentId,
+        sourceRefIds: replacement.sourceRefIds,
+        workspacePath: image.workspacePath,
+        alt: image.alt,
+        locked: replacement.locked,
+        rotation: replacement.rotation,
+        style: replacement.style ? { ...replacement.style } : { ...input.defaultStyle },
+      }
+      input.commands.execute({ type: 'element.update', elements: [element] })
+      input.replaceSelection([element.id])
+      input.setTool('select')
+      return element
+    }
+    const center = image.center || defaultCenter
     const frame = getBoardFrameAtPoint(input.elements, center)
-    const element: WhiteboardElement = {
+    const element: WhiteboardImageElement = {
       id: createWhiteboardElementId('image'),
       kind: 'image',
       x: center.x - width / 2,
@@ -375,7 +407,7 @@ export function useWhiteboardElementActions(input: {
     input.commands.execute({ type: 'element.create', elements: [element] })
     input.replaceSelection([element.id])
     input.setTool('select')
-    return element.id
+    return element
   }, [
     input.commands,
     input.defaultStyle,

@@ -194,6 +194,10 @@
     "loadingPage": "Carregando página..."
   },
   "fileViewer": {
+    "imageActions": "Ações da imagem",
+    "copyImage": "Copiar imagem",
+    "imageCopied": "Imagem copiada",
+    "imageCopyFailed": "Não foi possível copiar a imagem",
     "openInSystem": "Abrir no sistema",
     "showInFinder": "Mostrar no Finder",
     "previewUnsupported": "{{label}} · A visualização no app ainda não é suportada",

@@ -1,0 +1,345 @@
+{
+  "title": "AI 生图工作室",
+  "description": "先选成品效果，再改少量内容，直接生成。",
+  "close": "关闭生图工作室",
+  "gallery": {
+    "description": "先选择想要的成品效果，模板已经封装好提示词和视觉方向。",
+    "searchPlaceholder": "搜索海报、产品、角色……",
+    "headings": {
+      "recommended": "适合当前白板的模板",
+      "all": "全部视觉模板",
+      "generate": "从模板直接创作",
+      "edit": "修改选中的图片"
+    },
+    "templateCount": "{{count}} 个模板",
+    "templateCount_one": "{{count}} 个模板",
+    "templateCount_other": "{{count}} 个模板",
+    "empty": "没有符合当前筛选条件的模板。"
+  },
+  "generator": {
+    "description": "只填写必要信息，完整视觉提示词已经内置。",
+    "customizeHint": "只修改这次真正重要的内容。",
+    "referenceRequired": "这个模板需要原图。请关闭工作室，在白板中选中一张图片，然后打开“编辑图片”。",
+    "referenceCount": "已选择 {{count}} 张参考图",
+    "referenceCount_one": "已选择 {{count}} 张参考图",
+    "referenceCount_other": "已选择 {{count}} 张参考图"
+  },
+  "sections": {
+    "customize": "修改模板内容",
+    "advanced": "高级设置",
+    "results": "生成结果"
+  },
+  "templateViews": {
+    "label": "模板视图",
+    "recommended": "为你推荐",
+    "all": "全部",
+    "generate": "创作",
+    "edit": "改图"
+  },
+  "categories": {
+    "label": "模板分类",
+    "all": "全部场景",
+    "poster": "海报",
+    "product": "产品",
+    "brand": "品牌",
+    "education": "知识内容",
+    "character": "角色",
+    "editing": "照片改图"
+  },
+  "templateMeta": {
+    "generate": "直接创作",
+    "edit": "需要原图",
+    "selectImageFirst": "生成前请先在白板中选中一张图片",
+    "editableText": "文字可编辑"
+  },
+  "variables": {
+    "subject": {
+      "label": "主体内容",
+      "placeholder": "这张图主要表现什么？"
+    },
+    "scene": {
+      "label": "场景氛围",
+      "placeholder": "发生在哪里？希望是什么氛围？"
+    },
+    "details": {
+      "label": "关键细节",
+      "placeholder": "只填写必须出现或必须保持不变的细节。"
+    },
+    "palette": {
+      "label": "配色",
+      "placeholder": "可选，例如：暖白、森林绿和金色"
+    }
+  },
+  "fields": {
+    "textMode": "文字处理方式",
+    "editableText": "可编辑标题",
+    "editableTextPlaceholder": "可选，将作为独立白板文字层添加",
+    "visibleText": "图片内文字",
+    "visibleTextPlaceholder": "可选，输入必须准确呈现的短标题或标签",
+    "editableTextDescription": "Kition 会把这段文字作为独立图层放进白板，之后双击即可修改。",
+    "aspectRatio": "画面比例",
+    "resolution": "分辨率",
+    "quality": "质量",
+    "variants": "方案数量"
+  },
+  "quality": {
+    "low": "草稿",
+    "medium": "标准",
+    "high": "高质量"
+  },
+  "actions": {
+    "useTemplate": "使用这个模板",
+    "backToTemplates": "更换模板",
+    "generate": "生成 {{count}} 张图片",
+    "generate_one": "生成 {{count}} 张图片",
+    "generate_other": "生成 {{count}} 张图片",
+    "generating": "正在生成图片……",
+    "add": "放入白板",
+    "added": "已放入",
+    "addAll": "全部放入",
+    "addedAll": "已全部放入",
+    "replace": "替换原图",
+    "replaced": "已替换",
+    "viewSource": "查看来源",
+    "openStudio": "AI 生成图片",
+    "editImage": "编辑图片",
+    "editText": "编辑图片文字"
+  },
+  "textModes": {
+    "editable_overlay": {
+      "name": "独立文字层",
+      "description": "之后可双击修改"
+    },
+    "baked_text": {
+      "name": "融入图片",
+      "description": "融合更自然，但不可编辑"
+    },
+    "no_text": {
+      "name": "不要文字",
+      "description": "只生成视觉画面"
+    }
+  },
+  "status": {
+    "submitting": "正在准备生图任务……",
+    "generating": "正在生成图片……",
+    "detail": "正在根据所选模板生成 {{count}} 个方案，你可以继续操作白板。",
+    "detail_one": "正在根据所选模板生成 {{count}} 个方案，你可以继续操作白板。",
+    "detail_other": "正在根据所选模板生成 {{count}} 个方案，你可以继续操作白板。"
+  },
+  "errors": {
+    "variableRequired": "生成前请填写{{field}}。",
+    "referenceRequired": "使用这个改图模板前，请先在白板中选中一张图片。",
+    "startFailed": "无法启动生图任务。",
+    "unavailable": "请先配置 AI 模型，并使用支持 AI 白板的运行时。",
+    "noResult": "生图任务已结束，但没有返回图片。",
+    "timeout": "生图任务超时，暂未返回图片。"
+  },
+  "generatedImageAlt": "AI 生成图片",
+  "referenceAlt": "参考图片 {{index}}",
+  "templatePreviewAlt": "{{name}}效果示例",
+  "source": "模板改编自 {{repository}}（{{license}}）。",
+  "resultAlt": "生成图片 {{index}}",
+  "templates": {
+    "surreal-city-poster": {
+      "name": "超现实城市海报",
+      "description": "把地点或概念变成具有收藏感的编辑设计旅行海报。",
+      "placeholders": {
+        "subject": "例如：梦境般的未来杭州",
+        "scene": "标志建筑、空中蜿蜒道路、茶园、微小旅行者……",
+        "palette": "柔和玉绿色、暖石色、雾蓝色"
+      }
+    },
+    "miniature-product-campaign": {
+      "name": "微缩产品广告",
+      "description": "围绕一个主打产品，生成六宫格商业故事。",
+      "placeholders": {
+        "subject": "例如：名为 Limora 的气泡柠檬饮料",
+        "scene": "阳光海滩，微缩人物与巨型原料互动",
+        "palette": "柠檬黄、清新绿、海水蓝"
+      }
+    },
+    "engineering-infographic": {
+      "name": "工程信息图",
+      "description": "用剖面、数据和技术标注解释复杂产品。",
+      "placeholders": {
+        "subject": "例如：下一代纯电城市公交车",
+        "details": "电池系统、尺寸、充电流程、环境影响……",
+        "palette": "深海军蓝、石墨黑、电光绿"
+      }
+    },
+    "landmark-type-poster": {
+      "name": "城市地标文字海报",
+      "description": "用最具代表性的地标和城市细节组成城市名称。",
+      "placeholders": {
+        "subject": "例如：上海",
+        "details": "外滩、梧桐树、渡轮、里弄、城市天际线……",
+        "palette": "深海军蓝、奶油色、柔和红色"
+      }
+    },
+    "brand-touchpoint-board": {
+      "name": "品牌触点视觉板",
+      "description": "一次查看包装、产品和生活方式场景构成的完整品牌系统。",
+      "placeholders": {
+        "subject": "例如：名为 Matcha Mode 的现代抹茶品牌",
+        "details": "陶瓷杯、外带包装、菜单、帆布袋、贴纸……",
+        "palette": "抹茶绿、暖米色、灰白色"
+      }
+    },
+    "neon-creator-poster": {
+      "name": "霓虹创作者 3D 海报",
+      "description": "生成具有强烈视觉个性的职业或个人形象海报。",
+      "placeholders": {
+        "subject": "例如：自信的动态设计师",
+        "details": "廓形街头服饰、相机、笔记本、3D 工具、迷你手办……",
+        "palette": "电光蓝和黑色"
+      }
+    },
+    "vintage-travel-poster": {
+      "name": "复古旅行电影海报",
+      "description": "把目的地变成具有标志性层次的老电影印刷海报。",
+      "placeholders": {
+        "subject": "例如：黄金时刻的广州",
+        "details": "广州塔、骑楼街、珠江渡轮、木棉花……",
+        "palette": "暖琥珀色、钴蓝色、褪色棕褐色"
+      }
+    },
+    "product-concept-board": {
+      "name": "产品概念研发板",
+      "description": "完整呈现从灵感研究到产品成品的设计过程。",
+      "placeholders": {
+        "subject": "例如：受揉皱纸团启发的椅子",
+        "details": "形态分析、人体工学、材质、尺寸、原型……",
+        "palette": "灰白色、石墨色、暖灰色"
+      }
+    },
+    "vocabulary-learning-card": {
+      "name": "儿童词汇学习卡",
+      "description": "在友好的视觉卡片中讲清完整物体和相关局部。",
+      "placeholders": {
+        "subject": "例如：玉米和玉米粒",
+        "details": "为完整物体和局部分别使用简短大写标签",
+        "palette": "浅蓝色、白色和物体自然色"
+      }
+    },
+    "editorial-silhouette-poster": {
+      "name": "剪影排版人物海报",
+      "description": "把强烈的侧面剪影、表现性文字和粗粝油墨组合起来。",
+      "placeholders": {
+        "subject": "例如：戴棱角墨镜的先锋时装设计师侧脸",
+        "details": "齐耳短发、锐利墨镜、手写笔刷文字……",
+        "palette": "暖白纸张上的黑色油墨"
+      }
+    },
+    "mixed-media-memory-card": {
+      "name": "混合媒介回忆卡",
+      "description": "保留照片上半部分，把下半部分的回忆重新手绘出来。",
+      "placeholders": {
+        "details": "希望手绘部分强调哪个瞬间或小细节？",
+        "palette": "从照片中提取的柔和颜色"
+      }
+    },
+    "travel-field-notes": {
+      "name": "旅行田野笔记",
+      "description": "把真实旅行照片和手工地点印章放在同一页。",
+      "placeholders": {
+        "details": "地点名称，以及印章必须保留的少量标志特征",
+        "palette": "从照片中提取 2–4 种柔和专色"
+      }
+    },
+    "paper-collage-portrait": {
+      "name": "纸雕拼贴人像",
+      "description": "保持人物真实，把周围世界重建为层叠纸艺。",
+      "placeholders": {
+        "scene": "例如：有山丘、云朵和花朵的春日花园",
+        "details": "必须保持不变的身份、服装和姿势细节",
+        "palette": "梦幻粉彩色和自然肤色"
+      }
+    },
+    "photo-doodle-mix": {
+      "name": "实景涂鸦人物",
+      "description": "保留真实背景，只把人物改成有趣的手绘涂鸦。",
+      "placeholders": {
+        "details": "要转换哪些人物，以及必须保留的身份特征",
+        "palette": "黑色线稿和少量手工上色色彩"
+      }
+    },
+    "doodle-character": {
+      "name": "手绘涂鸦角色",
+      "description": "把人像变成松弛可爱的时尚手账角色。",
+      "placeholders": {
+        "details": "需要保留的发型、服装、配饰和面部特征",
+        "palette": "黑色铅笔、柔和腮红和少量蜡笔色"
+      }
+    },
+    "character-production-sheet": {
+      "name": "角色生产设定表",
+      "description": "把一个角色扩展成一致的多视图、动作和材质标注。",
+      "placeholders": {
+        "details": "标志装备、材质、需要的视图、动作和表情",
+        "palette": "主中性色加一种标志强调色"
+      }
+    }
+  },
+  "chat": {
+    "mode": "生图",
+    "templates": "图片模板",
+    "back": "返回聊天",
+    "search": "搜索图片模板",
+    "loading": "正在加载模板…",
+    "catalogUnavailable": "模板暂时不可用。返回聊天后仍可不使用模板生图。",
+    "retry": "重试",
+    "previous": "上一页",
+    "next": "下一页",
+    "clearTemplate": "清除模板",
+    "source": "查看来源",
+    "freeform": "在聊天中描述你想要的图片，生成结果会显示在当前对话中。",
+    "clearReference": "清除参考图",
+    "runtimeUnavailable": "生图模式需要支持图片生成的新版运行时。",
+    "targetRequired": "请打开文档、表格或白板后生图。",
+    "accountRequired": "请登录 Kition 账号以使用此模板。",
+    "referenceRequired": "请先在聊天中附加参考图片。",
+    "variablesRequired": "请填写模板的必填项。",
+    "checkingTemplate": "正在确认模板是否可用…",
+    "templateUnavailable": "无法验证此模板。请重试，或清除模板后自由生图。",
+    "editPrompt": "修改这张图片：",
+    "interrupted": "图片任务在收到最终状态前停止，已生成的图片保留在下方。",
+    "progress": "生图进度",
+    "noArtifacts": "任务已结束，但未返回图片。",
+    "openImage": "打开图片",
+    "generatedImage": "生成的图片",
+    "templateVersion": "模板：{{id}} · {{version}}",
+    "edit": "在聊天中修改",
+    "reuseSettings": "复用设置",
+    "access": {
+      "public": "免费",
+      "account": "Kition 账号",
+      "premium": "高级"
+    },
+    "options": {
+      "aspect_ratio": "宽高比",
+      "quality": "质量",
+      "resolution": "分辨率",
+      "variants": "图片数量",
+      "text_mode": "文字"
+    },
+    "status": {
+      "queued": "生图请求已排队",
+      "generating": "正在生成图片…",
+      "saving": "正在保存图片…",
+      "completed": "图片已生成，等待确认",
+      "failed": "生图失败",
+      "canceled": "生图已取消"
+    },
+    "createImage": "生成图片",
+    "imageSettings": "生图设置",
+    "closeSettings": "关闭生图设置",
+    "changeTemplate": "更换模板",
+    "browseTemplates": "选择风格与创作起点",
+    "useChat": "切回聊天",
+    "exitImageMode": "退出生图模式",
+    "done": "完成",
+    "catalogRange": "第 {{start}}–{{end}} 个，共 {{total}} 个",
+    "catalogPage": "第 {{page}} 页",
+    "withoutTemplate": "不使用模板"
+  }
+}

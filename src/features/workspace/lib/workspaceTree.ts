@@ -60,6 +60,7 @@ function resolveWorkspaceTreeFormat(
   format?: WorkspaceDocument['format'],
   content?: string,
 ) {
+  if (path.toLowerCase().endsWith('.kidesign')) return 'design' as const
   return path.toLowerCase().endsWith('.kiboard')
     ? 'board' as const
     : format || inferWorkspaceItemFormat(path, content)

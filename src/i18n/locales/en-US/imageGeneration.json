@@ -1,0 +1,345 @@
+{
+  "title": "AI Image Studio",
+  "description": "Choose a finished look, change a few details, and generate.",
+  "close": "Close image studio",
+  "gallery": {
+    "description": "Choose the result you want first. The template handles the prompt and art direction.",
+    "searchPlaceholder": "Search posters, products, characters…",
+    "headings": {
+      "recommended": "Recommended for this Board",
+      "all": "All visual templates",
+      "generate": "Create from a template",
+      "edit": "Transform a selected image"
+    },
+    "templateCount": "{{count}} templates",
+    "templateCount_one": "{{count}} template",
+    "templateCount_other": "{{count}} templates",
+    "empty": "No templates match these filters."
+  },
+  "generator": {
+    "description": "Fill the essentials below. The full visual prompt is already built in.",
+    "customizeHint": "Only change what matters for this result.",
+    "referenceRequired": "This transformation needs a source image. Close the studio, select an image on the Board, then open Edit image.",
+    "referenceCount": "{{count}} reference images",
+    "referenceCount_one": "{{count}} reference image",
+    "referenceCount_other": "{{count}} reference images"
+  },
+  "sections": {
+    "customize": "Customize this template",
+    "advanced": "Advanced settings",
+    "results": "Generated results"
+  },
+  "templateViews": {
+    "label": "Template view",
+    "recommended": "For you",
+    "all": "All",
+    "generate": "Create",
+    "edit": "Edit"
+  },
+  "categories": {
+    "label": "Template categories",
+    "all": "All scenes",
+    "poster": "Posters",
+    "product": "Products",
+    "brand": "Brand",
+    "education": "Education",
+    "character": "Characters",
+    "editing": "Photo edits"
+  },
+  "templateMeta": {
+    "generate": "Create",
+    "edit": "Needs image",
+    "selectImageFirst": "Select an image on the Board before generating",
+    "editableText": "Editable text"
+  },
+  "variables": {
+    "subject": {
+      "label": "Main subject",
+      "placeholder": "What should the image be about?"
+    },
+    "scene": {
+      "label": "Scene",
+      "placeholder": "Where should it happen, and what should the mood be?"
+    },
+    "details": {
+      "label": "Key details",
+      "placeholder": "Add only the details that must appear or stay unchanged."
+    },
+    "palette": {
+      "label": "Colors",
+      "placeholder": "Optional, for example: warm cream, forest green, and gold"
+    }
+  },
+  "fields": {
+    "textMode": "Text handling",
+    "editableText": "Editable headline",
+    "editableTextPlaceholder": "Optional headline to add as a separate Board text layer",
+    "visibleText": "Text inside the image",
+    "visibleTextPlaceholder": "Optional exact headline or short label",
+    "editableTextDescription": "Kition adds this as a separate text layer. Double-click it on the Board to edit it later.",
+    "aspectRatio": "Aspect ratio",
+    "resolution": "Resolution",
+    "quality": "Quality",
+    "variants": "Variants"
+  },
+  "quality": {
+    "low": "Draft",
+    "medium": "Standard",
+    "high": "High"
+  },
+  "actions": {
+    "useTemplate": "Use template",
+    "backToTemplates": "Choose another template",
+    "generate": "Generate {{count}} image",
+    "generate_one": "Generate {{count}} image",
+    "generate_other": "Generate {{count}} images",
+    "generating": "Generating images…",
+    "add": "Add",
+    "added": "Added",
+    "addAll": "Add all",
+    "addedAll": "All added",
+    "replace": "Replace",
+    "replaced": "Replaced",
+    "viewSource": "View source",
+    "openStudio": "Generate image",
+    "editImage": "Edit image",
+    "editText": "Edit image text"
+  },
+  "textModes": {
+    "editable_overlay": {
+      "name": "Editable layer",
+      "description": "Double-click to edit later"
+    },
+    "baked_text": {
+      "name": "In the image",
+      "description": "Better integration, not editable"
+    },
+    "no_text": {
+      "name": "No text",
+      "description": "Generate visuals only"
+    }
+  },
+  "status": {
+    "submitting": "Preparing the image task…",
+    "generating": "Generating your images…",
+    "detail": "Creating {{count}} option from the selected template. You can keep working on the Board.",
+    "detail_one": "Creating {{count}} option from the selected template. You can keep working on the Board.",
+    "detail_other": "Creating {{count}} options from the selected template. You can keep working on the Board."
+  },
+  "errors": {
+    "variableRequired": "Fill in {{field}} before generating.",
+    "referenceRequired": "Select one image on the Board before using this editing template.",
+    "startFailed": "Could not start image generation.",
+    "unavailable": "Configure an AI model and use a runtime with AI Board support to generate images.",
+    "noResult": "The image task finished without returning an image.",
+    "timeout": "Image generation timed out before an image was returned."
+  },
+  "generatedImageAlt": "AI-generated image",
+  "referenceAlt": "Reference image {{index}}",
+  "templatePreviewAlt": "Example result for {{name}}",
+  "source": "Template adapted from {{repository}} ({{license}}).",
+  "resultAlt": "Generated image {{index}}",
+  "templates": {
+    "surreal-city-poster": {
+      "name": "Surreal city poster",
+      "description": "Turn a place or idea into a collectible editorial travel poster.",
+      "placeholders": {
+        "subject": "For example: a dreamlike future Hangzhou",
+        "scene": "Iconic buildings, winding sky roads, tea fields, tiny travelers…",
+        "palette": "Muted jade, warm stone, mist blue"
+      }
+    },
+    "miniature-product-campaign": {
+      "name": "Miniature product campaign",
+      "description": "Build a six-panel commercial story around one hero product.",
+      "placeholders": {
+        "subject": "For example: a sparkling lemon drink called Limora",
+        "scene": "A sunny beach where tiny people interact with giant ingredients",
+        "palette": "Lemon yellow, fresh green, turquoise"
+      }
+    },
+    "engineering-infographic": {
+      "name": "Engineering infographic",
+      "description": "Explain a complex product with cutaways, data, and technical callouts.",
+      "placeholders": {
+        "subject": "For example: a next-generation electric city bus",
+        "details": "Battery system, dimensions, charging workflow, environmental impact…",
+        "palette": "Deep navy, graphite, electric green"
+      }
+    },
+    "landmark-type-poster": {
+      "name": "Landmark type poster",
+      "description": "Make a city name from its most recognizable landmarks and details.",
+      "placeholders": {
+        "subject": "For example: Shanghai",
+        "details": "The Bund, plane trees, ferries, lane houses, skyline…",
+        "palette": "Deep navy, cream, muted red"
+      }
+    },
+    "brand-touchpoint-board": {
+      "name": "Brand touchpoint board",
+      "description": "See a full brand system across packaging, products, and lifestyle scenes.",
+      "placeholders": {
+        "subject": "For example: a modern matcha brand called Matcha Mode",
+        "details": "Ceramic cup, takeaway packaging, menu, tote bag, stickers…",
+        "palette": "Matcha green, warm beige, off-white"
+      }
+    },
+    "neon-creator-poster": {
+      "name": "Neon creator poster",
+      "description": "Create a bold 3D personal or professional identity poster.",
+      "placeholders": {
+        "subject": "For example: a confident motion designer",
+        "details": "Oversized streetwear, camera, laptop, 3D tools, mini figure…",
+        "palette": "Electric blue and black"
+      }
+    },
+    "vintage-travel-poster": {
+      "name": "Vintage travel poster",
+      "description": "Turn a destination into an aged cinematic print with iconic depth.",
+      "placeholders": {
+        "subject": "For example: Guangzhou at golden hour",
+        "details": "Canton Tower, arcade streets, river ferry, kapok flowers…",
+        "palette": "Warm amber, cobalt blue, faded sepia"
+      }
+    },
+    "product-concept-board": {
+      "name": "Product concept board",
+      "description": "Present the design journey from inspiration to a finished product.",
+      "placeholders": {
+        "subject": "For example: a chair inspired by crumpled paper",
+        "details": "Form analysis, ergonomics, materials, dimensions, prototype…",
+        "palette": "Off-white, graphite, warm gray"
+      }
+    },
+    "vocabulary-learning-card": {
+      "name": "Vocabulary learning card",
+      "description": "Teach a whole object and one related part in a friendly visual card.",
+      "placeholders": {
+        "subject": "For example: corn and kernel",
+        "details": "Use short uppercase labels for the whole and its part",
+        "palette": "Pastel blue, white, natural object colors"
+      }
+    },
+    "editorial-silhouette-poster": {
+      "name": "Editorial silhouette poster",
+      "description": "Combine a bold side-profile portrait with expressive type and raw ink.",
+      "placeholders": {
+        "subject": "For example: an avant-garde fashion designer in side profile",
+        "details": "Bob haircut, angular sunglasses, raw brush lettering…",
+        "palette": "Black ink on warm off-white paper"
+      }
+    },
+    "mixed-media-memory-card": {
+      "name": "Mixed-media memory card",
+      "description": "Keep half of a photo intact and redraw the memory below by hand.",
+      "placeholders": {
+        "details": "What moment or small detail should the sketch emphasize?",
+        "palette": "Muted colors sampled from the photo"
+      }
+    },
+    "travel-field-notes": {
+      "name": "Travel field notes",
+      "description": "Pair an authentic travel photo with a handmade location stamp.",
+      "placeholders": {
+        "details": "Location name and the few landmarks the stamp must preserve",
+        "palette": "2–4 muted spot colors sampled from the photo"
+      }
+    },
+    "paper-collage-portrait": {
+      "name": "Paper-collage portrait",
+      "description": "Keep the person realistic and rebuild the world as layered paper art.",
+      "placeholders": {
+        "scene": "For example: a spring garden with hills, clouds, and flowers",
+        "details": "Identity, outfit, and pose details that must stay unchanged",
+        "palette": "Dreamy pastels with natural skin tones"
+      }
+    },
+    "photo-doodle-mix": {
+      "name": "Photo with doodle people",
+      "description": "Keep the real background and redraw only the people as playful doodles.",
+      "placeholders": {
+        "details": "Which people to transform and what identity details to retain",
+        "palette": "Black ink with restrained hand-colored accents"
+      }
+    },
+    "doodle-character": {
+      "name": "Doodle character",
+      "description": "Turn a portrait into a loose, charming fashion-notebook character.",
+      "placeholders": {
+        "details": "Hairstyle, clothing, accessories, and features to preserve",
+        "palette": "Black pencil with soft blush and light crayon color"
+      }
+    },
+    "character-production-sheet": {
+      "name": "Character production sheet",
+      "description": "Expand one character into consistent views, poses, and material callouts.",
+      "placeholders": {
+        "details": "Signature equipment, materials, views, poses, and expressions",
+        "palette": "Main neutrals plus one signature accent color"
+      }
+    }
+  },
+  "chat": {
+    "mode": "Image",
+    "templates": "Image templates",
+    "back": "Back to chat",
+    "search": "Search image templates",
+    "loading": "Loading templates…",
+    "catalogUnavailable": "Templates are unavailable. Return to chat to generate without a template.",
+    "retry": "Try again",
+    "previous": "Previous",
+    "next": "Next",
+    "clearTemplate": "Clear template",
+    "source": "View source",
+    "freeform": "Describe your image in chat. Results will appear in the conversation.",
+    "clearReference": "Clear reference",
+    "runtimeUnavailable": "Image mode needs an updated runtime with image generation support.",
+    "targetRequired": "Open a document, table, or Board to generate an image.",
+    "accountRequired": "Sign in to your Kition Account to use this template.",
+    "referenceRequired": "Attach a reference image to this chat first.",
+    "variablesRequired": "Fill in the required template fields.",
+    "checkingTemplate": "Checking template availability…",
+    "templateUnavailable": "This template could not be verified. Try again or clear it to generate without a template.",
+    "editPrompt": "Update this image: ",
+    "interrupted": "The image task stopped before its final status was received. Available images are kept below.",
+    "progress": "Image generation progress",
+    "noArtifacts": "The task completed without a delivered image.",
+    "openImage": "Open image",
+    "generatedImage": "Generated image",
+    "templateVersion": "Template: {{id}} · {{version}}",
+    "edit": "Edit in chat",
+    "reuseSettings": "Reuse settings",
+    "access": {
+      "public": "Free",
+      "account": "Kition Account",
+      "premium": "Premium"
+    },
+    "options": {
+      "aspect_ratio": "Aspect ratio",
+      "quality": "Quality",
+      "resolution": "Resolution",
+      "variants": "Images",
+      "text_mode": "Text"
+    },
+    "status": {
+      "queued": "Image request queued",
+      "generating": "Generating images…",
+      "saving": "Saving images…",
+      "completed": "Images ready for review",
+      "failed": "Image generation failed",
+      "canceled": "Image generation canceled"
+    },
+    "createImage": "Create an image",
+    "imageSettings": "Image settings",
+    "closeSettings": "Close image settings",
+    "changeTemplate": "Change template",
+    "browseTemplates": "Explore styles and starting points",
+    "useChat": "Use chat",
+    "exitImageMode": "Exit image mode",
+    "done": "Done",
+    "catalogRange": "{{start}}–{{end}} of {{total}}",
+    "catalogPage": "Page {{page}}",
+    "withoutTemplate": "Start without a template"
+  }
+}

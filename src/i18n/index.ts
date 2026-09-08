@@ -12,6 +12,8 @@ import enElectron from './locales/en-US/electron.json'
 import enErrors from './locales/en-US/errors.json'
 import enWorkflow from './locales/en-US/workflow.json'
 import enConnections from './locales/en-US/connections.json'
+import enImageGeneration from './locales/en-US/imageGeneration.json'
+import enDesign from './locales/en-US/design.json'
 
 import zhMetadata from './locales/zh-CN/metadata.json'
 
@@ -40,6 +42,8 @@ const resources = {
     errors: enErrors,
     workflow: enWorkflow,
     connections: enConnections,
+    imageGeneration: enImageGeneration,
+    design: enDesign,
   },
 } as const
 

@@ -3932,13 +3932,15 @@
   }
 
   .agent-ai-composer {
-    @apply w-full max-w-4xl rounded-xl border bg-card p-5 text-left;
+    @apply relative w-full max-w-4xl rounded-xl border bg-card p-3 text-left;
     border-color: hsl(var(--border));
-    box-shadow: var(--shadow-elevated);
+    box-shadow: var(--shadow-soft);
+    container-type: inline-size;
+    container-name: agent-composer;
   }
 
   .agent-ai-composer.is-compact {
-    @apply max-w-none rounded-xl border bg-card p-3.5 shadow-none;
+    @apply max-w-none p-2.5 shadow-none;
     border-color: var(--document-border, hsl(var(--border)));
   }
 
@@ -3992,13 +3994,23 @@
     @apply border-primary/30 bg-primary/10;
   }
 
-  .agent-ai-composer textarea {
-    @apply min-h-[80px] resize-none rounded-xl border bg-secondary p-3 text-base shadow-none outline-none focus-visible:ring-0;
-    border-color: hsl(var(--border));
+  .agent-ai-composer > textarea.agent-ai-draft {
+    @apply block min-h-24 w-full resize-none rounded-none border-0 bg-transparent px-2 pb-3 pt-2 text-sm leading-6 shadow-none outline-none focus-visible:ring-0;
+    max-height: 240px;
+    scrollbar-width: thin;
   }
 
-  .agent-ai-composer.is-compact textarea {
-    @apply min-h-[60px] p-0 text-sm;
+  .agent-ai-composer.is-compact > textarea.agent-ai-draft {
+    min-height: 72px;
+  }
+
+  .agent-ai-composer.has-context > textarea.agent-ai-draft {
+    min-height: 72px;
+    padding-top: 4px;
+  }
+
+  .agent-ai-composer.is-compact.has-context > textarea.agent-ai-draft {
+    min-height: 48px;
   }
 
   .agent-mention-menu {
@@ -4120,20 +4132,151 @@
   }
 
   .agent-ai-footer {
-    @apply mt-2 flex items-center gap-1;
+    @apply mt-1 flex min-w-0 items-center gap-1;
   }
 
   .agent-ai-model-picker {
-    @apply min-w-0 max-w-[55%] shrink;
+    @apply ml-auto min-w-0 max-w-36 shrink;
   }
 
   .agent-ai-configure {
-    @apply h-7 shrink-0 rounded-md border bg-background px-2 text-xs font-medium text-foreground transition-colors hover:border-ring/40;
+    @apply h-8 shrink-0 rounded-lg border bg-background px-2 text-xs font-medium text-foreground transition-colors hover:border-ring/40;
     border-color: var(--document-border, hsl(var(--border)));
   }
 
   .agent-ai-send {
-    @apply ml-auto inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-45;
+    @apply ml-1 inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:bg-muted disabled:text-muted-foreground;
+  }
+
+  .agent-composer-tool {
+    @apply inline-flex h-8 min-w-8 items-center justify-center gap-1.5 rounded-lg px-2 text-xs text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:bg-muted/50 disabled:text-muted-foreground;
+  }
+
+  .agent-composer-image {
+    @apply inline-flex shrink-0 items-center rounded-lg;
+  }
+
+  .agent-composer-image.is-active {
+    @apply bg-accent text-accent-foreground;
+  }
+
+  .agent-composer-image.is-active .agent-composer-tool {
+    @apply text-accent-foreground;
+  }
+
+  .agent-composer-image__exit {
+    @apply min-w-6 rounded-l-none px-1;
+  }
+
+  .agent-composer-context {
+    @apply flex max-h-24 min-w-0 flex-wrap items-center gap-x-2 gap-y-1 overflow-y-auto overscroll-contain px-1 pt-1;
+    scrollbar-width: thin;
+  }
+
+  .agent-composer-reference {
+    @apply inline-flex h-6 min-w-0 max-w-full items-center rounded-lg text-[13px] text-muted-foreground transition-colors hover:bg-muted/60 focus-within:bg-muted/60;
+  }
+
+  .agent-composer-reference__name {
+    @apply inline-flex h-full min-w-0 items-center gap-1.5 rounded-lg px-1 text-left outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring;
+  }
+
+  .agent-composer-reference__remove {
+    @apply inline-flex size-6 shrink-0 items-center justify-center rounded-lg text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:text-muted-foreground;
+  }
+
+  .agent-composer-popover {
+    @apply rounded-xl border border-border bg-popover text-popover-foreground;
+    max-width: calc(100vw - 24px);
+    box-shadow: var(--shadow-floating);
+  }
+
+  .agent-image-popover {
+    @apply flex min-h-0 flex-col overflow-hidden p-0;
+    container: agent-image-panel / inline-size;
+    max-height: calc(100dvh - 24px);
+  }
+
+  .agent-image-panel-header {
+    @apply flex min-h-14 shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3;
+  }
+
+  .agent-image-panel-footer {
+    @apply flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3;
+  }
+
+  .agent-image-browser {
+    @apply flex min-h-0 flex-1 flex-col gap-3;
+  }
+
+  .agent-image-browser[hidden] {
+    display: none;
+  }
+
+  .agent-image-template-grid {
+    @apply grid items-start gap-3 pb-1;
+    grid-template-columns: repeat(auto-fill, minmax(156px, 1fr));
+  }
+
+  .agent-image-template-card {
+    @apply min-w-0 overflow-hidden rounded-xl border border-border bg-card text-left transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
+  }
+
+  .agent-image-settings-body {
+    @apply flex min-h-0 flex-1 py-4;
+  }
+
+  .agent-image-settings-body:not(.has-preview) {
+    @apply mx-auto w-full max-w-md;
+  }
+
+  .agent-image-settings-body.has-preview {
+    @apply grid py-0;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 1fr);
+  }
+
+  .agent-image-settings-body.has-preview fieldset {
+    @apply py-4;
+  }
+
+  .agent-image-template-preview {
+    @apply flex min-h-0 min-w-0 flex-col gap-4 overflow-y-auto border-r border-border bg-muted/30 p-4;
+  }
+
+  .agent-image-template-preview img {
+    @apply w-full rounded-lg object-contain;
+    max-height: 440px;
+  }
+
+  @container agent-image-panel (max-width: 620px) {
+    .agent-image-settings-body.has-preview {
+      @apply block overflow-y-auto overscroll-contain;
+    }
+
+    .agent-image-settings-body.has-preview fieldset {
+      overflow: visible;
+    }
+
+    .agent-image-template-preview {
+      @apply border-b border-r-0;
+      overflow: visible;
+    }
+
+    .agent-image-template-preview img {
+      max-height: 240px;
+    }
+  }
+
+  .agent-image-field {
+    @apply min-h-9 rounded-lg text-sm;
+  }
+
+  .agent-image-summary {
+    @apply mb-2 flex min-h-9 w-full min-w-0 items-center gap-2 rounded-lg bg-muted/50 px-2 py-1.5 text-left text-xs text-foreground transition-colors hover:bg-muted disabled:pointer-events-none;
+  }
+
+  @container agent-composer (max-width: 280px) {
+    .agent-composer-image__label { display: none; }
   }
 
   .agent-chat-input-shell {

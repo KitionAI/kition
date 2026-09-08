@@ -1,0 +1,216 @@
+{
+  "title": "AI Image Studio",
+  "description": "Generate workspace images from visual recipes and place them on the Board.",
+  "close": "Close image studio",
+  "sections": {
+    "context": "Board context",
+    "template": "Visual recipe",
+    "brief": "Creative brief",
+    "output": "Output settings",
+    "results": "Generated results"
+  },
+  "context": {
+    "empty": "No Board selection. Describe the image you want below."
+  },
+  "templateViews": {
+    "label": "Template view",
+    "recommended": "For you",
+    "all": "All",
+    "generate": "Create",
+    "edit": "Edit"
+  },
+  "templateMeta": {
+    "generate": "Create",
+    "edit": "Edit",
+    "editableText": "Editable text"
+  },
+  "fields": {
+    "brief": "What should the image communicate?",
+    "textMode": "Text handling",
+    "exactText": "Editable text",
+    "exactTextPlaceholder": "Add a short headline or label",
+    "editableTextDescription": "Kition adds copy as a separate text layer that you can double-click to edit.",
+    "aspectRatio": "Aspect ratio",
+    "resolution": "Resolution",
+    "quality": "Quality",
+    "variants": "Variants"
+  },
+  "quality": {
+    "low": "Draft",
+    "medium": "Standard",
+    "high": "High"
+  },
+  "actions": {
+    "generate": "Generate {{count}} image",
+    "generate_one": "Generate {{count}} image",
+    "generate_other": "Generate {{count}} images",
+    "generating": "Generating images…",
+    "add": "Add",
+    "added": "Added",
+    "addAll": "Add all",
+    "addedAll": "All added",
+    "replace": "Replace",
+    "replaced": "Replaced",
+    "viewSource": "View source",
+    "openStudio": "Generate image",
+    "editImage": "Edit image",
+    "editText": "Edit image text"
+  },
+  "textModes": {
+    "editable_overlay": {
+      "name": "Editable layer",
+      "description": "Double-click to edit later"
+    },
+    "baked_text": {
+      "name": "In the image",
+      "description": "Better integration, not editable"
+    },
+    "no_text": {
+      "name": "No text",
+      "description": "Generate visuals only"
+    }
+  },
+  "status": {
+    "submitting": "Preparing the image task…",
+    "generating": "Generating your images…",
+    "detail": "Creating {{count}} option from the selected recipe. You can keep working on the Board.",
+    "detail_one": "Creating {{count}} option from the selected recipe. You can keep working on the Board.",
+    "detail_other": "Creating {{count}} options from the selected recipe. You can keep working on the Board."
+  },
+  "errors": {
+    "briefRequired": "Describe what you want to generate.",
+    "referenceRequired": "Select one image on the Board before using this editing recipe.",
+    "startFailed": "Could not start image generation.",
+    "unavailable": "Configure an AI model and use a runtime with AI Board support.",
+    "noResult": "The image task finished without returning an image.",
+    "timeout": "Image generation timed out before an image was returned."
+  },
+  "generatedImageAlt": "AI-generated image",
+  "referenceAlt": "Reference image {{index}}",
+  "source": "Recipe adapted from {{repository}} ({{license}}).",
+  "resultAlt": "Generated image {{index}}",
+  "templates": {
+    "concept-infographic": {
+      "name": "Concept infographic",
+      "description": "Turn structured ideas into a clear visual explanation.",
+      "placeholder": "Explain the topic, audience, facts, modules, and relationships."
+    },
+    "product-environment-edit": {
+      "name": "Product scene edit",
+      "description": "Keep the product fixed while changing its environment.",
+      "placeholder": "Describe the new setting, props, lighting, and preserved details."
+    },
+    "product-exploded-view": {
+      "name": "Exploded product view",
+      "description": "Show components and assembly order on one clean axis.",
+      "placeholder": "Describe the product, components, materials, and sequence."
+    },
+    "character-turnaround": {
+      "name": "Character turnaround",
+      "description": "Generate consistent front, side, and back views.",
+      "placeholder": "Describe identity anchors, clothing, equipment, and palette."
+    },
+    "naturalist-field-guide": {
+      "name": "Field guide spread",
+      "description": "Create an illustrated specimen page with precise callouts.",
+      "placeholder": "Describe the specimen, detail views, facts, and page structure."
+    },
+    "exact-type-poster": {
+      "name": "Editable type poster",
+      "description": "Create a poster background with a protected headline zone.",
+      "placeholder": "Describe the subject, mood, palette, composition, and headline placement."
+    },
+    "ui-concept": {
+      "name": "UI concept",
+      "description": "Generate a polished app, web, dashboard, or kiosk concept.",
+      "placeholder": "Name the platform, purpose, hierarchy, components, and states."
+    },
+    "seamless-pattern": {
+      "name": "Seamless pattern",
+      "description": "Create a repeat-ready tile with checked edge continuity.",
+      "placeholder": "Describe motifs, repeat logic, palette, scale, and density."
+    },
+    "clean-object-removal": {
+      "name": "Clean object removal",
+      "description": "Remove one object and reconstruct the retained background.",
+      "placeholder": "Name what to remove and describe the retained texture and light."
+    },
+    "portrait-outpaint": {
+      "name": "Portrait outpaint",
+      "description": "Extend a portrait while preserving identity and the original crop.",
+      "placeholder": "Describe the extension direction, scene, and preserved details."
+    },
+    "backlight-rescue": {
+      "name": "Backlight rescue",
+      "description": "Recover a dark subject without destroying the background.",
+      "placeholder": "Describe the face lift, skin finish, background control, and color mood."
+    },
+    "whiteboard-sketch-visual": {
+      "name": "Board sketch to visual",
+      "description": "Turn selected Board structure into a polished visual asset.",
+      "placeholder": "Describe the audience, visual style, hierarchy, and desired finish."
+    }
+  },
+  "chat": {
+    "mode": "Image",
+    "templates": "Modèles d’image",
+    "back": "Retour au chat",
+    "search": "Rechercher des modèles",
+    "loading": "Chargement des modèles…",
+    "catalogUnavailable": "Les modèles sont indisponibles. Revenez au chat pour générer sans modèle.",
+    "retry": "Réessayer",
+    "previous": "Précédent",
+    "next": "Suivant",
+    "clearTemplate": "Retirer le modèle",
+    "source": "Voir la source",
+    "freeform": "Décrivez votre image dans le chat. Les résultats apparaîtront dans la conversation.",
+    "clearReference": "Retirer la référence",
+    "runtimeUnavailable": "Le mode image nécessite un moteur à jour prenant en charge la génération d’images.",
+    "targetRequired": "Ouvrez un document, un tableau ou un Board pour générer une image.",
+    "accountRequired": "Connectez-vous à votre compte Kition pour utiliser ce modèle.",
+    "referenceRequired": "Joignez d’abord une image de référence au chat.",
+    "variablesRequired": "Remplissez les champs obligatoires du modèle.",
+    "checkingTemplate": "Vérification du modèle…",
+    "templateUnavailable": "Impossible de vérifier ce modèle. Réessayez ou retirez-le pour générer sans modèle.",
+    "editPrompt": "Modifier cette image : ",
+    "interrupted": "La tâche s’est arrêtée avant la réception de son état final. Les images disponibles sont conservées ci-dessous.",
+    "progress": "Progression de la génération",
+    "noArtifacts": "La tâche s’est terminée sans image.",
+    "openImage": "Ouvrir l’image",
+    "generatedImage": "Image générée",
+    "templateVersion": "Modèle : {{id}} · {{version}}",
+    "edit": "Modifier dans le chat",
+    "reuseSettings": "Réutiliser les réglages",
+    "access": {
+      "public": "Gratuit",
+      "account": "Compte Kition",
+      "premium": "Premium"
+    },
+    "options": {
+      "aspect_ratio": "Format",
+      "quality": "Qualité",
+      "resolution": "Résolution",
+      "variants": "Images",
+      "text_mode": "Texte"
+    },
+    "status": {
+      "queued": "Demande en attente",
+      "generating": "Génération des images…",
+      "saving": "Enregistrement des images…",
+      "completed": "Images prêtes à vérifier",
+      "failed": "Échec de la génération",
+      "canceled": "Génération annulée"
+    },
+    "createImage": "Créer une image",
+    "imageSettings": "Réglages de l’image",
+    "closeSettings": "Fermer les réglages",
+    "changeTemplate": "Changer de modèle",
+    "browseTemplates": "Explorer les styles et les idées",
+    "useChat": "Utiliser le chat",
+    "exitImageMode": "Quitter le mode image",
+    "done": "Terminé",
+    "catalogRange": "{{start}}–{{end}} sur {{total}}",
+    "catalogPage": "Page {{page}}",
+    "withoutTemplate": "Commencer sans modèle"
+  }
+}

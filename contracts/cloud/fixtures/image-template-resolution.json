@@ -1,0 +1,17 @@
+{
+  "request": {
+    "version": "1.0.0",
+    "variables": {
+      "subject": "a ceramic vase"
+    },
+    "instruction": "Use soft daylight.",
+    "operation": "generate",
+    "has_reference_image": false
+  },
+  "response": {
+    "id": "sample-poster",
+    "version": "1.0.0",
+    "prompt": "Create a calm poster featuring a ceramic vase.\nAdditional user direction:\nUse soft daylight.",
+    "prompt_sha256": "87e384d5a99d63d10c66c2bdebdb2b8897dc6bea7a35712bc7cc4a6eba83a6b0"
+  }
+}

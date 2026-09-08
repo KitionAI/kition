@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kition.ai/contracts/cloud/image-template-catalog.schema.json",
+  "title": "Kition Cloud Image Template Catalog",
+  "description": "Paginated localized template summaries returned to Kition clients. Private prompt recipes are intentionally excluded.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["catalog_revision", "items"],
+  "properties": {
+    "catalog_revision": { "$ref": "#/$defs/identifier" },
+    "total_count": { "type": "integer", "minimum": 0, "description": "Number of templates matching the filters across all pages, including templates that require a reference image." },
+    "next_cursor": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "items": {
+      "type": "array",
+      "maxItems": 100,
+      "items": { "$ref": "#/$defs/template" }
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "aspectRatio": {
+      "type": "string",
+      "enum": ["1:1", "16:9", "9:16", "4:3", "3:4", "2:3", "3:2"]
+    },
+    "thumbnail": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "width", "height"],
+      "properties": {
+        "url": { "type": "string", "format": "uri", "maxLength": 2048 },
+        "width": { "type": "integer", "minimum": 1, "maximum": 4096 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 4096 },
+        "blurhash": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    },
+    "variable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "label", "required", "multiline"],
+      "properties": {
+        "key": { "$ref": "#/$defs/identifier" },
+        "label": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "placeholder": { "type": "string", "maxLength": 500 },
+        "required": { "type": "boolean" },
+        "multiline": { "type": "boolean" }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["license", "label"],
+      "properties": {
+        "license": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "label": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "url": { "type": "string", "format": "uri", "maxLength": 2048 }
+      }
+    },
+    "template": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version",
+        "title",
+        "description",
+        "operation",
+        "category",
+        "thumbnail",
+        "default_aspect_ratio",
+        "default_quality",
+        "default_resolution",
+        "default_text_mode",
+        "requires_reference_image",
+        "access",
+        "variables",
+        "tags"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "version": { "$ref": "#/$defs/identifier" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "operation": { "type": "string", "enum": ["generate", "edit"] },
+        "category": { "$ref": "#/$defs/identifier" },
+        "thumbnail": { "$ref": "#/$defs/thumbnail" },
+        "default_aspect_ratio": { "$ref": "#/$defs/aspectRatio" },
+        "default_quality": { "type": "string", "enum": ["low", "medium", "high"] },
+        "default_resolution": { "type": "string", "enum": ["1K", "2K", "4K"] },
+        "default_text_mode": {
+          "type": "string",
+          "enum": ["editable_overlay", "baked_text", "no_text"]
+        },
+        "requires_reference_image": { "type": "boolean" },
+        "access": { "type": "string", "enum": ["public", "account", "premium"] },
+        "variables": {
+          "type": "array",
+          "maxItems": 32,
+          "items": { "$ref": "#/$defs/variable" }
+        },
+        "tags": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 100 }
+        },
+        "source": { "$ref": "#/$defs/source" }
+      }
+    }
+  }
+}

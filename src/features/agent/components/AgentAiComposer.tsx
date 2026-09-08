@@ -1,12 +1,12 @@
 import { ArrowUp, Check, FileText, Folder, X } from 'lucide-react'
-import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
+import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Textarea } from '@/components/ui'
 import type { AgentLocalSource } from '@/api/agent'
 import { AgentContextAddMenu } from '@/features/agent/components/AgentContextAddMenu'
-import { AgentContextTray } from '@/features/agent/components/AgentContextTray'
+import { AgentComposerContext } from '@/features/agent/components/AgentComposerContext'
 import { AgentModelPicker } from '@/features/agent/components/AgentModelPicker'
 import type { KitionAccountStatus } from '@/features/account/hooks/useKitionAccount'
 import type { AgentModelOption } from '@/features/agent/lib/agentConfig'
@@ -20,6 +20,8 @@ import {
 import { cn } from '@/lib/utils'
 
 type AgentAiComposerProps = {
+  imageControls?: ReactNode
+  imageSummary?: ReactNode
   busy: boolean
   canSend: boolean
   compact?: boolean
@@ -50,6 +52,8 @@ type AgentAiComposerProps = {
 }
 
 export function AgentAiComposer({
+  imageControls,
+  imageSummary,
   busy,
   canSend,
   compact = false,
@@ -84,6 +88,14 @@ export function AgentAiComposer({
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const mentionMenuRef = useRef<HTMLDivElement | null>(null)
   const visibleDraft = stripAgentDocumentMentions(draft)
+  const hasContext = documentContextPaths.length > 0 || localSources.length > 0
+  useEffect(() => {
+    const textarea = textareaRef.current
+    if (!textarea) return
+    textarea.style.height = '0px'
+    const minimumHeight = (compact ? 72 : 96) - (hasContext ? 24 : 0)
+    textarea.style.height = `${Math.min(240, Math.max(minimumHeight, textarea.scrollHeight))}px`
+  }, [visibleDraft, compact, hasContext])
   const documentsByPath = new Map(
     mentionableDocuments.map((document) => [document.path, document]),
   )
@@ -215,16 +227,23 @@ export function AgentAiComposer({
   }
 
   return (
-    <div className={cn('agent-ai-composer', compact && 'is-compact')}>
-      <AgentContextTray
+    <div className={cn('agent-ai-composer', compact && 'is-compact', hasContext && 'has-context')}>
+      <AgentComposerContext
         documents={contextDocuments}
         sources={localSources}
         disabled={busy}
         onOpenPath={onOpenPath}
-        onRemoveDocument={(path) => onRemoveDocumentContext?.(path)}
-        onRemoveSource={onRemoveLocalSource}
+        onRemoveDocument={(path) => {
+          onRemoveDocumentContext?.(path)
+          textareaRef.current?.focus()
+        }}
+        onRemoveSource={onRemoveLocalSource ? (id) => {
+          onRemoveLocalSource(id)
+          textareaRef.current?.focus()
+        } : undefined}
       />
       <Textarea
+        className="agent-ai-draft"
         ref={textareaRef}
         value={visibleDraft}
         onChange={(event) => updateVisibleDraft(event.target.value)}
@@ -360,6 +379,7 @@ export function AgentAiComposer({
           )}
         </div>
       ) : null}
+      {imageSummary}
       <div className="agent-ai-footer">
         <AgentContextAddMenu
           disabled={busy}
@@ -374,6 +394,7 @@ export function AgentAiComposer({
           onAddLocalSource={onAddLocalSource}
           onRequestDocumentReference={requestDocumentReference}
         />
+        {imageControls}
         <AgentModelPicker
           className="agent-ai-model-picker"
           variant="compact"

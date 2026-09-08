@@ -531,6 +531,7 @@ export function useWhiteboardEditor() {
     pasteFromClipboard,
     records,
     renamePage,
+    replaceSelection,
     replaceDocument,
     reorderPage,
     reorderSelection,

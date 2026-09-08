@@ -194,6 +194,10 @@
     "loadingPage": "Loading page..."
   },
   "fileViewer": {
+    "imageActions": "Image actions",
+    "copyImage": "Copy image",
+    "imageCopied": "Image copied",
+    "imageCopyFailed": "Could not copy image",
     "openInSystem": "Open in system",
     "showInFinder": "Show in Finder",
     "previewUnsupported": "{{label}} · In-app preview is not supported yet",

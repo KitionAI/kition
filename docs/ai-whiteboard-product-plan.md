@@ -3,6 +3,11 @@
 > Active direction: Kition continues with a native clean-room Board. The
 > focused next-stage execution plan is
 > [AI-Enabled Canvas Clean-Room Replication Plan](ai-enabled-canvas-replication-plan.md).
+>
+> Image generation is now planned as a shared Agent capability across documents,
+> tables, and Boards. The unified chat workflow and server-owned template
+> catalog in [Unified Agent Image Generation Plan](unified-agent-image-generation-plan.md)
+> supersede the Board-only Image Studio direction in this document.
 
 
 Research snapshot: 2026-08-23

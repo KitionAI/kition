@@ -14,7 +14,9 @@ import {
   screenToWhiteboardPoint,
   whiteboardPointsToPath,
 } from '../lib/whiteboardGeometry'
+import { getEditableImageTextOverlay } from '../lib/whiteboardGeneratedImages'
 import type {
+  WhiteboardElement,
   WhiteboardPoint,
   WhiteboardResizeHandle,
 } from '../lib/whiteboardTypes'
@@ -199,6 +201,13 @@ export function WhiteboardCanvas({
       return
     }
     controller.beginCanvasTextEdit(world)
+  }
+
+  function beginElementTextEdit(element: WhiteboardElement) {
+    const editableElement = element.kind === 'image'
+      ? getEditableImageTextOverlay(controller.elements, element.id) || element
+      : element
+    controller.beginTextEdit(editableElement)
   }
 
   function handlePointerMove(event: ReactPointerEvent<SVGSVGElement>) {
@@ -539,7 +548,7 @@ export function WhiteboardCanvas({
                 }
               }}
               onPointerDown={handleElementPointerDown}
-              onDoubleClick={() => controller.beginTextEdit(element)}
+              onDoubleClick={() => beginElementTextEdit(element)}
               interactive={!controller.mindMapManagedConnectorIds.has(element.id)}
               mindMapBranchAxis={controller.mindMapBranchAxisByConnectorId.get(element.id)}
               mindMapBranchTerminals={controller.mindMapBranchTerminalsByConnectorId.get(element.id)}
@@ -580,7 +589,7 @@ export function WhiteboardCanvas({
               onConnectionHandlePointerDown={handleConnectionHandlePointerDown}
               onDoubleClick={() => {
                 if (controller.selectedElements.length === 1) {
-                  controller.beginTextEdit(controller.selectedElements[0])
+                  beginElementTextEdit(controller.selectedElements[0])
                 }
               }}
               onMovePointerDown={handleSelectionPointerDown}
