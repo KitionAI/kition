@@ -21,7 +21,9 @@ test('copies an opened workspace image from its context menu to the native clipb
     },
   })
   try {
-    await app.evaluate(({ clipboard }) => {
+    await app.evaluate(async ({ app: desktopApp, clipboard }) => {
+      // Native clipboard services are only available after Electron is ready.
+      await desktopApp.whenReady()
       const state = globalThis as any
       state.__kitionImageCopyClipboard = {
         text: clipboard.readText(), html: clipboard.readHTML(), rtf: clipboard.readRTF(), image: clipboard.readImage(),
