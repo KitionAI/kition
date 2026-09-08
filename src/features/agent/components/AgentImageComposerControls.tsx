@@ -1,3 +1,4 @@
+import './AgentImageComposerControls.css'
 import { ArrowLeft, ImagePlus, Loader2, SlidersHorizontal, X } from 'lucide-react'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -82,7 +83,7 @@ export function AgentImageComposerSummary({ mode, busy }: { mode: AgentImageMode
   if (!mode.enabled) return null
   const status = mode.error || mode.blockedReason || (mode.preparing ? t('chat.checkingTemplate') : '')
   if (!mode.template && !mode.editReference && !status) return null
-  return <button type="button" className={cn('agent-image-summary', mode.error && 'text-destructive')}
+  return <button type="button" className={cn('agent-image-summary', mode.error && '!text-destructive')}
     disabled={busy || mode.preparing} onClick={() => { mode.setBrowsing(false); mode.setConfiguring(true) }} data-testid="agent-image-summary"
     title={status || t('chat.imageSettings')}>
     {mode.template ? <img src={mode.template.thumbnail.url} alt="" referrerPolicy="no-referrer" className="size-6 shrink-0 rounded object-cover" />

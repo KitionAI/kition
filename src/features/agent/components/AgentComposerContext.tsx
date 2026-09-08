@@ -1,3 +1,4 @@
+import './AgentComposerContext.css'
 import { Database, FileCode2, FileImage, FileSpreadsheet, FileText, Folder, FolderLock, PenTool, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { AgentLocalSource } from '@/api/agent'

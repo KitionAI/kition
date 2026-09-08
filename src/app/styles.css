@@ -4168,23 +4168,6 @@
     @apply min-w-6 rounded-l-none px-1;
   }
 
-  .agent-composer-context {
-    @apply flex max-h-24 min-w-0 flex-wrap items-center gap-x-2 gap-y-1 overflow-y-auto overscroll-contain px-1 pt-1;
-    scrollbar-width: thin;
-  }
-
-  .agent-composer-reference {
-    @apply inline-flex h-6 min-w-0 max-w-full items-center rounded-lg text-[13px] text-muted-foreground transition-colors hover:bg-muted/60 focus-within:bg-muted/60;
-  }
-
-  .agent-composer-reference__name {
-    @apply inline-flex h-full min-w-0 items-center gap-1.5 rounded-lg px-1 text-left outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring;
-  }
-
-  .agent-composer-reference__remove {
-    @apply inline-flex size-6 shrink-0 items-center justify-center rounded-lg text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:text-muted-foreground;
-  }
-
   .agent-composer-popover {
     @apply rounded-xl border border-border bg-popover text-popover-foreground;
     max-width: calc(100vw - 24px);
@@ -4195,84 +4178,6 @@
     @apply flex min-h-0 flex-col overflow-hidden p-0;
     container: agent-image-panel / inline-size;
     max-height: calc(100dvh - 24px);
-  }
-
-  .agent-image-panel-header {
-    @apply flex min-h-14 shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3;
-  }
-
-  .agent-image-panel-footer {
-    @apply flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3;
-  }
-
-  .agent-image-browser {
-    @apply flex min-h-0 flex-1 flex-col gap-3;
-  }
-
-  .agent-image-browser[hidden] {
-    display: none;
-  }
-
-  .agent-image-template-grid {
-    @apply grid items-start gap-3 pb-1;
-    grid-template-columns: repeat(auto-fill, minmax(156px, 1fr));
-  }
-
-  .agent-image-template-card {
-    @apply min-w-0 overflow-hidden rounded-xl border border-border bg-card text-left transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
-  }
-
-  .agent-image-settings-body {
-    @apply flex min-h-0 flex-1 py-4;
-  }
-
-  .agent-image-settings-body:not(.has-preview) {
-    @apply mx-auto w-full max-w-md;
-  }
-
-  .agent-image-settings-body.has-preview {
-    @apply grid py-0;
-    grid-template-columns: minmax(0, 1fr) minmax(260px, 1fr);
-  }
-
-  .agent-image-settings-body.has-preview fieldset {
-    @apply py-4;
-  }
-
-  .agent-image-template-preview {
-    @apply flex min-h-0 min-w-0 flex-col gap-4 overflow-y-auto border-r border-border bg-muted/30 p-4;
-  }
-
-  .agent-image-template-preview img {
-    @apply w-full rounded-lg object-contain;
-    max-height: 440px;
-  }
-
-  @container agent-image-panel (max-width: 620px) {
-    .agent-image-settings-body.has-preview {
-      @apply block overflow-y-auto overscroll-contain;
-    }
-
-    .agent-image-settings-body.has-preview fieldset {
-      overflow: visible;
-    }
-
-    .agent-image-template-preview {
-      @apply border-b border-r-0;
-      overflow: visible;
-    }
-
-    .agent-image-template-preview img {
-      max-height: 240px;
-    }
-  }
-
-  .agent-image-field {
-    @apply min-h-9 rounded-lg text-sm;
-  }
-
-  .agent-image-summary {
-    @apply mb-2 flex min-h-9 w-full min-w-0 items-center gap-2 rounded-lg bg-muted/50 px-2 py-1.5 text-left text-xs text-foreground transition-colors hover:bg-muted disabled:pointer-events-none;
   }
 
   @container agent-composer (max-width: 280px) {
