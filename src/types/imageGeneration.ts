@@ -1,4 +1,5 @@
 export const AGENT_IMAGE_GENERATION_CAPABILITY = 'agent_image_generation_v1' as const
+export const AGENT_IMAGE_GENERATION_CHAT_CAPABILITY = 'agent_image_generation_chat_v1' as const
 export const AGENT_IMAGE_GENERATION_SCHEMA_VERSION = 1 as const
 export const AGENT_IMAGE_GENERATION_CLIENT_CAPABILITY_VERSION = 1 as const
 export const AGENT_IMAGE_GENERATION_MAX_VARIANTS = 5 as const
@@ -21,7 +22,7 @@ export const AGENT_IMAGE_GENERATION_STATUSES = [
 ] as const
 
 export type AgentImageGenerationOperation = 'generate' | 'edit'
-export type AgentImageGenerationSurface = 'document' | 'table' | 'whiteboard'
+export type AgentImageGenerationSurface = 'document' | 'table' | 'whiteboard' | 'chat'
 export type AgentImageGenerationAspectRatio =
   | '1:1'
   | '16:9'
@@ -63,6 +64,7 @@ export type AgentImageWhiteboardTarget = {
 }
 
 export type AgentImageTarget =
+  | { type: 'image.target.chat' }
   | AgentImageDocumentTarget
   | AgentImageTableTarget
   | AgentImageWhiteboardTarget

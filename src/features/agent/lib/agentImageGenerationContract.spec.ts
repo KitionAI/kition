@@ -9,6 +9,7 @@ import {
 import { runtimeSupportsAgentImageGeneration } from '@/features/media-generation/lib/imageGenerationCapabilities'
 import {
   AGENT_IMAGE_GENERATION_CAPABILITY,
+  AGENT_IMAGE_GENERATION_CHAT_CAPABILITY,
   AGENT_IMAGE_GENERATION_EVENT_NAMES,
   AGENT_IMAGE_GENERATION_MAX_REFERENCES,
   AGENT_IMAGE_GENERATION_MAX_VARIANTS,
@@ -25,6 +26,7 @@ describe('Agent image-generation public boundary', () => {
 
     expect(schema.$id).toBe('https://kition.ai/contracts/runtime/agent-image-generation.schema.json')
     expect(schema['x-runtime-capability']).toBe(AGENT_IMAGE_GENERATION_CAPABILITY)
+    expect(schema['x-chat-runtime-capability']).toBe(AGENT_IMAGE_GENERATION_CHAT_CAPABILITY)
     expect(schema.oneOf).toEqual([
       { $ref: '#/$defs/intent' },
       { $ref: '#/$defs/event' },
@@ -39,6 +41,7 @@ describe('Agent image-generation public boundary', () => {
       'document',
       'table',
       'whiteboard',
+      'chat',
     ])
     expect(schema.$defs.event.properties.event.enum).toEqual([
       ...AGENT_IMAGE_GENERATION_EVENT_NAMES,

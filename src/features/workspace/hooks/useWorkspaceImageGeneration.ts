@@ -3,7 +3,7 @@ import type { AgentTurnContext } from '@/features/agent/lib/agentTurnContext'
 import { useDesktopSettings } from '@/features/settings/hooks/useDesktopSettings'
 import { runtimeSupportsAgentImageGeneration } from '@/features/media-generation/lib/imageGenerationCapabilities'
 import { getDesktopBackendStatus } from '@/services/desktop'
-import type { AgentImageTarget } from '@/types/imageGeneration'
+import { AGENT_IMAGE_GENERATION_CHAT_CAPABILITY, type AgentImageTarget } from '@/types/imageGeneration'
 
 export function captureWorkspaceImageTarget(context?: AgentTurnContext): AgentImageTarget | undefined {
   if (context?.paneContext === 'table') {
@@ -23,18 +23,23 @@ export function captureWorkspaceImageTarget(context?: AgentTurnContext): AgentIm
 export function useWorkspaceImageGeneration(rootPath: string, context?: AgentTurnContext) {
   const { settings } = useDesktopSettings()
   const [available, setAvailable] = useState(false)
+  const [chatAvailable, setChatAvailable] = useState(false)
   useEffect(() => {
     let canceled = false
     setAvailable(false)
+    setChatAvailable(false)
     let checking = false
     const refresh = async () => {
       if (checking || canceled) return
       checking = true
       try {
         const status = await getDesktopBackendStatus()
-        if (!canceled) setAvailable(runtimeSupportsAgentImageGeneration(status?.capabilities))
+        if (!canceled) {
+          setAvailable(runtimeSupportsAgentImageGeneration(status?.capabilities))
+          setChatAvailable(Boolean(status?.capabilities?.includes(AGENT_IMAGE_GENERATION_CHAT_CAPABILITY)))
+        }
       } catch {
-        if (!canceled) setAvailable(false)
+        if (!canceled) { setAvailable(false); setChatAvailable(false) }
       } finally {
         checking = false
       }
@@ -51,6 +56,6 @@ export function useWorkspaceImageGeneration(rootPath: string, context?: AgentTur
   return {
     available,
     accessToken: settings.providers.kition_console?.accessToken || undefined,
-    target: captureWorkspaceImageTarget(context),
+    target: captureWorkspaceImageTarget(context) ?? (chatAvailable ? { type: 'image.target.chat' } as const : undefined),
   }
 }

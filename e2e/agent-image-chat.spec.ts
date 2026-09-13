@@ -9,7 +9,7 @@ const template = {
   variables: [{ key: 'subject', label: 'Subject', required: true, multiline: false }], tags: [],
 }
 
-async function openImageChat(page: Page) {
+async function openImageChat(page: Page, chatTarget = false) {
   await page.route('**/workspace-files/Agent/generated-*.png', (route) => route.fulfill({
     contentType: 'image/webp', path: 'src/features/media-generation/assets/image-templates/engineering-infographic.webp',
   }))
@@ -17,15 +17,18 @@ async function openImageChat(page: Page) {
     contentType: 'image/webp', path: 'src/features/media-generation/assets/image-templates/engineering-infographic.webp',
   }))
   await openWhiteboardFixture(page)
-  await page.evaluate(async () => {
+  await page.evaluate(async (chatTarget) => {
     const settingsModulePath = '/src/services/desktopSettings.ts'
     const { loadDesktopSettings, saveDesktopSettings } = await import(settingsModulePath)
     const settings = await loadDesktopSettings()
     await saveDesktopSettings({ ...settings, general: { ...settings.general, theme: 'light' } })
     const bridge = (window as any).kitionDesktop
     const previous = bridge.BackendStatus
-    bridge.BackendStatus = async () => ({ ...(await previous()), capabilities: ['agent_whiteboard_v1', 'agent_image_generation_v1'] })
-  })
+    bridge.BackendStatus = async () => ({ ...(await previous()), capabilities: [
+      'agent_whiteboard_v1', 'agent_image_generation_v1', ...(chatTarget ? ['agent_image_generation_chat_v1'] : []),
+    ] })
+    window.dispatchEvent(new Event('focus'))
+  }, chatTarget)
   await page.getByRole('button', { name: 'Open AI Chat', exact: true }).click()
   const newChat = page.getByRole('button', { name: 'New chat' })
   if (await newChat.isVisible().catch(() => false)) await newChat.click()
@@ -144,6 +147,52 @@ test('searches and pages the server catalog, then submits a pinned template vers
   expect(detailChecks).toBe(1)
   expect(sent.content).toBe('Launch poster\nKition')
   expect(sent.image_generation_intent).toMatchObject({ template_id: 'launch', template_version: '2', template_variables: { subject: 'Kition' } })
+})
+
+test('generates from the template gallery with only a subject and no open editor', async ({ page }, testInfo) => {
+  const requests: Array<{ sessionId: number; body: any }> = []
+  await page.route('https://kition.ai/api/media/image-templates**', (route) => route.fulfill({
+    json: new URL(route.request().url()).pathname.endsWith('/launch')
+      ? template : { catalog_revision: 'chat-r1', items: [template] },
+  }))
+  await openImageChat(page, true)
+  await page.getByRole('button', { name: 'Close image settings', exact: true }).click()
+  await page.locator('.document-tab-list').getByRole('button', { name: 'Close tab', exact: true }).click()
+  await expect(page.getByTestId('whiteboard-svg-scene')).toHaveCount(0)
+  await page.getByTestId('agent-image-mode').click()
+  await page.getByTestId('agent-image-template-launch').click()
+  await page.getByLabel('Subject', { exact: false }).fill('A woman and an AI robot avatar')
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+
+  const composer = page.getByPlaceholder('Plan, write, or ask anything…')
+  const send = page.getByRole('button', { name: 'Send', exact: true })
+  await expect(composer).toHaveValue('')
+  await expect(send).toBeEnabled()
+  await page.route('**/api/v1/agent/sessions/*/messages/stream', async (route) => {
+    const body = route.request().postDataJSON()
+    const sessionId = Number(route.request().url().match(/sessions\/(\d+)/)![1])
+    requests.push({ sessionId, body })
+    await fulfillImageStream(route, body, sessionId, requests.length)
+  })
+  await send.click()
+  await expect(page.getByTestId('agent-image-result')).toContainText('Images ready for review')
+  expect(requests[0].body.image_generation_intent).toMatchObject({
+    operation: 'generate', surface: 'chat', target: { type: 'image.target.chat' },
+    placement_preference: 'review', template_id: 'launch', template_version: '2',
+    template_variables: { subject: 'A woman and an AI robot avatar' },
+    instruction: 'Launch poster\nA woman and an AI robot avatar',
+  })
+
+  await page.getByRole('button', { name: 'Edit in chat', exact: true }).click()
+  await composer.fill('Remove the foreground shoe and preserve the characters')
+  await send.click()
+  await expect(page.getByTestId('agent-image-result')).toHaveCount(2)
+  expect(requests[1].sessionId).toBe(requests[0].sessionId)
+  expect(requests[1].body.image_generation_intent).toMatchObject({
+    operation: 'edit', surface: 'chat', target: { type: 'image.target.chat' },
+    placement_preference: 'review', reference_paths: ['Agent/generated-1.png'],
+  })
+  await page.screenshot({ path: testInfo.outputPath('template-chat-review.png') })
 })
 
 test('edits an image from ordinary chat without an open editor and changes its aspect ratio', async ({ page }) => {

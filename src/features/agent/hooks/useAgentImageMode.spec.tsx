@@ -56,6 +56,7 @@ describe('Agent image composer', () => {
     expect(props.onSend).not.toHaveBeenCalled()
   })
   it.each([
+    { type: 'image.target.chat' as const },
     { type: 'image.target.document' as const, document_path: 'Notes.md' },
     { type: 'image.target.table' as const, data_document_id: 4, table_id: 12 },
     { type: 'image.target.whiteboard' as const, board_path: 'Ideas.kiboard' },
@@ -67,6 +68,19 @@ describe('Agent image composer', () => {
       request_id: expect.any(String), type: 'image_generation.intent',
     }))
     expect(getImageTemplate).not.toHaveBeenCalled()
+  })
+
+  it('sends a completed template for chat review without an editor or a draft', async () => {
+    await setup({ target: { type: 'image.target.chat' }, draft: '' })
+    vi.mocked(getImageTemplate).mockResolvedValue(template)
+    await act(async () => mode.selectTemplate(template))
+    await act(async () => mode.setVariables({ subject: 'A woman and an AI robot avatar' }))
+    expect(mode.blockedReason).toBe('')
+    await act(async () => mode.send())
+    expect(props.onSend).toHaveBeenCalledWith(expect.objectContaining({
+      surface: 'chat', target: { type: 'image.target.chat' }, placement_preference: 'review',
+      template_id: 'launch', instruction: 'Launch poster\nA woman and an AI robot avatar',
+    }))
   })
 
   it('preserves text when toggling mode and blocks unsupported runtimes', async () => {

@@ -3,7 +3,9 @@
   "$id": "https://kition.ai/contracts/runtime/agent-image-generation.schema.json",
   "title": "Kition Agent Image Generation",
   "description": "Typed image-generation intents and stream events shared by Agent conversations across documents, tables, and Boards.",
+  "$comment": "Generation and editing allow up to 600 seconds per image request, including waiting for the provider response. User cancellation and earlier caller deadlines still apply. Multiple-image jobs may take longer overall; clients must keep consuming progress until completion, failure, or cancellation.",
   "x-runtime-capability": "agent_image_generation_v1",
+  "x-chat-runtime-capability": "agent_image_generation_chat_v1",
   "oneOf": [
     { "$ref": "#/$defs/intent" },
     { "$ref": "#/$defs/event" }
@@ -30,6 +32,13 @@
     "aspectRatio": {
       "type": "string",
       "enum": ["1:1", "16:9", "9:16", "4:3", "3:4", "2:3", "3:2"]
+    },
+    "chatTarget": {
+      "type": "object",
+      "description": "Review generated images in the current Agent session without an open editor. Requires agent_image_generation_chat_v1 and placement_preference=review.",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": { "type": { "const": "image.target.chat" } }
     },
     "documentTarget": {
       "type": "object",
@@ -90,6 +99,7 @@
     },
     "intent": {
       "type": "object",
+      "description": "Generate and edit operations use the provider's configured image-capable model independently of the conversation's runtime_model.model_name. Clients keep the selected chat model unchanged; selecting a text-only chat model must not prevent image generation or editing.",
       "additionalProperties": false,
       "required": [
         "type",
@@ -142,9 +152,10 @@
           "uniqueItems": true,
           "items": { "$ref": "#/$defs/portablePath" }
         },
-        "surface": { "type": "string", "enum": ["document", "table", "whiteboard"] },
+        "surface": { "type": "string", "enum": ["document", "table", "whiteboard", "chat"] },
         "target": {
           "oneOf": [
+            { "$ref": "#/$defs/chatTarget" },
             { "$ref": "#/$defs/documentTarget" },
             { "$ref": "#/$defs/tableTarget" },
             { "$ref": "#/$defs/whiteboardTarget" }
@@ -157,6 +168,10 @@
         "client_capability_version": { "const": 1 }
       },
       "allOf": [
+        {
+          "if": { "properties": { "surface": { "const": "chat" } } },
+          "then": { "properties": { "target": { "$ref": "#/$defs/chatTarget" }, "placement_preference": { "const": "review" } } }
+        },
         {
           "if": { "properties": { "operation": { "const": "edit" } } },
           "then": { "properties": { "reference_paths": { "minItems": 1 } } }

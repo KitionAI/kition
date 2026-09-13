@@ -15,7 +15,7 @@ import { imageEventsForTurn, type AgentImageSessionEvent } from '../lib/agentIma
 import { useDesktopSettings } from '@/features/settings/hooks/useDesktopSettings'
 import { stripAgentDocumentMentions } from '../lib/documentMentions'
 import { cn } from '@/lib/utils'
-import { resolveAgentImageURL } from '@/services/workspaceFiles'
+import { resolveAgentImageURL, resolveAgentImageWorkspacePath } from '@/services/workspaceFiles'
 import {
   buildAgentConversationTurns, buildAgentRunLogItems, extractAgentToolImageResults,
   formatAgentRunLogExpandedDetail, getAgentModifiedDocumentPaths, resolveAgentTimelineLocale,
@@ -269,9 +269,9 @@ function AgentInlineActivity({
         />
       ) : null}
       <AgentRunLog items={runLogItems} locale={locale} dict={localeDict} />
-      <AgentToolImageStrip images={artifactImages} />
+      <AgentToolImageStrip images={artifactImages} onOpenArtifact={onOpenArtifact} />
       {imageTools.map((entry) => (
-        <AgentToolImageStrip key={`images-${entry.id}`} images={entry.images} />
+        <AgentToolImageStrip key={`images-${entry.id}`} images={entry.images} onOpenArtifact={onOpenArtifact} />
       ))}
       {artifacts.length ? (
         <div className="agent-artifacts is-inline">
@@ -485,24 +485,42 @@ function renderAgentRunLogIcon(item: AgentRunLogItem) {
   return <Check className="size-3.5" />
 }
 
-function AgentToolImageStrip({ images }: { images: AgentToolImageResult[] }) {
+function AgentToolImageStrip({ images, onOpenArtifact }: {
+  images: AgentToolImageResult[]
+  onOpenArtifact: (path: string) => void
+}) {
   if (!images.length) return null
   return (
     <div className="agent-tool-image-strip">
       {images.slice(0, 6).map((image, index) => {
         const previewURL = resolveAgentImageURL(image.preview_url || image.thumb_url || image.url)
+        const workspacePath = resolveAgentImageWorkspacePath(image.url)
         const href = resolveAgentImageURL(image.page_url || image.url)
-        return (
+        const title = image.title || image.alt || image.source || image.url
+        const content = <>
+          <img src={previewURL} alt={image.alt || image.title || 'Image result'} loading="lazy" />
+          {image.source ? <span>{image.source}</span> : null}
+        </>
+        return workspacePath ? (
+          <button
+            key={`${image.url}-${index}`}
+            type="button"
+            className="agent-tool-image-thumb p-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            title={title}
+            onClick={() => onOpenArtifact(workspacePath)}
+          >
+            {content}
+          </button>
+        ) : (
           <a
             key={`${image.url}-${index}`}
             href={href}
             target="_blank"
             rel="noreferrer"
             className="agent-tool-image-thumb"
-            title={image.title || image.alt || image.source || image.url}
+            title={title}
           >
-            <img src={previewURL} alt={image.alt || image.title || 'Image result'} loading="lazy" />
-            {image.source ? <span>{image.source}</span> : null}
+            {content}
           </a>
         )
       })}

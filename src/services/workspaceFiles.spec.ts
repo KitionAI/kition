@@ -78,4 +78,39 @@ describe('workspace image file URLs', () => {
       'http://127.0.0.1:18101/workspace-files/Agent/images/9/ig_generated.png',
     )
   })
+
+  it('resolves generated image destinations to workspace paths for internal previews', async () => {
+    const { resolveAgentImageWorkspacePath } = await loadWorkspaceFilesModule()
+    ;(window as typeof window & { kitionDesktop?: any }).kitionDesktop.backendOrigin = 'http://127.0.0.1:18102'
+    const expected = 'Agent/images/46/Edited poster.png'
+    for (const destination of [
+      expected,
+      `<${expected}>`,
+      '/workspace-files/Agent/images/46/Edited%20poster.png?download=1',
+      'http://127.0.0.1:18102/workspace-files/Agent/images/46/Edited%20poster.png',
+      'kition-workspace://Agent/images/46/Edited%20poster.png',
+    ]) {
+      expect(resolveAgentImageWorkspacePath(destination)).toBe(expected)
+    }
+    expect(resolveAgentImageWorkspacePath('/workspace-files/Agent/Poster%23one.png')).toBe('Agent/Poster#one.png')
+  })
+
+  it('keeps external image sources and non-workspace URLs out of internal navigation', async () => {
+    const { resolveAgentImageWorkspacePath } = await loadWorkspaceFilesModule()
+    for (const destination of [
+      'https://example.com/workspace-files/Agent/image.png',
+      'http://127.0.0.1:18102/workspace-files/Agent/image.png',
+      'http://127.0.0.1:18101/uploads/image.png',
+      '/uploads/image.png',
+      '//example.com/image.png',
+      'file:///tmp/image.png',
+      'data:image/png;base64,image',
+      'blob:https://example.com/image.png',
+      'javascript:image.png',
+      'Agent/report.pdf',
+      '',
+    ]) {
+      expect(resolveAgentImageWorkspacePath(destination)).toBe('')
+    }
+  })
 })

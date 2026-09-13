@@ -20,7 +20,8 @@ vi.mock('@/features/settings/hooks/useDesktopSettings', () => ({
 }))
 
 // resolveAgentImageURL uses workspaceFiles service
-vi.mock('@/services/workspaceFiles', () => ({
+vi.mock('@/services/workspaceFiles', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/services/workspaceFiles')>(),
   resolveAgentImageURL: (url: string) => url,
 }))
 

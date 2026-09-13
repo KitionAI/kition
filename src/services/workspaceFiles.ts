@@ -20,6 +20,30 @@ export function resolveAgentImageURL(value?: string) {
   return resolvePublicFileURL(raw)
 }
 
+export function resolveAgentImageWorkspacePath(value?: string) {
+  const raw = unwrapMarkdownDestination(value)
+  const prefix = '/workspace-files/'
+  let path = raw
+  if (/^kition-workspace:/i.test(raw)) {
+    path = raw.replace(/^kition-workspace:\/{0,2}/i, '').replace(/^\/+/, '')
+  } else if (raw.startsWith(prefix)) {
+    path = raw.slice(prefix.length)
+  } else if (/^https?:\/\//i.test(raw)) {
+    try {
+      const url = new URL(raw)
+      const workspaceURL = new URL(resolvePublicFileURL(prefix), window.location.href)
+      if (url.origin !== workspaceURL.origin || !url.pathname.startsWith(prefix)) return ''
+      path = url.pathname.slice(prefix.length)
+    } catch {
+      return ''
+    }
+  } else if (isPublicOrExternalFileURL(raw) || /^[a-z][a-z\d+.-]*:/i.test(raw)) {
+    return ''
+  }
+  path = splitPathSuffix(path).path
+  return isWorkspaceImagePath(path) ? normalizeWorkspacePath(decodeURIPath(path)).join('/') : ''
+}
+
 export function resolveWorkspaceImageURL(value: string | undefined, documentPath: string) {
   const raw = unwrapMarkdownDestination(value)
   if (!raw) {

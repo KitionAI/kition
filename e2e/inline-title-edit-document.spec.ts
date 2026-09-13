@@ -8,7 +8,7 @@ const IMAGE_NAME = 'Pasted image 20260718005317.png'
 const DOC_CONTENT = `# Heading\n\n![[Attachments/${IMAGE_NAME}]]\n\nbody after image`
 const IMAGE_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360"><rect width="640" height="360" fill="#252525"/><rect x="36" y="32" width="568" height="296" rx="16" fill="#343434"/><path d="M80 270 210 142l88 82 82-70 180 116" fill="none" stroke="#9b7cff" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/><circle cx="470" cy="112" r="42" fill="#63d7b0"/></svg>'
 
-async function mockDesktop(page: Page) {
+async function mockDesktop(page: Page, docContent = DOC_CONTENT) {
   await page.addInitScript(
     ({ vaultPath, docPath, docContent }) => {
       const stateWindow = window as typeof window & Record<string, unknown>
@@ -84,7 +84,7 @@ async function mockDesktop(page: Page) {
         },
       }
     },
-    { vaultPath: VAULT_PATH, docPath: DOC_PATH, docContent: DOC_CONTENT },
+    { vaultPath: VAULT_PATH, docPath: DOC_PATH, docContent },
   )
   await page.addInitScript(({ docPath }) => {
     window.localStorage.setItem('kition.document.last-active-path.v1', docPath)
@@ -151,6 +151,69 @@ test('clicking the document body commits the title without rolling back the tree
 
   await expect(title).toHaveText('renamed-via-blur')
   await expect(page.locator('.document-tree-row.is-active')).toContainText('renamed-via-blur.md')
+})
+
+for (const docContent of ['', 'First line\nSecond line']) {
+  test(`clicking blank document space restores the first-line caret in ${docContent ? 'a populated' : 'an empty'} document`, async ({ page }) => {
+    await mockLocalWorkspaceApi(page)
+    await mockDesktop(page, docContent)
+    await page.setViewportSize({ width: 1400, height: 900 })
+    await page.goto('/document')
+
+    const title = page.getByTestId('workspace-document-inline-title')
+    const content = page.locator('.document-editor .cm-content')
+    const scroller = page.locator('.document-editor .cm-scroller')
+    await expect(content).toBeVisible()
+
+    const scrollBox = (await scroller.boundingBox())!
+    const bodyBox = (await content.boundingBox())!
+    const blankY = bodyBox.y + bodyBox.height + 100
+    expect(blankY).toBeLessThan(scrollBox.y + scrollBox.height)
+    const blankXs = [
+      bodyBox.x + bodyBox.width / 2,
+      scrollBox.x + 8,
+      scrollBox.x + scrollBox.width - 24,
+    ]
+
+    for (const [index, x] of blankXs.entries()) {
+      await content.locator('.cm-line').last().click()
+      await title.click()
+      await expect(title).toBeFocused()
+      await expect(content).not.toBeFocused()
+
+      await page.mouse.click(x, blankY)
+      await expect(content).toBeFocused()
+      await page.keyboard.type('Start ')
+      await expect(content.locator('.cm-line').first()).toHaveText(
+        'Start '.repeat(index + 1) + docContent.split('\n')[0],
+      )
+      await expect(title).toHaveText('original')
+    }
+
+    if (docContent) {
+      const secondLine = content.locator('.cm-line').last()
+      await secondLine.dblclick()
+      await page.keyboard.type('Replacement')
+      await expect(secondLine).toContainText('Replacement')
+      await expect(content.locator('.cm-line').first()).toHaveText('Start Start Start First line')
+    }
+  })
+}
+
+test('clicking blank document space preserves reading mode', async ({ page }) => {
+  await mockLocalWorkspaceApi(page)
+  await mockDesktop(page, 'Read-only paragraph')
+  await page.goto('/document')
+  const content = page.locator('.document-editor .cm-content')
+  await expect(content).toBeVisible()
+  await page.getByRole('button', { name: 'Reading view', exact: true }).click()
+  const bodyBox = (await content.boundingBox())!
+
+  await page.mouse.click(bodyBox.x + bodyBox.width / 2, bodyBox.y + bodyBox.height + 100)
+
+  await expect(content).not.toBeFocused()
+  await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeVisible()
+  await expect(content).toHaveText('Read-only paragraph')
 })
 
 test('renaming a document preserves its visible tree position after reload', async ({ page }) => {

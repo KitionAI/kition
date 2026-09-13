@@ -33,8 +33,28 @@ export function documentTitleHostExtension(opts: DocumentTitleHostOptions): Exte
       private originalGuttersParent: HTMLElement | null = null
       private originalContentParent: HTMLElement | null = null
 
-      constructor(view: EditorView) {
+      constructor(private readonly view: EditorView) {
         this.install(view)
+        view.scrollDOM.addEventListener('mousedown', this.handleBlankSpaceMouseDown)
+      }
+
+      private readonly handleBlankSpaceMouseDown = (event: MouseEvent) => {
+        const view = this.view
+        if (event.defaultPrevented || event.button !== 0 || event.detail > 1
+          || event.shiftKey || event.altKey || event.metaKey || event.ctrlKey
+          || view.state.readOnly || !view.state.facet(EditorView.editable)) return
+
+        // CodeMirror handles clicks inside contentDOM; its surrounding page needs its own focus target.
+        if (event.target !== view.scrollDOM && event.target !== this.sizerEl
+          && event.target !== this.contentContainerEl) return
+
+        const bounds = view.scrollDOM.getBoundingClientRect()
+        if (event.clientX >= bounds.left + view.scrollDOM.clientWidth
+          || event.clientY >= bounds.top + view.scrollDOM.clientHeight) return
+
+        event.preventDefault()
+        view.dispatch({ selection: { anchor: 0 }, scrollIntoView: true, userEvent: 'select.pointer' })
+        view.focus()
       }
 
       update(_update: ViewUpdate) {
@@ -85,6 +105,7 @@ export function documentTitleHostExtension(opts: DocumentTitleHostOptions): Exte
       }
 
       destroy() {
+        this.view.scrollDOM.removeEventListener('mousedown', this.handleBlankSpaceMouseDown)
         opts.onHostRelease()
         if (!this.sizerEl) return
 
