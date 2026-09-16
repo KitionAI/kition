@@ -37,6 +37,7 @@ async function createFixture() {
           artifactName: '${productName}-${version}-linux-${arch}.${ext}',
           icon: 'linux.png',
           electronLanguages: ['zh-CN', 'en-US'],
+          executableArgs: ['--disable-gpu-sandbox'],
         },
       },
     },
@@ -79,6 +80,15 @@ describe('validateDesktopAssets', () => {
 
     await expect(validateDesktopAssets(fixture)).rejects.toThrow(
       'Electron locales must be configured per platform',
+    )
+  })
+
+  it('requires Linux to disable the GPU sandbox for AppImage GPU libraries', async () => {
+    const fixture = await createFixture()
+    delete fixture.packagePayload.build.linux.executableArgs
+
+    await expect(validateDesktopAssets(fixture)).rejects.toThrow(
+      'linux executableArgs must be --disable-gpu-sandbox',
     )
   })
 })

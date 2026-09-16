@@ -15,6 +15,7 @@ const expectedElectronLanguages = {
   win: ['zh-CN', 'en-US'],
   linux: ['zh-CN', 'en-US'],
 }
+const expectedLinuxExecutableArgs = ['--disable-gpu-sandbox']
 
 function collectConfiguredAssetPaths(packagePayload) {
   const build = packagePayload?.build || {}
@@ -46,6 +47,9 @@ export async function validateDesktopAssets({ rootDir = appDir, packagePayload }
     if (JSON.stringify(configuredLanguages) !== JSON.stringify(expectedLanguages)) {
       missing.push(`${platform} Electron locales must be ${expectedLanguages.join(', ')}`)
     }
+  }
+  if (JSON.stringify(payload?.build?.linux?.executableArgs) !== JSON.stringify(expectedLinuxExecutableArgs)) {
+    missing.push(`linux executableArgs must be ${expectedLinuxExecutableArgs.join(', ')}`)
   }
   for (const [label, configuredPath] of assets) {
     if (!configuredPath) {

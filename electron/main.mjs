@@ -33,6 +33,7 @@ import {
 } from './workspace-window.mjs'
 import { isTrustedWindowNavigation, normalizeExternalURL } from './external-url.mjs'
 import { createBeforeQuitHandler } from './quit-lifecycle.mjs'
+import { applyLinuxChromiumFlags } from './linux-chromium-flags.mjs'
 import { findKitionDeepLink, KITION_PROTOCOL_SCHEME, normalizeKitionDeepLink } from './deep-link.mjs'
 import { submitFeedbackToConsole } from './feedback-client.mjs'
 import { readClipboardImagePayload } from './clipboard-image.mjs'
@@ -83,6 +84,8 @@ if (process.platform === 'darwin') {
 if (process.platform === 'darwin') {
   app.commandLine.appendSwitch('use-mock-keychain')
 }
+
+applyLinuxChromiumFlags(app.commandLine)
 
 protocol.registerSchemesAsPrivileged([
   {
