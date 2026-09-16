@@ -2763,7 +2763,7 @@ License: MIT
 Homepage: https://github.com/lydell/js-tokens#readme
 License text: 266
 
-js-yaml 4.3.1
+js-yaml 4.3.2
 License: MIT
 Homepage: https://github.com/nodeca/js-yaml#readme
 License text: 267
@@ -14462,7 +14462,7 @@ THE SOFTWARE.
 ================================================================================
 
 License text 267
-Packages: js-yaml 4.3.1
+Packages: js-yaml 4.3.2
 
 (The MIT License)
 
