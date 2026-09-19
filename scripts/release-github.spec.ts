@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   alignReleaseVersion,
+  assertReleaseGitHubLogin,
   desktopAssetNames,
   parseReleaseArguments,
   parseStatusPaths,
+  REQUIRED_RELEASE_GITHUB_LOGIN,
   runtimeArtifactNames,
   runtimeAssetNames,
   selectWorkflowRun,
@@ -33,6 +35,15 @@ describe('release-github CLI', () => {
       forcePrepare: false,
       help: false,
     })
+  })
+
+  it('rejects official releases that are not published as the maintainer GitHub account', () => {
+    expect(REQUIRED_RELEASE_GITHUB_LOGIN).toBe('allentatakai')
+    expect(assertReleaseGitHubLogin('allentatakai')).toBe('allentatakai')
+    expect(() => assertReleaseGitHubLogin('wrong-publisher')).toThrow(
+      'Official releases must be published as allentatakai, got wrong-publisher. Run: gh auth switch --user allentatakai',
+    )
+    expect(() => assertReleaseGitHubLogin('')).toThrow('got <empty>')
   })
 
   it('rejects unsafe versions and refs', () => {

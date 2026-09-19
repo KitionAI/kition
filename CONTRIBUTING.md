@@ -116,7 +116,8 @@ applicable, and basic security risks.
 ## Release Process
 
 Releases are maintainer-managed through GitHub Actions. Do not add version bumps
-or run a local production packaging command for a normal contribution.
+or run a local production packaging command for a normal contribution. Official
+GitHub Releases must be published as `allentatakai`.
 
 1. `Prepare Unified Release` validates the version, creates a draft release,
    and requests the matching private runtime artifacts.

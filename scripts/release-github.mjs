@@ -19,6 +19,7 @@ const DEFAULT_SOURCE_REF = 'main'
 const DEFAULT_RUNTIME_REF = 'main'
 const DEFAULT_TIMEOUT_MINUTES = 90
 const POLL_INTERVAL_MS = 15_000
+export const REQUIRED_RELEASE_GITHUB_LOGIN = 'allentatakai'
 
 const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?(?:\+[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$/
 const REF_PATTERN = /^(?!-)(?!.*\.\.)(?!.*\/\/)[0-9A-Za-z._/-]+$/
@@ -115,6 +116,16 @@ export function validateRef(ref, label = 'ref') {
     throw new Error(`Invalid ${label}: ${ref || '<empty>'}`)
   }
   return ref
+}
+
+export function assertReleaseGitHubLogin(login, expected = REQUIRED_RELEASE_GITHUB_LOGIN) {
+  const actual = String(login || '').trim()
+  if (actual !== expected) {
+    throw new Error(
+      `Official releases must be published as ${expected}, got ${actual || '<empty>'}. Run: gh auth switch --user ${expected}`,
+    )
+  }
+  return actual
 }
 
 export function alignReleaseVersion(packagePayload, runtimeLock, version) {
@@ -575,6 +586,7 @@ async function executeRelease(options) {
   process.chdir(rootDir)
 
   run('gh', ['auth', 'status'])
+  assertReleaseGitHubLogin(capture('gh', ['api', 'user', '--jq', '.login']))
   const repositoryName = capture('gh', ['repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner'])
   if (repositoryName !== PUBLIC_REPOSITORY) {
     throw new Error(`Expected ${PUBLIC_REPOSITORY}, got ${repositoryName}`)

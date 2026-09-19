@@ -191,9 +191,10 @@ pnpm release:github 0.1.3 --resume
 ```
 
 Non-interactive environments must pass `--yes`. The authenticated `gh` account
-must have Actions access to `KitionAI/kition-dev`, source read access to
-`KitionAI/kition-runtime`, and Release write access
-to `KitionAI/kition` and `KitionAI/kition-dev`.
+must be `allentatakai`, have Actions access to `KitionAI/kition-dev`, source
+read access to `KitionAI/kition-runtime`, and Release write access to
+`KitionAI/kition` and `KitionAI/kition-dev`. Switch accounts with
+`gh auth switch --user allentatakai` before releasing.
 
 The public `release` environment requires:
 
