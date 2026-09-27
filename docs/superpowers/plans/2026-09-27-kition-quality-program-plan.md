@@ -210,9 +210,9 @@ Order matters. Each phase leaves `main` releasable.
 - Actions as pure functions on state: `openTab(state, descriptor)`, `closeTab(state, id)`, `pinTab`, `activateTab`, with tests.
 - One `WorkspaceLocation` type that serializes the current tab, pane, and settings section. Persist it per workspace root so relaunch restores the view.
 
-- [ ] Write table-driven tests for tab actions including pinned tabs, closing the active tab, and duplicate opens.
-- [ ] Implement atoms and actions with `jotai`; remove `jotai-x` if unused after the vendored dialog is replaced in Task 1.5.
-- [ ] Move the `Shell.tsx` settings and profile switches onto `settingsRouteAtom`; delete the ad-hoc `resolveSettingsSectionFromLocation` path parsing once the location type covers it.
+- [x] `src/features/workspace/state/tabs.ts` holds every tab transition as a pure function over `{ tabs, activeTabId }` (upsert with one-logical-tab-per-kitable, close with neighbour fallback, filter, path remap after moves, kitable rename collapse, workspace switch, initial binding) with 15 table-driven specs. `useWorkspaceTabs` now only applies them, persists per root, and runs side effects after the update. This also fixes a StrictMode bug: the close callback used to run inside the state updater, so it fired twice in development. (2026-09-27)
+- [ ] `jotai` atoms deferred: the tab list has exactly one consumer (`WorkspaceScreen`), so an atom store would add a second source of truth without a reader. Introduce atoms when Task 1.4 gives the command palette or the agent bridge a reason to read tab state outside `WorkspaceScreen`; `jotai-x` removal still belongs to Task 1.5.
+- [ ] Move the `Shell.tsx` settings and profile switches onto a `WorkspaceLocation` type; delete the ad-hoc `resolveSettingsSectionFromLocation` path parsing once the location type covers it.
 
 ### Task 1.4: Split `WorkspaceScreen.tsx`
 
