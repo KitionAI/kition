@@ -26,9 +26,7 @@ import { routeKitableOpenPath } from './workspaceScreenTabRouting'
 import { renameDataDocumentByPath } from '@/api/dataDocuments'
 import type { WorkflowRouteContext } from '@/features/workflow/public'
 import type { TableSchema } from '@/features/workflow/components/BodyTemplateEditor.types'
-import { useKitionAccount } from '@/features/account/hooks/useKitionAccount'
-import { getKitionAccountLinks } from '@/features/account/lib/accountLinks'
-import { isKitionAccountSessionUsable } from '@/features/account/lib/accountState'
+import { getKitionAccountLinks, isKitionAccountSessionUsable, useKitionAccount } from '@/features/account/public'
 import {
   appendAgentLocalSource,
   buildActiveBrowserTabContext,
@@ -75,6 +73,7 @@ import { useWorkspaceAgentPanel } from '@/features/workspace/hooks/useWorkspaceA
 import { useWorkspaceAgentChatEntryPoints } from '@/features/workspace/hooks/useWorkspaceAgentChatEntryPoints'
 import { useWorkspaceTabControllers } from '@/features/workspace/hooks/useWorkspaceTabControllers'
 import { WorkspaceDialogs } from '@/features/workspace/components/WorkspaceDialogs'
+import { WorkspaceAgentPane } from '@/features/workspace/components/WorkspaceAgentPane'
 import { useWorkspaceBoardCreation } from '@/features/workspace/hooks/useWorkspaceBoardCreation'
 import { useWhiteboardImageGeneration } from '@/features/workspace/hooks/useWhiteboardImageGeneration'
 import { setPinnedTabsWorkspace } from '@/features/document/editor/hooks/usePinnedTabs'
@@ -107,7 +106,6 @@ import {
   chooseAgentAnalysisDirectory,
   isDesktopRuntime,
   moveWorkspaceDocument,
-  openExternalURL,
   revealWorkspaceFolder,
   type WorkspaceDocument,
   type WorkspaceDocumentFormat,
@@ -116,9 +114,6 @@ import { WEB_BROWSER_ENABLED } from '@/lib/productFeatures'
 
 const WorkflowRoute = lazy(() =>
   import('@/features/workflow/pages/WorkflowRoute').then((module) => ({ default: module.WorkflowRoute })),
-)
-const WorkspaceAgentSidebar = lazy(() =>
-  import('@/features/workspace/components/WorkspaceAgentSidebar').then((module) => ({ default: module.WorkspaceAgentSidebar })),
 )
 
 type WorkspaceScreenProps = {
@@ -337,41 +332,7 @@ export function WorkspaceScreen({
   const {
     openExportDialog,
   } = documentExport
-  const {
-    agentArtifacts,
-    agentBusySessions,
-    agentDrafts,
-    agentEvents,
-    agentMessages,
-    agentImageGenerationEvents,
-    agentLocalSources,
-    agentModelOptions,
-    agentModifiedDocumentPaths,
-    agentSessions,
-    agentStreamingText,
-    agentToolCalls,
-    clearPendingFocusedSessionId,
-    clearModifiedDocumentPath,
-    createNewAgentChat,
-    addAgentDocumentContext,
-    addAgentLocalSource,
-    handleAgentModelChange,
-    mentionableDocuments,
-    openAgentSession,
-    pendingFocusedSessionId,
-    refreshAgentSessions,
-    removeAgentDocumentContext,
-    resolvedAgentModelKey,
-    resolveAgentDocumentContexts,
-    removeAgentLocalSource,
-    respondToAgentShellApproval,
-    selectedAgentModel,
-    sendAgentContextAction,
-    sendAiComposerMessage,
-    setAgentDraft,
-    setAgentModifiedDocumentPaths,
-    stopAgentMessage,
-  } = useWorkspaceAgent({
+  const workspaceAgent = useWorkspaceAgent({
     settings,
     rootPath,
     workspaceTreeItems: treeItems,
@@ -397,6 +358,31 @@ export function WorkspaceScreen({
     getTurnContext: getAgentTurnContext,
     prepareBrowserContext: prepareAgentBrowserContextForTurn,
   })
+  const {
+    agentArtifacts,
+    agentBusySessions,
+    agentDrafts,
+    agentEvents,
+    agentLocalSources,
+    agentModifiedDocumentPaths,
+    agentSessions,
+    agentToolCalls,
+    clearPendingFocusedSessionId,
+    clearModifiedDocumentPath,
+    createNewAgentChat,
+    addAgentDocumentContext,
+    addAgentLocalSource,
+    openAgentSession,
+    pendingFocusedSessionId,
+    refreshAgentSessions,
+    resolveAgentDocumentContexts,
+    selectedAgentModel,
+    sendAgentContextAction,
+    sendAiComposerMessage,
+    setAgentDraft,
+    setAgentModifiedDocumentPaths,
+    stopAgentMessage,
+  } = workspaceAgent
   agentDocumentStateRef.current = {
     clearModifiedPath: clearModifiedDocumentPath,
     modifiedPaths: agentModifiedDocumentPaths,
@@ -1172,92 +1158,24 @@ export function WorkspaceScreen({
   }
 
   const workspaceRightPane = workspaceAgentOpen ? (
-    <Suspense fallback={null}>
-      <WorkspaceAgentSidebar
-        rootPath={rootPath}
-        imageContext={agentTurnContextRef.current}
-        imageEvents={agentImageGenerationEvents[activeWorkspaceAgentSession?.id || 0] || []}
-        panelProps={
-          activeWorkspaceAgentSession
-            ? {
-              session: activeWorkspaceAgentSession,
-              messages:
-                agentMessages[activeWorkspaceAgentSession.id] || [],
-              toolCalls:
-                agentToolCalls[activeWorkspaceAgentSession.id] || [],
-              events: agentEvents[activeWorkspaceAgentSession.id] || [],
-              draft: agentDrafts[activeWorkspaceAgentSession.id] || '',
-              streamingText:
-                agentStreamingText[activeWorkspaceAgentSession.id] || '',
-              artifacts:
-                agentArtifacts[activeWorkspaceAgentSession.id] || [],
-              busy: agentBusySessions.has(activeWorkspaceAgentSession.id),
-              currentDocumentPath: activeWorkspaceDocumentPath,
-              modelOptions: agentModelOptions,
-              selectedModelKey: resolvedAgentModelKey,
-              needsModelConfig: !selectedAgentModel?.runtimeModel,
-              hostedAccountStatus: selectedAgentModel?.providerKind === 'kition_console'
-                ? kitionAccount.state.status
-                : undefined,
-              mentionableDocuments,
-              documentContextPaths: activeAgentDocumentContextPaths,
-              localSources: agentLocalSources[activeWorkspaceAgentSession.id] || [],
-              formatTime: formatWorkspaceTime,
-              onDraftChange: (value: string) =>
-                setAgentDraft(activeWorkspaceAgentSession.id, value),
-              onAddLocalSource: () => void addLocalAnalysisSource(),
-              onAddDocumentContext: (path: string) => addAgentDocumentContext(
-                activeWorkspaceAgentSession.id,
-                path,
-                activeWorkspaceDocumentPath,
-              ),
-              onRemoveDocumentContext: (path: string) => removeAgentDocumentContext(
-                activeWorkspaceAgentSession.id,
-                path,
-              ),
-              onRemoveLocalSource: (sourceId: string) => removeAgentLocalSource(
-                activeWorkspaceAgentSession.id,
-                sourceId,
-              ),
-              onSend: (intent) => void sendWorkspaceAgentMessage(activeWorkspaceAgentSession.id, intent),
-              onStop: () => stopAgentMessage(activeWorkspaceAgentSession.id),
-              onConfigureModel: onOpenSettingsSection
-                ? () => onOpenSettingsSection('models')
-                : () => {},
-              onHostedAccountConnect: () => void kitionAccount.ensureReady(),
-              onHostedAccountCancel: kitionAccount.cancelConnect,
-              onHostedAccountBilling: () => void openExternalURL(kitionAccountLinks.topup),
-              onModelChange: (value: string) =>
-                void handleAgentModelChange(value),
-              onOpenArtifact: (path: string) => void openDocument(path),
-              onReviewModifiedArtifact: (path: string) => void reviewAgentModifiedDocument(path),
-              onShellApprovalDecision: (request, decision) => respondToAgentShellApproval(
-                activeWorkspaceAgentSession.id,
-                request,
-                decision,
-              ),
-              onImportFiles: isDesktopRuntime()
-                ? (files) => importBrowserFiles(files, 'attachments')
-                : undefined,
-              onApplyPlan: (plan) =>
-                sendAgentContextAction(activeWorkspaceAgentSession.id, {
-                  content:
-                    'Please execute the current write task directly using the confirmed table plan, writing the rows to the table now.',
-                  executionMode: 'apply',
-                  tablePlanContext: plan,
-                }),
-              // Map the active tab type to the agent panel's empty-state
-              // variant so a freshly-opened workflow editor doesn't get
-              // the "Summarize this document" CTAs. The agent itself is
-              // pane-agnostic; this only changes what the user sees
-              // BEFORE they send their first message.
-              paneContext: deriveAgentPaneContext(activeWorkspaceTab),
-              emptyStateOverride: activeWorkspaceTab?.type === 'design' ? design.chatEmptyState : undefined,
-              }
-            : null
-        }
-      />
-    </Suspense>
+    <WorkspaceAgentPane
+      rootPath={rootPath}
+      agent={workspaceAgent}
+      session={activeWorkspaceAgentSession}
+      imageContext={agentTurnContextRef.current}
+      activeWorkspaceTab={activeWorkspaceTab}
+      activeWorkspaceDocumentPath={activeWorkspaceDocumentPath}
+      documentContextPaths={activeAgentDocumentContextPaths}
+      designEmptyState={design.chatEmptyState}
+      kitionAccount={kitionAccount}
+      kitionAccountLinks={kitionAccountLinks}
+      onOpenSettingsSection={onOpenSettingsSection}
+      onAddLocalSource={() => void addLocalAnalysisSource()}
+      onSend={(sessionId, intent) => void sendWorkspaceAgentMessage(sessionId, intent)}
+      onOpenDocument={(path) => void openDocument(path)}
+      onReviewModifiedArtifact={(path) => void reviewAgentModifiedDocument(path)}
+      onImportFiles={(files, target) => importBrowserFiles(files, target)}
+    />
   ) : null
 
   const handleTableFileImported = useCallback(async (path: string | undefined) => {

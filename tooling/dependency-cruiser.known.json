@@ -16640,6 +16640,108 @@
   },
   {
     "type": "dependency",
+    "from": "src/features/workspace/components/WorkspaceDialogs.tsx",
+    "to": "src/features/document/components/DocumentExportDialog.tsx",
+    "unresolvedTo": "@/features/document/components/DocumentExportDialog",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "dynamic-import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/workspace/components/WorkspaceDialogs.tsx",
+    "to": "src/features/document/components/DocumentTemplateLibraryDialog.tsx",
+    "unresolvedTo": "@/features/document/components/DocumentTemplateLibraryDialog",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "dynamic-import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/workspace/components/WorkspaceDialogs.tsx",
+    "to": "src/features/formSync/FormSyncCreateDialog.tsx",
+    "unresolvedTo": "@/features/formSync/FormSyncCreateDialog",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "dynamic-import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/workspace/components/WorkspaceDialogs.tsx",
+    "to": "src/features/table/components/KitableTemplateLibraryDialog.tsx",
+    "unresolvedTo": "@/features/table/components/KitableTemplateLibraryDialog",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "dynamic-import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/workspace/components/WorkspaceDialogs.tsx",
+    "to": "src/features/table/components/TableFileImportDialog.tsx",
+    "unresolvedTo": "@/features/table/components/TableFileImportDialog",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "dynamic-import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/workspace/components/WorkspaceDialogs.tsx",
+    "to": "src/features/whiteboard/components/WhiteboardTemplateLibraryDialog.tsx",
+    "unresolvedTo": "@/features/whiteboard/components/WhiteboardTemplateLibraryDialog",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "dynamic-import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-feature-internals"
+    }
+  },
+  {
+    "type": "dependency",
     "from": "src/features/workspace/components/WorkspaceEditorContent.tsx",
     "to": "src/features/dashboard/components/DashboardEditorPane.tsx",
     "unresolvedTo": "@/features/dashboard/components/DashboardEditorPane",
@@ -17039,57 +17141,6 @@
   {
     "type": "dependency",
     "from": "src/features/workspace/components/WorkspaceScreen.tsx",
-    "to": "src/features/account/hooks/useKitionAccount.ts",
-    "unresolvedTo": "@/features/account/hooks/useKitionAccount",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceScreen.tsx",
-    "to": "src/features/account/lib/accountLinks.ts",
-    "unresolvedTo": "@/features/account/lib/accountLinks",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceScreen.tsx",
-    "to": "src/features/account/lib/accountState.ts",
-    "unresolvedTo": "@/features/account/lib/accountState",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceScreen.tsx",
     "to": "src/features/agent/components/AgentFloatingLauncher.tsx",
     "unresolvedTo": "@/features/agent/components/AgentFloatingLauncher",
     "dependencyTypes": [
@@ -17098,40 +17149,6 @@
       "aliased-tsconfig-paths",
       "local",
       "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceDialogs.tsx",
-    "to": "src/features/document/components/DocumentExportDialog.tsx",
-    "unresolvedTo": "@/features/document/components/DocumentExportDialog",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "dynamic-import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceDialogs.tsx",
-    "to": "src/features/document/components/DocumentTemplateLibraryDialog.tsx",
-    "unresolvedTo": "@/features/document/components/DocumentTemplateLibraryDialog",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "dynamic-import"
     ],
     "rule": {
       "severity": "error",
@@ -17208,23 +17225,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceDialogs.tsx",
-    "to": "src/features/formSync/FormSyncCreateDialog.tsx",
-    "unresolvedTo": "@/features/formSync/FormSyncCreateDialog",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "dynamic-import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/features/workspace/components/WorkspaceScreen.tsx",
     "to": "src/features/settings/DesktopSettingsPage.tsx",
     "unresolvedTo": "@/features/settings/DesktopSettingsPage",
@@ -17252,57 +17252,6 @@
       "aliased-tsconfig-paths",
       "local",
       "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceDialogs.tsx",
-    "to": "src/features/table/components/KitableTemplateLibraryDialog.tsx",
-    "unresolvedTo": "@/features/table/components/KitableTemplateLibraryDialog",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "dynamic-import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceDialogs.tsx",
-    "to": "src/features/table/components/TableFileImportDialog.tsx",
-    "unresolvedTo": "@/features/table/components/TableFileImportDialog",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "dynamic-import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceDialogs.tsx",
-    "to": "src/features/whiteboard/components/WhiteboardTemplateLibraryDialog.tsx",
-    "unresolvedTo": "@/features/whiteboard/components/WhiteboardTemplateLibraryDialog",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "dynamic-import"
     ],
     "rule": {
       "severity": "error",
