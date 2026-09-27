@@ -124,9 +124,9 @@ Order matters. Each phase leaves `main` releasable.
 - Modify: `tooling/eslint.cjs`
 - Modify: `package.json`
 
-- [ ] Add `knip` and record the current unused-export and unused-dependency baseline in `tooling/knip.baseline.json`; fail CI on new entries.
-- [ ] Add `dependency-cruiser` rules: no import cycles between `src/features/*`; features may import `src/components`, `src/api`, `src/services`, `src/lib`, never another feature's `components` or `hooks`. Allow only `src/features/*/public.ts` as a cross-feature entry.
-- [ ] Add ESLint `max-lines` (600 for `.tsx`, 800 for `.ts`) and `max-lines-per-function` (200) as warnings with a baseline file, then flip to errors per directory as tasks land.
+- [x] Add `knip` and record the baseline in `tooling/knip.baseline.json` (2026-09-27: 278 unused exports, 248 unused types, 3 duplicate exports across 145 files). `scripts/check-knip-baseline.mjs` fails on new entries and reports fixed ones; `pnpm run check:knip:update` shrinks the baseline. Fixed on the way: `nanoid` was unused, `react-resizable` was imported but unlisted.
+- [x] Add `dependency-cruiser` rules in `tooling/dependency-cruiser.cjs`: no import cycles anywhere, no cross-feature imports except through `src/features/<name>/public.ts`, shared layers never import features. Baseline `tooling/dependency-cruiser.known.json` holds 377 known violations (156 cycles, 213 cross-feature internals, 5 shared-layer leaks); `pnpm run check:deps` ignores known entries and `check:deps:update` runs in shrink-only mode.
+- [x] Add ESLint `max-lines` (600 for `.tsx`, 800 otherwise) and `max-lines-per-function` (200) as errors, with baseline overrides in `tooling/eslint.cjs` listing the 25 files over the file ceiling and the 74 files with a function over 200 lines. Entries may only be removed.
 - [x] Remove `prop-types` and `sass`; regenerate third-party notices. (`tailwindcss-animate` stays: `tooling/tailwind.config.ts` loads it.)
 
 ### Task 0.3: Run the whole e2e suite in CI

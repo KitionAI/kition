@@ -1,0 +1,51 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "src/main.tsx",
+    "electron/main.mjs",
+    "electron/preload.cjs",
+    "electron/scripts/*.mjs",
+    "scripts/*.mjs",
+    "tooling/*.{ts,js,cjs}",
+    "src/**/*.spec.{ts,tsx}",
+    "electron/**/*.spec.ts",
+    "scripts/**/*.spec.ts",
+    "e2e/**/*.spec.ts",
+    "e2e/helpers/**/*.ts"
+  ],
+  "project": [
+    "src/**/*.{ts,tsx}",
+    "electron/**/*.{mjs,cjs,ts}",
+    "scripts/**/*.{mjs,ts}",
+    "e2e/**/*.ts"
+  ],
+  "ignore": [
+    "dist/**",
+    "dist-electron/**",
+    "test-results/**",
+    "src/api/generated/**"
+  ],
+  "ignoreDependencies": [
+    "electron-builder",
+    "electron-builder-squirrel-windows",
+    "tailwindcss-animate",
+    "autoprefixer",
+    "postcss"
+  ],
+  "rules": {
+    "files": "error",
+    "dependencies": "error",
+    "devDependencies": "error",
+    "unlisted": "error",
+    "exports": "error",
+    "types": "error",
+    "duplicates": "warn",
+    "enumMembers": "off",
+    "nsExports": "off",
+    "nsTypes": "off"
+  },
+  "ignoreBinaries": [
+    "magick",
+    "xvfb-run"
+  ]
+}
