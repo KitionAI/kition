@@ -74,6 +74,7 @@ import { useWorkspaceAgentTurnContext } from '@/features/workspace/hooks/useWork
 import { useWorkspaceKitableOpeners } from '@/features/workspace/hooks/useWorkspaceKitableOpeners'
 import { useWorkspaceTreeRowActions } from '@/features/workspace/hooks/useWorkspaceTreeRowActions'
 import { useWorkspaceCreateFlows } from '@/features/workspace/hooks/useWorkspaceCreateFlows'
+import { useWorkspaceAgentPanel } from '@/features/workspace/hooks/useWorkspaceAgentPanel'
 import { useWorkspaceBoardCreation } from '@/features/workspace/hooks/useWorkspaceBoardCreation'
 import { useWhiteboardImageGeneration } from '@/features/workspace/hooks/useWhiteboardImageGeneration'
 import { setPinnedTabsWorkspace } from '@/features/document/editor/hooks/usePinnedTabs'
@@ -102,8 +103,6 @@ import {
   resolveAgentActiveDocument,
 } from '@/features/workspace/lib/agentPaneContext'
 import {
-  readWorkspaceAgentActiveSessionId,
-  writeWorkspaceAgentActiveSessionId,
 } from '@/features/workspace/lib/workspacePersistence'
 import { notify } from '@/lib/notify'
 import { cn } from '@/lib/utils'
@@ -232,12 +231,6 @@ export function WorkspaceScreen({
   useKitableRegistration(files, kitableChildrenIndex)
   const [error, setError] = useState('')
   const [, setFeedback] = useState('')
-  const [workspaceAgentOpen, setWorkspaceAgentOpen] = useState(false)
-  const [workspaceAgentHistoryOpen, setWorkspaceAgentHistoryOpen] = useState(false)
-  const [activeWorkspaceAgentSessionId, setActiveWorkspaceAgentSessionId] =
-    useState<number | null>(null)
-  const [closedWorkspaceAgentSessionIds, setClosedWorkspaceAgentSessionIds] =
-    useState<Set<number>>(() => new Set())
   // Group A: when the user picks "Create Workflow" from a kitable table
   // leaf's "..." menu, we surface a mode chooser (template vs AI). The dialog
   // can run scoped to a (documentId, tableId) pair OR entirely unbound
@@ -448,26 +441,10 @@ export function WorkspaceScreen({
     getTurnContext: getAgentTurnContext,
     prepareBrowserContext: prepareAgentBrowserContextForTurn,
   })
-  const handleGenerateWhiteboardImage = useWhiteboardImageGeneration({
-    activeSessionId: activeWorkspaceAgentSessionId,
-    agentArtifacts,
-    agentBusySessions,
-    agentToolCalls,
-    available: whiteboardBridge.available,
-    bridgesRef: whiteboardBridge.bridgesRef,
-    createAgentChat: createNewAgentChat,
-    modelAvailable: Boolean(selectedAgentModel?.runtimeModel),
-    sendAgentAction: sendAgentContextAction,
-    setActiveSessionId: setActiveWorkspaceAgentSessionId,
-  })
   agentDocumentStateRef.current = {
     clearModifiedPath: clearModifiedDocumentPath,
     modifiedPaths: agentModifiedDocumentPaths,
   }
-  const openWorkspaceAgentSessions = useMemo(
-    () => agentSessions.filter((session) => !closedWorkspaceAgentSessionIds.has(session.id)),
-    [agentSessions, closedWorkspaceAgentSessionIds],
-  )
 
   const {
     activeWorkspaceTab,
@@ -688,10 +665,44 @@ export function WorkspaceScreen({
     // workflow list, which is fine — the backend skips the addendum.
     activeWorkflowId: activeWorkspaceTab?.type === 'workflow' ? activeWorkspaceTab.workflowId : undefined,
   })
-  const activeWorkspaceAgentSession = activeWorkspaceAgentSessionId
-    ? agentSessions.find((session) => session.id === activeWorkspaceAgentSessionId) || null
-    : null
   const activeWorkspaceDocumentPath = resolveAgentActiveDocument(activeWorkspaceTab).path
+  const agentPanel = useWorkspaceAgentPanel({
+    rootPath,
+    agentSessions,
+    refreshAgentSessions,
+    createNewAgentChat,
+    openAgentSession,
+    pendingFocusedSessionId,
+    clearPendingFocusedSessionId,
+    activeWorkspaceDocumentPath,
+    agentSidebarWidth,
+  })
+  const {
+    open: workspaceAgentOpen,
+    setOpen: setWorkspaceAgentOpen,
+    historyOpen: workspaceAgentHistoryOpen,
+    setHistoryOpen: setWorkspaceAgentHistoryOpen,
+    activeSessionId: activeWorkspaceAgentSessionId,
+    setActiveSessionId: setActiveWorkspaceAgentSessionId,
+    activeSession: activeWorkspaceAgentSession,
+    openSessions: openWorkspaceAgentSessions,
+    toggle: toggleActiveAgentPanel,
+    createChat: handleCreateWorkspaceAgentChat,
+    showSession: handleWorkspaceAgentSessionSelect,
+    closeSessions: handleCloseWorkspaceAgentChats,
+  } = agentPanel
+  const handleGenerateWhiteboardImage = useWhiteboardImageGeneration({
+    activeSessionId: activeWorkspaceAgentSessionId,
+    agentArtifacts,
+    agentBusySessions,
+    agentToolCalls,
+    available: whiteboardBridge.available,
+    bridgesRef: whiteboardBridge.bridgesRef,
+    createAgentChat: createNewAgentChat,
+    modelAvailable: Boolean(selectedAgentModel?.runtimeModel),
+    sendAgentAction: sendAgentContextAction,
+    setActiveSessionId: setActiveWorkspaceAgentSessionId,
+  })
   const activeAgentDocumentContextPaths = activeWorkspaceAgentSession
     ? resolveAgentDocumentContexts(
       activeWorkspaceAgentSession.id,
@@ -1015,102 +1026,6 @@ export function WorkspaceScreen({
     </div>
   ) : null
 
-  useEffect(() => {
-    if (!workspaceAgentOpen) {
-      setWorkspaceAgentHistoryOpen(false)
-      return
-    }
-    void refreshAgentSessions()
-  }, [refreshAgentSessions, workspaceAgentOpen])
-
-  const autoCreatedAgentChatRef = useRef(false)
-  useEffect(() => {
-    if (!workspaceAgentOpen) {
-      autoCreatedAgentChatRef.current = false
-      return
-    }
-    if (activeWorkspaceAgentSession || agentSessions.length > 0) {
-      return
-    }
-    if (autoCreatedAgentChatRef.current) {
-      return
-    }
-    autoCreatedAgentChatRef.current = true
-    void createNewAgentChat({
-      focusTab: true,
-      documentPaths: activeWorkspaceDocumentPath ? [activeWorkspaceDocumentPath] : [],
-    })
-  }, [
-    workspaceAgentOpen,
-    activeWorkspaceAgentSession,
-    agentSessions.length,
-    createNewAgentChat,
-    activeWorkspaceDocumentPath,
-  ])
-
-  useEffect(() => {
-    const root = document.documentElement
-    if (workspaceAgentOpen) {
-      root.style.setProperty('--workspace-agent-sidebar-width', `${agentSidebarWidth}px`)
-    } else {
-      root.style.removeProperty('--workspace-agent-sidebar-width')
-    }
-    return () => {
-      root.style.removeProperty('--workspace-agent-sidebar-width')
-    }
-  }, [workspaceAgentOpen, agentSidebarWidth])
-
-  useEffect(() => {
-    if (!pendingFocusedSessionId) {
-      return
-    }
-    setWorkspaceAgentOpen(true)
-    setWorkspaceAgentHistoryOpen(false)
-    setClosedWorkspaceAgentSessionIds((current) => {
-      if (!current.has(pendingFocusedSessionId)) return current
-      const next = new Set(current)
-      next.delete(pendingFocusedSessionId)
-      return next
-    })
-    setActiveWorkspaceAgentSessionId(pendingFocusedSessionId)
-    clearPendingFocusedSessionId()
-  }, [clearPendingFocusedSessionId, pendingFocusedSessionId])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return
-    }
-    setClosedWorkspaceAgentSessionIds(new Set())
-    const stored = readWorkspaceAgentActiveSessionId(rootPath)
-    setActiveWorkspaceAgentSessionId(stored && stored > 0 ? stored : null)
-    // Switch the active chat focus when the workspace root changes so the
-    // right-side tab bar tracks the workspace instead of leaking the previous
-    // workspace's pinned session. agentSessions reset is handled inside
-    // useWorkspaceAgent — here we just rehydrate the per-rootPath focus.
-  }, [rootPath])
-
-  useEffect(() => {
-    if (activeWorkspaceAgentSessionId) {
-      const exists = openWorkspaceAgentSessions.some(
-        (session) => session.id === activeWorkspaceAgentSessionId,
-      )
-      if (exists) {
-        return
-      }
-    }
-    setActiveWorkspaceAgentSessionId(openWorkspaceAgentSessions[0]?.id || null)
-  }, [activeWorkspaceAgentSessionId, openWorkspaceAgentSessions])
-
-  useEffect(() => {
-    writeWorkspaceAgentActiveSessionId(rootPath, activeWorkspaceAgentSessionId)
-  }, [activeWorkspaceAgentSessionId, rootPath])
-
-  useEffect(() => {
-    if (!activeWorkspaceAgentSession) {
-      return
-    }
-    void openAgentSession(activeWorkspaceAgentSession)
-  }, [activeWorkspaceAgentSession, openAgentSession])
 
   const agentBrowserAutomation = useWorkspaceAgentBrowserAutomation({
     activeWorkspaceAgentSession,
@@ -1127,37 +1042,6 @@ export function WorkspaceScreen({
   })
   agentTurn.setPreflight(agentBrowserAutomation.runPreflight)
 
-  function toggleActiveAgentPanel() {
-    if (workspaceAgentOpen) {
-      setWorkspaceAgentOpen(false)
-      setWorkspaceAgentHistoryOpen(false)
-      return
-    }
-
-    const sessionToRestore = activeWorkspaceAgentSession
-      || openWorkspaceAgentSessions[0]
-      || agentSessions[0]
-      || null
-    if (sessionToRestore) {
-      setClosedWorkspaceAgentSessionIds((current) => {
-        if (!current.has(sessionToRestore.id)) return current
-        const next = new Set(current)
-        next.delete(sessionToRestore.id)
-        return next
-      })
-      setActiveWorkspaceAgentSessionId(sessionToRestore.id)
-    }
-    setWorkspaceAgentOpen(true)
-  }
-
-  async function handleCreateWorkspaceAgentChat() {
-    setWorkspaceAgentOpen(true)
-    setWorkspaceAgentHistoryOpen(false)
-    await createNewAgentChat({
-      focusTab: true,
-      documentPaths: activeWorkspaceDocumentPath ? [activeWorkspaceDocumentPath] : [],
-    })
-  }
 
   async function handleDocumentAskAgent(request: DocumentAskAgentRequest) {
     setWorkspaceAgentOpen(true)
@@ -1338,43 +1222,6 @@ export function WorkspaceScreen({
     setWorkspaceAgentOpen,
   ])
 
-  function handleWorkspaceAgentSessionSelect(sessionId: number) {
-    setWorkspaceAgentOpen(true)
-    setWorkspaceAgentHistoryOpen(false)
-    setClosedWorkspaceAgentSessionIds((current) => {
-      if (!current.has(sessionId)) return current
-      const next = new Set(current)
-      next.delete(sessionId)
-      return next
-    })
-    setActiveWorkspaceAgentSessionId(sessionId)
-  }
-
-  function handleCloseWorkspaceAgentChats(sessionIds: number[]) {
-    const closingIds = new Set(sessionIds)
-    if (!closingIds.size) return
-    const activeIndex = openWorkspaceAgentSessions.findIndex(
-      (session) => session.id === activeWorkspaceAgentSessionId,
-    )
-    const remainingSessions = openWorkspaceAgentSessions.filter(
-      (session) => !closingIds.has(session.id),
-    )
-
-    setClosedWorkspaceAgentSessionIds((current) => {
-      const next = new Set(current)
-      closingIds.forEach((sessionId) => next.add(sessionId))
-      return next
-    })
-
-    if (activeWorkspaceAgentSessionId && closingIds.has(activeWorkspaceAgentSessionId)) {
-      const nextIndex = Math.min(Math.max(activeIndex, 0), remainingSessions.length - 1)
-      setActiveWorkspaceAgentSessionId(remainingSessions[nextIndex]?.id || null)
-    }
-    if (!remainingSessions.length) {
-      setWorkspaceAgentOpen(false)
-      setWorkspaceAgentHistoryOpen(false)
-    }
-  }
 
   const {
     importMarkdownFile,
