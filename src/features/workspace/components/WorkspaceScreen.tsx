@@ -24,43 +24,24 @@ import {
   updateWorkspaceTreeDocumentItem,
 } from '@/features/workspace/lib/workspaceTree'
 import { routeKitableOpenPath } from './workspaceScreenTabRouting'
-import type { AgentBrowserContext, AgentEvent } from '@/api/agent'
-import {
-  appendAgentLocalSource,
-  extractAgentLocalPathReference,
-} from '@/features/agent/lib/agentLocalSources'
+import type { AgentBrowserContext } from '@/api/agent'
 import { createDataDashboardByPath } from '@/api/dashboards'
 import { renameDataDocumentByPath } from '@/api/dataDocuments'
 import type { WorkflowRouteContext } from '@/features/workflow/public'
 import type { TableSchema } from '@/features/workflow/components/BodyTemplateEditor.types'
-import { useWorkspaceAgent } from '@/features/agent/hooks/useWorkspaceAgent'
 import { useKitionAccount } from '@/features/account/hooks/useKitionAccount'
 import { getKitionAccountLinks } from '@/features/account/lib/accountLinks'
 import { isKitionAccountSessionUsable } from '@/features/account/lib/accountState'
 import {
-  type AgentBrowserOpenRequest,
-  extractAgentBrowserContinuationContext,
-  findLatestBrowserContinuationRequest,
-  readBrowserOpenRequest,
-} from '@/features/agent/lib/agentBrowserContinuation'
-import {
-  buildAgentBrowserTabPayload,
-  dispatchOpenWorkspaceBrowserTab,
-} from '@/features/agent/lib/agentBrowserTab'
-import {
-  buildBrowserAutoContinuePrompt,
-  buildBrowserUnavailablePrompt,
-  extractAgentWebTarget,
-  MAX_BROWSER_AUTO_CONTINUE_ATTEMPTS,
-} from '@/features/agent/lib/agentBrowserIntent'
-import { preflightAgentBrowserContext } from '@/features/agent/lib/agentBrowserPreflight'
-import {
-  type AgentTurnContext,
+  appendAgentLocalSource,
   buildActiveBrowserTabContext,
   buildAgentTurnContext,
+  extractAgentLocalPathReference,
   finalizeAgentTurnContext,
   mapBrowserPageContextToAgentBrowserContext,
-} from '@/features/agent/lib/agentTurnContext'
+  useWorkspaceAgent,
+  type AgentTurnContext,
+} from '@/features/agent/public'
 import type { MarkdownImageInsertionSnapshot } from '@/features/document/editor/editor/markdown-image-insertion'
 import { useDocumentExport } from '@/features/document/hooks/useDocumentExport'
 import { useWorkspaceDocumentSession } from '@/features/document/hooks/useWorkspaceDocumentSession'
@@ -98,6 +79,7 @@ import { useWorkspaceWorkflowCreateMode } from '@/features/workspace/hooks/useWo
 import { useWorkspaceTemplateDialogs } from '@/features/workspace/hooks/useWorkspaceTemplateDialogs'
 import { useWorkspaceWhiteboardAgentBridge } from '@/features/workspace/hooks/useWorkspaceWhiteboardAgentBridge'
 import { useWorkspaceTableAgentContext } from '@/features/workspace/hooks/useWorkspaceTableAgentContext'
+import { useWorkspaceAgentBrowserAutomation } from '@/features/workspace/hooks/useWorkspaceAgentBrowserAutomation'
 import { useWorkspaceBoardCreation } from '@/features/workspace/hooks/useWorkspaceBoardCreation'
 import { useWhiteboardImageGeneration } from '@/features/workspace/hooks/useWhiteboardImageGeneration'
 import { setPinnedTabsWorkspace } from '@/features/document/editor/hooks/usePinnedTabs'
@@ -107,7 +89,6 @@ import {
   findWorkspaceBrowserTabIdsForSnapshot,
   OPEN_WORKSPACE_BROWSER_TAB_EVENT,
   resolveWorkspaceBrowserTabOrigin,
-  resolveWorkspaceBrowserHost,
   type WorkspaceBrowserTabPayload,
 } from '@/features/workspace/lib/browserTabs'
 import {
@@ -140,7 +121,6 @@ import {
   moveWorkspaceDocument,
   openExternalURL,
   revealWorkspaceFolder,
-  type BrowserSessionProvider,
   type WorkspaceDocument,
   type WorkspaceDocumentFormat,
 } from '@/services/desktop'
@@ -349,6 +329,7 @@ export function WorkspaceScreen({
     taskMode: 'auto',
     browserEnabled: false,
   })
+  const getAgentTaskMode = useCallback(() => agentTurnContextRef.current.taskMode, [])
   const markdownImageInsertionSnapshotRef = useRef<MarkdownImageInsertionSnapshot | null>(null)
   const handleAgentInsertionContextChange = useCallback((
     documentPath: string,
@@ -1520,174 +1501,20 @@ export function WorkspaceScreen({
     void openAgentSession(activeWorkspaceAgentSession)
   }, [activeWorkspaceAgentSession, openAgentSession])
 
-  const openWorkspaceBrowserFromRequest = useCallback(
-    (request: AgentBrowserOpenRequest) => {
-      if (!WEB_BROWSER_ENABLED) {
-        return
-      }
-      dispatchOpenWorkspaceBrowserTab(
-        buildAgentBrowserTabPayload({
-          provider:
-            (request.provider as BrowserSessionProvider) || 'generic-web',
-          taskMode: agentTurnContextRef.current.taskMode,
-          host: request.host,
-          url: request.url,
-          query: request.query,
-          activeDocument: tableAgentContext?.activeDocument ?? null,
-          documentPath: tableAgentDocumentPath,
-          activeTable: tableAgentContext?.activeTable ?? null,
-        }),
-      )
-    },
-    [tableAgentContext, tableAgentDocumentPath],
-  )
-
-  const runAgentBrowserPreflight = useCallback(async (content: string) => {
-    if (!WEB_BROWSER_ENABLED) {
-      return undefined
-    }
-    const target = extractAgentWebTarget(content)
-    if (!target) {
-      return undefined
-    }
-
-    const provider: BrowserSessionProvider = 'generic-web'
-    setAgentBrowserEnabled(true)
-    setBrowserPanelPhase('loading')
-    dispatchOpenWorkspaceBrowserTab(
-      buildAgentBrowserTabPayload({
-        provider,
-        taskMode: agentTurnContextRef.current.taskMode,
-        host: target.host,
-        url: target.url,
-        activeDocument: tableAgentContext?.activeDocument ?? null,
-        documentPath: tableAgentDocumentPath,
-        activeTable: tableAgentContext?.activeTable ?? null,
-      }),
-    )
-
-    const context = await preflightAgentBrowserContext({
-      target,
-      provider,
-    })
-    setBrowserPanelPhase('ready')
-    return context
-  }, [setAgentBrowserEnabled, tableAgentContext, tableAgentDocumentPath])
-  prepareAgentBrowserContextRef.current = runAgentBrowserPreflight
-
-  const browserAutoOpenSessionRef = useRef<number | null>(null)
-  const browserAutoOpenEventIdRef = useRef<number | null>(null)
-  useEffect(() => {
-    if (!activeWorkspaceAgentSession) {
-      return
-    }
-    const sessionId = activeWorkspaceAgentSession.id
-    let latest: AgentEvent | null = null
-    for (const event of agentEvents[sessionId] || []) {
-      if (event.event_type === 'browser.open_required') {
-        latest = event
-      }
-    }
-    const latestId = latest ? latest.id : null
-    // First view of a session seeds the handled id, so opening/switching/reloading
-    // never reopens a historical handoff — only events that arrive live auto-open.
-    if (browserAutoOpenSessionRef.current !== sessionId) {
-      browserAutoOpenSessionRef.current = sessionId
-      browserAutoOpenEventIdRef.current = latestId
-      return
-    }
-    if (!latest || browserAutoOpenEventIdRef.current === latestId) {
-      return
-    }
-    browserAutoOpenEventIdRef.current = latestId
-    openWorkspaceBrowserFromRequest(readBrowserOpenRequest(latest))
-  }, [activeWorkspaceAgentSession, agentEvents, openWorkspaceBrowserFromRequest])
-
-  const browserAutoContinueEventKeysRef = useRef(new Set<string>())
-  useEffect(() => {
-    if (
-      !activeWorkspaceAgentSession ||
-      !activeBrowserTab ||
-      (browserPanelPhase !== 'ready' && browserPanelPhase !== 'unavailable') ||
-      agentBusySessions.has(activeWorkspaceAgentSession.id)
-    ) {
-      return
-    }
-
-    const sessionId = activeWorkspaceAgentSession.id
-    const continuation = findLatestBrowserContinuationRequest(
-      agentEvents[sessionId] || [],
-    )
-    if (!continuation) {
-      return
-    }
-    const { eventId: latestEventId, request: latestRequest } = continuation
-
-    const eventKey = `${sessionId}:${latestEventId}`
-    if (browserAutoContinueEventKeysRef.current.has(eventKey)) {
-      return
-    }
-    const requestedHost = resolveWorkspaceBrowserHost({
-      host: latestRequest.host,
-      url: latestRequest.url,
-    })
-    const activeHost = resolveWorkspaceBrowserHost(activeBrowserTab)
-    if (requestedHost && requestedHost !== activeHost) {
-      return
-    }
-
-    browserAutoContinueEventKeysRef.current.add(eventKey)
-    setAgentBrowserEnabled(true)
-    const originalRequest = latestRequest.originalRequest || ''
-    const attempt = latestRequest.autoContinueAttempt || 1
-    if (
-      browserPanelPhase !== 'ready' ||
-      latestRequest.autoContinueExhausted ||
-      attempt > MAX_BROWSER_AUTO_CONTINUE_ATTEMPTS
-    ) {
-      sendAgentContextAction(sessionId, {
-        content: buildBrowserUnavailablePrompt(originalRequest),
-        browserAutoContinue: true,
-        browserAutoContinueAttempt: attempt,
-        browserAutoContinueFinal: true,
-        browserOriginalRequest: originalRequest,
-      })
-      return
-    }
-
-    void extractAgentBrowserContinuationContext({
-      target: {
-        provider: activeBrowserTab.provider,
-        profileId: activeBrowserTab.profileId,
-        host: activeBrowserTab.host,
-      },
-      request: latestRequest,
-    }).then((browserContext) => {
-      sendAgentContextAction(sessionId, {
-        content: buildBrowserAutoContinuePrompt(originalRequest),
-        browserAutoContinue: true,
-        browserAutoContinueAttempt: attempt,
-        browserOriginalRequest: originalRequest,
-        browserContext,
-      })
-    }).catch(() => {
-      sendAgentContextAction(sessionId, {
-        content: buildBrowserUnavailablePrompt(originalRequest),
-        browserAutoContinue: true,
-        browserAutoContinueAttempt: attempt,
-        browserAutoContinueFinal: true,
-        browserOriginalRequest: originalRequest,
-      })
-    })
-  }, [
-    activeBrowserTab,
+  const agentBrowserAutomation = useWorkspaceAgentBrowserAutomation({
     activeWorkspaceAgentSession,
-    agentBusySessions,
     agentEvents,
-    browserPanelPhase,
+    agentBusySessions,
     sendAgentContextAction,
+    activeBrowserTab,
+    browserPanelPhase,
+    setBrowserPanelPhase,
     setAgentBrowserEnabled,
-  ])
+    getTaskMode: getAgentTaskMode,
+    tableAgentContext,
+    tableAgentDocumentPath,
+  })
+  prepareAgentBrowserContextRef.current = agentBrowserAutomation.runPreflight
 
   function toggleActiveAgentPanel() {
     if (workspaceAgentOpen) {
