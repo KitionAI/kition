@@ -64,7 +64,6 @@ import {
 import type { MarkdownImageInsertionSnapshot } from '@/features/document/editor/editor/markdown-image-insertion'
 import { useDocumentExport } from '@/features/document/hooks/useDocumentExport'
 import { useWorkspaceDocumentSession } from '@/features/document/hooks/useWorkspaceDocumentSession'
-import type { DocumentCreationPreset } from '@/features/document/lib/documentCreation'
 import type { DocumentAskAgentRequest } from '@/features/document/lib/documentAgentActions'
 import type { WhiteboardAgentBridge } from '@/features/whiteboard/lib/whiteboardAgentBridge'
 import { runtimeSupportsWhiteboard } from '@/features/whiteboard/lib/whiteboardCapabilities'
@@ -72,12 +71,10 @@ import { AgentFloatingLauncher } from '@/features/agent/components/AgentFloating
 import type { SettingsSectionKey } from '@/features/settings/DesktopSettingsPage'
 import { useDesktopSettings } from '@/features/settings/hooks/useDesktopSettings'
 import type { DataDocument, DataTable } from '@/types/dataDocument'
-import type { KitableTemplateDefinition } from '@/features/table/templates/kitableTemplates'
 import { WorkspaceScreenEditor } from '@/features/workspace/components/WorkspaceScreenEditor'
 import { WorkspaceKitableSidebar } from '@/features/workspace/components/WorkspaceKitableSidebar'
-import { requestEmailSyncSetup } from '@/features/emailSync/setupRequest'
+import { requestEmailSyncSetup } from '@/features/emailSync/public'
 import { FORM_SYNC_CHANGED_EVENT, type FormSyncWorkflow } from '@/features/formSync/api'
-import { setupTemplateFormSync } from '@/features/formSync/templateSetup'
 import { useKitableTableLeafActions } from '@/features/workspace/hooks/useKitableTableLeafActions'
 import { useKitableDashboardLeafActions } from '@/features/workspace/hooks/useKitableDashboardLeafActions'
 import { useKitableWorkflowLeafActions } from '@/features/workspace/hooks/useKitableWorkflowLeafActions'
@@ -100,6 +97,7 @@ import { useWorkspaceTreeState } from '@/features/workspace/hooks/useWorkspaceTr
 import { useWorkspaceTabs } from '@/features/workspace/hooks/useWorkspaceTabs'
 import { useWorkspaceBrowserPanel } from '@/features/workspace/hooks/useWorkspaceBrowserPanel'
 import { useWorkspaceWorkflowCreateMode } from '@/features/workspace/hooks/useWorkspaceWorkflowCreateMode'
+import { useWorkspaceTemplateDialogs } from '@/features/workspace/hooks/useWorkspaceTemplateDialogs'
 import { useWorkspaceBoardCreation } from '@/features/workspace/hooks/useWorkspaceBoardCreation'
 import { useWhiteboardImageGeneration } from '@/features/workspace/hooks/useWhiteboardImageGeneration'
 import { setPinnedTabsWorkspace } from '@/features/document/editor/hooks/usePinnedTabs'
@@ -293,13 +291,6 @@ export function WorkspaceScreen({
     })
   const [workspaceFolderDialogOpen, setWorkspaceFolderDialogOpen] = useState(false)
   const [workspaceFolderName, setWorkspaceFolderName] = useState('')
-  const [documentTemplateDialogState, setDocumentTemplateDialogState] = useState<{
-    folderOverride?: string
-  } | null>(null)
-  const [documentEditorFocusRequest, setDocumentEditorFocusRequest] = useState(0)
-  const [kitableTemplateDialogState, setKitableTemplateDialogState] = useState<{
-    folderOverride?: string
-  } | null>(null)
   const [tableFileImportState, setTableFileImportState] = useState<{
     file: File
     folder?: string
@@ -1103,75 +1094,28 @@ export function WorkspaceScreen({
   })
   refreshWorkspaceDocumentsRef.current = refreshWorkspaceDocuments
 
-  const handleCreateDocumentFromTemplate = useCallback(async (
-    preset?: DocumentCreationPreset,
-  ) => {
-    if (!documentTemplateDialogState) return false
-    const created = await createDocument(
-      selectedPlatform,
-      documentTemplateDialogState.folderOverride,
-      preset,
-    )
-    if (created) {
-      setDocumentTemplateDialogState(null)
-      if (!preset) setDocumentEditorFocusRequest((current) => current + 1)
-    }
-    return created
-  }, [createDocument, documentTemplateDialogState, selectedPlatform])
-
-  const handleCreateKitableFromTemplate = useCallback(async (
-    template?: KitableTemplateDefinition,
-  ) => {
-    if (!kitableTemplateDialogState) return false
-    const result = await createTable(kitableTemplateDialogState.folderOverride, template)
-    if (!result) return false
-    if (result.tableId != null) {
-      workspaceTree.updateTreeMetadata((current) => {
-        if (current.collapsed.includes(result.kitablePath)) return current
-        return { ...current, collapsed: [...current.collapsed, result.kitablePath] }
-      })
-      upsertWorkspaceTab({
-        id: buildKitableWorkspaceTabId(result.kitablePath),
-        type: 'table',
-        title: getKitableWorkspaceTabTitle(result.kitablePath),
-        kitablePath: result.kitablePath,
-        tableId: result.tableId,
-        format: 'data',
-      })
-      setActiveResourcePath(buildKitableTableVirtualPath(result.kitablePath, result.tableId))
-    }
-    setKitableTemplateDialogState(null)
-    void kitableChildrenIndex.refresh()
-    if (template?.afterCreate?.type === 'email-sync') {
-      requestEmailSyncSetup(result.kitablePath, {
-        runAfterSave: template.afterCreate.runAfterSave,
-      })
-    }
-    if (template?.afterCreate?.type === 'form-sync') {
-      try {
-        const workflow = await setupTemplateFormSync({
-          documentId: result.documentId,
-          tableIdsByTitle: result.tableIdsByTitle,
-          setup: template.afterCreate,
-        })
-        setFeedback(workflow.published
-          ? `Private event form connected: ${workflow.public_url}`
-          : 'Private event form draft created')
-      } catch (requestError) {
-        setError(requestError instanceof Error ? requestError.message : 'Failed to connect the private event form')
-      }
-    }
-    return true
-  }, [
+  const templateDialogs = useWorkspaceTemplateDialogs({
+    createDocument,
     createTable,
+    selectedPlatform,
     kitableChildrenIndex,
-    kitableTemplateDialogState,
+    upsertWorkspaceTab,
+    setActiveResourcePath,
+    updateTreeMetadata: workspaceTree.updateTreeMetadata,
     setError,
     setFeedback,
-    setActiveResourcePath,
-    upsertWorkspaceTab,
-    workspaceTree,
-  ])
+  })
+  const {
+    documentTemplateDialogState,
+    kitableTemplateDialogState,
+    documentEditorFocusRequest,
+    openDocumentTemplateDialog,
+    closeDocumentTemplateDialog,
+    openKitableTemplateDialog,
+    closeKitableTemplateDialog,
+    createDocumentFromTemplate: handleCreateDocumentFromTemplate,
+    createKitableFromTemplate: handleCreateKitableFromTemplate,
+  } = templateDialogs
 
   const handleKitableTableDeleted = useCallback((kitablePath: string, tableId: number) => {
     const tabId = buildKitableWorkspaceTabId(kitablePath)
@@ -2829,7 +2773,7 @@ export function WorkspaceScreen({
             open
             busy={saving}
             onOpenChange={(open) => {
-              if (!open) setDocumentTemplateDialogState(null)
+              if (!open) closeDocumentTemplateDialog()
             }}
             onCreate={handleCreateDocumentFromTemplate}
           />
@@ -2853,7 +2797,7 @@ export function WorkspaceScreen({
             open
             busy={saving}
             onOpenChange={(open) => {
-              if (!open) setKitableTemplateDialogState(null)
+              if (!open) closeKitableTemplateDialog()
             }}
             onSelect={handleCreateKitableFromTemplate}
           />
@@ -2961,7 +2905,7 @@ export function WorkspaceScreen({
               },
               onCreateDocument: () => {
                 workspaceTree.setCreateMenuOpen(false)
-                setDocumentTemplateDialogState({ folderOverride: createMenuFolder })
+                openDocumentTemplateDialog(createMenuFolder)
               },
               onCreateFolder: () => {
                 workspaceTree.setCreateMenuOpen(false)
@@ -3003,7 +2947,7 @@ export function WorkspaceScreen({
                   return
                 }
                 workspaceTree.setCreateMenuOpen(false)
-                setKitableTemplateDialogState({ folderOverride: createMenuFolder })
+                openKitableTemplateDialog(createMenuFolder)
               },
               onImportTableFile: createMenuVariant === 'workspace'
                 ? () => {
@@ -3217,10 +3161,10 @@ export function WorkspaceScreen({
                     onOpenGlobalWorkflow: openWorkspaceWorkflow,
                     onOpenWorkflows: () => openWorkspaceWorkflow(),
                     onCreateDocument: () => {
-                      setDocumentTemplateDialogState({ folderOverride: '' })
+                      openDocumentTemplateDialog('')
                     },
                     onCreateTable: () => {
-                      setKitableTemplateDialogState({ folderOverride: '' })
+                      openKitableTemplateDialog('')
                     },
                     onOpenAgent: () => {
                       setWorkspaceAgentOpen(true)

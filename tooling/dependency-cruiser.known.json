@@ -17347,41 +17347,6 @@
   {
     "type": "dependency",
     "from": "src/features/workspace/components/WorkspaceScreen.tsx",
-    "to": "src/features/document/lib/documentCreation.ts",
-    "unresolvedTo": "@/features/document/lib/documentCreation",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceScreen.tsx",
-    "to": "src/features/emailSync/setupRequest.ts",
-    "unresolvedTo": "@/features/emailSync/setupRequest",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceScreen.tsx",
     "to": "src/features/formSync/api.ts",
     "unresolvedTo": "@/features/formSync/api",
     "dependencyTypes": [
@@ -17407,23 +17372,6 @@
       "aliased-tsconfig-paths",
       "local",
       "dynamic-import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceScreen.tsx",
-    "to": "src/features/formSync/templateSetup.ts",
-    "unresolvedTo": "@/features/formSync/templateSetup",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
     ],
     "rule": {
       "severity": "error",
@@ -17493,24 +17441,6 @@
       "aliased-tsconfig-paths",
       "local",
       "dynamic-import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceScreen.tsx",
-    "to": "src/features/table/templates/kitableTemplates.ts",
-    "unresolvedTo": "@/features/table/templates/kitableTemplates",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
-      "import"
     ],
     "rule": {
       "severity": "error",
