@@ -75,6 +75,7 @@ import { useWorkspaceWhiteboardAgentBridge } from '@/features/workspace/hooks/us
 import { useWorkspaceTableAgentContext } from '@/features/workspace/hooks/useWorkspaceTableAgentContext'
 import { useWorkspaceAgentBrowserAutomation } from '@/features/workspace/hooks/useWorkspaceAgentBrowserAutomation'
 import { useWorkspaceAgentTurnContext } from '@/features/workspace/hooks/useWorkspaceAgentTurnContext'
+import { useWorkspaceKitableOpeners } from '@/features/workspace/hooks/useWorkspaceKitableOpeners'
 import { useWorkspaceBoardCreation } from '@/features/workspace/hooks/useWorkspaceBoardCreation'
 import { useWhiteboardImageGeneration } from '@/features/workspace/hooks/useWhiteboardImageGeneration'
 import { setPinnedTabsWorkspace } from '@/features/document/editor/hooks/usePinnedTabs'
@@ -592,59 +593,21 @@ export function WorkspaceScreen({
     }
   }, [activeWorkspaceTab, setActiveResourcePath])
 
-  const openKitableTable = useCallback((kitablePath: string, tableId: number) => {
-    if (workflowOpen) {
-      onCloseWorkflow()
-    }
-    upsertWorkspaceTab({
-      id: buildKitableWorkspaceTabId(kitablePath),
-      type: 'table',
-      title: getKitableWorkspaceTabTitle(kitablePath),
-      kitablePath,
-      tableId,
-      format: 'data',
-    })
-    setActiveResourcePath(kitablePath)
-  }, [onCloseWorkflow, setActiveResourcePath, upsertWorkspaceTab, workflowOpen])
-
-  const openKitableDashboard = useCallback((kitablePath: string, dashboardId: string) => {
-    if (workflowOpen) {
-      onCloseWorkflow()
-    }
-    upsertWorkspaceTab({
-      id: buildKitableWorkspaceTabId(kitablePath),
-      type: 'dashboard',
-      title: getKitableWorkspaceTabTitle(kitablePath),
-      kitablePath,
-      dashboardId,
-      format: 'data',
-    })
-    setActiveResourcePath(kitablePath)
-  }, [onCloseWorkflow, setActiveResourcePath, upsertWorkspaceTab, workflowOpen])
-
-  const openKitableWorkflow = useCallback((kitablePath: string, workflowId?: string) => {
-    upsertWorkspaceTab({
-      id: buildKitableWorkspaceTabId(kitablePath),
-      type: 'workflow',
-      title: getKitableWorkspaceTabTitle(kitablePath),
-      kitablePath,
-      workflowId,
-    })
-    setActiveResourcePath(kitablePath)
-  }, [setActiveResourcePath, upsertWorkspaceTab])
-
-  const openWorkspaceWorkflow = useCallback((workflowId?: string) => {
-    if (workflowOpen) {
-      onCloseWorkflow()
-    }
-    upsertWorkspaceTab({
-      id: 'workflow:home',
-      type: 'workflow',
-      title: t('tabs.workflowsTitle'),
-      workflowId,
-    })
-  }, [onCloseWorkflow, t, upsertWorkspaceTab, workflowOpen])
-
+  const {
+    openKitableTable,
+    openKitableDashboard,
+    openKitableWorkflow,
+    openWorkspaceWorkflow,
+    openBoard,
+    openKitableContainer,
+  } = useWorkspaceKitableOpeners({
+    activeWorkspaceTab,
+    kitableChildrenIndex,
+    upsertWorkspaceTab,
+    setActiveResourcePath,
+    workflowOpen,
+    onCloseWorkflow,
+  })
   const design = useWorkspaceDesign({
     root: rootPath,
     activeTab: activeWorkspaceTab,
@@ -656,29 +619,6 @@ export function WorkspaceScreen({
       if (workflowOpen) onCloseWorkflow?.()
     },
   })
-
-  const openBoard = useCallback((path: string) => {
-    const normalizedPath = String(path || '').trim()
-    if (!normalizedPath) {
-      return
-    }
-    if (workflowOpen) {
-      onCloseWorkflow?.()
-    }
-    const filename = normalizedPath.split('/').pop() || normalizedPath
-    upsertWorkspaceTab({
-      id: `board:${normalizedPath}`,
-      type: 'board',
-      title: getWorkspaceItemTitle(filename),
-      path: normalizedPath,
-    })
-    setActiveResourcePath(normalizedPath)
-  }, [
-    onCloseWorkflow,
-    setActiveResourcePath,
-    upsertWorkspaceTab,
-    workflowOpen,
-  ])
 
   useEffect(() => {
     const handler = (event: Event) => {
@@ -697,68 +637,6 @@ export function WorkspaceScreen({
     window.addEventListener('kition:search:open-path', handler)
     return () => window.removeEventListener('kition:search:open-path', handler)
   }, [design.open, openBoard, openDocument])
-
-  useEffect(() => {
-    function openLocalWorkflow(event: Event) {
-      const kitablePath = String(
-        (event as CustomEvent<{ kitablePath?: string }>).detail?.kitablePath || '',
-      ).trim()
-      if (kitablePath) {
-        openKitableWorkflow(kitablePath)
-      }
-    }
-    window.addEventListener('kition:onboarding:open-local-workflow', openLocalWorkflow)
-    return () => window.removeEventListener('kition:onboarding:open-local-workflow', openLocalWorkflow)
-  }, [openKitableWorkflow])
-
-  const pendingKitableOpenPathRef = useRef('')
-  const refreshedKitableOpenPathRef = useRef('')
-  const openKitableContainer = useCallback((kitablePath: string) => {
-    const tables = [...(kitableChildrenIndex.tablesByKitablePath[kitablePath] || [])]
-      .sort((left, right) => left.order - right.order)
-    if (tables.length === 0) {
-      const waitingForCurrentRefresh = kitableChildrenIndex.status === 'idle'
-        || kitableChildrenIndex.status === 'loading'
-      const needsFreshLookup = kitableChildrenIndex.status === 'done'
-        && refreshedKitableOpenPathRef.current !== kitablePath
-      if (waitingForCurrentRefresh || needsFreshLookup) {
-        pendingKitableOpenPathRef.current = kitablePath
-        setActiveResourcePath(kitablePath)
-        if (needsFreshLookup) {
-          refreshedKitableOpenPathRef.current = kitablePath
-          void kitableChildrenIndex.refresh()
-        }
-        return
-      }
-    }
-    pendingKitableOpenPathRef.current = ''
-    refreshedKitableOpenPathRef.current = ''
-    const currentTableId = activeWorkspaceTab?.type === 'table'
-      && activeWorkspaceTab.kitablePath === kitablePath
-      ? activeWorkspaceTab.tableId
-      : undefined
-    const targetTableId = currentTableId ?? tables[0]?.id
-    if (targetTableId != null) {
-      openKitableTable(kitablePath, targetTableId)
-      return
-    }
-    openKitableWorkflow(kitablePath)
-  }, [
-    activeWorkspaceTab,
-    kitableChildrenIndex.refresh,
-    kitableChildrenIndex.status,
-    kitableChildrenIndex.tablesByKitablePath,
-    openKitableTable,
-    openKitableWorkflow,
-    setActiveResourcePath,
-  ])
-
-  useEffect(() => {
-    if (kitableChildrenIndex.status !== 'done') return
-    const pendingPath = pendingKitableOpenPathRef.current
-    if (!pendingPath) return
-    openKitableContainer(pendingPath)
-  }, [kitableChildrenIndex.status, openKitableContainer])
 
   const activeKitablePath = activeWorkspaceTab?.type === 'table'
     ? activeWorkspaceTab.kitablePath
