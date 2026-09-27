@@ -71,6 +71,7 @@ import { useWorkspaceTabControllers } from '@/features/workspace/hooks/useWorksp
 import { WorkspaceDialogs } from '@/features/workspace/components/WorkspaceDialogs'
 import { WorkspaceAgentPane } from '@/features/workspace/components/WorkspaceAgentPane'
 import { useWorkspaceSidebarNavigation } from '@/features/workspace/hooks/useWorkspaceSidebarNavigation'
+import { useWorkspaceCreateMenu } from '@/features/workspace/hooks/useWorkspaceCreateMenu'
 import { useWorkspaceBoardCreation } from '@/features/workspace/hooks/useWorkspaceBoardCreation'
 import { useWhiteboardImageGeneration } from '@/features/workspace/hooks/useWhiteboardImageGeneration'
 import { setPinnedTabsWorkspace } from '@/features/document/editor/hooks/usePinnedTabs'
@@ -729,19 +730,9 @@ export function WorkspaceScreen({
     setError,
   })
   const {
-    folderDialogOpen: workspaceFolderDialogOpen,
-    folderName: workspaceFolderName,
-    setFolderName: setWorkspaceFolderName,
-    tableFileImportState,
-    tableFileImportInputRef,
-    kitableCreateContext,
-    setKitableCreateContext,
-    createMenuVariant,
     createTableFromKitableSidebar,
     createDashboardFromKitableSidebar,
     createFormFromKitableSidebar,
-    formSyncCreateState,
-    handleFormSyncCreated,
   } = createFlows
 
   const workspaceMoveTargets = useMemo(
@@ -1192,6 +1183,21 @@ export function WorkspaceScreen({
     openDocument,
   })
 
+  const createMenuActions = useWorkspaceCreateMenu({
+    createFlows,
+    createMenuFolder,
+    closeCreateMenu: () => workspaceTree.setCreateMenuOpen(false),
+    openCreateFormatMenu,
+    expandPrivateSection: () => setSidebarSectionsExpanded((current) => ({ ...current, private: true })),
+    createDocumentInside,
+    openDocumentTemplateDialog,
+    openKitableTemplateDialog,
+    createDesign: design.create,
+    openBoardTemplateDialog: boardCreation.openTemplateDialog,
+    openWorkspaceWorkflow,
+    onCloseProfile,
+  })
+
   return (
     <>
       <WorkspaceTopbar
@@ -1408,50 +1414,7 @@ export function WorkspaceScreen({
               createMenuTriggerPath,
               loading,
               modifiedPaths: agentModifiedDocumentPaths,
-              onOpenCreateMenu: () => {
-                setSidebarSectionsExpanded((current) => ({
-                  ...current,
-                  private: true,
-                }))
-
-                openCreateFormatMenu('')
-              },
-              onCloseCreateMenu: () => {
-                workspaceTree.setCreateMenuOpen(false)
-                setKitableCreateContext(null)
-              },
-              onCreateDocument: () => {
-                workspaceTree.setCreateMenuOpen(false)
-                openDocumentTemplateDialog(createMenuFolder)
-              },
-              onCreateFolder: () => {
-                workspaceTree.setCreateMenuOpen(false)
-                createFlows.openFolderDialog()
-              },
-              onCreateInside: (node) => {
-                if (node.type === 'file' && node.name.toLowerCase().endsWith('.kitable') && !node.virtual) {
-                  setKitableCreateContext(node.path)
-                  setSidebarSectionsExpanded((cur) => ({ ...cur, private: true }))
-                  openCreateFormatMenu(undefined, node.path)
-                  return
-                }
-                void createDocumentInside(node)
-              },
-              onCreateTable: () => {
-                if (kitableCreateContext) {
-                  void createFlows.createTableFromCreateMenu()
-                  return
-                }
-                workspaceTree.setCreateMenuOpen(false)
-                openKitableTemplateDialog(createMenuFolder)
-              },
-              onImportTableFile: createMenuVariant === 'workspace'
-                ? () => {
-                    workspaceTree.setCreateMenuOpen(false)
-                    createFlows.requestTableFileImport(createMenuFolder)
-                  }
-                : undefined,
-              createMenuVariant,
+              ...createMenuActions,
               onDelete: handleTreeNodeDelete,
               onDuplicate: (node) => void duplicateDocumentNode(node),
               onMoveToFolder: (node, targetNode) => void moveWorkspaceNodeToFolder(node, targetNode),
@@ -1461,20 +1424,6 @@ export function WorkspaceScreen({
               onRevealInOS: isDesktopRuntime()
                 ? (node) => void revealWorkspaceFolder(node.path)
                 : undefined,
-              onOpenWorkflows: () => {
-                // Sidebar header lightning-bolt icon. Opens the unscoped
-                // global Workflows tab. Same outcome as dispatching the
-                // sentinel WORKSPACE_WORKFLOWS_ROOT_PATH through onOpen
-                // below — inlined here to avoid the self-reference inside
-                // the object literal.
-                onCloseProfile?.()
-                openWorkspaceWorkflow()
-              },
-              onCreateDesign: () => { onCloseProfile?.(); void design.create(createMenuFolder) },
-              onCreateBoard: () => {
-                onCloseProfile?.()
-                boardCreation.openTemplateDialog(createMenuFolder)
-              },
               onOpen: openSidebarPath,
               showBrowserTab: WEB_BROWSER_ENABLED && isDesktopRuntime(),
               onRefresh: () => {
