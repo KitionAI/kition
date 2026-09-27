@@ -8,7 +8,7 @@ import {
   createEmailSyncWorkflow,
   listEmailSyncWorkflows,
   startEmailSyncRun,
-} from './api'
+} from '@/api/emailSync'
 import { EmailSyncSettingsPanel, runtimeSupportsEmailSync } from './EmailSyncSettingsPanel'
 import type { EmailProviderId } from '@/features/emailProviders/emailProviderCatalog'
 
@@ -24,7 +24,7 @@ vi.mock('@/components/confirm', () => ({
   useConfirm: () => vi.fn(async () => true),
 }))
 
-vi.mock('./api', () => ({
+vi.mock('@/api/emailSync', () => ({
   EMAIL_SYNC_CHANGED_EVENT: 'kition:email-sync:changed',
   createEmailSyncWorkflow: vi.fn(),
   deleteEmailSyncWorkflow: vi.fn(),

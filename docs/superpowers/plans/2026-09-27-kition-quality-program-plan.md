@@ -169,10 +169,10 @@ Order matters. Each phase leaves `main` releasable.
 - `api.<domain>.<operation>(input): Promise<Output>` where types come from `contracts/runtime/*.schema.json` via `json-schema-to-typescript`.
 - `request.ts` keeps the error normalization and credit-exhaustion hooks, exposes a single `ApiError` class with `code`, `message`, `status`, `data`.
 
-- [ ] Add the generator and a CI check that regenerated output matches the committed output.
-- [ ] Move feature-local API modules into `src/api/` and delete the feature copies. Update imports.
-- [ ] Replace hand-written response interfaces in `src/api/*.ts` with generated types where a schema exists; add schemas to `contracts/runtime/` for endpoints that lack one, with the corresponding mock fixture.
-- [ ] Every `src/api/*.spec.ts` asserts request shape against the schema using `zod` or `ajv`, not string matching.
+- [x] `scripts/generate-contract-types.mjs` (2026-09-27) writes one module per contract into `src/api/generated/` with `<Contract><Def>` names; `pnpm run check:contracts` fails CI when the output is stale. It is a small in-repo generator: `json-schema-to-typescript` is incompatible with the pinned `js-yaml` security override.
+- [x] Moved `emailSync`, `connections`, and `workflows` into `src/api/`; `formSync` was split into an HTTP module (`src/api/formSync.ts`) and the local-draft orchestration that stays in the feature. Workflow body-template types and run records moved with the API; `src/lib/workflowEvents.ts` owns the change events. `media-generation/api/imageTemplates.ts` stays: it is a cloud contract with feature-local validation and moves with Task 1.5.
+- [x] `emailSync`, `formSync`, `dataImports`, and `workspaceStorage` types are aliases of the generated contract types; the client only narrows `DataImportField.options` to its field-option shape. Still hand-written, no schema yet: `workflows`, `agent`, `dataDocuments`, `dashboards`, `desktop`, `models`, `presentations`, `templates`. Writing those schemas is the remaining half of this task and needs the runtime maintainer.
+- [~] `src/test/contracts.ts` validates values against a contract definition with Ajv; `emailSync.spec.ts` and `dataImports.spec.ts` use it. Extend to every API spec as schemas land.
 
 ### Task 1.2: Introduce a data layer with TanStack Query
 

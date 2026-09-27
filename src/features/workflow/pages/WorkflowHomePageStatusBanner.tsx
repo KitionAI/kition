@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import type { WorkflowDefinition } from '@/features/workflow/api'
+import type { WorkflowDefinition } from '@/api/workflows'
 import { StatusBanner, deriveBannerState } from '@/features/workflow/banner/StatusBanner'
 import type { WorkflowRunRecord } from '@/features/workflow/hooks/useWorkflowRuns'
 import type {

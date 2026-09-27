@@ -31,7 +31,7 @@ import {
 import { createDataDashboardByPath } from '@/api/dashboards'
 import { openDataDocumentByPath, renameDataDocumentByPath } from '@/api/dataDocuments'
 import { openWorkflowHome, openWorkflowRoute, type WorkflowRouteContext } from '@/features/workflow/lib/openWorkflowRoute'
-import { createWorkflow, type WorkflowDefinition } from '@/features/workflow/api'
+import { createWorkflow, type WorkflowDefinition } from '@/api/workflows'
 import { createWorkflowFromMode } from '@/features/workflow/lib/createWorkflowFromMode'
 import type { TableSchema } from '@/features/workflow/components/BodyTemplateEditor.types'
 import { useWorkspaceAgent } from '@/features/agent/hooks/useWorkspaceAgent'

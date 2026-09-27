@@ -1,9 +1,49 @@
+/**
+ * Workflow definitions, runs, validation, and node tests. There is no public
+ * JSON contract for this surface yet (see the quality plan, Task 1.1); the
+ * types below mirror the runtime payloads and are the single client copy.
+ */
 import request from '@/api/request'
-import type { BodyTemplate } from '@/features/workflow/components/BodyTemplateEditor.types'
-import type { WorkflowRunRecord } from '@/features/workflow/hooks/useWorkflowRuns'
-import { WORKFLOW_CHANGED_EVENT } from '@/features/workflow/lib/workflowEvents'
+import { WORKFLOW_CHANGED_EVENT } from '@/lib/workflowEvents'
 
-export { WORKFLOW_CHANGED_EVENT } from '@/features/workflow/lib/workflowEvents'
+export { WORKFLOW_CHANGED_EVENT } from '@/lib/workflowEvents'
+
+/** Reference to a field on a workflow node, used inside body templates. */
+interface FieldRef { nodeId: string; fieldId: string }
+export type BodyPart =
+  | { kind: 'text'; text: string }
+  | { kind: 'newline' }
+  | { kind: 'field_ref'; fieldRef: FieldRef }
+/** Templated text: literal parts plus field references resolved at run time. */
+export interface BodyTemplate { parts: BodyPart[] }
+
+export interface WorkflowRunRecord {
+  id: string
+  workflowId: string
+  triggerEvent: string
+  recordId: string
+  startedAt: string
+  finishedAt: string
+  status: 'ok' | 'error' | 'skipped'
+  to: string
+  subject: string
+  body: string
+  error?: string
+  /** Server-side hint: when a run errors, which canvas node caused it. */
+  failingNodeId?: string
+  /** When status="skipped", a short reason the UI can render in the row. */
+  skipReason?: string
+  /** Per-node outcomes from the multi-action executor. Empty for legacy single-action runs. */
+  nodeOutcomes?: Array<{
+    nodeId: string
+    kind: string
+    status: string
+    error?: string
+    detail?: string
+    startedAt?: string
+    finishedAt?: string
+  }>
+}
 
 export type WorkflowNodeKind = 'trigger' | 'action' | 'filter'
 

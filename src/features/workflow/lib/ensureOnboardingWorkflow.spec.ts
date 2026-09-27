@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import type { WorkflowDefinition } from '@/features/workflow/api'
+import type { WorkflowDefinition } from '@/api/workflows'
 import { ensureOnboardingWorkflow, type EnsureOnboardingWorkflowDeps } from './ensureOnboardingWorkflow'
 
 function memoryStorage() {

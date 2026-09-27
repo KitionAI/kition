@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 
 import { listDataDocuments } from '@/api/dataDocuments'
 import { readDataDashboards } from '@/features/dashboard/lib/dashboardMetadata'
-import { listWorkflows } from '@/features/workflow/api'
+import { listWorkflows } from '@/api/workflows'
 import { listFormSyncWorkflows } from '@/features/formSync/api'
 import type {
   KitableDashboardSummary,

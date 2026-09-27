@@ -7,8 +7,9 @@ const requestMock = vi.hoisted(() => ({
   delete: vi.fn(),
 }))
 
-vi.mock('@/api/request', () => ({ default: requestMock }))
+vi.mock('./request', () => ({ default: requestMock }))
 
+import { expectMatchesContract } from '@/test/contracts'
 import {
   createEmailSyncWorkflow,
   cancelEmailSyncRun,
@@ -18,7 +19,7 @@ import {
   runEmailSyncWorkflow,
   startEmailSyncRun,
   updateEmailSyncWorkflow,
-} from './api'
+} from './emailSync'
 
 afterEach(() => {
   vi.clearAllMocks()
@@ -58,6 +59,7 @@ describe('email sync API', () => {
     await updateEmailSyncWorkflow('mail_1', { schedule: { enabled: true, interval_minutes: 30 } })
 
     expect(requestMock.post).toHaveBeenCalledWith('/v1/email-sync/workflows', input)
+    expectMatchesContract(requestMock.post.mock.calls[0][1], 'email-sync', 'saveInput')
     expect(requestMock.patch).toHaveBeenCalledWith('/v1/email-sync/workflows/mail_1', {
       schedule: { enabled: true, interval_minutes: 30 },
     })

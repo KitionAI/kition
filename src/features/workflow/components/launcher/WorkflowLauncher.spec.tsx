@@ -2,7 +2,7 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('@/features/workflow/api', () => ({
+vi.mock('@/api/workflows', () => ({
   createWorkflow: vi.fn(),
 }))
 vi.mock('@/features/workflow/lib/openWorkflowRoute', async (importOriginal) => {
@@ -10,7 +10,7 @@ vi.mock('@/features/workflow/lib/openWorkflowRoute', async (importOriginal) => {
   return { ...actual, openWorkflowHome: vi.fn() }
 })
 
-import * as api from '@/features/workflow/api'
+import * as api from '@/api/workflows'
 import * as router from '@/features/workflow/lib/openWorkflowRoute'
 import { WorkflowLauncher } from './WorkflowLauncher'
 import type { WorkflowLauncherProps } from './WorkflowLauncher'

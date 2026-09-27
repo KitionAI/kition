@@ -1,4 +1,4 @@
-import type { WorkflowDefinition } from '@/features/workflow/api'
+import type { WorkflowDefinition } from '@/api/workflows'
 import type { TableSchema } from '@/features/workflow/components/BodyTemplateEditor.types'
 
 /**

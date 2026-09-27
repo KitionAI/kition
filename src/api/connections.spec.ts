@@ -7,7 +7,7 @@ const requestMock = vi.hoisted(() => ({
   delete: vi.fn(),
 }))
 
-vi.mock('@/api/request', () => ({ default: requestMock }))
+vi.mock('./request', () => ({ default: requestMock }))
 
 import {
   CONNECTIONS_CHANGED_EVENT,
@@ -17,7 +17,7 @@ import {
   updateConnection,
   type ConnectionView,
   type SaveConnectionInput,
-} from './api'
+} from './connections'
 
 const input: SaveConnectionInput = {
   channel: 'email_smtp',

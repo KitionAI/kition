@@ -2,7 +2,7 @@ import { act, createElement, useEffect } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import type { WorkflowDefinition } from '@/features/workflow/api'
+import type { WorkflowDefinition } from '@/api/workflows'
 
 import { useWorkflowDraftState } from './useWorkflowDraftState'
 

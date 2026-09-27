@@ -1,4 +1,17 @@
-import request from '@/api/request'
+/**
+ * Form sync orchestration: decides whether a form lives as a document-embedded
+ * local draft or as a published runtime workflow, and keeps the two in step.
+ * HTTP calls and contract types come from src/api/formSync.ts.
+ */
+import {
+  createRemoteFormSyncWorkflow,
+  listRemoteFormSyncWorkflows,
+  syncRemoteFormSyncWorkflow,
+  updateRemoteFormSyncWorkflow,
+  type CreateFormSyncWorkflowInput,
+  type FormSyncWorkflow,
+  type UpdateFormSyncWorkflowInput,
+} from '@/api/formSync'
 import {
   getDataDocument,
   listDataDocuments,
@@ -12,91 +25,18 @@ import {
   type LocalFormSyncWorkflow,
 } from './localDrafts'
 
-export type FormSyncFieldType =
-  | 'text'
-  | 'email'
-  | 'phone'
-  | 'number'
-  | 'datetime'
-  | 'select'
-  | 'long_text'
-
-export type FormSyncField = {
-  key: string
-  label: string
-  type: FormSyncFieldType
-  required: boolean
-  options?: string[]
-}
-
-export type FormSyncTarget = {
-  document_id: string
-  table_id: string
-  field_mappings: Array<{
-    source_key: string
-    target_field_title: string
-  }>
-  defaults?: Array<{
-    target_field_title: string
-    value: unknown
-  }>
-  submission_id_field_title?: string
-  submitted_at_field_title?: string
-}
-
-export type FormSyncSchedule = {
-  enabled: boolean
-  interval_minutes: number
-}
-
-export type FormSyncWorkflow = {
-  id: string
-  name: string
-  template_id: string
-  remote_source_id: string
-  public_url: string
-  published: boolean
-  fields: FormSyncField[]
-  target: FormSyncTarget
-  schedule: FormSyncSchedule
-  status: 'active' | 'paused' | 'syncing' | 'error'
-  last_sync_at?: string
-  last_error?: string
-  synced_submissions: number
-  created_at: string
-  updated_at: string
-}
-
-export type CreateFormSyncWorkflowInput = {
-  name: string
-  template_id: string
-  fields: FormSyncField[]
-  target: FormSyncTarget
-  schedule: FormSyncSchedule
-  published?: boolean
-}
-
-export type UpdateFormSyncWorkflowInput = Partial<Pick<
+export type {
   CreateFormSyncWorkflowInput,
-  'name' | 'fields' | 'target' | 'schedule' | 'published'
->>
-
-export type FormSyncResult = {
-  workflow_id: string
-  imported: number
-  skipped: number
-  failed: number
-  started_at: string
-  finished_at: string
-}
+  FormSyncField,
+  FormSyncFieldType,
+  FormSyncWorkflow,
+  UpdateFormSyncWorkflowInput,
+} from '@/api/formSync'
 
 export async function listFormSyncWorkflows() {
   const [documents, remoteWorkflows] = await Promise.all([
     listDataDocuments().then((response) => response.items || []),
-    request
-      .get<{ items?: FormSyncWorkflow[] }>('/v1/form-sync/workflows', { suppressErrorMessage: true })
-      .then((response) => response.items || [])
-      .catch(() => []),
+    listRemoteFormSyncWorkflows(),
   ])
   const localWorkflows = readDocumentFormSyncWorkflows(documents)
   const aliasedRemoteIds = new Set(
@@ -110,7 +50,7 @@ export async function listFormSyncWorkflows() {
 
 export async function createFormSyncWorkflow(input: CreateFormSyncWorkflowInput) {
   if (input.published) {
-    const workflow = await request.post<FormSyncWorkflow>('/v1/form-sync/workflows', input)
+    const workflow = await createRemoteFormSyncWorkflow(input)
     emitFormSyncChanged(workflow.id)
     return workflow
   }
@@ -135,10 +75,7 @@ export async function createFormSyncWorkflow(input: CreateFormSyncWorkflowInput)
 export async function updateFormSyncWorkflow(id: string, input: UpdateFormSyncWorkflowInput) {
   const localWorkflow = await findLocalWorkflow(id)
   if (!localWorkflow) {
-    const workflow = await request.patch<FormSyncWorkflow>(
-      `/v1/form-sync/workflows/${encodeURIComponent(id)}`,
-      input,
-    )
+    const workflow = await updateRemoteFormSyncWorkflow(id, input)
     emitFormSyncChanged(workflow.id)
     return workflow
   }
@@ -153,14 +90,8 @@ export async function updateFormSyncWorkflow(id: string, input: UpdateFormSyncWo
   let remoteWorkflow: FormSyncWorkflow
   try {
     remoteWorkflow = localWorkflow.remote_workflow_id
-      ? await request.patch<FormSyncWorkflow>(
-          `/v1/form-sync/workflows/${encodeURIComponent(localWorkflow.remote_workflow_id)}`,
-          input,
-        )
-      : await request.post<FormSyncWorkflow>(
-          '/v1/form-sync/workflows',
-          toCreateInput(mergedWorkflow, true),
-        )
+      ? await updateRemoteFormSyncWorkflow(localWorkflow.remote_workflow_id, input)
+      : await createRemoteFormSyncWorkflow(toCreateInput(mergedWorkflow, true))
   } catch (error) {
     if (!localWorkflow.remote_workflow_id && input.published === true && isMissingFormSyncRoute(error)) {
       throw new Error('Publishing forms requires a runtime with form sync support. Your local draft is safe.')
@@ -191,7 +122,7 @@ export async function syncFormSyncWorkflow(id: string) {
   if (localWorkflow && !localWorkflow.remote_workflow_id) {
     throw new Error('Publish the form before syncing submissions.')
   }
-  return request.post<FormSyncResult>(`/v1/form-sync/workflows/${encodeURIComponent(remoteId)}/sync`, {})
+  return syncRemoteFormSyncWorkflow(remoteId)
 }
 
 export async function deleteFormSyncWorkflow(id: string) {

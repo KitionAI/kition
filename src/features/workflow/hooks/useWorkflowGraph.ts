@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react'
-import type { WorkflowDefinition, WorkflowNode, WorkflowEdge } from '@/features/workflow/api'
+import type { WorkflowDefinition, WorkflowNode, WorkflowEdge } from '@/api/workflows'
 
 /**
  * useWorkflowGraph normalises an WorkflowDefinition into a single

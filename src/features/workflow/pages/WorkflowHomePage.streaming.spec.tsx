@@ -9,13 +9,13 @@ import {
   listWorkflows,
   patchWorkflow,
   type WorkflowDefinition,
-} from '@/features/workflow/api'
-import { listChannels, listConnections } from '@/features/connections/api'
+} from '@/api/workflows'
+import { listChannels, listConnections } from '@/api/connections'
 import { STREAMING_WORKFLOW_ID, withStreamingId } from '@/features/workflow/lib/aiBuildPreview'
 import type { StreamingPreview } from './WorkflowHomePage'
 import { WorkflowHomePage } from './WorkflowHomePage'
 
-vi.mock('@/features/workflow/api', () => ({
+vi.mock('@/api/workflows', () => ({
   listWorkflows: vi.fn(),
   patchWorkflow: vi.fn(),
   deleteWorkflow: vi.fn(),
@@ -24,7 +24,7 @@ vi.mock('@/features/workflow/api', () => ({
   validateWorkflow: vi.fn().mockResolvedValue([]),
 }))
 
-vi.mock('@/features/connections/api', () => ({
+vi.mock('@/api/connections', () => ({
   listChannels: vi.fn(),
   listConnections: vi.fn(),
   createConnection: vi.fn(),

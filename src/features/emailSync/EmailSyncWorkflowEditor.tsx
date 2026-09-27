@@ -13,7 +13,7 @@ import {
   emailProviderUsernameKey,
 } from '@/features/emailProviders/emailProviderAccount'
 import { getSecureValue, setSecureValue } from '@/services/desktop'
-import { listEmailSyncWorkflows, type EmailSyncWorkflow } from './api'
+import { listEmailSyncWorkflows, type EmailSyncWorkflow } from '@/api/emailSync'
 import { EmailSyncSettingsPanel } from './EmailSyncSettingsPanel'
 
 export function EmailSyncWorkflowEditor({

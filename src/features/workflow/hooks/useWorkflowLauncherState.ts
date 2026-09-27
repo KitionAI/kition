@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 
-import { createWorkflow } from '@/features/workflow/api'
+import { createWorkflow } from '@/api/workflows'
 import { createWorkflowFromTemplate } from '@/features/workflow/lib/createWorkflowFromTemplate'
 import type { WorkflowTemplate } from '@/features/workflow/templates'
 

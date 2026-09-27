@@ -1,4 +1,4 @@
-import type { CreateWorkflowInput, WorkflowPatch } from '@/features/workflow/api'
+import type { CreateWorkflowInput, WorkflowPatch } from '@/api/workflows'
 import type { BodyPart, BodyTemplate, TableSchema } from '@/features/workflow/components/BodyTemplateEditor.types'
 import { detectBrowserTimezone } from '@/features/workflow/components/ScheduledTriggerPropertiesPanel'
 import type {

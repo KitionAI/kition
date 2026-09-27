@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { expectMatchesContract } from '@/test/contracts'
 import request from './request'
 import {
   cancelDataImportJob,
@@ -60,6 +61,7 @@ describe('data import API', () => {
     await cancelDataImportJob('job/1')
 
     expect(request.post).toHaveBeenCalledWith('/v1/data-imports', expect.any(Object))
+    expectMatchesContract(vi.mocked(request.post).mock.calls[0][1], 'data-import', 'execute_request')
     expect(request.get).toHaveBeenCalledWith('/v1/data-imports/job%2F1')
     expect(request.delete).toHaveBeenCalledWith('/v1/data-imports/job%2F1')
   })

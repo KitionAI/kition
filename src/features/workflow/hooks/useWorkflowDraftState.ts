@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
 
-import type { WorkflowDefinition } from '@/features/workflow/api'
+import type { WorkflowDefinition } from '@/api/workflows'
 import {
   type ValidationErrors,
   type WorkflowDraft,

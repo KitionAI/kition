@@ -67,6 +67,9 @@ jobs:
       - name: Module boundary ratchet
         run: pnpm run check:deps
 
+      - name: Generated contract types are current
+        run: pnpm run check:contracts
+
       - name: Audit tracked secrets and dependencies
         run: pnpm run check:security
 

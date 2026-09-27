@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import type { EmailSyncWorkflow } from './api'
+import type { EmailSyncWorkflow } from '@/api/emailSync'
 import {
   filterEmailSyncWorkflowsByTablePath,
   normalizeEmailSyncTablePath,

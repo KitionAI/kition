@@ -10,11 +10,11 @@ import {
   patchWorkflow,
   validateWorkflow,
   type WorkflowDefinition,
-} from '@/features/workflow/api'
-import { listChannels, listConnections } from '@/features/connections/api'
+} from '@/api/workflows'
+import { listChannels, listConnections } from '@/api/connections'
 import { WorkflowHomePage } from './WorkflowHomePage'
 
-vi.mock('@/features/workflow/api', () => ({
+vi.mock('@/api/workflows', () => ({
   listWorkflows: vi.fn(),
   patchWorkflow: vi.fn(),
   deleteWorkflow: vi.fn(),
@@ -23,7 +23,7 @@ vi.mock('@/features/workflow/api', () => ({
   validateWorkflow: vi.fn().mockResolvedValue([]),
 }))
 
-vi.mock('@/features/connections/api', () => ({
+vi.mock('@/api/connections', () => ({
   listChannels: vi.fn(),
   listConnections: vi.fn(),
   createConnection: vi.fn(),
@@ -508,7 +508,7 @@ describe('WorkflowHomePage', () => {
     // template draft the user hadn't asked for. The route now resolves
     // no-context /workflow/new?mode=ai to the AI prompt page directly, so
     // we just navigate.
-    const { createWorkflow } = await import('@/features/workflow/api')
+    const { createWorkflow } = await import('@/api/workflows')
     const { openWorkflowRoute } = await import('@/features/workflow/lib/openWorkflowRoute')
     const assistantEvents: CustomEvent[] = []
     const listener = (e: Event) => assistantEvents.push(e as CustomEvent)

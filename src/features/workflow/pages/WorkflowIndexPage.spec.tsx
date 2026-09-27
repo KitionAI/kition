@@ -2,7 +2,7 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { listWorkflowRuns, listWorkflows } from '@/features/workflow/api'
+import { listWorkflowRuns, listWorkflows } from '@/api/workflows'
 import { useWorkflowLauncherState } from '@/features/workflow/hooks/useWorkflowLauncherState'
 import { useWorkflowTableLabels } from '@/features/workflow/hooks/useWorkflowTableLabels'
 import { ensureOnboardingWorkflow } from '@/features/workflow/lib/ensureOnboardingWorkflow'
@@ -13,7 +13,7 @@ import { WorkflowIndexPage } from './WorkflowIndexPage'
 
 ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true
 
-vi.mock('@/features/workflow/api', () => ({
+vi.mock('@/api/workflows', () => ({
   WORKFLOW_CHANGED_EVENT: 'kition:workflow:changed',
   listWorkflowRuns: vi.fn(),
   listWorkflows: vi.fn(),

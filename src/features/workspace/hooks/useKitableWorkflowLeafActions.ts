@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { deleteWorkflow, patchWorkflow } from '@/features/workflow/api'
+import { deleteWorkflow, patchWorkflow } from '@/api/workflows'
 import { deleteFormSyncWorkflow, updateFormSyncWorkflow } from '@/features/formSync/api'
 import { useConfirm } from '@/components/confirm'
 import type { KitableChildrenIndex } from '@/features/workspace/hooks/useKitableChildrenIndex'

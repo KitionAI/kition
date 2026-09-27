@@ -6,7 +6,7 @@ vi.mock('@/api/dataDocuments', () => ({
   listDataDocuments: vi.fn(),
 }))
 
-vi.mock('@/features/workflow/api', () => ({
+vi.mock('@/api/workflows', () => ({
   listWorkflows: vi.fn(),
 }))
 
@@ -15,7 +15,7 @@ vi.mock('@/features/formSync/api', () => ({
 }))
 
 import { listDataDocuments } from '@/api/dataDocuments'
-import { listWorkflows } from '@/features/workflow/api'
+import { listWorkflows } from '@/api/workflows'
 import { listFormSyncWorkflows } from '@/features/formSync/api'
 
 import { useKitableChildrenIndex } from './useKitableChildrenIndex'

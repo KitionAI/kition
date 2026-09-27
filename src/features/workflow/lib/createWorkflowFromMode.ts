@@ -1,4 +1,4 @@
-import { createWorkflow, patchWorkflow, type WorkflowDefinition } from '@/features/workflow/api'
+import { createWorkflow, patchWorkflow, type WorkflowDefinition } from '@/api/workflows'
 import { listDataDocuments } from '@/api/dataDocuments'
 import { createWorkflowFromTemplate } from '@/features/workflow/lib/createWorkflowFromTemplate'
 import type { WorkflowRouteContext } from '@/features/workflow/lib/openWorkflowRoute'

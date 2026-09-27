@@ -19,7 +19,7 @@ import {
   updateConnection,
   type ChannelSchema,
   type ConnectionView,
-} from '@/features/connections/api'
+} from '@/api/connections'
 import type { SharedEmailProviderAccount } from '@/features/emailProviders/emailProviderAccount'
 
 type ConnectionFormState = {

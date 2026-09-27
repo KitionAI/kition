@@ -4,13 +4,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button, Input, PasswordInput } from '@/components/ui'
 import { ConnectionsSettingsPanel } from '@/features/connections/ConnectionsSettingsPanel'
 import { useConfirm } from '@/components/confirm'
-import { deleteConnection, type ConnectionView } from '@/features/connections/api'
+import { deleteConnection, type ConnectionView } from '@/api/connections'
 import { ProviderSwitch } from '@/features/emailSync/EmailSyncSettingsPanel'
 import {
   deleteEmailSyncWorkflow,
   listEmailSyncWorkflows,
   type EmailSyncWorkflow,
-} from '@/features/emailSync/api'
+} from '@/api/emailSync'
 import { SettingsPaneHeader } from '@/features/settings/primitives'
 import { cn } from '@/lib/utils'
 import { getSecureValue, setSecureValue } from '@/services/desktop'

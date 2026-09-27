@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { testWorkflowNode } from '@/features/workflow/api'
+import { testWorkflowNode } from '@/api/workflows'
 
 export interface NodeTestResult {
   ok: boolean

@@ -1,6 +1,6 @@
 import { ChevronRight, LoaderCircle } from 'lucide-react'
 
-import type { EmailSyncRun, EmailSyncWorkflow } from './api'
+import type { EmailSyncRun, EmailSyncWorkflow } from '@/api/emailSync'
 
 export function EmailSyncWorkflowTableRow({
   workflow,

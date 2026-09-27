@@ -5,7 +5,7 @@ import { Button } from '@/components/ui'
 import { NodeCard } from '@/features/workflow/canvas/NodeCard'
 import { WorkflowCanvas } from '@/features/workflow/canvas/WorkflowCanvas'
 import { PropertiesDrawer } from '@/features/workflow/drawer/PropertiesDrawer'
-import type { EmailSyncWorkflow } from './api'
+import type { EmailSyncWorkflow } from '@/api/emailSync'
 import { EmailSyncTriggerPanel } from './EmailSyncTriggerPanel'
 import { EmailSyncWorkflowEditor } from './EmailSyncWorkflowEditor'
 

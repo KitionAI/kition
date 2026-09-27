@@ -4,7 +4,7 @@ import {
   patchWorkflow,
   type CreateWorkflowInput,
   type WorkflowDefinition,
-} from '@/features/workflow/api'
+} from '@/api/workflows'
 import { createWorkflowFromTemplate } from '@/features/workflow/lib/createWorkflowFromTemplate'
 import { fetchWorkflowTableSchema } from '@/features/workflow/lib/workflowTableSchema'
 import { getBuiltinTemplates } from '@/features/workflow/templates'

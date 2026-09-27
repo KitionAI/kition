@@ -4,11 +4,11 @@ const requestMock = vi.hoisted(() => ({
   post: vi.fn(),
 }))
 
-vi.mock('@/api/request', () => ({
+vi.mock('./request', () => ({
   default: requestMock,
 }))
 
-import { createWorkflow } from '@/features/workflow/api'
+import { createWorkflow } from './workflows'
 
 afterEach(() => {
   requestMock.post.mockReset()

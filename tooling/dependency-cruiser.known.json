@@ -15408,42 +15408,8 @@
   {
     "type": "dependency",
     "from": "src/features/emailProviders/EmailProvidersPane.tsx",
-    "to": "src/features/connections/api.ts",
-    "unresolvedTo": "@/features/connections/api",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/emailProviders/EmailProvidersPane.tsx",
     "to": "src/features/connections/ConnectionsSettingsPanel.tsx",
     "unresolvedTo": "@/features/connections/ConnectionsSettingsPanel",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/emailProviders/EmailProvidersPane.tsx",
-    "to": "src/features/emailSync/api.ts",
-    "unresolvedTo": "@/features/emailSync/api",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",
@@ -16400,41 +16366,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/workflow/lib/workflowDraft.ts",
-    "to": "src/features/connections/api.ts",
-    "unresolvedTo": "@/features/connections/api",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workflow/pages/WorkflowHomePage.tsx",
-    "to": "src/features/connections/api.ts",
-    "unresolvedTo": "@/features/connections/api",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/features/workflow/pages/WorkflowHomePage.tsx",
     "to": "src/features/connections/ConnectionsSettingsPanel.tsx",
     "unresolvedTo": "@/features/connections/ConnectionsSettingsPanel",
@@ -16460,24 +16391,6 @@
       "aliased-tsconfig",
       "aliased-tsconfig-paths",
       "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workflow/pages/WorkflowIndexPage.tsx",
-    "to": "src/features/emailSync/api.ts",
-    "unresolvedTo": "@/features/emailSync/api",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
       "import"
     ],
     "rule": {
@@ -17659,23 +17572,6 @@
   {
     "type": "dependency",
     "from": "src/features/workspace/components/WorkspaceScreen.tsx",
-    "to": "src/features/workflow/api.ts",
-    "unresolvedTo": "@/features/workflow/api",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceScreen.tsx",
     "to": "src/features/workflow/components/BodyTemplateEditor.types.ts",
     "unresolvedTo": "@/features/workflow/components/BodyTemplateEditor.types",
     "dependencyTypes": [
@@ -17987,43 +17883,9 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/workspace/hooks/useKitableChildrenIndex.ts",
-    "to": "src/features/workflow/api.ts",
-    "unresolvedTo": "@/features/workflow/api",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/features/workspace/hooks/useKitableWorkflowLeafActions.ts",
     "to": "src/features/formSync/api.ts",
     "unresolvedTo": "@/features/formSync/api",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/hooks/useKitableWorkflowLeafActions.ts",
-    "to": "src/features/workflow/api.ts",
-    "unresolvedTo": "@/features/workflow/api",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",

@@ -1,4 +1,35 @@
+/**
+ * Email inbox sync workflows. Contract: contracts/runtime/email-sync.schema.json.
+ * Shapes come from the generated contract types; this module only adds the
+ * HTTP calls and the window events other surfaces listen to.
+ */
 import request from '@/api/request'
+import type {
+  EmailSyncConnection,
+  EmailSyncSaveInput,
+  EmailSyncSchedule,
+  EmailSyncSyncResult,
+  EmailSyncSyncRun,
+  EmailSyncTarget,
+  EmailSyncTlsMode,
+  EmailSyncWorkflow,
+} from '@/api/generated'
+
+export type { EmailSyncConnection, EmailSyncSchedule, EmailSyncTarget, EmailSyncTlsMode, EmailSyncWorkflow }
+export type EmailSyncStatus = EmailSyncWorkflow['status']
+export type SaveEmailSyncWorkflowInput = EmailSyncSaveInput
+export type EmailSyncRunResult = EmailSyncSyncResult
+export type EmailSyncRun = EmailSyncSyncRun
+export type EmailSyncRunMode = EmailSyncRun['mode']
+export type EmailSyncRunStatus = EmailSyncRun['status']
+
+/** Response of the connection test endpoint. Not yet part of the public contract. */
+export type EmailSyncTestResult = {
+  ok: boolean
+  mailbox?: string
+  message?: string
+  error_code?: string
+}
 
 export const EMAIL_SYNC_CHANGED_EVENT = 'kition:email-sync:changed'
 
@@ -14,94 +45,6 @@ function notifyWorkspaceReload(preferredPath: string) {
       detail: { preferredPath, treeOnly: true },
     }))
   }
-}
-
-export type EmailSyncTlsMode = 'tls' | 'starttls' | 'plain'
-export type EmailSyncStatus = 'active' | 'paused' | 'syncing' | 'error'
-
-export type EmailSyncConnection = {
-  host: string
-  port: number
-  tls_mode: EmailSyncTlsMode
-  username: string
-  mailbox: string
-}
-
-export type EmailSyncTarget = {
-  table_path: string
-  table_id?: number
-  content_folder: string
-  attachment_folder: string
-}
-
-export type EmailSyncSchedule = {
-  enabled: boolean
-  interval_minutes: number
-}
-
-export type EmailSyncWorkflow = {
-  id: string
-  name: string
-  connection: EmailSyncConnection
-  target: EmailSyncTarget
-  schedule: EmailSyncSchedule
-  include_attachments: boolean
-  status: EmailSyncStatus
-  last_sync_at?: string
-  last_error?: string
-  synced_messages: number
-  created_at: string
-  updated_at: string
-}
-
-export type SaveEmailSyncWorkflowInput = {
-  name: string
-  connection: EmailSyncConnection
-  password?: string
-  target: EmailSyncTarget
-  schedule: EmailSyncSchedule
-  include_attachments: boolean
-}
-
-export type EmailSyncTestResult = {
-  ok: boolean
-  mailbox?: string
-  message?: string
-  error_code?: string
-}
-
-export type EmailSyncRunResult = {
-  workflow_id: string
-  imported: number
-  updated: number
-  skipped: number
-  failed: number
-  table_path: string
-  started_at: string
-  finished_at: string
-}
-
-export type EmailSyncRunMode = 'incremental' | 'full' | 'scheduled'
-export type EmailSyncRunStatus = 'queued' | 'scanning' | 'running' | 'completed' | 'failed' | 'canceling' | 'canceled' | 'interrupted'
-
-export type EmailSyncRun = {
-  id: string
-  workflow_id: string
-  mode: EmailSyncRunMode
-  status: EmailSyncRunStatus
-  discovered_messages: number
-  processed_messages: number
-  imported: number
-  updated: number
-  skipped: number
-  failed: number
-  current_batch: number
-  table_path: string
-  error?: string
-  started_at?: string
-  finished_at?: string
-  created_at: string
-  updated_at: string
 }
 
 export function listEmailSyncWorkflows() {

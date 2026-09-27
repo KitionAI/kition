@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
-import type { ConnectionView } from '@/features/connections/api'
+import type { ConnectionView } from '@/api/connections'
 import type { GraphNode } from '@/features/workflow/hooks/useWorkflowGraph'
-import type { WorkflowDefinition } from '@/features/workflow/api'
+import type { WorkflowDefinition } from '@/api/workflows'
 
 import {
   actionInlineError,

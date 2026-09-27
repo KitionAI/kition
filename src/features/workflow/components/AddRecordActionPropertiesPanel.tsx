@@ -5,7 +5,7 @@ import { BodyTemplateEditor } from './BodyTemplateEditor'
 import type { BodyTemplate, TableSchema } from './BodyTemplateEditor.types'
 import { TriggerTableSelect, type TriggerTableOption } from './TriggerTableSelect'
 import { DrawerField, DrawerSection } from '../drawer/PropertiesDrawer'
-import type { WorkflowAddRecordConfig } from '../api'
+import type { WorkflowAddRecordConfig } from '@/api/workflows'
 
 /**
  * AddRecordActionPropertiesPanel edits the `add_record` action's target

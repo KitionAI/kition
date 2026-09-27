@@ -33,7 +33,7 @@ import {
   updateEmailSyncWorkflow,
   type EmailSyncRun,
   type EmailSyncWorkflow,
-} from './api'
+} from '@/api/emailSync'
 
 const activeStatuses = new Set<EmailSyncRun['status']>(['queued', 'scanning', 'running', 'canceling'])
 

@@ -7,7 +7,7 @@ import type {
   WorkflowTransformRecordConfig,
   WorkflowTransformOperation,
   WorkflowUpdateRecordConfig,
-} from '@/features/workflow/api'
+} from '@/api/workflows'
 import { DrawerField, DrawerSection } from '@/features/workflow/drawer/PropertiesDrawer'
 
 import { BodyTemplateEditor } from './BodyTemplateEditor'

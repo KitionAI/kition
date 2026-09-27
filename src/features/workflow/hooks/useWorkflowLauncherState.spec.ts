@@ -2,14 +2,14 @@ import { act, createElement, useEffect } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('@/features/workflow/api', () => ({
+vi.mock('@/api/workflows', () => ({
   createWorkflow: vi.fn(),
 }))
 vi.mock('@/features/workflow/lib/createWorkflowFromTemplate', () => ({
   createWorkflowFromTemplate: vi.fn(),
 }))
 
-import { createWorkflow } from '@/features/workflow/api'
+import { createWorkflow } from '@/api/workflows'
 import { createWorkflowFromTemplate } from '@/features/workflow/lib/createWorkflowFromTemplate'
 
 import { useWorkflowLauncherState } from './useWorkflowLauncherState'

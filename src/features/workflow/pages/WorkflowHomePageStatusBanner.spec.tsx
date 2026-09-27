@@ -2,7 +2,7 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { WorkflowDefinition } from '@/features/workflow/api'
+import type { WorkflowDefinition } from '@/api/workflows'
 import type { ValidationErrors, WorkflowDraft } from '@/features/workflow/lib/workflowDraft'
 import { StatusBannerSlot } from './WorkflowHomePageStatusBanner'
 

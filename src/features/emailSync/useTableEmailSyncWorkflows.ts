@@ -9,7 +9,7 @@ import {
   type EmailSyncRun,
   type EmailSyncWorkflow,
   updateEmailSyncWorkflow,
-} from './api'
+} from '@/api/emailSync'
 
 export const LEGACY_DEFAULT_EMAIL_SYNC_TABLE_PATH = 'Mail/Emails.kitable'
 

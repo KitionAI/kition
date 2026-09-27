@@ -15,7 +15,7 @@ import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } fro
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui'
 import { ConnectionModal, formFromConnection } from '@/features/connections/ConnectionsSettingsPanel'
-import { listChannels, listConnections, type ChannelSchema, type ConnectionView } from '@/features/connections/api'
+import { listChannels, listConnections, type ChannelSchema, type ConnectionView } from '@/api/connections'
 import {
   createWorkflow,
   deleteWorkflow,
@@ -24,7 +24,7 @@ import {
   patchWorkflow,
   type WorkflowAddRecordConfig,
   type WorkflowDefinition,
-} from '@/features/workflow/api'
+} from '@/api/workflows'
 import { WORKFLOW_ENABLED_CHANGED_EVENT } from '@/features/workflow/lib/workflowEvents'
 import {
   actionInlineError,
@@ -128,7 +128,7 @@ import {
 } from '@/features/workflow/components/FilterPropertiesPanel'
 import { filtersForPatch, normaliseGraph, type GraphNode } from '@/features/workflow/hooks/useWorkflowGraph'
 import { useWorkflowValidation } from '@/features/workflow/hooks/useWorkflowValidation'
-import { dryRunFilter, retryWorkflowRun } from '@/features/workflow/api'
+import { dryRunFilter, retryWorkflowRun } from '@/api/workflows'
 
 const inputClassName = 'w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30 disabled:bg-muted/40 disabled:text-muted-foreground'
 

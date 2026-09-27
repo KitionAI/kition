@@ -2,38 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { resolveApiURL } from '@/services/desktop'
 
-export interface WorkflowRunRecord {
-  id: string
-  workflowId: string
-  triggerEvent: string
-  recordId: string
-  startedAt: string
-  finishedAt: string
-  status: 'ok' | 'error' | 'skipped'
-  to: string
-  subject: string
-  body: string
-  error?: string
-  /** Server-side hint: when a run errors, which canvas node caused it.
-   *  Surfaced by the Run history row's "View node" link so the user can
-   *  jump straight to the offending step. */
-  failingNodeId?: string
-  /** When status="skipped", a short reason ("Filter X evaluated to false")
-   *  the UI can render in the row. */
-  skipReason?: string
-  /** Per-node outcomes from the multi-action executor. Surfaced in the
-   *  expanded detail panel as a small step list. Empty for legacy single-
-   *  action runs. */
-  nodeOutcomes?: Array<{
-    nodeId: string
-    kind: string
-    status: string
-    error?: string
-    detail?: string
-    startedAt?: string
-    finishedAt?: string
-  }>
-}
+import type { WorkflowRunRecord } from '@/api/workflows'
+
+export type { WorkflowRunRecord }
 
 export interface UseWorkflowRunsResult {
   status: 'idle' | 'loading' | 'done' | 'error'

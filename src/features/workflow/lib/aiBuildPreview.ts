@@ -1,4 +1,4 @@
-import type { WorkflowDefinition, WorkflowNode, WorkflowEdge } from '@/features/workflow/api'
+import type { WorkflowDefinition, WorkflowNode, WorkflowEdge } from '@/api/workflows'
 import type { NodeStatus } from '@/features/workflow/canvas/NodeCard'
 import type { BodyTemplate, TableSchema } from '@/features/workflow/components/BodyTemplateEditor.types'
 import type { WorkflowBuildEvent, WorkflowBuildStatus } from '@/features/workflow/types'

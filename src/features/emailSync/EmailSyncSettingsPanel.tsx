@@ -30,7 +30,7 @@ import {
   type EmailSyncTlsMode,
   type EmailSyncWorkflow,
   type SaveEmailSyncWorkflowInput,
-} from './api'
+} from '@/api/emailSync'
 import type { SharedEmailProviderAccount } from '@/features/emailProviders/emailProviderAccount'
 import { normalizeEmailSyncTablePath } from './useTableEmailSyncWorkflows'
 import { EmailSyncTableSelect } from './EmailSyncTableSelect'

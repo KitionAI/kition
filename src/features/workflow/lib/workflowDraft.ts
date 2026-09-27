@@ -1,6 +1,6 @@
 import type {
   ConnectionView,
-} from '@/features/connections/api'
+} from '@/api/connections'
 import type { NodeStatus } from '@/features/workflow/canvas/NodeCard'
 import type {
   BodyPart,
@@ -14,7 +14,7 @@ import type {
   WorkflowUpdateRecordConfig,
   WorkflowDefinition,
   WorkflowPatch,
-} from '@/features/workflow/api'
+} from '@/api/workflows'
 import type { GraphNode } from '@/features/workflow/hooks/useWorkflowGraph'
 import type { WorkflowRunRecord } from '@/features/workflow/hooks/useWorkflowRuns'
 import { STREAMING_WORKFLOW_ID } from '@/features/workflow/lib/aiBuildPreview'

@@ -7,11 +7,11 @@ import {
   listEmailSyncRuns,
   listEmailSyncWorkflows,
   startEmailSyncRun,
-} from './api'
+} from '@/api/emailSync'
 import { EmailSyncWorkflowPage } from './EmailSyncWorkflowPage'
 import { openDataDocumentByPath } from '@/api/dataDocuments'
 
-vi.mock('./api', () => ({
+vi.mock('@/api/emailSync', () => ({
   EMAIL_SYNC_CHANGED_EVENT: 'kition:email-sync:changed',
   cancelEmailSyncRun: vi.fn(),
   deleteEmailSyncWorkflow: vi.fn(),

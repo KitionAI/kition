@@ -8,10 +8,10 @@ import {
   listConnections,
   testConnection,
   updateConnection,
-} from '@/features/connections/api'
+} from '@/api/connections'
 import { ConnectionModal, ConnectionsSettingsPanel } from './ConnectionsSettingsPanel'
 
-vi.mock('@/features/connections/api', () => ({
+vi.mock('@/api/connections', () => ({
   listChannels: vi.fn(),
   listConnections: vi.fn(),
   createConnection: vi.fn(),

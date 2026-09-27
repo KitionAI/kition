@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 
-import type { NodeIssue, WorkflowPatch } from '@/features/workflow/api'
-import { validateWorkflow } from '@/features/workflow/api'
+import type { NodeIssue, WorkflowPatch } from '@/api/workflows'
+import { validateWorkflow } from '@/api/workflows'
 
 /**
  * useWorkflowValidation polls the server-side validator for the

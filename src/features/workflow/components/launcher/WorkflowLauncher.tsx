@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { createWorkflow } from '@/features/workflow/api'
+import { createWorkflow } from '@/api/workflows'
 import { createWorkflowFromTemplate } from '@/features/workflow/lib/createWorkflowFromTemplate'
 import { openWorkflowHome, type WorkflowRouteContext } from '@/features/workflow/lib/openWorkflowRoute'
 import type { TableSchema } from '@/features/workflow/components/BodyTemplateEditor.types'

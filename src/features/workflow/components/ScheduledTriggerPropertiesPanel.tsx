@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { previewSchedule } from '../api'
+import { previewSchedule } from '@/api/workflows'
 import { DrawerField, DrawerSection } from '../drawer/PropertiesDrawer'
 
 /**
