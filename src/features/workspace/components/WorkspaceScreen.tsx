@@ -15,14 +15,10 @@ import { useKitableRegistration } from '@/features/workspace/hooks/useKitableReg
 import {
   buildKitableTableVirtualPath,
   buildPrivateSectionTreeNodes,
-  parseKitableDashboardVirtualPath,
-  parseKitableWorkflowVirtualPath,
-  parseKitableTableVirtualPath,
   renameWorkspaceTreeBranchMetadata,
   replaceWorkspaceTreeDocumentItem,
   updateWorkspaceTreeDocumentItem,
 } from '@/features/workspace/lib/workspaceTree'
-import { routeKitableOpenPath } from './workspaceScreenTabRouting'
 import { renameDataDocumentByPath } from '@/api/dataDocuments'
 import type { WorkflowRouteContext } from '@/features/workflow/public'
 import type { TableSchema } from '@/features/workflow/components/BodyTemplateEditor.types'
@@ -74,6 +70,7 @@ import { useWorkspaceAgentChatEntryPoints } from '@/features/workspace/hooks/use
 import { useWorkspaceTabControllers } from '@/features/workspace/hooks/useWorkspaceTabControllers'
 import { WorkspaceDialogs } from '@/features/workspace/components/WorkspaceDialogs'
 import { WorkspaceAgentPane } from '@/features/workspace/components/WorkspaceAgentPane'
+import { useWorkspaceSidebarNavigation } from '@/features/workspace/hooks/useWorkspaceSidebarNavigation'
 import { useWorkspaceBoardCreation } from '@/features/workspace/hooks/useWorkspaceBoardCreation'
 import { useWhiteboardImageGeneration } from '@/features/workspace/hooks/useWhiteboardImageGeneration'
 import { setPinnedTabsWorkspace } from '@/features/document/editor/hooks/usePinnedTabs'
@@ -86,9 +83,7 @@ import {
   type WorkspaceBrowserTabPayload,
 } from '@/features/workspace/lib/browserTabs'
 import {
-  buildKitableWorkspaceTabId,
   formatWorkspaceTime,
-  getKitableWorkspaceTabTitle,
   getWorkspaceItemTitle,
   isEditableWorkspaceFormat,
   remapWorkspaceBranchPath,
@@ -1184,6 +1179,19 @@ export function WorkspaceScreen({
     if (path) openKitableContainer(path)
   }, [kitableChildrenIndex, openKitableContainer, refreshWorkspaceDocuments])
 
+  const { openSidebarPath } = useWorkspaceSidebarNavigation({
+    kitableChildrenIndex,
+    upsertWorkspaceTab,
+    setActiveResourcePath,
+    workflowOpen,
+    onCloseWorkflow,
+    onCloseProfile,
+    openDesign: design.open,
+    openBoard,
+    openKitableContainer,
+    openDocument,
+  })
+
   return (
     <>
       <WorkspaceTopbar
@@ -1467,71 +1475,7 @@ export function WorkspaceScreen({
                 onCloseProfile?.()
                 boardCreation.openTemplateDialog(createMenuFolder)
               },
-              onOpen: (path) => {
-                onCloseProfile?.()
-                // Mirror the tab strip's onActivate: when the full-screen
-                // /workflow route is up it masks the editor pane, so a
-                // sidebar click into a non-workflow node only flips the
-                // active tab — the user sees no change. Close the route
-                // for anything that isn't itself a workflow tree node.
-                const opensWorkflowTab = path.startsWith('workflows://') || path.startsWith('workflow://')
-                if (workflowOpen && !opensWorkflowTab) {
-                  onCloseWorkflow?.()
-                }
-                if (path.toLowerCase().endsWith('.kidesign')) {
-                  design.open(path)
-                  return
-                }
-                if (path.toLowerCase().endsWith('.kiboard')) {
-                  openBoard(path)
-                  return
-                }
-                if (path.toLowerCase().endsWith('.kitable')) {
-                  openKitableContainer(path)
-                  return
-                }
-                if (routeKitableOpenPath(path, kitableChildrenIndex, upsertWorkspaceTab)) {
-                  // Sidebar highlight keys off activeResourcePath. The
-                  // tab opener doesn't know the virtual path it came from
-                  // (it sees kitablePath + tableId), so push the virtual
-                  // path here too — otherwise the previous document
-                  // remains visually selected in the file tree.
-                  const tableResource = parseKitableTableVirtualPath(path)
-                  const dashboardResource = parseKitableDashboardVirtualPath(path)
-                  setActiveResourcePath(
-                    tableResource?.kitablePath || dashboardResource?.kitablePath || path,
-                  )
-                  return
-                }
-                // Virtual "Workflows" leaf under each .kitable file is
-                // synthesized by workspaceTree — it carries a sentinel
-                // path that routes through the DocTab system instead of
-                // touching the filesystem.
-                if (path.startsWith('workflows://')) {
-                  const kitablePath = path.slice('workflows://'.length)
-                  const tabId = kitablePath ? buildKitableWorkspaceTabId(kitablePath) : 'workflow:home'
-                  const title = kitablePath ? getKitableWorkspaceTabTitle(kitablePath) : t('tabs.workflowsTitle')
-                  upsertWorkspaceTab({ id: tabId, type: 'workflow', title, kitablePath: kitablePath || undefined })
-                  return
-                }
-                // Virtual per-workflow leaf under a .kitable. The path
-                // encodes both the kitable scope and the workflow id so
-                // the tab opens scoped + pre-selected.
-                if (path.startsWith('workflow://')) {
-                  const parsed = parseKitableWorkflowVirtualPath(path)
-                  if (parsed) {
-                    upsertWorkspaceTab({
-                      id: buildKitableWorkspaceTabId(parsed.kitablePath),
-                      type: 'workflow',
-                      title: getKitableWorkspaceTabTitle(parsed.kitablePath),
-                      kitablePath: parsed.kitablePath,
-                      workflowId: parsed.workflowId,
-                    })
-                  }
-                  return
-                }
-                void openDocument(path)
-              },
+              onOpen: openSidebarPath,
               showBrowserTab: WEB_BROWSER_ENABLED && isDesktopRuntime(),
               onRefresh: () => {
                 void refreshWorkspaceDocuments(undefined, { silent: true, treeOnly: true })
