@@ -24,7 +24,6 @@ import {
   updateWorkspaceTreeDocumentItem,
 } from '@/features/workspace/lib/workspaceTree'
 import { routeKitableOpenPath } from './workspaceScreenTabRouting'
-import type { AgentBrowserContext } from '@/api/agent'
 import { createDataDashboardByPath } from '@/api/dashboards'
 import { renameDataDocumentByPath } from '@/api/dataDocuments'
 import type { WorkflowRouteContext } from '@/features/workflow/public'
@@ -35,14 +34,9 @@ import { isKitionAccountSessionUsable } from '@/features/account/lib/accountStat
 import {
   appendAgentLocalSource,
   buildActiveBrowserTabContext,
-  buildAgentTurnContext,
   extractAgentLocalPathReference,
-  finalizeAgentTurnContext,
-  mapBrowserPageContextToAgentBrowserContext,
   useWorkspaceAgent,
-  type AgentTurnContext,
 } from '@/features/agent/public'
-import type { MarkdownImageInsertionSnapshot } from '@/features/document/editor/editor/markdown-image-insertion'
 import { useDocumentExport } from '@/features/document/hooks/useDocumentExport'
 import { useWorkspaceDocumentSession } from '@/features/document/hooks/useWorkspaceDocumentSession'
 import type { DocumentAskAgentRequest } from '@/features/document/lib/documentAgentActions'
@@ -80,6 +74,7 @@ import { useWorkspaceTemplateDialogs } from '@/features/workspace/hooks/useWorks
 import { useWorkspaceWhiteboardAgentBridge } from '@/features/workspace/hooks/useWorkspaceWhiteboardAgentBridge'
 import { useWorkspaceTableAgentContext } from '@/features/workspace/hooks/useWorkspaceTableAgentContext'
 import { useWorkspaceAgentBrowserAutomation } from '@/features/workspace/hooks/useWorkspaceAgentBrowserAutomation'
+import { useWorkspaceAgentTurnContext } from '@/features/workspace/hooks/useWorkspaceAgentTurnContext'
 import { useWorkspaceBoardCreation } from '@/features/workspace/hooks/useWorkspaceBoardCreation'
 import { useWhiteboardImageGeneration } from '@/features/workspace/hooks/useWhiteboardImageGeneration'
 import { setPinnedTabsWorkspace } from '@/features/document/editor/hooks/usePinnedTabs'
@@ -101,7 +96,6 @@ import {
   remapWorkspaceBranchPath,
   renameWorkspaceDocumentPath,
   type WorkspaceMediaKind,
-  type WorkspaceTab,
   type WorkspaceTreeNode,
 } from '@/features/workspace/lib/workspace'
 import {
@@ -116,7 +110,6 @@ import { notify } from '@/lib/notify'
 import { cn } from '@/lib/utils'
 import {
   chooseAgentAnalysisDirectory,
-  extractBrowserPageContext,
   isDesktopRuntime,
   moveWorkspaceDocument,
   openExternalURL,
@@ -269,7 +262,6 @@ export function WorkspaceScreen({
   // — the user will pick the table inside the trigger config panel
   // afterwards". kitablePath, when set, controls where the resulting
   // workflow lands in the workspace tree.
-  const [agentBrowserEnabled, setAgentBrowserEnabledState] = useState(false)
   const [documentToolbarPortal, setDocumentToolbarPortal] =
     useState<HTMLElement | null>(null)
   const handleDocumentToolbarMount = useCallback(
@@ -322,82 +314,18 @@ export function WorkspaceScreen({
     clearModifiedPath: (_path: string) => {},
     modifiedPaths: new Set<string>(),
   })
-  const agentTurnContextRef = useRef<AgentTurnContext>({
-    activeDocumentPath: '',
-    activeDataDocumentId: 0,
-    activeDataTableId: 0,
-    taskMode: 'auto',
-    browserEnabled: false,
-  })
-  const getAgentTaskMode = useCallback(() => agentTurnContextRef.current.taskMode, [])
-  const markdownImageInsertionSnapshotRef = useRef<MarkdownImageInsertionSnapshot | null>(null)
-  const handleAgentInsertionContextChange = useCallback((
-    documentPath: string,
-    context: MarkdownImageInsertionSnapshot | null,
-  ) => {
-    if (context) {
-      markdownImageInsertionSnapshotRef.current = context
-    } else if (markdownImageInsertionSnapshotRef.current?.documentPath === documentPath) {
-      markdownImageInsertionSnapshotRef.current = null
-    }
-  }, [])
   const whiteboardBridge = useWorkspaceWhiteboardAgentBridge({ rootPath })
   const whiteboardAgentAvailable = whiteboardBridge.available
   const handleWhiteboardAgentBridgeChange = whiteboardBridge.handleBridgeChange
-  const prepareAgentBrowserContextRef = useRef<
-    (content: string) => Promise<AgentBrowserContext | undefined>
-  >(async () => undefined)
-  const prepareAgentBrowserContextForTurn = useCallback(
-    (content: string) => prepareAgentBrowserContextRef.current(content),
-    [],
-  )
-  const setAgentBrowserEnabled = useCallback((next: boolean) => {
-    setAgentBrowserEnabledState(next)
-    agentTurnContextRef.current = {
-      ...agentTurnContextRef.current,
-      browserEnabled: next,
-    }
-  }, [])
-
+  const agentTurn = useWorkspaceAgentTurnContext({ buildWhiteboardContext: whiteboardBridge.buildActiveContext })
+  const agentTurnContextRef = agentTurn.turnContextRef
+  const agentBrowserEnabled = agentTurn.browserEnabled
+  const setAgentBrowserEnabled = agentTurn.setBrowserEnabled
+  const getAgentTaskMode = agentTurn.getTaskMode
+  const handleAgentInsertionContextChange = agentTurn.handleInsertionContextChange
+  const getAgentTurnContext = agentTurn.getTurnContext
+  const prepareAgentBrowserContextForTurn = agentTurn.prepareBrowserContextForTurn
   const tableAgentRefreshRef = useRef<(() => Promise<void> | void) | null>(null)
-  const activeBrowserTabRef = useRef<Extract<
-    WorkspaceTab,
-    { type: 'browser' }
-  > | null>(null)
-  const getAgentTurnContext = useCallback(
-    async (): Promise<AgentTurnContext> => {
-      const base = finalizeAgentTurnContext({
-        baseContext: agentTurnContextRef.current,
-        markdownImageInsertionSnapshot: markdownImageInsertionSnapshotRef.current,
-      })
-      const whiteboardContext = base.paneContext === 'whiteboard'
-        ? whiteboardBridge.buildActiveContext()
-        : undefined
-      const scopedBase = { ...base, whiteboardContext }
-      const tab = activeBrowserTabRef.current
-      if (!tab) {
-        return scopedBase
-      }
-      try {
-        const pageContext = await extractBrowserPageContext({
-          provider: tab.provider,
-        })
-        const enriched = mapBrowserPageContextToAgentBrowserContext(
-          pageContext,
-          tab.provider,
-        )
-        if (enriched) {
-          return { ...scopedBase, browserContext: enriched }
-        }
-      } catch {
-        // The embedded browser may be unavailable (e.g. dev browser build);
-        // fall back to the thin tab metadata already in the base context.
-      }
-      return scopedBase
-    },
-    [],
-  )
-
   const {
     activeDocument,
     activeDocumentFormat,
@@ -640,7 +568,7 @@ export function WorkspaceScreen({
 
   const activeBrowserTab =
     activeWorkspaceTab?.type === 'browser' ? activeWorkspaceTab : null
-  activeBrowserTabRef.current = activeBrowserTab
+  agentTurn.setActiveBrowserTab(activeBrowserTab)
 
   // A scoped table/workflow tab belongs to its .kitable container. Keep the
   // primary workspace tree focused on that container; the Feishu-style inner
@@ -864,7 +792,7 @@ export function WorkspaceScreen({
   tableAgentRefreshRef.current = tableAgentContext?.onTableChanged ?? null
   const agentActiveDocument = resolveAgentActiveDocument(activeWorkspaceTab)
   whiteboardBridge.setActiveBoardPath(activeWorkspaceTab?.type === 'board' ? activeWorkspaceTab.path : '')
-  agentTurnContextRef.current = buildAgentTurnContext({
+  agentTurn.updateTurnContext({
     activeDocumentPath: agentActiveDocument.path,
     activeDocumentFormat: agentActiveDocument.format,
     activeDocument: tableAgentContext?.activeDocument,
@@ -1514,7 +1442,7 @@ export function WorkspaceScreen({
     tableAgentContext,
     tableAgentDocumentPath,
   })
-  prepareAgentBrowserContextRef.current = agentBrowserAutomation.runPreflight
+  agentTurn.setPreflight(agentBrowserAutomation.runPreflight)
 
   function toggleActiveAgentPanel() {
     if (workspaceAgentOpen) {
