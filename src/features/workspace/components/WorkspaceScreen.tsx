@@ -65,8 +65,6 @@ import type { MarkdownImageInsertionSnapshot } from '@/features/document/editor/
 import { useDocumentExport } from '@/features/document/hooks/useDocumentExport'
 import { useWorkspaceDocumentSession } from '@/features/document/hooks/useWorkspaceDocumentSession'
 import type { DocumentAskAgentRequest } from '@/features/document/lib/documentAgentActions'
-import type { WhiteboardAgentBridge } from '@/features/whiteboard/lib/whiteboardAgentBridge'
-import { runtimeSupportsWhiteboard } from '@/features/whiteboard/lib/whiteboardCapabilities'
 import { AgentFloatingLauncher } from '@/features/agent/components/AgentFloatingLauncher'
 import type { SettingsSectionKey } from '@/features/settings/DesktopSettingsPage'
 import { useDesktopSettings } from '@/features/settings/hooks/useDesktopSettings'
@@ -98,6 +96,7 @@ import { useWorkspaceTabs } from '@/features/workspace/hooks/useWorkspaceTabs'
 import { useWorkspaceBrowserPanel } from '@/features/workspace/hooks/useWorkspaceBrowserPanel'
 import { useWorkspaceWorkflowCreateMode } from '@/features/workspace/hooks/useWorkspaceWorkflowCreateMode'
 import { useWorkspaceTemplateDialogs } from '@/features/workspace/hooks/useWorkspaceTemplateDialogs'
+import { useWorkspaceWhiteboardAgentBridge } from '@/features/workspace/hooks/useWorkspaceWhiteboardAgentBridge'
 import { useWorkspaceBoardCreation } from '@/features/workspace/hooks/useWorkspaceBoardCreation'
 import { useWhiteboardImageGeneration } from '@/features/workspace/hooks/useWhiteboardImageGeneration'
 import { setPinnedTabsWorkspace } from '@/features/document/editor/hooks/usePinnedTabs'
@@ -137,7 +136,6 @@ import { cn } from '@/lib/utils'
 import {
   chooseAgentAnalysisDirectory,
   extractBrowserPageContext,
-  getDesktopBackendStatus,
   isDesktopRuntime,
   moveWorkspaceDocument,
   openExternalURL,
@@ -313,7 +311,6 @@ export function WorkspaceScreen({
   // afterwards". kitablePath, when set, controls where the resulting
   // workflow lands in the workspace tree.
   const [agentBrowserEnabled, setAgentBrowserEnabledState] = useState(false)
-  const [whiteboardAgentAvailable, setWhiteboardAgentAvailable] = useState(false)
   const [documentToolbarPortal, setDocumentToolbarPortal] =
     useState<HTMLElement | null>(null)
   const handleDocumentToolbarMount = useCallback(
@@ -384,8 +381,9 @@ export function WorkspaceScreen({
       markdownImageInsertionSnapshotRef.current = null
     }
   }, [])
-  const activeWhiteboardPathRef = useRef('')
-  const whiteboardAgentBridgesRef = useRef<Record<string, WhiteboardAgentBridge>>({})
+  const whiteboardBridge = useWorkspaceWhiteboardAgentBridge({ rootPath })
+  const whiteboardAgentAvailable = whiteboardBridge.available
+  const handleWhiteboardAgentBridgeChange = whiteboardBridge.handleBridgeChange
   const prepareAgentBrowserContextRef = useRef<
     (content: string) => Promise<AgentBrowserContext | undefined>
   >(async () => undefined)
@@ -412,9 +410,8 @@ export function WorkspaceScreen({
         baseContext: agentTurnContextRef.current,
         markdownImageInsertionSnapshot: markdownImageInsertionSnapshotRef.current,
       })
-      const whiteboardPath = activeWhiteboardPathRef.current
       const whiteboardContext = base.paneContext === 'whiteboard'
-        ? whiteboardAgentBridgesRef.current[whiteboardPath]?.buildContext()
+        ? whiteboardBridge.buildActiveContext()
         : undefined
       const scopedBase = { ...base, whiteboardContext }
       const tab = activeBrowserTabRef.current
@@ -440,33 +437,6 @@ export function WorkspaceScreen({
     },
     [],
   )
-
-  useEffect(() => {
-    let cancelled = false
-    void getDesktopBackendStatus()
-      .then((status) => {
-        if (!cancelled) {
-          setWhiteboardAgentAvailable(runtimeSupportsWhiteboard(status?.capabilities))
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setWhiteboardAgentAvailable(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [rootPath])
-
-  const handleWhiteboardAgentBridgeChange = useCallback((
-    path: string,
-    bridge: WhiteboardAgentBridge | null,
-  ) => {
-    if (bridge) {
-      whiteboardAgentBridgesRef.current[path] = bridge
-    } else {
-      delete whiteboardAgentBridgesRef.current[path]
-    }
-  }, [])
 
   const {
     activeDocument,
@@ -600,16 +570,8 @@ export function WorkspaceScreen({
     onTableMutated: async () => {
       await tableAgentRefreshRef.current?.()
     },
-    onWhiteboardPatch: ({ boardPath, patch, provisional }) => {
-      if (!whiteboardAgentAvailable) return
-      const activeBoardPath = activeWhiteboardPathRef.current
-      const bridge = whiteboardAgentBridgesRef.current[boardPath]
-        || whiteboardAgentBridgesRef.current[activeBoardPath]
-      bridge?.receivePatch(patch, provisional)
-    },
-    onWhiteboardPatchCancelled: ({ boardPath }) => {
-      whiteboardAgentBridgesRef.current[boardPath]?.cancelPreview()
-    },
+    onWhiteboardPatch: whiteboardBridge.receivePatch,
+    onWhiteboardPatchCancelled: whiteboardBridge.cancelPreview,
     prepareActiveDocument: ensureActiveDocumentSaved,
     getTurnContext: getAgentTurnContext,
     prepareBrowserContext: prepareAgentBrowserContextForTurn,
@@ -619,8 +581,8 @@ export function WorkspaceScreen({
     agentArtifacts,
     agentBusySessions,
     agentToolCalls,
-    available: whiteboardAgentAvailable,
-    bridgesRef: whiteboardAgentBridgesRef,
+    available: whiteboardBridge.available,
+    bridgesRef: whiteboardBridge.bridgesRef,
     createAgentChat: createNewAgentChat,
     modelAvailable: Boolean(selectedAgentModel?.runtimeModel),
     sendAgentAction: sendAgentContextAction,
@@ -960,9 +922,7 @@ export function WorkspaceScreen({
   tableAgentRefreshRef.current = tableAgentContext?.onTableChanged ?? null
   const hasTableAgentTarget = Boolean(tableAgentDocumentPath)
   const agentActiveDocument = resolveAgentActiveDocument(activeWorkspaceTab)
-  activeWhiteboardPathRef.current = activeWorkspaceTab?.type === 'board'
-    ? activeWorkspaceTab.path
-    : ''
+  whiteboardBridge.setActiveBoardPath(activeWorkspaceTab?.type === 'board' ? activeWorkspaceTab.path : '')
   agentTurnContextRef.current = buildAgentTurnContext({
     activeDocumentPath: agentActiveDocument.path,
     activeDocumentFormat: agentActiveDocument.format,
