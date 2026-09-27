@@ -48,9 +48,6 @@ import { WorkspaceScreenEditor } from '@/features/workspace/components/Workspace
 import { WorkspaceKitableSidebar } from '@/features/workspace/components/WorkspaceKitableSidebar'
 import { requestEmailSyncSetup } from '@/features/emailSync/public'
 import { FORM_SYNC_CHANGED_EVENT, type FormSyncWorkflow } from '@/features/formSync/api'
-import { useKitableTableLeafActions } from '@/features/workspace/hooks/useKitableTableLeafActions'
-import { useKitableDashboardLeafActions } from '@/features/workspace/hooks/useKitableDashboardLeafActions'
-import { useKitableWorkflowLeafActions } from '@/features/workspace/hooks/useKitableWorkflowLeafActions'
 import { WorkspaceAgentTabBar } from '@/features/workspace/components/WorkspaceAgentTabBar'
 import {
   WorkspaceScreenSidebar,
@@ -76,6 +73,7 @@ import { useWorkspaceTableAgentContext } from '@/features/workspace/hooks/useWor
 import { useWorkspaceAgentBrowserAutomation } from '@/features/workspace/hooks/useWorkspaceAgentBrowserAutomation'
 import { useWorkspaceAgentTurnContext } from '@/features/workspace/hooks/useWorkspaceAgentTurnContext'
 import { useWorkspaceKitableOpeners } from '@/features/workspace/hooks/useWorkspaceKitableOpeners'
+import { useWorkspaceTreeRowActions } from '@/features/workspace/hooks/useWorkspaceTreeRowActions'
 import { useWorkspaceBoardCreation } from '@/features/workspace/hooks/useWorkspaceBoardCreation'
 import { useWhiteboardImageGeneration } from '@/features/workspace/hooks/useWhiteboardImageGeneration'
 import { setPinnedTabsWorkspace } from '@/features/document/editor/hooks/usePinnedTabs'
@@ -797,166 +795,22 @@ export function WorkspaceScreen({
     createKitableFromTemplate: handleCreateKitableFromTemplate,
   } = templateDialogs
 
-  const handleKitableTableDeleted = useCallback((kitablePath: string, tableId: number) => {
-    const tabId = buildKitableWorkspaceTabId(kitablePath)
-    const tab = workspaceTabs.find((item) => item.id === tabId)
-    if (tab?.type !== 'table' || tab.tableId !== tableId) return
-    const fallbackTable = (kitableChildrenIndex.tablesByKitablePath[kitablePath] || [])
-      .filter((table) => table.id !== tableId)
-      .sort((left, right) => left.order - right.order)[0]
-    const activate = activeWorkspaceTabId === tabId
-    if (fallbackTable) {
-      upsertWorkspaceTab({
-        id: tabId,
-        type: 'table',
-        title: getKitableWorkspaceTabTitle(kitablePath),
-        kitablePath,
-        tableId: fallbackTable.id,
-        format: 'data',
-      }, { activate })
-      return
-    }
-    upsertWorkspaceTab({
-      id: tabId,
-      type: 'workflow',
-      title: getKitableWorkspaceTabTitle(kitablePath),
-      kitablePath,
-    }, { activate })
-  }, [activeWorkspaceTabId, kitableChildrenIndex.tablesByKitablePath, upsertWorkspaceTab, workspaceTabs])
-
-  const handleKitableDashboardDeleted = useCallback((kitablePath: string, dashboardId: string) => {
-    const tabId = buildKitableWorkspaceTabId(kitablePath)
-    const tab = workspaceTabs.find((item) => item.id === tabId)
-    if (tab?.type !== 'dashboard' || tab.dashboardId !== dashboardId) return
-    const fallbackTable = [...(kitableChildrenIndex.tablesByKitablePath[kitablePath] || [])]
-      .sort((left, right) => left.order - right.order)[0]
-    const activate = activeWorkspaceTabId === tabId
-    if (fallbackTable) {
-      upsertWorkspaceTab({
-        id: tabId,
-        type: 'table',
-        title: getKitableWorkspaceTabTitle(kitablePath),
-        kitablePath,
-        tableId: fallbackTable.id,
-        format: 'data',
-      }, { activate })
-      return
-    }
-    upsertWorkspaceTab({
-      id: tabId,
-      type: 'workflow',
-      title: getKitableWorkspaceTabTitle(kitablePath),
-      kitablePath,
-    }, { activate })
-  }, [activeWorkspaceTabId, kitableChildrenIndex.tablesByKitablePath, upsertWorkspaceTab, workspaceTabs])
-
-  const handleKitableWorkflowDeleted = useCallback((kitablePath: string, workflowId: string) => {
-    const tabId = buildKitableWorkspaceTabId(kitablePath)
-    const tab = workspaceTabs.find((item) => item.id === tabId)
-    if (tab?.type !== 'workflow' || tab.workflowId !== workflowId) return
-    const fallbackTable = [...(kitableChildrenIndex.tablesByKitablePath[kitablePath] || [])]
-      .sort((left, right) => left.order - right.order)[0]
-    const activate = activeWorkspaceTabId === tabId
-    if (fallbackTable) {
-      upsertWorkspaceTab({
-        id: tabId,
-        type: 'table',
-        title: getKitableWorkspaceTabTitle(kitablePath),
-        kitablePath,
-        tableId: fallbackTable.id,
-        format: 'data',
-      }, { activate })
-      return
-    }
-    upsertWorkspaceTab({
-      id: tabId,
-      type: 'workflow',
-      title: getKitableWorkspaceTabTitle(kitablePath),
-      kitablePath,
-    }, { activate })
-  }, [activeWorkspaceTabId, kitableChildrenIndex.tablesByKitablePath, upsertWorkspaceTab, workspaceTabs])
-
-  // Group A helpers: virtual leaves use their domain APIs directly. The
-  // file-level kitable tab survives inner table/workflow deletion and falls
-  // back to another view in the same file.
-  const { renameKitableTableLeaf, deleteKitableTableLeaf } = useKitableTableLeafActions({
+  const {
+    handleTreeNodeDelete,
+    handleTreeNodeRename,
+    renameKitableTableLeaf,
+  } = useWorkspaceTreeRowActions({
+    workspaceTabs,
+    activeWorkspaceTabId,
+    upsertWorkspaceTab,
     kitableChildrenIndex,
     activeResourcePath,
     setActiveResourcePath,
-    onTableDeleted: handleKitableTableDeleted,
     setError,
     setFeedback,
+    deleteDocumentNode,
+    renameWorkspaceNode,
   })
-  const { renameKitableDashboardLeaf, deleteKitableDashboardLeaf } = useKitableDashboardLeafActions({
-    kitableChildrenIndex,
-    activeResourcePath,
-    setActiveResourcePath,
-    onDashboardDeleted: handleKitableDashboardDeleted,
-    setError,
-    setFeedback,
-  })
-  // Group A: virtual `workflow://` leaves under a .kitable. Like the table
-  // leaves they have no on-disk path — delete is routed through the
-  // workflow API, which also emits WORKFLOW_CHANGED_EVENT so the tree
-  // refresh is implicit.
-  const { renameKitableWorkflowLeaf, deleteKitableWorkflowLeaf } = useKitableWorkflowLeafActions({
-    kitableChildrenIndex,
-    activeResourcePath,
-    setActiveResourcePath,
-    onWorkflowDeleted: handleKitableWorkflowDeleted,
-    setError,
-    setFeedback,
-  })
-
-  // Group A: dispatch by virtual-table-leaf so the menu's "..." actions hit the
-  // data-document API for synthesized leaves and the existing workspace tree
-  // actions for real on-disk files.
-  const handleTreeNodeDelete = useCallback(
-    (node: WorkspaceTreeNode) => {
-      if (parseKitableTableVirtualPath(node.path)) {
-        void deleteKitableTableLeaf(node)
-        return
-      }
-      if (parseKitableDashboardVirtualPath(node.path)) {
-        void deleteKitableDashboardLeaf(node)
-        return
-      }
-      if (parseKitableWorkflowVirtualPath(node.path)) {
-        void deleteKitableWorkflowLeaf(node)
-        return
-      }
-      void deleteDocumentNode(node)
-    },
-    [
-      deleteDocumentNode,
-      deleteKitableDashboardLeaf,
-      deleteKitableWorkflowLeaf,
-      deleteKitableTableLeaf,
-    ],
-  )
-  const handleTreeNodeRename = useCallback(
-    (node: WorkspaceTreeNode, nextTitle: string) => {
-      if (parseKitableTableVirtualPath(node.path)) {
-        void renameKitableTableLeaf(node, nextTitle)
-        return
-      }
-      if (parseKitableDashboardVirtualPath(node.path)) {
-        void renameKitableDashboardLeaf(node, nextTitle)
-        return
-      }
-      if (parseKitableWorkflowVirtualPath(node.path)) {
-        void renameKitableWorkflowLeaf(node, nextTitle)
-        return
-      }
-      void renameWorkspaceNode(node, nextTitle)
-    },
-    [
-      renameKitableDashboardLeaf,
-      renameKitableWorkflowLeaf,
-      renameKitableTableLeaf,
-      renameWorkspaceNode,
-    ],
-  )
 
   // The mode chooser dialog runs against an optional (documentId, tableId)
   // pair. Two routing rules drive how callers reach this:
