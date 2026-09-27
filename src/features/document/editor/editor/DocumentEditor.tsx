@@ -1,13 +1,3 @@
-   
-                 
-  
-                                              
-                                                                                         
-  
-                                                      
-                                                  
-   
-
 import { markdown, markdownLanguage as gfmMarkdownLanguage } from '@codemirror/lang-markdown'
 import { languages as codeLanguages } from '@codemirror/language-data'
 import { type Extension } from '@codemirror/state'
@@ -67,33 +57,10 @@ const basicSetup = {
   highlightSelectionMatches: false,
   autocompletion: false,
   searchKeymap: true,
-                                                                      
-                                                           
-                                                            
-                                                    
-                                               
-                                                                         
+
   syntaxHighlighting: false,
 } as const
 
-   
-                                                                 
-                                                     
-                                                                
-                                                             
-                                                                   
-                                                         
-                              
-  
-                                                             
-                                                 
-                                                                      
-                                                      
-                              
-  
-                                                  
-                                    
-   
 const markdownExtension = markdown({ base: gfmMarkdownLanguage, codeLanguages })
 
 const editorTheme = EditorView.theme({
@@ -103,9 +70,9 @@ const editorTheme = EditorView.theme({
     color: 'inherit',
   },
   '&.cm-focused': { outline: 'none' },
-                                                                           
+
   // `view-content > .markdown-source-view.mod-cm6 > .cm-editor > .cm-scroller { padding: var(--file-margins) }`),
-                                                                        
+
   '.cm-scroller': {
     fontFamily: 'inherit',
     lineHeight: '1.75',
@@ -117,13 +84,7 @@ const editorTheme = EditorView.theme({
   },
   '.cm-line': { padding: '0' },
   '.cm-cursor': { borderLeftColor: 'currentColor' },
-                                                                         
-                                                                      
-                                                                           
-                                                                
-                                           
-                                                      
-                                           
+
   '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, ::selection': {
     backgroundColor: 'hsl(var(--primary) / 0.3)',
   },
@@ -138,7 +99,7 @@ export type CursorInfo = {
   col: number
   /** total selected character count across all ranges */
   selectionLength: number
-                                                           
+
   selectionText: string
 }
 
@@ -150,29 +111,29 @@ export type DocumentEditorProps = {
   onChange: (value: string) => void
   placeholder?: string
   className?: string
-                         
+
   sourcePath?: string
   /** Keep live-preview source markers hidden even while focused. */
   revealSourceOnFocus?: boolean
   /** Use CodeMirror's custom selection layer. Disable for rendered reading views. */
   drawSelection?: boolean
-                                   
+
   resolveWikilink?: WikilinkExtensionOptions['resolve']
-                              
+
   onWikilinkNavigate?: WikilinkNavigate
-                          
+
   onCreateMissingNote?: WikilinkCreate
-                         
+
   onTagNavigate?: (tag: TagParsed) => void
-                          
+
   onCursorLineChange?: (line: number) => void
-                      
+
   onCursorChange?: (info: CursorInfo) => void
-                               
+
   suggestProviders?: SuggestProviders
-                                         
+
   loadEmbed?: EmbedLoader
-                         
+
   onEmbedNavigate?: (target: string, section?: string) => void
   /** Handle a rendered Markdown link inside the workspace. Return true when handled. */
   onMarkdownLinkNavigate?: (href: string) => boolean

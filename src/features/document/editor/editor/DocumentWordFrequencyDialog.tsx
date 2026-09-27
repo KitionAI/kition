@@ -1,18 +1,3 @@
-   
-                     
-  
-                                           
-                            
-  
-      
-                   
-                                        
-                                 
-                            
-                        
-                                       
-   
-
 import { EditorSelection } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { useEffect, useMemo, useState } from 'react'
@@ -69,7 +54,7 @@ export function computeWordFrequency(source: string, minLen = 2): WordFreqEntry[
     while ((m = tokenRe.exec(text)) !== null) {
       const raw = m[0]
       const lower = raw.toLowerCase()
-                            
+
       const isTag = raw.startsWith('#')
       const isCjk = /^[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]$/u.test(raw)
       if (!isTag && !isCjk) {

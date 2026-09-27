@@ -1,14 +1,3 @@
-   
-                   
-  
-                                      
-                    
-                  
-  
-                                                     
-         
-   
-
 import { useCallback, useEffect, useState } from 'react'
 
 const STORAGE_KEY = 'kition.document.recentFiles'
@@ -17,7 +6,7 @@ const BROADCAST_EVENT = 'kition:document:recent-files-changed'
 
 export type RecentEntry = {
   path: string
-                
+
   visitedAt: string
 }
 

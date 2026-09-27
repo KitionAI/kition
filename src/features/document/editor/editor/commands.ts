@@ -1,14 +1,15 @@
-   
-                  
-  
-                                                            
-                             
-  
-        
-                                                   
-                                                 
-   
-
+/**
+ * Editor commands for the Markdown document editor.
+ *
+ * Every export is a CodeMirror `Command` (or a pure text transform ending in
+ * `Text` that a command wraps). Commands mutate the active document through
+ * `view.dispatch` and return `true` when they handled the invocation, so they
+ * can be bound to keymaps, toolbar buttons, and the document command palette.
+ *
+ * This file is registered wholesale by `DocumentCommandPalette.tsx`. Keep new
+ * commands small and pure; template-style insertions belong in the template
+ * library as data, not here as code.
+ */
 import type { ChangeSpec, EditorState, SelectionRange } from '@codemirror/state'
 import { EditorSelection } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
@@ -30,8 +31,6 @@ function dispatchChanges(
   view.focus()
   return true
 }
-
-                                                              
 
 export function toggleInlineMark(open: string, close: string = open): Command {
   return (view) =>
@@ -68,8 +67,6 @@ export const toggleBold = toggleInlineMark('**')
 export const toggleItalic = toggleInlineMark('*')
 export const toggleStrike = toggleInlineMark('~~')
 export const toggleInlineCode = toggleInlineMark('`')
-
-                                                    
 
 function eachSelectedLine(
   state: EditorState,
@@ -159,8 +156,6 @@ export const toggleOrderedList: Command = (view) =>
       range: EditorSelection.range(range.from, range.to + shift),
     }
   })
-
-                               
 
 function insertAtCursor(view: EditorView, text: string, cursorOffset: number = text.length): boolean {
   return dispatchChanges(view, (range) => ({
@@ -332,12 +327,6 @@ export function insertHorizontalRule(): Command {
   return (view) => ensureBlockBoundary(view, '---', 3)
 }
 
-                                          
-
-   
-                                                
-                             
-   
 export function shiftHeadingLevel(delta: number): Command {
   return (view) =>
     dispatchChanges(view, (range, state) => {
@@ -363,15 +352,6 @@ export function shiftHeadingLevel(delta: number): Command {
 export const promoteHeading = shiftHeadingLevel(-1)
 export const demoteHeading = shiftHeadingLevel(1)
 
-   
-            
-  
-                               
-                              
-                                  
-  
-                             
-   
 export const toggleTaskCheckbox: Command = (view) =>
   dispatchChanges(view, (range, state) => {
     const lines = eachSelectedLine(state, range)
@@ -387,7 +367,7 @@ export const toggleTaskCheckbox: Command = (view) =>
       if (allChecked && checked) {
         next = original.replace(/^(\s*(?:[-*+]|\d+\.)\s+\[)[xX](\]\s)/, '$1 $2')
       } else if (checked) {
-                                      
+
         next = original
       } else if (unchecked) {
         next = original.replace(/^(\s*(?:[-*+]|\d+\.)\s+\[) (\]\s)/, '$1x$2')
@@ -409,13 +389,10 @@ export const toggleTaskCheckbox: Command = (view) =>
     }
   })
 
-                                                          
-
 function pad(n: number, width = 2): string {
   return n.toString().padStart(width, '0')
 }
 
-                          
 export function insertDate(): Command {
   return (view) => {
     const d = new Date()
@@ -427,7 +404,6 @@ export function insertDate(): Command {
   }
 }
 
-                                
 export function insertTimestamp(): Command {
   return (view) => {
     const d = new Date()
@@ -441,7 +417,6 @@ export function insertTimestamp(): Command {
   }
 }
 
-                                          
 export const stripFrontmatter: Command = (view) => {
   const doc = view.state.doc
   const head = doc.sliceString(0, Math.min(doc.length, 4))
@@ -457,7 +432,7 @@ export const stripFrontmatter: Command = (view) => {
   }
   if (endLine < 0) return false
   let cut = doc.line(endLine).to
-             
+
   while (cut < doc.length) {
     const next = doc.lineAt(cut + 1)
     if (next.text.trim() === '') {
@@ -466,7 +441,7 @@ export const stripFrontmatter: Command = (view) => {
       break
     }
   }
-                     
+
   const removeTo = Math.min(doc.length, cut + 1)
   view.dispatch({
     changes: { from: 0, to: removeTo, insert: '' },
@@ -475,7 +450,6 @@ export const stripFrontmatter: Command = (view) => {
   return true
 }
 
-                             
 export function transformCase(mode: 'upper' | 'lower' | 'title' | 'sentence'): Command {
   return (view) =>
     dispatchChanges(view, (range, state) => {
@@ -493,7 +467,7 @@ export function transformCase(mode: 'upper' | 'lower' | 'title' | 'sentence'): C
           next = text.replace(/\w\S*/g, (w) => w[0].toUpperCase() + w.slice(1).toLowerCase())
           break
         case 'sentence':
-                               
+
           next = text
             .toLowerCase()
             .replace(/(^|\p{Sentence_Terminal}\s+)([a-z])/gu, (_, p, c) => p + c.toUpperCase())
@@ -505,8 +479,6 @@ export function transformCase(mode: 'upper' | 'lower' | 'title' | 'sentence'): C
       }
     })
 }
-
-                                  
 
 type ListKind = 'none' | 'bullet' | 'ordered' | 'todo'
 
@@ -539,10 +511,6 @@ function renderListLine(kind: ListKind, indent: string, rest: string, n: number)
   return `${indent}${rest}`
 }
 
-   
-                                                    
-                               
-   
 export const cycleListType: Command = (view) =>
   dispatchChanges(view, (range, state) => {
     const lines = eachSelectedLine(state, range)
@@ -568,7 +536,6 @@ export const cycleListType: Command = (view) =>
     }
   })
 
-                                   
 export const sortSelectedLines: Command = (view) => {
   const state = view.state
   const range = state.selection.main
@@ -589,16 +556,10 @@ export const sortSelectedLines: Command = (view) => {
 
 const HEADING_RE = /^(\s*)(#{1,6})\s+(?:(\d+(?:\.\d+)*)(?:\.)?\s+)?(.*)$/
 
-   
-                                       
-                                 
-                             
-   
 export const numberHeadings: Command = (view) => {
   return applyHeadingNumbering(view, true)
 }
 
-                   
 export const stripHeadingNumbers: Command = (view) => {
   return applyHeadingNumbering(view, false)
 }
@@ -638,18 +599,8 @@ function applyHeadingNumbering(view: EditorView, number: boolean): boolean {
   return true
 }
 
-                                                       
-
 const MD_LINK_RE = /\[([^\]]+)\]\(([^)\s]+)\)/g
 
-   
-                                       
-                                      
-                                               
-                                                                                            
-                               
-                             
-   
 export const convertLinkUnderCursor: Command = (view) => {
   const state = view.state
   const pos = state.selection.main.from
@@ -694,34 +645,26 @@ export const convertLinkUnderCursor: Command = (view) => {
   return false
 }
 
-                                        
-
 const BLOCK_ID_TAIL_RE = /\s\^([A-Za-z0-9_-]+)\s*$/
 const HEADING_LINE_RE = /^\s*(#{1,6})\s+(.+?)\s*$/
 
 function generateBlockId(): string {
-                                 
+
   return Math.random().toString(36).slice(2, 8)
 }
 
-                                   
 export function getBlockIdAtCursor(view: EditorView): string | null {
   const line = view.state.doc.lineAt(view.state.selection.main.from)
   const m = line.text.match(BLOCK_ID_TAIL_RE)
   return m ? m[1] : null
 }
 
-                                       
 export function getHeadingAtCursor(view: EditorView): string | null {
   const line = view.state.doc.lineAt(view.state.selection.main.from)
   const m = line.text.match(HEADING_LINE_RE)
   return m ? m[2] : null
 }
 
-   
-                           
-                      
-   
 export function ensureBlockIdAtCursor(view: EditorView): string {
   const state = view.state
   const line = state.doc.lineAt(state.selection.main.from)
@@ -736,20 +679,10 @@ export function ensureBlockIdAtCursor(view: EditorView): string {
   return id
 }
 
-                                    
-
-   
-                                    
-                                   
-                               
-                            
-                            
-                         
-   
 export function foldHeadingsBelowLevel(level: number): Command {
   return (view) => {
     if (level < 1 || level > 5) return false
-                 
+
     unfoldAll(view)
     const doc = view.state.doc
     const ranges: { from: number; to: number }[] = []
@@ -790,8 +723,6 @@ export function foldHeadingsBelowLevel(level: number): Command {
     return true
   }
 }
-
-                                        
 
 const HEADING_LINE_PATTERN = /^(#{1,6})\s+/
 
@@ -855,10 +786,6 @@ function findCurrentSection(state: EditorState): SectionBounds | null {
   return { headingLineNo, headingLevel, endLineNo }
 }
 
-   
-                         
-                             
-   
 export const moveSectionUp: Command = (view) => {
   const state = view.state
   const cur = findCurrentSection(state)
@@ -903,7 +830,6 @@ export const moveSectionUp: Command = (view) => {
   return true
 }
 
-                        
 export const moveSectionDown: Command = (view) => {
   const state = view.state
   const cur = findCurrentSection(state)
@@ -949,8 +875,6 @@ export const moveSectionDown: Command = (view) => {
   })
   return true
 }
-
-                                         
 
 const TABLE_LINE_RE = /^\s*\|.*\|\s*$/
 const TABLE_SEP_RE = /^\s*\|(\s*:?-+:?\s*\|)+\s*$/
@@ -1158,11 +1082,6 @@ export function tableAlignColumn(align: ColAlign): Command {
     })
 }
 
-   
-                        
-                                              
-                                  
-   
 export function tableSortByColumn(direction: 'asc' | 'desc' = 'asc'): Command {
   return (view) =>
     rewriteTable(view, (rows, aligns, loc) => {
@@ -1185,7 +1104,6 @@ export function tableSortByColumn(direction: 'asc' | 'desc' = 'asc'): Command {
     })
 }
 
-                           
 export function tableFormat(view: EditorView): boolean {
   const loc = findTableAtCursor(view.state)
   if (!loc) return false
@@ -1252,7 +1170,6 @@ export function tableFormat(view: EditorView): boolean {
   return true
 }
 
-                               
 export const insertFootnote: Command = (view) => {
   const state = view.state
   const doc = state.doc
@@ -1281,10 +1198,6 @@ export const insertFootnote: Command = (view) => {
   return true
 }
 
-   
-                                     
-                                                    
-   
 export const jumpFootnote: Command = (view) => {
   const state = view.state
   const doc = state.doc
@@ -1292,7 +1205,6 @@ export const jumpFootnote: Command = (view) => {
   const line = doc.lineAt(pos)
   const lineText = line.text
 
-                           
   const refRe = /\[\^([^\]\s]+)\](?!:)/g
   let mr: RegExpExecArray | null
   while ((mr = refRe.exec(lineText)) !== null) {
@@ -1310,7 +1222,6 @@ export const jumpFootnote: Command = (view) => {
     }
   }
 
-                            
   const defMatch = /^\[\^([^\]\s]+)\]:/.exec(lineText)
   if (defMatch && pos - line.from <= defMatch[0].length + 200) {
     const id = defMatch[1]
@@ -1350,16 +1261,11 @@ function findFootnoteRef(state: EditorState, id: string): number | null {
   return null
 }
 
-   
-                           
-                      
-   
 export const renumberFootnotes: Command = (view) => {
   const state = view.state
   const doc = state.doc
   const text = doc.toString()
 
-                                 
   const order: string[] = []
   const seen = new Set<string>()
   const allRefRe = /\[\^(\d+)\](?!:)/g
@@ -1376,7 +1282,6 @@ export const renumberFootnotes: Command = (view) => {
   const mapping = new Map<string, string>()
   order.forEach((oldId, i) => mapping.set(oldId, String(i + 1)))
 
-                           
   const alreadyOk = order.every((oldId, i) => oldId === String(i + 1))
   if (alreadyOk) return false
 
@@ -1388,7 +1293,7 @@ export const renumberFootnotes: Command = (view) => {
     if (!newId || newId === m[1]) continue
     changes.push({ from: m.index, to: m.index + m[0].length, insert: `[^${newId}]` })
   }
-                          
+
   for (let i = 1; i <= doc.lines; i++) {
     const line = doc.line(i)
     const defMatch = /^\[\^(\d+)\]:/.exec(line.text)
@@ -1406,7 +1311,6 @@ export const renumberFootnotes: Command = (view) => {
   return true
 }
 
-                                                                  
 export const wrapAsWikilink: Command = (view) => {
   const state = view.state
   const main = state.selection.main
@@ -1424,14 +1328,13 @@ export const wrapAsWikilink: Command = (view) => {
   return true
 }
 
-                                 
 export const wrapAsTag: Command = (view) => {
   const state = view.state
   const main = state.selection.main
   let from = main.from
   let to = main.to
   if (main.empty) {
-                            
+
     const line = state.doc.lineAt(main.from)
     const colInLine = main.from - line.from
     const text = line.text
@@ -1445,7 +1348,7 @@ export const wrapAsTag: Command = (view) => {
   }
   const raw = state.sliceDoc(from, to)
   if (raw.includes('\n') || raw.startsWith('#')) return false
-                                      
+
   const normalized = raw.replace(/[^\p{L}\p{N}_\-/]+/gu, '-').replace(/^-+|-+$/g, '')
   if (!normalized) return false
   const insert = `#${normalized}`
@@ -1457,7 +1360,6 @@ export const wrapAsTag: Command = (view) => {
   return true
 }
 
-                                    
 export function convertSelectionToCallout(type: string = 'note'): Command {
   return (view) => {
     const state = view.state
@@ -1480,7 +1382,6 @@ export function convertSelectionToCallout(type: string = 'note'): Command {
   }
 }
 
-                                            
 export const unwrapLink: Command = (view) => {
   const state = view.state
   const main = state.selection.main
@@ -1488,7 +1389,7 @@ export const unwrapLink: Command = (view) => {
   const to = main.empty ? state.doc.lineAt(main.from).to : main.to
   const text = state.sliceDoc(from, to)
   if (!text) return false
-                                                                                
+
   const replaced = text
     .replace(/!\[\[([^\]|]+)\|([^\]]+)\]\]/g, '$2')
     .replace(/!\[\[([^\]]+)\]\]/g, '$1')
@@ -1505,7 +1406,6 @@ export const unwrapLink: Command = (view) => {
   return true
 }
 
-                                                     
 export const selectCurrentSection: Command = (view) => {
   const state = view.state
   const cur = findCurrentSection(state)
@@ -1517,7 +1417,6 @@ export const selectCurrentSection: Command = (view) => {
   return true
 }
 
-                                             
 export const trimTrailingWhitespace: Command = (view) => {
   const state = view.state
   const doc = state.doc
@@ -1529,7 +1428,7 @@ export const trimTrailingWhitespace: Command = (view) => {
       changes.push({ from: line.from, to: line.to, insert: trimmed })
     }
   }
-           
+
   const text = doc.toString()
   const trimEnd = text.replace(/\s+$/, '')
   if (trimEnd.length < text.length) {
@@ -1540,7 +1439,6 @@ export const trimTrailingWhitespace: Command = (view) => {
   return true
 }
 
-                               
 export const insertAsQuote: Command = (view) => {
   const state = view.state
   const main = state.selection.main
@@ -1555,14 +1453,13 @@ export const insertAsQuote: Command = (view) => {
   return true
 }
 
-                                      
 export function wrapAsCodeBlock(lang: string = ''): Command {
   return (view) => {
     const state = view.state
     const main = state.selection.main
     if (main.empty) return false
     const selected = state.sliceDoc(main.from, main.to)
-                                
+
     const insert = '```' + lang + '\n' + selected + (selected.endsWith('\n') ? '' : '\n') + '```'
     view.dispatch({
       changes: { from: main.from, to: main.to, insert },
@@ -1573,10 +1470,6 @@ export function wrapAsCodeBlock(lang: string = ''): Command {
   }
 }
 
-   
-                        
-                                      
-   
 export const duplicateLine: Command = (view) => {
   const state = view.state
   const main = state.selection.main
@@ -1593,11 +1486,6 @@ export const duplicateLine: Command = (view) => {
   return true
 }
 
-   
-                 
-                       
-                    
-   
 export const joinLines: Command = (view) => {
   const state = view.state
   const main = state.selection.main
@@ -1606,7 +1494,7 @@ export const joinLines: Command = (view) => {
   const endLine = state.doc.lineAt(main.to)
   if (startLine.number === endLine.number) return false
   const text = state.sliceDoc(startLine.from, endLine.to)
-                      
+
   const merged = text.split('\n').map((s, i) => i === 0 ? s.replace(/\s+$/, '') : s.replace(/^\s+/, '').replace(/\s+$/, '')).filter((s) => s.length > 0).join(' ')
   view.dispatch({
     changes: { from: startLine.from, to: endLine.to, insert: merged },
@@ -1616,16 +1504,12 @@ export const joinLines: Command = (view) => {
   return true
 }
 
-   
-                                   
-                 
-   
 export const splitSentencesToLines: Command = (view) => {
   const state = view.state
   const main = state.selection.main
   if (main.empty) return false
   const text = state.sliceDoc(main.from, main.to)
-                    
+
   const split = text.replace(/(\p{Sentence_Terminal})\s+/gu, '$1\n').replace(/\n{2,}/g, '\n')
   if (split === text) return false
   view.dispatch({
@@ -1636,16 +1520,6 @@ export const splitSentencesToLines: Command = (view) => {
   return true
 }
 
-   
-                                     
-               
-                
-                
-                
-                 
-               
-                          
-   
 export const applySmartTypography: Command = (view) => {
   const state = view.state
   const main = state.selection.main
@@ -1673,10 +1547,6 @@ export const applySmartTypography: Command = (view) => {
   return true
 }
 
-   
-                      
-                           
-   
 export const deleteCurrentLine: Command = (view) => {
   const state = view.state
   const main = state.selection.main
@@ -1693,9 +1563,6 @@ export const deleteCurrentLine: Command = (view) => {
   return true
 }
 
-   
-                               
-   
 export const compressBlankLines: Command = (view) => {
   const state = view.state
   const main = state.selection.main
@@ -1712,10 +1579,6 @@ export const compressBlankLines: Command = (view) => {
   return true
 }
 
-   
-                                              
-                                                  
-   
 export const sortTasks: Command = (view) => {
   const state = view.state
   const main = state.selection.main
@@ -1728,7 +1591,7 @@ export const sortTasks: Command = (view) => {
     lines.push(state.doc.line(i).text)
   }
   const TASK_RE = /^(\s*[-*+]\s+)\[( |x|X)\](.*)$/
-            
+
   const taskIndices: number[] = []
   for (let i = 0; i < lines.length; i++) {
     if (TASK_RE.test(lines[i])) taskIndices.push(i)
@@ -1761,10 +1624,6 @@ export const sortTasks: Command = (view) => {
   return true
 }
 
-   
-                                                   
-                    
-   
 export const ensureFrontmatter: Command = (view) => {
   const state = view.state
   const first = state.doc.lineAt(0)
@@ -1778,10 +1637,6 @@ export const ensureFrontmatter: Command = (view) => {
   return true
 }
 
-   
-                                     
-                               
-   
 export const toggleAllTasksInSelection: Command = (view) => {
   const state = view.state
   const main = state.selection.main
@@ -1801,13 +1656,6 @@ export const toggleAllTasksInSelection: Command = (view) => {
   return true
 }
 
-   
-                                   
-                           
-                           
-                 
-                 
-   
 export const applySmartArrows: Command = (view) => {
   const state = view.state
   const main = state.selection.main
@@ -1830,10 +1678,6 @@ export const applySmartArrows: Command = (view) => {
   return true
 }
 
-   
-                                                  
-                                 
-   
 export function insertDataviewField(key: string = ''): Command {
   return (view) => {
     const state = view.state
@@ -1851,19 +1695,16 @@ export function insertDataviewField(key: string = ''): Command {
   }
 }
 
-   
-                                     
-   
 export const jumpToPrevHeading: Command = (view) => {
   const state = view.state
   const head = state.selection.main.head
   const curLine = state.doc.lineAt(head)
   let inFence = false
-                        
+
   for (let i = 1; i < curLine.number; i++) {
     if (/^\s*```/.test(state.doc.line(i).text)) inFence = !inFence
   }
-         
+
   let foundLineNo: number | null = null
   let runningFence = inFence
   for (let i = curLine.number - 1; i >= 1; i--) {
@@ -1887,9 +1728,6 @@ export const jumpToPrevHeading: Command = (view) => {
   return true
 }
 
-   
-                                     
-   
 export const jumpToNextHeading: Command = (view) => {
   const state = view.state
   const head = state.selection.main.head
@@ -1923,9 +1761,6 @@ export const jumpToNextHeading: Command = (view) => {
   return true
 }
 
-   
-                                 
-   
 export const tableMoveColumnLeft: Command = (view) =>
   rewriteTable(view, (rows, aligns, loc) => {
     const at = loc.cursorCol
@@ -1940,9 +1775,6 @@ export const tableMoveColumnLeft: Command = (view) =>
     return { rows: newRows, aligns: newAligns }
   })
 
-   
-                               
-   
 export const tableMoveColumnRight: Command = (view) =>
   rewriteTable(view, (rows, aligns, loc) => {
     const at = loc.cursorCol
@@ -1957,11 +1789,6 @@ export const tableMoveColumnRight: Command = (view) =>
     return { rows: newRows, aligns: newAligns }
   })
 
-   
-                            
-                                                                                    
-                                                                                        
-   
 export const tableMoveRowUp: Command = (view) =>
   rewriteTable(view, (rows, aligns, loc) => {
     if (loc.cursorRow < 3) return null
@@ -1972,9 +1799,6 @@ export const tableMoveRowUp: Command = (view) =>
     return { rows: newRows, aligns }
   })
 
-   
-                            
-   
 export const tableMoveRowDown: Command = (view) =>
   rewriteTable(view, (rows, aligns, loc) => {
     if (loc.cursorRow < 2) return null
@@ -1985,9 +1809,6 @@ export const tableMoveRowDown: Command = (view) =>
     return { rows: newRows, aligns }
   })
 
-   
-                       
-   
 export const swapLineUp: Command = (view) => {
   const state = view.state
   const main = state.selection.main
@@ -2004,9 +1825,6 @@ export const swapLineUp: Command = (view) => {
   return true
 }
 
-   
-                       
-   
 export const swapLineDown: Command = (view) => {
   const state = view.state
   const main = state.selection.main
@@ -2024,10 +1842,6 @@ export const swapLineDown: Command = (view) => {
   return true
 }
 
-   
-                                                        
-                       
-   
 export const normalizeBulletMarkers: Command = (view) => {
   const state = view.state
   const doc = state.doc
@@ -2044,7 +1858,7 @@ export const normalizeBulletMarkers: Command = (view) => {
     const m = /^(\s*)([*+])(\s+)(.*)$/.exec(text)
     if (!m) continue
     const [, indent, _bullet, space, rest] = m
-                                              
+
     if (/^\[( |x|X)\]\s/.test(rest)) {
       changes.push({ from: line.from, to: line.to, insert: `${indent}-${space}${rest}` })
     } else {
@@ -2056,10 +1870,6 @@ export const normalizeBulletMarkers: Command = (view) => {
   return true
 }
 
-   
-                                         
-                           
-   
 export const renumberOrderedLists: Command = (view) => {
   const state = view.state
   const doc = state.doc
@@ -2105,9 +1915,6 @@ export const renumberOrderedLists: Command = (view) => {
   return true
 }
 
-   
-                                     
-   
 export const selectCurrentParagraph: Command = (view) => {
   const state = view.state
   const main = state.selection.main
@@ -2126,9 +1933,6 @@ export const selectCurrentParagraph: Command = (view) => {
   return true
 }
 
-   
-                                               
-   
 export const ensureReferencesSection: Command = (view) => {
   const state = view.state
   const text = state.doc.toString()
@@ -2143,9 +1947,6 @@ export const ensureReferencesSection: Command = (view) => {
   return true
 }
 
-   
-                      
-   
 export const reverseLines: Command = (view) => {
   const state = view.state
   const main = state.selection.main
@@ -2164,9 +1965,6 @@ export const reverseLines: Command = (view) => {
   return true
 }
 
-   
-                               
-   
 export const dedupSelectedLines: Command = (view) => {
   const state = view.state
   const main = state.selection.main
@@ -2193,9 +1991,6 @@ export const dedupSelectedLines: Command = (view) => {
   return true
 }
 
-   
-             
-   
 export const removeEmptyLines: Command = (view) => {
   const state = view.state
   const main = state.selection.main
@@ -2215,9 +2010,6 @@ export const removeEmptyLines: Command = (view) => {
   return true
 }
 
-   
-                                   
-   
 export const collapseInnerSpaces: Command = (view) => {
   const state = view.state
   const main = state.selection.main
@@ -2235,9 +2027,6 @@ export const collapseInnerSpaces: Command = (view) => {
   return true
 }
 
-   
-                                                          
-   
 export const decodeHtmlEntities: Command = (view) => {
   const state = view.state
   const main = state.selection.main
@@ -2259,9 +2048,6 @@ export const decodeHtmlEntities: Command = (view) => {
   return true
 }
 
-   
-                                                     
-   
 export function getDocumentStats(view: EditorView): {
   chars: number
   charsNoSpaces: number
@@ -2273,7 +2059,7 @@ export function getDocumentStats(view: EditorView): {
   const chars = text.length
   const charsNoSpaces = text.replace(/\s+/g, '').length
   const lines = view.state.doc.lines
-                               
+
   const englishWords = (text.match(/[A-Za-z0-9]+(?:['’][A-Za-z0-9]+)*/g) || []).length
   const cjkChars = (text.match(/\p{Script=Han}/gu) || []).length
   const words = englishWords + cjkChars
@@ -2288,9 +2074,6 @@ function formatDateLink(date: Date): string {
   return `${y}-${m}-${d}`
 }
 
-   
-                                       
-   
 export const insertTodayLink: Command = (view) => {
   const link = `[[${formatDateLink(new Date())}]]`
   const pos = view.state.selection.main.from
@@ -2302,9 +2085,6 @@ export const insertTodayLink: Command = (view) => {
   return true
 }
 
-   
-                               
-   
 export const insertYesterdayLink: Command = (view) => {
   const d = new Date()
   d.setDate(d.getDate() - 1)
@@ -2318,9 +2098,6 @@ export const insertYesterdayLink: Command = (view) => {
   return true
 }
 
-   
-                               
-   
 export const insertTomorrowLink: Command = (view) => {
   const d = new Date()
   d.setDate(d.getDate() + 1)
@@ -2334,9 +2111,6 @@ export const insertTomorrowLink: Command = (view) => {
   return true
 }
 
-   
-                          
-   
 export function convertTabsToSpaces(spaces: number = 2): Command {
   const pad = ' '.repeat(Math.max(1, Math.min(8, spaces)))
   return (view) => {
@@ -2355,9 +2129,6 @@ export function convertTabsToSpaces(spaces: number = 2): Command {
   }
 }
 
-   
-                         
-   
 export function convertSpacesToTabs(spaces: number = 2): Command {
   const n = Math.max(1, Math.min(8, spaces))
   return (view) => {
@@ -2388,10 +2159,6 @@ export function convertSpacesToTabs(spaces: number = 2): Command {
   }
 }
 
-   
-                                                        
-                                  
-   
 export const generateTOC: Command = (view) => {
   const state = view.state
   const doc = state.doc
@@ -2438,9 +2205,6 @@ export const generateTOC: Command = (view) => {
   return true
 }
 
-   
-                                  
-   
 export function wrapAsSpoiler(summary: string = 'Click to expand'): Command {
   return (view) => {
     const state = view.state
@@ -2460,10 +2224,6 @@ export function wrapAsSpoiler(summary: string = 'Click to expand'): Command {
   }
 }
 
-   
-                                                   
-                                                           
-   
 export type Slide = { content: string; from: number; startLine: number; endLine: number }
 
 export function splitMarkdownSlides(source: string): Slide[] {
@@ -2476,7 +2236,7 @@ export function splitMarkdownSlides(source: string): Slide[] {
       off += ln.length + 1
     }
   }
-                        
+
   let bodyStart = 0
   if (lines[0]?.trim() === '---') {
     for (let i = 1; i < lines.length; i++) {
@@ -2496,7 +2256,7 @@ export function splitMarkdownSlides(source: string): Slide[] {
       continue
     }
     if (inFence) continue
-                                
+
     if (i > currentStart && /^-{3,}\s*$/.test(text)) {
       const content = lines.slice(currentStart, i).join('\n')
       slides.push({
@@ -2517,13 +2277,10 @@ export function splitMarkdownSlides(source: string): Slide[] {
       endLine: lines.length,
     })
   }
-             
+
   return slides.filter((s) => s.content.trim().length > 0)
 }
 
-   
-                                               
-   
 export function jumpToSlide(view: EditorView, slideNo: number): boolean {
   const source = view.state.doc.sliceString(0)
   const slides = splitMarkdownSlides(source)
@@ -2538,9 +2295,6 @@ export function jumpToSlide(view: EditorView, slideNo: number): boolean {
   return true
 }
 
-   
-                         
-   
 export const jumpToNextSlide: Command = (view) => {
   const source = view.state.doc.sliceString(0)
   const slides = splitMarkdownSlides(source)
@@ -2561,9 +2315,6 @@ export const jumpToNextSlide: Command = (view) => {
   return true
 }
 
-   
-            
-   
 export const jumpToPrevSlide: Command = (view) => {
   const source = view.state.doc.sliceString(0)
   const slides = splitMarkdownSlides(source)
@@ -2584,9 +2335,6 @@ export const jumpToPrevSlide: Command = (view) => {
   return true
 }
 
-   
-                        
-   
 export const insertSlideBreak: Command = (view) => {
   const state = view.state
   const main = state.selection.main
@@ -2602,21 +2350,18 @@ export const insertSlideBreak: Command = (view) => {
   return true
 }
 
-   
-                                                   
-   
 export type CodeBlockAtCursor = {
-                            
+
   from: number
-                                   
+
   to: number
-                        
+
   startLine: number
-               
+
   endLine: number
-                  
+
   lang: string
-                           
+
   body: string
 }
 
@@ -2634,7 +2379,7 @@ export function getCodeBlockAtCursor(view: EditorView): CodeBlockAtCursor | null
         fenceOpenLine = i
         lang = m[1] ?? ''
       } else {
-                   
+
         if (cursorLine > fenceOpenLine && cursorLine <= i) {
           const openLine = doc.line(fenceOpenLine)
           const closeLine = doc.line(i)
@@ -2657,10 +2402,6 @@ export function getCodeBlockAtCursor(view: EditorView): CodeBlockAtCursor | null
   return null
 }
 
-   
-                                    
-                        
-   
 export const copyCodeBlockAtCursor: Command = (view) => {
   const info = getCodeBlockAtCursor(view)
   if (!info) return false
@@ -2670,10 +2411,6 @@ export const copyCodeBlockAtCursor: Command = (view) => {
   return true
 }
 
-   
-                                  
-                                            
-   
 export function changeCodeBlockLang(newLang?: string): Command {
   return (view) => {
     const info = getCodeBlockAtCursor(view)
@@ -2697,11 +2434,6 @@ export function changeCodeBlockLang(newLang?: string): Command {
   }
 }
 
-   
-                             
-                                  
-                              
-   
 export function shiftAllHeadings(delta: number): Command {
   return (view) => {
     if (delta === 0) return false
@@ -2733,9 +2465,6 @@ export function shiftAllHeadings(delta: number): Command {
   }
 }
 
-   
-                                             
-   
 export function parseCsv(source: string, delimiter: string = ','): string[][] {
   const rows: string[][] = []
   let row: string[] = []
@@ -2779,15 +2508,11 @@ export function parseCsv(source: string, delimiter: string = ','): string[][] {
     row.push(field)
     rows.push(row)
   }
-            
+
   while (rows.length > 0 && rows[rows.length - 1].every((c) => c === '')) rows.pop()
   return rows
 }
 
-   
-                                     
-                                 
-   
 export function csvToMarkdownTable(csv: string, delimiter: string = ','): string {
   const rows = parseCsv(csv, delimiter)
   if (rows.length === 0) return ''
@@ -2808,15 +2533,12 @@ export function csvToMarkdownTable(csv: string, delimiter: string = ','): string
   return [header, sep, ...body].join('\n')
 }
 
-   
-                                         
-   
 export function markdownTableToCsv(table: string, delimiter: string = ','): string {
   const lines = table.split(/\r?\n/).filter((l) => l.trim().length > 0)
   const rows: string[][] = []
   for (const line of lines) {
     if (!line.trim().startsWith('|')) continue
-                         
+
     if (/^\|?\s*:?-{2,}/.test(line.trim().slice(1))) {
       const segs = line
         .trim()
@@ -2843,50 +2565,41 @@ export function markdownTableToCsv(table: string, delimiter: string = ','): stri
   return rows.map((r) => r.map(quote).join(delimiter)).join('\n')
 }
 
-   
-                                   
-                                                                                           
-                      
-   
 export function stripMarkdownToPlain(source: string): string {
   let s = source
-            
+
   s = s.replace(/<!--[\s\S]*?-->/g, '')
-                         
+
   s = s.replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
   // Wikilink [[Page|alias]] becomes alias; [[Page]] becomes Page.
   s = s.replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, '$2')
   s = s.replace(/\[\[([^\]]+)\]\]/g, '$1')
   // markdown link [text](url) → text
   s = s.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-              
+
   s = s.replace(/^(\s*)#{1,6}\s+/gm, '$1')
-              
+
   s = s.replace(/^(\s*)([-*+]|\d+\.)\s+/gm, '$1')
-              
+
   s = s.replace(/^(\s*)[-*+]\s+\[[ xX]\]\s+/gm, '$1')
-              
+
   s = s.replace(/^(\s*)>+\s?/gm, '$1')
-         
+
   s = s.replace(/\*\*([^*]+)\*\*/g, '$1')
   s = s.replace(/__([^_]+)__/g, '$1')
   s = s.replace(/\*([^*]+)\*/g, '$1')
   s = s.replace(/_([^_]+)_/g, '$1')
   s = s.replace(/~~([^~]+)~~/g, '$1')
   s = s.replace(/`([^`]+)`/g, '$1')
-               
+
   s = s.replace(/==([^=]+)==/g, '$1')
-                  
-           
+
   s = s.replace(/[ \t]+$/gm, '')
-           
+
   s = s.replace(/\n{3,}/g, '\n\n')
   return s.trim()
 }
 
-   
-                           
-   
 export const copyAsPlainText: Command = (view) => {
   const state = view.state
   const main = state.selection.main
@@ -2904,9 +2617,6 @@ export const copyAsPlainText: Command = (view) => {
   return true
 }
 
-   
-                           
-   
 export const replaceWithPlain: Command = (view) => {
   const state = view.state
   const main = state.selection.main
@@ -2923,9 +2633,6 @@ export const replaceWithPlain: Command = (view) => {
   return true
 }
 
-   
-                                      
-   
 export function convertCsvSelectionToTable(delimiter: string = ','): Command {
   return (view) => {
     const state = view.state
@@ -2944,9 +2651,6 @@ export function convertCsvSelectionToTable(delimiter: string = ','): Command {
   }
 }
 
-   
-                             
-   
 export function convertTableSelectionToCsv(delimiter: string = ','): Command {
   return (view) => {
     const state = view.state
@@ -2965,10 +2669,6 @@ export function convertTableSelectionToCsv(delimiter: string = ','): Command {
   }
 }
 
-   
-                                                  
-                        
-   
 export function markAllTasks(state: 'done' | 'undone'): Command {
   return (view) => {
     const doc = view.state.doc
@@ -2998,10 +2698,6 @@ export function markAllTasks(state: 'done' | 'undone'): Command {
   }
 }
 
-   
-                                                      
-                          
-   
 export const archiveDoneTasks: Command = (view) => {
   const doc = view.state.doc
   const lines: string[] = []
@@ -3025,7 +2721,7 @@ export const archiveDoneTasks: Command = (view) => {
   if (archived.length === 0) return false
 
   const kept = lines.filter((_, i) => keepIdx[i])
-                             
+
   let archivedHeadingAt = -1
   for (let i = 0; i < kept.length; i++) {
     if (/^##\s+Archived\s*$/.test(kept[i].trim())) {
@@ -3051,11 +2747,6 @@ export const archiveDoneTasks: Command = (view) => {
   return true
 }
 
-   
-                                            
-                                    
-                                
-   
 export function renameDocumentTag(oldTag: string, newTag: string): Command {
   return (view) => {
     const cleanOld = oldTag.replace(/^#/, '')
@@ -3073,14 +2764,14 @@ export function renameDocumentTag(oldTag: string, newTag: string): Command {
         continue
       }
       if (inFence) continue
-                         
+
       const masked = text.replace(/`[^`]*`/g, (m) => ' '.repeat(m.length))
       const escaped = cleanOld.replace(/[/.+\-]/g, '\\$&')
       const re = new RegExp('(^|[\\s\\p{P}])#' + escaped + '(?=$|[\\s\\p{P}])', 'gu')
       let m: RegExpExecArray | null
       while ((m = re.exec(masked)) !== null) {
         const startCol = m.index + m[1].length
-                                         
+
         changes.push({
           from: line.from + startCol,
           to: line.from + startCol + 1 + cleanOld.length,
@@ -3095,11 +2786,6 @@ export function renameDocumentTag(oldTag: string, newTag: string): Command {
   }
 }
 
-   
-                                    
-                                                
-                          
-   
 export function markdownOutlineToOpml(source: string): string {
   type Node = { text: string; children: Node[] }
   const root: Node = { text: '', children: [] }
@@ -3131,10 +2817,6 @@ export function markdownOutlineToOpml(source: string): string {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<opml version="2.0">\n  <head/>\n  <body>\n${render(root.children, 2)}\n  </body>\n</opml>`
 }
 
-   
-                                 
-                                        
-   
 export function opmlToMarkdownOutline(opml: string): string {
   const lines = opml.split(/\r?\n/)
   const out: string[] = []
@@ -3150,7 +2832,7 @@ export function opmlToMarkdownOutline(opml: string): string {
     if (trimmed.startsWith('<outline')) {
       const m = /text="([^"]*)"/.exec(trimmed)
       if (!m) continue
-                           
+
       const leading = /^( *)/.exec(line)?.[1].length ?? 0
       const depth = Math.max(0, Math.floor((leading - 4) / 2))
       out.push('  '.repeat(depth) + '- ' + decode(m[1]))
@@ -3162,9 +2844,6 @@ export function opmlToMarkdownOutline(opml: string): string {
   return out.join('\n')
 }
 
-   
-                                   
-   
 export const convertOutlineSelectionToOpml: Command = (view) => {
   const state = view.state
   const main = state.selection.main
@@ -3181,9 +2860,6 @@ export const convertOutlineSelectionToOpml: Command = (view) => {
   return true
 }
 
-   
-                                   
-   
 export const convertOpmlSelectionToOutline: Command = (view) => {
   const state = view.state
   const main = state.selection.main
@@ -3207,7 +2883,7 @@ function listItemRangeAtLine(view: EditorView, lineNo: number): { startLine: num
   if (!m) return null
   const indentChars = m[1]
   const indent = indentChars.replace(/\t/g, '  ').length
-                                      
+
   let endLine = lineNo
   for (let i = lineNo + 1; i <= doc.lines; i++) {
     const t = doc.line(i).text
@@ -3221,10 +2897,6 @@ function listItemRangeAtLine(view: EditorView, lineNo: number): { startLine: num
   return { startLine: lineNo, endLine, indentChars }
 }
 
-   
-                                 
-                  
-   
 export const promoteListItem: Command = (view) => {
   const state = view.state
   const head = state.selection.main.head
@@ -3249,9 +2921,6 @@ export const promoteListItem: Command = (view) => {
   return true
 }
 
-   
-                                 
-   
 export const demoteListItem: Command = (view) => {
   const state = view.state
   const head = state.selection.main.head
@@ -3280,9 +2949,6 @@ function selectionLineRange(view: EditorView): { fromLine: number; toLine: numbe
   return { fromLine, toLine }
 }
 
-   
-                                      
-   
 export const convertBulletListToOrdered: Command = (view) => {
   const state = view.state
   const { fromLine, toLine } = selectionLineRange(view)
@@ -3307,9 +2973,6 @@ export const convertBulletListToOrdered: Command = (view) => {
   return true
 }
 
-   
-                                   
-   
 export const convertOrderedListToBullet: Command = (view) => {
   const state = view.state
   const { fromLine, toLine } = selectionLineRange(view)
@@ -3329,9 +2992,6 @@ export const convertOrderedListToBullet: Command = (view) => {
   return true
 }
 
-   
-                                                 
-   
 export const insertUuid: Command = (view) => {
   let uuid: string
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -3354,10 +3014,6 @@ export const insertUuid: Command = (view) => {
   return true
 }
 
-   
-                                 
-                                                                           
-   
 export const sortFrontmatterKeys: Command = (view) => {
   const doc = view.state.doc
   if (doc.lines < 2) return false
@@ -3395,9 +3051,6 @@ export const sortFrontmatterKeys: Command = (view) => {
   return true
 }
 
-   
-                      
-   
 export const reverseCase: Command = (view) => {
   const state = view.state
   const main = state.selection.main
@@ -3419,9 +3072,6 @@ export const reverseCase: Command = (view) => {
   return true
 }
 
-   
-                                               
-   
 export const tableDedupRowsByFirstColumn: Command = (view) =>
   rewriteTable(view, (rows, aligns) => {
     if (rows.length < 2) return null
@@ -3438,9 +3088,6 @@ export const tableDedupRowsByFirstColumn: Command = (view) =>
     return { rows: [header, ...kept], aligns }
   })
 
-   
-                                         
-   
 export const tableRotateColumnsLeft: Command = (view) =>
   rewriteTable(view, (rows, aligns) => {
     if (aligns.length < 2) return null
@@ -3449,9 +3096,6 @@ export const tableRotateColumnsLeft: Command = (view) =>
     return { rows: newRows, aligns: newAligns }
   })
 
-   
-                                         
-   
 export const tableRotateColumnsRight: Command = (view) =>
   rewriteTable(view, (rows, aligns) => {
     if (aligns.length < 2) return null
@@ -3460,9 +3104,6 @@ export const tableRotateColumnsRight: Command = (view) =>
     return { rows: newRows, aligns: newAligns }
   })
 
-   
-                                           
-   
 export const tableTranspose: Command = (view) =>
   rewriteTable(view, (rows) => {
     if (rows.length < 1 || rows[0].length < 1) return null
@@ -3484,16 +3125,10 @@ export const tableTranspose: Command = (view) =>
     return { rows: newRows, aligns: newAligns }
   })
 
-   
-                                                              
-   
 export function escapeMarkdownText(text: string): string {
   return text.replace(/([\\`*_{}\[\]()#+\-.!<>|~])/g, '\\$1')
 }
 
-   
-                                     
-   
 export function unescapeMarkdownText(text: string): string {
   return text.replace(/\\([\\`*_{}\[\]()#+\-.!<>|~])/g, '$1')
 }
@@ -3546,10 +3181,6 @@ export function wrapAsDetails(summary: string = 'Details'): Command {
   }
 }
 
-   
-                                                           
-                            
-   
 export const convertHeadingsToList: Command = (view) => {
   const doc = view.state.doc
   const lines: string[] = []
@@ -3585,10 +3216,6 @@ export const convertHeadingsToList: Command = (view) => {
   return true
 }
 
-   
-                                                           
-                            
-   
 export const convertBulletsToHeadings: Command = (view) => {
   const doc = view.state.doc
   const lines: string[] = []
@@ -3624,9 +3251,6 @@ export const convertBulletsToHeadings: Command = (view) => {
   return true
 }
 
-   
-                                                               
-   
 export function capitalizeSentencesText(text: string): string {
   let out = ''
   let cap = true
@@ -3663,9 +3287,6 @@ export const capitalizeSentences: Command = (view) => {
   return true
 }
 
-   
-                                         
-   
 export function capitalizeEachWordText(text: string): string {
   return text.replace(/\b([a-zA-Z])/g, (_, c) => c.toUpperCase())
 }
@@ -3686,10 +3307,6 @@ export const capitalizeEachWord: Command = (view) => {
   return true
 }
 
-   
-                         
-                                                        
-   
 export function straightToCurlyQuotesText(text: string): string {
   let out = ''
   for (let i = 0; i < text.length; i++) {
@@ -3706,7 +3323,6 @@ export function straightToCurlyQuotesText(text: string): string {
   return out
 }
 
-                                       
 export function curlyToStraightQuotesText(text: string): string {
   return text
     .replace(/[“”]/g, '"')
@@ -3743,7 +3359,6 @@ export const curlyToStraightQuotes: Command = (view) => {
   return true
 }
 
-                                                        
 function consecutiveListBlock(view: EditorView): {
   startLine: number
   endLine: number
@@ -3801,11 +3416,11 @@ function rewriteListBlock(view: EditorView, transform: (items: string[]) => stri
   }
   const out = transform(items)
   if (!out) return false
-                                                            
+
   const sample = doc.line(block.startLine).text
   const rendered = out.map((content, idx) => {
     return sample.replace(block.matcher, (_full, _prefix, _marker, _body) => {
-                       
+
       if (/^([ \t]*)\d+\./.test(sample)) {
         return `${block.prefix}${idx + 1}. ${content}`
       }
@@ -3861,7 +3476,7 @@ export const shuffleListBlock: Command = (view) =>
       const j = Math.floor(Math.random() * (i + 1))
       ;[out[i], out[j]] = [out[j], out[i]]
     }
-                         
+
     if (out.every((v, i) => v === items[i])) {
       out.reverse()
     }
@@ -3904,10 +3519,6 @@ function moveSectionTo(view: EditorView, target: 'top' | 'bottom'): boolean {
 export const moveSectionToTop: Command = (view) => moveSectionTo(view, 'top')
 export const moveSectionToBottom: Command = (view) => moveSectionTo(view, 'bottom')
 
-   
-                                             
-                                                        
-   
 export function buildSectionLinkText(view: EditorView, documentBase: string): string | null {
   const cur = findCurrentSection(view.state)
   if (!cur) return null
@@ -3919,28 +3530,6 @@ export function buildSectionLinkText(view: EditorView, documentBase: string): st
   return documentBase ? `[[${documentBase}#${title}]]` : `[[#${title}]]`
 }
 
-   
-                                                           
-   
-export function copySectionAsLink(documentBase: string): Command {
-  return (view) => {
-    const txt = buildSectionLinkText(view, documentBase)
-    if (!txt) return false
-    try {
-      if (typeof navigator !== 'undefined' && navigator.clipboard) {
-        void navigator.clipboard.writeText(txt)
-      }
-    } catch {
-      // best-effort
-    }
-    return true
-  }
-}
-
-   
-                                 
-                      
-   
 export const toggleInlineMath: Command = (view) => {
   const state = view.state
   const main = state.selection.main
@@ -3974,10 +3563,6 @@ export const toggleInlineMath: Command = (view) => {
   return true
 }
 
-   
-                                   
-                                                                        
-   
 export const insertHorizontalRuleAtCursor: Command = (view) => {
   const state = view.state
   const main = state.selection.main
@@ -3992,9 +3577,6 @@ export const insertHorizontalRuleAtCursor: Command = (view) => {
   return true
 }
 
-   
-                                             
-   
 export function bulletsToCsvText(source: string, sep: string = ', '): string {
   const items: string[] = []
   for (const line of source.split('\n')) {
@@ -4004,9 +3586,6 @@ export function bulletsToCsvText(source: string, sep: string = ', '): string {
   return items.join(sep)
 }
 
-   
-                              
-   
 export function csvToBulletsText(csv: string, sep: string | RegExp = /,\s*|;\s*/): string {
   const parts = typeof sep === 'string' ? csv.split(sep) : csv.split(sep)
   return parts.map((p) => `- ${p.trim()}`).filter((l) => l.length > 2).join('\n')
@@ -4039,7 +3618,7 @@ export const csvToBulletsLine: Command = (view) => {
   const main = state.selection.main
   const line = state.doc.lineAt(main.head)
   if (!line.text.trim()) return false
-                         
+
   if (!/[,;]/.test(line.text)) return false
   const out = csvToBulletsText(line.text)
   if (!out) return false
@@ -4051,12 +3630,6 @@ export const csvToBulletsLine: Command = (view) => {
   return true
 }
 
-   
-                            
-  
-                                      
-                       
-   
 export function hardWrapText(source: string, width = 80): string {
   if (width < 1) return source
   const out: string[] = []
@@ -4065,7 +3638,7 @@ export function hardWrapText(source: string, width = 80): string {
       out.push(para)
       continue
     }
-                      
+
     const flat = para.replace(/\s+\n\s+/g, ' ').replace(/\n/g, ' ').replace(/\s+/g, ' ').trim()
     const lines: string[] = []
     let cur = ''
@@ -4088,24 +3661,18 @@ export function hardWrapText(source: string, width = 80): string {
   return out.join('\n\n')
 }
 
-   
-                                       
-   
 export function unwrapParagraphsText(source: string): string {
   return source
     .split(/\n\n+/)
     .map((para) => {
       if (!para.trim()) return para
-                                       
+
       if (/^[ \t]*```/.test(para) || /\n[ \t]*```/.test(para)) return para
       return para.replace(/\s*\n\s*/g, ' ').replace(/\s+/g, ' ').trim()
     })
     .join('\n\n')
 }
 
-   
-                                                            
-   
 export function toMarkdownHardBreaksText(source: string): string {
   return source
     .split(/\n\n+/)
@@ -4115,7 +3682,7 @@ export function toMarkdownHardBreaksText(source: string): string {
         .split('\n')
         .map((ln, i, arr) => {
           if (i === arr.length - 1) return ln
-                      
+
           if (/\s\s+$/.test(ln)) return ln
           return ln.replace(/\s+$/, '') + '  '
         })
@@ -4124,9 +3691,6 @@ export function toMarkdownHardBreaksText(source: string): string {
     .join('\n\n')
 }
 
-   
-                        
-   
 export function fromMarkdownHardBreaksText(source: string): string {
   return source.replace(/[ \t]{2,}\n/g, '\n')
 }
@@ -4152,27 +3716,22 @@ function applyToSelectionOrAll(
   return true
 }
 
-                   
 export const hardWrapSelection = (width = 80): Command => (view) =>
   applyToSelectionOrAll(view, (s) => hardWrapText(s, width), 'input.wrap.paragraph')
 
-                  
 export const unwrapParagraphs: Command = (view) =>
   applyToSelectionOrAll(view, unwrapParagraphsText, 'input.unwrap.paragraph')
 
-                            
 export const toMarkdownHardBreaks: Command = (view) =>
   applyToSelectionOrAll(view, toMarkdownHardBreaksText, 'input.hardbreaks.on')
 
-                             
 export const fromMarkdownHardBreaks: Command = (view) =>
   applyToSelectionOrAll(view, fromMarkdownHardBreaksText, 'input.hardbreaks.off')
 
 // -----------------------------------------------------------------------------
-                       
+
 // -----------------------------------------------------------------------------
 
-                                          
 export const increaseQuoteLevel: Command = (view) => {
   const state = view.state
   const range = state.selection.main
@@ -4192,7 +3751,6 @@ export const increaseQuoteLevel: Command = (view) => {
   return true
 }
 
-                                    
 export const decreaseQuoteLevel: Command = (view) => {
   const state = view.state
   const range = state.selection.main
@@ -4212,7 +3770,6 @@ export const decreaseQuoteLevel: Command = (view) => {
   return true
 }
 
-                                
 function sortLinesByComparator(
   view: EditorView,
   cmp: (a: string, b: string) => number,
@@ -4236,19 +3793,15 @@ function sortLinesByComparator(
   return true
 }
 
-                   
 export const sortSelectedLinesDesc: Command = (view) =>
   sortLinesByComparator(view, (a, b) => b.localeCompare(a), 'input.sort.desc')
 
-                  
 export const sortSelectedLinesByLengthAsc: Command = (view) =>
   sortLinesByComparator(view, (a, b) => a.length - b.length, 'input.sort.length.asc')
 
-                  
 export const sortSelectedLinesByLengthDesc: Command = (view) =>
   sortLinesByComparator(view, (a, b) => b.length - a.length, 'input.sort.length.desc')
 
-                                  
 export const sortSelectedLinesNumericAsc: Command = (view) => {
   const num = (s: string): number => {
     const m = /-?\d+(?:\.\d+)?/.exec(s)
@@ -4257,7 +3810,6 @@ export const sortSelectedLinesNumericAsc: Command = (view) => {
   return sortLinesByComparator(view, (a, b) => num(a) - num(b), 'input.sort.numeric.asc')
 }
 
-                      
 export const sortSelectedLinesNumericDesc: Command = (view) => {
   const num = (s: string): number => {
     const m = /-?\d+(?:\.\d+)?/.exec(s)
@@ -4266,20 +3818,15 @@ export const sortSelectedLinesNumericDesc: Command = (view) => {
   return sortLinesByComparator(view, (a, b) => num(b) - num(a), 'input.sort.numeric.desc')
 }
 
-                                           
 export const sortSelectedLinesNatural: Command = (view) => {
   const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' })
   return sortLinesByComparator(view, (a, b) => collator.compare(a, b), 'input.sort.natural')
 }
 
 // -----------------------------------------------------------------------------
-                             
+
 // -----------------------------------------------------------------------------
 
-   
-                                 
-                             
-   
 export function exportOutlineToText(source: string): string {
   const out: string[] = []
   let inFence = false
@@ -4299,7 +3846,6 @@ export function exportOutlineToText(source: string): string {
   return out.join('\n')
 }
 
-                                      
 export const trimSectionBlanks: Command = (view) => {
   const cur = findCurrentSection(view.state)
   if (!cur) return false
@@ -4322,7 +3868,6 @@ export const trimSectionBlanks: Command = (view) => {
   return true
 }
 
-                                                         
 export const insertAuthorAndDateFrontmatter: Command = (view) => {
   const doc = view.state.doc
   const text = doc.toString()
@@ -4330,7 +3875,7 @@ export const insertAuthorAndDateFrontmatter: Command = (view) => {
   const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
   const fm = /^---\n([\s\S]*?)\n---/.exec(text)
   if (!fm) {
-                     
+
     const block = `---\nauthor: \ndate: ${dateStr}\n---\n\n`
     view.dispatch({
       changes: { from: 0, insert: block },
@@ -4352,7 +3897,6 @@ export const insertAuthorAndDateFrontmatter: Command = (view) => {
   return true
 }
 
-                                
 export const expandSelectionToParagraph: Command = (view) => {
   const state = view.state
   const main = state.selection.main
@@ -4374,7 +3918,6 @@ export const expandSelectionToParagraph: Command = (view) => {
   return true
 }
 
-                                 
 export const selectToNextHeading: Command = (view) => {
   const state = view.state
   const doc = state.doc
@@ -4400,7 +3943,6 @@ export const selectToNextHeading: Command = (view) => {
 // Section duplicate / selection stats / blockquote / heading lowercase
 // -----------------------------------------------------------------------------
 
-                                         
 export const duplicateCurrentSection: Command = (view) => {
   const cur = findCurrentSection(view.state)
   if (!cur) return false
@@ -4419,9 +3961,6 @@ export const duplicateCurrentSection: Command = (view) => {
   return true
 }
 
-   
-                           
-   
 export function getSelectionStats(view: EditorView): {
   chars: number
   charsNoSpaces: number
@@ -4442,30 +3981,13 @@ export function getSelectionStats(view: EditorView): {
   return { chars, charsNoSpaces, words, lines }
 }
 
-   
-                                      
-  
-      
-      
-      
-      
-  
-      
-      
-      
-      
-      
-      
-      
-      
-   
 export function mergeAdjacentBlockquotesText(source: string): string {
   const lines = source.split('\n')
   const out: string[] = []
   for (let i = 0; i < lines.length; i++) {
     const cur = lines[i]
     if (cur.trim() === '' && i > 0 && i < lines.length - 1) {
-                      
+
       const prev = lines[i - 1]
       const next = lines[i + 1]
       if (/^\s*>/.test(prev) && /^\s*>/.test(next)) continue
@@ -4475,11 +3997,9 @@ export function mergeAdjacentBlockquotesText(source: string): string {
   return out.join('\n')
 }
 
-                      
 export const mergeAdjacentBlockquotes: Command = (view) =>
   applyToSelectionOrAll(view, mergeAdjacentBlockquotesText, 'input.blockquote.merge')
 
-                                  
 export function lowercaseHeadingsText(source: string): string {
   return source
     .split('\n')
@@ -4491,11 +4011,9 @@ export function lowercaseHeadingsText(source: string): string {
     .join('\n')
 }
 
-                 
 export const lowercaseAllHeadings: Command = (view) =>
   applyToSelectionOrAll(view, lowercaseHeadingsText, 'input.headings.lowercase')
 
-              
 export function uppercaseHeadingsText(source: string): string {
   return source
     .split('\n')
@@ -4511,26 +4029,18 @@ export const uppercaseAllHeadings: Command = (view) =>
   applyToSelectionOrAll(view, uppercaseHeadingsText, 'input.headings.uppercase')
 
 // -----------------------------------------------------------------------------
-                                     
+
 // -----------------------------------------------------------------------------
 
 export type TemplateContext = {
-                    
+
   title?: string
-                      
+
   vars?: Record<string, string>
-                           
+
   now?: Date
 }
 
-   
-          
-                                     
-                                
-                       
-                                   
-                                 
-   
 export function expandTemplateVariables(template: string, ctx: TemplateContext = {}): string {
   const now = ctx.now ?? new Date()
   const fmtDate = (pattern = 'YYYY-MM-DD'): string => formatWithPattern(pattern, now)
@@ -4569,9 +4079,6 @@ function formatWithPattern(pattern: string, d: Date): string {
     .replace(/ss/g, pad(s))
 }
 
-   
-                                           
-   
 export function insertTemplateText(view: EditorView, template: string, ctx: TemplateContext = {}): boolean {
   const expanded = expandTemplateVariables(template, ctx)
   const cursorIdx = expanded.indexOf('{{cursor}}')
@@ -4589,7 +4096,6 @@ export function insertTemplateText(view: EditorView, template: string, ctx: Temp
   return true
 }
 
-                                                   
 export function getNoteProperties(source: string): { keys: string[]; map: Record<string, string> } {
   const fm = /^---\n([\s\S]*?)\n---/.exec(source)
   const keys: string[] = []
@@ -4605,10 +4111,6 @@ export function getNoteProperties(source: string): { keys: string[]; map: Record
   return { keys, map }
 }
 
-   
-                                         
-                       
-   
 export function setNotePropertyText(source: string, key: string, value: string | null): string {
   const fm = /^---\n([\s\S]*?)\n---/.exec(source)
   const isDelete = value === null
@@ -4632,7 +4134,6 @@ export function setNotePropertyText(source: string, key: string, value: string |
   return source.replace(fm[0], `---\n${lines.join('\n')}\n---`)
 }
 
-                                
 export function setNoteProperty(view: EditorView, key: string, value: string | null): boolean {
   const text = view.state.doc.toString()
   const next = setNotePropertyText(text, key, value)
@@ -4645,7 +4146,6 @@ export function setNoteProperty(view: EditorView, key: string, value: string | n
   return true
 }
 
-                                                     
 export const insertImageEmbedWithSize = (file: string, width = 400): Command => (view) => {
   const text = `![[${file}|${width}]]`
   const state = view.state
@@ -4659,7 +4159,6 @@ export const insertImageEmbedWithSize = (file: string, width = 400): Command => 
   return true
 }
 
-                                                                      
 export function convertImagesToWikilinksText(source: string): string {
   return source.replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g, (full, alt, href) => {
     if (/^https?:\/\//i.test(href)) return full
@@ -4672,7 +4171,6 @@ export function convertImagesToWikilinksText(source: string): string {
 export const convertImagesToWikilinks: Command = (view) =>
   applyToSelectionOrAll(view, convertImagesToWikilinksText, 'input.image.wikilink')
 
-                                               
 export function convertImageWikilinksToMarkdownText(source: string): string {
   return source.replace(/!\[\[([^\]|]+)(?:\|[^\]]*)?\]\]/g, (_, href) => {
     return `![](${href})`
@@ -4683,12 +4181,9 @@ export const convertImageWikilinksToMarkdown: Command = (view) =>
   applyToSelectionOrAll(view, convertImageWikilinksToMarkdownText, 'input.image.markdown')
 
 // -----------------------------------------------------------------------------
-                                                        
+
 // -----------------------------------------------------------------------------
 
-   
-                                                 
-   
 export const surroundSelection = (left: string, right: string): Command => (view) => {
   const state = view.state
   const main = state.selection.main
@@ -4712,10 +4207,6 @@ export const surroundSelection = (left: string, right: string): Command => (view
   return true
 }
 
-   
-                                            
-                          
-   
 export const pasteUrlAsLink = (url: string): Command => (view) => {
   const state = view.state
   const main = state.selection.main
@@ -4740,7 +4231,6 @@ export const pasteUrlAsLink = (url: string): Command => (view) => {
   return true
 }
 
-                   
 export function cleanupZeroWidthCharsText(source: string): string {
   return source.replace(/[​‌‍﻿]/g, '')
 }
@@ -4748,17 +4238,12 @@ export function cleanupZeroWidthCharsText(source: string): string {
 export const cleanupZeroWidthChars: Command = (view) =>
   applyToSelectionOrAll(view, cleanupZeroWidthCharsText, 'input.cleanup.zerowidth')
 
-                               
 export const normalizeUnicodeNFC: Command = (view) =>
   applyToSelectionOrAll(view, (s) => s.normalize('NFC'), 'input.normalize.nfc')
 
-                               
 export const normalizeUnicodeNFD: Command = (view) =>
   applyToSelectionOrAll(view, (s) => s.normalize('NFD'), 'input.normalize.nfd')
 
-   
-                        
-   
 export const toggleHighlight: Command = (view) => {
   const state = view.state
   const main = state.selection.main
@@ -4792,7 +4277,6 @@ export const toggleHighlight: Command = (view) => {
   return true
 }
 
-                                
 export function transformToSentenceCaseText(text: string): string {
   if (!text) return text
   const lower = text.toLowerCase()
@@ -4816,12 +4300,11 @@ export const transformToSentenceCase: Command = (view) => {
 }
 
 // -----------------------------------------------------------------------------
-                                    
+
 // -----------------------------------------------------------------------------
 
 export type LinkRef = { label: string; url: string }
 
-                                                  
 export function extractAllLinks(source: string): LinkRef[] {
   const out: LinkRef[] = []
   let inFence = false
@@ -4841,7 +4324,6 @@ export function extractAllLinks(source: string): LinkRef[] {
   return out
 }
 
-                                   
 export function extractAllImages(source: string): LinkRef[] {
   const out: LinkRef[] = []
   let inFence = false
@@ -4860,7 +4342,6 @@ export function extractAllImages(source: string): LinkRef[] {
   return out
 }
 
-                                                           
 export function unwrapAllLinksToPlainTextText(source: string): string {
   return source.replace(/(?<!\!)\[([^\]]+)\]\([^)\s]+(?:\s+"[^"]*")?\)/g, '$1')
 }
@@ -4868,7 +4349,6 @@ export function unwrapAllLinksToPlainTextText(source: string): string {
 export const unwrapAllLinksToPlainText: Command = (view) =>
   applyToSelectionOrAll(view, unwrapAllLinksToPlainTextText, 'input.link.unwrap-all')
 
-                       
 export const surroundCurrentLineWith = (left: string, right: string): Command => (view) => {
   const state = view.state
   const main = state.selection.main
@@ -4881,7 +4361,6 @@ export const surroundCurrentLineWith = (left: string, right: string): Command =>
   return true
 }
 
-                                                         
 export const insertSeparatorComment = (title = ''): Command => (view) => {
   const inner = title ? ` ${title} ` : ' === '
   const text = `<!-- ${'='.repeat(5)}${inner}${'='.repeat(5)} -->`
@@ -4898,7 +4377,6 @@ export const insertSeparatorComment = (title = ''): Command => (view) => {
   return true
 }
 
-                                                                
 export const insertLinksSummary: Command = (view) => {
   const text = view.state.doc.toString()
   const links = extractAllLinks(text)
@@ -4916,7 +4394,6 @@ export const insertLinksSummary: Command = (view) => {
   return true
 }
 
-                
 export const insertImagesSummary: Command = (view) => {
   const text = view.state.doc.toString()
   const imgs = extractAllImages(text)
@@ -4945,7 +4422,6 @@ function findFenceLines(doc: { lines: number; line(n: number): { text: string; f
   return out
 }
 
-                                    
 export const jumpToNextCodeBlock: Command = (view) => {
   const doc = view.state.doc
   const fences = findFenceLines(doc)
@@ -4965,7 +4441,6 @@ export const jumpToNextCodeBlock: Command = (view) => {
   return false
 }
 
-                           
 export const jumpToPrevCodeBlock: Command = (view) => {
   const doc = view.state.doc
   const fences = findFenceLines(doc)
@@ -4987,7 +4462,6 @@ export const jumpToPrevCodeBlock: Command = (view) => {
 
 const TASK_LINE = /^\s*[-*+]\s+\[[ xX]\]\s+/
 
-                
 export const jumpToNextTask: Command = (view) => {
   const doc = view.state.doc
   const curLine = doc.lineAt(view.state.selection.main.head).number
@@ -5005,7 +4479,6 @@ export const jumpToNextTask: Command = (view) => {
   return false
 }
 
-                
 export const jumpToPrevTask: Command = (view) => {
   const doc = view.state.doc
   const curLine = doc.lineAt(view.state.selection.main.head).number
@@ -5023,11 +4496,6 @@ export const jumpToPrevTask: Command = (view) => {
   return false
 }
 
-   
-                             
-                                        
-                   
-   
 export function tableToBulletsText(source: string): string {
   const lines = source.split('\n')
   const rows: string[][] = []
@@ -5078,7 +4546,6 @@ export function tableToBulletsText(source: string): string {
 export const tableToBulletList: Command = (view) =>
   applyToSelectionOrAll(view, tableToBulletsText, 'input.table.bullets')
 
-                                                 
 export function bulletsToTableText(source: string): string {
   const lines = source.split('\n')
   const out: string[] = []
@@ -5158,18 +4625,6 @@ export function renameFrontmatterKeyText(source: string, oldKey: string, newKey:
   return source.replace(fm[0], `---\n${next.join('\n')}\n---`)
 }
 
-export const renameFrontmatterKey = (oldKey: string, newKey: string): Command => (view) => {
-  const text = view.state.doc.toString()
-  const next = renameFrontmatterKeyText(text, oldKey, newKey)
-  if (next === text) return false
-  view.dispatch({
-    changes: { from: 0, to: text.length, insert: next },
-    userEvent: 'input.frontmatter.rename',
-  })
-  view.focus()
-  return true
-}
-
 /** Sort the list-valued frontmatter value (`tags: [a, c, b]` → `tags: [a, b, c]`). */
 export function sortFrontmatterValuesText(source: string, key: string): string {
   const fm = /^---\n([\s\S]*?)\n---/.exec(source)
@@ -5223,9 +4678,6 @@ export function headingSlug(text: string): string {
     .slice(0, 80)
 }
 
-   
-                                                
-   
 export function slugifyHeadingsText(source: string): string {
   const lines = source.split('\n')
   const seen = new Set<string>()
@@ -5263,7 +4715,6 @@ export const slugifyHeadings: Command = (view) => {
   return true
 }
 
-                                         
 export const copyPlainTextOfSelection: Command = (view) => {
   const main = view.state.selection.main
   const text =
@@ -5279,7 +4730,6 @@ export const copyPlainTextOfSelection: Command = (view) => {
   return true
 }
 
-                                                              
 export function stripMarkdownToPlainText(source: string): string {
   return source
     .replace(/^#{1,6}\s+/gm, '')
@@ -5299,7 +4749,6 @@ export function stripMarkdownToPlainText(source: string): string {
 // Fold current section / unfold all + selection → list + wrap as %% comment %%
 // -----------------------------------------------------------------------------
 
-                                                           
 export const foldCurrentSection: Command = (view) => {
   const cur = findCurrentSection(view.state)
   if (!cur) return false
@@ -5313,14 +4762,10 @@ export const foldCurrentSection: Command = (view) => {
   return true
 }
 
-                                                                 
 export const unfoldAllSections: Command = (view) => {
   return unfoldAll(view)
 }
 
-   
-                                         
-   
 export function selectionToBulletListText(source: string): string {
   if (source.length === 0) return source
   return source
@@ -5332,7 +4777,6 @@ export function selectionToBulletListText(source: string): string {
 export const selectionToBulletList: Command = (view) =>
   applyToSelectionOrAll(view, selectionToBulletListText, 'input.selection.bullet')
 
-                             
 export function selectionToOrderedListText(source: string): string {
   if (source.length === 0) return source
   let n = 0
@@ -5349,7 +4793,6 @@ export function selectionToOrderedListText(source: string): string {
 export const selectionToOrderedList: Command = (view) =>
   applyToSelectionOrAll(view, selectionToOrderedListText, 'input.selection.olist')
 
-                               
 export function selectionToTaskListText(source: string): string {
   if (source.length === 0) return source
   return source
@@ -5361,7 +4804,6 @@ export function selectionToTaskListText(source: string): string {
 export const selectionToTaskList: Command = (view) =>
   applyToSelectionOrAll(view, selectionToTaskListText, 'input.selection.tasklist')
 
-                                          
 export const wrapSelectionAsComment: Command = (view) => {
   const state = view.state
   const main = state.selection.main
@@ -5385,7 +4827,6 @@ export const wrapSelectionAsComment: Command = (view) => {
   return true
 }
 
-                             
 export function unwrapCommentText(source: string): string {
   return source.replace(/%%([\s\S]*?)%%/g, (_, inner) => inner)
 }
@@ -5533,9 +4974,6 @@ export const convertOrderedToBullet: Command = (view) =>
 export const convertBulletToOrdered: Command = (view) =>
   applyToSelectionOrAll(view, convertBulletToOrderedText, 'input.ul.to.ol')
 
-   
-                                                
-   
 export const addBlockquoteAuthor = (name: string): Command => (view) => {
   const doc = view.state.doc
   const head = view.state.selection.main.head
@@ -5554,7 +4992,6 @@ export const addBlockquoteAuthor = (name: string): Command => (view) => {
   return true
 }
 
-                                 
 export const stripBlockquoteAuthor: Command = (view) => {
   const doc = view.state.doc
   const head = view.state.selection.main.head
@@ -5577,7 +5014,6 @@ export const stripBlockquoteAuthor: Command = (view) => {
 // Empty image alt fill + inline ↔ reference links + emoji bullets + line numbers
 // -----------------------------------------------------------------------------
 
-                                                         
 export function fillEmptyImageAltText(source: string): string {
   return source.replace(/!\[\]\(([^)\s]+)(\s+"[^"]*")?\)/g, (_, url, title) => {
     const fname = url.split(/[\/\\]/).pop() || ''
@@ -5589,7 +5025,6 @@ export function fillEmptyImageAltText(source: string): string {
 export const fillEmptyImageAlt: Command = (view) =>
   applyToSelectionOrAll(view, fillEmptyImageAltText, 'input.image.alt.fill')
 
-                                                               
 export function expandShortLinksToReferenceText(source: string): string {
   const refs: { url: string; title?: string }[] = []
   const seen = new Map<string, number>()
@@ -5616,7 +5051,6 @@ export function expandShortLinksToReferenceText(source: string): string {
 export const expandShortLinksToReference: Command = (view) =>
   applyToSelectionOrAll(view, expandShortLinksToReferenceText, 'input.links.toref')
 
-                                                      
 export function inlineReferenceLinksText(source: string): string {
   const refRe = /^\[([^\]]+)\]:\s*(\S+)(?:\s+"([^"]*)")?\s*$/gm
   const defs = new Map<string, { url: string; title?: string }>()
@@ -5637,7 +5071,6 @@ export function inlineReferenceLinksText(source: string): string {
 export const inlineReferenceLinks: Command = (view) =>
   applyToSelectionOrAll(view, inlineReferenceLinksText, 'input.links.toinline')
 
-                                    
 const EMOJI_BULLETS = ['🔹', '✨', '🌱', '⭐', '🍀', '🔸']
 export function emojiBulletText(source: string): string {
   let i = 0
@@ -5655,7 +5088,6 @@ export function emojiBulletText(source: string): string {
 export const emojiBullet: Command = (view) =>
   applyToSelectionOrAll(view, emojiBulletText, 'input.bullet.emoji')
 
-                               
 export function numberLinesText(source: string): string {
   const lines = source.split('\n')
   const w = String(lines.length).length
@@ -5665,7 +5097,6 @@ export function numberLinesText(source: string): string {
 export const numberLines: Command = (view) =>
   applyToSelectionOrAll(view, numberLinesText, 'input.lines.number')
 
-                                    
 export function unnumberLinesText(source: string): string {
   return source
     .split('\n')
@@ -5755,18 +5186,6 @@ export function renameHeadingInDocText(source: string, oldText: string, newText:
     return `[[#${newText}${alias ?? ''}]]`
   })
   return out
-}
-
-export const renameHeadingInDoc = (oldText: string, newText: string): Command => (view) => {
-  const text = view.state.doc.toString()
-  const next = renameHeadingInDocText(text, oldText, newText)
-  if (next === text) return false
-  view.dispatch({
-    changes: { from: 0, to: text.length, insert: next },
-    userEvent: 'input.heading.rename',
-  })
-  view.focus()
-  return true
 }
 
 /** Deduplicate items in `tags: [a, b, a]` or list-form `tags:\n - a\n - a` while preserving order. */
@@ -5871,7 +5290,6 @@ function findEnclosingFence(state: EditorState): { openLine: number; closeLine: 
   return null
 }
 
-                                                  
 export const wrapCodeBlockLang = (lang: string): Command => (view) => {
   const f = findEnclosingFence(view.state)
   if (!f) return false
@@ -6007,7 +5425,6 @@ export const annotateCodeLineNumbers: Command = (view) =>
 
 const TAG_BODY = '[\\p{L}\\p{N}_\\-\\/]+'
 
-                                                               
 export function renameTagInDocText(source: string, oldTag: string, newTag: string): string {
   if (!oldTag || oldTag === newTag) return source
   const lines = source.split('\n')
@@ -6033,18 +5450,6 @@ export function renameTagInDocText(source: string, oldTag: string, newTag: strin
     lines[i] = parts.join('')
   }
   return lines.join('\n')
-}
-
-export const renameTagInDoc = (oldTag: string, newTag: string): Command => (view) => {
-  const text = view.state.doc.toString()
-  const next = renameTagInDocText(text, oldTag, newTag)
-  if (next === text) return false
-  view.dispatch({
-    changes: { from: 0, to: text.length, insert: next },
-    userEvent: 'input.tag.rename',
-  })
-  view.focus()
-  return true
 }
 
 /** Pull a sorted list of unique tags out of the doc. */
@@ -6262,7 +5667,6 @@ export const splitOnSemicolons: Command = (view) =>
 // List indent normalize + citation + image grid + escape + CJK punctuation split + URL extract
 // -----------------------------------------------------------------------------
 
-                                                   
 export function normalizeListIndentationText(source: string): string {
   return source
     .split('\n')
@@ -6299,19 +5703,6 @@ export function formatCitation(c: Citation): string {
   return parts.join(' ').trim()
 }
 
-export const insertCitation = (c: Citation): Command => (view) => {
-  const text = formatCitation(c)
-  if (!text) return false
-  const main = view.state.selection.main
-  view.dispatch({
-    changes: { from: main.from, to: main.to, insert: text },
-    selection: EditorSelection.cursor(main.from + text.length),
-    userEvent: 'input.citation',
-  })
-  view.focus()
-  return true
-}
-
 /** Build an HTML image-grid snippet (responsive 3-column CSS grid). */
 export function buildImageGridHtml(urls: string[], cols = 3): string {
   if (urls.length === 0) return ''
@@ -6319,19 +5710,6 @@ export function buildImageGridHtml(urls: string[], cols = 3): string {
     .map((u) => `  <img src="${u}" alt="" loading="lazy" style="width:100%;height:auto;object-fit:cover;" />`)
     .join('\n')
   return `<div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:8px;">\n${cells}\n</div>`
-}
-
-export const insertImageGrid = (urls: string[], cols = 3): Command => (view) => {
-  const html = buildImageGridHtml(urls, cols)
-  if (!html) return false
-  const main = view.state.selection.main
-  view.dispatch({
-    changes: { from: main.from, to: main.to, insert: html },
-    selection: EditorSelection.cursor(main.from + html.length),
-    userEvent: 'input.image.grid',
-  })
-  view.focus()
-  return true
 }
 
 /** Backslash-escape markdown special chars so the text renders literally. */
@@ -6503,15 +5881,6 @@ export function appendLinesWithText(source: string, suffix: string): string {
 export const appendLinesWith = (suffix: string): Command => (view) =>
   applyToSelectionOrAll(view, (s) => appendLinesWithText(s, suffix), 'input.lines.append')
 
-
-                                                                                
-                               
-                                                                                  
-
-   
-                                         
-                                 
-   
 export function safeEvalArithmetic(expr: string): number | null {
   if (!/^[\s\d.+\-*/%()]+$/.test(expr)) return null
   try {
@@ -6525,15 +5894,11 @@ export function safeEvalArithmetic(expr: string): number | null {
   }
 }
 
-   
-                                                       
-                      
-   
 export function evalInlineMathInLinesText(source: string): string {
   return source
     .split('\n')
     .map((line) => {
-                              
+
       const eqCount = (line.match(/=/g) || []).length
       if (eqCount !== 1) return line
       const m = /^(.*?)=\s*([\d.+\-*/%()\s]+?)\s*$/.exec(line)
@@ -6549,7 +5914,6 @@ export function evalInlineMathInLinesText(source: string): string {
 export const evalInlineMathInLines: Command = (view) =>
   applyToSelectionOrAll(view, evalInlineMathInLinesText, 'input.math.eval')
 
-                                                            
 const TASK_STATE_CYCLE = [' ', '/', 'x', '-', '>'] as const
 
 export function cycleTaskStateChar(current: string): string {
@@ -6558,10 +5922,6 @@ export function cycleTaskStateChar(current: string): string {
   return TASK_STATE_CYCLE[next]
 }
 
-   
-                                   
-            
-   
 export const cycleTaskStateAtCursor: Command = (view) => {
   const sel = view.state.selection.main
   const line = view.state.doc.lineAt(sel.head)
@@ -6577,10 +5937,6 @@ export const cycleTaskStateAtCursor: Command = (view) => {
   return true
 }
 
-   
-                                                     
-                                      
-   
 export function archiveDoneTasksText(source: string): string {
   const lines = source.split('\n')
   const kept: string[] = []
@@ -6600,10 +5956,6 @@ export function archiveDoneTasksText(source: string): string {
   return [...kept, '', '## Archived', ...archived, ''].join('\n')
 }
 
-   
-                                              
-                                                                                       
-   
 export const cutCurrentSectionToClipboard: Command = (view) => {
   const cur = findCurrentSection(view.state)
   if (!cur) return false
@@ -6620,7 +5972,6 @@ export const cutCurrentSectionToClipboard: Command = (view) => {
   return true
 }
 
-                                    
 export function stripHighlightsText(source: string): string {
   return source.replace(/==([^=]+)==/g, '$1')
 }
@@ -6628,7 +5979,6 @@ export function stripHighlightsText(source: string): string {
 export const stripHighlights: Command = (view) =>
   applyToSelectionOrAll(view, stripHighlightsText, 'input.highlights.strip')
 
-                                      
 export function stripBoldText(source: string): string {
   return source.replace(/\*\*([^*]+)\*\*/g, '$1')
 }
@@ -6636,7 +5986,6 @@ export function stripBoldText(source: string): string {
 export const stripBold: Command = (view) =>
   applyToSelectionOrAll(view, stripBoldText, 'input.bold.strip')
 
-                                             
 export function stripItalicText(source: string): string {
   let out = source.replace(/(?<![*\w])\*([^*\n]+)\*(?!\*)/g, '$1')
   out = out.replace(/(?<![_\w])_([^_\n]+)_(?!_)/g, '$1')
@@ -6646,7 +5995,6 @@ export function stripItalicText(source: string): string {
 export const stripItalic: Command = (view) =>
   applyToSelectionOrAll(view, stripItalicText, 'input.italic.strip')
 
-                                                           
 export function ensureUpdatedFrontmatterText(source: string, now: Date): string {
   const date = now.toISOString().slice(0, 10)
   const fm = /^---\n([\s\S]*?)\n---\n?/.exec(source)
@@ -6670,7 +6018,6 @@ export const stampUpdatedFrontmatter: Command = (view) => {
   return true
 }
 
-                                                      
 export function hardBreaksToSpaceText(source: string): string {
   return source
     .split('\n')
@@ -6681,18 +6028,6 @@ export function hardBreaksToSpaceText(source: string): string {
 export const hardBreaksToSpace: Command = (view) =>
   applyToSelectionOrAll(view, hardBreaksToSpaceText, 'input.hardbreaks.normalize')
 
-                                                                                
-                                                      
-                                                                                  
-
-   
-                            
-         
-                  
-    
-       
-                
-   
 export function bulletPairsToDefinitionListText(source: string): string {
   const lines = source.split('\n')
   const out: string[] = []
@@ -6715,9 +6050,6 @@ export function bulletPairsToDefinitionListText(source: string): string {
 export const bulletPairsToDefinitionList: Command = (view) =>
   applyToSelectionOrAll(view, bulletPairsToDefinitionListText, 'input.deflist.convert')
 
-   
-                                                           
-   
 export function sortFrontmatterAliasesText(source: string): string {
   const fm = /^---\n([\s\S]*?)\n---/.exec(source)
   if (!fm) return source
@@ -6762,7 +6094,6 @@ export const sortFrontmatterAliases: Command = (view) => {
   return true
 }
 
-                                         
 export function blockquoteLinesText(source: string): string {
   return source
     .split('\n')
@@ -6773,7 +6104,6 @@ export function blockquoteLinesText(source: string): string {
 export const blockquoteLines: Command = (view) =>
   applyToSelectionOrAll(view, blockquoteLinesText, 'input.blockquote.lines')
 
-                     
 export function unblockquoteLinesText(source: string): string {
   return source
     .split('\n')
@@ -6784,10 +6114,6 @@ export function unblockquoteLinesText(source: string): string {
 export const unblockquoteLines: Command = (view) =>
   applyToSelectionOrAll(view, unblockquoteLinesText, 'input.blockquote.unlines')
 
-   
-                                                  
-           
-   
 export function injectTopTOCText(source: string): string {
   const lines = source.split('\n')
   const h1Idx = lines.findIndex((l) => /^#\s+/.test(l))
@@ -6832,14 +6158,6 @@ export const injectTopTOC: Command = (view) => {
   return true
 }
 
-                                                                                
-                                                                
-                                                                                  
-
-   
-                      
-                                             
-   
 export const changeCalloutTypeAtCursor = (newType: string): Command => (view) => {
   const sel = view.state.selection.main
   const line = view.state.doc.lineAt(sel.head)
@@ -6855,7 +6173,6 @@ export const changeCalloutTypeAtCursor = (newType: string): Command => (view) =>
   return true
 }
 
-                                                      
 export const insertKanbanColumn = (name: string): Command => (view) => {
   const sel = view.state.selection.main
   const line = view.state.doc.lineAt(sel.head)
@@ -6868,7 +6185,6 @@ export const insertKanbanColumn = (name: string): Command => (view) => {
   return true
 }
 
-                                                     
 export const insertKanbanCard = (text: string): Command => (view) => {
   const doc = view.state.doc
   const headOn = view.state.selection.main.head
@@ -6898,10 +6214,6 @@ export const insertKanbanCard = (text: string): Command => (view) => {
   return true
 }
 
-   
-                                                                 
-                 
-   
 export function renameInlineDataviewFieldText(
   source: string,
   oldKey: string,
@@ -6924,7 +6236,6 @@ export const renameInlineDataviewField = (oldKey: string, newKey: string): Comma
   return true
 }
 
-                    
 export const swapWithNextLine: Command = (view) => {
   const sel = view.state.selection.main
   const cur = view.state.doc.lineAt(sel.head)
@@ -6938,7 +6249,6 @@ export const swapWithNextLine: Command = (view) => {
   return true
 }
 
-                    
 export const swapWithPrevLine: Command = (view) => {
   const sel = view.state.selection.main
   const cur = view.state.doc.lineAt(sel.head)
@@ -6952,7 +6262,6 @@ export const swapWithPrevLine: Command = (view) => {
   return true
 }
 
-                                         
 export function numberCodeBlockLinesText(source: string): string {
   const lines = source.split('\n')
   // find first fenced code block
@@ -6984,7 +6293,6 @@ export const numberFirstCodeBlockLines: Command = (view) => {
   return true
 }
 
-                                        
 export function stripHtmlCommentsText(source: string): string {
   return source.replace(/<!--[\s\S]*?-->/g, '')
 }
@@ -6992,7 +6300,6 @@ export function stripHtmlCommentsText(source: string): string {
 export const stripHtmlComments: Command = (view) =>
   applyToSelectionOrAll(view, stripHtmlCommentsText, 'input.htmlcomments.strip')
 
-                                    
 export function purgeDoneTasksUnderTasksHeadingText(source: string): string {
   const lines = source.split('\n')
   let inside = false
@@ -7020,15 +6327,6 @@ export const purgeDoneTasksUnderTasksHeading: Command = (view) => {
   return true
 }
 
-                                                                                
-                                                     
-                                                                                  
-
-   
-                                                              
-                                   
-                              
-   
 export const extractWikilinkToOwnLine: Command = (view) => {
   const sel = view.state.selection.main
   const line = view.state.doc.lineAt(sel.head)
@@ -7055,10 +6353,6 @@ export const extractWikilinkToOwnLine: Command = (view) => {
   return false
 }
 
-   
-                                                   
-                
-   
 export function swapLinkTextWithUrlText(source: string): string {
   return source.replace(/(?<!\!)\[([^\]\n]+)\]\(([^)\s]+)(?:\s+"([^"]*)")?\)/g, (_m, t, u, title) => {
     const titlePart = title ? ` "${title}"` : ''
@@ -7069,9 +6363,6 @@ export function swapLinkTextWithUrlText(source: string): string {
 export const swapLinkTextWithUrl: Command = (view) =>
   applyToSelectionOrAll(view, swapLinkTextWithUrlText, 'input.link.swap')
 
-   
-                              
-   
 export const insertTitledDivider = (title: string): Command => (view) => {
   const sel = view.state.selection.main
   const line = view.state.doc.lineAt(sel.head)
@@ -7084,13 +6375,6 @@ export const insertTitledDivider = (title: string): Command => (view) => {
   return true
 }
 
-   
-                                             
-         
-          
-          
-          
-   
 export function frontmatterFieldInlineToBlockText(source: string, key: string): string {
   if (!key) return source
   const fm = /^---\n([\s\S]*?)\n---/.exec(source)
@@ -7120,9 +6404,6 @@ export const frontmatterFieldInlineToBlock = (key: string): Command => (view) =>
   return true
 }
 
-   
-                                   
-   
 export function frontmatterFieldBlockToInlineText(source: string, key: string): string {
   if (!key) return source
   const fm = /^---\n([\s\S]*?)\n---/.exec(source)
@@ -7152,7 +6433,6 @@ export const frontmatterFieldBlockToInline = (key: string): Command => (view) =>
   return true
 }
 
-                                                               
 export const swapWikilinkAliasAndTargetAtCursor: Command = (view) => {
   const sel = view.state.selection.main
   const line = view.state.doc.lineAt(sel.head)
@@ -7174,7 +6454,6 @@ export const swapWikilinkAliasAndTargetAtCursor: Command = (view) => {
   return false
 }
 
-                                           
 export function stampLinesWithDateText(source: string, date: string): string {
   let inFence = false
   return source
@@ -7194,10 +6473,6 @@ export function stampLinesWithDateText(source: string, date: string): string {
 export const stampLinesWithDate = (date: string): Command => (view) =>
   applyToSelectionOrAll(view, (s) => stampLinesWithDateText(s, date), 'input.lines.datestamp')
 
-                                                                 
-         
-        
-   
 export function unwrapDetailsBlocksText(source: string): string {
   return source.replace(
     /<details>\s*<summary>([\s\S]*?)<\/summary>([\s\S]*?)<\/details>/g,
@@ -7208,11 +6483,6 @@ export function unwrapDetailsBlocksText(source: string): string {
 export const unwrapDetailsBlocks: Command = (view) =>
   applyToSelectionOrAll(view, unwrapDetailsBlocksText, 'input.details.unwrap')
 
-                                                                                
-                          
-                                                                                  
-
-                                        
 export function collapseExcessiveBlankLinesText(source: string): string {
   return source.replace(/\n{3,}/g, '\n\n')
 }
@@ -7220,7 +6490,6 @@ export function collapseExcessiveBlankLinesText(source: string): string {
 export const collapseExcessiveBlankLines: Command = (view) =>
   applyToSelectionOrAll(view, collapseExcessiveBlankLinesText, 'input.lint.blanks')
 
-                                                
 export function singleSpaceAfterListMarkerText(source: string): string {
   let inFence = false
   return source
@@ -7239,7 +6508,6 @@ export function singleSpaceAfterListMarkerText(source: string): string {
 export const singleSpaceAfterListMarker: Command = (view) =>
   applyToSelectionOrAll(view, singleSpaceAfterListMarkerText, 'input.lint.listspace')
 
-                                  
 export function ensureBlankAroundHeadingsText(source: string): string {
   const lines = source.split('\n')
   const out: string[] = []
@@ -7262,7 +6530,6 @@ export function ensureBlankAroundHeadingsText(source: string): string {
 export const ensureBlankAroundHeadings: Command = (view) =>
   applyToSelectionOrAll(view, ensureBlankAroundHeadingsText, 'input.lint.headingspace')
 
-                      
 export function ensureSingleTrailingNewlineText(source: string): string {
   return source.replace(/\n*$/, '\n')
 }
@@ -7277,7 +6544,6 @@ export const ensureSingleTrailingNewline: Command = (view) => {
   return true
 }
 
-                                         
 export function sortFrontmatterTopKeysText(source: string): string {
   const fm = /^---\n([\s\S]*?)\n---/.exec(source)
   if (!fm) return source
@@ -7313,7 +6579,6 @@ export const sortFrontmatterTopKeys: Command = (view) => {
   return true
 }
 
-                                                       
 export function normalizeEmphasisToAsteriskText(source: string): string {
   return source.replace(/(?<![_\w])_(?!_)([^_\n]+?)(?<!_)_(?!_)/g, '*$1*')
 }
@@ -7321,7 +6586,6 @@ export function normalizeEmphasisToAsteriskText(source: string): string {
 export const normalizeEmphasisToAsterisk: Command = (view) =>
   applyToSelectionOrAll(view, normalizeEmphasisToAsteriskText, 'input.lint.emphasis.asterisk')
 
-                                           
 export function normalizeEmphasisToUnderscoreText(source: string): string {
   return source.replace(/(?<![*\w])\*(?!\*)([^*\n]+?)(?<!\*)\*(?!\*)/g, '_$1_')
 }
@@ -7329,7 +6593,6 @@ export function normalizeEmphasisToUnderscoreText(source: string): string {
 export const normalizeEmphasisToUnderscore: Command = (view) =>
   applyToSelectionOrAll(view, normalizeEmphasisToUnderscoreText, 'input.lint.emphasis.underscore')
 
-                                                       
 export function normalizeStrongToAsteriskText(source: string): string {
   return source.replace(/__([^_\n]+?)__/g, '**$1**')
 }
@@ -7337,7 +6600,6 @@ export function normalizeStrongToAsteriskText(source: string): string {
 export const normalizeStrongToAsterisk: Command = (view) =>
   applyToSelectionOrAll(view, normalizeStrongToAsteriskText, 'input.lint.strong.asterisk')
 
-                                       
 export function trimTrailingNonBreakWhitespaceText(source: string): string {
   return source
     .split('\n')
@@ -7362,7 +6624,6 @@ export const trimTrailingNonBreakWhitespace: Command = (view) => {
   return true
 }
 
-                                                     
 export const fixCommonMarkdownLints: Command = (view) => {
   let src = view.state.doc.toString()
   src = collapseExcessiveBlankLinesText(src)
@@ -7378,14 +6639,6 @@ export const fixCommonMarkdownLints: Command = (view) => {
   return true
 }
 
-                                                                                
-                                                   
-                                                                                  
-
-   
-                        
-                                        
-   
 export const splitSectionAtCursor = (title: string): Command => (view) => {
   const cur = findCurrentSection(view.state)
   if (!cur) return false
@@ -7402,7 +6655,6 @@ export const splitSectionAtCursor = (title: string): Command => (view) => {
   return true
 }
 
-                                            
 export function flattenNestedListsText(source: string): string {
   let inFence = false
   return source
@@ -7423,7 +6675,6 @@ export function flattenNestedListsText(source: string): string {
 export const flattenNestedLists: Command = (view) =>
   applyToSelectionOrAll(view, flattenNestedListsText, 'input.list.flatten')
 
-                               
 export function indentLinesBySpacesText(source: string, n: number): string {
   if (n <= 0) return source
   const pad = ' '.repeat(n)
@@ -7436,7 +6687,6 @@ export function indentLinesBySpacesText(source: string, n: number): string {
 export const indentLinesBySpaces = (n: number): Command => (view) =>
   applyToSelectionOrAll(view, (s) => indentLinesBySpacesText(s, n), 'input.lines.indent')
 
-                              
 export function dedentLinesBySpacesText(source: string, n: number): string {
   if (n <= 0) return source
   return source
@@ -7452,14 +6702,12 @@ export function dedentLinesBySpacesText(source: string, n: number): string {
 export const dedentLinesBySpaces = (n: number): Command => (view) =>
   applyToSelectionOrAll(view, (s) => dedentLinesBySpacesText(s, n), 'input.lines.dedent')
 
-                                                                         
 export function plainUrlToAutolinkText(source: string): string {
-                                                  
-                                  
+
   return source
     .split('\n')
     .map((line) => {
-                                        
+
       const masks: { from: number; to: number }[] = []
       const re1 = /\[[^\]\n]*\]\([^)\n]+\)/g
       let m1: RegExpExecArray | null
@@ -7495,7 +6743,6 @@ export function plainUrlToAutolinkText(source: string): string {
 export const plainUrlToAutolink: Command = (view) =>
   applyToSelectionOrAll(view, plainUrlToAutolinkText, 'input.url.autolink')
 
-                                           
 export function applyFrontmatterTemplateText(
   source: string,
   template: Record<string, string>,
@@ -7530,22 +6777,6 @@ export const applyFrontmatterTemplate = (
   return true
 }
 
-                                
-export const promoteFirstLineToH2: Command = (view) => {
-  const sel = view.state.selection.main
-  if (sel.empty) return false
-  const from = sel.from
-  const startLine = view.state.doc.lineAt(from)
-  const text = startLine.text
-  if (/^#{1,6}\s+/.test(text)) return false
-  view.dispatch({
-    changes: { from: startLine.from, to: startLine.from, insert: '## ' },
-    userEvent: 'input.heading.promote',
-  })
-  return true
-}
-
-                                                       
 export function shiftHeadingsUpOneLevelText(source: string): string {
   let inFence = false
   return source
@@ -7565,7 +6796,6 @@ export function shiftHeadingsUpOneLevelText(source: string): string {
 export const shiftHeadingsUpOneLevel: Command = (view) =>
   applyToSelectionOrAll(view, shiftHeadingsUpOneLevelText, 'input.headings.up')
 
-                        
 export function shiftHeadingsDownOneLevelText(source: string): string {
   let inFence = false
   return source
@@ -7585,7 +6815,6 @@ export function shiftHeadingsDownOneLevelText(source: string): string {
 export const shiftHeadingsDownOneLevel: Command = (view) =>
   applyToSelectionOrAll(view, shiftHeadingsDownOneLevelText, 'input.headings.down')
 
-                                        
 export function brTagsToHardBreaksText(source: string): string {
   return source
     .split('\n')
@@ -7596,11 +6825,6 @@ export function brTagsToHardBreaksText(source: string): string {
 export const brTagsToHardBreaks: Command = (view) =>
   applyToSelectionOrAll(view, brTagsToHardBreaksText, 'input.brtags.normalize')
 
-                                                                                
-                                 
-                                                                                  
-
-                                                            
 export const wrapSelectionWithPair = (left: string, right: string): Command => (view) => {
   const sel = view.state.selection.main
   if (sel.empty) {
@@ -7620,10 +6844,6 @@ export const wrapSelectionWithPair = (left: string, right: string): Command => (
   return true
 }
 
-   
-                                                       
-                           
-   
 export function convertLinksToFootnotesText(source: string): string {
   // pick next footnote id
   const usedIds = new Set<number>()
@@ -7665,10 +6885,6 @@ export const convertLinksToFootnotes: Command = (view) => {
   return true
 }
 
-   
-                                                     
-                         
-   
 export function headingsToOutlineText(source: string): string {
   let inFence = false
   return source
@@ -7692,7 +6908,6 @@ export function headingsToOutlineText(source: string): string {
 export const headingsToOutline: Command = (view) =>
   applyToSelectionOrAll(view, headingsToOutlineText, 'input.headings.outline')
 
-                                    
 export function surroundEachLineWithTagText(source: string, tag: string): string {
   if (!tag) return source
   return source
@@ -7708,7 +6923,6 @@ export function surroundEachLineWithTagText(source: string, tag: string): string
 export const surroundEachLineWithTag = (tag: string): Command => (view) =>
   applyToSelectionOrAll(view, (s) => surroundEachLineWithTagText(s, tag), 'input.lines.tagsurround')
 
-                                               
 export function htmlSupToCaretText(source: string): string {
   return source.replace(/<sup>([^<\n]+)<\/sup>/gi, '^$1')
 }
@@ -7716,7 +6930,6 @@ export function htmlSupToCaretText(source: string): string {
 export const htmlSupToCaret: Command = (view) =>
   applyToSelectionOrAll(view, htmlSupToCaretText, 'input.sup.normalize')
 
-                                                
 export function htmlSubToTildeText(source: string): string {
   return source.replace(/<sub>([^<\n]+)<\/sub>/gi, '~$1~')
 }
@@ -7724,7 +6937,6 @@ export function htmlSubToTildeText(source: string): string {
 export const htmlSubToTilde: Command = (view) =>
   applyToSelectionOrAll(view, htmlSubToTildeText, 'input.sub.normalize')
 
-                                              
 export function calloutsToHeadingsText(source: string): string {
   return source.replace(/^>\s*\[!([A-Za-z0-9_-]+)\][+-]?\s*(.*)$/gm, (_m, type, title) => {
     const cleanTitle = title.trim() || type
@@ -7735,10 +6947,6 @@ export function calloutsToHeadingsText(source: string): string {
 export const calloutsToHeadings: Command = (view) =>
   applyToSelectionOrAll(view, calloutsToHeadingsText, 'input.callouts.toheading')
 
-   
-                                   
-                                        
-   
 export function inlineFootnotesText(source: string): string {
   const defs = new Map<string, string>()
   const defRe = /^\[\^([^\]]+)\]:\s*(.+)$/gm
@@ -7750,7 +6958,7 @@ export function inlineFootnotesText(source: string): string {
   return source.replace(/\[\^([^\]]+)\]/g, (whole, id) => {
     const v = defs.get(id)
     if (!v) return whole
-                
+
     return `${whole}(${v})`
   }).replace(/^\[\^([^\]]+)\]:\s*(.+?)\(\2\)$/gm, (_, id, body) => `[^${id}]: ${body}`)
 }
@@ -7758,11 +6966,6 @@ export function inlineFootnotesText(source: string): string {
 export const inlineFootnotes: Command = (view) =>
   applyToSelectionOrAll(view, inlineFootnotesText, 'input.footnote.inline')
 
-                                                                                
-                                       
-                                                                                  
-
-                                           
 export function countHashtagsText(source: string): Map<string, number> {
   const counts = new Map<string, number>()
   let inFence = false
@@ -7784,7 +6987,6 @@ export function countHashtagsText(source: string): Map<string, number> {
   return counts
 }
 
-                           
 export const insertHashtagStats: Command = (view) => {
   const counts = countHashtagsText(view.state.doc.toString())
   if (counts.size === 0) return false
@@ -7799,7 +7001,6 @@ export const insertHashtagStats: Command = (view) => {
   return true
 }
 
-                                                           
 export type LinkTarget = { kind: 'wikilink' | 'image' | 'mdlink'; target: string; line: number }
 
 export function collectAllLinkTargets(source: string): LinkTarget[] {
@@ -7824,7 +7025,6 @@ export function collectAllLinkTargets(source: string): LinkTarget[] {
   return out
 }
 
-                     
 export const insertAllLinksReport: Command = (view) => {
   const targets = collectAllLinkTargets(view.state.doc.toString())
   if (targets.length === 0) return false
@@ -7840,18 +7040,13 @@ export const insertAllLinksReport: Command = (view) => {
   return true
 }
 
-   
-                                                 
-                                       
-                     
-   
 export const convertParagraphToFlashcard: Command = (view) => {
   const sel = view.state.selection.main
   const line = view.state.doc.lineAt(sel.head)
   const text = line.text
   const idx = text.lastIndexOf('?')
   if (idx < 0 || idx === text.length - 1) {
-                        
+
     if (idx < 0) {
       const newText = `${text}?::`
       view.dispatch({
@@ -7872,7 +7067,6 @@ export const convertParagraphToFlashcard: Command = (view) => {
   return true
 }
 
-                                                                      
 export const insertFlashcardSeparator: Command = (view) => {
   const sel = view.state.selection.main
   view.dispatch({
@@ -7883,7 +7077,6 @@ export const insertFlashcardSeparator: Command = (view) => {
   return true
 }
 
-                                 
 export function findDuplicateHeadings(source: string): { title: string; lines: number[] }[] {
   const map = new Map<string, number[]>()
   const lines = source.split('\n')
@@ -7909,7 +7102,6 @@ export function findDuplicateHeadings(source: string): { title: string; lines: n
   return dup
 }
 
-                     
 export const insertDuplicateHeadingsReport: Command = (view) => {
   const dup = findDuplicateHeadings(view.state.doc.toString())
   if (dup.length === 0) return false
@@ -7925,7 +7117,6 @@ export const insertDuplicateHeadingsReport: Command = (view) => {
   return true
 }
 
-                            
 export function lowercaseAllTagsText(source: string): string {
   return source.replace(
     /(?<![\p{L}\p{N}_/])#([\p{L}\p{N}_\-/]+)/gu,
@@ -7936,7 +7127,6 @@ export function lowercaseAllTagsText(source: string): string {
 export const lowercaseAllTags: Command = (view) =>
   applyToSelectionOrAll(view, lowercaseAllTagsText, 'input.tags.lower')
 
-                            
 export function uppercaseAllTagsText(source: string): string {
   return source.replace(
     /(?<![\p{L}\p{N}_/])#([\p{L}\p{N}_\-/]+)/gu,
@@ -7947,9 +7137,6 @@ export function uppercaseAllTagsText(source: string): string {
 export const uppercaseAllTags: Command = (view) =>
   applyToSelectionOrAll(view, uppercaseAllTagsText, 'input.tags.upper')
 
-   
-                                                       
-   
 export function paragraphsToHtmlBreaksText(source: string): string {
   return source.replace(/\n{2,}/g, '<br><br>')
 }
@@ -7957,11 +7144,6 @@ export function paragraphsToHtmlBreaksText(source: string): string {
 export const paragraphsToHtmlBreaks: Command = (view) =>
   applyToSelectionOrAll(view, paragraphsToHtmlBreaksText, 'input.paragraphs.htmlbr')
 
-                                                                                
-                                     
-                                                                                  
-
-                                                        
 export function convertMarkdownImagesToWikiEmbedsText(source: string): string {
   return source.replace(/!\[([^\]\n]*)\]\(([^)\s]+)\)/g, (_m, alt, path) => {
     if (alt) return `![[${path}|${alt}]]`
@@ -7972,7 +7154,6 @@ export function convertMarkdownImagesToWikiEmbedsText(source: string): string {
 export const convertMarkdownImagesToWikiEmbeds: Command = (view) =>
   applyToSelectionOrAll(view, convertMarkdownImagesToWikiEmbedsText, 'input.image.toembed')
 
-                                           
 export function convertDocumentEmbedToMdImageText(source: string): string {
   return source.replace(/!\[\[([^\]|]+?)(?:\|([^\]]*))?\]\]/g, (_m, path, alt) => {
     return `![${(alt ?? '').trim()}](${path.trim()})`
@@ -7982,7 +7163,6 @@ export function convertDocumentEmbedToMdImageText(source: string): string {
 export const convertDocumentEmbedToMdImage: Command = (view) =>
   applyToSelectionOrAll(view, convertDocumentEmbedToMdImageText, 'input.image.toMd')
 
-                                                 
 export function setImageWidthForEmbedsText(source: string, width: number): string {
   return source.replace(/!\[\[([^\]|]+)(?:\|([^\]]*))?\]\]/g, (_m, path, attrs) => {
     if (attrs && /\d+/.test(attrs)) return `![[${path}|${attrs}]]` // already has width
@@ -7994,7 +7174,6 @@ export function setImageWidthForEmbedsText(source: string, width: number): strin
 export const setImageWidthForEmbeds = (width: number): Command => (view) =>
   applyToSelectionOrAll(view, (s) => setImageWidthForEmbedsText(s, width), 'input.image.width')
 
-                                                            
 export function injectHtmlAnchorsBeforeHeadingsText(source: string): string {
   let inFence = false
   return source
@@ -8022,7 +7201,6 @@ export const injectHtmlAnchorsBeforeHeadings: Command = (view) =>
     'input.headings.htmlanchor',
   )
 
-                                          
 export function compressTableCellWhitespaceText(source: string): string {
   return source
     .split('\n')
@@ -8057,25 +7235,6 @@ export function abbreviateLinksToHostText(source: string): string {
 export const abbreviateLinksToHost: Command = (view) =>
   applyToSelectionOrAll(view, abbreviateLinksToHostText, 'input.links.abbreviate')
 
-                                                                 
-                                                                   
-                        
-                                                     
-                         
-           
-                                                            
-                                  
-               
-                 
-       
-      
-   
- 
-
-                                                       
-                                                                                  
-
-                                                           
 export function relativeMdLinksToWikilinksText(source: string): string {
   return source.replace(
     /(?<!\!)\[([^\]\n]+)\]\(([^):\s]+)\)/g,
@@ -8091,7 +7250,6 @@ export function relativeMdLinksToWikilinksText(source: string): string {
 export const relativeMdLinksToWikilinks: Command = (view) =>
   applyToSelectionOrAll(view, relativeMdLinksToWikilinksText, 'input.links.toWiki')
 
-                                               
 export function defaultCalloutTitlesText(source: string): string {
   return source.replace(/^(>\s*\[!([A-Za-z0-9_-]+)\][+-]?)(\s*)$/gm, (_m, head, type) => {
     const cap = type.charAt(0).toUpperCase() + type.slice(1)
@@ -8102,11 +7260,6 @@ export function defaultCalloutTitlesText(source: string): string {
 export const defaultCalloutTitles: Command = (view) =>
   applyToSelectionOrAll(view, defaultCalloutTitlesText, 'input.callouts.titles')
 
-   
-                                   
-                   
-                              
-   
 export function numberHeadingsText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -8144,7 +7297,6 @@ export function numberHeadingsText(source: string): string {
   return out.join('\n')
 }
 
-                                         
 export function unnumberHeadingsText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -8160,7 +7312,6 @@ export function unnumberHeadingsText(source: string): string {
     .join('\n')
 }
 
-                                                                       
 export function tidyLinkTextFromSlugText(source: string): string {
   return source.replace(
     /(?<!\!)\[([^\]\n]+)\]\(([^)\s]+)\)/g,
@@ -8186,7 +7337,6 @@ export function tidyLinkTextFromSlugText(source: string): string {
 export const tidyLinkTextFromSlug: Command = (view) =>
   applyToSelectionOrAll(view, tidyLinkTextFromSlugText, 'input.links.slugText')
 
-                                                        
 export function prefixTasksWithEmojiInRange(
   source: string,
   fromLine: number,
@@ -8221,7 +7371,6 @@ export function prefixSectionTasksWithEmoji(emoji: string): Command {
   }
 }
 
-                                                       
 export function normalizeHorizontalRulesText(source: string, style: '---' | '***' | '___'): string {
   const lines = source.split('\n')
   let inFence = false
@@ -8242,7 +7391,6 @@ export function normalizeHorizontalRules(style: '---' | '***' | '___'): Command 
   return (view) => applyToSelectionOrAll(view, (s) => normalizeHorizontalRulesText(s, style), 'input.hr.normalize')
 }
 
-                                                         
 export function fillImageAltFromFilenameText(source: string): string {
   return source.replace(/!\[\s*\]\(([^)\s]+)([^)]*)\)/g, (_whole, href, rest) => {
     const seg = href.split(/[\\/]/).pop() ?? ''
@@ -8255,7 +7403,6 @@ export function fillImageAltFromFilenameText(source: string): string {
 export const fillImageAltFromFilename: Command = (view) =>
   applyToSelectionOrAll(view, fillImageAltFromFilenameText, 'input.images.altFromFilename')
 
-                                        
 export function sortSectionsByHeadingText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -8288,7 +7435,6 @@ export function sortSectionsByHeadingText(source: string): string {
 export const sortSectionsByHeading: Command = (view) =>
   applyToSelectionOrAll(view, sortSectionsByHeadingText, 'input.sections.sortByHeading')
 
-                                                
 export function insertTodayWikilinkAtCursor(view: EditorView): boolean {
   const now = new Date()
   const yyyy = now.getFullYear()
@@ -8304,7 +7450,6 @@ export function insertTodayWikilinkAtCursor(view: EditorView): boolean {
   return true
 }
 
-                                       
 export function tabsToListText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -8327,9 +7472,6 @@ export function tabsToListText(source: string): string {
 export const tabsToList: Command = (view) =>
   applyToSelectionOrAll(view, tabsToListText, 'input.list.fromTabs')
 
-   
-                                   
-   
 export function tagCurrentSection(tag: string): Command {
   return (view) => {
     const cur = findCurrentSection(view.state)
@@ -8347,7 +7489,6 @@ export function tagCurrentSection(tag: string): Command {
   }
 }
 
-                                    
 export function paragraphsToQuotesText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -8368,7 +7509,6 @@ export function paragraphsToQuotesText(source: string): string {
 export const paragraphsToQuotes: Command = (view) =>
   applyToSelectionOrAll(view, paragraphsToQuotesText, 'input.paragraphs.toQuotes')
 
-                                     
 export function unquoteParagraphsText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -8387,7 +7527,6 @@ export function unquoteParagraphsText(source: string): string {
 export const unquoteParagraphs: Command = (view) =>
   applyToSelectionOrAll(view, unquoteParagraphsText, 'input.paragraphs.unquote')
 
-                                  
 export function redactSelection(view: EditorView): boolean {
   const sel = view.state.selection.main
   if (sel.empty) return false
@@ -8404,7 +7543,6 @@ export function redactSelection(view: EditorView): boolean {
   return true
 }
 
-                           
 export function listSummaryText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -8424,7 +7562,6 @@ export function listSummaryText(source: string): string {
 export const insertListSummary: Command = (view) =>
   applyToSelectionOrAll(view, listSummaryText, 'input.list.summary')
 
-                                 
 export function stripFrontmatterText(source: string): string {
   if (!source.startsWith('---\n')) return source
   const end = source.indexOf('\n---', 4)
@@ -8432,9 +7569,6 @@ export function stripFrontmatterText(source: string): string {
   return source.slice(end + 4).replace(/^\n/, '')
 }
 
-   
-                                        
-   
 export function surroundSelectionWithPair(left: string, right: string): Command {
   return (view) => {
     const sel = view.state.selection.main
@@ -8451,7 +7585,6 @@ export function surroundSelectionWithPair(left: string, right: string): Command 
   }
 }
 
-                                                              
 export function wikilinksToFootnotesInRange(
   source: string,
   from: number,
@@ -8487,10 +7620,6 @@ export const wikilinksInSectionToFootnotes: Command = (view) => {
   return true
 }
 
-   
-                                           
-                
-   
 export function extractTableColumnAsListText(source: string, colIndex: number): string {
   const lines = source.split('\n')
   let tableStart = -1
@@ -8529,7 +7658,6 @@ export function extractTableColumnAsList(colIndex: number): Command {
     )
 }
 
-                                  
 export function transformTableCellsText(
   source: string,
   fn: (s: string) => string,
@@ -8558,7 +7686,6 @@ export const tableCellsToUpper: Command = (view) =>
 export const tableCellsToLower: Command = (view) =>
   applyToSelectionOrAll(view, (s) => transformTableCellsText(s, (x) => x.toLowerCase()), 'input.table.lower')
 
-                             
 export function filterListItemsText(source: string, keyword: string): string {
   if (!keyword) return source
   const lines = source.split('\n')
@@ -8581,7 +7708,6 @@ export function filterListItems(keyword: string): Command {
   return (view) => applyToSelectionOrAll(view, (s) => filterListItemsText(s, keyword), 'input.list.filter')
 }
 
-                                  
 export function keepCheckedTasksOnlyText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -8602,7 +7728,6 @@ export function keepCheckedTasksOnlyText(source: string): string {
 export const keepCheckedTasksOnly: Command = (view) =>
   applyToSelectionOrAll(view, keepCheckedTasksOnlyText, 'input.tasks.keepChecked')
 
-                                        
 export function removeInlineCodeBackticksText(source: string): string {
   return source.replace(/`([^`\n]+)`/g, '$1')
 }
@@ -8610,10 +7735,6 @@ export function removeInlineCodeBackticksText(source: string): string {
 export const removeInlineCodeBackticks: Command = (view) =>
   applyToSelectionOrAll(view, removeInlineCodeBackticksText, 'input.code.unfence')
 
-   
-                               
-                        
-   
 export function singleLineFenceToInlineText(source: string): string {
   return source.replace(/```([a-zA-Z0-9_-]*)\n([^\n`]+)\n```/g, (_w, _lang, body) => {
     return `\`${body}\``
@@ -8623,7 +7744,6 @@ export function singleLineFenceToInlineText(source: string): string {
 export const singleLineFenceToInline: Command = (view) =>
   applyToSelectionOrAll(view, singleLineFenceToInlineText, 'input.code.toInline')
 
-                                                   
 export function calloutHeaderToHeadingText(source: string): string {
   return source.replace(/^>\s*\[![A-Za-z0-9_-]+\][+-]?\s*(.*)$/gm, (_w, title) => {
     const t = title.trim()
@@ -8634,7 +7754,6 @@ export function calloutHeaderToHeadingText(source: string): string {
 export const calloutHeaderToHeading: Command = (view) =>
   applyToSelectionOrAll(view, calloutHeaderToHeadingText, 'input.callout.toHeading')
 
-                                    
 export function inlineMathToBlockText(source: string): string {
   return source.replace(/^([ \t]*)\$([^$\n]+)\$\s*$/gm, (_w, indent, body) => {
     return `${indent}$$\n${indent}${body}\n${indent}$$`
@@ -8644,7 +7763,6 @@ export function inlineMathToBlockText(source: string): string {
 export const inlineMathToBlock: Command = (view) =>
   applyToSelectionOrAll(view, inlineMathToBlockText, 'input.math.toBlock')
 
-                                             
 export function detectLangByHeuristic(text: string): string {
   if (/^\s*(?:import|from|def |class |print\()/m.test(text)) return 'python'
   if (/^\s*(?:func |package |import \("|var .*=.*)/m.test(text)) return 'go'
@@ -8670,7 +7788,6 @@ export function wrapSelectionAsAutodetectedCode(view: EditorView): boolean {
   return true
 }
 
-                              
 export function insertDataviewQuery(kind: 'list' | 'table' | 'tasks'): Command {
   return (view) => {
     const sel = view.state.selection.main
@@ -8690,7 +7807,6 @@ export function insertDataviewQuery(kind: 'list' | 'table' | 'tasks'): Command {
   }
 }
 
-                                         
 export function highlightsToMarkText(source: string): string {
   return source.replace(/==([^=\n]+)==/g, '<mark>$1</mark>')
 }
@@ -8698,7 +7814,6 @@ export function highlightsToMarkText(source: string): string {
 export const highlightsToMark: Command = (view) =>
   applyToSelectionOrAll(view, highlightsToMarkText, 'input.highlight.toMark')
 
-                                     
 export function markToHighlightsText(source: string): string {
   return source.replace(/<mark>([\s\S]*?)<\/mark>/gi, '==$1==')
 }
@@ -8706,7 +7821,6 @@ export function markToHighlightsText(source: string): string {
 export const markToHighlights: Command = (view) =>
   applyToSelectionOrAll(view, markToHighlightsText, 'input.mark.toHighlight')
 
-                                 
 export function normalizeBulletsToDashText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -8725,7 +7839,6 @@ export function normalizeBulletsToDashText(source: string): string {
 export const normalizeBulletsToDash: Command = (view) =>
   applyToSelectionOrAll(view, normalizeBulletsToDashText, 'input.bullets.normalize')
 
-                                       
 export function atxHeadingCloseText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -8747,7 +7860,6 @@ export function atxHeadingCloseText(source: string): string {
 export const atxHeadingClose: Command = (view) =>
   applyToSelectionOrAll(view, atxHeadingCloseText, 'input.headings.close')
 
-                        
 export function stripAtxCloseText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -8766,7 +7878,6 @@ export function stripAtxCloseText(source: string): string {
 export const stripAtxClose: Command = (view) =>
   applyToSelectionOrAll(view, stripAtxCloseText, 'input.headings.stripClose')
 
-                             
 export function insertNoteMetadataBlock(view: EditorView): boolean {
   const now = new Date()
   const ymd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
@@ -8780,7 +7891,6 @@ export function insertNoteMetadataBlock(view: EditorView): boolean {
   return true
 }
 
-                            
 export function insertTableEmptyRowText(source: string): string {
   const lines = source.split('\n')
   let lastTableEnd = -1
@@ -8803,7 +7913,6 @@ export function insertTableEmptyRowText(source: string): string {
 export const insertTableEmptyRow: Command = (view) =>
   applyToSelectionOrAll(view, insertTableEmptyRowText, 'input.table.emptyRow')
 
-                                   
 export function annotateWikilinksWithEmojiText(source: string, emoji: string): string {
   return source.replace(/\[\[[^\]\n]+\]\]/g, (m) => {
     return `${m} ${emoji}`
@@ -8819,7 +7928,6 @@ export function annotateWikilinksWithEmoji(emoji: string): Command {
     )
 }
 
-                                            
 export function unifyFrontmatterTagsText(source: string): string {
   const m = /^---\n([\s\S]*?)\n---/.exec(source)
   if (!m) return source
@@ -8851,7 +7959,6 @@ export function unifyFrontmatterTagsText(source: string): string {
 export const unifyFrontmatterTags: Command = (view) =>
   applyToSelectionOrAll(view, unifyFrontmatterTagsText, 'input.frontmatter.unifyTags')
 
-                                   
 export function buildScopedTOCText(source: string, maxDepth: number): string {
   const lines = source.split('\n')
   let inFence = false
@@ -8887,7 +7994,6 @@ export function insertScopedTOC(maxDepth: number): Command {
   }
 }
 
-                                                    
 export function promoteH1ToFrontmatterTitleText(source: string): string {
   const h1 = /^#\s+(.+)$/m.exec(source)
   if (!h1) return source
@@ -8906,7 +8012,6 @@ export function promoteH1ToFrontmatterTitleText(source: string): string {
 export const promoteH1ToFrontmatterTitle: Command = (view) =>
   applyToSelectionOrAll(view, promoteH1ToFrontmatterTitleText, 'input.frontmatter.fromH1')
 
-                                              
 const TASK_STATE_ROTATION = [' ', 'x', '-', '?'] as const
 
 export function rotateTaskStateAtCursor(view: EditorView): boolean {
@@ -8925,7 +8030,6 @@ export function rotateTaskStateAtCursor(view: EditorView): boolean {
   return true
 }
 
-                                           
 export function insertBreadcrumbAtTop(path: string): Command {
   return (view) => {
     const parts = path.split('/').filter(Boolean)
@@ -8942,7 +8046,6 @@ export function insertBreadcrumbAtTop(path: string): Command {
   }
 }
 
-                                        
 export function splitLongLinesAtSentencesText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -8968,7 +8071,6 @@ export function splitLongLinesAtSentencesText(source: string): string {
 export const splitLongLinesAtSentences: Command = (view) =>
   applyToSelectionOrAll(view, splitLongLinesAtSentencesText, 'input.lines.splitSentences')
 
-                   
 export function dedupAdjacentParagraphsText(source: string): string {
   const lines = source.split('\n')
   let prev: string | null = null
@@ -8984,7 +8086,6 @@ export function dedupAdjacentParagraphsText(source: string): string {
 export const dedupAdjacentParagraphs: Command = (view) =>
   applyToSelectionOrAll(view, dedupAdjacentParagraphsText, 'input.paragraphs.dedupAdj')
 
-                                                                
 export function alignImagesText(source: string, align: 'center' | 'right' | 'left'): string {
   return source.replace(/^(!\[[^\]]*\]\([^)\s]+(?:\s+"[^"]*")?\))$/gm, (_w, img) => {
     return `<p align="${align}">${img}</p>`
@@ -8995,7 +8096,6 @@ export function alignImages(align: 'center' | 'right' | 'left'): Command {
   return (view) => applyToSelectionOrAll(view, (s) => alignImagesText(s, align), 'input.images.align')
 }
 
-                                             
 export function tagSectionTasksInRange(
   source: string,
   fromLine: number,
@@ -9029,7 +8129,6 @@ export function tagSectionTasks(tag: string): Command {
   }
 }
 
-                                              
 export type TagTreeNode = { name: string; children: Map<string, TagTreeNode>; count: number }
 
 export function collectTagTree(source: string): TagTreeNode {
@@ -9084,10 +8183,6 @@ export const insertTagTree: Command = (view) => {
   return true
 }
 
-   
-                                              
-                                      
-   
 export function buildMermaidFromWikilinks(source: string, direction: 'TD' | 'LR' = 'TD'): string {
   const targets = new Set<string>()
   const re = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g
@@ -9128,7 +8223,6 @@ export function insertMermaidGraphFromSection(direction: 'TD' | 'LR'): Command {
   }
 }
 
-                                                 
 export function swapMermaidDirectionText(source: string): string {
   return source.replace(
     /(```mermaid\n)(\s*graph\s+)(TD|LR|TB|RL|BT)/g,
@@ -9142,7 +8236,6 @@ export function swapMermaidDirectionText(source: string): string {
 export const swapMermaidDirection: Command = (view) =>
   applyToSelectionOrAll(view, swapMermaidDirectionText, 'input.mermaid.swapDirection')
 
-                                                       
 export function renameWikilinkText(source: string, oldName: string, newName: string): string {
   if (!oldName || !newName || oldName === newName) return source
   const escaped = oldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -9155,7 +8248,6 @@ export function renameWikilinkInDoc(oldName: string, newName: string): Command {
     applyToSelectionOrAll(view, (s) => renameWikilinkText(s, oldName, newName), 'input.wikilink.rename')
 }
 
-                                        
 export function tagsToWikilinksText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -9178,7 +8270,6 @@ export function tagsToWikilinksText(source: string): string {
 export const tagsToWikilinks: Command = (view) =>
   applyToSelectionOrAll(view, tagsToWikilinksText, 'input.tags.toWikilinks')
 
-                                      
 export function addFrontmatterAliasText(source: string, alias: string): string {
   if (!alias) return source
   const headM = /^---\n([\s\S]*?)\n---/.exec(source)
@@ -9203,7 +8294,6 @@ export function addFrontmatterAlias(alias: string): Command {
     applyToSelectionOrAll(view, (s) => addFrontmatterAliasText(s, alias), 'input.frontmatter.addAlias')
 }
 
-                                                        
 export function addReadingCssclassText(source: string, cssclass: string): string {
   const headM = /^---\n([\s\S]*?)\n---/.exec(source)
   if (!headM) return `---\ncssclasses: ["${cssclass}"]\n---\n${source}`
@@ -9227,7 +8317,6 @@ export function addReadingCssclass(cssclass: string): Command {
     applyToSelectionOrAll(view, (s) => addReadingCssclassText(s, cssclass), 'input.frontmatter.cssclass')
 }
 
-                                            
 export function insertSnippet(template: string): Command {
   return (view) => {
     const sel = view.state.selection.main
@@ -9240,7 +8329,6 @@ export function insertSnippet(template: string): Command {
   }
 }
 
-                     
 export function buildReviewNoteSnippet(): string {
   const now = new Date()
   const ymd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
@@ -9259,7 +8347,6 @@ export function buildWeeklyReviewSnippet(): string {
   return `# Week ${week} Review\n\n## Done\n- \n\n## Not Done\n- [ ] \n\n## Lessons Learned\n- \n\n## Next Week\n- [ ] \n`
 }
 
-                                                           
 export function applyColorHighlight(color: string): Command {
   return (view) => {
     const sel = view.state.selection.main
@@ -9273,7 +8360,6 @@ export function applyColorHighlight(color: string): Command {
   }
 }
 
-                                          
 export function swapAdjacentTableColumnsText(source: string, col: number): string {
   const lines = source.split('\n')
   let tableStart = -1
@@ -9315,7 +8401,6 @@ export function swapAdjacentTableColumns(col: number): Command {
     applyToSelectionOrAll(view, (s) => swapAdjacentTableColumnsText(s, col), 'input.table.swapCols')
 }
 
-                              
 export function insertLightboxImage(view: EditorView): boolean {
   const url = window.prompt?.('Image URL:') ?? null
   if (!url) return false
@@ -9330,7 +8415,6 @@ export function insertLightboxImage(view: EditorView): boolean {
   return true
 }
 
-                                   
 export function forceHardBreaksText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -9351,7 +8435,6 @@ export function forceHardBreaksText(source: string): string {
 export const forceHardBreaks: Command = (view) =>
   applyToSelectionOrAll(view, forceHardBreaksText, 'input.lines.forceHardBreaks')
 
-                                       
 export function toggleCalloutFoldText(source: string): string {
   return source.replace(/^(>\s*\[![A-Za-z0-9_-]+\])([+-]?)/gm, (_w, head, mark) => {
     if (mark === '-') return head
@@ -9363,7 +8446,6 @@ export function toggleCalloutFoldText(source: string): string {
 export const toggleCalloutFold: Command = (view) =>
   applyToSelectionOrAll(view, toggleCalloutFoldText, 'input.callout.toggleFold')
 
-                                                             
 export function videoLinksToEmbedText(source: string): string {
   return source.replace(
     /(?<!\!)\[([^\]\n]+)\]\(([^):\s]+\.(?:mp4|webm|ogv|mov))\)/gi,
@@ -9374,7 +8456,6 @@ export function videoLinksToEmbedText(source: string): string {
 export const videoLinksToEmbed: Command = (view) =>
   applyToSelectionOrAll(view, videoLinksToEmbedText, 'input.video.toEmbed')
 
-                                       
 export function audioLinksToEmbedText(source: string): string {
   return source.replace(
     /(?<!\!)\[([^\]\n]+)\]\(([^):\s]+\.(?:mp3|wav|ogg|m4a|flac))\)/gi,
@@ -9385,12 +8466,6 @@ export function audioLinksToEmbedText(source: string): string {
 export const audioLinksToEmbed: Command = (view) =>
   applyToSelectionOrAll(view, audioLinksToEmbedText, 'input.audio.toEmbed')
 
-   
-                       
-                                                               
-                      
-                               
-   
 export type TemplaterContext = {
   title?: string
   now?: Date
@@ -9438,7 +8513,6 @@ export function insertTemplate(template: string, ctx: TemplaterContext = {}): Co
   }
 }
 
-                                                    
 export function swapDollarMathText(source: string, toBlock: boolean): string {
   if (toBlock) {
     return source.replace(/(?<!\$)\$([^$\n]+)\$(?!\$)/g, '$$$$$1$$$$')
@@ -9452,7 +8526,6 @@ export const inlineDollarToBlock: Command = (view) =>
 export const blockDollarToInline: Command = (view) =>
   applyToSelectionOrAll(view, (s) => swapDollarMathText(s, false), 'input.math.toInline')
 
-                                           
 export function appendBlockIdAtCursor(view: EditorView): boolean {
   const head = view.state.selection.main.head
   const line = view.state.doc.lineAt(head)
@@ -9467,7 +8540,6 @@ export function appendBlockIdAtCursor(view: EditorView): boolean {
   return true
 }
 
-                                          
 export function incrementBlockIdAtCursor(view: EditorView): boolean {
   const head = view.state.selection.main.head
   const line = view.state.doc.lineAt(head)
@@ -9483,7 +8555,6 @@ export function incrementBlockIdAtCursor(view: EditorView): boolean {
   return true
 }
 
-                       
 export function sortLinesByLengthText(source: string, desc = false): string {
   const lines = source.split('\n')
   lines.sort((a, b) => (desc ? b.length - a.length : a.length - b.length))
@@ -9496,7 +8567,6 @@ export const sortLinesByLengthAsc: Command = (view) =>
 export const sortLinesByLengthDesc: Command = (view) =>
   applyToSelectionOrAll(view, (s) => sortLinesByLengthText(s, true), 'input.lines.sortLenDesc')
 
-                                           
 export function reportDuplicateLinesText(source: string): string {
   const lines = source.split('\n')
   const counts = new Map<string, number[]>()
@@ -9526,7 +8596,6 @@ export const insertDuplicateLinesReport: Command = (view) => {
   return true
 }
 
-                                                                       
 export function mdImagesToDocumentEmbedText(source: string): string {
   return source.replace(/!\[([^\]]*)\]\(([^):\s]+)\)/g, (_w, _alt, href) => {
     if (/^https?:\/\//i.test(href)) return _w
@@ -9537,7 +8606,6 @@ export function mdImagesToDocumentEmbedText(source: string): string {
 export const mdImagesToDocumentEmbed: Command = (view) =>
   applyToSelectionOrAll(view, mdImagesToDocumentEmbedText, 'input.images.toEmbed')
 
-                                            
 export function documentEmbedToMdImagesText(source: string): string {
   return source.replace(/!\[\[([^\]\n]+?)\]\]/g, (_w, href) => {
     return `![](${href})`
@@ -9547,7 +8615,6 @@ export function documentEmbedToMdImagesText(source: string): string {
 export const documentEmbedToMdImages: Command = (view) =>
   applyToSelectionOrAll(view, documentEmbedToMdImagesText, 'input.images.fromEmbed')
 
-                                            
 const CALLOUT_ALIAS_MAP: Record<string, string> = {
   i: 'info',
   w: 'warning',
@@ -9569,7 +8636,6 @@ export function expandCalloutAliasesText(source: string): string {
 export const expandCalloutAliases: Command = (view) =>
   applyToSelectionOrAll(view, expandCalloutAliasesText, 'input.callout.expandAliases')
 
-                                                                   
 export function unwrapSelfLinksText(source: string): string {
   return source.replace(/(?<!\!)\[([^\]\n]+)\]\(([^)\s]+)\)/g, (whole, text, href) => {
     if (text !== href) return whole
@@ -9584,10 +8650,6 @@ export const unwrapSelfLinks: Command = (view) =>
 // Batch #159: outline filter / checkbox cycle / URL shortcut / etc.
 // =====================================================================
 
-   
-                                                      
-                         
-   
 export function filterOutlineByLevelText(source: string, keepLevel: number): string {
   const lines = source.split('\n')
   let inFence = false
@@ -9616,7 +8678,6 @@ export const filterOutlineByLevel =
 
 const CHECKBOX_CYCLE = [' ', 'x', '-', '/', '?']
 
-                                                
 export const cycleTaskCheckboxAtCursor: Command = (view) => {
   const { state } = view
   const line = state.doc.lineAt(state.selection.main.head)
@@ -9633,10 +8694,6 @@ export const cycleTaskCheckboxAtCursor: Command = (view) => {
   return true
 }
 
-   
-                                            
-                                                         
-   
 export function autoLinkBareUrlsText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -9647,14 +8704,14 @@ export function autoLinkBareUrlsText(source: string): string {
         return line
       }
       if (inFence) return line
-               
+
       let masked = line
       const codeRanges: Array<[number, number]> = []
       masked = line.replace(/`[^`]*`/g, (s, off: number) => {
         codeRanges.push([off, off + s.length])
         return ' '.repeat(s.length)
       })
-                         
+
       const skip: Array<[number, number]> = [...codeRanges]
       const md = /\[[^\]]*\]\([^)\s]+\)/g
       let mm: RegExpExecArray | null
@@ -9700,7 +8757,6 @@ const LOREM_WORDS = [
   'magna', 'aliqua', 'enim', 'ad', 'minim', 'veniam', 'quis', 'nostrud',
 ]
 
-                             
 export const insertLoremIpsum =
   (wordCount = 12): Command =>
   (view) => {
@@ -9718,7 +8774,6 @@ export const insertLoremIpsum =
     return true
   }
 
-                                             
 export function titleCaseFrontmatterKeysText(source: string): string {
   const m = /^---\n([\s\S]*?)\n---/.exec(source)
   if (!m) return source
@@ -9742,7 +8797,6 @@ export function titleCaseFrontmatterKeysText(source: string): string {
 export const titleCaseFrontmatterKeys: Command = (view) =>
   applyToSelectionOrAll(view, titleCaseFrontmatterKeysText, 'input.frontmatter.titleCaseKeys')
 
-                                                 
 export const splitParagraphAtCursor: Command = (view) => {
   const { state } = view
   const head = state.selection.main.head
@@ -9761,7 +8815,6 @@ export const splitParagraphAtCursor: Command = (view) => {
   return true
 }
 
-                                     
 export function trimHeadingPunctuationText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -9782,10 +8835,6 @@ export function trimHeadingPunctuationText(source: string): string {
 export const trimHeadingPunctuation: Command = (view) =>
   applyToSelectionOrAll(view, trimHeadingPunctuationText, 'input.heading.trimPunct')
 
-   
-                                                   
-                                  
-   
 export function splitLongTableText(source: string, chunkRows: number): string {
   if (chunkRows < 1) chunkRows = 25
   const lines = source.split('\n')
@@ -9830,10 +8879,6 @@ export const splitLongTable =
   (view) =>
     applyToSelectionOrAll(view, (s) => splitLongTableText(s, chunkRows), 'input.table.split')
 
-   
-                                                                       
-              
-   
 export const swapListItems =
   (a: number, b: number): Command =>
   (view) => {
@@ -9870,7 +8915,6 @@ export const swapListItems =
     return true
   }
 
-                                         
 export const insertStickyNote =
   (type = 'note', title = 'Note'): Command =>
   (view) => {
@@ -9887,11 +8931,6 @@ export const insertStickyNote =
     return true
   }
 
-   
-                           
-                                                 
-                                                                                 
-   
 export function embedKnownVideoIframesText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -9922,9 +8961,6 @@ export function embedKnownVideoIframesText(source: string): string {
 export const embedKnownVideoIframes: Command = (view) =>
   applyToSelectionOrAll(view, embedKnownVideoIframesText, 'input.media.embedVideo')
 
-   
-                                                   
-   
 export const collapseParagraphAsDetails: Command = (view) => {
   const { state } = view
   const head = state.selection.main.head
@@ -9951,7 +8987,6 @@ export const collapseParagraphAsDetails: Command = (view) => {
 // Batch #160: wikilink nav / list indent / section tag / mixed bullets
 // =====================================================================
 
-                                          
 export function findWikilinkPositions(source: string): number[] {
   const lines = source.split('\n')
   const positions: number[] = []
@@ -9976,7 +9011,6 @@ export function findWikilinkPositions(source: string): number[] {
   return positions
 }
 
-                           
 export const jumpToNextWikilink: Command = (view) => {
   const head = view.state.selection.main.head
   const positions = findWikilinkPositions(view.state.doc.toString())
@@ -9990,7 +9024,6 @@ export const jumpToNextWikilink: Command = (view) => {
   return true
 }
 
-                           
 export const jumpToPrevWikilink: Command = (view) => {
   const head = view.state.selection.main.head
   const positions = findWikilinkPositions(view.state.doc.toString())
@@ -10004,10 +9037,6 @@ export const jumpToPrevWikilink: Command = (view) => {
   return true
 }
 
-   
-                                          
-                  
-   
 export function promoteListIndentText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -10027,7 +9056,6 @@ export function promoteListIndentText(source: string): string {
 export const promoteListIndent: Command = (view) =>
   applyToSelectionOrAll(view, promoteListIndentText, 'input.list.promote')
 
-                                
 export function demoteListIndentText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -10047,7 +9075,6 @@ export function demoteListIndentText(source: string): string {
 export const demoteListIndent: Command = (view) =>
   applyToSelectionOrAll(view, demoteListIndentText, 'input.list.demote')
 
-                                    
 export function unifyBulletMarkersText(source: string, marker: '-' | '*' | '+' = '-'): string {
   const lines = source.split('\n')
   let inFence = false
@@ -10068,7 +9095,6 @@ export const unifyBulletMarkers =
   (view) =>
     applyToSelectionOrAll(view, (s) => unifyBulletMarkersText(s, marker), 'input.list.unifyBullet')
 
-                                              
 export function buildDocumentMapText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -10098,7 +9124,6 @@ export const insertDocumentMap: Command = (view) => {
   return true
 }
 
-                                                                                 
 export const selectInsideInlineMark: Command = (view) => {
   const { state } = view
   const head = state.selection.main.head
@@ -10127,7 +9152,6 @@ export const selectInsideInlineMark: Command = (view) => {
   return false
 }
 
-                                 
 export const insertCheckboxStatsAtCursor: Command = (view) => {
   const source = view.state.doc.toString()
   const lines = source.split('\n')
@@ -10156,7 +9180,6 @@ export const insertCheckboxStatsAtCursor: Command = (view) => {
   return true
 }
 
-                                                       
 export const tagSectionLines =
   (tag: string): Command =>
   (view) => {
@@ -10177,12 +9200,10 @@ export const tagSectionLines =
     return true
   }
 
-                                  
 export function countCharsInRangeText(source: string, from: number, to: number): number {
   return Math.max(0, source.slice(from, to).length)
 }
 
-                                                             
 export function extractHtmlCommentsAsSectionText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -10210,14 +9231,12 @@ export const extractHtmlCommentsAsSection: Command = (view) =>
 // Batch #161: reading progress / heading move / callout fold-all / etc
 // =====================================================================
 
-                                        
 export function renderProgressBarText(percent: number, width = 20): string {
   const p = Math.max(0, Math.min(100, percent))
   const filled = Math.round((p / 100) * width)
   return `[${'█'.repeat(filled)}${'░'.repeat(width - filled)}] ${p}%`
 }
 
-                                   
 export const insertSectionTaskProgressBar: Command = (view) => {
   const section = findCurrentSection(view.state)
   if (!section) return false
@@ -10242,7 +9261,6 @@ export const insertSectionTaskProgressBar: Command = (view) => {
   return true
 }
 
-                                               
 export function foldAllCalloutsText(source: string): string {
   return source.replace(/^(> \[![A-Za-z]+\])([-+]?)(.*)$/gm, (_w, head, _fold, rest) => `${head}-${rest}`)
 }
@@ -10250,7 +9268,6 @@ export function foldAllCalloutsText(source: string): string {
 export const foldAllCallouts: Command = (view) =>
   applyToSelectionOrAll(view, foldAllCalloutsText, 'input.callout.foldAll')
 
-                                     
 export function expandAllCalloutsText(source: string): string {
   return source.replace(/^(> \[![A-Za-z]+\])[-+]/gm, '$1')
 }
@@ -10258,7 +9275,6 @@ export function expandAllCalloutsText(source: string): string {
 export const expandAllCallouts: Command = (view) =>
   applyToSelectionOrAll(view, expandAllCalloutsText, 'input.callout.expandAll')
 
-                                                                       
 export function ensureTimestampsInFrontmatterText(source: string, nowIso: string): string {
   const m = /^---\n([\s\S]*?)\n---/.exec(source)
   if (!m) {
@@ -10282,7 +9298,6 @@ export const ensureTimestampsInFrontmatter: Command = (view) => {
   return true
 }
 
-                                
 export const surroundWithStyledMark =
   (color: string): Command =>
   (view) => {
@@ -10301,7 +9316,6 @@ export const surroundWithStyledMark =
     return true
   }
 
-                             
 export const insertHrWith =
   (char: '---' | '***' | '___' = '---'): Command =>
   (view) => {
@@ -10317,9 +9331,6 @@ export const insertHrWith =
     return true
   }
 
-   
-                                                 
-   
 export function cleanupAllWhitespaceText(source: string): string {
   return source
     .replace(/^﻿/, '')
@@ -10333,7 +9344,6 @@ export function cleanupAllWhitespaceText(source: string): string {
 export const cleanupAllWhitespace: Command = (view) =>
   applyToSelectionOrAll(view, cleanupAllWhitespaceText, 'input.cleanup.whitespace')
 
-                                            
 export function linksToQrShortcutText(source: string, base = 'https://api.qrserver.com/v1/create-qr-code/?data='): string {
   const lines = source.split('\n')
   let inFence = false
@@ -10354,7 +9364,6 @@ export function linksToQrShortcutText(source: string, base = 'https://api.qrserv
 export const linksToQrShortcut: Command = (view) =>
   applyToSelectionOrAll(view, linksToQrShortcutText, 'input.links.toQr')
 
-                                              
 export function extractTasksToSummarySectionText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -10376,10 +9385,6 @@ export function extractTasksToSummarySectionText(source: string): string {
 export const extractTasksToSummarySection: Command = (view) =>
   applyToSelectionOrAll(view, extractTasksToSummarySectionText, 'input.tasks.summary')
 
-   
-                                                   
-               
-   
 export const promoteHeadingTree: Command = (view) => {
   const section = findCurrentSection(view.state)
   if (!section) return false
@@ -10398,7 +9403,6 @@ export const promoteHeadingTree: Command = (view) => {
   return true
 }
 
-                                                
 export const demoteHeadingTree: Command = (view) => {
   const section = findCurrentSection(view.state)
   if (!section) return false
@@ -10429,7 +9433,6 @@ function isoWeek(d: Date): { year: number; week: number } {
   return { year: target.getUTCFullYear(), week }
 }
 
-                                                
 export const insertTodayDailyWikilink: Command = (view) => {
   const d = new Date()
   const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -10443,7 +9446,6 @@ export const insertTodayDailyWikilink: Command = (view) => {
   return true
 }
 
-                                               
 export const insertWeeklyWikilink: Command = (view) => {
   const { year, week } = isoWeek(new Date())
   const text = `[[W-${year}-${String(week).padStart(2, '0')}]]`
@@ -10456,9 +9458,6 @@ export const insertWeeklyWikilink: Command = (view) => {
   return true
 }
 
-   
-                                                                        
-   
 export function inlineFootnotesToReferenceText(source: string): string {
   let counter = 0
   const collected: { id: number; text: string }[] = []
@@ -10475,10 +9474,6 @@ export function inlineFootnotesToReferenceText(source: string): string {
 export const inlineFootnotesToReference: Command = (view) =>
   applyToSelectionOrAll(view, inlineFootnotesToReferenceText, 'input.footnote.inlineToRef')
 
-   
-                                         
-                        
-   
 export const reorderTasksByStatus: Command = (view) => {
   const { state } = view
   const head = state.selection.main.head
@@ -10506,7 +9501,6 @@ export const reorderTasksByStatus: Command = (view) => {
   return true
 }
 
-                                                 
 export function explodeListToParagraphsText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -10540,9 +9534,6 @@ export function explodeListToParagraphsText(source: string): string {
 export const explodeListToParagraphs: Command = (view) =>
   applyToSelectionOrAll(view, explodeListToParagraphsText, 'input.list.explode')
 
-   
-                                                           
-   
 export function mergeAdjacentDuplicateHeadingsText(source: string): string {
   const lines = source.split('\n')
   const out: string[] = []
@@ -10581,9 +9572,6 @@ export function mergeAdjacentDuplicateHeadingsText(source: string): string {
 export const mergeAdjacentDuplicateHeadings: Command = (view) =>
   applyToSelectionOrAll(view, mergeAdjacentDuplicateHeadingsText, 'input.heading.mergeDup')
 
-   
-                                                        
-   
 export function tableColumnToWikilinksText(source: string, colIndex: number): string {
   const lines = source.split('\n')
   const out: string[] = []
@@ -10621,7 +9609,6 @@ export const tableColumnToWikilinks =
   (view) =>
     applyToSelectionOrAll(view, (s) => tableColumnToWikilinksText(s, colIndex), 'input.table.colToWikilink')
 
-                        
 export const insertQuoteWithAttribution =
   (author = 'Anonymous'): Command =>
   (view) => {
@@ -10637,7 +9624,6 @@ export const insertQuoteWithAttribution =
     return true
   }
 
-                                                             
 export function wrapHeadingsAsBlockLinksText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -10662,7 +9648,6 @@ export const wrapHeadingsAsBlockLinks: Command = (view) =>
 // Batch #163: numbered↔bullet / selection→footnote / word cloud / etc.
 // =====================================================================
 
-                                              
 export function bulletsToOrderedText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -10694,7 +9679,6 @@ export function bulletsToOrderedText(source: string): string {
 export const bulletsToOrdered: Command = (view) =>
   applyToSelectionOrAll(view, bulletsToOrderedText, 'input.list.bulletsToOrdered')
 
-                                
 export function orderedToBulletsText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -10713,10 +9697,6 @@ export function orderedToBulletsText(source: string): string {
 export const orderedToBullets: Command = (view) =>
   applyToSelectionOrAll(view, orderedToBulletsText, 'input.list.orderedToBullets')
 
-   
-                                            
-               
-   
 export const convertSelectionToFootnote: Command = (view) => {
   const r = view.state.selection.main
   if (r.empty) return false
@@ -10740,7 +9720,6 @@ export const convertSelectionToFootnote: Command = (view) => {
   return true
 }
 
-                               
 export const insertSectionDividerWithTitle =
   (title: string, char: '─' | '━' | '═' = '─'): Command =>
   (view) => {
@@ -10756,7 +9735,6 @@ export const insertSectionDividerWithTitle =
     return true
   }
 
-                                                     
 export function suggestFilenameFromH1(source: string): string | null {
   const lines = source.split('\n')
   let inFence = false
@@ -10778,10 +9756,6 @@ export function suggestFilenameFromH1(source: string): string | null {
   return null
 }
 
-   
-                                
-                           
-   
 export const insertCurrentHeadingPermalink =
   (notePath = ''): Command =>
   (view) => {
@@ -10798,10 +9772,6 @@ export const insertCurrentHeadingPermalink =
     return true
   }
 
-   
-                                                    
-                     
-   
 export function buildWordCloudSnapshotText(source: string, topN = 30): string {
   const text = source
     .replace(/```[\s\S]*?```/g, ' ')
@@ -10829,10 +9799,6 @@ export const insertWordCloudSnapshot =
     return true
   }
 
-   
-                                          
-          
-   
 export function shuffleParagraphsText(source: string, rng: () => number = Math.random): string {
   const blocks = source.split(/\n\n+/)
   const paraIdx: number[] = []
@@ -10860,7 +9826,6 @@ export function shuffleParagraphsText(source: string, rng: () => number = Math.r
 export const shuffleParagraphs: Command = (view) =>
   applyToSelectionOrAll(view, (s) => shuffleParagraphsText(s), 'input.paragraph.shuffle')
 
-                                    
 export const insertKbdSpan =
   (keys = 'Ctrl+K'): Command =>
   (view) => {
@@ -10874,7 +9839,6 @@ export const insertKbdSpan =
     return true
   }
 
-                                                            
 export function sortFrontmatterArrayValuesText(source: string): string {
   const m = /^---\n([\s\S]*?)\n---/.exec(source)
   if (!m) return source
@@ -10898,7 +9862,6 @@ export function sortFrontmatterArrayValuesText(source: string): string {
 export const sortFrontmatterArrayValues: Command = (view) =>
   applyToSelectionOrAll(view, sortFrontmatterArrayValuesText, 'input.frontmatter.sortArrays')
 
-                                    
 export const insertMathEquationRef: Command = (view) => {
   const source = view.state.doc.toString()
   const used = [...source.matchAll(/\[eq:(\d+)\]/g)].map((m) => parseInt(m[1], 10))
@@ -10917,13 +9880,9 @@ export const insertMathEquationRef: Command = (view) => {
 // Batch #164: section sort by date / roman list / redact / etc.
 // =====================================================================
 
-   
-                                    
-                       
-   
 export function sortH2SectionsByDateText(source: string): string {
   const lines = source.split('\n')
-                                  
+
   const blocks: { headerLine: number; lines: string[] }[] = []
   let cur: string[] = []
   let curHeader = -1
@@ -10958,7 +9917,6 @@ export function sortH2SectionsByDateText(source: string): string {
 export const sortH2SectionsByDate: Command = (view) =>
   applyToSelectionOrAll(view, sortH2SectionsByDateText, 'input.section.sortByDate')
 
-                                                            
 export const insertSectionLastReviewedStamp: Command = (view) => {
   const section = findCurrentSection(view.state)
   if (!section) return false
@@ -10991,7 +9949,6 @@ function toRoman(n: number): string {
   return s
 }
 
-                                               
 export function orderedToRomanText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -11019,7 +9976,6 @@ export function orderedToRomanText(source: string): string {
 export const orderedToRoman: Command = (view) =>
   applyToSelectionOrAll(view, orderedToRomanText, 'input.list.toRoman')
 
-                                                          
 export function tasksToDefinitionListText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -11048,7 +10004,6 @@ export function tasksToDefinitionListText(source: string): string {
 export const tasksToDefinitionList: Command = (view) =>
   applyToSelectionOrAll(view, tasksToDefinitionListText, 'input.tasks.toDefList')
 
-                                                                 
 export const insertCollapsibleTOC: Command = (view) => {
   const source = view.state.doc.toString()
   const lines = source.split('\n')
@@ -11075,9 +10030,6 @@ export const insertCollapsibleTOC: Command = (view) => {
   return true
 }
 
-   
-                                                       
-   
 export function redactSensitivePatternsText(source: string): string {
   const mask = (s: string) => {
     if (s.length <= 4) return '█'.repeat(s.length)
@@ -11091,7 +10043,6 @@ export function redactSensitivePatternsText(source: string): string {
 export const redactSensitivePatterns: Command = (view) =>
   applyToSelectionOrAll(view, redactSensitivePatternsText, 'input.redact.sensitive')
 
-                                                   
 export const insertChecklistFromPromptedLines: Command = (view) => {
   const raw = window.prompt('One item per line (paste here):') ?? ''
   if (!raw) return false
@@ -11110,7 +10061,6 @@ export const insertChecklistFromPromptedLines: Command = (view) => {
   return true
 }
 
-                                         
 export const splitCurrentHeading =
   (sep = ' / '): Command =>
   (view) => {
@@ -11130,9 +10080,6 @@ export const splitCurrentHeading =
     return true
   }
 
-   
-                                                                   
-   
 export function mergeDuplicateWikilinksText(source: string): string {
   return source.replace(/\[\[([^\]\n|]+)\|[^\]\n]+\]\]/g, '[[$1]]')
 }
@@ -11140,7 +10087,6 @@ export function mergeDuplicateWikilinksText(source: string): string {
 export const mergeDuplicateWikilinks: Command = (view) =>
   applyToSelectionOrAll(view, mergeDuplicateWikilinksText, 'input.wikilink.mergeDup')
 
-                                                                  
 export const linkPromptForSelection: Command = (view) => {
   const r = view.state.selection.main
   const url = window.prompt('URL:')
@@ -11168,10 +10114,6 @@ export const linkPromptForSelection: Command = (view) => {
 // Batch #165: blockquote↔callout / sentence split / deadline / etc.
 // =====================================================================
 
-   
-                                                  
-                                         
-   
 export function blockquoteToCalloutText(source: string, type = 'note'): string {
   const lines = source.split('\n')
   let inFence = false
@@ -11195,7 +10137,7 @@ export function blockquoteToCalloutText(source: string, type = 'note'): string {
         block.push(lines[i])
         i++
       }
-                           
+
       if (/^>\s+\[![A-Za-z]+\]/.test(block[0])) {
         out.push(...block)
         continue
@@ -11217,7 +10159,6 @@ export const blockquoteToCallout =
   (view) =>
     applyToSelectionOrAll(view, (s) => blockquoteToCalloutText(s, type), 'input.callout.fromBlockquote')
 
-                                                       
 export function calloutToBlockquoteText(source: string): string {
   return source.replace(/^(>\s?)\[![A-Za-z]+\][-+]?\s?(.*)$/gm, (_w, q, body) => `${q}${body}`)
 }
@@ -11225,9 +10166,6 @@ export function calloutToBlockquoteText(source: string): string {
 export const calloutToBlockquote: Command = (view) =>
   applyToSelectionOrAll(view, calloutToBlockquoteText, 'input.callout.toBlockquote')
 
-   
-                                                    
-   
 export function paragraphsToSentenceBulletsText(source: string): string {
   const blocks = source.split(/\n\n+/)
   return blocks
@@ -11254,7 +10192,6 @@ export const paragraphsToSentenceBullets: Command = (view) =>
 
 const HEADING_EMOJI_POOL = ['📌', '🔖', '✨', '🧭', '🎯', '📚', '🧠', '💡', '🔥', '⚡️', '🌱']
 
-                                   
 export function emojifyHeadingsText(source: string, rng: () => number = Math.random): string {
   const lines = source.split('\n')
   let inFence = false
@@ -11278,7 +10215,6 @@ export function emojifyHeadingsText(source: string, rng: () => number = Math.ran
 export const emojifyHeadings: Command = (view) =>
   applyToSelectionOrAll(view, (s) => emojifyHeadingsText(s), 'input.heading.emojify')
 
-                               
 export const toggleLineStrikethrough: Command = (view) => {
   const { state } = view
   const line = state.doc.lineAt(state.selection.main.head)
@@ -11301,7 +10237,6 @@ export const toggleLineStrikethrough: Command = (view) => {
   return true
 }
 
-                                                         
 export function stripMarkdownToPlainTextV2(source: string): string {
   return source
     .replace(/```[\s\S]*?```/g, (s) => s.replace(/^```\w*\n?|```$/g, ''))
@@ -11324,7 +10259,6 @@ export function stripMarkdownToPlainTextV2(source: string): string {
 export const stripMarkdownToPlainCommand: Command = (view) =>
   applyToSelectionOrAll(view, stripMarkdownToPlainTextV2, 'input.format.toPlain')
 
-                            
 export const insertTaskWithDeadline =
   (offsetDays = 0, title = 'Task'): Command =>
   (view) => {
@@ -11344,7 +10278,6 @@ export const insertTaskWithDeadline =
     return true
   }
 
-                                                            
 export function annotateUrlsWithTitlePlaceholderText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -11355,7 +10288,7 @@ export function annotateUrlsWithTitlePlaceholderText(source: string): string {
         return line
       }
       if (inFence) return line
-                                           
+
       const skip: Array<[number, number]> = []
       const md = /\[[^\]]*\]\([^)\s]+(?:\s+"[^"]*")?\)/g
       const auto = /<https?:\/\/[^>]+>/g
@@ -11384,7 +10317,6 @@ export function annotateUrlsWithTitlePlaceholderText(source: string): string {
 export const annotateUrlsWithTitlePlaceholder: Command = (view) =>
   applyToSelectionOrAll(view, annotateUrlsWithTitlePlaceholderText, 'input.links.annotateTitle')
 
-                                              
 export function removeOrphanListMarkersText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -11403,7 +10335,6 @@ export function removeOrphanListMarkersText(source: string): string {
 export const removeOrphanListMarkers: Command = (view) =>
   applyToSelectionOrAll(view, removeOrphanListMarkersText, 'input.list.removeOrphan')
 
-                               
 export function sortFrontmatterKeysAlphaText(source: string): string {
   const m = /^---\n([\s\S]*?)\n---/.exec(source)
   if (!m) return source
@@ -11443,10 +10374,6 @@ export const sortFrontmatterKeysAlpha: Command = (view) =>
 // Batch #166: list→table / collapse H3 / figure caption / etc.
 // =====================================================================
 
-   
-                                    
-               
-   
 export const listToSingleColumnTable: Command = (view) => {
   const { state } = view
   const head = state.selection.main.head
@@ -11473,12 +10400,8 @@ export const listToSingleColumnTable: Command = (view) => {
   return true
 }
 
-   
-                              
-                                                  
-   
 export function mergeConsecutiveCodeBlocksText(source: string): string {
-                                 
+
   const re = /^```([\w-]*)\s*\n([\s\S]*?)\n```/gm
   const segments: Array<{ kind: 'code' | 'text'; lang?: string; body?: string; raw: string; index: number }> = []
   let last = 0
@@ -11523,10 +10446,6 @@ export function mergeConsecutiveCodeBlocksText(source: string): string {
 export const mergeConsecutiveCodeBlocks: Command = (view) =>
   applyToSelectionOrAll(view, mergeConsecutiveCodeBlocksText, 'input.code.mergeAdjacent')
 
-   
-                                                    
-                              
-   
 export function applyWikilinkAliasMapText(
   source: string,
   aliasMap: Record<string, string>,
@@ -11542,7 +10461,7 @@ export function applyWikilinkAliasMapText(
         return line
       }
       if (inFence) return line
-                                   
+
       const skip: Array<[number, number]> = []
       const wikilink = /\[\[[^\]\n]+\]\]/g
       const md = /\[[^\]]*\]\([^)]+\)/g
@@ -11577,9 +10496,6 @@ export function applyWikilinkAliasMapText(
     .join('\n')
 }
 
-   
-                                                                                                             
-   
 export function imagesToFigureCaptionText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -11601,14 +10517,11 @@ export function imagesToFigureCaptionText(source: string): string {
 export const imagesToFigureCaption: Command = (view) =>
   applyToSelectionOrAll(view, imagesToFigureCaptionText, 'input.image.toFigure')
 
-   
-                                               
-   
 export const sortH3InCurrentH2: Command = (view) => {
   const section = findCurrentSection(view.state)
   if (!section || section.headingLevel !== 2) return false
   const { state } = view
-            
+
   const subSections: { headLine: number; lines: string[] }[] = []
   const pre: string[] = []
   let i = section.headingLineNo + 1
@@ -11640,9 +10553,6 @@ export const sortH3InCurrentH2: Command = (view) => {
   return true
 }
 
-   
-                                                       
-   
 export function expandInlineYamlObjectsText(source: string): string {
   const m = /^---\n([\s\S]*?)\n---/.exec(source)
   if (!m) return source
@@ -11681,7 +10591,6 @@ const EPIGRAPH_POOL = [
   '"The future is already here — it\'s just not evenly distributed." — Gibson',
 ]
 
-                               
 export const insertRandomEpigraph: Command = (view) => {
   const pick = EPIGRAPH_POOL[Math.floor(Math.random() * EPIGRAPH_POOL.length)]
   const text = `> ${pick}\n`
@@ -11696,7 +10605,6 @@ export const insertRandomEpigraph: Command = (view) => {
   return true
 }
 
-                                                                         
 export const stampTaskDone: Command = (view) => {
   const { state } = view
   const line = state.doc.lineAt(state.selection.main.head)
@@ -11713,7 +10621,6 @@ export const stampTaskDone: Command = (view) => {
   return true
 }
 
-                                                  
 export const insertQuoteWithTag =
   (tag: string): Command =>
   (view) => {
@@ -11728,7 +10635,6 @@ export const insertQuoteWithTag =
     return true
   }
 
-                                               
 export function wrapH3SectionsAsDetailsText(source: string): string {
   const lines = source.split('\n')
   const out: string[] = []
@@ -11766,10 +10672,6 @@ export const wrapH3SectionsAsDetails: Command = (view) =>
 // Batch #167: smart join / JSON-YAML format / admonition / etc.
 // =====================================================================
 
-   
-                                             
-                   
-   
 export function smartJoinSoftWrapsText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -11817,7 +10719,6 @@ export function smartJoinSoftWrapsText(source: string): string {
 export const smartJoinSoftWraps: Command = (view) =>
   applyToSelectionOrAll(view, smartJoinSoftWrapsText, 'input.format.smartJoin')
 
-                                                      
 export function wikipediaUrlsToWikilinksText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -11842,7 +10743,6 @@ export function wikipediaUrlsToWikilinksText(source: string): string {
 export const wikipediaUrlsToWikilinks: Command = (view) =>
   applyToSelectionOrAll(view, wikipediaUrlsToWikilinksText, 'input.links.wpToWikilink')
 
-                                            
 export function formatJsonCodeBlocksText(source: string): string {
   return source.replace(/```json\s*\n([\s\S]*?)\n```/g, (whole, body: string) => {
     try {
@@ -11857,9 +10757,6 @@ export function formatJsonCodeBlocksText(source: string): string {
 export const formatJsonCodeBlocks: Command = (view) =>
   applyToSelectionOrAll(view, formatJsonCodeBlocksText, 'input.code.formatJson')
 
-   
-                                            
-   
 export function formatYamlCodeBlocksText(source: string): string {
   return source.replace(/```ya?ml\s*\n([\s\S]*?)\n```/g, (whole, body: string) => {
     const normalized = body
@@ -11876,7 +10773,6 @@ export function formatYamlCodeBlocksText(source: string): string {
 export const formatYamlCodeBlocks: Command = (view) =>
   applyToSelectionOrAll(view, formatYamlCodeBlocksText, 'input.code.formatYaml')
 
-                                                                      
 export function calloutsToAdmonitionText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -11916,7 +10812,6 @@ export function calloutsToAdmonitionText(source: string): string {
 export const calloutsToAdmonition: Command = (view) =>
   applyToSelectionOrAll(view, calloutsToAdmonitionText, 'input.callout.toAdmonition')
 
-                              
 export const insertColorSwatch =
   (hex: string): Command =>
   (view) => {
@@ -11931,7 +10826,6 @@ export const insertColorSwatch =
     return true
   }
 
-                   
 export function rot13Text(source: string): string {
   return source.replace(/[A-Za-z]/g, (c) => {
     const base = c >= 'a' ? 97 : 65
@@ -11942,7 +10836,6 @@ export function rot13Text(source: string): string {
 export const rot13Selection: Command = (view) =>
   applyToSelectionOrAll(view, rot13Text, 'input.format.rot13')
 
-                           
 export const insertRfc3339Timestamp: Command = (view) => {
   const text = new Date().toISOString()
   const head = view.state.selection.main.head
@@ -11954,10 +10847,6 @@ export const insertRfc3339Timestamp: Command = (view) => {
   return true
 }
 
-   
-                                          
-                       
-   
 export function checklistToBarText(source: string, width = 10): string {
   const lines = source.split('\n')
   let total = 0
@@ -11980,7 +10869,6 @@ export function checklistToBarText(source: string, width = 10): string {
   return `${'▰'.repeat(filled)}${'▱'.repeat(width - filled)} ${pct}% (${done}/${total})`
 }
 
-                               
 export const insertChecklistBarAtCursor: Command = (view) => {
   const bar = checklistToBarText(view.state.doc.toString())
   if (bar === view.state.doc.toString()) return false
@@ -11993,17 +10881,13 @@ export const insertChecklistBarAtCursor: Command = (view) => {
   return true
 }
 
-   
-                                                         
-                               
-   
 export const breakHeadingBeforeParagraph: Command = (view) => {
   const { state } = view
   const head = state.selection.main.head
   const line = state.doc.lineAt(head)
   const m = /^(#{1,6})\s+(.+?)\s*$/.exec(line.text)
   if (!m) return false
-                  
+
   let next = line.number + 1
   while (next <= state.doc.lines && !state.doc.line(next).text.trim()) next++
   if (next > state.doc.lines) return false
@@ -12017,10 +10901,6 @@ export const breakHeadingBeforeParagraph: Command = (view) => {
   return true
 }
 
-   
-                                          
-                          
-   
 export function wordWrapParagraphsText(source: string, width = 80): string {
   const lines = source.split('\n')
   const out: string[] = []
@@ -12062,10 +10942,6 @@ export const wordWrapParagraphs =
   (view) =>
     applyToSelectionOrAll(view, (s) => wordWrapParagraphsText(s, width), 'input.format.wordWrap')
 
-   
-                                           
-                                                
-   
 export function toggleSetextHeadingsText(source: string): string {
   const lines = source.split('\n')
   const out: string[] = []
@@ -12126,7 +11002,6 @@ export function toggleSetextHeadingsText(source: string): string {
 export const toggleSetextHeadings: Command = (view) =>
   applyToSelectionOrAll(view, toggleSetextHeadingsText, 'input.heading.toggleSetext')
 
-                                                    
 export function orderedListToLetteredText(source: string): string {
   const letters = 'abcdefghijklmnopqrstuvwxyz'
   let idx = 0
@@ -12140,7 +11015,6 @@ export function orderedListToLetteredText(source: string): string {
 export const orderedListToLettered: Command = (view) =>
   applyToSelectionOrAll(view, orderedListToLetteredText, 'input.list.letter')
 
-                                   
 export function stripEmojiFromHeadingsText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -12163,7 +11037,6 @@ export function stripEmojiFromHeadingsText(source: string): string {
 export const stripEmojiFromHeadings: Command = (view) =>
   applyToSelectionOrAll(view, stripEmojiFromHeadingsText, 'input.heading.stripEmoji')
 
-                                  
 export const surroundWithBrackets =
   (pair: '()' | '[]' | '{}' | '<>'): Command =>
   (view) => {
@@ -12184,7 +11057,6 @@ export const surroundWithBrackets =
     })
   }
 
-                                       
 export const insertEmDashHr: Command = (view) => {
   const head = view.state.selection.main.head
   const line = view.state.doc.lineAt(head)
@@ -12197,7 +11069,6 @@ export const insertEmDashHr: Command = (view) => {
   return true
 }
 
-                                                   
 export const insertBacklinksPlaceholder: Command = (view) => {
   const head = view.state.selection.main.head
   const line = view.state.doc.lineAt(head)
@@ -12211,7 +11082,6 @@ export const insertBacklinksPlaceholder: Command = (view) => {
   return true
 }
 
-                                                                               
 export function ensureCreatedUpdatedTimestampsText(source: string, now = new Date()): string {
   const iso = now.toISOString()
   const m = /^---\n([\s\S]*?)\n---/.exec(source)
@@ -12235,7 +11105,6 @@ export function ensureCreatedUpdatedTimestampsText(source: string, now = new Dat
 export const ensureCreatedUpdatedTimestamps: Command = (view) =>
   applyToSelectionOrAll(view, (s) => ensureCreatedUpdatedTimestampsText(s), 'input.fm.timestamps')
 
-                                           
 export function changeOrderedStartText(source: string, start: number): string {
   const lines = source.split('\n')
   const out: string[] = []
@@ -12270,7 +11139,6 @@ export const changeOrderedStart =
   (view) =>
     applyToSelectionOrAll(view, (s) => changeOrderedStartText(s, start), 'input.list.startAt')
 
-                                                  
 export const wrapSelectionAsWikilinkSafe: Command = (view) => {
   const range = view.state.selection.main
   if (range.empty) return false
@@ -12284,7 +11152,6 @@ export const wrapSelectionAsWikilinkSafe: Command = (view) => {
   return true
 }
 
-                                                 
 export function tableToYamlObjectsText(source: string): string {
   const lines = source.split('\n')
   const start = lines.findIndex((l) => /^\s*\|.*\|\s*$/.test(l))
@@ -12316,7 +11183,6 @@ export function tableToYamlObjectsText(source: string): string {
 export const tableToYamlObjects: Command = (view) =>
   applyToSelectionOrAll(view, tableToYamlObjectsText, 'input.table.toYaml')
 
-                            
 export const insertMermaidSequence: Command = (view) => {
   const head = view.state.selection.main.head
   const line = view.state.doc.lineAt(head)
@@ -12332,7 +11198,6 @@ export const insertMermaidSequence: Command = (view) => {
   return true
 }
 
-                                               
 export function stripWikilinkAliasesText(source: string): string {
   return source.replace(/\[\[([^\]|]+)\|[^\]]+\]\]/g, '[[$1]]')
 }
@@ -12340,7 +11205,6 @@ export function stripWikilinkAliasesText(source: string): string {
 export const stripWikilinkAliases: Command = (view) =>
   applyToSelectionOrAll(view, stripWikilinkAliasesText, 'input.wikilink.stripAlias')
 
-                             
 export function headingsToNestedListText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -12362,7 +11226,6 @@ export function headingsToNestedListText(source: string): string {
 export const headingsToNestedList: Command = (view) =>
   applyToSelectionOrAll(view, headingsToNestedListText, 'input.heading.toNestedList')
 
-                                 
 export function normalizeMixedIndentText(source: string): string {
   return source
     .split('\n')
@@ -12378,7 +11241,6 @@ export function normalizeMixedIndentText(source: string): string {
 export const normalizeMixedIndent: Command = (view) =>
   applyToSelectionOrAll(view, normalizeMixedIndentText, 'input.format.normalizeIndent')
 
-                                     
 export const quoteSelectionLines: Command = (view) => {
   const range = view.state.selection.main
   if (range.empty) return false
@@ -12397,7 +11259,6 @@ export const quoteSelectionLines: Command = (view) => {
   return true
 }
 
-                                        
 export function sortTableByColumnDescText(source: string, col: number): string {
   const lines = source.split('\n')
   const start = lines.findIndex((l) => /^\s*\|.*\|\s*$/.test(l))
@@ -12430,7 +11291,6 @@ export const sortTableByColumnDesc =
       'input.table.sortDesc',
     )
 
-                                                
 export const insertSectionWikilink: Command = (view) => {
   const file = window.prompt('File name (without .md):')?.trim()
   if (!file) return false
@@ -12446,7 +11306,6 @@ export const insertSectionWikilink: Command = (view) => {
   return true
 }
 
-                                           
 export function inferFilenameFromH1Text(source: string): string | null {
   const m = /^#\s+(.+?)\s*$/m.exec(source)
   if (!m) return null
@@ -12457,7 +11316,6 @@ export function inferFilenameFromH1Text(source: string): string | null {
     .replace(/^_+|_+$/g, '')
 }
 
-                                               
 export function inlineCodeToWikilinkText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -12476,7 +11334,6 @@ export function inlineCodeToWikilinkText(source: string): string {
 export const inlineCodeToWikilink: Command = (view) =>
   applyToSelectionOrAll(view, inlineCodeToWikilinkText, 'input.format.codeToWikilink')
 
-                             
 export function splitParagraphsBySentenceCountText(source: string, n: number): string {
   const lines = source.split('\n')
   const out: string[] = []
@@ -12513,7 +11370,6 @@ export const splitParagraphsBySentenceCount =
       'input.format.splitBySentence',
     )
 
-                                       
 export function reverseListBlockText(source: string): string {
   const lines = source.split('\n')
   const out: string[] = []
@@ -12550,7 +11406,6 @@ export function reverseListBlockText(source: string): string {
 export const reverseListBlock: Command = (view) =>
   applyToSelectionOrAll(view, reverseListBlockText, 'input.list.reverse')
 
-                                          
 export const wrapSpoiler: Command = (view) => {
   const range = view.state.selection.main
   if (range.empty) return false
@@ -12563,7 +11418,6 @@ export const wrapSpoiler: Command = (view) => {
   return true
 }
 
-                                    
 export function flipTableHeaderToFirstColText(source: string): string {
   const lines = source.split('\n')
   const start = lines.findIndex((l) => /^\s*\|.*\|\s*$/.test(l))
@@ -12601,7 +11455,6 @@ export function flipTableHeaderToFirstColText(source: string): string {
 export const flipTableHeaderToFirstCol: Command = (view) =>
   applyToSelectionOrAll(view, flipTableHeaderToFirstColText, 'input.table.flipHeader')
 
-                                
 export function boldNumericInHeadingsText(source: string): string {
   return source.replace(/^(#{1,6}\s+)([\d.]+)/gm, (_w, hash: string, num: string) => `${hash}**${num}**`)
 }
@@ -12609,7 +11462,6 @@ export function boldNumericInHeadingsText(source: string): string {
 export const boldNumericInHeadings: Command = (view) =>
   applyToSelectionOrAll(view, boldNumericInHeadingsText, 'input.heading.boldNumeric')
 
-                                    
 export const insertEmptyQuoteBlock =
   (rows: number): Command =>
   (view) => {
@@ -12625,7 +11477,6 @@ export const insertEmptyQuoteBlock =
     return true
   }
 
-                                                 
 export function fillImageAltFromBasenameText(source: string): string {
   return source.replace(/!\[\]\(([^)\s]+)([^)]*)\)/g, (_w, url: string, rest: string) => {
     const base = url.split('/').pop() ?? ''
@@ -12637,7 +11488,6 @@ export function fillImageAltFromBasenameText(source: string): string {
 export const fillImageAltFromBasename: Command = (view) =>
   applyToSelectionOrAll(view, fillImageAltFromBasenameText, 'input.image.altFromBasename')
 
-                                                        
 export const insertKbdShortcut =
   (keys: string[]): Command =>
   (view) => {
@@ -12652,7 +11502,6 @@ export const insertKbdShortcut =
     return true
   }
 
-                                                 
 export function boldNumericToSupText(source: string): string {
   return source.replace(/\*\*(\d+)\*\*/g, (_w, n: string) => `<sup>${n}</sup>`)
 }
@@ -12660,7 +11509,6 @@ export function boldNumericToSupText(source: string): string {
 export const boldNumericToSup: Command = (view) =>
   applyToSelectionOrAll(view, boldNumericToSupText, 'input.format.boldNumericToSup')
 
-                                                      
 export const insertFrontmatterField =
   (key: string, value: string): Command =>
   (view) => {
@@ -12684,7 +11532,6 @@ export const insertFrontmatterField =
     return true
   }
 
-                                   
 export const insertMermaidFlowchart: Command = (view) => {
   const head = view.state.selection.main.head
   const line = view.state.doc.lineAt(head)
@@ -12700,7 +11547,6 @@ export const insertMermaidFlowchart: Command = (view) => {
   return true
 }
 
-                               
 export const insertMermaidGantt: Command = (view) => {
   const head = view.state.selection.main.head
   const line = view.state.doc.lineAt(head)
@@ -12719,7 +11565,6 @@ export const insertMermaidGantt: Command = (view) => {
   return true
 }
 
-                                       
 export const insertMermaidClass: Command = (view) => {
   const head = view.state.selection.main.head
   const line = view.state.doc.lineAt(head)
@@ -12735,7 +11580,6 @@ export const insertMermaidClass: Command = (view) => {
   return true
 }
 
-                                              
 export function renameHierarchicalTagText(
   source: string,
   from: string,
@@ -12757,7 +11601,6 @@ export const renameHierarchicalTag =
       'input.tag.renameHierarchical',
     )
 
-                             
 export function listToTaskListText(source: string): string {
   return source
     .split('\n')
@@ -12772,13 +11615,11 @@ export function listToTaskListText(source: string): string {
 export const listToTaskList: Command = (view) =>
   applyToSelectionOrAll(view, listToTaskListText, 'input.list.toTaskList')
 
-                                                              
 export const insertFrontmatterCallout =
   (kind: string): Command =>
   (view) =>
     insertFrontmatterField('callout', kind)(view)
 
-                                      
 export function markAllTasksDoneText(source: string): string {
   return source.replace(/(^|\n)(\s*[-*+]\s)\[ \]/g, '$1$2[x]')
 }
@@ -12786,7 +11627,6 @@ export function markAllTasksDoneText(source: string): string {
 export const markAllTasksDone: Command = (view) =>
   applyToSelectionOrAll(view, markAllTasksDoneText, 'input.task.allDone')
 
-                             
 export function escapeHtmlInCodeBlocksText(source: string): string {
   return source.replace(/```([a-zA-Z]*)\n([\s\S]*?)\n```/g, (_w, lang: string, body: string) => {
     const escaped = body
@@ -12800,7 +11640,6 @@ export function escapeHtmlInCodeBlocksText(source: string): string {
 export const escapeHtmlInCodeBlocks: Command = (view) =>
   applyToSelectionOrAll(view, escapeHtmlInCodeBlocksText, 'input.code.escapeHtml')
 
-                      
 export function ensureBlankBeforeHeadingsText(source: string): string {
   const lines = source.split('\n')
   const out: string[] = []
@@ -12825,7 +11664,6 @@ export function ensureBlankBeforeHeadingsText(source: string): string {
 export const ensureBlankBeforeHeadings: Command = (view) =>
   applyToSelectionOrAll(view, ensureBlankBeforeHeadingsText, 'input.heading.blankBefore')
 
-                    
 export function collapseBlankLinesText(source: string): string {
   return source.replace(/\n{3,}/g, '\n\n')
 }
@@ -12833,7 +11671,6 @@ export function collapseBlankLinesText(source: string): string {
 export const collapseBlankLines: Command = (view) =>
   applyToSelectionOrAll(view, collapseBlankLinesText, 'input.format.collapseBlanks')
 
-                                   
 export const insertMermaidPie: Command = (view) => {
   const head = view.state.selection.main.head
   const line = view.state.doc.lineAt(head)
@@ -12849,7 +11686,6 @@ export const insertMermaidPie: Command = (view) => {
   return true
 }
 
-                                                        
 export function linkifyIssueRefsText(source: string, baseUrl: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -12874,7 +11710,6 @@ export const linkifyIssueRefs =
       'input.links.issueRefs',
     )
 
-                        
 export const insertKbdCheatsheet: Command = (view) => {
   const head = view.state.selection.main.head
   const line = view.state.doc.lineAt(head)
@@ -12890,7 +11725,6 @@ export const insertKbdCheatsheet: Command = (view) => {
   return true
 }
 
-                                
 export function boldToItalicText(source: string): string {
   return source.replace(/\*\*([^*\n]+?)\*\*/g, '*$1*')
 }
@@ -12898,7 +11732,6 @@ export function boldToItalicText(source: string): string {
 export const boldToItalic: Command = (view) =>
   applyToSelectionOrAll(view, boldToItalicText, 'input.format.boldToItalic')
 
-                                          
 export function italicToBoldText(source: string): string {
   return source.replace(/(^|[^*])\*([^*\n]+?)\*(?!\*)/g, '$1**$2**')
 }
@@ -12906,7 +11739,6 @@ export function italicToBoldText(source: string): string {
 export const italicToBold: Command = (view) =>
   applyToSelectionOrAll(view, italicToBoldText, 'input.format.italicToBold')
 
-                               
 export function sortParagraphsByLengthText(source: string): string {
   const paragraphs = source.split(/\n{2,}/)
   paragraphs.sort((a, b) => a.length - b.length)
@@ -12916,7 +11748,6 @@ export function sortParagraphsByLengthText(source: string): string {
 export const sortParagraphsByLength: Command = (view) =>
   applyToSelectionOrAll(view, sortParagraphsByLengthText, 'input.format.sortParaLen')
 
-                                   
 export function reverseTableRowsText(source: string): string {
   const lines = source.split('\n')
   const start = lines.findIndex((l) => /^\s*\|.*\|\s*$/.test(l))
@@ -12933,7 +11764,6 @@ export function reverseTableRowsText(source: string): string {
 export const reverseTableRows: Command = (view) =>
   applyToSelectionOrAll(view, reverseTableRowsText, 'input.table.reverseRows')
 
-                          
 export function tabsToSpacesInCodeText(source: string, width = 2): string {
   return source.replace(/```([a-zA-Z]*)\n([\s\S]*?)\n```/g, (_w, lang: string, body: string) => {
     return '```' + lang + '\n' + body.replace(/\t/g, ' '.repeat(width)) + '\n```'
@@ -12949,7 +11779,6 @@ export const tabsToSpacesInCode =
       'input.code.tabsToSpaces',
     )
 
-                                                        
 export const insertCurrentH1Wikilink: Command = (view) => {
   const src = view.state.doc.toString()
   const m = /^#\s+(.+?)\s*$/m.exec(src)
@@ -12964,7 +11793,6 @@ export const insertCurrentH1Wikilink: Command = (view) => {
   return true
 }
 
-                          
 export function removeEmptyHeadingsText(source: string): string {
   return source
     .split('\n')
@@ -12975,7 +11803,6 @@ export function removeEmptyHeadingsText(source: string): string {
 export const removeEmptyHeadings: Command = (view) =>
   applyToSelectionOrAll(view, removeEmptyHeadingsText, 'input.heading.removeEmpty')
 
-                                      
 export function imagesToCaptionedBlockText(source: string): string {
   return source.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, (_w, alt: string, url: string) => {
     return `![${alt}](${url})\n<small><em>${alt || 'Image'}</em></small>`
@@ -12985,7 +11812,6 @@ export function imagesToCaptionedBlockText(source: string): string {
 export const imagesToCaptionedBlock: Command = (view) =>
   applyToSelectionOrAll(view, imagesToCaptionedBlockText, 'input.image.captionedBlock')
 
-                                      
 export const insertDailyNoteRangeTable =
   (days = 7): Command =>
   (view) => {
@@ -13008,7 +11834,6 @@ export const insertDailyNoteRangeTable =
     return true
   }
 
-                                                   
 export function expandWikilinkToAliasText(source: string): string {
   return source.replace(/\[\[([^\]|\n]+)\]\]/g, (_w, name: string) => `[[${name}|${name}]]`)
 }
@@ -13016,7 +11841,6 @@ export function expandWikilinkToAliasText(source: string): string {
 export const expandWikilinkToAlias: Command = (view) =>
   applyToSelectionOrAll(view, expandWikilinkToAliasText, 'input.wikilink.expandAlias')
 
-                                
 export function dedupTaskLinesText(source: string): string {
   const seen = new Set<string>()
   const lines = source.split('\n')
@@ -13045,7 +11869,6 @@ export function dedupTaskLinesText(source: string): string {
 export const dedupTaskLines: Command = (view) =>
   applyToSelectionOrAll(view, dedupTaskLinesText, 'input.task.dedup')
 
-                                                   
 export const insertHintCallout: Command = (view) => {
   const head = view.state.selection.main.head
   const line = view.state.doc.lineAt(head)
@@ -13059,7 +11882,6 @@ export const insertHintCallout: Command = (view) => {
   return true
 }
 
-                                                        
 export function mp4LinkToVideoEmbedText(source: string): string {
   return source.replace(
     /\[([^\]]+)\]\((https?:\/\/[^)\s]+\.mp4(?:\?[^)\s]*)?)\)/g,
@@ -13071,7 +11893,6 @@ export function mp4LinkToVideoEmbedText(source: string): string {
 export const mp4LinkToVideoEmbed: Command = (view) =>
   applyToSelectionOrAll(view, mp4LinkToVideoEmbedText, 'input.media.mp4ToVideo')
 
-                              
 export function reindentSpaceWidthText(source: string, from: 2 | 4, to: 2 | 4): string {
   if (from === to) return source
   const lines = source.split('\n')
@@ -13102,7 +11923,6 @@ export const reindentSpaceWidth =
       'input.format.reindent',
     )
 
-                                          
 export function capitalizeSentencesAsciiText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -13121,7 +11941,6 @@ export function capitalizeSentencesAsciiText(source: string): string {
 export const capitalizeSentencesAscii: Command = (view) =>
   applyToSelectionOrAll(view, capitalizeSentencesAsciiText, 'input.format.capSentencesAscii')
 
-                                           
 export function unicodeArrowsText(source: string): string {
   return source
     .replace(/(^|[^-])-->(?!>)/g, '$1→')
@@ -13135,7 +11954,6 @@ export function unicodeArrowsText(source: string): string {
 export const unicodeArrows: Command = (view) =>
   applyToSelectionOrAll(view, unicodeArrowsText, 'input.format.unicodeArrows')
 
-                                              
 export function inlineFootnotesV2Text(source: string): string {
   const lines = source.split('\n')
   const defs: Record<string, string> = {}
@@ -13159,7 +11977,6 @@ export function inlineFootnotesV2Text(source: string): string {
 export const inlineFootnotesV2: Command = (view) =>
   applyToSelectionOrAll(view, inlineFootnotesV2Text, 'input.footnote.inlineV2')
 
-                                          
 export const hideHeadingAsHtmlComment: Command = (view) => {
   const { state } = view
   const head = state.selection.main.head
@@ -13173,7 +11990,6 @@ export const hideHeadingAsHtmlComment: Command = (view) => {
   return true
 }
 
-                                  
 export const insertYouTubeEmbed =
   (videoId: string): Command =>
   (view) => {
@@ -13189,7 +12005,6 @@ export const insertYouTubeEmbed =
     return true
   }
 
-                              
 export function orderedListToAsciiTreeText(source: string): string {
   const lines = source.split('\n')
   const out: string[] = []
@@ -13198,7 +12013,7 @@ export function orderedListToAsciiTreeText(source: string): string {
   let inFence = false
   const flushBuf = () => {
     if (!buf.length) return
-                                    
+
     const lastAtLevel = new Map<number, number>()
     for (let i = 0; i < buf.length; i++) {
       const item = buf[i]
@@ -13239,7 +12054,6 @@ export function orderedListToAsciiTreeText(source: string): string {
 export const orderedListToAsciiTree: Command = (view) =>
   applyToSelectionOrAll(view, orderedListToAsciiTreeText, 'input.list.toAsciiTree')
 
-                                             
 export function doubleNewlineToBrText(source: string): string {
   const lines = source.split('\n')
   const out: string[] = []
@@ -13258,7 +12072,7 @@ export function doubleNewlineToBrText(source: string): string {
     }
     if (line === '') {
       if (lastWasBlank) {
-                
+
         out.push('')
       } else {
         out.push('<br>')
@@ -13275,7 +12089,6 @@ export function doubleNewlineToBrText(source: string): string {
 export const doubleNewlineToBr: Command = (view) =>
   applyToSelectionOrAll(view, doubleNewlineToBrText, 'input.format.nlToBr')
 
-                                                                        
 export function sortFrontmatterArrayFieldText(source: string, field: string): string {
   const m = /^---\n([\s\S]*?)\n---/.exec(source)
   if (!m) return source
@@ -13305,7 +12118,6 @@ export const sortFrontmatterArrayField =
       'input.fm.sortArray',
     )
 
-                                                 
 export function autoTagByFilenameText(source: string, filename: string): string {
   const m = /^([a-z]+)-/i.exec(filename)
   if (!m) return source
@@ -13325,7 +12137,6 @@ export function autoTagByFilenameText(source: string, filename: string): string 
   return `---\ntags: [${tag}]\n---\n\n${source}`
 }
 
-                                 
 export const insertNumberedChecklist =
   (from: number, to: number): Command =>
   (view) => {
@@ -13343,7 +12154,6 @@ export const insertNumberedChecklist =
     return true
   }
 
-                                          
 export function unwrapSoftLinesText(source: string): string {
   return smartJoinSoftWrapsText(source)
 }
@@ -13351,7 +12161,6 @@ export function unwrapSoftLinesText(source: string): string {
 export const unwrapSoftLines: Command = (view) =>
   applyToSelectionOrAll(view, unwrapSoftLinesText, 'input.format.unwrap')
 
-                                          
 export function splitTableByRowCountText(source: string, rowsPerSplit: number): string {
   if (rowsPerSplit < 1) return source
   const lines = source.split('\n')
@@ -13381,7 +12190,6 @@ export const splitTableByRowCount =
       'input.table.splitRows',
     )
 
-                                          
 export const insertTasksByTagDataview =
   (tag: string): Command =>
   (view) => {
@@ -13399,7 +12207,6 @@ export const insertTasksByTagDataview =
     return true
   }
 
-                                    
 export const insertLastEditedLine: Command = (view) => {
   const iso = new Date().toISOString().slice(0, 16).replace('T', ' ')
   const head = view.state.selection.main.head
@@ -13414,7 +12221,6 @@ export const insertLastEditedLine: Command = (view) => {
   return true
 }
 
-                                                                         
 export function relativeMdLinksToWikilinkText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -13433,7 +12239,6 @@ export function relativeMdLinksToWikilinkText(source: string): string {
 export const relativeMdLinksToWikilink: Command = (view) =>
   applyToSelectionOrAll(view, relativeMdLinksToWikilinkText, 'input.links.relMdToWikilink')
 
-                          
 export const insertBibtexEntry =
   (type = 'article'): Command =>
   (view) => {
@@ -13452,14 +12257,13 @@ export const insertBibtexEntry =
     return true
   }
 
-                                       
 export function sortH2SectionsAlphaText(source: string): string {
   const lines = source.split('\n')
-             
+
   const firstH2 = lines.findIndex((l) => /^##\s/.test(l))
   if (firstH2 < 0) return source
   const before = lines.slice(0, firstH2)
-                 
+
   const sections: { title: string; body: string[] }[] = []
   let cur: { title: string; body: string[] } | null = null
   for (let i = firstH2; i < lines.length; i++) {
@@ -13483,7 +12287,6 @@ export function sortH2SectionsAlphaText(source: string): string {
 export const sortH2SectionsAlpha: Command = (view) =>
   applyToSelectionOrAll(view, sortH2SectionsAlphaText, 'input.heading.sortH2Alpha')
 
-                               
 export function setextToAtxText(source: string): string {
   const fm = /^---\n([\s\S]*?)\n---\n?/.exec(source)
   const fmEnd = fm ? fm[0].length : 0
@@ -13520,7 +12323,6 @@ export function setextToAtxText(source: string): string {
 export const setextToAtx: Command = (view) =>
   applyToSelectionOrAll(view, setextToAtxText, 'input.heading.setextToAtx')
 
-                                   
 export const insertTagCloudSnapshot: Command = (view) => {
   const src = view.state.doc.toString()
   const counts: Map<string, number> = new Map()
@@ -13555,7 +12357,6 @@ export const insertTagCloudSnapshot: Command = (view) => {
   return true
 }
 
-                                     
 export function dedupBulletListText(source: string): string {
   const seen = new Set<string>()
   const out: string[] = []
@@ -13583,7 +12384,6 @@ export function dedupBulletListText(source: string): string {
 export const dedupBulletList: Command = (view) =>
   applyToSelectionOrAll(view, dedupBulletListText, 'input.list.dedup')
 
-                                    
 export function renumberOrderedListsFromOneText(source: string): string {
   return changeOrderedStartText(source, 1)
 }
@@ -13591,7 +12391,6 @@ export function renumberOrderedListsFromOneText(source: string): string {
 export const renumberOrderedListsFromOne: Command = (view) =>
   applyToSelectionOrAll(view, renumberOrderedListsFromOneText, 'input.list.renumberFromOne')
 
-                              
 export const insertAuthorDateHeader =
   (author: string): Command =>
   (view) => {
@@ -13604,7 +12403,6 @@ export const insertAuthorDateHeader =
     return true
   }
 
-                                              
 export const togglePrivateComment: Command = (view) => {
   const range = view.state.selection.main
   if (range.empty) return false
@@ -13621,7 +12419,6 @@ export const togglePrivateComment: Command = (view) => {
   return true
 }
 
-                                    
 export function rewrapBlockquotesText(source: string): string {
   const lines = source.split('\n')
   const out: string[] = []
@@ -13653,7 +12450,6 @@ export function rewrapBlockquotesText(source: string): string {
 export const rewrapBlockquotes: Command = (view) =>
   applyToSelectionOrAll(view, rewrapBlockquotesText, 'input.format.rewrapQuote')
 
-                                         
 export function promoteAllHeadingsText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -13672,7 +12468,6 @@ export function promoteAllHeadingsText(source: string): string {
 export const promoteAllHeadings: Command = (view) =>
   applyToSelectionOrAll(view, promoteAllHeadingsText, 'input.heading.promoteAll')
 
-                                     
 export function demoteAllHeadingsText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -13691,7 +12486,6 @@ export function demoteAllHeadingsText(source: string): string {
 export const demoteAllHeadings: Command = (view) =>
   applyToSelectionOrAll(view, demoteAllHeadingsText, 'input.heading.demoteAll')
 
-                                       
 export const insertIsoWeekHeading: Command = (view) => {
   const now = new Date()
   const target = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()))
@@ -13711,7 +12505,6 @@ export const insertIsoWeekHeading: Command = (view) => {
   return true
 }
 
-                                     
 export function orderedListToChecklistText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -13730,7 +12523,6 @@ export function orderedListToChecklistText(source: string): string {
 export const orderedListToChecklist: Command = (view) =>
   applyToSelectionOrAll(view, orderedListToChecklistText, 'input.list.orderedToChecklist')
 
-                                      
 export function checklistToOrderedText(source: string): string {
   const lines = source.split('\n')
   const counters: Map<string, number> = new Map()
@@ -13757,7 +12549,6 @@ export function checklistToOrderedText(source: string): string {
 export const checklistToOrdered: Command = (view) =>
   applyToSelectionOrAll(view, checklistToOrderedText, 'input.list.checklistToOrdered')
 
-                                      
 export const insertWikiRedirect =
   (target: string): Command =>
   (view) => {
@@ -13769,7 +12560,6 @@ export const insertWikiRedirect =
     return true
   }
 
-                                        
 export function collapseDuplicateHeadingsText(source: string): string {
   const lines = source.split('\n')
   const out: string[] = []
@@ -13797,7 +12587,6 @@ export function collapseDuplicateHeadingsText(source: string): string {
 export const collapseDuplicateHeadings: Command = (view) =>
   applyToSelectionOrAll(view, collapseDuplicateHeadingsText, 'input.heading.collapseDup')
 
-                                                                     
 export function wikilinkToFullMdLinkText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -13819,7 +12608,6 @@ export function wikilinkToFullMdLinkText(source: string): string {
 export const wikilinkToFullMdLink: Command = (view) =>
   applyToSelectionOrAll(view, wikilinkToFullMdLinkText, 'input.links.wikiToFullMd')
 
-                                      
 export function padFencedCodeBlocksText(source: string): string {
   const lines = source.split('\n')
   const out: string[] = []
@@ -13845,7 +12633,6 @@ export function padFencedCodeBlocksText(source: string): string {
 export const padFencedCodeBlocks: Command = (view) =>
   applyToSelectionOrAll(view, padFencedCodeBlocksText, 'format.code.pad')
 
-                                 
 export const insertCustomHr =
   (ch: string = '=', width: number = 60): Command =>
   (view) => {
@@ -13860,7 +12647,6 @@ export const insertCustomHr =
     return true
   }
 
-                                  
 export const insertImageGalleryGrid =
   (cols: number = 3): Command =>
   (view) => {
@@ -13879,7 +12665,6 @@ export const insertImageGalleryGrid =
     return true
   }
 
-                                
 export function mergeAdjacentTablesText(source: string): string {
   const lines = source.split('\n')
   const out: string[] = []
@@ -13915,7 +12700,6 @@ export function mergeAdjacentTablesText(source: string): string {
 export const mergeAdjacentTables: Command = (view) =>
   applyToSelectionOrAll(view, mergeAdjacentTablesText, 'input.table.merge')
 
-                                                                            
 export function sortFmKeysAlphaV2Text(source: string): string {
   const m = /^---\n([\s\S]*?)\n---/.exec(source)
   if (!m) return source
@@ -13940,7 +12724,6 @@ export function sortFmKeysAlphaV2Text(source: string): string {
 export const sortFmKeysAlphaV2: Command = (view) =>
   applyToSelectionOrAll(view, sortFmKeysAlphaV2Text, 'input.frontmatter.sortKeysV2')
 
-                                           
 export const insertPropertiesSummary: Command = (view) => {
   const src = view.state.doc.toString()
   const m = /^---\n([\s\S]*?)\n---/.exec(src)
@@ -13960,7 +12743,6 @@ export const insertPropertiesSummary: Command = (view) => {
   return true
 }
 
-                                      
 export function blockquoteToCalloutNoteText(source: string): string {
   const lines = source.split('\n')
   const out: string[] = []
@@ -13998,7 +12780,6 @@ export function blockquoteToCalloutNoteText(source: string): string {
 export const blockquoteToCalloutNote: Command = (view) =>
   applyToSelectionOrAll(view, blockquoteToCalloutNoteText, 'input.quote.toCallout')
 
-                                            
 export function priorityMarkersToWarningText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -14016,7 +12797,6 @@ export function priorityMarkersToWarningText(source: string): string {
 export const priorityMarkersToWarning: Command = (view) =>
   applyToSelectionOrAll(view, priorityMarkersToWarningText, 'input.tasks.priorityToWarn')
 
-                            
 export function stripWikilinksText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -14036,7 +12816,6 @@ export function stripWikilinksText(source: string): string {
 export const stripWikilinks: Command = (view) =>
   applyToSelectionOrAll(view, stripWikilinksText, 'input.links.stripWiki')
 
-                                 
 export const insertMermaidMindmap: Command = (view) => {
   const text =
     '\n```mermaid\nmindmap\n  root((Topic))\n    Branch A\n      Leaf 1\n      Leaf 2\n    Branch B\n      Leaf 3\n```\n\n'
@@ -14049,7 +12828,6 @@ export const insertMermaidMindmap: Command = (view) => {
   return true
 }
 
-                                                         
 export const linkToFootnote: Command = (view) => {
   const head = view.state.selection.main.head
   const line = view.state.doc.lineAt(head)
@@ -14071,7 +12849,6 @@ export const linkToFootnote: Command = (view) => {
   return true
 }
 
-                                            
 export function wrapParagraphsHtmlText(source: string): string {
   const lines = source.split('\n')
   const out: string[] = []
@@ -14112,7 +12889,6 @@ export function wrapParagraphsHtmlText(source: string): string {
 export const wrapParagraphsHtml: Command = (view) =>
   applyToSelectionOrAll(view, wrapParagraphsHtmlText, 'format.paragraph.html')
 
-                                     
 export function addHeadingStatusBadgeText(source: string, status: string): string {
   const lines = source.split('\n')
   const tag = `[${status.toUpperCase()}]`
@@ -14134,44 +12910,6 @@ export const addHeadingStatusBadge =
   (view) =>
     applyToSelectionOrAll(view, (s) => addHeadingStatusBadgeText(s, status), 'input.heading.badge')
 
-                                        
-export function formatThousandsSepText(source: string): string {
-  const lines = source.split('\n')
-  let inFence = false
-  for (let i = 0; i < lines.length; i++) {
-    if (/^\s*```/.test(lines[i])) {
-      inFence = !inFence
-      continue
-    }
-    if (inFence) continue
-    const masked = lines[i].replace(/`[^`]*`/g, (s) => '\x00'.repeat(s.length))
-    const placeholders: string[] = []
-    let work = masked
-    work = work.replace(/\[[^\]]*\]\([^)\s]+\)/g, (s) => {
-      placeholders.push(s)
-      return `${placeholders.length - 1}`
-    })
-    work = work.replace(/\b(\d{4,})(?!\d)/g, (n) =>
-      Number(n).toLocaleString('en-US'),
-    )
-    work = work.replace(/(\d+)/g, (_w, idx) => placeholders[Number(idx)])
-    lines[i] = work.replace(/\x00/g, (_c, _idx, full) => {
-      const orig = lines[i]
-      return orig[full.indexOf('\x00')]
-    })
-    lines[i] = work.replace(/\x00/g, '')
-                                        
-    const oj = 0
-    lines[i] = work || ''
-  }
-                                           
-  return lines.join('\n')
-}
-
-export const formatThousandsSep: Command = (view) =>
-  applyToSelectionOrAll(view, formatThousandsSepText, 'format.numbers.thousands')
-
-                      
 export const insertKatexBlock: Command = (view) => {
   const text = '\n$$\n\\frac{a}{b} = c\n$$\n\n'
   const head = view.state.selection.main.head
@@ -14183,7 +12921,6 @@ export const insertKatexBlock: Command = (view) => {
   return true
 }
 
-                                                   
 export function orderedListToWikilinkListText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -14202,7 +12939,6 @@ export function orderedListToWikilinkListText(source: string): string {
 export const orderedListToWikilinkList: Command = (view) =>
   applyToSelectionOrAll(view, orderedListToWikilinkListText, 'input.list.toWikiList')
 
-                   
 export const insertWeeklyReviewTemplate: Command = (view) => {
   const text =
     '## 📊 Wins\n\n- \n\n## 🚧 Challenges\n\n- \n\n## 🎯 Next Week\n\n- \n\n'
@@ -14213,7 +12949,6 @@ export const insertWeeklyReviewTemplate: Command = (view) => {
   return true
 }
 
-                                         
 export function stripEmphasisText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -14235,7 +12970,6 @@ export function stripEmphasisText(source: string): string {
 export const stripEmphasis: Command = (view) =>
   applyToSelectionOrAll(view, stripEmphasisText, 'input.format.stripEmphasis')
 
-                                              
 export function listToDefinitionListText(source: string): string {
   const lines = source.split('\n')
   const out: string[] = []
@@ -14265,7 +12999,6 @@ export function listToDefinitionListText(source: string): string {
 export const listToDefinitionList: Command = (view) =>
   applyToSelectionOrAll(view, listToDefinitionListText, 'input.list.toDefList')
 
-                                 
 export const wrapSelectionInQuoteCallout: Command = (view) => {
   const range = view.state.selection.main
   if (range.empty) return false
@@ -14283,7 +13016,6 @@ export const wrapSelectionInQuoteCallout: Command = (view) => {
   return true
 }
 
-                             
 export const insertRawHtmlSnippet =
   (html: string): Command =>
   (view) => {
@@ -14297,7 +13029,6 @@ export const insertRawHtmlSnippet =
     return true
   }
 
-                            
 export const insertSidebarReference =
   (page: string): Command =>
   (view) => {
@@ -14311,7 +13042,6 @@ export const insertSidebarReference =
     return true
   }
 
-                       
 export function appendTagToParagraphsText(source: string, tag: string): string {
   const cleanTag = tag.replace(/^#/, '')
   const lines = source.split('\n')
@@ -14356,7 +13086,6 @@ export const appendTagToParagraphs =
   (view) =>
     applyToSelectionOrAll(view, (s) => appendTagToParagraphsText(s, tag), 'input.tag.append')
 
-                             
 export const insertDocumentSubtitle =
   (text: string): Command =>
   (view) => {
@@ -14371,7 +13100,6 @@ export const insertDocumentSubtitle =
     return true
   }
 
-                   
 export function boldifyTagsText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -14391,7 +13119,6 @@ export function boldifyTagsText(source: string): string {
 export const boldifyTags: Command = (view) =>
   applyToSelectionOrAll(view, boldifyTagsText, 'input.tag.bold')
 
-                                                   
 export function asciiTasksToUnicodeText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -14411,7 +13138,6 @@ export function asciiTasksToUnicodeText(source: string): string {
 export const asciiTasksToUnicode: Command = (view) =>
   applyToSelectionOrAll(view, asciiTasksToUnicodeText, 'input.tasks.toUnicode')
 
-                                      
 export const insertSearchCallout =
   (query: string): Command =>
   (view) => {
@@ -14425,7 +13151,6 @@ export const insertSearchCallout =
     return true
   }
 
-                                   
 export function checkedTaskToEmojiText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -14443,7 +13168,6 @@ export function checkedTaskToEmojiText(source: string): string {
 export const checkedTaskToEmoji: Command = (view) =>
   applyToSelectionOrAll(view, checkedTaskToEmojiText, 'input.tasks.toEmoji')
 
-                                   
 export const insertTocWithDepth =
   (maxDepth: number = 3): Command =>
   (view) => {
@@ -14475,7 +13199,6 @@ export const insertTocWithDepth =
     return true
   }
 
-                                                         
 export function groupH3UnderH2DetailsText(source: string): string {
   const lines = source.split('\n')
   const out: string[] = []
@@ -14509,7 +13232,6 @@ export function groupH3UnderH2DetailsText(source: string): string {
 export const groupH3UnderH2Details: Command = (view) =>
   applyToSelectionOrAll(view, groupH3UnderH2DetailsText, 'input.heading.groupH3Details')
 
-                                            
 export const insertWikilinkAuditPlaceholder: Command = (view) => {
   const src = view.state.doc.toString()
   const links = new Set<string>()
@@ -14536,7 +13258,6 @@ export const insertWikilinkAuditPlaceholder: Command = (view) => {
   return true
 }
 
-                                                          
 export const insertTocWithTaskProgress: Command = (view) => {
   const src = view.state.doc.toString()
   const lines = src.split('\n')
@@ -14570,7 +13291,6 @@ export const insertTocWithTaskProgress: Command = (view) => {
   return true
 }
 
-                                                         
 export function annotateHeadingsWithProgressText(source: string): string {
   const lines = source.split('\n')
   type HeadIdx = { idx: number; level: number }
@@ -14608,7 +13328,6 @@ export function annotateHeadingsWithProgressText(source: string): string {
 export const annotateHeadingsWithProgress: Command = (view) =>
   applyToSelectionOrAll(view, annotateHeadingsWithProgressText, 'input.heading.taskProgress')
 
-                                          
 export const insertFrontmatterFromH1: Command = (view) => {
   const src = view.state.doc.toString()
   if (/^---\n/.test(src)) return false
@@ -14624,7 +13343,6 @@ export const insertFrontmatterFromH1: Command = (view) => {
   return true
 }
 
-                                                           
 export function tagsToWikilinkText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -14646,7 +13364,6 @@ export function tagsToWikilinkText(source: string): string {
 export const tagsToWikilink: Command = (view) =>
   applyToSelectionOrAll(view, tagsToWikilinkText, 'input.tag.toWikilink')
 
-                                 
 export const insertScrollTopButton: Command = (view) => {
   const text =
     '\n<a href="#" style="position:fixed;right:1em;bottom:1em;padding:0.4em 0.8em;background:#888;color:#fff;border-radius:4px;text-decoration:none;">↑ Top</a>\n\n'
@@ -14659,7 +13376,6 @@ export const insertScrollTopButton: Command = (view) => {
   return true
 }
 
-                                
 export const quoteCurrentParagraph: Command = (view) => {
   const state = view.state
   const doc = state.doc
@@ -14685,7 +13401,6 @@ export const quoteCurrentParagraph: Command = (view) => {
   return true
 }
 
-                                          
 export const insertLast7DaysChain: Command = (view) => {
   const out: string[] = []
   for (let i = 6; i >= 0; i--) {
@@ -14703,7 +13418,6 @@ export const insertLast7DaysChain: Command = (view) => {
   return true
 }
 
-                                                  
 export function asciiSymbolsToUnicodeText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -14725,7 +13439,6 @@ export function asciiSymbolsToUnicodeText(source: string): string {
 export const asciiSymbolsToUnicode: Command = (view) =>
   applyToSelectionOrAll(view, asciiSymbolsToUnicodeText, 'input.format.asciiToUnicode')
 
-                                             
 export const copyCurrentSectionAsPlain: Command = (view) => {
   const state = view.state
   const doc = state.doc
@@ -14750,7 +13463,6 @@ export const copyCurrentSectionAsPlain: Command = (view) => {
   return true
 }
 
-                                                         
 export function appendTableColumnStatsText(source: string, col: number): string {
   const lines = source.split('\n')
   const out: string[] = []
@@ -14786,7 +13498,6 @@ export const appendTableColumnStats =
   (view) =>
     applyToSelectionOrAll(view, (s) => appendTableColumnStatsText(s, col), 'input.table.colStats')
 
-                                
 export const pinSectionToTop: Command = (view) => {
   const doc = view.state.doc.toString()
   const lines = doc.split('\n')
@@ -14810,7 +13521,6 @@ export const pinSectionToTop: Command = (view) => {
   return true
 }
 
-                                               
 export function listToOutlinerText(source: string): string {
   const lines = source.split('\n')
   const counters: number[] = []
@@ -14839,7 +13549,6 @@ export function listToOutlinerText(source: string): string {
 export const listToOutliner: Command = (view) =>
   applyToSelectionOrAll(view, listToOutlinerText, 'input.list.outliner')
 
-                               
 export const insertOgMetadataBlock: Command = (view) => {
   const text =
     '\n<!--\nog:title:\nog:description:\nog:image:\nog:url:\n-->\n\n'
@@ -14852,7 +13561,6 @@ export const insertOgMetadataBlock: Command = (view) => {
   return true
 }
 
-                                        
 export function urlsToWikilinkText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -14872,7 +13580,6 @@ export function urlsToWikilinkText(source: string): string {
 export const urlsToWikilink: Command = (view) =>
   applyToSelectionOrAll(view, urlsToWikilinkText, 'input.links.urlsToWiki')
 
-                                           
 export const insertCurrentMonthCalendar: Command = (view) => {
   const now = new Date()
   const year = now.getFullYear()
@@ -14906,7 +13613,6 @@ export const insertCurrentMonthCalendar: Command = (view) => {
   return true
 }
 
-                           
 export function sentencesPerLineText(source: string): string {
   const lines = source.split('\n')
   const out: string[] = []
@@ -14934,7 +13640,6 @@ export function sentencesPerLineText(source: string): string {
 export const sentencesPerLine: Command = (view) =>
   applyToSelectionOrAll(view, sentencesPerLineText, 'format.sentences.perLine')
 
-                           
 export function stripHtmlTagsText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -14952,7 +13657,6 @@ export function stripHtmlTagsText(source: string): string {
 export const stripHtmlTags: Command = (view) =>
   applyToSelectionOrAll(view, stripHtmlTagsText, 'format.html.strip')
 
-                             
 export const insertHorizontalScrollContainer: Command = (view) => {
   const text =
     '\n<div style="overflow-x:auto;white-space:nowrap;border:1px solid #ddd;padding:8px;border-radius:6px;">\n  <span>note 1</span> | <span>note 2</span> | <span>note 3</span>\n</div>\n\n'
@@ -14965,7 +13669,6 @@ export const insertHorizontalScrollContainer: Command = (view) => {
   return true
 }
 
-                                                        
 export const insertExcelFormulaPlaceholder: Command = (view) => {
   const text = '`=SUM(1,2,3)`'
   const head = view.state.selection.main.head
@@ -14977,7 +13680,6 @@ export const insertExcelFormulaPlaceholder: Command = (view) => {
   return true
 }
 
-                                                         
 export const archiveSectionToYear: Command = (view) => {
   const source = view.state.doc.toString()
   const sec = findCurrentSection(view.state)
@@ -15039,7 +13741,6 @@ const EMOJI_SHORTCODE_MAP: Record<string, string> = {
   clock: '⏰',
 }
 
-                                                     
 export function emojiShortcodesText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -15062,7 +13763,6 @@ export function emojiShortcodesText(source: string): string {
 export const emojiShortcodes: Command = (view) =>
   applyToSelectionOrAll(view, emojiShortcodesText, 'format.emoji.shortcodes')
 
-                             
 export function unifyBulletDashText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -15080,7 +13780,6 @@ export function unifyBulletDashText(source: string): string {
 export const unifyBulletDash: Command = (view) =>
   applyToSelectionOrAll(view, unifyBulletDashText, 'format.list.bulletDash')
 
-                               
 export function tableColToWikilinkText(source: string, col: number): string {
   const lines = source.split('\n')
   let inTable = false
@@ -15116,7 +13815,6 @@ export const tableColToWikilink =
   (view) =>
     applyToSelectionOrAll(view, (s) => tableColToWikilinkText(s, col), 'input.table.colWikilink')
 
-                     
 export const insertTilTemplate: Command = (view) => {
   const today = new Date().toISOString().slice(0, 10)
   const text = `\n# TIL ${today}\n\n## What I learned\n\n- \n\n## Why it matters\n\n- \n\n## References\n\n- \n`
@@ -15129,7 +13827,6 @@ export const insertTilTemplate: Command = (view) => {
   return true
 }
 
-                               
 export function dedupAdjacentParagraphsV2Text(source: string): string {
   const paras = source.split(/\n\n+/)
   const out: string[] = []
@@ -15145,7 +13842,6 @@ export function dedupAdjacentParagraphsV2Text(source: string): string {
 export const dedupAdjacentParagraphsV2: Command = (view) =>
   applyToSelectionOrAll(view, dedupAdjacentParagraphsV2Text, 'format.paragraph.dedupAdjacentV2')
 
-                           
 export const insertPomodoroTracker: Command = (view) => {
   const today = new Date().toISOString().slice(0, 10)
   const text = `\n## Pomodoro ${today}\n\n| # | Start | End | Task | Done |\n| --- | --- | --- | --- | --- |\n| 1 | 09:00 | 09:25 |   | ⬜ |\n| 2 | 09:30 | 09:55 |   | ⬜ |\n| 3 | 10:00 | 10:25 |   | ⬜ |\n| 4 | 10:30 | 10:55 |   | ⬜ |\n\n`
@@ -15158,7 +13854,6 @@ export const insertPomodoroTracker: Command = (view) => {
   return true
 }
 
-                                           
 export function footnotesToInlineText(source: string): string {
   const defs = new Map<string, string>()
   const lines = source.split('\n')
@@ -15182,7 +13877,6 @@ export function footnotesToInlineText(source: string): string {
 export const footnotesToInline: Command = (view) =>
   applyToSelectionOrAll(view, footnotesToInlineText, 'format.footnotes.inline')
 
-                                           
 export const insertQuoteOfTheDay: Command = (view) => {
   const today = new Date().toISOString().slice(0, 10)
   const text = `\n> [!quote] Quote of the day · ${today}\n> > In your deepest nature, all you want is to be happy.\n> — Naval Ravikant\n\n`
@@ -15195,7 +13889,6 @@ export const insertQuoteOfTheDay: Command = (view) => {
   return true
 }
 
-                                                  
 export function computeReadingProfileText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -15246,7 +13939,6 @@ export const insertReadingProfile: Command = (view) => {
   return true
 }
 
-                                       
 export function reverseOutlineText(source: string): string {
   const lines = source.split('\n')
   const out: string[] = []
@@ -15279,7 +13971,6 @@ export const insertReverseOutline: Command = (view) => {
   return true
 }
 
-                  
 export const insertMoodLogTable: Command = (view) => {
   const today = new Date().toISOString().slice(0, 10)
   const text = `\n## Mood log ${today}\n\n| Time | Mood | Energy | Notes |\n| --- | --- | --- | --- |\n| Morning | 😊 |   |   |\n| Noon |   |   |   |\n| Evening |   |   |   |\n\n`
@@ -15292,7 +13983,6 @@ export const insertMoodLogTable: Command = (view) => {
   return true
 }
 
-                                                                  
 export function checklistToDefinitionListText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -15313,7 +14003,6 @@ export function checklistToDefinitionListText(source: string): string {
 export const checklistToDefinitionList: Command = (view) =>
   applyToSelectionOrAll(view, checklistToDefinitionListText, 'format.checklist.toDefList')
 
-                                        
 export function markLongParagraphsText(source: string, maxChars = 400): string {
   const paras = source.split(/\n\n+/)
   return paras
@@ -15336,7 +14025,6 @@ export const markLongParagraphs =
   (view) =>
     applyToSelectionOrAll(view, (s) => markLongParagraphsText(s, max), 'format.paragraph.markLong')
 
-                                                 
 const RFC_KEYWORDS = [
   'MUST NOT',
   'MUST',
@@ -15370,7 +14058,6 @@ export function boldifyRfcKeywordsText(source: string): string {
 export const boldifyRfcKeywords: Command = (view) =>
   applyToSelectionOrAll(view, boldifyRfcKeywordsText, 'format.rfc.keywords')
 
-                                                  
 export function frontmatterDatesToIsoText(source: string): string {
   const m = /^---\n([\s\S]*?)\n---/.exec(source)
   if (!m) return source
@@ -15392,7 +14079,6 @@ export function frontmatterDatesToIsoText(source: string): string {
 export const frontmatterDatesToIso: Command = (view) =>
   applyToSelectionOrAll(view, frontmatterDatesToIsoText, 'format.frontmatter.datesIso')
 
-                           
 export function renameTableColumnText(source: string, col: number, newName: string): string {
   const lines = source.split('\n')
   let inTable = false
@@ -15425,7 +14111,6 @@ export const renameTableColumn =
   (view) =>
     applyToSelectionOrAll(view, (s) => renameTableColumnText(s, col, name), 'input.table.renameCol')
 
-                                            
 export function sortTasksByPriorityEmojiText(source: string): string {
   const PRIORITY: Record<string, number> = { '🔴': 0, '🟠': 1, '🟡': 2, '🟢': 3 }
   const lines = source.split('\n')
@@ -15455,7 +14140,6 @@ export function sortTasksByPriorityEmojiText(source: string): string {
 export const sortTasksByPriorityEmoji: Command = (view) =>
   applyToSelectionOrAll(view, sortTasksByPriorityEmojiText, 'format.tasks.sortPriority')
 
-                            
 export const insertPrivacyNotice: Command = (view) => {
   const text = `\n> [!warning] Privacy notice\n> This document contains sensitive information. Do not share externally; destroy copies when done.\n\n`
   const head = view.state.selection.main.head
@@ -15467,7 +14151,6 @@ export const insertPrivacyNotice: Command = (view) => {
   return true
 }
 
-                                     
 export function appendTableTotalsRowText(source: string): string {
   const lines = source.split('\n')
   const out: string[] = []
@@ -15511,7 +14194,6 @@ export function appendTableTotalsRowText(source: string): string {
 export const appendTableTotalsRow: Command = (view) =>
   applyToSelectionOrAll(view, appendTableTotalsRowText, 'input.table.totalsRow')
 
-                                       
 export function bubbleUncheckedTasksTopText(source: string): string {
   const lines = source.split('\n')
   const unchecked: string[] = []
@@ -15538,7 +14220,6 @@ export function bubbleUncheckedTasksTopText(source: string): string {
 export const bubbleUncheckedTasksTop: Command = (view) =>
   applyToSelectionOrAll(view, bubbleUncheckedTasksTopText, 'format.tasks.bubbleUnchecked')
 
-                              
 export const insertRecurringTasksTemplate: Command = (view) => {
   const text = `\n## Recurring tasks\n\n### Daily\n\n- [ ] Morning reading 10 min\n- [ ] Write in journal\n- [ ] Exercise\n\n### Weekly\n\n- [ ] Weekly review\n- [ ] Clear inbox\n\n### Monthly\n\n- [ ] Financial summary\n- [ ] Goal retrospective\n\n`
   const head = view.state.selection.main.head
@@ -15550,7 +14231,6 @@ export const insertRecurringTasksTemplate: Command = (view) => {
   return true
 }
 
-                                                       
 export function stripAllMarkdownText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -15587,7 +14267,6 @@ export function stripAllMarkdownText(source: string): string {
 export const stripAllMarkdown: Command = (view) =>
   applyToSelectionOrAll(view, stripAllMarkdownText, 'format.markdown.stripAll')
 
-                                              
 export function listToMermaidPieText(source: string): string {
   const lines = source.split('\n')
   const out: string[] = []
@@ -15619,7 +14298,6 @@ export function listToMermaidPieText(source: string): string {
 export const listToMermaidPie: Command = (view) =>
   applyToSelectionOrAll(view, listToMermaidPieText, 'input.list.toMermaidPie')
 
-                            
 export function normalizeTableWhitespaceText(source: string): string {
   const lines = source.split('\n')
   for (let i = 0; i < lines.length; i++) {
@@ -15636,7 +14314,6 @@ export function normalizeTableWhitespaceText(source: string): string {
 export const normalizeTableWhitespace: Command = (view) =>
   applyToSelectionOrAll(view, normalizeTableWhitespaceText, 'format.table.ws')
 
-                        
 export const insertFaqQaBlock: Command = (view) => {
   const text = `\n## FAQ\n\n### Q: \n\nA: \n\n### Q: \n\nA: \n\n### Q: \n\nA: \n\n`
   const head = view.state.selection.main.head
@@ -15648,7 +14325,6 @@ export const insertFaqQaBlock: Command = (view) => {
   return true
 }
 
-                                
 export function swapParagraphsText(source: string, a: number, b: number): string {
   const paras = source.split(/\n\n+/)
   if (a < 1 || b < 1 || a > paras.length || b > paras.length || a === b) return source
@@ -15663,7 +14339,6 @@ export const swapParagraphs =
   (view) =>
     applyToSelectionOrAll(view, (s) => swapParagraphsText(s, a, b), 'format.paragraph.swap')
 
-                                
 export const insertTilRecentIndex: Command = (view) => {
   const now = new Date()
   const items: string[] = []
@@ -15683,7 +14358,6 @@ export const insertTilRecentIndex: Command = (view) => {
   return true
 }
 
-                        
 export const insertReadingLogTable: Command = (view) => {
   const text = `\n## Reading log\n\n| Book | Author | Started | Progress | Notes |\n| --- | --- | --- | --- | --- |\n|   |   |   | 0% |   |\n|   |   |   | 0% |   |\n|   |   |   | 0% |   |\n\n`
   const head = view.state.selection.main.head
@@ -15695,7 +14369,6 @@ export const insertReadingLogTable: Command = (view) => {
   return true
 }
 
-                                                         
 export function cycleCheckboxTriStateText(source: string): string {
   const lines = source.split('\n')
   for (let i = 0; i < lines.length; i++) {
@@ -15713,7 +14386,6 @@ export function cycleCheckboxTriStateText(source: string): string {
 export const cycleCheckboxTriState: Command = (view) =>
   applyToSelectionOrAll(view, cycleCheckboxTriStateText, 'format.checkbox.cycle3')
 
-                  
 export function trimTrailingWhitespaceText(source: string): string {
   return source
     .split('\n')
@@ -15724,7 +14396,6 @@ export function trimTrailingWhitespaceText(source: string): string {
 export const trimTrailingWhitespaceV2: Command = (view) =>
   applyToSelectionOrAll(view, trimTrailingWhitespaceText, 'format.ws.trimTrailingV2')
 
-                                                                     
 export function sortFrontmatterBySpecOrderText(source: string): string {
   const m = /^---\n([\s\S]*?)\n---/.exec(source)
   if (!m) return source
@@ -15759,7 +14430,6 @@ export function sortFrontmatterBySpecOrderText(source: string): string {
 export const sortFrontmatterBySpecOrder: Command = (view) =>
   applyToSelectionOrAll(view, sortFrontmatterBySpecOrderText, 'format.frontmatter.specOrder')
 
-                     
 export const insertWeeklyMeetingNotes: Command = (view) => {
   const today = new Date().toISOString().slice(0, 10)
   const text = `\n## Weekly meeting · ${today}\n\n### Attendees\n\n- \n\n### Agenda\n\n- \n\n### Decisions\n\n- \n\n### Action items\n\n- [ ] @owner — task by date\n\n`
@@ -15772,7 +14442,6 @@ export const insertWeeklyMeetingNotes: Command = (view) => {
   return true
 }
 
-                                              
 export function firstTableRowToListText(source: string): string {
   const lines = source.split('\n')
   const out: string[] = []
@@ -15803,7 +14472,6 @@ export function firstTableRowToListText(source: string): string {
 export const firstTableRowToList: Command = (view) =>
   applyToSelectionOrAll(view, firstTableRowToListText, 'format.table.rowToList')
 
-                               
 export const insertTldrCallout: Command = (view) => {
   const text = `\n> [!summary] TL;DR\n> - \n> - \n> - \n\n`
   const head = view.state.selection.main.head
@@ -15815,7 +14483,6 @@ export const insertTldrCallout: Command = (view) => {
   return true
 }
 
-                            
 export const insertWeeklyHabitTracker: Command = (view) => {
   const now = new Date()
   const monday = new Date(now)
@@ -15844,7 +14511,6 @@ export const insertWeeklyHabitTracker: Command = (view) => {
   return true
 }
 
-                                             
 export function sortDateSectionsDescText(source: string): string {
   const lines = source.split('\n')
   type Sec = { heading: string; body: string[]; date: string | null }
@@ -15882,7 +14548,6 @@ export function sortDateSectionsDescText(source: string): string {
 export const sortDateSectionsDesc: Command = (view) =>
   applyToSelectionOrAll(view, sortDateSectionsDescText, 'format.section.sortDateDesc')
 
-                       
 export const insertPageBreak: Command = (view) => {
   const text = `\n\n<div style="page-break-after: always;"></div>\n\n`
   const head = view.state.selection.main.head
@@ -15894,7 +14559,6 @@ export const insertPageBreak: Command = (view) => {
   return true
 }
 
-                                                       
 export function imagesToFigureText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -15915,7 +14579,6 @@ export function imagesToFigureText(source: string): string {
 export const imagesToFigure: Command = (view) =>
   applyToSelectionOrAll(view, imagesToFigureText, 'format.images.figure')
 
-                                  
 export function dedupFootnoteDefinitionsText(source: string): string {
   const lines = source.split('\n')
   const seen = new Set<string>()
@@ -15934,7 +14597,6 @@ export function dedupFootnoteDefinitionsText(source: string): string {
 export const dedupFootnoteDefinitions: Command = (view) =>
   applyToSelectionOrAll(view, dedupFootnoteDefinitionsText, 'format.footnotes.dedup')
 
-                               
 export function demoteH3ToH4Text(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -15954,7 +14616,6 @@ export function demoteH3ToH4Text(source: string): string {
 export const demoteH3ToH4: Command = (view) =>
   applyToSelectionOrAll(view, demoteH3ToH4Text, 'format.heading.demoteH3')
 
-                                       
 export function sortCalloutsByTypeText(source: string): string {
   const lines = source.split('\n')
   const out: string[] = []
@@ -15988,7 +14649,6 @@ export function sortCalloutsByTypeText(source: string): string {
 export const sortCalloutsByType: Command = (view) =>
   applyToSelectionOrAll(view, sortCalloutsByTypeText, 'format.callout.sortByType')
 
-                             
 export const insertAttributedQuote: Command = (view) => {
   const text = `\n> Quote text here.\n> — Author · Source\n\n`
   const head = view.state.selection.main.head
@@ -16000,7 +14660,6 @@ export const insertAttributedQuote: Command = (view) => {
   return true
 }
 
-                               
 export const insertMermaidGanttV2: Command = (view) => {
   const text = `\n\`\`\`mermaid\ngantt\n    title Project Milestones\n    dateFormat YYYY-MM-DD\n    section Development\n    Design :a1, 2026-06-01, 7d\n    Implementation :a2, after a1, 14d\n    Testing :a3, after a2, 7d\n    section Launch\n    Deployment :a4, after a3, 2d\n\`\`\`\n\n`
   const head = view.state.selection.main.head
@@ -16012,7 +14671,6 @@ export const insertMermaidGanttV2: Command = (view) => {
   return true
 }
 
-                                     
 export const appendSourceToCurrentParagraph: Command = (view) => {
   const url = window.prompt('Source URL?')
   if (!url) return false
@@ -16033,7 +14691,6 @@ export const appendSourceToCurrentParagraph: Command = (view) => {
   return true
 }
 
-                            
 export function collapseExtraBlankLinesText(source: string): string {
   return source.replace(/\n{3,}/g, '\n\n')
 }
@@ -16041,7 +14698,6 @@ export function collapseExtraBlankLinesText(source: string): string {
 export const collapseExtraBlankLines: Command = (view) =>
   applyToSelectionOrAll(view, collapseExtraBlankLinesText, 'format.lines.collapseBlank')
 
-                           
 export const insertNumberedFootnote: Command = (view) => {
   const source = view.state.doc.toString()
   const nums = Array.from(source.matchAll(/\[\^(\d+)\]/g)).map((m) => Number(m[1]))
@@ -16060,7 +14716,6 @@ export const insertNumberedFootnote: Command = (view) => {
   return true
 }
 
-                                                    
 export const insertCurrentSectionAnchorLink: Command = (view) => {
   const sec = findCurrentSection(view.state)
   if (!sec) return false
@@ -16075,7 +14730,6 @@ export const insertCurrentSectionAnchorLink: Command = (view) => {
   return true
 }
 
-                                                                                 
 export function refLinksToInlineText(source: string): string {
   const refs = new Map<string, string>()
   const lines = source.split('\n')
@@ -16100,7 +14754,6 @@ export function refLinksToInlineText(source: string): string {
 export const refLinksToInline: Command = (view) =>
   applyToSelectionOrAll(view, refLinksToInlineText, 'format.links.refToInline')
 
-                      
 export const insertGlossaryTemplate: Command = (view) => {
   const text = `\n## Glossary\n\nTerm 1\n: Definition text. May contain [[related wikilink]].\n\nTerm 2\n: Definition text.\n\nTerm 3\n: Definition text.\n\n`
   const head = view.state.selection.main.head
@@ -16112,7 +14765,6 @@ export const insertGlossaryTemplate: Command = (view) => {
   return true
 }
 
-                                              
 export function listToMermaidGraphLrText(source: string): string {
   const lines = source.split('\n')
   const out: string[] = []
@@ -16144,7 +14796,6 @@ export function listToMermaidGraphLrText(source: string): string {
 export const listToMermaidGraphLr: Command = (view) =>
   applyToSelectionOrAll(view, listToMermaidGraphLrText, 'input.list.toGraphLr')
 
-                              
 export const insertReviewSchedule: Command = (view) => {
   const now = new Date()
   const days = [1, 3, 7, 14, 30, 90]
@@ -16163,7 +14814,6 @@ export const insertReviewSchedule: Command = (view) => {
   return true
 }
 
-                                                       
 export const insertTemplaterVars: Command = (view) => {
   const text = `\n<!-- Templater vars -->\n- date: {{date:YYYY-MM-DD}}\n- title: {{title}}\n- weekday: {{date:dddd}}\n- timestamp: {{date:HH:mm}}\n\n`
   const head = view.state.selection.main.head
@@ -16175,7 +14825,6 @@ export const insertTemplaterVars: Command = (view) => {
   return true
 }
 
-                                      
 export function normalizeOrderedListStartAtOneText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -16211,7 +14860,6 @@ export function normalizeOrderedListStartAtOneText(source: string): string {
 export const normalizeOrderedListStartAtOne: Command = (view) =>
   applyToSelectionOrAll(view, normalizeOrderedListStartAtOneText, 'format.list.olStart1')
 
-                                                    
 export const insertAdrTemplate: Command = (view) => {
   const today = new Date().toISOString().slice(0, 10)
   const text = `\n# ADR-XXXX: Decision Title\n\n- Status: Proposed\n- Date: ${today}\n- Deciders: \n\n## Context\n\nDescribe the background and driving factors behind the decision.\n\n## Decision\n\nDescribe the chosen approach.\n\n## Consequences\n\nDescribe the impact of the decision (positive, negative, risks).\n\n## Alternatives considered\n\n- Option A — rationale\n- Option B — rationale\n\n`
@@ -16224,7 +14872,6 @@ export const insertAdrTemplate: Command = (view) => {
   return true
 }
 
-                                                           
 export const wrapSelectionAsKbd: Command = (view) => {
   const { from, to } = view.state.selection.main
   if (from === to) {
@@ -16245,7 +14892,6 @@ export const wrapSelectionAsKbd: Command = (view) => {
   return true
 }
 
-                                                          
 export function headingMapText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -16277,7 +14923,6 @@ export const insertHeadingMap: Command = (view) => {
   return true
 }
 
-                              
 export function tocWithAnchorsText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -16316,7 +14961,6 @@ export const insertTocWithAnchors: Command = (view) => {
   return true
 }
 
-                           
 export function sortH2SectionsByWordCountDescText(source: string): string {
   const lines = source.split('\n')
   type Sec = { heading: string; body: string[]; words: number }
@@ -16347,7 +14991,6 @@ export function sortH2SectionsByWordCountDescText(source: string): string {
 export const sortH2SectionsByWordCountDesc: Command = (view) =>
   applyToSelectionOrAll(view, sortH2SectionsByWordCountDescText, 'format.section.sortWords')
 
-                                        
 export function foldH2AsDetailsText(source: string): string {
   const lines = source.split('\n')
   const out: string[] = []
@@ -16373,7 +15016,6 @@ export function foldH2AsDetailsText(source: string): string {
 export const foldH2AsDetails: Command = (view) =>
   applyToSelectionOrAll(view, foldH2AsDetailsText, 'format.section.foldDetails')
 
-                         
 export function paragraphsToOrderedListText(source: string): string {
   const paras = source.split(/\n\n+/).map((p) => p.trim()).filter(Boolean)
   return paras.map((p, i) => `${i + 1}. ${p.replace(/\n/g, ' ')}`).join('\n')
@@ -16382,7 +15024,6 @@ export function paragraphsToOrderedListText(source: string): string {
 export const paragraphsToOrderedList: Command = (view) =>
   applyToSelectionOrAll(view, paragraphsToOrderedListText, 'format.paragraph.toOl')
 
-                                                  
 export const insertLiteratureNoteTemplate: Command = (view) => {
   const today = new Date().toISOString().slice(0, 10)
   const text = `\n---\ntype: literature\nsource: \nauthor: \ndate-read: ${today}\ntags: [literature]\n---\n\n## Quote\n\n> Original excerpt\n\n## Context\n\nBackground.\n\n## My take\n\nMy thoughts.\n\n## Connections\n\n- [[related note]]\n\n`
@@ -16395,7 +15036,6 @@ export const insertLiteratureNoteTemplate: Command = (view) => {
   return true
 }
 
-                                     
 export const insertDailyQuoteReflection: Command = (view) => {
   const today = new Date().toISOString().slice(0, 10)
   const text = `\n## ${today} · Quote & Reflection\n\n### Quote\n\n> \n\n— Author\n\n### Reflection\n\nWhat does this mean to me?\n\n`
@@ -16408,27 +15048,6 @@ export const insertDailyQuoteReflection: Command = (view) => {
   return true
 }
 
-                                  
-export function escapeTableCellPipesText(source: string): string {
-  const lines = source.split('\n')
-  for (let i = 0; i < lines.length; i++) {
-    if (!/^\s*\|.*\|\s*$/.test(lines[i])) continue
-    if (/^\s*\|\s*[-:]+/.test(lines[i])) continue
-    const parts = lines[i].split('|')
-    for (let j = 1; j < parts.length - 1; j++) {
-      // already escaped pipes inside text — leave alone
-    }
-    // we already split by | so any internal pipe is a separator — nothing to escape at this stage.
-    // For practical use, allow user to mark internal pipe before this step.
-    // Just normalize known patterns: ` | ` not preceded by `\` should be the separator.
-  }
-  return lines.join('\n')
-}
-
-export const escapeTableCellPipes: Command = (view) =>
-  applyToSelectionOrAll(view, escapeTableCellPipesText, 'format.table.escapePipes')
-
-                                            
 export function ddmmyyyyToIsoText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -16448,7 +15067,6 @@ export function ddmmyyyyToIsoText(source: string): string {
 export const ddmmyyyyToIso: Command = (view) =>
   applyToSelectionOrAll(view, ddmmyyyyToIsoText, 'format.dates.ddmmyyyy')
 
-                            
 export function capitalizeHeadingsText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -16469,7 +15087,6 @@ export function capitalizeHeadingsText(source: string): string {
 export const capitalizeHeadings: Command = (view) =>
   applyToSelectionOrAll(view, capitalizeHeadingsText, 'format.heading.capitalize')
 
-                                     
 export const insertReadingProgressBar: Command = (view) => {
   const pctRaw = window.prompt('Reading progress (0-100)?', '50')
   const pct = Math.max(0, Math.min(100, Number(pctRaw ?? '0')))
@@ -16484,7 +15101,6 @@ export const insertReadingProgressBar: Command = (view) => {
   return true
 }
 
-                                 
 export function smartQuotesToStraightText(source: string): string {
   return source
     .replace(/[“”]/g, '"')
@@ -16494,7 +15110,6 @@ export function smartQuotesToStraightText(source: string): string {
 export const smartQuotesToStraight: Command = (view) =>
   applyToSelectionOrAll(view, smartQuotesToStraightText, 'format.quotes.toStraight')
 
-                                         
 export const insertCodeSnippetTemplate: Command = (view) => {
   const lang = window.prompt('Language?', 'ts') ?? 'ts'
   const text = `\n### Snippet: Description\n\nPurpose.\n\n\`\`\`${lang}\n// example\n\`\`\`\n\n`
@@ -16507,7 +15122,6 @@ export const insertCodeSnippetTemplate: Command = (view) => {
   return true
 }
 
-                                                
 export const tagsToWikilinkInCurrentSection: Command = (view) => {
   const sec = findCurrentSection(view.state)
   if (!sec) return false
@@ -16535,7 +15149,6 @@ export const tagsToWikilinkInCurrentSection: Command = (view) => {
   return true
 }
 
-                                 
 export const insertLessonsLearnedTemplate: Command = (view) => {
   const today = new Date().toISOString().slice(0, 10)
   const text = `\n## Lessons learned · ${today}\n\n### What went well\n\n- \n\n### What didn't\n\n- \n\n### What to change next time\n\n- [ ] \n\n`
@@ -16548,7 +15161,6 @@ export const insertLessonsLearnedTemplate: Command = (view) => {
   return true
 }
 
-                           
 export function sortListByLengthDescText(source: string): string {
   const lines = source.split('\n')
   const out: string[] = []
@@ -16573,7 +15185,6 @@ export function sortListByLengthDescText(source: string): string {
 export const sortListByLengthDesc: Command = (view) =>
   applyToSelectionOrAll(view, sortListByLengthDescText, 'format.list.sortLengthDesc')
 
-                            
 export const insertSwotAnalysis: Command = (view) => {
   const text = `\n## SWOT analysis\n\n| Strengths | Weaknesses |\n| --- | --- |\n| - <br>- <br>- | - <br>- <br>- |\n\n| Opportunities | Threats |\n| --- | --- |\n| - <br>- <br>- | - <br>- <br>- |\n\n`
   const head = view.state.selection.main.head
@@ -16585,7 +15196,6 @@ export const insertSwotAnalysis: Command = (view) => {
   return true
 }
 
-                                                               
 export function asterisksToUnderscoresText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -16605,7 +15215,6 @@ export function asterisksToUnderscoresText(source: string): string {
 export const asterisksToUnderscores: Command = (view) =>
   applyToSelectionOrAll(view, asterisksToUnderscoresText, 'format.emphasis.starToUnder')
 
-                                                               
 export function underscoresToAsterisksText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -16625,7 +15234,6 @@ export function underscoresToAsterisksText(source: string): string {
 export const underscoresToAsterisks: Command = (view) =>
   applyToSelectionOrAll(view, underscoresToAsterisksText, 'format.emphasis.underToStar')
 
-                               
 export const insertReleaseNotesTemplate: Command = (view) => {
   const today = new Date().toISOString().slice(0, 10)
   const text = `\n# Release notes · vX.Y.Z · ${today}\n\n## Added\n\n- \n\n## Changed\n\n- \n\n## Fixed\n\n- \n\n## Deprecated\n\n- \n\n## Removed\n\n- \n\n## Security\n\n- \n\n`
@@ -16638,7 +15246,6 @@ export const insertReleaseNotesTemplate: Command = (view) => {
   return true
 }
 
-                                    
 export const insertMocSkeleton: Command = (view) => {
   const text = `\n# MOC — Topic\n\n## Overview\n\nThis MOC collects all notes related to "Topic".\n\n## Core Notes\n\n- [[Core 1]]\n- [[Core 2]]\n- [[Core 3]]\n\n## Subtopics\n\n### Subtopic A\n\n- [[Related Note A1]]\n- [[Related Note A2]]\n\n### Subtopic B\n\n- [[Related Note B1]]\n\n## To Integrate\n\n- [ ] \n\n`
   const head = view.state.selection.main.head
@@ -16650,7 +15257,6 @@ export const insertMocSkeleton: Command = (view) => {
   return true
 }
 
-                                                       
 export function wikilinkImagesToMdText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -16671,7 +15277,6 @@ export function wikilinkImagesToMdText(source: string): string {
 export const wikilinkImagesToMd: Command = (view) =>
   applyToSelectionOrAll(view, wikilinkImagesToMdText, 'format.images.wikiToMd')
 
-                                                                       
 export function mdImagesToWikilinkText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -17731,8 +16336,6 @@ export function massRenameWikilinkTargetText(source: string, from: string, to: s
   }
   return lines.join('\n')
 }
-export const massRenameWikilinkTarget = (from: string, to: string): Command => (view) =>
-  applyToSelectionOrAll(view, (s) => massRenameWikilinkTargetText(s, from, to), 'format.wikilink.rename-target')
 
 export const insertApiEndpointTemplate: Command = (view) => {
   const pos = view.state.selection.main.from
@@ -18684,7 +17287,7 @@ export const insertReleaseArtifactChecklist: Command = (view) => {
 }
 
 export function tasksToWikilinkInTasksSectionText(source: string): string {
-                                                                                                   
+
   const lines = source.split('\n')
   let inFence = false
   let inTasksSection = false
@@ -19920,10 +18523,6 @@ export const insertWireframeAsciiPlaceholder: Command = (view) => {
   return true
 }
 
-const SC_STOPWORDS = new Set([
-  'a','an','the','and','or','but','of','in','on','at','to','for','with','by','as','is','was','be','it','its','that','this',
-])
-
 export function sentenceCaseBulletsText(source: string): string {
   const lines = source.split('\n')
   let inFence = false
@@ -20418,7 +19017,7 @@ export function normalizeListSpacingText(source: string): string {
     const isList = /^\s*([-*+]|\d+\.)\s/.test(line)
     const blank = !line.trim()
     if (blank && prevList) {
-                            
+
       prevList = false
       continue
     }
@@ -20557,7 +19156,7 @@ export const insertDecisionJournalEntry: Command = (view) => {
 
 export function sortSectionsByDatePrefixText(source: string): string {
   const lines = source.split('\n')
-            
+
   type Section = { headerIdx: number; endIdx: number; date: string }
   const sections: Section[] = []
   let inFence = false
@@ -20574,7 +19173,6 @@ export function sortSectionsByDatePrefixText(source: string): string {
   if (cur) sections.push(cur)
   if (sections.length < 2) return source
 
-          
   const blocks = sections.map((s) => ({
     date: s.date,
     text: lines.slice(s.headerIdx, s.endIdx).join('\n'),
@@ -20990,7 +19588,7 @@ export function uppercaseAcronymsInTextText(source: string, acronyms: string[] =
     .map((line) => {
       if (/^\s*```/.test(line)) inFence = !inFence
       if (inFence) return line
-                       
+
       return line.replace(/`[^`]*`|[A-Za-z]+/g, (token) => {
         if (token.startsWith('`')) return token
         const lower = token.toLowerCase()
@@ -21956,7 +20554,7 @@ export const insertBookClubGuide: Command = (view) => {
 }
 
 export function paragraphsToGlossaryIndexText(source: string): string {
-                                 
+
   const blocks = source.split(/\n{2,}/).filter((b) => b.trim().length > 0)
   type Entry = { term: string; body: string }
   const entries: Entry[] = []
@@ -23127,7 +21725,7 @@ export const paragraphsToPodcastNotes: Command = (view) =>
   applyToSelectionOrAll(view, paragraphsToPodcastNotesText, 'transform.podcast-notes')
 
 export function normalizeFenceLanguageText(source: string): string {
-                         
+
   const lines = source.split('\n')
   let inFence = false
   for (let i = 0; i < lines.length; i++) {
@@ -23298,7 +21896,7 @@ export const insertExperimentDesign: Command = (view) => {
 }
 
 export function bulletsNestByDepthMarkerText(source: string): string {
-                                   
+
   const lines = source.split('\n')
   const out: string[] = []
   for (const line of lines) {
@@ -23461,7 +22059,7 @@ export const insertQuadrantChart: Command = (view) => {
 }
 
 export function renumberOrderedListText(source: string): string {
-                                         
+
   const lines = source.split('\n')
   const out: string[] = []
   type Counter = { indent: number; n: number }
@@ -23470,7 +22068,7 @@ export function renumberOrderedListText(source: string): string {
     const m = /^(\s*)\d+\.\s+(.*)$/.exec(line)
     if (!m) {
       out.push(line)
-                       
+
       if (!/^\s*$/.test(line)) {
         stack = stack.filter((c) => c.indent < (line.match(/^\s*/)?.[0].length ?? 0))
       }
@@ -23811,7 +22409,7 @@ export const linesToIndexedFAQ: Command = (view) =>
   applyToSelectionOrAll(view, linesToIndexedFAQText, 'transform.indexed-faq')
 
 export function normalizeBulletMarkerToDotText(source: string): string {
-               
+
   return source.split('\n').map((line) => {
     const m = /^(\s*)\*\s+(.+)$/.exec(line)
     if (m) return `${m[1]}• ${m[2]}`
@@ -23886,7 +22484,7 @@ export const paragraphsToThesisStatement: Command = (view) =>
   applyToSelectionOrAll(view, paragraphsToThesisStatementText, 'transform.thesis')
 
 export function stripDiacriticsText(source: string): string {
-                        
+
   return source.normalize('NFD').replace(/\p{Diacritic}/gu, '')
 }
 
@@ -24155,13 +22753,13 @@ export const paragraphsToTwitterThread: Command = (view) =>
   applyToSelectionOrAll(view, paragraphsToTwitterThreadText, 'transform.twitter-thread')
 
 export function normalizeMarkdownLinksToRefStyleText(source: string): string {
-                                          
+
   type Ref = { idx: number; url: string }
   const refs: Ref[] = []
   let counter = 1
   const lines = source.split('\n')
   const transformed = lines.map((line) => {
-                                          
+
     return line.replace(/\[([^\]]+)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g, (_, text, url) => {
       const existing = refs.find((r) => r.url === url)
       const idx = existing ? existing.idx : counter
@@ -24222,7 +22820,7 @@ export const insertGroceryList: Command = (view) => {
 }
 
 export function headingsToTitleCaseText(source: string): string {
-                                     
+
   const minorWords = new Set([
     'a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'in', 'nor', 'of', 'on',
     'or', 'so', 'the', 'to', 'up', 'with', 'yet',
@@ -24404,7 +23002,7 @@ export const insertUXResearchPlan: Command = (view) => {
 export function linesToHaikuText(source: string): string {
   const lines = source.split('\n').map((l) => l.trim()).filter((l) => l.length > 0)
   if (lines.length === 0) return source
-                                    
+
   const estimateSyllables = (s: string): number => {
     let count = 0
     // CJK chars
@@ -24505,7 +23103,7 @@ export const insertAdventCalendar: Command = (view) => {
 }
 
 export function bulletsToSwimLaneText(source: string): string {
-                                                     
+
   const lines = source.split('\n')
   type Msg = { from: string; to: string; text: string }
   const messages: Msg[] = []
@@ -24576,7 +23174,7 @@ export const insertDailyMoodSnapshot: Command = (view) => {
 }
 
 export function normalizeHeadingSpacingText(source: string): string {
-                                  
+
   return source.split('\n').map((line) => {
     const m = /^(#{1,6})\s*(.+?)\s*$/.exec(line)
     if (!m) return line
@@ -24625,7 +23223,7 @@ export const paragraphsToFortuneCookies: Command = (view) =>
   applyToSelectionOrAll(view, paragraphsToFortuneCookiesText, 'transform.fortune-cookies')
 
 export function headingsToNumberedTOCLinksText(source: string): string {
-                                      
+
   const lines = source.split('\n')
   type H = { level: number; text: string; slug: string }
   const headings: H[] = []
@@ -24914,7 +23512,7 @@ export const paragraphsToSoundbites: Command = (view) =>
   applyToSelectionOrAll(view, paragraphsToSoundbitesText, 'transform.soundbites')
 
 export function normalizeEmphasisMarkersText(source: string): string {
-                                     
+
   const lines = source.split('\n')
   let inFence = false
   const out: string[] = []
@@ -25026,7 +23624,7 @@ export const insertLinkRotScanTemplate: Command = (view) => {
 }
 
 export function linesToParetoBarText(source: string): string {
-                                                         
+
   const lines = source.split('\n')
   type Item = { label: string; value: number }
   const items: Item[] = []
@@ -25134,7 +23732,7 @@ export const insertLabSafetyChecklist: Command = (view) => {
 }
 
 export function bulletsToGitGraphMermaidText(source: string): string {
-                                                
+
   const lines = source.split('\n')
   const commits: string[] = []
   for (const line of lines) {
@@ -25209,17 +23807,17 @@ export const paragraphsToUserPersona: Command = (view) =>
   applyToSelectionOrAll(view, paragraphsToUserPersonaText, 'transform.user-persona')
 
 export function normalizeUnicodeWhitespaceText(source: string): string {
-                                            
+
   let out = source
-                 
+
   out = out.replace(/ /g, ' ')
-                
+
   out = out.replace(/　/g, ' ')
-          
+
   out = out.replace(/[ - ]/g, ' ')
-              
+
   out = out.replace(/[​‌‍﻿]/g, '')
-             
+
   out = out.replace(/­/g, '')
   return out
 }
@@ -25357,7 +23955,7 @@ export const insertABTestScorecard: Command = (view) => {
 }
 
 export function linesToTierListText(source: string): string {
-                                            
+
   const lines = source.split('\n')
   const buckets: Record<'S' | 'A' | 'B' | 'C' | 'D', string[]> = { S: [], A: [], B: [], C: [], D: [] }
   let any = false
@@ -25580,7 +24178,7 @@ export const paragraphsToKPITreeNarrative: Command = (view) =>
   applyToSelectionOrAll(view, paragraphsToKPITreeNarrativeText, 'transform.kpi-tree-narrative')
 
 export function normalizeOrderedListMarkersText(source: string): string {
-                                  
+
   const lines = source.split('\n')
   let inFence = false
   const out: string[] = []
@@ -25749,7 +24347,7 @@ export function linesToBalancedTreeAsciiText(source: string): string {
     .map((l) => l.replace(/^\s*[-*+]\s+/, '').trim())
     .filter(Boolean)
   if (items.length === 0) return source
-                 
+
   const out: string[] = ['```text']
   let level = 0
   let consumed = 0
@@ -25832,7 +24430,7 @@ export const insertDashboardLayoutTextGrid: Command = (view) => {
 }
 
 export function bulletsToOutlineNumberedText(source: string): string {
-                                
+
   const lines = source.split('\n')
   type Item = { depth: number; content: string }
   const items: Item[] = []
@@ -25915,7 +24513,7 @@ export function normalizeEmptyBulletItemsText(source: string): string {
       out.push(line)
       continue
     }
-                                                            
+
     if (/^\s*[-*+]\s*$/.test(line)) continue
     if (/^\s*[-*+]\s+\[ \]\s*$/.test(line)) continue
     if (/^\s*\d+\.\s*$/.test(line)) continue
@@ -25961,386 +24559,6 @@ export const insertSprintDashboardTemplate: Command = (view) => {
     '',
   ].join('\n')
   view.dispatch({ changes: { from: view.state.selection.main.head, insert: text }, userEvent: 'input.insert.sprint-dashboard' })
-  return true
-}
-
-// ===== Batch #227 =====
-
-export const insertWeeklyRetrospectiveBoard: Command = (view) => {
-  const text = [
-    '## Weekly Retrospective Board',
-    '',
-    '**Week #**:',
-    '**Facilitator**:',
-    '**Participants**:',
-    '',
-    '### 😀 Highlights',
-    '- ',
-    '',
-    '### 😟 Low points',
-    '- ',
-    '',
-    '### 💡 Insights',
-    '- ',
-    '',
-    '### 🎯 Next week focus',
-    '- [ ] ',
-    '',
-    '### 📊 Data points',
-    '| Metric | Last week | This week | Trend |',
-    '| --- | --- | --- | --- |',
-    '|  |  |  |  |',
-    '',
-  ].join('\n')
-  view.dispatch({ changes: { from: view.state.selection.main.head, insert: text }, userEvent: 'input.insert.weekly-retro-board' })
-  return true
-}
-
-export function paragraphsToCompetitiveMatrixText(source: string): string {
-  const paragraphs = source.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean)
-  if (paragraphs.length === 0) return source
-  const out: string[] = ['## Competitive Matrix', '']
-  out.push('| Dimension | Ours | ' + paragraphs.map((_, i) => `Competitor ${String.fromCharCode(65 + i)}`).join(' | ') + ' |')
-  out.push('| --- | --- | ' + paragraphs.map(() => '---').join(' | ') + ' |')
-  out.push('| Positioning | ✏️ | ' + paragraphs.map(() => ' ').join(' | ') + ' |')
-  out.push('| Pricing | ✏️ | ' + paragraphs.map(() => ' ').join(' | ') + ' |')
-  out.push('| Target users | ✏️ | ' + paragraphs.map(() => ' ').join(' | ') + ' |')
-  out.push('| Core features | ✏️ | ' + paragraphs.map(() => ' ').join(' | ') + ' |')
-  out.push('| Differentiation | ✏️ | ' + paragraphs.map(() => ' ').join(' | ') + ' |')
-  out.push('| Weaknesses | ✏️ | ' + paragraphs.map(() => ' ').join(' | ') + ' |')
-  out.push('')
-  out.push('### Competitor Notes')
-  out.push('')
-  paragraphs.forEach((p, i) => {
-    out.push(`**Competitor ${String.fromCharCode(65 + i)}**: ${p}`)
-    out.push('')
-  })
-  return out.join('\n')
-}
-
-export const paragraphsToCompetitiveMatrix: Command = (view) =>
-  applyToSelectionOrAll(view, paragraphsToCompetitiveMatrixText, 'transform.competitive-matrix')
-
-export const insertCustomerJourneyMomentsDashboard: Command = (view) => {
-  const text = [
-    '## Customer Journey Moments Dashboard',
-    '',
-    '| Stage | Touchpoint | User emotion | Pain point | Opportunity |',
-    '| --- | --- | --- | --- | --- |',
-    '| 👀 Awareness |  | 😐 |  |  |',
-    '| 🤔 Consideration |  | 🙂 |  |  |',
-    '| 🛒 Decision |  | 😟 |  |  |',
-    '| 🎉 Usage |  | 😀 |  |  |',
-    '| 💬 Referral |  | 🤩 |  |  |',
-    '',
-    '### MoT (Moments of Truth)',
-    '',
-    '1. First launch — 30 seconds to decide retention',
-    '2. First value realization — Aha! moment',
-    '3. First failure — trust test',
-    '',
-  ].join('\n')
-  view.dispatch({ changes: { from: view.state.selection.main.head, insert: text }, userEvent: 'input.insert.journey-dashboard' })
-  return true
-}
-
-export function linesToEisenhowerByHoursText(source: string): string {
-                                                   
-  const lines = source.split('\n')
-  type Item = { content: string; hours: number; urgent: boolean }
-  const items: Item[] = []
-  for (const raw of lines) {
-    const m = /^\s*[-*+]\s+(.+?)\s*\((\d+(?:\.\d+)?)\s*h\)\s*$/i.exec(raw)
-    if (!m) continue
-    const content = m[1].trim()
-    const hours = parseFloat(m[2])
-    const urgent = hours <= 2
-    items.push({ content, hours, urgent })
-  }
-  if (items.length === 0) return source
-  const buckets: Record<string, string[]> = { do: [], plan: [], delegate: [], drop: [] }
-  for (const it of items) {
-    const important = it.hours >= 3
-    const key = it.urgent && important ? 'do'
-      : !it.urgent && important ? 'plan'
-        : it.urgent && !important ? 'delegate'
-          : 'drop'
-    buckets[key].push(`- [${it.hours}h] ${it.content}`)
-  }
-  const out: string[] = ['## Eisenhower Matrix (by hours)', '']
-  out.push('### 🔥 Do now (Urgent + Important)')
-  out.push(...(buckets.do.length ? buckets.do : ['_none_']))
-  out.push('')
-  out.push('### 📅 Schedule (Not urgent + Important)')
-  out.push(...(buckets.plan.length ? buckets.plan : ['_none_']))
-  out.push('')
-  out.push('### 🤝 Delegate (Urgent + Not important)')
-  out.push(...(buckets.delegate.length ? buckets.delegate : ['_none_']))
-  out.push('')
-  out.push('### 🗑️ Drop (Not urgent + Not important)')
-  out.push(...(buckets.drop.length ? buckets.drop : ['_none_']))
-  return out.join('\n')
-}
-
-export const linesToEisenhowerByHours: Command = (view) =>
-  applyToSelectionOrAll(view, linesToEisenhowerByHoursText, 'transform.eisenhower-hours')
-
-export const insertScrumPokerSessionTemplate: Command = (view) => {
-  const text = [
-    '## Scrum Planning Poker',
-    '',
-    '**Sprint**:',
-    '**Facilitator**:',
-    '**Estimation unit**: Fibonacci (1 / 2 / 3 / 5 / 8 / 13 / 21)',
-    '',
-    '| Story | Description | Estimate 1 | Estimate 2 | Estimate 3 | Consensus | Assumptions |',
-    '| --- | --- | --- | --- | --- | --- | --- |',
-    '|  |  |  |  |  |  |  |',
-    '',
-    '### Discussion Notes',
-    '',
-    '- ',
-    '',
-    '### Stories with High Variance',
-    '',
-    '- ',
-    '',
-    '### Total Estimate',
-    '',
-    '- Story points total:',
-    '- Team velocity:',
-    '- Capacity ratio:',
-    '',
-  ].join('\n')
-  view.dispatch({ changes: { from: view.state.selection.main.head, insert: text }, userEvent: 'input.insert.scrum-poker' })
-  return true
-}
-
-export function paragraphsToUserStoryAcceptanceText(source: string): string {
-  const paragraphs = source.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean)
-  if (paragraphs.length === 0) return source
-  const out: string[] = ['## User Stories & Acceptance Criteria', '']
-  paragraphs.forEach((p, i) => {
-    out.push(`### Story ${i + 1}`)
-    out.push('')
-    out.push(`**As a** [role]`)
-    out.push(`**I want to** ${p}`)
-    out.push(`**So that** [value]`)
-    out.push('')
-    out.push('**Acceptance criteria**:')
-    out.push('- [ ] **Given** [precondition]')
-    out.push('- [ ] **When** [action]')
-    out.push('- [ ] **Then** [result]')
-    out.push('')
-    out.push('**Estimate**:')
-    out.push('**Priority**:')
-    out.push('')
-  })
-  return out.join('\n')
-}
-
-export const paragraphsToUserStoryAcceptance: Command = (view) =>
-  applyToSelectionOrAll(view, paragraphsToUserStoryAcceptanceText, 'transform.story-acceptance')
-
-export const insertDeploymentReleaseNotes: Command = (view) => {
-  const today = new Date().toISOString().slice(0, 10)
-  const text = [
-    `## Release Notes ${today}`,
-    '',
-    '**Version**: v',
-    '**Release date**:',
-    '**Released by**:',
-    '',
-    '### 🚀 New Features',
-    '- ',
-    '',
-    '### 🐛 Bug Fixes',
-    '- ',
-    '',
-    '### ⚡ Performance Improvements',
-    '- ',
-    '',
-    '### 💔 Breaking Changes',
-    '- _none_',
-    '',
-    '### ⬆️ Upgrade Guide',
-    '',
-    '```bash',
-    '# upgrade command',
-    '```',
-    '',
-    '### 🔄 Rollback Steps',
-    '',
-    '1. ',
-    '',
-    '### 🙏 Contributors',
-    '',
-    '- ',
-    '',
-  ].join('\n')
-  view.dispatch({ changes: { from: view.state.selection.main.head, insert: text }, userEvent: 'input.insert.release-notes' })
-  return true
-}
-
-export function bulletsToRoadmapQuartersText(source: string): string {
-  const lines = source.split('\n')
-  const items: string[] = []
-  for (const line of lines) {
-    const m = /^\s*[-*+]\s+(.+)$/.exec(line)
-    if (m) items.push(m[1].trim())
-  }
-  if (items.length === 0) return source
-  const quarters = ['Q1', 'Q2', 'Q3', 'Q4']
-  const out: string[] = ['## Roadmap', '']
-  out.push('| Quarter | Theme | Key deliverables | Status |')
-  out.push('| --- | --- | --- | --- |')
-  items.forEach((item, i) => {
-    const q = quarters[i % 4]
-    out.push(`| ${q} |  | ${item} | ⏳ |`)
-  })
-  return out.join('\n')
-}
-
-export const bulletsToRoadmapQuarters: Command = (view) =>
-  applyToSelectionOrAll(view, bulletsToRoadmapQuartersText, 'transform.roadmap-quarters')
-
-export const insertOKRCascadeTemplate: Command = (view) => {
-  const text = [
-    '## OKR Cascade',
-    '',
-    '### 🏢 Company Level',
-    '',
-    '**Objective**:',
-    '',
-    '- [ ] KR1:',
-    '- [ ] KR2:',
-    '- [ ] KR3:',
-    '',
-    '### 🏛️ Department Level',
-    '',
-    '**Department**:',
-    '**Objective**: (supports Company KR1)',
-    '',
-    '- [ ] KR1:',
-    '- [ ] KR2:',
-    '',
-    '### 👥 Team Level',
-    '',
-    '**Team**:',
-    '**Objective**: (supports Department KR1)',
-    '',
-    '- [ ] KR1:',
-    '- [ ] KR2:',
-    '',
-    '### 🧑 Individual Level',
-    '',
-    '**Objective**: (supports Team KR1)',
-    '',
-    '- [ ] KR1:',
-    '- [ ] KR2:',
-    '',
-  ].join('\n')
-  view.dispatch({ changes: { from: view.state.selection.main.head, insert: text }, userEvent: 'input.insert.okr-cascade' })
-  return true
-}
-
-export function paragraphsToRiskRegisterEntriesText(source: string): string {
-  const paragraphs = source.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean)
-  if (paragraphs.length === 0) return source
-  const out: string[] = ['## Risk Register', '']
-  out.push('| # | Risk | Probability | Impact | Score | Mitigation strategy | Owner |')
-  out.push('| --- | --- | --- | --- | --- | --- | --- |')
-  paragraphs.forEach((p, i) => {
-    out.push(`| R${String(i + 1).padStart(3, '0')} | ${p} | Medium | Medium | 4 | Mitigate |  |`)
-  })
-  out.push('')
-  out.push('### Score Legend')
-  out.push('')
-  out.push('- 1-2: Low priority, monitor')
-  out.push('- 3-5: Medium priority, develop response')
-  out.push('- 6-9: High priority, act immediately')
-  return out.join('\n')
-}
-
-export const paragraphsToRiskRegisterEntries: Command = (view) =>
-  applyToSelectionOrAll(view, paragraphsToRiskRegisterEntriesText, 'transform.risk-register')
-
-export function normalizeTrailingPunctuationText(source: string): string {
-                                         
-  const lines = source.split('\n')
-  let inFence = false
-  const out: string[] = []
-  for (const line of lines) {
-    if (/^\s*```/.test(line)) {
-      inFence = !inFence
-      out.push(line)
-      continue
-    }
-    if (inFence) {
-      out.push(line)
-      continue
-    }
-    let next = line
-                  
-    next = next.replace(/(\p{Sentence_Terminal})\1{1,}/gu, '$1')
-                
-    next = next.replace(/(\p{Sentence_Terminal})\s+$/gu, '$1')
-             
-    next = next.replace(/[ \t]+$/g, '')
-    out.push(next)
-  }
-  return out.join('\n')
-}
-
-export const normalizeTrailingPunctuation: Command = (view) =>
-  applyToSelectionOrAll(view, normalizeTrailingPunctuationText, 'lint.trailing-punct')
-
-export const insertMonthlyBusinessReviewTemplate: Command = (view) => {
-  const text = [
-    '# Monthly Business Review',
-    '',
-    '**Month**:',
-    '**Business**:',
-    '',
-    '## 📊 Key Metrics',
-    '',
-    '| Metric | Target | Actual | Achievement | YoY | MoM |',
-    '| --- | --- | --- | --- | --- | --- |',
-    '|  |  |  |  |  |  |',
-    '',
-    '## ✅ What We Accomplished',
-    '',
-    '- ',
-    '',
-    '## ⏰ What We Didn\'t Finish',
-    '',
-    '- ',
-    '',
-    '## 🔍 Key Findings',
-    '',
-    '1. ',
-    '',
-    '## 💡 Next Month Focus',
-    '',
-    '### Must do',
-    '- [ ] ',
-    '',
-    '### Should do',
-    '- [ ] ',
-    '',
-    '### Nice to do',
-    '- [ ] ',
-    '',
-    '## 🚨 Risks & Dependencies',
-    '',
-    '- ',
-    '',
-    '## 🤝 Support Needed',
-    '',
-    '- ',
-    '',
-  ].join('\n')
-  view.dispatch({ changes: { from: view.state.selection.main.head, insert: text }, userEvent: 'input.insert.mbr' })
   return true
 }
 

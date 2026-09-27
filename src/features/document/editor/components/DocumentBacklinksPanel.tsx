@@ -1,12 +1,3 @@
-   
-               
-  
-                                                                         
-                                                  
-  
-                                              
-   
-
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -39,7 +30,7 @@ export type BacklinkHit = {
 }
 
 export type DocumentBacklinksPanelProps = {
-                         
+
   currentPath: string
   onSelect?: (path: string, line: number) => void
   className?: string
@@ -126,7 +117,6 @@ export function DocumentBacklinksPanel({
     )
   }
 
-           
   const byFile = new Map<string, BacklinkHit[]>()
   for (const h of hits) {
     const arr = byFile.get(h.sourcePath) ?? []

@@ -1,51 +1,7 @@
-   
-                                
-  
-                                                                  
-  
-                                      
-                              
-                    
-                                                                       
-                                                                  
-                                                                
-        
-      
-  
-                                                                     
-  
-                                                   
-                                                        
-                   
-                                                             
-                                       
-  
-         
-                                                                             
-                                                                 
-                                  
-                                                                                      
-                                                                                
-                                                                                          
-                                                                      
-                                                                         
-                                 
-   
-
 import { StateEffect, StateField, type EditorState } from '@codemirror/state'
 
-   
-                                                                            
-                                          
-   
 export const editorFocusEffect = StateEffect.define<boolean>()
 
-   
-                                                           
-                                                        
-                                                          
-                                                                              
-   
 export const editorFocusField = StateField.define<boolean>({
   create: () => false,
   update(value, tr) {
@@ -55,21 +11,14 @@ export const editorFocusField = StateField.define<boolean>({
 })
 
 export type SelectionContext = {
-     
-                                                               
-                                                         
-     
+
   readonly activeLines: ReadonlySet<number>
-     
-                                                                        
-                                                                                  
-     
+
   readonly ranges: readonly { from: number; to: number }[]
 }
 
 export function buildSelectionContext(state: EditorState): SelectionContext {
-                                                           
-                              
+
   const focused = state.field(editorFocusField, false) ?? false
   const activeLines = new Set<number>()
   if (!focused) {
@@ -87,21 +36,6 @@ export function lineIsActive(ctx: SelectionContext, lineNumber: number): boolean
   return ctx.activeLines.has(lineNumber)
 }
 
-   
-                                 
-  
-                                                                  
-  
-                                                                     
-                                                                               
-  
-                                                                        
-                                                        
-                                
-  
-                                                     
-                                    
-   
 export function rangeIsActive(
   ctx: SelectionContext,
   from: number,
@@ -110,12 +44,6 @@ export function rangeIsActive(
   return ctx.ranges.some((r) => r.from <= to && r.to >= from)
 }
 
-   
-                                        
-                           
-  
-                                                                  
-   
 export function lineTextIsJustMarker(
   state: EditorState,
   lineNumber: number,
@@ -128,11 +56,6 @@ export function lineTextIsJustMarker(
   return lineText === markerText
 }
 
-   
-                    
-  
-                                                      
-   
 export function shouldHideLineMarker(
   ctx: SelectionContext,
   state: EditorState,
@@ -145,12 +68,6 @@ export function shouldHideLineMarker(
   return true
 }
 
-   
-                    
-  
-                                            
-                      
-   
 export function shouldHideInlineMarker(
   ctx: SelectionContext,
   from: number,

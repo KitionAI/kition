@@ -1,21 +1,3 @@
-   
-                                                      
-                                                                                            
-                                                                    
-  
-                                                                       
-                          
-                                              
-                                                                  
-                                                         
-                                                 
-                                   
-  
-                                                            
-                                                    
-                                                                
-                         
-   
 import { type Extension } from '@codemirror/state'
 import { EditorView, ViewPlugin, type PluginValue, type ViewUpdate } from '@codemirror/view'
 

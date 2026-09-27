@@ -1,52 +1,41 @@
-   
-                              
-  
-                               
-                                      
-                                               
-                         
-  
-                                                                  
-   
-
 import type { Completion, CompletionContext, CompletionResult, CompletionSource } from '@codemirror/autocomplete'
 import i18next from 'i18next'
 
 export type WikilinkSuggestion = {
-                               
+
   target: string
-                        
+
   label?: string
-                
+
   detail?: string
 }
 
 export type AnchorSuggestion = {
-                   
+
   text: string
-             
+
   level?: number
 }
 
 export type BlockIdSuggestion = {
-                       
+
   id: string
-                
+
   preview?: string
 }
 
 export type TagSuggestion = {
-                   
+
   name: string
-             
+
   count?: number
 }
 
 export type SuggestProviders = {
   wikilinks?: (query: string) => WikilinkSuggestion[] | Promise<WikilinkSuggestion[]>
-                                             
+
   headingsOf?: (target: string) => AnchorSuggestion[] | Promise<AnchorSuggestion[]>
-                                                      
+
   blockIdsOf?: (target: string) => BlockIdSuggestion[] | Promise<BlockIdSuggestion[]>
   tags?: (query: string) => TagSuggestion[] | Promise<TagSuggestion[]>
 }
@@ -59,16 +48,16 @@ export function wikilinkCompletionSource(
     const before = line.text.slice(0, context.pos - line.from)
     const open = before.lastIndexOf('[[')
     if (open < 0) return null
-                           
+
     const inner = before.slice(open + 2)
     if (/[\]\n]/.test(inner)) return null
 
     const hashIdx = inner.indexOf('#')
     if (hashIdx >= 0) {
-                             
+
       const target = inner.slice(0, hashIdx)
       const rest = inner.slice(hashIdx + 1)
-                        
+
       if (rest.startsWith('^') && providers.blockIdsOf) {
         const q = rest.slice(1).toLowerCase()
         const ids = await providers.blockIdsOf(target)
@@ -108,7 +97,6 @@ export function wikilinkCompletionSource(
       return null
     }
 
-            
     if (!providers.wikilinks) return null
     const query = inner
     const from = line.from + open + 2

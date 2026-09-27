@@ -1,13 +1,3 @@
-   
-                 
-  
-                                                               
-                                                    
-  
-                                                
-                                          
-   
-
 import { redo, undo } from '@codemirror/commands'
 import { openSearchPanel } from '@codemirror/search'
 import type { EditorView } from '@codemirror/view'
@@ -72,21 +62,21 @@ import {
 } from './commands'
 
 export type DocumentEditorToolbarProps = {
-                                            
+
   getView: () => EditorView | null
   readOnly?: boolean
   className?: string
-                                            
+
   showTools?: boolean
-                          
+
   onToggleOutline?: () => void
   outlineOpen?: boolean
-                                                   
+
   readingView?: boolean
-                                                
+
   onSetReadingView?: (next: boolean) => void
   onAskAgent?: () => void
-                                                       
+
   actionsSlot?: ReactNode
 }
 

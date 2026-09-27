@@ -1,10 +1,3 @@
-   
-                    
-  
-                                                                             
-                        
-   
-
 import { Compartment } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 

@@ -1,12 +1,3 @@
-   
-                                     
-  
-      
-                                            
-                                       
-                
-   
-
 import { EditorView } from '@codemirror/view'
 import type { Extension } from '@codemirror/state'
 
@@ -20,7 +11,7 @@ export function pasteLinkExtension(): Extension {
       const main = view.state.selection.main
       if (main.empty) return false
       const selected = view.state.sliceDoc(main.from, main.to)
-                           
+
       if (selected.includes('\n')) return false
       event.preventDefault()
       const insert = `[${selected}](${text})`

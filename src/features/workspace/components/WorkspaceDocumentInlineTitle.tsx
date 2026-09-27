@@ -1,19 +1,3 @@
-   
-                                
-  
-                                                              
-                                             
-                                                        
-                                   
-                                                  
-                                                              
-                                                       
-                          
-                                                          
-  
-                                                     
-                              
-   
 import { useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import {
@@ -25,7 +9,7 @@ type WorkspaceDocumentInlineTitleProps = {
   documentPath: string
   value: string
   onCommit: (next: string) => void
-                                           
+
   onFocusEditor?: () => void
   disabled?: boolean
 }

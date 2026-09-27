@@ -1,16 +1,3 @@
-   
-                                       
-  
-                                                                    
-                                  
-  
-                                            
-                                                                           
-                                                            
-                         
-                                                                 
-                                
-   
 import colors from 'tailwindcss/colors';
 import { hexToRGBA } from '../utils';
 

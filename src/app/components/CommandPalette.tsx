@@ -39,7 +39,6 @@ export function CommandPalette({
     onClose()
   }
 
-                                          
   useEffect(() => {
     const previouslyFocused = document.activeElement as HTMLElement | null
     const prevOverflow = document.body.style.overflow

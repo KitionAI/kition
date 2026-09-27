@@ -15,6 +15,7 @@ import {
   trackProductEvent,
 } from '@/features/analytics/lib/productAnalytics'
 
+import { AppErrorBoundary } from '@/components/AppErrorBoundary'
 import { AppShell } from './Shell'
 
 let appStartedTracked = false
@@ -87,5 +88,9 @@ export function App() {
     }
   }, [])
 
-  return <AppShell />
+  return (
+    <AppErrorBoundary scope="app">
+      <AppShell />
+    </AppErrorBoundary>
+  )
 }

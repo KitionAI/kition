@@ -35,9 +35,6 @@ function unwrapResponseData<T>(response: T | { data?: T }) {
   return (response as { data?: T })?.data ?? (response as T)
 }
 
-                                             
-                                                                   
-                                                                         
 function normalizeField(field: DataField | undefined | null): DataField {
   if (!field) return field as DataField
   const options = (field.options ?? {}) as Record<string, unknown>

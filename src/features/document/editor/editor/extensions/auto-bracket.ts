@@ -1,15 +1,3 @@
-   
-                
-  
-                                                                   
-                  
-                    
-                           
-                
-                                 
-                                            
-   
-
 import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete'
 import { EditorState } from '@codemirror/state'
 import { keymap } from '@codemirror/view'

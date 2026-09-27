@@ -1,15 +1,3 @@
-   
-                                                    
-  
-                                                        
-                                             
-                                 
-                                         
-  
-                                                   
-                
-   
-
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 
 import { parseBlockIds } from '@/features/document/editor/lib/block-id-parser'
@@ -82,10 +70,10 @@ export function useVaultSuggestProviders(): SuggestProviders {
     if (!target) return null
     const files = await loadFiles()
     const targetLower = target.toLowerCase()
-                    
+
     const exact = files.find((f) => stripMdExtension(f.path).toLowerCase() === targetLower)
     if (exact) return exact.path
-            
+
     const byName = files.find((f) => stripMdExtension(lastSegment(f.path)).toLowerCase() === targetLower)
     return byName ? byName.path : null
   }, [loadFiles])
@@ -106,7 +94,6 @@ export function useVaultSuggestProviders(): SuggestProviders {
     return counter
   }, [loadFiles, readFile])
 
-                            
   useEffect(() => {
     filesRef.current = null
     tagsRef.current = null
@@ -117,7 +104,7 @@ export function useVaultSuggestProviders(): SuggestProviders {
     async (query: string): Promise<WikilinkSuggestion[]> => {
       const files = await loadFiles()
       const q = query.toLowerCase()
-                   
+
       const recents = listRecentFiles()
       const recentRank = new Map<string, number>()
       recents.forEach((r, i) => recentRank.set(stripMdExtension(r.path).toLowerCase(), i))
@@ -131,7 +118,7 @@ export function useVaultSuggestProviders(): SuggestProviders {
         .map((s) => {
           const r = recentRank.get(s.target.toLowerCase())
           const recencyBoost = r != null ? Math.max(0, 50 - r) : 0
-                                  
+
           const lbl = s.label.toLowerCase()
           let score = 0
           if (q) {
@@ -191,10 +178,6 @@ export function useVaultSuggestProviders(): SuggestProviders {
     [loadTags],
   )
 
-                                                                              
-                                                           
-                                                                                 
-                                                 
   return useMemo<SuggestProviders>(
     () => ({ wikilinks, headingsOf, blockIdsOf, tags }),
     [wikilinks, headingsOf, blockIdsOf, tags],

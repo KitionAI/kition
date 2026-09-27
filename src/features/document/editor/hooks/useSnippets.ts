@@ -1,16 +1,3 @@
-   
-                     
-  
-                                                          
-                                               
-  
-                  
-                               
-                          
-                            
-                                 
-   
-
 import { useCallback, useEffect, useState } from 'react'
 
 const STORAGE_KEY = 'kition.document.snippets'

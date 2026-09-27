@@ -1,12 +1,3 @@
-   
-               
-  
-                                                            
-                                                             
-  
-                         
-   
-
 import {
   createWorkspaceDocument,
   deleteWorkspaceDocument,

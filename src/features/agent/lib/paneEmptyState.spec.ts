@@ -55,7 +55,7 @@ describe('PANE_SUGGESTIONS', () => {
   })
 
   // Galleries can hold images OR videos (WorkspaceMediaKind = 'images' |
-                                                                       
+
   // as a bug when the user is on a videos gallery. Lock in
   // media-neutral phrasing for the gallery pane only — other panes are
   // free to use document/table/etc. terminology where appropriate.

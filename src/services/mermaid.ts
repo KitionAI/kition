@@ -10,18 +10,12 @@ type MermaidModule = typeof import('mermaid').default
 let mermaidPromise: Promise<MermaidModule> | null = null
 let renderCounter = 0
 
-                                                      
 function cssVar(name: string, fallback: string): string {
   if (typeof document === 'undefined') return fallback
   const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
   return raw ? `hsl(${raw})` : fallback
 }
 
-   
-                                                               
-                                                     
-                                             
-   
 function applyTheme(mermaid: MermaidModule) {
   const isDark = typeof document !== 'undefined'
     && document.documentElement.classList.contains('dark')

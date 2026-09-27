@@ -1,13 +1,3 @@
-   
-                                                           
-  
-      
-                                              
-                                                            
-                                         
-                                      
-                                              
-   
 import { EditorState } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { afterEach, describe, expect, it, vi } from 'vitest'

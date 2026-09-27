@@ -1,17 +1,10 @@
-   
-                   
-  
-                                    
-                               
-   
-
 export type BlockIdParsed = {
-                   
+
   blockId: string
-                         
+
   from: number
   to: number
-                      
+
   line: number
 }
 

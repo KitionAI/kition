@@ -1,18 +1,3 @@
-   
-                         
-  
-                                 
-                                             
-                                                                
-                                                
-                                             
-                                  
-  
-                                         
-                                                                         
-                                                                                   
-   
-
 import {
   foldEffect,
   foldable,
@@ -36,11 +21,7 @@ class HeadingFoldWidget extends WidgetType {
   }
 
   eq(other: HeadingFoldWidget): boolean {
-                                                             
-                                                                
-                                                                    
-                                
-                                             
+
     return other.collapsed === this.collapsed
   }
 
@@ -51,15 +32,14 @@ class HeadingFoldWidget extends WidgetType {
 
     const indicator = document.createElement('span')
     indicator.className = 'collapse-indicator collapse-icon'
-                                                  
+
     indicator.innerHTML
       = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>'
 
     indicator.addEventListener('mousedown', (e) => {
       e.preventDefault()
       e.stopPropagation()
-                                                             
-                                                   
+
       const pos = view.posAtDOM(container)
       const line = view.state.doc.lineAt(pos)
       const range = foldable(view.state, line.from, line.to)
@@ -92,13 +72,7 @@ function buildDecorations(view: EditorView): DecorationSet {
     while (pos <= to) {
       const line = doc.lineAt(pos)
       if (HEADING_LINE_RE.test(line.text)) {
-                                             
-                                                                            
-                                                                  
-                                                         
-                                                        
-                                                                
-                              
+
         const range = foldable(state, line.from, line.to)
         let collapsed = false
         if (range) {
@@ -139,11 +113,7 @@ export function headingFoldIndicatorExtension(): Extension {
         this.decorations = buildDecorations(view)
       }
       update(update: ViewUpdate) {
-                                                       
-                                                        
-                                                                   
-                                                    
-                                          
+
         if (
           update.docChanged
           || update.viewportChanged

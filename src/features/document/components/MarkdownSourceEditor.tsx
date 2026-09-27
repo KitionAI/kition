@@ -117,9 +117,7 @@ export const MarkdownSourceEditor = forwardRef<ReactCodeMirrorRef, MarkdownSourc
           },
           '.cm-line': { padding: '0' },
           '.cm-cursor': { borderLeftColor: 'currentColor' },
-                                                                                         
-                                                        
-                                                       
+
           '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, ::selection': {
             backgroundColor: 'hsl(var(--primary) / 0.3)',
           },

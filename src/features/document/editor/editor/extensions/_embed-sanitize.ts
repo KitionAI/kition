@@ -1,11 +1,3 @@
-   
-                           
-                                       
-                                                  
-  
-                                                 
-   
-
 export function sanitizeEmbed(root: HTMLElement): void {
   root.querySelectorAll('script, iframe, object, embed').forEach((el) => el.remove())
   root.querySelectorAll('a[href]').forEach((a) => {

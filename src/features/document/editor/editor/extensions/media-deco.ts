@@ -1,14 +1,3 @@
-   
-         
-  
-                                               
-                  
-                                                            
-                                          
-  
-                                 
-   
-
 import { RangeSetBuilder, type Extension } from '@codemirror/state'
 import {
   Decoration,
@@ -20,24 +9,24 @@ import {
 } from '@codemirror/view'
 
 export type IframeSpan = {
-                                  
+
   from: number
-                                    
+
   to: number
-                    
+
   src: string
 }
 
 export type AudioLinkSpan = {
-                      
+
   from: number
-                        
+
   to: number
-                
+
   label: string
-                    
+
   href: string
-                        
+
   ext: string
 }
 
@@ -54,16 +43,11 @@ function buildLineOffsets(source: string): number[] {
   return offsets
 }
 
-   
-                                                    
-                        
-   
 export function findIframeSpans(source: string): IframeSpan[] {
   const spans: IframeSpan[] = []
   const lines = source.split('\n')
   const lineFrom = buildLineOffsets(source)
 
-                                           
   const inFence: boolean[] = new Array(lines.length).fill(false)
   let fence = false
   for (let i = 0; i < lines.length; i++) {
@@ -75,13 +59,12 @@ export function findIframeSpans(source: string): IframeSpan[] {
     inFence[i] = fence
   }
 
-                                                      
   const re = /<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi
   let m: RegExpExecArray | null
   while ((m = re.exec(source)) !== null) {
     const from = m.index
     const to = from + m[0].length
-                                 
+
     let overlap = false
     const fromLine = findLineByOffset(lineFrom, from)
     const toLine = findLineByOffset(lineFrom, to - 1)
@@ -99,7 +82,7 @@ export function findIframeSpans(source: string): IframeSpan[] {
 }
 
 function findLineByOffset(lineFrom: number[], offset: number): number {
-       
+
   let lo = 0
   let hi = lineFrom.length - 1
   while (lo < hi) {
@@ -110,10 +93,6 @@ function findLineByOffset(lineFrom: number[], offset: number): number {
   return lo
 }
 
-   
-                                           
-                                  
-   
 export function findAudioLinks(source: string): AudioLinkSpan[] {
   const spans: AudioLinkSpan[] = []
   const lines = source.split('\n')
@@ -126,7 +105,7 @@ export function findAudioLinks(source: string): AudioLinkSpan[] {
       continue
     }
     if (inFence) continue
-             
+
     const masked = line.replace(/`[^`]*`/g, (s) => ' '.repeat(s.length))
     const re = /\[([^\]]+)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g
     let m: RegExpExecArray | null
@@ -216,7 +195,7 @@ class AudioPlayWidget extends WidgetType {
     return el
   }
   ignoreEvent(): boolean {
-                       
+
     return false
   }
 }

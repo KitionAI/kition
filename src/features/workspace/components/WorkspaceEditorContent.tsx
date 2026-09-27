@@ -1,8 +1,9 @@
 import type { ComponentProps } from 'react'
-import { lazy, Suspense, useCallback, useEffect, useMemo } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, type ReactNode } from 'react'
 import { BookOpen, Globe } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/registry/ui/button'
+import { AppErrorBoundary } from '@/components/AppErrorBoundary'
 import type { OpenedDocumentDraftCacheEntry } from '@/features/document/lib/openedDocumentDrafts'
 import type {
   DocumentRevisionDecision,
@@ -88,6 +89,27 @@ function EditorPaneFallback() {
   )
 }
 
+/**
+ * Every editor surface mounts behind its own error boundary so a crash in one
+ * document, table, board, or workflow view leaves the shell and the other
+ * tabs usable. The Suspense fallback covers the lazy chunk load.
+ */
+function EditorPaneBoundary({
+  label,
+  fallback,
+  children,
+}: {
+  label?: string
+  fallback?: ReactNode
+  children: ReactNode
+}) {
+  return (
+    <AppErrorBoundary scope="pane" label={label}>
+      <Suspense fallback={fallback === undefined ? <EditorPaneFallback /> : fallback}>{children}</Suspense>
+    </AppErrorBoundary>
+  )
+}
+
 type WorkspaceEditorContentProps = {
   activeDocument: WorkspaceDocument | null
   activeDocumentFormat: WorkspaceDocumentFormat
@@ -138,16 +160,12 @@ type WorkspaceEditorContentProps = {
   onDecideDocumentRevisionChange: (changeId: string, decision: DocumentRevisionDecision) => void
   onResolveAllDocumentRevisionChanges: (decision: DocumentRevisionDecision) => void
   onSplitEditorChange: (value: string) => void
-     
-                                           
-                                                               
-                                               
-     
+
   onOpenDocument?: (path: string, opts?: { line?: number; section?: string }) => void
   onTableAgentOpenChange: (open: boolean) => void
-                                                       
+
   onToolbarMount?: (node: HTMLElement | null) => void
-                                          
+
   onSetEditorMode: (mode: 'rich' | 'split' | 'source' | 'preview') => void
   tableAgentOpen: boolean
   designRoot?: string
@@ -266,9 +284,9 @@ export function WorkspaceEditorContent({
       ) : null}
       {activeWorkspaceTab?.type === 'gallery' && galleryPanelProps ? (
         <div className="document-editor-view is-active">
-          <Suspense fallback={<EditorPaneFallback />}>
+          <EditorPaneBoundary>
             <WorkspaceMediaPanel {...galleryPanelProps} />
-          </Suspense>
+          </EditorPaneBoundary>
         </div>
       ) : null}
       {workspaceTabs
@@ -291,7 +309,7 @@ export function WorkspaceEditorContent({
           >
             {tab.workflowId ? (
               // Detail mode: show single workflow editor
-              <Suspense fallback={null}>
+              <EditorPaneBoundary fallback={null}>
                 {tab.workflowId.startsWith('formsync_') ? (
                   <FormSyncWorkflowPage workflowId={tab.workflowId} />
                 ) : tab.workflowId.startsWith('mail_') ? (
@@ -304,10 +322,10 @@ export function WorkspaceEditorContent({
                     rootPath={rootPath}
                   />
                 )}
-              </Suspense>
+              </EditorPaneBoundary>
             ) : (
               // Index mode: show list of workflows scoped to kitable
-              <Suspense fallback={null}>
+              <EditorPaneBoundary fallback={null}>
                 <WorkflowIndexPage
                   scopedKitablePath={tab.kitablePath}
                   rootPath={rootPath}
@@ -323,7 +341,7 @@ export function WorkspaceEditorContent({
                     ? () => onCreateWorkflow(tab.kitablePath!)
                     : undefined}
                 />
-              </Suspense>
+              </EditorPaneBoundary>
             )}
           </div>
         ))}
@@ -337,20 +355,20 @@ export function WorkspaceEditorContent({
               activeWorkspaceTabId === tab.id && activeWorkspaceTab?.type === 'file-viewer' && 'is-active',
             )}
           >
-            <Suspense fallback={<EditorPaneFallback />}>
+            <EditorPaneBoundary>
               <WorkspaceFileViewerPane
                 path={tab.path}
                 format={tab.format}
                 active={activeWorkspaceTabId === tab.id}
               />
-            </Suspense>
+            </EditorPaneBoundary>
           </div>
         ))}
       {workspaceTabs.filter((tab): tab is Extract<WorkspaceTab, { type: 'design' }> => tab.type === 'design').map(tab => (
         <div key={`${designRoot}:${tab.id}`} className={cn('document-editor-view', activeWorkspaceTabId === tab.id && 'is-active')}>
-          <Suspense fallback={<EditorPaneFallback />}>
+          <EditorPaneBoundary>
             <DesignEditorPane root={designRoot || 'browser-local-workspace'} path={tab.path} title={tab.title} active={activeWorkspaceTabId === tab.id} />
-          </Suspense>
+          </EditorPaneBoundary>
         </div>
       ))}
       {workspaceTabs
@@ -365,7 +383,7 @@ export function WorkspaceEditorContent({
                 && 'is-active',
             )}
           >
-            <Suspense fallback={<EditorPaneFallback />}>
+            <EditorPaneBoundary>
               <WhiteboardEditorPane
                 agentAvailable={whiteboardAgentAvailable}
                 agentBusy={whiteboardAgentBusy}
@@ -376,7 +394,7 @@ export function WorkspaceEditorContent({
                 path={tab.path}
                 title={tab.title}
               />
-            </Suspense>
+            </EditorPaneBoundary>
           </div>
         ))}
       {activeWorkspaceTab?.type === 'browser' ? (
@@ -481,7 +499,7 @@ export function WorkspaceEditorContent({
                 key={tab.path}
                 className={cn('document-data-editor-stack__pane', isActiveDataTab && 'is-active')}
               >
-                <Suspense fallback={<EditorPaneFallback />}>
+                <EditorPaneBoundary>
                   <TableEditorPane
                     documentPath={entry.document.path}
                     markerContent={entry.document.content}
@@ -490,7 +508,7 @@ export function WorkspaceEditorContent({
                     onAgentContextChange={onTableAgentContextChange}
                     onAgentOpenChange={onTableAgentOpenChange}
                   />
-                </Suspense>
+                </EditorPaneBoundary>
               </div>
             )
           })}
@@ -505,7 +523,7 @@ export function WorkspaceEditorContent({
                 className={cn('document-data-editor-stack__pane', isActiveTableTab && 'is-active')}
               >
                 {/* table tab is identified by pinnedTableId, not by parsing a marker file */}
-                <Suspense fallback={<EditorPaneFallback />}>
+                <EditorPaneBoundary>
                   <TableEditorPane
                     documentPath={tab.kitablePath}
                     markerContent=""
@@ -515,7 +533,7 @@ export function WorkspaceEditorContent({
                     onAgentContextChange={onTableAgentContextChange}
                     onAgentOpenChange={onTableAgentOpenChange}
                   />
-                </Suspense>
+                </EditorPaneBoundary>
               </div>
             )
           })}
@@ -529,12 +547,12 @@ export function WorkspaceEditorContent({
                 key={tab.id}
                 className={cn('document-data-editor-stack__pane', isActiveDashboardTab && 'is-active')}
               >
-                <Suspense fallback={<EditorPaneFallback />}>
+                <EditorPaneBoundary>
                   <DashboardEditorPane
                     documentPath={tab.kitablePath}
                     dashboardId={tab.dashboardId}
                   />
-                </Suspense>
+                </EditorPaneBoundary>
               </div>
             )
           })}
@@ -542,13 +560,13 @@ export function WorkspaceEditorContent({
       {activeWorkspaceTab?.type === 'document'
       && activeDocumentFormat === 'html'
       && !activeDocumentRevision ? (
-        <Suspense fallback={<EditorPaneFallback />}>
+        <EditorPaneBoundary>
           <DocumentHtmlPreviewPane html={draftContent} title={documentTitle} />
-        </Suspense>
+        </EditorPaneBoundary>
       ) : null}
       {activeWorkspaceTab?.type === 'document' && activeDocumentRevision ? (
         <div className="workspace-document-shell">
-          <Suspense fallback={<EditorPaneFallback />}>
+          <EditorPaneBoundary>
             <DocumentRevisionReview
               revision={activeDocumentRevision}
               saving={documentRevisionSaving}
@@ -556,7 +574,7 @@ export function WorkspaceEditorContent({
               onDecideChange={onDecideDocumentRevisionChange}
               onResolveAll={onResolveAllDocumentRevisionChanges}
             />
-          </Suspense>
+          </EditorPaneBoundary>
         </div>
       ) : null}
       {activeWorkspaceTab?.type === 'document'
@@ -594,7 +612,7 @@ export function WorkspaceEditorContent({
           ) : null}
           <div className="workspace-document-shell__body">
             {editorMode === 'split' ? (
-              <Suspense fallback={<EditorPaneFallback />}>
+              <EditorPaneBoundary>
                 <DocumentSplitEditorPane
                   value={draftContent}
                   previewHtml={editorPreviewHtml}
@@ -602,13 +620,13 @@ export function WorkspaceEditorContent({
                   onChange={onSplitEditorChange}
                   onCursorChange={handleMarkdownCursorChange}
                 />
-              </Suspense>
+              </EditorPaneBoundary>
             ) : null}
             {editorMode === 'source' ? (
               <div className="document-editor-view is-active">
                 <div className="document-markdown-split document-markdown-split--single">
                   <div className="document-markdown-pane">
-                    <Suspense fallback={<EditorPaneFallback />}>
+                    <EditorPaneBoundary>
                       <MarkdownSourceEditor
                         value={draftContent}
                         readOnly={!hasActiveDocument || editorLocked}
@@ -616,7 +634,7 @@ export function WorkspaceEditorContent({
                         placeholder={t('editor.sourcePlaceholder')}
                         onCursorChange={handleMarkdownCursorChange}
                       />
-                    </Suspense>
+                    </EditorPaneBoundary>
                   </div>
                 </div>
               </div>
@@ -648,7 +666,7 @@ export function WorkspaceEditorContent({
                       key={`${tab.uid || tab.path}:${editorResetVersions[tab.path] || 0}`}
                       className="document-rich-editor-stack__pane is-active"
                     >
-                      <Suspense fallback={<EditorPaneFallback />}>
+                      <EditorPaneBoundary>
                         <DocumentMarkdownEditorPane
                           documentPath={entry.document.path}
                           value={draftContent}
@@ -663,7 +681,7 @@ export function WorkspaceEditorContent({
                           onAskAgent={onAskDocumentAgent}
                           onAgentInsertionContextChange={onAgentInsertionContextChange}
                         />
-                      </Suspense>
+                      </EditorPaneBoundary>
                     </div>
                   )
                 })}

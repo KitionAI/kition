@@ -123,8 +123,7 @@ export function useWorkspaceTabs({
       ))
       const exists = existingIndex >= 0
       if (exists) {
-                                                       
-                                                           
+
         const existing = current[existingIndex]
         const merged = existing.type === 'document' && tab.type === 'document'
           ? { ...tab, uid: tab.uid || existing.uid }

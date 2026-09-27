@@ -202,7 +202,7 @@ describe('WorkflowHomePage', () => {
 
     // Post route-split: /workflow renders WorkflowIndexPage; this page's
     // own empty state is now the hero launcher (no kitable scope) rather
-                                 
+
     expect(container.querySelector('[data-testid="workflow-home-launcher"]')).not.toBeNull()
   })
 

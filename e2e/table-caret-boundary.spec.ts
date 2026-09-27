@@ -2,20 +2,6 @@ import { expect, test, type Page } from '@playwright/test'
 
 import { mockLocalWorkspaceApi } from './helpers/mockApi'
 
-   
-                                    
-  
-                                                                         
-                                                         
-  
-                                                                        
-                          
-  
-                                                                  
-                                                      
-                                       
-   
-
 const VAULT_PATH = '/tmp/kition-e2e-vault'
 const DOC_PATH = 'table-caret.md'
 

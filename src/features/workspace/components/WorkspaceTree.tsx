@@ -276,8 +276,7 @@ export function WorkspaceTree({
         const moveMenuOpen = moveMenuPath === node.path
         const iconPickerOpen = iconPickerPath === node.path
         const isRenaming = renamingPath === node.path
-                                                             
-                                             
+
         const isLiveLabelTarget = isActive && !node.virtual && node.type === 'file'
         const fallbackIcon = node.type === 'folder'
           ? <FolderOpen className={cn('size-4', workspaceFolderIconColorClass)} />
@@ -369,8 +368,7 @@ export function WorkspaceTree({
                 data-workflow-id={isKitableWorkflowLeaf ? (parseKitableWorkflowVirtualPath(node.path)?.workflowId ?? '') : undefined}
                 style={{ paddingLeft: `${paddingLeft}px` }}
                 onClick={(event) => {
-                                                          
-                                                      
+
                   if (event.detail > 1) {
                     return
                   }
@@ -806,7 +804,7 @@ function LiveActiveLabel({
   const { t } = useTranslation('workspace')
   const draft = useDraftTitleForPath(path)
   if (draft === null) return <>{fallback}</>
-                                                                    
+
   const extension = fallback.slice(title.length)
   const display = `${draft.trim() || t('tree.untitled')}${extension}`
   return <>{display}</>

@@ -32,8 +32,6 @@ export function clearDraftTitle(): void {
   notify()
 }
 
-                                                       
-                                 
 if (typeof window !== 'undefined') {
   window.addEventListener('kition:workspace-reload', () => {
     clearDraftTitle()

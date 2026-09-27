@@ -79,8 +79,6 @@ type UseWorkspaceDocumentSessionOptions = {
   setTreeItems: Dispatch<SetStateAction<WorkspaceDocumentTreeItem[]>>
 }
 
-                                                    
-                     
 const DRAFT_STATE_FLUSH_MS = 150
 
 export function useWorkspaceDocumentSession({
@@ -112,8 +110,7 @@ export function useWorkspaceDocumentSession({
   const activeDocumentFormatRef = useRef<WorkspaceDocumentFormat>('markdown')
   const draftContentRef = useRef('')
   const editorLockedRef = useRef(false)
-                                                                 
-                                                                             
+
   const draftStateFlushTimerRef = useRef<number | null>(null)
   const openedDocumentDraftsRef = useRef<Record<string, OpenedDocumentDraftCacheEntry>>({})
   const autoSnapshotAtRef = useRef<Record<string, number>>({})
@@ -138,26 +135,14 @@ export function useWorkspaceDocumentSession({
   activeDocumentFormatRef.current = activeDocumentFormat
   documentRevisionsRef.current = documentRevisions
   revisionSavingPathRef.current = revisionSavingPath
-                                                                   
-                                                                     
-                                                        
+
   if (draftStateFlushTimerRef.current == null) {
     draftContentRef.current = draftContent
   }
   editorLockedRef.current = editorLocked
 
-                                                             
-                                                                           
-                                                    
-                                                              
-                        
   //
-                                                             
-                                                      
-                                                         
-                                                   
-                                                        
-                                                    
+
   function handleDraftContentChange(nextValue: string) {
     draftContentRef.current = nextValue
     if (draftStateFlushTimerRef.current != null) {
@@ -171,8 +156,6 @@ export function useWorkspaceDocumentSession({
     }, DRAFT_STATE_FLUSH_MS)
   }
 
-                                                         
-                    
   function replaceDraftContent(nextValue: string) {
     if (draftStateFlushTimerRef.current != null) {
       window.clearTimeout(draftStateFlushTimerRef.current)
@@ -182,8 +165,6 @@ export function useWorkspaceDocumentSession({
     setDraftContent(nextValue)
   }
 
-                                                                 
-                                    
   function isDirtyByRef(): boolean {
     const document = activeDocumentRef.current
     if (!document) return false
@@ -204,9 +185,6 @@ export function useWorkspaceDocumentSession({
       return
     }
 
-                                             
-                                                                    
-                                                        
     const storedContent = getWorkspaceDocumentStoredContent({ document, format, markdown })
     if (storedContent === document.content) {
       delete openedDocumentDraftsRef.current[document.path]
@@ -246,18 +224,6 @@ export function useWorkspaceDocumentSession({
     ))
   }
 
-     
-                                           
-                                                                    
-                                                           
-    
-          
-                                                                   
-                   
-                                                                             
-                                                        
-                                                               
-     
   function remapOpenedDocumentDrafts(sourcePath: string, targetPath: string) {
     if (!sourcePath || !targetPath || sourcePath === targetPath) {
       return

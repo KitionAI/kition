@@ -1,11 +1,3 @@
-   
-                             
-  
-                                      
-                                                                                    
-                                                           
-   
-
 import type { ReactCodeMirrorRef } from '@uiw/react-codemirror'
 import { EditorView } from '@codemirror/view'
 import { EditorSelection } from '@codemirror/state'
@@ -82,17 +74,17 @@ export type DocumentMarkdownEditorPaneProps = {
   onChange: (value: string) => void
   documentPath: string
   suggestProviders?: SuggestProviders
-                                        
+
   onNavigate?: (path: string, opts?: { line?: number; section?: string }) => void
-                                                
+
   inlineTitleSlot?: ReactNode
-                                                 
+
   onToolbarMount?: (node: HTMLElement | null) => void
   /** Increment to place the caret at the start of the mounted editor. */
   focusRequest?: number
-                                        
+
   readingView?: boolean
-                                               
+
   onSetReadingView?: (next: boolean) => void
   onAskAgent?: (request: DocumentAskAgentRequest) => void
   onAgentInsertionContextChange?: (
@@ -210,7 +202,7 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
 
   const handleOpenDailyNoteOffset = useCallback(
     async (offsetDays: number) => {
-                                              
+
       const match = documentPath?.match(/(\d{4})-(\d{2})-(\d{2})\.md$/)
       const base = match
         ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
@@ -222,12 +214,10 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
     [documentPath, onNavigate],
   )
 
-             
   useEffect(() => {
     if (documentPath) pushRecentFile(documentPath)
   }, [documentPath])
 
-            
   useEffect(() => {
     try {
       localStorage.setItem(LAYOUT_KEY_OPEN, sideOpen ? '1' : '0')
@@ -243,7 +233,6 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
     }
   }, [sideTab])
 
-                                                              
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const container = containerRef.current
@@ -308,7 +297,6 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
     return () => window.removeEventListener('keydown', onKey, true)
   }, [handleOpenDailyNote, handleOpenDailyNoteOffset, readingView, onSetReadingView])
 
-                                
   useEffect(() => {
     const handler = () => {
       const view = editorRef.current?.view
@@ -342,7 +330,7 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
   const stats = useMemo(() => {
     const lines = value ? value.split(/\r?\n/).length : 0
     const words = countWords(value)
-                                            
+
     const readingMinutes = Math.max(1, Math.round(words / 250))
     return {
       chars: value.length,
@@ -445,7 +433,7 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
 
   const handleSelectGlobalTag = useCallback(
     (_name: string) => {
-                          
+
       const view = editorRef.current?.view
       if (!view) return
       view.focus()
@@ -561,7 +549,7 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
       notify.warning(t('kition.document.selectionEmpty'))
       return
     }
-                                
+
     const firstLine = selected.split('\n')[0].trim()
     const cleaned = firstLine.replace(/^#+\s+/, '').replace(/[\[\]<>:"/\\|?*\n]/g, '').slice(0, 80)
     const proposed = cleaned || td('pane.untitledNote')
@@ -569,7 +557,7 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
     if (name === null) return
     const trimmed = name.trim()
     if (!trimmed) return
-                
+
     const dir = documentPath?.includes('/')
       ? documentPath.slice(0, documentPath.lastIndexOf('/') + 1)
       : ''
@@ -578,7 +566,7 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
       const body = `# ${trimmed}\n\n${selected.trim()}\n`
       await writeWorkspaceDocument(newPath, body)
       clearVaultFileCache()
-                          
+
       view.dispatch({
         changes: { from: main.from, to: main.to, insert: `[[${trimmed}]]` },
       })
@@ -673,7 +661,7 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
         if (!trimmed) return
         void (async () => {
           const path = await appendToDailyNote(`- ${trimmed}`)
-                              
+
           void path
         })()
       },

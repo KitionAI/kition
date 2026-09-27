@@ -1,10 +1,3 @@
-   
-                         
-  
-                                           
-                              
-   
-
 import { useMemo, useState } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -15,7 +8,7 @@ export type OutlineHeading = {
   level: number
   text: string
   line: number
-                                 
+
   depth: number
 }
 
@@ -28,7 +21,7 @@ export function parseOutlineHeadings(source: string): OutlineHeading[] {
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i]
     const trimmed = raw.trim()
-                   
+
     if (!inFence && /^(```|~~~)/.test(trimmed)) {
       inFence = true
       fenceMarker = trimmed.startsWith('```') ? '```' : '~~~'
@@ -49,7 +42,7 @@ export function parseOutlineHeadings(source: string): OutlineHeading[] {
       depth: 0,
     })
   }
-                  
+
   if (headings.length === 0) return []
   const minLevel = Math.min(...headings.map((h) => h.level))
   for (const h of headings) {
@@ -60,7 +53,7 @@ export function parseOutlineHeadings(source: string): OutlineHeading[] {
 
 export type DocumentOutlinePanelProps = {
   source: string
-                               
+
   currentLine?: number | null
   onSelect?: (line: number) => void
   className?: string

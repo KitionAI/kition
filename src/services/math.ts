@@ -15,7 +15,7 @@ async function loadKatex(): Promise<KatexModule> {
   if (!katexPromise) {
     katexPromise = import('katex').then((mod) => mod.default)
     if (!cssInjected && typeof document !== 'undefined') {
-                                               
+
       void import('katex/dist/katex.min.css')
       cssInjected = true
     }

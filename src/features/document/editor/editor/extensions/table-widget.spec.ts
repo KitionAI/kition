@@ -26,8 +26,6 @@ describe('buildTableMarkdown round-trip', () => {
     expect(md).toContain('pipe \\| inside')
   })
 
-                                                                
-                                                                  
   it('does NOT escape pipes inside inline math', () => {
     const model: TableModel = {
       tableFrom: 0,
@@ -105,9 +103,6 @@ describe('splitRowCells', () => {
     expect(splitRowCells('| x \\| y \\| z | w |')).toEqual(['x | y | z', 'w'])
   })
 
-                                                  
-                                                            
-                                              
   it('preserves pipes inside inline math $...$', () => {
     expect(splitRowCells('| $|\\Theta|$ | 0.5M | 11M | 11M |')).toEqual([
       '$|\\Theta|$',
@@ -122,7 +117,7 @@ describe('splitRowCells', () => {
   })
 
   it('treats `$1 | $2` as TWO cells (currency, not math — opening $ followed by digit but closing $ preceded by whitespace)', () => {
-                                                                 
+
     expect(splitRowCells('| $1 | $2 |')).toEqual(['$1', '$2'])
   })
 
@@ -135,7 +130,7 @@ describe('splitRowCells', () => {
   })
 
   it('preserves pipes inside math even when math contains backslashes', () => {
-                                                            
+
     expect(splitRowCells('| $\\Theta|\\alpha$ | y |')).toEqual([
       '$\\Theta|\\alpha$',
       'y',
@@ -143,7 +138,7 @@ describe('splitRowCells', () => {
   })
 
   it('unterminated `$` falls through as plain text', () => {
-                                     
+
     expect(splitRowCells('| $x | y |')).toEqual(['$x', 'y'])
   })
 })
@@ -235,7 +230,6 @@ describe('TableWidget cell rendering', () => {
     const wrappers = getCellWrappers(view)
     expect(wrappers.length).toBeGreaterThan(0)
 
-                        
     const mathCell = wrappers.find((w) => (w.dataset.rawText ?? '').includes('\\sum'))
     expect(mathCell, 'math cell should be present').toBeTruthy()
     expect(mathCell!.innerHTML).toContain('class="katex"')
@@ -256,15 +250,12 @@ describe('TableWidget cell rendering', () => {
     const mathCell = getCellWrappers(view).find((w) => (w.dataset.rawText ?? '').includes('a^2'))
     expect(mathCell, 'math cell should be present').toBeTruthy()
 
-                       
     expect(mathCell!.innerHTML).toContain('class="katex"')
 
-                                                                    
     mathCell!.dispatchEvent(new FocusEvent('focus'))
     expect(mathCell!.dataset.editMode).toBe('1')
     expect(mathCell!.textContent).toBe('$a^2$')
 
-                     
     mathCell!.textContent = '$b^3$'
     mathCell!.dispatchEvent(new FocusEvent('blur'))
 
@@ -275,8 +266,7 @@ describe('TableWidget cell rendering', () => {
   })
 
   it('syncDomToDoc writes back raw markdown, not rendered text', () => {
-                                                        
-                                                             
+
     const doc = [
       '',
       '| h |',
@@ -286,8 +276,6 @@ describe('TableWidget cell rendering', () => {
     ].join('\n')
     const view = mountEditor(doc)
 
-                                                       
-                                                                 
     view.dispatch({
       changes: { from: view.state.doc.length, insert: 'tail\n' },
     })
@@ -296,8 +284,6 @@ describe('TableWidget cell rendering', () => {
     expect(docText).toContain('$x^2$')
   })
 
-                                                              
-                                      
   it('parses pipes inside $|\\Theta|$ as math, not column separators', () => {
     const doc = [
       '',
@@ -316,18 +302,15 @@ describe('TableWidget cell rendering', () => {
 
     const mathRow = rows[1]
     const cells = mathRow.querySelectorAll<HTMLElement>('td .table-cell-wrapper')
-                                 
+
     expect(cells.length).toBe(4)
 
-                                            
     expect(cells[0].dataset.rawText).toBe('$|\\Theta|$')
-                                       
+
     expect(cells[0].innerHTML).toContain('class="katex"')
     expect(cells[0].innerHTML).not.toContain('$|')
   })
 
-                                                           
-                                                
   it('round-trip preserves math cell verbatim (no spurious \\| escape)', () => {
     const doc = [
       '',
@@ -338,7 +321,6 @@ describe('TableWidget cell rendering', () => {
     ].join('\n')
     const view = mountEditor(doc)
 
-                                                               
     const wrappers = getCellWrappers(view)
     const target = wrappers.find((w) => w.dataset.rawText === '0.5M')
     expect(target, 'target cell present').toBeTruthy()

@@ -81,9 +81,6 @@ export const aiCellStore = {
   },
 }
 
-                                                                
-                                                           
-                                              
 if (typeof window !== 'undefined') {
   window.addEventListener('kition:workspace-reload', () => {
     const snapshotKeys = Array.from(states.keys())

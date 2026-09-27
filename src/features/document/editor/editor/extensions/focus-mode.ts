@@ -1,12 +1,3 @@
-   
-                          
-  
-                                     
-                                
-  
-                                     
-   
-
 import { StateEffect, StateField, type Extension } from '@codemirror/state'
 import {
   Decoration,

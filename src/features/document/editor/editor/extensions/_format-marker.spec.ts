@@ -1,11 +1,3 @@
-   
-                         
-  
-                                                          
-                                                                    
-                                                     
-                    
-   
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { EditorSelection, EditorState, type SelectionRange } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
@@ -76,11 +68,6 @@ describe('shouldHideLineMarker', () => {
   })
 })
 
-   
-                                                               
-                                                          
-                                                 
-   
 describe('livePreviewExtension focus tracking (integration)', () => {
   const mountEditor = (doc: string) => {
     const host = document.createElement('div')
@@ -99,7 +86,7 @@ describe('livePreviewExtension focus tracking (integration)', () => {
   }
 
   const hashHidden = (view: EditorView): boolean => {
-                                              
+
     const lineEl = view.dom.querySelector('.cm-content .cm-line')
     const mark = lineEl?.querySelector('.cm-md-h-mark')
     if (!mark) return false
@@ -146,26 +133,13 @@ describe('livePreviewExtension focus tracking (integration)', () => {
   })
 })
 
-   
-                                          
-  
-                                                   
-                                                
-                       
-  
-                                                             
-                             
-  
-                                                                  
-                                     
-   
 const makeFocusedState = (
   doc: string,
   selection: EditorSelection | SelectionRange,
 ): EditorState => {
   let state = EditorState.create({
     doc,
-                                                                 
+
     extensions: [editorFocusField, EditorState.allowMultipleSelections.of(true)],
     selection: 'ranges' in selection ? selection : EditorSelection.create([selection]),
   })
@@ -280,11 +254,6 @@ describe('rangeIsActive — head-only marker reveal (Document fidelity)', () => 
   })
 })
 
-   
-                                                   
-                                                  
-      
-   
 describe('livePreviewExtension — selection across link does not reveal URL', () => {
   const mountFocused = (doc: string, selection: EditorSelection | SelectionRange) => {
     const host = document.createElement('div')
@@ -303,15 +272,14 @@ describe('livePreviewExtension — selection across link does not reveal URL', (
   }
 
   it('keeps the link collapsed when selection spans the link but head is on a later line', () => {
-                                                   
-                         
+
     const doc = 'intro before [label](https://example.com) middle\nnext line tail'
     const headPos = doc.length                       
     const { view, cleanup } = mountFocused(doc, EditorSelection.range(0, headPos))
     try {
       const link = view.dom.querySelector('.cm-md-link')
       expect(link, 'link span should exist').not.toBeNull()
-                                            
+
       expect(link!.classList.contains('cm-md-link-expanded')).toBe(false)
     } finally {
       cleanup()

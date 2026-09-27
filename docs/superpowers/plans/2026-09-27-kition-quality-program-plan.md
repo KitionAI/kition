@@ -1,0 +1,412 @@
+# Kition Quality Program Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. Each task is one branch and one worktree.
+
+**Goal:** Reduce defect rate, make the codebase safe to change, and bring the product UI in line with `docs/design.md`, across the public client, the private runtime, and the console.
+
+**Scope:** This document is the program-level plan and the detailed client plan. Runtime and console details live in their own repositories:
+
+- Runtime: `docs/superpowers/plans/2026-09-27-runtime-architecture-quality-plan.md` in `KitionAI/kition-runtime`
+- Console: `docs/2026-09-27-console-quality-plan.md` in `KitionAI/kition-console`
+
+**Tech Stack:** TypeScript, React 19, Electron, CodeMirror 6, Vite, Vitest, Playwright, Go (runtime and console), Ant Design (console web).
+
+**Baseline (2026-09-27):** `pnpm typecheck`, `pnpm lint`, and `pnpm test:unit` (4,066 tests) exit 0. Runtime and console `go vet` and `go test` exit 0. The problems below are structural, not build hygiene.
+
+---
+
+## 1. Assessment
+
+### 1.1 Cross-repository findings
+
+| Area | Finding | Evidence |
+| --- | --- | --- |
+| Lost intent | Source comments were stripped to whitespace during the English-only cleanup. 82 client files start with whitespace-only blocks, 2,704 whitespace-only lines in `src/`, and shell scripts such as `scripts/inspect-table-widget.sh` have blank headers. | `grep -rc '^ \{4,\}$' src` |
+| Three UI stacks | Client: hand-written CSS plus Tailwind 3 plus Radix. Portal: Ant Design 6 plus Tailwind 4 plus framer-motion. Admin: Ant Design 6 plus Tailwind 4. No shared tokens or components. | `package.json` in each web project |
+| Contradictory design direction | `docs/design.md` mandates purple `#5645d4` CTAs, light surfaces, 8px buttons, no pills. The console plan `UI_UX_MIGRATION.md` targets ink-only pill CTAs and an editorial style. README screenshots show a dark product. The client default theme is dark through `migrateThemeToDarkDefault`. | `src/services/desktopSettings.ts:665` |
+| Local runtime is unauthenticated | The runtime listens on loopback with auth disabled and resolves a seeded debug principal. CORS restricts browsers, but any local process can call the runtime API, which can read workspace files and run approved shell commands. | Runtime plan section 2.1; `contracts/runtime/` has no auth contract |
+| Table storage has two truths | Tables are registered as runtime database rows and also live as `.kitable` files. The client has a lazy "register unseen `.kitable` files" workaround in `WorkspaceScreen.tsx`. | `src/features/workspace/components/WorkspaceScreen.tsx:300-330` |
+
+### 1.2 Client architecture findings
+
+| # | Finding | Evidence |
+| --- | --- | --- |
+| C1 | `WorkspaceScreen.tsx` is a 3,867-line god component: 31 effects, 42 callbacks, 47 handlers, 69 imports, JSX starts at line 3196. It is the most-changed source file in history (22 commits). | `wc -l`, `git log --name-only` |
+| C2 | No application state layer. 374 `useState` calls, 2 contexts, no router. `jotai` is installed but used only by one vendored dialog. Cross-pane coordination is done with props and portals (`topbarActionsPortal`). | `grep -rn "atom(" src` returns 0 |
+| C3 | No data-fetch layer. Every hook hand-rolls `loading`, `error`, refetch, and cache. There is no invalidation model tied to file watcher events, so stale views are a recurring bug class. | `useTableEditorData.ts:57`, no `react-query` usage |
+| C4 | Cross-feature import cycles: workspace to document (21) and document to workspace (8); workspace to workflow (13) and workflow to workspace (3); workflow to emailSync (11) and emailSync to workflow (6). | import graph over `src/features` |
+| C5 | Two API conventions: `src/api/*.ts` plus five feature-local `api.ts` files (`workflow`, `formSync`, `emailSync`, `connections`, `media-generation`). Response types are hand-written rather than derived from `contracts/runtime/*.schema.json`. | `find src/features -name api.ts` |
+| C6 | `commands.ts` is 24,590 lines with 1,681 exports after removing 31 dead declarations. 1,083 of them are commands registered in `DocumentCommandPalette.tsx` through one 1,100-line import list; most of the rest are per-command text helpers. Names such as `insertOKRCascadeTemplate` and `paragraphsToCompetitiveMatrix` indicate bulk generation. The problem is an unreviewed product surface of about a thousand palette commands, not unreachable code. | AST reference analysis over `src/` |
+| C7 | Duplicate UI primitives: `Button`, `Input`, and `Dialog` exist in both `src/components/ui.tsx` and `src/registry/ui/`. `styles.css` is 9,547 lines in one file with 26 `!important` and 6 section headers. 1,686 Tailwind class lines coexist with 183 BEM class lines. | `grep -c '!important'` |
+| C8 | No `ErrorBoundary` anywhere. A render error in any pane unmounts the whole window. An e2e spec named `large-doc-scroll-white-screen` exists for exactly this class. | `grep -rln ErrorBoundary src` returns nothing |
+| C9 | `src/services/desktop.ts` has 129 exports covering browser sessions, bootstrap, file operations, updates, and notifications. `electron/main.mjs` is 2,238 lines with 109 functions and 71 IPC handlers registered inline. | export count |
+| C10 | Keyboard handling is scattered: 55 ad-hoc `metaKey` and `ctrlKey` checks, no shortcut registry, no discoverable shortcut list. | `grep -rn "metaKey\|ctrlKey" src` |
+| C11 | i18n gaps: 53 raw English JSX strings, 33 raw `aria-label` strings, and four locales (es-ES, fr-FR, pt-BR, ru-RU) each missing 302 keys versus en-US. `scripts/check-i18n.py` compares only en-US with zh-CN, so these gaps pass CI. | flattened key diff per locale |
+| C12 | Test coverage is wide but CI is narrow. 60 Playwright specs exist; CI runs 2 plus the desktop subset; 37 specs are not referenced by any script; 18 use `skip` or `fixme`. The mandatory Stop hook runs a single spec. | `.github/workflows/ci.yml`, `package.json` |
+| C13 | Dependency hygiene: `prop-types`, `sass`, and `tailwindcss-animate` are unused; `react-dnd`, `react-grid-layout`, `react-hammerjs`, `scroller`, `jotai-x`, `vaul`, `cmdk`, `docx`, and `recharts` are each used by one file. `DndProvider` wraps the whole app for one consumer. | import scan |
+| C14 | Bundle: main chunk 1.07 MB, second chunk 663 KB, CSS 385 KB, plus eager-loaded `cytoscape` (435 KB) and `docx` (362 KB). | `ls -la dist/assets` |
+| C15 | UI details visible in shipped README assets: the agent empty state renders a broken logo image, the sidebar has no sections or empty-state guidance, and tab chrome spacing is uneven. | `docs/readme/agent.webp` |
+
+Electron process security is sound: `contextIsolation`, `sandbox`, and `nodeIntegration: false` are set on every window, navigation is guarded, and each module has a spec.
+
+### 1.3 What is already good and must be preserved
+
+- Whiteboard: modular `lib/board*.ts` engine with specs per module and an explicit interaction machine.
+- Table grid: canvas renderer with a clear renderer and interaction layer split.
+- Electron main process modules and their unit specs.
+- Runtime contracts under `contracts/runtime/` and the runtime lock plus verification flow.
+- Repository guards: branding, i18n, secrets, notices, performance budget.
+
+---
+
+## 2. Decisions required from the maintainer
+
+These change the work materially. Defaults are stated so the plan can proceed without blocking.
+
+| Decision | Options | Default used by this plan |
+| --- | --- | --- |
+| D1 Default product theme | Light per `docs/design.md`, or dark as shipped | Light default, dark stays a first-class option. `docs/design.md` and the README assets are updated together. |
+| D2 Console visual direction | `docs/design.md` purple system, or the ElevenLabs editorial direction in `UI_UX_MIGRATION.md` | `docs/design.md`. The console migration document is retired. |
+| D3 Client state and data libraries | Adopt `jotai` (already installed) plus TanStack Query, or keep hand-rolled hooks | Adopt both. |
+| D4 Loopback runtime token | Add a per-launch bearer token to the public contract, or accept unauthenticated loopback | Add the token. This is a contract change and is sequenced first. |
+
+---
+
+## 3. Program phases
+
+Order matters. Each phase leaves `main` releasable.
+
+| Phase | Outcome | Depends on |
+| --- | --- | --- |
+| 0 Guardrails | CI catches regressions the plan will otherwise reintroduce | none |
+| 1 Client foundation | State, data, API, and UI-kit layers exist; god components are split | 0 |
+| 2 Runtime hardening | Local principal, loopback token, typed boundaries, single table storage truth | 0, contract task in 1 |
+| 3 Product UI and UX | Product matches `docs/design.md`; shortcuts, empty states, i18n complete | 1 |
+| 4 Console | Service split, shared web package, coverage | 0 |
+| 5 Delivery | Bundle budget, lazy loading, release verification | 1, 3 |
+
+---
+
+## 4. Global constraints
+
+- Keep all repository source, tests, fixtures, comments, and documentation in English.
+- Do not add private runtime implementation to this repository. Runtime behavior changes go contract-first: update `contracts/runtime/` and the client mock, then implement privately, then validate as a black box.
+- Never write host-identifying paths into tracked files.
+- Run `python3 scripts/check-i18n.py`, `pnpm lint`, `pnpm typecheck`, `pnpm test:unit`, and `pnpm test:table:e2e` before declaring any task complete.
+- Editor layout, scrollbar, and jitter changes must be verified in the real Electron client, not only headless.
+- One task per branch and worktree. No task may exceed the file-size ceilings introduced in Phase 0.
+
+---
+
+## 5. Phase 0: Guardrails
+
+### Task 0.1: Add an application error boundary
+
+**Files:**
+- Create: `src/components/AppErrorBoundary.tsx`
+- Create: `src/components/AppErrorBoundary.spec.tsx`
+- Modify: `src/app/App.tsx`
+- Modify: `src/features/workspace/components/WorkspaceEditorContent.tsx`
+- Modify: `src/i18n/locales/en-US/common.json` and `src/i18n/locales/zh-CN/common.json`
+
+**Interfaces:**
+- `AppErrorBoundary({ scope: 'app' | 'pane', onReset?, children })` renders a recoverable fallback with a reload action and reports through the existing feedback client.
+
+- [x] Write a failing test that throws inside a child and asserts the fallback renders with the pane name and a retry button. (2026-09-27: 5 specs in `AppErrorBoundary.spec.tsx`.)
+- [x] Implement the boundary and wrap `App` at `scope: 'app'` and each editor pane at `scope: 'pane'`. (`EditorPaneBoundary` in `WorkspaceEditorContent.tsx` wraps all 14 pane mounts.)
+- [ ] Add an e2e assertion to `e2e/app-shell.spec.ts` that a forced pane error does not blank the shell. Needs a test-only trigger; decide whether a `?e2e-throw=<pane>` query flag in development builds is acceptable.
+
+### Task 0.2: Dead code and boundary linting
+
+**Files:**
+- Create: `tooling/knip.json`
+- Create: `tooling/dependency-cruiser.cjs`
+- Modify: `tooling/eslint.cjs`
+- Modify: `package.json`
+
+- [ ] Add `knip` and record the current unused-export and unused-dependency baseline in `tooling/knip.baseline.json`; fail CI on new entries.
+- [ ] Add `dependency-cruiser` rules: no import cycles between `src/features/*`; features may import `src/components`, `src/api`, `src/services`, `src/lib`, never another feature's `components` or `hooks`. Allow only `src/features/*/public.ts` as a cross-feature entry.
+- [ ] Add ESLint `max-lines` (600 for `.tsx`, 800 for `.ts`) and `max-lines-per-function` (200) as warnings with a baseline file, then flip to errors per directory as tasks land.
+- [x] Remove `prop-types` and `sass`; regenerate third-party notices. (`tailwindcss-animate` stays: `tooling/tailwind.config.ts` loads it.)
+
+### Task 0.3: Run the whole e2e suite in CI
+
+**Files:**
+- Modify: `.github/workflows/ci.yml`
+- Modify: `tooling/playwright.config.ts`
+- Modify: `package.json`
+- Modify: every `e2e/*.spec.ts` that uses `skip` or `fixme`
+
+- [ ] Tag specs with `@smoke`, `@desktop`, and `@ai` using Playwright `test.describe` annotations. `@ai` specs need credentials and run only on a nightly schedule.
+- [ ] CI pull-request job runs `@smoke` for every spec file that does not need credentials; nightly runs everything. No spec file may be unreferenced.
+- [ ] Triage the 18 `skip` and `fixme` usages: fix, delete, or link each to an issue in a comment.
+- [ ] Add a coverage threshold to `tooling/vitest.config.ts` for `src/features/table`, `src/features/document/hooks`, and `src/services` at the current measured value, so it cannot regress.
+- [x] Make the inspection scripts proxy-safe. Playwright's web server availability probe sends its HTTP GET through `HTTP_PROXY` even when `NO_PROXY` lists `127.0.0.1`; a proxy that answers 400 makes Playwright believe the server is up, Vite never starts, and every test fails with connection refused. (2026-09-27: `tooling/playwright.config.ts` drops the proxy variables for the runner and its children; the three single-spec gates now share `scripts/lib/run-inspection.sh`.)
+
+### Task 0.4: Restore stripped comments
+
+**Files:**
+- Modify: the 82 client files and scripts with whitespace-only blocks (list with `grep -rlE '^ {4,}$' src scripts electron`)
+
+- [x] Write `scripts/check-blank-comment-blocks.py`, which fails on any line containing only spaces or tabs. (2026-09-27)
+- [x] Delete every blanked block (about 3,300 whitespace-only lines across roughly 130 files, each verified content-identical once blank lines are ignored) and add English module comments to `commands.ts`, `live-preview.ts`, `table-widget.ts`, `WorkspaceScreen.tsx`, `scripts/post-task-e2e.sh`, and the inspection scripts.
+- [x] Add the script to `pnpm run check` as `check:blank-comments`.
+
+---
+
+## 6. Phase 1: Client foundation
+
+### Task 1.1: Typed API client generated from contracts
+
+**Files:**
+- Create: `scripts/generate-contract-types.mjs`
+- Create: `src/api/generated/` (generated, committed)
+- Create: `src/api/client.ts`
+- Modify: `src/api/request.ts`
+- Move: `src/features/workflow/api.ts` to `src/api/workflows.ts`; same for `formSync`, `emailSync`, `connections`, `media-generation`
+
+**Interfaces:**
+- `api.<domain>.<operation>(input): Promise<Output>` where types come from `contracts/runtime/*.schema.json` via `json-schema-to-typescript`.
+- `request.ts` keeps the error normalization and credit-exhaustion hooks, exposes a single `ApiError` class with `code`, `message`, `status`, `data`.
+
+- [ ] Add the generator and a CI check that regenerated output matches the committed output.
+- [ ] Move feature-local API modules into `src/api/` and delete the feature copies. Update imports.
+- [ ] Replace hand-written response interfaces in `src/api/*.ts` with generated types where a schema exists; add schemas to `contracts/runtime/` for endpoints that lack one, with the corresponding mock fixture.
+- [ ] Every `src/api/*.spec.ts` asserts request shape against the schema using `zod` or `ajv`, not string matching.
+
+### Task 1.2: Introduce a data layer with TanStack Query
+
+**Files:**
+- Modify: `package.json` (add `@tanstack/react-query`)
+- Create: `src/app/QueryProvider.tsx`
+- Create: `src/api/queryKeys.ts`
+- Create: `src/api/invalidation.ts`
+- Modify: `src/main.tsx`
+- Modify: `src/features/table/hooks/useTableEditorData.ts`
+- Modify: `src/features/workspace/hooks/useWorkspaceTreeState.ts`
+- Modify: `src/features/agent/hooks/useWorkspaceAgent.ts`
+
+**Interfaces:**
+- `queryKeys.document(path)`, `queryKeys.table(docId, tableId)`, `queryKeys.records(docId, tableId, viewId)`, `queryKeys.agentSession(id)`.
+- `invalidation.ts` subscribes to the workspace watcher IPC events and invalidates keys by path prefix. This replaces manual refresh calls.
+
+- [ ] Add the provider and keys. Write `invalidation.spec.ts` that proves a watcher event for `a/b.kitable` invalidates table and record queries under that path and nothing else.
+- [ ] Migrate `useTableEditorData` first, keeping its return shape so `TableEditor` does not change. Delete its `loading` and `error` state.
+- [ ] Migrate the workspace tree, then documents, then agent session lists. Each migration deletes one hand-rolled refetch path.
+- [ ] Delete the "register unseen `.kitable` files" effect in `WorkspaceScreen.tsx` once the runtime exposes a single listing endpoint (runtime plan Task R4). Until then, move it into `src/features/table/hooks/useKitableRegistration.ts` with a test.
+
+### Task 1.3: Workspace state store and navigation model
+
+**Files:**
+- Create: `src/features/workspace/state/workspaceAtoms.ts`
+- Create: `src/features/workspace/state/tabs.ts`
+- Create: `src/features/workspace/state/panes.ts`
+- Create: `src/features/workspace/state/*.spec.ts`
+- Modify: `src/app/Shell.tsx`
+
+**Interfaces:**
+- Atoms: `activeWorkspaceRootAtom`, `openTabsAtom`, `activeTabIdAtom`, `sidebarAtom`, `agentPanelAtom`, `browserPanelAtom`, `settingsRouteAtom`.
+- Actions as pure functions on state: `openTab(state, descriptor)`, `closeTab(state, id)`, `pinTab`, `activateTab`, with tests.
+- One `WorkspaceLocation` type that serializes the current tab, pane, and settings section. Persist it per workspace root so relaunch restores the view.
+
+- [ ] Write table-driven tests for tab actions including pinned tabs, closing the active tab, and duplicate opens.
+- [ ] Implement atoms and actions with `jotai`; remove `jotai-x` if unused after the vendored dialog is replaced in Task 1.5.
+- [ ] Move the `Shell.tsx` settings and profile switches onto `settingsRouteAtom`; delete the ad-hoc `resolveSettingsSectionFromLocation` path parsing once the location type covers it.
+
+### Task 1.4: Split `WorkspaceScreen.tsx`
+
+**Files:**
+- Modify: `src/features/workspace/components/WorkspaceScreen.tsx` (target under 400 lines)
+- Create: `src/features/workspace/hooks/useWorkspaceTabsController.ts`
+- Create: `src/features/workspace/hooks/useWorkspaceBrowserPanel.ts`
+- Create: `src/features/workspace/hooks/useWorkspaceAgentBridge.ts`
+- Create: `src/features/workspace/hooks/useWorkspaceCreateFlows.ts`
+- Create: `src/features/workspace/hooks/useWorkspaceDialogs.ts`
+- Create: `src/features/workspace/components/WorkspaceDialogs.tsx`
+- Create: one spec per new hook
+
+**Ownership after the split:**
+- `useWorkspaceTabsController`: open, close, rename, activate, restore tabs. Depends on Task 1.3 atoms.
+- `useWorkspaceBrowserPanel`: browser tab inset measurement, reattach limit, navigation commands.
+- `useWorkspaceAgentBridge`: agent insertion context, table and whiteboard agent context changes, preflight.
+- `useWorkspaceCreateFlows`: template, kitable, workflow, form, and folder creation entry points.
+- `WorkspaceDialogs`: every lazily-loaded dialog with its open state from `useWorkspaceDialogs`.
+
+- [ ] Extract one hook at a time. After each extraction run `pnpm test:unit src/features/workspace` and `pnpm test:table:e2e`.
+- [ ] Break the workspace to document and workspace to workflow cycles by moving shared types into `src/features/<feature>/public.ts` and shared helpers into `src/lib/`.
+- [ ] Apply the same treatment to `WorkflowHomePage.tsx` (2,249 lines) and `DesktopSettingsPage.tsx` (1,226 lines).
+
+### Task 1.5: One UI kit
+
+**Files:**
+- Create: `src/components/ui/` with one file per primitive: `button.tsx`, `input.tsx`, `textarea.tsx`, `select.tsx`, `dialog.tsx`, `drawer.tsx`, `sheet.tsx`, `tooltip.tsx`, `popover.tsx`, `switch.tsx`, `badge.tsx`, `card.tsx`, `spinner.tsx`, `empty-state.tsx`, `skeleton.tsx`, `page-header.tsx`, `command.tsx`
+- Delete: `src/components/ui.tsx`, `src/registry/ui/*`, `src/components/RightDrawer.tsx`, `src/components/RightSheet.tsx` after migration
+- Create: `src/components/ui/index.ts`
+- Create: Storybook-free visual spec `e2e/ui-kit.spec.ts` that renders every primitive in every variant on a hidden route and screenshots them
+
+**Rules the kit enforces (from `docs/design.md`):**
+- Primary button: `#5645d4` background, white text, 8px radius, `10px 18px` padding, pressed `#4534b3`, disabled hairline background with muted text.
+- Card: 12px radius, hairline border, light shadow, white surface.
+- No pill buttons except explicitly tagged `shape="pill"` for filter chips.
+- Focus ring visible on every interactive primitive.
+
+- [ ] Build the primitives on Radix with `class-variance-authority`, sourcing every color, radius, and spacing from CSS variables in `src/app/styles/tokens.css`.
+- [ ] Codemod imports from both old locations; remove the duplicates.
+- [ ] Add an ESLint restriction that forbids importing `radix-ui` outside `src/components/ui/`.
+
+### Task 1.6: Split `styles.css` into layers
+
+**Files:**
+- Create: `src/app/styles/tokens.css`, `base.css`, `primitives.css`, `layout.css`
+- Create: `src/features/<feature>/<feature>.css` per feature for feature-scoped rules
+- Modify: `src/app/styles.css` becomes an `@import` list using `@layer tokens, base, primitives, layout, features`
+- Modify: `src/app/styles.spec.ts`
+
+- [ ] Move rules file by file, using cascade layers so specificity no longer needs `!important`. Target zero `!important` outside `base.css` print rules.
+- [ ] Keep the existing `styles.spec.ts` assertions passing, and add one that fails if any feature CSS file defines a raw hex color instead of a token.
+- [ ] Run the desktop e2e set and check in the Electron client that editor scroll and layout are unchanged.
+
+### Task 1.7: Editor commands and shortcut registry
+
+**Files:**
+- Split: `src/features/document/editor/editor/commands.ts` into `commands/inline.ts`, `commands/blocks.ts`, `commands/lists.ts`, `commands/headings.ts`, `commands/tables.ts`, `commands/links.ts`, `commands/footnotes.ts`, `commands/frontmatter.ts`, `commands/transform.ts`, `commands/navigation.ts`
+- Create: `src/features/document/editor/editor/commands/registry.ts`
+- Create: `src/lib/shortcuts/registry.ts` and `src/lib/shortcuts/useShortcut.ts`
+- Modify: `src/features/document/editor/editor/DocumentCommandPalette.tsx`
+
+**Interfaces:**
+- `CommandDescriptor { id, titleKey, group, run, when?, shortcut? }`.
+- `registerShortcut(scope, combo, commandId)`; scopes are `global`, `editor`, `table`, `whiteboard`, `agent`. One `ShortcutsDialog` lists them.
+
+- [x] Delete declarations with no references anywhere (31 found by transitive AST analysis, done 2026-09-27). Add `knip` so the check is repeatable.
+- [ ] Review the 1,083 palette-registered commands as a product surface. Keep commands that map to a documented editor capability; move template insertions (`insert*Template`, `insert*Dashboard`, `insert*Mermaid*`) into the template library as data instead of code; delete one-off text transforms that no documentation or test describes. Target under 200 registered commands.
+- [ ] Group the remaining commands by domain file; each command gains a descriptor with an i18n title key. The palette renders from the registry instead of a hand-maintained list.
+- [ ] Replace the 55 ad-hoc `metaKey` and `ctrlKey` checks with `useShortcut`, one file per pull request, starting with `WorkspaceScreen.tsx` and `Shell.tsx`.
+- [ ] Add `e2e/shortcuts.spec.ts` covering palette open, save, new document, toggle sidebar, and toggle agent panel.
+
+### Task 1.8: Split desktop services and the Electron main process
+
+**Files:**
+- Split: `src/services/desktop.ts` into `src/services/desktop/runtime.ts`, `browserSession.ts`, `bootstrap.ts`, `files.ts`, `window.ts`, `export.ts`, `index.ts`
+- Split: `electron/main.mjs` into `electron/ipc/browser-session.mjs`, `electron/ipc/files.mjs`, `electron/ipc/export.mjs`, `electron/ipc/window.mjs`, `electron/ipc/updates.mjs`, each exporting `register(ipcMain, context)`
+- Create: `electron/ipc/index.spec.ts` asserting every channel in `electron/channels.mjs` has exactly one handler
+- Modify: `electron/preload.cjs` to expose a typed surface generated from `channels.mjs`
+
+- [ ] Move handlers group by group with the existing specs green after each move.
+- [ ] Add a preload type file `src/types/desktopBridge.d.ts` so renderer calls are typed end to end.
+
+---
+
+## 7. Phase 2: Runtime hardening (contract-facing tasks only)
+
+Private implementation detail lives in the runtime plan. These tasks are the public halves.
+
+### Task 2.1: Loopback session token contract
+
+**Files:**
+- Create: `contracts/runtime/local-session.schema.json`
+- Modify: `contracts/runtime/runtime-info.schema.json`
+- Modify: `electron/backend-supervisor.mjs`, `electron/local-runtime.mjs`
+- Modify: `src/api/request.ts`
+- Modify: `src/test/` mock runtime
+
+- [ ] Define the contract: Electron generates a random token per launch, passes it through an environment variable to the runtime, and the client sends it as a bearer header. `runtime-info` reports `auth: "local-token"`.
+- [ ] Implement the Electron and client halves behind a capability flag so an older runtime still works.
+- [ ] Add a black-box e2e that a request without the token is rejected once the runtime reports the capability.
+
+### Task 2.2: Single table listing contract
+
+**Files:**
+- Modify: `contracts/runtime/workspace-storage.schema.json`
+- Modify: `src/api/dataDocuments.ts`
+
+- [ ] Specify one endpoint that lists every table container under a workspace root from the file system, with the runtime index as a cache rather than a source of truth.
+- [ ] Remove the client-side registration workaround after the runtime ships it.
+
+---
+
+## 8. Phase 3: Product UI and UX
+
+### Task 3.1: Resolve the theme decision (D1)
+
+- [ ] If light default: remove `migrateThemeToDarkDefault`, set `theme: 'light'` in defaults, keep dark as an option, recapture README assets with `pnpm capture:readme:assets`.
+- [ ] If dark default: update `docs/design.md` and `AGENTS.md` to describe a dark product default and light option, and define dark tokens for every color in the design system.
+- [ ] Either way: `styles.spec.ts` asserts every token has both light and dark values.
+
+### Task 3.2: Workspace chrome polish against `docs/design.md`
+
+**Files:**
+- Modify: `src/features/workspace/components/WorkspaceSidebar.tsx`, `WorkspaceTree.tsx`, `WorkspaceTabStrip.tsx`, `WorkspaceTopbar.tsx`
+- Modify: `src/features/agent/components/AgentChatPanel.tsx`
+- Modify: `src/components/KitionLogoMark.tsx`
+
+- [ ] Fix the broken agent empty-state logo: inline the SVG mark instead of an `img` with a public URL that is not resolvable in packaged builds. Add a desktop e2e that the mark renders.
+- [ ] Sidebar: sections for documents, tables, whiteboards, workflows, with counts, a consistent 8px row rhythm, and an empty state with a create action per section.
+- [ ] Tab strip: equal padding, close affordance on hover, pinned indicator, overflow menu. Compare against the geometry rules in `docs/design.md`.
+- [ ] Agent panel: prompt suggestions as secondary buttons with 8px radius, model selector as a standard select, context chips using the badge primitive.
+- [ ] Verify every change in the Electron client on macOS and record screenshots in the pull request.
+
+### Task 3.3: Loading, empty, and error states
+
+- [ ] Define three primitives in the kit: `Skeleton`, `EmptyState`, and `InlineError` with retry.
+- [ ] Every query-backed pane uses them. Add a lint rule that forbids the strings `Loading...` and `Loading…` in JSX.
+
+### Task 3.4: i18n completeness gate
+
+**Files:**
+- Modify: `scripts/check-i18n.py`
+
+- [ ] Extend the script to fail when any locale lacks a key present in `en-US`, and when `.tsx` files contain raw sentence-case text nodes or raw `aria-label` strings outside an allowlist.
+- [ ] Fill the 302 missing keys per locale; fix the 53 raw strings and 33 raw labels.
+
+### Task 3.5: Accessibility pass
+
+- [ ] Replace the 6 clickable `div` elements with buttons.
+- [ ] Ensure every dialog, drawer, and sheet traps focus and restores it on close (test with Playwright keyboard navigation).
+- [ ] Add `prefers-reduced-motion` handling to every animated transition in the kit.
+
+---
+
+## 9. Phase 4: Console
+
+See the console plan. Client-facing dependency: the shared web design package ships tokens that match `src/app/styles/tokens.css`, so the website and the product look like one brand.
+
+---
+
+## 10. Phase 5: Delivery
+
+### Task 5.1: Bundle diet
+
+- [ ] Lazy-load `cytoscape`, `docx`, `katex`, `mermaid`, and `recharts` at the feature boundary; assert in `scripts/check-performance-budget.mjs` that the initial JS is under 900 KB decoded and CSS under 250 KB.
+- [ ] Remove `DndProvider` from `main.tsx` and mount it inside `DashboardEditorPane` only.
+
+### Task 5.2: Release verification
+
+- [ ] `pnpm run check` runs `knip`, dependency-cruiser, blank-comment check, and i18n completeness.
+- [ ] The Stop hook keeps `pnpm test:table:e2e`, and `prepare-release.yml` runs the full nightly suite before tagging.
+
+---
+
+## 11. Sequencing and estimates
+
+Estimates are engineer-weeks of focused work, assuming one engineer per repository in parallel.
+
+| Phase | Client | Runtime | Console |
+| --- | --- | --- | --- |
+| 0 | 1.5 | 0.5 | 0.5 |
+| 1 | 6 | 0 | 0 |
+| 2 | 1 | 4 | 0 |
+| 3 | 3 | 0 | 0 |
+| 4 | 0 | 0 | 3 |
+| 5 | 1 | 0.5 | 0.5 |
+
+Recommended start order: 0.1, 0.2, 0.3 in the first week. Then 1.1 and 1.2 together, because every later client task consumes the typed API and the query layer. Task 1.4 must not start before 1.3 lands.
+
+## 12. Definition of done for the program
+
+- No source file in `src/` or `electron/` exceeds the Phase 0 ceilings without a baseline entry, and the baseline is empty.
+- `knip` reports zero unused exports and dependencies.
+- dependency-cruiser reports zero cross-feature cycles.
+- Every `contracts/runtime` schema has a generated type and a mock fixture.
+- CI runs every e2e spec file at least nightly.
+- The product screenshots in `docs/readme/` match `docs/design.md`.

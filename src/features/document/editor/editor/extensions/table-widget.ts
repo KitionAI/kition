@@ -1,33 +1,12 @@
-   
-                                                                     
-  
-        
-                                                                       
-                                                                                          
-  
-        
-                                                       
-                                                                
-                                                                        
-                                        
-                                                                        
-                                                                             
-                                                                           
-                                                                                           
-                                                                      
-                                                     
-                                                                     
-                                                                                    
-                        
-  
-                                  
-                                                                        
-                                                                        
-                                                                               
-                                                                                   
-                                        
-   
-
+/**
+ * GFM table widget for the Markdown editor.
+ *
+ * Parses a pipe table from the syntax tree into a `TableModel`, renders it as
+ * an editable HTML table widget, and serializes edits back to Markdown.
+ * Structural operations (add, delete, move, align, sort rows and columns) go
+ * through `applyColOp` and the row helpers so undo history and the
+ * `tableSyncAnnotation` stay consistent with the source document.
+ */
 import { redo, undo } from '@codemirror/commands'
 import { Annotation, type EditorState } from '@codemirror/state'
 import { EditorView, WidgetType } from '@codemirror/view'
@@ -38,13 +17,6 @@ import { activateTableCellWikilink, renderCellHtml } from './table-cell-renderer
 
 export { renderCellHtml } from './table-cell-renderer'
 
-                                                                 
-                                      
-   
-                            
-                              
-                                                             
-   
 function readCellRawText(wrapper: HTMLElement): string {
   const raw = wrapper.dataset.editMode === '1'
     ? (wrapper.textContent ?? '')
@@ -52,9 +24,6 @@ function readCellRawText(wrapper: HTMLElement): string {
   return raw.replace(/\r?\n/g, ' ')
 }
 
-   
-                                                        
-   
 type SyntaxNode = {
   readonly from: number
   readonly to: number
@@ -63,10 +32,6 @@ type SyntaxNode = {
   readonly nextSibling: SyntaxNode | null
 }
 
-   
-                                                    
-                                                                                
-   
 export const tableSyncAnnotation = Annotation.define<true>()
 
 export type TableAlign = 'left' | 'center' | 'right' | null
@@ -81,21 +46,6 @@ export type TableModel = {
   rows: CellRef[][]
 }
 
-   
-                                      
-                                 
-  
-                                                      
-                                                             
-                                                  
-                                      
-  
-                                                  
-                                                     
-   
-   
-                                             
-   
 function scanInlineCode(body: string, start: number): number {
   const len = body.length
   let i = start
@@ -113,11 +63,6 @@ function scanInlineCode(body: string, start: number): number {
   return start
 }
 
-   
-                                                                    
-                                                          
-                       
-   
 function scanMath(body: string, start: number): number {
   const len = body.length
   if (body[start] !== '$') return start
@@ -158,15 +103,6 @@ function scanMath(body: string, start: number): number {
   return start
 }
 
-   
-                                
-                  
-                                                                  
-                                                             
-  
-                                                        
-                          
-   
 export function splitRowCells(rowText: string): string[] {
   let body = rowText.replace(/^[\r\n]+/, '').replace(/[\r\n]+$/, '')
   if (body.startsWith('|')) body = body.slice(1)
@@ -227,7 +163,7 @@ export function parseTableFromNode(
       const headerText = state.doc.sliceString(child.from, child.to)
       for (const t of splitRowCells(headerText)) headers.push({ text: t })
     } else if (child.name === 'TableDelimiter') {
-                                                
+
       const text = state.doc.sliceString(child.from, child.to).trim()
       const stripped = text.replace(/^\||\|$/g, '')
       aligns = stripped.split('|').map((col) => {
@@ -251,11 +187,6 @@ export function parseTableFromNode(
   return { tableFrom, tableTo, headers, aligns, rows }
 }
 
-   
-                                                                    
-                                                                
-                                               
-   
 function escapeCellText(t: string): string {
   let out = ''
   const len = t.length
@@ -296,7 +227,6 @@ function alignToDelim(a: TableAlign): string {
   return '---'
 }
 
-                                                  
 export function buildTableMarkdown(model: TableModel): string {
   const colCount = Math.max(
     model.headers.length,
@@ -366,7 +296,7 @@ function applyRowOp(model: TableModel, op: RowOp): TableModel {
       rows.push(emptyRow())
       break
     case 'appendCol': {
-                                                                   
+
       const newHeaders = [...model.headers, { text: '' }]
       const newAligns: TableAlign[] = [...model.aligns, null]
       for (const r of rows) r.push({ text: '' })
@@ -390,19 +320,12 @@ type ColOp =
   | { type: 'duplicateCol'; col: number }
   | { type: 'deleteCol'; col: number }
 
-   
-                                                                     
-                                                                             
-                                                                      
-                     
-   
 export function applyColOp(model: TableModel, op: ColOp): TableModel {
   const headers = model.headers.map((c) => ({ ...c }))
   const rows = model.rows.map((r) => r.map((c) => ({ ...c })))
   const aligns: TableAlign[] = [...model.aligns]
   const colCount = Math.max(headers.length, ...rows.map((r) => r.length), 1)
 
-                                                                           
   while (headers.length < colCount) headers.push({ text: '' })
   while (aligns.length < colCount) aligns.push(null)
   for (const r of rows) while (r.length < colCount) r.push({ text: '' })
@@ -414,7 +337,7 @@ export function applyColOp(model: TableModel, op: ColOp): TableModel {
       rows.sort((a, b) => {
         const av = (a[op.col]?.text ?? '').toLowerCase()
         const bv = (b[op.col]?.text ?? '').toLowerCase()
-                                            
+
         const an = Number(av)
         const bn = Number(bv)
         if (!Number.isNaN(an) && !Number.isNaN(bn) && av !== '' && bv !== '') {
@@ -501,7 +424,6 @@ function getStoredModel(dom: HTMLElement): TableModel | undefined {
   return (dom as unknown as Record<string, unknown>)[MODEL_KEY] as TableModel | undefined
 }
 
-                                                  
 function svgIcon(path: string): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>`
 }
@@ -523,19 +445,19 @@ const ICONS = {
   clipboard: svgIcon('<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>'),
   // lucide-trash-2
   trash2: svgIcon('<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>'),
-                                           
+
   gripVertical: svgIcon('<circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/>'),
-                                             
+
   gripHorizontal: svgIcon('<circle cx="12" cy="9" r="1"/><circle cx="19" cy="9" r="1"/><circle cx="5" cy="9" r="1"/><circle cx="12" cy="15" r="1"/><circle cx="19" cy="15" r="1"/><circle cx="5" cy="15" r="1"/>'),
-                                                    
+
   plus: svgIcon('<path d="M5 12h14"/><path d="M12 5v14"/>'),
-                                    
+
   sortAsc: svgIcon('<path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="M20 8h-5"/><path d="M15 10V6.5a2.5 2.5 0 0 1 5 0V10"/><path d="M15 14h5l-5 6h5"/>'),
-                                    
+
   sortDesc: svgIcon('<path d="m3 16 4 4 4-4"/><path d="M7 4v16"/><path d="M15 4h5l-5 6h5"/><path d="M15 20v-3.5a2.5 2.5 0 0 1 5 0V20"/><path d="M20 18h-5"/>'),
-                                    
+
   panelLeftClose: svgIcon('<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m16 15-3-3 3-3"/>'),
-                                     
+
   panelRightClose: svgIcon('<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/><path d="m8 9 3 3-3 3"/>'),
   // lucide-arrow-left
   arrowLeft: svgIcon('<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>'),
@@ -584,12 +506,6 @@ export class TableWidget extends WidgetType {
     (dom as unknown as { __cmTableCleanup?: () => void }).__cmTableCleanup?.()
   }
 
-     
-                                                    
-                                            
-                                                      
-                                            
-     
   get estimatedHeight(): number {
     const ROW_HEIGHT = 37                                          
     const WIDGET_PADDING = 32                             
@@ -597,11 +513,6 @@ export class TableWidget extends WidgetType {
     return WIDGET_PADDING + rowCount * ROW_HEIGHT
   }
 
-     
-                                                      
-                                                                 
-                                     
-     
   updateDOM(dom: HTMLElement, _view: EditorView): boolean {
     const thead = dom.querySelector('thead')
     const tbody = dom.querySelector('tbody')
@@ -652,11 +563,6 @@ export class TableWidget extends WidgetType {
     return true
   }
 
-     
-                                                             
-                                                                              
-                    
-     
   ignoreEvent(event: Event): boolean {
     const t = event.type
     if (
@@ -675,16 +581,11 @@ export class TableWidget extends WidgetType {
   }
 }
 
-                                                              
 function renderTableDom(model: TableModel, view: EditorView): HTMLElement {
   const wrap = document.createElement('div')
   wrap.className = 'cm-table-widget'
   setStoredModel(wrap, model)
 
-                                                                 
-                                                                     
-                                                                        
-                                                        
   wrap.addEventListener('mousedown', (e) => {
     if ((e.target as HTMLElement | null)?.closest('.table-cell-wrapper')) return
     e.preventDefault()
@@ -718,7 +619,7 @@ function renderTableDom(model: TableModel, view: EditorView): HTMLElement {
       annotations: tableSyncAnnotation.of(true),
     })
   }
-                                                                  
+
   function syncDomToDoc(): boolean {
     const m = getModel()
     const newHeaders: CellRef[] = []
@@ -766,11 +667,10 @@ function renderTableDom(model: TableModel, view: EditorView): HTMLElement {
     return true
   }
 
-                                                          
   function moveHostSelectionOutside(): void {
     try {
       const m = getModel()
-                                                               
+
       const target = Math.min(m.tableTo, view.state.doc.length)
       const cur = view.state.selection.main
       if (cur.from === target && cur.to === target) return
@@ -806,14 +706,11 @@ function renderTableDom(model: TableModel, view: EditorView): HTMLElement {
       activateTableCellWikilink(event.target, event, view)
     })
 
-                                                      
-                                           
     let cellEdited = false
     inner.addEventListener('input', () => {
       cellEdited = true
     })
 
-                                                 
     const commitAndRun = (cmd: (v: EditorView) => boolean): void => {
       syncDomToDoc()
       ;(document.activeElement as HTMLElement | null)?.blur?.()
@@ -821,12 +718,10 @@ function renderTableDom(model: TableModel, view: EditorView): HTMLElement {
       view.focus()
     }
 
-                                                          
     cell.addEventListener('mousedown', (e) => {
       e.stopPropagation()
       const me = e as MouseEvent
-                                                                      
-                                   
+
       if (me.button === 2) {
         e.preventDefault()
         return
@@ -838,13 +733,11 @@ function renderTableDom(model: TableModel, view: EditorView): HTMLElement {
     })
 
     inner.addEventListener('focus', () => {
-                             
+
       clearCellSelection()
-                                                
-                                                        
+
       cellEdited = false
-                                                                        
-                                                             
+
       if (inner.dataset.editMode !== '1') {
         inner.dataset.editMode = '1'
         inner.textContent = inner.dataset.rawText ?? ''
@@ -858,7 +751,7 @@ function renderTableDom(model: TableModel, view: EditorView): HTMLElement {
       moveHostSelectionOutside()
     })
     inner.addEventListener('blur', () => {
-                                                                       
+
       const raw = (inner.textContent ?? '').replace(/\r?\n/g, ' ')
       inner.dataset.rawText = raw
       inner.dataset.editMode = '0'
@@ -874,8 +767,7 @@ function renderTableDom(model: TableModel, view: EditorView): HTMLElement {
         return
       }
       const mod = e.metaKey || e.ctrlKey
-                                                                  
-                                                           
+
       if (mod && (e.key === 'z' || e.key === 'Z')) {
         if (cellEdited) return
         e.preventDefault()
@@ -913,11 +805,6 @@ function renderTableDom(model: TableModel, view: EditorView): HTMLElement {
     })
     cell.appendChild(inner)
 
-                                                                  
-                                                                      
-                                                       
-                                                
-                                                                                        
     if (isHeader) {
       const colHandle = document.createElement('div')
       colHandle.className = 'table-col-drag-handle'
@@ -1034,10 +921,6 @@ function renderTableDom(model: TableModel, view: EditorView): HTMLElement {
     }
   }
 
-                                  
-                                                       
-                                                   
-                                                  
   type CellCoord = { vrow: number; col: number }
   const selectionBox = document.createElement('div')
   selectionBox.className = 'table-cell-selection-box'
@@ -1111,7 +994,7 @@ function renderTableDom(model: TableModel, view: EditorView): HTMLElement {
     const coord = cellCoord(overCell)
     if (!coord) return
     if (!dragActive) {
-                                      
+
       if (coord.vrow === pendingAnchor.vrow && coord.col === pendingAnchor.col) return
       dragActive = true
       selAnchor = pendingAnchor
@@ -1142,7 +1025,6 @@ function renderTableDom(model: TableModel, view: EditorView): HTMLElement {
     document.addEventListener('mouseup', onDocMouseUp, true)
   }
 
-                                                               
   function tsvForRange(r0: number, r1: number, c0: number, c1: number): string {
     const trs = Array.from(table.querySelectorAll('tr'))
     const lines: string[] = []
@@ -1173,7 +1055,7 @@ function renderTableDom(model: TableModel, view: EditorView): HTMLElement {
   function onDocCopy(e: ClipboardEvent): void {
     if (!selAnchor || !selFocus) return
     const active = document.activeElement as HTMLElement | null
-                                          
+
     if (active && wrap.contains(active) && active.isContentEditable) return
     const tsv = selectionToTsv()
     if (tsv == null) return
@@ -1181,7 +1063,6 @@ function renderTableDom(model: TableModel, view: EditorView): HTMLElement {
     e.preventDefault()
   }
 
-                                                              
   function onDocCut(e: ClipboardEvent): void {
     if (!selAnchor || !selFocus) return
     const active = document.activeElement as HTMLElement | null
@@ -1193,7 +1074,6 @@ function renderTableDom(model: TableModel, view: EditorView): HTMLElement {
     clearSelectedCells(range)
   }
 
-                                                                             
   function onDocKeydown(e: KeyboardEvent): void {
     if (!selAnchor || !selFocus) return
     const active = document.activeElement as HTMLElement | null
@@ -1227,7 +1107,6 @@ function renderTableDom(model: TableModel, view: EditorView): HTMLElement {
     document.removeEventListener('mouseup', onDocMouseUp, true)
   }
 
-                                                        
   function setRowHandleActive(rowIdx: number, active: boolean): void {
     const tr = table.querySelectorAll<HTMLElement>('tbody tr')[rowIdx]
     if (!tr) return
@@ -1235,7 +1114,7 @@ function renderTableDom(model: TableModel, view: EditorView): HTMLElement {
     if (!handle) return
     handle.classList.toggle('is-active', active)
   }
-                                      
+
   function setColHandleActive(colIdx: number, active: boolean): void {
     const thead = table.querySelector('thead')
     if (!thead) return
@@ -1303,7 +1182,6 @@ function renderTableDom(model: TableModel, view: EditorView): HTMLElement {
     const rowColCount = Math.max(getModel().headers.length, ...getModel().rows.map((r) => r.length), 1)
     const rowRange: SelRange = { r0: rowIdx + 1, r1: rowIdx + 1, c0: 0, c1: rowColCount - 1 }
 
-                                                               
     type MenuItem = { label: string; icon: string; section: string; op?: RowOp; action?: () => void; warning?: boolean }
     const t = i18next.getFixedT(null, 'document')
     const items: MenuItem[] = []
@@ -1345,7 +1223,7 @@ function renderTableDom(model: TableModel, view: EditorView): HTMLElement {
           cleanup()
           return
         }
-                                                    
+
         const synced = syncDomToDoc()
         const base = synced ? readModelFromDom() : getModel()
         const next = applyRowOp(base, it.op)
@@ -1381,18 +1259,12 @@ function renderTableDom(model: TableModel, view: EditorView): HTMLElement {
     document.addEventListener('keydown', onKey, true)
   }
 
-     
-                                                                                      
-                                                                      
-                                              
-     
   function showColContextMenu(event: MouseEvent, colIdx: number): void {
     document.querySelectorAll('.cm-table-menu').forEach((n) => n.remove())
 
     const m0 = getModel()
     const colCount = Math.max(m0.headers.length, ...m0.rows.map((r) => r.length), 1)
 
-                                                                  
     const thCells = table.querySelectorAll<HTMLElement>('thead th')
     thCells.forEach((th, i) => th.classList.toggle('is-col-selected', i === colIdx))
     const allBodyTds: HTMLElement[] = []
@@ -1497,8 +1369,6 @@ function renderTableDom(model: TableModel, view: EditorView): HTMLElement {
     document.addEventListener('keydown', onKey, true)
   }
 
-                                   
-                                                                
   type SelRange = { r0: number; r1: number; c0: number; c1: number }
 
   function currentRange(): SelRange | null {
@@ -1517,7 +1387,6 @@ function renderTableDom(model: TableModel, view: EditorView): HTMLElement {
     return coord.vrow >= r.r0 && coord.vrow <= r.r1 && coord.col >= r.c0 && coord.col <= r.c1
   }
 
-                                                                          
   function setCellText(base: TableModel, vrow: number, col: number, text: string): void {
     if (vrow === 0) {
       if (base.headers[col]) base.headers[col].text = text
@@ -1549,10 +1418,6 @@ function renderTableDom(model: TableModel, view: EditorView): HTMLElement {
     dispatchModel(next)
   }
 
-     
-                                                    
-                                                        
-     
   function deleteSelectedCells(range: SelRange): void {
     const base = baseModel()
     const colCount = Math.max(base.headers.length, ...base.rows.map((r) => r.length), 1)
@@ -1561,7 +1426,7 @@ function renderTableDom(model: TableModel, view: EditorView): HTMLElement {
     const fullWidth = range.c0 === 0 && range.c1 === colCount - 1
     if (fullHeight && !fullWidth) {
       let next = base
-                     
+
       for (let col = range.c1; col >= range.c0; col--) {
         const cc = Math.max(next.headers.length, ...next.rows.map((r) => r.length), 1)
         if (cc <= 1) break          
@@ -1570,7 +1435,7 @@ function renderTableDom(model: TableModel, view: EditorView): HTMLElement {
       dispatchModel(next)
       return
     }
-                            
+
     const modelR0 = Math.max(range.r0, 1) - 1
     const modelR1 = range.r1 - 1
     if (modelR1 < modelR0) return
@@ -1629,8 +1494,6 @@ function renderTableDom(model: TableModel, view: EditorView): HTMLElement {
     const range = currentRange()
     if (!range) return
 
-                                                       
-                                  
     const t = i18next.getFixedT(null, 'document')
     const menu = new Menu()
     menu.addItem((i) => i.setTitle(t('editor.extensions.table.cellCut')).setIcon('scissors').setShortcut('⌘X').onSelect(() => { void copySelectionToClipboard(range).then(() => clearSelectedCells(range)) }))
@@ -1650,12 +1513,12 @@ function renderTableDom(model: TableModel, view: EditorView): HTMLElement {
     const target = e.target as HTMLElement | null
     const cell = target?.closest?.('th, td') as HTMLElement | null
     if (!cell || !table.contains(cell)) return
-                                                                         
+
     e.preventDefault()
     e.stopPropagation()
     const coord = cellCoord(cell)
     if (!coord) return
-                                        
+
     if (!coordInSelection(coord)) {
       clearCellSelection()
       selAnchor = coord
@@ -1685,7 +1548,6 @@ function renderTableDom(model: TableModel, view: EditorView): HTMLElement {
     return { ...m, headers: newHeaders, rows: newRows }
   }
 
-           
   if (model.headers.length > 0) {
     const thead = document.createElement('thead')
     const tr = document.createElement('tr')
@@ -1709,18 +1571,12 @@ function renderTableDom(model: TableModel, view: EditorView): HTMLElement {
   wrapper.appendChild(selectionBox)
 
   // Keep pointer-down from moving the editor selection before row insertion.
-                                                                         
-                                                                         
-                                                                              
-                                                             
-                                                                                   
-                                                                  
+
   let appendBusy = false
   const fireAppend = (op: RowOp) => {
     if (appendBusy) return
     appendBusy = true
-                                                         
-                                              
+
     queueMicrotask(() => {
       try {
         const synced = syncDomToDoc()
@@ -1742,7 +1598,7 @@ function renderTableDom(model: TableModel, view: EditorView): HTMLElement {
     btn.className = cls
     btn.setAttribute('aria-label', label)
     btn.title = label
-                                                 
+
     btn.textContent = '+'
     const handle = (e: Event) => {
       const me = e as MouseEvent
@@ -1751,7 +1607,7 @@ function renderTableDom(model: TableModel, view: EditorView): HTMLElement {
       e.stopPropagation()
       fireAppend(op)
     }
-                                    
+
     btn.addEventListener('click', handle, { capture: true })
     return btn
   }

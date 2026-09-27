@@ -1,17 +1,3 @@
-   
-                                                  
-  
-                                                               
-                                                          
-                                                  
-  
-                                   
-                                    
-                                                            
-                                
-                                                 
-   
-
 import { RangeSetBuilder, StateField, type EditorState, type Extension } from '@codemirror/state'
 import {
   Decoration,
@@ -37,7 +23,7 @@ export type EmbedExtensionOptions = {
   sourcePath?: string
   load: EmbedLoader
   enabled?: boolean
-                                                                          
+
   onNavigate?: (target: string, section?: string) => void
 }
 

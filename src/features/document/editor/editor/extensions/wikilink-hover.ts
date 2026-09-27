@@ -1,12 +1,3 @@
-   
-                         
-  
-                                                        
-                                        
-  
-                               
-   
-
 import { hoverTooltip } from '@codemirror/view'
 import i18next from 'i18next'
 
@@ -21,8 +12,6 @@ const MAX_PREVIEW_LENGTH = 240
 type CacheEntry = { content: string; expiresAt: number }
 const cache = new Map<string, CacheEntry>()
 
-                                                     
-                                               
 if (typeof window !== 'undefined') {
   window.addEventListener('kition:workspace-reload', () => {
     cache.clear()
@@ -49,7 +38,7 @@ async function getPreview(target: string): Promise<{ ok: true; path: string; pre
   try {
     const doc = await readWorkspaceDocument(path)
     const content = (doc.content ?? '').trim()
-                            
+
     let body = content
     if (body.startsWith('---')) {
       const end = body.indexOf('\n---', 3)

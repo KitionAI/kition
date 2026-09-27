@@ -1,10 +1,3 @@
-   
-                  
-  
-                                               
-                                          
-   
-
 import { useTranslation } from 'react-i18next'
 
 import { useRecentFiles } from '@/features/document/editor/hooks/useRecentFiles'

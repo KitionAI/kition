@@ -2,29 +2,6 @@ import { expect, test, type Page } from '@playwright/test'
 
 import { fulfillJson, mockLocalWorkspaceApi } from './helpers/mockApi'
 
-   
-                                    
-  
-      
-                                                                                         
-                                                                                  
-                                                                    
-                                                                  
-                                               
-                                                      
-  
-                       
-                                                              
-                                                                   
-  
-        
-                                                                           
-                                                           
-                                                     
-                                                                             
-                           
-   
-
 const VAULT_PATH = '/tmp/kition-kitable-e2e-vault'
 const DOC_PATH = 'table-test.kitable'
 const DOC_MARKER = JSON.stringify({ data_document_id: 1 })

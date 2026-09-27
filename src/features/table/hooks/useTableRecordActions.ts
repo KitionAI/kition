@@ -42,8 +42,6 @@ import {
 } from '@/features/table/lib/aiPromptInterpolation'
 import { hydrateBundledAIFieldAttachments } from '@/features/table/lib/aiAttachmentHydration'
 
-                                                                               
-                                                                 
 const NON_CLEARABLE_FIELD_TYPES = new Set<string>([
   'auto_number',
   'created_time',
@@ -527,9 +525,6 @@ export function useTableRecordActions({
     const docId = document.id
     const tableIdActive = activeTable.id
 
-                                               
-                                                               
-                      
     const byRecord = new Map<number, { record: DataRecord; fields: DataField[] }>()
     for (const { record, field } of cells) {
       if (!isClearableField(field)) continue

@@ -1,17 +1,7 @@
-   
-       
-  
-               
-                                        
-                       
-                
-                                                         
-   
-
 export type TagParsed = {
-                                       
+
   name: string
-                                        
+
   segments: string[]
   from: number
   to: number

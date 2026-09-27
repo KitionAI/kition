@@ -1,13 +1,3 @@
-   
-                     
-  
-                                                       
-                                         
-                
-  
-               
-   
-
 const HEADING_RE = /^(#{1,6})\s+(.*?)\s*$/
 const MAX_DEFAULT_LINES = 80
 const BLOCK_CTX = 3

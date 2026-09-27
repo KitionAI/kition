@@ -1,8 +1,3 @@
-   
-                     
-                       
-   
-
 import { Decoration, type DecorationSet, EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view'
 import { RangeSetBuilder, type Extension } from '@codemirror/state'
 import { parseTags, type TagParsed } from '../../lib/tag-parser'

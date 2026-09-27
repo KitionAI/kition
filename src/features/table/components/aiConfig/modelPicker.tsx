@@ -9,9 +9,6 @@ type ModelPickerProps = {
   onChange: (modelKey: string | undefined) => void
 }
 
-                                                                                       
-                                                                  
-                         
 export function ModelPicker({ value, capability, onChange }: ModelPickerProps) {
   const { t } = useTranslation('table')
   const [options, setOptions] = useState<MediaModelOption[]>([])

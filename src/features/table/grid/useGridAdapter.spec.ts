@@ -310,9 +310,7 @@ describe('useGridAdapter — phase 2 field types', () => {
 })
 
 describe('readCellValue — Select cell shape tolerance', () => {
-                                                                            
-                                                            
-                                                      
+
   const selectField = (type: 'single_select' | 'multi_select') =>
     makeField({ type, options: { choices: ['Not started', 'In progress', 'Done'] } })
 

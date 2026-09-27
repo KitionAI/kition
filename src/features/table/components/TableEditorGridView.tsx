@@ -172,8 +172,7 @@ export const GridView = forwardRef<IGridRef, GridViewProps>(function GridView(pr
     onCellEdited: (record, field, value) => onUpdateCell(record, field, value),
     onRowExpand: (record) => onOpenRecord(record),
     onOpenDocument,
-                                                       
-                                                           
+
     onRowAppend: (targetIndex) => {
       if (!groupFieldNames.length) return onAddRecord()
       const anchor =
@@ -280,8 +279,6 @@ export const GridView = forwardRef<IGridRef, GridViewProps>(function GridView(pr
     [sortedAndFilteredRecords, visibleFields, onOpenRecordContextMenu, onSelectCell]
   )
 
-                                                                    
-                                                                                      
   const handleDelete = useCallback(
     (selection: CombinedSelection) => {
       const cells: Array<{ record: DataRecord; field: DataField }> = []
@@ -364,10 +361,6 @@ export const GridView = forwardRef<IGridRef, GridViewProps>(function GridView(pr
     [canReorderRows]
   )
 
-                                                                                 
-                                                                          
-                                                  
-                                                         
   const rowControls = useMemo<IRowControlItem[]>(() => {
     const controls: IRowControlItem[] = []
     if (canReorderRows) controls.push({ type: RowControlType.Drag })

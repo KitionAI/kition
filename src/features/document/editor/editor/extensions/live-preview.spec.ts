@@ -1,17 +1,3 @@
-   
-                                                                      
-  
-                                           
-  
-                                                          
-                                                                  
-                                                             
-                                                       
-                        
-  
-                                                              
-                            
-   
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { EditorSelection, EditorState } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
@@ -374,7 +360,6 @@ describe('livePreviewExtension — fenced code block', () => {
     const before = codeBlockActions(view)
     expect(before, 'actions widget should render once block has code').not.toBeNull()
 
-                           
     const line2 = view.state.doc.line(2)
     view.dispatch({
       changes: { from: line2.to, insert: 'x' },
@@ -382,8 +367,7 @@ describe('livePreviewExtension — fenced code block', () => {
 
     const after = codeBlockActions(view)
     expect(after, 'actions widget should still exist after edit').not.toBeNull()
-                                                       
-                     
+
     expect(after).toBe(before)
   })
 
@@ -403,7 +387,7 @@ describe('livePreviewExtension — fenced code block', () => {
   })
 
   it('renders one clickable lang label + an svg copy icon, and hides the raw fence lang text', () => {
-                                                               
+
     const view = mountEditor('x\n```bash\nls -la\n```\n', 0)
 
     const actions = codeBlockActions(view)
@@ -418,26 +402,11 @@ describe('livePreviewExtension — fenced code block', () => {
     expect(copy!.querySelector('svg'), 'copy button should be an icon').not.toBeNull()
     expect(copy!.textContent?.trim()).toBe('')            
 
-                                                    
-                           
     const fenceLine = view.dom.querySelector('.cm-md-codeblock-fence')
     const bashCount = (fenceLine?.textContent?.match(/bash/g) ?? []).length
     expect(bashCount).toBe(1)
   })
 
-     
-                                                 
-                                       
-    
-                                                                 
-                                                                
-                                                              
-                                 
-    
-                                                      
-                                                        
-                             
-     
   describe('source-flash on edits elsewhere', () => {
     const buildLongDoc = (preLines: number) => {
       const filler = Array.from({ length: preLines }, (_, i) => `line ${i + 1}`).join('\n')
@@ -448,17 +417,14 @@ describe('livePreviewExtension — fenced code block', () => {
       for (const N of [10, 200, 400, 800]) {
         const view = mountEditor(buildLongDoc(N), 0)
 
-                 
         const before = scanFencedCodeBlocks(view.state)
         expect(before.length, `N=${N} initial scan should find one block`).toBe(1)
         expect(before[0].lang).toBe('bash')
         expect(before[0].openLineNumber).toBe(N + 1)
 
-                                        
         const line1 = view.state.doc.line(1)
         view.dispatch({ changes: { from: line1.to, insert: 'x' } })
 
-                                            
         const after = scanFencedCodeBlocks(view.state)
         expect(after.length, `N=${N} post-edit scan should still find one block`).toBe(1)
         expect(after[0].lang).toBe('bash')
@@ -470,21 +436,6 @@ describe('livePreviewExtension — fenced code block', () => {
     })
   })
 
-     
-                                                         
-                                                            
-                                                                            
-    
-                                                       
-                                                             
-                                                                    
-                                 
-    
-                                                                  
-                                                       
-                                                   
-                                                          
-     
   describe('inline marker stability under partial tree', () => {
     const buildHeadingDoc = (preLines: number) => {
       const filler = Array.from({ length: preLines }, (_, i) => `line ${i + 1}`).join('\n\n')
@@ -495,13 +446,11 @@ describe('livePreviewExtension — fenced code block', () => {
       for (const N of [10, 200, 400, 800]) {
         const view = mountEditor(buildHeadingDoc(N), 0)
 
-                                                               
         const fenced = scanFencedCodeBlocks(view.state)
         const before = scanATXHeadings(view.state, fenced)
         expect(before.length, `N=${N} initial scan should find the heading`).toBe(1)
         expect(before[0].level).toBe(2)
 
-                                        
         const line1 = view.state.doc.line(1)
         view.dispatch({ changes: { from: line1.to, insert: 'x' } })
 
@@ -562,19 +511,6 @@ describe('livePreviewExtension — fenced code block', () => {
     })
   })
 
-     
-                                                        
-                                                           
-    
-                                                                                           
-                                                      
-                                                                           
-                                       
-    
-                                                                 
-                                                                   
-                   
-     
   describe('inline emphasis markers reveal as one unit', () => {
     const focus = (view: EditorView) => {
       view.contentDOM.focus()
@@ -645,32 +581,12 @@ describe('livePreviewExtension — fenced code block', () => {
     })
   })
 
-     
-                                                         
-                                    
-    
-        
-                                                                                   
-                                                                          
-                                           
-                                                                               
-                                                                          
-                        
-    
-                                                                                   
-                                                                                             
-                             
-                         
-                                                      
-     
   describe('escape sequence `\\*` renders correctly in live preview', () => {
     const focus = (view: EditorView) => {
       view.contentDOM.focus()
       view.contentDOM.dispatchEvent(new FocusEvent('focus'))
     }
 
-                                                                  
-                          
     const lineText = (view: EditorView, lineIdx = 0): string => {
       const lines = view.dom.querySelectorAll('.cm-line')
       return lines[lineIdx]?.textContent ?? ''
@@ -678,19 +594,19 @@ describe('livePreviewExtension — fenced code block', () => {
 
     it('hides the backslash on inactive lines (no focus → user sees just `*hello`)', () => {
       const view = mountEditor('\\*hello')
-                                                               
+
       expect(lineText(view)).toBe('*hello')
     })
 
     it('reveals the backslash on the active line when the editor is focused and cursor sits on it', () => {
-                                                             
+
       const view = mountEditor('\\*hello', 3)
       focus(view)
       expect(lineText(view)).toBe('\\*hello')
     })
 
     it('does not produce emphasis when both `*` are escaped (`\\*foo\\*` is plain text)', () => {
-                                                        
+
       const view = mountEditor('\\*foo\\* bar')
       expect(view.dom.querySelector('.cm-md-em')).toBeNull()
       expect(view.dom.querySelector('.cm-md-strong')).toBeNull()
@@ -698,15 +614,13 @@ describe('livePreviewExtension — fenced code block', () => {
 
     it('marks the escaped character with `cm-md-escape-char` so its color is not the orange #e40 from defaultHighlightStyle', () => {
       const view = mountEditor('\\*x')
-                                                         
-                                                       
+
       const el = view.dom.querySelector('.cm-md-escape-char')
       expect(el?.textContent).toBe('*')
     })
 
     it('on a multi-line doc, hides the backslash on the inactive line even when cursor is focused elsewhere', () => {
-                                                              
-                              
+
       const view = mountEditor('\\*line1\nnormal line', 10)
       focus(view)
       expect(lineText(view, 0)).toBe('*line1')
@@ -721,25 +635,6 @@ describe('livePreviewExtension — fenced code block', () => {
     })
   })
 
-     
-                                                        
-                                                                     
-                                                                   
-                                    
-    
-        
-                                                                
-                                                            
-                                                                                
-                                                                         
-                                                                           
-    
-                                          
-                                                                 
-                                  
-                                                                        
-                   
-     
   describe('html entity `&nbsp;` decodes correctly in live preview', () => {
     const focus = (view: EditorView) => {
       view.contentDOM.focus()
@@ -752,14 +647,14 @@ describe('livePreviewExtension — fenced code block', () => {
 
     it('decodes `&nbsp;` to non-breaking space on inactive lines', () => {
       const view = mountEditor('a&nbsp;b')
-                                            
+
       expect(lineText(view)).toBe('a b')
     })
 
     it('reveals literal `&nbsp;` source on the active line when editor is focused', () => {
       const view = mountEditor('a&nbsp;b', 4)
       focus(view)
-                                         
+
       expect(lineText(view)).toBe('a&nbsp;b')
     })
 
@@ -792,22 +687,11 @@ describe('livePreviewExtension — fenced code block', () => {
 
     it('does not affect entities inside fenced code blocks (lezer does not parse Entity inside code)', () => {
       const view = mountEditor('```\n&nbsp;\n```\n')
-                                    
+
       expect(view.dom.textContent ?? '').toContain('&nbsp;')
     })
   })
 
-     
-                                                    
-                             
-    
-                                                            
-                                                          
-                              
-    
-                                                                      
-                                  
-     
   describe('inline link expand/collapse vs selection position', () => {
     const focus = (view: EditorView) => {
       view.contentDOM.focus()
@@ -817,12 +701,10 @@ describe('livePreviewExtension — fenced code block', () => {
       view.dom.querySelector('.cm-md-link')
 
     it('stays collapsed when the selection starts immediately after the closing `)`', () => {
-                                                              
-                                               
+
       const doc = `before [label](https://example.com)${String.fromCodePoint(0x3002)}trailing text selected`
       const closeParen = doc.indexOf(')')
-                                                               
-                                            
+
       const selStart = closeParen + 2
       const view = mountEditor(doc)
       focus(view)
@@ -845,8 +727,7 @@ describe('livePreviewExtension — fenced code block', () => {
     })
 
     it('stays collapsed when the cursor sits one char before the opening `[`', () => {
-                                                               
-                             
+
       const doc = 'before [label](https://example.com) tail'
       const openBracket = doc.indexOf('[')
       const view = mountEditor(doc, openBracket - 1)

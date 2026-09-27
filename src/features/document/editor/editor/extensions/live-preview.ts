@@ -1,33 +1,12 @@
-   
-                  
-  
-                                 
-                                                                    
-                                                    
-                                           
-                                                  
-                                
-                                             
-                                                                                                 
-                                                
-                              
-  
-                                                             
-                               
-                                            
-                                                 
-                                           
-                                                 
-                                        
-                                                   
-                                               
-                            
-                             
-                                       
-                   
-                                                                
-   
-
+/**
+ * Live preview extension for the Markdown editor.
+ *
+ * Replaces Markdown syntax with rendered widgets (headings, emphasis, links,
+ * images, math, callouts, tables, embeds) while the cursor is elsewhere, and
+ * reveals the raw source for the block under the cursor so editing stays
+ * predictable. Decorations are rebuilt from the Lezer syntax tree on every
+ * relevant transaction; `livePreviewExtension` is the public entry point.
+ */
 import { syntaxTree, syntaxTreeAvailable } from '@codemirror/language'
 import { Facet, RangeSet, StateEffect, StateField, type EditorState, type Range } from '@codemirror/state'
 import {
@@ -155,9 +134,6 @@ class HRWidget extends WidgetType {
   }
 }
 
-                                                 
-                                                   
-                                                  
 const NAMED_HTML_ENTITIES: Record<string, string> = {
   nbsp: ' ',
   amp: '&',
@@ -185,8 +161,6 @@ const NAMED_HTML_ENTITIES: Record<string, string> = {
   rdquo: '”',
 }
 
-                                                           
-                         
 function decodeHtmlEntity(raw: string): string | null {
   const m = /^&(?:#(\d+)|#[xX]([a-fA-F\d]+)|([A-Za-z][A-Za-z\d]*));$/.exec(raw)
   if (!m) return null
@@ -221,8 +195,6 @@ class HtmlEntityWidget extends WidgetType {
   }
 }
 
-                                                                                                   
-                                                                                     
 const EXTERNAL_LINK_SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="11" height="11" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"><path d="M14 9 L3 9 3 29 23 29 23 18 M18 4 L28 4 28 14 M28 4 L14 18"/></svg>'
 
@@ -435,9 +407,7 @@ class ImageWidget extends WidgetType {
     })
     actions.appendChild(sourceToggle)
     wrap.appendChild(actions)
-                                                    
-                                                               
-                                          
+
     attachResizeMeasure(wrap, view)
     return wrap
   }
@@ -464,8 +434,6 @@ class ImageWidget extends WidgetType {
   }
 }
 
-                                                            
-                             
 const CALLOUT_ICON_ALIAS: Record<string, string> = {
   hint: 'tip', important: 'tip',
   check: 'success', done: 'success',
@@ -506,7 +474,7 @@ class CalloutTitleWidget extends WidgetType {
     wrap.setAttribute('aria-hidden', 'true')
     wrap.innerHTML =
       `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${calloutIconPaths(this.type)}</svg>`
-                                                   
+
     if (!this.hasTitle) {
       const label = document.createElement('span')
       label.className = 'cm-md-callout-title-text'
@@ -530,10 +498,6 @@ const CHECK_ICON_SVG =
 const CODE_ICON_SVG =
   '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>'
 
-   
-                                                                
-                                                                      
-   
 function editFenceLangAtWidget(view: EditorView, dom: HTMLElement, currentLang: string) {
   const t = i18next.getFixedT(null, 'document')
   const next = window.prompt(t('editor.extensions.codeblock.editLangPrompt'), currentLang)
@@ -556,18 +520,14 @@ class CodeCopyWidget extends WidgetType {
     super()
   }
   eq(other: CodeCopyWidget) {
-                                                         
-                                                                      
-                                                                     
-                                                       
-                                                         
+
     return other.lang === this.lang
   }
   toDOM(view: EditorView) {
     const t = i18next.getFixedT(null, 'document')
     const wrap = document.createElement('span')
     wrap.className = 'cm-md-codeblock-actions'
-                                                
+
     const tag = document.createElement('span')
     tag.className = 'cm-md-codeblock-lang'
     tag.textContent = this.lang || t('editor.extensions.codeblock.plainText')
@@ -580,7 +540,7 @@ class CodeCopyWidget extends WidgetType {
       editFenceLangAtWidget(view, wrap, this.lang)
     })
     wrap.appendChild(tag)
-                                   
+
     const btn = document.createElement('button')
     btn.className = 'cm-md-codeblock-copy'
     btn.type = 'button'
@@ -633,12 +593,6 @@ class CodeCopyWidget extends WidgetType {
   }
 }
 
-   
-                                               
-                                                            
-                                                              
-                              
-   
 function readCodeAtWidget(view: EditorView, dom: HTMLElement): string | null {
   const pos = view.posAtDOM(dom)
   const state = view.state
@@ -675,8 +629,7 @@ class MermaidWidget extends WidgetType {
     const wrap = document.createElement('div')
     wrap.className = 'cm-md-mermaid'
     wrap.setAttribute('aria-hidden', 'true')
-                                                             
-                        
+
     const content = document.createElement('div')
     content.className = 'cm-md-mermaid-content'
     const indicator = document.createElement('span')
@@ -698,8 +651,7 @@ class MermaidWidget extends WidgetType {
         content.appendChild(errEl)
         view.requestMeasure()
       })
-                                                              
-                                           
+
     const edit = document.createElement('button')
     edit.className = 'cm-md-mermaid-edit'
     edit.type = 'button'
@@ -710,8 +662,7 @@ class MermaidWidget extends WidgetType {
     edit.addEventListener('click', (e) => {
       e.preventDefault()
       e.stopPropagation()
-                                                       
-                                           
+
       const live = view.posAtDOM(wrap)
       const anchor = live >= 0 && live <= view.state.doc.length ? live : this.srcFrom
       view.dispatch({
@@ -725,16 +676,11 @@ class MermaidWidget extends WidgetType {
     attachResizeMeasure(wrap, view)
     return wrap
   }
-                                                
-                                                                 
-                                                           
-                                                      
-                                                  
-                                             
+
   eq(other: MermaidWidget) {
     return other.code === this.code
   }
-                                                              
+
   get estimatedHeight(): number {
     return 280
   }
@@ -775,14 +721,11 @@ class MathWidget extends WidgetType {
     }
     return wrap
   }
-                                                                  
-                                                                  
-                                              
+
   eq(other: MathWidget) {
     return other.source === this.source && other.display === this.display
   }
-                                                                
-                          
+
   get estimatedHeight(): number {
     return this.display ? 60 : -1
   }
@@ -794,22 +737,14 @@ class MathWidget extends WidgetType {
   }
 }
 
-   
-                                      
-                                                     
-                                     
-                                       
-                      
-   
-
 type CalloutInfo = {
   type: string
   startLine: number
   endLine: number
-                                      
+
   markerFrom: number
   markerTo: number
-                                  
+
   hasTitle: boolean
 }
 
@@ -820,7 +755,7 @@ function detectCallout(
 ): CalloutInfo | null {
   const startLine = state.doc.lineAt(blockFrom)
   const endLine = state.doc.lineAt(blockTo)
-                                                   
+
   const match = /^>\s*\[!([A-Za-z]+)\]/.exec(startLine.text)
   if (!match) return null
   const type = match[1].toLowerCase()
@@ -844,21 +779,9 @@ function detectCallout(
 const FOOTNOTE_REF_RE = /\[\^([A-Za-z0-9_-]+)\]/g
 const FOOTNOTE_DEF_RE = /^\[\^([A-Za-z0-9_-]+)\]:\s/
 const MATH_DISPLAY_RE = /\$\$([\s\S]+?)\$\$/g
-                                     
+
 const MATH_INLINE_RE = /(?<!\\)\$([^\s$][^$\n]*?[^\s$]|[^\s$])\$/g
 
-   
-                               
-  
-                                                    
-                                                               
-                                                                   
-                                                            
-                                                                
-  
-                                                   
-                                                           
-   
 type FencedBlockInfo = {
   openLineFrom: number
   openLineTo: number
@@ -875,32 +798,17 @@ type FencedBlockInfo = {
   lang: string
 }
 
-   
-                   
-  
-                                                              
-                                                                           
-                                                                 
-                                                        
-                                                      
-                                            
-                                                        
-  
-                                                                
-                                             
-   
 type ATXHeadingInfo = {
   line: number
   lineFrom: number
   lineTo: number
   level: number
-                             
+
   markFrom: number
-                                                                  
+
   markTo: number
 }
 
-             
 export function scanATXHeadings(
   state: EditorState,
   fencedBlocks: FencedBlockInfo[],
@@ -916,7 +824,7 @@ export function scanATXHeadings(
   for (let i = 1; i <= doc.lines; i++) {
     if (inFence(i)) continue
     const line = doc.line(i)
-                                                               
+
     const m = line.text.match(/^( {0,3})(#{1,6})(?:[ \t]|$)/)
     if (!m) continue
     const [, indent, hashes] = m
@@ -937,7 +845,6 @@ export function scanATXHeadings(
   return out
 }
 
-                                    
 export function scanFencedCodeBlocks(state: EditorState): FencedBlockInfo[] {
   const doc = state.doc
   const blocks: FencedBlockInfo[] = []
@@ -1006,22 +913,14 @@ function buildLivePreviewDecorations(state: EditorState): DecorationSet {
   const selCtx = state.facet(livePreviewRevealSourceFacet)
     ? buildSelectionContext(state)
     : { activeLines: new Set<number>(), ranges: [] }
-                                             
+
   const cursorLines = selCtx.activeLines
-                                                              
-                                                                    
-                                           
+
   const decoratedQuoteLines = new Set<number>()
   const renderedTaskMarkers = new Set<number>()
 
-                                      
-                                                                    
-                                                             
-                                                     
-                                                                           
-          
   const fencedBlocks = scanFencedCodeBlocks(state)
-                                                                
+
   const fenceMarkRanges: Array<[number, number]> = []
   for (const fb of fencedBlocks) {
     fenceMarkRanges.push([fb.openMarkFrom, fb.openMarkTo])
@@ -1037,7 +936,7 @@ function buildLivePreviewDecorations(state: EditorState): DecorationSet {
     const inBlock = state.selection.ranges.some(
       (r) => r.to >= fb.openLineFrom && r.from <= fb.closeLineTo,
     )
-                                                           
+
     if (fb.lang === 'mermaid' && !inBlock && fb.codeTo > fb.codeFrom) {
       const code = state.doc.sliceString(fb.codeFrom, fb.codeTo).trim()
       if (code) {
@@ -1050,7 +949,7 @@ function buildLivePreviewDecorations(state: EditorState): DecorationSet {
         continue
       }
     }
-          
+
     for (let n = fb.openLineNumber; n <= fb.closeLineNumber; n++) {
       const line = state.doc.line(n)
       const cls = n === fb.openLineNumber || n === fb.closeLineNumber
@@ -1058,20 +957,17 @@ function buildLivePreviewDecorations(state: EditorState): DecorationSet {
         : 'cm-md-codeblock-line'
       decos.push(Decoration.line({ class: cls }).range(line.from))
     }
-                                                        
-                                                           
-                                                       
-                                                        
+
     if (!rangeIsActive(selCtx, fb.openLineFrom, fb.openLineTo)) {
       if (fb.openLineTo > fb.openMarkFrom) {
         decos.push(Decoration.replace({}).range(fb.openMarkFrom, fb.openLineTo))
       }
     }
-                      
+
     if (!rangeIsActive(selCtx, fb.closeMarkFrom, fb.closeMarkTo)) {
       decos.push(Decoration.replace({}).range(fb.closeMarkFrom, fb.closeMarkTo))
     }
-                                           
+
     if (fb.codeTo > fb.codeFrom) {
       const code = state.doc.sliceString(fb.codeFrom, fb.codeTo)
       if (code.trim()) {
@@ -1085,13 +981,6 @@ function buildLivePreviewDecorations(state: EditorState): DecorationSet {
     }
   }
 
-                                                 
-                                                                           
-                                                        
-                                                           
-                                                             
-                                                                     
-                                                 
   const atxHeadings = scanATXHeadings(state, fencedBlocks)
   for (const h of atxHeadings) {
     decos.push(Decoration.line({ class: `cm-md-h cm-md-h${h.level}` }).range(h.lineFrom))
@@ -1101,7 +990,7 @@ function buildLivePreviewDecorations(state: EditorState): DecorationSet {
   }
 
   // ---------- YAML Frontmatter ----------
-                                      
+
   if (state.doc.lines >= 2) {
     const first = state.doc.line(1)
     if (first.text === '---') {
@@ -1124,9 +1013,6 @@ function buildLivePreviewDecorations(state: EditorState): DecorationSet {
     }
   }
 
-                                                   
-                                                           
-                              
   const scanRanges: { from: number; to: number }[] = [{ from: 0, to: state.doc.length }]
   for (const { from, to } of scanRanges) {
     const startLine = state.doc.lineAt(from).number
@@ -1156,11 +1042,8 @@ function buildLivePreviewDecorations(state: EditorState): DecorationSet {
     return rangeIsActive(selCtx, from, to)
   }
 
-                                                                  
   const calloutByBlockStart = new Map<number, CalloutInfo>()
 
-                               
-                                                     
   const consumedMath: { from: number; to: number }[] = []
   for (const { from, to } of scanRanges) {
     const text = state.doc.sliceString(from, to)
@@ -1209,21 +1092,14 @@ function buildLivePreviewDecorations(state: EditorState): DecorationSet {
       from,
       to,
       enter(node) {
-                                   
-                                                                 
-                                                                
-                                                              
-                                                    
+
         const headingMatch = /^ATXHeading([1-6])$/.exec(node.name)
         if (headingMatch) {
           return false
         }
 
         if (node.name === 'HeaderMark') {
-                                                                       
-                                                                    
-                                                              
-                                                        
+
           const line = state.doc.lineAt(node.from)
           const end = Math.min(line.to, node.to + 1)
           const hidden = shouldHideLineMarker(selCtx, state, line.number, node.from, end)
@@ -1232,14 +1108,8 @@ function buildLivePreviewDecorations(state: EditorState): DecorationSet {
           return
         }
 
-                                          
-                                                                                
-                                                                       
-                                              
         //
-                                                                       
-                                                                     
-                                            
+
         if (
           node.name === 'EmphasisMark'
           || node.name === 'CodeMark'
@@ -1254,23 +1124,15 @@ function buildLivePreviewDecorations(state: EditorState): DecorationSet {
           return
         }
 
-                                               
-                                                                           
-                                                                
-                                                       
         //
-                                                                   
-                                                                                    
+
         //
-                                                           
+
         //   .hmd-inactive-line span.cm-hmd-escape-backslash { font-size:0!important }
         //   span.cm-hmd-escape-backslash                    { color: var(--text-faint) }
-                                       
-                                                   
+
         //
-                                                                      
-                                                            
-                                                  
+
         if (node.name === 'Escape') {
           const line = state.doc.lineAt(node.from)
           const bsFrom = node.from
@@ -1293,16 +1155,9 @@ function buildLivePreviewDecorations(state: EditorState): DecorationSet {
         }
 
         // ---------- HTML Entity `&nbsp;` / `&#160;` / `&#xa0;` ----------
-                                                                
-                                                                     
-                                                               
-                                                                     
-                                                             
+
         //
-                                              
-                                                                    
-                                                                             
-                                      
+
         if (node.name === 'Entity') {
           const line = state.doc.lineAt(node.from)
           if (cursorLines.has(line.number)) {
@@ -1367,8 +1222,7 @@ function buildLivePreviewDecorations(state: EditorState): DecorationSet {
             }
             return
           }
-                                                                     
-                                                          
+
           const startLine = state.doc.lineAt(node.from).number
           const endLine = state.doc.lineAt(node.to).number
           for (let n = startLine; n <= endLine; n++) {
@@ -1382,7 +1236,7 @@ function buildLivePreviewDecorations(state: EditorState): DecorationSet {
 
         if (node.name === 'QuoteMark') {
           const line = state.doc.lineAt(node.from)
-                                                                
+
           const end = Math.min(line.to, node.to + 1)
           if (shouldHideLineMarker(selCtx, state, line.number, node.from, end)) {
             decos.push(Decoration.replace({}).range(node.from, end))
@@ -1390,7 +1244,6 @@ function buildLivePreviewDecorations(state: EditorState): DecorationSet {
           return
         }
 
-                                   
         if (node.name === 'ListMark') {
           const text = state.doc.sliceString(node.from, node.to)
           const isBullet = /^[-*+]$/.test(text)
@@ -1411,8 +1264,7 @@ function buildLivePreviewDecorations(state: EditorState): DecorationSet {
           }
 
           // Replace source markers with the live-preview bullet widget.
-                                                                
-                                                       
+
           if (isBullet) {
             decos.push(
               Decoration.replace({ widget: new BulletWidget() }).range(node.from, node.to),
@@ -1443,7 +1295,6 @@ function buildLivePreviewDecorations(state: EditorState): DecorationSet {
           return
         }
 
-                                                     
         if (node.name === 'Image') {
           let urlStart = -1
           let urlEnd = -1
@@ -1515,9 +1366,7 @@ function buildLivePreviewDecorations(state: EditorState): DecorationSet {
         }
 
         // ---------- Link ----------
-                                                                                       
-                                                                  
-                                                                  
+
         if (node.name === 'Link') {
           const cursorIn = rangeNearCursor(node.from, node.to)
           const linkMarks: { from: number; to: number }[] = []
@@ -1536,8 +1385,7 @@ function buildLivePreviewDecorations(state: EditorState): DecorationSet {
           const url = hasUrl ? state.doc.sliceString(urlStart, urlEnd) : ''
           decos.push(
             Decoration.mark({
-                                                                    
-                                                    
+
               class: cursorIn ? 'cm-md-link cm-md-link-expanded' : 'cm-md-link',
               attributes: hasUrl ? { 'data-href': url, role: 'link' } : {},
             }).range(node.from, node.to),
@@ -1556,17 +1404,10 @@ function buildLivePreviewDecorations(state: EditorState): DecorationSet {
           return
         }
 
-                                      
-                                                                         
-                                                                        
-                                                                 
-                                        
-                                                  
         if (node.name === 'FencedCode') {
           return false
         }
 
-                                      
         if (node.name === 'HorizontalRule') {
           const line = state.doc.lineAt(node.from)
           if (!cursorLines.has(line.number)) {
@@ -1579,10 +1420,6 @@ function buildLivePreviewDecorations(state: EditorState): DecorationSet {
           return
         }
 
-                                       
-                                                                              
-                                                              
-                                                   
         if (node.name === 'Table') {
           const model = parseTableFromNode(node.node, state)
           if (model) {
@@ -1593,7 +1430,7 @@ function buildLivePreviewDecorations(state: EditorState): DecorationSet {
               }).range(node.from, node.to),
             )
           }
-                                                             
+
           return false
         }
       },
@@ -1603,26 +1440,8 @@ function buildLivePreviewDecorations(state: EditorState): DecorationSet {
   return Decoration.set(decos, true)
 }
 
-                                                                       
 const atomicPlaceholder = Decoration.replace({})
 
-   
-                                                       
-                      
-  
-                                                              
-                                                                    
-                                                         
-                                                                      
-                                                   
-  
-                                                 
-                                                          
-                               
-  
-                                                       
-             
-   
 function buildBlockAtomicRanges(set: DecorationSet, docLength: number): RangeSet<Decoration> {
   const ranges: Range<Decoration>[] = []
   set.between(0, docLength, (from, to, value) => {
@@ -1636,9 +1455,6 @@ function buildBlockAtomicRanges(set: DecorationSet, docLength: number): RangeSet
   return RangeSet.of(ranges, true)
 }
 
-                                                                     
-                                                            
-                                          
 // Exported so the spec can call `view.state.field(livePreviewField)` and
 // directly iterate decorations rather than relying on jsdom's small viewport.
 export const livePreviewField = StateField.define<DecorationSet>({
@@ -1646,12 +1462,7 @@ export const livePreviewField = StateField.define<DecorationSet>({
     return buildLivePreviewDecorations(state)
   },
   update(value, tr) {
-                                                                   
-                                                                  
-                                                                
-                                              
-                                                               
-                                                                  
+
     const focusChanged = tr.effects.some((e) => e.is(editorFocusEffect))
     const imageSourceChanged = tr.effects.some((e) => e.is(revealImageSourceEffect))
     const shouldRebuild =
@@ -1662,14 +1473,6 @@ export const livePreviewField = StateField.define<DecorationSet>({
       syntaxTree(tr.startState) !== syntaxTree(tr.state)
     if (!shouldRebuild) return value
 
-                                                   
-                                                                      
-                                                                  
-                                                              
-                                     
-                                                     
-                                                      
-                                                                               
     if (!syntaxTreeAvailable(tr.state, tr.state.doc.length)) {
       return tr.docChanged ? value.map(tr.changes) : value
     }
@@ -1685,7 +1488,7 @@ export const livePreviewField = StateField.define<DecorationSet>({
 })
 
 const livePreviewTheme = EditorView.baseTheme({
-                                            
+
   '.cm-md-h': {
     padding: '1rem 0 0',           // --p-spacing
     textDecoration: 'none',
@@ -1693,17 +1496,13 @@ const livePreviewTheme = EditorView.baseTheme({
   '.cm-md-h *': {
     textDecoration: 'none !important',
   },
-                                                                                
+
   '.cm-md-h-mark, .cm-md-h .cm-md-h-mark': {
     color: 'hsl(var(--muted-foreground) / 0.55) !important',
     fontWeight: 'normal !important',
     textDecoration: 'none !important',
   },
-                                                       
-                                                                             
-                                                              
-                                                                
-                                         
+
   '.cm-md-h-mark-hidden': {
     fontSize: '0 !important',
     display: 'inline-block',
@@ -1748,28 +1547,20 @@ const livePreviewTheme = EditorView.baseTheme({
   '.cm-md-strong': { fontWeight: '700' },
   '.cm-md-em': { fontStyle: 'italic' },
   '.cm-md-strike': { textDecoration: 'line-through' },
-                                           
-                                                            
-                         
+
   '.cm-md-escape-backslash': {
     color: 'hsl(var(--muted-foreground) / 0.5)',
   },
-                                                            
-                                                                      
-                                                                   
-                                    
+
   '.cm-md-escape-char': {
     color: 'inherit !important',
   },
-                                                  
-                                                                          
-                                                                      
-                                     
+
   '.cm-md-entity-source': {
     color: 'inherit !important',
   },
   '.cm-md-entity': {
-                                                      
+
   },
   '.cm-md-code': {
     fontFamily: 'var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace)',
@@ -1778,14 +1569,7 @@ const livePreviewTheme = EditorView.baseTheme({
     padding: '0.05em 0.35em',
     borderRadius: '0.25rem',
   },
-                                                                                 
-                                                                               
-                                                                      
-                                                                    
-                                                                 
-                                                 
-                                                              
-                                        
+
   '.cm-line.cm-md-quote-line': {
     borderInlineStart: '2px solid hsl(var(--primary))',
     paddingInlineStart: '1em',
@@ -1820,13 +1604,11 @@ const livePreviewTheme = EditorView.baseTheme({
     textDecoration: 'underline',
     cursor: 'pointer',
   },
-                                                
-                                                   
+
   '.cm-md-link.cm-md-link-expanded': {
     cursor: 'text',
   },
-                                                           
-                                                                         
+
   '.cm-md-link-external-icon': {
     display: 'inline-flex',
     alignItems: 'center',
@@ -1846,16 +1628,13 @@ const livePreviewTheme = EditorView.baseTheme({
     width: '100%',
     height: '100%',
   },
-                                                       
-                                                                         
-                                            
+
   '.cm-line.cm-md-codeblock-line': {
     fontFamily: 'var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace)',
     fontSize: '0.9em',
     backgroundColor: 'hsl(var(--muted, 215 15% 90%) / 0.55)',
     position: 'relative',
-                                                   
-                 
+
     paddingLeft: '1rem',
     paddingRight: '1rem',
   },
@@ -1871,7 +1650,7 @@ const livePreviewTheme = EditorView.baseTheme({
     gap: '6px',
     pointerEvents: 'auto',
   },
-                          
+
   '.cm-md-codeblock-lang': {
     fontSize: '0.72rem',
     fontFamily: 'var(--font-sans, ui-sans-serif, system-ui, sans-serif)',
@@ -1886,7 +1665,7 @@ const livePreviewTheme = EditorView.baseTheme({
   '.cm-md-codeblock-lang:hover': {
     color: 'hsl(var(--foreground, 215 15% 15%))',
   },
-                                          
+
   '.cm-md-codeblock-copy': {
     appearance: 'none',
     display: 'inline-flex',
@@ -1935,7 +1714,6 @@ const livePreviewTheme = EditorView.baseTheme({
     color: 'hsl(var(--muted-foreground, 215 15% 55%))',
   },
 
-       
   '.cm-md-image': {
     display: 'inline-block',
     position: 'relative',
@@ -2014,11 +1792,6 @@ const livePreviewTheme = EditorView.baseTheme({
     textDecoration: 'none !important',
   },
 
-                                                      
-                                                    
-                                          
-                                                                       
-                                                                                     
   '.cm-line.cm-md-callout': {
     paddingLeft: '1rem',
     paddingRight: '1rem',
@@ -2048,7 +1821,6 @@ const livePreviewTheme = EditorView.baseTheme({
   '.cm-md-callout-icon svg': { display: 'block' },
   '.cm-md-callout-title-text': { fontWeight: '600' },
 
-                                                
   '.cm-md-callout-note': { '--callout-color': '210 90% 62%' },
   '.cm-md-callout-info': { '--callout-color': '200 85% 58%' },
   '.cm-md-callout-tip': { '--callout-color': '168 66% 52%' },
@@ -2077,8 +1849,6 @@ const livePreviewTheme = EditorView.baseTheme({
   '.cm-md-callout-tldr': { '--callout-color': '190 65% 55%' },
   '.cm-md-callout-todo': { '--callout-color': '220 80% 65%' },
 
-                                                                             
-                                                             
   '.cm-table-widget': {
     display: 'block',
     padding: '16px',                                                                            
@@ -2094,8 +1864,7 @@ const livePreviewTheme = EditorView.baseTheme({
     borderCollapse: 'collapse',
     fontSize: '0.95em',
   },
-                                                                                             
-                                                            
+
   '.cm-table-widget th, .cm-table-widget td': {
     border: '1px solid hsl(var(--border, 215 15% 80%))',
     cursor: 'text',
@@ -2109,7 +1878,7 @@ const livePreviewTheme = EditorView.baseTheme({
     backgroundColor: 'hsl(var(--muted, 215 15% 90%) / 0.4)',
     fontWeight: '600',
   },
-                                     
+
   '.cm-table-widget.is-cell-selecting': {
     userSelect: 'none',
   },
@@ -2117,7 +1886,7 @@ const livePreviewTheme = EditorView.baseTheme({
     userSelect: 'none',
     cursor: 'default',
   },
-                                                     
+
   '.cm-table-widget td.is-cell-selected, .cm-table-widget th.is-cell-selected': {
     backgroundColor: 'hsl(var(--primary, 247 63% 55%) / 0.15)',
   },
@@ -2143,7 +1912,7 @@ const livePreviewTheme = EditorView.baseTheme({
   '.cm-table-widget tbody tr.is-row-selected td': {
     background: 'hsl(var(--primary, 220 90% 55%) / 0.12)',
   },
-                                                           
+
   '.cm-table-widget tbody tr.is-row-selected td::after': {
     content: '""',
     position: 'absolute',
@@ -2151,7 +1920,7 @@ const livePreviewTheme = EditorView.baseTheme({
     background: 'hsl(var(--primary, 220 90% 55%) / 0.08)',
     pointerEvents: 'none',
   },
-                                                                  
+
   '.cm-table-widget thead th.is-col-selected, .cm-table-widget tbody td.is-col-selected': {
     background: 'hsl(var(--primary, 220 90% 55%) / 0.12)',
   },
@@ -2163,11 +1932,6 @@ const livePreviewTheme = EditorView.baseTheme({
     pointerEvents: 'none',
   },
 
-                                                           
-                                                                
-                                                        
-                                                             
-                                                       
   '.cm-table-widget .table-row-drag-handle, .cm-table-widget .table-col-drag-handle': {
     position: 'absolute',
     display: 'flex',
@@ -2203,20 +1967,13 @@ const livePreviewTheme = EditorView.baseTheme({
   '.cm-table-widget .table-row-drag-handle:active, .cm-table-widget .table-col-drag-handle:active': {
     cursor: 'grabbing',
   },
-                                                           
-                                                    
-                                                   
+
   '.cm-table-widget.is-mounting .table-row-drag-handle, .cm-table-widget.is-mounting .table-col-drag-handle': {
     opacity: '0 !important',
     transition: 'none !important',
     pointerEvents: 'none !important',
   },
 
-                                                                                     
-                                                                 
-                                                                           
-                                                                                  
-                                                                          
   '.cm-table-widget .table-row-btn, .cm-table-widget .table-col-btn': {
     position: 'absolute',
     display: 'flex',
@@ -2244,7 +2001,7 @@ const livePreviewTheme = EditorView.baseTheme({
     background: 'hsl(var(--accent, 215 15% 92%))',
     color: 'hsl(var(--foreground, 215 15% 15%))',
   },
-                                              
+
   '.cm-table-widget .table-row-btn': {
     top: '100%',
     left: '0',
@@ -2253,7 +2010,7 @@ const livePreviewTheme = EditorView.baseTheme({
     borderTop: 'none',
     cursor: 's-resize',
   },
-                                                         
+
   '.cm-table-widget .table-col-btn': {
     top: '0',
     left: '100%',
@@ -2263,7 +2020,6 @@ const livePreviewTheme = EditorView.baseTheme({
     cursor: 'e-resize',
   },
 
-            
   '.cm-table-menu': {
     minWidth: '200px',
     padding: '4px 0',
@@ -2292,7 +2048,7 @@ const livePreviewTheme = EditorView.baseTheme({
     background: 'hsl(var(--accent, 215 15% 92%))',
     color: 'hsl(var(--accent-foreground, 215 15% 15%))',
   },
-                                            
+
   '.cm-table-menu-item.is-warning': {
     color: 'hsl(var(--destructive, 0 72% 51%))',
   },
@@ -2335,7 +2091,6 @@ const livePreviewTheme = EditorView.baseTheme({
     borderBottom: '1px solid hsl(var(--border, 215 15% 80%) / 0.6)',
   },
 
-       
   '.cm-md-footnote-ref': {
     color: 'hsl(var(--primary, 220 90% 55%))',
     fontSize: '0.78em',
@@ -2404,7 +2159,6 @@ const livePreviewTheme = EditorView.baseTheme({
     textAlign: 'left',
   },
 
-                
   '.cm-md-math': {
     fontFamily: 'KaTeX_Main, Cambria Math, serif',
   },
@@ -2443,10 +2197,7 @@ export function livePreviewExtension(options: {
     revealedImageSourceField,
     livePreviewRevealSourceFacet.of(options.revealSourceOnFocus !== false),
     livePreviewImagePreviewFacet.of(options.onImagePreview ?? null),
-                                                           
-                                                                    
-                                                                
-                                      
+
     EditorView.domEventHandlers({
       focus(_e, view) {
         if (view.state.field(editorFocusField, false)) return
@@ -2462,15 +2213,9 @@ export function livePreviewExtension(options: {
         event.preventDefault()
         return true
       },
-                                                                      
-                                                                        
-                                                         
-                                                               
-                    
+
       //
-                                                            
-                                                       
-                                         
+
       mousedown(event, view) {
         if (event.button !== 0) return false
         const target = event.target as HTMLElement | null

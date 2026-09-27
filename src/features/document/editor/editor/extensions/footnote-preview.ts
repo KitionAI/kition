@@ -1,12 +1,3 @@
-   
-                          
-  
-                                                
-                        
-  
-                                  
-   
-
 import type { EditorState, Range } from '@codemirror/state'
 import { RangeSetBuilder } from '@codemirror/state'
 import {
@@ -44,7 +35,6 @@ function buildFootnoteDecorations(state: EditorState): DecorationSet {
   const cursor = state.selection.main.head
   const cursorLine = doc.lineAt(cursor).number
 
-                         
   const defs = new Map<string, string>()
   type LineInfo = { from: number; to: number; text: string; number: number; isDef: boolean }
   const lines: LineInfo[] = []
@@ -60,7 +50,6 @@ function buildFootnoteDecorations(state: EditorState): DecorationSet {
   }
   if (defs.size === 0) return builder.finish()
 
-                             
   const decos: Range<Decoration>[] = []
   for (const info of lines) {
     if (info.isDef) continue

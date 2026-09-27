@@ -1,10 +1,3 @@
-   
-                
-  
-                                           
-                                                
-   
-
 import { ChevronDown, ChevronRight, File as FileIcon, Folder, FolderOpen } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -65,7 +58,6 @@ export function DocumentExplorerPanel({ currentPath, onOpen, className }: Docume
     }
   }, [])
 
-                  
   useEffect(() => {
     if (!currentPath || initialAutoExpand.current) return
     const dirs = parentDirs(currentPath)

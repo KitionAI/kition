@@ -1,13 +1,3 @@
-   
-                      
-  
-                                  
-                                             
-                         
-  
-                              
-   
-
 import { EditorSelection } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { useEffect, useMemo, useState } from 'react'
@@ -74,7 +64,6 @@ export function DocumentHeadingOutlineDialog({
     return headings.filter((h) => h.text.toLowerCase().includes(q))
   }, [headings, query])
 
-                                   
   const minLevel = useMemo(() => {
     if (filtered.length === 0) return 1
     let min = 6

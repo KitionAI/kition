@@ -1,10 +1,3 @@
-   
-                                               
-  
-                                                                         
-                                
-   
-
 import { useCallback, useRef } from 'react'
 
 import type { EmbedLoader } from '@/features/document/editor/editor/extensions'
@@ -67,7 +60,7 @@ export function useVaultEmbedLoader(): EmbedLoader {
     })()
     inflight.current.set(key, promise)
     promise.finally(() => {
-                                                     
+
       inflight.current.delete(key)
     })
     return promise

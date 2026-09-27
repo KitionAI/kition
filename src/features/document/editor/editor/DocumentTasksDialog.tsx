@@ -1,11 +1,3 @@
-   
-               
-  
-                                             
-                                        
-                 
-   
-
 import { CheckSquare2, Loader2, Square } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'

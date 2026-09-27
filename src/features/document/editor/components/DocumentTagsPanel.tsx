@@ -1,15 +1,3 @@
-   
-          
-  
-                                                     
-                   
-  
-                         
-                                         
-                                                     
-                       
-   
-
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -27,13 +15,13 @@ function flattenTree(items: VaultTreeItem[], out: VaultTreeItem[] = []): VaultTr
 }
 
 export type DocumentTagsPanelProps = {
-               
+
   source: string
-                       
+
   currentPath: string
-                       
+
   onSelectInDocument?: (tag: TagParsed) => void
-                                    
+
   onSelectGlobalTag?: (name: string) => void
   className?: string
 }

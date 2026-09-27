@@ -1,13 +1,3 @@
-   
-                                  
-  
-                                                             
-                                                        
-                                                                    
-                                                             
-                                                     
-   
-
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react'
 
 import {
@@ -40,7 +30,6 @@ function basename(p: string): string {
   return i >= 0 ? p.slice(i + 1) : p
 }
 
-                                  
 export function matchWikilinkTarget(
   files: readonly FileLike[],
   target: string,
@@ -82,7 +71,6 @@ export function matchWikilinkTarget(
     if (siblingMatch) return siblingMatch
   }
 
-                                     
   for (const f of files) {
     if (stripLinkExt(basename(f.path)).toLowerCase() === targetKey) return f.path
   }
@@ -122,10 +110,6 @@ export function invalidateVaultWikilinkResolver(): void {
   void refresh()
 }
 
-                                                                      
-                                                                   
-                                              
-                                   
 if (typeof window !== 'undefined') {
   window.addEventListener('kition:workspace-reload', () => {
     invalidateVaultWikilinkResolver()

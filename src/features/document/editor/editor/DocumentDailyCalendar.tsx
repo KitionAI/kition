@@ -1,10 +1,3 @@
-   
-                
-  
-                                             
-                                             
-   
-
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -35,7 +28,6 @@ function daysInMonth(year: number, month: number): number {
   return new Date(year, month + 1, 0).getDate()
 }
 
-                             
 function mondayBasedWeekday(date: Date): number {
   const d = date.getDay()        
   return (d + 6) % 7

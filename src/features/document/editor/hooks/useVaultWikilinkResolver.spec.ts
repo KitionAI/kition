@@ -20,8 +20,7 @@ vi.mock('@/features/document/editor/vault/vault-files', () => {
       callIndex += 1
       return next
     }),
-                                                  
-                                                      
+
     clearVaultFileCache: vi.fn(),
     pickRandomMarkdownFile: vi.fn(),
     __setVaultFilesByCall: (lists: any[][]) => {
@@ -105,17 +104,15 @@ describe('matchWikilinkTarget', () => {
 
   it('prefers exact path over basename when both could match', () => {
     const more = [...files, { path: 'Test1.md' }]
-                                                           
+
     expect(matchWikilinkTarget(more, 'test1')).toBe('Notes/Test1.md')
-                  
+
     expect(matchWikilinkTarget(more, '/Test1')).toBe('Test1.md')
   })
 })
 
 describe('useVaultWikilinkResolver', () => {
-                                                         
-                                                                   
-                                                           
+
   it('returns a referentially stable object across renders when store snapshot is unchanged', async () => {
     const snapshots: ReturnType<typeof useVaultWikilinkResolver>[] = []
     function Harness() {
@@ -129,8 +126,7 @@ describe('useVaultWikilinkResolver', () => {
     await act(async () => {
       root.render(createElement(Harness))
     })
-                                                        
-                                                
+
     await act(async () => {
       await new Promise<void>((resolve) => setTimeout(resolve, 0))
     })
@@ -158,10 +154,6 @@ describe('useVaultWikilinkResolver', () => {
     container.remove()
   })
 
-                                                                          
-                                                       
-                                                          
-                                                   
   it('re-fetches the vault file list when kition:workspace-reload fires (vault switch)', async () => {
     const vaultFiles = await import('@/features/document/editor/vault/vault-files') as any
     vaultFiles.__setVaultFilesByCall([
@@ -171,7 +163,6 @@ describe('useVaultWikilinkResolver', () => {
     ;(loadVaultLinkableFiles as any).mockClear?.()
     ;(clearVaultFileCache as any).mockClear?.()
 
-                                                              
     invalidateVaultWikilinkResolver()
     await new Promise<void>((resolve) => setTimeout(resolve, 0))
 

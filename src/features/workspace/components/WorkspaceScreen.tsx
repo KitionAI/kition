@@ -1,3 +1,10 @@
+/**
+ * Composition root for the workspace window: sidebar tree, tab strip, editor
+ * panes, browser panel, and the Agent sidebar. It owns tab state, create
+ * flows, and the bridges that feed document, table, and whiteboard context to
+ * the Agent. It is intentionally being split into focused hooks; do not add
+ * new responsibilities here (see docs/superpowers/plans, Task 1.4).
+ */
 import { useWorkspaceDesign } from '../hooks/useWorkspaceDesign'
 import { flushWorkspaceEditSessions } from '@/services/workspaceEditSessions'
 import type { AgentImageGenerationIntent } from '@/types/imageGeneration'
@@ -1593,8 +1600,7 @@ export function WorkspaceScreen({
       // metadata + tab juggling.
       const finalizeCreatedWorkflow = (def: WorkflowDefinition) => {
         if (state.kitablePath) {
-                                                      
-                                            
+
           workspaceTree.updateTreeMetadata((current) => {
             if (current.collapsed.includes(state.kitablePath!)) return current
             return { ...current, collapsed: [...current.collapsed, state.kitablePath!] }
@@ -1735,8 +1741,7 @@ export function WorkspaceScreen({
       title: getWorkspaceItemTitle(document.name),
       path: document.path,
       format,
-                                                           
-                                                     
+
       uid: typeof crypto !== 'undefined' && 'randomUUID' in crypto
         ? crypto.randomUUID()
         : `doc-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
@@ -2999,13 +3004,7 @@ export function WorkspaceScreen({
         current.forEach((itemPath) => next.add(remapWorkspaceBranchPath(itemPath, path, movedDocument.path)))
         return next
       })
-                                        
-                                                          
-                                                                            
-                                        
-                                                                                        
-                                               
-                          
+
       remapWorkspaceTabPaths(path, movedDocument.path)
       remapOpenedDocumentDrafts(path, movedDocument.path)
 
@@ -3550,8 +3549,7 @@ export function WorkspaceScreen({
                   ...current,
                   private: true,
                 }))
-                                                                         
-                                                       
+
                 openCreateFormatMenu('')
               },
               onCloseCreateMenu: () => {
@@ -3583,9 +3581,7 @@ export function WorkspaceScreen({
                     const result = await createTableInsideKitable(captured)
                     setKitableCreateContext(null)
                     if (result) {
-                                                                  
-                                                            
-                                 
+
                       workspaceTree.updateTreeMetadata((current) => {
                         if (current.collapsed.includes(captured)) return current
                         return { ...current, collapsed: [...current.collapsed, captured] }

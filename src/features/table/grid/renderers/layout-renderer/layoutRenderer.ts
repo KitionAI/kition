@@ -693,9 +693,6 @@ export const drawActiveCell = (ctx: CanvasRenderingContext2D, props: ILayoutDraw
     ctx.translate(0, -contentScrollTop);
   }
 
-                                                           
-                                             
-                               
   if (!isEditing) {
     drawCellContent(ctx, {
       x: x + 0.5,
@@ -1604,9 +1601,6 @@ export const drawAppendRow = (ctx: CanvasRenderingContext2D, props: IAppendRowDr
   ctx.restore();
 };
 
-                                                          
-                                                              
-                                                    
 const drawAppendRowColumnDividers = (
   ctx: CanvasRenderingContext2D,
   appendRowList: IAppendRowDrawerProps[],

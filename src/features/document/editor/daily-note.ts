@@ -1,19 +1,9 @@
-   
-                
-  
-                                
-                                    
-                        
-  
-                                         
-   
-
 import { readWorkspaceDocument, writeWorkspaceDocument } from '@/services/desktop'
 
 export type DailyNoteOptions = {
-                              
+
   folder?: string
-                                     
+
   template?: string
 }
 

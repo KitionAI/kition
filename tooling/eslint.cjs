@@ -52,11 +52,7 @@ module.exports = {
         ],
       },
     ],
-                                                             
-                                                   
-                                                                 
-                                            
-                         
+
     'no-restricted-syntax': [
       'warn',
       {
@@ -84,16 +80,7 @@ module.exports = {
       rules: { 'no-restricted-imports': 'off' },
     },
     {
-              
-                                             
-                                                             
-                    
-                                                        
-                                        
-                                                   
-                     
-                                                       
-                                       
+
       files: [
         'src/features/document/lib/pdfExportHtml.ts',
         'src/features/table/grid/configs/gridTheme.ts',

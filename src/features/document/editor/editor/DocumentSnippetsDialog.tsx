@@ -1,10 +1,3 @@
-   
-                 
-  
-                                             
-                     
-   
-
 import { Plus, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'

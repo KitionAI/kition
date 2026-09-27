@@ -1,10 +1,3 @@
-   
-                  
-  
-                                                           
-                                             
-   
-
 import type { FrontmatterField } from './frontmatter-parser'
 
 export type SerializableValue = string | string[]
@@ -40,9 +33,6 @@ export function serializeFrontmatter(fields: Array<{ key: string; value: Seriali
   return `---\n${body}\n---\n`
 }
 
-   
-                                             
-   
 export function applyFrontmatter(
   source: string,
   fields: Array<{ key: string; value: SerializableValue }>,
@@ -50,7 +40,7 @@ export function applyFrontmatter(
 ): string {
   const block = serializeFrontmatter(fields)
   if (parsed) {
-                                           
+
     let end = parsed.to
     if (source[end] === '\n') end += 1
     const before = source.slice(0, parsed.from)

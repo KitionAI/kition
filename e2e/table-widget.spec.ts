@@ -2,22 +2,6 @@ import { expect, test, type Page } from '@playwright/test'
 
 import { mockLocalWorkspaceApi } from './helpers/mockApi'
 
-   
-                                             
-  
-        
-                                                                              
-                                                          
-                                    
-                                                   
-                                                       
-  
-                                                                              
-                                                                
-                                                              
-                                       
-   
-
 const VAULT_PATH = '/tmp/kition-e2e-vault'
 const DOC_PATH = 'table-test.md'
 
@@ -130,7 +114,6 @@ async function mockDesktopBridge(
     },
   )
 
-                                                               
   await page.addInitScript(() => {
     const idleWindow = window as typeof window & {
       requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number
@@ -270,7 +253,6 @@ test.describe('table widget — row/col append from + buttons', () => {
     const rows = tableRowsLocator(page)
     await expect(rows).toHaveCount(1)
 
-                                                                     
     const rowButton = page.locator('.cm-table-widget .table-row-btn').first()
     await rowButton.hover()
     await rowButton.click()
@@ -353,7 +335,6 @@ test('right-click column header opens a vertically laid-out menu', async ({ page
   const menu = page.locator('.cm-table-menu')
   await expect(menu).toBeVisible()
 
-                                              
   const items = menu.locator('.cm-table-menu-item')
   const count = await items.count()
   expect(count).toBeGreaterThan(3)
@@ -363,7 +344,7 @@ test('right-click column header opens a vertically laid-out menu', async ({ page
     const box = await items.nth(i).boundingBox()
     if (box) boxes.push(box)
   }
-                                                   
+
   for (let i = 1; i < boxes.length; i++) {
     expect(boxes[i].y).toBeGreaterThanOrEqual(boxes[i - 1].y + boxes[i - 1].height - 2)
   }
@@ -394,8 +375,7 @@ test('delete column menu item shows warning color', async ({ page }) => {
   await waitForTableWidget(page)
 
   await page.locator('.cm-table-widget table thead th').nth(0).click({ button: 'right' })
-                                                                
-                                                                 
+
   const delItem = page.locator('.cm-table-menu-item').filter({ hasText: 'Delete column' })
   await expect(delItem).toBeVisible()
   await expect(delItem).toHaveClass(/is-warning/)
@@ -513,13 +493,11 @@ test.describe('table widget - Ctrl+Z reverts structural table actions', () => {
     const rows = tableRowsLocator(page)
     await expect(rows).toHaveCount(2)
 
-                                                
     const rowButton = page.locator('.cm-table-widget .table-row-btn').first()
     await rowButton.hover()
     await rowButton.click()
     await expect(rows).toHaveCount(3)
 
-                                                             
     await page.locator('.cm-table-widget table tbody tr').nth(0).locator('.table-cell-wrapper').first().focus()
     await page.keyboard.press('ControlOrMeta+z')
     await expect(rows).toHaveCount(2)

@@ -1,14 +1,3 @@
-   
-                  
-  
-                                                       
-                                       
-  
-                                   
-                                          
-                                               
-   
-
 import { StateField, type EditorState, type Extension, type Range } from '@codemirror/state'
 import {
   Decoration,
@@ -26,26 +15,20 @@ import {
 } from './_click-to-source'
 
 export type MathSpan = {
-                             
+
   from: number
-                             
+
   to: number
-                      
+
   tex: string
-                                      
+
   display: boolean
 }
 
-   
-                                    
-                              
-                    
-                                     
-   
 export function findMathSpans(source: string): MathSpan[] {
   const spans: MathSpan[] = []
   const lines = source.split('\n')
-                    
+
   const lineFrom: number[] = []
   {
     let off = 0
@@ -69,13 +52,11 @@ export function findMathSpans(source: string): MathSpan[] {
       continue
     }
 
-                       
-                                   
     const blockStartMatch = /(^|[^\\$])\$\$/.exec(line)
     if (blockStartMatch && /^\s*\$\$/.test(line)) {
       const startOnLine = line.indexOf('$$')
       const startGlobal = lineFrom[i] + startOnLine
-                  
+
       const rest = line.slice(startOnLine + 2)
       const closeOnSameLine = rest.indexOf('$$')
       if (closeOnSameLine !== -1) {
@@ -91,7 +72,7 @@ export function findMathSpans(source: string): MathSpan[] {
         i++
         continue
       }
-                          
+
       let j = i + 1
       let closingLine = -1
       let closingCol = -1
@@ -115,33 +96,32 @@ export function findMathSpans(source: string): MathSpan[] {
         i = closingLine + 1
         continue
       }
-                     
+
       i++
       continue
     }
 
-                           
     let p = 0
     while (p < line.length) {
       const dollar = line.indexOf('$', p)
       if (dollar === -1) break
-             
+
       if (dollar > 0 && line[dollar - 1] === '\\') {
         p = dollar + 1
         continue
       }
-                
+
       if (line[dollar + 1] === '$') {
         p = dollar + 2
         continue
       }
-                             
+
       const afterOpen = line[dollar + 1]
       if (afterOpen === undefined || /\s/.test(afterOpen)) {
         p = dollar + 1
         continue
       }
-            
+
       let q = dollar + 1
       let close = -1
       while (q < line.length) {
@@ -155,7 +135,7 @@ export function findMathSpans(source: string): MathSpan[] {
           q = next + 2
           continue
         }
-                  
+
         const before = line[next - 1]
         if (before !== undefined && /\s/.test(before)) {
           q = next + 1
@@ -215,8 +195,7 @@ class MathWidget extends WidgetType {
     if (this.display) {
       attachResizeMeasure(root, view)
     }
-                                                         
-                                                     
+
     attachClickToSource(root, view, this.srcFrom + 1)
     return root
   }
@@ -228,13 +207,6 @@ class MathWidget extends WidgetType {
   }
 }
 
-   
-                                           
-                                                  
-                                          
-  
-                                   
-   
 class MathEditPreviewWidget extends WidgetType {
   constructor(readonly tex: string, readonly display: boolean) {
     super()
@@ -267,8 +239,7 @@ class MathEditPreviewWidget extends WidgetType {
     if (this.display) detachResizeMeasure(dom)
   }
   ignoreEvent(): boolean {
-                                         
-                         
+
     return false
   }
 }
@@ -306,7 +277,7 @@ export function mathPreviewExtension(): Extension {
         }
         continue
       }
-                                     
+
       if (span.display) {
         const endLine = doc.lineAt(span.to)
         decos.push(

@@ -1,10 +1,3 @@
-   
-                  
-  
-                                                    
-                                
-   
-
 import { vaultClient, type VaultTreeItem } from '@/features/document/editor/vault/vault-client'
 
 const TTL_MS = 10_000
@@ -49,12 +42,6 @@ export function clearVaultFileCache(): void {
   linkableCache = null
 }
 
-   
-                                                     
-                                                   
-                                                      
-                                                     
-   
 export async function loadVaultLinkableFiles(): Promise<VaultTreeItem[]> {
   const now = Date.now()
   if (linkableCache && now - linkableCache.fetchedAt < TTL_MS) return linkableCache.files

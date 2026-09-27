@@ -41,7 +41,6 @@ function renderKatex(tex: string, displayMode: boolean): string {
   }
 }
 
-                                                                      
 const blockMath = {
   name: 'blockMath',
   level: 'block' as const,
@@ -61,8 +60,6 @@ const blockMath = {
   },
 }
 
-                                                                  
-                                                     
 const inlineMath = {
   name: 'inlineMath',
   level: 'inline' as const,

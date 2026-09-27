@@ -1,12 +1,3 @@
-   
-                                       
-  
-                                                         
-                                                                                 
-                                          
-                                    
-   
-
 import {
   autocompletion,
   type Completion,
@@ -47,9 +38,9 @@ import {
 type SlashCommand = {
   /** i18next key under document:slash.commands.<key> and document:slash.details.<key> */
   key: string
-             
+
   order: number
-                       
+
   apply: (view: EditorView) => void
 }
 

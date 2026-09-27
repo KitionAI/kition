@@ -190,8 +190,6 @@
     animation: none !important;
   }
 
-                                   
-                              
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -246,9 +244,7 @@
 }
 
 @layer components {
-                                       
-                                                             
-                                                                   
+
   .card-interactive {
     transition-property: color, background-color, border-color, box-shadow, transform;
     transition-duration: 180ms;
@@ -261,9 +257,6 @@
     transform: translateY(0) scale(0.99);
   }
 
-                                                
-                                                     
-                  
   .skeleton {
     position: relative;
     overflow: hidden;
@@ -980,11 +973,7 @@
   }
 
   .document-title-row {
-                                                                       
-                                                      
-                                                                         
-                                                                  
-                                                          
+
     @apply flex items-center gap-2;
     box-sizing: border-box;
     max-width: 756px !important;
@@ -999,11 +988,7 @@
   }
 
   .document-top-actions-bar {
-                                     
-                                                       
-                                                        
-                                                                
-                                                        
+
     @apply relative z-20 flex shrink-0 items-center bg-background/80 px-2 py-1 pr-3 backdrop-blur;
   }
 
@@ -1400,11 +1385,6 @@
     @apply my-1 h-px bg-secondary dark:bg-accent;
   }
 
-                                                                     
-                                                                    
-                                                                
-                                                                       
-     
   .cm-table-menu {
     @apply fixed z-[200] flex min-w-[200px] flex-col overflow-hidden rounded-md border border-border bg-popover py-1 text-sm text-popover-foreground shadow-floating;
     user-select: none;
@@ -2558,31 +2538,14 @@
     color: inherit;
   }
 
-                                                                          
-                                                    
-                           
-                                                                   
-                                                                              
-                                                         
-                                                      
-                                                                    
-                                                            
-                                    
   .document-editor .cm-content {
-                                                                                
-                                                                     
-                                                                
-                                                                       
-                                                
+
     width: 100% !important;
     max-width: 700px;
     margin-left: auto !important;
     margin-right: auto !important;
   }
 
-                                                            
-                                                     
-                                           
   .document-markdown-source .cm-content {
     width: 100% !important;
     max-width: 700px;
@@ -2769,15 +2732,8 @@
     }
   }
 
-                                                          
-                                                    
-                                         
-                                                    
   .cm-fold-indicator {
-                                      
-                                                        
-                                        
-                                                                    
+
     display: inline-block;
     position: relative;
     z-index: 1;
@@ -6994,8 +6950,7 @@
     box-sizing: border-box;
     display: block;
     width: 100%;
-                                                  
-                                                                  
+
     min-height: 1.4em;
     margin-block-end: 0.5em;
     padding: 0.1em 0;
@@ -7510,9 +7465,7 @@
   }
 
   .data-inline-add-record-button {
-                                                           
-                                                 
-                                                      
+
     @apply h-8 shrink-0 gap-2 rounded-md px-3 text-sm shadow-none;
   }
 
@@ -9233,8 +9186,7 @@
 }
 
 /* === Search command palette (Phase H) === */
-                                       
-                                                    
+
 @keyframes overlay-backdrop-in {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -9338,25 +9290,14 @@
   text-align: center;
 }
 
-                                                                             
-                  
-                                                                
-                          
-                                                              
-                                                                
-                                             
-                                                      
-  
-                                                            
-                                                                                
 
-                                       
+
 @media (max-width: 1023px) {
   .app-shell.is-narrow .document-workspace {
     grid-template-columns: 0 minmax(0, 1fr) !important;
   }
   .app-shell.is-narrow .document-workspace.has-right-pane {
-                                                            
+
     grid-template-columns: 0 minmax(0, 1fr) 0 !important;
   }
   .app-shell.is-narrow .document-workspace > .document-sidebar {
@@ -9381,15 +9322,12 @@
   }
 }
 
-                                        
 @media (max-width: 767px) {
   .app-shell.is-narrow .document-workspace > .document-sidebar {
     width: min(360px, 92vw);
   }
 }
 
-                                                       
-                                         
 @media (max-width: 767px) {
   .app-shell.is-narrow .app-topbar {
     padding-left: 0.5rem;

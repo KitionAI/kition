@@ -27,12 +27,7 @@ export type WorkspaceTab =
       title: string
       path: string
       format?: WorkspaceDocumentFormat
-         
-                                                                 
-                                                            
-                                                        
-                                     
-         
+
       uid?: string
     }
   | {

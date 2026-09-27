@@ -192,8 +192,7 @@ export function buildCellForField(
         type: CellType.Rating,
         data,
         icon: iconRaw,
-                                                          
-                                         
+
         color: '#f59e0b',
         max: Number.isFinite(max) && max > 0 ? Math.min(max, 10) : 5,
         contentAlign: 'center',
@@ -330,9 +329,7 @@ export function readCellValue(field: DataField, cell: IInnerCell): DataRecordVal
     case CellType.Rating:
       return typeof cell.data === 'number' && Number.isFinite(cell.data) ? cell.data : 0;
     case CellType.Select: {
-                                                                               
-                                                             
-                                      
+
       const raw = cell.data as unknown;
       const arr = Array.isArray(raw) ? raw : raw == null ? [] : [raw];
       const items = arr.map((item) => (typeof item === 'string' ? item : (item as { title: string }).title));

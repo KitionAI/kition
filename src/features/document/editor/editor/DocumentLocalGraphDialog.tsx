@@ -1,12 +1,3 @@
-   
-                   
-  
-                                             
-                             
-  
-                       
-   
-
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -70,7 +61,7 @@ export function DocumentLocalGraphDialog({
       try {
         const files = await loadVaultMarkdownFiles()
         if (runRef.current !== run) return
-                            
+
         const currentDoc = await readWorkspaceDocument(currentPath)
         if (runRef.current !== run) return
         const outRaw = parseWikilinks(currentDoc.content ?? '')
@@ -87,7 +78,7 @@ export function DocumentLocalGraphDialog({
           const hit = fileByFull.get(`${t}.md`) ?? fileByBase.get(t)
           if (hit && hit !== currentPath) outPaths.add(hit)
         }
-                                          
+
         const inPaths = new Set<string>()
         const currentBase = lowercased(basename(currentPath))
         const limit = Math.min(files.length, SCAN_LIMIT)

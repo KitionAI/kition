@@ -261,24 +261,16 @@ export function AppShell() {
   const [onboardingOpen, setOnboardingOpen] = useState(false)
   const lastTrackedWorkspaceRef = useRef('')
 
-                                                                  
-                                           
-                                                                  
-                                                                  
-                                                   
   const isNarrowShell = useMediaQuery('(max-width: 1023px)')
   const isTinyShell = useMediaQuery('(max-width: 479px)')
   const [sidebarDrawerOpen, setSidebarDrawerOpen] = useState(false)
 
-                                                      
-                                           
   useEffect(() => {
     if (!isNarrowShell && sidebarDrawerOpen) {
       setSidebarDrawerOpen(false)
     }
   }, [isNarrowShell, sidebarDrawerOpen])
 
-                   
   useEffect(() => {
     if (!sidebarDrawerOpen) return
     function onKeyDown(e: KeyboardEvent) {

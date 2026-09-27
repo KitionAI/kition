@@ -103,8 +103,7 @@ export function WorkspaceTabStrip({
 
       addTab(activeId, true)
       linkedIds.forEach((tabId) => addTab(tabId, true))
-                                             
-                                                    
+
       for (let i = tabs.length - 1; i >= 0; i--) {
         addTab(tabs[i].id)
       }

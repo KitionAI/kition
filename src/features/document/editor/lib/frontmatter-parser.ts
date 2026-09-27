@@ -1,28 +1,17 @@
-   
-                         
-  
-                        
-                                
-               
-                                   
-  
-                                             
-   
-
 export type FrontmatterField = {
   key: string
-                                      
+
   value: string | string[]
-                                        
+
   startLine: number
   endLine: number
 }
 
 export type FrontmatterParsed = {
-                                                 
+
   from: number
   to: number
-                       
+
   raw: string
   fields: FrontmatterField[]
 }
@@ -30,7 +19,7 @@ export type FrontmatterParsed = {
 const FENCE_RE = /^---\s*$/
 
 export function parseFrontmatter(source: string): FrontmatterParsed | null {
-                        
+
   const lines = source.split(/\r?\n/)
   if (lines.length === 0) return null
   if (!FENCE_RE.test(lines[0])) return null
@@ -53,8 +42,7 @@ export function parseFrontmatter(source: string): FrontmatterParsed | null {
       i += 1
       continue
     }
-                                                        
-                                      
+
     const keyMatch = line.match(/^([^\s:#][^:]*?)\s*:\s*(.*)$/)
     if (!keyMatch) {
       i += 1
@@ -67,7 +55,7 @@ export function parseFrontmatter(source: string): FrontmatterParsed | null {
     let value: string | string[]
 
     if (rest === '') {
-               
+
       const items: string[] = []
       let j = i + 1
       while (j < bodyLines.length) {

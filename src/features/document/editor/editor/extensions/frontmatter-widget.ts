@@ -1,26 +1,3 @@
-   
-                                                        
-  
-                                       
-                         
-                                                       
-                                                     
-                                          
-                            
-                                              
-  
-       
-                                                        
-                                                        
-                                                   
-  
-                                                              
-                                                                 
-  
-                                                                    
-                                                  
-   
-
 import { Prec, RangeSetBuilder, StateEffect, StateField, type EditorState, type Extension } from '@codemirror/state'
 import {
   Decoration,
@@ -62,7 +39,6 @@ function iconGlyphFor(type: FieldType): string {
   }
 }
 
-                               
 const setFrontmatterRawMode = StateEffect.define<'toggle' | boolean>()
 
 const frontmatterRawModeField = StateField.define<boolean>({
@@ -82,7 +58,6 @@ function toggleFrontmatterRawMode(view: EditorView): boolean {
   return true
 }
 
-                               
 type EditingSlot =
   | null
   | { kind: 'value'; key: string }
@@ -98,7 +73,7 @@ const editingField = StateField.define<EditingSlot>({
     for (const e of tr.effects) {
       if (e.is(setEditing)) value = e.value
     }
-                              
+
     if (tr.docChanged && !tr.effects.some((e) => e.is(setEditing))) {
       value = null
     }
@@ -106,7 +81,6 @@ const editingField = StateField.define<EditingSlot>({
   },
 })
 
-                                                   
 function commitFields(view: EditorView, mutate: (fields: EditableField[]) => EditableField[] | null, nextEditing: EditingSlot = null): void {
   const doc = view.state.doc
   const source = doc.toString()
@@ -115,7 +89,7 @@ function commitFields(view: EditorView, mutate: (fields: EditableField[]) => Edi
   const fields = mutate(fieldsFromParsed(parsed.fields))
   if (!fields) return
   const newSource = applyFrontmatter(source, fields, parsed)
-                                              
+
   let end = parsed.to
   if (source[end] === '\n') end += 1
   const inserted = newSource.slice(0, newSource.length - (source.length - end))
@@ -160,10 +134,8 @@ class FrontmatterPropertiesWidget extends WidgetType {
       root.appendChild(this.renderRow(view, field, t))
     }
 
-                
     root.appendChild(this.renderAddProperty(view, t))
 
-                                                
     requestAnimationFrame(() => {
       const focusEl = root.querySelector<HTMLInputElement>('[data-cm-frontmatter-focus="1"]')
       if (focusEl) {
@@ -176,7 +148,7 @@ class FrontmatterPropertiesWidget extends WidgetType {
   }
 
   ignoreEvent(): boolean {
-                                                  
+
     return true
   }
 
@@ -186,7 +158,6 @@ class FrontmatterPropertiesWidget extends WidgetType {
     row.className = 'cm-document-properties__row'
     row.dataset.type = type
 
-                             
     const icon = document.createElement('span')
     icon.className = 'cm-document-properties__icon'
     icon.textContent = iconGlyphFor(type)
@@ -198,7 +169,6 @@ class FrontmatterPropertiesWidget extends WidgetType {
     })
     row.appendChild(icon)
 
-        
     if (this.editing && this.editing.kind === 'key' && this.editing.key === field.key) {
       row.appendChild(this.renderKeyInput(view, field, t))
     } else {
@@ -214,7 +184,6 @@ class FrontmatterPropertiesWidget extends WidgetType {
       row.appendChild(key)
     }
 
-        
     row.appendChild(this.renderValue(view, field, type, t))
 
     return row
@@ -302,7 +271,7 @@ class FrontmatterPropertiesWidget extends WidgetType {
         chip.appendChild(remove)
         cell.appendChild(chip)
       })
-                   
+
       if (this.editing && this.editing.kind === 'array-add' && this.editing.key === field.key) {
         const input = document.createElement('input')
         input.type = 'text'
@@ -319,7 +288,7 @@ class FrontmatterPropertiesWidget extends WidgetType {
             view.dispatch({ effects: setEditing.of(null) })
             return
           }
-                                    
+
           commitFields(
             view,
             (fields) => fields.map((f) => {
@@ -353,7 +322,6 @@ class FrontmatterPropertiesWidget extends WidgetType {
       return cell
     }
 
-         
     if (this.editing && this.editing.kind === 'value' && this.editing.key === field.key) {
       const input = document.createElement('input')
       input.type = 'text'
@@ -482,8 +450,6 @@ function buildFrontmatterDecorations(state: EditorState): DecorationSet {
   return builder.finish()
 }
 
-                                                                     
-                                                            
 const frontmatterField = StateField.define<DecorationSet>({
   create(state) {
     return buildFrontmatterDecorations(state)

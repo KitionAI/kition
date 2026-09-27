@@ -42,5 +42,14 @@
   },
   "search": {
     "fileMissing": "文件已不存在"
+  },
+  "errorBoundary": {
+    "title": "出了点问题",
+    "paneTitle": "{{label}} 已停止响应",
+    "paneTitleGeneric": "此视图已停止响应",
+    "description": "Kition 的其他部分仍可正常使用。请重试；如果再次发生，请重新加载应用。",
+    "retry": "重试",
+    "reload": "重新加载 Kition",
+    "details": "错误详情"
   }
 }

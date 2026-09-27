@@ -1,10 +1,3 @@
-   
-               
-  
-                                             
-                             
-   
-
 import { Tag } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -31,13 +24,13 @@ export type DocumentTagBrowserDialogProps = {
 }
 
 type TagIndex = {
-                     
+
   counts: Map<string, number>
-                          
+
   files: Map<string, Set<string>>
-                
+
   scanned: number
-                               
+
   total: number
 }
 
@@ -138,7 +131,7 @@ export function DocumentTagBrowserDialog({
       setBusy(false)
       setRenameTarget(null)
       setActiveTag(null)
-             
+
       setIndex(null)
       setTimeout(() => setIndex(null), 0)
       onOpenChange(false)

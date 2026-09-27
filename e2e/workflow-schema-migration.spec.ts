@@ -3,25 +3,6 @@ import { expect, test, type Route } from '@playwright/test'
 import { mockLocalWorkspaceApi } from './helpers/mockApi'
 import { mockSuppressLauncher } from './helpers/mockSuppressLauncher'
 
-   
-                                                     
-  
-                                                                        
-                                       
-                                                                  
-                                                                     
-                                                                      
-                                                                      
-                                         
-  
-                                    
-                                         
-                                                     
-                                                            
-                                                                         
-                             
-   
-
 test.beforeEach(async ({ page }) => {
   await mockSuppressLauncher(page)
   await mockLocalWorkspaceApi(page)

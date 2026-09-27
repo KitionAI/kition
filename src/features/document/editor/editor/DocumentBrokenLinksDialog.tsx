@@ -1,10 +1,3 @@
-   
-               
-  
-                                                  
-                       
-   
-
 import { AlertTriangle, FilePlus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -73,7 +66,7 @@ export function DocumentBrokenLinksDialog({
         if (cancelled) return
         const limit = Math.min(files.length, SCAN_LIMIT)
         setProgress({ scanned: 0, total: limit })
-                                    
+
         const byBase = new Map<string, string>()
         const byFull = new Map<string, string>()
         for (const f of files) {
@@ -116,7 +109,7 @@ export function DocumentBrokenLinksDialog({
   const totalBroken = groups?.reduce((s, g) => s + g.refs.length, 0) ?? 0
 
   const handleCreate = async (target: string, sourcePath: string) => {
-                                         
+
     const dir = sourcePath.includes('/') ? sourcePath.slice(0, sourcePath.lastIndexOf('/') + 1) : ''
     const cleanTarget = target.replace(/\.md$/i, '')
     const newPath = `${dir}${cleanTarget}.md`

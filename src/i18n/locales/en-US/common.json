@@ -42,5 +42,14 @@
   },
   "search": {
     "fileMissing": "File no longer exists"
+  },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "paneTitle": "{{label}} stopped responding",
+    "paneTitleGeneric": "This view stopped responding",
+    "description": "The rest of Kition keeps working. Retry, or reload the app if it happens again.",
+    "retry": "Retry",
+    "reload": "Reload Kition",
+    "details": "Error details"
   }
 }

@@ -70,9 +70,7 @@ export function useWorkspaceTreeCreateActions({
       setEditorMode('rich')
       rememberDocumentSnapshot(document, document.content, 'New document')
       setFeedback(t('workspace:feedback.documentCreated'))
-                                                             
-                                                   
-                                                        
+
       setTreeItems((current) => insertWorkspaceTreeDocumentItem(current, document))
       return true
     } catch (requestError: any) {
@@ -116,11 +114,7 @@ export function useWorkspaceTreeCreateActions({
       })
       setFeedback(t('workspace:feedback.tableCreated'))
       expandFolders(getAncestorFolderPaths(document.path))
-                                             
-                                                           
-                               
-                                                               
-                                                               
+
       await refreshWorkspaceDocuments(activeDocumentPath || undefined, { silent: true, treeOnly: true })
       if (tableId != null) {
         window.dispatchEvent(new CustomEvent('kition:data-document:table:create', {
@@ -161,8 +155,7 @@ export function useWorkspaceTreeCreateActions({
       })
       expandFolders([folderOverride, response.created_path].filter((p): p is string => Boolean(p)))
       setFeedback(t('feedback.folderCreated'))
-                                                                
-                                         
+
       await refreshWorkspaceDocuments(activeDocumentPath || undefined, { silent: true, treeOnly: true })
       return true
     } catch (requestError: any) {
@@ -206,11 +199,7 @@ export function useWorkspaceTreeCreateActions({
         await seedDefaultEmptyRows(doc.id, created.id)
       }
       setFeedback(t('feedback.tableCreated'))
-                                                          
-                                                              
-                                                              
-                                                                   
-                                   
+
       if (created?.id != null) {
         window.dispatchEvent(new CustomEvent('kition:data-document:table:create', {
           detail: { vaultPath: kitablePath, tableId: created.id },

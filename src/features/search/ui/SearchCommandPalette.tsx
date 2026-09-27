@@ -45,7 +45,7 @@ export function SearchCommandPalette({ service, ready, open, onClose, onPick }: 
       if (e.key === 'ArrowDown') { e.preventDefault(); setCursor(c => Math.min(c + 1, hits.length - 1)); return }
       if (e.key === 'ArrowUp')   { e.preventDefault(); setCursor(c => Math.max(c - 1, 0)); return }
       if (e.key === 'Enter')     { e.preventDefault(); if (hits[cursor]) { onPick(hits[cursor]); onClose() } return }
-                                 
+
       if ((e.metaKey || e.ctrlKey) && e.key >= '1' && e.key <= '9') {
         const idx = Number(e.key) - 1
         if (hits[idx]) { e.preventDefault(); onPick(hits[idx]); onClose() }

@@ -1,10 +1,3 @@
-   
-                            
-  
-                                        
-                                                             
-   
-
 import { useCallback, useEffect, useState } from 'react'
 
 const STORAGE_KEY = 'kition.document.bookmarks'
@@ -12,9 +5,9 @@ const BROADCAST_EVENT = 'kition:document:bookmarks-changed'
 
 export type BookmarkEntry = {
   path: string
-                
+
   addedAt: string
-                    
+
   alias?: string
 }
 

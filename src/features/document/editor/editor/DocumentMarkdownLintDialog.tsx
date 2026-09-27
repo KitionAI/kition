@@ -1,26 +1,3 @@
-   
-                    
-  
-                             
-                       
-  
-                         
-                
-                         
-                              
-                   
-                   
-                              
-                    
-                           
-                      
-                   
-                                                       
-                                       
-  
-                      
-   
-
 import { EditorSelection } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { useEffect, useMemo, useState } from 'react'
@@ -42,7 +19,7 @@ export type LintIssue = {
   /** interpolation params for the message key */
   messageParams?: Record<string, string | number>
   lineNo: number
-                               
+
   col: number
   severity: 'warn' | 'info'
 }
@@ -63,7 +40,6 @@ export function lintMarkdown(source: string): LintIssue[] {
   let h1Count = 0
   const headingSlugs = new Set<string>()
 
-               
   for (let i = 0; i < lines.length; i++) {
     const text = lines[i]
     if (/^\s*```/.test(text)) {
@@ -87,7 +63,7 @@ export function lintMarkdown(source: string): LintIssue[] {
       if (/[\p{Sentence_Terminal}:;]$/u.test(body.trim())) {
         issues.push({ rule: 'MD026', messageKey: 'md026_trailingPunct', lineNo: i + 1, col: 1, severity: 'info' })
       }
-             
+
       if (i > 0 && lines[i - 1].trim() !== '') {
         issues.push({ rule: 'MD022', messageKey: 'md022_blankBefore', lineNo: i + 1, col: 1, severity: 'info' })
       }
@@ -108,7 +84,6 @@ export function lintMarkdown(source: string): LintIssue[] {
     })
   }
 
-                          
   inFence = false
   let blankRun = 0
   let lastOrderedIndent: string | null = null
@@ -171,7 +146,7 @@ export function lintMarkdown(source: string): LintIssue[] {
       lastOrderedIndent = null
       lastOrderedCounter = 0
     }
-                                          
+
     if (/^\s*\*\*[^*\n]+\*\*\s*$/.test(text)) {
       issues.push({ rule: 'MD036', messageKey: 'md036_boldAsHeading', lineNo: i + 1, col: 1, severity: 'info' })
     }
@@ -218,7 +193,6 @@ export function lintMarkdown(source: string): LintIssue[] {
     }
   }
 
-                 
   issues.sort((a, b) => {
     if (a.severity !== b.severity) return a.severity === 'warn' ? -1 : 1
     return a.lineNo - b.lineNo

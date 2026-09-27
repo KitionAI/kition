@@ -588,7 +588,7 @@ describe('AgentChatPanel empty-state per pane', () => {
     const labels = getStarterLabels()
     expect(labels).toContain('Add a site')
     expect(labels).toContain('Show connected')
-                                                          
+
     // iter 14 split them deliberately.
     expect(labels).not.toContain('Summarise this page')
     expect(labels).not.toContain('Summarize this document')

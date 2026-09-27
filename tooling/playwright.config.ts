@@ -4,6 +4,17 @@ import { fileURLToPath } from 'node:url'
 
 const repositoryDir = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
+// Every test target is a loopback Vite server. Playwright's webServer readiness
+// probe sends its HTTP request through HTTP_PROXY even when NO_PROXY lists
+// 127.0.0.1; a proxy that answers for closed ports makes the probe report the
+// server as available, Vite is never started, and every test fails with
+// ERR_CONNECTION_REFUSED. Drop the proxy variables for this runner and its
+// children. Scripts that start a live runtime do so before Playwright runs and
+// keep their own environment.
+for (const key of ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']) {
+  delete process.env[key]
+}
+
 const PORT = Number(process.env.KITION_E2E_PORT ?? 3000)
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${PORT}`
 // Allow opting out of webServer auto-start when a dev server is already

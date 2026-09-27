@@ -1901,7 +1901,7 @@ describe('archiveDoneTasks', () => {
     const view = makeView(src, { anchor: 0 })
     archiveDoneTasks(view)
     const out = view.state.doc.toString()
-                              
+
     expect(out.indexOf('- [x] new')).toBeGreaterThan(out.indexOf('## Archived'))
   })
 

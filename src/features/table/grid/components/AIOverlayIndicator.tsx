@@ -71,9 +71,7 @@ export const AIOverlayIndicator = (props: IAIOverlayIndicatorProps) => {
                 <div className="size-5 animate-spin rounded-full border-2 border-transparent border-t-blue-500" />
               </div>
             ) : (
-                                                                            
-                                                                          
-                                                          
+
               <button
                 type="button"
                 onClick={(event) => {

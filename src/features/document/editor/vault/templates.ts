@@ -1,14 +1,3 @@
-   
-                 
-  
-                                                  
-                               
-                                                                                                 
-                                                    
-  
-                                
-   
-
 import { EditorSelection } from '@codemirror/state'
 import type { EditorView } from '@codemirror/view'
 

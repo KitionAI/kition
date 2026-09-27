@@ -1,21 +1,3 @@
-   
-                   
-  
-                                
-                                          
-                              
-                                                 
-                                           
-                                
-                                
-                              
-                              
-                                                       
-                                                         
-  
-                                                                       
-   
-
 import { insertNewlineContinueMarkup } from '@codemirror/lang-markdown'
 import { codeFolding, foldKeymap } from '@codemirror/language'
 import { copyLineDown, cursorLineEnd, deleteLine, moveLineDown, moveLineUp, simplifySelection } from '@codemirror/commands'
@@ -57,7 +39,7 @@ const toggleHtmlComment: Command = (view) => {
     const text = state.sliceDoc(range.from, range.to)
     const trimmed = text.trim()
     if (trimmed.startsWith('<!--') && trimmed.endsWith('-->')) {
-                           
+
       const lead = text.indexOf('<!--')
       const trail = text.lastIndexOf('-->')
       const inner = text.slice(lead + 4, trail).replace(/^\s/, '').replace(/\s$/, '')
@@ -65,7 +47,7 @@ const toggleHtmlComment: Command = (view) => {
       const after = text.slice(trail + 3)
       changes.push({ from: range.from, to: range.to, insert: before + inner + after })
     } else if (range.empty) {
-             
+
       const line = state.doc.lineAt(range.from)
       const lineText = line.text
       if (lineText.trim().startsWith('<!--') && lineText.trim().endsWith('-->')) {

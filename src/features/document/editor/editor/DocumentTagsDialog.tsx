@@ -1,12 +1,3 @@
-   
-                        
-  
-                                           
-                
-  
-                                                           
-   
-
 import { EditorSelection } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { useEffect, useMemo, useState } from 'react'
@@ -39,15 +30,14 @@ export function extractDocumentTags(source: string): DocumentTagEntry[] {
       continue
     }
     if (inFence) continue
-                                         
+
     const cleaned = text.replace(/`[^`]*`/g, (m) => ' '.repeat(m.length))
     const re = /(^|[\s\p{P}])#([\p{L}\p{N}_/\-]+)/gu
     let m: RegExpExecArray | null
     while ((m = re.exec(cleaned)) !== null) {
       const lead = m[1]
       const tagBody = m[2]
-                                                               
-                                 
+
       if (/^\d/.test(tagBody)) continue
       const tag = '#' + tagBody
       const startCol = m.index + lead.length + 1 // 1-based col of `#`

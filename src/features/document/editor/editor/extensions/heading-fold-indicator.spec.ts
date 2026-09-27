@@ -1,17 +1,3 @@
-   
-                                                       
-  
-                                               
-  
-                                                            
-                                                      
-                                                                            
-                                                      
-                         
-  
-                                                        
-                     
-   
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { EditorState } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
@@ -55,13 +41,12 @@ const firstHeadingFoldIndicator = (view: EditorView): Element | null => {
 
 describe('headingFoldIndicatorExtension', () => {
   it('keeps the fold-indicator DOM stable when typing under the heading', () => {
-                                                    
+
     const view = mountEditor('## Intro\nseed\n## Body\n')
 
     const before = firstHeadingFoldIndicator(view)
     expect(before, 'fold indicator should render on heading line').not.toBeNull()
 
-                                          
     const line2 = view.state.doc.line(2)
     view.dispatch({
       changes: { from: line2.to, insert: '3' },
@@ -69,8 +54,7 @@ describe('headingFoldIndicatorExtension', () => {
 
     const after = firstHeadingFoldIndicator(view)
     expect(after, 'fold indicator should still exist after edit').not.toBeNull()
-                                                     
-                      
+
     expect(after).toBe(before)
   })
 
@@ -80,7 +64,6 @@ describe('headingFoldIndicatorExtension', () => {
     const initial = firstHeadingFoldIndicator(view)
     expect(initial).not.toBeNull()
 
-                                            
     for (let i = 0; i < 3; i++) {
       const line2 = view.state.doc.line(2)
       view.dispatch({
@@ -92,12 +75,7 @@ describe('headingFoldIndicatorExtension', () => {
   })
 
   it('renders the indicator on a heading whose section is empty when lang-markdown foldable() returns null', () => {
-                                                               
-                                                          
-                                                                    
-                                                 
-                                  
-                                                     
+
     const view = mountEditor('## Intro\n\n\n## Body\nbody-text\n')
     const indicator = firstHeadingFoldIndicator(view)
     expect(indicator, 'An empty heading section should still have a fold indicator').not.toBeNull()

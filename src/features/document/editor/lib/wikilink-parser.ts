@@ -1,30 +1,17 @@
-   
-                  
-  
-                 
-               
-                       
-                       
-                         
-                                        
-  
-                                                  
-   
-
 export type WikilinkParsed = {
-                              
+
   raw: string
-                     
+
   embed: boolean
-                           
+
   target: string
-                     
+
   heading?: string
-                      
+
   blockId?: string
-                   
+
   display?: string
-                                     
+
   from: number
   to: number
 }

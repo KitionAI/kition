@@ -1,83 +1,18 @@
-   
-                                        
-  
-                                                                       
-                                                   
-                                                  
-  
-                                                          
-                                                               
-                                              
-                                                                
-                                                                         
-                                                               
-                                                                  
-                                                    
-                                                                  
-                                                 
-                                                              
-                                                  
-  
-                                                              
-                                                           
-                                               
-                                   
-  
-                                         
-                                                   
-                            
-  
-                                               
-  
-      
-                                                            
-                                                         
-                                                                        
-                                                                          
-                                                            
-                                                                     
-                                                                          
-                                                            
-                                                      
-                                                                  
-                                                                    
-                                                         
-                                                       
-                                                            
-                                    
-   
-
 import { defaultHighlightStyle, HighlightStyle, syntaxTree, syntaxTreeAvailable } from '@codemirror/language'
 import { RangeSetBuilder } from '@codemirror/state'
 import { Decoration, type DecorationSet, EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view'
 import { highlightTree, tags } from '@lezer/highlight'
 import type { Tree } from '@lezer/common'
 
-                                                                  
-                                                          
-                                                         
-                                                             
 //
-                                                                       
-                                                               
-                                                     
-                                                                     
+
 const themedLinkHighlightStyle = HighlightStyle.define([
   { tag: tags.url, color: 'hsl(var(--primary)) !important', textDecoration: 'underline' },
   { tag: tags.link, color: 'hsl(var(--primary)) !important', textDecoration: 'underline' },
 ])
-                                                        
-                                                                     
-                                                                    
-                                                            
-                                                      
-                   
+
 //
-                                                           
-                                                         
-                                                           
-                                                                
-                                                  
+
 const codeThemeHighlightStyle = HighlightStyle.define([
   { tag: tags.keyword, color: 'hsl(var(--code-keyword)) !important' },
   { tag: [tags.controlKeyword, tags.moduleKeyword, tags.operatorKeyword], color: 'hsl(var(--code-keyword)) !important' },
@@ -85,20 +20,17 @@ const codeThemeHighlightStyle = HighlightStyle.define([
   // legacy shell "builtin"(mkdir/cd/git/npm…) → tags.standard(variableName)
   { tag: [tags.standard(tags.variableName), tags.standard(tags.name)], color: 'hsl(var(--code-function)) !important' },
   { tag: [tags.typeName, tags.namespace, tags.className], color: 'hsl(var(--code-function)) !important' },
-                                                                             
+
   { tag: [tags.attributeName, tags.propertyName], color: 'hsl(var(--code-attr)) !important' },
   { tag: tags.operator, color: 'hsl(var(--code-attr)) !important' },
   { tag: [tags.string, tags.special(tags.string), tags.regexp], color: 'hsl(var(--code-string)) !important' },
   { tag: [tags.number, tags.integer, tags.float, tags.literal, tags.bool, tags.atom], color: 'hsl(var(--code-number)) !important' },
   { tag: [tags.comment, tags.lineComment, tags.blockComment], color: 'hsl(var(--code-comment)) !important', fontStyle: 'italic' },
   { tag: [tags.variableName, tags.definition(tags.variableName)], color: 'hsl(var(--code-text)) !important' },
-                                                                  
-                                                                  
-                                                           
+
   { tag: tags.labelName, color: 'hsl(var(--muted-foreground)) !important' },
 ])
-                                                                       
-                                                                 
+
 const activeHighlighters = [defaultHighlightStyle, themedLinkHighlightStyle, codeThemeHighlightStyle]
 
 class PreserveHighlighter {
@@ -156,15 +88,10 @@ class PreserveHighlighter {
   }
 }
 
-                                                                
-                
 const preserveHighlightPlugin = ViewPlugin.fromClass(PreserveHighlighter, {
   decorations: (v) => v.decorations,
 })
-                                                                   
-                                                                     
-                                                
-                                                       
+
 const preserveHighlightStyle = [
   ...(defaultHighlightStyle.module ? [EditorView.styleModule.of(defaultHighlightStyle.module)] : []),
   ...(themedLinkHighlightStyle.module ? [EditorView.styleModule.of(themedLinkHighlightStyle.module)] : []),

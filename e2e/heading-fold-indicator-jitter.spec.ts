@@ -1,20 +1,3 @@
-   
-                                           
-  
-                                             
-  
-                                                             
-                                                                          
-                                                                 
-                                                            
-                                      
-  
-                                                         
-                                   
-  
-                                                          
-                         
-   
 import { expect, test, type Page } from '@playwright/test'
 
 import { mockLocalWorkspaceApi } from './helpers/mockApi'
@@ -22,8 +5,6 @@ import { mockLocalWorkspaceApi } from './helpers/mockApi'
 const VAULT_PATH = '/tmp/kition-heading-jitter-vault'
 const DOC_PATH = 'jitter.md'
 
-                                                         
-                                           
 const DOC_CONTENT = [
   '# Untitled note 2',
   '',
@@ -147,8 +128,6 @@ async function mockDesktop(page: Page) {
   }, { docPath: DOC_PATH })
 }
 
-                                               
-                                                         
 async function measureHeadingRect(page: Page, needle: string) {
   return await page.evaluate((needleArg) => {
     const lines = Array.from(document.querySelectorAll('.cm-content .cm-line')) as HTMLElement[]
@@ -183,14 +162,11 @@ test('typing under a heading does not jitter the heading line', async ({ page })
   await page.goto('/document')
 
   await page.waitForSelector('.cm-content .cm-line', { timeout: 10_000 })
-             
+
   await page.waitForTimeout(500)
 
-                                                                          
-                                                                      
-                                                             
   await page.locator('.cm-content .cm-line', { hasText: 'Intro' }).first().click()
-                      
+
   await page.keyboard.press('ArrowDown')
   await page.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => r())))
   await page.waitForTimeout(50)
@@ -209,7 +185,6 @@ test('typing under a heading does not jitter the heading line', async ({ page })
     samples.push(m!)
   }
 
-                                                                     
   const lineTops = samples.map((s) => s.lineTop)
   const charTops = samples.map((s) => s.charTop!)
   const lineRange = Math.max(...lineTops) - Math.min(...lineTops)

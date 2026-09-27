@@ -1,13 +1,3 @@
-   
-                                                        
-                                 
-  
-                                                                            
-                                     
-  
-                                          
-                          
-   
 import { expect, test, type Page } from '@playwright/test'
 
 import { mockLocalWorkspaceApi } from './helpers/mockApi'
@@ -149,7 +139,6 @@ test('multi-line selection across a markdown link keeps the URL collapsed', asyn
   await page.waitForSelector('.cm-content .cm-line', { timeout: 10_000 })
   await page.waitForTimeout(500)
 
-                                       
   const anchors = await page.evaluate(() => {
     const lines = Array.from(document.querySelectorAll('.cm-content .cm-line')) as HTMLElement[]
     const lead = lines.find((l) => l.textContent?.includes('Lead paragraph'))!
@@ -159,17 +148,15 @@ test('multi-line selection across a markdown link keeps the URL collapsed', asyn
     return {
       lead: { x: r(lead).left + 20, y: r(lead).top + r(lead).height / 2 },
       linkLine: { x: r(linkLine).left + 20, y: r(linkLine).top + r(linkLine).height / 2 },
-                                                                 
+
       tailX: r(tail).right - 40,
       tailY: r(tail).top + r(tail).height / 2,
     }
   })
 
-                                                                  
   await page.mouse.click(anchors.lead.x, anchors.lead.y)
   await page.waitForTimeout(100)
 
-                                                                   
   await page.mouse.move(anchors.lead.x, anchors.lead.y)
   await page.mouse.down()
   await page.mouse.move(anchors.linkLine.x, anchors.linkLine.y, { steps: 5 })
@@ -182,13 +169,12 @@ test('multi-line selection across a markdown link keeps the URL collapsed', asyn
   await page.screenshot({ path: testInfo.outputPath('with-selection.png') })
 
   expect(withSelection.linkRect, 'link should still be in DOM').not.toBeNull()
-                                     
+
   expect(
     withSelection.linkClassList,
     'link should NOT have cm-md-link-expanded while selection spans it',
   ).not.toContain('cm-md-link-expanded')
 
-                                                     
   await page.mouse.click(anchors.lead.x, anchors.lead.y + 1)                             
   await page.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => r())))
   await page.waitForTimeout(100)
@@ -196,8 +182,6 @@ test('multi-line selection across a markdown link keeps the URL collapsed', asyn
   const afterClickOutside = await dumpEditorState(page)
   await page.screenshot({ path: testInfo.outputPath('after-click-outside.png') })
 
-                                                         
-                                  
   const before = withSelection.trailRect!.top
   const after = afterClickOutside.trailRect!.top
   expect(
@@ -205,7 +189,6 @@ test('multi-line selection across a markdown link keeps the URL collapsed', asyn
     `trailing line top should not shift when collapsing the selection (before=${before}, after=${after})`,
   ).toBeLessThan(0.5)
 
-                     
   const linkBefore = withSelection.linkRect!.top
   const linkAfter = afterClickOutside.linkRect!.top
   expect(

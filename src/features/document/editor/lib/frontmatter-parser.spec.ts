@@ -87,8 +87,7 @@ describe('parseFrontmatter', () => {
   })
 
   it('round-trips a newly-created numeric key through applyFrontmatter (create-key flow)', () => {
-                                                         
-                                                                        
+
     const src = '---\ntitle: Hello\n---\nbody'
     const parsed = parseFrontmatter(src)!
     const next = applyFrontmatter(

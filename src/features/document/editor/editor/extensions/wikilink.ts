@@ -1,17 +1,3 @@
-   
-                                                     
-  
-                                                                                 
-  
-                                                                     
-                                              
-                                                                    
-                                                             
-                             
-  
-                                                      
-   
-
 import { Facet, RangeSetBuilder, type Extension } from '@codemirror/state'
 import {
   Decoration,
@@ -46,7 +32,6 @@ export const wikilinkResolverFacet = Facet.define<WikilinkResolver, WikilinkReso
   combine: (vals) => vals[0] ?? (() => true),
 })
 
-                                                                        
 function displayText(link: WikilinkParsed): string {
   if (link.display) return link.display
   if (link.heading) return `${link.target} › ${link.heading}`

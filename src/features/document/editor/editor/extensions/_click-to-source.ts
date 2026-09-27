@@ -1,47 +1,17 @@
-   
-                         
-  
-                                                                   
-                                                          
-                                          
-                                                         
-                                             
-  
-                                                           
-                                       
-  
-                                                     
-                                                            
-                                                            
-                                 
-   
-
 import type { EditorView } from '@codemirror/view'
 
 const RO_KEY = '__cmClickToSourceRO'
 
-   
-                                                     
-  
-                                                    
-                                                                  
-                                 
-  
-      
-                                                                
-                                                
-                                                                 
-   
 export function attachClickToSource(
   dom: HTMLElement,
   view: EditorView,
   srcPos: number | (() => number),
 ): void {
   dom.addEventListener('mousedown', (event) => {
-                                            
+
     const target = event.target as HTMLElement | null
     if (target && target !== dom) {
-                                                      
+
       const interactive = target.closest('button, a, input, textarea, select')
       if (interactive && dom.contains(interactive)) return
     }
@@ -59,15 +29,6 @@ export function attachClickToSource(
   })
 }
 
-   
-                                                                 
-                          
-  
-                                               
-                                           
-                                                 
-                              
-   
 export function attachResizeMeasure(dom: HTMLElement, view: EditorView): () => void {
   if (typeof ResizeObserver === 'undefined') return () => {}
   detachResizeMeasure(dom)

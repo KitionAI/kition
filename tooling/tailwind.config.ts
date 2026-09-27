@@ -24,10 +24,7 @@ export default {
     },
     extend: {
       screens: {
-                                                                        
-                                                          
-                                                             
-                                  
+
         narrow: { max: '1023px' },                             
         compact: { max: '767px' },                                 
         tiny: { max: '479px' },                                    
@@ -125,14 +122,13 @@ export default {
         elevated: 'var(--shadow-elevated)',
       },
       transitionTimingFunction: {
-                                                      
-                                               
+
         standard: 'cubic-bezier(0.2, 0, 0, 1)',
         emphasized: 'cubic-bezier(0.3, 0, 0, 1)',
         'spring-out': 'cubic-bezier(0.34, 1.56, 0.64, 1)',
       },
       transitionDuration: {
-                                        
+
         fast: '120ms',
         base: '180ms',
         slow: '260ms',

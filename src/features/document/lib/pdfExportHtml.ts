@@ -1,9 +1,3 @@
-   
-                                                      
-                                      
-                                                
-                                            
-   
 import { getCurrentLocale } from '@/i18n'
 
 export type PdfExportPageFormat = 'a4' | 'a3' | 'a5' | 'letter' | 'legal' | 'tabloid'

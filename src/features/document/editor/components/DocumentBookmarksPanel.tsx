@@ -1,9 +1,3 @@
-   
-               
-  
-                                  
-   
-
 import { Star, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 

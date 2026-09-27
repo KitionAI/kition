@@ -6,7 +6,7 @@ import { renderSnippet } from './renderSnippet'
 export function SearchResultItem({ hit, onClick }: { hit: SearchHit; onClick: () => void }) {
   const { t } = useTranslation('settings')
   const doc = hit.doc
-                                                
+
   let source: string
   if (doc.kind === 'note') {
     const dir = doc.vaultPath.includes('/') ? doc.vaultPath.slice(0, doc.vaultPath.lastIndexOf('/')) : ''

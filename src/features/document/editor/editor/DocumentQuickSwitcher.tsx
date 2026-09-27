@@ -1,15 +1,3 @@
-   
-                 
-  
-                            
-                              
-                     
-                                  
-                            
-  
-                                                  
-   
-
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -49,7 +37,7 @@ type FileEntry = { path: string; base: string; folder: string }
 export type DocumentQuickSwitcherProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
-                            
+
   currentPath?: string
   onOpen: (path: string) => void
 }

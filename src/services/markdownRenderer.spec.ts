@@ -102,7 +102,7 @@ describe('markdownRenderer', () => {
   })
 
   it('does not treat plain currency dollars as math', () => {
-                                                  
+
     const html = markdownToHtml('I have $5 in my wallet and need $10 more.')
 
     expect(html).not.toContain('class="katex"')
