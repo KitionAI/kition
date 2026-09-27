@@ -23,6 +23,8 @@ export type CreateFormSyncWorkflowInput = FormSyncCreateInput
 export type UpdateFormSyncWorkflowInput = FormSyncUpdateInput
 export type FormSyncResult = FormSyncSyncResult
 
+export const FORM_SYNC_CHANGED_EVENT = 'kition:form-sync:changed'
+
 const BASE = '/v1/form-sync/workflows'
 
 function workflowPath(id: string) {

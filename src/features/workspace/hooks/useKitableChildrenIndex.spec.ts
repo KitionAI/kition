@@ -1,6 +1,8 @@
-import { act, createElement, useEffect } from 'react'
+import { act, createElement, useEffect, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { createTestQueryClient, withQueryClient } from '@/test/queryClient'
 
 vi.mock('@/api/dataDocuments', () => ({
   listDataDocuments: vi.fn(),
@@ -20,10 +22,17 @@ import { listFormSyncWorkflows } from '@/features/formSync/api'
 
 import { useKitableChildrenIndex } from './useKitableChildrenIndex'
 
-function HookSurface({ onResult }: { onResult: (r: ReturnType<typeof useKitableChildrenIndex>) => void }) {
+function HookInner({ onResult }: { onResult: (r: ReturnType<typeof useKitableChildrenIndex>) => void }) {
   const result = useKitableChildrenIndex()
   useEffect(() => onResult(result), [result, onResult])
   return null
+}
+
+// The hook reads through the query cache, so every mount gets one fresh client.
+// Query results settle on a macrotask, so the settle loops below wait on setTimeout.
+function HookSurface(props: { onResult: (r: ReturnType<typeof useKitableChildrenIndex>) => void }) {
+  const [client] = useState(createTestQueryClient)
+  return withQueryClient(createElement(HookInner, props), client)
 }
 
 let container: HTMLDivElement
@@ -53,7 +62,7 @@ async function mountAndSettle(): Promise<ReturnType<typeof useKitableChildrenInd
     await Promise.resolve()
   })
   for (let i = 0; i < 16; i++) {
-    await act(async () => { await Promise.resolve() })
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)) })
     if (captured?.status === 'done' || captured?.status === 'error') break
   }
   return captured!
@@ -171,14 +180,14 @@ describe('useKitableChildrenIndex', () => {
       await Promise.resolve()
     })
     for (let i = 0; i < 16; i++) {
-      await act(async () => { await Promise.resolve() })
+      await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)) })
       if (captured?.status === 'done') break
     }
     expect(Object.keys(captured!.tablesByKitablePath)).toEqual(['A.kitable'])
 
     await act(async () => { await captured!.refresh() })
     for (let i = 0; i < 16; i++) {
-      await act(async () => { await Promise.resolve() })
+      await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)) })
       if (Object.keys(captured!.tablesByKitablePath).length === 2) break
     }
     expect(Object.keys(captured!.tablesByKitablePath).sort()).toEqual(['A.kitable', 'B.kitable'])

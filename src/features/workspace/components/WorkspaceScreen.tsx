@@ -7,10 +7,12 @@
  */
 import { useWorkspaceDesign } from '../hooks/useWorkspaceDesign'
 import { flushWorkspaceEditSessions } from '@/services/workspaceEditSessions'
+import { setInvalidationWorkspaceRoot } from '@/api/invalidation'
 import type { AgentImageGenerationIntent } from '@/types/imageGeneration'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useKitableChildrenIndex } from '@/features/workspace/hooks/useKitableChildrenIndex'
+import { useKitableRegistration } from '@/features/workspace/hooks/useKitableRegistration'
 import {
   buildKitableWorkflowVirtualPath,
   buildKitableTableVirtualPath,
@@ -307,42 +309,9 @@ export function WorkspaceScreen({
   // in sync with rootPath so pin/unpin/list operations hit the right bucket.
   useEffect(() => {
     setPinnedTabsWorkspace(rootPath)
+    setInvalidationWorkspaceRoot(rootPath)
   }, [rootPath])
-  // .kitable files imported through onboarding guides,
-  // drag-drop) are only written to disk — nothing registers a DataDocument row,
-  // so listDataDocuments returns nothing for them and the tree renders the
-  // container with no table leaves to click. Lazily index any .kitable that the
-  // tree knows about but the backend hasn't seen yet, then refresh the children
-  // index so the table leaves appear. Idempotent on the backend; the attempted
-  // set stops re-tries for genuinely unopenable files.
-  const kitableRegisterAttemptedRef = useRef<Set<string>>(new Set())
-  useEffect(() => {
-    if (kitableChildrenIndex.status !== 'done') return
-    const unregistered = files
-      .filter((file) => file.type === 'file' && file.path.toLowerCase().endsWith('.kitable'))
-      .map((file) => file.path)
-      .filter(
-        (path) =>
-          !(path in kitableChildrenIndex.docIdByKitablePath) &&
-          !kitableRegisterAttemptedRef.current.has(path),
-      )
-    if (unregistered.length === 0) return
-    unregistered.forEach((path) => kitableRegisterAttemptedRef.current.add(path))
-    void (async () => {
-      let registeredAny = false
-      for (const path of unregistered) {
-        try {
-          await openDataDocumentByPath({ path })
-          registeredAny = true
-        } catch {
-          // Corrupt / unreadable .kitable: leave it leafless rather than looping.
-        }
-      }
-      if (registeredAny) {
-        void kitableChildrenIndex.refresh()
-      }
-    })()
-  }, [files, kitableChildrenIndex.status, kitableChildrenIndex.docIdByKitablePath, kitableChildrenIndex.refresh])
+  useKitableRegistration(files, kitableChildrenIndex)
   const [error, setError] = useState('')
   const [, setFeedback] = useState('')
   const [workspaceAgentOpen, setWorkspaceAgentOpen] = useState(false)

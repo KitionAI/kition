@@ -4,6 +4,7 @@
  * HTTP calls and contract types come from src/api/formSync.ts.
  */
 import {
+  FORM_SYNC_CHANGED_EVENT,
   createRemoteFormSyncWorkflow,
   listRemoteFormSyncWorkflows,
   syncRemoteFormSyncWorkflow,
@@ -141,7 +142,7 @@ export async function deleteFormSyncWorkflow(id: string) {
   emitFormSyncChanged(id)
 }
 
-export const FORM_SYNC_CHANGED_EVENT = 'kition:form-sync:changed'
+export { FORM_SYNC_CHANGED_EVENT } from '@/api/formSync'
 
 function emitFormSyncChanged(workflowId: string) {
   if (typeof window === 'undefined') return

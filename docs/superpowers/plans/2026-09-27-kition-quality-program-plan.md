@@ -190,10 +190,11 @@ Order matters. Each phase leaves `main` releasable.
 - `queryKeys.document(path)`, `queryKeys.table(docId, tableId)`, `queryKeys.records(docId, tableId, viewId)`, `queryKeys.agentSession(id)`.
 - `invalidation.ts` subscribes to the workspace watcher IPC events and invalidates keys by path prefix. This replaces manual refresh calls.
 
-- [ ] Add the provider and keys. Write `invalidation.spec.ts` that proves a watcher event for `a/b.kitable` invalidates table and record queries under that path and nothing else.
-- [ ] Migrate `useTableEditorData` first, keeping its return shape so `TableEditor` does not change. Delete its `loading` and `error` state.
-- [ ] Migrate the workspace tree, then documents, then agent session lists. Each migration deletes one hand-rolled refetch path.
-- [ ] Delete the "register unseen `.kitable` files" effect in `WorkspaceScreen.tsx` once the runtime exposes a single listing endpoint (runtime plan Task R4). Until then, move it into `src/features/table/hooks/useKitableRegistration.ts` with a test.
+- [x] `QueryProvider` (desktop defaults: no focus refetch, no retries, 5s staleTime), `queryKeys.ts` (root-scoped hierarchical keys), and `invalidation.ts` wired to the file watcher, `kition:workspace-reload`, and the workflow, form sync, email sync, and connections change events. `invalidation.spec.ts` proves a `.kitable` change invalidates that document and the kitable index only, and that other roots and runtime lists stay untouched. (2026-09-27)
+- [x] First migration: `useKitableChildrenIndex` reads through `useQuery` with the same return shape; renames and table-title edits patch the cache with `setQueryData`. Consumers unchanged.
+- [ ] Migrate `useTableEditorData` keeping its return shape. Its setters are mutated from 52 call sites across 7 table hooks, so this needs the record cache to expose `setQueryData`-backed setters first; not started.
+- [ ] Migrate the workspace tree, then documents, then agent session lists. The tree loader also opens the active document as a side effect (`useWorkspaceTreeLoader.applyWorkspaceDocumentList`), so split that out before moving the listing into a query.
+- [x] The "register unseen `.kitable` files" effect moved out of `WorkspaceScreen.tsx` into `src/features/workspace/hooks/useKitableRegistration.ts` with specs for the pure selector and the once-only retry behavior. Delete it when runtime plan Task R4 ships.
 
 ### Task 1.3: Workspace state store and navigation model
 
