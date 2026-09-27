@@ -23,13 +23,16 @@ function Harness({ onResult }: { onResult: (result: Result) => void }) {
   return null
 }
 
-function fakeBridge(): WhiteboardAgentBridge & { receivePatch: ReturnType<typeof vi.fn>; cancelPreview: ReturnType<typeof vi.fn> } {
-  return {
+function fakeBridge() {
+  const cancelPreview = vi.fn<WhiteboardAgentBridge['cancelPreview']>()
+  const receivePatch = vi.fn<WhiteboardAgentBridge['receivePatch']>()
+  const bridge: WhiteboardAgentBridge = {
     available: true,
     buildContext: () => ({ board: 'ctx' } as never),
-    cancelPreview: vi.fn(),
-    receivePatch: vi.fn(),
+    cancelPreview,
+    receivePatch,
   }
+  return Object.assign(bridge, { cancelPreview, receivePatch })
 }
 
 const patch = { operations: [] } as unknown as AgentWhiteboardPatch

@@ -30,7 +30,7 @@ import {
   extractAgentLocalPathReference,
 } from '@/features/agent/lib/agentLocalSources'
 import { createDataDashboardByPath } from '@/api/dashboards'
-import { openDataDocumentByPath, renameDataDocumentByPath } from '@/api/dataDocuments'
+import { renameDataDocumentByPath } from '@/api/dataDocuments'
 import type { WorkflowRouteContext } from '@/features/workflow/public'
 import type { TableSchema } from '@/features/workflow/components/BodyTemplateEditor.types'
 import { useWorkspaceAgent } from '@/features/agent/hooks/useWorkspaceAgent'
@@ -68,7 +68,7 @@ import type { DocumentAskAgentRequest } from '@/features/document/lib/documentAg
 import { AgentFloatingLauncher } from '@/features/agent/components/AgentFloatingLauncher'
 import type { SettingsSectionKey } from '@/features/settings/DesktopSettingsPage'
 import { useDesktopSettings } from '@/features/settings/hooks/useDesktopSettings'
-import type { DataDocument, DataTable } from '@/types/dataDocument'
+import type { DataDocument } from '@/types/dataDocument'
 import { WorkspaceScreenEditor } from '@/features/workspace/components/WorkspaceScreenEditor'
 import { WorkspaceKitableSidebar } from '@/features/workspace/components/WorkspaceKitableSidebar'
 import { requestEmailSyncSetup } from '@/features/emailSync/public'
@@ -97,6 +97,7 @@ import { useWorkspaceBrowserPanel } from '@/features/workspace/hooks/useWorkspac
 import { useWorkspaceWorkflowCreateMode } from '@/features/workspace/hooks/useWorkspaceWorkflowCreateMode'
 import { useWorkspaceTemplateDialogs } from '@/features/workspace/hooks/useWorkspaceTemplateDialogs'
 import { useWorkspaceWhiteboardAgentBridge } from '@/features/workspace/hooks/useWorkspaceWhiteboardAgentBridge'
+import { useWorkspaceTableAgentContext } from '@/features/workspace/hooks/useWorkspaceTableAgentContext'
 import { useWorkspaceBoardCreation } from '@/features/workspace/hooks/useWorkspaceBoardCreation'
 import { useWhiteboardImageGeneration } from '@/features/workspace/hooks/useWhiteboardImageGeneration'
 import { setPinnedTabsWorkspace } from '@/features/document/editor/hooks/usePinnedTabs'
@@ -125,7 +126,6 @@ import {
 import {
   deriveAgentPaneContext,
   resolveAgentActiveDocument,
-  resolveAgentDataTableTarget,
 } from '@/features/workspace/lib/agentPaneContext'
 import {
   readWorkspaceAgentActiveSessionId,
@@ -192,18 +192,6 @@ type WorkspaceScreenProps = {
   onCloseWorkflow?: () => void
   /** Opens the standalone full-text search modal (Codex-style palette). */
   onOpenSearch?: () => void
-}
-
-type WorkspaceTableAgentContext = {
-  activeDocument: DataDocument | null
-  activeTable: DataTable | null
-  onTableChanged?: () => Promise<void> | void
-}
-
-type WorkspaceTableAgentTarget = {
-  documentPath: string
-  tableId: number | null
-  originLabel: string
 }
 
 
@@ -278,15 +266,6 @@ export function WorkspaceScreen({
     useState<number | null>(null)
   const [closedWorkspaceAgentSessionIds, setClosedWorkspaceAgentSessionIds] =
     useState<Set<number>>(() => new Set())
-  const [tableAgentContextByPath, setTableAgentContextByPath] = useState<
-    Record<string, WorkspaceTableAgentContext>
-  >({})
-  const [lastTableAgentTarget, setLastTableAgentTarget] =
-    useState<WorkspaceTableAgentTarget>({
-      documentPath: '',
-      tableId: null,
-      originLabel: '',
-    })
   const [workspaceFolderDialogOpen, setWorkspaceFolderDialogOpen] = useState(false)
   const [workspaceFolderName, setWorkspaceFolderName] = useState('')
   const [tableFileImportState, setTableFileImportState] = useState<{
@@ -889,38 +868,19 @@ export function WorkspaceScreen({
       ? 'dashboard'
       : 'table'
 
-  const browserOriginDocumentPath = String(
-    activeBrowserTab?.originDocumentPath || '',
-  ).trim()
-  const browserOriginTableId =
-    typeof activeBrowserTab?.originTableId === 'number'
-      ? activeBrowserTab.originTableId
-      : null
-  const browserResolvedDocumentPath =
-    browserOriginDocumentPath || lastTableAgentTarget.documentPath
-  const browserResolvedTableId =
-    browserOriginTableId ?? lastTableAgentTarget.tableId
-  const activeDataTableTarget = resolveAgentDataTableTarget(activeWorkspaceTab)
-  const activeDataWorkspaceTabPath = activeDataTableTarget?.documentPath || ''
-  const activeDataWorkspaceTableId = activeDataTableTarget?.tableId ?? null
-  const activeDataWorkspaceTabPathRef = useRef('')
-  activeDataWorkspaceTabPathRef.current = activeDataWorkspaceTabPath
-  const lastTableAgentTargetRef = useRef(lastTableAgentTarget)
-  lastTableAgentTargetRef.current = lastTableAgentTarget
-  const tableAgentDocumentPath = useMemo(() => {
-    if (activeDataWorkspaceTabPath) {
-      return activeDataWorkspaceTabPath
-    }
-    if (activeWorkspaceTab?.type === 'browser') {
-      return browserResolvedDocumentPath
-    }
-    return ''
-  }, [activeDataWorkspaceTabPath, activeWorkspaceTab?.type, browserResolvedDocumentPath])
-  const tableAgentContext = tableAgentDocumentPath
-    ? tableAgentContextByPath[tableAgentDocumentPath] || null
-    : null
+  const tableAgent = useWorkspaceTableAgentContext({ activeWorkspaceTab, activeBrowserTab })
+  const {
+    context: tableAgentContext,
+    documentPath: tableAgentDocumentPath,
+    activeDataWorkspaceTabPath,
+    activeDataWorkspaceTableId,
+    activeDataWorkspaceTabPathRef,
+    browserOriginDocumentPath,
+    browserResolvedTableId,
+    lastTargetRef: lastTableAgentTargetRef,
+    handleContextChange: handleTableAgentContextChange,
+  } = tableAgent
   tableAgentRefreshRef.current = tableAgentContext?.onTableChanged ?? null
-  const hasTableAgentTarget = Boolean(tableAgentDocumentPath)
   const agentActiveDocument = resolveAgentActiveDocument(activeWorkspaceTab)
   whiteboardBridge.setActiveBoardPath(activeWorkspaceTab?.type === 'board' ? activeWorkspaceTab.path : '')
   agentTurnContextRef.current = buildAgentTurnContext({
@@ -968,33 +928,6 @@ export function WorkspaceScreen({
       activeWorkspaceDocumentPath,
     )
     : []
-
-  const refreshTableAgentContextByPath = useCallback(async (
-    path: string,
-    preferredTableId?: number | null,
-  ) => {
-    const normalizedPath = String(path || '').trim()
-    if (!normalizedPath) {
-      return null
-    }
-    const document = await openDataDocumentByPath({ path: normalizedPath })
-    const preferredTable = preferredTableId
-      ? document.tables?.find((table) => table.id === preferredTableId) || null
-      : null
-    const activeTable = preferredTable || document.tables?.[0] || null
-    const nextContext: WorkspaceTableAgentContext = {
-      activeDocument: document,
-      activeTable,
-      onTableChanged: async () => {
-        await refreshTableAgentContextByPath(normalizedPath, activeTable?.id || preferredTableId || null)
-      },
-    }
-    setTableAgentContextByPath((current) => ({
-      ...current,
-      [normalizedPath]: nextContext,
-    }))
-    return nextContext
-  }, [])
 
   const hasDocumentSnapshot = useCallback(
     (path: string) => snapshots.some((item) => item.path === path),
@@ -1387,70 +1320,6 @@ export function WorkspaceScreen({
   openFileViewerTabRef.current = openFileViewerTab
 
   useEffect(() => {
-    if (!activeDataWorkspaceTabPath) {
-      return
-    }
-    const nextTableId =
-      tableAgentContextByPath[activeDataWorkspaceTabPath]?.activeTable?.id
-      ?? activeDataWorkspaceTableId
-    const nextOriginLabel = String(
-      tableAgentContextByPath[activeDataWorkspaceTabPath]?.activeTable?.title ||
-        tableAgentContextByPath[activeDataWorkspaceTabPath]?.activeDocument
-          ?.title ||
-        '',
-    ).trim()
-    setLastTableAgentTarget((current) => {
-      if (
-        current.documentPath === activeDataWorkspaceTabPath &&
-        current.tableId === nextTableId &&
-        current.originLabel === nextOriginLabel
-      ) {
-        return current
-      }
-      return {
-        documentPath: activeDataWorkspaceTabPath,
-        tableId: nextTableId,
-        originLabel: nextOriginLabel,
-      }
-    })
-  }, [activeDataWorkspaceTabPath, activeDataWorkspaceTableId, tableAgentContextByPath])
-
-  useEffect(() => {
-    if (!browserResolvedDocumentPath) {
-      return
-    }
-    const nextOriginLabel = String(
-      activeBrowserTab?.originLabel ||
-        tableAgentContextByPath[browserResolvedDocumentPath]?.activeTable
-          ?.title ||
-        tableAgentContextByPath[browserResolvedDocumentPath]?.activeDocument
-          ?.title ||
-        lastTableAgentTarget.originLabel ||
-        '',
-    ).trim()
-    setLastTableAgentTarget((current) => {
-      if (
-        current.documentPath === browserResolvedDocumentPath &&
-        current.tableId === browserResolvedTableId &&
-        current.originLabel === nextOriginLabel
-      ) {
-        return current
-      }
-      return {
-        documentPath: browserResolvedDocumentPath,
-        tableId: browserResolvedTableId,
-        originLabel: nextOriginLabel,
-      }
-    })
-  }, [
-    activeBrowserTab?.originLabel,
-    browserResolvedDocumentPath,
-    browserResolvedTableId,
-    lastTableAgentTarget.originLabel,
-    tableAgentContextByPath,
-  ])
-
-  useEffect(() => {
     const handleOpenBrowserTab = (event: Event) => {
       if (!WEB_BROWSER_ENABLED) {
         return
@@ -1553,85 +1422,6 @@ export function WorkspaceScreen({
       </Suspense>
     </div>
   ) : null
-
-  const handleTableAgentContextChange = useCallback((context: {
-    documentPath: string
-    activeDocument: DataDocument | null
-    activeTable: DataTable | null
-    onTableChanged?: () => Promise<void> | void
-  }) => {
-    const path = String(context.documentPath || '').trim()
-    if (!path) {
-      return
-    }
-
-    setTableAgentContextByPath((current) => {
-      if (!context.activeDocument || !context.activeTable) {
-        const existing = current[path]
-        if (!existing) {
-          return current
-        }
-        return {
-          ...current,
-          [path]: {
-            ...existing,
-            onTableChanged: undefined,
-          },
-        }
-      }
-
-      return {
-        ...current,
-        [path]: {
-          activeDocument: context.activeDocument,
-          activeTable: context.activeTable,
-          onTableChanged: context.onTableChanged,
-        },
-      }
-    })
-  }, [])
-
-  useEffect(() => {
-    if (!hasTableAgentTarget || !tableAgentDocumentPath) {
-      return
-    }
-    const needsHydration =
-      !tableAgentContext?.activeDocument ||
-      !tableAgentContext?.activeTable ||
-      (
-        activeWorkspaceTab?.type === 'browser' &&
-        Boolean(browserResolvedTableId) &&
-        tableAgentContext.activeTable.id !== browserResolvedTableId
-      )
-    if (!needsHydration) {
-      return
-    }
-
-    let cancelled = false
-    void refreshTableAgentContextByPath(
-      tableAgentDocumentPath,
-      activeWorkspaceTab?.type === 'browser'
-        ? browserResolvedTableId
-        : activeDataWorkspaceTableId || tableAgentContext?.activeTable?.id || null,
-    ).catch(() => {
-      if (!cancelled) {
-        // Keep the current workspace usable even if lazy table-agent hydration fails.
-      }
-    })
-
-    return () => {
-      cancelled = true
-    }
-  }, [
-    activeWorkspaceTab?.type,
-    activeDataWorkspaceTableId,
-    browserResolvedTableId,
-    hasTableAgentTarget,
-    refreshTableAgentContextByPath,
-    tableAgentContext?.activeDocument,
-    tableAgentContext?.activeTable,
-    tableAgentDocumentPath,
-  ])
 
   useEffect(() => {
     if (!workspaceAgentOpen) {
