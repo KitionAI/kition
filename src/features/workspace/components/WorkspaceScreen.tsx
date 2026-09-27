@@ -6,7 +6,6 @@
  * new responsibilities here (see docs/superpowers/plans, Task 1.4).
  */
 import { useWorkspaceDesign } from '../hooks/useWorkspaceDesign'
-import { flushWorkspaceEditSessions } from '@/services/workspaceEditSessions'
 import { setInvalidationWorkspaceRoot } from '@/api/invalidation'
 import type { AgentImageGenerationIntent } from '@/types/imageGeneration'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -75,6 +74,7 @@ import { useWorkspaceTreeRowActions } from '@/features/workspace/hooks/useWorksp
 import { useWorkspaceCreateFlows } from '@/features/workspace/hooks/useWorkspaceCreateFlows'
 import { useWorkspaceAgentPanel } from '@/features/workspace/hooks/useWorkspaceAgentPanel'
 import { useWorkspaceAgentChatEntryPoints } from '@/features/workspace/hooks/useWorkspaceAgentChatEntryPoints'
+import { useWorkspaceTabControllers } from '@/features/workspace/hooks/useWorkspaceTabControllers'
 import { useWorkspaceBoardCreation } from '@/features/workspace/hooks/useWorkspaceBoardCreation'
 import { useWhiteboardImageGeneration } from '@/features/workspace/hooks/useWhiteboardImageGeneration'
 import { setPinnedTabsWorkspace } from '@/features/document/editor/hooks/usePinnedTabs'
@@ -91,11 +91,9 @@ import {
   formatWorkspaceTime,
   getKitableWorkspaceTabTitle,
   getWorkspaceItemTitle,
-  inferWorkspaceItemFormat,
   isEditableWorkspaceFormat,
   remapWorkspaceBranchPath,
   renameWorkspaceDocumentPath,
-  type WorkspaceMediaKind,
 } from '@/features/workspace/lib/workspace'
 import {
   deriveAgentPaneContext,
@@ -491,66 +489,11 @@ export function WorkspaceScreen({
   // /workflow route has nothing left to scope to and should exit.
   // Shared between the tab strip's close button, the middle-click
   // shortcut, and the Cmd/Ctrl+W keyboard handler below.
-  const handleCloseWorkspaceTabById = useCallback((tabId: string) => {
-    const tabs = workspaceTabsRef.current
-    const closing = tabs.find((t) => t.id === tabId)
-    if (!closing) return
-    if (closing.type === 'design') {
-      void flushWorkspaceEditSessions(closing.path)
-        .then(() => closeWorkspaceTab(tabId))
-        .catch(() => notify.error(t('design:errors.save')))
-      return
-    }
-    closeWorkspaceTab(tabId)
-    if (workflowOpen && closing.type === 'workflow') {
-      const remainingWorkflow = tabs.some((t) => t.id !== tabId && t.type === 'workflow')
-      if (!remainingWorkflow) onCloseWorkflow?.()
-    }
-  }, [closeWorkspaceTab, onCloseWorkflow, t, workflowOpen])
-
-  // Cmd/Ctrl+W closes the active workspace tab. preventDefault avoids
-  // the Electron / browser default of closing the window when the
-  // shortcut bubbles up unhandled. No-op when there's no active tab
-  // so empty workspaces don't swallow the key.
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (!(event.metaKey || event.ctrlKey)) return
-      if (event.shiftKey || event.altKey) return
-      if (event.key.toLowerCase() !== 'w') return
-      const tabId = activeWorkspaceTabId
-      if (!tabId) return
-      event.preventDefault()
-      handleCloseWorkspaceTabById(tabId)
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [activeWorkspaceTabId, handleCloseWorkspaceTabById])
 
   const activeBrowserTab =
     activeWorkspaceTab?.type === 'browser' ? activeWorkspaceTab : null
   agentTurn.setActiveBrowserTab(activeBrowserTab)
 
-  // A scoped table/workflow tab belongs to its .kitable container. Keep the
-  // primary workspace tree focused on that container; the Feishu-style inner
-  // sidebar below owns table/workflow selection.
-  useEffect(() => {
-    if (!activeWorkspaceTab) return
-    if (activeWorkspaceTab.type === 'table') {
-      setActiveResourcePath(activeWorkspaceTab.kitablePath)
-      return
-    }
-    if (activeWorkspaceTab.type === 'dashboard') {
-      setActiveResourcePath(activeWorkspaceTab.kitablePath)
-      return
-    }
-    if (activeWorkspaceTab.type === 'board' || activeWorkspaceTab.type === 'design') {
-      setActiveResourcePath(activeWorkspaceTab.path)
-      return
-    }
-    if (activeWorkspaceTab.type === 'workflow' && activeWorkspaceTab.kitablePath) {
-      setActiveResourcePath(activeWorkspaceTab.kitablePath)
-    }
-  }, [activeWorkspaceTab, setActiveResourcePath])
 
   const {
     openKitableTable,
@@ -579,23 +522,20 @@ export function WorkspaceScreen({
     },
   })
 
-  useEffect(() => {
-    const handler = (event: Event) => {
-      const detail = (event as CustomEvent).detail as { path?: string; vaultPath?: string }
-      const path = detail?.path || detail?.vaultPath
-      if (!path) {
-        return
-      }
-      if (path.toLowerCase().endsWith('.kidesign')) { design.open(path); return }
-      if (path.toLowerCase().endsWith('.kiboard')) {
-        openBoard(path)
-        return
-      }
-      void openDocument(path)
-    }
-    window.addEventListener('kition:search:open-path', handler)
-    return () => window.removeEventListener('kition:search:open-path', handler)
-  }, [design.open, openBoard, openDocument])
+  const { handleCloseWorkspaceTabById, openDocumentTab, openFileViewerTab } = useWorkspaceTabControllers({
+    workspaceTabs,
+    activeWorkspaceTab,
+    activeWorkspaceTabId,
+    closeWorkspaceTab,
+    upsertWorkspaceTab,
+    setActiveResourcePath,
+    workflowOpen,
+    onCloseWorkflow,
+    openDesign: design.open,
+    openKitableContainer,
+    openBoard,
+    openDocument,
+  })
 
   const activeKitablePath = activeWorkspaceTab?.type === 'table'
     ? activeWorkspaceTab.kitablePath
@@ -887,38 +827,8 @@ export function WorkspaceScreen({
     itemMenuOpen,
   })
 
-  function openDocumentTab(document: WorkspaceDocument) {
-    const format = inferWorkspaceItemFormat(document.path, document.content)
-    if (format === 'design') { design.open(document.path); return }
-    if (format === 'data' && document.path.toLowerCase().endsWith('.kitable')) {
-      openKitableContainer(document.path)
-      return
-    }
-    upsertWorkspaceTab({
-      id: `document:${document.path}`,
-      type: 'document',
-      title: getWorkspaceItemTitle(document.name),
-      path: document.path,
-      format,
 
-      uid: typeof crypto !== 'undefined' && 'randomUUID' in crypto
-        ? crypto.randomUUID()
-        : `doc-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
-    })
-  }
   openDocumentTabRef.current = openDocumentTab
-
-  function openFileViewerTab(path: string, format: WorkspaceDocumentFormat) {
-    if (path.toLowerCase().endsWith('.kidesign')) { design.open(path); return }
-    const filename = String(path || '').split('/').filter(Boolean).pop() || path
-    upsertWorkspaceTab({
-      id: `file-viewer:${path}`,
-      type: 'file-viewer',
-      title: getWorkspaceItemTitle(filename),
-      path,
-      format,
-    })
-  }
   openFileViewerTabRef.current = openFileViewerTab
 
   useEffect(() => {
@@ -1107,21 +1017,6 @@ export function WorkspaceScreen({
     }
   }, [error, agentNeedsModelConfig, onOpenSettingsSection])
 
-  function openGalleryTab(kind: WorkspaceMediaKind) {
-    if (kind === 'images') {
-      return
-    }
-    upsertWorkspaceTab({
-      id: `gallery:${kind}`,
-      type: 'gallery',
-      title: t('tabs.videos'),
-      kind,
-    })
-    setSidebarSectionsExpanded((current) => ({ ...current, [kind]: true }))
-    setActiveResourcePath('')
-    setError('')
-    setFeedback('')
-  }
 
   const renameActiveWorkspaceDocument = useCallback(async ({
     path,
