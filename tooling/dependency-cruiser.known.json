@@ -17192,24 +17192,6 @@
   {
     "type": "dependency",
     "from": "src/features/workspace/components/WorkspaceScreen.tsx",
-    "to": "src/features/document/lib/documentAgentActions.ts",
-    "unresolvedTo": "@/features/document/lib/documentAgentActions",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceScreen.tsx",
     "to": "src/features/formSync/api.ts",
     "unresolvedTo": "@/features/formSync/api",
     "dependencyTypes": [
@@ -17339,23 +17321,6 @@
       "local",
       "type-only",
       "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceScreen.tsx",
-    "to": "src/features/workflow/lib/askAiBridge.ts",
-    "unresolvedTo": "@/features/workflow/lib/askAiBridge",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "dynamic-import"
     ],
     "rule": {
       "severity": "error",

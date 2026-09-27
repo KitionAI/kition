@@ -6,3 +6,4 @@
  */
 export { openWorkflowRoute, type WorkflowRouteContext } from './lib/openWorkflowRoute'
 export { createWorkflowFromMode } from './lib/createWorkflowFromMode'
+export { buildWorkflowNodeAskAIPrompt } from './lib/askAiBridge'

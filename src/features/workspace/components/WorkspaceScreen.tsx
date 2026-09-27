@@ -38,7 +38,6 @@ import {
 } from '@/features/agent/public'
 import { useDocumentExport } from '@/features/document/hooks/useDocumentExport'
 import { useWorkspaceDocumentSession } from '@/features/document/hooks/useWorkspaceDocumentSession'
-import type { DocumentAskAgentRequest } from '@/features/document/lib/documentAgentActions'
 import { AgentFloatingLauncher } from '@/features/agent/components/AgentFloatingLauncher'
 import type { SettingsSectionKey } from '@/features/settings/DesktopSettingsPage'
 import { useDesktopSettings } from '@/features/settings/hooks/useDesktopSettings'
@@ -75,6 +74,7 @@ import { useWorkspaceKitableOpeners } from '@/features/workspace/hooks/useWorksp
 import { useWorkspaceTreeRowActions } from '@/features/workspace/hooks/useWorkspaceTreeRowActions'
 import { useWorkspaceCreateFlows } from '@/features/workspace/hooks/useWorkspaceCreateFlows'
 import { useWorkspaceAgentPanel } from '@/features/workspace/hooks/useWorkspaceAgentPanel'
+import { useWorkspaceAgentChatEntryPoints } from '@/features/workspace/hooks/useWorkspaceAgentChatEntryPoints'
 import { useWorkspaceBoardCreation } from '@/features/workspace/hooks/useWorkspaceBoardCreation'
 import { useWhiteboardImageGeneration } from '@/features/workspace/hooks/useWhiteboardImageGeneration'
 import { setPinnedTabsWorkspace } from '@/features/document/editor/hooks/usePinnedTabs'
@@ -96,7 +96,6 @@ import {
   remapWorkspaceBranchPath,
   renameWorkspaceDocumentPath,
   type WorkspaceMediaKind,
-  type WorkspaceTreeNode,
 } from '@/features/workspace/lib/workspace'
 import {
   deriveAgentPaneContext,
@@ -1043,184 +1042,26 @@ export function WorkspaceScreen({
   agentTurn.setPreflight(agentBrowserAutomation.runPreflight)
 
 
-  async function handleDocumentAskAgent(request: DocumentAskAgentRequest) {
+  const openWorkspaceAgentPanel = useCallback(() => {
     setWorkspaceAgentOpen(true)
     setWorkspaceAgentHistoryOpen(false)
-
-    let sessionId = activeWorkspaceAgentSession?.id ?? null
-    const shouldCreateSession = !sessionId
-      || agentBusySessions.has(sessionId)
-      || Boolean(agentDrafts[sessionId]?.trim())
-    if (shouldCreateSession) {
-      const session = await createNewAgentChat({
-        focusTab: true,
-        documentPaths: request.documentPath ? [request.documentPath] : [],
-      })
-      sessionId = session?.id ?? null
-      if (sessionId) {
-        setActiveWorkspaceAgentSessionId(sessionId)
-      }
-    } else if (sessionId && request.documentPath) {
-      addAgentDocumentContext(sessionId, request.documentPath, activeWorkspaceDocumentPath)
-    }
-    if (!sessionId) return
-
-    setAgentDraft(sessionId, request.prompt)
-    window.requestAnimationFrame(() => {
-      window.dispatchEvent(new CustomEvent('kition:agent:focus-composer'))
-    })
-  }
-
-  useEffect(() => {
-    function startOnboardingAgent(event: Event) {
-      const detail = (event as CustomEvent<{ documentPath?: string; prompt?: string }>).detail
-      const documentPath = String(detail?.documentPath || '').trim()
-      const prompt = String(detail?.prompt || '').trim()
-      void (async () => {
-        if (documentPath) {
-          await openDocument(documentPath)
-        }
-        setWorkspaceAgentOpen(true)
-        setWorkspaceAgentHistoryOpen(false)
-        const session = await createNewAgentChat({
-          focusTab: true,
-          documentPaths: documentPath ? [documentPath] : [],
-        })
-        if (!session?.id) return
-        setActiveWorkspaceAgentSessionId(session.id)
-        if (prompt) {
-          setAgentDraft(session.id, prompt)
-        }
-        window.dispatchEvent(new CustomEvent('kition:agent:focus-composer'))
-      })()
-    }
-    window.addEventListener('kition:onboarding:start-agent', startOnboardingAgent)
-    return () => window.removeEventListener('kition:onboarding:start-agent', startOnboardingAgent)
-  }, [createNewAgentChat, openDocument, setAgentDraft])
-
-  async function attachNodeMentionToAgentChat(
-    node: WorkspaceTreeNode,
-    { forceNew }: { forceNew: boolean },
-  ) {
-    setWorkspaceAgentOpen(true)
-    setWorkspaceAgentHistoryOpen(false)
-
-    let sessionId = forceNew ? null : activeWorkspaceAgentSession?.id ?? null
-    if (!sessionId) {
-      const session = await createNewAgentChat({
-        focusTab: true,
-        documentPaths: [node.path],
-      })
-      sessionId = session?.id ?? null
-      if (sessionId) {
-        setActiveWorkspaceAgentSessionId(sessionId)
-      }
-    }
-    if (!sessionId) {
-      return
-    }
-
-    if (!forceNew) {
-      addAgentDocumentContext(sessionId, node.path, activeWorkspaceDocumentPath)
-    }
-
-    window.dispatchEvent(new CustomEvent('kition:agent:focus-composer'))
-  }
-
-  async function addNodeToWorkspaceAgentChat(node: WorkspaceTreeNode) {
-    await attachNodeMentionToAgentChat(node, { forceNew: false })
-  }
-
-  async function addNodeToNewWorkspaceAgentChat(node: WorkspaceTreeNode) {
-    await attachNodeMentionToAgentChat(node, { forceNew: true })
-  }
-
-  // Consumer for the workflow Ask-AI bridge. NodeCard's hover pill dispatches
-  // kition:workflow-node:ask-ai with a typed payload (workflow/node ids,
-  // current config, table schema). We mirror addNodeToWorkspaceAgentChat —
-  // open the agent panel, ensure a session, then prepend the pre-rendered
-  // prompt as the session draft. The publisher lives in features/workflow;
-  // we keep the consumer here because session state isn't lifted any higher.
-  const askAIPromptBuilderRef = useRef<((payload: any) => string) | null>(null)
-  useEffect(() => {
-    let cancelled = false
-    void import('@/features/workflow/lib/askAiBridge').then((mod) => {
-      if (!cancelled) askAIPromptBuilderRef.current = mod.buildWorkflowNodeAskAIPrompt
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [])
-  useEffect(() => {
-    async function handler(event: Event) {
-      const detail = (event as CustomEvent).detail
-      if (!detail) return
-      setWorkspaceAgentOpen(true)
-      setWorkspaceAgentHistoryOpen(false)
-      let sessionId = activeWorkspaceAgentSession?.id ?? null
-      if (!sessionId) {
-        const session = await createNewAgentChat({ focusTab: true })
-        sessionId = session?.id ?? null
-        if (sessionId) setActiveWorkspaceAgentSessionId(sessionId)
-      }
-      if (!sessionId) return
-      const build = askAIPromptBuilderRef.current
-      const prompt = build ? build(detail) : `Help me with the ${detail.nodeKind} node ${detail.nodeId} of workflow ${detail.workflow?.name}.`
-      const current = agentDrafts[sessionId] || ''
-      const separator = current && !/\s$/.test(current) ? '\n\n' : ''
-      setAgentDraft(sessionId, `${current}${separator}${prompt}`)
-    }
-    window.addEventListener('kition:workflow-node:ask-ai', handler as EventListener)
-    return () => {
-      window.removeEventListener('kition:workflow-node:ask-ai', handler as EventListener)
-    }
-  }, [
-    activeWorkspaceAgentSession?.id,
-    agentDrafts,
+  }, [setWorkspaceAgentHistoryOpen, setWorkspaceAgentOpen])
+  const {
+    handleDocumentAskAgent,
+    addNodeToChat: addNodeToWorkspaceAgentChat,
+    addNodeToNewChat: addNodeToNewWorkspaceAgentChat,
+  } = useWorkspaceAgentChatEntryPoints({
+    openPanel: openWorkspaceAgentPanel,
+    activeSessionId: activeWorkspaceAgentSessionId,
+    setActiveSessionId: setActiveWorkspaceAgentSessionId,
     createNewAgentChat,
-    setActiveWorkspaceAgentSessionId,
-    setAgentDraft,
-    setWorkspaceAgentHistoryOpen,
-    setWorkspaceAgentOpen,
-  ])
-
-  // Sibling of the Ask-AI listener: AI workflow generation publishes
-  // kition:workflow-ai-build:open when WorkflowHomePage mounts in
-  // build-streaming mode. We open the agent panel and seed the composer with
-  // the user's initial prompt so the chat surface is immediately useful for
-  // follow-ups while the SSE stream paints nodes onto the canvas.
-  useEffect(() => {
-    async function handler(event: Event) {
-      const detail = (event as CustomEvent).detail as { prompt?: string; workflow?: { name?: string }; tableName?: string } | undefined
-      if (!detail || !detail.prompt) return
-      setWorkspaceAgentOpen(true)
-      setWorkspaceAgentHistoryOpen(false)
-      let sessionId = activeWorkspaceAgentSession?.id ?? null
-      if (!sessionId) {
-        const session = await createNewAgentChat({ focusTab: true })
-        sessionId = session?.id ?? null
-        if (sessionId) setActiveWorkspaceAgentSessionId(sessionId)
-      }
-      if (!sessionId) return
-      // Only seed when the composer is empty so we don't clobber whatever the
-      // user typed manually between event dispatch and listener resolution.
-      const current = agentDrafts[sessionId] || ''
-      if (current.trim()) return
-      setAgentDraft(sessionId, detail.prompt)
-    }
-    window.addEventListener('kition:workflow-ai-build:open', handler as EventListener)
-    return () => {
-      window.removeEventListener('kition:workflow-ai-build:open', handler as EventListener)
-    }
-  }, [
-    activeWorkspaceAgentSession?.id,
+    agentBusySessions,
     agentDrafts,
-    createNewAgentChat,
-    setActiveWorkspaceAgentSessionId,
     setAgentDraft,
-    setWorkspaceAgentHistoryOpen,
-    setWorkspaceAgentOpen,
-  ])
+    addAgentDocumentContext,
+    activeWorkspaceDocumentPath,
+    openDocument,
+  })
 
 
   const {

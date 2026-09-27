@@ -4,3 +4,4 @@
  */
 export type { DocumentCreationPreset } from './lib/documentCreation'
 export type { MarkdownImageInsertionSnapshot } from './editor/editor/markdown-image-insertion'
+export type { DocumentAskAgentRequest } from './lib/documentAgentActions'
