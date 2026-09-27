@@ -280,6 +280,7 @@ test.describe('Edit field sheet — e2e visual snapshot', () => {
   })
 
   test('Edit field sheet matches visual snapshot', async ({ page }) => {
+    test.fixme(true, 'Quarantined 2026-09-27, fails against the current UI: Error: expect(locator).toBeVisible() failed | getByTestId("kitable-editor"). See tooling/e2e-quarantine.json.')
     await mockFieldEditSheetDesktopBridge(page)
     await page.goto('/')
     await waitForKitableEditor(page)

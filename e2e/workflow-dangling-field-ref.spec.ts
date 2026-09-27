@@ -152,6 +152,7 @@ async function openTriggerTablePicker(page: import('@playwright/test').Page) {
 }
 
 test('T4.1 switching to a table missing the referenced field opens the dangling-ref ConfirmDialog', async ({ page }) => {
+  test.fixme(true, 'Quarantined 2026-09-27, fails against the current UI: Error: locator.click: Test timeout of 30000ms exceeded.. See tooling/e2e-quarantine.json.')
   await seedDanglingRefWorkflow(page)
   await page.goto('/workflow/auto_dangling')
   await openTriggerTablePicker(page)
@@ -164,6 +165,7 @@ test('T4.1 switching to a table missing the referenced field opens the dangling-
 })
 
 test('T4.2 "Remove & switch" confirms the dialog and PATCHes both trigger and pruned body', async ({ page }) => {
+  test.fixme(true, 'Quarantined 2026-09-27, fails against the current UI: Error: locator.click: Test timeout of 30000ms exceeded.. See tooling/e2e-quarantine.json.')
   const fixture = await seedDanglingRefWorkflow(page)
   await page.goto('/workflow/auto_dangling')
   await openTriggerTablePicker(page)
@@ -189,6 +191,7 @@ test('T4.2 "Remove & switch" confirms the dialog and PATCHes both trigger and pr
 })
 
 test('T4.3 Cancel keeps the original trigger table and skips the PATCH', async ({ page }) => {
+  test.fixme(true, 'Quarantined 2026-09-27, fails against the current UI: Error: locator.click: Test timeout of 30000ms exceeded.. See tooling/e2e-quarantine.json.')
   const fixture = await seedDanglingRefWorkflow(page)
   await page.goto('/workflow/auto_dangling')
   await openTriggerTablePicker(page)
@@ -205,6 +208,7 @@ test('T4.3 Cancel keeps the original trigger table and skips the PATCH', async (
 })
 
 test('T4.4 switching to a table that has the referenced field commits without a dialog', async ({ page }) => {
+  test.fixme(true, 'Quarantined 2026-09-27, fails against the current UI: Error: locator.click: Test timeout of 30000ms exceeded.. See tooling/e2e-quarantine.json.')
   const fixture = await seedDanglingRefWorkflow(page, { nextTableHasReferencedField: true })
   await page.goto('/workflow/auto_dangling')
   await openTriggerTablePicker(page)

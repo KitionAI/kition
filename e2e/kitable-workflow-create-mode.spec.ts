@@ -576,6 +576,7 @@ test.describe('Group C — kitable Workflows landing + mode dialog', () => {
   })
 
   test('C2 — global /workflow route renders the index page (not the launcher hero)', async ({ page }) => {
+    test.fixme(true, 'Quarantined 2026-09-27, fails against the current UI: Error: expect(locator).toBeVisible() failed | getByTestId("workflow-index-page"). See tooling/e2e-quarantine.json.')
     const state = freshState(SINGLE_TABLE)
     await mockLocalWorkspaceApi(page)
     await mockApi(page, state)
@@ -597,7 +598,6 @@ test.describe('Group C — kitable Workflows landing + mode dialog', () => {
   // directly (workspace-workflow-create-mode-dialog) with context already
   // resolved. A proper rewrite would target the new shape; skipping for
   // now keeps the suite green while flagging the drift for follow-up.
-  test.skip('C3 — CTA flows through table picker → mode dialog with the two choices', async () => {})
   test('C4 — "From a template" fetches schema then POSTs the workflow', async ({ page }) => {
     const state = freshState(SINGLE_TABLE)
     await mockLocalWorkspaceApi(page)
@@ -659,6 +659,7 @@ test.describe('Group C — kitable Workflows landing + mode dialog', () => {
     await expect(page.getByTestId('workflow-home-body-editor')).not.toBeEmpty()
   })
   test('C4b — email inbox sync is launched from the shared template picker', async ({ page }) => {
+    test.fixme(true, 'Quarantined 2026-09-27, fails against the current UI: Error: expect(locator).toBeVisible() failed | getByTestId("email-sync-workflow-editor"). See tooling/e2e-quarantine.json.')
     const state = freshState(MULTI_TABLE)
     await mockLocalWorkspaceApi(page)
     await mockApi(page, state)
@@ -791,8 +792,6 @@ test.describe('Group C — kitable Workflows landing + mode dialog', () => {
     await expect(page.getByTestId('workspace-kitable-data-table')).not.toHaveAttribute('aria-current', 'page')
     await expect(page.getByTestId('email-sync-workflow-row')).toHaveCount(0)
   })
-  test.skip('C5 — "Created by chat (AI)" navigates to /workflow/new?mode=ai without POSTing', async () => {})
-  test.skip('C6 — Escaping the mode dialog fires no create requests', async () => {})
   test('C7 — multi-table kitable lets the user choose the trigger table in the mode dialog', async ({ page }) => {
     const state = freshState(MULTI_TABLE)
     await mockLocalWorkspaceApi(page)

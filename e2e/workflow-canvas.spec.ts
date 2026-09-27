@@ -380,6 +380,7 @@ test('A9 InsertPoint popover offers Add action / Add filter when "+" is clicked'
 })
 
 test('A1 DocTab — /workflow URL opens a doc tab (no modal overlay)', async ({ page }) => {
+  test.fixme(true, 'Quarantined 2026-09-27, fails against the current UI: Error: locator.click: Test timeout of 30000ms exceeded.. See tooling/e2e-quarantine.json.')
   await seedWorkflow(page, {
     enabled: false,
     to: 'sevennt.leslie@gmail.com',

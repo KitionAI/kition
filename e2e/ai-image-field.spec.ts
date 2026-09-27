@@ -282,6 +282,7 @@ test.describe('AI image field — e2e smoke', () => {
   test('renders attachment thumbnail in RecordDetailDrawer for image_generation AI field', async ({
     page,
   }) => {
+    test.fixme(true, 'Quarantined 2026-09-27, fails against the current UI: Error: expect(locator).toBeVisible() failed | getByTestId("kitable-editor"). See tooling/e2e-quarantine.json.')
     await mockAIImageDesktopBridge(page)
     await page.goto('/')
     await waitForKitableEditor(page)

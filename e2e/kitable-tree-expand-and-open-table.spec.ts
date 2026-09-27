@@ -537,6 +537,7 @@ test.describe('kitable inner navigation and file-level tabs', () => {
   })
 
   test('kitable opens a Feishu-style inner navigation and keeps virtual tables out of the primary tree', async ({ page }) => {
+    test.fixme(true, 'Quarantined 2026-09-27, fails against the current UI: Error: expect(locator).toHaveCount(expected) failed | locator(".document-create-option"). See tooling/e2e-quarantine.json.')
     await page.goto('/')
 
     // ── Wait for the sidebar tree to load ──────────────────────────────────

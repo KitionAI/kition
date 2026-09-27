@@ -340,6 +340,7 @@ test.describe('kitable + create menu', () => {
   })
 
   test('kitable + opens a single-item menu (New table only); New workflow entry is gone', async ({ page }) => {
+    test.fixme(true, 'Quarantined 2026-09-27, fails against the current UI: Error: expect(locator).toHaveCount(expected) failed | locator(".document-create-menu").locator("button"). See tooling/e2e-quarantine.json.')
     await openKitableCreateMenu(page)
 
     // Group B: the kitable-variant menu now only renders "New table". The

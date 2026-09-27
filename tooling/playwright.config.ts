@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
+import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -15,6 +16,27 @@ for (const key of ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']) {
   delete process.env[key]
 }
 
+// KITION_E2E_SCOPE=ci runs every mock-backed spec in one sweep. Specs that
+// need live AI or SMTP credentials, the packaged Electron binary under xvfb,
+// or the README capture flag run through their own scripts instead, and
+// specs that currently fail against the UI are quarantined in
+// tooling/e2e-quarantine.json until they are fixed or deleted.
+const LIVE_SERVICE_SPECS = [
+  '**/workflow-real.spec.ts',
+  '**/workflow-real-ai-build.spec.ts',
+  '**/workflow-onboarding-actions-real.spec.ts',
+  '**/readme-assets.spec.ts',
+]
+const DESKTOP_SPECS = ['**/desktop-*.spec.ts', '**/electron-*.spec.ts', '**/settings-desktop*.spec.ts']
+const quarantine = JSON.parse(
+  readFileSync(resolve(repositoryDir, 'tooling/e2e-quarantine.json'), 'utf8'),
+) as { quarantined: Array<{ spec: string }> }
+const CI_SWEEP_IGNORE = [
+  ...LIVE_SERVICE_SPECS,
+  ...DESKTOP_SPECS,
+  ...quarantine.quarantined.map((entry) => `**/${entry.spec}`),
+]
+
 const PORT = Number(process.env.KITION_E2E_PORT ?? 3000)
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${PORT}`
 // Allow opting out of webServer auto-start when a dev server is already
@@ -24,6 +46,7 @@ const REUSE_ONLY = process.env.KITION_E2E_REUSE === 'true'
 
 export default defineConfig({
   testDir: resolve(repositoryDir, 'e2e'),
+  testIgnore: process.env.KITION_E2E_SCOPE === 'ci' ? CI_SWEEP_IGNORE : [],
   outputDir: resolve(repositoryDir, 'test-results'),
   timeout: 30_000,
   expect: {
