@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500">
+  <rect width="800" height="500" fill="#dff4ff"/>
+  <path d="M80 405 H720" stroke="#78b98b" stroke-width="8" stroke-linecap="round"/>
+
+  <!-- bicycle -->
+  <g fill="none" stroke="#263746" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="245" cy="375" r="72" fill="#fff"/>
+    <circle cx="570" cy="375" r="72" fill="#fff"/>
+    <path d="M245 375 L350 270 L430 375 L245 375 M350 270 L570 375 M430 375 L500 260"/>
+    <path d="M485 260 H535 M500 260 L520 235"/>
+    <path d="M350 270 H315"/>
+  </g>
+
+  <!-- pelican body -->
+  <ellipse cx="405" cy="190" rx="105" ry="125" fill="#f5f7f8" stroke="#263746" stroke-width="7"/>
+  <path d="M335 215 Q390 255 465 220 Q450 300 395 305 Q345 295 335 215Z"
+        fill="#d9e2e7" stroke="#263746" stroke-width="7"/>
+
+  <!-- wing -->
+  <path d="M350 155 Q420 155 455 215 Q420 245 365 220 Q345 195 350 155Z"
+        fill="#c4d0d8" stroke="#263746" stroke-width="7"/>
+  <path d="M375 175 Q400 205 430 220" fill="none" stroke="#8b9aa4" stroke-width="6"/>
+
+  <!-- neck and head -->
+  <path d="M375 115 Q365 65 405 45 Q455 25 495 62 Q515 90 495 125"
+        fill="#f5f7f8" stroke="#263746" stroke-width="7"/>
+  <circle cx="455" cy="70" r="9" fill="#263746"/>
+
+  <!-- beak -->
+  <path d="M485 83 Q590 75 625 120 Q560 165 475 125 Q455 110 485 83Z"
+        fill="#f2a65a" stroke="#263746" stroke-width="7"/>
+  <path d="M495 124 Q555 135 610 120" fill="none" stroke="#c87836" stroke-width="5"/>
+
+  <!-- pelican legs -->
+  <g fill="none" stroke="#d1843f" stroke-width="9" stroke-linecap="round">
+    <path d="M385 285 L355 345 L330 375"/>
+    <path d="M435 285 L455 340 L430 375"/>
+  </g>
+  <g fill="#e89a4d" stroke="#263746" stroke-width="5">
+    <path d="M330 375 q-28 15-42 0 q18-17 42 0Z"/>
+    <path d="M430 375 q28 15 42 0 q-18-17-42 0Z"/>
+  </g>
+
+  <!-- handlebars and seat -->
+  <path d="M495 260 Q520 245 535 260" fill="none" stroke="#263746" stroke-width="8"/>
+  <path d="M315 255 H365" stroke="#263746" stroke-width="9" stroke-linecap="round"/>
+  <path d="M320 248 Q340 235 360 248" fill="none" stroke="#263746" stroke-width="7"/>
+
+  <!-- small motion lines -->
+  <g stroke="#78b98b" stroke-width="6" stroke-linecap="round">
+    <path d="M150 300 H195"/>
+    <path d="M110 335 H165"/>
+    <path d="M635 285 H680"/>
+  </g>
+</svg>

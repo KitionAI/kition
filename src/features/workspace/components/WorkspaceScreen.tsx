@@ -24,7 +24,6 @@ import {
   updateWorkspaceTreeDocumentItem,
 } from '@/features/workspace/lib/workspaceTree'
 import { routeKitableOpenPath } from './workspaceScreenTabRouting'
-import { createDataDashboardByPath } from '@/api/dashboards'
 import { renameDataDocumentByPath } from '@/api/dataDocuments'
 import type { WorkflowRouteContext } from '@/features/workflow/public'
 import type { TableSchema } from '@/features/workflow/components/BodyTemplateEditor.types'
@@ -47,7 +46,7 @@ import type { DataDocument } from '@/types/dataDocument'
 import { WorkspaceScreenEditor } from '@/features/workspace/components/WorkspaceScreenEditor'
 import { WorkspaceKitableSidebar } from '@/features/workspace/components/WorkspaceKitableSidebar'
 import { requestEmailSyncSetup } from '@/features/emailSync/public'
-import { FORM_SYNC_CHANGED_EVENT, type FormSyncWorkflow } from '@/features/formSync/api'
+import { FORM_SYNC_CHANGED_EVENT } from '@/features/formSync/api'
 import { WorkspaceAgentTabBar } from '@/features/workspace/components/WorkspaceAgentTabBar'
 import {
   WorkspaceScreenSidebar,
@@ -74,6 +73,7 @@ import { useWorkspaceAgentBrowserAutomation } from '@/features/workspace/hooks/u
 import { useWorkspaceAgentTurnContext } from '@/features/workspace/hooks/useWorkspaceAgentTurnContext'
 import { useWorkspaceKitableOpeners } from '@/features/workspace/hooks/useWorkspaceKitableOpeners'
 import { useWorkspaceTreeRowActions } from '@/features/workspace/hooks/useWorkspaceTreeRowActions'
+import { useWorkspaceCreateFlows } from '@/features/workspace/hooks/useWorkspaceCreateFlows'
 import { useWorkspaceBoardCreation } from '@/features/workspace/hooks/useWorkspaceBoardCreation'
 import { useWhiteboardImageGeneration } from '@/features/workspace/hooks/useWhiteboardImageGeneration'
 import { setPinnedTabsWorkspace } from '@/features/document/editor/hooks/usePinnedTabs'
@@ -238,21 +238,6 @@ export function WorkspaceScreen({
     useState<number | null>(null)
   const [closedWorkspaceAgentSessionIds, setClosedWorkspaceAgentSessionIds] =
     useState<Set<number>>(() => new Set())
-  const [workspaceFolderDialogOpen, setWorkspaceFolderDialogOpen] = useState(false)
-  const [workspaceFolderName, setWorkspaceFolderName] = useState('')
-  const [tableFileImportState, setTableFileImportState] = useState<{
-    file: File
-    folder?: string
-  } | null>(null)
-  const tableFileImportFolderRef = useRef('')
-  const tableFileImportInputRef = useRef<HTMLInputElement | null>(null)
-  const [kitableCreateContext, setKitableCreateContext] = useState<string | null>(null)
-  const [formSyncCreateState, setFormSyncCreateState] = useState<{
-    kitablePath: string
-    documentId: string
-    initialTableId?: number
-  } | null>(null)
-  const createMenuVariant: 'workspace' | 'kitable' = kitableCreateContext ? 'kitable' : 'workspace'
   // Group A: when the user picks "Create Workflow" from a kitable table
   // leaf's "..." menu, we surface a mode chooser (template vs AI). The dialog
   // can run scoped to a (documentId, tableId) pair OR entirely unbound
@@ -840,68 +825,34 @@ export function WorkspaceScreen({
   const closeWorkflowCreateModeDialog = workflowCreateMode.close
   const handleWorkflowCreateModeSelect = workflowCreateMode.select
 
-  const createTableFromKitableSidebar = useCallback(async (kitablePath: string) => {
-    const result = await createTableInsideKitable(kitablePath)
-    if (!result || result.tableId == null) {
-      return
-    }
-    upsertWorkspaceTab({
-      id: buildKitableWorkspaceTabId(kitablePath),
-      type: 'table',
-      title: getKitableWorkspaceTabTitle(kitablePath),
-      kitablePath,
-      tableId: result.tableId,
-      format: 'data',
-    })
-    setActiveResourcePath(kitablePath)
-    void kitableChildrenIndex.refresh()
-  }, [createTableInsideKitable, kitableChildrenIndex, setActiveResourcePath, t, upsertWorkspaceTab])
-
-  const createDashboardFromKitableSidebar = useCallback(async (kitablePath: string) => {
-    const sourceTableId = activeWorkspaceTab?.type === 'table'
-      && activeWorkspaceTab.kitablePath === kitablePath
-      ? activeWorkspaceTab.tableId
-      : undefined
-    try {
-      const created = await createDataDashboardByPath(kitablePath, sourceTableId)
-      await kitableChildrenIndex.refresh()
-      openKitableDashboard(kitablePath, created.dashboard.id)
-      notify.success(t('feedback.dashboardCreated'))
-    } catch (createError) {
-      setError(
-        createError instanceof Error
-          ? createError.message
-          : t('errors.createDashboardFailed'),
-      )
-    }
-  }, [
+  const createFlows = useWorkspaceCreateFlows({
     activeWorkspaceTab,
     kitableChildrenIndex,
+    createMenuFolder,
+    createFolder,
+    createTableInsideKitable,
+    upsertWorkspaceTab,
+    setActiveResourcePath,
+    updateTreeMetadata: workspaceTree.updateTreeMetadata,
     openKitableDashboard,
+    openKitableWorkflow,
     setError,
-    t,
-  ])
-
-  const createFormFromKitableSidebar = useCallback((kitablePath: string) => {
-    const documentId = kitableChildrenIndex.docIdByKitablePath[kitablePath]
-    if (!documentId) {
-      setError(t('errors.kitableNotFound'))
-      return
-    }
-    const initialTableId = activeWorkspaceTab?.type === 'table'
-      && activeWorkspaceTab.kitablePath === kitablePath
-      ? activeWorkspaceTab.tableId
-      : kitableChildrenIndex.tablesByKitablePath[kitablePath]?.[0]?.id
-    setFormSyncCreateState({ kitablePath, documentId, initialTableId })
-  }, [activeWorkspaceTab, kitableChildrenIndex, setError, t])
-
-  const handleFormSyncCreated = useCallback((workflow: FormSyncWorkflow) => {
-    const state = formSyncCreateState
-    if (!state) return
-    void kitableChildrenIndex.refresh()
-    openKitableWorkflow(state.kitablePath, workflow.id)
-    setFormSyncCreateState(null)
-  }, [formSyncCreateState, kitableChildrenIndex, openKitableWorkflow])
+  })
+  const {
+    folderDialogOpen: workspaceFolderDialogOpen,
+    folderName: workspaceFolderName,
+    setFolderName: setWorkspaceFolderName,
+    tableFileImportState,
+    tableFileImportInputRef,
+    kitableCreateContext,
+    setKitableCreateContext,
+    createMenuVariant,
+    createTableFromKitableSidebar,
+    createDashboardFromKitableSidebar,
+    createFormFromKitableSidebar,
+    formSyncCreateState,
+    handleFormSyncCreated,
+  } = createFlows
 
   const workspaceMoveTargets = useMemo(
     () => workspaceTree.flatTreeNodes.filter(
@@ -1423,15 +1374,6 @@ export function WorkspaceScreen({
       setWorkspaceAgentOpen(false)
       setWorkspaceAgentHistoryOpen(false)
     }
-  }
-
-  async function handleSubmitWorkspaceFolder() {
-    const created = await createFolder(createMenuFolder, workspaceFolderName)
-    if (!created) {
-      return
-    }
-    setWorkspaceFolderDialogOpen(false)
-    setWorkspaceFolderName('')
   }
 
   const {
@@ -1993,14 +1935,9 @@ export function WorkspaceScreen({
             open
             value={workspaceFolderName}
             busy={saving}
-            onOpenChange={(open) => {
-              setWorkspaceFolderDialogOpen(open)
-              if (!open) {
-                setWorkspaceFolderName('')
-              }
-            }}
+            onOpenChange={createFlows.setFolderDialogVisible}
             onValueChange={setWorkspaceFolderName}
-            onSubmit={() => void handleSubmitWorkspaceFolder()}
+            onSubmit={() => void createFlows.submitFolderDialog()}
           />
         </Suspense>
       ) : null}
@@ -2047,7 +1984,7 @@ export function WorkspaceScreen({
             documentId={formSyncCreateState.documentId}
             initialTableId={formSyncCreateState.initialTableId}
             onOpenChange={(open) => {
-              if (!open) setFormSyncCreateState(null)
+              if (!open) createFlows.closeFormSyncCreate()
             }}
             onCreated={handleFormSyncCreated}
           />
@@ -2079,13 +2016,7 @@ export function WorkspaceScreen({
         type="file"
         accept=".csv,.tsv,.xlsx,text/csv,text/tab-separated-values,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         className="hidden"
-        onChange={(event) => {
-          const file = event.target.files?.[0]
-          if (file) {
-            setTableFileImportState({ file, folder: tableFileImportFolderRef.current || undefined })
-          }
-          event.currentTarget.value = ''
-        }}
+        onChange={createFlows.handleTableFileInputChange}
       />
       {tableFileImportState ? (
         <Suspense fallback={null}>
@@ -2094,7 +2025,7 @@ export function WorkspaceScreen({
             file={tableFileImportState.file}
             target={{ kind: 'new_document', folder: tableFileImportState.folder }}
             onOpenChange={(open) => {
-              if (!open) setTableFileImportState(null)
+              if (!open) createFlows.closeTableFileImport()
             }}
             onCompleted={async (result) => {
               const path = result.path
@@ -2146,8 +2077,7 @@ export function WorkspaceScreen({
               },
               onCreateFolder: () => {
                 workspaceTree.setCreateMenuOpen(false)
-                setWorkspaceFolderName('')
-                setWorkspaceFolderDialogOpen(true)
+                createFlows.openFolderDialog()
               },
               onCreateInside: (node) => {
                 if (node.type === 'file' && node.name.toLowerCase().endsWith('.kitable') && !node.virtual) {
@@ -2160,27 +2090,7 @@ export function WorkspaceScreen({
               },
               onCreateTable: () => {
                 if (kitableCreateContext) {
-                  void (async () => {
-                    const captured = kitableCreateContext
-                    const result = await createTableInsideKitable(captured)
-                    setKitableCreateContext(null)
-                    if (result) {
-
-                      workspaceTree.updateTreeMetadata((current) => {
-                        if (current.collapsed.includes(captured)) return current
-                        return { ...current, collapsed: [...current.collapsed, captured] }
-                      })
-                      upsertWorkspaceTab({
-                        id: buildKitableWorkspaceTabId(captured),
-                        type: 'table',
-                        title: getKitableWorkspaceTabTitle(captured),
-                        kitablePath: captured,
-                        tableId: result.tableId,
-                        format: 'data',
-                      })
-                      void kitableChildrenIndex.refresh()
-                    }
-                  })()
+                  void createFlows.createTableFromCreateMenu()
                   return
                 }
                 workspaceTree.setCreateMenuOpen(false)
@@ -2189,8 +2099,7 @@ export function WorkspaceScreen({
               onImportTableFile: createMenuVariant === 'workspace'
                 ? () => {
                     workspaceTree.setCreateMenuOpen(false)
-                    tableFileImportFolderRef.current = createMenuFolder
-                    tableFileImportInputRef.current?.click()
+                    createFlows.requestTableFileImport(createMenuFolder)
                   }
                 : undefined,
               createMenuVariant,
