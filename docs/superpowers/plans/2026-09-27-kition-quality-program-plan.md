@@ -233,8 +233,8 @@ Order matters. Each phase leaves `main` releasable.
 - `useWorkspaceCreateFlows`: template, kitable, workflow, form, and folder creation entry points.
 - `WorkspaceDialogs`: every lazily-loaded dialog with its open state from `useWorkspaceDialogs`.
 
-- [ ] Extract one hook at a time. After each extraction run `pnpm test:unit src/features/workspace` and `pnpm test:table:e2e`.
-- [ ] Break the workspace to document and workspace to workflow cycles by moving shared types into `src/features/<feature>/public.ts` and shared helpers into `src/lib/`.
+- [~] Extract one hook at a time. Done 2026-09-27: `useWorkspaceBrowserPanel` (BrowserView attach, layout, re-attach budget, toolbar commands; the re-attach rule is a pure, tested function and the session sync is its own inner hook because the 200-line function ceiling caught the first draft) and `useWorkspaceWorkflowCreateMode` (create-mode dialog state, template / scratch / chat branches, post-create routing). `WorkspaceScreen.tsx` went from 3,832 to 3,266 lines. Remaining slices, in order: create flows for documents, kitables, dashboards, and forms; the Agent bridge (turn context, insertion context, whiteboard bridges, browser preflight, auto-continue); the dialogs bundle; tab open/close controllers.
+- [~] Break the cross-feature cycles through `public.ts` entries. First one landed: `src/features/workflow/public.ts` exposes `openWorkflowRoute`, `WorkflowRouteContext`, and `createWorkflowFromMode`; the workspace feature now imports only that, which retired 2 baselined boundary violations (369 to 367).
 - [ ] Apply the same treatment to `WorkflowHomePage.tsx` (2,249 lines) and `DesktopSettingsPage.tsx` (1,226 lines).
 
 ### Task 1.5: One UI kit

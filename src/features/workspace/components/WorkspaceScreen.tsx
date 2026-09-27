@@ -14,7 +14,6 @@ import { useTranslation } from 'react-i18next'
 import { useKitableChildrenIndex } from '@/features/workspace/hooks/useKitableChildrenIndex'
 import { useKitableRegistration } from '@/features/workspace/hooks/useKitableRegistration'
 import {
-  buildKitableWorkflowVirtualPath,
   buildKitableTableVirtualPath,
   buildPrivateSectionTreeNodes,
   parseKitableDashboardVirtualPath,
@@ -32,9 +31,7 @@ import {
 } from '@/features/agent/lib/agentLocalSources'
 import { createDataDashboardByPath } from '@/api/dashboards'
 import { openDataDocumentByPath, renameDataDocumentByPath } from '@/api/dataDocuments'
-import { openWorkflowHome, openWorkflowRoute, type WorkflowRouteContext } from '@/features/workflow/lib/openWorkflowRoute'
-import { createWorkflow, type WorkflowDefinition } from '@/api/workflows'
-import { createWorkflowFromMode } from '@/features/workflow/lib/createWorkflowFromMode'
+import type { WorkflowRouteContext } from '@/features/workflow/public'
 import type { TableSchema } from '@/features/workflow/components/BodyTemplateEditor.types'
 import { useWorkspaceAgent } from '@/features/agent/hooks/useWorkspaceAgent'
 import { useKitionAccount } from '@/features/account/hooks/useKitionAccount'
@@ -78,7 +75,6 @@ import type { DataDocument, DataTable } from '@/types/dataDocument'
 import type { KitableTemplateDefinition } from '@/features/table/templates/kitableTemplates'
 import { WorkspaceScreenEditor } from '@/features/workspace/components/WorkspaceScreenEditor'
 import { WorkspaceKitableSidebar } from '@/features/workspace/components/WorkspaceKitableSidebar'
-import type { WorkspaceWorkflowCreateModeChoice } from '@/features/workspace/components/WorkspaceWorkflowCreateModeDialog'
 import { requestEmailSyncSetup } from '@/features/emailSync/setupRequest'
 import { FORM_SYNC_CHANGED_EVENT, type FormSyncWorkflow } from '@/features/formSync/api'
 import { setupTemplateFormSync } from '@/features/formSync/templateSetup'
@@ -102,18 +98,18 @@ import { useWorkspaceTopbarActions } from '@/features/workspace/hooks/useWorkspa
 import { useWorkspaceTreeActions } from '@/features/workspace/hooks/useWorkspaceTreeActions'
 import { useWorkspaceTreeState } from '@/features/workspace/hooks/useWorkspaceTreeState'
 import { useWorkspaceTabs } from '@/features/workspace/hooks/useWorkspaceTabs'
+import { useWorkspaceBrowserPanel } from '@/features/workspace/hooks/useWorkspaceBrowserPanel'
+import { useWorkspaceWorkflowCreateMode } from '@/features/workspace/hooks/useWorkspaceWorkflowCreateMode'
 import { useWorkspaceBoardCreation } from '@/features/workspace/hooks/useWorkspaceBoardCreation'
 import { useWhiteboardImageGeneration } from '@/features/workspace/hooks/useWhiteboardImageGeneration'
 import { setPinnedTabsWorkspace } from '@/features/document/editor/hooks/usePinnedTabs'
 import {
-  applyWorkspaceBrowserSessionSnapshot,
   buildWorkspaceBrowserTabId,
   buildWorkspaceBrowserTabTitle,
   findWorkspaceBrowserTabIdsForSnapshot,
   OPEN_WORKSPACE_BROWSER_TAB_EVENT,
   resolveWorkspaceBrowserTabOrigin,
   resolveWorkspaceBrowserHost,
-  resolveWorkspaceBrowserTabNavigationURL,
   type WorkspaceBrowserTabPayload,
 } from '@/features/workspace/lib/browserTabs'
 import {
@@ -141,31 +137,17 @@ import {
 import { notify } from '@/lib/notify'
 import { cn } from '@/lib/utils'
 import {
-  ensureBrowserSessionWindow,
   chooseAgentAnalysisDirectory,
   extractBrowserPageContext,
-  getBrowserSessionPanelState,
-  getBrowserSessionStatus,
   getDesktopBackendStatus,
-  hideBrowserSessionPanel,
   isDesktopRuntime,
   moveWorkspaceDocument,
   openExternalURL,
-  registerBrowserSessionStateHandler,
   revealWorkspaceFolder,
-  browserSessionGoBack,
-  browserSessionGoForward,
-  browserSessionReload,
-  browserSessionStop,
-  setBrowserSessionHostLayout,
-  type BrowserSessionPanelState,
   type BrowserSessionProvider,
-  type BrowserSessionRequest,
-  type BrowserSessionStatus,
   type WorkspaceDocument,
   type WorkspaceDocumentFormat,
 } from '@/services/desktop'
-import { WORKSPACE_BROWSER_TOOLBAR_HEIGHT } from '@/features/workspace/components/WorkspaceBrowserToolbar'
 import { WEB_BROWSER_ENABLED } from '@/lib/productFeatures'
 
 const WorkflowRoute = lazy(() =>
@@ -228,26 +210,6 @@ type WorkspaceTableAgentTarget = {
   originLabel: string
 }
 
-const WORKSPACE_BROWSER_TAB_CHROME_TOP_INSET = 98
-const WORKSPACE_BROWSER_TAB_TOP_INSET =
-  WORKSPACE_BROWSER_TAB_CHROME_TOP_INSET + WORKSPACE_BROWSER_TOOLBAR_HEIGHT
-
-// The native browser view must overlay the `.workspace-browser-tab` placeholder
-// exactly. Measure its on-screen top so the view never starts below the
-// placeholder, which would expose the placeholder's gradient as an empty strip.
-function measureBrowserTabTopInset() {
-  if (typeof document === 'undefined') {
-    return WORKSPACE_BROWSER_TAB_TOP_INSET
-  }
-  const node = document.querySelector('.workspace-browser-tab')
-  if (!node) {
-    return WORKSPACE_BROWSER_TAB_TOP_INSET
-  }
-  const top = Math.round(node.getBoundingClientRect().top)
-  return Number.isFinite(top) && top > 0 ? top : WORKSPACE_BROWSER_TAB_TOP_INSET
-}
-
-const WORKSPACE_BROWSER_TAB_REATTACH_LIMIT = 3
 
 export function WorkspaceScreen({
   onOpenSettingsSection,
@@ -329,11 +291,6 @@ export function WorkspaceScreen({
       tableId: null,
       originLabel: '',
     })
-  const [browserPanelPhase, setBrowserPanelPhase] = useState<
-    'loading' | 'ready' | 'unavailable' | 'empty'
-  >('loading')
-  const [browserNavState, setBrowserNavState] =
-    useState<BrowserSessionPanelState | null>(null)
   const [workspaceFolderDialogOpen, setWorkspaceFolderDialogOpen] = useState(false)
   const [workspaceFolderName, setWorkspaceFolderName] = useState('')
   const [documentTemplateDialogState, setDocumentTemplateDialogState] = useState<{
@@ -364,16 +321,6 @@ export function WorkspaceScreen({
   // — the user will pick the table inside the trigger config panel
   // afterwards". kitablePath, when set, controls where the resulting
   // workflow lands in the workspace tree.
-  const [autoCreateModeState, setAutoCreateModeState] = useState<
-    {
-      context: WorkflowRouteContext | null
-      tableOptions: WorkflowRouteContext[]
-      kitablePath: string | null
-    } | null
-  >(null)
-  const [autoCreateModeBusyKind, setAutoCreateModeBusyKind] = useState<'template' | 'chat' | 'scratch' | null>(null)
-  const [autoCreateModeBusyTemplateId, setAutoCreateModeBusyTemplateId] = useState<string | undefined>(undefined)
-  const [autoCreateModeError, setAutoCreateModeError] = useState<string | null>(null)
   const [agentBrowserEnabled, setAgentBrowserEnabledState] = useState(false)
   const [whiteboardAgentAvailable, setWhiteboardAgentAvailable] = useState(false)
   const [documentToolbarPortal, setDocumentToolbarPortal] =
@@ -424,8 +371,6 @@ export function WorkspaceScreen({
   const refreshWorkspaceDocumentsRef = useRef<
     (preferredPath?: string, options?: { silent?: boolean; treeOnly?: boolean }) => Promise<boolean>
   >(async () => true)
-  const lastSyncedBrowserTabIdRef = useRef('')
-  const browserTabReattachCountRef = useRef<Record<string, number>>({})
   const agentDocumentStateRef = useRef({
     clearModifiedPath: (_path: string) => {},
     modifiedPaths: new Set<string>(),
@@ -1400,66 +1345,22 @@ export function WorkspaceScreen({
   //   - virtual `table://` leaf: resolve the parent kitable + table from
   //     the leaf path and open the mode dialog with that scope (legacy
   //     entry, retained for callers that hand us a leaf node).
-  const openWorkflowModeDialogForContext = useCallback(
-    (
-      kitablePath: string | null,
-      context: WorkflowRouteContext | null,
-      tableOptions: WorkflowRouteContext[] = context ? [context] : [],
-    ) => {
-      setAutoCreateModeError(null)
-      setAutoCreateModeBusyKind(null)
-      setAutoCreateModeBusyTemplateId(undefined)
-      setAutoCreateModeState({ kitablePath, context, tableOptions })
-    },
-    [],
-  )
-
-  const openWorkflowCreateModeDialog = useCallback(
-    (node: WorkspaceTreeNode) => {
-      // Case 1: .kitable container row.
-      const isKitableContainer = node.type === 'file'
-        && !node.virtual
-        && node.name.toLowerCase().endsWith('.kitable')
-      if (isKitableContainer) {
-        const kitablePath = node.path
-        const docId = kitableChildrenIndex.docIdByKitablePath[kitablePath]
-        if (!docId) {
-          setError(t('errors.kitableNotFound'))
-          return
-        }
-        const tables = kitableChildrenIndex.tablesByKitablePath[kitablePath] || []
-        if (tables.length === 0) {
-          setError(t('errors.kitableNoTables'))
-          return
-        }
-        const tableOptions = tables.map((table) => ({
-            documentId: String(docId),
-            tableId: String(table.id),
-            tableName: table.title || node.title || t('tabs.untitledTable'),
-        }))
-        openWorkflowModeDialogForContext(kitablePath, tableOptions[0], tableOptions)
-        return
-      }
-      // Case 2: virtual `table://` leaf (legacy entry).
-      const parsed = parseKitableTableVirtualPath(node.path)
-      if (!parsed) return
-      const docId = kitableChildrenIndex.docIdByKitablePath[parsed.kitablePath]
-      if (!docId) {
-        setError(t('errors.parentKitableNotFound'))
-        return
-      }
-      const summary = (kitableChildrenIndex.tablesByKitablePath[parsed.kitablePath] || []).find(
-        (table) => table.id === parsed.tableId,
-      )
-      const tableName = summary?.title || node.title || t('tabs.untitledTable')
-      openWorkflowModeDialogForContext(parsed.kitablePath, {
-        documentId: String(docId),
-        tableId: String(parsed.tableId),
-        tableName,
-      })
-    },
-    [kitableChildrenIndex, openWorkflowModeDialogForContext, setError, t],
-  )
+  const workflowCreateMode = useWorkspaceWorkflowCreateMode({
+    kitableChildrenIndex,
+    upsertWorkspaceTab,
+    setActiveResourcePath,
+    updateTreeMetadata: workspaceTree.updateTreeMetadata,
+    setError,
+  })
+  const autoCreateModeState = workflowCreateMode.state
+  const autoCreateModeBusyKind = workflowCreateMode.busyKind
+  const autoCreateModeBusyTemplateId = workflowCreateMode.busyTemplateId
+  const autoCreateModeError = workflowCreateMode.error
+  const openWorkflowModeDialogForContext = workflowCreateMode.openForContext
+  const openWorkflowCreateModeDialog = workflowCreateMode.openForTreeNode
+  const createWorkflowFromKitableSidebar = workflowCreateMode.openForKitable
+  const closeWorkflowCreateModeDialog = workflowCreateMode.close
+  const handleWorkflowCreateModeSelect = workflowCreateMode.select
 
   const createTableFromKitableSidebar = useCallback(async (kitablePath: string) => {
     const result = await createTableInsideKitable(kitablePath)
@@ -1503,23 +1404,6 @@ export function WorkspaceScreen({
     t,
   ])
 
-  const createWorkflowFromKitableSidebar = useCallback((kitablePath: string) => {
-    const name = kitablePath.split('/').pop() || kitablePath
-    const parentPath = kitablePath.includes('/')
-      ? kitablePath.slice(0, kitablePath.lastIndexOf('/'))
-      : ''
-    openWorkflowCreateModeDialog({
-      type: 'file',
-      path: kitablePath,
-      filePath: kitablePath,
-      name,
-      title: name.replace(/\.kitable$/i, ''),
-      format: 'data',
-      parentPath,
-      children: [],
-    })
-  }, [openWorkflowCreateModeDialog])
-
   const createFormFromKitableSidebar = useCallback((kitablePath: string) => {
     const documentId = kitableChildrenIndex.docIdByKitablePath[kitablePath]
     if (!documentId) {
@@ -1540,139 +1424,6 @@ export function WorkspaceScreen({
     openKitableWorkflow(state.kitablePath, workflow.id)
     setFormSyncCreateState(null)
   }, [formSyncCreateState, kitableChildrenIndex, openKitableWorkflow])
-
-  const closeWorkflowCreateModeDialog = useCallback(() => {
-    setAutoCreateModeState(null)
-    setAutoCreateModeError(null)
-    setAutoCreateModeBusyKind(null)
-    setAutoCreateModeBusyTemplateId(undefined)
-  }, [])
-
-  const handleWorkflowCreateModeSelect = useCallback(
-    (choice: WorkspaceWorkflowCreateModeChoice) => {
-      const state = autoCreateModeState
-      if (!state) return
-      const selectedContext = choice.context || state.context
-      if (choice.kind === 'chat') {
-        // AI mode runs in the standalone /workflow route — close the dialog
-        // synchronously and let the router show the chat-first surface.
-        // state.context may be null (unbound creation); openWorkflowRoute
-        // already accepts null and persists it as the route context.
-        closeWorkflowCreateModeDialog()
-        openWorkflowRoute(selectedContext, { mode: 'ai' })
-        return
-      }
-      // Both the template and scratch branches end with the same post-create
-      // routing: attach the new workflow under the source .kitable tab when
-      // we have a kitablePath, otherwise open the standalone editor. Extract
-      // it so the scratch branch doesn't have to duplicate ~20 lines of tree
-      // metadata + tab juggling.
-      const finalizeCreatedWorkflow = (def: WorkflowDefinition) => {
-        if (state.kitablePath) {
-
-          workspaceTree.updateTreeMetadata((current) => {
-            if (current.collapsed.includes(state.kitablePath!)) return current
-            return { ...current, collapsed: [...current.collapsed, state.kitablePath!] }
-          })
-          upsertWorkspaceTab({
-            id: buildKitableWorkspaceTabId(state.kitablePath),
-            type: 'workflow',
-            title: getKitableWorkspaceTabTitle(state.kitablePath),
-            kitablePath: state.kitablePath,
-            workflowId: def.id,
-          })
-          setActiveResourcePath(buildKitableWorkflowVirtualPath(state.kitablePath, def.id))
-        } else {
-          // Unbound creation (no parent kitable). Route through the
-          // standalone /workflow editor so the user can pick a table
-          // inside the trigger config panel.
-          openWorkflowRoute(null, { mode: 'editor' })
-        }
-        void kitableChildrenIndex.refresh()
-        closeWorkflowCreateModeDialog()
-      }
-      if (choice.kind === 'scratch') {
-        // Scratch branch: POST an empty draft directly. Seed
-        // trigger.type with record_created regardless of context — the
-        // drawer's event dropdown defaults to this anyway, and the
-        // create endpoint's allowedTriggerTypes gate rejects an empty
-        // string (only def.Validate() is lenient about it, which the
-        // gate runs before). documentId/tableId still get the
-        // delayed-binding empty when no context is pinned; the user
-        // wires those from the trigger panel.
-        setAutoCreateModeError(null)
-        setAutoCreateModeBusyKind('scratch')
-        setAutoCreateModeBusyTemplateId(undefined)
-        void (async () => {
-          try {
-            const def = await createWorkflow({
-              name: 'Untitled workflow',
-              description: '',
-              enabled: false,
-              trigger: {
-                type: 'record_created',
-                documentId: selectedContext?.documentId ?? '',
-                tableId: selectedContext?.tableId ?? '',
-              },
-              action: {
-                type: 'send_email',
-                connectionId: '',
-                to: 'you@example.com',
-                subject: { parts: [{ kind: 'text', text: 'New record' }] },
-                body: { parts: [{ kind: 'text', text: 'A new record was created.' }] },
-              },
-            })
-            finalizeCreatedWorkflow(def)
-          } catch (err) {
-            setAutoCreateModeError(err instanceof Error ? err.message : t('errors.createWorkflowFailed'))
-            setAutoCreateModeBusyKind(null)
-          }
-        })()
-        return
-      }
-      // Template branch: POST the workflow immediately. When state.context
-      // is null the template helper skips schema fetch and produces a draft
-      // (Trigger.TableID/Type empty) — the backend now accepts this and the
-      // user binds the table afterwards from the trigger config panel.
-      setAutoCreateModeError(null)
-      setAutoCreateModeBusyKind('template')
-      setAutoCreateModeBusyTemplateId(choice.template.id)
-      void (async () => {
-        try {
-          const { workflow: def, unresolvedFieldNames } = await createWorkflowFromMode(choice.template, selectedContext)
-          // Same one-shot handoff the inline launcher uses (see
-          // WorkflowLauncher.handleTemplateSelect). The post-creation
-          // editor reads this key to decide whether to show the
-          // "template fields couldn't be bound" banner.
-          if (unresolvedFieldNames.length > 0) {
-            try {
-              window.sessionStorage.setItem(
-                `kition:workflow:template-unresolved:${def.id}`,
-                JSON.stringify(unresolvedFieldNames),
-              )
-            } catch {
-              // sessionStorage may be unavailable in some Electron
-              // contexts; the banner is non-critical so we silently skip.
-            }
-          }
-          finalizeCreatedWorkflow(def)
-        } catch (err) {
-          setAutoCreateModeError(err instanceof Error ? err.message : t('errors.createWorkflowFailed'))
-          setAutoCreateModeBusyKind(null)
-          setAutoCreateModeBusyTemplateId(undefined)
-        }
-      })()
-    },
-    [
-      autoCreateModeState,
-      closeWorkflowCreateModeDialog,
-      kitableChildrenIndex,
-      setActiveResourcePath,
-      upsertWorkspaceTab,
-      workspaceTree,
-      t,
-    ],
-  )
 
   const workspaceMoveTargets = useMemo(
     () => workspaceTree.flatTreeNodes.filter(
@@ -1866,341 +1617,24 @@ export function WorkspaceScreen({
     }
   }, [upsertWorkspaceTab])
 
-  useEffect(() => {
-    const syncSnapshotIntoTabs = (snapshot: WorkspaceBrowserTabPayload) => {
-      const matchedIds = findWorkspaceBrowserTabIdsForSnapshot(
-        workspaceTabsRef.current,
-        snapshot,
-      )
-      for (const tabId of matchedIds) {
-        updateWorkspaceTab(tabId, (tab) =>
-          applyWorkspaceBrowserSessionSnapshot(tab, snapshot),
-        )
-      }
-    }
-
-    const unregisterGenericWeb = registerBrowserSessionStateHandler('generic-web', (state) => {
-      setBrowserNavState((current) =>
-        current?.provider === state.provider &&
-        current.url === state.url &&
-        current.canGoBack === state.canGoBack &&
-        current.canGoForward === state.canGoForward &&
-        current.isLoading === state.isLoading
-          ? current
-          : state,
-      )
-      syncSnapshotIntoTabs({
-        provider: 'generic-web',
-        title: state.title,
-        url: state.url,
-      })
-    })
-
-    return () => {
-      unregisterGenericWeb()
-    }
-  }, [updateWorkspaceTab])
-
-  useEffect(() => {
-    setBrowserNavState(null)
-    setBrowserPanelPhase(
-      activeBrowserTab && !String(activeBrowserTab.url || '').trim()
-        ? 'empty'
-        : 'loading',
-    )
-    // Only re-seed the phase when switching tabs, not on every live URL update.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeBrowserTab?.id])
-
-  useEffect(() => {
-    let cancelled = false
-
-    const resetBrowserTabReattachBudget = (tabId: string) => {
-      if (!tabId) {
-        return
-      }
-      browserTabReattachCountRef.current = {
-        ...browserTabReattachCountRef.current,
-        [tabId]: 0,
-      }
-    }
-
-    const shouldReattachBrowserTab = (
-      status?: Awaited<ReturnType<typeof getBrowserSessionStatus>> | null,
-    ) => {
-      if (!activeBrowserTab) {
-        return false
-      }
-      const expectedUrl = String(activeBrowserTab.url || '').trim()
-      const liveUrl = String(status?.page_url || '').trim()
-      // A browser tab with no requested URL and no live page stays on the empty
-      // state with its BrowserView detached — never reattach it.
-      if (!expectedUrl && !liveUrl) {
-        return false
-      }
-      if (!status) {
-        return true
-      }
-      if (!status.panel_visible) {
-        return true
-      }
-      if (expectedUrl && !liveUrl) {
-        return true
-      }
-      return false
-    }
-
-    const refreshBrowserTabSnapshot = async () => {
-      if (!activeBrowserTab) {
-        return
-      }
-      const status = await getBrowserSessionStatus({
-        provider: activeBrowserTab.provider,
-        profile_id: activeBrowserTab.profileId,
-        host: activeBrowserTab.host,
-      }).catch(() => null)
-      if (!status || cancelled) {
-        return
-      }
-      if (status.panel_visible) {
-        resetBrowserTabReattachBudget(activeBrowserTab.id)
-        setBrowserPanelPhase('ready')
-      }
-      updateWorkspaceTab(activeBrowserTab.id, (tab) =>
-        applyWorkspaceBrowserSessionSnapshot(tab, {
-          provider: activeBrowserTab.provider,
-          profile_id: activeBrowserTab.profileId,
-          host: activeBrowserTab.host,
-          title: status.page_title,
-          url: status.page_url,
-        }),
-      )
-      return status
-    }
-
-    const syncBrowserTab = async () => {
-      if (workflowOpen) {
-        lastSyncedBrowserTabIdRef.current = ''
-        await hideBrowserSessionPanel({ provider: activeBrowserTab?.provider || 'generic-web' }).catch(() => null)
-        if (!cancelled) {
-          setBrowserPanelPhase('empty')
-        }
-        return
-      }
-      if (!activeBrowserTab) {
-        lastSyncedBrowserTabIdRef.current = ''
-        await hideBrowserSessionPanel({ provider: 'generic-web' }).catch(() => null)
-        return
-      }
-
-      const currentStatus = await refreshBrowserTabSnapshot()
-      const sameTabActive =
-        lastSyncedBrowserTabIdRef.current === activeBrowserTab.id
-      const targetURL = String(activeBrowserTab.url || '').trim()
-      const liveURL = String(currentStatus?.page_url || '').trim()
-      // No requested URL and no live page → keep the BrowserView detached and
-      // show the empty state until the user (or agent) navigates somewhere.
-      if (!targetURL && !(sameTabActive && liveURL)) {
-        lastSyncedBrowserTabIdRef.current = ''
-        await hideBrowserSessionPanel({
-          provider: activeBrowserTab.provider,
-        }).catch(() => null)
-        if (!cancelled) {
-          setBrowserPanelPhase('empty')
-        }
-        return
-      }
-      const keepLivePage = sameTabActive && Boolean(liveURL)
-      const resolvedURL = resolveWorkspaceBrowserTabNavigationURL({
-        tabURL: keepLivePage ? '' : activeBrowserTab.url,
-        liveURL: currentStatus?.page_url,
-      })
-      const request = {
-        provider: activeBrowserTab.provider,
-        profile_id: activeBrowserTab.profileId,
-        host: activeBrowserTab.host,
-        url: resolvedURL,
-      }
-      const attachedStatus = await ensureBrowserSessionWindow(request)
-      if (cancelled) {
-        return
-      }
-      resetBrowserTabReattachBudget(activeBrowserTab.id)
-      lastSyncedBrowserTabIdRef.current = activeBrowserTab.id
-      updateWorkspaceTab(activeBrowserTab.id, (tab) => {
-        return applyWorkspaceBrowserSessionSnapshot(tab, {
-          provider: activeBrowserTab.provider,
-          profile_id: activeBrowserTab.profileId,
-          host: activeBrowserTab.host,
-          title: attachedStatus.page_title,
-          url: attachedStatus.page_url,
-        })
-      })
-      await setBrowserSessionHostLayout({
-        ...request,
-        leftInset: effectiveSidebarWidth,
-        topInset: measureBrowserTabTopInset(),
-        rightInset:
-          workspaceAgentOpen
-            ? agentSidebarWidth
-            : 0,
-      })
-      if (!cancelled) {
-        setBrowserPanelPhase(
-          attachedStatus.panel_visible === false ? 'loading' : 'ready',
-        )
-      }
-    }
-
-    void syncBrowserTab().catch(() => {
-      // The embedded browser is unavailable (e.g. dev/web build without the
-      // desktop bridge); show the explanatory placeholder instead of a spinner.
-      if (!cancelled) {
-        setBrowserPanelPhase('unavailable')
-      }
-    })
-
-    if (workflowOpen || !activeBrowserTab) {
-      return () => {
-        cancelled = true
-      }
-    }
-
-    const handleResize = () => {
-      void syncBrowserTab().catch(() => {
-        // Ignore browser tab resize sync errors.
-      })
-    }
-    const pollTimer = window.setInterval(() => {
-      void (async () => {
-        const status = await refreshBrowserTabSnapshot().catch(() => null)
-        if (cancelled || !activeBrowserTab) {
-          return
-        }
-        if (!shouldReattachBrowserTab(status)) {
-          return
-        }
-        const reattachCount =
-          browserTabReattachCountRef.current[activeBrowserTab.id] || 0
-        if (reattachCount >= WORKSPACE_BROWSER_TAB_REATTACH_LIMIT) {
-          return
-        }
-        browserTabReattachCountRef.current = {
-          ...browserTabReattachCountRef.current,
-          [activeBrowserTab.id]: reattachCount + 1,
-        }
-        await syncBrowserTab()
-      })().catch(() => {
-        // Ignore browser tab polling errors.
-      })
-    }, 1500)
-    window.addEventListener('resize', handleResize)
-    return () => {
-      cancelled = true
-      window.clearInterval(pollTimer)
-      window.removeEventListener('resize', handleResize)
-    }
-  }, [
+  const {
+    browserPanelPhase,
+    setBrowserPanelPhase,
+    browserToolbarStatus,
+    handleBrowserNavigate,
+    handleBrowserBack,
+    handleBrowserForward,
+    handleBrowserReload,
+    handleBrowserStop,
+  } = useWorkspaceBrowserPanel({
     activeBrowserTab,
-    agentSidebarWidth,
+    workspaceTabs,
+    updateWorkspaceTab,
     workflowOpen,
     effectiveSidebarWidth,
+    agentSidebarWidth,
     workspaceAgentOpen,
-    updateWorkspaceTab,
-  ])
-
-  const handleBrowserNavigate = useCallback(
-    async (address: string) => {
-      const tab = activeBrowserTabRef.current
-      const target = String(address || '').trim()
-      if (!tab || !target) {
-        return
-      }
-      const request = {
-        provider: tab.provider,
-        profile_id: tab.profileId,
-        host: tab.host,
-      }
-      setBrowserPanelPhase('loading')
-      const status = await ensureBrowserSessionWindow({
-        ...request,
-        address: target,
-      }).catch(() => null)
-      if (!status) {
-        setBrowserPanelPhase('unavailable')
-        return
-      }
-      lastSyncedBrowserTabIdRef.current = tab.id
-      setBrowserNavState(getBrowserSessionPanelState(tab.provider, status))
-      updateWorkspaceTab(tab.id, (current) =>
-        applyWorkspaceBrowserSessionSnapshot(current, {
-          provider: tab.provider,
-          profile_id: tab.profileId,
-          host: tab.host,
-          title: status.page_title,
-          url: status.page_url,
-        }),
-      )
-      await setBrowserSessionHostLayout({
-        ...request,
-        leftInset: effectiveSidebarWidth,
-        topInset: measureBrowserTabTopInset(),
-        rightInset: workspaceAgentOpen ? agentSidebarWidth : 0,
-      }).catch(() => null)
-      setBrowserPanelPhase(status.panel_visible === false ? 'loading' : 'ready')
-    },
-    [agentSidebarWidth, effectiveSidebarWidth, updateWorkspaceTab, workspaceAgentOpen],
-  )
-
-  const runBrowserNavCommand = useCallback(
-    async (
-      command: (request: BrowserSessionRequest) => Promise<BrowserSessionStatus>,
-    ) => {
-      const tab = activeBrowserTabRef.current
-      if (!tab) {
-        return
-      }
-      const status = await command({
-        provider: tab.provider,
-        profile_id: tab.profileId,
-        host: tab.host,
-      }).catch(() => null)
-      if (!status) {
-        return
-      }
-      setBrowserNavState(getBrowserSessionPanelState(tab.provider, status))
-    },
-    [],
-  )
-
-  const handleBrowserBack = useCallback(() => {
-    void runBrowserNavCommand(browserSessionGoBack)
-  }, [runBrowserNavCommand])
-  const handleBrowserForward = useCallback(() => {
-    void runBrowserNavCommand(browserSessionGoForward)
-  }, [runBrowserNavCommand])
-  const handleBrowserReload = useCallback(() => {
-    void runBrowserNavCommand(browserSessionReload)
-  }, [runBrowserNavCommand])
-  const handleBrowserStop = useCallback(() => {
-    void runBrowserNavCommand(browserSessionStop)
-  }, [runBrowserNavCommand])
-
-  const browserToolbarStatus = useMemo(
-    () => ({
-      url: browserNavState?.url || String(activeBrowserTab?.url || ''),
-      canGoBack: browserNavState?.canGoBack,
-      canGoForward: browserNavState?.canGoForward,
-      isLoading: browserNavState?.isLoading,
-    }),
-    [
-      activeBrowserTab?.url,
-      browserNavState?.url,
-      browserNavState?.canGoBack,
-      browserNavState?.canGoForward,
-      browserNavState?.isLoading,
-    ],
-  )
+  })
 
   const workflowWorkbench = workflowOpen && workflowSchemaLookup ? (
     <div data-testid="workspace-workflow-workbench" className="h-full min-h-0 overflow-hidden bg-background">

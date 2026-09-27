@@ -17607,40 +17607,6 @@
   {
     "type": "dependency",
     "from": "src/features/workspace/components/WorkspaceScreen.tsx",
-    "to": "src/features/workflow/lib/createWorkflowFromMode.ts",
-    "unresolvedTo": "@/features/workflow/lib/createWorkflowFromMode",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceScreen.tsx",
-    "to": "src/features/workflow/lib/openWorkflowRoute.ts",
-    "unresolvedTo": "@/features/workflow/lib/openWorkflowRoute",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceScreen.tsx",
     "to": "src/features/workflow/pages/WorkflowRoute.tsx",
     "unresolvedTo": "@/features/workflow/pages/WorkflowRoute",
     "dependencyTypes": [
