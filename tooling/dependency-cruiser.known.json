@@ -17106,7 +17106,7 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceScreen.tsx",
+    "from": "src/features/workspace/components/WorkspaceDialogs.tsx",
     "to": "src/features/document/components/DocumentExportDialog.tsx",
     "unresolvedTo": "@/features/document/components/DocumentExportDialog",
     "dependencyTypes": [
@@ -17123,7 +17123,7 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceScreen.tsx",
+    "from": "src/features/workspace/components/WorkspaceDialogs.tsx",
     "to": "src/features/document/components/DocumentTemplateLibraryDialog.tsx",
     "unresolvedTo": "@/features/document/components/DocumentTemplateLibraryDialog",
     "dependencyTypes": [
@@ -17208,7 +17208,7 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceScreen.tsx",
+    "from": "src/features/workspace/components/WorkspaceDialogs.tsx",
     "to": "src/features/formSync/FormSyncCreateDialog.tsx",
     "unresolvedTo": "@/features/formSync/FormSyncCreateDialog",
     "dependencyTypes": [
@@ -17260,7 +17260,7 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceScreen.tsx",
+    "from": "src/features/workspace/components/WorkspaceDialogs.tsx",
     "to": "src/features/table/components/KitableTemplateLibraryDialog.tsx",
     "unresolvedTo": "@/features/table/components/KitableTemplateLibraryDialog",
     "dependencyTypes": [
@@ -17277,7 +17277,7 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceScreen.tsx",
+    "from": "src/features/workspace/components/WorkspaceDialogs.tsx",
     "to": "src/features/table/components/TableFileImportDialog.tsx",
     "unresolvedTo": "@/features/table/components/TableFileImportDialog",
     "dependencyTypes": [
@@ -17294,7 +17294,7 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceScreen.tsx",
+    "from": "src/features/workspace/components/WorkspaceDialogs.tsx",
     "to": "src/features/whiteboard/components/WhiteboardTemplateLibraryDialog.tsx",
     "unresolvedTo": "@/features/whiteboard/components/WhiteboardTemplateLibraryDialog",
     "dependencyTypes": [

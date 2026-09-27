@@ -43,7 +43,6 @@ import { useDesktopSettings } from '@/features/settings/hooks/useDesktopSettings
 import type { DataDocument } from '@/types/dataDocument'
 import { WorkspaceScreenEditor } from '@/features/workspace/components/WorkspaceScreenEditor'
 import { WorkspaceKitableSidebar } from '@/features/workspace/components/WorkspaceKitableSidebar'
-import { requestEmailSyncSetup } from '@/features/emailSync/public'
 import { FORM_SYNC_CHANGED_EVENT } from '@/features/formSync/api'
 import { WorkspaceAgentTabBar } from '@/features/workspace/components/WorkspaceAgentTabBar'
 import {
@@ -75,6 +74,7 @@ import { useWorkspaceCreateFlows } from '@/features/workspace/hooks/useWorkspace
 import { useWorkspaceAgentPanel } from '@/features/workspace/hooks/useWorkspaceAgentPanel'
 import { useWorkspaceAgentChatEntryPoints } from '@/features/workspace/hooks/useWorkspaceAgentChatEntryPoints'
 import { useWorkspaceTabControllers } from '@/features/workspace/hooks/useWorkspaceTabControllers'
+import { WorkspaceDialogs } from '@/features/workspace/components/WorkspaceDialogs'
 import { useWorkspaceBoardCreation } from '@/features/workspace/hooks/useWorkspaceBoardCreation'
 import { useWhiteboardImageGeneration } from '@/features/workspace/hooks/useWhiteboardImageGeneration'
 import { setPinnedTabsWorkspace } from '@/features/document/editor/hooks/usePinnedTabs'
@@ -116,30 +116,6 @@ import { WEB_BROWSER_ENABLED } from '@/lib/productFeatures'
 
 const WorkflowRoute = lazy(() =>
   import('@/features/workflow/pages/WorkflowRoute').then((module) => ({ default: module.WorkflowRoute })),
-)
-const DocumentExportDialog = lazy(() =>
-  import('@/features/document/components/DocumentExportDialog').then((module) => ({ default: module.DocumentExportDialog })),
-)
-const DocumentTemplateLibraryDialog = lazy(() =>
-  import('@/features/document/components/DocumentTemplateLibraryDialog').then((module) => ({ default: module.DocumentTemplateLibraryDialog })),
-)
-const KitableTemplateLibraryDialog = lazy(() =>
-  import('@/features/table/components/KitableTemplateLibraryDialog').then((module) => ({ default: module.KitableTemplateLibraryDialog })),
-)
-const WhiteboardTemplateLibraryDialog = lazy(() =>
-  import('@/features/whiteboard/components/WhiteboardTemplateLibraryDialog').then((module) => ({ default: module.WhiteboardTemplateLibraryDialog })),
-)
-const TableFileImportDialog = lazy(() =>
-  import('@/features/table/components/TableFileImportDialog').then((module) => ({ default: module.TableFileImportDialog })),
-)
-const WorkspaceFolderCreateDialog = lazy(() =>
-  import('@/features/workspace/components/WorkspaceFolderCreateDialog').then((module) => ({ default: module.WorkspaceFolderCreateDialog })),
-)
-const WorkspaceWorkflowCreateModeDialog = lazy(() =>
-  import('@/features/workspace/components/WorkspaceWorkflowCreateModeDialog').then((module) => ({ default: module.WorkspaceWorkflowCreateModeDialog })),
-)
-const FormSyncCreateDialog = lazy(() =>
-  import('@/features/formSync/FormSyncCreateDialog').then((module) => ({ default: module.FormSyncCreateDialog })),
 )
 const WorkspaceAgentSidebar = lazy(() =>
   import('@/features/workspace/components/WorkspaceAgentSidebar').then((module) => ({ default: module.WorkspaceAgentSidebar })),
@@ -351,33 +327,16 @@ export function WorkspaceScreen({
     setTreeItems: workspaceTree.setTreeItems,
   })
 
-  const {
-    exportCurrentDocument,
-    exportDialogOpen,
-    exportFormat,
-    exportIncludeMedia,
-    exportPageFormat,
-    exportScale,
-    exporting,
-    openExportDialog,
-    pdfIncludeName,
-    pdfLandscape,
-    pdfMarginsType,
-    setExportDialogOpen,
-    setExportFormat,
-    setExportIncludeMedia,
-    setExportPageFormat,
-    setExportScale,
-    setPdfIncludeName,
-    setPdfLandscape,
-    setPdfMarginsType,
-  } = useDocumentExport({
+  const documentExport = useDocumentExport({
     activeDocument,
     activeDocumentFormat,
     draftContent,
     onError: setError,
     onFeedback: setFeedback,
   })
+  const {
+    openExportDialog,
+  } = documentExport
   const {
     agentArtifacts,
     agentBusySessions,
@@ -1301,6 +1260,12 @@ export function WorkspaceScreen({
     </Suspense>
   ) : null
 
+  const handleTableFileImported = useCallback(async (path: string | undefined) => {
+    await refreshWorkspaceDocuments(path, { silent: true, treeOnly: true })
+    await kitableChildrenIndex.refresh()
+    if (path) openKitableContainer(path)
+  }, [kitableChildrenIndex, openKitableContainer, refreshWorkspaceDocuments])
+
   return (
     <>
       <WorkspaceTopbar
@@ -1488,140 +1453,15 @@ export function WorkspaceScreen({
         visible={!workspaceAgentOpen}
         onOpen={toggleActiveAgentPanel}
       />
-      {exportDialogOpen ? (
-        <Suspense fallback={null}>
-          <DocumentExportDialog
-            open
-            exporting={exporting}
-            exportFormat={exportFormat}
-            exportIncludeMedia={exportIncludeMedia}
-            exportPageFormat={exportPageFormat}
-            exportScale={exportScale}
-            pdfIncludeName={pdfIncludeName}
-            pdfLandscape={pdfLandscape}
-            pdfMarginsType={pdfMarginsType}
-            onClose={() => setExportDialogOpen(false)}
-            onExportFormatChange={setExportFormat}
-            onIncludeMediaChange={setExportIncludeMedia}
-            onPageFormatChange={setExportPageFormat}
-            onScaleChange={setExportScale}
-            onPdfIncludeNameChange={setPdfIncludeName}
-            onPdfLandscapeChange={setPdfLandscape}
-            onPdfMarginsTypeChange={setPdfMarginsType}
-            onExport={() => void exportCurrentDocument()}
-          />
-        </Suspense>
-      ) : null}
-      {workspaceFolderDialogOpen ? (
-        <Suspense fallback={null}>
-          <WorkspaceFolderCreateDialog
-            open
-            value={workspaceFolderName}
-            busy={saving}
-            onOpenChange={createFlows.setFolderDialogVisible}
-            onValueChange={setWorkspaceFolderName}
-            onSubmit={() => void createFlows.submitFolderDialog()}
-          />
-        </Suspense>
-      ) : null}
-      {documentTemplateDialogState ? (
-        <Suspense fallback={null}>
-          <DocumentTemplateLibraryDialog
-            open
-            busy={saving}
-            onOpenChange={(open) => {
-              if (!open) closeDocumentTemplateDialog()
-            }}
-            onCreate={handleCreateDocumentFromTemplate}
-          />
-        </Suspense>
-      ) : null}
-      {boardCreation.dialogState ? (
-        <Suspense fallback={null}>
-          <WhiteboardTemplateLibraryDialog
-            open
-            busy={saving}
-            onOpenChange={(open) => {
-              if (!open) boardCreation.closeTemplateDialog()
-            }}
-            onSelect={boardCreation.createBoard}
-          />
-        </Suspense>
-      ) : null}
-      {kitableTemplateDialogState ? (
-        <Suspense fallback={null}>
-          <KitableTemplateLibraryDialog
-            open
-            busy={saving}
-            onOpenChange={(open) => {
-              if (!open) closeKitableTemplateDialog()
-            }}
-            onSelect={handleCreateKitableFromTemplate}
-          />
-        </Suspense>
-      ) : null}
-      {formSyncCreateState ? (
-        <Suspense fallback={null}>
-          <FormSyncCreateDialog
-            open
-            documentId={formSyncCreateState.documentId}
-            initialTableId={formSyncCreateState.initialTableId}
-            onOpenChange={(open) => {
-              if (!open) createFlows.closeFormSyncCreate()
-            }}
-            onCreated={handleFormSyncCreated}
-          />
-        </Suspense>
-      ) : null}
-      {autoCreateModeState ? (
-        <Suspense fallback={null}>
-          <WorkspaceWorkflowCreateModeDialog
-            open
-            context={autoCreateModeState.context}
-            tableOptions={autoCreateModeState.tableOptions}
-            onOpenChange={(open) => {
-              if (!open) closeWorkflowCreateModeDialog()
-            }}
-            onSelect={handleWorkflowCreateModeSelect}
-            busyKind={autoCreateModeBusyKind}
-            busyTemplateId={autoCreateModeBusyTemplateId}
-            errorMessage={autoCreateModeError}
-            emailSyncTablePath={autoCreateModeState.kitablePath || undefined}
-            onSelectEmailSync={(tablePath, runAfterSave) => {
-              closeWorkflowCreateModeDialog()
-              requestEmailSyncSetup(tablePath, { runAfterSave })
-            }}
-          />
-        </Suspense>
-      ) : null}
-      <input
-        ref={tableFileImportInputRef}
-        type="file"
-        accept=".csv,.tsv,.xlsx,text/csv,text/tab-separated-values,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        className="hidden"
-        onChange={createFlows.handleTableFileInputChange}
+      <WorkspaceDialogs
+        saving={saving}
+        documentExport={documentExport}
+        createFlows={createFlows}
+        templateDialogs={templateDialogs}
+        boardCreation={boardCreation}
+        workflowCreateMode={workflowCreateMode}
+        onTableFileImported={handleTableFileImported}
       />
-      {tableFileImportState ? (
-        <Suspense fallback={null}>
-          <TableFileImportDialog
-            open
-            file={tableFileImportState.file}
-            target={{ kind: 'new_document', folder: tableFileImportState.folder }}
-            onOpenChange={(open) => {
-              if (!open) createFlows.closeTableFileImport()
-            }}
-            onCompleted={async (result) => {
-              const path = result.path
-              await refreshWorkspaceDocuments(path, { silent: true, treeOnly: true })
-              await kitableChildrenIndex.refresh()
-              if (path) {
-                openKitableContainer(path)
-              }
-              notify.success(t('feedback.spreadsheetImported'))
-            }}
-          />
-        </Suspense>
-      ) : null}
       <WorkspaceLayout
         sidebarWidth={effectiveSidebarWidth}
         rightPane={workspaceRightPane}

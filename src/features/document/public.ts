@@ -5,3 +5,5 @@
 export type { DocumentCreationPreset } from './lib/documentCreation'
 export type { MarkdownImageInsertionSnapshot } from './editor/editor/markdown-image-insertion'
 export type { DocumentAskAgentRequest } from './lib/documentAgentActions'
+// Type-only so consumers can name the hook's result without bundling the hook.
+export type { useDocumentExport } from './hooks/useDocumentExport'
