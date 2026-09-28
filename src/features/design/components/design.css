@@ -91,7 +91,7 @@
 }
 .design-artboard {
   position: absolute;
-  background: repeating-conic-gradient(#f0eeec 0% 25%, #ffffff 0% 50%) 0 0/16px
+  background: repeating-conic-gradient(hsl(var(--muted)) 0% 25%, hsl(var(--card)) 0% 50%) 0 0/16px
     16px;
   box-shadow: var(--shadow-soft);
 }

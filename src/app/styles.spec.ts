@@ -1,5 +1,5 @@
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const styles = readFileSync(resolve(process.cwd(), 'src/app/styles.css'), 'utf8')
@@ -67,5 +67,30 @@ describe('document completion contrast', () => {
     expect(styles).toMatch(
       /\.document-editor \.cm-tooltip-autocomplete \.cm-completionDetail,[\s\S]*?color: hsl\(var\(--muted-foreground\)\);/,
     )
+  })
+})
+
+function cssFilesUnder(directory: string): string[] {
+  return readdirSync(directory).flatMap((entry) => {
+    const path = join(directory, entry)
+    if (statSync(path).isDirectory()) return cssFilesUnder(path)
+    return entry.endsWith('.css') ? [path] : []
+  })
+}
+
+describe('feature stylesheets', () => {
+  it('use semantic tokens instead of raw hex colors', () => {
+    const files = [
+      ...cssFilesUnder(resolve(process.cwd(), 'src/features')),
+      ...cssFilesUnder(resolve(process.cwd(), 'src/styles')),
+    ]
+    expect(files.length).toBeGreaterThan(0)
+    const offenders = files.flatMap((file) => {
+      const content = readFileSync(file, 'utf8')
+      return content.split('\n').flatMap((line, index) => (
+        /#[0-9a-fA-F]{3,8}\b/.test(line) && !line.trim().startsWith('/*') ? [`${file}:${index + 1}: ${line.trim()}`] : []
+      ))
+    })
+    expect(offenders).toEqual([])
   })
 })

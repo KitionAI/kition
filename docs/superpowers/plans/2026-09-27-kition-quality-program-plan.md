@@ -264,7 +264,7 @@ Order matters. Each phase leaves `main` releasable.
 - Modify: `src/app/styles.spec.ts`
 
 - [ ] Move rules file by file, using cascade layers so specificity no longer needs `!important`. Target zero `!important` outside `base.css` print rules.
-- [ ] Keep the existing `styles.spec.ts` assertions passing, and add one that fails if any feature CSS file defines a raw hex color instead of a token.
+- [x] `styles.spec.ts` (2026-09-29) fails when any stylesheet under `src/features` or `src/styles` contains a raw hex color; the one offender, the design canvas checkerboard, uses the muted and card tokens now. The 14 hex values still in `styles.css` (template gradient presets and three brand fills) move with the layer split above.
 - [ ] Run the desktop e2e set and check in the Electron client that editor scroll and layout are unchanged.
 
 ### Task 1.7: Editor commands and shortcut registry
@@ -350,7 +350,7 @@ Private implementation detail lives in the runtime plan. These tasks are the pub
 ### Task 3.3: Loading, empty, and error states
 
 - [x] `src/components/states.tsx` (2026-09-28): `Skeleton` and `SkeletonRows` (a labelled status region), `EmptyState` (icon, title, description, one action slot), and `InlineError` (role alert, three sizes, optional retry button), with specs.
-- [~] Every query-backed pane uses them. (2026-09-28: the vault launcher's raw loading text became skeleton rows, the translation card's loading rows use `Skeleton`, and the eleven hand-written destructive error boxes across the workflow launcher, index page, home page, drawer panels, and banners are `InlineError`. `scripts/check-i18n.py` now fails on `Loading...` or `Loading…` inside a `.tsx` under `src/`; the ESLint `no-restricted-syntax` block stays at warn level because 87 hex-color warnings already live there and `pnpm lint` runs with `--quiet`. Remaining: the empty states in the workspace, Agent, and workflow features still render their own markup and should move onto `EmptyState`.)
+- [~] Every query-backed pane uses them. (2026-09-28: the vault launcher's raw loading text became skeleton rows, the translation card's loading rows use `Skeleton`, and the eleven hand-written destructive error boxes across the workflow launcher, index page, home page, drawer panels, and banners are `InlineError`. `scripts/check-i18n.py` now fails on `Loading...` or `Loading…` inside a `.tsx` under `src/`; the ESLint `no-restricted-syntax` block stays at warn level because 87 hex-color warnings already live there and `pnpm lint` runs with `--quiet`. The workflow page's scoped empty state uses `EmptyState` (2026-09-29). The workspace hero and the Agent panel empty states stay bespoke on purpose: the first is the branded landing surface with the logo mark, the second lists prompt suggestions.)
 
 ### Task 3.4: i18n completeness gate
 

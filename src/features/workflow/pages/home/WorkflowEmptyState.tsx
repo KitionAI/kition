@@ -2,6 +2,7 @@ import { FileText, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import type { WorkflowDefinition } from '@/api/workflows'
+import { EmptyState } from '@/components/states'
 import { Button } from '@/components/ui'
 import { WorkflowHomeLauncher } from '@/features/workflow/components/launcher/WorkflowHomeLauncher'
 import type { useWorkflowLauncherState } from '@/features/workflow/hooks/useWorkflowLauncherState'
@@ -32,19 +33,19 @@ export function WorkflowEmptyState(props: WorkflowEmptyStateProps) {
   const { launcher, scopedWorkflows } = props
   if (scopedWorkflows.length === 0 && props.scopedKitablePath) {
     return (
-      <div className="flex h-full items-center justify-center px-8 text-center" data-testid="kitable-workflows-empty">
-        <div className="max-w-md">
-          <FileText className="mx-auto mb-4 size-8 text-primary" />
-          <h1 className="text-xl font-semibold">{t('panels.home.emptyCreateTitle')}</h1>
-          <p className="mt-2 text-sm text-muted-foreground">{t('panels.home.emptyCreateHint')}</p>
-          <div className="mt-5 flex justify-center">
+      <div className="flex h-full flex-col items-center justify-center" data-testid="kitable-workflows-empty">
+        <EmptyState
+          icon={<FileText />}
+          title={t('panels.home.emptyCreateTitle')}
+          description={t('panels.home.emptyCreateHint')}
+          action={(
             <Button className="bg-primary hover:bg-primary/90" onClick={props.onOpenModeDialog} data-testid="kitable-workflows-create-cta">
               <Plus className="mr-1 size-4" />
               {t('panels.home.emptyCreateButton')}
             </Button>
-          </div>
-          {launcher.error ? <p className="mt-3 text-xs text-destructive" data-testid="kitable-workflows-error">{launcher.error}</p> : null}
-        </div>
+          )}
+        />
+        {launcher.error ? <p className="-mt-6 pb-6 text-xs text-destructive" data-testid="kitable-workflows-error">{launcher.error}</p> : null}
       </div>
     )
   }
