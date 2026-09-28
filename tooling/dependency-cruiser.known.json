@@ -17141,23 +17141,6 @@
   {
     "type": "dependency",
     "from": "src/features/workspace/components/WorkspaceScreen.tsx",
-    "to": "src/features/agent/components/AgentFloatingLauncher.tsx",
-    "unresolvedTo": "@/features/agent/components/AgentFloatingLauncher",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceScreen.tsx",
     "to": "src/features/document/editor/hooks/usePinnedTabs.ts",
     "unresolvedTo": "@/features/document/editor/hooks/usePinnedTabs",
     "dependencyTypes": [

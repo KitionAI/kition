@@ -17,19 +17,15 @@ import {
 import type { WorkflowRouteContext } from '@/features/workflow/public'
 import type { TableSchema } from '@/features/workflow/components/BodyTemplateEditor.types'
 import { getKitionAccountLinks, isKitionAccountSessionUsable, useKitionAccount } from '@/features/account/public'
-import {
-  buildActiveBrowserTabContext,
-  useWorkspaceAgent,
-} from '@/features/agent/public'
+import { useWorkspaceAgent } from '@/features/agent/public'
 import { useDocumentExport } from '@/features/document/hooks/useDocumentExport'
 import { useWorkspaceDocumentSession } from '@/features/document/hooks/useWorkspaceDocumentSession'
-import { AgentFloatingLauncher } from '@/features/agent/components/AgentFloatingLauncher'
 import type { SettingsSectionKey } from '@/features/settings/DesktopSettingsPage'
 import { useDesktopSettings } from '@/features/settings/hooks/useDesktopSettings'
 import type { DataDocument } from '@/types/dataDocument'
 import { WorkspaceEditorFrame, type WorkspaceKitableSidebarActions } from '@/features/workspace/components/WorkspaceEditorFrame'
 import { FORM_SYNC_CHANGED_EVENT } from '@/features/formSync/api'
-import { WorkspaceAgentTabBar } from '@/features/workspace/components/WorkspaceAgentTabBar'
+import { WorkspaceAgentChrome } from '@/features/workspace/components/WorkspaceAgentChrome'
 import {
   WorkspaceScreenSidebar,
   WorkspaceScreenSidebarFooter,
@@ -67,9 +63,7 @@ import { useWorkspaceBrowserTabEvents } from '@/features/workspace/hooks/useWork
 import { useWorkspaceDocumentTitleRename } from '@/features/workspace/hooks/useWorkspaceDocumentTitleRename'
 import { useWorkspaceAgentComposer } from '@/features/workspace/hooks/useWorkspaceAgentComposer'
 import { useWorkspaceErrorNotice } from '@/features/workspace/hooks/useWorkspaceErrorNotice'
-import { useSelectionTranslator } from '@/features/workspace/hooks/useSelectionTranslator'
-import type { DocumentTranslationSupport } from '@/features/document/public'
-import { saveDesktopSettings } from '@/services/desktopSettings'
+import { useWorkspaceDocumentTranslation } from '@/features/workspace/hooks/useWorkspaceDocumentTranslation'
 import { useWorkspaceBoardCreation } from '@/features/workspace/hooks/useWorkspaceBoardCreation'
 import { useWhiteboardImageGeneration } from '@/features/workspace/hooks/useWhiteboardImageGeneration'
 import { setPinnedTabsWorkspace } from '@/features/document/editor/hooks/usePinnedTabs'
@@ -78,13 +72,10 @@ import {
   getWorkspaceItemTitle,
   isEditableWorkspaceFormat,
 } from '@/features/workspace/lib/workspace'
-import {
-  deriveAgentPaneContext,
-  resolveAgentActiveDocument,
-} from '@/features/workspace/lib/agentPaneContext'
+import { resolveAgentActiveDocument } from '@/features/workspace/lib/agentPaneContext'
 import { resolveActiveKitablePath, resolveKitableSidebarMode } from '@/features/workspace/lib/activeKitable'
+import { buildWorkspaceAgentTurnUpdate } from '@/features/workspace/lib/agentTurnUpdate'
 import { buildWorkspaceTabStripProps } from '@/features/workspace/lib/workspaceTabStripActions'
-import { selectItemsToClose, type CloseScope } from '@/features/workspace/state/closeScope'
 import { notify } from '@/lib/notify'
 import { cn } from '@/lib/utils'
 import {
@@ -481,43 +472,16 @@ export function WorkspaceScreen({
     handleContextChange: handleTableAgentContextChange,
   } = tableAgent
   tableAgentRefreshRef.current = tableAgentContext?.onTableChanged ?? null
-  const agentActiveDocument = resolveAgentActiveDocument(activeWorkspaceTab)
   whiteboardBridge.setActiveBoardPath(activeWorkspaceTab?.type === 'board' ? activeWorkspaceTab.path : '')
-  agentTurn.updateTurnContext({
-    activeDocumentPath: agentActiveDocument.path,
-    activeDocumentFormat: agentActiveDocument.format,
-    activeDocument: tableAgentContext?.activeDocument,
-    activeTable: tableAgentContext?.activeTable,
-    activeDataDocumentId: Number(
-      tableAgentDocumentPath
-        ? kitableChildrenIndex.docIdByKitablePath[tableAgentDocumentPath]
-        : 0,
-    ) || 0,
-    activeDataTableId: activeWorkspaceTab?.type === 'browser'
-      ? browserResolvedTableId
-      : activeDataWorkspaceTableId,
-    browserContext: activeBrowserTab
-      ? buildActiveBrowserTabContext({
-          provider: activeBrowserTab.provider,
-          host: activeBrowserTab.host,
-          url: activeBrowserTab.url,
-          title: activeBrowserTab.title,
-        })
-      : undefined,
+  agentTurn.updateTurnContext(buildWorkspaceAgentTurnUpdate({
+    activeWorkspaceTab,
+    tableAgentContext,
+    tableAgentDocumentPath,
+    docIdByKitablePath: kitableChildrenIndex.docIdByKitablePath,
+    browserResolvedTableId,
+    activeDataWorkspaceTableId,
     browserEnabled: agentBrowserEnabled,
-    // Same mapping as AgentChatPanel.paneContext (empty-state copy) so
-    // the agent's system prompt addendum matches what the user sees on
-    // the empty-state card. Browser pane is implicit when an
-    // activeBrowserTab is set, but we also pass it explicitly so the
-    // mapping doesn't silently desync between the two surfaces.
-    paneContext: deriveAgentPaneContext(activeWorkspaceTab),
-    // When the workflow tab carries a specific workflowId (the user
-    // drilled into one via the file tree leaf or the picker), forward
-    // it so the backend can attach the active-workflow summary to the
-    // skill context. Empty / undefined when the tab is the global
-    // workflow list, which is fine — the backend skips the addendum.
-    activeWorkflowId: activeWorkspaceTab?.type === 'workflow' ? activeWorkspaceTab.workflowId : undefined,
-  })
+  }))
   const activeWorkspaceDocumentPath = resolveAgentActiveDocument(activeWorkspaceTab).path
   const agentPanel = useWorkspaceAgentPanel({
     rootPath,
@@ -533,16 +497,10 @@ export function WorkspaceScreen({
   const {
     open: workspaceAgentOpen,
     setOpen: setWorkspaceAgentOpen,
-    historyOpen: workspaceAgentHistoryOpen,
     setHistoryOpen: setWorkspaceAgentHistoryOpen,
     activeSessionId: activeWorkspaceAgentSessionId,
     setActiveSessionId: setActiveWorkspaceAgentSessionId,
     activeSession: activeWorkspaceAgentSession,
-    openSessions: openWorkspaceAgentSessions,
-    toggle: toggleActiveAgentPanel,
-    createChat: handleCreateWorkspaceAgentChat,
-    showSession: handleWorkspaceAgentSessionSelect,
-    closeSessions: handleCloseWorkspaceAgentChats,
   } = agentPanel
   const handleGenerateWhiteboardImage = useWhiteboardImageGeneration({
     activeSessionId: activeWorkspaceAgentSessionId,
@@ -936,18 +894,13 @@ export function WorkspaceScreen({
     onCloseProfile,
   })
 
-  const translateSelection = useSelectionTranslator({ model: selectedAgentModel, ensureHostedAccountReady })
-  const documentTranslation = useMemo<DocumentTranslationSupport>(() => ({
-    translateText: translateSelection,
-    preference: settings.general.translationTargetLanguage,
-    onChangePreference: (target) => {
-      void saveDesktopSettings({
-        ...settings,
-        general: { ...settings.general, translationTargetLanguage: target },
-      }).then(setSettings)
-    },
-    onConfigureModel: onOpenSettingsSection ? () => onOpenSettingsSection('models') : undefined,
-  }), [onOpenSettingsSection, setSettings, settings, translateSelection])
+  const documentTranslation = useWorkspaceDocumentTranslation({
+    model: selectedAgentModel,
+    ensureHostedAccountReady,
+    settings,
+    setSettings,
+    onOpenModelSettings: openModelSettings,
+  })
 
   const kitableSidebarActions: WorkspaceKitableSidebarActions = {
     createDashboard: createDashboardFromKitableSidebar,
@@ -959,10 +912,6 @@ export function WorkspaceScreen({
     openWorkflow: openKitableWorkflow,
     renameTableLeaf: renameKitableTableLeaf,
   }
-  const closeAgentSessions = (sessionId: number | null, scope: CloseScope) =>
-    handleCloseWorkspaceAgentChats(
-      selectItemsToClose(openWorkspaceAgentSessions, sessionId, scope).map((session) => session.id),
-    )
 
   return (
     <>
@@ -1016,39 +965,7 @@ export function WorkspaceScreen({
         onRunActiveDataTableAction={runActiveDataTableAction}
         formatTime={formatWorkspaceTime}
       />
-      <WorkspaceAgentTabBar
-        portal={topbarActionsPortal}
-        open={workspaceAgentOpen}
-        activeSessionId={activeWorkspaceAgentSession?.id || null}
-        sessions={agentSessions}
-        openSessions={openWorkspaceAgentSessions}
-        historyOpen={workspaceAgentHistoryOpen}
-        onToggleOpen={toggleActiveAgentPanel}
-        onCreateSession={() => void handleCreateWorkspaceAgentChat()}
-        onCloseSession={(session) =>
-          handleCloseWorkspaceAgentChats([session.id])
-        }
-        onCloseOtherSessions={(session) => closeAgentSessions(session.id, 'others')}
-        onCloseAllSessions={() => closeAgentSessions(null, 'all')}
-        onCloseLeftSessions={(session) => closeAgentSessions(session.id, 'left')}
-        onCloseRightSessions={(session) => closeAgentSessions(session.id, 'right')}
-        onCopySessionRef={(session) => {
-          const text = session.title || `Chat #${session.id}`
-          if (typeof navigator !== 'undefined' && navigator.clipboard) {
-            void navigator.clipboard.writeText(text)
-          }
-        }}
-        onSelectSession={(session) =>
-          handleWorkspaceAgentSessionSelect(session.id)
-        }
-        onToggleHistory={() =>
-          setWorkspaceAgentHistoryOpen((current) => !current)
-        }
-      />
-      <AgentFloatingLauncher
-        visible={!workspaceAgentOpen}
-        onOpen={toggleActiveAgentPanel}
-      />
+      <WorkspaceAgentChrome portal={topbarActionsPortal} panel={agentPanel} sessions={agentSessions} />
       <WorkspaceDialogs
         saving={saving}
         documentExport={documentExport}
