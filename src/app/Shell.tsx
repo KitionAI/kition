@@ -7,6 +7,7 @@ import { ConsoleCreditsExhaustedBanner } from '@/app/ConsoleCreditsExhaustedBann
 import type { TableSchema } from '@/features/workflow/components/BodyTemplateEditor.types'
 import type { SettingsSectionKey } from '@/features/settings/DesktopSettingsPage'
 import { appLocationPathname, leaveAppView, readAppLocation, resolveSettingsSection, type AppLocation } from '@/app/appLocation'
+import { useShortcut } from '@/lib/useShortcut'
 import type { WorkflowRouteContext } from '@/features/workflow/public'
 import { useGlobalShortcuts } from '@/features/settings/useGlobalShortcuts'
 import { WorkspaceScreen } from '@/features/workspace/components/WorkspaceScreen'
@@ -593,37 +594,9 @@ export function AppShell() {
     leaveAppView('workflow')
   }, [])
 
-  useEffect(() => {
-    function onSearchHotkey(event: KeyboardEvent) {
-      if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === 'f') {
-        event.preventDefault()
-        openSearch()
-      }
-    }
-    window.addEventListener('keydown', onSearchHotkey)
-    return () => window.removeEventListener('keydown', onSearchHotkey)
-  }, [openSearch])
-
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
-        event.preventDefault()
-        setCommandOpen(true)
-        return
-      }
-      if (
-        (event.metaKey || event.ctrlKey) &&
-        event.shiftKey &&
-        event.key.toLowerCase() === 'o'
-      ) {
-        event.preventDefault()
-        openVaultLauncherDialog()
-      }
-    }
-
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [openVaultLauncherDialog])
+  useShortcut('Mod+Shift+F', openSearch)
+  useShortcut('Mod+K', () => setCommandOpen(true))
+  useShortcut('Mod+Shift+O', openVaultLauncherDialog)
 
   useEffect(() => {
     let mounted = true

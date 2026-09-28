@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import type { WorkspaceTab } from '@/features/workspace/lib/workspace'
 import { getWorkspaceItemTitle, inferWorkspaceItemFormat } from '@/features/workspace/lib/workspace'
 import { notify } from '@/lib/notify'
+import { useShortcut } from '@/lib/useShortcut'
 import type { WorkspaceDocument, WorkspaceDocumentFormat } from '@/services/desktop'
 import { flushWorkspaceEditSessions } from '@/services/workspaceEditSessions'
 
@@ -70,21 +71,9 @@ export function useWorkspaceTabControllers({
     }
   }, [closeWorkspaceTab, onCloseWorkflow, t, workflowOpen])
 
-  // Cmd/Ctrl+W closes the active tab. preventDefault stops Electron and the
-  // browser from closing the window when the shortcut bubbles up unhandled;
-  // no-op without an active tab so empty workspaces do not swallow the key.
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (!(event.metaKey || event.ctrlKey)) return
-      if (event.shiftKey || event.altKey) return
-      if (event.key.toLowerCase() !== 'w') return
-      if (!activeWorkspaceTabId) return
-      event.preventDefault()
-      handleCloseWorkspaceTabById(activeWorkspaceTabId)
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [activeWorkspaceTabId, handleCloseWorkspaceTabById])
+  // Cmd/Ctrl+W closes the active tab. Disabled without one so an empty
+  // workspace lets the key reach Electron and the browser.
+  useShortcut('Mod+W', () => handleCloseWorkspaceTabById(activeWorkspaceTabId), { enabled: Boolean(activeWorkspaceTabId) })
 
   // A scoped table/workflow tab belongs to its .kitable container: keep the
   // primary tree focused on that container while the inner sidebar owns

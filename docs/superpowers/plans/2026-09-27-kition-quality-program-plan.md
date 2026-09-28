@@ -282,8 +282,8 @@ Order matters. Each phase leaves `main` releasable.
 - [x] Delete declarations with no references anywhere (31 found by transitive AST analysis, done 2026-09-27). Add `knip` so the check is repeatable.
 - [ ] Review the 1,083 palette-registered commands as a product surface. Keep commands that map to a documented editor capability; move template insertions (`insert*Template`, `insert*Dashboard`, `insert*Mermaid*`) into the template library as data instead of code; delete one-off text transforms that no documentation or test describes. Target under 200 registered commands.
 - [ ] Group the remaining commands by domain file; each command gains a descriptor with an i18n title key. The palette renders from the registry instead of a hand-maintained list.
-- [ ] Replace the 55 ad-hoc `metaKey` and `ctrlKey` checks with `useShortcut`, one file per pull request, starting with `WorkspaceScreen.tsx` and `Shell.tsx`.
-- [ ] Add `e2e/shortcuts.spec.ts` covering palette open, save, new document, toggle sidebar, and toggle agent panel.
+- [~] Replace the 55 ad-hoc `metaKey` and `ctrlKey` checks with `useShortcut`, one file per pull request, starting with `WorkspaceScreen.tsx` and `Shell.tsx`. (2026-09-28: `src/lib/shortcuts.ts` parses `Mod+Shift+F` combos and matches events with exact modifiers, with specs; `src/lib/useShortcut.ts` binds one combo to a window keydown. `Shell.tsx` (search, command palette, vault launcher) and `useWorkspaceTabControllers` (close tab, the former `WorkspaceScreen` handler) use it. The remaining checks are inside editors and canvases, where they handle drag, selection, and cell editing rather than app shortcuts; review them file by file.)
+- [~] Add `e2e/shortcuts.spec.ts` covering palette open, save, new document, toggle sidebar, and toggle agent panel. (2026-09-28: the file exists and covers Cmd/Ctrl+W closing the active tab while ignoring extra modifiers; the two palettes are covered in `app-shell.spec.ts`. Save, new document, sidebar, and agent panel have no app-level shortcut yet; add them with the registry work above.)
 
 ### Task 1.8: Split desktop services and the Electron main process
 
