@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import type { DataField } from '@/types/dataDocument'
 import type { AttachmentAIConfig, DataFieldAIImageUseCase } from '@/types/aiConfig'
-import { MAX_AI_IMAGE_VARIANTS, useCaseSchema } from '@/types/aiConfig'
+import { MAX_AI_IMAGE_VARIANTS, useCaseSchema } from '@/types/aiConfigSchemas'
 import { SourceFieldPicker } from './sourceFieldPicker'
 
 type ImageCustomizationConfig = Extract<AttachmentAIConfig, { type: 'image_customization' }>

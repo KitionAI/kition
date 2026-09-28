@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
-  attachmentAIConfigSchema,
-  textAIConfigSchema,
-  getAIConfigSchemaForField,
   isAttachmentAIConfig,
   isTextAIConfig,
   normalizeAIConfig,
   type AnyAIConfig,
 } from './aiConfig'
+import {
+  attachmentAIConfigSchema,
+  textAIConfigSchema,
+} from './aiConfigSchemas'
 
 describe('attachmentAIConfigSchema', () => {
   it('accepts a valid image_generation config', () => {
@@ -230,22 +231,6 @@ describe('textAIConfigSchema', () => {
       auto_update: false,
       prompt: 'Add an emoji to {{title}}',
     }).success).toBe(true)
-  })
-})
-
-describe('getAIConfigSchemaForField', () => {
-  it('returns attachment schema for attachment type', () => {
-    expect(getAIConfigSchemaForField('attachment')).toBe(attachmentAIConfigSchema)
-  })
-
-  it('returns text schema for text and long_text', () => {
-    expect(getAIConfigSchemaForField('text')).toBe(textAIConfigSchema)
-    expect(getAIConfigSchemaForField('long_text')).toBe(textAIConfigSchema)
-  })
-
-  it('returns null for unsupported types', () => {
-    expect(getAIConfigSchemaForField('number')).toBeNull()
-    expect(getAIConfigSchemaForField('checkbox')).toBeNull()
   })
 })
 

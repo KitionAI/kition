@@ -1,12 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { createDesignFile } from '@/features/design/lib/designFile'
-import { createDesign } from '@/features/design/lib/designTypes'
-import {
-  existingDesignImage,
-  insertDesignImage,
-} from '@/features/design/lib/designAssets'
-import { placeImageInDesign } from '@/features/design/lib/designImageTargets'
+import { loadDesignLib } from '@/features/design/public'
 import { DESIGN_IMAGE_ACTION } from '@/services/workspaceDesignActions'
 import { notify } from '@/lib/notify'
 import { getWorkspaceItemTitle, type WorkspaceTab } from '../lib/workspace'
@@ -39,6 +33,7 @@ export function useWorkspaceDesign(options: {
       const captured = current.current
       captured.closeCreateMenu()
       try {
+        const { createDesignFile } = await loadDesignLib()
         const file = await createDesignFile(captured.root, folder)
         if (current.current.root !== captured.root) return
         if (folder) captured.expandFolder([folder])
@@ -62,6 +57,7 @@ export function useWorkspaceDesign(options: {
             : null
       void (async () => {
         try {
+          const { createDesign, createDesignFile, existingDesignImage, insertDesignImage, placeImageInDesign } = await loadDesignLib()
           const asset = await existingDesignImage(captured.root, path)
           if (current.current.root !== captured.root) return
           if (target) {

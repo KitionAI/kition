@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 
-import { createBoardWorkspaceFile } from '@/features/whiteboard/lib/boardFile'
 import type { WhiteboardTemplateCreationSelection } from '@/features/whiteboard/lib/whiteboardTemplates'
+import { loadBoardFile } from '@/features/whiteboard/public'
 import { notify } from '@/lib/notify'
 
 type BoardTemplateDialogState = {
@@ -50,6 +50,7 @@ export function useWorkspaceBoardCreation({
     setFeedback('')
 
     try {
+      const { createBoardWorkspaceFile } = await loadBoardFile()
       const created = await createBoardWorkspaceFile({
         folder: dialogState.folder,
         template: selection?.template,

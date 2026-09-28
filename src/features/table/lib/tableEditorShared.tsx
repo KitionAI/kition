@@ -34,15 +34,12 @@ import {
   resolvePreferredDesktopMediaModel,
 } from '@/services/mediaModels'
 import { ensurePortalAccountSessionRestored } from '@/services/portalAccount'
-export {
-  createEmptyFilterCondition,
-  createEmptyFilterGroup,
-  countFilterConditions,
-  evaluateFilterTree,
-  filterTreeHasActiveCondition,
-} from '@/features/table/filter'
-export type { FilterConjunction, FilterOperator } from '@/features/table/filter'
-import type { FilterCondition, FilterGroup, FilterNode } from '@/features/table/filter'
+// The filter barrel also exports the popover components, which import this
+// module; reach the pure modules directly so the graph stays acyclic.
+export { createEmptyFilterCondition, createEmptyFilterGroup } from '@/features/table/filter/types'
+export { countFilterConditions, evaluateFilterTree, filterTreeHasActiveCondition } from '@/features/table/filter/evaluate'
+export type { FilterConjunction, FilterOperator } from '@/types/tableFilter'
+import type { FilterCondition, FilterGroup, FilterNode } from '@/types/tableFilter'
 export type DataInlineFilterCondition = FilterCondition
 export type DataInlineFilterGroup = FilterGroup
 export type DataInlineFilterNode = FilterNode

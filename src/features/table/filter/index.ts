@@ -2,7 +2,6 @@ export type {
   FilterCondition,
   FilterConjunction,
   FilterGroup,
-  FilterNode,
   FilterOperator,
   FilterValue,
 } from './types'

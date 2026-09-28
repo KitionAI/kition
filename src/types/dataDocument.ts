@@ -1,5 +1,5 @@
 import type { AnyAIConfig } from './aiConfig'
-import type { FilterGroup } from '@/features/table/filter'
+import type { FilterGroup } from './tableFilter'
 
 export type DataFieldType =
   | 'text'

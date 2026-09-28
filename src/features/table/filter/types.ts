@@ -1,32 +1,13 @@
-export type FilterConjunction = 'and' | 'or'
+import type { FilterCondition, FilterConjunction, FilterGroup } from '@/types/tableFilter'
 
-export type FilterOperator =
-  | 'is' | 'isNot'
-  | 'isEmpty' | 'isNotEmpty'
-  | 'contains' | 'doesNotContain'
-  | 'isGreater' | 'isGreaterEqual' | 'isLess' | 'isLessEqual'
-  | 'isAnyOf' | 'isNoneOf'
-  | 'hasAnyOf' | 'hasAllOf' | 'isExactly' | 'isNotExactly' | 'hasNoneOf'
-  | 'isWithIn' | 'isBefore' | 'isAfter' | 'isOnOrBefore' | 'isOnOrAfter'
-
-export type FilterValue = string | number | boolean | string[] | null
-
-export type FilterCondition = {
-  id: string
-  kind: 'condition'
-  field_name: string
-  operator: FilterOperator
-  value: FilterValue
-}
-
-export type FilterGroup = {
-  id: string
-  kind: 'group'
-  conjunction: FilterConjunction
-  children: FilterNode[]
-}
-
-export type FilterNode = FilterCondition | FilterGroup
+export type {
+  FilterCondition,
+  FilterConjunction,
+  FilterGroup,
+  FilterNode,
+  FilterOperator,
+  FilterValue,
+} from '@/types/tableFilter'
 
 let _idCounter = 0
 function generateFilterNodeId(prefix: 'cond' | 'grp'): string {

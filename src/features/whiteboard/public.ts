@@ -4,3 +4,5 @@
  */
 export type { WhiteboardAgentBridge } from './lib/whiteboardAgentBridge'
 export { runtimeSupportsWhiteboard } from './lib/whiteboardCapabilities'
+/** Loads board file creation on first use; it carries the board serializer and geometry. */
+export const loadBoardFile = () => import('./lib/boardFile')

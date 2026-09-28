@@ -349,7 +349,6 @@
   "types src/features/document/editor/editor/extensions/index.ts WikilinkResolver",
   "types src/features/document/editor/editor/extensions/table-widget.ts TableAlign",
   "types src/features/document/editor/editor/extensions/tag.ts TagNavigate",
-  "types src/features/document/editor/editor/markdown-image-insertion.ts MarkdownImageInsertionStrategy",
   "types src/features/document/editor/menu/index.ts MenuEntry",
   "types src/features/document/editor/menu/index.ts MenuPosition",
   "types src/features/document/lib/documentAgentActions.ts DocumentAgentSelection",
