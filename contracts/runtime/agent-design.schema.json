@@ -1,0 +1,312 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kition.ai/contracts/runtime/agent-design.schema.json",
+  "title": "Kition Agent Design Context And Patch",
+  "description": "Bounded semantic Design context and typed preview patches for one artboard. Payloads must not contain credentials, host root paths, image bytes, or unrelated workspace content. Images enter a design only through the image generation contract.",
+  "x-runtime-capability": "agent_design_v1",
+  "oneOf": [
+    { "$ref": "#/$defs/context" },
+    { "$ref": "#/$defs/patch" }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "portablePath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "pattern": "^(?!/)(?![A-Za-z]:[\\\\/])(?!.*(?:^|[\\\\/])\\.\\.(?:[\\\\/]|$)).+$"
+    },
+    "color": {
+      "type": "string",
+      "pattern": "^(#[0-9a-fA-F]{6}|#[0-9a-fA-F]{8}|transparent)$"
+    },
+    "bounds": {
+      "description": "Axis-aligned box in artboard pixels, before rotation.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": { "type": "number", "minimum": -100000, "maximum": 100000 },
+        "y": { "type": "number", "minimum": -100000, "maximum": 100000 },
+        "width": { "type": "number", "minimum": 0, "maximum": 100000 },
+        "height": { "type": "number", "minimum": 0, "maximum": 100000 }
+      }
+    },
+    "layerKind": {
+      "type": "string",
+      "enum": ["text", "image", "rectangle", "ellipse", "line", "group"]
+    },
+    "creatableLayerKind": {
+      "type": "string",
+      "enum": ["text", "rectangle", "ellipse", "line"]
+    },
+    "layerRole": {
+      "description": "Hint about what a layer is for, derived by the client; never authoritative.",
+      "type": "string",
+      "enum": ["headline", "body", "label", "accent", "background", "image", "group"]
+    },
+    "fontFamily": {
+      "type": "string",
+      "enum": ["Arial", "Georgia", "Courier New"]
+    },
+    "style": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fill": { "$ref": "#/$defs/color" },
+        "stroke": { "$ref": "#/$defs/color" },
+        "stroke_width": { "type": "number", "minimum": 0, "maximum": 200 },
+        "radius": { "type": "number", "minimum": 0, "maximum": 10000 },
+        "opacity": { "type": "number", "minimum": 0, "maximum": 1 },
+        "font_family": { "$ref": "#/$defs/fontFamily" },
+        "font_size": { "type": "number", "minimum": 1, "maximum": 2000 },
+        "font_weight": { "type": "integer", "minimum": 100, "maximum": 900, "multipleOf": 100 },
+        "text_align": { "type": "string", "enum": ["left", "center", "right"] },
+        "line_height": { "type": "number", "minimum": 0.5, "maximum": 4 },
+        "letter_spacing": { "type": "number", "minimum": -50, "maximum": 200 }
+      }
+    },
+    "layer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "bounds"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "kind": { "$ref": "#/$defs/layerKind" },
+        "name": { "type": "string", "maxLength": 200 },
+        "bounds": { "$ref": "#/$defs/bounds" },
+        "rotation": { "type": "number", "minimum": -360, "maximum": 360 },
+        "text": { "type": "string", "maxLength": 2000 },
+        "style": { "$ref": "#/$defs/style" },
+        "role": { "$ref": "#/$defs/layerRole" },
+        "parent_id": { "$ref": "#/$defs/identifier" },
+        "locked": { "type": "boolean" }
+      }
+    },
+    "creatableLayer": {
+      "allOf": [
+        { "$ref": "#/$defs/layer" },
+        {
+          "properties": {
+            "kind": { "$ref": "#/$defs/creatableLayerKind" },
+            "bounds": {
+              "type": "object",
+              "properties": {
+                "width": { "type": "number", "minimum": 1 },
+                "height": { "type": "number", "minimum": 1 }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "designReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "path", "title"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "path": { "$ref": "#/$defs/portablePath" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 500 }
+      }
+    },
+    "artboard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height", "background"],
+      "properties": {
+        "width": { "type": "number", "minimum": 1, "maximum": 100000 },
+        "height": { "type": "number", "minimum": 1, "maximum": 100000 },
+        "background": { "$ref": "#/$defs/color" }
+      }
+    },
+    "brand": {
+      "description": "Summary of the workspace brand kit, when one exists.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "colors": { "type": "array", "maxItems": 12, "items": { "$ref": "#/$defs/color" } },
+        "fonts": { "type": "array", "maxItems": 6, "items": { "$ref": "#/$defs/fontFamily" } }
+      }
+    },
+    "layerIds": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/identifier" }
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "schema_version",
+        "design",
+        "artboard",
+        "selected_layer_ids",
+        "layers",
+        "recent_operations"
+      ],
+      "properties": {
+        "type": { "const": "design.context" },
+        "schema_version": { "const": 1 },
+        "design": { "$ref": "#/$defs/designReference" },
+        "artboard": { "$ref": "#/$defs/artboard" },
+        "brand": { "$ref": "#/$defs/brand" },
+        "selected_layer_ids": {
+          "type": "array",
+          "maxItems": 100,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "layers": {
+          "type": "array",
+          "maxItems": 500,
+          "items": { "$ref": "#/$defs/layer" }
+        },
+        "recent_operations": {
+          "type": "array",
+          "maxItems": 50,
+          "items": { "type": "string", "minLength": 1, "maxLength": 500 }
+        }
+      }
+    },
+    "patchOperation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "layer_id", "text"],
+          "properties": {
+            "op": { "const": "text.set" },
+            "layer_id": { "$ref": "#/$defs/identifier" },
+            "text": { "type": "string", "maxLength": 2000 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "layer_ids", "style"],
+          "properties": {
+            "op": { "const": "style.set" },
+            "layer_ids": { "$ref": "#/$defs/layerIds" },
+            "style": {
+              "allOf": [{ "$ref": "#/$defs/style" }, { "minProperties": 1 }]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "layer"],
+          "properties": {
+            "op": { "const": "layer.create" },
+            "layer": { "$ref": "#/$defs/creatableLayer" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "layer_ids", "delta"],
+          "properties": {
+            "op": { "const": "layer.move" },
+            "layer_ids": { "$ref": "#/$defs/layerIds" },
+            "delta": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["x", "y"],
+              "properties": {
+                "x": { "type": "number", "minimum": -100000, "maximum": 100000 },
+                "y": { "type": "number", "minimum": -100000, "maximum": 100000 }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "layer_id", "bounds"],
+          "properties": {
+            "op": { "const": "layer.resize" },
+            "layer_id": { "$ref": "#/$defs/identifier" },
+            "bounds": { "$ref": "#/$defs/bounds" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "layer_id", "direction"],
+          "properties": {
+            "op": { "const": "layer.reorder" },
+            "layer_id": { "$ref": "#/$defs/identifier" },
+            "direction": { "type": "string", "enum": ["forward", "backward"] }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "layer_ids"],
+          "properties": {
+            "op": { "const": "layer.delete" },
+            "layer_ids": { "$ref": "#/$defs/layerIds" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "layer_ids", "edge"],
+          "properties": {
+            "op": { "const": "layout.align" },
+            "layer_ids": { "$ref": "#/$defs/layerIds" },
+            "edge": {
+              "type": "string",
+              "enum": ["left", "centerX", "right", "top", "centerY", "bottom"]
+            },
+            "reference": { "type": "string", "enum": ["selection", "artboard"] }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "layer_ids", "axis"],
+          "properties": {
+            "op": { "const": "layout.distribute" },
+            "layer_ids": { "$ref": "#/$defs/layerIds" },
+            "axis": { "type": "string", "enum": ["x", "y"] }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "background"],
+          "properties": {
+            "op": { "const": "artboard.background" },
+            "background": { "$ref": "#/$defs/color" }
+          }
+        }
+      ]
+    },
+    "patch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "schema_version", "summary", "operations"],
+      "properties": {
+        "type": { "const": "design.patch" },
+        "schema_version": { "const": 1 },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "operations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": { "$ref": "#/$defs/patchOperation" }
+        }
+      }
+    }
+  }
+}
