@@ -102,6 +102,18 @@ import {
 } from '@/registry/ui/dialog'
 
 import { WorkflowCanvas } from '@/features/workflow/canvas/WorkflowCanvas'
+import { WorkflowDetailTopbar, WorkflowIndexTopbar } from '@/features/workflow/pages/home/WorkflowHomeTopbar'
+import { WorkflowBuildBanner, WorkflowRunTestHeader, WorkflowUnresolvedTemplateBanner } from '@/features/workflow/pages/home/WorkflowHomeBanners'
+import { WorkflowCanvasNodes } from '@/features/workflow/pages/home/WorkflowCanvasNodes'
+import { WorkflowDrawerSaveRow, WorkflowSaveBar } from '@/features/workflow/pages/home/WorkflowSaveBar'
+import { WorkflowTriggerDrawerPanel } from '@/features/workflow/pages/home/WorkflowTriggerDrawerPanel'
+import {
+  WorkflowAddRecordDrawerPanel,
+  WorkflowEmailDrawerPanel,
+  WorkflowRecordActionDrawerPanel,
+  type WorkflowActionPanelContext,
+} from '@/features/workflow/pages/home/WorkflowActionDrawerPanels'
+import { WorkflowEmptyState } from '@/features/workflow/pages/home/WorkflowEmptyState'
 import { NodeCard, type NodeStatus } from '@/features/workflow/canvas/NodeCard'
 import { DrawerField, DrawerSection, PropertiesDrawer } from '@/features/workflow/drawer/PropertiesDrawer'
 import { publishWorkflowNodeAskAI } from '@/features/workflow/lib/askAiBridge'
@@ -128,7 +140,6 @@ import { buildTriggerTableOptions, buildWorkflowSavePatch, countRunsByStatus, fi
 import { useWorkflowValidation } from '@/features/workflow/hooks/useWorkflowValidation'
 import { dryRunFilter, retryWorkflowRun } from '@/api/workflows'
 
-const inputClassName = 'w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30 disabled:bg-muted/40 disabled:text-muted-foreground'
 
 type StatusFilter = 'all' | 'active' | 'failing' | 'disabled'
 export interface WorkflowHomePageProps {
@@ -662,12 +673,7 @@ export function WorkflowHomePage({ initialSelectedId, initialModeDialogOpen = fa
     (documentId: string, tableId: string) => schemaCache.ensure(documentId, tableId, tableLabels[tableId]?.tableName),
     [schemaCache, tableLabels],
   )
-  const {
-    setTriggerTable,
-    setTriggerSchedule,
-    setTriggerType,
-    setTriggerRequiredFields,
-  } = useWorkflowTriggerEditor({
+  const triggerEditor = useWorkflowTriggerEditor({
     selected,
     tableLabels,
     ensureSchema: ensureSchemaLoaded,
@@ -886,342 +892,107 @@ export function WorkflowHomePage({ initialSelectedId, initialModeDialogOpen = fa
   }, [visibleRuns, runStatusFilter])
   const runCounts = useMemo(() => countRunsByStatus(visibleRuns), [visibleRuns])
 
+  const actionPanelContext: WorkflowActionPanelContext | null = selected ? {
+    selected,
+    draft,
+    setDraft,
+    validation,
+    serverErrors: serverValidation.errors,
+    saving: savingDraft,
+    dirty: isDirty,
+    hasValidationErrors,
+    schema: selectedSchema,
+    schemaByTableId,
+    tableOptions: triggerTableOptions,
+    nodeTest,
+  } : null
+
+  function openNodeInDrawer(nodeId: string) {
+    setSelectedNodeId(nodeId)
+    setDrawerOpen(true)
+  }
+
   return (
     <div data-testid="workflow-home-page" className="flex h-full min-h-0 bg-card text-foreground">
       <div className="flex min-w-0 flex-1 flex-col">
         {selected ? (
-          // Consolidated topbar: back arrow + ON/OFF + run-test + save + more.
-          // Secondary views and destructive actions live in the More menu.
-          // The surrounding workspace already identifies the active
-          // kitable and workflow, so this bar avoids repeating either name.
-          // Replaces the old [breadcrumb row + stats row + detail-header
-          // row] stack so the detail page reads as a single focused surface.
-          // The stats badge has no meaning when we're already showing a
-          // single workflow — it lived on the index page anyway, and
-          // WorkflowIndexPage now owns that role.
-          <div
-            className={`flex shrink-0 items-center gap-2 border-b border-border bg-card px-4 text-sm ${scopedKitablePath ? 'h-14' : 'h-12'}`}
-            data-testid="workflow-home-topbar"
-          >
-            {hideClose ? null : (
-              <button
-                type="button"
-                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-muted-foreground hover:bg-muted"
-                onClick={handleClose}
-                aria-label={t('panels.home.closeAria')}
-                data-testid="workflow-home-back"
-              >
-                <ChevronLeft className="size-4" />
-                <span className="truncate max-w-[160px]">{t('panels.home.h1')}</span>
-              </button>
-            )}
-            <WorkflowStatusToggle enabled={selected.enabled} saving={togglingEnabled} onToggle={(next) => void toggleSelected(next)} disabled={streamLocked} />
-            <div className="ml-auto flex shrink-0 items-center gap-2">
-              {draft.actionType !== 'send_email' ? null : (
-                <>
-                  <Button variant="outline" onClick={() => void runSelectedTest()} disabled={streamLocked || runTest.status === 'running' || Boolean(validation.to)} data-testid="workflow-home-run-test">
-                    {runTest.status === 'running' ? <LoaderCircle className="size-4 animate-spin" /> : <Play className="size-4" />}
-                    {t('panels.home.runTest')}
-                  </Button>
-                  {selected.trigger.type === 'record_created'
-                    || selected.trigger.type === 'record_updated'
-                    || selected.trigger.type === 'record_created_or_updated' ? (
-                    <SampleRowPicker
-                      documentId={parseIdAsNumber(selected.trigger.documentId)}
-                      tableId={parseIdAsNumber(selected.trigger.tableId)}
-                      disabled={streamLocked || runTest.status === 'running' || Boolean(validation.to)}
-                      onPick={(values) => { void runSelectedTestWithRow(values) }}
-                    />
-                  ) : null}
-                </>
-              )}
-              <Button
-                onClick={() => void saveSelected()}
-                disabled={!isDirty || hasValidationErrors || savingDraft || streamLocked}
-                data-testid="workflow-home-save-topbar"
-              >
-                {savingDraft ? <LoaderCircle className="size-4 animate-spin" /> : <Save className="size-4" />}
-                {t('panels.home.save')}
-              </Button>
-              <WorkflowHomeActionsMenu
-                activeView={activeTab}
-                labels={{
-                  moreActions: t('panels.home.moreActions'),
-                  configuration: t('panels.home.tabConfiguration'),
-                  history: t('panels.home.tabRunHistory'),
-                  logs: t('panels.home.tabLogs'),
-                  delete: t('panels.home.delete'),
-                }}
-                deleting={deleting}
-                deleteDisabled={streamLocked || deleting}
-                onSelectView={setActiveTab}
-                onDelete={requestDelete}
-              />
-            </div>
-          </div>
+          <WorkflowDetailTopbar
+            selected={selected}
+            hideClose={hideClose}
+            scopedKitablePath={scopedKitablePath}
+            streamLocked={streamLocked}
+            onClose={handleClose}
+            toggle={{ saving: togglingEnabled, onToggle: (next) => void toggleSelected(next) }}
+            runTest={{
+              visible: draft.actionType === 'send_email',
+              running: runTest.status === 'running',
+              blocked: Boolean(validation.to),
+              onRun: () => void runSelectedTest(),
+              onRunWithRow: (values) => void runSelectedTestWithRow(values),
+            }}
+            save={{ disabled: !isDirty || hasValidationErrors || savingDraft || streamLocked, saving: savingDraft, onSave: () => void saveSelected() }}
+            actions={{ activeView: activeTab, deleting, onSelectView: setActiveTab, onDelete: requestDelete }}
+          />
         ) : (
-          <>
-            <div className="flex h-11 shrink-0 items-center gap-2 border-b border-border bg-card px-5 text-sm">
-              <span className="truncate text-muted-foreground">{breadcrumbLeft}</span>
-              <span className="text-muted-foreground/60">/</span>
-              <span className="truncate font-medium">{breadcrumbRight}</span>
-              {hideClose ? null : (
-                <button type="button" className="ml-auto inline-grid size-8 place-items-center rounded-lg hover:bg-muted" onClick={handleClose} aria-label={t('panels.home.closeAria')}>
-                  <X className="size-4" />
-                </button>
-              )}
-            </div>
-
-            <div className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-5">
-              <div className="flex items-center gap-2">
-                <h1 className="text-base font-semibold">{t('panels.home.h1')}</h1>
-                <span className="rounded-lg bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-                  {t('panels.home.stats', { total: scopedKitablePath ? scopedWorkflows.length : workflows.length, active: scopedKitablePath ? scopedActiveCount : activeCount })}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button type="button" className="inline-grid size-8 place-items-center rounded-lg border border-border bg-card hover:bg-muted/40" onClick={handleRefresh} aria-label={t('panels.home.refreshAria')}>
-                  <RefreshCw className="size-4" />
-                </button>
-                <Button className="h-8 bg-primary px-3 hover:bg-primary/90" onClick={modeDialog.openDialog} data-testid="workflow-home-create">
-                  <Plus className="size-4" />
-                  {t('panels.home.create')}
-                </Button>
-              </div>
-            </div>
-          </>
+          <WorkflowIndexTopbar
+            hideClose={hideClose}
+            breadcrumbLeft={breadcrumbLeft}
+            breadcrumbRight={breadcrumbRight}
+            stats={{
+              total: scopedKitablePath ? scopedWorkflows.length : workflows.length,
+              active: scopedKitablePath ? scopedActiveCount : activeCount,
+            }}
+            onClose={handleClose}
+            onRefresh={handleRefresh}
+            onCreate={modeDialog.openDialog}
+          />
         )}
 
         <div className="flex min-h-0 flex-1">
-
           <main className="min-w-0 flex flex-1 flex-col overflow-y-auto bg-background">
-            {selected ? (
+            {selected && actionPanelContext ? (
               <div className="relative flex min-h-full flex-1 flex-col pb-24">
-                {selectedLatestRun?.status === 'error' || validation.name || runTest.status === 'done' || runTest.status === 'error' ? (
-                  <header className="border-b border-border bg-card px-6 py-3">
-                    {selectedLatestRun?.status === 'error' ? (
-                      <span className="inline-flex items-center gap-1 text-destructive">
-                        <AlertCircle className="size-3.5" />
-                        {t('panels.home.failingLastRun')}
-                      </span>
-                    ) : null}
-                    {validation.name ? <div className="mt-1 text-[11px] text-destructive" data-testid="workflow-home-field-error">{t(`panels.home.validation.${validation.name}`)}</div> : null}
-                    {runTest.status === 'done' && runTest.result ? (
-                      <div data-testid="workflow-home-run-test-status" className="mt-3 rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-xs text-success-foreground">
-                        <div className="font-semibold">{t('panels.home.testEmailDelivered')}</div>
-                        <div className="mt-2 grid gap-1 text-success-foreground" data-testid="workflow-home-run-test-preview">
-                          <div><strong>{t('panels.home.detailTo')}</strong>&nbsp;&nbsp;{runTest.result.input.to}</div>
-                          <div><strong>{t('panels.home.detailSubject')}</strong>&nbsp;&nbsp;{runTest.result.input.subject}</div>
-                          <div data-testid="workflow-home-run-test-body" className="whitespace-pre-wrap"><strong>{t('panels.home.detailBody')}</strong>&nbsp;&nbsp;{runTest.result.input.body}</div>
-                        </div>
-                      </div>
-                    ) : null}
-                    {runTest.status === 'error' ? (
-                      <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive" data-testid="workflow-home-run-test-error">{runTest.error}</div>
-                    ) : null}
-                  </header>
-                ) : null}
+                <WorkflowRunTestHeader lastRunFailed={selectedLatestRun?.status === 'error'} nameError={validation.name} runTest={runTest} />
 
                 <div className="flex min-h-0 flex-1 flex-col px-6 py-5">
                   {error ? <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</div> : null}
-                  {unresolvedTemplate.fieldNames.length > 0 ? (
-                    <div
-                      data-testid="workflow-home-template-unresolved-banner"
-                      className="mb-4 flex items-start gap-3 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning-foreground"
-                      role="status"
-                    >
-                      <div className="flex-1 leading-snug">
-                        <strong className="font-semibold">
-                          {t('panels.home.unresolvedTitle', { count: unresolvedTemplate.fieldNames.length })}
-                        </strong>
-                        <span className="ml-1">
-                          {t('panels.home.unresolvedBody', { names: unresolvedTemplate.fieldNames.join(', ') })}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        data-testid="workflow-home-template-unresolved-dismiss"
-                        onClick={unresolvedTemplate.dismiss}
-                        className="shrink-0 rounded px-2 py-0.5 text-xs font-medium text-warning-foreground hover:bg-warning/20"
-                      >
-                        {t('panels.home.unresolvedDismiss')}
-                      </button>
-                    </div>
-                  ) : null}
+                  <WorkflowUnresolvedTemplateBanner fieldNames={unresolvedTemplate.fieldNames} onDismiss={unresolvedTemplate.dismiss} />
                   {activeTab === 'configuration' ? (
                     <div className="flex min-h-0 flex-1 flex-col gap-4" data-testid="workflow-home-configuration-tab">
-                      {streamLocked ? (
-                        <div
-                          data-testid="workflow-home-streaming-banner"
-                          className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-primary"
-                          role="status"
-                        >
-                          <LoaderCircle className="size-3.5 animate-spin" aria-hidden />
-                          <span className="font-medium">{t('panels.home.streamingBanner.title')}</span>
-                          <span className="text-primary">·</span>
-                          <span className="text-xs text-primary">{t(phaseLabelKey(streamingPreview!.phase))}</span>
-                        </div>
-                      ) : streamingPreview?.error ? (
-                        <div
-                          data-testid="workflow-home-streaming-error"
-                          className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-                          role="alert"
-                        >
-                          <strong>{t('panels.home.streamingBanner.errorTitle')}</strong> {streamingPreview.error}
-                        </div>
-                      ) : (
-                        <StatusBannerSlot
-                          selected={selected}
-                          draft={draft}
-                          validation={validation}
-                          latestRun={selectedLatestRun}
-                          onFix={() => {
-                            setSelectedNodeId(selected.action.nodeId || 'action_1')
-                            setDrawerOpen(true)
-                          }}
-                          onEnable={() => void toggleSelected(true)}
-                        />
-                      )}
+                      <WorkflowBuildBanner
+                        streamLocked={streamLocked}
+                        phase={streamingPreview?.phase}
+                        buildError={streamingPreview?.error}
+                        status={{
+                          selected,
+                          draft,
+                          validation,
+                          latestRun: selectedLatestRun,
+                          onFix: () => openNodeInDrawer(selected.action.nodeId || 'action_1'),
+                          onEnable: () => void toggleSelected(true),
+                        }}
+                      />
 
                       <div className="flex min-h-[480px] flex-1 gap-4">
-                        <WorkflowCanvas
-                          onInsertAt={handleInsertAt}
-                          onRequestDeleteSelected={handleDeleteSelectedNode}
-                        >
-                          {graphNodes.map((node, index) => {
-                            const isTrigger = node.kind === 'trigger'
-                            const isFilter = node.kind === 'filter'
-                            const isActionNode = node.kind === 'action'
-                            const nodeIssues = serverValidation.byNode[node.nodeId] || []
-                            const hasNodeError = nodeIssues.some((i) => (i.level ?? 'error') === 'error')
-                            const hasNodeWarn = nodeIssues.some((i) => i.level === 'warning')
-                            const baseStatus = isTrigger
-                              ? triggerStatus(selected, validation)
-                              : isFilter
-                                ? filterNodeStatus(node)
-                                : actionStatus(draft, validation, selectedLatestRun)
-                            // During streaming the synthetic preview's nodes light up
-                            // in lockstep with the SSE phase so the canvas reads
-                            // visibly "in flight" — trigger goes green once
-                            // trigger.generated lands, action goes amber while
-                            // action.generated is being drained, green once persisted.
-                            const phaseStatus: NodeStatus | null = streamLocked && !isFilter
-                              ? statusForPhase(streamingPreview!.phase, isTrigger ? 'trigger' : 'action')
-                              : null
-                            // Promote based on server-side issues.
-                            const status: NodeStatus = phaseStatus
-                              ?? (hasNodeError
-                                ? 'red'
-                                : hasNodeWarn && baseStatus !== 'red'
-                                  ? 'amber'
-                                  : baseStatus)
-                            return (
-                              <NodeCard
-                                key={node.nodeId}
-                                kind={node.kind}
-                                rowLabel={
-                                  isTrigger
-                                    ? t('panels.home.nodeCard.triggerLabel')
-                                    : isFilter
-                                      ? t('panels.home.nodeCard.stepFilter', { index: index + 1 })
-                                    : draft.actionType === 'add_record'
-                                      ? t('panels.home.nodeCard.stepActionAddRecord', { index: index + 1 })
-                                      : t('panels.home.nodeCard.stepActionGeneric', { index: index + 1 })
-                                }
-                                title={
-                                  isTrigger
-                                    ? t(triggerTitleI18nKey(selected.trigger.type))
-                                    : isFilter
-                                      ? filterNodeTitle(node)
-                                      : t(actionTitleI18nKey(draft.actionType))
-                                }
-                                description={
-                                  isTrigger
-                                    ? selectedTriggerLabel
-                                    : isFilter
-                                      ? filterNodeDescription(node)
-                                      : actionNodeDescription(draft, connections, tableLabels, t)
-                                }
-                                status={status}
-                                disabled={node.disabled}
-                                selected={selectedNodeId === node.nodeId}
-                                onSelect={() => {
-                                  setSelectedNodeId(node.nodeId)
-                                  setDrawerOpen(true)
-                                }}
-                                onAskAI={
-                                  isFilter
-                                    ? undefined
-                                    : () => publishWorkflowNodeAskAI({
-                                        workflow: { id: selected.id, name: selected.name },
-                                        nodeId: node.nodeId,
-                                        nodeKind: isTrigger ? 'trigger' : 'action',
-                                        nodeConfig: node.config,
-                                        tableSchema: selectedSchema,
-                                      })
-                                }
-                                onDuplicate={isFilter ? () => handleDuplicateNode(node.nodeId) : undefined}
-                                onDelete={isTrigger ? undefined : () => handleDeleteNode(node.nodeId)}
-                                onToggleDisabled={isFilter ? (next) => handleToggleDisabledNode(node.nodeId, next) : undefined}
-                                inlineError={
-                                  isActionNode
-                                    ? (() => {
-                                        const serverError = nodeIssues.find((i) => (i.level ?? 'error') === 'error')
-                                        const serverWarning = nodeIssues.find((i) => i.level === 'warning')
-                                        const existing = actionInlineError({ draft, validation, latestRun: selectedLatestRun, t })
-                                        const localError = existing
-                                          ? {
-                                              ...existing,
-                                              fixLabel: 'Fix',
-                                              severity: (selectedLatestRun?.status === 'error' || selected.enabled ? 'error' : 'warning') as 'error' | 'warning',
-                                              onFix: () => {
-                                                setSelectedNodeId(node.nodeId)
-                                                setDrawerOpen(true)
-                                              },
-                                            }
-                                          : null
-                                        // Server errors take precedence; otherwise fall back to the
-                                        // existing local-side derivation. Warnings show as muted text
-                                        // and don't surface a Fix button.
-                                        // Severity:
-                                        //   * runtime failure (latestRun status === 'error') stays red,
-                                        //     server-emitted error stays red — these are real blockers,
-                                        //   * draft-state validation issues (the user is still composing
-                                        //     and the workflow is OFF) downgrade to amber so the canvas
-                                        //     doesn't look like a P0 page when it's just "fill the To
-                                        //     field". `enabled` workflows treat the same validation as
-                                        //     red because the next run will fail.
-                                        // A missing reusable connection is the exception: the server may
-                                        // report the legacy fallback as "smtp host not configured", but
-                                        // the actionable problem in this UI is that no connection is bound.
-                                        if (draft.actionType === 'send_email' && !draft.connectionId && localError) {
-                                          return localError
-                                        }
-                                        if (serverError) {
-                                          return {
-                                            message: serverError.message,
-                                            fixLabel: 'Fix',
-                                            severity: 'error' as const,
-                                            onFix: () => {
-                                              setSelectedNodeId(node.nodeId)
-                                              setDrawerOpen(true)
-                                            },
-                                          }
-                                        }
-                                        if (localError) return localError
-                                        if (serverWarning) {
-                                          // Warnings render as advisory only — no Fix button, no
-                                          // status escalation past amber, Save still allowed.
-                                          return { message: serverWarning.message, severity: 'warning' as const }
-                                        }
-                                        return null
-                                      })()
-                                    : null
-                                }
-                                dataRole={node.kind}
-                              />
-                            )
-                          })}
+                        <WorkflowCanvas onInsertAt={handleInsertAt} onRequestDeleteSelected={handleDeleteSelectedNode}>
+                          <WorkflowCanvasNodes
+                            graphNodes={graphNodes}
+                            selected={selected}
+                            draft={draft}
+                            validation={validation}
+                            issuesByNode={serverValidation.byNode}
+                            latestRun={selectedLatestRun}
+                            streamingPhase={streamLocked ? streamingPreview!.phase : null}
+                            selectedNodeId={selectedNodeId}
+                            connections={connections}
+                            tableLabels={tableLabels}
+                            triggerLabel={selectedTriggerLabel}
+                            schema={selectedSchema}
+                            onSelectNode={openNodeInDrawer}
+                            onDuplicateNode={handleDuplicateNode}
+                            onDeleteNode={handleDeleteNode}
+                            onToggleDisabledNode={handleToggleDisabledNode}
+                          />
                         </WorkflowCanvas>
 
                         <PropertiesDrawer
@@ -1235,103 +1006,24 @@ export function WorkflowHomePage({ initialSelectedId, initialModeDialogOpen = fa
                                 : t(actionTitleI18nKey(draft.actionType))
                           }
                           footer={isDirty ? (
-                            <div className="flex items-center gap-2" data-testid="workflow-drawer-save-row">
-                              <span className="size-2 shrink-0 rounded-full bg-warning" />
-                              <span className="flex-1 truncate text-[12px] text-muted-foreground">
-                                {hasValidationErrors
-                                  ? t('panels.drawer.saveBar.validationErrors', { count: Object.keys(validation).length + serverValidation.errors.length })
-                                  : t('panels.drawer.saveBar.unsavedEdits')}
-                              </span>
-                              <Button variant="outline" onClick={discardChanges} disabled={savingDraft} data-testid="workflow-drawer-discard">
-                                {t('panels.drawer.saveBar.discard')}
-                              </Button>
-                              <Button className="bg-primary hover:bg-primary/90" onClick={() => void saveSelected()} disabled={hasValidationErrors || savingDraft} data-testid="workflow-drawer-save">
-                                {savingDraft ? <LoaderCircle className="size-3 animate-spin" /> : null}
-                                {t('panels.drawer.saveBar.save')}
-                              </Button>
-                            </div>
+                            <WorkflowDrawerSaveRow
+                              validationErrorCount={hasValidationErrors ? Object.keys(validation).length + serverValidation.errors.length : 0}
+                              saving={savingDraft}
+                              onDiscard={discardChanges}
+                              onSave={() => void saveSelected()}
+                            />
                           ) : null}
                           onClose={() => setDrawerOpen(false)}
                         >
                           {selectedNodeKind === 'trigger' ? (
-                            <DrawerSection title={t('panels.drawer.trigger.section')}>
-                              {/* Event picker is shared by every trigger type
-                                  — switching it commits immediately so the
-                                  rest of this section (table picker vs cron
-                                  panel) flips with the same click. The
-                                  options list mirrors the 5 enabled types
-                                  in TriggerPicker (button_clicked stays
-                                  gated until its runtime lands). */}
-                              <DrawerField label={t('panels.drawer.trigger.eventLabel')}>
-                                <select
-                                  className={inputClassName}
-                                  value={selected?.trigger.type || 'record_created'}
-                                  onChange={(event) => {
-                                    const next = event.target.value as
-                                      | 'record_created'
-                                      | 'record_updated'
-                                      | 'record_created_or_updated'
-                                      | 'record_date_reached'
-                                      | 'scheduled_time'
-                                    void setTriggerType(next)
-                                  }}
-                                  disabled={savingDraft}
-                                  data-testid="workflow-home-trigger-type"
-                                >
-                                  <option value="record_created">{t('panels.drawer.titles.whenRecordCreated')}</option>
-                                  <option value="record_created_or_updated">{t('panels.drawer.titles.whenRecordCreatedOrUpdated')}</option>
-                                  <option value="record_updated">{t('panels.drawer.titles.whenRecordUpdated')}</option>
-                                  <option value="record_date_reached">{t('panels.drawer.titles.whenRecordDateReached')}</option>
-                                  <option value="scheduled_time">{t('panels.drawer.titles.whenScheduledTime')}</option>
-                                </select>
-                              </DrawerField>
-                              {selected?.trigger.type === 'scheduled_time' ? (
-                                // scheduled_time has no table binding — the
-                                // trigger source is a clock, not a row event.
-                                // The drawer collapses to the cron picker.
-                                // We deliberately omit the Filter row too:
-                                // nothing to filter when the trigger has no
-                                // input record. Server-side validation
-                                // surfaces a "trigger_schedule_invalid"
-                                // diagnostic for malformed cron — we pluck
-                                // it off serverValidation and feed it to
-                                // the panel so the user sees the parser's
-                                // own error text.
-                                <ScheduledTriggerPropertiesPanel
-                                  cron={selected?.trigger.schedule?.cron || ''}
-                                  timezone={selected?.trigger.schedule?.timezone}
-                                  onChange={(next) => { void setTriggerSchedule(next) }}
-                                  disabled={savingDraft}
-                                  error={serverValidation.errors.find((issue) => issue.code === 'trigger_schedule_invalid' || issue.code === 'trigger_schedule_empty')?.hint
-                                    || serverValidation.errors.find((issue) => issue.code === 'trigger_schedule_invalid' || issue.code === 'trigger_schedule_empty')?.message}
-                                  timezoneError={serverValidation.errors.find((issue) => issue.code === 'trigger_schedule_timezone_invalid')?.hint
-                                    || serverValidation.errors.find((issue) => issue.code === 'trigger_schedule_timezone_invalid')?.message}
-                                />
-                              ) : (
-                                <>
-                                  <DrawerField
-                                    label={t('panels.drawer.trigger.tableLabel')}
-                                    hint={selected?.trigger.tableId ? undefined : t('panels.drawer.trigger.tableHint')}
-                                  >
-                                    <TriggerTableSelect
-                                      value={selected?.trigger.tableId || ''}
-                                      options={triggerTableOptions}
-                                      onChange={(nextTableId) => { void setTriggerTable(nextTableId) }}
-                                      disabled={savingDraft}
-                                      testId="workflow-home-trigger-table"
-                                    />
-                                  </DrawerField>
-                                  <DrawerField label={t('panels.drawer.trigger.requiredFieldsLabel')} hint={t('panels.drawer.trigger.requiredFieldsHint')}>
-                                    <TriggerRequiredFieldsPanel
-                                      value={selected?.trigger.requiredFields || []}
-                                      schema={selectedSchema}
-                                      onChange={(next) => { void setTriggerRequiredFields(next) }}
-                                      disabled={savingDraft}
-                                    />
-                                  </DrawerField>
-                                </>
-                              )}
-                            </DrawerSection>
+                            <WorkflowTriggerDrawerPanel
+                              selected={selected}
+                              saving={savingDraft}
+                              serverErrors={serverValidation.errors}
+                              tableOptions={triggerTableOptions}
+                              schema={selectedSchema}
+                              editor={triggerEditor}
+                            />
                           ) : selectedNodeKind === 'filter' && selectedGraphNode ? (
                             <FilterPropertiesPanel
                               conditions={filterConditions}
@@ -1340,278 +1032,30 @@ export function WorkflowHomePage({ initialSelectedId, initialModeDialogOpen = fa
                               expressionPreview={compileFilterExpression(filterConditions, filterMode)}
                               onChange={({ conditions, mode }) => {
                                 setFilterDryRun(null)
-                                setGraphNodes((current) => current.map((n) => {
-                                  if (n.nodeId !== selectedGraphNode.nodeId) return n
-                                  return {
-                                    ...n,
-                                    config: {
-                                      ...n.config,
-                                      mode,
-                                      expression: compileFilterExpression(conditions, mode),
-                                    },
-                                  }
-                                }))
+                                setGraphNodes((current) => current.map((n) => (
+                                  n.nodeId !== selectedGraphNode.nodeId
+                                    ? n
+                                    : { ...n, config: { ...n.config, mode, expression: compileFilterExpression(conditions, mode) } }
+                                )))
                               }}
                               onDryRun={handleFilterDryRun}
                               dryRun={filterDryRun}
                               dryRunLoading={filterDryRunLoading}
                             />
+                          ) : draft.actionType === 'add_record' ? (
+                            <WorkflowAddRecordDrawerPanel context={actionPanelContext} targetLabel={selectedAddRecordTargetLabel} />
+                          ) : ['update_record', 'lookup_record', 'transform_record'].includes(draft.actionType) ? (
+                            <WorkflowRecordActionDrawerPanel context={actionPanelContext} />
                           ) : (
-                            draft.actionType === 'add_record' ? (
-                              <>
-                                <AddRecordActionPropertiesPanel
-                                  config={draft.addRecord || null}
-                                  tableOptions={triggerTableOptions}
-                                  targetSchema={draft.addRecord?.targetTableId ? schemaByTableId[draft.addRecord.targetTableId] || null : null}
-                                  sourceSchema={selectedSchema}
-                                  sourceNodeId={selected.trigger.nodeId || 'trigger_1'}
-                                  sourceNodeTitle="1. Trigger"
-                                  triggerTableId={selected.trigger.tableId}
-                                  onChange={(next) => setDraft((current) => ({ ...current, addRecord: next }))}
-                                  disabled={savingDraft}
-                                  error={(validation.addRecordTarget ? t(`panels.home.validation.${validation.addRecordTarget}`) : '')
-                                    || serverValidation.errors.find((issue) => issue.code === 'action_add_record_target_missing')?.message
-                                    || serverValidation.errors.find((issue) => issue.code === 'action_add_record_fields_empty')?.message
-                                    || serverValidation.errors.find((issue) => issue.code === 'add_record_target_equals_trigger_table')?.message}
-                                />
-                                <DrawerSection title={t('panels.addRecord.testSection')}>
-                                  <div className="rounded-lg border border-border bg-muted/40 p-3" data-testid="workflow-add-record-test-step">
-                                    <p className="m-0 text-xs text-muted-foreground">
-                                      {selected.trigger.type === 'scheduled_time'
-                                        ? t('panels.addRecord.scheduledTestDescription', { target: selectedAddRecordTargetLabel })
-                                        : t('panels.addRecord.testDescription', { target: selectedAddRecordTargetLabel })}
-                                    </p>
-                                    <div className="mt-2">
-                                      {selected.trigger.type === 'scheduled_time' ? (
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          data-testid="workflow-add-record-run-now"
-                                          disabled={nodeTest.status === 'running' || hasValidationErrors || isDirty}
-                                          onClick={() => {
-                                            void nodeTest.run(selected.id, selected.action.nodeId || 'action_1')
-                                          }}
-                                        >
-                                          {nodeTest.status === 'running'
-                                            ? <LoaderCircle className="size-4 animate-spin" />
-                                            : <Play className="size-4" />}
-                                          {t('panels.addRecord.runNow')}
-                                        </Button>
-                                      ) : (
-                                        <SampleRowPicker
-                                          documentId={parseIdAsNumber(selected.trigger.documentId)}
-                                          tableId={parseIdAsNumber(selected.trigger.tableId)}
-                                          disabled={nodeTest.status === 'running' || hasValidationErrors || isDirty}
-                                          onPick={(values) => {
-                                            void nodeTest.run(
-                                              selected.id,
-                                              selected.action.nodeId || 'action_1',
-                                              { triggerFields: values },
-                                            )
-                                          }}
-                                        />
-                                      )}
-                                    </div>
-                                    {isDirty ? (
-                                      <p className="mt-2 text-[11px] text-warning-foreground">{t('panels.addRecord.saveBeforeTest')}</p>
-                                    ) : null}
-                                    {nodeTest.status === 'done' && nodeTest.result?.output?.recordId ? (
-                                      <div data-testid="workflow-add-record-test-status" className="mt-2 rounded-md border border-success/30 bg-success/10 px-2.5 py-1.5 text-[11px] text-success-foreground">
-                                        {t('panels.addRecord.testCreated', {
-                                          target: selectedAddRecordTargetLabel,
-                                          recordId: nodeTest.result.output.recordId,
-                                        })}
-                                      </div>
-                                    ) : null}
-                                    {nodeTest.status === 'error' ? (
-                                      <div data-testid="workflow-add-record-test-error" className="mt-2 rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-1.5 text-[11px] text-destructive">
-                                        {nodeTest.error}
-                                      </div>
-                                    ) : null}
-                                  </div>
-                                </DrawerSection>
-                              </>
-                            ) : ['update_record', 'lookup_record', 'transform_record'].includes(draft.actionType) ? (
-                              <>
-                                <RecordActionPropertiesPanel
-                                  actionType={draft.actionType as 'update_record' | 'lookup_record' | 'transform_record'}
-                                  updateRecord={draft.updateRecord}
-                                  lookupRecord={draft.lookupRecord}
-                                  transformRecord={draft.transformRecord}
-                                  sourceSchema={selectedSchema}
-                                  sourceNodeId={selected.trigger.nodeId || 'trigger_1'}
-                                  tableOptions={triggerTableOptions}
-                                  schemaByTableId={schemaByTableId}
-                                  onUpdateRecordChange={(updateRecord) => setDraft((current) => ({ ...current, updateRecord }))}
-                                  onLookupRecordChange={(lookupRecord) => setDraft((current) => ({ ...current, lookupRecord }))}
-                                  onTransformRecordChange={(transformRecord) => setDraft((current) => ({ ...current, transformRecord }))}
-                                  error={validation.recordAction ? t(`panels.home.validation.${validation.recordAction}`) : ''}
-                                />
-                                <DrawerSection title={t('panels.recordActions.testSection')}>
-                                  <div className="rounded-lg border border-border bg-muted/40 p-3">
-                                    <p className="m-0 text-xs text-muted-foreground">{t('panels.recordActions.testDescription')}</p>
-                                    <div className="mt-2">
-                                      <SampleRowPicker
-                                        documentId={parseIdAsNumber(selected.trigger.documentId)}
-                                        tableId={parseIdAsNumber(selected.trigger.tableId)}
-                                        disabled={nodeTest.status === 'running' || hasValidationErrors || isDirty}
-                                        onPick={(values, record) => {
-                                          void nodeTest.run(selected.id, selected.action.nodeId || 'action_1', {
-                                            triggerFields: values,
-                                            recordId: String(record.id),
-                                          })
-                                        }}
-                                      />
-                                    </div>
-                                    {nodeTest.status === 'done' ? (
-                                      <div className="mt-2 rounded-md border border-success/30 bg-success/10 px-2.5 py-1.5 text-[11px] text-success-foreground" data-testid="workflow-record-action-test-status">
-                                        {nodeTest.result?.output?.matched === false
-                                          ? t('panels.recordActions.noMatch')
-                                          : t('panels.recordActions.testUpdated')}
-                                      </div>
-                                    ) : null}
-                                    {nodeTest.status === 'error' ? (
-                                      <div className="mt-2 rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-1.5 text-[11px] text-destructive">{nodeTest.error}</div>
-                                    ) : null}
-                                  </div>
-                                </DrawerSection>
-                              </>
-                            ) : (
-                            <>
-                              <DrawerSection title={t('panels.drawer.channel.section')}>
-                                <DrawerField
-                                  label={t('panels.drawer.channel.connectionLabel')}
-                                  action={(
-                                    <button
-                                      type="button"
-                                      className="inline-flex items-center gap-1 text-[11px] font-medium text-primary"
-                                      onClick={() => {
-                                        connectionsModal.openCreate()
-                                      }}
-                                      data-testid="workflow-home-new-connection"
-                                    >
-                                      <Plus className="size-3" />
-                                      {t('panels.drawer.channel.newConnection')}
-                                    </button>
-                                  )}
-                                >
-                                  <select
-                                    className={inputClassName}
-                                    value={draft.connectionId}
-                                    onChange={(event) => setDraft((current) => ({ ...current, connectionId: event.target.value }))}
-                                    data-testid="workflow-home-connection"
-                                  >
-                                    <option value="">{t('panels.home.nodeCard.noConnectionSelected')}</option>
-                                    {connections.map((connection) => (
-                                      <option key={connection.id} value={connection.id}>
-                                        {connection.name} - {String(connection.settings.from || connection.settings.host || 'Email SMTP')}
-                                      </option>
-                                    ))}
-                                  </select>
-                                  {draft.connectionId ? (
-                                    <div className="mt-1 flex gap-2 text-[11px]">
-                                      <button
-                                        type="button"
-                                        className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-2 py-0.5 text-muted-foreground hover:bg-muted"
-                                        onClick={() => {
-                                          connectionsModal.openEdit(draft.connectionId)
-                                        }}
-                                        data-testid="workflow-home-edit-connection"
-                                      >
-                                        {t('panels.drawer.channel.editConnection')}
-                                      </button>
-                                    </div>
-                                  ) : null}
-                                </DrawerField>
-                              </DrawerSection>
-
-                              <DrawerSection title={t('panels.drawer.email.section')}>
-                                <DrawerField
-                                  label={t('panels.drawer.email.toLabel')}
-                                  error={validation.to ? t(`panels.home.validation.${validation.to}`) : ''}
-                                  action={(
-                                    <button
-                                      type="button"
-                                      className="inline-flex items-center gap-1 text-[11px] font-medium text-primary"
-                                      onClick={() => void sendInlineTest()}
-                                      disabled={sendTest.status === 'running' || Boolean(validation.to)}
-                                      data-testid="workflow-home-send-test"
-                                    >
-                                      {sendTest.status === 'running' ? <LoaderCircle className="size-3 animate-spin" /> : <Send className="size-3" />}
-                                      {t('panels.drawer.email.sendTestEmail')}
-                                    </button>
-                                  )}
-                                >
-                                  <input className={inputClassName} value={draft.to} onChange={(event) => setDraft((current) => ({ ...current, to: event.target.value }))} data-testid="workflow-home-to" />
-                                </DrawerField>
-                                {sendTest.status === 'done' && sendTest.result ? (
-                                  <div data-testid="send-test-status" className="rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-xs text-success-foreground">
-                                    {t('panels.drawer.email.testDelivered', { to: sendTest.result.input.to })}
-                                  </div>
-                                ) : null}
-                                {sendTest.status === 'error' ? (
-                                  <div data-testid="send-test-error" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                                    {sendTest.error}
-                                  </div>
-                                ) : null}
-                                <DrawerField label={t('panels.drawer.email.subjectLabel')} hint={!selected?.trigger.tableId ? t('panels.drawer.email.pickTableFirstHint') : undefined} error={validation.subject ? t(`panels.home.validation.${validation.subject}`) : ''}>
-                                  <TemplateTokenInput
-                                    value={draft.subject}
-                                    schema={selectedSchema}
-                                    triggerNodeId={selected.trigger.nodeId}
-                                    triggerNodeTitle="1. Trigger"
-                                    multiline={false}
-                                    testId="workflow-home-subject"
-                                    disabled={!selected?.trigger.tableId}
-                                    placeholder={!selected?.trigger.tableId ? t('panels.drawer.email.pickTableFirstPlaceholder') : undefined}
-                                    onChange={(subject) => setDraft((current) => ({ ...current, subject }))}
-                                  />
-                                </DrawerField>
-                                <DrawerField label={t('panels.drawer.email.bodyLabel')} hint={!selected?.trigger.tableId ? t('panels.drawer.email.pickTableFirstHint') : t('panels.drawer.email.bodyHint')} error={validation.body ? t(`panels.home.validation.${validation.body}`) : ''}>
-                                  <TemplateTokenInput
-                                    value={draft.body}
-                                    schema={selectedSchema}
-                                    triggerNodeId={selected.trigger.nodeId}
-                                    triggerNodeTitle="1. Trigger"
-                                    multiline
-                                    testId="workflow-home-body"
-                                    disabled={!selected?.trigger.tableId}
-                                    placeholder={!selected?.trigger.tableId ? t('panels.drawer.email.pickTableFirstPlaceholder') : undefined}
-                                    onChange={(body) => setDraft((current) => ({ ...current, body }))}
-                                  />
-                                </DrawerField>
-                              </DrawerSection>
-
-                              <DrawerSection title={t('panels.drawer.testStep.section')}>
-                                <div className="rounded-lg border border-border bg-muted/40 p-3" data-testid="workflow-drawer-test-step">
-                                  <p className="m-0 text-xs text-muted-foreground">
-                                    {t('panels.drawer.testStep.descriptionPre')}{selectedTableLabel}{t('panels.drawer.testStep.descriptionMid')}<code className="rounded bg-card px-1 py-0.5 text-[10px] text-primary">manual.test</code>{t('panels.drawer.testStep.descriptionPost')}
-                                  </p>
-                                  <div className="mt-2 flex items-center gap-2">
-                                    <Button
-                                      className="h-8 bg-primary px-3 hover:bg-primary/90"
-                                      onClick={() => void nodeTest.run(selected.id, selected.action.nodeId || 'action_1', { to: draft.to })}
-                                      disabled={nodeTest.status === 'running' || Boolean(validation.to)}
-                                      data-testid="workflow-drawer-run-with-sample"
-                                    >
-                                      {nodeTest.status === 'running' ? <LoaderCircle className="size-3 animate-spin" /> : <Play className="size-3" />}
-                                      {t('panels.drawer.testStep.runWithSample')}
-                                    </Button>
-                                  </div>
-                                  {nodeTest.status === 'done' && nodeTest.result?.input ? (
-                                    <div data-testid="workflow-drawer-test-step-status" className="mt-2 rounded-md border border-success/30 bg-success/10 px-2.5 py-1.5 text-[11px] text-success-foreground">
-                                      {t('panels.drawer.testStep.testDelivered', { to: nodeTest.result.input.to })}
-                                    </div>
-                                  ) : null}
-                                  {nodeTest.status === 'error' ? (
-                                    <div data-testid="workflow-drawer-test-step-error" className="mt-2 rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-1.5 text-[11px] text-destructive">
-                                      {nodeTest.error}
-                                    </div>
-                                  ) : null}
-                                </div>
-                              </DrawerSection>
-                            </>
-                            )
+                            <WorkflowEmailDrawerPanel
+                              context={actionPanelContext}
+                              connections={connections}
+                              onNewConnection={connectionsModal.openCreate}
+                              onEditConnection={connectionsModal.openEdit}
+                              sendTest={sendTest}
+                              onSendInlineTest={() => void sendInlineTest()}
+                              tableLabel={selectedTableLabel}
+                            />
                           )}
                         </PropertiesDrawer>
                       </div>
@@ -1631,12 +1075,9 @@ export function WorkflowHomePage({ initialSelectedId, initialModeDialogOpen = fa
                       expandedRunId={expandedRunId}
                       onToggle={(id) => setExpandedRunId((current) => current === id ? null : id)}
                       onJumpToNode={(nodeId) => {
-                        // Jump back to Edit workflow with the failing node
-                        // selected and the Drawer open. The user lands on
-                        // the same spot the StatusBanner Fix CTA targets.
-                        setSelectedNodeId(nodeId)
+                        // Same landing spot as the status banner's Fix action.
+                        openNodeInDrawer(nodeId)
                         setActiveTab('configuration')
-                        setDrawerOpen(true)
                       }}
                     />
                   ) : null}
@@ -1646,140 +1087,27 @@ export function WorkflowHomePage({ initialSelectedId, initialModeDialogOpen = fa
                   ) : null}
                 </div>
 
-                {isDirty ? (
-                  <div
-                    data-testid="workflow-home-save-bar"
-                    // The drawer is rendered inside the same absolute-positioning
-                    // ancestor as this bar, so a plain `right-6` would have the
-                    // save bar overlap (and intercept clicks on) the drawer's own
-                    // save row. Inset the right edge past the drawer width when
-                    // it's open so both save bars stay clickable side by side.
-                    className={`absolute bottom-4 left-6 z-20 flex items-center justify-between rounded-xl bg-popover px-4 py-3 text-sm text-popover-foreground shadow-floating ${drawerOpen ? 'right-[376px]' : 'right-6'}`}
-                  >
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span className="size-2 shrink-0 rounded-full bg-warning" />
-                      <span className="truncate">{t('panels.drawer.pageSaveBar.messagePrefix', { fields: dirtyFields.join(', ') })}</span>
-                    </div>
-                    <div className="flex shrink-0 gap-2">
-                      <Button variant="outline" className="border-border bg-transparent text-popover-foreground hover:bg-muted/80" onClick={discardChanges} disabled={savingDraft} data-testid="workflow-home-discard">
-                        {t('panels.drawer.pageSaveBar.discard')}
-                      </Button>
-                      <Button className="bg-primary hover:bg-primary/90" onClick={() => void saveSelected()} disabled={hasValidationErrors || savingDraft} data-testid="workflow-home-save">
-                        {savingDraft ? <LoaderCircle className="size-4 animate-spin" /> : null}
-                        {t('panels.drawer.pageSaveBar.save')}
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="sr-only" data-testid="workflow-home-save-bar-hidden" />
-                )}
+                <WorkflowSaveBar
+                  dirty={isDirty}
+                  dirtyFields={dirtyFields}
+                  drawerOpen={drawerOpen}
+                  saving={savingDraft}
+                  saveDisabled={hasValidationErrors || savingDraft}
+                  onDiscard={discardChanges}
+                  onSave={() => void saveSelected()}
+                />
               </div>
             ) : status === 'done' ? (
-              // No left rail to pick from — the route + index page own
-              // workflow selection, so this surface only ever renders an
-              // empty state (or an inline picker for kitable-scoped
-              // mounts whose scope has workflows but none was preselected).
-              // Shape depends on whether a kitable scope is pinned:
-              //   * scoped (kitable Workflows tab) + zero scoped rows:
-              //     single-CTA card so the user goes through the mode
-              //     chooser dialog — templates need the dialog's table
-              //     picker to bind correctly under this kitable.
-              //   * unscoped (deep-linked /workflow/{id} that doesn't
-              //     resolve, or post-streaming with no surviving row):
-              //     the full WorkflowHomeLauncher hero.
-              //   * scoped + has rows but none selected: inline picker
-              //     so the user doesn't have to hunt the sidebar tree.
-              scopedWorkflows.length === 0 ? (
-                scopedKitablePath ? (
-                  <div
-                    className="flex h-full items-center justify-center px-8 text-center"
-                    data-testid="kitable-workflows-empty"
-                  >
-                    <div className="max-w-md">
-                      <FileText className="mx-auto mb-4 size-8 text-primary" />
-                      <h1 className="text-xl font-semibold">{t('panels.home.emptyCreateTitle')}</h1>
-                      <p className="mt-2 text-sm text-muted-foreground">
-                        {t('panels.home.emptyCreateHint')}
-                      </p>
-                      <div className="mt-5 flex justify-center">
-                        <Button
-                          className="bg-primary hover:bg-primary/90"
-                          onClick={modeDialog.openDialog}
-                          data-testid="kitable-workflows-create-cta"
-                        >
-                          <Plus className="mr-1 size-4" />
-                          {t('panels.home.emptyCreateButton')}
-                        </Button>
-                      </div>
-                      {launcher.error ? (
-                        <p
-                          className="mt-3 text-xs text-destructive"
-                          data-testid="kitable-workflows-error"
-                        >
-                          {launcher.error}
-                        </p>
-                      ) : null}
-                    </div>
-                  </div>
-                ) : (
-                  <WorkflowHomeLauncher
-                    onGenerateWithAi={() => {
-                      // Drive the AI flow through the standalone
-                      // /workflow/new?mode=ai surface. Even without a
-                      // pre-bound table the route now lands on the
-                      // AI prompt page (mode 'ai-no-context') instead
-                      // of looping back to this launcher, so the
-                      // click resolves into something visible.
-                      openWorkflowRoute(null, { mode: 'ai' })
-                    }}
-                    onStartFromScratch={() => void launcher.runScratch()}
-                    onTemplateSelect={(template) => void launcher.runTemplate(template)}
-                    onAgentClick={launcher.handleAgent}
-                    busyAction={launcher.busyAction}
-                    busyTemplateId={launcher.busyTemplateId}
-                    errorMessage={launcher.error}
-                    scopeLabel={scopedKitableLabel || undefined}
-                  />
-                )
-              ) : (
-                <div className="mx-auto w-full max-w-3xl px-6 py-6" data-testid="kitable-workflows-picker">
-                  <div className="overflow-hidden rounded-xl border border-border bg-card">
-                    {scopedWorkflows.map((workflow) => {
-                      const latestRun = latestRuns[workflow.id] || null
-                      const itemStatus = workflowStatus(workflow, latestRun)
-                      return (
-                        <div
-                          key={workflow.id}
-                          data-testid="kitable-workflows-picker-item"
-                          className="border-b border-border/60 last:border-b-0 bg-card hover:bg-muted/40"
-                        >
-                          <div
-                            role="button"
-                            tabIndex={0}
-                            className="w-full px-4 py-3 text-left"
-                            onClick={() => handleSelectListItem(workflow.id)}
-                            onKeyDown={(event) => {
-                              if (event.key === 'Enter' || event.key === ' ') {
-                                event.preventDefault()
-                                handleSelectListItem(workflow.id)
-                              }
-                            }}
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="min-w-0 truncate text-sm font-medium">{workflow.name || 'Untitled workflow'}</span>
-                              <StatusPill status={itemStatus} />
-                            </div>
-                            <div className="mt-1.5 grid gap-0.5 text-[11px] text-muted-foreground">
-                              <FlowLine label={t('panels.home.list.flowWhen')} value={triggerLabel(workflow, tableLabels, t)} />
-                              <FlowLine label={t('panels.home.list.flowThen')} value={t('panels.home.nodeCard.actionSendEmail')} />
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )
+              <WorkflowEmptyState
+                scopedKitablePath={scopedKitablePath}
+                scopedKitableLabel={scopedKitableLabel}
+                scopedWorkflows={scopedWorkflows}
+                latestRuns={latestRuns}
+                tableLabels={tableLabels}
+                launcher={launcher}
+                onOpenModeDialog={modeDialog.openDialog}
+                onSelect={handleSelectListItem}
+              />
             ) : null}
           </main>
         </div>

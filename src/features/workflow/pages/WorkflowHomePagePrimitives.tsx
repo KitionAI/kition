@@ -108,3 +108,6 @@ export function Field({
     </label>
   )
 }
+
+/** Input styling shared by the properties drawer's native controls. */
+export const drawerInputClassName = 'w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30 disabled:bg-muted/40 disabled:text-muted-foreground'
