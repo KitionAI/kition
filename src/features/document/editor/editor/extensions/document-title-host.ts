@@ -6,6 +6,19 @@ export type DocumentTitleHostOptions = {
   onHostRelease: () => void
 }
 
+/**
+ * Caret position for a click in the blank page around the text: the nearest
+ * spot on the line at the click's height, the end of the document below the
+ * text, and the start above it.
+ */
+function blankSpaceClickPosition(view: EditorView, event: Pick<MouseEvent, 'clientX' | 'clientY'>) {
+  const content = view.contentDOM.getBoundingClientRect()
+  if (event.clientY >= content.bottom) return view.state.doc.length
+  if (event.clientY < content.top) return 0
+  const x = Math.min(Math.max(event.clientX, content.left + 1), content.right - 1)
+  return view.posAtCoords({ x, y: event.clientY }, false)
+}
+
 export function documentTitleHostExtension(opts: DocumentTitleHostOptions): Extension {
   return ViewPlugin.fromClass(
     class implements PluginValue {
@@ -35,7 +48,9 @@ export function documentTitleHostExtension(opts: DocumentTitleHostOptions): Exte
           || event.clientY >= bounds.top + view.scrollDOM.clientHeight) return
 
         event.preventDefault()
-        view.dispatch({ selection: { anchor: 0 }, scrollIntoView: true, userEvent: 'select.pointer' })
+        // Place the caret on the line at the clicked height (end of the document
+        // below the content), never jump away from what the reader is looking at.
+        view.dispatch({ selection: { anchor: blankSpaceClickPosition(view, event) }, userEvent: 'select.pointer' })
         view.focus()
       }
 

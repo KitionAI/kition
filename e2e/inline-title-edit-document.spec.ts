@@ -154,7 +154,7 @@ test('clicking the document body commits the title without rolling back the tree
 })
 
 for (const docContent of ['', 'First line\nSecond line']) {
-  test(`clicking blank document space restores the first-line caret in ${docContent ? 'a populated' : 'an empty'} document`, async ({ page }) => {
+  test(`clicking blank space below the text focuses the end of ${docContent ? 'a populated' : 'an empty'} document`, async ({ page }) => {
     await mockLocalWorkspaceApi(page)
     await mockDesktop(page, docContent)
     await page.setViewportSize({ width: 1400, height: 900 })
@@ -174,31 +174,59 @@ for (const docContent of ['', 'First line\nSecond line']) {
       scrollBox.x + 8,
       scrollBox.x + scrollBox.width - 24,
     ]
+    const lastLine = docContent.split('\n').at(-1) ?? ''
 
     for (const [index, x] of blankXs.entries()) {
-      await content.locator('.cm-line').last().click()
       await title.click()
       await expect(title).toBeFocused()
       await expect(content).not.toBeFocused()
 
       await page.mouse.click(x, blankY)
       await expect(content).toBeFocused()
-      await page.keyboard.type('Start ')
-      await expect(content.locator('.cm-line').first()).toHaveText(
-        'Start '.repeat(index + 1) + docContent.split('\n')[0],
-      )
+      await page.keyboard.type(' End')
+      await expect(content.locator('.cm-line').last()).toHaveText(lastLine + ' End'.repeat(index + 1))
       await expect(title).toHaveText('original')
-    }
-
-    if (docContent) {
-      const secondLine = content.locator('.cm-line').last()
-      await secondLine.dblclick()
-      await page.keyboard.type('Replacement')
-      await expect(secondLine).toContainText('Replacement')
-      await expect(content.locator('.cm-line').first()).toHaveText('Start Start Start First line')
     }
   })
 }
+
+test('clicking the page margin of a scrolled document keeps the view and targets that line', async ({ page }) => {
+  const lines = Array.from({ length: 160 }, (_, index) => `Paragraph line ${index + 1}`)
+  await mockLocalWorkspaceApi(page)
+  await mockDesktop(page, lines.join('\n\n'))
+  await page.setViewportSize({ width: 1400, height: 900 })
+  await page.goto('/document')
+
+  const content = page.locator('.document-editor .cm-content')
+  const scroller = page.locator('.document-editor .cm-scroller')
+  await expect(content).toBeVisible()
+  await scroller.evaluate((el) => { el.scrollTop = 2400 })
+  await expect.poll(() => scroller.evaluate((el) => el.scrollTop)).toBeGreaterThan(2000)
+
+  const scrollBox = (await scroller.boundingBox())!
+  // A paragraph line near the middle of the visible scroller.
+  const targetText = await content.evaluate((el, middle) => {
+    const visible = Array.from(el.querySelectorAll<HTMLElement>('.cm-line'))
+      .filter((line) => /^Paragraph line \d+$/.test(line.textContent ?? ''))
+      .map((line) => ({ text: line.textContent!, rect: line.getBoundingClientRect() }))
+    visible.sort((a, b) => Math.abs(a.rect.top - middle) - Math.abs(b.rect.top - middle))
+    return visible[0].text
+  }, scrollBox.y + scrollBox.height / 2)
+  const target = content.locator('.cm-line', { hasText: new RegExp(`^${targetText}$`) })
+  const lineBox = (await target.boundingBox())!
+  const bodyBox = (await content.boundingBox())!
+  const before = await scroller.evaluate((el) => el.scrollTop)
+
+  for (const x of [scrollBox.x + 8, bodyBox.x + bodyBox.width + 16]) {
+    expect(x < bodyBox.x || x > bodyBox.x + bodyBox.width).toBe(true)
+    await page.mouse.click(x, lineBox.y + lineBox.height / 2)
+    await expect(content).toBeFocused()
+    expect(Math.abs((await scroller.evaluate((el) => el.scrollTop)) - before)).toBeLessThan(4)
+  }
+
+  await page.keyboard.type('!')
+  await expect(content.locator('.cm-line', { hasText: `${targetText}!` })).toHaveCount(1)
+})
 
 test('clicking blank document space preserves reading mode', async ({ page }) => {
   await mockLocalWorkspaceApi(page)
