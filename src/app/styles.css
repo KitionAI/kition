@@ -4181,6 +4181,12 @@
       filter 180ms ease;
   }
 
+  /* The workflow properties drawer is flush with the right edge; keep the
+     launcher clear of its save row instead of covering it. */
+  body:has(.workflow-properties-drawer) .agent-floating-launcher {
+    right: calc(360px + max(1.25rem, env(safe-area-inset-right)));
+  }
+
   .agent-floating-launcher:hover {
     transform: translateY(-2px);
     filter: brightness(1.08);

@@ -28,13 +28,13 @@
     },
     {
       "spec": "kitable-workflow-create-mode.spec.ts",
-      "test": "C2 — global /workflow route renders the index page (not the launcher hero)",
+      "test": "C2 \u2014 global /workflow route renders the index page (not the launcher hero)",
       "since": "2026-09-27",
       "reason": "Error: expect(locator).toBeVisible() failed | getByTestId('workflow-index-page')"
     },
     {
       "spec": "kitable-workflow-create-mode.spec.ts",
-      "test": "C4b — email inbox sync is launched from the shared template picker",
+      "test": "C4b \u2014 email inbox sync is launched from the shared template picker",
       "since": "2026-09-27",
       "reason": "Error: expect(locator).toBeVisible() failed | getByTestId('email-sync-workflow-editor')"
     },
@@ -46,55 +46,7 @@
     },
     {
       "spec": "workflow-canvas.spec.ts",
-      "test": "A1 DocTab — /workflow URL opens a doc tab (no modal overlay)",
-      "since": "2026-09-27",
-      "reason": "Error: locator.click: Test timeout of 30000ms exceeded."
-    },
-    {
-      "spec": "workflow-dangling-field-ref.spec.ts",
-      "test": "T4.1 switching to a table missing the referenced field opens the dangling-ref ConfirmDialog",
-      "since": "2026-09-27",
-      "reason": "Error: locator.click: Test timeout of 30000ms exceeded."
-    },
-    {
-      "spec": "workflow-dangling-field-ref.spec.ts",
-      "test": "T4.2 \"Remove & switch\" confirms the dialog and PATCHes both trigger and pruned body",
-      "since": "2026-09-27",
-      "reason": "Error: locator.click: Test timeout of 30000ms exceeded."
-    },
-    {
-      "spec": "workflow-dangling-field-ref.spec.ts",
-      "test": "T4.3 Cancel keeps the original trigger table and skips the PATCH",
-      "since": "2026-09-27",
-      "reason": "Error: locator.click: Test timeout of 30000ms exceeded."
-    },
-    {
-      "spec": "workflow-dangling-field-ref.spec.ts",
-      "test": "T4.4 switching to a table that has the referenced field commits without a dialog",
-      "since": "2026-09-27",
-      "reason": "Error: locator.click: Test timeout of 30000ms exceeded."
-    },
-    {
-      "spec": "workflow-improvements-2.spec.ts",
-      "test": "B1 inserting a filter then saving sends nodes/edges in PATCH body",
-      "since": "2026-09-27",
-      "reason": "Error: locator.click: Test timeout of 30000ms exceeded."
-    },
-    {
-      "spec": "workflow-trigger-required-fields.spec.ts",
-      "test": "R1 switching trigger tables drops stale requiredFields IDs in the PATCH",
-      "since": "2026-09-27",
-      "reason": "Error: locator.click: Test timeout of 30000ms exceeded."
-    },
-    {
-      "spec": "workflow-trigger-required-fields.spec.ts",
-      "test": "R2 stale rows disappear from the panel after the table swap",
-      "since": "2026-09-27",
-      "reason": "Error: locator.click: Test timeout of 30000ms exceeded."
-    },
-    {
-      "spec": "workflow-trigger-required-fields.spec.ts",
-      "test": "R3 a table swap that keeps a valid required ID preserves it in the PATCH",
+      "test": "A1 DocTab \u2014 /workflow URL opens a doc tab (no modal overlay)",
       "since": "2026-09-27",
       "reason": "Error: locator.click: Test timeout of 30000ms exceeded."
     }

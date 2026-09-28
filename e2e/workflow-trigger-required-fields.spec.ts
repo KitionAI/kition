@@ -113,7 +113,8 @@ async function seedStaleRequiredFieldsWorkflow(page: Page) {
       }] }),
     }),
   )
-  await page.route('**/v1/data-documents', (route: Route) =>
+  // The labels hook scopes the request with ?workspace_root=, so match the query too.
+  await page.route(/\/v1\/data-documents(?:\?.*)?$/, (route: Route) =>
     route.fulfill({
       status: 200, contentType: 'application/json',
       body: JSON.stringify({ items: [{
@@ -135,7 +136,6 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('R1 switching trigger tables drops stale requiredFields IDs in the PATCH', async ({ page }) => {
-  test.fixme(true, 'Quarantined 2026-09-27, fails against the current UI: Error: locator.click: Test timeout of 30000ms exceeded.. See tooling/e2e-quarantine.json.')
   const fixture = await seedStaleRequiredFieldsWorkflow(page)
   await page.goto('/workflow/auto_stale')
   await expect(page.getByTestId('workflow-canvas')).toBeVisible()
@@ -157,7 +157,6 @@ test('R1 switching trigger tables drops stale requiredFields IDs in the PATCH', 
 })
 
 test('R2 stale rows disappear from the panel after the table swap', async ({ page }) => {
-  test.fixme(true, 'Quarantined 2026-09-27, fails against the current UI: Error: locator.click: Test timeout of 30000ms exceeded.. See tooling/e2e-quarantine.json.')
   await seedStaleRequiredFieldsWorkflow(page)
   await page.goto('/workflow/auto_stale')
   await expect(page.getByTestId('workflow-canvas')).toBeVisible()
@@ -178,7 +177,6 @@ test('R2 stale rows disappear from the panel after the table swap', async ({ pag
 })
 
 test('R3 a table swap that keeps a valid required ID preserves it in the PATCH', async ({ page }) => {
-  test.fixme(true, 'Quarantined 2026-09-27, fails against the current UI: Error: locator.click: Test timeout of 30000ms exceeded.. See tooling/e2e-quarantine.json.')
   const fixture = await seedStaleRequiredFieldsWorkflow(page)
   // Override the followups schema so fld_priority is still present on
   // the new table. Registered AFTER seed so this handler takes precedence

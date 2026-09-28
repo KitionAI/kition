@@ -100,7 +100,6 @@ test('A4 server error blocks Save and disables the button', async ({ page }) => 
 })
 
 test('B1 inserting a filter then saving sends nodes/edges in PATCH body', async ({ page }) => {
-  test.fixme(true, 'Quarantined 2026-09-27, fails against the current UI: Error: locator.click: Test timeout of 30000ms exceeded.. See tooling/e2e-quarantine.json.')
   let lastPatch: Record<string, unknown> | null = null
   await seedWorkflow(page, {
     patchResponder: (body) => {
