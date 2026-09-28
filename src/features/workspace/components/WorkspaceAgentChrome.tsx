@@ -1,5 +1,5 @@
 import type { AgentSession } from '@/api/agent'
-import { AgentFloatingLauncher } from '@/features/agent/components/AgentFloatingLauncher'
+import { AgentFloatingLauncher } from '@/features/agent/public'
 import { WorkspaceAgentTabBar } from '@/features/workspace/components/WorkspaceAgentTabBar'
 import type { useWorkspaceAgentPanel } from '@/features/workspace/hooks/useWorkspaceAgentPanel'
 import { selectItemsToClose, type CloseScope } from '@/features/workspace/state/closeScope'

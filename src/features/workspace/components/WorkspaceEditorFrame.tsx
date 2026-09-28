@@ -1,7 +1,7 @@
-import type { ComponentProps, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 
 import { WorkspaceKitableSidebar } from '@/features/workspace/components/WorkspaceKitableSidebar'
-import { WorkspaceScreenEditor } from '@/features/workspace/components/WorkspaceScreenEditor'
+import { WorkspaceScreenEditor, type WorkspaceScreenEditorInput } from '@/features/workspace/components/WorkspaceScreenEditor'
 import type { KitableChildrenIndex } from '@/features/workspace/hooks/useKitableChildrenIndex'
 import type { KitableSidebarMode } from '@/features/workspace/lib/activeKitable'
 import type { WorkspaceTab, WorkspaceTreeNode } from '@/features/workspace/lib/workspace'
@@ -29,7 +29,7 @@ type WorkspaceEditorFrameProps = {
   kitableActions: WorkspaceKitableSidebarActions
   /** Full-screen workflow workbench; replaces the editor while open. */
   workbench: ReactNode
-  editorContentProps: ComponentProps<typeof WorkspaceScreenEditor>['editorContentProps']
+  editor: WorkspaceScreenEditorInput
 }
 
 /** The editor column: the .kitable container sidebar (when inside one) next to the active pane. */
@@ -40,7 +40,7 @@ export function WorkspaceEditorFrame({
   kitableChildrenIndex,
   kitableActions: actions,
   workbench,
-  editorContentProps,
+  editor,
 }: WorkspaceEditorFrameProps) {
   return (
     <div className={cn('workspace-editor-frame', kitablePath && 'has-kitable-sidebar')}>
@@ -74,7 +74,7 @@ export function WorkspaceEditorFrame({
         />
       ) : null}
       <div className="workspace-editor-frame__content">
-        {workbench || <WorkspaceScreenEditor editorContentProps={editorContentProps} />}
+        {workbench || <WorkspaceScreenEditor {...editor} />}
       </div>
     </div>
   )

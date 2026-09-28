@@ -2,7 +2,7 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('@/features/agent/components/AgentFloatingLauncher', () => ({
+vi.mock('@/features/agent/public', () => ({
   AgentFloatingLauncher: ({ visible }: { visible: boolean }) => createElement('div', { 'data-testid': 'launcher', 'data-visible': String(visible) }),
 }))
 
