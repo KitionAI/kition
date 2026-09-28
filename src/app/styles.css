@@ -30,6 +30,8 @@
     --brand-active: 248.031 54.978% 45.294%;
     --subtle-foreground: 42 3% 46%;
     --radius: 0.5rem;
+    /* Top-edge highlight available to light surfaces; the dark theme composes it into every shadow. */
+    --shadow-inset-highlight: inset 0 1px 0 hsl(0 0% 100% / 0.6);
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 42 3% 46%;
     --sidebar-accent: 30 12% 96%;

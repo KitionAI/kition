@@ -134,7 +134,7 @@ export function createExportImageInliner(deps) {
     if (!value) {
       return ''
     }
-  
+
     try {
       const parsedURL = new URL(value, deps.getBackendPublicBaseURL())
       const backendURL = new URL(deps.getBackendPublicBaseURL())
@@ -146,7 +146,7 @@ export function createExportImageInliner(deps) {
     } catch {
       return ''
     }
-  
+
     return ''
   }
 
@@ -155,12 +155,12 @@ export function createExportImageInliner(deps) {
     if (!raw || (/^(data:|blob:|https?:\/\/)/i.test(raw) && !workspaceRelativePathFromPublicURL(raw))) {
       return ''
     }
-  
+
     try {
       if (/^kition-workspace:/i.test(raw)) {
         return (await deps.resolveSafeWorkspaceProtocolPath(raw)).absolutePath
       }
-  
+
       if (/^file:/i.test(raw)) {
         const absolutePath = fileURLToPath(stripURLSuffix(raw))
         const resolvedRoot = path.resolve(deps.getWorkspaceRoot())
@@ -170,12 +170,12 @@ export function createExportImageInliner(deps) {
         }
         return await deps.assertWorkspacePathSafe(resolvedRoot, resolvedTarget)
       }
-  
+
       const publicWorkspacePath = workspaceRelativePathFromPublicURL(raw)
       if (publicWorkspacePath) {
         return (await deps.resolveSafeWorkspacePath(publicWorkspacePath)).absolutePath
       }
-  
+
       if (isImagePath(raw)) {
         const relativePath = stripURLSuffix(raw).replace(/^\/+/, '')
         const basePath = isWorkspaceRootImagePath(relativePath)
@@ -188,7 +188,7 @@ export function createExportImageInliner(deps) {
     } catch (error) {
       console.warn('failed to resolve export image file:', raw, error)
     }
-  
+
     return ''
   }
 
@@ -210,7 +210,7 @@ export function createExportImageInliner(deps) {
     if (localDataURL) {
       return localDataURL
     }
-  
+
     const url = resolveExportImageURL(src)
     if (!url) {
       return ''
@@ -245,11 +245,11 @@ export function createExportImageInliner(deps) {
     if (!sourceByRawValue.size) {
       return html
     }
-  
+
     for (const rawValue of sourceByRawValue.keys()) {
       sourceByRawValue.set(rawValue, await imageSourceToDataURL(decodeHtmlAttribute(rawValue), documentPath))
     }
-  
+
     return String(html || '').replace(imageSourcePattern, (tag, quote, rawValue) => {
       const dataURL = sourceByRawValue.get(rawValue)
       if (!dataURL) {

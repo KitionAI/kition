@@ -193,7 +193,7 @@ Order matters. Each phase leaves `main` releasable.
 - [x] `QueryProvider` (desktop defaults: no focus refetch, no retries, 5s staleTime), `queryKeys.ts` (root-scoped hierarchical keys), and `invalidation.ts` wired to the file watcher, `kition:workspace-reload`, and the workflow, form sync, email sync, and connections change events. `invalidation.spec.ts` proves a `.kitable` change invalidates that document and the kitable index only, and that other roots and runtime lists stay untouched. (2026-09-27)
 - [x] First migration: `useKitableChildrenIndex` reads through `useQuery` with the same return shape; renames and table-title edits patch the cache with `setQueryData`. Consumers unchanged.
 - [ ] Migrate `useTableEditorData` keeping its return shape. Its setters are mutated from 52 call sites across 7 table hooks, so this needs the record cache to expose `setQueryData`-backed setters first; not started.
-- [ ] Migrate the workspace tree, then documents, then agent session lists. The tree loader also opens the active document as a side effect (`useWorkspaceTreeLoader.applyWorkspaceDocumentList`), so split that out before moving the listing into a query.
+- [~] Migrate the workspace tree, then documents, then agent session lists. The tree loader also opens the active document as a side effect (`useWorkspaceTreeLoader.applyWorkspaceDocumentList`), so split that out before moving the listing into a query. (2026-09-29: the choice of which document opens after a list load is `lib/initialDocument.ts`, a pure function with specs for the preference order and the fallbacks; the loader only reads and applies the result. Moving the listing itself into `useQuery` is the next step.)
 - [x] The "register unseen `.kitable` files" effect moved out of `WorkspaceScreen.tsx` into `src/features/workspace/hooks/useKitableRegistration.ts` with specs for the pure selector and the once-only retry behavior. Delete it when runtime plan Task R4 ships.
 
 ### Task 1.3: Workspace state store and navigation model
@@ -294,7 +294,7 @@ Order matters. Each phase leaves `main` releasable.
 - Modify: `electron/preload.cjs` to expose a typed surface generated from `channels.mjs`
 
 - [~] Move handlers group by group with the existing specs green after each move. (2026-09-29, renderer side: `src/services/desktop.ts` (2,382 lines) is a barrel over `src/services/desktopClient/`: `bridge` (the preload surface and every payload type, with the `Window` augmentation), `runtime` (platform, API base, backend readiness, bootstrap, feedback, notifications, window actions), `browserSession`, `workspaceDocuments`, `workspaceFiles`, `vaults`, and `secureStore`. All 140 importers keep `@/services/desktop`. The shared `AgentLocalSource` type moved to `src/types/agentLocalSource.ts`, which also removed the service-to-API cycle. Main process, first move: the export image inlining (workspace image resolution, data URL conversion, HTML rewriting) is `electron/export-images.mjs`, pure helpers plus a factory that takes the main-process dependencies, with 5 specs; `main.mjs` is 2,010 lines and the desktop e2e set passes locally. Remaining groups there: the browser session handlers, the workspace document handlers, the vault handlers, and window lifecycle.)
-- [ ] Add a preload type file `src/types/desktopBridge.d.ts` so renderer calls are typed end to end.
+- [x] The renderer side of the bridge is typed by `KitionDesktopBridge` in `src/services/desktopClient/bridge.ts`, which also carries the `Window` augmentation (verified 2026-09-29). A separate `.d.ts` in `src/types` would only duplicate it; typing the preload itself waits for the main-process split.
 
 ---
 
@@ -332,7 +332,7 @@ Private implementation detail lives in the runtime plan. These tasks are the pub
 
 - [ ] If light default: remove `migrateThemeToDarkDefault`, set `theme: 'light'` in defaults, keep dark as an option, recapture README assets with `pnpm capture:readme:assets`.
 - [ ] If dark default: update `docs/design.md` and `AGENTS.md` to describe a dark product default and light option, and define dark tokens for every color in the design system.
-- [ ] Either way: `styles.spec.ts` asserts every token has both light and dark values.
+- [x] `styles.spec.ts` (2026-09-29) asserts every `:root` token except the geometry `radius` also exists in `.dark` and vice versa; the one gap, `--shadow-inset-highlight`, now has a light value too.
 
 ### Task 3.2: Workspace chrome polish against `docs/design.md`
 

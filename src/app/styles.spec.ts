@@ -94,3 +94,17 @@ describe('feature stylesheets', () => {
     expect(offenders).toEqual([])
   })
 })
+
+describe('theme token parity', () => {
+  it('defines every color and shadow token in both the light and the dark theme', () => {
+    const tokens = (selector: ':root' | '.dark') => new Set(
+      Array.from(themeBlock(selector).matchAll(/--([a-zA-Z0-9-]+)\s*:/g), (match) => match[1]),
+    )
+    // Geometry tokens are theme-independent and live only in :root.
+    const geometry = new Set(['radius'])
+    const light = tokens(':root')
+    const dark = tokens('.dark')
+    expect([...light].filter((token) => !dark.has(token) && !geometry.has(token))).toEqual([])
+    expect([...dark].filter((token) => !light.has(token))).toEqual([])
+  })
+})

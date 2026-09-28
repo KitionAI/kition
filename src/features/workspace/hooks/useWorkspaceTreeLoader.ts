@@ -8,10 +8,7 @@ import {
 import {
   flattenWorkspaceDocumentItems,
 } from '@/features/workspace/lib/workspaceTree'
-import {
-  inferWorkspaceItemFormat,
-  isEditableWorkspaceFormat,
-} from '@/features/workspace/lib/workspace'
+import { resolveInitialDocumentPath } from '@/features/workspace/lib/initialDocument'
 import type { ApplyWorkspaceDocument } from '@/features/workspace/hooks/workspaceTreeActionShared'
 import type { UseWorkspaceTreeStateResult } from '@/features/workspace/hooks/useWorkspaceTreeState'
 import {
@@ -80,16 +77,11 @@ export function useWorkspaceTreeLoader({
       return
     }
 
-    const nextFiles = flattenWorkspaceDocumentItems(response.items || [])
-    const editableFiles = nextFiles.filter((item) => (
-      isEditableWorkspaceFormat(item.format || inferWorkspaceItemFormat(item.path))
-    ))
-    const lastActivePath = readLastActiveDocumentPath()
-    const homePath = editableFiles.find((item) => item.path === 'Home.md')?.path || ''
-    const candidatePath = preferredPath || activeDocumentPath || lastActivePath || homePath || ''
-    const nextPath = candidatePath && editableFiles.some((item) => item.path === candidatePath)
-      ? candidatePath
-      : editableFiles[0]?.path || ''
+    const nextPath = resolveInitialDocumentPath(flattenWorkspaceDocumentItems(response.items || []), {
+      preferredPath,
+      activeDocumentPath,
+      lastActivePath: readLastActiveDocumentPath(),
+    })
 
     if (!nextPath) {
       clearActiveDocumentSession()
