@@ -31,11 +31,8 @@ import {
   WorkspaceScreenSidebarFooter,
 } from '@/features/workspace/components/WorkspaceScreenSidebar'
 import { WorkspaceLayout } from '@/features/workspace/components/WorkspaceLayout'
-import { WorkspaceTopbar } from '@/features/workspace/components/WorkspaceTopbar'
-import {
-  editorTextStyleOptions,
-  useWorkspaceChrome,
-} from '@/features/workspace/hooks/useWorkspaceChrome'
+import { WorkspaceScreenTopbar } from '@/features/workspace/components/WorkspaceScreenTopbar'
+import { useWorkspaceChrome } from '@/features/workspace/hooks/useWorkspaceChrome'
 import { useWorkspaceEditorPanels } from '@/features/workspace/hooks/useWorkspaceEditorPanels'
 import { useWorkspaceDerivedState } from '@/features/workspace/hooks/useWorkspaceDerivedState'
 import { useWorkspaceTopbarActions } from '@/features/workspace/hooks/useWorkspaceTopbarActions'
@@ -67,11 +64,10 @@ import { useWorkspaceDocumentTranslation } from '@/features/workspace/hooks/useW
 import { useWorkspaceBoardCreation } from '@/features/workspace/hooks/useWorkspaceBoardCreation'
 import { useWhiteboardImageGeneration } from '@/features/workspace/hooks/useWhiteboardImageGeneration'
 import { setPinnedTabsWorkspace } from '@/features/document/editor/hooks/usePinnedTabs'
-import { formatWorkspaceTime, isEditableWorkspaceFormat } from '@/features/workspace/lib/workspace'
+import { isEditableWorkspaceFormat } from '@/features/workspace/lib/workspace'
 import { resolveAgentActiveDocument } from '@/features/workspace/lib/agentPaneContext'
 import { resolveActiveKitablePath, resolveKitableSidebarMode } from '@/features/workspace/lib/activeKitable'
 import { buildWorkspaceAgentTurnUpdate } from '@/features/workspace/lib/agentTurnUpdate'
-import { buildWorkspaceTabStripProps } from '@/features/workspace/lib/workspaceTabStripActions'
 import { notify } from '@/lib/notify'
 import { cn } from '@/lib/utils'
 import { isDesktopRuntime, type WorkspaceDocument, type WorkspaceDocumentFormat } from '@/services/desktop'
@@ -171,6 +167,7 @@ export function WorkspaceScreen({
     (node: HTMLElement | null) => setDocumentToolbarPortal(node),
     [],
   )
+  const chrome = useWorkspaceChrome()
   const {
     agentSidebarWidth,
     editorView,
@@ -181,12 +178,10 @@ export function WorkspaceScreen({
     setEditorView,
     setItemMenuOpen,
     setSidebarSectionsExpanded,
-    sidebarCollapsed,
     sidebarSectionsExpanded,
-    toggleEditorPreference,
     toggleSidebarCollapsed,
     toggleSidebarSection,
-  } = useWorkspaceChrome()
+  } = chrome
   const importInputRef = useRef<HTMLInputElement | null>(null)
   // The kition:workflow:changed bus (dispatched from features/workflow/api
   // on every patch/delete) drives a sidebar refresh so the per-kitable
@@ -646,13 +641,7 @@ export function WorkspaceScreen({
     [workspaceTree.flatTreeNodes],
   )
 
-  const {
-    activeItemWordCount,
-    canImportSource,
-    editorPreviewHtml,
-    imageFiles,
-    videoFiles,
-  } = useWorkspaceDerivedState({
+  const derivedState = useWorkspaceDerivedState({
     activeDocument,
     activeDocumentFormat,
     draftContent,
@@ -661,6 +650,11 @@ export function WorkspaceScreen({
     files,
     itemMenuOpen,
   })
+  const {
+    editorPreviewHtml,
+    imageFiles,
+    videoFiles,
+  } = derivedState
 
 
   openDocumentTabRef.current = openDocumentTab
@@ -741,12 +735,7 @@ export function WorkspaceScreen({
   })
   const { handleDocumentAskAgent } = chatEntryPoints
 
-  const {
-    importMarkdownFile,
-    restoreSavedDraft,
-    runActiveDataTableAction,
-    setEditorMode,
-  } = useWorkspaceTopbarActions({
+  const topbarActions = useWorkspaceTopbarActions({
     activeDocument,
     activeDocumentFormat,
     applyWorkspaceDocument,
@@ -759,6 +748,9 @@ export function WorkspaceScreen({
     setFeedback,
     setItemMenuOpen,
   })
+  const {
+    setEditorMode,
+  } = topbarActions
   const { agentNeedsModelConfig, galleryPanelProps } =
     useWorkspaceEditorPanels({
       activeWorkspaceTab,
@@ -879,55 +871,20 @@ export function WorkspaceScreen({
 
   return (
     <>
-      <WorkspaceTopbar
+      <WorkspaceScreenTopbar
         tabsPortal={topbarLeadingPortal}
-        documentToolbarPortal={activeWorkspaceTab?.type === 'document' ? documentToolbarPortal : null}
-        tabStripProps={buildWorkspaceTabStripProps({
-          tabs: workspaceTabs,
-          activeTabId: activeWorkspaceTabId,
-          activeDocumentPath: activeDocument?.path,
-          hasUnsavedChanges,
-          getOpenedDocumentDraftEntry,
-          workflowOpen,
-          closeTab: handleCloseWorkspaceTabById,
-          activateTab: activateWorkspaceTab,
-          onCloseWorkflow,
-          onCloseProfile,
-          sidebarCollapsed,
-          onToggleSidebar: toggleSidebarCollapsed,
-        })}
+        documentToolbarPortal={documentToolbarPortal}
         importInputRef={importInputRef}
-        itemMenuOpen={itemMenuOpen}
-        activeItemFormat={activeDocumentFormat}
-        editorView={editorView}
-        editorTextStyleOptions={editorTextStyleOptions}
-        hasActiveItem={Boolean(activeDocument)}
-        hasUnsavedChanges={hasUnsavedChanges}
-        itemWordCount={activeItemWordCount}
-        activeItemUpdatedAt={activeDocument?.updated_at}
-        canImportSource={canImportSource}
-        onFileChange={(file) => void importMarkdownFile(file)}
-        onToggleItemMenu={() => setItemMenuOpen((value) => !value)}
-        onCloseItemMenu={() => setItemMenuOpen(false)}
-        onSetEditorMode={setEditorMode}
-        onSetTextStyle={(style) =>
-          setEditorView((current) => ({ ...current, textStyle: style }))
-        }
-        onToggleEditorPreference={toggleEditorPreference}
-        onRestoreSavedDraft={restoreSavedDraft}
-        onTriggerImport={() => importInputRef.current?.click()}
-        onOpenExportDialog={() => {
-          setItemMenuOpen(false)
-          openExportDialog()
-        }}
-        onOpenWorkspaceFolder={() => {
-          setItemMenuOpen(false)
-          if (activeDocument) {
-            void openWorkspaceFolder(activeDocument.path)
-          }
-        }}
-        onRunActiveDataTableAction={runActiveDataTableAction}
-        formatTime={formatWorkspaceTime}
+        chrome={chrome}
+        actions={topbarActions}
+        derived={derivedState}
+        documentSession={documentSession}
+        tabs={{ workspaceTabs, activeWorkspaceTab, activeWorkspaceTabId, activateWorkspaceTab, closeTab: handleCloseWorkspaceTabById }}
+        workflowOpen={workflowOpen}
+        onCloseWorkflow={onCloseWorkflow}
+        onCloseProfile={onCloseProfile}
+        openExportDialog={openExportDialog}
+        openWorkspaceFolder={openWorkspaceFolder}
       />
       <WorkspaceAgentChrome portal={topbarActionsPortal} panel={agentPanel} sessions={agentSessions} />
       <WorkspaceDialogs
