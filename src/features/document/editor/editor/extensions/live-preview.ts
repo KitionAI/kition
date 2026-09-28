@@ -1720,14 +1720,19 @@ const livePreviewTheme = EditorView.baseTheme({
     maxWidth: '100%',
     verticalAlign: 'top',
   },
+  // Block widgets must not have vertical margins: CodeMirror measures the
+  // widget's box without them, so every image would shift its height map for
+  // all lines below and clicks (double-clicks, drags) would land a line low.
+  // Keep the spacing inside the box as padding instead.
   '.cm-md-image-block': {
     display: 'block',
     width: 'fit-content',
-    margin: '0.5em 0',
+    padding: '0.5em 0',
   },
   '.cm-md-image-block.is-loading': {
     width: '100%',
     height: `${BLOCK_IMAGE_ESTIMATED_HEIGHT}px`,
+    boxSizing: 'border-box',
   },
   '.cm-md-image img': {
     display: 'block',
