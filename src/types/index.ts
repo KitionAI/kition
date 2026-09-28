@@ -110,31 +110,12 @@ export interface AvailableModel {
   }
 }
 
-// Unified AI invocation
-export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant'
-  content: string
-}
-
-export interface ChatRequest {
-  model_id: string
-  messages: ChatMessage[]
-  scene_type?: string
-  stream?: boolean
-  temperature?: number
-  max_tokens?: number
-  top_p?: number
-}
-
-export interface ChatResponse {
-  content: string
-  model: string
-  usage: {
-    prompt_tokens: number
-    completion_tokens: number
-    total_tokens: number
-  }
-}
+// Unified AI invocation. Contract: contracts/runtime/ai-chat.schema.json.
+export type {
+  AiChatMessage as ChatMessage,
+  AiChatRequest as ChatRequest,
+  AiChatResponse as ChatResponse,
+} from '@/api/generated'
 
 // ============================================================================
 // Writing tool form types

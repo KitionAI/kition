@@ -31,7 +31,6 @@
   "exports src/api/desktopNotifications.ts updateHook",
   "exports src/api/emailSync.ts getEmailSyncRun",
   "exports src/api/models.ts addAIModel",
-  "exports src/api/models.ts chatWithModel",
   "exports src/api/models.ts deleteAIModel",
   "exports src/api/models.ts getAvailableModels",
   "exports src/api/models.ts updateAIModel",

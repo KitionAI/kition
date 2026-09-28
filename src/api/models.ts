@@ -15,9 +15,16 @@ export function getAvailableModels(sceneType?: string) {
   })
 }
 
-// Unified AI invocation
-export function chatWithModel(data: ChatRequest) {
-  return request.post<ChatResponse>('/v1/ai/chat', data)
+/**
+ * One-shot, non-streaming completion. Pass `signal` to cancel; a cancelled
+ * call rejects, so callers should check `signal.aborted` before reporting.
+ * Errors are left to the caller rather than logged as request failures.
+ */
+export function chatWithModel(data: ChatRequest, options: { signal?: AbortSignal } = {}) {
+  return request.post<ChatResponse>('/v1/ai/chat', data, {
+    signal: options.signal,
+    suppressErrorMessage: true,
+  })
 }
 
 // Create AI model

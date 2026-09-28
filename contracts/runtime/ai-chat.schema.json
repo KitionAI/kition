@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kition.ai/contracts/runtime/ai-chat.schema.json",
+  "title": "Kition One-Shot AI Chat",
+  "description": "Non-streaming completion used by single-purpose editor actions such as selection translation. Requires AI login for hosted models.",
+  "$ref": "#/$defs/request",
+  "x-endpoints": {
+    "chat": "POST /api/v1/ai/chat"
+  },
+  "$defs": {
+    "message": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "content"],
+      "properties": {
+        "role": { "type": "string", "enum": ["system", "user", "assistant"] },
+        "content": { "type": "string" }
+      }
+    },
+    "runtimeModel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider_type", "provider_label", "model_name", "base_url", "api_key"],
+      "properties": {
+        "provider_type": { "type": "string", "enum": ["openai", "anthropic", "deepseek", "kimi", "custom", "kition_console"] },
+        "provider_label": { "type": "string" },
+        "model_name": { "type": "string", "minLength": 1 },
+        "base_url": { "type": "string" },
+        "api_key": { "type": "string" },
+        "access_token": { "type": "string" },
+        "auth_header": { "type": "string" },
+        "auth_scheme": { "type": "string", "enum": ["bearer", "raw", "x-api-key"] },
+        "wire_api": { "type": "string", "enum": ["responses", "anthropic_messages"] },
+        "reasoning_effort": { "type": "string", "enum": ["minimal", "low", "medium", "high"] },
+        "hosted_web_search_version": { "type": "string", "enum": ["20260209", "20250305"] },
+        "disable_response_storage": { "type": "boolean" },
+        "max_output_tokens": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["messages"],
+      "properties": {
+        "model_id": { "type": "string" },
+        "scene_type": { "type": "string" },
+        "messages": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/message" } },
+        "runtime_model": { "$ref": "#/$defs/runtimeModel" }
+      }
+    },
+    "usage": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "prompt_tokens": { "type": "integer", "minimum": 0 },
+        "completion_tokens": { "type": "integer", "minimum": 0 },
+        "total_tokens": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["content"],
+      "properties": {
+        "content": { "type": "string" },
+        "model": { "type": "string" },
+        "usage": { "$ref": "#/$defs/usage" }
+      }
+    }
+  }
+}
