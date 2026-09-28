@@ -205,7 +205,7 @@ describe('native Design document invariants', () => {
 it('aligns a multi-selection in one undoable action', () => {
   const store = new DesignStore(fixture())
   const initial = store.getSnapshot().document
-  store.execute({ type: 'align', ids: ['heading', 'shape'], axis: 'x' })
+  store.execute({ type: 'align', ids: ['heading', 'shape'], edge: 'centerX', reference: 'artboard' })
   store.undo()
   expect(store.getSnapshot().document.nodes).toEqual(initial.nodes)
 })

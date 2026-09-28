@@ -1,6 +1,12 @@
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui'
-import type { DesignDocument, DesignNode } from '../lib/designTypes'
+import {
+  DEFAULT_CONSTRAINTS,
+  type DesignConstraints,
+  type DesignDocument,
+  type DesignNode,
+} from '../lib/designTypes'
+import type { AlignEdge } from '../lib/designLayout'
 import { DesignStore } from '../lib/designStore'
 import {
   around,
@@ -10,6 +16,7 @@ import {
   worldMatrix,
 } from '../lib/designGeometry'
 import { DesignColorField, DesignNumberField } from './DesignFields'
+const ALIGN_EDGES: AlignEdge[] = ['left', 'centerX', 'right', 'top', 'centerY', 'bottom']
 export function DesignInspector({
   document: doc,
   selection,
@@ -25,9 +32,13 @@ export function DesignInspector({
   const patch = (value: Partial<DesignNode>) =>
     store.execute({ type: 'patch', ids: selection, patch: value })
   const bounds = selectionBounds(doc, selection)
-  function align(axis: 'x' | 'y') {
-    store.execute({ type: 'align', ids: selection, axis })
+  function align(edge: AlignEdge) {
+    store.execute({ type: 'align', ids: selection, edge })
   }
+  const topLevel = n && page.children.includes(n.id) ? n : null
+  const constraints = topLevel?.constraints || DEFAULT_CONSTRAINTS
+  const setConstraint = (value: Partial<DesignConstraints>) =>
+    patch({ constraints: { ...constraints, ...value } })
   if (!selection.length)
     return (
       <div className="design-properties">
@@ -188,13 +199,84 @@ export function DesignInspector({
           />
         ) : null}
       </div>
+      <div
+        className="design-action-grid design-align-grid"
+        role="group"
+        aria-label={t('align')}
+      >
+        {ALIGN_EDGES.map((edge) => (
+          <Button
+            key={edge}
+            variant="ghost"
+            size="sm"
+            onClick={() => align(edge)}
+          >
+            {t(`alignEdge.${edge}`)}
+          </Button>
+        ))}
+      </div>
+      {selection.length >= 3 ? (
+        <div className="design-action-grid">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() =>
+              store.execute({ type: 'distribute', ids: selection, axis: 'x' })
+            }
+          >
+            {t('distributeHorizontal')}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() =>
+              store.execute({ type: 'distribute', ids: selection, axis: 'y' })
+            }
+          >
+            {t('distributeVertical')}
+          </Button>
+        </div>
+      ) : null}
+      {topLevel ? (
+        <div className="design-field-grid">
+          <label className="design-field">
+            <span>{t('constraintHorizontal')}</span>
+            <select
+              aria-label={t('constraintHorizontal')}
+              value={constraints.horizontal}
+              onChange={(event) =>
+                setConstraint({
+                  horizontal: event.target
+                    .value as DesignConstraints['horizontal'],
+                })
+              }
+            >
+              <option value="left">{t('constraint.left')}</option>
+              <option value="center">{t('constraint.center')}</option>
+              <option value="right">{t('constraint.right')}</option>
+              <option value="scale">{t('constraint.scale')}</option>
+            </select>
+          </label>
+          <label className="design-field">
+            <span>{t('constraintVertical')}</span>
+            <select
+              aria-label={t('constraintVertical')}
+              value={constraints.vertical}
+              onChange={(event) =>
+                setConstraint({
+                  vertical: event.target.value as DesignConstraints['vertical'],
+                })
+              }
+            >
+              <option value="top">{t('constraint.top')}</option>
+              <option value="center">{t('constraint.center')}</option>
+              <option value="bottom">{t('constraint.bottom')}</option>
+              <option value="scale">{t('constraint.scale')}</option>
+            </select>
+          </label>
+        </div>
+      ) : null}
       <div className="design-action-grid">
-        <Button variant="ghost" size="sm" onClick={() => align('x')}>
-          {t('centerX')}
-        </Button>
-        <Button variant="ghost" size="sm" onClick={() => align('y')}>
-          {t('centerY')}
-        </Button>
         <Button
           variant="ghost"
           size="sm"

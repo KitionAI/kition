@@ -44,12 +44,22 @@ import {
 import { createDesignFile } from '../lib/designFile'
 import { registerDesignImageTarget } from '../lib/designImageTargets'
 import { translation } from '../lib/designGeometry'
+import type { AlignEdge } from '../lib/designLayout'
 import { DesignToolbar } from './DesignToolbar'
 import { DesignCanvas } from './DesignCanvas'
 import { DesignInspector } from './DesignInspector'
 import { DesignLayers } from './DesignLayers'
 import { DesignLibrary } from './DesignLibrary'
 import './design.css'
+/** Alt with a letter aligns the selection; adding Mod distributes instead. */
+const ALIGN_KEYS: Record<string, AlignEdge> = {
+  KeyA: 'left',
+  KeyD: 'right',
+  KeyW: 'top',
+  KeyS: 'bottom',
+  KeyH: 'centerX',
+  KeyV: 'centerY',
+}
 export function DesignEditorPane({
   root,
   path,
@@ -318,6 +328,17 @@ function DesignEditor({
     if (mod && key === 'd') {
       event.preventDefault()
       store.execute({ type: 'duplicate', ids: selection })
+      return
+    }
+    if (event.altKey && selection.length && event.code in ALIGN_KEYS) {
+      // Alt with a letter changes `event.key` on macOS, so match the code.
+      event.preventDefault()
+      const edge = ALIGN_KEYS[event.code]
+      if (mod && edge === 'centerX')
+        store.execute({ type: 'distribute', ids: selection, axis: 'x' })
+      else if (mod && edge === 'centerY')
+        store.execute({ type: 'distribute', ids: selection, axis: 'y' })
+      else store.execute({ type: 'align', ids: selection, edge })
       return
     }
     if (key === 'escape') {

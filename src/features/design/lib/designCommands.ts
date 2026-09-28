@@ -16,6 +16,14 @@ import {
   worldMatrix,
 } from './designGeometry'
 import { validateDesign } from './designSerialization'
+import {
+  alignMoves,
+  artboardResizeMoves,
+  distributeMoves,
+  type AlignEdge,
+  type AlignReference,
+  type DistributeAxis,
+} from './designLayout'
 export type DesignCommand =
   | { type: 'insert'; nodes: DesignNode[] }
   | {
@@ -24,7 +32,8 @@ export type DesignCommand =
       patch: Partial<Omit<DesignNode, 'id' | 'type' | 'children'>>
     }
   | { type: 'transform'; ids: string[]; matrix: Matrix }
-  | { type: 'align'; ids: string[]; axis: 'x' | 'y' }
+  | { type: 'align'; ids: string[]; edge: AlignEdge; reference?: AlignReference }
+  | { type: 'distribute'; ids: string[]; axis: DistributeAxis }
   | { type: 'remove' | 'group' | 'ungroup' | 'duplicate'; ids: string[] }
   | { type: 'reorder'; id: string; direction: -1 | 1 }
   | {
@@ -42,6 +51,14 @@ function remove(doc: DesignDocument, id: string) {
   list.splice(list.indexOf(id), 1)
   for (const child of children) remove(doc, child)
   delete doc.nodes[id]
+}
+/** Applies world-space matrices to layers, converting each into its parent's space. */
+function applyWorldMoves(doc: DesignDocument, moves: Map<string, Matrix>) {
+  for (const [id, move] of moves) {
+    const parent = parentNode(doc, id)
+    const p = parent ? worldMatrix(doc, parent.id) : ([1, 0, 0, 1, 0, 0] as Matrix)
+    doc.nodes[id].transform = multiply(inverse(p), multiply(move, worldMatrix(doc, id)))
+  }
 }
 export function duplicateNodes(
   doc: DesignDocument,
@@ -70,8 +87,11 @@ export function applyDesignCommand(
   command: DesignCommand,
 ): DesignDocument {
   const doc = structuredClone(source)
-  if (command.type === 'page') Object.assign(doc.pages[0], command.patch)
-  else if (command.type === 'insert') {
+  if (command.type === 'page') {
+    const next = { width: command.patch.width ?? doc.pages[0].width, height: command.patch.height ?? doc.pages[0].height }
+    applyWorldMoves(doc, artboardResizeMoves(doc, next))
+    Object.assign(doc.pages[0], command.patch)
+  } else if (command.type === 'insert') {
     const children = new Set(command.nodes.flatMap((n) => n.children))
     for (const n of command.nodes) {
       if (doc.nodes[n.id]) throw new Error('Duplicate layer ID')
@@ -96,23 +116,8 @@ export function applyDesignCommand(
     )
     if (command.type === 'patch')
       for (const id of ids) Object.assign(doc.nodes[id], command.patch)
-    if (command.type === 'align')
-      for (const id of ids) {
-        const b = selectionBounds(doc, [id]),
-          page = doc.pages[0]
-        const delta =
-          command.axis === 'x'
-            ? translation(page.width / 2 - b.x - b.width / 2, 0)
-            : translation(0, page.height / 2 - b.y - b.height / 2)
-        const parent = parentNode(doc, id),
-          p = parent
-            ? worldMatrix(doc, parent.id)
-            : ([1, 0, 0, 1, 0, 0] as Matrix)
-        doc.nodes[id].transform = multiply(
-          inverse(p),
-          multiply(delta, worldMatrix(doc, id)),
-        )
-      }
+    if (command.type === 'align') applyWorldMoves(doc, alignMoves(doc, ids, command.edge, command.reference))
+    if (command.type === 'distribute') applyWorldMoves(doc, distributeMoves(doc, ids, command.axis))
     if (command.type === 'transform')
       for (const id of ids) {
         const parent = parentNode(doc, id),

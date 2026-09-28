@@ -41,6 +41,12 @@ const node = z
     letterSpacing: z.number().min(-100).max(500),
     assetId: id.optional(),
     crop: bounds.optional(),
+    constraints: z
+      .object({
+        horizontal: z.enum(['left', 'center', 'right', 'scale']),
+        vertical: z.enum(['top', 'center', 'bottom', 'scale']),
+      })
+      .optional(),
     children: z.array(id).max(DESIGN_MAX_NODES),
   })
   .strict()

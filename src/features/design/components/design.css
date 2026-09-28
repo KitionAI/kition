@@ -243,6 +243,9 @@
   padding-right: 4px;
   font-size: 11px;
 }
+.design-align-grid {
+  grid-template-columns: 1fr 1fr 1fr;
+}
 .design-layer {
   display: flex;
   align-items: center;

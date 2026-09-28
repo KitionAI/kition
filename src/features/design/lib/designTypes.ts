@@ -1,6 +1,12 @@
 /** SVG/Canvas matrix: [a, b, c, d, e, f], applied to parent-local coordinates. */
 export type Matrix = [number, number, number, number, number, number]
 export type Bounds = { x: number; y: number; width: number; height: number }
+/** How a top-level layer follows the artboard when its size changes. */
+export type DesignConstraints = {
+  horizontal: 'left' | 'center' | 'right' | 'scale'
+  vertical: 'top' | 'center' | 'bottom' | 'scale'
+}
+export const DEFAULT_CONSTRAINTS: DesignConstraints = { horizontal: 'left', vertical: 'top' }
 export type DesignNode = {
   id: string
   name: string
@@ -24,6 +30,8 @@ export type DesignNode = {
   letterSpacing: number
   assetId?: string
   crop?: Bounds
+  /** Absent on files saved before constraints existed; treated as left and top. */
+  constraints?: DesignConstraints
   children: string[]
 }
 export type DesignAsset = {
@@ -101,6 +109,7 @@ export function createDesignNode(
     textAlign: 'left',
     lineHeight: 1.2,
     letterSpacing: 0,
+    constraints: { ...DEFAULT_CONSTRAINTS },
     children: [],
     ...overrides,
   }
