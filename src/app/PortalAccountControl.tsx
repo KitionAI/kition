@@ -19,7 +19,7 @@ export function PortalProfileDialog({ onClose }: { onClose: () => void }) {
   }, [onClose])
 
   return (
-    <div className="portal-profile-modal-stage" onClick={onClose}>
+    <div className="portal-profile-modal-stage" role="presentation" onClick={onClose}>
       <div
         className="portal-profile-modal-window"
         role="dialog"

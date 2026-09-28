@@ -106,7 +106,7 @@ export function DesktopSettingsPage({ initialSection, onClose }: DesktopSettings
   }
 
   return (
-    <div className="settings-modal-stage" onClick={handleRequestClose}>
+    <div className="settings-modal-stage" role="presentation" onClick={handleRequestClose}>
       <section
         className="settings-modal-window"
         role="dialog"

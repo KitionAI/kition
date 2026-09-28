@@ -98,7 +98,7 @@ export function CommandPalette({
   }, [actions, cursor, onClose])
 
   return (
-    <div className="command-overlay" onClick={onClose}>
+    <div className="command-overlay" role="presentation" onClick={onClose}>
       <div
         className="command-panel"
         data-testid="command-palette"

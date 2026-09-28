@@ -25,7 +25,7 @@ export function DisconnectConfirmDialog({ providerName, onCancel, onConfirm, pen
   }, [onCancel])
 
   return (
-    <div className="settings-modal-stage" onClick={onCancel}>
+    <div className="settings-modal-stage" role="presentation" onClick={onCancel}>
       <div className="disconnect-dialog" role="alertdialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <h3>{t('disconnectDialog.title', { provider: providerName })}</h3>
         <p>{t('disconnectDialog.body')}</p>

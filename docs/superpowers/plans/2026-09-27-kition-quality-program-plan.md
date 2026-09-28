@@ -362,7 +362,7 @@ Private implementation detail lives in the runtime plan. These tasks are the pub
 
 ### Task 3.5: Accessibility pass
 
-- [ ] Replace the 6 clickable `div` elements with buttons.
+- [x] Replace the 6 clickable `div` elements with buttons. (2026-09-29: on inspection all five that remained are modal backdrops that dismiss on click, not controls, so a button would be the wrong element; each dialog already closes on Escape. They carry `role="presentation"` now, and no `div` with `onClick` and no role remains.)
 - [ ] Ensure every dialog, drawer, and sheet traps focus and restores it on close (test with Playwright keyboard navigation).
 - [ ] Add `prefers-reduced-motion` handling to every animated transition in the kit.
 

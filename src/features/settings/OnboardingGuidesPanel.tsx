@@ -77,7 +77,7 @@ export function OnboardingGuidesPanel({ onClose }: { onClose?: () => void } = {}
 
   if (onClose) {
     return (
-      <div className="settings-modal-stage" onClick={onClose}>
+      <div className="settings-modal-stage" role="presentation" onClick={onClose}>
         <section
           className="settings-modal-window"
           onClick={(e) => e.stopPropagation()}
