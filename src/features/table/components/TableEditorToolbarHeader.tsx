@@ -148,7 +148,7 @@ function ViewTab({
               if (event.key === 'Enter') event.currentTarget.blur()
               if (event.key === 'Escape') setRenaming(false)
             }}
-            aria-label="View name"
+            aria-label={t('toolbar.viewName')}
             data-testid={`data-view-rename-${view.id}`}
           />
         </div>

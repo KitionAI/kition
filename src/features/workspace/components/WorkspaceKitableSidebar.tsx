@@ -1,5 +1,6 @@
 import { ChevronDown, ChevronsLeft, ChevronsRight, Database, FileInput, LayoutDashboard, MoreHorizontal, Pencil, Plus, Search, Workflow } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { WorkspaceCreateMenu } from '@/features/workspace/components/WorkspaceCreateMenu'
 import {
@@ -53,6 +54,7 @@ export function WorkspaceKitableSidebar({
   onOpenWorkflow,
   onRenameTable,
 }: WorkspaceKitableSidebarProps) {
+  const { t } = useTranslation('workspace')
   const [collapsed, setCollapsed] = useState(() => readKitableSidebarCollapsed(defaultCollapsed))
   const [collapsedMenuOpen, setCollapsedMenuOpen] = useState(false)
   const [createMenuOpen, setCreateMenuOpen] = useState(false)
@@ -135,8 +137,8 @@ export function WorkspaceKitableSidebar({
               setCollapsedMenuOpen(false)
               updateCollapsed(false)
             }}
-            aria-label="Expand kitable sidebar"
-            title="Expand kitable sidebar"
+            aria-label={t('kitableSidebar.expand')}
+            title={t('kitableSidebar.expand')}
             data-testid="workspace-kitable-expand"
           >
             <ChevronsRight className="size-4" />
@@ -146,7 +148,7 @@ export function WorkspaceKitableSidebar({
               type="button"
               className="workspace-kitable-sidebar__collapsed-selector"
               onClick={() => setCollapsedMenuOpen((open) => !open)}
-              aria-label="Switch kitable section"
+              aria-label={t('kitableSidebar.switchSection')}
               aria-expanded={collapsedMenuOpen}
               data-testid="workspace-kitable-collapsed-selector"
             >
@@ -260,7 +262,7 @@ export function WorkspaceKitableSidebar({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search"
-            aria-label="Search tables, dashboards, and workflows"
+            aria-label={t('kitableSidebar.searchPlaceholder')}
             data-testid="workspace-kitable-search"
           />
         </label>
@@ -269,8 +271,8 @@ export function WorkspaceKitableSidebar({
             type="button"
             className="workspace-kitable-sidebar__header-button"
             onClick={() => setCreateMenuOpen((open) => !open)}
-            aria-label="Create in kitable"
-            title="Create in kitable"
+            aria-label={t('kitableSidebar.create')}
+            title={t('kitableSidebar.create')}
             aria-expanded={createMenuOpen}
             data-testid="workspace-kitable-create"
           >
@@ -303,14 +305,14 @@ export function WorkspaceKitableSidebar({
           type="button"
           className="workspace-kitable-sidebar__header-button"
           onClick={() => updateCollapsed(true)}
-          aria-label="Collapse kitable sidebar"
-          title="Collapse kitable sidebar"
+          aria-label={t('kitableSidebar.collapse')}
+          title={t('kitableSidebar.collapse')}
           data-testid="workspace-kitable-collapse"
         >
           <ChevronsLeft className="size-4" />
         </button>
       </div>
-      <nav className="workspace-kitable-sidebar__nav" aria-label="Kitable">
+      <nav className="workspace-kitable-sidebar__nav" aria-label={t('kitableSidebar.navLabel')}>
         {defaultTable ? (
           <KitableTableNavItem
             table={defaultTable}
@@ -406,6 +408,7 @@ function KitableTableNavItem({
   onOpen: () => void
   onRename?: (tableId: number, currentTitle: string, nextTitle: string) => void
 }) {
+  const { t } = useTranslation('workspace')
   const displayTitle = tableDisplayTitle(table)
   const [menuOpen, setMenuOpen] = useState(false)
   const [renaming, setRenaming] = useState(false)
@@ -440,7 +443,7 @@ function KitableTableNavItem({
               if (event.key === 'Enter') event.currentTarget.blur()
               if (event.key === 'Escape') setRenaming(false)
             }}
-            aria-label="Data table name"
+            aria-label={t('kitableSidebar.tableName')}
             data-testid={`${testId}-rename-input`}
           />
         </div>
@@ -461,7 +464,7 @@ function KitableTableNavItem({
         <button
           type="button"
           className="workspace-kitable-sidebar__item-menu-trigger"
-          aria-label="Open table menu"
+          aria-label={t('kitableSidebar.tableMenu')}
           title={`Table options for ${displayTitle}`}
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen((open) => !open)}
@@ -482,7 +485,7 @@ function KitableTableNavItem({
             }}
           >
             <Pencil className="size-4" />
-            <span>Rename data table</span>
+            <span>{t('kitableSidebar.renameTable')}</span>
           </button>
         </div>
       ) : null}

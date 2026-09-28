@@ -186,7 +186,8 @@
       },
       "aiCta": "Or describe it — let AI build the workflow",
       "back": "Back",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "fullEmailSync": "Full email inbox sync"
     }
   },
   "errors": {

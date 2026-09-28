@@ -51,7 +51,8 @@
     "renameTitle": "重命名工作区",
     "renamePlaceholder": "工作区名称",
     "removeConfirm": "确定从列表中移除此工作区？磁盘上的文件夹不会被删除。",
-    "empty": "暂无工作区，新建或打开一个开始使用。"
+    "empty": "暂无工作区，新建或打开一个开始使用。",
+    "more": "更多"
   },
   "errors": {
     "missingName": "请填写工作区名称。",

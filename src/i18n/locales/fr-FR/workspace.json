@@ -265,7 +265,8 @@
           "distribute": "Répartir les éléments",
           "stack": "Empiler les éléments"
         }
-      }
+      },
+      "label": "Aperçu du tableau IA"
     },
     "status": {
       "loading": "Chargement…",
@@ -630,5 +631,16 @@
     "renamed": "Renommé",
     "alreadyInLocation": "Déjà à cet emplacement",
     "tableDeleted": "Table supprimée"
+  },
+  "kitableSidebar": {
+    "collapse": "Réduire la barre latérale du fichier de tables",
+    "expand": "Déployer la barre latérale du fichier de tables",
+    "create": "Créer dans le fichier de tables",
+    "tableName": "Nom de la table de données",
+    "navLabel": "Fichier de tables",
+    "tableMenu": "Ouvrir le menu de la table",
+    "searchPlaceholder": "Rechercher des tables, tableaux de bord et workflows",
+    "switchSection": "Changer de section du fichier de tables",
+    "renameTable": "Renommer la table de données"
   }
 }

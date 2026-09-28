@@ -186,7 +186,8 @@
       },
       "aiCta": "或者描述一下 — 让 AI 帮你搭建",
       "back": "返回",
-      "cancel": "取消"
+      "cancel": "取消",
+      "fullEmailSync": "完整同步邮箱收件箱"
     }
   },
   "errors": {

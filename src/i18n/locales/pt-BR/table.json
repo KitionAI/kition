@@ -146,7 +146,8 @@
     "groupField": "Campo de agrupamento",
     "groupDirection": "Direção do agrupamento",
     "removeGroup": "Remover agrupamento",
-    "addAnotherGroup": "Adicionar outro agrupamento"
+    "addAnotherGroup": "Adicionar outro agrupamento",
+    "viewName": "Nome da visualização"
   },
   "header": {
     "addView": "Adicionar visualização"
@@ -225,7 +226,9 @@
   },
   "datePicker": {
     "clear": "Limpar",
-    "today": "Hoje"
+    "today": "Hoje",
+    "nextMonth": "Próximo mês",
+    "previousMonth": "Mês anterior"
   },
   "aiOverlay": {
     "regenerate": "Regenerar"
@@ -489,7 +492,15 @@
         "title": "Restaurant Operations",
         "description": "Coordinate reservations, guest preferences, private events, and service follow-up."
       }
-    }
+    },
+    "blankWorkspace": "Novo espaço de tabelas em branco",
+    "newWorkspace": "Novo espaço de tabelas",
+    "readOnly": "Somente leitura",
+    "liveReporting": "Relatórios ao vivo a partir dos registros do modelo",
+    "progressDistribution": "Distribuição do progresso",
+    "tasksByAssignee": "Tarefas por responsável",
+    "previewLoading": "Carregando a prévia da imagem",
+    "previewUnavailable": "Prévia da imagem indisponível"
   },
   "fileImport": {
     "title": "Importar planilha",

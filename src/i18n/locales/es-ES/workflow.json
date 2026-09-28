@@ -186,7 +186,8 @@
       },
       "aiCta": "O descríbelo: deja que la IA cree el flujo de trabajo",
       "back": "Atrás",
-      "cancel": "Cancelar"
+      "cancel": "Cancelar",
+      "fullEmailSync": "Sincronización completa de la bandeja de correo"
     }
   },
   "errors": {

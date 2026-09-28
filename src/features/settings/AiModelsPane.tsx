@@ -477,7 +477,7 @@ export function AiModelsPane() {
                 value={providerSearch}
                 onChange={(event) => setProviderSearch(event.target.value)}
                 placeholder="Search providers"
-                aria-label="Search AI providers"
+                aria-label={t('models.searchProviders')}
               />
             </label>
             {visibleProviders.map((provider) => {

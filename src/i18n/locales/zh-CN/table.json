@@ -146,7 +146,8 @@
     "groupField": "分组字段",
     "groupDirection": "分组方向",
     "removeGroup": "移除分组",
-    "addAnotherGroup": "添加分组"
+    "addAnotherGroup": "添加分组",
+    "viewName": "视图名称"
   },
   "header": {
     "addView": "添加视图"
@@ -225,7 +226,9 @@
   },
   "datePicker": {
     "clear": "清除",
-    "today": "今天"
+    "today": "今天",
+    "nextMonth": "下个月",
+    "previousMonth": "上个月"
   },
   "aiOverlay": {
     "regenerate": "重新生成"
@@ -489,7 +492,15 @@
         "title": "餐厅运营",
         "description": "协调预订、宾客偏好、私人活动和服务跟进。"
       }
-    }
+    },
+    "blankWorkspace": "新建空白数据表工作区",
+    "newWorkspace": "新建数据表工作区",
+    "readOnly": "只读",
+    "liveReporting": "基于模板记录的实时报表",
+    "progressDistribution": "进度分布",
+    "tasksByAssignee": "按负责人统计任务",
+    "previewLoading": "正在加载图片预览",
+    "previewUnavailable": "图片预览不可用"
   },
   "fileImport": {
     "title": "导入电子表格",

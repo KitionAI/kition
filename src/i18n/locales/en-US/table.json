@@ -146,7 +146,8 @@
     "groupField": "Group field",
     "groupDirection": "Group direction",
     "removeGroup": "Remove group",
-    "addAnotherGroup": "Add another group"
+    "addAnotherGroup": "Add another group",
+    "viewName": "View name"
   },
   "header": {
     "addView": "Add view"
@@ -225,7 +226,9 @@
   },
   "datePicker": {
     "clear": "Clear",
-    "today": "Today"
+    "today": "Today",
+    "nextMonth": "Next month",
+    "previousMonth": "Previous month"
   },
   "aiOverlay": {
     "regenerate": "Regenerate"
@@ -489,7 +492,15 @@
         "title": "Restaurant Operations",
         "description": "Coordinate reservations, guest preferences, private events, and service follow-up."
       }
-    }
+    },
+    "blankWorkspace": "New blank table workspace",
+    "newWorkspace": "New table workspace",
+    "readOnly": "Read only",
+    "liveReporting": "Live reporting from template records",
+    "progressDistribution": "Progress distribution",
+    "tasksByAssignee": "Tasks by assignee",
+    "previewLoading": "Loading image preview",
+    "previewUnavailable": "Image preview unavailable"
   },
   "fileImport": {
     "title": "Import spreadsheet",

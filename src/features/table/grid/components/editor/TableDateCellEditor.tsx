@@ -197,7 +197,7 @@ export const TableDateCellEditor = forwardRef<HTMLDivElement, TableDateCellEdito
                 <button
                   type="button"
                   onClick={() => moveMonth(-1)}
-                  aria-label="Previous month"
+                  aria-label={t('datePicker.previousMonth')}
                   className="grid size-7 cursor-pointer place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
                 >
                   <ChevronLeft className="size-4" />
@@ -205,7 +205,7 @@ export const TableDateCellEditor = forwardRef<HTMLDivElement, TableDateCellEdito
                 <button
                   type="button"
                   onClick={() => moveMonth(1)}
-                  aria-label="Next month"
+                  aria-label={t('datePicker.nextMonth')}
                   className="grid size-7 cursor-pointer place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
                 >
                   <ChevronRight className="size-4" />

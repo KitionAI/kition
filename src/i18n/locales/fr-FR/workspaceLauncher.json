@@ -51,7 +51,8 @@
     "renameTitle": "Renommer l'espace de travail",
     "renamePlaceholder": "Nom de l'espace de travail",
     "removeConfirm": "Retirer cet espace de travail de la liste ? Le dossier sur le disque reste intact.",
-    "empty": "Aucun espace de travail pour l'instant. Créez-en un ou ouvrez-en un pour commencer."
+    "empty": "Aucun espace de travail pour l'instant. Créez-en un ou ouvrez-en un pour commencer.",
+    "more": "Plus"
   },
   "errors": {
     "missingName": "Veuillez saisir un nom d'espace de travail.",

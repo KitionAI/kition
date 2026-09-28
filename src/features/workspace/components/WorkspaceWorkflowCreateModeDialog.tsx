@@ -259,7 +259,7 @@ export function WorkspaceWorkflowCreateModeDialog({
                       <Table2 className="size-4" />
                     </span>
                   </div>
-                  <span className="block text-sm font-medium text-foreground">Full email inbox sync</span>
+                  <span className="block text-sm font-medium text-foreground">{t('launcher.createModeDialog.fullEmailSync')}</span>
                   <span className="-mt-1 block text-xs leading-relaxed text-muted-foreground">
                     Import every message from the selected IMAP mailbox into this table, then keep later runs incremental.
                   </span>

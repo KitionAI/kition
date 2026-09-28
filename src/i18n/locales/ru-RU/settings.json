@@ -298,7 +298,8 @@
       "low": "Низкое",
       "medium": "Среднее",
       "high": "Высокое"
-    }
+    },
+    "searchProviders": "Поиск провайдеров ИИ"
   },
   "disconnectDialog": {
     "title": "Отключить {{provider}}?",

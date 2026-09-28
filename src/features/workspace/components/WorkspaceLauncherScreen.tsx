@@ -143,7 +143,7 @@ export function WorkspaceLauncherScreen({
           <div className="flex items-center justify-between pb-3">
             <span className="text-sm font-medium text-foreground">{t('title')}</span>
             {variant === 'dialog' && onClose ? (
-              <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close">
+              <Button variant="ghost" size="icon" onClick={onClose} aria-label={tCommon('actions.close')}>
                 <X className="size-4" />
               </Button>
             ) : null}
@@ -180,7 +180,7 @@ export function WorkspaceLauncherScreen({
                           setOpenMenuPath(openMenuPath === vault.path ? null : vault.path)
                         }}
                         className="absolute right-1 top-1.5 hidden rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground group-hover:inline-flex"
-                        aria-label="More"
+                        aria-label={t('vault.more')}
                       >
                         <MoreHorizontal className="size-4" />
                       </button>

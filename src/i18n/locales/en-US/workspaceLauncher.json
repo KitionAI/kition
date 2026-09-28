@@ -51,7 +51,8 @@
     "renameTitle": "Rename workspace",
     "renamePlaceholder": "Workspace name",
     "removeConfirm": "Remove this workspace from the list? The folder on disk stays untouched.",
-    "empty": "No workspaces yet. Create or open one to get started."
+    "empty": "No workspaces yet. Create or open one to get started.",
+    "more": "More"
   },
   "errors": {
     "missingName": "Please enter a workspace name.",

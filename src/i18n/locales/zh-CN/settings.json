@@ -298,7 +298,8 @@
       "low": "低",
       "medium": "中",
       "high": "高"
-    }
+    },
+    "searchProviders": "搜索 AI 提供方"
   },
   "disconnectDialog": {
     "title": "断开 {{provider}}？",

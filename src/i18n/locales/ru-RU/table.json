@@ -146,7 +146,8 @@
     "groupField": "Поле группировки",
     "groupDirection": "Направление группировки",
     "removeGroup": "Удалить группировку",
-    "addAnotherGroup": "Добавить группировку"
+    "addAnotherGroup": "Добавить группировку",
+    "viewName": "Название вида"
   },
   "header": {
     "addView": "Добавить представление"
@@ -225,7 +226,9 @@
   },
   "datePicker": {
     "clear": "Очистить",
-    "today": "Сегодня"
+    "today": "Сегодня",
+    "nextMonth": "Следующий месяц",
+    "previousMonth": "Предыдущий месяц"
   },
   "aiOverlay": {
     "regenerate": "Перегенерировать"
@@ -489,7 +492,15 @@
         "title": "Restaurant Operations",
         "description": "Coordinate reservations, guest preferences, private events, and service follow-up."
       }
-    }
+    },
+    "blankWorkspace": "Новое пустое пространство таблиц",
+    "newWorkspace": "Новое пространство таблиц",
+    "readOnly": "Только чтение",
+    "liveReporting": "Живые отчёты по записям шаблона",
+    "progressDistribution": "Распределение прогресса",
+    "tasksByAssignee": "Задачи по исполнителям",
+    "previewLoading": "Загрузка предпросмотра изображения",
+    "previewUnavailable": "Предпросмотр изображения недоступен"
   },
   "fileImport": {
     "title": "Импорт таблицы",

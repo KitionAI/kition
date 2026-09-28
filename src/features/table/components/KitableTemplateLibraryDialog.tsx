@@ -193,6 +193,7 @@ function BlankTemplateCard({
   disabled: boolean
   onCreate: () => void
 }) {
+  const { t } = useTranslation('table')
   return (
     <article className="group min-w-0" data-testid="kitable-template-blank-card">
       <button
@@ -209,12 +210,12 @@ function BlankTemplateCard({
               <span className="absolute inset-3 rotate-6 rounded-xl border border-border bg-background shadow-sm" />
               <span className="absolute inset-0 grid place-items-center"><Plus className="size-7 text-primary" /></span>
             </span>
-            <span className="mt-2 block text-xs font-medium text-muted-foreground">New blank table workspace</span>
+            <span className="mt-2 block text-xs font-medium text-muted-foreground">{t('templateLibrary.blankWorkspace')}</span>
           </span>
         </span>
         {busy ? <span className="absolute inset-0 grid place-items-center bg-background/70"><LoaderCircle className="size-6 animate-spin text-primary" /></span> : null}
       </button>
-      <h4 className="mt-3 text-sm font-semibold text-foreground">New table workspace</h4>
+      <h4 className="mt-3 text-sm font-semibold text-foreground">{t('templateLibrary.newWorkspace')}</h4>
       <p className="mt-1 truncate text-xs text-muted-foreground">Start from a clean data workspace.</p>
     </article>
   )
@@ -282,6 +283,7 @@ function TemplateDetail({
   onBack: () => void
   onUse: () => void
 }) {
+  const { t } = useTranslation('table')
   const activeResource = template.snapshot.resources.find((resource) => resource.id === activeResourceId)
     || template.snapshot.resources[0]
 
@@ -377,6 +379,7 @@ function TemplateResourcePreview({
   template: KitableTemplateDefinition
   resource?: KitableTemplateResource
 }) {
+  const { t } = useTranslation('table')
   const [assetById, setAssetById] = useState<Map<string, KitableTemplateAssetManifestItem>>(() => new Map())
   const [assetManifestStatus, setAssetManifestStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
 
@@ -441,7 +444,7 @@ function TemplateResourcePreview({
             <h3 className="text-sm font-semibold text-foreground">{resource.title}</h3>
             <p className="text-xs text-muted-foreground">{resource.description}</p>
           </div>
-          <span className="rounded-md border bg-background px-2 py-1 text-xs text-muted-foreground">Read only</span>
+          <span className="rounded-md border bg-background px-2 py-1 text-xs text-muted-foreground">{t('templateLibrary.readOnly')}</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] border-collapse text-left text-xs">
@@ -462,7 +465,7 @@ function TemplateResourcePreview({
                           isAsset ? 'min-w-36' : 'max-w-56 truncate',
                         )}
                       >
-                        {renderPreviewValue(value, field.title, assetById, assetManifestStatus)}
+                        {renderPreviewValue(value, field.title, assetById, assetManifestStatus, t)}
                       </td>
                     )
                   })}
@@ -485,7 +488,7 @@ function TemplateResourcePreview({
           </span>
           <div>
             <h3 className="text-sm font-semibold text-foreground">{dashboard?.title || resource.title}</h3>
-            <p className="text-xs text-muted-foreground">Live reporting from template records</p>
+            <p className="text-xs text-muted-foreground">{t('templateLibrary.liveReporting')}</p>
           </div>
         </div>
         <div className="grid grid-cols-4 gap-3">
@@ -498,7 +501,7 @@ function TemplateResourcePreview({
         </div>
         <div className="mt-3 grid grid-cols-[0.8fr_1.2fr] gap-3">
           <div className="rounded-xl border bg-background p-4 shadow-sm">
-            <div className="text-xs font-medium text-foreground">Progress distribution</div>
+            <div className="text-xs font-medium text-foreground">{t('templateLibrary.progressDistribution')}</div>
             <div className="mt-5 flex items-center justify-center">
               <div
                 className="grid size-32 place-items-center rounded-full"
@@ -509,7 +512,7 @@ function TemplateResourcePreview({
             </div>
           </div>
           <div className="rounded-xl border bg-background p-4 shadow-sm">
-            <div className="text-xs font-medium text-foreground">Tasks by assignee</div>
+            <div className="text-xs font-medium text-foreground">{t('templateLibrary.tasksByAssignee')}</div>
             <div className="mt-5 flex h-32 items-end gap-2">
               {[38, 72, 48, 88, 55, 34, 62].map((height, index) => (
                 <div
@@ -550,6 +553,7 @@ function renderPreviewValue(
   fieldTitle: string,
   assetById: Map<string, KitableTemplateAssetManifestItem>,
   assetManifestStatus: 'idle' | 'loading' | 'ready' | 'error',
+  t: (key: string) => string,
 ) {
   if (isKitableTemplateAssetReference(value)) {
     const assets = value.assetIds
@@ -579,9 +583,9 @@ function renderPreviewValue(
       )
     }
     if (assetManifestStatus === 'loading') {
-      return <LoaderCircle className="size-4 animate-spin text-muted-foreground" aria-label="Loading image preview" />
+      return <LoaderCircle className="size-4 animate-spin text-muted-foreground" aria-label={t('templateLibrary.previewLoading')} />
     }
-    return <span className="text-xs text-muted-foreground">Image preview unavailable</span>
+    return <span className="text-xs text-muted-foreground">{t('templateLibrary.previewUnavailable')}</span>
   }
   if (Array.isArray(value)) return value.join(', ')
   if (typeof value === 'boolean') return value ? 'Yes' : 'No'

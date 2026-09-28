@@ -51,7 +51,8 @@
     "renameTitle": "Renombrar espacio de trabajo",
     "renamePlaceholder": "Nombre del espacio de trabajo",
     "removeConfirm": "¿Quitar este espacio de trabajo de la lista? La carpeta en el disco permanece intacta.",
-    "empty": "Aún no hay espacios de trabajo. Crea o abre uno para empezar."
+    "empty": "Aún no hay espacios de trabajo. Crea o abre uno para empezar.",
+    "more": "Más"
   },
   "errors": {
     "missingName": "Introduce un nombre para el espacio de trabajo.",

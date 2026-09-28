@@ -14,9 +14,10 @@ export function WhiteboardAgentPreviewLayer({
 }: {
   preview: NonNullable<WhiteboardAgentPreviewState['preview']>
 }) {
+  const { t } = useTranslation('workspace')
   return (
     <g
-      aria-label="AI Board preview"
+      aria-label={t('board.agentPreview.label')}
       data-testid="whiteboard-agent-preview-layer"
       pointerEvents="none"
     >

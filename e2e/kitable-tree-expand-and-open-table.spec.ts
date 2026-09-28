@@ -632,7 +632,7 @@ test.describe('kitable inner navigation and file-level tabs', () => {
 
     // ── (b) Tables stay out of the primary tree and are flat inner-nav rows ──
     await expect(page.locator('.document-tree-row', { hasText: 'Prospects' })).toHaveCount(0)
-    const kitableNav = page.getByRole('navigation', { name: 'Kitable' })
+    const kitableNav = page.getByRole('navigation', { name: 'Table file' })
     const dataTableItem = page.getByTestId('workspace-kitable-data-table')
     const workflowItem = page.getByTestId('workspace-kitable-workflow')
     const touchpointsItem = page.getByTestId('workspace-kitable-table-13')

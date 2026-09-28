@@ -298,7 +298,8 @@
       "low": "Baixo",
       "medium": "Médio",
       "high": "Alto"
-    }
+    },
+    "searchProviders": "Buscar provedores de IA"
   },
   "disconnectDialog": {
     "title": "Desconectar {{provider}}?",
