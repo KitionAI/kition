@@ -1,3 +1,4 @@
+import { InlineError } from '@/components/states'
 import {
   AlertCircle,
   ChevronLeft,
@@ -955,7 +956,7 @@ export function WorkflowHomePage({ initialSelectedId, initialModeDialogOpen = fa
                 <WorkflowRunTestHeader lastRunFailed={selectedLatestRun?.status === 'error'} nameError={validation.name} runTest={runTest} />
 
                 <div className="flex min-h-0 flex-1 flex-col px-6 py-5">
-                  {error ? <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</div> : null}
+                  {error ? <InlineError className="mb-4" message={error} /> : null}
                   <WorkflowUnresolvedTemplateBanner fieldNames={unresolvedTemplate.fieldNames} onDismiss={unresolvedTemplate.dismiss} />
                   {activeTab === 'configuration' ? (
                     <div className="flex min-h-0 flex-1 flex-col gap-4" data-testid="workflow-home-configuration-tab">

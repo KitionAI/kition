@@ -17,6 +17,8 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+# Loading copy belongs in locale files or the Skeleton primitive, never inline in JSX.
+HARDCODED_LOADING_PATTERN = re.compile(r"Loading(?:\.\.\.|\u2026)")
 TEXT_SCAN_EXEMPT_PATHS = {
     "docs/legal/THIRD_PARTY_NOTICES.txt",
     "README.md",
@@ -170,7 +172,10 @@ def scan() -> list[tuple[str, int, str]]:
         except UnicodeDecodeError:
             continue
 
+        is_component = relative_path.startswith("src/") and relative_path.endswith(".tsx") and ".spec." not in relative_path
         for line_number, line in enumerate(text.splitlines(), 1):
+            if is_component and HARDCODED_LOADING_PATTERN.search(line):
+                violations.append((relative_path, line_number, "hardcoded loading text in JSX; use SkeletonRows or an i18n key"))
             if contains_prohibited_script(line):
                 violations.append((relative_path, line_number, line.strip()))
             elif contains_prohibited_escape(line):

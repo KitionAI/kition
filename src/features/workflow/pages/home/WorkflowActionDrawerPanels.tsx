@@ -1,4 +1,5 @@
 import { LoaderCircle, Play, Plus, Send } from 'lucide-react'
+import { InlineError } from '@/components/states'
 import type { Dispatch, SetStateAction } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -48,9 +49,7 @@ function NodeTestOutcome({ nodeTest, successMessage, testIdPrefix }: { nodeTest:
         </div>
       ) : null}
       {nodeTest.status === 'error' ? (
-        <div data-testid={`${testIdPrefix}-error`} className="mt-2 rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-1.5 text-[11px] text-destructive">
-          {nodeTest.error}
-        </div>
+        <InlineError size="xs" className="mt-2" message={nodeTest.error} data-testid={`${testIdPrefix}-error`} />
       ) : null}
     </>
   )
@@ -105,9 +104,7 @@ export function WorkflowAddRecordDrawerPanel({ context, targetLabel }: { context
             </div>
           ) : null}
           {nodeTest.status === 'error' ? (
-            <div data-testid="workflow-add-record-test-error" className="mt-2 rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-1.5 text-[11px] text-destructive">
-              {nodeTest.error}
-            </div>
+            <InlineError size="xs" className="mt-2" message={nodeTest.error} data-testid="workflow-add-record-test-error" />
           ) : null}
         </div>
       </DrawerSection>
@@ -239,9 +236,7 @@ export function WorkflowEmailDrawerPanel({ context, connections, onNewConnection
           </div>
         ) : null}
         {sendTest.status === 'error' ? (
-          <div data-testid="send-test-error" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-            {sendTest.error}
-          </div>
+          <InlineError size="sm" message={sendTest.error} data-testid="send-test-error" />
         ) : null}
         <DrawerField label={t('panels.drawer.email.subjectLabel')} hint={pickTableHint} error={validation.subject ? t(`panels.home.validation.${validation.subject}`) : ''}>
           <TemplateTokenInput
@@ -293,9 +288,7 @@ export function WorkflowEmailDrawerPanel({ context, connections, onNewConnection
             </div>
           ) : null}
           {nodeTest.status === 'error' ? (
-            <div data-testid="workflow-drawer-test-step-error" className="mt-2 rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-1.5 text-[11px] text-destructive">
-              {nodeTest.error}
-            </div>
+            <InlineError size="xs" className="mt-2" message={nodeTest.error} data-testid="workflow-drawer-test-step-error" />
           ) : null}
         </div>
       </DrawerSection>

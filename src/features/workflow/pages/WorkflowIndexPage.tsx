@@ -1,4 +1,5 @@
 import { Plus } from 'lucide-react'
+import { InlineError } from '@/components/states'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -350,9 +351,7 @@ export function WorkflowIndexPage({
         {state.status === 'loading' || tableLabelsStatus === 'loading' || onboardingPending || emailSync.status === 'loading' ? (
           <WorkflowListSkeleton label={t('panels.home.list.loading')} />
         ) : state.status === 'error' ? (
-          <div className="m-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-3 text-sm text-destructive">
-            {state.error}
-          </div>
+          <InlineError className="m-3" message={state.error} />
         ) : scopedWorkflows.length || emailSync.workflows.length ? (
           <WorkflowDefinitionTable
             workflows={scopedWorkflows}

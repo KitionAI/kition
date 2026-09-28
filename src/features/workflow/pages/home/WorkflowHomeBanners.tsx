@@ -1,4 +1,5 @@
 import { AlertCircle, LoaderCircle } from 'lucide-react'
+import { InlineError } from '@/components/states'
 import { useTranslation } from 'react-i18next'
 
 import type { useWorkflowSendTest } from '@/features/workflow/hooks/useWorkflowSendTest'
@@ -37,7 +38,7 @@ export function WorkflowRunTestHeader({ lastRunFailed, nameError, runTest }: Wor
         </div>
       ) : null}
       {runTest.status === 'error' ? (
-        <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive" data-testid="workflow-home-run-test-error">{runTest.error}</div>
+        <InlineError size="sm" className="mt-3" message={runTest.error} data-testid="workflow-home-run-test-error" />
       ) : null}
     </header>
   )
@@ -95,13 +96,9 @@ export function WorkflowBuildBanner({ streamLocked, phase, buildError, status }:
   }
   if (buildError) {
     return (
-      <div
-        data-testid="workflow-home-streaming-error"
-        className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-        role="alert"
-      >
+      <InlineError data-testid="workflow-home-streaming-error">
         <strong>{t('panels.home.streamingBanner.errorTitle')}</strong> {buildError}
-      </div>
+      </InlineError>
     )
   }
   return <StatusBannerSlot {...status} />

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { InlineError } from '@/components/states'
 import { useTranslation } from 'react-i18next'
 import { LoaderCircle, Plus, Sparkles } from 'lucide-react'
 import { getBuiltinTemplates, type WorkflowTemplate } from '@/features/workflow/templates'
@@ -64,9 +65,7 @@ export function WorkflowHomeLauncher(props: WorkflowHomeLauncherProps) {
             </button>
           </div>
           {errorMessage ? (
-            <div data-testid="workflow-home-launcher-error" className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-              {errorMessage}
-            </div>
+            <InlineError size="sm" className="mt-3" message={errorMessage} data-testid="workflow-home-launcher-error" />
           ) : null}
         </div>
         <WorkflowLauncherDecor />

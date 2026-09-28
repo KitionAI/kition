@@ -2,12 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ChevronDown,
   MoreHorizontal,
-  RefreshCw,
   X,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { KitionLogoMark } from '@/components/KitionLogoMark'
 import { Button, Card, CardContent, Input } from '@/components/ui'
+import { SkeletonRows } from '@/components/states'
 import { useConfirm } from '@/components/confirm'
 import { useDismissableLayer } from '@/registry/hooks/use-on-click-outside'
 import { cn } from '@/lib/utils'
@@ -57,6 +57,7 @@ export function WorkspaceLauncherScreen({
   onClose,
 }: WorkspaceLauncherScreenProps) {
   const { t } = useTranslation('workspaceLauncher')
+  const { t: tCommon } = useTranslation('common')
   const confirm = useConfirm()
   const [openMenuPath, setOpenMenuPath] = useState<string | null>(null)
   const [renameTarget, setRenameTarget] = useState<VaultEntry | null>(null)
@@ -149,9 +150,7 @@ export function WorkspaceLauncherScreen({
           </div>
           <div className="-mx-1 flex-1 overflow-y-auto">
             {!loaded ? (
-              <div className="flex items-center gap-2 px-2 py-3 text-xs text-muted-foreground">
-                <RefreshCw className="size-3 animate-spin" /> Loading…
-              </div>
+              <SkeletonRows className="px-2 py-3" label={tCommon('actions.loading')} />
             ) : sortedVaults.length === 0 ? (
               <p className="px-2 py-6 text-xs text-muted-foreground">{t('vault.empty')}</p>
             ) : (

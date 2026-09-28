@@ -1,4 +1,5 @@
 import { ArrowLeft, ArrowUp, LoaderCircle, Plus, Sparkles, Table } from 'lucide-react'
+import { InlineError } from '@/components/states'
 import { useTranslation } from 'react-i18next'
 import { TriggerTableSelect, type TriggerTableOption } from '@/features/workflow/components/TriggerTableSelect'
 
@@ -72,9 +73,7 @@ function GalleryHero(props: WorkflowLauncherHeroProps) {
         </button>
       </div>
       {errorMessage ? (
-        <div data-testid="workflow-model-error" className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-          {errorMessage}
-        </div>
+        <InlineError size="sm" className="mt-3" message={errorMessage} data-testid="workflow-model-error" />
       ) : null}
     </div>
   )
@@ -186,9 +185,7 @@ function AiPromptHero(props: WorkflowLauncherHeroProps) {
       {/* Preserve old test-id alias so legacy e2e tests still pass */}
       <button type="button" data-testid="workflow-start-btn" hidden onClick={() => { if (canSubmit) onAiSubmit() }} />
       {errorMessage ? (
-        <div data-testid="workflow-model-error" className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-          {errorMessage}
-        </div>
+        <InlineError size="sm" className="mt-3" message={errorMessage} data-testid="workflow-model-error" />
       ) : null}
     </div>
   )

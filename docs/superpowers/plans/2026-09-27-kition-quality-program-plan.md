@@ -349,8 +349,8 @@ Private implementation detail lives in the runtime plan. These tasks are the pub
 
 ### Task 3.3: Loading, empty, and error states
 
-- [ ] Define three primitives in the kit: `Skeleton`, `EmptyState`, and `InlineError` with retry.
-- [ ] Every query-backed pane uses them. Add a lint rule that forbids the strings `Loading...` and `Loading…` in JSX.
+- [x] `src/components/states.tsx` (2026-09-28): `Skeleton` and `SkeletonRows` (a labelled status region), `EmptyState` (icon, title, description, one action slot), and `InlineError` (role alert, three sizes, optional retry button), with specs.
+- [~] Every query-backed pane uses them. (2026-09-28: the vault launcher's raw loading text became skeleton rows, the translation card's loading rows use `Skeleton`, and the eleven hand-written destructive error boxes across the workflow launcher, index page, home page, drawer panels, and banners are `InlineError`. `scripts/check-i18n.py` now fails on `Loading...` or `Loading…` inside a `.tsx` under `src/`; the ESLint `no-restricted-syntax` block stays at warn level because 87 hex-color warnings already live there and `pnpm lint` runs with `--quiet`. Remaining: the empty states in the workspace, Agent, and workflow features still render their own markup and should move onto `EmptyState`.)
 
 ### Task 3.4: i18n completeness gate
 

@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 
 import { ActionMenu, ActionMenuContent, ActionMenuItem, ActionMenuTrigger } from '@/components/ActionMenu'
+import { Skeleton } from '@/components/states'
 import type { DocumentTranslationState } from '@/features/document/hooks/useDocumentTranslation'
 import {
   TRANSLATION_LANGUAGES,
@@ -115,9 +116,9 @@ export function DocumentTranslationCard({
 
       {state.status === 'loading' ? (
         <div className="space-y-2 py-1" role="status" aria-label={t('editor.translate.loading')}>
-          <div className="h-3 w-11/12 animate-pulse rounded bg-muted motion-reduce:animate-none" />
-          <div className="h-3 w-4/5 animate-pulse rounded bg-muted motion-reduce:animate-none" />
-          <div className="h-3 w-2/3 animate-pulse rounded bg-muted motion-reduce:animate-none" />
+          <Skeleton className="h-3 w-11/12" />
+          <Skeleton className="h-3 w-4/5" />
+          <Skeleton className="h-3 w-2/3" />
         </div>
       ) : null}
 
