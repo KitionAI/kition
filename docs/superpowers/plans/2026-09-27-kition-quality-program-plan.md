@@ -114,7 +114,7 @@ Order matters. Each phase leaves `main` releasable.
 
 - [x] Write a failing test that throws inside a child and asserts the fallback renders with the pane name and a retry button. (2026-09-27: 5 specs in `AppErrorBoundary.spec.tsx`.)
 - [x] Implement the boundary and wrap `App` at `scope: 'app'` and each editor pane at `scope: 'pane'`. (`EditorPaneBoundary` in `WorkspaceEditorContent.tsx` wraps all 14 pane mounts.)
-- [ ] Add an e2e assertion to `e2e/app-shell.spec.ts` that a forced pane error does not blank the shell. Needs a test-only trigger; decide whether a `?e2e-throw=<pane>` query flag in development builds is acceptable.
+- [x] `e2e/app-shell.spec.ts` (2026-09-28) opens `/documents?e2e-throw=document` and asserts the pane fallback with its retry button renders while the document tree and the Settings button stay visible and no app-scope fallback appears. The trigger is `src/features/workspace/testing/paneErrorTrigger.tsx`, which returns nothing unless `import.meta.env.DEV` is set, following the whiteboard test bridge precedent; `EditorPaneBoundary` takes an optional `paneId`, set on the document editor pane.
 
 ### Task 0.2: Dead code and boundary linting
 

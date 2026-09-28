@@ -5,6 +5,7 @@ import { BookOpen, Globe } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/registry/ui/button'
 import { AppErrorBoundary } from '@/components/AppErrorBoundary'
+import { PaneErrorTrigger } from '@/features/workspace/testing/paneErrorTrigger'
 import type { OpenedDocumentDraftCacheEntry } from '@/features/document/lib/openedDocumentDrafts'
 import type {
   DocumentRevisionDecision,
@@ -98,14 +99,18 @@ function EditorPaneFallback() {
 function EditorPaneBoundary({
   label,
   fallback,
+  paneId,
   children,
 }: {
   label?: string
   fallback?: ReactNode
+  /** Names the pane for the development-only `?e2e-throw=<paneId>` trigger. */
+  paneId?: string
   children: ReactNode
 }) {
   return (
     <AppErrorBoundary scope="pane" label={label}>
+      {paneId ? <PaneErrorTrigger paneId={paneId} /> : null}
       <Suspense fallback={fallback === undefined ? <EditorPaneFallback /> : fallback}>{children}</Suspense>
     </AppErrorBoundary>
   )
@@ -671,7 +676,7 @@ export function WorkspaceEditorContent({
                       key={`${tab.uid || tab.path}:${editorResetVersions[tab.path] || 0}`}
                       className="document-rich-editor-stack__pane is-active"
                     >
-                      <EditorPaneBoundary>
+                      <EditorPaneBoundary paneId="document">
                         <DocumentMarkdownEditorPane
                           documentPath={entry.document.path}
                           value={draftContent}

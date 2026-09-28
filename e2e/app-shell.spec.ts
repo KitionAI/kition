@@ -381,6 +381,20 @@ test.describe('app shell navigation', () => {
     await expect(page.getByTestId('search-palette-input')).toBeVisible()
   })
 
+  test('a pane render error shows the pane fallback and keeps the shell alive', async ({ page }) => {
+    await mockDesktopWorkspaceBridge(page)
+    await page.goto('/documents?e2e-throw=document', { waitUntil: 'networkidle' })
+
+    const fallback = page.getByTestId('app-error-boundary')
+    await expect(fallback).toBeVisible()
+    await expect(fallback).toHaveAttribute('data-scope', 'pane')
+    await expect(page.getByTestId('app-error-boundary-retry')).toBeVisible()
+    // The shell around the pane is untouched.
+    await expect(page.getByTestId('document-tree')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Settings', exact: true })).toBeVisible()
+    await expect(page.locator('[data-testid="app-error-boundary"][data-scope="app"]')).toHaveCount(0)
+  })
+
   test('keeps backendless web preview free of optional startup errors', async ({ page }) => {
     let notificationPolicyCalls = 0
     let lifecycleHookCalls = 0
