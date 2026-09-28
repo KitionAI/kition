@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { useDialogFocus } from '@/lib/useDialogFocus'
 import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
@@ -7,6 +8,7 @@ import { KitionAccountPanel } from '@/features/account/components/KitionAccountP
 export { KitionAccountPanel as PortalProfilePage }
 
 export function PortalProfileDialog({ onClose }: { onClose: () => void }) {
+  const dialogRef = useDialogFocus<HTMLDivElement>()
   const { t } = useTranslation('common')
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -24,6 +26,8 @@ export function PortalProfileDialog({ onClose }: { onClose: () => void }) {
     <div className="portal-profile-modal-stage" role="presentation" onClick={onClose}>
       <div
         className="portal-profile-modal-window"
+        ref={dialogRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label={t('dialogs.accountInfo')}

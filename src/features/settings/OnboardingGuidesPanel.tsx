@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useDialogFocus } from '@/lib/useDialogFocus'
 import { Button, Card, CardContent } from '@/components/ui'
 import { listWorkspaceDocuments, type WorkspaceDocumentTreeItem } from '@/services/desktop'
 import {
@@ -18,6 +19,7 @@ type LoadState =
   | { kind: 'ready'; manifest: OnboardingGuideManifest; items: WorkspaceDocumentTreeItem[]; rootPath: string }
 
 export function OnboardingGuidesPanel({ onClose }: { onClose?: () => void } = {}) {
+  const dialogRef = useDialogFocus<HTMLElement>()
   const { t } = useTranslation('settings')
   const [state, setState] = useState<LoadState>({ kind: 'loading' })
 
@@ -81,6 +83,8 @@ export function OnboardingGuidesPanel({ onClose }: { onClose?: () => void } = {}
         <section
           className="settings-modal-window"
           onClick={(e) => e.stopPropagation()}
+          ref={dialogRef}
+          tabIndex={-1}
           role="dialog"
           aria-modal="true"
           aria-label={t('onboardingGuides.modalLabel')}

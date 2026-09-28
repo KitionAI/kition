@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useDialogFocus } from '@/lib/useDialogFocus'
 import { EmailProvidersPane } from '@/features/emailProviders/public'
 import { AiModelsPane } from '@/features/settings/AiModelsPane'
 import { NetworkSettings } from '@/features/settings/NetworkSettings'
@@ -23,6 +24,7 @@ type DesktopSettingsPageProps = {
 }
 
 export function DesktopSettingsPage({ initialSection, onClose }: DesktopSettingsPageProps = {}) {
+  const dialogRef = useDialogFocus<HTMLElement>()
   const { t, i18n } = useTranslation('settings')
   const [activeSection, setActiveSection] = useState<SettingsSectionKey>(() => initialSection || 'general')
   const [search, setSearch] = useState('')
@@ -109,6 +111,8 @@ export function DesktopSettingsPage({ initialSection, onClose }: DesktopSettings
     <div className="settings-modal-stage" role="presentation" onClick={handleRequestClose}>
       <section
         className="settings-modal-window"
+        ref={dialogRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-labelledby="settings-title"

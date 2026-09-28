@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { useDialogFocus } from '@/lib/useDialogFocus'
 import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
@@ -25,6 +26,7 @@ export function RightSheet({
   dirty = false,
   onRequestClose,
 }: RightSheetProps) {
+  const dialogRef = useDialogFocus<HTMLElement>()
   const { t } = useTranslation('common')
   const [visible, setVisible] = useState(false)
 
@@ -65,6 +67,8 @@ export function RightSheet({
       />
       <aside
         data-testid="right-sheet"
+        ref={dialogRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label={typeof title === 'string' ? title : t('dialogs.rightSheet')}

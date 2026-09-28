@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { useDialogFocus } from '@/lib/useDialogFocus'
 import { Button } from '@/components/ui'
 import { useTranslation } from '@/i18n'
 
@@ -11,6 +12,7 @@ type Props = {
 }
 
 export function DisconnectConfirmDialog({ providerName, onCancel, onConfirm, pending, error }: Props) {
+  const dialogRef = useDialogFocus<HTMLDivElement>()
   const { t } = useTranslation('settings')
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
@@ -26,7 +28,7 @@ export function DisconnectConfirmDialog({ providerName, onCancel, onConfirm, pen
 
   return (
     <div className="settings-modal-stage" role="presentation" onClick={onCancel}>
-      <div className="disconnect-dialog" role="alertdialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+      <div ref={dialogRef} tabIndex={-1} className="disconnect-dialog" role="alertdialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <h3>{t('disconnectDialog.title', { provider: providerName })}</h3>
         <p>{t('disconnectDialog.body')}</p>
         {error ? <p className="disconnect-dialog-error" role="alert">{error}</p> : null}

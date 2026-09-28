@@ -363,8 +363,8 @@ Private implementation detail lives in the runtime plan. These tasks are the pub
 ### Task 3.5: Accessibility pass
 
 - [x] Replace the 6 clickable `div` elements with buttons. (2026-09-29: on inspection all five that remained are modal backdrops that dismiss on click, not controls, so a button would be the wrong element; each dialog already closes on Escape. They carry `role="presentation"` now, and no `div` with `onClick` and no role remains.)
-- [ ] Ensure every dialog, drawer, and sheet traps focus and restores it on close (test with Playwright keyboard navigation).
-- [ ] Add `prefers-reduced-motion` handling to every animated transition in the kit.
+- [x] `src/lib/useDialogFocus.ts` (2026-09-29) moves focus into a dialog on mount, wraps Tab and Shift+Tab inside, and hands focus back on unmount, with specs. It is wired into the five hand-rolled modals (settings, account, onboarding guides, disconnect confirm, right sheet); the Radix-based dialogs and the command palette already managed focus, and the right drawer is a non-modal side panel. `e2e/dialog-focus.spec.ts` tabs through the settings dialog forty times and checks Escape returns focus to the Settings button.
+- [x] `prefers-reduced-motion` is handled globally in `src/app/styles.css`: one media query collapses every animation and transition, and a second one stops the Agent launcher's idle animation. Kit-level variants would duplicate that rule.
 
 ---
 
