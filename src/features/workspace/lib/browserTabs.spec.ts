@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   applyWorkspaceBrowserSessionSnapshot,
+  buildWorkspaceBrowserTab,
   buildWorkspaceBrowserTabId,
   buildWorkspaceBrowserTabTitle,
   doesWorkspaceBrowserTabMatchSnapshot,
@@ -10,6 +11,7 @@ import {
   resolveWorkspaceBrowserTabOrigin,
   resolveWorkspaceBrowserTabNavigationURL,
   resolveWorkspaceBrowserHost,
+  workspaceBrowserTabUpsertOptions,
 } from './browserTabs'
 
 describe('workspace browser tab utilities', () => {
@@ -279,5 +281,53 @@ describe('workspace browser tab utilities', () => {
         },
       ], 'document:travel.kitable'),
     ).toEqual(['browser:generic-web:youtube.com:document:travel.kitable'])
+  })
+})
+
+describe('buildWorkspaceBrowserTab', () => {
+  it('maps the payload and resolved origin onto a browser tab, dropping empty origin fields', () => {
+    const payload = {
+      provider: 'generic-web' as const,
+      task_mode: 'table' as const,
+      host: 'example.com',
+      url: 'https://example.com/list',
+      query: 'q',
+      profile_id: 'p1',
+    }
+    const origin = resolveWorkspaceBrowserTabOrigin(payload, { documentPath: 'leads.kitable', tableId: 3, originLabel: 'Leads' })
+    const tab = buildWorkspaceBrowserTab(payload, origin, 'browser:1')
+    expect(tab).toMatchObject({
+      id: 'browser:1',
+      type: 'browser',
+      provider: 'generic-web',
+      taskMode: 'table',
+      host: 'example.com',
+      url: 'https://example.com/list',
+      query: 'q',
+      profileId: 'p1',
+      originTabId: 'document:leads.kitable',
+      originDocumentPath: 'leads.kitable',
+      originTableId: 3,
+      originLabel: 'Leads',
+    })
+
+    const bare = buildWorkspaceBrowserTab(
+      { provider: 'generic-web', task_mode: 'weird' as never },
+      resolveWorkspaceBrowserTabOrigin({ provider: 'generic-web' }),
+      'browser:2',
+    )
+    expect(bare.taskMode).toBeUndefined()
+    expect(bare.originTabId).toBeUndefined()
+    expect(bare.originDocumentPath).toBeUndefined()
+    expect(bare.originTableId).toBeUndefined()
+    expect(bare.originLabel).toBeUndefined()
+  })
+})
+
+describe('workspaceBrowserTabUpsertOptions', () => {
+  it('activates and inserts next to the active tab unless the payload opts out', () => {
+    expect(workspaceBrowserTabUpsertOptions({ provider: 'generic-web' })).toEqual({ activate: true, insertAfterActive: true })
+    expect(workspaceBrowserTabUpsertOptions({ provider: 'generic-web', activate: false, insertAfterActive: false }))
+      .toEqual({ activate: false, insertAfterActive: false })
   })
 })

@@ -368,3 +368,35 @@ export function dispatchOpenWorkspaceBrowserTab(
     ),
   )
 }
+
+/** The tab record for an open-browser-tab request, once its origin is resolved. */
+export function buildWorkspaceBrowserTab(
+  payload: WorkspaceBrowserTabPayload,
+  origin: ReturnType<typeof resolveWorkspaceBrowserTabOrigin>,
+  id: string,
+): Extract<WorkspaceTab, { type: 'browser' }> {
+  const taskMode = payload.task_mode
+  return {
+    id,
+    type: 'browser',
+    title: buildWorkspaceBrowserTabTitle({ ...payload, origin_label: origin.originLabel }),
+    provider: payload.provider,
+    taskMode: taskMode === 'auto' || taskMode === 'browse' || taskMode === 'table' ? taskMode : undefined,
+    host: payload.host,
+    url: payload.url,
+    query: payload.query,
+    profileId: payload.profile_id,
+    originTabId: origin.originTabId || undefined,
+    originDocumentPath: origin.originDocumentPath || undefined,
+    originTableId: typeof origin.originTableId === 'number' ? origin.originTableId : undefined,
+    originLabel: origin.originLabel || undefined,
+  }
+}
+
+/** Open-browser-tab requests activate and insert next to the active tab unless they opt out. */
+export function workspaceBrowserTabUpsertOptions(payload: WorkspaceBrowserTabPayload) {
+  return {
+    activate: payload.activate !== false,
+    insertAfterActive: payload.insertAfterActive !== false,
+  }
+}

@@ -7,25 +7,18 @@
  */
 import { useWorkspaceDesign } from '../hooks/useWorkspaceDesign'
 import { setInvalidationWorkspaceRoot } from '@/api/invalidation'
-import type { AgentImageGenerationIntent } from '@/types/imageGeneration'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useKitableChildrenIndex } from '@/features/workspace/hooks/useKitableChildrenIndex'
 import { useKitableRegistration } from '@/features/workspace/hooks/useKitableRegistration'
 import {
   buildPrivateSectionTreeNodes,
-  renameWorkspaceTreeBranchMetadata,
-  replaceWorkspaceTreeDocumentItem,
-  updateWorkspaceTreeDocumentItem,
 } from '@/features/workspace/lib/workspaceTree'
-import { renameDataDocumentByPath } from '@/api/dataDocuments'
 import type { WorkflowRouteContext } from '@/features/workflow/public'
 import type { TableSchema } from '@/features/workflow/components/BodyTemplateEditor.types'
 import { getKitionAccountLinks, isKitionAccountSessionUsable, useKitionAccount } from '@/features/account/public'
 import {
-  appendAgentLocalSource,
   buildActiveBrowserTabContext,
-  extractAgentLocalPathReference,
   useWorkspaceAgent,
 } from '@/features/agent/public'
 import { useDocumentExport } from '@/features/document/hooks/useDocumentExport'
@@ -70,6 +63,10 @@ import { WorkspaceDialogs } from '@/features/workspace/components/WorkspaceDialo
 import { WorkspaceAgentPane } from '@/features/workspace/components/WorkspaceAgentPane'
 import { useWorkspaceSidebarNavigation } from '@/features/workspace/hooks/useWorkspaceSidebarNavigation'
 import { useWorkspaceCreateMenu } from '@/features/workspace/hooks/useWorkspaceCreateMenu'
+import { useWorkspaceBrowserTabEvents } from '@/features/workspace/hooks/useWorkspaceBrowserTabEvents'
+import { useWorkspaceDocumentTitleRename } from '@/features/workspace/hooks/useWorkspaceDocumentTitleRename'
+import { useWorkspaceAgentComposer } from '@/features/workspace/hooks/useWorkspaceAgentComposer'
+import { useWorkspaceErrorNotice } from '@/features/workspace/hooks/useWorkspaceErrorNotice'
 import { useSelectionTranslator } from '@/features/workspace/hooks/useSelectionTranslator'
 import type { DocumentTranslationSupport } from '@/features/document/public'
 import { saveDesktopSettings } from '@/services/desktopSettings'
@@ -77,19 +74,9 @@ import { useWorkspaceBoardCreation } from '@/features/workspace/hooks/useWorkspa
 import { useWhiteboardImageGeneration } from '@/features/workspace/hooks/useWhiteboardImageGeneration'
 import { setPinnedTabsWorkspace } from '@/features/document/editor/hooks/usePinnedTabs'
 import {
-  buildWorkspaceBrowserTabId,
-  buildWorkspaceBrowserTabTitle,
-  findWorkspaceBrowserTabIdsForSnapshot,
-  OPEN_WORKSPACE_BROWSER_TAB_EVENT,
-  resolveWorkspaceBrowserTabOrigin,
-  type WorkspaceBrowserTabPayload,
-} from '@/features/workspace/lib/browserTabs'
-import {
   formatWorkspaceTime,
   getWorkspaceItemTitle,
   isEditableWorkspaceFormat,
-  remapWorkspaceBranchPath,
-  renameWorkspaceDocumentPath,
 } from '@/features/workspace/lib/workspace'
 import {
   deriveAgentPaneContext,
@@ -101,9 +88,7 @@ import { selectItemsToClose, type CloseScope } from '@/features/workspace/state/
 import { notify } from '@/lib/notify'
 import { cn } from '@/lib/utils'
 import {
-  chooseAgentAnalysisDirectory,
   isDesktopRuntime,
-  moveWorkspaceDocument,
   revealWorkspaceFolder,
   type WorkspaceDocument,
   type WorkspaceDocumentFormat,
@@ -750,76 +735,17 @@ export function WorkspaceScreen({
   openDocumentTabRef.current = openDocumentTab
   openFileViewerTabRef.current = openFileViewerTab
 
-  useEffect(() => {
-    const handleOpenBrowserTab = (event: Event) => {
-      if (!WEB_BROWSER_ENABLED) {
-        return
-      }
-      const detail = (event as CustomEvent<WorkspaceBrowserTabPayload>).detail
-      if (!detail?.provider) {
-        return
-      }
-      const resolvedOrigin = resolveWorkspaceBrowserTabOrigin(detail, {
-        documentPath:
-          activeDataWorkspaceTabPathRef.current ||
-          lastTableAgentTargetRef.current.documentPath,
-        tableId: lastTableAgentTargetRef.current.tableId,
-        originLabel: lastTableAgentTargetRef.current.originLabel,
-      })
-      const snapshot = {
-        ...detail,
-        origin_tab_id: resolvedOrigin.originTabId,
-        origin_document_path: resolvedOrigin.originDocumentPath,
-        origin_table_id: resolvedOrigin.originTableId,
-        origin_label: resolvedOrigin.originLabel,
-      }
-      const matchedIds = findWorkspaceBrowserTabIdsForSnapshot(
-        workspaceTabsRef.current,
-        snapshot,
-      )
-      upsertWorkspaceTab({
-        id: matchedIds[0] || buildWorkspaceBrowserTabId(snapshot),
-        type: 'browser',
-        title: buildWorkspaceBrowserTabTitle({
-          ...detail,
-          origin_label: resolvedOrigin.originLabel,
-        }),
-        provider: detail.provider,
-        taskMode:
-          detail.task_mode === 'auto' ||
-          detail.task_mode === 'browse' ||
-          detail.task_mode === 'table'
-            ? detail.task_mode
-            : undefined,
-        host: detail.host,
-        url: detail.url,
-        query: detail.query,
-        profileId: detail.profile_id,
-        originTabId: resolvedOrigin.originTabId || undefined,
-        originDocumentPath: resolvedOrigin.originDocumentPath || undefined,
-        originTableId:
-          typeof resolvedOrigin.originTableId === 'number'
-            ? resolvedOrigin.originTableId
-            : undefined,
-        originLabel: resolvedOrigin.originLabel || undefined,
-      }, {
-        activate: detail.activate !== false,
-        insertAfterActive: detail.insertAfterActive !== false,
-      })
-    }
-
-    window.addEventListener(
-      OPEN_WORKSPACE_BROWSER_TAB_EVENT,
-      handleOpenBrowserTab as EventListener,
-    )
-
-    return () => {
-      window.removeEventListener(
-        OPEN_WORKSPACE_BROWSER_TAB_EVENT,
-        handleOpenBrowserTab as EventListener,
-      )
-    }
-  }, [upsertWorkspaceTab])
+  const getBrowserTabOriginFallback = useCallback(() => ({
+    documentPath: activeDataWorkspaceTabPathRef.current || lastTableAgentTargetRef.current.documentPath,
+    tableId: lastTableAgentTargetRef.current.tableId,
+    originLabel: lastTableAgentTargetRef.current.originLabel,
+  }), [activeDataWorkspaceTabPathRef, lastTableAgentTargetRef])
+  const getWorkspaceTabs = useCallback(() => workspaceTabsRef.current, [])
+  useWorkspaceBrowserTabEvents({
+    upsertWorkspaceTab,
+    getTabs: getWorkspaceTabs,
+    getOriginFallback: getBrowserTabOriginFallback,
+  })
 
   const {
     browserPanelPhase,
@@ -920,216 +846,40 @@ export function WorkspaceScreen({
       videoFiles,
     })
 
-  useEffect(() => {
-    const id = 'workspace-error'
-    if (!error) {
-      notify.dismiss(id)
-      return
-    }
-    if (agentNeedsModelConfig && onOpenSettingsSection) {
-      notify.persistentError(error, {
-        label: 'Configure',
-        onClick: () => onOpenSettingsSection('models'),
-      }, { id })
-    } else {
-      notify.error(error, { id })
-    }
-  }, [error, agentNeedsModelConfig, onOpenSettingsSection])
+  const openModelSettings = useMemo(
+    () => (onOpenSettingsSection ? () => onOpenSettingsSection('models') : undefined),
+    [onOpenSettingsSection],
+  )
+  useWorkspaceErrorNotice({ error, agentNeedsModelConfig, onOpenModelSettings: openModelSettings })
 
 
-  const renameActiveWorkspaceDocument = useCallback(async ({
-    path,
-    title,
-  }: {
-    path: string
-    title: string
-  }) => {
-    const nextTitle = String(title || '').trim()
-    if (!path) {
-      throw new Error(t('errors.documentPathEmpty'))
-    }
-    if (!nextTitle) {
-      throw new Error(t('errors.nameEmpty'))
-    }
-
-    const targetPath = renameWorkspaceDocumentPath(path, nextTitle)
-    if (!targetPath || targetPath === path) {
-      const currentDocument = activeDocument?.path === path ? activeDocument : null
-      return currentDocument || {
-        path,
-        name: path.split('/').pop() || path,
-        content: '',
-      }
-    }
-
-    const shouldSaveActiveDocument = remapWorkspaceBranchPath(activeDocument?.path || '', path, targetPath) !== (activeDocument?.path || '')
-    if (shouldSaveActiveDocument) {
-      const saved = await ensureActiveDocumentSaved()
-      if (!saved) {
-        throw new Error(t('errors.saveBeforeRename'))
-      }
-    }
-
-    const targetFolder = targetPath.includes('/') ? targetPath.slice(0, targetPath.lastIndexOf('/')) : ''
-    const targetName = targetPath.split('/').pop() || targetPath
-    const draggedNode = workspaceTree.flatTreeNodes.find((node) => node.path === path)
-
-    setSaving(true)
-    setError('')
-    setFeedback('')
-
-    try {
-      const movedDocument = await moveWorkspaceDocument({
-        path,
-        target_folder: targetFolder,
-        target_name: targetName,
-      })
-
-      // Keep the DataDocument row's path in sync with the on-disk file —
-      // without this, listDocuments would keep trying to open the old path.
-      // Also rekey the kitable children index so the tree's table/workflow
-      // leaves don't briefly disappear before the next backend refresh.
-      // Best-effort: a failure here mustn't roll back the disk rename.
-      if (path !== movedDocument.path && path.toLowerCase().endsWith('.kitable')) {
-        kitableChildrenIndex.renameKitablePath(path, movedDocument.path)
-        renameDataDocumentByPath({ path, target_path: movedDocument.path, workspace_root: rootPath })
-          .catch((cleanupError) => {
-            console.warn('[workspace] failed to sync kitable backend index', cleanupError)
-          })
-      }
-
-      if (draggedNode) {
-        workspaceTree.updateTreeMetadata((current) => (
-          renameWorkspaceTreeBranchMetadata(
-            current,
-            workspaceTree.flatTreeNodes,
-            draggedNode,
-            movedDocument.path,
-          )
-        ))
-      }
-
-      workspaceTree.setTreeItems((current) => (
-        replaceWorkspaceTreeDocumentItem(current, path, movedDocument)
-      ))
-
-      updateSnapshots(
-        snapshots.map((snapshot) => {
-          const nextPath = remapWorkspaceBranchPath(snapshot.path, path, movedDocument.path)
-          if (nextPath === snapshot.path) {
-            return snapshot
-          }
-
-          return {
-            ...snapshot,
-            path: nextPath,
-            name: nextPath === movedDocument.path ? movedDocument.name : nextPath.split('/').pop() || snapshot.name,
-          }
-        }),
-      )
-      setAgentModifiedDocumentPaths((current) => {
-        const next = new Set<string>()
-        current.forEach((itemPath) => next.add(remapWorkspaceBranchPath(itemPath, path, movedDocument.path)))
-        return next
-      })
-
-      remapWorkspaceTabPaths(path, movedDocument.path)
-      remapOpenedDocumentDrafts(path, movedDocument.path)
-
-      if (activeResourcePath) {
-        const nextResourcePath = remapWorkspaceBranchPath(activeResourcePath, path, movedDocument.path)
-        if (nextResourcePath !== activeResourcePath) {
-          setActiveResourcePath('')
-        }
-      }
-
-      setFeedback(t('feedback.nameUpdated'))
-      return movedDocument
-    } catch (requestError: any) {
-      const message = requestError?.message || t('errors.renameFailed')
-      setError(message)
-      throw new Error(message)
-    } finally {
-      setSaving(false)
-    }
-  }, [
+  const { saveDocumentTitle } = useWorkspaceDocumentTitleRename({
+    rootPath,
     activeDocument,
+    activeDocumentFormat,
     activeResourcePath,
+    treeState: workspaceTree,
+    renameKitableChildrenIndexPath: kitableChildrenIndex.renameKitablePath,
     ensureActiveDocumentSaved,
-    remapOpenedDocumentDrafts,
-    remapWorkspaceTabPaths,
-    setAgentModifiedDocumentPaths,
-    setActiveResourcePath,
-    setError,
-    setFeedback,
-    setSaving,
     snapshots,
     updateSnapshots,
-    workspaceTree,
-    t,
-  ])
+    setAgentModifiedDocumentPaths,
+    remapWorkspaceTabPaths,
+    remapOpenedDocumentDrafts,
+    setActiveResourcePath,
+    setSaving,
+    setError,
+    setFeedback,
+  })
 
-  async function saveDocumentTitle(nextTitleInput: string) {
-    if (!activeDocument || activeDocumentFormat === 'data') {
-      return
-    }
-
-    const currentTitle = getWorkspaceItemTitle(activeDocument.name)
-    const nextTitle = nextTitleInput.trim() || currentTitle
-    if (nextTitle === currentTitle) {
-      return
-    }
-
-    const targetPath = renameWorkspaceDocumentPath(activeDocument.path, nextTitle)
-    const targetName = targetPath.split('/').pop() || activeDocument.name
-    workspaceTree.setTreeItems((current) => updateWorkspaceTreeDocumentItem(current, {
-      ...activeDocument,
-      name: targetName,
-    }))
-
-    try {
-      await renameActiveWorkspaceDocument({
-        path: activeDocument.path,
-        title: nextTitle,
-      })
-    } catch {
-      workspaceTree.setTreeItems((current) => updateWorkspaceTreeDocumentItem(current, activeDocument))
-    }
-  }
-
-  async function reviewAgentModifiedDocument(path: string) {
-    await openModifiedDocumentReview(path)
-  }
-
-  async function addLocalAnalysisSource(suggestedPath = '') {
-    if (!activeWorkspaceAgentSession) {
-      return null
-    }
-    try {
-      const source = await chooseAgentAnalysisDirectory(suggestedPath)
-      if (source) {
-        addAgentLocalSource(activeWorkspaceAgentSession.id, source)
-      }
-      return source
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to select an analysis folder')
-      return null
-    }
-  }
-
-  async function sendWorkspaceAgentMessage(sessionId: number, imageIntent?: AgentImageGenerationIntent) {
-    const sources = agentLocalSources[sessionId] || []
-    const pathReference = extractAgentLocalPathReference(agentDrafts[sessionId] || '')
-    if (!sources.length && pathReference) {
-      const source = await addLocalAnalysisSource(pathReference)
-      if (!source) {
-        return
-      }
-      sendAiComposerMessage(sessionId, appendAgentLocalSource(sources, source), imageIntent)
-      return
-    }
-    sendAiComposerMessage(sessionId, undefined, imageIntent)
-  }
+  const agentComposer = useWorkspaceAgentComposer({
+    activeSession: activeWorkspaceAgentSession,
+    agentDrafts,
+    agentLocalSources,
+    addAgentLocalSource,
+    sendAiComposerMessage,
+    setError,
+  })
 
   const workspaceRightPane = workspaceAgentOpen ? (
     <WorkspaceAgentPane
@@ -1144,10 +894,10 @@ export function WorkspaceScreen({
       kitionAccount={kitionAccount}
       kitionAccountLinks={kitionAccountLinks}
       onOpenSettingsSection={onOpenSettingsSection}
-      onAddLocalSource={() => void addLocalAnalysisSource()}
-      onSend={(sessionId, intent) => void sendWorkspaceAgentMessage(sessionId, intent)}
+      onAddLocalSource={() => void agentComposer.addLocalAnalysisSource()}
+      onSend={(sessionId, intent) => void agentComposer.sendMessage(sessionId, intent)}
       onOpenDocument={(path) => void openDocument(path)}
-      onReviewModifiedArtifact={(path) => void reviewAgentModifiedDocument(path)}
+      onReviewModifiedArtifact={(path) => void openModifiedDocumentReview(path)}
       onImportFiles={(files, target) => importBrowserFiles(files, target)}
     />
   ) : null
