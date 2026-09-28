@@ -85,18 +85,6 @@ export type AgentWhiteboardContext = {
   clusters: AgentWhiteboardCluster[]
   recent_operations: string[]
   source_refs: AgentWhiteboardSourceReference[]
-  current_page: { id: string; name: string }
-  current_tool: string
-  active_style: AgentWhiteboardElement['style']
-  viewport_snapshot?: {
-    mime_type: 'image/svg+xml'
-    data_url: string
-  }
-  lint_findings: Array<{
-    code: string
-    element_ids: string[]
-    severity: 'warning'
-  }>
 }
 
 export type AgentWhiteboardElementChanges = {

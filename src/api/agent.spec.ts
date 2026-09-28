@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { expectMatchesContract } from '@/test/contracts'
 
 import { streamAgentMessage } from './agent'
 import type { RuntimeWritingModel } from '@/types'
@@ -31,10 +32,6 @@ describe('streamAgentMessage', () => {
       clusters: [],
       recent_operations: [],
       source_refs: [],
-      current_page: { id: 'page:main', name: 'Home' },
-      current_tool: 'select',
-      active_style: {},
-      lint_findings: [],
     }
     const fetchMock = vi.fn(async (
       _input: RequestInfo | URL,
@@ -55,6 +52,7 @@ describe('streamAgentMessage', () => {
     expect(fetchMock).toHaveBeenCalledOnce()
     const [url, init] = fetchMock.mock.calls[0]!
     expect(url).toBe('http://runtime.test/v1/agent/sessions/7/messages/stream')
+    expectMatchesContract(whiteboardContext, 'agent-whiteboard', 'context')
     expect(JSON.parse(String(init?.body))).toMatchObject({
       pane_context: 'whiteboard',
       whiteboard_context: whiteboardContext,
@@ -164,6 +162,7 @@ describe('streamAgentMessage', () => {
 
     expect(fetchMock).toHaveBeenCalledOnce()
     const [, init] = fetchMock.mock.calls[0]!
+    expectMatchesContract(imageGenerationIntent, 'agent-image-generation', 'intent')
     expect(JSON.parse(String(init?.body))).toMatchObject({
       image_generation_intent: imageGenerationIntent,
       runtime_model: runtimeModel,

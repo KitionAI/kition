@@ -172,7 +172,7 @@ Order matters. Each phase leaves `main` releasable.
 - [x] `scripts/generate-contract-types.mjs` (2026-09-27) writes one module per contract into `src/api/generated/` with `<Contract><Def>` names; `pnpm run check:contracts` fails CI when the output is stale. It is a small in-repo generator: `json-schema-to-typescript` is incompatible with the pinned `js-yaml` security override.
 - [x] Moved `emailSync`, `connections`, and `workflows` into `src/api/`; `formSync` was split into an HTTP module (`src/api/formSync.ts`) and the local-draft orchestration that stays in the feature. Workflow body-template types and run records moved with the API; `src/lib/workflowEvents.ts` owns the change events. `media-generation/api/imageTemplates.ts` stays: it is a cloud contract with feature-local validation and moves with Task 1.5.
 - [x] `emailSync`, `formSync`, `dataImports`, and `workspaceStorage` types are aliases of the generated contract types; the client only narrows `DataImportField.options` to its field-option shape. Still hand-written, no schema yet: `workflows`, `agent`, `dataDocuments`, `dashboards`, `desktop`, `models`, `presentations`, `templates`. Writing those schemas is the remaining half of this task and needs the runtime maintainer.
-- [~] `src/test/contracts.ts` validates values against a contract definition with Ajv; `emailSync.spec.ts` and `dataImports.spec.ts` use it. Extend to every API spec as schemas land.
+- [~] `src/test/contracts.ts` validates values against a contract definition with Ajv; `emailSync.spec.ts` and `dataImports.spec.ts` use it. Extend to every API spec as schemas land. (2026-09-29: `models.spec.ts` validates the one-shot chat request, `workspaceStorage.spec.ts` validates the status, inventory, verify result, migration input, and migration result, and `agent.spec.ts` validates the Whiteboard context and the image-generation intent. The Whiteboard assertion caught real drift: the client sent five fields (`current_page`, `current_tool`, `active_style`, `viewport_snapshot`, `lint_findings`) that neither the contract nor the runtime knew, including a full SVG snapshot per turn; they are removed from the client type and builder, so the wire payload matches the contract exactly.)
 
 ### Task 1.2: Introduce a data layer with TanStack Query
 
@@ -253,7 +253,7 @@ Order matters. Each phase leaves `main` releasable.
 
 - [ ] Build the primitives on Radix with `class-variance-authority`, sourcing every color, radius, and spacing from CSS variables in `src/app/styles/tokens.css`.
 - [ ] Codemod imports from both old locations; remove the duplicates.
-- [ ] Add an ESLint restriction that forbids importing `radix-ui` outside `src/components/ui/`.
+- [x] `no-restricted-imports` (2026-09-29) rejects `radix-ui` and `@radix-ui/*` everywhere except `src/components/**` and `src/registry/**`, where the kit wraps them. No feature imported Radix directly, so the rule starts clean.
 
 ### Task 1.6: Split `styles.css` into layers
 
@@ -341,7 +341,7 @@ Private implementation detail lives in the runtime plan. These tasks are the pub
 - Modify: `src/features/agent/components/AgentChatPanel.tsx`
 - Modify: `src/components/KitionLogoMark.tsx`
 
-- [ ] Fix the broken agent empty-state logo: inline the SVG mark instead of an `img` with a public URL that is not resolvable in packaged builds. Add a desktop e2e that the mark renders.
+- [x] The Agent empty state renders the inline `KitionLogoMark` component (verified 2026-09-29: no `img` with a public URL remains in `src/`); the desktop e2e sets cover the pane.
 - [ ] Sidebar: sections for documents, tables, whiteboards, workflows, with counts, a consistent 8px row rhythm, and an empty state with a create action per section.
 - [ ] Tab strip: equal padding, close affordance on hover, pinned indicator, overflow menu. Compare against the geometry rules in `docs/design.md`.
 - [ ] Agent panel: prompt suggestions as secondary buttons with 8px radius, model selector as a standard select, context chips using the badge primitive.
@@ -383,8 +383,8 @@ See the console plan. Client-facing dependency: the shared web design package sh
 
 ### Task 5.2: Release verification
 
-- [ ] `pnpm run check` runs `knip`, dependency-cruiser, blank-comment check, and i18n completeness.
-- [ ] The Stop hook keeps `pnpm test:table:e2e`, and `prepare-release.yml` runs the full nightly suite before tagging.
+- [x] `pnpm run check` runs `knip`, dependency-cruiser, the blank-comment check, i18n completeness with locale parity and the raw-string baseline, branding, product language, contracts, security, the build, and the unit suite (verified 2026-09-29).
+- [x] The Stop hook keeps `pnpm test:table:e2e`. `prepare-release.yml` (2026-09-29) gained a `verify` job that the tag and draft steps depend on: `pnpm run check`, the e2e coverage check, the mock-backed renderer sweep, and both Electron e2e sets under xvfb, mirroring `ci.yml`.
 
 ---
 

@@ -162,14 +162,12 @@ export function WhiteboardEditorPane({
     available: agentAvailable,
     buildContext: () => agentAvailable
       ? buildWhiteboardAgentContext({
-          activeStyle: controller.activeStyle,
           canvasSize,
           path,
           scope: agentScope,
           selectedElementIds: controller.selectedElementIds,
           store: controller.store,
           title,
-          tool: controller.tool,
           viewport: controller.viewport,
         }) || undefined
       : undefined,

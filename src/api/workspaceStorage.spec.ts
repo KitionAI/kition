@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { expectMatchesContract } from '@/test/contracts'
+
 import request from './request'
 import {
   getWorkspaceStorageStatus,
@@ -47,6 +49,8 @@ describe('workspace storage API', () => {
 
     await expect(getWorkspaceStorageStatus()).resolves.toEqual(status)
     await expect(inventoryWorkspaceStorage()).resolves.toEqual({ status, items: [] })
+    expectMatchesContract(status, 'workspace-storage', 'status')
+    expectMatchesContract({ status, items: [] }, 'workspace-storage', 'inventory')
     expect(request.get).toHaveBeenNthCalledWith(1, '/v1/workspace/storage')
     expect(request.get).toHaveBeenNthCalledWith(2, '/v1/workspace/storage/inventory')
   })
@@ -56,6 +60,7 @@ describe('workspace storage API', () => {
     vi.mocked(request.post).mockResolvedValue(result)
 
     await expect(verifyWorkspaceStorage()).resolves.toEqual(result)
+    expectMatchesContract(result, 'workspace-storage', 'verifyResult')
     expect(request.post).toHaveBeenCalledWith('/v1/workspace/storage/verify', {})
   })
 
@@ -70,6 +75,8 @@ describe('workspace storage API', () => {
     vi.mocked(request.post).mockResolvedValue({ data: result })
 
     await expect(migrateWorkspaceStorage({ dry_run: true })).resolves.toEqual(result)
+    expectMatchesContract(result, 'workspace-storage', 'migrationResult')
+    expectMatchesContract(vi.mocked(request.post).mock.calls[0][1], 'workspace-storage', 'migrationInput')
     expect(request.post).toHaveBeenCalledWith('/v1/workspace/storage/migrate', {
       dry_run: true,
     })

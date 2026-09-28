@@ -40,15 +40,16 @@ test('streams visible AI board actions and supports reject, accept, and undo', a
   expect(requests[0]).toMatchObject({
     pane_context: 'whiteboard',
     whiteboard_context: {
+      type: 'whiteboard.context',
       scope: 'selection',
       selected_element_ids: ['node-a'],
-      current_page: { id: 'page:main' },
-      current_tool: 'select',
     },
   })
-  expect(requests[0].whiteboard_context.viewport_snapshot.data_url)
-    .toContain('data:image/svg+xml')
-  expect(Array.isArray(requests[0].whiteboard_context.lint_findings)).toBe(true)
+  // The wire payload carries only what the public contract documents.
+  expect(Object.keys(requests[0].whiteboard_context).sort()).toEqual([
+    'board', 'clusters', 'elements', 'recent_operations', 'schema_version', 'scope',
+    'selected_element_ids', 'source_refs', 'type', 'viewport',
+  ])
 
   await page.getByTestId('whiteboard-agent-reject').click()
   await expect.poll(async () => hasElement(page, 'ai-node-1')).toBe(false)

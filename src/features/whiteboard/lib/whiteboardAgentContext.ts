@@ -5,10 +5,7 @@ import type {
 } from '@/types/whiteboardAgent'
 
 import { getBoardAgentElementKind } from './boardElementDefinitions'
-import { exportBoardSvg } from './boardExport'
-import { lintWhiteboard } from './whiteboardLint'
 import {
-  DEFAULT_WHITEBOARD_STYLE,
   getWhiteboardElementStyle,
 } from './whiteboardStyle'
 import type { BoardStore } from './boardStore'
@@ -22,7 +19,6 @@ import type {
   WhiteboardPoint,
   WhiteboardViewport,
   WhiteboardElementStyle,
-  WhiteboardTool,
 } from './whiteboardTypes'
 
 export type WhiteboardAgentScope = 'selection' | 'viewport' | 'board'
@@ -34,13 +30,11 @@ const CLUSTER_SIZE = 100
 
 export function buildWhiteboardAgentContext(input: {
   canvasSize: WhiteboardPoint
-  activeStyle?: WhiteboardElementStyle
   path: string
   scope: WhiteboardAgentScope
   selectedElementIds: readonly string[]
   store: BoardStore
   title: string
-  tool?: WhiteboardTool
   viewport: WhiteboardViewport
 }): AgentWhiteboardContext | null {
   const path = normalizePortableBoardPath(input.path)
@@ -74,21 +68,6 @@ export function buildWhiteboardAgentContext(input: {
   const compactElements = included.slice(0, MAX_CONTEXT_ELEMENTS)
   const includedIds = new Set(compactElements.map((element) => element.id))
   const omitted = elements.filter((element) => !includedIds.has(element.id))
-  const currentPageId = input.store.getCurrentPageId()
-  const currentPage = input.store.getPages().find((page) => page.id === currentPageId)
-  const lintFindings = lintWhiteboard({
-    bindings: input.store.getRecords().filter((record) => record.record_type === 'binding'),
-    elements,
-  })
-  const snapshotElements = compactElements.filter((element) => (
-    input.scope !== 'selection' || selectedSet.has(element.id)
-  ))
-  const snapshotSvg = snapshotElements.length > 0 ? exportBoardSvg({
-    elements: snapshotElements,
-    title: input.title,
-    padding: 16,
-  }) : ''
-
   return {
     type: 'whiteboard.context',
     schema_version: 1,
@@ -104,23 +83,6 @@ export function buildWhiteboardAgentContext(input: {
     clusters: buildOmittedClusters(omitted),
     recent_operations: input.store.getRecentUserOperations(50),
     source_refs: [],
-    current_page: {
-      id: currentPageId,
-      name: currentPage?.name || input.title,
-    },
-    current_tool: input.tool || 'select',
-    active_style: whiteboardStyleToAgentStyle(input.activeStyle || DEFAULT_WHITEBOARD_STYLE),
-    viewport_snapshot: snapshotSvg
-      ? {
-          mime_type: 'image/svg+xml',
-          data_url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(snapshotSvg)}`,
-        }
-      : undefined,
-    lint_findings: lintFindings.map((finding) => ({
-      code: finding.code,
-      element_ids: finding.elementIds,
-      severity: finding.severity,
-    })),
   }
 }
 

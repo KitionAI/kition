@@ -23,15 +23,62 @@ permissions:
 
 env:
   RUNTIME_REPOSITORY: KitionAI/kition-dev
+  PNPM_VERSION: 10.33.0
+  NODE_VERSION: '22.19.0'
 
 concurrency:
   group: prepare-release-${{ inputs.version }}
   cancel-in-progress: false
 
 jobs:
+  verify:
+    name: Full suite before tagging
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout public client source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.source_ref }}
+          lfs: true
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Static checks, build, and unit tests
+        run: pnpm run check
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Every e2e spec is run somewhere
+        run: pnpm run check:e2e-coverage
+
+      - name: Run every mock-backed renderer end-to-end spec
+        run: pnpm run test:e2e:ci
+
+      - name: Run mock-backed Electron end-to-end tests
+        run: xvfb-run -a pnpm run test:desktop:e2e
+
+      - name: Run remaining Electron end-to-end specs
+        run: xvfb-run -a pnpm run test:desktop:e2e:extra
+
   prepare:
     runs-on: ubuntu-latest
     environment: release
+    needs: verify
     steps:
       - name: Checkout public client source
         uses: actions/checkout@v7

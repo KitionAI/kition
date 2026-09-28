@@ -53,6 +53,16 @@ module.exports = {
             name: 'sonner',
             message: 'Import from @/lib/notify instead. Direct sonner usage is only allowed inside src/lib/notify/ and Shell.tsx (for <Toaster>).',
           },
+          {
+            name: 'radix-ui',
+            message: 'Use the kit in src/components and src/registry/ui instead of importing Radix directly in features.',
+          },
+        ],
+        patterns: [
+          {
+            group: ['@radix-ui/*'],
+            message: 'Use the kit in src/components and src/registry/ui instead of importing Radix directly in features.',
+          },
         ],
       },
     ],
@@ -199,6 +209,11 @@ module.exports = {
     {
       files: ['src/lib/notify/**', 'src/app/Shell.tsx'],
       rules: { 'no-restricted-imports': 'off' },
+    },
+    {
+      // The kit itself wraps Radix; features consume the wrappers.
+      files: ['src/components/**', 'src/registry/**'],
+      rules: { 'no-restricted-imports': ['error', { paths: [{ name: 'sonner', message: 'Import from @/lib/notify instead.' }] }] },
     },
     {
 
