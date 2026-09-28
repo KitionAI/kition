@@ -22,7 +22,6 @@ import {
   listWorkflowRuns,
   listWorkflows,
   patchWorkflow,
-  type WorkflowAddRecordConfig,
   type WorkflowDefinition,
 } from '@/api/workflows'
 import { WORKFLOW_ENABLED_CHANGED_EVENT } from '@/features/workflow/lib/workflowEvents'
@@ -32,16 +31,13 @@ import {
   actionStatus,
   actionTitleI18nKey,
   cloneAddRecord,
-  cloneBody,
   draftToValidationPatch,
   emptyDraft,
   fallbackSchemaFromWorkflow,
   filterNodeDescription,
   filterNodeStatus,
   filterNodeTitle,
-  findDanglingFieldRefs,
   parseIdAsNumber,
-  pruneBody,
   toDraft,
   triggerLabel,
   triggerStatus,
@@ -106,7 +102,6 @@ import {
 } from '@/registry/ui/dialog'
 
 import { WorkflowCanvas } from '@/features/workflow/canvas/WorkflowCanvas'
-import type { InsertableActionType } from '@/features/workflow/canvas/WorkflowNodePicker'
 import { NodeCard, type NodeStatus } from '@/features/workflow/canvas/NodeCard'
 import { DrawerField, DrawerSection, PropertiesDrawer } from '@/features/workflow/drawer/PropertiesDrawer'
 import { publishWorkflowNodeAskAI } from '@/features/workflow/lib/askAiBridge'
@@ -126,7 +121,10 @@ import {
   parseFilterExpression,
   type FilterCondition,
 } from '@/features/workflow/components/FilterPropertiesPanel'
-import { filtersForPatch, normaliseGraph, type GraphNode } from '@/features/workflow/hooks/useWorkflowGraph'
+import { normaliseGraph } from '@/features/workflow/hooks/useWorkflowGraph'
+import { useWorkflowTriggerEditor } from '@/features/workflow/hooks/useWorkflowTriggerEditor'
+import { useWorkflowGraphEditing } from '@/features/workflow/hooks/useWorkflowGraphEditing'
+import { buildTriggerTableOptions, buildWorkflowSavePatch, countRunsByStatus, filterDryRunSample } from '@/features/workflow/lib/workflowPatches'
 import { useWorkflowValidation } from '@/features/workflow/hooks/useWorkflowValidation'
 import { dryRunFilter, retryWorkflowRun } from '@/api/workflows'
 
@@ -601,84 +599,7 @@ export function WorkflowHomePage({ initialSelectedId, initialModeDialogOpen = fa
     setSavingDraft(true)
     setError('')
     try {
-      const filterNodes = filtersForPatch({ nodes: graphNodes, edges: [] })
-      const triggerNodeId = selected.trigger.nodeId || 'trigger_1'
-      const actionNodeId = selected.action.nodeId || 'action_1'
-      // For add_record we resolve the target's documentId from the
-      // tableLabels cache so the server can route the write to the right
-      // datadoc (the panel only emits targetTableId — see
-      // AddRecordActionPropertiesPanel's handleTargetTableChange comment).
-      const addRecordPayload: WorkflowAddRecordConfig | undefined =
-        draft.actionType === 'add_record' && draft.addRecord
-          ? {
-              targetTableId: draft.addRecord.targetTableId,
-              targetDocumentId: draft.addRecord.targetDocumentId
-                || tableLabels[draft.addRecord.targetTableId]?.documentId
-                || undefined,
-              fields: (draft.addRecord.fields || []).map((entry) => ({
-                fieldId: entry.fieldId,
-                value: cloneBody(entry.value),
-              })),
-            }
-          : undefined
-      const actionConfig = draft.actionType === 'add_record'
-        ? {
-            nodeId: actionNodeId,
-            type: 'add_record',
-            addRecord: addRecordPayload,
-          }
-        : draft.actionType === 'update_record'
-          ? { nodeId: actionNodeId, type: 'update_record', updateRecord: draft.updateRecord }
-          : draft.actionType === 'lookup_record'
-            ? { nodeId: actionNodeId, type: 'lookup_record', lookupRecord: draft.lookupRecord }
-            : draft.actionType === 'transform_record'
-              ? { nodeId: actionNodeId, type: 'transform_record', transformRecord: draft.transformRecord }
-        : {
-            nodeId: actionNodeId,
-            type: selected.action.type || 'send_email',
-            connectionId: draft.connectionId,
-            to: draft.to.trim(),
-            subject: draft.subject,
-            body: cloneBody(draft.body),
-          }
-      const fullNodes = [
-        {
-          nodeId: triggerNodeId,
-          kind: 'trigger' as const,
-          config: { nodeId: triggerNodeId, type: selected.trigger.type, tableId: selected.trigger.tableId, documentId: selected.trigger.documentId },
-        },
-        ...filterNodes,
-        {
-          nodeId: actionNodeId,
-          kind: 'action' as const,
-          config: actionConfig,
-        },
-      ]
-      const fullEdges = []
-      for (let i = 0; i < fullNodes.length - 1; i += 1) {
-        fullEdges.push({ from: fullNodes[i].nodeId, to: fullNodes[i + 1].nodeId })
-      }
-      const actionPatch = draft.actionType === 'add_record'
-        ? { type: 'add_record' as const, addRecord: addRecordPayload }
-        : draft.actionType === 'update_record'
-          ? { type: 'update_record' as const, updateRecord: draft.updateRecord }
-          : draft.actionType === 'lookup_record'
-            ? { type: 'lookup_record' as const, lookupRecord: draft.lookupRecord }
-            : draft.actionType === 'transform_record'
-              ? { type: 'transform_record' as const, transformRecord: draft.transformRecord }
-        : {
-            connectionId: draft.connectionId,
-            to: draft.to.trim(),
-            subject: draft.subject,
-            body: cloneBody(draft.body),
-          }
-      const updated = await patchWorkflow(selected.id, {
-        name: draft.name.trim(),
-        description: draft.description.trim(),
-        action: actionPatch,
-        nodes: fullNodes,
-        edges: fullEdges,
-      })
+      const updated = await patchWorkflow(selected.id, buildWorkflowSavePatch({ draft, selected, graphNodes, tableLabels }))
       setWorkflows((current) => current.map((item) => item.id === updated.id ? updated : item))
       setOriginalDraft(toDraft(updated))
       setDraft(toDraft(updated))
@@ -731,263 +652,30 @@ export function WorkflowHomePage({ initialSelectedId, initialModeDialogOpen = fa
     await refreshLatestRun(selected.id)
   }
 
-  /** Bind / rebind the trigger's table from the drawer dropdown. Commits
-   *  immediately via PATCH instead of routing through the draft → Save
-   *  flow because the table change has downstream effects (schema reload,
-   *  body-template token validity) that the rest of the page already
-   *  reacts to when `selected` updates. Passing an empty tableId is the
-   *  contract for unbinding (returns the workflow to the draft state). */
-  async function setTriggerTable(nextTableId: string) {
-    if (!selected) return
-    const label = nextTableId ? tableLabels[nextTableId] : null
-    const nextDocumentId = label?.documentId || ''
-    // No-op when the table is already what's selected — avoids a spurious
-    // PATCH and the resulting toast / refresh churn.
-    if (nextTableId === selected.trigger.tableId && nextDocumentId === selected.trigger.documentId) {
-      return
-    }
-    // Before committing, inspect the action body for field_refs that won't
-    // resolve under the new table's schema. Without this prompt the user
-    // would see "missing field" warnings appear in the body editor with no
-    // clear path forward — the underlying data is stale but the UI doesn't
-    // suggest a fix. We fetch the schema on demand so the check is reliable
-    // even on the first switch to a never-loaded table. add_record per-field
-    // templates are not yet covered (each entry is its own BodyTemplate, and
-    // pruning them in the same PATCH requires sending the full addRecord
-    // shape — deferred to a follow-up).
-    if (nextTableId && nextDocumentId && selected.action.type !== 'add_record') {
-      const newSchema = await ensureSchemaLoaded(nextDocumentId, nextTableId)
-      const danglingIds = newSchema
-        ? findDanglingFieldRefs(selected.action.body, newSchema)
-        : []
-      if (danglingIds.length > 0) {
-        await new Promise<void>((resolve) => {
-          setConfirm({
-            title: t('confirms.switchTriggerTable.title', { tableName: label?.tableName || t('confirms.switchTriggerTable.tableFallback') }),
-            message: t('confirms.switchTriggerTable.message', { count: danglingIds.length }),
-            confirmLabel: t('confirms.switchTriggerTable.confirm'),
-            destructive: true,
-            onConfirm: () => {
-              void commitTriggerTableSwap({
-                nextTableId,
-                nextDocumentId,
-                pruneFieldIds: danglingIds,
-              }).then(resolve, resolve)
-            },
-          })
-          // The Cancel branch closes the dialog without commit. We resolve
-          // immediately so the calling `await` returns; the user's intent
-          // ("don't switch tables") is the silent no-op.
-          // setConfirm only triggers resolve once the dialog closes via
-          // onConfirm above; tag the resolve through onClose by overriding
-          // setConfirm wrapping if needed. For now, callers don't await
-          // setTriggerTable beyond catching errors, so resolving via
-          // onConfirm is sufficient.
-        })
-        return
-      }
-    }
-    await commitTriggerTableSwap({ nextTableId, nextDocumentId, pruneFieldIds: [] })
-  }
-
-  async function ensureSchemaLoaded(documentId: string, tableId: string): Promise<TableSchema | null> {
-    // Delegates to the cache hook: short-circuit on cache hit, dedupe
-    // concurrent fetches, swallow errors to null. The page-level helper
-    // stays as a name-level shim because it's referenced from multiple
-    // handlers — switching every call site to schemaCache.ensure would
-    // ripple further than this PR's scope.
-    return schemaCache.ensure(documentId, tableId, tableLabels[tableId]?.tableName)
-  }
-
-  async function commitTriggerTableSwap({ nextTableId, nextDocumentId, pruneFieldIds }: {
-    nextTableId: string
-    nextDocumentId: string
-    pruneFieldIds: string[]
-  }) {
-    if (!selected) return
-    setSavingDraft(true)
-    setError('')
-    try {
-      // Default to record_created when binding from an empty draft; preserve
-      // the existing type otherwise so a user who had record_updated picked
-      // doesn't silently flip back. Cast to the patch type — the runtime
-      // type field is a wide `string` (back-compat for legacy triggers) but
-      // the patch surface narrows it to the supported enum.
-      const nextType = (selected.trigger.type || 'record_created') as 'record_created'
-        | 'record_updated' | 'record_created_or_updated' | 'scheduled_time'
-        | 'record_date_reached' | ''
-      // Drop required-field IDs that the new table's schema doesn't know
-      // about. The trigger gate can never fire on a field that doesn't
-      // exist, so leaving them around just clutters the drawer with a
-      // permanent "(removed)" warning. We resolve the new schema via the
-      // cache — populated by the dangling-body-refs check in
-      // setTriggerTable for non-add_record actions, and pulled on demand
-      // here for add_record (which skipped the body check).
-      const currentRequired = selected.trigger.requiredFields || []
-      let nextRequired: string[] | undefined
-      if (currentRequired.length > 0) {
-        const newSchema = await ensureSchemaLoaded(nextDocumentId, nextTableId)
-        if (newSchema) {
-          const validIds = new Set(newSchema.fields.map((f) => f.id))
-          const pruned = currentRequired.filter((id) => validIds.has(id))
-          if (pruned.length !== currentRequired.length) {
-            nextRequired = pruned
-          }
-        }
-      }
-      const triggerPatch: NonNullable<Parameters<typeof patchWorkflow>[1]['trigger']> = {
-        ...selected.trigger,
-        type: nextType,
-        documentId: nextDocumentId,
-        tableId: nextTableId,
-      }
-      if (nextRequired !== undefined) {
-        triggerPatch.requiredFields = nextRequired
-      }
-      const updated = await patchWorkflow(selected.id, pruneFieldIds.length > 0
-        ? {
-            trigger: triggerPatch,
-            // Strip the dangling field_refs from the body. We keep text and
-            // newline parts intact and only drop field_refs whose fieldId is
-            // on the prune list. Empty pruneFieldIds short-circuits before
-            // this branch, so this only runs when the user opted in via the
-            // ConfirmDialog above.
-            action: { body: pruneBody(selected.action.body, pruneFieldIds) },
-          }
-        : { trigger: triggerPatch })
-      setWorkflows((current) => current.map((item) => item.id === updated.id ? updated : item))
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Failed to update trigger table')
-    } finally {
-      setSavingDraft(false)
-    }
-  }
-
   async function sendInlineTest() {
     if (!selected || validation.to) return
     await sendTest.send(selected.id, draft.to)
     await refreshLatestRun(selected.id)
   }
 
-  /** Patch the scheduled_time trigger's cron string in place. Mirrors
-   *  setTriggerTable: commits immediately via PATCH rather than routing
-   *  through the draft → Save loop, because the cron value has no
-   *  downstream coupling to the email body fields (no schema reload).
-   *  Empty cron is allowed — it leaves the trigger as a scheduled draft
-   *  the backend's Validate() tolerates when Enabled=false. */
-  async function setTriggerSchedule(next: { cron: string; timezone: string }) {
-    if (!selected) return
-    const trimmed = next.cron.trim()
-    const tz = next.timezone.trim()
-    const currentCron = (selected.trigger.schedule?.cron || '').trim()
-    const currentTZ = (selected.trigger.schedule?.timezone || '').trim()
-    if (trimmed === currentCron && tz === currentTZ) return
-    setSavingDraft(true)
-    setError('')
-    try {
-      const updated = await patchWorkflow(selected.id, {
-        trigger: {
-          // Preserve nodeId so the patch lands on the same trigger node
-          // (the backend's TriggerPatch derives identity from nodeId).
-          nodeId: selected.trigger.nodeId,
-          type: 'scheduled_time',
-          schedule: { cron: trimmed, timezone: tz },
-        },
-      })
-      setWorkflows((current) => current.map((item) => item.id === updated.id ? updated : item))
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Failed to update schedule')
-    } finally {
-      setSavingDraft(false)
-    }
-  }
-
-  /** Switch the trigger type from the drawer dropdown. Commits immediately
-   *  (like setTriggerTable / setTriggerSchedule) because the type swap
-   *  rearranges the rest of the trigger panel — scheduled_time hides the
-   *  table picker and shows the cron editor; record-bearing types do the
-   *  opposite. We normalise the surrounding fields per transition so the
-   *  backend never sees a half-mode trigger (e.g. type=scheduled_time
-   *  still carrying a tableId):
-   *    - record → record: keep table/document/requiredFields untouched.
-   *    - record → scheduled_time: clear table/document, drop required
-   *      fields (they reference fields on the now-disowned table), and
-   *      seed an empty schedule the user fills in via the cron picker.
-   *    - scheduled_time → record: clear the schedule (no longer
-   *      consulted) and leave table empty so the user explicitly picks
-   *      one in the table dropdown below. */
-  async function setTriggerType(
-    nextType: 'record_created' | 'record_updated' | 'record_created_or_updated' | 'scheduled_time' | 'record_date_reached',
-  ) {
-    if (!selected) return
-    const currentType = selected.trigger.type || 'record_created'
-    if (currentType === nextType) return
-    setSavingDraft(true)
-    setError('')
-    try {
-      const triggerPatch: NonNullable<Parameters<typeof patchWorkflow>[1]['trigger']> = {
-        nodeId: selected.trigger.nodeId,
-        type: nextType,
-      }
-      if (nextType === 'scheduled_time') {
-        triggerPatch.documentId = ''
-        triggerPatch.tableId = ''
-        triggerPatch.requiredFields = []
-        triggerPatch.schedule = {
-          cron: selected.trigger.schedule?.cron || '',
-          timezone: selected.trigger.schedule?.timezone || '',
-        }
-      } else if (currentType === 'scheduled_time') {
-        // Coming back to a record-bearing type. Wipe the schedule so the
-        // server doesn't keep dispatching the cron after the trigger
-        // table is rebound.
-        triggerPatch.documentId = selected.trigger.documentId || ''
-        triggerPatch.tableId = selected.trigger.tableId || ''
-        triggerPatch.schedule = { cron: '', timezone: '' }
-      } else {
-        // record → record: nothing else to migrate. We still echo the
-        // table/document IDs so the patch round-trips deterministically
-        // (an omitted key keeps its prior value, but the patch tests
-        // assert on the wire shape).
-        triggerPatch.documentId = selected.trigger.documentId || ''
-        triggerPatch.tableId = selected.trigger.tableId || ''
-        if (selected.trigger.requiredFields !== undefined) {
-          triggerPatch.requiredFields = selected.trigger.requiredFields
-        }
-      }
-      const updated = await patchWorkflow(selected.id, { trigger: triggerPatch })
-      setWorkflows((current) => current.map((item) => item.id === updated.id ? updated : item))
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Failed to update trigger type')
-    } finally {
-      setSavingDraft(false)
-    }
-  }
-
-  /** Patch the trigger's RequiredFields gate. Sends the next list as-is
-   *  (the backend uses pointer semantics: `[]` clears, `[...]` replaces).
-   *  No-ops when nothing changed so a stray checkbox-render doesn't
-   *  generate a spurious PATCH + toast. */
-  async function setTriggerRequiredFields(next: string[]) {
-    if (!selected) return
-    const current = selected.trigger.requiredFields || []
-    if (current.length === next.length && current.every((id, i) => id === next[i])) return
-    setSavingDraft(true)
-    setError('')
-    try {
-      const updated = await patchWorkflow(selected.id, {
-        trigger: {
-          nodeId: selected.trigger.nodeId,
-          requiredFields: next,
-        },
-      })
-      setWorkflows((current) => current.map((item) => item.id === updated.id ? updated : item))
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Failed to update required fields')
-    } finally {
-      setSavingDraft(false)
-    }
-  }
+  const ensureSchemaLoaded = useCallback(
+    (documentId: string, tableId: string) => schemaCache.ensure(documentId, tableId, tableLabels[tableId]?.tableName),
+    [schemaCache, tableLabels],
+  )
+  const {
+    setTriggerTable,
+    setTriggerSchedule,
+    setTriggerType,
+    setTriggerRequiredFields,
+  } = useWorkflowTriggerEditor({
+    selected,
+    tableLabels,
+    ensureSchema: ensureSchemaLoaded,
+    setWorkflows,
+    setSavingDraft,
+    setError,
+    setConfirm,
+  })
 
   function requestDelete() {
     if (!selected) return
@@ -1060,112 +748,24 @@ export function WorkflowHomePage({ initialSelectedId, initialModeDialogOpen = fa
     setFilterDryRun(null)
   }, [selectedNodeId])
 
-  const handleDeleteNode = useCallback((nodeId: string) => {
-    if (!selected) return
-    const idx = graphNodes.findIndex((n) => n.nodeId === nodeId)
-    if (idx < 0) return
-    const node = graphNodes[idx]
-    if (node.kind === 'trigger') {
-      setConfirm({
-        title: t('confirms.deleteTriggerWorkflow.title'),
-        message: t('confirms.deleteTriggerWorkflow.message'),
-        confirmLabel: t('confirms.deleteTriggerWorkflow.confirm'),
-        destructive: true,
-        onConfirm: () => { void removeSelected() },
-      })
-      return
-    }
-    if (node.kind === 'action') {
-      // The single email action is the legacy primary action — deleting it
-      // would leave the workflow without a delivery step. We block the
-      // delete and surface a hint instead.
-      setError(t('errors.primaryActionLocked'))
-      return
-    }
-    setConfirm({
-      title: t('confirms.deleteFilter.title'),
-      message: t('confirms.deleteFilter.message'),
-      confirmLabel: t('confirms.deleteFilter.confirm'),
-      destructive: true,
-      onConfirm: () => {
-        const next = graphNodes.filter((_, i) => i !== idx)
-        setGraphNodes(next)
-        // If the deleted node was selected, fall back to the action.
-        if (selectedNodeId === nodeId) {
-          setSelectedNodeId(selected.action.nodeId || 'action_1')
-        }
-      },
-    })
-  }, [graphNodes, selected, selectedNodeId])
-
-  const handleDuplicateNode = useCallback((nodeId: string) => {
-    if (!selected) return
-    const idx = graphNodes.findIndex((n) => n.nodeId === nodeId)
-    if (idx < 0) return
-    const original = graphNodes[idx]
-    // Trigger / action are singletons in v1 — only filters can be cloned.
-    if (original.kind !== 'filter') {
-      setError(`${original.kind} nodes can't be duplicated in this release.`)
-      return
-    }
-    const clone: GraphNode = {
-      ...original,
-      nodeId: `filter_${Date.now().toString(36)}`,
-      config: { ...original.config, nodeId: `filter_${Date.now().toString(36)}` },
-    }
-    const next = [...graphNodes]
-    next.splice(idx + 1, 0, clone)
-    setGraphNodes(next)
-  }, [graphNodes, selected])
-
-  const handleToggleDisabledNode = useCallback((nodeId: string, disabled: boolean) => {
-    setGraphNodes((current) => current.map((n) => n.nodeId === nodeId ? { ...n, disabled } : n))
-  }, [])
-
-  const handleInsertAt = useCallback((index: number, kind: 'filter' | 'action', actionType?: InsertableActionType) => {
-    if (kind === 'action' && actionType) {
-      setDraft((current) => ({
-        ...current,
-        actionType,
-        connectionId: actionType === 'send_email' ? current.connectionId : '',
-        to: actionType === 'send_email' ? current.to : '',
-        subject: actionType === 'send_email' ? current.subject : { parts: [] },
-        body: actionType === 'send_email' ? current.body : { parts: [] },
-        addRecord: actionType === 'add_record' ? current.addRecord || { targetTableId: '', fields: [] } : undefined,
-        updateRecord: actionType === 'update_record' ? current.updateRecord || { target: 'trigger_record', fields: [] } : undefined,
-        lookupRecord: actionType === 'lookup_record' ? current.lookupRecord || { targetTableId: '', matchFieldId: '', matchValue: { parts: [] }, writeBack: [] } : undefined,
-        transformRecord: actionType === 'transform_record' ? current.transformRecord || { operations: [] } : undefined,
-      }))
-      setSelectedNodeId(selected?.action.nodeId || 'action_1')
-      setDrawerOpen(true)
-      return
-    }
-    if (kind !== 'filter') return
-    // Insert a fresh filter node between graphNodes[index-1] and graphNodes[index].
-    // The trigger always sits at position 0 and the primary action sits at
-    // position graphNodes.length-1; filters can go anywhere between.
-    const newId = `filter_${Date.now().toString(36)}`
-    const newNode: GraphNode = {
-      nodeId: newId,
-      kind: 'filter',
-      config: {
-        nodeId: newId,
-        type: 'filter',
-        expression: '',
-        mode: 'all',
-      },
-    }
-    const next = [...graphNodes]
-    next.splice(index, 0, newNode)
-    setGraphNodes(next)
-    setSelectedNodeId(newId)
-    setDrawerOpen(true)
-  }, [graphNodes, selected])
-
-  const handleDeleteSelectedNode = useCallback(() => {
-    if (!selectedNodeId) return
-    handleDeleteNode(selectedNodeId)
-  }, [selectedNodeId, handleDeleteNode])
+  const {
+    deleteNode: handleDeleteNode,
+    duplicateNode: handleDuplicateNode,
+    setNodeDisabled: handleToggleDisabledNode,
+    insertAt: handleInsertAt,
+    deleteSelectedNode: handleDeleteSelectedNode,
+  } = useWorkflowGraphEditing({
+    selected,
+    graphNodes,
+    setGraphNodes,
+    selectedNodeId,
+    setSelectedNodeId,
+    setDraft,
+    setDrawerOpen,
+    setConfirm,
+    setError,
+    onDeleteWorkflow: () => { void removeSelected() },
+  })
 
   const handleRetryRun = useCallback(async (runId: string) => {
     if (!selected) return
@@ -1192,14 +792,7 @@ export function WorkflowHomePage({ initialSelectedId, initialModeDialogOpen = fa
       setFilterDryRun({ matched: true, reason: 'Empty filter matches every row' })
       return
     }
-    const sample: Record<string, unknown> = {}
-    const tableId = selected.trigger.tableId
-    const schema = schemaByTableId[tableId]
-    if (schema) {
-      for (const field of schema.fields) {
-        sample[field.name] = field.type === 'number' ? 0 : ''
-      }
-    }
+    const sample = filterDryRunSample(schemaByTableId[selected.trigger.tableId])
     setFilterDryRunLoading(true)
     try {
       const result = await dryRunFilter(selected.id, expression, sample, selected.trigger.nodeId || 'trigger_1')
@@ -1261,25 +854,10 @@ export function WorkflowHomePage({ initialSelectedId, initialModeDialogOpen = fa
   // of the user's current scope. The currently-bound tableId is always
   // kept in the list so a pre-existing out-of-scope binding still renders
   // as the selected option instead of falling back to the empty draft.
-  const triggerTableOptions = useMemo(() => {
-    const currentTableId = selected?.trigger.tableId || ''
-    return Object.entries(tableLabels)
-      .filter(([tableId, label]) => {
-        if (!scopedKitablePath) return true
-        if (tableId === currentTableId) return true
-        return label.documentPath === scopedKitablePath
-      })
-      .map(([tableId, label]) => ({
-        tableId,
-        tableName: label.tableName,
-        documentTitle: label.documentTitle,
-      }))
-      .sort((a, b) => {
-        const docCmp = a.documentTitle.localeCompare(b.documentTitle)
-        if (docCmp !== 0) return docCmp
-        return a.tableName.localeCompare(b.tableName)
-      })
-  }, [tableLabels, scopedKitablePath, selected?.trigger.tableId])
+  const triggerTableOptions = useMemo(
+    () => buildTriggerTableOptions(tableLabels, scopedKitablePath, selected?.trigger.tableId || ''),
+    [tableLabels, scopedKitablePath, selected?.trigger.tableId],
+  )
 
   const selectedGraphNode = useMemo(
     () => graphNodes.find((n) => n.nodeId === selectedNodeId) || null,
@@ -1306,12 +884,7 @@ export function WorkflowHomePage({ initialSelectedId, initialModeDialogOpen = fa
     if (runStatusFilter === 'all') return visibleRuns
     return visibleRuns.filter((r) => r.status === runStatusFilter)
   }, [visibleRuns, runStatusFilter])
-  const runCounts = useMemo(() => ({
-    all: visibleRuns.length,
-    ok: visibleRuns.filter((r) => r.status === 'ok').length,
-    error: visibleRuns.filter((r) => r.status === 'error').length,
-    skipped: visibleRuns.filter((r) => r.status === 'skipped').length,
-  }), [visibleRuns])
+  const runCounts = useMemo(() => countRunsByStatus(visibleRuns), [visibleRuns])
 
   return (
     <div data-testid="workflow-home-page" className="flex h-full min-h-0 bg-card text-foreground">
