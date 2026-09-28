@@ -37,6 +37,7 @@ import { applyLinuxChromiumFlags } from './linux-chromium-flags.mjs'
 import { findKitionDeepLink, KITION_PROTOCOL_SCHEME, normalizeKitionDeepLink } from './deep-link.mjs'
 import { submitFeedbackToConsole } from './feedback-client.mjs'
 import { readClipboardImagePayload } from './clipboard-image.mjs'
+import { createExportImageInliner, unresolvedClipboardImageSources } from './export-images.mjs'
 import {
   assertWorkspacePathSafe,
   trashWorkspaceDocument,
@@ -649,247 +650,18 @@ function getBackendPublicBaseURL() {
   return getBackendBaseURL().replace(/\/api\/?$/i, '')
 }
 
-function decodeHtmlAttribute(value) {
-  return String(value || '')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-}
-
-function escapeHtmlAttribute(value) {
-  return String(value || '')
-    .replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-}
-
-function resolveExportImageURL(src) {
-  const raw = String(src || '').trim()
-  if (!raw || /^(data:|blob:)/i.test(raw)) {
-    return ''
-  }
-  if (/^(kition-workspace:|https?:\/\/)/i.test(raw)) {
-    return raw
-  }
-  if (raw.startsWith('/')) {
-    return new URL(raw, getBackendPublicBaseURL()).toString()
-  }
-  return ''
-}
-
-function decodeURIPath(pathname) {
-  return String(pathname || '')
-    .split('/')
-    .map((part) => {
-      let decoded = part
-      for (let index = 0; index < 3; index += 1) {
-        try {
-          const next = decodeURIComponent(decoded)
-          if (next === decoded) {
-            break
-          }
-          decoded = next
-        } catch {
-          break
-        }
-      }
-      return decoded
-    })
-    .join('/')
-}
-
-function stripURLSuffix(value) {
-  return String(value || '').replace(/[?#].*$/, '')
-}
-
-function unwrapMarkdownDestination(value) {
-  const raw = String(value || '').trim()
-  return raw.startsWith('<') && raw.endsWith('>')
-    ? raw.slice(1, -1).trim()
-    : raw
-}
-
-function parentWorkspacePath(documentPath) {
-  const normalized = String(documentPath || '').replace(/\\/g, '/')
-  const index = normalized.lastIndexOf('/')
-  return index > 0 ? normalized.slice(0, index) : ''
-}
-
-function isImagePath(value) {
-  return /\.(png|jpe?g|gif|webp|svg|avif)$/i.test(stripURLSuffix(value))
-}
-
-function isWorkspaceRootImagePath(value) {
-  const [root = ''] = String(value || '').replace(/\\/g, '/').replace(/^\/+/, '').split('/')
-  return ['agent', 'attachments', '.kition'].includes(root.toLowerCase())
-}
-
-function imageMimeTypeFromPath(filePath) {
-  switch (path.extname(stripURLSuffix(filePath)).toLowerCase()) {
-    case '.jpg':
-    case '.jpeg':
-      return 'image/jpeg'
-    case '.gif':
-      return 'image/gif'
-    case '.webp':
-      return 'image/webp'
-    case '.svg':
-      return 'image/svg+xml'
-    case '.avif':
-      return 'image/avif'
-    case '.png':
-    default:
-      return 'image/png'
-  }
-}
-
-function workspaceRelativePathFromPublicURL(raw) {
-  const value = String(raw || '').trim()
-  if (!value) {
-    return ''
-  }
-
-  try {
-    const parsedURL = new URL(value, getBackendPublicBaseURL())
-    const backendURL = new URL(getBackendPublicBaseURL())
-    const isBackendURL = parsedURL.origin === backendURL.origin
-    const isRootRelativeURL = value.startsWith('/')
-    if ((isBackendURL || isRootRelativeURL) && parsedURL.pathname.startsWith('/workspace-files/')) {
-      return decodeURIPath(parsedURL.pathname.slice('/workspace-files/'.length))
-    }
-  } catch {
-    return ''
-  }
-
-  return ''
-}
-
-async function exportImageFilePath(src, documentPath = '') {
-  const raw = unwrapMarkdownDestination(src)
-  if (!raw || (/^(data:|blob:|https?:\/\/)/i.test(raw) && !workspaceRelativePathFromPublicURL(raw))) {
-    return ''
-  }
-
-  try {
-    if (/^kition-workspace:/i.test(raw)) {
-      return (await resolveSafeWorkspaceProtocolPath(raw)).absolutePath
-    }
-
-    if (/^file:/i.test(raw)) {
-      const absolutePath = fileURLToPath(stripURLSuffix(raw))
-      const resolvedRoot = path.resolve(getWorkspaceRoot())
-      const resolvedTarget = path.resolve(absolutePath)
-      if (resolvedTarget !== resolvedRoot && !resolvedTarget.startsWith(`${resolvedRoot}${path.sep}`)) {
-        return ''
-      }
-      return await assertWorkspacePathSafe(resolvedRoot, resolvedTarget)
-    }
-
-    const publicWorkspacePath = workspaceRelativePathFromPublicURL(raw)
-    if (publicWorkspacePath) {
-      return (await resolveSafeWorkspacePath(publicWorkspacePath)).absolutePath
-    }
-
-    if (isImagePath(raw)) {
-      const relativePath = stripURLSuffix(raw).replace(/^\/+/, '')
-      const basePath = isWorkspaceRootImagePath(relativePath)
-        ? ''
-        : parentWorkspacePath(documentPath)
-      return (await resolveSafeWorkspacePath(
-        basePath ? `${basePath}/${relativePath}` : relativePath,
-      )).absolutePath
-    }
-  } catch (error) {
-    console.warn('failed to resolve export image file:', raw, error)
-  }
-
-  return ''
-}
-
-async function imageFileToDataURL(filePath) {
-  if (!filePath) {
-    return ''
-  }
-  try {
-    const buffer = await fs.readFile(filePath)
-    return `data:${imageMimeTypeFromPath(filePath)};base64,${buffer.toString('base64')}`
-  } catch (error) {
-    console.warn('failed to inline export image file:', filePath, error)
-    return ''
-  }
-}
-
-async function imageSourceToDataURL(src, documentPath = '') {
-  const localDataURL = await imageFileToDataURL(await exportImageFilePath(src, documentPath))
-  if (localDataURL) {
-    return localDataURL
-  }
-
-  const url = resolveExportImageURL(src)
-  if (!url) {
-    return ''
-  }
-  try {
-    const response = await net.fetch(url)
-    if (!response.ok) {
-      console.warn('failed to inline export image:', url, response.status)
-      return ''
-    }
-    const contentType = response.headers.get('content-type') || 'image/png'
-    if (!/^image\//i.test(contentType)) {
-      return ''
-    }
-    const buffer = Buffer.from(await response.arrayBuffer())
-    return `data:${contentType};base64,${buffer.toString('base64')}`
-  } catch (error) {
-    console.warn('failed to inline export image:', url, error)
-    return ''
-  }
-}
-
-async function inlineExportImages(html, documentPath = '') {
-  const sourceByRawValue = new Map()
-  const imageSourcePattern = /<img\b[^>]*?\bsrc=(["'])(.*?)\1[^>]*>/gi
-  for (const match of String(html || '').matchAll(imageSourcePattern)) {
-    const rawValue = match[2]
-    if (!sourceByRawValue.has(rawValue)) {
-      sourceByRawValue.set(rawValue, null)
-    }
-  }
-  if (!sourceByRawValue.size) {
-    return html
-  }
-
-  for (const rawValue of sourceByRawValue.keys()) {
-    sourceByRawValue.set(rawValue, await imageSourceToDataURL(decodeHtmlAttribute(rawValue), documentPath))
-  }
-
-  return String(html || '').replace(imageSourcePattern, (tag, quote, rawValue) => {
-    const dataURL = sourceByRawValue.get(rawValue)
-    if (!dataURL) {
-      return tag
-    }
-    return tag.replace(`${quote}${rawValue}${quote}`, `${quote}${escapeHtmlAttribute(dataURL)}${quote}`)
-  })
-}
-
-function unresolvedClipboardImageSources(html) {
-  const sources = []
-  const imageSourcePattern = /<img\b[^>]*?\bsrc=(["'])(.*?)\1[^>]*>/gi
-  for (const match of String(html || '').matchAll(imageSourcePattern)) {
-    const source = decodeHtmlAttribute(match[2])
-    if (source && !/^data:image\//i.test(source)) {
-      sources.push(source)
-    }
-  }
-  return sources
-}
+const exportImages = createExportImageInliner({
+  getBackendPublicBaseURL,
+  getWorkspaceRoot: () => getWorkspaceRoot(),
+  resolveSafeWorkspacePath: (relativePath) => resolveSafeWorkspacePath(relativePath),
+  resolveSafeWorkspaceProtocolPath: (url) => resolveSafeWorkspaceProtocolPath(url),
+  assertWorkspacePathSafe,
+  readFile: (filePath) => fs.readFile(filePath),
+  fetchImage: (url) => net.fetch(url),
+})
 
 async function handleCopyDocumentHtml(_event, request) {
-  const html = await inlineExportImages(
+  const html = await exportImages.inlineExportImages(
     String(request?.html || ''),
     String(request?.document_path || ''),
   )
@@ -961,7 +733,7 @@ async function handleSavePdfFile(_event, request) {
   })
 
   try {
-    const html = await inlineExportImages(String(request?.html || ''), String(request?.document_path || ''))
+    const html = await exportImages.inlineExportImages(String(request?.html || ''), String(request?.document_path || ''))
     const dataURL = `data:text/html;charset=utf-8;base64,${Buffer.from(html).toString('base64')}`
     await printWindow.loadURL(dataURL)
     await printWindow.webContents.executeJavaScript('document.fonts && document.fonts.ready ? document.fonts.ready : true', true)
