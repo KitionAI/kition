@@ -41,8 +41,9 @@ const totalGzipBytes = assets.reduce((total, asset) => total + asset.gzipBytes, 
 const totalCssBytes = cssAssets.reduce((total, asset) => total + asset.bytes, 0)
 const totalCssGzipBytes = cssAssets.reduce((total, asset) => total + asset.gzipBytes, 0)
 const limits = {
-  initialBytes: 2_200_000,
-  initialGzipBytes: 700_000,
+  // Ratchet: measured 1.40 MB decoded / 0.43 MB gzip on 2026-09-28. Lower only.
+  initialBytes: 1_500_000,
+  initialGzipBytes: 480_000,
   initialAssetCount: 6,
   initialCssBytes: 390_000,
   initialCssGzipBytes: 60_000,

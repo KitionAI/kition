@@ -6,11 +6,7 @@ import type {
 } from '@/services/desktop'
 import type { DataDocument, DataTable } from '@/types/dataDocument'
 import type { AgentWhiteboardContext } from '@/types/whiteboardAgent'
-import {
-  resolveMarkdownImageInsertionContext,
-  type MarkdownImageInsertionContext,
-  type MarkdownImageInsertionSnapshot,
-} from '@/features/document/editor/editor/markdown-image-insertion'
+import type { MarkdownImageInsertionContext, MarkdownImageInsertionSnapshot } from '@/features/document/public'
 
 export type AgentTurnContext = {
   activeDocumentPath: string
@@ -31,13 +27,20 @@ export type AgentTurnContext = {
   markdownImageInsertionContext?: MarkdownImageInsertionContext
 }
 
+/**
+ * Attaches the image insertion anchor to the base context when the editor's
+ * snapshot is for the active document. The resolver is injected: it needs
+ * the Markdown parser, which the caller loads with the editor so the parser
+ * stays out of the startup bundle.
+ */
 export function finalizeAgentTurnContext(input: {
   baseContext: AgentTurnContext
   markdownImageInsertionSnapshot?: MarkdownImageInsertionSnapshot | null
+  resolveMarkdownImageInsertionContext: (snapshot: MarkdownImageInsertionSnapshot) => MarkdownImageInsertionContext
 }): AgentTurnContext {
   const snapshot = input.markdownImageInsertionSnapshot
   const markdownImageInsertionContext = snapshot?.documentPath === input.baseContext.activeDocumentPath
-    ? resolveMarkdownImageInsertionContext(snapshot)
+    ? input.resolveMarkdownImageInsertionContext(snapshot)
     : undefined
   return {
     ...input.baseContext,

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
+import { resolveMarkdownImageInsertionContext } from '@/features/document/editor/editor/markdown-image-insertion'
+
 import { buildAgentTurnContext, finalizeAgentTurnContext } from './agentTurnContext'
 
 describe('buildAgentTurnContext', () => {
@@ -99,6 +101,7 @@ describe('buildAgentTurnContext', () => {
 
     expect(finalizeAgentTurnContext({
       baseContext,
+      resolveMarkdownImageInsertionContext,
       markdownImageInsertionSnapshot: {
         documentPath: 'Docs/Pendant.md',
         markdown: '# Title\n\nBody',
@@ -120,6 +123,7 @@ describe('buildAgentTurnContext', () => {
 
     expect(finalizeAgentTurnContext({
       baseContext,
+      resolveMarkdownImageInsertionContext,
       markdownImageInsertionSnapshot: {
         documentPath: 'Docs/Previous.md',
         markdown: '# Previous',

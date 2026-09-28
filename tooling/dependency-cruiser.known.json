@@ -15097,23 +15097,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/agent/lib/agentTurnContext.ts",
-    "to": "src/features/document/editor/editor/markdown-image-insertion.ts",
-    "unresolvedTo": "@/features/document/editor/editor/markdown-image-insertion",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/features/agent/lib/documentMentions.ts",
     "to": "src/features/workspace/lib/workspace.ts",
     "unresolvedTo": "@/features/workspace/lib/workspace",

@@ -378,8 +378,8 @@ See the console plan. Client-facing dependency: the shared web design package sh
 
 ### Task 5.1: Bundle diet
 
-- [ ] Lazy-load `cytoscape`, `docx`, `katex`, `mermaid`, and `recharts` at the feature boundary; assert in `scripts/check-performance-budget.mjs` that the initial JS is under 900 KB decoded and CSS under 250 KB.
-- [ ] Remove `DndProvider` from `main.tsx` and mount it inside `DashboardEditorPane` only.
+- [~] Lazy-load `cytoscape`, `docx`, `katex`, `mermaid`, and `recharts` at the feature boundary; assert in `scripts/check-performance-budget.mjs` that the initial JS is under 900 KB decoded and CSS under 250 KB. (2026-09-28: those five already load in their own chunks. A sourcemap build attributed the startup chunk instead: the Markdown parser reached it through the Agent turn context's image insertion resolver, which is now loaded with the editor chunk through `loadMarkdownImageInsertionResolver` in the document public entry. Startup JS went from 1.51 MB to 1.40 MB decoded, 0.46 MB to 0.43 MB gzip; the budget ratchets to 1.5 MB / 480 KB. Still in the startup chunk and worth moving next: the whiteboard geometry and patch libs pulled in by the workspace's board hooks, `zod` through `types/aiConfig`, and `axios`. CSS is 0.37 MB and waits on Task 1.6.)
+- [x] `DndProvider` is gone from `main.tsx`: nothing used `react-dnd` (the table grid has its own drag hook), so the two packages and their `dnd-core` and `redux` dependencies are removed and the third-party notices regenerated.
 
 ### Task 5.2: Release verification
 

@@ -7,7 +7,7 @@ import {
   mapBrowserPageContextToAgentBrowserContext,
   type AgentTurnContext,
 } from '@/features/agent/public'
-import type { MarkdownImageInsertionSnapshot } from '@/features/document/public'
+import { loadMarkdownImageInsertionResolver, type MarkdownImageInsertionSnapshot } from '@/features/document/public'
 import type { WorkspaceBrowserTab } from '@/features/workspace/hooks/useWorkspaceBrowserPanel'
 import { extractBrowserPageContext } from '@/services/desktop'
 import type { AgentWhiteboardContext } from '@/types/whiteboardAgent'
@@ -80,9 +80,13 @@ export function useWorkspaceAgentTurnContext({ buildWhiteboardContext }: UseWork
   )
 
   const getTurnContext = useCallback(async (): Promise<AgentTurnContext> => {
+    // The insertion resolver carries the Markdown parser; load it with the
+    // editor chunk instead of at startup.
+    const resolveMarkdownImageInsertionContext = await loadMarkdownImageInsertionResolver()
     const base = finalizeAgentTurnContext({
       baseContext: turnContextRef.current,
       markdownImageInsertionSnapshot: insertionSnapshotRef.current,
+      resolveMarkdownImageInsertionContext,
     })
     const whiteboardContext = base.paneContext === 'whiteboard' ? buildWhiteboardContext() : undefined
     const scopedBase = { ...base, whiteboardContext }

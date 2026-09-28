@@ -155,8 +155,6 @@
     "postcss": "^8.5.26",
     "radix-ui": "1.4.3",
     "react": "^19.2.5",
-    "react-dnd": "16.0.1",
-    "react-dnd-html5-backend": "16.0.1",
     "react-dom": "^19.2.5",
     "react-grid-layout": "^2.2.3",
     "react-hammerjs": "1.0.1",
