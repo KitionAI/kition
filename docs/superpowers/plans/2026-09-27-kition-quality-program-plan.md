@@ -212,7 +212,7 @@ Order matters. Each phase leaves `main` releasable.
 
 - [x] `src/features/workspace/state/tabs.ts` holds every tab transition as a pure function over `{ tabs, activeTabId }` (upsert with one-logical-tab-per-kitable, close with neighbour fallback, filter, path remap after moves, kitable rename collapse, workspace switch, initial binding) with 15 table-driven specs. `useWorkspaceTabs` now only applies them, persists per root, and runs side effects after the update. This also fixes a StrictMode bug: the close callback used to run inside the state updater, so it fired twice in development. (2026-09-27)
 - [ ] `jotai` atoms deferred: the tab list has exactly one consumer (`WorkspaceScreen`), so an atom store would add a second source of truth without a reader. Introduce atoms when Task 1.4 gives the command palette or the agent bridge a reason to read tab state outside `WorkspaceScreen`; `jotai-x` removal still belongs to Task 1.5.
-- [ ] Move the `Shell.tsx` settings and profile switches onto a `WorkspaceLocation` type; delete the ad-hoc `resolveSettingsSectionFromLocation` path parsing once the location type covers it.
+- [x] `src/app/appLocation.ts` (2026-09-28) is the typed top-level location: `documents`, `settings` with its section, `scenario`, or `workflow` with its sub-path and history-state context. The shell parses the URL once (`readAppLocation`), applies it to the view states in one place, and closes views through `leaveAppView`, which only rewrites the URL when it names that view. The ad-hoc query and pathname parsing is gone; 13 specs cover parsing, the pathname round-trip, and leaving a view. Persisting the location per workspace root still belongs with the atoms above.
 
 ### Task 1.4: Split `WorkspaceScreen.tsx`
 

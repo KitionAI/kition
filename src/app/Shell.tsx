@@ -6,6 +6,8 @@ import { ConfirmProvider } from '@/components/confirm'
 import { ConsoleCreditsExhaustedBanner } from '@/app/ConsoleCreditsExhaustedBanner'
 import type { TableSchema } from '@/features/workflow/components/BodyTemplateEditor.types'
 import type { SettingsSectionKey } from '@/features/settings/DesktopSettingsPage'
+import { appLocationPathname, leaveAppView, readAppLocation, resolveSettingsSection, type AppLocation } from '@/app/appLocation'
+import type { WorkflowRouteContext } from '@/features/workflow/public'
 import { useGlobalShortcuts } from '@/features/settings/useGlobalShortcuts'
 import { WorkspaceScreen } from '@/features/workspace/components/WorkspaceScreen'
 import { WorkspaceLauncherScreen } from '@/features/workspace/components/WorkspaceLauncherScreen'
@@ -194,51 +196,6 @@ function useSearchBoot(rootPath: string) {
   return { ready, start }
 }
 
-const settingsSectionKeys: SettingsSectionKey[] = [
-  'general',
-  'account',
-  'models',
-  'connections',
-  'display',
-  'network',
-  'runtime',
-  'developer',
-  'about',
-]
-const settingsSectionAliases: Record<string, SettingsSectionKey> = {
-  providers: 'models',
-  'ai-providers': 'models',
-  'email-providers': 'connections',
-  demos: 'general',
-  advanced: 'developer',
-}
-
-export function resolveSettingsSection(section: unknown): SettingsSectionKey {
-  if (typeof section !== 'string') return 'general'
-  if (settingsSectionAliases[section]) return settingsSectionAliases[section]
-  return settingsSectionKeys.includes(section as SettingsSectionKey)
-    ? section as SettingsSectionKey
-    : 'general'
-}
-
-export function normalizeAppPathname(pathname: string): string {
-  if (pathname === '/') return '/documents'
-  if (
-    pathname === '/documents'
-    || pathname === '/settings'
-    || pathname === '/scenario'
-    || pathname.startsWith('/workflow')
-  ) {
-    return pathname
-  }
-  return '/documents'
-}
-
-function resolveSettingsSectionFromLocation() {
-  const params = new URLSearchParams(window.location.search)
-  return resolveSettingsSection(params.get('section'))
-}
-
 export function AppShell() {
   const { t } = useTranslation('common')
   const { t: tLauncher } = useTranslation('workspaceLauncher')
@@ -248,7 +205,7 @@ export function AppShell() {
   const [profileOpen, setProfileOpen] = useState(false)
   const [scenarioOpen, setScenarioOpen] = useState(false)
   const [workflowOpen, setWorkflowOpen] = useState(false)
-  const [workflowContext, setWorkflowContext] = useState<{ documentId: string; tableId: string; tableName: string } | null>(null)
+  const [workflowContext, setWorkflowContext] = useState<WorkflowRouteContext | null>(null)
   const [desktopPlatform, setDesktopPlatform] = useState<string | null>(null)
   const [appVersion, setAppVersion] = useState<string | undefined>(undefined)
   const [runtimeLabel, setRuntimeLabel] = useState<'local-runtime' | 'dev-runtime' | ''>('')
@@ -571,9 +528,7 @@ export function AppShell() {
 
   const closeSettings = useCallback(() => {
     setSettingsOpen(false)
-    if (window.location.pathname === '/settings') {
-      window.history.replaceState(window.history.state, '', '/documents')
-    }
+    leaveAppView('settings')
   }, [])
 
   const openProfile = useCallback(() => {
@@ -581,48 +536,33 @@ export function AppShell() {
     setProfileOpen(true)
   }, [])
 
+  // The URL is the source of truth for the full-screen views. Applying a
+  // parsed location keeps the four view states consistent with each other.
+  const applyAppLocation = useCallback((location: AppLocation) => {
+    setScenarioOpen(location.view === 'scenario')
+    setWorkflowOpen(location.view === 'workflow')
+    setWorkflowContext(location.view === 'workflow' ? location.context : null)
+    if (location.view === 'settings') {
+      openSettings(location.section)
+    } else {
+      setSettingsOpen(false)
+    }
+  }, [openSettings])
+
   useEffect(() => {
-    function syncSettingsRoute() {
-      const pathname = normalizeAppPathname(window.location.pathname)
+    function syncAppLocation() {
+      const location = readAppLocation()
+      const pathname = appLocationPathname(location)
       if (pathname !== window.location.pathname) {
         window.history.replaceState(window.history.state, '', pathname)
       }
-
-      if (pathname === '/scenario') {
-        setSettingsOpen(false)
-        setScenarioOpen(true)
-        return
-      }
-
-      setScenarioOpen(false)
-
-      if (pathname.startsWith('/workflow')) {
-        setSettingsOpen(false)
-        setWorkflowOpen(true)
-        const state = window.history.state as { workflowContext?: { documentId: string; tableId: string; tableName: string } } | null
-        if (state?.workflowContext && state.workflowContext.documentId && state.workflowContext.tableId) {
-          setWorkflowContext(state.workflowContext)
-        } else {
-          setWorkflowContext(null)
-        }
-        return
-      }
-
-      setWorkflowOpen(false)
-      setWorkflowContext(null)
-
-      if (pathname !== '/settings') {
-        setSettingsOpen(false)
-        return
-      }
-
-      openSettings(resolveSettingsSectionFromLocation())
+      applyAppLocation(location)
     }
 
-    syncSettingsRoute()
-    window.addEventListener('popstate', syncSettingsRoute)
-    return () => window.removeEventListener('popstate', syncSettingsRoute)
-  }, [openSettings])
+    syncAppLocation()
+    window.addEventListener('popstate', syncAppLocation)
+    return () => window.removeEventListener('popstate', syncAppLocation)
+  }, [applyAppLocation])
 
   // Decoupled "open Settings" trigger so unrelated features (workflow AI
   // dead-end, agent panel "configure model" CTA, etc.) can pop the
@@ -644,17 +584,13 @@ export function AppShell() {
 
   const closeScenarioRoute = useCallback(() => {
     setScenarioOpen(false)
-    if (window.location.pathname === '/scenario') {
-      window.history.replaceState(window.history.state, '', '/documents')
-    }
+    leaveAppView('scenario')
   }, [])
 
   const closeWorkflowRoute = useCallback(() => {
     setWorkflowOpen(false)
     setWorkflowContext(null)
-    if (window.location.pathname.startsWith('/workflow')) {
-      window.history.replaceState(window.history.state, '', '/documents')
-    }
+    leaveAppView('workflow')
   }, [])
 
   useEffect(() => {

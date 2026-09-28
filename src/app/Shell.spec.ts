@@ -94,45 +94,9 @@ vi.mock('@/lib/windowChrome', () => ({
 }))
 
 let AppShell: typeof import('./Shell').AppShell
-let resolveSettingsSection: typeof import('./Shell').resolveSettingsSection
-let normalizeAppPathname: typeof import('./Shell').normalizeAppPathname
 
 beforeAll(async () => {
-  ({ AppShell, normalizeAppPathname, resolveSettingsSection } = await import('./Shell'))
-})
-
-describe('settings section routing', () => {
-  it('keeps legacy provider links pointed at the models pane', () => {
-    expect(resolveSettingsSection('providers')).toBe('models')
-    expect(resolveSettingsSection('ai-providers')).toBe('models')
-    expect(resolveSettingsSection('email-providers')).toBe('connections')
-  })
-
-  it('keeps old demo and advanced links pointed at their new parent panes', () => {
-    expect(resolveSettingsSection('demos')).toBe('general')
-    expect(resolveSettingsSection('advanced')).toBe('developer')
-    expect(resolveSettingsSection('runtime')).toBe('runtime')
-    expect(resolveSettingsSection('shortcuts')).toBe('general')
-    expect(resolveSettingsSection('mcp')).toBe('general')
-    expect(resolveSettingsSection('hooks')).toBe('general')
-    expect(resolveSettingsSection('notifications')).toBe('general')
-  })
-
-  it('falls back to general for unknown sections', () => {
-    expect(resolveSettingsSection('missing')).toBe('general')
-  })
-})
-
-describe('app route normalization', () => {
-  it('keeps file-level workspace routes', () => {
-    expect(normalizeAppPathname('/workflow/new')).toBe('/workflow/new')
-    expect(normalizeAppPathname('/settings')).toBe('/settings')
-  })
-
-  it('returns removed routes to the document workspace', () => {
-    expect(normalizeAppPathname('/writing/wechat_article')).toBe('/documents')
-    expect(normalizeAppPathname('/image')).toBe('/documents')
-  })
+  ({ AppShell } = await import('./Shell'))
 })
 
 describe('AppShell portal restore', () => {
