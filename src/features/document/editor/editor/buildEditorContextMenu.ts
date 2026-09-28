@@ -27,7 +27,7 @@ import {
 
 export function buildEditorContextMenu(
   view: EditorView,
-  options: { onAskAgent?: (request: DocumentAgentActionRequest) => void } = {},
+  options: { onAskAgent?: (request: DocumentAgentActionRequest) => void; onTranslate?: () => void } = {},
 ): Menu {
   const menu = new Menu()
   const t = i18next.getFixedT(null, 'document')
@@ -111,6 +111,13 @@ export function buildEditorContextMenu(
         .setIcon('maximize')
         .setDisabled(!selection)
         .onSelect(() => options.onAskAgent?.({ action: 'expand', selection })))
+      if (options.onTranslate) {
+        sub.addItem((s) => s
+          .setTitle(t('editor.translate.command'))
+          .setIcon('languages')
+          .setDisabled(!selection)
+          .onSelect(() => options.onTranslate?.()))
+      }
     })
   }
 

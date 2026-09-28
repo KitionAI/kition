@@ -119,7 +119,12 @@
   "notSynced": "Not synced yet",
   "language": {
     "label": "Language",
-    "description": "Choose the display language for the desktop app."
+    "description": "Choose the display language for the desktop app.",
+    "translationTarget": {
+      "label": "Translation language",
+      "description": "Default language for translating selected text. You can change it from the Translate menu too.",
+      "auto": "Follow app language"
+    }
   },
   "sidebar": {
     "title": "Settings",

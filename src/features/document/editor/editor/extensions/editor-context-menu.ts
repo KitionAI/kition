@@ -5,6 +5,8 @@ import { buildEditorContextMenu } from '../buildEditorContextMenu'
 
 export function editorContextMenuExtension(options: {
   onAskAgent?: (request: DocumentAgentActionRequest) => void
+  /** Opens the translation card for the current selection. */
+  onTranslate?: () => void
 } = {}): Extension {
   return EditorView.domEventHandlers({
     contextmenu(event, view) {

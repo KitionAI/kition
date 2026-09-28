@@ -13,11 +13,12 @@ export async function mockDesktopBridge(
   tableMarkdown: string,
   additionalDocuments: Record<string, string> = {},
   documentPath: string = DEFAULT_DOC_PATH,
+  options: { secureValues?: Record<string, string> } = {},
 ) {
   await page.addInitScript(
-    ({ vaultPath, docPath, content, extraDocuments }) => {
+    ({ vaultPath, docPath, content, extraDocuments, secureValues }) => {
       const stateWindow = window as typeof window & Record<string, unknown>
-      const secureStore = new Map<string, string>()
+      const secureStore = new Map<string, string>(Object.entries(secureValues))
       const docs = new Map<string, { content: string; updated_at: string }>()
       docs.set(docPath, { content, updated_at: new Date().toISOString() })
       for (const [path, documentContent] of Object.entries(extraDocuments)) {
@@ -112,6 +113,7 @@ export async function mockDesktopBridge(
       docPath: documentPath,
       content: tableMarkdown,
       extraDocuments: additionalDocuments,
+      secureValues: options.secureValues ?? {},
     },
   )
 

@@ -27,3 +27,4 @@ export {
 } from './lib/agentTurnContext'
 export { appendAgentLocalSource, extractAgentLocalPathReference } from './lib/agentLocalSources'
 export { useWorkspaceAgent } from './hooks/useWorkspaceAgent'
+export type { AgentModelOption } from './lib/agentConfig'

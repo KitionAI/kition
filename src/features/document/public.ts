@@ -7,3 +7,11 @@ export type { MarkdownImageInsertionSnapshot } from './editor/editor/markdown-im
 export type { DocumentAskAgentRequest } from './lib/documentAgentActions'
 // Type-only so consumers can name the hook's result without bundling the hook.
 export type { useDocumentExport } from './hooks/useDocumentExport'
+export {
+  buildTranslationMessages,
+  cleanTranslationResult,
+  TranslationAccountNotReadyError,
+  TranslationModelMissingError,
+  type DocumentTranslateText,
+  type DocumentTranslationSupport,
+} from './lib/documentTranslation'

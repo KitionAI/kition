@@ -400,6 +400,33 @@
         "clearCells": "Clear selected cells",
         "deleteCells": "Delete selected cells"
       }
+    },
+    "translate": {
+      "button": "Translate",
+      "to": "Translate to {{language}}",
+      "translateTo": "Translate to",
+      "chooseLanguage": "Choose translation language",
+      "defaultBadge": "Default",
+      "alwaysUse": "Always use this language",
+      "cardLabel": "Translation",
+      "close": "Close",
+      "loading": "Translating…",
+      "cancel": "Cancel",
+      "replace": "Replace",
+      "insertBelow": "Insert below",
+      "copy": "Copy",
+      "copied": "Translation copied",
+      "retry": "Translate again",
+      "stale": "The selected text changed. Translate again to use the new text.",
+      "configureModel": "Configure model",
+      "errors": {
+        "model": "Choose a text model in Settings to translate.",
+        "account": "Connect your Kition account to translate with Kition Cloud models.",
+        "tooLong": "Select less text to translate (up to 6,000 characters).",
+        "failed": "Translation failed. Try again."
+      },
+      "command": "Translate selection",
+      "commandTo": "Translate selection to…"
     }
   },
   "command": {

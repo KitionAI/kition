@@ -1,3 +1,4 @@
+import type { TranslationTargetPreference } from '@/lib/translationLanguages'
 import type { Locale } from '@/i18n/types'
 
 export type DesktopSettingsSection =
@@ -46,6 +47,8 @@ export type HostedWebSearchVersion = '20260209' | '20250305'
 export interface DesktopGeneralSettings {
   theme: DesktopThemeMode
   language: Locale
+  /** Default target for selection translation; `auto` follows the app language. */
+  translationTargetLanguage: TranslationTargetPreference
   restoreWorkspaceOnLaunch: boolean
   confirmBeforeQuit: boolean
   autoCheckUpdates: boolean

@@ -1,19 +1,61 @@
 {
   "sections": {
-    "general": { "label": "Общие", "title": "Основы приложения" },
-    "account": { "label": "Аккаунт", "title": "Аккаунт Kition" },
-    "onboardingGuides": { "label": "Getting Started guides", "title": "Kition Getting Started guides" },
-    "models": { "label": "AI-модели", "title": "AI-модели" },
-    "connections": { "label": "Подключения", "title": "Подключения" },
-    "mcp": { "label": "MCP", "title": "Серверы MCP" },
-    "shortcuts": { "label": "Горячие клавиши", "title": "Сочетания клавиш" },
-    "display": { "label": "Экран", "title": "Экран и внешний вид" },
-    "advanced": { "label": "Дополнительно", "title": "Расширенные настройки" },
-    "hooks": { "label": "Hooks", "title": "Hooks автоматизации" },
-    "developer": { "label": "Разработчик", "title": "Настройки разработчика" },
-    "runtime": { "label": "Данные", "title": "Состояние локальной среды" },
-    "network": { "label": "Сеть", "title": "Сеть" },
-    "about": { "label": "О программе", "title": "О программе Kition" }
+    "general": {
+      "label": "Общие",
+      "title": "Основы приложения"
+    },
+    "account": {
+      "label": "Аккаунт",
+      "title": "Аккаунт Kition"
+    },
+    "onboardingGuides": {
+      "label": "Getting Started guides",
+      "title": "Kition Getting Started guides"
+    },
+    "models": {
+      "label": "AI-модели",
+      "title": "AI-модели"
+    },
+    "connections": {
+      "label": "Подключения",
+      "title": "Подключения"
+    },
+    "mcp": {
+      "label": "MCP",
+      "title": "Серверы MCP"
+    },
+    "shortcuts": {
+      "label": "Горячие клавиши",
+      "title": "Сочетания клавиш"
+    },
+    "display": {
+      "label": "Экран",
+      "title": "Экран и внешний вид"
+    },
+    "advanced": {
+      "label": "Дополнительно",
+      "title": "Расширенные настройки"
+    },
+    "hooks": {
+      "label": "Hooks",
+      "title": "Hooks автоматизации"
+    },
+    "developer": {
+      "label": "Разработчик",
+      "title": "Настройки разработчика"
+    },
+    "runtime": {
+      "label": "Данные",
+      "title": "Состояние локальной среды"
+    },
+    "network": {
+      "label": "Сеть",
+      "title": "Сеть"
+    },
+    "about": {
+      "label": "О программе",
+      "title": "О программе Kition"
+    }
   },
   "network": {
     "description": "Настройки прокси и исходящих подключений для всего приложения.",
@@ -77,7 +119,12 @@
   "notSynced": "Ещё не синхронизировано",
   "language": {
     "label": "Язык",
-    "description": "Выберите язык интерфейса приложения."
+    "description": "Выберите язык интерфейса приложения.",
+    "translationTarget": {
+      "label": "Язык перевода",
+      "description": "Язык по умолчанию для перевода выделенного текста. Его также можно изменить в меню «Перевести».",
+      "auto": "Как язык приложения"
+    }
   },
   "sidebar": {
     "title": "Настройки",
@@ -246,7 +293,12 @@
     "disconnect": "Отключить",
     "noModelsReturned": "Эндпоинт провайдера не вернул пригодных моделей",
     "unknownError": "Неизвестная ошибка",
-    "reasoning": { "minimal": "Минимальное", "low": "Низкое", "medium": "Среднее", "high": "Высокое" }
+    "reasoning": {
+      "minimal": "Минимальное",
+      "low": "Низкое",
+      "medium": "Среднее",
+      "high": "Высокое"
+    }
   },
   "disconnectDialog": {
     "title": "Отключить {{provider}}?",
@@ -405,8 +457,16 @@
     "saveFailed": "Не удалось сохранить настройки экрана",
     "restored": "Настройки экрана восстановлены к значениям по умолчанию",
     "restoreDefaults": "Восстановить значения по умолчанию",
-    "density": { "compact": "Компактная", "normal": "Обычная", "relaxed": "Свободная" },
-    "lineHeight": { "tight": "Плотная", "normal": "Обычная", "loose": "Свободная" }
+    "density": {
+      "compact": "Компактная",
+      "normal": "Обычная",
+      "relaxed": "Свободная"
+    },
+    "lineHeight": {
+      "tight": "Плотная",
+      "normal": "Обычная",
+      "loose": "Свободная"
+    }
   },
   "hooks": {
     "paneTitle": "Hooks",

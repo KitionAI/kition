@@ -142,6 +142,8 @@ export type DocumentEditorProps = {
   /** Return true to replace the native copy for the selected Markdown. */
   onCopySelection?: (markdown: string, clipboardData: DataTransfer | null) => boolean
   onAskAgent?: (request: DocumentAgentActionRequest) => void
+  /** Opens the translation card for the current selection. */
+  onTranslate?: () => void
   /**
    * Extensions composed by the consuming pane; spread after every built-in
    * except `editorTheme`, which stays last so the base styles anchor the cascade.
@@ -178,6 +180,7 @@ export const DocumentEditor = forwardRef<ReactCodeMirrorRef, DocumentEditorProps
       onCreateEditor,
       onCopySelection,
       onAskAgent,
+      onTranslate,
       extraExtensions,
     },
     ref,
@@ -240,7 +243,7 @@ export const DocumentEditor = forwardRef<ReactCodeMirrorRef, DocumentEditorProps
         blockIdExtension(),
         footnotePreviewExtension(),
         spellcheckExtension(),
-        editorContextMenuExtension({ onAskAgent }),
+        editorContextMenuExtension({ onAskAgent, onTranslate }),
         headingFoldIndicatorExtension(),
         ...(loadEmbed
           ? [embedTransclusionExtension({ sourcePath, load: loadEmbed, onNavigate: onEmbedNavigate })]
@@ -269,7 +272,7 @@ export const DocumentEditor = forwardRef<ReactCodeMirrorRef, DocumentEditorProps
         ...(extraExtensions ?? []),
         editorTheme,
       ],
-      [compositionExtension, sourcePath, revealSourceOnFocus, resolveWikilink, onWikilinkNavigate, onCreateMissingNote, onTagNavigate, onCursorLineChange, onCursorChange, suggestProviders, loadEmbed, onEmbedNavigate, onMarkdownLinkNavigate, onImagePreview, onCopySelection, onAskAgent, extraExtensions],
+      [compositionExtension, sourcePath, revealSourceOnFocus, resolveWikilink, onWikilinkNavigate, onCreateMissingNote, onTagNavigate, onCursorLineChange, onCursorChange, suggestProviders, loadEmbed, onEmbedNavigate, onMarkdownLinkNavigate, onImagePreview, onCopySelection, onAskAgent, onTranslate, extraExtensions],
     )
 
     const effectiveBasicSetup = useMemo(

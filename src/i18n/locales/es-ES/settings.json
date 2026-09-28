@@ -119,7 +119,12 @@
   "notSynced": "Aún no sincronizado",
   "language": {
     "label": "Idioma",
-    "description": "Elige el idioma de visualización de la aplicación de escritorio."
+    "description": "Elige el idioma de visualización de la aplicación de escritorio.",
+    "translationTarget": {
+      "label": "Idioma de traducción",
+      "description": "Idioma predeterminado al traducir el texto seleccionado. También puedes cambiarlo desde el menú Traducir.",
+      "auto": "Seguir el idioma de la aplicación"
+    }
   },
   "sidebar": {
     "title": "Ajustes",

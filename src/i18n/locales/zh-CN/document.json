@@ -400,6 +400,33 @@
         "clearCells": "清空选中的单元格",
         "deleteCells": "删除选中的单元格"
       }
+    },
+    "translate": {
+      "button": "翻译",
+      "to": "翻译为{{language}}",
+      "translateTo": "翻译为",
+      "chooseLanguage": "选择翻译语言",
+      "defaultBadge": "默认",
+      "alwaysUse": "始终使用此语言",
+      "cardLabel": "翻译",
+      "close": "关闭",
+      "loading": "正在翻译…",
+      "cancel": "取消",
+      "replace": "替换",
+      "insertBelow": "插入到下方",
+      "copy": "复制",
+      "copied": "已复制译文",
+      "retry": "重新翻译",
+      "stale": "选中的文本已修改。重新翻译以使用新文本。",
+      "configureModel": "配置模型",
+      "errors": {
+        "model": "请先在设置中选择一个文本模型再翻译。",
+        "account": "连接 Kition 账号后才能使用 Kition Cloud 模型翻译。",
+        "tooLong": "选中的文本过长，最多 6,000 个字符。",
+        "failed": "翻译失败，请重试。"
+      },
+      "command": "翻译选中内容",
+      "commandTo": "将选中内容翻译为…"
     }
   },
   "command": {

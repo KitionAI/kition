@@ -1,6 +1,13 @@
+import { getCurrentLocale } from '@/i18n'
+import { DocumentTranslationCard } from '@/features/document/components/DocumentTranslationCard'
+import { useDocumentTranslation } from '@/features/document/hooks/useDocumentTranslation'
+import {
+  resolveTranslationTarget,
+  type DocumentTranslationSupport,
+} from '@/features/document/lib/documentTranslation'
 import type { ReactCodeMirrorRef } from '@uiw/react-codemirror'
-import { EditorView } from '@codemirror/view'
-import { EditorSelection } from '@codemirror/state'
+import { EditorView, keymap } from '@codemirror/view'
+import { EditorSelection, Prec } from '@codemirror/state'
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -87,6 +94,8 @@ export type DocumentMarkdownEditorPaneProps = {
 
   onSetReadingView?: (next: boolean) => void
   onAskAgent?: (request: DocumentAskAgentRequest) => void
+  /** Selection translation; absent in contexts without a model (web preview). */
+  translation?: DocumentTranslationSupport
   onAgentInsertionContextChange?: (
     documentPath: string,
     context: MarkdownImageInsertionSnapshot | null,
@@ -143,6 +152,7 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
   readingView = false,
   onSetReadingView,
   onAskAgent,
+  translation,
   onAgentInsertionContextChange,
 }: DocumentMarkdownEditorPaneProps) {
   const { t } = useTranslation('errors')
@@ -186,7 +196,25 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
     }),
     [],
   )
-  const extraExtensions = useMemo(() => [titleHostExt], [titleHostExt])
+  const translationCard = useDocumentTranslation({ getView, translateText: translation?.translateText })
+  // Resolved lazily so the keymap stays stable across renders (see openTranslationForSelection).
+  const openTranslationRef = useRef<() => void>(() => {})
+  const hasTranslation = Boolean(translation)
+  const translationKeymap = useMemo(() => (hasTranslation
+    ? Prec.high(keymap.of([{
+      key: 'Mod-Alt-t',
+      preventDefault: true,
+      run: (view) => {
+        if (view.state.selection.main.empty) return false
+        openTranslationRef.current()
+        return true
+      },
+    }]))
+    : []), [hasTranslation])
+  const extraExtensions = useMemo(
+    () => [titleHostExt, translationCard.extension, translationKeymap],
+    [titleHostExt, translationCard.extension, translationKeymap],
+  )
   const defaultProviders = useVaultSuggestProviders()
   const effectiveProviders = suggestProviders ?? defaultProviders
   const embedLoader = useVaultEmbedLoader()
@@ -339,6 +367,23 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
       readingMinutes,
     }
   }, [value])
+
+  const translationTarget = useMemo(() => resolveTranslationTarget({
+    preference: translation?.preference ?? 'auto',
+    appLocale: getCurrentLocale(),
+    text: cursorInfo?.selectionText ?? '',
+  }), [cursorInfo?.selectionText, translation?.preference])
+
+  // Must stay referentially stable: DocumentEditor rebuilds its extensions
+  // when a callback prop changes, and a rebuild starts a new, empty undo history.
+  const translationTargetRef = useRef(translationTarget)
+  translationTargetRef.current = translationTarget
+  const openTranslation = translationCard.open
+  const openTranslationForSelection = useCallback(
+    () => openTranslation(translationTargetRef.current),
+    [openTranslation],
+  )
+  openTranslationRef.current = openTranslationForSelection
 
   const selectionStats = useMemo(() => {
     if (!cursorInfo || cursorInfo.selectionLength === 0) return null
@@ -578,6 +623,14 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
 
   const paletteExtras = useMemo<PaletteExtra[]>(() => {
     const list: PaletteExtra[] = []
+    if (translation && cursorInfo?.selectionLength) {
+      list.push({
+        id: 'translate-selection',
+        group: td('pane.palette.groupAi'),
+        label: td('editor.translate.command'),
+        run: () => translationCard.open(translationTarget),
+      })
+    }
     if (onAskAgent) {
       list.push({
         id: 'ask-ai',
@@ -960,6 +1013,7 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
               onCursorChange={handleCursorChange}
               onCopySelection={handleCopySelection}
               onAskAgent={onAskAgent ? requestAgentAction : undefined}
+              onTranslate={translation ? openTranslationForSelection : undefined}
               suggestProviders={effectiveProviders}
               resolveWikilink={wikilinkResolver.resolve}
               onWikilinkNavigate={handleWikilinkNavigate}
@@ -973,8 +1027,25 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
             {onAskAgent && selectionStats && !readOnly && !readingView ? (
               <DocumentAgentSelectionToolbar
                 onAction={(action) => requestAgentAction({ action, selection: null })}
+                translation={translation ? {
+                  target: translationTarget,
+                  defaultTarget: translation.preference === 'auto' ? null : translation.preference,
+                  onTranslate: translationCard.open,
+                  onSetDefault: translation.onChangePreference,
+                } : undefined}
               />
             ) : null}
+            <DocumentTranslationCard
+              container={translationCard.cardElement}
+              state={translationCard.state}
+              onClose={translationCard.close}
+              onRetry={translationCard.retry}
+              onChangeTarget={translationCard.changeTarget}
+              onReplace={translationCard.replace}
+              onInsertBelow={translationCard.insertBelow}
+              onCopy={translationCard.copy}
+              onConfigureModel={translation?.onConfigureModel}
+            />
           </div>
         </div>
         {sideOpen ? (

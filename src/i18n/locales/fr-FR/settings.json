@@ -1,19 +1,61 @@
 {
   "sections": {
-    "general": { "label": "Général", "title": "Notions de base du bureau" },
-    "account": { "label": "Compte", "title": "Compte Kition" },
-    "onboardingGuides": { "label": "Getting Started guides", "title": "Kition Getting Started guides" },
-    "models": { "label": "Modèles d'IA", "title": "Modèles d'IA" },
-    "connections": { "label": "Connexions", "title": "Connexions" },
-    "mcp": { "label": "MCP", "title": "Serveurs MCP" },
-    "shortcuts": { "label": "Raccourcis", "title": "Raccourcis clavier" },
-    "display": { "label": "Affichage", "title": "Affichage et apparence" },
-    "advanced": { "label": "Avancé", "title": "Paramètres avancés" },
-    "hooks": { "label": "Hooks", "title": "Hooks d’automatisation" },
-    "developer": { "label": "Développeur", "title": "Paramètres développeur" },
-    "runtime": { "label": "Données", "title": "État de l'exécution locale" },
-    "network": { "label": "Réseau", "title": "Réseau" },
-    "about": { "label": "À propos", "title": "À propos de Kition" }
+    "general": {
+      "label": "Général",
+      "title": "Notions de base du bureau"
+    },
+    "account": {
+      "label": "Compte",
+      "title": "Compte Kition"
+    },
+    "onboardingGuides": {
+      "label": "Getting Started guides",
+      "title": "Kition Getting Started guides"
+    },
+    "models": {
+      "label": "Modèles d'IA",
+      "title": "Modèles d'IA"
+    },
+    "connections": {
+      "label": "Connexions",
+      "title": "Connexions"
+    },
+    "mcp": {
+      "label": "MCP",
+      "title": "Serveurs MCP"
+    },
+    "shortcuts": {
+      "label": "Raccourcis",
+      "title": "Raccourcis clavier"
+    },
+    "display": {
+      "label": "Affichage",
+      "title": "Affichage et apparence"
+    },
+    "advanced": {
+      "label": "Avancé",
+      "title": "Paramètres avancés"
+    },
+    "hooks": {
+      "label": "Hooks",
+      "title": "Hooks d’automatisation"
+    },
+    "developer": {
+      "label": "Développeur",
+      "title": "Paramètres développeur"
+    },
+    "runtime": {
+      "label": "Données",
+      "title": "État de l'exécution locale"
+    },
+    "network": {
+      "label": "Réseau",
+      "title": "Réseau"
+    },
+    "about": {
+      "label": "À propos",
+      "title": "À propos de Kition"
+    }
   },
   "network": {
     "description": "Préférences de proxy et de connexions sortantes pour l'ensemble de l'application de bureau.",
@@ -77,7 +119,12 @@
   "notSynced": "Pas encore synchronisé",
   "language": {
     "label": "Langue",
-    "description": "Choisissez la langue d'affichage de l'application de bureau."
+    "description": "Choisissez la langue d'affichage de l'application de bureau.",
+    "translationTarget": {
+      "label": "Langue de traduction",
+      "description": "Langue par défaut pour traduire le texte sélectionné. Vous pouvez aussi la changer depuis le menu Traduire.",
+      "auto": "Suivre la langue de l'application"
+    }
   },
   "sidebar": {
     "title": "Paramètres",
@@ -246,7 +293,12 @@
     "disconnect": "Déconnecter",
     "noModelsReturned": "Aucun modèle utilisable renvoyé par le point de terminaison du fournisseur",
     "unknownError": "Erreur inconnue",
-    "reasoning": { "minimal": "Minimal", "low": "Faible", "medium": "Moyen", "high": "Élevé" }
+    "reasoning": {
+      "minimal": "Minimal",
+      "low": "Faible",
+      "medium": "Moyen",
+      "high": "Élevé"
+    }
   },
   "disconnectDialog": {
     "title": "Déconnecter {{provider}} ?",
@@ -405,8 +457,16 @@
     "saveFailed": "Échec de l'enregistrement des paramètres d'affichage",
     "restored": "Paramètres d'affichage restaurés aux valeurs par défaut",
     "restoreDefaults": "Restaurer les valeurs par défaut",
-    "density": { "compact": "Compact", "normal": "Normal", "relaxed": "Détendu" },
-    "lineHeight": { "tight": "Serré", "normal": "Normal", "loose": "Aéré" }
+    "density": {
+      "compact": "Compact",
+      "normal": "Normal",
+      "relaxed": "Détendu"
+    },
+    "lineHeight": {
+      "tight": "Serré",
+      "normal": "Normal",
+      "loose": "Aéré"
+    }
   },
   "hooks": {
     "paneTitle": "Hooks",

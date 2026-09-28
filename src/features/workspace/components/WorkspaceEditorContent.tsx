@@ -1,3 +1,4 @@
+import type { DocumentTranslationSupport } from '@/features/document/public'
 import type { ComponentProps } from 'react'
 import { lazy, Suspense, useCallback, useEffect, useMemo, type ReactNode } from 'react'
 import { BookOpen, Globe } from 'lucide-react'
@@ -152,6 +153,7 @@ type WorkspaceEditorContentProps = {
   onCreateTable: () => void
   onOpenAgent: () => void
   onAskDocumentAgent?: (request: DocumentAskAgentRequest) => void
+  documentTranslation?: DocumentTranslationSupport
   onAgentInsertionContextChange?: (
     documentPath: string,
     context: MarkdownImageInsertionSnapshot | null,
@@ -216,6 +218,7 @@ export function WorkspaceEditorContent({
   onCreateTable,
   onOpenAgent,
   onAskDocumentAgent,
+  documentTranslation,
   onAgentInsertionContextChange,
   onSaveDocumentTitle,
   onDecideDocumentRevisionChange,
@@ -681,6 +684,7 @@ export function WorkspaceEditorContent({
                           readingView={editorMode === 'preview'}
                           onSetReadingView={(next) => onSetEditorMode(next ? 'preview' : 'rich')}
                           onAskAgent={onAskDocumentAgent}
+                          translation={documentTranslation}
                           onAgentInsertionContextChange={onAgentInsertionContextChange}
                         />
                       </EditorPaneBoundary>

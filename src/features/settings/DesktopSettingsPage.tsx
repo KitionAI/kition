@@ -1,3 +1,8 @@
+import {
+  normalizeTranslationTargetPreference,
+  TRANSLATION_LANGUAGES,
+  translationLanguageEndonym,
+} from '@/lib/translationLanguages'
 import type { ReactNode } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { TFunction } from 'i18next'
@@ -273,6 +278,24 @@ function GeneralSettings() {
             {SUPPORTED_LOCALES.map((locale) => (
               <option key={locale} value={locale}>
                 {getLocaleEndonym(locale)}
+              </option>
+            ))}
+          </Select>
+        </SettingsRow>
+        <SettingsRow title={t('language.translationTarget.label')} description={t('language.translationTarget.description')}>
+          <Select
+            className="settings-select w-full max-w-[220px]"
+            value={settings.general.translationTargetLanguage}
+            onChange={(event) => updateGeneral({
+              translationTargetLanguage: normalizeTranslationTargetPreference(event.target.value),
+            })}
+            aria-label={t('language.translationTarget.label')}
+            data-testid="settings-translation-target"
+          >
+            <option value="auto">{t('language.translationTarget.auto')}</option>
+            {TRANSLATION_LANGUAGES.map((language) => (
+              <option key={language} value={language}>
+                {translationLanguageEndonym(language)}
               </option>
             ))}
           </Select>

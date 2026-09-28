@@ -119,7 +119,12 @@
   "notSynced": "尚未同步",
   "language": {
     "label": "语言",
-    "description": "选择桌面端的显示语言。"
+    "description": "选择桌面端的显示语言。",
+    "translationTarget": {
+      "label": "翻译语言",
+      "description": "翻译选中文本时的默认目标语言。也可以在“翻译”菜单中修改。",
+      "auto": "跟随应用语言"
+    }
   },
   "sidebar": {
     "title": "设置",

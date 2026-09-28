@@ -418,3 +418,12 @@ describe('desktopSettings display / notifications / hooks normalization', () => 
     matchMediaSpy.mockRestore()
   })
 })
+
+describe('translation target language setting', () => {
+  it('defaults to following the app language and drops unknown values', async () => {
+    const { normalizeDesktopSettings } = await import('./desktopSettings')
+    expect(normalizeDesktopSettings({}).general.translationTargetLanguage).toBe('auto')
+    expect(normalizeDesktopSettings({ general: { translationTargetLanguage: 'ja' } } as never).general.translationTargetLanguage).toBe('ja')
+    expect(normalizeDesktopSettings({ general: { translationTargetLanguage: 'klingon' } } as never).general.translationTargetLanguage).toBe('auto')
+  })
+})

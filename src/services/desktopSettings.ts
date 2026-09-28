@@ -1,3 +1,4 @@
+import { normalizeTranslationTargetPreference } from '@/lib/translationLanguages'
 import { deleteSecureValue, getSecureValue, setSecureValue } from '@/services/desktop'
 import type {
   DesktopAgentTimelineLineHeight,
@@ -225,6 +226,7 @@ export function createDefaultDesktopSettings(): DesktopSettingsState {
       // North America is the default market. Existing on-disk preferences are preserved by
       // loadDesktopSettings() - only fresh installs see this value.
       language: 'en-US',
+      translationTargetLanguage: 'auto',
       restoreWorkspaceOnLaunch: true,
       confirmBeforeQuit: true,
       autoCheckUpdates: true,
@@ -342,6 +344,7 @@ export function normalizeDesktopSettings(input?: Partial<DesktopSettingsState>):
       ...fallback.general,
       ...(input?.general || {}),
       theme: normalizedTheme,
+      translationTargetLanguage: normalizeTranslationTargetPreference(input?.general?.translationTargetLanguage),
     },
     display: normalizeDesktopDisplay(input?.display),
     notifications: normalizeDesktopNotifications(input?.notifications),

@@ -400,6 +400,33 @@
         "clearCells": "Vaciar celdas seleccionadas",
         "deleteCells": "Eliminar celdas seleccionadas"
       }
+    },
+    "translate": {
+      "button": "Traducir",
+      "to": "Traducir al {{language}}",
+      "translateTo": "Traducir a",
+      "chooseLanguage": "Elegir idioma de traducción",
+      "defaultBadge": "Predeterminado",
+      "alwaysUse": "Usar siempre este idioma",
+      "cardLabel": "Traducción",
+      "close": "Cerrar",
+      "loading": "Traduciendo…",
+      "cancel": "Cancelar",
+      "replace": "Reemplazar",
+      "insertBelow": "Insertar debajo",
+      "copy": "Copiar",
+      "copied": "Traducción copiada",
+      "retry": "Traducir de nuevo",
+      "stale": "El texto seleccionado cambió. Vuelve a traducir para usar el texto nuevo.",
+      "configureModel": "Configurar modelo",
+      "errors": {
+        "model": "Elige un modelo de texto en Ajustes para traducir.",
+        "account": "Conecta tu cuenta de Kition para traducir con modelos de Kition Cloud.",
+        "tooLong": "Selecciona menos texto (hasta 6.000 caracteres).",
+        "failed": "La traducción falló. Inténtalo de nuevo."
+      },
+      "command": "Traducir selección",
+      "commandTo": "Traducir selección a…"
     }
   },
   "command": {

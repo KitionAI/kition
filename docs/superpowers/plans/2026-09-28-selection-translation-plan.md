@@ -133,60 +133,60 @@ WorkspaceEditorContent → DocumentMarkdownEditorPane (prop: translateText)
 
 **Files:** `contracts/runtime/ai-chat.schema.json` (new), `src/api/generated/*` (regenerated), `src/api/models.ts`, `src/types/index.ts`
 
-- [ ] Write the public contract for the existing `POST /v1/ai/chat` request and response, including `runtime_model`. Regenerate types and alias `ChatRequest` / `ChatResponse` to them.
-- [ ] Let `chatWithModel` take `{ signal }` and pass it to the request so a closed card cancels the call.
-- [ ] Spec: the request body matches the contract (`expectMatchesContract`).
-- [ ] Mirror the schema into `KitionAI/kition-runtime` `contracts/runtime/`. No runtime code change is needed; the endpoint already accepts these fields.
+- [x] Write the public contract for the existing `POST /v1/ai/chat` request and response, including `runtime_model`. Regenerate types and alias `ChatRequest` / `ChatResponse` to them.
+- [x] Let `chatWithModel` take `{ signal }` and pass it to the request so a closed card cancels the call.
+- [x] Spec: the request body matches the contract (`expectMatchesContract`).
+- [x] Mirror the schema into `KitionAI/kition-runtime` `contracts/runtime/`. No runtime code change is needed; the endpoint already accepts these fields.
 
 ### Task 2: Pure translation logic
 
 **Files:** `src/features/document/lib/documentTranslation.ts`, `.spec.ts`
 
-- [ ] Language list: the six app locales plus Japanese, Korean, German, Italian, Traditional Chinese, Arabic. Each with an endonym.
-- [ ] `detectScript(text)` and `resolveTranslationTarget({ preferred, appLocale, text })` with the fallback in section 2.2.
-- [ ] `buildTranslationMessages(text, target)` with the rules in section 2.4.
-- [ ] `cleanTranslationResult(raw)` strips a wrapping code fence or quotes and trims.
-- [ ] Table-driven specs for each function, including Markdown-heavy input (list, link, inline code, wikilink).
+- [x] Language list: the six app locales plus Japanese, Korean, German, Italian, Traditional Chinese, Arabic. Each with an endonym.
+- [x] `detectScript(text)` and `resolveTranslationTarget({ preferred, appLocale, text })` with the fallback in section 2.2.
+- [x] `buildTranslationMessages(text, target)` with the rules in section 2.4.
+- [x] `cleanTranslationResult(raw)` strips a wrapping code fence or quotes and trims.
+- [x] Table-driven specs for each function, including Markdown-heavy input (list, link, inline code, wikilink).
 
 ### Task 3: Settings
 
 **Files:** `src/types/desktopSettings.ts`, `src/services/desktopSettings.ts`, the General settings pane, all six `settings.json` locales
 
-- [ ] Add `translationTargetLanguage` with default `'auto'` and a load-time migration for existing settings.
-- [ ] Add the select to General with "Follow app language" first.
+- [x] Add `translationTargetLanguage` with default `'auto'` and a load-time migration for existing settings.
+- [x] Add the select to General with "Follow app language" first.
 
 ### Task 4: Translator binding
 
 **Files:** `src/features/workspace/hooks/useSelectionTranslator.ts`, `.spec.ts`, `WorkspaceScreen.tsx`, `WorkspaceEditorContent.tsx`
 
-- [ ] Build `translate(text, target, signal)` from the Agent's selected model (`selectedAgentModel.runtimeModel`). Throw a typed `TranslationModelMissingError` when there is none.
-- [ ] Pass it to `DocumentMarkdownEditorPane` as `translateText`. The toolbar hides Translate when the prop is absent (web preview).
+- [x] Build `translate(text, target, signal)` from the Agent's selected model (`selectedAgentModel.runtimeModel`). Throw a typed `TranslationModelMissingError` when there is none.
+- [x] Pass it to `DocumentMarkdownEditorPane` as `translateText`. The toolbar hides Translate when the prop is absent (web preview).
 
 ### Task 5: Card and hook
 
 **Files:** `useDocumentTranslation.ts`, `DocumentTranslationCard.tsx`, their specs, `document.json` in all six locales
 
-- [ ] Hook states: `idle → loading → ready | error`, with abort on close, retry, and target change.
-- [ ] Track the source range with a CodeMirror `StateField` that maps through changes; mark it stale when a change touches it.
-- [ ] Replace: one dispatch, `userEvent: 'input.translate'`, selection placed after the inserted text.
-- [ ] Insert below: after the end of the block containing the selection, separated by a blank line.
-- [ ] Card built from the shared UI kit: 12px card radius, 8px buttons, Replace in the primary purple, focus trapped inside, Esc closes and returns focus to the editor.
-- [ ] Component specs: each action, keyboard shortcuts, stale state, error with Configure model.
+- [x] Hook states: `idle → loading → ready | error`, with abort on close, retry, and target change.
+- [x] Track the source range with a CodeMirror `StateField` that maps through changes; mark it stale when a change touches it.
+- [x] Replace: one dispatch, `userEvent: 'input.translate'`, selection placed after the inserted text.
+- [x] Insert below: after the end of the block containing the selection, separated by a blank line.
+- [x] Card built from the shared UI kit: 12px card radius, 8px buttons, Replace in the primary purple, focus trapped inside, Esc closes and returns focus to the editor.
+- [x] Component specs: each action, keyboard shortcuts, stale state, error with Configure model.
 
 ### Task 6: Entry points
 
 **Files:** `DocumentAgentSelectionToolbar.tsx`, `buildEditorContextMenu.ts`, `DocumentMarkdownEditorPane.tsx` (palette commands)
 
-- [ ] Split button with the language menu and the "Always use this language" checkbox wired to settings.
-- [ ] Context menu items, palette command, and the shortcut.
+- [x] Split button with the language menu and the "Always use this language" checkbox wired to settings.
+- [x] Context menu items, palette command, and the shortcut.
 
 ### Task 7: End-to-end
 
 **Files:** `e2e/document-selection-translation.spec.ts`
 
-- [ ] Mock `/api/v1/ai/chat` with Playwright routing. Select a sentence, click Translate, see the card, click Replace, verify the file content, press Cmd+Z, verify the original is back.
-- [ ] Pick another language from the chevron with "Always use this language" ticked; reload; the tooltip names the new default.
-- [ ] No model configured shows the Configure model state.
+- [x] Mock `/api/v1/ai/chat` with Playwright routing. Select a sentence, click Translate, see the card, click Replace, verify the file content, press Cmd+Z, verify the original is back.
+- [x] Pick another language from the chevron with "Always use this language" ticked; reload; the tooltip names the new default.
+- [x] No model configured shows the Configure model state.
 - [ ] Verify layout and focus once in the Electron client on macOS; attach screenshots in the commit.
 
 ---

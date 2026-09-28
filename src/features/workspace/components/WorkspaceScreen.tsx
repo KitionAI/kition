@@ -72,6 +72,9 @@ import { WorkspaceDialogs } from '@/features/workspace/components/WorkspaceDialo
 import { WorkspaceAgentPane } from '@/features/workspace/components/WorkspaceAgentPane'
 import { useWorkspaceSidebarNavigation } from '@/features/workspace/hooks/useWorkspaceSidebarNavigation'
 import { useWorkspaceCreateMenu } from '@/features/workspace/hooks/useWorkspaceCreateMenu'
+import { useSelectionTranslator } from '@/features/workspace/hooks/useSelectionTranslator'
+import type { DocumentTranslationSupport } from '@/features/document/public'
+import { saveDesktopSettings } from '@/services/desktopSettings'
 import { useWorkspaceBoardCreation } from '@/features/workspace/hooks/useWorkspaceBoardCreation'
 import { useWhiteboardImageGeneration } from '@/features/workspace/hooks/useWhiteboardImageGeneration'
 import { setPinnedTabsWorkspace } from '@/features/document/editor/hooks/usePinnedTabs'
@@ -1198,6 +1201,19 @@ export function WorkspaceScreen({
     onCloseProfile,
   })
 
+  const translateSelection = useSelectionTranslator({ model: selectedAgentModel, ensureHostedAccountReady })
+  const documentTranslation = useMemo<DocumentTranslationSupport>(() => ({
+    translateText: translateSelection,
+    preference: settings.general.translationTargetLanguage,
+    onChangePreference: (target) => {
+      void saveDesktopSettings({
+        ...settings,
+        general: { ...settings.general, translationTargetLanguage: target },
+      }).then(setSettings)
+    },
+    onConfigureModel: onOpenSettingsSection ? () => onOpenSettingsSection('models') : undefined,
+  }), [onOpenSettingsSection, setSettings, settings, translateSelection])
+
   return (
     <>
       <WorkspaceTopbar
@@ -1552,6 +1568,7 @@ export function WorkspaceScreen({
                       window.dispatchEvent(new CustomEvent('kition:agent:focus-composer'))
                     },
                     onAskDocumentAgent: (request) => void handleDocumentAskAgent(request),
+                    documentTranslation,
                     onAgentInsertionContextChange: handleAgentInsertionContextChange,
                     onSaveDocumentTitle: (nextTitle: string) => void saveDocumentTitle(nextTitle),
                     onDecideDocumentRevisionChange: (changeId, decision) => {
