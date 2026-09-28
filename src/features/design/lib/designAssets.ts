@@ -110,11 +110,11 @@ export async function importDesignImage(
     .map((n) => n.toString(16).padStart(2, '0'))
     .join('')
   const extension = blob.type === 'image/jpeg' ? 'jpg' : blob.type.slice(6)
-  let path = `Attachments/Design/${hash}.${extension}`
+  let path = `attachments/design/${hash}.${extension}`
   if (isDesktopRuntime()) {
     const imported = await importWorkspaceFile({
       expected_root: root,
-      folder: 'Attachments/Design',
+      folder: 'attachments/design',
       filename: `${hash}.${extension}`,
       base64_content: dataURL.split(',')[1],
     })

@@ -88,7 +88,7 @@ test('creates, edits, crops, saves, reopens, and exports a native poster', async
       .map((n) => n.type)
       .sort(),
   ).toEqual(['image', 'rectangle', 'text'])
-  expect(Object.values(doc.assets)[0].path).toMatch(/^Attachments\/Design\//)
+  expect(Object.values(doc.assets)[0].path).toMatch(/^attachments\/design\//)
   expect(JSON.stringify(doc)).not.toMatch(/blob:|data:image|localhost|http:/)
   await page.getByRole('button', { name: 'Close panel', exact: true }).click()
   const photo = page.locator(

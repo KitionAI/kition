@@ -41,7 +41,7 @@ beforeEach(() => {
   })
   vi.mocked(writeWorkspaceDocument).mockResolvedValue({} as never)
   vi.mocked(importWorkspaceImageFromFile).mockResolvedValue({
-    importedPath: 'Attachments/imported.png',
+    importedPath: 'attachments/imported.png',
     relativePath: 'imported.png',
   })
 })
@@ -744,7 +744,7 @@ describe('WhiteboardEditorPane', () => {
       .toContain('Launch plan')
   })
 
-  it('imports an image into Attachments and renders it as a portable SVG image element', async () => {
+  it('imports an image into attachments and renders it as a portable SVG image element', async () => {
     await act(async () => {
       root = createRoot(container)
       root.render(createElement(WhiteboardEditorPane, {
@@ -767,11 +767,11 @@ describe('WhiteboardEditorPane', () => {
 
     expect(importWorkspaceImageFromFile).toHaveBeenCalledWith({
       file,
-      folder: 'Attachments',
+      folder: 'attachments',
       index: 1,
     })
     const imageElement = container.querySelector('[data-element-kind="image"]')
     expect(imageElement).not.toBeNull()
-    expect(imageElement?.querySelector('image')?.getAttribute('href')).toContain('Attachments/imported.png')
+    expect(imageElement?.querySelector('image')?.getAttribute('href')).toContain('attachments/imported.png')
   })
 })

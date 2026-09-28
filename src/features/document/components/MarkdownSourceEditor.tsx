@@ -34,6 +34,8 @@ type MarkdownSourceEditorProps = {
   className?: string
   onCreateEditor?: (view: EditorView) => void
   onCursorChange?: (snapshot: MarkdownCursorSnapshot) => void
+  /** Workspace-relative path of the edited document; pasted image links are written relative to its folder. */
+  documentPath?: string
 }
 
 function insertImagesAtCursor(view: EditorView, snippets: string[]) {
@@ -48,13 +50,14 @@ function insertImagesAtCursor(view: EditorView, snippets: string[]) {
   view.focus()
 }
 
-const imagePasteExtension = EditorView.domEventHandlers({
+function createImagePasteExtension(documentPath: string) {
+  return EditorView.domEventHandlers({
   paste: (event, view) => {
     if (view.state.readOnly) return false
     const images = collectDocumentClipboardImages(event.clipboardData)
     if (!images.length && !canPasteNativeDocumentClipboardImage(event.clipboardData)) return false
     event.preventDefault()
-    void importDocumentClipboardImages(images, { preferNativeClipboard: true }).then((snippets) => {
+    void importDocumentClipboardImages(images, { preferNativeClipboard: true, documentPath }).then((snippets) => {
       insertImagesAtCursor(view, snippets)
     })
     return true
@@ -66,16 +69,17 @@ const imagePasteExtension = EditorView.domEventHandlers({
     event.preventDefault()
     const pos = view.posAtCoords({ x: event.clientX, y: event.clientY }) ?? view.state.selection.main.head
     view.dispatch({ selection: { anchor: pos } })
-    void importDocumentClipboardImages(images).then((snippets) => {
+    void importDocumentClipboardImages(images, { documentPath }).then((snippets) => {
       insertImagesAtCursor(view, snippets)
     })
     return true
   },
-})
+  })
+}
 
 export const MarkdownSourceEditor = forwardRef<ReactCodeMirrorRef, MarkdownSourceEditorProps>(
   function MarkdownSourceEditor(
-    { value, readOnly, onChange, placeholder, className, onCreateEditor, onCursorChange },
+    { value, readOnly, onChange, placeholder, className, onCreateEditor, onCursorChange, documentPath = '' },
     ref,
   ) {
     const {
@@ -89,7 +93,7 @@ export const MarkdownSourceEditor = forwardRef<ReactCodeMirrorRef, MarkdownSourc
         markdownLanguage(),
         compositionExtension,
         EditorView.lineWrapping,
-        imagePasteExtension,
+        createImagePasteExtension(documentPath),
         ...(onCursorChange
           ? [EditorView.updateListener.of((update) => {
             if (!update.selectionSet && !update.docChanged) return
@@ -123,7 +127,7 @@ export const MarkdownSourceEditor = forwardRef<ReactCodeMirrorRef, MarkdownSourc
           },
         }),
       ],
-      [compositionExtension, onCursorChange],
+      [compositionExtension, onCursorChange, documentPath],
     )
 
     const handleCreateEditor = useCallback((view: EditorView) => {

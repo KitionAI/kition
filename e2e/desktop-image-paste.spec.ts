@@ -115,9 +115,9 @@ test('pastes a native image copied from a Feishu-style editor clipboard', async 
     await expect.poll(async () => fs.readFile(
       path.join(desktopInfo!.workspace_dir!, TARGET_DOCUMENT_PATH),
       'utf8',
-    )).toContain('![[Attachments/pasted-')
+    )).toContain('](../../attachments/pasted-')
     await expect.poll(async () => fs.readdir(
-      path.join(desktopInfo!.workspace_dir!, 'Attachments'),
+      path.join(desktopInfo!.workspace_dir!, 'attachments'),
     )).toEqual(expect.arrayContaining([
       expect.stringMatching(/^pasted-.*\.png$/),
     ]))

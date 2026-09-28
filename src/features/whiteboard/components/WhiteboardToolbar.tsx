@@ -93,7 +93,7 @@ export function WhiteboardToolbar({
       const [imported, size] = await Promise.all([
         importWorkspaceImageFromFile({
           file,
-          folder: 'Attachments',
+          folder: 'attachments',
           index: importSequenceRef.current,
         }),
         readImagePlacementSize(file),

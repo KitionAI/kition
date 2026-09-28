@@ -37,13 +37,13 @@ describe('pasteImageExtension', () => {
   it('imports a copied image even when the clipboard also contains its direct URL', async () => {
     const file = new File(['image'], 'photo.png', { type: 'image/png' })
     desktopMocks.importWorkspaceImageFromFile.mockResolvedValue({
-      importedPath: 'Attachments/pasted-photo.png',
+      importedPath: 'attachments/pasted-photo.png',
       relativePath: 'pasted-photo.png',
     })
     view = new EditorView({
       state: EditorState.create({
         doc: '',
-        extensions: [pasteImageExtension()],
+        extensions: [pasteImageExtension({ sourcePath: 'Notes/demo.md' })],
       }),
       parent: document.body,
     })
@@ -65,12 +65,12 @@ describe('pasteImageExtension', () => {
     view.contentDOM.dispatchEvent(event)
 
     await vi.waitFor(() => {
-      expect(view?.state.doc.toString()).toBe('![[Attachments/pasted-photo.png]]')
+      expect(view?.state.doc.toString()).toBe('![photo](../attachments/pasted-photo.png)')
     })
     expect(event.defaultPrevented).toBe(true)
     expect(desktopMocks.importWorkspaceImageFromFile).toHaveBeenCalledWith({
       file,
-      folder: 'Attachments',
+      folder: 'attachments',
       index: 1,
     })
   })
@@ -107,7 +107,7 @@ describe('pasteImageExtension', () => {
 
   it('uses the native image behind a protected Feishu clipboard URL', async () => {
     desktopMocks.importWorkspaceImageFromClipboard.mockResolvedValue({
-      importedPath: 'Attachments/pasted-feishu.png',
+      importedPath: 'attachments/pasted-feishu.png',
       relativePath: 'pasted-feishu.png',
     })
     view = new EditorView({
@@ -131,7 +131,7 @@ describe('pasteImageExtension', () => {
     view.contentDOM.dispatchEvent(event)
 
     await vi.waitFor(() => {
-      expect(view?.state.doc.toString()).toBe('![[Attachments/pasted-feishu.png]]')
+      expect(view?.state.doc.toString()).toBe('![image-id](attachments/pasted-feishu.png)')
     })
     expect(event.defaultPrevented).toBe(true)
     expect(desktopMocks.importWorkspaceImageFromBlobURL).not.toHaveBeenCalled()
@@ -140,7 +140,7 @@ describe('pasteImageExtension', () => {
   it('pastes a native desktop image when Feishu exposes no browser clipboard payload', async () => {
     desktopMocks.canImportWorkspaceImageFromClipboard.mockReturnValue(true)
     desktopMocks.importWorkspaceImageFromClipboard.mockResolvedValue({
-      importedPath: 'Attachments/pasted-feishu.png',
+      importedPath: 'attachments/pasted-feishu.png',
       relativePath: 'pasted-feishu.png',
     })
     view = new EditorView({
@@ -162,7 +162,7 @@ describe('pasteImageExtension', () => {
     view.contentDOM.dispatchEvent(event)
 
     await vi.waitFor(() => {
-      expect(view?.state.doc.toString()).toBe('![[Attachments/pasted-feishu.png]]')
+      expect(view?.state.doc.toString()).toBe('![image](attachments/pasted-feishu.png)')
     })
     expect(event.defaultPrevented).toBe(true)
   })

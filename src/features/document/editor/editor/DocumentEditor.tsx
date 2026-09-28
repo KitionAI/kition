@@ -224,7 +224,7 @@ export const DocumentEditor = forwardRef<ReactCodeMirrorRef, DocumentEditorProps
               },
             })]
           : []),
-        pasteImageExtension(),
+        pasteImageExtension({ sourcePath }),
         pasteLinkExtension(),
         wikilinkExtension({
           sourcePath,

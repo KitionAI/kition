@@ -15,12 +15,14 @@ export function DocumentSplitEditorPane({
   readOnly,
   onChange,
   onCursorChange,
+  documentPath,
 }: {
   value: string
   previewHtml: string
   readOnly: boolean
   onChange: (value: string) => void
   onCursorChange?: (snapshot: MarkdownCursorSnapshot) => void
+  documentPath?: string
 }) {
   const { t } = useTranslation('document')
   const sourceViewRef = useRef<EditorView | null>(null)
@@ -149,6 +151,7 @@ export function DocumentSplitEditorPane({
             placeholder={t('splitEditor.sourcePlaceholder')}
             onCreateEditor={handleCreateEditor}
             onCursorChange={onCursorChange}
+            documentPath={documentPath}
           />
         </div>
         <button

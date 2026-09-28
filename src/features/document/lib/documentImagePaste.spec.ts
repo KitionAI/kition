@@ -19,6 +19,7 @@ import {
   collectDocumentClipboardImages,
   extractImageOnlyClipboardHTML,
   importDocumentClipboardImages,
+  relativeMarkdownPath,
 } from './documentImagePaste'
 
 describe('document image paste', () => {
@@ -87,15 +88,15 @@ describe('document image paste', () => {
 
   it('uses the native desktop image instead of a protected Feishu preview URL', async () => {
     desktopMocks.importWorkspaceImageFromClipboard.mockResolvedValue({
-      importedPath: 'Attachments/pasted-feishu.png',
+      importedPath: 'attachments/pasted-feishu.png',
       relativePath: 'pasted-feishu.png',
     })
     const images = extractImageOnlyClipboardHTML(
       '<meta charset="utf-8"><img src="https://internal-api-drive-stream.feishu.cn/space/api/box/stream/download/preview/image-id/?preview_type=16" alt="image-id">',
     )
 
-    await expect(importDocumentClipboardImages(images, { preferNativeClipboard: true }))
-      .resolves.toEqual(['![[Attachments/pasted-feishu.png]]'])
+    await expect(importDocumentClipboardImages(images, { preferNativeClipboard: true, documentPath: 'notes/today.md' }))
+      .resolves.toEqual(['![image-id](../attachments/pasted-feishu.png)'])
     expect(desktopMocks.importWorkspaceImageFromBlobURL).not.toHaveBeenCalled()
   })
 
@@ -113,20 +114,40 @@ describe('document image paste', () => {
     )).toEqual([])
   })
 
-  it('stores a pasted image file in Attachments and returns a durable wikilink', async () => {
+  it('stores a pasted image file in attachments and links it relative to the document folder', async () => {
     const file = new File(['image'], 'photo.png', { type: 'image/png' })
     desktopMocks.importWorkspaceImageFromFile.mockResolvedValue({
-      importedPath: 'Attachments/pasted-photo.png',
+      importedPath: 'attachments/pasted-photo.png',
       relativePath: 'pasted-photo.png',
     })
 
-    await expect(importDocumentClipboardImages([{ kind: 'file', file, alt: 'photo' }]))
-      .resolves.toEqual(['![[Attachments/pasted-photo.png]]'])
+    await expect(importDocumentClipboardImages(
+      [{ kind: 'file', file, alt: 'photo' }],
+      { documentPath: 'reference/how_to_use_ga4_for_seo/overview.md' },
+    )).resolves.toEqual(['![photo](../../attachments/pasted-photo.png)'])
     expect(desktopMocks.importWorkspaceImageFromFile).toHaveBeenCalledWith({
       file,
-      folder: 'Attachments',
+      folder: 'attachments',
       index: 1,
     })
+  })
+
+  it('links a pasted image from a root document without a parent prefix', async () => {
+    const file = new File(['image'], 'photo.png', { type: 'image/png' })
+    desktopMocks.importWorkspaceImageFromFile.mockResolvedValue({
+      importedPath: 'attachments/pasted-photo.png',
+      relativePath: 'pasted-photo.png',
+    })
+
+    await expect(importDocumentClipboardImages([{ kind: 'file', file, alt: 'photo' }], { documentPath: 'Home.md' }))
+      .resolves.toEqual(['![photo](attachments/pasted-photo.png)'])
+  })
+
+  it('computes document-relative paths, sharing a common prefix and quoting spaces', () => {
+    expect(relativeMarkdownPath('Home.md', 'attachments/a.png')).toBe('attachments/a.png')
+    expect(relativeMarkdownPath('notes/daily/today.md', 'attachments/a.png')).toBe('../../attachments/a.png')
+    expect(relativeMarkdownPath('attachments/readme.md', 'attachments/a.png')).toBe('a.png')
+    expect(relativeMarkdownPath('reference/x/y.md', 'reference/img/a.png')).toBe('../img/a.png')
   })
 
   it('falls back to a remote Markdown image when the site blocks downloading', async () => {

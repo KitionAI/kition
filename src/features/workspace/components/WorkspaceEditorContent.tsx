@@ -619,6 +619,7 @@ export function WorkspaceEditorContent({
                   readOnly={!hasActiveDocument || editorLocked}
                   onChange={onSplitEditorChange}
                   onCursorChange={handleMarkdownCursorChange}
+                  documentPath={activeDocument?.path ?? ''}
                 />
               </EditorPaneBoundary>
             ) : null}
@@ -633,6 +634,7 @@ export function WorkspaceEditorContent({
                         onChange={onSplitEditorChange}
                         placeholder={t('editor.sourcePlaceholder')}
                         onCursorChange={handleMarkdownCursorChange}
+                        documentPath={activeDocument?.path ?? ''}
                       />
                     </EditorPaneBoundary>
                   </div>

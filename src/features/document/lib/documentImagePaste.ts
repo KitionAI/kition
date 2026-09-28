@@ -5,7 +5,8 @@ import {
   importWorkspaceImageFromFile,
 } from '@/services/desktop'
 
-const ATTACHMENT_FOLDER = 'Attachments'
+/** Workspace folder pasted and dropped images are stored in, relative to the workspace root. */
+const ATTACHMENT_FOLDER = 'attachments'
 const MAX_PASTED_IMAGES = 8
 
 export type DocumentClipboardImage =
@@ -115,22 +116,60 @@ function externalImageMarkdown(image: Extract<DocumentClipboardImage, { kind: 's
   return `![${escapeMarkdownAlt(image.alt)}](<${safeSource}>)`
 }
 
-function importedImageMarkdown(importedPath: string, relativePath: string) {
+function splitWorkspacePath(path: string) {
+  return String(path || '').replace(/\\/g, '/').split('/').filter((part) => part && part !== '.')
+}
+
+/**
+ * Path from the folder that contains `documentPath` to `targetPath`, both
+ * workspace-relative. This is what standard Markdown viewers resolve, so a
+ * link written this way renders in Kition and in any other editor that opens
+ * the same folder. A document at the root gets the target path unchanged.
+ */
+export function relativeMarkdownPath(documentPath: string, targetPath: string) {
+  const folder = splitWorkspacePath(documentPath).slice(0, -1)
+  const target = splitWorkspacePath(targetPath)
+  let common = 0
+  while (common < folder.length && common < target.length && folder[common] === target[common]) common += 1
+  const up = folder.slice(common).map(() => '..')
+  return [...up, ...target.slice(common)].join('/')
+}
+
+/** Markdown destination: wrapped in angle brackets when it contains characters that would end the link early. */
+function markdownDestination(path: string) {
+  return /[\s()<>]/.test(path) ? `<${path.replace(/>/g, '%3E')}>` : path
+}
+
+function importedImageMarkdown(
+  importedPath: string,
+  relativePath: string,
+  alt: string,
+  documentPath: string,
+) {
   const normalizedImported = importedPath.replace(/\\/g, '/').replace(/^\/+/, '')
   const normalizedRelative = relativePath.replace(/\\/g, '/').replace(/^\/+/, '')
-  const path = normalizedImported
+  const workspacePath = normalizedImported
     || (normalizedRelative
       ? (normalizedRelative.startsWith(`${ATTACHMENT_FOLDER}/`)
         ? normalizedRelative
         : `${ATTACHMENT_FOLDER}/${normalizedRelative}`)
       : '')
-  return path ? `![[${path}]]` : ''
+  if (!workspacePath) return ''
+  const destination = markdownDestination(relativeMarkdownPath(documentPath, workspacePath))
+  return `![${escapeMarkdownAlt(alt)}](${destination})`
+}
+
+export type ImportDocumentClipboardImagesOptions = {
+  preferNativeClipboard?: boolean
+  /** Workspace-relative path of the document being edited; links are written relative to its folder. */
+  documentPath?: string
 }
 
 export async function importDocumentClipboardImages(
   images: DocumentClipboardImage[],
-  options: { preferNativeClipboard?: boolean } = {},
+  options: ImportDocumentClipboardImagesOptions = {},
 ) {
+  const documentPath = options.documentPath ?? ''
   const limitedImages = images.slice(0, MAX_PASTED_IMAGES)
   if (options.preferNativeClipboard && limitedImages.length <= 1) {
     try {
@@ -139,7 +178,8 @@ export async function importDocumentClipboardImages(
         index: 1,
       })
       if (imported) {
-        const snippet = importedImageMarkdown(imported.importedPath, imported.relativePath)
+        const alt = limitedImages[0]?.alt || 'image'
+        const snippet = importedImageMarkdown(imported.importedPath, imported.relativePath, alt, documentPath)
         if (snippet) return [snippet]
       }
     } catch (error) {
@@ -162,7 +202,7 @@ export async function importDocumentClipboardImages(
             blobURL: image.source,
             index: index++,
           })
-      const snippet = importedImageMarkdown(imported.importedPath, imported.relativePath)
+      const snippet = importedImageMarkdown(imported.importedPath, imported.relativePath, image.alt, documentPath)
       if (snippet) snippets.push(snippet)
     } catch (error) {
       if (image.kind === 'source') {
