@@ -14,7 +14,10 @@
     "loading": "Chargement…",
     "submit": "Envoyer",
     "showPassword": "Afficher le mot de passe",
-    "hidePassword": "Masquer le mot de passe"
+    "hidePassword": "Masquer le mot de passe",
+    "dismiss": "Ignorer",
+    "closeDrawer": "Fermer le panneau",
+    "resizeDrawer": "Redimensionner le panneau"
   },
   "statusLabel": {
     "success": "Réussi",
@@ -51,5 +54,14 @@
     "retry": "Retry",
     "reload": "Reload Kition",
     "details": "Error details"
+  },
+  "dialogs": {
+    "accountInfo": "Informations du compte",
+    "rightDrawer": "Panneau droit",
+    "rightSheet": "Volet droit"
+  },
+  "credits": {
+    "exhaustedTitle": "Les crédits Kition sont épuisés",
+    "topUp": "Recharger des crédits"
   }
 }

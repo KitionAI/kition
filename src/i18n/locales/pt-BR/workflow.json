@@ -34,6 +34,40 @@
     "scheduledTime": "No horário agendado",
     "buttonClicked": "Quando o botão é clicado"
   },
+  "nodePicker": {
+    "search": "Search nodes",
+    "close": "Close node picker",
+    "results": "Search results",
+    "planned": "Planned",
+    "tabs": {
+      "common": "Common",
+      "ai": "AI",
+      "connectors": "Connectors",
+      "utilities": "Utilities"
+    },
+    "items": {
+      "updateRecord": "Update record",
+      "updateRecordDesc": "Change fields on the triggering row",
+      "lookupRecord": "Find record",
+      "lookupRecordDesc": "Match a row in another table and write fields back",
+      "addRecord": "Add record",
+      "addRecordDesc": "Create a row in another table",
+      "transformRecord": "Data transformer",
+      "transformRecordDesc": "Clean text and calculate values locally",
+      "sendEmail": "Send email",
+      "sendEmailDesc": "Deliver through an SMTP connection",
+      "ifElse": "Condition (If/Else)",
+      "ifElseDesc": "Route the workflow into true and false branches",
+      "aiText": "AI generate text",
+      "aiTextDesc": "Generate or analyze text with a configured model",
+      "aiClassify": "AI classify",
+      "aiClassifyDesc": "Assign a category from model output",
+      "webhook": "Webhook / group robot",
+      "webhookDesc": "Send to Feishu, DingTalk, WeCom, or a custom endpoint",
+      "javascript": "JavaScript",
+      "javascriptDesc": "Run a sandboxed script"
+    }
+  },
   "buttons": {
     "create": "Novo fluxo de trabalho"
   },
@@ -74,10 +108,6 @@
       "name": "Manter um diário de progresso de leitura",
       "description": "Quando um item é criado ou atualizado, adiciona o status atual ao Reading Journal."
     },
-    "bodyFallbacks": {
-      "unnamed": "(sem nome)",
-      "there": "olá"
-    },
     "expenseHighValueReview": {
       "name": "Flag high-value expenses for review",
       "description": "When Amount is above 1000, update the same expense row to Needs review."
@@ -89,6 +119,10 @@
     "normalizeContactDetails": {
       "name": "Normalize contact details",
       "description": "Extract the email domain and keep phone numbers as digits using local transforms."
+    },
+    "bodyFallbacks": {
+      "unnamed": "(sem nome)",
+      "there": "olá"
     }
   },
   "launcher": {
@@ -339,6 +373,7 @@
       "tableLabelWorkspace": "Espaço de trabalho",
       "failingLastRun": "Com falha — a última execução falhou",
       "runTest": "Executar teste",
+      "save": "Salvar",
       "moreActions": "Mais ações do fluxo de trabalho",
       "delete": "Excluir",
       "testEmailDelivered": "E-mail de teste entregue",
@@ -364,22 +399,22 @@
         "subjectRequired": "O assunto é obrigatório",
         "bodyRequired": "O corpo é obrigatório",
         "addRecordTargetRequired": "Escolha uma tabela de destino",
-        "connectionRequired": "Nenhuma conexão selecionada",
         "updateRecordFieldsRequired": "Add at least one field update",
         "lookupRecordConfigRequired": "Complete the lookup and add a write-back mapping",
-        "transformRecordOperationsRequired": "Add at least one transform operation"
+        "transformRecordOperationsRequired": "Add at least one transform operation",
+        "connectionRequired": "Nenhuma conexão selecionada"
       },
       "statusBanner": {
         "enableNow": "Ativar agora",
         "fixConnection": "Corrigir conexão",
+        "fixAction": "Fix action",
         "finishConfiguration": "Concluir configuração",
         "lastRunFailedLeading": "A última execução falhou —",
         "lastRunFailedFallback": "corrija a ação para reativar.",
         "validationFailedLeading": "A validação falhou —",
         "notConfiguredOne": "Conclua a configuração antes de ativar este fluxo de trabalho.",
         "notConfiguredOther": "{{count}} campos precisam de atenção antes que este fluxo de trabalho possa ser ativado.",
-        "configuredDisabled": "A configuração está correta. Ative este fluxo de trabalho para começar a executá-lo.",
-        "fixAction": "Fix action"
+        "configuredDisabled": "A configuração está correta. Ative este fluxo de trabalho para começar a executá-lo."
       },
       "triggerVerb": {
         "recordCreated": "Registro criado",
@@ -392,10 +427,14 @@
         "stepLabel": "Etapa {{index}}",
         "stepActionEmail": "Etapa {{index}} · E-mail",
         "stepActionAddRecord": "Etapa {{index}} · Adicionar registro",
+        "stepActionGeneric": "Step {{index}} · Action",
         "stepFilter": "Etapa {{index}} · Filtro",
         "triggerLabel": "Etapa 1",
         "actionSendEmail": "Enviar e-mail",
         "actionAddRecord": "Adicionar registro",
+        "actionUpdateRecord": "Update record",
+        "actionLookupRecord": "Find and fill record",
+        "actionTransformRecord": "Transform record data",
         "drawerKindAction": "Ação",
         "drawerKindFilter": "Filtro",
         "drawerKindTrigger": "Gatilho",
@@ -406,18 +445,14 @@
         "sendEmailDescription": "via {{channel}} · para {{recipient}}",
         "addRecordDescription_one": "em {{target}} · 1 campo",
         "addRecordDescription_other": "em {{target}} · {{count}} campos",
-        "unknownTable": "Tabela desconhecida",
-        "noSchedule": "(sem agenda)",
-        "newFilter": "Novo filtro",
-        "stepActionGeneric": "Step {{index}} · Action",
-        "actionUpdateRecord": "Update record",
-        "actionLookupRecord": "Find and fill record",
-        "actionTransformRecord": "Transform record data",
         "updateRecordDescription_one": "update trigger row · 1 field",
         "updateRecordDescription_other": "update trigger row · {{count}} fields",
         "lookupRecordDescription": "find a match in {{target}} and fill this row",
         "transformRecordDescription_one": "1 local transform",
-        "transformRecordDescription_other": "{{count}} local transforms"
+        "transformRecordDescription_other": "{{count}} local transforms",
+        "unknownTable": "Tabela desconhecida",
+        "noSchedule": "(sem agenda)",
+        "newFilter": "Novo filtro"
       },
       "list": {
         "searchPlaceholder": "Pesquisar fluxos de trabalho...",
@@ -475,6 +510,46 @@
       "dryRunButton": "▶ Executar com linha de amostra",
       "dryMatched": "✓ Correspondência — esta linha continuaria para as próximas etapas",
       "dryNotMatched": "⊘ Sem correspondência — a execução seria marcada como ignorada"
+    },
+    "recordActions": {
+      "triggerRecord": "Trigger record",
+      "remove": "Remove",
+      "testSection": "Test action",
+      "testDescription": "Pick an existing row. Kition runs the real action and persists the result in the table.",
+      "testUpdated": "The selected row was updated successfully.",
+      "noMatch": "No matching row was found; the source row was left unchanged.",
+      "update": {
+        "section": "Update current record",
+        "description": "Only populated fields below are changed. Unchanged values are preserved."
+      },
+      "lookup": {
+        "section": "Find record and write back",
+        "table": "Lookup table",
+        "tablePlaceholder": "Choose a table",
+        "matchField": "Match field",
+        "fieldPlaceholder": "Choose a field",
+        "matchValue": "Value from the trigger record",
+        "sourceField": "Field to read",
+        "targetField": "Field to fill",
+        "addMapping": "Add write-back mapping"
+      },
+      "transform": {
+        "section": "Transform record data",
+        "operation": "Operation {{index}}",
+        "argument": "Argument",
+        "targetField": "Choose output field",
+        "addOperation": "Add transform",
+        "operations": {
+          "trim": "Trim whitespace",
+          "lowercase": "Lowercase",
+          "uppercase": "Uppercase",
+          "digits_only": "Keep digits only",
+          "domain_from_email": "Extract email domain",
+          "concat": "Append text",
+          "number_add": "Add number",
+          "number_multiply": "Multiply number"
+        }
+      }
     },
     "bodyEditor": {
       "noFieldsAvailable": "Nenhum campo disponível",
@@ -559,46 +634,6 @@
       "stepWorkflow": "Gerar fluxo de trabalho",
       "stepTrigger": "Gerar gatilho",
       "stepAction": "Gerar nó de ação"
-    },
-    "recordActions": {
-      "triggerRecord": "Trigger record",
-      "remove": "Remove",
-      "testSection": "Test action",
-      "testDescription": "Pick an existing row. Kition runs the real action and persists the result in the table.",
-      "testUpdated": "The selected row was updated successfully.",
-      "noMatch": "No matching row was found; the source row was left unchanged.",
-      "update": {
-        "section": "Update current record",
-        "description": "Only populated fields below are changed. Unchanged values are preserved."
-      },
-      "lookup": {
-        "section": "Find record and write back",
-        "table": "Lookup table",
-        "tablePlaceholder": "Choose a table",
-        "matchField": "Match field",
-        "fieldPlaceholder": "Choose a field",
-        "matchValue": "Value from the trigger record",
-        "sourceField": "Field to read",
-        "targetField": "Field to fill",
-        "addMapping": "Add write-back mapping"
-      },
-      "transform": {
-        "section": "Transform record data",
-        "operation": "Operation {{index}}",
-        "argument": "Argument",
-        "targetField": "Choose output field",
-        "addOperation": "Add transform",
-        "operations": {
-          "trim": "Trim whitespace",
-          "lowercase": "Lowercase",
-          "uppercase": "Uppercase",
-          "digits_only": "Keep digits only",
-          "domain_from_email": "Extract email domain",
-          "concat": "Append text",
-          "number_add": "Add number",
-          "number_multiply": "Multiply number"
-        }
-      }
     }
   },
   "runs": {
@@ -640,39 +675,5 @@
       "hoursAgo": "há {{n}}h",
       "daysAgo": "há {{n}}d"
     }
-  },
-  "nodePicker": {
-    "search": "Search nodes",
-    "results": "Search results",
-    "planned": "Planned",
-    "tabs": {
-      "common": "Common",
-      "ai": "AI",
-      "connectors": "Connectors",
-      "utilities": "Utilities"
-    },
-    "items": {
-      "updateRecord": "Update record",
-      "updateRecordDesc": "Change fields on the triggering row",
-      "lookupRecord": "Find record",
-      "lookupRecordDesc": "Match a row in another table and write fields back",
-      "addRecord": "Add record",
-      "addRecordDesc": "Create a row in another table",
-      "transformRecord": "Data transformer",
-      "transformRecordDesc": "Clean text and calculate values locally",
-      "sendEmail": "Send email",
-      "sendEmailDesc": "Deliver through an SMTP connection",
-      "ifElse": "Condition (If/Else)",
-      "ifElseDesc": "Route the workflow into true and false branches",
-      "aiText": "AI generate text",
-      "aiTextDesc": "Generate or analyze text with a configured model",
-      "aiClassify": "AI classify",
-      "aiClassifyDesc": "Assign a category from model output",
-      "webhook": "Webhook / group robot",
-      "webhookDesc": "Send to Feishu, DingTalk, WeCom, or a custom endpoint",
-      "javascript": "JavaScript",
-      "javascriptDesc": "Run a sandboxed script"
-    },
-    "close": "Close node picker"
   }
 }

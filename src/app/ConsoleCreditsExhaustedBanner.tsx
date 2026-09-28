@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AlertTriangle, ExternalLink, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui'
 import { openExternalURL } from '@/services/desktop'
@@ -15,6 +16,7 @@ import {
  * close it and keep working with a different provider without it lingering.
  */
 export function ConsoleCreditsExhaustedBanner() {
+  const { t } = useTranslation('common')
   const [detail, setDetail] = useState<ConsoleCreditsExhaustedDetail | null>(null)
 
   useEffect(() => {
@@ -37,7 +39,7 @@ export function ConsoleCreditsExhaustedBanner() {
         <AlertTriangle className="size-5" />
       </div>
       <div className="console-credits-banner__copy">
-        <p className="console-credits-banner__title">Kition credits are exhausted</p>
+        <p className="console-credits-banner__title">{t('credits.exhaustedTitle')}</p>
         <p className="console-credits-banner__message">{detail.message}</p>
       </div>
       <div className="console-credits-banner__actions">
@@ -49,15 +51,15 @@ export function ConsoleCreditsExhaustedBanner() {
             data-testid="console-credits-exhausted-topup"
           >
             <ExternalLink className="size-4" />
-            Top up credits
+            {t('credits.topUp')}
           </Button>
         ) : null}
         <button
           type="button"
           className="console-credits-banner__close"
           onClick={() => setDetail(null)}
-          aria-label="Dismiss"
-          title="Dismiss"
+          aria-label={t('actions.dismiss')}
+          title={t('actions.dismiss')}
           data-testid="console-credits-exhausted-dismiss"
         >
           <X className="size-4" />

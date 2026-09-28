@@ -357,8 +357,8 @@ Private implementation detail lives in the runtime plan. These tasks are the pub
 **Files:**
 - Modify: `scripts/check-i18n.py`
 
-- [ ] Extend the script to fail when any locale lacks a key present in `en-US`, and when `.tsx` files contain raw sentence-case text nodes or raw `aria-label` strings outside an allowlist.
-- [ ] Fill the 302 missing keys per locale; fix the 53 raw strings and 33 raw labels.
+- [x] `scripts/check-i18n.py` (2026-09-29) compares every locale directory against `en-US` (missing, stale, type, and placeholder parity), not only `zh-CN`, and reports raw sentence-case JSX text nodes and literal `aria-label` strings in `src/**/*.tsx`. Existing raw strings live in `tooling/i18n-raw-strings.baseline.json`; new ones fail the check and `--update-raw-baseline` shrinks the list.
+- [~] Fill the 302 missing keys per locale; fix the 53 raw strings and 33 raw labels. (2026-09-29: the 302 keys are filled in `es-ES`, `fr-FR`, `pt-BR`, and `ru-RU` (1,208 entries: document revision review, the image studio gallery and templates, the board templates and toolbar, and the first-run scenario), the 45 stale image-generation keys per locale are removed, and each file is rebuilt in `en-US` key order with every existing value unchanged. The translations are a first pass and welcome native review. Eight raw strings in the shared shell components (credits banner, account dialog, right drawer and sheet, dialog close) moved to `common` keys in all six locales; 59 remain in the baseline, mostly in email sync, form sync, the template library dialog, and the kitable sidebar.)
 
 ### Task 3.5: Accessibility pass
 

@@ -1198,6 +1198,34 @@
       "failed": "Error al exportar"
     }
   },
+  "publishingClipboard": {
+    "copied": "Copiado con las imágenes incrustadas",
+    "failed": "No se pudo copiar el contenido con las imágenes incrustadas"
+  },
+  "revision": {
+    "title": "Revisar cambios",
+    "summary_one": "{{count}} cambio se hizo fuera del editor",
+    "summary_other": "{{count}} cambios se hicieron fuera del editor",
+    "pending_one": "{{count}} pendiente",
+    "pending_other": "{{count}} pendientes",
+    "previous": "Cambio anterior",
+    "next": "Cambio siguiente",
+    "changeLabel": "Cambio {{index}}",
+    "accept": "Aceptar cambio",
+    "reject": "Rechazar cambio",
+    "acceptAll": "Aceptar todos",
+    "rejectAll": "Rechazar todos",
+    "accepted": "Aceptado",
+    "rejected": "Rechazado",
+    "externalChangeReady_one": "Revisa {{count}} cambio externo antes de aplicarlo.",
+    "externalChangeReady_other": "Revisa {{count}} cambios externos antes de aplicarlos.",
+    "dirtyExternalChange": "El archivo cambió en el disco. Se conservó el contenido sin guardar del editor.",
+    "acceptedFeedback": "Cambios revisados aceptados.",
+    "rejectedFeedback": "Cambios revisados rechazados.",
+    "appliedFeedback": "Decisiones de revisión aplicadas.",
+    "refreshFailed": "No se pudo cargar el documento modificado para revisarlo.",
+    "saveFailed": "No se pudieron aplicar los cambios revisados."
+  },
   "splitEditor": {
     "sourcePlaceholder": "Edita el código Markdown aquí...",
     "dividerAriaLabel": "Arrastra para redimensionar los paneles (doble clic para restablecer)"

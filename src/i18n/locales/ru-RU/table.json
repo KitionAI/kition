@@ -223,6 +223,10 @@
     "search": "Поиск",
     "notFound": "Варианты не найдены"
   },
+  "datePicker": {
+    "clear": "Очистить",
+    "today": "Сегодня"
+  },
   "aiOverlay": {
     "regenerate": "Перегенерировать"
   },
@@ -352,6 +356,7 @@
     "showAs": "Показывать как",
     "showAsText": "Текст",
     "showAsMarkdown": "Markdown",
+    "dateFormat": "Формат даты",
     "removeConfig": "Удалить настройку"
   },
   "fieldChoices": {

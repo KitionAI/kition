@@ -14,7 +14,10 @@
     "loading": "Loading…",
     "submit": "Submit",
     "showPassword": "Show password",
-    "hidePassword": "Hide password"
+    "hidePassword": "Hide password",
+    "dismiss": "Dismiss",
+    "closeDrawer": "Close drawer",
+    "resizeDrawer": "Resize drawer"
   },
   "statusLabel": {
     "success": "Success",
@@ -51,5 +54,14 @@
     "retry": "Retry",
     "reload": "Reload Kition",
     "details": "Error details"
+  },
+  "dialogs": {
+    "accountInfo": "Account info",
+    "rightDrawer": "Right drawer",
+    "rightSheet": "Right sheet"
+  },
+  "credits": {
+    "exhaustedTitle": "Kition credits are exhausted",
+    "topUp": "Top up credits"
   }
 }

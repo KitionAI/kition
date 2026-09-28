@@ -1,11 +1,13 @@
 import { useEffect } from 'react'
 import { X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 import { KitionAccountPanel } from '@/features/account/components/KitionAccountPanel'
 
 export { KitionAccountPanel as PortalProfilePage }
 
 export function PortalProfileDialog({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation('common')
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
@@ -24,15 +26,15 @@ export function PortalProfileDialog({ onClose }: { onClose: () => void }) {
         className="portal-profile-modal-window"
         role="dialog"
         aria-modal="true"
-        aria-label="Account info"
+        aria-label={t('dialogs.accountInfo')}
         onClick={(event) => event.stopPropagation()}
       >
         <button
           type="button"
           className="portal-profile-modal-close"
           onClick={onClose}
-          aria-label="Close"
-          title="Close"
+          aria-label={t('actions.close')}
+          title={t('actions.close')}
         >
           <X className="size-4" />
         </button>

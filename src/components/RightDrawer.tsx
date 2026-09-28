@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 export interface RightDrawerProps {
   /** When false, the drawer is unmounted (children disappear). */
@@ -44,6 +45,7 @@ export function RightDrawer({
   title,
   children,
 }: RightDrawerProps) {
+  const { t } = useTranslation('common')
   const draggingRef = useRef(false)
 
   // Slide-in animation: start off-screen so the browser paints one frame with
@@ -116,14 +118,14 @@ export function RightDrawer({
         transition: 'transform 200ms ease-out',
       }}
       role="complementary"
-      aria-label={typeof title === 'string' ? title : 'Right drawer'}
+      aria-label={typeof title === 'string' ? title : t('dialogs.rightDrawer')}
     >
       {/* Resize handle (left edge) */}
       <div
         data-testid="right-drawer-resize-handle"
         role="separator"
         aria-orientation="vertical"
-        aria-label="Resize drawer"
+        aria-label={t('actions.resizeDrawer')}
         onPointerDown={handlePointerDown}
         className="absolute left-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-muted"
         style={{ touchAction: 'none' }}
@@ -141,7 +143,7 @@ export function RightDrawer({
           type="button"
           data-testid="right-drawer-close"
           onClick={onClose}
-          aria-label="Close drawer"
+          aria-label={t('actions.closeDrawer')}
           className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
         >
           <X className="size-4" />

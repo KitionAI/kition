@@ -1198,6 +1198,34 @@
       "failed": "Falha na exportação"
     }
   },
+  "publishingClipboard": {
+    "copied": "Copiado com as imagens incorporadas",
+    "failed": "Não foi possível copiar o conteúdo com as imagens incorporadas"
+  },
+  "revision": {
+    "title": "Revisar alterações",
+    "summary_one": "{{count}} alteração foi feita fora do editor",
+    "summary_other": "{{count}} alterações foram feitas fora do editor",
+    "pending_one": "{{count}} restante",
+    "pending_other": "{{count}} restantes",
+    "previous": "Alteração anterior",
+    "next": "Próxima alteração",
+    "changeLabel": "Alteração {{index}}",
+    "accept": "Aceitar alteração",
+    "reject": "Rejeitar alteração",
+    "acceptAll": "Aceitar todas",
+    "rejectAll": "Rejeitar todas",
+    "accepted": "Aceita",
+    "rejected": "Rejeitada",
+    "externalChangeReady_one": "Revise {{count}} alteração externa antes de aplicá-la.",
+    "externalChangeReady_other": "Revise {{count}} alterações externas antes de aplicá-las.",
+    "dirtyExternalChange": "O arquivo mudou no disco. O conteúdo não salvo do editor foi mantido.",
+    "acceptedFeedback": "Alterações revisadas aceitas.",
+    "rejectedFeedback": "Alterações revisadas rejeitadas.",
+    "appliedFeedback": "Decisões da revisão aplicadas.",
+    "refreshFailed": "Não foi possível carregar o documento modificado para revisão.",
+    "saveFailed": "Não foi possível aplicar as alterações revisadas."
+  },
   "splitEditor": {
     "sourcePlaceholder": "Edite o código-fonte Markdown aqui...",
     "dividerAriaLabel": "Arraste para redimensionar os painéis (clique duplo para redefinir)"

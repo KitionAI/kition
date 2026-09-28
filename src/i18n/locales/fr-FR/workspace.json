@@ -243,7 +243,29 @@
       "description": "Vérifiez {{count}} modifications proposées avant de les appliquer.",
       "accept": "Accepter",
       "reject": "Refuser",
-      "cancel": "Annuler"
+      "cancel": "Annuler",
+      "operations": {
+        "element": {
+          "create": "Créer un élément",
+          "update": "Mettre à jour l’élément",
+          "delete": "Supprimer l’élément",
+          "reorder": "Réordonner l’élément",
+          "move": "Déplacer les éléments",
+          "rotate": "Faire pivoter les éléments",
+          "resize": "Redimensionner les éléments",
+          "style": "Mettre à jour les styles",
+          "group": "Créer un conteneur",
+          "ungroup": "Dissocier le conteneur"
+        },
+        "connector": {
+          "create": "Créer un connecteur"
+        },
+        "layout": {
+          "align": "Aligner les éléments",
+          "distribute": "Répartir les éléments",
+          "stack": "Empiler les éléments"
+        }
+      }
     },
     "status": {
       "loading": "Chargement…",
@@ -273,21 +295,295 @@
       "zoomIn": "Zoom avant",
       "fit": "Ajuster au contenu"
     },
-    "shapePalette": { "label": "Formes" },
-    "selectionToolbar": { "label": "Disposition de la sélection", "alignLeft": "Aligner à gauche", "alignCenterHorizontal": "Centrer horizontalement", "alignRight": "Aligner à droite", "alignTop": "Aligner en haut", "alignCenterVertical": "Centrer verticalement", "alignBottom": "Aligner en bas", "distributeHorizontal": "Répartir horizontalement", "distributeVertical": "Répartir verticalement", "askAI": "Interroger l’IA sur la sélection", "group": "Grouper la sélection", "frame": "Encadrer la sélection", "ungroup": "Dissocier la sélection" },
+    "shapePalette": {
+      "label": "Formes"
+    },
+    "templates": {
+      "trigger": "Modèles",
+      "title": "Modèles de tableau",
+      "description": "Insérez une structure de départ modifiable au centre de la vue actuelle.",
+      "blank": {
+        "name": "Tableau vierge",
+        "description": "Partez d’une toile vide et construisez librement."
+      },
+      "categories": {
+        "recommended": "Recommandés",
+        "planning": "Planification et diagrammes",
+        "meetings": "Réunions",
+        "presentation": "Présentations"
+      },
+      "creation": {
+        "title": "Centre de modèles de tableau",
+        "description": "Choisissez un modèle ou une toile vierge pour créer un nouveau tableau.",
+        "searchPlaceholder": "Rechercher des modèles de tableau",
+        "searchResults": "Résultats de recherche pour « {{query}} »",
+        "hint": "Choisissez un point de départ visuel et personnalisez chaque forme après la création.",
+        "use": "Utiliser le modèle",
+        "noMatches": "Aucun modèle de tableau trouvé",
+        "noMatchesHint": "Essayez un autre mot-clé ou une autre catégorie.",
+        "createFailed": "Impossible de créer le tableau."
+      },
+      "items": {
+        "mind-map": {
+          "name": "Carte mentale",
+          "description": "Explorez un sujet central à travers des branches reliées."
+        },
+        "flowchart": {
+          "name": "Organigramme",
+          "description": "Représentez un processus avec des étapes, des décisions et des résultats."
+        },
+        "project-roadmap": {
+          "name": "Feuille de route du projet",
+          "description": "Planifiez les phases et jalons sur une frise de quatre trimestres."
+        },
+        "kanban-board": {
+          "name": "Tableau kanban",
+          "description": "Suivez le travail entre à faire, en cours et terminé."
+        },
+        "meeting-retrospective": {
+          "name": "Rétrospective de réunion",
+          "description": "Notez les réussites, les améliorations et les prochaines actions."
+        },
+        "presentation-storyboard": {
+          "name": "Storyboard de présentation",
+          "description": "Esquissez un récit en six diapositives avant de construire le support."
+        }
+      },
+      "content": {
+        "mindMap": {
+          "title": "Carte mentale",
+          "topic": "Sujet central",
+          "research": "Recherche",
+          "ideas": "Idées",
+          "audience": "Public",
+          "actions": "Actions",
+          "questions": "Questions ouvertes"
+        },
+        "flowchart": {
+          "title": "Flux du processus",
+          "start": "Début",
+          "process": "Recueillir les besoins",
+          "decision": "Prêt à continuer ?",
+          "revise": "Réviser le plan",
+          "finish": "Livrer",
+          "yes": "Oui",
+          "no": "Non"
+        },
+        "roadmap": {
+          "title": "Feuille de route du projet",
+          "quarter1": "T1",
+          "quarter2": "T2",
+          "quarter3": "T3",
+          "quarter4": "T4",
+          "discover": "Découvrir",
+          "prototype": "Prototyper",
+          "validate": "Valider",
+          "launch": "Lancer",
+          "discoverMilestone": "Problème et public définis",
+          "prototypeMilestone": "Expérience principale testée",
+          "validateMilestone": "Retours de la bêta recueillis",
+          "launchMilestone": "Lancer et mesurer"
+        },
+        "kanban": {
+          "title": "Kanban de l’équipe",
+          "todo": "À faire",
+          "progress": "En cours",
+          "done": "Terminé",
+          "scope": "Définir le périmètre de la version",
+          "content": "Rédiger le contenu de lancement",
+          "prototype": "Construire un prototype interactif",
+          "testing": "Mener des tests utilisateurs",
+          "kickoff": "Lancement du projet",
+          "research": "Étude clients"
+        },
+        "retrospective": {
+          "title": "Rétrospective de réunion",
+          "well": "Ce qui a bien marché",
+          "improve": "À améliorer",
+          "next": "Prochaines étapes",
+          "clearGoal": "L’objectif est resté clair",
+          "feedback": "Les retours sont arrivés vite",
+          "decisions": "Les décisions sont arrivées trop tard",
+          "owners": "Certains responsables n’étaient pas clairs",
+          "assign": "Désigner un responsable par action",
+          "review": "Faire le point la semaine prochaine"
+        },
+        "storyboard": {
+          "title": "Storyboard de présentation",
+          "cover": "Ouverture",
+          "problem": "Problème",
+          "insight": "Idée clé",
+          "solution": "Solution",
+          "proof": "Preuves",
+          "nextStep": "Prochaine étape",
+          "slide1": "01",
+          "slide2": "02",
+          "slide3": "03",
+          "slide4": "04",
+          "slide5": "05",
+          "slide6": "06",
+          "visual": "Espace visuel"
+        }
+      }
+    },
+    "selectionToolbar": {
+      "label": "Disposition de la sélection",
+      "mindMap": {
+        "label": "Carte mentale",
+        "addChild": "Ajouter un nœud enfant (Tab)",
+        "addSibling": "Ajouter un nœud frère (Entrée)",
+        "collapse": "Replier la branche",
+        "expand": "Déplier {{count}} nœuds masqués",
+        "newNode": "Nouvelle idée",
+        "direction": "Direction de la carte mentale",
+        "directions": {
+          "both": "Des deux côtés",
+          "right": "Vers la droite",
+          "left": "Vers la gauche",
+          "down": "Vers le bas"
+        }
+      },
+      "alignLeft": "Aligner à gauche",
+      "alignCenterHorizontal": "Centrer horizontalement",
+      "alignRight": "Aligner à droite",
+      "alignTop": "Aligner en haut",
+      "alignCenterVertical": "Centrer verticalement",
+      "alignBottom": "Aligner en bas",
+      "distributeHorizontal": "Répartir horizontalement",
+      "distributeVertical": "Répartir verticalement",
+      "stackHorizontal": "Empiler horizontalement",
+      "stackVertical": "Empiler verticalement",
+      "rotateCounterclockwise": "Pivoter dans le sens antihoraire",
+      "rotateClockwise": "Pivoter dans le sens horaire",
+      "flipHorizontal": "Retourner horizontalement",
+      "flipVertical": "Retourner verticalement",
+      "askAI": "Interroger l’IA sur la sélection",
+      "group": "Grouper la sélection",
+      "frame": "Encadrer la sélection",
+      "fitFrame": "Ajuster le cadre au contenu",
+      "ungroup": "Dissocier la sélection",
+      "more": "Autres actions de mise en page",
+      "spacing": "Espacement",
+      "transform": "Transformer",
+      "containers": "Conteneurs"
+    },
     "shapes": {
-      "rectangle": "Rectangle", "ellipse": "Ellipse", "triangle": "Triangle", "diamond": "Losange", "hexagon": "Hexagone", "pill": "Capsule", "parallelogram": "Parallélogramme", "star": "Étoile", "cloud": "Nuage", "heart": "Cœur", "x-box": "Case avec X", "check-box": "Case cochée", "check": "Coche", "arrow-left": "Flèche gauche", "arrow-right": "Flèche droite", "arrow-up": "Flèche haut", "arrow-down": "Flèche bas", "line": "Ligne", "frame": "Cadre"
+      "rectangle": "Rectangle",
+      "ellipse": "Ellipse",
+      "triangle": "Triangle",
+      "diamond": "Losange",
+      "hexagon": "Hexagone",
+      "pill": "Capsule",
+      "parallelogram": "Parallélogramme",
+      "star": "Étoile",
+      "cloud": "Nuage",
+      "heart": "Cœur",
+      "x-box": "Case avec X",
+      "check-box": "Case cochée",
+      "check": "Coche",
+      "arrow-left": "Flèche gauche",
+      "arrow-right": "Flèche droite",
+      "arrow-up": "Flèche haut",
+      "arrow-down": "Flèche bas",
+      "line": "Ligne",
+      "frame": "Cadre"
     },
     "style": {
-      "label": "Style", "selection": "Sélection", "defaults": "Nouveaux éléments", "strokeColor": "Couleur du trait", "fillColor": "Couleur de remplissage", "opacity": "Opacité", "fill": "Remplissage", "line": "Style de ligne", "size": "Épaisseur du trait",
-      "fillStyles": { "none": "Sans remplissage", "solid": "Remplissage uni", "semi": "Remplissage semi-transparent", "pattern": "Remplissage à motif" },
-      "dashStyles": { "solid": "Ligne continue", "dashed": "Ligne tiretée", "dotted": "Ligne pointillée" },
-      "sizes": { "s": "Petit", "m": "Moyen", "l": "Grand", "xl": "Très grand" },
-      "colors": { "ink": "Encre", "gray": "Gris", "purple": "Violet", "green": "Vert", "orange": "Orange", "red": "Rouge", "yellow": "Jaune", "blue": "Bleu", "white": "Blanc" }
+      "label": "Style",
+      "selection": "Sélection",
+      "defaults": "Nouveaux éléments",
+      "strokeColor": "Couleur du trait",
+      "fillColor": "Couleur de remplissage",
+      "opacity": "Opacité",
+      "fill": "Remplissage",
+      "line": "Style de ligne",
+      "size": "Épaisseur du trait",
+      "connectorType": "Type de connecteur",
+      "connectorTypes": {
+        "straight": "Droit",
+        "elbow": "Coudé",
+        "curved": "Courbe"
+      },
+      "connectorTypeShort": {
+        "straight": "D",
+        "elbow": "Co",
+        "curved": "Cb"
+      },
+      "arrowheads": "Pointes de flèche",
+      "startArrowhead": "Début",
+      "endArrowhead": "Fin",
+      "arrowheadTypes": {
+        "none": "Aucune",
+        "arrow": "Flèche",
+        "dot": "Point"
+      },
+      "fillStyles": {
+        "none": "Sans remplissage",
+        "solid": "Remplissage uni",
+        "semi": "Remplissage semi-transparent",
+        "pattern": "Remplissage à motif"
+      },
+      "dashStyles": {
+        "solid": "Ligne continue",
+        "dashed": "Ligne tiretée",
+        "dotted": "Ligne pointillée"
+      },
+      "sizes": {
+        "s": "Petit",
+        "m": "Moyen",
+        "l": "Grand",
+        "xl": "Très grand"
+      },
+      "colors": {
+        "ink": "Encre",
+        "gray": "Gris",
+        "purple": "Violet",
+        "green": "Vert",
+        "orange": "Orange",
+        "red": "Rouge",
+        "yellow": "Jaune",
+        "blue": "Bleu",
+        "white": "Blanc"
+      }
     },
-    "topActions": { "pages": "Pages", "duplicate": "Dupliquer la sélection", "more": "Plus d’actions", "selectAll": "Tout sélectionner", "copy": "Copier", "cut": "Couper", "paste": "Coller", "bringToFront": "Mettre au premier plan", "bringForward": "Avancer d’un plan", "sendBackward": "Reculer d’un plan", "sendToBack": "Mettre à l’arrière-plan", "zoomToSelection": "Zoomer sur la sélection", "actualSize": "Taille réelle", "cameraBack": "Vue précédente du canevas", "cameraForward": "Vue suivante du canevas", "exportSvg": "Exporter en SVG", "exportPng": "Exporter en PNG" },
-    "minimap": { "label": "Mini-carte du Board" },
-    "imageImport": { "error": "Impossible d’insérer l’image" }
+    "topActions": {
+      "pages": "Pages",
+      "createPage": "Créer une page",
+      "duplicatePage": "Dupliquer",
+      "deletePage": "Supprimer",
+      "renamePage": "Renommer la page",
+      "savePageName": "Enregistrer le nom de la page",
+      "movePagePrevious": "Monter la page",
+      "movePageNext": "Descendre la page",
+      "duplicate": "Dupliquer la sélection",
+      "more": "Plus d’actions",
+      "selectAll": "Tout sélectionner",
+      "copy": "Copier",
+      "cut": "Couper",
+      "paste": "Coller",
+      "bringToFront": "Mettre au premier plan",
+      "bringForward": "Avancer d’un plan",
+      "sendBackward": "Reculer d’un plan",
+      "sendToBack": "Mettre à l’arrière-plan",
+      "zoomToSelection": "Zoomer sur la sélection",
+      "actualSize": "Taille réelle",
+      "grid": "Afficher la grille",
+      "snap": "Aimanter aux formes",
+      "toolLock": "Garder l’outil de dessin actif",
+      "cameraBack": "Vue précédente du canevas",
+      "cameraForward": "Vue suivante du canevas",
+      "exportSvg": "Exporter en SVG",
+      "exportPng": "Exporter en PNG"
+    },
+    "contextMenu": {
+      "label": "Actions du tableau"
+    },
+    "minimap": {
+      "label": "Mini-carte du Board"
+    },
+    "imageImport": {
+      "error": "Impossible d’insérer l’image"
+    }
   },
   "layout": {
     "resizeSidebar": "Redimensionner la barre latérale",

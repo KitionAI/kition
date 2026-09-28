@@ -99,6 +99,12 @@
         "privacy": "Este workflow roda localmente e não envia conteúdo a um serviço de IA."
       }
     },
+    "scenario": {
+      "eyebrow": "Cenário de primeiros passos",
+      "emailTitle": "Importar uma caixa de entrada",
+      "emailDescription": "Conecte Gmail, 163 Mail, Outlook ou outro provedor e sincronize as mensagens na tabela Inbox preparada.",
+      "emailAction": "Configurar a sincronização da caixa de entrada"
+    },
     "continue": "Continuar",
     "back": "Voltar",
     "skip": "Pular por enquanto",

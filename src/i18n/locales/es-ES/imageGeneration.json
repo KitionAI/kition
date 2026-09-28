@@ -2,15 +2,32 @@
   "title": "AI Image Studio",
   "description": "Generate workspace images from visual recipes and place them on the Board.",
   "close": "Close image studio",
-  "sections": {
-    "context": "Board context",
-    "template": "Visual recipe",
-    "brief": "Creative brief",
-    "output": "Output settings",
-    "results": "Generated results"
+  "gallery": {
+    "description": "Elige primero el resultado que quieres. La plantilla se encarga del prompt y la dirección de arte.",
+    "searchPlaceholder": "Buscar pósteres, productos, personajes…",
+    "headings": {
+      "recommended": "Recomendado para este tablero",
+      "all": "Todas las plantillas visuales",
+      "generate": "Crear desde una plantilla",
+      "edit": "Transformar una imagen seleccionada"
+    },
+    "templateCount": "{{count}} plantillas",
+    "templateCount_one": "{{count}} plantilla",
+    "templateCount_other": "{{count}} plantillas",
+    "empty": "Ninguna plantilla coincide con estos filtros."
   },
-  "context": {
-    "empty": "No Board selection. Describe the image you want below."
+  "generator": {
+    "description": "Rellena lo esencial abajo. El prompt visual completo ya está incorporado.",
+    "customizeHint": "Cambia solo lo que importa para este resultado.",
+    "referenceRequired": "Esta transformación necesita una imagen de origen. Cierra el estudio, selecciona una imagen en el tablero y abre Editar imagen.",
+    "referenceCount": "{{count}} imágenes de referencia",
+    "referenceCount_one": "{{count}} imagen de referencia",
+    "referenceCount_other": "{{count}} imágenes de referencia"
+  },
+  "sections": {
+    "customize": "Personalizar esta plantilla",
+    "advanced": "Ajustes avanzados",
+    "results": "Generated results"
   },
   "templateViews": {
     "label": "Template view",
@@ -19,16 +36,46 @@
     "generate": "Create",
     "edit": "Edit"
   },
+  "categories": {
+    "label": "Categorías de plantillas",
+    "all": "Todas las escenas",
+    "poster": "Pósteres",
+    "product": "Productos",
+    "brand": "Marca",
+    "education": "Educación",
+    "character": "Personajes",
+    "editing": "Retoques de foto"
+  },
   "templateMeta": {
     "generate": "Create",
     "edit": "Edit",
+    "selectImageFirst": "Selecciona una imagen en el tablero antes de generar",
     "editableText": "Editable text"
   },
+  "variables": {
+    "subject": {
+      "label": "Tema principal",
+      "placeholder": "¿De qué debería tratar la imagen?"
+    },
+    "scene": {
+      "label": "Escena",
+      "placeholder": "¿Dónde debería ocurrir y qué ambiente debería tener?"
+    },
+    "details": {
+      "label": "Detalles clave",
+      "placeholder": "Añade solo los detalles que deben aparecer o mantenerse."
+    },
+    "palette": {
+      "label": "Colores",
+      "placeholder": "Opcional, por ejemplo: crema cálido, verde bosque y dorado"
+    }
+  },
   "fields": {
-    "brief": "What should the image communicate?",
     "textMode": "Text handling",
-    "exactText": "Editable text",
-    "exactTextPlaceholder": "Add a short headline or label",
+    "editableText": "Titular editable",
+    "editableTextPlaceholder": "Titular opcional para añadir como capa de texto separada en el tablero",
+    "visibleText": "Texto dentro de la imagen",
+    "visibleTextPlaceholder": "Titular exacto o etiqueta corta opcional",
     "editableTextDescription": "Kition adds copy as a separate text layer that you can double-click to edit.",
     "aspectRatio": "Aspect ratio",
     "resolution": "Resolution",
@@ -41,6 +88,8 @@
     "high": "High"
   },
   "actions": {
+    "useTemplate": "Usar plantilla",
+    "backToTemplates": "Elegir otra plantilla",
     "generate": "Generate {{count}} image",
     "generate_one": "Generate {{count}} image",
     "generate_other": "Generate {{count}} images",
@@ -78,7 +127,7 @@
     "detail_other": "Creating {{count}} options from the selected recipe. You can keep working on the Board."
   },
   "errors": {
-    "briefRequired": "Describe what you want to generate.",
+    "variableRequired": "Rellena {{field}} antes de generar.",
     "referenceRequired": "Select one image on the Board before using this editing recipe.",
     "startFailed": "Could not start image generation.",
     "unavailable": "Configure an AI model and use a runtime with AI Board support.",
@@ -87,68 +136,148 @@
   },
   "generatedImageAlt": "AI-generated image",
   "referenceAlt": "Reference image {{index}}",
+  "templatePreviewAlt": "Resultado de ejemplo para {{name}}",
   "source": "Recipe adapted from {{repository}} ({{license}}).",
   "resultAlt": "Generated image {{index}}",
   "templates": {
-    "concept-infographic": {
-      "name": "Concept infographic",
-      "description": "Turn structured ideas into a clear visual explanation.",
-      "placeholder": "Explain the topic, audience, facts, modules, and relationships."
+    "surreal-city-poster": {
+      "name": "Póster de ciudad surrealista",
+      "description": "Convierte un lugar o una idea en un póster de viaje editorial coleccionable.",
+      "placeholders": {
+        "subject": "Por ejemplo: un Hangzhou futuro y onírico",
+        "scene": "Edificios icónicos, carreteras sinuosas en el cielo, campos de té, viajeros diminutos…",
+        "palette": "Jade apagado, piedra cálida, azul neblina"
+      }
     },
-    "product-environment-edit": {
-      "name": "Product scene edit",
-      "description": "Keep the product fixed while changing its environment.",
-      "placeholder": "Describe the new setting, props, lighting, and preserved details."
+    "miniature-product-campaign": {
+      "name": "Campaña de producto en miniatura",
+      "description": "Construye una historia comercial de seis paneles alrededor de un producto estrella.",
+      "placeholders": {
+        "subject": "Por ejemplo: una bebida de limón con gas llamada Limora",
+        "scene": "Una playa soleada donde personas diminutas interactúan con ingredientes gigantes",
+        "palette": "Amarillo limón, verde fresco, turquesa"
+      }
     },
-    "product-exploded-view": {
-      "name": "Exploded product view",
-      "description": "Show components and assembly order on one clean axis.",
-      "placeholder": "Describe the product, components, materials, and sequence."
+    "engineering-infographic": {
+      "name": "Infografía de ingeniería",
+      "description": "Explica un producto complejo con cortes, datos y anotaciones técnicas.",
+      "placeholders": {
+        "subject": "Por ejemplo: un autobús urbano eléctrico de nueva generación",
+        "details": "Sistema de baterías, dimensiones, flujo de carga, impacto ambiental…",
+        "palette": "Azul marino profundo, grafito, verde eléctrico"
+      }
     },
-    "character-turnaround": {
-      "name": "Character turnaround",
-      "description": "Generate consistent front, side, and back views.",
-      "placeholder": "Describe identity anchors, clothing, equipment, and palette."
+    "landmark-type-poster": {
+      "name": "Póster tipográfico de monumentos",
+      "description": "Forma el nombre de una ciudad con sus monumentos y detalles más reconocibles.",
+      "placeholders": {
+        "subject": "Por ejemplo: Shanghái",
+        "details": "El Bund, plátanos de sombra, ferris, casas de callejón, horizonte…",
+        "palette": "Azul marino profundo, crema, rojo apagado"
+      }
     },
-    "naturalist-field-guide": {
-      "name": "Field guide spread",
-      "description": "Create an illustrated specimen page with precise callouts.",
-      "placeholder": "Describe the specimen, detail views, facts, and page structure."
+    "brand-touchpoint-board": {
+      "name": "Tablero de puntos de contacto de marca",
+      "description": "Visualiza un sistema de marca completo en envases, productos y escenas de estilo de vida.",
+      "placeholders": {
+        "subject": "Por ejemplo: una marca moderna de matcha llamada Matcha Mode",
+        "details": "Taza de cerámica, envase para llevar, carta, bolsa de tela, pegatinas…",
+        "palette": "Verde matcha, beige cálido, blanco roto"
+      }
     },
-    "exact-type-poster": {
-      "name": "Editable type poster",
-      "description": "Create a poster background with a protected headline zone.",
-      "placeholder": "Describe the subject, mood, palette, composition, and headline placement."
+    "neon-creator-poster": {
+      "name": "Póster de creador neón",
+      "description": "Crea un póster de identidad personal o profesional en 3D y con fuerza.",
+      "placeholders": {
+        "subject": "Por ejemplo: un diseñador de motion seguro de sí mismo",
+        "details": "Ropa urbana holgada, cámara, portátil, herramientas 3D, minifigura…",
+        "palette": "Azul eléctrico y negro"
+      }
     },
-    "ui-concept": {
-      "name": "UI concept",
-      "description": "Generate a polished app, web, dashboard, or kiosk concept.",
-      "placeholder": "Name the platform, purpose, hierarchy, components, and states."
+    "vintage-travel-poster": {
+      "name": "Póster de viaje vintage",
+      "description": "Convierte un destino en una lámina cinematográfica envejecida con profundidad icónica.",
+      "placeholders": {
+        "subject": "Por ejemplo: Guangzhou a la hora dorada",
+        "details": "Torre de Cantón, calles porticadas, ferri fluvial, flores de kapok…",
+        "palette": "Ámbar cálido, azul cobalto, sepia desvaído"
+      }
     },
-    "seamless-pattern": {
-      "name": "Seamless pattern",
-      "description": "Create a repeat-ready tile with checked edge continuity.",
-      "placeholder": "Describe motifs, repeat logic, palette, scale, and density."
+    "product-concept-board": {
+      "name": "Tablero de concepto de producto",
+      "description": "Presenta el recorrido de diseño desde la inspiración hasta el producto terminado.",
+      "placeholders": {
+        "subject": "Por ejemplo: una silla inspirada en papel arrugado",
+        "details": "Análisis de forma, ergonomía, materiales, dimensiones, prototipo…",
+        "palette": "Blanco roto, grafito, gris cálido"
+      }
     },
-    "clean-object-removal": {
-      "name": "Clean object removal",
-      "description": "Remove one object and reconstruct the retained background.",
-      "placeholder": "Name what to remove and describe the retained texture and light."
+    "vocabulary-learning-card": {
+      "name": "Tarjeta de vocabulario",
+      "description": "Enseña un objeto completo y una de sus partes en una tarjeta visual amable.",
+      "placeholders": {
+        "subject": "Por ejemplo: maíz y grano",
+        "details": "Usa etiquetas cortas en mayúsculas para el todo y su parte",
+        "palette": "Azul pastel, blanco, colores naturales del objeto"
+      }
     },
-    "portrait-outpaint": {
-      "name": "Portrait outpaint",
-      "description": "Extend a portrait while preserving identity and the original crop.",
-      "placeholder": "Describe the extension direction, scene, and preserved details."
+    "editorial-silhouette-poster": {
+      "name": "Póster editorial de silueta",
+      "description": "Combina un retrato de perfil contundente con tipografía expresiva y tinta cruda.",
+      "placeholders": {
+        "subject": "Por ejemplo: una diseñadora de moda vanguardista de perfil",
+        "details": "Corte bob, gafas angulosas, letras a pincel…",
+        "palette": "Tinta negra sobre papel blanco roto cálido"
+      }
     },
-    "backlight-rescue": {
-      "name": "Backlight rescue",
-      "description": "Recover a dark subject without destroying the background.",
-      "placeholder": "Describe the face lift, skin finish, background control, and color mood."
+    "mixed-media-memory-card": {
+      "name": "Tarjeta de recuerdo en técnica mixta",
+      "description": "Conserva la mitad de una foto intacta y redibuja el recuerdo a mano debajo.",
+      "placeholders": {
+        "details": "¿Qué momento o pequeño detalle debería resaltar el boceto?",
+        "palette": "Colores apagados tomados de la foto"
+      }
     },
-    "whiteboard-sketch-visual": {
-      "name": "Board sketch to visual",
-      "description": "Turn selected Board structure into a polished visual asset.",
-      "placeholder": "Describe the audience, visual style, hierarchy, and desired finish."
+    "travel-field-notes": {
+      "name": "Notas de campo de viaje",
+      "description": "Combina una foto de viaje auténtica con un sello de ubicación hecho a mano.",
+      "placeholders": {
+        "details": "Nombre del lugar y los pocos monumentos que el sello debe conservar",
+        "palette": "De 2 a 4 colores planos apagados tomados de la foto"
+      }
+    },
+    "paper-collage-portrait": {
+      "name": "Retrato en collage de papel",
+      "description": "Mantén a la persona realista y reconstruye el mundo como arte de papel en capas.",
+      "placeholders": {
+        "scene": "Por ejemplo: un jardín de primavera con colinas, nubes y flores",
+        "details": "Detalles de identidad, vestimenta y pose que deben mantenerse",
+        "palette": "Pasteles de ensueño con tonos de piel naturales"
+      }
+    },
+    "photo-doodle-mix": {
+      "name": "Foto con personas garabateadas",
+      "description": "Conserva el fondo real y redibuja solo a las personas como garabatos divertidos.",
+      "placeholders": {
+        "details": "Qué personas transformar y qué detalles de identidad conservar",
+        "palette": "Tinta negra con toques de color a mano contenidos"
+      }
+    },
+    "doodle-character": {
+      "name": "Personaje garabateado",
+      "description": "Convierte un retrato en un personaje suelto y encantador de cuaderno de moda.",
+      "placeholders": {
+        "details": "Peinado, ropa, accesorios y rasgos que conservar",
+        "palette": "Lápiz negro con rubor suave y color de cera ligero"
+      }
+    },
+    "character-production-sheet": {
+      "name": "Hoja de producción de personaje",
+      "description": "Amplía un personaje a vistas, poses y anotaciones de materiales coherentes.",
+      "placeholders": {
+        "details": "Equipo característico, materiales, vistas, poses y expresiones",
+        "palette": "Neutros principales más un color de acento característico"
+      }
     }
   },
   "chat": {

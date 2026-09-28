@@ -14,7 +14,10 @@
     "loading": "加载中…",
     "submit": "提交",
     "showPassword": "显示密码",
-    "hidePassword": "隐藏密码"
+    "hidePassword": "隐藏密码",
+    "dismiss": "关闭提示",
+    "closeDrawer": "关闭抽屉",
+    "resizeDrawer": "调整抽屉宽度"
   },
   "statusLabel": {
     "success": "成功",
@@ -51,5 +54,14 @@
     "retry": "重试",
     "reload": "重新加载 Kition",
     "details": "错误详情"
+  },
+  "dialogs": {
+    "accountInfo": "账户信息",
+    "rightDrawer": "右侧抽屉",
+    "rightSheet": "右侧面板"
+  },
+  "credits": {
+    "exhaustedTitle": "Kition 额度已用完",
+    "topUp": "充值额度"
   }
 }

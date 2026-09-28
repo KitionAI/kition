@@ -1198,6 +1198,34 @@
       "failed": "Échec de l'exportation"
     }
   },
+  "publishingClipboard": {
+    "copied": "Copié avec les images intégrées",
+    "failed": "Impossible de copier le contenu avec les images intégrées"
+  },
+  "revision": {
+    "title": "Vérifier les modifications",
+    "summary_one": "{{count}} modification a été faite hors de l’éditeur",
+    "summary_other": "{{count}} modifications ont été faites hors de l’éditeur",
+    "pending_one": "{{count}} restante",
+    "pending_other": "{{count}} restantes",
+    "previous": "Modification précédente",
+    "next": "Modification suivante",
+    "changeLabel": "Modification {{index}}",
+    "accept": "Accepter la modification",
+    "reject": "Rejeter la modification",
+    "acceptAll": "Tout accepter",
+    "rejectAll": "Tout rejeter",
+    "accepted": "Acceptée",
+    "rejected": "Rejetée",
+    "externalChangeReady_one": "Vérifiez {{count}} modification externe avant de l’appliquer.",
+    "externalChangeReady_other": "Vérifiez {{count}} modifications externes avant de les appliquer.",
+    "dirtyExternalChange": "Le fichier a changé sur le disque. Le contenu non enregistré de l’éditeur a été conservé.",
+    "acceptedFeedback": "Modifications vérifiées acceptées.",
+    "rejectedFeedback": "Modifications vérifiées rejetées.",
+    "appliedFeedback": "Décisions de vérification appliquées.",
+    "refreshFailed": "Impossible de charger le document modifié pour vérification.",
+    "saveFailed": "Impossible d’appliquer les modifications vérifiées."
+  },
   "splitEditor": {
     "sourcePlaceholder": "Modifier la source Markdown ici...",
     "dividerAriaLabel": "Faites glisser pour redimensionner les volets (double-clic pour réinitialiser)"

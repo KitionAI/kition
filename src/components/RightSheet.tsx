@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 export interface RightSheetProps {
   open: boolean
@@ -24,6 +25,7 @@ export function RightSheet({
   dirty = false,
   onRequestClose,
 }: RightSheetProps) {
+  const { t } = useTranslation('common')
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
@@ -65,7 +67,7 @@ export function RightSheet({
         data-testid="right-sheet"
         role="dialog"
         aria-modal="true"
-        aria-label={typeof title === 'string' ? title : 'Right sheet'}
+        aria-label={typeof title === 'string' ? title : t('dialogs.rightSheet')}
         className="fixed right-0 top-0 z-40 flex h-full flex-col border-l border-border bg-card text-foreground shadow-floating"
         style={{
           width: `${SHEET_WIDTH}px`,
@@ -84,7 +86,7 @@ export function RightSheet({
             type="button"
             data-testid="right-sheet-close"
             onClick={attemptClose}
-            aria-label="Close"
+            aria-label={t('actions.close')}
             className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             <X className="size-4" />

@@ -14,7 +14,10 @@
     "loading": "Загрузка…",
     "submit": "Отправить",
     "showPassword": "Показать пароль",
-    "hidePassword": "Скрыть пароль"
+    "hidePassword": "Скрыть пароль",
+    "dismiss": "Скрыть",
+    "closeDrawer": "Закрыть панель",
+    "resizeDrawer": "Изменить ширину панели"
   },
   "statusLabel": {
     "success": "Успешно",
@@ -51,5 +54,14 @@
     "retry": "Retry",
     "reload": "Reload Kition",
     "details": "Error details"
+  },
+  "dialogs": {
+    "accountInfo": "Сведения об аккаунте",
+    "rightDrawer": "Правая панель",
+    "rightSheet": "Правый лист"
+  },
+  "credits": {
+    "exhaustedTitle": "Кредиты Kition исчерпаны",
+    "topUp": "Пополнить кредиты"
   }
 }

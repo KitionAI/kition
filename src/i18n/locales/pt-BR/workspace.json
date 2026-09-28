@@ -243,7 +243,29 @@
       "description": "Revise {{count}} alterações propostas antes de aplicá-las.",
       "accept": "Aceitar",
       "reject": "Rejeitar",
-      "cancel": "Cancelar"
+      "cancel": "Cancelar",
+      "operations": {
+        "element": {
+          "create": "Criar elemento",
+          "update": "Atualizar elemento",
+          "delete": "Excluir elemento",
+          "reorder": "Reordenar elemento",
+          "move": "Mover elementos",
+          "rotate": "Girar elementos",
+          "resize": "Redimensionar elementos",
+          "style": "Atualizar estilos",
+          "group": "Criar contêiner",
+          "ungroup": "Desagrupar contêiner"
+        },
+        "connector": {
+          "create": "Criar conector"
+        },
+        "layout": {
+          "align": "Alinhar elementos",
+          "distribute": "Distribuir elementos",
+          "stack": "Empilhar elementos"
+        }
+      }
     },
     "status": {
       "loading": "Carregando…",
@@ -273,21 +295,295 @@
       "zoomIn": "Aumentar zoom",
       "fit": "Ajustar ao conteúdo"
     },
-    "shapePalette": { "label": "Formas" },
-    "selectionToolbar": { "label": "Layout da seleção", "alignLeft": "Alinhar à esquerda", "alignCenterHorizontal": "Centralizar horizontalmente", "alignRight": "Alinhar à direita", "alignTop": "Alinhar ao topo", "alignCenterVertical": "Centralizar verticalmente", "alignBottom": "Alinhar à base", "distributeHorizontal": "Distribuir horizontalmente", "distributeVertical": "Distribuir verticalmente", "askAI": "Perguntar à IA sobre a seleção", "group": "Agrupar seleção", "frame": "Enquadrar seleção", "ungroup": "Desagrupar seleção" },
+    "shapePalette": {
+      "label": "Formas"
+    },
+    "templates": {
+      "trigger": "Modelos",
+      "title": "Modelos de quadro",
+      "description": "Insira uma estrutura inicial editável no centro da visualização atual.",
+      "blank": {
+        "name": "Quadro em branco",
+        "description": "Comece com uma tela limpa e construa livremente."
+      },
+      "categories": {
+        "recommended": "Recomendados",
+        "planning": "Planejamento e diagramas",
+        "meetings": "Reuniões",
+        "presentation": "Apresentações"
+      },
+      "creation": {
+        "title": "Central de modelos de quadro",
+        "description": "Escolha um modelo ou uma tela em branco para criar um novo quadro.",
+        "searchPlaceholder": "Buscar modelos de quadro",
+        "searchResults": "Resultados da busca por “{{query}}”",
+        "hint": "Escolha um ponto de partida visual e personalize cada forma depois de criar.",
+        "use": "Usar modelo",
+        "noMatches": "Nenhum modelo de quadro encontrado",
+        "noMatchesHint": "Tente outra palavra-chave ou categoria.",
+        "createFailed": "Não foi possível criar o quadro."
+      },
+      "items": {
+        "mind-map": {
+          "name": "Mapa mental",
+          "description": "Explore um tema central por meio de ramificações conectadas."
+        },
+        "flowchart": {
+          "name": "Fluxograma",
+          "description": "Mapeie um processo com etapas, decisões e resultados."
+        },
+        "project-roadmap": {
+          "name": "Roteiro do projeto",
+          "description": "Planeje fases e marcos em uma linha do tempo de quatro trimestres."
+        },
+        "kanban-board": {
+          "name": "Quadro kanban",
+          "description": "Acompanhe o trabalho entre a fazer, em andamento e concluído."
+        },
+        "meeting-retrospective": {
+          "name": "Retrospectiva de reunião",
+          "description": "Registre acertos, melhorias e próximas ações."
+        },
+        "presentation-storyboard": {
+          "name": "Storyboard de apresentação",
+          "description": "Esboce uma narrativa de seis slides antes de montar a apresentação."
+        }
+      },
+      "content": {
+        "mindMap": {
+          "title": "Mapa mental",
+          "topic": "Tema central",
+          "research": "Pesquisa",
+          "ideas": "Ideias",
+          "audience": "Público",
+          "actions": "Ações",
+          "questions": "Questões em aberto"
+        },
+        "flowchart": {
+          "title": "Fluxo do processo",
+          "start": "Início",
+          "process": "Coletar requisitos",
+          "decision": "Pronto para continuar?",
+          "revise": "Revisar o plano",
+          "finish": "Entregar",
+          "yes": "Sim",
+          "no": "Não"
+        },
+        "roadmap": {
+          "title": "Roteiro do projeto",
+          "quarter1": "T1",
+          "quarter2": "T2",
+          "quarter3": "T3",
+          "quarter4": "T4",
+          "discover": "Descobrir",
+          "prototype": "Prototipar",
+          "validate": "Validar",
+          "launch": "Lançar",
+          "discoverMilestone": "Problema e público definidos",
+          "prototypeMilestone": "Experiência principal testada",
+          "validateMilestone": "Feedback do beta coletado",
+          "launchMilestone": "Lançar e medir"
+        },
+        "kanban": {
+          "title": "Kanban da equipe",
+          "todo": "A fazer",
+          "progress": "Em andamento",
+          "done": "Concluído",
+          "scope": "Definir o escopo da versão",
+          "content": "Redigir o conteúdo de lançamento",
+          "prototype": "Construir protótipo interativo",
+          "testing": "Fazer testes com usuários",
+          "kickoff": "Início do projeto",
+          "research": "Pesquisa com clientes"
+        },
+        "retrospective": {
+          "title": "Retrospectiva de reunião",
+          "well": "O que foi bem",
+          "improve": "O que pode melhorar",
+          "next": "Próximos passos",
+          "clearGoal": "O objetivo permaneceu claro",
+          "feedback": "O feedback chegou rápido",
+          "decisions": "As decisões chegaram tarde demais",
+          "owners": "Alguns responsáveis não estavam claros",
+          "assign": "Definir um responsável por ação",
+          "review": "Revisar o progresso na próxima semana"
+        },
+        "storyboard": {
+          "title": "Storyboard de apresentação",
+          "cover": "Abertura",
+          "problem": "Problema",
+          "insight": "Insight principal",
+          "solution": "Solução",
+          "proof": "Evidências",
+          "nextStep": "Próximo passo",
+          "slide1": "01",
+          "slide2": "02",
+          "slide3": "03",
+          "slide4": "04",
+          "slide5": "05",
+          "slide6": "06",
+          "visual": "Espaço visual"
+        }
+      }
+    },
+    "selectionToolbar": {
+      "label": "Layout da seleção",
+      "mindMap": {
+        "label": "Mapa mental",
+        "addChild": "Adicionar nó filho (Tab)",
+        "addSibling": "Adicionar nó irmão (Enter)",
+        "collapse": "Recolher ramificação",
+        "expand": "Expandir {{count}} nós ocultos",
+        "newNode": "Nova ideia",
+        "direction": "Direção do mapa mental",
+        "directions": {
+          "both": "Ambos os lados",
+          "right": "Crescer para a direita",
+          "left": "Crescer para a esquerda",
+          "down": "Crescer para baixo"
+        }
+      },
+      "alignLeft": "Alinhar à esquerda",
+      "alignCenterHorizontal": "Centralizar horizontalmente",
+      "alignRight": "Alinhar à direita",
+      "alignTop": "Alinhar ao topo",
+      "alignCenterVertical": "Centralizar verticalmente",
+      "alignBottom": "Alinhar à base",
+      "distributeHorizontal": "Distribuir horizontalmente",
+      "distributeVertical": "Distribuir verticalmente",
+      "stackHorizontal": "Empilhar horizontalmente",
+      "stackVertical": "Empilhar verticalmente",
+      "rotateCounterclockwise": "Girar no sentido anti-horário",
+      "rotateClockwise": "Girar no sentido horário",
+      "flipHorizontal": "Inverter horizontalmente",
+      "flipVertical": "Inverter verticalmente",
+      "askAI": "Perguntar à IA sobre a seleção",
+      "group": "Agrupar seleção",
+      "frame": "Enquadrar seleção",
+      "fitFrame": "Ajustar quadro ao conteúdo",
+      "ungroup": "Desagrupar seleção",
+      "more": "Mais ações de layout",
+      "spacing": "Espaçamento",
+      "transform": "Transformar",
+      "containers": "Contêineres"
+    },
     "shapes": {
-      "rectangle": "Retângulo", "ellipse": "Elipse", "triangle": "Triângulo", "diamond": "Losango", "hexagon": "Hexágono", "pill": "Cápsula", "parallelogram": "Paralelogramo", "star": "Estrela", "cloud": "Nuvem", "heart": "Coração", "x-box": "Caixa com X", "check-box": "Caixa marcada", "check": "Marca de seleção", "arrow-left": "Seta para esquerda", "arrow-right": "Seta para direita", "arrow-up": "Seta para cima", "arrow-down": "Seta para baixo", "line": "Linha", "frame": "Quadro"
+      "rectangle": "Retângulo",
+      "ellipse": "Elipse",
+      "triangle": "Triângulo",
+      "diamond": "Losango",
+      "hexagon": "Hexágono",
+      "pill": "Cápsula",
+      "parallelogram": "Paralelogramo",
+      "star": "Estrela",
+      "cloud": "Nuvem",
+      "heart": "Coração",
+      "x-box": "Caixa com X",
+      "check-box": "Caixa marcada",
+      "check": "Marca de seleção",
+      "arrow-left": "Seta para esquerda",
+      "arrow-right": "Seta para direita",
+      "arrow-up": "Seta para cima",
+      "arrow-down": "Seta para baixo",
+      "line": "Linha",
+      "frame": "Quadro"
     },
     "style": {
-      "label": "Estilo", "selection": "Seleção", "defaults": "Novos elementos", "strokeColor": "Cor do traço", "fillColor": "Cor do preenchimento", "opacity": "Opacidade", "fill": "Preenchimento", "line": "Estilo de linha", "size": "Espessura do traço",
-      "fillStyles": { "none": "Sem preenchimento", "solid": "Preenchimento sólido", "semi": "Preenchimento semitransparente", "pattern": "Preenchimento com padrão" },
-      "dashStyles": { "solid": "Linha sólida", "dashed": "Linha tracejada", "dotted": "Linha pontilhada" },
-      "sizes": { "s": "Pequeno", "m": "Médio", "l": "Grande", "xl": "Extra grande" },
-      "colors": { "ink": "Tinta", "gray": "Cinza", "purple": "Roxo", "green": "Verde", "orange": "Laranja", "red": "Vermelho", "yellow": "Amarelo", "blue": "Azul", "white": "Branco" }
+      "label": "Estilo",
+      "selection": "Seleção",
+      "defaults": "Novos elementos",
+      "strokeColor": "Cor do traço",
+      "fillColor": "Cor do preenchimento",
+      "opacity": "Opacidade",
+      "fill": "Preenchimento",
+      "line": "Estilo de linha",
+      "size": "Espessura do traço",
+      "connectorType": "Tipo de conector",
+      "connectorTypes": {
+        "straight": "Reto",
+        "elbow": "Em ângulo",
+        "curved": "Curvo"
+      },
+      "connectorTypeShort": {
+        "straight": "R",
+        "elbow": "A",
+        "curved": "C"
+      },
+      "arrowheads": "Pontas de seta",
+      "startArrowhead": "Início",
+      "endArrowhead": "Fim",
+      "arrowheadTypes": {
+        "none": "Nenhuma",
+        "arrow": "Seta",
+        "dot": "Ponto"
+      },
+      "fillStyles": {
+        "none": "Sem preenchimento",
+        "solid": "Preenchimento sólido",
+        "semi": "Preenchimento semitransparente",
+        "pattern": "Preenchimento com padrão"
+      },
+      "dashStyles": {
+        "solid": "Linha sólida",
+        "dashed": "Linha tracejada",
+        "dotted": "Linha pontilhada"
+      },
+      "sizes": {
+        "s": "Pequeno",
+        "m": "Médio",
+        "l": "Grande",
+        "xl": "Extra grande"
+      },
+      "colors": {
+        "ink": "Tinta",
+        "gray": "Cinza",
+        "purple": "Roxo",
+        "green": "Verde",
+        "orange": "Laranja",
+        "red": "Vermelho",
+        "yellow": "Amarelo",
+        "blue": "Azul",
+        "white": "Branco"
+      }
     },
-    "topActions": { "pages": "Páginas", "duplicate": "Duplicar seleção", "more": "Mais ações", "selectAll": "Selecionar tudo", "copy": "Copiar", "cut": "Recortar", "paste": "Colar", "bringToFront": "Trazer para a frente", "bringForward": "Avançar", "sendBackward": "Recuar", "sendToBack": "Enviar para trás", "zoomToSelection": "Ampliar para a seleção", "actualSize": "Tamanho real", "cameraBack": "Vista anterior do quadro", "cameraForward": "Próxima vista do quadro", "exportSvg": "Exportar SVG", "exportPng": "Exportar PNG" },
-    "minimap": { "label": "Minimapa do Board" },
-    "imageImport": { "error": "Não foi possível inserir a imagem" }
+    "topActions": {
+      "pages": "Páginas",
+      "createPage": "Criar página",
+      "duplicatePage": "Duplicar",
+      "deletePage": "Excluir",
+      "renamePage": "Renomear página",
+      "savePageName": "Salvar nome da página",
+      "movePagePrevious": "Mover página para cima",
+      "movePageNext": "Mover página para baixo",
+      "duplicate": "Duplicar seleção",
+      "more": "Mais ações",
+      "selectAll": "Selecionar tudo",
+      "copy": "Copiar",
+      "cut": "Recortar",
+      "paste": "Colar",
+      "bringToFront": "Trazer para a frente",
+      "bringForward": "Avançar",
+      "sendBackward": "Recuar",
+      "sendToBack": "Enviar para trás",
+      "zoomToSelection": "Ampliar para a seleção",
+      "actualSize": "Tamanho real",
+      "grid": "Mostrar grade",
+      "snap": "Alinhar às formas",
+      "toolLock": "Manter a ferramenta de desenho ativa",
+      "cameraBack": "Vista anterior do quadro",
+      "cameraForward": "Próxima vista do quadro",
+      "exportSvg": "Exportar SVG",
+      "exportPng": "Exportar PNG"
+    },
+    "contextMenu": {
+      "label": "Ações do quadro"
+    },
+    "minimap": {
+      "label": "Minimapa do Board"
+    },
+    "imageImport": {
+      "error": "Não foi possível inserir a imagem"
+    }
   },
   "layout": {
     "resizeSidebar": "Redimensionar barra lateral",

@@ -9,6 +9,7 @@ import { createAtomStore } from 'jotai-x';
 import { XIcon } from 'lucide-react';
 import type { ComponentProps } from 'react';
 import * as React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Drawer as DrawerPrimitive } from 'vaul';
 
 import { cn } from '@/lib/utils';
@@ -54,9 +55,10 @@ export function DialogClose({
   className,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Close>) {
+  const { t } = useTranslation('common')
   return (
     <DialogPrimitive.Close
-      aria-label="Close"
+      aria-label={t('actions.close')}
       className={cn(
         buttonVariants({ size: 'none', variant: 'ghost' }),
         'top-2.5 right-2.5 size-6',

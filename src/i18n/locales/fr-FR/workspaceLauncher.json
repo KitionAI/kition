@@ -99,6 +99,12 @@
         "privacy": "Ce workflow s'exécute localement et n'envoie aucun contenu à un service d'IA."
       }
     },
+    "scenario": {
+      "eyebrow": "Scénario de démarrage",
+      "emailTitle": "Importer une boîte de réception",
+      "emailDescription": "Connectez Gmail, 163 Mail, Outlook ou un autre fournisseur et synchronisez les messages dans la table Inbox préparée.",
+      "emailAction": "Configurer la synchronisation de la boîte"
+    },
     "continue": "Continuer",
     "back": "Retour",
     "skip": "Ignorer pour l'instant",

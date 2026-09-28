@@ -19,6 +19,12 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 # Loading copy belongs in locale files or the Skeleton primitive, never inline in JSX.
 HARDCODED_LOADING_PATTERN = re.compile(r"Loading(?:\.\.\.|\u2026)")
+# Sentence-case JSX text nodes and literal aria-labels are UI copy that
+# belongs in the locale files. Existing ones are listed in the baseline,
+# which may only shrink; new ones fail the check.
+RAW_TEXT_NODE_PATTERN = re.compile(r">\s*([A-Z][a-z]+(?: [a-z][a-z']*)+)\s*<")
+RAW_ARIA_LABEL_PATTERN = re.compile(r'aria-label="([^"{}]+)"')
+RAW_STRING_BASELINE = REPO_ROOT / "tooling/i18n-raw-strings.baseline.json"
 TEXT_SCAN_EXEMPT_PATHS = {
     "docs/legal/THIRD_PARTY_NOTICES.txt",
     "README.md",
@@ -34,7 +40,6 @@ TEXT_SCAN_EXEMPT_PREFIXES = (
     "src/i18n/locales/zh-CN/",
 )
 ENGLISH_LOCALE_ROOT = REPO_ROOT / "src/i18n/locales/en-US"
-SIMPLIFIED_CHINESE_LOCALE_ROOT = REPO_ROOT / "src/i18n/locales/zh-CN"
 
 PROHIBITED_RANGES = (
     (0x3400, 0x4DBF),   # CJK Unified Ideographs Extension A
@@ -106,10 +111,25 @@ def flatten_json_values(value: object, prefix: str = "") -> dict[str, object]:
     return values
 
 
+def localized_locale_roots() -> list[Path]:
+    """Every locale directory other than English; each must mirror en-US."""
+    return sorted(
+        path for path in ENGLISH_LOCALE_ROOT.parent.iterdir()
+        if path.is_dir() and path.name != ENGLISH_LOCALE_ROOT.name
+    )
+
+
 def locale_parity_violations() -> list[tuple[str, int, str]]:
     violations: list[tuple[str, int, str]] = []
+    for locale_root in localized_locale_roots():
+        violations.extend(locale_parity_violations_for(locale_root))
+    return violations
+
+
+def locale_parity_violations_for(locale_root: Path) -> list[tuple[str, int, str]]:
+    violations: list[tuple[str, int, str]] = []
     for english_path in sorted(ENGLISH_LOCALE_ROOT.glob("*.json")):
-        localized_path = SIMPLIFIED_CHINESE_LOCALE_ROOT / english_path.name
+        localized_path = locale_root / english_path.name
         relative_path = localized_path.relative_to(REPO_ROOT).as_posix()
         if not localized_path.is_file():
             violations.append((relative_path, 0, "missing localized namespace"))
@@ -145,6 +165,37 @@ def locale_parity_violations() -> list[tuple[str, int, str]]:
             if expected_placeholders != actual_placeholders:
                 violations.append((relative_path, 0, f"locale placeholders differ at {key}"))
     return violations
+
+
+def raw_ui_strings() -> dict[str, tuple[str, int]]:
+    """Every raw JSX text node or aria-label literal in a component, keyed by `path|kind|text`."""
+    found: dict[str, tuple[str, int]] = {}
+    for path in sorted((REPO_ROOT / "src").rglob("*.tsx")):
+        relative_path = path.relative_to(REPO_ROOT).as_posix()
+        if ".spec." in path.name:
+            continue
+        for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            for match in RAW_TEXT_NODE_PATTERN.finditer(line):
+                found[f"{relative_path}|text|{match.group(1)}"] = (relative_path, line_number)
+            for match in RAW_ARIA_LABEL_PATTERN.finditer(line):
+                found[f"{relative_path}|aria-label|{match.group(1)}"] = (relative_path, line_number)
+    return found
+
+
+def raw_string_violations(update_baseline: bool) -> list[tuple[str, int, str]]:
+    import json
+
+    found = raw_ui_strings()
+    baseline: set[str] = set(json.loads(RAW_STRING_BASELINE.read_text(encoding="utf-8"))) if RAW_STRING_BASELINE.is_file() else set()
+    fixed = sorted(baseline - set(found))
+    new = sorted(set(found) - baseline)
+    if update_baseline:
+        RAW_STRING_BASELINE.write_text(json.dumps(sorted(set(found) & baseline), indent=2) + "\n", encoding="utf-8")
+        print(f"[i18n-raw-strings] wrote {len(set(found) & baseline)} entries ({len(fixed)} fixed removed).")
+        return []
+    if fixed:
+        print(f"[i18n-raw-strings] {len(fixed)} baseline entries are fixed; run with --update-raw-baseline to shrink the baseline.")
+    return [(found[key][0], found[key][1], f"raw UI string {key.split('|', 1)[1]!r}; move it to a locale key") for key in new]
 
 
 def scan() -> list[tuple[str, int, str]]:
@@ -183,6 +234,7 @@ def scan() -> list[tuple[str, int, str]]:
                     (relative_path, line_number, "escaped prohibited script code point"),
                 )
     violations.extend(locale_parity_violations())
+    violations.extend(raw_string_violations("--update-raw-baseline" in sys.argv))
     return violations
 
 

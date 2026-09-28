@@ -99,6 +99,12 @@
         "privacy": "Este flujo se ejecuta localmente y no envía contenido a un servicio de IA."
       }
     },
+    "scenario": {
+      "eyebrow": "Escenario de bienvenida",
+      "emailTitle": "Importar una bandeja de correo",
+      "emailDescription": "Conecta Gmail, 163 Mail, Outlook u otro proveedor y sincroniza los mensajes en la tabla Inbox preparada.",
+      "emailAction": "Configurar la sincronización de la bandeja"
+    },
     "continue": "Continuar",
     "back": "Atrás",
     "skip": "Omitir por ahora",

@@ -2,15 +2,32 @@
   "title": "AI Image Studio",
   "description": "Generate workspace images from visual recipes and place them on the Board.",
   "close": "Close image studio",
-  "sections": {
-    "context": "Board context",
-    "template": "Visual recipe",
-    "brief": "Creative brief",
-    "output": "Output settings",
-    "results": "Generated results"
+  "gallery": {
+    "description": "Сначала выберите нужный результат. Шаблон возьмёт на себя промпт и арт-направление.",
+    "searchPlaceholder": "Поиск постеров, товаров, персонажей…",
+    "headings": {
+      "recommended": "Рекомендовано для этой доски",
+      "all": "Все визуальные шаблоны",
+      "generate": "Создать по шаблону",
+      "edit": "Преобразовать выбранное изображение"
+    },
+    "templateCount": "Шаблонов: {{count}}",
+    "templateCount_one": "{{count}} шаблон",
+    "templateCount_other": "Шаблонов: {{count}}",
+    "empty": "Нет шаблонов, подходящих под эти фильтры."
   },
-  "context": {
-    "empty": "No Board selection. Describe the image you want below."
+  "generator": {
+    "description": "Заполните основное ниже. Полный визуальный промпт уже встроен.",
+    "customizeHint": "Меняйте только то, что важно для этого результата.",
+    "referenceRequired": "Для этого преобразования нужно исходное изображение. Закройте студию, выберите изображение на доске и откройте «Редактировать изображение».",
+    "referenceCount": "Референсов: {{count}}",
+    "referenceCount_one": "{{count}} референс",
+    "referenceCount_other": "Референсов: {{count}}"
+  },
+  "sections": {
+    "customize": "Настроить этот шаблон",
+    "advanced": "Расширенные настройки",
+    "results": "Generated results"
   },
   "templateViews": {
     "label": "Template view",
@@ -19,16 +36,46 @@
     "generate": "Create",
     "edit": "Edit"
   },
+  "categories": {
+    "label": "Категории шаблонов",
+    "all": "Все сцены",
+    "poster": "Постеры",
+    "product": "Товары",
+    "brand": "Бренд",
+    "education": "Образование",
+    "character": "Персонажи",
+    "editing": "Обработка фото"
+  },
   "templateMeta": {
     "generate": "Create",
     "edit": "Edit",
+    "selectImageFirst": "Выберите изображение на доске перед генерацией",
     "editableText": "Editable text"
   },
+  "variables": {
+    "subject": {
+      "label": "Главный объект",
+      "placeholder": "О чём должно быть изображение?"
+    },
+    "scene": {
+      "label": "Сцена",
+      "placeholder": "Где это происходит и какое должно быть настроение?"
+    },
+    "details": {
+      "label": "Ключевые детали",
+      "placeholder": "Добавьте только те детали, которые должны появиться или остаться без изменений."
+    },
+    "palette": {
+      "label": "Цвета",
+      "placeholder": "Необязательно, например: тёплый кремовый, лесной зелёный и золотой"
+    }
+  },
   "fields": {
-    "brief": "What should the image communicate?",
     "textMode": "Text handling",
-    "exactText": "Editable text",
-    "exactTextPlaceholder": "Add a short headline or label",
+    "editableText": "Редактируемый заголовок",
+    "editableTextPlaceholder": "Необязательный заголовок, добавляемый отдельным текстовым слоем на доске",
+    "visibleText": "Текст внутри изображения",
+    "visibleTextPlaceholder": "Необязательный точный заголовок или короткая подпись",
     "editableTextDescription": "Kition adds copy as a separate text layer that you can double-click to edit.",
     "aspectRatio": "Aspect ratio",
     "resolution": "Resolution",
@@ -41,6 +88,8 @@
     "high": "High"
   },
   "actions": {
+    "useTemplate": "Использовать шаблон",
+    "backToTemplates": "Выбрать другой шаблон",
     "generate": "Generate {{count}} image",
     "generate_one": "Generate {{count}} image",
     "generate_other": "Generate {{count}} images",
@@ -78,7 +127,7 @@
     "detail_other": "Creating {{count}} options from the selected recipe. You can keep working on the Board."
   },
   "errors": {
-    "briefRequired": "Describe what you want to generate.",
+    "variableRequired": "Заполните {{field}} перед генерацией.",
     "referenceRequired": "Select one image on the Board before using this editing recipe.",
     "startFailed": "Could not start image generation.",
     "unavailable": "Configure an AI model and use a runtime with AI Board support.",
@@ -87,68 +136,148 @@
   },
   "generatedImageAlt": "AI-generated image",
   "referenceAlt": "Reference image {{index}}",
+  "templatePreviewAlt": "Пример результата для {{name}}",
   "source": "Recipe adapted from {{repository}} ({{license}}).",
   "resultAlt": "Generated image {{index}}",
   "templates": {
-    "concept-infographic": {
-      "name": "Concept infographic",
-      "description": "Turn structured ideas into a clear visual explanation.",
-      "placeholder": "Explain the topic, audience, facts, modules, and relationships."
+    "surreal-city-poster": {
+      "name": "Сюрреалистический постер города",
+      "description": "Превратите место или идею в коллекционный редакционный туристический постер.",
+      "placeholders": {
+        "subject": "Например: сказочный Ханчжоу будущего",
+        "scene": "Знаковые здания, извилистые небесные дороги, чайные плантации, крошечные путешественники…",
+        "palette": "Приглушённый нефрит, тёплый камень, туманно-голубой"
+      }
     },
-    "product-environment-edit": {
-      "name": "Product scene edit",
-      "description": "Keep the product fixed while changing its environment.",
-      "placeholder": "Describe the new setting, props, lighting, and preserved details."
+    "miniature-product-campaign": {
+      "name": "Миниатюрная кампания товара",
+      "description": "Постройте рекламную историю из шести кадров вокруг одного главного товара.",
+      "placeholders": {
+        "subject": "Например: газированный лимонный напиток Limora",
+        "scene": "Солнечный пляж, где крошечные люди взаимодействуют с гигантскими ингредиентами",
+        "palette": "Лимонно-жёлтый, свежий зелёный, бирюзовый"
+      }
     },
-    "product-exploded-view": {
-      "name": "Exploded product view",
-      "description": "Show components and assembly order on one clean axis.",
-      "placeholder": "Describe the product, components, materials, and sequence."
+    "engineering-infographic": {
+      "name": "Инженерная инфографика",
+      "description": "Объясните сложный продукт с помощью разрезов, данных и технических выносок.",
+      "placeholders": {
+        "subject": "Например: городской электробус нового поколения",
+        "details": "Батарейная система, габариты, процесс зарядки, влияние на среду…",
+        "palette": "Глубокий тёмно-синий, графит, электрический зелёный"
+      }
     },
-    "character-turnaround": {
-      "name": "Character turnaround",
-      "description": "Generate consistent front, side, and back views.",
-      "placeholder": "Describe identity anchors, clothing, equipment, and palette."
+    "landmark-type-poster": {
+      "name": "Типографический постер достопримечательностей",
+      "description": "Составьте название города из его самых узнаваемых достопримечательностей и деталей.",
+      "placeholders": {
+        "subject": "Например: Шанхай",
+        "details": "Бунд, платаны, паромы, дома в переулках, силуэт города…",
+        "palette": "Глубокий тёмно-синий, кремовый, приглушённый красный"
+      }
     },
-    "naturalist-field-guide": {
-      "name": "Field guide spread",
-      "description": "Create an illustrated specimen page with precise callouts.",
-      "placeholder": "Describe the specimen, detail views, facts, and page structure."
+    "brand-touchpoint-board": {
+      "name": "Доска точек контакта бренда",
+      "description": "Покажите цельную систему бренда на упаковке, товарах и сценах из жизни.",
+      "placeholders": {
+        "subject": "Например: современный бренд матча Matcha Mode",
+        "details": "Керамическая чашка, упаковка навынос, меню, сумка-шоппер, стикеры…",
+        "palette": "Зелёный матча, тёплый бежевый, молочно-белый"
+      }
     },
-    "exact-type-poster": {
-      "name": "Editable type poster",
-      "description": "Create a poster background with a protected headline zone.",
-      "placeholder": "Describe the subject, mood, palette, composition, and headline placement."
+    "neon-creator-poster": {
+      "name": "Неоновый постер создателя",
+      "description": "Создайте смелый 3D-постер личного или профессионального образа.",
+      "placeholders": {
+        "subject": "Например: уверенный моушн-дизайнер",
+        "details": "Оверсайз-стритвир, камера, ноутбук, 3D-инструменты, мини-фигурка…",
+        "palette": "Электрический синий и чёрный"
+      }
     },
-    "ui-concept": {
-      "name": "UI concept",
-      "description": "Generate a polished app, web, dashboard, or kiosk concept.",
-      "placeholder": "Name the platform, purpose, hierarchy, components, and states."
+    "vintage-travel-poster": {
+      "name": "Винтажный туристический постер",
+      "description": "Превратите место назначения в состаренный кинематографичный принт с глубиной.",
+      "placeholders": {
+        "subject": "Например: Гуанчжоу в золотой час",
+        "details": "Кантонская башня, улицы с аркадами, речной паром, цветы капока…",
+        "palette": "Тёплый янтарь, кобальтовый синий, выцветшая сепия"
+      }
     },
-    "seamless-pattern": {
-      "name": "Seamless pattern",
-      "description": "Create a repeat-ready tile with checked edge continuity.",
-      "placeholder": "Describe motifs, repeat logic, palette, scale, and density."
+    "product-concept-board": {
+      "name": "Концепт-доска продукта",
+      "description": "Покажите путь дизайна от вдохновения до готового продукта.",
+      "placeholders": {
+        "subject": "Например: стул, вдохновлённый смятой бумагой",
+        "details": "Анализ формы, эргономика, материалы, размеры, прототип…",
+        "palette": "Молочно-белый, графит, тёплый серый"
+      }
     },
-    "clean-object-removal": {
-      "name": "Clean object removal",
-      "description": "Remove one object and reconstruct the retained background.",
-      "placeholder": "Name what to remove and describe the retained texture and light."
+    "vocabulary-learning-card": {
+      "name": "Карточка для изучения слов",
+      "description": "Покажите целый предмет и одну его часть на дружелюбной визуальной карточке.",
+      "placeholders": {
+        "subject": "Например: кукуруза и зерно",
+        "details": "Используйте короткие подписи заглавными буквами для целого и его части",
+        "palette": "Пастельно-голубой, белый, натуральные цвета предмета"
+      }
     },
-    "portrait-outpaint": {
-      "name": "Portrait outpaint",
-      "description": "Extend a portrait while preserving identity and the original crop.",
-      "placeholder": "Describe the extension direction, scene, and preserved details."
+    "editorial-silhouette-poster": {
+      "name": "Редакционный постер-силуэт",
+      "description": "Соедините выразительный профильный портрет с экспрессивной типографикой и живой тушью.",
+      "placeholders": {
+        "subject": "Например: авангардный модельер в профиль",
+        "details": "Стрижка боб, угловатые очки, рукописные буквы кистью…",
+        "palette": "Чёрная тушь на тёплой молочно-белой бумаге"
+      }
     },
-    "backlight-rescue": {
-      "name": "Backlight rescue",
-      "description": "Recover a dark subject without destroying the background.",
-      "placeholder": "Describe the face lift, skin finish, background control, and color mood."
+    "mixed-media-memory-card": {
+      "name": "Карточка воспоминания в смешанной технике",
+      "description": "Оставьте половину фото нетронутой и дорисуйте воспоминание от руки ниже.",
+      "placeholders": {
+        "details": "Какой момент или мелкую деталь должен подчеркнуть набросок?",
+        "palette": "Приглушённые цвета, взятые с фото"
+      }
     },
-    "whiteboard-sketch-visual": {
-      "name": "Board sketch to visual",
-      "description": "Turn selected Board structure into a polished visual asset.",
-      "placeholder": "Describe the audience, visual style, hierarchy, and desired finish."
+    "travel-field-notes": {
+      "name": "Путевые заметки",
+      "description": "Соедините настоящее фото из путешествия с рукодельным штампом места.",
+      "placeholders": {
+        "details": "Название места и несколько достопримечательностей, которые штамп должен сохранить",
+        "palette": "2–4 приглушённых плашечных цвета, взятых с фото"
+      }
+    },
+    "paper-collage-portrait": {
+      "name": "Портрет в технике бумажного коллажа",
+      "description": "Оставьте человека реалистичным и пересоберите мир как многослойное бумажное искусство.",
+      "placeholders": {
+        "scene": "Например: весенний сад с холмами, облаками и цветами",
+        "details": "Детали внешности, одежды и позы, которые должны остаться без изменений",
+        "palette": "Мечтательная пастель с натуральными оттенками кожи"
+      }
+    },
+    "photo-doodle-mix": {
+      "name": "Фото с нарисованными человечками",
+      "description": "Сохраните реальный фон и перерисуйте только людей в виде игривых дудлов.",
+      "placeholders": {
+        "details": "Каких людей преобразовать и какие детали внешности сохранить",
+        "palette": "Чёрная тушь со сдержанными цветными акцентами от руки"
+      }
+    },
+    "doodle-character": {
+      "name": "Дудл-персонаж",
+      "description": "Превратите портрет в свободного обаятельного персонажа из модного блокнота.",
+      "placeholders": {
+        "details": "Причёска, одежда, аксессуары и черты, которые нужно сохранить",
+        "palette": "Чёрный карандаш с мягким румянцем и лёгким цветом мелков"
+      }
+    },
+    "character-production-sheet": {
+      "name": "Продакшн-лист персонажа",
+      "description": "Разверните одного персонажа в согласованные ракурсы, позы и выноски материалов.",
+      "placeholders": {
+        "details": "Характерное снаряжение, материалы, ракурсы, позы и выражения",
+        "palette": "Основные нейтральные плюс один характерный акцентный цвет"
+      }
     }
   },
   "chat": {

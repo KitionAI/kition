@@ -223,6 +223,10 @@
     "search": "Pesquisar",
     "notFound": "Nenhuma opção encontrada"
   },
+  "datePicker": {
+    "clear": "Limpar",
+    "today": "Hoje"
+  },
   "aiOverlay": {
     "regenerate": "Regenerar"
   },
@@ -352,6 +356,7 @@
     "showAs": "Mostrar como",
     "showAsText": "Texto",
     "showAsMarkdown": "Markdown",
+    "dateFormat": "Formato de data",
     "removeConfig": "Remover configuração"
   },
   "fieldChoices": {
