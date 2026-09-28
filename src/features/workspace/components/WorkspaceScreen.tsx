@@ -13,7 +13,6 @@ import { useTranslation } from 'react-i18next'
 import { useKitableChildrenIndex } from '@/features/workspace/hooks/useKitableChildrenIndex'
 import { useKitableRegistration } from '@/features/workspace/hooks/useKitableRegistration'
 import {
-  buildKitableTableVirtualPath,
   buildPrivateSectionTreeNodes,
   renameWorkspaceTreeBranchMetadata,
   replaceWorkspaceTreeDocumentItem,
@@ -35,8 +34,7 @@ import { AgentFloatingLauncher } from '@/features/agent/components/AgentFloating
 import type { SettingsSectionKey } from '@/features/settings/DesktopSettingsPage'
 import { useDesktopSettings } from '@/features/settings/hooks/useDesktopSettings'
 import type { DataDocument } from '@/types/dataDocument'
-import { WorkspaceScreenEditor } from '@/features/workspace/components/WorkspaceScreenEditor'
-import { WorkspaceKitableSidebar } from '@/features/workspace/components/WorkspaceKitableSidebar'
+import { WorkspaceEditorFrame, type WorkspaceKitableSidebarActions } from '@/features/workspace/components/WorkspaceEditorFrame'
 import { FORM_SYNC_CHANGED_EVENT } from '@/features/formSync/api'
 import { WorkspaceAgentTabBar } from '@/features/workspace/components/WorkspaceAgentTabBar'
 import {
@@ -97,8 +95,9 @@ import {
   deriveAgentPaneContext,
   resolveAgentActiveDocument,
 } from '@/features/workspace/lib/agentPaneContext'
-import {
-} from '@/features/workspace/lib/workspacePersistence'
+import { resolveActiveKitablePath, resolveKitableSidebarMode } from '@/features/workspace/lib/activeKitable'
+import { buildWorkspaceTabStripProps } from '@/features/workspace/lib/workspaceTabStripActions'
+import { selectItemsToClose, type CloseScope } from '@/features/workspace/state/closeScope'
 import { notify } from '@/lib/notify'
 import { cn } from '@/lib/utils'
 import {
@@ -481,22 +480,8 @@ export function WorkspaceScreen({
     openDocument,
   })
 
-  const activeKitablePath = activeWorkspaceTab?.type === 'table'
-    ? activeWorkspaceTab.kitablePath
-    : activeWorkspaceTab?.type === 'dashboard'
-      ? activeWorkspaceTab.kitablePath
-    : activeWorkspaceTab?.type === 'workflow'
-      ? activeWorkspaceTab.kitablePath || ''
-      : activeWorkspaceTab?.type === 'document'
-        && activeDocumentFormat === 'data'
-        && activeWorkspaceTab.path.toLowerCase().endsWith('.kitable')
-        ? activeWorkspaceTab.path
-        : ''
-  const activeKitableMode: 'dashboard' | 'table' | 'workflow' = workflowOpen || activeWorkspaceTab?.type === 'workflow'
-    ? 'workflow'
-    : activeWorkspaceTab?.type === 'dashboard'
-      ? 'dashboard'
-      : 'table'
+  const activeKitablePath = resolveActiveKitablePath(activeWorkspaceTab, activeDocumentFormat)
+  const activeKitableMode = resolveKitableSidebarMode(activeWorkspaceTab, workflowOpen)
 
   const tableAgent = useWorkspaceTableAgentContext({ activeWorkspaceTab, activeBrowserTab })
   const {
@@ -1214,103 +1199,40 @@ export function WorkspaceScreen({
     onConfigureModel: onOpenSettingsSection ? () => onOpenSettingsSection('models') : undefined,
   }), [onOpenSettingsSection, setSettings, settings, translateSelection])
 
+  const kitableSidebarActions: WorkspaceKitableSidebarActions = {
+    createDashboard: createDashboardFromKitableSidebar,
+    createTable: createTableFromKitableSidebar,
+    createForm: createFormFromKitableSidebar,
+    createWorkflow: createWorkflowFromKitableSidebar,
+    openDashboard: openKitableDashboard,
+    openTable: openKitableTable,
+    openWorkflow: openKitableWorkflow,
+    renameTableLeaf: renameKitableTableLeaf,
+  }
+  const closeAgentSessions = (sessionId: number | null, scope: CloseScope) =>
+    handleCloseWorkspaceAgentChats(
+      selectItemsToClose(openWorkspaceAgentSessions, sessionId, scope).map((session) => session.id),
+    )
+
   return (
     <>
       <WorkspaceTopbar
         tabsPortal={topbarLeadingPortal}
         documentToolbarPortal={activeWorkspaceTab?.type === 'document' ? documentToolbarPortal : null}
-        tabStripProps={{
+        tabStripProps={buildWorkspaceTabStripProps({
           tabs: workspaceTabs,
           activeTabId: activeWorkspaceTabId,
-          onActivate: (tab) => {
-            onCloseProfile?.()
-            // The full-screen WorkflowRoute is gated on the URL (/workflow*),
-            // so switching to a non-workflow tab without exiting the route
-            // would leave WorkflowRoute covering the chosen document.
-            if (workflowOpen && tab.type !== 'workflow') {
-              onCloseWorkflow?.()
-            }
-            activateWorkspaceTab(tab)
-          },
-          onClose: handleCloseWorkspaceTabById,
-          onCloseOthers: (tabId) => {
-            workspaceTabs
-              .filter((tab) => tab.id !== tabId)
-              .forEach((tab) => handleCloseWorkspaceTabById(tab.id))
-            const keeper = workspaceTabs.find((t) => t.id === tabId)
-            if (workflowOpen && keeper && keeper.type !== 'workflow') {
-              onCloseWorkflow?.()
-            }
-          },
-          onCloseAll: () => {
-            workspaceTabs.forEach((tab) => handleCloseWorkspaceTabById(tab.id))
-            if (workflowOpen) onCloseWorkflow?.()
-          },
-          onCloseUnmodified: () => {
-            workspaceTabs.forEach((tab) => {
-              if (tab.type === 'document') {
-                const modified = tab.path === activeDocument?.path
-                  ? hasUnsavedChanges
-                  : getOpenedDocumentDraftEntry(tab.path) !== null
-                if (modified) {
-                  return
-                }
-              }
-              handleCloseWorkspaceTabById(tab.id)
-            })
-          },
-          onCloseLeft: (tabId) => {
-            const index = workspaceTabs.findIndex((tab) => tab.id === tabId)
-            if (index <= 0) {
-              return
-            }
-            workspaceTabs
-              .slice(0, index)
-              .forEach((tab) => handleCloseWorkspaceTabById(tab.id))
-          },
-          onCloseRight: (tabId) => {
-            const index = workspaceTabs.findIndex((tab) => tab.id === tabId)
-            if (index < 0) {
-              return
-            }
-            workspaceTabs
-              .slice(index + 1)
-              .forEach((tab) => handleCloseWorkspaceTabById(tab.id))
-          },
-          onCloseReadOnly: () => {
-            workspaceTabs.forEach((tab) => {
-              if (
-                tab.type === 'file-viewer'
-                || tab.type === 'gallery'
-                || tab.type === 'browser-sites'
-              ) {
-                handleCloseWorkspaceTabById(tab.id)
-              }
-            })
-          },
-          onCopyTabRef: (tab) => {
-            const text = tab.type === 'document'
-              ? tab.path
-              : tab.type === 'file-viewer'
-                ? tab.path
-                : tab.type === 'browser'
-                  ? tab.url || tab.title
-                  : tab.title
-            if (text && typeof navigator !== 'undefined' && navigator.clipboard) {
-              void navigator.clipboard.writeText(text)
-            }
-          },
-          isTabModified: (tab) => {
-            if (tab.type !== 'document') {
-              return false
-            }
-            return tab.path === activeDocument?.path
-              ? hasUnsavedChanges
-              : getOpenedDocumentDraftEntry(tab.path) !== null
-          },
+          activeDocumentPath: activeDocument?.path,
+          hasUnsavedChanges,
+          getOpenedDocumentDraftEntry,
+          workflowOpen,
+          closeTab: handleCloseWorkspaceTabById,
+          activateTab: activateWorkspaceTab,
+          onCloseWorkflow,
+          onCloseProfile,
           sidebarCollapsed,
           onToggleSidebar: toggleSidebarCollapsed,
-        }}
+        })}
         importInputRef={importInputRef}
         itemMenuOpen={itemMenuOpen}
         activeItemFormat={activeDocumentFormat}
@@ -1356,34 +1278,10 @@ export function WorkspaceScreen({
         onCloseSession={(session) =>
           handleCloseWorkspaceAgentChats([session.id])
         }
-        onCloseOtherSessions={(session) =>
-          handleCloseWorkspaceAgentChats(
-            openWorkspaceAgentSessions
-              .filter((other) => other.id !== session.id)
-              .map((other) => other.id),
-          )
-        }
-        onCloseAllSessions={() =>
-          handleCloseWorkspaceAgentChats(openWorkspaceAgentSessions.map((session) => session.id))
-        }
-        onCloseLeftSessions={(session) => {
-          const index = openWorkspaceAgentSessions.findIndex((item) => item.id === session.id)
-          if (index <= 0) {
-            return
-          }
-          handleCloseWorkspaceAgentChats(
-            openWorkspaceAgentSessions.slice(0, index).map((other) => other.id),
-          )
-        }}
-        onCloseRightSessions={(session) => {
-          const index = openWorkspaceAgentSessions.findIndex((item) => item.id === session.id)
-          if (index < 0) {
-            return
-          }
-          handleCloseWorkspaceAgentChats(
-            openWorkspaceAgentSessions.slice(index + 1).map((other) => other.id),
-          )
-        }}
+        onCloseOtherSessions={(session) => closeAgentSessions(session.id, 'others')}
+        onCloseAllSessions={() => closeAgentSessions(null, 'all')}
+        onCloseLeftSessions={(session) => closeAgentSessions(session.id, 'left')}
+        onCloseRightSessions={(session) => closeAgentSessions(session.id, 'right')}
         onCopySessionRef={(session) => {
           const text = session.title || `Chat #${session.id}`
           if (typeof navigator !== 'undefined' && navigator.clipboard) {
@@ -1483,123 +1381,94 @@ export function WorkspaceScreen({
           ) : null
         }
         editor={(
-          <div className={cn('workspace-editor-frame', activeKitablePath && 'has-kitable-sidebar')}>
-            {activeKitablePath ? (
-              <WorkspaceKitableSidebar
-                key={activeKitablePath}
-                mode={activeKitableMode}
-                activeDashboardId={activeWorkspaceTab?.type === 'dashboard' ? activeWorkspaceTab.dashboardId : undefined}
-                activeTableId={activeWorkspaceTab?.type === 'table' ? activeWorkspaceTab.tableId : undefined}
-                activeWorkflowId={activeWorkspaceTab?.type === 'workflow' ? activeWorkspaceTab.workflowId : undefined}
-                dashboards={kitableChildrenIndex.dashboardsByKitablePath[activeKitablePath] || []}
-                tables={kitableChildrenIndex.tablesByKitablePath[activeKitablePath] || []}
-                workflows={kitableChildrenIndex.workflowsByKitablePath[activeKitablePath] || []}
-                onCreateDashboard={() => void createDashboardFromKitableSidebar(activeKitablePath)}
-                onCreateTable={() => void createTableFromKitableSidebar(activeKitablePath)}
-                onCreateForm={() => createFormFromKitableSidebar(activeKitablePath)}
-                onCreateWorkflow={() => createWorkflowFromKitableSidebar(activeKitablePath)}
-                onOpenDashboard={(dashboardId) => openKitableDashboard(activeKitablePath, dashboardId)}
-                onOpenTable={(tableId) => openKitableTable(activeKitablePath, tableId)}
-                onOpenWorkflow={(workflowId) => openKitableWorkflow(activeKitablePath, workflowId)}
-                onRenameTable={(tableId, currentTitle, nextTitle) => void renameKitableTableLeaf({
-                  type: 'file',
-                  virtual: true,
-                  path: buildKitableTableVirtualPath(activeKitablePath, tableId),
-                  name: currentTitle,
-                  title: currentTitle,
-                  format: 'data',
-                  parentPath: activeKitablePath,
-                  children: [],
-                }, nextTitle)}
-              />
-            ) : null}
-            <div className="workspace-editor-frame__content">
-              {workflowWorkbench || (
-                <WorkspaceScreenEditor
-                  editorContentProps={{
-                    designRoot: rootPath,
-                    activeDocument,
-                    activeDocumentFormat,
-                    activeDocumentRevision,
-                    activeWorkspaceTab,
-                    activeWorkspaceTabId,
-                    documentTitle: activeDocument ? getWorkspaceItemTitle(activeDocument.name) : '',
-                    draftContent,
-                    hasActiveDocument: Boolean(activeDocument),
-                    editorLocked: editorView.locked,
-                    editorMode: editorView.editorMode,
-                    editorPreviewHtml,
-                    editorResetVersions,
-                    documentRevisionSaving,
-                    documentEditorFocusRequest,
-                    galleryPanelProps,
-                    browserOriginDocumentPath,
-                    browserPanelPhase,
-                    browserToolbarStatus,
-                    onBrowserNavigate: (address) => void handleBrowserNavigate(address),
-                    onBrowserBack: handleBrowserBack,
-                    onBrowserForward: handleBrowserForward,
-                    onBrowserReload: handleBrowserReload,
-                    onBrowserStop: handleBrowserStop,
-                    getOpenedDocumentDraftEntry,
-                    whiteboardAgentAvailable,
-                    whiteboardAgentBusy: activeWorkspaceAgentSession
-                      ? agentBusySessions.has(activeWorkspaceAgentSession.id)
-                      : false,
-                    onWhiteboardAgentBridgeChange: handleWhiteboardAgentBridgeChange,
-                    onCancelWhiteboardAgent: activeWorkspaceAgentSession
-                      ? () => stopAgentMessage(activeWorkspaceAgentSession.id)
-                      : undefined,
-                    onGenerateWhiteboardImage: handleGenerateWhiteboardImage,
-                    onTableAgentContextChange: handleTableAgentContextChange,
-                    onCreateWorkflow: createWorkflowFromKitableSidebar,
-                    onOpenWorkflow: openKitableWorkflow,
-                    onOpenGlobalWorkflow: openWorkspaceWorkflow,
-                    onOpenWorkflows: () => openWorkspaceWorkflow(),
-                    onCreateDocument: () => {
-                      openDocumentTemplateDialog('')
-                    },
-                    onCreateTable: () => {
-                      openKitableTemplateDialog('')
-                    },
-                    onOpenAgent: () => {
-                      setWorkspaceAgentOpen(true)
-                      setWorkspaceAgentHistoryOpen(false)
-                      window.dispatchEvent(new CustomEvent('kition:agent:focus-composer'))
-                    },
-                    onAskDocumentAgent: (request) => void handleDocumentAskAgent(request),
-                    documentTranslation,
-                    onAgentInsertionContextChange: handleAgentInsertionContextChange,
-                    onSaveDocumentTitle: (nextTitle: string) => void saveDocumentTitle(nextTitle),
-                    onDecideDocumentRevisionChange: (changeId, decision) => {
-                      if (activeDocumentRevision) {
-                        decideDocumentRevisionChange(activeDocumentRevision.path, changeId, decision)
-                      }
-                    },
-                    onResolveAllDocumentRevisionChanges: (decision) => {
-                      if (activeDocumentRevision) {
-                        resolveAllDocumentRevisionChanges(activeDocumentRevision.path, decision)
-                      }
-                    },
-                    onSplitEditorChange: (value) => {
-                      handleDraftContentChange(value)
-                      setFeedback('')
-                    },
-                    onOpenDocument: (path) => void openDocument(path),
-                    onToolbarMount: handleDocumentToolbarMount,
-                    onSetEditorMode: setEditorMode,
-                    tableAgentOpen: workspaceAgentOpen,
-                    onTableAgentOpenChange: (open) => {
-                      setWorkspaceAgentOpen(open)
-                      setWorkspaceAgentHistoryOpen(false)
-                    },
-                    workspaceTabs,
-                    rootPath,
-                  }}
-                />
-              )}
-            </div>
-          </div>
+          <WorkspaceEditorFrame
+            kitablePath={activeKitablePath}
+            kitableMode={activeKitableMode}
+            activeTab={activeWorkspaceTab}
+            kitableChildrenIndex={kitableChildrenIndex}
+            kitableActions={kitableSidebarActions}
+            workbench={workflowWorkbench}
+            editorContentProps={{
+              designRoot: rootPath,
+              activeDocument,
+              activeDocumentFormat,
+              activeDocumentRevision,
+              activeWorkspaceTab,
+              activeWorkspaceTabId,
+              documentTitle: activeDocument ? getWorkspaceItemTitle(activeDocument.name) : '',
+              draftContent,
+              hasActiveDocument: Boolean(activeDocument),
+              editorLocked: editorView.locked,
+              editorMode: editorView.editorMode,
+              editorPreviewHtml,
+              editorResetVersions,
+              documentRevisionSaving,
+              documentEditorFocusRequest,
+              galleryPanelProps,
+              browserOriginDocumentPath,
+              browserPanelPhase,
+              browserToolbarStatus,
+              onBrowserNavigate: (address) => void handleBrowserNavigate(address),
+              onBrowserBack: handleBrowserBack,
+              onBrowserForward: handleBrowserForward,
+              onBrowserReload: handleBrowserReload,
+              onBrowserStop: handleBrowserStop,
+              getOpenedDocumentDraftEntry,
+              whiteboardAgentAvailable,
+              whiteboardAgentBusy: activeWorkspaceAgentSession
+                ? agentBusySessions.has(activeWorkspaceAgentSession.id)
+                : false,
+              onWhiteboardAgentBridgeChange: handleWhiteboardAgentBridgeChange,
+              onCancelWhiteboardAgent: activeWorkspaceAgentSession
+                ? () => stopAgentMessage(activeWorkspaceAgentSession.id)
+                : undefined,
+              onGenerateWhiteboardImage: handleGenerateWhiteboardImage,
+              onTableAgentContextChange: handleTableAgentContextChange,
+              onCreateWorkflow: createWorkflowFromKitableSidebar,
+              onOpenWorkflow: openKitableWorkflow,
+              onOpenGlobalWorkflow: openWorkspaceWorkflow,
+              onOpenWorkflows: () => openWorkspaceWorkflow(),
+              onCreateDocument: () => {
+                openDocumentTemplateDialog('')
+              },
+              onCreateTable: () => {
+                openKitableTemplateDialog('')
+              },
+              onOpenAgent: () => {
+                setWorkspaceAgentOpen(true)
+                setWorkspaceAgentHistoryOpen(false)
+                window.dispatchEvent(new CustomEvent('kition:agent:focus-composer'))
+              },
+              onAskDocumentAgent: (request) => void handleDocumentAskAgent(request),
+              documentTranslation,
+              onAgentInsertionContextChange: handleAgentInsertionContextChange,
+              onSaveDocumentTitle: (nextTitle: string) => void saveDocumentTitle(nextTitle),
+              onDecideDocumentRevisionChange: (changeId, decision) => {
+                if (activeDocumentRevision) {
+                  decideDocumentRevisionChange(activeDocumentRevision.path, changeId, decision)
+                }
+              },
+              onResolveAllDocumentRevisionChanges: (decision) => {
+                if (activeDocumentRevision) {
+                  resolveAllDocumentRevisionChanges(activeDocumentRevision.path, decision)
+                }
+              },
+              onSplitEditorChange: (value) => {
+                handleDraftContentChange(value)
+                setFeedback('')
+              },
+              onOpenDocument: (path) => void openDocument(path),
+              onToolbarMount: handleDocumentToolbarMount,
+              onSetEditorMode: setEditorMode,
+              tableAgentOpen: workspaceAgentOpen,
+              onTableAgentOpenChange: (open) => {
+                setWorkspaceAgentOpen(open)
+                setWorkspaceAgentHistoryOpen(false)
+              },
+              workspaceTabs,
+              rootPath,
+            }}
+          />
         )}
       />
     </>
