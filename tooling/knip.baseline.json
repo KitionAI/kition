@@ -246,8 +246,6 @@
   "exports src/registry/ui/dialog.tsx DrawerTitle",
   "exports src/registry/ui/dialog.tsx DrawerTrigger",
   "exports src/registry/ui/dialog.tsx useDialogContentValue",
-  "exports src/registry/ui/dialog.tsx useDialogSet",
-  "exports src/registry/ui/dialog.tsx useDialogStore",
   "exports src/registry/ui/dialog.tsx useDialogValue",
   "exports src/registry/ui/popover.tsx popoverVariants",
   "exports src/registry/ui/tooltip.tsx TooltipPortal",

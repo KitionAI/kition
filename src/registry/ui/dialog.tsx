@@ -5,7 +5,6 @@ import { Dialog as DialogPrimitive } from 'radix-ui';
 type DialogPrimitiveProps = React.ComponentProps<typeof DialogPrimitive.Root>;
 
 import { cva, type VariantProps } from 'class-variance-authority';
-import { createAtomStore } from 'jotai-x';
 import { XIcon } from 'lucide-react';
 import type { ComponentProps } from 'react';
 import * as React from 'react';
@@ -236,21 +235,60 @@ export function DialogDescription({
   );
 }
 
-export const { DialogProvider, useDialogSet, useDialogStore, useDialogValue } =
-  createAtomStore(
-    {
-      desktopVariant: 'modal' as 'drawer' | 'full' | 'modal',
-      dismissible: true,
-      mobileVariant: 'drawer' as 'drawer' | 'full' | 'modal',
-      variant: 'modal' as 'drawer' | 'full' | 'modal',
-    },
-    { name: 'dialog' }
-  );
+type DialogVariant = 'drawer' | 'full' | 'modal';
 
-export const { DialogContentProvider, useDialogContentValue } = createAtomStore(
-  { fixed: false },
-  { name: 'dialogContent' }
-);
+type DialogState = {
+  desktopVariant: DialogVariant;
+  dismissible: boolean;
+  mobileVariant: DialogVariant;
+  variant: DialogVariant;
+};
+
+const DIALOG_DEFAULTS: DialogState = {
+  desktopVariant: 'modal',
+  dismissible: true,
+  mobileVariant: 'drawer',
+  variant: 'modal',
+};
+
+const DialogContext = React.createContext<DialogState>(DIALOG_DEFAULTS);
+
+/** Values set on a provider override the enclosing one; unset keys inherit. */
+export function DialogProvider({
+  children,
+  ...values
+}: Partial<DialogState> & { children?: React.ReactNode }) {
+  const parent = React.useContext(DialogContext);
+  const value = React.useMemo(() => {
+    const next = { ...parent };
+    for (const [key, entry] of Object.entries(values)) {
+      if (entry !== undefined) (next as Record<string, unknown>)[key] = entry;
+    }
+    return next;
+  }, [parent, values.desktopVariant, values.dismissible, values.mobileVariant, values.variant]);
+  return <DialogContext.Provider value={value}>{children}</DialogContext.Provider>;
+}
+
+export function useDialogValue<K extends keyof DialogState>(key: K): DialogState[K] {
+  return React.useContext(DialogContext)[key];
+}
+
+type DialogContentState = { fixed: boolean };
+
+const DialogContentContext = React.createContext<DialogContentState>({ fixed: false });
+
+export function DialogContentProvider({
+  children,
+  fixed,
+}: Partial<DialogContentState> & { children?: React.ReactNode }) {
+  const parent = React.useContext(DialogContentContext);
+  const value = React.useMemo(() => ({ fixed: fixed ?? parent.fixed }), [fixed, parent.fixed]);
+  return <DialogContentContext.Provider value={value}>{children}</DialogContentContext.Provider>;
+}
+
+export function useDialogContentValue<K extends keyof DialogContentState>(key: K): DialogContentState[K] {
+  return React.useContext(DialogContentContext)[key];
+}
 
 export function Dialog({
   desktopVariant = 'modal',
