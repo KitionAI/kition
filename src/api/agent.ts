@@ -13,12 +13,9 @@ import type {
 export type AgentExecutionMode = 'research' | 'preview' | 'apply'
 export type AgentTaskMode = 'auto' | 'browse' | 'table'
 
-export type AgentLocalSource = {
-  id: string
-  label: string
-  root_path: string
-  access: 'read'
-}
+import type { AgentLocalSource } from '@/types/agentLocalSource'
+
+export type { AgentLocalSource } from '@/types/agentLocalSource'
 
 // AgentPaneContext mirrors the workbench tab the user has open when the
 // turn is sent. The runtime echoes it back into the agent context, tool

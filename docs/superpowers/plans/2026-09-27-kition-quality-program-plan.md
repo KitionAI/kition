@@ -293,7 +293,7 @@ Order matters. Each phase leaves `main` releasable.
 - Create: `electron/ipc/index.spec.ts` asserting every channel in `electron/channels.mjs` has exactly one handler
 - Modify: `electron/preload.cjs` to expose a typed surface generated from `channels.mjs`
 
-- [ ] Move handlers group by group with the existing specs green after each move.
+- [~] Move handlers group by group with the existing specs green after each move. (2026-09-29, renderer side: `src/services/desktop.ts` (2,382 lines) is a barrel over `src/services/desktopClient/`: `bridge` (the preload surface and every payload type, with the `Window` augmentation), `runtime` (platform, API base, backend readiness, bootstrap, feedback, notifications, window actions), `browserSession`, `workspaceDocuments`, `workspaceFiles`, `vaults`, and `secureStore`. All 140 importers keep `@/services/desktop`. The shared `AgentLocalSource` type moved to `src/types/agentLocalSource.ts`, which also removed the service-to-API cycle. The Electron main process (`electron/main.mjs`, 2,238 lines) is still to split.)
 - [ ] Add a preload type file `src/types/desktopBridge.d.ts` so renderer calls are typed end to end.
 
 ---
