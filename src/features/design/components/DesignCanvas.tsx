@@ -25,6 +25,9 @@ import {
   type DesignSnapTargets,
   type DesignSnapGuides,
 } from '../lib/designSnapping'
+import { snapDesignSpacing, type DesignSpacingGuide } from '../lib/designSpacing'
+import { duplicateNodes } from '../lib/designCommands'
+import { DesignRulers } from './DesignRulers'
 type Gesture = {
   kind: 'move' | 'resize' | 'rotate' | 'marquee' | 'pan'
   x: number
@@ -33,7 +36,26 @@ type Gesture = {
   bounds: Bounds
   handle?: string
   snapTargets?: DesignSnapTargets
+  /** Unselected visible top-level layers, for equal-spacing guides. */
+  stationary?: Bounds[]
   pan: { x: number; y: number }
+}
+/**
+ * The closest unselected visible layers to a selection, for equal-spacing
+ * guides. Capped so a drag over a crowded artboard stays cheap: the guide
+ * only ever relates to nearby neighbors anyway.
+ */
+function nearestStationary(doc: DesignDocument, ids: string[], children: string[], limit = 8): Bounds[] {
+  const moving = selectionBounds(doc, ids)
+  const cx = moving.x + moving.width / 2,
+    cy = moving.y + moving.height / 2
+  return children
+    .filter((child) => !ids.includes(child) && doc.nodes[child]?.visible)
+    .map((child) => selectionBounds(doc, [child]))
+    .map((bounds) => ({ bounds, distance: Math.hypot(bounds.x + bounds.width / 2 - cx, bounds.y + bounds.height / 2 - cy) }))
+    .sort((a, b) => a.distance - b.distance)
+    .slice(0, limit)
+    .map((entry) => entry.bounds)
 }
 export function DesignCanvas({
   document: doc,
@@ -60,6 +82,7 @@ export function DesignCanvas({
     [pan, setPan] = useState({ x: 0, y: 0 }),
     [marquee, setMarquee] = useState<Bounds | null>(null)
   const [guides, setGuides] = useState<DesignSnapGuides>({})
+  const [spacing, setSpacing] = useState<DesignSpacingGuide[]>([])
   const [space, setSpace] = useState(false),
     gesture = useRef<Gesture | null>(null),
     page = doc.pages[0]
@@ -170,7 +193,7 @@ export function DesignCanvas({
       }
     }
     if (id && isNodeLocked(doc, id)) return
-    const ids = id
+    let ids = id
       ? event.shiftKey
         ? selection.includes(id)
           ? selection.filter((s) => s !== id)
@@ -179,13 +202,21 @@ export function DesignCanvas({
           ? selection
           : [id]
       : []
+    // Alt-drag leaves the originals in place and moves fresh copies.
+    if (id && event.altKey && ids.length) {
+      const copied = duplicateNodes(doc, ids, 0)
+      store.execute({ type: 'insert', nodes: copied.nodes })
+      ids = copied.roots
+    }
     store.select(ids)
+    const current = store.getSnapshot().view
     gesture.current = {
       kind: id ? 'move' : 'marquee',
       ...p,
       ids,
-      bounds: selectionBounds(doc, ids),
-      snapTargets: id ? designSnapTargets(doc, ids) : undefined,
+      bounds: selectionBounds(current, ids),
+      snapTargets: id ? designSnapTargets(current, ids) : undefined,
+      stationary: id ? nearestStationary(current, ids, page.children) : undefined,
       pan,
     }
   }
@@ -216,11 +247,16 @@ export function DesignCanvas({
         g.snapTargets && !event.altKey
           ? snapDesignMove(g.bounds, dx, dy, g.snapTargets, 6 / zoom)
           : { dx, dy, guides: {} }
+      const spaced =
+        g.stationary && g.stationary.length >= 2 && !event.altKey
+          ? snapDesignSpacing(g.bounds, snapped.dx, snapped.dy, g.stationary, 6 / zoom)
+          : { dx: snapped.dx, dy: snapped.dy, guides: [] }
       setGuides(snapped.guides)
+      setSpacing(spaced.guides)
       store.preview({
         type: 'transform',
         ids: g.ids,
-        matrix: translation(snapped.dx, snapped.dy),
+        matrix: translation(spaced.dx, spaced.dy),
       })
       return
     }
@@ -288,6 +324,7 @@ export function DesignCanvas({
     gesture.current = null
     setMarquee(null)
     setGuides({})
+    setSpacing([])
     const target = event.target as Element
     if (target.hasPointerCapture(event.pointerId))
       target.releasePointerCapture(event.pointerId)
@@ -325,6 +362,12 @@ export function DesignCanvas({
         if (event.code === 'Space') setSpace(false)
       }}
     >
+      <DesignRulers
+        width={page.width}
+        height={page.height}
+        zoom={zoom}
+        origin={center}
+      />
       <div
         className="design-artboard"
         style={{
@@ -374,6 +417,27 @@ export function DesignCanvas({
             {guides.y !== undefined ? (
               <line x1={0} x2={page.width} y1={guides.y} y2={guides.y} />
             ) : null}
+            {spacing.map((guide) =>
+              guide.spans.map(([start, end], index) => (
+                <g key={`${guide.axis}-${index}`} className="design-spacing-guide" strokeDasharray="none">
+                  {guide.axis === 'x' ? (
+                    <line x1={start} x2={end} y1={guide.at} y2={guide.at} />
+                  ) : (
+                    <line x1={guide.at} x2={guide.at} y1={start} y2={end} />
+                  )}
+                  <text
+                    x={guide.axis === 'x' ? (start + end) / 2 : guide.at + 4 / zoom}
+                    y={guide.axis === 'x' ? guide.at - 4 / zoom : (start + end) / 2}
+                    fontSize={11 / zoom}
+                    textAnchor="middle"
+                    stroke="none"
+                    fill="hsl(var(--brand))"
+                  >
+                    {Math.round(guide.gap)}
+                  </text>
+                </g>
+              )),
+            )}
           </g>
           {selection.length && !editingId ? (
             <g

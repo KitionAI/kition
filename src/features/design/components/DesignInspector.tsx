@@ -10,6 +10,8 @@ import {
 } from '../lib/designTypes'
 import type { AlignEdge } from '../lib/designLayout'
 import { DesignArtboardPanel } from './DesignArtboardPanel'
+import { fitDesignTextFontSize } from '../lib/designTextFit'
+import { imageFillCrop, imageFitPatch } from '../lib/designImageFit'
 import { DesignStore } from '../lib/designStore'
 import {
   around,
@@ -404,6 +406,13 @@ export function DesignInspector({
               ))}
             </select>
           </label>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => patch({ fontSize: fitDesignTextFontSize(n) })}
+          >
+            {t('fitText')}
+          </Button>
           <p className="design-help">{t('editTextHint')}</p>
         </>
       ) : null}
@@ -437,16 +446,32 @@ export function DesignInspector({
               )
             })}
           </div>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => {
-              const a = doc.assets[n.assetId!]
-              patch({ crop: { x: 0, y: 0, width: a.width, height: a.height } })
-            }}
-          >
-            {t('resetCrop')}
-          </Button>
+          <div className="design-action-grid">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => patch({ crop: imageFillCrop(doc.assets[n.assetId!], n) })}
+            >
+              {t('imageFill')}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => patch(imageFitPatch(doc.assets[n.assetId!], n))}
+            >
+              {t('imageFit')}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                const a = doc.assets[n.assetId!]
+                patch({ crop: { x: 0, y: 0, width: a.width, height: a.height } })
+              }}
+            >
+              {t('resetCrop')}
+            </Button>
+          </div>
         </>
       ) : null}
       <div className="design-action-grid">

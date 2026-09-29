@@ -86,6 +86,34 @@
   background: hsl(var(--secondary));
   touch-action: none;
 }
+.design-ruler {
+  position: absolute;
+  z-index: 2;
+  background: hsl(var(--background) / 0.92);
+  stroke: hsl(var(--muted-foreground));
+  stroke-width: 1;
+  fill: hsl(var(--muted-foreground));
+  font-size: 9px;
+  pointer-events: none;
+}
+.design-ruler text {
+  stroke: none;
+}
+.design-ruler-x {
+  top: 0;
+  left: 0;
+  width: 100%;
+  border-bottom: 1px solid hsl(var(--border));
+}
+.design-ruler-y {
+  top: 0;
+  left: 0;
+  height: 100%;
+  border-right: 1px solid hsl(var(--border));
+}
+.design-spacing-guide line {
+  stroke-width: inherit;
+}
 .design-stage.is-panning {
   cursor: grab;
 }

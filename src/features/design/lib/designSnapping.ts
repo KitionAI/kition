@@ -1,5 +1,6 @@
 import type { Bounds, DesignDocument } from './designTypes'
 import { nodeBounds, selectionBounds } from './designGeometry'
+import { marginGuides } from './designRulers'
 
 export type DesignSnapTargets = { x: number[]; y: number[] }
 export type DesignSnapGuides = { x?: number; y?: number }
@@ -20,9 +21,10 @@ export function designSnapTargets(
       node.type === 'group' ? selectionBounds(doc, [id]) : nodeBounds(node),
     )
   }
+  const margins = marginGuides(page)
   return {
-    x: bounds.flatMap((b) => [b.x, b.x + b.width / 2, b.x + b.width]),
-    y: bounds.flatMap((b) => [b.y, b.y + b.height / 2, b.y + b.height]),
+    x: [...margins.x, ...bounds.flatMap((b) => [b.x, b.x + b.width / 2, b.x + b.width])],
+    y: [...margins.y, ...bounds.flatMap((b) => [b.y, b.y + b.height / 2, b.y + b.height])],
   }
 }
 
