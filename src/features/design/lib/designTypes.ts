@@ -7,6 +7,29 @@ export type DesignConstraints = {
   vertical: 'top' | 'center' | 'bottom' | 'scale'
 }
 export const DEFAULT_CONSTRAINTS: DesignConstraints = { horizontal: 'left', vertical: 'top' }
+/** System faces first, then the bundled open-license set (see designFonts). */
+export const DESIGN_FONT_FAMILIES = [
+  'Arial',
+  'Georgia',
+  'Courier New',
+  'Inter',
+  'Lora',
+  'JetBrains Mono',
+  'Bricolage Grotesque',
+] as const
+export type DesignFontFamily = (typeof DESIGN_FONT_FAMILIES)[number]
+/** A named, reusable set of typographic values shared by text layers. */
+export type DesignTextStyle = {
+  id: string
+  name: string
+  fontFamily: DesignFontFamily
+  fontSize: number
+  fontWeight: number
+  lineHeight: number
+  letterSpacing: number
+  fill: string
+}
+export const TEXT_STYLE_KEYS = ['fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing', 'fill'] as const
 export type DesignNode = {
   id: string
   name: string
@@ -22,7 +45,7 @@ export type DesignNode = {
   strokeWidth: number
   radius: number
   text: string
-  fontFamily: 'Arial' | 'Georgia' | 'Courier New'
+  fontFamily: DesignFontFamily
   fontSize: number
   fontWeight: number
   textAlign: 'left' | 'center' | 'right'
@@ -32,6 +55,8 @@ export type DesignNode = {
   crop?: Bounds
   /** Absent on files saved before constraints existed; treated as left and top. */
   constraints?: DesignConstraints
+  /** Text layers only: the shared style whose values this layer follows. */
+  styleId?: string
   children: string[]
 }
 export type DesignAsset = {
@@ -57,6 +82,7 @@ export type DesignDocument = {
   pages: [DesignPage]
   nodes: Record<string, DesignNode>
   assets: Record<string, DesignAsset>
+  textStyles?: Record<string, DesignTextStyle>
   provenance?: {
     templateId?: string
     templateVersion?: number

@@ -2,6 +2,8 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui'
 import {
   DEFAULT_CONSTRAINTS,
+  DESIGN_FONT_FAMILIES,
+  designId,
   type DesignConstraints,
   type DesignDocument,
   type DesignNode,
@@ -340,6 +342,58 @@ export function DesignInspector({
         <>
           <p className="design-panel-heading">{t('typography')}</p>
           <label className="design-field">
+            <span>{t('textStyle')}</span>
+            <select
+              aria-label={t('textStyle')}
+              value={n.styleId ?? ''}
+              onChange={(event) =>
+                store.execute({
+                  type: 'applyTextStyle',
+                  ids: selection,
+                  styleId: event.target.value || null,
+                })
+              }
+            >
+              <option value="">{t('noStyle')}</option>
+              {Object.values(doc.textStyles || {}).map((style) => (
+                <option key={style.id} value={style.id}>
+                  {style.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          {!n.styleId ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                const id = designId()
+                store.execute({
+                  type: 'textStyle',
+                  style: {
+                    id,
+                    name: t('styleName', {
+                      number: Object.keys(doc.textStyles || {}).length + 1,
+                    }),
+                    fontFamily: n.fontFamily,
+                    fontSize: n.fontSize,
+                    fontWeight: n.fontWeight,
+                    lineHeight: n.lineHeight,
+                    letterSpacing: n.letterSpacing,
+                    fill: n.fill,
+                  },
+                })
+                store.execute({
+                  type: 'applyTextStyle',
+                  ids: selection,
+                  styleId: id,
+                })
+              }}
+            >
+              {t('saveStyle')}
+            </Button>
+          ) : null}
+          <label className="design-field">
             <span>{t('font')}</span>
             <select
               aria-label={t('font')}
@@ -350,7 +404,7 @@ export function DesignInspector({
                 })
               }
             >
-              {['Arial', 'Georgia', 'Courier New'].map((font) => (
+              {DESIGN_FONT_FAMILIES.map((font) => (
                 <option key={font}>{font}</option>
               ))}
             </select>

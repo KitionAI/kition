@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { DESIGN_MAX_NODES, type DesignDocument } from './designTypes'
+import { DESIGN_FONT_FAMILIES, DESIGN_MAX_NODES, type DesignDocument } from './designTypes'
 const finite = z.number().finite().min(-1e7).max(1e7)
 const dimension = z.number().finite().positive().max(16384)
 const id = z
@@ -33,7 +33,7 @@ const node = z
     strokeWidth: z.number().min(0).max(1000),
     radius: z.number().min(0).max(8192),
     text: z.string().max(50000),
-    fontFamily: z.enum(['Arial', 'Georgia', 'Courier New']),
+    fontFamily: z.enum(DESIGN_FONT_FAMILIES),
     fontSize: z.number().min(1).max(2000),
     fontWeight: z.number().int().min(100).max(900),
     textAlign: z.enum(['left', 'center', 'right']),
@@ -47,7 +47,20 @@ const node = z
         vertical: z.enum(['top', 'center', 'bottom', 'scale']),
       })
       .optional(),
+    styleId: id.optional(),
     children: z.array(id).max(DESIGN_MAX_NODES),
+  })
+  .strict()
+const textStyle = z
+  .object({
+    id,
+    name: z.string().min(1).max(200),
+    fontFamily: z.enum(DESIGN_FONT_FAMILIES),
+    fontSize: z.number().finite().positive().max(2000),
+    fontWeight: z.number().int().min(100).max(900),
+    lineHeight: z.number().finite().min(0.5).max(4),
+    letterSpacing: z.number().finite().min(-100).max(500),
+    fill: color,
   })
   .strict()
 export function isPortableDesignPath(value: string) {
@@ -96,6 +109,7 @@ const schema = z
         })
         .strict(),
     ),
+    textStyles: z.record(id, textStyle).optional(),
     provenance: z
       .object({
         templateId: z.string().max(200).optional(),

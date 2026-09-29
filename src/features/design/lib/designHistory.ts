@@ -1,6 +1,6 @@
 import type { DesignAsset, DesignDocument, DesignNode } from './designTypes'
 type Change<T> = { before: T | undefined; after: T | undefined }
-type Header = Pick<DesignDocument, 'title' | 'pages' | 'provenance'>
+type Header = Pick<DesignDocument, 'title' | 'pages' | 'provenance' | 'textStyles'>
 export type DesignHistoryEntry = {
   nodes: Record<string, Change<DesignNode>>
   assets: Record<string, Change<DesignAsset>>
@@ -18,6 +18,7 @@ const header = (doc: DesignDocument): Header => ({
   title: doc.title,
   pages: doc.pages,
   provenance: doc.provenance,
+  textStyles: doc.textStyles,
 })
 export function designHistoryEntry(
   before: DesignDocument,

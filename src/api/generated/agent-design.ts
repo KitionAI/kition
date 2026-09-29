@@ -30,7 +30,7 @@ export type AgentDesignCreatableLayerKind = "text" | "rectangle" | "ellipse" | "
  */
 export type AgentDesignLayerRole = "headline" | "body" | "label" | "accent" | "background" | "image" | "group"
 
-export type AgentDesignFontFamily = "Arial" | "Georgia" | "Courier New"
+export type AgentDesignFontFamily = "Arial" | "Georgia" | "Courier New" | "Inter" | "Lora" | "JetBrains Mono" | "Bricolage Grotesque"
 
 export type AgentDesignStyle = {
   fill?: AgentDesignColor

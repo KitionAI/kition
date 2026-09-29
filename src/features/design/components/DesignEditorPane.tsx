@@ -51,6 +51,7 @@ import { DesignInspector } from './DesignInspector'
 import { DesignLayers } from './DesignLayers'
 import { DesignLibrary } from './DesignLibrary'
 import './design.css'
+import { useDesignFonts } from '../hooks/useDesignFonts'
 /** Alt with a letter aligns the selection; adding Mod distributes instead. */
 const ALIGN_KEYS: Record<string, AlignEdge> = {
   KeyA: 'left',
@@ -130,6 +131,7 @@ function DesignEditor({
   const doc = state.preview || state.document,
     selection = state.selection,
     { images, missing } = useDesignImages(session.root, doc)
+  useDesignFonts()
   const [panel, setPanel] = useState<
       'layouts' | 'layers' | 'properties' | null
     >('layouts'),

@@ -8,7 +8,7 @@
 import { z } from 'zod'
 import type { TemplatePackageContract, TemplatePackageResource } from '@/api/generated/template-package'
 import { readBundledAssetText } from '@/lib/bundledAssets'
-import { createDesign, createDesignNode, type DesignDocument, type DesignNode } from './designTypes'
+import { createDesign, createDesignNode, DESIGN_FONT_FAMILIES, type DesignDocument, type DesignNode } from './designTypes'
 
 const DESIGN_TEMPLATE_PACKAGE_PATH = 'kition-bundled:/templates/design/manifest.json'
 const DESIGN_TEMPLATE_DIR = 'kition-bundled:/templates/design'
@@ -38,7 +38,7 @@ const layer = z
     stroke: color.optional(),
     strokeWidth: z.number().finite().min(0).optional(),
     radius: z.number().finite().min(0).optional(),
-    fontFamily: z.enum(['Arial', 'Georgia', 'Courier New']).optional(),
+    fontFamily: z.enum(DESIGN_FONT_FAMILIES).optional(),
     fontSize: z.number().finite().positive().optional(),
     fontWeight: z.number().int().min(100).max(900).optional(),
     textAlign: z.enum(['left', 'center', 'right']).optional(),

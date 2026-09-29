@@ -52,7 +52,7 @@
     },
     "fontFamily": {
       "type": "string",
-      "enum": ["Arial", "Georgia", "Courier New"]
+      "enum": ["Arial", "Georgia", "Courier New", "Inter", "Lora", "JetBrains Mono", "Bricolage Grotesque"]
     },
     "style": {
       "type": "object",

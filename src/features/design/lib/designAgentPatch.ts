@@ -16,7 +16,7 @@ import {
 import { applyDesignCommand, type DesignCommand } from './designCommands'
 import { isNodeLocked, selectionBounds, translation } from './designGeometry'
 import type { DesignStore } from './designStore'
-import { createDesignNode, DESIGN_MAX_NODES, type DesignDocument, type DesignNode } from './designTypes'
+import { createDesignNode, DESIGN_FONT_FAMILIES, DESIGN_MAX_NODES, type DesignDocument, type DesignNode } from './designTypes'
 
 const identifier = z.string().min(1).max(128).regex(/^[A-Za-z0-9][A-Za-z0-9._:-]*$/)
 const color = z.string().regex(/^(#[0-9a-fA-F]{6}|#[0-9a-fA-F]{8}|transparent)$/)
@@ -36,7 +36,7 @@ const style = z
     stroke_width: z.number().finite().min(0).max(200).optional(),
     radius: z.number().finite().min(0).max(10_000).optional(),
     opacity: z.number().finite().min(0).max(1).optional(),
-    font_family: z.enum(['Arial', 'Georgia', 'Courier New']).optional(),
+    font_family: z.enum(DESIGN_FONT_FAMILIES).optional(),
     font_size: z.number().finite().min(1).max(2000).optional(),
     font_weight: z.number().int().min(100).max(900).multipleOf(100).optional(),
     text_align: z.enum(['left', 'center', 'right']).optional(),

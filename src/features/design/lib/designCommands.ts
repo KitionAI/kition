@@ -4,6 +4,8 @@ import {
   type DesignDocument,
   type DesignNode,
   type Matrix,
+  TEXT_STYLE_KEYS,
+  type DesignTextStyle,
 } from './designTypes'
 import {
   inverse,
@@ -34,6 +36,11 @@ export type DesignCommand =
   | { type: 'transform'; ids: string[]; matrix: Matrix }
   | { type: 'align'; ids: string[]; edge: AlignEdge; reference?: AlignReference }
   | { type: 'distribute'; ids: string[]; axis: DistributeAxis }
+  /** Creates or replaces a shared text style and refreshes every layer that follows it. */
+  | { type: 'textStyle'; style: DesignTextStyle }
+  /** Makes text layers follow a style, or detaches them (null) keeping their current values. */
+  | { type: 'applyTextStyle'; ids: string[]; styleId: string | null }
+  | { type: 'removeTextStyle'; id: string }
   | { type: 'remove' | 'group' | 'ungroup' | 'duplicate'; ids: string[] }
   | { type: 'reorder'; id: string; direction: -1 | 1 }
   | {
@@ -51,6 +58,9 @@ function remove(doc: DesignDocument, id: string) {
   list.splice(list.indexOf(id), 1)
   for (const child of children) remove(doc, child)
   delete doc.nodes[id]
+}
+function followTextStyle(node: DesignNode, style: DesignTextStyle) {
+  for (const key of TEXT_STYLE_KEYS) (node as Record<typeof key, DesignNode[typeof key]>)[key] = style[key]
 }
 /** Applies world-space matrices to layers, converting each into its parent's space. */
 function applyWorldMoves(doc: DesignDocument, moves: Map<string, Matrix>) {
@@ -87,7 +97,15 @@ export function applyDesignCommand(
   command: DesignCommand,
 ): DesignDocument {
   const doc = structuredClone(source)
-  if (command.type === 'page') {
+  if (command.type === 'textStyle') {
+    doc.textStyles = { ...doc.textStyles, [command.style.id]: command.style }
+    for (const node of Object.values(doc.nodes))
+      if (node.styleId === command.style.id) followTextStyle(node, command.style)
+  } else if (command.type === 'removeTextStyle') {
+    const { [command.id]: _removed, ...rest } = doc.textStyles || {}
+    doc.textStyles = rest
+    for (const node of Object.values(doc.nodes)) if (node.styleId === command.id) delete node.styleId
+  } else if (command.type === 'page') {
     const next = { width: command.patch.width ?? doc.pages[0].width, height: command.patch.height ?? doc.pages[0].height }
     applyWorldMoves(doc, artboardResizeMoves(doc, next))
     Object.assign(doc.pages[0], command.patch)
@@ -115,7 +133,22 @@ export function applyDesignCommand(
         !isNodeLocked(doc, id),
     )
     if (command.type === 'patch')
-      for (const id of ids) Object.assign(doc.nodes[id], command.patch)
+      for (const id of ids) {
+        Object.assign(doc.nodes[id], command.patch)
+        // Editing a typographic value on a styled layer detaches it, as in Figma.
+        if (doc.nodes[id].styleId && TEXT_STYLE_KEYS.some((key) => key in command.patch))
+          delete doc.nodes[id].styleId
+      }
+    if (command.type === 'applyTextStyle')
+      for (const id of ids) {
+        const node = doc.nodes[id]
+        if (node.type !== 'text') continue
+        const style = command.styleId ? doc.textStyles?.[command.styleId] : undefined
+        if (style) {
+          node.styleId = style.id
+          followTextStyle(node, style)
+        } else delete node.styleId
+      }
     if (command.type === 'align') applyWorldMoves(doc, alignMoves(doc, ids, command.edge, command.reference))
     if (command.type === 'distribute') applyWorldMoves(doc, distributeMoves(doc, ids, command.axis))
     if (command.type === 'transform')

@@ -6,6 +6,7 @@ import {
 } from '@/services/desktop'
 import { DesignArtwork } from '../components/DesignArtwork'
 import type { DesignDocument } from './designTypes'
+import { designFontFaceCSS, loadDesignFonts } from './designFonts'
 import {
   blobDataURL,
   decodeDesignImage,
@@ -41,17 +42,22 @@ export async function renderDesignImage(
         page.background.slice(-2).toLowerCase() !== 'ff'))
   )
     throw new DesignExportError('jpegBackground')
+  await loadDesignFonts()
   await document.fonts.ready
   const used = new Set<string>()
+  const fonts = new Set<string>()
   const collectVisibleImages = (ids: string[]) => {
     for (const id of ids) {
       const node = doc.nodes[id]
       if (!node.visible) continue
       if (node.type === 'image') used.add(node.assetId!)
+      if (node.type === 'text') fonts.add(node.fontFamily)
       collectVisibleImages(node.children)
     }
   }
   collectVisibleImages(page.children)
+  // A standalone SVG cannot reach the app's fonts, so embed the used faces.
+  const fontCSS = await designFontFaceCSS(fonts)
   const images: Record<string, string> = {}
   await Promise.all(
     Array.from(used, async (id) => {
@@ -65,6 +71,7 @@ export async function renderDesignImage(
       height={height}
       viewBox={`0 0 ${page.width} ${page.height}`}
     >
+      {fontCSS ? <style>{fontCSS}</style> : null}
       <DesignArtwork document={doc} images={images} prefix="export" />
     </svg>,
   )
