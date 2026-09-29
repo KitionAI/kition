@@ -1,6 +1,12 @@
 import { z } from 'zod'
-import { DESIGN_FONT_FAMILIES, DESIGN_MAX_NODES, type DesignDocument } from './designTypes'
+import { DESIGN_FONT_FAMILIES, DESIGN_MAX_NODES, type DesignDocument, type Matrix } from './designTypes'
 const finite = z.number().finite().min(-1e7).max(1e7)
+const transform = z
+  .tuple([finite, finite, finite, finite, finite, finite])
+  .refine((m) => Math.abs(m[0] * m[3] - m[1] * m[2]) >= 1e-8)
+export function validateDesignTransform(value: unknown): Matrix {
+  return transform.parse(value) as Matrix
+}
 const dimension = z.number().finite().positive().max(16384)
 const id = z
   .string()
@@ -20,9 +26,7 @@ const node = z
     id,
     name: z.string().max(1000),
     type: z.enum(['text', 'image', 'rectangle', 'ellipse', 'line', 'group']),
-    transform: z
-      .tuple([finite, finite, finite, finite, finite, finite])
-      .refine((m) => Math.abs(m[0] * m[3] - m[1] * m[2]) >= 1e-8),
+    transform,
     width: dimension,
     height: dimension,
     opacity: z.number().min(0).max(1),

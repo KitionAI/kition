@@ -8,6 +8,7 @@ import {
 import { applyDesignCommand, type DesignCommand } from './designCommands'
 import type { DesignDocument } from './designTypes'
 import { topSelection } from './designGeometry'
+import { previewDesignTransform } from './designTransformPreview'
 import {
   createDesignVariant,
   foldDesignVariant,
@@ -135,7 +136,9 @@ export class DesignStore {
   preview(command: DesignCommand) {
     this.state = {
       ...this.state,
-      preview: applyDesignCommand(this.state.view, command),
+      preview: command.type === 'transform'
+        ? previewDesignTransform(this.state.view, command.ids, command.matrix)
+        : applyDesignCommand(this.state.view, command),
     }
     this.publish()
   }
