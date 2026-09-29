@@ -134,10 +134,10 @@ Each task is one branch on `main`, lands with unit specs for pure logic and an e
 
 ### Phase 4: Quality and consistency — 1 week
 
-- [ ] **4.1 Localize** every new string in all six locales through the existing parity check; no raw strings pass the i18n baseline.
-- [ ] **4.2 Accessibility.** Inspector fields labelled, toolbar buttons with names and shortcuts in tooltips, focus order through the panels, reduced motion respected by the preview overlay.
-- [ ] **4.3 Performance.** Keep the 520-layer e2e green; add a 2,000-layer variant behind the budget; virtualize the layer list.
-- [ ] **4.4 Documentation.** A `docs/design-studio.md` user guide with screenshots captured through `pnpm capture:readme:assets`, and a README scenario entry.
+- [x] **4.1 Localize** every new string in all six locales through the existing parity check; no raw strings pass the i18n baseline.
+- [x] **4.2 Accessibility.** Inspector fields labelled, toolbar buttons with names and shortcuts in tooltips, focus order through the panels, reduced motion respected by the preview overlay.
+- [x] **4.3 Performance.** Keep the 520-layer e2e green; add a 2,000-layer variant behind the budget; virtualize the layer list.
+- [x] **4.4 Documentation.** A `docs/design-studio.md` user guide with screenshots captured through `pnpm capture:readme:assets`, and a README scenario entry.
 
 ---
 

@@ -120,3 +120,72 @@ test('keeps a 520-layer artboard interactive while rendering 20 image layers', a
   expect(report.p95InputToFrameMs).toBeLessThan(100)
   await page.screenshot({ path: testInfo.outputPath('design-520-layers.png') })
 })
+
+test('keeps a 2,000-layer artboard and its layer list responsive', async ({ page }) => {
+  test.skip(process.env.KITION_E2E_HEAVY !== '1', 'Run with KITION_E2E_HEAVY=1; it exceeds the default budget.')
+  await mockLocalWorkspaceApi(page)
+  await page.goto('/documents')
+  await dismissFirstRunActivation(page)
+  await page
+    .locator('.document-private-heading .document-create-menu-anchor > button')
+    .click()
+  await page.getByTestId('workspace-create-design').click()
+  await expect(page.getByTestId('design-editor')).toBeVisible()
+  await expect(page.getByTestId('design-save-status')).toHaveText('Saved')
+  await page.evaluate(async () => {
+    const { createDesignNode } = await import(
+      /* @vite-ignore */ ['/src/features/design/lib', 'designTypes.ts'].join('/')
+    )
+    const key = 'kition.workspace.documents.v1'
+    const records = JSON.parse(localStorage.getItem(key)!)
+    const doc = JSON.parse(records['Untitled design.kidesign'].content)
+    doc.nodes = {}
+    doc.pages[0].children = []
+    for (let i = 0; i < 2000; i++) {
+      const node = createDesignNode('rectangle', {
+        id: `layer-${i}`,
+        width: 20,
+        height: 20,
+        transform: [1, 0, 0, 1, 10 + (i % 40) * 26, 10 + Math.floor(i / 40) * 26],
+      })
+      doc.nodes[node.id] = node
+      doc.pages[0].children.push(node.id)
+    }
+    records['Untitled design.kidesign'].content = JSON.stringify(doc)
+    localStorage.setItem(key, JSON.stringify(records))
+  })
+  await page.reload()
+  await page.locator('.document-tab[data-tab-title="Untitled design"]').click()
+  await expect(page.locator('.design-artwork [data-design-node]')).toHaveCount(2000)
+  await page.getByRole('button', { name: 'Layers', exact: true }).click()
+  await expect(page.getByTestId('design-layer-list')).toBeVisible()
+  // The list windows its rows; only a screenful plus padding is in the DOM.
+  expect(await page.locator('.design-layer').count()).toBeLessThan(120)
+  await page.getByRole('button', { name: 'Close panel', exact: true }).click()
+  const target = page.locator('[data-design-node="layer-0"]')
+  const box = (await target.boundingBox())!
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await page.mouse.down()
+  await page.evaluate(() => {
+    const samples: number[] = []
+    const stage = document.querySelector('.design-stage')!
+    stage.addEventListener(
+      'pointermove',
+      () => {
+        const start = performance.now()
+        requestAnimationFrame(() => samples.push(performance.now() - start))
+      },
+      { capture: true },
+    )
+    Object.assign(window, { designPerformanceSamples: samples })
+  })
+  await page.mouse.move(box.x + box.width / 2 + 180, box.y + box.height / 2 + 120, { steps: 40 })
+  await page.mouse.up()
+  await expect(page.getByTestId('design-save-status')).toHaveText('Saved')
+  const samples = await page.evaluate(
+    () => (window as unknown as { designPerformanceSamples: number[] }).designPerformanceSamples,
+  )
+  samples.sort((a, b) => a - b)
+  expect(samples[Math.floor(samples.length / 2)]).toBeLessThan(200)
+})
+

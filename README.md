@@ -138,6 +138,18 @@ regenerate, and hand off than a collection of disconnected chat outputs.
   <img src="docs/readme/scenarios/batch-product-designer.webp" alt="Kition batch product design table with generated designs, orthographic views, feature images, lifestyle shots, style boards, and launch copy" width="100%" />
 </p>
 
+### Design posters from records, Boards, and the Agent
+
+Design Studio turns a table record, a Board frame, or a generated image into an
+editable poster. Templates bind the workspace brand kit, size variants keep one
+composition across poster, story, square, and landscape, and the Agent proposes
+text and layout changes as a reviewable preview. Exports go back into documents
+and tables. See [docs/design-studio.md](docs/design-studio.md).
+
+<p align="center">
+  <img src="docs/readme/design-studio.webp" alt="Kition Design Studio editing a poster with an Agent preview, size variants, and a brand kit" width="100%" />
+</p>
+
 These scenarios show the intended Kition loop: use documents for narrative
 context, tables for structured state, Whiteboards for visual thinking, the
 Agent for uncertain work, and Workflows for steps that should become

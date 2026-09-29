@@ -12,6 +12,7 @@ import type { AlignEdge } from '../lib/designLayout'
 import { DesignArtboardPanel } from './DesignArtboardPanel'
 import { fitDesignTextFontSize } from '../lib/designTextFit'
 import { imageFillCrop, imageFitPatch } from '../lib/designImageFit'
+import { designTooltip } from '../lib/designShortcuts'
 import { DesignStore } from '../lib/designStore'
 import {
   around,
@@ -21,6 +22,14 @@ import {
   worldMatrix,
 } from '../lib/designGeometry'
 import { DesignColorField, DesignNumberField } from './DesignFields'
+const ALIGN_SHORTCUTS: Record<AlignEdge, string> = {
+  left: 'A',
+  centerX: 'H',
+  right: 'D',
+  top: 'W',
+  centerY: 'V',
+  bottom: 'S',
+}
 const ALIGN_EDGES: AlignEdge[] = ['left', 'centerX', 'right', 'top', 'centerY', 'bottom']
 export function DesignInspector({
   document: doc,
@@ -153,6 +162,7 @@ export function DesignInspector({
             key={edge}
             variant="ghost"
             size="sm"
+            title={designTooltip(t(`alignEdge.${edge}`), `Alt+${ALIGN_SHORTCUTS[edge]}`)}
             onClick={() => align(edge)}
           >
             {t(`alignEdge.${edge}`)}

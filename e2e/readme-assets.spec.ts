@@ -370,3 +370,28 @@ test('captures README whiteboard screenshot from the real product surface', asyn
   await expect(page.locator('svg')).toBeVisible()
   await page.screenshot({ path: 'docs/readme/kition-overview.png' })
 })
+
+test('captures the README Design Studio screenshot', async ({ page }) => {
+  test.skip(!CAPTURE_ENABLED, 'Run through pnpm capture:readme:assets.')
+  await mockLocalWorkspaceApi(page)
+  await page.setViewportSize({ width: 1200, height: 750 })
+  await page.goto('/documents')
+  await page.locator('.document-private-heading .document-create-menu-anchor > button').click()
+  await page.getByTestId('workspace-create-design').click()
+  await expect(page.getByTestId('design-editor')).toBeVisible()
+  await page.evaluate(async () => {
+    const { loadDesktopSettings, saveDesktopSettings } = await import(
+      /* @vite-ignore */ ['/src/services', 'desktopSettings.ts'].join('/')
+    )
+    const settings = await loadDesktopSettings()
+    await saveDesktopSettings({ ...settings, general: { ...settings.general, theme: 'light' } })
+  })
+  await page.getByRole('button', { name: 'Event', exact: true }).click()
+  await expect(page.getByTestId('design-save-status')).toHaveText('Saved')
+  await page.getByRole('button', { name: 'Artboard size', exact: true }).click()
+  await page.getByRole('combobox', { name: 'Add size variant', exact: true }).selectOption('story')
+  await expect(page.getByTestId('design-save-status')).toHaveText('Saved')
+  await page.locator('.design-artwork text').first().click()
+  await page.screenshot({ path: 'docs/readme/design-studio.png' })
+})
+

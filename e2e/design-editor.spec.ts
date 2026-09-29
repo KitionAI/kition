@@ -160,6 +160,11 @@ test('shows editable starter previews and keeps controls reachable at 1024px in 
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
     1024,
   )
+  // The inspector's controls must stay inside the window, not clipped past it.
+  const heightField = (await page
+    .getByRole('spinbutton', { name: 'Height', exact: true })
+    .boundingBox())!
+  expect(heightField.x + heightField.width).toBeLessThanOrEqual(1024)
   await page.evaluate(async () => {
     const { loadDesktopSettings, saveDesktopSettings } = await import(
       /* @vite-ignore */ ['/src/services', 'desktopSettings.ts'].join('/')

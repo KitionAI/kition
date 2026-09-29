@@ -14,6 +14,7 @@ import { Button } from '@/components/ui'
 import type { DesignSaveStatus } from '../lib/designSession'
 import type { DesignExportPresets } from '../lib/designExportPresets'
 import type { DesignExportFormat } from '../hooks/useDesignFileActions'
+import { designTooltip } from '../lib/designShortcuts'
 export function DesignToolbar({
   title,
   status,
@@ -69,6 +70,7 @@ export function DesignToolbar({
           variant="ghost"
           size="icon"
           aria-label={t('undo')}
+          title={designTooltip(t('undo'), 'Mod+Z')}
           disabled={!canUndo}
           onClick={onUndo}
         >
@@ -78,6 +80,7 @@ export function DesignToolbar({
           variant="ghost"
           size="icon"
           aria-label={t('redo')}
+          title={designTooltip(t('redo'), 'Mod+Shift+Z')}
           disabled={!canRedo}
           onClick={onRedo}
         >
