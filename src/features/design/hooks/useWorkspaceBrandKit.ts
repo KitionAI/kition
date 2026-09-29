@@ -1,13 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/api/queryKeys'
 import { writeWorkspaceDocument } from '@/services/desktop'
-import { BRAND_KIT_PATH, loadWorkspaceBrandKit, serializeBrandKit, type BrandKitFile } from '../lib/designBrand'
+import { BRAND_KIT_PATH, serializeBrandKit, type BrandKitFile } from '../lib/designBrandFile'
 
 export function useWorkspaceBrandKit(root: string) {
   const queryClient = useQueryClient()
   const query = useQuery({
     queryKey: queryKeys.brandKit(root),
-    queryFn: () => loadWorkspaceBrandKit(root),
+    queryFn: async () => {
+      const { loadWorkspaceBrandKit } = await import('../lib/designBrand')
+      return loadWorkspaceBrandKit(root)
+    },
     enabled: Boolean(root),
     staleTime: 60_000,
   })

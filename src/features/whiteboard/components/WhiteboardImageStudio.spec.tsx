@@ -102,6 +102,7 @@ async function renderStudio(
       open: true,
     }))
   })
+  await act(async () => vi.dynamicImportSettled())
 }
 
 async function click(selector: string) {

@@ -5509,12 +5509,6 @@
     color: hsl(var(--success-foreground));
   }
 
-  .settings-modal-stage {
-    @apply fixed inset-0 z-[100] grid place-items-center p-8;
-    background: rgb(0 0 0 / 0.32);
-    animation: overlay-backdrop-in 120ms cubic-bezier(0.2, 0, 0, 1);
-  }
-
   .settings-modal-window {
     @apply relative grid overflow-hidden rounded-xl border bg-card;
     height: min(760px, calc(100vh - 4rem));
@@ -9358,10 +9352,6 @@
 }
 
 @media (max-width: 600px) {
-  .settings-modal-stage {
-    padding: 8px;
-  }
-
   .settings-modal-window {
     width: calc(100vw - 16px);
     height: calc(100dvh - 16px);

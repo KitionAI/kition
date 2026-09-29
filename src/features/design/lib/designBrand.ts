@@ -9,9 +9,9 @@ import type { AgentDesignContext } from '@/types/designAgent'
 import { applyDesignCommand } from './designCommands'
 import { DESIGN_FONT_FAMILIES, type DesignDocument, type DesignFontFamily } from './designTypes'
 import type { DesignBrandKit } from './designTemplates'
+import { BRAND_KIT_PATH, BRAND_COLOR_ROLES, type BrandKitFile } from './designBrandFile'
 
-export const BRAND_KIT_PATH = '.kition/brand.json'
-export const BRAND_COLOR_ROLES = ['primary', 'accent', 'text', 'surface'] as const
+export { BRAND_COLOR_ROLES, EMPTY_BRAND_KIT, serializeBrandKit, type BrandKitFile } from './designBrandFile'
 
 const color = z.string().regex(/^#[\da-f]{6}$/i)
 const portablePath = z
@@ -36,15 +36,9 @@ const schema = z
   })
   .strict()
 
-export type BrandKitFile = z.infer<typeof schema>
-
-export const EMPTY_BRAND_KIT: BrandKitFile = { version: 1, colors: {} }
-
 export function parseBrandKit(content: string): BrandKitFile {
   return schema.parse(JSON.parse(content))
 }
-
-export const serializeBrandKit = (kit: BrandKitFile) => JSON.stringify(kit, null, 2) + '\n'
 
 /** Reads the workspace brand kit; null when the workspace has none yet. */
 export async function loadWorkspaceBrandKit(root: string): Promise<BrandKitFile | null> {

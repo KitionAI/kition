@@ -2,7 +2,8 @@
  * Public entry of the media-generation feature for other features. Import
  * from here, never from internal modules (enforced by tooling/dependency-cruiser.cjs).
  */
-export { ImageStudio, type ImageStudioGenerationState } from './components/ImageStudio'
+export { LazyImageStudio as ImageStudio } from './components/LazyImageStudio'
+export type { ImageStudioGenerationState } from './components/ImageStudio'
 export {
   getGeneratedImageToolOutputPaths,
   isGeneratedImageArtifact,

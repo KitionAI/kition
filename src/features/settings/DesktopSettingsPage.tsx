@@ -1,3 +1,4 @@
+import './settings-modal.css'
 import { useEffect, useMemo, useState } from 'react'
 import { useDialogFocus } from '@/lib/useDialogFocus'
 import { EmailProvidersPane } from '@/features/emailProviders/public'

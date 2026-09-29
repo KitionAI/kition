@@ -10,7 +10,7 @@ export {
   EMPTY_BRAND_KIT,
   serializeBrandKit,
   type BrandKitFile,
-} from './lib/designBrand'
+} from './lib/designBrandFile'
 export { useWorkspaceBrandKit } from './hooks/useWorkspaceBrandKit'
 export { DESIGN_FONT_FAMILIES } from './lib/designTypes'
 export type { DesignDocument } from './lib/designTypes'

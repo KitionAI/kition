@@ -656,6 +656,7 @@ async function executeRelease(options) {
   if (!options.resume) {
     console.log('[release] running repository checks')
     run('pnpm', ['check'], { cwd: rootDir })
+    run('pnpm', ['perf:budget'], { cwd: rootDir })
     run('pnpm', ['test:table:e2e'], { cwd: rootDir })
     assertAllowedChanges(rootDir, ['package.json', 'electron/runtime.lock.json'])
 
