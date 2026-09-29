@@ -2,6 +2,7 @@ import { useConfirm } from '@/components/confirm'
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -32,14 +33,14 @@ import {
   type DesignNode,
 } from '../lib/designTypes'
 import type { DesignSession } from '../lib/designSession'
-import { importDesignImage, insertDesignImage } from '../lib/designAssets'
+import { insertDesignImage } from '../lib/designAssets'
 import { duplicateNodes } from '../lib/designCommands'
 import { parseDesign, serializeDesign } from '../lib/designSerialization'
 import {
-  copyDesignImage,
-  DesignExportError,
-  renderDesignImage,
-  saveDesignImage,
+
+
+
+
 } from '../lib/designExport'
 import { createDesignFile } from '../lib/designFile'
 import { registerDesignImageTarget } from '../lib/designImageTargets'
@@ -52,6 +53,7 @@ import './design.css'
 import { useDesignFonts } from '../hooks/useDesignFonts'
 import { useDesignKeyboard } from '../hooks/useDesignKeyboard'
 import { useDesignAgentPatch } from '../hooks/useDesignAgentPatch'
+import { useDesignFileActions } from '../hooks/useDesignFileActions'
 import { useDesignImageStudio } from '../hooks/useDesignImageStudio'
 import { artboardAspectRatio } from '../lib/designImageGeneration'
 import {
@@ -62,6 +64,9 @@ import {
 import { DesignAgentPreviewControls } from './DesignAgentPreview'
 import type { DesignAgentBridge } from '../lib/designAgentBridge'
 import { useDesignAgentBridge } from '../hooks/useDesignAgentBridge'
+import { useWorkspaceBrandKit } from '../hooks/useWorkspaceBrandKit'
+import { brandKitBindings, brandKitContext } from '../lib/designBrand'
+import { DesignBrandMenu } from './DesignBrandMenu'
 export type DesignEditorPaneProps = {
   root: string
   path: string
@@ -197,6 +202,15 @@ function DesignEditor({
       store.cancel()
     }
   }, [active, store])
+  const { importImage, exportImage } = useDesignFileActions({
+    session,
+    store,
+    title,
+    insertAsset,
+    focusCanvas,
+    isActive,
+    setBusy,
+  })
   const agent = useDesignAgentPatch(store)
   const studio = useDesignImageStudio({
     session,
@@ -205,6 +219,7 @@ function DesignEditor({
     onError: (error) =>
       notify.error(t('errors.image'), { description: String(error) }),
   })
+  const brand = useWorkspaceBrandKit(session.root).kit
   useDesignAgentBridge({
     agentAvailable: Boolean(agentAvailable),
     onAgentBridgeChange,
@@ -213,21 +228,8 @@ function DesignEditor({
     receivePatch: agent.receivePatch,
     cancelPreview: agent.reject,
     receiver: studio.receiver,
+    brand: useMemo(() => brandKitContext(brand), [brand]),
   })
-  async function importImage(blob: Blob) {
-    setBusy(true)
-    try {
-      const asset = await importDesignImage(session.root, blob)
-      if (isActive.current) {
-        insertAsset(asset)
-        focusCanvas()
-      }
-    } catch (error) {
-      notify.error(t('errors.image'), { description: String(error) })
-    } finally {
-      setBusy(false)
-    }
-  }
   function insert(type: DesignNode['type']) {
     const p = doc.pages[0],
       width = Math.min(p.width * 0.7, type === 'text' ? 680 : 320),
@@ -251,35 +253,6 @@ function DesignEditor({
       else focusCanvas()
     } catch (error) {
       notify.error(t('errors.edit'), { description: String(error) })
-    }
-  }
-  async function exportImage(format: 'png' | 'jpeg' | 'copy') {
-    setBusy(true)
-    try {
-      const frozen = structuredClone(store.getSnapshot().document),
-        blob = await renderDesignImage(
-          frozen,
-          session.root,
-          format === 'jpeg' ? 'jpeg' : 'png',
-        )
-      if (format === 'copy') {
-        await copyDesignImage(blob)
-        notify.success(t('copied'))
-      } else
-        await saveDesignImage(
-          blob,
-          `${title}.${format === 'jpeg' ? 'jpg' : 'png'}`,
-          t('export'),
-        )
-    } catch (error) {
-      notify.error(t('errors.export'), {
-        description:
-          error instanceof DesignExportError
-            ? t(`errors.${error.code}`)
-            : String(error),
-      })
-    } finally {
-      setBusy(false)
     }
   }
   function applyStarter(value: DesignDocument) {
@@ -441,6 +414,9 @@ function DesignEditor({
         onUndo={store.undo}
         onRedo={store.redo}
         onGenerateImage={onGenerateImage ? studio.openStudio : undefined}
+        brandMenu={
+          <DesignBrandMenu kit={brand} store={store} selection={selection} />
+        }
         onSize={() => {
           store.select([])
           setPanel('properties')
@@ -540,6 +516,7 @@ function DesignEditor({
             </Button>
             {panel === 'layouts' ? (
               <DesignLibrary
+                brand={brandKitBindings(brand)}
                 onApply={(value) => {
                   void chooseStarter(value)
                 }}

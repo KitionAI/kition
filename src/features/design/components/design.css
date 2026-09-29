@@ -303,6 +303,20 @@
   gap: 8px;
   margin-top: 12px;
 }
+.design-brand-swatch {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  border: 1px solid hsl(var(--border));
+  font-size: 10px;
+  line-height: 1;
+}
+.design-brand-font {
+  background: hsl(var(--background));
+}
 .design-align-grid {
   grid-template-columns: 1fr 1fr 1fr;
 }

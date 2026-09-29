@@ -32,6 +32,10 @@
       "label": "显示",
       "title": "显示与外观"
     },
+    "brand": {
+      "label": "品牌",
+      "title": "品牌套件"
+    },
     "advanced": {
       "label": "高级",
       "title": "高级设置"
@@ -468,6 +472,30 @@
       "normal": "标准",
       "loose": "宽松"
     }
+  },
+  "brand": {
+    "paneTitle": "品牌套件",
+    "paneDescription": "本工作区中设计模板与品牌菜单使用的颜色、字体和 Logo。保存到 .kition/brand.json。",
+    "noWorkspace": "请先打开工作区以编辑品牌套件。",
+    "identitySection": "标识",
+    "name": "品牌名称",
+    "nameDescription": "显示在模板预览中。",
+    "font": "品牌字体",
+    "fontDescription": "应用于模板文本，并可在品牌菜单中使用。",
+    "noFont": "无品牌字体",
+    "logo": "Logo 路径",
+    "logoDescription": "工作区内的相对图片路径，例如 assets/logo.png。",
+    "colorsSection": "颜色",
+    "colorsDescription": "留空则保留各模板自身的颜色。",
+    "colors": {
+      "primary": "主色",
+      "accent": "强调色",
+      "text": "文字色",
+      "surface": "背景色"
+    },
+    "clearColor": "清除",
+    "save": "保存品牌套件",
+    "saveFailed": "无法保存品牌套件"
   },
   "hooks": {
     "paneTitle": "Hooks",

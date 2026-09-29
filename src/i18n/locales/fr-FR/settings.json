@@ -32,6 +32,10 @@
       "label": "Affichage",
       "title": "Affichage et apparence"
     },
+    "brand": {
+      "label": "Marque",
+      "title": "Kit de marque"
+    },
     "advanced": {
       "label": "Avancé",
       "title": "Paramètres avancés"
@@ -468,6 +472,30 @@
       "normal": "Normal",
       "loose": "Aéré"
     }
+  },
+  "brand": {
+    "paneTitle": "Kit de marque",
+    "paneDescription": "Couleurs, police et logo utilisés par les modèles de design et le menu Marque dans cet espace de travail. Enregistré dans .kition/brand.json.",
+    "noWorkspace": "Ouvrez un espace de travail pour modifier son kit de marque.",
+    "identitySection": "Identité",
+    "name": "Nom de la marque",
+    "nameDescription": "Affiché dans les aperçus de modèles.",
+    "font": "Police de la marque",
+    "fontDescription": "Appliquée au texte des modèles et disponible dans le menu Marque.",
+    "noFont": "Aucune police de marque",
+    "logo": "Chemin du logo",
+    "logoDescription": "Un chemin d'image relatif à l'espace de travail, par exemple assets/logo.png.",
+    "colorsSection": "Couleurs",
+    "colorsDescription": "Laissez une couleur vide pour conserver la valeur propre à chaque modèle.",
+    "colors": {
+      "primary": "Principale",
+      "accent": "Accent",
+      "text": "Texte",
+      "surface": "Surface"
+    },
+    "clearColor": "Effacer",
+    "save": "Enregistrer le kit de marque",
+    "saveFailed": "Impossible d'enregistrer le kit de marque"
   },
   "hooks": {
     "paneTitle": "Hooks",

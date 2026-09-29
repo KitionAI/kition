@@ -32,6 +32,10 @@
       "label": "Pantalla",
       "title": "Pantalla y apariencia"
     },
+    "brand": {
+      "label": "Marca",
+      "title": "Kit de marca"
+    },
     "advanced": {
       "label": "Avanzado",
       "title": "Ajustes avanzados"
@@ -468,6 +472,30 @@
       "normal": "Normal",
       "loose": "Holgada"
     }
+  },
+  "brand": {
+    "paneTitle": "Kit de marca",
+    "paneDescription": "Colores, una fuente y un logotipo que usan las plantillas de diseño y el menú Marca en este espacio de trabajo. Se guarda en .kition/brand.json.",
+    "noWorkspace": "Abre un espacio de trabajo para editar su kit de marca.",
+    "identitySection": "Identidad",
+    "name": "Nombre de la marca",
+    "nameDescription": "Se muestra en las vistas previas de plantillas.",
+    "font": "Fuente de la marca",
+    "fontDescription": "Se aplica al texto de las plantillas y está disponible en el menú Marca.",
+    "noFont": "Sin fuente de marca",
+    "logo": "Ruta del logotipo",
+    "logoDescription": "Una ruta de imagen relativa al espacio de trabajo, como assets/logo.png.",
+    "colorsSection": "Colores",
+    "colorsDescription": "Deja un color vacío para conservar el valor propio de cada plantilla.",
+    "colors": {
+      "primary": "Principal",
+      "accent": "Acento",
+      "text": "Texto",
+      "surface": "Superficie"
+    },
+    "clearColor": "Borrar",
+    "save": "Guardar kit de marca",
+    "saveFailed": "No se pudo guardar el kit de marca"
   },
   "hooks": {
     "paneTitle": "Hooks",

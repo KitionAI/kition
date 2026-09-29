@@ -6,6 +6,7 @@ import {
   Undo2,
   WandSparkles,
 } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui'
 import type { DesignSaveStatus } from '../lib/designSession'
@@ -21,6 +22,7 @@ export function DesignToolbar({
   onSize,
   onExport,
   onGenerateImage,
+  brandMenu,
 }: {
   title: string
   status: DesignSaveStatus
@@ -34,6 +36,8 @@ export function DesignToolbar({
   onExport: (format: 'png' | 'jpeg' | 'copy') => void
   /** Opens the image studio; hidden when the runtime cannot generate. */
   onGenerateImage?: () => void
+  /** The Brand menu, when the workspace has a brand kit. */
+  brandMenu?: ReactNode
 }) {
   const { t } = useTranslation('design')
   return (
@@ -74,6 +78,7 @@ export function DesignToolbar({
         {size}
         <ChevronDown className="size-3" />
       </Button>
+      {brandMenu}
       {onGenerateImage ? (
         <Button
           size="sm"

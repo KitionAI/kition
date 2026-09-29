@@ -32,6 +32,10 @@
       "label": "Display",
       "title": "Display & appearance"
     },
+    "brand": {
+      "label": "Brand",
+      "title": "Brand kit"
+    },
     "advanced": {
       "label": "Advanced",
       "title": "Advanced settings"
@@ -468,6 +472,30 @@
       "normal": "Normal",
       "loose": "Loose"
     }
+  },
+  "brand": {
+    "paneTitle": "Brand kit",
+    "paneDescription": "Colors, a font, and a logo that design templates and the Brand menu use across this workspace. Saved to .kition/brand.json.",
+    "noWorkspace": "Open a workspace to edit its brand kit.",
+    "identitySection": "Identity",
+    "name": "Brand name",
+    "nameDescription": "Shown in template previews.",
+    "font": "Brand font",
+    "fontDescription": "Applied to template text and available from the Brand menu.",
+    "noFont": "No brand font",
+    "logo": "Logo path",
+    "logoDescription": "A workspace-relative image path, such as assets/logo.png.",
+    "colorsSection": "Colors",
+    "colorsDescription": "Leave a color empty to keep each template's own value.",
+    "colors": {
+      "primary": "Primary",
+      "accent": "Accent",
+      "text": "Text",
+      "surface": "Surface"
+    },
+    "clearColor": "Clear",
+    "save": "Save brand kit",
+    "saveFailed": "Could not save the brand kit"
   },
   "hooks": {
     "paneTitle": "Hooks",

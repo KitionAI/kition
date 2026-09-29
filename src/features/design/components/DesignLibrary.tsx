@@ -4,14 +4,18 @@ import { queryKeys } from '@/api/queryKeys'
 import {
   fillDesignTemplate,
   loadDesignTemplatePackage,
+  type DesignBrandKit,
   type DesignTemplate,
 } from '../lib/designTemplates'
 import { DesignArtwork } from './DesignArtwork'
 import type { DesignDocument } from '../lib/designTypes'
 export function DesignLibrary({
   onApply,
+  brand,
 }: {
   onApply: (document: DesignDocument) => void
+  /** Workspace brand bindings applied to every template on insert. */
+  brand?: DesignBrandKit
 }) {
   const { t } = useTranslation('design')
   const templates = useQuery({
@@ -22,6 +26,7 @@ export function DesignLibrary({
   // Localized copy fills the slots; the template keeps its English defaults.
   const build = (template: DesignTemplate) =>
     fillDesignTemplate(template, {
+      brand,
       slots: {
         headline: t(`starters.${template.id}.heading`, { defaultValue: '' }),
         body: t(`starters.${template.id}.body`, { defaultValue: '' }),

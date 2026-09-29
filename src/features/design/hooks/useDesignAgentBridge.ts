@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import type { ImageGenerationReceiver } from '@/features/media-generation/public'
+import type { AgentDesignContext } from '@/types/designAgent'
 import { buildDesignAgentContext } from '../lib/designAgentContext'
 import type { DesignAgentBridge } from '../lib/designAgentBridge'
 import type { DesignSession } from '../lib/designSession'
@@ -14,6 +15,7 @@ export function useDesignAgentBridge({
   receivePatch,
   cancelPreview,
   receiver,
+  brand,
 }: {
   agentAvailable: boolean
   onAgentBridgeChange?: (path: string, bridge: DesignAgentBridge | null) => void
@@ -22,6 +24,7 @@ export function useDesignAgentBridge({
   receivePatch: DesignAgentBridge['receivePatch']
   cancelPreview: DesignAgentBridge['cancelPreview']
   receiver: ImageGenerationReceiver
+  brand?: AgentDesignContext['brand']
 }) {
   useEffect(() => {
     if (!agentAvailable || !onAgentBridgeChange) return
@@ -31,6 +34,7 @@ export function useDesignAgentBridge({
           document: store.getSnapshot().document,
           path: session.path,
           selection: store.getSnapshot().selection,
+          brand,
         }) ?? undefined,
       receivePatch,
       cancelPreview,
@@ -38,5 +42,5 @@ export function useDesignAgentBridge({
     }
     onAgentBridgeChange(session.path, bridge)
     return () => onAgentBridgeChange(session.path, null)
-  }, [agentAvailable, onAgentBridgeChange, session.path, store, receivePatch, cancelPreview, receiver])
+  }, [agentAvailable, onAgentBridgeChange, session.path, store, receivePatch, cancelPreview, receiver, brand])
 }

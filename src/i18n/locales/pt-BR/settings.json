@@ -32,6 +32,10 @@
       "label": "Exibição",
       "title": "Exibição e aparência"
     },
+    "brand": {
+      "label": "Marca",
+      "title": "Kit de marca"
+    },
     "advanced": {
       "label": "Avançado",
       "title": "Configurações avançadas"
@@ -468,6 +472,30 @@
       "normal": "Normal",
       "loose": "Larga"
     }
+  },
+  "brand": {
+    "paneTitle": "Kit de marca",
+    "paneDescription": "Cores, uma fonte e um logotipo usados pelos modelos de design e pelo menu Marca neste espaço de trabalho. Salvo em .kition/brand.json.",
+    "noWorkspace": "Abra um espaço de trabalho para editar seu kit de marca.",
+    "identitySection": "Identidade",
+    "name": "Nome da marca",
+    "nameDescription": "Exibido nas prévias de modelos.",
+    "font": "Fonte da marca",
+    "fontDescription": "Aplicada ao texto dos modelos e disponível no menu Marca.",
+    "noFont": "Sem fonte de marca",
+    "logo": "Caminho do logotipo",
+    "logoDescription": "Um caminho de imagem relativo ao espaço de trabalho, como assets/logo.png.",
+    "colorsSection": "Cores",
+    "colorsDescription": "Deixe uma cor vazia para manter o valor de cada modelo.",
+    "colors": {
+      "primary": "Primária",
+      "accent": "Destaque",
+      "text": "Texto",
+      "surface": "Superfície"
+    },
+    "clearColor": "Limpar",
+    "save": "Salvar kit de marca",
+    "saveFailed": "Não foi possível salvar o kit de marca"
   },
   "hooks": {
     "paneTitle": "Hooks",

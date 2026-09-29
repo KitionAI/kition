@@ -15,6 +15,7 @@ import { DeveloperSettings } from '@/features/settings/sections/DeveloperSetting
 import { DisplaySettings } from '@/features/settings/sections/DisplaySettings'
 import { GeneralSettings } from '@/features/settings/sections/GeneralSettings'
 import { RuntimeSettings } from '@/features/settings/sections/RuntimeSettings'
+import { BrandSettings } from '@/features/settings/sections/BrandSettings'
 
 export type { SettingsSectionKey } from '@/features/settings/sections/sectionRegistry'
 
@@ -168,6 +169,7 @@ export function DesktopSettingsPage({ initialSection, onClose }: DesktopSettings
             {activeSection === 'models' ? <AiModelsPane /> : null}
             {activeSection === 'connections' ? <EmailProvidersPane /> : null}
             {activeSection === 'display' ? <DisplaySettings /> : null}
+            {activeSection === 'brand' ? <BrandSettings /> : null}
             {activeSection === 'network' ? <NetworkSettings /> : null}
             {activeSection === 'runtime' ? <RuntimeSettings /> : null}
             {activeSection === 'developer' ? <DeveloperSettings /> : null}

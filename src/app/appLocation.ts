@@ -22,6 +22,7 @@ const settingsSectionKeys: SettingsSectionKey[] = [
   'models',
   'connections',
   'display',
+  'brand',
   'network',
   'runtime',
   'developer',
