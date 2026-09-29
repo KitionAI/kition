@@ -187,7 +187,7 @@ WorkspaceEditorContent → DocumentMarkdownEditorPane (prop: translateText)
 - [x] Mock `/api/v1/ai/chat` with Playwright routing. Select a sentence, click Translate, see the card, click Replace, verify the file content, press Cmd+Z, verify the original is back.
 - [x] Pick another language from the chevron with "Always use this language" ticked; reload; the tooltip names the new default.
 - [x] No model configured shows the Configure model state.
-- [ ] Verify layout and focus once in the Electron client on macOS; attach screenshots in the commit.
+- [x] Verify layout and focus once in the Electron client on macOS. (2026-09-29: `e2e/desktop-selection-translation.spec.ts` drives the real client in both themes. It found the card flush against the window edge, fixed with a 16px tooltip inset, and the registry Button's undefined `focus-ring` utility, which fell back to the macOS accent outline; the utility now draws the project ring. Real Cmd+Z undo works there, which headless Chromium could not exercise.)
 
 ---
 

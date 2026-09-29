@@ -1,6 +1,6 @@
 import { isolateHistory } from '@codemirror/commands'
 import { StateEffect, StateField, type Extension } from '@codemirror/state'
-import { EditorView, keymap, showTooltip, type Tooltip } from '@codemirror/view'
+import { EditorView, keymap, showTooltip, type Tooltip, tooltips } from '@codemirror/view'
 import { Prec } from '@codemirror/state'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
@@ -63,6 +63,18 @@ const translationTooltipField = StateField.define<{ request: TooltipRequest; too
   },
   provide: (field) => showTooltip.compute([field], (state) => state.field(field).tooltip),
 })
+
+const TOOLTIP_EDGE_MARGIN = 16
+
+function tooltipSpaceWithMargin(view: EditorView) {
+  const win = view.dom.ownerDocument.defaultView || window
+  return {
+    top: TOOLTIP_EDGE_MARGIN,
+    left: TOOLTIP_EDGE_MARGIN,
+    bottom: win.innerHeight - TOOLTIP_EDGE_MARGIN,
+    right: win.innerWidth - TOOLTIP_EDGE_MARGIN,
+  }
+}
 
 /** Paragraph end after `pos`: the last non-blank line of the block that contains it. */
 function blockEnd(view: EditorView, pos: number) {
@@ -215,6 +227,8 @@ export function useDocumentTranslation({ getView, translateText }: UseDocumentTr
 
   const extension = useMemo<Extension>(() => [
     translationTooltipField,
+    // Keep tooltips, the card included, a margin away from the window edges.
+    tooltips({ tooltipSpace: tooltipSpaceWithMargin }),
     // The card draws its own surface; drop CodeMirror's default tooltip frame.
     EditorView.theme({
       '.cm-tooltip.cm-document-translation-tooltip': {

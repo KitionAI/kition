@@ -732,6 +732,8 @@ test('table agent opens youtube.com and automatically resumes a combined capture
 
     await page.reload({ waitUntil: 'commit' })
     await expect(page.getByTestId('document-tree')).toBeVisible()
+    // A reload can show the first-run activation again; clear it before clicking the tree.
+    await dismissFirstRunActivation(page)
     const patchedBridge = await installMockBrowserBridge(page, {
       entities: browserEntities,
     })
@@ -1186,6 +1188,7 @@ test('table agent treats open-site requests as browser-only work', async ({ base
 
     await page.reload({ waitUntil: 'domcontentloaded' })
     await expect(page.getByTestId('document-tree')).toBeVisible()
+    await dismissFirstRunActivation(page)
     const patchedBridge = await installMockBrowserBridge(page, {
       entities: [],
       pageUrl: 'https://www.youtube.com/',
@@ -1926,6 +1929,7 @@ test.skip('table agent keeps browser-open and write-to-table turns separate on y
 
     await page.reload({ waitUntil: 'domcontentloaded' })
     await expect(page.getByTestId('document-tree')).toBeVisible()
+    await dismissFirstRunActivation(page)
     const patchedBridge = await installMockBrowserBridge(page, {
       entities: browserEntities,
       pageUrl: 'https://www.youtube.com/',
