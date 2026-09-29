@@ -5,9 +5,16 @@ import {
   DESIGN_FROM_BOARD_ACTION,
   DESIGN_FROM_RECORD_ACTION,
   DESIGN_IMAGE_ACTION,
+  DESIGN_INSERT_DOCUMENT_ACTION,
+  DESIGN_SEND_TABLE_ACTION,
+  type DesignDocumentInsertRequest,
   type DesignImageRequest,
   type DesignRecordRequest,
+  type DesignTableSendRequest,
 } from '@/services/workspaceDesignActions'
+import { relativeMarkdownPath } from '@/features/document/public'
+import { listDataRecords, updateDataRecord, uploadDataAttachment } from '@/api/dataDocuments'
+import { designMarkdownLink, sendDesignToTable } from '../lib/designHandoff'
 import type { DesignDocument } from '@/features/design/public'
 import type { BoardFrameSnapshot } from '@/types/designStart'
 import { notify } from '@/lib/notify'
@@ -101,13 +108,13 @@ export function useWorkspaceDesign(options: {
   }, [createFrom, t])
   useEffect(() => {
     const fromRecord = (event: Event) => {
-      const { title, fields } = (event as CustomEvent<DesignRecordRequest>).detail
+      const { title, fields, record } = (event as CustomEvent<DesignRecordRequest>).detail
       const root = current.current.root
       void createFrom(async ({ designFromRecord, loadDesignTemplatePackage, loadWorkspaceBrandKit, brandKitBindings }) => {
         const [pack, kit] = await Promise.all([loadDesignTemplatePackage(), loadWorkspaceBrandKit(root)])
         const entry = pack.templates.find(({ resource }) => resource.id === pack.manifest.defaultResourceId) ?? pack.templates[0]
         if (!entry) throw new Error('No design template is available')
-        return designFromRecord(entry.template, fields, { brand: brandKitBindings(kit), title })
+        return designFromRecord(entry.template, fields, { brand: brandKitBindings(kit), title, record })
       })
     }
     const fromBoard = (event: Event) => {
@@ -124,6 +131,51 @@ export function useWorkspaceDesign(options: {
       window.removeEventListener(DESIGN_FROM_BOARD_ACTION, fromBoard)
     }
   }, [createFrom])
+  // The document the user was on last, for "Insert into document".
+  const lastDocumentTab = useRef<Extract<WorkspaceTab, { type: 'document' }> | null>(null)
+  if (options.activeTab?.type === 'document' && (options.activeTab.format ?? 'markdown') === 'markdown')
+    lastDocumentTab.current = options.activeTab
+  useEffect(() => {
+    const insert = (event: Event) => {
+      const { assetPath, title } = (event as CustomEvent<DesignDocumentInsertRequest>).detail
+      const tab = lastDocumentTab.current
+      if (!tab) {
+        notify.error(t('noDocumentTarget'))
+        return
+      }
+      current.current.upsert(tab)
+      const markdown = designMarkdownLink(title, relativeMarkdownPath(tab.path, assetPath))
+      window.setTimeout(() => {
+        window.dispatchEvent(
+          new CustomEvent('kition:document:insert-markdown', { detail: { path: tab.path, markdown } }),
+        )
+        notify.success(t('insertedIntoDocument', { title: tab.title }))
+      }, 50)
+    }
+    const send = (event: Event) => {
+      const { file, ref } = (event as CustomEvent<DesignTableSendRequest>).detail
+      void sendDesignToTable(
+        {
+          uploadAttachment: uploadDataAttachment,
+          readRecordValue: async (target) => {
+            const page = await listDataRecords(target.documentId, target.tableId, { limit: 500 })
+            return page.items?.find((record) => record.id === target.recordId)?.values?.[target.field]
+          },
+          updateRecord: (target, values) => updateDataRecord(target.documentId, target.tableId, target.recordId, values),
+        },
+        ref,
+        file,
+      )
+        .then(() => notify.success(t('sentToTable')))
+        .catch((error) => notify.error(t('errors.sendToTable'), { description: String(error) }))
+    }
+    window.addEventListener(DESIGN_INSERT_DOCUMENT_ACTION, insert)
+    window.addEventListener(DESIGN_SEND_TABLE_ACTION, send)
+    return () => {
+      window.removeEventListener(DESIGN_INSERT_DOCUMENT_ACTION, insert)
+      window.removeEventListener(DESIGN_SEND_TABLE_ACTION, send)
+    }
+  }, [t])
   const chatEmptyState = {
     description: t('chat.description'),
     suggestions: (['headline', 'palette', 'background'] as const).map(

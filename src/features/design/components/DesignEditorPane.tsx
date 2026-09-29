@@ -205,7 +205,7 @@ function DesignEditor({
     }
   }, [active, store])
   const exportPresets = useDesignExportPresets()
-  const { importImage, exportImage } = useDesignFileActions({
+  const { importImage, exportImage, handoff } = useDesignFileActions({
     session,
     store,
     title,
@@ -430,6 +430,8 @@ function DesignEditor({
         presets={exportPresets.presets}
         onPresetsChange={exportPresets.update}
         pdfAvailable={isDesktopRuntime()}
+        canSendToTable={Boolean(state.document.provenance?.recordRef)}
+        onHandoff={(kind) => void handoff(kind)}
       />
       {['conflict', 'error', 'recovered'].includes(status) ? (
         <div className="design-alert" role="alert">

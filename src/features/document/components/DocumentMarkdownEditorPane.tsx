@@ -337,6 +337,26 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
   }, [])
 
   useEffect(() => {
+    // Other panes (the design editor) hand Markdown to this document at the cursor.
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ path: string; markdown: string }>).detail
+      const view = editorRef.current?.view
+      if (!view || !detail || detail.path !== documentPath) return
+      const at = view.state.selection.main.to
+      const before = at === 0 || view.state.doc.sliceString(Math.max(0, at - 1), at) === '\n' ? '' : '\n'
+      const text = `${before}${detail.markdown}\n`
+      view.dispatch({
+        changes: { from: at, insert: text },
+        selection: EditorSelection.cursor(at + text.length),
+        scrollIntoView: true,
+      })
+      view.focus()
+    }
+    window.addEventListener('kition:document:insert-markdown', handler)
+    return () => window.removeEventListener('kition:document:insert-markdown', handler)
+  }, [documentPath])
+
+  useEffect(() => {
     if (!focusRequest || readingView) return
     let animationFrame = 0
     let attempts = 0

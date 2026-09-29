@@ -153,6 +153,11 @@
     "transparent": "Transparent",
     "white": "White"
   },
+  "insertIntoDocument": "Insert into document",
+  "sendToTable": "Send to table",
+  "insertedIntoDocument": "Inserted into {{title}}",
+  "sentToTable": "Attached to the table record",
+  "noDocumentTarget": "Open a document first, then insert the design.",
   "errors": {
     "create": "Could not create the design",
     "open": "This design could not be opened.",
@@ -165,7 +170,8 @@
     "missing": "{{count}} image assets are unavailable. Restore them before exporting.",
     "jpegBackground": "Choose an opaque artboard background for JPEG",
     "exportLimit": "Export must be under 32 megapixels and 16384 pixels per side",
-    "pdfDesktopOnly": "PDF export needs the desktop app"
+    "pdfDesktopOnly": "PDF export needs the desktop app",
+    "sendToTable": "Could not attach the design to the record"
   },
   "starters": {
     "editorial": {

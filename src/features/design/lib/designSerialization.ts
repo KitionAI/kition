@@ -142,6 +142,15 @@ const schema = z
         templateId: z.string().max(200).optional(),
         templateVersion: z.number().int().positive().optional(),
         imagePath: z.string().refine(isPortableDesignPath).optional(),
+        recordRef: z
+          .object({
+            documentId: z.number().int().positive(),
+            tableId: z.number().int().positive(),
+            recordId: z.number().int().positive(),
+            field: z.string().min(1).max(200),
+          })
+          .strict()
+          .optional(),
       })
       .strict()
       .optional(),

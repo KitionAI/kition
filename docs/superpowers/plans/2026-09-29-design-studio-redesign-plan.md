@@ -130,7 +130,7 @@ Each task is one branch on `main`, lands with unit specs for pure logic and an e
 - [x] **3.1 Size variants.** A design keeps named variants (poster, story, square, landscape) that share layers and differ by constraints and overrides; the topbar Size menu switches and creates them. Export offers "all variants". Specs on the variant override merge; e2e: create a story variant and export both.
 - [x] **3.2 Export formats.** SVG (already the render path) and PDF (through the existing document PDF pipeline) join PNG and JPEG; export presets remember scale and background. Contract test that the SVG is valid and embeds fonts.
 - [x] **3.3 Canvas polish.** Rulers and margin guides, smart spacing guides between three or more layers, text auto-fit within its box, image fit and fill modes, Alt-drag duplicate, arrow-key nudge with Shift. Each with a spec on the pure helper and one e2e assertion.
-- [ ] **3.4 Hand-off.** "Insert into document" (Markdown image link to the exported asset), "Send to table" (attachment cell on the source record), and "Copy as image" reuse the existing clipboard and asset paths.
+- [x] **3.4 Hand-off.** "Insert into document" (Markdown image link to the exported asset), "Send to table" (attachment cell on the source record), and "Copy as image" reuse the existing clipboard and asset paths.
 
 ### Phase 4: Quality and consistency — 1 week
 

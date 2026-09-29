@@ -153,6 +153,11 @@
     "transparent": "Transparent",
     "white": "Blanc"
   },
+  "insertIntoDocument": "Insérer dans le document",
+  "sendToTable": "Envoyer vers la table",
+  "insertedIntoDocument": "Inséré dans {{title}}",
+  "sentToTable": "Joint à l'enregistrement de la table",
+  "noDocumentTarget": "Ouvrez d'abord un document, puis insérez le design.",
   "errors": {
     "create": "Impossible de créer le design",
     "open": "Impossible d’ouvrir ce design.",
@@ -165,7 +170,8 @@
     "missing": "{{count}} images sont indisponibles. Restaurez-les avant l’export.",
     "jpegBackground": "Choisissez un fond opaque pour exporter en JPEG",
     "exportLimit": "L’export doit rester sous 32 mégapixels et 16384 pixels par côté",
-    "pdfDesktopOnly": "L'export PDF nécessite l'application de bureau"
+    "pdfDesktopOnly": "L'export PDF nécessite l'application de bureau",
+    "sendToTable": "Impossible de joindre le design à l'enregistrement"
   },
   "starters": {
     "editorial": {

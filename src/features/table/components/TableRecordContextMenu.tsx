@@ -57,6 +57,7 @@ export function TableRecordContextMenu({
   }
 
   const aiFields = fields.filter((field) => field.ai_config?.enabled)
+  const attachmentField = fields.find((field) => field.type === 'attachment')
   const selectedField = selectedFieldName
     ? fields.find((field) => field.name === selectedFieldName)
     : null
@@ -110,6 +111,14 @@ export function TableRecordContextMenu({
           requestDesignFromRecord({
             title: t('recordMenu.designTitle', { id: record.auto_number ?? record.id }),
             fields: record.values ?? {},
+            record: attachmentField
+              ? {
+                  documentId: record.document_id,
+                  tableId: record.table_id,
+                  recordId: record.id,
+                  field: attachmentField.name,
+                }
+              : undefined,
           }),
         )
       }

@@ -2,7 +2,9 @@ import {
   ChevronDown,
   Copy,
   Download,
+  FileText,
   Redo2,
+  Table2,
   Undo2,
   WandSparkles,
 } from 'lucide-react'
@@ -28,6 +30,8 @@ export function DesignToolbar({
   presets,
   onPresetsChange,
   pdfAvailable,
+  canSendToTable,
+  onHandoff,
 }: {
   title: string
   status: DesignSaveStatus
@@ -43,6 +47,9 @@ export function DesignToolbar({
   onPresetsChange: (patch: Partial<DesignExportPresets>) => void
   /** PDF needs the desktop; the item is hidden elsewhere. */
   pdfAvailable: boolean
+  /** True when the design came from a table record and can go back as an attachment. */
+  canSendToTable: boolean
+  onHandoff: (kind: 'document' | 'table') => void
   /** Opens the image studio; hidden when the runtime cannot generate. */
   onGenerateImage?: () => void
   /** The Brand menu, when the workspace has a brand kit. */
@@ -164,6 +171,32 @@ export function DesignToolbar({
               {t(`exportFormats.${format}`)}
             </Button>
           ))}
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={busy}
+            onClick={(event) => {
+              event.currentTarget.closest('details')?.removeAttribute('open')
+              onHandoff('document')
+            }}
+          >
+            <FileText className="size-4" />
+            {t('insertIntoDocument')}
+          </Button>
+          {canSendToTable ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={busy}
+              onClick={(event) => {
+                event.currentTarget.closest('details')?.removeAttribute('open')
+                onHandoff('table')
+              }}
+            >
+              <Table2 className="size-4" />
+              {t('sendToTable')}
+            </Button>
+          ) : null}
         </div>
       </details>
     </div>

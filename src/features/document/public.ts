@@ -15,6 +15,7 @@ export {
   type DocumentTranslateText,
   type DocumentTranslationSupport,
 } from './lib/documentTranslation'
+export { relativeMarkdownPath } from './lib/documentImagePaste'
 /** Loads the image insertion resolver with the editor chunk; it carries the Markdown parser. */
 export const loadMarkdownImageInsertionResolver = () =>
   import('./editor/editor/markdown-image-insertion').then((module) => module.resolveMarkdownImageInsertionContext)

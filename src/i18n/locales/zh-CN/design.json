@@ -153,6 +153,11 @@
     "transparent": "透明",
     "white": "白色"
   },
+  "insertIntoDocument": "插入到文档",
+  "sendToTable": "发送到表格",
+  "insertedIntoDocument": "已插入到 {{title}}",
+  "sentToTable": "已附加到表格记录",
+  "noDocumentTarget": "请先打开一个文档，再插入设计。",
   "errors": {
     "create": "无法创建设计",
     "open": "无法打开此设计。",
@@ -165,7 +170,8 @@
     "missing": "有 {{count}} 个图片资源不可用，请恢复后再导出。",
     "jpegBackground": "请为 JPEG 选择不透明的画板背景",
     "exportLimit": "导出图片需小于 3200 万像素，且每边不超过 16384 像素",
-    "pdfDesktopOnly": "导出 PDF 需要桌面应用"
+    "pdfDesktopOnly": "导出 PDF 需要桌面应用",
+    "sendToTable": "无法将设计附加到记录"
   },
   "starters": {
     "editorial": {

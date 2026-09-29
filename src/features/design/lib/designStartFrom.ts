@@ -4,7 +4,7 @@
  * source into the template slot filler or the artboard placement helpers,
  * so every entry point produces the same kind of document.
  */
-import type { BoardFrameSnapshot } from '@/types/designStart'
+import type { BoardFrameSnapshot, DesignRecordRef } from '@/types/designStart'
 import { placeGeneratedImageInDesign } from './designImageGeneration'
 import { fillDesignTemplate, type DesignBrandKit, type DesignTemplate, type DesignTemplateSlot } from './designTemplates'
 import { createDesign, createDesignNode, type DesignAsset, type DesignDocument } from './designTypes'
@@ -54,14 +54,16 @@ export function recordSlots(fields: Record<string, unknown>): Partial<Record<Des
 export function designFromRecord(
   template: DesignTemplate,
   fields: Record<string, unknown>,
-  options: { brand?: DesignBrandKit; title?: string } = {},
+  options: { brand?: DesignBrandKit; title?: string; record?: DesignRecordRef } = {},
 ): DesignDocument {
   const slots = recordSlots(fields)
-  return fillDesignTemplate(template, {
+  const doc = fillDesignTemplate(template, {
     slots,
     brand: options.brand,
     title: options.title ?? slots.headline ?? template.name,
   })
+  if (options.record) doc.provenance = { ...doc.provenance, recordRef: options.record }
+  return doc
 }
 
 /**

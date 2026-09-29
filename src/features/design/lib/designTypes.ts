@@ -1,3 +1,4 @@
+import type { DesignRecordRef } from '@/types/designStart'
 /** SVG/Canvas matrix: [a, b, c, d, e, f], applied to parent-local coordinates. */
 export type Matrix = [number, number, number, number, number, number]
 export type Bounds = { x: number; y: number; width: number; height: number }
@@ -100,6 +101,8 @@ export type DesignDocument = {
     templateId?: string
     templateVersion?: number
     imagePath?: string
+    /** Set when the design was created from a table record. */
+    recordRef?: DesignRecordRef
   }
 }
 export const DESIGN_EXTENSION = '.kidesign'
