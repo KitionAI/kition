@@ -38,6 +38,7 @@ import { findKitionDeepLink, KITION_PROTOCOL_SCHEME, normalizeKitionDeepLink } f
 import { submitFeedbackToConsole } from './feedback-client.mjs'
 import { readClipboardImagePayload } from './clipboard-image.mjs'
 import { createExportImageInliner, unresolvedClipboardImageSources } from './export-images.mjs'
+import { buildPrintToPdfOptions } from './pdf-options.mjs'
 import {
   assertWorkspacePathSafe,
   trashWorkspaceDocument,
@@ -756,25 +757,7 @@ async function handleSavePdfFile(_event, request) {
         return true;
       })();
     `, true)
-    // A custom size (design artboards) is given in CSS pixels; Electron wants microns.
-    const customWidth = Number(request?.page_width_px)
-    const customHeight = Number(request?.page_height_px)
-    const pxToMicrons = (px) => Math.round((px / 96) * 25400)
-    const pageSize = customWidth > 0 && customHeight > 0
-      ? { width: pxToMicrons(customWidth), height: pxToMicrons(customHeight) }
-      : String(request?.page_format || 'a4').toUpperCase()
-    const marginsType = request?.margins_type === 1 || request?.margins_type === 2 ? request.margins_type : 0
-    const printOpts = {
-      pageSize,
-      printBackground: true,
-      preferCSSPageSize: false,
-      landscape: Boolean(request?.landscape),
-      marginsType,
-    }
-    const scalePercent = Number(request?.scale_factor)
-    if (Number.isFinite(scalePercent) && scalePercent > 0) {
-      printOpts.scale = Math.min(2, Math.max(0.1, scalePercent / 100))
-    }
+    const printOpts = buildPrintToPdfOptions(request)
     const pdfBuffer = await printWindow.webContents.printToPDF(printOpts)
     await writeFileAtomically(result.filePath, pdfBuffer)
     void shell.openPath(result.filePath)

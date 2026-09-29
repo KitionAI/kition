@@ -334,7 +334,6 @@
   "types src/features/dashboard/lib/dashboardQuery.ts DashboardSeriesPoint",
   "types src/features/dashboard/lib/dashboardQuery.ts DashboardSeriesResult",
   "types src/features/dashboard/lib/dashboardQuery.ts DashboardTableResult",
-  "types src/features/design/lib/designTypes.ts DesignPage",
   "types src/features/document/editor/editor/extensions/embed-transclusion.ts EmbedLoadResult",
   "types src/features/document/editor/editor/extensions/index.ts AudioLinkSpan",
   "types src/features/document/editor/editor/extensions/index.ts DocumentTitleHostOptions",

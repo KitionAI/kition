@@ -60,7 +60,7 @@ export function DesignArtboardPanel({
                   })
               }}
             >
-              <option value="">{t('custom')}</option>
+              <option value="">{t('chooseSize')}</option>
               {SIZE_PRESETS.map((preset) => (
                 <option key={preset.key} value={preset.key}>
                   {t(`sizes.${preset.key}`)}
@@ -83,7 +83,14 @@ export function DesignArtboardPanel({
           <span>{t('size')}</span>
           <select
             aria-label={t('size')}
-            value=""
+            value={
+              SIZE_PRESETS.some(
+                (preset) =>
+                  preset.width === page.width && preset.height === page.height,
+              )
+                ? `${page.width}x${page.height}`
+                : ''
+            }
             onChange={(event) => {
               const [width, height] = event.target.value.split('x').map(Number)
               if (width && height)

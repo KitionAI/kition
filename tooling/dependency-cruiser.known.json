@@ -13578,37 +13578,6 @@
   },
   {
     "type": "cycle",
-    "from": "src/features/whiteboard/components/WhiteboardImageStudio.tsx",
-    "to": "src/features/whiteboard/components/WhiteboardImageTemplateGallery.tsx",
-    "unresolvedTo": "./WhiteboardImageTemplateGallery",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-circular"
-    },
-    "cycle": [
-      {
-        "name": "src/features/whiteboard/components/WhiteboardImageTemplateGallery.tsx",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/features/whiteboard/components/WhiteboardImageStudio.tsx",
-        "dependencyTypes": [
-          "local",
-          "type-only",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
     "from": "src/features/whiteboard/lib/boardBindingEngine.ts",
     "to": "src/features/whiteboard/lib/boardStore.ts",
     "unresolvedTo": "./boardStore",
@@ -14903,40 +14872,6 @@
       "aliased-tsconfig-paths",
       "local",
       "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/whiteboard/components/WhiteboardImageStudio.tsx",
-    "to": "src/features/media-generation/lib/imagePromptTemplates.ts",
-    "unresolvedTo": "@/features/media-generation/lib/imagePromptTemplates",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/whiteboard/components/WhiteboardImageTemplateGallery.tsx",
-    "to": "src/features/media-generation/lib/imagePromptTemplates.ts",
-    "unresolvedTo": "@/features/media-generation/lib/imagePromptTemplates",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
       "import"
     ],
     "rule": {
