@@ -321,8 +321,8 @@ Private implementation detail lives in the runtime plan. These tasks are the pub
 - Modify: `contracts/runtime/workspace-storage.schema.json`
 - Modify: `src/api/dataDocuments.ts`
 
-- [ ] Specify one endpoint that lists every table container under a workspace root from the file system, with the runtime index as a cache rather than a source of truth.
-- [ ] Remove the client-side registration workaround after the runtime ships it.
+- [x] Specify one endpoint that lists every table container under a workspace root from the file system, with the runtime index as a cache rather than a source of truth. (2026-09-29: rather than a new endpoint, `GET /data-documents?workspace_root=` reconciles with the disk when the runtime advertises `data_documents_fs_listing_v1`; see `contracts/runtime/data-documents-listing.schema.json`.)
+- [~] Remove the client-side registration workaround after the runtime ships it. (2026-09-29: `useKitableRegistration` stays off for runtimes with the capability and remains only as the fallback for older runtimes; delete it when the pinned runtime lock requires the capability.)
 
 ---
 

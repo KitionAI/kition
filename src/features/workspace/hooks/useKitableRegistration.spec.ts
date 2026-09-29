@@ -2,11 +2,16 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('@/api/dataDocuments', () => ({
+vi.mock('@/api/dataDocuments', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/api/dataDocuments')>()),
   openDataDocumentByPath: vi.fn(),
+}))
+vi.mock('@/services/desktop', () => ({
+  getDesktopBackendStatus: vi.fn(async () => ({ capabilities: [] })),
 }))
 
 import { openDataDocumentByPath } from '@/api/dataDocuments'
+import { getDesktopBackendStatus } from '@/services/desktop'
 
 import { findUnregisteredKitables, useKitableRegistration } from './useKitableRegistration'
 
@@ -46,6 +51,7 @@ describe('useKitableRegistration', () => {
     container = document.createElement('div')
     document.body.appendChild(container)
     vi.mocked(openDataDocumentByPath).mockReset()
+    vi.mocked(getDesktopBackendStatus).mockResolvedValue({ capabilities: [] } as never)
     refresh.mockClear()
   })
 
@@ -84,5 +90,12 @@ describe('useKitableRegistration', () => {
     await render({ status: 'done', docIds: {} })
     expect(openDataDocumentByPath).toHaveBeenCalledTimes(2)
     expect(refresh).not.toHaveBeenCalled()
+  })
+
+  it('stays off when the runtime lists tables from the file system', async () => {
+    vi.mocked(getDesktopBackendStatus).mockResolvedValue({ capabilities: ['data_documents_fs_listing_v1'] } as never)
+    await render({ status: 'done', docIds: {} })
+    await render({ status: 'done', docIds: {} })
+    expect(openDataDocumentByPath).not.toHaveBeenCalled()
   })
 })

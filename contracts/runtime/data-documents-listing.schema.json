@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kition.ai/contracts/runtime/data-documents-listing.schema.json",
+  "title": "Kition Data Document Listing",
+  "description": "GET /api/v1/data-documents?workspace_root=<root>. With the capability, the workspace file system is the source of truth: the runtime indexes every .kitable under the root that has no index row yet, and omits file-backed rows whose file is gone (their rows are kept so a restored file keeps its id). Hidden folders, dependency folders, and symlinks are not scanned. Without workspace_root the plain index answers. Clients must keep their own registration fallback until the capability is advertised.",
+  "x-runtime-capability": "data_documents_fs_listing_v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["items", "total"],
+  "properties": {
+    "items": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/document" }
+    },
+    "total": { "type": "integer", "minimum": 0 }
+  },
+  "$defs": {
+    "document": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "path", "title"],
+      "properties": {
+        "id": { "type": "integer", "minimum": 1 },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024,
+          "description": "Workspace-relative, slash-separated .kitable path."
+        },
+        "title": { "type": "string" },
+        "workspace_root": { "type": "string" }
+      }
+    }
+  }
+}

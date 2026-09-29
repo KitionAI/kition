@@ -415,3 +415,10 @@ export function bulkCopyDataRecords(documentId: number, tableId: number, payload
     )
     .then(unwrapResponseData<BulkCopyRecordsResult>)
 }
+
+/** Runtimes with this capability list tables from the workspace file system (data-documents-listing contract). */
+export const DATA_DOCUMENTS_FS_LISTING_CAPABILITY = 'data_documents_fs_listing_v1'
+
+export function runtimeListsTablesFromFileSystem(capabilities?: readonly string[]) {
+  return Boolean(capabilities?.includes(DATA_DOCUMENTS_FS_LISTING_CAPABILITY))
+}
