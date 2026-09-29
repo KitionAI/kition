@@ -1,6 +1,6 @@
 (() => {
   const root = document.documentElement
-  let themeMode = 'dark'
+  let themeMode = 'light'
 
   try {
     const cachedTheme = localStorage.getItem('kition.desktop.theme.bootstrap.v1')
@@ -14,7 +14,7 @@
       }
     }
   } catch {
-    // A blocked or malformed local cache falls back to the product default.
+    // A blocked or malformed local cache falls back to the light product default.
   }
 
   const resolvedTheme = themeMode === 'auto'

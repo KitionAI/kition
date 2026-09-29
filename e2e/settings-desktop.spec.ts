@@ -204,9 +204,6 @@ test('desktop settings persist a dark theme after reload', async ({ page }) => {
   const secureStore = new Map<string, string>([
     ['kition.desktop.settings.v1', JSON.stringify({ general: { theme: 'light' } })],
   ])
-  await page.addInitScript(() => {
-    localStorage.setItem('kition.desktop.theme.darkDefaultMigration.v1', 'done')
-  })
   await page.exposeFunction('__desktopWriteSecureValue', async (key: string, value: string) => {
     secureStore.set(key, value)
   })
@@ -231,9 +228,6 @@ test('desktop settings apply dark theme across the document workspace', async ({
   const secureStore = new Map<string, string>([
     ['kition.desktop.settings.v1', JSON.stringify({ general: { theme: 'light' } })],
   ])
-  await page.addInitScript(() => {
-    localStorage.setItem('kition.desktop.theme.darkDefaultMigration.v1', 'done')
-  })
   await page.exposeFunction('__desktopWriteSecureValue', async (key: string, value: string) => {
     secureStore.set(key, value)
   })
@@ -308,9 +302,6 @@ test('desktop settings keep a live light-theme preview after syncing provider mo
   const secureStore = new Map<string, string>([
     ['kition.desktop.settings.v1', JSON.stringify({ general: { theme: 'dark' } })],
   ])
-  await page.addInitScript(() => {
-    localStorage.setItem('kition.desktop.theme.darkDefaultMigration.v1', 'done')
-  })
   await page.exposeFunction('__desktopWriteSecureValue', async (key: string, value: string) => {
     secureStore.set(key, value)
   })

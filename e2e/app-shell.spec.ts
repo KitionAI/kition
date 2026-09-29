@@ -674,9 +674,14 @@ test.describe('app shell navigation', () => {
     })
   })
 
-  test('keeps default dark document editor surfaces and completion results readable', async ({ page }) => {
+  test('keeps dark document editor surfaces and completion results readable', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'dark' })
     await mockDesktopWorkspaceBridge(page)
+    await page.addInitScript(() => {
+      localStorage.setItem('kition.desktop.settings.backup.v1', JSON.stringify({
+        general: { theme: 'dark' },
+      }))
+    })
     await page.goto('/documents')
 
     await expect(page.locator('html')).toHaveClass(/dark/)
@@ -1290,15 +1295,16 @@ test.describe('app shell navigation', () => {
 
     await page.goto('/')
     await expect(page.getByTestId('first-run-activation')).toBeVisible()
-    await expect(page.locator('html')).toHaveClass(/dark/)
+    await expect(page.locator('html')).toHaveAttribute('data-desktop-theme-mode', 'light')
+    await expect(page.locator('html')).not.toHaveClass(/dark/)
 
     await page.setViewportSize({ width: 420, height: 720 })
-    const darkDialogBox = await page.getByTestId('first-run-activation').boundingBox()
-    expect(darkDialogBox).not.toBeNull()
-    expect(darkDialogBox!.x).toBeGreaterThanOrEqual(0)
-    expect(darkDialogBox!.y).toBeGreaterThanOrEqual(0)
-    expect(darkDialogBox!.x + darkDialogBox!.width).toBeLessThanOrEqual(420)
-    expect(darkDialogBox!.y + darkDialogBox!.height).toBeLessThanOrEqual(720)
+    const lightDialogBox = await page.getByTestId('first-run-activation').boundingBox()
+    expect(lightDialogBox).not.toBeNull()
+    expect(lightDialogBox!.x).toBeGreaterThanOrEqual(0)
+    expect(lightDialogBox!.y).toBeGreaterThanOrEqual(0)
+    expect(lightDialogBox!.x + lightDialogBox!.width).toBeLessThanOrEqual(420)
+    expect(lightDialogBox!.y + lightDialogBox!.height).toBeLessThanOrEqual(720)
 
     await page.getByTestId('first-run-configure-models').click()
 
@@ -1307,17 +1313,17 @@ test.describe('app shell navigation', () => {
     await expect.poll(() => page.evaluate((key) => localStorage.getItem(key), onboardingKey)).toContain('"providerChoice":"byo"')
 
     await page.getByRole('button', { name: 'Display', exact: true }).click()
-    await page.getByRole('button', { name: 'Light', exact: true }).click()
+    await page.getByRole('button', { name: 'Dark', exact: true }).click()
     await page.getByRole('button', { name: 'Save', exact: true }).click()
-    await expect(page.locator('html')).not.toHaveClass(/dark/)
+    await expect(page.locator('html')).toHaveClass(/dark/)
 
     await page.getByRole('button', { name: 'General', exact: true }).click()
     await page.getByTestId('reopen-getting-started').click()
     await expect(page.getByTestId('first-run-activation')).toBeVisible()
-    const lightDialogBox = await page.getByTestId('first-run-activation').boundingBox()
-    expect(lightDialogBox).not.toBeNull()
-    expect(lightDialogBox!.x + lightDialogBox!.width).toBeLessThanOrEqual(420)
-    expect(lightDialogBox!.y + lightDialogBox!.height).toBeLessThanOrEqual(720)
+    const darkDialogBox = await page.getByTestId('first-run-activation').boundingBox()
+    expect(darkDialogBox).not.toBeNull()
+    expect(darkDialogBox!.x + darkDialogBox!.width).toBeLessThanOrEqual(420)
+    expect(darkDialogBox!.y + darkDialogBox!.height).toBeLessThanOrEqual(720)
 
     await page.getByRole('button', { name: 'Skip for now' }).click()
     await page.reload()

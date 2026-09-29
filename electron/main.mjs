@@ -442,7 +442,7 @@ function getInitialWindowURL() {
 }
 
 async function getInitialWindowBackgroundColor() {
-  let themeMode = 'dark'
+  let themeMode = 'light'
   try {
     const raw = await secureStore?.get(DESKTOP_SETTINGS_STORAGE_KEY)
     const persistedTheme = raw ? JSON.parse(raw)?.general?.theme : ''
@@ -450,7 +450,7 @@ async function getInitialWindowBackgroundColor() {
       themeMode = persistedTheme
     }
   } catch {
-    // A missing or malformed setting uses the product's dark default.
+    // A missing or malformed setting uses the product's light default.
   }
 
   if (themeMode === 'light') {

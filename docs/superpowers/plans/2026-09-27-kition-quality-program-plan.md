@@ -330,8 +330,8 @@ Private implementation detail lives in the runtime plan. These tasks are the pub
 
 ### Task 3.1: Resolve the theme decision (D1)
 
-- [ ] If light default: remove `migrateThemeToDarkDefault`, set `theme: 'light'` in defaults, keep dark as an option, recapture README assets with `pnpm capture:readme:assets`.
-- [ ] If dark default: update `docs/design.md` and `AGENTS.md` to describe a dark product default and light option, and define dark tokens for every color in the design system.
+- [x] If light default: remove `migrateThemeToDarkDefault`, set `theme: 'light'` in defaults, keep dark as an option, recapture README assets with `pnpm capture:readme:assets`. (2026-09-29: chosen per `docs/design.md` and `AGENTS.md`. The settings default, the theme normalizer, `public/theme-bootstrap.js`, the Electron window color, and `index.html` all start light; saved dark preferences are kept. The recapture also exposed the Agent empty-state logo as a broken image in browser captures; `KitionLogoMark` now falls back to its web path.)
+- [x] ~~If dark default~~: not taken; light is the default.
 - [x] `styles.spec.ts` (2026-09-29) asserts every `:root` token except the geometry `radius` also exists in `.dark` and vice versa; the one gap, `--shadow-inset-highlight`, now has a light value too.
 
 ### Task 3.2: Workspace chrome polish against `docs/design.md`

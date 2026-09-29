@@ -42,13 +42,13 @@ describe('theme bootstrap', () => {
     vi.restoreAllMocks()
   })
 
-  it('uses dark on the first frame for a new user', () => {
+  it('uses light on the first frame for a new user', () => {
     runThemeBootstrap()
 
-    expect(document.documentElement.classList.contains('dark')).toBe(true)
-    expect(document.documentElement.dataset.desktopThemeMode).toBe('dark')
-    expect(document.documentElement.dataset.desktopTheme).toBe('dark')
-    expect(document.documentElement.style.colorScheme).toBe('dark')
+    expect(document.documentElement.classList.contains('dark')).toBe(false)
+    expect(document.documentElement.dataset.desktopThemeMode).toBe('light')
+    expect(document.documentElement.dataset.desktopTheme).toBe('light')
+    expect(document.documentElement.style.colorScheme).toBe('light')
   })
 
   it('uses the saved bootstrap theme before the app loads', () => {

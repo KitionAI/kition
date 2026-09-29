@@ -21,9 +21,6 @@ import { isLikelyTextGenerationModel } from '@/services/modelCapabilities'
 const SETTINGS_STORAGE_KEY = 'kition.desktop.settings.v1'
 const SETTINGS_BACKUP_STORAGE_KEY = 'kition.desktop.settings.backup.v1'
 const THEME_BOOTSTRAP_STORAGE_KEY = 'kition.desktop.theme.bootstrap.v1'
-// One-time migration: existing installs saved 'light' as the old default theme.
-// Rewrite that to 'dark' exactly once, then leave the user's choice alone.
-const THEME_DARK_DEFAULT_MIGRATION_KEY = 'kition.desktop.theme.darkDefaultMigration.v1'
 const SETTINGS_UPDATED_EVENT = 'desktop-settings-updated'
 const SYSTEM_THEME_MEDIA_QUERY = '(prefers-color-scheme: dark)'
 const PROVIDER_SECRET_FIELDS = ['apiKey', 'accessToken', 'refreshToken'] as const
@@ -222,7 +219,8 @@ function createDefaultModelSettings(): DesktopModelSettings {
 export function createDefaultDesktopSettings(): DesktopSettingsState {
   return {
     general: {
-      theme: 'dark',
+      // Light is the product default per docs/design.md; dark stays a first-class option.
+      theme: 'light',
       // North America is the default market. Existing on-disk preferences are preserved by
       // loadDesktopSettings() - only fresh installs see this value.
       language: 'en-US',
@@ -249,19 +247,15 @@ export async function loadDesktopSettings() {
   const raw = await getSecureValue(SETTINGS_STORAGE_KEY)
 
   let next: DesktopSettingsState
-  let fromPersistedStore = false
   if (!raw) {
     next = normalizeDesktopSettings(backup || fallback)
   } else {
     try {
       next = normalizeDesktopSettings(JSON.parse(raw) as Partial<DesktopSettingsState>)
-      fromPersistedStore = true
     } catch {
       next = normalizeDesktopSettings(backup || fallback)
     }
   }
-
-  next = await migrateThemeToDarkDefault(next, fromPersistedStore)
 
   persistDesktopSettingsBackup(next)
   persistDesktopThemeBootstrap(next.general.theme)
@@ -502,7 +496,7 @@ function normalizeDesktopThemeMode(themeMode?: string): DesktopThemeMode {
     return 'auto'
   }
 
-  return 'dark'
+  return 'light'
 }
 
 function buildProviderSecretStorageKey(
@@ -663,62 +657,6 @@ function normalizeShortcutKey(event: KeyboardEvent) {
   }
 
   return event.key
-}
-
-async function migrateThemeToDarkDefault(
-  settings: DesktopSettingsState,
-  fromPersistedStore: boolean,
-): Promise<DesktopSettingsState> {
-  if (hasRunThemeDarkDefaultMigration()) {
-    return settings
-  }
-
-  if (settings.general.theme !== 'light') {
-    markThemeDarkDefaultMigrationDone()
-    return settings
-  }
-
-  const migrated: DesktopSettingsState = {
-    ...settings,
-    general: { ...settings.general, theme: 'dark' },
-  }
-
-  // Persist back so the flipped theme survives the next launch. `settings` is the
-  // normalized (secret-redacted) shape, matching what saveDesktopSettings writes.
-  if (fromPersistedStore) {
-    try {
-      await setSecureValue(SETTINGS_STORAGE_KEY, JSON.stringify(migrated))
-    } catch {
-      // Leave the migration flag unset so we retry on the next launch. The
-      // in-memory value still applies dark for this session.
-      return migrated
-    }
-  }
-
-  markThemeDarkDefaultMigrationDone()
-  return migrated
-}
-
-function hasRunThemeDarkDefaultMigration() {
-  if (typeof window === 'undefined' || !window.localStorage) {
-    return true
-  }
-  try {
-    return window.localStorage.getItem(THEME_DARK_DEFAULT_MIGRATION_KEY) === 'done'
-  } catch {
-    return true
-  }
-}
-
-function markThemeDarkDefaultMigrationDone() {
-  if (typeof window === 'undefined' || !window.localStorage) {
-    return
-  }
-  try {
-    window.localStorage.setItem(THEME_DARK_DEFAULT_MIGRATION_KEY, 'done')
-  } catch {
-    // Ignore — worst case the migration re-runs next launch, which is idempotent.
-  }
 }
 
 function persistDesktopThemeBootstrap(themeMode: DesktopThemeMode) {

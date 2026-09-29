@@ -185,7 +185,7 @@ describe('desktopSettings display / notifications / hooks normalization', () => 
   it('fills missing display / notifications / hooks branches with defaults', async () => {
     const { normalizeDesktopSettings } = await import('./desktopSettings')
     const result = normalizeDesktopSettings({})
-    expect(result.general.theme).toBe('dark')
+    expect(result.general.theme).toBe('light')
     expect(result.display).toEqual({
       zoomLevel: 1,
       density: 'normal',
@@ -205,17 +205,17 @@ describe('desktopSettings display / notifications / hooks normalization', () => 
     expect(result.hooks).toEqual([])
   })
 
-  it('defaults fresh installs to dark theme appearance', async () => {
+  it('defaults fresh installs to the light theme', async () => {
     const { createDefaultDesktopSettings, loadDesktopSettings, applyDesktopAppearance } = await import('./desktopSettings')
-    expect(createDefaultDesktopSettings().general.theme).toBe('dark')
+    expect(createDefaultDesktopSettings().general.theme).toBe('light')
 
     const settings = await loadDesktopSettings()
-    expect(settings.general.theme).toBe('dark')
+    expect(settings.general.theme).toBe('light')
 
     applyDesktopAppearance(settings.general.theme)
-    expect(document.documentElement.dataset.desktopThemeMode).toBe('dark')
-    expect(document.documentElement.dataset.desktopTheme).toBe('dark')
-    expect(document.documentElement.classList.contains('dark')).toBe(true)
+    expect(document.documentElement.dataset.desktopThemeMode).toBe('light')
+    expect(document.documentElement.dataset.desktopTheme).toBe('light')
+    expect(document.documentElement.classList.contains('dark')).toBe(false)
   })
 
   it('keeps a saved dark theme after reloading settings', async () => {
@@ -231,8 +231,7 @@ describe('desktopSettings display / notifications / hooks normalization', () => 
     expect(localStorage.getItem('kition.desktop.theme.bootstrap.v1')).toBe('dark')
   })
 
-  it('preserves an explicit light preference after the dark-default migration has run', async () => {
-    localStorage.setItem('kition.desktop.theme.darkDefaultMigration.v1', 'done')
+  it('keeps an explicit light preference', async () => {
     secureValues.set('kition.desktop.settings.v1', JSON.stringify({ general: { theme: 'light' } }))
 
     const { loadDesktopSettings } = await import('./desktopSettings')
@@ -339,7 +338,7 @@ describe('desktopSettings display / notifications / hooks normalization', () => 
     expect(root.dataset.reduceMotion).toBeUndefined()
   })
 
-  it('loadDesktopSettings persists the legacy light-to-dark migration and backfills display defaults', async () => {
+  it('loadDesktopSettings keeps a saved light theme and backfills display defaults', async () => {
     secureValues.set(
       'kition.desktop.settings.v1',
       JSON.stringify({ general: { theme: 'light' } }), // legacy JSON: no display branch
@@ -347,12 +346,12 @@ describe('desktopSettings display / notifications / hooks normalization', () => 
     const { loadDesktopSettings } = await import('./desktopSettings')
     const settings = await loadDesktopSettings()
     const persisted = JSON.parse(secureValues.get('kition.desktop.settings.v1') || '{}')
-    expect(settings.general.theme).toBe('dark')
+    expect(settings.general.theme).toBe('light')
     const backup = JSON.parse(localStorage.getItem('kition.desktop.settings.backup.v1') || '{}')
     expect(backup.display).toBeDefined()
     expect(backup.notifications).toBeDefined()
     expect(Array.isArray(backup.hooks)).toBe(true)
-    expect(persisted.general.theme).toBe('dark')
+    expect(persisted.general.theme).toBe('light')
   })
 
   it('applyDesktopAppearance wraps theme changes in a two-frame transition guard', async () => {

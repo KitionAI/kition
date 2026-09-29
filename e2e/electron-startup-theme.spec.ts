@@ -4,7 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
-test('uses a dark native window before the renderer is shown', async () => {
+test('uses a light native window before the renderer is shown on a fresh install', async () => {
   test.setTimeout(60_000)
   const userDataDir = await mkdtemp(path.join(tmpdir(), 'kition-theme-e2e-'))
 
@@ -31,7 +31,7 @@ test('uses a dark native window before the renderer is shown', async () => {
     })
 
     expect(windowState).not.toBeNull()
-    expect(windowState?.backgroundColor.toLowerCase()).toContain('#1b1e22')
+    expect(windowState?.backgroundColor.toLowerCase()).toContain('#ffffff')
     expect(windowState?.visible).toBe(true)
   } finally {
     await app.close()

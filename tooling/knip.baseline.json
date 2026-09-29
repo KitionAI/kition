@@ -35,7 +35,6 @@
   "exports src/api/models.ts getAvailableModels",
   "exports src/api/models.ts updateAIModel",
   "exports src/api/workflows.ts listWorkflowsForTable",
-  "exports src/components/KitionLogoMark.tsx KITION_LOGO_MARK_URL",
   "exports src/components/confirm/index.ts ConfirmDialog",
   "exports src/components/ui.tsx CardHeader",
   "exports src/components/ui.tsx PageHeader",

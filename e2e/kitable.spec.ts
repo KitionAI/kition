@@ -752,6 +752,11 @@ test.describe('kitable editor — toolbar interactions', () => {
   test('keeps active table controls readable in dark mode', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'dark' })
     await mockKitableDesktopBridge(page)
+    await page.addInitScript(() => {
+      localStorage.setItem('kition.desktop.settings.backup.v1', JSON.stringify({
+        general: { theme: 'dark' },
+      }))
+    })
     await page.goto('/')
     await waitForKitableEditor(page)
     await expect(page.locator('html')).toHaveClass(/dark/)
