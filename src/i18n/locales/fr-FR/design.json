@@ -8,6 +8,10 @@
   "artboard": "Plan de travail",
   "artboardSize": "Taille du plan de travail",
   "artboardHint": "Dimensions en pixels. L’export est limité au plan de travail.",
+  "variant": "Variante du plan de travail",
+  "primaryVariant": "Principal",
+  "addVariant": "Ajouter une variante de taille",
+  "removeVariant": "Supprimer la variante",
   "size": "Taille",
   "custom": "Personnalisé",
   "width": "Largeur",
@@ -134,7 +138,8 @@
   "exportFormats": {
     "png": "Télécharger PNG",
     "jpeg": "Télécharger JPEG",
-    "copy": "Copier l’image"
+    "copy": "Copier l’image",
+    "all": "Télécharger toutes les tailles (PNG)"
   },
   "errors": {
     "create": "Impossible de créer le design",

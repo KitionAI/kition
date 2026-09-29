@@ -63,6 +63,32 @@ const textStyle = z
     fill: color,
   })
   .strict()
+const variantOverride = z
+  .object({
+    transform: z.tuple([finite, finite, finite, finite, finite, finite]).optional(),
+    width: dimension.optional(),
+    height: dimension.optional(),
+    visible: z.boolean().optional(),
+    fontSize: z.number().finite().positive().max(2000).optional(),
+    lineHeight: z.number().finite().min(0.5).max(4).optional(),
+    constraints: z
+      .object({
+        horizontal: z.enum(['left', 'center', 'right', 'scale']),
+        vertical: z.enum(['top', 'center', 'bottom', 'scale']),
+      })
+      .optional(),
+  })
+  .strict()
+const variant = z
+  .object({
+    id,
+    name: z.string().max(200),
+    width: dimension,
+    height: dimension,
+    background: color.optional(),
+    overrides: z.record(id, variantOverride),
+  })
+  .strict()
 export function isPortableDesignPath(value: string) {
   return (
     !!value &&
@@ -110,6 +136,7 @@ const schema = z
         .strict(),
     ),
     textStyles: z.record(id, textStyle).optional(),
+    variants: z.record(id, variant).optional(),
     provenance: z
       .object({
         templateId: z.string().max(200).optional(),

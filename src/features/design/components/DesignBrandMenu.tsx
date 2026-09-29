@@ -42,7 +42,7 @@ export function DesignBrandMenu({
               close(event.currentTarget)
               store.commit(
                 applyBrandColor(
-                  store.getSnapshot().document,
+                  store.getSnapshot().view,
                   selection,
                   kit.colors[role]!,
                 ),
@@ -64,7 +64,7 @@ export function DesignBrandMenu({
               close(event.currentTarget)
               store.commit(
                 applyBrandFont(
-                  store.getSnapshot().document,
+                  store.getSnapshot().view,
                   selection,
                   kit.fontFamily!,
                 ),

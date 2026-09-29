@@ -8,6 +8,10 @@
   "artboard": "Mesa de trabajo",
   "artboardSize": "Tamaño del diseño",
   "artboardHint": "Dimensiones en píxeles. Se exporta el área de trabajo.",
+  "variant": "Variante del lienzo",
+  "primaryVariant": "Principal",
+  "addVariant": "Añadir variante de tamaño",
+  "removeVariant": "Eliminar variante",
   "size": "Tamaño",
   "custom": "Personalizado",
   "width": "Ancho",
@@ -134,7 +138,8 @@
   "exportFormats": {
     "png": "Descargar PNG",
     "jpeg": "Descargar JPEG",
-    "copy": "Copiar imagen"
+    "copy": "Copiar imagen",
+    "all": "Descargar todos los tamaños (PNG)"
   },
   "errors": {
     "create": "No se pudo crear el diseño",

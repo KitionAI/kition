@@ -29,6 +29,17 @@ export type DesignTextStyle = {
   letterSpacing: number
   fill: string
 }
+export type DesignVariantOverride = Partial<
+  Pick<DesignNode, 'transform' | 'width' | 'height' | 'visible' | 'fontSize' | 'lineHeight' | 'constraints'>
+>
+export type DesignVariant = {
+  id: string
+  name: string
+  width: number
+  height: number
+  background?: string
+  overrides: Record<string, DesignVariantOverride>
+}
 export const TEXT_STYLE_KEYS = ['fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing', 'fill'] as const
 export type DesignNode = {
   id: string
@@ -83,6 +94,8 @@ export type DesignDocument = {
   nodes: Record<string, DesignNode>
   assets: Record<string, DesignAsset>
   textStyles?: Record<string, DesignTextStyle>
+  /** Other artboard sizes sharing these layers; the primary artboard is pages[0]. */
+  variants?: Record<string, DesignVariant>
   provenance?: {
     templateId?: string
     templateVersion?: number

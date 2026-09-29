@@ -8,6 +8,10 @@
   "artboard": "Artboard",
   "artboardSize": "Artboard size",
   "artboardHint": "Dimensions are in pixels. Export clips to the artboard.",
+  "variant": "Artboard variant",
+  "primaryVariant": "Primary",
+  "addVariant": "Add size variant",
+  "removeVariant": "Remove variant",
   "size": "Size",
   "custom": "Custom",
   "width": "Width",
@@ -134,7 +138,8 @@
   "exportFormats": {
     "png": "Download PNG",
     "jpeg": "Download JPEG",
-    "copy": "Copy image"
+    "copy": "Copy image",
+    "all": "Download all sizes (PNG)"
   },
   "errors": {
     "create": "Could not create the design",

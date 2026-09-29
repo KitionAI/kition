@@ -8,6 +8,18 @@ import {
 import { applyDesignCommand, type DesignCommand } from './designCommands'
 import type { DesignDocument } from './designTypes'
 import { topSelection } from './designGeometry'
+import {
+  createDesignVariant,
+  foldDesignVariant,
+  removeDesignVariant,
+  resolveDesignVariant,
+} from './designVariants'
+/**
+ * Holds the saved document (the base with its variants), the view the user
+ * edits (the active variant resolved), an optional preview of a pending
+ * gesture, and undo history over the base. Commands apply to the view and
+ * fold back into the base, so variants stay in sync with shared edits.
+ */
 export class DesignStore {
   private coalescing: string | undefined
   private listeners = new Set<() => void>()
@@ -15,6 +27,8 @@ export class DesignStore {
   private future: DesignHistoryEntry[] = []
   private state: {
     document: DesignDocument
+    view: DesignDocument
+    variantId: string | null
     preview: DesignDocument | null
     selection: string[]
     canUndo: boolean
@@ -23,6 +37,8 @@ export class DesignStore {
   constructor(document: DesignDocument) {
     this.state = {
       document,
+      view: document,
+      variantId: null,
       preview: null,
       selection: [],
       canUndo: false,
@@ -47,21 +63,51 @@ export class DesignStore {
   select(ids: string[]) {
     this.state = {
       ...this.state,
-      selection: topSelection(this.state.document, ids),
+      selection: topSelection(this.state.view, ids),
     }
     this.publish()
   }
+  /** Switches the edited artboard; null is the primary. */
+  setVariant(variantId: string | null) {
+    const id = variantId && this.state.document.variants?.[variantId] ? variantId : null
+    this.state = {
+      ...this.state,
+      variantId: id,
+      view: resolveDesignVariant(this.state.document, id),
+      preview: null,
+      selection: [],
+    }
+    this.publish()
+  }
+  addVariant(input: { name: string; width: number; height: number }) {
+    const { document, variantId } = createDesignVariant(this.state.document, input)
+    this.commitBase(document)
+    this.setVariant(variantId)
+    return variantId
+  }
+  removeVariant(variantId: string) {
+    if (this.state.variantId === variantId) this.setVariant(null)
+    this.commitBase(removeDesignVariant(this.state.document, variantId))
+  }
   execute(command: DesignCommand, coalescing?: string) {
-    this.commit(applyDesignCommand(this.state.document, command), coalescing)
+    this.commit(applyDesignCommand(this.state.view, command), coalescing)
   }
   endCoalescing() {
     this.coalescing = undefined
   }
-  commit(document: DesignDocument, coalescing?: string) {
-    if (document === this.state.document) {
+  /** Records an edited view as one history step. */
+  commit(view: DesignDocument, coalescing?: string) {
+    if (view === this.state.view) {
       this.cancel()
       return
     }
+    this.commitBase(
+      foldDesignVariant(this.state.document, validateDesign(view), this.state.variantId),
+      coalescing,
+    )
+  }
+  private commitBase(document: DesignDocument, coalescing?: string) {
+    if (document === this.state.document) return
     document = validateDesign(document)
     const entry = designHistoryEntry(this.state.document, document)
     const last = this.past[this.past.length - 1]
@@ -71,18 +117,25 @@ export class DesignStore {
     this.coalescing = coalescing
     if (this.past.length > 100) this.past.shift()
     this.future = []
+    this.setDocument(document, this.state.selection.filter((id) => document.nodes[id]))
+  }
+  private setDocument(document: DesignDocument, selection: string[]) {
+    const next = { ...document, revision: this.state.document.revision + 1 }
+    const variantId = this.state.variantId && next.variants?.[this.state.variantId] ? this.state.variantId : null
     this.state = {
       ...this.state,
-      document: { ...document, revision: this.state.document.revision + 1 },
+      document: next,
+      variantId,
+      view: resolveDesignVariant(next, variantId),
       preview: null,
-      selection: this.state.selection.filter((id) => document.nodes[id]),
+      selection,
     }
     this.publish()
   }
   preview(command: DesignCommand) {
     this.state = {
       ...this.state,
-      preview: applyDesignCommand(this.state.document, command),
+      preview: applyDesignCommand(this.state.view, command),
     }
     this.publish()
   }
@@ -105,22 +158,13 @@ export class DesignStore {
     const document = this.past.pop()
     if (!document) return
     this.future.push(document)
-    this.restore(applyDesignHistory(this.state.document, document, 'before'))
+    this.setDocument(applyDesignHistory(this.state.document, document, 'before'), [])
   }
   redo = () => {
     this.endCoalescing()
     const document = this.future.pop()
     if (!document) return
     this.past.push(document)
-    this.restore(applyDesignHistory(this.state.document, document, 'after'))
-  }
-  private restore(document: DesignDocument) {
-    this.state = {
-      ...this.state,
-      document: { ...document, revision: this.state.document.revision + 1 },
-      preview: null,
-      selection: [],
-    }
-    this.publish()
+    this.setDocument(applyDesignHistory(this.state.document, document, 'after'), [])
   }
 }

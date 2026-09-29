@@ -9,6 +9,7 @@ import {
   type DesignNode,
 } from '../lib/designTypes'
 import type { AlignEdge } from '../lib/designLayout'
+import { DesignArtboardPanel } from './DesignArtboardPanel'
 import { DesignStore } from '../lib/designStore'
 import {
   around,
@@ -23,10 +24,12 @@ export function DesignInspector({
   document: doc,
   selection,
   store,
+  variantId = null,
 }: {
   document: DesignDocument
   selection: string[]
   store: DesignStore
+  variantId?: string | null
 }) {
   const { t } = useTranslation('design'),
     n = selection.length === 1 ? doc.nodes[selection[0]] : null,
@@ -42,70 +45,7 @@ export function DesignInspector({
   const setConstraint = (value: Partial<DesignConstraints>) =>
     patch({ constraints: { ...constraints, ...value } })
   if (!selection.length)
-    return (
-      <div className="design-properties">
-        <p className="design-panel-heading">{t('artboard')}</p>
-        <label className="design-field">
-          <span>{t('size')}</span>
-          <select
-            aria-label={t('size')}
-            value=""
-            onChange={(event) => {
-              const [width, height] = event.target.value.split('x').map(Number)
-              if (width && height)
-                store.execute({ type: 'page', patch: { width, height } })
-            }}
-          >
-            <option value="">{t('custom')}</option>
-            <option value="1080x1440">{t('sizes.poster')}</option>
-            <option value="1080x1080">{t('sizes.square')}</option>
-            <option value="1080x1920">{t('sizes.story')}</option>
-            <option value="1920x1080">{t('sizes.landscape')}</option>
-          </select>
-        </label>
-        <div className="design-field-grid">
-          <DesignNumberField
-            label={t('width')}
-            value={page.width}
-            min={1}
-            onChange={(width) =>
-              store.execute({ type: 'page', patch: { width } })
-            }
-          />
-          <DesignNumberField
-            label={t('height')}
-            value={page.height}
-            min={1}
-            onChange={(height) =>
-              store.execute({ type: 'page', patch: { height } })
-            }
-          />
-        </div>
-        <DesignColorField
-          label={t('background')}
-          value={page.background}
-          onChange={(background) =>
-            store.execute({ type: 'page', patch: { background } })
-          }
-        />
-        <label className="design-check">
-          <input
-            type="checkbox"
-            checked={page.background === 'transparent'}
-            onChange={(event) =>
-              store.execute({
-                type: 'page',
-                patch: {
-                  background: event.target.checked ? 'transparent' : '#ffffff',
-                },
-              })
-            }
-          />
-          {t('transparent')}
-        </label>
-        <p className="design-help">{t('artboardHint')}</p>
-      </div>
-    )
+    return <DesignArtboardPanel document={doc} store={store} variantId={variantId} />
   const m = n ? worldMatrix(doc, n.id) : null,
     angle = m ? (Math.atan2(m[1], m[0]) * 180) / Math.PI : 0
   const scaleX = m ? Math.hypot(m[0], m[1]) : 1,

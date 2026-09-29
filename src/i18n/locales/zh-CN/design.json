@@ -8,6 +8,10 @@
   "artboard": "画板",
   "artboardSize": "画板尺寸",
   "artboardHint": "尺寸单位为像素，导出范围为画板。",
+  "variant": "画板变体",
+  "primaryVariant": "主画板",
+  "addVariant": "添加尺寸变体",
+  "removeVariant": "删除变体",
   "size": "尺寸",
   "custom": "自定义",
   "width": "宽度",
@@ -134,7 +138,8 @@
   "exportFormats": {
     "png": "下载 PNG",
     "jpeg": "下载 JPEG",
-    "copy": "复制图片"
+    "copy": "复制图片",
+    "all": "下载所有尺寸 (PNG)"
   },
   "errors": {
     "create": "无法创建设计",

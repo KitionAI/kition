@@ -11,6 +11,7 @@ import {
 import type { DesignSession } from '../lib/designSession'
 import type { DesignStore } from '../lib/designStore'
 import type { DesignAsset } from '../lib/designTypes'
+import { designVariantList, resolveDesignVariant } from '../lib/designVariants'
 
 /** Importing an image file into the design and exporting the artboard. */
 export function useDesignFileActions({
@@ -45,10 +46,28 @@ export function useDesignFileActions({
       setBusy(false)
     }
   }
-  async function exportImage(format: 'png' | 'jpeg' | 'copy') {
+  /** Every artboard size as its own PNG, named after the variant. */
+  async function exportAllVariants() {
     setBusy(true)
     try {
-      const frozen = structuredClone(store.getSnapshot().document),
+      const base = structuredClone(store.getSnapshot().document)
+      for (const entry of designVariantList(base)) {
+        const blob = await renderDesignImage(resolveDesignVariant(base, entry.id), session.root, 'png')
+        await saveDesignImage(blob, `${title}${entry.name ? ` - ${entry.name}` : ''}.png`, t('export'))
+      }
+    } catch (error) {
+      notify.error(t('errors.export'), {
+        description: error instanceof DesignExportError ? t(`errors.${error.code}`) : String(error),
+      })
+    } finally {
+      setBusy(false)
+    }
+  }
+  async function exportImage(format: 'png' | 'jpeg' | 'copy' | 'all') {
+    if (format === 'all') return exportAllVariants()
+    setBusy(true)
+    try {
+      const frozen = structuredClone(store.getSnapshot().view),
         blob = await renderDesignImage(
           frozen,
           session.root,

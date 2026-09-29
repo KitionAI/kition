@@ -31,7 +31,7 @@ export function useDesignAgentPatch(store: DesignStore) {
         return
       }
       try {
-        const proposed = reduceDesignAgentPatch(store.getSnapshot().document, parsed.patch)
+        const proposed = reduceDesignAgentPatch(store.getSnapshot().view, parsed.patch)
         store.showPreview(proposed)
         setState({ status: provisional ? 'streaming' : 'ready', patch: parsed.patch, proposed, error: '' })
       } catch (error) {

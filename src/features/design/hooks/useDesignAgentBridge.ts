@@ -31,7 +31,7 @@ export function useDesignAgentBridge({
     const bridge: DesignAgentBridge = {
       buildContext: () =>
         buildDesignAgentContext({
-          document: store.getSnapshot().document,
+          document: store.getSnapshot().view,
           path: session.path,
           selection: store.getSnapshot().selection,
           brand,

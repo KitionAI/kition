@@ -157,7 +157,7 @@ function DesignEditor({
     store = session.store,
     state = useSyncExternalStore(store.subscribe, store.getSnapshot),
     status = useSyncExternalStore(session.subscribe, session.getStatus)
-  const doc = state.preview || state.document,
+  const doc = state.preview || state.view,
     selection = state.selection,
     { images, missing } = useDesignImages(session.root, doc)
   useDesignFonts()
@@ -175,7 +175,7 @@ function DesignEditor({
     rootElement.current?.querySelector<HTMLElement>('.design-stage')?.focus()
   const insertAsset = useCallback(
     (asset: Parameters<typeof insertDesignImage>[1]) => {
-      const result = insertDesignImage(store.getSnapshot().document, asset)
+      const result = insertDesignImage(store.getSnapshot().view, asset)
       store.commit(result.document)
       store.select([result.nodeId])
       setPanel('properties')
@@ -256,6 +256,7 @@ function DesignEditor({
     }
   }
   function applyStarter(value: DesignDocument) {
+    store.setVariant(null)
     store.commit({
       ...value,
       id: doc.id,
@@ -352,7 +353,7 @@ function DesignEditor({
         throw new Error('Paste layers within their source workspace')
       const source = parseDesign(payload.content),
         copied = duplicateNodes(source, source.pages[0].children)
-      const next = structuredClone(store.getSnapshot().document)
+      const next = structuredClone(store.getSnapshot().view)
       next.assets = { ...next.assets, ...source.assets }
       for (const n of copied.nodes) next.nodes[n.id] = n
       next.pages[0].children.push(...copied.roots)
@@ -555,6 +556,7 @@ function DesignEditor({
             </Button>
             <DesignInspector
               document={doc}
+              variantId={state.variantId}
               selection={selection}
               store={store}
             />

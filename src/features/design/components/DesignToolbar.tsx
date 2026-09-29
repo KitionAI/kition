@@ -33,7 +33,7 @@ export function DesignToolbar({
   onUndo: () => void
   onRedo: () => void
   onSize: () => void
-  onExport: (format: 'png' | 'jpeg' | 'copy') => void
+  onExport: (format: 'png' | 'jpeg' | 'copy' | 'all') => void
   /** Opens the image studio; hidden when the runtime cannot generate. */
   onGenerateImage?: () => void
   /** The Brand menu, when the workspace has a brand kit. */
@@ -97,7 +97,7 @@ export function DesignToolbar({
           <ChevronDown className="size-3" />
         </summary>
         <div className="design-export-menu">
-          {(['png', 'jpeg', 'copy'] as const).map((format) => (
+          {(['png', 'jpeg', 'copy', 'all'] as const).map((format) => (
             <Button
               key={format}
               size="sm"

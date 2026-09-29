@@ -8,6 +8,10 @@
   "artboard": "Prancheta",
   "artboardSize": "Tamanho da prancheta",
   "artboardHint": "Dimensões em pixels. A exportação usa a área da prancheta.",
+  "variant": "Variante da prancheta",
+  "primaryVariant": "Principal",
+  "addVariant": "Adicionar variante de tamanho",
+  "removeVariant": "Remover variante",
   "size": "Tamanho",
   "custom": "Personalizado",
   "width": "Largura",
@@ -134,7 +138,8 @@
   "exportFormats": {
     "png": "Baixar PNG",
     "jpeg": "Baixar JPEG",
-    "copy": "Copiar imagem"
+    "copy": "Copiar imagem",
+    "all": "Baixar todos os tamanhos (PNG)"
   },
   "errors": {
     "create": "Não foi possível criar o design",

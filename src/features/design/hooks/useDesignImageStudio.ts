@@ -90,7 +90,7 @@ export function useDesignImageStudio({
     async (path: string, options: ImageStudioPlacementOptions) => {
       try {
         const asset = await existingDesignImage(session.root, path)
-        const placed = placeGeneratedImageInDesign(store.getSnapshot().document, asset, options)
+        const placed = placeGeneratedImageInDesign(store.getSnapshot().view, asset, options)
         store.commit(placed.document)
         store.select(placed.nodeIds)
       } catch (error) {
