@@ -51,12 +51,12 @@ async function selectSource(page: Page) {
 
 test('translates a selection in the desktop client with keyboard undo and both themes', async ({ baseURL }, testInfo) => {
   test.setTimeout(120_000)
-  const home = await fs.mkdtemp(path.join(os.tmpdir(), 'kition-desktop-translation-'))
+  const profile = await fs.mkdtemp(path.join(os.tmpdir(), 'kition-desktop-translation-'))
   const app = await electron.launch({
     executablePath: electronPath,
     cwd: process.cwd(),
     args: ['.'],
-    env: { ...process.env, HOME: home, KITION_ELECTRON_DEV_SERVER_URL: baseURL!, KITION_DESKTOP_SKIP_API: 'true' },
+    env: { ...process.env, KITION_ELECTRON_TEST_DATA_DIR: profile, KITION_ELECTRON_DEV_SERVER_URL: baseURL!, KITION_DESKTOP_SKIP_API: 'true' },
   })
   try {
     const page = await app.firstWindow()
@@ -68,17 +68,14 @@ test('translates a selection in the desktop client with keyboard undo and both t
     await page.goto(new URL('/documents', baseURL!).toString(), { waitUntil: 'domcontentloaded' })
     await dismissFirstRunActivation(page)
     await seedSettings(page, 'light')
-    const documentPath = await page.evaluate(async (markdown) => {
+    await page.evaluate(async (markdown) => {
       const bridge = (window as typeof window & { kitionDesktop?: Record<string, any> }).kitionDesktop!
       const created = await bridge.CreateWorkspaceDocument({ title: 'Traffic review', folder: '', platform: 'Research', format: 'markdown' })
       await bridge.WriteWorkspaceDocument({ path: created.path, content: markdown })
       return created.path as string
     }, DOC)
     await page.reload({ waitUntil: 'domcontentloaded' })
-    await page.evaluate((target) => {
-      window.dispatchEvent(new CustomEvent('kition:workspace-reload', { detail: { treeOnly: true } }))
-      window.dispatchEvent(new CustomEvent('kition:search:open-path', { detail: { path: target } }))
-    }, documentPath)
+    await page.locator('.document-tree-row', { hasText: 'Traffic review' }).first().click()
     await expect(page.locator('.cm-line', { hasText: 'When organic traffic' })).toBeVisible({ timeout: 15_000 })
 
     await selectSource(page)
@@ -89,13 +86,16 @@ test('translates a selection in the desktop client with keyboard undo and both t
     expect(card.x).toBeGreaterThanOrEqual(0)
     // The card keeps a margin from the window edge.
     expect(card.x + card.width).toBeLessThanOrEqual(1280 - 16)
-    // The focused primary action shows the project ring, not the platform accent outline.
-    const focusStyle = await page.getByTestId('document-translation-replace').evaluate((element) => {
+    // Keyboard navigation activates :focus-visible after the pointer-driven menu selection.
+    const replaceButton = page.getByTestId('document-translation-replace')
+    await expect(replaceButton).toBeFocused()
+    await page.keyboard.press('Tab')
+    await page.keyboard.press('Shift+Tab')
+    await expect(replaceButton).toBeFocused()
+    await expect.poll(() => replaceButton.evaluate((element) => {
       const style = getComputedStyle(element)
       return { outlineStyle: style.outlineStyle, shadow: style.boxShadow }
-    })
-    expect(focusStyle.outlineStyle).not.toBe('auto')
-    expect(focusStyle.shadow).toContain('86, 69, 212')
+    })).toEqual({ outlineStyle: expect.not.stringMatching(/^auto$/), shadow: expect.stringContaining('86, 69, 212') })
     await page.screenshot({ path: testInfo.outputPath('translation-light.png') })
 
     await page.getByTestId('document-translation-replace').click()
@@ -103,7 +103,7 @@ test('translates a selection in the desktop client with keyboard undo and both t
     expect(await readDoc(page)).toContain(TRANSLATION)
     // Focus returns to the editor, so the real keyboard undo reaches CodeMirror.
     await expect(view(page)).toBeFocused()
-    await page.keyboard.press('Meta+Z')
+    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+Z' : 'Control+Z')
     await expect.poll(() => readDoc(page)).toContain(SOURCE)
     expect(await readDoc(page)).not.toContain(TRANSLATION)
 
@@ -122,6 +122,6 @@ test('translates a selection in the desktop client with keyboard undo and both t
     await expect(view(page)).toBeFocused()
   } finally {
     await app.close()
-    await fs.rm(home, { recursive: true, force: true })
+    await fs.rm(profile, { recursive: true, force: true })
   }
 })
