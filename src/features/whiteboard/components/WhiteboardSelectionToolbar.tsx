@@ -18,6 +18,7 @@ import {
   Frame,
   GitBranch,
   Group,
+  LayoutTemplate,
   Images,
   Maximize2,
   MoreHorizontal,
@@ -33,6 +34,8 @@ import { useTranslation } from 'react-i18next'
 
 import type { WhiteboardEditorController } from '../hooks/useWhiteboardEditor'
 import { getEditableImageTextOverlay } from '../lib/whiteboardGeneratedImages'
+import { boardFrameSnapshot } from '../lib/boardFrameExport'
+import { requestDesignFromBoardFrame } from '@/services/workspaceDesignActions'
 import type { WhiteboardMindMapDirection } from '../lib/whiteboardTypes'
 import {
   ActionMenu,
@@ -292,6 +295,20 @@ export function WhiteboardSelectionToolbar({
           >
             <Maximize2 className="size-4" />
             {t('board.selectionToolbar.fitFrame')}
+          </ActionMenuItem>
+          <ActionMenuItem
+            disabled={!hasFrame}
+            onSelect={() => {
+              const frame = controller.selectedElements.find((element) => (
+                element.kind === 'rectangle' && element.shapeStyle === 'frame'
+              ))
+              const snapshot = frame ? boardFrameSnapshot(frame, controller.elements) : null
+              if (snapshot) requestDesignFromBoardFrame(snapshot)
+            }}
+            data-testid="whiteboard-frame-to-design"
+          >
+            <LayoutTemplate className="size-4" />
+            {t('board.selectionToolbar.createDesign')}
           </ActionMenuItem>
           <ActionMenuItem
             disabled={!hasContainer}

@@ -13,5 +13,6 @@ export {
 } from './lib/designBrand'
 export { useWorkspaceBrandKit } from './hooks/useWorkspaceBrandKit'
 export { DESIGN_FONT_FAMILIES } from './lib/designTypes'
+export type { DesignDocument } from './lib/designTypes'
 /** Loads the design document library on first use; it carries the zod-based serializer. */
 export const loadDesignLib = () => import('./lib/designLib')

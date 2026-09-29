@@ -462,6 +462,7 @@
       "group": "组合选中内容",
       "frame": "为选中内容创建框架",
       "fitFrame": "框架适应内容",
+      "createDesign": "从画框创建设计",
       "ungroup": "取消组合",
       "more": "更多排版操作",
       "spacing": "间距",

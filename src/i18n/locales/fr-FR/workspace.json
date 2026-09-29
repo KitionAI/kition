@@ -462,6 +462,7 @@
       "group": "Grouper la sélection",
       "frame": "Encadrer la sélection",
       "fitFrame": "Ajuster le cadre au contenu",
+      "createDesign": "Créer un design à partir du cadre",
       "ungroup": "Dissocier la sélection",
       "more": "Autres actions de mise en page",
       "spacing": "Espacement",

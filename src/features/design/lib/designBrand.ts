@@ -4,6 +4,7 @@
  * Missing values fall back to whatever the template or layer already has.
  */
 import { z } from 'zod'
+import { readWorkspaceDocument } from '@/services/desktop'
 import type { AgentDesignContext } from '@/types/designAgent'
 import { applyDesignCommand } from './designCommands'
 import { DESIGN_FONT_FAMILIES, type DesignDocument, type DesignFontFamily } from './designTypes'
@@ -44,6 +45,16 @@ export function parseBrandKit(content: string): BrandKitFile {
 }
 
 export const serializeBrandKit = (kit: BrandKitFile) => JSON.stringify(kit, null, 2) + '\n'
+
+/** Reads the workspace brand kit; null when the workspace has none yet. */
+export async function loadWorkspaceBrandKit(root: string): Promise<BrandKitFile | null> {
+  try {
+    const file = await readWorkspaceDocument(BRAND_KIT_PATH, root)
+    return parseBrandKit(file.content)
+  } catch {
+    return null
+  }
+}
 
 /** The bindings templates and the inspector consume. */
 export function brandKitBindings(kit: BrandKitFile | null | undefined): DesignBrandKit | undefined {

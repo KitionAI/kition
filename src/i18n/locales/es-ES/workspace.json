@@ -462,6 +462,7 @@
       "group": "Agrupar selección",
       "frame": "Enmarcar selección",
       "fitFrame": "Ajustar marco al contenido",
+      "createDesign": "Crear diseño desde el marco",
       "ungroup": "Desagrupar selección",
       "more": "Más acciones de diseño",
       "spacing": "Espaciado",

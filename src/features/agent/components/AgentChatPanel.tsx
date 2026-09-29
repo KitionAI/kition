@@ -286,6 +286,7 @@ export function AgentChatPanel({
             imageEvents={imageGeneration?.events}
             imageActions={imageGeneration ? {
               onEdit: imageMode.edit, onRetry: imageMode.retry, canRetry: imageMode.canRetry,
+              headlineFor: imageMode.headlineFor,
             } : undefined}
             messages={messages}
             toolCalls={toolCalls}

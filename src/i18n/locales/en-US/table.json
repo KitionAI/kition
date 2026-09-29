@@ -84,6 +84,8 @@
     "showHistory": "Show history",
     "addComment": "Add comment",
     "addToChat": "Add to chat",
+    "createDesign": "Create design from record",
+    "designTitle": "Design {{id}}",
     "regenerateAiFields": "Regenerate AI fields",
     "deleteRecord": "Delete record",
     "historyUnavailable": "History is unavailable",

@@ -1,17 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/api/queryKeys'
-import { readWorkspaceDocument, writeWorkspaceDocument } from '@/services/desktop'
-import { BRAND_KIT_PATH, parseBrandKit, serializeBrandKit, type BrandKitFile } from '../lib/designBrand'
-
-/** Reads the workspace brand kit; null when the workspace has none yet. */
-async function loadWorkspaceBrandKit(root: string): Promise<BrandKitFile | null> {
-  try {
-    const file = await readWorkspaceDocument(BRAND_KIT_PATH, root)
-    return parseBrandKit(file.content)
-  } catch {
-    return null
-  }
-}
+import { writeWorkspaceDocument } from '@/services/desktop'
+import { BRAND_KIT_PATH, loadWorkspaceBrandKit, serializeBrandKit, type BrandKitFile } from '../lib/designBrand'
 
 export function useWorkspaceBrandKit(root: string) {
   const queryClient = useQueryClient()

@@ -190,6 +190,8 @@ export function useAgentImageMode(input: {
     },
     error, preparing, blockedReason, referencePaths, instruction, send, edit, retry,
     canRetry: (id: string) => requests.current.has(id),
+    /** The exact text a request asked for, so a placed image keeps it editable. */
+    headlineFor: (id: string) => requests.current.get(id)?.intent.exact_text,
   }
 }
 export type AgentImageMode = ReturnType<typeof useAgentImageMode>

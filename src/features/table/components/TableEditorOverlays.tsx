@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ArrowDown, ArrowUp, Copy, History, Image as ImageIcon, Link2, MessageSquare, Send, Sparkles, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, Copy, History, Image as ImageIcon, LayoutTemplate, Link2, MessageSquare, Send, Sparkles, Trash2 } from 'lucide-react'
 import type { DataRecord } from '@/types/dataDocument'
 import { cn } from '@/lib/utils'
 
@@ -83,6 +83,7 @@ export function DataRecordContextMenu({
   onHistory,
   onComment,
   onAddToChat,
+  onCreateDesign,
   onRegenerateAI,
   onDelete,
 }: {
@@ -96,6 +97,7 @@ export function DataRecordContextMenu({
   onInsertBelow: (count: number) => void
   onDuplicate: () => void
   onCopyURL: () => void
+  onCreateDesign?: () => void
   onCopyImage?: () => void
   onHistory: () => void
   onComment: () => void
@@ -207,6 +209,12 @@ export function DataRecordContextMenu({
           <Send className="size-4" />
           {t('recordMenu.addToChat')}
         </button>
+        {onCreateDesign ? (
+          <button type="button" className="data-inline-record-menu-item" onClick={onCreateDesign} disabled={busy}>
+            <LayoutTemplate className="size-4" />
+            {t('recordMenu.createDesign')}
+          </button>
+        ) : null}
         {canRegenerateAI ? (
           <button type="button" className="data-inline-record-menu-item" onClick={onRegenerateAI} disabled={busy}>
             <Sparkles className="size-4" />

@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import type { DataField, DataRecord } from '@/types/dataDocument'
+import { requestDesignFromRecord } from '@/services/workspaceDesignActions'
 import {
   findImageLikeString,
   normalizeAttachmentValue,
@@ -104,6 +105,14 @@ export function TableRecordContextMenu({
         onStatus(t('recordMenu.commentsHint'))
       }}
       onAddToChat={() => closeAndRun(() => onCopyRecordForChat(record))}
+      onCreateDesign={() =>
+        closeAndRun(() =>
+          requestDesignFromRecord({
+            title: t('recordMenu.designTitle', { id: record.auto_number ?? record.id }),
+            fields: record.values ?? {},
+          }),
+        )
+      }
       onRegenerateAI={() => {
         onClose()
         for (const field of aiFields) {

@@ -462,6 +462,7 @@
       "group": "Agrupar seleção",
       "frame": "Enquadrar seleção",
       "fitFrame": "Ajustar quadro ao conteúdo",
+      "createDesign": "Criar design a partir do quadro",
       "ungroup": "Desagrupar seleção",
       "more": "Mais ações de layout",
       "spacing": "Espaçamento",

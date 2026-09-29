@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { loadDesignLib } from '@/features/design/public'
-import { DESIGN_IMAGE_ACTION } from '@/services/workspaceDesignActions'
+import {
+  DESIGN_FROM_BOARD_ACTION,
+  DESIGN_FROM_RECORD_ACTION,
+  DESIGN_IMAGE_ACTION,
+  type DesignImageRequest,
+  type DesignRecordRequest,
+} from '@/services/workspaceDesignActions'
+import type { DesignDocument } from '@/features/design/public'
+import type { BoardFrameSnapshot } from '@/types/designStart'
 import { notify } from '@/lib/notify'
 import { getWorkspaceItemTitle, type WorkspaceTab } from '../lib/workspace'
 export function useWorkspaceDesign(options: {
@@ -45,11 +53,27 @@ export function useWorkspaceDesign(options: {
     },
     [open, t],
   )
+  /** Writes a new design file in the workspace root and opens it. */
+  const createFrom = useCallback(
+    async (build: (lib: Awaited<ReturnType<typeof loadDesignLib>>) => Promise<DesignDocument>) => {
+      const captured = current.current
+      try {
+        const lib = await loadDesignLib()
+        const document = await build(lib)
+        if (current.current.root !== captured.root) return
+        const file = await lib.createDesignFile(captured.root, '', document)
+        if (current.current.root !== captured.root) return
+        await captured.refresh(undefined, { silent: true, treeOnly: true })
+        if (current.current.root === captured.root) open(file.path)
+      } catch (error) {
+        notify.error(t('errors.create'), { description: String(error) })
+      }
+    },
+    [open, t],
+  )
   useEffect(() => {
     const handler = (event: Event) => {
-      const { path, createNew } = (
-        event as CustomEvent<{ path: string; createNew?: boolean }>
-      ).detail
+      const { path, createNew, headline } = (event as CustomEvent<DesignImageRequest>).detail
       const captured = current.current,
         target =
           !createNew && captured.activeTab?.type === 'design'
@@ -57,7 +81,7 @@ export function useWorkspaceDesign(options: {
             : null
       void (async () => {
         try {
-          const { createDesign, createDesignFile, existingDesignImage, insertDesignImage, placeImageInDesign } = await loadDesignLib()
+          const { existingDesignImage, placeImageInDesign } = await loadDesignLib()
           const asset = await existingDesignImage(captured.root, path)
           if (current.current.root !== captured.root) return
           if (target) {
@@ -66,16 +90,7 @@ export function useWorkspaceDesign(options: {
             return
           }
           const title = getWorkspaceItemTitle(path.split('/').pop() || 'Design')
-          const document = insertDesignImage(
-            createDesign(title),
-            asset,
-            true,
-          ).document
-          document.provenance = { imagePath: path }
-          const file = await createDesignFile(captured.root, '', document)
-          if (current.current.root !== captured.root) return
-          await captured.refresh(undefined, { silent: true, treeOnly: true })
-          if (current.current.root === captured.root) open(file.path)
+          await createFrom(async ({ designFromImage }) => designFromImage(asset, { title, headline }))
         } catch (error) {
           notify.error(t('errors.image'), { description: String(error) })
         }
@@ -83,7 +98,32 @@ export function useWorkspaceDesign(options: {
     }
     window.addEventListener(DESIGN_IMAGE_ACTION, handler)
     return () => window.removeEventListener(DESIGN_IMAGE_ACTION, handler)
-  }, [open, t])
+  }, [createFrom, t])
+  useEffect(() => {
+    const fromRecord = (event: Event) => {
+      const { title, fields } = (event as CustomEvent<DesignRecordRequest>).detail
+      const root = current.current.root
+      void createFrom(async ({ designFromRecord, loadDesignTemplatePackage, loadWorkspaceBrandKit, brandKitBindings }) => {
+        const [pack, kit] = await Promise.all([loadDesignTemplatePackage(), loadWorkspaceBrandKit(root)])
+        const entry = pack.templates.find(({ resource }) => resource.id === pack.manifest.defaultResourceId) ?? pack.templates[0]
+        if (!entry) throw new Error('No design template is available')
+        return designFromRecord(entry.template, fields, { brand: brandKitBindings(kit), title })
+      })
+    }
+    const fromBoard = (event: Event) => {
+      const frame = (event as CustomEvent<BoardFrameSnapshot>).detail
+      const root = current.current.root
+      void createFrom(async ({ designFromBoardFrame, existingDesignImage }) =>
+        designFromBoardFrame(frame, (workspacePath) => existingDesignImage(root, workspacePath)),
+      )
+    }
+    window.addEventListener(DESIGN_FROM_RECORD_ACTION, fromRecord)
+    window.addEventListener(DESIGN_FROM_BOARD_ACTION, fromBoard)
+    return () => {
+      window.removeEventListener(DESIGN_FROM_RECORD_ACTION, fromRecord)
+      window.removeEventListener(DESIGN_FROM_BOARD_ACTION, fromBoard)
+    }
+  }, [createFrom])
   const chatEmptyState = {
     description: t('chat.description'),
     suggestions: (['headline', 'palette', 'background'] as const).map(

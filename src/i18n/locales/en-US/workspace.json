@@ -462,6 +462,7 @@
       "group": "Group selection",
       "frame": "Frame selection",
       "fitFrame": "Fit frame to content",
+      "createDesign": "Create design from frame",
       "ungroup": "Ungroup selection",
       "more": "More layout actions",
       "spacing": "Spacing",

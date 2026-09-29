@@ -84,6 +84,8 @@
     "showHistory": "查看历史",
     "addComment": "添加评论",
     "addToChat": "添加到对话",
+    "createDesign": "从记录创建设计",
+    "designTitle": "设计 {{id}}",
     "regenerateAiFields": "重新生成 AI 字段",
     "deleteRecord": "删除记录",
     "historyUnavailable": "历史记录不可用",

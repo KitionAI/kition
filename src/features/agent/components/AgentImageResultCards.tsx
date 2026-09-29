@@ -9,8 +9,9 @@ export type AgentImageResultActions = {
   onEdit?: (artifact: AgentImageArtifact) => void
   onRetry?: (requestId: string) => void
   canRetry?: (requestId: string) => boolean
+  headlineFor?: (requestId: string) => string | undefined
 }
-export function AgentImageResultCards({ events, busy, onOpen, onEdit, onRetry, canRetry }: AgentImageResultActions & {
+export function AgentImageResultCards({ events, busy, onOpen, onEdit, onRetry, canRetry, headlineFor }: AgentImageResultActions & {
   events: AgentImageSessionEvent[]
   busy: boolean
   onOpen: (path: string) => void
@@ -39,7 +40,7 @@ export function AgentImageResultCards({ events, busy, onOpen, onEdit, onRetry, c
             })}</span> : null}
             {artifact.provenance.model_id ? <span className="block">{artifact.provenance.model_id}</span> : null}
           </figcaption>
-          <Button variant="secondary" size="sm" onClick={() => requestUseImageInDesign(artifact.path)}>{t('design:useImage')}</Button>
+          <Button variant="secondary" size="sm" onClick={() => requestUseImageInDesign(artifact.path, false, headlineFor?.(job.requestId))}>{t('design:useImage')}</Button>
           {onEdit ? <Button variant="secondary" size="sm" disabled={busy} onClick={() => onEdit(artifact)}>{t('chat.edit')}</Button> : null}
         </figure>)}
       </div>

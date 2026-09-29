@@ -84,6 +84,8 @@
     "showHistory": "Показать историю",
     "addComment": "Добавить комментарий",
     "addToChat": "Добавить в чат",
+    "createDesign": "Создать дизайн из записи",
+    "designTitle": "Дизайн {{id}}",
     "regenerateAiFields": "Перегенерировать ИИ-поля",
     "deleteRecord": "Удалить запись",
     "historyUnavailable": "История недоступна",

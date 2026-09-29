@@ -84,6 +84,8 @@
     "showHistory": "Ver historial",
     "addComment": "Añadir comentario",
     "addToChat": "Añadir al chat",
+    "createDesign": "Crear diseño desde el registro",
+    "designTitle": "Diseño {{id}}",
     "regenerateAiFields": "Regenerar campos de IA",
     "deleteRecord": "Eliminar registro",
     "historyUnavailable": "El historial no está disponible",
