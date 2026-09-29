@@ -208,6 +208,23 @@
           "prompt": "Genera un recurso visual para la idea seleccionada y colócalo en este tablero."
         }
       }
+    },
+    "design": {
+      "description": "Desarrolla el texto, los colores y las imágenes de tu cartel con el agente.",
+      "suggestions": {
+        "headline": {
+          "label": "Escribir un titular",
+          "prompt": "Ayúdame a escribir un titular breve y memorable para un cartel."
+        },
+        "palette": {
+          "label": "Explorar colores",
+          "prompt": "Sugiere tres paletas de colores para un cartel moderno y explica cuándo usar cada una."
+        },
+        "background": {
+          "label": "Crear un fondo",
+          "prompt": "Crea un fondo de cartel con espacio para un titular. Pregúntame primero por el tema y el estilo."
+        }
+      }
     }
   }
 }

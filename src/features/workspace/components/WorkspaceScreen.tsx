@@ -43,6 +43,7 @@ import { useWorkspaceBrowserPanel } from '@/features/workspace/hooks/useWorkspac
 import { useWorkspaceWorkflowCreateMode } from '@/features/workspace/hooks/useWorkspaceWorkflowCreateMode'
 import { useWorkspaceTemplateDialogs } from '@/features/workspace/hooks/useWorkspaceTemplateDialogs'
 import { useWorkspaceWhiteboardAgentBridge } from '@/features/workspace/hooks/useWorkspaceWhiteboardAgentBridge'
+import { useWorkspaceDesignAgentBridge } from '@/features/workspace/hooks/useWorkspaceDesignAgentBridge'
 import { useWorkspaceTableAgentContext } from '@/features/workspace/hooks/useWorkspaceTableAgentContext'
 import { useWorkspaceAgentBrowserAutomation } from '@/features/workspace/hooks/useWorkspaceAgentBrowserAutomation'
 import { useWorkspaceAgentTurnContext } from '@/features/workspace/hooks/useWorkspaceAgentTurnContext'
@@ -215,7 +216,11 @@ export function WorkspaceScreen({
   const whiteboardBridge = useWorkspaceWhiteboardAgentBridge({ rootPath })
   const whiteboardAgentAvailable = whiteboardBridge.available
   const handleWhiteboardAgentBridgeChange = whiteboardBridge.handleBridgeChange
-  const agentTurn = useWorkspaceAgentTurnContext({ buildWhiteboardContext: whiteboardBridge.buildActiveContext })
+  const designBridge = useWorkspaceDesignAgentBridge({ rootPath })
+  const agentTurn = useWorkspaceAgentTurnContext({
+    buildWhiteboardContext: whiteboardBridge.buildActiveContext,
+    buildDesignContext: designBridge.buildActiveContext,
+  })
   const agentTurnContextRef = agentTurn.turnContextRef
   const agentBrowserEnabled = agentTurn.browserEnabled
   const setAgentBrowserEnabled = agentTurn.setBrowserEnabled
@@ -302,6 +307,8 @@ export function WorkspaceScreen({
     },
     onWhiteboardPatch: whiteboardBridge.receivePatch,
     onWhiteboardPatchCancelled: whiteboardBridge.cancelPreview,
+    onDesignPatch: designBridge.receivePatch,
+    onDesignPatchCancelled: designBridge.cancelPreview,
     prepareActiveDocument: ensureActiveDocumentSaved,
     getTurnContext: getAgentTurnContext,
     prepareBrowserContext: prepareAgentBrowserContextForTurn,
@@ -445,6 +452,7 @@ export function WorkspaceScreen({
   } = tableAgent
   tableAgentRefreshRef.current = tableAgentContext?.onTableChanged ?? null
   whiteboardBridge.setActiveBoardPath(activeWorkspaceTab?.type === 'board' ? activeWorkspaceTab.path : '')
+  designBridge.setActiveDesignPath(activeWorkspaceTab?.type === 'design' ? activeWorkspaceTab.path : '')
   agentTurn.updateTurnContext(buildWorkspaceAgentTurnUpdate({
     activeWorkspaceTab,
     tableAgentContext,
@@ -969,6 +977,10 @@ export function WorkspaceScreen({
                 available: whiteboardAgentAvailable,
                 onBridgeChange: handleWhiteboardAgentBridgeChange,
                 onGenerateImage: handleGenerateWhiteboardImage,
+              },
+              design: {
+                available: designBridge.available,
+                onBridgeChange: designBridge.handleBridgeChange,
               },
               templateDialogs,
               workflows: {

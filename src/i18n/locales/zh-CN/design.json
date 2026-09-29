@@ -185,5 +185,25 @@
       "label": "生成背景",
       "prompt": "生成一张留有标题空间的海报背景。请先询问我主题和风格。"
     }
+  },
+  "agentPreview": {
+    "generating": "AI 正在生成设计预览",
+    "ready": "AI 设计修改已就绪",
+    "invalid": "AI 设计预览已被拒绝",
+    "accept": "接受",
+    "reject": "拒绝",
+    "cancel": "取消",
+    "operations": {
+      "text.set": "设置文本",
+      "style.set": "更新样式",
+      "layer.create": "创建图层",
+      "layer.move": "移动图层",
+      "layer.resize": "调整图层大小",
+      "layer.reorder": "调整图层顺序",
+      "layer.delete": "删除图层",
+      "layout.align": "对齐图层",
+      "layout.distribute": "分布图层",
+      "artboard.background": "更改背景"
+    }
   }
 }

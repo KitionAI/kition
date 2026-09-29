@@ -11,6 +11,7 @@ import { loadMarkdownImageInsertionResolver, type MarkdownImageInsertionSnapshot
 import type { WorkspaceBrowserTab } from '@/features/workspace/hooks/useWorkspaceBrowserPanel'
 import { extractBrowserPageContext } from '@/services/desktop'
 import type { AgentWhiteboardContext } from '@/types/whiteboardAgent'
+import type { AgentDesignContext } from '@/types/designAgent'
 
 type BuildTurnContextInput = Parameters<typeof buildAgentTurnContext>[0]
 type PreflightBrowserContext = (content: string) => Promise<AgentBrowserContext | undefined>
@@ -26,6 +27,8 @@ const INITIAL_TURN_CONTEXT: AgentTurnContext = {
 type UseWorkspaceAgentTurnContextOptions = {
   /** Context for the active whiteboard, or undefined when no board is active. */
   buildWhiteboardContext: () => AgentWhiteboardContext | undefined
+  /** Context for the active design, or undefined when no design is active. */
+  buildDesignContext: () => AgentDesignContext | undefined
 }
 
 /**
@@ -35,7 +38,7 @@ type UseWorkspaceAgentTurnContextOptions = {
  * screen refreshes the base context during render; `getTurnContext`
  * finalizes it at send time and enriches it with the live browser page.
  */
-export function useWorkspaceAgentTurnContext({ buildWhiteboardContext }: UseWorkspaceAgentTurnContextOptions) {
+export function useWorkspaceAgentTurnContext({ buildWhiteboardContext, buildDesignContext }: UseWorkspaceAgentTurnContextOptions) {
   const turnContextRef = useRef<AgentTurnContext>(INITIAL_TURN_CONTEXT)
   const insertionSnapshotRef = useRef<MarkdownImageInsertionSnapshot | null>(null)
   const activeBrowserTabRef = useRef<WorkspaceBrowserTab | null>(null)
@@ -89,7 +92,8 @@ export function useWorkspaceAgentTurnContext({ buildWhiteboardContext }: UseWork
       resolveMarkdownImageInsertionContext,
     })
     const whiteboardContext = base.paneContext === 'whiteboard' ? buildWhiteboardContext() : undefined
-    const scopedBase = { ...base, whiteboardContext }
+    const designContext = base.paneContext === 'design' ? buildDesignContext() : undefined
+    const scopedBase = { ...base, whiteboardContext, designContext }
     const tab = activeBrowserTabRef.current
     if (!tab) return scopedBase
     try {
@@ -101,7 +105,7 @@ export function useWorkspaceAgentTurnContext({ buildWhiteboardContext }: UseWork
       // fall back to the thin tab metadata already in the base context.
     }
     return scopedBase
-  }, [buildWhiteboardContext])
+  }, [buildWhiteboardContext, buildDesignContext])
 
   return {
     turnContextRef,

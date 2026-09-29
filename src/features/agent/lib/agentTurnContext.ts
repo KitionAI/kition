@@ -6,6 +6,7 @@ import type {
 } from '@/services/desktop'
 import type { DataDocument, DataTable } from '@/types/dataDocument'
 import type { AgentWhiteboardContext } from '@/types/whiteboardAgent'
+import type { AgentDesignContext } from '@/types/designAgent'
 import type { MarkdownImageInsertionContext, MarkdownImageInsertionSnapshot } from '@/features/document/public'
 
 export type AgentTurnContext = {
@@ -24,6 +25,8 @@ export type AgentTurnContext = {
   activeWorkflowId?: string
   /** Compact selection, viewport, or board context for AI Whiteboard turns. */
   whiteboardContext?: AgentWhiteboardContext
+  /** Bounded artboard and layer context for Design turns. */
+  designContext?: AgentDesignContext
   markdownImageInsertionContext?: MarkdownImageInsertionContext
 }
 
@@ -121,6 +124,8 @@ export function buildAgentTurnContext(input: {
   paneContext?: AgentPaneContext
   activeWorkflowId?: string
   whiteboardContext?: AgentWhiteboardContext
+  /** Artboard and layer context for Design turns. */
+  designContext?: AgentDesignContext
   markdownImageInsertionContext?: MarkdownImageInsertionContext | null
 }): AgentTurnContext {
   const activeDocumentPath = String(input.activeDocumentPath || '').trim()
@@ -136,6 +141,7 @@ export function buildAgentTurnContext(input: {
     paneContext: input.paneContext,
     activeWorkflowId: input.activeWorkflowId,
     whiteboardContext: input.whiteboardContext,
+    designContext: input.designContext,
     markdownImageInsertionContext,
     taskMode: 'auto',
     browserEnabled: input.browserEnabled === true,

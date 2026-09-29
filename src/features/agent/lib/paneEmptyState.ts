@@ -33,6 +33,7 @@ export const PANE_SUGGESTIONS: Record<AgentPaneContext, readonly string[]> = {
   browserSites: ['addSite', 'showConnected', 'setupCustom'],
   gallery: ['describeEach', 'groupByTopic', 'pickHero'],
   whiteboard: ['generateMindMap', 'organizeBoard', 'generateImage'],
+  design: ['headline', 'palette', 'background'],
 }
 
 export function emptyStateForPane(

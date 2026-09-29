@@ -151,6 +151,6 @@ export type AgentDesignPatch = {
 }
 
 /**
- * Bounded semantic Design context and typed preview patches for one artboard. Payloads must not contain credentials, host root paths, image bytes, or unrelated workspace content. Images enter a design only through the image generation contract.
+ * Bounded semantic Design context and typed preview patches for one artboard. Payloads must not contain credentials, host root paths, image bytes, or unrelated workspace content. Images enter a design only through the image generation contract. Turn requests carry `pane_context: "design"` and `design_context`; the runtime proposes changes through the `design_propose_patch` tool, whose output and the `design_patch` stream events carry a patch plus `design_path`.
  */
 export type AgentDesignContract = AgentDesignContext | AgentDesignPatch

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://kition.ai/contracts/runtime/agent-design.schema.json",
   "title": "Kition Agent Design Context And Patch",
-  "description": "Bounded semantic Design context and typed preview patches for one artboard. Payloads must not contain credentials, host root paths, image bytes, or unrelated workspace content. Images enter a design only through the image generation contract.",
+  "description": "Bounded semantic Design context and typed preview patches for one artboard. Payloads must not contain credentials, host root paths, image bytes, or unrelated workspace content. Images enter a design only through the image generation contract. Turn requests carry `pane_context: \"design\"` and `design_context`; the runtime proposes changes through the `design_propose_patch` tool, whose output and the `design_patch` stream events carry a patch plus `design_path`.",
   "x-runtime-capability": "agent_design_v1",
   "oneOf": [
     { "$ref": "#/$defs/context" },

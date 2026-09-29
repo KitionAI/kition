@@ -185,5 +185,25 @@
       "label": "Create a background",
       "prompt": "Create a poster background with room for a headline. Ask me about the subject and style first."
     }
+  },
+  "agentPreview": {
+    "generating": "AI is preparing a design preview",
+    "ready": "AI design changes are ready",
+    "invalid": "AI design preview was rejected",
+    "accept": "Accept",
+    "reject": "Reject",
+    "cancel": "Cancel",
+    "operations": {
+      "text.set": "Set text",
+      "style.set": "Update styles",
+      "layer.create": "Create layer",
+      "layer.move": "Move layers",
+      "layer.resize": "Resize layer",
+      "layer.reorder": "Reorder layer",
+      "layer.delete": "Delete layers",
+      "layout.align": "Align layers",
+      "layout.distribute": "Distribute layers",
+      "artboard.background": "Change background"
+    }
   }
 }

@@ -208,6 +208,23 @@
           "prompt": "Génère un visuel pour l'idée sélectionnée et place-le sur ce tableau."
         }
       }
+    },
+    "design": {
+      "description": "Préparez le texte, les couleurs et les images de votre affiche avec l’agent.",
+      "suggestions": {
+        "headline": {
+          "label": "Rédiger un titre",
+          "prompt": "Aide-moi à rédiger un titre court et mémorable pour une affiche."
+        },
+        "palette": {
+          "label": "Explorer les couleurs",
+          "prompt": "Propose trois palettes pour une affiche moderne et explique quand utiliser chacune."
+        },
+        "background": {
+          "label": "Créer un fond",
+          "prompt": "Crée un fond d’affiche avec de la place pour un titre. Demande-moi d’abord le sujet et le style."
+        }
+      }
     }
   }
 }

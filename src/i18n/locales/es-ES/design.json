@@ -185,5 +185,25 @@
       "label": "Crear un fondo",
       "prompt": "Crea un fondo de cartel con espacio para un titular. Pregúntame primero por el tema y el estilo."
     }
+  },
+  "agentPreview": {
+    "generating": "La IA está preparando una vista previa del diseño",
+    "ready": "Los cambios de diseño de la IA están listos",
+    "invalid": "La vista previa de diseño de la IA fue rechazada",
+    "accept": "Aceptar",
+    "reject": "Rechazar",
+    "cancel": "Cancelar",
+    "operations": {
+      "text.set": "Establecer texto",
+      "style.set": "Actualizar estilos",
+      "layer.create": "Crear capa",
+      "layer.move": "Mover capas",
+      "layer.resize": "Redimensionar capa",
+      "layer.reorder": "Reordenar capa",
+      "layer.delete": "Eliminar capas",
+      "layout.align": "Alinear capas",
+      "layout.distribute": "Distribuir capas",
+      "artboard.background": "Cambiar fondo"
+    }
   }
 }

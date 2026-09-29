@@ -185,5 +185,25 @@
       "label": "Créer un fond",
       "prompt": "Crée un fond d’affiche avec de la place pour un titre. Demande-moi d’abord le sujet et le style."
     }
+  },
+  "agentPreview": {
+    "generating": "L'IA prépare un aperçu du design",
+    "ready": "Les modifications de design de l'IA sont prêtes",
+    "invalid": "L'aperçu de design de l'IA a été rejeté",
+    "accept": "Accepter",
+    "reject": "Rejeter",
+    "cancel": "Annuler",
+    "operations": {
+      "text.set": "Définir le texte",
+      "style.set": "Mettre à jour les styles",
+      "layer.create": "Créer un calque",
+      "layer.move": "Déplacer les calques",
+      "layer.resize": "Redimensionner le calque",
+      "layer.reorder": "Réordonner le calque",
+      "layer.delete": "Supprimer les calques",
+      "layout.align": "Aligner les calques",
+      "layout.distribute": "Répartir les calques",
+      "artboard.background": "Changer l'arrière-plan"
+    }
   }
 }

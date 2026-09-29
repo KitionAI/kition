@@ -27,6 +27,7 @@ import type { AgentPaneContext } from '@/features/agent/lib/paneEmptyState'
 //   dashboard       → 'table'     (data reporting over a table)
 //   gallery         → 'gallery'   (image gallery)
 //   board           → 'whiteboard' (native SVG board)
+//   design          → 'design'    (artboard editor)
 //   null/undefined  → 'document'  (no tab open — fall back to general assistance)
 export function deriveAgentPaneContext(
   tab: WorkspaceTab | null | undefined,
@@ -61,6 +62,7 @@ export function deriveAgentPaneContext(
     case 'dashboard':
       return 'table'
     case 'design':
+      return 'design'
     case 'gallery':
       return 'gallery'
     case 'board':

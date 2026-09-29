@@ -185,5 +185,25 @@
       "label": "Criar um fundo",
       "prompt": "Crie um fundo de pôster com espaço para um título. Pergunte primeiro sobre o tema e o estilo."
     }
+  },
+  "agentPreview": {
+    "generating": "A IA está preparando uma prévia do design",
+    "ready": "As alterações de design da IA estão prontas",
+    "invalid": "A prévia de design da IA foi rejeitada",
+    "accept": "Aceitar",
+    "reject": "Rejeitar",
+    "cancel": "Cancelar",
+    "operations": {
+      "text.set": "Definir texto",
+      "style.set": "Atualizar estilos",
+      "layer.create": "Criar camada",
+      "layer.move": "Mover camadas",
+      "layer.resize": "Redimensionar camada",
+      "layer.reorder": "Reordenar camada",
+      "layer.delete": "Excluir camadas",
+      "layout.align": "Alinhar camadas",
+      "layout.distribute": "Distribuir camadas",
+      "artboard.background": "Alterar fundo"
+    }
   }
 }

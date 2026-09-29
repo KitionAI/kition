@@ -91,6 +91,8 @@ import {
   mergeAgentImageGenerationEvents,
 } from '@/features/agent/lib/agentImageGenerationStream'
 import { readAgentWhiteboardPatchFrame } from '@/features/agent/lib/agentWhiteboardStream'
+import { AGENT_DESIGN_PATCH_TOOL, readAgentDesignPatchFrame } from '@/features/agent/lib/agentDesignStream'
+import type { AgentDesignContext, AgentDesignPatch } from '@/types/designAgent'
 import type { MarkdownImageInsertionContext } from '@/features/document/editor/editor/markdown-image-insertion'
 
 type WorkspaceAgentTurnContext = {
@@ -111,6 +113,7 @@ type WorkspaceAgentTurnContext = {
    *  context. Frontend reads this from the active workflow tab. */
   activeWorkflowId?: string
   whiteboardContext?: AgentWhiteboardContext
+  designContext?: AgentDesignContext
   markdownImageInsertionContext?: MarkdownImageInsertionContext
 }
 
@@ -135,6 +138,13 @@ type UseWorkspaceAgentOptions = {
     boardPath: string
     sessionId: number
   }) => void
+  onDesignPatch?: (input: {
+    designPath: string
+    patch: AgentDesignPatch
+    provisional: boolean
+    sessionId: number
+  }) => void
+  onDesignPatchCancelled?: (input: { designPath: string; sessionId: number }) => void
   prepareActiveDocument?: () => Promise<boolean>
   prepareBrowserContext?: (content: string) => Promise<AgentBrowserContext | undefined>
   silentInitialSessionLoad?: boolean
@@ -164,6 +174,8 @@ export function useWorkspaceAgent({
   onTableMutated,
   onWhiteboardPatch,
   onWhiteboardPatchCancelled,
+  onDesignPatch,
+  onDesignPatchCancelled,
   prepareActiveDocument,
   prepareBrowserContext,
   silentInitialSessionLoad = !isDesktopRuntime(),
@@ -656,6 +668,8 @@ export function useWorkspaceAgent({
     let tableMutated = false
     let whiteboardPathForTurn = ''
     let pendingWhiteboardPatch: AgentWhiteboardPatch | null = null
+    let designPathForTurn = ''
+    let pendingDesignPatch: AgentDesignPatch | null = null
 
     try {
       let preparedBrowserContext: AgentBrowserContext | undefined
@@ -670,6 +684,7 @@ export function useWorkspaceAgent({
       whiteboardPathForTurn = String(
         turnContext?.whiteboardContext?.board.path || '',
       ).trim()
+      designPathForTurn = String(turnContext?.designContext?.design.path || '').trim()
       const automaticActiveDocumentPath = String(turnContext?.activeDocumentPath || '').trim()
       const documentContextPaths = resolveAgentDocumentContextPaths(
         agentDocumentContextsRef.current,
@@ -796,6 +811,7 @@ export function useWorkspaceAgent({
         activeWorkflowId: turnContext?.activeWorkflowId,
         paneContext: turnContext?.paneContext,
         whiteboardContext: turnContext?.whiteboardContext,
+        designContext: turnContext?.designContext,
         taskMode: turnContext?.taskMode,
         browserEnabled: browserEnabledForTurn,
         browserContext: browserContextForTurn,
@@ -857,6 +873,35 @@ export function useWorkspaceAgent({
           ) {
             pendingWhiteboardPatch = null
             onWhiteboardPatchCancelled?.({ boardPath: whiteboardPathForTurn, sessionId })
+          }
+
+          const designFrame = readAgentDesignPatchFrame(event)
+          if (designFrame && designPathForTurn) {
+            pendingDesignPatch = designFrame.provisional ? designFrame.patch : null
+            onDesignPatch?.({
+              designPath: designFrame.designPath || designPathForTurn,
+              patch: designFrame.patch,
+              provisional: designFrame.provisional,
+              sessionId,
+            })
+          }
+          if (
+            event.type === 'tool_call'
+            && event.tool_call?.status === 'completed'
+            && event.tool_call.tool_name === AGENT_DESIGN_PATCH_TOOL
+            && pendingDesignPatch
+            && designPathForTurn
+          ) {
+            onDesignPatch?.({ designPath: designPathForTurn, patch: pendingDesignPatch, provisional: false, sessionId })
+            pendingDesignPatch = null
+          }
+          if (
+            event.type === 'tool_error'
+            && event.tool_call?.tool_name === AGENT_DESIGN_PATCH_TOOL
+            && designPathForTurn
+          ) {
+            pendingDesignPatch = null
+            onDesignPatchCancelled?.({ designPath: designPathForTurn, sessionId })
           }
 
           if (

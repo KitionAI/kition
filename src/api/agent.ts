@@ -9,6 +9,7 @@ import type {
   AgentWhiteboardContext,
   AgentWhiteboardPatch,
 } from '@/types/whiteboardAgent'
+import type { AgentDesignContext, AgentDesignPatch } from '@/types/designAgent'
 
 export type AgentExecutionMode = 'research' | 'preview' | 'apply'
 export type AgentTaskMode = 'auto' | 'browse' | 'table'
@@ -30,6 +31,7 @@ export type AgentPaneContext =
   | 'browserSites'
   | 'gallery'
   | 'whiteboard'
+  | 'design'
 
 export type AgentBrowserContextLink = {
   text: string
@@ -288,6 +290,8 @@ export type AgentStreamEvent = {
   event?: AgentEvent
   image_generation?: AgentImageGenerationEvent
   whiteboard_patch?: AgentWhiteboardPatch
+  design_patch?: AgentDesignPatch
+  design_path?: string
   provisional?: boolean
   done?: boolean
   extra_data?: {
@@ -446,6 +450,7 @@ export async function streamAgentMessage(options: {
   browserContext?: AgentBrowserContext
   imageGenerationIntent?: AgentImageGenerationIntent
   whiteboardContext?: AgentWhiteboardContext
+  designContext?: AgentDesignContext
   tablePlanContext?: AgentTablePlanContext
   shellApproval?: AgentShellApprovalResponse
   modelId?: string
@@ -479,6 +484,7 @@ export async function streamAgentMessage(options: {
       browser_context: options.browserContext || undefined,
       image_generation_intent: options.imageGenerationIntent || undefined,
       whiteboard_context: options.whiteboardContext || undefined,
+      design_context: options.designContext || undefined,
       table_plan_context: options.tablePlanContext || undefined,
       shell_approval: options.shellApproval || undefined,
       model_id: options.modelId || '',

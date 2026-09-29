@@ -30,6 +30,6 @@ it('restores Design tabs in their own workspace and does not impersonate a runti
   writeWorkspaceTabs('/workspace-one', [tab])
   expect(readWorkspaceTabs('/workspace-one')).toEqual([tab])
   expect(readWorkspaceTabs('/workspace-two')).toEqual([])
-  expect(deriveAgentPaneContext(tab)).toBe('gallery')
+  expect(deriveAgentPaneContext(tab)).toBe('design')
   expect(resolveAgentActiveDocument(tab)).toEqual({ path: '' })
 })

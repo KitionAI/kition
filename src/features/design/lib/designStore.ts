@@ -86,6 +86,11 @@ export class DesignStore {
     }
     this.publish()
   }
+  /** Shows a proposed document without touching history; commit or cancel ends it. */
+  showPreview(document: DesignDocument) {
+    this.state = { ...this.state, preview: document }
+    this.publish()
+  }
   commitPreview() {
     if (this.state.preview) this.commit(this.state.preview)
   }

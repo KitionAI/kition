@@ -208,6 +208,23 @@
           "prompt": "Generate a visual for the selected idea and place it on this Board."
         }
       }
+    },
+    "design": {
+      "description": "Develop your poster copy, colors, and images with the agent.",
+      "suggestions": {
+        "headline": {
+          "label": "Write a headline",
+          "prompt": "Help me write a short, memorable headline for a poster."
+        },
+        "palette": {
+          "label": "Explore colors",
+          "prompt": "Suggest three color palettes for a modern poster and explain when to use each."
+        },
+        "background": {
+          "label": "Create a background",
+          "prompt": "Create a poster background with room for a headline. Ask me about the subject and style first."
+        }
+      }
     }
   }
 }

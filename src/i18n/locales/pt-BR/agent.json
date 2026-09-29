@@ -208,6 +208,23 @@
           "prompt": "Gere um visual para a ideia selecionada e coloque-o neste quadro."
         }
       }
+    },
+    "design": {
+      "description": "Crie o texto, as cores e as imagens do seu pôster com o agente.",
+      "suggestions": {
+        "headline": {
+          "label": "Escrever um título",
+          "prompt": "Ajude-me a escrever um título curto e memorável para um pôster."
+        },
+        "palette": {
+          "label": "Explorar cores",
+          "prompt": "Sugira três paletas para um pôster moderno e explique quando usar cada uma."
+        },
+        "background": {
+          "label": "Criar um fundo",
+          "prompt": "Crie um fundo de pôster com espaço para um título. Pergunte primeiro sobre o tema e o estilo."
+        }
+      }
     }
   }
 }

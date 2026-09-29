@@ -26,6 +26,7 @@ import type {
   WorkspaceDocumentFormat,
 } from '@/services/desktop'
 import type { WhiteboardAgentBridge } from '@/features/whiteboard/lib/whiteboardAgentBridge'
+import type { DesignAgentBridge } from '@/features/design/public'
 import type {
   WhiteboardImageGenerationRequest,
   WhiteboardImageGenerationStartResult,
@@ -148,6 +149,9 @@ type WorkspaceEditorContentProps = {
   whiteboardAgentBusy?: boolean
   onWhiteboardAgentBridgeChange?: (path: string, bridge: WhiteboardAgentBridge | null) => void
   onCancelWhiteboardAgent?: () => void
+  designAgentAvailable?: boolean
+  onDesignAgentBridgeChange?: (path: string, bridge: DesignAgentBridge | null) => void
+  onCancelDesignAgent?: () => void
   onGenerateWhiteboardImage?: (request: WhiteboardImageGenerationRequest) => Promise<WhiteboardImageGenerationStartResult>
   onTableAgentContextChange?: ComponentProps<typeof TableEditorPane>['onAgentContextChange']
   onCreateWorkflow?: (kitablePath: string) => void
@@ -211,6 +215,9 @@ export function WorkspaceEditorContent({
   getOpenedDocumentDraftEntry,
   whiteboardAgentAvailable = false,
   whiteboardAgentBusy = false,
+  designAgentAvailable = false,
+  onDesignAgentBridgeChange,
+  onCancelDesignAgent,
   onWhiteboardAgentBridgeChange,
   onCancelWhiteboardAgent,
   onGenerateWhiteboardImage,
@@ -375,7 +382,7 @@ export function WorkspaceEditorContent({
       {workspaceTabs.filter((tab): tab is Extract<WorkspaceTab, { type: 'design' }> => tab.type === 'design').map(tab => (
         <div key={`${designRoot}:${tab.id}`} className={cn('document-editor-view', activeWorkspaceTabId === tab.id && 'is-active')}>
           <EditorPaneBoundary>
-            <DesignEditorPane root={designRoot || 'browser-local-workspace'} path={tab.path} title={tab.title} active={activeWorkspaceTabId === tab.id} />
+            <DesignEditorPane root={designRoot || 'browser-local-workspace'} path={tab.path} title={tab.title} active={activeWorkspaceTabId === tab.id} agentAvailable={designAgentAvailable} onAgentBridgeChange={onDesignAgentBridgeChange} onCancelAgent={onCancelDesignAgent} />
           </EditorPaneBoundary>
         </div>
       ))}

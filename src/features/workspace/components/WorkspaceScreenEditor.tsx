@@ -47,6 +47,10 @@ export type WorkspaceScreenEditorInput = {
     onBridgeChange: WorkspaceEditorContentProps['onWhiteboardAgentBridgeChange']
     onGenerateImage: WorkspaceEditorContentProps['onGenerateWhiteboardImage']
   }
+  design: {
+    available: boolean
+    onBridgeChange: WorkspaceEditorContentProps['onDesignAgentBridgeChange']
+  }
   templateDialogs: Pick<
     ReturnType<typeof useWorkspaceTemplateDialogs>,
     'documentEditorFocusRequest' | 'openDocumentTemplateDialog' | 'openKitableTemplateDialog'
@@ -67,7 +71,7 @@ export type WorkspaceScreenEditorInput = {
 }
 
 export function buildWorkspaceEditorContentProps(input: WorkspaceScreenEditorInput): WorkspaceEditorContentProps {
-  const { documentSession, browserPanel, tableAgent, agentPanel, activeAgentSession, whiteboard, templateDialogs, workflows } = input
+  const { documentSession, browserPanel, tableAgent, agentPanel, activeAgentSession, whiteboard, design, templateDialogs, workflows } = input
   const revision = documentSession.activeDocumentRevision
   const openAgentPanel = () => {
     agentPanel.setOpen(true)
@@ -104,6 +108,9 @@ export function buildWorkspaceEditorContentProps(input: WorkspaceScreenEditorInp
     onWhiteboardAgentBridgeChange: whiteboard.onBridgeChange,
     onCancelWhiteboardAgent: activeAgentSession ? () => input.stopAgentMessage(activeAgentSession.id) : undefined,
     onGenerateWhiteboardImage: whiteboard.onGenerateImage,
+    designAgentAvailable: design.available,
+    onDesignAgentBridgeChange: design.onBridgeChange,
+    onCancelDesignAgent: activeAgentSession ? () => input.stopAgentMessage(activeAgentSession.id) : undefined,
     onTableAgentContextChange: tableAgent.handleContextChange,
     onCreateWorkflow: workflows.createForKitable,
     onOpenWorkflow: workflows.openKitableWorkflow,

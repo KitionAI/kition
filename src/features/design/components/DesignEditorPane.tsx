@@ -43,8 +43,6 @@ import {
 } from '../lib/designExport'
 import { createDesignFile } from '../lib/designFile'
 import { registerDesignImageTarget } from '../lib/designImageTargets'
-import { translation } from '../lib/designGeometry'
-import type { AlignEdge } from '../lib/designLayout'
 import { DesignToolbar } from './DesignToolbar'
 import { DesignCanvas } from './DesignCanvas'
 import { DesignInspector } from './DesignInspector'
@@ -52,26 +50,31 @@ import { DesignLayers } from './DesignLayers'
 import { DesignLibrary } from './DesignLibrary'
 import './design.css'
 import { useDesignFonts } from '../hooks/useDesignFonts'
-/** Alt with a letter aligns the selection; adding Mod distributes instead. */
-const ALIGN_KEYS: Record<string, AlignEdge> = {
-  KeyA: 'left',
-  KeyD: 'right',
-  KeyW: 'top',
-  KeyS: 'bottom',
-  KeyH: 'centerX',
-  KeyV: 'centerY',
+import { useDesignKeyboard } from '../hooks/useDesignKeyboard'
+import { useDesignAgentPatch } from '../hooks/useDesignAgentPatch'
+import { DesignAgentPreviewControls } from './DesignAgentPreview'
+import { buildDesignAgentContext } from '../lib/designAgentContext'
+import type { DesignAgentBridge } from '../lib/designAgentBridge'
+export type DesignEditorPaneProps = {
+  root: string
+  path: string
+  title: string
+  active: boolean
+  /** True when the runtime supports design agent patches. */
+  agentAvailable?: boolean
+  onAgentBridgeChange?: (path: string, bridge: DesignAgentBridge | null) => void
+  /** Stops the running agent turn while a preview is streaming. */
+  onCancelAgent?: () => void
 }
 export function DesignEditorPane({
   root,
   path,
   title,
   active,
-}: {
-  root: string
-  path: string
-  title: string
-  active: boolean
-}) {
+  agentAvailable = false,
+  onAgentBridgeChange,
+  onCancelAgent,
+}: DesignEditorPaneProps) {
   const { t } = useTranslation('design'),
     [reload, setReload] = useState(0),
     { session, error } = useDesignSession(root, path, reload)
@@ -99,6 +102,9 @@ export function DesignEditorPane({
       session={session}
       title={title}
       active={active}
+      agentAvailable={agentAvailable}
+      onAgentBridgeChange={onAgentBridgeChange}
+      onCancelAgent={onCancelAgent}
       onReload={() => {
         session.discardRecovery()
         setReload((value) => value + 1)
@@ -116,8 +122,14 @@ function DesignEditor({
   session,
   title,
   active,
+  agentAvailable,
+  onAgentBridgeChange,
+  onCancelAgent,
   onReload,
-}: {
+}: Pick<
+  DesignEditorPaneProps,
+  'agentAvailable' | 'onAgentBridgeChange' | 'onCancelAgent'
+> & {
   session: DesignSession
   title: string
   active: boolean
@@ -173,6 +185,24 @@ function DesignEditor({
       store.cancel()
     }
   }, [active, store])
+  const agent = useDesignAgentPatch(store)
+  const agentReceive = agent.receivePatch,
+    agentReject = agent.reject
+  useEffect(() => {
+    if (!agentAvailable || !onAgentBridgeChange) return
+    const bridge: DesignAgentBridge = {
+      buildContext: () =>
+        buildDesignAgentContext({
+          document: store.getSnapshot().document,
+          path: session.path,
+          selection: store.getSnapshot().selection,
+        }) ?? undefined,
+      receivePatch: agentReceive,
+      cancelPreview: agentReject,
+    }
+    onAgentBridgeChange(session.path, bridge)
+    return () => onAgentBridgeChange(session.path, null)
+  }, [agentAvailable, onAgentBridgeChange, session.path, store, agentReceive, agentReject])
   async function importImage(blob: Blob) {
     setBusy(true)
     try {
@@ -294,81 +324,14 @@ function DesignEditor({
       notify.error(t('errors.save'), { description: String(error) })
     }
   }
-  function keyboard(event: KeyboardEvent) {
-    if (!active || isTextTarget(event.target) || event.nativeEvent.isComposing)
-      return
-    const mod = event.metaKey || event.ctrlKey,
-      key = event.key.toLowerCase()
-    if (mod && key === 'z') {
-      event.preventDefault()
-      event.shiftKey ? store.redo() : store.undo()
-      return
-    }
-    if (mod && key === 'y') {
-      event.preventDefault()
-      store.redo()
-      return
-    }
-    if (mod && key === 's') {
-      event.preventDefault()
-      void session.flush().catch(() => notify.error(t('errors.save')))
-      return
-    }
-    if (mod && key === 'a') {
-      event.preventDefault()
-      store.select(doc.pages[0].children)
-      return
-    }
-    if (mod && key === 'g') {
-      event.preventDefault()
-      store.execute({
-        type: event.shiftKey ? 'ungroup' : 'group',
-        ids: selection,
-      })
-      return
-    }
-    if (mod && key === 'd') {
-      event.preventDefault()
-      store.execute({ type: 'duplicate', ids: selection })
-      return
-    }
-    if (event.altKey && selection.length && event.code in ALIGN_KEYS) {
-      // Alt with a letter changes `event.key` on macOS, so match the code.
-      event.preventDefault()
-      const edge = ALIGN_KEYS[event.code]
-      if (mod && edge === 'centerX')
-        store.execute({ type: 'distribute', ids: selection, axis: 'x' })
-      else if (mod && edge === 'centerY')
-        store.execute({ type: 'distribute', ids: selection, axis: 'y' })
-      else store.execute({ type: 'align', ids: selection, edge })
-      return
-    }
-    if (key === 'escape') {
-      store.cancel()
-      store.select([])
-      return
-    }
-    if (key === 'delete' || key === 'backspace') {
-      event.preventDefault()
-      store.execute({ type: 'remove', ids: selection })
-      return
-    }
-    if (key.startsWith('arrow') && selection.length) {
-      event.preventDefault()
-      const amount = event.shiftKey ? 10 : 1
-      store.execute(
-        {
-          type: 'transform',
-          ids: selection,
-          matrix: translation(
-            key === 'arrowleft' ? -amount : key === 'arrowright' ? amount : 0,
-            key === 'arrowup' ? -amount : key === 'arrowdown' ? amount : 0,
-          ),
-        },
-        'nudge',
-      )
-    }
-  }
+  const keyboard = useDesignKeyboard({
+    store,
+    session,
+    active,
+    doc,
+    selection,
+    onSaveError: () => notify.error(t('errors.save')),
+  })
   function copyObjects(event: ClipboardEvent) {
     if (!active || isTextTarget(event.target) || !selection.length) return
     const copied = duplicateNodes(doc, selection, 0),
@@ -505,6 +468,15 @@ function DesignEditor({
           {t('errors.missing', { count: missing.length })}
         </div>
       ) : null}
+      <DesignAgentPreviewControls
+        state={agent.state}
+        onAccept={agent.accept}
+        onReject={agent.reject}
+        onCancel={() => {
+          onCancelAgent?.()
+          agent.reject()
+        }}
+      />
       <div className="design-workbench">
         <div
           className="design-tool-rail"

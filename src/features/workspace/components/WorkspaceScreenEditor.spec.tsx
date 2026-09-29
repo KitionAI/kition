@@ -49,6 +49,7 @@ function buildInput(overrides: Partial<WorkspaceScreenEditorInput> = {}) {
     agentBusySessions: new Set([5]),
     stopAgentMessage: vi.fn(),
     whiteboard: { available: true, onBridgeChange: vi.fn(), onGenerateImage: undefined },
+    design: { available: true, onBridgeChange: vi.fn() },
     templateDialogs,
     workflows: { createForKitable: vi.fn(), openKitableWorkflow: vi.fn(), openWorkspaceWorkflow: vi.fn() },
     onAskDocumentAgent: vi.fn(),
