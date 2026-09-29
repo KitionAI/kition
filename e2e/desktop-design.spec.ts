@@ -206,7 +206,7 @@ test('edits and reopens a desktop Design with local assets, file moves, export, 
       document.body.appendChild(target)
     })
     await page.getByLabel('Image paste target').focus()
-    await page.getByLabel('Image paste target').press('Meta+V')
+    await page.getByLabel('Image paste target').press(process.platform === 'darwin' ? 'Meta+V' : 'Control+V')
     await expect(page.getByLabel('Image paste target')).toHaveValue('image/png')
     const source = Object.values(before.assets)[0]
     await page.evaluate(
