@@ -1,6 +1,6 @@
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { ScenarioBuildEvent } from '@/features/scenario/types'
 
@@ -95,10 +95,10 @@ const cellAIFilled = (
 })
 
 describe('ScenarioBuildPage', () => {
-  beforeEach(async () => {
+  beforeEach(() => {
     tableEditorRenders.length = 0
-    await unmount()
   })
+  afterEach(unmount)
 
   it('renders the progress card inside the drawer with events', async () => {
     await mount(
