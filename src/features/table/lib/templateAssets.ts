@@ -1,14 +1,9 @@
-import { uploadDataAttachment } from '@/api/dataDocuments'
 import type {
   KitableTemplateAssetReference,
   KitableTemplateRecordValue,
 } from '@/features/table/templates/kitableTemplates'
 import type { DataAttachment, DataRecordValue } from '@/types/dataDocument'
-import {
-  bundledAssetArrayBuffer,
-  readBundledAssetBytes,
-  readBundledAssetText,
-} from '@/lib/bundledAssets'
+import { readBundledAssetText } from '@/lib/bundledAssets'
 
 export type KitableTemplateAssetManifestItem = {
   id: string
@@ -67,57 +62,28 @@ export async function loadKitableTemplateAssetManifest(
   return manifest
 }
 
-async function mapWithConcurrency<Input, Output>(
-  values: Input[],
-  concurrency: number,
-  mapper: (value: Input) => Promise<Output>,
-) {
-  const queue = [...values]
-  const output: Output[] = []
-  const workers = Array.from(
-    { length: Math.max(1, Math.min(concurrency, values.length || 1)) },
-    async () => {
-      while (queue.length) {
-        const value = queue.shift() as Input
-        output.push(await mapper(value))
-      }
-    },
-  )
-  await Promise.all(workers)
-  return output
-}
-
-export async function uploadKitableTemplateAssets({
-  documentId,
-  tableId,
+export function buildKitableTemplateAttachments({
   manifest,
   assetIds,
 }: {
-  documentId: number
-  tableId: number
   manifest: KitableTemplateAssetManifest
   assetIds: string[]
 }) {
   const manifestAssetById = new Map(manifest.assets.map((asset) => [asset.id, asset]))
-  const missingAssetId = assetIds.find((assetId) => !manifestAssetById.has(assetId))
-  if (missingAssetId) {
-    throw new Error(`Template asset is missing from the manifest: ${missingAssetId}`)
-  }
-
-  const uploaded = await mapWithConcurrency(assetIds, 4, async (assetId) => {
-    const asset = manifestAssetById.get(assetId) as KitableTemplateAssetManifestItem
-    const bytes = await readBundledAssetBytes(asset.path)
-    if (bytes.byteLength !== asset.sizeBytes) {
-      throw new Error(`Template asset size mismatch: ${asset.path}`)
-    }
-    const file = new File([bundledAssetArrayBuffer(bytes)], asset.sourceName, {
-      type: asset.mimeType,
-    })
-    const attachment = await uploadDataAttachment(documentId, tableId, file)
-    return [assetId, attachment] as const
-  })
-
-  return new Map<string, DataAttachment>(uploaded)
+  return new Map<string, DataAttachment>(assetIds.map((assetId) => {
+    const asset = manifestAssetById.get(assetId)
+    if (!asset) throw new Error(`Template asset is missing from the manifest: ${assetId}`)
+    // Template images are bundled content, just like the onboarding examples.
+    const url = asset.path.startsWith('kition-bundled:')
+      ? asset.path
+      : `kition-bundled:/${asset.path.replace(/^\/+/, '')}`
+    return [assetId, {
+      name: asset.sourceName,
+      url,
+      mimeType: asset.mimeType,
+      sizeBytes: asset.sizeBytes,
+    }]
+  }))
 }
 
 export function resolveKitableTemplateRecordValue(
@@ -127,7 +93,7 @@ export function resolveKitableTemplateRecordValue(
   if (!isKitableTemplateAssetReference(value)) return value
   return value.assetIds.map((assetId) => {
     const attachment = attachmentByAssetId.get(assetId)
-    if (!attachment) throw new Error(`Template asset was not uploaded: ${assetId}`)
+    if (!attachment) throw new Error(`Template asset was not resolved: ${assetId}`)
     return attachment
   })
 }

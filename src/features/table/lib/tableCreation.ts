@@ -19,7 +19,7 @@ import {
   collectKitableTemplateAssetIds,
   loadKitableTemplateAssetManifest,
   resolveKitableTemplateRecordValue,
-  uploadKitableTemplateAssets,
+  buildKitableTemplateAttachments,
 } from '@/features/table/lib/templateAssets'
 import {
   createWorkspaceDocument,
@@ -307,9 +307,7 @@ async function seedKitableTemplateRecords(
       throw new Error(`Template asset manifest was not configured: ${template.id}`)
     }
     const attachmentByAssetId = assetManifest
-      ? await uploadKitableTemplateAssets({
-          documentId: dataDocument.id,
-          tableId: createdTable.id,
+      ? buildKitableTemplateAttachments({
           manifest: assetManifest,
           assetIds,
         })

@@ -298,7 +298,7 @@ describe('createTableWorkspaceEntry', () => {
     expect(createDataRecord).toHaveBeenCalledWith(8, 12, { key_message: 'Build faster' })
   })
 
-  it('uploads bundled assets and materializes per-view field layout', async () => {
+  it('seeds bundled image references without uploading and materializes per-view field layout', async () => {
     const assetTemplate: KitableTemplateDefinition = {
       ...template,
       assetManifestPath: '/templates/test/manifest.json',
@@ -356,13 +356,12 @@ describe('createTableWorkspaceEntry', () => {
         { view_id: 51, field_id: 42, visible: true, width: 120, position: 1, frozen: false },
       ],
     })
-    const uploadedAttachment = {
+    const bundledAttachment = {
       name: 'preview.png',
-      url: '/uploads/preview.png',
+      url: 'kition-bundled:/templates/test/preview.png',
       mimeType: 'image/png',
       sizeBytes: 3,
     }
-    vi.mocked(uploadDataAttachment).mockResolvedValueOnce(uploadedAttachment)
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input)
       if (url.endsWith('manifest.json')) {
@@ -410,14 +409,11 @@ describe('createTableWorkspaceEntry', () => {
       width: 581,
       visible: false,
     })
-    expect(uploadDataAttachment).toHaveBeenCalledWith(9, 13, expect.any(File))
-    const uploadedFile = vi.mocked(uploadDataAttachment).mock.calls[0]?.[2]
-    expect(uploadedFile?.name).toBe('preview.png')
-    expect(uploadedFile?.type).toBe('image/png')
-    expect(uploadedFile?.size).toBe(3)
+    expect(uploadDataAttachment).not.toHaveBeenCalled()
+    expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(createDataRecord).toHaveBeenCalledWith(9, 13, {
       project: 'Website refresh',
-      preview: [uploadedAttachment],
+      preview: [bundledAttachment],
     })
   })
 

@@ -2113,6 +2113,8 @@ export const drawColumnStatisticsRegion = (
 export const computeShouldRerender = (current: ILayoutDrawerProps, last?: ILayoutDrawerProps) => {
   if (last == null) return true;
   return !(
+    current.width === last.width &&
+    current.height === last.height &&
     current.theme === last.theme &&
     current.columns === last.columns &&
     current.getLinearRow === last.getLinearRow &&
@@ -2173,12 +2175,18 @@ export const drawGrid = (
   const { isScrolling } = scrollState;
   const { containerWidth } = coordInstance;
 
-  if (containerWidth === 0 || originHeight === 0) return;
+  if (containerWidth === 0 || originHeight === 0) {
+    cacheCanvas.width = 0;
+    cacheCanvas.height = 0;
+    return;
+  }
 
   const pixelRatio = Math.ceil(window.devicePixelRatio ?? 1);
   const width = Math.ceil(containerWidth * pixelRatio);
   const height = Math.ceil(originHeight * pixelRatio);
-  const shouldRerender = isScrolling || computeShouldRerender(props, lastProps);
+  // Resizing a canvas clears its bitmap, even when its cell data is unchanged.
+  const shouldRerender = cacheCanvas.width !== width || cacheCanvas.height !== height ||
+    isScrolling || computeShouldRerender(props, lastProps);
 
   if (mainCanvas.width !== width || mainCanvas.height !== height) {
     mainCanvas.width = width;

@@ -90,6 +90,25 @@ describe('request api client', () => {
     await expect(mod.default.patch('/v1/x', {})).rejects.toThrow('bad field')
   })
 
+  it.each(['Content-Type', 'content-type', 'CONTENT-TYPE'])(
+    'lets fetch generate the multipart boundary when a caller supplies %s', async (headerName) => {
+      fetchMock.mockResolvedValue(jsonResponse({ ok: true }))
+      const mod = await loadRequestModule()
+      const form = new FormData()
+      form.append('file', new File(['image bytes'], 'preview.png', { type: 'image/png' }))
+      const headers = { [headerName]: 'multipart/form-data', 'X-Upload-Source': 'template' }
+
+      await mod.default.post('/v1/attachments', form, { headers })
+
+      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+      expect(init.body).toBe(form)
+      expect(new Headers(init.headers).has('content-type')).toBe(false)
+      expect(new Headers(init.headers).get('X-Upload-Source')).toBe('template')
+      expect(new Headers(init.headers).get('X-Locale')).toBeTruthy()
+      expect(headers[headerName]).toBe('multipart/form-data')
+    },
+  )
+
   it('rejects a non-200 envelope code and reports network failures', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ code: 500, message: 'Runtime failed' }))
     const mod = await loadRequestModule()

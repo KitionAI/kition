@@ -183,6 +183,12 @@ async function send<T>(method: string, url: string, dataArgument: unknown, confi
 
     const headers: Record<string, string> = { 'X-Locale': getCurrentLocale(), ...(config.headers || {}) }
     const isFormData = typeof FormData !== 'undefined' && data instanceof FormData
+    if (isFormData) {
+        // Fetch must generate the Content-Type boundary to match its multipart body.
+        for (const name of Object.keys(headers)) {
+            if (name.toLowerCase() === 'content-type') delete headers[name]
+        }
+    }
     let body: BodyInit | undefined
     if (data !== undefined && data !== null) {
         if (isFormData || typeof data === 'string' || data instanceof Blob || data instanceof ArrayBuffer) {
