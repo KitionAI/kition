@@ -89,6 +89,7 @@
   "undo": "Deshacer",
   "redo": "Rehacer",
   "export": "Exportar",
+  "generateImage": "Generar imagen",
   "copied": "Diseño copiado como imagen",
   "copiedLayers": "Capas de diseño de Kition",
   "retry": "Reintentar",

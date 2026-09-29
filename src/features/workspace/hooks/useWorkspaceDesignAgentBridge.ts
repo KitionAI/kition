@@ -58,5 +58,5 @@ export function useWorkspaceDesignAgentBridge({ rootPath }: { rootPath: string }
     bridgesRef.current[designPath]?.cancelPreview()
   }, [])
 
-  return { available, setActiveDesignPath, handleBridgeChange, buildActiveContext, receivePatch, cancelPreview }
+  return { available, bridgesRef, setActiveDesignPath, handleBridgeChange, buildActiveContext, receivePatch, cancelPreview }
 }

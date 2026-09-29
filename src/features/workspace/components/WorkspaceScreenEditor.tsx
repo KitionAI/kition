@@ -50,6 +50,7 @@ export type WorkspaceScreenEditorInput = {
   design: {
     available: boolean
     onBridgeChange: WorkspaceEditorContentProps['onDesignAgentBridgeChange']
+    onGenerateImage: WorkspaceEditorContentProps['onGenerateDesignImage']
   }
   templateDialogs: Pick<
     ReturnType<typeof useWorkspaceTemplateDialogs>,
@@ -110,6 +111,7 @@ export function buildWorkspaceEditorContentProps(input: WorkspaceScreenEditorInp
     onGenerateWhiteboardImage: whiteboard.onGenerateImage,
     designAgentAvailable: design.available,
     onDesignAgentBridgeChange: design.onBridgeChange,
+    onGenerateDesignImage: design.available ? design.onGenerateImage : undefined,
     onCancelDesignAgent: activeAgentSession ? () => input.stopAgentMessage(activeAgentSession.id) : undefined,
     onTableAgentContextChange: tableAgent.handleContextChange,
     onCreateWorkflow: workflows.createForKitable,

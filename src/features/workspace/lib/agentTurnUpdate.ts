@@ -53,5 +53,6 @@ export function buildWorkspaceAgentTurnUpdate({
     // A workflow tab opened on one workflow lets the runtime attach that
     // workflow's summary; the global list carries no id.
     activeWorkflowId: activeWorkspaceTab?.type === 'workflow' ? activeWorkspaceTab.workflowId : undefined,
+    activeDesignPath: activeWorkspaceTab?.type === 'design' ? activeWorkspaceTab.path : undefined,
   }
 }

@@ -89,6 +89,7 @@
   "undo": "Undo",
   "redo": "Redo",
   "export": "Export",
+  "generateImage": "Generate image",
   "copied": "Design copied as an image",
   "copiedLayers": "Kition design layers",
   "retry": "Retry",

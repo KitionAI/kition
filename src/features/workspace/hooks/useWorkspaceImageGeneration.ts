@@ -14,6 +14,9 @@ export function captureWorkspaceImageTarget(context?: AgentTurnContext): AgentIm
     if (!context.activeDocumentPath) return undefined
     return { type: 'image.target.whiteboard', board_path: context.activeDocumentPath }
   }
+  if (context?.paneContext === 'design' && context.activeDesignPath) {
+    return { type: 'image.target.design', design_path: context.activeDesignPath }
+  }
   if (context?.paneContext === 'document' && context.activeDocumentPath) {
     return { type: 'image.target.document', document_path: context.activeDocumentPath }
   }

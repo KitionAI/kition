@@ -89,6 +89,7 @@
   "undo": "撤销",
   "redo": "重做",
   "export": "导出",
+  "generateImage": "生成图片",
   "copied": "设计已复制为图片",
   "copiedLayers": "Kition 设计图层",
   "retry": "重试",

@@ -4,5 +4,6 @@
  */
 export type { DesignAgentBridge } from './lib/designAgentBridge'
 export { runtimeSupportsDesignAgent } from './lib/designCapabilities'
+export { buildDesignImageAgentInstruction } from './lib/designImageGeneration'
 /** Loads the design document library on first use; it carries the zod-based serializer. */
 export const loadDesignLib = () => import('./lib/designLib')

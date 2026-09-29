@@ -64,6 +64,8 @@ import { useWorkspaceErrorNotice } from '@/features/workspace/hooks/useWorkspace
 import { useWorkspaceDocumentTranslation } from '@/features/workspace/hooks/useWorkspaceDocumentTranslation'
 import { useWorkspaceBoardCreation } from '@/features/workspace/hooks/useWorkspaceBoardCreation'
 import { useWhiteboardImageGeneration } from '@/features/workspace/hooks/useWhiteboardImageGeneration'
+import { useAgentImageGeneration } from '@/features/workspace/hooks/useAgentImageGeneration'
+import { buildDesignImageAgentInstruction } from '@/features/design/public'
 import { setPinnedTabsWorkspace } from '@/features/document/editor/hooks/usePinnedTabs'
 import { isEditableWorkspaceFormat } from '@/features/workspace/lib/workspace'
 import { resolveAgentActiveDocument } from '@/features/workspace/lib/agentPaneContext'
@@ -489,6 +491,19 @@ export function WorkspaceScreen({
     agentToolCalls,
     available: whiteboardBridge.available,
     bridgesRef: whiteboardBridge.bridgesRef,
+    createAgentChat: createNewAgentChat,
+    modelAvailable: Boolean(selectedAgentModel?.runtimeModel),
+    sendAgentAction: sendAgentContextAction,
+    setActiveSessionId: setActiveWorkspaceAgentSessionId,
+  })
+  const handleGenerateDesignImage = useAgentImageGeneration({
+    activeSessionId: activeWorkspaceAgentSessionId,
+    agentArtifacts,
+    agentBusySessions,
+    agentToolCalls,
+    available: designBridge.available,
+    bridgesRef: designBridge.bridgesRef,
+    buildInstruction: buildDesignImageAgentInstruction,
     createAgentChat: createNewAgentChat,
     modelAvailable: Boolean(selectedAgentModel?.runtimeModel),
     sendAgentAction: sendAgentContextAction,
@@ -981,6 +996,7 @@ export function WorkspaceScreen({
               design: {
                 available: designBridge.available,
                 onBridgeChange: designBridge.handleBridgeChange,
+                onGenerateImage: handleGenerateDesignImage,
               },
               templateDialogs,
               workflows: {

@@ -1,4 +1,11 @@
-import { ChevronDown, Copy, Download, Redo2, Undo2 } from 'lucide-react'
+import {
+  ChevronDown,
+  Copy,
+  Download,
+  Redo2,
+  Undo2,
+  WandSparkles,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui'
 import type { DesignSaveStatus } from '../lib/designSession'
@@ -13,6 +20,7 @@ export function DesignToolbar({
   onRedo,
   onSize,
   onExport,
+  onGenerateImage,
 }: {
   title: string
   status: DesignSaveStatus
@@ -24,6 +32,8 @@ export function DesignToolbar({
   onRedo: () => void
   onSize: () => void
   onExport: (format: 'png' | 'jpeg' | 'copy') => void
+  /** Opens the image studio; hidden when the runtime cannot generate. */
+  onGenerateImage?: () => void
 }) {
   const { t } = useTranslation('design')
   return (
@@ -64,6 +74,17 @@ export function DesignToolbar({
         {size}
         <ChevronDown className="size-3" />
       </Button>
+      {onGenerateImage ? (
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={onGenerateImage}
+          aria-label={t('generateImage')}
+        >
+          <WandSparkles className="size-4" />
+          {t('generateImage')}
+        </Button>
+      ) : null}
       <details className="design-export">
         <summary aria-label={t('export')}>
           <Download className="size-4" />

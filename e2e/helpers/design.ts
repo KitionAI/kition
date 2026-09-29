@@ -35,6 +35,49 @@ export async function expectDesignSaved(page: Page) {
   await expect(page.getByTestId('design-save-status')).toHaveText('Saved')
 }
 
+/**
+ * Advertises runtime capabilities through the desktop status bridge and
+ * configures a model so the agent composer is enabled.
+ */
+export async function installDesignAgentFixture(page: Page, capabilities: string[]) {
+  await page.addInitScript((flags: string[]) => {
+    const host = window as unknown as { kitionDesktop?: Record<string, unknown> }
+    host.kitionDesktop = {
+      ...(host.kitionDesktop || {}),
+      BackendStatus: async () => ({
+        base_url: 'http://127.0.0.1:18101/api',
+        health_url: 'http://127.0.0.1:18101/health',
+        running: true,
+        last_error: '',
+        logs: '',
+        log_file: '',
+        launch_mode: 'managed',
+        binary_path: '',
+        config_path: '',
+        working_dir: '',
+        command: '',
+        capabilities: flags,
+      }),
+    }
+    window.localStorage.setItem(
+      'kition.desktop.settings.backup.v1',
+      JSON.stringify({
+        providers: {
+          openai: {
+            enabled: true,
+            label: 'OpenAI',
+            baseUrl: 'https://api.openai.com/v1',
+            apiKey: 'test-key',
+            wireApi: 'responses',
+            discoveredModels: ['gpt-test'],
+          },
+        },
+        models: { activeProvider: 'openai', selectedModelByProvider: { openai: 'gpt-test' } },
+      }),
+    )
+  }, capabilities)
+}
+
 export function designLayers(doc: DesignDocument) {
   return doc.pages[0].children.map((id) => doc.nodes[id])
 }

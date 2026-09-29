@@ -12,13 +12,14 @@ import {
 import { cn } from '@/lib/utils'
 import { resolveWorkspaceFileURL } from '@/services/workspaceFiles'
 
-import type { WhiteboardImageStudioContext } from './WhiteboardImageStudio'
+import type { ImageStudioContext } from '../lib/imageStudioTypes'
 
 const TEMPLATE_VIEWS: readonly ImagePromptTemplateView[] = [
   'recommended', 'all', 'generate', 'edit',
 ]
 
-export function WhiteboardImageTemplateGallery({
+export function ImageTemplateGallery({
+  testIdPrefix,
   category,
   context,
   onCategoryChange,
@@ -29,8 +30,9 @@ export function WhiteboardImageTemplateGallery({
   templateView,
   templates,
 }: {
+  testIdPrefix: string
   category: ImagePromptTemplateCategoryFilter
-  context: WhiteboardImageStudioContext
+  context: ImageStudioContext
   onCategoryChange: (category: ImagePromptTemplateCategoryFilter) => void
   onChoose: (template: ImagePromptTemplateDefinition) => void
   onQueryChange: (query: string) => void
@@ -41,7 +43,7 @@ export function WhiteboardImageTemplateGallery({
 }) {
   const { t } = useTranslation('imageGeneration')
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto p-4" data-testid="whiteboard-image-template-gallery">
+    <div className="min-h-0 flex-1 overflow-y-auto p-4" data-testid={`${testIdPrefix}-template-gallery`}>
       <label className="relative block">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <input
@@ -50,7 +52,7 @@ export function WhiteboardImageTemplateGallery({
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
           placeholder={t('gallery.searchPlaceholder')}
-          data-testid="whiteboard-image-template-search"
+          data-testid={`${testIdPrefix}-template-search`}
         />
       </label>
       <div className="mt-3 grid grid-cols-4 gap-1 rounded-lg border bg-surface-soft p-1" role="group" aria-label={t('templateViews.label')}>
@@ -66,7 +68,7 @@ export function WhiteboardImageTemplateGallery({
             )}
             onClick={() => onViewChange(view)}
             aria-pressed={templateView === view}
-            data-testid={`whiteboard-image-template-view-${view}`}
+            data-testid={`${testIdPrefix}-template-view-${view}`}
           >
             {t(`templateViews.${view}`)}
           </button>
@@ -85,7 +87,7 @@ export function WhiteboardImageTemplateGallery({
             )}
             onClick={() => onCategoryChange(item)}
             aria-pressed={category === item}
-            data-testid={`whiteboard-image-template-category-${item}`}
+            data-testid={`${testIdPrefix}-template-category-${item}`}
           >
             {t(`categories.${item}`)}
           </button>
@@ -100,6 +102,7 @@ export function WhiteboardImageTemplateGallery({
           {templates.map((template) => (
             <TemplateCard
               key={template.id}
+              testIdPrefix={testIdPrefix}
               needsReference={template.operation === 'edit' && context.sourceImagePaths.length === 0}
               onSelect={() => onChoose(template)}
               template={template}
@@ -119,7 +122,9 @@ function TemplateCard({
   needsReference,
   onSelect,
   template,
+  testIdPrefix,
 }: {
+  testIdPrefix: string
   needsReference: boolean
   onSelect: () => void
   template: ImagePromptTemplateDefinition
@@ -130,7 +135,7 @@ function TemplateCard({
       type="button"
       className="group overflow-hidden rounded-xl border bg-background text-left transition hover:border-hairline-strong hover:shadow-[var(--shadow-soft)]"
       onClick={onSelect}
-      data-testid={`whiteboard-image-template-${template.id}`}
+      data-testid={`${testIdPrefix}-template-${template.id}`}
     >
       <span className="relative block h-40 overflow-hidden bg-surface-soft">
         <img
@@ -166,11 +171,11 @@ function TemplateCard({
   )
 }
 
-export function WhiteboardImageSelectedTemplate({
+export function ImageSelectedTemplate({
   context,
   template,
 }: {
-  context: WhiteboardImageStudioContext
+  context: ImageStudioContext
   template: ImagePromptTemplateDefinition
 }) {
   const { t } = useTranslation('imageGeneration')
@@ -218,7 +223,8 @@ export function WhiteboardImageSelectedTemplate({
   )
 }
 
-export function WhiteboardImageVariableField({
+export function ImageVariableField({
+  testIdPrefix,
   multiline,
   onChange,
   required,
@@ -226,6 +232,7 @@ export function WhiteboardImageVariableField({
   value,
   variableKey,
 }: {
+  testIdPrefix: string
   multiline?: boolean
   onChange: (value: string) => void
   required?: boolean
@@ -248,7 +255,7 @@ export function WhiteboardImageVariableField({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
-          data-testid={`whiteboard-image-variable-${variableKey}`}
+          data-testid={`${testIdPrefix}-variable-${variableKey}`}
         />
       ) : (
         <input
@@ -256,7 +263,7 @@ export function WhiteboardImageVariableField({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
-          data-testid={`whiteboard-image-variable-${variableKey}`}
+          data-testid={`${testIdPrefix}-variable-${variableKey}`}
         />
       )}
     </label>

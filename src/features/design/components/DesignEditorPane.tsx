@@ -52,9 +52,16 @@ import './design.css'
 import { useDesignFonts } from '../hooks/useDesignFonts'
 import { useDesignKeyboard } from '../hooks/useDesignKeyboard'
 import { useDesignAgentPatch } from '../hooks/useDesignAgentPatch'
+import { useDesignImageStudio } from '../hooks/useDesignImageStudio'
+import { artboardAspectRatio } from '../lib/designImageGeneration'
+import {
+  ImageStudio,
+  type ImageStudioRequest,
+  type ImageStudioStartResult,
+} from '@/features/media-generation/public'
 import { DesignAgentPreviewControls } from './DesignAgentPreview'
-import { buildDesignAgentContext } from '../lib/designAgentContext'
 import type { DesignAgentBridge } from '../lib/designAgentBridge'
+import { useDesignAgentBridge } from '../hooks/useDesignAgentBridge'
 export type DesignEditorPaneProps = {
   root: string
   path: string
@@ -65,6 +72,8 @@ export type DesignEditorPaneProps = {
   onAgentBridgeChange?: (path: string, bridge: DesignAgentBridge | null) => void
   /** Stops the running agent turn while a preview is streaming. */
   onCancelAgent?: () => void
+  /** Starts an image studio generation; absent when the runtime cannot generate. */
+  onGenerateImage?: (request: ImageStudioRequest) => Promise<ImageStudioStartResult>
 }
 export function DesignEditorPane({
   root,
@@ -74,6 +83,7 @@ export function DesignEditorPane({
   agentAvailable = false,
   onAgentBridgeChange,
   onCancelAgent,
+  onGenerateImage,
 }: DesignEditorPaneProps) {
   const { t } = useTranslation('design'),
     [reload, setReload] = useState(0),
@@ -105,6 +115,7 @@ export function DesignEditorPane({
       agentAvailable={agentAvailable}
       onAgentBridgeChange={onAgentBridgeChange}
       onCancelAgent={onCancelAgent}
+      onGenerateImage={onGenerateImage}
       onReload={() => {
         session.discardRecovery()
         setReload((value) => value + 1)
@@ -125,10 +136,11 @@ function DesignEditor({
   agentAvailable,
   onAgentBridgeChange,
   onCancelAgent,
+  onGenerateImage,
   onReload,
 }: Pick<
   DesignEditorPaneProps,
-  'agentAvailable' | 'onAgentBridgeChange' | 'onCancelAgent'
+  'agentAvailable' | 'onAgentBridgeChange' | 'onCancelAgent' | 'onGenerateImage'
 > & {
   session: DesignSession
   title: string
@@ -186,23 +198,22 @@ function DesignEditor({
     }
   }, [active, store])
   const agent = useDesignAgentPatch(store)
-  const agentReceive = agent.receivePatch,
-    agentReject = agent.reject
-  useEffect(() => {
-    if (!agentAvailable || !onAgentBridgeChange) return
-    const bridge: DesignAgentBridge = {
-      buildContext: () =>
-        buildDesignAgentContext({
-          document: store.getSnapshot().document,
-          path: session.path,
-          selection: store.getSnapshot().selection,
-        }) ?? undefined,
-      receivePatch: agentReceive,
-      cancelPreview: agentReject,
-    }
-    onAgentBridgeChange(session.path, bridge)
-    return () => onAgentBridgeChange(session.path, null)
-  }, [agentAvailable, onAgentBridgeChange, session.path, store, agentReceive, agentReject])
+  const studio = useDesignImageStudio({
+    session,
+    store,
+    onGenerateImage,
+    onError: (error) =>
+      notify.error(t('errors.image'), { description: String(error) }),
+  })
+  useDesignAgentBridge({
+    agentAvailable: Boolean(agentAvailable),
+    onAgentBridgeChange,
+    session,
+    store,
+    receivePatch: agent.receivePatch,
+    cancelPreview: agent.reject,
+    receiver: studio.receiver,
+  })
   async function importImage(blob: Blob) {
     setBusy(true)
     try {
@@ -429,6 +440,7 @@ function DesignEditor({
         busy={busy}
         onUndo={store.undo}
         onRedo={store.redo}
+        onGenerateImage={onGenerateImage ? studio.openStudio : undefined}
         onSize={() => {
           store.select([])
           setPanel('properties')
@@ -468,6 +480,23 @@ function DesignEditor({
           {t('errors.missing', { count: missing.length })}
         </div>
       ) : null}
+      <ImageStudio
+        available={Boolean(onGenerateImage)}
+        context={studio.context}
+        defaultAspectRatio={artboardAspectRatio(
+          doc.pages[0].width,
+          doc.pages[0].height,
+        )}
+        generation={studio.generation}
+        onAddAll={(paths, options) => void studio.addAll(paths, options)}
+        onAddResult={(path, options) => void studio.addResult(path, options)}
+        onClose={studio.close}
+        onGenerate={studio.start}
+        onReplaceResult={() => {}}
+        open={studio.open}
+        targetPath={session.path}
+        testIdPrefix="design-image"
+      />
       <DesignAgentPreviewControls
         state={agent.state}
         onAccept={agent.accept}

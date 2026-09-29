@@ -22,7 +22,7 @@ export const AGENT_IMAGE_GENERATION_STATUSES = [
 ] as const
 
 export type AgentImageGenerationOperation = 'generate' | 'edit'
-export type AgentImageGenerationSurface = 'document' | 'table' | 'whiteboard' | 'chat'
+export type AgentImageGenerationSurface = 'document' | 'table' | 'whiteboard' | 'design' | 'chat'
 export type AgentImageGenerationAspectRatio =
   | '1:1'
   | '16:9'
@@ -63,11 +63,20 @@ export type AgentImageWhiteboardTarget = {
   target_revision?: string
 }
 
+type AgentImageDesignTarget = {
+  type: 'image.target.design'
+  design_path: string
+  artboard?: { width: number; height: number }
+  replace_layer_id?: string
+  target_revision?: string
+}
+
 export type AgentImageTarget =
   | { type: 'image.target.chat' }
   | AgentImageDocumentTarget
   | AgentImageTableTarget
   | AgentImageWhiteboardTarget
+  | AgentImageDesignTarget
 
 export type AgentImageGenerationIntent = {
   type: 'image_generation.intent'

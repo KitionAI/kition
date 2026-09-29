@@ -173,7 +173,7 @@ module.exports = {
         'src/features/table/templates/thumbnailGeneratorTemplate.ts',
         'src/features/whiteboard/components/WhiteboardCanvas.tsx',
         'src/features/whiteboard/components/WhiteboardEditorPane.tsx',
-        'src/features/whiteboard/components/WhiteboardImageStudio.tsx',
+        'src/features/media-generation/components/ImageStudio.tsx',
         'src/features/whiteboard/components/WhiteboardSelectionOverlay.tsx',
         'src/features/whiteboard/components/WhiteboardSelectionToolbar.tsx',
         'src/features/whiteboard/components/WhiteboardTopActions.tsx',

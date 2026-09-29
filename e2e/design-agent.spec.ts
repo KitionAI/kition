@@ -3,52 +3,9 @@ import {
   createDesign,
   designLayers,
   expectDesignSaved,
+  installDesignAgentFixture,
   readDesign,
 } from './helpers/design'
-
-/** Advertises the design agent capability through the desktop status bridge. */
-async function installDesignAgentCapability(page: Page) {
-  await page.addInitScript(() => {
-    const desktop = (window as unknown as { kitionDesktop?: Record<string, unknown> }).kitionDesktop || {}
-    ;(window as unknown as { kitionDesktop: Record<string, unknown> }).kitionDesktop = {
-      ...desktop,
-      BackendStatus: async () => ({
-        base_url: 'http://127.0.0.1:18101/api',
-        health_url: 'http://127.0.0.1:18101/health',
-        running: true,
-        last_error: '',
-        logs: '',
-        log_file: '',
-        launch_mode: 'managed',
-        binary_path: '',
-        config_path: '',
-        working_dir: '',
-        command: '',
-        capabilities: ['agent_design_v1'],
-      }),
-    }
-    // A configured model enables the composer, as in the whiteboard fixture.
-    window.localStorage.setItem(
-      'kition.desktop.settings.backup.v1',
-      JSON.stringify({
-        providers: {
-          openai: {
-            enabled: true,
-            label: 'OpenAI',
-            baseUrl: 'https://api.openai.com/v1',
-            apiKey: 'test-key',
-            wireApi: 'responses',
-            discoveredModels: ['gpt-test'],
-          },
-        },
-        models: {
-          activeProvider: 'openai',
-          selectedModelByProvider: { openai: 'gpt-test' },
-        },
-      }),
-    )
-  })
-}
 
 function headlinePatch(layerId: string, text: string) {
   return {
@@ -116,7 +73,7 @@ test('previews an agent design patch, applies it on accept, and reverts on rejec
   page,
 }) => {
   const requests: Array<Record<string, any>> = []
-  await installDesignAgentCapability(page)
+  await installDesignAgentFixture(page, ['agent_design_v1'])
   await createDesign(page)
   await page.getByRole('button', { name: 'Text', exact: true }).click()
   await page

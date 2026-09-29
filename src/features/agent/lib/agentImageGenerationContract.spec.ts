@@ -41,6 +41,7 @@ describe('Agent image-generation public boundary', () => {
       'document',
       'table',
       'whiteboard',
+      'design',
       'chat',
     ])
     expect(schema.$defs.event.properties.event.enum).toEqual([

@@ -27,6 +27,8 @@ export type AgentTurnContext = {
   whiteboardContext?: AgentWhiteboardContext
   /** Bounded artboard and layer context for Design turns. */
   designContext?: AgentDesignContext
+  /** Workspace path of the active design, for image placement targets. */
+  activeDesignPath?: string
   markdownImageInsertionContext?: MarkdownImageInsertionContext
 }
 
@@ -126,6 +128,7 @@ export function buildAgentTurnContext(input: {
   whiteboardContext?: AgentWhiteboardContext
   /** Artboard and layer context for Design turns. */
   designContext?: AgentDesignContext
+  activeDesignPath?: string
   markdownImageInsertionContext?: MarkdownImageInsertionContext | null
 }): AgentTurnContext {
   const activeDocumentPath = String(input.activeDocumentPath || '').trim()
@@ -142,6 +145,7 @@ export function buildAgentTurnContext(input: {
     activeWorkflowId: input.activeWorkflowId,
     whiteboardContext: input.whiteboardContext,
     designContext: input.designContext,
+    activeDesignPath: input.activeDesignPath,
     markdownImageInsertionContext,
     taskMode: 'auto',
     browserEnabled: input.browserEnabled === true,

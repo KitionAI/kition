@@ -89,6 +89,7 @@
   "undo": "Annuler",
   "redo": "Rétablir",
   "export": "Exporter",
+  "generateImage": "Générer une image",
   "copied": "Design copié en image",
   "copiedLayers": "Calques de design Kition",
   "retry": "Réessayer",
