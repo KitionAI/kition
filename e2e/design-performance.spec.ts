@@ -4,6 +4,9 @@ import { expect, test } from '@playwright/test'
 import { mockLocalWorkspaceApi } from './helpers/mockApi'
 import { dismissFirstRunActivation } from './helpers/onboarding'
 
+// Recording every DOM mutation and frame distorts interaction latency measurements.
+test.use({ trace: 'off', video: 'off' })
+
 test('keeps a 520-layer artboard interactive while rendering 20 image layers', async ({
   page,
 }, testInfo) => {

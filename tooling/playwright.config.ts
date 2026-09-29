@@ -34,6 +34,8 @@ const quarantine = JSON.parse(
 const CI_SWEEP_IGNORE = [
   ...LIVE_SERVICE_SPECS,
   ...DESKTOP_SPECS,
+  // Run this benchmark alone after the functional sweep to avoid CPU contention.
+  '**/design-performance.spec.ts',
   ...quarantine.quarantined.map((entry) => `**/${entry.spec}`),
 ]
 

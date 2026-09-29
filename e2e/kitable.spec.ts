@@ -2,6 +2,9 @@ import { expect, test, type Page } from '@playwright/test'
 
 import { fulfillJson, mockLocalWorkspaceApi } from './helpers/mockApi'
 
+// Date editor fixtures expect local time eight hours ahead of UTC.
+test.use({ timezoneId: 'Asia/Shanghai' })
+
 const VAULT_PATH = '/tmp/kition-kitable-e2e-vault'
 const DOC_PATH = 'table-test.kitable'
 const DOC_MARKER = JSON.stringify({ data_document_id: 1 })

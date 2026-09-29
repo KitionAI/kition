@@ -76,7 +76,7 @@
     "test:coverage": "vitest run --config tooling/vitest.config.ts --coverage",
     "test:unit:watch": "vitest --config tooling/vitest.config.ts",
     "test:e2e": "playwright test --config tooling/playwright.config.ts e2e/app-shell.spec.ts e2e/table-widget.spec.ts --workers=1",
-    "test:e2e:ci": "KITION_E2E_SCOPE=ci playwright test --config tooling/playwright.config.ts --workers=2",
+    "test:e2e:ci": "KITION_E2E_SCOPE=ci playwright test --config tooling/playwright.config.ts --workers=2 && playwright test --config tooling/playwright.config.ts e2e/design-performance.spec.ts --workers=1",
     "test:e2e:headed": "playwright test --config tooling/playwright.config.ts --headed",
     "test:design:unit": "vitest run --config tooling/vitest.config.ts src/features/design src/features/workspace/lib/workspaceDesign.spec.ts electron/workspace-guarded-write.spec.ts electron/workspace-image-read.spec.ts electron/workspace-document-formats.spec.ts",
     "test:design:e2e": "playwright test --config tooling/playwright.config.ts e2e/design-editor.spec.ts e2e/desktop-design.spec.ts e2e/design-performance.spec.ts --workers=1",

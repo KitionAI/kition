@@ -420,26 +420,26 @@ test.describe('app shell navigation', () => {
     expect(lifecycleHookCalls).toBe(0)
   })
 
-  test('preserves legacy settings deep links inside the new navigation hierarchy', async ({ page }) => {
-    for (const [section, expected] of [
-      ['providers', 'AI Providers'],
-      ['demos', 'General'],
-      ['advanced', 'Developer'],
-      ['runtime', 'Data'],
-      ['account', 'Account'],
-      ['shortcuts', 'General'],
-      ['mcp', 'General'],
-      ['hooks', 'General'],
-      ['notifications', 'General'],
-    ] as const) {
+  for (const [section, expected] of [
+    ['providers', 'AI Providers'],
+    ['demos', 'General'],
+    ['advanced', 'Developer'],
+    ['runtime', 'Data'],
+    ['account', 'Account'],
+    ['shortcuts', 'General'],
+    ['mcp', 'General'],
+    ['hooks', 'General'],
+    ['notifications', 'General'],
+  ] as const) {
+    test(`preserves the ${section} settings deep link inside the new navigation hierarchy`, async ({ page }) => {
       await page.goto(`/settings?section=${section}`)
       await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible()
       await expect(page.locator('.settings-nav-button.is-active')).toHaveText(expected)
       if (section === 'runtime' || section === 'advanced') {
         await expect(page.getByRole('button', { name: 'Advanced', exact: true })).toHaveAttribute('aria-expanded', 'true')
       }
-    }
-  })
+    })
+  }
 
   test('keeps Account and Advanced settings usable at a narrow viewport', async ({ page }) => {
     await page.goto('/documents')

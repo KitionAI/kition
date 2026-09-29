@@ -67,7 +67,7 @@ jobs:
         run: pnpm run check:e2e-coverage
 
       - name: Run every mock-backed renderer end-to-end spec
-        run: pnpm run test:e2e:ci
+        run: xvfb-run -a pnpm run test:e2e:ci
 
       - name: Run mock-backed Electron end-to-end tests
         run: xvfb-run -a pnpm run test:desktop:e2e
