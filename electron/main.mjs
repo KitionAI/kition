@@ -756,7 +756,13 @@ async function handleSavePdfFile(_event, request) {
         return true;
       })();
     `, true)
-    const pageSize = String(request?.page_format || 'a4').toUpperCase()
+    // A custom size (design artboards) is given in CSS pixels; Electron wants microns.
+    const customWidth = Number(request?.page_width_px)
+    const customHeight = Number(request?.page_height_px)
+    const pxToMicrons = (px) => Math.round((px / 96) * 25400)
+    const pageSize = customWidth > 0 && customHeight > 0
+      ? { width: pxToMicrons(customWidth), height: pxToMicrons(customHeight) }
+      : String(request?.page_format || 'a4').toUpperCase()
     const marginsType = request?.margins_type === 1 || request?.margins_type === 2 ? request.margins_type : 0
     const printOpts = {
       pageSize,

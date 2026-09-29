@@ -215,6 +215,7 @@ export async function savePdfFile(options: {
   landscape?: boolean
   marginsType?: 0 | 1 | 2
   scaleFactor?: number
+  pageSizePx?: { width: number; height: number }
 }) {
   const bridge = getDesktopBridge()
   if (!bridge?.SavePdfFile) {
@@ -238,6 +239,10 @@ export async function savePdfFile(options: {
   }
   if (typeof options.scaleFactor === 'number' && Number.isFinite(options.scaleFactor)) {
     request.scale_factor = options.scaleFactor
+  }
+  if (options.pageSizePx && options.pageSizePx.width > 0 && options.pageSizePx.height > 0) {
+    request.page_width_px = options.pageSizePx.width
+    request.page_height_px = options.pageSizePx.height
   }
 
   return bridge.SavePdfFile(request)

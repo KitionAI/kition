@@ -54,6 +54,8 @@ import { useDesignFonts } from '../hooks/useDesignFonts'
 import { useDesignKeyboard } from '../hooks/useDesignKeyboard'
 import { useDesignAgentPatch } from '../hooks/useDesignAgentPatch'
 import { useDesignFileActions } from '../hooks/useDesignFileActions'
+import { useDesignExportPresets } from '../hooks/useDesignExportPresets'
+import { isDesktopRuntime } from '@/services/desktop'
 import { useDesignImageStudio } from '../hooks/useDesignImageStudio'
 import { artboardAspectRatio } from '../lib/designImageGeneration'
 import {
@@ -202,6 +204,7 @@ function DesignEditor({
       store.cancel()
     }
   }, [active, store])
+  const exportPresets = useDesignExportPresets()
   const { importImage, exportImage } = useDesignFileActions({
     session,
     store,
@@ -210,6 +213,7 @@ function DesignEditor({
     focusCanvas,
     isActive,
     setBusy,
+    presets: exportPresets.presets,
   })
   const agent = useDesignAgentPatch(store)
   const studio = useDesignImageStudio({
@@ -423,6 +427,9 @@ function DesignEditor({
           setPanel('properties')
         }}
         onExport={(format) => void exportImage(format)}
+        presets={exportPresets.presets}
+        onPresetsChange={exportPresets.update}
+        pdfAvailable={isDesktopRuntime()}
       />
       {['conflict', 'error', 'recovered'].includes(status) ? (
         <div className="design-alert" role="alert">

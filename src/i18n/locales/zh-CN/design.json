@@ -138,8 +138,17 @@
   "exportFormats": {
     "png": "下载 PNG",
     "jpeg": "下载 JPEG",
+    "svg": "下载 SVG",
+    "pdf": "下载 PDF",
     "copy": "复制图片",
     "all": "下载所有尺寸 (PNG)"
+  },
+  "exportScale": "缩放",
+  "exportBackground": "背景",
+  "exportBackgrounds": {
+    "keep": "按设计",
+    "transparent": "透明",
+    "white": "白色"
   },
   "errors": {
     "create": "无法创建设计",
@@ -152,7 +161,8 @@
     "conflict": "文件在编辑器外被修改。请另存副本保留编辑，或重新载入文件。",
     "missing": "有 {{count}} 个图片资源不可用，请恢复后再导出。",
     "jpegBackground": "请为 JPEG 选择不透明的画板背景",
-    "exportLimit": "导出图片需小于 3200 万像素，且每边不超过 16384 像素"
+    "exportLimit": "导出图片需小于 3200 万像素，且每边不超过 16384 像素",
+    "pdfDesktopOnly": "导出 PDF 需要桌面应用"
   },
   "starters": {
     "editorial": {

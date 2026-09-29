@@ -138,8 +138,17 @@
   "exportFormats": {
     "png": "Télécharger PNG",
     "jpeg": "Télécharger JPEG",
+    "svg": "Télécharger le SVG",
+    "pdf": "Télécharger le PDF",
     "copy": "Copier l’image",
     "all": "Télécharger toutes les tailles (PNG)"
+  },
+  "exportScale": "Échelle",
+  "exportBackground": "Arrière-plan",
+  "exportBackgrounds": {
+    "keep": "Comme conçu",
+    "transparent": "Transparent",
+    "white": "Blanc"
   },
   "errors": {
     "create": "Impossible de créer le design",
@@ -152,7 +161,8 @@
     "conflict": "Ce fichier a été modifié ailleurs. Enregistrez une copie ou rechargez-le.",
     "missing": "{{count}} images sont indisponibles. Restaurez-les avant l’export.",
     "jpegBackground": "Choisissez un fond opaque pour exporter en JPEG",
-    "exportLimit": "L’export doit rester sous 32 mégapixels et 16384 pixels par côté"
+    "exportLimit": "L’export doit rester sous 32 mégapixels et 16384 pixels par côté",
+    "pdfDesktopOnly": "L'export PDF nécessite l'application de bureau"
   },
   "starters": {
     "editorial": {

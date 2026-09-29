@@ -3,6 +3,7 @@ import {
   copyImageToClipboard,
   isDesktopRuntime,
   saveBinaryFile,
+  savePdfFile,
 } from '@/services/desktop'
 import { DesignArtwork } from '../components/DesignArtwork'
 import type { DesignDocument } from './designTypes'
@@ -13,57 +14,68 @@ import {
   designAssetDataURL,
 } from './designAssets'
 export class DesignExportError extends Error {
-  constructor(readonly code: 'jpegBackground' | 'exportLimit') {
+  constructor(readonly code: 'jpegBackground' | 'exportLimit' | 'pdfDesktopOnly') {
     super(code)
     this.name = 'DesignExportError'
   }
 }
-export async function renderDesignImage(
-  doc: DesignDocument,
-  root: string,
-  format: 'png' | 'jpeg' = 'png',
-  scale = 1,
-): Promise<Blob> {
-  const page = doc.pages[0],
-    width = Math.round(page.width * scale),
+export type DesignExportOptions = {
+  scale?: number
+  /** Overrides the artboard background; 'transparent' or a color. */
+  background?: string
+}
+
+/** Rejects sizes the rasterizer cannot handle and JPEGs without an opaque background. */
+function checkExportLimits(page: DesignDocument['pages'][0], scale: number, format: 'png' | 'jpeg' | 'svg' | 'pdf') {
+  const width = Math.round(page.width * scale),
     height = Math.round(page.height * scale)
-  if (
-    width < 1 ||
-    height < 1 ||
-    width > 16384 ||
-    height > 16384 ||
-    width * height > 32_000_000
-  )
+  if (width < 1 || height < 1 || width > 16384 || height > 16384 || width * height > 32_000_000)
     throw new DesignExportError('exportLimit')
   if (
     format === 'jpeg' &&
     (page.background === 'transparent' ||
-      (page.background.length === 9 &&
-        page.background.slice(-2).toLowerCase() !== 'ff'))
+      (page.background.length === 9 && page.background.slice(-2).toLowerCase() !== 'ff'))
   )
     throw new DesignExportError('jpegBackground')
-  await loadDesignFonts()
-  await document.fonts.ready
+  return { width, height }
+}
+
+/**
+ * The artboard as standalone SVG markup: visible images inlined as data
+ * URLs and the used bundled fonts embedded, so the file renders the same
+ * outside the app. Exports of every format start here.
+ */
+export async function buildDesignSVG(
+  source: DesignDocument,
+  root: string,
+  options: DesignExportOptions & { format?: 'png' | 'jpeg' | 'svg' | 'pdf' } = {},
+): Promise<{ svg: string; width: number; height: number }> {
+  const scale = options.scale ?? 1
+  const doc = options.background
+    ? { ...source, pages: [{ ...source.pages[0], background: options.background }] as DesignDocument['pages'] }
+    : source
+  const page = doc.pages[0]
+  const { width, height } = checkExportLimits(page, scale, options.format ?? 'png')
   const used = new Set<string>()
   const fonts = new Set<string>()
-  const collectVisibleImages = (ids: string[]) => {
+  const collectVisible = (ids: string[]) => {
     for (const id of ids) {
       const node = doc.nodes[id]
-      if (!node.visible) continue
-      if (node.type === 'image') used.add(node.assetId!)
+      if (!node?.visible) continue
+      if (node.type === 'image' && node.assetId) used.add(node.assetId)
       if (node.type === 'text') fonts.add(node.fontFamily)
-      collectVisibleImages(node.children)
+      collectVisible(node.children)
     }
   }
-  collectVisibleImages(page.children)
-  // A standalone SVG cannot reach the app's fonts, so embed the used faces.
-  const fontCSS = await designFontFaceCSS(fonts)
+  collectVisible(page.children)
   const images: Record<string, string> = {}
   await Promise.all(
     Array.from(used, async (id) => {
       images[id] = await designAssetDataURL(root, doc.assets[id].path)
     }),
   )
+  // A standalone SVG cannot reach the app's fonts, so embed the used faces.
+  const fontCSS = await designFontFaceCSS(fonts)
   const svg = renderToStaticMarkup(
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -75,6 +87,19 @@ export async function renderDesignImage(
       <DesignArtwork document={doc} images={images} prefix="export" />
     </svg>,
   )
+  return { svg, width, height }
+}
+
+export async function renderDesignImage(
+  doc: DesignDocument,
+  root: string,
+  format: 'png' | 'jpeg' = 'png',
+  scale = 1,
+  background?: string,
+): Promise<Blob> {
+  await loadDesignFonts()
+  await document.fonts.ready
+  const { svg, width, height } = await buildDesignSVG(doc, root, { scale, background, format })
   const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }))
   try {
     const image = await decodeDesignImage(url),
@@ -86,8 +111,7 @@ export async function renderDesignImage(
     ctx.drawImage(image, 0, 0)
     return await new Promise<Blob>((resolve, reject) =>
       canvas.toBlob(
-        (blob) =>
-          blob ? resolve(blob) : reject(new Error('Image export failed')),
+        (blob) => (blob ? resolve(blob) : reject(new Error('Image export failed'))),
         `image/${format}`,
         0.94,
       ),
@@ -95,6 +119,37 @@ export async function renderDesignImage(
   } finally {
     URL.revokeObjectURL(url)
   }
+}
+
+/** The artboard as an SVG file. */
+export async function renderDesignSVG(doc: DesignDocument, root: string, options: DesignExportOptions = {}): Promise<Blob> {
+  const { svg } = await buildDesignSVG(doc, root, { ...options, format: 'svg' })
+  return new Blob([svg], { type: 'image/svg+xml' })
+}
+
+/** The HTML the desktop prints to a PDF page of exactly the artboard's size. */
+export function designPdfHtml(svg: string, width: number, height: number) {
+  const data = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`
+  return `<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;padding:0;background:transparent}img{display:block;width:${width}px;height:${height}px}</style></head><body><img src="${data}" alt=""></body></html>`
+}
+
+/** Prints the artboard to a PDF through the desktop; browsers cannot. */
+export async function exportDesignPDF(
+  doc: DesignDocument,
+  root: string,
+  options: DesignExportOptions & { filename: string; dialogTitle: string },
+) {
+  if (!isDesktopRuntime()) throw new DesignExportError('pdfDesktopOnly')
+  await loadDesignFonts()
+  await document.fonts.ready
+  const { svg, width, height } = await buildDesignSVG(doc, root, { ...options, format: 'pdf' })
+  return savePdfFile({
+    dialogTitle: options.dialogTitle,
+    defaultFilename: options.filename,
+    html: designPdfHtml(svg, width, height),
+    pageSizePx: { width, height },
+    marginsType: 1,
+  })
 }
 export async function saveDesignImage(
   blob: Blob,

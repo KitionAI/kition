@@ -138,8 +138,17 @@
   "exportFormats": {
     "png": "Download PNG",
     "jpeg": "Download JPEG",
+    "svg": "Download SVG",
+    "pdf": "Download PDF",
     "copy": "Copy image",
     "all": "Download all sizes (PNG)"
+  },
+  "exportScale": "Scale",
+  "exportBackground": "Background",
+  "exportBackgrounds": {
+    "keep": "As designed",
+    "transparent": "Transparent",
+    "white": "White"
   },
   "errors": {
     "create": "Could not create the design",
@@ -152,7 +161,8 @@
     "conflict": "This file changed outside the editor. Save a copy to keep your edits, or reload the saved file.",
     "missing": "{{count}} image assets are unavailable. Restore them before exporting.",
     "jpegBackground": "Choose an opaque artboard background for JPEG",
-    "exportLimit": "Export must be under 32 megapixels and 16384 pixels per side"
+    "exportLimit": "Export must be under 32 megapixels and 16384 pixels per side",
+    "pdfDesktopOnly": "PDF export needs the desktop app"
   },
   "starters": {
     "editorial": {

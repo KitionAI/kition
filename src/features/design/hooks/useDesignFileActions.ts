@@ -5,13 +5,18 @@ import { importDesignImage } from '../lib/designAssets'
 import {
   copyDesignImage,
   DesignExportError,
+  exportDesignPDF,
   renderDesignImage,
+  renderDesignSVG,
   saveDesignImage,
 } from '../lib/designExport'
+import { exportBackground, type DesignExportPresets } from '../lib/designExportPresets'
 import type { DesignSession } from '../lib/designSession'
 import type { DesignStore } from '../lib/designStore'
 import type { DesignAsset } from '../lib/designTypes'
 import { designVariantList, resolveDesignVariant } from '../lib/designVariants'
+
+export type DesignExportFormat = 'png' | 'jpeg' | 'svg' | 'pdf' | 'copy' | 'all'
 
 /** Importing an image file into the design and exporting the artboard. */
 export function useDesignFileActions({
@@ -22,6 +27,7 @@ export function useDesignFileActions({
   focusCanvas,
   isActive,
   setBusy,
+  presets,
 }: {
   session: DesignSession
   store: DesignStore
@@ -30,6 +36,7 @@ export function useDesignFileActions({
   focusCanvas: () => void
   isActive: MutableRefObject<boolean>
   setBusy: Dispatch<SetStateAction<boolean>>
+  presets: DesignExportPresets
 }) {
   const { t } = useTranslation('design')
   async function importImage(blob: Blob) {
@@ -52,7 +59,13 @@ export function useDesignFileActions({
     try {
       const base = structuredClone(store.getSnapshot().document)
       for (const entry of designVariantList(base)) {
-        const blob = await renderDesignImage(resolveDesignVariant(base, entry.id), session.root, 'png')
+        const blob = await renderDesignImage(
+          resolveDesignVariant(base, entry.id),
+          session.root,
+          'png',
+          presets.scale,
+          exportBackground(presets),
+        )
         await saveDesignImage(blob, `${title}${entry.name ? ` - ${entry.name}` : ''}.png`, t('export'))
       }
     } catch (error) {
@@ -63,31 +76,32 @@ export function useDesignFileActions({
       setBusy(false)
     }
   }
-  async function exportImage(format: 'png' | 'jpeg' | 'copy' | 'all') {
+  async function exportImage(format: DesignExportFormat) {
     if (format === 'all') return exportAllVariants()
     setBusy(true)
     try {
-      const frozen = structuredClone(store.getSnapshot().view),
-        blob = await renderDesignImage(
+      const frozen = structuredClone(store.getSnapshot().view)
+      const options = { scale: presets.scale, background: exportBackground(presets) }
+      if (format === 'pdf') {
+        await exportDesignPDF(frozen, session.root, { ...options, filename: `${title}.pdf`, dialogTitle: t('export') })
+      } else if (format === 'svg') {
+        await saveDesignImage(await renderDesignSVG(frozen, session.root, options), `${title}.svg`, t('export'))
+      } else {
+        const blob = await renderDesignImage(
           frozen,
           session.root,
           format === 'jpeg' ? 'jpeg' : 'png',
+          options.scale,
+          options.background,
         )
-      if (format === 'copy') {
-        await copyDesignImage(blob)
-        notify.success(t('copied'))
-      } else
-        await saveDesignImage(
-          blob,
-          `${title}.${format === 'jpeg' ? 'jpg' : 'png'}`,
-          t('export'),
-        )
+        if (format === 'copy') {
+          await copyDesignImage(blob)
+          notify.success(t('copied'))
+        } else await saveDesignImage(blob, `${title}.${format === 'jpeg' ? 'jpg' : 'png'}`, t('export'))
+      }
     } catch (error) {
       notify.error(t('errors.export'), {
-        description:
-          error instanceof DesignExportError
-            ? t(`errors.${error.code}`)
-            : String(error),
+        description: error instanceof DesignExportError ? t(`errors.${error.code}`) : String(error),
       })
     } finally {
       setBusy(false)

@@ -505,6 +505,9 @@ export type SavePdfFileRequest = {
   landscape?: boolean
   margins_type?: 0 | 1 | 2
   scale_factor?: number
+  /** Custom page size in CSS pixels; wins over page_format. */
+  page_width_px?: number
+  page_height_px?: number
 }
 
 export type CopyDocumentHtmlRequest = {
