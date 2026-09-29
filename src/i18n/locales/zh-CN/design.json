@@ -77,6 +77,7 @@
   "emptyLayers": "添加文字、图片或形状以开始。",
   "layouts": "版式",
   "layoutsHint": "可编辑的起始版式，每个细节都能修改。",
+  "layoutsError": "无法加载版式",
   "selected": "已选中 {{count}} 个图层",
   "zoomOut": "缩小",
   "zoomIn": "放大",

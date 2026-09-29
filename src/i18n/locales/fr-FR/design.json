@@ -77,6 +77,7 @@
   "emptyLayers": "Ajoutez du texte, une image ou une forme.",
   "layouts": "Mises en page",
   "layoutsHint": "Modèles modifiables. Personnalisez chaque détail.",
+  "layoutsError": "Impossible de charger les mises en page",
   "selected": "{{count}} calques sélectionnés",
   "zoomOut": "Dézoomer",
   "zoomIn": "Zoomer",

@@ -41,7 +41,8 @@ def main() -> int:
     for path in tracked_files():
         try:
             lines = path.read_text(encoding="utf-8").split("\n")
-        except UnicodeDecodeError:
+        except (UnicodeDecodeError, FileNotFoundError):
+            # Binary files and tracked files deleted in the working tree.
             continue
         for number, line in enumerate(lines, start=1):
             if BLANK_COMMENT_LINE.match(line):

@@ -11,6 +11,7 @@
  *   ['workspace', root, 'document', path]     one document or data document by path
  *   ['workspace', root, 'records', ...]       record windows for one table
  *   ['runtime', 'workflows' | 'connections' | ...] workspace-independent runtime lists
+ *   ['bundled', ...]                          assets packaged with the client
  */
 export const queryKeys = {
   workspace: (root: string) => ['workspace', root] as const,
@@ -19,6 +20,9 @@ export const queryKeys = {
   documentByPath: (root: string, path: string) => ['workspace', root, 'document', path] as const,
   records: (root: string, documentId: number, tableId: number, viewId?: number | null) =>
     ['workspace', root, 'records', documentId, tableId, viewId ?? null] as const,
+
+  /** Bundled assets shipped with the client; independent of workspace and runtime. */
+  designTemplates: () => ['bundled', 'design-templates'] as const,
 
   runtime: ['runtime'] as const,
   workflows: () => ['runtime', 'workflows'] as const,

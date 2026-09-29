@@ -77,6 +77,7 @@
   "emptyLayers": "Add text, an image, or a shape to start.",
   "layouts": "Layouts",
   "layoutsHint": "Editable starters. Make every detail your own.",
+  "layoutsError": "Could not load the layouts",
   "selected": "{{count}} layers selected",
   "zoomOut": "Zoom out",
   "zoomIn": "Zoom in",

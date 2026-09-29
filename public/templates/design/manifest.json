@@ -1,0 +1,76 @@
+{
+  "id": "design-starters",
+  "snapshotVersion": 1,
+  "title": "Design starters",
+  "description": "Original editable poster layouts with headline, body, and label slots.",
+  "includeData": false,
+  "defaultResourceId": "editorial",
+  "resources": [
+    {
+      "id": "editorial",
+      "kind": "design",
+      "title": "Editorial",
+      "slots": [
+        "label",
+        "headline",
+        "body"
+      ],
+      "brandBindings": [
+        "primary",
+        "text",
+        "font",
+        "accent",
+        "surface"
+      ]
+    },
+    {
+      "id": "event",
+      "kind": "design",
+      "title": "Event",
+      "slots": [
+        "label",
+        "headline",
+        "body"
+      ],
+      "brandBindings": [
+        "primary",
+        "text",
+        "font",
+        "surface"
+      ]
+    },
+    {
+      "id": "sale",
+      "kind": "design",
+      "title": "Promotion",
+      "slots": [
+        "label",
+        "headline",
+        "body"
+      ],
+      "brandBindings": [
+        "text",
+        "font",
+        "primary",
+        "surface",
+        "accent"
+      ]
+    },
+    {
+      "id": "quote",
+      "kind": "design",
+      "title": "Quote",
+      "slots": [
+        "headline",
+        "body",
+        "label"
+      ],
+      "brandBindings": [
+        "accent",
+        "font",
+        "text",
+        "surface"
+      ]
+    }
+  ]
+}

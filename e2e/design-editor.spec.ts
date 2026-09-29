@@ -1,34 +1,13 @@
 import fs from 'node:fs/promises'
 import { expect, test, type Page } from '@playwright/test'
-import { mockLocalWorkspaceApi } from './helpers/mockApi'
-import { dismissFirstRunActivation } from './helpers/onboarding'
-import type { DesignDocument } from '../src/features/design/lib/designTypes'
+import {
+  createDesign as create,
+  DESIGN_STORAGE_KEY as key,
+  expectDesignSaved as saved,
+  fillDesignNumber as number,
+  readDesign as read,
+} from './helpers/design'
 import designChinese from '../src/i18n/locales/zh-CN/design.json' with { type: 'json' }
-const key = 'kition.workspace.documents.v1'
-async function create(page: Page) {
-  await mockLocalWorkspaceApi(page)
-  await page.goto('/documents')
-  await dismissFirstRunActivation(page)
-  await page
-    .locator('.document-private-heading .document-create-menu-anchor > button')
-    .click()
-  await page.getByTestId('workspace-create-design').click()
-  await expect(page.getByTestId('design-editor')).toBeVisible()
-}
-async function read(page: Page): Promise<DesignDocument> {
-  return page.evaluate((storageKey) => {
-    const records = JSON.parse(localStorage.getItem(storageKey) || '{}')
-    return JSON.parse(records['Untitled design.kidesign'].content)
-  }, key)
-}
-async function number(page: Page, label: string, value: number) {
-  const field = page.getByRole('spinbutton', { name: label, exact: true })
-  await field.fill(String(value))
-  await field.press('Enter')
-}
-async function saved(page: Page) {
-  await expect(page.getByTestId('design-save-status')).toHaveText('Saved')
-}
 async function fixtureImage(page: Page) {
   const data = await page.evaluate(() => {
     const canvas = document.createElement('canvas')

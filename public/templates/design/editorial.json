@@ -1,0 +1,105 @@
+{
+  "id": "editorial",
+  "version": 1,
+  "name": "Editorial",
+  "width": 1080,
+  "height": 1440,
+  "background": "#f8f5e8",
+  "brand": {
+    "background": "surface"
+  },
+  "layers": [
+    {
+      "id": "bar",
+      "type": "rectangle",
+      "name": "Accent bar",
+      "x": 80,
+      "y": 80,
+      "width": 12,
+      "height": 1280,
+      "fill": "#5645d4",
+      "brand": {
+        "fill": "primary"
+      },
+      "constraints": {
+        "horizontal": "left",
+        "vertical": "scale"
+      }
+    },
+    {
+      "id": "label",
+      "type": "text",
+      "slot": "label",
+      "text": "FIELD NOTES / 01",
+      "x": 140,
+      "y": 90,
+      "width": 880,
+      "height": 96,
+      "fontFamily": "Arial",
+      "fontSize": 24,
+      "lineHeight": 1.04,
+      "fill": "#1a1a1a",
+      "brand": {
+        "fill": "text",
+        "font": true
+      }
+    },
+    {
+      "id": "headline",
+      "type": "text",
+      "slot": "headline",
+      "text": "Ideas for a slower world",
+      "x": 140,
+      "y": 285,
+      "width": 830,
+      "height": 528,
+      "fontFamily": "Georgia",
+      "fontSize": 132,
+      "lineHeight": 1.04,
+      "fill": "#1a1a1a",
+      "brand": {
+        "fill": "text",
+        "font": true
+      }
+    },
+    {
+      "id": "orb",
+      "type": "ellipse",
+      "name": "Orb",
+      "x": 655,
+      "y": 880,
+      "width": 320,
+      "height": 320,
+      "fill": "#dd5b00",
+      "brand": {
+        "fill": "accent"
+      },
+      "constraints": {
+        "horizontal": "right",
+        "vertical": "bottom"
+      }
+    },
+    {
+      "id": "body",
+      "type": "text",
+      "slot": "body",
+      "text": "A little room to think. A different way to see.",
+      "x": 140,
+      "y": 1100,
+      "width": 440,
+      "height": 128,
+      "fontFamily": "Arial",
+      "fontSize": 32,
+      "lineHeight": 1.04,
+      "fill": "#1a1a1a",
+      "brand": {
+        "fill": "text",
+        "font": true
+      },
+      "constraints": {
+        "horizontal": "left",
+        "vertical": "bottom"
+      }
+    }
+  ]
+}

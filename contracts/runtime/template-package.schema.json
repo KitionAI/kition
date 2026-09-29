@@ -66,7 +66,8 @@
             "dashboard",
             "app",
             "automation",
-            "attachment"
+            "attachment",
+            "design"
           ]
         },
         "title": {
@@ -80,8 +81,43 @@
         "sourceId": {
           "type": "string",
           "minLength": 1
+        },
+        "slots": {
+          "description": "Editable slots a design resource exposes. Present only for the design kind.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/designSlot"
+          }
+        },
+        "brandBindings": {
+          "description": "Brand kit values a design resource binds when a brand is applied. Present only for the design kind.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/brandBinding"
+          }
         }
       }
+    },
+    "designSlot": {
+      "enum": [
+        "headline",
+        "body",
+        "label",
+        "image",
+        "logo",
+        "accent"
+      ]
+    },
+    "brandBinding": {
+      "enum": [
+        "primary",
+        "accent",
+        "text",
+        "surface",
+        "font"
+      ]
     }
   }
 }

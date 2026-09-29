@@ -1,41 +1,17 @@
 import { expect, test, type Page } from '@playwright/test'
-import { mockLocalWorkspaceApi } from './helpers/mockApi'
-import { dismissFirstRunActivation } from './helpers/onboarding'
-import type { DesignDocument } from '../src/features/design/lib/designTypes'
-const key = 'kition.workspace.documents.v1'
-async function create(page: Page) {
-  await mockLocalWorkspaceApi(page)
-  await page.goto('/documents')
-  await dismissFirstRunActivation(page)
-  await page
-    .locator('.document-private-heading .document-create-menu-anchor > button')
-    .click()
-  await page.getByTestId('workspace-create-design').click()
-  await expect(page.getByTestId('design-editor')).toBeVisible()
-}
-async function read(page: Page): Promise<DesignDocument> {
-  return page.evaluate((storageKey) => {
-    const records = JSON.parse(localStorage.getItem(storageKey) || '{}')
-    return JSON.parse(records['Untitled design.kidesign'].content)
-  }, key)
-}
-async function number(page: Page, label: string, value: number) {
-  const field = page.getByRole('spinbutton', { name: label, exact: true })
-  await field.fill(String(value))
-  await field.press('Enter')
-}
+import {
+  createDesign as create,
+  designLayers as layers,
+  expectDesignSaved as saved,
+  fillDesignNumber as number,
+  readDesign as read,
+} from './helpers/design'
 async function rectangle(page: Page, x: number, y: number, size: number) {
   await page.getByRole('button', { name: 'Rectangle', exact: true }).click()
   await number(page, 'X', x)
   await number(page, 'Y', y)
   await number(page, 'Width', size)
   await number(page, 'Height', size)
-}
-async function saved(page: Page) {
-  await expect(page.getByTestId('design-save-status')).toHaveText('Saved')
-}
-function layers(doc: DesignDocument) {
-  return doc.pages[0].children.map((id) => doc.nodes[id])
 }
 
 test('aligns and distributes a multi-selection from the inspector', async ({
