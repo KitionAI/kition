@@ -37,6 +37,7 @@ import { applyLinuxChromiumFlags } from './linux-chromium-flags.mjs'
 import { findKitionDeepLink, KITION_PROTOCOL_SCHEME, normalizeKitionDeepLink } from './deep-link.mjs'
 import { submitFeedbackToConsole } from './feedback-client.mjs'
 import { readClipboardImagePayload } from './clipboard-image.mjs'
+import { readRemoteImagePayload } from './remote-image.mjs'
 import { createExportImageInliner, unresolvedClipboardImageSources } from './export-images.mjs'
 import { buildPrintToPdfOptions } from './pdf-options.mjs'
 import {
@@ -1784,6 +1785,7 @@ async function registerIpcHandlers() {
   ipcMain.handle(IPC_CHANNELS.copyDocumentHtml, handleCopyDocumentHtml)
   ipcMain.handle(IPC_CHANNELS.copyImage, handleCopyImage)
   ipcMain.handle(IPC_CHANNELS.readClipboardImage, () => readClipboardImagePayload(clipboard))
+  ipcMain.handle(IPC_CHANNELS.readRemoteImage, (_event, url) => readRemoteImagePayload(url, (source, options) => net.fetch(source, options)))
   ipcMain.handle(IPC_CHANNELS.submitFeedback, handleSubmitFeedback)
   ipcMain.handle(IPC_CHANNELS.listWorkspaceDocuments, handleListWorkspaceDocuments)
   ipcMain.handle(IPC_CHANNELS.readWorkspaceImage, async (_event, request) => {

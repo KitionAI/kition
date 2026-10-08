@@ -112,7 +112,9 @@
       "default": "Padrão",
       "serif": "Serifa",
       "mono": "Monoespaçada"
-    }
+    },
+    "openInSystem": "Abrir com o aplicativo padrão",
+    "openingInSystem": "Abrindo…"
   },
   "tabs": {
     "webBadge": "Web",
@@ -617,7 +619,9 @@
     "importMarkdownFailed": "Falha ao importar Markdown",
     "browserDevModeOpenDirectory": "Você está executando no modo de desenvolvimento do navegador e não pode abrir diretórios nativos. Inicie o app de desktop via pnpm dev:electron e tente novamente.",
     "browserDevModePickDirectory": "Você está executando no modo de desenvolvimento do navegador e não pode selecionar um diretório nativo. Inicie o app de desktop via pnpm dev:electron e tente novamente.",
-    "browserDevModeSwitchDirectory": "Você está executando no modo de desenvolvimento do navegador e não pode trocar de diretórios nativos."
+    "browserDevModeSwitchDirectory": "Você está executando no modo de desenvolvimento do navegador e não pode trocar de diretórios nativos.",
+    "openInSystemFailed": "Não foi possível abrir o arquivo. Verifique o aplicativo padrão e tente novamente.",
+    "reviewBeforeExternalOpen": "Conclua a revisão das alterações antes de abrir este arquivo em outro aplicativo."
   },
   "feedback": {
     "nameUpdated": "Nome atualizado",

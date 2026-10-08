@@ -3,6 +3,8 @@ import i18next from 'i18next'
 
 import { notify } from '@/lib/notify'
 import { copyImageToClipboard } from '@/services/desktop'
+import { importDocumentClipboardImages } from '../../../lib/documentImagePaste'
+import { notifyImageImportFailure } from '../../../lib/documentImageImportFeedback'
 import { Menu } from '../../menu'
 
 export type DocumentImagePreviewRequest = {
@@ -13,6 +15,8 @@ export type DocumentImagePreviewRequest = {
 type ImageWidgetActionOptions = {
   view: EditorView
   imageSrc: string
+  imageAlt?: string
+  sourcePath?: string
   sourceFrom: number
   sourceTo: number
   block: boolean
@@ -77,6 +81,8 @@ export function removeImageSource(
 export function buildImageContextMenu({
   view,
   imageSrc,
+  imageAlt = 'image',
+  sourcePath = '',
   sourceFrom,
   sourceTo,
   block,
@@ -97,6 +103,28 @@ export function buildImageContextMenu({
           description: error instanceof Error ? error.message : String(error),
         }))
     }))
+  if (/^https?:\/\//i.test(imageSrc) && !imageSrc.includes('/workspace-files/')) {
+    menu.addItem((item) => item
+      .setTitle(t('editor.image.saveLocal'))
+      .setIcon('download')
+      .setDisabled(readOnly)
+      .onSelect(() => {
+        void importDocumentClipboardImages([{ kind: 'source', source: imageSrc, alt: imageAlt }], {
+          documentPath: sourcePath,
+        }).then(([markdown]) => {
+          if (!markdown || !view.dom.isConnected || view.state.readOnly
+            || sourceTo > view.state.doc.length || view.state.doc.sliceString(sourceFrom, sourceTo) !== source) {
+            notifyImageImportFailure()
+            return
+          }
+          view.dispatch({
+            changes: { from: sourceFrom, to: sourceTo, insert: markdown },
+            userEvent: 'input.image.save-local',
+          })
+          notify.success(t('editor.image.savedLocal'))
+        }).catch(notifyImageImportFailure)
+      }))
+  }
   menu.addItem((item) => item
     .setTitle(t('editor.image.remove'))
     .setIcon('trash-2')

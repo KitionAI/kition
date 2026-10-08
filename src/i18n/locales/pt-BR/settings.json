@@ -414,7 +414,24 @@
     "loading": "Carregando configurações de desenvolvedor…",
     "debugSection": "Logs",
     "debugTitle": "Modo de depuração",
-    "debugDescription": "Quando ativado, os logs do agente incluem requisições ao modelo, detalhes de turnos e outras informações de depuração; quando desativado, apenas as chamadas de ferramentas e os resultados são mantidos."
+    "debugDescription": "Quando ativado, os logs do agente incluem requisições ao modelo, detalhes de turnos e outras informações de depuração; quando desativado, apenas as chamadas de ferramentas e os resultados são mantidos.",
+    "clipboard": {
+      "title": "Inspetor da área de transferência",
+      "description": "Inspecione os formatos originais e a conversão do documento antes de colar.",
+      "pasteLabel": "Cole aqui para inspecionar",
+      "placeholder": "Clique aqui e pressione Ctrl+V ou Cmd+V.",
+      "privacy": "Os dados ficam na memória até serem limpos ou este painel ser fechado. Nada é enviado. Exporte apenas conteúdo que deseja compartilhar.",
+      "export": "Exportar JSON",
+      "clear": "Limpar",
+      "detected": "Formatos disponíveis: {{types}}",
+      "none": "Nenhum",
+      "raw": "Dados originais da área de transferência",
+      "converted": "Conversão de texto do documento ({{format}})",
+      "markdown": "Markdown convertido",
+      "metadata": "Metadados de arquivos e itens",
+      "preview": "Prévia HTML",
+      "conversionNote": "A prévia bloqueia scripts e recursos externos. A conversão de texto aparece aqui; a importação de imagens e ações sobre a seleção ocorrem no documento."
+    }
   },
   "runtime": {
     "paneTitle": "Dados",

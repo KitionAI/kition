@@ -257,7 +257,7 @@ describe('useWorkspaceDocumentSession external changes', () => {
     expect(ref.current.draftContent).toBe('Original paragraph.\n')
   })
 
-  it('combines accepted and rejected change locations before writing', async () => {
+  it.each(['individual', 'remaining'])('combines decisions before writing (%s)', async (mode) => {
     desktopMocks.readWorkspaceDocument
       .mockResolvedValueOnce({
         path: 'notes/today.md',
@@ -288,7 +288,8 @@ describe('useWorkspaceDocumentSession external changes', () => {
       ref.current.decideDocumentRevisionChange('notes/today.md', changes[0].id, 'accepted')
     })
     await act(async () => {
-      ref.current.decideDocumentRevisionChange('notes/today.md', changes[1].id, 'rejected')
+      if (mode === 'remaining') ref.current.resolveAllDocumentRevisionChanges('notes/today.md', 'rejected')
+      else ref.current.decideDocumentRevisionChange('notes/today.md', changes[1].id, 'rejected')
       await Promise.resolve()
       await Promise.resolve()
     })

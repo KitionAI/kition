@@ -268,7 +268,20 @@
       "hideSource": "Ocultar código de la imagen",
       "previewLabel": "Vista previa de imagen: {{name}}",
       "closePreview": "Cerrar vista previa de la imagen",
-      "fallbackName": "Imagen"
+      "fallbackName": "Imagen",
+      "saveLocal": "Guardar en adjuntos locales",
+      "savedLocal": "Imagen guardada localmente",
+      "importFailed": "No se pudieron guardar las imágenes localmente. Comprueba la conexión y el acceso al espacio de trabajo e inténtalo de nuevo. No se insertaron enlaces de imágenes externas.",
+      "retryImport": "Reintentar descarga",
+      "savingLocal": "Guardando localmente…",
+      "importErrors": {
+        "desktopUpdate": "Reinicia la aplicación para habilitar descargas locales. El texto pegado se conserva.",
+        "accessDenied": "Acceso a la imagen denegado o enlace caducado.",
+        "notImage": "El servidor devolvió una página en lugar de una imagen.",
+        "tooLarge": "La imagen supera el límite de 50 MB.",
+        "download": "Falló la descarga. El texto se conserva; reintenta cuando haya conexión.",
+        "write": "Imagen descargada pero no guardada. Comprueba permisos y espacio en disco."
+      }
     },
     "toolbar": {
       "ariaLabel": "Barra de herramientas del editor Markdown",
@@ -427,6 +440,14 @@
       },
       "command": "Traducir selección",
       "commandTo": "Traducir selección a…"
+    },
+    "mermaid": {
+      "preview": "Diagrama Mermaid",
+      "openPreview": "Haz doble clic para ampliar el diagrama",
+      "zoomIn": "Ampliar",
+      "zoomOut": "Reducir",
+      "fit": "Ajustar a la ventana",
+      "previewFailed": "No se pudo mostrar la vista previa del diagrama."
     }
   },
   "command": {
@@ -1224,7 +1245,20 @@
     "rejectedFeedback": "Cambios revisados rechazados.",
     "appliedFeedback": "Decisiones de revisión aplicadas.",
     "refreshFailed": "No se pudo cargar el documento modificado para revisarlo.",
-    "saveFailed": "No se pudieron aplicar los cambios revisados."
+    "saveFailed": "No se pudieron aplicar los cambios revisados.",
+    "original": "Original",
+    "proposed": "Revisado",
+    "empty": "Sin contenido",
+    "hint": "Revisa cada cambio. Tus decisiones se guardan al resolver todos los cambios.",
+    "layout": "Vista de comparación",
+    "split": "En paralelo",
+    "inline": "En línea",
+    "changesOnly": "Solo cambios",
+    "unchangedLines": "Líneas sin cambios: {{count}}",
+    "acceptRemaining": "Aceptar restantes",
+    "rejectRemaining": "Rechazar restantes",
+    "removedCharacters": "−{{count}} caracteres",
+    "addedCharacters": "+{{count}} caracteres"
   },
   "splitEditor": {
     "sourcePlaceholder": "Edita el código Markdown aquí...",

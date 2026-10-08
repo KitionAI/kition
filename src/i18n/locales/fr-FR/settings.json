@@ -414,7 +414,24 @@
     "loading": "Chargement des paramètres développeur…",
     "debugSection": "Journaux",
     "debugTitle": "Mode débogage",
-    "debugDescription": "Lorsqu'il est activé, les journaux de l'agent incluent les requêtes du modèle, les détails des tours et d'autres informations de débogage ; lorsqu'il est désactivé, seuls les appels d'outils et les résultats sont conservés."
+    "debugDescription": "Lorsqu'il est activé, les journaux de l'agent incluent les requêtes du modèle, les détails des tours et d'autres informations de débogage ; lorsqu'il est désactivé, seuls les appels d'outils et les résultats sont conservés.",
+    "clipboard": {
+      "title": "Inspecteur du presse-papiers",
+      "description": "Examinez les formats originaux et la conversion du document avant de coller.",
+      "pasteLabel": "Collez ici pour inspecter",
+      "placeholder": "Cliquez ici, puis appuyez sur Ctrl+V ou Cmd+V.",
+      "privacy": "Les données restent en mémoire jusqu’à leur effacement ou la fermeture du panneau. Rien n’est envoyé. Exportez uniquement le contenu que vous souhaitez partager.",
+      "export": "Exporter JSON",
+      "clear": "Effacer",
+      "detected": "Formats disponibles : {{types}}",
+      "none": "Aucun",
+      "raw": "Données brutes du presse-papiers",
+      "converted": "Conversion du texte du document ({{format}})",
+      "markdown": "Markdown converti",
+      "metadata": "Métadonnées des fichiers et éléments",
+      "preview": "Aperçu HTML",
+      "conversionNote": "L’aperçu bloque les scripts et les ressources externes. La conversion du texte est affichée ici ; l’importation d’images et les actions liées à la sélection ont lieu dans le document."
+    }
   },
   "runtime": {
     "paneTitle": "Données",

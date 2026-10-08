@@ -79,6 +79,8 @@ export function buildWorkspaceTopbarProps(input: WorkspaceScreenTopbarInput): To
     onSetTextStyle: (style) => chrome.setEditorView((current) => ({ ...current, textStyle: style })),
     onToggleEditorPreference: chrome.toggleEditorPreference,
     onRestoreSavedDraft: actions.restoreSavedDraft,
+    onOpenInSystem: actions.canOpenInSystem ? () => void actions.openDocumentInSystem() : undefined,
+    openingInSystem: actions.openingInSystem,
     onTriggerImport: () => input.importInputRef.current?.click(),
     onOpenExportDialog: () => {
       chrome.setItemMenuOpen(false)

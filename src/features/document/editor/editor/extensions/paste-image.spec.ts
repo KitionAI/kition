@@ -70,12 +70,12 @@ describe('pasteImageExtension', () => {
     expect(event.defaultPrevented).toBe(true)
     expect(desktopMocks.importWorkspaceImageFromFile).toHaveBeenCalledWith({
       file,
-      folder: 'attachments',
+      folder: 'attachments/Notes/demo.md',
       index: 1,
     })
   })
 
-  it('pastes an external-site HTML image when no image file is provided', async () => {
+  it('does not insert an external image link when downloading fails', async () => {
     desktopMocks.importWorkspaceImageFromBlobURL.mockRejectedValue(new TypeError('Failed to fetch'))
     view = new EditorView({
       state: EditorState.create({
@@ -98,9 +98,8 @@ describe('pasteImageExtension', () => {
     view.contentDOM.dispatchEvent(event)
 
     await vi.waitFor(() => {
-      expect(view?.state.doc.toString()).toBe(
-        '![Cover](<https://cdn.example.com/photo?id=7>)',
-      )
+      expect(desktopMocks.importWorkspaceImageFromBlobURL).toHaveBeenCalled()
+      expect(view?.state.doc.toString()).toBe('')
     })
     expect(event.defaultPrevented).toBe(true)
   })

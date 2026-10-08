@@ -268,7 +268,20 @@
       "hideSource": "Masquer la source de l’image",
       "previewLabel": "Aperçu de l’image : {{name}}",
       "closePreview": "Fermer l’aperçu de l’image",
-      "fallbackName": "Image"
+      "fallbackName": "Image",
+      "saveLocal": "Enregistrer dans les pièces jointes locales",
+      "savedLocal": "Image enregistrée localement",
+      "importFailed": "Impossible d’enregistrer les images localement. Vérifiez la connexion et l’accès à l’espace de travail, puis réessayez. Aucun lien d’image externe n’a été inséré.",
+      "retryImport": "Réessayer le téléchargement",
+      "savingLocal": "Enregistrement local…",
+      "importErrors": {
+        "desktopUpdate": "Redémarrez l’application pour activer le téléchargement local. Le texte collé est conservé.",
+        "accessDenied": "Accès à l’image refusé ou lien expiré.",
+        "notImage": "Le serveur a renvoyé une page au lieu d’une image.",
+        "tooLarge": "Cette image dépasse la limite de 50 Mo.",
+        "download": "Téléchargement échoué. Le texte est conservé ; réessayez après connexion.",
+        "write": "Image téléchargée mais non enregistrée. Vérifiez les droits et l’espace disque."
+      }
     },
     "toolbar": {
       "ariaLabel": "Barre d'outils de l'éditeur Markdown",
@@ -427,6 +440,14 @@
       },
       "command": "Traduire la sélection",
       "commandTo": "Traduire la sélection en…"
+    },
+    "mermaid": {
+      "preview": "Diagramme Mermaid",
+      "openPreview": "Double-cliquez pour agrandir le diagramme",
+      "zoomIn": "Agrandir",
+      "zoomOut": "Réduire",
+      "fit": "Adapter à la fenêtre",
+      "previewFailed": "Impossible d’afficher l’aperçu du diagramme."
     }
   },
   "command": {
@@ -1224,7 +1245,20 @@
     "rejectedFeedback": "Modifications vérifiées rejetées.",
     "appliedFeedback": "Décisions de vérification appliquées.",
     "refreshFailed": "Impossible de charger le document modifié pour vérification.",
-    "saveFailed": "Impossible d’appliquer les modifications vérifiées."
+    "saveFailed": "Impossible d’appliquer les modifications vérifiées.",
+    "original": "Original",
+    "proposed": "Version révisée",
+    "empty": "Aucun contenu",
+    "hint": "Examinez chaque modification. Vos choix sont enregistrés une fois toutes les modifications traitées.",
+    "layout": "Mode de comparaison",
+    "split": "Côte à côte",
+    "inline": "En ligne",
+    "changesOnly": "Modifications uniquement",
+    "unchangedLines": "Lignes inchangées : {{count}}",
+    "acceptRemaining": "Accepter le reste",
+    "rejectRemaining": "Rejeter le reste",
+    "removedCharacters": "−{{count}} caractères",
+    "addedCharacters": "+{{count}} caractères"
   },
   "splitEditor": {
     "sourcePlaceholder": "Modifier la source Markdown ici...",

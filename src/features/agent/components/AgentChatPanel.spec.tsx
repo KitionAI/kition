@@ -437,7 +437,7 @@ describe('AgentChatPanel changed files', () => {
       .map((node) => node.textContent)
     const disclosure = container.querySelector<HTMLDetailsElement>('.agent-changed-files')
 
-    expect(container.querySelector('.agent-changed-files-head')?.textContent).toContain('2 file(s) modified')
+    expect(container.querySelector('.agent-changed-files-head')?.textContent).toContain('Files modified: 2')
     expect(disclosure?.open).toBe(false)
     expect(changedFiles).toEqual([
       'Admissions guide.md',

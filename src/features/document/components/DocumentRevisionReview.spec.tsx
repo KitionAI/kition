@@ -53,6 +53,11 @@ describe('DocumentRevisionReview', () => {
       }))
     })
 
+    expect(container.querySelectorAll('.document-revision-comparison')).toHaveLength(2)
+    expect(container.querySelector('mark.is-removed')?.textContent).toBe('Old')
+    expect(container.querySelector('mark.is-added')?.textContent).toBe('New')
+    expect(container.querySelector('.document-revision-comparison__text')?.textContent).toBe('Old paragraph.\n')
+    act(() => (Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'Inline'))?.click())
     expect(container.querySelectorAll('.document-revision-change-block')).toHaveLength(2)
     expect(container.querySelector('.document-revision-line.is-removed')?.textContent).toContain('Old paragraph.')
     expect(container.querySelector('.document-revision-line.is-added')?.textContent).toContain('New paragraph.')

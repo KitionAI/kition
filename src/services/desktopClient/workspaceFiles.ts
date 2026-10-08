@@ -3,12 +3,15 @@
  */
 import { type CopyDocumentHtmlRequest, type SavePdfFileRequest, type WorkspaceAsset, type WorkspaceFileChooseResponse, type WorkspaceFileImportRequest, getDesktopBridge } from './bridge'
 import { normalizeWorkspaceDocumentPath } from './workspaceDocuments'
+import { ImageImportError, imageImportFailure } from '@/lib/imageImportError'
 
 export async function openWorkspaceFile(path: string) {
   const normalizedPath = normalizeWorkspaceDocumentPath(path)
   const bridge = getDesktopBridge()
   if (bridge?.OpenWorkspaceFile) {
-    return bridge.OpenWorkspaceFile({ path: normalizedPath })
+    const error = await bridge.OpenWorkspaceFile({ path: normalizedPath })
+    if (error) throw new Error(error)
+    return error
   }
   throw new Error('desktop file opening is unavailable')
 }
@@ -103,12 +106,30 @@ export async function importWorkspaceImageFromBlobURL(options: {
   blobURL: string
   index?: number
 }): Promise<{ importedPath: string; relativePath: string }> {
-  const response = await fetch(options.blobURL)
+  const bridge = getDesktopBridge()
+  if (/^https?:\/\//i.test(options.blobURL) && bridge?.shell === 'electron' && !bridge.ReadRemoteImage) {
+    throw new ImageImportError('desktopUpdate')
+  }
+  if (/^https?:\/\//i.test(options.blobURL) && bridge?.ReadRemoteImage) {
+    const image = await bridge.ReadRemoteImage(options.blobURL).catch((error) => {
+      throw new ImageImportError(imageImportFailure(error), error)
+    })
+    const stamp = `${Date.now().toString(36)}-${(options.index || 1).toString(36)}`
+    const imported = await importWorkspaceFile({
+      folder: options.folder || '',
+      filename: `pasted-${stamp}${extensionFromMimeType(image.mime_type)}`,
+      base64_content: image.base64_content,
+    }).catch((error) => { throw new ImageImportError('write', error) })
+    if (!imported?.imported_path) throw new ImageImportError('write')
+    return { importedPath: imported.imported_path, relativePath: imported.imported_path }
+  }
+  const response = await fetch(options.blobURL, { referrerPolicy: 'no-referrer' })
   if (!response.ok) {
     throw new Error(`image blob read failed: ${response.status}`)
   }
 
   const blob = await response.blob()
+  if (!blob.type.startsWith('image/')) throw new Error('image response is not an image')
   return importWorkspaceImageFromBlob({
     blob,
     folder: options.folder,
@@ -143,7 +164,8 @@ async function importWorkspaceImageFromBlob(options: {
     folder: options.folder || '',
     filename,
     base64_content: base64,
-  })
+  }).catch((error) => { throw new ImageImportError('write', error) })
+  if (!result?.imported_path) throw new Error('image was not saved to the workspace')
   const importedPath = String(result?.imported_path || '')
   const folder = String(options.folder || '').replace(/\\/g, '/').replace(/^\/+|\/+$/g, '')
   const normalizedImported = importedPath.replace(/\\/g, '/').replace(/^\/+/, '')
@@ -177,6 +199,7 @@ export async function importWorkspaceImageFromClipboard(options: {
     filename: `pasted-${stamp}.png`,
     base64_content: image.base64_content,
   })
+  if (!result?.imported_path) throw new Error('image was not saved to the workspace')
   const importedPath = String(result?.imported_path || '').replace(/\\/g, '/').replace(/^\/+/, '')
   const relativePath = folder && importedPath.startsWith(`${folder}/`)
     ? importedPath.slice(folder.length + 1)

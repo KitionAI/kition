@@ -759,6 +759,8 @@ export function WorkspaceScreen({
   const { handleDocumentAskAgent } = chatEntryPoints
 
   const topbarActions = useWorkspaceTopbarActions({
+    ensureActiveDocumentSaved,
+    hasPendingRevision: Boolean(documentSession.activeDocumentRevision),
     activeDocument,
     activeDocumentFormat,
     applyWorkspaceDocument,

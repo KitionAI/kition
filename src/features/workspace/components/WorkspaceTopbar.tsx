@@ -38,6 +38,8 @@ export function WorkspaceTopbar({
   onSetTextStyle,
   onToggleEditorPreference,
   onRestoreSavedDraft,
+  onOpenInSystem,
+  openingInSystem,
   onTriggerImport,
   onOpenExportDialog,
   onOpenWorkspaceFolder,
@@ -63,6 +65,8 @@ export function WorkspaceTopbar({
   onSetEditorMode: (mode: EditorMode) => void
   onSetTextStyle: (style: EditorTextStyle) => void
   onToggleEditorPreference: (key: 'smallText' | 'fullWidth' | 'toc' | 'locked') => void
+  onOpenInSystem?: () => void
+  openingInSystem?: boolean
   onRestoreSavedDraft: () => void
   onTriggerImport: () => void
   onOpenExportDialog: () => void
@@ -107,6 +111,8 @@ export function WorkspaceTopbar({
                 />
               ) : activeItemFormat === 'markdown' ? (
                 <WorkspaceMarkdownItemMenu
+                  onOpenInSystem={onOpenInSystem}
+                  openingInSystem={openingInSystem}
                   editorMode={editorView.editorMode}
                   hasActiveItem={hasActiveItem}
                   onOpenExportDialog={onOpenExportDialog}

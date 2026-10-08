@@ -10,6 +10,7 @@ import {
 } from '@/features/document/lib/documentRevision'
 import { Button } from '@/registry/ui/button'
 import { cn } from '@/lib/utils'
+import { DocumentRevisionComparison } from './DocumentRevisionComparison'
 
 type DocumentRevisionReviewProps = {
   revision: PendingDocumentRevision
@@ -29,6 +30,8 @@ export function DocumentRevisionReview({
   const { t } = useTranslation('document')
   const scrollerRef = useRef<HTMLDivElement | null>(null)
   const [activePendingIndex, setActivePendingIndex] = useState(0)
+  const [layout, setLayout] = useState<'split' | 'inline'>('split')
+  const [changesOnly, setChangesOnly] = useState(false)
   const pendingChanges = useMemo(
     () => revision.comparison.changes.filter((change) => !revision.decisions[change.id]),
     [revision],
@@ -79,7 +82,8 @@ export function DocumentRevisionReview({
         </div>
         <div className="document-revision-toolbar__actions">
           <span className="document-revision-toolbar__pending">
-            {t('revision.pending', { count: pendingChanges.length })}
+            {pendingChanges.length ? `${Math.min(activePendingIndex + 1, pendingChanges.length)} / ${pendingChanges.length}` : '0'}
+            {' · '}{t('revision.pending', { count: pendingChanges.length })}
           </span>
           <Button
             variant="outline"
@@ -109,7 +113,7 @@ export function DocumentRevisionReview({
             onClick={() => onResolveAll('rejected')}
           >
             <X />
-            {t('revision.rejectAll')}
+            {t(pendingChanges.length < revision.comparison.changes.length ? 'revision.rejectRemaining' : 'revision.rejectAll')}
           </Button>
           <Button
             size="md"
@@ -119,10 +123,11 @@ export function DocumentRevisionReview({
             onClick={() => onResolveAll('accepted')}
           >
             <Check />
-            {t('revision.acceptAll')}
+            {t(pendingChanges.length < revision.comparison.changes.length ? 'revision.acceptRemaining' : 'revision.acceptAll')}
           </Button>
         </div>
       </div>
+      <DocumentRevisionOptions layout={layout} setLayout={setLayout} changesOnly={changesOnly} setChangesOnly={setChangesOnly} />
       <div ref={scrollerRef} className="document-revision-review__scroller">
         {titleSlot ? (
           <div className="document-title-row document-revision-title-row">
@@ -132,16 +137,15 @@ export function DocumentRevisionReview({
         <div className="document-revision-content">
           {displayBlocks.map((block, blockIndex) => {
             if (block.kind === 'equal') {
-              return (
-                <div key={`equal-${blockIndex}`} className="document-revision-lines">
-                  {block.lines.map((line, lineIndex) => (
-                    <DocumentRevisionLine
-                      key={`equal-${blockIndex}-${lineIndex}`}
-                      line={line}
-                    />
-                  ))}
-                </div>
-              )
+              const lines = block.lines.map((line, lineIndex) => (
+                <DocumentRevisionLine key={`equal-${blockIndex}-${lineIndex}`} line={line} />
+              ))
+              return changesOnly ? (
+                <details key={`equal-${blockIndex}`} className="document-revision-context">
+                  <summary>{t('revision.unchangedLines', { count: block.lines.length })}</summary>
+                  {lines}
+                </details>
+              ) : <div key={`equal-${blockIndex}`} className="document-revision-lines">{lines}</div>
             }
 
             const { change } = block
@@ -157,9 +161,11 @@ export function DocumentRevisionReview({
                 key={change.id}
                 className={cn(
                   'document-revision-change-block',
+                  pendingChanges[activePendingIndex]?.id === change.id && 'is-current',
                   decision === 'accepted' && 'is-accepted',
                   decision === 'rejected' && 'is-rejected',
                 )}
+                aria-label={t('revision.changeLabel', { index: changeIndex + 1 })}
                 data-revision-change-id={change.id}
                 data-testid={`document-revision-change-${change.id}`}
               >
@@ -173,32 +179,33 @@ export function DocumentRevisionReview({
                     </span>
                   ) : null}
                   <span className="document-revision-change-actions__metrics" aria-hidden="true">
-                    <span className="is-removed">−{change.oldText.length}</span>
-                    <span className="is-added">+{change.newText.length}</span>
+                    <span className="is-removed">{t('revision.removedCharacters', { count: Array.from(change.parts.filter((part) => part.kind === 'removed').map((part) => part.text).join('')).length })}</span>
+                    <span className="is-added">{t('revision.addedCharacters', { count: Array.from(change.parts.filter((part) => part.kind === 'added').map((part) => part.text).join('')).length })}</span>
                   </span>
                   <Button
                     variant="outline"
-                    size="iconSm"
+                    size="md"
                     type="button"
                     disabled={saving}
                     className={cn(decision === 'rejected' && 'is-selected-reject')}
                     onClick={() => onDecideChange(change.id, 'rejected')}
                     label={t('revision.reject')}
                   >
-                    <X />
+                    <X />{t('revision.reject')}
                   </Button>
                   <Button
                     variant="outline"
-                    size="iconSm"
+                    size="md"
                     type="button"
                     disabled={saving}
                     className={cn(decision === 'accepted' && 'is-selected-accept')}
                     onClick={() => onDecideChange(change.id, 'accepted')}
                     label={t('revision.accept')}
                   >
-                    <Check />
+                    <Check />{t('revision.accept')}
                   </Button>
                 </div>
+                {layout === 'split' ? <DocumentRevisionComparison change={change} decision={decision} /> : (
                 <div className="document-revision-lines">
                   {visibleLines.map((line, lineIndex) => (
                     <DocumentRevisionLine
@@ -208,12 +215,39 @@ export function DocumentRevisionReview({
                     />
                   ))}
                 </div>
+                )}
               </section>
             )
           })}
         </div>
       </div>
     </div>
+  )
+}
+
+function DocumentRevisionOptions({ layout, setLayout, changesOnly, setChangesOnly }: {
+  layout: 'split' | 'inline'
+  setLayout: (layout: 'split' | 'inline') => void
+  changesOnly: boolean
+  setChangesOnly: (value: boolean) => void
+}) {
+  const { t } = useTranslation('document')
+  return (
+      <div className="document-revision-options">
+        <p>{t('revision.hint')}</p>
+        <div className="document-revision-options__controls">
+          <div role="group" aria-label={t('revision.layout')} className="document-revision-layout">
+            {(['split', 'inline'] as const).map((value) => (
+              <Button key={value} size="md" variant="ghost" aria-pressed={layout === value}
+                onClick={() => setLayout(value)}>{t(`revision.${value}`)}</Button>
+            ))}
+          </div>
+          <label className="document-revision-context-toggle">
+            <input type="checkbox" checked={changesOnly} onChange={(event) => setChangesOnly(event.target.checked)} />
+            {t('revision.changesOnly')}
+          </label>
+        </div>
+      </div>
   )
 }
 

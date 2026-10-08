@@ -5,6 +5,7 @@ import { ProductAnalyticsInspector } from '@/features/analytics/public'
 import { SettingsPaneHeader, SettingsSection, SettingsRow, SettingsActionBar } from '@/features/settings/primitives'
 import { useTranslation } from '@/i18n'
 import { cn } from '@/lib/utils'
+import { ClipboardInspector } from './ClipboardInspector'
 
 export function DeveloperSettings() {
   const { t } = useTranslation('settings')
@@ -81,6 +82,7 @@ export function DeveloperSettings() {
         </SettingsRow>
       </SettingsSection>
       {__APP_BUILD_IDENTITY__ === 'dev' ? <ProductAnalyticsInspector /> : null}
+      <ClipboardInspector />
       <SettingsActionBar
         dirty={settings.general.debug !== pristine.general.debug}
         saving={saving}

@@ -268,7 +268,20 @@
       "hideSource": "Hide image source",
       "previewLabel": "Image preview: {{name}}",
       "closePreview": "Close image preview",
-      "fallbackName": "Image"
+      "fallbackName": "Image",
+      "saveLocal": "Save to local attachments",
+      "savedLocal": "Image saved to local attachments",
+      "importFailed": "Could not save images locally. Check your connection and workspace access, then try again. No external image links were inserted.",
+      "retryImport": "Retry image download",
+      "savingLocal": "Saving locally…",
+      "importErrors": {
+        "desktopUpdate": "Restart the desktop app to enable local image downloads. Your pasted text is kept.",
+        "accessDenied": "The image source denied access or its link expired.",
+        "notImage": "The server returned a page instead of an image.",
+        "tooLarge": "This image exceeds the 50 MB limit.",
+        "download": "The image download failed. Your text is kept; retry when connected.",
+        "write": "The image downloaded but could not be saved. Check workspace permissions and free disk space."
+      }
     },
     "toolbar": {
       "ariaLabel": "Markdown editor toolbar",
@@ -427,6 +440,14 @@
       },
       "command": "Translate selection",
       "commandTo": "Translate selection to…"
+    },
+    "mermaid": {
+      "preview": "Mermaid diagram",
+      "openPreview": "Double-click to enlarge diagram",
+      "zoomIn": "Zoom in",
+      "zoomOut": "Zoom out",
+      "fit": "Fit to window",
+      "previewFailed": "Could not render the diagram preview."
     }
   },
   "command": {
@@ -1224,7 +1245,20 @@
     "rejectedFeedback": "Reviewed changes rejected.",
     "appliedFeedback": "Reviewed decisions applied.",
     "refreshFailed": "Failed to load the modified document for review.",
-    "saveFailed": "Failed to apply reviewed changes."
+    "saveFailed": "Failed to apply reviewed changes.",
+    "original": "Original",
+    "proposed": "Revised",
+    "empty": "No content",
+    "hint": "Review each change. Your choices are saved when all changes are resolved.",
+    "layout": "Comparison layout",
+    "split": "Side by side",
+    "inline": "Inline",
+    "changesOnly": "Changes only",
+    "unchangedLines": "Unchanged lines: {{count}}",
+    "acceptRemaining": "Accept remaining",
+    "rejectRemaining": "Reject remaining",
+    "removedCharacters": "−{{count}} characters",
+    "addedCharacters": "+{{count}} characters"
   },
   "splitEditor": {
     "sourcePlaceholder": "Edit Markdown source here...",

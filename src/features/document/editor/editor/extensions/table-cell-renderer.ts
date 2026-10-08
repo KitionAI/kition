@@ -2,6 +2,8 @@ import type { EditorView } from '@codemirror/view'
 import { marked } from 'marked'
 
 import { sanitizeRenderedHtml } from '@/services/htmlSanitizer'
+import { resolveWorkspaceImageURL } from '@/services/workspaceFiles'
+import { pendingImageElement } from './pending-image-widget'
 import '@/services/markdownRenderer'
 
 import { parseWikilinks, type WikilinkParsed } from '../../lib/wikilink-parser'
@@ -56,6 +58,20 @@ export function renderCellHtml(text: string): string {
     return sanitizeRenderedHtml(marked.parseInline(markdown) as string)
   } catch {
     return escapeHtml(text)
+  }
+}
+
+export function renderTableCell(element: HTMLElement, text: string, view: EditorView, sourcePath: string) {
+  element.innerHTML = renderCellHtml(text)
+  for (const image of element.querySelectorAll('img')) {
+    const source = image.getAttribute('src') || ''
+    const pending = pendingImageElement(source, sourcePath, view)
+    if (pending) { image.replaceWith(pending); continue }
+    image.referrerPolicy = 'no-referrer'
+    image.src = resolveWorkspaceImageURL(source, sourcePath)
+    image.style.maxWidth = '100%'
+    image.style.height = 'auto'
+    image.addEventListener('load', () => view.requestMeasure())
   }
 }
 

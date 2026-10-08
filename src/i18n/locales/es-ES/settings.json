@@ -414,7 +414,24 @@
     "loading": "Cargando ajustes de desarrollador…",
     "debugSection": "Registros",
     "debugTitle": "Modo de depuración",
-    "debugDescription": "Cuando está activado, los registros del agente incluyen las solicitudes al modelo, los detalles de los turnos y otra información de depuración; cuando está desactivado, solo se conservan las llamadas a herramientas y sus resultados."
+    "debugDescription": "Cuando está activado, los registros del agente incluyen las solicitudes al modelo, los detalles de los turnos y otra información de depuración; cuando está desactivado, solo se conservan las llamadas a herramientas y sus resultados.",
+    "clipboard": {
+      "title": "Inspector del portapapeles",
+      "description": "Examina los formatos originales y la conversión del documento antes de pegar.",
+      "pasteLabel": "Pega aquí para inspeccionar",
+      "placeholder": "Haz clic aquí y pulsa Ctrl+V o Cmd+V.",
+      "privacy": "Los datos permanecen en memoria hasta borrarlos o cerrar este panel. No se sube nada. Exporta solo contenido que quieras compartir.",
+      "export": "Exportar JSON",
+      "clear": "Borrar",
+      "detected": "Formatos disponibles: {{types}}",
+      "none": "Ninguno",
+      "raw": "Datos originales del portapapeles",
+      "converted": "Conversión de texto del documento ({{format}})",
+      "markdown": "Markdown convertido",
+      "metadata": "Metadatos de archivos y elementos",
+      "preview": "Vista previa HTML",
+      "conversionNote": "La vista previa bloquea scripts y recursos externos. Aquí se muestra la conversión de texto; las imágenes y las acciones sobre la selección se procesan en el documento."
+    }
   },
   "runtime": {
     "paneTitle": "Datos",

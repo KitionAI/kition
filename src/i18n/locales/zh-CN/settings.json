@@ -414,7 +414,24 @@
     "loading": "正在加载开发人员设置……",
     "debugSection": "日志记录",
     "debugTitle": "调试模式",
-    "debugDescription": "开启时，代理日志包括模型请求、转向详细信息和其他调试信息；关闭时，仅保留工具调用和结果。"
+    "debugDescription": "开启时，代理日志包括模型请求、转向详细信息和其他调试信息；关闭时，仅保留工具调用和结果。",
+    "clipboard": {
+      "title": "剪贴板查看器",
+      "description": "粘贴前查看剪贴板原始格式和文档转换结果。",
+      "pasteLabel": "在此粘贴以检查",
+      "placeholder": "点击此处，然后按 Ctrl+V 或 Cmd+V。",
+      "privacy": "数据仅保留在内存中，清空或关闭面板即移除，不会上传。请仅导出你愿意分享的内容。",
+      "export": "导出 JSON",
+      "clear": "清空",
+      "detected": "可用格式：{{types}}",
+      "none": "无",
+      "raw": "剪贴板原始数据",
+      "converted": "文档文本转换（{{format}}）",
+      "markdown": "转换后的 Markdown",
+      "metadata": "文件和数据项信息",
+      "preview": "HTML 预览",
+      "conversionNote": "预览会阻止脚本和外部资源。此处显示文本转换结果；图片导入和依赖选区的编辑操作仅在文档中执行。"
+    }
   },
   "runtime": {
     "paneTitle": "数据",

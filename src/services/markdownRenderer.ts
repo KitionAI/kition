@@ -6,8 +6,11 @@
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import { marked, Renderer } from 'marked'
+import { copiedStrongLabels } from './markdownStrong'
 import { sanitizeRenderedHtml } from '@/services/htmlSanitizer'
 import { buildMermaidPlaceholderHtml } from '@/services/mermaid'
+
+marked.use(copiedStrongLabels)
 
 // Configure marked
 marked.setOptions({

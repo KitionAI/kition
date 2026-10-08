@@ -17,7 +17,8 @@ import {
 } from '@codemirror/view'
 import i18next from 'i18next'
 
-import { renderMermaid } from '@/services/mermaid'
+import { MermaidWidget } from './mermaid-widget'
+import { revealedMermaidSourceField, revealMermaidSourceEffect } from './mermaid-source'
 import { renderMath } from '@/services/math'
 import { isWorkspaceImagePath, resolveWorkspaceImageURL } from '@/services/workspaceFiles'
 import { parseWikilinks } from '../../lib/wikilink-parser'
@@ -54,7 +55,11 @@ import {
   attachResizeMeasure,
   detachResizeMeasure,
 } from './_click-to-source'
+import { pendingImageElement, pendingImageTheme } from './pending-image-widget'
 import { TableWidget, parseTableFromNode } from './table-widget'
+import { HtmlTableWidget, htmlTableTheme } from './html-table-widget'
+import { isDocumentTableHtml } from '../../../lib/documentTableHtml'
+import { bulletListDecorations, bulletListTheme } from './live-preview-list'
 
 const CALLOUT_TYPES = new Set([
   'note', 'info', 'tip', 'hint', 'important',
@@ -98,21 +103,6 @@ class CheckboxWidget extends WidgetType {
   }
   ignoreEvent() {
     return false
-  }
-}
-
-class BulletWidget extends WidgetType {
-  toDOM() {
-    const dot = document.createElement('span')
-    dot.className = 'cm-md-bullet'
-    dot.textContent = '•'
-    return dot
-  }
-  eq() {
-    return true
-  }
-  ignoreEvent() {
-    return true
   }
 }
 
@@ -308,6 +298,8 @@ class ImageWidget extends WidgetType {
     super()
   }
   toDOM(view: EditorView) {
+    const pending = pendingImageElement(this.url, this.sourcePath, view)
+    if (pending) return pending
     const t = i18next.getFixedT(null, 'document')
     const wrap = document.createElement(this.block ? 'div' : 'span')
     wrap.className = 'cm-md-image'
@@ -348,6 +340,8 @@ class ImageWidget extends WidgetType {
       buildImageContextMenu({
         view,
         imageSrc: img.currentSrc || img.src,
+        imageAlt: this.alt,
+        sourcePath: this.sourcePath,
         sourceFrom: this.sourceFrom,
         sourceTo: this.sourceTo,
         block: this.block,
@@ -495,8 +489,6 @@ const COPY_ICON_SVG =
   '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>'
 const CHECK_ICON_SVG =
   '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>'
-const CODE_ICON_SVG =
-  '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>'
 
 function editFenceLangAtWidget(view: EditorView, dom: HTMLElement, currentLang: string) {
   const t = i18next.getFixedT(null, 'document')
@@ -620,77 +612,6 @@ function readCodeAtWidget(view: EditorView, dom: HTMLElement): string | null {
   return result
 }
 
-class MermaidWidget extends WidgetType {
-  constructor(readonly code: string, readonly srcFrom: number) {
-    super()
-  }
-  toDOM(view: EditorView) {
-    const t = i18next.getFixedT(null, 'document')
-    const wrap = document.createElement('div')
-    wrap.className = 'cm-md-mermaid'
-    wrap.setAttribute('aria-hidden', 'true')
-
-    const content = document.createElement('div')
-    content.className = 'cm-md-mermaid-content'
-    const indicator = document.createElement('span')
-    indicator.className = 'cm-md-mermaid-loading'
-    indicator.textContent = t('editor.extensions.livePreview.renderingMermaid')
-    content.appendChild(indicator)
-    wrap.appendChild(content)
-    renderMermaid(this.code)
-      .then((svg) => {
-        content.innerHTML = svg
-        view.requestMeasure()
-      })
-      .catch((err: unknown) => {
-        const message = err instanceof Error ? err.message : String(err)
-        content.innerHTML = ''
-        const errEl = document.createElement('pre')
-        errEl.className = 'cm-md-mermaid-error'
-        errEl.textContent = `Mermaid error: ${message}`
-        content.appendChild(errEl)
-        view.requestMeasure()
-      })
-
-    const edit = document.createElement('button')
-    edit.className = 'cm-md-mermaid-edit'
-    edit.type = 'button'
-    edit.innerHTML = CODE_ICON_SVG
-    edit.title = t('editor.extensions.livePreview.editSource')
-    edit.setAttribute('aria-label', t('editor.extensions.livePreview.editSource'))
-    edit.addEventListener('mousedown', (e) => e.preventDefault())
-    edit.addEventListener('click', (e) => {
-      e.preventDefault()
-      e.stopPropagation()
-
-      const live = view.posAtDOM(wrap)
-      const anchor = live >= 0 && live <= view.state.doc.length ? live : this.srcFrom
-      view.dispatch({
-        selection: { anchor },
-        scrollIntoView: true,
-        userEvent: 'select.pointer',
-      })
-      view.focus()
-    })
-    wrap.appendChild(edit)
-    attachResizeMeasure(wrap, view)
-    return wrap
-  }
-
-  eq(other: MermaidWidget) {
-    return other.code === this.code
-  }
-
-  get estimatedHeight(): number {
-    return 280
-  }
-  destroy(dom: HTMLElement): void {
-    detachResizeMeasure(dom)
-  }
-  ignoreEvent() {
-    return true
-  }
-}
 
 class MathWidget extends WidgetType {
   constructor(readonly source: string, readonly display: boolean, readonly srcFrom: number) {
@@ -921,28 +842,16 @@ function buildLivePreviewDecorations(state: EditorState): DecorationSet {
 
   const fencedBlocks = scanFencedCodeBlocks(state)
 
-  const fenceMarkRanges: Array<[number, number]> = []
   for (const fb of fencedBlocks) {
-    fenceMarkRanges.push([fb.openMarkFrom, fb.openMarkTo])
-    fenceMarkRanges.push([fb.closeMarkFrom, fb.closeMarkTo])
-  }
-  const isInsideFenceMark = (from: number, to: number): boolean => {
-    for (const [f, t] of fenceMarkRanges) {
-      if (from >= f && to <= t) return true
-    }
-    return false
-  }
-  for (const fb of fencedBlocks) {
-    const inBlock = state.selection.ranges.some(
-      (r) => r.to >= fb.openLineFrom && r.from <= fb.closeLineTo,
-    )
-
-    if (fb.lang === 'mermaid' && !inBlock && fb.codeTo > fb.codeFrom) {
+    const revealed = state.field(revealedMermaidSourceField, false)
+    const sourceVisible = state.facet(livePreviewRevealSourceFacet) && revealed
+      && revealed.from === fb.openLineFrom && revealed.to === fb.closeLineTo
+    if (fb.lang === 'mermaid' && !sourceVisible && fb.codeTo > fb.codeFrom) {
       const code = state.doc.sliceString(fb.codeFrom, fb.codeTo).trim()
       if (code) {
         decos.push(
           Decoration.replace({
-            widget: new MermaidWidget(code, fb.openLineFrom),
+            widget: new MermaidWidget(code, fb.openLineFrom, fb.closeLineTo - fb.openLineFrom),
             block: true,
           }).range(fb.openLineFrom, fb.closeLineTo),
         )
@@ -1094,11 +1003,12 @@ function buildLivePreviewDecorations(state: EditorState): DecorationSet {
       enter(node) {
 
         const headingMatch = /^ATXHeading([1-6])$/.exec(node.name)
-        if (headingMatch) {
-          return false
-        }
+        if (headingMatch) return
+
 
         if (node.name === 'HeaderMark') {
+          // ATX heading markers were already decorated by the line scanner.
+          if (/^ATXHeading[1-6]$/.test(node.node.parent?.name || '')) return
 
           const line = state.doc.lineAt(node.from)
           const end = Math.min(line.to, node.to + 1)
@@ -1266,9 +1176,7 @@ function buildLivePreviewDecorations(state: EditorState): DecorationSet {
           // Replace source markers with the live-preview bullet widget.
 
           if (isBullet) {
-            decos.push(
-              Decoration.replace({ widget: new BulletWidget() }).range(node.from, node.to),
-            )
+            decos.push(...bulletListDecorations(state, node.from, node.to))
           } else {
             decos.push(
               Decoration.mark({ class: 'cm-md-list-mark' }).range(node.from, node.to),
@@ -1420,12 +1328,23 @@ function buildLivePreviewDecorations(state: EditorState): DecorationSet {
           return
         }
 
+        if (node.name === 'HTMLBlock') {
+          const html = state.doc.sliceString(node.from, node.to)
+          if (isDocumentTableHtml(html)) {
+            decos.push(Decoration.replace({
+              widget: new HtmlTableWidget(html, state.facet(livePreviewSourcePathFacet)),
+              block: true,
+            }).range(node.from, node.to))
+          }
+          return false
+        }
+
         if (node.name === 'Table') {
           const model = parseTableFromNode(node.node, state)
           if (model) {
             decos.push(
               Decoration.replace({
-                widget: new TableWidget(model),
+                widget: new TableWidget(model, state.facet(livePreviewSourcePathFacet)),
                 block: true,
               }).range(node.from, node.to),
             )
@@ -1446,7 +1365,7 @@ function buildBlockAtomicRanges(set: DecorationSet, docLength: number): RangeSet
   const ranges: Range<Decoration>[] = []
   set.between(0, docLength, (from, to, value) => {
     const widget = (value as unknown as { block?: boolean; widget?: unknown }).widget
-    if (from < to && (value as unknown as { block?: boolean }).block === true && widget instanceof TableWidget) {
+    if (from < to && (value as unknown as { block?: boolean }).block === true && (widget instanceof TableWidget || widget instanceof HtmlTableWidget)) {
       const f = Math.max(0, from - 1)
       const t = Math.min(docLength, to + 1)
       ranges.push(atomicPlaceholder.range(f, t))
@@ -1464,7 +1383,7 @@ export const livePreviewField = StateField.define<DecorationSet>({
   update(value, tr) {
 
     const focusChanged = tr.effects.some((e) => e.is(editorFocusEffect))
-    const imageSourceChanged = tr.effects.some((e) => e.is(revealImageSourceEffect))
+    const imageSourceChanged = tr.effects.some((e) => e.is(revealImageSourceEffect) || e.is(revealMermaidSourceEffect))
     const shouldRebuild =
       tr.docChanged ||
       tr.selection ||
@@ -1578,12 +1497,6 @@ const livePreviewTheme = EditorView.baseTheme({
   '.cm-md-list-mark': {
     color: 'hsl(var(--muted-foreground) / 0.55)',
   },
-  '.cm-md-bullet': {
-    display: 'inline-block',
-    width: '1.2em',
-    color: 'hsl(var(--muted-foreground) / 0.55)',
-    fontWeight: '700',
-  },
   '.cm-md-task-checkbox': {
     display: 'inline-flex',
     alignItems: 'center',
@@ -1677,7 +1590,7 @@ const livePreviewTheme = EditorView.baseTheme({
     border: 'none',
     background: 'transparent',
     color: 'hsl(var(--muted-foreground, 215 15% 45%))',
-    borderRadius: '5px',
+    borderRadius: '8px',
     cursor: 'pointer',
     opacity: '0',
     transition: 'opacity 120ms ease, color 120ms ease, background 120ms ease',
@@ -2139,12 +2052,14 @@ const livePreviewTheme = EditorView.baseTheme({
     border: '1px solid hsl(var(--border, 215 15% 85%))',
     background: 'hsl(var(--background, 0 0% 100%) / 0.85)',
     color: 'hsl(var(--muted-foreground, 215 15% 45%))',
-    borderRadius: '5px',
+    borderRadius: '8px',
     cursor: 'pointer',
     opacity: '0',
     transition: 'opacity 120ms ease, color 120ms ease, background 120ms ease',
   },
-  '.cm-md-mermaid:hover .cm-md-mermaid-edit': {
+  '.cm-md-mermaid-content': { cursor: 'zoom-in' },
+  '.cm-md-mermaid-content:focus-visible': { outline: '2px solid hsl(var(--primary))' },
+  '.cm-md-mermaid:hover .cm-md-mermaid-edit, .cm-md-mermaid:focus-within .cm-md-mermaid-edit': {
     opacity: '1',
   },
   '.cm-md-mermaid-edit:hover': {
@@ -2200,6 +2115,7 @@ export function livePreviewExtension(options: {
   return [
     editorFocusField,
     revealedImageSourceField,
+    revealedMermaidSourceField,
     livePreviewRevealSourceFacet.of(options.revealSourceOnFocus !== false),
     livePreviewImagePreviewFacet.of(options.onImagePreview ?? null),
 
@@ -2264,6 +2180,9 @@ export function livePreviewExtension(options: {
     }),
     livePreviewField,
     livePreviewTheme,
+    bulletListTheme,
+    htmlTableTheme,
+    pendingImageTheme,
     livePreviewSourcePathFacet.of(options.sourcePath ?? ''),
   ]
 }

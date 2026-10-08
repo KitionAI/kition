@@ -268,7 +268,20 @@
       "hideSource": "隐藏图片源码",
       "previewLabel": "图片预览：{{name}}",
       "closePreview": "关闭图片预览",
-      "fallbackName": "图片"
+      "fallbackName": "图片",
+      "saveLocal": "保存到本地附件",
+      "savedLocal": "图片已保存到本地附件",
+      "importFailed": "图片无法保存到本地，请检查网络和工作区写入权限后重试。未插入云端图片链接。",
+      "retryImport": "重试下载图片",
+      "savingLocal": "正在保存到本地…",
+      "importErrors": {
+        "desktopUpdate": "请完全退出并重新打开桌面端，以启用本地图片下载。已保留粘贴的文字。",
+        "accessDenied": "图片来源拒绝访问，或图片链接已过期。",
+        "notImage": "服务器返回的不是图片，可能需要登录来源网站。",
+        "tooLarge": "图片超过 50 MB 大小限制。",
+        "download": "图片下载失败。文字已保留，可在网络恢复后重试。",
+        "write": "图片已下载，但无法保存。请检查工作区写入权限和磁盘空间。"
+      }
     },
     "toolbar": {
       "ariaLabel": "Markdown 编辑工具栏",
@@ -427,6 +440,14 @@
       },
       "command": "翻译选中内容",
       "commandTo": "将选中内容翻译为…"
+    },
+    "mermaid": {
+      "preview": "Mermaid 图表",
+      "openPreview": "双击放大查看图表",
+      "zoomIn": "放大",
+      "zoomOut": "缩小",
+      "fit": "适应窗口",
+      "previewFailed": "无法渲染图表预览。"
     }
   },
   "command": {
@@ -1224,7 +1245,20 @@
     "rejectedFeedback": "已拒绝审阅的修改。",
     "appliedFeedback": "已应用审阅结果。",
     "refreshFailed": "无法加载修改后的文档进行审阅。",
-    "saveFailed": "无法应用审阅后的修改。"
+    "saveFailed": "无法应用审阅后的修改。",
+    "original": "原文",
+    "proposed": "修改稿",
+    "empty": "无内容",
+    "hint": "逐处接受或拒绝修改，全部处理后保存审阅结果。",
+    "layout": "对比方式",
+    "split": "并排对比",
+    "inline": "行内对比",
+    "changesOnly": "只看修改",
+    "unchangedLines": "展开未修改内容（{{count}} 行）",
+    "acceptRemaining": "接受剩余修改",
+    "rejectRemaining": "拒绝剩余修改",
+    "removedCharacters": "删除 {{count}} 字符",
+    "addedCharacters": "新增 {{count}} 字符"
   },
   "splitEditor": {
     "sourcePlaceholder": "在此编辑 Markdown 源文…",

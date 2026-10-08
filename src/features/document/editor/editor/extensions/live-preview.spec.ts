@@ -239,6 +239,7 @@ describe('livePreviewExtension — images', () => {
     const items = Array.from(document.querySelectorAll<HTMLElement>('.document-menu-item'))
     expect(items.map((item) => item.textContent)).toEqual([
       'Copy image',
+      'Save to local attachments',
       'Remove image',
       'Reset size',
     ])

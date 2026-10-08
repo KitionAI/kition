@@ -470,12 +470,13 @@ export function useWorkspaceDocumentSession({
     const revision = documentRevisionsRef.current[path]
     if (!revision) return
     const decisions = Object.fromEntries(
-      revision.comparison.changes.map((change) => [change.id, decision]),
+      revision.comparison.changes.map((change) => [change.id, revision.decisions[change.id] || decision]),
     ) as Record<string, DocumentRevisionDecision>
     void finalizeDocumentRevision(
       revision,
       decisions,
-      decision === 'accepted' ? 'revision.acceptedFeedback' : 'revision.rejectedFeedback',
+      Object.keys(revision.decisions).length ? 'revision.appliedFeedback'
+        : decision === 'accepted' ? 'revision.acceptedFeedback' : 'revision.rejectedFeedback',
     )
   }
 

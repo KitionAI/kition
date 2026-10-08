@@ -1,3 +1,4 @@
+import { describeAgentTurnFailure } from '../lib/agentTurnFailure'
 import { agentArtifactFromImageEvent, readAgentImageGenerationSessionEvent, type AgentImageSessionEvent } from '@/features/agent/lib/agentImageJobs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type {
@@ -665,6 +666,8 @@ export function useWorkspaceAgent({
 
     const abortController = new AbortController()
     agentAbortControllers.current[sessionId] = abortController
+    let turnMessageId = optimisticUserMessage.id
+    let partialResponse = ''
     let tableMutated = false
     let whiteboardPathForTurn = ''
     let pendingWhiteboardPatch: AgentWhiteboardPatch | null = null
@@ -826,7 +829,10 @@ export function useWorkspaceAgent({
         language: getLanguageNameForLocale(getCurrentLocale()),
         signal: abortController.signal,
         onEvent: (event) => {
-          if (event.type === 'user_message' && event.chat_message) imageTurnMessageId = event.chat_message.id
+          if (event.type === 'user_message' && event.chat_message) {
+            imageTurnMessageId = event.chat_message.id
+            turnMessageId = event.chat_message.id
+          }
           const imageGenerationEvent = readAgentImageGenerationSessionEvent(event, optimisticUserMessage.created_at, imageTurnMessageId)
           if (imageGenerationEvent) {
             setAgentImageGenerationEvents((current) => ({
@@ -916,6 +922,7 @@ export function useWorkspaceAgent({
           }
 
           if (event.type === 'model_delta' && event.delta) {
+            partialResponse += event.delta
             setAgentStreamingText((current) => ({ ...current, [sessionId]: `${current[sessionId] || ''}${event.delta}` }))
             setAgentEvents((current) => {
               const existing = current[sessionId] || []
@@ -1159,11 +1166,17 @@ export function useWorkspaceAgent({
       if (whiteboardPathForTurn) {
         onWhiteboardPatchCancelled?.({ boardPath: whiteboardPathForTurn, sessionId })
       }
-      if (requestError?.name === 'AbortError') {
-        onFeedback('Agent task stopped')
-      } else {
-        onError(requestError?.message || 'Agent execution failed')
-      }
+      const failure = describeAgentTurnFailure(requestError, sessionId, turnMessageId)
+      if (partialResponse) setAgentMessages((current) => ({
+        ...current, [sessionId]: [...(current[sessionId] || []), {
+          ...optimisticUserMessage, id: failure.event.id, role: 'assistant', content: partialResponse, status: 'interrupted',
+        }],
+      }))
+      setAgentEvents((current) => ({
+        ...current, [sessionId]: [...(current[sessionId] || []), failure.event],
+      }))
+      if (failure.canceled) onFeedback(failure.message)
+      else onError(failure.message)
     } finally {
       delete agentAbortControllers.current[sessionId]
       agentSendInFlightSessions.current.delete(sessionId)

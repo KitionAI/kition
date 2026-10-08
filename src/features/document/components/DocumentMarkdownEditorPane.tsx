@@ -69,7 +69,7 @@ import {
   buildDocumentPublishingClipboardHtml,
   copyDocumentMarkdownForPublishing,
 } from '@/features/document/lib/documentPublishingClipboard'
-import { resolveMarkdownLinkTarget } from '@/features/document/lib/markdownLinkNavigation'
+import { useMarkdownLinkNavigation } from '@/features/document/hooks/useMarkdownLinkNavigation'
 import type { DocumentAskAgentRequest } from '@/features/document/lib/documentAgentActions'
 import type { MarkdownImageInsertionSnapshot } from '@/features/document/editor/editor/markdown-image-insertion'
 import { notify } from '@/lib/notify'
@@ -558,16 +558,12 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
     [documentPath, onNavigate, wikilinkResolver],
   )
 
-  const handleMarkdownLinkNavigate = useCallback(
-    (href: string) => {
-      if (!onNavigate) return false
-      const target = resolveMarkdownLinkTarget(href, documentPath, wikilinkResolver.resolvePath)
-      if (!target) return false
-      onNavigate(target.path, target.section ? { section: target.section } : undefined)
-      return true
-    },
-    [documentPath, onNavigate, wikilinkResolver],
-  )
+  const handleMarkdownLinkNavigate = useMarkdownLinkNavigation({
+    documentPath,
+    getView,
+    resolvePath: wikilinkResolver.resolvePath,
+    onNavigate,
+  })
 
   const handleChange = useCallback(
     (next: string) => {

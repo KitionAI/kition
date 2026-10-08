@@ -6,6 +6,7 @@ const URL_RE = /^https?:\/\/\S+$/i
 export function pasteLinkExtension(): Extension {
   return EditorView.domEventHandlers({
     paste: (event, view) => {
+      if (view.state.readOnly) return false
       const text = event.clipboardData?.getData('text/plain')?.trim() ?? ''
       if (!text || !URL_RE.test(text)) return false
       const main = view.state.selection.main

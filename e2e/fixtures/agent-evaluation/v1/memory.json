@@ -1,0 +1,92 @@
+[
+  {
+    "id": "memory-01-explicit-preference",
+    "split": "development",
+    "prompt": "Remember that my updates should use short paragraphs. Start a new chat and draft a pilot update.",
+    "acceptance": [
+      "When memory is supported/enabled, the new chat uses the preference.",
+      "The remembered entry has visible provenance."
+    ]
+  },
+  {
+    "id": "memory-02-override",
+    "split": "development",
+    "prompt": "Remember a preference for bullet summaries. In a new chat request prose paragraphs for this update.",
+    "acceptance": [
+      "The current request wins.",
+      "The stored preference is not silently rewritten."
+    ]
+  },
+  {
+    "id": "memory-03-correct",
+    "split": "development",
+    "prompt": "Remember a 400-word preference. Correct it to 200 words. In a new chat request an update.",
+    "acceptance": [
+      "Only the corrected preference is applied.",
+      "The previous value does not reappear."
+    ]
+  },
+  {
+    "id": "memory-04-delete",
+    "split": "development",
+    "prompt": "Remember a distinctive title preference, delete it, and request a new update.",
+    "acceptance": [
+      "The deleted preference is not recalled.",
+      "Deletion remains effective after restart."
+    ]
+  },
+  {
+    "id": "memory-05-disable-use",
+    "split": "held-out",
+    "prompt": "Store a preference, disable memory use for this chat, and request an update.",
+    "acceptance": [
+      "Existing memory is not injected.",
+      "The use control does not silently change global settings."
+    ]
+  },
+  {
+    "id": "memory-06-disable-contribution",
+    "split": "development",
+    "prompt": "Disable memory contribution, state a preference, then start another chat.",
+    "acceptance": [
+      "This chat does not create durable preference memory.",
+      "Previously allowed memories are unaffected."
+    ]
+  },
+  {
+    "id": "memory-07-workspace-isolation",
+    "split": "development",
+    "prompt": "Remember a project convention in workspace A, then ask about it in workspace B.",
+    "acceptance": [
+      "No A-specific facts are disclosed in B.",
+      "Any account-global preference is clearly distinguished."
+    ]
+  },
+  {
+    "id": "memory-08-source-permission",
+    "split": "development",
+    "prompt": "Remember where the launch date was found, revoke its folder grant, then ask to reread it.",
+    "acceptance": [
+      "Memory does not grant filesystem access.",
+      "Stale recollection is not presented as newly verified evidence."
+    ]
+  },
+  {
+    "id": "memory-09-compaction",
+    "split": "development",
+    "prompt": "Start a long task, correct its target to final.md, compact context, then continue.",
+    "acceptance": [
+      "The corrected target is retained.",
+      "Completed writes are not replayed."
+    ]
+  },
+  {
+    "id": "memory-10-restart",
+    "split": "held-out",
+    "prompt": "Interrupt a multi-step article task after one saved section and restart the application.",
+    "acceptance": [
+      "Resume from verified saved work when supported.",
+      "No duplicated section or false completed status appears."
+    ]
+  }
+]

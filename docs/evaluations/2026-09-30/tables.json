@@ -1,0 +1,178 @@
+[
+  {
+    "title": "Typed Pilot Orders",
+    "fields": [
+      {
+        "name": "order_id",
+        "type": "text"
+      },
+      {
+        "name": "team",
+        "type": "text"
+      },
+      {
+        "name": "quantity",
+        "type": "number"
+      },
+      {
+        "name": "unit_price",
+        "type": "number"
+      },
+      {
+        "name": "currency",
+        "type": "text"
+      },
+      {
+        "name": "status",
+        "type": "single_select"
+      }
+    ],
+    "records": [
+      {
+        "currency": "USD",
+        "order_id": "001",
+        "quantity": 2,
+        "status": "paid",
+        "team": "Alpha",
+        "unit_price": 12.5
+      },
+      {
+        "currency": "USD",
+        "order_id": "002",
+        "quantity": 3,
+        "status": "paid",
+        "team": "Beta",
+        "unit_price": 10
+      },
+      {
+        "currency": "USD",
+        "order_id": "003",
+        "quantity": 1,
+        "status": "pending",
+        "team": "Alpha",
+        "unit_price": 20
+      },
+      {
+        "currency": "USD",
+        "order_id": "004",
+        "quantity": 0,
+        "status": "paid",
+        "team": "Gamma",
+        "unit_price": 15
+      },
+      {
+        "currency": "USD",
+        "order_id": "005",
+        "quantity": 4,
+        "status": "paid",
+        "team": "Beta",
+        "unit_price": 2.5
+      },
+      {
+        "currency": "USD",
+        "order_id": "006",
+        "quantity": null,
+        "status": "pending",
+        "team": "Delta",
+        "unit_price": 9
+      }
+    ],
+    "verified_calculations": {
+      "paid_revenue": 65.0,
+      "known_total": 85.0,
+      "known_team_totals": {
+        "Alpha": 45.0,
+        "Beta": 40.0,
+        "Gamma": 0.0
+      }
+    }
+  },
+  {
+    "title": "Pilot Orders",
+    "fields": [
+      {
+        "name": "order_id",
+        "type": "text"
+      },
+      {
+        "name": "team",
+        "type": "text"
+      },
+      {
+        "name": "quantity",
+        "type": "text"
+      },
+      {
+        "name": "unit_price",
+        "type": "number"
+      },
+      {
+        "name": "currency",
+        "type": "text"
+      },
+      {
+        "name": "status",
+        "type": "single_select"
+      }
+    ],
+    "records": [
+      {
+        "currency": "USD",
+        "order_id": "001",
+        "quantity": "2",
+        "status": "paid",
+        "team": "Alpha",
+        "unit_price": 12.5
+      },
+      {
+        "currency": "USD",
+        "order_id": "002",
+        "quantity": "3",
+        "status": "paid",
+        "team": "Beta",
+        "unit_price": 10
+      },
+      {
+        "currency": "USD",
+        "order_id": "003",
+        "quantity": "1",
+        "status": "pending",
+        "team": "Alpha",
+        "unit_price": 20
+      },
+      {
+        "currency": "USD",
+        "order_id": "004",
+        "quantity": "0",
+        "status": "paid",
+        "team": "Gamma",
+        "unit_price": 15
+      },
+      {
+        "currency": "USD",
+        "order_id": "005",
+        "quantity": "4",
+        "status": "paid",
+        "team": "Beta",
+        "unit_price": 2.5
+      },
+      {
+        "currency": "USD",
+        "order_id": "006",
+        "quantity": "unknown",
+        "status": "pending",
+        "team": "Delta",
+        "unit_price": 9
+      }
+    ],
+    "verified_calculations": {
+      "paid_revenue": 65.0,
+      "known_total": 85.0,
+      "known_team_totals": {
+        "Alpha": 45.0,
+        "Beta": 40.0,
+        "Gamma": 0.0
+      }
+    }
+  }
+]

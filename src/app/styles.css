@@ -1841,6 +1841,7 @@
 
   .document-revision-review {
     @apply flex h-full min-h-0 flex-col bg-background;
+    container-type: inline-size;
   }
 
   .document-revision-toolbar {
@@ -1952,7 +1953,7 @@
   }
 
   .document-revision-change-actions {
-    @apply absolute right-2 top-1 z-10 flex h-7 items-center gap-1 rounded-lg border border-border bg-card/95 px-1.5 shadow-[var(--shadow-floating)] backdrop-blur;
+    @apply flex min-h-11 flex-wrap items-center gap-2 border-b border-border bg-muted/30 px-3 py-2;
   }
 
   .document-revision-change-actions__label {
@@ -1976,7 +1977,7 @@
   }
 
   .document-revision-change-actions__metrics {
-    @apply mr-1 flex items-center gap-1.5 text-[10px] font-semibold tabular-nums;
+    @apply mr-auto flex items-center gap-2 text-xs tabular-nums;
   }
 
   .document-revision-change-actions__metrics .is-added {
@@ -1999,8 +2000,91 @@
     background: hsl(var(--destructive-background));
   }
 
-  .document-revision-change-block .document-revision-line:first-child .document-revision-line__text {
-    padding-right: 17rem;
+  .document-revision-options {
+    @apply flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card px-4 py-2 text-xs text-muted-foreground;
+  }
+
+  .document-revision-options__controls {
+    @apply flex flex-wrap items-center gap-4;
+  }
+
+  .document-revision-layout {
+    @apply flex gap-1 rounded-lg border border-border p-1;
+  }
+
+  .document-revision-layout button[aria-pressed="true"] {
+    @apply bg-accent text-primary;
+  }
+
+  .document-revision-context-toggle {
+    @apply flex cursor-pointer items-center gap-2;
+  }
+
+  .document-revision-context-toggle input {
+    accent-color: hsl(var(--primary));
+  }
+
+  .document-revision-context summary {
+    @apply cursor-pointer border-y border-border bg-muted/30 px-4 py-2 text-xs text-muted-foreground;
+  }
+
+  .document-revision-change-block.is-current {
+    outline: 2px solid hsl(var(--primary) / 0.5);
+    outline-offset: -2px;
+  }
+
+  .document-revision-comparison {
+    @apply grid min-w-0 grid-cols-2;
+  }
+
+  .document-revision-comparison[data-resolved="true"] {
+    @apply grid-cols-1;
+  }
+
+  .document-revision-comparison__side + .document-revision-comparison__side {
+    @apply border-l border-border;
+  }
+
+  .document-revision-comparison__label {
+    @apply flex items-center gap-2 px-4 pt-3 text-xs font-medium text-muted-foreground;
+  }
+
+  .document-revision-comparison__text {
+    @apply whitespace-pre-wrap px-4 pb-5 pt-2 text-sm leading-7 text-foreground;
+    overflow-wrap: anywhere;
+    tab-size: 4;
+  }
+
+  .document-revision-comparison__text mark {
+    border-radius: 3px;
+    padding-block: 2px;
+    color: inherit;
+    box-decoration-break: clone;
+  }
+
+  .document-revision-comparison__text mark.is-removed {
+    background: hsl(var(--destructive-background));
+    text-decoration: line-through;
+    text-decoration-color: hsl(var(--destructive) / 0.5);
+  }
+
+  .document-revision-comparison__text mark.is-added {
+    background: hsl(var(--success-background));
+    box-shadow: 0 1px 0 hsl(var(--success-border));
+  }
+
+  .document-revision-comparison__empty {
+    @apply italic text-muted-foreground;
+  }
+
+  @container (max-width: 640px) {
+    .document-revision-comparison { grid-template-columns: minmax(0, 1fr); }
+    .document-revision-comparison__side + .document-revision-comparison__side {
+      border-left: 0;
+      border-top: 1px solid hsl(var(--border));
+    }
+    .document-revision-toolbar { flex-wrap: wrap; }
+    .document-revision-toolbar__actions { flex-wrap: wrap; }
   }
 
   @media (max-width: 900px) {
@@ -2009,7 +2093,7 @@
     }
 
     .document-revision-toolbar__actions {
-      @apply w-full overflow-x-auto;
+      @apply w-full flex-wrap;
     }
 
     .document-revision-toolbar__pending {
@@ -2025,7 +2109,7 @@
     }
 
     .document-revision-change-actions {
-      @apply static h-9 justify-end rounded-none border-x-0 border-t-0 shadow-none;
+      @apply justify-end;
     }
 
     .document-revision-change-block .document-revision-line:first-child .document-revision-line__text {

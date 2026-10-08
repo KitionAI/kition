@@ -112,7 +112,9 @@
       "default": "默认",
       "serif": "衬线",
       "mono": "等宽"
-    }
+    },
+    "openInSystem": "使用默认应用打开",
+    "openingInSystem": "正在打开…"
   },
   "tabs": {
     "webBadge": "网页",
@@ -617,7 +619,9 @@
     "importMarkdownFailed": "导入 Markdown 失败",
     "browserDevModeOpenDirectory": "你正在浏览器开发模式下运行，无法打开原生目录。请通过 pnpm dev:electron 启动桌面应用后重试。",
     "browserDevModePickDirectory": "你正在浏览器开发模式下运行，无法选择原生目录。请通过 pnpm dev:electron 启动桌面应用后重试。",
-    "browserDevModeSwitchDirectory": "你正在浏览器开发模式下运行，无法切换原生目录。"
+    "browserDevModeSwitchDirectory": "你正在浏览器开发模式下运行，无法切换原生目录。",
+    "openInSystemFailed": "无法使用默认应用打开文件，请检查文件关联后重试。",
+    "reviewBeforeExternalOpen": "请先完成修改审阅，再使用其他应用打开此文件。"
   },
   "feedback": {
     "nameUpdated": "名称已更新",

@@ -1,0 +1,42 @@
+diff --git a/dist/index.cjs b/dist/index.cjs
+index 2e8ca4075f5f3f23ef47ef135a491394f6a34e6b..1e9074d5fed83585c10d8abcd10c504e55da2899 100644
+--- a/dist/index.cjs
++++ b/dist/index.cjs
+@@ -9283,6 +9283,16 @@ function rectanglesForRange(view, className, range) {
+     let leftSide = contentRect.left +
+         (lineStyle ? parseInt(lineStyle.paddingLeft) + Math.min(0, parseInt(lineStyle.textIndent)) : 0);
+     let rightSide = contentRect.right - (lineStyle ? parseInt(lineStyle.paddingRight) : 0);
++    // Live previews can mix padded quotes/code with unindented paragraphs.
++    // The first rendered line changes when scrolling, so its padding alone
++    // must not narrow the continuation rectangles for all selected lines.
++    if (leftSide > contentRect.left || rightSide < contentRect.right) {
++        for (let line of content.querySelectorAll(".cm-line")) {
++            let style = window.getComputedStyle(line);
++            leftSide = Math.min(leftSide, contentRect.left + parseInt(style.paddingLeft) + Math.min(0, parseInt(style.textIndent)));
++            rightSide = Math.max(rightSide, contentRect.right - parseInt(style.paddingRight));
++        }
++    }
+     let startBlock = blockAt(view, from, 1), endBlock = blockAt(view, to, -1);
+     let visualStart = startBlock.type == exports.BlockType.Text ? startBlock : null;
+     let visualEnd = endBlock.type == exports.BlockType.Text ? endBlock : null;
+diff --git a/dist/index.js b/dist/index.js
+index cfb44591c515154334d9896228db3b86c5a863e6..f98d4126fe783bf6939ebee6b987df87f02d7cb4 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -9278,6 +9278,16 @@ function rectanglesForRange(view, className, range) {
+     let leftSide = contentRect.left +
+         (lineStyle ? parseInt(lineStyle.paddingLeft) + Math.min(0, parseInt(lineStyle.textIndent)) : 0);
+     let rightSide = contentRect.right - (lineStyle ? parseInt(lineStyle.paddingRight) : 0);
++    // Live previews can mix padded quotes/code with unindented paragraphs.
++    // The first rendered line changes when scrolling, so its padding alone
++    // must not narrow the continuation rectangles for all selected lines.
++    if (leftSide > contentRect.left || rightSide < contentRect.right) {
++        for (let line of content.querySelectorAll(".cm-line")) {
++            let style = window.getComputedStyle(line);
++            leftSide = Math.min(leftSide, contentRect.left + parseInt(style.paddingLeft) + Math.min(0, parseInt(style.textIndent)));
++            rightSide = Math.max(rightSide, contentRect.right - parseInt(style.paddingRight));
++        }
++    }
+     let startBlock = blockAt(view, from, 1), endBlock = blockAt(view, to, -1);
+     let visualStart = startBlock.type == BlockType.Text ? startBlock : null;
+     let visualEnd = endBlock.type == BlockType.Text ? endBlock : null;

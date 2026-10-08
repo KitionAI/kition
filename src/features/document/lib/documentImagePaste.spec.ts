@@ -23,6 +23,14 @@ import {
 } from './documentImagePaste'
 
 describe('document image paste', () => {
+  it('does not replace a mixed HTML selection with its bitmap representation', () => {
+    const file = new File(['image'], 'selection.png', { type: 'image/png' })
+    expect(collectDocumentClipboardImages({
+      items: [{ kind: 'file', getAsFile: () => file }], files: [file],
+      getData: (type: string) => type === 'text/html' ? '<p>Keep this text</p><img src="https://example.com/a.png">' : '',
+    } as unknown as DataTransfer)).toEqual([])
+  })
+
   beforeEach(() => {
     desktopMocks.canImportWorkspaceImageFromClipboard.mockReset().mockReturnValue(false)
     desktopMocks.importWorkspaceImageFromBlobURL.mockReset()
@@ -127,7 +135,7 @@ describe('document image paste', () => {
     )).resolves.toEqual(['![photo](../../attachments/pasted-photo.png)'])
     expect(desktopMocks.importWorkspaceImageFromFile).toHaveBeenCalledWith({
       file,
-      folder: 'attachments',
+      folder: 'attachments/reference/how_to_use_ga4_for_seo/overview.md',
       index: 1,
     })
   })
@@ -150,15 +158,13 @@ describe('document image paste', () => {
     expect(relativeMarkdownPath('reference/x/y.md', 'reference/img/a.png')).toBe('../img/a.png')
   })
 
-  it('falls back to a remote Markdown image when the site blocks downloading', async () => {
+  it('rejects failed imports without retaining remote image links', async () => {
     desktopMocks.importWorkspaceImageFromBlobURL.mockRejectedValue(new TypeError('Failed to fetch'))
 
     await expect(importDocumentClipboardImages([{
       kind: 'source',
       source: 'https://cdn.example.com/photo?id=7',
       alt: 'Cover image',
-    }])).resolves.toEqual([
-      '![Cover image](<https://cdn.example.com/photo?id=7>)',
-    ])
+    }])).rejects.toThrow('saved to workspace')
   })
 })

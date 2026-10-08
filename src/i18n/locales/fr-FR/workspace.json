@@ -112,7 +112,9 @@
       "default": "Par défaut",
       "serif": "Serif",
       "mono": "Mono"
-    }
+    },
+    "openInSystem": "Ouvrir avec l’application par défaut",
+    "openingInSystem": "Ouverture…"
   },
   "tabs": {
     "webBadge": "Web",
@@ -617,7 +619,9 @@
     "importMarkdownFailed": "Échec de l'importation du Markdown",
     "browserDevModeOpenDirectory": "Vous exécutez le mode développement dans le navigateur et ne pouvez pas ouvrir de répertoires natifs. Lancez l'application de bureau via pnpm dev:electron et réessayez.",
     "browserDevModePickDirectory": "Vous exécutez le mode développement dans le navigateur et ne pouvez pas choisir de répertoire natif. Lancez l'application de bureau via pnpm dev:electron et réessayez.",
-    "browserDevModeSwitchDirectory": "Vous exécutez le mode développement dans le navigateur et ne pouvez pas changer de répertoire natif."
+    "browserDevModeSwitchDirectory": "Vous exécutez le mode développement dans le navigateur et ne pouvez pas changer de répertoire natif.",
+    "openInSystemFailed": "Impossible d’ouvrir le fichier. Vérifiez l’application par défaut et réessayez.",
+    "reviewBeforeExternalOpen": "Terminez la révision des modifications avant d’ouvrir ce fichier dans une autre application."
   },
   "feedback": {
     "nameUpdated": "Nom mis à jour",

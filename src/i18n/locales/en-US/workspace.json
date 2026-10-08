@@ -112,7 +112,9 @@
       "default": "Default",
       "serif": "Serif",
       "mono": "Mono"
-    }
+    },
+    "openInSystem": "Open with default app",
+    "openingInSystem": "Opening…"
   },
   "tabs": {
     "webBadge": "Web",
@@ -617,7 +619,9 @@
     "importMarkdownFailed": "Failed to import Markdown",
     "browserDevModeOpenDirectory": "You are running in browser dev mode and cannot open native directories. Launch the desktop app via pnpm dev:electron and try again.",
     "browserDevModePickDirectory": "You are running in browser dev mode and cannot pick a native directory. Launch the desktop app via pnpm dev:electron and try again.",
-    "browserDevModeSwitchDirectory": "You are running in browser dev mode and cannot switch native directories."
+    "browserDevModeSwitchDirectory": "You are running in browser dev mode and cannot switch native directories.",
+    "openInSystemFailed": "Could not open the file with the default app. Check the file association and try again.",
+    "reviewBeforeExternalOpen": "Finish reviewing the changes before opening this file in another app."
   },
   "feedback": {
     "nameUpdated": "Name updated",

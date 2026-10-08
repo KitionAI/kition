@@ -58,9 +58,9 @@ describe('image widget actions', () => {
       block: true,
     })
 
-    expect(menu.items).toHaveLength(4)
+    expect(menu.items).toHaveLength(5)
     expect(menu.items[0]).toMatchObject({ kind: 'item', title: 'Copy image' })
-    expect(menu.items[1]).toMatchObject({ kind: 'item', title: 'Remove image', warning: true })
-    expect(menu.items[3]).toMatchObject({ kind: 'item', title: 'Reset size', disabled: false })
+    expect(menu.items[2]).toMatchObject({ kind: 'item', title: 'Remove image', warning: true })
+    expect(menu.items[4]).toMatchObject({ kind: 'item', title: 'Reset size', disabled: false })
   })
 })

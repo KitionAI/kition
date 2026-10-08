@@ -1,3 +1,4 @@
+import { copiedStrongLabels } from '../lib/markdown-strong'
 import { markdown, markdownLanguage as gfmMarkdownLanguage } from '@codemirror/lang-markdown'
 import { languages as codeLanguages } from '@codemirror/language-data'
 import { type Extension } from '@codemirror/state'
@@ -30,6 +31,7 @@ import {
   mediaDecoExtension,
   documentKeymap,
   pasteImageExtension,
+  pasteHtmlExtension,
   pasteLinkExtension,
   preserveHighlightExtension,
   slashCommandExtension,
@@ -61,7 +63,7 @@ const basicSetup = {
   syntaxHighlighting: false,
 } as const
 
-const markdownExtension = markdown({ base: gfmMarkdownLanguage, codeLanguages })
+const markdownExtension = markdown({ base: gfmMarkdownLanguage, codeLanguages, extensions: [copiedStrongLabels] })
 
 const editorTheme = EditorView.theme({
   '&': {
@@ -229,6 +231,7 @@ export const DocumentEditor = forwardRef<ReactCodeMirrorRef, DocumentEditorProps
           : []),
         pasteImageExtension({ sourcePath }),
         pasteLinkExtension(),
+        pasteHtmlExtension({ sourcePath }),
         wikilinkExtension({
           sourcePath,
           resolve: resolveWikilink,

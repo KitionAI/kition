@@ -1,12 +1,12 @@
-// All user-visible strings in the agent timeline. Picks a dictionary by locale
-// so AgentChatPanel can switch labels based on desktopSettings.general.language.
+import i18next from 'i18next'
+import { DEFAULT_LOCALE, resolveLocale, type Locale } from '@/i18n/types'
+import type enAgent from '@/i18n/locales/en-US/agent.json'
 
-export type AgentTimelineLocale = 'en-US'
+export type AgentTimelineLocale = Locale
+export const DEFAULT_AGENT_TIMELINE_LOCALE = DEFAULT_LOCALE
 
-export const DEFAULT_AGENT_TIMELINE_LOCALE: AgentTimelineLocale = 'en-US'
-
-export function resolveAgentTimelineLocale(_value: string | undefined | null): AgentTimelineLocale {
-  return 'en-US'
+export function resolveAgentTimelineLocale(value: string | undefined | null): AgentTimelineLocale {
+  return resolveLocale(value)
 }
 
 type ToolLabelMap = Record<string, string>
@@ -46,6 +46,9 @@ type AgentTimelineDict = {
     taskCompleted: string
     waiting: string
     thinking: string
+    completionUnknown: string
+    interruptedDetail: string
+    stopped: string
   }
   event: {
     understandingTask: string
@@ -63,6 +66,7 @@ type AgentTimelineDict = {
     backendTurnCompleted: string
     finalizeResponse: string
     taskFailed: string
+    taskCompleted: string
     currentModel: string
     nativeToolLoop: string
     standardChat: string
@@ -105,186 +109,52 @@ type AgentTimelineDict = {
 }
 
 
-const EN_US_DICT: AgentTimelineDict = {
-  status: { running: 'Running', failed: 'Failed', completed: 'Completed', unknown: 'Unknown' },
-  sections: {
-    tool: 'Tool',
-    input: 'Input',
-    output: 'Output',
-    error: 'Error',
-    status: 'Status',
-    data: 'Data',
-    backendContent: 'AI backend content',
-    toolArguments: 'Tool arguments',
-    path: 'Path',
-    type: 'Type',
-    title: 'Title',
-    mimeType: 'MIME type',
-    createdAt: 'Created at',
-    preview: 'Preview',
-    noDetail: 'This step is waiting for more execution data.',
-  },
-  model: {
-    titlePlanning: 'Understanding the task',
-    titleProcessing: 'Processing tool results',
-    detailPlanning: 'The model is analyzing the goal, context, and available tools',
-    detailProcessing: (tool) => `Received ${tool} results; the model is deciding the next step`,
-    expandedPlanning:
-      'The model is considering your question, the available context, and tools to figure out the first step. Execution starts as soon as a plan is ready.',
-    expandedProcessing: (tool) =>
-      `The model just received results from “${tool}” and is using the context to decide what to do next (run more tools, or reply directly).`,
-  },
-  activity: {
-    running: (tool) => `Running ${tool}`,
-    failed: (tool) => `${tool} failed`,
-    preparingFinal: 'Preparing the final reply',
-    planningNext: 'Planning the next step',
-    taskCompleted: 'Task completed',
-    waiting: 'Waiting for task',
-    thinking: 'Thinking…',
-  },
-  event: {
-    understandingTask: 'Understanding task',
-    taskUnderstood: 'Task understood',
-    enableSkills: 'Enable skills',
-    sendModelRequest: 'Send model request',
-    callingBackend: 'Calling AI backend',
-    backendCalled: 'AI backend called',
-    backendStreaming: 'AI backend streaming content',
-    backendReturned: 'AI backend returned content',
-    generatingToolArgs: (tool) => `Generating ${tool} arguments`,
-    generatingToolArgsAnon: 'Generating tool arguments',
-    toolCallGenerated: (tool) => `${tool} call generated`,
-    toolCallGeneratedAnon: 'Tool call generated',
-    backendTurnCompleted: 'AI backend turn completed',
-    finalizeResponse: 'Finalize response',
-    taskFailed: 'Task failed',
-    currentModel: 'Current model',
-    nativeToolLoop: 'Native tool loop',
-    standardChat: 'Standard chat',
-    modelTurnFinished: (turn) => `Model turn ${turn} has finished`,
-    requestingModelTurn: (turn) => `Requesting model turn ${turn}`,
-    requestingModel: 'Requesting model',
-    receivedChars: (chars) => `Received ${chars} characters from the backend`,
-    waitingBackendContent: 'Waiting for backend content',
-    modelRequestedNTools: (count) => `The model requested ${count} tools`,
-    modelReturnedChars: (chars) => `The model returned ${chars} characters of final content`,
-    thisTurnCompleted: 'This model turn completed',
-    reconnecting: (attempt, maxRetries) => `Reconnecting... ${attempt}/${maxRetries}`,
-    reconnectingNow: 'Retrying now',
-    reconnectingInSeconds: (seconds) => `Retrying in ${seconds} second${seconds === 1 ? '' : 's'}`,
-    reconnectReason: {
-      tls_handshake_timeout: 'Secure connection timed out',
-      connection_timeout: 'Connection timed out',
-      connection_closed: 'Connection closed unexpectedly',
-      connection_reset: 'Connection was reset',
-      dns_failure: 'Network address lookup failed',
-      network_error: 'Temporary network error',
-      request_timeout: 'AI backend request timed out',
-      rate_limited: 'AI backend is temporarily busy',
-      server_unavailable: 'AI backend is temporarily unavailable',
+export function getAgentTimelineDict(locale: AgentTimelineLocale = DEFAULT_AGENT_TIMELINE_LOCALE): AgentTimelineDict {
+  const t = i18next.getFixedT(locale, 'agent')
+  const strings = t('timeline', { returnObjects: true }) as typeof enAgent.timeline
+  return {
+    ...strings,
+    model: {
+      ...strings.model,
+      detailProcessing: (tool) => t('timeline.model.detailProcessing', { tool }),
+      expandedProcessing: (tool) => t('timeline.model.expandedProcessing', { tool }),
     },
-  },
-  tool: {
-    inProgress: (label) => `${label} in progress`,
-    failed: (label) => `${label} failed`,
-    completed: (label) => `${label} completed`,
-    pendingApproval: (command) => `Pending approval · $ ${command}`,
-    searchInBrowserPrefix: (query) => `Search in browser: ${query}`,
-    searchPrefix: (query) => `Search: ${query}`,
-    generateImagePrefix: (query) => `Generate image: ${query}`,
-    previewNFiles: (count, added, removed) =>
-      `Preview ${count} file${count === 1 ? '' : 's'} · +${added} −${removed}`,
-    appliedNFiles: (count, added, removed) =>
-      `Applied ${count} file${count === 1 ? '' : 's'} · +${added} −${removed}`,
-    nMatches: (count) => `${count} match${count === 1 ? '' : 'es'}`,
-    nResults: (count) => `${count} results`,
-    nImages: (count) => `${count} images`,
-    nEntries: (count) => `${count} entr${count === 1 ? 'y' : 'ies'}`,
-    removed: (path) => `Removed ${path}`,
-  },
-  artifact: { title: 'Save artifact' },
-  final: { streaming: 'Streaming final reply' },
-  sanitize: {
-    continueAndWrite:
-      'Continue from the current browser page and write the visible results into the table.',
-    continueDefault: 'Continue from the current browser page and prepare the next agent step.',
-  },
-  toolDisplayName: {
-    browser_open: 'Open Browser Tab',
-    browser_navigate: 'Navigate Browser',
-    browser_search: 'Search In Browser',
-    source_adapter_catalog: 'Inspect Source Context',
-    browser_context_entities: 'Read Browser Page',
-    browser_ingest_strategy: 'Evaluate Page Readiness',
-    web_search: 'Web Search',
-    web_fetch: 'Web Fetch',
-    data_table_create: 'Create Table',
-    data_table_schema: 'Table Schema',
-    data_table_records: 'Table Records',
-    data_table_record_draft: 'Draft Table Records',
-    data_table_add_fields: 'Add Table Fields',
-    data_table_add_records: 'Add Table Records',
-    image_search: 'Image Generation',
-    save_image_asset: 'Save Image',
-    document_search: 'Document Search',
-    document_read: 'Read Document',
-    document_write: 'Update Document',
-    apply_patch: 'Apply Patch',
-    file_search: 'Search Files',
-    fs_read: 'Read File',
-    fs_stat: 'Stat Path',
-    fs_list: 'List Directory',
-    fs_mkdir: 'Create Directory',
-    fs_remove: 'Remove Path',
-    fs_copy: 'Copy Path',
-    create_markdown: 'Create Markdown',
-    artifact_write: 'Save Artifact',
-    register_artifact: 'Register Artifact',
-  },
-  toolActionLabel: {
-    browser_open: 'Open browser tab',
-    browser_navigate: 'Navigate browser',
-    browser_search: 'Search in browser',
-    source_adapter_catalog: 'Inspect source context',
-    browser_context_entities: 'Inspect browser page',
-    browser_ingest_strategy: 'Evaluate page readiness',
-    web_search: 'Web search',
-    web_fetch: 'Web fetch',
-    data_table_create: 'Create data table',
-    data_table_schema: 'Inspect table schema',
-    data_table_records: 'Read table records',
-    data_table_record_draft: 'Draft table records',
-    data_table_add_fields: 'Add table fields',
-    data_table_add_records: 'Write table records',
-    image_search: 'Generate images',
-    save_image_asset: 'Save image',
-    document_search: 'Search documents',
-    document_read: 'Read document',
-    document_write: 'Update document',
-    apply_patch: 'Apply patch',
-    file_search: 'Search files',
-    fs_read: 'Read file',
-    fs_stat: 'Stat path',
-    fs_list: 'List directory',
-    fs_mkdir: 'Create directory',
-    fs_remove: 'Remove path',
-    fs_copy: 'Copy path',
-    create_markdown: 'Save Markdown',
-    artifact_write: 'Save artifact',
-    register_artifact: 'Register artifact',
-    shell_exec: 'Run command',
-  },
-  mcpDisplayPrefix: 'MCP',
-  mcpActionTemplate: (server, tool) => `MCP ${server}: ${tool}`,
-}
-
-const DICTS: Record<AgentTimelineLocale, AgentTimelineDict> = {
-  'en-US': EN_US_DICT,
-}
-
-export function getAgentTimelineDict(locale: AgentTimelineLocale = DEFAULT_AGENT_TIMELINE_LOCALE) {
-  return DICTS[locale] ?? DICTS[DEFAULT_AGENT_TIMELINE_LOCALE]
+    activity: {
+      ...strings.activity,
+      running: (tool) => t('timeline.activity.running', { tool }),
+      failed: (tool) => t('timeline.activity.failed', { tool }),
+    },
+    event: {
+      ...strings.event,
+      generatingToolArgs: (tool) => t('timeline.event.generatingToolArgs', { tool }),
+      toolCallGenerated: (tool) => t('timeline.event.toolCallGenerated', { tool }),
+      modelTurnFinished: (turn) => t('timeline.event.modelTurnFinished', { turn }),
+      requestingModelTurn: (turn) => t('timeline.event.requestingModelTurn', { turn }),
+      receivedChars: (chars) => t('timeline.event.receivedChars', { chars }),
+      modelRequestedNTools: (count) => t('timeline.event.modelRequestedNTools', { count }),
+      modelReturnedChars: (chars) => t('timeline.event.modelReturnedChars', { chars }),
+      reconnecting: (attempt, maxRetries) => t('timeline.event.reconnecting', { attempt, maxRetries }),
+      reconnectingInSeconds: (seconds) => t('timeline.event.reconnectingInSeconds', { seconds, count: seconds }),
+    },
+    tool: {
+      ...strings.tool,
+      inProgress: (label) => t('timeline.tool.inProgress', { label }),
+      failed: (label) => t('timeline.tool.failed', { label }),
+      completed: (label) => t('timeline.tool.completed', { label }),
+      pendingApproval: (command) => t('timeline.tool.pendingApproval', { command }),
+      searchInBrowserPrefix: (query) => t('timeline.tool.searchInBrowserPrefix', { query }),
+      searchPrefix: (query) => t('timeline.tool.searchPrefix', { query }),
+      generateImagePrefix: (query) => t('timeline.tool.generateImagePrefix', { query }),
+      previewNFiles: (count, added, removed) => t('timeline.tool.previewNFiles', { count, added, removed }),
+      appliedNFiles: (count, added, removed) => t('timeline.tool.appliedNFiles', { count, added, removed }),
+      nMatches: (count) => t('timeline.tool.nMatches', { count }),
+      nResults: (count) => t('timeline.tool.nResults', { count }),
+      nImages: (count) => t('timeline.tool.nImages', { count }),
+      nEntries: (count) => t('timeline.tool.nEntries', { count }),
+      removed: (path) => t('timeline.tool.removed', { path }),
+    },
+    mcpActionTemplate: (server, tool) => t('timeline.mcpActionTemplate', { server, tool }),
+  }
 }
 
 export function parseMcpToolName(toolName: string): { server: string; tool: string } | null {

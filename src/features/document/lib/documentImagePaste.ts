@@ -4,9 +4,9 @@ import {
   importWorkspaceImageFromClipboard,
   importWorkspaceImageFromFile,
 } from '@/services/desktop'
+import { clipboardHtmlFragment } from './documentClipboard'
+import { documentAttachmentFolder } from './documentAttachments'
 
-/** Workspace folder pasted and dropped images are stored in, relative to the workspace root. */
-const ATTACHMENT_FOLDER = 'attachments'
 const MAX_PASTED_IMAGES = 8
 
 export type DocumentClipboardImage =
@@ -53,7 +53,7 @@ function firstSrcsetSource(srcset: string) {
 
 export function extractImageOnlyClipboardHTML(html: string): DocumentClipboardImage[] {
   if (!html.trim() || typeof DOMParser === 'undefined') return []
-  const parsed = new DOMParser().parseFromString(html, 'text/html')
+  const parsed = new DOMParser().parseFromString(clipboardHtmlFragment(html), 'text/html')
   const imageElements = Array.from(parsed.querySelectorAll('img'))
   if (!imageElements.length) return []
 
@@ -87,6 +87,14 @@ export function extractImageOnlyClipboardHTML(html: string): DocumentClipboardIm
 
 export function collectDocumentClipboardImages(data: DataTransfer | null | undefined) {
   if (!data) return []
+  if (data.getData('text/markdown')) return []
+  const html = data.getData('text/html') || ''
+  if (html.trim()) {
+    const parsed = new DOMParser().parseFromString(clipboardHtmlFragment(html), 'text/html')
+    parsed.querySelectorAll('script, style, noscript').forEach((element) => element.remove())
+    // A bitmap can be an alternative representation of an entire rich selection.
+    if (parsed.body.textContent?.trim()) return []
+  }
   const files: File[] = []
   Array.from(data.items || []).forEach((item) => {
     if (item.kind !== 'file') return
@@ -104,16 +112,11 @@ export function collectDocumentClipboardImages(data: DataTransfer | null | undef
 export function canPasteNativeDocumentClipboardImage(data: DataTransfer | null | undefined) {
   if (!canImportWorkspaceImageFromClipboard()) return false
   if (!data) return true
-  return !data.getData('text/plain').trim() && !data.getData('text/html').trim()
+  return !data.getData('text/plain').trim() && !data.getData('text/html').trim() && !data.getData('text/markdown').trim()
 }
 
 function escapeMarkdownAlt(value: string) {
   return value.replace(/\\/g, '\\\\').replace(/]/g, '\\]')
-}
-
-function externalImageMarkdown(image: Extract<DocumentClipboardImage, { kind: 'source' }>) {
-  const safeSource = image.source.replace(/>/g, '%3E')
-  return `![${escapeMarkdownAlt(image.alt)}](<${safeSource}>)`
 }
 
 function splitWorkspacePath(path: string) {
@@ -137,7 +140,8 @@ export function relativeMarkdownPath(documentPath: string, targetPath: string) {
 
 /** Markdown destination: wrapped in angle brackets when it contains characters that would end the link early. */
 function markdownDestination(path: string) {
-  return /[\s()<>]/.test(path) ? `<${path.replace(/>/g, '%3E')}>` : path
+  const escaped = path.replace(/[%#?<>"]/g, (character) => encodeURIComponent(character))
+  return /[\s()]/.test(escaped) ? `<${escaped}>` : escaped
 }
 
 function importedImageMarkdown(
@@ -146,13 +150,14 @@ function importedImageMarkdown(
   alt: string,
   documentPath: string,
 ) {
+  const attachmentFolder = documentAttachmentFolder(documentPath)
   const normalizedImported = importedPath.replace(/\\/g, '/').replace(/^\/+/, '')
   const normalizedRelative = relativePath.replace(/\\/g, '/').replace(/^\/+/, '')
   const workspacePath = normalizedImported
     || (normalizedRelative
-      ? (normalizedRelative.startsWith(`${ATTACHMENT_FOLDER}/`)
+      ? (normalizedRelative.startsWith('attachments/')
         ? normalizedRelative
-        : `${ATTACHMENT_FOLDER}/${normalizedRelative}`)
+        : `${attachmentFolder}/${normalizedRelative}`)
       : '')
   if (!workspacePath) return ''
   const destination = markdownDestination(relativeMarkdownPath(documentPath, workspacePath))
@@ -161,6 +166,7 @@ function importedImageMarkdown(
 
 export type ImportDocumentClipboardImagesOptions = {
   preferNativeClipboard?: boolean
+  startIndex?: number
   /** Workspace-relative path of the document being edited; links are written relative to its folder. */
   documentPath?: string
 }
@@ -170,46 +176,47 @@ export async function importDocumentClipboardImages(
   options: ImportDocumentClipboardImagesOptions = {},
 ) {
   const documentPath = options.documentPath ?? ''
+  const folder = documentAttachmentFolder(documentPath)
   const limitedImages = images.slice(0, MAX_PASTED_IMAGES)
   if (options.preferNativeClipboard && limitedImages.length <= 1) {
     try {
       const imported = await importWorkspaceImageFromClipboard({
-        folder: ATTACHMENT_FOLDER,
-        index: 1,
+        folder,
+        index: options.startIndex ?? 1,
       })
       if (imported) {
         const alt = limitedImages[0]?.alt || 'image'
         const snippet = importedImageMarkdown(imported.importedPath, imported.relativePath, alt, documentPath)
         if (snippet) return [snippet]
       }
-    } catch (error) {
-      console.warn('document native clipboard image import failed', error)
+    } catch {
+      console.warn('document native clipboard image import failed')
     }
   }
 
+  if (options.preferNativeClipboard && !limitedImages.length) {
+    throw new Error('no clipboard image could be saved locally')
+  }
   const snippets: string[] = []
-  let index = 1
+  let index = options.startIndex ?? 1
   for (const image of limitedImages) {
     try {
       const imported = image.kind === 'file'
         ? await importWorkspaceImageFromFile({
             file: image.file,
-            folder: ATTACHMENT_FOLDER,
+            folder,
             index: index++,
           })
         : await importWorkspaceImageFromBlobURL({
-            folder: ATTACHMENT_FOLDER,
+            folder,
             blobURL: image.source,
             index: index++,
           })
       const snippet = importedImageMarkdown(imported.importedPath, imported.relativePath, image.alt, documentPath)
-      if (snippet) snippets.push(snippet)
-    } catch (error) {
-      if (image.kind === 'source') {
-        snippets.push(externalImageMarkdown(image))
-      } else {
-        console.warn('document image paste import failed', error)
-      }
+      if (!snippet) throw new Error('image import returned no local path')
+      snippets.push(snippet)
+    } catch (cause) {
+      throw new Error('image could not be saved to workspace attachments', { cause })
     }
   }
   return snippets

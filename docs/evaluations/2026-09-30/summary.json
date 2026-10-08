@@ -1,0 +1,424 @@
+{
+  "date": "2026-09-30",
+  "kind": "live-smoke",
+  "provider": "Kition Cloud",
+  "model": "gpt-5.5",
+  "reasoning_effort": "medium",
+  "client_base_commit": "62a88604",
+  "client_dirty": true,
+  "runtime_version": "dev",
+  "runtime_build_commit": "9a9e7733a04c",
+  "repetitions": 1,
+  "shared_isolated_workspace": true,
+  "renderer_exercised": false,
+  "token_usage": null,
+  "billing_cost": null,
+  "runs": [
+    {
+      "name": "writing",
+      "duration_seconds": 62.6,
+      "terminal_frame": true,
+      "error_frame": false,
+      "tool_calls": [
+        {
+          "name": "source_list",
+          "status": "completed"
+        },
+        {
+          "name": "source_read",
+          "status": "completed"
+        },
+        {
+          "name": "source_read",
+          "status": "completed"
+        },
+        {
+          "name": "source_read",
+          "status": "completed"
+        },
+        {
+          "name": "source_read",
+          "status": "completed"
+        },
+        {
+          "name": "source_list",
+          "status": "completed"
+        },
+        {
+          "name": "source_list",
+          "status": "completed"
+        },
+        {
+          "name": "source_list",
+          "status": "completed"
+        },
+        {
+          "name": "source_read",
+          "status": "completed"
+        },
+        {
+          "name": "source_read",
+          "status": "completed"
+        },
+        {
+          "name": "source_read",
+          "status": "completed"
+        },
+        {
+          "name": "artifact_write",
+          "status": "completed"
+        }
+      ],
+      "event_counts": {
+        "started": 1,
+        "user_message": 1,
+        "agent_event": 44,
+        "model_tool_call_delta": 773,
+        "model_tool_call_ready": 24,
+        "tool_call": 24,
+        "artifact": 1,
+        "model_delta": 28,
+        "assistant_message": 1,
+        "done": 1
+      },
+      "task_completed_event": true,
+      "prompt": "Write a 500-word pilot announcement using the selected sources. Save announcement.md. Attribute factual claims to source locators. Do not browse the web.",
+      "final_reply": "Saved the pilot announcement as:\n\n`Agent/announcement/announcement.md`\n\nI used only the selected local sources and did not browse the web."
+    },
+    {
+      "name": "revision",
+      "duration_seconds": 68.1,
+      "terminal_frame": true,
+      "error_frame": false,
+      "tool_calls": [
+        {
+          "name": "document_read",
+          "status": "completed"
+        },
+        {
+          "name": "source_list",
+          "status": "completed"
+        },
+        {
+          "name": "source_search",
+          "status": "completed"
+        },
+        {
+          "name": "source_read",
+          "status": "completed"
+        },
+        {
+          "name": "apply_patch",
+          "status": "completed"
+        }
+      ],
+      "event_counts": {
+        "started": 1,
+        "user_message": 1,
+        "agent_event": 29,
+        "model_tool_call_delta": 209,
+        "model_tool_call_ready": 10,
+        "tool_call": 10,
+        "model_delta": 49,
+        "assistant_message": 1,
+        "done": 1
+      },
+      "task_completed_event": true,
+      "prompt": "Replace only the Evidence section in article.md with survey findings from the selected sources. Preserve every byte outside that section, including frontmatter, links, and the code block. Save the revised article.md.",
+      "final_reply": "Done \u2014 I replaced only the Evidence section in `article.md` with the survey findings and preserved the rest of the file, including frontmatter, links, and the code block.\n\nSource used: `source://pilot-fixtures/research.md`"
+    },
+    {
+      "name": "table",
+      "duration_seconds": 84.0,
+      "terminal_frame": true,
+      "error_frame": false,
+      "tool_calls": [
+        {
+          "name": "source_file_search",
+          "status": "completed"
+        },
+        {
+          "name": "source_read",
+          "status": "completed"
+        },
+        {
+          "name": "data_table_create",
+          "status": "completed"
+        },
+        {
+          "name": "data_table_add_records",
+          "status": "completed"
+        },
+        {
+          "name": "data_table_schema",
+          "status": "completed"
+        },
+        {
+          "name": "data_table_records",
+          "status": "completed"
+        },
+        {
+          "name": "artifact_write",
+          "status": "completed"
+        }
+      ],
+      "event_counts": {
+        "started": 1,
+        "user_message": 1,
+        "agent_event": 37,
+        "model_tool_call_delta": 894,
+        "model_tool_call_ready": 14,
+        "tool_call": 14,
+        "artifact": 1,
+        "model_delta": 125,
+        "assistant_message": 1,
+        "done": 1
+      },
+      "task_completed_event": true,
+      "prompt": "Import orders.csv from the selected folder into a new native data table named Pilot Orders, keeping all six rows and six original fields. Keep order IDs as text with leading zeros and missing quantity as unknown. Then calculate paid revenue, known total revenue, and totals by team; explicitly identify incomplete rows. Verify the saved records and save a concise analysis to orders-analysis.md.",
+      "final_reply": "Done.\n\n- Imported `orders.csv` into a new native data table: `Pilot Orders.kitable`\n- Created table: `Pilot Orders`\n- Saved all 6 rows and all 6 original fields\n- Preserved order IDs as text with leading zeros\n- Saved missing quantity as `unknown`\n- Verified 6 saved records in the table\n- Calculated:\n  - Paid revenue: `$65.00`\n  - Known total revenue: `$85.00`\n  - Totals by team\n  - Incomplete row: order `006`\n\nAnalysis saved to:\n\n`Agent/orders-analysis/orders-analysis.md`"
+    },
+    {
+      "name": "retrieval",
+      "duration_seconds": 46.1,
+      "terminal_frame": true,
+      "error_frame": false,
+      "tool_calls": [
+        {
+          "name": "source_list",
+          "status": "completed"
+        },
+        {
+          "name": "source_search",
+          "status": "completed"
+        },
+        {
+          "name": "source_search",
+          "status": "completed"
+        },
+        {
+          "name": "source_search",
+          "status": "completed"
+        },
+        {
+          "name": "source_search",
+          "status": "completed"
+        },
+        {
+          "name": "source_read",
+          "status": "completed"
+        },
+        {
+          "name": "source_read",
+          "status": "completed"
+        },
+        {
+          "name": "source_read",
+          "status": "completed"
+        },
+        {
+          "name": "source_read",
+          "status": "completed"
+        }
+      ],
+      "event_counts": {
+        "started": 1,
+        "user_message": 1,
+        "agent_event": 33,
+        "model_tool_call_delta": 22,
+        "model_tool_call_ready": 18,
+        "tool_call": 18,
+        "model_delta": 283,
+        "assistant_message": 1,
+        "done": 1
+      },
+      "task_completed_event": true,
+      "prompt": "Use the selected folder to find the current approved launch date, invited team count, and the verification code near the end of the large source file. Explain the conflicting archived launch date. Cite file and line locators. Do not browse the web.",
+      "final_reply": "## Findings from the selected folder\n\n- **Current approved launch date:** **2026-11-12**  \n  - Confirmed in `source://pilot-fixtures/decisions.md:4`\n  - Also reflected in `source://pilot-fixtures/brief.md:3`\n\n- **Invited team count:** **24 invited teams**  \n  - Confirmed in `source://pilot-fixtures/brief.md:5`\n  - Also consistent with `source://pilot-fixtures/research.md:3`, which says 18 of 24 invited teams responded.\n\n- **Verification code near the end of the large source file:** **PILOT-7319**  \n  - Found at `source://pilot-fixtures/large-source.md:1206`\n\n## Explanation of the conflicting archived launch date\n\nThe archived launch date **2026-10-15** is from an old, superseded draft. The archive file explicitly says it was **superseded by `brief.md`** and that the early draft\u2019s launch date and team count were **not approved**. See `source://pilot-fixtures/archive/old-brief.md:3-4`.\n\nThe current approved date is therefore **2026-11-12**, because `decisions.md` says this date \u201csupersedes the archive proposal\u201d at `source://pilot-fixtures/decisions.md:4`."
+    },
+    {
+      "name": "memory-store",
+      "duration_seconds": 26.4,
+      "terminal_frame": true,
+      "error_frame": false,
+      "tool_calls": [],
+      "event_counts": {
+        "started": 1,
+        "user_message": 1,
+        "agent_event": 9,
+        "model_delta": 70,
+        "assistant_message": 1,
+        "done": 1
+      },
+      "task_completed_event": true,
+      "prompt": "Remember for future chats: the pilot review label is AMBER-742. This is an arbitrary user preference, not a source-file fact. Do not create or edit any document. Tell me whether you can persist it across chats.",
+      "final_reply": "I can remember that **within this chat**: the pilot review label is **AMBER-742**, and it\u2019s an arbitrary user preference, not a source-file fact.\n\nI **cannot guarantee persistence across future chats** unless this Kition environment has an enabled memory feature outside this conversation. I also won\u2019t create or edit any document for this."
+    },
+    {
+      "name": "memory-same-session",
+      "duration_seconds": 7.2,
+      "terminal_frame": true,
+      "error_frame": false,
+      "tool_calls": [],
+      "event_counts": {
+        "started": 1,
+        "user_message": 1,
+        "agent_event": 7,
+        "model_delta": 4,
+        "assistant_message": 1,
+        "done": 1
+      },
+      "task_completed_event": true,
+      "prompt": "What pilot review label did I ask you to remember? Reply with the label only.",
+      "final_reply": "AMBER-742"
+    },
+    {
+      "name": "memory-new-session",
+      "duration_seconds": 21.5,
+      "terminal_frame": true,
+      "error_frame": false,
+      "tool_calls": [],
+      "event_counts": {
+        "started": 1,
+        "user_message": 1,
+        "agent_event": 7,
+        "model_delta": 41,
+        "assistant_message": 1,
+        "done": 1
+      },
+      "task_completed_event": true,
+      "prompt": "What pilot review label did I ask you to remember in the previous chat? Do not guess. Do not read or write files.",
+      "final_reply": "I don\u2019t have access to the previous chat in this conversation, and you asked me not to read files or guess.\n\nSo I can\u2019t reliably tell you what pilot review label you asked me to remember."
+    },
+    {
+      "name": "writing-zh",
+      "duration_seconds": 82.6,
+      "terminal_frame": true,
+      "error_frame": false,
+      "tool_calls": [
+        {
+          "name": "source_list",
+          "status": "completed"
+        },
+        {
+          "name": "source_read",
+          "status": "completed"
+        },
+        {
+          "name": "source_read",
+          "status": "completed"
+        },
+        {
+          "name": "source_read",
+          "status": "completed"
+        },
+        {
+          "name": "source_read",
+          "status": "completed"
+        },
+        {
+          "name": "source_list",
+          "status": "completed"
+        },
+        {
+          "name": "source_list",
+          "status": "completed"
+        },
+        {
+          "name": "source_list",
+          "status": "completed"
+        },
+        {
+          "name": "source_read",
+          "status": "completed"
+        },
+        {
+          "name": "source_read",
+          "status": "completed"
+        },
+        {
+          "name": "source_read",
+          "status": "completed"
+        },
+        {
+          "name": "source_search",
+          "status": "completed"
+        },
+        {
+          "name": "artifact_write",
+          "status": "completed"
+        }
+      ],
+      "event_counts": {
+        "started": 1,
+        "user_message": 1,
+        "agent_event": 48,
+        "model_tool_call_delta": 870,
+        "model_tool_call_ready": 26,
+        "tool_call": 26,
+        "artifact": 1,
+        "model_delta": 42,
+        "assistant_message": 1,
+        "done": 1
+      },
+      "task_completed_event": true,
+      "prompt_description": "Request a roughly 800-Han-character Chinese pilot announcement with source-grounded facts and practical next steps.",
+      "final_reply_description": "The assistant reported the saved Chinese announcement artifact. Localized content is retained only in the temporary evaluation workspace."
+    },
+    {
+      "name": "table-typed",
+      "duration_seconds": 78.3,
+      "terminal_frame": true,
+      "error_frame": false,
+      "tool_calls": [
+        {
+          "name": "source_file_search",
+          "status": "completed"
+        },
+        {
+          "name": "source_read",
+          "status": "completed"
+        },
+        {
+          "name": "data_table_create",
+          "status": "completed"
+        },
+        {
+          "name": "data_table_add_records",
+          "status": "completed"
+        },
+        {
+          "name": "data_table_schema",
+          "status": "completed"
+        },
+        {
+          "name": "data_table_records",
+          "status": "completed"
+        }
+      ],
+      "event_counts": {
+        "started": 1,
+        "user_message": 1,
+        "agent_event": 32,
+        "model_tool_call_delta": 355,
+        "model_tool_call_ready": 12,
+        "tool_call": 12,
+        "model_delta": 160,
+        "assistant_message": 1,
+        "done": 1
+      },
+      "task_completed_event": true,
+      "prompt": "Import orders.csv from the selected folder into a second new native data table named Typed Pilot Orders. The order_id field must be text and preserve leading zeros; quantity and unit_price must be numeric fields; status must be a selection field. Preserve missing quantity as a blank/null numeric value, not zero or a text sentinel. Keep all six rows. Verify the saved schema and records.",
+      "final_reply": "Done \u2014 imported `orders.csv` into a new native data table:\n\n**Saved table:** `Agent/Typed Pilot Orders.kitable`\n\nVerified schema:\n- `order_id`: text, primary, preserves leading zeros\n- `team`: text\n- `quantity`: number\n- `unit_price`: number\n- `currency`: text\n- `status`: single select with choices `paid`, `pending`\n\nVerified records:\n- 6 rows saved\n- `order_id` values preserved as `001` through `006`\n- `quantity` and `unit_price` saved as numeric fields\n- Missing `quantity` for order `006` saved as `null` / blank, not zero or text\n- `status` saved as a selection field values `paid` / `pending`"
+    }
+  ],
+  "checks": {
+    "english_announcement_words_whitespace": 398,
+    "english_requested_words": 500,
+    "chinese_han_characters_full_artifact": 663,
+    "chinese_requested_approximate_han_characters": 800,
+    "chinese_artifact_sha256": "9fa3793facda781a312b18bce8ed59538442c583ba8ee5303e9dcb610dc013a7",
+    "revision_prefix_unchanged": true,
+    "revision_suffix_unchanged": true
+  }
+}

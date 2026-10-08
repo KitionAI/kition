@@ -26,6 +26,7 @@ type KitionDesktopBridge = {
   CopyDocumentHtml?: (request: CopyDocumentHtmlRequest) => Promise<boolean>
   CopyImage?: (request: { url: string }) => Promise<boolean>
   ReadClipboardImage?: () => Promise<DesktopClipboardImage | null>
+  ReadRemoteImage?: (url: string) => Promise<DesktopClipboardImage>
   SubmitFeedback?: (request: FeedbackReportSubmissionRequest) => Promise<FeedbackReportSubmissionResponse>
   ListWorkspaceDocuments?: () => Promise<WorkspaceDocumentListResponse>
   ReadWorkspaceImage?: (request: { path: string; expected_root: string }) => Promise<DesktopClipboardImage>

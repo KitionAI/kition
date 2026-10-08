@@ -1,3 +1,4 @@
+import { notifyImageImportFailure } from '../lib/documentImageImportFeedback'
 import { markdown as markdownLanguage } from '@codemirror/lang-markdown'
 import { EditorView } from '@codemirror/view'
 import CodeMirror, { type ReactCodeMirrorRef } from '@uiw/react-codemirror'
@@ -59,7 +60,7 @@ function createImagePasteExtension(documentPath: string) {
     event.preventDefault()
     void importDocumentClipboardImages(images, { preferNativeClipboard: true, documentPath }).then((snippets) => {
       insertImagesAtCursor(view, snippets)
-    })
+    }).catch(notifyImageImportFailure)
     return true
   },
   drop: (event, view) => {
@@ -71,7 +72,7 @@ function createImagePasteExtension(documentPath: string) {
     view.dispatch({ selection: { anchor: pos } })
     void importDocumentClipboardImages(images, { documentPath }).then((snippets) => {
       insertImagesAtCursor(view, snippets)
-    })
+    }).catch(notifyImageImportFailure)
     return true
   },
   })

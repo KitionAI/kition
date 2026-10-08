@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { getGeneratedImageToolOutputPaths, isGeneratedImageArtifact } from '@/features/media-generation/lib/generatedImageArtifacts'
 import {
   Check, ChevronDown, ChevronRight, Clock3, FileImage, FileSpreadsheet,
@@ -34,6 +35,7 @@ export function AgentChangedFilesCard({
   artifacts: AgentArtifact[]
   onOpen: (path: string) => void
 }) {
+  const { t } = useTranslation('agent')
   const paths = Array.from(getAgentModifiedDocumentPaths(toolCalls))
   if (!paths.length) {
     return null
@@ -46,7 +48,7 @@ export function AgentChangedFilesCard({
     <details className="agent-changed-files">
       <summary className="agent-changed-files-head">
         <FileText className="size-3.5" />
-        <span className="min-w-0 flex-1">{paths.length} file(s) modified</span>
+        <span className="min-w-0 flex-1">{t('results.modifiedFiles', { count: paths.length })}</span>
         <ChevronRight className="agent-changed-files-chevron size-4 shrink-0" />
       </summary>
       <div className="agent-changed-files-list">
@@ -59,11 +61,11 @@ export function AgentChangedFilesCard({
               className="agent-changed-file"
               onClick={() => onOpen(path)}
               title={path}
-              aria-label={`View changes in ${resolveName(path)}`}
+              aria-label={t('results.viewChanges', { name: resolveName(path) })}
             >
               <FileIcon className="size-4 shrink-0" />
               <span className="agent-changed-file-name">{resolveName(path)}</span>
-              <span className="agent-changed-file-action">View</span>
+              <span className="agent-changed-file-action">{t('results.view')}</span>
             </button>
           )
         })}
@@ -216,7 +218,8 @@ function AgentInlineActivity({
   ) => void
 }) {
   const { settings } = useDesktopSettings()
-  const locale = resolveAgentTimelineLocale(settings.general.language)
+  const { t, i18n } = useTranslation('agent')
+  const locale = resolveAgentTimelineLocale(i18n.resolvedLanguage || settings.general.language)
   const localeDict = getAgentTimelineDict(locale)
   const runLogItems = buildAgentRunLogItems({
     events,
@@ -284,7 +287,7 @@ function AgentInlineActivity({
                 type="button"
                 className={cn('agent-artifact', isModified && 'is-modified')}
                 onClick={() => onOpenArtifact(artifact.path)}
-                title={isModified ? `@ modified ${artifact.path}` : artifact.path}
+                title={isModified ? t('results.modifiedArtifact', { path: artifact.path }) : artifact.path}
               >
                 {isModified ? <span className="agent-artifact-at">@</span> : null}
                 <ArtifactIcon className="size-4" />
@@ -489,6 +492,7 @@ function AgentToolImageStrip({ images, onOpenArtifact }: {
   images: AgentToolImageResult[]
   onOpenArtifact: (path: string) => void
 }) {
+  const { t } = useTranslation('agent')
   if (!images.length) return null
   return (
     <div className="agent-tool-image-strip">
@@ -498,7 +502,7 @@ function AgentToolImageStrip({ images, onOpenArtifact }: {
         const href = resolveAgentImageURL(image.page_url || image.url)
         const title = image.title || image.alt || image.source || image.url
         const content = <>
-          <img src={previewURL} alt={image.alt || image.title || 'Image result'} loading="lazy" />
+          <img src={previewURL} alt={image.alt || image.title || t('results.imageResult')} loading="lazy" />
           {image.source ? <span>{image.source}</span> : null}
         </>
         return workspacePath ? (

@@ -1,13 +1,15 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
-import { useCallback } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DATA_TABLE_ACTION_EVENT, type TableAction } from '@/features/table/lib/tableActions'
 import type { EditorMode, EditorViewPreferences } from '@/features/workspace/hooks/useWorkspaceChrome'
-import type { WorkspaceDocument, WorkspaceDocumentFormat } from '@/services/desktop'
+import { isDesktopRuntime, openWorkspaceFile, type WorkspaceDocument, type WorkspaceDocumentFormat } from '@/services/desktop'
 
 type UseWorkspaceTopbarActionsOptions = {
   activeDocument: WorkspaceDocument | null
   activeDocumentFormat: WorkspaceDocumentFormat
+  ensureActiveDocumentSaved: () => Promise<boolean>
+  hasPendingRevision: boolean
   applyWorkspaceDocument: (document: WorkspaceDocument, options?: { resetEditor?: boolean; restoreFromCache?: boolean }) => void
   bumpEditorReset: () => void
   editorLocked: boolean
@@ -22,6 +24,8 @@ type UseWorkspaceTopbarActionsOptions = {
 export function useWorkspaceTopbarActions({
   activeDocument,
   activeDocumentFormat,
+  ensureActiveDocumentSaved,
+  hasPendingRevision,
   applyWorkspaceDocument,
   bumpEditorReset,
   editorLocked,
@@ -33,6 +37,28 @@ export function useWorkspaceTopbarActions({
   setItemMenuOpen,
 }: UseWorkspaceTopbarActionsOptions) {
   const { t } = useTranslation('workspace')
+  const [openingInSystem, setOpeningInSystem] = useState(false)
+  const openingRef = useRef(false)
+  const openDocumentInSystem = useCallback(async () => {
+    if (!activeDocument || activeDocumentFormat !== 'markdown' || openingRef.current) return
+    setItemMenuOpen(false)
+    if (hasPendingRevision) {
+      setError(t('errors.reviewBeforeExternalOpen'))
+      return
+    }
+    openingRef.current = true
+    setOpeningInSystem(true)
+    try {
+      if (!await ensureActiveDocumentSaved()) return
+      await openWorkspaceFile(activeDocument.path)
+    } catch {
+      setError(t('errors.openInSystemFailed'))
+    } finally {
+      openingRef.current = false
+      setOpeningInSystem(false)
+    }
+  }, [activeDocument, activeDocumentFormat, ensureActiveDocumentSaved, hasPendingRevision, setError, setItemMenuOpen, t])
+
   const setEditorMode = useCallback((mode: EditorMode) => {
     setEditorView((current) => ({ ...current, editorMode: mode }))
     bumpEditorReset()
@@ -90,6 +116,9 @@ export function useWorkspaceTopbarActions({
   ])
 
   return {
+    openDocumentInSystem,
+    openingInSystem,
+    canOpenInSystem: isDesktopRuntime(),
     importMarkdownFile,
     restoreSavedDraft,
     runActiveDataTableAction,

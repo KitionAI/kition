@@ -13,7 +13,7 @@ import { EditorView, WidgetType } from '@codemirror/view'
 import i18next from 'i18next'
 
 import { Menu } from '../../menu'
-import { activateTableCellWikilink, renderCellHtml } from './table-cell-renderer'
+import { activateTableCellWikilink, renderTableCell } from './table-cell-renderer'
 
 export { renderCellHtml } from './table-cell-renderer'
 
@@ -472,11 +472,12 @@ const ICONS = {
 }
 
 export class TableWidget extends WidgetType {
-  constructor(readonly model: TableModel) {
+  constructor(readonly model: TableModel, readonly sourcePath = '') {
     super()
   }
 
   eq(other: TableWidget): boolean {
+    if (this.sourcePath !== other.sourcePath) return false
     const a = this.model
     const b = other.model
     if (a.tableFrom !== b.tableFrom || a.tableTo !== b.tableTo) return false
@@ -499,7 +500,7 @@ export class TableWidget extends WidgetType {
   }
 
   toDOM(view: EditorView): HTMLElement {
-    return renderTableDom(this.model, view)
+    return renderTableDom(this.model, view, this.sourcePath)
   }
 
   destroy(dom: HTMLElement): void {
@@ -513,7 +514,7 @@ export class TableWidget extends WidgetType {
     return WIDGET_PADDING + rowCount * ROW_HEIGHT
   }
 
-  updateDOM(dom: HTMLElement, _view: EditorView): boolean {
+  updateDOM(dom: HTMLElement, view: EditorView): boolean {
     const thead = dom.querySelector('thead')
     const tbody = dom.querySelector('tbody')
     if (!thead || !tbody) return false
@@ -542,7 +543,7 @@ export class TableWidget extends WidgetType {
       const next = this.model.headers[i].text
       if (cellDom.dataset.rawText !== next) {
         cellDom.dataset.rawText = next
-        cellDom.innerHTML = renderCellHtml(next)
+        renderTableCell(cellDom, next, view, this.sourcePath)
       }
     }
     for (let r = 0; r < bodyRowDoms.length; r++) {
@@ -555,7 +556,7 @@ export class TableWidget extends WidgetType {
         const next = this.model.rows[r][c].text
         if (cellDom.dataset.rawText !== next) {
           cellDom.dataset.rawText = next
-          cellDom.innerHTML = renderCellHtml(next)
+          renderTableCell(cellDom, next, view, this.sourcePath)
         }
       }
     }
@@ -581,7 +582,7 @@ export class TableWidget extends WidgetType {
   }
 }
 
-function renderTableDom(model: TableModel, view: EditorView): HTMLElement {
+function renderTableDom(model: TableModel, view: EditorView, sourcePath: string): HTMLElement {
   const wrap = document.createElement('div')
   wrap.className = 'cm-table-widget'
   setStoredModel(wrap, model)
@@ -699,7 +700,7 @@ function renderTableDom(model: TableModel, view: EditorView): HTMLElement {
     inner.spellcheck = false
     inner.dataset.rawText = text
     inner.dataset.editMode = '0'
-    inner.innerHTML = renderCellHtml(text)
+    renderTableCell(inner, text, view, sourcePath)
 
     inner.addEventListener('mousedown', (event) => {
       if (inner.dataset.editMode === '1') return
@@ -755,7 +756,7 @@ function renderTableDom(model: TableModel, view: EditorView): HTMLElement {
       const raw = (inner.textContent ?? '').replace(/\r?\n/g, ' ')
       inner.dataset.rawText = raw
       inner.dataset.editMode = '0'
-      inner.innerHTML = renderCellHtml(raw)
+      renderTableCell(inner, raw, view, sourcePath)
       syncDomToDoc()
     })
     inner.addEventListener('keydown', (e: KeyboardEvent) => {

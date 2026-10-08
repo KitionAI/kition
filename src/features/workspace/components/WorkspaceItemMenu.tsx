@@ -5,6 +5,7 @@ import {
   Code2,
   Download,
   Edit3,
+  ExternalLink,
   FileDown,
   FileText,
   FileUp,
@@ -182,6 +183,8 @@ export function WorkspaceDocumentItemMenu({
 type WorkspaceMarkdownItemMenuProps = {
   editorMode: EditorMode
   hasActiveItem: boolean
+  onOpenInSystem?: () => void
+  openingInSystem?: boolean
   onOpenExportDialog: () => void
   onOpenWorkspaceFolder: () => void
   onSetEditorMode: (mode: EditorMode) => void
@@ -190,6 +193,8 @@ type WorkspaceMarkdownItemMenuProps = {
 export function WorkspaceMarkdownItemMenu({
   editorMode,
   hasActiveItem,
+  onOpenInSystem,
+  openingInSystem,
   onOpenExportDialog,
   onOpenWorkspaceFolder,
   onSetEditorMode,
@@ -232,6 +237,13 @@ export function WorkspaceMarkdownItemMenu({
           <FileUp className="size-4" />
           {t('itemMenu.exportFile')}
         </button>
+        {onOpenInSystem ? (
+          <button type="button" className="document-menu-command" onClick={onOpenInSystem}
+            disabled={!hasActiveItem || openingInSystem}>
+            <ExternalLink className="size-4" />
+            {t(openingInSystem ? 'itemMenu.openingInSystem' : 'itemMenu.openInSystem')}
+          </button>
+        ) : null}
         <button
           type="button"
           className="document-menu-command"

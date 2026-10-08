@@ -1,3 +1,4 @@
+import { notifyImageImportFailure } from '@/features/document/lib/documentImageImportFeedback'
 import { EditorView } from '@codemirror/view'
 
 import {
@@ -19,6 +20,7 @@ export type PasteImageExtensionOptions = {
 export function pasteImageExtension({ sourcePath = '' }: PasteImageExtensionOptions = {}) {
   return EditorView.domEventHandlers({
     paste: (event, view) => {
+      if (view.state.readOnly) return false
       const data = event.clipboardData
       const images = collectDocumentClipboardImages(data)
       if (images.length === 0 && !canPasteNativeDocumentClipboardImage(data)) return false
@@ -36,7 +38,7 @@ export function pasteImageExtension({ sourcePath = '' }: PasteImageExtensionOpti
           selection: { anchor: sel.from + insertText.length },
           userEvent: 'input.paste',
         })
-      })()
+      })().catch(notifyImageImportFailure)
       return true
     },
   })

@@ -1,5 +1,4 @@
-import { importWorkspaceImageFromBlobURL } from '@/services/desktop'
-import { parentDocumentFolderPath } from '@/services/workspaceFiles'
+import { importDocumentClipboardImages } from './documentImagePaste'
 
 export async function persistBlobImageLinks(markdown: string, documentPath?: string) {
   const matches = Array.from(markdown.matchAll(/!\[([^\]]*)\]\((blob:[^)]+)\)/g))
@@ -7,7 +6,6 @@ export async function persistBlobImageLinks(markdown: string, documentPath?: str
     return markdown
   }
 
-  const folder = parentDocumentFolderPath(documentPath || '')
   let nextMarkdown = markdown
 
   for (const [index, match] of matches.entries()) {
@@ -15,13 +13,12 @@ export async function persistBlobImageLinks(markdown: string, documentPath?: str
     const altText = match[1] || ''
     const blobURL = match[2]
     try {
-      const { relativePath } = await importWorkspaceImageFromBlobURL({
-        folder,
-        blobURL,
-        index: index + 1,
-      })
-      if (relativePath) {
-        nextMarkdown = nextMarkdown.replace(fullMatch, `![${altText}](${relativePath})`)
+      const [snippet] = await importDocumentClipboardImages(
+        [{ kind: 'source', source: blobURL, alt: altText }],
+        { documentPath, startIndex: index + 1 },
+      )
+      if (snippet) {
+        nextMarkdown = nextMarkdown.replace(fullMatch, snippet)
       }
     } catch {
       // leave the blob: link in place; the next save attempt can retry

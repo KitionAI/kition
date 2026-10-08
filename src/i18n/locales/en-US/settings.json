@@ -414,7 +414,24 @@
     "loading": "Loading developer settings…",
     "debugSection": "Logging",
     "debugTitle": "Debug mode",
-    "debugDescription": "When on, agent logs include model requests, turn details, and other debug information; when off, only tool calls and results are kept."
+    "debugDescription": "When on, agent logs include model requests, turn details, and other debug information; when off, only tool calls and results are kept.",
+    "clipboard": {
+      "title": "Clipboard inspector",
+      "description": "Inspect the original clipboard formats and document conversion before pasting.",
+      "pasteLabel": "Paste here to inspect",
+      "placeholder": "Click here, then press Ctrl+V or Cmd+V.",
+      "privacy": "Captured data stays in memory until cleared or this panel closes. Nothing is uploaded. Export only content you intend to share.",
+      "export": "Export JSON",
+      "clear": "Clear",
+      "detected": "Available formats: {{types}}",
+      "none": "None",
+      "raw": "Raw clipboard data",
+      "converted": "Document text conversion ({{format}})",
+      "markdown": "Converted Markdown",
+      "metadata": "File and item metadata",
+      "preview": "HTML preview",
+      "conversionNote": "Preview blocks scripts and external resources. Text conversion is shown here; image import and selection-specific editor actions run only in the document."
+    }
   },
   "runtime": {
     "paneTitle": "Data",
