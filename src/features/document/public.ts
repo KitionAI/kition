@@ -19,4 +19,5 @@ export { relativeMarkdownPath } from './lib/documentImagePaste'
 /** Loads the image insertion resolver with the editor chunk; it carries the Markdown parser. */
 export const loadMarkdownImageInsertionResolver = () =>
   import('./editor/editor/markdown-image-insertion').then((module) => module.resolveMarkdownImageInsertionContext)
-export { clipboardHtmlPreview, inspectDocumentClipboard } from './lib/documentClipboard'
+/** Loads the clipboard inspection helpers; they carry the HTML-to-Markdown converter. */
+export const loadDocumentClipboard = () => import('./lib/documentClipboard')

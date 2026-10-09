@@ -5,20 +5,14 @@ import { marked } from 'marked'
 import { sanitizeRenderedHtml } from '@/services/htmlSanitizer'
 import { normalizeClipboardHtmlStructure } from './clipboardHtmlStructure'
 import { sanitizeDocumentTableHtml } from './documentTableHtml'
+import { clipboardHtmlFragment } from './clipboardHtmlFragment'
 
 export type DocumentClipboardDecision = {
   format: 'markdown' | 'html' | 'text' | 'empty'
   markdown: string
 }
 
-/** CF_HTML producers may include context outside the copied selection. */
-export function clipboardHtmlFragment(html: string) {
-  const start = /<!--\s*StartFragment\s*-->/i.exec(html)
-  const end = /<!--\s*EndFragment\s*-->/i.exec(html)
-  return start && end && end.index > start.index
-    ? html.slice(start.index + start[0].length, end.index)
-    : html
-}
+export { clipboardHtmlFragment }
 
 export function parseClipboardHtml(html: string) {
   const document = new DOMParser().parseFromString(

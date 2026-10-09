@@ -4,7 +4,7 @@ import {
   importWorkspaceImageFromClipboard,
   importWorkspaceImageFromFile,
 } from '@/services/desktop'
-import { clipboardHtmlFragment } from './documentClipboard'
+import { clipboardHtmlFragment } from './clipboardHtmlFragment'
 import { documentAttachmentFolder } from './documentAttachments'
 
 const MAX_PASTED_IMAGES = 8

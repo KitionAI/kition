@@ -1,15 +1,26 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui'
-import { clipboardHtmlPreview, inspectDocumentClipboard } from '@/features/document/public'
+import { loadDocumentClipboard } from '@/features/document/public'
 import { SettingsSection } from '@/features/settings/primitives'
 import { useTranslation } from '@/i18n'
 import { isDesktopRuntime, saveTextFile } from '@/services/desktop'
 
-type Snapshot = ReturnType<typeof inspectDocumentClipboard>
+type ClipboardTools = Awaited<ReturnType<typeof loadDocumentClipboard>>
+type Snapshot = ReturnType<ClipboardTools['inspectDocumentClipboard']>
 
 export function ClipboardInspector() {
   const { t } = useTranslation('settings')
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
+  const [tools, setTools] = useState<ClipboardTools | null>(null)
+  useEffect(() => {
+    let active = true
+    void loadDocumentClipboard().then((loaded) => {
+      if (active) setTools(loaded)
+    })
+    return () => {
+      active = false
+    }
+  }, [])
   const [selectedType, setSelectedType] = useState('text/html')
   const [showPreview, setShowPreview] = useState(false)
   const [exportError, setExportError] = useState('')
@@ -48,7 +59,8 @@ export function ClipboardInspector() {
             onPaste={(event) => {
               event.preventDefault()
               event.stopPropagation()
-              const next = inspectDocumentClipboard(event.clipboardData)
+              if (!tools) return
+              const next = tools.inspectDocumentClipboard(event.clipboardData)
               setSnapshot(next)
               setSelectedType(next.types.includes('text/html') ? 'text/html' : next.types.find((type) => type !== 'Files') || '')
               setShowPreview(false)
@@ -93,7 +105,7 @@ export function ClipboardInspector() {
                   sandbox=""
                   referrerPolicy="no-referrer"
                   className="h-64 w-full rounded-xl border border-border bg-white"
-                  srcDoc={`<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'"></head><body>${clipboardHtmlPreview(snapshot.payloads['text/html'])}</body></html>`}
+                  srcDoc={`<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'"></head><body>${tools?.clipboardHtmlPreview(snapshot.payloads['text/html']) ?? ''}</body></html>`}
                 /> : null}
               </>
             ) : null}
