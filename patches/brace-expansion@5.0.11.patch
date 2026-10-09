@@ -1,9 +1,7 @@
 diff --git a/dist/commonjs/index.js b/dist/commonjs/index.js
-index be9df86be09c7655787a65c55ae6da01858894c3..16089769a6be82f031c5ccd9bb71af0ee9ab871f 100644
 --- a/dist/commonjs/index.js
 +++ b/dist/commonjs/index.js
-@@ -285,5 +285,10 @@ function expand_(str, max, maxLength, isTop, dropEmpties = false) {
-         str = m.post;
+@@ -317,4 +317,9 @@
      }
      return acc;
  }
@@ -13,3 +11,4 @@ index be9df86be09c7655787a65c55ae6da01858894c3..16089769a6be82f031c5ccd9bb71af0e
 +    EXPANSION_MAX_LENGTH: exports.EXPANSION_MAX_LENGTH,
 +});
  //# sourceMappingURL=index.js.map
+\ No newline at end of file

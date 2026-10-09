@@ -172,7 +172,7 @@
   },
   "pnpm": {
     "overrides": {
-      "brace-expansion": "5.0.9",
+      "brace-expansion": "5.0.11",
       "dompurify": "3.4.13",
       "fast-uri": "3.1.7",
       "form-data": "4.0.6",
@@ -181,15 +181,21 @@
       "tar@>=7.0.0 <7.5.21": "7.5.21",
       "tmp": "0.2.7",
       "undici@>=6.0.0 <6.28.0": "6.28.0",
-      "undici@>=7.0.0 <7.29.0": "7.29.0",
+      "undici@>=7.0.0 <7.29.1": "7.29.1",
       "browserslist": "4.28.7",
       "@xmldom/xmldom@>=0.8.0 <0.8.15": "0.8.15",
       "@xmldom/xmldom@>=0.9.0 <0.9.12": "0.9.12",
-      "postcss-selector-parser@>=6.0.0 <6.1.4": "6.1.4"
+      "postcss-selector-parser@>=6.0.0 <6.1.4": "6.1.4",
+      "source-map-js": "1.2.2"
     },
     "patchedDependencies": {
-      "brace-expansion@5.0.9": "patches/brace-expansion@5.0.9.patch",
+      "brace-expansion@5.0.11": "patches/brace-expansion@5.0.11.patch",
       "@codemirror/view@6.43.0": "patches/@codemirror__view@6.43.0.patch"
+    },
+    "auditConfig": {
+      "ignoreGhsas": [
+        "GHSA-vfj7-8cjw-p6xm"
+      ]
     }
   }
 }
