@@ -1,6 +1,6 @@
 /**
  * Composition root for the workspace window: sidebar tree, tab strip, editor
- * panes, browser panel, and the Agent sidebar. It owns tab state, create
+ * panes, and the Agent sidebar. It owns tab state, create
  * flows, and the bridges that feed document, table, and whiteboard context to
  * the Agent. It is intentionally being split into focused hooks; do not add
  * new responsibilities here (see docs/superpowers/plans, Task 1.4).
@@ -39,13 +39,11 @@ import { useWorkspaceTopbarActions } from '@/features/workspace/hooks/useWorkspa
 import { useWorkspaceTreeActions } from '@/features/workspace/hooks/useWorkspaceTreeActions'
 import { useWorkspaceTreeState } from '@/features/workspace/hooks/useWorkspaceTreeState'
 import { useWorkspaceTabs } from '@/features/workspace/hooks/useWorkspaceTabs'
-import { useWorkspaceBrowserPanel } from '@/features/workspace/hooks/useWorkspaceBrowserPanel'
 import { useWorkspaceWorkflowCreateMode } from '@/features/workspace/hooks/useWorkspaceWorkflowCreateMode'
 import { useWorkspaceTemplateDialogs } from '@/features/workspace/hooks/useWorkspaceTemplateDialogs'
 import { useWorkspaceWhiteboardAgentBridge } from '@/features/workspace/hooks/useWorkspaceWhiteboardAgentBridge'
 import { useWorkspaceDesignAgentBridge } from '@/features/workspace/hooks/useWorkspaceDesignAgentBridge'
 import { useWorkspaceTableAgentContext } from '@/features/workspace/hooks/useWorkspaceTableAgentContext'
-import { useWorkspaceAgentBrowserAutomation } from '@/features/workspace/hooks/useWorkspaceAgentBrowserAutomation'
 import { useWorkspaceAgentTurnContext } from '@/features/workspace/hooks/useWorkspaceAgentTurnContext'
 import { useWorkspaceKitableOpeners } from '@/features/workspace/hooks/useWorkspaceKitableOpeners'
 import { useWorkspaceTreeRowActions } from '@/features/workspace/hooks/useWorkspaceTreeRowActions'
@@ -57,7 +55,6 @@ import { WorkspaceDialogs } from '@/features/workspace/components/WorkspaceDialo
 import { WorkspaceAgentPane } from '@/features/workspace/components/WorkspaceAgentPane'
 import { useWorkspaceSidebarNavigation } from '@/features/workspace/hooks/useWorkspaceSidebarNavigation'
 import { useWorkspaceCreateMenu } from '@/features/workspace/hooks/useWorkspaceCreateMenu'
-import { useWorkspaceBrowserTabEvents } from '@/features/workspace/hooks/useWorkspaceBrowserTabEvents'
 import { useWorkspaceDocumentTitleRename } from '@/features/workspace/hooks/useWorkspaceDocumentTitleRename'
 import { useWorkspaceAgentComposer } from '@/features/workspace/hooks/useWorkspaceAgentComposer'
 import { useWorkspaceErrorNotice } from '@/features/workspace/hooks/useWorkspaceErrorNotice'
@@ -74,7 +71,6 @@ import { buildWorkspaceAgentTurnUpdate } from '@/features/workspace/lib/agentTur
 import { notify } from '@/lib/notify'
 import { cn } from '@/lib/utils'
 import { isDesktopRuntime, type WorkspaceDocument, type WorkspaceDocumentFormat } from '@/services/desktop'
-import { WEB_BROWSER_ENABLED } from '@/lib/productFeatures'
 
 const WorkflowRoute = lazy(() =>
   import('@/features/workflow/pages/WorkflowRoute').then((module) => ({ default: module.WorkflowRoute })),
@@ -207,7 +203,6 @@ export function WorkspaceScreen({
     (path: string, format: WorkspaceDocumentFormat) => void
   >(() => {})
   const setActiveWorkspaceTabIdRef = useRef<(tabId: string) => void>(() => {})
-  const workspaceTabsRef = useRef<typeof workspaceTabs>([])
   const refreshWorkspaceDocumentsRef = useRef<
     (preferredPath?: string, options?: { silent?: boolean; treeOnly?: boolean }) => Promise<boolean>
   >(async () => true)
@@ -224,12 +219,8 @@ export function WorkspaceScreen({
     buildDesignContext: designBridge.buildActiveContext,
   })
   const agentTurnContextRef = agentTurn.turnContextRef
-  const agentBrowserEnabled = agentTurn.browserEnabled
-  const setAgentBrowserEnabled = agentTurn.setBrowserEnabled
-  const getAgentTaskMode = agentTurn.getTaskMode
   const handleAgentInsertionContextChange = agentTurn.handleInsertionContextChange
   const getAgentTurnContext = agentTurn.getTurnContext
-  const prepareAgentBrowserContextForTurn = agentTurn.prepareBrowserContextForTurn
   const tableAgentRefreshRef = useRef<(() => Promise<void> | void) | null>(null)
   const documentSession = useWorkspaceDocumentSession({
     editorLocked: editorView.locked,
@@ -313,13 +304,11 @@ export function WorkspaceScreen({
     onDesignPatchCancelled: designBridge.cancelPreview,
     prepareActiveDocument: ensureActiveDocumentSaved,
     getTurnContext: getAgentTurnContext,
-    prepareBrowserContext: prepareAgentBrowserContextForTurn,
   })
   const {
     agentArtifacts,
     agentBusySessions,
     agentDrafts,
-    agentEvents,
     agentLocalSources,
     agentModifiedDocumentPaths,
     agentSessions,
@@ -354,7 +343,6 @@ export function WorkspaceScreen({
     remapWorkspaceTabPaths,
     renameWorkspaceTabPath,
     setActiveWorkspaceTabId,
-    updateWorkspaceTab,
     upsertWorkspaceTab,
     workspaceTabs,
   } = useWorkspaceTabs({
@@ -384,7 +372,6 @@ export function WorkspaceScreen({
     },
   })
   setActiveWorkspaceTabIdRef.current = setActiveWorkspaceTabId
-  workspaceTabsRef.current = workspaceTabs
 
   // Closing a tab needs the workflow-route guard from the tab strip's
   // onClose: when the last workflow tab goes away, the full-screen
@@ -392,9 +379,6 @@ export function WorkspaceScreen({
   // Shared between the tab strip's close button, the middle-click
   // shortcut, and the Cmd/Ctrl+W keyboard handler below.
 
-  const activeBrowserTab =
-    activeWorkspaceTab?.type === 'browser' ? activeWorkspaceTab : null
-  agentTurn.setActiveBrowserTab(activeBrowserTab)
 
 
   const {
@@ -442,15 +426,11 @@ export function WorkspaceScreen({
   const activeKitablePath = resolveActiveKitablePath(activeWorkspaceTab, activeDocumentFormat)
   const activeKitableMode = resolveKitableSidebarMode(activeWorkspaceTab, workflowOpen)
 
-  const tableAgent = useWorkspaceTableAgentContext({ activeWorkspaceTab, activeBrowserTab })
+  const tableAgent = useWorkspaceTableAgentContext({ activeWorkspaceTab })
   const {
     context: tableAgentContext,
     documentPath: tableAgentDocumentPath,
-    activeDataWorkspaceTabPath,
     activeDataWorkspaceTableId,
-    activeDataWorkspaceTabPathRef,
-    browserResolvedTableId,
-    lastTargetRef: lastTableAgentTargetRef,
   } = tableAgent
   tableAgentRefreshRef.current = tableAgentContext?.onTableChanged ?? null
   whiteboardBridge.setActiveBoardPath(activeWorkspaceTab?.type === 'board' ? activeWorkspaceTab.path : '')
@@ -460,9 +440,7 @@ export function WorkspaceScreen({
     tableAgentContext,
     tableAgentDocumentPath,
     docIdByKitablePath: kitableChildrenIndex.docIdByKitablePath,
-    browserResolvedTableId,
     activeDataWorkspaceTableId,
-    browserEnabled: agentBrowserEnabled,
   }))
   const activeWorkspaceDocumentPath = resolveAgentActiveDocument(activeWorkspaceTab).path
   const agentPanel = useWorkspaceAgentPanel({
@@ -683,32 +661,6 @@ export function WorkspaceScreen({
   openDocumentTabRef.current = openDocumentTab
   openFileViewerTabRef.current = openFileViewerTab
 
-  const getBrowserTabOriginFallback = useCallback(() => ({
-    documentPath: activeDataWorkspaceTabPathRef.current || lastTableAgentTargetRef.current.documentPath,
-    tableId: lastTableAgentTargetRef.current.tableId,
-    originLabel: lastTableAgentTargetRef.current.originLabel,
-  }), [activeDataWorkspaceTabPathRef, lastTableAgentTargetRef])
-  const getWorkspaceTabs = useCallback(() => workspaceTabsRef.current, [])
-  useWorkspaceBrowserTabEvents({
-    upsertWorkspaceTab,
-    getTabs: getWorkspaceTabs,
-    getOriginFallback: getBrowserTabOriginFallback,
-  })
-
-  const browserPanel = useWorkspaceBrowserPanel({
-    activeBrowserTab,
-    workspaceTabs,
-    updateWorkspaceTab,
-    workflowOpen,
-    effectiveSidebarWidth,
-    agentSidebarWidth,
-    workspaceAgentOpen,
-  })
-  const {
-    browserPanelPhase,
-    setBrowserPanelPhase,
-  } = browserPanel
-
   const workflowWorkbench = workflowOpen && workflowSchemaLookup ? (
     <div data-testid="workspace-workflow-workbench" className="h-full min-h-0 overflow-hidden bg-background">
       <Suspense fallback={null}>
@@ -722,22 +674,6 @@ export function WorkspaceScreen({
       </Suspense>
     </div>
   ) : null
-
-
-  const agentBrowserAutomation = useWorkspaceAgentBrowserAutomation({
-    activeWorkspaceAgentSession,
-    agentEvents,
-    agentBusySessions,
-    sendAgentContextAction,
-    activeBrowserTab,
-    browserPanelPhase,
-    setBrowserPanelPhase,
-    setAgentBrowserEnabled,
-    getTaskMode: getAgentTaskMode,
-    tableAgentContext,
-    tableAgentDocumentPath,
-  })
-  agentTurn.setPreflight(agentBrowserAutomation.runPreflight)
 
 
   const openWorkspaceAgentPanel = useCallback(() => {
@@ -950,7 +886,6 @@ export function WorkspaceScreen({
               onToggleSidebar: toggleSidebarCollapsed,
             }}
             desktop={isDesktopRuntime()}
-            browserTabEnabled={WEB_BROWSER_ENABLED && isDesktopRuntime()}
             onCreateWorkflowForTable={openWorkflowCreateModeDialog}
             onOpen={openSidebarPath}
             onOpenSearch={onOpenSearch}
@@ -984,7 +919,6 @@ export function WorkspaceScreen({
               editorView,
               editorPreviewHtml,
               galleryPanelProps,
-              browserPanel,
               tableAgent,
               agentPanel,
               activeAgentSession: activeWorkspaceAgentSession,

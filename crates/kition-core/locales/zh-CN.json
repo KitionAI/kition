@@ -1,0 +1,15 @@
+{
+  "common": {
+    "internal_error": "服务器内部错误",
+    "bad_request": "请求参数错误"
+  },
+  "auth": {
+    "invalid_credentials": "无效的认证凭证",
+    "local_debug_user_missing": "本地调试用户不存在",
+    "unauthorized": "未授权，请重新登录",
+    "user_not_found": "用户不存在",
+    "user_disabled": "用户已被禁用",
+    "forbidden": "权限不足",
+    "ai_login_required": "使用 AI 功能需要先登录云端账号"
+  }
+}

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 
 import { getCurrentLocale } from '@/i18n'
 import { resolveApiURL } from '@/services/desktop'
+import { resolveAIConfigRuntimeModel } from '@/features/table/public'
 
 import {
   parseScenarioBuildEvent,
@@ -245,6 +246,14 @@ export function useScenarioBuild(): UseScenarioBuildResult {
       formData.append('prompt', prompt)
       for (const file of files) {
         formData.append('attachments', file)
+      }
+      // The active text model infers the schema and fills AI columns; without
+      // one the runtime falls back to a default schema and skips AI fills.
+      const runtimeModel = await resolveAIConfigRuntimeModel({
+        type: 'summarize',
+      } as Parameters<typeof resolveAIConfigRuntimeModel>[0]).catch(() => undefined)
+      if (runtimeModel) {
+        formData.append('runtime_model', JSON.stringify(runtimeModel))
       }
 
       try {

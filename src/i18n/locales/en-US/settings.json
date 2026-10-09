@@ -65,7 +65,7 @@
     "description": "Proxy and outbound connection preferences for the whole desktop app.",
     "proxy": {
       "sectionTitle": "Proxy",
-      "sectionDescription": "Routes every outbound request — Go API (SMTP, webhooks, console), Electron window, and auto-updater — through the same proxy.",
+      "sectionDescription": "Routes every outbound request — runtime (SMTP, webhooks, console), desktop window, and auto-updater — through the same proxy.",
       "enableTitle": "Use proxy",
       "enableDescription": "When off, traffic goes direct.",
       "enabled": "Enabled",

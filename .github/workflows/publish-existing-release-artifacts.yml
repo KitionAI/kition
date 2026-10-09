@@ -37,42 +37,18 @@ jobs:
           run-id: ${{ inputs.run_id }}
           path: desktop-artifacts
 
-      - name: Verify release asset names
+      - name: Stage release assets and the updater manifest
         shell: bash
         env:
           VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
-          expected=(
-            "Kition-${VERSION}-macos-arm64.dmg"
-            "Kition-${VERSION}-macos-arm64.dmg.blockmap"
-            "Kition-${VERSION}-macos-arm64.zip"
-            "Kition-${VERSION}-macos-arm64.zip.blockmap"
-            "Kition-${VERSION}-macos-x64.dmg"
-            "Kition-${VERSION}-macos-x64.dmg.blockmap"
-            "Kition-${VERSION}-macos-x64.zip"
-            "Kition-${VERSION}-macos-x64.zip.blockmap"
-            "Kition-${VERSION}-windows-x64-setup.exe"
-            "Kition-${VERSION}-windows-x64-setup.exe.blockmap"
-            "Kition-${VERSION}-linux-x86_64.AppImage"
-          )
-          for name in "${expected[@]}"; do
-            count="$(find desktop-artifacts -type f -name "$name" | wc -l | tr -d ' ')"
-            if [[ "$count" != "1" ]]; then
-              echo "Expected exactly one release asset named $name, found $count" >&2
-              exit 1
-            fi
-          done
-
-      - name: Generate combined macOS update metadata
-        shell: bash
-        env:
-          VERSION: ${{ inputs.version }}
-        run: |
-          set -euo pipefail
-          node electron/scripts/generate-mac-update-metadata.mjs \
-            --root desktop-artifacts \
-            --version "$VERSION"
+          node src-tauri/scripts/stage-release-assets.mjs \
+            --artifacts desktop-artifacts \
+            --out release-assets \
+            --version "$VERSION" \
+            --tag "$RELEASE_TAG" \
+            --repository "$GITHUB_REPOSITORY"
 
       - name: Upload installers to draft Release
         shell: bash
@@ -80,11 +56,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          mapfile -d '' files < <(find desktop-artifacts -type f -print0)
-          if [[ "${#files[@]}" -eq 0 ]]; then
-            echo "No desktop artifacts were downloaded" >&2
-            exit 1
-          fi
+          mapfile -d '' files < <(find release-assets -type f -print0)
           gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --clobber "${files[@]}"
 
       - name: Verify and publish Release
@@ -109,7 +81,7 @@ jobs:
               echo "Missing uploaded desktop asset: $name" >&2
               exit 1
             fi
-          done < <(find desktop-artifacts -type f -print | sort)
+          done < <(find release-assets -type f -print | sort)
           gh release edit "$RELEASE_TAG" \
             --repo "$GITHUB_REPOSITORY" \
             --draft=false \

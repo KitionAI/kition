@@ -41,8 +41,7 @@
   "sidebar": {
     "tabs": {
       "files": "Arquivos",
-      "search": "Pesquisar",
-      "browser": "Navegador"
+      "search": "Pesquisar"
     },
     "collapseSection": "Recolher {{name}}",
     "expandSection": "Expandir {{name}}",
@@ -117,7 +116,6 @@
     "openingInSystem": "Abrindo…"
   },
   "tabs": {
-    "webBadge": "Web",
     "closeTab": "Fechar aba",
     "expandSidebar": "Expandir barra lateral",
     "previousTab": "Aba anterior",
@@ -164,36 +162,6 @@
   },
   "topbar": {
     "more": "Mais"
-  },
-  "browserSites": {
-    "title": "Navegador",
-    "visitedCount": "{{count}} sites visitados",
-    "openBrowser": "Abrir Navegador",
-    "openBrowserTitle": "Abrir uma nova aba do navegador",
-    "refreshLoginStatus": "Atualizar status de login",
-    "loading": "Carregando sites...",
-    "lastVisited": "Última visita {{time}}",
-    "signedIn": "Conectado",
-    "signedOut": "Desconectado",
-    "openSite": "Abrir site",
-    "open": "Abrir {{host}}",
-    "forgetSite": "Esquecer este site (limpar login)",
-    "forget": "Esquecer {{host}}",
-    "emptyTitle": "Nenhum site visitado ainda",
-    "emptyDescription": "Visite e faça login em sites no navegador integrado. Eles serão listados aqui junto com o status de login para permitir a conexão automática em coletas futuras."
-  },
-  "browserToolbar": {
-    "back": "Voltar",
-    "forward": "Avançar",
-    "stopLoading": "Parar de carregar",
-    "reload": "Recarregar",
-    "addressPlaceholder": "Digite a URL ou pesquise..."
-  },
-  "browserTab": {
-    "eyebrow": "Navegador integrado",
-    "unavailableDescription": "A página do navegador está anexada a esta área de aba. Use esta aba para login, pesquisa e navegação. O Chat de IA permanece disponível à direita, para que você possa continuar a partir da página atual sem sair dela.",
-    "emptyText": "Navegador — Digite uma URL acima ou instrua o Agente a navegar e usar o navegador",
-    "loadingPage": "Carregando página..."
   },
   "fileViewer": {
     "imageActions": "Ações da imagem",
@@ -617,8 +585,8 @@
     "createDashboardFailed": "Failed to create dashboard",
     "createTableFailed": "Falha ao criar a tabela",
     "importMarkdownFailed": "Falha ao importar Markdown",
-    "browserDevModeOpenDirectory": "Você está executando no modo de desenvolvimento do navegador e não pode abrir diretórios nativos. Inicie o app de desktop via pnpm dev:electron e tente novamente.",
-    "browserDevModePickDirectory": "Você está executando no modo de desenvolvimento do navegador e não pode selecionar um diretório nativo. Inicie o app de desktop via pnpm dev:electron e tente novamente.",
+    "browserDevModeOpenDirectory": "Você está executando no modo de desenvolvimento do navegador e não pode abrir diretórios nativos. Inicie o app de desktop via pnpm dev e tente novamente.",
+    "browserDevModePickDirectory": "Você está executando no modo de desenvolvimento do navegador e não pode selecionar um diretório nativo. Inicie o app de desktop via pnpm dev e tente novamente.",
     "browserDevModeSwitchDirectory": "Você está executando no modo de desenvolvimento do navegador e não pode trocar de diretórios nativos.",
     "openInSystemFailed": "Não foi possível abrir o arquivo. Verifique o aplicativo padrão e tente novamente.",
     "reviewBeforeExternalOpen": "Conclua a revisão das alterações antes de abrir este arquivo em outro aplicativo."

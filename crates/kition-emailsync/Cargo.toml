@@ -1,0 +1,44 @@
+[package]
+name = "kition-emailsync"
+description = "Email sync: imports IMAP messages as Markdown documents with a .kitable index."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+kition-connections = { workspace = true }
+kition-core = { workspace = true }
+kition-datadoc = { workspace = true }
+kition-http = { workspace = true }
+kition-kitable = { workspace = true }
+kition-store = { workspace = true }
+kition-workspace = { workspace = true }
+
+async-imap = { workspace = true }
+axum = { workspace = true }
+chrono = { workspace = true }
+futures = { workspace = true }
+hex = { workspace = true }
+htmd = { workspace = true }
+http = { workspace = true }
+lol_html = { workspace = true }
+mail-parser = { workspace = true }
+r2d2 = { workspace = true }
+r2d2_sqlite = { workspace = true }
+regex = { workspace = true }
+rusqlite = { workspace = true }
+rustls = { workspace = true }
+rustls-platform-verifier = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+tempfile = { workspace = true }
+tokio = { workspace = true }
+tokio-rustls = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }

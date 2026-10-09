@@ -85,14 +85,8 @@ jobs:
       - name: Every e2e spec is run somewhere
         run: pnpm run check:e2e-coverage
 
-      - name: Run every mock-backed renderer end-to-end spec
+      - name: Run every mock-backed renderer and desktop end-to-end spec
         run: xvfb-run -a pnpm run test:e2e:ci
-
-      - name: Run mock-backed Electron end-to-end tests
-        run: xvfb-run -a pnpm run test:desktop:e2e
-
-      - name: Run remaining Electron end-to-end specs
-        run: xvfb-run -a pnpm run test:desktop:e2e:extra
 
       - name: Upload Playwright artifacts on failure
         if: failure()
@@ -101,3 +95,42 @@ jobs:
           name: playwright-test-results
           path: test-results
           if-no-files-found: ignore
+
+  desktop-shell:
+    name: Rust runtime and desktop shell (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, macos-15, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache Rust builds
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install Linux web view libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libayatana-appindicator3-dev patchelf
+
+      - name: Provide an empty renderer bundle for compilation
+        shell: bash
+        run: mkdir -p dist && touch dist/index.html
+
+      - name: Check formatting
+        run: cargo fmt --all --check
+
+      - name: Lint the runtime and desktop shell
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Test the runtime and desktop shell
+        run: cargo test --workspace

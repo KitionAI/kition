@@ -26,17 +26,15 @@
     "kition",
     "ai-workspace",
     "automation",
-    "electron",
+    "tauri",
     "documents",
     "tables",
     "agents"
   ],
   "type": "module",
   "scripts": {
-    "dev": "node electron/scripts/dev-runtime.mjs",
+    "dev": "tauri dev",
     "dev:web": "vite --config tooling/vite.config.ts --mode web-preview",
-    "dev:electron": "node electron/scripts/dev-electron.mjs",
-    "dev:runtime": "node electron/scripts/dev-runtime.mjs",
     "typecheck": "tsc --noEmit",
     "test": "pnpm run test:unit",
     "check:branding": "python3 scripts/check-branding.py",
@@ -52,23 +50,21 @@
     "check:contracts": "node scripts/generate-contract-types.mjs --check",
     "check": "pnpm run check:branding && pnpm run check:product-language && pnpm run check:i18n && pnpm run check:blank-comments && pnpm run check:knip && pnpm run check:deps && pnpm run check:e2e-coverage && pnpm run check:contracts && pnpm run lint && pnpm run check:security && pnpm run build:check && pnpm test",
     "build": "vite build --config tooling/vite.config.ts",
-    "build:check": "pnpm run check:runtime-lock && pnpm run check:desktop-assets && pnpm run check:notices && pnpm run typecheck && pnpm run build",
-    "check:runtime-lock": "node electron/scripts/validate-runtime-lock.mjs",
-    "check:desktop-assets": "node electron/scripts/validate-desktop-assets.mjs",
+    "build:check": "pnpm run check:desktop-assets && pnpm run check:notices && pnpm run typecheck && pnpm run build",
+    "check:desktop-assets": "node src-tauri/scripts/validate-desktop-assets.mjs",
     "check:notices": "node scripts/generate-third-party-notices.mjs --check",
     "check:security": "python3 scripts/check-secrets.py && pnpm audit --audit-level high --ignore-registry-errors",
     "notices:generate": "node scripts/generate-third-party-notices.mjs",
     "build:perf": "pnpm run build && pnpm perf:budget",
-    "build:electron": "node electron/scripts/build-electron.mjs",
-    "build:unpack": "pnpm run build:electron -- --dir",
-    "dist:electron": "node electron/scripts/build-electron.mjs --publish never",
+    "build:desktop": "node src-tauri/scripts/build.mjs",
+    "dist:desktop": "node src-tauri/scripts/build.mjs",
+    "check:desktop": "cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace",
     "release:github": "node scripts/release-github.mjs",
-    "test:agent:unit": "vitest run --config tooling/vitest.config.ts src/features/agent/hooks/useTableAgentSession.spec.ts src/features/agent/lib/tableAgentShared.spec.ts src/features/workspace/lib/browserTabs.spec.ts src/features/workspace/lib/workspacePersistence.spec.ts",
-    "test:agent:e2e": "playwright test --config tooling/playwright.config.ts e2e/table-agent-browser-flow.spec.ts e2e/table-agent-document-flow.spec.ts e2e/markdown-image-insertion.spec.ts --workers=1",
+    "test:agent:unit": "vitest run --config tooling/vitest.config.ts src/features/agent/hooks/useTableAgentSession.spec.ts src/features/agent/lib/tableAgentShared.spec.ts src/features/workspace/lib/workspacePersistence.spec.ts",
+    "test:agent:e2e": "playwright test --config tooling/playwright.config.ts e2e/table-agent-document-flow.spec.ts e2e/markdown-image-insertion.spec.ts --workers=1",
     "test:agent:stable": "pnpm run test:agent:unit && pnpm run test:agent:e2e",
-    "test:desktop:unit": "vitest run --config tooling/vitest.config.ts src/services/desktop.spec.ts src/services/desktopBootstrap.spec.ts src/services/portalAccount.spec.ts electron/clipboard-image.spec.ts electron/pdf-options.spec.ts electron/workspace-file-operations.spec.ts electron/workspace-document-formats.spec.ts electron/workspace-registry.spec.ts electron/workspace-window.spec.ts electron/menu.spec.ts electron/secure-store.spec.ts electron/backend-supervisor.spec.ts electron/feedback-client.spec.ts electron/deep-link.spec.ts electron/external-url.spec.ts electron/local-runtime.spec.ts electron/linux-chromium-flags.spec.ts electron/runtime-label.spec.ts electron/runtime-manager.spec.ts electron/scripts/build-identity.spec.ts electron/scripts/build-sidecar.spec.ts electron/scripts/electron-builder-args.spec.ts electron/scripts/validate-desktop-assets.spec.ts electron/scripts/validate-desktop-renderer.spec.ts electron/scripts/validate-runtime-lock.spec.ts",
-    "test:desktop:e2e": "playwright test --config tooling/playwright.config.ts e2e/desktop-bundled-assets.spec.ts e2e/desktop-template-creation.spec.ts --workers=1 && playwright test --config tooling/playwright.config.ts e2e/desktop-shortcuts.spec.ts --workers=1 && playwright test --config tooling/playwright.config.ts e2e/desktop-image-paste.spec.ts e2e/desktop-image-copy.spec.ts --workers=1 && playwright test --config tooling/playwright.config.ts e2e/settings-desktop.spec.ts --workers=1 && playwright test --config tooling/playwright.config.ts e2e/table-agent-browser-flow.spec.ts --workers=1",
-    "test:desktop:e2e:extra": "playwright test --config tooling/playwright.config.ts e2e/electron-startup-theme.spec.ts e2e/electron-browser-session-debug.spec.ts e2e/desktop-design.spec.ts e2e/desktop-design-studio.spec.ts e2e/desktop-selection-translation.spec.ts e2e/settings-desktop-network.spec.ts --workers=1",
+    "test:desktop:unit": "vitest run --config tooling/vitest.config.ts src/services/desktop.spec.ts src/services/desktopBootstrap.spec.ts src/services/portalAccount.spec.ts src/services/desktopClient/tauriBridge.spec.ts src-tauri/scripts",
+    "test:desktop:e2e": "playwright test --config tooling/playwright.config.ts e2e/desktop-bundled-assets.spec.ts e2e/desktop-design-studio.spec.ts e2e/desktop-design.spec.ts e2e/desktop-image-copy.spec.ts e2e/desktop-image-import.spec.ts e2e/desktop-image-paste.spec.ts e2e/desktop-selection-translation.spec.ts e2e/desktop-shortcuts.spec.ts e2e/desktop-template-creation.spec.ts e2e/settings-desktop.spec.ts e2e/settings-desktop-network.spec.ts",
     "lint": "eslint . --config tooling/eslint.cjs --no-eslintrc --ext .js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --quiet --ignore-path .gitignore",
     "lint:fix": "eslint . --config tooling/eslint.cjs --no-eslintrc --ext .js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
     "perf:budget": "node scripts/check-performance-budget.mjs",
@@ -78,7 +74,7 @@
     "test:e2e": "playwright test --config tooling/playwright.config.ts e2e/app-shell.spec.ts e2e/table-widget.spec.ts --workers=1",
     "test:e2e:ci": "KITION_E2E_SCOPE=ci playwright test --config tooling/playwright.config.ts --workers=2 && playwright test --config tooling/playwright.config.ts e2e/design-performance.spec.ts --workers=1",
     "test:e2e:headed": "playwright test --config tooling/playwright.config.ts --headed",
-    "test:design:unit": "vitest run --config tooling/vitest.config.ts src/features/design src/features/workspace/lib/workspaceDesign.spec.ts electron/workspace-guarded-write.spec.ts electron/workspace-image-read.spec.ts electron/workspace-document-formats.spec.ts",
+    "test:design:unit": "vitest run --config tooling/vitest.config.ts src/features/design src/features/workspace/lib/workspaceDesign.spec.ts",
     "test:design:e2e": "playwright test --config tooling/playwright.config.ts e2e/design-editor.spec.ts e2e/desktop-design.spec.ts e2e/design-performance.spec.ts --workers=1",
     "test:whiteboard:e2e": "playwright test --config tooling/playwright.config.ts e2e/whiteboard-editing.spec.ts e2e/whiteboard-agent.spec.ts e2e/whiteboard-image-studio.spec.ts --workers=1",
     "test:whiteboard:e2e:headed": "pnpm run test:whiteboard:e2e --headed",
@@ -94,10 +90,7 @@
     "@fontsource-variable/bricolage-grotesque": "5.3.0",
     "@fontsource-variable/inter": "5.3.0",
     "@fontsource-variable/jetbrains-mono": "5.3.0",
-    "@fontsource-variable/lora": "5.3.0",
-    "chokidar": "^4.0.3",
-    "electron-log": "^5.4.4",
-    "electron-updater": "^6.6.10"
+    "@fontsource-variable/lora": "5.3.0"
   },
   "devDependencies": {
     "@codemirror/autocomplete": "^6.20.3",
@@ -114,6 +107,8 @@
     "@orama/orama": "^3.1.18",
     "@playwright/test": "^1.54.2",
     "@tanstack/react-query": "^5.104.0",
+    "@tauri-apps/api": "^2.12.2",
+    "@tauri-apps/cli": "^2.12.1",
     "@types/hammerjs": "^2.0.46",
     "@types/lodash-es": "^4.17.12",
     "@types/node": "^22.20.1",
@@ -129,17 +124,12 @@
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
     "autoprefixer": "^10.5.0",
-    "axios": "^1.18.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "1.1.1",
     "codemirror": "^6.0.2",
     "dependency-cruiser": "^18.4.0",
-    "docx": "^9.7.1",
     "dompurify": "3.4.13",
-    "electron": "^43.1.1",
-    "electron-builder": "^26.15.3",
-    "electron-builder-squirrel-windows": "26.15.3",
     "eslint": "^8.56.0",
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-react-hooks": "^4.6.2",
@@ -181,10 +171,6 @@
     "zod": "4.1.13"
   },
   "pnpm": {
-    "onlyBuiltDependencies": [
-      "electron",
-      "electron-winstaller"
-    ],
     "overrides": {
       "brace-expansion": "5.0.9",
       "dompurify": "3.4.13",
@@ -204,116 +190,6 @@
     "patchedDependencies": {
       "brace-expansion@5.0.9": "patches/brace-expansion@5.0.9.patch",
       "@codemirror/view@6.43.0": "patches/@codemirror__view@6.43.0.patch"
-    }
-  },
-  "main": "electron/main.mjs",
-  "build": {
-    "appId": "com.kition.desktop",
-    "productName": "Kition",
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "KitionAI",
-        "repo": "kition",
-        "releaseType": "release"
-      }
-    ],
-    "copyright": "Copyright © 2026 Heartie Technology Limited",
-    "protocols": [
-      {
-        "name": "Kition",
-        "schemes": [
-          "kition"
-        ]
-      }
-    ],
-    "npmRebuild": false,
-    "compression": "maximum",
-    "directories": {
-      "output": "dist-electron"
-    },
-    "files": [
-      "dist/**/*",
-      "electron/**/*",
-      "electron/defaults/config.toml",
-      "!**/*.{spec,test}.{ts,js,mjs,cjs,tsx,jsx}",
-      "!**/node_modules/**/*.{map,md,markdown,d.ts}",
-      "!**/node_modules/**/{CHANGELOG,README,readme,HISTORY,SECURITY,CONTRIBUTING,LICENSE}*",
-      "!**/node_modules/**/{__tests__,test,tests,__mocks__,e2e,example,examples,demo,demos,docs,doc,.github,.vscode,.idea,.bin,.cache}/**"
-    ],
-    "extraResources": [
-      {
-        "from": "electron/resources/bin",
-        "to": "bin",
-        "filter": [
-          "**/*"
-        ]
-      },
-      {
-        "from": "LICENSE",
-        "to": "LICENSE.kition.txt"
-      },
-      {
-        "from": "docs/legal/THIRD_PARTY_NOTICES.txt",
-        "to": "THIRD_PARTY_NOTICES.txt"
-      },
-      {
-        "from": "node_modules/electron/dist/LICENSE",
-        "to": "LICENSE.electron.txt"
-      },
-      {
-        "from": "node_modules/electron/dist/LICENSES.chromium.html",
-        "to": "LICENSES.chromium.html"
-      }
-    ],
-    "mac": {
-      "artifactName": "${productName}-${version}-macos-${arch}.${ext}",
-      "icon": "electron/icon.icns",
-      "electronLanguages": [
-        "zh_CN",
-        "en"
-      ],
-      "category": "public.app-category.productivity",
-      "target": [
-        "dmg",
-        "zip"
-      ],
-      "identity": "Heartie Technology Limited (X3FLP9863V)",
-      "hardenedRuntime": true,
-      "gatekeeperAssess": false,
-      "entitlements": "build/entitlements.mac.plist",
-      "entitlementsInherit": "build/entitlements.mac.plist",
-      "notarize": true
-    },
-    "win": {
-      "artifactName": "${productName}-${version}-windows-${arch}-setup.${ext}",
-      "icon": "electron/icon.png",
-      "electronLanguages": [
-        "zh-CN",
-        "en-US"
-      ],
-      "signtoolOptions": {
-        "publisherName": "Heartie Technology Limited"
-      },
-      "target": [
-        "nsis"
-      ]
-    },
-    "linux": {
-      "artifactName": "${productName}-${version}-linux-${arch}.${ext}",
-      "icon": "electron/icon.png",
-      "electronLanguages": [
-        "zh-CN",
-        "en-US"
-      ],
-      "category": "Office",
-      "maintainer": "Heartie Technology Limited <support@kition.ai>",
-      "executableArgs": [
-        "--disable-gpu-sandbox"
-      ],
-      "target": [
-        "AppImage"
-      ]
     }
   }
 }

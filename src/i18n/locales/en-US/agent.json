@@ -141,40 +141,6 @@
         }
       }
     },
-    "browser": {
-      "description": "Ask the agent to read, summarise, or capture from this page.",
-      "suggestions": {
-        "summarizePage": {
-          "label": "Summarise this page",
-          "prompt": "Summarise the current web page into bullet points."
-        },
-        "extractTable": {
-          "label": "Extract a table",
-          "prompt": "Extract the main data table on this page as Markdown."
-        },
-        "saveAsNote": {
-          "label": "Save as a note",
-          "prompt": "Capture the key points from this page into a new Markdown note."
-        }
-      }
-    },
-    "browserSites": {
-      "description": "Ask the agent to help you discover, configure, or sign in to browser sessions.",
-      "suggestions": {
-        "addSite": {
-          "label": "Add a site",
-          "prompt": "Walk me through adding a new browser site so the agent can use it."
-        },
-        "showConnected": {
-          "label": "Show connected",
-          "prompt": "Summarise which browser sites are signed in and which still need authentication."
-        },
-        "setupCustom": {
-          "label": "Set up custom",
-          "prompt": "Help me configure a custom adapter for a website that isn't built in."
-        }
-      }
-    },
     "gallery": {
       "description": "Ask the agent to organise, describe, or repurpose the media in this gallery.",
       "suggestions": {
@@ -321,7 +287,6 @@
       "failed": "{{label}} failed",
       "completed": "{{label}} completed",
       "pendingApproval": "Pending approval · $ {{command}}",
-      "searchInBrowserPrefix": "Search in browser: {{query}}",
       "searchPrefix": "Search: {{query}}",
       "generateImagePrefix": "Generate image: {{query}}",
       "previewNFiles": "Preview files: {{count}} · +{{added}} −{{removed}}",
@@ -338,17 +303,8 @@
     "final": {
       "streaming": "Streaming final reply"
     },
-    "sanitize": {
-      "continueAndWrite": "Continue from the current browser page and write the visible results into the table.",
-      "continueDefault": "Continue from the current browser page and prepare the next agent step."
-    },
     "toolDisplayName": {
-      "browser_open": "Open Browser Tab",
-      "browser_navigate": "Navigate Browser",
-      "browser_search": "Search In Browser",
       "source_adapter_catalog": "Inspect Source Context",
-      "browser_context_entities": "Read Browser Page",
-      "browser_ingest_strategy": "Evaluate Page Readiness",
       "web_search": "Web Search",
       "web_fetch": "Web Fetch",
       "data_table_create": "Create Table",
@@ -375,12 +331,7 @@
       "register_artifact": "Register Artifact"
     },
     "toolActionLabel": {
-      "browser_open": "Open browser tab",
-      "browser_navigate": "Navigate browser",
-      "browser_search": "Search in browser",
       "source_adapter_catalog": "Inspect source context",
-      "browser_context_entities": "Inspect browser page",
-      "browser_ingest_strategy": "Evaluate page readiness",
       "web_search": "Web search",
       "web_fetch": "Web fetch",
       "data_table_create": "Create data table",

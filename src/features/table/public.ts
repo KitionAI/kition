@@ -3,3 +3,4 @@
  * never from internal modules (enforced by tooling/dependency-cruiser.cjs).
  */
 export type { KitableTemplateDefinition } from './templates/kitableTemplates'
+export { resolveAIConfigRuntimeModel } from './lib/tableEditorShared'

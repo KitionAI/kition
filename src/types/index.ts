@@ -1,3 +1,6 @@
+/** A runtime timestamp: Unix milliseconds (protocol 2) or an older ISO string. */
+export type ApiTimestamp = string | number
+
 // Common type definitions
 
 export interface ApiResponse<T = any> {
@@ -33,9 +36,9 @@ export interface User {
   daily_quota?: number
   used_quota?: number
   total_creations?: number
-  last_login_at?: string | null
+  last_login_at?: ApiTimestamp | null
   last_login_ip?: string
-  created_at: string
+  created_at: ApiTimestamp
 }
 
 // AI model
@@ -57,8 +60,8 @@ export interface AIModel {
   is_system_builtin: boolean
   description?: string
   capabilities: ModelCapability[]
-  created_at: string
-  updated_at: string
+  created_at: ApiTimestamp
+  updated_at: ApiTimestamp
   is_readonly?: boolean
 }
 
@@ -90,24 +93,6 @@ export interface RuntimeWritingModel {
   reasoning_effort?: 'minimal' | 'low' | 'medium' | 'high'
   hosted_web_search_version?: '20260209' | '20250305'
   disable_response_storage?: boolean
-}
-
-// Available models (API Key models only)
-export interface AvailableModel {
-  model_id: string  // ai_model_{model_id}
-  model_name: string  // Actual model name
-  display_name: string  // Display name
-  provider: string  // Provider
-  source_type: 'api_key'  // Source type
-  source_id: number  // Source ID
-  is_free: boolean  // Is free
-  is_preferred: boolean  // Is user-preferred
-  status: 'active' | 'expired' | 'quota_exceeded'  // Status
-  quota_info?: {
-    used: number
-    total: number
-    percentage: number
-  }
 }
 
 // Unified AI invocation. Contract: contracts/runtime/ai-chat.schema.json.

@@ -5,7 +5,7 @@ import { mockLocalWorkspaceApi } from './helpers/mockApi'
 /**
  * Hooks the renderer-side desktop bridge with an in-memory proxy state that
  * lets the test inspect and drive the four proxy IPC methods without spinning
- * up Electron. Stores last save/test payloads on window so assertions can
+ * up the desktop shell. Stores last save/test payloads on window so assertions can
  * reach in for them.
  *
  * The default state matches `createDefaultDesktopProxyConfig`: disabled, http,
@@ -44,7 +44,7 @@ async function mockDesktopBridge(
         restart: 0,
       }
       stateWindow.kitionDesktop = {
-        shell: 'electron',
+        shell: 'tauri',
         DesktopInfo: async () => ({
           is_desktop: true,
           platform: 'darwin',

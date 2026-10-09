@@ -8,9 +8,7 @@ const base = {
   tableAgentContext: null,
   tableAgentDocumentPath: '',
   docIdByKitablePath: { 'leads.kitable': '42' },
-  browserResolvedTableId: 9,
   activeDataWorkspaceTableId: 3,
-  browserEnabled: false,
 }
 
 describe('buildWorkspaceAgentTurnUpdate', () => {
@@ -20,17 +18,7 @@ describe('buildWorkspaceAgentTurnUpdate', () => {
     expect(update.activeDocumentPath).toBe('leads.kitable')
     expect(update.activeDataDocumentId).toBe(42)
     expect(update.activeDataTableId).toBe(3)
-    expect(update.browserContext).toBeUndefined()
     expect(update.activeWorkflowId).toBeUndefined()
-  })
-
-  it('uses the browser origin table and attaches the page context for a browser tab', () => {
-    const tab: WorkspaceTab = { id: 'b', type: 'browser', title: 'Example', provider: 'generic-web', host: 'example.com', url: 'https://example.com/x' }
-    const update = buildWorkspaceAgentTurnUpdate({ ...base, activeWorkspaceTab: tab, browserEnabled: true })
-    expect(update.activeDataTableId).toBe(9)
-    expect(update.browserEnabled).toBe(true)
-    expect(update.browserContext).toMatchObject({ source: 'desktop_embedded_browser', host: 'example.com' })
-    expect(update.paneContext).toBeDefined()
   })
 
   it('forwards the workflow id only for a workflow tab opened on one workflow', () => {

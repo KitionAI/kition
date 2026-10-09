@@ -91,7 +91,7 @@ describe('livePreviewExtension — images', () => {
   it('resolves angle-bracket generated image destinations from the workspace root', () => {
     const desktopWindow = window as typeof window & { kitionDesktop?: unknown }
     const previousDesktopBridge = desktopWindow.kitionDesktop
-    desktopWindow.kitionDesktop = { shell: 'electron' }
+    desktopWindow.kitionDesktop = { shell: 'tauri' }
     mounts.push(() => {
       desktopWindow.kitionDesktop = previousDesktopBridge
     })

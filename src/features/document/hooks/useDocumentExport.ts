@@ -4,7 +4,6 @@ import { getWorkspaceItemTitle } from '@/features/workspace/lib/workspace'
 import { inlineMermaidBlocksInHtml } from '@/services/mermaid'
 import {
   isDesktopRuntime,
-  saveBinaryFile,
   savePdfFile,
   saveTextFile,
   type WorkspaceDocument,
@@ -12,7 +11,7 @@ import {
 } from '@/services/desktop'
 import { resolveWorkspaceImageSources } from '@/services/workspaceFiles'
 
-export type DocumentExportFormat = 'markdown' | 'html' | 'pdf' | 'word'
+export type DocumentExportFormat = 'markdown' | 'html' | 'pdf'
 
 export type DocumentExportPageFormat = 'a4' | 'a3' | 'a5' | 'letter' | 'legal' | 'tabloid'
 
@@ -26,7 +25,6 @@ export const documentExportFormats: Array<{
   { value: 'markdown', label: 'Markdown (.md)', extension: 'md' },
   { value: 'html', label: 'HTML (.html)', extension: 'html' },
   { value: 'pdf', label: 'PDF (.pdf)', extension: 'pdf' },
-  { value: 'word', label: 'Word (.docx)', extension: 'docx' },
 ]
 
 export const documentExportPageFormats: Array<{ value: DocumentExportPageFormat; label: string }> = [
@@ -68,15 +66,6 @@ async function saveTextExport(filename: string, content: string, mimeType: strin
   }
 
   downloadBrowserText(content, filename, mimeType)
-  return filename
-}
-
-async function saveBinaryExport(filename: string, bytes: Uint8Array, mimeType: string, dialogTitle: string) {
-  if (isDesktopRuntime()) {
-    return saveBinaryFile({ dialogTitle, defaultFilename: filename, bytes })
-  }
-
-  downloadBrowserBlob(new Blob([bytes as BlobPart], { type: mimeType }), filename)
   return filename
 }
 
@@ -183,26 +172,6 @@ export function useDocumentExport({
           scaleFactor: scaleNumber,
         })
         onFeedback(savedPath ? t('export.feedback.pdfExportedTo', { path: savedPath }) : t('export.feedback.canceled'))
-        setExportDialogOpen(false)
-        return
-      }
-
-      if (exportFormat === 'word') {
-        const { buildWordExportBlob } = await import('@/features/document/lib/docxExport')
-        const blob = await buildWordExportBlob({
-          markdown: draftContent,
-          title,
-          includeMedia: exportIncludeMedia,
-          includeName: true,
-        })
-        const bytes = new Uint8Array(await blob.arrayBuffer())
-        const savedPath = await saveBinaryExport(
-          filename,
-          bytes,
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          t('export.dialogTitle.word'),
-        )
-        onFeedback(savedPath ? t('export.feedback.wordExportedTo', { path: savedPath }) : t('export.feedback.canceled'))
         setExportDialogOpen(false)
         return
       }

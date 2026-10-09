@@ -22,7 +22,7 @@ describe('buildPdfExportHtml', () => {
     expect(buildPdfExportHtml({ ...baseOpts, landscape: true })).toContain('size: A4 landscape')
   })
 
-  it('emits zero CSS margin (electron drives margins)', () => {
+  it('emits zero CSS margin (the desktop shell drives margins)', () => {
     expect(buildPdfExportHtml(baseOpts)).toContain('margin: 0')
   })
 

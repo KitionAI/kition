@@ -1,8 +1,7 @@
-import { ChevronDown, ChevronLeft, ChevronRight, FileSpreadsheet, FileText, FileVideo2, Globe, Image as ImageIcon, LayoutDashboard, PanelLeftOpen, Paintbrush, PenTool, X, Zap } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, FileSpreadsheet, FileText, FileVideo2, Image as ImageIcon, LayoutDashboard, PanelLeftOpen, Paintbrush, PenTool, X, Zap } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkspaceTabContextMenu, type WorkspaceTabContextMenuItem } from '@/features/workspace/components/WorkspaceTabContextMenu'
-import { findLinkedWorkspaceTabIds } from '@/features/workspace/lib/browserTabs'
 import { getWorkspaceItemIcon, getWorkspaceItemIconColorClass, type WorkspaceTab } from '@/features/workspace/lib/workspace'
 import { cn } from '@/lib/utils'
 
@@ -81,7 +80,6 @@ export function WorkspaceTabStrip({
       }
 
       const activeId = tabs.some((tab) => tab.id === activeTabId) ? activeTabId : tabs[0]?.id
-      const linkedIds = findLinkedWorkspaceTabIds(tabs, activeId)
       const nextVisibleIds = new Set<string>()
       let usedWidth = 0
       const foldedAvailableWidth = Math.max(0, availableWidth - overflowTriggerWidth)
@@ -102,7 +100,6 @@ export function WorkspaceTabStrip({
       }
 
       addTab(activeId, true)
-      linkedIds.forEach((tabId) => addTab(tabId, true))
 
       for (let i = tabs.length - 1; i >= 0; i--) {
         addTab(tabs[i].id)
@@ -164,10 +161,6 @@ export function WorkspaceTabStrip({
     () => new Set(visibleTabIds.length ? visibleTabIds : tabs.map((tab) => tab.id)),
     [tabs, visibleTabIds],
   )
-  const linkedTabIdSet = useMemo(
-    () => new Set(findLinkedWorkspaceTabIds(tabs, activeTabId)),
-    [activeTabId, tabs],
-  )
   const visibleTabs = tabs.filter((tab) => visibleTabIdSet.has(tab.id))
   const overflowTabs = tabs.filter((tab) => !visibleTabIdSet.has(tab.id))
 
@@ -192,7 +185,7 @@ export function WorkspaceTabStrip({
     const hasLeft = index > 0
     const hasRight = index >= 0 && index < tabs.length - 1
     const hasOthers = tabs.length > 1
-    const supportsCopyRef = tab.type === 'document' || tab.type === 'file-viewer' || tab.type === 'browser'
+    const supportsCopyRef = tab.type === 'document' || tab.type === 'file-viewer'
     return [
       {
         key: 'close',
@@ -256,8 +249,6 @@ export function WorkspaceTabStrip({
         key={tab.id}
         className={cn(
           'document-tab',
-          tab.type === 'browser' && 'is-browser',
-          linkedTabIdSet.has(tab.id) && 'is-linked',
           activeTabId === tab.id && 'is-active',
           isTabModified?.(tab) && 'is-modified',
         )}
@@ -276,9 +267,6 @@ export function WorkspaceTabStrip({
         }}
       >
         <WorkspaceTabIcon tab={tab} />
-        {tab.type === 'browser' ? (
-          <span className="document-tab-badge">{t('tabs.webBadge')}</span>
-        ) : null}
         <span>{tab.title}</span>
         <button
           type="button"
@@ -357,8 +345,6 @@ export function WorkspaceTabStrip({
                   key={tab.id}
                   className={cn(
                     'document-tab-overflow-item',
-                    tab.type === 'browser' && 'is-browser',
-                    linkedTabIdSet.has(tab.id) && 'is-linked',
                     activeTabId === tab.id && 'is-active',
                     isTabModified?.(tab) && 'is-modified',
                   )}
@@ -377,9 +363,6 @@ export function WorkspaceTabStrip({
                   }}
                 >
                   <WorkspaceTabIcon tab={tab} />
-                  {tab.type === 'browser' ? (
-                    <span className="document-tab-badge">{t('tabs.webBadge')}</span>
-                  ) : null}
                   <span>{tab.title}</span>
                   <button
                     type="button"
@@ -412,9 +395,6 @@ export function WorkspaceTabStrip({
             className="document-tab"
           >
             <WorkspaceTabIcon tab={tab} />
-            {tab.type === 'browser' ? (
-              <span className="document-tab-badge">{t('tabs.webBadge')}</span>
-            ) : null}
             <span>{tab.title}</span>
             <button type="button" className="document-tab-close" tabIndex={-1}>
               <X className="size-3" />
@@ -434,12 +414,6 @@ export function WorkspaceTabStrip({
 }
 
 function WorkspaceTabIcon({ tab }: { tab: WorkspaceTab }) {
-  if (tab.type === 'browser') {
-    return <Globe className="size-3.5" />
-  }
-  if (tab.type === 'browser-sites') {
-    return <Globe className="size-3.5" />
-  }
   if (tab.type === 'gallery') {
     return tab.kind === 'images'
       ? <ImageIcon className={cn('size-3.5', getWorkspaceItemIconColorClass('image'))} />

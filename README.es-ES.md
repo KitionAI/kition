@@ -15,7 +15,7 @@
 
 <p align="center">
   <strong>Documentos, tablas, agentes y flujos de trabajo en un único espacio de escritorio.</strong><br />
-  Escribe conocimiento conectado, crea herramientas de datos, investiga en el navegador y automatiza el trabajo repetitivo.
+  Escribe conocimiento conectado, crea herramientas de datos, investiga en la web y automatiza el trabajo repetitivo.
 </p>
 
 <p align="center">
@@ -36,7 +36,7 @@
 
 <p align="center"><img src="docs/readme/kition-overview.webp" alt="Vista general de Kition con documentos, tablas estructuradas, investigación del agente y flujos visuales" width="100%" /></p>
 
-Kition reúne documentos Markdown, tablas estructuradas, un agente de IA capaz de usar herramientas, investigación en el navegador y flujos de trabajo visuales. El agente trabaja con archivos de proyecto editables, registros tipados, adjuntos y procesos visibles, lo que facilita revisar, corregir y repetir los resultados.
+Kition reúne documentos Markdown, tablas estructuradas, un agente de IA capaz de usar herramientas, investigación web y flujos de trabajo visuales. El agente trabaja con archivos de proyecto editables, registros tipados, adjuntos y procesos visibles, lo que facilita revisar, corregir y repetir los resultados.
 
 > Kition se encuentra actualmente en beta. Haz copias de seguridad de los espacios importantes y revisa los cambios del agente antes de usarlo en procesos de producción.
 
@@ -44,7 +44,7 @@ Kition reúne documentos Markdown, tablas estructuradas, un agente de IA capaz d
 
 - **Documentos conectados.** Markdown con vista previa, enlaces internos, backlinks, código, matemáticas, diagramas, notas diarias, búsqueda y exportación.
 - **Datos estructurados junto al conocimiento.** Campos tipados, fórmulas, filtros, grupos, vistas, adjuntos y campos de IA.
-- **Un agente que puede actuar.** Investiga en el navegador, lee y actualiza documentos y tablas, y guarda resultados en el proyecto.
+- **Un agente que puede actuar.** Investiga en la web, lee y actualiza documentos y tablas, y guarda resultados en el proyecto.
 - **Cambios de documentos revisables.** Deja que el agente edite el documento activo, revisa cada adición y eliminación, y acepta o rechaza los cambios de forma individual.
 - **Automatización visible.** Combina disparadores y acciones, prueba pasos y revisa el historial de ejecución.
 
@@ -88,7 +88,7 @@ Genera propuestas de diseño, vistas ortográficas, imágenes de característica
 
 ## Funciones principales
 
-- **Documentos:** edición Markdown, vista previa, plantillas, búsqueda y exportación PDF/DOCX.
+- **Documentos:** edición Markdown, vista previa, plantillas, búsqueda y exportación PDF.
 - **Tablas:** campos tipados, adjuntos, fórmulas, filtros, ordenación, grupos y varias vistas.
 - **Agente:** actualización de documentos, investigación web, uso de herramientas y guardado en el espacio de trabajo.
 - **Flujos:** composición visual de disparadores y acciones, pruebas por pasos e historial de ejecución.
@@ -104,7 +104,7 @@ Las compilaciones de escritorio se publican mediante [GitHub Releases](https://g
 
 ## Ejecutar desde el código fuente
 
-Requisitos: Node.js 22.19.0 y pnpm 10.33.0.
+Requisitos: Node.js 22.19.0, pnpm 10.33.0 y Rust (stable) con los [requisitos del sistema de Tauri](https://v2.tauri.app/start/prerequisites/).
 
 ```bash
 pnpm install --frozen-lockfile
@@ -115,13 +115,13 @@ Para desarrollar únicamente la interfaz sin integración con el runtime, usa `p
 
 ## Límite del código abierto
 
-Este repositorio contiene el cliente público React/Electron, contratos públicos del runtime, mocks, pruebas y empaquetado. El código fuente del runtime de Kition se mantiene por separado y no está incluido. El cliente solo se comunica mediante los contratos públicos de [`contracts/runtime/`](contracts/runtime/).
+Este repositorio contiene el cliente público React/Tauri, contratos públicos del runtime, mocks, pruebas y empaquetado. El código fuente del runtime de Kition se mantiene por separado y no está incluido. El cliente solo se comunica mediante los contratos públicos de [`contracts/runtime/`](contracts/runtime/).
 
 ## Tecnología
 
 | Área | Tecnología |
 | --- | --- |
-| Escritorio | Electron |
+| Escritorio | Tauri 2 (Rust) |
 | Interfaz | React, TypeScript, Vite |
 | Documentos | CodeMirror, Marked, Mermaid, KaTeX |
 | Datos y estado | IndexedDB, Jotai, Zod |

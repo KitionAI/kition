@@ -3,7 +3,6 @@ import { agentArtifactFromImageEvent, readAgentImageGenerationSessionEvent, type
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type {
   AgentArtifact,
-  AgentBrowserContext,
   AgentEvent,
   AgentExecutionMode,
   AgentMessage,
@@ -48,10 +47,6 @@ import {
   readAgentLocalSourcesForWorkspace,
   writeAgentLocalSourcesForSession,
 } from '@/features/agent/lib/agentLocalSources'
-import {
-  analyzeAgentBrowserIntent,
-  MAX_BROWSER_AUTO_CONTINUE_ATTEMPTS,
-} from '@/features/agent/lib/agentBrowserIntent'
 import {
   buildAgentModelOptions,
   resolveAgentModelKey,
@@ -101,9 +96,7 @@ type WorkspaceAgentTurnContext = {
   activeDocumentFormat?: WorkspaceDocumentFormat
   activeDataDocumentId?: number | null
   activeDataTableId?: number | null
-  browserContext?: AgentBrowserContext
   taskMode?: AgentTaskMode
-  browserEnabled?: boolean
   /** Active workbench tab type. Forwarded to streamAgentMessage so the
    *  backend can swap pane-specific instructions in the system prompt
    *  (e.g. don't suggest document_write when the pane is a workflow
@@ -147,7 +140,6 @@ type UseWorkspaceAgentOptions = {
   }) => void
   onDesignPatchCancelled?: (input: { designPath: string; sessionId: number }) => void
   prepareActiveDocument?: () => Promise<boolean>
-  prepareBrowserContext?: (content: string) => Promise<AgentBrowserContext | undefined>
   silentInitialSessionLoad?: boolean
   getTurnContext?: () =>
     | WorkspaceAgentTurnContext
@@ -178,7 +170,6 @@ export function useWorkspaceAgent({
   onDesignPatch,
   onDesignPatchCancelled,
   prepareActiveDocument,
-  prepareBrowserContext,
   silentInitialSessionLoad = !isDesktopRuntime(),
   getTurnContext,
 }: UseWorkspaceAgentOptions) {
@@ -554,18 +545,12 @@ export function useWorkspaceAgent({
       hideUserMessage?: boolean
       executionMode?: AgentExecutionMode
       tablePlanContext?: AgentTablePlanContext
-      browserAutoContinue?: boolean
-      browserAutoContinueAttempt?: number
-      browserAutoContinueFinal?: boolean
-      browserOriginalRequest?: string
-      browserContext?: AgentBrowserContext
       imageGenerationIntent?: AgentImageGenerationIntent
       localSources?: AgentLocalSource[]
       shellApproval?: AgentShellApprovalResponse
     },
   ) => {
     const content = (followup?.content ?? agentDrafts[sessionId] ?? '').trim()
-    const browserIntent = analyzeAgentBrowserIntent(content)
     // Block double-sends for THIS session only — other sessions remain
     // free to run independently. The bare `if (agentBusySessionId)`
     // form was the cross-session silent-skip bug; a click on another
@@ -675,14 +660,6 @@ export function useWorkspaceAgent({
     let pendingDesignPatch: AgentDesignPatch | null = null
 
     try {
-      let preparedBrowserContext: AgentBrowserContext | undefined
-      if (
-        browserIntent.browserEnabled &&
-        followup?.browserAutoContinue !== true &&
-        prepareBrowserContext
-      ) {
-        preparedBrowserContext = await prepareBrowserContext(content).catch(() => undefined)
-      }
       const turnContext = (await getTurnContext?.()) || undefined
       whiteboardPathForTurn = String(
         turnContext?.whiteboardContext?.board.path || '',
@@ -793,13 +770,6 @@ export function useWorkspaceAgent({
           bindDocumentContext: Boolean(activeDocumentPath),
           allowSaveMarkdown: true,
         })
-      const browserEnabledForTurn =
-        followup?.browserAutoContinue === true ||
-        browserIntent.browserEnabled ||
-        turnContext?.paneContext === 'browser'
-      const browserContextForTurn = browserEnabledForTurn
-        ? followup?.browserContext || preparedBrowserContext || turnContext?.browserContext
-        : undefined
 
       let imageTurnMessageId = optimisticUserMessage.id
       const done = await streamAgentMessage({
@@ -816,8 +786,6 @@ export function useWorkspaceAgent({
         whiteboardContext: turnContext?.whiteboardContext,
         designContext: turnContext?.designContext,
         taskMode: turnContext?.taskMode,
-        browserEnabled: browserEnabledForTurn,
-        browserContext: browserContextForTurn,
         imageGenerationIntent: followup?.imageGenerationIntent,
         executionMode,
         tablePlanContext: followup?.tablePlanContext,
@@ -1077,42 +1045,11 @@ export function useWorkspaceAgent({
           }
 
           if (event.type === 'agent_event' && event.event) {
-            const isUnexpectedBrowserOpen =
-              event.event.event_type === 'browser.open_required' &&
-              !browserEnabledForTurn
-            if (isUnexpectedBrowserOpen) {
+            // The embedded browser was removed; ignore legacy open requests.
+            if (event.event.event_type === 'browser.open_required') {
               return
             }
-            const currentBrowserAttempt = Math.max(
-              0,
-              Math.floor(followup?.browserAutoContinueAttempt || 0),
-            )
-            const isContinuableBrowserOpen =
-              event.event.event_type === 'browser.open_required' &&
-              followup?.browserAutoContinueFinal !== true &&
-              (browserIntent.continueAfterOpen || followup?.browserAutoContinue === true)
-            const shouldAutoContinue =
-              isContinuableBrowserOpen &&
-              currentBrowserAttempt < MAX_BROWSER_AUTO_CONTINUE_ATTEMPTS
-            const autoContinueExhausted =
-              isContinuableBrowserOpen &&
-              followup?.browserAutoContinue === true &&
-              currentBrowserAttempt >= MAX_BROWSER_AUTO_CONTINUE_ATTEMPTS
-            const nextEvent = shouldAutoContinue || autoContinueExhausted
-              ? {
-                  ...event.event,
-                  data: {
-                    ...(event.event.data || {}),
-                    client_auto_continue: shouldAutoContinue,
-                    client_auto_continue_attempt: shouldAutoContinue
-                      ? currentBrowserAttempt + 1
-                      : currentBrowserAttempt,
-                    client_auto_continue_exhausted: autoContinueExhausted,
-                    client_original_request:
-                      followup?.browserOriginalRequest || content,
-                  },
-                }
-              : event.event
+            const nextEvent = event.event
             setAgentEvents((current) => {
               const existing = current[sessionId] || []
               const next = existing.some((item) => item.id === nextEvent.id)
@@ -1200,8 +1137,7 @@ export function useWorkspaceAgent({
     onWhiteboardPatch,
     onWhiteboardPatchCancelled,
     prepareActiveDocument,
-    prepareBrowserContext,
-    refreshMentionableDocuments,
+      refreshMentionableDocuments,
     selectedAgentModel,
     markSessionBusy,
   ])
@@ -1235,11 +1171,6 @@ export function useWorkspaceAgent({
       content: string
       executionMode?: AgentExecutionMode
       tablePlanContext?: AgentTablePlanContext
-      browserAutoContinue?: boolean
-      browserAutoContinueAttempt?: number
-      browserAutoContinueFinal?: boolean
-      browserOriginalRequest?: string
-      browserContext?: AgentBrowserContext
       imageGenerationIntent?: AgentImageGenerationIntent
     },
   ) => {
@@ -1248,11 +1179,6 @@ export function useWorkspaceAgent({
       hideUserMessage: true,
       executionMode: input.executionMode,
       tablePlanContext: input.tablePlanContext,
-      browserAutoContinue: input.browserAutoContinue,
-      browserAutoContinueAttempt: input.browserAutoContinueAttempt,
-      browserAutoContinueFinal: input.browserAutoContinueFinal,
-      browserOriginalRequest: input.browserOriginalRequest,
-      browserContext: input.browserContext,
       imageGenerationIntent: input.imageGenerationIntent,
     })
   }, [sendAgentMessage])

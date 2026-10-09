@@ -4,7 +4,6 @@ import type { AgentSession } from '@/api/agent'
 import type { WorkspaceAgentPanelState } from '@/features/workspace/components/WorkspaceAgentChrome'
 import { WorkspaceEditorContent } from '@/features/workspace/components/WorkspaceEditorContent'
 import { WorkspaceEditorPane } from '@/features/workspace/components/WorkspaceEditorPane'
-import type { useWorkspaceBrowserPanel } from '@/features/workspace/hooks/useWorkspaceBrowserPanel'
 import type { useWorkspaceTableAgentContext } from '@/features/workspace/hooks/useWorkspaceTableAgentContext'
 import type { useWorkspaceTemplateDialogs } from '@/features/workspace/hooks/useWorkspaceTemplateDialogs'
 import { getWorkspaceItemTitle } from '@/features/workspace/lib/workspace'
@@ -32,12 +31,7 @@ export type WorkspaceScreenEditorInput = {
   editorView: { locked: boolean; editorMode: WorkspaceEditorContentProps['editorMode'] }
   editorPreviewHtml: string
   galleryPanelProps: WorkspaceEditorContentProps['galleryPanelProps']
-  browserPanel: Pick<
-    ReturnType<typeof useWorkspaceBrowserPanel>,
-    'browserPanelPhase' | 'browserToolbarStatus' | 'handleBrowserNavigate' | 'handleBrowserBack'
-    | 'handleBrowserForward' | 'handleBrowserReload' | 'handleBrowserStop'
-  >
-  tableAgent: Pick<ReturnType<typeof useWorkspaceTableAgentContext>, 'browserOriginDocumentPath' | 'handleContextChange'>
+  tableAgent: Pick<ReturnType<typeof useWorkspaceTableAgentContext>, 'handleContextChange'>
   agentPanel: Pick<WorkspaceAgentPanelState, 'open' | 'setOpen' | 'setHistoryOpen'>
   activeAgentSession: AgentSession | null
   agentBusySessions: Set<number>
@@ -72,7 +66,7 @@ export type WorkspaceScreenEditorInput = {
 }
 
 export function buildWorkspaceEditorContentProps(input: WorkspaceScreenEditorInput): WorkspaceEditorContentProps {
-  const { documentSession, browserPanel, tableAgent, agentPanel, activeAgentSession, whiteboard, design, templateDialogs, workflows } = input
+  const { documentSession, tableAgent, agentPanel, activeAgentSession, whiteboard, design, templateDialogs, workflows } = input
   const revision = documentSession.activeDocumentRevision
   const openAgentPanel = () => {
     agentPanel.setOpen(true)
@@ -95,14 +89,6 @@ export function buildWorkspaceEditorContentProps(input: WorkspaceScreenEditorInp
     documentRevisionSaving: documentSession.documentRevisionSaving,
     documentEditorFocusRequest: templateDialogs.documentEditorFocusRequest,
     galleryPanelProps: input.galleryPanelProps,
-    browserOriginDocumentPath: tableAgent.browserOriginDocumentPath,
-    browserPanelPhase: browserPanel.browserPanelPhase,
-    browserToolbarStatus: browserPanel.browserToolbarStatus,
-    onBrowserNavigate: (address) => void browserPanel.handleBrowserNavigate(address),
-    onBrowserBack: browserPanel.handleBrowserBack,
-    onBrowserForward: browserPanel.handleBrowserForward,
-    onBrowserReload: browserPanel.handleBrowserReload,
-    onBrowserStop: browserPanel.handleBrowserStop,
     getOpenedDocumentDraftEntry: documentSession.getOpenedDocumentDraftEntry,
     whiteboardAgentAvailable: whiteboard.available,
     whiteboardAgentBusy: activeAgentSession ? input.agentBusySessions.has(activeAgentSession.id) : false,

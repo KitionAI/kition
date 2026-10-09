@@ -11,7 +11,7 @@ API_PORT="${KITION_ONBOARDING_E2E_API_PORT:-18141}"
 API_ORIGIN="http://127.0.0.1:${API_PORT}"
 UI_PORT="${KITION_ONBOARDING_E2E_UI_PORT:-31141}"
 CONFIG_FILE="$RUNTIME_DIR/desktop-e2e.toml"
-RUNTIME_CONFIG_TEMPLATE="$APP_DIR/electron/defaults/config.e2e.toml"
+RUNTIME_CONFIG_TEMPLATE="$APP_DIR/crates/kition-api/e2e.toml"
 API_PID=""
 
 cleanup() {
@@ -42,11 +42,8 @@ awk -v port="$API_PORT" -v sqlite_path="$RUNTIME_DIR/desktop-e2e.db" -v upload_d
   { print }
 ' "$RUNTIME_CONFIG_TEMPLATE" > "$CONFIG_FILE"
 
-RUNTIME_BINARY="$(node "$APP_DIR/electron/scripts/resolve-runtime-path.mjs")"
-if [[ -z "$RUNTIME_BINARY" || ! -x "$RUNTIME_BINARY" ]]; then
-  echo "[workflow-onboarding] failed to resolve an executable Kition runtime" >&2
-  exit 2
-fi
+cargo build --quiet --manifest-path "$APP_DIR/Cargo.toml" -p kition-api
+RUNTIME_BINARY="$APP_DIR/target/debug/kition-api"
 
 (
   cd "$APP_DIR"

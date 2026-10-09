@@ -40,7 +40,7 @@ async function mockDesktop(page: Page, docContent = DOC_CONTENT) {
         })),
       })
       stateWindow.kitionDesktop = {
-        shell: 'electron',
+        shell: 'tauri',
         DesktopInfo: async () => ({
           is_desktop: true, platform: 'darwin', backend_base_url: 'http://127.0.0.1:18101/api',
           data_dir: '/tmp/kition/data', cache_dir: '/tmp/kition/cache', logs_dir: '/tmp/kition/logs',

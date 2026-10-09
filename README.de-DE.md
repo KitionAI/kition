@@ -15,7 +15,7 @@
 
 <p align="center">
   <strong>Dokumente, Tabellen, Agenten und Workflows in einem Desktop-Arbeitsbereich.</strong><br />
-  Schreiben Sie vernetztes Wissen, bauen Sie Datenwerkzeuge, recherchieren Sie im Browser und automatisieren Sie wiederkehrende Arbeit.
+  Schreiben Sie vernetztes Wissen, bauen Sie Datenwerkzeuge, recherchieren Sie im Web und automatisieren Sie wiederkehrende Arbeit.
 </p>
 
 <p align="center">
@@ -36,7 +36,7 @@
 
 <p align="center"><img src="docs/readme/kition-overview.webp" alt="Kition-Übersicht mit Dokumenten, strukturierten Tabellen, Agentenrecherche und visuellen Workflows" width="100%" /></p>
 
-Kition vereint Markdown-Dokumente, strukturierte Tabellen, einen werkzeugfähigen KI-Agenten, Browserrecherche und visuelle Workflows. Der Agent arbeitet mit bearbeitbaren Projektdateien, typisierten Datensätzen, Anhängen und sichtbaren Prozessen. Dadurch lassen sich Ergebnisse leichter prüfen, korrigieren und wiederholen.
+Kition vereint Markdown-Dokumente, strukturierte Tabellen, einen werkzeugfähigen KI-Agenten, Webrecherche und visuelle Workflows. Der Agent arbeitet mit bearbeitbaren Projektdateien, typisierten Datensätzen, Anhängen und sichtbaren Prozessen. Dadurch lassen sich Ergebnisse leichter prüfen, korrigieren und wiederholen.
 
 > Kition befindet sich derzeit in der Beta-Phase. Sichern Sie wichtige Arbeitsbereiche und prüfen Sie Änderungen des Agenten vor dem Einsatz in produktiven Abläufen.
 
@@ -44,7 +44,7 @@ Kition vereint Markdown-Dokumente, strukturierte Tabellen, einen werkzeugfähige
 
 - **Vernetzte Dokumente.** Markdown mit Live-Vorschau, internen Links, Backlinks, Code, Mathematik, Diagrammen, täglichen Notizen, Suche und Export.
 - **Strukturierte Daten neben dem Wissen.** Typisierte Felder, Formeln, Filter, Gruppen, Ansichten, Anhänge und KI-Felder.
-- **Ein Agent, der handeln kann.** Er recherchiert im Browser, liest und aktualisiert Dokumente und Tabellen und speichert Ergebnisse im Projekt.
+- **Ein Agent, der handeln kann.** Er recherchiert im Web, liest und aktualisiert Dokumente und Tabellen und speichert Ergebnisse im Projekt.
 - **Prüfbare Dokumentänderungen.** Lassen Sie den Agenten das aktive Dokument bearbeiten, prüfen Sie jede Ergänzung und Löschung und nehmen Sie einzelne Änderungen an oder lehnen Sie sie ab.
 - **Sichtbare Automatisierung.** Kombinieren Sie Auslöser und Aktionen, testen Sie Schritte und prüfen Sie den Ausführungsverlauf.
 
@@ -88,7 +88,7 @@ Erzeugen Sie Designvarianten, orthografische Ansichten, Funktionsbilder, Lifesty
 
 ## Hauptfunktionen
 
-- **Dokumente:** Markdown-Bearbeitung, Vorschau, Vorlagen, Suche und PDF/DOCX-Export.
+- **Dokumente:** Markdown-Bearbeitung, Vorschau, Vorlagen, Suche und PDF-Export.
 - **Tabellen:** typisierte Felder, Anhänge, Formeln, Filter, Sortierung, Gruppen und mehrere Ansichten.
 - **Agent:** Dokumentaktualisierung, Webrecherche, Werkzeugnutzung und Speichern im Arbeitsbereich.
 - **Workflows:** visuelle Kombination von Auslösern und Aktionen, Schritttests und Ausführungsverlauf.
@@ -104,7 +104,7 @@ Desktop-Versionen werden über [GitHub Releases](https://github.com/KitionAI/kit
 
 ## Aus dem Quellcode ausführen
 
-Erforderlich sind Node.js 22.19.0 und pnpm 10.33.0.
+Erforderlich sind Node.js 22.19.0, pnpm 10.33.0 sowie Rust (stable) mit den [Tauri-Systemvoraussetzungen](https://v2.tauri.app/start/prerequisites/).
 
 ```bash
 pnpm install --frozen-lockfile
@@ -115,13 +115,13 @@ Für reine Oberflächenentwicklung ohne Runtime-Integration verwenden Sie `pnpm 
 
 ## Open-Source-Grenze
 
-Dieses Repository enthält den öffentlichen React/Electron-Client, öffentliche Runtime-Verträge, Mocks, Tests und Paketierung. Der Quellcode der Kition-Runtime wird separat gepflegt und ist nicht enthalten. Der Client kommuniziert ausschließlich über die öffentlichen Verträge in [`contracts/runtime/`](contracts/runtime/).
+Dieses Repository enthält den öffentlichen React/Tauri-Client, öffentliche Runtime-Verträge, Mocks, Tests und Paketierung. Der Quellcode der Kition-Runtime wird separat gepflegt und ist nicht enthalten. Der Client kommuniziert ausschließlich über die öffentlichen Verträge in [`contracts/runtime/`](contracts/runtime/).
 
 ## Technologie
 
 | Bereich | Technologie |
 | --- | --- |
-| Desktop | Electron |
+| Desktop | Tauri 2 (Rust) |
 | Oberfläche | React, TypeScript, Vite |
 | Dokumente | CodeMirror, Marked, Mermaid, KaTeX |
 | Daten und Zustand | IndexedDB, Jotai, Zod |

@@ -41,8 +41,7 @@
   "sidebar": {
     "tabs": {
       "files": "Archivos",
-      "search": "Buscar",
-      "browser": "Navegador"
+      "search": "Buscar"
     },
     "collapseSection": "Contraer {{name}}",
     "expandSection": "Expandir {{name}}",
@@ -117,7 +116,6 @@
     "openingInSystem": "Abriendo…"
   },
   "tabs": {
-    "webBadge": "Web",
     "closeTab": "Cerrar pestaña",
     "expandSidebar": "Expandir barra lateral",
     "previousTab": "Pestaña anterior",
@@ -164,36 +162,6 @@
   },
   "topbar": {
     "more": "Más"
-  },
-  "browserSites": {
-    "title": "Navegador",
-    "visitedCount": "{{count}} sitios visitados",
-    "openBrowser": "Abrir navegador",
-    "openBrowserTitle": "Abrir una nueva pestaña del navegador",
-    "refreshLoginStatus": "Actualizar estado de inicio de sesión",
-    "loading": "Cargando sitios...",
-    "lastVisited": "Última visita {{time}}",
-    "signedIn": "Sesión iniciada",
-    "signedOut": "Sesión cerrada",
-    "openSite": "Abrir sitio",
-    "open": "Abrir {{host}}",
-    "forgetSite": "Olvidar este sitio (borrar inicio de sesión)",
-    "forget": "Olvidar {{host}}",
-    "emptyTitle": "Aún no hay sitios visitados",
-    "emptyDescription": "Visita e inicia sesión en sitios en el navegador integrado. Se mostrarán aquí junto con su estado de inicio de sesión para permitir el inicio de sesión automático en extracciones posteriores."
-  },
-  "browserToolbar": {
-    "back": "Atrás",
-    "forward": "Adelante",
-    "stopLoading": "Detener carga",
-    "reload": "Recargar",
-    "addressPlaceholder": "Introduce una URL o busca..."
-  },
-  "browserTab": {
-    "eyebrow": "Navegador integrado",
-    "unavailableDescription": "La página del navegador está adjunta a esta área de pestaña. Usa esta pestaña para iniciar sesión, buscar y navegar. El chat de IA sigue disponible a la derecha, así que puedes continuar desde la página actual sin cambiar de vista.",
-    "emptyText": "Navegador — Introduce una URL arriba o indica al agente que navegue y use el navegador",
-    "loadingPage": "Cargando página..."
   },
   "fileViewer": {
     "imageActions": "Acciones de imagen",
@@ -617,8 +585,8 @@
     "createDashboardFailed": "Failed to create dashboard",
     "createTableFailed": "No se pudo crear la tabla",
     "importMarkdownFailed": "No se pudo importar Markdown",
-    "browserDevModeOpenDirectory": "Estás en modo de desarrollo del navegador y no puedes abrir directorios nativos. Inicia la aplicación de escritorio con pnpm dev:electron e inténtalo de nuevo.",
-    "browserDevModePickDirectory": "Estás en modo de desarrollo del navegador y no puedes elegir un directorio nativo. Inicia la aplicación de escritorio con pnpm dev:electron e inténtalo de nuevo.",
+    "browserDevModeOpenDirectory": "Estás en modo de desarrollo del navegador y no puedes abrir directorios nativos. Inicia la aplicación de escritorio con pnpm dev e inténtalo de nuevo.",
+    "browserDevModePickDirectory": "Estás en modo de desarrollo del navegador y no puedes elegir un directorio nativo. Inicia la aplicación de escritorio con pnpm dev e inténtalo de nuevo.",
     "browserDevModeSwitchDirectory": "Estás en modo de desarrollo del navegador y no puedes cambiar de directorio nativo.",
     "openInSystemFailed": "No se pudo abrir el archivo. Comprueba la aplicación predeterminada e inténtalo de nuevo.",
     "reviewBeforeExternalOpen": "Termina de revisar los cambios antes de abrir el archivo en otra aplicación."

@@ -1,3 +1,5 @@
+import type { ApiTimestamp } from '@/types'
+import { toEpochMs, toIsoTimestamp } from '@/lib/timestamps'
 import type { AgentRunLogItem } from './agentTimelineTypes'
 import { agentEventTurn, agentReconnectAttempt, formatAgentRunLogEvent, normalizeAgentTaskStepStatus } from './agentTimelineEvents'
 import { compactAgentRunDetail, sanitizeAgentVisibleDetail } from './agentTimelineText'
@@ -93,8 +95,8 @@ export function scopeAgentTurnEventsById(
 // open-ended (active) turn owns artifacts created at or after its user message.
 export function scopeAgentTurnArtifacts(
   artifacts: AgentArtifact[],
-  startISO: string | null,
-  endISO: string | null,
+  startISO: ApiTimestamp | null,
+  endISO: ApiTimestamp | null,
 ): AgentArtifact[] {
   const start = startISO ? safeAgentTime(startISO) : 0
   const end = endISO ? safeAgentTime(endISO) : Number.POSITIVE_INFINITY
@@ -191,7 +193,7 @@ export function buildAgentRunLogItems({
         created_at: toolCall.created_at,
         updated_at: toolCall.updated_at,
       },
-      createdAt: toolCall.created_at || toolCall.updated_at || '',
+      createdAt: toIsoTimestamp(toolCall.created_at || toolCall.updated_at),
     })
   })
 
@@ -213,7 +215,7 @@ export function buildAgentRunLogItems({
         title: artifact.title,
         created_at: artifact.created_at,
       },
-      createdAt: artifact.created_at,
+      createdAt: toIsoTimestamp(artifact.created_at),
     })
   })
 
@@ -520,23 +522,8 @@ export function formatAgentToolHeadline(
   const dict = getAgentTimelineDict(locale)
   const input = toolCall.input_data || {}
   const output = toolCall.output_data || {}
-  if (toolCall.tool_name === 'browser_open' && (input.url || input.host || output.url)) {
-    return String(output.url || input.url || input.host)
-  }
-  if (toolCall.tool_name === 'browser_navigate' && (input.url || output.url)) {
-    return String(output.url || input.url)
-  }
-  if (toolCall.tool_name === 'browser_search' && input.query) {
-    return dict.tool.searchInBrowserPrefix(String(input.query))
-  }
   if (toolCall.tool_name === 'source_adapter_catalog' && (input.host || input.site || input.domain)) {
     return String(input.host || input.site || input.domain)
-  }
-  if (toolCall.tool_name === 'browser_context_entities' && (output.source_scope || input.page_url)) {
-    return String(output.source_scope || input.page_url)
-  }
-  if (toolCall.tool_name === 'browser_ingest_strategy' && (output.next_action || output.target_page_type)) {
-    return [output.next_action, output.target_page_type].filter(Boolean).join(' · ')
   }
   if (toolCall.tool_name === 'shell_exec' && input.command) {
     if (output && output.requires === 'approval') {
@@ -859,7 +846,7 @@ export function formatAgentErrorSummary(
   return normalized.length > 120 ? `${normalized.slice(0, 120)}...` : normalized
 }
 
-function safeAgentTime(value: string) {
-  const time = new Date(value).getTime()
+function safeAgentTime(value: ApiTimestamp) {
+  const time = toEpochMs(value)
   return Number.isFinite(time) ? time : 0
 }

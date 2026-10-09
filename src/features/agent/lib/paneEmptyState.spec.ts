@@ -18,8 +18,6 @@ const PANES: AgentPaneContext[] = [
   'document',
   'workflow',
   'table',
-  'browser',
-  'browserSites',
   'gallery',
   'whiteboard',
 ]
@@ -108,7 +106,7 @@ describe('emptyStateForPane', () => {
     const t = (key: string) => key
     const cfg = emptyStateForPane('unknown-pane' as AgentPaneContext, t)
     // The document pane has 3 suggestions, and unknown panes should
-    // borrow those keys (not workflow / table / browser / gallery's).
+    // borrow those keys (not workflow / table / gallery's).
     expect(cfg.suggestions).toHaveLength(3)
     // The keys themselves come from PANE_SUGGESTIONS.document — they are
     // requested under the unknown pane's namespace (so a refactor that

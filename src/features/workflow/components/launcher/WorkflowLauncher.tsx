@@ -209,7 +209,7 @@ export function WorkflowLauncher({ tableContext, onAiSubmit, schemaLookup, initi
             JSON.stringify(unresolvedFieldNames),
           )
         } catch {
-          // sessionStorage may be unavailable in some Electron contexts;
+          // sessionStorage may be unavailable in some embedded web views;
           // the banner is non-critical so we silently skip.
         }
       }

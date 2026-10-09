@@ -26,11 +26,6 @@ export const PANE_SUGGESTIONS: Record<AgentPaneContext, readonly string[]> = {
   document: ['summarize', 'launchPlan', 'checklist'],
   workflow: ['emailOnRecord', 'remindOnDate', 'refine'],
   table: ['addStatusColumn', 'summarizeTable', 'fillCells'],
-  browser: ['summarizePage', 'extractTable', 'saveAsNote'],
-  // browserSites is the browser sites list (no page loaded), so the
-  // page-action suggestions that work for the 'browser' pane don't fit.
-  // These suggestions are about discovering / managing browser sessions.
-  browserSites: ['addSite', 'showConnected', 'setupCustom'],
   gallery: ['describeEach', 'groupByTopic', 'pickHero'],
   whiteboard: ['generateMindMap', 'organizeBoard', 'generateImage'],
   design: ['headline', 'palette', 'background'],

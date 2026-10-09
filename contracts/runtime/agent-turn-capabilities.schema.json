@@ -6,8 +6,7 @@
   "additionalProperties": false,
   "required": [
     "available_tools",
-    "hosted_web_search",
-    "browser_search"
+    "hosted_web_search"
   ],
   "properties": {
     "available_tools": {
@@ -19,9 +18,6 @@
       "uniqueItems": true
     },
     "hosted_web_search": {
-      "$ref": "#/$defs/toolAvailability"
-    },
-    "browser_search": {
       "$ref": "#/$defs/toolAvailability"
     }
   },

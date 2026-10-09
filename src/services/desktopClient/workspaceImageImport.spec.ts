@@ -7,10 +7,13 @@ afterEach(() => {
 })
 
 describe('desktop pasted image import', () => {
-  it('identifies an outdated desktop preload without falling back to browser CORS', async () => {
+  it('identifies an outdated desktop app without falling back to browser CORS', async () => {
     const fetch = vi.fn()
     vi.stubGlobal('fetch', fetch)
-    window.kitionDesktop = { shell: 'electron' }
+    window.kitionDesktop = {
+      shell: 'tauri',
+      ReadRemoteImage: vi.fn().mockRejectedValue(new Error('command read_remote_image_command not found')),
+    }
     await expect(importWorkspaceImageFromBlobURL({ blobURL: 'https://example.com/image.png' }))
       .rejects.toMatchObject({ reason: 'desktopUpdate' })
     expect(fetch).not.toHaveBeenCalled()

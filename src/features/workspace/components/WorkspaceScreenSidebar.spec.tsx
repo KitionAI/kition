@@ -42,7 +42,6 @@ function buildInput(overrides: Partial<WorkspaceScreenSidebarInput> = {}) {
     chat: { addNodeToChat: vi.fn(async () => undefined), addNodeToNewChat: vi.fn(async () => undefined) } as never,
     chrome: { privateExpanded: true, onTogglePrivate: vi.fn(), onToggleSidebar: vi.fn() },
     desktop: true,
-    browserTabEnabled: true,
     onCreateWorkflowForTable: vi.fn(),
     onOpen: vi.fn(),
     onRefreshed: vi.fn(),
@@ -60,11 +59,10 @@ describe('buildWorkspaceSidebarPanelProps', () => {
     desktop.onRevealInOS!({ path: 'docs/a.md' } as never)
     expect(revealWorkspaceFolder).toHaveBeenCalledWith('docs/a.md')
 
-    const web = buildWorkspaceSidebarPanelProps(buildInput({ desktop: false, browserTabEnabled: false }).input)
+    const web = buildWorkspaceSidebarPanelProps(buildInput({ desktop: false }).input)
     expect(web.onRevealInOS).toBeUndefined()
     expect(web.onImportFiles).toBeUndefined()
     expect(web.onPasteFiles).toBeUndefined()
-    expect(web.showBrowserTab).toBe(false)
   })
 
   it('reports a manual refresh only when it succeeded', async () => {

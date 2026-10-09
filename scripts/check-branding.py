@@ -18,6 +18,11 @@ PROHIBITED_WORDS = (
     "no" + "tion",
     "air" + "table",
 )
+# Ordinary third-party words that contain a prohibited substring, such as the
+# ICU crate used by the desktop shell's dependencies.
+ALLOWED_WORDS = (
+    "wri" + "tea" + "ble",
+)
 
 
 def tracked_files() -> list[str]:
@@ -32,6 +37,8 @@ def tracked_files() -> list[str]:
 
 def matched_identity(value: str) -> str | None:
     normalized = value.casefold()
+    for allowed in ALLOWED_WORDS:
+        normalized = normalized.replace(allowed, "")
     substring = next(
         (identity for identity in PROHIBITED_SUBSTRINGS if identity in normalized),
         None,
@@ -50,6 +57,8 @@ def matched_identity(value: str) -> str | None:
 
 def matched_binary_identity(raw: bytes) -> tuple[str, int] | None:
     normalized = raw.lower()
+    for allowed in ALLOWED_WORDS:
+        normalized = normalized.replace(allowed.encode("ascii"), b"")
     for identity in PROHIBITED_SUBSTRINGS:
         offset = normalized.find(identity.encode("ascii"))
         if offset >= 0:

@@ -210,7 +210,7 @@ export function useWorkspaceWorkflowCreateMode({
             JSON.stringify(unresolvedFieldNames),
           )
         } catch {
-          // sessionStorage may be unavailable in some Electron contexts; the banner is non-critical.
+          // sessionStorage may be unavailable in some embedded web views; the banner is non-critical.
         }
       }
       finalizeCreatedWorkflow(def)

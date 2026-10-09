@@ -28,7 +28,7 @@ async function mockDesktopBridge(page: Page, md: string) {
       const vault = { path: vaultPath, name: 'E2E Vault', added_at: '2026-01-01T00:00:00.000Z', last_opened_at: '2026-01-01T00:00:00.000Z' }
       function makeRegistry() { return { vaults: [vault], active_vault_path: vaultPath } }
       stateWindow.kitionDesktop = {
-        shell: 'electron',
+        shell: 'tauri',
         DesktopInfo: async () => ({ is_desktop: true, platform: 'darwin', backend_base_url: 'http://127.0.0.1:18101/api', data_dir: '/tmp/kition/data', cache_dir: '/tmp/kition/cache', logs_dir: '/tmp/kition/logs', uploads_dir: '/tmp/kition/uploads', exports_dir: '/tmp/kition/exports', workspace_dir: vaultPath, supports_secure_storage: true }),
         StoreSecureValue: async (k: string, v: string) => { secureStore.set(k, v) },
         ReadSecureValue: async (k: string) => secureStore.get(k) || '',

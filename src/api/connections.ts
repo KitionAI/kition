@@ -1,3 +1,4 @@
+import type { ApiTimestamp } from '@/types'
 import request from '@/api/request'
 
 export const CONNECTIONS_CHANGED_EVENT = 'kition:connections:changed'
@@ -33,12 +34,12 @@ export type ConnectionView = {
   name: string
   settings: Record<string, unknown>
   status: 'pending' | 'active' | 'invalid' | string
-  lastVerifiedAt?: string
+  lastVerifiedAt?: ApiTimestamp
   lastErrorCode?: string
   lastErrorMessage?: string
   usedByCount?: number
-  createdAt: string
-  updatedAt: string
+  createdAt: ApiTimestamp
+  updatedAt: ApiTimestamp
 }
 
 export type SaveConnectionInput = {

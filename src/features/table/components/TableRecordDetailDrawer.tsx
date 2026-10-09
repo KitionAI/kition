@@ -1,3 +1,5 @@
+import type { ApiTimestamp } from '@/types'
+import { toEpochMs } from '@/lib/timestamps'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronUp, ClipboardList, Link as LinkIcon, Trash2 } from 'lucide-react'
@@ -231,9 +233,9 @@ function RecordHistoryPanel({
   )
 }
 
-function formatHistoryTime(raw: string): string {
+function formatHistoryTime(raw: ApiTimestamp): string {
   if (!raw) return ''
-  const date = new Date(raw)
-  if (Number.isNaN(date.getTime())) return raw
+  const date = new Date(toEpochMs(raw))
+  if (Number.isNaN(date.getTime())) return String(raw)
   return date.toLocaleString(getCurrentLocale())
 }

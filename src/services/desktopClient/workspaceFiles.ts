@@ -107,9 +107,6 @@ export async function importWorkspaceImageFromBlobURL(options: {
   index?: number
 }): Promise<{ importedPath: string; relativePath: string }> {
   const bridge = getDesktopBridge()
-  if (/^https?:\/\//i.test(options.blobURL) && bridge?.shell === 'electron' && !bridge.ReadRemoteImage) {
-    throw new ImageImportError('desktopUpdate')
-  }
   if (/^https?:\/\//i.test(options.blobURL) && bridge?.ReadRemoteImage) {
     const image = await bridge.ReadRemoteImage(options.blobURL).catch((error) => {
       throw new ImageImportError(imageImportFailure(error), error)

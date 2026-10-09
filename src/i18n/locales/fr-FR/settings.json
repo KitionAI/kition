@@ -65,7 +65,7 @@
     "description": "Préférences de proxy et de connexions sortantes pour l'ensemble de l'application de bureau.",
     "proxy": {
       "sectionTitle": "Proxy",
-      "sectionDescription": "Achemine chaque requête sortante — API Go (SMTP, webhooks, console), fenêtre Electron et outil de mise à jour automatique — via le même proxy.",
+      "sectionDescription": "Achemine chaque requête sortante — moteur d'exécution (SMTP, webhooks, console), fenêtre de bureau et outil de mise à jour automatique — via le même proxy.",
       "enableTitle": "Utiliser un proxy",
       "enableDescription": "Lorsque désactivé, le trafic passe en direct.",
       "enabled": "Activé",

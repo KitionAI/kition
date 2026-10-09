@@ -1,0 +1,430 @@
+//! Whiteboard and design pane support: the bounded context the client
+//! attaches, and patch proposals streamed back for the user to review.
+//! The client validates each patch strictly before previewing it; the
+//! runtime checks the envelope, operations, identifiers, and references.
+
+use std::collections::{HashMap, HashSet};
+
+use serde_json::{Value, json};
+
+use crate::run::{Run, ToolOutput, ToolResult};
+use crate::stream::Frame;
+use crate::workspace::clean_path;
+
+const WHITEBOARD_OPS: &[&str] = &[
+    "element.create",
+    "connector.create",
+    "element.update",
+    "element.delete",
+    "element.reorder",
+];
+const DESIGN_OPS: &[&str] = &[
+    "text.set",
+    "style.set",
+    "layer.create",
+    "layer.move",
+    "layer.resize",
+    "layer.reorder",
+    "layer.delete",
+    "layout.align",
+    "layout.distribute",
+    "artboard.background",
+];
+
+fn identifier(value: &str) -> bool {
+    let mut chars = value.chars();
+    (1..=128).contains(&value.len())
+        && chars.next().is_some_and(|c| c.is_ascii_alphanumeric())
+        && chars.all(|c| c.is_ascii_alphanumeric() || "._:-".contains(c))
+}
+
+fn portable_path(value: &str) -> bool {
+    !value.contains(['\\', '\0']) && clean_path(value, false).is_ok_and(|cleaned| cleaned == value)
+}
+
+fn text<'a>(value: &'a Value, key: &str) -> &'a str {
+    value.get(key).and_then(Value::as_str).unwrap_or_default()
+}
+
+fn items<'a>(value: &'a Value, key: &str) -> &'a [Value] {
+    value
+        .get(key)
+        .and_then(Value::as_array)
+        .map_or(&[], Vec::as_slice)
+}
+
+/// Checks a `whiteboard.context` payload.
+pub fn validate_whiteboard_context(context: &Value) -> Result<(), String> {
+    let board = &context["board"];
+    let ok = text(context, "type") == "whiteboard.context"
+        && context["schema_version"].as_i64() == Some(1)
+        && identifier(text(board, "id"))
+        && portable_path(text(board, "path"))
+        && (1..=500).contains(&text(board, "title").trim().chars().count())
+        && ["selection", "viewport", "board"].contains(&text(context, "scope"))
+        && items(context, "elements").len() <= 500
+        && items(context, "clusters").len() <= 64
+        && items(context, "recent_operations").len() <= 50
+        && items(context, "selected_element_ids").len() <= 100
+        && items(context, "elements")
+            .iter()
+            .all(|element| identifier(text(element, "id")));
+    if ok {
+        Ok(())
+    } else {
+        Err("invalid Whiteboard context".into())
+    }
+}
+
+/// Checks a `design.context` payload.
+pub fn validate_design_context(context: &Value) -> Result<(), String> {
+    let design = &context["design"];
+    let artboard = &context["artboard"];
+    let dimension = |key: &str| {
+        artboard[key]
+            .as_f64()
+            .is_some_and(|n| (1.0..=100_000.0).contains(&n))
+    };
+    let ok = text(context, "type") == "design.context"
+        && context["schema_version"].as_i64() == Some(1)
+        && identifier(text(design, "id"))
+        && portable_path(text(design, "path"))
+        && (1..=500).contains(&text(design, "title").trim().chars().count())
+        && dimension("width")
+        && dimension("height")
+        && items(context, "layers").len() <= 500
+        && items(context, "selected_layer_ids").len() <= 100
+        && items(context, "recent_operations").len() <= 50
+        && items(context, "layers")
+            .iter()
+            .all(|layer| identifier(text(layer, "id")));
+    if ok {
+        Ok(())
+    } else {
+        Err("invalid design context".into())
+    }
+}
+
+pub fn whiteboard_prompt(context: &Value) -> String {
+    format!(
+        "Active Kition Whiteboard context (pane = whiteboard):\nTreat element ids and coordinates as authoritative. Selected ids identify the user's current focus. Off-screen clusters are summaries only; do not invent their contents.\n{context}"
+    )
+}
+
+pub fn design_prompt(context: &Value) -> String {
+    format!(
+        "Active Kition design context (pane = design):\nCoordinates are artboard pixels from the top-left corner. Layer ids are authoritative, roles are hints, and locked layers must not be edited. Selected ids identify the user's current focus.\n{context}"
+    )
+}
+
+pub fn whiteboard_event(context: &Value) -> (String, Value) {
+    (
+        format!(
+            "Attached {} scope with {} element(s) and {} selected",
+            text(context, "scope"),
+            items(context, "elements").len(),
+            items(context, "selected_element_ids").len()
+        ),
+        json!({
+            "board_id": context["board"]["id"], "board_path": context["board"]["path"],
+            "scope": context["scope"], "element_count": items(context, "elements").len(),
+            "selected_count": items(context, "selected_element_ids").len(),
+            "cluster_count": items(context, "clusters").len(),
+        }),
+    )
+}
+
+pub fn design_event(context: &Value) -> (String, Value) {
+    let artboard = &context["artboard"];
+    (
+        format!(
+            "Attached a {}x{} artboard with {} layer(s) and {} selected",
+            artboard["width"],
+            artboard["height"],
+            items(context, "layers").len(),
+            items(context, "selected_layer_ids").len()
+        ),
+        json!({
+            "design_id": context["design"]["id"], "design_path": context["design"]["path"],
+            "layer_count": items(context, "layers").len(),
+            "selected_count": items(context, "selected_layer_ids").len(),
+            "has_brand": context.get("brand").is_some_and(|b| !b.is_null()),
+        }),
+    )
+}
+
+fn patch_envelope<'a>(
+    input: &'a Value,
+    kind: &str,
+    max_ops: usize,
+    ops: &[&str],
+) -> Result<&'a [Value], String> {
+    let operations = items(input, "operations");
+    let summary = text(input, "summary").trim().chars().count();
+    if text(input, "type") != kind
+        || input["schema_version"].as_i64() != Some(1)
+        || !(1..=2000).contains(&summary)
+        || operations.is_empty()
+        || operations.len() > max_ops
+    {
+        return Err(format!(
+            "invalid {kind}: check type, schema_version, summary, and operations"
+        ));
+    }
+    if let Some(bad) = operations.iter().find(|op| !ops.contains(&text(op, "op"))) {
+        return Err(format!("unsupported operation {:?}", text(bad, "op")));
+    }
+    Ok(operations)
+}
+
+fn check_whiteboard(input: &Value, context: &Value) -> Result<usize, String> {
+    let operations = patch_envelope(input, "whiteboard.patch", 250, WHITEBOARD_OPS)?;
+    let mut kinds: HashMap<String, String> = items(context, "elements")
+        .iter()
+        .map(|element| {
+            (
+                text(element, "id").to_owned(),
+                text(element, "kind").to_owned(),
+            )
+        })
+        .collect();
+    let mut deleted = HashSet::new();
+    for operation in operations {
+        let (id, kind) = match text(operation, "op") {
+            "element.create" => (
+                text(&operation["element"], "id"),
+                text(&operation["element"], "kind"),
+            ),
+            "connector.create" => (text(&operation["connector"], "id"), "connector"),
+            op => {
+                let id = text(operation, "element_id");
+                if !identifier(id) {
+                    return Err(format!("invalid {op} operation: element_id"));
+                }
+                if op == "element.delete" {
+                    deleted.insert(id.to_owned());
+                }
+                continue;
+            }
+        };
+        if !identifier(id) {
+            return Err("Whiteboard patch has an invalid id".into());
+        }
+        if kinds.insert(id.to_owned(), kind.to_owned()).is_some() {
+            return Err(format!("Whiteboard patch reuses an existing id {id:?}"));
+        }
+    }
+    for operation in operations
+        .iter()
+        .filter(|op| text(op, "op") == "connector.create")
+    {
+        let connector = &operation["connector"];
+        for endpoint in [text(connector, "from_id"), text(connector, "to_id")] {
+            match kinds.get(endpoint) {
+                Some(kind)
+                    if !deleted.contains(endpoint) && kind != "connector" && kind != "freehand" => {
+                }
+                _ => {
+                    return Err(format!(
+                        "Whiteboard connector {:?} references missing or unsupported endpoint {endpoint:?}",
+                        text(connector, "id")
+                    ));
+                }
+            }
+        }
+    }
+    Ok(operations.len())
+}
+
+fn check_design(input: &Value, context: &Value) -> Result<usize, String> {
+    let operations = patch_envelope(input, "design.patch", 100, DESIGN_OPS)?;
+    let mut kinds: HashMap<String, String> = HashMap::new();
+    let mut locked = HashSet::new();
+    for layer in items(context, "layers") {
+        kinds.insert(text(layer, "id").to_owned(), text(layer, "kind").to_owned());
+        if layer["locked"].as_bool() == Some(true) {
+            locked.insert(text(layer, "id").to_owned());
+        }
+    }
+    let existing = |kinds: &HashMap<String, String>, id: &str| -> Result<(), String> {
+        if !kinds.contains_key(id) {
+            return Err(format!("design patch references unknown layer {id:?}"));
+        }
+        if locked.contains(id) {
+            return Err(format!("design patch edits locked layer {id:?}"));
+        }
+        Ok(())
+    };
+    for operation in operations {
+        let ids: Vec<&str> = items(operation, "layer_ids")
+            .iter()
+            .filter_map(Value::as_str)
+            .collect();
+        match text(operation, "op") {
+            "layer.create" => {
+                let layer = &operation["layer"];
+                let id = text(layer, "id");
+                if !identifier(id)
+                    || !["text", "rectangle", "ellipse", "line"].contains(&text(layer, "kind"))
+                {
+                    return Err("design patch creates an invalid layer".into());
+                }
+                if kinds
+                    .insert(id.to_owned(), text(layer, "kind").to_owned())
+                    .is_some()
+                {
+                    return Err(format!("design patch reuses an existing id {id:?}"));
+                }
+            }
+            "text.set" => {
+                let id = text(operation, "layer_id");
+                existing(&kinds, id)?;
+                if kinds.get(id).map(String::as_str) != Some("text") {
+                    return Err(format!("design layer {id:?} is not a text layer"));
+                }
+            }
+            "layer.resize" | "layer.reorder" => existing(&kinds, text(operation, "layer_id"))?,
+            "layer.delete" => {
+                for id in &ids {
+                    existing(&kinds, id)?;
+                }
+                for id in ids {
+                    kinds.remove(id);
+                }
+            }
+            "style.set" | "layer.move" | "layout.align" | "layout.distribute" => {
+                if ids.is_empty() {
+                    return Err("design operation needs layer_ids".into());
+                }
+                for id in ids {
+                    existing(&kinds, id)?;
+                }
+            }
+            _ => {}
+        }
+    }
+    Ok(operations.len())
+}
+
+pub async fn propose_whiteboard_patch(run: &Run, input: &Value) -> ToolResult {
+    let context = match (&run.whiteboard, run.pane.as_str()) {
+        (Some(context), "whiteboard") => context,
+        _ => return Err("whiteboard context is unavailable for this turn".into()),
+    };
+    let count = check_whiteboard(input, context)?;
+    let board_path = text(&context["board"], "path").to_owned();
+    if !run.send(&Frame {
+        whiteboard_patch: Some(input.clone()),
+        board_path: board_path.clone(),
+        ..Frame::new("whiteboard_patch")
+    }) {
+        return Err("whiteboard preview stream is unavailable".into());
+    }
+    let summary = text(input, "summary").to_owned();
+    Ok(ToolOutput {
+        event_summary: Some(format!("Proposed {count} Whiteboard change(s) for review")),
+        event_output: Some(json!({
+            "awaiting_user_review": true, "board_path": board_path, "operation_count": count,
+            "summary_chars": summary.chars().count(), "whiteboard_patch": input,
+        })),
+        ..ToolOutput::new(
+            format!("Proposed {count} Whiteboard change(s) for user review: {summary}"),
+            json!({ "awaiting_user_review": true, "operation_count": count, "summary": summary }),
+        )
+    })
+}
+
+pub async fn propose_design_patch(run: &Run, input: &Value) -> ToolResult {
+    let context = match (&run.design, run.pane.as_str()) {
+        (Some(context), "design") => context,
+        _ => return Err("design context is unavailable for this turn".into()),
+    };
+    let count = check_design(input, context)?;
+    let design_path = text(&context["design"], "path").to_owned();
+    if !run.send(&Frame {
+        design_patch: Some(input.clone()),
+        design_path: design_path.clone(),
+        ..Frame::new("design_patch")
+    }) {
+        return Err("design preview stream is unavailable".into());
+    }
+    let summary = text(input, "summary").to_owned();
+    Ok(ToolOutput {
+        event_summary: Some(format!("Proposed {count} design change(s) for review")),
+        event_output: Some(json!({
+            "awaiting_user_review": true, "design_path": design_path, "operation_count": count,
+            "summary_chars": summary.chars().count(), "design_patch": input,
+        })),
+        ..ToolOutput::new(
+            format!("Proposed {count} design change(s) for user review: {summary}"),
+            json!({ "awaiting_user_review": true, "operation_count": count, "summary": summary }),
+        )
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn board() -> Value {
+        json!({
+            "type": "whiteboard.context", "schema_version": 1,
+            "board": { "id": "b1", "path": "Boards/a.kiboard", "title": "A" },
+            "scope": "viewport", "viewport": {}, "selected_element_ids": [],
+            "elements": [{ "id": "n1", "kind": "mind_node" }], "clusters": [], "recent_operations": [],
+        })
+    }
+
+    #[test]
+    fn checks_whiteboard_patches() {
+        assert!(validate_whiteboard_context(&board()).is_ok());
+        let patch = json!({
+            "type": "whiteboard.patch", "schema_version": 1, "summary": "Add a child",
+            "operations": [
+                { "op": "element.create", "element": { "id": "n2", "kind": "mind_node", "bounds": {} } },
+                { "op": "connector.create", "connector": { "id": "c1", "from_id": "n1", "to_id": "n2" } },
+            ],
+        });
+        assert_eq!(check_whiteboard(&patch, &board()), Ok(2));
+        let mut bad = patch.clone();
+        bad["operations"][1]["connector"]["to_id"] = json!("missing");
+        assert!(check_whiteboard(&bad, &board()).is_err());
+        let mut reused = patch;
+        reused["operations"][0]["element"]["id"] = json!("n1");
+        assert!(check_whiteboard(&reused, &board()).is_err());
+    }
+
+    #[test]
+    fn checks_design_patches() {
+        let context = json!({
+            "type": "design.context", "schema_version": 1,
+            "design": { "id": "d1", "path": "a.kidesign", "title": "A" },
+            "artboard": { "width": 800, "height": 600, "background": "#ffffff" },
+            "selected_layer_ids": [], "recent_operations": [],
+            "layers": [{ "id": "t1", "kind": "text" }, { "id": "bg", "kind": "rectangle", "locked": true }],
+        });
+        assert!(validate_design_context(&context).is_ok());
+        let patch = |ops: Value| json!({ "type": "design.patch", "schema_version": 1, "summary": "s", "operations": ops });
+        assert_eq!(
+            check_design(
+                &patch(json!([{ "op": "text.set", "layer_id": "t1", "text": "Hi" }])),
+                &context
+            ),
+            Ok(1)
+        );
+        assert!(
+            check_design(
+                &patch(json!([{ "op": "layer.delete", "layer_ids": ["bg"] }])),
+                &context
+            )
+            .is_err()
+        );
+        assert!(
+            check_design(
+                &patch(json!([{ "op": "text.set", "layer_id": "bg", "text": "x" }])),
+                &context
+            )
+            .is_err()
+        );
+    }
+}

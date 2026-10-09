@@ -15,7 +15,7 @@
 
 <p align="center">
   <strong>Documents, tableaux, agents et workflows dans un seul espace de travail.</strong><br />
-  Rédigez des connaissances reliées, créez des outils de données, effectuez des recherches dans le navigateur et automatisez le travail répétitif.
+  Rédigez des connaissances reliées, créez des outils de données, effectuez des recherches sur le web et automatisez le travail répétitif.
 </p>
 
 <p align="center">
@@ -36,7 +36,7 @@
 
 <p align="center"><img src="docs/readme/kition-overview.webp" alt="Vue d’ensemble de Kition avec documents, tableaux structurés, recherches de l’agent et workflows visuels" width="100%" /></p>
 
-Kition réunit des documents Markdown, des tableaux structurés, un agent IA capable d’utiliser des outils, la recherche dans le navigateur et des workflows visuels. L’agent travaille avec des fichiers de projet modifiables, des enregistrements typés, des pièces jointes et des processus visibles, ce qui facilite la vérification, la correction et la répétition des résultats.
+Kition réunit des documents Markdown, des tableaux structurés, un agent IA capable d’utiliser des outils, la recherche web et des workflows visuels. L’agent travaille avec des fichiers de projet modifiables, des enregistrements typés, des pièces jointes et des processus visibles, ce qui facilite la vérification, la correction et la répétition des résultats.
 
 > Kition est actuellement en version bêta. Sauvegardez les espaces de travail importants et vérifiez les modifications de l’agent avant une utilisation en production.
 
@@ -44,7 +44,7 @@ Kition réunit des documents Markdown, des tableaux structurés, un agent IA cap
 
 - **Documents reliés.** Markdown avec aperçu en direct, liens internes, backlinks, code, mathématiques, diagrammes, notes quotidiennes, recherche et export.
 - **Données structurées à côté des connaissances.** Champs typés, formules, filtres, groupes, vues, pièces jointes et champs IA.
-- **Un agent qui peut agir.** Il recherche dans le navigateur, lit et modifie les documents et tableaux, puis enregistre les résultats dans le projet.
+- **Un agent qui peut agir.** Il recherche sur le web, lit et modifie les documents et tableaux, puis enregistre les résultats dans le projet.
 - **Modifications de documents contrôlables.** Laissez l’agent modifier le document actif, examinez chaque ajout et suppression, puis acceptez ou refusez les changements individuellement.
 - **Automatisation visible.** Assemblez des déclencheurs et des actions, testez les étapes et consultez l’historique d’exécution.
 
@@ -88,7 +88,7 @@ Créez des propositions de design, vues orthographiques, images de fonctionnalit
 
 ## Fonctionnalités principales
 
-- **Documents :** édition Markdown, aperçu, modèles, recherche, export PDF/DOCX.
+- **Documents :** édition Markdown, aperçu, modèles, recherche, export PDF.
 - **Tableaux :** champs typés, pièces jointes, formules, filtres, tri, groupes et vues multiples.
 - **Agent :** modification de documents, recherche web, utilisation d’outils et sauvegarde dans l’espace de travail.
 - **Workflows :** composition visuelle de déclencheurs et d’actions, tests et historique d’exécution.
@@ -104,7 +104,7 @@ Les versions de bureau sont publiées dans [GitHub Releases](https://github.com/
 
 ## Exécuter depuis les sources
 
-Prérequis : Node.js 22.19.0 et pnpm 10.33.0.
+Prérequis : Node.js 22.19.0, pnpm 10.33.0 et Rust (stable) avec les [prérequis système de Tauri](https://v2.tauri.app/start/prerequisites/).
 
 ```bash
 pnpm install --frozen-lockfile
@@ -115,13 +115,13 @@ Pour le développement de l’interface sans intégration au runtime, utilisez `
 
 ## Périmètre open source
 
-Ce dépôt contient le client public React/Electron, les contrats publics du runtime, les mocks, les tests et l’empaquetage. Le code source du runtime Kition est maintenu séparément et n’est pas inclus. Le client communique uniquement à travers les contrats publics de [`contracts/runtime/`](contracts/runtime/).
+Ce dépôt contient le client public React/Tauri, les contrats publics du runtime, les mocks, les tests et l’empaquetage. Le code source du runtime Kition est maintenu séparément et n’est pas inclus. Le client communique uniquement à travers les contrats publics de [`contracts/runtime/`](contracts/runtime/).
 
 ## Technologies
 
 | Domaine | Technologies |
 | --- | --- |
-| Bureau | Electron |
+| Bureau | Tauri 2 (Rust) |
 | Interface | React, TypeScript, Vite |
 | Documents | CodeMirror, Marked, Mermaid, KaTeX |
 | Données et état | IndexedDB, Jotai, Zod |

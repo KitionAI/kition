@@ -10,7 +10,7 @@ describe('document publishing clipboard', () => {
   const desktopWindow = window as typeof window & { kitionDesktop?: unknown }
 
   beforeEach(() => {
-    desktopWindow.kitionDesktop = { shell: 'electron' }
+    desktopWindow.kitionDesktop = { shell: 'tauri' }
   })
 
   afterEach(() => {

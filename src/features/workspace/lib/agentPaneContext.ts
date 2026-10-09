@@ -18,10 +18,6 @@ import type { AgentPaneContext } from '@/features/agent/lib/paneEmptyState'
 //                    → 'gallery'  for media formats (image, video, audio) —
 //                                  "Summarize this document" reads as a bug
 //                                  when the user is staring at a PNG
-//   browser         → 'browser'       (embedded browser session — a page is loaded)
-//   browser-sites   → 'browserSites'  (sites list — no page loaded; needs its own
-//                                      suggestion set so 'Summarize this page' doesn't
-//                                      show next to a discovery UI)
 //   workflow        → 'workflow'  (workflow editor)
 //   table           → 'table'     (data-table editor)
 //   dashboard       → 'table'     (data reporting over a table)
@@ -52,10 +48,6 @@ export function deriveAgentPaneContext(
         default:
           return 'document'
       }
-    case 'browser':
-      return 'browser'
-    case 'browser-sites':
-      return 'browserSites'
     case 'workflow':
       return 'workflow'
     case 'table':
@@ -97,18 +89,10 @@ export function resolveAgentActiveDocument(
         path: tab.kitablePath || '',
         format: tab.kitablePath ? 'data' : undefined,
       }
-    case 'browser':
-      return {
-        path: tab.originDocumentPath || '',
-        format: tab.originDocumentPath?.toLowerCase().endsWith('.kitable')
-          ? 'data'
-          : undefined,
-      }
     case 'board':
       return { path: tab.path, format: 'board' }
     // Design placement uses completed images; no Design target is sent to older runtimes.
     case 'design':
-    case 'browser-sites':
     case 'gallery':
       return { path: '' }
     default: {

@@ -1,3 +1,5 @@
+import type { ApiTimestamp } from '@/types'
+import { toEpochMs } from '@/lib/timestamps'
 import {
   FileDown,
   FileImage,
@@ -13,7 +15,6 @@ import {
 import type { LucideIcon } from 'lucide-react'
 import { getCurrentLocale } from '@/i18n'
 import type {
-  BrowserSessionProvider,
   WorkspaceDocumentFormat,
   WorkspaceDocumentTreeItem,
 } from '@/services/desktop'
@@ -37,23 +38,7 @@ export type WorkspaceTab =
       path: string
       format: WorkspaceDocumentFormat
     }
-  | {
-      id: string
-      type: 'browser'
-      title: string
-      provider: BrowserSessionProvider
-      taskMode?: 'auto' | 'browse' | 'table'
-      host?: string
-      url?: string
-      query?: string
-      profileId?: string
-      originTabId?: string
-      originDocumentPath?: string
-      originTableId?: number
-      originLabel?: string
-    }
   | { id: string; type: 'gallery'; title: string; kind: WorkspaceMediaKind }
-  | { id: string; type: 'browser-sites'; title: string }
   | { id: string; type: 'board'; title: string; path: string }
   | { id: string; type: 'design'; title: string; path: string }
   | {
@@ -110,18 +95,18 @@ export function formatCompactNumber(value: number) {
   return new Intl.NumberFormat(getCurrentLocale()).format(value)
 }
 
-export function formatWorkspaceTime(value?: string | null) {
+export function formatWorkspaceTime(value?: ApiTimestamp | null) {
   return value ? formatRelativeDateTime(value) : 'just now'
 }
 
-function formatRelativeDateTime(value?: string | null) {
+function formatRelativeDateTime(value?: ApiTimestamp | null) {
   if (!value) {
     return 'just now'
   }
 
-  const target = new Date(value)
+  const target = new Date(toEpochMs(value))
   if (Number.isNaN(target.getTime())) {
-    return value
+    return String(value)
   }
 
   const diffMs = Date.now() - target.getTime()

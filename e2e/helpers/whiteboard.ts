@@ -116,7 +116,7 @@ async function installWhiteboardDesktopBridge(
       })
 
       stateWindow.kitionDesktop = {
-        shell: 'electron',
+        shell: 'tauri',
         DesktopInfo: async () => ({
           is_desktop: true,
           platform: 'darwin',

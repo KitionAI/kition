@@ -20,7 +20,6 @@ describe('agent turn capabilities contract', () => {
     expect(schema.required).toEqual([
       'available_tools',
       'hosted_web_search',
-      'browser_search',
     ])
     expect(JSON.stringify(schema)).not.toContain('api_key')
     expect(JSON.stringify(schema)).not.toContain('access_token')
@@ -107,10 +106,6 @@ function event(id: number, available: boolean): AgentEvent {
         hosted_web_search: {
           available,
           reason: available ? 'available' : 'task_mode_restricted',
-        },
-        browser_search: {
-          available: false,
-          reason: 'browser_disabled',
         },
       },
     },

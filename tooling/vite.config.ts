@@ -48,7 +48,7 @@ function readAnalyticsEndpoint(): string {
 export default defineConfig(({ mode }) => ({
   root: repositoryDir,
   publicDir: resolve(repositoryDir, 'public'),
-  base: process.env.KITION_DESKTOP_BUILD === 'true' ? './' : '/',
+  base: '/',
   plugins: [react()],
   resolve: {
     alias: {

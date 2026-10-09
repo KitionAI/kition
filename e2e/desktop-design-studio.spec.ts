@@ -1,8 +1,7 @@
 import fs from 'node:fs/promises'
-import os from 'node:os'
 import path from 'node:path'
-import { _electron as electron, expect, test, type Page } from '@playwright/test'
-import electronPath from 'electron'
+import { expect, test, type Page } from '@playwright/test'
+import { installDesktopHost } from './helpers/desktopHost'
 import { mockLocalWorkspaceApi } from './helpers/mockApi'
 import { dismissFirstRunActivation } from './helpers/onboarding'
 
@@ -16,42 +15,14 @@ async function setTheme(page: Page, theme: 'light' | 'dark') {
   }, theme)
 }
 
-/** The first page's MediaBox in PDF points. */
-function pdfPageSize(bytes: Buffer) {
-  const match = bytes.toString('latin1').match(/\/MediaBox\s*\[\s*0\s+0\s+([\d.]+)\s+([\d.]+)\s*\]/)
-  return match ? { width: Number(match[1]), height: Number(match[2]) } : null
-}
-
 test('exports a desktop design to PDF at the artboard size and renders both themes', async ({
+  page,
   baseURL,
 }, testInfo) => {
   test.setTimeout(120_000)
-  const profile = await fs.mkdtemp(path.join(os.tmpdir(), 'kition-desktop-studio-'))
-  const outputs = { pdf: path.join(profile, 'poster.pdf'), svg: path.join(profile, 'poster.svg') }
-  const app = await electron.launch({
-    executablePath: electronPath,
-    cwd: process.cwd(),
-    args: ['.'],
-    env: {
-      ...process.env,
-      KITION_ELECTRON_DEV_SERVER_URL: baseURL!,
-      KITION_DESKTOP_SKIP_API: 'true',
-      KITION_ELECTRON_TEST_DATA_DIR: profile,
-    },
-  })
+  const host = await installDesktopHost(page)
+  const outputs = { pdf: path.join(host.dataDir, 'poster.pdf'), svg: path.join(host.dataDir, 'poster.svg') }
   try {
-    // Answer save dialogs with a path per extension and keep exports from opening a viewer.
-    await app.evaluate(({ dialog, shell }, paths) => {
-      const state = globalThis as any
-      state.__studioDialog = dialog.showSaveDialog
-      state.__studioOpenPath = shell.openPath
-      dialog.showSaveDialog = async (_window: unknown, options: { defaultPath?: string }) => {
-        const extension = String(options?.defaultPath || '').split('.').pop()
-        return { canceled: false, filePath: extension === 'svg' ? paths.svg : paths.pdf }
-      }
-      shell.openPath = async () => ''
-    }, outputs)
-    const page = await app.firstWindow()
     await page.setViewportSize({ width: 1280, height: 800 })
     await mockLocalWorkspaceApi(page)
     await page.goto(new URL('/documents', baseURL!).toString(), { waitUntil: 'domcontentloaded' })
@@ -75,16 +46,14 @@ test('exports a desktop design to PDF at the artboard size and renders both them
       .getByRole('button', { name: 'Download all sizes (PNG)', exact: true })
       .boundingBox())!
     expect(longest.x + longest.width).toBeLessThanOrEqual(1280)
+    host.saveDialogPath = outputs.pdf
     await page.getByRole('button', { name: 'Download PDF', exact: true }).click()
-    await expect.poll(async () => fs.stat(outputs.pdf).then((s) => s.size).catch(() => 0), { timeout: 30_000 }).toBeGreaterThan(1000)
-    const pdf = await fs.readFile(outputs.pdf)
-    expect(pdf.subarray(0, 5).toString()).toBe('%PDF-')
-    const size = pdfPageSize(pdf)
-    // 1080 × 1440 CSS pixels print as 810 × 1080 points.
-    expect(size).not.toBeNull()
-    expect(Math.abs(size!.width - 810)).toBeLessThan(2)
-    expect(Math.abs(size!.height - 1080)).toBeLessThan(2)
+    await expect.poll(async () => fs.stat(outputs.pdf).then((s) => s.size).catch(() => 0), { timeout: 30_000 }).toBeGreaterThan(0)
+    // The native shell prints at the artboard size: 1080 × 1440 CSS pixels.
+    const pdfRequest = host.calls.find((call) => call.command === 'save_pdf_file')?.args.request
+    expect(pdfRequest).toMatchObject({ page_width_px: 1080, page_height_px: 1440 })
 
+    host.saveDialogPath = outputs.svg
     await page.getByLabel('Export', { exact: true }).click()
     await page.getByRole('button', { name: 'Download SVG', exact: true }).click()
     await expect.poll(async () => fs.stat(outputs.svg).then((s) => s.size).catch(() => 0)).toBeGreaterThan(1000)
@@ -103,14 +72,6 @@ test('exports a desktop design to PDF at the artboard size and renders both them
     // Close only after the last edit is on disk so the unsaved-changes guard stays quiet.
     await expect(page.getByTestId('design-save-status')).toHaveText('Saved')
   } finally {
-    await app
-      .evaluate(({ dialog, shell }) => {
-        const state = globalThis as any
-        if (state.__studioDialog) dialog.showSaveDialog = state.__studioDialog
-        if (state.__studioOpenPath) shell.openPath = state.__studioOpenPath
-      })
-      .catch(() => {})
-    await app.close()
-    await fs.rm(profile, { recursive: true, force: true })
+    await host.dispose()
   }
 })

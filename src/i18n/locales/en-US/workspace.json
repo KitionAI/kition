@@ -41,8 +41,7 @@
   "sidebar": {
     "tabs": {
       "files": "Files",
-      "search": "Search",
-      "browser": "Browser"
+      "search": "Search"
     },
     "collapseSection": "Collapse {{name}}",
     "expandSection": "Expand {{name}}",
@@ -117,7 +116,6 @@
     "openingInSystem": "Opening…"
   },
   "tabs": {
-    "webBadge": "Web",
     "closeTab": "Close tab",
     "expandSidebar": "Expand sidebar",
     "previousTab": "Previous tab",
@@ -164,36 +162,6 @@
   },
   "topbar": {
     "more": "More"
-  },
-  "browserSites": {
-    "title": "Browser",
-    "visitedCount": "{{count}} visited sites",
-    "openBrowser": "Open Browser",
-    "openBrowserTitle": "Open a new browser tab",
-    "refreshLoginStatus": "Refresh login status",
-    "loading": "Loading sites...",
-    "lastVisited": "Last visited {{time}}",
-    "signedIn": "Signed in",
-    "signedOut": "Signed out",
-    "openSite": "Open site",
-    "open": "Open {{host}}",
-    "forgetSite": "Forget this site (clear login)",
-    "forget": "Forget {{host}}",
-    "emptyTitle": "No visited sites yet",
-    "emptyDescription": "Visit and sign in to sites in the built-in browser. They will be listed here along with their login status to enable automatic sign-in for later scraping."
-  },
-  "browserToolbar": {
-    "back": "Back",
-    "forward": "Forward",
-    "stopLoading": "Stop loading",
-    "reload": "Reload",
-    "addressPlaceholder": "Enter URL or search..."
-  },
-  "browserTab": {
-    "eyebrow": "Embedded browser",
-    "unavailableDescription": "The browser page is attached to this tab area. Use this tab for login, search, and navigation. AI Chat stays available on the right, so you can continue from the current page without switching away.",
-    "emptyText": "Browser — Enter a URL above, or instruct the Agent to navigate and use the browser",
-    "loadingPage": "Loading page..."
   },
   "fileViewer": {
     "imageActions": "Image actions",
@@ -617,8 +585,8 @@
     "createDashboardFailed": "Failed to create dashboard",
     "createTableFailed": "Failed to create table",
     "importMarkdownFailed": "Failed to import Markdown",
-    "browserDevModeOpenDirectory": "You are running in browser dev mode and cannot open native directories. Launch the desktop app via pnpm dev:electron and try again.",
-    "browserDevModePickDirectory": "You are running in browser dev mode and cannot pick a native directory. Launch the desktop app via pnpm dev:electron and try again.",
+    "browserDevModeOpenDirectory": "You are running in browser dev mode and cannot open native directories. Launch the desktop app via pnpm dev and try again.",
+    "browserDevModePickDirectory": "You are running in browser dev mode and cannot pick a native directory. Launch the desktop app via pnpm dev and try again.",
     "browserDevModeSwitchDirectory": "You are running in browser dev mode and cannot switch native directories.",
     "openInSystemFailed": "Could not open the file with the default app. Check the file association and try again.",
     "reviewBeforeExternalOpen": "Finish reviewing the changes before opening this file in another app."

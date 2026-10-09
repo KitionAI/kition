@@ -9,7 +9,7 @@ type UseShortcutOptions = {
 
 /**
  * Runs `handler` on a window keydown that matches `combo` (see
- * `parseShortcut`) and prevents the default so Electron and the browser
+ * `parseShortcut`) and prevents the default so the desktop shell and the browser
  * never see the key. The latest handler is always used.
  */
 export function useShortcut(combo: string, handler: () => void, { enabled = true }: UseShortcutOptions = {}) {

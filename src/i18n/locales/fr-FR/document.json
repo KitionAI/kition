@@ -1196,8 +1196,7 @@
     "formats": {
       "markdown": "Markdown (.md)",
       "html": "HTML (.html)",
-      "pdf": "PDF (.pdf)",
-      "word": "Word (.docx)"
+      "pdf": "PDF (.pdf)"
     },
     "margins": {
       "0": "Par défaut",
@@ -1207,14 +1206,12 @@
     "dialogTitle": {
       "markdown": "Exporter en Markdown",
       "html": "Exporter en HTML",
-      "pdf": "Exporter en PDF",
-      "word": "Exporter en Word"
+      "pdf": "Exporter en PDF"
     },
     "feedback": {
       "markdownExported": "Markdown exporté",
       "htmlExported": "HTML exporté",
       "pdfExportedTo": "PDF exporté vers {{path}}",
-      "wordExportedTo": "Word exporté vers {{path}}",
       "canceled": "Exportation annulée",
       "failed": "Échec de l'exportation"
     }

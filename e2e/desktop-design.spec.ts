@@ -1,47 +1,25 @@
 import fs from 'node:fs/promises'
-import os from 'node:os'
 import path from 'node:path'
-import { _electron as electron, expect, test } from '@playwright/test'
-import electronPath from 'electron'
+import { expect, test } from '@playwright/test'
+import { installDesktopHost } from './helpers/desktopHost'
 import { mockLocalWorkspaceApi } from './helpers/mockApi'
 import { dismissFirstRunActivation } from './helpers/onboarding'
 import type { DesignDocument } from '../src/features/design/lib/designTypes'
-test('edits and reopens a desktop Design with local assets, file moves, export, and native image copy', async ({
+/** Width and height from a PNG's IHDR chunk. */
+function pngSize(bytes: Buffer) {
+  return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) }
+}
+
+test('edits and reopens a desktop Design with local assets, file moves, export, and image copy', async ({
+  page,
   baseURL,
 }, testInfo) => {
   test.setTimeout(120_000)
-  const profile = await fs.mkdtemp(
-    path.join(os.tmpdir(), 'kition-desktop-design-'),
-  )
+  const host = await installDesktopHost(page)
   const fixture = path.join(process.cwd(), 'public', 'logo-mark.png'),
-    output = path.join(profile, 'poster.png')
-  const app = await electron.launch({
-    executablePath: electronPath,
-    cwd: process.cwd(),
-    args: ['.'],
-    env: {
-      ...process.env,
-      KITION_ELECTRON_DEV_SERVER_URL: baseURL!,
-      KITION_DESKTOP_SKIP_API: 'true',
-      KITION_ELECTRON_TEST_DATA_DIR: profile,
-    },
-  })
+    output = path.join(host.dataDir, 'poster.png')
+  host.saveDialogPath = output
   try {
-    await app.evaluate(({ clipboard, dialog }, outputPath) => {
-      const state = globalThis as any
-      state.__designClipboard = {
-        text: clipboard.readText(),
-        html: clipboard.readHTML(),
-        rtf: clipboard.readRTF(),
-        image: clipboard.readImage(),
-      }
-      state.__designSaveDialog = dialog.showSaveDialog
-      dialog.showSaveDialog = async () => ({
-        canceled: false,
-        filePath: outputPath,
-      })
-    }, output)
-    const page = await app.firstWindow()
     await mockLocalWorkspaceApi(page)
     await page.route('**/workspace-files/**', (route) => route.abort())
     await page.goto(new URL('/documents', baseURL!).toString(), {
@@ -181,33 +159,10 @@ test('edits and reopens a desktop Design with local assets, file moves, export, 
     await expect(
       page.getByText('Design copied as an image', { exact: true }),
     ).toBeVisible()
-    const pixels = await app.evaluate(
-      ({ clipboard, nativeImage }, filename) => {
-        const actual = clipboard.readImage(),
-          expected = nativeImage.createFromPath(filename)
-        return {
-          size: actual.getSize(),
-          equal: actual.toBitmap().equals(expected.toBitmap()),
-        }
-      },
-      output,
-    )
-    expect(pixels).toEqual({ size: { width: 1080, height: 1440 }, equal: true })
-    await page.evaluate(() => {
-      const target = document.createElement('textarea')
-      target.setAttribute('aria-label', 'Image paste target')
-      target.style.cssText = 'position:fixed;top:8px;left:8px;z-index:100'
-      target.addEventListener('paste', (event) => {
-        event.preventDefault()
-        target.value = Array.from(event.clipboardData?.files || [])
-          .map((file) => file.type)
-          .join(',')
-      })
-      document.body.appendChild(target)
-    })
-    await page.getByLabel('Image paste target').focus()
-    await page.getByLabel('Image paste target').press(process.platform === 'darwin' ? 'Meta+V' : 'Control+V')
-    await expect(page.getByLabel('Image paste target')).toHaveValue('image/png')
+    expect(host.clipboard.imageSource).toMatch(/^data:image\/png;base64,/)
+    const copied = Buffer.from(host.clipboard.imageSource.split(',')[1], 'base64')
+    expect(pngSize(copied)).toEqual({ width: 1080, height: 1440 })
+    expect(pngSize(await fs.readFile(output))).toEqual({ width: 1080, height: 1440 })
     const source = Object.values(before.assets)[0]
     await page.evaluate(
       (imagePath) =>
@@ -246,15 +201,6 @@ test('edits and reopens a desktop Design with local assets, file moves, export, 
     })
     expect(Object.values(created.nodes)).toHaveLength(1)
   } finally {
-    await app
-      .evaluate(({ clipboard, dialog }) => {
-        const state = globalThis as any
-        if (state.__designClipboard) clipboard.write(state.__designClipboard)
-        if (state.__designSaveDialog)
-          dialog.showSaveDialog = state.__designSaveDialog
-      })
-      .catch(() => {})
-    await app.close()
-    await fs.rm(profile, { recursive: true, force: true })
+    await host.dispose()
   }
 })

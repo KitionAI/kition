@@ -65,7 +65,7 @@
     "description": "Preferencias de proxy y de conexiones salientes para toda la aplicación de escritorio.",
     "proxy": {
       "sectionTitle": "Proxy",
-      "sectionDescription": "Enruta todas las solicitudes salientes — API de Go (SMTP, webhooks, consola), ventana de Electron y actualizador automático — a través del mismo proxy.",
+      "sectionDescription": "Enruta todas las solicitudes salientes — entorno de ejecución (SMTP, webhooks, consola), ventana de escritorio y actualizador automático — a través del mismo proxy.",
       "enableTitle": "Usar proxy",
       "enableDescription": "Cuando está desactivado, el tráfico va directo.",
       "enabled": "Activado",

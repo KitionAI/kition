@@ -96,16 +96,11 @@ describe('filterTabs', () => {
 })
 
 describe('remapTabPaths', () => {
-  it('moves document, board, and browser-origin tabs under the renamed folder', () => {
-    const browser: WorkspaceTab = {
-      id: 'browser:1', type: 'browser', title: 'Web', provider: 'generic' as never,
-      originDocumentPath: 'old/a.md', originTabId: 'document:old/a.md',
-    }
-    const start = state([doc('old/a.md'), board('old/b.kiboard'), doc('other/c.md'), browser], 'board:old/b.kiboard')
+  it('moves document and board tabs under the renamed folder', () => {
+    const start = state([doc('old/a.md'), board('old/b.kiboard'), doc('other/c.md')], 'board:old/b.kiboard')
     const next = remapTabPaths(start, 'old', 'new')
-    expect(ids(next)).toEqual(['document:new/a.md', 'board:new/b.kiboard', 'document:other/c.md', 'browser:1'])
+    expect(ids(next)).toEqual(['document:new/a.md', 'board:new/b.kiboard', 'document:other/c.md'])
     expect(next.tabs[1]).toMatchObject({ path: 'new/b.kiboard', title: 'b' })
-    expect(next.tabs[3]).toMatchObject({ originDocumentPath: 'new/a.md', originTabId: 'document:new/a.md' })
     expect(next.activeTabId).toBe('board:new/b.kiboard')
     expect(remapTabPaths(start, 'x', 'x')).toBe(start)
   })

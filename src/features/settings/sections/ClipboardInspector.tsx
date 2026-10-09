@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui'
-import { clipboardHtmlPreview, inspectDocumentClipboard } from '@/features/document/lib/documentClipboard'
+import { clipboardHtmlPreview, inspectDocumentClipboard } from '@/features/document/public'
 import { SettingsSection } from '@/features/settings/primitives'
 import { useTranslation } from '@/i18n'
 import { isDesktopRuntime, saveTextFile } from '@/services/desktop'

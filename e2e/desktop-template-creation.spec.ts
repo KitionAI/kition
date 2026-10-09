@@ -1,8 +1,5 @@
-import fs from 'node:fs/promises'
-import os from 'node:os'
-import path from 'node:path'
-import { _electron as electron, expect, test } from '@playwright/test'
-import electronPath from 'electron'
+import { expect, test } from '@playwright/test'
+import { installDesktopHost } from './helpers/desktopHost'
 import { mockLocalWorkspaceApi } from './helpers/mockApi'
 import { dismissFirstRunActivation } from './helpers/onboarding'
 import { mockTemplateCreationApi } from './helpers/templateCreationApi'
@@ -11,16 +8,10 @@ for (const template of [
   { id: 'receipt-ocr-database', count: 10, title: 'Receipt OCR Table', assetFolder: 'receipt-ocr-database' },
   { id: 'thumbnail-generator', count: 5, title: 'YouTube & TikTok Thumbnail Generator', assetFolder: 'youtube-tiktok-thumbnail-generator' },
 ]) {
-test(`creates ${template.id} with bundled images and populated cells in Electron`, async ({ baseURL }, testInfo) => {
+test(`creates ${template.id} with bundled images and populated cells in the desktop client`, async ({ page, baseURL }, testInfo) => {
   test.setTimeout(90_000)
-  const profile = await fs.mkdtemp(path.join(os.tmpdir(), 'kition-template-creation-'))
-  const app = await electron.launch({
-    executablePath: electronPath, cwd: process.cwd(), args: ['.'],
-    env: { ...process.env, KITION_ELECTRON_DEV_SERVER_URL: baseURL!,
-      KITION_DESKTOP_SKIP_API: 'true', KITION_ELECTRON_TEST_DATA_DIR: profile },
-  })
+  const host = await installDesktopHost(page)
   try {
-    const page = await app.firstWindow()
     await mockLocalWorkspaceApi(page)
     const { records, uploads } = await mockTemplateCreationApi(page)
     await page.addInitScript(() => {
@@ -76,8 +67,7 @@ test(`creates ${template.id} with bundled images and populated cells in Electron
     await page.screenshot({ path: testInfo.outputPath('template-reopened.png') })
     expect(uploads).toEqual([])
   } finally {
-    await app.close()
-    await fs.rm(profile, { recursive: true, force: true })
+    await host.dispose()
   }
 })
 

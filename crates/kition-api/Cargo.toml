@@ -1,0 +1,49 @@
+[package]
+name = "kition-api"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "kition-api"
+path = "src/main.rs"
+
+[dependencies]
+kition-agent = { workspace = true }
+kition-ai = { workspace = true }
+kition-connections = { workspace = true }
+kition-core = { workspace = true }
+kition-datadoc = { workspace = true }
+kition-desktop = { workspace = true }
+kition-emailsync = { workspace = true }
+kition-formsync = { workspace = true }
+kition-http = { workspace = true }
+kition-store = { workspace = true }
+kition-workspace = { workspace = true }
+kition-workspacestorage = { workspace = true }
+kition-workflow = { workspace = true }
+
+anyhow = { workspace = true }
+axum = { workspace = true }
+clap = { workspace = true }
+hex = { workspace = true }
+rusqlite = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+tokio = { workspace = true }
+tower-http = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+[dev-dependencies]
+http-body-util = { workspace = true }
+tempfile = { workspace = true }
+tower = { workspace = true }

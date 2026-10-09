@@ -183,7 +183,7 @@ async function mockReadmeWorkspace(page: Page, activePath = WELCOME_PATH) {
       })
 
       stateWindow.kitionDesktop = {
-        shell: 'electron',
+        shell: 'tauri',
         DesktopInfo: async () => ({
           is_desktop: true,
           platform: 'darwin',

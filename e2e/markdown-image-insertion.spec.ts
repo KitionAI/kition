@@ -1,10 +1,6 @@
-import fs from 'node:fs/promises'
-import os from 'node:os'
-import path from 'node:path'
+import { expect, test, type Page, type Route } from '@playwright/test'
 
-import { _electron as electron, expect, test, type Page, type Route } from '@playwright/test'
-import electronPath from 'electron'
-
+import { installDesktopHost } from './helpers/desktopHost'
 import { mockLocalWorkspaceApi } from './helpers/mockApi'
 import { dismissFirstRunActivation } from './helpers/onboarding'
 
@@ -81,25 +77,13 @@ async function configureMockAgent(page: Page) {
   })
 }
 
-test('Agent image generation forwards a safe fenced-code cursor anchor and renders the mocked revision', async ({ baseURL }) => {
+test('Agent image generation forwards a safe fenced-code cursor anchor and renders the mocked revision', async ({ page, baseURL }) => {
   test.setTimeout(90_000)
   expect(baseURL).toBeTruthy()
 
-  const tempHome = await fs.mkdtemp(path.join(os.tmpdir(), 'kition-electron-image-insertion-'))
-  const app = await electron.launch({
-    executablePath: electronPath,
-    cwd: process.cwd(),
-    args: ['.'],
-    env: {
-      ...process.env,
-      HOME: tempHome,
-      KITION_ELECTRON_DEV_SERVER_URL: baseURL as string,
-      KITION_DESKTOP_SKIP_API: 'true',
-    },
-  })
+  const host = await installDesktopHost(page)
 
   try {
-    const page = await app.firstWindow()
     await mockLocalWorkspaceApi(page)
 
     await page.goto(new URL('/documents', baseURL as string).toString(), {
@@ -304,7 +288,6 @@ test('Agent image generation forwards a safe fenced-code cursor anchor and rende
     await page.getByRole('button', { name: 'Edit view' }).click()
     await expect(page.locator('.document-editor img[alt="Generated pendant"]')).toBeVisible()
   } finally {
-    await app.close()
-    await fs.rm(tempHome, { recursive: true, force: true })
+    await host.dispose()
   }
 })

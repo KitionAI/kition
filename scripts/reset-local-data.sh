@@ -29,7 +29,7 @@ kition_running_processes() {
         $1 = ""
         sub(/^[[:space:]]+/, "")
         command = $0
-        if (command ~ /(^|\/)kition-api([[:space:]]|$)/ || command ~ /electron\/scripts\/dev-electron\.mjs([[:space:]]|$)/ || command ~ /\/Kition\.app\/Contents\/MacOS\/Kition([[:space:]]|$)/) {
+        if (command ~ /(^|\/)kition-api([[:space:]]|$)/ || command ~ /src-tauri\/target\/[^[:space:]]*\/Kition([[:space:]]|$)/ || command ~ /\/Kition\.app\/Contents\/MacOS\/Kition([[:space:]]|$)/) {
           print pid " " command
         }
       }
@@ -79,6 +79,8 @@ case "$(uname -s)" in
       "$HOME/Library/Application Support/Kition"
       "$HOME/Library/Caches/Kition"
       "$HOME/Library/Logs/Kition"
+      "$HOME/Library/WebKit/com.kition.desktop"
+      "$HOME/Library/Caches/com.kition.desktop"
     )
     ;;
   Linux)
@@ -86,6 +88,7 @@ case "$(uname -s)" in
       "${XDG_CONFIG_HOME:-$HOME/.config}/Kition"
       "${XDG_CACHE_HOME:-$HOME/.cache}/Kition"
       "${XDG_STATE_HOME:-$HOME/.local/state}/Kition"
+      "${XDG_DATA_HOME:-$HOME/.local/share}/com.kition.desktop"
     )
     ;;
   MINGW*|MSYS*|CYGWIN*|Windows_NT)
@@ -93,6 +96,7 @@ case "$(uname -s)" in
       "${APPDATA:-$HOME/AppData/Roaming}/Kition"
       "${LOCALAPPDATA:-$HOME/AppData/Local}/Kition"
       "${LOCALAPPDATA:-$HOME/AppData/Local}/Kition/logs"
+      "${LOCALAPPDATA:-$HOME/AppData/Local}/com.kition.desktop"
     )
     ;;
   *)

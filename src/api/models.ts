@@ -1,17 +1,10 @@
 import request from './request'
-import type { AIModel, AIModelForm, AvailableModel, ChatRequest, ChatResponse, ModelCapability } from '@/types'
+import type { AIModel, AIModelForm, ChatRequest, ChatResponse, ModelCapability } from '@/types'
 
 // List AI models
 export function getAIModels(capability?: ModelCapability) {
   return request.get<AIModel[]>('/v1/models', {
     params: capability ? { capability } : {}
-  })
-}
-
-// List available models (includes OAuth and API Key models)
-export function getAvailableModels(sceneType?: string) {
-  return request.get<{ models: AvailableModel[] }>('/v1/ai/models/available', {
-    params: sceneType ? { scene_type: sceneType } : {}
   })
 }
 

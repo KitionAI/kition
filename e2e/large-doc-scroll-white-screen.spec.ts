@@ -105,7 +105,7 @@ async function mockDesktop(page: Page, docContent: string) {
       })
 
       stateWindow.kitionDesktop = {
-        shell: 'electron',
+        shell: 'tauri',
         DesktopInfo: async () => ({
           is_desktop: true,
           platform: 'darwin',

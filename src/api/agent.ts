@@ -6,7 +6,6 @@ import type { AgentImageGenerationIntent } from '@/types/imageGeneration'
 import type { AgentWhiteboardContext } from '@/types/whiteboardAgent'
 import type { AgentDesignContext } from '@/types/designAgent'
 import type {
-  AgentBrowserContext,
   AgentCapabilities,
   AgentEvent,
   AgentExecutionMode,
@@ -161,15 +160,13 @@ export async function streamAgentMessage(options: {
    *  workflow context is injected. */
   activeWorkflowId?: string
   /** Mirrors the workbench tab type the user has open ("document" /
-   *  "workflow" / "table" / "browser" / "gallery"). The backend uses
+   *  "workflow" / "table" / "gallery"). The backend uses
    *  this to add pane-specific guidance to the system prompt so the
    *  agent's behaviour matches what the user is actually looking at.
    *  Empty string / undefined defaults to "document". */
   paneContext?: AgentPaneContext
   executionMode?: AgentExecutionMode
   taskMode?: AgentTaskMode
-  browserEnabled?: boolean
-  browserContext?: AgentBrowserContext
   imageGenerationIntent?: AgentImageGenerationIntent
   whiteboardContext?: AgentWhiteboardContext
   designContext?: AgentDesignContext
@@ -202,8 +199,6 @@ export async function streamAgentMessage(options: {
       pane_context: options.paneContext || '',
       execution_mode: options.executionMode || 'apply',
       task_mode: options.taskMode || 'auto',
-      browser_enabled: options.browserEnabled === true,
-      browser_context: options.browserContext || undefined,
       image_generation_intent: options.imageGenerationIntent || undefined,
       whiteboard_context: options.whiteboardContext || undefined,
       design_context: options.designContext || undefined,

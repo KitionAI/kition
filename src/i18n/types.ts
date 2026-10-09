@@ -12,7 +12,6 @@ export const SUPPORTED_NAMESPACES = [
   'agent',
   'document',
   'table',
-  'electron',
   'errors',
   'workflow',
   'connections',

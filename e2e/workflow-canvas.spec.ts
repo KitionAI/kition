@@ -28,7 +28,7 @@ async function mockSuppressLauncher(page: Page) {
     const registry = () => ({ vaults: [vault], active_vault_path: vaultPath })
     const listResponse = () => ({ root_path: vaultPath, items: [] })
     stateWindow.kitionDesktop = {
-      shell: 'electron',
+      shell: 'tauri',
       DesktopInfo: async () => ({
         is_desktop: false,
         platform: 'darwin',

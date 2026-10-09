@@ -4,8 +4,6 @@ import {
   getKitableWorkspaceTabTitle,
   type WorkspaceTab,
 } from '@/features/workspace/lib/workspace'
-import { buildWorkspaceBrowserTabTitle } from '@/features/workspace/lib/browserTabs'
-import { WEB_BROWSER_ENABLED } from '@/lib/productFeatures'
 
 export type WorkspaceTreeMetadata = {
   icons: Record<string, string>
@@ -281,9 +279,8 @@ export function writeWorkspaceTabs(rootPath: string, tabs: WorkspaceTab[]) {
   }
 
   // Important: operate on the *raw* (unparsed) map so other workspaces' stored
-  // entries pass through untouched. Going through parseWorkspaceTabList would
-  // reformat their browser titles every write (originLabel/query get re-
-  // appended), corrupting them over time.
+  // entries pass through untouched instead of being rewritten by
+  // parseWorkspaceTabList on every write.
   const rawMap = readWorkspaceTabsRawMap()
   if (tabs.length === 0) {
     if (!(key in rawMap)) {
@@ -371,42 +368,6 @@ function parseWorkspaceTabList(items: unknown[]): WorkspaceTab[] {
         format: typeof item.format === 'string' ? item.format as WorkspaceDocumentFormat : undefined,
       }]
     }
-    if (item.type === 'browser' && typeof item.id === 'string' && typeof item.title === 'string' && typeof item.provider === 'string') {
-      if (!WEB_BROWSER_ENABLED) {
-        return []
-      }
-      const taskMode = item.taskMode === 'browse' || item.taskMode === 'table'
-        ? item.taskMode
-        : undefined
-      const host = typeof item.host === 'string' ? item.host : undefined
-      const url = typeof item.url === 'string' ? item.url : undefined
-      const query = typeof item.query === 'string' ? item.query : undefined
-      const originLabel = typeof item.originLabel === 'string' ? item.originLabel : undefined
-      return [{
-        id: item.id,
-        type: 'browser',
-        title: buildWorkspaceBrowserTabTitle({
-          provider: item.provider,
-          host,
-          url,
-          title: item.title,
-          query,
-          origin_label: originLabel,
-        }),
-        provider: item.provider,
-        taskMode,
-        host,
-        url,
-        query,
-        profileId: typeof item.profileId === 'string' ? item.profileId : undefined,
-        originTabId: typeof item.originTabId === 'string' ? item.originTabId : undefined,
-        originDocumentPath: typeof item.originDocumentPath === 'string' ? item.originDocumentPath : undefined,
-        originTableId: Number.isFinite(Number(item.originTableId))
-          ? Number(item.originTableId)
-          : undefined,
-        originLabel,
-      }]
-    }
     if (item.type === 'gallery' && typeof item.id === 'string' && typeof item.title === 'string' && item.kind === 'videos') {
       return [{
         id: item.id,
@@ -491,10 +452,6 @@ function parseWorkspaceTabList(items: unknown[]): WorkspaceTab[] {
         title: item.title,
         path: item.path,
       }]
-    }
-    if (item.type === 'browser-sites') {
-      // Browser sites is rendered inside the sidebar tab now; drop any legacy persisted tab.
-      return []
     }
     return []
   })

@@ -48,14 +48,6 @@ describe('workspace scroll containment', () => {
   })
 })
 
-describe('workspace tab contrast', () => {
-  it('keeps the active browser tab title readable on the themed topbar', () => {
-    expect(styles).toMatch(
-      /\.document-topbar-tabs \.document-tab\.is-browser\.is-active\s*\{[\s\S]*?@apply text-foreground;/,
-    )
-  })
-})
-
 describe('document completion contrast', () => {
   it('uses themed surfaces and brand selection colors for autocomplete results', () => {
     expect(styles).toMatch(

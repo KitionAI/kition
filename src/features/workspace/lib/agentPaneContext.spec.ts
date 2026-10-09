@@ -73,25 +73,6 @@ describe('deriveAgentPaneContext', () => {
     }
   })
 
-  it('browser tab → browser', () => {
-    const tab: WorkspaceTab = {
-      id: 'b1',
-      type: 'browser',
-      title: 'Google',
-      provider: 'browser',
-    }
-    expect(deriveAgentPaneContext(tab)).toBe('browser')
-  })
-
-  it('browser-sites tab → browserSites (own pane variant — sites list, no page loaded)', () => {
-    const tab: WorkspaceTab = {
-      id: 'bs1',
-      type: 'browser-sites',
-      title: 'Browser sites',
-    }
-    expect(deriveAgentPaneContext(tab)).toBe('browserSites')
-  })
-
   it('workflow tab → workflow', () => {
     const tab: WorkspaceTab = {
       id: 'w1',

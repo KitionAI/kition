@@ -1,0 +1,842 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "action": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "body": {
+              "additionalProperties": false,
+              "properties": {
+                "parts": {
+                  "items": {
+                    "oneOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "kind": {
+                            "enum": [
+                              "text"
+                            ],
+                            "type": "string"
+                          },
+                          "text": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "text"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "fieldRef": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "fieldId": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "fieldId"
+                            ],
+                            "type": "object"
+                          },
+                          "kind": {
+                            "enum": [
+                              "field_ref"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "fieldRef"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "kind": {
+                            "enum": [
+                              "newline"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind"
+                        ],
+                        "type": "object"
+                      }
+                    ]
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "parts"
+              ],
+              "type": "object"
+            },
+            "subject": {
+              "type": "string"
+            },
+            "to": {
+              "type": "string"
+            },
+            "type": {
+              "enum": [
+                "send_email"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "to",
+            "subject",
+            "body"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "body": {
+              "additionalProperties": false,
+              "properties": {
+                "parts": {
+                  "items": {
+                    "oneOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "kind": {
+                            "enum": [
+                              "text"
+                            ],
+                            "type": "string"
+                          },
+                          "text": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "text"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "fieldRef": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "fieldId": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "fieldId"
+                            ],
+                            "type": "object"
+                          },
+                          "kind": {
+                            "enum": [
+                              "field_ref"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "fieldRef"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "kind": {
+                            "enum": [
+                              "newline"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind"
+                        ],
+                        "type": "object"
+                      }
+                    ]
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "parts"
+              ],
+              "type": "object"
+            },
+            "title": {
+              "type": "string"
+            },
+            "type": {
+              "enum": [
+                "send_notification"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "title",
+            "body"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "addRecord": {
+              "additionalProperties": false,
+              "properties": {
+                "fields": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "fieldId": {
+                        "type": "string"
+                      },
+                      "value": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "parts": {
+                            "items": {
+                              "oneOf": [
+                                {
+                                  "additionalProperties": false,
+                                  "properties": {
+                                    "kind": {
+                                      "enum": [
+                                        "text"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    "text": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "text"
+                                  ],
+                                  "type": "object"
+                                },
+                                {
+                                  "additionalProperties": false,
+                                  "properties": {
+                                    "fieldRef": {
+                                      "additionalProperties": false,
+                                      "properties": {
+                                        "fieldId": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "fieldId"
+                                      ],
+                                      "type": "object"
+                                    },
+                                    "kind": {
+                                      "enum": [
+                                        "field_ref"
+                                      ],
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "fieldRef"
+                                  ],
+                                  "type": "object"
+                                },
+                                {
+                                  "additionalProperties": false,
+                                  "properties": {
+                                    "kind": {
+                                      "enum": [
+                                        "newline"
+                                      ],
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind"
+                                  ],
+                                  "type": "object"
+                                }
+                              ]
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "parts"
+                        ],
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "fieldId",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "targetDocumentId": {
+                  "description": "Optional; defaults to the trigger's document.",
+                  "type": "string"
+                },
+                "targetTableId": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "targetTableId",
+                "fields"
+              ],
+              "type": "object"
+            },
+            "type": {
+              "enum": [
+                "add_record"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "addRecord"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "enum": [
+                "update_record"
+              ],
+              "type": "string"
+            },
+            "updateRecord": {
+              "additionalProperties": false,
+              "properties": {
+                "fields": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "fieldId": {
+                        "type": "string"
+                      },
+                      "value": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "parts": {
+                            "items": {
+                              "oneOf": [
+                                {
+                                  "additionalProperties": false,
+                                  "properties": {
+                                    "kind": {
+                                      "enum": [
+                                        "text"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    "text": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "text"
+                                  ],
+                                  "type": "object"
+                                },
+                                {
+                                  "additionalProperties": false,
+                                  "properties": {
+                                    "fieldRef": {
+                                      "additionalProperties": false,
+                                      "properties": {
+                                        "fieldId": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "fieldId"
+                                      ],
+                                      "type": "object"
+                                    },
+                                    "kind": {
+                                      "enum": [
+                                        "field_ref"
+                                      ],
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "fieldRef"
+                                  ],
+                                  "type": "object"
+                                },
+                                {
+                                  "additionalProperties": false,
+                                  "properties": {
+                                    "kind": {
+                                      "enum": [
+                                        "newline"
+                                      ],
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind"
+                                  ],
+                                  "type": "object"
+                                }
+                              ]
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "parts"
+                        ],
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "fieldId",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  "minItems": 1,
+                  "type": "array"
+                },
+                "target": {
+                  "enum": [
+                    "trigger_record"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "target",
+                "fields"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "type",
+            "updateRecord"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "lookupRecord": {
+              "additionalProperties": false,
+              "properties": {
+                "matchFieldId": {
+                  "type": "string"
+                },
+                "matchValue": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "parts": {
+                      "items": {
+                        "oneOf": [
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "kind": {
+                                "enum": [
+                                  "text"
+                                ],
+                                "type": "string"
+                              },
+                              "text": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "text"
+                            ],
+                            "type": "object"
+                          },
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "fieldRef": {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "fieldId": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "fieldId"
+                                ],
+                                "type": "object"
+                              },
+                              "kind": {
+                                "enum": [
+                                  "field_ref"
+                                ],
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "fieldRef"
+                            ],
+                            "type": "object"
+                          },
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "kind": {
+                                "enum": [
+                                  "newline"
+                                ],
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "kind"
+                            ],
+                            "type": "object"
+                          }
+                        ]
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "parts"
+                  ],
+                  "type": "object"
+                },
+                "targetDocumentId": {
+                  "description": "Optional; defaults to the trigger's document.",
+                  "type": "string"
+                },
+                "targetTableId": {
+                  "type": "string"
+                },
+                "writeBack": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "sourceFieldId": {
+                        "type": "string"
+                      },
+                      "targetFieldId": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "sourceFieldId",
+                      "targetFieldId"
+                    ],
+                    "type": "object"
+                  },
+                  "minItems": 1,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "targetTableId",
+                "matchFieldId",
+                "matchValue",
+                "writeBack"
+              ],
+              "type": "object"
+            },
+            "type": {
+              "enum": [
+                "lookup_record"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "lookupRecord"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "transformRecord": {
+              "additionalProperties": false,
+              "properties": {
+                "operations": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "argument": {
+                        "type": "string"
+                      },
+                      "operation": {
+                        "enum": [
+                          "trim",
+                          "lowercase",
+                          "uppercase",
+                          "digits_only",
+                          "domain_from_email",
+                          "number_add",
+                          "number_multiply",
+                          "concat"
+                        ],
+                        "type": "string"
+                      },
+                      "source": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "parts": {
+                            "items": {
+                              "oneOf": [
+                                {
+                                  "additionalProperties": false,
+                                  "properties": {
+                                    "kind": {
+                                      "enum": [
+                                        "text"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    "text": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "text"
+                                  ],
+                                  "type": "object"
+                                },
+                                {
+                                  "additionalProperties": false,
+                                  "properties": {
+                                    "fieldRef": {
+                                      "additionalProperties": false,
+                                      "properties": {
+                                        "fieldId": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "fieldId"
+                                      ],
+                                      "type": "object"
+                                    },
+                                    "kind": {
+                                      "enum": [
+                                        "field_ref"
+                                      ],
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "fieldRef"
+                                  ],
+                                  "type": "object"
+                                },
+                                {
+                                  "additionalProperties": false,
+                                  "properties": {
+                                    "kind": {
+                                      "enum": [
+                                        "newline"
+                                      ],
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind"
+                                  ],
+                                  "type": "object"
+                                }
+                              ]
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "parts"
+                        ],
+                        "type": "object"
+                      },
+                      "targetFieldId": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "source",
+                      "operation",
+                      "targetFieldId"
+                    ],
+                    "type": "object"
+                  },
+                  "minItems": 1,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "operations"
+              ],
+              "type": "object"
+            },
+            "type": {
+              "enum": [
+                "transform_record"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "transformRecord"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "description": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "trigger": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "tableId": {
+              "type": "string"
+            },
+            "type": {
+              "enum": [
+                "record_created",
+                "record_updated",
+                "record_created_or_updated"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "tableId"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "schedule": {
+              "additionalProperties": false,
+              "properties": {
+                "cron": {
+                  "type": "string"
+                },
+                "timezone": {
+                  "description": "Optional IANA timezone name. Leave blank for server-local.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "cron"
+              ],
+              "type": "object"
+            },
+            "type": {
+              "enum": [
+                "scheduled_time"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "schedule"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "dateField": {
+              "additionalProperties": false,
+              "properties": {
+                "atTime": {
+                  "description": "HH:MM in 24h notation, e.g. \"09:00\". Omit for server default.",
+                  "type": "string"
+                },
+                "fieldId": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "fieldId"
+              ],
+              "type": "object"
+            },
+            "tableId": {
+              "type": "string"
+            },
+            "type": {
+              "enum": [
+                "record_date_reached"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "tableId",
+            "dateField"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "required": [
+    "name",
+    "description",
+    "trigger",
+    "action"
+  ],
+  "type": "object"
+}

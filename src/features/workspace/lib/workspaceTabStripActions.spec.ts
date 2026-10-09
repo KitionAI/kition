@@ -9,7 +9,7 @@ const tabs: WorkspaceTab[] = [
   { id: 'doc-b', type: 'document', title: 'B', path: 'b.md' },
   { id: 'viewer', type: 'file-viewer', title: 'Photo', path: 'photo.png', format: 'markdown' },
   { id: 'flow', type: 'workflow', title: 'Flows' },
-  { id: 'sites', type: 'browser-sites', title: 'Sites' },
+  { id: 'sites', type: 'gallery', title: 'Images', kind: 'images' },
 ]
 
 function build(overrides: Partial<WorkspaceTabStripActionsInput> = {}) {
@@ -74,9 +74,8 @@ describe('buildWorkspaceTabStripProps', () => {
     expect(run.activateTab).toHaveBeenCalledWith(tabs[0])
   })
 
-  it('references a tab by path, URL, or title', () => {
+  it('references a tab by path or title', () => {
     expect(workspaceTabReference(tabs[0])).toBe('a.md')
-    expect(workspaceTabReference({ id: 'w', type: 'browser', title: 'Docs', provider: 'google', url: 'https://example.com' } as WorkspaceTab)).toBe('https://example.com')
     expect(workspaceTabReference(tabs[3])).toBe('Flows')
   })
 })

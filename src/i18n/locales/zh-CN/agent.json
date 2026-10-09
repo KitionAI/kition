@@ -141,40 +141,6 @@
         }
       }
     },
-    "browser": {
-      "description": "让 agent 帮你阅读、总结或抓取当前页面。",
-      "suggestions": {
-        "summarizePage": {
-          "label": "总结当前页面",
-          "prompt": "把当前网页总结成要点列表。"
-        },
-        "extractTable": {
-          "label": "提取页面中的表格",
-          "prompt": "把当前页面里主要的数据表提取成 Markdown。"
-        },
-        "saveAsNote": {
-          "label": "保存为笔记",
-          "prompt": "把当前页面的要点保存到一份新的 Markdown 笔记里。"
-        }
-      }
-    },
-    "browserSites": {
-      "description": "让 agent 帮你发现、配置或登录浏览器会话。",
-      "suggestions": {
-        "addSite": {
-          "label": "新增一个站点",
-          "prompt": "带我把一个新的浏览器站点加进来，让 agent 可以使用它。"
-        },
-        "showConnected": {
-          "label": "查看已连接站点",
-          "prompt": "总结一下哪些浏览器站点已经登录，哪些还没有授权。"
-        },
-        "setupCustom": {
-          "label": "配置自定义适配",
-          "prompt": "帮我为一个内置不支持的网站配置自定义适配器。"
-        }
-      }
-    },
     "gallery": {
       "description": "让 agent 帮你整理、描述或复用当前画廊里的素材。",
       "suggestions": {
@@ -321,7 +287,6 @@
       "failed": "{{label}}失败",
       "completed": "{{label}}已完成",
       "pendingApproval": "等待批准 · $ {{command}}",
-      "searchInBrowserPrefix": "在浏览器中搜索：{{query}}",
       "searchPrefix": "搜索：{{query}}",
       "generateImagePrefix": "生成图片：{{query}}",
       "previewNFiles": "预览 {{count}} 个文件 · +{{added}} −{{removed}}",
@@ -338,17 +303,8 @@
     "final": {
       "streaming": "正在输出回复"
     },
-    "sanitize": {
-      "continueAndWrite": "继续处理当前浏览器页面，并将可见结果写入表格。",
-      "continueDefault": "继续处理当前浏览器页面，准备执行下一步。"
-    },
     "toolDisplayName": {
-      "browser_open": "打开浏览器标签页",
-      "browser_navigate": "浏览器导航",
-      "browser_search": "在浏览器中搜索",
       "source_adapter_catalog": "检查来源上下文",
-      "browser_context_entities": "读取浏览器页面",
-      "browser_ingest_strategy": "检查页面状态",
       "web_search": "搜索网页",
       "web_fetch": "读取网页",
       "data_table_create": "创建表格",
@@ -375,12 +331,7 @@
       "register_artifact": "登记产物"
     },
     "toolActionLabel": {
-      "browser_open": "打开浏览器标签页",
-      "browser_navigate": "浏览器导航",
-      "browser_search": "在浏览器中搜索",
       "source_adapter_catalog": "检查来源上下文",
-      "browser_context_entities": "读取浏览器页面",
-      "browser_ingest_strategy": "检查页面状态",
       "web_search": "搜索网页",
       "web_fetch": "读取网页",
       "data_table_create": "创建表格",

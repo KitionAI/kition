@@ -1,148 +1,59 @@
 import fs from 'node:fs/promises'
-import os from 'node:os'
 import path from 'node:path'
 
-import { _electron as electron, expect, test } from '@playwright/test'
-import electronPath from 'electron'
+import { expect, test } from '@playwright/test'
 
+import { installDesktopHost } from './helpers/desktopHost'
 import { mockLocalWorkspaceApi } from './helpers/mockApi'
 import { dismissFirstRunActivation } from './helpers/onboarding'
 
-test('desktop provider inputs keep native select-all and paste shortcuts', async ({ baseURL }) => {
+test('desktop shortcuts keep select-all in inputs and copy articles through the desktop clipboard', async ({ page, baseURL }) => {
   test.setTimeout(60_000)
   expect(baseURL).toBeTruthy()
-
-  const tempHome = await fs.mkdtemp(path.join(os.tmpdir(), 'kition-electron-shortcuts-'))
-  const shortcutModifier = process.platform === 'darwin' ? 'Meta' : 'Control'
-
-  const app = await electron.launch({
-    executablePath: electronPath,
-    cwd: process.cwd(),
-    args: ['.'],
-    env: {
-      ...process.env,
-      HOME: tempHome,
-      KITION_ELECTRON_DEV_SERVER_URL: baseURL as string,
-      KITION_DESKTOP_SKIP_API: 'true',
-    },
-  })
-
+  const host = await installDesktopHost(page)
   try {
-    const page = await app.firstWindow()
     await mockLocalWorkspaceApi(page)
-    await page.goto(new URL('/settings?section=providers', baseURL as string).toString(), {
-      waitUntil: 'commit',
-    })
+    await page.goto(new URL('/settings?section=providers', baseURL as string).toString(), { waitUntil: 'commit' })
     await page.waitForLoadState('domcontentloaded')
     await dismissFirstRunActivation(page)
+    // Editor shortcuts follow the page's reported platform; native input
+    // editing and clipboard commands follow the host operating system.
+    const modifier = await page.evaluate(() => (/Mac/.test(navigator.platform) ? 'Meta' : 'Control'))
     await page.getByRole('button', { name: /OpenAI/ }).click()
     const providerInput = page.getByLabel('API key').first()
     await expect(providerInput).toBeVisible({ timeout: 30_000 })
-
-    await providerInput.click()
-    await providerInput.press(`${shortcutModifier}+A`)
-    await providerInput.type('CMD-A-REPLACED')
+    await providerInput.fill('ORIGINAL-KEY')
+    await providerInput.press('ControlOrMeta+a')
+    await providerInput.pressSequentially('CMD-A-REPLACED')
     await expect(providerInput).toHaveValue('CMD-A-REPLACED')
 
-    await app.evaluate(({ clipboard }, value) => {
-      clipboard.writeText(value)
-    }, 'PASTED-BY-CMD-V')
+    const imagePath = path.join(host.root, 'Agent', 'images', 'clipboard-test.png')
+    await fs.mkdir(path.dirname(imagePath), { recursive: true })
+    await fs.writeFile(imagePath, Buffer.from([0x89, 0x50, 0x4e, 0x47]))
+    const markdown = 'Before\n\n![Generated](<Agent/images/clipboard-test.png>)\n\nAfter\n'
+    await fs.writeFile(path.join(host.root, 'Publishing copy.md'), markdown)
 
-    await providerInput.click()
-    await providerInput.press(`${shortcutModifier}+A`)
-    await providerInput.press(`${shortcutModifier}+V`)
-    await expect(providerInput).toHaveValue('PASTED-BY-CMD-V')
-
-    const desktopInfo = await page.evaluate(() => window.kitionDesktop?.DesktopInfo?.())
-    expect(desktopInfo?.workspace_dir).toBeTruthy()
-    const generatedImagePath = path.join(
-      desktopInfo!.workspace_dir!,
-      'Agent',
-      'images',
-      'clipboard-test.png',
-    )
-    await fs.mkdir(path.dirname(generatedImagePath), { recursive: true })
-    await fs.writeFile(generatedImagePath, Buffer.from([0x89, 0x50, 0x4e, 0x47]))
-
-    await page.evaluate(async () => {
-      await window.kitionDesktop?.CopyDocumentHtml?.({
-        document_path: 'Articles/Publishing/article.md',
-        html: '<article><img src="Agent/images/clipboard-test.png" alt="Generated"></article>',
-        text: 'Generated',
-      })
-    })
-    const publishingClipboard = await app.evaluate(({ clipboard }) => ({
-      html: clipboard.readHTML(),
-      text: clipboard.readText(),
-    }))
-    expect(publishingClipboard.html).toContain('src="data:image/png;base64,iVBORw=="')
-    expect(publishingClipboard.html).not.toContain('Agent/images/clipboard-test.png')
-    expect(publishingClipboard.text).toBe('Generated')
-
-    const backendPublicOrigin = desktopInfo!.backend_base_url.replace(/\/api\/?$/, '')
-    await page.evaluate(async ({ imageUrl }) => {
-      await window.kitionDesktop?.CopyDocumentHtml?.({
-        document_path: 'Articles/Publishing/article.md',
-        html: `<article><img src="${imageUrl}" alt="Generated"></article>`,
-        text: 'Generated from workspace URL',
-      })
-    }, {
-      imageUrl: `${backendPublicOrigin}/workspace-files/Agent/images/clipboard-test.png`,
-    })
-    const publicUrlClipboard = await app.evaluate(({ clipboard }) => ({
-      html: clipboard.readHTML(),
-      text: clipboard.readText(),
-    }))
-    expect(publicUrlClipboard.html).toContain('src="data:image/png;base64,iVBORw=="')
-    expect(publicUrlClipboard.text).toBe('Generated from workspace URL')
-
-    await page.evaluate(() => {
-      const pasteTarget = document.createElement('div')
-      pasteTarget.contentEditable = 'true'
-      pasteTarget.dataset.testid = 'publishing-paste-target'
-      document.body.appendChild(pasteTarget)
-      pasteTarget.focus()
-    })
-    await page.locator('[data-testid="publishing-paste-target"]').press(`${shortcutModifier}+V`)
-    await expect(page.locator('[data-testid="publishing-paste-target"] img')).toHaveAttribute(
-      'src',
-      'data:image/png;base64,iVBORw==',
-    )
-
-    const publishingCopyMarkdown = 'Before\n\n![Generated](<Agent/images/clipboard-test.png>)\n\nAfter\n'
-    await fs.writeFile(
-      path.join(desktopInfo!.workspace_dir!, 'Publishing copy.md'),
-      publishingCopyMarkdown,
-    )
-    await page.goto(new URL('/documents', baseURL as string).toString(), {
-      waitUntil: 'commit',
-    })
+    await page.goto(new URL('/documents', baseURL as string).toString(), { waitUntil: 'commit' })
     await page.waitForLoadState('domcontentloaded')
     await expect(page.getByTestId('document-tree')).toBeVisible({ timeout: 30_000 })
     await page.locator('.document-tree-row', { hasText: 'Publishing copy' }).first().click()
     await page.getByRole('button', { name: 'Reading view' }).click()
     await expect(page.getByRole('button', { name: 'Edit' })).toBeVisible()
-    await expect(page.locator('.document-editor .cm-selectionLayer')).toHaveCount(0)
     const editorContent = page.locator('.document-editor .cm-content').first()
     await expect(editorContent).toContainText('Before')
     await editorContent.click()
-    await editorContent.press(`${shortcutModifier}+A`)
-    await editorContent.press(`${shortcutModifier}+C`)
+    await editorContent.press(`${modifier}+a`)
+    await editorContent.press('ControlOrMeta+c')
 
     await expect(page.getByText('Copied with images embedded')).toBeVisible({ timeout: 5_000 })
-    await expect.poll(() => app.evaluate(({ clipboard }) => clipboard.readHTML()))
-      .toContain('src="data:image/png;base64,iVBORw=="')
-    const copiedArticle = await app.evaluate(({ clipboard }) => ({
-      html: clipboard.readHTML(),
-      text: clipboard.readText(),
-    }))
-    expect(copiedArticle.html).toContain('Before')
-    expect(copiedArticle.html).toContain('After')
-    expect(copiedArticle.html).not.toContain('![Generated]')
-    expect(copiedArticle.html).not.toContain('Agent/images/clipboard-test.png')
-    expect(copiedArticle.text).toBe(publishingCopyMarkdown)
+    const copy = host.calls.find((call) => call.command === 'copy_document_html')
+    expect(copy?.args.request).toMatchObject({ document_path: 'Publishing copy.md' })
+    expect(host.clipboard.html).toContain('Before')
+    expect(host.clipboard.html).toContain('After')
+    expect(host.clipboard.html).not.toContain('![Generated]')
+    expect(host.clipboard.html).toMatch(/<img[^>]+clipboard-test\.png/)
+    expect(host.clipboard.text).toBe(markdown)
   } finally {
-    await app.close()
-    await fs.rm(tempHome, { recursive: true, force: true })
+    await host.dispose()
   }
 })

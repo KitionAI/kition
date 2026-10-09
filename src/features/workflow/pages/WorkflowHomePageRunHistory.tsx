@@ -1,3 +1,5 @@
+import type { ApiTimestamp } from '@/types'
+import { toEpochMs } from '@/lib/timestamps'
 import type { ReactNode } from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -254,10 +256,10 @@ const DEFAULT_RELATIVE_STRINGS: RelativeTimeStrings = {
  *
  *  Exported only for the spec — keep the relative-time contract pinned so
  *  a future change (e.g. dropping "just now") is intentional. */
-export function relativeTime(raw: string, strings: RelativeTimeStrings = DEFAULT_RELATIVE_STRINGS): string {
+export function relativeTime(raw: ApiTimestamp, strings: RelativeTimeStrings = DEFAULT_RELATIVE_STRINGS): string {
   if (!raw) return ''
-  const d = new Date(raw)
-  if (Number.isNaN(d.getTime())) return raw
+  const d = new Date(toEpochMs(raw))
+  if (Number.isNaN(d.getTime())) return String(raw)
   const diff = Date.now() - d.getTime()
   if (diff < 0) return d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
   const minutes = Math.floor(diff / 60000)
@@ -273,9 +275,9 @@ export function relativeTime(raw: string, strings: RelativeTimeStrings = DEFAULT
 /** formatAbsoluteTime renders the full datetime in the user's locale. Used
  *  as the row's hover title and in the LogsView; relative time is reserved
  *  for the visible label. Exported only for the spec. */
-export function formatAbsoluteTime(raw: string): string {
+export function formatAbsoluteTime(raw: ApiTimestamp): string {
   if (!raw) return ''
-  const d = new Date(raw)
-  if (Number.isNaN(d.getTime())) return raw
+  const d = new Date(toEpochMs(raw))
+  if (Number.isNaN(d.getTime())) return String(raw)
   return d.toLocaleString([], { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }

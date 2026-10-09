@@ -22,7 +22,7 @@ List the exact commands that were run and note any platform-specific coverage.
 If an AI coding agent contributed, summarize its review of:
 
 - user-visible behavior and copy accuracy;
-- macOS, Windows, web-preview, and Electron differences;
+- macOS, Windows, Linux, web-preview, and desktop shell differences;
 - public runtime contracts, mocks, and private runtime boundaries;
 - performance and accessibility risks;
 - English-only content, branding, and portable paths.

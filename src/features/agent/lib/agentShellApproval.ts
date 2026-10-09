@@ -1,3 +1,4 @@
+import { toEpochMs } from '@/lib/timestamps'
 import type {
   AgentMessage,
   AgentShellApprovalDecision,
@@ -18,12 +19,12 @@ function hasLaterTurn(
       || toolCalls.some((candidate) => Number(candidate.message_id || 0) > messageId)
   }
 
-  const createdAt = Date.parse(toolCall.created_at)
+  const createdAt = toEpochMs(toolCall.created_at)
   if (Number.isNaN(createdAt)) {
     return false
   }
-  return messages.some((message) => Date.parse(message.created_at) > createdAt)
-    || toolCalls.some((candidate) => Date.parse(candidate.created_at) > createdAt)
+  return messages.some((message) => toEpochMs(message.created_at) > createdAt)
+    || toolCalls.some((candidate) => toEpochMs(candidate.created_at) > createdAt)
 }
 
 export function readLatestAgentShellApprovalRequest(

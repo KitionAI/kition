@@ -32,7 +32,7 @@ async function mockSuppressLauncher(page: Page) {
       }
     }
     stateWindow.kitionDesktop = {
-      shell: 'electron',
+      shell: 'tauri',
       DesktopInfo: async () => ({
         is_desktop: false,
         platform: 'darwin',

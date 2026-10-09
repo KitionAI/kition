@@ -1,3 +1,4 @@
+import type { ApiTimestamp } from '@/types'
 import request from './request'
 import { resolveApiURL } from '@/services/desktop'
 import type { DiscoverProviderModelsPayload, DiscoverProviderModelsResponse } from '@/types/desktopSettings'
@@ -28,7 +29,7 @@ export type BootstrapChallengeResponse = {
   startup_id: string
   challenge_id: string
   challenge: string
-  expires_at: string
+  expires_at: ApiTimestamp
   server_time: string
   bootstrap_policy: {
     official_required: boolean

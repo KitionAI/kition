@@ -1,3 +1,5 @@
+import type { ApiTimestamp } from '@/types'
+import { toEpochMs } from '@/lib/timestamps'
 import { History as HistoryIcon, Pause, Play, RefreshCw, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -213,10 +215,10 @@ const DEFAULT_RELATIVE: RelativeStrings = {
   daysAgo: (n) => `${n}d ago`,
 }
 
-function formatRelativeTime(raw: string, strings: RelativeStrings = DEFAULT_RELATIVE): string {
+function formatRelativeTime(raw: ApiTimestamp, strings: RelativeStrings = DEFAULT_RELATIVE): string {
   if (!raw) return ''
-  const d = new Date(raw)
-  if (Number.isNaN(d.getTime())) return raw
+  const d = new Date(toEpochMs(raw))
+  if (Number.isNaN(d.getTime())) return String(raw)
   const diff = Date.now() - d.getTime()
   if (diff < 0) return d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
   const minutes = Math.floor(diff / 60000)
@@ -229,9 +231,9 @@ function formatRelativeTime(raw: string, strings: RelativeStrings = DEFAULT_RELA
   return d.toLocaleDateString([], { month: 'short', day: 'numeric' })
 }
 
-function formatAbsoluteTime(raw: string): string {
+function formatAbsoluteTime(raw: ApiTimestamp): string {
   if (!raw) return ''
-  const d = new Date(raw)
-  if (Number.isNaN(d.getTime())) return raw
+  const d = new Date(toEpochMs(raw))
+  if (Number.isNaN(d.getTime())) return String(raw)
   return d.toLocaleString([], { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }

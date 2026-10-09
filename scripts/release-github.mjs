@@ -1,22 +1,17 @@
 #!/usr/bin/env node
 
 import fs from 'node:fs'
-import os from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
 import readline from 'node:readline/promises'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { expectedReleaseAssets } from '../src-tauri/scripts/release-artifacts.mjs'
 
 const PUBLIC_REPOSITORY = 'KitionAI/kition'
-const RUNTIME_REPOSITORY = 'KitionAI/kition-dev'
-const RUNTIME_BUILD_REPOSITORY = 'KitionAI/kition-dev'
-const RUNTIME_SOURCE_REPOSITORY = 'KitionAI/kition-runtime'
 const PUBLISH_WORKFLOW = 'publish-release.yml'
-const RUNTIME_WORKFLOW = 'build-release-assets.yml'
 const CI_WORKFLOW = 'ci.yml'
 const DEFAULT_SOURCE_REF = 'main'
-const DEFAULT_RUNTIME_REF = 'main'
 const DEFAULT_TIMEOUT_MINUTES = 90
 const POLL_INTERVAL_MS = 15_000
 export const REQUIRED_RELEASE_GITHUB_LOGIN = 'allentatakai'
@@ -29,11 +24,9 @@ export function releaseUsage() {
     'Usage: pnpm release:github <version> [options]',
     '',
     'Options:',
-    '  --source-ref <ref>       Public client branch to release (default: main)',
-    '  --runtime-ref <ref>      Private runtime ref to build (default: main)',
+    '  --source-ref <ref>       Branch to release (default: main)',
     '  --timeout-minutes <n>    Overall workflow timeout (default: 90)',
     '  --resume                 Resume an aligned release without repeating local checks',
-    '  --force-prepare          Rebuild runtime assets while Releases are still drafts',
     '  --dry-run                Validate context without changing release state',
     '  --yes                    Skip the interactive version confirmation',
     '  --help                   Show this help',
@@ -44,12 +37,10 @@ export function parseReleaseArguments(argv) {
   const options = {
     version: '',
     sourceRef: DEFAULT_SOURCE_REF,
-    runtimeRef: DEFAULT_RUNTIME_REF,
     timeoutMinutes: DEFAULT_TIMEOUT_MINUTES,
     yes: false,
     dryRun: false,
     resume: false,
-    forcePrepare: false,
     help: false,
   }
 
@@ -67,10 +58,6 @@ export function parseReleaseArguments(argv) {
       options.dryRun = true
       continue
     }
-    if (argument === '--force-prepare') {
-      options.forcePrepare = true
-      continue
-    }
     if (argument === '--resume') {
       options.resume = true
       continue
@@ -83,10 +70,6 @@ export function parseReleaseArguments(argv) {
       options.sourceRef = argv[++index] || ''
       continue
     }
-    if (argument === '--runtime-ref') {
-      options.runtimeRef = argv[++index] || ''
-      continue
-    }
     if (argument === '--timeout-minutes') {
       options.timeoutMinutes = Number(argv[++index])
       continue
@@ -97,7 +80,6 @@ export function parseReleaseArguments(argv) {
   if (options.help) return options
   validateVersion(options.version)
   validateRef(options.sourceRef, 'source ref')
-  validateRef(options.runtimeRef, 'runtime ref')
   if (!Number.isFinite(options.timeoutMinutes) || options.timeoutMinutes < 10) {
     throw new Error('--timeout-minutes must be at least 10')
   }
@@ -128,68 +110,15 @@ export function assertReleaseGitHubLogin(login, expected = REQUIRED_RELEASE_GITH
   return actual
 }
 
-export function alignReleaseVersion(packagePayload, runtimeLock, version) {
+export function alignReleaseVersion(packagePayload, version) {
   if (!packagePayload || typeof packagePayload !== 'object') {
     throw new Error('package.json is not a JSON object')
   }
-  if (!runtimeLock || typeof runtimeLock !== 'object') {
-    throw new Error('electron/runtime.lock.json is not a JSON object')
-  }
-  if (runtimeLock.repository !== RUNTIME_REPOSITORY) {
-    throw new Error(`Runtime repository must be ${RUNTIME_REPOSITORY}`)
-  }
-  if (!Number.isInteger(runtimeLock.protocolVersion) || runtimeLock.protocolVersion < 1) {
-    throw new Error('Runtime protocol version must be a positive integer')
-  }
-  return {
-    packagePayload: { ...packagePayload, version },
-    runtimeLock: {
-      ...runtimeLock,
-      runtimeVersion: version,
-      releaseTag: `v${version}`,
-    },
-  }
-}
-
-export function runtimeAssetNames(version) {
-  return [
-    'runtime-manifest.json',
-    'runtime-SHA256SUMS.txt',
-    'runtime-provenance.json',
-    `kition-runtime-${version}-darwin-arm64.tar.gz`,
-    `kition-runtime-${version}-darwin-x64.tar.gz`,
-    `kition-runtime-${version}-windows-x64.zip`,
-    `kition-runtime-${version}-linux-x64.tar.gz`,
-  ]
-}
-
-export function runtimeArtifactNames(version) {
-  return [
-    ...runtimeAssetNames(version),
-    'runtime-sbom-darwin-arm64.spdx.json',
-    'runtime-sbom-darwin-x64.spdx.json',
-    'runtime-sbom-windows-x64.spdx.json',
-    'runtime-sbom-linux-x64.spdx.json',
-  ]
+  return { ...packagePayload, version }
 }
 
 export function desktopAssetNames(version) {
-  return [
-    `Kition-${version}-macos-arm64.dmg`,
-    `Kition-${version}-macos-arm64.dmg.blockmap`,
-    `Kition-${version}-macos-arm64.zip`,
-    `Kition-${version}-macos-arm64.zip.blockmap`,
-    `Kition-${version}-macos-x64.dmg`,
-    `Kition-${version}-macos-x64.dmg.blockmap`,
-    `Kition-${version}-macos-x64.zip`,
-    `Kition-${version}-macos-x64.zip.blockmap`,
-    `Kition-${version}-windows-x64-setup.exe`,
-    `Kition-${version}-windows-x64-setup.exe.blockmap`,
-    `Kition-${version}-linux-x86_64.AppImage`,
-    'latest-mac.yml',
-    'latest.yml',
-    'latest-linux.yml',
-  ]
+  return [...expectedReleaseAssets(version), 'latest.json']
 }
 
 export function selectWorkflowRun(runs, { headSha, dispatchedAfter }) {
@@ -299,17 +228,9 @@ function getHeadSha(rootDir) {
 }
 
 function assertAlignedReleaseFiles(rootDir, version) {
-  const packagePayload = readJson(path.join(rootDir, 'package.json'))
-  const runtimeLock = readJson(path.join(rootDir, 'electron', 'runtime.lock.json'))
-  alignReleaseVersion(packagePayload, runtimeLock, version)
-  if (
-    packagePayload.version !== version ||
-    runtimeLock.runtimeVersion !== version ||
-    runtimeLock.releaseTag !== `v${version}`
-  ) {
-    throw new Error(`--resume requires package.json and electron/runtime.lock.json to already match ${version}`)
+  if (readJson(path.join(rootDir, 'package.json')).version !== version) {
+    throw new Error(`--resume requires package.json to already match ${version}`)
   }
-  return runtimeLock
 }
 
 function getTagCommit(rootDir, tag) {
@@ -323,14 +244,8 @@ function getTagCommit(rootDir, tag) {
 
 function assertTagVersion(rootDir, tag, version) {
   const packagePayload = JSON.parse(capture('git', ['show', `${tag}:package.json`], { cwd: rootDir }))
-  const runtimeLock = JSON.parse(capture('git', ['show', `${tag}:electron/runtime.lock.json`], { cwd: rootDir }))
-  alignReleaseVersion(packagePayload, runtimeLock, version)
-  if (
-    packagePayload.version !== version ||
-    runtimeLock.runtimeVersion !== version ||
-    runtimeLock.releaseTag !== tag
-  ) {
-    throw new Error(`Tag ${tag} does not contain the aligned ${version} release files`)
+  if (packagePayload.version !== version) {
+    throw new Error(`Tag ${tag} does not contain the ${version} package version`)
   }
 }
 
@@ -438,127 +353,6 @@ function ensurePublicDraft(version, releaseCommit) {
   return viewRelease(PUBLIC_REPOSITORY, tag)
 }
 
-function ensureRuntimeDraft(version) {
-  const tag = `v${version}`
-  const release = viewRelease(RUNTIME_REPOSITORY, tag)
-  if (release) return release
-  run('gh', [
-    'release', 'create', tag,
-    '--repo', RUNTIME_REPOSITORY,
-    '--draft',
-    '--title', `Kition Runtime ${version}`,
-    '--notes', `Developer runtime binaries for Kition ${version}. Runtime source is not included.`,
-  ])
-  return viewRelease(RUNTIME_REPOSITORY, tag)
-}
-
-function repositoryRefSha(repository, ref) {
-  return capture('gh', [
-    'api', '--method', 'GET', `repos/${repository}/commits`,
-    '-f', `sha=${ref}`,
-    '-f', 'per_page=1',
-    '--jq', '.[0].sha',
-  ])
-}
-
-function dispatchRuntime(options) {
-  run('gh', [
-    'workflow', 'run', RUNTIME_WORKFLOW,
-    '--repo', RUNTIME_BUILD_REPOSITORY,
-    '--ref', DEFAULT_SOURCE_REF,
-    '-f', `version=${options.version}`,
-    '-f', `release_tag=v${options.version}`,
-    '-f', `protocol_version=${options.protocolVersion}`,
-    '-f', `runtime_ref=${options.runtimeRef}`,
-    '-f', `public_repository=${PUBLIC_REPOSITORY}`,
-  ])
-}
-
-function uploadReleaseFiles(repository, tag, files) {
-  const release = viewRelease(repository, tag)
-  if (!release?.isDraft) {
-    throw new Error(`Release ${tag} in ${repository} must be a draft before uploading assets`)
-  }
-  run('gh', ['release', 'upload', tag, '--repo', repository, '--clobber', ...files])
-}
-
-function publishRuntimeRelease(version) {
-  run('gh', [
-    'release', 'edit', `v${version}`,
-    '--repo', RUNTIME_REPOSITORY,
-    '--draft=false',
-    `--prerelease=${version.includes('-')}`,
-  ])
-}
-
-function downloadReleaseAssets(repository, version, directory) {
-  const args = [
-    'release', 'download', `v${version}`,
-    '--repo', repository,
-    '--dir', directory,
-  ]
-  for (const name of runtimeAssetNames(version)) args.push('--pattern', name)
-  run('gh', args)
-  const files = runtimeAssetNames(version).map((name) => path.join(directory, name))
-  const missing = files.filter((filePath) => !fs.existsSync(filePath))
-  if (missing.length) {
-    throw new Error(`Downloaded runtime Release is missing files: ${missing.map((filePath) => path.basename(filePath)).join(', ')}`)
-  }
-  return files
-}
-
-async function buildAndStageRuntime(options, timeoutAt) {
-  ensureRuntimeDraft(options.version)
-  const dispatchedAfter = new Date().toISOString()
-  const runtimeCommit = repositoryRefSha(RUNTIME_SOURCE_REPOSITORY, options.runtimeRef)
-  const headSha = repositoryRefSha(RUNTIME_BUILD_REPOSITORY, DEFAULT_SOURCE_REF)
-  console.log(`[release] runtime source ${options.runtimeRef} resolves to ${runtimeCommit.slice(0, 12)}`)
-  console.log(`[release] dispatching ${RUNTIME_BUILD_REPOSITORY}/${RUNTIME_WORKFLOW}`)
-  dispatchRuntime(options)
-  await watchWorkflow({
-    repository: RUNTIME_BUILD_REPOSITORY,
-    workflow: RUNTIME_WORKFLOW,
-    headSha,
-    dispatchedAfter,
-    timeoutAt,
-  })
-}
-
-function copyRuntimeAssets(sourceRepository, targetRepository, version) {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'kition-runtime-copy-'))
-  try {
-    const files = downloadReleaseAssets(sourceRepository, version, directory)
-    uploadReleaseFiles(targetRepository, `v${version}`, files)
-  } finally {
-    fs.rmSync(directory, { recursive: true, force: true })
-  }
-}
-
-async function waitForRuntimeAssets(version, timeoutAt) {
-  const tag = `v${version}`
-  const expectedRuntimeAssets = runtimeAssetNames(version)
-  let lastReport = 0
-  while (Date.now() < timeoutAt) {
-    const runtimeRelease = viewRelease(RUNTIME_REPOSITORY, tag)
-    const installerDraft = viewRelease(PUBLIC_REPOSITORY, tag)
-    const runtimeMissing = missingAssets(runtimeRelease, expectedRuntimeAssets)
-    const installerMissing = missingAssets(installerDraft, expectedRuntimeAssets)
-    if (
-      runtimeRelease && runtimeRelease.isDraft === false && runtimeMissing.length === 0 &&
-      installerDraft && installerDraft.isDraft === true && installerMissing.length === 0
-    ) {
-      console.log(`[release] verified published runtime and staged installer assets for ${tag}`)
-      return
-    }
-    if (Date.now() - lastReport >= 60_000) {
-      console.log(`[release] waiting for runtime assets (${runtimeMissing.length} runtime, ${installerMissing.length} staged missing)`)
-      lastReport = Date.now()
-    }
-    await sleep(POLL_INTERVAL_MS)
-  }
-  throw new Error(`Timed out waiting for runtime assets for ${tag}. Re-run with --force-prepare after checking the runtime build workflow.`)
-}
-
 function dispatchPublish(options) {
   run('gh', [
     'workflow', 'run', PUBLISH_WORKFLOW,
@@ -608,13 +402,9 @@ async function executeRelease(options) {
     if (options.resume) {
       assertAlignedReleaseFiles(rootDir, options.version)
     } else {
-      alignReleaseVersion(
-        readJson(path.join(rootDir, 'package.json')),
-        readJson(path.join(rootDir, 'electron', 'runtime.lock.json')),
-        options.version,
-      )
+      alignReleaseVersion(readJson(path.join(rootDir, 'package.json')), options.version)
     }
-    console.log(`[release] target=v${options.version} source=${options.sourceRef} runtime=${options.runtimeRef}`)
+    console.log(`[release] target=v${options.version} source=${options.sourceRef}`)
     console.log('[release] dry run complete; no files or remote state changed')
     return null
   }
@@ -631,37 +421,31 @@ async function executeRelease(options) {
   }
 
   await confirmRelease(options)
-  console.log(`[release] target=v${options.version} source=${options.sourceRef} runtime=${options.runtimeRef}`)
+  console.log(`[release] target=v${options.version} source=${options.sourceRef}`)
 
   const packagePath = path.join(rootDir, 'package.json')
-  const runtimeLockPath = path.join(rootDir, 'electron', 'runtime.lock.json')
   const currentPackage = readJson(packagePath)
-  const currentRuntimeLock = readJson(runtimeLockPath)
   if (options.resume) assertAlignedReleaseFiles(rootDir, options.version)
-  const aligned = alignReleaseVersion(currentPackage, currentRuntimeLock, options.version)
-  const needsVersionUpdate =
-    currentPackage.version !== options.version ||
-    currentRuntimeLock.runtimeVersion !== options.version ||
-    currentRuntimeLock.releaseTag !== `v${options.version}`
+  const aligned = alignReleaseVersion(currentPackage, options.version)
+  const needsVersionUpdate = currentPackage.version !== options.version
 
   if (options.resume && needsVersionUpdate) {
     throw new Error(`--resume requires release files to already match ${options.version}`)
   }
   if (!options.resume && needsVersionUpdate) {
-    writeJson(packagePath, aligned.packagePayload)
-    writeJson(runtimeLockPath, aligned.runtimeLock)
+    writeJson(packagePath, aligned)
   }
-  assertAllowedChanges(rootDir, ['package.json', 'electron/runtime.lock.json'])
+  assertAllowedChanges(rootDir, ['package.json'])
 
   if (!options.resume) {
     console.log('[release] running repository checks')
     run('pnpm', ['check'], { cwd: rootDir })
     run('pnpm', ['perf:budget'], { cwd: rootDir })
     run('pnpm', ['test:table:e2e'], { cwd: rootDir })
-    assertAllowedChanges(rootDir, ['package.json', 'electron/runtime.lock.json'])
+    assertAllowedChanges(rootDir, ['package.json'])
 
     if (getStatusPaths(rootDir).length) {
-      run('git', ['add', 'package.json', 'electron/runtime.lock.json'], { cwd: rootDir })
+      run('git', ['add', 'package.json'], { cwd: rootDir })
       run('git', ['commit', '-m', `Release Kition ${options.version}`], { cwd: rootDir })
     }
     run('git', ['push', 'origin', options.sourceRef], { cwd: rootDir })
@@ -685,38 +469,6 @@ async function executeRelease(options) {
     assertTagVersion(rootDir, tag, options.version)
   }
   ensurePublicDraft(options.version, releaseCommit)
-
-  const publicDraft = viewRelease(PUBLIC_REPOSITORY, tag)
-  const runtimeRelease = viewRelease(RUNTIME_REPOSITORY, tag)
-  const stagedMissing = missingAssets(publicDraft, runtimeAssetNames(options.version))
-  const runtimeMissing = missingAssets(runtimeRelease, runtimeAssetNames(options.version))
-
-  if (runtimeRelease && !runtimeRelease.isDraft && runtimeMissing.length === 0) {
-    if (stagedMissing.length) {
-      console.log(`[release] staging published runtime assets on the installer draft`)
-      copyRuntimeAssets(RUNTIME_REPOSITORY, PUBLIC_REPOSITORY, options.version)
-    } else {
-      console.log(`[release] reusing published runtime assets for ${tag}`)
-    }
-  } else if (publicDraft?.isDraft && stagedMissing.length === 0 && !options.forcePrepare) {
-    const draft = ensureRuntimeDraft(options.version)
-    if (!draft.isDraft) {
-      throw new Error(`Runtime Release ${tag} is published but incomplete`)
-    }
-    console.log(`[release] publishing runtime assets already staged on the installer draft`)
-    copyRuntimeAssets(PUBLIC_REPOSITORY, RUNTIME_REPOSITORY, options.version)
-    publishRuntimeRelease(options.version)
-  } else {
-    if (runtimeRelease && !runtimeRelease.isDraft) {
-      throw new Error(`Runtime Release ${tag} is published but incomplete and cannot be replaced`)
-    }
-    await buildAndStageRuntime({
-      ...options,
-      protocolVersion: currentRuntimeLock.protocolVersion,
-    }, timeoutAt)
-  }
-
-  await waitForRuntimeAssets(options.version, timeoutAt)
 
   const dispatchedAfter = new Date().toISOString()
   console.log(`[release] dispatching ${PUBLISH_WORKFLOW}`)

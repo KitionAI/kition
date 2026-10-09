@@ -1,3 +1,4 @@
+import { toIsoTimestamp } from '@/lib/timestamps'
 import type { AgentEvent, AgentSkillSpec } from '@/api/agent'
 import type { AgentRunLogItem, AgentTaskStep } from './agentTimelineTypes'
 import { getAgentTimelineDict, getAgentToolDisplayName, type AgentTimelineLocale } from './agentTimelineI18n'
@@ -35,7 +36,7 @@ export function formatAgentRunLogEvent(
     detail: formatAgentRunLogEventDetail(event, status, locale),
     status,
     payload: formatAgentRunLogEventPayload(event),
-    createdAt: event.created_at,
+    createdAt: toIsoTimestamp(event.created_at),
   }
 }
 

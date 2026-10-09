@@ -8,7 +8,7 @@ async function mockDesktopBridge(page: Page) {
     const secureStore = new Map<string, string>()
 
     stateWindow.kitionDesktop = {
-      shell: 'electron',
+      shell: 'tauri',
       DesktopInfo: async () => ({
         is_desktop: true,
         platform: 'darwin',

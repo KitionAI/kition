@@ -8,6 +8,10 @@ vi.mock('@/services/desktop', () => ({
   resolveApiURL: (path: string) => `/api${path.startsWith('/') ? path : `/${path}`}`,
 }))
 
+vi.mock('@/features/table/public', () => ({
+  resolveAIConfigRuntimeModel: async () => undefined,
+}))
+
 vi.mock('@/i18n', () => ({
   getCurrentLocale: () => 'en-US',
 }))
@@ -209,6 +213,7 @@ describe('useScenarioBuild — happy path', () => {
       submission = harness.get().submit('p', [])
     })
     await waitFor(() => harness.get().status === 'submitting', { tag: 'submitting' })
+    await waitFor(() => resolveFetch !== undefined, { tag: 'fetch' })
 
     act(() => {
       resolveFetch!(

@@ -10,7 +10,7 @@ export class ImageImportError extends Error {
 export function imageImportFailure(error: unknown): ImageImportFailure {
   if (error instanceof ImageImportError) return error.reason
   const message = error instanceof Error ? error.message : ''
-  if (/No handler registered|IMAGE_IMPORT_DESKTOP_UPDATE_REQUIRED/i.test(message)) return 'desktopUpdate'
+  if (/No handler registered|IMAGE_IMPORT_DESKTOP_UPDATE_REQUIRED|command \S+ not found/i.test(message)) return 'desktopUpdate'
   if (/\b(?:401|403)\b/.test(message)) return 'accessDenied'
   if (/not an image/i.test(message)) return 'notImage'
   if (/50 MB|too large/i.test(message)) return 'tooLarge'

@@ -88,7 +88,6 @@ type AgentTimelineDict = {
     failed: (label: string) => string
     completed: (label: string) => string
     pendingApproval: (command: string) => string
-    searchInBrowserPrefix: (query: string) => string
     searchPrefix: (query: string) => string
     generateImagePrefix: (query: string) => string
     previewNFiles: (count: number, added: number, removed: number) => string
@@ -101,7 +100,6 @@ type AgentTimelineDict = {
   }
   artifact: { title: string }
   final: { streaming: string }
-  sanitize: { continueAndWrite: string; continueDefault: string }
   toolDisplayName: ToolLabelMap
   toolActionLabel: ToolLabelMap
   mcpDisplayPrefix: string
@@ -142,7 +140,6 @@ export function getAgentTimelineDict(locale: AgentTimelineLocale = DEFAULT_AGENT
       failed: (label) => t('timeline.tool.failed', { label }),
       completed: (label) => t('timeline.tool.completed', { label }),
       pendingApproval: (command) => t('timeline.tool.pendingApproval', { command }),
-      searchInBrowserPrefix: (query) => t('timeline.tool.searchInBrowserPrefix', { query }),
       searchPrefix: (query) => t('timeline.tool.searchPrefix', { query }),
       generateImagePrefix: (query) => t('timeline.tool.generateImagePrefix', { query }),
       previewNFiles: (count, added, removed) => t('timeline.tool.previewNFiles', { count, added, removed }),

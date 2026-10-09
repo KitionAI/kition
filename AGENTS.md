@@ -10,7 +10,8 @@
 - English remains mandatory for filenames, source code, comments, examples,
   fixtures, tests, commit-facing templates, generated reports, and general
   documentation.
-- Approved localized content is limited to `src/i18n/locales/<locale>/`, root
+- Approved localized content is limited to `src/i18n/locales/<locale>/`, the
+  runtime message catalogs in `crates/kition-core/locales/<locale>.json`, root
   `README.<locale>.md` files, and the language switcher in `README.md`.
 - Keep localized prose inside those approved files. Never hide non-English
   prose behind Unicode escape sequences.
@@ -86,21 +87,21 @@ covers the three GFM table widget row and column button regressions.
 - When reviewing screenshots, compare geometry, palette, hierarchy, and control
   emphasis against `docs/design.md`.
 
-## Closed Runtime Boundary (Mandatory)
+## Repository Layout And Secrets (Mandatory)
 
-- This repository contains only the React/Electron client, public contracts,
-  mocks, fixtures, and black-box tests.
-- Go runtime source, internal tests, implementation design, and private OpenSpec
-  changes belong only in the private `KitionAI/kition-runtime` repository.
-- Never recreate `api/`, a root `config/`, a Go module, `go run`, `go build`, or
-  any runtime source fallback in this repository.
-- Client development uses `pnpm dev`. Private integration uses
-  `KITION_API_BINARY=<runtime-binary> pnpm dev`.
-- Packaging may use only a verified Release asset, an explicit runtime binary,
-  or the pinned verified runtime cache.
-- The client may depend only on `contracts/runtime/`, HTTP behavior, and
-  capability flags. Never copy private implementation details into code,
-  comments, tests, or docs.
-- For cross-repository runtime behavior changes, update the public contract and
-  client mock first, then implement the private runtime and validate it as a
-  black box with a local binary.
+- `src/` is the React renderer, `src-tauri/` the Tauri desktop shell, and
+  `crates/` the Rust runtime (`kition-api` and its feature crates). They form
+  one Cargo workspace; the shell runs the runtime in-process and the runtime
+  serves its HTTP API on loopback only.
+- The runtime is written in Rust. Never add Go code, a Go module, or a second
+  runtime implementation.
+- `contracts/runtime/` describes the HTTP API the renderer uses. Update the
+  contract, the renderer mock, and the runtime together.
+- Never commit secrets: signing keys and certificates, updater private keys,
+  API keys, OAuth client secrets, portal tokens, or real passwords. They live
+  only in CI secrets or on the developer's machine. Test fixtures use obviously
+  fake values.
+- The local API is unauthenticated, so it must only ever bind to
+  `127.0.0.1` and reject requests whose `Host` is not loopback.
+- Check Rust changes with `pnpm check:desktop` (format, clippy, and tests for
+  the whole workspace).

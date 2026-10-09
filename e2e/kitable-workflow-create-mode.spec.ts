@@ -241,7 +241,7 @@ async function mockDesktopBridge(page: Page, docPath = DOC_PATH) {
       }
 
       stateWindow.kitionDesktop = {
-        shell: 'electron',
+        shell: 'tauri',
         DesktopInfo: async () => ({
           is_desktop: true,
           platform: 'darwin',

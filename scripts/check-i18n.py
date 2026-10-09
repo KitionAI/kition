@@ -26,6 +26,7 @@ RAW_TEXT_NODE_PATTERN = re.compile(r">\s*([A-Z][a-z]+(?: [a-z][a-z']*)+)\s*<")
 RAW_ARIA_LABEL_PATTERN = re.compile(r'aria-label="([^"{}]+)"')
 RAW_STRING_BASELINE = REPO_ROOT / "tooling/i18n-raw-strings.baseline.json"
 TEXT_SCAN_EXEMPT_PATHS = {
+    "crates/kition-core/locales/zh-CN.json",
     "docs/legal/THIRD_PARTY_NOTICES.txt",
     "README.md",
     "README.de-DE.md",

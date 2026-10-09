@@ -1,3 +1,4 @@
+import type { ApiTimestamp } from '@/types'
 import type { AnyAIConfig } from './aiConfig'
 import type { FilterGroup } from './tableFilter'
 
@@ -134,8 +135,8 @@ export type DataField = {
   formula?: string
   ai_config?: AnyAIConfig | null
   meta?: Record<string, unknown> | null
-  created_at: string
-  updated_at: string
+  created_at: ApiTimestamp
+  updated_at: ApiTimestamp
 }
 
 export type DataView = {
@@ -148,8 +149,8 @@ export type DataView = {
   order: number
   locked: boolean
   config?: DataViewConfig | null
-  created_at: string
-  updated_at: string
+  created_at: ApiTimestamp
+  updated_at: ApiTimestamp
 }
 
 export type DataTable = {
@@ -164,8 +165,8 @@ export type DataTable = {
   meta?: Record<string, unknown> | null
   fields?: DataField[]
   views?: DataView[]
-  created_at: string
-  updated_at: string
+  created_at: ApiTimestamp
+  updated_at: ApiTimestamp
 }
 
 export type DashboardWidgetType = 'metric' | 'bar' | 'line' | 'pie' | 'table'
@@ -232,8 +233,8 @@ export type DataDocument = {
   color: string
   meta?: Record<string, unknown> | null
   tables?: DataTable[]
-  created_at: string
-  updated_at: string
+  created_at: ApiTimestamp
+  updated_at: ApiTimestamp
 }
 
 export type DataAttachment = {
@@ -269,8 +270,8 @@ export type DataRecord = {
   auto_number?: number | null
   created_by?: string
   updated_by?: string
-  created_at: string
-  updated_at: string
+  created_at: ApiTimestamp
+  updated_at: ApiTimestamp
 }
 
 export type DataListResponse<T> = {
@@ -344,7 +345,7 @@ export type RecordHistoryEntry = {
   before?: DataRecordValue | Record<string, DataRecordValue> | null
   after?: DataRecordValue | Record<string, DataRecordValue> | null
   actor?: string
-  created_at: string
+  created_at: ApiTimestamp
 }
 
 export type RecordHistoryResponse = DataListResponse<RecordHistoryEntry>

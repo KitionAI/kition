@@ -1,8 +1,5 @@
-import fs from 'node:fs/promises'
-import os from 'node:os'
-import path from 'node:path'
-import { _electron as electron, expect, test, type Page } from '@playwright/test'
-import electronPath from 'electron'
+import { expect, test, type Page } from '@playwright/test'
+import { installDesktopHost } from './helpers/desktopHost'
 import { mockLocalWorkspaceApi } from './helpers/mockApi'
 import { dismissFirstRunActivation } from './helpers/onboarding'
 
@@ -49,17 +46,10 @@ async function selectSource(page: Page) {
   }, SOURCE)
 }
 
-test('translates a selection in the desktop client with keyboard undo and both themes', async ({ baseURL }, testInfo) => {
+test('translates a selection in the desktop client with keyboard undo and both themes', async ({ page, baseURL }, testInfo) => {
   test.setTimeout(120_000)
-  const profile = await fs.mkdtemp(path.join(os.tmpdir(), 'kition-desktop-translation-'))
-  const app = await electron.launch({
-    executablePath: electronPath,
-    cwd: process.cwd(),
-    args: ['.'],
-    env: { ...process.env, KITION_ELECTRON_TEST_DATA_DIR: profile, KITION_ELECTRON_DEV_SERVER_URL: baseURL!, KITION_DESKTOP_SKIP_API: 'true' },
-  })
+  const host = await installDesktopHost(page)
   try {
-    const page = await app.firstWindow()
     await page.setViewportSize({ width: 1280, height: 800 })
     await mockLocalWorkspaceApi(page)
     await page.route('**/api/v1/ai/chat', (route) =>
@@ -103,7 +93,9 @@ test('translates a selection in the desktop client with keyboard undo and both t
     expect(await readDoc(page)).toContain(TRANSLATION)
     // Focus returns to the editor, so the real keyboard undo reaches CodeMirror.
     await expect(view(page)).toBeFocused()
-    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+Z' : 'Control+Z')
+    // CodeMirror picks the undo modifier from the page's reported platform.
+    const modifier = await page.evaluate(() => (/Mac/.test(navigator.platform) ? 'Meta' : 'Control'))
+    await page.keyboard.press(`${modifier}+z`)
     await expect.poll(() => readDoc(page)).toContain(SOURCE)
     expect(await readDoc(page)).not.toContain(TRANSLATION)
 
@@ -121,7 +113,6 @@ test('translates a selection in the desktop client with keyboard undo and both t
     await expect(page.getByTestId('document-translation-card')).toHaveCount(0)
     await expect(view(page)).toBeFocused()
   } finally {
-    await app.close()
-    await fs.rm(profile, { recursive: true, force: true })
+    await host.dispose()
   }
 })

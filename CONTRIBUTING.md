@@ -8,8 +8,8 @@ Orca.
 
 ## Scope
 
-This repository contains the React and Electron client, public runtime
-contracts, mocks, fixtures, packaging logic, and black-box tests. The
+This repository contains the React client and its Tauri desktop shell, public
+runtime contracts, mocks, fixtures, packaging logic, and black-box tests. The
 proprietary runtime implementation is maintained separately.
 
 Cross-repository behavior changes must begin here with a public contract,
@@ -22,15 +22,17 @@ Requirements:
 
 - Node.js 22.19.0
 - pnpm 10.33.0
+- Rust (stable) and the
+  [Tauri system prerequisites](https://v2.tauri.app/start/prerequisites/)
 
 ```bash
 pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-`pnpm dev` starts the desktop app with the exact runtime pinned by
-`electron/runtime.lock.json`. It verifies and caches a published runtime outside
-the Git worktree before launching Electron.
+`pnpm dev` starts the desktop app. The Rust runtime in `crates/` is compiled
+into the Tauri shell and runs in-process; see
+[docs/runtime-development.md](docs/runtime-development.md).
 
 For renderer, component, editor, and style work that does not require the
 desktop runtime:
@@ -39,8 +41,7 @@ desktop runtime:
 pnpm dev:web
 ```
 
-This is the supported open-source fallback when the pinned runtime release is
-not available for the current platform. It starts in a backendless preview mode,
+It starts in a backendless preview mode,
 so optional runtime-backed startup requests are skipped while document editing
 and visual development remain available. To use an already-running API instead,
 set `KITION_API_TARGET` before the same command:
@@ -49,7 +50,7 @@ set `KITION_API_TARGET` before the same command:
 KITION_API_TARGET=http://127.0.0.1:18101 pnpm dev:web
 ```
 
-Runtime cache, proxy, and explicit binary options are documented in
+Runtime crates, checks, and rules are documented in
 [Runtime development](docs/runtime-development.md).
 
 ## Development Identities
@@ -69,15 +70,19 @@ injected only by the release workflow after it classifies the immutable tag.
 ## Testing Model
 
 Public tests must not require production credentials, a private repository, or
-network access to the Portal. Browser and Electron end-to-end tests use the
-public mock API and isolated temporary desktop state.
+network access to the Portal. Browser and desktop end-to-end tests use the
+public mock API and isolated temporary desktop state. Desktop specs run the
+renderer in Chromium against a mocked `window.kitionDesktop` bridge
+(`e2e/helpers/desktopHost.ts`); the native shell is covered by its own Rust
+tests.
 
 | Command | Coverage |
 | --- | --- |
 | `pnpm test` | Full Vitest unit and component suite |
-| `pnpm test:desktop:unit` | Electron bridge, runtime resolution, and packaging contracts |
+| `pnpm test:desktop:unit` | Desktop bridge, runtime resolution, and packaging contracts |
+| `pnpm check:desktop` | Desktop shell lint and Rust tests (`src-tauri/`) |
 | `pnpm test:e2e` | Mock-backed renderer black-box flows |
-| `pnpm test:desktop:e2e` | Mock-backed real Electron flows |
+| `pnpm test:desktop:e2e` | Desktop flows against the mocked desktop bridge |
 | `pnpm test:table:e2e` | Required table-widget regression gate |
 | `pnpm build:check` | Runtime lock, assets, notices, types, and renderer build |
 
@@ -94,7 +99,8 @@ pnpm test:e2e
 pnpm test:table:e2e
 ```
 
-For Electron-specific behavior, also run `pnpm test:desktop:e2e` on a supported
+For desktop shell changes, also run `pnpm check:desktop` and
+`pnpm test:desktop:e2e`, and try the change in `pnpm dev` on a supported
 desktop platform.
 
 For visual changes, include a screenshot or screen recording. If an AI coding

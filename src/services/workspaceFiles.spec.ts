@@ -9,7 +9,7 @@ describe('workspace image file URLs', () => {
   beforeEach(() => {
     vi.unstubAllGlobals()
     ;(window as typeof window & { kitionDesktop?: any }).kitionDesktop = {
-      shell: 'electron',
+      shell: 'tauri',
     }
   })
 

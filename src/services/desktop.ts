@@ -5,7 +5,6 @@
  */
 export * from './desktopClient/bridge'
 export * from './desktopClient/runtime'
-export * from './desktopClient/browserSession'
 export * from './desktopClient/workspaceDocuments'
 export * from './desktopClient/workspaceFiles'
 export * from './desktopClient/vaults'

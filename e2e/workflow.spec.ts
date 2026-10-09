@@ -25,7 +25,7 @@ async function mockSuppressLauncher(page: Page) {
       return { root_path: vaultPath, items: [] }
     }
     stateWindow.kitionDesktop = {
-      shell: 'electron',
+      shell: 'tauri',
       DesktopInfo: async () => ({
         is_desktop: false,
         platform: 'darwin',

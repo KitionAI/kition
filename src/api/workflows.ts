@@ -1,3 +1,4 @@
+import type { ApiTimestamp } from '@/types'
 /**
  * Workflow definitions, runs, validation, and node tests. There is no public
  * JSON contract for this surface yet (see the quality plan, Task 1.1); the
@@ -22,8 +23,8 @@ export interface WorkflowRunRecord {
   workflowId: string
   triggerEvent: string
   recordId: string
-  startedAt: string
-  finishedAt: string
+  startedAt: ApiTimestamp
+  finishedAt: ApiTimestamp
   status: 'ok' | 'error' | 'skipped'
   to: string
   subject: string
@@ -40,8 +41,8 @@ export interface WorkflowRunRecord {
     status: string
     error?: string
     detail?: string
-    startedAt?: string
-    finishedAt?: string
+    startedAt?: ApiTimestamp
+    finishedAt?: ApiTimestamp
   }>
 }
 

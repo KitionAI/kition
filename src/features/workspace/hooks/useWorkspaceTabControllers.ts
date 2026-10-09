@@ -72,7 +72,7 @@ export function useWorkspaceTabControllers({
   }, [closeWorkspaceTab, onCloseWorkflow, t, workflowOpen])
 
   // Cmd/Ctrl+W closes the active tab. Disabled without one so an empty
-  // workspace lets the key reach Electron and the browser.
+  // workspace lets the key reach the desktop shell and the browser.
   useShortcut('Mod+W', () => handleCloseWorkspaceTabById(activeWorkspaceTabId), { enabled: Boolean(activeWorkspaceTabId) })
 
   // A scoped table/workflow tab belongs to its .kitable container: keep the

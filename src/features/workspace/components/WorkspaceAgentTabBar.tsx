@@ -1,3 +1,5 @@
+import type { ApiTimestamp } from '@/types'
+import { toEpochMs } from '@/lib/timestamps'
 import { Bot, ChevronsRight, History, Plus, Search, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -16,13 +18,13 @@ const sessionHistoryGroupLabelKeys: Record<SessionHistoryGroupKey, string> = {
   older: 'agentTabs.history.older',
 }
 
-function getSessionHistoryGroup(value: string): SessionHistoryGroupKey {
+function getSessionHistoryGroup(value: ApiTimestamp): SessionHistoryGroupKey {
   const now = new Date()
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const weekStart = new Date(today)
   weekStart.setDate(weekStart.getDate() - 7)
 
-  const date = new Date(value)
+  const date = new Date(toEpochMs(value))
   const targetDay = new Date(date.getFullYear(), date.getMonth(), date.getDate())
   if (targetDay.getTime() >= today.getTime()) {
     return 'today'

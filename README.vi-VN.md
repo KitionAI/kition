@@ -15,7 +15,7 @@
 
 <p align="center">
   <strong>Tài liệu, bảng, tác nhân và quy trình trong một không gian làm việc trên máy tính.</strong><br />
-  Viết tri thức liên kết, xây dựng công cụ dữ liệu, nghiên cứu trên trình duyệt và tự động hóa công việc lặp lại.
+  Viết tri thức liên kết, xây dựng công cụ dữ liệu, nghiên cứu trên web và tự động hóa công việc lặp lại.
 </p>
 
 <p align="center">
@@ -36,7 +36,7 @@
 
 <p align="center"><img src="docs/readme/kition-overview.webp" alt="Tổng quan Kition với tài liệu, bảng dữ liệu, nghiên cứu của tác nhân và quy trình trực quan" width="100%" /></p>
 
-Kition kết hợp tài liệu Markdown, bảng có cấu trúc, tác nhân AI có thể dùng công cụ, nghiên cứu trên trình duyệt và quy trình trực quan trong một không gian làm việc. Tác nhân làm việc với tệp dự án có thể chỉnh sửa, bản ghi có kiểu, tệp đính kèm và quy trình hiển thị rõ ràng, giúp kết quả dễ kiểm tra, sửa đổi và lặp lại.
+Kition kết hợp tài liệu Markdown, bảng có cấu trúc, tác nhân AI có thể dùng công cụ, nghiên cứu web và quy trình trực quan trong một không gian làm việc. Tác nhân làm việc với tệp dự án có thể chỉnh sửa, bản ghi có kiểu, tệp đính kèm và quy trình hiển thị rõ ràng, giúp kết quả dễ kiểm tra, sửa đổi và lặp lại.
 
 > Kition hiện đang ở giai đoạn beta. Hãy sao lưu không gian làm việc quan trọng và xem lại thay đổi của tác nhân trước khi dùng trong quy trình sản xuất.
 
@@ -44,7 +44,7 @@ Kition kết hợp tài liệu Markdown, bảng có cấu trúc, tác nhân AI c
 
 - **Tài liệu liên kết.** Markdown với xem trước trực tiếp, liên kết nội bộ, backlink, mã, công thức, sơ đồ, ghi chú hằng ngày, tìm kiếm và xuất tệp.
 - **Dữ liệu có cấu trúc bên cạnh tri thức.** Trường có kiểu, công thức, bộ lọc, nhóm, chế độ xem, tệp đính kèm và trường AI.
-- **Tác nhân có thể hành động.** Nghiên cứu trong trình duyệt, đọc và cập nhật tài liệu hoặc bảng, rồi lưu kết quả vào dự án.
+- **Tác nhân có thể hành động.** Nghiên cứu trên web, đọc và cập nhật tài liệu hoặc bảng, rồi lưu kết quả vào dự án.
 - **Chỉnh sửa tài liệu có thể xem xét.** Cho phép tác nhân sửa tài liệu đang mở, kiểm tra từng phần thêm hoặc xóa, rồi chấp nhận hay từ chối từng thay đổi.
 - **Tự động hóa có thể quan sát.** Ghép trình kích hoạt với hành động, kiểm thử từng bước và xem lịch sử chạy.
 
@@ -88,7 +88,7 @@ Tạo phương án thiết kế, hình chiếu, ảnh tính năng, ảnh phong c
 
 ## Tính năng chính
 
-- **Tài liệu:** chỉnh sửa Markdown, xem trước, mẫu, tìm kiếm, xuất PDF/DOCX.
+- **Tài liệu:** chỉnh sửa Markdown, xem trước, mẫu, tìm kiếm, xuất PDF.
 - **Bảng:** trường có kiểu, tệp đính kèm, công thức, bộ lọc, sắp xếp, nhóm và nhiều chế độ xem.
 - **Tác nhân:** cập nhật tài liệu, nghiên cứu web, dùng công cụ và lưu kết quả vào không gian làm việc.
 - **Quy trình:** xây dựng trực quan từ trình kích hoạt và hành động, kiểm thử bước và xem lịch sử chạy.
@@ -104,7 +104,7 @@ Bản dựng máy tính được phát hành qua [GitHub Releases](https://githu
 
 ## Chạy từ mã nguồn
 
-Yêu cầu Node.js 22.19.0 và pnpm 10.33.0.
+Yêu cầu Node.js 22.19.0, pnpm 10.33.0 và Rust (stable) cùng [các yêu cầu hệ thống của Tauri](https://v2.tauri.app/start/prerequisites/).
 
 ```bash
 pnpm install --frozen-lockfile
@@ -115,13 +115,13 @@ pnpm dev
 
 ## Phạm vi mã nguồn mở
 
-Kho này chứa ứng dụng React/Electron công khai, hợp đồng runtime công khai, mock, kiểm thử và quy trình đóng gói. Mã nguồn Kition runtime được duy trì riêng và không nằm trong kho này. Ứng dụng chỉ giao tiếp qua các hợp đồng công khai trong [`contracts/runtime/`](contracts/runtime/).
+Kho này chứa ứng dụng React/Tauri công khai, hợp đồng runtime công khai, mock, kiểm thử và quy trình đóng gói. Mã nguồn Kition runtime được duy trì riêng và không nằm trong kho này. Ứng dụng chỉ giao tiếp qua các hợp đồng công khai trong [`contracts/runtime/`](contracts/runtime/).
 
 ## Công nghệ
 
 | Lĩnh vực | Công nghệ |
 | --- | --- |
-| Máy tính | Electron |
+| Máy tính | Tauri 2 (Rust) |
 | Giao diện | React, TypeScript, Vite |
 | Tài liệu | CodeMirror, Marked, Mermaid, KaTeX |
 | Dữ liệu và trạng thái | IndexedDB, Jotai, Zod |

@@ -1196,8 +1196,7 @@
     "formats": {
       "markdown": "扣分(.md)",
       "html": "HTML (.html)",
-      "pdf": "PDF (.pdf)",
-      "word": "Word (.docx)"
+      "pdf": "PDF (.pdf)"
     },
     "margins": {
       "0": "默认",
@@ -1207,14 +1206,12 @@
     "dialogTitle": {
       "markdown": "导出 Markdown",
       "html": "导出 HTML",
-      "pdf": "导出 PDF",
-      "word": "导出 Word"
+      "pdf": "导出 PDF"
     },
     "feedback": {
       "markdownExported": "已导出 Markdown",
       "htmlExported": "已导出 HTML",
       "pdfExportedTo": "PDF 已导出到 {{path}}",
-      "wordExportedTo": "Word 已导出到 {{path}}",
       "canceled": "已取消导出",
       "failed": "导出失败"
     }

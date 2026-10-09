@@ -89,7 +89,7 @@ export function DocumentExportDialog({
 
   const scaleNumber = Number(exportScale)
   const invalidScale = scaleNumber < 10 || scaleNumber > 100 || Number.isNaN(scaleNumber)
-  const showIncludeMedia = exportFormat === 'markdown' || exportFormat === 'html' || exportFormat === 'word'
+  const showIncludeMedia = exportFormat === 'markdown' || exportFormat === 'html'
 
   return (
     <div className="document-export-overlay" role="presentation" data-window-drag-exclude="true">

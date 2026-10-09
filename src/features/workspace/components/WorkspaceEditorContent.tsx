@@ -1,7 +1,7 @@
 import type { DocumentTranslationSupport } from '@/features/document/public'
 import type { ComponentProps } from 'react'
 import { lazy, Suspense, useCallback, useEffect, useMemo, type ReactNode } from 'react'
-import { BookOpen, Globe } from 'lucide-react'
+import { BookOpen } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/registry/ui/button'
 import { AppErrorBoundary } from '@/components/AppErrorBoundary'
@@ -17,11 +17,9 @@ import type { MarkdownCursorSnapshot } from '@/features/document/components/Mark
 import { WorkspaceDocumentInlineTitle } from '@/features/workspace/components/WorkspaceDocumentInlineTitle'
 import { WorkspaceEmptyState } from '@/features/workspace/components/WorkspaceEmptyState'
 import { openWorkflowDetail } from '@/features/workflow/lib/openWorkflowRoute'
-import { WorkspaceBrowserToolbar } from '@/features/workspace/components/WorkspaceBrowserToolbar'
 import type { WorkspaceTab } from '@/features/workspace/lib/workspace'
 import { cn } from '@/lib/utils'
 import type {
-  BrowserSessionPanelState,
   WorkspaceDocument,
   WorkspaceDocumentFormat,
 } from '@/services/desktop'
@@ -87,7 +85,7 @@ function EditorPaneFallback() {
       aria-label={t('actions.loading')}
     >
       <div className="flex h-full min-h-0 items-center justify-center">
-        <span className="workspace-browser-tab__spinner" aria-hidden="true" />
+        <span className="workspace-pane-spinner" aria-hidden="true" />
       </div>
     </div>
   )
@@ -134,17 +132,6 @@ type WorkspaceEditorContentProps = {
   documentRevisionSaving: boolean
   documentEditorFocusRequest?: number
   galleryPanelProps: ComponentProps<typeof WorkspaceMediaPanel> | null
-  browserOriginDocumentPath?: string
-  browserPanelPhase: 'loading' | 'ready' | 'unavailable' | 'empty'
-  browserToolbarStatus: Pick<
-    BrowserSessionPanelState,
-    'url' | 'canGoBack' | 'canGoForward' | 'isLoading'
-  >
-  onBrowserNavigate: (address: string) => void
-  onBrowserBack: () => void
-  onBrowserForward: () => void
-  onBrowserReload: () => void
-  onBrowserStop: () => void
   getOpenedDocumentDraftEntry: (path: string) => OpenedDocumentDraftCacheEntry | null
   whiteboardAgentAvailable?: boolean
   whiteboardAgentBusy?: boolean
@@ -206,14 +193,6 @@ export function WorkspaceEditorContent({
   documentRevisionSaving,
   documentEditorFocusRequest = 0,
   galleryPanelProps,
-  browserOriginDocumentPath,
-  browserPanelPhase,
-  browserToolbarStatus,
-  onBrowserNavigate,
-  onBrowserBack,
-  onBrowserForward,
-  onBrowserReload,
-  onBrowserStop,
   getOpenedDocumentDraftEntry,
   whiteboardAgentAvailable = false,
   whiteboardAgentBusy = false,
@@ -251,11 +230,6 @@ export function WorkspaceEditorContent({
   const { t } = useTranslation('workspace')
   const { t: td } = useTranslation('document')
   const openGlobalWorkflow = onOpenGlobalWorkflow ?? openWorkflowDetail
-  const showTableAgentAlongsideBrowser =
-    activeWorkspaceTab?.type === 'browser' &&
-    activeWorkspaceTab.taskMode !== 'browse' &&
-    Boolean(browserOriginDocumentPath) &&
-    tableAgentOpen
   const handleMarkdownCursorChange = useCallback((snapshot: MarkdownCursorSnapshot) => {
     const documentPath = activeDocument?.path || ''
     if (!documentPath || !onAgentInsertionContextChange) return
@@ -415,71 +389,6 @@ export function WorkspaceEditorContent({
             </EditorPaneBoundary>
           </div>
         ))}
-      {activeWorkspaceTab?.type === 'browser' ? (
-        <div className="document-editor-view is-active">
-          <div className="workspace-browser-pane">
-            <WorkspaceBrowserToolbar
-              status={browserToolbarStatus}
-              onNavigate={onBrowserNavigate}
-              onBack={onBrowserBack}
-              onForward={onBrowserForward}
-              onReload={onBrowserReload}
-              onStop={onBrowserStop}
-            />
-            <div
-              className={cn(
-                'workspace-browser-tab',
-                browserPanelPhase === 'loading' && 'workspace-browser-tab--loading',
-                browserPanelPhase === 'empty' && 'workspace-browser-tab--empty',
-              )}
-            >
-              {browserPanelPhase === 'unavailable' ? (
-                <>
-                  <div className="workspace-browser-tab__eyebrow">
-                    {t('browserTab.eyebrow')}
-                  </div>
-                  <h2>{activeWorkspaceTab.title}</h2>
-                  <p>
-                    {t('browserTab.unavailableDescription')}
-                  </p>
-                  {activeWorkspaceTab.url ? (
-                    <code>{activeWorkspaceTab.url}</code>
-                  ) : null}
-                </>
-              ) : browserPanelPhase === 'empty' ? (
-                <div className="workspace-browser-tab__empty">
-                  <span
-                    className="workspace-browser-tab__empty-icon"
-                    aria-hidden="true"
-                  >
-                    <Globe className="size-6" />
-                  </span>
-                  <p className="workspace-browser-tab__empty-text">
-                    {t('browserTab.emptyText')}
-                  </p>
-                </div>
-              ) : browserPanelPhase === 'loading' ? (
-                <div
-                  className="workspace-browser-tab__status"
-                  role="status"
-                  aria-live="polite"
-                >
-                  <span
-                    className="workspace-browser-tab__spinner"
-                    aria-hidden="true"
-                  />
-                  <span className="workspace-browser-tab__status-text">
-                    {t('browserTab.loadingPage')}
-                  </span>
-                  {activeWorkspaceTab.url ? (
-                    <code>{activeWorkspaceTab.url}</code>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      ) : null}
       {/* Table and dashboard tabs hardcode format:'data', so they don't need the activeDocumentFormat guard. */}
       <div
         className={cn(
@@ -488,7 +397,7 @@ export function WorkspaceEditorContent({
             activeWorkspaceTab?.type === 'table' ||
             activeWorkspaceTab?.type === 'dashboard' ||
             (
-              (activeWorkspaceTab?.type === 'document' || showTableAgentAlongsideBrowser) &&
+              activeWorkspaceTab?.type === 'document' &&
               activeDocumentFormat === 'data'
             )
           ) &&
@@ -503,14 +412,10 @@ export function WorkspaceEditorContent({
               return null
             }
 
-            const isActiveDataTab = (
+            const isActiveDataTab =
               activeWorkspaceTabId === tab.id &&
               activeWorkspaceTab?.type === 'document' &&
               activeDocumentFormat === 'data'
-            ) || (
-              showTableAgentAlongsideBrowser &&
-              browserOriginDocumentPath === tab.path
-            )
 
             return (
               <div

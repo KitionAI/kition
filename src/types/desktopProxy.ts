@@ -1,11 +1,11 @@
 /**
- * Proxy configuration that the Electron main process owns and propagates to:
- *   1. Renderer (via `session.defaultSession.setProxy`)
- *   2. Go API subprocess (via `HTTPS_PROXY` / `HTTP_PROXY` / `NO_PROXY` env vars)
- *   3. Auto-updater (via `process.env.HTTPS_PROXY`)
+ * Proxy configuration that the desktop shell owns and propagates to:
+ *   1. The renderer web view (applied when the window opens)
+ *   2. The runtime process (via `HTTPS_PROXY` / `HTTP_PROXY` / `NO_PROXY` env vars)
+ *   3. The updater's HTTP client
  *
- * The password is stored in `SecureStore` (plaintext file under userData,
- * protected by OS user permissions — see secure-store.mjs), the rest in
+ * The password is stored in the desktop secure store (a file under the data
+ * directory, protected by OS user permissions), the rest in
  * `<data_dir>/proxy.json`. Renderer never sees the raw password — `hasPassword`
  * is a derived boolean for the form's "stored" affordance.
  */
@@ -58,10 +58,11 @@ export function createDefaultDesktopProxyState(): DesktopProxyState {
 }
 
 /**
- * Build the URL form (e.g. http://user@host:port) Electron and Go consume. The
- * password is intentionally NOT part of the URL — Electron pulls it from
- * SecureStore right before applying, Go reads it from the env var the supervisor
- * injects. Keeping it out of the URL means we never log it.
+ * Build the URL form (e.g. http://user@host:port) the desktop shell and runtime
+ * consume. The password is intentionally NOT part of the URL — the shell reads
+ * it from the secure store right before applying it, and the runtime reads it
+ * from the env var the supervisor injects. Keeping it out of the URL means we
+ * never log it.
  */
 export function formatProxyURLWithoutPassword(config: DesktopProxyConfig): string {
   const host = String(config.host || '').trim()

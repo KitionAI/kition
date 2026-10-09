@@ -133,7 +133,7 @@ export function DashboardEditorPane({
   if (phase === 'loading') {
     return (
       <div className="flex h-full items-center justify-center bg-muted/30" role="status">
-        <span className="workspace-browser-tab__spinner" aria-hidden="true" />
+        <span className="workspace-pane-spinner" aria-hidden="true" />
         <span className="sr-only">Loading dashboard</span>
       </div>
     )

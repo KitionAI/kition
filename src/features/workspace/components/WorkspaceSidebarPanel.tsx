@@ -30,7 +30,6 @@ type WorkspaceSidebarPanelProps = {
    *  row. Opens the mode-chooser dialog (template / chat AI) — when the
    *  kitable has multiple tables a picker is shown first to resolve scope. */
   onCreateWorkflowForTable?: (node: WorkspaceTreeNode) => void
-  showBrowserTab?: boolean
   onRefresh?: () => void
   /** Opens the workspace-global Workflows tab. Surfaced as a lightning-bolt
    *  icon in the sidebar header — replaces the old root-level virtual
@@ -75,7 +74,6 @@ export function WorkspaceSidebarPanel({
   onOpen,
   onOpenCreateMenu,
   onCloseCreateMenu,
-  showBrowserTab,
   onRefresh,
   onOpenWorkflows,
   onCreateBoard,
@@ -118,7 +116,6 @@ export function WorkspaceSidebarPanel({
       onImportTableFile={onImportTableFile}
       onCreateDocument={onCreateDocument}
       onPasteFiles={onPasteFiles}
-      showBrowserTab={showBrowserTab}
       onRefresh={onRefresh}
       onOpenWorkflows={onOpenWorkflows}
       onCreateBoard={onCreateBoard}

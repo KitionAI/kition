@@ -15,7 +15,7 @@
 
 <p align="center">
   <strong>Documents, Tables, Whiteboards, Agents, and Workflows in one desktop workspace.</strong><br />
-  Write connected knowledge, think visually, build data tools, research in the browser, and automate repeatable work.
+  Write connected knowledge, think visually, build data tools, research the web, and automate repeatable work.
 </p>
 
 <p align="center">
@@ -45,7 +45,7 @@
 </p>
 
 Kition brings Markdown documents, structured table files, an infinite
-Whiteboard, a tool-using AI agent, browser research, and visual workflows into
+Whiteboard, a tool-using AI agent, web research, and visual workflows into
 one desktop workspace.
 Instead of making every task begin in a blank chat, Kition gives the Agent
 editable project files, typed records, attachments, and visible processes to
@@ -64,7 +64,7 @@ repeat without handing context between disconnected tools.
 - **Visual thinking with reviewable AI changes.** Build diagrams, mind maps,
   flows, and freeform sketches, then review Agent proposals before applying
   them to the Whiteboard.
-- **An Agent that can act.** Research in browser tabs, inspect documents and
+- **An Agent that can act.** Search the web, inspect documents and
   table schemas, update content, and save useful output into the active project.
 - **Reviewable document edits.** Let the Agent edit the active document, inspect
   every addition and deletion, then accept or reject individual changes.
@@ -165,7 +165,7 @@ repeatable.
 
 Write Markdown with live preview, internal links, backlinks, tags, outlines,
 embeds, callouts, code, math, diagrams, templates, daily notes, tabs, and
-full-text search. Export finished work to PDF or DOCX when it needs to leave
+full-text search. Export finished work to PDF when it needs to leave
 the workspace.
 
 </td>
@@ -193,7 +193,7 @@ research, content pipelines, lightweight CRM, inventory, or project tracking.
 ### Give the agent real context
 
 Ask the Kition agent to read and update documents, inspect table schemas,
-create or modify records, research in browser tabs, use tools, and follow a
+create or modify records, search the web, use tools, and follow a
 plan. Agent output can be written back into the active workspace.
 
 </td>
@@ -236,8 +236,6 @@ Also included:
 
 - AI-assisted table fields for generating text, structured values, and media
   from record context.
-- Browser research tabs that stay inside the workspace and can be used by the
-  agent when a task needs live web context.
 - Email connections and inbox-to-table workflows. See
   [Email Connections](docs/email-connections.md).
 - Model, proxy, MCP, account, usage, update, and desktop integration settings.
@@ -261,6 +259,9 @@ Requirements:
 
 - Node.js 22.19.0
 - pnpm 10.33.0
+- Rust (stable) and the
+  [Tauri system prerequisites](https://v2.tauri.app/start/prerequisites/)
+  for your platform
 
 ```bash
 pnpm install --frozen-lockfile
@@ -268,7 +269,7 @@ pnpm dev
 ```
 
 `pnpm dev` verifies and caches the pinned released runtime outside the Git
-worktree, then starts the Electron client.
+worktree, then starts the Tauri desktop client.
 
 For renderer, component, editor, and style work that does not require runtime
 integration:
@@ -283,11 +284,11 @@ most client-side contributions. More options are documented in
 
 ## Open Source Boundary
 
-This repository contains the public React and Electron client:
+This repository contains the public React client and its Tauri desktop shell:
 
-- document, table, Whiteboard, Agent, browser, settings, email, scenario, and
+- document, table, Whiteboard, Agent, settings, email, scenario, and
   workflow UI;
-- the Electron shell and desktop integration;
+- the Tauri desktop shell (`src-tauri/`) and desktop integration;
 - public runtime contracts, mocks, fixtures, and black-box tests;
 - packaging and unified release workflows.
 
@@ -303,7 +304,7 @@ repository.
 
 | Area | Stack |
 | --- | --- |
-| Desktop | Electron |
+| Desktop | Tauri 2 (Rust) |
 | Interface | React, TypeScript, Vite |
 | Documents | CodeMirror, Marked, Mermaid, KaTeX |
 | Data and state | IndexedDB, Jotai, Zod |
@@ -331,10 +332,10 @@ For product questions, account help, and private workspace concerns, see
 ├── contracts/runtime/       # Public runtime schemas
 ├── docs/                    # Product, contributor, design, and runtime docs
 ├── e2e/                     # Playwright black-box tests
-├── electron/                # Electron shell and runtime manager
 ├── public/                  # Static assets and onboarding files
 ├── scripts/                 # Repository checks and inspection entry points
 ├── src/                     # React application organized by feature domain
+├── src-tauri/               # Tauri desktop shell, runtime manager, and packaging
 ├── tooling/                 # Build, lint, and test configuration
 └── package.json             # Development, test, and packaging commands
 ```

@@ -15,7 +15,7 @@ AI coding agent, or inside Orca.
    unless the code has the result data to support that claim.
 4. **Test user-visible behavior.** Use unit tests for pure logic and component
    behavior. Use end-to-end tests when the regression depends on routing,
-   Electron, browser events, persistence, IPC, or a real rendered interaction.
+   the desktop shell, browser events, persistence, IPC, or a real rendered interaction.
 5. **Leave evidence.** A pull request should make it easy to understand the
    user-visible change, the risks reviewed, and the commands that passed.
 
@@ -102,14 +102,13 @@ Verification:
 
 ## Implementation Rules
 
-### Public client boundary
+### Repository boundary
 
-- This repository owns the React/Electron client, public contracts, mocks,
-  fixtures, packaging, and black-box tests.
-- Do not recreate runtime implementation details or a source fallback here.
-- For runtime behavior changes, update the public contract and mock first.
-- Validate private runtime integration only through an explicit runtime binary
-  and public HTTP/capability behavior.
+- This repository owns the React client, the Tauri desktop shell, and the Rust
+  runtime in `crates/`, together with contracts, mocks, fixtures, packaging, and
+  tests.
+- For runtime behavior changes, update the contract in `contracts/runtime/`, the
+  renderer mock, and the runtime crates together.
 
 ### Frontend structure
 
@@ -135,7 +134,7 @@ Verification:
 - Prefer pure unit tests for transforms, state machines, and formatting.
 - Prefer component tests for visible states and user actions.
 - Use end-to-end tests for real keyboard, pointer, editor, routing, persistence,
-  Electron, or IPC behavior.
+  the desktop shell, or IPC behavior.
 - End-to-end assertions should target what the user can see or do, not only an
   internal store value.
 - Keep mocks aligned with public runtime contracts.
@@ -152,7 +151,7 @@ gates.
 | Shared UI or layout | Focused tests, `pnpm run build:check`, visual review |
 | Table behavior | Focused tests, `pnpm test:kitable:e2e`, required table widget gate |
 | Workflow or scenario | Focused tests and the matching inspection command |
-| Electron or packaging | `pnpm test:desktop:unit` and relevant Electron E2E |
+| Desktop shell or packaging | `pnpm check:desktop`, `pnpm test:desktop:unit`, and relevant desktop E2E |
 | Runtime contract | Contract/mock tests plus black-box integration with an explicit binary |
 
 Before completion, always run:
@@ -179,7 +178,7 @@ Every change should be reviewed for the applicable risks:
 
 - user-visible behavior and copy accuracy;
 - macOS and Windows differences;
-- web preview versus Electron behavior;
+- web preview versus desktop shell behavior;
 - local workspace paths and portable path handling;
 - public runtime contract and mock compatibility;
 - credentials, account state, network requests, IPC, and external URLs;

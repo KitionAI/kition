@@ -53,8 +53,10 @@ openspec/specs/*
 logs
 
 kition-extension.pem
-electron/resources/bin/
-electron/build-info.json
+src-tauri/binaries/
+src-tauri/gen/
+/target/
+src-tauri/target/
 .kitable
 test-workspace
 
@@ -63,6 +65,8 @@ node_modules/
 .vite/
 dist/
 dist-ssr/
+dist-desktop/
+# Output of desktop builds made before the Tauri shell.
 dist-electron/
 playwright-report/
 test-results/

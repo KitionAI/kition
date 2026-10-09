@@ -982,12 +982,6 @@
     box-shadow: inset 0 2px 0 0 hsl(var(--primary));
   }
 
-  .document-topbar-tabs .document-tab.is-browser.is-active {
-    @apply text-foreground;
-    background: var(--document-main-surface, hsl(var(--card)));
-    box-shadow: inset 0 2px 0 0 hsl(var(--primary));
-  }
-
   .document-title-row {
 
     @apply flex items-center gap-2;
@@ -1350,26 +1344,9 @@
     @apply opacity-0;
   }
 
-  .document-tab.is-browser {
-    @apply max-w-72 bg-sky-50/80 text-sky-900 hover:bg-sky-100;
-  }
-
   .document-tab.is-active {
     @apply text-foreground;
     background: hsl(var(--primary) / 0.1);
-  }
-
-  .document-tab.is-browser.is-active {
-    @apply bg-sky-100 text-sky-950;
-  }
-
-  .document-tab.is-linked {
-    @apply ring-1 ring-amber-200 ring-inset;
-  }
-
-  .document-tab.is-linked::after {
-    content: '';
-    @apply absolute right-1 top-1 size-1.5 rounded-full bg-amber-400;
   }
 
   .document-tab.is-modified .document-tab-close {
@@ -1483,25 +1460,8 @@
     @apply relative flex h-9 min-w-0 cursor-pointer items-center gap-2 rounded-md px-2 text-left text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground;
   }
 
-  .document-tab-overflow-item.is-browser {
-    @apply bg-sky-50/70 text-sky-900 hover:bg-sky-100;
-  }
-
   .document-tab-overflow-item.is-active {
     @apply bg-background font-medium text-foreground;
-  }
-
-  .document-tab-overflow-item.is-browser.is-active {
-    @apply border border-sky-200 bg-card text-sky-950;
-  }
-
-  .document-tab-overflow-item.is-linked {
-    @apply ring-1 ring-amber-200 ring-inset;
-  }
-
-  .document-tab-overflow-item.is-linked::after {
-    content: '';
-    @apply absolute right-1 top-1.5 size-1.5 rounded-full bg-amber-400;
   }
 
   .document-tab-overflow-item span {
@@ -2117,95 +2077,8 @@
     }
   }
 
-  .workspace-browser-pane {
-    @apply flex h-full min-h-0 flex-col;
-  }
-
-  .workspace-browser-toolbar {
-    @apply flex h-12 shrink-0 items-center gap-2 border-b border-border bg-card px-3;
-  }
-
-  .workspace-browser-toolbar__nav {
-    @apply flex items-center gap-0.5;
-  }
-
-  .workspace-browser-toolbar__icon-button {
-    @apply flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:text-subtle-foreground disabled:hover:bg-transparent;
-  }
-
-  .workspace-browser-toolbar__address {
-    @apply relative flex min-w-0 flex-1 items-center;
-  }
-
-  .workspace-browser-toolbar__input {
-    @apply h-8 w-full rounded-md border border-input bg-card px-3 pr-8 text-sm text-foreground outline-none placeholder:text-subtle-foreground;
-  }
-
-  .workspace-browser-toolbar__address--focused .workspace-browser-toolbar__input {
-    @apply border-2 border-primary px-[11px];
-  }
-
-  .workspace-browser-toolbar__spinner {
-    @apply pointer-events-none absolute right-2.5 size-4 animate-spin rounded-full border-2 border-input border-t-primary;
-  }
-
-  .workspace-browser-tab {
-    @apply flex min-h-0 flex-1 flex-col justify-end px-8 py-8;
-    background:
-      radial-gradient(circle at top, hsl(var(--brand) / 0.15), transparent 38%),
-      linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--background)) 100%);
-  }
-
-  .workspace-browser-tab__eyebrow {
-    @apply text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground;
-  }
-
-  .workspace-browser-tab h2 {
-    @apply mt-3 text-3xl font-semibold tracking-tight text-foreground;
-  }
-
-  .workspace-browser-tab p {
-    @apply mt-3 max-w-2xl text-sm leading-6 text-muted-foreground;
-  }
-
-  .workspace-browser-tab code {
-    @apply mt-4 inline-flex max-w-full overflow-hidden text-ellipsis whitespace-nowrap rounded-full border border-border bg-card/80 px-4 py-2 text-xs text-foreground shadow-sm;
-  }
-
-  .workspace-browser-tab--loading {
-    @apply items-center justify-center text-center;
-  }
-
-  .workspace-browser-tab__status {
-    @apply flex flex-col items-center gap-3;
-  }
-
-  .workspace-browser-tab__spinner {
+  .workspace-pane-spinner {
     @apply size-6 animate-spin rounded-full border-2 border-input border-t-primary;
-  }
-
-  .workspace-browser-tab__status-text {
-    @apply text-sm font-medium text-muted-foreground;
-  }
-
-  .workspace-browser-tab__status code {
-    @apply mt-1;
-  }
-
-  .workspace-browser-tab--empty {
-    @apply items-center justify-center text-center;
-  }
-
-  .workspace-browser-tab__empty {
-    @apply flex flex-col items-center gap-4;
-  }
-
-  .workspace-browser-tab__empty-icon {
-    @apply flex size-12 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm;
-  }
-
-  .workspace-browser-tab__empty-text {
-    @apply max-w-md text-sm leading-6 text-muted-foreground;
   }
 
   .workspace-document-shell__body {
@@ -3308,175 +3181,6 @@
 
   .workspace-sidebar-header-action.is-active {
     @apply bg-muted text-foreground;
-  }
-
-  .workspace-sidebar-browser-entry {
-    @apply flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground;
-  }
-
-  .workspace-sidebar-browser-entry + .workspace-sidebar-browser-entry {
-    @apply mt-0.5;
-  }
-
-  .workspace-browser-sites-panel {
-    @apply flex h-full min-h-0 flex-col overflow-auto bg-background px-8 py-7;
-  }
-
-  .workspace-browser-sites-header {
-    @apply mb-6 flex min-w-0 items-center gap-3;
-  }
-
-  .workspace-browser-sites-icon {
-    @apply grid size-10 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground;
-  }
-
-  .workspace-browser-sites-header h2 {
-    @apply truncate text-2xl font-semibold tracking-normal;
-  }
-
-  .workspace-browser-sites-header p {
-    @apply mt-1 text-sm text-muted-foreground;
-  }
-
-  .workspace-browser-sites-header-actions {
-    @apply ml-auto flex shrink-0 items-center gap-2;
-  }
-
-  .workspace-browser-sites-open {
-    @apply flex shrink-0 items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90;
-  }
-
-  .workspace-browser-sites-refresh {
-    @apply flex shrink-0 items-center gap-2 rounded-md border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:border-ring/40 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60;
-    border-color: var(--document-border, hsl(var(--border)));
-  }
-
-  .workspace-browser-sites-list {
-    @apply flex flex-col gap-2;
-  }
-
-  .workspace-browser-sites-row {
-    @apply flex min-w-0 items-center gap-3 rounded-md border bg-card px-3 py-2.5;
-    border-color: var(--document-border, hsl(var(--border)));
-  }
-
-  .workspace-browser-sites-favicon {
-    @apply grid size-8 shrink-0 place-items-center overflow-hidden rounded bg-muted text-muted-foreground;
-  }
-
-  .workspace-browser-sites-favicon img {
-    @apply size-5 object-contain;
-  }
-
-  .workspace-browser-sites-meta {
-    @apply grid min-w-0 flex-1 gap-0.5;
-  }
-
-  .workspace-browser-sites-meta strong {
-    @apply truncate text-sm font-medium text-foreground;
-  }
-
-  .workspace-browser-sites-meta small {
-    @apply truncate text-xs text-muted-foreground;
-  }
-
-  .workspace-browser-sites-badge {
-    @apply shrink-0 rounded-full px-2 py-0.5 text-xs font-medium;
-  }
-
-  .workspace-browser-sites-badge--in {
-    color: hsl(var(--brand-active));
-    background: hsl(var(--brand) / 0.12);
-  }
-
-  .workspace-browser-sites-badge--out {
-    @apply bg-muted text-muted-foreground;
-  }
-
-  .workspace-browser-sites-actions {
-    @apply flex shrink-0 items-center gap-1;
-  }
-
-  .workspace-browser-sites-actions button {
-    @apply grid size-8 place-items-center rounded-md text-muted-foreground transition-[background-color,color,transform] duration-fast ease-standard hover:bg-muted hover:text-foreground active:scale-95;
-  }
-
-  .workspace-browser-sites-empty {
-    @apply flex h-full min-h-[240px] flex-col items-center justify-center rounded-xl border border-dashed border-border/70 bg-muted/20 px-6 text-center;
-  }
-
-  .workspace-browser-sites-empty h3 {
-    @apply text-base font-semibold;
-  }
-
-  .workspace-browser-sites-empty p {
-    @apply mt-2 max-w-[40ch] text-sm text-muted-foreground;
-  }
-
-  .workspace-sidebar-browser-pane {
-    @apply flex min-h-0 flex-1 flex-col;
-  }
-
-  .workspace-sidebar-browser-pane .workspace-browser-sites-panel {
-    @apply h-full px-2.5 py-2;
-  }
-
-  .workspace-sidebar-browser-pane .workspace-browser-sites-header {
-    @apply mb-3 flex-wrap gap-2;
-  }
-
-  .workspace-sidebar-browser-pane .workspace-browser-sites-icon {
-    @apply size-7;
-  }
-
-  .workspace-sidebar-browser-pane .workspace-browser-sites-icon svg {
-    @apply size-4;
-  }
-
-  .workspace-sidebar-browser-pane .workspace-browser-sites-header h2 {
-    @apply text-sm font-semibold;
-  }
-
-  .workspace-sidebar-browser-pane .workspace-browser-sites-header p {
-    @apply mt-0 text-xs;
-  }
-
-  .workspace-sidebar-browser-pane .workspace-browser-sites-header-actions {
-    @apply ml-0 w-full flex-wrap;
-  }
-
-  .workspace-sidebar-browser-pane .workspace-browser-sites-open,
-  .workspace-sidebar-browser-pane .workspace-browser-sites-refresh {
-    @apply h-7 px-2 py-0 text-xs;
-  }
-
-  .workspace-sidebar-browser-pane .workspace-browser-sites-open span,
-  .workspace-sidebar-browser-pane .workspace-browser-sites-refresh span {
-    @apply truncate;
-  }
-
-  .workspace-sidebar-browser-pane .workspace-browser-sites-row {
-    @apply gap-2 px-2 py-2;
-  }
-
-  .workspace-sidebar-browser-pane .workspace-browser-sites-favicon {
-    @apply size-7;
-  }
-
-  .workspace-sidebar-browser-pane .workspace-browser-sites-badge {
-    @apply hidden;
-  }
-
-  .workspace-sidebar-browser-pane .workspace-browser-sites-actions button {
-    @apply size-7;
-  }
-
-  .workspace-sidebar-browser-pane .workspace-browser-sites-empty {
-    @apply min-h-[160px] px-3;
-  }
-
-  .workspace-sidebar-browser-pane .workspace-browser-sites-empty p {
-    @apply text-xs;
   }
 
   .agent-chat-panel {
@@ -6457,27 +6161,6 @@
     @apply ml-5 list-decimal space-y-1.5 text-[14px] leading-6 text-foreground;
   }
 
-  .data-agent-browser-assist {
-    @apply border-border bg-card;
-  }
-
-  .data-agent-browser-title-row {
-    @apply mb-0 flex items-start justify-between gap-3;
-  }
-
-  .data-agent-browser-assist-title {
-    @apply mb-0 text-[14px] font-semibold text-foreground;
-  }
-
-  .data-agent-browser-progress {
-    @apply mt-2 h-1 overflow-hidden rounded-full bg-secondary;
-  }
-
-  .data-agent-browser-progress__bar {
-    @apply block h-full w-2/5 rounded-full bg-primary;
-    animation: data-agent-browser-progress-slide 1.1s ease-in-out infinite;
-  }
-
   .data-agent-domain-grid {
     @apply flex flex-wrap gap-2;
   }
@@ -6488,14 +6171,6 @@
 
   .data-agent-domain-option.is-active {
     @apply border-primary/20 bg-primary/10 text-primary;
-  }
-
-  .data-agent-browser-assist .data-agent-browser-inline-note {
-    @apply mt-2;
-  }
-
-  .data-agent-browser-assist .data-agent-browser-actions {
-    @apply mt-2.5;
   }
 
   .data-agent-write-receipt {
@@ -6594,49 +6269,11 @@
     @apply bg-card text-muted-foreground;
   }
 
-  .data-agent-browser-inline-note {
-    @apply mt-2 rounded-xl border bg-surface-soft px-3 py-2;
-    border-color: var(--document-border, hsl(var(--border)));
-  }
-
-  .data-agent-browser-inline-note strong {
-    @apply block text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground;
-  }
-
-  .data-agent-browser-inline-note span {
-    @apply text-xs leading-5 text-foreground;
-  }
-
-  .data-agent-browser-inline-note.is-warning {
-    @apply border-amber-300 bg-amber-50;
-  }
-
-  .data-agent-browser-inline-note.is-warning strong {
-    @apply text-amber-950;
-  }
-
-  .data-agent-browser-inline-note.is-warning span {
-    @apply text-amber-900;
-  }
-
-  .data-agent-browser-error {
-    @apply mt-2 text-xs leading-5 text-amber-700;
-  }
-
-  @keyframes data-agent-browser-progress-slide {
-    0% {
-      transform: translateX(-110%);
-    }
-    100% {
-      transform: translateX(260%);
-    }
-  }
-
   .data-agent-action-primary {
     @apply inline-flex h-9 min-h-0 w-auto justify-center rounded-md bg-primary px-3.5 text-[12px] font-medium text-primary-foreground hover:bg-primary/90;
   }
 
-  .data-agent-browser-actions {
+  .data-agent-actions {
     @apply mt-2.5 flex flex-wrap items-center gap-2;
   }
 

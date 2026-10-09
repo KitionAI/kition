@@ -1,3 +1,4 @@
+import type { ApiTimestamp } from '@/types'
 import type { AgentImageGenerationEvent } from '@/types/imageGeneration'
 import type { AgentWhiteboardPatch } from '@/types/whiteboardAgent'
 import type { AgentDesignPatch } from '@/types/designAgent'
@@ -18,59 +19,9 @@ export type AgentPaneContext =
   | 'document'
   | 'workflow'
   | 'table'
-  | 'browser'
-  | 'browserSites'
   | 'gallery'
   | 'whiteboard'
   | 'design'
-
-type AgentBrowserContextLink = {
-  text: string
-  href: string
-}
-
-type AgentBrowserContextEntity = {
-  entity_type?: string
-  url?: string
-  title?: string
-  author?: string
-  published_at?: string
-  summary?: string
-}
-
-type AgentBrowserContextContentBlock = {
-  url?: string
-  title?: string
-  summary?: string
-  text?: string
-  html?: string
-}
-
-export type AgentBrowserContext = {
-  source?: string
-  platform?: string
-  adapter?: string
-  command?: string
-  entity_type?: string
-  action?: string
-  host?: string
-  page_url?: string
-  page_title?: string
-  logged_in?: boolean
-  supported_page?: boolean
-  editor_ready?: boolean
-  page_heading?: string
-  title_text?: string
-  content_text_preview?: string
-  visible_text_preview?: string
-  main_content_html?: string
-  html_snapshot?: string
-  content_blocks?: AgentBrowserContextContentBlock[]
-  page_type?: string
-  links?: AgentBrowserContextLink[]
-  extracted_entities?: AgentBrowserContextEntity[]
-  extracted_at?: string
-}
 
 export type AgentTablePlanContext = {
   execution_mode?: string
@@ -102,8 +53,8 @@ export type AgentSession = {
   status: 'idle' | 'running' | 'failed' | 'completed' | string
   model_id?: string
   system_prompt?: string
-  created_at: string
-  updated_at: string
+  created_at: ApiTimestamp
+  updated_at: ApiTimestamp
 }
 
 export type AgentMessage = {
@@ -114,7 +65,7 @@ export type AgentMessage = {
   content: string
   parts?: any
   status: string
-  created_at: string
+  created_at: ApiTimestamp
 }
 
 export type AgentArtifact = {
@@ -125,7 +76,7 @@ export type AgentArtifact = {
   path: string
   mime_type?: string
   title?: string
-  created_at: string
+  created_at: ApiTimestamp
 }
 
 export type AgentToolCall = {
@@ -138,8 +89,8 @@ export type AgentToolCall = {
   output_data?: any
   status: 'running' | 'completed' | 'failed' | string
   error_message?: string
-  created_at: string
-  updated_at: string
+  created_at: ApiTimestamp
+  updated_at: ApiTimestamp
 }
 
 type AgentToolAvailability = {
@@ -150,7 +101,6 @@ type AgentToolAvailability = {
 export type AgentTurnCapabilities = {
   available_tools: string[]
   hosted_web_search: AgentToolAvailability
-  browser_search: AgentToolAvailability
 }
 
 export type AgentShellApprovalDecision = 'allow_once' | 'allow_always' | 'deny'
@@ -193,7 +143,7 @@ export type AgentEvent = {
     reason?: string
     [key: string]: any
   }
-  created_at: string
+  created_at: ApiTimestamp
 }
 
 type AgentToolSpec = {

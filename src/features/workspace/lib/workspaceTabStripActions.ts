@@ -30,12 +30,11 @@ export type WorkspaceTabStripActionsInput = {
   onToggleSidebar: () => void
 }
 
-const READ_ONLY_TAB_TYPES = new Set<WorkspaceTab['type']>(['file-viewer', 'gallery', 'browser-sites'])
+const READ_ONLY_TAB_TYPES = new Set<WorkspaceTab['type']>(['file-viewer', 'gallery'])
 
-/** Text copied by "Copy reference": the file path, the page URL, or the title. */
+/** Text copied by "Copy reference": the file path or the title. */
 export function workspaceTabReference(tab: WorkspaceTab) {
   if (tab.type === 'document' || tab.type === 'file-viewer') return tab.path
-  if (tab.type === 'browser') return tab.url || tab.title
   return tab.title
 }
 

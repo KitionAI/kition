@@ -81,11 +81,12 @@ module.exports = {
   },
   ignorePatterns: [
     'dist/',
-    'dist-electron/',
+    'dist-desktop/',
     'node_modules/',
     'src/registry/',  // shadcn-ui upstream, not our style domain
     'public/',
-    'electron/resources/',
+    'src-tauri/target/',
+    'src-tauri/gen/',
     '*.config.{js,cjs,mjs,ts}',
   ],
   overrides: [
@@ -96,8 +97,6 @@ module.exports = {
     {
       // Size baseline (files already over the max-lines ceiling on 2026-09-27). Only remove entries; never add.
       files: [
-        'electron/generic-browser-session.mjs',
-        'electron/main.mjs',
         'src/app/Shell.tsx',
         'src/features/agent/hooks/useWorkspaceAgent.ts',
         'src/features/agent/lib/agentTimeline.ts',
@@ -228,7 +227,7 @@ module.exports = {
         '**/*.test.tsx',
         'e2e/**',
         'scripts/**',
-        'electron/**',
+        'src-tauri/scripts/**',
       ],
       rules: { 'no-restricted-syntax': 'off' },
     },

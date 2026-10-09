@@ -1,5 +1,5 @@
 /**
- * The preload bridge as the renderer sees it: the `window.kitionDesktop` surface and every payload type it exchanges.
+ * The desktop bridge as the renderer sees it: the `window.kitionDesktop` surface and every payload type it exchanges.
  */
 import type { AgentLocalSource } from '@/types/agentLocalSource'
 
@@ -7,10 +7,6 @@ type KitionDesktopBridge = {
   shell?: string
   backendOrigin?: string
   DesktopInfo?: () => Promise<DesktopInfo>
-  ReadBundledAsset?: (request: { path: string }) => Promise<{
-    base64_content: string
-    size_bytes: number
-  }>
   BackendStatus?: () => Promise<DesktopBackendStatus>
   RetryBackendStart?: () => Promise<DesktopBackendStatus>
   OpenExternalURL?: (url: string) => Promise<void>
@@ -57,19 +53,6 @@ type KitionDesktopBridge = {
   StoreSecureValue?: (key: string, value: string) => Promise<void>
   ReadSecureValue?: (key: string) => Promise<string>
   DeleteSecureValue?: (key: string) => Promise<void>
-  BrowserSessionStatus?: (request: BrowserSessionRequest) => Promise<BrowserSessionStatus>
-  EnsureBrowserSessionWindow?: (request: BrowserSessionRequest) => Promise<BrowserSessionStatus>
-  OpenBrowserSessionHome?: (request: BrowserSessionRequest) => Promise<BrowserSessionStatus>
-  HideBrowserSessionPanel?: (request: BrowserSessionRequest) => Promise<BrowserSessionStatus>
-  GoBackBrowserSession?: (request: BrowserSessionRequest) => Promise<BrowserSessionStatus>
-  GoForwardBrowserSession?: (request: BrowserSessionRequest) => Promise<BrowserSessionStatus>
-  ReloadBrowserSession?: (request: BrowserSessionRequest) => Promise<BrowserSessionStatus>
-  StopBrowserSession?: (request: BrowserSessionRequest) => Promise<BrowserSessionStatus>
-  SetBrowserSessionHostLayout?: (request: BrowserSessionHostLayoutRequest) => Promise<BrowserSessionStatus>
-  ExtractBrowserPageContext?: (request: BrowserPageContextRequest) => Promise<BrowserPageContext>
-  ListBrowserSites?: () => Promise<BrowserSiteListResponse>
-  ForgetBrowserSite?: (request: BrowserSiteForgetRequest) => Promise<BrowserSiteListResponse>
-  RefreshBrowserSiteLoginStatus?: (request: BrowserSiteRefreshRequest) => Promise<BrowserSiteListResponse>
   EventsOn?: (eventName: string, callback: (payload: any) => void) => (() => void) | void
   documentExternalChangeEvent?: string
   BrowserOpenURL?: (url: string) => void
@@ -293,145 +276,6 @@ export type DesktopBackendStatus = {
   capabilities?: string[]
   runtime_sha256?: string
   runtime_label?: 'local-runtime' | 'dev-runtime' | ''
-}
-
-export type BrowserSessionProvider = 'generic-web' | (string & {})
-
-export type BrowserSessionRequest = {
-  provider: BrowserSessionProvider
-  profile_id?: string
-  host?: string
-  url?: string
-  page_url?: string
-  address?: string
-  command?: string
-  query?: string
-  adapter?: string
-}
-
-export type BrowserSessionStatus = {
-  provider: BrowserSessionProvider
-  profile_id?: string
-  supported: boolean
-  driver?: string
-  available: boolean
-  window_open: boolean
-  panel_visible?: boolean
-  panel_width?: number
-  logged_in: boolean
-  editor_ready?: boolean
-  can_go_back?: boolean
-  can_go_forward?: boolean
-  is_loading?: boolean
-  page_url: string
-  page_title: string
-  message: string
-  last_error: string
-  runtime?: Record<string, any>
-}
-
-export type BrowserSessionPanelState = {
-  provider: BrowserSessionProvider
-  visible: boolean
-  width: number
-  title: string
-  url: string
-  canGoBack?: boolean
-  canGoForward?: boolean
-  isLoading?: boolean
-  windowOpen?: boolean
-  loggedIn?: boolean
-  message?: string
-  lastError?: string
-  runtime?: Record<string, any>
-}
-
-export type BrowserSessionHostLayoutRequest = BrowserSessionRequest & {
-  leftInset?: number
-  topInset?: number
-  rightInset?: number
-}
-
-export type BrowserPageContextRequest = BrowserSessionRequest & {
-  adapter?: string
-  command?: string
-  query?: string
-  entity_type?: string
-  max_preview_length?: number
-  max_content_length?: number
-  max_links?: number
-}
-
-export type BrowserSite = {
-  host: string
-  profileId: string
-  url: string
-  title: string
-  favicon: string
-  provider: BrowserSessionProvider
-  firstSeenAt: string
-  lastSeenAt: string
-  visitCount: number
-  loggedIn: boolean
-  lastCheckedAt: string
-}
-
-export type BrowserSiteListResponse = {
-  sites: BrowserSite[]
-}
-
-export type BrowserSiteForgetRequest = {
-  host: string
-  profile_id?: string
-}
-
-export type BrowserSiteRefreshRequest = {
-  host?: string
-}
-
-export type BrowserPageEntity = {
-  entity_type?: string
-  url?: string
-  title?: string
-  author?: string
-  published_at?: string
-  summary?: string
-}
-
-export type BrowserPageContentBlock = {
-  url?: string
-  title?: string
-  summary?: string
-  text?: string
-  html?: string
-}
-
-export type BrowserPageContext = {
-  provider?: BrowserSessionProvider
-  profile_id?: string
-  supported_page: boolean
-  logged_in: boolean
-  editor_ready: boolean
-  title_ready?: boolean
-  content_ready?: boolean
-  longform_entry_available?: boolean
-  page_url: string
-  page_title: string
-  hostname?: string
-  page_heading?: string
-  title_text?: string
-  content_text_preview?: string
-  visible_text_preview?: string
-  main_content_html?: string
-  html_snapshot?: string
-  content_blocks?: BrowserPageContentBlock[]
-  page_type?: string
-  links?: Array<{
-    text: string
-    href: string
-  }>
-  extracted_entities?: BrowserPageEntity[]
-  extracted_at?: string
 }
 
 export type BootstrapDiagnostics = {

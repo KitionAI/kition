@@ -1,3 +1,4 @@
+import type { ApiTimestamp } from '@/types'
 import request from './request'
 import type { DesktopHook, DesktopHookEvent, DesktopNotificationPolicy } from '@/types/desktopSettings'
 
@@ -20,10 +21,10 @@ export type DesktopHookDTO = {
   workdir: string
   timeout_seconds: number
   enabled: boolean
-  last_run_at?: string
+  last_run_at?: ApiTimestamp
   last_exit_code?: number
-  created_at: string
-  updated_at: string
+  created_at: ApiTimestamp
+  updated_at: ApiTimestamp
 }
 
 export type DesktopHookDryRunResult = {

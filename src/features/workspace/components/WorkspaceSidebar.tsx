@@ -1,13 +1,10 @@
-import { ChevronDown, ChevronRight, Folder, Globe, LoaderCircle, PanelLeftClose, Plus, RefreshCw, Search, Zap } from 'lucide-react'
+import { ChevronDown, ChevronRight, Folder, LoaderCircle, PanelLeftClose, Plus, RefreshCw, Search, Zap } from 'lucide-react'
 import { type ClipboardEvent as ReactClipboardEvent, type ReactNode, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { WorkspaceBrowserSitesPanel } from '@/features/workspace/components/WorkspaceBrowserSitesPanel'
 import { WorkspaceCreateMenu } from '@/features/workspace/components/WorkspaceCreateMenu'
 import type { DocumentCreateFormat } from '@/features/document/lib/documentCreation'
 import type { WorkspaceImportEntry } from '@/features/workspace/hooks/useWorkspaceTreeCreateActions'
-import { WEB_BROWSER_ENABLED } from '@/lib/productFeatures'
 import { handleDesktopChromeDoubleClick } from '@/lib/windowChrome'
-import { cn } from '@/lib/utils'
 
 export function WorkspaceSidebar({
   loading,
@@ -27,7 +24,6 @@ export function WorkspaceSidebar({
   onCreateTable,
   onImportTableFile,
   onPasteFiles,
-  showBrowserTab,
   onRefresh,
   onOpenWorkflows,
   onCreateBoard,
@@ -52,7 +48,6 @@ export function WorkspaceSidebar({
   onCreateTable: () => void
   onImportTableFile?: () => void
   onPasteFiles?: (entries: WorkspaceImportEntry[]) => void
-  showBrowserTab?: boolean
   onRefresh?: () => void
   /** Opens the workspace-global Workflows tab. Replaces the old root-level
    *  virtual "Workflows" tree node — kept as a header-bar shortcut so the
@@ -89,18 +84,10 @@ export function WorkspaceSidebar({
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [createMenuOpen, onCloseCreateMenu])
-  const [activeSidebarTab, setActiveSidebarTab] = useState<'files' | 'browser'>('files')
   const { t } = useTranslation('workspace')
   // Callback ref into state so the menu re-renders once the button mounts and
   // computes its portal coords from the real bounding rect.
   const [headerCreateAnchor, setHeaderCreateAnchor] = useState<HTMLButtonElement | null>(null)
-
-  function handleSelectSidebarTab(tab: 'files' | 'browser') {
-    if (tab === activeSidebarTab) {
-      return
-    }
-    setActiveSidebarTab(tab)
-  }
 
   function handlePaste(event: ReactClipboardEvent<HTMLDivElement>) {
     if (!onPasteFiles) {
@@ -150,9 +137,8 @@ export function WorkspaceSidebar({
           <button
             type="button"
             role="tab"
-            aria-selected={activeSidebarTab === 'files'}
-            className={cn('workspace-sidebar-tab', activeSidebarTab === 'files' && 'is-active')}
-            onClick={() => handleSelectSidebarTab('files')}
+            aria-selected
+            className="workspace-sidebar-tab is-active"
             aria-label={t('sidebar.tabs.files')}
             title={t('sidebar.tabs.files')}
             data-testid="sidebar-tab-files"
@@ -169,20 +155,6 @@ export function WorkspaceSidebar({
           >
             <Search className="size-4" />
           </button>
-          {WEB_BROWSER_ENABLED && showBrowserTab ? (
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeSidebarTab === 'browser'}
-              className={cn('workspace-sidebar-tab', activeSidebarTab === 'browser' && 'is-active')}
-              onClick={() => handleSelectSidebarTab('browser')}
-              aria-label={t('sidebar.tabs.browser')}
-              title={t('sidebar.tabs.browser')}
-              data-testid="sidebar-tab-browser"
-            >
-              <Globe className="size-4" />
-            </button>
-          ) : null}
         </div>
         {/* Workflows are reached via per-kitable virtual leaves now — the
             previous global header button was removed because it implied
@@ -206,10 +178,6 @@ export function WorkspaceSidebar({
             <LoaderCircle className="size-4 animate-spin" />
             {t('sidebar.loadingDirectory')}
           </div>
-        </div>
-      ) : WEB_BROWSER_ENABLED && activeSidebarTab === 'browser' ? (
-        <div className="workspace-sidebar-browser-pane min-h-0 flex-1 overflow-hidden">
-          <WorkspaceBrowserSitesPanel />
         </div>
       ) : (
         <>

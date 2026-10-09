@@ -76,7 +76,7 @@ function TablePlanCard({
         </ul>
       ) : null}
       {showApply ? (
-        <div className="data-agent-browser-actions">
+        <div className="data-agent-actions">
           <button
             type="button"
             className="data-agent-action-primary"

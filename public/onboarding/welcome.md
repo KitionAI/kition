@@ -184,7 +184,6 @@ Open **Settings > Onboarding Guides** when you want a larger, guided example. Im
 | Lead Automation | A record-created follow-up workflow | None to inspect |
 | Receipt Extraction | A reusable structured extraction prompt | AI provider to run again |
 | Product Content | Image and copy generation fields | Image-capable AI provider to run again |
-| Web Research | A reusable browser task handoff | Desktop browser and AI provider |
 
 > [!note] Optional guides stay optional
 > The first-run workspace contains this root-level welcome page plus categorized, ready-to-open templates inside Getting Started. Optional guides appear only when you import them.

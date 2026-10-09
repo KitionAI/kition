@@ -41,8 +41,7 @@
   "sidebar": {
     "tabs": {
       "files": "Fichiers",
-      "search": "Rechercher",
-      "browser": "Navigateur"
+      "search": "Rechercher"
     },
     "collapseSection": "Réduire {{name}}",
     "expandSection": "Développer {{name}}",
@@ -117,7 +116,6 @@
     "openingInSystem": "Ouverture…"
   },
   "tabs": {
-    "webBadge": "Web",
     "closeTab": "Fermer l'onglet",
     "expandSidebar": "Développer la barre latérale",
     "previousTab": "Onglet précédent",
@@ -164,36 +162,6 @@
   },
   "topbar": {
     "more": "Plus"
-  },
-  "browserSites": {
-    "title": "Navigateur",
-    "visitedCount": "{{count}} sites visités",
-    "openBrowser": "Ouvrir le navigateur",
-    "openBrowserTitle": "Ouvrir un nouvel onglet de navigateur",
-    "refreshLoginStatus": "Actualiser l'état de connexion",
-    "loading": "Chargement des sites…",
-    "lastVisited": "Dernière visite {{time}}",
-    "signedIn": "Connecté",
-    "signedOut": "Déconnecté",
-    "openSite": "Ouvrir le site",
-    "open": "Ouvrir {{host}}",
-    "forgetSite": "Oublier ce site (effacer la connexion)",
-    "forget": "Oublier {{host}}",
-    "emptyTitle": "Aucun site visité pour l'instant",
-    "emptyDescription": "Visitez et connectez-vous à des sites dans le navigateur intégré. Ils seront répertoriés ici avec leur état de connexion pour permettre une connexion automatique lors de l'extraction ultérieure."
-  },
-  "browserToolbar": {
-    "back": "Précédent",
-    "forward": "Suivant",
-    "stopLoading": "Arrêter le chargement",
-    "reload": "Recharger",
-    "addressPlaceholder": "Saisir une URL ou rechercher…"
-  },
-  "browserTab": {
-    "eyebrow": "Navigateur intégré",
-    "unavailableDescription": "La page du navigateur est rattachée à cette zone d'onglet. Utilisez cet onglet pour la connexion, la recherche et la navigation. La discussion IA reste disponible à droite, vous pouvez donc continuer depuis la page actuelle sans changer de vue.",
-    "emptyText": "Navigateur — Saisissez une URL ci-dessus ou demandez à l'agent de naviguer et d'utiliser le navigateur",
-    "loadingPage": "Chargement de la page…"
   },
   "fileViewer": {
     "imageActions": "Actions sur l’image",
@@ -617,8 +585,8 @@
     "createDashboardFailed": "Failed to create dashboard",
     "createTableFailed": "Échec de la création de la table",
     "importMarkdownFailed": "Échec de l'importation du Markdown",
-    "browserDevModeOpenDirectory": "Vous exécutez le mode développement dans le navigateur et ne pouvez pas ouvrir de répertoires natifs. Lancez l'application de bureau via pnpm dev:electron et réessayez.",
-    "browserDevModePickDirectory": "Vous exécutez le mode développement dans le navigateur et ne pouvez pas choisir de répertoire natif. Lancez l'application de bureau via pnpm dev:electron et réessayez.",
+    "browserDevModeOpenDirectory": "Vous exécutez le mode développement dans le navigateur et ne pouvez pas ouvrir de répertoires natifs. Lancez l'application de bureau via pnpm dev et réessayez.",
+    "browserDevModePickDirectory": "Vous exécutez le mode développement dans le navigateur et ne pouvez pas choisir de répertoire natif. Lancez l'application de bureau via pnpm dev et réessayez.",
     "browserDevModeSwitchDirectory": "Vous exécutez le mode développement dans le navigateur et ne pouvez pas changer de répertoire natif.",
     "openInSystemFailed": "Impossible d’ouvrir le fichier. Vérifiez l’application par défaut et réessayez.",
     "reviewBeforeExternalOpen": "Terminez la révision des modifications avant d’ouvrir ce fichier dans une autre application."

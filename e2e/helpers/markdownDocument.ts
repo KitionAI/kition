@@ -1,7 +1,7 @@
 /**
  * Mounts the workspace with an in-memory desktop bridge that serves one
  * Markdown document (plus optional extra documents), so editor specs can
- * run against the real renderer without the Electron shell or the runtime.
+ * run against the real renderer without the desktop shell or the runtime.
  */
 import type { Page } from '@playwright/test'
 
@@ -51,7 +51,7 @@ export async function mockDesktopBridge(
       }
 
       stateWindow.kitionDesktop = {
-        shell: 'electron',
+        shell: 'tauri',
         DesktopInfo: async () => ({
           is_desktop: true,
           platform: 'darwin',

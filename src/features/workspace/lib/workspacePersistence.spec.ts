@@ -9,38 +9,32 @@ import {
 const ROOT_A = '/Users/alice/vault-a'
 const ROOT_B = '/Users/alice/vault-b'
 
-const browserTab = {
-  id: 'browser:generic-web:youtube.com:document:travel.kitable',
-  type: 'browser' as const,
-  title: '',
-  provider: 'generic-web',
-  host: 'youtube.com',
-  url: 'https://example.com/search?q=San%20Diego%20travel',
-  query: 'San Diego travel',
-  originTabId: 'document:travel.kitable',
-  originDocumentPath: 'travel.kitable',
-  originTableId: 42,
-  originLabel: 'Travel Leads',
+const boardTab = {
+  id: 'board:plan.kiboard',
+  type: 'board' as const,
+  title: 'plan',
+  path: 'plan.kiboard',
 }
 
-describe('workspacePersistence browser tabs', () => {
+describe('workspacePersistence tabs', () => {
   beforeEach(() => {
     window.localStorage.clear()
   })
 
-  it('restores persisted browser tabs when the feature is enabled', () => {
-    writeWorkspaceTabs(ROOT_A, [browserTab])
+  it('drops browser tabs saved by earlier versions', () => {
+    window.localStorage.setItem('kition.document.workspace-tabs.v2', JSON.stringify({
+      [ROOT_A]: [
+        { id: 'browser:generic-web:example.com', type: 'browser', title: 'Example', provider: 'generic-web' },
+        { id: 'browser-sites', type: 'browser-sites', title: 'Sites' },
+        boardTab,
+      ],
+    }))
 
-    expect(readWorkspaceTabs(ROOT_A)).toEqual([
-      expect.objectContaining({
-        ...browserTab,
-        title: 'youtube.com · Travel Leads · San Diego travel',
-      }),
-    ])
+    expect(readWorkspaceTabs(ROOT_A)).toEqual([expect.objectContaining(boardTab)])
   })
 
   it('keeps each workspace tab list isolated under its own rootPath', () => {
-    writeWorkspaceTabs(ROOT_A, [browserTab])
+    writeWorkspaceTabs(ROOT_A, [boardTab])
     writeWorkspaceTabs(ROOT_B, [
       {
         id: 'document:notes.md',
@@ -50,12 +44,7 @@ describe('workspacePersistence browser tabs', () => {
       },
     ])
 
-    expect(readWorkspaceTabs(ROOT_A)).toEqual([
-      expect.objectContaining({
-        ...browserTab,
-        title: 'youtube.com · Travel Leads · San Diego travel',
-      }),
-    ])
+    expect(readWorkspaceTabs(ROOT_A)).toEqual([expect.objectContaining(boardTab)])
     expect(readWorkspaceTabs(ROOT_B)).toEqual([
       {
         id: 'document:notes.md',
@@ -68,7 +57,7 @@ describe('workspacePersistence browser tabs', () => {
   })
 
   it('returns no tabs and does not write when rootPath is empty', () => {
-    writeWorkspaceTabs(ROOT_A, [browserTab])
+    writeWorkspaceTabs(ROOT_A, [boardTab])
 
     expect(readWorkspaceTabs('')).toEqual([])
 
@@ -81,16 +70,11 @@ describe('workspacePersistence browser tabs', () => {
       },
     ])
 
-    expect(readWorkspaceTabs(ROOT_A)).toEqual([
-      expect.objectContaining({
-        ...browserTab,
-        title: 'youtube.com · Travel Leads · San Diego travel',
-      }),
-    ])
+    expect(readWorkspaceTabs(ROOT_A)).toEqual([expect.objectContaining(boardTab)])
   })
 
   it('writing an empty list removes that workspace’s slot', () => {
-    writeWorkspaceTabs(ROOT_A, [browserTab])
+    writeWorkspaceTabs(ROOT_A, [boardTab])
     writeWorkspaceTabs(ROOT_A, [])
 
     expect(readWorkspaceTabs(ROOT_A)).toEqual([])
@@ -102,15 +86,10 @@ describe('workspacePersistence browser tabs', () => {
   it('migrates legacy v1 array into the first rootPath that reads it', () => {
     window.localStorage.setItem(
       'kition.document.workspace-tabs.v1',
-      JSON.stringify([browserTab]),
+      JSON.stringify([boardTab]),
     )
 
-    expect(readWorkspaceTabs(ROOT_A)).toEqual([
-      expect.objectContaining({
-        ...browserTab,
-        title: 'youtube.com · Travel Leads · San Diego travel',
-      }),
-    ])
+    expect(readWorkspaceTabs(ROOT_A)).toEqual([expect.objectContaining(boardTab)])
     // Legacy key gets cleaned up.
     expect(window.localStorage.getItem('kition.document.workspace-tabs.v1')).toBeNull()
     // Subsequent reads from other workspaces do not see the migrated data.

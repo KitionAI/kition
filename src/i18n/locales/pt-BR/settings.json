@@ -65,7 +65,7 @@
     "description": "Preferências de proxy e de conexões de saída para todo o app desktop.",
     "proxy": {
       "sectionTitle": "Proxy",
-      "sectionDescription": "Roteia todas as requisições de saída — Go API (SMTP, webhooks, console), janela do Electron e atualizador automático — pelo mesmo proxy.",
+      "sectionDescription": "Roteia todas as requisições de saída — runtime (SMTP, webhooks, console), janela do app e atualizador automático — pelo mesmo proxy.",
       "enableTitle": "Usar proxy",
       "enableDescription": "Quando desativado, o tráfego vai direto.",
       "enabled": "Ativado",

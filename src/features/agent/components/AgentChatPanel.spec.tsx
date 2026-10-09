@@ -9,7 +9,7 @@ import type { AgentSession } from '@/api/agent'
 
 // ── Mocks ────────────────────────────────────────────────────────────────────
 
-// useDesktopSettings relies on Electron IPC — stub it out
+// useDesktopSettings relies on the desktop bridge — stub it out
 vi.mock('@/features/settings/hooks/useDesktopSettings', () => ({
   useDesktopSettings: () => ({
     settings: {
@@ -190,7 +190,7 @@ describe('AgentChatPanel composer controls', () => {
     expect(onSend).toHaveBeenCalledOnce()
   })
 
-  it('keeps web search and browser capability controls out of the composer', async () => {
+  it('keeps web search capability controls out of the composer', async () => {
     Element.prototype.scrollIntoView = vi.fn()
     const modelOption = {
       key: 'kition_console:gpt-test',
@@ -223,7 +223,6 @@ describe('AgentChatPanel composer controls', () => {
     expect(modelPicker.textContent).not.toContain('Kition Cloud')
     expect(container.querySelector('.agent-ai-send')).not.toBeNull()
     expect(container.querySelector('[data-testid="agent-hosted-web-search-status"]')).toBeNull()
-    expect(container.querySelector('.agent-ai-browser-toggle')).toBeNull()
   })
 
   it('keeps the write target and local folders in the input area', async () => {
@@ -581,19 +580,6 @@ describe('AgentChatPanel empty-state per pane', () => {
     expect(labels).not.toContain('Summarize this document')
   })
 
-  it('browserSites pane shows discovery suggestions, not page-action suggestions', async () => {
-    await mount(
-      createElement(AgentChatPanel, makeMinimalProps({ paneContext: 'browserSites' })),
-    )
-    const labels = getStarterLabels()
-    expect(labels).toContain('Add a site')
-    expect(labels).toContain('Show connected')
-
-    // iter 14 split them deliberately.
-    expect(labels).not.toContain('Summarise this page')
-    expect(labels).not.toContain('Summarize this document')
-  })
-
   it('gallery pane shows media-agnostic suggestions', async () => {
     await mount(
       createElement(AgentChatPanel, makeMinimalProps({ paneContext: 'gallery' })),
@@ -635,15 +621,13 @@ describe('AgentChatPanel empty-state per pane', () => {
   // iter 28: parameterize across every pane. The CTA-swap logic is
   // pane-agnostic, but each pane has its own suggestion set, and a
   // regression that special-cases (say) workflow could silently leak
-  // pane-specific suggestions back through. Cover all 6 panes
+  // pane-specific suggestions back through. Cover the panes
   // explicitly so one accidentally re-enabled pane fails its own
   // assertion.
   describe.each([
     { pane: 'document', leakedStarter: 'Summarize this document' },
     { pane: 'workflow', leakedStarter: 'Email me on every new record' },
     { pane: 'table', leakedStarter: 'Summarise this table' },
-    { pane: 'browser', leakedStarter: 'Summarise this page' },
-    { pane: 'browserSites', leakedStarter: 'Add a site' },
     { pane: 'gallery', leakedStarter: 'Describe each item' },
   ] as const)('needsModelConfig on pane $pane', ({ pane, leakedStarter }) => {
     it('hides the pane-specific suggestion and shows the Configure CTA instead', async () => {

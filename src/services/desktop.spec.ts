@@ -30,11 +30,11 @@ describe('desktop service helpers', () => {
 
   it('resolves bundled template assets against the renderer instead of the runtime API', async () => {
     const desktopWindow = window as typeof window & { kitionDesktop?: unknown }
-    desktopWindow.kitionDesktop = { shell: 'electron' }
+    desktopWindow.kitionDesktop = { shell: 'tauri' }
     const { resolvePublicFileURL } = await loadDesktopModule()
 
     expect(resolvePublicFileURL('kition-bundled:/templates/example/image.png'))
-      .toBe('kition-bundled://assets/templates/example/image.png')
+      .toBe('/templates/example/image.png')
     expect(resolvePublicFileURL('/uploads/example/image.png'))
       .toBe('http://127.0.0.1:18101/uploads/example/image.png')
   })
@@ -43,19 +43,10 @@ describe('desktop service helpers', () => {
     const { getApiBaseURL } = await loadDesktopModule()
     expect(getApiBaseURL()).toBe('/api')
 
-    ;(window as typeof window & { kitionDesktop?: unknown }).kitionDesktop = { shell: 'electron' }
+    ;(window as typeof window & { kitionDesktop?: unknown }).kitionDesktop = { shell: 'tauri' }
 
     const desktopModule = await loadDesktopModule()
     expect(desktopModule.getApiBaseURL()).toBe('http://127.0.0.1:18101/api')
-  })
-
-  it('detects the electron desktop runtime from the dedicated bridge', async () => {
-    (window as typeof window & { kitionDesktop?: Record<string, unknown> }).kitionDesktop = {
-      shell: 'electron',
-    }
-
-    const { isElectronDesktopRuntime } = await loadDesktopModule()
-    expect(isElectronDesktopRuntime()).toBe(true)
   })
 
   it('selects a read-only local analysis source through the desktop bridge', async () => {
@@ -66,7 +57,7 @@ describe('desktop service helpers', () => {
       access: 'read',
     }
     ;(window as typeof window & { kitionDesktop?: any }).kitionDesktop = {
-      shell: 'electron',
+      shell: 'tauri',
       ChooseAgentAnalysisDirectory: vi.fn().mockResolvedValue(source),
     }
 
@@ -84,7 +75,7 @@ describe('desktop service helpers', () => {
       return off
     })
     ;(window as typeof window & { kitionDesktop?: any }).kitionDesktop = {
-      shell: 'electron',
+      shell: 'tauri',
       documentExternalChangeEvent: 'desktop:document:external-change',
       EventsOn: eventsOn,
     }
@@ -110,7 +101,7 @@ describe('desktop service helpers', () => {
 
   it('waits for the embedded desktop backend health endpoint', async () => {
     vi.useFakeTimers()
-    ;(window as typeof window & { kitionDesktop?: unknown }).kitionDesktop = { shell: 'electron' }
+    ;(window as typeof window & { kitionDesktop?: unknown }).kitionDesktop = { shell: 'tauri' }
 
     const fetchMock = vi
       .fn()
@@ -157,7 +148,7 @@ describe('desktop service helpers', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     ;(window as typeof window & { kitionDesktop?: any }).kitionDesktop = {
-      shell: 'electron',
+      shell: 'tauri',
       BackendStatus: vi.fn().mockResolvedValue(backendStatus),
     }
 
@@ -191,7 +182,7 @@ describe('desktop service helpers', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     ;(window as typeof window & { kitionDesktop?: any }).kitionDesktop = {
-      shell: 'electron',
+      shell: 'tauri',
       BackendStatus: vi.fn().mockResolvedValue(backendStatus),
       RetryBackendStart: retryMock,
     }
@@ -209,7 +200,7 @@ describe('desktop service helpers', () => {
   it('does not cache desktop backend readiness forever after a prior success', async () => {
     vi.useFakeTimers()
     ;(window as typeof window & { kitionDesktop?: any }).kitionDesktop = {
-      shell: 'electron',
+      shell: 'tauri',
       BackendStatus: vi.fn().mockResolvedValue(null),
     }
 
@@ -227,334 +218,9 @@ describe('desktop service helpers', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
-  it('proxies generic browser session helpers through the desktop bridge', async () => {
-    const status = {
-      provider: 'generic-web',
-      supported: true,
-      available: true,
-      window_open: true,
-      logged_in: true,
-      editor_ready: false,
-      page_url: 'https://www.youtube.com/feed/trending',
-      page_title: 'YouTube Trending',
-      message: 'ready',
-      last_error: '',
-    }
-    const pageContext = {
-      provider: 'generic-web',
-      supported_page: true,
-      logged_in: true,
-      editor_ready: false,
-      page_url: 'https://www.youtube.com/feed/trending',
-      page_title: 'YouTube Trending',
-      hostname: 'youtube.com',
-      page_heading: 'Markets',
-      content_text_preview: 'Body text preview',
-      extracted_at: '2026-05-15T10:00:00.000Z',
-    }
-
-    ;(window as typeof window & { kitionDesktop?: any }).kitionDesktop = {
-      shell: 'electron',
-      BrowserSessionStatus: vi.fn().mockResolvedValue(status),
-      EnsureBrowserSessionWindow: vi.fn().mockResolvedValue(status),
-      OpenBrowserSessionHome: vi.fn().mockResolvedValue(status),
-      HideBrowserSessionPanel: vi.fn().mockResolvedValue({
-        ...status,
-        window_open: false,
-        panel_visible: false,
-        panel_width: 0,
-      }),
-      SetBrowserSessionHostLayout: vi.fn().mockResolvedValue(status),
-      ExtractBrowserPageContext: vi.fn().mockResolvedValue(pageContext),
-    }
-
-    const desktopModule = await loadDesktopModule()
-
-    await expect(
-      desktopModule.getBrowserSessionStatus({ provider: 'generic-web' }),
-    ).resolves.toMatchObject({
-      provider: 'generic-web',
-      page_url: 'https://www.youtube.com/feed/trending',
-    })
-    await expect(
-      desktopModule.ensureBrowserSessionWindow({ provider: 'generic-web' }),
-    ).resolves.toMatchObject({
-      provider: 'generic-web',
-      logged_in: true,
-    })
-    await expect(
-      desktopModule.openBrowserSessionHome({ provider: 'generic-web' }),
-    ).resolves.toMatchObject({
-      provider: 'generic-web',
-      supported: true,
-    })
-    await expect(
-      desktopModule.hideBrowserSessionPanel({ provider: 'generic-web' }),
-    ).resolves.toMatchObject({
-      provider: 'generic-web',
-      panel_visible: false,
-    })
-    await expect(
-      desktopModule.setBrowserSessionHostLayout({
-        provider: 'generic-web',
-        leftInset: 272,
-        topInset: 98,
-        rightInset: 392,
-      }),
-    ).resolves.toMatchObject({
-      provider: 'generic-web',
-      logged_in: true,
-    })
-    await expect(
-      desktopModule.extractBrowserPageContext({
-        provider: 'generic-web',
-        max_preview_length: 800,
-      }),
-    ).resolves.toMatchObject({
-      provider: 'generic-web',
-      hostname: 'youtube.com',
-    })
-    expect((window as typeof window & { kitionDesktop?: any }).kitionDesktop.BrowserSessionStatus).toHaveBeenCalledWith({
-      provider: 'generic-web',
-    })
-    expect((window as typeof window & { kitionDesktop?: any }).kitionDesktop.ExtractBrowserPageContext).toHaveBeenCalledWith({
-      provider: 'generic-web',
-      max_preview_length: 800,
-    })
-    expect((window as typeof window & { kitionDesktop?: any }).kitionDesktop.SetBrowserSessionHostLayout).toHaveBeenCalledWith({
-      provider: 'generic-web',
-      leftInset: 272,
-      topInset: 98,
-      rightInset: 392,
-    })
-  })
-
-  it('forwards generic-web session targets through the desktop bridge', async () => {
-    const status = {
-      provider: 'generic-web',
-      supported: true,
-      available: true,
-      window_open: true,
-      logged_in: true,
-      editor_ready: false,
-      page_url: 'https://example.com/list',
-      page_title: 'Example List',
-      message: 'ready',
-      last_error: '',
-    }
-
-    ;(window as typeof window & { kitionDesktop?: any }).kitionDesktop = {
-      shell: 'electron',
-      EnsureBrowserSessionWindow: vi.fn().mockResolvedValue(status),
-    }
-
-    const desktopModule = await loadDesktopModule()
-
-    await expect(
-      desktopModule.ensureBrowserSessionWindow({
-        provider: 'generic-web',
-        host: 'example.com',
-        url: 'https://example.com/list',
-      }),
-    ).resolves.toMatchObject({
-      provider: 'generic-web',
-      page_url: 'https://example.com/list',
-    })
-    expect((window as typeof window & { kitionDesktop?: any }).kitionDesktop.EnsureBrowserSessionWindow).toHaveBeenCalledWith({
-      provider: 'generic-web',
-      host: 'example.com',
-      url: 'https://example.com/list',
-    })
-  })
-
-  it('normalizes generic-web structured page entities from the desktop bridge', async () => {
-    const pageContext = {
-      provider: 'generic-web',
-      supported_page: true,
-      logged_in: true,
-      editor_ready: false,
-      page_url: 'https://example.com/list',
-      page_title: 'Example List',
-      hostname: 'example.com',
-      page_type: 'list',
-      extracted_entities: [
-        {
-          entity_type: 'post',
-          url: 'https://example.com/post-1',
-          title: 'Post One',
-          summary: 'First post summary',
-        },
-      ],
-      extracted_at: '2026-05-15T10:00:00.000Z',
-    }
-
-    ;(window as typeof window & { kitionDesktop?: any }).kitionDesktop = {
-      shell: 'electron',
-      ExtractBrowserPageContext: vi.fn().mockResolvedValue(pageContext),
-    }
-
-    const desktopModule = await loadDesktopModule()
-
-    await expect(
-      desktopModule.extractBrowserPageContext({
-        provider: 'generic-web',
-        command: 'extract-list',
-        entity_type: 'post',
-      }),
-    ).resolves.toMatchObject({
-      provider: 'generic-web',
-      page_type: 'list',
-      extracted_entities: [
-        {
-          entity_type: 'post',
-          url: 'https://example.com/post-1',
-          title: 'Post One',
-        },
-      ],
-    })
-  })
-
-  it('subscribes browser session panel state through the generic desktop event', async () => {
-    const payload = {
-      provider: 'generic-web',
-      panel_visible: true,
-      panel_width: 560,
-      page_title: 'YouTube Trending',
-      page_url: 'https://www.youtube.com/feed/trending',
-    }
-    const eventsOn = vi.fn((eventName: string, callback: (data: unknown) => void) => {
-      if (eventName === 'desktop:browser:session-state-updated') {
-        callback(payload)
-      }
-    })
-
-    ;(window as typeof window & { kitionDesktop?: any }).kitionDesktop = {
-      shell: 'electron',
-      EventsOn: eventsOn,
-    }
-
-    const desktopModule = await loadDesktopModule()
-    const handler = vi.fn()
-
-    desktopModule.registerBrowserSessionStateHandler('generic-web', handler)
-
-    expect(eventsOn).toHaveBeenCalledWith(
-      'desktop:browser:session-state-updated',
-      expect.any(Function),
-    )
-    expect(handler).toHaveBeenCalledWith({
-      provider: 'generic-web',
-      visible: true,
-      width: 560,
-      title: 'YouTube Trending',
-      url: 'https://www.youtube.com/feed/trending',
-      canGoBack: false,
-      canGoForward: false,
-      isLoading: false,
-    })
-  })
-
-  it('binds the browser session desktop event only once and fans out to matching handlers', async () => {
-    let browserSessionCallback: ((data: unknown) => void) | null = null
-    const eventsOn = vi.fn((eventName: string, callback: (data: unknown) => void) => {
-      if (eventName === 'desktop:browser:session-state-updated') {
-        browserSessionCallback = callback
-      }
-    })
-
-    ;(window as typeof window & { kitionDesktop?: any }).kitionDesktop = {
-      shell: 'electron',
-      EventsOn: eventsOn,
-    }
-
-    const desktopModule = await loadDesktopModule()
-    const webHandler = vi.fn()
-
-    const offWeb = desktopModule.registerBrowserSessionStateHandler('generic-web', webHandler)
-
-    expect(eventsOn).toHaveBeenCalledTimes(1)
-    expect(eventsOn).toHaveBeenCalledWith(
-      'desktop:browser:session-state-updated',
-      expect.any(Function),
-    )
-
-    browserSessionCallback?.({
-      provider: 'generic-web',
-      panel_visible: true,
-      panel_width: 440,
-      page_title: 'Search results',
-      page_url: 'https://www.youtube.com/results?search_query=test',
-    })
-
-    expect(webHandler).toHaveBeenCalledWith({
-      provider: 'generic-web',
-      visible: true,
-      width: 440,
-      title: 'Search results',
-      url: 'https://www.youtube.com/results?search_query=test',
-      canGoBack: false,
-      canGoForward: false,
-      isLoading: false,
-    })
-
-    offWeb()
-  })
-
-  it('keeps runtime and visibility details on browser session state events', async () => {
-    const payload = {
-      provider: 'generic-web',
-      panel_visible: true,
-      panel_width: 420,
-      window_open: true,
-      logged_in: true,
-      message: 'Opened youtube.com',
-      page_title: 'YouTube',
-      page_url: 'https://www.youtube.com/',
-      runtime: {
-        navigation: {
-          stage: 'loading',
-        },
-      },
-    }
-    const eventsOn = vi.fn((eventName: string, callback: (data: unknown) => void) => {
-      if (eventName === 'desktop:browser:session-state-updated') {
-        callback(payload)
-      }
-    })
-
-    ;(window as typeof window & { kitionDesktop?: any }).kitionDesktop = {
-      shell: 'electron',
-      EventsOn: eventsOn,
-    }
-
-    const desktopModule = await loadDesktopModule()
-    const handler = vi.fn()
-
-    desktopModule.registerBrowserSessionStateHandler('generic-web', handler)
-
-    expect(handler).toHaveBeenCalledWith({
-      provider: 'generic-web',
-      visible: true,
-      width: 420,
-      windowOpen: true,
-      loggedIn: true,
-      message: 'Opened youtube.com',
-      title: 'YouTube',
-      url: 'https://www.youtube.com/',
-      canGoBack: false,
-      canGoForward: false,
-      isLoading: false,
-      runtime: {
-        navigation: {
-          stage: 'loading',
-        },
-      },
-    })
-  })
-
-  it('normalizes Electron platform identifiers from the desktop bridge', async () => {
+  it('normalizes Node-style platform identifiers from the desktop bridge', async () => {
     (window as typeof window & { kitionDesktop?: any }).kitionDesktop = {
-      shell: 'electron',
+      shell: 'tauri',
       DesktopInfo: vi.fn().mockResolvedValue({
         is_desktop: true,
         platform: 'win32',
@@ -574,9 +240,9 @@ describe('desktop service helpers', () => {
     })
   })
 
-  it('proxies desktop file export helpers through the Electron bridge', async () => {
+  it('proxies desktop file export helpers through the desktop bridge', async () => {
     (window as typeof window & { kitionDesktop?: any }).kitionDesktop = {
-      shell: 'electron',
+      shell: 'tauri',
       SaveTextFile: vi.fn().mockResolvedValue('/tmp/exports/doc.md'),
       SaveBinaryFile: vi.fn().mockResolvedValue('/tmp/exports/doc.docx'),
       SavePdfFile: vi.fn().mockResolvedValue('/tmp/exports/doc.pdf'),
@@ -676,7 +342,7 @@ describe('desktop service helpers', () => {
     const drawImage = vi.fn()
 
     ;(window as typeof window & { kitionDesktop?: any }).kitionDesktop = {
-      shell: 'electron',
+      shell: 'tauri',
       CopyImage: copyImage,
     }
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
@@ -726,7 +392,7 @@ describe('desktop service helpers', () => {
     }
 
     ;(window as typeof window & { kitionDesktop?: any }).kitionDesktop = {
-      shell: 'electron',
+      shell: 'tauri',
       ListWorkspaceDocuments: vi.fn().mockResolvedValue(listResponse),
       ReadWorkspaceDocument: vi.fn().mockResolvedValue(document),
       WriteWorkspaceDocument: vi.fn().mockResolvedValue({ ...document, content: '# Updated' }),
@@ -906,171 +572,4 @@ describe('desktop service helpers', () => {
     expect(window.localStorage.getItem('kition.workspace.folders.v1')).toBe('[]')
   })
 
-  it('returns empty browser site results without a desktop bridge', async () => {
-    const desktopModule = await loadDesktopModule()
-
-    await expect(desktopModule.listBrowserSites()).resolves.toEqual({ sites: [] })
-    await expect(
-      desktopModule.forgetBrowserSite({ host: 'example.com' }),
-    ).resolves.toEqual({ sites: [] })
-    await expect(desktopModule.refreshBrowserSiteLoginStatus()).resolves.toEqual({ sites: [] })
-  })
-
-  it('falls back to a safe browser status for navigation commands without a desktop bridge', async () => {
-    const desktopModule = await loadDesktopModule()
-
-    for (const command of [
-      desktopModule.browserSessionGoBack,
-      desktopModule.browserSessionGoForward,
-      desktopModule.browserSessionReload,
-      desktopModule.browserSessionStop,
-    ]) {
-      await expect(command({ provider: 'generic-web' })).resolves.toMatchObject({
-        provider: 'generic-web',
-        window_open: false,
-        can_go_back: false,
-        can_go_forward: false,
-        is_loading: false,
-      })
-    }
-  })
-
-  it('proxies browser navigation commands and surfaces navigation status fields', async () => {
-    const status = {
-      provider: 'generic-web',
-      supported: true,
-      available: true,
-      window_open: true,
-      logged_in: false,
-      editor_ready: false,
-      page_url: 'https://example.com/list',
-      page_title: 'Example List',
-      message: 'ready',
-      last_error: '',
-      can_go_back: true,
-      can_go_forward: false,
-      is_loading: true,
-    }
-
-    ;(window as typeof window & { kitionDesktop?: any }).kitionDesktop = {
-      shell: 'electron',
-      GoBackBrowserSession: vi.fn().mockResolvedValue(status),
-      GoForwardBrowserSession: vi.fn().mockResolvedValue(status),
-      ReloadBrowserSession: vi.fn().mockResolvedValue(status),
-      StopBrowserSession: vi.fn().mockResolvedValue({ ...status, is_loading: false }),
-    }
-
-    const desktopModule = await loadDesktopModule()
-    const bridge = (window as typeof window & { kitionDesktop?: any }).kitionDesktop
-
-    await expect(
-      desktopModule.browserSessionGoBack({ provider: 'generic-web' }),
-    ).resolves.toMatchObject({ can_go_back: true, can_go_forward: false, is_loading: true })
-    await expect(
-      desktopModule.browserSessionGoForward({ provider: 'generic-web' }),
-    ).resolves.toMatchObject({ can_go_back: true, is_loading: true })
-    await expect(
-      desktopModule.browserSessionReload({ provider: 'generic-web' }),
-    ).resolves.toMatchObject({ is_loading: true })
-    await expect(
-      desktopModule.browserSessionStop({ provider: 'generic-web' }),
-    ).resolves.toMatchObject({ is_loading: false })
-
-    expect(bridge.GoBackBrowserSession).toHaveBeenCalledWith({ provider: 'generic-web' })
-    expect(bridge.StopBrowserSession).toHaveBeenCalledWith({ provider: 'generic-web' })
-  })
-
-  it('normalizes navigation flags onto browser session panel state events', async () => {
-    const payload = {
-      provider: 'generic-web',
-      panel_visible: true,
-      panel_width: 480,
-      page_title: 'Example',
-      page_url: 'https://example.com/',
-      can_go_back: true,
-      can_go_forward: false,
-      is_loading: true,
-    }
-    const eventsOn = vi.fn((eventName: string, callback: (data: unknown) => void) => {
-      if (eventName === 'desktop:browser:session-state-updated') {
-        callback(payload)
-      }
-    })
-
-    ;(window as typeof window & { kitionDesktop?: any }).kitionDesktop = {
-      shell: 'electron',
-      EventsOn: eventsOn,
-    }
-
-    const desktopModule = await loadDesktopModule()
-    const handler = vi.fn()
-
-    desktopModule.registerBrowserSessionStateHandler('generic-web', handler)
-
-    expect(handler).toHaveBeenCalledWith(
-      expect.objectContaining({
-        provider: 'generic-web',
-        url: 'https://example.com/',
-        canGoBack: true,
-        canGoForward: false,
-        isLoading: true,
-      }),
-    )
-  })
-
-  it('normalizes browser site records through the desktop bridge', async () => {
-    const listResponse = {
-      sites: [
-        {
-          host: 'example.com',
-          profileId: 'default',
-          url: 'https://example.com/feed',
-          title: 'Example',
-          favicon: 'https://example.com/favicon.ico',
-          provider: 'generic-web',
-          lastSeenAt: '2026-05-20T10:00:00.000Z',
-          visitCount: 3,
-          loggedIn: true,
-          lastCheckedAt: '2026-05-20T10:05:00.000Z',
-        },
-        { host: 'partial.com' },
-      ],
-    }
-
-    ;(window as typeof window & { kitionDesktop?: any }).kitionDesktop = {
-      shell: 'electron',
-      ListBrowserSites: vi.fn().mockResolvedValue(listResponse),
-      ForgetBrowserSite: vi.fn().mockResolvedValue({ sites: [] }),
-      RefreshBrowserSiteLoginStatus: vi.fn().mockResolvedValue(listResponse),
-    }
-
-    const desktopModule = await loadDesktopModule()
-
-    const result = await desktopModule.listBrowserSites()
-    expect(result.sites).toHaveLength(2)
-    expect(result.sites[0]).toMatchObject({
-      host: 'example.com',
-      profileId: 'default',
-      visitCount: 3,
-      loggedIn: true,
-    })
-    expect(result.sites[1]).toMatchObject({
-      host: 'partial.com',
-      profileId: '',
-      provider: 'generic-web',
-      visitCount: 0,
-      loggedIn: false,
-    })
-
-    await desktopModule.forgetBrowserSite({ host: 'example.com', profile_id: 'default' })
-    expect(
-      (window as typeof window & { kitionDesktop?: any }).kitionDesktop.ForgetBrowserSite,
-    ).toHaveBeenCalledWith({ host: 'example.com', profile_id: 'default' })
-
-    await desktopModule.refreshBrowserSiteLoginStatus({ host: 'example.com' })
-    expect(
-      (window as typeof window & { kitionDesktop?: any }).kitionDesktop
-        .RefreshBrowserSiteLoginStatus,
-    ).toHaveBeenCalledWith({ host: 'example.com' })
-  })
 })

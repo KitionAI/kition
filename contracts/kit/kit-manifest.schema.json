@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kition.ai/contracts/kit/kit-manifest.schema.json",
+  "title": "Kition Kit Manifest",
+  "description": "The kit.json file shipped at the root of every kit package.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "name",
+    "version",
+    "publisher",
+    "kitProtocol",
+    "license",
+    "executable",
+    "fileTypes",
+    "surfaces"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "id": { "$ref": "#/$defs/kitId" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "description": { "type": "string", "maxLength": 280 },
+    "version": { "$ref": "#/$defs/semver" },
+    "publisher": { "type": "string", "minLength": 1 },
+    "kitProtocol": { "type": "integer", "minimum": 1 },
+    "minHostVersion": { "$ref": "#/$defs/semver" },
+    "license": {
+      "type": "string",
+      "minLength": 1,
+      "description": "SPDX license expression for the kit package."
+    },
+    "attribution": {
+      "type": "array",
+      "description": "Upstream projects included in the kit. Upstream product names appear only here.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "url", "license"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "url": { "type": "string", "format": "uri" },
+          "license": { "type": "string", "minLength": 1 },
+          "revision": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "executable": {
+      "type": "string",
+      "description": "Package-relative path to the kit executable, without the .exe suffix.",
+      "pattern": "^[A-Za-z0-9._/-]+$"
+    },
+    "fileTypes": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/fileType" }
+    },
+    "surfaces": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "enum": ["embedded", "window", "web", "headless"] }
+    },
+    "embedding": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Embedding mechanisms supported per platform, in preference order. Required when surfaces contains embedded.",
+      "properties": {
+        "macos": { "$ref": "#/$defs/mechanismList" },
+        "windows": { "$ref": "#/$defs/mechanismList" },
+        "linux": { "$ref": "#/$defs/mechanismList" }
+      }
+    },
+    "web": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entry"],
+      "description": "WebAssembly build entry. Required when surfaces contains web.",
+      "properties": {
+        "entry": { "type": "string", "pattern": "^[A-Za-z0-9._/-]+\\.html$" }
+      }
+    },
+    "permissions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "network": {
+          "description": "false for no network access, or the list of hosts the kit may contact.",
+          "oneOf": [
+            { "const": false },
+            {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string", "minLength": 1 }
+            }
+          ]
+        }
+      }
+    },
+    "agent": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "toolGroups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "title", "description"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[a-z][a-z0-9_.-]*$" },
+              "title": { "type": "string", "minLength": 1 },
+              "description": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "surfaces": { "contains": { "const": "embedded" } } } },
+      "then": { "required": ["embedding"] }
+    },
+    {
+      "if": { "properties": { "surfaces": { "contains": { "const": "web" } } } },
+      "then": { "required": ["web"] }
+    }
+  ],
+  "$defs": {
+    "kitId": {
+      "type": "string",
+      "pattern": "^kit\\.[a-z][a-z0-9-]*$"
+    },
+    "semver": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?$"
+    },
+    "mechanismList": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": ["child-window", "overlay-window", "shared-texture"]
+      }
+    },
+    "fileType": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "extensions", "roles"],
+      "properties": {
+        "format": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$",
+          "description": "Kit-local format identifier used in document.* methods."
+        },
+        "extensions": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "pattern": "^[a-z0-9]+$" }
+        },
+        "mimeTypes": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z]+/[A-Za-z0-9.+-]+$" }
+        },
+        "roles": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["editor", "viewer", "importer", "exporter"] }
+        },
+        "default": {
+          "type": "boolean",
+          "description": "Offer this kit as the default handler for these extensions."
+        }
+      }
+    }
+  }
+}

@@ -65,7 +65,7 @@
     "description": "桌面端代理与对外连接的统一设置。",
     "proxy": {
       "sectionTitle": "代理",
-      "sectionDescription": "Go API（SMTP / Webhook / Console）、Electron 窗口、自动更新都会走这里配置的代理。",
+      "sectionDescription": "运行时（SMTP / Webhook / Console）、桌面窗口、自动更新都会走这里配置的代理。",
       "enableTitle": "启用代理",
       "enableDescription": "关闭时直连。",
       "enabled": "已启用",

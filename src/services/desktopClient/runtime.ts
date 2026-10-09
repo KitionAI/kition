@@ -26,10 +26,6 @@ export function isDesktopRuntime() {
   return Boolean(getDesktopBridge())
 }
 
-export function isElectronDesktopRuntime() {
-  return getDesktopBridge()?.shell === 'electron'
-}
-
 function getDesktopBackendOrigin() {
   return getDesktopBridge()?.backendOrigin || desktopBackendOriginFallback
 }

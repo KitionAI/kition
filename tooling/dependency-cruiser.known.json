@@ -13920,23 +13920,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/agent/lib/agentBrowserTab.ts",
-    "to": "src/features/workspace/lib/browserTabs.ts",
-    "unresolvedTo": "@/features/workspace/lib/browserTabs",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/features/agent/lib/agentDocumentEditing.ts",
     "to": "src/features/document/editor/editor/markdown-image-insertion.ts",
     "unresolvedTo": "@/features/document/editor/editor/markdown-image-insertion",
@@ -14942,23 +14925,6 @@
       "aliased-tsconfig-paths",
       "local",
       "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/whiteboard/lib/whiteboardPresentation.ts",
-    "to": "src/features/presentation/lib/presentationTypes.ts",
-    "unresolvedTo": "@/features/presentation/lib/presentationTypes",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
       "import"
     ],
     "rule": {
@@ -16513,24 +16479,6 @@
       "aliased-tsconfig",
       "aliased-tsconfig-paths",
       "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "shared-layers-do-not-import-features"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/api/presentations.ts",
-    "to": "src/features/presentation/lib/presentationTypes.ts",
-    "unresolvedTo": "@/features/presentation/lib/presentationTypes",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
       "import"
     ],
     "rule": {

@@ -1,0 +1,92 @@
+[workspace]
+resolver = "3"
+members = ["crates/*", "src-tauri"]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.94"
+license = "AGPL-3.0-only"
+publish = false
+
+[workspace.dependencies]
+kition-core = { path = "crates/kition-core" }
+kition-store = { path = "crates/kition-store" }
+kition-http = { path = "crates/kition-http" }
+kition-ai = { path = "crates/kition-ai" }
+kition-workspace = { path = "crates/kition-workspace" }
+kition-kitable = { path = "crates/kition-kitable" }
+kition-datadoc = { path = "crates/kition-datadoc" }
+kition-connections = { path = "crates/kition-connections" }
+kition-formsync = { path = "crates/kition-formsync" }
+kition-emailsync = { path = "crates/kition-emailsync" }
+kition-workspacestorage = { path = "crates/kition-workspacestorage" }
+kition-desktop = { path = "crates/kition-desktop" }
+kition-workflow = { path = "crates/kition-workflow" }
+kition-api = { path = "crates/kition-api" }
+kition-agent = { path = "crates/kition-agent" }
+
+anyhow = "1"
+async-imap = { version = "0.10", default-features = false, features = ["runtime-tokio"] }
+dom_smoothie = "0.18"
+futures = "0.3"
+htmd = "0.2"
+lol_html = "2"
+mail-parser = "0.11"
+aes-gcm = "0.10"
+base64 = "0.22"
+bcrypt = "0.17"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+chrono-tz = "0.10"
+crc32fast = "1"
+hex = "0.4"
+jsonwebtoken = "9"
+mime_guess = "2"
+pdf-extract = "0.12"
+quick-xml = "0.37"
+r2d2 = "0.8"
+r2d2_sqlite = "0.31"
+rand = "0.9"
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+rustls-platform-verifier = "0.6"
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
+regex = "1"
+reqwest = { version = "0.12", default-features = false, features = ["json", "multipart", "rustls-tls", "stream"] }
+rusqlite = { version = "0.37", features = ["bundled", "hooks", "serde_json"] }
+sha2 = "0.10"
+tower-http = { version = "0.6", features = ["cors", "fs", "set-header"] }
+url = "2"
+uuid = { version = "1", features = ["v4"] }
+axum = { version = "0.8", features = ["multipart"] }
+bytes = "1"
+calamine = { version = "0.30", features = ["dates"] }
+csv = "1"
+clap = { version = "4", features = ["derive", "env"] }
+http = "1"
+http-body-util = "0.1"
+hyper = { version = "1", features = ["client", "http1"] }
+hyper-util = { version = "0.1", features = ["client-legacy", "http1", "tokio"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+socket2 = "0.5"
+tempfile = "3"
+thiserror = "2"
+tokio-stream = "0.1"
+tokio = { version = "1", features = ["macros", "net", "process", "rt-multi-thread", "signal", "sync", "time"] }
+toml = "0.8"
+zip = { version = "4", default-features = false, features = ["deflate"] }
+tower = { version = "0.5", features = ["util"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+
+[profile.release]
+strip = true
+lto = "thin"
+codegen-units = 1

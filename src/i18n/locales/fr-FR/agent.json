@@ -141,40 +141,6 @@
         }
       }
     },
-    "browser": {
-      "description": "Demandez à l'agent de lire, résumer ou capturer depuis cette page.",
-      "suggestions": {
-        "summarizePage": {
-          "label": "Résumer cette page",
-          "prompt": "Résume la page web actuelle sous forme de points clés."
-        },
-        "extractTable": {
-          "label": "Extraire une table",
-          "prompt": "Extrais la table de données principale de cette page au format Markdown."
-        },
-        "saveAsNote": {
-          "label": "Enregistrer comme note",
-          "prompt": "Capture les points clés de cette page dans une nouvelle note Markdown."
-        }
-      }
-    },
-    "browserSites": {
-      "description": "Demandez à l'agent de vous aider à découvrir, configurer ou vous connecter à des sessions de navigateur.",
-      "suggestions": {
-        "addSite": {
-          "label": "Ajouter un site",
-          "prompt": "Guide-moi pour ajouter un nouveau site de navigateur afin que l'agent puisse l'utiliser."
-        },
-        "showConnected": {
-          "label": "Afficher les connectés",
-          "prompt": "Résume quels sites de navigateur sont connectés et lesquels nécessitent encore une authentification."
-        },
-        "setupCustom": {
-          "label": "Configurer un site personnalisé",
-          "prompt": "Aide-moi à configurer un adaptateur personnalisé pour un site web qui n'est pas intégré."
-        }
-      }
-    },
     "gallery": {
       "description": "Demandez à l'agent d'organiser, de décrire ou de réutiliser les médias de cette galerie.",
       "suggestions": {
@@ -321,7 +287,6 @@
       "failed": "{{label}} failed",
       "completed": "{{label}} completed",
       "pendingApproval": "Pending approval · $ {{command}}",
-      "searchInBrowserPrefix": "Search in browser: {{query}}",
       "searchPrefix": "Search: {{query}}",
       "generateImagePrefix": "Generate image: {{query}}",
       "previewNFiles": "Preview files: {{count}} · +{{added}} −{{removed}}",
@@ -338,17 +303,8 @@
     "final": {
       "streaming": "Streaming final reply"
     },
-    "sanitize": {
-      "continueAndWrite": "Continue from the current browser page and write the visible results into the table.",
-      "continueDefault": "Continue from the current browser page and prepare the next agent step."
-    },
     "toolDisplayName": {
-      "browser_open": "Open Browser Tab",
-      "browser_navigate": "Navigate Browser",
-      "browser_search": "Search In Browser",
       "source_adapter_catalog": "Inspect Source Context",
-      "browser_context_entities": "Read Browser Page",
-      "browser_ingest_strategy": "Evaluate Page Readiness",
       "web_search": "Web Search",
       "web_fetch": "Web Fetch",
       "data_table_create": "Create Table",
@@ -375,12 +331,7 @@
       "register_artifact": "Register Artifact"
     },
     "toolActionLabel": {
-      "browser_open": "Open browser tab",
-      "browser_navigate": "Navigate browser",
-      "browser_search": "Search in browser",
       "source_adapter_catalog": "Inspect source context",
-      "browser_context_entities": "Inspect browser page",
-      "browser_ingest_strategy": "Evaluate page readiness",
       "web_search": "Web search",
       "web_fetch": "Web fetch",
       "data_table_create": "Create data table",

@@ -50,7 +50,12 @@ export function documentTitleHostExtension(opts: DocumentTitleHostOptions): Exte
         event.preventDefault()
         // Place the caret on the line at the clicked height (end of the document
         // below the content), never jump away from what the reader is looking at.
-        view.dispatch({ selection: { anchor: blankSpaceClickPosition(view, event) }, userEvent: 'select.pointer' })
+        const anchor = blankSpaceClickPosition(view, event)
+        view.dispatch({ selection: { anchor }, userEvent: 'select.pointer' })
+        // CodeMirror reads the DOM selection again once it gains focus; point it
+        // at the same spot so a stale selection cannot move the caret back.
+        const { node, offset } = view.domAtPos(anchor)
+        view.dom.ownerDocument.getSelection()?.collapse(node, offset)
         view.focus()
       }
 

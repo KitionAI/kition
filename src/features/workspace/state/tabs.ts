@@ -100,7 +100,7 @@ export function filterTabs(state: TabsState, predicate: (tab: WorkspaceTab) => b
   return { tabs, activeTabId }
 }
 
-/** After a move or folder rename, point document, board, design, and browser-origin tabs at the new path. */
+/** After a move or folder rename, point document, board, and design tabs at the new path. */
 export function remapTabPaths(state: TabsState, sourcePath: string, targetPath: string): TabsState {
   if (!sourcePath || !targetPath || sourcePath === targetPath) return state
   let changed = false
@@ -115,18 +115,6 @@ export function remapTabPaths(state: TabsState, sourcePath: string, targetPath: 
         id: `${tab.type}:${nextPath}`,
         path: nextPath,
         ...(tab.type !== 'document' ? { title: getWorkspaceItemTitle(filename) } : {}),
-      }
-    }
-    if (tab.type === 'browser' && tab.originDocumentPath) {
-      const nextOrigin = remapWorkspaceBranchPath(tab.originDocumentPath, sourcePath, targetPath)
-      if (nextOrigin === tab.originDocumentPath) return tab
-      changed = true
-      return {
-        ...tab,
-        originDocumentPath: nextOrigin,
-        originTabId: tab.originTabId === `document:${tab.originDocumentPath}`
-          ? `document:${nextOrigin}`
-          : tab.originTabId,
       }
     }
     return tab

@@ -11,7 +11,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 API_LOG_FILE="${TMPDIR:-/tmp}/kition-workflow-real-api.log"
-RUNTIME_CONFIG_TEMPLATE="$APP_DIR/electron/defaults/config.e2e.toml"
+RUNTIME_CONFIG_TEMPLATE="$APP_DIR/crates/kition-api/e2e.toml"
 SPEC="e2e/workflow-real.spec.ts"
 DEFAULT_API_PORT="${KITION_E2E_API_PORT:-18101}"
 PERSIST_WORKSPACE="${KITION_WORKFLOW_E2E_PERSIST_WORKSPACE:-0}"
@@ -172,11 +172,8 @@ if api_is_healthy; then
   echo "[inspect-workflow] reusing existing API at $api_health_url"
 else
   make_temp_config
-  runtime_binary="$(node "$APP_DIR/electron/scripts/resolve-runtime-path.mjs")"
-  if [[ -z "$runtime_binary" || ! -x "$runtime_binary" ]]; then
-    echo "[inspect-workflow] failed to resolve an executable Kition runtime" >&2
-    exit 2
-  fi
+  cargo build --quiet --manifest-path "$APP_DIR/Cargo.toml" -p kition-api
+  runtime_binary="$APP_DIR/target/debug/kition-api"
   if [[ "$PERSIST_WORKSPACE" == "1" ]]; then
     echo "[inspect-workflow] starting real API with persistent test-workspace config on port $api_port"
   else

@@ -32,17 +32,9 @@ describe('KitionLogoMark', () => {
     expect(image.alt).toBe('Kition')
   })
 
-  it('falls back to the web path once when the bundled protocol cannot load', async () => {
-    Object.assign(window, { kitionDesktop: { shell: 'electron' } })
+  it('uses the same path inside the desktop shell', async () => {
+    Object.assign(window, { kitionDesktop: { shell: 'tauri' } })
     const image = await render()
-    expect(image.getAttribute('src')).toBe('kition-bundled://assets/logo-mark.png')
-    await act(async () => {
-      image.dispatchEvent(new Event('error'))
-    })
-    expect(image.getAttribute('src')).toBe('/logo-mark.png')
-    await act(async () => {
-      image.dispatchEvent(new Event('error'))
-    })
     expect(image.getAttribute('src')).toBe('/logo-mark.png')
   })
 })

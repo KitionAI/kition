@@ -1,13 +1,15 @@
+import type { ApiTimestamp } from '@/types'
+import { toEpochMs } from '@/lib/timestamps'
 import type { AgentArtifact, AgentMessage, AgentStreamEvent } from '@/api/agent'
 import type { AgentImageArtifact, AgentImageGenerationEvent } from '@/types/imageGeneration'
 import { readAgentImageGenerationEvent } from './agentImageGenerationStream'
 
 export type AgentImageSessionEvent = AgentImageGenerationEvent & {
-  clientTurnCreatedAt?: string
+  clientTurnCreatedAt?: ApiTimestamp
   clientMessageId?: number
 }
 
-export function readAgentImageGenerationSessionEvent(frame: AgentStreamEvent, turnCreatedAt?: string, messageId?: number) {
+export function readAgentImageGenerationSessionEvent(frame: AgentStreamEvent, turnCreatedAt?: ApiTimestamp, messageId?: number) {
   const event = readAgentImageGenerationEvent(frame)
   if (!event) return null
   return {
@@ -20,14 +22,15 @@ export function readAgentImageGenerationSessionEvent(frame: AgentStreamEvent, tu
 export function imageEventsForTurn(
   events: AgentImageSessionEvent[],
   message: AgentMessage | undefined,
-  nextTurnCreatedAt: string | null,
+  nextTurnCreatedAt: ApiTimestamp | null,
   isActiveTurn: boolean,
 ) {
   return events.filter((event) => {
     if (event.clientMessageId && event.clientMessageId > 0) return event.clientMessageId === message?.id
     if (!event.clientTurnCreatedAt) return isActiveTurn
-    return (!message || event.clientTurnCreatedAt >= message.created_at)
-      && (!nextTurnCreatedAt || event.clientTurnCreatedAt < nextTurnCreatedAt)
+    const created = toEpochMs(event.clientTurnCreatedAt)
+    return (!message || created >= toEpochMs(message.created_at))
+      && (!nextTurnCreatedAt || created < toEpochMs(nextTurnCreatedAt))
   })
 }
 

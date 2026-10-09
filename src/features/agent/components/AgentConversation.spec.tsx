@@ -25,7 +25,7 @@ describe('Agent conversation image navigation', () => {
     container = document.createElement('div')
     document.body.appendChild(container)
     root = createRoot(container)
-    window.kitionDesktop = { shell: 'electron', backendOrigin: 'http://127.0.0.1:18102' }
+    window.kitionDesktop = { shell: 'tauri', backendOrigin: 'http://127.0.0.1:18102' }
   })
 
   afterEach(async () => {

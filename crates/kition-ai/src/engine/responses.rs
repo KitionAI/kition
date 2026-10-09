@@ -1,0 +1,768 @@
+//! The OpenAI Responses wire (`POST {base}/responses`), streaming and not.
+
+use std::collections::HashSet;
+use std::time::Instant;
+
+use kition_core::coerce::{as_i64, as_str};
+use serde_json::{Map, Value, json};
+
+use super::error::{AiError, AiResult};
+use super::transport::{
+    MIB, SseLines, chat_headers, credits_exhausted, header, log_provider_failure, network_error,
+    normalize_base_url, read_limited, send, status_error, usage_from, validate_endpoint,
+};
+use super::types::{
+    ChatResult, HostedImageGenerationCall, HostedWebSearchCall, HostedWebSearchResult, Message,
+    RuntimeModel, StreamEvent, StreamHandler, ToolCall, ToolSpec,
+};
+
+pub(crate) fn hosted_web_search_tool() -> Value {
+    json!({ "type": "web_search", "external_web_access": true, "search_context_size": "high" })
+}
+
+/// The hosted image tool always returns PNG; the model decides when to
+/// call it.
+pub(crate) fn hosted_image_generation_tool() -> Value {
+    json!({ "type": "image_generation", "output_format": "png" })
+}
+
+fn text_of(value: Option<&Value>) -> &str {
+    value.map(as_str).unwrap_or_default()
+}
+
+fn trimmed(value: Option<&Value>) -> String {
+    text_of(value).trim().to_owned()
+}
+
+/// `input_text`/`input_image` parts, or `None` when the message has no
+/// parts and should be sent as plain content.
+fn content_parts(message: &Message) -> Option<Vec<Value>> {
+    if message.parts.is_empty() {
+        return None;
+    }
+    let mut parts = Vec::new();
+    for part in &message.parts {
+        match part.kind.trim() {
+            "image_url" => {
+                let url = part.image_url.trim();
+                if url.is_empty() {
+                    continue;
+                }
+                let mut item = Map::new();
+                item.insert("type".into(), "input_image".into());
+                item.insert("image_url".into(), url.into());
+                if !part.detail.trim().is_empty() {
+                    item.insert("detail".into(), part.detail.trim().into());
+                }
+                parts.push(Value::Object(item));
+            }
+            "text" | "input_text" | "" => {
+                let text = part.text.trim();
+                if !text.is_empty() {
+                    parts.push(json!({ "type": "input_text", "text": text }));
+                }
+            }
+            _ => {}
+        }
+    }
+    let content = message.content.trim();
+    if parts.is_empty() {
+        if content.is_empty() {
+            return None;
+        }
+        return Some(vec![json!({ "type": "input_text", "text": content })]);
+    }
+    let has_text = parts.iter().any(|part| part["type"] == "input_text");
+    if !content.is_empty() && !has_text {
+        parts.insert(0, json!({ "type": "input_text", "text": content }));
+    }
+    Some(parts)
+}
+
+fn valid_input_item(item: &Map<String, Value>) -> bool {
+    match trimmed(item.get("type")).as_str() {
+        "function_call" => {
+            !trimmed(item.get("call_id")).is_empty() && !trimmed(item.get("name")).is_empty()
+        }
+        "function_call_output" => !trimmed(item.get("call_id")).is_empty(),
+        _ => true,
+    }
+}
+
+/// System messages become instructions; everything else becomes input
+/// items.
+pub(crate) fn normalize_input(messages: &[Message]) -> (String, Vec<Value>) {
+    let mut instructions = Vec::new();
+    let mut items = Vec::new();
+    for message in messages {
+        let role = message.role.trim();
+        let content = message.content.trim();
+        if role == "system" {
+            if !content.is_empty() {
+                instructions.push(content.to_owned());
+            }
+            continue;
+        }
+        if !message.raw_items.is_empty() {
+            for raw in &message.raw_items {
+                let Value::Object(item) = raw else { continue };
+                if item.is_empty() {
+                    continue;
+                }
+                // Hosted image output is saved to the workspace before the
+                // next turn; with store=false the provider item cannot be
+                // referenced again.
+                if trimmed(item.get("type")) == "image_generation_call" {
+                    continue;
+                }
+                if valid_input_item(item) {
+                    items.push(raw.clone());
+                }
+            }
+            continue;
+        }
+        if role == "tool" {
+            if message.tool_call_id.trim().is_empty() {
+                continue;
+            }
+            items.push(json!({
+                "type": "function_call_output",
+                "call_id": message.tool_call_id,
+                "output": content,
+            }));
+            continue;
+        }
+        if role == "assistant" && !message.tool_calls.is_empty() {
+            for call in &message.tool_calls {
+                if call.name.trim().is_empty() || call.id.trim().is_empty() {
+                    continue;
+                }
+                items.push(json!({
+                    "type": "function_call",
+                    "call_id": call.id.trim(),
+                    "name": call.name.trim(),
+                    "arguments": call.input,
+                }));
+            }
+            continue;
+        }
+        let role = if role == "assistant" || role == "user" {
+            role
+        } else {
+            "user"
+        };
+        if let Some(parts) = content_parts(message) {
+            items.push(json!({ "role": role, "content": parts }));
+            continue;
+        }
+        if content.is_empty() {
+            continue;
+        }
+        items.push(json!({ "role": role, "content": content }));
+    }
+    if items.is_empty() {
+        items.push(json!({
+            "role": "user",
+            "content": "Please continue the writing based on the current editor context.",
+        }));
+    }
+    (instructions.join("\n\n"), items)
+}
+
+/// The text inside a message `content` value.
+pub(crate) fn content_text(value: Option<&Value>) -> String {
+    match value {
+        Some(Value::String(text)) => text.trim().to_owned(),
+        Some(Value::Array(parts)) => parts
+            .iter()
+            .filter_map(|part| part.get("text").and_then(Value::as_str))
+            .map(str::trim)
+            .filter(|text| !text.is_empty())
+            .collect::<Vec<_>>()
+            .join("\n\n"),
+        _ => String::new(),
+    }
+}
+
+pub(crate) fn prompt_text(items: &[Value]) -> String {
+    let mut parts = Vec::new();
+    for item in items {
+        let content = content_text(item.get("content"));
+        if !content.is_empty() {
+            parts.push(content);
+        }
+        let output = trimmed(item.get("output"));
+        if !output.is_empty() {
+            parts.push(output);
+        }
+    }
+    parts.join("\n\n")
+}
+
+fn objects(raw: &[Value]) -> impl Iterator<Item = &Map<String, Value>> {
+    raw.iter().filter_map(Value::as_object)
+}
+
+pub(crate) fn tool_calls_from_output(raw: &[Value]) -> Vec<ToolCall> {
+    objects(raw)
+        .filter(|entry| as_str(&entry["type"]) == "function_call")
+        .filter_map(|entry| {
+            let name = trimmed(entry.get("name"));
+            if name.is_empty() {
+                return None;
+            }
+            let input = trimmed(entry.get("arguments"));
+            Some(ToolCall {
+                id: trimmed(entry.get("call_id")),
+                name,
+                input: if input.is_empty() { "{}".into() } else { input },
+            })
+        })
+        .collect()
+}
+
+pub(crate) fn query_from_action(action: &Map<String, Value>) -> String {
+    match text_of(action.get("type")) {
+        "search" => {
+            let query = trimmed(action.get("query"));
+            if !query.is_empty() {
+                return query;
+            }
+            action
+                .get("queries")
+                .and_then(Value::as_array)
+                .and_then(|queries| queries.first())
+                .map(|first| as_str(first).trim().to_owned())
+                .unwrap_or_default()
+        }
+        "open_page" => trimmed(action.get("url")),
+        "find_in_page" => {
+            let pattern = trimmed(action.get("pattern"));
+            let url = trimmed(action.get("url"));
+            if !pattern.is_empty() && !url.is_empty() {
+                format!("'{pattern}' in {url}")
+            } else if !pattern.is_empty() {
+                pattern
+            } else {
+                url
+            }
+        }
+        _ => String::new(),
+    }
+}
+
+pub(crate) fn web_search_calls_from_output(raw: &[Value]) -> Vec<HostedWebSearchCall> {
+    objects(raw)
+        .filter(|entry| as_str(&entry["type"]) == "web_search_call")
+        .map(|entry| {
+            let action = entry
+                .get("action")
+                .and_then(Value::as_object)
+                .cloned()
+                .unwrap_or_default();
+            HostedWebSearchCall {
+                id: trimmed(entry.get("id")),
+                status: trimmed(entry.get("status")),
+                query: query_from_action(&action),
+                action: Some(action),
+            }
+        })
+        .collect()
+}
+
+pub(crate) fn image_generation_calls_from_output(raw: &[Value]) -> Vec<HostedImageGenerationCall> {
+    objects(raw)
+        .filter(|entry| as_str(&entry["type"]) == "image_generation_call")
+        .map(|entry| HostedImageGenerationCall {
+            id: trimmed(entry.get("id")),
+            status: trimmed(entry.get("status")),
+            result: text_of(entry.get("result")).to_owned(),
+            size: trimmed(entry.get("size")),
+            revised_prompt: trimmed(entry.get("revised_prompt")),
+            mime_type: "image/png".into(),
+        })
+        .collect()
+}
+
+pub(crate) fn text_from_output(raw: &[Value]) -> String {
+    let mut parts = Vec::new();
+    for entry in objects(raw).filter(|entry| as_str(&entry["type"]) == "message") {
+        let Some(content) = entry.get("content").and_then(Value::as_array) else {
+            continue;
+        };
+        for item in content {
+            let text = trimmed(item.get("text"));
+            if !text.is_empty() {
+                parts.push(text);
+            }
+        }
+    }
+    parts.concat()
+}
+
+/// Cited sources from hosted web search output, de-duplicated by URL.
+pub(crate) fn web_search_results_from_output(
+    raw: &[Value],
+    fallback_text: &str,
+) -> Vec<HostedWebSearchResult> {
+    let mut results = Vec::new();
+    let mut seen = HashSet::new();
+    let mut add = |title: &str, url: &str, snippet: &str| {
+        let (title, url, snippet) = (title.trim(), url.trim(), snippet.trim());
+        let key = if url.is_empty() {
+            format!("{title}\n{snippet}")
+        } else {
+            url.to_owned()
+        };
+        if !seen.insert(key) {
+            return;
+        }
+        results.push(HostedWebSearchResult {
+            title: if title.is_empty() { "Source" } else { title }.to_owned(),
+            url: url.to_owned(),
+            snippet: snippet.to_owned(),
+        });
+    };
+    let url_of = |entry: &Map<String, Value>| {
+        let url = trimmed(entry.get("url"));
+        if url.is_empty() {
+            trimmed(entry.get("uri"))
+        } else {
+            url
+        }
+    };
+    for entry in objects(raw) {
+        if as_str(&entry["type"]) == "web_search_call" {
+            let sources = entry
+                .get("action")
+                .and_then(|action| action.get("sources"))
+                .and_then(Value::as_array);
+            for source in sources.into_iter().flatten().filter_map(Value::as_object) {
+                add(text_of(source.get("title")), &url_of(source), fallback_text);
+            }
+        }
+        let content = entry.get("content").and_then(Value::as_array);
+        for item in content.into_iter().flatten().filter_map(Value::as_object) {
+            let text = text_of(item.get("text"));
+            let annotations = item.get("annotations").and_then(Value::as_array);
+            for annotation in annotations
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_object)
+            {
+                add(text_of(annotation.get("title")), &url_of(annotation), text);
+            }
+        }
+    }
+    results
+}
+
+fn emit_output_item_done(item: &Map<String, Value>, index: i64, stream: Option<&StreamHandler>) {
+    let Some(stream) = stream else { return };
+    if item.is_empty() {
+        return;
+    }
+    let ready = |id: String, name: String, arguments: String| StreamEvent {
+        kind: "tool_call_ready",
+        tool_call_index: index,
+        tool_call_id: id,
+        tool_name: name,
+        tool_arguments: arguments,
+        ..StreamEvent::default()
+    };
+    match text_of(item.get("type")) {
+        "function_call" => stream(ready(
+            trimmed(item.get("call_id")),
+            trimmed(item.get("name")),
+            trimmed(item.get("arguments")),
+        )),
+        "web_search_call" => {
+            let action = item.get("action").cloned().unwrap_or(Value::Null);
+            let arguments = match action {
+                Value::Object(_) => action.to_string(),
+                _ => "null".into(),
+            };
+            stream(ready(
+                trimmed(item.get("id")),
+                "web_search".into(),
+                arguments,
+            ));
+        }
+        "image_generation_call" => {
+            let arguments = json!({
+                "revised_prompt": trimmed(item.get("revised_prompt")),
+                "size": trimmed(item.get("size")),
+                "status": trimmed(item.get("status")),
+            });
+            stream(ready(
+                trimmed(item.get("id")),
+                "image_generation".into(),
+                arguments.to_string(),
+            ));
+        }
+        _ => {}
+    }
+}
+
+fn tool_choice(name: &str) -> Value {
+    if name.is_empty() {
+        "auto".into()
+    } else {
+        json!({ "type": "function", "name": name })
+    }
+}
+
+fn function_tools(tools: &[ToolSpec]) -> Vec<Value> {
+    let mut payload = Vec::new();
+    for tool in tools {
+        if tool.name.trim().is_empty() {
+            continue;
+        }
+        match tool.name.as_str() {
+            "web_search" => payload.push(hosted_web_search_tool()),
+            "image_generation" => payload.push(hosted_image_generation_tool()),
+            _ => {
+                let mut item = Map::new();
+                item.insert("type".into(), "function".into());
+                item.insert("name".into(), tool.name.clone().into());
+                item.insert("description".into(), tool.description.clone().into());
+                if let Some(schema) = &tool.input_schema {
+                    item.insert("parameters".into(), schema.clone());
+                }
+                payload.push(Value::Object(item));
+            }
+        }
+    }
+    payload
+}
+
+pub(crate) async fn call(
+    http: &reqwest::Client,
+    messages: &[Message],
+    tools: &[ToolSpec],
+    choice: &str,
+    model: &RuntimeModel,
+    stream: Option<&StreamHandler>,
+) -> AiResult<ChatResult> {
+    let headers = chat_headers(model)?;
+    let base_url = normalize_base_url(&model.provider_type, &model.base_url);
+    let model_name = model.model_name.trim().to_owned();
+    if base_url.is_empty() || model_name.is_empty() {
+        return Err(AiError::msg(
+            "runtime provider is missing base_url or model_name",
+        ));
+    }
+    let (instructions, input_items) = normalize_input(messages);
+    let payload_tools = function_tools(tools);
+    let mut payload = Map::new();
+    payload.insert("model".into(), model_name.clone().into());
+    payload.insert("input".into(), Value::Array(input_items.clone()));
+    payload.insert("store".into(), (!model.disable_storage()).into());
+    payload.insert("stream".into(), stream.is_some().into());
+    if !instructions.is_empty() {
+        payload.insert("instructions".into(), instructions.into());
+    }
+    if !payload_tools.is_empty() {
+        payload.insert("tools".into(), Value::Array(payload_tools));
+        payload.insert("tool_choice".into(), tool_choice(choice));
+    }
+    let effort = model.reasoning_effort.trim();
+    if !effort.is_empty() {
+        payload.insert("reasoning".into(), json!({ "effort": effort }));
+    }
+
+    let endpoint = validate_endpoint(&format!("{base_url}/responses"))?;
+    let mut request = http.post(&endpoint).json(&Value::Object(payload));
+    for (key, value) in &headers {
+        request = request.header(key, value);
+    }
+    let accept = if stream.is_some() {
+        "text/event-stream"
+    } else {
+        "application/json"
+    };
+    request = request.header("Accept", accept);
+    let started = Instant::now();
+    let response = send(request, stream.is_some())
+        .await
+        .map_err(|failure| network_error("runtime provider call failed", &endpoint, &failure))?;
+    let status = response.status().as_u16();
+    if status == 402 {
+        let body = read_limited(response, 4 * MIB).await.unwrap_or_default();
+        return Err(credits_exhausted(&body));
+    }
+    if status >= 400 {
+        let retry_after = header(&response, "Retry-After");
+        let body = read_limited(response, 4 * MIB)
+            .await
+            .map_err(|_| AiError::msg("failed to read runtime provider response"))?;
+        log_provider_failure(model, "responses", &endpoint, status, &body);
+        return Err(status_error(
+            "runtime provider call failed",
+            status,
+            &retry_after,
+            &body,
+        ));
+    }
+
+    let prompt = prompt_text(&input_items);
+    let content_type = header(&response, "Content-Type").to_lowercase();
+    let mut result = if stream.is_some() && content_type.contains("text/event-stream") {
+        parse_stream(
+            SseLines::new(response),
+            &prompt,
+            &model_name,
+            started,
+            stream,
+        )
+        .await?
+    } else {
+        let body = read_limited(response, 4 * MIB)
+            .await
+            .map_err(|_| AiError::msg("failed to read runtime provider response"))?;
+        let data: Map<String, Value> = serde_json::from_slice(&body)
+            .map_err(|_| AiError::msg("runtime provider returned a non-JSON response"))?;
+        let output = data
+            .get("output")
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
+        let mut content = trimmed(data.get("output_text"));
+        if content.is_empty() {
+            content = text_from_output(&output);
+        }
+        ChatResult {
+            usage: usage_from(data.get("usage"), &prompt, &content, started, false),
+            tool_calls: tool_calls_from_output(&output),
+            hosted_web_search_calls: web_search_calls_from_output(&output),
+            hosted_image_generation_calls: image_generation_calls_from_output(&output),
+            response_items: output,
+            stop_reason: text_of(data.get("status")).to_owned(),
+            model: model_name.clone(),
+            content,
+            ..ChatResult::default()
+        }
+    };
+    result.wire_api = "responses".into();
+    Ok(result)
+}
+
+async fn parse_stream(
+    mut lines: SseLines,
+    prompt: &str,
+    model_name: &str,
+    started: Instant,
+    stream: Option<&StreamHandler>,
+) -> AiResult<ChatResult> {
+    let mut content = String::new();
+    let mut output: Vec<Value> = Vec::new();
+    let mut usage_raw: Option<Value> = None;
+    let mut status = String::new();
+    let mut events = 0;
+    while let Some(data) = lines.next_data().await? {
+        if data == "[DONE]" {
+            break;
+        }
+        let Ok(Value::Object(payload)) = serde_json::from_str::<Value>(&data) else {
+            continue;
+        };
+        events += 1;
+        match text_of(payload.get("type")) {
+            "response.output_text.delta" => {
+                let delta = text_of(payload.get("delta"));
+                if !delta.is_empty() {
+                    content.push_str(delta);
+                    if let Some(stream) = stream {
+                        stream(StreamEvent {
+                            kind: "delta",
+                            delta: delta.to_owned(),
+                            ..StreamEvent::default()
+                        });
+                    }
+                }
+            }
+            "response.function_call_arguments.delta" => {
+                if let Some(stream) = stream {
+                    let call_id = text_of(payload.get("call_id"));
+                    let item_id = text_of(payload.get("item_id"));
+                    let id = if call_id.trim().is_empty() {
+                        item_id.trim()
+                    } else {
+                        call_id.trim()
+                    };
+                    stream(StreamEvent {
+                        kind: "tool_call_delta",
+                        tool_call_index: as_i64(
+                            payload.get("output_index").unwrap_or(&Value::Null),
+                        ),
+                        tool_call_id: id.to_owned(),
+                        tool_arguments_delta: text_of(payload.get("delta")).to_owned(),
+                        ..StreamEvent::default()
+                    });
+                }
+            }
+            "response.output_item.done" => {
+                if let Some(Value::Object(item)) = payload.get("item")
+                    && !item.is_empty()
+                {
+                    output.push(Value::Object(item.clone()));
+                    let index = as_i64(payload.get("output_index").unwrap_or(&Value::Null));
+                    emit_output_item_done(item, index, stream);
+                }
+            }
+            "response.completed" => {
+                let Some(Value::Object(response)) = payload.get("response") else {
+                    continue;
+                };
+                if response.is_empty() {
+                    continue;
+                }
+                if let Some(Value::Array(items)) = response.get("output") {
+                    output = items.clone();
+                    for (index, item) in items.iter().enumerate() {
+                        if let Value::Object(entry) = item {
+                            emit_output_item_done(entry, index as i64, stream);
+                        }
+                    }
+                }
+                if let Some(usage) = response.get("usage").filter(|usage| !usage.is_null()) {
+                    usage_raw = Some(usage.clone());
+                }
+                status = text_of(response.get("status")).to_owned();
+                let text = text_of(response.get("output_text"));
+                if !text.is_empty() && content.is_empty() {
+                    content.push_str(text);
+                }
+            }
+            _ => {}
+        }
+    }
+    if events == 0 {
+        return Err(AiError::msg(
+            "runtime provider did not return any valid stream data",
+        ));
+    }
+    let mut content = content.trim().to_owned();
+    if content.is_empty() {
+        content = text_from_output(&output);
+    }
+    Ok(ChatResult {
+        usage: usage_from(usage_raw.as_ref(), prompt, &content, started, false),
+        tool_calls: tool_calls_from_output(&output),
+        hosted_web_search_calls: web_search_calls_from_output(&output),
+        hosted_image_generation_calls: image_generation_calls_from_output(&output),
+        response_items: output,
+        stop_reason: status,
+        model: model_name.to_owned(),
+        content,
+        ..ChatResult::default()
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::types::MessagePart;
+    use super::*;
+
+    #[test]
+    fn normalizes_messages_into_input_items() {
+        let messages = vec![
+            Message::new("system", " be brief "),
+            Message::new("user", "hello"),
+            Message {
+                role: "assistant".into(),
+                tool_calls: vec![ToolCall {
+                    id: "c1".into(),
+                    name: "read".into(),
+                    input: r#"{"p":1}"#.into(),
+                }],
+                ..Message::default()
+            },
+            Message {
+                role: "tool".into(),
+                tool_call_id: "c1".into(),
+                content: "result".into(),
+                ..Message::default()
+            },
+            Message {
+                role: "assistant".into(),
+                raw_items: vec![
+                    json!({ "type": "image_generation_call", "id": "ig" }),
+                    json!({ "type": "function_call", "call_id": "", "name": "x" }),
+                    json!({ "type": "reasoning", "id": "r" }),
+                ],
+                ..Message::default()
+            },
+            Message {
+                role: "developer".into(),
+                content: "see".into(),
+                parts: vec![MessagePart {
+                    kind: "image_url".into(),
+                    image_url: "data:image/png;base64,AA".into(),
+                    ..MessagePart::default()
+                }],
+                ..Message::default()
+            },
+        ];
+        let (instructions, items) = normalize_input(&messages);
+        assert_eq!(instructions, "be brief");
+        assert_eq!(
+            items,
+            vec![
+                json!({ "role": "user", "content": "hello" }),
+                json!({ "type": "function_call", "call_id": "c1", "name": "read", "arguments": r#"{"p":1}"# }),
+                json!({ "type": "function_call_output", "call_id": "c1", "output": "result" }),
+                json!({ "type": "reasoning", "id": "r" }),
+                json!({ "role": "user", "content": [
+                    { "type": "input_text", "text": "see" },
+                    { "type": "input_image", "image_url": "data:image/png;base64,AA" },
+                ] }),
+            ]
+        );
+        let (_, fallback) = normalize_input(&[]);
+        assert_eq!(fallback.len(), 1);
+    }
+
+    #[test]
+    fn reads_output_items() {
+        let output = vec![
+            json!({ "type": "message", "content": [{ "type": "output_text", "text": "Hi ", "annotations": [
+                { "title": "Doc", "url": "https://a.test" },
+                { "title": "Dup", "url": "https://a.test" },
+            ] }] }),
+            json!({ "type": "function_call", "call_id": "c", "name": "f", "arguments": "" }),
+            json!({ "type": "web_search_call", "id": "w", "status": "completed",
+                    "action": { "type": "search", "queries": ["rust"], "sources": [{ "url": "https://b.test" }] } }),
+            json!({ "type": "image_generation_call", "id": "i", "result": "AAAA", "size": "1024x1024" }),
+        ];
+        assert_eq!(text_from_output(&output), "Hi");
+        let calls = tool_calls_from_output(&output);
+        assert_eq!(calls[0].input, "{}");
+        assert_eq!(web_search_calls_from_output(&output)[0].query, "rust");
+        assert_eq!(
+            image_generation_calls_from_output(&output)[0].mime_type,
+            "image/png"
+        );
+        let results = web_search_results_from_output(&output, "summary");
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0].title, "Doc");
+        assert_eq!(results[0].url, "https://a.test");
+        assert_eq!(results[1].title, "Source");
+        assert_eq!(results[1].snippet, "summary");
+    }
+
+    #[test]
+    fn describes_hosted_search_actions() {
+        let action = |value: Value| value.as_object().cloned().unwrap_or_default();
+        assert_eq!(
+            query_from_action(&action(json!({ "type": "open_page", "url": "u" }))),
+            "u"
+        );
+        assert_eq!(
+            query_from_action(&action(
+                json!({ "type": "find_in_page", "pattern": "p", "url": "u" })
+            )),
+            "'p' in u"
+        );
+    }
+}

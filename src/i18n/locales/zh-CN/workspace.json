@@ -41,8 +41,7 @@
   "sidebar": {
     "tabs": {
       "files": "文件",
-      "search": "搜索",
-      "browser": "浏览器"
+      "search": "搜索"
     },
     "collapseSection": "折叠 {{name}}",
     "expandSection": "展开 {{name}}",
@@ -117,7 +116,6 @@
     "openingInSystem": "正在打开…"
   },
   "tabs": {
-    "webBadge": "网页",
     "closeTab": "关闭标签页",
     "expandSidebar": "展开侧边栏",
     "previousTab": "上一个标签页",
@@ -164,36 +162,6 @@
   },
   "topbar": {
     "more": "更多"
-  },
-  "browserSites": {
-    "title": "浏览器",
-    "visitedCount": "{{count}} 个已访问站点",
-    "openBrowser": "打开浏览器",
-    "openBrowserTitle": "打开新的浏览器标签页",
-    "refreshLoginStatus": "刷新登录状态",
-    "loading": "正在加载站点…",
-    "lastVisited": "上次访问 {{time}}",
-    "signedIn": "已登录",
-    "signedOut": "未登录",
-    "openSite": "打开站点",
-    "open": "打开 {{host}}",
-    "forgetSite": "忘记此站点（清除登录）",
-    "forget": "忘记 {{host}}",
-    "emptyTitle": "暂无已访问站点",
-    "emptyDescription": "在内置浏览器中访问并登录站点，它们会连同登录状态显示在这里，以便后续抓取时自动登录。"
-  },
-  "browserToolbar": {
-    "back": "后退",
-    "forward": "前进",
-    "stopLoading": "停止加载",
-    "reload": "刷新",
-    "addressPlaceholder": "输入网址或搜索…"
-  },
-  "browserTab": {
-    "eyebrow": "内置浏览器",
-    "unavailableDescription": "浏览器页面已附加到此标签区域。可在此标签中进行登录、搜索和导航。AI 对话始终显示在右侧，你可以从当前页面继续操作而无需切换。",
-    "emptyText": "浏览器 — 在上方输入网址，或让 Agent 导航并使用浏览器",
-    "loadingPage": "正在加载页面…"
   },
   "fileViewer": {
     "imageActions": "图片操作",
@@ -617,8 +585,8 @@
     "createDashboardFailed": "创建仪表盘失败",
     "createTableFailed": "创建表格失败",
     "importMarkdownFailed": "导入 Markdown 失败",
-    "browserDevModeOpenDirectory": "你正在浏览器开发模式下运行，无法打开原生目录。请通过 pnpm dev:electron 启动桌面应用后重试。",
-    "browserDevModePickDirectory": "你正在浏览器开发模式下运行，无法选择原生目录。请通过 pnpm dev:electron 启动桌面应用后重试。",
+    "browserDevModeOpenDirectory": "你正在浏览器开发模式下运行，无法打开原生目录。请通过 pnpm dev 启动桌面应用后重试。",
+    "browserDevModePickDirectory": "你正在浏览器开发模式下运行，无法选择原生目录。请通过 pnpm dev 启动桌面应用后重试。",
     "browserDevModeSwitchDirectory": "你正在浏览器开发模式下运行，无法切换原生目录。",
     "openInSystemFailed": "无法使用默认应用打开文件，请检查文件关联后重试。",
     "reviewBeforeExternalOpen": "请先完成修改审阅，再使用其他应用打开此文件。"

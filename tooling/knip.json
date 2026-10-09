@@ -2,32 +2,30 @@
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "entry": [
     "src/main.tsx",
-    "electron/main.mjs",
-    "electron/preload.cjs",
-    "electron/scripts/*.mjs",
+    "src-tauri/scripts/*.mjs",
     "scripts/*.mjs",
     "tooling/*.{ts,js,cjs}",
     "src/**/*.spec.{ts,tsx}",
-    "electron/**/*.spec.ts",
+    "src-tauri/scripts/**/*.spec.ts",
     "scripts/**/*.spec.ts",
     "e2e/**/*.spec.ts",
     "e2e/helpers/**/*.ts"
   ],
   "project": [
     "src/**/*.{ts,tsx}",
-    "electron/**/*.{mjs,cjs,ts}",
+    "src-tauri/scripts/**/*.{mjs,ts}",
     "scripts/**/*.{mjs,ts}",
     "e2e/**/*.ts"
   ],
   "ignore": [
     "dist/**",
-    "dist-electron/**",
+    "dist-desktop/**",
+    "src-tauri/target/**",
     "test-results/**",
     "src/api/generated/**"
   ],
   "ignoreDependencies": [
-    "electron-builder",
-    "electron-builder-squirrel-windows",
+    "@tauri-apps/cli",
     "tailwindcss-animate",
     "autoprefixer",
     "postcss"
@@ -45,7 +43,9 @@
     "nsTypes": "off"
   },
   "ignoreBinaries": [
+    "cargo",
     "magick",
+    "rustc",
     "xvfb-run"
   ]
 }

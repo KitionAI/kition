@@ -13,5 +13,4 @@ export type AgentTurnCapabilitiesToolAvailability = {
 export type AgentTurnCapabilitiesContract = {
   available_tools: string[]
   hosted_web_search: AgentTurnCapabilitiesToolAvailability
-  browser_search: AgentTurnCapabilitiesToolAvailability
 }
