@@ -37,7 +37,8 @@ public/kits/%-sdk/.built:
 	@PATH="$(TOOLCHAIN_PATH)" KIT_REPO="$(KIT_$(shell echo $* | tr a-z A-Z)_REPO)" scripts/build-kit-sdk.sh $*
 	@touch $@
 
-kit-sdk-%:
+# A static pattern rule: plain pattern rules are skipped for .PHONY targets.
+$(addprefix kit-sdk-,$(KITS)): kit-sdk-%:
 	@rm -f public/kits/$*-sdk/.built
 	@$(MAKE) --no-print-directory public/kits/$*-sdk/.built
 
