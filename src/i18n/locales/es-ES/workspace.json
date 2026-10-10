@@ -693,6 +693,9 @@
       "open": "Apertura {{ms}} ms",
       "render": "Renderizado {{ms}} ms",
       "stroke": "Trazo {{ms}} ms"
-    }
+    },
+    "changedOnDisk": "Esta imagen cambió fuera del editor y tienes cambios sin guardar.",
+    "keepMine": "Conservar mis cambios",
+    "reloadFile": "Cargar la nueva versión"
   }
 }

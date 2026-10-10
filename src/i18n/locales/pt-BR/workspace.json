@@ -693,6 +693,9 @@
       "open": "Abertura {{ms}} ms",
       "render": "Renderização {{ms}} ms",
       "stroke": "Traço {{ms}} ms"
-    }
+    },
+    "changedOnDisk": "Esta imagem mudou fora do editor e você tem edições não salvas.",
+    "keepMine": "Manter minhas edições",
+    "reloadFile": "Carregar a nova versão"
   }
 }

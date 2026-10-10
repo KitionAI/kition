@@ -693,6 +693,9 @@
       "open": "打开 {{ms}} 毫秒",
       "render": "渲染 {{ms}} 毫秒",
       "stroke": "笔触 {{ms}} 毫秒"
-    }
+    },
+    "changedOnDisk": "这张图片已在编辑器外被修改，而你还有未保存的编辑。",
+    "keepMine": "保留我的编辑",
+    "reloadFile": "载入新版本"
   }
 }

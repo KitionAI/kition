@@ -1,7 +1,7 @@
 import type { PhotoSdkDocument } from './photoSdk'
 
 /** The largest image the engine renders for one frame; bigger views are drawn scaled up. */
-const MAX_FRAME_PIXELS = 4_000_000
+const MAX_FRAME_PIXELS = 8_000_000
 const FIT_MARGIN = 32
 const MIN_ZOOM = 0.01
 const MAX_ZOOM = 64
@@ -10,9 +10,24 @@ const CHECKER = 8
 /** The view: `zoom` screen pixels per image pixel, with image point (`x`, `y`) at the top-left. */
 export type PhotoView = { zoom: number; x: number; y: number }
 
-type Frame = { bitmap: HTMLCanvasElement; x: number; y: number; width: number; height: number }
+/**
+ * The cached render: `bitmap` shows the image area at (`x`, `y`), `width` × `height` image
+ * pixels, at `scale`. Below 1:1 the scale is 1/k, so each bitmap pixel is exactly a k × k block.
+ */
+type Frame = { bitmap: HTMLCanvasElement; x: number; y: number; width: number; height: number; scale: number }
+
+/** An image area in image pixels. */
+export type PhotoRect = { x0: number; y0: number; x1: number; y1: number }
 
 export type PhotoViewportStats = { renderMs: number; frameWidth: number; frameHeight: number }
+
+function imageData(rgba: Uint8Array, width: number, height: number) {
+  return new ImageData(new Uint8ClampedArray(rgba.buffer as ArrayBuffer, rgba.byteOffset, rgba.byteLength), width, height)
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
+}
 
 function clampZoom(zoom: number) {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom))
@@ -109,21 +124,67 @@ export class PhotoViewport {
       this.draw()
       return
     }
-    let scale = this.view.zoom * dpr
-    const pixels = (x1 - x0) * (y1 - y0) * scale * scale
-    if (pixels > MAX_FRAME_PIXELS) scale *= Math.sqrt(MAX_FRAME_PIXELS / pixels)
-    const frameWidth = Math.max(1, Math.ceil((x1 - x0) * scale))
-    const frameHeight = Math.max(1, Math.ceil((y1 - y0) * scale))
+    const wanted = this.view.zoom * dpr
     const started = performance.now()
-    const rgba = this.doc.render(x0, y0, scale, frameWidth, frameHeight)
+    let frame: Omit<Frame, 'bitmap'>
+    let rgba: Uint8Array
+    let frameWidth: number
+    let frameHeight: number
+    if (wanted < 1) {
+      // A whole-number reduction at least as sharp as the screen, so patches line up exactly.
+      let k = Math.max(1, Math.floor(1 / wanted))
+      while (((x1 - x0) / k) * ((y1 - y0) / k) > MAX_FRAME_PIXELS) k += 1
+      frameWidth = Math.ceil((x1 - x0) / k)
+      frameHeight = Math.ceil((y1 - y0) / k)
+      rgba = this.doc.renderArea(x0, y0, x0 + frameWidth * k, y0 + frameHeight * k, frameWidth, frameHeight)
+      frame = { x: x0, y: y0, width: frameWidth * k, height: frameHeight * k, scale: 1 / k }
+    } else {
+      let scale = wanted
+      const pixels = (x1 - x0) * (y1 - y0) * scale * scale
+      if (pixels > MAX_FRAME_PIXELS) scale = Math.max(1, scale * Math.sqrt(MAX_FRAME_PIXELS / pixels))
+      frameWidth = Math.max(1, Math.ceil((x1 - x0) * scale))
+      frameHeight = Math.max(1, Math.ceil((y1 - y0) * scale))
+      rgba = this.doc.render(x0, y0, scale, frameWidth, frameHeight)
+      frame = { x: x0, y: y0, width: frameWidth / scale, height: frameHeight / scale, scale }
+    }
     const bitmap = this.frame?.bitmap ?? document.createElement('canvas')
     bitmap.width = frameWidth
     bitmap.height = frameHeight
-    bitmap.getContext('2d')?.putImageData(new ImageData(new Uint8ClampedArray(rgba.buffer as ArrayBuffer, rgba.byteOffset, rgba.byteLength), frameWidth, frameHeight), 0, 0)
-    this.frame = { bitmap, x: x0, y: y0, width: frameWidth / scale, height: frameHeight / scale }
+    bitmap.getContext('2d')?.putImageData(imageData(rgba, frameWidth, frameHeight), 0, 0)
+    this.frame = { bitmap, ...frame }
     const renderMs = Math.round(performance.now() - started)
     this.draw()
     this.onChange(this.view, { renderMs, frameWidth, frameHeight })
+  }
+
+  /**
+   * Re-renders only `area` (what a stroke touched) into the cached frame, at the frame's
+   * own scale, then redraws. Falls back to a full render when there is no frame yet.
+   */
+  renderArea(area: PhotoRect) {
+    const frame = this.frame
+    if (!frame) {
+      this.render()
+      return
+    }
+    const sx = frame.bitmap.width / frame.width
+    const sy = frame.bitmap.height / frame.height
+    const px0 = clamp(Math.floor((area.x0 - frame.x) * sx), 0, frame.bitmap.width)
+    const py0 = clamp(Math.floor((area.y0 - frame.y) * sy), 0, frame.bitmap.height)
+    const px1 = clamp(Math.ceil((area.x1 - frame.x) * sx), 0, frame.bitmap.width)
+    const py1 = clamp(Math.ceil((area.y1 - frame.y) * sy), 0, frame.bitmap.height)
+    if (px1 <= px0 || py1 <= py0) return
+    const width = px1 - px0
+    const height = py1 - py0
+    const started = performance.now()
+    const k = Math.round(1 / frame.scale)
+    const rgba = frame.scale < 1
+      ? this.doc.renderArea(frame.x + px0 * k, frame.y + py0 * k, frame.x + px1 * k, frame.y + py1 * k, width, height)
+      : this.doc.render(frame.x + px0 / sx, frame.y + py0 / sy, frame.scale, width, height)
+    frame.bitmap.getContext('2d')?.putImageData(imageData(rgba, width, height), px0, py0)
+    const renderMs = Math.round(performance.now() - started)
+    this.draw()
+    this.onChange(this.view, { renderMs, frameWidth: width, frameHeight: height })
   }
 
   /** Redraws the cached frame at the current view. */

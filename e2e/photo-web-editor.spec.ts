@@ -15,12 +15,12 @@ type NodePhotoSdk = {
   PhotoDocument: { create(name: string, width: number, height: number): { save(): Uint8Array; execute(command: string, params: string): string; free(): void } }
 }
 
-/** A real two-layer PSD written by the same engine the page runs. */
-async function psdFixture() {
+/** A real PSD written by the same engine the page runs: a background and the named layers. */
+async function psdFixture(layers: readonly string[] = ['Ink']) {
   const sdk = (await import(pathToFileURL(path.join(SDK_DIR, 'kition_photo_sdk.js')).href)) as NodePhotoSdk
   await sdk.default({ module_or_path: await fs.readFile(SDK_WASM) })
   const doc = sdk.PhotoDocument.create('Poster.psd', 96, 64)
-  doc.execute('layer.new.layer', JSON.stringify({ name: 'Ink' }))
+  for (const name of layers) doc.execute('layer.new.layer', JSON.stringify({ name }))
   const bytes = doc.save()
   doc.free()
   return Buffer.from(bytes)
@@ -44,9 +44,21 @@ test('edits a PSD in the page with the Photo engine and saves it back to the wor
     await fs.writeFile(path.join(host.root, 'Poster.psd'), original)
     await mockLocalWorkspaceApi(page)
     const saves: Array<{ path: string | null; bytes: Buffer }> = []
+    const file = path.join(host.root, 'Poster.psd')
     await page.route('**/workspace-files/Poster.psd', async (route) => {
-      await route.fulfill({ contentType: 'image/vnd.adobe.photoshop', body: await fs.readFile(path.join(host.root, 'Poster.psd')) })
+      const stat = await fs.stat(file)
+      await route.fulfill({
+        contentType: 'image/vnd.adobe.photoshop',
+        headers: { etag: `"${stat.mtimeMs}-${stat.size}"` },
+        body: await fs.readFile(file),
+      })
     })
+    /** The agent saves a new version of the file through its own kit connection. */
+    const agentSaves = async (layers: readonly string[]) => {
+      await fs.writeFile(file, await psdFixture(layers))
+      const later = new Date(Date.now() + 5000)
+      await fs.utimes(file, later, later)
+    }
     await page.route('**/api/v1/kits/files?**', async (route) => {
       const request = route.request()
       const target = new URL(request.url()).searchParams.get('path')
@@ -95,6 +107,25 @@ test('edits a PSD in the page with the Photo engine and saves it back to the wor
     expect(saves[0].path).toBe('Poster.psd')
     expect(saves[0].bytes.subarray(0, 4).toString()).toBe('8BPS')
     expect(saves[0].bytes.equals(original)).toBe(false)
+
+    // With nothing unsaved, the tab follows the agent's new version of the file.
+    await agentSaves(['Ink', 'Agent'])
+    await expect(page.getByTestId('photo-kit-layers')).toContainText('Agent', { timeout: 10_000 })
+    await expect(page.getByTestId('photo-file-changed')).toHaveCount(0)
+
+    // With unsaved edits, it asks before replacing them.
+    await page.mouse.move(cx - 60, cy + 40)
+    await page.mouse.down()
+    await page.mouse.move(cx + 60, cy + 40)
+    await page.mouse.up()
+    await expect(page.getByTestId('photo-kit-unsaved')).toBeVisible()
+    await agentSaves(['Ink', 'Agent', 'Agent two'])
+    await expect(page.getByTestId('photo-file-changed')).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByTestId('photo-kit-layers')).not.toContainText('Agent two')
+    await page.getByTestId('photo-file-reload').click()
+    await expect(page.getByTestId('photo-kit-layers')).toContainText('Agent two')
+    await expect(page.getByTestId('photo-kit-unsaved')).toHaveCount(0)
+    await expect(page.getByTestId('photo-file-changed')).toHaveCount(0)
   } finally {
     await host.dispose()
   }

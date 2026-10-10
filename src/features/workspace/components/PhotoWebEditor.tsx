@@ -10,7 +10,7 @@ import { PhotoSidePanel } from './photo/PhotoSidePanel'
 import { PhotoToolRail } from './photo/PhotoToolRail'
 import { PhotoWebCanvas, type PhotoCanvasHandle, type PhotoStrokePoint } from './photo/PhotoWebCanvas'
 import { PHOTO_TOOLS } from './photo/photoTools'
-import type { PhotoViewportStats } from './photo/photoViewport'
+import type { PhotoRect, PhotoView, PhotoViewportStats } from './photo/photoViewport'
 import { usePhotoDocument } from './photo/usePhotoDocument'
 
 /** The tools the in-page canvas handles itself. */
@@ -20,11 +20,26 @@ const ZOOM_STEP = 1.25
 
 type PhotoWebEditorProps = {
   path: string
+  /** The tab is in front; only then does the editor follow changes to the file. */
+  active: boolean
   onOpenAgent?: () => void
 }
 
 function errorText(error: unknown) {
   return error instanceof Error ? error.message : String(error)
+}
+
+/** The image area a stroke can touch: its points, widened by the brush and a soft edge. */
+function strokeBounds(points: readonly PhotoStrokePoint[], size: number): PhotoRect {
+  const reach = size / 2 + 2
+  const xs = points.map((point) => point[0])
+  const ys = points.map((point) => point[1])
+  return {
+    x0: Math.floor(Math.min(...xs) - reach),
+    y0: Math.floor(Math.min(...ys) - reach),
+    x1: Math.ceil(Math.max(...xs) + reach),
+    y1: Math.ceil(Math.max(...ys) + reach),
+  }
 }
 
 function hex(rgb: readonly number[]) {
@@ -35,10 +50,11 @@ function hex(rgb: readonly number[]) {
  * A layered image edited in the page: the Photo engine runs as WebAssembly
  * and paints into a canvas, and Kition draws the whole editor around it.
  */
-export function PhotoWebEditor({ path, onOpenAgent }: PhotoWebEditorProps) {
+export function PhotoWebEditor({ path, active, onOpenAgent }: PhotoWebEditorProps) {
   const { t } = useTranslation('workspace')
-  const photo = usePhotoDocument(path)
+  const photo = usePhotoDocument(path, active)
   const canvas = useRef<PhotoCanvasHandle>(null)
+  const viewMemory = useRef<PhotoView | null>(null)
   const [tool, setTool] = useState('Brush')
   const [brushSize, setBrushSize] = useState(24)
   const [foreground, setForeground] = useState<[number, number, number]>([0, 0, 0])
@@ -71,9 +87,13 @@ export function PhotoWebEditor({ path, onOpenAgent }: PhotoWebEditorProps) {
 
   const stroke = useCallback((points: PhotoStrokePoint[], erase: boolean) => {
     const started = performance.now()
-    run('paint.stroke', { points, size: brushSize, color: hex(foreground), erase })
+    try {
+      photo.run('paint.stroke', { points, size: brushSize, color: hex(foreground), erase }, strokeBounds(points, brushSize))
+    } catch (error) {
+      notify.error(t('photoKit.commandFailed'), { description: errorText(error) })
+    }
     setStrokeMs(Math.round(performance.now() - started))
-  }, [brushSize, foreground, run])
+  }, [brushSize, foreground, photo, t])
 
   const details = useMemo<KitsPhotoDetails | null>(() => (photo.state ? {
     ...photo.state.details,
@@ -151,6 +171,13 @@ export function PhotoWebEditor({ path, onOpenAgent }: PhotoWebEditorProps) {
       <div className="flex min-h-0 flex-1">
         <PhotoToolRail tools={WEB_TOOLS} tool={tool} foreground={details?.foreground} background={details?.background} onSelect={setTool} />
         <div className="relative min-w-0 flex-1 bg-secondary/40" data-testid="photo-kit-editor-region">
+          {photo.conflict ? (
+            <div className="absolute inset-x-3 top-3 z-10 flex items-center gap-3 rounded-xl border border-border bg-background px-4 py-2.5 shadow-sm" role="alert" data-testid="photo-file-changed">
+              <p className="min-w-0 flex-1 text-[13px] text-foreground">{t('photoKit.changedOnDisk')}</p>
+              <Button variant="outline" size="sm" onClick={photo.keepMine}>{t('photoKit.keepMine')}</Button>
+              <Button size="sm" onClick={photo.reopen} data-testid="photo-file-reload">{t('photoKit.reloadFile')}</Button>
+            </div>
+          ) : null}
           {photo.failure ? (
             <div className="flex h-full items-center justify-center p-8">
               <div className="max-w-md rounded-xl border border-border bg-background p-6 text-center">
@@ -165,8 +192,9 @@ export function PhotoWebEditor({ path, onOpenAgent }: PhotoWebEditorProps) {
           ) : doc && photo.state ? (
             <PhotoWebCanvas
               ref={canvas}
+              viewMemory={viewMemory}
               doc={doc}
-              revision={photo.revision}
+              change={photo.change}
               tool={tool}
               brushSize={brushSize}
               color={hex(foreground)}

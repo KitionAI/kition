@@ -693,6 +693,9 @@
       "open": "Ouverture {{ms}} ms",
       "render": "Rendu {{ms}} ms",
       "stroke": "Trait {{ms}} ms"
-    }
+    },
+    "changedOnDisk": "Cette image a été modifiée hors de l'éditeur et vous avez des modifications non enregistrées.",
+    "keepMine": "Garder mes modifications",
+    "reloadFile": "Charger la nouvelle version"
   }
 }

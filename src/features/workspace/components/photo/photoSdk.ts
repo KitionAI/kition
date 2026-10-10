@@ -14,6 +14,8 @@ export interface PhotoSdkDocument {
   readonly dirty: boolean
   /** RGBA8 of the area at (`x`, `y`) document pixels shown at `scale` screen pixels per pixel. */
   render(x: number, y: number, scale: number, width: number, height: number): Uint8Array
+  /** RGBA8 of the image area (`x0`, `y0`)–(`x1`, `y1`), averaged down to exactly `width` × `height`. */
+  renderArea(x0: number, y0: number, x1: number, y1: number, width: number, height: number): Uint8Array
   execute(command: string, params: string): string
   inspect(): string
   commands(): string

@@ -693,6 +693,9 @@
       "open": "Open {{ms}} ms",
       "render": "Render {{ms}} ms",
       "stroke": "Stroke {{ms}} ms"
-    }
+    },
+    "changedOnDisk": "This image changed outside the editor, and you have unsaved edits.",
+    "keepMine": "Keep my edits",
+    "reloadFile": "Load the new version"
   }
 }

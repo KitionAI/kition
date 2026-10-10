@@ -1,7 +1,8 @@
-import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react'
+import { useEffect, useImperativeHandle, useRef, useState, type RefObject, type Ref } from 'react'
 import { cn } from '@/lib/utils'
 import type { PhotoSdkDocument } from './photoSdk'
 import { PhotoViewport, type PhotoView, type PhotoViewportStats } from './photoViewport'
+import type { PhotoChange } from './usePhotoDocument'
 
 const BACKDROP = '#f3f3f6'
 const WHEEL_ZOOM_SPEED = 0.01
@@ -17,8 +18,8 @@ export type PhotoCanvasHandle = {
 
 type PhotoWebCanvasProps = {
   doc: PhotoSdkDocument
-  /** Moves with every document change; the canvas re-renders when it does. */
-  revision: number
+  /** Moves with every document change; the canvas repaints what it names. */
+  change: PhotoChange
   tool: string
   brushSize: number
   /** CSS colour of the brush preview. */
@@ -26,6 +27,8 @@ type PhotoWebCanvasProps = {
   onStroke: (points: PhotoStrokePoint[], erase: boolean) => void
   onPick: (rgb: [number, number, number]) => void
   onView: (view: PhotoView, stats: PhotoViewportStats | null) => void
+  /** The last view, kept when the document is replaced by a newer version of the file. */
+  viewMemory: RefObject<PhotoView | null>
   ref?: Ref<PhotoCanvasHandle>
 }
 
@@ -40,7 +43,7 @@ function cursorFor(tool: string, panning: boolean) {
 }
 
 /** The image, painted by the in-page engine, with Kition's own pointer handling. */
-export function PhotoWebCanvas({ doc, revision, tool, brushSize, color, onStroke, onPick, onView, ref }: PhotoWebCanvasProps) {
+export function PhotoWebCanvas({ doc, change, tool, brushSize, color, onStroke, onPick, onView, viewMemory, ref }: PhotoWebCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const overlayRef = useRef<HTMLCanvasElement>(null)
   const viewportRef = useRef<PhotoViewport | null>(null)
@@ -52,12 +55,17 @@ export function PhotoWebCanvas({ doc, revision, tool, brushSize, color, onStroke
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return undefined
-    const viewport = new PhotoViewport(canvas, doc, BACKDROP, (view, stats) => latest.current.onView(view, stats))
+    // Remember the view only once it is placed (fitted, or carried over), never the default.
+    let placed = viewMemory.current != null
+    const viewport = new PhotoViewport(canvas, doc, BACKDROP, (view, stats) => {
+      if (placed) viewMemory.current = view
+      latest.current.onView(view, stats)
+    })
     viewportRef.current = viewport
-    let fitted = false
+    if (viewMemory.current) viewport.view = { ...viewMemory.current }
     const observer = new ResizeObserver(() => {
-      if (!fitted && canvas.clientWidth > 0) {
-        fitted = true
+      if (!placed && canvas.clientWidth > 0) {
+        placed = true
         viewport.fit()
       }
       viewport.render()
@@ -75,13 +83,15 @@ export function PhotoWebCanvas({ doc, revision, tool, brushSize, color, onStroke
       viewport.dispose()
       viewportRef.current = null
     }
-  }, [doc])
+  }, [doc, viewMemory])
 
   useEffect(() => {
-    viewportRef.current?.render()
+    const viewport = viewportRef.current
+    if (change.damage) viewport?.renderArea(change.damage)
+    else viewport?.render()
     const overlay = overlayRef.current
     overlay?.getContext('2d')?.clearRect(0, 0, overlay.width, overlay.height)
-  }, [revision])
+  }, [change])
 
   useEffect(() => {
     const down = (event: KeyboardEvent) => {

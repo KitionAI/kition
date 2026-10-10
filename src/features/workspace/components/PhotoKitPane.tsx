@@ -71,7 +71,7 @@ export function PhotoKitPane({ path, active, onOpenAgent }: PhotoKitPaneProps) {
   const showPreview = useCallback(() => setMode('preview'), [])
 
   if (mode === 'checking') return null
-  if (mode === 'web') return <PhotoWebEditor path={path} onOpenAgent={onOpenAgent} />
+  if (mode === 'web') return <PhotoWebEditor path={path} active={active} onOpenAgent={onOpenAgent} />
   if (mode === 'editor') {
     return <PhotoKitEditor path={path} active={active} onOpenAgent={onOpenAgent} onUnavailable={showPreview} />
   }
