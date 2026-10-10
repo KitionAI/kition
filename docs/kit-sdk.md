@@ -1,7 +1,9 @@
 # Kit SDK: Editing Kit Files Inside Kition
 
-Status: in use for `kit.photo` since 2026-10-10. Every new kit must follow this
-guide. The platform background lives in
+Status: in use for `kit.photo` and `kit.film` since 2026-10-10. Every new kit
+must follow this guide. The kit-side SDK is the private repository
+`KitionAI/kition-sdk` (AGPL-3.0-only, like Kition); its `docs/contract.md`
+holds the contract section 3 summarizes. The platform background lives in
 [kit-platform-architecture.md](kit-platform-architecture.md) and the wire
 protocol in [kit-protocol.md](kit-protocol.md).
 
@@ -30,8 +32,8 @@ without the SDK and is slated for removal.
 ```text
 kit repository (for example KitionAI/kit-photo, standalone, private)
   crates/<engine crates>          the upstream engine, changed as needed
-  crates/kition-kit-sdk           the Rust half of the Kit SDK: KitDocument, export_kit_document!,
-                                  testing::check_contract (MIT OR Apache-2.0; moves to the open SDK)
+  (git dependency) kition-sdk     KitionAI/kition-sdk: KitDocument, export_kit_document!,
+                                  testing::check_contract, host (lent files), raster
   crates/kition-<kit>-sdk         the kit's SDK: its engine behind KitDocument, as WebAssembly
   apps/kit-<kit>                  the headless Kit Protocol executable (agent)
   KITION_CHANGES.md               every upstream file Kition changed, and why
@@ -71,10 +73,10 @@ the headless kit and saves it. The tab notices the new version on disk
 ## 3. The SDK Contract (Kit Side)
 
 Each kit repository adds `crates/kition-<kit>-sdk` on top of the
-`kition-kit-sdk` crate, modelled on `crates/kition-photo-sdk` in kit-photo:
+`kition-sdk` crate, modelled on `crates/kition-photo-sdk` in kit-photo:
 
 ```rust
-use kition_kit_sdk::{KitCommand, KitDocument};
+use kition_sdk::{KitCommand, KitDocument};
 
 pub struct SketchDocument { /* the engine's session */ }
 
@@ -84,11 +86,11 @@ impl KitDocument for SketchDocument {
     // execute, inspect, commands, save, mark_saved
 }
 
-kition_kit_sdk::export_kit_document!(SketchDocument as "SketchDocument");
+kition_sdk::export_kit_document!(SketchDocument as "SketchDocument");
 
 #[test]
 fn keeps_the_kit_sdk_contract() {
-    kition_kit_sdk::testing::check_contract::<SketchDocument>(&fixture(), "fixture.sketch", |doc| {
+    kition_sdk::testing::check_contract::<SketchDocument>(&fixture(), "fixture.sketch", |doc| {
         doc.execute("draw.line", serde_json::json!({ "from": [1, 1], "to": [20, 10] })).map(|_| ())
     })
     .unwrap();
@@ -102,8 +104,13 @@ fn keeps_the_kit_sdk_contract() {
   block and are reached from the page with `KitEngine.invoke`.
 - No `unsafe`, no `unwrap`, `expect`, or `panic!`. Bad input returns an error
   (a `JsError` in JavaScript), never a panic, because a panic kills the worker.
-- `crates/kition-kit-sdk/tests/reference_kit.rs` is a complete minimal kit to
-  copy.
+- `examples/grid-kit` in kition-sdk is the smallest complete kit to copy. A
+  kit does not depend on wasm-bindgen; the macro brings it.
+- Engines that render whole frames (video, slides, pages) implement `render`
+  and `render_area` with `kition_sdk::raster` from one full-resolution frame;
+  the results are contract-exact.
+- Documents that name other files (a film project's media) read them with
+  `kition_sdk::host` (lent files, below).
 
 The JavaScript class the macro generates (`KitSdkDocument` in
 `src/features/kits/sdk/kitSdk.ts`):
@@ -140,6 +147,16 @@ Rust toolchain new enough for the kit; kit-photo needs 1.95, and the script
 handles macOS `rust-lld`'s library path. The output, about 20 MB for Photo, is
 not committed. wasm-pack writes a `.gitignore` of `*` into it.
 
+Lent files: `kition_sdk::host::{size, read_range, read}` are synchronous.
+Kition's worker answers them (`src/features/kits/sdk/lentFiles.ts`) with
+ranged XMLHttpRequests against the workspace file server, cached in 1 MiB
+chunks (256 MiB budget). Paths resolve against the document's folder, a
+leading `/` means the workspace root, and nothing resolves above the root.
+`KitHost.lend(path)` says where; `KITION_KIT_HOST` lends the workspace. The
+runtime's CORS allows `Range` and exposes `ETag` and `Content-Range` for it.
+Projects should name media relative to themselves (`../clips/a.mp4`) so they
+stay portable.
+
 The headless executable must also reload a document from disk when the file
 changed since it read it and nothing is unsaved there. Otherwise the agent
 edits a stale copy and its save overwrites the person's work. See
@@ -160,7 +177,7 @@ what the open Kit SDK will publish:
 | `KitEngine` | One document in its own worker; async calls answered in order; `info` (`width`, `height`, `revision`, `dirty`, `canUndo`, `canRedo`, `inspected`) is current after every change; `invoke(name, …args)` reaches an SDK's own extras; a worker failure rejects every waiting call |
 | `KitHost` | File IO: `read`, `stamp`, `write` |
 | `useKitDocument(host, manifest, path, active, describe)` | Loads the file, follows it on disk, runs commands with a repaint area, saves in place; `describe(info)` maps `inspected` to the kit's view model |
-| `KitCanvas` | The document on a canvas: the active `KitTool` gets gestures in document pixels; Space, the middle button, and `HAND_TOOL` pan; the wheel pans and zooms with Cmd or Ctrl; pointer capture and coalesced events; a preview overlay; `decorate` with `animated` for marching ants; HTML children for inline fields |
+| `KitCanvas` | The document on a canvas: the active `KitTool` gets gestures in document pixels; Space (unless `spacePans` is off, as in a player), the middle button, and `HAND_TOOL` pan; the wheel pans and zooms with Cmd or Ctrl; pointer capture and coalesced events; a preview overlay; `decorate` with `animated` for marching ants; HTML children for inline fields |
 | `KitTool`, `KitGesture`, `KitPointer`, `HAND_TOOL`, `ZOOM_TOOL`, `dragRect` | Tools: `begin(pointer, { viewport, overlay })` returns a gesture with `move`, `end`, `cancel` |
 | `RasterViewport` | The canvas engine: cached frame, pan, zoom, fit, exact damage patches, sampling, `toScreen` |
 | `commandForShortcut` (internal) | Shortcut matching used by the frame |
@@ -170,8 +187,8 @@ what the open Kit SDK will publish:
 | Export | Role |
 | --- | --- |
 | `KITION_KIT_HOST` | The workspace as a `KitHost` |
-| `useKitEditor(document, { onOpenAgent })` | Command list (refreshed after each change), failure and save notices, "save before asking the agent" |
-| `KitEditorFrame` | Header, menus, options, tools, canvas, panels, status bar; opening, failure, and changed-on-disk states. Keys go to the kit first, then Cmd/Ctrl+S, then every enabled command's own shortcut (modified keys, Delete, Backspace, F-keys; never Kition's Cmd+N, W, O, P, Q, T, or comma) |
+| `useKitEditor(document, { onOpenAgent })` | Command list (at once on open, then throttled to every 250 ms while the document changes), `run` returning the command's JSON result (or null after a notice), `runShortcut`, save notices, "save before asking the agent" |
+| `KitEditorFrame` | Header, menus, options, tools, canvas, panels, a `bottom` panel (timelines), status bar; opening, failure, and changed-on-disk states. Keys go to the kit first, then Cmd/Ctrl+S, then the command bound to the key (modified keys, Delete, Backspace, F-keys; never Kition's Cmd+N, W, O, P, Q, T, or comma); the engine is asked whether it can run at that moment |
 | `KitMenuBar` | Menus from the commands in a given top-level order |
 
 Shared test ids: `kit-editor`, `kit-unsaved`, `kit-save`, `kit-ask-agent`,
@@ -187,7 +204,7 @@ Kit repository:
 1. Create the standalone repository from upstream as a clone, never a GitHub
    fork. Note the upstream base in the README and keep `KITION_CHANGES.md`
    current.
-2. Add `crates/kition-<kit>-sdk` on `kition-kit-sdk` (section 3), with
+2. Add `crates/kition-<kit>-sdk` on `kition-sdk` (section 3), with
    `check_contract` in its tests plus the kit's own tests.
 3. Implement the headless Kit Protocol executable and pass the conformance
    suite (`kition-kit-conformance`); include the reload-on-change rule.
@@ -293,6 +310,21 @@ React and the canvas:
 - Wheel listeners must be registered with `{ passive: false }` to prevent
   page scrolling. Use pointer capture and coalesced events for strokes.
 
+Learned from Film (the second kit):
+
+- Never debounce anything that must eventually happen. Playback changes the
+  document every frame, and a debounced command refresh never fired, so no
+  shortcut matched. Throttle instead.
+- Ask the engine at key-press time whether a command can run; cached enabled
+  states lag a fast select-then-delete.
+- When two commands bind Delete and Backspace, the exact key wins; `Delete`
+  also answering to Backspace (the Mac key) is only a fallback.
+- Multi-step edits are normal (create, then place). The contract checkers take
+  a list of steps, where `"$0.item"` is step 0's result field.
+- A second kit finds what the first hides: `export_kit_document!` only built
+  because Photo happened to depend on wasm-bindgen. Test SDK changes on a kit
+  that does not (`examples/grid-kit`).
+
 Product:
 
 - Kition draws all chrome; kits contribute commands (with menu paths and
@@ -316,27 +348,36 @@ desktop app's status bar too.
 | Pan and zoom | next frame | immediate (cached frame) |
 | Save | < 3 s, no long tasks | 1.3 to 1.9 s, none |
 
-## 8. Toward The Open Kit SDK
+Film, measured on the built SDK in Node with real H.264 through lent files
+(single-threaded WebAssembly): 1080p next frame 25 to 34 ms, a seek 200 to
+400 ms (decoding from the keyframe), the same frame again 26 ms, and 3.7 MB
+read of an 8 MB clip for five frames. Playback skips frames the engine cannot
+keep up with; the status bar shows the frame rate reached.
 
-The Kit SDK will be published so other developers can make their engines
-editable inside Kition, and so the KitionAI kits (Photo first, then the
-others) ship as SDKs. What is already portable:
+## 8. The Kition SDK Repository
 
-- the Rust crate `kition-kit-sdk` (trait, export macro, contract checker,
-  reference kit), dual MIT and Apache-2.0 like the upstream engines;
-- the TypeScript core `src/features/kits/sdk/`, which `check:deps` keeps free
-  of Kition imports;
-- `scripts/check-kit-sdk.mjs` and the contract in section 3.
+`KitionAI/kition-sdk` (private for now, AGPL-3.0-only, like Kition and the
+kits) is the kit author's SDK:
 
-What stays in Kition: the editor chrome (`src/features/kits/kition/`), the
-workspace host, the registry, the runtime routes, and the agent tools.
+- `crates/kition-sdk`: the contract trait, export macro, contract checker,
+  lent files, and raster helpers;
+- `examples/grid-kit`: the smallest complete kit;
+- `tools/check-sdk.mjs`: the built-SDK checker (Kition's
+  `scripts/check-kit-sdk.mjs` is the same checker with the `kits/sdks.json`
+  registry);
+- `docs/contract.md`: the contract; CI builds the example for wasm32.
 
-Rules until it is published:
+Kits pin it by commit (`kition-sdk = { git = "https://github.com/KitionAI/kition-sdk", rev = … }`)
+with `net.git-fetch-with-cli = true`. Kit-photo and kit-film use it. The host
+side (`src/features/kits/sdk/`) stays in Kition and is kept portable by
+`check:deps`.
 
-- Every change to the contract bumps `CONTRACT_VERSION` (Rust) and
-  `KIT_CONTRACT_VERSION` (TypeScript) together, and updates both checkers.
-- Anything a second kit would need goes into `sdk/` or `kition-kit-sdk`, not
-  into one kit.
+Rules:
+
+- Contract changes happen in kition-sdk, bump `CONTRACT_VERSION` there and
+  `KIT_CONTRACT_VERSION` in `src/features/kits/sdk/kitSdk.ts` together, and
+  update both checkers.
+- Anything a second kit would need goes into kition-sdk or `sdk/`, not into
+  one kit.
 - Kit-specific behavior never leaks into the core. Use `invoke` for extras,
   `describe` for view models, and `KitTool` for interaction.
-

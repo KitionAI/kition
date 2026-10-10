@@ -57,7 +57,7 @@ export function useKitDocument<T>(host: KitHost, manifest: KitSdkManifest, path:
       if (!isCurrent()) return
       const started = performance.now()
       const name = path.split('/').filter(Boolean).pop() || path
-      const next = await KitEngine.open(manifest, name, bytes)
+      const next = await KitEngine.open(manifest, name, bytes, host.lend?.(path) ?? null)
       setOpenMs(Math.round(performance.now() - started))
       if (!isCurrent()) {
         next.dispose()

@@ -11,6 +11,12 @@ export type KitHost = {
   stamp: (path: string) => Promise<string | null>
   /** Replaces the file with `bytes`. */
   write: (path: string, bytes: Uint8Array) => Promise<void>
+  /**
+   * Where the document at `path` may read the other files it names (lent files): an absolute
+   * URL of the workspace root that serves ranged reads, and the document's folder in it. Absent:
+   * documents read no other files.
+   */
+  lend?: (path: string) => { root: string; folder: string } | null
 }
 
 /** A version stamp from HTTP headers: the validator, or the time and size. */

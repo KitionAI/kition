@@ -116,6 +116,7 @@ export type WorkspaceDocumentFormat =
   | 'html'
   | 'image'
   | 'photo'
+  | 'film'
   | 'video'
   | 'audio'
   | 'binary'

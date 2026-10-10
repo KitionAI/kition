@@ -3,6 +3,8 @@ import type { KitSdkManifest } from '@/features/kits/public'
 import type { WorkspaceDocumentFormat } from '@/services/desktop'
 import { PhotoKitPane } from '../PhotoKitPane'
 import { PHOTO_SDK } from '../photo/photoKitSdk'
+import { FilmUnavailable } from '../film/FilmUnavailable'
+import { FILM_SDK } from '../film/filmKitSdk'
 
 /** What every kit editor receives from the workspace tab. */
 export type KitEditorProps = {
@@ -31,6 +33,12 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
     sdk: PHOTO_SDK,
     Editor: lazy(() => import('../PhotoWebEditor').then((module) => ({ default: module.PhotoWebEditor }))),
     Fallback: PhotoKitPane,
+  },
+  {
+    format: 'film',
+    sdk: FILM_SDK,
+    Editor: lazy(() => import('../FilmWebEditor').then((module) => ({ default: module.FilmWebEditor }))),
+    Fallback: FilmUnavailable,
   },
 ]
 

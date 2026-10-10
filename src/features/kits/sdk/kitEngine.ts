@@ -1,4 +1,5 @@
 import type { KitCommand, KitSdkManifest } from './kitSdk'
+import type { LentFiles } from './lentFiles'
 
 /** What the page keeps in sync about the open document after every request that can change it. */
 export type KitEngineInfo = {
@@ -13,7 +14,7 @@ export type KitEngineInfo = {
 }
 
 export type KitEngineRequest =
-  | { method: 'open'; manifest: KitSdkManifest; name: string; bytes: ArrayBuffer }
+  | { method: 'open'; manifest: KitSdkManifest; name: string; bytes: ArrayBuffer; lent: LentFiles | null }
   | { method: 'execute'; command: string; params: Record<string, unknown> }
   | { method: 'render'; x: number; y: number; scale: number; width: number; height: number }
   | { method: 'renderArea'; x0: number; y0: number; x1: number; y1: number; width: number; height: number }
@@ -39,14 +40,17 @@ export class KitEngine {
 
   private constructor(private readonly worker: Worker, public info: KitEngineInfo) {}
 
-  /** Starts a worker and opens the file's bytes in it with the kit's SDK; the bytes move to the worker. */
-  static async open(manifest: KitSdkManifest, name: string, bytes: ArrayBuffer) {
+  /**
+   * Starts a worker and opens the file's bytes in it with the kit's SDK; the bytes move to the
+   * worker. `lent` is where the document's other files (media) are read from, if anywhere.
+   */
+  static async open(manifest: KitSdkManifest, name: string, bytes: ArrayBuffer, lent: LentFiles | null = null) {
     const worker = new Worker(new URL('./kitEngine.worker.ts', import.meta.url), { type: 'module' })
     const engine = new KitEngine(worker, CLOSED_INFO)
     worker.onmessage = (event: MessageEvent<KitEngineResponse>) => engine.settle(event.data)
     worker.onerror = (event) => engine.fail(new Error(event.message || 'the kit engine stopped'))
     try {
-      engine.info = (await engine.call({ method: 'open', manifest, name, bytes }, [bytes])) as KitEngineInfo
+      engine.info = (await engine.call({ method: 'open', manifest, name, bytes, lent }, [bytes])) as KitEngineInfo
       return engine
     } catch (error) {
       engine.dispose()

@@ -6,6 +6,48 @@
     "module": "kition_photo_sdk",
     "class": "PhotoDocument",
     "name": "fixture.psd",
-    "edit": { "command": "paint.stroke", "params": { "points": [[4, 4, 1], [30, 20, 1]], "size": 6, "color": "#ff0000" } }
+    "edit": {
+      "command": "paint.stroke",
+      "params": {
+        "points": [
+          [
+            4,
+            4,
+            1
+          ],
+          [
+            30,
+            20,
+            1
+          ]
+        ],
+        "size": 6,
+        "color": "#ff0000"
+      }
+    }
+  },
+  "film": {
+    "repository": "KitionAI/kit-film",
+    "crate": "kition-film-sdk",
+    "module": "kition_film_sdk",
+    "class": "FilmDocument",
+    "name": "Edit.fcproj",
+    "edit": [
+      {
+        "command": "file.newColorMatte",
+        "params": {
+          "color": "#ff0000",
+          "seconds": 2
+        }
+      },
+      {
+        "command": "timeline.place",
+        "params": {
+          "item": "$0.item",
+          "track": "V1",
+          "seconds": 0
+        }
+      }
+    ]
   }
 }

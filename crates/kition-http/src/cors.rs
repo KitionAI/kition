@@ -17,7 +17,10 @@ const DESKTOP_SHELL_ORIGINS: [&str; 3] = [
     "https://tauri.localhost",
 ];
 const ALLOW_METHODS: &str = "GET,POST,PUT,PATCH,DELETE,OPTIONS";
-const ALLOW_HEADERS: &str = "Authorization,Content-Type,X-Request-Id,X-Locale";
+// `Range` lets kit workers read workspace media in ranges (lent files in docs/kit-sdk.md).
+const ALLOW_HEADERS: &str = "Authorization,Content-Type,X-Request-Id,X-Locale,Range";
+// Kit editors follow a file by its `ETag`, and lent reads check `Content-Range`.
+const EXPOSE_HEADERS: &str = "ETag,Content-Range,Accept-Ranges";
 
 fn origin_allowed(origin: &str) -> bool {
     ALLOWED_ORIGINS.contains(&origin)
@@ -111,6 +114,10 @@ fn apply_normal(headers: &mut HeaderMap, origin: HeaderValue) {
         header::ACCESS_CONTROL_ALLOW_CREDENTIALS,
         HeaderValue::from_static("true"),
     );
+    headers.insert(
+        header::ACCESS_CONTROL_EXPOSE_HEADERS,
+        HeaderValue::from_static(EXPOSE_HEADERS),
+    );
     headers.insert(header::VARY, HeaderValue::from_static("Origin"));
     headers.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, origin);
 }
@@ -175,6 +182,11 @@ mod tests {
             ["true"]
         );
         assert_eq!(header_text(&response, "vary"), ["Origin"]);
+        assert_eq!(
+            header_text(&response, "access-control-expose-headers"),
+            [EXPOSE_HEADERS]
+        );
+        assert!(ALLOW_HEADERS.split(',').any(|name| name == "Range"));
     }
 
     #[tokio::test]

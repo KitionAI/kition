@@ -23,8 +23,11 @@ function isMac() {
   return typeof navigator !== 'undefined' && /Mac|iPhone|iPad/i.test(navigator.platform)
 }
 
-/** Whether `event` is `shortcut`, written as kits write it: `Cmd+Shift+Z`, `Alt+Backspace`, `F12`. */
-export function shortcutMatches(shortcut: string, event: KeyLike, mac = isMac()) {
+/**
+ * Whether `event` is `shortcut`, written as kits write it: `Cmd+Shift+Z`, `Alt+Backspace`, `F12`.
+ * `Delete` also answers to Backspace (the Mac delete key) unless `exact`.
+ */
+export function shortcutMatches(shortcut: string, event: KeyLike, mac = isMac(), exact = false) {
   const parts = shortcut.split('+')
   const key = parts.length > 1 && parts[parts.length - 1] === '' ? '+' : parts.pop() ?? ''
   const mods = new Set(parts.filter(Boolean))
@@ -36,7 +39,7 @@ export function shortcutMatches(shortcut: string, event: KeyLike, mac = isMac())
   if (/^[A-Za-z]$/.test(key)) return event.code === `Key${key.toUpperCase()}`
   if (/^[0-9]$/.test(key)) return event.code === `Digit${key}`
   if (CODES[key]) return event.code === CODES[key]
-  if (key === 'Delete') return event.key === 'Delete' || event.key === 'Backspace'
+  if (key === 'Delete') return event.key === 'Delete' || (!exact && event.key === 'Backspace')
   return event.key === key
 }
 
@@ -46,7 +49,11 @@ export function bindableShortcut(shortcut: string | null): shortcut is string {
   return shortcut.includes('+') || /^(Delete|Backspace|F[0-9]{1,2})$/.test(shortcut)
 }
 
-/** The enabled command whose shortcut is `event`, if any. */
+/**
+ * The command whose shortcut is `event`, if any, whether or not it can run now. An exact key wins
+ * over the Delete and Backspace alias (Film binds both, to different commands).
+ */
 export function commandForShortcut(commands: readonly KitCommand[], event: KeyLike, mac = isMac()) {
-  return commands.find((command) => command.enabled && bindableShortcut(command.shortcut) && shortcutMatches(command.shortcut, event, mac))
+  const bound = commands.filter((command) => bindableShortcut(command.shortcut))
+  return bound.find((command) => shortcutMatches(command.shortcut!, event, mac, true)) ?? bound.find((command) => shortcutMatches(command.shortcut!, event, mac))
 }

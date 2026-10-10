@@ -14,7 +14,7 @@ export type PhotoToolEnv = {
   shapeKind: 'rect' | 'ellipse'
   /** The active layer's bounds, for the Move preview and its repaint. */
   layerBounds: RasterRect | null
-  run: (command: string, params: Record<string, unknown>, damage?: RasterRect | null) => Promise<boolean>
+  run: (command: string, params: Record<string, unknown>, damage?: RasterRect | null) => Promise<string | null>
   pick: (rgb: [number, number, number]) => void
   /** The Crop tool proposes an area; the editor confirms it (Enter) or drops it (Escape). */
   proposeCrop: (area: { x: number; y: number; width: number; height: number }) => void

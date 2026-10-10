@@ -716,5 +716,32 @@
     "saved": "已保存",
     "undo": "撤销",
     "unsaved": "未保存"
+  },
+  "filmKit": {
+    "play": "播放",
+    "pause": "暂停",
+    "stepBack": "上一帧",
+    "stepForward": "下一帧",
+    "goToStart": "跳到开头",
+    "goToEnd": "跳到结尾",
+    "split": "在播放头处分割",
+    "addMedia": "添加素材",
+    "addMediaHint": "添加到播放头位置",
+    "noMedia": "工作区里没有视频、音频或图片",
+    "noSequence": "这个项目还没有序列。",
+    "playbackFps": "{{fps}} 帧/秒",
+    "unavailableTitle": "此版本不包含视频编辑",
+    "unavailableBody": "包含 Film 引擎时，视频项目可在 Kition 中打开。",
+    "menu": {
+      "File": "文件",
+      "Edit": "编辑",
+      "Clip": "剪辑",
+      "Sequence": "序列",
+      "Markers": "标记",
+      "GraphicsandTitles": "图形和标题",
+      "View": "视图",
+      "Window": "窗口",
+      "Help": "帮助"
+    }
   }
 }

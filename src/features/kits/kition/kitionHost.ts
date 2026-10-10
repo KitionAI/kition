@@ -16,4 +16,9 @@ export const KITION_KIT_HOST: KitHost = {
   write: async (path, bytes) => {
     await writeKitFile(path, bytes)
   },
+  // The workspace file server answers ranged reads; workers need an absolute URL.
+  lend: (path) => {
+    const root = new URL(resolveWorkspaceFileURL('_').replace(/_$/, ''), window.location.href).href
+    return { root, folder: path.split('/').filter(Boolean).slice(0, -1).join('/') }
+  },
 }

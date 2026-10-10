@@ -38,14 +38,25 @@ pub struct KitDefinition {
     pub embeds: bool,
 }
 
-pub const KITS: &[KitDefinition] = &[KitDefinition {
-    id: "kit.photo",
-    name: "Kition Photo",
-    binary_env: "KITION_KIT_PHOTO_BINARY",
-    extensions: &["psd", "psb", "pcraft"],
-    creates: &[("psd", "psd"), ("psb", "psb"), ("pcraft", "pcraft")],
-    embeds: true,
-}];
+pub const KITS: &[KitDefinition] = &[
+    KitDefinition {
+        id: "kit.photo",
+        name: "Kition Photo",
+        binary_env: "KITION_KIT_PHOTO_BINARY",
+        extensions: &["psd", "psb", "pcraft"],
+        creates: &[("psd", "psd"), ("psb", "psb"), ("pcraft", "pcraft")],
+        embeds: true,
+    },
+    // Edited in the page through its SDK; the headless executable for the agent comes later.
+    KitDefinition {
+        id: "kit.film",
+        name: "Kition Film",
+        binary_env: "KITION_KIT_FILM_BINARY",
+        extensions: &["fcproj"],
+        creates: &[],
+        embeds: false,
+    },
+];
 
 /// Who is asking: a person in a kit tab or the agent.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

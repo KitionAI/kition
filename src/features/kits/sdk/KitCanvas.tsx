@@ -25,6 +25,8 @@ type KitCanvasProps = {
   /** Drawn over the document on every frame; `animated` redraws it continuously (marching ants). */
   decorate?: RasterDecoration | null
   animated?: boolean
+  /** Whether holding Space pans (on by default); a player uses Space for play and pause. */
+  spacePans?: boolean
   /** HTML laid over the canvas, for example an inline text field. */
   children?: ReactNode
   ref?: Ref<KitCanvasHandle>
@@ -81,7 +83,7 @@ function useOverlay(overlayRef: RefObject<HTMLCanvasElement | null>, viewportRef
  * tool gets gestures in document pixels; Space, the middle button, and the
  * Hand tool pan; the wheel pans, and zooms with Cmd or Ctrl (and pinch).
  */
-export function KitCanvas({ doc, change, tool, onView, viewMemory, decorate = null, animated = false, children, ref }: KitCanvasProps) {
+export function KitCanvas({ doc, change, tool, onView, viewMemory, decorate = null, animated = false, spacePans = true, children, ref }: KitCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const overlayRef = useRef<HTMLCanvasElement>(null)
   const viewportRef = useRef<RasterViewport | null>(null)
@@ -143,6 +145,7 @@ export function KitCanvas({ doc, change, tool, onView, viewMemory, decorate = nu
   }, [animated, decorate, doc])
 
   useEffect(() => {
+    if (!spacePans) return undefined
     const editable = (target: EventTarget | null) => target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement
     const down = (event: KeyboardEvent) => {
       if (event.code === 'Space' && !editable(event.target)) setSpaceHeld(true)
@@ -156,7 +159,7 @@ export function KitCanvas({ doc, change, tool, onView, viewMemory, decorate = nu
       window.removeEventListener('keydown', down)
       window.removeEventListener('keyup', up)
     }
-  }, [])
+  }, [spacePans])
 
   useImperativeHandle(ref, () => ({
     fit: () => viewportRef.current?.fit(),

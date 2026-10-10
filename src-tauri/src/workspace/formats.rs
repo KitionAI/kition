@@ -25,6 +25,8 @@ pub fn infer_format(path: &str) -> &'static str {
         ".png" | ".jpg" | ".jpeg" | ".gif" | ".webp" | ".svg" => "image",
         // Layered images, edited in the Photo kit.
         ".psd" | ".psb" | ".pcraft" => "photo",
+        // Video projects, edited in the Film kit.
+        ".fcproj" => "film",
         ".mp4" | ".mov" | ".webm" => "video",
         ".mp3" | ".wav" | ".m4a" => "audio",
         _ => "binary",
@@ -55,8 +57,8 @@ pub fn is_supported(path: &str) -> bool {
         &[
             "md", "markdown", "kitable", "kiboard", "kidesign", "txt", "csv", "tsv", "json",
             "html", "htm", "pdf", "docx", "xlsx", "xls", "pptx", "ppt", "png", "jpg", "jpeg",
-            "gif", "webp", "svg", "psd", "psb", "pcraft", "mp4", "mov", "webm", "mp3", "wav",
-            "m4a",
+            "gif", "webp", "svg", "psd", "psb", "pcraft", "fcproj", "mp4", "mov", "webm", "mp3",
+            "wav", "m4a",
         ],
     )
 }
@@ -73,6 +75,8 @@ mod tests {
         assert_eq!(infer_format("photo.JPEG"), "image");
         assert_eq!(infer_format("archive.zip"), "binary");
         assert_eq!(infer_format("art/Cover.PSD"), "photo");
+        assert_eq!(infer_format("films/Trailer.fcproj"), "film");
+        assert!(is_supported("films/Trailer.fcproj"));
         assert!(is_supported("art/poster.psb"));
         assert!(!is_text("art/poster.pcraft"));
         assert_eq!(infer_format(".md"), "binary");

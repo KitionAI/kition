@@ -5,7 +5,7 @@
 //   node scripts/check-kit-sdk.mjs --kit photo            one kit from kits/sdks.json
 //   node scripts/check-kit-sdk.mjs --all                  every kit in kits/sdks.json that is built
 //   node scripts/check-kit-sdk.mjs --dir <sdk dir> --module <module> --class <Class> \
-//     --name <file name> --edit '{"command":…,"params":…}'      any SDK, for example a third-party one
+//     --name <file name> --edit '{"command":…,"params":…}' (or a list of steps)      any SDK, for example a third-party one
 //
 // --fixture <file> opens a real file; without it the SDK's own create() and save() make one.
 import fs from 'node:fs'
@@ -50,7 +50,7 @@ const className = argument('class', entry?.class ?? '')
 const name = argument('name', entry?.name ?? 'fixture')
 const fixturePath = argument('fixture')
 const edit = argument('edit') ? JSON.parse(argument('edit')) : entry?.edit ?? null
-if (!dir || !moduleName || !className || !edit?.command) {
+if (!dir || !moduleName || !className || !(Array.isArray(edit) ? edit.length : edit?.command)) {
   console.error('usage: check-kit-sdk.mjs --kit <kit> | --all | --dir <sdk dir> --module <module> --class <Class> --name <file name> --edit <{"command","params"}> [--fixture <file>]')
   process.exit(2)
 }
@@ -150,7 +150,16 @@ check('unknown commands are errors', () => {
 let edited
 check('the edit moves revision, sets dirty, and changes pixels', () => {
   const before = doc.revision
-  JSON.parse(doc.execute(edit.command, JSON.stringify(edit.params ?? {})))
+  // One step or several; a string "$<n>.<field>" in params is step n's result field.
+  const steps = Array.isArray(edit) ? edit : [edit]
+  const results = []
+  for (const step of steps) {
+    const params = JSON.parse(JSON.stringify(step.params ?? {}), (_, value) => {
+      const match = typeof value === 'string' && /^\$(\d+)\.(\w+)$/.exec(value)
+      return match ? results[Number(match[1])]?.[match[2]] : value
+    })
+    results.push(JSON.parse(doc.execute(step.command, JSON.stringify(params))))
+  }
   assert(doc.revision !== before, 'revision did not move')
   assert(doc.dirty, 'not dirty after the edit')
   edited = doc.render(0, 0, 1, doc.width, doc.height)

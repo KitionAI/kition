@@ -716,5 +716,32 @@
     "saved": "Guardado",
     "undo": "Deshacer",
     "unsaved": "Sin guardar"
+  },
+  "filmKit": {
+    "play": "Reproducir",
+    "pause": "Pausa",
+    "stepBack": "Fotograma anterior",
+    "stepForward": "Fotograma siguiente",
+    "goToStart": "Ir al inicio",
+    "goToEnd": "Ir al final",
+    "split": "Dividir en el cabezal",
+    "addMedia": "Añadir medios",
+    "addMediaHint": "Se añaden en el cabezal",
+    "noMedia": "No hay vídeo, audio ni imágenes en este espacio de trabajo",
+    "noSequence": "Este proyecto aún no tiene secuencia.",
+    "playbackFps": "{{fps}} fps",
+    "unavailableTitle": "La edición de vídeo no está disponible en esta versión",
+    "unavailableBody": "Los proyectos de vídeo se abren en Kition cuando se incluye el motor Film.",
+    "menu": {
+      "File": "Archivo",
+      "Edit": "Edición",
+      "Clip": "Clip",
+      "Sequence": "Secuencia",
+      "Markers": "Marcadores",
+      "GraphicsandTitles": "Gráficos y títulos",
+      "View": "Ver",
+      "Window": "Ventana",
+      "Help": "Ayuda"
+    }
   }
 }

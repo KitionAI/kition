@@ -7,6 +7,7 @@
  */
 import { kitSdkCommands, loadKitSdk, openKitSdkDocument, type KitSdkDocument } from './kitSdk'
 import type { KitEngineInfo, KitEngineRequest, KitEngineResponse } from './kitEngine'
+import { lendFiles } from './lentFiles'
 
 declare const self: DedicatedWorkerGlobalScope
 
@@ -37,6 +38,7 @@ async function handle(request: KitEngineRequest): Promise<{ value: unknown; tran
   switch (request.method) {
     case 'open': {
       const sdk = await loadKitSdk(request.manifest)
+      lendFiles(request.lent)
       doc?.free()
       doc = openKitSdkDocument(sdk, request.manifest, request.name, new Uint8Array(request.bytes))
       return { value: info(doc) }

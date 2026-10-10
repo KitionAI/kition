@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { notify } from '@/lib/notify'
 import type { KitCommand } from '../sdk/kitSdk'
@@ -27,21 +27,31 @@ export function useKitEditor(document: KitDocument, options: { onOpenAgent?: () 
     listCommands().then(setCommands, () => undefined)
   }, [listCommands])
 
-  // Enabled states follow the document: after it opens and shortly after each change.
+  // Enabled states follow the document: at once when it opens, then at most every 250 ms while
+  // it changes. A throttle, not a debounce: playback changes it every frame and must not starve it.
+  const pending = useRef<number | undefined>(undefined)
   useEffect(() => {
-    if (!doc) return undefined
-    const timer = window.setTimeout(refreshCommands, change.revision ? COMMAND_REFRESH_MS : 0)
-    return () => window.clearTimeout(timer)
+    if (doc) refreshCommands()
+  }, [doc, refreshCommands])
+  useEffect(() => {
+    if (!doc || !change.revision || pending.current !== undefined) return
+    pending.current = window.setTimeout(() => {
+      pending.current = undefined
+      refreshCommands()
+    }, COMMAND_REFRESH_MS)
   }, [change.revision, doc, refreshCommands])
+  useEffect(() => () => window.clearTimeout(pending.current), [])
 
-  /** Runs a kit command; a refusal shows a notice instead of throwing. `damage` limits the repaint. */
-  const run = useCallback(async (command: string, params: Record<string, unknown> = {}, damage: RasterRect | null = null) => {
+  /**
+   * Runs a kit command and returns its JSON result; a refusal shows a notice and returns null
+   * instead of throwing. `damage` limits the repaint.
+   */
+  const run = useCallback(async (command: string, params: Record<string, unknown> = {}, damage: RasterRect | null = null): Promise<string | null> => {
     try {
-      await runCommand(command, params, damage)
-      return true
+      return (await runCommand(command, params, damage)) ?? 'null'
     } catch (error) {
       notify.error(t('kitEditor.commandFailed'), { description: errorText(error) })
-      return false
+      return null
     }
   }, [runCommand, t])
 
@@ -56,11 +66,21 @@ export function useKitEditor(document: KitDocument, options: { onOpenAgent?: () 
     }
   }, [saveDocument, t])
 
+  /**
+   * Runs the command a shortcut names if the engine says it can run now. The menus' enabled
+   * states lag a change by a moment; a key pressed right after (select, then Delete) must not.
+   */
+  const runShortcut = useCallback(async (id: string) => {
+    const fresh = await listCommands().catch(() => null)
+    if (fresh) setCommands(fresh)
+    if (fresh?.find((command) => command.id === id)?.enabled) await run(id)
+  }, [listCommands, run])
+
   /** The agent edits the file on disk, so unsaved edits are saved first. */
   const askAgent = useCallback(async () => {
     if (dirty && !(await save())) return
     options.onOpenAgent?.()
   }, [dirty, options, save])
 
-  return { commands, refreshCommands, run, save, askAgent, canAskAgent: Boolean(options.onOpenAgent) }
+  return { commands, refreshCommands, run, runShortcut, save, askAgent, canAskAgent: Boolean(options.onOpenAgent) }
 }

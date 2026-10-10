@@ -716,5 +716,32 @@
     "saved": "Saved",
     "undo": "Undo",
     "unsaved": "Unsaved"
+  },
+  "filmKit": {
+    "play": "Play",
+    "pause": "Pause",
+    "stepBack": "Previous frame",
+    "stepForward": "Next frame",
+    "goToStart": "Go to start",
+    "goToEnd": "Go to end",
+    "split": "Split at playhead",
+    "addMedia": "Add media",
+    "addMediaHint": "Added at the playhead",
+    "noMedia": "No video, audio, or images in this workspace",
+    "noSequence": "This project has no sequence yet.",
+    "playbackFps": "{{fps}} fps",
+    "unavailableTitle": "Film editing is not available in this build",
+    "unavailableBody": "Video projects open in Kition when the Film engine is included.",
+    "menu": {
+      "File": "File",
+      "Edit": "Edit",
+      "Clip": "Clip",
+      "Sequence": "Sequence",
+      "Markers": "Markers",
+      "GraphicsandTitles": "Graphics and Titles",
+      "View": "View",
+      "Window": "Window",
+      "Help": "Help"
+    }
   }
 }

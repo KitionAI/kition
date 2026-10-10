@@ -103,11 +103,11 @@ covers the three GFM table widget row and column button regressions.
 - `src/features/kits/sdk/` is the portable core of the open Kit SDK: it must
   never import the rest of Kition (`pnpm check:deps` enforces it). Shared
   strings under `workspace:kitEditor.*` must never name a kit.
-- A kit SDK implements `KitDocument` from the `kition-kit-sdk` crate, exports
-  it with `export_kit_document!`, and passes
-  `kition_kit_sdk::testing::check_contract` in its tests and
-  `pnpm check:kit-sdks` once built. Contract changes bump the version in both
-  the Rust crate and `src/features/kits/sdk/kitSdk.ts`.
+- A kit SDK implements `KitDocument` from the private `KitionAI/kition-sdk`
+  crate (AGPL-3.0-only), exports it with `export_kit_document!`, and passes
+  `kition_sdk::testing::check_contract` in its tests and `pnpm check:kit-sdks`
+  once built. Contract changes happen in kition-sdk and bump the version there
+  and in `src/features/kits/sdk/kitSdk.ts` together.
 - Kit repositories are standalone clones (never GitHub forks). Log every
   upstream file change in their `KITION_CHANGES.md`.
 - Never run a kit engine on the page's thread, never write a kit file except

@@ -22,6 +22,8 @@ type KitEditorFrameProps = {
   tools?: ReactNode
   /** The column right of the canvas: panels. */
   side?: ReactNode
+  /** A panel across the whole width under the canvas, for example a timeline. */
+  bottom?: ReactNode
   /** The left side of the status bar; `statusEnd` is the right side. */
   status?: ReactNode
   statusEnd?: ReactNode
@@ -56,7 +58,7 @@ export function KitEditorFrame(props: KitEditorFrameProps) {
     const shortcut = commandForShortcut(editor.commands, event)
     if (!shortcut) return
     event.preventDefault()
-    void editor.run(shortcut.id)
+    void editor.runShortcut(shortcut.id)
   }
 
   return (
@@ -119,6 +121,7 @@ export function KitEditorFrame(props: KitEditorFrameProps) {
         </div>
         {props.side}
       </div>
+      {props.bottom}
       <div className="flex h-7 shrink-0 items-center gap-3 border-t border-border px-3 text-xs text-muted-foreground" data-testid="kit-status-bar">
         {props.status}
         <div className="flex-1" />
