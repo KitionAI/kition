@@ -1,10 +1,12 @@
 import { ChevronDown, ChevronRight, Folder, LoaderCircle, PanelLeftClose, Plus, RefreshCw, Search, Zap } from 'lucide-react'
-import { type ClipboardEvent as ReactClipboardEvent, type ReactNode, useEffect, useState } from 'react'
+import { type ClipboardEvent as ReactClipboardEvent, type DragEvent as ReactDragEvent, type ReactNode, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkspaceCreateMenu } from '@/features/workspace/components/WorkspaceCreateMenu'
 import type { DocumentCreateFormat } from '@/features/document/lib/documentCreation'
 import type { WorkspaceImportEntry } from '@/features/workspace/hooks/useWorkspaceTreeCreateActions'
 import { handleDesktopChromeDoubleClick } from '@/lib/windowChrome'
+import { carriesFiles } from '@/lib/fileDropGuard'
+import { cn } from '@/lib/utils'
 
 export function WorkspaceSidebar({
   loading,
@@ -89,20 +91,20 @@ export function WorkspaceSidebar({
   // computes its portal coords from the real bounding rect.
   const [headerCreateAnchor, setHeaderCreateAnchor] = useState<HTMLButtonElement | null>(null)
 
-  function handlePaste(event: ReactClipboardEvent<HTMLDivElement>) {
-    if (!onPasteFiles) {
+  const [fileDragOver, setFileDragOver] = useState(false)
+
+  /** Imports files and folders from a paste or an OS drop into the workspace root. */
+  function importTransfer(transfer: DataTransfer | null, preventDefault: () => void) {
+    if (!onPasteFiles || !transfer) {
       return
     }
-    const clipboard = event.clipboardData
-    if (!clipboard) {
-      return
-    }
-    const rootEntries = snapshotClipboardFileEntries(clipboard)
-    const fallbackFiles = !rootEntries.length ? Array.from(clipboard.files || []) : []
+    // Entries must be read while the event is dispatching; the transfer is emptied afterwards.
+    const rootEntries = snapshotClipboardFileEntries(transfer)
+    const fallbackFiles = !rootEntries.length ? Array.from(transfer.files || []) : []
     if (!rootEntries.length && !fallbackFiles.length) {
       return
     }
-    event.preventDefault()
+    preventDefault()
     void (async () => {
       const collected: WorkspaceImportEntry[] = []
       for (const entry of rootEntries) {
@@ -123,6 +125,35 @@ export function WorkspaceSidebar({
         onPasteFiles(collected)
       }
     })()
+  }
+
+  function handlePaste(event: ReactClipboardEvent<HTMLDivElement>) {
+    importTransfer(event.clipboardData, () => event.preventDefault())
+  }
+
+  // Rows take drops into their folder and stop propagation; a drop anywhere
+  // else in the tree area imports into the workspace root.
+  function handleFileDragOver(event: ReactDragEvent<HTMLDivElement>) {
+    if (!onPasteFiles || !carriesFiles(event.nativeEvent)) {
+      return
+    }
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'copy'
+    setFileDragOver(true)
+  }
+
+  function handleFileDragLeave(event: ReactDragEvent<HTMLDivElement>) {
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+      setFileDragOver(false)
+    }
+  }
+
+  function handleFileDrop(event: ReactDragEvent<HTMLDivElement>) {
+    setFileDragOver(false)
+    if (!carriesFiles(event.nativeEvent)) {
+      return
+    }
+    importTransfer(event.dataTransfer, () => event.preventDefault())
   }
 
   return (
@@ -241,7 +272,16 @@ export function WorkspaceSidebar({
               ) : null}
             </div>
           </div>
-          <div className="document-tree-scroll min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-2.5 pb-2">
+          <div
+            className={cn(
+              'document-tree-scroll min-h-0 flex-1 overflow-x-hidden overflow-y-auto rounded-lg px-2.5 pb-2',
+              fileDragOver && 'bg-primary/5 ring-1 ring-inset ring-primary/40',
+            )}
+            data-testid="document-tree-drop-zone"
+            onDragOver={handleFileDragOver}
+            onDragLeave={handleFileDragLeave}
+            onDrop={handleFileDrop}
+          >
             <div className="document-private-section">
               {privateExpanded ? treeContent : null}
               {mediaSections}

@@ -136,4 +136,39 @@ describe('WorkspaceSidebar', () => {
     expect(options).toEqual(['Document', 'Table', 'Folder'])
     expect(document.body.textContent).not.toContain('Import file')
   })
+
+  it('imports OS files dropped on the tree area into the workspace root', async () => {
+    const onPasteFiles = vi.fn()
+    await mount(defaultProps({ onPasteFiles }))
+    const zone = container.querySelector<HTMLElement>('[data-testid="document-tree-drop-zone"]')!
+    const file = new File(['8BPS'], 'Poster.psd', { type: 'image/vnd.adobe.photoshop' })
+    const transfer = { types: ['Files'], files: [file], items: [], dropEffect: 'none' }
+    const dragEvent = (type: string) => {
+      const event = new Event(type, { bubbles: true, cancelable: true })
+      Object.defineProperty(event, 'dataTransfer', { value: transfer })
+      return event
+    }
+
+    const over = dragEvent('dragover')
+    await act(async () => { zone.dispatchEvent(over) })
+    expect(over.defaultPrevented).toBe(true)
+    expect(transfer.dropEffect).toBe('copy')
+    expect(zone.className).toContain('ring-primary/40')
+
+    const drop = dragEvent('drop')
+    await act(async () => { zone.dispatchEvent(drop); await Promise.resolve() })
+    expect(drop.defaultPrevented).toBe(true)
+    expect(onPasteFiles).toHaveBeenCalledWith([{ file, relativePath: 'Poster.psd' }])
+    expect(zone.className).not.toContain('ring-primary/40')
+  })
+
+  it('ignores drags that carry no files', async () => {
+    const onPasteFiles = vi.fn()
+    await mount(defaultProps({ onPasteFiles }))
+    const zone = container.querySelector<HTMLElement>('[data-testid="document-tree-drop-zone"]')!
+    const event = new Event('dragover', { bubbles: true, cancelable: true })
+    Object.defineProperty(event, 'dataTransfer', { value: { types: ['text/plain'], files: [], items: [] } })
+    await act(async () => { zone.dispatchEvent(event) })
+    expect(event.defaultPrevented).toBe(false)
+  })
 })

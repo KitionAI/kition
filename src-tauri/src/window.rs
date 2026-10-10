@@ -71,6 +71,9 @@ pub fn create_main<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<WebviewWindo
                 LIGHT_BACKGROUND
             })
             .initialization_script(bootstrap_script(&desktop))
+            // Files dropped from the OS reach the page as HTML5 drops, so the
+            // workspace tree and the agent composer can import them.
+            .disable_drag_drop_handler()
             .on_new_window(move |url, _features| {
                 open_externally(&new_window_app, &url);
                 NewWindowResponse::Deny

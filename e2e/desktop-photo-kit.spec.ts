@@ -91,6 +91,34 @@ test('opens a PSD from the workspace tree in the Photo tab and follows agent edi
   }
 })
 
+test('imports a PSD dropped from the OS onto the tree area', async ({ page, baseURL }) => {
+  test.setTimeout(60_000)
+  const host = await installDesktopHost(page)
+  try {
+    await mockLocalWorkspaceApi(page)
+    await page.route('**/api/v1/kits/documents', (route) => fulfillJson(route, { code: 200, message: 'success', data: photoView({ path: 'Dropped.psd', title: 'Dropped.psd' }) }))
+    await page.route('**/api/v1/kits/kit.photo/documents/7', (route) => fulfillJson(route, { code: 200, message: 'success', data: photoView({ path: 'Dropped.psd' }) }))
+    await page.goto(new URL('/documents', baseURL!).toString(), { waitUntil: 'domcontentloaded' })
+    await dismissFirstRunActivation(page)
+    const zone = page.getByTestId('document-tree-drop-zone')
+    await expect(zone).toBeVisible()
+    const transfer = await page.evaluateHandle(() => {
+      const data = new DataTransfer()
+      data.items.add(new File([new Uint8Array([0x38, 0x42, 0x50, 0x53])], 'Dropped.psd', { type: 'image/vnd.adobe.photoshop' }))
+      return data
+    })
+    await zone.dispatchEvent('dragover', { dataTransfer: transfer })
+    await zone.dispatchEvent('drop', { dataTransfer: transfer })
+    await expect(page.locator('.document-tree-row', { hasText: 'Dropped' })).toBeVisible()
+    const imported = await fs.readFile(path.join(host.root, 'Dropped.psd'))
+    expect(imported.subarray(0, 4).toString()).toBe('8BPS')
+    await page.locator('.document-tree-row', { hasText: 'Dropped' }).first().click()
+    await expect(page.getByTestId('photo-kit-pane')).toBeVisible()
+  } finally {
+    await host.dispose()
+  }
+})
+
 test('explains how to install Photo when the kit is missing', async ({ page, baseURL }) => {
   test.setTimeout(60_000)
   const host = await installDesktopHost(page)
