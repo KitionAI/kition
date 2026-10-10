@@ -650,20 +650,19 @@ pub fn node_issues(
                 ERROR,
             )),
         },
-        "transform_record" => {
+        "transform_record"
             if action
                 .transform_record
                 .as_ref()
-                .is_none_or(|c| c.operations.is_empty())
-            {
-                issues.push(issue(
-                    action_id,
-                    "action_transform_record_operations_empty",
-                    "Add at least one transform operation",
-                    "",
-                    ERROR,
-                ));
-            }
+                .is_none_or(|c| c.operations.is_empty()) =>
+        {
+            issues.push(issue(
+                action_id,
+                "action_transform_record_operations_empty",
+                "Add at least one transform operation",
+                "",
+                ERROR,
+            ));
         }
         _ => {}
     }

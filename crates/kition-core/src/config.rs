@@ -56,7 +56,7 @@ pub enum ConfigError {
     #[error("read config {path}: {source}")]
     Parse {
         path: PathBuf,
-        source: toml::de::Error,
+        source: Box<toml::de::Error>,
     },
 }
 
@@ -83,7 +83,7 @@ pub fn load(path: &Path, env: &dyn Fn(&str) -> Option<String>) -> Result<AppConf
     })?;
     let root: Value = toml::from_str(&text).map_err(|source| ConfigError::Parse {
         path: path.to_path_buf(),
-        source,
+        source: Box::new(source),
     })?;
     Ok(from_value(&root, env))
 }

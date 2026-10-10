@@ -154,9 +154,9 @@ pub fn parse_delimited(raw: &[u8], extension: &str) -> Result<(Vec<Vec<String>>,
         .map_err(|_| "CSV and TSV imports must use UTF-8 encoding".to_owned())?;
     let content = content.strip_prefix('\u{feff}').unwrap_or(content);
     let delimiters: [u8; 3] = if extension == ".tsv" {
-        [b'\t', b',', b';']
+        *b"\t,;"
     } else {
-        [b',', b'\t', b';']
+        *b",\t;"
     };
     // A delimiter must beat -1, the score of a source without data rows.
     let (mut best_score, mut rows, mut delimiter) = (-1.0, Vec::new(), b',');
