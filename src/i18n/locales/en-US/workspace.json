@@ -632,6 +632,10 @@
     "layers": "Layers",
     "noLayers": "No layers",
     "hiddenLayer": "Hidden layer",
-    "agentTip": "Ask the agent to edit this image, for example \"add a vignette\" or \"brighten the background layer\"."
+    "agentTip": "Ask the agent to edit this image, for example \"add a vignette\" or \"brighten the background layer\".",
+    "openingEditor": "Opening the editor…",
+    "editorClosed": "The editor was closed.",
+    "reopen": "Open again",
+    "askAgent": "Ask Agent"
   }
 }

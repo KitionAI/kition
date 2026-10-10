@@ -223,9 +223,11 @@ Only valid when `KITION_KIT_SURFACE` is `embedded` or `window`.
 | `surface.snapshot` | none | `Image` of the full surface |
 | `surface.detach` | none | `{}`; the kit keeps documents open with no visible surface |
 
-`bounds` is `{ x, y, width, height }` in logical pixels, relative to the
-top-left of the host window content area. `scaleFactor` is the device pixel
-ratio.
+`bounds` is `{ x, y, width, height }` in logical pixels. For `child-window`
+and `shared-texture` it is relative to the top-left of the host window content
+area. For `overlay-window` and `top-level` the kit window is a top-level window,
+so `bounds` is in screen coordinates (top-left origin) and the host resends it
+whenever its own window moves. `scaleFactor` is the device pixel ratio.
 
 `mechanism` and `parent`:
 

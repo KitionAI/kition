@@ -41,6 +41,11 @@ pub fn router(state: KitsState) -> Router {
             get(commands).post(execute),
         )
         .route("/kits/{kit}/documents/{document}/save", post(save))
+        .route("/kits/surfaces", post(open_surface))
+        .route(
+            "/kits/surfaces/{surface}",
+            axum::routing::put(update_surface).delete(close_surface),
+        )
         .with_state(state)
 }
 
@@ -54,6 +59,7 @@ pub fn app_error(error: KitError) -> AppError {
         KitError::InvalidPath(_) => (400, 40000),
         KitError::Launch { .. } => (502, 50201),
         KitError::Stopped { .. } => (503, 50301),
+        KitError::Unavailable(_) => (409, 40904),
         KitError::Kit { reason, .. } => match reason {
             Some(ErrorReason::DocumentNotFound) => (404, 40401),
             Some(ErrorReason::UriNotGranted) => (403, 40301),
@@ -68,6 +74,7 @@ pub fn app_error(error: KitError) -> AppError {
         } => serde_json::to_value(reason).unwrap_or(Value::Null),
         KitError::NotInstalled { .. } => json!("not_installed"),
         KitError::Stopped { .. } => json!("stopped"),
+        KitError::Unavailable(_) => json!("unavailable"),
         _ => Value::Null,
     };
     AppError::new(status, code, message).with_data(json!({ "reason": reason }))
@@ -254,4 +261,60 @@ async fn save(
         .await
         .map_err(app_error)?;
     Ok(ok(view))
+}
+
+#[derive(Deserialize)]
+struct OpenSurfaceBody {
+    path: String,
+    rect: crate::surfaces::Rect,
+    #[serde(default = "default_visible")]
+    visible: bool,
+}
+
+const fn default_visible() -> bool {
+    true
+}
+
+async fn open_surface(
+    State(state): State<KitsState>,
+    _user: CurrentUser,
+    JsonBody(body): JsonBody<OpenSurfaceBody>,
+) -> AppResult<Response> {
+    let view = state
+        .kits
+        .open_surface(&body.path, body.rect, body.visible)
+        .await
+        .map_err(app_error)?;
+    Ok(ok(view))
+}
+
+#[derive(Deserialize)]
+struct UpdateSurfaceBody {
+    #[serde(default)]
+    rect: Option<crate::surfaces::Rect>,
+    #[serde(default)]
+    visible: Option<bool>,
+}
+
+async fn update_surface(
+    State(state): State<KitsState>,
+    _user: CurrentUser,
+    Path(surface): Path<u64>,
+    JsonBody(body): JsonBody<UpdateSurfaceBody>,
+) -> AppResult<Response> {
+    state
+        .kits
+        .update_surface(surface, body.rect, body.visible)
+        .await
+        .map_err(app_error)?;
+    Ok(ok(json!({})))
+}
+
+async fn close_surface(
+    State(state): State<KitsState>,
+    _user: CurrentUser,
+    Path(surface): Path<u64>,
+) -> AppResult<Response> {
+    state.kits.close_surface(surface).await;
+    Ok(ok(json!({})))
 }

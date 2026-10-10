@@ -4,9 +4,12 @@ import { Eye, EyeOff, Layers, Loader2, Redo2, RefreshCw, Save, Undo2 } from 'luc
 import { Button } from '@/components/ui'
 import { cn } from '@/lib/utils'
 import { notify } from '@/lib/notify'
+import { isDesktopRuntime } from '@/services/desktop'
+import { PhotoKitEditor } from './PhotoKitEditor'
 import {
   getKitDocument,
   kitErrorReason,
+  listKits,
   kitPreviewURL,
   openKitDocument,
   photoDetails,
@@ -20,6 +23,7 @@ const POLL_INTERVAL_MS = 2000
 type PhotoKitPaneProps = {
   path: string
   active: boolean
+  onOpenAgent?: () => void
 }
 
 type LoadState =
@@ -33,11 +37,39 @@ function errorMessage(error: unknown) {
 }
 
 /**
- * A layered image (PSD, PSB, .pcraft) opened in the Photo kit. The kit renders
- * the canvas; this tab shows the preview and layers, and refreshes when the
- * agent edits the same file.
+ * A layered image (PSD, PSB, .pcraft) opened in the Photo kit. In the desktop
+ * app the tab shows the kit's own editor; elsewhere it shows the kit's
+ * rendered preview and layers.
  */
-export function PhotoKitPane({ path, active }: PhotoKitPaneProps) {
+export function PhotoKitPane({ path, active, onOpenAgent }: PhotoKitPaneProps) {
+  const [mode, setMode] = useState<'checking' | 'editor' | 'preview'>(() => (isDesktopRuntime() ? 'checking' : 'preview'))
+
+  useEffect(() => {
+    if (mode !== 'checking') return
+    let cancelled = false
+    listKits()
+      .then((list) => {
+        if (!cancelled) setMode(list.kits.some((kit) => kit.id === 'kit.photo' && kit.installed && kit.embeddable) ? 'editor' : 'preview')
+      })
+      .catch(() => {
+        if (!cancelled) setMode('preview')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [mode])
+
+  const showPreview = useCallback(() => setMode('preview'), [])
+
+  if (mode === 'checking') return null
+  if (mode === 'editor') {
+    return <PhotoKitEditor path={path} active={active} onOpenAgent={onOpenAgent} onUnavailable={showPreview} />
+  }
+  return <PhotoKitPreview path={path} active={active} />
+}
+
+/** The kit's rendered preview with its layers, for browsers and systems without embedding. */
+function PhotoKitPreview({ path, active }: { path: string; active: boolean }) {
   const { t } = useTranslation('workspace')
   const [state, setState] = useState<LoadState>({ kind: 'loading' })
   const [busy, setBusy] = useState<'undo' | 'redo' | 'save' | null>(null)

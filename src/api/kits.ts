@@ -5,9 +5,17 @@
  */
 import request from './request'
 import { resolveApiURL } from '@/services/desktop'
-import type { KitsCreateRequest, KitsDocumentView, KitsExecuteResult, KitsKitList, KitsPhotoDetails } from './generated/kits'
+import type {
+  KitsCreateRequest,
+  KitsDocumentView,
+  KitsExecuteResult,
+  KitsKitList,
+  KitsPhotoDetails,
+  KitsSurfaceRect,
+  KitsSurfaceView,
+} from './generated/kits'
 
-export type { KitsDocumentView, KitsExecuteResult, KitsPhotoDetails }
+export type { KitsDocumentView, KitsExecuteResult, KitsPhotoDetails, KitsSurfaceRect, KitsSurfaceView }
 
 function unwrap<T>(response: T | { data?: T }) {
   return (response as { data?: T })?.data ?? (response as T)
@@ -50,6 +58,21 @@ export function saveKitDocument(kitId: string, documentId: string) {
   return request
     .post<KitsDocumentView | { data?: KitsDocumentView }>(`${documentPath(kitId, documentId)}/save`, {})
     .then(unwrap<KitsDocumentView>)
+}
+
+/** Opens `path` in the kit's own editor, kept over `rect` (window coordinates). */
+export function openKitSurface(path: string, rect: KitsSurfaceRect, visible: boolean) {
+  return request
+    .post<KitsSurfaceView | { data?: KitsSurfaceView }>('/v1/kits/surfaces', { path, rect, visible })
+    .then(unwrap<KitsSurfaceView>)
+}
+
+export function updateKitSurface(surfaceId: number, update: { rect?: KitsSurfaceRect; visible?: boolean }) {
+  return request.put(`/v1/kits/surfaces/${surfaceId}`, update, { suppressErrorMessage: true })
+}
+
+export function closeKitSurface(surfaceId: number) {
+  return request.delete(`/v1/kits/surfaces/${surfaceId}`, { suppressErrorMessage: true })
 }
 
 /** The rendered preview; `version` busts the image cache after each change. */

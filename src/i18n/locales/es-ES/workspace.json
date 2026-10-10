@@ -632,6 +632,10 @@
     "layers": "Capas",
     "noLayers": "Sin capas",
     "hiddenLayer": "Capa oculta",
-    "agentTip": "Pide al agente que edite esta imagen, por ejemplo «añade una viñeta» o «aclara la capa de fondo»."
+    "agentTip": "Pide al agente que edite esta imagen, por ejemplo «añade una viñeta» o «aclara la capa de fondo».",
+    "openingEditor": "Abriendo el editor…",
+    "editorClosed": "El editor se cerró.",
+    "reopen": "Abrir de nuevo",
+    "askAgent": "Preguntar al agente"
   }
 }

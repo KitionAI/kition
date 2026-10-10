@@ -21,7 +21,7 @@ vi.mock('@/api/kits', async () => {
     kitPreviewURL: (kitId: string, documentId: string, version: number) => `/preview/${kitId}/${documentId}?v=${version}`,
   }
 })
-vi.mock('@/services/desktop', () => ({ resolveApiURL: (path: string) => path }))
+vi.mock('@/services/desktop', () => ({ resolveApiURL: (path: string) => path, isDesktopRuntime: () => false }))
 vi.mock('@/lib/notify', () => ({ notify: { success, error } }))
 
 ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true

@@ -22,6 +22,7 @@ static MOCK: KitDefinition = KitDefinition {
     binary_env: "KITION_KIT_MOCK_BINARY",
     extensions: &["mocktext"],
     creates: &[("mocktext", "mock.text")],
+    embeds: false,
 };
 
 fn mock_binary() -> Option<PathBuf> {

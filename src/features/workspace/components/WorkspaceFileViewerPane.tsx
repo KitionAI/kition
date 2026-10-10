@@ -20,6 +20,7 @@ type WorkspaceFileViewerPaneProps = {
   path: string
   format: WorkspaceDocumentFormat
   active: boolean
+  onOpenAgent?: () => void
 }
 
 function basenameFromPath(path: string) {
@@ -37,7 +38,7 @@ function parentFolderFromPath(path: string) {
 
 export function WorkspaceFileViewerPane(props: WorkspaceFileViewerPaneProps) {
   if (props.format === 'photo') {
-    return <PhotoKitPane path={props.path} active={props.active} />
+    return <PhotoKitPane path={props.path} active={props.active} onOpenAgent={props.onOpenAgent} />
   }
   return <WorkspaceFilePreview {...props} />
 }

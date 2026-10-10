@@ -3107,6 +3107,7 @@ dependencies = [
  "image",
  "kition-api",
  "kition-core",
+ "kition-kits",
  "libc",
  "notify",
  "objc2",

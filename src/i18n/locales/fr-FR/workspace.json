@@ -632,6 +632,10 @@
     "layers": "Calques",
     "noLayers": "Aucun calque",
     "hiddenLayer": "Calque masqué",
-    "agentTip": "Demandez à l'agent de modifier cette image, par exemple « ajoute un vignettage » ou « éclaircis le calque d'arrière-plan »."
+    "agentTip": "Demandez à l'agent de modifier cette image, par exemple « ajoute un vignettage » ou « éclaircis le calque d'arrière-plan ».",
+    "openingEditor": "Ouverture de l'éditeur…",
+    "editorClosed": "L'éditeur a été fermé.",
+    "reopen": "Rouvrir",
+    "askAgent": "Demander à l'agent"
   }
 }

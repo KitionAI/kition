@@ -2,8 +2,10 @@
 //! demand for the open workspace, serves kit tabs over `/kits`, and gives the agent its own
 //! connection to them.
 
+pub mod host;
 pub mod manager;
 pub mod routes;
+pub mod surfaces;
 
 pub use manager::{Caller, DocumentView, ExecuteView, KITS, KitDefinition, KitError, KitManager};
 pub use routes::{KitsState, router};

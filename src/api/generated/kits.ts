@@ -19,6 +19,10 @@ export type KitsKitStatus = {
   creates: string[]
   installed: boolean
   /**
+   * Kit tabs can show the kit's own editor here: the desktop app on a supported system.
+   */
+  embeddable: boolean
+  /**
    * Environment variable that points at a local build of the kit executable.
    */
   binaryEnv: string
@@ -30,6 +34,41 @@ export type KitsKitList = {
 
 export type KitsOpenRequest = {
   path: KitsWorkspacePath
+}
+
+/**
+ * Logical pixels relative to the top-left of the window's web content.
+ */
+export type KitsSurfaceRect = {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+/**
+ * POST /v1/kits/surfaces: opens the file in the kit's own editor, kept over `rect`.
+ */
+export type KitsOpenSurfaceRequest = {
+  path: KitsWorkspacePath
+  rect: KitsSurfaceRect
+  /**
+   * @default true
+   */
+  visible?: boolean
+}
+
+export type KitsSurfaceView = {
+  surfaceId: number
+  document: KitsDocumentView
+}
+
+/**
+ * PUT /v1/kits/surfaces/{surfaceId}. DELETE on the same path closes the editor.
+ */
+export type KitsUpdateSurfaceRequest = {
+  rect?: KitsSurfaceRect
+  visible?: boolean
 }
 
 /**

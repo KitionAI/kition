@@ -163,6 +163,50 @@ test('hides New image when no kit can create images', async ({ page, baseURL }) 
   }
 })
 
+test('shows the embedded editor over the tab in the desktop app and hides it with the tab', async ({ page, baseURL }) => {
+  test.setTimeout(60_000)
+  const host = await installDesktopHost(page)
+  try {
+    await fs.writeFile(path.join(host.root, 'Poster.psd'), Buffer.from('8BPS fixture'))
+    await fs.writeFile(path.join(host.root, 'Notes.md'), '# Notes\n')
+    await mockLocalWorkspaceApi(page)
+    await page.route('**/api/v1/kits', (route) => fulfillJson(route, { code: 200, message: 'success', data: {
+      kits: [{ id: 'kit.photo', name: 'Kition Photo', extensions: ['psd'], creates: ['psd'], installed: true, embeddable: true, binaryEnv: 'KITION_KIT_PHOTO_BINARY' }],
+    } }))
+    const opened: Array<{ path: string; rect: { x: number; y: number; width: number; height: number }; visible: boolean }> = []
+    const updates: Array<{ rect?: unknown; visible?: boolean }> = []
+    await page.route('**/api/v1/kits/surfaces', async (route) => {
+      opened.push(JSON.parse(route.request().postData() || '{}'))
+      await fulfillJson(route, { code: 200, message: 'success', data: { surfaceId: 1, document: photoView({ documentId: 's1::Poster.psd' }) } })
+    })
+    await page.route('**/api/v1/kits/surfaces/1', async (route) => {
+      if (route.request().method() === 'PUT') updates.push(JSON.parse(route.request().postData() || '{}'))
+      await fulfillJson(route, { code: 200, message: 'success', data: {} })
+    })
+    await page.route('**/api/v1/kits/kit.photo/documents/**', (route) => fulfillJson(route, { code: 200, message: 'success', data: photoView({ documentId: 's1::Poster.psd', dirty: true }) }))
+    await page.goto(new URL('/documents', baseURL!).toString(), { waitUntil: 'domcontentloaded' })
+    await dismissFirstRunActivation(page)
+    await page.locator('.document-tree-row', { hasText: 'Poster' }).first().click()
+
+    const region = page.getByTestId('photo-kit-editor-region')
+    await expect(region).toBeVisible()
+    await expect.poll(() => opened.length).toBe(1)
+    expect(opened[0].path).toBe('Poster.psd')
+    const box = await region.boundingBox()
+    expect(Math.abs(opened[0].rect.x - Math.round(box!.x))).toBeLessThanOrEqual(1)
+    expect(Math.abs(opened[0].rect.width - Math.round(box!.width))).toBeLessThanOrEqual(1)
+    await expect(page.getByTestId('agent-floating-launcher')).toHaveCount(0)
+    await expect(page.getByTestId('photo-kit-ask-agent')).toBeVisible()
+    await expect(page.getByTestId('photo-kit-unsaved')).toBeVisible({ timeout: 10_000 })
+
+    await page.locator('.document-tree-row', { hasText: 'Notes' }).first().click()
+    await expect.poll(() => updates.some((update) => update.visible === false)).toBe(true)
+    await expect(page.getByTestId('agent-floating-launcher')).toBeVisible()
+  } finally {
+    await host.dispose()
+  }
+})
+
 test('explains how to install Photo when the kit is missing', async ({ page, baseURL }) => {
   test.setTimeout(60_000)
   const host = await installDesktopHost(page)

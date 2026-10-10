@@ -8,6 +8,7 @@ mod env;
 mod external;
 mod feedback;
 mod images;
+mod kit_host;
 mod menu;
 mod pdf;
 mod proxy;
@@ -300,6 +301,9 @@ pub fn run() {
         RunEvent::ExitRequested { code, api, .. } => on_exit_requested(app, code, &api),
         #[cfg(target_os = "macos")]
         RunEvent::Reopen { .. } => window::show_main(app),
+        RunEvent::WindowEvent { label, event, .. } => {
+            kit_host::on_window_event(app, &label, &event)
+        }
         _ => {}
     });
 }

@@ -17,7 +17,7 @@
     "kitStatus": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "extensions", "creates", "installed", "binaryEnv"],
+      "required": ["id", "name", "extensions", "creates", "installed", "embeddable", "binaryEnv"],
       "properties": {
         "id": { "$ref": "#/$defs/kitId" },
         "name": { "type": "string", "minLength": 1 },
@@ -31,6 +31,10 @@
           "items": { "type": "string", "pattern": "^[a-z0-9]+$" }
         },
         "installed": { "type": "boolean" },
+        "embeddable": {
+          "type": "boolean",
+          "description": "Kit tabs can show the kit's own editor here: the desktop app on a supported system."
+        },
         "binaryEnv": {
           "type": "string",
           "description": "Environment variable that points at a local build of the kit executable."
@@ -51,6 +55,47 @@
       "required": ["path"],
       "properties": {
         "path": { "$ref": "#/$defs/workspacePath" }
+      }
+    },
+    "surfaceRect": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Logical pixels relative to the top-left of the window's web content.",
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "width": { "type": "number", "minimum": 0 },
+        "height": { "type": "number", "minimum": 0 }
+      }
+    },
+    "openSurfaceRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "POST /v1/kits/surfaces: opens the file in the kit's own editor, kept over `rect`.",
+      "required": ["path", "rect"],
+      "properties": {
+        "path": { "$ref": "#/$defs/workspacePath" },
+        "rect": { "$ref": "#/$defs/surfaceRect" },
+        "visible": { "type": "boolean", "default": true }
+      }
+    },
+    "surfaceView": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["surfaceId", "document"],
+      "properties": {
+        "surfaceId": { "type": "integer", "minimum": 1 },
+        "document": { "$ref": "#/$defs/documentView" }
+      }
+    },
+    "updateSurfaceRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "PUT /v1/kits/surfaces/{surfaceId}. DELETE on the same path closes the editor.",
+      "properties": {
+        "rect": { "$ref": "#/$defs/surfaceRect" },
+        "visible": { "type": "boolean" }
       }
     },
     "createRequest": {

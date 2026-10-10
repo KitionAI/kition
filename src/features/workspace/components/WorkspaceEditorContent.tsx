@@ -352,6 +352,7 @@ export function WorkspaceEditorContent({
                 path={tab.path}
                 format={tab.format}
                 active={activeWorkspaceTabId === tab.id}
+                onOpenAgent={onOpenAgent}
               />
             </EditorPaneBoundary>
           </div>

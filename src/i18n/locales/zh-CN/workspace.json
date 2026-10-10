@@ -632,6 +632,10 @@
     "layers": "图层",
     "noLayers": "没有图层",
     "hiddenLayer": "隐藏的图层",
-    "agentTip": "可以让 Agent 编辑这张图片，例如“加一个暗角”或“把背景图层调亮”。"
+    "agentTip": "可以让 Agent 编辑这张图片，例如“加一个暗角”或“把背景图层调亮”。",
+    "openingEditor": "正在打开编辑器…",
+    "editorClosed": "编辑器已关闭。",
+    "reopen": "重新打开",
+    "askAgent": "问 Agent"
   }
 }

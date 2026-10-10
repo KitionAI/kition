@@ -632,6 +632,10 @@
     "layers": "Camadas",
     "noLayers": "Sem camadas",
     "hiddenLayer": "Camada oculta",
-    "agentTip": "Peça ao agente para editar esta imagem, por exemplo \"adicione uma vinheta\" ou \"clareie a camada de fundo\"."
+    "agentTip": "Peça ao agente para editar esta imagem, por exemplo \"adicione uma vinheta\" ou \"clareie a camada de fundo\".",
+    "openingEditor": "Abrindo o editor…",
+    "editorClosed": "O editor foi fechado.",
+    "reopen": "Abrir novamente",
+    "askAgent": "Perguntar ao agente"
   }
 }

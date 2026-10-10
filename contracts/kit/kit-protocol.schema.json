@@ -35,6 +35,7 @@
       }
     },
     "bounds": {
+      "description": "Logical pixels. Relative to the host content area for child-window and shared-texture; screen coordinates for overlay-window and top-level.",
       "type": "object",
       "additionalProperties": false,
       "required": ["x", "y", "width", "height"],
