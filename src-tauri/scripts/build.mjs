@@ -82,7 +82,11 @@ console.log(`[build] identity=${buildIdentity} portalBaseURL=${portalBaseURL} ta
 const signed = Boolean(process.env.TAURI_SIGNING_PRIVATE_KEY)
 fs.mkdirSync(configDir, { recursive: true })
 const configOverride = path.join(configDir, 'build.conf.json')
-fs.writeFileSync(configOverride, JSON.stringify({ bundle: { createUpdaterArtifacts: signed } }))
+const updaterPubkey = (process.env.KITION_UPDATER_PUBKEY || '').trim()
+const override = { bundle: { createUpdaterArtifacts: signed } }
+// The bundler verifies the update signatures it writes against this key.
+if (updaterPubkey) override.plugins = { updater: { pubkey: updaterPubkey } }
+fs.writeFileSync(configOverride, JSON.stringify(override))
 const tauriArgs = ['exec', 'tauri', 'build', '--config', configOverride, '--target', triple]
 if (options.bundles) tauriArgs.push('--bundles', options.bundles)
 tauriArgs.push(...options.passthrough)
