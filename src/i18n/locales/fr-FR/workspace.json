@@ -5,7 +5,8 @@
       "table": "Table",
       "board": "Tableau",
       "page": "Page",
-      "note": "Note"
+      "note": "Note",
+      "image": "Image"
     },
     "folder": "Dossier",
     "importSpreadsheet": "Importer une feuille de calcul",

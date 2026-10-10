@@ -17,12 +17,17 @@
     "kitStatus": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "extensions", "installed", "binaryEnv"],
+      "required": ["id", "name", "extensions", "creates", "installed", "binaryEnv"],
       "properties": {
         "id": { "$ref": "#/$defs/kitId" },
         "name": { "type": "string", "minLength": 1 },
         "extensions": {
           "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z0-9]+$" }
+        },
+        "creates": {
+          "type": "array",
+          "description": "Extensions the kit can create new documents in.",
           "items": { "type": "string", "pattern": "^[a-z0-9]+$" }
         },
         "installed": { "type": "boolean" },
@@ -46,6 +51,17 @@
       "required": ["path"],
       "properties": {
         "path": { "$ref": "#/$defs/workspacePath" }
+      }
+    },
+    "createRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "POST /v1/kits/documents/new: creates an `Untitled image` file in the folder and opens it.",
+      "properties": {
+        "folder": { "type": "string", "description": "Workspace-relative folder; empty for the workspace root." },
+        "extension": { "type": "string", "pattern": "^[a-z0-9]+$", "default": "psd" },
+        "width": { "type": "integer", "minimum": 1, "maximum": 30000, "default": 1920 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 30000, "default": 1080 }
       }
     },
     "documentView": {

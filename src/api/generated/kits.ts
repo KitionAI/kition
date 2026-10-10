@@ -13,6 +13,10 @@ export type KitsKitStatus = {
   id: KitsKitId
   name: string
   extensions: string[]
+  /**
+   * Extensions the kit can create new documents in.
+   */
+  creates: string[]
   installed: boolean
   /**
    * Environment variable that points at a local build of the kit executable.
@@ -26,6 +30,28 @@ export type KitsKitList = {
 
 export type KitsOpenRequest = {
   path: KitsWorkspacePath
+}
+
+/**
+ * POST /v1/kits/documents/new: creates an `Untitled image` file in the folder and opens it.
+ */
+export type KitsCreateRequest = {
+  /**
+   * Workspace-relative folder; empty for the workspace root.
+   */
+  folder?: string
+  /**
+   * @default "psd"
+   */
+  extension?: string
+  /**
+   * @default 1920
+   */
+  width?: number
+  /**
+   * @default 1080
+   */
+  height?: number
 }
 
 export type KitsDocumentView = {

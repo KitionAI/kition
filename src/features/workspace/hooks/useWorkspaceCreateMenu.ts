@@ -19,6 +19,8 @@ type UseWorkspaceCreateMenuOptions = {
   openDocumentTemplateDialog: (folder?: string) => void
   openKitableTemplateDialog: (folder?: string) => void
   createDesign: (folder?: string) => Promise<unknown> | void
+  /** Present when an installed kit can create images. */
+  createImage?: (folder?: string) => Promise<unknown> | void
   openBoardTemplateDialog: (folder?: string) => void
   openWorkspaceWorkflow: () => void
   onCloseProfile?: () => void
@@ -40,6 +42,7 @@ export function useWorkspaceCreateMenu({
   openDocumentTemplateDialog,
   openKitableTemplateDialog,
   createDesign,
+  createImage,
   openBoardTemplateDialog,
   openWorkspaceWorkflow,
   onCloseProfile,
@@ -94,6 +97,13 @@ export function useWorkspaceCreateMenu({
       onCloseProfile?.()
       void createDesign(createMenuFolder)
     },
+    onCreateImage: createImage
+      ? () => {
+          onCloseProfile?.()
+          closeCreateMenu()
+          void createImage(createMenuFolder)
+        }
+      : undefined,
     onCreateBoard: () => {
       onCloseProfile?.()
       openBoardTemplateDialog(createMenuFolder)
@@ -101,6 +111,7 @@ export function useWorkspaceCreateMenu({
   }), [
     closeCreateMenu,
     createDesign,
+    createImage,
     createDocumentInside,
     createFlows,
     createMenuFolder,

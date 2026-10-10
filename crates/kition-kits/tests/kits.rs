@@ -21,6 +21,7 @@ static MOCK: KitDefinition = KitDefinition {
     name: "Mock kit",
     binary_env: "KITION_KIT_MOCK_BINARY",
     extensions: &["mocktext"],
+    creates: &[("mocktext", "mock.text")],
 };
 
 fn mock_binary() -> Option<PathBuf> {
@@ -183,6 +184,56 @@ async fn opens_edits_and_saves_a_workspace_file() {
 
     let (status, _) = call(&f.app, "DELETE", &base, None).await;
     assert_eq!(status, StatusCode::OK);
+    f.kits.shutdown().await;
+}
+
+#[tokio::test]
+async fn creates_untitled_documents_with_unused_names() {
+    let Some(f) = fixture() else { return };
+    let (status, created) = call(
+        &f.app,
+        "POST",
+        "/kits/documents/new",
+        Some(json!({ "folder": "art", "extension": "mocktext" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{created}");
+    check_contract("documentView", &created["data"]);
+    assert_eq!(created["data"]["path"], "art/Untitled image.mocktext");
+    assert_eq!(created["data"]["dirty"], false);
+    assert!(f.dir.path().join("art/Untitled image.mocktext").is_file());
+    let (_, second) = call(
+        &f.app,
+        "POST",
+        "/kits/documents/new",
+        Some(json!({ "folder": "art", "extension": "mocktext" })),
+    )
+    .await;
+    assert_eq!(second["data"]["path"], "art/Untitled image 2.mocktext");
+    let (status, _) = call(
+        &f.app,
+        "POST",
+        "/kits/documents/new",
+        Some(json!({ "folder": "missing", "extension": "mocktext" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    let (status, _) = call(
+        &f.app,
+        "POST",
+        "/kits/documents/new",
+        Some(json!({ "extension": "exe" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    let (status, _) = call(
+        &f.app,
+        "POST",
+        "/kits/documents/new",
+        Some(json!({ "extension": "mocktext", "width": 0 })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
     f.kits.shutdown().await;
 }
 

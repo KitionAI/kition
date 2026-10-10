@@ -5,7 +5,8 @@
       "table": "表格",
       "board": "画板",
       "page": "页面",
-      "note": "笔记"
+      "note": "笔记",
+      "image": "图片"
     },
     "folder": "文件夹",
     "importSpreadsheet": "导入电子表格",

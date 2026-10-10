@@ -55,6 +55,7 @@ import { WorkspaceDialogs } from '@/features/workspace/components/WorkspaceDialo
 import { WorkspaceAgentPane } from '@/features/workspace/components/WorkspaceAgentPane'
 import { useWorkspaceSidebarNavigation } from '@/features/workspace/hooks/useWorkspaceSidebarNavigation'
 import { useWorkspaceCreateMenu } from '@/features/workspace/hooks/useWorkspaceCreateMenu'
+import { useKitImageCreation } from '@/features/workspace/hooks/useKitImageCreation'
 import { useWorkspaceDocumentTitleRename } from '@/features/workspace/hooks/useWorkspaceDocumentTitleRename'
 import { useWorkspaceAgentComposer } from '@/features/workspace/hooks/useWorkspaceAgentComposer'
 import { useWorkspaceErrorNotice } from '@/features/workspace/hooks/useWorkspaceErrorNotice'
@@ -796,6 +797,13 @@ export function WorkspaceScreen({
     openDocument,
   })
 
+  const createImage = useKitImageCreation({
+    rootPath,
+    refreshWorkspaceDocuments,
+    openPath: openSidebarPath,
+    onError: setError,
+  })
+
   const createMenuActions = useWorkspaceCreateMenu({
     createFlows,
     createMenuFolder,
@@ -806,6 +814,7 @@ export function WorkspaceScreen({
     openDocumentTemplateDialog,
     openKitableTemplateDialog,
     createDesign: design.create,
+    createImage,
     openBoardTemplateDialog: boardCreation.openTemplateDialog,
     openWorkspaceWorkflow,
     onCloseProfile,

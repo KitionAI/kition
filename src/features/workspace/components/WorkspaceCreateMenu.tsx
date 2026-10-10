@@ -1,4 +1,4 @@
-import { FileInput, FileSpreadsheet, FileText, FolderPlus, LayoutDashboard, Paintbrush, PenTool, Upload, Zap } from 'lucide-react'
+import { FileInput, FileSpreadsheet, FileText, FolderPlus, Layers, LayoutDashboard, Paintbrush, PenTool, Upload, Zap } from 'lucide-react'
 import { type CSSProperties, type ReactNode, useLayoutEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
@@ -23,6 +23,7 @@ export function WorkspaceCreateMenu({
   onCreateTable,
   onCreateBoard,
   onCreateDesign,
+  onCreateImage,
   onImportTableFile,
   onCreateForm,
   onCreateWorkflow,
@@ -41,6 +42,7 @@ export function WorkspaceCreateMenu({
   onCreateTable: () => void
   onCreateBoard?: () => void
   onCreateDesign?: () => void
+  onCreateImage?: () => void
   onImportTableFile?: () => void
   onCreateForm?: () => void
   /** Kitable variant only — adds a "Create Workflow" entry that defers to
@@ -126,6 +128,9 @@ export function WorkspaceCreateMenu({
           </button>
         )
       })}
+      {onCreateImage ? <button type="button" className="document-create-option" data-testid="workspace-create-image" onClick={onCreateImage}>
+        <Layers className="size-4" /><span>{t('createMenu.format.image')}</span>
+      </button> : null}
       {onCreateDesign ? <button type="button" className="document-create-option" data-testid="workspace-create-design" onClick={onCreateDesign}>
         <Paintbrush className="size-4" /><span>{t('design:suite')}</span>
       </button> : null}

@@ -30,6 +30,7 @@ pub fn router(state: KitsState) -> Router {
     Router::new()
         .route("/kits", get(list))
         .route("/kits/documents", post(open))
+        .route("/kits/documents/new", post(create))
         .route(
             "/kits/{kit}/documents/{document}",
             get(document).delete(close),
@@ -89,6 +90,53 @@ async fn open(
     let view = state
         .kits
         .open(Caller::User, &body.path)
+        .await
+        .map_err(app_error)?;
+    Ok(ok(view))
+}
+
+#[derive(Deserialize)]
+struct CreateBody {
+    #[serde(default)]
+    folder: String,
+    #[serde(default = "default_extension")]
+    extension: String,
+    #[serde(default = "default_width")]
+    width: u32,
+    #[serde(default = "default_height")]
+    height: u32,
+}
+
+fn default_extension() -> String {
+    "psd".into()
+}
+
+const fn default_width() -> u32 {
+    1920
+}
+
+const fn default_height() -> u32 {
+    1080
+}
+
+async fn create(
+    State(state): State<KitsState>,
+    _user: CurrentUser,
+    JsonBody(body): JsonBody<CreateBody>,
+) -> AppResult<Response> {
+    if !(1..=30_000).contains(&body.width) || !(1..=30_000).contains(&body.height) {
+        return Err(AppError::bad_request(
+            "width and height must be between 1 and 30000 pixels",
+        ));
+    }
+    let options = Map::from_iter([
+        ("width".to_owned(), json!(body.width)),
+        ("height".to_owned(), json!(body.height)),
+        ("background".to_owned(), json!("white")),
+    ]);
+    let view = state
+        .kits
+        .create(Caller::User, &body.folder, &body.extension, options)
         .await
         .map_err(app_error)?;
     Ok(ok(view))

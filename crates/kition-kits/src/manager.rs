@@ -27,6 +27,8 @@ pub struct KitDefinition {
     pub binary_env: &'static str,
     /// Lowercase extensions, without the dot, that open in this kit.
     pub extensions: &'static [&'static str],
+    /// Extensions Kition can create new documents in, with the kit's format id for each.
+    pub creates: &'static [(&'static str, &'static str)],
 }
 
 pub const KITS: &[KitDefinition] = &[KitDefinition {
@@ -34,6 +36,7 @@ pub const KITS: &[KitDefinition] = &[KitDefinition {
     name: "Kition Photo",
     binary_env: "KITION_KIT_PHOTO_BINARY",
     extensions: &["psd", "psb", "pcraft"],
+    creates: &[("psd", "psd"), ("psb", "psb"), ("pcraft", "pcraft")],
 }];
 
 /// Who is asking: a person in a kit tab or the agent.
@@ -101,6 +104,8 @@ pub struct KitStatus {
     pub id: &'static str,
     pub name: &'static str,
     pub extensions: Vec<&'static str>,
+    /// Extensions this kit can create new documents in.
+    pub creates: Vec<&'static str>,
     pub installed: bool,
     pub binary_env: &'static str,
 }
@@ -222,6 +227,11 @@ impl KitManager {
                 id: kit.id,
                 name: kit.name,
                 extensions: kit.extensions.to_vec(),
+                creates: kit
+                    .creates
+                    .iter()
+                    .map(|(extension, _)| *extension)
+                    .collect(),
                 installed: binary.as_deref().is_some_and(Path::is_file),
                 binary_env: kit.binary_env,
             })
@@ -381,6 +391,74 @@ impl KitManager {
         let (running, state) = self
             .call::<methods::DocumentOpen>(kit, caller, &params)
             .await?;
+        self.view(kit, &running, caller, state).await
+    }
+
+    /// Creates a new document in `folder` (workspace-relative, `""` for the root) with an
+    /// unused `Untitled image` name, saves it so it appears in the workspace, and opens it.
+    pub async fn create(
+        &self,
+        caller: Caller,
+        folder: &str,
+        extension: &str,
+        options: Map<String, Value>,
+    ) -> Result<DocumentView, KitError> {
+        let extension = extension.trim_start_matches('.').to_ascii_lowercase();
+        let (kit, format) = self
+            .inner
+            .kits
+            .iter()
+            .find_map(|(kit, _)| {
+                kit.creates
+                    .iter()
+                    .find(|(known, _)| *known == extension)
+                    .map(|(_, format)| (*kit, *format))
+            })
+            .ok_or_else(|| KitError::InvalidPath(format!("no kit creates .{extension} files")))?;
+        let directory = if folder.trim().trim_matches('/').is_empty() {
+            self.workspace()?.to_path_buf()
+        } else {
+            self.resolve(folder)?
+        };
+        if !directory.is_dir() {
+            return Err(KitError::InvalidPath(format!(
+                "`{folder}` is not a workspace folder"
+            )));
+        }
+        let target = (1..1000)
+            .map(|n| {
+                let name = if n == 1 {
+                    format!("Untitled image.{extension}")
+                } else {
+                    format!("Untitled image {n}.{extension}")
+                };
+                directory.join(name)
+            })
+            .find(|path| !path.exists())
+            .ok_or_else(|| {
+                KitError::InvalidPath("too many untitled images in this folder".into())
+            })?;
+        let uri = url::Url::from_file_path(&target)
+            .map(String::from)
+            .map_err(|()| KitError::InvalidPath("the folder is not a local path".into()))?;
+        let params = DocumentOpenParams {
+            uri,
+            read_only: None,
+            create: Some(CreateDocument {
+                format: format.to_owned(),
+                options: Some(options),
+            }),
+        };
+        let (_, state) = self
+            .call::<methods::DocumentOpen>(kit, caller, &params)
+            .await?;
+        let saved = DocumentRef {
+            document_id: state.document_id.clone(),
+        };
+        let (running, _) = self
+            .call::<methods::DocumentSave>(kit, caller, &saved)
+            .await?;
+        let (_, state) = self.state(kit, caller, &saved.document_id).await?;
         self.view(kit, &running, caller, state).await
     }
 

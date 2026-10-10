@@ -131,5 +131,23 @@ async fn edits_a_real_psd_through_kit_photo() {
         .unwrap_or_else(|err| panic!("{err}"));
     assert_eq!(layers(&reopened), before + 1, "{:?}", reopened.details);
     println!("after save: {}", reopened.summary);
+
+    // A new image from the create menu.
+    let created = kits
+        .create(
+            Caller::User,
+            "art",
+            "psd",
+            Map::from_iter([
+                ("width".into(), json!(320)),
+                ("height".into(), json!(200)),
+                ("background".into(), json!("white")),
+            ]),
+        )
+        .await
+        .unwrap_or_else(|err| panic!("{err}"));
+    assert_eq!(created.path.as_deref(), Some("art/Untitled image.psd"));
+    assert_eq!(created.details["width"], 320);
+    assert!(dir.path().join("art/Untitled image.psd").is_file());
     kits.shutdown().await;
 }

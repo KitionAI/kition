@@ -119,6 +119,50 @@ test('imports a PSD dropped from the OS onto the tree area', async ({ page, base
   }
 })
 
+test('creates a new image from the create menu when the Photo kit is installed', async ({ page, baseURL }) => {
+  test.setTimeout(60_000)
+  const host = await installDesktopHost(page)
+  try {
+    await mockLocalWorkspaceApi(page)
+    await page.route('**/api/v1/kits', (route) => fulfillJson(route, { code: 200, message: 'success', data: {
+      kits: [{ id: 'kit.photo', name: 'Kition Photo', extensions: ['psd', 'psb', 'pcraft'], creates: ['psd', 'psb', 'pcraft'], installed: true, binaryEnv: 'KITION_KIT_PHOTO_BINARY' }],
+    } }))
+    const created: unknown[] = []
+    await page.route('**/api/v1/kits/documents/new', async (route) => {
+      created.push(JSON.parse(route.request().postData() || '{}'))
+      // The runtime writes the file through the kit; the mocked host lists it from disk.
+      await fs.writeFile(path.join(host.root, 'Untitled image.psd'), Buffer.from('8BPS new'))
+      await fulfillJson(route, { code: 200, message: 'success', data: photoView({ path: 'Untitled image.psd', title: 'Untitled image.psd', summary: '1920 x 1080 px, Rgb, 8-bit, 1 layers' }) })
+    })
+    await page.route('**/api/v1/kits/documents', (route) => fulfillJson(route, { code: 200, message: 'success', data: photoView({ path: 'Untitled image.psd', summary: '1920 x 1080 px, Rgb, 8-bit, 1 layers' }) }))
+    await page.goto(new URL('/documents', baseURL!).toString(), { waitUntil: 'domcontentloaded' })
+    await dismissFirstRunActivation(page)
+    await page.locator('.document-private-heading .document-create-menu-anchor > button').click()
+    await page.getByTestId('workspace-create-image').click()
+    await expect(page.getByTestId('photo-kit-pane')).toBeVisible()
+    await expect(page.getByTestId('photo-kit-summary')).toHaveText('1920 x 1080 px, Rgb, 8-bit, 1 layers')
+    expect(created).toEqual([{ folder: '', extension: 'psd' }])
+    await expect(page.locator('.document-tree-row', { hasText: 'Untitled image' })).toBeVisible()
+  } finally {
+    await host.dispose()
+  }
+})
+
+test('hides New image when no kit can create images', async ({ page, baseURL }) => {
+  const host = await installDesktopHost(page)
+  try {
+    await mockLocalWorkspaceApi(page)
+    await page.route('**/api/v1/kits', (route) => fulfillJson(route, { code: 200, message: 'success', data: { kits: [] } }))
+    await page.goto(new URL('/documents', baseURL!).toString(), { waitUntil: 'domcontentloaded' })
+    await dismissFirstRunActivation(page)
+    await page.locator('.document-private-heading .document-create-menu-anchor > button').click()
+    await expect(page.getByTestId('workspace-create-design')).toBeVisible()
+    await expect(page.getByTestId('workspace-create-image')).toHaveCount(0)
+  } finally {
+    await host.dispose()
+  }
+})
+
 test('explains how to install Photo when the kit is missing', async ({ page, baseURL }) => {
   test.setTimeout(60_000)
   const host = await installDesktopHost(page)

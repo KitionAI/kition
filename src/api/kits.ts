@@ -5,7 +5,7 @@
  */
 import request from './request'
 import { resolveApiURL } from '@/services/desktop'
-import type { KitsDocumentView, KitsExecuteResult, KitsPhotoDetails } from './generated/kits'
+import type { KitsCreateRequest, KitsDocumentView, KitsExecuteResult, KitsKitList, KitsPhotoDetails } from './generated/kits'
 
 export type { KitsDocumentView, KitsExecuteResult, KitsPhotoDetails }
 
@@ -15,6 +15,17 @@ function unwrap<T>(response: T | { data?: T }) {
 
 function documentPath(kitId: string, documentId: string) {
   return `/v1/kits/${encodeURIComponent(kitId)}/documents/${encodeURIComponent(documentId)}`
+}
+
+export function listKits() {
+  return request.get<KitsKitList | { data?: KitsKitList }>('/v1/kits', { suppressErrorMessage: true }).then(unwrap<KitsKitList>)
+}
+
+/** Creates an `Untitled image` in `folder` with an installed kit and opens it. */
+export function createKitDocument(input: KitsCreateRequest) {
+  return request
+    .post<KitsDocumentView | { data?: KitsDocumentView }>('/v1/kits/documents/new', input)
+    .then(unwrap<KitsDocumentView>)
 }
 
 export function openKitDocument(path: string) {
