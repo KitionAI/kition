@@ -56,6 +56,7 @@ import { WorkspaceAgentPane } from '@/features/workspace/components/WorkspaceAge
 import { useWorkspaceSidebarNavigation } from '@/features/workspace/hooks/useWorkspaceSidebarNavigation'
 import { useWorkspaceCreateMenu } from '@/features/workspace/hooks/useWorkspaceCreateMenu'
 import { useKitCreations } from '@/features/workspace/hooks/useKitCreations'
+import { onShowWorkspaceFile } from '@/features/workspace/lib/workspaceFileRequests'
 import { useWorkspaceDocumentTitleRename } from '@/features/workspace/hooks/useWorkspaceDocumentTitleRename'
 import { useWorkspaceAgentComposer } from '@/features/workspace/hooks/useWorkspaceAgentComposer'
 import { useWorkspaceErrorNotice } from '@/features/workspace/hooks/useWorkspaceErrorNotice'
@@ -796,6 +797,13 @@ export function WorkspaceScreen({
     openKitableContainer,
     openDocument,
   })
+
+  // A kit wrote a new file (an export, a project from a clip): show it, and open it when asked.
+  useEffect(() => onShowWorkspaceFile(({ path, open }) => {
+    void Promise.resolve(refreshWorkspaceDocuments(path, { silent: true })).then(() => {
+      if (open) openSidebarPath(path)
+    })
+  }), [openSidebarPath, refreshWorkspaceDocuments])
 
   const kitCreations = useKitCreations({
     rootPath,

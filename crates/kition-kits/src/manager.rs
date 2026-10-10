@@ -36,6 +36,9 @@ pub struct KitDefinition {
     pub creates: &'static [(&'static str, &'static str)],
     /// Whether the kit's own editor can be embedded in a desktop tab.
     pub embeds: bool,
+    /// Extensions the kit's in-page editor exports to, for example `mp4` from a video project.
+    /// Exports are only ever new files: `write_file` never replaces an existing one.
+    pub exports: &'static [&'static str],
 }
 
 pub const KITS: &[KitDefinition] = &[
@@ -46,6 +49,7 @@ pub const KITS: &[KitDefinition] = &[
         extensions: &["psd", "psb", "pcraft"],
         creates: &[("psd", "psd"), ("psb", "psb"), ("pcraft", "pcraft")],
         embeds: true,
+        exports: &[],
     },
     // Edited in the page through its SDK; the headless executable for the agent comes later.
     KitDefinition {
@@ -55,6 +59,7 @@ pub const KITS: &[KitDefinition] = &[
         extensions: &["fcproj"],
         creates: &[],
         embeds: false,
+        exports: &["mp4"],
     },
 ];
 
@@ -797,10 +802,24 @@ impl KitManager {
     /// temporary file beside the target, which is then renamed over it. The in-page editors save
     /// through here.
     pub fn write_file(&self, path: &str, bytes: &[u8]) -> Result<(), KitError> {
-        if self.kit_for_path(path).is_none() {
+        let extension = path
+            .rsplit_once('.')
+            .map(|(_, extension)| extension.to_ascii_lowercase())
+            .unwrap_or_default();
+        let export = self
+            .inner
+            .kits
+            .iter()
+            .any(|(kit, _)| kit.exports.contains(&extension.as_str()));
+        if self.kit_for_path(path).is_none() && !export {
             return Err(KitError::InvalidPath(format!("no kit edits `{path}`")));
         }
         let target = self.resolve(path)?;
+        if export && self.kit_for_path(path).is_none() && target.exists() {
+            return Err(KitError::InvalidPath(format!(
+                "`{path}` exists; exports never replace a file"
+            )));
+        }
         let parent = target
             .parent()
             .filter(|parent| parent.is_dir())

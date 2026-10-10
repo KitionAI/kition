@@ -45,7 +45,7 @@ async function handle(request: KitEngineRequest): Promise<{ value: unknown; tran
     }
     case 'create': {
       const sdk = await loadKitSdk(request.manifest)
-      lendFiles(null)
+      lendFiles(request.lent)
       doc?.free()
       doc = createKitSdkDocument(sdk, request.manifest, request.name, request.width, request.height)
       return { value: info(doc) }

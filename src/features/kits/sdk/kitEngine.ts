@@ -15,7 +15,7 @@ export type KitEngineInfo = {
 
 export type KitEngineRequest =
   | { method: 'open'; manifest: KitSdkManifest; name: string; bytes: ArrayBuffer; lent: LentFiles | null }
-  | { method: 'create'; manifest: KitSdkManifest; name: string; width: number; height: number }
+  | { method: 'create'; manifest: KitSdkManifest; name: string; width: number; height: number; lent: LentFiles | null }
   | { method: 'execute'; command: string; params: Record<string, unknown> }
   | { method: 'render'; x: number; y: number; scale: number; width: number; height: number }
   | { method: 'renderArea'; x0: number; y0: number; x1: number; y1: number; width: number; height: number }
@@ -59,14 +59,17 @@ export class KitEngine {
     }
   }
 
-  /** Starts a worker with a new, empty document made by the kit's SDK; nothing is written yet. */
-  static async create(manifest: KitSdkManifest, name: string, width: number, height: number) {
+  /**
+   * Starts a worker with a new, empty document made by the kit's SDK; nothing is written yet.
+   * `lent` lets it read other files, for example the clip a video project is made from.
+   */
+  static async create(manifest: KitSdkManifest, name: string, width: number, height: number, lent: LentFiles | null = null) {
     const worker = new Worker(new URL('./kitEngine.worker.ts', import.meta.url), { type: 'module' })
     const engine = new KitEngine(worker, CLOSED_INFO)
     worker.onmessage = (event: MessageEvent<KitEngineResponse>) => engine.settle(event.data)
     worker.onerror = (event) => engine.fail(new Error(event.message || 'the kit engine stopped'))
     try {
-      engine.info = (await engine.call({ method: 'create', manifest, name, width, height })) as KitEngineInfo
+      engine.info = (await engine.call({ method: 'create', manifest, name, width, height, lent })) as KitEngineInfo
       return engine
     } catch (error) {
       engine.dispose()

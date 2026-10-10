@@ -23,6 +23,7 @@ static MOCK: KitDefinition = KitDefinition {
     extensions: &["mocktext"],
     creates: &[("mocktext", "mock.text")],
     embeds: false,
+    exports: &["mockout"],
 };
 
 fn mock_binary() -> Option<PathBuf> {
@@ -259,6 +260,15 @@ async fn in_page_editors_save_kit_files_inside_the_workspace() {
     assert_eq!(
         put("/kits/files?path=art/note.mocktext").await,
         StatusCode::OK
+    );
+    // An export is written once, as a new file, and never over an existing one.
+    assert_eq!(
+        put("/kits/files?path=art/note.mockout").await,
+        StatusCode::OK
+    );
+    assert_eq!(
+        put("/kits/files?path=art/note.mockout").await,
+        StatusCode::BAD_REQUEST
     );
     assert_eq!(
         std::fs::read_to_string(f.dir.path().join("art/note.mocktext")).unwrap_or_default(),

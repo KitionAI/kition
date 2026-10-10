@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { createKitDocument, listKits } from '@/api/kits'
 import { KITION_KIT_HOST, createKitFile } from '@/features/kits/public'
-import { listWorkspaceDocuments, type WorkspaceDocumentTreeItem } from '@/services/desktop'
+import { unusedWorkspacePath } from '@/features/workspace/lib/unusedWorkspacePath'
 import { creatableKits, sdkAvailable, type KitCreateSpec, type KitEditorEntry } from '../components/kits/kitEditors'
 
 /** A kit item as the create menu shows it. */
@@ -22,25 +22,6 @@ type UseKitCreationsOptions = {
   refreshWorkspaceDocuments: (path?: string, options?: { silent?: boolean }) => Promise<unknown> | unknown
   openPath: (path: string) => void
   onError: (message: string) => void
-}
-
-function paths(items: readonly WorkspaceDocumentTreeItem[], out = new Set<string>()) {
-  for (const item of items) {
-    out.add(item.path)
-    if (item.children) paths(item.children, out)
-  }
-  return out
-}
-
-/** `folder/<baseName>.<ext>`, or `<baseName> 2.<ext>` and so on when taken. */
-async function unusedPath(folder: string, spec: KitCreateSpec) {
-  const taken = paths((await listWorkspaceDocuments()).items)
-  const prefix = folder ? `${folder.replace(/\/+$/, '')}/` : ''
-  for (let n = 1; n < 1000; n += 1) {
-    const candidate = `${prefix}${spec.baseName}${n === 1 ? '' : ` ${n}`}.${spec.extension}`
-    if (!taken.has(candidate)) return candidate
-  }
-  throw new Error(`too many files named ${spec.baseName} in this folder`)
 }
 
 /** How this build can make a kit's files: in the page with its SDK, or through the runtime's kit process. */
@@ -78,7 +59,7 @@ export function useKitCreations({ rootPath, refreshWorkspaceDocuments, openPath,
     try {
       let path: string | undefined
       if (modes[entry.create.id] === 'sdk') {
-        path = await unusedPath(folder || '', entry.create)
+        path = await unusedWorkspacePath(folder || '', entry.create.baseName, entry.create.extension)
         await createKitFile(KITION_KIT_HOST, entry.sdk, path, entry.create.size)
       } else {
         path = (await createKitDocument({ folder: folder || '', extension: entry.create.extension })).path || undefined

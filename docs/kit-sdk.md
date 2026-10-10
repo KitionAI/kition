@@ -316,6 +316,23 @@ React and the canvas:
 - Wheel listeners must be registered with `{ passive: false }` to prevent
   page scrolling. Use pointer capture and coalesced events for strokes.
 
+Exports (Film's MP4):
+
+- A kit that turns its document into another file (a movie from a video
+  project) declares the extension in `KitDefinition.exports`. `PUT
+  /v1/kits/files` writes an export only as a new file, never over an existing
+  one, so an original clip cannot be overwritten. The editor picks an unused
+  name (`bars 2.mp4`).
+- Long exports run in steps inside the worker (`file.exportMedia` without
+  `wait`, then the `exportStep(job, ms)` extra until finished, `takeFile` for
+  the bytes), with progress and a stop button; the page never blocks. 1080p
+  H.264 encodes at about 5 times slower than real time in single-threaded
+  WebAssembly.
+- Editing a file the kit does not own (an mp4) goes through a project: "Edit
+  in Film" on the video viewer makes `<clip>.fcproj` beside the clip
+  (`createKitFile` with a `prepare` step that imports it and builds a
+  sequence from it) and opens it. The clip itself is never changed.
+
 Time-based kits (Film):
 
 - Sound leads, the picture follows. The engine mixes audio through an SDK extra

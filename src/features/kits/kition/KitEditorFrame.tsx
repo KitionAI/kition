@@ -16,6 +16,8 @@ type KitEditorFrameProps = {
   /** Top-level menus in display order, and their shown names. */
   menuOrder: readonly string[]
   menuLabel?: (label: string) => string
+  /** More header buttons, before Save (Film's Export). */
+  actions?: ReactNode
   /** The bar under the menus: the active tool's options. */
   options?: ReactNode
   /** The column left of the canvas: tools. */
@@ -84,6 +86,7 @@ export function KitEditorFrame(props: KitEditorFrameProps) {
             {t('kitEditor.askAgent')}
           </Button>
         ) : null}
+        {props.actions}
         <Button size="sm" disabled={!document.dirty || document.saving} onClick={() => void editor.save()} data-testid="kit-save">
           {document.saving ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : <Save className="size-3.5" aria-hidden="true" />}
           {t('kitEditor.save')}

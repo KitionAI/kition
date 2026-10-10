@@ -93,7 +93,7 @@ export type KitsCommandList = {
 }
 
 /**
- * PUT /v1/kits/files?path=: replaces a workspace file a kit edits with the raw request body (application/octet-stream, up to 2 GiB). In-page editors save through it.
+ * PUT /v1/kits/files?path=: replaces a workspace file a kit edits with the raw request body (application/octet-stream, up to 2 GiB), or writes a kit export (for example an .mp4 from a video project) as a new file; an export never replaces an existing file. In-page editors save and export through it.
  */
 export type KitsWriteFileQuery = {
   path: KitsWorkspacePath

@@ -745,6 +745,13 @@
       "Help": "Aide"
     },
     "mute": "Couper le son",
-    "unmute": "Rétablir le son"
+    "unmute": "Rétablir le son",
+    "editInFilm": "Modifier dans Film",
+    "editFailed": "Impossible de créer le projet vidéo",
+    "exportMovie": "Exporter en MP4",
+    "exporting": "Exportation {{percent}} %",
+    "exportCancel": "Arrêter l'exportation",
+    "exported": "{{name}} exporté",
+    "exportFailed": "Impossible d'exporter la vidéo"
   }
 }

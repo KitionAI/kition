@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Clapperboard } from 'lucide-react'
+import { Clapperboard, Download, Loader2, X } from 'lucide-react'
+import { Button } from '@/components/ui'
+import { notify } from '@/lib/notify'
+import { requestShowWorkspaceFile } from '@/features/workspace/lib/workspaceFileRequests'
 import {
   HAND_TOOL,
   KITION_KIT_HOST,
@@ -17,6 +20,7 @@ import { FilmTimeline } from './film/FilmTimeline'
 import { FilmTransport } from './film/FilmTransport'
 import { FilmAudioPlayer } from './film/filmAudio'
 import { FILM_SDK, describeFilm } from './film/filmKitSdk'
+import { exportMovie, type ExportProgress } from './film/filmMovies'
 
 /** Film's menus, in the order video editors show them. */
 const FILM_MENU_ORDER = ['File', 'Edit', 'Clip', 'Sequence', 'Markers', 'Graphics and Titles', 'View', 'Window', 'Help']
@@ -101,6 +105,34 @@ function usePlayback(doc: KitEngine | null, run: (command: string, params: Recor
   return { playing, toggle, stop, muted, toggleMuted: () => setMuted((value) => !value) }
 }
 
+/** Exports the project as an MP4 beside it, with progress and a way to stop. */
+function useMovieExport(doc: KitEngine | null, path: string) {
+  const { t } = useTranslation('workspace')
+  const [progress, setProgress] = useState<ExportProgress | null>(null)
+  const abort = useRef<AbortController | null>(null)
+
+  const start = useCallback(async () => {
+    if (!doc || abort.current) return
+    const controller = new AbortController()
+    abort.current = controller
+    setProgress({ fraction: 0, secondsLeft: null })
+    try {
+      const movie = await exportMovie(doc, path, setProgress, controller.signal)
+      notify.success(t('filmKit.exported', { name: movie.split('/').pop() }))
+      requestShowWorkspaceFile(movie)
+    } catch (error) {
+      if (!controller.signal.aborted) notify.error(t('filmKit.exportFailed'), { description: error instanceof Error ? error.message : String(error) })
+    } finally {
+      abort.current = null
+      setProgress(null)
+    }
+  }, [doc, path, t])
+
+  useEffect(() => () => abort.current?.abort(), [])
+
+  return { progress, start, cancel: () => abort.current?.abort() }
+}
+
 /**
  * A video project edited in the page, on the Kit SDK template: the Film
  * engine runs in a worker and paints the program monitor, media are lent
@@ -119,6 +151,7 @@ export function FilmWebEditor({ path, active, onOpenAgent }: FilmWebEditorProps)
   const { run: runQuietly } = film
   const { run } = editor
   const playback = usePlayback(film.doc, runQuietly, state?.playhead ?? 0, state?.duration ?? 0)
+  const movie = useMovieExport(film.doc, path)
 
   const seek = useCallback((seconds: number) => void runQuietly('playhead.set', { seconds: Math.max(0, seconds) }).catch(() => undefined), [runQuietly])
 
@@ -153,6 +186,22 @@ export function FilmWebEditor({ path, active, onOpenAgent }: FilmWebEditorProps)
       menuOrder={FILM_MENU_ORDER}
       menuLabel={(label) => t(`filmKit.menu.${label.replace(/\W+/g, '')}`, { defaultValue: label })}
       onKeyDown={keyDown}
+      actions={movie.progress ? (
+        <div className="flex items-center gap-1.5" data-testid="film-exporting">
+          <Loader2 className="size-3.5 animate-spin text-muted-foreground" aria-hidden="true" />
+          <span className="tabular-nums text-xs text-muted-foreground">
+            {t('filmKit.exporting', { percent: Math.round(movie.progress.fraction * 100) })}
+          </span>
+          <Button variant="ghost" size="icon" className="size-7" aria-label={t('filmKit.exportCancel')} title={t('filmKit.exportCancel')} onClick={movie.cancel}>
+            <X className="size-3.5" aria-hidden="true" />
+          </Button>
+        </div>
+      ) : (
+        <Button variant="ghost" size="sm" disabled={!state?.duration} onClick={() => void movie.start()} data-testid="film-export">
+          <Download className="size-3.5" aria-hidden="true" />
+          {t('filmKit.exportMovie')}
+        </Button>
+      )}
       bottom={state ? (
         <>
           <FilmTransport

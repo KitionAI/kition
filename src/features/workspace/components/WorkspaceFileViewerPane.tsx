@@ -14,6 +14,7 @@ import {
 } from '@/features/workspace/lib/workspace'
 import { cn } from '@/lib/utils'
 import { notify } from '@/lib/notify'
+import { EditInFilmButton } from './film/EditInFilmButton'
 import { KitFilePane } from './kits/KitFilePane'
 import { kitEditorFor } from './kits/kitEditors'
 
@@ -110,6 +111,7 @@ function WorkspaceFilePreview({ path, format, active }: WorkspaceFileViewerPaneP
             <span className="workspace-file-viewer__format-chip">{label}</span>
           </div>
           <div className="workspace-file-viewer__actions">
+            {format === 'video' ? <EditInFilmButton path={path} /> : null}
             <button
               type="button"
               className="workspace-file-viewer__action"
@@ -153,6 +155,11 @@ function WorkspaceFilePreview({ path, format, active }: WorkspaceFileViewerPaneP
                 const bounds = event.currentTarget.getBoundingClientRect()
                 setImageMenu({ x: bounds.left + 16, y: Math.max(8, bounds.top) + 16 })
               }} />
+          </div>
+        ) : format === 'video' ? (
+          <div className="flex h-full items-center justify-center bg-secondary/40 p-6">
+            {/* eslint-disable-next-line jsx-a11y/media-has-caption -- workspace clips carry no caption track */}
+            <video src={url} controls preload="metadata" className="max-h-full max-w-full rounded-xl bg-black shadow-sm" data-testid="workspace-video" />
           </div>
         ) : format === 'pdf' ? (
           <iframe

@@ -745,6 +745,13 @@
       "Help": "Help"
     },
     "mute": "Mute",
-    "unmute": "Unmute"
+    "unmute": "Unmute",
+    "editInFilm": "Edit in Film",
+    "editFailed": "Could not start a video project",
+    "exportMovie": "Export MP4",
+    "exporting": "Exporting {{percent}}%",
+    "exportCancel": "Stop exporting",
+    "exported": "Exported {{name}}",
+    "exportFailed": "Could not export the movie"
   }
 }

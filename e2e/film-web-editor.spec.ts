@@ -185,3 +185,44 @@ test('creates a new video project from the create menu with the Film engine', as
     await host.dispose()
   }
 })
+
+test('edits an mp4 through a video project and exports a new mp4, leaving the original as it was', async ({ page, baseURL }) => {
+  test.skip(!existsSync(SDK_WASM), 'the Film engine is not built into public/kits/film-sdk')
+  test.setTimeout(120_000)
+  const host = await installDesktopHost(page)
+  try {
+    await fs.mkdir(path.join(host.root, 'clips'), { recursive: true })
+    const clip = path.join(host.root, 'clips', 'bars.mp4')
+    await fs.copyFile(CLIP, clip)
+    const original = await fs.readFile(clip)
+    await mockLocalWorkspaceApi(page)
+    await serveWorkspace(page, host.root)
+    const written: string[] = []
+    await page.route('**/api/v1/kits/files?**', async (route) => {
+      const target = new URL(route.request().url()).searchParams.get('path') ?? ''
+      written.push(target)
+      await fs.writeFile(path.join(host.root, target), route.request().postDataBuffer() ?? Buffer.alloc(0))
+      await fulfillJson(route, { code: 200, message: 'success', data: {} })
+    })
+
+    await page.goto(new URL('/documents', baseURL!).toString(), { waitUntil: 'domcontentloaded' })
+    await dismissFirstRunActivation(page)
+    await page.locator('.document-tree-row', { hasText: 'clips' }).first().click()
+    await page.locator('.document-tree-row', { hasText: 'bars' }).first().click()
+    await page.getByTestId('film-edit-clip').click()
+
+    // A project beside the clip, with the clip on a sequence of its own size, opened in Film.
+    await expect.poll(() => written).toEqual(['clips/bars.fcproj'])
+    await expect(page.getByTestId('kit-status-bar')).toContainText('160 x 90 px', { timeout: 60_000 })
+    await expect(page.getByTestId('film-track-Video 1')).toContainText('bars.mp4')
+
+    await page.getByTestId('film-export').click()
+    await expect(page.getByText('Exported bars 2.mp4', { exact: true })).toBeVisible({ timeout: 90_000 })
+    expect(written).toEqual(['clips/bars.fcproj', 'clips/bars 2.mp4'])
+    const movie = await fs.readFile(path.join(host.root, 'clips', 'bars 2.mp4'))
+    expect(movie.subarray(4, 8).toString()).toBe('ftyp')
+    expect((await fs.readFile(clip)).equals(original)).toBe(true)
+  } finally {
+    await host.dispose()
+  }
+})

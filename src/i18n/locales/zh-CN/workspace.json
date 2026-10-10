@@ -745,6 +745,13 @@
       "Help": "帮助"
     },
     "mute": "静音",
-    "unmute": "取消静音"
+    "unmute": "取消静音",
+    "editInFilm": "在 Film 中编辑",
+    "editFailed": "无法创建视频项目",
+    "exportMovie": "导出 MP4",
+    "exporting": "正在导出 {{percent}}%",
+    "exportCancel": "停止导出",
+    "exported": "已导出 {{name}}",
+    "exportFailed": "无法导出视频"
   }
 }
