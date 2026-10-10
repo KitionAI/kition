@@ -6,7 +6,8 @@
       "board": "Board",
       "page": "Page",
       "note": "Note",
-      "image": "Image"
+      "image": "Image",
+      "video": "Video project"
     },
     "folder": "Folder",
     "importSpreadsheet": "Import spreadsheet",

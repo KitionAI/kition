@@ -1,3 +1,4 @@
+import type { KitCreationItem } from '@/features/workspace/hooks/useKitCreations'
 import { ChevronDown, ChevronRight, Folder, LoaderCircle, PanelLeftClose, Plus, RefreshCw, Search, Zap } from 'lucide-react'
 import { type ClipboardEvent as ReactClipboardEvent, type DragEvent as ReactDragEvent, type ReactNode, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -30,7 +31,7 @@ export function WorkspaceSidebar({
   onOpenWorkflows,
   onCreateBoard,
   onCreateDesign,
-  onCreateImage,
+  kitCreations,
   onToggleSidebar,
   onOpenSearch,
 }: {
@@ -59,7 +60,8 @@ export function WorkspaceSidebar({
   /** Creates a durable native SVG Board file in the active workspace folder. */
   onCreateBoard?: () => void
   onCreateDesign?: () => void
-  onCreateImage?: () => void
+  /** The create menu's kit items (Image, Video project). */
+  kitCreations?: readonly KitCreationItem[]
   onToggleSidebar?: () => void
   /** Opens the standalone full-text search modal (Codex-style palette). */
   onOpenSearch?: () => void
@@ -245,7 +247,7 @@ export function WorkspaceSidebar({
                   onCreateTable={onCreateTable}
                   onCreateBoard={onCreateBoard}
                   onCreateDesign={onCreateDesign}
-                  onCreateImage={onCreateImage}
+                  kitCreations={kitCreations}
                   onImportTableFile={onImportTableFile}
                   onCreateDocument={onCreateDocument}
                 />

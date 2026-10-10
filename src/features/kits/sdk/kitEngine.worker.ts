@@ -5,7 +5,7 @@
  * file is, and a failing engine cannot take the page down. Requests are
  * answered in the order they arrive.
  */
-import { kitSdkCommands, loadKitSdk, openKitSdkDocument, type KitSdkDocument } from './kitSdk'
+import { createKitSdkDocument, kitSdkCommands, loadKitSdk, openKitSdkDocument, type KitSdkDocument } from './kitSdk'
 import type { KitEngineInfo, KitEngineRequest, KitEngineResponse } from './kitEngine'
 import { lendFiles } from './lentFiles'
 
@@ -41,6 +41,13 @@ async function handle(request: KitEngineRequest): Promise<{ value: unknown; tran
       lendFiles(request.lent)
       doc?.free()
       doc = openKitSdkDocument(sdk, request.manifest, request.name, new Uint8Array(request.bytes))
+      return { value: info(doc) }
+    }
+    case 'create': {
+      const sdk = await loadKitSdk(request.manifest)
+      lendFiles(null)
+      doc?.free()
+      doc = createKitSdkDocument(sdk, request.manifest, request.name, request.width, request.height)
       return { value: info(doc) }
     }
     case 'execute': {

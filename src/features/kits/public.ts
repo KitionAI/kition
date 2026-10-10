@@ -6,6 +6,7 @@
  * See docs/kit-sdk.md. Re-export more of `sdk/` here when a kit needs it.
  */
 export { KitCanvas, type KitCanvasHandle } from './sdk/KitCanvas'
+export { createKitFile } from './sdk/createKitFile'
 export { KitEngine, type KitEngineInfo } from './sdk/kitEngine'
 export { kitSdkAvailable, type KitSdkManifest } from './sdk/kitSdk'
 export { HAND_TOOL, ZOOM_TOOL, dragRect, type KitPointer, type KitTool } from './sdk/kitTools'

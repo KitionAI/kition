@@ -6,7 +6,8 @@
       "board": "画板",
       "page": "页面",
       "note": "笔记",
-      "image": "图片"
+      "image": "图片",
+      "video": "视频项目"
     },
     "folder": "文件夹",
     "importSpreadsheet": "导入电子表格",

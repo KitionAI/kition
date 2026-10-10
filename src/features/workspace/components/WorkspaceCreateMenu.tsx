@@ -1,3 +1,4 @@
+import type { KitCreationItem } from '@/features/workspace/hooks/useKitCreations'
 import { FileInput, FileSpreadsheet, FileText, FolderPlus, Layers, LayoutDashboard, Paintbrush, PenTool, Upload, Zap } from 'lucide-react'
 import { type CSSProperties, type ReactNode, useLayoutEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -23,7 +24,7 @@ export function WorkspaceCreateMenu({
   onCreateTable,
   onCreateBoard,
   onCreateDesign,
-  onCreateImage,
+  kitCreations,
   onImportTableFile,
   onCreateForm,
   onCreateWorkflow,
@@ -42,7 +43,8 @@ export function WorkspaceCreateMenu({
   onCreateTable: () => void
   onCreateBoard?: () => void
   onCreateDesign?: () => void
-  onCreateImage?: () => void
+  /** The create menu's kit items (Image, Video project). */
+  kitCreations?: readonly KitCreationItem[]
   onImportTableFile?: () => void
   onCreateForm?: () => void
   /** Kitable variant only — adds a "Create Workflow" entry that defers to
@@ -128,9 +130,14 @@ export function WorkspaceCreateMenu({
           </button>
         )
       })}
-      {onCreateImage ? <button type="button" className="document-create-option" data-testid="workspace-create-image" onClick={onCreateImage}>
-        <Layers className="size-4" /><span>{t('createMenu.format.image')}</span>
-      </button> : null}
+      {kitCreations?.map((kit) => {
+        const KitIcon = kit.icon
+        return (
+          <button key={kit.id} type="button" className="document-create-option" data-testid={`workspace-create-${kit.id}`} onClick={kit.onCreate}>
+            <KitIcon className="size-4" /><span>{t(kit.label)}</span>
+          </button>
+        )
+      })}
       {onCreateDesign ? <button type="button" className="document-create-option" data-testid="workspace-create-design" onClick={onCreateDesign}>
         <Paintbrush className="size-4" /><span>{t('design:suite')}</span>
       </button> : null}

@@ -137,3 +137,36 @@ test('edits a video project in the page with the Film engine, reading its media 
     await host.dispose()
   }
 })
+
+test('creates a new video project from the create menu with the Film engine', async ({ page, baseURL }) => {
+  test.skip(!existsSync(SDK_WASM), 'the Film engine is not built into public/kits/film-sdk')
+  test.setTimeout(90_000)
+  const host = await installDesktopHost(page)
+  try {
+    await fs.writeFile(path.join(host.root, 'Untitled video.fcproj'), '{}')
+    await mockLocalWorkspaceApi(page)
+    await serveWorkspace(page, host.root)
+    const written: string[] = []
+    // The runtime writes the new file; here the host's folder plays the workspace.
+    await page.route('**/api/v1/kits/files?**', async (route) => {
+      const target = new URL(route.request().url()).searchParams.get('path') ?? ''
+      written.push(target)
+      await fs.writeFile(path.join(host.root, target), route.request().postDataBuffer() ?? Buffer.alloc(0))
+      await fulfillJson(route, { code: 200, message: 'success', data: {} })
+    })
+    await page.goto(new URL('/documents', baseURL!).toString(), { waitUntil: 'domcontentloaded' })
+    await dismissFirstRunActivation(page)
+    await page.locator('.document-private-heading .document-create-menu-anchor > button').click()
+    await page.getByTestId('workspace-create-video').click()
+
+    // "Untitled video.fcproj" is taken, so the new project is numbered.
+    await expect.poll(() => written).toEqual(['Untitled video 2.fcproj'])
+    await expect(page.getByTestId('kit-status-bar')).toContainText('1920 x 1080 px', { timeout: 60_000 })
+    await expect(page.getByTestId('film-track-Video 1')).toBeVisible()
+    await expect(page.locator('.document-tree-row', { hasText: 'Untitled video 2' })).toBeVisible()
+    const saved = await fs.readFile(path.join(host.root, 'Untitled video 2.fcproj'), 'utf8')
+    expect(saved).toContain('"format":"filmcraft.project"')
+  } finally {
+    await host.dispose()
+  }
+})

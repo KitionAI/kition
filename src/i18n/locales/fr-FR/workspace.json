@@ -6,7 +6,8 @@
       "board": "Tableau",
       "page": "Page",
       "note": "Note",
-      "image": "Image"
+      "image": "Image",
+      "video": "Projet vidéo"
     },
     "folder": "Dossier",
     "importSpreadsheet": "Importer une feuille de calcul",

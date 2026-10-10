@@ -86,13 +86,30 @@ export function loadKitSdk(manifest: KitSdkManifest): Promise<KitSdkModule> {
   return module
 }
 
-/** Opens file bytes with a loaded SDK's document class. */
-export function openKitSdkDocument(module: KitSdkModule, manifest: KitSdkManifest, name: string, bytes: Uint8Array) {
-  const documentClass = module[manifest.documentClass] as { open?: (name: string, bytes: Uint8Array) => KitSdkDocument; contractVersion?: () => number } | undefined
+type KitSdkClass = {
+  open?: (name: string, bytes: Uint8Array) => KitSdkDocument
+  create?: (name: string, width: number, height: number) => KitSdkDocument
+  contractVersion?: () => number
+}
+
+function documentClassOf(module: KitSdkModule, manifest: KitSdkManifest) {
+  const documentClass = module[manifest.documentClass] as KitSdkClass | undefined
   if (typeof documentClass?.open !== 'function') throw new Error(`${manifest.module} has no ${manifest.documentClass}.open`)
   const version = documentClass.contractVersion?.() ?? 1
   if (version > KIT_CONTRACT_VERSION) throw new Error(`${manifest.module} needs Kit SDK contract ${version}; this app supports ${KIT_CONTRACT_VERSION}`)
-  return documentClass.open(name, bytes)
+  return documentClass
+}
+
+/** Opens file bytes with a loaded SDK's document class. */
+export function openKitSdkDocument(module: KitSdkModule, manifest: KitSdkManifest, name: string, bytes: Uint8Array) {
+  return documentClassOf(module, manifest).open!(name, bytes)
+}
+
+/** A new, empty document of the SDK's own making (New image, New video project). */
+export function createKitSdkDocument(module: KitSdkModule, manifest: KitSdkManifest, name: string, width: number, height: number) {
+  const documentClass = documentClassOf(module, manifest)
+  if (typeof documentClass.create !== 'function') throw new Error(`${manifest.module} cannot create documents`)
+  return documentClass.create(name, width, height)
 }
 
 /** Whether a kit's SDK is built into this app (a missing file falls back to the app page). */

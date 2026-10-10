@@ -6,7 +6,8 @@
       "board": "Tablero",
       "page": "Página",
       "note": "Nota",
-      "image": "Imagen"
+      "image": "Imagen",
+      "video": "Proyecto de vídeo"
     },
     "folder": "Carpeta",
     "importSpreadsheet": "Importar hoja de cálculo",
