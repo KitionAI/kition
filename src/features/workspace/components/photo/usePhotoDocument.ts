@@ -2,17 +2,14 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { writeKitFile } from '@/api/kits'
 import { resolveWorkspaceFileURL } from '@/services/workspaceFiles'
 import type { PhotoRect } from './photoViewport'
-import { inspectPhotoDocument, loadPhotoSdk, photoSdkCommands, type PhotoSdkDocument, type PhotoSdkState } from './photoSdk'
+import { PhotoEngine } from './photoEngine'
+import type { PhotoSdkState } from './photoSdk'
 
 /** One edit: the canvas repaints `damage`, or everything when it is null. */
 export type PhotoChange = { revision: number; damage: PhotoRect | null }
 
 /** How often an active tab checks whether something else (the agent) replaced the file. */
 const FILE_CHECK_MS = 2000
-
-function nextFrame() {
-  return new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
-}
 
 function errorText(error: unknown) {
   return error instanceof Error ? error.message : String(error)
@@ -37,10 +34,10 @@ async function readStamp(url: string) {
  * the image reloads, unless there are unsaved edits, which raise `conflict`.
  */
 export function usePhotoDocument(path: string, active: boolean) {
-  const docRef = useRef<PhotoSdkDocument | null>(null)
+  const docRef = useRef<PhotoEngine | null>(null)
   const stampRef = useRef<string | null>(null)
   const busyRef = useRef(false)
-  const [doc, setDoc] = useState<PhotoSdkDocument | null>(null)
+  const [doc, setDoc] = useState<PhotoEngine | null>(null)
   const [state, setState] = useState<PhotoSdkState | null>(null)
   const [change, setChange] = useState<PhotoChange>({ revision: 0, damage: null })
   const [dirty, setDirty] = useState(false)
@@ -54,8 +51,8 @@ export function usePhotoDocument(path: string, active: boolean) {
   const refresh = useCallback((damage: PhotoRect | null = null) => {
     const current = docRef.current
     if (!current) return
-    setState(inspectPhotoDocument(current))
-    setDirty(current.dirty)
+    setState(current.info.state)
+    setDirty(current.info.dirty)
     setChange((previous) => ({ revision: previous.revision + 1, damage }))
   }, [])
 
@@ -63,19 +60,17 @@ export function usePhotoDocument(path: string, active: boolean) {
   const load = useCallback(async (isCurrent: () => boolean) => {
     busyRef.current = true
     try {
-      const [sdk, response] = await Promise.all([loadPhotoSdk(), fetch(url, { cache: 'no-store' })])
+      const response = await fetch(url, { cache: 'no-store' })
       if (!response.ok) throw new Error(`could not read ${path} (${response.status})`)
       const stamp = fileStamp(response)
-      const bytes = new Uint8Array(await response.arrayBuffer())
-      // Let the loading state paint before the engine decodes on this thread.
-      await nextFrame()
+      const bytes = await response.arrayBuffer()
       if (!isCurrent()) return
       const started = performance.now()
       const name = path.split('/').filter(Boolean).pop() || path
-      const next = sdk.PhotoDocument.open(name, bytes)
+      const next = await PhotoEngine.open(name, bytes)
       setOpenMs(Math.round(performance.now() - started))
       if (!isCurrent()) {
-        next.free()
+        next.dispose()
         return
       }
       const previous = docRef.current
@@ -85,7 +80,7 @@ export function usePhotoDocument(path: string, active: boolean) {
       setConflict(false)
       setFailure(null)
       refresh()
-      previous?.free()
+      previous?.dispose()
     } finally {
       busyRef.current = false
     }
@@ -102,7 +97,7 @@ export function usePhotoDocument(path: string, active: boolean) {
   }, [attempt, load])
 
   useEffect(() => () => {
-    docRef.current?.free()
+    docRef.current?.dispose()
     docRef.current = null
   }, [path])
 
@@ -115,7 +110,7 @@ export function usePhotoDocument(path: string, active: boolean) {
       try {
         const stamp = await readStamp(url)
         if (!current || !stamp || stamp === stampRef.current || busyRef.current) return
-        if (open.dirty) setConflict(true)
+        if (open.info.dirty) setConflict(true)
         else await load(() => current)
       } catch {
         // The next check tries again.
@@ -128,15 +123,15 @@ export function usePhotoDocument(path: string, active: boolean) {
   }, [active, load, url])
 
   /** Runs an engine command; throws when the engine refuses it. `damage` limits the repaint. */
-  const run = useCallback((command: string, params: Record<string, unknown> = {}, damage: PhotoRect | null = null) => {
+  const run = useCallback(async (command: string, params: Record<string, unknown> = {}, damage: PhotoRect | null = null) => {
     const open = docRef.current
     if (!open) return null
-    const result = open.execute(command, JSON.stringify(params))
-    refresh(damage)
+    const result = await open.execute(command, params)
+    if (docRef.current === open) refresh(damage)
     return result
   }, [refresh])
 
-  const commands = useCallback(() => (docRef.current ? photoSdkCommands(docRef.current) : []), [])
+  const commands = useCallback(async () => (docRef.current ? docRef.current.commands() : []), [])
 
   /** Writes the document back to its workspace file. */
   const save = useCallback(async () => {
@@ -145,12 +140,11 @@ export function usePhotoDocument(path: string, active: boolean) {
     setSaving(true)
     busyRef.current = true
     try {
-      await nextFrame()
-      const at = open.revision
-      await writeKitFile(path, open.save())
+      const at = open.info.revision
+      await writeKitFile(path, await open.save())
       stampRef.current = await readStamp(url).catch(() => null)
       // Only a file that reached the disk counts as saved, and only if nothing changed meanwhile.
-      if (open.revision === at) open.markSaved()
+      if (open.info.revision === at) await open.markSaved()
       setConflict(false)
       refresh()
     } finally {

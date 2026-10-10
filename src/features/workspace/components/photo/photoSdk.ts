@@ -38,13 +38,13 @@ const SDK_URL = '/kits/photo-sdk/kition_photo_sdk.js'
 
 let loading: Promise<PhotoSdkModule> | null = null
 
-/** Loads and starts the engine once per page. */
+/** Loads and starts the engine once per page or worker. */
 export function loadPhotoSdk(): Promise<PhotoSdkModule> {
   if (!loading) {
     loading = (async () => {
       // A full URL, so the dev server serves the file as it is instead of as an app module.
-      const module = (await import(/* @vite-ignore */ new URL(SDK_URL, window.location.href).href)) as PhotoSdkModule
-      await module.default({ module_or_path: new URL('/kits/photo-sdk/kition_photo_sdk_bg.wasm', window.location.href) })
+      const module = (await import(/* @vite-ignore */ new URL(SDK_URL, globalThis.location.href).href)) as PhotoSdkModule
+      await module.default({ module_or_path: new URL('/kits/photo-sdk/kition_photo_sdk_bg.wasm', globalThis.location.href) })
       return module
     })()
     loading.catch(() => {

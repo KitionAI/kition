@@ -1,6 +1,6 @@
 import { useEffect, useImperativeHandle, useRef, useState, type RefObject, type Ref } from 'react'
 import { cn } from '@/lib/utils'
-import type { PhotoSdkDocument } from './photoSdk'
+import type { PhotoEngine } from './photoEngine'
 import { PhotoViewport, type PhotoView, type PhotoViewportStats } from './photoViewport'
 import type { PhotoChange } from './usePhotoDocument'
 
@@ -17,7 +17,7 @@ export type PhotoCanvasHandle = {
 }
 
 type PhotoWebCanvasProps = {
-  doc: PhotoSdkDocument
+  doc: PhotoEngine
   /** Moves with every document change; the canvas repaints what it names. */
   change: PhotoChange
   tool: string
@@ -68,7 +68,7 @@ export function PhotoWebCanvas({ doc, change, tool, brushSize, color, onStroke, 
         placed = true
         viewport.fit()
       }
-      viewport.render()
+      void viewport.render()
     })
     observer.observe(canvas)
     const wheel = (event: WheelEvent) => {
@@ -87,10 +87,12 @@ export function PhotoWebCanvas({ doc, change, tool, brushSize, color, onStroke, 
 
   useEffect(() => {
     const viewport = viewportRef.current
-    if (change.damage) viewport?.renderArea(change.damage)
-    else viewport?.render()
-    const overlay = overlayRef.current
-    overlay?.getContext('2d')?.clearRect(0, 0, overlay.width, overlay.height)
+    if (!viewport) return
+    // The stroke preview stays until the engine's pixels replace it.
+    void (change.damage ? viewport.renderArea(change.damage) : viewport.render()).then(() => {
+      const overlay = overlayRef.current
+      overlay?.getContext('2d')?.clearRect(0, 0, overlay.width, overlay.height)
+    })
   }, [change])
 
   useEffect(() => {

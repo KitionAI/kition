@@ -1,4 +1,4 @@
-import type { PhotoSdkDocument } from './photoSdk'
+import type { PhotoEngine } from './photoEngine'
 
 /** The largest image the engine renders for one frame; bigger views are drawn scaled up. */
 const MAX_FRAME_PIXELS = 8_000_000
@@ -58,16 +58,20 @@ export class PhotoViewport {
   private frame: Frame | null = null
   private pattern: CanvasPattern | null = null
   private settle: number | undefined
+  private rendering = false
+  private renderAgain = false
+  private disposed = false
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
-    private readonly doc: PhotoSdkDocument,
+    private readonly doc: PhotoEngine,
     private readonly backdrop: string,
     private readonly onChange: (view: PhotoView, stats: PhotoViewportStats | null) => void,
   ) {}
 
   dispose() {
     window.clearTimeout(this.settle)
+    this.disposed = true
     this.frame = null
   }
 
@@ -107,12 +111,34 @@ export class PhotoViewport {
     this.draw()
     this.onChange(view, null)
     window.clearTimeout(this.settle)
-    this.settle = window.setTimeout(() => this.render(), 120)
+    this.settle = window.setTimeout(() => void this.render(), 120)
   }
 
-  /** Renders the visible part of the image now; call after the document changes. */
-  render() {
+  /**
+   * Renders the visible part of the image in the engine, then shows it; call after the
+   * document changes. One render runs at a time; a request meanwhile renders again after it.
+   */
+  async render() {
     window.clearTimeout(this.settle)
+    if (this.rendering) {
+      this.renderAgain = true
+      return
+    }
+    this.rendering = true
+    try {
+      await this.renderNow()
+    } catch {
+      // A closed or stopped engine; the editor reports that itself.
+    } finally {
+      this.rendering = false
+    }
+    if (this.renderAgain && !this.disposed) {
+      this.renderAgain = false
+      await this.render()
+    }
+  }
+
+  private async renderNow() {
     const { width, height, dpr } = this.size
     if (!width || !height) return
     const x0 = Math.max(0, Math.floor(this.view.x))
@@ -136,7 +162,7 @@ export class PhotoViewport {
       while (((x1 - x0) / k) * ((y1 - y0) / k) > MAX_FRAME_PIXELS) k += 1
       frameWidth = Math.ceil((x1 - x0) / k)
       frameHeight = Math.ceil((y1 - y0) / k)
-      rgba = this.doc.renderArea(x0, y0, x0 + frameWidth * k, y0 + frameHeight * k, frameWidth, frameHeight)
+      rgba = await this.doc.renderArea(x0, y0, x0 + frameWidth * k, y0 + frameHeight * k, frameWidth, frameHeight)
       frame = { x: x0, y: y0, width: frameWidth * k, height: frameHeight * k, scale: 1 / k }
     } else {
       let scale = wanted
@@ -144,10 +170,11 @@ export class PhotoViewport {
       if (pixels > MAX_FRAME_PIXELS) scale = Math.max(1, scale * Math.sqrt(MAX_FRAME_PIXELS / pixels))
       frameWidth = Math.max(1, Math.ceil((x1 - x0) * scale))
       frameHeight = Math.max(1, Math.ceil((y1 - y0) * scale))
-      rgba = this.doc.render(x0, y0, scale, frameWidth, frameHeight)
+      rgba = await this.doc.render(x0, y0, scale, frameWidth, frameHeight)
       frame = { x: x0, y: y0, width: frameWidth / scale, height: frameHeight / scale, scale }
     }
-    const bitmap = this.frame?.bitmap ?? document.createElement('canvas')
+    if (this.disposed) return
+    const bitmap = document.createElement('canvas')
     bitmap.width = frameWidth
     bitmap.height = frameHeight
     bitmap.getContext('2d')?.putImageData(imageData(rgba, frameWidth, frameHeight), 0, 0)
@@ -159,12 +186,12 @@ export class PhotoViewport {
 
   /**
    * Re-renders only `area` (what a stroke touched) into the cached frame, at the frame's
-   * own scale, then redraws. Falls back to a full render when there is no frame yet.
+   * own scale, then redraws. When the frame changed meanwhile, renders it all again.
    */
-  renderArea(area: PhotoRect) {
+  async renderArea(area: PhotoRect) {
     const frame = this.frame
-    if (!frame) {
-      this.render()
+    if (!frame || this.rendering) {
+      await this.render()
       return
     }
     const sx = frame.bitmap.width / frame.width
@@ -178,9 +205,19 @@ export class PhotoViewport {
     const height = py1 - py0
     const started = performance.now()
     const k = Math.round(1 / frame.scale)
-    const rgba = frame.scale < 1
-      ? this.doc.renderArea(frame.x + px0 * k, frame.y + py0 * k, frame.x + px1 * k, frame.y + py1 * k, width, height)
-      : this.doc.render(frame.x + px0 / sx, frame.y + py0 / sy, frame.scale, width, height)
+    let rgba: Uint8Array
+    try {
+      rgba = frame.scale < 1
+        ? await this.doc.renderArea(frame.x + px0 * k, frame.y + py0 * k, frame.x + px1 * k, frame.y + py1 * k, width, height)
+        : await this.doc.render(frame.x + px0 / sx, frame.y + py0 / sy, frame.scale, width, height)
+    } catch {
+      return
+    }
+    if (this.disposed) return
+    if (this.frame !== frame) {
+      await this.render()
+      return
+    }
     frame.bitmap.getContext('2d')?.putImageData(imageData(rgba, width, height), px0, py0)
     const renderMs = Math.round(performance.now() - started)
     this.draw()

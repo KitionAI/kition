@@ -64,13 +64,17 @@ export function PhotoWebEditor({ path, active, onOpenAgent }: PhotoWebEditorProp
   const [commands, setCommands] = useState<KitsCommandView[]>([])
   const listCommands = photo.commands
 
-  useEffect(() => {
-    if (photo.doc) setCommands(listCommands())
-  }, [listCommands, photo.doc])
+  const refreshCommands = useCallback(() => {
+    listCommands().then(setCommands, () => undefined)
+  }, [listCommands])
 
-  const run = useCallback((command: string, params: Record<string, unknown> = {}) => {
+  useEffect(() => {
+    if (photo.doc) refreshCommands()
+  }, [photo.doc, refreshCommands])
+
+  const run = useCallback(async (command: string, params: Record<string, unknown> = {}) => {
     try {
-      photo.run(command, params)
+      await photo.run(command, params)
     } catch (error) {
       notify.error(t('photoKit.commandFailed'), { description: errorText(error) })
     }
@@ -85,10 +89,10 @@ export function PhotoWebEditor({ path, active, onOpenAgent }: PhotoWebEditorProp
     }
   }, [photo, t])
 
-  const stroke = useCallback((points: PhotoStrokePoint[], erase: boolean) => {
+  const stroke = useCallback(async (points: PhotoStrokePoint[], erase: boolean) => {
     const started = performance.now()
     try {
-      photo.run('paint.stroke', { points, size: brushSize, color: hex(foreground), erase }, strokeBounds(points, brushSize))
+      await photo.run('paint.stroke', { points, size: brushSize, color: hex(foreground), erase }, strokeBounds(points, brushSize))
     } catch (error) {
       notify.error(t('photoKit.commandFailed'), { description: errorText(error) })
     }
@@ -166,7 +170,7 @@ export function PhotoWebEditor({ path, active, onOpenAgent }: PhotoWebEditorProp
           {t('photoKit.save')}
         </Button>
       </div>
-      <PhotoMenuBar commands={commands} onRun={(command) => run(command.id)} onOpen={() => setCommands(photo.commands())} />
+      <PhotoMenuBar commands={commands} onRun={(command) => void run(command.id)} onOpen={refreshCommands} />
       <PhotoOptionsBar details={details} onSet={setOptions} />
       <div className="flex min-h-0 flex-1">
         <PhotoToolRail tools={WEB_TOOLS} tool={tool} foreground={details?.foreground} background={details?.background} onSelect={setTool} />
