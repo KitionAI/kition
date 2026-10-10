@@ -133,4 +133,4 @@ jobs:
         run: cargo clippy --workspace --all-targets -- -D warnings
 
       - name: Test the runtime and desktop shell
-        run: cargo test --workspace
+        run: cargo test --workspace --no-fail-fast
