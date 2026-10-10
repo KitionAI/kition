@@ -136,7 +136,29 @@ check('commands are well formed and include undo and redo', () => {
     assert(command.menu == null || Array.isArray(command.menu), `${command.id}: menu must be an array or null`)
   }
   for (const id of ['edit.undo', 'edit.redo']) assert(commands.some((command) => command.id === id), `no ${id}`)
-  return `${commands.length} commands`
+  // Agent schemas (standard E7, A5): a ParameterSchemaSpec of typed properties.
+  const kinds = new Set(['string', 'number', 'integer', 'boolean', 'null', 'array', 'object', 'json'])
+  const checkNode = (node, at, property) => {
+    assert(node && typeof node === 'object' && !Array.isArray(node), `${at}: a schema node is an object`)
+    if (property && 'required' in node) assert(node.required === true, `${at}: required must be true`)
+    if (node.oneOf) {
+      assert(Array.isArray(node.oneOf) && node.oneOf.length >= 2, `${at}: oneOf needs two branches`)
+      node.oneOf.forEach((branch, index) => checkNode(branch, `${at}.oneOf[${index}]`, false))
+      return
+    }
+    assert(kinds.has(node.type), `${at}: unknown type ${node.type}`)
+    if (node.type === 'object') assert(typeof node.additionalProperties === 'boolean', `${at}: objects state additionalProperties`)
+    if (node.items) checkNode(node.items, `${at}[]`, false)
+    for (const [key, inner] of Object.entries(node.properties ?? {})) checkNode(inner, `${at}.${key}`, true)
+  }
+  let schemas = 0
+  for (const command of commands) {
+    if (command.schema == null) continue
+    schemas += 1
+    assert(typeof command.schema === 'object' && !Array.isArray(command.schema), `${command.id}: the schema is an object of parameters`)
+    for (const [key, node] of Object.entries(command.schema)) checkNode(node, `${command.id}.${key}`, true)
+  }
+  return `${commands.length} commands, ${schemas} with agent schemas`
 })
 check('unknown commands are errors', () => {
   let failed = false
