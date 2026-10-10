@@ -233,9 +233,11 @@ upstream, not a pinned dependency.
 
 1. **Add, do not edit.** Kition code goes into new crates that upstream never
    touches: `crates/kition-*` (protocol server, theme, surface attachment,
-   Kition integrations) and `apps/kit-<name>` (the kit executable). The
-   protocol server depends on `kition-kit-protocol` from this repository
-   through a git dependency pinned to a commit.
+   Kition integrations) and `apps/kit-<name>` (the kit executable). Kit
+   repositories keep their upstream license, so they do not link the
+   AGPL-licensed crates of this repository: each kit implements the protocol
+   in its own `kition-kit-server` crate, and the conformance suite, which runs
+   as a separate program, proves it matches.
 2. **Hooks over rewrites.** When upstream code must change, make the smallest
    change that exposes an extension point (a trait, a callback, a feature
    flag), and implement the behavior in a `kition-*` crate.
@@ -389,7 +391,7 @@ program has a foundation:
 | Phase | Deliverable | Exit criteria |
 | --- | --- | --- |
 | 0 | Kit crates in this repository (section 4.1): protocol types, host launch and client, mock kit, conformance suite | Types round-trip through the schemas; the mock kit passes the suite and each injected fault fails its check; `pnpm check:desktop` passes |
-| 1 | `KitionAI/kit-photo` fork with `kition-kit-server` over the upstream control handlers, `apps/kit-photo`, `kition-theme`, branding | `window` and `headless` surfaces pass the conformance suite in the fork's CI |
+| 1 | `KitionAI/kit-photo` fork: `kition-kit-server`, `apps/kit-photo` with a `headless` backend over the upstream automation engine, then a `window` backend over the upstream desktop app's control channel, `kition-theme`, branding | `headless` passes the conformance suite (reached 2026-10-10, 13 of 13 checks); `window` opens, edits, and saves in the real desktop client |
 | 2 | Host integration in `src-tauri`: supervision, opening `.psd`, `.psb`, and `.pcraft` in a `window` surface, agent tools from `commands.list`, `KITION_KIT_PHOTO_BINARY` override, capability flags in `contracts/runtime/` | Open, edit, and save a PSD from the workspace; agent edits with approval and screenshot feedback |
 | 3 | Embedding prototype with `kit.photo` on macOS and Windows | Drag, resize, focus, IME, tablet input, shortcuts, and snapshot overlay judged acceptable in the real desktop client |
 | 4 | Distribution: pinned assets first (section 8), then the signed index, updates, and the Kits page | Install from a clean machine, offline relaunch from cache |
@@ -412,4 +414,4 @@ runs cannot reproduce native surface placement, focus, or input method issues.
 | Kit crashes | Process isolation; the host restarts the kit and reopens documents from disk |
 | Bundle size | Only built-in kits ship with Kition; others install on demand |
 | Font licensing for bundled fonts | Review each font package before redistribution |
-| License of shared crates | `kition-kit-protocol` inherits the workspace license (AGPL-3.0-only); decide its license before an MIT OR Apache-2.0 kit links it in phase 1 |
+| Protocol drift between Kition and kit repositories | Decided 2026-10-10: kits do not link `kition-kit-protocol` (AGPL-3.0-only); every kit release must pass the conformance suite built from this repository |
