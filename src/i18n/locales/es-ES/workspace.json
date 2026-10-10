@@ -615,5 +615,22 @@
     "searchPlaceholder": "Buscar tablas, paneles y flujos de trabajo",
     "switchSection": "Cambiar de sección del archivo de tablas",
     "renameTable": "Renombrar la tabla de datos"
+  },
+  "photoKit": {
+    "loading": "Abriendo en Photo…",
+    "notInstalledTitle": "Photo no está instalado",
+    "openFailed": "No se pudo abrir esta imagen",
+    "retry": "Reintentar",
+    "undo": "Deshacer",
+    "redo": "Rehacer",
+    "save": "Guardar",
+    "saved": "Imagen guardada",
+    "saveFailed": "No se pudo guardar la imagen",
+    "commandFailed": "Photo no pudo aplicar el cambio",
+    "unsaved": "Sin guardar",
+    "layers": "Capas",
+    "noLayers": "Sin capas",
+    "hiddenLayer": "Capa oculta",
+    "agentTip": "Pide al agente que edite esta imagen, por ejemplo «añade una viñeta» o «aclara la capa de fondo»."
   }
 }

@@ -23,6 +23,8 @@ pub fn infer_format(path: &str) -> &'static str {
         ".txt" => "text",
         ".html" | ".htm" => "html",
         ".png" | ".jpg" | ".jpeg" | ".gif" | ".webp" | ".svg" => "image",
+        // Layered images, edited in the Photo kit.
+        ".psd" | ".psb" | ".pcraft" => "photo",
         ".mp4" | ".mov" | ".webm" => "video",
         ".mp3" | ".wav" | ".m4a" => "audio",
         _ => "binary",
@@ -53,7 +55,8 @@ pub fn is_supported(path: &str) -> bool {
         &[
             "md", "markdown", "kitable", "kiboard", "kidesign", "txt", "csv", "tsv", "json",
             "html", "htm", "pdf", "docx", "xlsx", "xls", "pptx", "ppt", "png", "jpg", "jpeg",
-            "gif", "webp", "svg", "mp4", "mov", "webm", "mp3", "wav", "m4a",
+            "gif", "webp", "svg", "psd", "psb", "pcraft", "mp4", "mov", "webm", "mp3", "wav",
+            "m4a",
         ],
     )
 }
@@ -69,6 +72,9 @@ mod tests {
         assert_eq!(infer_format("deck.kidesign"), "design");
         assert_eq!(infer_format("photo.JPEG"), "image");
         assert_eq!(infer_format("archive.zip"), "binary");
+        assert_eq!(infer_format("art/Cover.PSD"), "photo");
+        assert!(is_supported("art/poster.psb"));
+        assert!(!is_text("art/poster.pcraft"));
         assert_eq!(infer_format(".md"), "binary");
         assert!(is_editable("a/b.kiboard"));
         assert!(!is_editable("a/b.txt"));

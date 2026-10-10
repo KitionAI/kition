@@ -392,11 +392,33 @@ program has a foundation:
 | --- | --- | --- |
 | 0 | Kit crates in this repository (section 4.1): protocol types, host launch and client, mock kit, conformance suite | Types round-trip through the schemas; the mock kit passes the suite and each injected fault fails its check; `pnpm check:desktop` passes |
 | 1 | `KitionAI/kit-photo` fork: `kition-kit-server`, `apps/kit-photo` with a `headless` backend over the upstream automation engine, then a `window` backend over the upstream desktop app's control channel, `kition-theme`, branding | `headless` passes the conformance suite (reached 2026-10-10, 13 of 13 checks); `window` opens, edits, and saves in the real desktop client |
-| 2 | Host integration in `src-tauri`: supervision, opening `.psd`, `.psb`, and `.pcraft` in a `window` surface, agent tools from `commands.list`, `KITION_KIT_PHOTO_BINARY` override, capability flags in `contracts/runtime/` | Open, edit, and save a PSD from the workspace; agent edits with approval and screenshot feedback |
+| 2 | Runtime integration (`kition-kits`): the workspace lists `.psd`, `.psb`, and `.pcraft`; a Photo tab shows the rendered preview and layers with Undo, Redo, and Save; agent tools `photo_inspect`, `photo_commands`, `photo_run`; `/v1/kits` in `contracts/runtime/kits.schema.json`; `KITION_KIT_PHOTO_BINARY` override. Then a `window` surface for hands-on editing | Reached for `headless` on 2026-10-10: open, edit, and save a PSD from the workspace, and agent edits refresh the tab. The `window` surface remains |
 | 3 | Embedding prototype with `kit.photo` on macOS and Windows | Drag, resize, focus, IME, tablet input, shortcuts, and snapshot overlay judged acceptable in the real desktop client |
 | 4 | Distribution: pinned assets first (section 8), then the signed index, updates, and the Kits page | Install from a clean machine, offline relaunch from cache |
 | 5 | Image editing inside documents over the headless engine (crop and adjust) | Image edits round-trip from documents |
 | 6 | Additional kits (`kit.pdf`, video, vector, audio) | Each passes conformance and embedding acceptance |
+
+### 11.1 Trying `kit.photo` locally
+
+```bash
+# In the kit-photo fork (needs Rust 1.95 or newer)
+cargo build -p kit-photo
+
+# In this repository
+KITION_KIT_PHOTO_BINARY="$HOME/<path-to>/kit-photo/target/debug/kit-photo" pnpm dev
+```
+
+Put a `.psd` file in the workspace and open it from the tree. Ask the agent to
+edit it, for example "add a layer named Notes" or "brighten the background";
+the tab refreshes after each edit. Without the variable the tab explains how
+to install the kit.
+
+The runtime crate `kition-kits` starts the kit on first use with the workspace
+folder as its only root, opens a `host` connection for the tab and an `agent`
+connection for agent tools, and stops the kit when the runtime restarts for
+another workspace. `cargo test -p kition-kits` covers the routes against the
+mock kit; `tests/photo.rs` runs against a real build when
+`KITION_KIT_PHOTO_BINARY` and `KITION_KIT_PHOTO_FIXTURE` are set.
 
 Ordinary PNG and JPEG files keep opening in Kition's own preview; they open in
 `kit.photo` only when the user chooses to edit them there.

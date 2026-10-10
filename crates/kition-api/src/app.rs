@@ -29,6 +29,8 @@ pub struct Deps {
     pub portal: kition_desktop::PortalAuth,
     /// Model provider calls, shared by every AI feature.
     pub ai: kition_ai::engine::Engine,
+    /// Kits for this workspace; they stop when the runtime restarts.
+    pub kits: kition_kits::KitManager,
 }
 
 impl Deps {
@@ -88,7 +90,9 @@ pub fn build_deps(config: AppConfig) -> AppResult<Deps> {
         upload_dir.clone(),
         Some(kition_ai::engine::cloud_resolver(cloud_session.clone())),
     );
+    let kits = kition_kits::KitManager::from_env(workspace_dir.clone());
     Ok(Deps {
+        kits,
         cloud_session,
         portal,
         ai,
@@ -114,7 +118,11 @@ pub fn router(deps: &Deps) -> Router {
             engine: deps.ai.clone(),
             ai_gate: deps.ai_gate(),
         }))
-        .merge(kition_ai::usage::router(deps.auth()));
+        .merge(kition_ai::usage::router(deps.auth()))
+        .merge(kition_kits::router(kition_kits::KitsState {
+            auth: deps.auth(),
+            kits: deps.kits.clone(),
+        }));
     let api = api.merge(kition_desktop::router(kition_desktop::DesktopState {
         auth: deps.auth(),
         portal: deps.portal.clone(),

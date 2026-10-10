@@ -615,5 +615,22 @@
     "searchPlaceholder": "Rechercher des tables, tableaux de bord et workflows",
     "switchSection": "Changer de section du fichier de tables",
     "renameTable": "Renommer la table de données"
+  },
+  "photoKit": {
+    "loading": "Ouverture dans Photo…",
+    "notInstalledTitle": "Photo n'est pas installé",
+    "openFailed": "Impossible d'ouvrir cette image",
+    "retry": "Réessayer",
+    "undo": "Annuler",
+    "redo": "Rétablir",
+    "save": "Enregistrer",
+    "saved": "Image enregistrée",
+    "saveFailed": "Impossible d'enregistrer l'image",
+    "commandFailed": "Photo n'a pas pu appliquer la modification",
+    "unsaved": "Non enregistré",
+    "layers": "Calques",
+    "noLayers": "Aucun calque",
+    "hiddenLayer": "Calque masqué",
+    "agentTip": "Demandez à l'agent de modifier cette image, par exemple « ajoute un vignettage » ou « éclaircis le calque d'arrière-plan »."
   }
 }

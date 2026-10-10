@@ -317,6 +317,7 @@ pub fn build(
         portal_base_url: deps.config.portal_base_url.clone(),
         mcp_path: kition_agent::mcp::default_path(),
         workflow_prompt: Some(workflow_prompt),
+        kits: Some(deps.kits.clone()),
     });
     let background = agent.clone();
     tokio::spawn(async move {

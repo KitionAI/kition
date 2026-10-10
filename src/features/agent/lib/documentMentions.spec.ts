@@ -252,6 +252,24 @@ describe('documentMentions', () => {
     expect(context).toContain('Do not ask which document the user means')
   })
 
+  it('points the agent at the Photo tools for an open or mentioned layered image', () => {
+    const active = buildAgentDocumentMentionPromptContext({
+      activeDocumentPath: 'Art/Cover.psd',
+      activeDocumentFormat: 'photo',
+      referencedDocuments: [],
+    })
+    expect(active).toContain('layered image open in Kition Photo')
+    expect(active).toContain('photo_inspect')
+    expect(active).not.toContain('Read this exact path with document_read')
+
+    const mentioned = buildAgentDocumentMentionPromptContext({
+      referencedDocuments: [{ kind: 'file', path: 'Art/Poster.psb', name: 'Poster.psb', title: 'Poster' }],
+    })
+    expect(mentioned).toContain('Referenced layered images in this turn')
+    expect(mentioned).toContain('- Art/Poster.psb')
+    expect(mentioned).not.toContain('Referenced workspace documents in this turn')
+  })
+
   it('builds a folders block instructing document_list for referenced folders', () => {
     const context = buildAgentDocumentMentionPromptContext({
       referencedDocuments: [

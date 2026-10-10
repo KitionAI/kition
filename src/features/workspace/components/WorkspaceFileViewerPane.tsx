@@ -14,6 +14,7 @@ import {
 } from '@/features/workspace/lib/workspace'
 import { cn } from '@/lib/utils'
 import { notify } from '@/lib/notify'
+import { PhotoKitPane } from './PhotoKitPane'
 
 type WorkspaceFileViewerPaneProps = {
   path: string
@@ -34,7 +35,14 @@ function parentFolderFromPath(path: string) {
   return segments.slice(0, -1).join('/')
 }
 
-export function WorkspaceFileViewerPane({ path, format, active }: WorkspaceFileViewerPaneProps) {
+export function WorkspaceFileViewerPane(props: WorkspaceFileViewerPaneProps) {
+  if (props.format === 'photo') {
+    return <PhotoKitPane path={props.path} active={props.active} />
+  }
+  return <WorkspaceFilePreview {...props} />
+}
+
+function WorkspaceFilePreview({ path, format, active }: WorkspaceFileViewerPaneProps) {
   const { t } = useTranslation('workspace')
   const url = resolveWorkspaceFileURL(path)
   const filename = basenameFromPath(path)

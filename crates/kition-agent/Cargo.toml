@@ -11,6 +11,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+kition-kits = { workspace = true }
 kition-ai = { workspace = true }
 kition-core = { workspace = true }
 kition-datadoc = { workspace = true }

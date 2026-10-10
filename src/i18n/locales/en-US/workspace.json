@@ -615,5 +615,22 @@
     "searchPlaceholder": "Search tables, dashboards, and workflows",
     "switchSection": "Switch table file section",
     "renameTable": "Rename data table"
+  },
+  "photoKit": {
+    "loading": "Opening in Photo…",
+    "notInstalledTitle": "Photo is not installed",
+    "openFailed": "Could not open this image",
+    "retry": "Try again",
+    "undo": "Undo",
+    "redo": "Redo",
+    "save": "Save",
+    "saved": "Image saved",
+    "saveFailed": "Could not save the image",
+    "commandFailed": "Photo could not apply the change",
+    "unsaved": "Unsaved",
+    "layers": "Layers",
+    "noLayers": "No layers",
+    "hiddenLayer": "Hidden layer",
+    "agentTip": "Ask the agent to edit this image, for example \"add a vignette\" or \"brighten the background layer\"."
   }
 }

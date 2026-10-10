@@ -64,6 +64,13 @@ export function isBinaryAttachmentMention(
   return binaryAttachmentExtensionPattern.test(path)
 }
 
+/** Layered images (PSD, PSB, .pcraft) that open in the Photo kit. */
+function isPhotoKitDocument(format: WorkspaceDocumentFormat | undefined, path: string) {
+  return format === 'photo' || /\.(?:psd|psb|pcraft)$/i.test(path)
+}
+
+const photoToolsHint = 'Inspect it with photo_inspect and edit it with photo_commands and photo_run; never use document_read or document_write on it, because it is binary image data.'
+
 export function flattenMentionableWorkspaceDocuments(
   items: WorkspaceDocumentTreeItem[],
 ): AgentMentionableDocument[] {
@@ -406,7 +413,9 @@ export function buildAgentDocumentMentionPromptContext(input: {
   if (activeDocumentPath) {
     lines.push('Current workspace document for this turn:')
     lines.push(`- ${activeDocumentPath}`)
-    if (isBinaryAttachmentMention(input.activeDocumentFormat, activeDocumentPath)) {
+    if (isPhotoKitDocument(input.activeDocumentFormat, activeDocumentPath)) {
+      lines.push(`This current document is a layered image open in Kition Photo. ${photoToolsHint}`)
+    } else if (isBinaryAttachmentMention(input.activeDocumentFormat, activeDocumentPath)) {
       lines.push(
         'This current document is attached to the turn. Analyze it before responding; it is implicit context even without an @ mention.',
       )
@@ -436,8 +445,10 @@ export function buildAgentDocumentMentionPromptContext(input: {
       || document.format === 'table'
       || document.path.toLowerCase().endsWith('.kitable'),
   )
+  const photoFiles = referencedFiles.filter((document) => isPhotoKitDocument(document.format, document.path))
   const textFiles = referencedFiles.filter(
     (document) => !structuredFiles.includes(document)
+      && !photoFiles.includes(document)
       && !isBinaryAttachmentMention(document.format, document.path),
   )
   const binaryFiles = referencedFiles.filter((document) => isBinaryAttachmentMention(document.format, document.path))
@@ -452,6 +463,13 @@ export function buildAgentDocumentMentionPromptContext(input: {
     lines.push(
       'If the user wants to update one referenced document, write back to that same path with document_write instead of creating a new file.',
     )
+  }
+  if (photoFiles.length) {
+    lines.push('Referenced layered images in this turn (open them in Kition Photo):')
+    for (const document of photoFiles) {
+      lines.push(`- ${document.path}`)
+    }
+    lines.push(photoToolsHint)
   }
   if (binaryFiles.length) {
     lines.push('Referenced binary attachments in this turn (already embedded as multimodal/text parts of this turn):')

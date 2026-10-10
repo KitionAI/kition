@@ -122,6 +122,7 @@ fn harness() -> Harness {
         portal_base_url: String::new(),
         mcp_path: None,
         workflow_prompt: None,
+        kits: None,
     });
     let app = router(AgentState {
         auth: AuthConfig {

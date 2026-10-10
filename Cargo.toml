@@ -28,6 +28,7 @@ kition-agent = { path = "crates/kition-agent" }
 kition-kit-protocol = { path = "crates/kition-kit-protocol" }
 kition-kit-host = { path = "crates/kition-kit-host" }
 kition-kit-conformance = { path = "crates/kition-kit-conformance" }
+kition-kits = { path = "crates/kition-kits" }
 
 anyhow = "1"
 async-imap = { version = "0.10", default-features = false, features = ["runtime-tokio"] }

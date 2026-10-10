@@ -31,6 +31,13 @@ pub fn system_prompt(language: &str) -> String {
 }
 
 pub fn linked_document(path: &str) -> String {
+    let lower = path.trim().to_ascii_lowercase();
+    if [".psd", ".psb", ".pcraft"]
+        .iter()
+        .any(|extension| lower.ends_with(extension))
+    {
+        return linked_photo(path);
+    }
     [
         &format!("Current linked document: `{}`.", path.trim()),
         "If the user wants to continue editing, extending, rewriting, or improving this document, read it first and then overwrite the same path with document_write.",
@@ -38,6 +45,17 @@ pub fn linked_document(path: &str) -> String {
         "After image_search returns, optionally call document_write to embed the returned workspace-relative image path as a Markdown image link in the document.",
         "If the user says \"these images / the previous images / existing images / generated images\", reuse the recent image artifacts already saved by the system instead of calling image_search again.",
         "Only use artifact_write to create a new file when the user explicitly asks to create, save as, or generate a new file; pick the path extension from intent, not from any referenced source file.",
+    ]
+    .join("\n")
+}
+
+/// A layered image open in a Photo tab: edit it through the Photo tools, never as text.
+fn linked_photo(path: &str) -> String {
+    [
+        &format!("Current linked image: `{}`, open in Kition Photo.", path.trim()),
+        "Call photo_inspect on this path to see its layers and a rendered preview before describing or changing it.",
+        "To edit it, find command ids with photo_commands (search by keywords such as `brightness`, `new layer`, or `gaussian blur`), then call photo_run with the steps. photo_run saves the file and returns a new preview; check it, and fix or undo (`edit.undo`) when the result is wrong.",
+        "Do not use document_read, document_write, fs_read, or apply_patch on this file: it is binary image data.",
     ]
     .join("\n")
 }
@@ -291,6 +309,18 @@ pub fn title_from(content: &str, fallback: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn layered_images_get_the_photo_tools() {
+        let photo = linked_document("art/Cover.PSD");
+        assert!(
+            photo.contains("photo_inspect") && photo.contains("photo_run"),
+            "{photo}"
+        );
+        assert!(!photo.contains("overwrite the same path with document_write"));
+        assert!(linked_document("notes/plan.md").contains("document_write"));
+    }
+
     use serde_json::json;
 
     use super::*;

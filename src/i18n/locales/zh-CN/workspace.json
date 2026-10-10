@@ -615,5 +615,22 @@
     "searchPlaceholder": "搜索数据表、仪表盘和工作流",
     "switchSection": "切换数据表文件分区",
     "renameTable": "重命名数据表"
+  },
+  "photoKit": {
+    "loading": "正在用 Photo 打开…",
+    "notInstalledTitle": "尚未安装 Photo",
+    "openFailed": "无法打开这张图片",
+    "retry": "重试",
+    "undo": "撤销",
+    "redo": "重做",
+    "save": "保存",
+    "saved": "图片已保存",
+    "saveFailed": "无法保存图片",
+    "commandFailed": "Photo 无法应用此修改",
+    "unsaved": "未保存",
+    "layers": "图层",
+    "noLayers": "没有图层",
+    "hiddenLayer": "隐藏的图层",
+    "agentTip": "可以让 Agent 编辑这张图片，例如“加一个暗角”或“把背景图层调亮”。"
   }
 }

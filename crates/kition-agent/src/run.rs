@@ -42,6 +42,8 @@ pub struct AgentConfig {
     pub portal_base_url: String,
     pub mcp_path: Option<PathBuf>,
     pub workflow_prompt: Option<WorkflowPrompt>,
+    /// Kits the agent can drive, such as the photo editor.
+    pub kits: Option<kition_kits::KitManager>,
 }
 
 struct Inner {
@@ -56,6 +58,7 @@ struct Inner {
     portal_base_url: String,
     mcp: crate::mcp::Manager,
     workflow_prompt: Option<WorkflowPrompt>,
+    kits: Option<kition_kits::KitManager>,
     web: reqwest::Client,
 }
 
@@ -80,6 +83,7 @@ impl Agent {
                 portal_base_url: config.portal_base_url,
                 mcp: crate::mcp::Manager::new(config.mcp_path),
                 workflow_prompt: config.workflow_prompt,
+                kits: config.kits,
                 web: reqwest::Client::builder()
                     .redirect(reqwest::redirect::Policy::none())
                     .connect_timeout(std::time::Duration::from_secs(10))
@@ -117,6 +121,10 @@ impl Agent {
 
     pub fn tables(&self) -> Option<&kition_datadoc::DataDocState> {
         self.inner.tables.as_ref()
+    }
+
+    pub fn kits(&self) -> Option<&kition_kits::KitManager> {
+        self.inner.kits.as_ref()
     }
 
     pub fn portal_base_url(&self) -> &str {

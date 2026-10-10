@@ -1156,6 +1156,95 @@
       "permission": "workspace-write"
     },
     {
+      "name": "photo_commands",
+      "description": "Search Kition Photo's editing commands (layers, adjustments, filters, selections, transforms, type, and more) by keywords. Returns command ids with their parameter notes; pass an id to photo_run.",
+      "category": "context",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Workspace-relative path to a PSD, PSB, or .pcraft file."
+          },
+          "query": {
+            "type": "string",
+            "description": "Keywords to match in the command id, title, or description, for example `brightness`, `gaussian blur`, or `new layer`."
+          }
+        },
+        "required": [
+          "path",
+          "query"
+        ]
+      },
+      "permission": "read-only"
+    },
+    {
+      "name": "photo_inspect",
+      "description": "Open a layered image (PSD, PSB, or .pcraft) in Kition Photo and report its size, color mode, bit depth, and layers. By default it also attaches a rendered preview to the next turn so you can see the image. Use it before and after editing.",
+      "category": "context",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Workspace-relative path to a PSD, PSB, or .pcraft file."
+          },
+          "preview": {
+            "type": "boolean",
+            "description": "Attach a rendered preview image. Defaults to true."
+          }
+        },
+        "required": [
+          "path"
+        ]
+      },
+      "permission": "read-only"
+    },
+    {
+      "name": "photo_run",
+      "description": "Edit a layered image in Kition Photo by running commands in order, then save the file. Each step is one undoable command with a JSON object of params, as documented by photo_commands. Stops at the first failing step. Attaches a rendered preview of the result.",
+      "category": "artifact",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Workspace-relative path to a PSD, PSB, or .pcraft file."
+          },
+          "steps": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 50,
+            "items": {
+              "type": "object",
+              "properties": {
+                "command": {
+                  "type": "string",
+                  "description": "A command id from photo_commands, for example `layer.new.layer`."
+                },
+                "params": {
+                  "type": "object",
+                  "description": "Command parameters."
+                }
+              },
+              "required": [
+                "command"
+              ]
+            }
+          },
+          "save": {
+            "type": "boolean",
+            "description": "Save the file after the steps. Defaults to true."
+          }
+        },
+        "required": [
+          "path",
+          "steps"
+        ]
+      },
+      "permission": "workspace-write"
+    },
+    {
       "name": "register_artifact",
       "description": "Register a non-Office file that was just written under the workspace as an Agent artifact so it appears in the workspace document list and chat trace. Use this for existing PDF, HTML, image, Markdown, or plain-text deliverables. DOCX, XLSX, and PPTX creation or registration are not supported by generic Agent tools. The file must already exist at the given relative path.",
       "category": "artifact",

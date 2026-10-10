@@ -1,0 +1,9 @@
+//! Kits in the runtime: native editors that speak the Kit Protocol. The runtime starts them on
+//! demand for the open workspace, serves kit tabs over `/kits`, and gives the agent its own
+//! connection to them.
+
+pub mod manager;
+pub mod routes;
+
+pub use manager::{Caller, DocumentView, ExecuteView, KITS, KitDefinition, KitError, KitManager};
+pub use routes::{KitsState, router};

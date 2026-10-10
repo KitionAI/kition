@@ -615,5 +615,22 @@
     "searchPlaceholder": "Buscar tabelas, painéis e fluxos de trabalho",
     "switchSection": "Trocar a seção do arquivo de tabelas",
     "renameTable": "Renomear a tabela de dados"
+  },
+  "photoKit": {
+    "loading": "Abrindo no Photo…",
+    "notInstalledTitle": "O Photo não está instalado",
+    "openFailed": "Não foi possível abrir esta imagem",
+    "retry": "Tentar novamente",
+    "undo": "Desfazer",
+    "redo": "Refazer",
+    "save": "Salvar",
+    "saved": "Imagem salva",
+    "saveFailed": "Não foi possível salvar a imagem",
+    "commandFailed": "O Photo não conseguiu aplicar a alteração",
+    "unsaved": "Não salvo",
+    "layers": "Camadas",
+    "noLayers": "Sem camadas",
+    "hiddenLayer": "Camada oculta",
+    "agentTip": "Peça ao agente para editar esta imagem, por exemplo \"adicione uma vinheta\" ou \"clareie a camada de fundo\"."
   }
 }

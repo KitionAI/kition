@@ -7,6 +7,7 @@ import {
   FileText,
   FileType2,
   FileVideo2,
+  Layers,
   PenTool,
   Paintbrush,
   Presentation,
@@ -177,6 +178,9 @@ export function inferWorkspaceItemFormat(path: string, content?: string): Worksp
   if (/\.(png|jpe?g|gif|webp|svg)$/i.test(path)) {
     return 'image'
   }
+  if (/\.(psd|psb|pcraft)$/i.test(path)) {
+    return 'photo'
+  }
   if (/\.(mp4|mov|webm)$/i.test(path)) {
     return 'video'
   }
@@ -272,6 +276,8 @@ export function getWorkspaceItemIcon(format?: WorkspaceDocumentFormat): LucideIc
       return FileDown
     case 'image':
       return FileImage
+    case 'photo':
+      return Layers
     case 'video':
       return FileVideo2
     case 'audio':
@@ -307,6 +313,7 @@ export function getWorkspaceItemIconColorClass(format?: WorkspaceDocumentFormat)
     case 'html':
       return 'text-orange-600'
     case 'image':
+    case 'photo':
       return 'text-violet-500'
     case 'design':
     case 'board':
@@ -336,6 +343,7 @@ export function getWorkspaceItemFormatLabel(format?: WorkspaceDocumentFormat) {
     text: 'TXT',
     html: 'HTML',
     image: 'Image',
+    photo: 'Photo',
     video: 'Video',
     audio: 'Audio',
     binary: 'File',
@@ -391,7 +399,7 @@ export function isOrganizableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
 }
 
 export function isPreviewableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
-  return format === 'image' || format === 'pdf'
+  return format === 'image' || format === 'pdf' || format === 'photo'
 }
 
 export function isSupportedWorkspaceFormat(format?: WorkspaceDocumentFormat) {

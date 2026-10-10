@@ -3013,6 +3013,7 @@ dependencies = [
  "kition-datadoc",
  "kition-http",
  "kition-kitable",
+ "kition-kits",
  "kition-store",
  "lol_html",
  "mime_guess",
@@ -3077,6 +3078,7 @@ dependencies = [
  "kition-emailsync",
  "kition-formsync",
  "kition-http",
+ "kition-kits",
  "kition-store",
  "kition-workflow",
  "kition-workspace",
@@ -3374,6 +3376,30 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.21",
  "uuid",
+]
+
+[[package]]
+name = "kition-kits"
+version = "0.0.0"
+dependencies = [
+ "axum",
+ "base64 0.22.1",
+ "http",
+ "http-body-util",
+ "jsonschema",
+ "kition-core",
+ "kition-http",
+ "kition-kit-host",
+ "kition-kit-protocol",
+ "kition-store",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+ "tower",
+ "tracing",
+ "url",
 ]
 
 [[package]]
