@@ -6,6 +6,8 @@ import { cn } from '@/lib/utils'
 import { notify } from '@/lib/notify'
 import { isDesktopRuntime } from '@/services/desktop'
 import { PhotoKitEditor } from './PhotoKitEditor'
+import { PhotoWebEditor } from './PhotoWebEditor'
+import { photoSdkAvailable } from './photo/photoSdk'
 import {
   getKitDocument,
   kitErrorReason,
@@ -36,32 +38,40 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error)
 }
 
+async function editorMode(): Promise<'web' | 'editor' | 'preview'> {
+  if (await photoSdkAvailable()) return 'web'
+  if (!isDesktopRuntime()) return 'preview'
+  try {
+    const list = await listKits()
+    return list.kits.some((kit) => kit.id === 'kit.photo' && kit.installed && kit.embeddable) ? 'editor' : 'preview'
+  } catch {
+    return 'preview'
+  }
+}
+
 /**
- * A layered image (PSD, PSB, .pcraft) opened in the Photo kit. In the desktop
- * app the tab shows the kit's own editor; elsewhere it shows the kit's
- * rendered preview and layers.
+ * A layered image (PSD, PSB, .pcraft) opened in the Photo kit. With the Photo
+ * engine built into the app the tab edits the image in the page; otherwise
+ * the desktop app embeds the kit's own editor, and elsewhere the tab shows
+ * the kit's rendered preview and layers.
  */
 export function PhotoKitPane({ path, active, onOpenAgent }: PhotoKitPaneProps) {
-  const [mode, setMode] = useState<'checking' | 'editor' | 'preview'>(() => (isDesktopRuntime() ? 'checking' : 'preview'))
+  const [mode, setMode] = useState<'checking' | 'web' | 'editor' | 'preview'>('checking')
 
   useEffect(() => {
-    if (mode !== 'checking') return
     let cancelled = false
-    listKits()
-      .then((list) => {
-        if (!cancelled) setMode(list.kits.some((kit) => kit.id === 'kit.photo' && kit.installed && kit.embeddable) ? 'editor' : 'preview')
-      })
-      .catch(() => {
-        if (!cancelled) setMode('preview')
-      })
+    void editorMode().then((next) => {
+      if (!cancelled) setMode(next)
+    })
     return () => {
       cancelled = true
     }
-  }, [mode])
+  }, [])
 
   const showPreview = useCallback(() => setMode('preview'), [])
 
   if (mode === 'checking') return null
+  if (mode === 'web') return <PhotoWebEditor path={path} onOpenAgent={onOpenAgent} />
   if (mode === 'editor') {
     return <PhotoKitEditor path={path} active={active} onOpenAgent={onOpenAgent} onUnavailable={showPreview} />
   }

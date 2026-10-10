@@ -32,6 +32,11 @@ pub fn router(state: KitsState) -> Router {
         .route("/kits/documents", post(open))
         .route("/kits/documents/new", post(create))
         .route(
+            "/kits/files",
+            axum::routing::put(write_file)
+                .layer(axum::extract::DefaultBodyLimit::max(MAX_FILE_BYTES)),
+        )
+        .route(
             "/kits/{kit}/documents/{document}",
             get(document).delete(close),
         )
@@ -317,4 +322,25 @@ async fn close_surface(
 ) -> AppResult<Response> {
     state.kits.close_surface(surface).await;
     Ok(ok(json!({})))
+}
+
+/// The largest file an in-page editor may save in one request.
+const MAX_FILE_BYTES: usize = 2 << 30;
+
+#[derive(Deserialize)]
+struct WriteFileQuery {
+    path: String,
+}
+
+async fn write_file(
+    State(state): State<KitsState>,
+    _user: CurrentUser,
+    Query(query): Query<WriteFileQuery>,
+    body: axum::body::Bytes,
+) -> AppResult<Response> {
+    state
+        .kits
+        .write_file(&query.path, &body)
+        .map_err(app_error)?;
+    Ok(ok(json!({ "path": query.path, "bytes": body.len() })))
 }

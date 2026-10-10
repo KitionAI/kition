@@ -688,6 +688,11 @@
       "View": "Affichage",
       "Window": "Fenêtre",
       "Help": "Aide"
+    },
+    "stats": {
+      "open": "Ouverture {{ms}} ms",
+      "render": "Rendu {{ms}} ms",
+      "stroke": "Trait {{ms}} ms"
     }
   }
 }

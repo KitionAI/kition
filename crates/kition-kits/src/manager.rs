@@ -782,6 +782,37 @@ impl KitManager {
         Ok(())
     }
 
+    /// Replaces a workspace file that a kit handles with `bytes`, crash-safely: the bytes go to a
+    /// temporary file beside the target, which is then renamed over it. The in-page editors save
+    /// through here.
+    pub fn write_file(&self, path: &str, bytes: &[u8]) -> Result<(), KitError> {
+        if self.kit_for_path(path).is_none() {
+            return Err(KitError::InvalidPath(format!("no kit edits `{path}`")));
+        }
+        let target = self.resolve(path)?;
+        let parent = target
+            .parent()
+            .filter(|parent| parent.is_dir())
+            .ok_or_else(|| {
+                KitError::InvalidPath(format!("the folder of `{path}` does not exist"))
+            })?;
+        let name = target
+            .file_name()
+            .map(|name| name.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        let temporary = parent.join(format!(".{name}.kition-{}.tmp", std::process::id()));
+        let written =
+            std::fs::write(&temporary, bytes).and_then(|()| std::fs::rename(&temporary, &target));
+        if let Err(error) = written {
+            let _ = std::fs::remove_file(&temporary);
+            return Err(KitError::Kit {
+                reason: Some(ErrorReason::IoError),
+                message: format!("could not save `{path}`: {}", error.kind()),
+            });
+        }
+        Ok(())
+    }
+
     /// Asks every running kit, headless and embedded, to exit.
     pub async fn shutdown(&self) {
         let mut stopping: Vec<Arc<RunningKit>> = self

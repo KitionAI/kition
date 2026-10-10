@@ -688,6 +688,11 @@
       "View": "View",
       "Window": "Window",
       "Help": "Help"
+    },
+    "stats": {
+      "open": "Open {{ms}} ms",
+      "render": "Render {{ms}} ms",
+      "stroke": "Stroke {{ms}} ms"
     }
   }
 }

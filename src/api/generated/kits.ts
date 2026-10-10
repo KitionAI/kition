@@ -93,6 +93,13 @@ export type KitsCommandList = {
 }
 
 /**
+ * PUT /v1/kits/files?path=: replaces a workspace file a kit edits with the raw request body (application/octet-stream, up to 2 GiB). In-page editors save through it.
+ */
+export type KitsWriteFileQuery = {
+  path: KitsWorkspacePath
+}
+
+/**
  * POST /v1/kits/documents/new: creates an `Untitled image` file in the folder and opens it.
  */
 export type KitsCreateRequest = {

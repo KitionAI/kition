@@ -70,6 +70,16 @@ export function saveKitDocument(kitId: string, documentId: string) {
     .then(unwrap<KitsDocumentView>)
 }
 
+/** Replaces a workspace file a kit edits with `bytes`; the in-page editors save through it. */
+export function writeKitFile(path: string, bytes: Uint8Array) {
+  return request.put('/v1/kits/files', new Blob([bytes as BlobPart], { type: 'application/octet-stream' }), {
+    params: { path },
+    headers: { 'Content-Type': 'application/octet-stream' },
+    timeout: 10 * 60_000,
+    suppressErrorMessage: true,
+  })
+}
+
 /** Opens `path` in the kit's own editor, kept over `rect` (window coordinates). */
 export function openKitSurface(path: string, rect: KitsSurfaceRect, visible: boolean) {
   return request

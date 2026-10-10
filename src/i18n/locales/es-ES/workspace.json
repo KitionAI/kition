@@ -688,6 +688,11 @@
       "View": "Vista",
       "Window": "Ventana",
       "Help": "Ayuda"
+    },
+    "stats": {
+      "open": "Apertura {{ms}} ms",
+      "render": "Renderizado {{ms}} ms",
+      "stroke": "Trazo {{ms}} ms"
     }
   }
 }

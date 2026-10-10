@@ -126,6 +126,15 @@
         "commands": { "type": "array", "items": { "$ref": "#/$defs/commandView" } }
       }
     },
+    "writeFileQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "PUT /v1/kits/files?path=: replaces a workspace file a kit edits with the raw request body (application/octet-stream, up to 2 GiB). In-page editors save through it.",
+      "required": ["path"],
+      "properties": {
+        "path": { "$ref": "#/$defs/workspacePath" }
+      }
+    },
     "createRequest": {
       "type": "object",
       "additionalProperties": false,

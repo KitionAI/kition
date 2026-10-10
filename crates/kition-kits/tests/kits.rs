@@ -239,6 +239,41 @@ async fn creates_untitled_documents_with_unused_names() {
 }
 
 #[tokio::test]
+async fn in_page_editors_save_kit_files_inside_the_workspace() {
+    let Some(f) = fixture() else { return };
+    let put = |uri: &str| {
+        let request = Request::builder()
+            .method("PUT")
+            .uri(uri)
+            .header("content-type", "application/octet-stream")
+            .body(Body::from("saved"))
+            .unwrap_or_else(|err| panic!("{err}"));
+        let app = f.app.clone();
+        async move {
+            app.oneshot(request)
+                .await
+                .unwrap_or_else(|err| panic!("{err}"))
+                .status()
+        }
+    };
+    assert_eq!(
+        put("/kits/files?path=art/note.mocktext").await,
+        StatusCode::OK
+    );
+    assert_eq!(
+        std::fs::read_to_string(f.dir.path().join("art/note.mocktext")).unwrap_or_default(),
+        "saved"
+    );
+    for path in ["art/note.txt", "../x.mocktext", "missing/x.mocktext"] {
+        assert_eq!(
+            put(&format!("/kits/files?path={path}")).await,
+            StatusCode::BAD_REQUEST,
+            "{path}"
+        );
+    }
+}
+
+#[tokio::test]
 async fn rejects_paths_outside_the_workspace_and_unknown_kits() {
     let Some(f) = fixture() else { return };
     for path in [

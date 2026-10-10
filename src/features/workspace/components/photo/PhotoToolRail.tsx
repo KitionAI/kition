@@ -1,20 +1,22 @@
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
-import { PHOTO_TOOLS, cssColor } from './photoTools'
+import { PHOTO_TOOLS, cssColor, type PhotoTool } from './photoTools'
 
 type PhotoToolRailProps = {
   tool: string | null | undefined
   foreground?: readonly number[] | null
   background?: readonly number[] | null
   onSelect: (tool: string) => void
+  /** The tools to offer; all of them by default. */
+  tools?: readonly PhotoTool[]
 }
 
 /** The editor's tools, one column on the left of the canvas. */
-export function PhotoToolRail({ tool, foreground, background, onSelect }: PhotoToolRailProps) {
+export function PhotoToolRail({ tool, foreground, background, onSelect, tools = PHOTO_TOOLS }: PhotoToolRailProps) {
   const { t } = useTranslation('workspace')
   return (
     <div className="flex w-11 shrink-0 flex-col items-center gap-0.5 overflow-y-auto border-r border-border py-2" role="toolbar" aria-orientation="vertical" aria-label={t('photoKit.toolsLabel')} data-testid="photo-tool-rail">
-      {PHOTO_TOOLS.map((item) => {
+      {tools.map((item) => {
         const Icon = item.icon
         const active = item.id === tool
         const label = `${t(`photoKit.tools.${item.label}`)} (${item.shortcut})`

@@ -688,6 +688,11 @@
       "View": "Visualizar",
       "Window": "Janela",
       "Help": "Ajuda"
+    },
+    "stats": {
+      "open": "Abertura {{ms}} ms",
+      "render": "Renderização {{ms}} ms",
+      "stroke": "Traço {{ms}} ms"
     }
   }
 }

@@ -34,6 +34,11 @@ function photoView(overrides: Partial<View> = {}): View {
   }
 }
 
+// These cover the kit-process editors; the in-page engine has its own spec.
+test.beforeEach(async ({ page }) => {
+  await page.route('**/kits/photo-sdk/**', (route) => route.fulfill({ status: 404, body: '' }))
+})
+
 test('opens a PSD from the workspace tree in the Photo tab and follows agent edits', async ({ page, baseURL }, testInfo) => {
   test.setTimeout(60_000)
   const png = await fs.readFile(path.join(process.cwd(), 'public', 'logo-mark.png'))
