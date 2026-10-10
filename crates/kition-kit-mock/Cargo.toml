@@ -1,0 +1,27 @@
+[package]
+name = "kition-kit-mock"
+description = "A minimal headless kit for plain-text documents, used to test the Kit Protocol host and conformance suite."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "kition-kit-mock"
+path = "src/main.rs"
+
+[dependencies]
+kition-kit-protocol = { workspace = true, features = ["tokio"] }
+
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true, features = ["io-util"] }
+url = { workspace = true }
+
+[dev-dependencies]
+kition-kit-conformance = { workspace = true }
+tokio = { workspace = true, features = ["io-util"] }

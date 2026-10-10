@@ -1,6 +1,7 @@
 # Kit Platform Architecture
 
-Status: proposal, 2026-10-09.
+Status: proposal, 2026-10-09; revised 2026-10-10 for the in-process Rust
+runtime and for `kit.photo` as the first kit.
 
 Kition is a workspace for documents, data, media, and an AI agent that works
 across all of them. This document defines how professional editors (images,
@@ -41,9 +42,20 @@ The facts that drive this architecture:
 | Engine | Pure-data document model with a single command registry (500+ commands per app) | One command model serves UI, CLI, automation, and agents |
 | Automation | CLI, authenticated JSON-lines control channel, MCP server, offscreen screenshots | A natural basis for the kit protocol |
 | Web build | Engine and UI compile to WebAssembly with WebGPU | A non-native fallback surface exists |
-| Shared code | No shared core: `geom`, `color`, `gpu`, and similar crates are copied per repository and have diverged | A merged monorepo would not deduplicate anything |
+| Shared code | A young shared library repository (`craft-libs`) exists, but most `geom`, `color`, `gpu`, and similar crates are still copied per repository and have diverged | A merged monorepo would not deduplicate anything |
+| Windowing patches | Some applications patch `winit` and `egui-wgpu` through `[patch.crates-io]` with vendored copies | Their user interfaces cannot link into the Tauri process; they must stay separate processes |
 | Velocity | Hundreds of commits each, updated daily, self-described early alpha | Forks drift quickly; sync on a schedule and keep Kition changes additive |
 | License | MIT OR Apache-2.0 | Redistribution is allowed with attribution; product names are not ours to use |
+
+The photo editor, the first kit, was surveyed in more detail on 2026-10-10:
+
+| Property | Observation | Consequence |
+| --- | --- | --- |
+| Control channel | Loopback JSON lines with a 256-bit token; `engine.execute`, `engine.commands`, `ui.screenshot`, and `app.open` / `app.save` scoped to read and write roots | The Kit Protocol adapter maps onto it without engine changes |
+| Headless engine | A CLI and an MCP server drive the same engine without a window | `headless` surface for agent edits |
+| Release size | About 65 to 75 MB per platform for version 0.5.0 | Installed on demand, not bundled in the Kition installer |
+| Toolchain | `rust-version = 1.95` | The kit repository builds with stable Rust; Kition's own minimum is unaffected |
+| Themes and locales | Built-in light themes and several UI languages | `kition-theme` starts from the light theme; the host locale is passed through |
 
 ## 3. Options Considered
 
@@ -73,23 +85,23 @@ the agent; each kit owns one editing domain.
 ## 4. Architecture
 
 ```text
-+------------------------------- Kition Host --------------------------------+
-| Renderer (React)                                                           |
-|   workspace tree, tabs, agent panel, built-in kits (markdown, table, ...)  |
-|   kit tab = placeholder region that reports its bounds                     |
-|                                                                            |
-| Tauri shell (Rust) = Kit Host                                              |
-|   kit index, install + verify, process supervisor, surface placement,     |
-|   focus and shortcut routing                                               |
-+-----------+--------------------------------------------+-------------------+
-            | Kit Protocol (JSON-RPC 2.0, local socket)    | runtime HTTP API
-            v                                              v
-   +-----------------+   +-----------------+       +------------------------+
-   | kit.pdf process |   | kit.photo proc. |  ...  | Kition runtime         |
-   | upstream engine |   | upstream engine |       | agent, data, workflows |
-   | + Kition adapter|   | + Kition adapter|       | attaches to kits as a  |
-   +-----------------+   +-----------------+       | second protocol client |
-                                                   +------------------------+
++------------------------- Kition desktop process --------------------------+
+| Renderer (React)                                                          |
+|   workspace tree, tabs, agent panel, built-in kits (markdown, table, ...) |
+|   kit tab = placeholder region that reports its bounds                    |
+|                 | loopback HTTP API                                       |
+| Tauri shell (Rust) = Kit Host       | Runtime (Rust crates, in-process)   |
+|   kit index, install + verify,      |   agent, data, workflows; opens     |
+|   supervisor, surface placement,    |   agent-role connections to kits    |
+|   focus and shortcut routing        |   through kition-kit-host           |
++-------------+-------------------------------------+-----------------------+
+              | Kit Protocol (JSON-RPC 2.0, local socket or named pipe)
+              v                                     v
+     +-------------------+   +-------------------+
+     | kit.photo process |   | kit.pdf process   |  ...
+     | upstream engine   |   | upstream engine   |
+     | + Kition adapter  |   | + Kition adapter  |
+     +-------------------+   +-------------------+
 ```
 
 Responsibilities:
@@ -101,16 +113,30 @@ Responsibilities:
 | Kit process | Document model, rendering, its own menus, panels, and dialogs inside its surface, file I/O for the documents it was given |
 | Runtime | Agent turns; it attaches to running kits (or starts headless ones through the host) and exposes kit commands as agent tools |
 
-The runtime is an opaque binary. Its implementation language is not part of any
-public contract; the client and kits depend only on HTTP behavior, the Kit
-Protocol, and capability flags.
+The runtime is Rust code in this repository (`crates/`) and runs inside the
+desktop process (see `AGENTS.md`). It does not get a privileged path into kits:
+it opens its own connection with the `agent` role through `kition-kit-host`,
+so the kit enforces the same role and URI limits for the agent as for any
+other client. Kits depend only on the Kit Protocol.
+
+### 4.1 Kit crates in this repository
+
+| Crate | Purpose |
+| --- | --- |
+| `kition-kit-protocol` | Message types mirroring `contracts/kit/`, error codes, launch constants, line framing, and the socket or named pipe transport. No async runtime unless the `tokio` feature is enabled, so thread-based kits can use it |
+| `kition-kit-host` | Launching a kit with a private endpoint and token, waiting for `ready`, and a request client with timeouts and cancellation. Supervision, installation, and surface placement build on it |
+| `kition-kit-mock` | A headless kit for `.mocktext` documents, used to test the host and the suite |
+| `kition-kit-conformance` | The conformance suite (protocol section 14), as a library and as the `kition-kit-conformance` command that kit repositories run in CI |
+
+`cargo test -p kition-kit-mock` runs the suite against the mock kit, including
+injected faults that each check must catch.
 
 ## 5. Built-In And Installable Kits
 
 | Kind | Examples | Implementation | Delivery |
 | --- | --- | --- | --- |
 | Built-in | Markdown documents, tables, whiteboard, presentations | React inside the renderer | Ships with Kition |
-| Installable | `kit.pdf`, `kit.photo`, `kit.vector`, `kit.film`, `kit.audio` | Native executable speaking the Kit Protocol | Downloaded on first use |
+| Installable | `kit.photo` first, then `kit.pdf`, `kit.vector`, `kit.film`, `kit.audio` | Native executable speaking the Kit Protocol | Downloaded on first use |
 
 Built-in kits stay Kition's own products. Upstream word processing,
 spreadsheet, and slide engines overlap with them; they are candidates only for
@@ -207,7 +233,9 @@ upstream, not a pinned dependency.
 
 1. **Add, do not edit.** Kition code goes into new crates that upstream never
    touches: `crates/kition-*` (protocol server, theme, surface attachment,
-   Kition integrations) and `apps/kit-<name>` (the kit executable).
+   Kition integrations) and `apps/kit-<name>` (the kit executable). The
+   protocol server depends on `kition-kit-protocol` from this repository
+   through a git dependency pinned to a commit.
 2. **Hooks over rewrites.** When upstream code must change, make the smallest
    change that exposes an extension point (a trait, a callback, a feature
    flag), and implement the behavior in a `kition-*` crate.
@@ -256,7 +284,9 @@ GitHub Actions in each kit repository:
    Windows executables are Authenticode signed.
 5. Package `kit-<name>-<version>-<target>.tar.gz` (`.zip` on Windows)
    containing the executable, `kit.json`, `NOTICE`, and license texts.
-6. Run the Kit Protocol conformance suite against the packaged executable.
+6. Run the Kit Protocol conformance suite against the packaged executable:
+   `kition-kit-conformance --kit <executable> --manifest kit.json --fixture
+   <document> --edit-command <command> --edit-params '<json>'`.
 7. Upload assets to the kit repository's GitHub Release.
 
 ## 8. Distribution And Verification
@@ -272,6 +302,10 @@ Decisions (2026-10-09):
 - Users install kits **when opening a file that needs one** (a prompt with a
   one-click install) and manage them on a **Kits page in Settings** (install,
   update, uninstall).
+
+Until the index exists (phase 4), the first shipped kit uses a smaller step:
+Kition pins the kit version and the per-target SHA-256 of each asset at build
+time and downloads only those exact assets from the kit repository's Release.
 
 ### 8.1 Index
 
@@ -354,12 +388,16 @@ program has a foundation:
 
 | Phase | Deliverable | Exit criteria |
 | --- | --- | --- |
-| 0 | Kit Protocol and manifest schemas, client mock kit | Schemas validated in CI; a mock kit passes the conformance suite |
-| 1 | Embedding prototype with `kit.photo` on macOS and Windows | Drag, resize, focus, IME, shortcuts, and snapshot overlay judged acceptable in the real desktop client |
-| 2 | `kit.pdf` as the first shipped kit: `window` and `headless`, then `embedded` | Open, annotate, save, and agent-driven edits through the protocol |
-| 3 | Kit index, installation, verification, updates | Install from a clean machine, offline relaunch from cache |
-| 4 | `kit.photo` and lightweight React editing over headless engines (crop and adjust images inside documents) | Image edits round-trip from documents |
-| 5 | Additional kits (video, vector, audio) | Each passes conformance and embedding acceptance |
+| 0 | Kit crates in this repository (section 4.1): protocol types, host launch and client, mock kit, conformance suite | Types round-trip through the schemas; the mock kit passes the suite and each injected fault fails its check; `pnpm check:desktop` passes |
+| 1 | `KitionAI/kit-photo` fork with `kition-kit-server` over the upstream control handlers, `apps/kit-photo`, `kition-theme`, branding | `window` and `headless` surfaces pass the conformance suite in the fork's CI |
+| 2 | Host integration in `src-tauri`: supervision, opening `.psd`, `.psb`, and `.pcraft` in a `window` surface, agent tools from `commands.list`, `KITION_KIT_PHOTO_BINARY` override, capability flags in `contracts/runtime/` | Open, edit, and save a PSD from the workspace; agent edits with approval and screenshot feedback |
+| 3 | Embedding prototype with `kit.photo` on macOS and Windows | Drag, resize, focus, IME, tablet input, shortcuts, and snapshot overlay judged acceptable in the real desktop client |
+| 4 | Distribution: pinned assets first (section 8), then the signed index, updates, and the Kits page | Install from a clean machine, offline relaunch from cache |
+| 5 | Image editing inside documents over the headless engine (crop and adjust) | Image edits round-trip from documents |
+| 6 | Additional kits (`kit.pdf`, video, vector, audio) | Each passes conformance and embedding acceptance |
+
+Ordinary PNG and JPEG files keep opening in Kition's own preview; they open in
+`kit.photo` only when the user chooses to edit them there.
 
 Embedding behavior must be validated in the real desktop client. Headless test
 runs cannot reproduce native surface placement, focus, or input method issues.
@@ -374,3 +412,4 @@ runs cannot reproduce native surface placement, focus, or input method issues.
 | Kit crashes | Process isolation; the host restarts the kit and reopens documents from disk |
 | Bundle size | Only built-in kits ship with Kition; others install on demand |
 | Font licensing for bundled fonts | Review each font package before redistribution |
+| License of shared crates | `kition-kit-protocol` inherits the workspace license (AGPL-3.0-only); decide its license before an MIT OR Apache-2.0 kit links it in phase 1 |

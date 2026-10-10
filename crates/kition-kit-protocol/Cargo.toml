@@ -1,0 +1,25 @@
+[package]
+name = "kition-kit-protocol"
+description = "Kit Protocol v1 message types, error codes, launch constants, and line framing shared by the Kition host and kits."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+# Async framing and the local socket / named pipe transport over tokio.
+tokio = ["dep:tokio"]
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, optional = true, features = ["io-util"] }
+
+[dev-dependencies]
+jsonschema = { workspace = true }
+tokio = { workspace = true, features = ["io-util"] }

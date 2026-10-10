@@ -25,6 +25,9 @@ kition-desktop = { path = "crates/kition-desktop" }
 kition-workflow = { path = "crates/kition-workflow" }
 kition-api = { path = "crates/kition-api" }
 kition-agent = { path = "crates/kition-agent" }
+kition-kit-protocol = { path = "crates/kition-kit-protocol" }
+kition-kit-host = { path = "crates/kition-kit-host" }
+kition-kit-conformance = { path = "crates/kition-kit-conformance" }
 
 anyhow = "1"
 async-imap = { version = "0.10", default-features = false, features = ["runtime-tokio"] }
@@ -40,6 +43,7 @@ chrono = { version = "0.4", default-features = false, features = ["clock", "std"
 chrono-tz = "0.10"
 crc32fast = "1"
 hex = "0.4"
+jsonschema = { version = "0.58", default-features = false }
 jsonwebtoken = "9"
 mime_guess = "2"
 pdf-extract = "0.12"
