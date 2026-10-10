@@ -21,12 +21,13 @@ E2E_PORT ?= 3123
 KIT_E2E := e2e/photo-web-editor.spec.ts e2e/film-web-editor.spec.ts e2e/desktop-photo-kit.spec.ts
 PHOTO_BINARY := $(KIT_PHOTO_REPO)/target/debug/kit-photo
 
-.PHONY: help kit-dev kit-sdks kit-sdk-photo kit-sdk-film kit-photo-binary kit-check kit-test kit-e2e kit-e2e-headed kit-clean
+.PHONY: help kit-e2e-webkit kit-dev kit-sdks kit-sdk-photo kit-sdk-film kit-photo-binary kit-check kit-test kit-e2e kit-e2e-headed kit-clean
 
 help:
 	@echo "make kit-dev         build missing kit engines and the Photo kit binary, then run Kition (pnpm dev)"
 	@echo "make kit-test        kit contract checks, then the Photo and Film e2e specs"
 	@echo "make kit-e2e-headed  the kit e2e specs in a visible browser"
+	@echo "make kit-e2e-webkit  the in-page kit specs in WebKit, the desktop app's engine"
 	@echo "make kit-sdks        rebuild both kit engines to WebAssembly (public/kits/<kit>-sdk)"
 	@echo "make kit-sdk-photo   rebuild one kit engine (also kit-sdk-film)"
 	@echo "make kit-check       contract checks of the built kit engines only"
@@ -62,6 +63,10 @@ kit-e2e: $(addprefix public/kits/,$(addsuffix -sdk/.built,$(KITS)))
 
 kit-e2e-headed: $(addprefix public/kits/,$(addsuffix -sdk/.built,$(KITS)))
 	$(NO_PROXY_ENV) KITION_E2E_PORT=$(E2E_PORT) pnpm exec playwright test --config tooling/playwright.config.ts $(KIT_E2E) --headed --workers=1
+
+# WebKit is what the desktop app runs (WKWebView); `playwright install webkit` once.
+kit-e2e-webkit: $(addprefix public/kits/,$(addsuffix -sdk/.built,$(KITS)))
+	$(NO_PROXY_ENV) KITION_E2E_PORT=$(E2E_PORT) pnpm exec playwright test --config tooling/playwright.webkit.config.ts e2e/photo-web-editor.spec.ts e2e/film-web-editor.spec.ts --reporter=line
 
 kit-test: kit-check kit-e2e
 

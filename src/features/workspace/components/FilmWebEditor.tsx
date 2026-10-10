@@ -66,9 +66,9 @@ function usePlayback(doc: KitEngine | null, run: (command: string, params: Recor
       return
     }
     const from = latest.current.playhead >= latest.current.duration - 1e-3 ? 0 : latest.current.playhead
-    const player = new FilmAudioPlayer(muted)
+    const player = new FilmAudioPlayer(from, muted)
     audio.current = player
-    void player.start(doc, from)
+    void player.start(doc)
     setPlaying(true)
   }, [doc, muted, playing, stop])
 

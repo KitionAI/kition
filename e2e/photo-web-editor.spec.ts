@@ -6,6 +6,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { installDesktopHost } from './helpers/desktopHost'
 import { fulfillJson, mockLocalWorkspaceApi } from './helpers/mockApi'
 import { dismissFirstRunActivation } from './helpers/onboarding'
+import { canReadBlobBodies } from './helpers/requestBody'
 
 const SDK_DIR = path.join(process.cwd(), 'public', 'kits', 'photo-sdk')
 const SDK_WASM = path.join(SDK_DIR, 'kition_photo_sdk_bg.wasm')
@@ -46,7 +47,7 @@ async function drag(page: Page, from: [number, number], to: [number, number]) {
   await page.mouse.up()
 }
 
-test('edits a PSD in the page with the Photo engine and saves it back to the workspace', async ({ page, baseURL }, testInfo) => {
+test('edits a PSD in the page with the Photo engine and saves it back to the workspace', async ({ page, baseURL, browserName }, testInfo) => {
   test.skip(!existsSync(SDK_WASM), 'the Photo engine is not built into public/kits/photo-sdk')
   test.setTimeout(90_000)
   const host = await installDesktopHost(page)
@@ -60,7 +61,8 @@ test('edits a PSD in the page with the Photo engine and saves it back to the wor
       const stat = await fs.stat(file)
       await route.fulfill({
         contentType: 'image/vnd.adobe.photoshop',
-        headers: { etag: `"${stat.mtimeMs}-${stat.size}"` },
+        // As the runtime's file server: Last-Modified (readable across origins) and the same exposed headers.
+        headers: { etag: `"${stat.mtimeMs}-${stat.size}"`, 'last-modified': stat.mtime.toUTCString(), 'access-control-expose-headers': 'ETag,Content-Range,Accept-Ranges' },
         body: await fs.readFile(file),
       })
     })
@@ -115,8 +117,10 @@ test('edits a PSD in the page with the Photo engine and saves it back to the wor
     await expect(page.getByTestId('kit-unsaved')).toHaveCount(0)
     expect(saves).toHaveLength(1)
     expect(saves[0].path).toBe('Poster.psd')
-    expect(saves[0].bytes.subarray(0, 4).toString()).toBe('8BPS')
-    expect(saves[0].bytes.equals(original)).toBe(false)
+    if (canReadBlobBodies(browserName)) {
+      expect(saves[0].bytes.subarray(0, 4).toString()).toBe('8BPS')
+      expect(saves[0].bytes.equals(original)).toBe(false)
+    }
 
     // With nothing unsaved, the tab follows the agent's new version of the file.
     await agentSaves(['Ink', 'Agent'])

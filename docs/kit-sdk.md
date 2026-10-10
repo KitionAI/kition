@@ -341,8 +341,17 @@ Time-based kits (Film):
   from that context's clock. A chunk that arrives late plays its remaining
   part, so sound never drifts. Without a running context (no device, autoplay
   refused) the clock falls back to wall time.
-- Create the AudioContext inside the play gesture; browsers refuse sound
-  started anywhere else.
+- Create the AudioContext inside the play gesture and call `resume()` there:
+  WebKit (the desktop app's WKWebView) starts a new context suspended, while
+  Chromium starts it running. Start the playback clock synchronously in the
+  gesture, never after an `await`; a clock whose origin is set later reads
+  "seconds since page load" and playback stops on its first frame (this
+  shipped once and only failed in the desktop app).
+- Test in WebKit too: `make kit-e2e-webkit` runs the in-page kit specs in
+  Playwright's WebKit. Mocks must behave like the runtime: its file server
+  sends `Last-Modified` (readable across origins), not an `ETag`, and
+  Playwright cannot read Blob request bodies in WebKit
+  (`e2e/helpers/requestBody.ts`).
 - Space belongs to play and pause in a player (`spacePans={false}`).
 
 Learned from Film (the second kit):

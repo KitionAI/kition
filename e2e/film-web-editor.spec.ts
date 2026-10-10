@@ -6,6 +6,7 @@ import { expect, test, type Page, type Route } from '@playwright/test'
 import { installDesktopHost } from './helpers/desktopHost'
 import { fulfillJson, mockLocalWorkspaceApi } from './helpers/mockApi'
 import { dismissFirstRunActivation } from './helpers/onboarding'
+import { canReadBlobBodies } from './helpers/requestBody'
 
 const SDK_DIR = path.join(process.cwd(), 'public', 'kits', 'film-sdk')
 const SDK_WASM = path.join(SDK_DIR, 'kition_film_sdk_bg.wasm')
@@ -48,7 +49,8 @@ async function serveWorkspace(page: Page, root: string) {
     if (!file.startsWith(root) || !existsSync(file)) return route.fulfill({ status: 404, body: '' })
     const bytes = await fs.readFile(file)
     const stat = await fs.stat(file)
-    const headers = { 'accept-ranges': 'bytes', etag: `"${stat.mtimeMs}-${stat.size}"`, 'content-type': 'application/octet-stream' }
+    // As the runtime's file server: Last-Modified (readable across origins) and the same exposed headers.
+    const headers = { 'accept-ranges': 'bytes', etag: `"${stat.mtimeMs}-${stat.size}"`, 'last-modified': stat.mtime.toUTCString(), 'access-control-expose-headers': 'ETag,Content-Range,Accept-Ranges', 'content-type': 'application/octet-stream' }
     const range = /bytes=(\d+)-(\d+)?/.exec(request.headers().range ?? '')
     if (request.method() === 'HEAD') return route.fulfill({ status: 200, headers: { ...headers, 'content-length': String(bytes.length) }, body: '' })
     if (range) {
@@ -68,7 +70,7 @@ function centre(page: Page) {
   })
 }
 
-test('edits a video project in the page with the Film engine, reading its media from the workspace', async ({ page, baseURL }, testInfo) => {
+test('edits a video project in the page with the Film engine, reading its media from the workspace', async ({ page, baseURL, browserName }, testInfo) => {
   test.skip(!existsSync(SDK_WASM), 'the Film engine is not built into public/kits/film-sdk')
   test.setTimeout(120_000)
   const host = await installDesktopHost(page)
@@ -145,15 +147,18 @@ test('edits a video project in the page with the Film engine, reading its media 
     await page.getByTestId('kit-save').click()
     await expect(page.getByText('Saved', { exact: true })).toBeVisible()
     expect(saves).toHaveLength(1)
-    const saved = saves[0].toString('utf8')
-    expect(saved).toContain('"format":"filmcraft.project"')
-    expect(saved).toContain('../clips/bars.mp4')
+    if (canReadBlobBodies(browserName)) {
+      const saved = saves[0].toString('utf8')
+      expect(saved).toContain('"format":"filmcraft.project"')
+      expect(saved).toContain('../clips/bars.mp4')
+    }
   } finally {
     await host.dispose()
   }
 })
 
-test('creates a new video project from the create menu with the Film engine', async ({ page, baseURL }) => {
+test('creates a new video project from the create menu with the Film engine', async ({ page, baseURL, browserName }) => {
+  test.skip(!canReadBlobBodies(browserName), 'it opens the file it wrote, and Playwright cannot read Blob bodies in WebKit')
   test.skip(!existsSync(SDK_WASM), 'the Film engine is not built into public/kits/film-sdk')
   test.setTimeout(90_000)
   const host = await installDesktopHost(page)
@@ -186,7 +191,8 @@ test('creates a new video project from the create menu with the Film engine', as
   }
 })
 
-test('edits an mp4 through a video project and exports a new mp4, leaving the original as it was', async ({ page, baseURL }) => {
+test('edits an mp4 through a video project and exports a new mp4, leaving the original as it was', async ({ page, baseURL, browserName }) => {
+  test.skip(!canReadBlobBodies(browserName), 'it opens the file it wrote, and Playwright cannot read Blob bodies in WebKit')
   test.skip(!existsSync(SDK_WASM), 'the Film engine is not built into public/kits/film-sdk')
   test.setTimeout(120_000)
   const host = await installDesktopHost(page)
@@ -222,6 +228,45 @@ test('edits an mp4 through a video project and exports a new mp4, leaving the or
     const movie = await fs.readFile(path.join(host.root, 'clips', 'bars 2.mp4'))
     expect(movie.subarray(4, 8).toString()).toBe('ftyp')
     expect((await fs.readFile(clip)).equals(original)).toBe(true)
+  } finally {
+    await host.dispose()
+  }
+})
+
+test('plays where a new audio context starts suspended, as in the desktop app (WebKit)', async ({ page, baseURL }) => {
+  test.skip(!existsSync(SDK_WASM), 'the Film engine is not built into public/kits/film-sdk')
+  test.setTimeout(90_000)
+  const host = await installDesktopHost(page)
+  try {
+    // WebKit starts a context suspended and runs it only after resume() in a gesture; playback
+    // used to stop on its first frame there.
+    await page.addInitScript(() => {
+      const Native = window.AudioContext
+      window.AudioContext = class extends Native {
+        private resumed = false
+        get state() {
+          return (this.resumed ? super.state : 'suspended') as AudioContextState
+        }
+        resume() {
+          this.resumed = true
+          return super.resume()
+        }
+      } as typeof AudioContext
+    })
+    await fs.mkdir(path.join(host.root, 'films'), { recursive: true })
+    await fs.mkdir(path.join(host.root, 'clips'), { recursive: true })
+    await fs.copyFile(CLIP, path.join(host.root, 'clips', 'bars.mp4'))
+    await fs.writeFile(path.join(host.root, 'films', 'Trailer.fcproj'), await projectFixture(host.root))
+    await mockLocalWorkspaceApi(page)
+    await serveWorkspace(page, host.root)
+    await page.goto(new URL('/documents', baseURL!).toString(), { waitUntil: 'domcontentloaded' })
+    await dismissFirstRunActivation(page)
+    await page.locator('.document-tree-row', { hasText: 'films' }).first().click()
+    await page.locator('.document-tree-row', { hasText: 'Trailer' }).first().click()
+    await expect(page.getByTestId('kit-status-bar')).toContainText('320 x 180 px', { timeout: 60_000 })
+    await page.getByTestId('film-play').click()
+    await expect(page.getByTestId('film-timecode')).not.toHaveText('00:00:00:00', { timeout: 5_000 })
+    await expect(page.getByTestId('film-play')).toHaveAttribute('aria-label', 'Pause')
   } finally {
     await host.dispose()
   }
