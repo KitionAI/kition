@@ -4,6 +4,7 @@ import { Loader2, Redo2, RefreshCw, Save, Sparkles, Undo2, type LucideIcon } fro
 import { Button } from '@/components/ui'
 import type { useKitDocument } from '../sdk/useKitDocument'
 import type { useKitEditor } from '../sdk/useKitEditor'
+import { commandForShortcut } from '../sdk/kitShortcuts'
 import { KitMenuBar } from './KitMenuBar'
 
 type KitEditorFrameProps = {
@@ -24,7 +25,7 @@ type KitEditorFrameProps = {
   /** The left side of the status bar; `statusEnd` is the right side. */
   status?: ReactNode
   statusEnd?: ReactNode
-  /** Keys the frame does not handle itself (it handles undo, redo, and save). */
+  /** The kit's own keys; they come first. The frame then handles Save and every command's shortcut. */
   onKeyDown?: (event: KeyboardEvent<HTMLDivElement>) => void
   /** The canvas, shown once the document is open. */
   children: ReactNode
@@ -33,8 +34,9 @@ type KitEditorFrameProps = {
 /**
  * The editor every in-page kit shares: the header with the file, undo, redo,
  * Ask agent, and Save; the kit's menus; the options bar; tools, canvas, and
- * panels; the status bar; and the opening, failure, and changed-on-disk
- * states. A kit supplies its tools, panels, and canvas.
+ * panels; the status bar; the opening, failure, and changed-on-disk states;
+ * and the shortcuts of the kit's commands. A kit supplies its tools, panels,
+ * and canvas.
  */
 export function KitEditorFrame(props: KitEditorFrameProps) {
   const { document, editor, title, icon: Icon } = props
@@ -42,16 +44,19 @@ export function KitEditorFrame(props: KitEditorFrameProps) {
 
   const keyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return
+    // The kit's own keys first (tools, Enter and Escape), then Save, then the kit's command shortcuts.
+    props.onKeyDown?.(event)
+    if (event.defaultPrevented) return
     const command = event.metaKey || event.ctrlKey
-    const key = event.key.toLowerCase()
-    if (command && key === 'z') void editor.run(event.shiftKey ? 'edit.redo' : 'edit.undo')
-    else if (command && key === 'y') void editor.run('edit.redo')
-    else if (command && key === 's') void editor.save()
-    else {
-      props.onKeyDown?.(event)
+    if (command && event.key.toLowerCase() === 's') {
+      event.preventDefault()
+      void editor.save()
       return
     }
+    const shortcut = commandForShortcut(editor.commands, event)
+    if (!shortcut) return
     event.preventDefault()
+    void editor.run(shortcut.id)
   }
 
   return (

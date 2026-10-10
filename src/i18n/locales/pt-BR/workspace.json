@@ -691,22 +691,28 @@
     },
     "stats": {
       "open": "Abertura {{ms}} ms",
-      "render": "Renderização {{ms}} ms",
-      "stroke": "Traço {{ms}} ms"
-    }
+      "render": "Renderização {{ms}} ms"
+    },
+    "applyCrop": "Cortar",
+    "cancel": "Cancelar",
+    "shapeRect": "Retângulo",
+    "shapeEllipse": "Elipse",
+    "fontSize": "Tamanho",
+    "typePlaceholder": "Digite e pressione Enter",
+    "cloneHint": "Alt+clique para definir a origem"
   },
   "kitEditor": {
     "askAgent": "Perguntar ao agente",
     "changedOnDisk": "Este arquivo mudou fora do editor e você tem edições não salvas.",
-    "commandFailed": "O Photo não conseguiu aplicar a alteração",
+    "commandFailed": "Não foi possível aplicar a alteração",
     "keepMine": "Manter minhas edições",
-    "openFailed": "Não foi possível abrir esta imagem",
+    "openFailed": "Não foi possível abrir este arquivo",
     "opening": "Abrindo…",
     "redo": "Refazer",
     "reloadFile": "Carregar a nova versão",
     "reopen": "Abrir novamente",
     "save": "Salvar",
-    "saveFailed": "Não foi possível salvar a imagem",
+    "saveFailed": "Não foi possível salvar o arquivo",
     "saved": "Salvo",
     "undo": "Desfazer",
     "unsaved": "Não salvo"

@@ -7,6 +7,8 @@ import type { useKitDocument } from './useKitDocument'
 
 type KitDocument = ReturnType<typeof useKitDocument<unknown>>
 
+const COMMAND_REFRESH_MS = 250
+
 function errorText(error: unknown) {
   return error instanceof Error ? error.message : String(error)
 }
@@ -19,15 +21,18 @@ function errorText(error: unknown) {
 export function useKitEditor(document: KitDocument, options: { onOpenAgent?: () => void } = {}) {
   const { t } = useTranslation('workspace')
   const [commands, setCommands] = useState<KitsCommandView[]>([])
-  const { doc, run: runCommand, save: saveDocument, commands: listCommands, dirty } = document
+  const { doc, run: runCommand, save: saveDocument, commands: listCommands, dirty, change } = document
 
   const refreshCommands = useCallback(() => {
     listCommands().then(setCommands, () => undefined)
   }, [listCommands])
 
+  // Enabled states follow the document: after it opens and shortly after each change.
   useEffect(() => {
-    if (doc) refreshCommands()
-  }, [doc, refreshCommands])
+    if (!doc) return undefined
+    const timer = window.setTimeout(refreshCommands, change.revision ? COMMAND_REFRESH_MS : 0)
+    return () => window.clearTimeout(timer)
+  }, [change.revision, doc, refreshCommands])
 
   /** Runs a kit command; a refusal shows a notice instead of throwing. `damage` limits the repaint. */
   const run = useCallback(async (command: string, params: Record<string, unknown> = {}, damage: RasterRect | null = null) => {

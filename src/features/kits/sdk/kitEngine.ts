@@ -21,6 +21,7 @@ export type KitEngineRequest =
   | { method: 'commands' }
   | { method: 'save' }
   | { method: 'markSaved' }
+  | { method: 'invoke'; name: string; args: unknown[] }
 
 export type KitEngineResponse = { id: number; ok: true; value: unknown } | { id: number; ok: false; error: string }
 
@@ -112,6 +113,15 @@ export class KitEngine {
 
   async markSaved() {
     this.info = (await this.call({ method: 'markSaved' })) as KitEngineInfo
+  }
+
+  /**
+   * Calls one of the kit SDK's own document methods beyond the shared contract, for example
+   * Photo's `selectionOutline`. Typed-array results arrive as that array. Changes made this way
+   * are not reflected in `info`; use `execute` for edits.
+   */
+  async invoke<T = unknown>(name: string, ...args: unknown[]) {
+    return (await this.call({ method: 'invoke', name, args })) as T
   }
 
   dispose() {

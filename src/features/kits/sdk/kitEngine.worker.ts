@@ -12,6 +12,9 @@ declare const self: DedicatedWorkerGlobalScope
 
 let doc: KitSdkDocument | null = null
 
+/** The shared contract's own methods, which `invoke` must not reach around. */
+const CONTRACT = new Set(['free', 'execute', 'save', 'markSaved', 'constructor', 'open', 'create'])
+
 function info(open: KitSdkDocument): KitEngineInfo {
   const inspected = JSON.parse(open.inspect()) as Record<string, unknown>
   return {
@@ -55,6 +58,15 @@ async function handle(request: KitEngineRequest): Promise<{ value: unknown; tran
     case 'save': {
       const bytes = opened().save()
       return { value: bytes.buffer, transfer: [bytes.buffer] }
+    }
+    case 'invoke': {
+      const open = opened() as unknown as Record<string, unknown>
+      const method = open[request.name]
+      if (CONTRACT.has(request.name) || request.name.startsWith('_') || typeof method !== 'function') {
+        throw new Error(`the kit SDK has no method ${request.name}`)
+      }
+      const value = (method as (...args: unknown[]) => unknown).apply(open, request.args)
+      return ArrayBuffer.isView(value) ? { value, transfer: [value.buffer] } : { value }
     }
     case 'markSaved':
       opened().markSaved()

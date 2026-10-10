@@ -691,22 +691,28 @@
     },
     "stats": {
       "open": "Ouverture {{ms}} ms",
-      "render": "Rendu {{ms}} ms",
-      "stroke": "Trait {{ms}} ms"
-    }
+      "render": "Rendu {{ms}} ms"
+    },
+    "applyCrop": "Recadrer",
+    "cancel": "Annuler",
+    "shapeRect": "Rectangle",
+    "shapeEllipse": "Ellipse",
+    "fontSize": "Taille",
+    "typePlaceholder": "Tapez, puis appuyez sur Entrée",
+    "cloneHint": "Alt-clic pour définir la source"
   },
   "kitEditor": {
     "askAgent": "Demander à l'agent",
     "changedOnDisk": "Ce fichier a été modifié hors de l'éditeur et vous avez des modifications non enregistrées.",
-    "commandFailed": "Photo n'a pas pu appliquer la modification",
+    "commandFailed": "La modification n'a pas pu être appliquée",
     "keepMine": "Garder mes modifications",
-    "openFailed": "Impossible d'ouvrir cette image",
+    "openFailed": "Impossible d'ouvrir ce fichier",
     "opening": "Ouverture…",
     "redo": "Rétablir",
     "reloadFile": "Charger la nouvelle version",
     "reopen": "Rouvrir",
     "save": "Enregistrer",
-    "saveFailed": "Impossible d'enregistrer l'image",
+    "saveFailed": "Impossible d'enregistrer le fichier",
     "saved": "Enregistré",
     "undo": "Annuler",
     "unsaved": "Non enregistré"

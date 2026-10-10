@@ -26,13 +26,24 @@ async function psdFixture(layers: readonly string[] = ['Ink']) {
   return Buffer.from(bytes)
 }
 
-/** The colour of the canvas pixel at the centre of the image area. */
-function centrePixel(page: Page) {
-  return page.getByTestId('photo-web-canvas-surface').evaluate((canvas: HTMLCanvasElement) => {
+/** The colour of the canvas pixel at (`fx`, `fy`) of the canvas, the centre by default. */
+function centrePixel(page: Page, fx = 0.5, fy = 0.5) {
+  return page.getByTestId('kit-canvas-surface').evaluate((canvas: HTMLCanvasElement, [x, y]) => {
     const context = canvas.getContext('2d')
-    const data = context?.getImageData(Math.floor(canvas.width / 2), Math.floor(canvas.height / 2), 1, 1).data
+    const data = context?.getImageData(Math.floor(canvas.width * x), Math.floor(canvas.height * y), 1, 1).data
     return data ? [data[0], data[1], data[2]] : null
-  })
+  }, [fx, fy])
+}
+
+/** Drags on the canvas between two fractions of its box. */
+async function drag(page: Page, from: [number, number], to: [number, number]) {
+  const box = (await page.getByTestId('kit-canvas-surface').boundingBox())!
+  await page.mouse.move(box.x + box.width * from[0], box.y + box.height * from[1])
+  await page.mouse.down()
+  for (let step = 1; step <= 8; step += 1) {
+    await page.mouse.move(box.x + box.width * (from[0] + ((to[0] - from[0]) * step) / 8), box.y + box.height * (from[1] + ((to[1] - from[1]) * step) / 8))
+  }
+  await page.mouse.up()
 }
 
 test('edits a PSD in the page with the Photo engine and saves it back to the workspace', async ({ page, baseURL }, testInfo) => {
@@ -81,7 +92,7 @@ test('edits a PSD in the page with the Photo engine and saves it back to the wor
     await expect.poll(() => centrePixel(page)).toEqual([255, 255, 255])
 
     // Paint across the middle of the image with the brush.
-    const surface = page.getByTestId('photo-web-canvas-surface')
+    const surface = page.getByTestId('kit-canvas-surface')
     const box = (await surface.boundingBox())!
     const cx = box.x + box.width / 2
     const cy = box.y + box.height / 2
@@ -91,7 +102,6 @@ test('edits a PSD in the page with the Photo engine and saves it back to the wor
     await page.mouse.up()
     await expect(page.getByTestId('kit-unsaved')).toBeVisible()
     await expect.poll(() => centrePixel(page)).toEqual([0, 0, 0])
-    await expect(page.getByTestId('photo-web-stats')).toContainText('Stroke')
     await page.screenshot({ path: testInfo.outputPath('photo-web-editor.png') })
 
     // Undo and redo run in the engine.
@@ -126,6 +136,74 @@ test('edits a PSD in the page with the Photo engine and saves it back to the wor
     await expect(page.getByTestId('photo-kit-layers')).toContainText('Agent two')
     await expect(page.getByTestId('kit-unsaved')).toHaveCount(0)
     await expect(page.getByTestId('kit-file-changed')).toHaveCount(0)
+  } finally {
+    await host.dispose()
+  }
+})
+
+test('selects, fills, draws shapes and text, and crops with the in-page tools', async ({ page, baseURL }) => {
+  test.skip(!existsSync(SDK_WASM), 'the Photo engine is not built into public/kits/photo-sdk')
+  test.setTimeout(90_000)
+  const host = await installDesktopHost(page)
+  try {
+    const file = path.join(host.root, 'Poster.psd')
+    await fs.writeFile(file, await psdFixture())
+    await mockLocalWorkspaceApi(page)
+    await page.route('**/workspace-files/Poster.psd', async (route) => {
+      await route.fulfill({ contentType: 'image/vnd.adobe.photoshop', headers: { etag: '"1"' }, body: await fs.readFile(file) })
+    })
+    await page.goto(new URL('/documents', baseURL!).toString(), { waitUntil: 'domcontentloaded' })
+    await dismissFirstRunActivation(page)
+    await page.locator('.document-tree-row', { hasText: 'Poster' }).first().click()
+    const status = page.getByTestId('kit-status-bar')
+    await expect(status).toContainText('96 x 64 px', { timeout: 30_000 })
+
+    // A marquee around the centre, then the paint bucket fills only the selection.
+    await page.getByTestId('photo-tool-RectMarquee').click()
+    await drag(page, [0.4, 0.4], [0.6, 0.6])
+    await page.getByTestId('photo-tool-PaintBucket').click()
+    const box = (await page.getByTestId('kit-canvas-surface').boundingBox())!
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+    await expect.poll(() => centrePixel(page)).toEqual([0, 0, 0])
+    expect(await centrePixel(page, 0.3, 0.5)).toEqual([255, 255, 255])
+
+    // Command shortcuts come from the engine: Cmd+D deselects.
+    await page.getByTestId('kit-editor').press('ControlOrMeta+d')
+    await page.getByTestId('photo-tool-Rectangle').click()
+    await drag(page, [0.3, 0.3], [0.38, 0.38])
+    await expect(page.getByTestId('photo-kit-layers')).toContainText('Rectangle', { timeout: 10_000 })
+
+    await page.getByTestId('photo-tool-Type').click()
+    await page.mouse.click(box.x + box.width * 0.35, box.y + box.height * 0.7)
+    await page.getByTestId('photo-text-field').fill('Hello')
+    await page.getByTestId('photo-text-field').press('Enter')
+    await expect(page.getByTestId('photo-kit-layers')).toContainText('Hello', { timeout: 10_000 })
+
+    // The brush-like tools and the magic wand run their own engine commands. They paint pixel
+    // layers, so the Background is chosen first (the engine refuses Type layers, as Photoshop does).
+    await page.getByTestId('photo-kit-layers').getByText('Background', { exact: true }).click()
+    for (const tool of ['Blur', 'Dodge', 'SpotHealing', 'HistoryBrush']) {
+      await page.getByTestId(`photo-tool-${tool}`).click()
+      await drag(page, [0.2, 0.8], [0.5, 0.85])
+    }
+    await page.getByTestId('photo-tool-CloneStamp').click()
+    await expect(page.getByTestId('photo-clone-hint')).toBeVisible()
+    await page.keyboard.down('Alt')
+    await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5)
+    await page.keyboard.up('Alt')
+    await expect(page.getByTestId('photo-clone-hint')).toHaveCount(0)
+    await drag(page, [0.75, 0.3], [0.8, 0.35])
+    await page.getByTestId('photo-tool-MagicWand').click()
+    await page.mouse.click(box.x + box.width * 0.2, box.y + box.height * 0.2)
+    await expect(page.getByText('The change could not be applied', { exact: true })).toHaveCount(0)
+
+    // Crop proposes an area; Enter applies it.
+    await page.getByTestId('photo-tool-Crop').click()
+    await drag(page, [0.3, 0.3], [0.7, 0.7])
+    await expect(page.getByTestId('photo-crop-apply')).toBeVisible()
+    await page.getByTestId('kit-editor').press('Enter')
+    await expect(status).not.toContainText('96 x 64 px')
+    await expect(page.getByTestId('kit-unsaved')).toBeVisible()
   } finally {
     await host.dispose()
   }

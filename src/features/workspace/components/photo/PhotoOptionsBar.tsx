@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Maximize, Minus, Plus } from 'lucide-react'
 import { Button } from '@/components/ui'
@@ -46,10 +46,12 @@ type PhotoOptionsBarProps = {
   details: KitsPhotoDetails | null
   /** Sets editor UI state through the kit (`ui.set`): tool, brush size, zoom. */
   onSet: (settings: Record<string, unknown>) => void
+  /** The active tool's other options, after its name. */
+  children?: ReactNode
 }
 
 /** The active tool's options and the zoom controls, above the canvas. */
-export function PhotoOptionsBar({ details, onSet }: PhotoOptionsBarProps) {
+export function PhotoOptionsBar({ details, onSet, children }: PhotoOptionsBarProps) {
   const { t } = useTranslation('workspace')
   const tool = toolFor(details?.tool)
   const zoom = typeof details?.zoom === 'number' ? details.zoom : null
@@ -57,6 +59,7 @@ export function PhotoOptionsBar({ details, onSet }: PhotoOptionsBarProps) {
     <div className="flex h-10 shrink-0 items-center gap-3 border-b border-border px-3 text-[13px]" data-testid="photo-options-bar">
       <span className="font-medium text-foreground">{tool ? t(`photoKit.tools.${tool.label}`) : details?.tool ?? ''}</span>
       {tool?.painting ? <BrushSize size={details?.brushSize ?? 20} label={t('photoKit.brushSize')} onCommit={(size) => onSet({ brushSize: size })} /> : null}
+      {children}
       <div className="flex-1" />
       <div className="flex items-center gap-0.5">
         <Button variant="ghost" size="icon" className="size-7" aria-label={t('photoKit.zoomOut')} title={t('photoKit.zoomOut')} disabled={zoom == null} onClick={() => zoom && onSet({ zoom: Math.max(0.01, zoom / ZOOM_STEP) })}>

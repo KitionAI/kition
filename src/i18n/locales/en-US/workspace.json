@@ -691,22 +691,28 @@
     },
     "stats": {
       "open": "Open {{ms}} ms",
-      "render": "Render {{ms}} ms",
-      "stroke": "Stroke {{ms}} ms"
-    }
+      "render": "Render {{ms}} ms"
+    },
+    "applyCrop": "Crop",
+    "cancel": "Cancel",
+    "shapeRect": "Rectangle",
+    "shapeEllipse": "Ellipse",
+    "fontSize": "Size",
+    "typePlaceholder": "Type, then press Enter",
+    "cloneHint": "Alt-click to set the source"
   },
   "kitEditor": {
     "askAgent": "Ask Agent",
     "changedOnDisk": "This file changed outside the editor, and you have unsaved edits.",
-    "commandFailed": "Photo could not apply the change",
+    "commandFailed": "The change could not be applied",
     "keepMine": "Keep my edits",
-    "openFailed": "Could not open this image",
+    "openFailed": "Could not open this file",
     "opening": "Opening…",
     "redo": "Redo",
     "reloadFile": "Load the new version",
     "reopen": "Open again",
     "save": "Save",
-    "saveFailed": "Could not save the image",
+    "saveFailed": "Could not save the file",
     "saved": "Saved",
     "undo": "Undo",
     "unsaved": "Unsaved"

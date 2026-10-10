@@ -1,17 +1,28 @@
-import { useCallback, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Layers } from 'lucide-react'
 import type { KitsPhotoDetails } from '@/api/kits'
-import { KitEditorFrame, useKitDocument, useKitEditor, type RasterRect, type RasterView, type RasterViewportStats } from '@/features/kits/public'
+import {
+  KitCanvas,
+  KitEditorFrame,
+  useKitDocument,
+  useKitEditor,
+  type KitCanvasHandle,
+  type RasterView,
+  type RasterViewportStats,
+} from '@/features/kits/public'
 import { PhotoOptionsBar } from './photo/PhotoOptionsBar'
 import { PhotoSidePanel } from './photo/PhotoSidePanel'
+import { PhotoTextField, type PhotoTextDraft } from './photo/PhotoTextField'
+import { PhotoToolOptions } from './photo/PhotoToolOptions'
 import { PhotoToolRail } from './photo/PhotoToolRail'
-import { PhotoWebCanvas, type PhotoCanvasHandle, type PhotoStrokePoint } from './photo/PhotoWebCanvas'
+import { photoCanvasTool } from './photo/photoCanvasTools'
 import { PHOTO_SDK, describePhoto } from './photo/photoKitSdk'
 import { PHOTO_MENU_ORDER, PHOTO_TOOLS } from './photo/photoTools'
+import { usePhotoOverlays, type CropArea } from './photo/usePhotoOverlays'
 
-/** The tools the in-page canvas handles itself. */
-const WEB_TOOL_IDS = new Set(['Brush', 'Eraser', 'Eyedropper', 'Hand', 'Zoom'])
+/** The tools the in-page canvas handles. */
+const WEB_TOOL_IDS = new Set(['Move', 'RectMarquee', 'Lasso', 'MagicWand', 'Crop', 'Eyedropper', 'SpotHealing', 'Brush', 'CloneStamp', 'HistoryBrush', 'Eraser', 'Gradient', 'PaintBucket', 'Blur', 'Dodge', 'Rectangle', 'Type', 'Hand', 'Zoom'])
 const WEB_TOOLS = PHOTO_TOOLS.filter((tool) => WEB_TOOL_IDS.has(tool.id))
 const ZOOM_STEP = 1.25
 
@@ -22,47 +33,56 @@ type PhotoWebEditorProps = {
   onOpenAgent?: () => void
 }
 
-/** The image area a stroke can touch: its points, widened by the brush and a soft edge. */
-function strokeBounds(points: readonly PhotoStrokePoint[], size: number): RasterRect {
-  const reach = size / 2 + 2
-  const xs = points.map((point) => point[0])
-  const ys = points.map((point) => point[1])
-  return {
-    x0: Math.floor(Math.min(...xs) - reach),
-    y0: Math.floor(Math.min(...ys) - reach),
-    x1: Math.ceil(Math.max(...xs) + reach),
-    y1: Math.ceil(Math.max(...ys) + reach),
-  }
-}
-
 function hex(rgb: readonly number[]) {
   return `#${rgb.map((channel) => Math.round(channel).toString(16).padStart(2, '0')).join('')}`
 }
 
+/** The tool chosen by a key: the first tool with that shortcut, or the next one when it is already active. */
+function toolForKey(key: string, current: string) {
+  const matches = WEB_TOOLS.filter((item) => item.shortcut.toLowerCase() === key)
+  if (!matches.length) return null
+  const index = matches.findIndex((item) => item.id === current)
+  return matches[(index + 1) % matches.length].id
+}
+
 /**
  * A layered image edited in the page, built on the Kit SDK template: the
- * Photo engine runs in a worker and paints into a canvas, the shared kit
- * frame draws the editor, and Photo adds its tools, options, and layers.
+ * Photo engine runs in a worker and paints into the kit canvas, the shared
+ * kit frame draws the editor, and Photo adds its tools, options, and layers.
  */
 export function PhotoWebEditor({ path, active, onOpenAgent }: PhotoWebEditorProps) {
   const { t } = useTranslation('workspace')
   const photo = useKitDocument(PHOTO_SDK, path, active, describePhoto)
   const editor = useKitEditor(photo, { onOpenAgent })
-  const canvas = useRef<PhotoCanvasHandle>(null)
+  const canvas = useRef<KitCanvasHandle>(null)
   const viewMemory = useRef<RasterView | null>(null)
   const [tool, setTool] = useState('Brush')
   const [brushSize, setBrushSize] = useState(24)
   const [foreground, setForeground] = useState<[number, number, number]>([0, 0, 0])
+  const [background, setBackground] = useState<[number, number, number]>([255, 255, 255])
+  const [shapeKind, setShapeKind] = useState<'rect' | 'ellipse'>('rect')
+  const [fontSize, setFontSize] = useState(48)
+  const [crop, setCrop] = useState<CropArea | null>(null)
+  const [textDraft, setTextDraft] = useState<PhotoTextDraft | null>(null)
+  const [cloneSource, setCloneSource] = useState<{ x: number; y: number } | null>(null)
   const [zoom, setZoom] = useState<number | null>(null)
   const [stats, setStats] = useState<RasterViewportStats | null>(null)
-  const [strokeMs, setStrokeMs] = useState<number | null>(null)
   const { run } = editor
+  const overlays = usePhotoOverlays(photo.doc, photo.change, photo.state?.hasSelection ?? false, zoom, tool === 'Crop' ? crop : null)
 
-  const stroke = useCallback(async (points: PhotoStrokePoint[], erase: boolean) => {
-    const started = performance.now()
-    await run('paint.stroke', { points, size: brushSize, color: hex(foreground), erase }, strokeBounds(points, brushSize))
-    setStrokeMs(Math.round(performance.now() - started))
-  }, [brushSize, foreground, run])
+  const canvasTool = useMemo(() => photoCanvasTool(tool, {
+    brushSize,
+    foreground: hex(foreground),
+    background: hex(background),
+    shapeKind,
+    layerBounds: photo.state?.activeBounds ?? null,
+    run,
+    pick: setForeground,
+    proposeCrop: setCrop,
+    beginText: (pointer) => setTextDraft({ x: pointer.x, y: pointer.y, left: pointer.canvasX, top: pointer.canvasY }),
+    cloneSource,
+    setCloneSource,
+  }), [background, brushSize, cloneSource, foreground, photo.state?.activeBounds, run, shapeKind, tool])
 
   const details = useMemo<KitsPhotoDetails | null>(() => (photo.state ? {
     ...photo.state.details,
@@ -70,11 +90,23 @@ export function PhotoWebEditor({ path, active, onOpenAgent }: PhotoWebEditorProp
     brushSize,
     zoom,
     foreground: [...foreground.map((channel) => channel / 255), 1],
-    background: [1, 1, 1, 1],
-  } : null), [brushSize, foreground, photo.state, tool, zoom])
+    background: [...background.map((channel) => channel / 255), 1],
+  } : null), [background, brushSize, foreground, photo.state, tool, zoom])
+
+  const chooseTool = (next: string) => {
+    setTool(next)
+    setCrop(null)
+  }
+
+  const applyCrop = async () => {
+    if (!crop) return
+    const area = crop
+    setCrop(null)
+    if (await run('image.crop', area)) canvas.current?.fit()
+  }
 
   const setOptions = (settings: Record<string, unknown>) => {
-    if (typeof settings.tool === 'string') setTool(settings.tool)
+    if (typeof settings.tool === 'string') chooseTool(settings.tool)
     if (typeof settings.brushSize === 'number') setBrushSize(settings.brushSize)
     if (typeof settings.zoom === 'number') canvas.current?.zoomTo(settings.zoom)
     if (settings.fit) canvas.current?.fit()
@@ -83,17 +115,28 @@ export function PhotoWebEditor({ path, active, onOpenAgent }: PhotoWebEditorProp
   const keyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const command = event.metaKey || event.ctrlKey
     const key = event.key.toLowerCase()
-    if (command && key === '0') canvas.current?.fit()
+    if (crop && key === 'enter') void applyCrop()
+    else if (crop && key === 'escape') setCrop(null)
+    else if (command && key === '0') canvas.current?.fit()
     else if (command && (key === '=' || key === '+')) canvas.current?.zoomBy(ZOOM_STEP)
     else if (command && key === '-') canvas.current?.zoomBy(1 / ZOOM_STEP)
-    else if (!command && key === '[') setBrushSize((size) => Math.max(1, Math.round(size / 1.2)))
-    else if (!command && key === ']') setBrushSize((size) => Math.min(500, Math.round(size * 1.2)))
-    else if (!command && !event.altKey) {
-      const match = WEB_TOOLS.find((item) => item.shortcut.toLowerCase() === key)
-      if (!match) return
-      setTool(match.id)
-    } else return
+    else if (!command && !event.altKey && key === '[') setBrushSize((size) => Math.max(1, Math.round(size / 1.2)))
+    else if (!command && !event.altKey && key === ']') setBrushSize((size) => Math.min(500, Math.round(size * 1.2)))
+    else if (!command && !event.altKey && key === 'x') {
+      setForeground(background)
+      setBackground(foreground)
+    } else if (!command && !event.altKey && key === 'd') {
+      setForeground([0, 0, 0])
+      setBackground([255, 255, 255])
+    } else if (!command && !event.altKey && !event.shiftKey && toolForKey(key, tool)) chooseTool(toolForKey(key, tool)!)
+    else return
     event.preventDefault()
+  }
+
+  const placeText = (text: string) => {
+    const draft = textDraft
+    setTextDraft(null)
+    if (draft) void run('type.create', { x: Math.round(draft.x), y: Math.round(draft.y), text, size: fontSize, color: hex(foreground) })
   }
 
   const filename = path.split('/').filter(Boolean).pop() || path
@@ -107,8 +150,22 @@ export function PhotoWebEditor({ path, active, onOpenAgent }: PhotoWebEditorProp
       menuOrder={PHOTO_MENU_ORDER}
       menuLabel={(label) => t(`photoKit.menu.${label}`, { defaultValue: label })}
       onKeyDown={keyDown}
-      options={<PhotoOptionsBar details={details} onSet={setOptions} />}
-      tools={<PhotoToolRail tools={WEB_TOOLS} tool={tool} foreground={details?.foreground} background={details?.background} onSelect={setTool} />}
+      options={(
+        <PhotoOptionsBar details={details} onSet={setOptions}>
+          <PhotoToolOptions
+            tool={tool}
+            shapeKind={shapeKind}
+            onShapeKind={setShapeKind}
+            fontSize={fontSize}
+            onFontSize={setFontSize}
+            cropProposed={crop != null}
+            cloneSourceSet={cloneSource != null}
+            onApplyCrop={() => void applyCrop()}
+            onCancelCrop={() => setCrop(null)}
+          />
+        </PhotoOptionsBar>
+      )}
+      tools={<PhotoToolRail tools={WEB_TOOLS} tool={tool} foreground={details?.foreground} background={details?.background} onSelect={chooseTool} />}
       side={<PhotoSidePanel details={details} onRun={(command, params) => void run(command, params)} />}
       status={<span>{photo.state?.summary ?? ''}</span>}
       statusEnd={(
@@ -117,7 +174,6 @@ export function PhotoWebEditor({ path, active, onOpenAgent }: PhotoWebEditorProp
             {[
               photo.openMs != null ? t('photoKit.stats.open', { ms: photo.openMs }) : null,
               stats ? t('photoKit.stats.render', { ms: stats.renderMs }) : null,
-              strokeMs != null ? t('photoKit.stats.stroke', { ms: strokeMs }) : null,
             ].filter(Boolean).join(' · ')}
           </span>
           {zoom != null ? <span className="tabular-nums">{Math.round(zoom * 100)}%</span> : null}
@@ -125,21 +181,23 @@ export function PhotoWebEditor({ path, active, onOpenAgent }: PhotoWebEditorProp
       )}
     >
       {photo.doc ? (
-        <PhotoWebCanvas
+        <KitCanvas
           ref={canvas}
           viewMemory={viewMemory}
           doc={photo.doc}
           change={photo.change}
-          tool={tool}
-          brushSize={brushSize}
-          color={hex(foreground)}
-          onStroke={(points, erase) => void stroke(points, erase)}
-          onPick={setForeground}
+          tool={canvasTool}
+          decorate={overlays.decorate}
+          animated={overlays.animated}
           onView={(view, next) => {
             setZoom(view.zoom)
             if (next) setStats(next)
           }}
-        />
+        >
+          {textDraft ? (
+            <PhotoTextField draft={textDraft} size={fontSize} zoom={zoom ?? 1} color={hex(foreground)} onCommit={placeText} onCancel={() => setTextDraft(null)} />
+          ) : null}
+        </KitCanvas>
       ) : null}
     </KitEditorFrame>
   )

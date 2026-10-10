@@ -59,8 +59,13 @@ function checkerPattern(context: CanvasRenderingContext2D) {
  * and zooming redraw that frame at once, and a fresh render follows when the
  * view settles.
  */
+/** Draws on top of the document in canvas CSS pixels; `toScreen` maps document points there. */
+export type RasterDecoration = (context: CanvasRenderingContext2D, toScreen: (x: number, y: number) => { x: number; y: number }, view: RasterView) => void
+
 export class RasterViewport {
   view: RasterView = { zoom: 1, x: 0, y: 0 }
+  /** Drawn after the document on every frame, for example marching ants. */
+  decorate: RasterDecoration | null = null
   private frame: Frame | null = null
   private pattern: CanvasPattern | null = null
   private settle: number | undefined
@@ -83,6 +88,11 @@ export class RasterViewport {
 
   private get size() {
     return { width: this.canvas.clientWidth, height: this.canvas.clientHeight, dpr: window.devicePixelRatio || 1 }
+  }
+
+  /** Canvas CSS pixel position of a document point. */
+  toScreen(x: number, y: number) {
+    return { x: (x - this.view.x) * this.view.zoom, y: (y - this.view.y) * this.view.zoom }
   }
 
   /** Image coordinates of a point in the canvas's CSS pixels. */
@@ -260,6 +270,11 @@ export class RasterViewport {
       context.imageSmoothingEnabled = zoom < 1
       context.imageSmoothingQuality = 'high'
       context.drawImage(frame.bitmap, (frame.x - x) * zoom, (frame.y - y) * zoom, frame.width * zoom, frame.height * zoom)
+    }
+    if (this.decorate) {
+      context.save()
+      this.decorate(context, (px, py) => this.toScreen(px, py), this.view)
+      context.restore()
     }
   }
 
