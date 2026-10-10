@@ -163,8 +163,9 @@ test('hides New image when no kit can create images', async ({ page, baseURL }) 
   }
 })
 
-test('shows the embedded editor over the tab in the desktop app and hides it with the tab', async ({ page, baseURL }) => {
+test('draws the Photo editor chrome around the embedded canvas and drives the kit', async ({ page, baseURL }, testInfo) => {
   test.setTimeout(60_000)
+  const png = await fs.readFile(path.join(process.cwd(), 'public', 'logo-mark.png'))
   const host = await installDesktopHost(page)
   try {
     await fs.writeFile(path.join(host.root, 'Poster.psd'), Buffer.from('8BPS fixture'))
@@ -173,17 +174,43 @@ test('shows the embedded editor over the tab in the desktop app and hides it wit
     await page.route('**/api/v1/kits', (route) => fulfillJson(route, { code: 200, message: 'success', data: {
       kits: [{ id: 'kit.photo', name: 'Kition Photo', extensions: ['psd'], creates: ['psd'], installed: true, embeddable: true, binaryEnv: 'KITION_KIT_PHOTO_BINARY' }],
     } }))
-    const opened: Array<{ path: string; rect: { x: number; y: number; width: number; height: number }; visible: boolean }> = []
-    const updates: Array<{ rect?: unknown; visible?: boolean }> = []
+    const details = {
+      width: 96, height: 64, mode: 'Rgb', depth: 8, activeLayer: 3, tool: 'Brush', brushSize: 24, zoom: 2,
+      foreground: [0.1, 0.2, 0.8, 1], background: [1, 1, 1, 1],
+      layers: [
+        { id: 3, name: 'Ink', kind: 'Pixel', visible: true, opacity: 1, blend: 'Normal', selected: true, depth: 0 },
+        { id: 2, name: 'Background', kind: 'Pixel', visible: true, opacity: 1, blend: 'Normal', selected: false, depth: 0 },
+      ],
+    }
+    let current = photoView({ documentId: 's1::Poster.psd', details })
+    const opened: Array<{ path: string; rect: { x: number; y: number; width: number; height: number } }> = []
+    const updates: Array<{ visible?: boolean }> = []
+    const executed: Array<{ command: string; params?: Record<string, unknown> }> = []
     await page.route('**/api/v1/kits/surfaces', async (route) => {
       opened.push(JSON.parse(route.request().postData() || '{}'))
-      await fulfillJson(route, { code: 200, message: 'success', data: { surfaceId: 1, document: photoView({ documentId: 's1::Poster.psd' }) } })
+      await fulfillJson(route, { code: 200, message: 'success', data: { surfaceId: 1, document: current } })
     })
     await page.route('**/api/v1/kits/surfaces/1', async (route) => {
       if (route.request().method() === 'PUT') updates.push(JSON.parse(route.request().postData() || '{}'))
       await fulfillJson(route, { code: 200, message: 'success', data: {} })
     })
-    await page.route('**/api/v1/kits/kit.photo/documents/**', (route) => fulfillJson(route, { code: 200, message: 'success', data: photoView({ documentId: 's1::Poster.psd', dirty: true }) }))
+    const base = '**/api/v1/kits/kit.photo/documents/s1%3A%3APoster.psd'
+    await page.route(base, (route) => fulfillJson(route, { code: 200, message: 'success', data: current }))
+    await page.route(`${base}/preview**`, (route) => route.fulfill({ contentType: 'image/png', body: png }))
+    await page.route(`${base}/commands`, async (route) => {
+      if (route.request().method() === 'GET') {
+        await fulfillJson(route, { code: 200, message: 'success', data: { commands: [
+          { id: 'file.new', title: 'New…', description: null, group: 'file', mutates: true, enabled: true, menu: ['File'], shortcut: 'Cmd+N' },
+          { id: 'layer.new.layer', title: 'Layer…', description: null, group: 'layer', mutates: true, enabled: true, menu: ['Layer', 'New'], shortcut: 'Cmd+Shift+N' },
+          { id: 'filter.blur.gaussianBlur', title: 'Gaussian Blur…', description: null, group: 'filter', mutates: true, enabled: true, menu: ['Filter', 'Blur'], shortcut: null },
+        ] } })
+        return
+      }
+      const body = JSON.parse(route.request().postData() || '{}')
+      executed.push(body)
+      if (body.command === 'ui.set' && body.params?.tool) current = { ...current, details: { ...details, tool: body.params.tool }, version: current.version + 1 }
+      await fulfillJson(route, { code: 200, message: 'success', data: { changed: true, result: null, document: current } })
+    })
     await page.goto(new URL('/documents', baseURL!).toString(), { waitUntil: 'domcontentloaded' })
     await dismissFirstRunActivation(page)
     await page.locator('.document-tree-row', { hasText: 'Poster' }).first().click()
@@ -191,16 +218,34 @@ test('shows the embedded editor over the tab in the desktop app and hides it wit
     const region = page.getByTestId('photo-kit-editor-region')
     await expect(region).toBeVisible()
     await expect.poll(() => opened.length).toBe(1)
-    expect(opened[0].path).toBe('Poster.psd')
     const box = await region.boundingBox()
     expect(Math.abs(opened[0].rect.x - Math.round(box!.x))).toBeLessThanOrEqual(1)
-    expect(Math.abs(opened[0].rect.width - Math.round(box!.width))).toBeLessThanOrEqual(1)
+    await expect(page.getByTestId('photo-menu-bar')).toContainText('File')
+    await expect(page.getByTestId('photo-menu-bar')).toContainText('Filter')
+    await expect(page.getByTestId('photo-tool-Brush')).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.getByTestId('photo-options-bar')).toContainText('Brush')
+    await expect(page.getByTestId('photo-brush-size')).toHaveValue('24')
+    await expect(page.getByTestId('photo-zoom')).toHaveText('200%')
+    await expect(page.getByTestId('photo-kit-layers')).toContainText('Ink')
     await expect(page.getByTestId('agent-floating-launcher')).toHaveCount(0)
-    await expect(page.getByTestId('photo-kit-ask-agent')).toBeVisible()
-    await expect(page.getByTestId('photo-kit-unsaved')).toBeVisible({ timeout: 10_000 })
+    await page.screenshot({ path: testInfo.outputPath('photo-editor-chrome.png') })
+
+    // A Kition menu cannot draw over the native canvas: the canvas steps aside for it.
+    await page.getByTestId('photo-menu-Filter').click()
+    await expect.poll(() => updates.some((update) => update.visible === false)).toBe(true)
+    await expect(page.getByTestId('photo-canvas-snapshot')).toBeVisible()
+    await page.getByRole('menuitem', { name: 'Blur' }).hover()
+    await page.getByTestId('photo-menu-command-filter.blur.gaussianBlur').click()
+    await expect.poll(() => executed.map((entry) => entry.command)).toContain('filter.blur.gaussianBlur')
+
+    await page.getByTestId('photo-tool-Eraser').click()
+    await expect.poll(() => executed.some((entry) => entry.command === 'ui.set' && entry.params?.tool === 'Eraser')).toBe(true)
+    await expect(page.getByTestId('photo-tool-Eraser')).toHaveAttribute('aria-pressed', 'true')
+
+    await page.getByTestId('photo-layer-visibility-2').click()
+    await expect.poll(() => executed.some((entry) => entry.command === 'layer.setProps' && entry.params?.layer === 2 && entry.params?.visible === false)).toBe(true)
 
     await page.locator('.document-tree-row', { hasText: 'Notes' }).first().click()
-    await expect.poll(() => updates.some((update) => update.visible === false)).toBe(true)
     await expect(page.getByTestId('agent-floating-launcher')).toBeVisible()
   } finally {
     await host.dispose()

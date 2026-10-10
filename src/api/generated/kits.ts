@@ -71,6 +71,27 @@ export type KitsUpdateSurfaceRequest = {
   visible?: boolean
 }
 
+export type KitsCommandView = {
+  id: string
+  title: string
+  description: string | null
+  group: string
+  mutates: boolean
+  enabled: boolean
+  /**
+   * Menu path in the kit, for example ["Layer", "New"]; empty when the command is not in a menu.
+   */
+  menu: string[]
+  shortcut: string | null
+}
+
+/**
+ * GET /v1/kits/{kitId}/documents/{documentId}/commands[?query=]
+ */
+export type KitsCommandList = {
+  commands: KitsCommandView[]
+}
+
 /**
  * POST /v1/kits/documents/new: creates an `Untitled image` file in the folder and opens it.
  */
@@ -118,10 +139,23 @@ export type KitsDocumentView = {
 }
 
 export type KitsPhotoLayer = {
+  id?: number
   name: string
   kind: string
   visible: boolean
+  opacity?: number | null
+  blend?: string | null
+  selected?: boolean
+  /**
+   * Nesting inside groups; 0 at the top level.
+   */
+  depth?: number
 }
+
+/**
+ * RGBA, each 0 to 1.
+ */
+export type KitsPhotoColor = number[]
 
 export type KitsPhotoDetails = {
   width: number
@@ -129,6 +163,18 @@ export type KitsPhotoDetails = {
   mode: string
   depth: number
   layers: KitsPhotoLayer[]
+  activeLayer?: number | null
+  /**
+   * The embedded editor's active tool, for example Brush.
+   */
+  tool?: string | null
+  brushSize?: number | null
+  /**
+   * 1 is 100%.
+   */
+  zoom?: number | null
+  foreground?: KitsPhotoColor | null
+  background?: KitsPhotoColor | null
 }
 
 export type KitsExecuteRequest = {

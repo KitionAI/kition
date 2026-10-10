@@ -212,6 +212,8 @@ fn command_and_view_shapes_match_the_schema() {
         params: json!({"type": "object"}),
         mutates: true,
         enabled: true,
+        menu: vec!["Image".into(), "Adjustments".into()],
+        shortcut: Some("Cmd+M".into()),
     };
     round_trip(
         "commandsListParams",

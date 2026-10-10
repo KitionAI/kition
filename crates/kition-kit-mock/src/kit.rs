@@ -441,6 +441,8 @@ impl Kit {
                 }),
                 mutates: true,
                 enabled: !read_only,
+                menu: Vec::new(),
+                shortcut: None,
             },
             CommandInfo {
                 id: "text.clear".to_owned(),
@@ -450,6 +452,8 @@ impl Kit {
                 params: json!({ "type": "object", "additionalProperties": false }),
                 mutates: true,
                 enabled: !read_only && !empty,
+                menu: Vec::new(),
+                shortcut: None,
             },
             CommandInfo {
                 id: "edit.undo".to_owned(),
@@ -459,6 +463,8 @@ impl Kit {
                 params: json!({ "type": "object", "additionalProperties": false }),
                 mutates: true,
                 enabled: !read_only && can_undo,
+                menu: Vec::new(),
+                shortcut: None,
             },
         ];
         let commands = commands

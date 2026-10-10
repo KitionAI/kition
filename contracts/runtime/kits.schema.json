@@ -98,6 +98,34 @@
         "visible": { "type": "boolean" }
       }
     },
+    "commandView": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "description", "group", "mutates", "enabled", "menu", "shortcut"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "title": { "type": "string" },
+        "description": { "type": ["string", "null"] },
+        "group": { "type": "string" },
+        "mutates": { "type": "boolean" },
+        "enabled": { "type": "boolean" },
+        "menu": {
+          "type": "array",
+          "description": "Menu path in the kit, for example [\"Layer\", \"New\"]; empty when the command is not in a menu.",
+          "items": { "type": "string" }
+        },
+        "shortcut": { "type": ["string", "null"] }
+      }
+    },
+    "commandList": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "GET /v1/kits/{kitId}/documents/{documentId}/commands[?query=]",
+      "required": ["commands"],
+      "properties": {
+        "commands": { "type": "array", "items": { "$ref": "#/$defs/commandView" } }
+      }
+    },
     "createRequest": {
       "type": "object",
       "additionalProperties": false,
@@ -156,10 +184,20 @@
       "type": "object",
       "required": ["name", "kind", "visible"],
       "properties": {
+        "id": { "type": "integer" },
         "name": { "type": "string" },
         "kind": { "type": "string" },
-        "visible": { "type": "boolean" }
+        "visible": { "type": "boolean" },
+        "opacity": { "type": ["number", "null"] },
+        "blend": { "type": ["string", "null"] },
+        "selected": { "type": "boolean" },
+        "depth": { "type": "integer", "minimum": 0, "description": "Nesting inside groups; 0 at the top level." }
       }
+    },
+    "photoColor": {
+      "type": "array",
+      "description": "RGBA, each 0 to 1.",
+      "items": { "type": "number" }
     },
     "photoDetails": {
       "type": "object",
@@ -169,7 +207,13 @@
         "height": { "type": "integer", "minimum": 0 },
         "mode": { "type": "string" },
         "depth": { "type": "integer" },
-        "layers": { "type": "array", "items": { "$ref": "#/$defs/photoLayer" } }
+        "layers": { "type": "array", "items": { "$ref": "#/$defs/photoLayer" } },
+        "activeLayer": { "type": ["integer", "null"] },
+        "tool": { "type": ["string", "null"], "description": "The embedded editor's active tool, for example Brush." },
+        "brushSize": { "type": ["number", "null"] },
+        "zoom": { "type": ["number", "null"], "description": "1 is 100%." },
+        "foreground": { "anyOf": [{ "$ref": "#/$defs/photoColor" }, { "type": "null" }] },
+        "background": { "anyOf": [{ "$ref": "#/$defs/photoColor" }, { "type": "null" }] }
       }
     },
     "executeRequest": {

@@ -215,6 +215,11 @@ pub struct CommandInfo {
     pub params: Value,
     pub mutates: bool,
     pub enabled: bool,
+    /// Where the command sits in the kit's menus, for example `["Layer", "New"]`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub menu: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shortcut: Option<String>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]

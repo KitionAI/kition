@@ -6,6 +6,8 @@
 import request from './request'
 import { resolveApiURL } from '@/services/desktop'
 import type {
+  KitsCommandList,
+  KitsCommandView,
   KitsCreateRequest,
   KitsDocumentView,
   KitsExecuteResult,
@@ -15,7 +17,7 @@ import type {
   KitsSurfaceView,
 } from './generated/kits'
 
-export type { KitsDocumentView, KitsExecuteResult, KitsPhotoDetails, KitsSurfaceRect, KitsSurfaceView }
+export type { KitsCommandView, KitsDocumentView, KitsExecuteResult, KitsPhotoDetails, KitsSurfaceRect, KitsSurfaceView }
 
 function unwrap<T>(response: T | { data?: T }) {
   return (response as { data?: T })?.data ?? (response as T)
@@ -52,6 +54,14 @@ export function runKitCommand(kitId: string, documentId: string, command: string
   return request
     .post<KitsExecuteResult | { data?: KitsExecuteResult }>(`${documentPath(kitId, documentId)}/commands`, { command, params })
     .then(unwrap<KitsExecuteResult>)
+}
+
+/** Every command the kit offers for the document, with menu paths and enabled state. */
+export function listKitCommands(kitId: string, documentId: string) {
+  return request
+    .get<KitsCommandList | { data?: KitsCommandList }>(`${documentPath(kitId, documentId)}/commands`, { suppressErrorMessage: true })
+    .then(unwrap<KitsCommandList>)
+    .then((list) => list.commands)
 }
 
 export function saveKitDocument(kitId: string, documentId: string) {

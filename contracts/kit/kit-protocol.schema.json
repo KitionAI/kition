@@ -257,7 +257,16 @@
           "description": "JSON Schema (draft 2020-12) for commands.execute params."
         },
         "mutates": { "type": "boolean" },
-        "enabled": { "type": "boolean" }
+        "enabled": { "type": "boolean" },
+        "menu": {
+          "type": "array",
+          "description": "Where the command sits in the kit's menus, for example [\"Layer\", \"New\"]. A host that draws the kit's chrome builds its menus from it.",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "shortcut": {
+          "type": "string",
+          "description": "The default shortcut, for example Cmd+Shift+N."
+        }
       }
     },
     "commandsListParams": {

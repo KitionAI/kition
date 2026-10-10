@@ -152,6 +152,8 @@ pub struct CommandView {
     pub group: String,
     pub mutates: bool,
     pub enabled: bool,
+    pub menu: Vec<String>,
+    pub shortcut: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -711,6 +713,8 @@ impl KitManager {
                 group: command.group,
                 mutates: command.mutates,
                 enabled: command.enabled,
+                menu: command.menu,
+                shortcut: command.shortcut,
             })
             .collect())
     }
