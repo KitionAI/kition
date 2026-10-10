@@ -69,13 +69,19 @@ fn slash(path: &Path) -> String {
     path.to_string_lossy().replace('\\', "/")
 }
 
+/// Whether a cleaned path is a plain relative path. On Windows a rooted
+/// path such as `\\etc` or a drive-relative `C:x` is not absolute, yet
+/// joining it replaces the base directory.
+fn stays_within(cleaned: &Path) -> bool {
+    !cleaned.as_os_str().is_empty()
+        && cleaned
+            .components()
+            .all(|component| matches!(component, Component::Normal(_)))
+}
+
 pub fn normalize_relative_path(value: &str, extension: &str) -> Result<PathBuf, String> {
     let cleaned = clean(value.trim());
-    if cleaned.as_os_str().is_empty()
-        || cleaned.is_absolute()
-        || cleaned.starts_with("..")
-        || value.trim().starts_with('/')
-    {
+    if !stays_within(&cleaned) || value.trim().starts_with('/') {
         return Err("email sync path must stay within the workspace".into());
     }
     if !extension.is_empty() {
@@ -93,11 +99,7 @@ pub fn normalize_relative_path(value: &str, extension: &str) -> Result<PathBuf, 
 
 pub fn normalize_relative_folder(value: &str) -> Result<PathBuf, String> {
     let cleaned = clean(value.trim());
-    if cleaned.as_os_str().is_empty()
-        || cleaned.is_absolute()
-        || cleaned.starts_with("..")
-        || value.trim().starts_with('/')
-    {
+    if !stays_within(&cleaned) || value.trim().starts_with('/') {
         return Err("email sync folder must stay within the workspace".into());
     }
     Ok(cleaned)
@@ -692,6 +694,11 @@ mod tests {
     fn paths_and_titles() {
         assert!(normalize_relative_path("../x.kitable", ".kitable").is_err());
         assert!(normalize_relative_path("x.md", ".kitable").is_err());
+        if cfg!(windows) {
+            assert!(normalize_relative_path("\\etc\\x.kitable", ".kitable").is_err());
+            assert!(normalize_relative_path("C:x.kitable", ".kitable").is_err());
+            assert!(normalize_relative_folder("C:\\inbox").is_err());
+        }
         assert_eq!(
             normalize_relative_path("a/./b.KITABLE", ".kitable").ok(),
             Some(PathBuf::from("a/b.KITABLE"))
