@@ -20,8 +20,11 @@ describe('release artifacts', () => {
   })
 
   it('plans stable release names', () => {
-    const names = plannedArtifacts({ bundleDir: '/b', version: '1.2.3', triple: 'x86_64-apple-darwin' }).map((item) => item.to)
-    expect(names).toEqual(['Kition-1.2.3-macos-x64.dmg', 'Kition-1.2.3-macos-x64.app.tar.gz'])
+    const intel = plannedArtifacts({ bundleDir: '/b', version: '1.2.3', triple: 'x86_64-apple-darwin' })
+    expect(intel.map((item) => item.to)).toEqual(['Kition-1.2.3-macos-x64.dmg', 'Kition-1.2.3-macos-x64.app.tar.gz'])
+    expect(intel[0].from).toBe(path.join('/b', 'dmg', 'Kition_1.2.3_x64.dmg'))
+    const silicon = plannedArtifacts({ bundleDir: '/b', version: '1.2.3', triple: 'aarch64-apple-darwin' })
+    expect(silicon[0].from).toBe(path.join('/b', 'dmg', 'Kition_1.2.3_aarch64.dmg'))
     const windows = plannedArtifacts({ bundleDir: '/b', version: '1.2.3', triple: 'x86_64-pc-windows-msvc' })
     expect(windows[0].from).toBe(path.join('/b', 'nsis', 'Kition_1.2.3_x64-setup.exe'))
   })
