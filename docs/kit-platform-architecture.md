@@ -76,8 +76,8 @@ still does not solve the egui versus DOM rendering mismatch.
 ### 3.3 Kits as separate processes behind a protocol (chosen)
 
 Each kit is a separate native executable, built in its own repository, that
-speaks the Kit Protocol. Kition is the host. Each kit repository is a
-maintained fork of one upstream application (section 7), so Kition can change
+speaks the Kit Protocol. Kition is the host. Each kit repository is Kition's
+own copy of one upstream application (section 7), so Kition can change
 kits while still merging upstream progress. This is the model of editor
 extensions with language servers: the host owns the workspace, the shell, and
 the agent; each kit owns one editing domain.
@@ -209,23 +209,28 @@ This rule belongs in `docs/design.md` once the first embedded kit ships.
 ## 7. Upstream Integration Policy
 
 Kition modifies kits to integrate them with the product (theme, menus, agent
-hooks, Kition-specific features), so each kit is a **maintained fork** of its
+hooks, Kition-specific features), so each kit is Kition's **own copy** of its
 upstream, not a pinned dependency.
 
 ### 7.1 Repository and branch model
 
-- Each kit repository is a GitHub fork of its upstream, renamed to
-  `KitionAI/kit-<name>` (for example `KitionAI/kit-photo` forks the upstream
-  photo editor).
+Decided 2026-10-10: kit repositories are standalone repositories, not GitHub
+forks. Kition does not send pull requests upstream and expects to diverge.
+
+- Each kit repository is `KitionAI/kit-<name>`, created empty and pushed from
+  a clone of the upstream repository with its full history, so newer upstream
+  work can still be merged. `KitionAI/kit-photo` started from PhotoCraft
+  `9c427a7a` (version 0.5.0).
+- The `README.md` of each kit repository opens with the upstream base: the
+  upstream repository, version, and commit. Update it at every sync.
 - Branches:
-  - `upstream`: an exact mirror of the upstream default branch. Never commit
+  - `main` (default): the Kition line. All Kition work lands here through
+    pull requests.
+  - `upstream`: the upstream commit the last sync started from. Never commit
     to it.
-  - `main` (default): `upstream` plus Kition changes. All Kition work lands
-    here through pull requests.
-- Upstream sync is a scheduled job (weekly, or on demand) that fast-forwards
-  `upstream` and opens a pull request merging it into `main`. The merge must
-  pass the kit's tests and the Kit Protocol conformance suite. Merge, do not
-  rebase, so that collaborators' history stays stable.
+- Upstream sync is on demand: fetch upstream, merge it into a branch from
+  `main`, and open a pull request. The merge must pass the kit's tests and the
+  Kit Protocol conformance suite. Merge, do not rebase.
 - Releases are tagged on `main` as `v<kit-version>`; `kit.json` attribution
   records the upstream revision included in the release.
 
@@ -257,7 +262,7 @@ upstream, not a pinned dependency.
 ### 7.3 Workspace layout
 
 ```text
-kit-photo/                       fork of the upstream repository
+kit-photo/                       Kition's copy of the upstream repository
   Cargo.toml                     upstream workspace + Kition members
   crates/<upstream crates>       upstream code, edited only per section 7.2
   crates/kition-kit-server/      Kit Protocol server over the engine command registry
@@ -391,7 +396,7 @@ program has a foundation:
 | Phase | Deliverable | Exit criteria |
 | --- | --- | --- |
 | 0 | Kit crates in this repository (section 4.1): protocol types, host launch and client, mock kit, conformance suite | Types round-trip through the schemas; the mock kit passes the suite and each injected fault fails its check; `pnpm check:desktop` passes |
-| 1 | `KitionAI/kit-photo` fork: `kition-kit-server`, `apps/kit-photo` with a `headless` backend over the upstream automation engine, then a `window` backend over the upstream desktop app's control channel, `kition-theme`, branding | `headless` passes the conformance suite (reached 2026-10-10, 13 of 13 checks); `window` opens, edits, and saves in the real desktop client |
+| 1 | `KitionAI/kit-photo` repository: `kition-kit-server`, `apps/kit-photo` with a `headless` backend over the upstream automation engine, then a `window` backend over the upstream desktop app's control channel, `kition-theme`, branding | `headless` passes the conformance suite (reached 2026-10-10, 13 of 13 checks); `window` opens, edits, and saves in the real desktop client |
 | 2 | Runtime integration (`kition-kits`): the workspace lists `.psd`, `.psb`, and `.pcraft`; a Photo tab shows the rendered preview and layers with Undo, Redo, and Save; agent tools `photo_inspect`, `photo_commands`, `photo_run`; `/v1/kits` in `contracts/runtime/kits.schema.json`; `KITION_KIT_PHOTO_BINARY` override. Then a `window` surface for hands-on editing | Reached for `headless` on 2026-10-10: open, edit, and save a PSD from the workspace, and agent edits refresh the tab. The `window` surface remains |
 | 3 | Embedding prototype with `kit.photo` on macOS and Windows | Drag, resize, focus, IME, tablet input, shortcuts, and snapshot overlay judged acceptable in the real desktop client |
 | 4 | Distribution: pinned assets first (section 8), then the signed index, updates, and the Kits page | Install from a clean machine, offline relaunch from cache |
@@ -401,7 +406,7 @@ program has a foundation:
 ### 11.1 Trying `kit.photo` locally
 
 ```bash
-# In the kit-photo fork (needs Rust 1.95 or newer)
+# In the kit-photo repository (needs Rust 1.95 or newer)
 cargo build -p kit-photo
 
 # In this repository
