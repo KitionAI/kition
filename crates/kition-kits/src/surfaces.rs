@@ -264,12 +264,30 @@ impl KitManager {
         Ok(())
     }
 
-    /// Stops the tab's editor. Unsaved changes in it are discarded.
+    /// Stops the tab's editor. Like other Kition documents, unsaved changes are saved first.
     pub async fn close_surface(&self, id: u64) {
         let surface = self.inner.surfaces.lock().await.remove(&id);
-        if let Some(surface) = surface {
-            surface.running.stop().await;
+        let Some(surface) = surface else { return };
+        if let Ok(list) = surface
+            .running
+            .host
+            .call::<methods::DocumentList>(&Empty {})
+            .await
+        {
+            for document in list.documents.into_iter().filter(|document| document.dirty) {
+                let saved = surface
+                    .running
+                    .host
+                    .call::<methods::DocumentSave>(&DocumentRef {
+                        document_id: document.document_id.clone(),
+                    })
+                    .await;
+                if let Err(error) = saved {
+                    tracing::warn!(error = %error, path = %surface.path, "could not save the image before closing its editor");
+                }
+            }
         }
+        surface.running.stop().await;
     }
 }
 
