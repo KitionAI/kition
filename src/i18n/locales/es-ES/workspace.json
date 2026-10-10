@@ -743,6 +743,8 @@
       "View": "Ver",
       "Window": "Ventana",
       "Help": "Ayuda"
-    }
+    },
+    "mute": "Silenciar",
+    "unmute": "Activar sonido"
   }
 }

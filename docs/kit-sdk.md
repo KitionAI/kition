@@ -98,10 +98,13 @@ fn keeps_the_kit_sdk_contract() {
 ```
 
 - `crate-type = ["cdylib", "rlib"]`. The macro expands to nothing outside
-  `wasm32`, so native `cargo test` needs no wasm-bindgen. A kit's own extras
-  (Photo's `selectionOutline`) go in another
-  `#[wasm_bindgen(js_class = "<Class>")] impl __kition_kit_export::WebDocument`
-  block and are reached from the page with `KitEngine.invoke`.
+  `wasm32`, so native `cargo test` needs no wasm-bindgen, and a kit never
+  depends on wasm-bindgen itself. A kit's own extras (Photo's
+  `selectionOutline`, Film's `audio` and `audioRate`) go in an
+  `impl WebDocument` block (imported from `crate::__kition_kit_export`) with
+  `#[wasm_bindgen(js_class = "<Class>", wasm_bindgen = kition_sdk::wasm_bindgen)]`
+  and `use kition_sdk::wasm_bindgen::prelude::*`, and are reached from the
+  page with `KitEngine.invoke`.
 - No `unsafe`, no `unwrap`, `expect`, or `panic!`. Bad input returns an error
   (a `JsError` in JavaScript), never a panic, because a panic kills the worker.
 - `examples/grid-kit` in kition-sdk is the smallest complete kit to copy. A
@@ -232,7 +235,10 @@ Kition renderer:
    `<Kit>WebEditor.tsx`: `useKitDocument(KITION_KIT_HOST, …)`,
    `useKitEditor`, `KitEditorFrame`, and `KitCanvas` with the active tool.
 10. One entry in `KIT_EDITORS` (`kits/kitEditors.ts`): format, SDK, lazy
-    editor, and fallback (the runtime preview).
+    editor, fallback, and `create` when the kit makes new files (id, extension,
+    base name, size, label, icon). The create menu then offers it: the SDK's
+    own `create` makes the file in the page (`createKitFile`), under an
+    unused name, written through the host.
 11. Strings in all six locales; menu labels under `<kit>Kit.menu.*`.
 12. An e2e spec like `e2e/photo-web-editor.spec.ts`. It generates a real
     fixture with the SDK in Node, serves `/workspace-files/<file>` with an
@@ -310,6 +316,18 @@ React and the canvas:
 - Wheel listeners must be registered with `{ passive: false }` to prevent
   page scrolling. Use pointer capture and coalesced events for strokes.
 
+Time-based kits (Film):
+
+- Sound leads, the picture follows. The engine mixes audio through an SDK extra
+  (`audio(start, frames)`); `FilmAudioPlayer` schedules half-second chunks
+  about a second ahead on a WebAudio context, and playback sets the playhead
+  from that context's clock. A chunk that arrives late plays its remaining
+  part, so sound never drifts. Without a running context (no device, autoplay
+  refused) the clock falls back to wall time.
+- Create the AudioContext inside the play gesture; browsers refuse sound
+  started anywhere else.
+- Space belongs to play and pause in a player (`spacePans={false}`).
+
 Learned from Film (the second kit):
 
 - Never debounce anything that must eventually happen. Playback changes the
@@ -321,9 +339,11 @@ Learned from Film (the second kit):
   also answering to Backspace (the Mac key) is only a fallback.
 - Multi-step edits are normal (create, then place). The contract checkers take
   a list of steps, where `"$0.item"` is step 0's result field.
-- A second kit finds what the first hides: `export_kit_document!` only built
-  because Photo happened to depend on wasm-bindgen. Test SDK changes on a kit
-  that does not (`examples/grid-kit`).
+- A second kit finds what the first hides: `export_kit_document!`, and later
+  a kit's extras, only built because Photo happened to depend on wasm-bindgen.
+  Test SDK changes on a kit that does not: kition-sdk's CI builds
+  `examples/grid-kit` (with an extra) with wasm-pack and runs the JavaScript
+  checker on it.
 
 Product:
 

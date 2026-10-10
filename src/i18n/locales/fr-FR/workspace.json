@@ -743,6 +743,8 @@
       "View": "Affichage",
       "Window": "Fenêtre",
       "Help": "Aide"
-    }
+    },
+    "mute": "Couper le son",
+    "unmute": "Rétablir le son"
   }
 }

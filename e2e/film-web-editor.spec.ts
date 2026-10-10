@@ -79,6 +79,17 @@ test('edits a video project in the page with the Film engine, reading its media 
     await fs.writeFile(path.join(host.root, 'films', 'Trailer.fcproj'), await projectFixture(host.root))
     await mockLocalWorkspaceApi(page)
     await serveWorkspace(page, host.root)
+    // Headless browsers cannot hear: record the loudest sample of every sound scheduled on WebAudio.
+    await page.addInitScript(() => {
+      const peaks: number[] = []
+      ;(window as unknown as { soundPeaks: number[] }).soundPeaks = peaks
+      const start = AudioBufferSourceNode.prototype.start
+      AudioBufferSourceNode.prototype.start = function (this: AudioBufferSourceNode, ...args: Parameters<AudioBufferSourceNode['start']>) {
+        const data = this.buffer?.getChannelData(0) ?? new Float32Array()
+        peaks.push(data.reduce((max, value) => Math.max(max, Math.abs(value)), 0))
+        return start.apply(this, args)
+      }
+    })
     const saves: Buffer[] = []
     await page.route('**/api/v1/kits/files?**', async (route) => {
       saves.push(route.request().postDataBuffer() ?? Buffer.alloc(0))
@@ -105,8 +116,12 @@ test('edits a video project in the page with the Film engine, reading its media 
     const seeked = await page.getByTestId('film-timecode').textContent()
     await page.getByTestId('kit-editor').press('ArrowRight')
     await expect(page.getByTestId('film-timecode')).not.toHaveText(seeked!)
+    await page.getByTestId('film-track-Audio 1').waitFor()
+    await expect(page.getByTestId('film-track-Audio 1')).toContainText('bars.mp4')
     await page.getByTestId('film-play').click()
     await expect(page.getByTestId('film-stats')).toContainText('fps', { timeout: 10_000 })
+    // The clip's tone, mixed by the engine and scheduled ahead of the picture.
+    await expect.poll(() => page.evaluate(() => Math.max(0, ...(window as unknown as { soundPeaks: number[] }).soundPeaks)), { timeout: 10_000 }).toBeGreaterThan(0.05)
     await page.getByTestId('film-play').click()
 
     // Split at the playhead, delete the second half, undo.

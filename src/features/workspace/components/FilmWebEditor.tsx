@@ -9,11 +9,13 @@ import {
   useKitDocument,
   useKitEditor,
   type KitCanvasHandle,
+  type KitEngine,
   type RasterView,
   type RasterViewportStats,
 } from '@/features/kits/public'
 import { FilmTimeline } from './film/FilmTimeline'
 import { FilmTransport } from './film/FilmTransport'
+import { FilmAudioPlayer } from './film/filmAudio'
 import { FILM_SDK, describeFilm } from './film/filmKitSdk'
 
 /** Film's menus, in the order video editors show them. */
@@ -36,28 +38,54 @@ function relativePath(folder: string, to: string) {
   return [...from.slice(shared).map(() => '..'), ...target.slice(shared)].join('/')
 }
 
-/** Plays from the playhead in real time; frames the engine cannot keep up with are skipped. */
-function usePlayback(run: (command: string, params: Record<string, unknown>) => Promise<unknown>, playhead: number, duration: number) {
+/**
+ * Plays from the playhead with sound: the audio clock leads, and the picture
+ * follows it; frames the engine cannot keep up with are skipped.
+ */
+function usePlayback(doc: KitEngine | null, run: (command: string, params: Record<string, unknown>) => Promise<unknown>, playhead: number, duration: number) {
   const [playing, setPlaying] = useState(false)
+  const [muted, setMuted] = useState(false)
   const latest = useRef({ playhead, duration })
   latest.current = { playhead, duration }
+  const audio = useRef<FilmAudioPlayer | null>(null)
+
+  const stop = useCallback(() => {
+    audio.current?.stop()
+    audio.current = null
+    setPlaying(false)
+  }, [])
+
+  // The context is made here, in the click or key press, where browsers allow sound to start.
+  const toggle = useCallback(() => {
+    if (playing || !doc) {
+      stop()
+      return
+    }
+    const from = latest.current.playhead >= latest.current.duration - 1e-3 ? 0 : latest.current.playhead
+    const player = new FilmAudioPlayer(muted)
+    audio.current = player
+    void player.start(doc, from)
+    setPlaying(true)
+  }, [doc, muted, playing, stop])
+
+  useEffect(() => {
+    audio.current?.setMuted(muted)
+  }, [muted])
 
   useEffect(() => {
     if (!playing) return undefined
-    const startedAt = performance.now()
-    const from = latest.current.playhead >= latest.current.duration ? 0 : latest.current.playhead
     let busy = false
     let stopped = false
     const step = async () => {
       if (stopped) return
-      const at = from + (performance.now() - startedAt) / 1000
+      const at = audio.current?.now() ?? latest.current.playhead
       if (at >= latest.current.duration) {
-        setPlaying(false)
+        stop()
         return
       }
       if (!busy) {
         busy = true
-        await run('playhead.set', { seconds: at }).catch(() => setPlaying(false))
+        await run('playhead.set', { seconds: at }).catch(stop)
         busy = false
       }
       requestAnimationFrame(() => void step())
@@ -66,9 +94,11 @@ function usePlayback(run: (command: string, params: Record<string, unknown>) => 
     return () => {
       stopped = true
     }
-  }, [playing, run])
+  }, [playing, run, stop])
 
-  return { playing, toggle: () => setPlaying((value) => !value), stop: () => setPlaying(false) }
+  useEffect(() => () => audio.current?.stop(), [])
+
+  return { playing, toggle, stop, muted, toggleMuted: () => setMuted((value) => !value) }
 }
 
 /**
@@ -88,7 +118,7 @@ export function FilmWebEditor({ path, active, onOpenAgent }: FilmWebEditorProps)
   const state = film.state
   const { run: runQuietly } = film
   const { run } = editor
-  const playback = usePlayback(runQuietly, state?.playhead ?? 0, state?.duration ?? 0)
+  const playback = usePlayback(film.doc, runQuietly, state?.playhead ?? 0, state?.duration ?? 0)
 
   const seek = useCallback((seconds: number) => void runQuietly('playhead.set', { seconds: Math.max(0, seconds) }).catch(() => undefined), [runQuietly])
 
@@ -129,6 +159,8 @@ export function FilmWebEditor({ path, active, onOpenAgent }: FilmWebEditorProps)
             film={state}
             playing={playback.playing}
             onPlay={playback.toggle}
+            muted={playback.muted}
+            onMute={playback.toggleMuted}
             onSeek={seek}
             onStep={(count) => void runQuietly('playhead.step', { frames: count })}
             onSplit={() => void run('sequence.addEdit', { time: Math.round(state.playhead * state.ticksPerSecond) })}

@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Pause, Play, Scissors, SkipBack, SkipForward, StepBack, StepForward } from 'lucide-react'
+import { Pause, Play, Scissors, SkipBack, SkipForward, StepBack, StepForward, Volume2, VolumeX } from 'lucide-react'
 import { Button } from '@/components/ui'
 import { timecode, type FilmState } from './filmKitSdk'
 import { FilmMediaMenu } from './FilmMediaMenu'
@@ -8,6 +8,8 @@ type FilmTransportProps = {
   film: FilmState
   playing: boolean
   onPlay: () => void
+  muted: boolean
+  onMute: () => void
   onSeek: (seconds: number) => void
   onStep: (frames: number) => void
   onSplit: () => void
@@ -17,7 +19,7 @@ type FilmTransportProps = {
 }
 
 /** Play, step, jump, split, and add media, under the program monitor. */
-export function FilmTransport({ film, playing, onPlay, onSeek, onStep, onSplit, onAddMedia, projectPath }: FilmTransportProps) {
+export function FilmTransport({ film, playing, onPlay, muted, onMute, onSeek, onStep, onSplit, onAddMedia, projectPath }: FilmTransportProps) {
   const { t } = useTranslation('workspace')
   const button = 'size-8'
   return (
@@ -38,6 +40,9 @@ export function FilmTransport({ film, playing, onPlay, onSeek, onStep, onSplit, 
       </Button>
       <Button variant="ghost" size="icon" className={button} aria-label={t('filmKit.goToEnd')} title={t('filmKit.goToEnd')} onClick={() => onSeek(Math.max(0, film.duration - film.frame))}>
         <SkipForward className="size-4" aria-hidden="true" />
+      </Button>
+      <Button variant="ghost" size="icon" className={button} aria-label={muted ? t('filmKit.unmute') : t('filmKit.mute')} title={muted ? t('filmKit.unmute') : t('filmKit.mute')} aria-pressed={muted} onClick={onMute} data-testid="film-mute">
+        {muted ? <VolumeX className="size-4" aria-hidden="true" /> : <Volume2 className="size-4" aria-hidden="true" />}
       </Button>
       <span className="ml-2 font-mono text-[13px] tabular-nums text-foreground" data-testid="film-timecode">{timecode(film.playhead, film.fps)}</span>
       <span className="font-mono text-[13px] tabular-nums text-muted-foreground">/ {timecode(film.duration, film.fps)}</span>

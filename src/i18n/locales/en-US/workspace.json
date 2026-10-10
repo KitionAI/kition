@@ -743,6 +743,8 @@
       "View": "View",
       "Window": "Window",
       "Help": "Help"
-    }
+    },
+    "mute": "Mute",
+    "unmute": "Unmute"
   }
 }

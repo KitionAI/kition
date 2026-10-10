@@ -743,6 +743,8 @@
       "View": "Exibir",
       "Window": "Janela",
       "Help": "Ajuda"
-    }
+    },
+    "mute": "Silenciar",
+    "unmute": "Ativar som"
   }
 }
