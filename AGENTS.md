@@ -89,9 +89,15 @@ covers the three GFM table widget row and column button regressions.
 
 ## Kits (Mandatory)
 
-- Read `docs/kit-sdk.md` before any kit work. It is the source of truth for
-  how a kit appears in Kition, and its checklist is the definition of done
-  for a new kit.
+- Read `docs/kit-sdk.md` before any kit work. It is how Kition implements the
+  Kition Kit Standard (`docs/standard.md` in the private `KitionAI/kition-sdk`
+  repository), which is normative: kits, the host, and the agent conform to
+  it, and contract changes go there first. The checklist in `docs/kit-sdk.md`
+  is the definition of done for a new kit, and every kit ships a `kit.json`
+  that passes the standard's `tools/check-manifest.mjs`.
+- Kition is the standard's reference implementation, and its agent targets
+  DeepSeek Harness contracts (tool definitions, session event log, SDK
+  protocol) by contract, not by embedding another runtime.
 - Kit editors run in the page: the kit's engine is compiled to WebAssembly,
   runs in a Web Worker, and paints into a canvas, while Kition draws all
   chrome. Never embed a kit's native window over a tab; that was tried and

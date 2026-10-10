@@ -1,11 +1,15 @@
 # Kit SDK: Editing Kit Files Inside Kition
 
 Status: in use for `kit.photo` and `kit.film` since 2026-10-10. Every new kit
-must follow this guide. The kit-side SDK is the private repository
-`KitionAI/kition-sdk` (AGPL-3.0-only, like Kition); its `docs/contract.md`
-holds the contract section 3 summarizes. The platform background lives in
-[kit-platform-architecture.md](kit-platform-architecture.md) and the wire
-protocol in [kit-protocol.md](kit-protocol.md).
+must follow this guide.
+
+This guide is how Kition implements the **Kition Kit Standard**, which is
+normative: [`docs/standard.md`](https://github.com/KitionAI/kition-sdk/blob/main/docs/standard.md)
+in the private `KitionAI/kition-sdk` repository (AGPL-3.0-only, aligned with
+DeepSeek Harness contracts), with its plan in `docs/roadmap.md` there. Where
+this guide and the standard disagree, the standard wins and this guide is
+fixed. Every kit ships a `kit.json` manifest checked by the standard's
+`tools/check-manifest.mjs`.
 
 ## 1. The Decision
 
