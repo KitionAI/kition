@@ -1,0 +1,11 @@
+{
+  "$comment": "Kit SDKs built into public/kits/<kit>-sdk by scripts/build-kit-sdk.sh, and how scripts/check-kit-sdk.mjs checks each one (docs/kit-sdk.md).",
+  "photo": {
+    "repository": "KitionAI/kit-photo",
+    "crate": "kition-photo-sdk",
+    "module": "kition_photo_sdk",
+    "class": "PhotoDocument",
+    "name": "fixture.psd",
+    "edit": { "command": "paint.stroke", "params": { "points": [[4, 4, 1], [30, 20, 1]], "size": 6, "color": "#ff0000" } }
+  }
+}

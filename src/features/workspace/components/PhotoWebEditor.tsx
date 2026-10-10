@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Layers } from 'lucide-react'
 import type { KitsPhotoDetails } from '@/api/kits'
 import {
+  KITION_KIT_HOST,
   KitCanvas,
   KitEditorFrame,
   useKitDocument,
@@ -52,7 +53,7 @@ function toolForKey(key: string, current: string) {
  */
 export function PhotoWebEditor({ path, active, onOpenAgent }: PhotoWebEditorProps) {
   const { t } = useTranslation('workspace')
-  const photo = useKitDocument(PHOTO_SDK, path, active, describePhoto)
+  const photo = useKitDocument(KITION_KIT_HOST, PHOTO_SDK, path, active, describePhoto)
   const editor = useKitEditor(photo, { onOpenAgent })
   const canvas = useRef<KitCanvasHandle>(null)
   const viewMemory = useRef<RasterView | null>(null)

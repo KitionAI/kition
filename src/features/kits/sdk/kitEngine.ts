@@ -1,5 +1,4 @@
-import type { KitsCommandView } from '@/api/kits'
-import type { KitSdkManifest } from './kitSdk'
+import type { KitCommand, KitSdkManifest } from './kitSdk'
 
 /** What the page keeps in sync about the open document after every request that can change it. */
 export type KitEngineInfo = {
@@ -103,7 +102,7 @@ export class KitEngine {
   }
 
   async commands() {
-    return (await this.call({ method: 'commands' })) as KitsCommandView[]
+    return (await this.call({ method: 'commands' })) as KitCommand[]
   }
 
   /** The document as file bytes; it stays unsaved until `markSaved`. */

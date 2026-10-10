@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { KitsCommandView } from '@/api/kits'
 import { notify } from '@/lib/notify'
-import type { RasterRect } from './rasterViewport'
-import type { useKitDocument } from './useKitDocument'
+import type { KitCommand } from '../sdk/kitSdk'
+import type { RasterRect } from '../sdk/rasterViewport'
+import type { useKitDocument } from '../sdk/useKitDocument'
 
 type KitDocument = ReturnType<typeof useKitDocument<unknown>>
 
@@ -20,7 +20,7 @@ function errorText(error: unknown) {
  */
 export function useKitEditor(document: KitDocument, options: { onOpenAgent?: () => void } = {}) {
   const { t } = useTranslation('workspace')
-  const [commands, setCommands] = useState<KitsCommandView[]>([])
+  const [commands, setCommands] = useState<KitCommand[]>([])
   const { doc, run: runCommand, save: saveDocument, commands: listCommands, dirty, change } = document
 
   const refreshCommands = useCallback(() => {

@@ -96,12 +96,18 @@ covers the three GFM table widget row and column button regressions.
   runs in a Web Worker, and paints into a canvas, while Kition draws all
   chrome. Never embed a kit's native window over a tab; that was tried and
   rejected. Native kit executables run only `headless`, for the agent.
-- Build every kit editor on `src/features/kits/public.ts` (`KitEngine`,
-  `useKitDocument`, `useKitEditor`, `KitEditorFrame`, `RasterViewport`) and
-  register it in `src/features/workspace/components/kits/kitEditors.ts`. Put
-  shared behavior in the template, not in one kit.
-- A kit SDK implements the contract in `docs/kit-sdk.md` section 3 exactly,
-  including `renderArea` box exactness and `save` without marking saved.
+- Build every kit editor on `src/features/kits/public.ts` (`useKitDocument`,
+  `KitCanvas` with `KitTool`s, `useKitEditor`, `KitEditorFrame`) and register
+  it in `src/features/workspace/components/kits/kitEditors.ts` and
+  `kits/sdks.json`. Put shared behavior in the template, not in one kit.
+- `src/features/kits/sdk/` is the portable core of the open Kit SDK: it must
+  never import the rest of Kition (`pnpm check:deps` enforces it). Shared
+  strings under `workspace:kitEditor.*` must never name a kit.
+- A kit SDK implements `KitDocument` from the `kition-kit-sdk` crate, exports
+  it with `export_kit_document!`, and passes
+  `kition_kit_sdk::testing::check_contract` in its tests and
+  `pnpm check:kit-sdks` once built. Contract changes bump the version in both
+  the Rust crate and `src/features/kits/sdk/kitSdk.ts`.
 - Kit repositories are standalone clones (never GitHub forks). Log every
   upstream file change in their `KITION_CHANGES.md`.
 - Never run a kit engine on the page's thread, never write a kit file except

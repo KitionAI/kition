@@ -1,7 +1,7 @@
 import { HAND_TOOL, ZOOM_TOOL, dragRect, type KitPointer, type KitTool, type RasterRect } from '@/features/kits/public'
 
 /** An image area that needs no repaint: the change touched no pixels (selections). */
-export const NO_REPAINT: RasterRect = { x0: 0, y0: 0, x1: 0, y1: 0 }
+const NO_REPAINT: RasterRect = { x0: 0, y0: 0, x1: 0, y1: 0 }
 
 const SOFT_EDGE = 2
 const ANT_DASH = [4, 4]

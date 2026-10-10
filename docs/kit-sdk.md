@@ -30,17 +30,23 @@ without the SDK and is slated for removal.
 ```text
 kit repository (for example KitionAI/kit-photo, standalone, private)
   crates/<engine crates>          the upstream engine, changed as needed
-  crates/kition-<kit>-sdk         the SDK: the engine as WebAssembly (section 3)
+  crates/kition-kit-sdk           the Rust half of the Kit SDK: KitDocument, export_kit_document!,
+                                  testing::check_contract (MIT OR Apache-2.0; moves to the open SDK)
+  crates/kition-<kit>-sdk         the kit's SDK: its engine behind KitDocument, as WebAssembly
   apps/kit-<kit>                  the headless Kit Protocol executable (agent)
   KITION_CHANGES.md               every upstream file Kition changed, and why
 
 Kition (this repository)
-  public/kits/<kit>-sdk/          the built SDK (not committed; scripts/build-kit-sdk.sh)
-  src/features/kits/              the template every kit editor shares (section 4)
+  kits/sdks.json                  every kit SDK: crate, module, class, and its contract-check edit
+  public/kits/<kit>-sdk/          the built SDK (not committed; scripts/build-kit-sdk.sh <kit>)
+  src/features/kits/sdk/          the portable TypeScript core of the Kit SDK (section 4); it
+                                  imports nothing else from Kition (enforced by check:deps)
+  src/features/kits/kition/       Kition's editor chrome and workspace host for kits
   src/features/workspace/components/kits/kitEditors.ts
                                   the registry: format -> SDK, editor, fallback
   src/features/workspace/components/<Kit>WebEditor.tsx and <kit>/
-                                  the kit's own tools, panels, and canvas
+                                  the kit's own tools, panels, and options
+  scripts/check-kit-sdk.mjs       checks a built SDK against the contract (pnpm check:kit-sdks)
   crates/kition-kits/             the runtime side: kit definitions, /v1/kits routes,
                                   PUT /v1/kits/files for in-page saves
   crates/kition-agent/src/tools/kits.rs
@@ -50,36 +56,63 @@ Kition (this repository)
 Data flow for one open file:
 
 ```text
-workspace file --fetch--> KitEngine (page) --postMessage--> kitEngine.worker
-   ^                          |                               |  SDK document
-   |                          | info after every change       |  render, renderArea,
-   |                          v                               |  execute, inspect,
-   +---- PUT /v1/kits/files <-- save() bytes <----------------+  commands, save
+file --KitHost.read--> KitEngine (page) --postMessage--> kitEngine.worker
+  ^                        |                               |  SDK document
+  |                        | info after every change       |  render, renderArea,
+  |                        v                               |  execute, inspect,
+  +---- KitHost.write <-- save() bytes <-------------------+  commands, save, invoke
 ```
 
-The agent edits the same file through the headless kit and saves it. The tab
-notices the new version on disk (section 6).
+In Kition, `KitHost` is `KITION_KIT_HOST`: it reads `/workspace-files/<path>`
+and writes through `PUT /v1/kits/files`. The agent edits the same file through
+the headless kit and saves it. The tab notices the new version on disk
+(section 6).
 
 ## 3. The SDK Contract (Kit Side)
 
-Each kit repository adds `crates/kition-<kit>-sdk`, modelled on
-`crates/kition-photo-sdk` in kit-photo:
+Each kit repository adds `crates/kition-<kit>-sdk` on top of the
+`kition-kit-sdk` crate, modelled on `crates/kition-photo-sdk` in kit-photo:
 
-- `crate-type = ["cdylib", "rlib"]`. `wasm-bindgen` is a dependency only for
-  `cfg(target_arch = "wasm32")`.
-- A plain Rust `<Kit>Document` holds the engine session, so native
-  `cargo test` covers it. A `web` module wraps it for JavaScript with
-  `#[wasm_bindgen(js_name = <Kit>Document)]`.
+```rust
+use kition_kit_sdk::{KitCommand, KitDocument};
+
+pub struct SketchDocument { /* the engine's session */ }
+
+impl KitDocument for SketchDocument {
+    fn open(name: &str, bytes: &[u8]) -> Result<Self, String> { /* … */ }
+    // create, width, height, revision, dirty, render, render_area,
+    // execute, inspect, commands, save, mark_saved
+}
+
+kition_kit_sdk::export_kit_document!(SketchDocument as "SketchDocument");
+
+#[test]
+fn keeps_the_kit_sdk_contract() {
+    kition_kit_sdk::testing::check_contract::<SketchDocument>(&fixture(), "fixture.sketch", |doc| {
+        doc.execute("draw.line", serde_json::json!({ "from": [1, 1], "to": [20, 10] })).map(|_| ())
+    })
+    .unwrap();
+}
+```
+
+- `crate-type = ["cdylib", "rlib"]`. The macro expands to nothing outside
+  `wasm32`, so native `cargo test` needs no wasm-bindgen. A kit's own extras
+  (Photo's `selectionOutline`) go in another
+  `#[wasm_bindgen(js_class = "<Class>")] impl __kition_kit_export::WebDocument`
+  block and are reached from the page with `KitEngine.invoke`.
 - No `unsafe`, no `unwrap`, `expect`, or `panic!`. Bad input returns an error
   (a `JsError` in JavaScript), never a panic, because a panic kills the worker.
+- `crates/kition-kit-sdk/tests/reference_kit.rs` is a complete minimal kit to
+  copy.
 
-The JavaScript shape every SDK must expose (`KitSdkDocument` in
+The JavaScript class the macro generates (`KitSdkDocument` in
 `src/features/kits/sdk/kitSdk.ts`):
 
 | Member | Meaning |
 | --- | --- |
 | `static open(name, bytes)` | Opens file bytes; `name`'s extension picks the format |
 | `static create(name, width, height)` | A new blank document (for New) |
+| `static contractVersion()` | The contract the SDK implements (now 1); Kition refuses newer ones |
 | `width`, `height` | Document size in document pixels |
 | `revision` (`u64`, a `bigint` in JS) | Moves with every change |
 | `dirty` | Unsaved changes exist |
@@ -87,13 +120,20 @@ The JavaScript shape every SDK must expose (`KitSdkDocument` in
 | `renderArea(x0, y0, x1, y1, width, height)` | RGBA8 of exactly that integer area averaged to exactly that size. When the area is k times the size, every output pixel must be the exact k × k box average (the canvas relies on it for seamless patches) |
 | `execute(command, paramsJson)` | Runs an engine command, returns its JSON result; unknown commands and bad parameters are errors |
 | `inspect()` | The document as JSON; must include `canUndo` and `canRedo`; the rest is the kit's own |
-| `commands()` | JSON array of `{ id, title, menu: string[] \| null, shortcut, mutates, enabled }`. Kition builds the menus from `menu` |
+| `commands()` | JSON array of `{ id, title, menu: string[] \| null, shortcut, params, mutates, enabled }`. Kition builds the menus from `menu` and binds `shortcut` |
 | `save(name?)` | The document as file bytes. It must **not** mark the document saved |
 | `markSaved()` | Marks the last `save` as written. Kition calls it only after the file reached the disk |
 | `free()` | Releases the document |
 
-Commands must include `edit.undo` and `edit.redo`; the shared frame's Undo,
-Redo, and keyboard shortcuts call them.
+Commands must include `edit.undo` and `edit.redo`; the shared frame's Undo and
+Redo call them. Shortcuts are written `Cmd+Shift+Z`, `Alt+Backspace`, `F12`;
+`Cmd` means Control off macOS.
+
+Prove the contract twice: `check_contract` in the kit's Rust tests, and the
+built WebAssembly with `node scripts/check-kit-sdk.mjs --kit <kit>` after an
+entry in `kits/sdks.json`. `pnpm check:kit-sdks` checks every built kit. A
+third party checks any SDK with `--dir`, `--module`, `--class`, `--name`, and
+`--edit`.
 
 Build it with `scripts/build-kit-sdk.sh <kit>`. It needs `wasm-pack` and a
 Rust toolchain new enough for the kit; kit-photo needs 1.95, and the script
@@ -107,23 +147,38 @@ edits a stale copy and its save overwrites the person's work. See
 
 ## 4. The Template (Kition Side)
 
-`src/features/kits/public.ts` is the only import path:
+`src/features/kits/public.ts` is the only import path; it re-exports what
+kits use, and more of `sdk/` can be added when a kit needs it. The template
+has two layers.
+
+**`sdk/`, the portable core.** It depends on React and itself only, and is
+what the open Kit SDK will publish:
 
 | Export | Role |
 | --- | --- |
-| `KitSdkManifest` | `{ kitId, dir, module, documentClass }`: where the SDK lives |
-| `kitSdkAvailable(manifest)` | Whether this build has the SDK (checks for a JavaScript response, because a missing file falls back to the app page) |
-| `KitEngine` | The page's handle on one document in its own worker; async calls answered in order; `info` (`width`, `height`, `revision`, `dirty`, `canUndo`, `canRedo`, `inspected`) is current after every change; a worker failure rejects every waiting call |
-| `useKitDocument(manifest, path, active, describe)` | Loads the file, follows it on disk, runs commands, saves in place; `describe(info)` maps `inspected` to the kit's view model |
-| `useKitEditor(document, { onOpenAgent })` | Command menus, failure and save notices, "save before asking the agent" |
-| `KitEditorFrame` | The shared editor layout and its opening, failure, and changed-on-disk states; handles Cmd/Ctrl+Z, Shift+Cmd/Ctrl+Z, Cmd/Ctrl+Y, Cmd/Ctrl+S |
-| `KitMenuBar` | Menus from `commands()` in a given top-level order |
-| `RasterViewport` | The canvas engine: cached frame, pan and zoom, fit, exact damage patches, eyedropper sampling |
+| `KitSdkManifest`, `kitSdkAvailable` | Where an SDK lives (`{ kitId, dir, module, documentClass }`) and whether this build has it |
+| `KitEngine` | One document in its own worker; async calls answered in order; `info` (`width`, `height`, `revision`, `dirty`, `canUndo`, `canRedo`, `inspected`) is current after every change; `invoke(name, …args)` reaches an SDK's own extras; a worker failure rejects every waiting call |
+| `KitHost` | File IO: `read`, `stamp`, `write` |
+| `useKitDocument(host, manifest, path, active, describe)` | Loads the file, follows it on disk, runs commands with a repaint area, saves in place; `describe(info)` maps `inspected` to the kit's view model |
+| `KitCanvas` | The document on a canvas: the active `KitTool` gets gestures in document pixels; Space, the middle button, and `HAND_TOOL` pan; the wheel pans and zooms with Cmd or Ctrl; pointer capture and coalesced events; a preview overlay; `decorate` with `animated` for marching ants; HTML children for inline fields |
+| `KitTool`, `KitGesture`, `KitPointer`, `HAND_TOOL`, `ZOOM_TOOL`, `dragRect` | Tools: `begin(pointer, { viewport, overlay })` returns a gesture with `move`, `end`, `cancel` |
+| `RasterViewport` | The canvas engine: cached frame, pan, zoom, fit, exact damage patches, sampling, `toScreen` |
+| `commandForShortcut` (internal) | Shortcut matching used by the frame |
+
+**`kition/`, Kition's chrome.**
+
+| Export | Role |
+| --- | --- |
+| `KITION_KIT_HOST` | The workspace as a `KitHost` |
+| `useKitEditor(document, { onOpenAgent })` | Command list (refreshed after each change), failure and save notices, "save before asking the agent" |
+| `KitEditorFrame` | Header, menus, options, tools, canvas, panels, status bar; opening, failure, and changed-on-disk states. Keys go to the kit first, then Cmd/Ctrl+S, then every enabled command's own shortcut (modified keys, Delete, Backspace, F-keys; never Kition's Cmd+N, W, O, P, Q, T, or comma) |
+| `KitMenuBar` | Menus from the commands in a given top-level order |
 
 Shared test ids: `kit-editor`, `kit-unsaved`, `kit-save`, `kit-ask-agent`,
 `kit-menu-bar`, `kit-menu-<Menu>`, `kit-menu-command-<id>`,
-`kit-canvas-region`, `kit-opening`, `kit-file-changed`, `kit-file-reload`,
-`kit-status-bar`. Shared strings live under `workspace:kitEditor.*`.
+`kit-canvas-region`, `kit-canvas`, `kit-canvas-surface`, `kit-opening`,
+`kit-file-changed`, `kit-file-reload`, `kit-status-bar`. Shared strings live
+under `workspace:kitEditor.*` and must never name a kit.
 
 ## 5. Adding A Kit: Checklist
 
@@ -132,9 +187,8 @@ Kit repository:
 1. Create the standalone repository from upstream as a clone, never a GitHub
    fork. Note the upstream base in the README and keep `KITION_CHANGES.md`
    current.
-2. Add `crates/kition-<kit>-sdk` (section 3) with native tests for open,
-   render, `renderArea` exactness, execute, inspect, commands, save, and bad
-   input.
+2. Add `crates/kition-<kit>-sdk` on `kition-kit-sdk` (section 3), with
+   `check_contract` in its tests plus the kit's own tests.
 3. Implement the headless Kit Protocol executable and pass the conformance
    suite (`kition-kit-conformance`); include the reload-on-change rule.
 
@@ -152,11 +206,14 @@ Kition runtime and desktop:
 
 Kition renderer:
 
-8. `src/features/workspace/components/<kit>/<kit>KitSdk.ts`: the manifest
-   and `describe<Kit>(info)`.
-9. `<Kit>WebEditor.tsx`: `useKitDocument` plus `useKitEditor` plus
-   `KitEditorFrame`, with the kit's tools, options, panels, and a canvas
-   built on `RasterViewport` (copy `PhotoWebCanvas` for pointer handling).
+8. An entry in `kits/sdks.json`, then `scripts/build-kit-sdk.sh <kit>` and
+   `pnpm check:kit-sdks`.
+9. `src/features/workspace/components/<kit>/<kit>KitSdk.ts`: the manifest
+   and `describe<Kit>(info)`; `<kit>CanvasTools.ts`: the kit's `KitTool`s
+   (Photo's `photoCanvasTools.ts` shows brushes, rectangles, lassos, clicks,
+   and inline text).
+   `<Kit>WebEditor.tsx`: `useKitDocument(KITION_KIT_HOST, …)`,
+   `useKitEditor`, `KitEditorFrame`, and `KitCanvas` with the active tool.
 10. One entry in `KIT_EDITORS` (`kits/kitEditors.ts`): format, SDK, lazy
     editor, and fallback (the runtime preview).
 11. Strings in all six locales; menu labels under `<kit>Kit.menu.*`.
@@ -221,6 +278,15 @@ Saving and the agent:
 
 React and the canvas:
 
+- `KitCanvas` focuses the editor itself on pointer down and suppresses the
+  browser's mousedown focus. Otherwise a field a tool opens (Type) loses focus
+  the moment it appears.
+- Selection-only commands repaint nothing: pass an empty damage area
+  (`NO_REPAINT` in Photo), then trace the selection with an SDK extra.
+- Engines refuse edits that make no sense for the target (painting a type
+  layer). Show the engine's message in the notice; in tests, pick a valid
+  target first instead of expecting success everywhere.
+
 - Remember the last view (for reloads) only after the canvas placed it by
   fitting or by restoring. StrictMode's double effects otherwise store the
   default view and the image opens at 100% in the corner.
@@ -249,3 +315,28 @@ desktop app's status bar too.
 | Repaint after a stroke | < 50 ms | 11 to 23 ms |
 | Pan and zoom | next frame | immediate (cached frame) |
 | Save | < 3 s, no long tasks | 1.3 to 1.9 s, none |
+
+## 8. Toward The Open Kit SDK
+
+The Kit SDK will be published so other developers can make their engines
+editable inside Kition, and so the KitionAI kits (Photo first, then the
+others) ship as SDKs. What is already portable:
+
+- the Rust crate `kition-kit-sdk` (trait, export macro, contract checker,
+  reference kit), dual MIT and Apache-2.0 like the upstream engines;
+- the TypeScript core `src/features/kits/sdk/`, which `check:deps` keeps free
+  of Kition imports;
+- `scripts/check-kit-sdk.mjs` and the contract in section 3.
+
+What stays in Kition: the editor chrome (`src/features/kits/kition/`), the
+workspace host, the registry, the runtime routes, and the agent tools.
+
+Rules until it is published:
+
+- Every change to the contract bumps `CONTRACT_VERSION` (Rust) and
+  `KIT_CONTRACT_VERSION` (TypeScript) together, and updates both checkers.
+- Anything a second kit would need goes into `sdk/` or `kition-kit-sdk`, not
+  into one kit.
+- Kit-specific behavior never leaks into the core. Use `invoke` for extras,
+  `describe` for view models, and `KitTool` for interaction.
+

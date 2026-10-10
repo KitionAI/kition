@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { writeKitFile } from '@/api/kits'
-import { resolveWorkspaceFileURL } from '@/services/workspaceFiles'
 import { KitEngine, type KitEngineInfo } from './kitEngine'
 import type { KitSdkManifest } from './kitSdk'
+import type { KitHost } from './kitHost'
 import type { RasterRect } from './rasterViewport'
 
 /** One edit: the canvas repaints `damage`, or everything when it is null. */
@@ -15,17 +14,6 @@ function errorText(error: unknown) {
   return error instanceof Error ? error.message : String(error)
 }
 
-/** Identifies one version of the file: its validator, or its time and size. */
-function fileStamp(response: Response) {
-  const headers = response.headers
-  return headers.get('etag') || [headers.get('last-modified'), headers.get('content-length')].filter(Boolean).join('|') || null
-}
-
-async function readStamp(url: string) {
-  const response = await fetch(url, { method: 'HEAD', cache: 'no-store' })
-  return response.ok ? fileStamp(response) : null
-}
-
 /**
  * One workspace file opened in a kit's in-page engine: starts the engine
  * worker with the file's bytes, runs commands, and saves the file back in
@@ -33,9 +21,9 @@ async function readStamp(url: string) {
  * While the tab is active it follows the file: when the agent saves a new
  * version the document reloads, unless there are unsaved edits, which raise
  * `conflict`. `describe` turns the engine's `inspect()` JSON into what the
- * kit's editor shows.
+ * kit's editor shows; `host` reads and writes the file.
  */
-export function useKitDocument<T>(manifest: KitSdkManifest, path: string, active: boolean, describe: (info: KitEngineInfo) => T) {
+export function useKitDocument<T>(host: KitHost, manifest: KitSdkManifest, path: string, active: boolean, describe: (info: KitEngineInfo) => T) {
   const docRef = useRef<KitEngine | null>(null)
   const describeRef = useRef(describe)
   describeRef.current = describe
@@ -51,7 +39,6 @@ export function useKitDocument<T>(manifest: KitSdkManifest, path: string, active
   const [saving, setSaving] = useState(false)
   const [conflict, setConflict] = useState(false)
   const [attempt, setAttempt] = useState(0)
-  const url = resolveWorkspaceFileURL(path)
 
   const refresh = useCallback((damage: RasterRect | null = null) => {
     const current = docRef.current
@@ -66,10 +53,7 @@ export function useKitDocument<T>(manifest: KitSdkManifest, path: string, active
   const load = useCallback(async (isCurrent: () => boolean) => {
     busyRef.current = true
     try {
-      const response = await fetch(url, { cache: 'no-store' })
-      if (!response.ok) throw new Error(`could not read ${path} (${response.status})`)
-      const stamp = fileStamp(response)
-      const bytes = await response.arrayBuffer()
+      const { bytes, stamp } = await host.read(path)
       if (!isCurrent()) return
       const started = performance.now()
       const name = path.split('/').filter(Boolean).pop() || path
@@ -90,7 +74,7 @@ export function useKitDocument<T>(manifest: KitSdkManifest, path: string, active
     } finally {
       busyRef.current = false
     }
-  }, [manifest, path, refresh, url])
+  }, [host, manifest, path, refresh])
 
   useEffect(() => {
     let current = true
@@ -114,7 +98,7 @@ export function useKitDocument<T>(manifest: KitSdkManifest, path: string, active
       const open = docRef.current
       if (!open || busyRef.current || !stampRef.current) return
       try {
-        const stamp = await readStamp(url)
+        const stamp = await host.stamp(path)
         if (!current || !stamp || stamp === stampRef.current || busyRef.current) return
         if (open.info.dirty) setConflict(true)
         else await load(() => current)
@@ -126,7 +110,7 @@ export function useKitDocument<T>(manifest: KitSdkManifest, path: string, active
       current = false
       window.clearInterval(timer)
     }
-  }, [active, load, url])
+  }, [active, host, load, path])
 
   /** Runs an engine command; throws when the engine refuses it. `damage` limits the repaint. */
   const run = useCallback(async (command: string, params: Record<string, unknown> = {}, damage: RasterRect | null = null) => {
@@ -147,8 +131,8 @@ export function useKitDocument<T>(manifest: KitSdkManifest, path: string, active
     busyRef.current = true
     try {
       const at = open.info.revision
-      await writeKitFile(path, await open.save())
-      stampRef.current = await readStamp(url).catch(() => null)
+      await host.write(path, await open.save())
+      stampRef.current = await host.stamp(path).catch(() => null)
       // Only a file that reached the disk counts as saved, and only if nothing changed meanwhile.
       if (open.info.revision === at) await open.markSaved()
       setConflict(false)
@@ -157,17 +141,17 @@ export function useKitDocument<T>(manifest: KitSdkManifest, path: string, active
       busyRef.current = false
       setSaving(false)
     }
-  }, [path, refresh, url])
+  }, [host, path, refresh])
 
   const reopen = useCallback(() => setAttempt((value) => value + 1), [])
 
   /** Keeps the unsaved edits; the next save replaces the newer file. */
   const keepMine = useCallback(() => {
     setConflict(false)
-    void readStamp(url).then((stamp) => {
+    void host.stamp(path).then((stamp) => {
       if (stamp) stampRef.current = stamp
     })
-  }, [url])
+  }, [host, path])
 
   return { doc, info, state, change, dirty, failure, openMs, saving, conflict, run, commands, save, reopen, keepMine }
 }

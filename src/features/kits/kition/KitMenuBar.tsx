@@ -10,16 +10,16 @@ import {
   MenuBarSubTrigger,
   MenuBarTrigger,
 } from '@/components/MenuBar'
-import type { KitsCommandView } from '@/api/kits'
+import type { KitCommand } from '../sdk/kitSdk'
 
 type MenuNode = {
   label: string
-  commands: KitsCommandView[]
-  submenus: Map<string, KitsCommandView[]>
+  commands: KitCommand[]
+  submenus: Map<string, KitCommand[]>
 }
 
 /** Groups commands by their first menu segment, and the rest by their second, in `order`. */
-function buildMenus(commands: readonly KitsCommandView[], order: readonly string[]) {
+function buildMenus(commands: readonly KitCommand[], order: readonly string[]) {
   const menus = new Map<string, MenuNode>()
   for (const command of commands) {
     const [top, sub] = command.menu
@@ -49,7 +49,7 @@ function shortcutLabel(shortcut: string | null) {
     : shortcut.replace(/Cmd\+/g, 'Ctrl+')
 }
 
-function CommandItem({ command, onRun, testId }: { command: KitsCommandView; onRun: (command: KitsCommandView) => void; testId: string }) {
+function CommandItem({ command, onRun, testId }: { command: KitCommand; onRun: (command: KitCommand) => void; testId: string }) {
   return (
     <MenuBarItem
       disabled={!command.enabled}
@@ -63,8 +63,8 @@ function CommandItem({ command, onRun, testId }: { command: KitsCommandView; onR
 }
 
 type KitMenuBarProps = {
-  commands: readonly KitsCommandView[]
-  onRun: (command: KitsCommandView) => void
+  commands: readonly KitCommand[]
+  onRun: (command: KitCommand) => void
   /** Called when a menu opens, so enabled states can be refreshed. */
   onOpen: () => void
   /** Top-level menus in display order; others follow. */

@@ -1,4 +1,4 @@
-import type { KitsCommandView } from '@/api/kits'
+import type { KitCommand } from './kitSdk'
 
 /** Shortcuts Kition itself owns; a kit command never takes them. */
 const HOST_SHORTCUTS = new Set(['Cmd+N', 'Cmd+W', 'Cmd+O', 'Cmd+P', 'Cmd+Q', 'Cmd+,', 'Cmd+S', 'Cmd+Shift+S', 'Cmd+T'])
@@ -47,6 +47,6 @@ export function bindableShortcut(shortcut: string | null): shortcut is string {
 }
 
 /** The enabled command whose shortcut is `event`, if any. */
-export function commandForShortcut(commands: readonly KitsCommandView[], event: KeyLike, mac = isMac()) {
+export function commandForShortcut(commands: readonly KitCommand[], event: KeyLike, mac = isMac()) {
   return commands.find((command) => command.enabled && bindableShortcut(command.shortcut) && shortcutMatches(command.shortcut, event, mac))
 }

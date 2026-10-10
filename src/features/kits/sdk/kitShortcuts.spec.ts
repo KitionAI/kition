@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { KitsCommandView } from '@/api/kits'
+import type { KitCommand } from './kitSdk'
 import { bindableShortcut, commandForShortcut, shortcutMatches } from './kitShortcuts'
 
 const key = (code: string, extra: Partial<{ key: string; metaKey: boolean; ctrlKey: boolean; shiftKey: boolean; altKey: boolean }> = {}) => ({
@@ -38,7 +38,7 @@ describe('kit shortcuts', () => {
     const commands = [
       { id: 'select.all', shortcut: 'Cmd+A', enabled: false },
       { id: 'select.deselect', shortcut: 'Cmd+D', enabled: true },
-    ] as KitsCommandView[]
+    ] as KitCommand[]
     expect(commandForShortcut(commands, key('KeyA', { metaKey: true }), true)).toBeUndefined()
     expect(commandForShortcut(commands, key('KeyD', { metaKey: true }), true)?.id).toBe('select.deselect')
   })

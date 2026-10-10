@@ -43,6 +43,7 @@
     "check:blank-comments": "python3 scripts/check-blank-comment-blocks.py",
     "check:knip": "node scripts/check-knip-baseline.mjs",
     "check:knip:update": "node scripts/check-knip-baseline.mjs --update",
+    "check:kit-sdks": "node scripts/check-kit-sdk.mjs --all",
     "check:deps": "depcruise --config tooling/dependency-cruiser.cjs --ignore-known tooling/dependency-cruiser.known.json --output-type err src",
     "check:deps:update": "depcruise --config tooling/dependency-cruiser.cjs --baseline tooling/dependency-cruiser.known.json --baseline-mode shrink-only src",
     "check:e2e-coverage": "node scripts/check-e2e-coverage.mjs",

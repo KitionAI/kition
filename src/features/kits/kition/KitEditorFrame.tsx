@@ -2,9 +2,9 @@ import type { KeyboardEvent, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Loader2, Redo2, RefreshCw, Save, Sparkles, Undo2, type LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui'
-import type { useKitDocument } from '../sdk/useKitDocument'
-import type { useKitEditor } from '../sdk/useKitEditor'
 import { commandForShortcut } from '../sdk/kitShortcuts'
+import type { useKitDocument } from '../sdk/useKitDocument'
+import type { useKitEditor } from './useKitEditor'
 import { KitMenuBar } from './KitMenuBar'
 
 type KitEditorFrameProps = {

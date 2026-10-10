@@ -2,9 +2,27 @@
  * The Kit SDK contract: how a kit's engine, compiled to WebAssembly, plugs
  * into Kition's in-page editors. Every kit SDK exposes the same document
  * class shape (see docs/kit-sdk.md), so one worker, one client, and one
- * document hook serve every kit.
+ * document hook serve every kit. Nothing under `sdk/` imports the rest of
+ * Kition: it is the portable core of the open Kit SDK.
  */
-import type { KitsCommandView } from '@/api/kits'
+
+/** One engine command, as the editor's menus and shortcuts show it. */
+export type KitCommand = {
+  id: string
+  title: string
+  description: string | null
+  /** The command's family, the id's first segment. */
+  group: string
+  mutates: boolean
+  enabled: boolean
+  /** The menu path, for example ["Layer", "New"]; empty when it is not in a menu. */
+  menu: string[]
+  /** As `Cmd+Shift+N`; `Cmd` is Control off macOS. */
+  shortcut: string | null
+}
+
+/** The contract version this host implements (`contractVersion()` in the Rust crate). */
+const KIT_CONTRACT_VERSION = 1
 
 /** Where a kit's SDK lives in the app: `public/kits/<dir>/<module>.js` and `<module>_bg.wasm`. */
 export type KitSdkManifest = {
@@ -70,8 +88,10 @@ export function loadKitSdk(manifest: KitSdkManifest): Promise<KitSdkModule> {
 
 /** Opens file bytes with a loaded SDK's document class. */
 export function openKitSdkDocument(module: KitSdkModule, manifest: KitSdkManifest, name: string, bytes: Uint8Array) {
-  const documentClass = module[manifest.documentClass] as { open?: (name: string, bytes: Uint8Array) => KitSdkDocument } | undefined
+  const documentClass = module[manifest.documentClass] as { open?: (name: string, bytes: Uint8Array) => KitSdkDocument; contractVersion?: () => number } | undefined
   if (typeof documentClass?.open !== 'function') throw new Error(`${manifest.module} has no ${manifest.documentClass}.open`)
+  const version = documentClass.contractVersion?.() ?? 1
+  if (version > KIT_CONTRACT_VERSION) throw new Error(`${manifest.module} needs Kit SDK contract ${version}; this app supports ${KIT_CONTRACT_VERSION}`)
   return documentClass.open(name, bytes)
 }
 
@@ -85,8 +105,8 @@ export async function kitSdkAvailable(manifest: KitSdkManifest) {
   }
 }
 
-/** A kit's commands, shaped like the runtime's kit command list so the same menus show them. */
-export function kitSdkCommands(json: string): KitsCommandView[] {
+/** A kit's commands from its SDK's `commands()` JSON. */
+export function kitSdkCommands(json: string): KitCommand[] {
   const commands = JSON.parse(json) as Array<{ id: string; title: string; menu: string[] | null; shortcut: string | null; mutates: boolean; enabled: boolean; description?: string | null }>
   return commands.map((command) => ({
     id: command.id,

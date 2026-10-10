@@ -1,8 +1,8 @@
 import { useEffect, useImperativeHandle, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode, type Ref, type RefObject } from 'react'
-import type { KitEngine } from '../sdk/kitEngine'
-import { HAND_TOOL, type KitGesture, type KitOverlay, type KitPointer, type KitTool, type KitToolContext } from '../sdk/kitTools'
-import { RasterViewport, type RasterDecoration, type RasterView, type RasterViewportStats } from '../sdk/rasterViewport'
-import type { KitChange } from '../sdk/useKitDocument'
+import type { KitEngine } from './kitEngine'
+import { HAND_TOOL, type KitGesture, type KitOverlay, type KitPointer, type KitTool, type KitToolContext } from './kitTools'
+import { RasterViewport, type RasterDecoration, type RasterView, type RasterViewportStats } from './rasterViewport'
+import type { KitChange } from './useKitDocument'
 
 const BACKDROP = '#f3f3f6'
 const WHEEL_ZOOM_SPEED = 0.01
