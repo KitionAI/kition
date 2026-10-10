@@ -87,6 +87,27 @@ covers the three GFM table widget row and column button regressions.
 - When reviewing screenshots, compare geometry, palette, hierarchy, and control
   emphasis against `docs/design.md`.
 
+## Kits (Mandatory)
+
+- Read `docs/kit-sdk.md` before any kit work. It is the source of truth for
+  how a kit appears in Kition, and its checklist is the definition of done
+  for a new kit.
+- Kit editors run in the page: the kit's engine is compiled to WebAssembly,
+  runs in a Web Worker, and paints into a canvas, while Kition draws all
+  chrome. Never embed a kit's native window over a tab; that was tried and
+  rejected. Native kit executables run only `headless`, for the agent.
+- Build every kit editor on `src/features/kits/public.ts` (`KitEngine`,
+  `useKitDocument`, `useKitEditor`, `KitEditorFrame`, `RasterViewport`) and
+  register it in `src/features/workspace/components/kits/kitEditors.ts`. Put
+  shared behavior in the template, not in one kit.
+- A kit SDK implements the contract in `docs/kit-sdk.md` section 3 exactly,
+  including `renderArea` box exactness and `save` without marking saved.
+- Kit repositories are standalone clones (never GitHub forks). Log every
+  upstream file change in their `KITION_CHANGES.md`.
+- Never run a kit engine on the page's thread, never write a kit file except
+  through `PUT /v1/kits/files`, and never overwrite unsaved edits when the
+  file changes on disk.
+
 ## Repository Layout And Secrets (Mandatory)
 
 - `src/` is the React renderer, `src-tauri/` the Tauri desktop shell, and

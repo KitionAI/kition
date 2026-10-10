@@ -693,9 +693,22 @@
       "open": "Ouverture {{ms}} ms",
       "render": "Rendu {{ms}} ms",
       "stroke": "Trait {{ms}} ms"
-    },
-    "changedOnDisk": "Cette image a été modifiée hors de l'éditeur et vous avez des modifications non enregistrées.",
+    }
+  },
+  "kitEditor": {
+    "askAgent": "Demander à l'agent",
+    "changedOnDisk": "Ce fichier a été modifié hors de l'éditeur et vous avez des modifications non enregistrées.",
+    "commandFailed": "Photo n'a pas pu appliquer la modification",
     "keepMine": "Garder mes modifications",
-    "reloadFile": "Charger la nouvelle version"
+    "openFailed": "Impossible d'ouvrir cette image",
+    "opening": "Ouverture…",
+    "redo": "Rétablir",
+    "reloadFile": "Charger la nouvelle version",
+    "reopen": "Rouvrir",
+    "save": "Enregistrer",
+    "saveFailed": "Impossible d'enregistrer l'image",
+    "saved": "Enregistré",
+    "undo": "Annuler",
+    "unsaved": "Non enregistré"
   }
 }

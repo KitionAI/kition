@@ -1,8 +1,6 @@
 import { useEffect, useImperativeHandle, useRef, useState, type RefObject, type Ref } from 'react'
 import { cn } from '@/lib/utils'
-import type { PhotoEngine } from './photoEngine'
-import { PhotoViewport, type PhotoView, type PhotoViewportStats } from './photoViewport'
-import type { PhotoChange } from './usePhotoDocument'
+import { RasterViewport, type KitChange, type KitEngine, type RasterView, type RasterViewportStats } from '@/features/kits/public'
 
 const BACKDROP = '#f3f3f6'
 const WHEEL_ZOOM_SPEED = 0.01
@@ -17,18 +15,18 @@ export type PhotoCanvasHandle = {
 }
 
 type PhotoWebCanvasProps = {
-  doc: PhotoEngine
+  doc: KitEngine
   /** Moves with every document change; the canvas repaints what it names. */
-  change: PhotoChange
+  change: KitChange
   tool: string
   brushSize: number
   /** CSS colour of the brush preview. */
   color: string
   onStroke: (points: PhotoStrokePoint[], erase: boolean) => void
   onPick: (rgb: [number, number, number]) => void
-  onView: (view: PhotoView, stats: PhotoViewportStats | null) => void
+  onView: (view: RasterView, stats: RasterViewportStats | null) => void
   /** The last view, kept when the document is replaced by a newer version of the file. */
-  viewMemory: RefObject<PhotoView | null>
+  viewMemory: RefObject<RasterView | null>
   ref?: Ref<PhotoCanvasHandle>
 }
 
@@ -46,7 +44,7 @@ function cursorFor(tool: string, panning: boolean) {
 export function PhotoWebCanvas({ doc, change, tool, brushSize, color, onStroke, onPick, onView, viewMemory, ref }: PhotoWebCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const overlayRef = useRef<HTMLCanvasElement>(null)
-  const viewportRef = useRef<PhotoViewport | null>(null)
+  const viewportRef = useRef<RasterViewport | null>(null)
   const gesture = useRef<Gesture | null>(null)
   const [spaceHeld, setSpaceHeld] = useState(false)
   const latest = useRef({ onView, onStroke, onPick })
@@ -57,7 +55,7 @@ export function PhotoWebCanvas({ doc, change, tool, brushSize, color, onStroke, 
     if (!canvas) return undefined
     // Remember the view only once it is placed (fitted, or carried over), never the default.
     let placed = viewMemory.current != null
-    const viewport = new PhotoViewport(canvas, doc, BACKDROP, (view, stats) => {
+    const viewport = new RasterViewport(canvas, doc, BACKDROP, (view, stats) => {
       if (placed) viewMemory.current = view
       latest.current.onView(view, stats)
     })

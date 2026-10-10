@@ -693,9 +693,22 @@
       "open": "Apertura {{ms}} ms",
       "render": "Renderizado {{ms}} ms",
       "stroke": "Trazo {{ms}} ms"
-    },
-    "changedOnDisk": "Esta imagen cambió fuera del editor y tienes cambios sin guardar.",
+    }
+  },
+  "kitEditor": {
+    "askAgent": "Preguntar al agente",
+    "changedOnDisk": "Este archivo cambió fuera del editor y tienes cambios sin guardar.",
+    "commandFailed": "Photo no pudo aplicar el cambio",
     "keepMine": "Conservar mis cambios",
-    "reloadFile": "Cargar la nueva versión"
+    "openFailed": "No se pudo abrir esta imagen",
+    "opening": "Abriendo…",
+    "redo": "Rehacer",
+    "reloadFile": "Cargar la nueva versión",
+    "reopen": "Abrir de nuevo",
+    "save": "Guardar",
+    "saveFailed": "No se pudo guardar la imagen",
+    "saved": "Guardado",
+    "undo": "Deshacer",
+    "unsaved": "Sin guardar"
   }
 }

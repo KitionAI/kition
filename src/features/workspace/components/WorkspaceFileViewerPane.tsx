@@ -14,7 +14,8 @@ import {
 } from '@/features/workspace/lib/workspace'
 import { cn } from '@/lib/utils'
 import { notify } from '@/lib/notify'
-import { PhotoKitPane } from './PhotoKitPane'
+import { KitFilePane } from './kits/KitFilePane'
+import { kitEditorFor } from './kits/kitEditors'
 
 type WorkspaceFileViewerPaneProps = {
   path: string
@@ -37,8 +38,9 @@ function parentFolderFromPath(path: string) {
 }
 
 export function WorkspaceFileViewerPane(props: WorkspaceFileViewerPaneProps) {
-  if (props.format === 'photo') {
-    return <PhotoKitPane path={props.path} active={props.active} onOpenAgent={props.onOpenAgent} />
+  const kit = kitEditorFor(props.format)
+  if (kit) {
+    return <KitFilePane kit={kit} path={props.path} active={props.active} onOpenAgent={props.onOpenAgent} />
   }
   return <WorkspaceFilePreview {...props} />
 }

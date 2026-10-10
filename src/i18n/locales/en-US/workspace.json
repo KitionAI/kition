@@ -693,9 +693,22 @@
       "open": "Open {{ms}} ms",
       "render": "Render {{ms}} ms",
       "stroke": "Stroke {{ms}} ms"
-    },
-    "changedOnDisk": "This image changed outside the editor, and you have unsaved edits.",
+    }
+  },
+  "kitEditor": {
+    "askAgent": "Ask Agent",
+    "changedOnDisk": "This file changed outside the editor, and you have unsaved edits.",
+    "commandFailed": "Photo could not apply the change",
     "keepMine": "Keep my edits",
-    "reloadFile": "Load the new version"
+    "openFailed": "Could not open this image",
+    "opening": "Opening…",
+    "redo": "Redo",
+    "reloadFile": "Load the new version",
+    "reopen": "Open again",
+    "save": "Save",
+    "saveFailed": "Could not save the image",
+    "saved": "Saved",
+    "undo": "Undo",
+    "unsaved": "Unsaved"
   }
 }

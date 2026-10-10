@@ -145,6 +145,15 @@ high-fidelity `.docx`, `.xlsx`, and `.pptx` import and export kits running in
 
 ## 6. Surfaces: How A Kit Appears Inside Kition
 
+> **Decision, 2026-10-10:** kit editors run in the page. The kit's engine is
+> compiled to WebAssembly (its SDK), runs in a worker, and paints into a
+> canvas, while Kition draws all chrome. This is the `web` surface below,
+> promoted to the default editing surface. The `embedded` overlay window was
+> prototyped for `kit.photo` and rejected in the real desktop client: it felt
+> like a separate program, doubled the canvas, and added scroll bars. Native
+> kit processes remain for `headless` agent work. How to build a kit editor:
+> [kit-sdk.md](kit-sdk.md).
+
 A **surface** is where a kit renders. A kit declares the surfaces it supports
 in its manifest; the host picks the best one for the current platform.
 
@@ -398,10 +407,11 @@ program has a foundation:
 | 0 | Kit crates in this repository (section 4.1): protocol types, host launch and client, mock kit, conformance suite | Types round-trip through the schemas; the mock kit passes the suite and each injected fault fails its check; `pnpm check:desktop` passes |
 | 1 | `KitionAI/kit-photo` repository: `kition-kit-server`, `apps/kit-photo` with a `headless` backend over the upstream automation engine, then a `window` backend over the upstream desktop app's control channel, `kition-theme`, branding | `headless` passes the conformance suite (reached 2026-10-10, 13 of 13 checks); `window` opens, edits, and saves in the real desktop client |
 | 2 | Runtime integration (`kition-kits`): the workspace lists `.psd`, `.psb`, and `.pcraft`; a Photo tab shows the rendered preview and layers with Undo, Redo, and Save; agent tools `photo_inspect`, `photo_commands`, `photo_run`; `/v1/kits` in `contracts/runtime/kits.schema.json`; `KITION_KIT_PHOTO_BINARY` override. Then a `window` surface for hands-on editing | Reached for `headless` on 2026-10-10: open, edit, and save a PSD from the workspace, and agent edits refresh the tab. The `window` surface remains |
-| 3 | Embedding with `kit.photo`: the kit hosts its full desktop editor in-process (`embedded` surface); the runtime (`kition-kits` surfaces) keeps the borderless editor window over the tab from the tab's rectangle and the window position the shell reports, and hides it with the tab, dialogs, or when another app takes focus. macOS first (`overlay-window`), then Windows (`child-window`) | Started 2026-10-10 on macOS. Drag, resize, focus, IME, tablet input, and shortcuts must be judged acceptable in the real desktop client |
+| 3a | In-page editing with `kit.photo` ([kit-sdk.md](kit-sdk.md)): `kition-photo-sdk` (WebAssembly) in a worker per file, `src/features/kits` template, exact damage repaint, saves through `PUT /v1/kits/files`, two-way sync with the agent | Reached 2026-10-10: checked in the real desktop client; a 4K PSD opens and saves with no main-thread long tasks |
+| 3 (rejected) | Embedding with `kit.photo`: the kit hosts its full desktop editor in-process (`embedded` surface); the runtime (`kition-kits` surfaces) keeps the borderless editor window over the tab from the tab's rectangle and the window position the shell reports, and hides it with the tab, dialogs, or when another app takes focus. macOS first (`overlay-window`), then Windows (`child-window`) | Prototyped on macOS 2026-10-10 and rejected in the real desktop client; superseded by 3a |
 | 4 | Distribution: pinned assets first (section 8), then the signed index, updates, and the Kits page | Install from a clean machine, offline relaunch from cache |
 | 5 | Image editing inside documents over the headless engine (crop and adjust) | Image edits round-trip from documents |
-| 6 | Additional kits (`kit.pdf`, video, vector, audio) | Each passes conformance and embedding acceptance |
+| 6 | Additional kits (`kit.pdf`, video, vector, audio), each built on the Kit SDK template | Each passes conformance, its SDK e2e, and the performance budget in [kit-sdk.md](kit-sdk.md) |
 
 ### 11.1 Trying `kit.photo` locally
 
@@ -428,8 +438,9 @@ mock kit; `tests/photo.rs` runs against a real build when
 Ordinary PNG and JPEG files keep opening in Kition's own preview; they open in
 `kit.photo` only when the user chooses to edit them there.
 
-Embedding behavior must be validated in the real desktop client. Headless test
-runs cannot reproduce native surface placement, focus, or input method issues.
+With the Photo SDK built (`scripts/build-kit-sdk.sh photo`), the tab edits the
+image in the page instead; see [kit-sdk.md](kit-sdk.md). Editor feel (stroke
+latency, scrolling, focus) must still be validated in the real desktop client.
 
 ## 12. Risks
 

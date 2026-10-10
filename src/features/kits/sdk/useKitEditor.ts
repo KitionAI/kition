@@ -1,0 +1,61 @@
+import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import type { KitsCommandView } from '@/api/kits'
+import { notify } from '@/lib/notify'
+import type { RasterRect } from './rasterViewport'
+import type { useKitDocument } from './useKitDocument'
+
+type KitDocument = ReturnType<typeof useKitDocument<unknown>>
+
+function errorText(error: unknown) {
+  return error instanceof Error ? error.message : String(error)
+}
+
+/**
+ * What every kit editor does the same way on top of its document: running
+ * commands with a notice when they fail, saving with a notice, the command
+ * menus, and saving before the agent works on the file.
+ */
+export function useKitEditor(document: KitDocument, options: { onOpenAgent?: () => void } = {}) {
+  const { t } = useTranslation('workspace')
+  const [commands, setCommands] = useState<KitsCommandView[]>([])
+  const { doc, run: runCommand, save: saveDocument, commands: listCommands, dirty } = document
+
+  const refreshCommands = useCallback(() => {
+    listCommands().then(setCommands, () => undefined)
+  }, [listCommands])
+
+  useEffect(() => {
+    if (doc) refreshCommands()
+  }, [doc, refreshCommands])
+
+  /** Runs a kit command; a refusal shows a notice instead of throwing. `damage` limits the repaint. */
+  const run = useCallback(async (command: string, params: Record<string, unknown> = {}, damage: RasterRect | null = null) => {
+    try {
+      await runCommand(command, params, damage)
+      return true
+    } catch (error) {
+      notify.error(t('kitEditor.commandFailed'), { description: errorText(error) })
+      return false
+    }
+  }, [runCommand, t])
+
+  const save = useCallback(async () => {
+    try {
+      await saveDocument()
+      notify.success(t('kitEditor.saved'))
+      return true
+    } catch (error) {
+      notify.error(t('kitEditor.saveFailed'), { description: errorText(error) })
+      return false
+    }
+  }, [saveDocument, t])
+
+  /** The agent edits the file on disk, so unsaved edits are saved first. */
+  const askAgent = useCallback(async () => {
+    if (dirty && !(await save())) return
+    options.onOpenAgent?.()
+  }, [dirty, options, save])
+
+  return { commands, refreshCommands, run, save, askAgent, canAskAgent: Boolean(options.onOpenAgent) }
+}

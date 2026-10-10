@@ -1,4 +1,10 @@
-import type { PhotoEngine } from './photoEngine'
+/** What the viewport needs from an engine: the document size and two render calls. */
+export type RasterSource = {
+  readonly width: number
+  readonly height: number
+  render(x: number, y: number, scale: number, width: number, height: number): Promise<Uint8Array>
+  renderArea(x0: number, y0: number, x1: number, y1: number, width: number, height: number): Promise<Uint8Array>
+}
 
 /** The largest image the engine renders for one frame; bigger views are drawn scaled up. */
 const MAX_FRAME_PIXELS = 8_000_000
@@ -8,7 +14,7 @@ const MAX_ZOOM = 64
 const CHECKER = 8
 
 /** The view: `zoom` screen pixels per image pixel, with image point (`x`, `y`) at the top-left. */
-export type PhotoView = { zoom: number; x: number; y: number }
+export type RasterView = { zoom: number; x: number; y: number }
 
 /**
  * The cached render: `bitmap` shows the image area at (`x`, `y`), `width` × `height` image
@@ -17,9 +23,9 @@ export type PhotoView = { zoom: number; x: number; y: number }
 type Frame = { bitmap: HTMLCanvasElement; x: number; y: number; width: number; height: number; scale: number }
 
 /** An image area in image pixels. */
-export type PhotoRect = { x0: number; y0: number; x1: number; y1: number }
+export type RasterRect = { x0: number; y0: number; x1: number; y1: number }
 
-export type PhotoViewportStats = { renderMs: number; frameWidth: number; frameHeight: number }
+export type RasterViewportStats = { renderMs: number; frameWidth: number; frameHeight: number }
 
 function imageData(rgba: Uint8Array, width: number, height: number) {
   return new ImageData(new Uint8ClampedArray(rgba.buffer as ArrayBuffer, rgba.byteOffset, rgba.byteLength), width, height)
@@ -48,13 +54,13 @@ function checkerPattern(context: CanvasRenderingContext2D) {
 }
 
 /**
- * Paints an engine document into a `<canvas>`. The engine renders only the
+ * Paints a kit document into a `<canvas>`. The engine renders only the
  * visible part of the image at the current zoom into a cached frame; panning
  * and zooming redraw that frame at once, and a fresh render follows when the
  * view settles.
  */
-export class PhotoViewport {
-  view: PhotoView = { zoom: 1, x: 0, y: 0 }
+export class RasterViewport {
+  view: RasterView = { zoom: 1, x: 0, y: 0 }
   private frame: Frame | null = null
   private pattern: CanvasPattern | null = null
   private settle: number | undefined
@@ -64,9 +70,9 @@ export class PhotoViewport {
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
-    private readonly doc: PhotoEngine,
+    private readonly doc: RasterSource,
     private readonly backdrop: string,
-    private readonly onChange: (view: PhotoView, stats: PhotoViewportStats | null) => void,
+    private readonly onChange: (view: RasterView, stats: RasterViewportStats | null) => void,
   ) {}
 
   dispose() {
@@ -106,7 +112,7 @@ export class PhotoViewport {
     this.setView({ ...this.view, x: this.view.x - dx / this.view.zoom, y: this.view.y - dy / this.view.zoom })
   }
 
-  private setView(view: PhotoView) {
+  private setView(view: RasterView) {
     this.view = view
     this.draw()
     this.onChange(view, null)
@@ -188,7 +194,7 @@ export class PhotoViewport {
    * Re-renders only `area` (what a stroke touched) into the cached frame, at the frame's
    * own scale, then redraws. When the frame changed meanwhile, renders it all again.
    */
-  async renderArea(area: PhotoRect) {
+  async renderArea(area: RasterRect) {
     const frame = this.frame
     if (!frame || this.rendering) {
       await this.render()

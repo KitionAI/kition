@@ -73,10 +73,10 @@ test('edits a PSD in the page with the Photo engine and saves it back to the wor
     await dismissFirstRunActivation(page)
     await page.locator('.document-tree-row', { hasText: 'Poster' }).first().click()
 
-    await expect(page.getByTestId('photo-web-editor')).toBeVisible()
-    await expect(page.getByTestId('photo-status-bar')).toContainText('96 x 64 px, Rgb, 8-bit, 2 layers', { timeout: 30_000 })
+    await expect(page.getByTestId('kit-editor')).toBeVisible()
+    await expect(page.getByTestId('kit-status-bar')).toContainText('96 x 64 px, Rgb, 8-bit, 2 layers', { timeout: 30_000 })
     await expect(page.getByTestId('photo-kit-layers')).toContainText('Ink')
-    await expect(page.getByTestId('photo-menu-Layer')).toBeVisible()
+    await expect(page.getByTestId('kit-menu-Layer')).toBeVisible()
     await expect(page.getByTestId('photo-web-stats')).toContainText('Render')
     await expect.poll(() => centrePixel(page)).toEqual([255, 255, 255])
 
@@ -89,7 +89,7 @@ test('edits a PSD in the page with the Photo engine and saves it back to the wor
     await page.mouse.down()
     for (let step = 1; step <= 12; step += 1) await page.mouse.move(cx - 120 + step * 20, cy)
     await page.mouse.up()
-    await expect(page.getByTestId('photo-kit-unsaved')).toBeVisible()
+    await expect(page.getByTestId('kit-unsaved')).toBeVisible()
     await expect.poll(() => centrePixel(page)).toEqual([0, 0, 0])
     await expect(page.getByTestId('photo-web-stats')).toContainText('Stroke')
     await page.screenshot({ path: testInfo.outputPath('photo-web-editor.png') })
@@ -100,9 +100,9 @@ test('edits a PSD in the page with the Photo engine and saves it back to the wor
     await page.getByRole('button', { name: 'Redo' }).click()
     await expect.poll(() => centrePixel(page)).toEqual([0, 0, 0])
 
-    await page.getByTestId('photo-kit-save').click()
-    await expect(page.getByText('Image saved', { exact: true })).toBeVisible()
-    await expect(page.getByTestId('photo-kit-unsaved')).toHaveCount(0)
+    await page.getByTestId('kit-save').click()
+    await expect(page.getByText('Saved', { exact: true })).toBeVisible()
+    await expect(page.getByTestId('kit-unsaved')).toHaveCount(0)
     expect(saves).toHaveLength(1)
     expect(saves[0].path).toBe('Poster.psd')
     expect(saves[0].bytes.subarray(0, 4).toString()).toBe('8BPS')
@@ -111,21 +111,21 @@ test('edits a PSD in the page with the Photo engine and saves it back to the wor
     // With nothing unsaved, the tab follows the agent's new version of the file.
     await agentSaves(['Ink', 'Agent'])
     await expect(page.getByTestId('photo-kit-layers')).toContainText('Agent', { timeout: 10_000 })
-    await expect(page.getByTestId('photo-file-changed')).toHaveCount(0)
+    await expect(page.getByTestId('kit-file-changed')).toHaveCount(0)
 
     // With unsaved edits, it asks before replacing them.
     await page.mouse.move(cx - 60, cy + 40)
     await page.mouse.down()
     await page.mouse.move(cx + 60, cy + 40)
     await page.mouse.up()
-    await expect(page.getByTestId('photo-kit-unsaved')).toBeVisible()
+    await expect(page.getByTestId('kit-unsaved')).toBeVisible()
     await agentSaves(['Ink', 'Agent', 'Agent two'])
-    await expect(page.getByTestId('photo-file-changed')).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByTestId('kit-file-changed')).toBeVisible({ timeout: 10_000 })
     await expect(page.getByTestId('photo-kit-layers')).not.toContainText('Agent two')
-    await page.getByTestId('photo-file-reload').click()
+    await page.getByTestId('kit-file-reload').click()
     await expect(page.getByTestId('photo-kit-layers')).toContainText('Agent two')
-    await expect(page.getByTestId('photo-kit-unsaved')).toHaveCount(0)
-    await expect(page.getByTestId('photo-file-changed')).toHaveCount(0)
+    await expect(page.getByTestId('kit-unsaved')).toHaveCount(0)
+    await expect(page.getByTestId('kit-file-changed')).toHaveCount(0)
   } finally {
     await host.dispose()
   }

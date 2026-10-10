@@ -693,9 +693,22 @@
       "open": "打开 {{ms}} 毫秒",
       "render": "渲染 {{ms}} 毫秒",
       "stroke": "笔触 {{ms}} 毫秒"
-    },
-    "changedOnDisk": "这张图片已在编辑器外被修改，而你还有未保存的编辑。",
+    }
+  },
+  "kitEditor": {
+    "askAgent": "问 Agent",
+    "changedOnDisk": "这个文件已在编辑器外被修改，而你还有未保存的编辑。",
+    "commandFailed": "Photo 无法应用此修改",
     "keepMine": "保留我的编辑",
-    "reloadFile": "载入新版本"
+    "openFailed": "无法打开这张图片",
+    "opening": "正在打开…",
+    "redo": "重做",
+    "reloadFile": "载入新版本",
+    "reopen": "重新打开",
+    "save": "保存",
+    "saveFailed": "无法保存图片",
+    "saved": "已保存",
+    "undo": "撤销",
+    "unsaved": "未保存"
   }
 }

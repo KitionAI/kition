@@ -6,8 +6,6 @@ import { cn } from '@/lib/utils'
 import { notify } from '@/lib/notify'
 import { isDesktopRuntime } from '@/services/desktop'
 import { PhotoKitEditor } from './PhotoKitEditor'
-import { PhotoWebEditor } from './PhotoWebEditor'
-import { photoSdkAvailable } from './photo/photoSdk'
 import {
   getKitDocument,
   kitErrorReason,
@@ -38,8 +36,7 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error)
 }
 
-async function editorMode(): Promise<'web' | 'editor' | 'preview'> {
-  if (await photoSdkAvailable()) return 'web'
+async function editorMode(): Promise<'editor' | 'preview'> {
   if (!isDesktopRuntime()) return 'preview'
   try {
     const list = await listKits()
@@ -50,13 +47,13 @@ async function editorMode(): Promise<'web' | 'editor' | 'preview'> {
 }
 
 /**
- * A layered image (PSD, PSB, .pcraft) opened in the Photo kit. With the Photo
- * engine built into the app the tab edits the image in the page; otherwise
- * the desktop app embeds the kit's own editor, and elsewhere the tab shows
- * the kit's rendered preview and layers.
+ * A layered image (PSD, PSB, .pcraft) in the Photo kit's own process, for
+ * builds without the in-page Photo engine (see kits/kitEditors.ts): the
+ * desktop app embeds the kit's editor, and elsewhere the tab shows the kit's
+ * rendered preview and layers.
  */
 export function PhotoKitPane({ path, active, onOpenAgent }: PhotoKitPaneProps) {
-  const [mode, setMode] = useState<'checking' | 'web' | 'editor' | 'preview'>('checking')
+  const [mode, setMode] = useState<'checking' | 'editor' | 'preview'>('checking')
 
   useEffect(() => {
     let cancelled = false
@@ -71,7 +68,6 @@ export function PhotoKitPane({ path, active, onOpenAgent }: PhotoKitPaneProps) {
   const showPreview = useCallback(() => setMode('preview'), [])
 
   if (mode === 'checking') return null
-  if (mode === 'web') return <PhotoWebEditor path={path} active={active} onOpenAgent={onOpenAgent} />
   if (mode === 'editor') {
     return <PhotoKitEditor path={path} active={active} onOpenAgent={onOpenAgent} onUnavailable={showPreview} />
   }
