@@ -2460,6 +2460,31 @@ So the next plan does not start from zero, these are the known pieces:
 8. Hosted web search and image generation results logged as `tool/call` and
    `tool/result` with `meta.hosted = true`.
 
+Found in phase A reviews and deferred to phase B:
+
+- Approval resume must run before any new turn: `derive_messages` already
+  closes a pending call with a synthetic result at `step/end`, so a late real
+  `tool/result` would be out of place. Calls after the asked one in the same
+  reply were never logged as `tool/call`; resume runs them. Consider making
+  repair durable (synthetic `tool/call` and `tool/result` events, as dsh's
+  `repair.ts` does) instead of derive-time only.
+- Log the streamed text of a cancelled model call as an interrupted
+  `assistant/message`, as dsh does.
+- Race legacy tool bodies (`spawn_blocking`) against cancellation.
+- Serialize turns per session (one driver per session key).
+- `SessionLog` and `Policy::pre_execute` are synchronous; move SQLite writes
+  off the async workers and make policies async when approvals need lookups.
+- `Pipeline::with` takes `impl Policy`; add `Arc<dyn Policy>` for shared
+  policies. A provider whose `tools()` fails should not fail every turn.
+- Report retry progress (`EngineLlm` passes `on_retry: None`) and carry
+  `usage` and `wire_api` in `LlmReply` for token metering.
+- Add `agent_session_events` to the workspace mirror tables
+  (`crates/kition-workspacestorage/src/state.rs`) and delete a session's
+  events when the session is deleted.
+- Pass tool-result `is_error` to the Anthropic wire.
+- Phase G maps Kition turn-end reasons and payloads onto dsh's exact
+  `SessionEvent` shapes; the phase A guard checks names only.
+
 ## 6. Risks
 
 | Risk | Mitigation |
