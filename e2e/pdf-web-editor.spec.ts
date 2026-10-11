@@ -74,6 +74,8 @@ test('opens a PDF in the page with the PDF engine, edits it from the menus, and 
     const fixture = await reportFixture()
     await fs.writeFile(path.join(host.root, 'Report.pdf'), fixture)
     await mockLocalWorkspaceApi(page)
+    // This spec covers Kition's own editor for the kit; the kit's embedded one has pdf-embedded.spec.ts.
+    await page.route('**/kits/pdf-ui/kit-ui.json', (route) => route.fulfill({ status: 404, body: '' }))
     await serveWorkspace(page, host.root)
     const saves: Array<{ path: string | null; bytes: Buffer }> = []
     await page.route('**/api/v1/kits/files?**', async (route) => {
@@ -124,6 +126,8 @@ test('creates a new PDF from the create menu with the PDF engine', async ({ page
   const host = await installDesktopHost(page)
   try {
     await mockLocalWorkspaceApi(page)
+    // This spec covers Kition's own editor for the kit; the kit's embedded one has pdf-embedded.spec.ts.
+    await page.route('**/kits/pdf-ui/kit-ui.json', (route) => route.fulfill({ status: 404, body: '' }))
     await serveWorkspace(page, host.root)
     const written: string[] = []
     // The runtime writes the new file; here the host's folder plays the workspace.
