@@ -333,6 +333,87 @@ async fn a_second_harness_turn_is_refused_while_the_first_runs() {
     assert_eq!(status, 200, "the session is free once the first turn ends");
 }
 
+/// A provider whose image endpoint signals `entered` and never answers,
+/// while `/responses` answers with plain text.
+async fn stuck_image_provider(entered: Arc<Notify>) -> String {
+    let app = Router::new()
+        .route(
+            "/images/generations",
+            post(move || {
+                let entered = entered.clone();
+                async move {
+                    entered.notify_one();
+                    std::future::pending::<()>().await;
+                    ""
+                }
+            }),
+        )
+        .route(
+            "/responses",
+            post(|| async {
+                (
+                    [(http::header::CONTENT_TYPE, "text/event-stream")],
+                    answer(&["Done."]),
+                )
+            }),
+        );
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .unwrap_or_else(|err| panic!("{err}"));
+    let addr = listener.local_addr().unwrap_or_else(|err| panic!("{err}"));
+    tokio::spawn(async move { axum::serve(listener, app).await });
+    format!("http://{addr}")
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_disconnected_image_turn_releases_its_session() {
+    let Harness { app, .. } = app_with(true);
+    let session_id = new_session(&app).await;
+    let entered = Arc::new(Notify::new());
+    let base_url = stuck_image_provider(entered.clone()).await;
+    let model = json!({ "provider_type": "custom", "model_name": "test-model", "base_url": base_url, "wire_api": "responses", "api_key": "k" });
+    let uri = format!("/agent/sessions/{session_id}/messages/stream");
+    let body = json!({
+        "content": "A red fox",
+        "runtime_model": model,
+        "image_generation_intent": {
+            "type": "image_generation.intent", "schema_version": 1, "request_id": "req-1",
+            "operation": "generate", "instruction": "A red fox", "locale": "en-US",
+            "aspect_ratio": "1:1", "quality": "low", "resolution": "1K", "variants": 1,
+            "text_mode": "no_text", "reference_paths": [], "surface": "chat",
+            "target": { "type": "image.target.chat" }, "placement_preference": "review",
+            "client_capability_version": 1,
+        },
+    });
+    let request = Request::builder()
+        .method("POST")
+        .uri(&uri)
+        .header(http::header::CONTENT_TYPE, "application/json")
+        .body(Body::from(body.to_string()))
+        .unwrap_or_else(|err| panic!("{err}"));
+    let response = app
+        .clone()
+        .oneshot(request)
+        .await
+        .unwrap_or_else(|err| panic!("{err}"));
+    assert_eq!(response.status(), 200);
+    tokio::time::timeout(std::time::Duration::from_secs(10), entered.notified())
+        .await
+        .unwrap_or_else(|err| panic!("the image call never started: {err}"));
+    drop(response);
+
+    let retry = json!({ "content": "And now text", "runtime_model": model });
+    let mut status = 0;
+    for _ in 0..20 {
+        status = call(&app, "POST", &uri, retry.clone()).await.0;
+        if status != 409 {
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    }
+    assert_eq!(status, 200, "the session stays busy after the client left");
+}
+
 async fn chat_completions_turn(harness_mode: bool) {
     let Harness { app, workspace, .. } = app_with(harness_mode);
     let session_id = new_session(&app).await;

@@ -622,6 +622,58 @@ describe('useWorkspaceAgent hosted console restore', () => {
     container.remove()
   })
 
+  it('retries a send while the stopped turn finishes releasing its session', async () => {
+    const { useWorkspaceAgent } = await import('./useWorkspaceAgent')
+    const busy = () => Object.assign(
+      new Error('{"code":409,"message":"This session is still answering. Wait for the reply or stop it first."}'),
+      { status: 409 },
+    )
+    mocks.streamAgentMessage
+      .mockRejectedValueOnce(busy())
+      .mockRejectedValueOnce(busy())
+      .mockResolvedValueOnce({ extra_data: {} })
+    const onError = vi.fn()
+    let latest: any = null
+
+    function Harness() {
+      latest = useWorkspaceAgent({
+        settings: createOpenAISettings(),
+        rootPath: '/test/workspace',
+        onError,
+        onFeedback: vi.fn(),
+      })
+      return null
+    }
+
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    let root: Root | null = null
+    await act(async () => {
+      root = createRoot(container)
+      root.render(createElement(Harness))
+    })
+    await act(async () => {
+      latest.setAgentDraft(16, 'send again')
+    })
+    await act(async () => {
+      latest.sendAiComposerMessage(16)
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+    })
+
+    expect(mocks.streamAgentMessage).toHaveBeenCalledTimes(3)
+    for (const [request] of mocks.streamAgentMessage.mock.calls) {
+      expect(request.content).toBe('send again')
+    }
+    expect(onError.mock.calls.filter(([message]) => message)).toEqual([])
+    const userMessages = (latest.agentMessages[16] || []).filter((message: any) => message.role === 'user')
+    expect(userMessages).toHaveLength(1)
+
+    await act(async () => {
+      root?.unmount()
+    })
+    container.remove()
+  })
+
   it.each(['', 'Create a launch illustration.'])('forwards a typed image intent with draft %j from a visible composer turn', async (draft) => {
     const { useWorkspaceAgent } = await import('./useWorkspaceAgent')
     let latest: any = null

@@ -393,7 +393,20 @@ async fn drive(agent: Agent, user_id: i64, prepared: Prepared, emitter: Emitter)
         language: request.language.trim().to_owned(),
     });
     if let Some(intent) = image_intent {
-        images::stream_intent(&run, session, agent.portal_base_url(), intent).await;
+        // The session is released as soon as the client leaves; the image
+        // work keeps running in its own task and records its own outcome.
+        let (task_run, portal) = (run.clone(), agent.portal_base_url().to_owned());
+        let work = tokio::spawn(async move {
+            images::stream_intent(&task_run, session, &portal, intent).await;
+        });
+        tokio::select! {
+            result = work => {
+                if let Err(error) = result {
+                    tracing::warn!(error = %error, "image generation task ended abnormally");
+                }
+            }
+            () = emitter.closed() => {}
+        }
         drop(turn);
         return;
     }

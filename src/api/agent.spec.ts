@@ -20,6 +20,18 @@ afterEach(() => {
 })
 
 describe('streamAgentMessage', () => {
+  it('rejects a refused turn with the HTTP status', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(
+      '{"code":409,"message":"This session is still answering."}',
+      { status: 409 },
+    )))
+
+    await expect(streamAgentMessage({ sessionId: 7, content: 'again' })).rejects.toMatchObject({
+      status: 409,
+      message: expect.stringContaining('still answering'),
+    })
+  })
+
   it('forwards compact Whiteboard context on the public wire field', async () => {
     const whiteboardContext: AgentWhiteboardContext = {
       type: 'whiteboard.context',

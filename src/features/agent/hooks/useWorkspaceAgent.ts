@@ -88,6 +88,7 @@ import {
 } from '@/features/agent/lib/agentImageGenerationStream'
 import { readAgentWhiteboardPatchFrame } from '@/features/agent/lib/agentWhiteboardStream'
 import { AGENT_DESIGN_PATCH_TOOL, readAgentDesignPatchFrame } from '@/features/agent/lib/agentDesignStream'
+import { retryWhileSessionBusy } from '@/features/agent/lib/agentSendRetry'
 import type { AgentDesignContext, AgentDesignPatch } from '@/types/designAgent'
 import type { MarkdownImageInsertionContext } from '@/features/document/editor/editor/markdown-image-insertion'
 
@@ -772,7 +773,7 @@ export function useWorkspaceAgent({
         })
 
       let imageTurnMessageId = optimisticUserMessage.id
-      const done = await streamAgentMessage({
+      const done = await retryWhileSessionBusy(() => streamAgentMessage({
         sessionId,
         content,
         promptContext,
@@ -1064,7 +1065,7 @@ export function useWorkspaceAgent({
             })
           }
         },
-      })
+      }), { signal: abortController.signal })
 
       const assistantMessage = done?.extra_data?.message
       const artifact = done?.extra_data?.artifact

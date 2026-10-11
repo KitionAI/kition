@@ -222,7 +222,8 @@ export async function streamAgentMessage(options: {
   })
 
   if (!response.ok) {
-    throw new Error(await response.text() || `Agent request failed (${response.status})`)
+    const message = await response.text() || `Agent request failed (${response.status})`
+    throw Object.assign(new Error(message), { status: response.status })
   }
   if (!response.body) {
     throw new Error('Agent streaming response is unavailable')
