@@ -359,7 +359,7 @@ export async function saveRemoteFile(url: string, defaultFilename: string, dialo
   })
 }
 
-function uint8ArrayToBase64(bytes: Uint8Array) {
+export function uint8ArrayToBase64(bytes: Uint8Array) {
   let binary = ''
   const chunkSize = 0x8000
 

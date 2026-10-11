@@ -62,6 +62,8 @@ test('types in a Word document in the page with the Word engine, and saves it ba
   try {
     await fs.writeFile(path.join(host.root, 'Letter.docx'), await letterFixture())
     await mockLocalWorkspaceApi(page)
+    // This spec covers Kition's own editor for the kit; the kit's embedded one has word-embedded.spec.ts.
+    await page.route('**/kits/word-ui/kit-ui.json', (route) => route.fulfill({ status: 404, body: '' }))
     await serveWorkspace(page, host.root)
     const saves: Array<{ path: string | null; bytes: Buffer }> = []
     await page.route('**/api/v1/kits/files?**', async (route) => {
@@ -108,6 +110,8 @@ test('creates a new Word document from the create menu with the Word engine', as
   const host = await installDesktopHost(page)
   try {
     await mockLocalWorkspaceApi(page)
+    // This spec covers Kition's own editor for the kit; the kit's embedded one has word-embedded.spec.ts.
+    await page.route('**/kits/word-ui/kit-ui.json', (route) => route.fulfill({ status: 404, body: '' }))
     await serveWorkspace(page, host.root)
     const written: string[] = []
     // The runtime writes the new file; here the host's folder plays the workspace.

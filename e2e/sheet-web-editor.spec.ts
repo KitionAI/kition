@@ -74,6 +74,8 @@ test('edits a workbook in the page with the Sheet engine, its grid, and its form
   try {
     await fs.writeFile(path.join(host.root, 'Budget.xlsx'), await budgetFixture())
     await mockLocalWorkspaceApi(page)
+    // This spec covers Kition's own editor for the kit; the kit's embedded one has sheet-embedded.spec.ts.
+    await page.route('**/kits/sheet-ui/kit-ui.json', (route) => route.fulfill({ status: 404, body: '' }))
     await serveWorkspace(page, host.root)
     const saves: Array<{ path: string | null; bytes: Buffer }> = []
     await page.route('**/api/v1/kits/files?**', async (route) => {
@@ -131,6 +133,8 @@ test('creates a new spreadsheet from the create menu with the Sheet engine', asy
   const host = await installDesktopHost(page)
   try {
     await mockLocalWorkspaceApi(page)
+    // This spec covers Kition's own editor for the kit; the kit's embedded one has sheet-embedded.spec.ts.
+    await page.route('**/kits/sheet-ui/kit-ui.json', (route) => route.fulfill({ status: 404, body: '' }))
     await serveWorkspace(page, host.root)
     const written: string[] = []
     // The runtime writes the new file; here the host's folder plays the workspace.

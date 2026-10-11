@@ -7,11 +7,28 @@
 
 export const KIT_UI_PROTOCOL = 'kition-kit-ui/1'
 
-/** The one window message that hands the kit its port (`kitionKitUi: 1`). */
-export type KitUiHandshake = { kitionKitUi: 1; protocol: string }
+/**
+ * The window messages that connect a host and a kit (`kitionKitUi: 1`, protocol section 2): the
+ * kit announces each document it loads (`ready`, with an id of its own), the host asks a kit that
+ * may have announced before it listened (`hello`), and answers a `ready` with the handshake that
+ * hands the kit its port.
+ */
+export type KitUiHandshake = { kitionKitUi: 1; protocol: string; id?: string }
+export type KitUiReady = { kitionKitUi: 1; ready: string; id: string }
+export type KitUiHello = { kitionKitUi: 1; hello: string }
+
+const kitUiMessage = (data: unknown): data is Record<string, unknown> => typeof data === 'object' && data !== null && (data as { kitionKitUi?: unknown }).kitionKitUi === 1
 
 export function isHandshake(data: unknown): data is KitUiHandshake {
-  return typeof data === 'object' && data !== null && (data as KitUiHandshake).kitionKitUi === 1 && typeof (data as KitUiHandshake).protocol === 'string'
+  return kitUiMessage(data) && typeof data.protocol === 'string'
+}
+
+export function isReady(data: unknown): data is KitUiReady {
+  return kitUiMessage(data) && typeof data.ready === 'string' && typeof data.id === 'string'
+}
+
+export function isHello(data: unknown): data is KitUiHello {
+  return kitUiMessage(data) && typeof data.hello === 'string'
 }
 
 /** CSS custom properties the kit applies to its root (protocol section 4). */
