@@ -1,11 +1,8 @@
-//! The session event log: its key, the paged reader behind
-//! `GET /agent/sessions/{id}/session-events`, and the exchanges that do not
-//! run a turn.
+//! The session event log: its key and the paged reader behind
+//! `GET /agent/sessions/{id}/session-events`.
 
-use kition_harness::events::{ContentBlock, EventBody, MessageSource, SessionEvent};
-use kition_harness::log::{SessionLog, SqliteLog};
-
-use crate::run::Agent;
+use kition_harness::events::{EventBody, SessionEvent};
+use kition_harness::log::SessionLog;
 
 /// The event log key of an agent session.
 pub(crate) fn log_key(session_id: i64) -> String {
@@ -39,39 +36,6 @@ pub(crate) fn read_events(
         .collect();
     let next_after = items.last().map_or(after, |event| event.seq);
     Ok((items, next_after))
-}
-
-fn user_message(text: &str) -> EventBody {
-    EventBody::UserMessage {
-        content: vec![ContentBlock::text(text)],
-        source: MessageSource::user(),
-    }
-}
-
-fn assistant_message(text: &str) -> EventBody {
-    EventBody::AssistantMessage {
-        content: text.to_owned(),
-        tool_calls: Vec::new(),
-        stop_reason: String::new(),
-        model: String::new(),
-        raw_items: Vec::new(),
-    }
-}
-
-/// Logs an exchange that ran without a turn (an image request) so later
-/// turns see it. A failure is logged and the exchange stays out of history.
-pub(crate) async fn record_exchange(agent: &Agent, session_id: i64, request: &str, reply: &str) {
-    let log = SqliteLog::new(agent.db().clone());
-    let (request, reply) = (request.to_owned(), reply.to_owned());
-    let key = log_key(session_id);
-    let appended = tokio::task::spawn_blocking(move || {
-        log.append(&key, user_message(&request))?;
-        log.append(&key, assistant_message(&reply))
-    })
-    .await;
-    if !matches!(appended, Ok(Ok(_))) {
-        tracing::warn!(session = session_id, "could not log the exchange");
-    }
 }
 
 #[cfg(test)]

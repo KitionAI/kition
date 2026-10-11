@@ -25,12 +25,11 @@ impl Default for HistoryBudget {
 /// The events a request is derived from under `budget`. The newest
 /// `full_turns` turns are kept whole (`full_turns == 0` keeps everything
 /// since the first turn, so the current turn is never dropped). Before them
-/// only real conversation survives: the person's message (the first
-/// `user/message` after each `turn/start`; later ones are recovery context
-/// or hosted follow-ups), assistant text replies without tool calls, and
-/// every user message logged outside a turn (before the first `turn/start`
-/// or after a `turn/end`). At most `older_messages` of them are kept,
-/// newest first, plus the newest older system message.
+/// only real conversation survives: user messages the client sent (see
+/// [`crate::events::MessageSource::is_client_input`]; recovery context and tool follow-ups
+/// are dropped) and assistant text replies without tool calls. At most
+/// `older_messages` of them are kept, newest first, plus the newest older
+/// system message.
 pub fn bound_history(events: &[SessionEvent], budget: HistoryBudget) -> Vec<SessionEvent> {
     let starts: Vec<usize> = events
         .iter()
@@ -49,28 +48,11 @@ pub fn bound_history(events: &[SessionEvent], budget: HistoryBudget) -> Vec<Sess
             .unwrap_or(first)
     };
     let (older, recent) = events.split_at(full_from);
-    // Outside a turn every user message is the person's.
-    let mut awaiting_person = true;
-    let mut in_turn = false;
     let conversation: Vec<usize> = older
         .iter()
         .enumerate()
         .filter(|(_, event)| match &event.body {
-            EventBody::TurnStart { .. } => {
-                in_turn = true;
-                awaiting_person = true;
-                false
-            }
-            EventBody::TurnEnd { .. } => {
-                in_turn = false;
-                awaiting_person = true;
-                false
-            }
-            EventBody::UserMessage { .. } => {
-                let person = awaiting_person;
-                awaiting_person = !in_turn;
-                person
-            }
+            EventBody::UserMessage { source, .. } => source.is_client_input(),
             EventBody::AssistantMessage {
                 tool_calls,
                 content,
@@ -201,61 +183,6 @@ mod tests {
     }
 
     #[test]
-    fn messages_logged_between_turns_are_conversation() {
-        let mut seq = 0;
-        let mut events = turn(&mut seq, 1, "1");
-        for body in [
-            EventBody::UserMessage {
-                content: vec![ContentBlock::text("draw a fox")],
-                source: crate::events::MessageSource::user(),
-            },
-            EventBody::AssistantMessage {
-                content: "drew a fox".into(),
-                tool_calls: Vec::new(),
-                stop_reason: String::new(),
-                model: String::new(),
-                raw_items: Vec::new(),
-            },
-        ] {
-            seq += 1;
-            events.push(at(seq, body));
-        }
-        for number in 2..=3 {
-            events.extend(turn(&mut seq, number, &number.to_string()));
-        }
-        let kept = bound_history(
-            &events,
-            HistoryBudget {
-                full_turns: 1,
-                older_messages: 16,
-            },
-        );
-        let texts: Vec<String> = kept
-            .iter()
-            .take_while(|event| !matches!(event.body, EventBody::TurnStart { turn: 3 }))
-            .filter_map(|event| match &event.body {
-                EventBody::UserMessage { content, .. } => match &content[0] {
-                    ContentBlock::Text { text } => Some(text.clone()),
-                    ContentBlock::Image { .. } => None,
-                },
-                EventBody::AssistantMessage { content, .. } => Some(content.clone()),
-                _ => None,
-            })
-            .collect();
-        assert_eq!(
-            texts,
-            [
-                "ask 1",
-                "answer 1",
-                "draw a fox",
-                "drew a fox",
-                "ask 2",
-                "answer 2"
-            ]
-        );
-    }
-
-    #[test]
     fn older_conversation_is_capped_newest_first() {
         let mut seq = 0;
         let mut events = Vec::new();
@@ -284,11 +211,12 @@ mod tests {
     }
 
     #[test]
-    fn older_turns_keep_the_persons_message_not_recovery_context() {
-        let user = |text: &str| EventBody::UserMessage {
+    fn older_turns_keep_client_input_not_runtime_context() {
+        let from = |kind: &str, text: &str| EventBody::UserMessage {
             content: vec![ContentBlock::text(text)],
-            source: crate::events::MessageSource::user(),
+            source: crate::events::MessageSource::new(kind),
         };
+        let user = |text: &str| from("user", text);
         let reply = |text: &str| EventBody::AssistantMessage {
             content: text.into(),
             tool_calls: Vec::new(),
@@ -329,7 +257,8 @@ mod tests {
                 is_error: true,
                 meta: None,
             },
-            user("[recovery] the write failed; recover now"),
+            from("recovery", "[recovery] the write failed; recover now"),
+            from("tool-follow-up", "[image follow-up] saved"),
             reply("answer 1"),
             EventBody::TurnEnd {
                 turn: 1,
@@ -337,7 +266,15 @@ mod tests {
                 error: String::new(),
             },
             EventBody::TurnStart { turn: 2 },
-            user("ask 2"),
+            from("approval", "Approved"),
+            reply("ran it"),
+            EventBody::TurnEnd {
+                turn: 2,
+                reason: TurnEndReason::Completed,
+                error: String::new(),
+            },
+            EventBody::TurnStart { turn: 3 },
+            user("ask 3"),
         ];
         let events: Vec<SessionEvent> = bodies
             .into_iter()
@@ -353,7 +290,7 @@ mod tests {
         );
         let older: Vec<String> = kept
             .iter()
-            .take_while(|event| !matches!(event.body, EventBody::TurnStart { turn: 2 }))
+            .take_while(|event| !matches!(event.body, EventBody::TurnStart { turn: 3 }))
             .map(|event| match &event.body {
                 EventBody::SystemMessage { content } => format!("system {content}"),
                 EventBody::UserMessage { content, .. } => match &content[0] {
@@ -366,42 +303,13 @@ mod tests {
             .collect();
         assert_eq!(
             older,
-            ["system newer sys", "user ask 1", "assistant answer 1"]
-        );
-    }
-
-    #[test]
-    fn events_before_any_turn_count_as_older() {
-        let events = vec![
-            at(
-                1,
-                EventBody::UserMessage {
-                    content: vec![ContentBlock::text("carried")],
-                    source: crate::events::MessageSource::user(),
-                },
-            ),
-            at(
-                2,
-                EventBody::AssistantMessage {
-                    content: "carried reply".into(),
-                    tool_calls: Vec::new(),
-                    stop_reason: String::new(),
-                    model: String::new(),
-                    raw_items: Vec::new(),
-                },
-            ),
-            at(3, EventBody::TurnStart { turn: 1 }),
-        ];
-        assert_eq!(
-            bound_history(
-                &events,
-                HistoryBudget {
-                    full_turns: 1,
-                    older_messages: 1
-                }
-            )
-            .len(),
-            2
+            [
+                "system newer sys",
+                "user ask 1",
+                "assistant answer 1",
+                "user Approved",
+                "assistant ran it",
+            ]
         );
     }
 }

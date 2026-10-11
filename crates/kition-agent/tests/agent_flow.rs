@@ -371,6 +371,89 @@ async fn an_image_exchange_is_history_for_the_next_turn() {
     let done = frames.last().cloned().unwrap_or_default();
     let reply = done["extra_data"]["message"]["content"].clone();
     assert!(reply.is_string(), "{frames:?}");
+    let events = session_events(&app, session_id).await;
+    let composer = events
+        .iter()
+        .rposition(|event| event["type"] == "turn/start")
+        .unwrap_or_default();
+    let turn: Vec<&Value> = events[composer..].iter().collect();
+    let kinds: Vec<&str> = turn.iter().filter_map(|e| e["type"].as_str()).collect();
+    assert_eq!(
+        kinds,
+        [
+            "turn/start",
+            "step/start",
+            "user/message",
+            "tool/call",
+            "tool/result",
+            "deliverables/presented",
+            "assistant/message",
+            "step/end",
+            "turn/end",
+        ],
+        "{turn:?}"
+    );
+    assert_eq!(turn[0]["turn"], 2);
+    assert_eq!(turn[2]["content"][0]["text"], "A red fox");
+    assert_eq!(turn[2]["source"]["kind"], "user");
+    let call_id = turn[3]["callId"].as_str().unwrap_or_default();
+    assert!(
+        call_id.starts_with("img_") && call_id.ends_with("_0"),
+        "{call_id}"
+    );
+    assert_eq!(turn[3]["name"], "image_generation");
+    assert_eq!(turn[3]["arguments"]["request_id"], "req-1");
+    assert_eq!(turn[3]["arguments"]["variant_index"], 0);
+    assert_eq!(turn[3]["arguments"]["variant_count"], 1);
+    assert_eq!(turn[3]["arguments"]["reference_count"], 0);
+    assert_eq!(
+        turn[3]["arguments"]["intent_sha256"].as_str().map(str::len),
+        Some(64)
+    );
+    assert_eq!(turn[4]["callId"], call_id);
+    assert_eq!(turn[4]["isError"], false);
+    assert_eq!(turn[4]["meta"]["kind"], "image_generation.variant");
+    assert_eq!(turn[4]["meta"]["request_id"], "req-1");
+    assert_eq!(turn[4]["meta"]["artifact"]["call_id"], call_id);
+    assert_eq!(turn[4]["value"], turn[4]["meta"]["artifact"]);
+    let path = turn[4]["meta"]["artifact"]["path"].clone();
+    assert_eq!(turn[5]["files"][0]["path"], path);
+    assert_eq!(turn[6]["content"], reply);
+    assert_eq!(turn[8]["reason"], "completed");
+    check_image_contract("variantMeta", &turn[4]["meta"]);
+    check_image_contract("variantCall", &turn[3]["arguments"]);
+
+    let intent = json!({
+        "type": "image_generation.intent", "schema_version": 1, "request_id": "req-1",
+        "operation": "generate", "instruction": "A red fox", "locale": "en-US",
+        "aspect_ratio": "1:1", "quality": "low", "resolution": "1K", "variants": 1,
+        "text_mode": "no_text", "reference_paths": [], "surface": "chat",
+        "target": { "type": "image.target.chat" }, "placement_preference": "review",
+        "client_capability_version": 1,
+    });
+    let before = events.len();
+    stream(
+        &app,
+        session_id,
+        &base_url,
+        json!({ "content": "A red fox", "image_generation_intent": intent }),
+    )
+    .await;
+    assert_eq!(
+        session_events(&app, session_id).await.len(),
+        before,
+        "a repeat appends nothing"
+    );
+    let mut changed = intent.clone();
+    changed["quality"] = json!("high");
+    let (status, _) = call(
+        &app,
+        "POST",
+        &format!("/agent/sessions/{session_id}/messages/stream"),
+        json!({ "content": "A red fox", "image_generation_intent": changed }),
+    )
+    .await;
+    assert_eq!(status, 409, "a request id names one set of settings");
 
     let frames = stream(
         &app,
@@ -495,6 +578,34 @@ async fn a_disconnected_image_turn_releases_its_session() {
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
     }
     assert_eq!(status, 200, "the session stays busy after the client left");
+    let events = session_events(&app, session_id).await;
+    let ends: Vec<&Value> = events.iter().filter(|e| e["type"] == "turn/end").collect();
+    assert_eq!(ends[0]["reason"], "cancelled", "{events:?}");
+    let stopped = events
+        .iter()
+        .find(|e| e["type"] == "tool/result" && e["name"] == "image_generation")
+        .cloned()
+        .unwrap_or_default();
+    assert_eq!(stopped["isError"], true, "{events:?}");
+}
+
+/// Validates `instance` against one `$defs` entry of the image generation contract.
+fn check_image_contract(def: &str, instance: &Value) {
+    let mut schema: Value = serde_json::from_str(include_str!(
+        "../../../contracts/runtime/agent-image-generation.schema.json"
+    ))
+    .unwrap_or_else(|err| panic!("{err}"));
+    schema["$ref"] = json!(format!("#/$defs/{def}"));
+    let validator = jsonschema::validator_for(&schema).unwrap_or_else(|err| panic!("{err}"));
+    let errors: Vec<String> = validator
+        .iter_errors(instance)
+        .map(|error| format!("{error} at {}", error.instance_path()))
+        .collect();
+    assert!(
+        errors.is_empty(),
+        "{def}: {}\n{instance}",
+        errors.join("; ")
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]

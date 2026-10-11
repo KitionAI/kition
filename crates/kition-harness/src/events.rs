@@ -63,6 +63,13 @@ impl MessageSource {
     pub fn user() -> Self {
         Self::new("user")
     }
+
+    /// Whether the client sent this message (the person's own message, an
+    /// approval resume, or a hidden follow-up), as opposed to context the
+    /// runtime added (`recovery`, `tool-follow-up`).
+    pub fn is_client_input(&self) -> bool {
+        matches!(self.kind.as_str(), "user" | "approval" | "context-action")
+    }
 }
 
 /// How an `approval/asked` was settled.

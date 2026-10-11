@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex};
 use axum::response::Response;
 use kition_ai::engine::RuntimeModel;
 use kition_core::{AppError, AppResult, now_millis};
+use kition_harness::log::{SessionLog, SqliteLog};
 use serde::Deserialize;
 use serde_json::{Value, json};
 
@@ -119,6 +120,8 @@ pub struct Prepared {
     session: AgentSession,
     content: String,
     image_intent: Option<images::ImageIntent>,
+    /// The image request was already logged with the same settings.
+    image_repeat: bool,
     approval: Option<exec::Approval>,
     local_sources: Vec<sources::LocalSource>,
     /// The session's turn guard, taken by the busy check and held until
@@ -171,9 +174,19 @@ pub async fn prepare(
     if content.is_empty() {
         return Err(AppError::bad_request("Message content cannot be empty"));
     }
-    if image_intent.is_none() {
-        check_model(request.runtime_model.as_ref()).map_err(AppError::bad_request)?;
-    }
+    let image_repeat = match &image_intent {
+        Some(intent) => {
+            let log = SqliteLog::new(agent.db().clone());
+            let events = log
+                .read(&log::log_key(session.id))
+                .map_err(AppError::internal)?;
+            !images::claim(&events, intent).map_err(AppError::conflict)?
+        }
+        None => {
+            check_model(request.runtime_model.as_ref()).map_err(AppError::bad_request)?;
+            false
+        }
+    };
     let approval = match &request.shell_approval {
         Some(input) => Some(
             exec::resolve_approval(
@@ -202,6 +215,7 @@ pub async fn prepare(
         session,
         content,
         image_intent,
+        image_repeat,
         approval,
         local_sources,
         turn,
@@ -254,10 +268,18 @@ async fn drive(agent: Agent, user_id: i64, prepared: Prepared, emitter: Emitter)
         mut session,
         content,
         image_intent,
+        image_repeat,
         approval,
         local_sources,
         turn,
     } = prepared;
+    if image_repeat {
+        emitter.send(&Frame {
+            done: true,
+            ..Frame::new("done")
+        });
+        return;
+    }
     let mut active_document = request.active_document_path.trim().to_owned();
     if active_document.is_empty() {
         active_document = session.active_document_path.trim().to_owned();
@@ -324,23 +346,22 @@ async fn drive(agent: Agent, user_id: i64, prepared: Prepared, emitter: Emitter)
         source: message_source(approval.is_some(), request.hide_user_message),
     });
     if let Some(intent) = image_intent {
-        // The session is released as soon as the client leaves; the image
-        // work keeps running in its own task and records its own outcome,
-        // logging the exchange so later turns see it.
-        let (task_run, portal) = (run.clone(), agent.portal_base_url().to_owned());
-        let request = content.clone();
-        let work = tokio::spawn(async move {
-            if let Some(reply) = images::stream_intent(&task_run, session, &portal, intent).await {
-                log::record_exchange(&task_run.agent, task_run.session_id, &request, &reply).await;
+        // The whole request is logged as one turn under the session's turn
+        // guard. When the client leaves, the generation stops and the turn
+        // ends as cancelled, which releases the session.
+        let composer = match images::Composer::start(&run, &intent.request_id, &content) {
+            Ok(composer) => composer,
+            Err(error) => {
+                emitter.send(&Frame::error(format!(
+                    "Failed to log the image request: {error}"
+                )));
+                return;
             }
-        });
+        };
+        let portal = agent.portal_base_url().to_owned();
         tokio::select! {
-            result = work => {
-                if let Err(error) = result {
-                    tracing::warn!(error = %error, "image generation task ended abnormally");
-                }
-            }
-            () = emitter.closed() => {}
+            () = images::stream_intent(&run, session, &portal, &intent, &composer) => {}
+            () = emitter.closed() => composer.cancel(),
         }
         drop(turn);
         return;

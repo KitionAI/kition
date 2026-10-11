@@ -10,10 +10,8 @@ import { runtimeSupportsAgentImageGeneration } from '@/features/media-generation
 import {
   AGENT_IMAGE_GENERATION_CAPABILITY,
   AGENT_IMAGE_GENERATION_CHAT_CAPABILITY,
-  AGENT_IMAGE_GENERATION_EVENT_NAMES,
   AGENT_IMAGE_GENERATION_MAX_REFERENCES,
   AGENT_IMAGE_GENERATION_MAX_VARIANTS,
-  AGENT_IMAGE_GENERATION_STATUSES,
   type AgentImageGenerationEvent,
 } from '@/types/imageGeneration'
 
@@ -29,7 +27,8 @@ describe('Agent image-generation public boundary', () => {
     expect(schema['x-chat-runtime-capability']).toBe(AGENT_IMAGE_GENERATION_CHAT_CAPABILITY)
     expect(schema.oneOf).toEqual([
       { $ref: '#/$defs/intent' },
-      { $ref: '#/$defs/event' },
+      { $ref: '#/$defs/variantCall' },
+      { $ref: '#/$defs/variantMeta' },
     ])
     expect(schema.$defs.intent.properties.variants.maximum).toBe(
       AGENT_IMAGE_GENERATION_MAX_VARIANTS,
@@ -44,12 +43,7 @@ describe('Agent image-generation public boundary', () => {
       'design',
       'chat',
     ])
-    expect(schema.$defs.event.properties.event.enum).toEqual([
-      ...AGENT_IMAGE_GENERATION_EVENT_NAMES,
-    ])
-    expect(schema.$defs.event.properties.status.enum).toEqual([
-      ...AGENT_IMAGE_GENERATION_STATUSES,
-    ])
+    expect(schema.$defs.variantMeta.properties.kind.const).toBe('image_generation.variant')
     expect(schema.$defs.artifact.required).toContain('provenance')
   })
 

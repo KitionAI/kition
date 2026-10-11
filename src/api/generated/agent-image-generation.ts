@@ -80,7 +80,7 @@ export type AgentImageGenerationProvenance = {
 }
 
 export type AgentImageGenerationArtifact = {
-  id: number
+  call_id: string
   path: AgentImageGenerationPortablePath
   mime_type: string
   title?: string
@@ -98,9 +98,30 @@ export type AgentImageGenerationError = {
   retryable: boolean
 }
 
-export type AgentImageGenerationEvent = (unknown) & (unknown) & (unknown)
+/**
+ * The arguments of the image_generation tool/call for one variant of a request.
+ */
+export type AgentImageGenerationVariantCall = {
+  request_id: AgentImageGenerationIdentifier
+  intent_sha256: string
+  variant_index: number
+  variant_count: number
+  size: string
+  quality: "low" | "medium" | "high"
+  template_id?: AgentImageGenerationIdentifier
+  reference_count: number
+}
 
 /**
- * Typed image-generation intents and stream events shared by Agent conversations across documents, tables, and Boards.
+ * The meta of a successful image_generation tool/result: the saved variant.
  */
-export type AgentImageGenerationContract = AgentImageGenerationIntent | AgentImageGenerationEvent
+export type AgentImageGenerationVariantMeta = {
+  kind: "image_generation.variant"
+  request_id: AgentImageGenerationIdentifier
+  artifact: AgentImageGenerationArtifact
+}
+
+/**
+ * Typed image-generation intents shared by Agent conversations across documents, tables, and Boards, and how the runtime logs them: an image composer request is one session turn (agent-session-events.schema.json) whose variant i is a tool/call named image_generation with variantCall arguments and call id img_<first 24 hex of sha256(request_id)>_<i>, settled by a tool/result whose value is the artifact and whose meta is variantMeta (success, followed by deliverables/presented), or by a tool/result with isError whose content is the message and the error as JSON. A request id names one set of settings: a repeat with the same settings changes nothing, other settings are refused with HTTP 409.
+ */
+export type AgentImageGenerationContract = AgentImageGenerationIntent | AgentImageGenerationVariantCall | AgentImageGenerationVariantMeta

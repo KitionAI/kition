@@ -12,7 +12,12 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 use sha2::{Digest, Sha256};
 
+use std::sync::Arc;
+
+use kition_harness::driver::{Live, LiveSink, append_live, next_turn};
+use kition_harness::events::{ContentBlock, EventBody, MessageSource, SessionEvent, TurnEndReason};
 use kition_harness::llm::HostedCall;
+use kition_harness::log::{SessionLog, SqliteLog};
 
 use crate::run::{EventInput, Run, ToolOutput, ToolResult, delivered, int_field, text_field};
 use crate::store::{self, AgentMessage, AgentSession};
@@ -593,66 +598,226 @@ async fn emit_image_event(
     .ok_or_else(|| "failed to persist image generation progress".to_owned())
 }
 
-/// Accepts a request ID once; replays earlier progress for a repeat.
-async fn claim(run: &Run, intent: &ImageIntent) -> Result<bool, String> {
-    let (session, user) = (run.session_id, run.user_id);
-    let events: Vec<store::AgentEvent> = run
-        .agent
-        .with_db(move |conn| store::session_rows(conn, session, user))
-        .await
-        .map_err(|_| "failed to load image generation state".to_owned())?;
-    let fingerprint = digest(&serde_json::to_vec(intent).unwrap_or_default());
-    let mut found = false;
-    for event in events
-        .iter()
-        .filter(|e| e.event_type.starts_with("image_generation."))
-    {
-        if event.data["image_generation"]["request_id"].as_str() != Some(intent.request_id.as_str())
+/// The fingerprint of an image composer request's settings.
+pub fn intent_sha256(intent: &ImageIntent) -> String {
+    digest(&serde_json::to_vec(intent).unwrap_or_default())
+}
+
+/// The call id of variant `index` of request `request_id`.
+fn variant_call_id(request_id: &str, index: i64) -> String {
+    format!("img_{}_{index}", &digest(request_id.as_bytes())[..24])
+}
+
+/// Whether `intent` is new to the session log: `Ok(false)` when an
+/// `image_generation` call already logged its request id with the same
+/// settings, an error when it logged other settings.
+pub fn claim(events: &[SessionEvent], intent: &ImageIntent) -> Result<bool, String> {
+    let fingerprint = intent_sha256(intent);
+    for event in events {
+        let EventBody::ToolCall {
+            name, arguments, ..
+        } = &event.body
+        else {
+            continue;
+        };
+        if name != "image_generation"
+            || arguments["request_id"].as_str() != Some(intent.request_id.as_str())
         {
             continue;
         }
-        if let Some(previous) = event.data["image_intent_sha256"].as_str()
-            && previous != fingerprint
-        {
+        if arguments["intent_sha256"].as_str() != Some(fingerprint.as_str()) {
             return Err("image request ID was already used for different settings".into());
         }
-        found = true;
-        run.send(&Frame {
-            event: value(event),
-            ..Frame::new("agent_event")
-        });
-    }
-    if found {
         return Ok(false);
     }
-    emit_image_event(run, intent, "accepted", "queued", json!({})).await?;
     Ok(true)
 }
 
-/// Records a failed image request; `None`, as there is no reply.
+/// An image composer request as one logged turn without a model call:
+/// `turn/start`, `step/start`, the user's `user/message`, per variant an
+/// `image_generation` `tool/call` and its `tool/result`, then the reply,
+/// `step/end`, and `turn/end`. Every append happens under the session's
+/// turn guard, which `session::prepare` took.
+pub struct Composer {
+    log: SqliteLog,
+    key: String,
+    live: LiveSink,
+    turn: u32,
+    request_id: String,
+    /// The variant call that has no result yet.
+    open: std::sync::Mutex<Option<String>>,
+}
+
+impl Composer {
+    /// Opens the turn with the user's message.
+    pub fn start(run: &Run, request_id: &str, content: &str) -> Result<Self, String> {
+        let log = SqliteLog::new(run.agent.db().clone());
+        let key = crate::log::log_key(run.session_id);
+        let turn = next_turn(&log.read(&key)?);
+        let composer = Self {
+            log,
+            key,
+            live: Arc::new(|_: Live| {}),
+            turn,
+            request_id: request_id.to_owned(),
+            open: std::sync::Mutex::new(None),
+        };
+        composer.append(EventBody::TurnStart { turn })?;
+        composer.append(EventBody::StepStart { turn, step: 1 })?;
+        composer.append(EventBody::UserMessage {
+            content: vec![ContentBlock::text(content)],
+            source: MessageSource::user(),
+        })?;
+        Ok(composer)
+    }
+
+    fn append(&self, body: EventBody) -> Result<(), String> {
+        append_live(&self.log, &self.key, &self.live, body).map(|_| ())
+    }
+
+    fn open(&self) -> std::sync::MutexGuard<'_, Option<String>> {
+        self.open
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
+    /// Logs the call for variant `index`.
+    fn call(&self, index: i64, arguments: Value) -> Result<String, String> {
+        let call_id = variant_call_id(&self.request_id, index);
+        self.append(EventBody::ToolCall {
+            call_id: call_id.clone(),
+            name: "image_generation".into(),
+            arguments,
+        })?;
+        *self.open() = Some(call_id.clone());
+        Ok(call_id)
+    }
+
+    /// Logs the saved variant of the open call and hands its file over.
+    fn saved(&self, artifact: &Value, path: &str, title: &str) -> Result<(), String> {
+        let Some(call_id) = self.open().take() else {
+            return Err("no image variant is pending".into());
+        };
+        self.append(EventBody::ToolResult {
+            call_id: call_id.clone(),
+            name: "image_generation".into(),
+            value: artifact.clone(),
+            content: vec![ContentBlock::text(format!(
+                "Generated image {}: {path}",
+                artifact["variant_index"].as_i64().unwrap_or_default() + 1
+            ))],
+            is_error: false,
+            meta: Some(json!({
+                "kind": "image_generation.variant",
+                "request_id": self.request_id,
+                "artifact": artifact,
+            })),
+        })?;
+        self.append(EventBody::DeliverablesPresented {
+            turn: self.turn,
+            call_id,
+            files: vec![delivered(path, title)],
+        })
+    }
+
+    /// Ends the turn: a failed open call first, then the reply (when the
+    /// turn completed), `step/end`, and `turn/end`.
+    fn end(
+        &self,
+        reason: TurnEndReason,
+        error: Option<(&str, &str, bool)>,
+        reply: Option<&str>,
+    ) -> Result<(), String> {
+        let open = self.open().take();
+        if let (Some(call_id), Some((code, message, retryable))) = (open, error) {
+            self.append(EventBody::ToolResult {
+                call_id,
+                name: "image_generation".into(),
+                value: Value::Null,
+                content: vec![
+                    ContentBlock::text(message),
+                    ContentBlock::text(
+                        json!({ "code": code, "message": message, "retryable": retryable })
+                            .to_string(),
+                    ),
+                ],
+                is_error: true,
+                meta: None,
+            })?;
+        }
+        if let Some(reply) = reply {
+            self.append(EventBody::AssistantMessage {
+                content: reply.to_owned(),
+                tool_calls: Vec::new(),
+                stop_reason: "stop".into(),
+                model: String::new(),
+                raw_items: Vec::new(),
+            })?;
+        }
+        self.append(EventBody::StepEnd {
+            turn: self.turn,
+            step: 1,
+        })?;
+        self.append(EventBody::TurnEnd {
+            turn: self.turn,
+            reason,
+            error: error
+                .map(|(_, message, _)| message.to_owned())
+                .unwrap_or_default(),
+        })
+    }
+
+    /// Ends the turn as cancelled: the client left.
+    pub fn cancel(&self) {
+        let ended = self.end(
+            TurnEndReason::Cancelled,
+            Some(("image_generation_canceled", "canceled", true)),
+            None,
+        );
+        if let Err(error) = ended {
+            tracing::warn!(error = %error, "could not log the cancelled image request");
+        }
+    }
+}
+
+/// Records a failed image request and ends its logged turn.
 async fn fail_intent(
     run: &Run,
     intent: &ImageIntent,
+    composer: &Composer,
     code: &str,
     message: String,
     count: i64,
-) -> Option<String> {
+) {
     let message = crate::run::truncate_chars(&message, 1800);
     let canceled = run.emitter.is_closed();
     let status = if canceled { "canceled" } else { "failed" };
+    let retryable = code != "reference_invalid";
     let fields = if canceled {
         json!({ "artifact_count": count })
     } else {
-        json!({ "artifact_count": count, "error": { "code": code, "message": message, "retryable": code != "reference_invalid" } })
+        json!({ "artifact_count": count, "error": { "code": code, "message": message, "retryable": retryable } })
     };
     let _ = emit_image_event(run, intent, status, status, fields).await;
+    let ended = if canceled {
+        composer.cancel();
+        Ok(())
+    } else {
+        composer.end(
+            TurnEndReason::Failed,
+            Some((code, &message, retryable)),
+            None,
+        )
+    };
+    if let Err(error) = ended {
+        tracing::warn!(error = %error, "could not log the failed image request");
+    }
     let session_id = run.session_id;
     let _ = run
         .agent
         .with_db(move |conn| store::set_session_status(conn, session_id, status))
         .await;
     run.send(&Frame::error(message));
-    None
 }
 
 async fn resolve_prompt(run: &Run, portal: &str, intent: &ImageIntent) -> Result<String, String> {
@@ -753,29 +918,40 @@ fn references(run: &Run, paths: &[String]) -> Result<Vec<String>, String> {
         .collect()
 }
 
-/// Runs an image composer request: generates each variant, saves it, and
-/// streams progress, artifacts, and the final reply. Returns the reply, or
-/// `None` when the request was not claimed or failed.
+/// Runs an image composer request that `claim` accepted: generates each
+/// variant, saves it, logs it on `composer`'s turn, and streams progress,
+/// artifacts, and the final reply.
 pub async fn stream_intent(
     run: &Run,
     mut session: AgentSession,
     portal: &str,
-    intent: ImageIntent,
-) -> Option<String> {
-    let claimed = match claim(run, &intent).await {
-        Ok(claimed) => claimed,
+    intent: &ImageIntent,
+    composer: &Composer,
+) {
+    let intent = intent.clone();
+    let (width, height) = intent_dimensions(&intent);
+    let fingerprint = intent_sha256(&intent);
+    let arguments = |index: i64| {
+        let mut arguments = json!({
+            "request_id": intent.request_id, "intent_sha256": fingerprint,
+            "variant_index": index, "variant_count": intent.variants,
+            "size": format!("{width}x{height}"), "quality": intent.quality,
+            "reference_count": intent.reference_paths.len(),
+        });
+        if !intent.template_id.is_empty() {
+            arguments["template_id"] = json!(intent.template_id);
+        }
+        arguments
+    };
+    if let Err(error) = emit_image_event(run, &intent, "accepted", "queued", json!({})).await {
+        return fail_intent(run, &intent, composer, "image_progress_failed", error, 0).await;
+    }
+    let mut call_id = match composer.call(0, arguments(0)) {
+        Ok(call_id) => call_id,
         Err(error) => {
-            run.send(&Frame::error(error));
-            return None;
+            return fail_intent(run, &intent, composer, "image_progress_failed", error, 0).await;
         }
     };
-    if !claimed {
-        run.send(&Frame {
-            done: true,
-            ..Frame::new("done")
-        });
-        return None;
-    }
     let session_id = session.id;
     let _ = run
         .agent
@@ -784,15 +960,24 @@ pub async fn stream_intent(
     let mut count = 0;
     let refs = match references(run, &intent.reference_paths) {
         Ok(refs) => refs,
-        Err(error) => return fail_intent(run, &intent, "reference_invalid", error, 0).await,
+        Err(error) => {
+            return fail_intent(run, &intent, composer, "reference_invalid", error, 0).await;
+        }
     };
     let prompt = match resolve_prompt(run, portal, &intent).await {
         Ok(prompt) => prompt,
         Err(error) => {
-            return fail_intent(run, &intent, "template_resolution_failed", error, 0).await;
+            return fail_intent(
+                run,
+                &intent,
+                composer,
+                "template_resolution_failed",
+                error,
+                0,
+            )
+            .await;
         }
     };
-    let (width, height) = intent_dimensions(&intent);
     let folder = format!(
         "Agent/images/{}/{}",
         run.session_id,
@@ -815,16 +1000,41 @@ pub async fn stream_intent(
             return fail_intent(
                 run,
                 &intent,
+                composer,
                 "image_generation_canceled",
                 "canceled".into(),
                 count,
             )
             .await;
         }
+        if index > 0 {
+            call_id = match composer.call(index, arguments(index)) {
+                Ok(call_id) => call_id,
+                Err(error) => {
+                    return fail_intent(
+                        run,
+                        &intent,
+                        composer,
+                        "image_progress_failed",
+                        error,
+                        count,
+                    )
+                    .await;
+                }
+            };
+        }
         let progress = json!({ "progress": index as f64 / intent.variants as f64 });
         if let Err(error) = emit_image_event(run, &intent, "progress", "generating", progress).await
         {
-            return fail_intent(run, &intent, "image_progress_failed", error, count).await;
+            return fail_intent(
+                run,
+                &intent,
+                composer,
+                "image_progress_failed",
+                error,
+                count,
+            )
+            .await;
         }
         let request = ImageRequest {
             prompt: prompt.clone(),
@@ -845,6 +1055,7 @@ pub async fn stream_intent(
                 return fail_intent(
                     run,
                     &intent,
+                    composer,
                     "image_provider_error",
                     error.to_string(),
                     count,
@@ -860,6 +1071,7 @@ pub async fn stream_intent(
             return fail_intent(
                 run,
                 &intent,
+                composer,
                 "image_result_missing",
                 "image provider returned no usable image".into(),
                 count,
@@ -875,6 +1087,7 @@ pub async fn stream_intent(
             return fail_intent(
                 run,
                 &intent,
+                composer,
                 "image_result_invalid",
                 "image provider returned an unsupported image format".into(),
                 count,
@@ -887,6 +1100,7 @@ pub async fn stream_intent(
             return fail_intent(
                 run,
                 &intent,
+                composer,
                 "image_result_invalid",
                 "image provider returned an invalid image".into(),
                 count,
@@ -903,6 +1117,7 @@ pub async fn stream_intent(
                 return fail_intent(
                     run,
                     &intent,
+                    composer,
                     "image_save_failed",
                     "failed to save the generated image".into(),
                     count,
@@ -923,6 +1138,7 @@ pub async fn stream_intent(
             return fail_intent(
                 run,
                 &intent,
+                composer,
                 "image_save_failed",
                 "failed to record the generated image".into(),
                 count,
@@ -938,7 +1154,7 @@ pub async fn stream_intent(
             provenance["template_version"] = json!(intent.template_version);
         }
         let artifact_view = json!({
-            "id": artifact.id, "path": path, "mime_type": mime, "title": artifact.title,
+            "call_id": call_id, "path": path, "mime_type": mime, "title": artifact.title,
             "width": w, "height": h, "variant_index": index, "variant_count": intent.variants,
             "created_at": kition_core::time::to_rfc3339(kition_core::now_millis()),
             "provenance": provenance,
@@ -952,15 +1168,19 @@ pub async fn stream_intent(
         )
         .await
         {
-            return fail_intent(run, &intent, "image_save_failed", error, count).await;
+            return fail_intent(run, &intent, composer, "image_save_failed", error, count).await;
+        }
+        if let Err(error) = composer.saved(&artifact_view, &path, &artifact.title) {
+            return fail_intent(run, &intent, composer, "image_save_failed", error, count).await;
         }
         last = Some(artifact);
         count += 1;
     }
+    let reply = format!("Generated {count} image(s) for review.");
     let message = store::new_message(
         &session,
         "assistant",
-        &format!("Generated {count} image(s) for review."),
+        &reply,
         json!({ "image_generation_request_id": intent.request_id }),
     );
     let message: AgentMessage = match run
@@ -973,6 +1193,7 @@ pub async fn stream_intent(
             return fail_intent(
                 run,
                 &intent,
+                composer,
                 "image_reply_save_failed",
                 "failed to save the image generation reply".into(),
                 count,
@@ -989,7 +1210,26 @@ pub async fn stream_intent(
     )
     .await
     {
-        return fail_intent(run, &intent, "image_progress_failed", error, count).await;
+        return fail_intent(
+            run,
+            &intent,
+            composer,
+            "image_progress_failed",
+            error,
+            count,
+        )
+        .await;
+    }
+    if let Err(error) = composer.end(TurnEndReason::Completed, None, Some(&reply)) {
+        return fail_intent(
+            run,
+            &intent,
+            composer,
+            "image_progress_failed",
+            error,
+            count,
+        )
+        .await;
     }
     session.status = "idle".into();
     let mut saved = session.clone();
@@ -1011,7 +1251,6 @@ pub async fn stream_intent(
         done = done.extra("artifact", artifact);
     }
     run.send(&done);
-    Some(message.content)
 }
 
 #[cfg(test)]
