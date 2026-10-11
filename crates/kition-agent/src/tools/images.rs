@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 use sha2::{Digest, Sha256};
 
-use crate::run::{EventInput, Run, ToolOutput, ToolResult, int_field, text_field};
+use crate::run::{EventInput, Run, ToolOutput, ToolResult, delivered, int_field, text_field};
 use crate::store::{self, AgentMessage, AgentSession};
 use crate::stream::{Frame, value};
 use crate::tools::documents::default_folder;
@@ -72,6 +72,7 @@ pub async fn image_search(run: &Run, tool_call_id: i64, input: &Value) -> ToolRe
     let folder = artifact_folder(run, &title, &text_field(input, "folder"));
     let mut items = Vec::new();
     let mut paths = Vec::new();
+    let mut deliverables = Vec::new();
     let mut first = None;
     for (index, image) in images.iter().enumerate() {
         let item_title = if images.len() > 1 {
@@ -105,6 +106,7 @@ pub async fn image_search(run: &Run, tool_call_id: i64, input: &Value) -> ToolRe
         if first.is_none() {
             first = artifact;
         }
+        deliverables.push(delivered(&path, &item_title));
         items.push(json!({
             "path": path, "url": image.url, "preview_url": image.url, "title": item_title,
             "mime_type": image.mime_type,
@@ -117,6 +119,7 @@ pub async fn image_search(run: &Run, tool_call_id: i64, input: &Value) -> ToolRe
     let rows: Vec<String> = paths.iter().map(|path| format!("- `{path}`")).collect();
     Ok(ToolOutput {
         artifact: first,
+        deliverables,
         follow_up: vec![text_part(format!(
             "[image_search system follow-up] The image generation completed and the file(s) below have been saved into the workspace:\n  - {}\nTell the user the image is ready and quote the saved path(s) verbatim so they can click to open it. Do not call image_search again unless the user asks for another image.",
             paths.join("\n  - ")
@@ -158,6 +161,7 @@ pub async fn save_image_asset(run: &Run, tool_call_id: i64, input: &Value) -> To
         .await;
     Ok(ToolOutput {
         artifact,
+        deliverables: vec![delivered(&path, &title)],
         ..ToolOutput::new(
             format!("Saved image asset: `{path}`"),
             json!({ "path": path, "source_url": url, "mime_type": asset.mime, "bytes": asset.data.len() }),

@@ -15,6 +15,7 @@ use std::sync::Arc;
 
 use kition_ai::engine::MessagePart;
 use kition_core::now_millis;
+use kition_harness::events::{PresentedFile, TodoItem};
 use serde_json::{Map, Value, json};
 
 use crate::catalog::{self, READ_ONLY, WORKSPACE_WRITE};
@@ -33,6 +34,8 @@ pub struct Executed {
     pub error_message: String,
     pub interrupt: Option<&'static str>,
     pub follow_up: Vec<MessagePart>,
+    pub deliverables: Vec<PresentedFile>,
+    pub todos: Option<Vec<TodoItem>>,
 }
 
 fn rank(permission: &str) -> u8 {
@@ -444,6 +447,8 @@ pub async fn execute(run: &Arc<Run>, name: &str, raw_input: &str) -> Executed {
                 output: result.output,
                 interrupt: result.interrupt,
                 follow_up: result.follow_up,
+                deliverables: result.deliverables,
+                todos: result.todos,
                 ..Executed::default()
             }
         }

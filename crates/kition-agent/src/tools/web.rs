@@ -10,7 +10,9 @@ use std::time::Duration;
 use serde_json::{Value, json};
 use url::Url;
 
-use crate::run::{Run, ToolOutput, ToolResult, int_field, string_list, text_field, truncate_chars};
+use crate::run::{
+    Run, ToolOutput, ToolResult, delivered, int_field, string_list, text_field, truncate_chars,
+};
 use crate::workspace::{parent_folder, sanitize_filename};
 
 const MAX_REDIRECTS: usize = 5;
@@ -654,6 +656,7 @@ pub async fn web_article_save(run: &Run, tool_call_id: i64, input: &Value) -> To
     }
     Ok(ToolOutput {
         artifact,
+        deliverables: vec![delivered(&path, &title)],
         ..ToolOutput::new(
             summary,
             json!({

@@ -6,6 +6,7 @@ use std::sync::{Arc, Mutex, PoisonError, RwLock};
 
 use kition_ai::engine::{Engine, MessagePart, RuntimeModel};
 use kition_core::{AppResult, now_millis};
+use kition_harness::events::{PresentedFile, TodoItem};
 use kition_store::Db;
 use rusqlite::Connection;
 use serde_json::{Map, Value, json};
@@ -436,6 +437,19 @@ pub struct ToolOutput {
     pub interrupt: Option<&'static str>,
     /// Content shown to the model on its next turn, such as an image.
     pub follow_up: Vec<MessagePart>,
+    /// Files the call hands to the user, logged as `deliverables/presented`.
+    pub deliverables: Vec<PresentedFile>,
+    /// The agent's whole todo list when the call rewrote it, logged as
+    /// `todo/write`.
+    pub todos: Option<Vec<TodoItem>>,
+}
+
+/// A file a tool hands to the user.
+pub fn delivered(path: &str, description: &str) -> PresentedFile {
+    PresentedFile {
+        path: path.to_owned(),
+        description: description.to_owned(),
+    }
 }
 
 impl ToolOutput {

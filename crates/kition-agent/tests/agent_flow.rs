@@ -627,6 +627,78 @@ async fn streams_a_turn_with_a_tool_call() {
     assert_session_events_api(&app, session_id).await;
 }
 
+/// The session's logged events through `GET /session-events`, each checked
+/// against the contract.
+async fn session_events(app: &Router, session_id: i64) -> Vec<Value> {
+    let uri = format!("/agent/sessions/{session_id}/session-events");
+    let (status, body) = call(app, "GET", &uri, json!({})).await;
+    assert_eq!(status, 200, "{}", String::from_utf8_lossy(&body));
+    let items = data(&body)["items"].as_array().cloned().unwrap_or_default();
+    for item in &items {
+        check_session_events_contract("sessionEvent", item);
+    }
+    items
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_document_write_presents_the_document_after_its_result() {
+    let Fixture { app, workspace, .. } = app();
+    std::fs::create_dir_all(workspace.path().join("Notes")).unwrap_or_else(|err| panic!("{err}"));
+    std::fs::write(workspace.path().join("Notes/plan.md"), "old")
+        .unwrap_or_else(|err| panic!("{err}"));
+    let session_id = new_session(&app).await;
+    let base_url = fake_provider(vec![
+        tool_call(
+            "document_write",
+            json!({ "path": "Notes/plan.md", "content": "# Plan" }),
+        ),
+        answer(&["Updated."]),
+    ])
+    .await;
+    stream(&app, session_id, &base_url, json!({})).await;
+    let events = session_events(&app, session_id).await;
+    let result = events
+        .iter()
+        .position(|event| event["type"] == "tool/result" && event["name"] == "document_write")
+        .unwrap_or_else(|| panic!("no document_write result: {events:?}"));
+    let presented = &events[result + 1];
+    assert_eq!(presented["type"], "deliverables/presented", "{events:?}");
+    assert_eq!(presented["callId"], "call_1");
+    assert_eq!(presented["turn"], 1);
+    assert_eq!(presented["files"][0]["path"], "Notes/plan.md");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn an_update_plan_call_logs_the_todo_list() {
+    let Fixture { app, .. } = app();
+    let session_id = new_session(&app).await;
+    let base_url = fake_provider(vec![
+        tool_call(
+            "update_plan",
+            json!({ "explanation": "Two steps", "plan": [
+                { "step": "Draft", "status": "in_progress" },
+                { "step": "Review", "status": "pending" },
+            ] }),
+        ),
+        answer(&["Planned."]),
+    ])
+    .await;
+    stream(&app, session_id, &base_url, json!({})).await;
+    let events = session_events(&app, session_id).await;
+    let todos = events
+        .iter()
+        .find(|event| event["type"] == "todo/write")
+        .cloned()
+        .unwrap_or_else(|| panic!("no todo/write: {events:?}"));
+    assert_eq!(
+        todos["todos"],
+        json!([
+            { "content": "Draft", "status": "in_progress" },
+            { "content": "Review", "status": "pending" },
+        ])
+    );
+}
+
 /// A provider-native output item that carries a secret-looking string.
 const RAW_SECRET: &str = "fake-raw-item-secret-4d1c";
 

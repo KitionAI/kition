@@ -7,9 +7,11 @@ use serde_json::{Value, json};
 
 use crate::attachments::image_data_url;
 use crate::fuzzy;
+use kition_harness::events::{TodoItem, TodoStatus};
+
 use crate::run::{
-    EventInput, Run, ToolOutput, ToolResult, bool_field, int_field, string_list, text_field,
-    truncate_chars,
+    EventInput, Run, ToolOutput, ToolResult, bool_field, delivered, int_field, string_list,
+    text_field, truncate_chars,
 };
 use crate::store;
 
@@ -274,6 +276,7 @@ pub async fn view_image(run: &Run, tool_call_id: i64, input: &Value) -> ToolResu
         .await;
     Ok(ToolOutput {
         artifact,
+        deliverables: vec![delivered(&relative, &name)],
         follow_up: vec![
             MessagePart {
                 kind: "text".into(),
@@ -372,5 +375,19 @@ pub async fn update_plan(run: &Run, input: &Value) -> ToolResult {
         };
         rendered.push_str(&format!("{}. {marker} {step}\n", index + 1));
     }
-    Ok(ToolOutput::new(rendered.trim_end().to_owned(), output))
+    let todos = normalized
+        .into_iter()
+        .map(|(content, status)| TodoItem {
+            content,
+            status: match status.as_str() {
+                "in_progress" => TodoStatus::InProgress,
+                "completed" => TodoStatus::Completed,
+                _ => TodoStatus::Pending,
+            },
+        })
+        .collect();
+    Ok(ToolOutput {
+        todos: Some(todos),
+        ..ToolOutput::new(rendered.trim_end().to_owned(), output)
+    })
 }

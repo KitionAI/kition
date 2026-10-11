@@ -10,7 +10,7 @@ use futures::future::BoxFuture;
 use kition_ai::engine::{MessagePart, ToolSpec};
 use kition_harness::cancel::Cancel;
 use kition_harness::driver::{Driver, Live, TurnInput};
-use kition_harness::events::{ContentBlock, MessageSource, TurnEndReason};
+use kition_harness::events::{ContentBlock, EventBody, MessageSource, TurnEndReason};
 use kition_harness::log::SqliteLog;
 use kition_harness::policy::{CallInfo, Pipeline, Policy};
 use kition_harness::provider::{TurnScene, assemble};
@@ -223,6 +223,17 @@ async fn call_tool(
         cx.pause.request(reason);
     }
     remember(notes, &cx.call_id, &executed.follow_up);
+    if !executed.deliverables.is_empty() {
+        // The driver fills in this turn and call.
+        cx.emit.push(EventBody::DeliverablesPresented {
+            turn: cx.turn,
+            call_id: cx.call_id.clone(),
+            files: executed.deliverables,
+        });
+    }
+    if let Some(todos) = executed.todos {
+        cx.emit.push(EventBody::TodoWrite { todos });
+    }
     if executed.failed {
         // The model sees the failure, then the call's record.
         let detail = json!({

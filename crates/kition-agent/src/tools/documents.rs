@@ -3,7 +3,7 @@
 use serde_json::{Value, json};
 
 use crate::attachments::Kind;
-use crate::run::{Run, ToolOutput, ToolResult, text_field};
+use crate::run::{Run, ToolOutput, ToolResult, delivered, text_field};
 use crate::workspace::{self, parent_folder, sanitize_filename};
 
 const READ_BUDGET: usize = 96 * 1024;
@@ -105,6 +105,7 @@ pub async fn write(run: &Run, tool_call_id: i64, input: &Value) -> ToolResult {
         .await;
     Ok(ToolOutput {
         artifact,
+        deliverables: vec![delivered(&path, &format!("Updated: {path}"))],
         ..ToolOutput::new(
             format!("Updated document: `{path}`"),
             json!({ "path": path, "operation": "updated", "chars": content.chars().count(), "at": true }),
@@ -212,6 +213,7 @@ pub async fn artifact_write(run: &Run, tool_call_id: i64, input: &Value) -> Tool
         .await;
     Ok(ToolOutput {
         artifact,
+        deliverables: vec![delivered(&stored, &filename)],
         ..ToolOutput::new(
             format!("Saved artifact: `{stored}`"),
             json!({ "path": stored, "extension": format!(".{ext}") }),
@@ -276,6 +278,7 @@ pub async fn register_artifact(run: &Run, tool_call_id: i64, input: &Value) -> T
         .await;
     Ok(ToolOutput {
         artifact,
+        deliverables: vec![delivered(&relative, &title)],
         ..ToolOutput::new(
             format!("Registered artifact: `{relative}`"),
             json!({ "path": relative, "mime": mime, "kind": kind, "title": title, "bytes": meta.len() }),
