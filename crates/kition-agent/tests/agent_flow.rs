@@ -459,7 +459,73 @@ async fn tool_call_turn(harness_mode: bool) {
         assert_eq!(kinds.first(), Some(&"turn/start"), "{kinds:?}");
         assert!(kinds.contains(&"tool/result"), "{kinds:?}");
         assert_eq!(kinds.last(), Some(&"turn/end"), "{kinds:?}");
+        assert_session_events_api(&app, session_id).await;
     }
+}
+
+/// Validates `instance` against one `$defs` entry of the session events contract.
+fn check_session_events_contract(def: &str, instance: &Value) {
+    let mut schema: Value = serde_json::from_str(include_str!(
+        "../../../contracts/runtime/agent-session-events.schema.json"
+    ))
+    .unwrap_or_else(|err| panic!("{err}"));
+    schema["$ref"] = json!(format!("#/$defs/{def}"));
+    let validator = jsonschema::validator_for(&schema).unwrap_or_else(|err| panic!("{err}"));
+    let errors: Vec<String> = validator
+        .iter_errors(instance)
+        .map(|error| format!("{error} at {}", error.instance_path()))
+        .collect();
+    assert!(
+        errors.is_empty(),
+        "{def}: {}\n{instance}",
+        errors.join("; ")
+    );
+}
+
+/// `GET /agent/sessions/{id}/session-events` pages the session event log.
+async fn assert_session_events_api(app: &Router, session_id: i64) {
+    let uri = format!("/agent/sessions/{session_id}/session-events");
+    let (status, body) = call(app, "GET", &uri, json!({})).await;
+    assert_eq!(status, 200, "{}", String::from_utf8_lossy(&body));
+    let page = data(&body);
+    check_session_events_contract("page", &page);
+    let items = page["items"].as_array().cloned().unwrap_or_default();
+    assert_eq!(
+        items.first().map(|e| e["type"].clone()),
+        Some(json!("turn/start"))
+    );
+    assert_eq!(
+        items.last().map(|e| e["type"].clone()),
+        Some(json!("turn/end"))
+    );
+    for item in &items {
+        check_session_events_contract("sessionEvent", item);
+    }
+    let seqs: Vec<u64> = items.iter().filter_map(|e| e["seq"].as_u64()).collect();
+    assert!(seqs.windows(2).all(|pair| pair[0] < pair[1]), "{seqs:?}");
+    let last = seqs.last().copied().unwrap_or_default();
+    assert_eq!(page["next_after"], json!(last));
+
+    let middle = seqs.get(seqs.len() / 2).copied().unwrap_or_default();
+    let (status, body) = call(app, "GET", &format!("{uri}?after={middle}"), json!({})).await;
+    assert_eq!(status, 200);
+    let rest = data(&body);
+    assert_eq!(
+        rest["items"][0]["seq"],
+        json!(middle + 1),
+        "the page starts after the given seq"
+    );
+    assert_eq!(rest["next_after"], json!(last));
+
+    let (status, body) = call(app, "GET", &format!("{uri}?after={last}"), json!({})).await;
+    assert_eq!(status, 200);
+    let empty = data(&body);
+    assert_eq!(empty["items"], json!([]));
+    assert_eq!(empty["next_after"], json!(last));
+    check_session_events_contract("page", &empty);
+
+    let (status, _) = call(app, "GET", "/agent/sessions/999/session-events", json!({})).await;
+    assert_eq!(status, 404);
 }
 
 async fn approval_turns(harness_mode: bool) {

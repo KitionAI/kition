@@ -197,6 +197,31 @@ fn logged_arguments(name: &str, input: &Value) -> Value {
     }
 }
 
+/// The event log key of an agent session.
+pub(crate) fn log_key(session_id: i64) -> String {
+    format!("agent:{session_id}")
+}
+
+/// The most session events one page answers.
+pub(crate) const EVENT_PAGE_LIMIT: usize = 500;
+
+/// The session events after `after`, in order, at most one page, and the
+/// cursor for the next page (the last seq returned, or `after`).
+pub(crate) fn read_events(
+    log: &dyn SessionLog,
+    session_id: i64,
+    after: u64,
+) -> Result<(Vec<kition_harness::events::SessionEvent>, u64), String> {
+    let items: Vec<_> = log
+        .read(&log_key(session_id))?
+        .into_iter()
+        .filter(|event| event.seq > after)
+        .take(EVENT_PAGE_LIMIT)
+        .collect();
+    let next_after = items.last().map_or(after, |event| event.seq);
+    Ok((items, next_after))
+}
+
 /// One lock per session, so two turns of a session never interleave their
 /// log appends. Each `Agent` owns one: session ids are only unique within
 /// its database.
@@ -486,7 +511,7 @@ pub async fn drive(
         calls: AtomicUsize::new(0),
         last: Mutex::new(None),
     });
-    let key = format!("agent:{}", run.session_id);
+    let key = log_key(run.session_id);
     let log = Arc::new(SqliteLog::new(run.agent.db().clone()));
     carry_over(run, &session, log.as_ref(), &key).await;
     let mut driver = Driver::new(log, llm.clone());
@@ -726,6 +751,35 @@ mod tests {
         }
         let args = json!({ "path": "a.md", "password": "kept" });
         assert_eq!(logged_arguments("document_read", &args), args);
+    }
+
+    #[test]
+    fn session_events_are_paged_after_a_cursor() {
+        use kition_harness::log::{MemoryLog, SessionLog};
+
+        let log = MemoryLog::default();
+        for turn in 0..(EVENT_PAGE_LIMIT as u32 + 3) {
+            log.append(&log_key(4), EventBody::TurnStart { turn })
+                .unwrap_or_else(|error| panic!("{error}"));
+        }
+        log.append(&log_key(5), EventBody::TurnStart { turn: 1 })
+            .unwrap_or_else(|error| panic!("{error}"));
+
+        let (first, next) = read_events(&log, 4, 0).unwrap_or_else(|error| panic!("{error}"));
+        assert_eq!(first.len(), EVENT_PAGE_LIMIT);
+        assert_eq!(first.first().map(|event| event.seq), Some(1));
+        assert_eq!(next, EVENT_PAGE_LIMIT as u64);
+        let (rest, last) = read_events(&log, 4, next).unwrap_or_else(|error| panic!("{error}"));
+        assert_eq!(
+            rest.iter().map(|event| event.seq).collect::<Vec<_>>(),
+            [501, 502, 503]
+        );
+        let (empty, same) = read_events(&log, 4, last).unwrap_or_else(|error| panic!("{error}"));
+        assert!(empty.is_empty());
+        assert_eq!(same, last);
+        let (missing, cursor) = read_events(&log, 6, 0).unwrap_or_else(|error| panic!("{error}"));
+        assert!(missing.is_empty());
+        assert_eq!(cursor, 0);
     }
 
     #[test]

@@ -5,6 +5,7 @@ import type { RuntimeWritingModel } from '@/types'
 import type { AgentImageGenerationIntent } from '@/types/imageGeneration'
 import type { AgentWhiteboardContext } from '@/types/whiteboardAgent'
 import type { AgentDesignContext } from '@/types/designAgent'
+import type { AgentSessionEventsPage } from './generated/agent-session-events'
 import type {
   AgentCapabilities,
   AgentEvent,
@@ -54,6 +55,13 @@ export async function listAgentToolCalls(sessionId: number) {
 
 export async function listAgentEvents(sessionId: number) {
   return request.get<{ items: AgentEvent[] }>(`/v1/agent/sessions/${sessionId}/events`)
+}
+
+/** The session event log after `after` (`contracts/runtime/agent-session-events.schema.json`). */
+export async function listAgentSessionEvents(sessionId: number, after = 0) {
+  return request.get<AgentSessionEventsPage>(`/v1/agent/sessions/${sessionId}/session-events`, {
+    params: { after },
+  })
 }
 
 export async function deleteAgentSession(sessionId: number) {

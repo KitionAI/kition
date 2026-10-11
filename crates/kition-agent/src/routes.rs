@@ -1,7 +1,7 @@
 //! The `/agent` HTTP API.
 
 use axum::Router;
-use axum::extract::{FromRef, Path, State};
+use axum::extract::{FromRef, Path, Query, State};
 use axum::response::Response;
 use axum::routing::{get, post};
 use kition_ai::chat::{AiGate, require_ai};
@@ -43,6 +43,10 @@ pub fn router(state: AgentState) -> Router {
         .route("/agent/sessions/{id}/messages", get(list_messages))
         .route("/agent/sessions/{id}/tool-calls", get(list_tool_calls))
         .route("/agent/sessions/{id}/events", get(list_events))
+        .route(
+            "/agent/sessions/{id}/session-events",
+            get(list_session_events),
+        )
         .route("/agent/sessions/{id}/messages/stream", post(stream))
         .route(
             "/agent/exec-policy/rules",
@@ -172,6 +176,30 @@ async fn list_events(
     Path(id): Path<String>,
 ) -> AppResult<Response> {
     session_rows::<AgentEvent>(&state, user.id, &id, "events").await
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(default)]
+struct EventsQuery {
+    after: u64,
+}
+
+/// The session event log (`contracts/runtime/agent-session-events.schema.json`).
+async fn list_session_events(
+    State(state): State<AgentState>,
+    user: CurrentUser,
+    Path(id): Path<String>,
+    Query(query): Query<EventsQuery>,
+) -> AppResult<Response> {
+    let session = session::owned_session(&state.agent, parse_id(&id)?, user.id).await?;
+    let log = kition_harness::log::SqliteLog::new(state.agent.db().clone());
+    let (items, next_after) = tokio::task::spawn_blocking(move || {
+        crate::harness_turn::read_events(&log, session.id, query.after)
+    })
+    .await
+    .map_err(|_| AppError::internal("Failed to load agent session events"))?
+    .map_err(|_| AppError::internal("Failed to load agent session events"))?;
+    Ok(ok(json!({ "items": items, "next_after": next_after })))
 }
 
 async fn stream(

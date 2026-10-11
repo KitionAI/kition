@@ -3008,6 +3008,7 @@ dependencies = [
  "htmd",
  "http",
  "http-body-util",
+ "jsonschema",
  "kition-ai",
  "kition-core",
  "kition-datadoc",

@@ -285,7 +285,9 @@ async fn configure_smtp(
 /// `off`, or `false` (the original loop stays as a fallback for one release).
 fn harness_enabled(value: Option<&str>) -> bool {
     !matches!(
-        value.map(|value| value.trim().to_ascii_lowercase()).as_deref(),
+        value
+            .map(|value| value.trim().to_ascii_lowercase())
+            .as_deref(),
         Some("0" | "off" | "false")
     )
 }

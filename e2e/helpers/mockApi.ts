@@ -519,6 +519,17 @@ export async function mockLocalWorkspaceApi(page: Page, options: MockLocalWorksp
       })
     }
 
+    const agentSessionEventsMatch = path.match(/^\/api\/v1\/agent\/sessions\/(\d+)\/session-events$/)
+    if (method === 'GET' && agentSessionEventsMatch) {
+      return fulfill(route, {
+        code: 200,
+        data: {
+          items: [],
+          next_after: 0,
+        },
+      })
+    }
+
     if (method === 'GET' && path === '/api/v1/oauth/platforms') {
       return fulfill(route, {
         code: 200,

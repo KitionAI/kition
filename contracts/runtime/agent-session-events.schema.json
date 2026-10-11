@@ -1,0 +1,499 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kition.ai/contracts/runtime/agent-session-events.schema.json",
+  "title": "Kition Agent Session Events",
+  "description": "GET /agent/sessions/{id}/session-events?after=<seq> answers the caller's own session event log in the runtime envelope: events with seq greater than after, in order, at most 500 per page. Another user's or an unknown session answers 404. Logged tool arguments are redacted by the harness.",
+  "$ref": "#/$defs/page",
+  "$defs": {
+    "seq": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Position of the event in its session, starting at 1."
+    },
+    "at": {
+      "type": "integer",
+      "description": "When the event was appended, in Unix milliseconds."
+    },
+    "contentBlock": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "text"
+          ],
+          "properties": {
+            "type": {
+              "const": "text"
+            },
+            "text": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "url"
+          ],
+          "description": "An image the model sees, as a data: URL or a workspace URL.",
+          "properties": {
+            "type": {
+              "const": "image"
+            },
+            "url": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "loggedCall": {
+      "type": "object",
+      "description": "A tool call as the model asked for it.",
+      "additionalProperties": false,
+      "required": [
+        "callId",
+        "name",
+        "arguments"
+      ],
+      "properties": {
+        "callId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "arguments": {
+          "description": "The call arguments; secrets are redacted before they are logged."
+        }
+      }
+    },
+    "turnEndReason": {
+      "type": "string",
+      "enum": [
+        "completed",
+        "cancelled",
+        "failed",
+        "awaiting-approval",
+        "step-limit"
+      ]
+    },
+    "turnStartEvent": {
+      "type": "object",
+      "description": "A turn began.",
+      "additionalProperties": false,
+      "required": [
+        "seq",
+        "at",
+        "type",
+        "turn"
+      ],
+      "properties": {
+        "seq": {
+          "$ref": "#/$defs/seq"
+        },
+        "at": {
+          "$ref": "#/$defs/at"
+        },
+        "type": {
+          "const": "turn/start"
+        },
+        "turn": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "turnEndEvent": {
+      "type": "object",
+      "description": "A turn ended; error is omitted when empty.",
+      "additionalProperties": false,
+      "required": [
+        "seq",
+        "at",
+        "type",
+        "turn",
+        "reason"
+      ],
+      "properties": {
+        "seq": {
+          "$ref": "#/$defs/seq"
+        },
+        "at": {
+          "$ref": "#/$defs/at"
+        },
+        "type": {
+          "const": "turn/end"
+        },
+        "turn": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reason": {
+          "$ref": "#/$defs/turnEndReason"
+        },
+        "error": {
+          "type": "string"
+        }
+      }
+    },
+    "stepStartEvent": {
+      "type": "object",
+      "description": "One model call and its tool calls began.",
+      "additionalProperties": false,
+      "required": [
+        "seq",
+        "at",
+        "type",
+        "turn",
+        "step"
+      ],
+      "properties": {
+        "seq": {
+          "$ref": "#/$defs/seq"
+        },
+        "at": {
+          "$ref": "#/$defs/at"
+        },
+        "type": {
+          "const": "step/start"
+        },
+        "turn": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "step": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "stepEndEvent": {
+      "type": "object",
+      "description": "One model call and its tool calls ended.",
+      "additionalProperties": false,
+      "required": [
+        "seq",
+        "at",
+        "type",
+        "turn",
+        "step"
+      ],
+      "properties": {
+        "seq": {
+          "$ref": "#/$defs/seq"
+        },
+        "at": {
+          "$ref": "#/$defs/at"
+        },
+        "type": {
+          "const": "step/end"
+        },
+        "turn": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "step": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "systemMessageEvent": {
+      "type": "object",
+      "description": "The system prompt the model saw.",
+      "additionalProperties": false,
+      "required": [
+        "seq",
+        "at",
+        "type",
+        "content"
+      ],
+      "properties": {
+        "seq": {
+          "$ref": "#/$defs/seq"
+        },
+        "at": {
+          "$ref": "#/$defs/at"
+        },
+        "type": {
+          "const": "system/message"
+        },
+        "content": {
+          "type": "string"
+        }
+      }
+    },
+    "userMessageEvent": {
+      "type": "object",
+      "description": "What the user sent.",
+      "additionalProperties": false,
+      "required": [
+        "seq",
+        "at",
+        "type",
+        "content"
+      ],
+      "properties": {
+        "seq": {
+          "$ref": "#/$defs/seq"
+        },
+        "at": {
+          "$ref": "#/$defs/at"
+        },
+        "type": {
+          "const": "user/message"
+        },
+        "content": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/contentBlock"
+          }
+        }
+      }
+    },
+    "assistantMessageEvent": {
+      "type": "object",
+      "description": "What the model answered, with the tool calls it asked for.",
+      "additionalProperties": false,
+      "required": [
+        "seq",
+        "at",
+        "type",
+        "content",
+        "stopReason",
+        "model"
+      ],
+      "properties": {
+        "seq": {
+          "$ref": "#/$defs/seq"
+        },
+        "at": {
+          "$ref": "#/$defs/at"
+        },
+        "type": {
+          "const": "assistant/message"
+        },
+        "content": {
+          "type": "string"
+        },
+        "toolCalls": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/loggedCall"
+          }
+        },
+        "stopReason": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "rawItems": {
+          "type": "array",
+          "description": "Provider-native items replayed verbatim on the Responses wire.",
+          "items": true
+        }
+      }
+    },
+    "assistantAttemptEvent": {
+      "type": "object",
+      "description": "A model call that settled without a message: failed or cancelled.",
+      "additionalProperties": false,
+      "required": [
+        "seq",
+        "at",
+        "type",
+        "error"
+      ],
+      "properties": {
+        "seq": {
+          "$ref": "#/$defs/seq"
+        },
+        "at": {
+          "$ref": "#/$defs/at"
+        },
+        "type": {
+          "const": "assistant/attempt"
+        },
+        "error": {
+          "type": "string"
+        }
+      }
+    },
+    "toolCallEvent": {
+      "type": "object",
+      "description": "A tool call the runtime is about to run; secrets in the arguments are redacted.",
+      "additionalProperties": false,
+      "required": [
+        "seq",
+        "at",
+        "type",
+        "callId",
+        "name",
+        "arguments"
+      ],
+      "properties": {
+        "seq": {
+          "$ref": "#/$defs/seq"
+        },
+        "at": {
+          "$ref": "#/$defs/at"
+        },
+        "type": {
+          "const": "tool/call"
+        },
+        "callId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "arguments": {
+          "description": "The logged arguments, possibly summarized by the tool."
+        }
+      }
+    },
+    "toolResultEvent": {
+      "type": "object",
+      "description": "The outcome of a tool call.",
+      "additionalProperties": false,
+      "required": [
+        "seq",
+        "at",
+        "type",
+        "callId",
+        "name",
+        "value",
+        "content",
+        "isError"
+      ],
+      "properties": {
+        "seq": {
+          "$ref": "#/$defs/seq"
+        },
+        "at": {
+          "$ref": "#/$defs/at"
+        },
+        "type": {
+          "const": "tool/result"
+        },
+        "callId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "description": "The canonical output value; null on failure."
+        },
+        "content": {
+          "type": "array",
+          "description": "What the model sees.",
+          "items": {
+            "$ref": "#/$defs/contentBlock"
+          }
+        },
+        "isError": {
+          "type": "boolean"
+        },
+        "meta": {
+          "description": "Display-only data derived from the arguments and the value."
+        }
+      }
+    },
+    "approvalAskedEvent": {
+      "type": "object",
+      "description": "A tool call that waits for the user's approval.",
+      "additionalProperties": false,
+      "required": [
+        "seq",
+        "at",
+        "type",
+        "callId",
+        "reason"
+      ],
+      "properties": {
+        "seq": {
+          "$ref": "#/$defs/seq"
+        },
+        "at": {
+          "$ref": "#/$defs/at"
+        },
+        "type": {
+          "const": "approval/asked"
+        },
+        "callId": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "sessionEvent": {
+      "description": "One durable session event, named after DeepSeek Harness events.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/turnStartEvent"
+        },
+        {
+          "$ref": "#/$defs/turnEndEvent"
+        },
+        {
+          "$ref": "#/$defs/stepStartEvent"
+        },
+        {
+          "$ref": "#/$defs/stepEndEvent"
+        },
+        {
+          "$ref": "#/$defs/systemMessageEvent"
+        },
+        {
+          "$ref": "#/$defs/userMessageEvent"
+        },
+        {
+          "$ref": "#/$defs/assistantMessageEvent"
+        },
+        {
+          "$ref": "#/$defs/assistantAttemptEvent"
+        },
+        {
+          "$ref": "#/$defs/toolCallEvent"
+        },
+        {
+          "$ref": "#/$defs/toolResultEvent"
+        },
+        {
+          "$ref": "#/$defs/approvalAskedEvent"
+        }
+      ]
+    },
+    "page": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "items",
+        "next_after"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "maxItems": 500,
+          "items": {
+            "$ref": "#/$defs/sessionEvent"
+          }
+        },
+        "next_after": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Pass as after to read the next page: the last seq returned, or the given after when the page is empty."
+        }
+      }
+    }
+  }
+}
