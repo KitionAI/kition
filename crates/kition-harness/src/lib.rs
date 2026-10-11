@@ -18,3 +18,36 @@ pub mod tool;
 /// The DeepSeek Harness release whose contracts this crate follows (Kit
 /// Standard D4). Change it only together with a conformance re-run.
 pub const DSH_TARGET: &str = "0.2.1-alpha.2 (d7432673)";
+
+#[cfg(test)]
+mod tests {
+    use super::events::EventBody;
+
+    /// From `packages/core/session/src/known-event-types.ts` at the pinned
+    /// release. A name outside this list would be an invented event.
+    const DSH_KNOWN: &[&str] = &[
+        "approval/asked",
+        "approval/decided",
+        "assistant/attempt",
+        "assistant/message",
+        "step/end",
+        "step/start",
+        "system/message",
+        "tool/call",
+        "tool/result",
+        "turn/end",
+        "turn/start",
+        "user/message",
+    ];
+
+    #[test]
+    fn every_event_name_exists_in_the_pinned_dsh_release() {
+        for kind in EventBody::KINDS {
+            assert!(
+                DSH_KNOWN.contains(kind),
+                "`{kind}` is not a DeepSeek Harness {} event",
+                super::DSH_TARGET
+            );
+        }
+    }
+}
