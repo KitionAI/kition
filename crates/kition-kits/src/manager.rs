@@ -39,6 +39,28 @@ pub struct KitDefinition {
     /// Extensions the kit's in-page editor exports to, for example `mp4` from a video project.
     /// Exports are only ever new files: `write_file` never replaces an existing one.
     pub exports: &'static [&'static str],
+    /// How the agent's tools for this kit read (`kit.json` `agent`).
+    pub agent: KitAgent,
+}
+
+/// The words the agent's tools for a kit use. The tools are `<prefix>_inspect`,
+/// `<prefix>_commands`, and `<prefix>_run` (Kition Kit Standard A3).
+#[derive(Debug)]
+pub struct KitAgent {
+    /// `kit.json` `agent.prefix`.
+    pub prefix: &'static str,
+    /// What one file is, for example `layered image`.
+    pub noun: &'static str,
+    /// The file types as people know them, for example `PSD, PSB, or .pcraft`.
+    pub formats: &'static str,
+    /// What `<prefix>_inspect` reports.
+    pub reports: &'static str,
+    /// What the commands cover.
+    pub covers: &'static str,
+    /// Keywords that find commands, for example `` `brightness` or `new layer` ``.
+    pub queries: &'static str,
+    /// One command id, as an example.
+    pub command: &'static str,
 }
 
 pub const KITS: &[KitDefinition] = &[
@@ -50,8 +72,17 @@ pub const KITS: &[KitDefinition] = &[
         creates: &[("psd", "psd"), ("psb", "psb"), ("pcraft", "pcraft")],
         embeds: true,
         exports: &[],
+        agent: KitAgent {
+            prefix: "photo",
+            noun: "layered image",
+            formats: "PSD, PSB, or .pcraft",
+            reports: "its size, color mode, bit depth, and layers",
+            covers: "layers, adjustments, filters, selections, transforms, type, and more",
+            queries: "`brightness`, `gaussian blur`, or `new layer`",
+            command: "layer.new.layer",
+        },
     },
-    // Edited in the page through its SDK; the headless executable for the agent comes later.
+    // Edited in the page through its SDK; `kit-film` serves the agent.
     KitDefinition {
         id: "kit.film",
         name: "Kition Film",
@@ -60,6 +91,15 @@ pub const KITS: &[KitDefinition] = &[
         creates: &[],
         embeds: false,
         exports: &["mp4"],
+        agent: KitAgent {
+            prefix: "film",
+            noun: "video project",
+            formats: ".fcproj",
+            reports: "its sequences, tracks, clips, and playhead",
+            covers: "clips, the timeline, trimming, transitions, titles, audio, and more",
+            queries: "`split`, `place clip`, or `color matte`",
+            command: "timeline.place",
+        },
     },
     // Edited in the page through its SDK.
     KitDefinition {
@@ -70,6 +110,15 @@ pub const KITS: &[KitDefinition] = &[
         creates: &[],
         embeds: false,
         exports: &[],
+        agent: KitAgent {
+            prefix: "vector",
+            noun: "vector drawing",
+            formats: ".vectorcraft",
+            reports: "its artboards, layers, objects, and selection",
+            covers: "shapes, paths, paint, type, alignment, effects, artboards, and more",
+            queries: "`rectangle`, `align`, or `stroke`",
+            command: "shape.rectangle",
+        },
     },
     // Edited in the page through its SDK; renders are new MP4 files.
     KitDefinition {
@@ -80,6 +129,15 @@ pub const KITS: &[KitDefinition] = &[
         creates: &[],
         embeds: false,
         exports: &["mp4"],
+        agent: KitAgent {
+            prefix: "effect",
+            noun: "motion graphics project",
+            formats: ".ecproj",
+            reports: "its active composition, layers, and their keyframe times",
+            covers: "compositions, layers, keyframes, effects, masks, text, and more",
+            queries: "`new solid`, `add keyframe`, or `gaussian blur`",
+            command: "layer.newSolid",
+        },
     },
     // Edited in the page through its SDK.
     KitDefinition {
@@ -90,6 +148,15 @@ pub const KITS: &[KitDefinition] = &[
         creates: &[],
         embeds: false,
         exports: &[],
+        agent: KitAgent {
+            prefix: "design",
+            noun: "page layout",
+            formats: ".designcraft",
+            reports: "its pages, spreads, frames, stories, styles, and swatches",
+            covers: "pages, frames, text, styles, swatches, tables, and more",
+            queries: "`text frame`, `paragraph style`, or `insert page`",
+            command: "frame.create",
+        },
     },
 ];
 

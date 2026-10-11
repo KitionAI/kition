@@ -168,7 +168,7 @@ fn title(id: &str) -> &'static str {
 struct Context<'a> {
     options: &'a Options,
     schemas: Schemas,
-    manifest: Option<KitManifest>,
+    manifest: Option<ManifestFacts>,
     process: KitProcess,
     workspace: PathBuf,
     outside: PathBuf,
@@ -326,11 +326,40 @@ fn skip_rest(report: &mut Report, reason: &str) {
     }
 }
 
-fn check_manifest(schemas: &Schemas, path: &Path) -> Result<KitManifest, String> {
+/// What the suite checks the running kit against, from either kind of `kit.json`.
+struct ManifestFacts {
+    id: String,
+    version: String,
+    /// The tool groups commands must belong to, when the manifest declares them.
+    tool_groups: Option<Vec<String>>,
+}
+
+/// The protocol a Kition Kit Standard manifest's `headless` section must name.
+const STANDARD_HEADLESS_PROTOCOL: &str = "kition-kit/1";
+
+fn check_manifest(schemas: &Schemas, path: &Path) -> Result<ManifestFacts, String> {
     let text = std::fs::read_to_string(path)
         .map_err(|error| format!("cannot read {}: {error}", path.display()))?;
     let value: Value =
         serde_json::from_str(&text).map_err(|error| format!("kit.json is not JSON: {error}"))?;
+    // A Kition Kit Standard manifest (kition-sdk `docs/standard.md` section 3): its `headless`
+    // section names the executable under test and the protocol it speaks.
+    if value.get("standard").is_some() {
+        schemas.standard(&value)?;
+        let protocol = value["headless"]["protocol"].as_str();
+        if protocol != Some(STANDARD_HEADLESS_PROTOCOL) {
+            return Err(format!(
+                "kit.json `headless.protocol` is {}, expected {STANDARD_HEADLESS_PROTOCOL}",
+                protocol.unwrap_or("missing")
+            ));
+        }
+        let text = |key: &str| value[key].as_str().unwrap_or_default().to_owned();
+        return Ok(ManifestFacts {
+            id: text("id"),
+            version: text("version"),
+            tool_groups: None,
+        });
+    }
     schemas.manifest(&value)?;
     let manifest: KitManifest = serde_json::from_value(value).map_err(|error| error.to_string())?;
     if manifest.kit_protocol != PROTOCOL_VERSION {
@@ -339,7 +368,17 @@ fn check_manifest(schemas: &Schemas, path: &Path) -> Result<KitManifest, String>
             manifest.kit_protocol
         ));
     }
-    Ok(manifest)
+    Ok(ManifestFacts {
+        tool_groups: manifest.agent.as_ref().map(|agent| {
+            agent
+                .tool_groups
+                .iter()
+                .map(|group| group.id.clone())
+                .collect()
+        }),
+        id: manifest.id,
+        version: manifest.version,
+    })
 }
 
 fn canonical(path: &Path) -> PathBuf {
@@ -517,13 +556,10 @@ impl Context<'_> {
             serde_json::from_value(raw).map_err(|error| error.to_string())?;
         let mut seen = std::collections::HashSet::new();
         let groups: Option<Vec<&str>> = self.manifest.as_ref().and_then(|manifest| {
-            manifest.agent.as_ref().map(|agent| {
-                agent
-                    .tool_groups
-                    .iter()
-                    .map(|group| group.id.as_str())
-                    .collect()
-            })
+            manifest
+                .tool_groups
+                .as_ref()
+                .map(|groups| groups.iter().map(String::as_str).collect())
         });
         for command in &result.commands {
             if !seen.insert(command.id.as_str()) {

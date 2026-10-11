@@ -20,8 +20,13 @@ bar, panels, status bar, notices. The person sees one product, like the suites
 of an office package, not a separate program.
 
 The kit's native executable still exists, but only `headless`: the runtime
-starts it for the agent (`photo_inspect`, `photo_commands`, `photo_run`) and
-for conversions. It never shows a window.
+starts it for the agent and for conversions. It never shows a window. For a
+kit on the SDK the executable is the same `KitDocument` the page runs, served
+over the Kit Protocol by kition-sdk's `kition-headless`, so it is a few lines
+(`apps/kit-<kit>` in each kit repository). The agent's tools for every kit are
+`<prefix>_inspect`, `<prefix>_commands`, and `<prefix>_run`, generated from
+the kit's definition (`photo_*`, `film_*`, `vector_*`, `effect_*`,
+`design_*`).
 
 Rejected on 2026-10-10 after a real-app trial: embedding the kit's native
 editor in an overlay window above the tab (`surface: embedded`, plan B). It
@@ -215,8 +220,15 @@ Kit repository:
    current.
 2. Add `crates/kition-<kit>-sdk` on `kition-sdk` (section 3), with
    `check_contract` in its tests plus the kit's own tests.
-3. Implement the headless Kit Protocol executable and pass the conformance
-   suite (`kition-kit-conformance`); include the reload-on-change rule.
+3. Add the headless executable `apps/kit-<kit>`:
+   `kition_headless::run_manifest::<KitDocument>(include_str!("../../../kit.json"), SANDBOXED, VOLATILE)`.
+   Add `"headless": { "executable": "kit-<kit>", "protocol": "kition-kit/1" }`
+   to `kit.json`. `SANDBOXED` lists commands whose file parameters the
+   engine reads through lent files (otherwise commands naming files are
+   refused for the agent); `VOLATILE` lists `inspect()` keys that are session
+   state, so `view.describe` survives a save. Pass the conformance suite:
+   `cargo run -p kition-kit-conformance -- --kit <kit-<kit>> --manifest kit.json
+   --fixture <file> --edit-command <id> --edit-params '<json>'`, 13/13.
 
 Kition runtime and desktop:
 
@@ -225,8 +237,12 @@ Kition runtime and desktop:
 5. Map the extensions to a format in `src-tauri/src/workspace/formats.rs`, and
    mirror it in the renderer's `src/features/workspace/lib/workspace.ts` and
    the `WorkspaceDocumentFormat` type.
-6. Add agent tools in `crates/kition-agent/src/tools/kits.rs` and their
-   catalog entries, following the `photo_*` tools.
+6. Give the definition its `agent: KitAgent` (prefix from `kit.json`, the
+   noun, formats, what inspect reports, example queries and command). The
+   three agent tools, their labels, and the linked-file prompt follow from it
+   (`crates/kition-agent/src/tools/kits.rs`); add the kit to
+   `KIT_FILE_KINDS` in `src/features/agent/lib/documentMentions.ts` and a case
+   to `crates/kition-kits/tests/sdk_kits.rs` with a small fixture.
 7. Keep `contracts/runtime/kits.schema.json` in step with any new route or
    detail shape, and regenerate the renderer types.
 
@@ -256,6 +272,9 @@ Kition renderer:
     save, the agent's clean reload, and the conflict notice. It skips itself
     when the SDK is not built. Kit-process specs must route
     `**/kits/<kit>-sdk/**` to 404 so they test the fallback deterministically.
+
+`make kit-dev` builds every kit executable and points the runtime at it
+(`KITION_KIT_<KIT>_BINARY`).
 
 Finish with `pnpm run check`, `pnpm check:desktop`, `python3
 scripts/check-i18n.py`, the kit's e2e, and `pnpm test:table:e2e`. Then try it

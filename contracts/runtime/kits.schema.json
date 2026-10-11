@@ -7,7 +7,7 @@
   "$defs": {
     "kitId": {
       "type": "string",
-      "pattern": "^kit\\.[a-z][a-z0-9-]*$"
+      "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$"
     },
     "workspacePath": {
       "type": "string",

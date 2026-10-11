@@ -25,17 +25,24 @@ E2E_PORT ?= 3123
 WEB_KIT_E2E := e2e/photo-web-editor.spec.ts e2e/film-web-editor.spec.ts e2e/vector-web-editor.spec.ts e2e/effect-web-editor.spec.ts e2e/design-web-editor.spec.ts
 KIT_E2E := $(WEB_KIT_E2E) e2e/desktop-photo-kit.spec.ts
 PHOTO_BINARY := $(KIT_PHOTO_REPO)/target/debug/kit-photo
+# The SDK kits' headless executables for the agent (kit-film, kit-vector, ...), from kition-headless.
+SDK_KITS := film vector effect design
+kit_binary = $(KIT_$(shell echo $(1) | tr a-z A-Z)_REPO)/target/debug/kit-$(1)
+SDK_BINARIES := $(foreach kit,$(SDK_KITS),$(call kit_binary,$(kit)))
+# Points the runtime at every kit executable (KITION_KIT_<KIT>_BINARY).
+KIT_BINARY_ENV := KITION_KIT_PHOTO_BINARY="$(PHOTO_BINARY)" $(foreach kit,$(SDK_KITS),KITION_KIT_$(shell echo $(kit) | tr a-z A-Z)_BINARY="$(call kit_binary,$(kit))")
 
-.PHONY: help kit-e2e-webkit kit-dev kit-sdks $(addprefix kit-sdk-,$(KITS)) kit-photo-binary kit-check kit-test kit-e2e kit-e2e-headed kit-clean
+.PHONY: help kit-e2e-webkit kit-dev kit-sdks $(addprefix kit-sdk-,$(KITS)) kit-photo-binary kit-binaries kit-check kit-test kit-e2e kit-e2e-headed kit-clean
 
 help:
-	@echo "make kit-dev         build missing kit engines and the Photo kit binary, then run Kition (pnpm dev)"
+	@echo "make kit-dev         build missing kit engines and kit executables, then run Kition (pnpm dev)"
 	@echo "make kit-test        kit contract checks, then the kit e2e specs"
 	@echo "make kit-e2e-headed  the kit e2e specs in a visible browser"
 	@echo "make kit-e2e-webkit  the in-page kit specs in WebKit, the desktop app's engine"
 	@echo "make kit-sdks        rebuild every kit engine to WebAssembly (public/kits/<kit>-sdk)"
 	@echo "make kit-sdk-photo   rebuild one kit engine (also kit-sdk-film, kit-sdk-vector, kit-sdk-effect, kit-sdk-design)"
 	@echo "make kit-check       contract checks of the built kit engines only"
+	@echo "make kit-binaries    build every kit's headless executable for the agent"
 	@echo "make kit-clean       remove the built kit engines"
 
 # Builds a kit's engine only when it is missing; `make kit-sdks` always rebuilds.
@@ -50,15 +57,22 @@ $(addprefix kit-sdk-,$(KITS)): kit-sdk-%:
 
 kit-sdks: $(addprefix kit-sdk-,$(KITS))
 
-# The headless Photo kit the agent uses (photo_inspect, photo_commands, photo_run).
+# The headless Photo kit the agent uses (photo_inspect, photo_commands, photo_run; each kit's
+# tools are <prefix>_inspect, _commands, and _run).
 $(PHOTO_BINARY):
 	@cd "$(KIT_PHOTO_REPO)" && PATH="$(TOOLCHAIN_PATH)" cargo build -p kit-photo
 
 kit-photo-binary: $(PHOTO_BINARY)
 
-kit-dev: $(addprefix public/kits/,$(addsuffix -sdk/.built,$(KITS))) $(PHOTO_BINARY)
+# kit-film, kit-vector, kit-effect, kit-design: the kit's own document over the Kit Protocol.
+$(SDK_BINARIES):
+	@cd "$(abspath $(dir $@)/../..)" && PATH="$(TOOLCHAIN_PATH)" cargo build -p $(notdir $@)
+
+kit-binaries: $(PHOTO_BINARY) $(SDK_BINARIES)
+
+kit-dev: $(addprefix public/kits/,$(addsuffix -sdk/.built,$(KITS))) $(PHOTO_BINARY) $(SDK_BINARIES)
 	@echo "Kition with Photo, Film, Vector, Effect, and Design: open a .psd, .fcproj, .vectorcraft, .ecproj, or .designcraft, or use the New menu."
-	$(NO_PROXY_ENV) KITION_KIT_PHOTO_BINARY="$(PHOTO_BINARY)" pnpm dev
+	$(NO_PROXY_ENV) $(KIT_BINARY_ENV) pnpm dev
 
 kit-check: $(addprefix public/kits/,$(addsuffix -sdk/.built,$(KITS)))
 	pnpm check:kit-sdks

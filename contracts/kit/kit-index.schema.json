@@ -20,7 +20,7 @@
       "additionalProperties": false,
       "required": ["id", "name", "versions"],
       "properties": {
-        "id": { "type": "string", "pattern": "^kit\\.[a-z][a-z0-9-]*$" },
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$" },
         "name": { "type": "string", "minLength": 1 },
         "builtIn": {
           "type": "boolean",

@@ -47,7 +47,7 @@
     },
     {
       "name": "configure_smtp_connection",
-      "description": "Create or update an Email SMTP connection from the values the user provided, AND optionally attach it to the calling workflow in the same call. Use this tool whenever the user asks you to set up, configure, save, or update SMTP / email settings \u2014 typical inputs include host, port, username, password, from address, and TLS mode. When the prompt mentions a specific workflow id, ALWAYS pass it as `workflowId` so the new connection is wired into that workflow's action node immediately (no manual dropdown click required). On success, the new connection's id is returned (and, when workflowId was supplied, the patched workflow's id too). The server runs a real Test & Save against the SMTP server before persisting; if the test fails the row is rolled back and you should report the failure verbatim to the user.",
+      "description": "Create or update an Email SMTP connection from the values the user provided, AND optionally attach it to the calling workflow in the same call. Use this tool whenever the user asks you to set up, configure, save, or update SMTP / email settings — typical inputs include host, port, username, password, from address, and TLS mode. When the prompt mentions a specific workflow id, ALWAYS pass it as `workflowId` so the new connection is wired into that workflow's action node immediately (no manual dropdown click required). On success, the new connection's id is returned (and, when workflowId was supplied, the patched workflow's id too). The server runs a real Test & Save against the SMTP server before persisting; if the test fails the row is rolled back and you should report the failure verbatim to the user.",
       "category": "workflow",
       "input_schema": {
         "type": "object",
@@ -95,7 +95,7 @@
           },
           "workflowId": {
             "type": "string",
-            "description": "Optional. When set, after the connection is saved this tool also patches the workflow's action.connectionId so the connection is attached in one step \u2014 saves the user a manual click. The prompt passed to you usually already contains the workflow id; copy it here verbatim when present."
+            "description": "Optional. When set, after the connection is saved this tool also patches the workflow's action.connectionId so the connection is attached in one step — saves the user a manual click. The prompt passed to you usually already contains the workflow id; copy it here verbatim when present."
           }
         },
         "required": [
@@ -1098,7 +1098,7 @@
     },
     {
       "name": "image_generation",
-      "description": "Generate one image via the runtime's native image_generation tool.\n\nWHEN TO INVOKE\n- Any request to create / generate / draw / design / render / illustrate /\n  produce an image, cover, banner, illustration, poster, header.\n- Follow-ups: \"another one\" / \"different style\" / \"next 3\" also trigger this\n  tool. Never claim an image was produced without actually calling this tool \u2014\n  that is a hallucination.\n\nHOW TO WRITE THE prompt PARAMETER (load-bearing)\nUse this labeled-line scaffold verbatim; do NOT collapse into one paragraph:\n\n  Use case: <one of cover_illustration | inline_illustration |\n              infographic_diagram | product_showcase | icon_brand | other>\n  Primary request: <user-facing concept; do NOT augment if user was specific>\n  Asset type: <intended use, e.g. blog hero cover 16:9>\n  Style: <visual language; for series, copy STYLE LOCK verbatim from anchor>\n  Composition: <framing, negative space, focal point>\n  Lighting: <mood, color temperature>\n  Constraints: <hard rules; default include \"no readable text\" except in\n                infographic_diagram where labels are verbatim-rendered from\n                quoted text>\n  Avoid: <ban generic-AI-illustration tropes (blob shapes, gradient halos,\n          cyberpunk neon), purple-everywhere unless cover_illustration, emoji>\n\nUSE-CASE CLASSIFICATION CHEAT-SHEET\n- cover_illustration  : single hero, brand palette (purple-led), generous left\n                        margin for title text\n- inline_illustration : story beat for one paragraph, no brand palette preset\n- infographic_diagram : flow / hierarchy / comparison; verbatim labels allowed\n                        from Primary request's quoted text only\n- product_showcase    : UI / device / packaging mockup, neutral background\n- icon_brand          : single symbol, scalable silhouette, generous padding\n- other               : fall-through, minimal scaffolding\n\nSERIES CONSISTENCY CONTRACT (most important rule)\nWhen the user asks for N>1 images in one turn:\n  1. BEFORE the first image_generation call, draft a STYLE LOCK paragraph\n     covering: palette (hex codes), geometry rule, material / finish,\n     lighting, and layout grid.\n  2. In the FIRST image's prompt, place STYLE LOCK between the literal\n     markers <<STYLE LOCK>> and <<END STYLE LOCK>> inside the Style field.\n     The STYLE LOCK content supersedes the top-level Lighting field for\n     series \u2014 write lighting choices INSIDE the lock, not in the separate\n     Lighting field, so they propagate verbatim to every subsequent call.\n  3. In EVERY subsequent image_generation call in this turn, copy that\n     block \u2014 the markers and the content \u2014 VERBATIM, character for\n     character. Then write the per-image Primary request and Composition.\n  4. Do NOT rewrite the lock, do NOT translate it, do NOT \"improve\" it\n     between calls. Any drift here is the failure mode this contract\n     was added to prevent.\n\nITERATION DISCIPLINE\n- If a result misses the spec, change ONE thing in the next call and\n  re-state STYLE LOCK verbatim.\n- Never silently swap the model or the size mid-series.\n\nAFTER THE CALL\n- The saved workspace-relative path arrives as a system follow-up. Quote\n  it verbatim in your reply so the user can click it.",
+      "description": "Generate one image via the runtime's native image_generation tool.\n\nWHEN TO INVOKE\n- Any request to create / generate / draw / design / render / illustrate /\n  produce an image, cover, banner, illustration, poster, header.\n- Follow-ups: \"another one\" / \"different style\" / \"next 3\" also trigger this\n  tool. Never claim an image was produced without actually calling this tool —\n  that is a hallucination.\n\nHOW TO WRITE THE prompt PARAMETER (load-bearing)\nUse this labeled-line scaffold verbatim; do NOT collapse into one paragraph:\n\n  Use case: <one of cover_illustration | inline_illustration |\n              infographic_diagram | product_showcase | icon_brand | other>\n  Primary request: <user-facing concept; do NOT augment if user was specific>\n  Asset type: <intended use, e.g. blog hero cover 16:9>\n  Style: <visual language; for series, copy STYLE LOCK verbatim from anchor>\n  Composition: <framing, negative space, focal point>\n  Lighting: <mood, color temperature>\n  Constraints: <hard rules; default include \"no readable text\" except in\n                infographic_diagram where labels are verbatim-rendered from\n                quoted text>\n  Avoid: <ban generic-AI-illustration tropes (blob shapes, gradient halos,\n          cyberpunk neon), purple-everywhere unless cover_illustration, emoji>\n\nUSE-CASE CLASSIFICATION CHEAT-SHEET\n- cover_illustration  : single hero, brand palette (purple-led), generous left\n                        margin for title text\n- inline_illustration : story beat for one paragraph, no brand palette preset\n- infographic_diagram : flow / hierarchy / comparison; verbatim labels allowed\n                        from Primary request's quoted text only\n- product_showcase    : UI / device / packaging mockup, neutral background\n- icon_brand          : single symbol, scalable silhouette, generous padding\n- other               : fall-through, minimal scaffolding\n\nSERIES CONSISTENCY CONTRACT (most important rule)\nWhen the user asks for N>1 images in one turn:\n  1. BEFORE the first image_generation call, draft a STYLE LOCK paragraph\n     covering: palette (hex codes), geometry rule, material / finish,\n     lighting, and layout grid.\n  2. In the FIRST image's prompt, place STYLE LOCK between the literal\n     markers <<STYLE LOCK>> and <<END STYLE LOCK>> inside the Style field.\n     The STYLE LOCK content supersedes the top-level Lighting field for\n     series — write lighting choices INSIDE the lock, not in the separate\n     Lighting field, so they propagate verbatim to every subsequent call.\n  3. In EVERY subsequent image_generation call in this turn, copy that\n     block — the markers and the content — VERBATIM, character for\n     character. Then write the per-image Primary request and Composition.\n  4. Do NOT rewrite the lock, do NOT translate it, do NOT \"improve\" it\n     between calls. Any drift here is the failure mode this contract\n     was added to prevent.\n\nITERATION DISCIPLINE\n- If a result misses the spec, change ONE thing in the next call and\n  re-state STYLE LOCK verbatim.\n- Never silently swap the model or the size mid-series.\n\nAFTER THE CALL\n- The saved workspace-relative path arrives as a system follow-up. Quote\n  it verbatim in your reply so the user can click it.",
       "category": "artifact",
       "input_schema": {
         "type": "object",
@@ -1113,14 +1113,14 @@
     },
     {
       "name": "image_search",
-      "description": "Generate one image via the runtime's native image_generation tool.\n\nWHEN TO INVOKE\n- Any request to create / generate / draw / design / render / illustrate /\n  produce an image, cover, banner, illustration, poster, header.\n- Follow-ups: \"another one\" / \"different style\" / \"next 3\" also trigger this\n  tool. Never claim an image was produced without actually calling this tool \u2014\n  that is a hallucination.\n\nHOW TO WRITE THE prompt PARAMETER (load-bearing)\nUse this labeled-line scaffold verbatim; do NOT collapse into one paragraph:\n\n  Use case: <one of cover_illustration | inline_illustration |\n              infographic_diagram | product_showcase | icon_brand | other>\n  Primary request: <user-facing concept; do NOT augment if user was specific>\n  Asset type: <intended use, e.g. blog hero cover 16:9>\n  Style: <visual language; for series, copy STYLE LOCK verbatim from anchor>\n  Composition: <framing, negative space, focal point>\n  Lighting: <mood, color temperature>\n  Constraints: <hard rules; default include \"no readable text\" except in\n                infographic_diagram where labels are verbatim-rendered from\n                quoted text>\n  Avoid: <ban generic-AI-illustration tropes (blob shapes, gradient halos,\n          cyberpunk neon), purple-everywhere unless cover_illustration, emoji>\n\nUSE-CASE CLASSIFICATION CHEAT-SHEET\n- cover_illustration  : single hero, brand palette (purple-led), generous left\n                        margin for title text\n- inline_illustration : story beat for one paragraph, no brand palette preset\n- infographic_diagram : flow / hierarchy / comparison; verbatim labels allowed\n                        from Primary request's quoted text only\n- product_showcase    : UI / device / packaging mockup, neutral background\n- icon_brand          : single symbol, scalable silhouette, generous padding\n- other               : fall-through, minimal scaffolding\n\nSERIES CONSISTENCY CONTRACT (most important rule)\nWhen the user asks for N>1 images in one turn:\n  1. BEFORE the first image_generation call, draft a STYLE LOCK paragraph\n     covering: palette (hex codes), geometry rule, material / finish,\n     lighting, and layout grid.\n  2. In the FIRST image's prompt, place STYLE LOCK between the literal\n     markers <<STYLE LOCK>> and <<END STYLE LOCK>> inside the Style field.\n     The STYLE LOCK content supersedes the top-level Lighting field for\n     series \u2014 write lighting choices INSIDE the lock, not in the separate\n     Lighting field, so they propagate verbatim to every subsequent call.\n  3. In EVERY subsequent image_generation call in this turn, copy that\n     block \u2014 the markers and the content \u2014 VERBATIM, character for\n     character. Then write the per-image Primary request and Composition.\n  4. Do NOT rewrite the lock, do NOT translate it, do NOT \"improve\" it\n     between calls. Any drift here is the failure mode this contract\n     was added to prevent.\n\nITERATION DISCIPLINE\n- If a result misses the spec, change ONE thing in the next call and\n  re-state STYLE LOCK verbatim.\n- Never silently swap the model or the size mid-series.\n\nAFTER THE CALL\n- The saved workspace-relative path arrives as a system follow-up. Quote\n  it verbatim in your reply so the user can click it.\n\nADAPTER NOTES FOR image_search:\n- Reuse the same style/composition/lighting descriptors verbatim across queries when fulfilling a multi-image set.\n- Do NOT change art style, palette, or mood between consecutive queries for the same series.\n- If you can't find a coherent set, fall back to image_generation rather than mixing styles.\n",
+      "description": "Generate one image via the runtime's native image_generation tool.\n\nWHEN TO INVOKE\n- Any request to create / generate / draw / design / render / illustrate /\n  produce an image, cover, banner, illustration, poster, header.\n- Follow-ups: \"another one\" / \"different style\" / \"next 3\" also trigger this\n  tool. Never claim an image was produced without actually calling this tool —\n  that is a hallucination.\n\nHOW TO WRITE THE prompt PARAMETER (load-bearing)\nUse this labeled-line scaffold verbatim; do NOT collapse into one paragraph:\n\n  Use case: <one of cover_illustration | inline_illustration |\n              infographic_diagram | product_showcase | icon_brand | other>\n  Primary request: <user-facing concept; do NOT augment if user was specific>\n  Asset type: <intended use, e.g. blog hero cover 16:9>\n  Style: <visual language; for series, copy STYLE LOCK verbatim from anchor>\n  Composition: <framing, negative space, focal point>\n  Lighting: <mood, color temperature>\n  Constraints: <hard rules; default include \"no readable text\" except in\n                infographic_diagram where labels are verbatim-rendered from\n                quoted text>\n  Avoid: <ban generic-AI-illustration tropes (blob shapes, gradient halos,\n          cyberpunk neon), purple-everywhere unless cover_illustration, emoji>\n\nUSE-CASE CLASSIFICATION CHEAT-SHEET\n- cover_illustration  : single hero, brand palette (purple-led), generous left\n                        margin for title text\n- inline_illustration : story beat for one paragraph, no brand palette preset\n- infographic_diagram : flow / hierarchy / comparison; verbatim labels allowed\n                        from Primary request's quoted text only\n- product_showcase    : UI / device / packaging mockup, neutral background\n- icon_brand          : single symbol, scalable silhouette, generous padding\n- other               : fall-through, minimal scaffolding\n\nSERIES CONSISTENCY CONTRACT (most important rule)\nWhen the user asks for N>1 images in one turn:\n  1. BEFORE the first image_generation call, draft a STYLE LOCK paragraph\n     covering: palette (hex codes), geometry rule, material / finish,\n     lighting, and layout grid.\n  2. In the FIRST image's prompt, place STYLE LOCK between the literal\n     markers <<STYLE LOCK>> and <<END STYLE LOCK>> inside the Style field.\n     The STYLE LOCK content supersedes the top-level Lighting field for\n     series — write lighting choices INSIDE the lock, not in the separate\n     Lighting field, so they propagate verbatim to every subsequent call.\n  3. In EVERY subsequent image_generation call in this turn, copy that\n     block — the markers and the content — VERBATIM, character for\n     character. Then write the per-image Primary request and Composition.\n  4. Do NOT rewrite the lock, do NOT translate it, do NOT \"improve\" it\n     between calls. Any drift here is the failure mode this contract\n     was added to prevent.\n\nITERATION DISCIPLINE\n- If a result misses the spec, change ONE thing in the next call and\n  re-state STYLE LOCK verbatim.\n- Never silently swap the model or the size mid-series.\n\nAFTER THE CALL\n- The saved workspace-relative path arrives as a system follow-up. Quote\n  it verbatim in your reply so the user can click it.\n\nADAPTER NOTES FOR image_search:\n- Reuse the same style/composition/lighting descriptors verbatim across queries when fulfilling a multi-image set.\n- Do NOT change art style, palette, or mood between consecutive queries for the same series.\n- If you can't find a coherent set, fall back to image_generation rather than mixing styles.\n",
       "category": "artifact",
       "input_schema": {
         "type": "object",
         "properties": {
           "query": {
             "type": "string",
-            "description": "Image search query; apply the SERIES CONSISTENCY CONTRACT \u2014 reuse style/composition/lighting descriptors verbatim across consecutive queries for a multi-image set."
+            "description": "Image search query; apply the SERIES CONSISTENCY CONTRACT — reuse style/composition/lighting descriptors verbatim across consecutive queries for a multi-image set."
           },
           "limit": {
             "type": "integer",
@@ -1151,95 +1151,6 @@
         },
         "required": [
           "query"
-        ]
-      },
-      "permission": "workspace-write"
-    },
-    {
-      "name": "photo_commands",
-      "description": "Search Kition Photo's editing commands (layers, adjustments, filters, selections, transforms, type, and more) by keywords. Returns command ids with their parameter notes; pass an id to photo_run.",
-      "category": "context",
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "path": {
-            "type": "string",
-            "description": "Workspace-relative path to a PSD, PSB, or .pcraft file."
-          },
-          "query": {
-            "type": "string",
-            "description": "Keywords to match in the command id, title, or description, for example `brightness`, `gaussian blur`, or `new layer`."
-          }
-        },
-        "required": [
-          "path",
-          "query"
-        ]
-      },
-      "permission": "read-only"
-    },
-    {
-      "name": "photo_inspect",
-      "description": "Open a layered image (PSD, PSB, or .pcraft) in Kition Photo and report its size, color mode, bit depth, and layers. By default it also attaches a rendered preview to the next turn so you can see the image. Use it before and after editing.",
-      "category": "context",
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "path": {
-            "type": "string",
-            "description": "Workspace-relative path to a PSD, PSB, or .pcraft file."
-          },
-          "preview": {
-            "type": "boolean",
-            "description": "Attach a rendered preview image. Defaults to true."
-          }
-        },
-        "required": [
-          "path"
-        ]
-      },
-      "permission": "read-only"
-    },
-    {
-      "name": "photo_run",
-      "description": "Edit a layered image in Kition Photo by running commands in order, then save the file. Each step is one undoable command with a JSON object of params, as documented by photo_commands. Stops at the first failing step. Attaches a rendered preview of the result.",
-      "category": "artifact",
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "path": {
-            "type": "string",
-            "description": "Workspace-relative path to a PSD, PSB, or .pcraft file."
-          },
-          "steps": {
-            "type": "array",
-            "minItems": 1,
-            "maxItems": 50,
-            "items": {
-              "type": "object",
-              "properties": {
-                "command": {
-                  "type": "string",
-                  "description": "A command id from photo_commands, for example `layer.new.layer`."
-                },
-                "params": {
-                  "type": "object",
-                  "description": "Command parameters."
-                }
-              },
-              "required": [
-                "command"
-              ]
-            }
-          },
-          "save": {
-            "type": "boolean",
-            "description": "Save the file after the steps. Defaults to true."
-          }
-        },
-        "required": [
-          "path",
-          "steps"
         ]
       },
       "permission": "workspace-write"
@@ -1714,7 +1625,7 @@
     },
     {
       "name": "web_article_save",
-      "description": "Archive a web article (URL \u2192 workspace Markdown + local images). Fetches the page, extracts the main article, downloads inline images into an images/ subfolder, rewrites all <img src> to relative paths, and writes index.md with frontmatter (source_url, captured_at, title).",
+      "description": "Archive a web article (URL → workspace Markdown + local images). Fetches the page, extracts the main article, downloads inline images into an images/ subfolder, rewrites all <img src> to relative paths, and writes index.md with frontmatter (source_url, captured_at, title).",
       "category": "artifact",
       "input_schema": {
         "type": "object",
@@ -1744,7 +1655,7 @@
     },
     {
       "name": "web_fetch",
-      "description": "Read a specific http/https page when the user explicitly provides the URL. Do NOT use this to follow up on web_search results or to verify URLs you recall from memory \u2014 for general research questions, call web_search instead and write your answer from its hosted snippets.",
+      "description": "Read a specific http/https page when the user explicitly provides the URL. Do NOT use this to follow up on web_search results or to verify URLs you recall from memory — for general research questions, call web_search instead and write your answer from its hosted snippets.",
       "category": "web",
       "input_schema": {
         "type": "object",
@@ -2230,7 +2141,7 @@
     },
     {
       "name": "web-archive-agent",
-      "description": "Archive arbitrary web articles (URL \u2192 workspace Markdown + local images) so the saved doc keeps its title, source URL, and inline images as relative paths.",
+      "description": "Archive arbitrary web articles (URL → workspace Markdown + local images) so the saved doc keeps its title, source URL, and inline images as relative paths.",
       "triggers": [
         "archive",
         "scrape article",

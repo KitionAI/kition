@@ -57,9 +57,14 @@ pub fn stage(name: &str) -> &'static str {
         | "fs_stat"
         | "fs_list"
         | "file_search"
-        | "view_image"
-        | "photo_inspect"
-        | "photo_commands" => "context",
+        | "view_image" => "context",
+        _ if matches!(
+            kits::parse(name),
+            Some((_, kits::Action::Inspect | kits::Action::Commands))
+        ) =>
+        {
+            "context"
+        }
         _ if name.starts_with("source_") => "context",
         "web_search" | "web_fetch" => "research",
         "exec_command" => "execute",
@@ -100,9 +105,6 @@ pub fn label(name: &str) -> String {
         "exec_command" => "Run command",
         "update_plan" => "Update plan",
         "view_image" => "View image",
-        "photo_inspect" => "Inspect image in Photo",
-        "photo_commands" => "Find Photo commands",
-        "photo_run" => "Edit image in Photo",
         "fs_read" => "Read file",
         "fs_stat" => "Stat file",
         "fs_list" => "List directory",
@@ -114,7 +116,7 @@ pub fn label(name: &str) -> String {
         "configure_smtp_connection" => "Configure SMTP connection",
         "whiteboard_propose_patch" => "Propose Whiteboard changes",
         "design_propose_patch" => "Propose design changes",
-        other => return other.to_owned(),
+        other => return kits::label(other).unwrap_or_else(|| other.to_owned()),
     }
     .to_owned()
 }
@@ -231,6 +233,13 @@ async fn configure_smtp(run: &Run, input: &Value) -> ToolResult {
 }
 
 async fn dispatch(run: &Arc<Run>, call_id: i64, name: &str, input: &Value) -> ToolResult {
+    if let Some((kit, action)) = kits::parse(name) {
+        return match action {
+            kits::Action::Inspect => kits::inspect(run, kit, input).await,
+            kits::Action::Commands => kits::commands(run, kit, input).await,
+            kits::Action::Run => kits::run_steps(run, kit, input).await,
+        };
+    }
     match name {
         "document_read" => documents::read(run, input).await,
         "document_write" => documents::write(run, call_id, input).await,
@@ -247,9 +256,6 @@ async fn dispatch(run: &Arc<Run>, call_id: i64, name: &str, input: &Value) -> To
         "file_search" => blocking(run, input, files::file_search).await,
         "apply_patch" => blocking(run, input, apply_patch::apply).await,
         "view_image" => files::view_image(run, call_id, input).await,
-        "photo_inspect" => kits::inspect(run, input).await,
-        "photo_commands" => kits::commands(run, input).await,
-        "photo_run" => kits::run_steps(run, input).await,
         "update_plan" => files::update_plan(run, input).await,
         "source_read" => blocking(run, input, sources::read).await,
         "source_list" => blocking(run, input, sources::list).await,

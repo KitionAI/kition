@@ -11,7 +11,7 @@ use axum::body::Body;
 use http::{Request, StatusCode};
 use http_body_util::BodyExt;
 use kition_http::AuthConfig;
-use kition_kits::{Caller, KitDefinition, KitManager, KitsState, router};
+use kition_kits::{Caller, KitAgent, KitDefinition, KitManager, KitsState, router};
 use kition_store::Db;
 use serde_json::{Value, json};
 use tower::ServiceExt;
@@ -24,6 +24,15 @@ static MOCK: KitDefinition = KitDefinition {
     creates: &[("mocktext", "mock.text")],
     embeds: false,
     exports: &["mockout"],
+    agent: KitAgent {
+        prefix: "mock",
+        noun: "mock document",
+        formats: ".mocktext",
+        reports: "its text",
+        covers: "text edits",
+        queries: "`append`",
+        command: "text.append",
+    },
 };
 
 fn mock_binary() -> Option<PathBuf> {

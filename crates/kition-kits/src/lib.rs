@@ -7,5 +7,7 @@ pub mod manager;
 pub mod routes;
 pub mod surfaces;
 
-pub use manager::{Caller, DocumentView, ExecuteView, KITS, KitDefinition, KitError, KitManager};
+pub use manager::{
+    Caller, DocumentView, ExecuteView, KITS, KitAgent, KitDefinition, KitError, KitManager,
+};
 pub use routes::{KitsState, router};

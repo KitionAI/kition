@@ -345,6 +345,14 @@ kition-kit-conformance --kit <executable> --manifest kit.json \
   --fixture <document> --edit-command <command id> --edit-params '<json object>'
 ```
 
+`kit.json` may be the Kition Kit Standard manifest (it has a `standard`
+version; schema `contracts/kit/kit-standard.schema.json`, a copy of
+kition-sdk's `schemas/kit.schema.json`), whose `headless` section names the
+executable and must say `kition-kit/1`; or the package manifest below. Kit ids
+are dotted, reverse-domain style (`kit.photo`, `com.example.cad`), in both.
+Kits built on the Kition SDK get their executable from `kition-headless`
+and pass the suite without kit-specific protocol code.
+
 Besides the numbered checks it validates `kit.json` against the manifest
 schema and validates `kit.initialize`, `document.open`, `commands.list`,
 `view.describe`, and `view.screenshot` results against the protocol schema.

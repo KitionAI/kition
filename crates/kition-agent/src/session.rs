@@ -114,9 +114,7 @@ async fn tool_specs(run: &Run) -> Vec<ToolSpec> {
             hidden.push(name);
         }
     }
-    if !crate::tools::kits::available(run) {
-        hidden.extend_from_slice(crate::tools::kits::TOOLS);
-    }
+    hidden.extend(crate::tools::kits::unavailable(run));
     if !supports_hosted_web_search(&run.model) {
         hidden.push("web_search");
     }

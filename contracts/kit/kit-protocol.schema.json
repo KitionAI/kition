@@ -91,7 +91,7 @@
           "additionalProperties": false,
           "required": ["id", "version"],
           "properties": {
-            "id": { "type": "string", "pattern": "^kit\\.[a-z][a-z0-9-]*$" },
+            "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$" },
             "version": { "type": "string", "minLength": 1 }
           }
         },

@@ -252,6 +252,29 @@ describe('documentMentions', () => {
     expect(context).toContain('Do not ask which document the user means')
   })
 
+  it('points the agent at each kit\'s own tools for its files', () => {
+    const active = buildAgentDocumentMentionPromptContext({
+      activeDocumentPath: 'Art/Logo.vectorcraft',
+      activeDocumentFormat: 'vector',
+      referencedDocuments: [],
+    })
+    expect(active).toContain('a vector drawing open in Kition Vector')
+    expect(active).toContain('vector_inspect')
+    expect(active).not.toContain('photo_inspect')
+
+    const mentioned = buildAgentDocumentMentionPromptContext({
+      referencedDocuments: [
+        { kind: 'file', path: 'Motion/Intro.ecproj', name: 'Intro.ecproj', title: 'Intro' },
+        { kind: 'file', path: 'Print/Flyer.designcraft', name: 'Flyer.designcraft', title: 'Flyer' },
+      ],
+    })
+    expect(mentioned).toContain('Referenced motion graphics projects in this turn (open them in Kition Effect)')
+    expect(mentioned).toContain('effect_run')
+    expect(mentioned).toContain('Referenced page layouts in this turn (open them in Kition Design)')
+    expect(mentioned).toContain('design_commands')
+    expect(mentioned).not.toContain('Referenced workspace documents in this turn')
+  })
+
   it('points the agent at the Photo tools for an open or mentioned layered image', () => {
     const active = buildAgentDocumentMentionPromptContext({
       activeDocumentPath: 'Art/Cover.psd',
