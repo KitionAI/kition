@@ -4,7 +4,9 @@
 //! which panes and kits contribute to a turn.
 
 pub mod cancel;
+pub mod derive;
 pub mod events;
+pub mod log;
 pub mod schema;
 pub mod tool;
 
