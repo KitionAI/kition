@@ -5,6 +5,7 @@
 
 pub mod cancel;
 pub mod derive;
+pub mod driver;
 pub mod events;
 pub mod llm;
 pub mod log;
