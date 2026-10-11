@@ -57,6 +57,8 @@ export interface KitSdkDocument {
   inspect(): string
   /** Every command as JSON: id, title, menu path, shortcut, mutates, enabled. */
   commands(): string
+  /** The ids of the commands that cannot run now, as JSON; optional in contract 1. */
+  disabledCommands?(): string
   /** The document as file bytes; it stays unsaved until `markSaved`. */
   save(name?: string): Uint8Array
   /** Records that the bytes from the last `save` reached the file. */

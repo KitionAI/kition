@@ -66,6 +66,12 @@ async function handle(request: KitEngineRequest): Promise<{ value: unknown; tran
     }
     case 'commands':
       return { value: kitSdkCommands(opened().commands()) }
+    case 'disabledCommands': {
+      const open = opened()
+      // Kits before disabledCommands answer from the full list.
+      if (typeof open.disabledCommands !== 'function') return { value: kitSdkCommands(open.commands()).filter((command) => !command.enabled).map((command) => command.id) }
+      return { value: JSON.parse(open.disabledCommands()) as string[] }
+    }
     case 'save': {
       const bytes = opened().save()
       return { value: bytes.buffer, transfer: [bytes.buffer] }

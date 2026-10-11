@@ -22,7 +22,7 @@ function errorText(error: unknown) {
 export function useKitEditor(document: KitDocument, options: { onOpenAgent?: () => void } = {}) {
   const { t } = useTranslation('workspace')
   const [commands, setCommands] = useState<KitCommand[]>([])
-  const { doc, run: runCommand, save: saveDocument, commands: listCommands, dirty, change } = document
+  const { doc, run: runCommand, save: saveDocument, commands: listCommands, disabledCommands, dirty, change } = document
   // The agent edits this document live while it is open here (Kit AI bridge).
   const { agentEdited } = useKitBridge(document)
 
@@ -30,8 +30,20 @@ export function useKitEditor(document: KitDocument, options: { onOpenAgent?: () 
     listCommands().then(setCommands, () => undefined)
   }, [listCommands])
 
-  // Enabled states follow the document: at once when it opens, then at most every 250 ms while
-  // it changes. A throttle, not a debounce: playback changes it every frame and must not starve it.
+  /** Applies the engine's current disabled set to the menus; answers it too. */
+  const refreshEnabled = useCallback(async () => {
+    const disabled = new Set(await disabledCommands())
+    setCommands((current) => {
+      if (current.every((command) => command.enabled !== disabled.has(command.id))) return current
+      return current.map((command) => ({ ...command, enabled: !disabled.has(command.id) }))
+    })
+    return disabled
+  }, [disabledCommands])
+
+  // The full list (menus, shortcuts) loads once when the document opens; then only the enabled
+  // states follow it, at most every 250 ms while it changes, through the cheap
+  // `disabledCommands()`. A throttle, not a debounce: playback changes it every frame and must
+  // not starve it.
   const pending = useRef<number | undefined>(undefined)
   useEffect(() => {
     if (doc) refreshCommands()
@@ -40,9 +52,9 @@ export function useKitEditor(document: KitDocument, options: { onOpenAgent?: () 
     if (!doc || !change.revision || pending.current !== undefined) return
     pending.current = window.setTimeout(() => {
       pending.current = undefined
-      refreshCommands()
+      refreshEnabled().catch(() => undefined)
     }, COMMAND_REFRESH_MS)
-  }, [change.revision, doc, refreshCommands])
+  }, [change.revision, doc, refreshEnabled])
   useEffect(() => () => window.clearTimeout(pending.current), [])
 
   /**
@@ -74,10 +86,9 @@ export function useKitEditor(document: KitDocument, options: { onOpenAgent?: () 
    * states lag a change by a moment; a key pressed right after (select, then Delete) must not.
    */
   const runShortcut = useCallback(async (id: string) => {
-    const fresh = await listCommands().catch(() => null)
-    if (fresh) setCommands(fresh)
-    if (fresh?.find((command) => command.id === id)?.enabled) await run(id)
-  }, [listCommands, run])
+    const disabled = await refreshEnabled().catch(() => null)
+    if (disabled && !disabled.has(id)) await run(id)
+  }, [refreshEnabled, run])
 
   /** The agent edits the file on disk, so unsaved edits are saved first. */
   const askAgent = useCallback(async () => {

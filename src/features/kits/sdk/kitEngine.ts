@@ -20,6 +20,7 @@ export type KitEngineRequest =
   | { method: 'render'; x: number; y: number; scale: number; width: number; height: number }
   | { method: 'renderArea'; x0: number; y0: number; x1: number; y1: number; width: number; height: number }
   | { method: 'commands' }
+  | { method: 'disabledCommands' }
   | { method: 'save' }
   | { method: 'markSaved' }
   | { method: 'invoke'; name: string; args: unknown[] }
@@ -130,6 +131,11 @@ export class KitEngine {
 
   async commands() {
     return (await this.call({ method: 'commands' })) as KitCommand[]
+  }
+
+  /** The ids of the commands that cannot run now: the cheap call for menu and shortcut states. */
+  async disabledCommands() {
+    return (await this.call({ method: 'disabledCommands' })) as string[]
   }
 
   /** The document as file bytes; it stays unsaved until `markSaved`. */

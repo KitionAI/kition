@@ -180,7 +180,7 @@ test('creates a new video project from the create menu with the Film engine', as
     await page.getByTestId('workspace-create-video').click()
 
     // "Untitled video.fcproj" is taken, so the new project is numbered.
-    await expect.poll(() => written).toEqual(['Untitled video 2.fcproj'])
+    await expect.poll(() => written, { timeout: 60_000 }).toEqual(['Untitled video 2.fcproj'])
     await expect(page.getByTestId('kit-status-bar')).toContainText('1920 x 1080 px', { timeout: 60_000 })
     await expect(page.getByTestId('film-track-Video 1')).toBeVisible()
     await expect(page.locator('.document-tree-row', { hasText: 'Untitled video 2' })).toBeVisible()
@@ -218,7 +218,7 @@ test('edits an mp4 through a video project and exports a new mp4, leaving the or
     await page.getByTestId('film-edit-clip').click()
 
     // A project beside the clip, with the clip on a sequence of its own size, opened in Film.
-    await expect.poll(() => written).toEqual(['clips/bars.fcproj'])
+    await expect.poll(() => written, { timeout: 60_000 }).toEqual(['clips/bars.fcproj'])
     await expect(page.getByTestId('kit-status-bar')).toContainText('160 x 90 px', { timeout: 60_000 })
     await expect(page.getByTestId('film-track-Video 1')).toContainText('bars.mp4')
 

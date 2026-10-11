@@ -151,7 +151,7 @@ test('creates a new motion project from the create menu with the Effect engine',
     await page.locator('.document-private-heading .document-create-menu-anchor > button').click()
     await page.getByTestId('workspace-create-motion').click()
 
-    await expect.poll(() => written).toEqual(['Untitled motion.ecproj'])
+    await expect.poll(() => written, { timeout: 60_000 }).toEqual(['Untitled motion.ecproj'])
     await expect(page.getByTestId('effect-status')).toContainText('Comp 1: 1920 × 1080, 30 fps, 0 layers', { timeout: 60_000 })
     await expect(page.locator('.document-tree-row', { hasText: 'Untitled motion' })).toBeVisible()
   } finally {

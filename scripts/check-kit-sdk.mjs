@@ -127,6 +127,16 @@ check('inspect is JSON with canUndo and canRedo', () => {
   const inspected = JSON.parse(doc.inspect())
   assert(typeof inspected.canUndo === 'boolean' && typeof inspected.canRedo === 'boolean', 'missing canUndo or canRedo')
 })
+check('disabledCommands agrees with commands', () => {
+  if (typeof doc.disabledCommands !== 'function') return 'not exported (contract 1 before disabledCommands); hosts fall back to commands()'
+  const disabled = JSON.parse(doc.disabledCommands())
+  assert(Array.isArray(disabled) && disabled.every((id) => typeof id === 'string'), 'disabledCommands must be a JSON array of ids')
+  const expected = JSON.parse(doc.commands()).filter((command) => !command.enabled).map((command) => command.id).sort()
+  const got = [...disabled].sort()
+  assert(JSON.stringify(got) === JSON.stringify(expected), `disabled ${got.length} commands, commands() says ${expected.length}`)
+  return `${got.length} disabled; ${doc.disabledCommands().length} bytes instead of ${doc.commands().length}`
+})
+
 check('commands are well formed and include undo and redo', () => {
   const commands = JSON.parse(doc.commands())
   assert(Array.isArray(commands) && commands.length, 'no commands')
