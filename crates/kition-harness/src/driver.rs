@@ -13,6 +13,7 @@ use crate::events::{ContentBlock, EventBody, LoggedCall, SessionEvent, TurnEndRe
 use crate::llm::{ChunkSink, Llm, LlmRequest};
 use crate::log::SessionLog;
 use crate::policy::{CallInfo, Decision, Pipeline};
+use crate::stop::StopCheck;
 use crate::tool::{Pause, Settled, ToolContext, ToolRegistry};
 
 pub const MAX_STEPS: u32 = 16;
@@ -53,6 +54,9 @@ pub struct Driver {
     pub llm: Arc<dyn Llm>,
     pub pipeline: Pipeline,
     pub max_steps: u32,
+    /// Checked when the model stops calling tools, before the turn may end
+    /// as completed.
+    pub stop_checks: Vec<Arc<dyn StopCheck>>,
 }
 
 impl std::fmt::Debug for Driver {
@@ -61,6 +65,7 @@ impl std::fmt::Debug for Driver {
             .debug_struct("Driver")
             .field("pipeline", &self.pipeline)
             .field("max_steps", &self.max_steps)
+            .field("stop_checks", &self.stop_checks.len())
             .finish_non_exhaustive()
     }
 }
@@ -72,6 +77,7 @@ impl Driver {
             llm,
             pipeline: Pipeline::default(),
             max_steps: MAX_STEPS,
+            stop_checks: Vec::new(),
         }
     }
 
@@ -194,30 +200,57 @@ impl Driver {
             )?;
             if reply.tool_calls.is_empty() {
                 self.append(input, events, EventBody::StepEnd { turn, step })?;
-                return if reply.content.trim().is_empty() {
-                    Err("the model returned no content and no tool calls".into())
-                } else {
-                    Ok(TurnEndReason::Completed)
+                if reply.content.trim().is_empty() {
+                    return Err("the model returned no content and no tool calls".into());
+                }
+                return match self.run_stop_checks(events, &input.tools) {
+                    Some(message) => Err(message),
+                    None => Ok(TurnEndReason::Completed),
                 };
             }
+            let mut contexts: Vec<ContentBlock> = Vec::new();
+            let mut end_reason = None;
             for call in &reply.tool_calls {
-                if let Some(reason) = self.run_call(input, events, call).await? {
-                    self.append(input, events, EventBody::StepEnd { turn, step })?;
-                    return Ok(reason);
+                let (reason, context) = self.run_call(input, events, call).await?;
+                contexts.extend(context);
+                if reason.is_some() {
+                    end_reason = reason;
+                    break;
                 }
             }
+            if !contexts.is_empty() {
+                self.append(input, events, EventBody::UserMessage { content: contexts })?;
+            }
             self.append(input, events, EventBody::StepEnd { turn, step })?;
+            if let Some(reason) = end_reason {
+                return Ok(reason);
+            }
         }
         Ok(TurnEndReason::StepLimit)
     }
 
-    /// Runs one call through the pipeline. `Some` ends the turn.
+    /// This turn's events so far (from its most recent `turn/start`), run
+    /// through every stop check in order; the first failure wins.
+    fn run_stop_checks(&self, events: &[SessionEvent], tools: &ToolRegistry) -> Option<String> {
+        let start = events
+            .iter()
+            .rposition(|event| matches!(event.body, EventBody::TurnStart { .. }))
+            .unwrap_or(0);
+        let turn_events = &events[start..];
+        self.stop_checks
+            .iter()
+            .find_map(|check| check.check(turn_events, tools))
+    }
+
+    /// Runs one call through the pipeline. The first element of the pair is
+    /// `Some` when the call ends the turn; the second is any recovery
+    /// context the policies attached to the settled result.
     async fn run_call(
         &self,
         input: &TurnInput,
         events: &mut Vec<SessionEvent>,
         call: &LoggedCall,
-    ) -> Result<Option<TurnEndReason>, String> {
+    ) -> Result<(Option<TurnEndReason>, Vec<ContentBlock>), String> {
         self.append(
             input,
             events,
@@ -233,7 +266,7 @@ impl Driver {
                 None,
             );
             self.record(input, events, call, missing)?;
-            return Ok(None);
+            return Ok((None, Vec::new()));
         };
         let info = CallInfo {
             session: &input.session,
@@ -262,10 +295,11 @@ impl Driver {
                         reason,
                     },
                 )?;
-                return Ok(Some(TurnEndReason::AwaitingApproval));
+                return Ok((Some(TurnEndReason::AwaitingApproval), Vec::new()));
             }
         };
         self.pipeline.settle(&info, &mut settled);
+        let context = std::mem::take(&mut settled.context);
         self.record(input, events, call, settled)?;
         if let Some(reason) = pause.take() {
             self.append(
@@ -276,12 +310,15 @@ impl Driver {
                     reason,
                 },
             )?;
-            return Ok(Some(TurnEndReason::AwaitingApproval));
+            return Ok((Some(TurnEndReason::AwaitingApproval), context));
         }
-        Ok(input
-            .cancel
-            .is_cancelled()
-            .then_some(TurnEndReason::Cancelled))
+        Ok((
+            input
+                .cancel
+                .is_cancelled()
+                .then_some(TurnEndReason::Cancelled),
+            context,
+        ))
     }
 
     fn record(

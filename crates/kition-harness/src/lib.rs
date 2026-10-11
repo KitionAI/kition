@@ -12,6 +12,7 @@ pub mod log;
 pub mod policy;
 pub mod provider;
 pub mod schema;
+pub mod stop;
 pub mod testing;
 pub mod tool;
 

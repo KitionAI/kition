@@ -162,6 +162,7 @@ mod tests {
             content: Vec::new(),
             is_error: false,
             meta: None,
+            context: Vec::new(),
         };
         Pipeline::default().with(Redact).settle(&call, &mut settled);
         assert_eq!(settled.content, vec![ContentBlock::text("[redacted]")]);

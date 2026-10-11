@@ -597,6 +597,33 @@ async fn a_paused_tool_records_its_result_and_awaits_approval() {
 }
 
 #[tokio::test]
+async fn contexts_follow_the_step_and_stop_checks_can_fail_the_turn() {
+    use kition_harness::stop::{RecoveryPrompt, UnresolvedWrites};
+    let setup = setup(vec![
+        LlmReply::calls(vec![call("c1", "echo", json!({}))]),
+        LlmReply::text("All done"),
+    ]);
+    let mut driver = setup.driver(Pipeline::default().with(RecoveryPrompt));
+    driver.stop_checks.push(Arc::new(UnresolvedWrites));
+    let error = driver
+        .run_turn(setup.input("go", Cancel::default()))
+        .await
+        .err()
+        .unwrap_or_default();
+    assert!(
+        error.contains("did not recover from failed workspace tool echo"),
+        "{error}"
+    );
+    let second = &setup.llm.requests()[1];
+    let last = second
+        .messages
+        .last()
+        .map(|message| message.content.clone())
+        .unwrap_or_default();
+    assert!(last.starts_with("[tool recovery required]"), "{last}");
+}
+
+#[tokio::test]
 async fn an_empty_model_reply_fails_the_turn() {
     let setup = setup(vec![LlmReply::text("")]);
     let error = setup

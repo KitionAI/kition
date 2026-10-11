@@ -109,6 +109,9 @@ pub struct Settled {
     pub content: Vec<ContentBlock>,
     pub is_error: bool,
     pub meta: Option<Value>,
+    /// Extra model input from policies, logged as one `user/message` after
+    /// all results of the step (DeepSeek Harness `additionalContexts`).
+    pub context: Vec<ContentBlock>,
 }
 
 impl Settled {
@@ -127,6 +130,7 @@ impl Settled {
             content,
             is_error: true,
             meta: None,
+            context: Vec::new(),
         }
     }
 }
@@ -378,6 +382,7 @@ impl ToolDef {
             meta,
             value,
             is_error: false,
+            context: Vec::new(),
         }
     }
 }
