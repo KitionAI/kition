@@ -272,6 +272,24 @@ fn legacy_tools(
     registry(specs, &body)
 }
 
+/// Runs `work` in its own task and waits for it unless the turn is
+/// cancelled first; then it keeps running and its result is dropped. A
+/// panic in `work` is resumed here, as if it had run inline.
+async fn unless_cancelled<T: Send + 'static>(
+    work: impl std::future::Future<Output = T> + Send + 'static,
+    cancel: &Cancel,
+) -> Option<T> {
+    let task = tokio::spawn(work);
+    tokio::select! {
+        result = task => match result {
+            Ok(value) => Some(value),
+            Err(error) if error.is_panic() => std::panic::resume_unwind(error.into_panic()),
+            Err(_) => None,
+        },
+        () = cancel.cancelled() => None,
+    }
+}
+
 async fn legacy_call(
     run: &Arc<Run>,
     name: &str,
@@ -280,7 +298,20 @@ async fn legacy_call(
     pending: &Pending,
     notes: &Notes,
 ) -> Result<Value, ToolFailure> {
-    let executed = tools::execute(run, name, &args.to_string()).await;
+    // A stopped turn does not wait for a long tool: it finishes in the
+    // background (its row, events, and files complete normally) and its
+    // result is dropped.
+    let (task_run, task_name, raw) = (run.clone(), name.to_owned(), args.to_string());
+    let Some(executed) = unless_cancelled(
+        async move { tools::execute(&task_run, &task_name, &raw).await },
+        &cx.cancel,
+    )
+    .await
+    else {
+        return Err(ToolFailure::from(
+            "stopped by the user; the tool may still finish in the background",
+        ));
+    };
     if executed.interrupt == Some("await_shell_approval") {
         let reason = executed.output["reason"]
             .as_str()
@@ -667,6 +698,27 @@ mod tests {
         );
         drop(held);
         assert!(!is_busy(&locks, 9001));
+    }
+
+    #[tokio::test]
+    async fn a_cancelled_wait_returns_early_and_the_work_finishes_anyway() {
+        let cancel = Cancel::default();
+        let finished = Arc::new(AtomicBool::new(false));
+        let done = finished.clone();
+        let work = async move {
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+            done.store(true, Ordering::SeqCst);
+            7
+        };
+        let stopper = cancel.clone();
+        tokio::spawn(async move { stopper.cancel() });
+        assert_eq!(unless_cancelled(work, &cancel).await, None);
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        assert!(finished.load(Ordering::SeqCst));
+        assert_eq!(
+            unless_cancelled(async { 8 }, &Cancel::default()).await,
+            Some(8)
+        );
     }
 
     #[test]
