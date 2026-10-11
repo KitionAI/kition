@@ -1,0 +1,179 @@
+[
+  {
+    "seq": 1,
+    "at": 1791732515403,
+    "type": "turn/start",
+    "turn": 1
+  },
+  {
+    "seq": 2,
+    "at": 1791732515403,
+    "type": "step/start",
+    "turn": 1,
+    "step": 1
+  },
+  {
+    "seq": 3,
+    "at": 1791732515404,
+    "type": "system/message",
+    "content": "You are the built-in agent inside the Kition document system."
+  },
+  {
+    "seq": 4,
+    "at": 1791732515404,
+    "type": "permission/preset",
+    "preset": "apply"
+  },
+  {
+    "seq": 5,
+    "at": 1791732515404,
+    "type": "user/message",
+    "content": [
+      {
+        "type": "text",
+        "text": "Draw a fox"
+      }
+    ],
+    "source": {
+      "kind": "user"
+    }
+  },
+  {
+    "seq": 6,
+    "at": 1791732515418,
+    "type": "assistant/message",
+    "content": "Here is a fox.",
+    "stopReason": "completed",
+    "model": "test-model"
+  },
+  {
+    "seq": 7,
+    "at": 1791732515418,
+    "type": "tool/call",
+    "callId": "ws_1",
+    "name": "web_search",
+    "arguments": {
+      "query": "fox facts",
+      "hosted": true,
+      "action": {
+        "type": "search",
+        "query": "fox facts"
+      }
+    }
+  },
+  {
+    "seq": 8,
+    "at": 1791732515418,
+    "type": "tool/result",
+    "callId": "ws_1",
+    "name": "web_search",
+    "value": {
+      "provider": "responses",
+      "hosted": true,
+      "status": "completed",
+      "query": "fox facts",
+      "action": {
+        "type": "search",
+        "query": "fox facts"
+      }
+    },
+    "content": [],
+    "isError": false,
+    "meta": {
+      "hosted": true
+    }
+  },
+  {
+    "seq": 9,
+    "at": 1791732515418,
+    "type": "tool/call",
+    "callId": "ig_1",
+    "name": "image_generation",
+    "arguments": {
+      "hosted": true,
+      "revised_prompt": "",
+      "size": "1024x1024"
+    }
+  },
+  {
+    "seq": 10,
+    "at": 1791732515418,
+    "type": "tool/result",
+    "callId": "ig_1",
+    "name": "image_generation",
+    "value": {
+      "provider": "responses",
+      "hosted": true,
+      "status": "completed",
+      "path": "Agent/images/1/ig_1.png",
+      "mime": "image/png"
+    },
+    "content": [],
+    "isError": false,
+    "meta": {
+      "hosted": true
+    }
+  },
+  {
+    "seq": 11,
+    "at": 1791732515418,
+    "type": "deliverables/presented",
+    "turn": 1,
+    "callId": "ig_1",
+    "files": [
+      {
+        "path": "Agent/images/1/ig_1.png"
+      }
+    ]
+  },
+  {
+    "seq": 12,
+    "at": 1791732515418,
+    "type": "user/message",
+    "content": [
+      {
+        "type": "text",
+        "text": "[image_generation system follow-up] The hosted image_generation tool produced the image(s) below and they have been saved into the workspace:\n  - Agent/images/1/ig_1.png\nContinue the user's original task using these saved paths. Do not request another image unless the user asks for one.\nReport the saved workspace-relative paths in the final reply."
+      }
+    ],
+    "source": {
+      "kind": "tool-follow-up"
+    }
+  },
+  {
+    "seq": 13,
+    "at": 1791732515418,
+    "type": "step/end",
+    "turn": 1,
+    "step": 1
+  },
+  {
+    "seq": 14,
+    "at": 1791732515418,
+    "type": "step/start",
+    "turn": 1,
+    "step": 2
+  },
+  {
+    "seq": 15,
+    "at": 1791732515424,
+    "type": "assistant/message",
+    "content": "Done.",
+    "stopReason": "completed",
+    "model": "test-model"
+  },
+  {
+    "seq": 16,
+    "at": 1791732515424,
+    "type": "step/end",
+    "turn": 1,
+    "step": 2
+  },
+  {
+    "seq": 17,
+    "at": 1791732515424,
+    "type": "turn/end",
+    "turn": 1,
+    "reason": "completed"
+  }
+]

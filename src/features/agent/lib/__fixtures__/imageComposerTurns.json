@@ -1,0 +1,193 @@
+[
+  {
+    "seq": 1,
+    "at": 1791732515325,
+    "type": "turn/start",
+    "turn": 1
+  },
+  {
+    "seq": 2,
+    "at": 1791732515326,
+    "type": "step/start",
+    "turn": 1,
+    "step": 1
+  },
+  {
+    "seq": 3,
+    "at": 1791732515326,
+    "type": "system/message",
+    "content": "You are the built-in agent inside the Kition document system."
+  },
+  {
+    "seq": 4,
+    "at": 1791732515326,
+    "type": "permission/preset",
+    "preset": "apply"
+  },
+  {
+    "seq": 5,
+    "at": 1791732515326,
+    "type": "user/message",
+    "content": [
+      {
+        "type": "text",
+        "text": "Hello"
+      }
+    ],
+    "source": {
+      "kind": "user"
+    }
+  },
+  {
+    "seq": 6,
+    "at": 1791732515332,
+    "type": "assistant/message",
+    "content": "It is a fox.",
+    "stopReason": "completed",
+    "model": "test-model"
+  },
+  {
+    "seq": 7,
+    "at": 1791732515332,
+    "type": "step/end",
+    "turn": 1,
+    "step": 1
+  },
+  {
+    "seq": 8,
+    "at": 1791732515332,
+    "type": "turn/end",
+    "turn": 1,
+    "reason": "completed"
+  },
+  {
+    "seq": 9,
+    "at": 1791732515337,
+    "type": "turn/start",
+    "turn": 2
+  },
+  {
+    "seq": 10,
+    "at": 1791732515337,
+    "type": "step/start",
+    "turn": 2,
+    "step": 1
+  },
+  {
+    "seq": 11,
+    "at": 1791732515337,
+    "type": "user/message",
+    "content": [
+      {
+        "type": "text",
+        "text": "A red fox"
+      }
+    ],
+    "source": {
+      "kind": "user"
+    }
+  },
+  {
+    "seq": 12,
+    "at": 1791732515337,
+    "type": "tool/call",
+    "callId": "img_9456bdfa12ea76959c94a357_0",
+    "name": "image_generation",
+    "arguments": {
+      "request_id": "req-1",
+      "intent_sha256": "d7cef66331a771edd5e07dbd0c09927cbb7bef203578a2082ed2813d7918453c",
+      "variant_index": 0,
+      "variant_count": 1,
+      "size": "1024x1024",
+      "quality": "low",
+      "reference_count": 0
+    }
+  },
+  {
+    "seq": 13,
+    "at": 1791732515342,
+    "type": "tool/result",
+    "callId": "img_9456bdfa12ea76959c94a357_0",
+    "name": "image_generation",
+    "value": {
+      "call_id": "img_9456bdfa12ea76959c94a357_0",
+      "path": "Agent/images/1/9456bdfa12ea76959c94a357/variant-1.png",
+      "mime_type": "image/png",
+      "title": "Generated image 1",
+      "width": 1,
+      "height": 1,
+      "variant_index": 0,
+      "variant_count": 1,
+      "created_at": "2026-10-11T15:28:35.341Z",
+      "provenance": {
+        "request_id": "req-1",
+        "provider_class": "connected_provider",
+        "prompt_sha256": "a2579b27f269265c8452fa4e762a21a70cfff1bdbd890d7acd0ff18eb1c6dfca",
+        "source_paths": []
+      }
+    },
+    "content": [
+      {
+        "type": "text",
+        "text": "Generated image 1: Agent/images/1/9456bdfa12ea76959c94a357/variant-1.png"
+      }
+    ],
+    "isError": false,
+    "meta": {
+      "kind": "image_generation.variant",
+      "request_id": "req-1",
+      "artifact": {
+        "call_id": "img_9456bdfa12ea76959c94a357_0",
+        "path": "Agent/images/1/9456bdfa12ea76959c94a357/variant-1.png",
+        "mime_type": "image/png",
+        "title": "Generated image 1",
+        "width": 1,
+        "height": 1,
+        "variant_index": 0,
+        "variant_count": 1,
+        "created_at": "2026-10-11T15:28:35.341Z",
+        "provenance": {
+          "request_id": "req-1",
+          "provider_class": "connected_provider",
+          "prompt_sha256": "a2579b27f269265c8452fa4e762a21a70cfff1bdbd890d7acd0ff18eb1c6dfca",
+          "source_paths": []
+        }
+      }
+    }
+  },
+  {
+    "seq": 14,
+    "at": 1791732515342,
+    "type": "deliverables/presented",
+    "turn": 2,
+    "callId": "img_9456bdfa12ea76959c94a357_0",
+    "files": [
+      {
+        "path": "Agent/images/1/9456bdfa12ea76959c94a357/variant-1.png",
+        "description": "Generated image 1"
+      }
+    ]
+  },
+  {
+    "seq": 15,
+    "at": 1791732515343,
+    "type": "assistant/message",
+    "content": "Generated 1 image(s) for review.",
+    "stopReason": "stop",
+    "model": ""
+  },
+  {
+    "seq": 16,
+    "at": 1791732515343,
+    "type": "step/end",
+    "turn": 2,
+    "step": 1
+  },
+  {
+    "seq": 17,
+    "at": 1791732515343,
+    "type": "turn/end",
+    "turn": 2,
+    "reason": "completed"
+  }
+]
