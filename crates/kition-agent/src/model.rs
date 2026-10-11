@@ -17,9 +17,6 @@ use crate::run::{EventInput, Run};
 use crate::stream::{Frame, value};
 use crate::tools::{self, images};
 
-/// The most model calls one turn makes.
-pub const MAX_STEPS: u32 = 16;
-
 /// Message parts as harness content blocks; parts with nothing to show are
 /// dropped.
 pub(crate) fn blocks(parts: &[MessagePart]) -> Vec<ContentBlock> {
@@ -132,6 +129,11 @@ async fn record_hosted_searches(run: &Run, result: &ChatResult) {
     }
 }
 
+/// The id prefix for calls of model step `step` that came without an id.
+fn call_id_prefix(step: usize) -> String {
+    format!("call_{}_{step}", kition_core::now_millis())
+}
+
 /// The engine as the turn's `Llm`.
 pub(crate) struct AgentLlm {
     run: Arc<Run>,
@@ -189,10 +191,7 @@ impl Llm for AgentLlm {
             let follow_up = blocks(
                 &images::save_hosted_images(run, &result.hosted_image_generation_calls).await,
             );
-            let tool_calls = normalize_calls(
-                &result.tool_calls,
-                &format!("ow_tool_{}_{index}", kition_core::now_millis()),
-            );
+            let tool_calls = normalize_calls(&result.tool_calls, &call_id_prefix(index));
             run.event(
                 EventInput::new(
                     "model.turn.completed",
@@ -222,5 +221,17 @@ impl Llm for AgentLlm {
                 Some((result, streamed.load(Ordering::SeqCst)));
             Ok(reply)
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn generated_call_ids_name_the_step() {
+        let prefix = call_id_prefix(3);
+        assert!(prefix.starts_with("call_"), "{prefix}");
+        assert!(prefix.ends_with("_3"), "{prefix}");
     }
 }

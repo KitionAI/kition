@@ -18,11 +18,14 @@ use kition_harness::stop::{RecoveryPrompt, UnresolvedWrites};
 use kition_harness::tool::{Settled, ToolContext, ToolDef, ToolFailure, ToolRegistry, define};
 use serde_json::{Value, json};
 
-use crate::model::{self, AgentLlm, blocks};
+use crate::model::{AgentLlm, blocks};
 use crate::providers::{self, ToolFactory, ToolShape, TurnFacts};
-use crate::run::{EventInput, Run};
+use crate::run::{EventInput, Run, TurnGuard};
 use crate::store::AgentSession;
 use crate::{prompts, session, tools};
+
+/// The most model calls one turn makes.
+const MAX_STEPS: u32 = 16;
 
 /// The output of the call that paused the turn, for the approval frames.
 type Pending = Arc<Mutex<Option<Value>>>;
@@ -97,36 +100,6 @@ fn logged_arguments(name: &str, input: &Value) -> Value {
         }
         _ => input.clone(),
     }
-}
-
-/// One lock per session, so two turns of a session never interleave their
-/// log appends. Each `Agent` owns one: session ids are only unique within
-/// its database.
-pub type SessionLocks = Mutex<HashMap<i64, Arc<tokio::sync::Mutex<()>>>>;
-
-/// The session's lock. Entries nobody holds are pruned on the next lookup.
-fn session_lock(locks: &SessionLocks, session_id: i64) -> Arc<tokio::sync::Mutex<()>> {
-    let mut locks = locks.lock().unwrap_or_else(PoisonError::into_inner);
-    locks.retain(|id, lock| *id == session_id || Arc::strong_count(lock) > 1);
-    locks.entry(session_id).or_default().clone()
-}
-
-/// What a second turn of a session hears while the first is running.
-pub const BUSY: &str = "This session is still answering. Wait for the reply or stop it first.";
-
-/// Whether a turn of this session is running.
-#[cfg(test)]
-fn is_busy(locks: &SessionLocks, session_id: i64) -> bool {
-    session_lock(locks, session_id).try_lock().is_err()
-}
-
-/// Held by one turn (or image request) of a session from the
-/// request's busy check to its last frame.
-pub type TurnGuard = tokio::sync::OwnedMutexGuard<()>;
-
-/// The session's turn guard, or `None` while another turn holds it.
-pub fn hold(locks: &SessionLocks, session_id: i64) -> Option<TurnGuard> {
-    session_lock(locks, session_id).try_lock_owned().ok()
 }
 
 /// Aborts the task when dropped, even if the turn panics.
@@ -314,6 +287,26 @@ fn user_content(run: &Run) -> Vec<ContentBlock> {
     content
 }
 
+/// The offered tools and whether hosted web search is among them, for the
+/// `prompt.sent` event. `hosted_search` says whether the model supports it.
+fn turn_capabilities(tool_names: &[String], hosted_search: bool) -> Value {
+    let mut names: Vec<&str> = tool_names.iter().map(String::as_str).collect();
+    names.sort_unstable();
+    names.dedup();
+    let search = names.contains(&"web_search");
+    let reason = if search {
+        "available"
+    } else if hosted_search {
+        "not_exposed"
+    } else {
+        "provider_unsupported"
+    };
+    json!({
+        "available_tools": names,
+        "hosted_web_search": { "available": search, "reason": reason },
+    })
+}
+
 /// Runs the turn, assembled from the providers, and finishes it.
 pub async fn drive(
     run: &Arc<Run>,
@@ -327,6 +320,7 @@ pub async fn drive(
     let _turn = turn;
     let pending: Pending = Arc::new(Mutex::new(None));
     let notes = Notes::default();
+    let hosted_search = facts.hosted_web_search;
     let (system, tools) =
         match assemble_turn(run, facts, &tools_factory(run, &pending, &notes)).await {
             Ok(assembled) => assembled,
@@ -338,14 +332,14 @@ pub async fn drive(
     let names: Vec<String> = tools.specs().into_iter().map(|spec| spec.name).collect();
     run.event(
         EventInput::new("prompt.sent", "intent", "completed", "Send model request", "Sent the user goal, session context, and available tools to the model")
-            .data(json!({ "model_id": session.model_id, "turn_capabilities": session::turn_capabilities(&names, &run.model) })),
+            .data(json!({ "model_id": session.model_id, "turn_capabilities": turn_capabilities(&names, hosted_search) })),
     )
     .await;
     let llm = Arc::new(AgentLlm::new(run));
     let key = crate::log::log_key(run.session_id);
     let log = Arc::new(SqliteLog::new(run.agent.db().clone()));
     let mut driver = Driver::new(log, llm.clone());
-    driver.max_steps = model::MAX_STEPS;
+    driver.max_steps = MAX_STEPS;
     driver.pipeline = pipeline(&notes);
     driver.stop_checks.push(Arc::new(UnresolvedWrites));
     let cancel = Cancel::default();
@@ -405,8 +399,7 @@ pub async fn drive(
         }
         Ok(TurnEndReason::StepLimit) => {
             let message = format!(
-                "agent tool loop exceeded {} turns; narrow the task or clarify the next step",
-                model::MAX_STEPS
+                "the turn exceeded {MAX_STEPS} model steps; narrow the task or clarify the next step"
             );
             session::fail(run, "Execution failed", "final", &message).await;
         }
@@ -554,6 +547,17 @@ mod tests {
     }
 
     #[test]
+    fn capabilities_say_why_web_search_is_missing() {
+        let caps = turn_capabilities(&["web_search".to_owned(), "web_search".to_owned()], false);
+        assert_eq!(caps["hosted_web_search"]["available"], true);
+        assert_eq!(caps["available_tools"], json!(["web_search"]));
+        let caps = turn_capabilities(&["document_read".to_owned()], true);
+        assert_eq!(caps["hosted_web_search"]["reason"], "not_exposed");
+        let caps = turn_capabilities(&[], false);
+        assert_eq!(caps["hosted_web_search"]["reason"], "provider_unsupported");
+    }
+
+    #[test]
     fn logged_arguments_mirror_the_persisted_tool_input() {
         assert_eq!(
             logged_arguments(
@@ -570,20 +574,6 @@ mod tests {
         }
         let args = json!({ "path": "a.md", "password": "kept" });
         assert_eq!(logged_arguments("document_read", &args), args);
-    }
-
-    #[tokio::test]
-    async fn a_running_turn_marks_its_session_busy() {
-        let locks = SessionLocks::default();
-        assert!(!is_busy(&locks, 9001));
-        let held = session_lock(&locks, 9001).lock_owned().await;
-        assert!(is_busy(&locks, 9001));
-        assert!(
-            !is_busy(&SessionLocks::default(), 9001),
-            "another agent's session 9001 is a different session"
-        );
-        drop(held);
-        assert!(!is_busy(&locks, 9001));
     }
 
     #[tokio::test]
@@ -608,18 +598,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn a_held_turn_guard_keeps_its_session_busy_until_dropped() {
-        let locks = SessionLocks::default();
-        let guard = hold(&locks, 5).unwrap_or_else(|| panic!("session 5 is free"));
-        assert!(is_busy(&locks, 5));
-        assert!(hold(&locks, 5).is_none(), "a second turn is refused");
-        assert!(!is_busy(&locks, 6));
-        drop(guard);
-        assert!(!is_busy(&locks, 5));
-        assert!(hold(&locks, 5).is_some());
-    }
-
-    #[tokio::test]
     async fn an_already_cancelled_turn_does_not_start_the_tool() {
         let cancel = Cancel::default();
         cancel.cancel();
@@ -632,15 +610,5 @@ mod tests {
         assert_eq!(unless_cancelled(work, &cancel).await, None);
         tokio::time::sleep(std::time::Duration::from_millis(20)).await;
         assert!(!started.load(Ordering::SeqCst));
-    }
-
-    #[test]
-    fn turns_of_one_session_share_a_lock() {
-        let locks = SessionLocks::default();
-        let first = session_lock(&locks, 7);
-        let again = session_lock(&locks, 7);
-        let other = session_lock(&locks, 8);
-        assert!(Arc::ptr_eq(&first, &again));
-        assert!(!Arc::ptr_eq(&first, &other));
     }
 }

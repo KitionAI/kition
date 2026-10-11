@@ -27,7 +27,7 @@ runtime crates.
 | `kition-http` | Auth, CORS and loopback `Host` checks, extractors. |
 | `kition-store` | The SQLite database, schema, and migrations. |
 | `kition-ai` | Model providers (OpenAI Responses and Anthropic Messages), streaming, retries, and image generation. |
-| `kition-agent` | Agent sessions, the streamed tool loop, its tools, the execution policy, and MCP servers. |
+| `kition-agent` | Agent sessions, the streamed agent turn, its tools, the execution policy, and MCP servers. |
 | `kition-datadoc` / `kition-kitable` | Data documents, `.kitable` files, AI fields, and the scenario builder. |
 | `kition-workflow` | Workflow definitions, triggers, runs, and the AI workflow builder. |
 | Other crates | Connections, email and form sync, desktop features, and workspace storage. |

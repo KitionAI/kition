@@ -148,7 +148,7 @@ fn data(bytes: &[u8]) -> Value {
     serde_json::from_slice::<Value>(bytes).unwrap_or_default()["data"].clone()
 }
 
-struct Harness {
+struct Fixture {
     app: Router,
     db: Db,
     workspace: tempfile::TempDir,
@@ -156,7 +156,7 @@ struct Harness {
     _config: tempfile::TempDir,
 }
 
-fn app() -> Harness {
+fn app() -> Fixture {
     let workspace = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
     let uploads = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
     let config = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
@@ -187,7 +187,7 @@ fn app() -> Harness {
         agent,
         ai_gate: Arc::new(|| true),
     });
-    Harness {
+    Fixture {
         app,
         db: db_handle,
         workspace,
@@ -270,7 +270,7 @@ async fn blocking_provider(entered: Arc<Notify>, release: Arc<Notify>) -> String
 
 #[tokio::test(flavor = "multi_thread")]
 async fn a_second_turn_is_refused_while_the_first_runs() {
-    let Harness { app, .. } = app();
+    let Fixture { app, .. } = app();
     let session_id = new_session(&app).await;
     let (entered, release) = (Arc::new(Notify::new()), Arc::new(Notify::new()));
     let base_url = blocking_provider(entered.clone(), release.clone()).await;
@@ -341,7 +341,7 @@ async fn image_and_text_provider() -> (String, Bodies) {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn an_image_exchange_is_history_for_the_next_turn() {
-    let Harness { app, .. } = app();
+    let Fixture { app, .. } = app();
     let session_id = new_session(&app).await;
     let (base_url, bodies) = image_and_text_provider().await;
     // A first ordinary turn, so the session already has an event log.
@@ -394,6 +394,28 @@ async fn an_image_exchange_is_history_for_the_next_turn() {
     );
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn a_turn_stops_at_the_step_limit() {
+    let Fixture { app, .. } = app();
+    let session_id = new_session(&app).await;
+    let script = (0..20)
+        .map(|_| tool_call("document_list", json!({})))
+        .collect();
+    let base_url = fake_provider(script).await;
+    let frames = stream(&app, session_id, &base_url, json!({})).await;
+    let error = frames
+        .iter()
+        .find(|frame| frame["type"] == "error")
+        .cloned()
+        .unwrap_or_default();
+    assert!(
+        error
+            .to_string()
+            .contains("the turn exceeded 16 model steps; narrow the task or clarify the next step"),
+        "{frames:?}"
+    );
+}
+
 /// A provider whose image endpoint signals `entered` and never answers,
 /// while `/responses` answers with plain text.
 async fn stuck_image_provider(entered: Arc<Notify>) -> String {
@@ -428,7 +450,7 @@ async fn stuck_image_provider(entered: Arc<Notify>) -> String {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn a_disconnected_image_turn_releases_its_session() {
-    let Harness { app, .. } = app();
+    let Fixture { app, .. } = app();
     let session_id = new_session(&app).await;
     let entered = Arc::new(Notify::new());
     let base_url = stuck_image_provider(entered.clone()).await;
@@ -477,7 +499,7 @@ async fn a_disconnected_image_turn_releases_its_session() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn streams_a_turn_over_chat_completions() {
-    let Harness { app, workspace, .. } = app();
+    let Fixture { app, workspace, .. } = app();
     let session_id = new_session(&app).await;
     let base_url = fake_provider_at(
         "/chat/completions",
@@ -509,7 +531,7 @@ async fn streams_a_turn_over_chat_completions() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn streams_a_turn_with_a_tool_call() {
-    let Harness {
+    let Fixture {
         app, db, workspace, ..
     } = app();
     let session_id = new_session(&app).await;
@@ -610,7 +632,7 @@ const RAW_SECRET: &str = "fake-raw-item-secret-4d1c";
 
 #[tokio::test(flavor = "multi_thread")]
 async fn the_session_events_api_keeps_provider_native_items_out() {
-    let Harness { app, db, .. } = app();
+    let Fixture { app, db, .. } = app();
     let session_id = new_session(&app).await;
     let raw = json!({ "type": "provider_note", "id": "pn_1", "note": RAW_SECRET });
     let item = json!({
@@ -724,7 +746,7 @@ async fn assert_session_events_api(app: &Router, session_id: i64) {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn commands_outside_the_policy_wait_for_approval() {
-    let Harness { app, workspace, .. } = app();
+    let Fixture { app, workspace, .. } = app();
     let session_id = new_session(&app).await;
     let command = json!({ "cmd": ["ls && touch approved.txt"], "shell": "sh" });
     let base_url = fake_provider(vec![
@@ -821,10 +843,9 @@ fn conversation(body: &Value) -> Vec<Value> {
 }
 
 /// The prompt as a sorted list of non-empty lines, duplicates kept,
-/// without the tool list line, so the two modes can join sections
-/// differently. Reads Responses
-/// `instructions` and system or developer items, and Chat Completions
-/// system messages.
+/// without the tool list line, so how sections are joined does not matter.
+/// Reads Responses `instructions` and system or developer items, and Chat
+/// Completions system messages.
 fn prompt_lines(body: &Value) -> Vec<String> {
     let mut text = body["instructions"].as_str().unwrap_or_default().to_owned();
     for item in body["input"]
@@ -860,7 +881,7 @@ async fn first_request_with(
     files: &[(&str, &[u8])],
     extra: Value,
 ) -> (Value, std::path::PathBuf) {
-    let Harness { app, workspace, .. } = app();
+    let Fixture { app, workspace, .. } = app();
     for (path, bytes) in files {
         let path = workspace.path().join(path);
         if let Some(parent) = path.parent() {

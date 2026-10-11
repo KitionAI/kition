@@ -1,6 +1,6 @@
 [package]
 name = "kition-agent"
-description = "The workspace agent: sessions, the streaming tool loop, and its tools."
+description = "The workspace agent: sessions, the streamed agent turn, and its tools."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

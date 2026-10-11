@@ -1,5 +1,6 @@
 //! Shared agent state and the context of one streamed turn.
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, PoisonError, RwLock};
 
@@ -61,7 +62,7 @@ struct Inner {
     kits: Option<kition_kits::KitManager>,
     /// One lock per session for its turns; session ids are unique only
     /// within this agent's database.
-    turns: crate::turn::SessionLocks,
+    turns: SessionLocks,
     web: reqwest::Client,
 }
 
@@ -96,7 +97,7 @@ impl Agent {
                 mcp: crate::mcp::Manager::new(config.mcp_path),
                 workflow_prompt: config.workflow_prompt,
                 kits: config.kits,
-                turns: crate::turn::SessionLocks::default(),
+                turns: SessionLocks::default(),
                 web: reqwest::Client::builder()
                     .redirect(reqwest::redirect::Policy::none())
                     .connect_timeout(std::time::Duration::from_secs(10))
@@ -140,9 +141,9 @@ impl Agent {
         self.inner.kits.as_ref()
     }
 
-    /// The per-session locks turns hold while they run.
-    pub(crate) fn turns(&self) -> &crate::turn::SessionLocks {
-        &self.inner.turns
+    /// The session's turn guard, or `None` while another turn of it runs.
+    pub(crate) fn hold_turn(&self, session_id: i64) -> Option<TurnGuard> {
+        hold(&self.inner.turns, session_id)
     }
 
     pub fn portal_base_url(&self) -> &str {
@@ -184,6 +185,37 @@ impl Agent {
     {
         self.inner.db.run(move |conn| work(conn)).await
     }
+}
+
+/// One lock per session, so two turns of a session never interleave their
+/// log appends. Each `Agent` owns one: session ids are only unique within
+/// its database.
+type SessionLocks = Mutex<HashMap<i64, Arc<tokio::sync::Mutex<()>>>>;
+
+/// The session's lock. Entries nobody holds are pruned on the next lookup.
+fn session_lock(locks: &SessionLocks, session_id: i64) -> Arc<tokio::sync::Mutex<()>> {
+    let mut locks = locks.lock().unwrap_or_else(PoisonError::into_inner);
+    locks.retain(|id, lock| *id == session_id || Arc::strong_count(lock) > 1);
+    locks.entry(session_id).or_default().clone()
+}
+
+/// What a second turn of a session hears while the first is running.
+pub(crate) const BUSY: &str =
+    "This session is still answering. Wait for the reply or stop it first.";
+
+/// Whether a turn of this session is running.
+#[cfg(test)]
+fn is_busy(locks: &SessionLocks, session_id: i64) -> bool {
+    session_lock(locks, session_id).try_lock().is_err()
+}
+
+/// Held by one turn (or image request) of a session from the
+/// request's busy check to its last frame.
+pub(crate) type TurnGuard = tokio::sync::OwnedMutexGuard<()>;
+
+/// The session's turn guard, or `None` while another turn holds it.
+fn hold(locks: &SessionLocks, session_id: i64) -> Option<TurnGuard> {
+    session_lock(locks, session_id).try_lock_owned().ok()
 }
 
 /// The permission mode a turn runs with.
@@ -505,5 +537,41 @@ mod tests {
         assert_eq!(string_list(&input, "l"), ["p"]);
         assert_eq!(truncate_chars("abcdef", 3), "abc...");
         assert_eq!(truncate_chars("ab", 3), "ab");
+    }
+
+    #[tokio::test]
+    async fn a_running_turn_marks_its_session_busy() {
+        let locks = SessionLocks::default();
+        assert!(!is_busy(&locks, 9001));
+        let held = session_lock(&locks, 9001).lock_owned().await;
+        assert!(is_busy(&locks, 9001));
+        assert!(
+            !is_busy(&SessionLocks::default(), 9001),
+            "another agent's session 9001 is a different session"
+        );
+        drop(held);
+        assert!(!is_busy(&locks, 9001));
+    }
+
+    #[tokio::test]
+    async fn a_held_turn_guard_keeps_its_session_busy_until_dropped() {
+        let locks = SessionLocks::default();
+        let guard = hold(&locks, 5).unwrap_or_else(|| panic!("session 5 is free"));
+        assert!(is_busy(&locks, 5));
+        assert!(hold(&locks, 5).is_none(), "a second turn is refused");
+        assert!(!is_busy(&locks, 6));
+        drop(guard);
+        assert!(!is_busy(&locks, 5));
+        assert!(hold(&locks, 5).is_some());
+    }
+
+    #[test]
+    fn turns_of_one_session_share_a_lock() {
+        let locks = SessionLocks::default();
+        let first = session_lock(&locks, 7);
+        let again = session_lock(&locks, 7);
+        let other = session_lock(&locks, 8);
+        assert!(Arc::ptr_eq(&first, &again));
+        assert!(!Arc::ptr_eq(&first, &other));
     }
 }

@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 
 use crate::catalog::{self, SkillDef};
 use crate::providers::TurnFacts;
-use crate::run::{Agent, EventInput, Run, truncate_chars};
+use crate::run::{Agent, BUSY, EventInput, Run, TurnGuard, truncate_chars};
 use crate::sources::{self, LocalSourceInput};
 use crate::store::{self, AgentSession};
 use crate::stream::{Emitter, Frame, value};
@@ -70,7 +70,7 @@ fn task_mode(value: &str) -> String {
     }
 }
 
-pub(crate) fn supports_hosted_web_search(model: &RuntimeModel) -> bool {
+fn supports_hosted_web_search(model: &RuntimeModel) -> bool {
     let provider = model.provider_type.trim().to_lowercase();
     let name = model.model_name.to_lowercase();
     match model.wire_api.trim() {
@@ -87,33 +87,13 @@ pub(crate) fn supports_hosted_web_search(model: &RuntimeModel) -> bool {
     }
 }
 
-pub(crate) fn supports_hosted_images(model: &RuntimeModel) -> bool {
+fn supports_hosted_images(model: &RuntimeModel) -> bool {
     let provider = model.provider_type.trim().to_lowercase();
     model.wire_api.trim() == "responses"
         && (matches!(
             provider.as_str(),
             "openai" | "openai-oauth2" | "custom" | KITION_CLOUD_PROVIDER
         ) || model.model_name.to_lowercase().contains("gpt"))
-}
-
-/// The offered tools and whether hosted web search is among them, for the
-/// `prompt.sent` event.
-pub(crate) fn turn_capabilities(tool_names: &[String], model: &RuntimeModel) -> Value {
-    let mut names: Vec<&str> = tool_names.iter().map(String::as_str).collect();
-    names.sort_unstable();
-    names.dedup();
-    let search = names.contains(&"web_search");
-    let reason = if search {
-        "available"
-    } else if supports_hosted_web_search(model) {
-        "not_exposed"
-    } else {
-        "provider_unsupported"
-    };
-    json!({
-        "available_tools": names,
-        "hosted_web_search": { "available": search, "reason": reason },
-    })
 }
 
 /// Loads the caller's live session.
@@ -145,7 +125,7 @@ pub struct Prepared {
     local_sources: Vec<sources::LocalSource>,
     /// The session's turn guard, taken by the busy check and held until
     /// the turn's last frame.
-    turn: turn::TurnGuard,
+    turn: TurnGuard,
 }
 
 /// Validates the request; failures become ordinary error responses.
@@ -158,8 +138,9 @@ pub async fn prepare(
     let session = owned_session(agent, session_id, user_id).await?;
     // Taken here, not when the turn starts, so no second request can slip
     // in between the check and the turn. Image requests hold it too.
-    let turn =
-        turn::hold(agent.turns(), session_id).ok_or_else(|| AppError::conflict(turn::BUSY))?;
+    let turn = agent
+        .hold_turn(session_id)
+        .ok_or_else(|| AppError::conflict(BUSY))?;
     let image_intent = match &request.image_generation_intent {
         Some(raw) => {
             if request.hide_user_message {
@@ -721,7 +702,5 @@ mod tests {
         };
         assert!(supports_hosted_web_search(&model));
         assert!(!supports_hosted_images(&model));
-        let caps = turn_capabilities(&["web_search".to_owned()], &model);
-        assert_eq!(caps["hosted_web_search"]["available"], true);
     }
 }

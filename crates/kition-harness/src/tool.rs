@@ -684,7 +684,7 @@ mod tests {
     #[tokio::test]
     async fn unchecked_parameters_are_sent_as_is_and_not_validated() {
         let schema = json!({ "type": "object", "properties": { "n": { "type": "integer" } }, "required": ["n"] });
-        let tool = define("legacy-tool", "Legacy")
+        let tool = define("catalog-tool", "Catalog")
             .unchecked_parameters(schema.clone())
             .execute(|args, _| async move { Ok(args) })
             .build()
