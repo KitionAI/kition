@@ -9,6 +9,7 @@ pub mod events;
 pub mod llm;
 pub mod log;
 pub mod policy;
+pub mod provider;
 pub mod schema;
 pub mod testing;
 pub mod tool;
