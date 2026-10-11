@@ -445,8 +445,12 @@ export function isOrganizableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
   return isEditableWorkspaceFormat(format) || format === 'board' || format === 'design'
 }
 
+/**
+ * Formats that open in a Kition tab rather than the system app. Office files a kit edits (Word,
+ * PowerPoint) open in the kit's editor, or the file preview when the kit's engine is not built in.
+ */
 export function isPreviewableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
-  return format === 'image' || format === 'pdf' || format === 'photo' || format === 'film' || format === 'vector' || format === 'effect' || format === 'layout' || format === 'cad' || format === 'presentation' || format === 'video'
+  return format === 'image' || format === 'pdf' || format === 'photo' || format === 'film' || format === 'vector' || format === 'effect' || format === 'layout' || format === 'cad' || format === 'presentation' || format === 'pptx' || format === 'docx' || format === 'video'
 }
 
 export function isSupportedWorkspaceFormat(format?: WorkspaceDocumentFormat) {

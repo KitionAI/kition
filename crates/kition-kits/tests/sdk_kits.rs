@@ -68,6 +68,13 @@ const CASES: &[Case] = &[
         params: || json!({ "preset": "ellipse", "rect": [100, 100, 200, 120] }),
         file_command: ("file.saveAs", || json!({ "path": "elsewhere.deckcraft" })),
     },
+    Case {
+        kit: "kit.word",
+        fixture: "Letter.docx",
+        command: "text.insert",
+        params: || json!({ "text": "Hello" }),
+        file_command: ("file.saveAs", || json!({ "path": "elsewhere.docx" })),
+    },
 ];
 
 fn binary(kit: &kition_kits::KitDefinition) -> Option<PathBuf> {

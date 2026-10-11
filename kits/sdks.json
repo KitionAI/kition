@@ -145,5 +145,18 @@
         ]
       }
     }
+  },
+  "word": {
+    "repository": "KitionAI/kit-word",
+    "crate": "kition-word-sdk",
+    "module": "kition_word_sdk",
+    "class": "WordDocument",
+    "name": "Letter.docx",
+    "edit": {
+      "command": "text.insert",
+      "params": {
+        "text": "Hello"
+      }
+    }
   }
 }

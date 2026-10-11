@@ -129,7 +129,7 @@ export function StandardKitEditor({ spec, path, active, onOpenAgent }: StandardK
       menuOrder={spec.menuOrder}
       menuLabel={(label) => t(`${spec.key}Kit.menu.${label}`, { defaultValue: t(`kitEditor.menu.${label}`, { defaultValue: label }) })}
       onKeyDown={keyDown}
-      tools={spec.tools ? <EngineToolRail tools={railTools} active={tools.active} onSelect={tools.select} testId={spec.key} /> : null}
+      tools={spec.tools && spec.tools.rail !== false ? <EngineToolRail tools={railTools} active={tools.active} onSelect={tools.select} testId={spec.key} /> : null}
       bottom={spec.commandLine ? (
         <form
           className="flex h-9 shrink-0 items-center gap-2 border-t border-border bg-background px-3"

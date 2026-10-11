@@ -196,6 +196,25 @@ pub const KITS: &[KitDefinition] = &[
             command: "shape.insert",
         },
     },
+    // Edited in the page through its SDK.
+    KitDefinition {
+        id: "kit.word",
+        name: "Kition Word",
+        binary_env: "KITION_KIT_WORD_BINARY",
+        extensions: &["docx"],
+        creates: &[],
+        embeds: false,
+        exports: &[],
+        agent: KitAgent {
+            prefix: "word",
+            noun: "Word document",
+            formats: ".docx",
+            reports: "its pages, word count, and the selection",
+            covers: "typing, styles, fonts, paragraphs, lists, tables, pictures, headers and footers, references, review, and more",
+            queries: "`bold`, `heading`, or `insert table`",
+            command: "text.insert",
+        },
+    },
 ];
 
 /// Who is asking: a person in a kit tab or the agent.

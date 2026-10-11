@@ -12,7 +12,8 @@
       "motion": "动态图形",
       "layout": "版式",
       "cad": "CAD 图纸",
-      "presentation": "演示文稿"
+      "presentation": "演示文稿",
+      "word": "Word 文档"
     },
     "folder": "文件夹",
     "importSpreadsheet": "导入电子表格",
@@ -751,7 +752,12 @@
       "Table Layout": "表布局",
       "Chart Design": "图表设计",
       "Slide Master": "幻灯片母版",
-      "Window": "窗口"
+      "Window": "窗口",
+      "Layout": "布局",
+      "References": "引用",
+      "Mailings": "邮件",
+      "Header & Footer": "页眉和页脚",
+      "Equation": "公式"
     }
   },
   "filmKit": {
@@ -880,5 +886,10 @@
     "summary": "第 {{slide}} 张，共 {{slides}} 张，已选 {{selected}} 个",
     "unavailableTitle": "此版本不支持编辑演示文稿",
     "unavailableBody": "包含演示文稿引擎时，演示文稿会在 Kition 中打开。"
+  },
+  "wordKit": {
+    "summary": "第 {{page}} 页，共 {{pages}} 页，{{words}} 个字",
+    "unavailableTitle": "此版本不支持编辑 Word 文档",
+    "unavailableBody": "包含 Word 引擎时，Word 文档会在 Kition 中打开。"
   }
 }

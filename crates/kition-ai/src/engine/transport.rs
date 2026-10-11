@@ -46,6 +46,29 @@ pub(crate) fn chat_headers(model: &RuntimeModel) -> AiResult<Vec<(String, String
     Ok(headers)
 }
 
+/// Adds the provider headers to a request whose body was set with `.json()`,
+/// which already sets `Content-Type`, and sends exactly one `Accept`. Some
+/// gateways reject a repeated `Content-Type` ("Unsupported content type").
+pub(crate) fn json_request(
+    mut request: reqwest::RequestBuilder,
+    headers: &[(String, String)],
+    streaming: bool,
+) -> reqwest::RequestBuilder {
+    for (key, value) in headers.iter().filter(|(key, _)| {
+        !key.eq_ignore_ascii_case("Content-Type") && !key.eq_ignore_ascii_case("Accept")
+    }) {
+        request = request.header(key, value);
+    }
+    request.header(
+        "Accept",
+        if streaming {
+            "text/event-stream"
+        } else {
+            "application/json"
+        },
+    )
+}
+
 /// Sets `name` to `value`, replacing any header of the same name.
 pub(crate) fn set_header(headers: &mut Vec<(String, String)>, name: &str, value: &str) {
     headers.retain(|(key, _)| !key.eq_ignore_ascii_case(name));
@@ -522,6 +545,26 @@ mod tests {
             auth_scheme: scheme.into(),
             auth_header: header.into(),
             ..RuntimeModel::default()
+        }
+    }
+
+    #[test]
+    fn json_requests_send_each_content_header_once() {
+        let headers = chat_headers(&model("", "")).unwrap_or_default();
+        let client = reqwest::Client::new();
+        for (streaming, accept) in [(true, "text/event-stream"), (false, "application/json")] {
+            let request = json_request(
+                client.post("http://127.0.0.1:9/v1/chat/completions").json(&serde_json::json!({})),
+                &headers,
+                streaming,
+            )
+            .build()
+            .unwrap_or_else(|error| panic!("{error}"));
+            let content_types: Vec<_> = request.headers().get_all("content-type").iter().collect();
+            assert_eq!(content_types, ["application/json"]);
+            let accepts: Vec<_> = request.headers().get_all("accept").iter().collect();
+            assert_eq!(accepts, [accept]);
+            assert!(request.headers().get("authorization").is_some());
         }
     }
 

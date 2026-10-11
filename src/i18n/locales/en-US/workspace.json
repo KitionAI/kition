@@ -12,7 +12,8 @@
       "motion": "Motion graphics",
       "layout": "Page layout",
       "cad": "CAD drawing",
-      "presentation": "Presentation"
+      "presentation": "Presentation",
+      "word": "Word document"
     },
     "folder": "Folder",
     "importSpreadsheet": "Import spreadsheet",
@@ -751,7 +752,12 @@
       "Table Layout": "Table Layout",
       "Chart Design": "Chart Design",
       "Slide Master": "Slide Master",
-      "Window": "Window"
+      "Window": "Window",
+      "Layout": "Layout",
+      "References": "References",
+      "Mailings": "Mailings",
+      "Header & Footer": "Header & Footer",
+      "Equation": "Equation"
     }
   },
   "filmKit": {
@@ -880,5 +886,10 @@
     "summary": "Slide {{slide}} of {{slides}}, {{selected}} selected",
     "unavailableTitle": "Presentation editing is not available in this build",
     "unavailableBody": "Presentations open in Kition when the Presentation engine is included."
+  },
+  "wordKit": {
+    "summary": "Page {{page}} of {{pages}}, {{words}} words",
+    "unavailableTitle": "Word editing is not available in this build",
+    "unavailableBody": "Word documents open in Kition when the Word engine is included."
   }
 }

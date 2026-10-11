@@ -1,4 +1,4 @@
-import { DraftingCompass, Presentation, type LucideIcon } from 'lucide-react'
+import { DraftingCompass, FileText, Presentation, type LucideIcon } from 'lucide-react'
 import type { KitSdkManifest, RasterRect } from '@/features/kits/public'
 
 /**
@@ -15,7 +15,7 @@ export type StandardKitSpec = {
   /** Top-level menus in display order (the kit's `kit.json` `ui.menus`). */
   menuOrder: readonly string[]
   /** The engine's tools (engine-tools capability): the first one, and any kept off the rail. */
-  tools?: { initial: string; hidden?: ReadonlySet<string> }
+  tools?: { initial: string; hidden?: ReadonlySet<string>; rail?: boolean }
   /** A command-line bar under the canvas that runs the kit's `commandLine` command (CAD). */
   commandLine?: boolean
   /** Where the canvas opens, from `inspect()`: the first page or slide rather than the whole canvas. */
@@ -45,9 +45,9 @@ export const CAD_KIT: StandardKitSpec = {
 
 type InspectedArea = { x: number; y: number; width: number; height: number }
 
-/** A slide's `{x, y, width, height}` from `inspect()` as a canvas rectangle. */
-function slideArea(inspected: Record<string, unknown>, index: number): RasterRect | null {
-  const area = (inspected.slides as Array<{ area?: InspectedArea }> | undefined)?.[index]?.area
+/** A slide's or page's `{x, y, width, height}` from `inspect()` (under `key`) as a canvas rectangle. */
+function slideArea(inspected: Record<string, unknown>, index: number, key = 'slides'): RasterRect | null {
+  const area = (inspected[key] as Array<{ area?: InspectedArea }> | undefined)?.[index]?.area
   return area ? { x0: area.x, y0: area.y, x1: area.x + area.width, y1: area.y + area.height } : null
 }
 
@@ -65,5 +65,22 @@ export const PRESENTATION_KIT: StandardKitSpec = {
     slide: count(inspected.slide) + 1,
     slides: Array.isArray(inspected.slides) ? inspected.slides.length : 0,
     selected: count(inspected.selection),
+  }),
+}
+
+/** The Word engine (`kition-word-sdk` in the kit-word repository), built by `scripts/build-kit-sdk.sh word`. */
+export const WORD_KIT: StandardKitSpec = {
+  sdk: { kitId: 'kit.word', dir: 'word-sdk', module: 'kition_word_sdk', documentClass: 'WordDocument' },
+  key: 'word',
+  icon: FileText,
+  menuOrder: ['File', 'Home', 'Insert', 'Draw', 'Design', 'Layout', 'References', 'Mailings', 'Review', 'View', 'Table Design', 'Table Layout', 'Picture Format', 'Shape Format', 'Header & Footer', 'Equation'],
+  // One text tool (click, drag, type), so no rail.
+  tools: { initial: 'text', rail: false },
+  initialArea: (inspected) => slideArea(inspected, 0, 'pages'),
+  focusArea: (inspected) => slideArea(inspected, count(inspected.page), 'pages'),
+  summary: (inspected) => ({
+    page: count(inspected.page) + 1,
+    pages: Array.isArray(inspected.pages) ? inspected.pages.length : 0,
+    words: count(inspected.words),
   }),
 }

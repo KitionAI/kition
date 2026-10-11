@@ -1,5 +1,5 @@
 import { createElement, lazy, type ComponentType } from 'react'
-import { Clapperboard, DraftingCompass, Layers, LayoutTemplate, PenTool, Presentation, Sparkles, type LucideIcon } from 'lucide-react'
+import { Clapperboard, DraftingCompass, FileText, Layers, LayoutTemplate, PenTool, Presentation, Sparkles, type LucideIcon } from 'lucide-react'
 import { kitSdkAvailable, type KitSdkManifest } from '@/features/kits/public'
 import type { WorkspaceDocumentFormat } from '@/services/desktop'
 import { PhotoKitPane } from '../PhotoKitPane'
@@ -13,7 +13,7 @@ import { EFFECT_SDK } from '../effect/effectKitSdk'
 import { VectorUnavailable } from '../vector/VectorUnavailable'
 import { VECTOR_SDK } from '../vector/vectorKitSdk'
 import { StandardKitUnavailable } from './StandardKitUnavailable'
-import { CAD_KIT, PRESENTATION_KIT, type StandardKitSpec } from './standardKits'
+import { CAD_KIT, PRESENTATION_KIT, WORD_KIT, type StandardKitSpec } from './standardKits'
 
 /** What every kit editor receives from the workspace tab. */
 export type KitEditorProps = {
@@ -107,6 +107,8 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
   standardKit(PRESENTATION_KIT, 'presentation', { create: { id: 'presentation', extension: 'deckcraft', baseName: 'Untitled presentation', size: { width: 960, height: 540 }, label: 'createMenu.format.presentation', icon: Presentation } }),
   // PowerPoint files open in the Presentation kit, and keep the file preview without it.
   standardKit(PRESENTATION_KIT, 'pptx', { preview: true }),
+  // Word files open in the Word kit, and keep the file preview without it. US Letter, in points.
+  standardKit(WORD_KIT, 'docx', { preview: true, create: { id: 'word', extension: 'docx', baseName: 'Untitled Word document', size: { width: 612, height: 792 }, label: 'createMenu.format.word', icon: FileText } }),
 ]
 
 const availability = new Map<string, Promise<boolean>>()

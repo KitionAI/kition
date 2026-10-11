@@ -12,7 +12,8 @@
       "motion": "Анимированная графика",
       "layout": "Вёрстка",
       "cad": "Чертёж САПР",
-      "presentation": "Презентация"
+      "presentation": "Презентация",
+      "word": "Документ Word"
     },
     "folder": "Папка",
     "importSpreadsheet": "Импортировать таблицу",
@@ -751,7 +752,12 @@
       "Table Layout": "Макет таблицы",
       "Chart Design": "Конструктор диаграмм",
       "Slide Master": "Образец слайдов",
-      "Window": "Окно"
+      "Window": "Окно",
+      "Layout": "Макет",
+      "References": "Ссылки",
+      "Mailings": "Рассылки",
+      "Header & Footer": "Колонтитулы",
+      "Equation": "Уравнение"
     }
   },
   "filmKit": {
@@ -880,5 +886,10 @@
     "summary": "Слайд {{slide}} из {{slides}}, выбрано: {{selected}}",
     "unavailableTitle": "Редактирование презентаций недоступно в этой сборке",
     "unavailableBody": "Презентации открываются в Kition, когда в сборку включён движок презентаций."
+  },
+  "wordKit": {
+    "summary": "Страница {{page}} из {{pages}}, слов: {{words}}",
+    "unavailableTitle": "Редактирование Word недоступно в этой сборке",
+    "unavailableBody": "Документы Word открываются в Kition, когда в сборку включён движок Word."
   }
 }

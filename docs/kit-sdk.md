@@ -26,7 +26,7 @@ over the Kit Protocol by kition-sdk's `kition-headless`, so it is a few lines
 (`apps/kit-<kit>` in each kit repository). The agent's tools for every kit are
 `<prefix>_inspect`, `<prefix>_commands`, and `<prefix>_run`, generated from
 the kit's definition (`photo_*`, `film_*`, `vector_*`, `effect_*`,
-`design_*`, `cad_*`, `presentation_*`).
+`design_*`, `cad_*`, `presentation_*`, `word_*`).
 
 When the file is open in a kit editor, those tools act on the editor itself
 through the **Kit AI bridge** (standard A7 to A10), not on a headless copy:
@@ -272,10 +272,13 @@ Kition renderer:
    (SDK manifest, test id key, icon, menu order, engine tools, an optional
    command line, and the status-line values from `inspect()`) and
    `standardKit(spec, format, create)` in `KIT_EDITORS` replace steps 9 and 10's
-   editor, fallback, and SDK files. CAD and Presentation are. A kit for a format the
+   editor, fallback, and SDK files. CAD, Presentation, and Word are (Word with
+   `rail: false`: its one text tool needs no rail). A kit for a format the
    file preview already shows (PDF, Office) passes `{ preview: true }`, so that
    preview stays the fallback, and the linked-file prompt keeps `document_read`
-   for its text (`TEXT_EXTRACTED` in `crates/kition-kits/src/tools.rs`). Otherwise:
+   for its text (`TEXT_EXTRACTED` in `crates/kition-kits/src/tools.rs`); add the
+   format to `isPreviewableWorkspaceFormat`, or it opens in the system app instead
+   of a tab. Otherwise:
    `src/features/workspace/components/<kit>/<kit>KitSdk.ts`: the manifest
    and `describe<Kit>(info)`. Tools come one of two ways. When the engine
    owns its tools (manifest capability `engine-tools`, as Vector), use
@@ -498,6 +501,18 @@ Slide and page kits (Presentation):
 - Engines built with craft-fonts need the checkout next to the kit
   repository (`../craft-fonts`), or web builds have no fonts and text is
   invisible.
+
+Text kits (Word):
+
+- A word processor always types: report `busy` and `wantsText` all the time,
+  so every printable key and editing key reaches the engine, and command
+  shortcuts (`Cmd+B`) reach the frame. Turn the engine's `Mod+` shortcuts into
+  `Cmd+`.
+- Keep the session in a `RefCell` when laying out needs `&mut` (WordCraft
+  caches its layout), since `render` and `inspect` take `&self`. Never mark
+  the document changed for a caret or selection move.
+- An engine that fills its whole output with paper (`render_region`) renders
+  each page's visible piece separately and copies it into place.
 
 Time-based kits (Effect):
 

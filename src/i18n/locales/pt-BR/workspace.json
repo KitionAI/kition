@@ -12,7 +12,8 @@
       "motion": "Motion graphics",
       "layout": "Diagramação",
       "cad": "Desenho CAD",
-      "presentation": "Apresentação"
+      "presentation": "Apresentação",
+      "word": "Documento do Word"
     },
     "folder": "Pasta",
     "importSpreadsheet": "Importar planilha",
@@ -751,7 +752,12 @@
       "Table Layout": "Layout da Tabela",
       "Chart Design": "Design do Gráfico",
       "Slide Master": "Slide Mestre",
-      "Window": "Janela"
+      "Window": "Janela",
+      "Layout": "Layout",
+      "References": "Referências",
+      "Mailings": "Correspondências",
+      "Header & Footer": "Cabeçalho e Rodapé",
+      "Equation": "Equação"
     }
   },
   "filmKit": {
@@ -880,5 +886,10 @@
     "summary": "Slide {{slide}} de {{slides}}, {{selected}} selecionados",
     "unavailableTitle": "A edição de apresentações não está disponível nesta versão",
     "unavailableBody": "Apresentações abrem no Kition quando o mecanismo de apresentações está incluído."
+  },
+  "wordKit": {
+    "summary": "Página {{page}} de {{pages}}, {{words}} palavras",
+    "unavailableTitle": "A edição do Word não está disponível nesta versão",
+    "unavailableBody": "Documentos do Word abrem no Kition quando o mecanismo do Word está incluído."
   }
 }

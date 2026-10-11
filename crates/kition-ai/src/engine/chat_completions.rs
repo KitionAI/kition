@@ -526,16 +526,7 @@ pub(crate) async fn call(
     let payload = request_body(model, items, tools, choice, stream.is_some());
 
     let endpoint = validate_endpoint(&format!("{base_url}/chat/completions"))?;
-    let mut request = http.post(&endpoint).json(&payload);
-    for (key, value) in &headers {
-        request = request.header(key, value);
-    }
-    let accept = if stream.is_some() {
-        "text/event-stream"
-    } else {
-        "application/json"
-    };
-    request = request.header("Accept", accept);
+    let request = json_request(http.post(&endpoint).json(&payload), &headers, stream.is_some());
     let started = Instant::now();
     let response = send(request, stream.is_some())
         .await
