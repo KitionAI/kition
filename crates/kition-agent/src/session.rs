@@ -672,6 +672,33 @@ async fn active_data_document(run: &Run) -> String {
 
 /// The conversation sent to the model: system prompts, the last 16
 /// messages, attachments, the turn context, and the user's message.
+/// The conversation before the triggering message as the model sees it:
+/// the last 16 earlier messages, only user and assistant ones, with the
+/// table plan block stripped from assistant replies. Load `history` with
+/// `store::recent_messages(.., 17)`.
+pub(crate) fn previous_conversation(
+    history: &[AgentMessage],
+    trigger_message_id: i64,
+) -> Vec<(String, String)> {
+    let previous: Vec<&AgentMessage> = history
+        .iter()
+        .filter(|m| m.id != trigger_message_id)
+        .collect();
+    previous
+        .iter()
+        .skip(previous.len().saturating_sub(16))
+        .filter(|message| message.role == "user" || message.role == "assistant")
+        .map(|message| {
+            let content = if message.role == "assistant" {
+                table_plan::strip_block(&message.content)
+            } else {
+                message.content.clone()
+            };
+            (message.role.clone(), content)
+        })
+        .collect()
+}
+
 async fn build_messages(
     run: &Run,
     session: &AgentSession,
@@ -703,18 +730,8 @@ async fn build_messages(
             prompts::linked_document(&run.active_document_path),
         ));
     }
-    let previous = history.iter().filter(|m| m.id != run.trigger_message_id);
-    let previous: Vec<&AgentMessage> = previous.collect();
-    for message in previous.iter().skip(previous.len().saturating_sub(16)) {
-        if message.role != "user" && message.role != "assistant" {
-            continue;
-        }
-        let content = if message.role == "assistant" {
-            table_plan::strip_block(&message.content)
-        } else {
-            message.content.clone()
-        };
-        messages.push(Message::new(&message.role, content));
+    for (role, content) in previous_conversation(&history, run.trigger_message_id) {
+        messages.push(Message::new(&role, content));
     }
     let attachment_block = attachments::prompt_block(&run.attachments);
     if !attachment_block.is_empty() {

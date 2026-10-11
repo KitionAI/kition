@@ -10,9 +10,9 @@ use futures::future::BoxFuture;
 use kition_ai::engine::{ChatResult, MessagePart, ToolSpec};
 use kition_harness::cancel::Cancel;
 use kition_harness::driver::{Driver, Live, TurnInput};
-use kition_harness::events::{ContentBlock, TurnEndReason};
+use kition_harness::events::{ContentBlock, EventBody, TurnEndReason};
 use kition_harness::llm::{ChunkSink, Llm, LlmReply, LlmRequest, normalize_calls};
-use kition_harness::log::SqliteLog;
+use kition_harness::log::{SessionLog, SqliteLog};
 use kition_harness::policy::{CallInfo, Pipeline, Policy};
 use kition_harness::stop::{RecoveryPrompt, UnresolvedWrites};
 use kition_harness::tool::{Settled, ToolContext, ToolFailure, ToolRegistry, define};
@@ -342,6 +342,51 @@ fn user_content(run: &Run) -> Vec<ContentBlock> {
     content
 }
 
+/// Logs a session's earlier conversation the first time it runs on the
+/// harness, so turns started without the flag keep their context.
+fn seed(log: &dyn SessionLog, key: &str, history: &[(String, String)]) -> Result<(), String> {
+    if !log.read(key)?.is_empty() {
+        return Ok(());
+    }
+    for (role, content) in history {
+        let body = match role.as_str() {
+            "user" => EventBody::UserMessage {
+                content: vec![ContentBlock::text(content.clone())],
+            },
+            "assistant" => EventBody::AssistantMessage {
+                content: content.clone(),
+                tool_calls: Vec::new(),
+                stop_reason: String::new(),
+                model: String::new(),
+                raw_items: Vec::new(),
+            },
+            _ => continue,
+        };
+        log.append(key, body)?;
+    }
+    Ok(())
+}
+
+/// Seeds the harness log of a session whose earlier turns ran on the
+/// original loop. A failure is logged and the turn goes on without them.
+async fn carry_over(run: &Run, session: &AgentSession, log: &dyn SessionLog, key: &str) {
+    let (id, user) = (session.id, session.user_id);
+    let history = match run
+        .agent
+        .with_db(move |conn| store::recent_messages(conn, id, user, 17))
+        .await
+    {
+        Ok(history) => session::previous_conversation(&history, run.trigger_message_id),
+        Err(error) => {
+            tracing::warn!(session = id, error = %error, "could not load the conversation to carry over");
+            return;
+        }
+    };
+    if let Err(error) = seed(log, key, &history) {
+        tracing::warn!(session = id, error = %error, "could not carry the conversation into the harness log");
+    }
+}
+
 /// Runs the turn and finishes it exactly as `session::drive` does.
 pub async fn drive(
     run: &Arc<Run>,
@@ -361,10 +406,10 @@ pub async fn drive(
         calls: AtomicUsize::new(0),
         last: Mutex::new(None),
     });
-    let mut driver = Driver::new(
-        Arc::new(SqliteLog::new(run.agent.db().clone())),
-        llm.clone(),
-    );
+    let key = format!("agent:{}", run.session_id);
+    let log = Arc::new(SqliteLog::new(run.agent.db().clone()));
+    carry_over(run, &session, log.as_ref(), &key).await;
+    let mut driver = Driver::new(log, llm.clone());
     driver.max_steps = u32::try_from(turn::MAX_TURNS).unwrap_or(16);
     driver.pipeline = pipeline(&notes);
     driver.stop_checks.push(Arc::new(UnresolvedWrites));
@@ -379,7 +424,7 @@ pub async fn drive(
         }))
     };
     let input = TurnInput {
-        session: format!("agent:{}", run.session_id),
+        session: key,
         system: system_prompt(run, &session, context).await,
         tools,
         user: user_content(run),
@@ -567,6 +612,34 @@ mod tests {
         }
         let args = json!({ "path": "a.md", "password": "kept" });
         assert_eq!(logged_arguments("document_read", &args), args);
+    }
+
+    #[test]
+    fn an_empty_log_is_seeded_with_the_previous_conversation() {
+        use kition_harness::log::{MemoryLog, SessionLog};
+
+        let log = MemoryLog::default();
+        let history = vec![
+            ("user".to_owned(), "first".to_owned()),
+            ("assistant".to_owned(), "reply".to_owned()),
+            ("tool".to_owned(), "ignored".to_owned()),
+        ];
+        seed(&log, "agent:7", &history).unwrap_or_else(|error| panic!("{error}"));
+        let kinds: Vec<&str> = log
+            .read("agent:7")
+            .unwrap_or_else(|error| panic!("{error}"))
+            .iter()
+            .map(|e| e.body.kind())
+            .collect();
+        assert_eq!(kinds, ["user/message", "assistant/message"]);
+        seed(&log, "agent:7", &history).unwrap_or_else(|error| panic!("{error}"));
+        assert_eq!(
+            log.read("agent:7")
+                .unwrap_or_else(|error| panic!("{error}"))
+                .len(),
+            2,
+            "a non-empty log is left alone"
+        );
     }
 
     #[test]
