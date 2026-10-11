@@ -281,6 +281,15 @@ async fn configure_smtp(
     Ok((summary, output))
 }
 
+/// Agent turns run on the harness unless `KITION_AGENT_HARNESS` is `0`,
+/// `off`, or `false` (the original loop stays as a fallback for one release).
+fn harness_enabled(value: Option<&str>) -> bool {
+    !matches!(
+        value.map(|value| value.trim().to_ascii_lowercase()).as_deref(),
+        Some("0" | "off" | "false")
+    )
+}
+
 pub fn build(
     deps: &Deps,
     tables: Option<kition_datadoc::DataDocState>,
@@ -318,7 +327,7 @@ pub fn build(
         mcp_path: kition_agent::mcp::default_path(),
         workflow_prompt: Some(workflow_prompt),
         kits: Some(deps.kits.clone()),
-        harness: std::env::var("KITION_AGENT_HARNESS").is_ok_and(|value| value.trim() == "1"),
+        harness: harness_enabled(std::env::var("KITION_AGENT_HARNESS").ok().as_deref()),
     });
     let background = agent.clone();
     tokio::spawn(async move {
@@ -327,4 +336,19 @@ pub fn build(
         }
     });
     agent
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_harness_is_on_unless_turned_off() {
+        assert!(harness_enabled(None));
+        assert!(harness_enabled(Some("1")));
+        assert!(harness_enabled(Some("")));
+        assert!(!harness_enabled(Some("0")));
+        assert!(!harness_enabled(Some(" off ")));
+        assert!(!harness_enabled(Some("false")));
+    }
 }

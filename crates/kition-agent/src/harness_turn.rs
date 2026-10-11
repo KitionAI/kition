@@ -1,6 +1,7 @@
 //! One agent turn on `kition-harness`: the same prompts, tools, stream
 //! frames, and timeline as `turn.rs`, with the session event log as the
-//! source of model history. Selected by `KITION_AGENT_HARNESS=1`.
+//! source of model history. This is the default; `KITION_AGENT_HARNESS=0`
+//! falls back to the original loop in `turn.rs` for one release.
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};

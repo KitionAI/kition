@@ -44,7 +44,8 @@ pub struct AgentConfig {
     pub workflow_prompt: Option<WorkflowPrompt>,
     /// Kits the agent can drive, such as the photo editor.
     pub kits: Option<kition_kits::KitManager>,
-    /// Run turns on `kition-harness` (`KITION_AGENT_HARNESS=1`).
+    /// Run turns on `kition-harness`. The API turns this on by default;
+    /// `KITION_AGENT_HARNESS=0` falls back to the original loop.
     pub harness: bool,
 }
 
