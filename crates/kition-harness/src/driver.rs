@@ -107,6 +107,12 @@ fn deliverables(turn: u32, call_id: &str, files: Vec<PresentedFile>) -> Option<E
 }
 
 /// The `approval/asked` for a call that waits for the person.
+///
+/// Deviation from dsh, whose approval service issues a fresh id per
+/// request: the id is `approval:<callId>`, because a call is asked at most
+/// once. Also unlike dsh, the matching `approval/decided` is not appended
+/// inside this turn: the turn ends `awaiting-approval`, and the decision
+/// lands at the start of the next drive, before the turn that resumes it.
 fn approval_asked(call: &LoggedCall, reason: String) -> EventBody {
     EventBody::ApprovalAsked {
         id: format!("approval:{}", call.call_id),

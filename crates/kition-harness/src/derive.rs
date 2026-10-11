@@ -272,7 +272,9 @@ mod tests {
 
     #[test]
     fn panel_and_audit_events_are_not_model_history() {
-        use crate::events::{ApprovalOutcome, LlmFailure, PresentedFile, TodoItem, TodoStatus};
+        use crate::events::{
+            ApprovalOutcome, LlmFailure, PresentedFile, RetryMode, TodoItem, TodoStatus,
+        };
         let user = |seq, text: &str| {
             at(
                 seq,
@@ -294,11 +296,11 @@ mod tests {
             at(
                 3,
                 EventBody::LlmRetry {
-                    retry_id: "s#1.1/1".into(),
+                    retry_id: "s#1.1".into(),
                     turn: 1,
                     step: 1,
                     provider: "openai".into(),
-                    mode: "normal".into(),
+                    mode: RetryMode::Normal,
                     policy_key: "engine".into(),
                     retry: 1,
                     max_retries: 5,
@@ -307,6 +309,15 @@ mod tests {
                         message: "timed out".into(),
                         code: "timeout".into(),
                     },
+                },
+            ),
+            at(
+                4,
+                EventBody::LlmRetryStarted {
+                    retry_id: "s#1.1".into(),
+                    turn: 1,
+                    step: 1,
+                    retry: 1,
                 },
             ),
             at(

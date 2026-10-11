@@ -99,6 +99,13 @@ pub struct TodoItem {
     pub status: TodoStatus,
 }
 
+/// How a retry is bounded; Kition retries only up to `maxRetries`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum RetryMode {
+    Normal,
+}
+
 /// Why a model request failed (dsh `LlmFailure`, the fields Kition knows).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LlmFailure {
@@ -190,18 +197,29 @@ pub enum EventBody {
     #[serde(rename = "todo/write")]
     TodoWrite { todos: Vec<TodoItem> },
     /// A failed model request that will be retried after `delay_ms`.
+    /// `retry_id` names the retry chain of one model step; `retry` counts
+    /// from 1.
     #[serde(rename = "llm/retry")]
     LlmRetry {
         retry_id: String,
         turn: u32,
         step: u32,
         provider: String,
-        mode: String,
+        mode: RetryMode,
         policy_key: String,
         retry: u32,
         max_retries: u32,
         delay_ms: u64,
         failure: LlmFailure,
+    },
+    /// The wait of `llm/retry` number `retry` is over and the next attempt
+    /// starts.
+    #[serde(rename = "llm/retry-started")]
+    LlmRetryStarted {
+        retry_id: String,
+        turn: u32,
+        step: u32,
+        retry: u32,
     },
     /// The permission preset (Kition's execution mode) from this point on.
     #[serde(rename = "permission/preset")]
@@ -226,6 +244,7 @@ impl EventBody {
         "deliverables/presented",
         "todo/write",
         "llm/retry",
+        "llm/retry-started",
         "permission/preset",
     ];
 
@@ -246,6 +265,7 @@ impl EventBody {
             Self::DeliverablesPresented { .. } => "deliverables/presented",
             Self::TodoWrite { .. } => "todo/write",
             Self::LlmRetry { .. } => "llm/retry",
+            Self::LlmRetryStarted { .. } => "llm/retry-started",
             Self::PermissionPreset { .. } => "permission/preset",
         }
     }
@@ -355,11 +375,11 @@ mod tests {
                 }],
             },
             EventBody::LlmRetry {
-                retry_id: "agent:1#1.1/1".into(),
+                retry_id: "agent:1#1.1".into(),
                 turn: 1,
                 step: 1,
                 provider: "openai".into(),
-                mode: "normal".into(),
+                mode: RetryMode::Normal,
                 policy_key: "engine".into(),
                 retry: 1,
                 max_retries: 5,
@@ -368,6 +388,12 @@ mod tests {
                     message: "timed out".into(),
                     code: "timeout".into(),
                 },
+            },
+            EventBody::LlmRetryStarted {
+                retry_id: "agent:1#1.1".into(),
+                turn: 1,
+                step: 1,
+                retry: 1,
             },
             EventBody::PermissionPreset {
                 preset: "preview".into(),
@@ -484,11 +510,11 @@ mod tests {
         );
         assert_eq!(
             wire(EventBody::LlmRetry {
-                retry_id: "agent:1#1.1/2".into(),
+                retry_id: "agent:1#1.1".into(),
                 turn: 1,
                 step: 1,
                 provider: "openai".into(),
-                mode: "normal".into(),
+                mode: RetryMode::Normal,
                 policy_key: "engine".into(),
                 retry: 2,
                 max_retries: 5,
@@ -499,11 +525,20 @@ mod tests {
                 },
             }),
             json!({
-                "type": "llm/retry", "retryId": "agent:1#1.1/2", "turn": 1, "step": 1,
+                "type": "llm/retry", "retryId": "agent:1#1.1", "turn": 1, "step": 1,
                 "provider": "openai", "mode": "normal", "policyKey": "engine", "retry": 2,
                 "maxRetries": 5, "delayMs": 1000,
                 "failure": { "message": "rate limited", "code": "429" },
             })
+        );
+        assert_eq!(
+            wire(EventBody::LlmRetryStarted {
+                retry_id: "agent:1#1.1".into(),
+                turn: 1,
+                step: 1,
+                retry: 2,
+            }),
+            json!({ "type": "llm/retry-started", "retryId": "agent:1#1.1", "turn": 1, "step": 1, "retry": 2 })
         );
         assert_eq!(
             wire(EventBody::PermissionPreset {

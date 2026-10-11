@@ -259,7 +259,7 @@ export type AgentSessionEventsTodoWriteEvent = {
 }
 
 /**
- * A failed model request of a step that will be retried after delayMs.
+ * A failed model request of a step that will be retried after delayMs. retryId names the retry chain of one model step (every retry of the step shares it); retry counts from 1.
  */
 export type AgentSessionEventsLlmRetryEvent = {
   seq: AgentSessionEventsSeq
@@ -278,6 +278,19 @@ export type AgentSessionEventsLlmRetryEvent = {
 }
 
 /**
+ * The wait of llm/retry number retry (same retryId) is over and the next attempt starts.
+ */
+export type AgentSessionEventsLlmRetryStartedEvent = {
+  seq: AgentSessionEventsSeq
+  at: AgentSessionEventsAt
+  type: "llm/retry-started"
+  retryId: string
+  turn: number
+  step: number
+  retry: number
+}
+
+/**
  * The permission preset (execution mode) from this point on, logged when it changes.
  */
 export type AgentSessionEventsPermissionPresetEvent = {
@@ -290,7 +303,7 @@ export type AgentSessionEventsPermissionPresetEvent = {
 /**
  * One durable session event, named after DeepSeek Harness events.
  */
-export type AgentSessionEventsSessionEvent = AgentSessionEventsTurnStartEvent | AgentSessionEventsTurnEndEvent | AgentSessionEventsStepStartEvent | AgentSessionEventsStepEndEvent | AgentSessionEventsSystemMessageEvent | AgentSessionEventsUserMessageEvent | AgentSessionEventsAssistantMessageEvent | AgentSessionEventsAssistantAttemptEvent | AgentSessionEventsToolCallEvent | AgentSessionEventsToolResultEvent | AgentSessionEventsApprovalAskedEvent | AgentSessionEventsApprovalDecidedEvent | AgentSessionEventsDeliverablesPresentedEvent | AgentSessionEventsTodoWriteEvent | AgentSessionEventsLlmRetryEvent | AgentSessionEventsPermissionPresetEvent
+export type AgentSessionEventsSessionEvent = AgentSessionEventsTurnStartEvent | AgentSessionEventsTurnEndEvent | AgentSessionEventsStepStartEvent | AgentSessionEventsStepEndEvent | AgentSessionEventsSystemMessageEvent | AgentSessionEventsUserMessageEvent | AgentSessionEventsAssistantMessageEvent | AgentSessionEventsAssistantAttemptEvent | AgentSessionEventsToolCallEvent | AgentSessionEventsToolResultEvent | AgentSessionEventsApprovalAskedEvent | AgentSessionEventsApprovalDecidedEvent | AgentSessionEventsDeliverablesPresentedEvent | AgentSessionEventsTodoWriteEvent | AgentSessionEventsLlmRetryEvent | AgentSessionEventsLlmRetryStartedEvent | AgentSessionEventsPermissionPresetEvent
 
 export type AgentSessionEventsPage = {
   items: AgentSessionEventsSessionEvent[]

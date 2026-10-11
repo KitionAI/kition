@@ -34,6 +34,7 @@ mod tests {
         "assistant/message",
         "deliverables/presented",
         "llm/retry",
+        "llm/retry-started",
         "permission/preset",
         "step/end",
         "step/start",

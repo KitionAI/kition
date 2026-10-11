@@ -722,7 +722,7 @@
     },
     "llmRetryEvent": {
       "type": "object",
-      "description": "A failed model request of a step that will be retried after delayMs.",
+      "description": "A failed model request of a step that will be retried after delayMs. retryId names the retry chain of one model step (every retry of the step shares it); retry counts from 1.",
       "additionalProperties": false,
       "required": [
         "seq",
@@ -783,6 +783,46 @@
         },
         "failure": {
           "$ref": "#/$defs/llmFailure"
+        }
+      }
+    },
+    "llmRetryStartedEvent": {
+      "type": "object",
+      "description": "The wait of llm/retry number retry (same retryId) is over and the next attempt starts.",
+      "additionalProperties": false,
+      "required": [
+        "seq",
+        "at",
+        "type",
+        "retryId",
+        "turn",
+        "step",
+        "retry"
+      ],
+      "properties": {
+        "seq": {
+          "$ref": "#/$defs/seq"
+        },
+        "at": {
+          "$ref": "#/$defs/at"
+        },
+        "type": {
+          "const": "llm/retry-started"
+        },
+        "retryId": {
+          "type": "string"
+        },
+        "turn": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "step": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "retry": {
+          "type": "integer",
+          "minimum": 1
         }
       }
     },
@@ -863,6 +903,9 @@
         },
         {
           "$ref": "#/$defs/llmRetryEvent"
+        },
+        {
+          "$ref": "#/$defs/llmRetryStartedEvent"
         },
         {
           "$ref": "#/$defs/permissionPresetEvent"
