@@ -241,13 +241,14 @@ impl Driver {
             tool,
             arguments: &call.arguments,
         };
+        let pause = Pause::default();
         let mut settled = match self.pipeline.decide(&info) {
             Decision::Allow => {
                 let cx = ToolContext {
                     session_id: input.session.clone(),
                     call_id: call.call_id.clone(),
                     cancel: input.cancel.clone(),
-                    pause: Pause::default(),
+                    pause: pause.clone(),
                 };
                 tool.run(call.arguments.clone(), cx).await
             }
@@ -266,6 +267,17 @@ impl Driver {
         };
         self.pipeline.settle(&info, &mut settled);
         self.record(input, events, call, settled)?;
+        if let Some(reason) = pause.take() {
+            self.append(
+                input,
+                events,
+                EventBody::ApprovalAsked {
+                    call_id: call.call_id.clone(),
+                    reason,
+                },
+            )?;
+            return Ok(Some(TurnEndReason::AwaitingApproval));
+        }
         Ok(input
             .cancel
             .is_cancelled()

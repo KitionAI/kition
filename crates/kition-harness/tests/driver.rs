@@ -537,6 +537,66 @@ async fn when_the_turn_fails_and_turn_end_also_fails_to_append_the_original_erro
 }
 
 #[tokio::test]
+async fn a_paused_tool_records_its_result_and_awaits_approval() {
+    let log = Arc::new(MemoryLog::default());
+    let llm = Arc::new(ScriptedLlm::new(vec![LlmReply::calls(vec![
+        call("c1", "ask", json!({})),
+        call("c2", "ask", json!({})),
+    ])]));
+    let ran = Arc::new(AtomicUsize::new(0));
+    let counter = ran.clone();
+    let ask = define("ask", "Asks")
+        .execute(move |_, cx| {
+            let counter = counter.clone();
+            async move {
+                counter.fetch_add(1, Ordering::SeqCst);
+                cx.pause.request("Approve the command");
+                Ok(json!({ "requires": "approval" }))
+            }
+        })
+        .build()
+        .unwrap_or_else(|error| panic!("{error}"));
+    let mut tools = ToolRegistry::default();
+    tools
+        .register(ask)
+        .unwrap_or_else(|error| panic!("{error}"));
+    let input = TurnInput {
+        session: "s".into(),
+        system: "sys".into(),
+        tools,
+        user: vec![ContentBlock::text("go")],
+        cancel: Cancel::default(),
+        live: Arc::new(|_: Live| {}),
+    };
+    let reason = Driver::new(log.clone(), llm)
+        .run_turn(input)
+        .await
+        .unwrap_or_else(|error| panic!("{error}"));
+    assert_eq!(reason, TurnEndReason::AwaitingApproval);
+    assert_eq!(
+        ran.load(Ordering::SeqCst),
+        1,
+        "the second call must not run"
+    );
+    let kinds: Vec<&str> = log
+        .read("s")
+        .unwrap_or_else(|error| panic!("{error}"))
+        .iter()
+        .map(|e| e.body.kind())
+        .collect();
+    assert_eq!(
+        &kinds[kinds.len() - 5..],
+        [
+            "tool/call",
+            "tool/result",
+            "approval/asked",
+            "step/end",
+            "turn/end"
+        ]
+    );
+}
+
+#[tokio::test]
 async fn an_empty_model_reply_fails_the_turn() {
     let setup = setup(vec![LlmReply::text("")]);
     let error = setup
