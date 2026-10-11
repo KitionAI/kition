@@ -115,6 +115,8 @@ CREATE INDEX `idx_agent_subagents_status` ON `agent_subagents`(`status`);
 CREATE INDEX `idx_agent_subagents_user_id` ON `agent_subagents`(`user_id`);
 CREATE INDEX `idx_agent_subagents_child_session_id` ON `agent_subagents`(`child_session_id`);
 CREATE INDEX `idx_agent_subagents_parent_session_id` ON `agent_subagents`(`parent_session_id`);
+CREATE TABLE `agent_session_events` (`id` integer PRIMARY KEY AUTOINCREMENT,`session_key` text NOT NULL,`seq` integer NOT NULL,`event_type` text NOT NULL,`body` JSON NOT NULL,`created_at` integer NOT NULL);
+CREATE UNIQUE INDEX `idx_agent_session_events_session_seq` ON `agent_session_events`(`session_key`,`seq`);
 CREATE TABLE `data_documents` (`id` integer PRIMARY KEY AUTOINCREMENT,`user_id` integer NOT NULL,`workspace_root` text,`path` text,`title` text NOT NULL,`description` text,`icon` text,`color` text,`meta` JSON,`created_at` integer,`updated_at` integer,`deleted_at` integer);
 CREATE INDEX `idx_data_documents_deleted_at` ON `data_documents`(`deleted_at`);
 CREATE INDEX `idx_data_documents_path` ON `data_documents`(`path`);
