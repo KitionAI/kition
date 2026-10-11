@@ -3011,6 +3011,7 @@ dependencies = [
  "kition-ai",
  "kition-core",
  "kition-datadoc",
+ "kition-harness",
  "kition-http",
  "kition-kitable",
  "kition-kits",

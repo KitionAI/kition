@@ -98,6 +98,7 @@ fn data(bytes: &[u8]) -> Value {
 
 struct Harness {
     app: Router,
+    db: Db,
     workspace: tempfile::TempDir,
     _uploads: tempfile::TempDir,
     _config: tempfile::TempDir,
@@ -125,6 +126,7 @@ fn app_with(harness_mode: bool) -> Harness {
         kits: None,
         harness: harness_mode,
     });
+    let db_handle = db.clone();
     let app = router(AgentState {
         auth: AuthConfig {
             db,
@@ -136,6 +138,7 @@ fn app_with(harness_mode: bool) -> Harness {
     });
     Harness {
         app,
+        db: db_handle,
         workspace,
         _uploads: uploads,
         _config: config,
@@ -178,7 +181,28 @@ async fn stream(app: &Router, session_id: i64, base_url: &str, extra: Value) -> 
 
 #[tokio::test(flavor = "multi_thread")]
 async fn streams_a_turn_with_a_tool_call() {
-    let Harness { app, workspace, .. } = app_with(false);
+    tool_call_turn(false).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn streams_a_turn_with_a_tool_call_on_the_harness() {
+    tool_call_turn(true).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn commands_outside_the_policy_wait_for_approval() {
+    approval_turns(false).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn commands_outside_the_policy_wait_for_approval_on_the_harness() {
+    approval_turns(true).await;
+}
+
+async fn tool_call_turn(harness_mode: bool) {
+    let Harness {
+        app, db, workspace, ..
+    } = app_with(harness_mode);
     let session_id = new_session(&app).await;
     let base_url = fake_provider(vec![
         tool_call(
@@ -261,11 +285,20 @@ async fn streams_a_turn_with_a_tool_call() {
             .as_array()
             .is_some_and(|tools| tools.len() > 30)
     );
+
+    if harness_mode {
+        let log = kition_harness::log::SqliteLog::new(db.clone());
+        let events = kition_harness::log::SessionLog::read(&log, &format!("agent:{session_id}"))
+            .unwrap_or_else(|error| panic!("{error}"));
+        let kinds: Vec<&str> = events.iter().map(|event| event.body.kind()).collect();
+        assert_eq!(kinds.first(), Some(&"turn/start"), "{kinds:?}");
+        assert!(kinds.contains(&"tool/result"), "{kinds:?}");
+        assert_eq!(kinds.last(), Some(&"turn/end"), "{kinds:?}");
+    }
 }
 
-#[tokio::test(flavor = "multi_thread")]
-async fn commands_outside_the_policy_wait_for_approval() {
-    let Harness { app, workspace, .. } = app_with(false);
+async fn approval_turns(harness_mode: bool) {
+    let Harness { app, workspace, .. } = app_with(harness_mode);
     let session_id = new_session(&app).await;
     let command = json!({ "cmd": ["ls && touch approved.txt"], "shell": "sh" });
     let base_url = fake_provider(vec![
