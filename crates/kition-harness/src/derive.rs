@@ -2,7 +2,7 @@
 //! `deriveMessages`). Lifecycle events and failed attempts are not model
 //! history; the newest system message leads.
 //!
-//! Every provider wire (OpenAI/DeepSeek, Responses, Anthropic) rejects a
+//! Every provider wire (OpenAI chat, Responses, Anthropic Messages) rejects a
 //! request where an assistant tool call has no matching tool result, so a
 //! call left open by a crash, cancellation, or a pending approval is
 //! repaired at the next boundary with a synthetic `tool` message.

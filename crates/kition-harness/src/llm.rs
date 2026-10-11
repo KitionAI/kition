@@ -1,6 +1,7 @@
-//! The model seam: one streamed call. `EngineLlm` adapts Kition's AI engine,
-//! which speaks the OpenAI-compatible wire (DeepSeek included), Responses, and
-//! Anthropic.
+//! The model seam: one streamed call. The harness is model-agnostic; any
+//! provider the engine can reach works. `EngineLlm` adapts Kition's AI engine,
+//! which speaks the OpenAI Responses and Anthropic Messages wires (DeepSeek
+//! through its Anthropic-compatible Messages API).
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
