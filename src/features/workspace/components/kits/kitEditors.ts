@@ -73,6 +73,7 @@ const PRESENTATION_UI: EmbeddedKit = { kitId: 'kit.presentation', dir: 'presenta
 const WORD_UI: EmbeddedKit = { kitId: 'kit.word', dir: 'word-ui' }
 const SHEET_UI: EmbeddedKit = { kitId: 'kit.sheet', dir: 'sheet-ui' }
 const PDF_UI: EmbeddedKit = { kitId: 'kit.pdf', dir: 'pdf-ui' }
+const CAD_UI: EmbeddedKit = { kitId: 'kit.cad', dir: 'cad-ui' }
 
 const KIT_EDITORS: readonly KitEditorEntry[] = [
   {
@@ -112,7 +113,7 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
     create: { id: 'layout', extension: 'designcraft', baseName: 'Untitled layout', size: { width: 612, height: 792 }, label: 'createMenu.format.layout', icon: LayoutTemplate },
   },
   // A3 in millimetres; the engine starts a metric drawing with those limits.
-  standardKit(CAD_KIT, 'cad', { create: { id: 'cad', extension: 'dxf', baseName: 'Untitled CAD drawing', size: { width: 420, height: 297 }, label: 'createMenu.format.cad', icon: DraftingCompass } }),
+  standardKit(CAD_KIT, 'cad', { embedded: CAD_UI, create: { id: 'cad', extension: 'dxf', baseName: 'Untitled CAD drawing', size: { width: 420, height: 297 }, label: 'createMenu.format.cad', icon: DraftingCompass } }),
   standardKit(PRESENTATION_KIT, 'presentation', { embedded: PRESENTATION_UI, create: { id: 'presentation', extension: 'deckcraft', baseName: 'Untitled presentation', size: { width: 960, height: 540 }, label: 'createMenu.format.presentation', icon: Presentation } }),
   // PowerPoint files open in the Presentation kit, and keep the file preview without it.
   standardKit(PRESENTATION_KIT, 'pptx', { preview: true, embedded: PRESENTATION_UI }),
