@@ -721,7 +721,9 @@
     "undo": "Deshacer",
     "unsaved": "Sin guardar",
     "tools": "Herramientas",
-    "moreTools": "Más herramientas como {{tool}}"
+    "moreTools": "Más herramientas como {{tool}}",
+    "agentEdited": "Editado por el agente",
+    "agentEditedNotice": "El agente editó {{name}}"
   },
   "filmKit": {
     "play": "Reproducir",

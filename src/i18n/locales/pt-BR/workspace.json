@@ -721,7 +721,9 @@
     "undo": "Desfazer",
     "unsaved": "Não salvo",
     "tools": "Ferramentas",
-    "moreTools": "Mais ferramentas como {{tool}}"
+    "moreTools": "Mais ferramentas como {{tool}}",
+    "agentEdited": "Editado pelo agente",
+    "agentEditedNotice": "O agente editou {{name}}"
   },
   "filmKit": {
     "play": "Reproduzir",

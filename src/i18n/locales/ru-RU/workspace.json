@@ -721,7 +721,9 @@
     "undo": "Отменить",
     "unsaved": "Не сохранено",
     "tools": "Инструменты",
-    "moreTools": "Другие инструменты, как {{tool}}"
+    "moreTools": "Другие инструменты, как {{tool}}",
+    "agentEdited": "Изменено агентом",
+    "agentEditedNotice": "Агент изменил {{name}}"
   },
   "filmKit": {
     "play": "Воспроизвести",

@@ -353,6 +353,8 @@ pub(crate) struct Inner {
     running: tokio::sync::Mutex<HashMap<&'static str, Arc<RunningKit>>>,
     pub(crate) surfaces: tokio::sync::Mutex<HashMap<u64, Arc<SurfaceKit>>>,
     pub(crate) next_surface: AtomicU64,
+    /// Kit editors open in the renderer, for the agent (`bridge.rs`).
+    bridge: Arc<crate::bridge::Bridge>,
 }
 
 /// The kits of one workspace. Cheap to clone.
@@ -388,8 +390,14 @@ impl KitManager {
                 running: tokio::sync::Mutex::new(HashMap::new()),
                 surfaces: tokio::sync::Mutex::new(HashMap::new()),
                 next_surface: AtomicU64::new(1),
+                bridge: Arc::default(),
             }),
         }
+    }
+
+    /// The Kit AI bridge to the renderer's open kit editors.
+    pub fn bridge(&self) -> &Arc<crate::bridge::Bridge> {
+        &self.inner.bridge
     }
 
     pub fn statuses(&self) -> Vec<KitStatus> {

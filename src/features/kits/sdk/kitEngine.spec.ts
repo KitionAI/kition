@@ -85,8 +85,9 @@ describe('KitEngine', () => {
 
 describe('kitSdkCommands', () => {
   it('shapes SDK commands like the runtime command list', () => {
-    const commands = kitSdkCommands(JSON.stringify([{ id: 'layer.new.layer', title: 'New Layer', menu: ['Layer', 'New'], shortcut: 'Cmd+Shift+N', mutates: true, enabled: true }, { id: 'view.fit', title: 'Fit', menu: null, shortcut: null, mutates: false, enabled: false }]))
-    expect(commands[0]).toEqual({ id: 'layer.new.layer', title: 'New Layer', description: null, group: 'layer', mutates: true, enabled: true, menu: ['Layer', 'New'], shortcut: 'Cmd+Shift+N', schema: null })
+    const commands = kitSdkCommands(JSON.stringify([{ id: 'layer.new.layer', title: 'New Layer', menu: ['Layer', 'New'], shortcut: 'Cmd+Shift+N', mutates: true, enabled: true, params: '{name?: string}' }, { id: 'view.fit', title: 'Fit', menu: null, shortcut: null, mutates: false, enabled: false }]))
+    expect(commands[0]).toEqual({ id: 'layer.new.layer', title: 'New Layer', description: null, group: 'layer', mutates: true, enabled: true, menu: ['Layer', 'New'], shortcut: 'Cmd+Shift+N', schema: null, params: '{name?: string}' })
+    expect(commands[1].params).toBeNull()
     expect(commands[1].menu).toEqual([])
   })
 })

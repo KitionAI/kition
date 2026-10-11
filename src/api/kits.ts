@@ -6,6 +6,11 @@
 import request from './request'
 import { resolveApiURL } from '@/services/desktop'
 import type {
+  KitsBridgeChanged,
+  KitsBridgeCommand,
+  KitsBridgeDocument,
+  KitsBridgeLiveDocument,
+  KitsBridgeRunStep,
   KitsCommandList,
   KitsCommandView,
   KitsCreateRequest,
@@ -17,7 +22,7 @@ import type {
   KitsSurfaceView,
 } from './generated/kits'
 
-export type { KitsCommandView, KitsDocumentView, KitsExecuteResult, KitsPhotoDetails, KitsSurfaceRect, KitsSurfaceView }
+export type { KitsBridgeChanged, KitsBridgeCommand, KitsBridgeDocument, KitsBridgeLiveDocument, KitsBridgeRunStep, KitsCommandView, KitsDocumentView, KitsExecuteResult, KitsPhotoDetails, KitsSurfaceRect, KitsSurfaceView }
 
 function unwrap<T>(response: T | { data?: T }) {
   return (response as { data?: T })?.data ?? (response as T)
@@ -111,4 +116,14 @@ export function photoDetails(view: KitsDocumentView): KitsPhotoDetails | null {
 export function kitErrorReason(error: unknown): string {
   const data = (error as { response?: { data?: { data?: { reason?: unknown } } } })?.response?.data?.data
   return typeof data?.reason === 'string' ? data.reason : ''
+}
+
+/** The Kit AI bridge's stream: the runtime's requests to this window's kit editors. */
+export function kitBridgeURL() {
+  return resolveApiURL('/v1/kits/bridge')
+}
+
+/** An answer to a bridge request, or a `kit.changed` notification, from this window. */
+export function postKitBridgeMessage(session: number, message: Record<string, unknown>) {
+  return request.post('/v1/kits/bridge', message, { params: { session }, suppressErrorMessage: true })
 }

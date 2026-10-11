@@ -46,12 +46,73 @@ pub fn router(state: KitsState) -> Router {
             get(commands).post(execute),
         )
         .route("/kits/{kit}/documents/{document}/save", post(save))
+        .route("/kits/bridge", get(bridge_stream).post(bridge_message))
         .route("/kits/surfaces", post(open_surface))
         .route(
             "/kits/surfaces/{surface}",
             axum::routing::put(update_surface).delete(close_surface),
         )
         .with_state(state)
+}
+
+/// Ends a bridge session when its stream is dropped (the renderer window went away).
+struct BridgeStream {
+    bridge: std::sync::Arc<crate::bridge::Bridge>,
+    session: u64,
+    rx: tokio::sync::mpsc::UnboundedReceiver<Value>,
+}
+
+impl Drop for BridgeStream {
+    fn drop(&mut self) {
+        self.bridge.disconnect(self.session);
+    }
+}
+
+impl tokio_stream::Stream for BridgeStream {
+    type Item = Result<axum::response::sse::Event, std::convert::Infallible>;
+
+    fn poll_next(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Option<Self::Item>> {
+        self.rx.poll_recv(cx).map(|message| {
+            message
+                .map(|message| Ok(axum::response::sse::Event::default().data(message.to_string())))
+        })
+    }
+}
+
+/// `GET /kits/bridge`: the renderer's stream of bridge requests (one JSON-RPC message per event).
+async fn bridge_stream(State(state): State<KitsState>, _user: CurrentUser) -> Response {
+    let bridge = state.kits.bridge().clone();
+    let (session, rx) = bridge.connect();
+    axum::response::sse::Sse::new(BridgeStream {
+        bridge,
+        session,
+        rx,
+    })
+    .keep_alive(axum::response::sse::KeepAlive::default())
+    .into_response()
+}
+
+#[derive(Deserialize)]
+struct BridgeQuery {
+    session: u64,
+}
+
+/// `POST /kits/bridge?session=<id>`: an answer to a bridge request, or a `kit.changed` notification.
+async fn bridge_message(
+    State(state): State<KitsState>,
+    _user: CurrentUser,
+    Query(query): Query<BridgeQuery>,
+    JsonBody(message): JsonBody<Value>,
+) -> AppResult<Response> {
+    state
+        .kits
+        .bridge()
+        .receive(query.session, &message)
+        .map_err(|message| AppError::new(404, 40402, message))?;
+    Ok(ok(json!({})))
 }
 
 /// Maps kit failures to statuses the renderer can branch on.

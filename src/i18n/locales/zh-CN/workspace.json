@@ -721,7 +721,9 @@
     "undo": "撤销",
     "unsaved": "未保存",
     "tools": "工具",
-    "moreTools": "与{{tool}}同组的更多工具"
+    "moreTools": "与{{tool}}同组的更多工具",
+    "agentEdited": "由智能体编辑",
+    "agentEditedNotice": "智能体编辑了 {{name}}"
   },
   "filmKit": {
     "play": "播放",
