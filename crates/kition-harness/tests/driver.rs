@@ -6,9 +6,12 @@ use std::sync::{Arc, Mutex, PoisonError};
 use futures::future::BoxFuture;
 use kition_harness::cancel::Cancel;
 use kition_harness::driver::{Driver, Live, TurnInput, append_live, next_turn};
-use kition_harness::events::{ContentBlock, EventBody, MessageSource, SessionEvent, TurnEndReason};
+use kition_harness::events::{
+    ContentBlock, EventBody, MessageSource, PresentedFile, SessionEvent, TodoItem, TodoStatus,
+    TurnEndReason,
+};
 use kition_harness::history::HistoryBudget;
-use kition_harness::llm::{ChunkSink, Llm, LlmReply, LlmRequest};
+use kition_harness::llm::{ChunkSink, HostedCall, Llm, LlmReply, LlmRequest};
 use kition_harness::log::{MemoryLog, SessionLog};
 use kition_harness::policy::{CallInfo, Decision, Pipeline, Policy, WritePermission};
 use kition_harness::testing::{ScriptedLlm, call};
@@ -78,6 +81,7 @@ impl Setup {
             }),
             model: None,
             source: MessageSource::user(),
+            preset: None,
         }
     }
 
@@ -535,6 +539,7 @@ async fn cancelling_during_the_model_call_ends_the_turn_as_cancelled() {
         live: Arc::new(|_event: Live| {}),
         model: None,
         source: MessageSource::user(),
+        preset: None,
     };
     let handle = tokio::spawn(async move { driver.run_turn(input).await });
     entered.notified().await;
@@ -617,6 +622,7 @@ async fn cancelling_inside_a_tool_body_stops_the_remaining_calls_in_the_step() {
         live: Arc::new(|_event: Live| {}),
         model: None,
         source: MessageSource::user(),
+        preset: None,
     };
     let reason = setup
         .driver(Pipeline::default().with(RecoveryPrompt))
@@ -681,6 +687,7 @@ fn flaky_input(fail_at: usize) -> (Arc<FlakyLog>, TurnInput) {
         live: Arc::new(|_event: Live| {}),
         model: None,
         source: MessageSource::user(),
+        preset: None,
     };
     (log, input)
 }
@@ -752,6 +759,7 @@ async fn a_paused_tool_records_its_result_and_awaits_approval() {
         live: Arc::new(|_: Live| {}),
         model: None,
         source: MessageSource::user(),
+        preset: None,
     };
     let reason = driver
         .run_turn(input)
@@ -796,6 +804,7 @@ async fn a_paused_tool_records_its_result_and_awaits_approval() {
         live: Arc::new(|_: Live| {}),
         model: None,
         source: MessageSource::user(),
+        preset: None,
     };
     let second_reason = driver
         .run_turn(second_input)
@@ -845,6 +854,7 @@ async fn a_failed_calls_pause_request_is_discarded_and_the_turn_continues() {
         live: Arc::new(|_: Live| {}),
         model: None,
         source: MessageSource::user(),
+        preset: None,
     };
     let reason = Driver::new(log.clone(), llm)
         .run_turn(input)
@@ -1064,4 +1074,216 @@ async fn logged_tool_arguments_go_through_the_tools_projection() {
     }
     let text = format!("{events:?}");
     assert!(!text.contains("hunter2"), "{text}");
+}
+
+/// A tool that hands a file to the user and rewrites the todo list, then
+/// succeeds or fails.
+fn presenter(fail: bool) -> ToolDef {
+    define("present", "Presents a file")
+        .execute(move |_, cx| async move {
+            cx.emit.push(EventBody::DeliverablesPresented {
+                turn: 0,
+                call_id: String::new(),
+                files: vec![
+                    PresentedFile {
+                        path: "Notes/plan.md".into(),
+                        description: "Plan".into(),
+                    },
+                    PresentedFile {
+                        path: String::new(),
+                        description: "dropped".into(),
+                    },
+                ],
+            });
+            cx.emit.push(EventBody::TodoWrite {
+                todos: vec![TodoItem {
+                    content: "Write the plan".into(),
+                    status: TodoStatus::Completed,
+                }],
+            });
+            if fail {
+                Err("disk full".into())
+            } else {
+                Ok(json!({ "path": "Notes/plan.md" }))
+            }
+        })
+        .build()
+        .unwrap_or_else(|error| panic!("{error}"))
+}
+
+async fn run_presenter(fail: bool) -> Vec<SessionEvent> {
+    let log = Arc::new(MemoryLog::default());
+    let llm = Arc::new(ScriptedLlm::new(vec![
+        LlmReply::calls(vec![call("c1", "present", json!({}))]),
+        LlmReply::text("done"),
+    ]));
+    let mut tools = ToolRegistry::default();
+    tools
+        .register(presenter(fail))
+        .unwrap_or_else(|error| panic!("{error}"));
+    Driver::new(log.clone(), llm)
+        .run_turn(TurnInput {
+            session: "s".into(),
+            system: "sys".into(),
+            tools,
+            user: vec![ContentBlock::text("go")],
+            cancel: Cancel::default(),
+            live: Arc::new(|_: Live| {}),
+            model: None,
+            source: MessageSource::user(),
+            preset: None,
+        })
+        .await
+        .unwrap_or_else(|error| panic!("{error}"));
+    log.read("s").unwrap_or_else(|error| panic!("{error}"))
+}
+
+#[tokio::test]
+async fn tool_emits_follow_a_successful_result() {
+    let events = run_presenter(false).await;
+    let start = events
+        .iter()
+        .position(|event| event.body.kind() == "tool/result")
+        .unwrap_or_else(|| panic!("no tool/result"));
+    assert_eq!(
+        events[start + 1].body,
+        EventBody::DeliverablesPresented {
+            turn: 1,
+            call_id: "c1".into(),
+            files: vec![PresentedFile {
+                path: "Notes/plan.md".into(),
+                description: "Plan".into(),
+            }],
+        }
+    );
+    assert_eq!(events[start + 2].body.kind(), "todo/write");
+    assert_eq!(events[start + 3].body.kind(), "step/end");
+}
+
+#[tokio::test]
+async fn tool_emits_are_dropped_when_the_tool_fails() {
+    let kinds: Vec<&str> = run_presenter(true)
+        .await
+        .iter()
+        .map(|event| event.body.kind())
+        .collect();
+    assert!(kinds.contains(&"tool/result"), "{kinds:?}");
+    assert!(!kinds.contains(&"deliverables/presented"), "{kinds:?}");
+    assert!(!kinds.contains(&"todo/write"), "{kinds:?}");
+}
+
+#[tokio::test]
+async fn hosted_calls_follow_the_assistant_message_and_stay_out_of_history() {
+    let mut reply = LlmReply::calls(vec![call("c1", "echo", json!({ "text": "hi" }))]);
+    reply.hosted = vec![
+        HostedCall {
+            call_id: "ws_1".into(),
+            name: "web_search".into(),
+            arguments: json!({ "query": "kition" }),
+            value: json!({ "status": "completed" }),
+            meta: Some(json!({ "hosted": true })),
+            files: Vec::new(),
+        },
+        HostedCall {
+            call_id: "ig_1".into(),
+            name: "image_generation".into(),
+            arguments: json!({}),
+            value: json!({ "path": "Agent/images/1/ig_1.png" }),
+            meta: Some(json!({ "hosted": true })),
+            files: vec![PresentedFile {
+                path: "Agent/images/1/ig_1.png".into(),
+                description: String::new(),
+            }],
+        },
+    ];
+    let setup = setup(vec![reply, LlmReply::text("done")]);
+    setup
+        .driver(Pipeline::default())
+        .run_turn(setup.input("search", Cancel::default()))
+        .await
+        .unwrap_or_else(|error| panic!("{error}"));
+    let kinds = setup.kinds();
+    let first = kinds
+        .iter()
+        .position(|kind| *kind == "assistant/message")
+        .unwrap_or_default();
+    assert_eq!(
+        &kinds[first..first + 8],
+        [
+            "assistant/message",
+            "tool/call",
+            "tool/result",
+            "tool/call",
+            "tool/result",
+            "deliverables/presented",
+            "tool/call",
+            "tool/result",
+        ]
+    );
+    let events = setup
+        .log
+        .read("s")
+        .unwrap_or_else(|error| panic!("{error}"));
+    let hosted = events.iter().find_map(|event| match &event.body {
+        EventBody::ToolResult {
+            call_id,
+            meta,
+            is_error,
+            ..
+        } if call_id == "ws_1" => Some((meta.clone(), *is_error)),
+        _ => None,
+    });
+    assert_eq!(hosted, Some((Some(json!({ "hosted": true })), false)));
+    assert!(events.iter().any(|event| event.body
+        == EventBody::DeliverablesPresented {
+            turn: 1,
+            call_id: "ig_1".into(),
+            files: vec![PresentedFile {
+                path: "Agent/images/1/ig_1.png".into(),
+                description: String::new(),
+            }],
+        }));
+    let history = kition_harness::derive::derive_messages(&events);
+    assert!(
+        history
+            .iter()
+            .all(|message| message.tool_call_id != "ws_1" && message.tool_call_id != "ig_1"),
+        "{history:?}"
+    );
+    assert_eq!(
+        history
+            .iter()
+            .filter(|message| message.role == "tool")
+            .count(),
+        1
+    );
+}
+
+#[tokio::test]
+async fn the_permission_preset_is_logged_when_it_changes() {
+    let setup = setup(vec![
+        LlmReply::text("one"),
+        LlmReply::text("two"),
+        LlmReply::text("three"),
+    ]);
+    let driver = setup.driver(Pipeline::default());
+    for preset in ["preview", "preview", "apply"] {
+        let mut input = setup.input("go", Cancel::default());
+        input.preset = Some(preset.into());
+        driver
+            .run_turn(input)
+            .await
+            .unwrap_or_else(|error| panic!("{error}"));
+    }
+    let presets: Vec<String> = setup
+        .log
+        .read("s")
+        .unwrap_or_else(|error| panic!("{error}"))
+        .into_iter()
+        .filter_map(|event| match event.body {
+            EventBody::PermissionPreset { preset } => Some(preset),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(presets, ["preview", "apply"]);
 }

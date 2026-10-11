@@ -123,8 +123,10 @@ mod tests {
         let cx = kition_harness::tool::ToolContext {
             session_id: "agent:1".into(),
             call_id: "call_1".into(),
+            turn: 1,
             cancel: kition_harness::cancel::Cancel::default(),
             pause: kition_harness::tool::Pause::default(),
+            emit: kition_harness::tool::Emits::default(),
         };
         let settled = tool.run(patch(), cx).await;
         assert_eq!(

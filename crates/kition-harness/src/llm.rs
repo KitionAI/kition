@@ -13,7 +13,7 @@ use kition_ai::engine::{
 use kition_core::now_millis;
 use serde_json::{Value, json};
 
-use crate::events::{ContentBlock, LoggedCall};
+use crate::events::{ContentBlock, LoggedCall, PresentedFile};
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct LlmRequest {
@@ -31,6 +31,23 @@ pub struct LlmReply {
     /// Model input produced by the provider call itself (hosted image
     /// results), logged as a `user/message` after the step's tool results.
     pub follow_up: Vec<ContentBlock>,
+    /// Calls the provider ran itself during this call (hosted web search,
+    /// hosted image generation), logged after the `assistant/message`.
+    pub hosted: Vec<HostedCall>,
+}
+
+/// A call the provider ran itself. It is logged as a `tool/call` and a
+/// successful `tool/result`, plus `deliverables/presented` for its files;
+/// the model never asked for it through a tool call, so it is not model
+/// history.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct HostedCall {
+    pub call_id: String,
+    pub name: String,
+    pub arguments: Value,
+    pub value: Value,
+    pub meta: Option<Value>,
+    pub files: Vec<PresentedFile>,
 }
 
 impl LlmReply {
@@ -158,6 +175,7 @@ impl Llm for EngineLlm {
                 model: result.model,
                 raw_items: result.response_items,
                 follow_up: Vec::new(),
+                hosted: Vec::new(),
             })
         })
     }

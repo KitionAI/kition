@@ -360,6 +360,7 @@ pub async fn drive(
         cancel,
         live: Arc::new(|_: Live| {}),
         model: Some(run.model.model_name.clone()),
+        preset: None,
         source: MessageSource::new(run.source),
     };
     let outcome = driver.run_turn(input).await;
@@ -523,6 +524,7 @@ mod tests {
                 cancel: Cancel::default(),
                 live: Arc::new(|_: Live| {}),
                 model: None,
+                preset: None,
                 source: MessageSource::user(),
             })
             .await

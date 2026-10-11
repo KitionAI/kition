@@ -10,14 +10,14 @@ use std::sync::Arc;
 use crate::cancel::Cancel;
 use crate::derive::derive_messages_for;
 use crate::events::{
-    ContentBlock, EventBody, LoggedCall, MessageSource, SessionEvent, TurnEndReason,
+    ContentBlock, EventBody, LoggedCall, MessageSource, PresentedFile, SessionEvent, TurnEndReason,
 };
 use crate::history::{HistoryBudget, bound_history};
-use crate::llm::{ChunkSink, Llm, LlmRequest};
+use crate::llm::{ChunkSink, HostedCall, Llm, LlmRequest};
 use crate::log::SessionLog;
 use crate::policy::{CallInfo, Decision, Pipeline};
 use crate::stop::StopCheck;
-use crate::tool::{Pause, Settled, ToolContext, ToolRegistry};
+use crate::tool::{Emits, Pause, Settled, ToolContext, ToolRegistry};
 
 pub const MAX_STEPS: u32 = 16;
 
@@ -40,6 +40,9 @@ pub struct TurnInput {
     pub user: Vec<ContentBlock>,
     /// Who sent `user`: logged on the turn's first `user/message`.
     pub source: MessageSource,
+    /// The permission preset of this turn, logged as `permission/preset` at
+    /// step 1 when it differs from the newest logged one.
+    pub preset: Option<String>,
     pub cancel: Cancel,
     pub live: LiveSink,
     /// The model id this turn will use. Provider-native `raw_items` on
@@ -87,6 +90,20 @@ pub fn append_live(
     let event = log.append(session, body)?;
     live(Live::Event(Box::new(event.clone())));
     Ok(event)
+}
+
+/// A `deliverables/presented` for the files of `call_id` that have a path,
+/// or `None` when no file does.
+fn deliverables(turn: u32, call_id: &str, files: Vec<PresentedFile>) -> Option<EventBody> {
+    let files: Vec<PresentedFile> = files
+        .into_iter()
+        .filter(|file| !file.path.trim().is_empty())
+        .collect();
+    (!files.is_empty()).then(|| EventBody::DeliverablesPresented {
+        turn,
+        call_id: call_id.to_owned(),
+        files,
+    })
 }
 
 /// The `approval/asked` for a call that waits for the person.
@@ -197,6 +214,7 @@ impl Driver {
             self.append(input, events, EventBody::StepStart { turn, step })?;
             if step == 1 {
                 self.reconcile_system(input, events)?;
+                self.reconcile_preset(input, events)?;
             }
             if let Some(content) = user.take() {
                 self.append(
@@ -265,6 +283,9 @@ impl Driver {
                     raw_items: reply.raw_items,
                 },
             )?;
+            for hosted in reply.hosted {
+                self.record_hosted(input, events, turn, hosted)?;
+            }
             if reply.tool_calls.is_empty() && reply.follow_up.is_empty() {
                 self.append(input, events, EventBody::StepEnd { turn, step })?;
                 // A stop check (an unresolved failed write, say) is the more
@@ -281,7 +302,7 @@ impl Driver {
             let mut contexts: Vec<ContentBlock> = Vec::new();
             let mut end_reason = None;
             for call in &reply.tool_calls {
-                let (reason, context) = self.run_call(input, events, call).await?;
+                let (reason, context) = self.run_call(input, events, turn, call).await?;
                 contexts.extend(context);
                 if reason.is_some() {
                     end_reason = reason;
@@ -340,6 +361,7 @@ impl Driver {
         &self,
         input: &TurnInput,
         events: &mut Vec<SessionEvent>,
+        turn: u32,
         call: &LoggedCall,
     ) -> Result<(Option<TurnEndReason>, Vec<ContentBlock>), String> {
         self.append(
@@ -368,13 +390,16 @@ impl Driver {
             arguments: &call.arguments,
         };
         let pause = Pause::default();
+        let emit = Emits::default();
         let mut settled = match self.pipeline.decide(&info) {
             Decision::Allow => {
                 let cx = ToolContext {
                     session_id: input.session.clone(),
                     call_id: call.call_id.clone(),
+                    turn,
                     cancel: input.cancel.clone(),
                     pause: pause.clone(),
+                    emit: emit.clone(),
                 };
                 tool.run(call.arguments.clone(), cx).await
             }
@@ -388,6 +413,12 @@ impl Driver {
         let context = std::mem::take(&mut settled.context);
         let is_error = settled.is_error;
         self.record(input, events, call, settled)?;
+        let emitted = emit.take();
+        if !is_error {
+            for body in emitted {
+                self.append_emitted(input, events, turn, &call.call_id, body)?;
+            }
+        }
         // Cancel takes precedence over a pending pause, and a failed body's
         // pause request is meaningless: discard it either way and only
         // honour a pause when the call actually succeeded.
@@ -422,6 +453,92 @@ impl Driver {
             },
         )
         .map(|_| ())
+    }
+
+    /// Logs an event a tool body emitted. A `deliverables/presented` gets
+    /// this turn and call, and files without a path are dropped (with the
+    /// event when none remain).
+    fn append_emitted(
+        &self,
+        input: &TurnInput,
+        events: &mut Vec<SessionEvent>,
+        turn: u32,
+        call_id: &str,
+        body: EventBody,
+    ) -> Result<(), String> {
+        let body = match body {
+            EventBody::DeliverablesPresented { files, .. } => {
+                match deliverables(turn, call_id, files) {
+                    Some(body) => body,
+                    None => return Ok(()),
+                }
+            }
+            body => body,
+        };
+        self.append(input, events, body).map(|_| ())
+    }
+
+    /// Logs a call the provider ran itself: `tool/call`, a successful
+    /// `tool/result`, and its files. No `tool/call` of the model is open for
+    /// it, so `derive` skips the pair.
+    fn record_hosted(
+        &self,
+        input: &TurnInput,
+        events: &mut Vec<SessionEvent>,
+        turn: u32,
+        hosted: HostedCall,
+    ) -> Result<(), String> {
+        self.append(
+            input,
+            events,
+            EventBody::ToolCall {
+                call_id: hosted.call_id.clone(),
+                name: hosted.name.clone(),
+                arguments: hosted.arguments,
+            },
+        )?;
+        self.append(
+            input,
+            events,
+            EventBody::ToolResult {
+                call_id: hosted.call_id.clone(),
+                name: hosted.name,
+                value: hosted.value,
+                content: Vec::new(),
+                is_error: false,
+                meta: hosted.meta,
+            },
+        )?;
+        if let Some(body) = deliverables(turn, &hosted.call_id, hosted.files) {
+            self.append(input, events, body)?;
+        }
+        Ok(())
+    }
+
+    /// Logs the permission preset only when it differs from the newest
+    /// logged one; checked once, at the first step of the turn.
+    fn reconcile_preset(
+        &self,
+        input: &TurnInput,
+        events: &mut Vec<SessionEvent>,
+    ) -> Result<(), String> {
+        let Some(preset) = &input.preset else {
+            return Ok(());
+        };
+        let current = events.iter().rev().find_map(|event| match &event.body {
+            EventBody::PermissionPreset { preset } => Some(preset.as_str()),
+            _ => None,
+        });
+        if current != Some(preset.as_str()) {
+            self.append(
+                input,
+                events,
+                EventBody::PermissionPreset {
+                    preset: preset.clone(),
+                },
+            )?;
+        }
+        Ok(())
     }
 
     /// Logs the system prompt only when it differs from the newest logged
@@ -475,6 +592,7 @@ mod tests {
             live: Arc::new(|_event: Live| {}),
             model: None,
             source: MessageSource::user(),
+            preset: None,
         };
         let debug = format!("{input:?}");
         assert!(debug.contains("\"s\""), "{debug}");

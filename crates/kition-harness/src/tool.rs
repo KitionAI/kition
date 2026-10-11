@@ -13,7 +13,7 @@ use kition_ai::engine::ToolSpec;
 use serde_json::{Value, json};
 
 use crate::cancel::Cancel;
-use crate::events::ContentBlock;
+use crate::events::{ContentBlock, EventBody};
 use crate::schema;
 
 /// What a tool body knows about its call.
@@ -21,8 +21,38 @@ use crate::schema;
 pub struct ToolContext {
     pub session_id: String,
     pub call_id: String,
+    pub turn: u32,
     pub cancel: Cancel,
     pub pause: Pause,
+    /// Events the body adds to the log (dsh tools append through
+    /// `exec.agent.session.append`).
+    pub emit: Emits,
+}
+
+/// Events a tool body asks the driver to log right after its result; they
+/// are dropped when the call fails. Cheap to clone.
+#[derive(Debug, Clone, Default)]
+pub struct Emits {
+    events: Arc<std::sync::Mutex<Vec<EventBody>>>,
+}
+
+impl Emits {
+    pub fn push(&self, body: EventBody) {
+        self.events
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .push(body);
+    }
+
+    /// Everything pushed so far, once.
+    pub fn take(&self) -> Vec<EventBody> {
+        std::mem::take(
+            &mut *self
+                .events
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner),
+        )
+    }
 }
 
 /// Lets a tool body end the turn after its result is recorded, for example
@@ -483,8 +513,10 @@ mod tests {
         ToolContext {
             session_id: "s".into(),
             call_id: "c".into(),
+            turn: 1,
             cancel: Cancel::default(),
             pause: Pause::default(),
+            emit: Emits::default(),
         }
     }
 

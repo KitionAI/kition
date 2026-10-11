@@ -221,6 +221,7 @@ impl Llm for AgentLlm {
                 model: result.model.clone(),
                 raw_items: result.response_items.clone(),
                 follow_up,
+                hosted: Vec::new(),
             };
             *self.last.lock().unwrap_or_else(PoisonError::into_inner) =
                 Some((result, streamed.load(Ordering::SeqCst)));
