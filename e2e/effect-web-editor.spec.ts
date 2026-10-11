@@ -64,6 +64,8 @@ test('animates a composition in the page with the Effect engine, saves it, and r
   try {
     await fs.writeFile(path.join(host.root, 'Intro.ecproj'), await projectFixture())
     await mockLocalWorkspaceApi(page)
+    // This spec covers Kition's own editor for the kit; the kit's embedded one has effect-embedded.spec.ts.
+    await page.route('**/kits/effect-ui/kit-ui.json', (route) => route.fulfill({ status: 404, body: '' }))
     await serveWorkspace(page, host.root)
     const writes: Array<{ path: string | null; bytes: Buffer }> = []
     await page.route('**/api/v1/kits/files?**', async (route) => {
@@ -138,6 +140,8 @@ test('creates a new motion project from the create menu with the Effect engine',
   const host = await installDesktopHost(page)
   try {
     await mockLocalWorkspaceApi(page)
+    // This spec covers Kition's own editor for the kit; the kit's embedded one has effect-embedded.spec.ts.
+    await page.route('**/kits/effect-ui/kit-ui.json', (route) => route.fulfill({ status: 404, body: '' }))
     await serveWorkspace(page, host.root)
     const written: string[] = []
     await page.route('**/api/v1/kits/files?**', async (route) => {
