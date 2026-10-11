@@ -49,7 +49,7 @@
     "check:e2e-coverage": "node scripts/check-e2e-coverage.mjs",
     "contracts:generate": "node scripts/generate-contract-types.mjs",
     "check:contracts": "node scripts/generate-contract-types.mjs --check",
-    "check": "pnpm run check:branding && pnpm run check:product-language && pnpm run check:i18n && pnpm run check:blank-comments && pnpm run check:knip && pnpm run check:deps && pnpm run check:e2e-coverage && pnpm run check:contracts && pnpm run lint && pnpm run check:security && pnpm run build:check && pnpm test",
+    "check": "pnpm run check:branding && pnpm run check:product-language && pnpm run check:i18n && pnpm run check:blank-comments && pnpm run check:knip && pnpm run check:deps && pnpm run check:e2e-coverage && pnpm run check:contracts && pnpm run check:kit-host && pnpm run lint && pnpm run check:security && pnpm run build:check && pnpm test",
     "build": "vite build --config tooling/vite.config.ts",
     "build:check": "pnpm run check:desktop-assets && pnpm run check:notices && pnpm run typecheck && pnpm run build",
     "check:desktop-assets": "node src-tauri/scripts/validate-desktop-assets.mjs",
@@ -85,7 +85,8 @@
     "test:scenario:e2e": "bash scripts/inspect-scenario.sh",
     "test:workflow:e2e": "bash scripts/inspect-workflow.sh",
     "test:workflow:ai-build:e2e": "playwright test --config tooling/playwright.config.ts e2e/workflow-real-ai-build.spec.ts --workers=1",
-    "test:workflow:onboarding:e2e": "bash scripts/inspect-workflow-onboarding.sh"
+    "test:workflow:onboarding:e2e": "bash scripts/inspect-workflow-onboarding.sh",
+    "check:kit-host": "node scripts/sync-kit-host.mjs --check"
   },
   "dependencies": {
     "@fontsource-variable/bricolage-grotesque": "5.3.0",

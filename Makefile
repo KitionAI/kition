@@ -20,6 +20,8 @@ KIT_WORD_REPO ?= $(REPO_ROOT)/../kit-word
 KIT_SHEET_REPO ?= $(REPO_ROOT)/../kit-sheet
 KIT_PDF_REPO ?= $(REPO_ROOT)/../kit-pdf
 KITS := photo film vector effect design cad presentation word sheet pdf
+# Kits that draw their own editor (Kit UI protocol), built into public/kits/<kit>-ui.
+KIT_UIS := presentation
 
 # The kits need a newer Rust than some system installs; prefer rustup's stable toolchain.
 STABLE_BIN := $(patsubst %/,%,$(dir $(shell rustup which --toolchain stable cargo 2>/dev/null)))
@@ -27,7 +29,7 @@ TOOLCHAIN_PATH := $(if $(STABLE_BIN),$(STABLE_BIN):,)$(PATH)
 # The e2e web server is probed through any HTTP proxy; run without one.
 NO_PROXY_ENV := env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy
 E2E_PORT ?= 3123
-WEB_KIT_E2E := e2e/photo-web-editor.spec.ts e2e/film-web-editor.spec.ts e2e/vector-web-editor.spec.ts e2e/effect-web-editor.spec.ts e2e/design-web-editor.spec.ts e2e/cad-web-editor.spec.ts e2e/presentation-web-editor.spec.ts e2e/word-web-editor.spec.ts e2e/sheet-web-editor.spec.ts e2e/pdf-web-editor.spec.ts e2e/kit-bridge.spec.ts
+WEB_KIT_E2E := e2e/photo-web-editor.spec.ts e2e/film-web-editor.spec.ts e2e/vector-web-editor.spec.ts e2e/effect-web-editor.spec.ts e2e/design-web-editor.spec.ts e2e/cad-web-editor.spec.ts e2e/presentation-web-editor.spec.ts e2e/word-web-editor.spec.ts e2e/sheet-web-editor.spec.ts e2e/pdf-web-editor.spec.ts e2e/presentation-embedded.spec.ts e2e/kit-bridge.spec.ts
 KIT_E2E := $(WEB_KIT_E2E) e2e/desktop-photo-kit.spec.ts
 PHOTO_BINARY := $(KIT_PHOTO_REPO)/target/debug/kit-photo
 # The SDK kits' headless executables for the agent (kit-film, kit-vector, ...), from kition-headless.
@@ -37,7 +39,7 @@ SDK_BINARIES := $(foreach kit,$(SDK_KITS),$(call kit_binary,$(kit)))
 # Points the runtime at every kit executable (KITION_KIT_<KIT>_BINARY).
 KIT_BINARY_ENV := KITION_KIT_PHOTO_BINARY="$(PHOTO_BINARY)" $(foreach kit,$(SDK_KITS),KITION_KIT_$(shell echo $(kit) | tr a-z A-Z)_BINARY="$(call kit_binary,$(kit))")
 
-.PHONY: help kit-e2e-webkit kit-dev kit-sdks $(addprefix kit-sdk-,$(KITS)) kit-photo-binary kit-binaries kit-check kit-test kit-e2e kit-e2e-headed kit-clean
+.PHONY: help kit-e2e-webkit kit-dev kit-sdks kit-uis $(addprefix kit-sdk-,$(KITS)) $(addprefix kit-ui-,$(KIT_UIS)) kit-photo-binary kit-binaries kit-check kit-test kit-e2e kit-e2e-headed kit-clean
 
 help:
 	@echo "make kit-dev         build missing kit engines and kit executables, then run Kition (pnpm dev)"
@@ -46,6 +48,7 @@ help:
 	@echo "make kit-e2e-webkit  the in-page kit specs in WebKit, the desktop app's engine"
 	@echo "make kit-sdks        rebuild every kit engine to WebAssembly (public/kits/<kit>-sdk)"
 	@echo "make kit-sdk-photo   rebuild one kit engine (also kit-sdk-film, kit-sdk-vector, kit-sdk-effect, kit-sdk-design, kit-sdk-cad, kit-sdk-presentation, kit-sdk-word, kit-sdk-sheet, kit-sdk-pdf)"
+	@echo "make kit-uis         rebuild every kit's own editor (public/kits/<kit>-ui); one: make kit-ui-presentation"
 	@echo "make kit-check       contract checks of the built kit engines only"
 	@echo "make kit-binaries    build every kit's headless executable for the agent"
 	@echo "make kit-clean       remove the built kit engines"
@@ -62,6 +65,16 @@ $(addprefix kit-sdk-,$(KITS)): kit-sdk-%:
 
 kit-sdks: $(addprefix kit-sdk-,$(KITS))
 
+# A kit's own editor, only when it is missing; `make kit-uis` always rebuilds.
+public/kits/%-ui/kit-ui.json:
+	@PATH="$(TOOLCHAIN_PATH)" KIT_REPO="$(KIT_$(shell echo $* | tr a-z A-Z)_REPO)" scripts/build-kit-ui.sh $*
+
+$(addprefix kit-ui-,$(KIT_UIS)): kit-ui-%:
+	@rm -f public/kits/$*-ui/kit-ui.json
+	@$(MAKE) --no-print-directory public/kits/$*-ui/kit-ui.json
+
+kit-uis: $(addprefix kit-ui-,$(KIT_UIS))
+
 # The headless Photo kit the agent uses (photo_inspect, photo_commands, photo_run; each kit's
 # tools are <prefix>_inspect, _commands, and _run).
 $(PHOTO_BINARY):
@@ -75,21 +88,21 @@ $(SDK_BINARIES):
 
 kit-binaries: $(PHOTO_BINARY) $(SDK_BINARIES)
 
-kit-dev: $(addprefix public/kits/,$(addsuffix -sdk/.built,$(KITS))) $(PHOTO_BINARY) $(SDK_BINARIES)
+kit-dev: $(addprefix public/kits/,$(addsuffix -sdk/.built,$(KITS))) $(addprefix public/kits/,$(addsuffix -ui/kit-ui.json,$(KIT_UIS))) $(PHOTO_BINARY) $(SDK_BINARIES)
 	@echo "Kition with Photo, Film, Vector, Effect, Design, CAD, Presentation, Word, Sheet, and PDF: open a .psd, .fcproj, .vectorcraft, .ecproj, .designcraft, .dxf, .deckcraft, .pptx, .docx, .xlsx, or .pdf, or use the New menu."
 	$(NO_PROXY_ENV) $(KIT_BINARY_ENV) pnpm dev
 
 kit-check: $(addprefix public/kits/,$(addsuffix -sdk/.built,$(KITS)))
 	pnpm check:kit-sdks
 
-kit-e2e: $(addprefix public/kits/,$(addsuffix -sdk/.built,$(KITS)))
+kit-e2e: $(addprefix public/kits/,$(addsuffix -sdk/.built,$(KITS))) $(addprefix public/kits/,$(addsuffix -ui/kit-ui.json,$(KIT_UIS)))
 	$(NO_PROXY_ENV) KITION_E2E_PORT=$(E2E_PORT) pnpm exec playwright test --config tooling/playwright.config.ts $(KIT_E2E) --reporter=line
 
 kit-e2e-headed: $(addprefix public/kits/,$(addsuffix -sdk/.built,$(KITS)))
 	$(NO_PROXY_ENV) KITION_E2E_PORT=$(E2E_PORT) pnpm exec playwright test --config tooling/playwright.config.ts $(KIT_E2E) --headed --workers=1
 
 # WebKit is what the desktop app runs (WKWebView); `playwright install webkit` once.
-kit-e2e-webkit: $(addprefix public/kits/,$(addsuffix -sdk/.built,$(KITS)))
+kit-e2e-webkit: $(addprefix public/kits/,$(addsuffix -sdk/.built,$(KITS))) $(addprefix public/kits/,$(addsuffix -ui/kit-ui.json,$(KIT_UIS)))
 	$(NO_PROXY_ENV) KITION_E2E_PORT=$(E2E_PORT) pnpm exec playwright test --config tooling/playwright.webkit.config.ts $(WEB_KIT_E2E) --reporter=line
 
 kit-test: kit-check kit-e2e

@@ -1,6 +1,6 @@
 import { createElement, lazy, type ComponentType } from 'react'
 import { Clapperboard, DraftingCompass, FileText, FileType2, Layers, LayoutTemplate, PenTool, Presentation, Sheet, Sparkles, type LucideIcon } from 'lucide-react'
-import { kitSdkAvailable, type KitSdkManifest } from '@/features/kits/public'
+import { kitSdkAvailable, type EmbeddedKit, type KitSdkManifest } from '@/features/kits/public'
 import type { WorkspaceDocumentFormat } from '@/services/desktop'
 import { PhotoKitPane } from '../PhotoKitPane'
 import { PHOTO_SDK } from '../photo/photoKitSdk'
@@ -35,6 +35,8 @@ export type KitEditorEntry = {
   Editor: ComponentType<KitEditorProps>
   /** What the tab shows without the SDK; none for formats the file preview already shows (PDF, Office). */
   Fallback?: ComponentType<KitEditorProps>
+  /** The kit's own editor (standard 6.1), shown in an iframe when its package is built in; it wins over `Editor`. */
+  embedded?: EmbeddedKit
   /** A create menu item: an empty document of this size, made by the SDK in the page. */
   create?: KitCreateSpec
 }
@@ -54,7 +56,7 @@ export type KitCreateSpec = {
 }
 
 /** A kit on the standard editor (StandardKitEditor), which needs no editor code of its own. */
-function standardKit(spec: StandardKitSpec, format: WorkspaceDocumentFormat, options: { create?: KitCreateSpec; preview?: boolean } = {}): KitEditorEntry {
+function standardKit(spec: StandardKitSpec, format: WorkspaceDocumentFormat, options: { create?: KitCreateSpec; preview?: boolean; embedded?: EmbeddedKit } = {}): KitEditorEntry {
   return {
     format,
     sdk: spec.sdk,
@@ -62,8 +64,12 @@ function standardKit(spec: StandardKitSpec, format: WorkspaceDocumentFormat, opt
     // A format the file preview shows keeps that preview without the SDK.
     Fallback: options.preview ? undefined : () => createElement(StandardKitUnavailable, { spec }),
     create: options.create,
+    embedded: options.embedded,
   }
 }
+
+/** The Presentation kit's own editor, built by `scripts/build-kit-ui.sh presentation`. */
+const PRESENTATION_UI: EmbeddedKit = { kitId: 'kit.presentation', dir: 'presentation-ui' }
 
 const KIT_EDITORS: readonly KitEditorEntry[] = [
   {
@@ -104,9 +110,9 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
   },
   // A3 in millimetres; the engine starts a metric drawing with those limits.
   standardKit(CAD_KIT, 'cad', { create: { id: 'cad', extension: 'dxf', baseName: 'Untitled CAD drawing', size: { width: 420, height: 297 }, label: 'createMenu.format.cad', icon: DraftingCompass } }),
-  standardKit(PRESENTATION_KIT, 'presentation', { create: { id: 'presentation', extension: 'deckcraft', baseName: 'Untitled presentation', size: { width: 960, height: 540 }, label: 'createMenu.format.presentation', icon: Presentation } }),
+  standardKit(PRESENTATION_KIT, 'presentation', { embedded: PRESENTATION_UI, create: { id: 'presentation', extension: 'deckcraft', baseName: 'Untitled presentation', size: { width: 960, height: 540 }, label: 'createMenu.format.presentation', icon: Presentation } }),
   // PowerPoint files open in the Presentation kit, and keep the file preview without it.
-  standardKit(PRESENTATION_KIT, 'pptx', { preview: true }),
+  standardKit(PRESENTATION_KIT, 'pptx', { preview: true, embedded: PRESENTATION_UI }),
   // Word files open in the Word kit, and keep the file preview without it. US Letter, in points.
   standardKit(WORD_KIT, 'docx', { preview: true, create: { id: 'word', extension: 'docx', baseName: 'Untitled Word document', size: { width: 612, height: 792 }, label: 'createMenu.format.word', icon: FileText } }),
   // Excel files open in the Sheet kit, and keep the file preview without it.
@@ -116,6 +122,24 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
 ]
 
 const availability = new Map<string, Promise<boolean>>()
+const embeddedAvailability = new Map<string, Promise<boolean>>()
+
+/**
+ * Whether this build has the kit's own editor: its `kit-ui.json` marker, which a missing package
+ * cannot fake (the dev server answers unknown paths with the app's page).
+ */
+export function embeddedAvailable(entry: KitEditorEntry) {
+  const kit = entry.embedded
+  if (!kit) return Promise.resolve(false)
+  let known = embeddedAvailability.get(kit.dir)
+  if (!known) {
+    known = fetch(`/kits/${kit.dir}/kit-ui.json`, { cache: 'no-store' })
+      .then(async (response) => response.ok && /json/i.test(response.headers.get('content-type') ?? '') && (await response.json()).kitId === kit.kitId)
+      .catch(() => false)
+    embeddedAvailability.set(kit.dir, known)
+  }
+  return known
+}
 
 /** Whether this build has the kit's SDK; asked once per kit. */
 export function sdkAvailable(entry: KitEditorEntry) {

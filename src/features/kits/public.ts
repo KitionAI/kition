@@ -15,6 +15,7 @@ export type { RasterDecoration, RasterRect, RasterView, RasterViewportStats } fr
 export { useKitDocument, type KitChange } from './sdk/useKitDocument'
 export { EngineToolRail } from './kition/EngineToolRail'
 export { KitEditorFrame } from './kition/KitEditorFrame'
+export { KitFrame, type EmbeddedKit } from './kition/KitFrame'
 export { KitMenuBar } from './kition/KitMenuBar'
 export { KITION_KIT_HOST } from './kition/kitionHost'
 export { useKitEditor } from './kition/useKitEditor'

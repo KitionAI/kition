@@ -22,7 +22,8 @@ export type BridgeEditor = {
   kitId: string
   revision: () => number
   dirty: () => boolean
-  inspect: () => KitsBridgeLiveDocument
+  /** The document as the agent sees it; an embedded kit UI answers asynchronously. */
+  inspect: () => KitsBridgeLiveDocument | Promise<KitsBridgeLiveDocument>
   commands: (query: string) => Promise<KitsBridgeCommand[]>
   run: (steps: Array<{ command: string; params?: Record<string, unknown> }>, save: boolean) => Promise<{ completed: KitsBridgeRunStep[]; saved: boolean }>
   /** A PNG of the whole document, at most `maxSize` pixels on its longer side, as base64. */
@@ -74,7 +75,7 @@ async function handle(request: Request) {
       const args = (params.arguments ?? {}) as Record<string, unknown>
       switch (params.tool) {
         case 'inspect':
-          return { document: editor.inspect() }
+          return { document: await editor.inspect() }
         case 'commands': {
           const commands = await editor.commands(String(args.query ?? ''))
           return { commands, total: commands.length }
@@ -83,7 +84,7 @@ async function handle(request: Request) {
           const steps = Array.isArray(args.steps) ? (args.steps as Array<{ command: string; params?: Record<string, unknown> }>) : []
           if (!steps.length) throw new Error('`steps` must be a non-empty array')
           const { completed, saved } = await editor.run(steps, args.save !== false)
-          return { completed, saved, document: editor.inspect() }
+          return { completed, saved, document: await editor.inspect() }
         }
         default:
           throw new Error(`unknown kit tool ${String(params.tool)}`)

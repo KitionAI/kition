@@ -74,6 +74,8 @@ test('edits a deck in the page with the Presentation engine and its own tools, a
     await fs.writeFile(path.join(host.root, 'Launch.deckcraft'), await deckFixture())
     await mockLocalWorkspaceApi(page)
     await serveWorkspace(page, host.root)
+    // Kition's own editor on the kit's engine, not the kit's embedded one (presentation-embedded.spec.ts).
+    await page.route('**/kits/presentation-ui/kit-ui.json', (route) => route.fulfill({ status: 404, body: '' }))
     const saves: Array<{ path: string | null; bytes: Buffer }> = []
     await page.route('**/api/v1/kits/files?**', async (route) => {
       const target = new URL(route.request().url()).searchParams.get('path')
@@ -134,6 +136,8 @@ test('creates a new presentation from the create menu with the Presentation engi
   try {
     await mockLocalWorkspaceApi(page)
     await serveWorkspace(page, host.root)
+    // Kition's own editor on the kit's engine, not the kit's embedded one (presentation-embedded.spec.ts).
+    await page.route('**/kits/presentation-ui/kit-ui.json', (route) => route.fulfill({ status: 404, body: '' }))
     const written: string[] = []
     // The runtime writes the new file; here the host's folder plays the workspace.
     await page.route('**/api/v1/kits/files?**', async (route) => {

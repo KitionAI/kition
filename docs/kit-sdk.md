@@ -228,6 +228,34 @@ Shared test ids: `kit-editor`, `kit-unsaved`, `kit-save`, `kit-ask-agent`,
 `kit-file-changed`, `kit-file-reload`, `kit-status-bar`. Shared strings live
 under `workspace:kitEditor.*` and must never name a kit.
 
+## 4a. Kits With Their Own Editor (Standard 6.1)
+
+From standard 1.1 a kit draws its own editor, the way new kits should: the
+kit repository's `web/` app (React, on kition-sdk's `@kition/kit-ui`) holds
+the ribbon, panels, canvas, and dialogs next to the engine, and Kition shows
+it in an iframe and talks to it over the Kit UI protocol (`kition-kit-ui/1`,
+kition-sdk `docs/ui-protocol.md`). Kition keeps the shell: files, the
+workspace, the agent, the theme, the language, and its own shortcuts. The
+first such kit is Presentation (`kit-presentation/web`).
+
+- `scripts/build-kit-ui.sh <kit>` builds the kit's engine and editor into
+  `public/kits/<kit>-ui/` with a `kit-ui.json` marker (`make kit-ui-<kit>`;
+  `make kit-uis` for all of `KIT_UIS`).
+- `src/features/kits/kition/KitFrame.tsx` mounts it: the document's bytes,
+  Kition's theme tokens and language, `host/read` and `host/write` through
+  the workspace file API, paths confined to the workspace, new files and
+  exports under unused names, Kition's shortcuts forwarded back, and the Kit
+  AI bridge forwarded to the frame as `ai/*`.
+- A kit entry in `kits/kitEditors.ts` names its package with `embedded`;
+  `KitFilePane` prefers it when the marker is present, then Kition's own
+  editor on the kit's engine, then the fallback or the file preview.
+- `src/features/kits/host/` is Kition's copy of `@kition/kit-protocol` and
+  `@kition/kit-host` (kition-sdk is private, Kition public):
+  `node scripts/sync-kit-host.mjs` copies them, and `pnpm check:kit-host`
+  fails when they drift.
+- A kit's development host (`web/dev.html`) runs the editor without Kition,
+  with an in-memory workspace.
+
 ## 5. Adding A Kit: Checklist
 
 Kit repository:
