@@ -42,6 +42,7 @@ pub trait Provider: Send + Sync {
 }
 
 /// The system prompt and tools for one turn.
+#[derive(Debug)]
 pub struct Assembly {
     pub system: String,
     pub tools: ToolRegistry,
@@ -170,5 +171,14 @@ mod tests {
             .err()
             .unwrap_or_default();
         assert!(error.starts_with("b:"), "{error}");
+    }
+
+    #[test]
+    fn assembly_derives_debug() {
+        let assembly = Assembly {
+            system: "s".into(),
+            tools: ToolRegistry::default(),
+        };
+        assert!(format!("{assembly:?}").starts_with("Assembly {"));
     }
 }

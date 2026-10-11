@@ -1,7 +1,9 @@
 //! The turn and step driver (DeepSeek Harness `agent-loop`). A turn is steps
 //! until the model answers without tools; a step is one model call plus the
 //! tools it asked for. Every model-visible input is logged first and the
-//! request is derived from the log.
+//! request is derived from the log, which is read once at the start of the
+//! turn; every event the turn itself appends also lands in that local copy,
+//! so no step re-reads the log store.
 
 use std::sync::Arc;
 
@@ -36,11 +38,31 @@ pub struct TurnInput {
     pub live: LiveSink,
 }
 
+impl std::fmt::Debug for TurnInput {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("TurnInput")
+            .field("session", &self.session)
+            .field("tools", &self.tools)
+            .finish_non_exhaustive()
+    }
+}
+
 pub struct Driver {
     pub log: Arc<dyn SessionLog>,
     pub llm: Arc<dyn Llm>,
     pub pipeline: Pipeline,
     pub max_steps: u32,
+}
+
+impl std::fmt::Debug for Driver {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("Driver")
+            .field("pipeline", &self.pipeline)
+            .field("max_steps", &self.max_steps)
+            .finish_non_exhaustive()
+    }
 }
 
 impl Driver {
@@ -53,19 +75,24 @@ impl Driver {
         }
     }
 
-    /// Runs one turn to its end. A model failure ends the turn as `failed`
-    /// and is returned as the error after `turn/end` is logged.
+    /// Runs one turn to its end. A model failure, an empty model reply (no
+    /// content and no tool calls), or an append failure all end the turn as
+    /// `failed`. If the turn's own outcome is an error, that error is
+    /// returned even when the closing `turn/end` append itself also fails;
+    /// a `turn/end` append failure is only surfaced when the turn otherwise
+    /// succeeded, since there is no earlier error to prefer.
     pub async fn run_turn(&self, input: TurnInput) -> Result<TurnEndReason, String> {
-        let turn = self
-            .log
-            .read(&input.session)?
+        let mut events = self.log.read(&input.session)?;
+        let turn = events
             .iter()
             .filter(|event| matches!(event.body, EventBody::TurnStart { .. }))
             .count() as u32
             + 1;
         (input.live)(Live::Status { running: true });
-        let outcome = match self.append(&input, EventBody::TurnStart { turn }) {
-            Ok(_) => self.steps(&input, turn).await,
+        let outcome = match self.append(&input, &mut events, EventBody::TurnStart { turn }) {
+            // dsh closes a turn with no new input without a step or a model call.
+            Ok(_) if input.user.is_empty() => Ok(TurnEndReason::Completed),
+            Ok(_) => self.steps(&input, &mut events, turn).await,
             Err(error) => Err(error),
         };
         let (reason, error) = match &outcome {
@@ -74,6 +101,7 @@ impl Driver {
         };
         let ended = self.append(
             &input,
+            &mut events,
             EventBody::TurnEnd {
                 turn,
                 reason,
@@ -81,29 +109,44 @@ impl Driver {
             },
         );
         (input.live)(Live::Status { running: false });
-        ended?;
-        outcome
+        match outcome {
+            Err(error) => Err(error),
+            Ok(reason) => ended.map(|_| reason),
+        }
     }
 
-    fn append(&self, input: &TurnInput, body: EventBody) -> Result<SessionEvent, String> {
+    fn append(
+        &self,
+        input: &TurnInput,
+        events: &mut Vec<SessionEvent>,
+        body: EventBody,
+    ) -> Result<SessionEvent, String> {
         let event = self.log.append(&input.session, body)?;
+        events.push(event.clone());
         (input.live)(Live::Event(Box::new(event.clone())));
         Ok(event)
     }
 
-    async fn steps(&self, input: &TurnInput, turn: u32) -> Result<TurnEndReason, String> {
+    async fn steps(
+        &self,
+        input: &TurnInput,
+        events: &mut Vec<SessionEvent>,
+        turn: u32,
+    ) -> Result<TurnEndReason, String> {
         let mut user = Some(input.user.clone());
         for step in 1..=self.max_steps {
             if input.cancel.is_cancelled() {
                 return Ok(TurnEndReason::Cancelled);
             }
-            self.append(input, EventBody::StepStart { turn, step })?;
-            self.reconcile_system(input)?;
+            self.append(input, events, EventBody::StepStart { turn, step })?;
+            if step == 1 {
+                self.reconcile_system(input, events)?;
+            }
             if let Some(content) = user.take() {
-                self.append(input, EventBody::UserMessage { content })?;
+                self.append(input, events, EventBody::UserMessage { content })?;
             }
             let request = LlmRequest {
-                messages: derive_messages(&self.log.read(&input.session)?),
+                messages: derive_messages(events.as_slice()),
                 tools: input.tools.specs(),
             };
             let live = input.live.clone();
@@ -119,13 +162,18 @@ impl Driver {
             let reply = match reply {
                 Ok(reply) => reply,
                 Err(error) => {
-                    self.append(
+                    // A failed `assistant/attempt` append must not shadow
+                    // the model error itself: that is the one the caller
+                    // needs, and `run_turn` still gets a chance to log
+                    // `turn/end` for it.
+                    let _ = self.append(
                         input,
+                        events,
                         EventBody::AssistantAttempt {
                             error: error.clone(),
                         },
-                    )?;
-                    self.append(input, EventBody::StepEnd { turn, step })?;
+                    );
+                    self.append(input, events, EventBody::StepEnd { turn, step })?;
                     return if input.cancel.is_cancelled() {
                         Ok(TurnEndReason::Cancelled)
                     } else {
@@ -135,6 +183,7 @@ impl Driver {
             };
             self.append(
                 input,
+                events,
                 EventBody::AssistantMessage {
                     content: reply.content.clone(),
                     tool_calls: reply.tool_calls.clone(),
@@ -144,7 +193,7 @@ impl Driver {
                 },
             )?;
             if reply.tool_calls.is_empty() {
-                self.append(input, EventBody::StepEnd { turn, step })?;
+                self.append(input, events, EventBody::StepEnd { turn, step })?;
                 return if reply.content.trim().is_empty() {
                     Err("the model returned no content and no tool calls".into())
                 } else {
@@ -152,12 +201,12 @@ impl Driver {
                 };
             }
             for call in &reply.tool_calls {
-                if let Some(reason) = self.run_call(input, call).await? {
-                    self.append(input, EventBody::StepEnd { turn, step })?;
+                if let Some(reason) = self.run_call(input, events, call).await? {
+                    self.append(input, events, EventBody::StepEnd { turn, step })?;
                     return Ok(reason);
                 }
             }
-            self.append(input, EventBody::StepEnd { turn, step })?;
+            self.append(input, events, EventBody::StepEnd { turn, step })?;
         }
         Ok(TurnEndReason::StepLimit)
     }
@@ -166,10 +215,12 @@ impl Driver {
     async fn run_call(
         &self,
         input: &TurnInput,
+        events: &mut Vec<SessionEvent>,
         call: &LoggedCall,
     ) -> Result<Option<TurnEndReason>, String> {
         self.append(
             input,
+            events,
             EventBody::ToolCall {
                 call_id: call.call_id.clone(),
                 name: call.name.clone(),
@@ -181,7 +232,7 @@ impl Driver {
                 format!("tool `{}` is not available in this turn", call.name),
                 None,
             );
-            self.record(input, call, missing)?;
+            self.record(input, events, call, missing)?;
             return Ok(None);
         };
         let info = CallInfo {
@@ -203,6 +254,7 @@ impl Driver {
             Decision::Ask(reason) => {
                 self.append(
                     input,
+                    events,
                     EventBody::ApprovalAsked {
                         call_id: call.call_id.clone(),
                         reason,
@@ -212,16 +264,23 @@ impl Driver {
             }
         };
         self.pipeline.settle(&info, &mut settled);
-        self.record(input, call, settled)?;
+        self.record(input, events, call, settled)?;
         Ok(input
             .cancel
             .is_cancelled()
             .then_some(TurnEndReason::Cancelled))
     }
 
-    fn record(&self, input: &TurnInput, call: &LoggedCall, settled: Settled) -> Result<(), String> {
+    fn record(
+        &self,
+        input: &TurnInput,
+        events: &mut Vec<SessionEvent>,
+        call: &LoggedCall,
+        settled: Settled,
+    ) -> Result<(), String> {
         self.append(
             input,
+            events,
             EventBody::ToolResult {
                 call_id: call.call_id.clone(),
                 name: call.name.clone(),
@@ -234,25 +293,56 @@ impl Driver {
         .map(|_| ())
     }
 
-    /// Logs the system prompt only when it differs from the newest logged one.
-    fn reconcile_system(&self, input: &TurnInput) -> Result<(), String> {
-        let current =
-            self.log
-                .read(&input.session)?
-                .into_iter()
-                .rev()
-                .find_map(|event| match event.body {
-                    EventBody::SystemMessage { content } => Some(content),
-                    _ => None,
-                });
+    /// Logs the system prompt only when it differs from the newest logged
+    /// one; checked once, at the first step of the turn.
+    fn reconcile_system(
+        &self,
+        input: &TurnInput,
+        events: &mut Vec<SessionEvent>,
+    ) -> Result<(), String> {
+        let current = events.iter().rev().find_map(|event| match &event.body {
+            EventBody::SystemMessage { content } => Some(content.clone()),
+            _ => None,
+        });
         if current.as_deref() != Some(input.system.as_str()) {
             self.append(
                 input,
+                events,
                 EventBody::SystemMessage {
                     content: input.system.clone(),
                 },
             )?;
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::log::MemoryLog;
+    use crate::testing::ScriptedLlm;
+    use crate::tool::ToolRegistry;
+
+    #[test]
+    fn debug_impls_do_not_panic_and_do_not_dump_every_field() {
+        let driver = Driver::new(
+            Arc::new(MemoryLog::default()),
+            Arc::new(ScriptedLlm::new(Vec::new())),
+        );
+        let debug = format!("{driver:?}");
+        assert!(debug.starts_with("Driver {"), "{debug}");
+        assert!(debug.contains("max_steps"), "{debug}");
+
+        let input = TurnInput {
+            session: "s".into(),
+            system: "sys".into(),
+            tools: ToolRegistry::default(),
+            user: Vec::new(),
+            cancel: Cancel::default(),
+            live: Arc::new(|_event: Live| {}),
+        };
+        let debug = format!("{input:?}");
+        assert!(debug.contains("\"s\""), "{debug}");
     }
 }

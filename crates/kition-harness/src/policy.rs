@@ -60,6 +60,15 @@ pub struct Pipeline {
     policies: Vec<Arc<dyn Policy>>,
 }
 
+impl std::fmt::Debug for Pipeline {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("Pipeline")
+            .field("policies", &self.policies.len())
+            .finish()
+    }
+}
+
 impl Pipeline {
     pub fn with(mut self, policy: impl Policy + 'static) -> Self {
         self.policies.push(Arc::new(policy));
@@ -116,7 +125,7 @@ mod tests {
     }
 
     #[test]
-    fn first_non_allow_decision_wins_and_post_runs_in_order() {
+    fn deny_and_ask_decisions_and_post_settle_in_order() {
         let args = json!({});
         let writer = tool(true);
         let call = CallInfo {
@@ -185,5 +194,13 @@ mod tests {
             .with(AskForAll)
             .with(WritePermission { may_write: false });
         assert_eq!(pipeline.decide(&call), Decision::Ask("confirm".into()));
+    }
+
+    #[test]
+    fn debug_shows_the_policy_count_not_the_policies_themselves() {
+        let pipeline = Pipeline::default()
+            .with(AskForAll)
+            .with(WritePermission { may_write: true });
+        assert_eq!(format!("{pipeline:?}"), "Pipeline { policies: 2 }");
     }
 }

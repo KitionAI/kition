@@ -15,6 +15,20 @@ pub struct ScriptedLlm {
     requests: Mutex<Vec<LlmRequest>>,
 }
 
+impl std::fmt::Debug for ScriptedLlm {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let remaining = self
+            .replies
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .len();
+        formatter
+            .debug_struct("ScriptedLlm")
+            .field("remaining_replies", &remaining)
+            .finish_non_exhaustive()
+    }
+}
+
 impl ScriptedLlm {
     pub fn new(replies: Vec<LlmReply>) -> Self {
         Self {
@@ -121,5 +135,11 @@ mod tests {
                 .len(),
             1
         );
+    }
+
+    #[test]
+    fn debug_shows_the_remaining_reply_count() {
+        let llm = ScriptedLlm::new(vec![LlmReply::text("a"), LlmReply::text("b")]);
+        assert!(format!("{llm:?}").contains("remaining_replies: 2"));
     }
 }

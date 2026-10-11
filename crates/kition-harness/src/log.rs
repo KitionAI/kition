@@ -19,7 +19,7 @@ pub trait SessionLog: Send + Sync {
 }
 
 /// A log in memory, for tests and short-lived sessions.
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct MemoryLog {
     sessions: Mutex<HashMap<String, Vec<SessionEvent>>>,
 }
@@ -46,6 +46,12 @@ impl SessionLog for MemoryLog {
 /// The durable log in the workspace database (`agent_session_events`).
 pub struct SqliteLog {
     db: Db,
+}
+
+impl std::fmt::Debug for SqliteLog {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.debug_struct("SqliteLog").finish_non_exhaustive()
+    }
 }
 
 impl SqliteLog {
@@ -174,5 +180,12 @@ mod tests {
             .append("a", EventBody::StepStart { turn: 1, step: 1 })
             .unwrap_or_else(|error| panic!("{error}"));
         assert_eq!((first_a.seq, first_b.seq, second_a.seq), (1, 1, 2));
+    }
+
+    #[test]
+    fn memory_log_and_sqlite_log_debug_impls_do_not_panic() {
+        assert!(format!("{:?}", MemoryLog::default()).contains("MemoryLog"));
+        let db = kition_store::Db::open_in_memory().unwrap_or_else(|error| panic!("{error}"));
+        assert_eq!(format!("{:?}", SqliteLog::new(db)), "SqliteLog { .. }");
     }
 }

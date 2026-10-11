@@ -99,6 +99,17 @@ pub struct EngineLlm {
     seq: AtomicU64,
 }
 
+impl std::fmt::Debug for EngineLlm {
+    /// Shows only the model name: `RuntimeModel` also carries the API key
+    /// and access token.
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("EngineLlm")
+            .field("model", &self.model.model_name)
+            .finish_non_exhaustive()
+    }
+}
+
 impl EngineLlm {
     pub fn new(engine: Engine, model: RuntimeModel) -> Self {
         Self {
@@ -180,5 +191,20 @@ mod tests {
         assert_eq!(normalized[2].arguments, json!({ "raw": "{\"a\":" }));
         assert_eq!(normalized[3].call_id, "call_1_0_3");
         assert_eq!(normalized[3].arguments, json!({ "raw": "[1]" }));
+    }
+
+    #[test]
+    fn engine_llm_debug_shows_only_the_model_name() {
+        let llm = EngineLlm::new(
+            Engine::new(std::path::PathBuf::from("."), None),
+            RuntimeModel {
+                model_name: "gpt-5".into(),
+                api_key: "secret".into(),
+                ..RuntimeModel::default()
+            },
+        );
+        let debug = format!("{llm:?}");
+        assert!(debug.contains("gpt-5"), "{debug}");
+        assert!(!debug.contains("secret"), "{debug}");
     }
 }

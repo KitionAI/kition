@@ -345,6 +345,15 @@ pub struct ToolRegistry {
     tools: BTreeMap<String, ToolDef>,
 }
 
+impl std::fmt::Debug for ToolRegistry {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("ToolRegistry")
+            .field("tools", &self.tools.keys().collect::<Vec<_>>())
+            .finish()
+    }
+}
+
 impl ToolRegistry {
     pub fn register(&mut self, tool: ToolDef) -> Result<(), String> {
         if self.tools.contains_key(&tool.name) {
@@ -594,5 +603,17 @@ mod tests {
         let settled = tool.run(json!({ "raw": "{\"a\":" }), cx()).await;
         assert!(!settled.is_error);
         assert_eq!(settled.value, json!({ "raw": "{\"a\":" }));
+    }
+
+    #[test]
+    fn debug_shows_tool_names_not_their_full_definitions() {
+        let mut registry = ToolRegistry::default();
+        registry
+            .register(echo())
+            .unwrap_or_else(|error| panic!("{error}"));
+        assert_eq!(
+            format!("{registry:?}"),
+            r#"ToolRegistry { tools: ["echo"] }"#
+        );
     }
 }
