@@ -9,6 +9,9 @@ mod fuzzy;
 mod harness_turn;
 pub mod mcp;
 mod prompts;
+// Assembled by `harness_turn` in the next change.
+#[allow(dead_code)]
+mod providers;
 mod routes;
 mod run;
 mod session;

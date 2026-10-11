@@ -1,0 +1,246 @@
+//! Everything a pane, the local sources, the kits, or MCP add to a harness
+//! turn, one provider each. The harness turn assembles them and never names
+//! a pane or a kit.
+
+mod core;
+mod design;
+mod document;
+mod gallery;
+mod images;
+mod kits;
+mod mcp;
+mod sources;
+mod tables;
+mod whiteboard;
+mod workflow;
+
+use std::sync::Arc;
+
+use kition_ai::engine::ToolSpec;
+use kition_harness::provider::Provider;
+use kition_harness::tool::ToolDef;
+use serde_json::Value;
+
+use crate::catalog::SkillDef;
+use crate::run::Run;
+
+/// What the request says about this turn beyond `Run`.
+#[derive(Debug, Clone, Default)]
+pub struct TurnFacts {
+    pub prompt_context: String,
+    pub active_workflow_id: String,
+    pub table_plan: Option<Value>,
+    pub skills: Vec<SkillDef>,
+    pub hosted_web_search: bool,
+    pub hosted_images: bool,
+}
+
+/// Builds one harness tool from a catalog or MCP spec; `None` when the
+/// harness cannot offer it (the factory logs why).
+pub type ToolFactory = Arc<dyn Fn(&ToolSpec) -> Option<ToolDef> + Send + Sync>;
+
+/// Tools a provider other than `CoreProvider` offers.
+pub fn owned_elsewhere(name: &str) -> bool {
+    matches!(
+        name,
+        "document_write"
+            | "image_search"
+            | "table_upsert_records"
+            | "whiteboard_propose_patch"
+            | "design_propose_patch"
+    ) || name.starts_with("data_table_")
+        || crate::sources::CORE_TOOLS.contains(&name)
+        || crate::sources::GIT_TOOLS.contains(&name)
+        || crate::tools::kits::tool_defs()
+            .iter()
+            .any(|tool| tool.name == name)
+}
+
+/// The providers of one turn, in assembly order. Async because some
+/// providers load their prompt state (recent images, the open table) up
+/// front: `Provider::prompt` is synchronous.
+pub async fn providers(
+    run: &Arc<Run>,
+    facts: &Arc<TurnFacts>,
+    factory: &ToolFactory,
+) -> Vec<Arc<dyn Provider>> {
+    vec![
+        Arc::new(core::CoreProvider::load(run, facts, factory).await),
+        Arc::new(document::DocumentProvider::load(run, factory).await),
+        Arc::new(images::ImagesProvider::new(facts, factory)),
+        Arc::new(tables::TablesProvider::load(run, facts, factory).await),
+        Arc::new(workflow::WorkflowProvider::new(run, facts)),
+        Arc::new(gallery::GalleryProvider),
+        Arc::new(whiteboard::WhiteboardProvider::new(run, factory)),
+        Arc::new(design::DesignProvider::new(run, factory)),
+        Arc::new(sources::LocalSourcesProvider::new(run, factory)),
+        Arc::new(kits::KitsProvider::new(run, factory)),
+        Arc::new(mcp::McpProvider::new(run, factory)),
+    ]
+}
+
+/// The catalog spec of `name` as a model tool spec, if the catalog offers
+/// it at all (`exposure` is not `hidden`).
+pub fn catalog_spec(name: &str) -> Option<ToolSpec> {
+    crate::catalog::tool(name)
+        .filter(|tool| tool.exposure != "hidden")
+        .map(|tool| ToolSpec {
+            name: tool.name.clone(),
+            description: tool.description.clone(),
+            input_schema: tool.input_schema.clone(),
+        })
+}
+
+/// The catalog tools among `names`, built by `factory`.
+fn offer<'a>(factory: &ToolFactory, names: impl IntoIterator<Item = &'a str>) -> Vec<ToolDef> {
+    names
+        .into_iter()
+        .filter_map(catalog_spec)
+        .filter_map(|spec| factory(&spec))
+        .collect()
+}
+
+/// A finished tool list as the provider seam's future.
+fn ready<'a>(tools: Vec<ToolDef>) -> futures::future::BoxFuture<'a, Result<Vec<ToolDef>, String>> {
+    Box::pin(std::future::ready(Ok(tools)))
+}
+
+#[cfg(test)]
+pub(crate) mod testing {
+    //! A `Run` and a tool factory for provider unit tests.
+
+    use std::sync::{Arc, Mutex};
+
+    use kition_ai::engine::{Engine, RuntimeModel, ToolSpec};
+    use kition_harness::provider::TurnScene;
+    use kition_harness::tool::define;
+    use serde_json::Value;
+
+    use super::ToolFactory;
+    use crate::run::{Agent, AgentConfig, Run};
+    use crate::stream::Emitter;
+
+    /// Keeps the temporary folders of a test agent alive.
+    pub struct Fixture {
+        pub run: Run,
+        _dirs: Vec<tempfile::TempDir>,
+    }
+
+    pub fn fixture(pane: &str) -> Fixture {
+        let dirs: Vec<tempfile::TempDir> = (0..3)
+            .map(|_| tempfile::tempdir().unwrap_or_else(|error| panic!("{error}")))
+            .collect();
+        let db = kition_store::Db::open_in_memory().unwrap_or_else(|error| panic!("{error}"));
+        let agent = Agent::new(AgentConfig {
+            db,
+            engine: Engine::new(dirs[1].path().to_path_buf(), None),
+            workspace_dir: dirs[0].path().to_path_buf(),
+            upload_dir: dirs[1].path().to_path_buf(),
+            policy_path: Some(dirs[2].path().join("execpolicy.toml")),
+            hooks: None,
+            smtp: None,
+            tables: None,
+            portal_base_url: String::new(),
+            mcp_path: None,
+            workflow_prompt: None,
+            kits: None,
+            harness: true,
+        });
+        let run = Run {
+            agent,
+            emitter: Emitter::channel().0,
+            user_id: 1,
+            session_id: 1,
+            trigger_message_id: 0,
+            active_document_path: String::new(),
+            active_data_document_id: 0,
+            active_data_table_id: 0,
+            execution_mode: "apply".into(),
+            task_mode: "auto".into(),
+            pane: pane.into(),
+            whiteboard: None,
+            design: None,
+            model: RuntimeModel::default(),
+            prompt: "hi".into(),
+            attachments: Vec::new(),
+            local_sources: Vec::new(),
+            approved_command: Mutex::new(None),
+            language: String::new(),
+        };
+        Fixture { run, _dirs: dirs }
+    }
+
+    /// Builds every spec as a no-op tool.
+    pub fn factory() -> ToolFactory {
+        Arc::new(|spec: &ToolSpec| {
+            define(&spec.name, &spec.description)
+                .execute(|_, _| async { Ok(Value::Null) })
+                .build()
+                .ok()
+        })
+    }
+
+    pub fn scene(run: &Run) -> TurnScene {
+        TurnScene {
+            pane: run.pane.clone(),
+            active_path: run.active_document_path.clone(),
+            language: run.language.clone(),
+            extra: Value::Null,
+        }
+    }
+
+    /// The names of the tools a provider offers in `scene`.
+    pub async fn names(
+        provider: &dyn kition_harness::provider::Provider,
+        scene: &TurnScene,
+    ) -> Vec<String> {
+        provider
+            .tools(scene)
+            .await
+            .unwrap_or_else(|error| panic!("{error}"))
+            .iter()
+            .map(|tool| tool.name.clone())
+            .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tools_owned_by_a_pane_provider_are_not_core_tools() {
+        for name in [
+            "document_write",
+            "image_search",
+            "data_table_add_records",
+            "data_table_create",
+            "table_upsert_records",
+            "whiteboard_propose_patch",
+            "design_propose_patch",
+            "source_read",
+            "source_git_log",
+        ] {
+            assert!(owned_elsewhere(name), "{name}");
+        }
+        for tool in crate::tools::kits::tool_defs() {
+            assert!(owned_elsewhere(&tool.name), "{}", tool.name);
+        }
+        for name in [
+            "document_read",
+            "web_search",
+            "image_generation",
+            "exec_command",
+        ] {
+            assert!(!owned_elsewhere(name), "{name}");
+        }
+    }
+
+    #[test]
+    fn catalog_specs_carry_the_catalog_schema() {
+        let spec = catalog_spec("document_read").unwrap_or_default();
+        assert_eq!(spec.name, "document_read");
+        assert!(spec.input_schema.is_some());
+        assert!(catalog_spec("no_such_tool").is_none());
+    }
+}

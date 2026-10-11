@@ -70,7 +70,7 @@ fn task_mode(value: &str) -> String {
     }
 }
 
-fn supports_hosted_web_search(model: &RuntimeModel) -> bool {
+pub(crate) fn supports_hosted_web_search(model: &RuntimeModel) -> bool {
     let provider = model.provider_type.trim().to_lowercase();
     let name = model.model_name.to_lowercase();
     match model.wire_api.trim() {
@@ -87,7 +87,7 @@ fn supports_hosted_web_search(model: &RuntimeModel) -> bool {
     }
 }
 
-fn supports_hosted_images(model: &RuntimeModel) -> bool {
+pub(crate) fn supports_hosted_images(model: &RuntimeModel) -> bool {
     let provider = model.provider_type.trim().to_lowercase();
     model.wire_api.trim() == "responses"
         && (matches!(
@@ -138,21 +138,12 @@ async fn tool_specs(run: &Run) -> Vec<ToolSpec> {
         })
         .collect();
     for tool in run.agent.mcp().tools().await {
-        let description = if tool.description.trim().is_empty() {
-            format!("External MCP tool from {}", tool.server)
-        } else {
-            format!("[MCP {}] {}", tool.server, tool.description.trim())
-        };
-        specs.push(ToolSpec {
-            name: tool.qualified,
-            description,
-            input_schema: tool.input_schema,
-        });
+        specs.push(tool.model_spec());
     }
     specs
 }
 
-fn turn_capabilities(specs: &[ToolSpec], model: &RuntimeModel) -> Value {
+pub(crate) fn turn_capabilities(specs: &[ToolSpec], model: &RuntimeModel) -> Value {
     let mut names: Vec<&str> = specs.iter().map(|spec| spec.name.as_str()).collect();
     names.sort_unstable();
     names.dedup();
@@ -615,18 +606,8 @@ async fn drive(agent: Agent, user_id: i64, prepared: Prepared, emitter: Emitter)
 /// The skill, table, pane, and source context for the system prompt.
 async fn build_context(run: &Run, request: &StreamRequest, skills: &[SkillDef]) -> String {
     let mut blocks = vec![catalog::skill_prompt(skills)];
-    if let Some(state) = run.agent.tables().cloned() {
-        let context = tables::TableContext {
-            user_id: run.user_id,
-            active_document_path: run.active_document_path.clone(),
-            document_id: run.active_data_document_id,
-            table_id: run.active_data_table_id,
-        };
-        blocks.push(
-            tokio::task::spawn_blocking(move || tables::active_table_context(&state, &context))
-                .await
-                .unwrap_or_default(),
-        );
+    if run.agent.tables().is_some() {
+        blocks.push(active_table_context(run).await);
         if run.pane == "document"
             && run.active_data_document_id != 0
             && run.active_data_table_id == 0
@@ -658,7 +639,25 @@ async fn build_context(run: &Run, request: &StreamRequest, skills: &[SkillDef]) 
     blocks.join("\n\n")
 }
 
-async fn active_data_document(run: &Run) -> String {
+/// The data table the user has open, as a prompt block; empty without
+/// table support or an open table.
+pub(crate) async fn active_table_context(run: &Run) -> String {
+    let Some(state) = run.agent.tables().cloned() else {
+        return String::new();
+    };
+    let context = tables::TableContext {
+        user_id: run.user_id,
+        active_document_path: run.active_document_path.clone(),
+        document_id: run.active_data_document_id,
+        table_id: run.active_data_table_id,
+    };
+    tokio::task::spawn_blocking(move || tables::active_table_context(&state, &context))
+        .await
+        .unwrap_or_default()
+}
+
+/// The data document the user has open in the document pane.
+pub(crate) async fn active_data_document(run: &Run) -> String {
     let (id, user) = (run.active_data_document_id, run.user_id);
     let doc = run
         .agent
