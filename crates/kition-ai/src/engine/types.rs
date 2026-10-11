@@ -6,6 +6,8 @@ use std::sync::Arc;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 
+use super::KITION_CLOUD_PROVIDER;
+
 /// One conversation turn. Provider-native items in `raw_items` replay
 /// verbatim on the Responses wire.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -72,6 +74,37 @@ impl RuntimeModel {
     /// Responses storage is off unless the client asks for it.
     pub fn disable_storage(&self) -> bool {
         self.disable_response_storage.unwrap_or(true)
+    }
+
+    /// Whether the provider runs web search itself: OpenAI-style providers
+    /// (or GPT models) on the Responses wire, Anthropic (or Claude models)
+    /// on the Messages wire.
+    pub fn supports_hosted_web_search(&self) -> bool {
+        let provider = self.provider_type.trim().to_lowercase();
+        let name = self.model_name.to_lowercase();
+        match self.wire_api.trim() {
+            "responses" => {
+                matches!(
+                    provider.as_str(),
+                    "openai" | "openai-oauth2" | "custom" | KITION_CLOUD_PROVIDER
+                ) || name.contains("gpt")
+            }
+            "anthropic_messages" => {
+                matches!(provider.as_str(), "anthropic" | "custom") || name.contains("claude")
+            }
+            _ => false,
+        }
+    }
+
+    /// Whether the provider generates images itself: OpenAI-style providers
+    /// (or GPT models) on the Responses wire.
+    pub fn supports_hosted_images(&self) -> bool {
+        let provider = self.provider_type.trim().to_lowercase();
+        self.wire_api.trim() == "responses"
+            && (matches!(
+                provider.as_str(),
+                "openai" | "openai-oauth2" | "custom" | KITION_CLOUD_PROVIDER
+            ) || self.model_name.to_lowercase().contains("gpt"))
     }
 }
 
@@ -270,6 +303,36 @@ mod tests {
             input: String::new(),
         };
         assert_eq!(empty.input_value(), json!({}));
+    }
+
+    #[test]
+    fn hosted_tool_support_follows_the_wire_and_provider() {
+        let model = |provider: &str, wire: &str, name: &str| RuntimeModel {
+            provider_type: provider.into(),
+            wire_api: wire.into(),
+            model_name: name.into(),
+            ..RuntimeModel::default()
+        };
+        let anthropic = model("anthropic", "anthropic_messages", "");
+        assert!(anthropic.supports_hosted_web_search());
+        assert!(!anthropic.supports_hosted_images());
+        let claude = model("gateway", "anthropic_messages", "Claude-Sonnet");
+        assert!(claude.supports_hosted_web_search());
+        let openai = model(" OpenAI ", "responses", "");
+        assert!(openai.supports_hosted_web_search());
+        assert!(openai.supports_hosted_images());
+        let cloud = model(KITION_CLOUD_PROVIDER, "responses", "");
+        assert!(cloud.supports_hosted_web_search());
+        assert!(cloud.supports_hosted_images());
+        let gpt = model("gateway", "responses", "GPT-5");
+        assert!(gpt.supports_hosted_web_search());
+        assert!(gpt.supports_hosted_images());
+        let other = model("gateway", "responses", "other");
+        assert!(!other.supports_hosted_web_search());
+        assert!(!other.supports_hosted_images());
+        let chat = model("openai", "chat_completions", "gpt-5");
+        assert!(!chat.supports_hosted_web_search());
+        assert!(!chat.supports_hosted_images());
     }
 
     #[test]

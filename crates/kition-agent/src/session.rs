@@ -3,7 +3,7 @@
 use std::sync::{Arc, Mutex};
 
 use axum::response::Response;
-use kition_ai::engine::{KITION_CLOUD_PROVIDER, RuntimeModel};
+use kition_ai::engine::RuntimeModel;
 use kition_core::{AppError, AppResult, now_millis};
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -68,32 +68,6 @@ fn task_mode(value: &str) -> String {
         "table" => "table".to_owned(),
         _ => "auto".to_owned(),
     }
-}
-
-fn supports_hosted_web_search(model: &RuntimeModel) -> bool {
-    let provider = model.provider_type.trim().to_lowercase();
-    let name = model.model_name.to_lowercase();
-    match model.wire_api.trim() {
-        "responses" => {
-            matches!(
-                provider.as_str(),
-                "openai" | "openai-oauth2" | "custom" | KITION_CLOUD_PROVIDER
-            ) || name.contains("gpt")
-        }
-        "anthropic_messages" => {
-            matches!(provider.as_str(), "anthropic" | "custom") || name.contains("claude")
-        }
-        _ => false,
-    }
-}
-
-fn supports_hosted_images(model: &RuntimeModel) -> bool {
-    let provider = model.provider_type.trim().to_lowercase();
-    model.wire_api.trim() == "responses"
-        && (matches!(
-            provider.as_str(),
-            "openai" | "openai-oauth2" | "custom" | KITION_CLOUD_PROVIDER
-        ) || model.model_name.to_lowercase().contains("gpt"))
 }
 
 /// Loads the caller's live session.
@@ -507,8 +481,8 @@ async fn drive(agent: Agent, user_id: i64, prepared: Prepared, emitter: Emitter)
         active_workflow_id: request.active_workflow_id,
         table_plan: request.table_plan_context,
         skills,
-        hosted_web_search: supports_hosted_web_search(&run.model),
-        hosted_images: supports_hosted_images(&run.model),
+        hosted_web_search: run.model.supports_hosted_web_search(),
+        hosted_images: run.model.supports_hosted_images(),
     };
     turn::drive(&run, session, &content, facts, turn).await;
 }
@@ -690,17 +664,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn normalizes_modes_and_provider_support() {
+    fn normalizes_modes() {
         assert_eq!(pane("Whiteboard"), "whiteboard");
         assert_eq!(pane("browser"), "document");
         assert_eq!(execution_mode("PREVIEW"), "preview");
         assert_eq!(task_mode("browse"), "auto");
-        let model = RuntimeModel {
-            provider_type: "anthropic".into(),
-            wire_api: "anthropic_messages".into(),
-            ..RuntimeModel::default()
-        };
-        assert!(supports_hosted_web_search(&model));
-        assert!(!supports_hosted_images(&model));
     }
 }

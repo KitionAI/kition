@@ -170,6 +170,7 @@ pub async fn save_image_asset(run: &Run, tool_call_id: i64, input: &Value) -> To
 /// model turn.
 pub async fn save_hosted_images(
     run: &Run,
+    wire_api: &str,
     calls: &[HostedImageGenerationCall],
 ) -> Vec<MessagePart> {
     let mut saved = Vec::new();
@@ -201,7 +202,7 @@ pub async fn save_hosted_images(
             .record_artifact(Some(tool_call.id), "image", &path, "image/png", &id)
             .await;
         let mut output = json!({
-            "provider": "openai_responses", "hosted": true, "status": call.status,
+            "provider": wire_api, "hosted": true, "status": call.status,
             "path": path, "mime": "image/png",
         });
         if let Some(artifact) = &artifact {

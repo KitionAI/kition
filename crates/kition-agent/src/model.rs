@@ -189,7 +189,12 @@ impl Llm for AgentLlm {
                 .map_err(|error| error.to_string())?;
             record_hosted_searches(run, &result).await;
             let follow_up = blocks(
-                &images::save_hosted_images(run, &result.hosted_image_generation_calls).await,
+                &images::save_hosted_images(
+                    run,
+                    &result.wire_api,
+                    &result.hosted_image_generation_calls,
+                )
+                .await,
             );
             let tool_calls = normalize_calls(&result.tool_calls, &call_id_prefix(index));
             run.event(
