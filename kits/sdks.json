@@ -65,5 +65,19 @@
         "height": 30
       }
     }
+  },
+  "effect": {
+    "repository": "KitionAI/kit-effect",
+    "crate": "kition-effect-sdk",
+    "module": "kition_effect_sdk",
+    "class": "EffectDocument",
+    "name": "Motion.ecproj",
+    "edit": {
+      "command": "layer.newSolid",
+      "params": {
+        "name": "Red",
+        "color": "#ff0000"
+      }
+    }
   }
 }

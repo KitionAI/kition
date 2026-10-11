@@ -8,7 +8,8 @@
       "note": "Nota",
       "image": "Imagem",
       "video": "Projeto de vídeo",
-      "drawing": "Desenho"
+      "drawing": "Desenho",
+      "motion": "Motion graphics"
     },
     "folder": "Pasta",
     "importSpreadsheet": "Importar planilha",
@@ -774,6 +775,46 @@
       "Type": "Texto",
       "Select": "Selecionar",
       "Effect": "Efeito",
+      "View": "Exibir",
+      "Window": "Janela",
+      "Help": "Ajuda"
+    }
+  },
+  "effectKit": {
+    "layers": "Camadas",
+    "noLayers": "Ainda não há camadas. Adicione uma com Nova camada.",
+    "newLayer": "Nova camada",
+    "layerKind": {
+      "text": "Texto",
+      "shape": "Forma",
+      "solid": "Sólido",
+      "null": "Objeto nulo",
+      "adjustment": "Camada de ajuste"
+    },
+    "play": "Reproduzir",
+    "pause": "Pausar",
+    "stepBack": "Quadro anterior",
+    "stepForward": "Próximo quadro",
+    "goToStart": "Ir para o início",
+    "goToEnd": "Ir para o fim",
+    "properties": "Propriedades",
+    "selectLayer": "Selecione uma camada para ver as propriedades de Transformar.",
+    "addKey": "Adicionar aqui um quadro-chave de {{name}}",
+    "renderMovie": "Renderizar MP4",
+    "rendering": "Renderizando…",
+    "rendered": "{{name}} renderizado",
+    "renderFailed": "Não foi possível renderizar o filme",
+    "summary": "{{name}}: {{width}} × {{height}}, {{fps}} fps, {{layers}} camadas",
+    "noComp": "Este projeto ainda não tem composição.",
+    "unavailableTitle": "A edição de motion graphics não está disponível nesta versão",
+    "unavailableBody": "Projetos de motion graphics abrem no Kition quando o motor Effect está incluído.",
+    "menu": {
+      "File": "Arquivo",
+      "Edit": "Editar",
+      "Composition": "Composição",
+      "Layer": "Camada",
+      "Effect": "Efeito",
+      "Animation": "Animação",
       "View": "Exibir",
       "Window": "Janela",
       "Help": "Ajuda"

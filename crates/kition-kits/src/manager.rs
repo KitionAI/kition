@@ -71,6 +71,16 @@ pub const KITS: &[KitDefinition] = &[
         embeds: false,
         exports: &[],
     },
+    // Edited in the page through its SDK; renders are new MP4 files.
+    KitDefinition {
+        id: "kit.effect",
+        name: "Kition Effect",
+        binary_env: "KITION_KIT_EFFECT_BINARY",
+        extensions: &["ecproj"],
+        creates: &[],
+        embeds: false,
+        exports: &["mp4"],
+    },
 ];
 
 /// Who is asking: a person in a kit tab or the agent.

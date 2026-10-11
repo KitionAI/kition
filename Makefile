@@ -1,6 +1,6 @@
-# Kit (Photo, Film, Vector) shortcuts for trying and testing the in-page kit editors.
+# Kit (Photo, Film, Vector, Effect) shortcuts for trying and testing the in-page kit editors.
 # See docs/kit-sdk.md. Kit repositories are sibling checkouts (../kit-photo,
-# ../kit-film, ../kit-vector); set KIT_<KIT>_REPO, for example KIT_FILM_REPO,
+# ../kit-film, ../kit-vector, ../kit-effect); set KIT_<KIT>_REPO, for example KIT_FILM_REPO,
 # to use other paths.
 #
 #   make kit-dev      build what is missing, then run Kition with the kits
@@ -12,7 +12,8 @@ REPO_ROOT := $(shell git rev-parse --show-toplevel)
 KIT_PHOTO_REPO ?= $(REPO_ROOT)/../kit-photo
 KIT_FILM_REPO ?= $(REPO_ROOT)/../kit-film
 KIT_VECTOR_REPO ?= $(REPO_ROOT)/../kit-vector
-KITS := photo film vector
+KIT_EFFECT_REPO ?= $(REPO_ROOT)/../kit-effect
+KITS := photo film vector effect
 
 # The kits need a newer Rust than some system installs; prefer rustup's stable toolchain.
 STABLE_BIN := $(patsubst %/,%,$(dir $(shell rustup which --toolchain stable cargo 2>/dev/null)))
@@ -20,7 +21,7 @@ TOOLCHAIN_PATH := $(if $(STABLE_BIN),$(STABLE_BIN):,)$(PATH)
 # The e2e web server is probed through any HTTP proxy; run without one.
 NO_PROXY_ENV := env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy
 E2E_PORT ?= 3123
-WEB_KIT_E2E := e2e/photo-web-editor.spec.ts e2e/film-web-editor.spec.ts e2e/vector-web-editor.spec.ts
+WEB_KIT_E2E := e2e/photo-web-editor.spec.ts e2e/film-web-editor.spec.ts e2e/vector-web-editor.spec.ts e2e/effect-web-editor.spec.ts
 KIT_E2E := $(WEB_KIT_E2E) e2e/desktop-photo-kit.spec.ts
 PHOTO_BINARY := $(KIT_PHOTO_REPO)/target/debug/kit-photo
 
@@ -32,7 +33,7 @@ help:
 	@echo "make kit-e2e-headed  the kit e2e specs in a visible browser"
 	@echo "make kit-e2e-webkit  the in-page kit specs in WebKit, the desktop app's engine"
 	@echo "make kit-sdks        rebuild every kit engine to WebAssembly (public/kits/<kit>-sdk)"
-	@echo "make kit-sdk-photo   rebuild one kit engine (also kit-sdk-film, kit-sdk-vector)"
+	@echo "make kit-sdk-photo   rebuild one kit engine (also kit-sdk-film, kit-sdk-vector, kit-sdk-effect)"
 	@echo "make kit-check       contract checks of the built kit engines only"
 	@echo "make kit-clean       remove the built kit engines"
 
@@ -55,7 +56,7 @@ $(PHOTO_BINARY):
 kit-photo-binary: $(PHOTO_BINARY)
 
 kit-dev: $(addprefix public/kits/,$(addsuffix -sdk/.built,$(KITS))) $(PHOTO_BINARY)
-	@echo "Kition with Photo, Film, and Vector: open a .psd, .fcproj, or .vectorcraft, or New > Image / Video project / Drawing."
+	@echo "Kition with Photo, Film, Vector, and Effect: open a .psd, .fcproj, .vectorcraft, or .ecproj, or use the New menu."
 	$(NO_PROXY_ENV) KITION_KIT_PHOTO_BINARY="$(PHOTO_BINARY)" pnpm dev
 
 kit-check: $(addprefix public/kits/,$(addsuffix -sdk/.built,$(KITS)))

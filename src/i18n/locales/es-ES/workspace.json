@@ -8,7 +8,8 @@
       "note": "Nota",
       "image": "Imagen",
       "video": "Proyecto de vídeo",
-      "drawing": "Dibujo"
+      "drawing": "Dibujo",
+      "motion": "Gráficos animados"
     },
     "folder": "Carpeta",
     "importSpreadsheet": "Importar hoja de cálculo",
@@ -774,6 +775,46 @@
       "Type": "Texto",
       "Select": "Seleccionar",
       "Effect": "Efecto",
+      "View": "Ver",
+      "Window": "Ventana",
+      "Help": "Ayuda"
+    }
+  },
+  "effectKit": {
+    "layers": "Capas",
+    "noLayers": "Aún no hay capas. Añade una con Nueva capa.",
+    "newLayer": "Nueva capa",
+    "layerKind": {
+      "text": "Texto",
+      "shape": "Forma",
+      "solid": "Sólido",
+      "null": "Objeto nulo",
+      "adjustment": "Capa de ajuste"
+    },
+    "play": "Reproducir",
+    "pause": "Pausa",
+    "stepBack": "Fotograma anterior",
+    "stepForward": "Fotograma siguiente",
+    "goToStart": "Ir al inicio",
+    "goToEnd": "Ir al final",
+    "properties": "Propiedades",
+    "selectLayer": "Selecciona una capa para ver sus propiedades de Transformar.",
+    "addKey": "Añadir aquí un fotograma clave de {{name}}",
+    "renderMovie": "Renderizar MP4",
+    "rendering": "Renderizando…",
+    "rendered": "Se renderizó {{name}}",
+    "renderFailed": "No se pudo renderizar la película",
+    "summary": "{{name}}: {{width}} × {{height}}, {{fps}} fps, {{layers}} capas",
+    "noComp": "Este proyecto aún no tiene composición.",
+    "unavailableTitle": "La edición de gráficos animados no está disponible en esta versión",
+    "unavailableBody": "Los proyectos de gráficos animados se abren en Kition cuando se incluye el motor Effect.",
+    "menu": {
+      "File": "Archivo",
+      "Edit": "Edición",
+      "Composition": "Composición",
+      "Layer": "Capa",
+      "Effect": "Efecto",
+      "Animation": "Animación",
       "View": "Ver",
       "Window": "Ventana",
       "Help": "Ayuda"

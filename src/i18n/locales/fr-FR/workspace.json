@@ -8,7 +8,8 @@
       "note": "Note",
       "image": "Image",
       "video": "Projet vidéo",
-      "drawing": "Dessin"
+      "drawing": "Dessin",
+      "motion": "Animation graphique"
     },
     "folder": "Dossier",
     "importSpreadsheet": "Importer une feuille de calcul",
@@ -774,6 +775,46 @@
       "Type": "Texte",
       "Select": "Sélection",
       "Effect": "Effet",
+      "View": "Affichage",
+      "Window": "Fenêtre",
+      "Help": "Aide"
+    }
+  },
+  "effectKit": {
+    "layers": "Calques",
+    "noLayers": "Aucun calque pour l'instant. Ajoutez-en un avec Nouveau calque.",
+    "newLayer": "Nouveau calque",
+    "layerKind": {
+      "text": "Texte",
+      "shape": "Forme",
+      "solid": "Solide",
+      "null": "Objet nul",
+      "adjustment": "Calque d'effets"
+    },
+    "play": "Lire",
+    "pause": "Pause",
+    "stepBack": "Image précédente",
+    "stepForward": "Image suivante",
+    "goToStart": "Aller au début",
+    "goToEnd": "Aller à la fin",
+    "properties": "Propriétés",
+    "selectLayer": "Sélectionnez un calque pour voir ses propriétés de Transformation.",
+    "addKey": "Ajouter ici une image clé de {{name}}",
+    "renderMovie": "Rendre en MP4",
+    "rendering": "Rendu en cours…",
+    "rendered": "{{name}} rendu",
+    "renderFailed": "Impossible de rendre le film",
+    "summary": "{{name}} : {{width}} × {{height}}, {{fps}} i/s, {{layers}} calques",
+    "noComp": "Ce projet n'a pas encore de composition.",
+    "unavailableTitle": "L'animation graphique n'est pas disponible dans cette version",
+    "unavailableBody": "Les projets d'animation s'ouvrent dans Kition lorsque le moteur Effect est inclus.",
+    "menu": {
+      "File": "Fichier",
+      "Edit": "Édition",
+      "Composition": "Composition",
+      "Layer": "Calque",
+      "Effect": "Effet",
+      "Animation": "Animation",
       "View": "Affichage",
       "Window": "Fenêtre",
       "Help": "Aide"

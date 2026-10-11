@@ -405,6 +405,19 @@ Engine tools (Vector):
 - Build with an absolute `CARGO_TARGET_DIR`: `wasm-pack` runs cargo inside
   the crate's folder, so a relative one lands in a stray directory there.
 
+Time-based kits (Effect):
+
+- An export through the engine's own queue (a Render Queue item) changes the
+  project and marks it unsaved. Render from a scratch session holding a copy
+  of the project instead (Effect's `renderMovie`), so exporting never dirties
+  the document.
+- Resolve an engine's relative output paths against a virtual root in the
+  SDK. Upstream defaults (the home folder, `~/Movies`) are host paths and
+  must never appear in a kit's memory keys or reports.
+- A command that only moves the current time (`time.set`) must not bump the
+  revision; then playback never marks the file unsaved. Cache the rendered
+  frame per revision and time, since `render` and `renderArea` both ask.
+
 ## 7. Performance Budget
 
 Measured for Photo in Chromium on a 4096 × 4096 PSD with four layers, in a

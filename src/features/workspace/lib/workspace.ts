@@ -12,6 +12,7 @@ import {
   PenTool,
   Paintbrush,
   Presentation,
+  Sparkles,
   Volume2,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -188,6 +189,9 @@ export function inferWorkspaceItemFormat(path: string, content?: string): Worksp
   if (/\.(vectorcraft|drawcraft)$/i.test(path)) {
     return 'vector'
   }
+  if (/\.ecproj$/i.test(path)) {
+    return 'effect'
+  }
   if (/\.(mp4|mov|webm)$/i.test(path)) {
     return 'video'
   }
@@ -289,6 +293,8 @@ export function getWorkspaceItemIcon(format?: WorkspaceDocumentFormat): LucideIc
       return Clapperboard
     case 'vector':
       return PenTool
+    case 'effect':
+      return Sparkles
     case 'video':
       return FileVideo2
     case 'audio':
@@ -327,6 +333,7 @@ export function getWorkspaceItemIconColorClass(format?: WorkspaceDocumentFormat)
     case 'photo':
     case 'film':
     case 'vector':
+    case 'effect':
       return 'text-violet-500'
     case 'design':
     case 'board':
@@ -359,6 +366,7 @@ export function getWorkspaceItemFormatLabel(format?: WorkspaceDocumentFormat) {
     photo: 'Photo',
     film: 'Film',
     vector: 'Vector',
+    effect: 'Effect',
     video: 'Video',
     audio: 'Audio',
     binary: 'File',
@@ -414,7 +422,7 @@ export function isOrganizableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
 }
 
 export function isPreviewableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
-  return format === 'image' || format === 'pdf' || format === 'photo' || format === 'film' || format === 'vector' || format === 'video'
+  return format === 'image' || format === 'pdf' || format === 'photo' || format === 'film' || format === 'vector' || format === 'effect' || format === 'video'
 }
 
 export function isSupportedWorkspaceFormat(format?: WorkspaceDocumentFormat) {

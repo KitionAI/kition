@@ -8,7 +8,8 @@
       "note": "笔记",
       "image": "图片",
       "video": "视频项目",
-      "drawing": "矢量图"
+      "drawing": "矢量图",
+      "motion": "动态图形"
     },
     "folder": "文件夹",
     "importSpreadsheet": "导入电子表格",
@@ -774,6 +775,46 @@
       "Type": "文字",
       "Select": "选择",
       "Effect": "效果",
+      "View": "视图",
+      "Window": "窗口",
+      "Help": "帮助"
+    }
+  },
+  "effectKit": {
+    "layers": "图层",
+    "noLayers": "还没有图层。用“新建图层”添加一个。",
+    "newLayer": "新建图层",
+    "layerKind": {
+      "text": "文本",
+      "shape": "形状",
+      "solid": "纯色",
+      "null": "空对象",
+      "adjustment": "调整图层"
+    },
+    "play": "播放",
+    "pause": "暂停",
+    "stepBack": "上一帧",
+    "stepForward": "下一帧",
+    "goToStart": "转到开头",
+    "goToEnd": "转到结尾",
+    "properties": "属性",
+    "selectLayer": "选择一个图层以查看其变换属性。",
+    "addKey": "在此处添加“{{name}}”关键帧",
+    "renderMovie": "渲染 MP4",
+    "rendering": "正在渲染…",
+    "rendered": "已渲染 {{name}}",
+    "renderFailed": "无法渲染影片",
+    "summary": "{{name}}：{{width}} × {{height}}，{{fps}} fps，{{layers}} 个图层",
+    "noComp": "此项目还没有合成。",
+    "unavailableTitle": "此版本不支持动态图形编辑",
+    "unavailableBody": "包含 Effect 引擎时，动态图形项目会在 Kition 中打开。",
+    "menu": {
+      "File": "文件",
+      "Edit": "编辑",
+      "Composition": "合成",
+      "Layer": "图层",
+      "Effect": "效果",
+      "Animation": "动画",
       "View": "视图",
       "Window": "窗口",
       "Help": "帮助"
