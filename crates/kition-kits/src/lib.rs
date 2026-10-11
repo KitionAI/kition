@@ -5,8 +5,10 @@
 pub mod bridge;
 pub mod host;
 pub mod manager;
+pub mod mcp;
 pub mod routes;
 pub mod surfaces;
+pub mod tools;
 
 pub use bridge::{Bridge, LiveDocument};
 pub use manager::{

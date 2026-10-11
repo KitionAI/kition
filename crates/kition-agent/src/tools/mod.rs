@@ -233,12 +233,8 @@ async fn configure_smtp(run: &Run, input: &Value) -> ToolResult {
 }
 
 async fn dispatch(run: &Arc<Run>, call_id: i64, name: &str, input: &Value) -> ToolResult {
-    if let Some((kit, action)) = kits::parse(name) {
-        return match action {
-            kits::Action::Inspect => kits::inspect(run, kit, input).await,
-            kits::Action::Commands => kits::commands(run, kit, input).await,
-            kits::Action::Run => kits::run_steps(run, kit, input).await,
-        };
+    if let Some((kit, _)) = kits::parse(name) {
+        return kits::call(run, kit, name, input).await;
     }
     match name {
         "document_read" => documents::read(run, input).await,

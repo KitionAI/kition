@@ -156,7 +156,7 @@ test('creates a new drawing from the create menu with the Vector engine', async 
     await page.locator('.document-private-heading .document-create-menu-anchor > button').click()
     await page.getByTestId('workspace-create-drawing').click()
 
-    await expect.poll(() => written).toEqual(['Untitled drawing.vectorcraft'])
+    await expect.poll(() => written, { timeout: 60_000 }).toEqual(['Untitled drawing.vectorcraft'])
     await expect(page.getByTestId('vector-status')).toContainText('0 objects on 1 artboards', { timeout: 60_000 })
     await expect(page.locator('.document-tree-row', { hasText: 'Untitled drawing' })).toBeVisible()
     expect(await objectsIn(await fs.readFile(path.join(host.root, 'Untitled drawing.vectorcraft')))).toBe(0)

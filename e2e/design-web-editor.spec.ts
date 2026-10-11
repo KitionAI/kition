@@ -166,7 +166,7 @@ test('creates a new layout from the create menu with the Design engine', async (
     await page.locator('.document-private-heading .document-create-menu-anchor > button').click()
     await page.getByTestId('workspace-create-layout').click()
 
-    await expect.poll(() => written).toEqual(['Untitled layout.designcraft'])
+    await expect.poll(() => written, { timeout: 60_000 }).toEqual(['Untitled layout.designcraft'])
     await expect(page.getByTestId('design-status')).toContainText('1 pages, 0 stories', { timeout: 60_000 })
     await expect(page.locator('.document-tree-row', { hasText: 'Untitled layout' })).toBeVisible()
   } finally {

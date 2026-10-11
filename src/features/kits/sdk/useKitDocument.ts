@@ -139,6 +139,7 @@ export function useKitDocument<T>(host: KitHost, manifest: KitSdkManifest, path:
   }, [refresh])
 
   const commands = useCallback(async () => (docRef.current ? docRef.current.commands() : []), [])
+  const disabledCommands = useCallback(async () => (docRef.current ? docRef.current.disabledCommands() : []), [])
 
   /** Writes the document back to its workspace file. */
   const save = useCallback(async () => {
@@ -170,5 +171,5 @@ export function useKitDocument<T>(host: KitHost, manifest: KitSdkManifest, path:
     })
   }, [host, path])
 
-  return { path, manifest, doc, info, state, change, dirty, failure, openMs, saving, conflict, run, tool, commands, save, reopen, keepMine }
+  return { path, manifest, doc, info, state, change, dirty, failure, openMs, saving, conflict, run, tool, commands, disabledCommands, save, reopen, keepMine }
 }
