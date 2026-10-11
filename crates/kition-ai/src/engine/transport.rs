@@ -52,7 +52,9 @@ pub(crate) fn set_header(headers: &mut Vec<(String, String)>, name: &str, value:
     headers.push((name.to_owned(), value.to_owned()));
 }
 
-/// OpenAI-compatible providers default to the `/v1` path.
+/// OpenAI-compatible providers default to the `/v1` path. DeepSeek's
+/// renderer-side settings already send the `/anthropic` Messages path, so a
+/// non-empty path here (including `/anthropic`) is left unchanged.
 pub(crate) fn normalize_base_url(provider_type: &str, raw: &str) -> String {
     let value = raw.trim();
     if value.is_empty() {
@@ -553,6 +555,10 @@ mod tests {
         assert_eq!(
             normalize_base_url("anthropic", "https://api.anthropic.com/"),
             "https://api.anthropic.com"
+        );
+        assert_eq!(
+            normalize_base_url("deepseek", "https://api.deepseek.com/anthropic"),
+            "https://api.deepseek.com/anthropic"
         );
         assert_eq!(normalize_base_url("openai", ""), "");
         assert!(validate_endpoint("localhost:8080/v1").is_err());
