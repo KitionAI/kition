@@ -51,8 +51,10 @@ impl Policy for WritePermission {
     }
 }
 
-/// Policies in order. Before a call the first decision other than `Allow`
-/// wins; after it every policy runs in order.
+/// Policies in order. Before a call every policy runs: a `Deny` from any
+/// policy outranks everything else, otherwise the first `Ask` wins,
+/// otherwise `Allow`. After a call every policy's `post_execute` runs in
+/// order.
 #[derive(Clone, Default)]
 pub struct Pipeline {
     policies: Vec<Arc<dyn Policy>>,
@@ -65,13 +67,17 @@ impl Pipeline {
     }
 
     pub fn decide(&self, call: &CallInfo<'_>) -> Decision {
+        let mut ask = None;
         for policy in &self.policies {
             match policy.pre_execute(call) {
                 Decision::Allow => {}
-                other => return other,
+                deny @ Decision::Deny(_) => return deny,
+                asked @ Decision::Ask(_) => {
+                    ask.get_or_insert(asked);
+                }
             }
         }
-        Decision::Allow
+        ask.unwrap_or(Decision::Allow)
     }
 
     pub fn settle(&self, call: &CallInfo<'_>, settled: &mut Settled) {
@@ -150,5 +156,34 @@ mod tests {
         };
         Pipeline::default().with(Redact).settle(&call, &mut settled);
         assert_eq!(settled.content, vec![ContentBlock::text("[redacted]")]);
+    }
+
+    #[test]
+    fn a_deny_from_any_policy_outranks_an_earlier_ask() {
+        let args = json!({});
+        let writer = tool(true);
+        let call = CallInfo {
+            session: "s",
+            call_id: "c",
+            tool: &writer,
+            arguments: &args,
+        };
+        let pipeline = Pipeline::default()
+            .with(AskForAll)
+            .with(WritePermission { may_write: false });
+        assert!(
+            matches!(pipeline.decide(&call), Decision::Deny(reason) if reason.contains("read-only"))
+        );
+        let reader = tool(false);
+        let call = CallInfo {
+            session: "s",
+            call_id: "c",
+            tool: &reader,
+            arguments: &args,
+        };
+        let pipeline = Pipeline::default()
+            .with(AskForAll)
+            .with(WritePermission { may_write: false });
+        assert_eq!(pipeline.decide(&call), Decision::Ask("confirm".into()));
     }
 }

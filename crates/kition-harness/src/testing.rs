@@ -38,16 +38,16 @@ impl Llm for ScriptedLlm {
         request: LlmRequest,
         on_text: ChunkSink,
     ) -> BoxFuture<'_, Result<LlmReply, String>> {
-        self.requests
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .push(request);
-        let reply = self
-            .replies
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .pop_front();
         Box::pin(async move {
+            self.requests
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .push(request);
+            let reply = self
+                .replies
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .pop_front();
             let reply = reply.ok_or("the scripted model has no more replies")?;
             if !reply.content.is_empty() {
                 on_text(&reply.content);
@@ -101,5 +101,25 @@ mod tests {
             tools: Vec::new(),
         };
         assert!(llm.call(request, on_text).await.is_err());
+    }
+
+    #[test]
+    fn call_does_not_record_or_pop_until_the_future_is_polled() {
+        let llm = ScriptedLlm::new(vec![LlmReply::text("hello")]);
+        let on_text: ChunkSink = Arc::new(|_delta: &str| {});
+        let request = LlmRequest {
+            messages: Vec::new(),
+            tools: Vec::new(),
+        };
+        let future = llm.call(request, on_text);
+        drop(future);
+        assert!(llm.requests().is_empty());
+        assert_eq!(
+            llm.replies
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .len(),
+            1
+        );
     }
 }

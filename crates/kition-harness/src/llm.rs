@@ -3,11 +3,14 @@
 //! Anthropic.
 
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use futures::future::BoxFuture;
-use kition_ai::engine::{Engine, Message, RuntimeModel, StreamEvent, StreamHandler, ToolSpec};
+use kition_ai::engine::{
+    Engine, Message, RuntimeModel, StreamEvent, StreamHandler, ToolCall, ToolSpec,
+};
 use kition_core::now_millis;
-use serde_json::Value;
+use serde_json::{Value, json};
 
 use crate::events::LoggedCall;
 
@@ -55,10 +58,53 @@ pub trait Llm: Send + Sync {
     ) -> BoxFuture<'_, Result<LlmReply, String>>;
 }
 
+/// Fills blank call ids from `prefix` plus the call's index, trims names, and
+/// keeps arguments the model sent as malformed JSON visible as `{"raw": ...}`
+/// instead of silently discarding them (matches the loop in
+/// `kition-agent/src/tools/mod.rs::execute`, so the model's original text is
+/// preserved in the log and the tool's schema validation reports it).
+pub fn normalize_calls(calls: &[ToolCall], prefix: &str) -> Vec<LoggedCall> {
+    calls
+        .iter()
+        .enumerate()
+        .map(|(index, call)| {
+            let id = call.id.trim();
+            let arguments = if call.input.trim().is_empty() {
+                json!({})
+            } else {
+                match serde_json::from_str::<Value>(&call.input) {
+                    Ok(value @ Value::Object(_)) => value,
+                    _ => json!({ "raw": call.input }),
+                }
+            };
+            LoggedCall {
+                call_id: if id.is_empty() {
+                    format!("{prefix}_{index}")
+                } else {
+                    id.to_owned()
+                },
+                name: call.name.trim().to_owned(),
+                arguments,
+            }
+        })
+        .collect()
+}
+
 /// Kition's AI engine with one resolved model.
 pub struct EngineLlm {
-    pub engine: Engine,
-    pub model: RuntimeModel,
+    engine: Engine,
+    model: RuntimeModel,
+    seq: AtomicU64,
+}
+
+impl EngineLlm {
+    pub fn new(engine: Engine, model: RuntimeModel) -> Self {
+        Self {
+            engine,
+            model,
+            seq: AtomicU64::new(0),
+        }
+    }
 }
 
 impl Llm for EngineLlm {
@@ -85,21 +131,9 @@ impl Llm for EngineLlm {
                 )
                 .await
                 .map_err(|error| error.to_string())?;
-            let stamp = now_millis();
-            let tool_calls = result
-                .tool_calls
-                .iter()
-                .enumerate()
-                .map(|(index, call)| LoggedCall {
-                    call_id: if call.id.trim().is_empty() {
-                        format!("call_{stamp}_{index}")
-                    } else {
-                        call.id.trim().to_owned()
-                    },
-                    name: call.name.trim().to_owned(),
-                    arguments: call.input_value(),
-                })
-                .collect();
+            let seq = self.seq.fetch_add(1, Ordering::SeqCst);
+            let prefix = format!("call_{}_{seq}", now_millis());
+            let tool_calls = normalize_calls(&result.tool_calls, &prefix);
             Ok(LlmReply {
                 content: result.content.trim().to_owned(),
                 tool_calls,
@@ -108,5 +142,41 @@ impl Llm for EngineLlm {
                 raw_items: result.response_items,
             })
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use kition_ai::engine::ToolCall;
+    use serde_json::json;
+
+    use super::*;
+
+    fn call(id: &str, name: &str, input: &str) -> ToolCall {
+        ToolCall {
+            id: id.into(),
+            name: name.into(),
+            input: input.into(),
+        }
+    }
+
+    #[test]
+    fn normalize_calls_fills_blank_ids_trims_names_and_keeps_malformed_arguments_as_raw() {
+        let calls = vec![
+            call("", "  echo  ", ""),
+            call(" c1 ", "echo", "{\"a\":1}"),
+            call("", "echo", "{\"a\":"),
+            call("", "echo", "[1]"),
+        ];
+        let normalized = normalize_calls(&calls, "call_1_0");
+        assert_eq!(normalized[0].call_id, "call_1_0_0");
+        assert_eq!(normalized[0].name, "echo");
+        assert_eq!(normalized[0].arguments, json!({}));
+        assert_eq!(normalized[1].call_id, "c1");
+        assert_eq!(normalized[1].arguments, json!({ "a": 1 }));
+        assert_eq!(normalized[2].call_id, "call_1_0_2");
+        assert_eq!(normalized[2].arguments, json!({ "raw": "{\"a\":" }));
+        assert_eq!(normalized[3].call_id, "call_1_0_3");
+        assert_eq!(normalized[3].arguments, json!({ "raw": "[1]" }));
     }
 }
