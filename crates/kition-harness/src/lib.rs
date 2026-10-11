@@ -6,6 +6,7 @@
 pub mod cancel;
 pub mod events;
 pub mod schema;
+pub mod tool;
 
 /// The DeepSeek Harness release whose contracts this crate follows (Kit
 /// Standard D4). Change it only together with a conformance re-run.
