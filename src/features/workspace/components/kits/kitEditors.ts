@@ -76,6 +76,7 @@ const PDF_UI: EmbeddedKit = { kitId: 'kit.pdf', dir: 'pdf-ui' }
 const CAD_UI: EmbeddedKit = { kitId: 'kit.cad', dir: 'cad-ui' }
 const VECTOR_UI: EmbeddedKit = { kitId: 'kit.vector', dir: 'vector-ui' }
 const DESIGN_UI: EmbeddedKit = { kitId: 'kit.design', dir: 'design-ui' }
+const PHOTO_UI: EmbeddedKit = { kitId: 'kit.photo', dir: 'photo-ui' }
 
 const KIT_EDITORS: readonly KitEditorEntry[] = [
   {
@@ -83,6 +84,7 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
     sdk: PHOTO_SDK,
     Editor: lazy(() => import('../PhotoWebEditor').then((module) => ({ default: module.PhotoWebEditor }))),
     Fallback: PhotoKitPane,
+    embedded: PHOTO_UI,
     create: { id: 'image', extension: 'psd', baseName: 'Untitled image', size: { width: 1920, height: 1080 }, label: 'createMenu.format.image', icon: Layers, runtimeFallback: true },
   },
   {
