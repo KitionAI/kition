@@ -70,6 +70,16 @@ fn task_mode(value: &str) -> String {
     }
 }
 
+/// The `user/message` source kind of a request: an approval resume, a
+/// hidden follow-up the client sent, or the person's own message.
+fn message_source(approval: bool, hidden: bool) -> &'static str {
+    match (approval, hidden) {
+        (true, _) => "approval",
+        (false, true) => "context-action",
+        (false, false) => "user",
+    }
+}
+
 /// Loads the caller's live session.
 pub async fn owned_session(agent: &Agent, id: i64, user_id: i64) -> AppResult<AgentSession> {
     agent
@@ -294,6 +304,7 @@ async fn drive(agent: Agent, user_id: i64, prepared: Prepared, emitter: Emitter)
                 .map(|a| a.command.clone()),
         ),
         language: request.language.trim().to_owned(),
+        source: message_source(approval.is_some(), request.hide_user_message),
     });
     if let Some(intent) = image_intent {
         // The session is released as soon as the client leaves; the image
@@ -669,5 +680,12 @@ mod tests {
         assert_eq!(pane("browser"), "document");
         assert_eq!(execution_mode("PREVIEW"), "preview");
         assert_eq!(task_mode("browse"), "auto");
+    }
+
+    #[test]
+    fn names_who_sent_the_message() {
+        assert_eq!(message_source(true, true), "approval");
+        assert_eq!(message_source(false, true), "context-action");
+        assert_eq!(message_source(false, false), "user");
     }
 }

@@ -69,7 +69,7 @@ pub fn derive_messages_for(events: &[SessionEvent], model: Option<&str>) -> Vec<
         }
         match &event.body {
             EventBody::SystemMessage { content } => system.clone_from(content),
-            EventBody::UserMessage { content } => {
+            EventBody::UserMessage { content, .. } => {
                 history.push(user_message(content, keep_images));
             }
             EventBody::AssistantMessage {
@@ -271,6 +271,78 @@ mod tests {
     }
 
     #[test]
+    fn panel_and_audit_events_are_not_model_history() {
+        use crate::events::{ApprovalOutcome, LlmFailure, PresentedFile, TodoItem, TodoStatus};
+        let user = |seq, text: &str| {
+            at(
+                seq,
+                EventBody::UserMessage {
+                    content: vec![ContentBlock::text(text)],
+                    source: crate::events::MessageSource::user(),
+                },
+            )
+        };
+        let plain = vec![user(1, "hi"), user(9, "again")];
+        let mut noisy = vec![user(1, "hi")];
+        noisy.extend([
+            at(
+                2,
+                EventBody::PermissionPreset {
+                    preset: "preview".into(),
+                },
+            ),
+            at(
+                3,
+                EventBody::LlmRetry {
+                    retry_id: "s#1.1/1".into(),
+                    turn: 1,
+                    step: 1,
+                    provider: "openai".into(),
+                    mode: "normal".into(),
+                    policy_key: "engine".into(),
+                    retry: 1,
+                    max_retries: 5,
+                    delay_ms: 10,
+                    failure: LlmFailure {
+                        message: "timed out".into(),
+                        code: "timeout".into(),
+                    },
+                },
+            ),
+            at(
+                4,
+                EventBody::TodoWrite {
+                    todos: vec![TodoItem {
+                        content: "Draft".into(),
+                        status: TodoStatus::Pending,
+                    }],
+                },
+            ),
+            at(
+                5,
+                EventBody::DeliverablesPresented {
+                    turn: 1,
+                    call_id: "c1".into(),
+                    files: vec![PresentedFile {
+                        path: "a.md".into(),
+                        description: String::new(),
+                    }],
+                },
+            ),
+            at(
+                6,
+                EventBody::ApprovalDecided {
+                    id: "approval:c1".into(),
+                    outcome: ApprovalOutcome::Rejected,
+                },
+            ),
+            user(9, "again"),
+        ]);
+        assert_eq!(derive_messages(&noisy), derive_messages(&plain));
+        assert_eq!(derive_messages(&noisy).len(), 2);
+    }
+
+    #[test]
     fn derives_history_with_tool_images_after_the_results() {
         let events = vec![
             at(1, EventBody::TurnStart { turn: 1 }),
@@ -291,6 +363,7 @@ mod tests {
                 5,
                 EventBody::UserMessage {
                     content: vec![ContentBlock::text("Brighten it")],
+                    source: crate::events::MessageSource::user(),
                 },
             ),
             at(
@@ -400,6 +473,7 @@ mod tests {
                 4,
                 EventBody::UserMessage {
                     content: vec![ContentBlock::text("next")],
+                    source: crate::events::MessageSource::user(),
                 },
             ),
         ];
@@ -442,6 +516,8 @@ mod tests {
             at(
                 4,
                 EventBody::ApprovalAsked {
+                    id: "approval:c1".into(),
+                    tool_name: "photo_run".into(),
                     call_id: "c1".into(),
                     reason: "writes outside the workspace".into(),
                 },
@@ -607,6 +683,7 @@ mod tests {
                 1,
                 EventBody::UserMessage {
                     content: vec![ContentBlock::text("draw")],
+                    source: crate::events::MessageSource::user(),
                 },
             ),
             at(
@@ -625,6 +702,7 @@ mod tests {
                 3,
                 EventBody::UserMessage {
                     content: vec![ContentBlock::text("continue")],
+                    source: crate::events::MessageSource::user(),
                 },
             ),
         ];
@@ -677,6 +755,8 @@ mod tests {
             at(
                 4,
                 EventBody::ApprovalAsked {
+                    id: "approval:c1".into(),
+                    tool_name: "photo_run".into(),
                     call_id: "c1".into(),
                     reason: "writes outside the workspace".into(),
                 },
@@ -777,6 +857,7 @@ mod tests {
                 2,
                 EventBody::UserMessage {
                     content: vec![ContentBlock::text("look"), image("data:old-user")],
+                    source: crate::events::MessageSource::user(),
                 },
             ),
             at(3, assistant_with_calls(vec![call.clone()])),
@@ -804,6 +885,7 @@ mod tests {
                 7,
                 EventBody::UserMessage {
                     content: vec![ContentBlock::text("again"), image("data:new-user")],
+                    source: crate::events::MessageSource::user(),
                 },
             ),
             at(
@@ -868,6 +950,7 @@ mod tests {
                 4,
                 EventBody::UserMessage {
                     content: vec![ContentBlock::text("next")],
+                    source: crate::events::MessageSource::user(),
                 },
             ),
             at(

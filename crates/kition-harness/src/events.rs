@@ -44,6 +44,68 @@ pub struct LoggedCall {
     pub arguments: Value,
 }
 
+/// Who produced a `user/message` (dsh `MessageSource`): `user` is the
+/// person; `approval` resumes a turn after an approval decision;
+/// `context-action` is a hidden follow-up the client sent; `recovery` is
+/// context the driver adds after tool failures; `tool-follow-up` is content
+/// a model reply hands to the next step (such as hosted images). Open, as
+/// in dsh.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MessageSource {
+    pub kind: String,
+}
+
+impl MessageSource {
+    pub fn new(kind: impl Into<String>) -> Self {
+        Self { kind: kind.into() }
+    }
+
+    pub fn user() -> Self {
+        Self::new("user")
+    }
+}
+
+/// How an `approval/asked` was settled.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ApprovalOutcome {
+    AllowedOnce,
+    Rejected,
+    Cancelled,
+    Unavailable,
+}
+
+/// A file a turn hands to the user (dsh `PresentedFile`); `path` is
+/// workspace-relative.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PresentedFile {
+    pub path: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub description: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TodoStatus {
+    Pending,
+    InProgress,
+    Completed,
+}
+
+/// One entry of the agent's todo list (dsh `TodoItem`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TodoItem {
+    pub content: String,
+    pub status: TodoStatus,
+}
+
+/// Why a model request failed (dsh `LlmFailure`, the fields Kition knows).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LlmFailure {
+    pub message: String,
+    pub code: String,
+}
+
 /// The payload of one durable event; `type` carries the DeepSeek Harness name.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all_fields = "camelCase")]
@@ -64,7 +126,10 @@ pub enum EventBody {
     #[serde(rename = "system/message")]
     SystemMessage { content: String },
     #[serde(rename = "user/message")]
-    UserMessage { content: Vec<ContentBlock> },
+    UserMessage {
+        content: Vec<ContentBlock>,
+        source: MessageSource,
+    },
     #[serde(rename = "assistant/message")]
     AssistantMessage {
         content: String,
@@ -100,8 +165,47 @@ pub enum EventBody {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         meta: Option<Value>,
     },
+    /// `id` is `approval:<callId>`; the matching `approval/decided` uses it.
     #[serde(rename = "approval/asked")]
-    ApprovalAsked { call_id: String, reason: String },
+    ApprovalAsked {
+        id: String,
+        tool_name: String,
+        call_id: String,
+        #[serde(default, skip_serializing_if = "String::is_empty")]
+        reason: String,
+    },
+    #[serde(rename = "approval/decided")]
+    ApprovalDecided {
+        id: String,
+        outcome: ApprovalOutcome,
+    },
+    /// Files a successful tool result hands to the user.
+    #[serde(rename = "deliverables/presented")]
+    DeliverablesPresented {
+        turn: u32,
+        call_id: String,
+        files: Vec<PresentedFile>,
+    },
+    /// The whole todo list; the latest write wins. Never model history.
+    #[serde(rename = "todo/write")]
+    TodoWrite { todos: Vec<TodoItem> },
+    /// A failed model request that will be retried after `delay_ms`.
+    #[serde(rename = "llm/retry")]
+    LlmRetry {
+        retry_id: String,
+        turn: u32,
+        step: u32,
+        provider: String,
+        mode: String,
+        policy_key: String,
+        retry: u32,
+        max_retries: u32,
+        delay_ms: u64,
+        failure: LlmFailure,
+    },
+    /// The permission preset (Kition's execution mode) from this point on.
+    #[serde(rename = "permission/preset")]
+    PermissionPreset { preset: String },
 }
 
 impl EventBody {
@@ -118,6 +222,11 @@ impl EventBody {
         "tool/call",
         "tool/result",
         "approval/asked",
+        "approval/decided",
+        "deliverables/presented",
+        "todo/write",
+        "llm/retry",
+        "permission/preset",
     ];
 
     pub fn kind(&self) -> &'static str {
@@ -133,6 +242,11 @@ impl EventBody {
             Self::ToolCall { .. } => "tool/call",
             Self::ToolResult { .. } => "tool/result",
             Self::ApprovalAsked { .. } => "approval/asked",
+            Self::ApprovalDecided { .. } => "approval/decided",
+            Self::DeliverablesPresented { .. } => "deliverables/presented",
+            Self::TodoWrite { .. } => "todo/write",
+            Self::LlmRetry { .. } => "llm/retry",
+            Self::PermissionPreset { .. } => "permission/preset",
         }
     }
 }
@@ -191,6 +305,7 @@ mod tests {
             },
             EventBody::UserMessage {
                 content: vec![ContentBlock::text("hi")],
+                source: MessageSource::new("context-action"),
             },
             EventBody::AssistantMessage {
                 content: String::new(),
@@ -216,8 +331,46 @@ mod tests {
                 meta: None,
             },
             EventBody::ApprovalAsked {
+                id: "approval:c1".into(),
+                tool_name: "exec_command".into(),
                 call_id: "c1".into(),
                 reason: "writes outside the workspace".into(),
+            },
+            EventBody::ApprovalDecided {
+                id: "approval:c1".into(),
+                outcome: ApprovalOutcome::AllowedOnce,
+            },
+            EventBody::DeliverablesPresented {
+                turn: 1,
+                call_id: "c1".into(),
+                files: vec![PresentedFile {
+                    path: "Notes/plan.md".into(),
+                    description: "Plan".into(),
+                }],
+            },
+            EventBody::TodoWrite {
+                todos: vec![TodoItem {
+                    content: "Draft".into(),
+                    status: TodoStatus::InProgress,
+                }],
+            },
+            EventBody::LlmRetry {
+                retry_id: "agent:1#1.1/1".into(),
+                turn: 1,
+                step: 1,
+                provider: "openai".into(),
+                mode: "normal".into(),
+                policy_key: "engine".into(),
+                retry: 1,
+                max_retries: 5,
+                delay_ms: 500,
+                failure: LlmFailure {
+                    message: "timed out".into(),
+                    code: "timeout".into(),
+                },
+            },
+            EventBody::PermissionPreset {
+                preset: "preview".into(),
             },
         ];
 
@@ -248,6 +401,115 @@ mod tests {
             deduped.len(),
             kinds.len(),
             "duplicate kind in coverage list"
+        );
+    }
+
+    #[test]
+    fn new_events_use_the_dsh_wire_shapes() {
+        let wire = |body: EventBody| serde_json::to_value(&body).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(
+            wire(EventBody::UserMessage {
+                content: vec![ContentBlock::text("hi")],
+                source: MessageSource::user(),
+            }),
+            json!({ "type": "user/message", "content": [{ "type": "text", "text": "hi" }], "source": { "kind": "user" } })
+        );
+        assert!(
+            serde_json::from_value::<EventBody>(json!({ "type": "user/message", "content": [] }))
+                .is_err(),
+            "a user message names its source"
+        );
+        assert_eq!(
+            wire(EventBody::ApprovalAsked {
+                id: "approval:c1".into(),
+                tool_name: "exec_command".into(),
+                call_id: "c1".into(),
+                reason: "outside the policy".into(),
+            }),
+            json!({ "type": "approval/asked", "id": "approval:c1", "toolName": "exec_command", "callId": "c1", "reason": "outside the policy" })
+        );
+        for (outcome, name) in [
+            (ApprovalOutcome::AllowedOnce, "allowed-once"),
+            (ApprovalOutcome::Rejected, "rejected"),
+            (ApprovalOutcome::Cancelled, "cancelled"),
+            (ApprovalOutcome::Unavailable, "unavailable"),
+        ] {
+            assert_eq!(
+                wire(EventBody::ApprovalDecided {
+                    id: "approval:c1".into(),
+                    outcome,
+                }),
+                json!({ "type": "approval/decided", "id": "approval:c1", "outcome": name })
+            );
+        }
+        assert_eq!(
+            wire(EventBody::DeliverablesPresented {
+                turn: 2,
+                call_id: "c1".into(),
+                files: vec![
+                    PresentedFile {
+                        path: "a.md".into(),
+                        description: String::new(),
+                    },
+                    PresentedFile {
+                        path: "b.png".into(),
+                        description: "Cover".into(),
+                    },
+                ],
+            }),
+            json!({ "type": "deliverables/presented", "turn": 2, "callId": "c1", "files": [{ "path": "a.md" }, { "path": "b.png", "description": "Cover" }] })
+        );
+        assert_eq!(
+            wire(EventBody::TodoWrite {
+                todos: vec![
+                    TodoItem {
+                        content: "a".into(),
+                        status: TodoStatus::Pending,
+                    },
+                    TodoItem {
+                        content: "b".into(),
+                        status: TodoStatus::InProgress,
+                    },
+                    TodoItem {
+                        content: "c".into(),
+                        status: TodoStatus::Completed,
+                    },
+                ],
+            }),
+            json!({ "type": "todo/write", "todos": [
+                { "content": "a", "status": "pending" },
+                { "content": "b", "status": "in_progress" },
+                { "content": "c", "status": "completed" },
+            ] })
+        );
+        assert_eq!(
+            wire(EventBody::LlmRetry {
+                retry_id: "agent:1#1.1/2".into(),
+                turn: 1,
+                step: 1,
+                provider: "openai".into(),
+                mode: "normal".into(),
+                policy_key: "engine".into(),
+                retry: 2,
+                max_retries: 5,
+                delay_ms: 1000,
+                failure: LlmFailure {
+                    message: "rate limited".into(),
+                    code: "429".into(),
+                },
+            }),
+            json!({
+                "type": "llm/retry", "retryId": "agent:1#1.1/2", "turn": 1, "step": 1,
+                "provider": "openai", "mode": "normal", "policyKey": "engine", "retry": 2,
+                "maxRetries": 5, "delayMs": 1000,
+                "failure": { "message": "rate limited", "code": "429" },
+            })
+        );
+        assert_eq!(
+            wire(EventBody::PermissionPreset {
+                preset: "apply".into(),
+            }),
+            json!({ "type": "permission/preset", "preset": "apply" })
         );
     }
 

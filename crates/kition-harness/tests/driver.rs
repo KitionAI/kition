@@ -5,8 +5,8 @@ use std::sync::{Arc, Mutex, PoisonError};
 
 use futures::future::BoxFuture;
 use kition_harness::cancel::Cancel;
-use kition_harness::driver::{Driver, Live, TurnInput};
-use kition_harness::events::{ContentBlock, EventBody, SessionEvent, TurnEndReason};
+use kition_harness::driver::{Driver, Live, TurnInput, append_live, next_turn};
+use kition_harness::events::{ContentBlock, EventBody, MessageSource, SessionEvent, TurnEndReason};
 use kition_harness::history::HistoryBudget;
 use kition_harness::llm::{ChunkSink, Llm, LlmReply, LlmRequest};
 use kition_harness::log::{MemoryLog, SessionLog};
@@ -77,6 +77,7 @@ impl Setup {
                     .push(event)
             }),
             model: None,
+            source: MessageSource::user(),
         }
     }
 
@@ -299,6 +300,77 @@ async fn ask_pauses_the_turn_for_approval() {
         &kinds[kinds.len() - 4..],
         ["tool/call", "approval/asked", "step/end", "turn/end"]
     );
+    let asked = setup
+        .log
+        .read("s")
+        .unwrap_or_else(|error| panic!("{error}"))
+        .into_iter()
+        .find_map(|event| match event.body {
+            body @ EventBody::ApprovalAsked { .. } => Some(body),
+            _ => None,
+        });
+    assert_eq!(
+        asked,
+        Some(EventBody::ApprovalAsked {
+            id: "approval:c1".into(),
+            tool_name: "echo".into(),
+            call_id: "c1".into(),
+            reason: "Run echo?".into(),
+        })
+    );
+}
+
+#[tokio::test]
+async fn user_messages_name_their_source() {
+    use kition_harness::stop::RecoveryPrompt;
+    let mut first = LlmReply::calls(vec![call("c1", "missing", json!({}))]);
+    first.follow_up = vec![ContentBlock::text("hosted image saved")];
+    let setup = setup(vec![first, LlmReply::text("done")]);
+    let mut input = setup.input("resume", Cancel::default());
+    input.source = MessageSource::new("approval");
+    let reason = setup
+        .driver(Pipeline::default().with(RecoveryPrompt))
+        .run_turn(input)
+        .await
+        .unwrap_or_else(|error| panic!("{error}"));
+    assert_eq!(reason, TurnEndReason::Completed);
+    let sources: Vec<String> = setup
+        .log
+        .read("s")
+        .unwrap_or_else(|error| panic!("{error}"))
+        .into_iter()
+        .filter_map(|event| match event.body {
+            EventBody::UserMessage { source, .. } => Some(source.kind),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(sources, ["approval", "recovery", "tool-follow-up"]);
+}
+
+#[test]
+fn events_appended_outside_a_turn_go_live_and_count_turns() {
+    let log = MemoryLog::default();
+    let live = Arc::new(Mutex::new(Vec::new()));
+    let sink = {
+        let live = live.clone();
+        Arc::new(move |event: Live| {
+            live.lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .push(event)
+        }) as kition_harness::driver::LiveSink
+    };
+    assert_eq!(next_turn(&[]), 1);
+    let event = append_live(&log, "s", &sink, EventBody::TurnStart { turn: 1 })
+        .unwrap_or_else(|error| panic!("{error}"));
+    assert_eq!(event.seq, 1);
+    assert_eq!(
+        live.lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .as_slice(),
+        [Live::Event(Box::new(event))]
+    );
+    let events = log.read("s").unwrap_or_else(|error| panic!("{error}"));
+    assert_eq!(next_turn(&events), 2);
 }
 
 #[tokio::test]
@@ -462,6 +534,7 @@ async fn cancelling_during_the_model_call_ends_the_turn_as_cancelled() {
         cancel: cancel.clone(),
         live: Arc::new(|_event: Live| {}),
         model: None,
+        source: MessageSource::user(),
     };
     let handle = tokio::spawn(async move { driver.run_turn(input).await });
     entered.notified().await;
@@ -543,6 +616,7 @@ async fn cancelling_inside_a_tool_body_stops_the_remaining_calls_in_the_step() {
         cancel,
         live: Arc::new(|_event: Live| {}),
         model: None,
+        source: MessageSource::user(),
     };
     let reason = setup
         .driver(Pipeline::default().with(RecoveryPrompt))
@@ -556,7 +630,7 @@ async fn cancelling_inside_a_tool_body_stops_the_remaining_calls_in_the_step() {
         .read("s")
         .unwrap_or_else(|error| panic!("{error}"));
     let has_recovery_context = events.iter().any(|event| match &event.body {
-        EventBody::UserMessage { content } => content.iter().any(|block| {
+        EventBody::UserMessage { content, .. } => content.iter().any(|block| {
             matches!(block, ContentBlock::Text { text } if text.starts_with("[tool recovery required]"))
         }),
         _ => false,
@@ -606,6 +680,7 @@ fn flaky_input(fail_at: usize) -> (Arc<FlakyLog>, TurnInput) {
         cancel: Cancel::default(),
         live: Arc::new(|_event: Live| {}),
         model: None,
+        source: MessageSource::user(),
     };
     (log, input)
 }
@@ -676,6 +751,7 @@ async fn a_paused_tool_records_its_result_and_awaits_approval() {
         cancel: Cancel::default(),
         live: Arc::new(|_: Live| {}),
         model: None,
+        source: MessageSource::user(),
     };
     let reason = driver
         .run_turn(input)
@@ -719,6 +795,7 @@ async fn a_paused_tool_records_its_result_and_awaits_approval() {
         cancel: Cancel::default(),
         live: Arc::new(|_: Live| {}),
         model: None,
+        source: MessageSource::user(),
     };
     let second_reason = driver
         .run_turn(second_input)
@@ -767,6 +844,7 @@ async fn a_failed_calls_pause_request_is_discarded_and_the_turn_continues() {
         cancel: Cancel::default(),
         live: Arc::new(|_: Live| {}),
         model: None,
+        source: MessageSource::user(),
     };
     let reason = Driver::new(log.clone(), llm)
         .run_turn(input)
@@ -857,7 +935,7 @@ async fn recovery_context_precedes_the_follow_up_message_in_the_same_step() {
     let user_messages: Vec<&Vec<ContentBlock>> = events
         .iter()
         .filter_map(|event| match &event.body {
-            EventBody::UserMessage { content } => Some(content),
+            EventBody::UserMessage { content, .. } => Some(content),
             _ => None,
         })
         .collect();

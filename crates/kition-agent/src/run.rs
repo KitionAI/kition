@@ -294,6 +294,9 @@ pub struct Run {
     /// A command the user approved once for this turn.
     pub approved_command: Mutex<Option<String>>,
     pub language: String,
+    /// Who sent the turn's message, as the `user/message` source kind:
+    /// `user`, `approval`, or `context-action`.
+    pub source: &'static str,
 }
 
 impl Run {

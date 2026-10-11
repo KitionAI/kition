@@ -792,6 +792,32 @@ async fn commands_outside_the_policy_wait_for_approval() {
         "{frames:?}"
     );
     assert!(workspace.path().join("approved.txt").exists());
+
+    let uri = format!("/agent/sessions/{session_id}/session-events");
+    let (_, body) = call(&app, "GET", &uri, json!({})).await;
+    let items = data(&body)["items"].as_array().cloned().unwrap_or_default();
+    for item in &items {
+        check_session_events_contract("sessionEvent", item);
+    }
+    let sources: Vec<Value> = items
+        .iter()
+        .filter(|event| event["type"] == "user/message")
+        .map(|event| event["source"]["kind"].clone())
+        .collect();
+    assert_eq!(sources, [json!("user"), json!("approval")]);
+    let asked = items
+        .iter()
+        .find(|event| event["type"] == "approval/asked")
+        .cloned()
+        .unwrap_or_default();
+    assert_eq!(asked["toolName"], "exec_command", "{asked}");
+    assert_eq!(
+        asked["id"],
+        json!(format!(
+            "approval:{}",
+            asked["callId"].as_str().unwrap_or_default()
+        ))
+    );
 }
 
 /// The offered tools as `{ name, description, parameters }`, sorted by

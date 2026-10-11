@@ -149,6 +149,7 @@ mod tests {
             .unwrap_or_else(|error| panic!("{error}"));
         let body = EventBody::UserMessage {
             content: vec![crate::events::ContentBlock::text("hi")],
+            source: crate::events::MessageSource::user(),
         };
         let appended = log
             .append("agent:1", body.clone())

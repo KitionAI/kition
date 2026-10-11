@@ -116,6 +116,7 @@ mod tests {
             next(EventBody::TurnStart { turn: number }),
             next(EventBody::UserMessage {
                 content: vec![ContentBlock::text(format!("ask {text}"))],
+                source: crate::events::MessageSource::user(),
             }),
             next(EventBody::AssistantMessage {
                 content: String::new(),
@@ -206,6 +207,7 @@ mod tests {
         for body in [
             EventBody::UserMessage {
                 content: vec![ContentBlock::text("draw a fox")],
+                source: crate::events::MessageSource::user(),
             },
             EventBody::AssistantMessage {
                 content: "drew a fox".into(),
@@ -232,7 +234,7 @@ mod tests {
             .iter()
             .take_while(|event| !matches!(event.body, EventBody::TurnStart { turn: 3 }))
             .filter_map(|event| match &event.body {
-                EventBody::UserMessage { content } => match &content[0] {
+                EventBody::UserMessage { content, .. } => match &content[0] {
                     ContentBlock::Text { text } => Some(text.clone()),
                     ContentBlock::Image { .. } => None,
                 },
@@ -271,7 +273,7 @@ mod tests {
             .iter()
             .take_while(|event| !matches!(event.body, EventBody::TurnStart { turn: 10 }))
             .filter_map(|event| match &event.body {
-                EventBody::UserMessage { content } => match &content[0] {
+                EventBody::UserMessage { content, .. } => match &content[0] {
                     ContentBlock::Text { text } => Some(text.clone()),
                     ContentBlock::Image { .. } => None,
                 },
@@ -285,6 +287,7 @@ mod tests {
     fn older_turns_keep_the_persons_message_not_recovery_context() {
         let user = |text: &str| EventBody::UserMessage {
             content: vec![ContentBlock::text(text)],
+            source: crate::events::MessageSource::user(),
         };
         let reply = |text: &str| EventBody::AssistantMessage {
             content: text.into(),
@@ -353,7 +356,7 @@ mod tests {
             .take_while(|event| !matches!(event.body, EventBody::TurnStart { turn: 2 }))
             .map(|event| match &event.body {
                 EventBody::SystemMessage { content } => format!("system {content}"),
-                EventBody::UserMessage { content } => match &content[0] {
+                EventBody::UserMessage { content, .. } => match &content[0] {
                     ContentBlock::Text { text } => format!("user {text}"),
                     ContentBlock::Image { .. } => "image".into(),
                 },
@@ -374,6 +377,7 @@ mod tests {
                 1,
                 EventBody::UserMessage {
                     content: vec![ContentBlock::text("carried")],
+                    source: crate::events::MessageSource::user(),
                 },
             ),
             at(

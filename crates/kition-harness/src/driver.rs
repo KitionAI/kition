@@ -9,7 +9,9 @@ use std::sync::Arc;
 
 use crate::cancel::Cancel;
 use crate::derive::derive_messages_for;
-use crate::events::{ContentBlock, EventBody, LoggedCall, SessionEvent, TurnEndReason};
+use crate::events::{
+    ContentBlock, EventBody, LoggedCall, MessageSource, SessionEvent, TurnEndReason,
+};
 use crate::history::{HistoryBudget, bound_history};
 use crate::llm::{ChunkSink, Llm, LlmRequest};
 use crate::log::SessionLog;
@@ -36,6 +38,8 @@ pub struct TurnInput {
     pub system: String,
     pub tools: ToolRegistry,
     pub user: Vec<ContentBlock>,
+    /// Who sent `user`: logged on the turn's first `user/message`.
+    pub source: MessageSource,
     pub cancel: Cancel,
     pub live: LiveSink,
     /// The model id this turn will use. Provider-native `raw_items` on
@@ -61,6 +65,38 @@ fn logged_arguments(tools: &ToolRegistry, call: &LoggedCall) -> serde_json::Valu
         || call.arguments.clone(),
         |tool| tool.logged_arguments(&call.arguments),
     )
+}
+
+/// The number the next turn of a session gets: one past its turns so far.
+pub fn next_turn(events: &[SessionEvent]) -> u32 {
+    events
+        .iter()
+        .filter(|event| matches!(event.body, EventBody::TurnStart { .. }))
+        .count() as u32
+        + 1
+}
+
+/// Appends one event to `session` and sends it live. Every durable event
+/// goes through here, including those written outside a model turn.
+pub fn append_live(
+    log: &dyn SessionLog,
+    session: &str,
+    live: &LiveSink,
+    body: EventBody,
+) -> Result<SessionEvent, String> {
+    let event = log.append(session, body)?;
+    live(Live::Event(Box::new(event.clone())));
+    Ok(event)
+}
+
+/// The `approval/asked` for a call that waits for the person.
+fn approval_asked(call: &LoggedCall, reason: String) -> EventBody {
+    EventBody::ApprovalAsked {
+        id: format!("approval:{}", call.call_id),
+        tool_name: call.name.clone(),
+        call_id: call.call_id.clone(),
+        reason,
+    }
 }
 
 pub struct Driver {
@@ -108,11 +144,7 @@ impl Driver {
     /// succeeded, since there is no earlier error to prefer.
     pub async fn run_turn(&self, input: TurnInput) -> Result<TurnEndReason, String> {
         let mut events = self.log.read(&input.session)?;
-        let turn = events
-            .iter()
-            .filter(|event| matches!(event.body, EventBody::TurnStart { .. }))
-            .count() as u32
-            + 1;
+        let turn = next_turn(&events);
         (input.live)(Live::Status { running: true });
         let outcome = match self.append(&input, &mut events, EventBody::TurnStart { turn }) {
             // dsh closes a turn with no new input without a step or a model call.
@@ -146,9 +178,8 @@ impl Driver {
         events: &mut Vec<SessionEvent>,
         body: EventBody,
     ) -> Result<SessionEvent, String> {
-        let event = self.log.append(&input.session, body)?;
+        let event = append_live(self.log.as_ref(), &input.session, &input.live, body)?;
         events.push(event.clone());
-        (input.live)(Live::Event(Box::new(event.clone())));
         Ok(event)
     }
 
@@ -168,7 +199,14 @@ impl Driver {
                 self.reconcile_system(input, events)?;
             }
             if let Some(content) = user.take() {
-                self.append(input, events, EventBody::UserMessage { content })?;
+                self.append(
+                    input,
+                    events,
+                    EventBody::UserMessage {
+                        content,
+                        source: input.source.clone(),
+                    },
+                )?;
             }
             let request = LlmRequest {
                 messages: derive_messages_for(
@@ -255,7 +293,14 @@ impl Driver {
             // "recover now", which makes no sense once the turn is already
             // tearing down.
             if !contexts.is_empty() && end_reason != Some(TurnEndReason::Cancelled) {
-                self.append(input, events, EventBody::UserMessage { content: contexts })?;
+                self.append(
+                    input,
+                    events,
+                    EventBody::UserMessage {
+                        content: contexts,
+                        source: MessageSource::new("recovery"),
+                    },
+                )?;
             }
             if end_reason.is_none() && !reply.follow_up.is_empty() {
                 self.append(
@@ -263,6 +308,7 @@ impl Driver {
                     events,
                     EventBody::UserMessage {
                         content: reply.follow_up,
+                        source: MessageSource::new("tool-follow-up"),
                     },
                 )?;
             }
@@ -334,14 +380,7 @@ impl Driver {
             }
             Decision::Deny(reason) => Settled::error(reason, None),
             Decision::Ask(reason) => {
-                self.append(
-                    input,
-                    events,
-                    EventBody::ApprovalAsked {
-                        call_id: call.call_id.clone(),
-                        reason,
-                    },
-                )?;
+                self.append(input, events, approval_asked(call, reason))?;
                 return Ok((Some(TurnEndReason::AwaitingApproval), Vec::new()));
             }
         };
@@ -357,14 +396,7 @@ impl Driver {
             return Ok((Some(TurnEndReason::Cancelled), context));
         }
         if let Some(reason) = pause_reason.filter(|_| !is_error) {
-            self.append(
-                input,
-                events,
-                EventBody::ApprovalAsked {
-                    call_id: call.call_id.clone(),
-                    reason,
-                },
-            )?;
+            self.append(input, events, approval_asked(call, reason))?;
             return Ok((Some(TurnEndReason::AwaitingApproval), context));
         }
         Ok((None, context))
@@ -442,6 +474,7 @@ mod tests {
             cancel: Cancel::default(),
             live: Arc::new(|_event: Live| {}),
             model: None,
+            source: MessageSource::user(),
         };
         let debug = format!("{input:?}");
         assert!(debug.contains("\"s\""), "{debug}");

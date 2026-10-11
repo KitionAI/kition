@@ -2,7 +2,7 @@
 //! `GET /agent/sessions/{id}/session-events`, and the exchanges that do not
 //! run a turn.
 
-use kition_harness::events::{ContentBlock, EventBody, SessionEvent};
+use kition_harness::events::{ContentBlock, EventBody, MessageSource, SessionEvent};
 use kition_harness::log::{SessionLog, SqliteLog};
 
 use crate::run::Agent;
@@ -44,6 +44,7 @@ pub(crate) fn read_events(
 fn user_message(text: &str) -> EventBody {
     EventBody::UserMessage {
         content: vec![ContentBlock::text(text)],
+        source: MessageSource::user(),
     }
 }
 

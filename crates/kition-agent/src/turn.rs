@@ -10,7 +10,7 @@ use futures::future::BoxFuture;
 use kition_ai::engine::{MessagePart, ToolSpec};
 use kition_harness::cancel::Cancel;
 use kition_harness::driver::{Driver, Live, TurnInput};
-use kition_harness::events::{ContentBlock, TurnEndReason};
+use kition_harness::events::{ContentBlock, MessageSource, TurnEndReason};
 use kition_harness::log::SqliteLog;
 use kition_harness::policy::{CallInfo, Pipeline, Policy};
 use kition_harness::provider::{TurnScene, assemble};
@@ -360,6 +360,7 @@ pub async fn drive(
         cancel,
         live: Arc::new(|_: Live| {}),
         model: Some(run.model.model_name.clone()),
+        source: MessageSource::new(run.source),
     };
     let outcome = driver.run_turn(input).await;
     drop(watcher);
@@ -522,6 +523,7 @@ mod tests {
                 cancel: Cancel::default(),
                 live: Arc::new(|_: Live| {}),
                 model: None,
+                source: MessageSource::user(),
             })
             .await
             .unwrap_or_else(|error| panic!("{error}"));

@@ -232,6 +232,7 @@ pub(crate) mod testing {
             local_sources: Vec::new(),
             approved_command: Mutex::new(None),
             language: String::new(),
+            source: "user",
         };
         Fixture { run, _dirs: dirs }
     }

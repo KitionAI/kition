@@ -82,6 +82,189 @@
         "step-limit"
       ]
     },
+    "messageSource": {
+      "type": "object",
+      "description": "Who produced a user/message (DeepSeek Harness MessageSource). Known kinds: user (the person, shown as a bubble), approval (resumes a turn after an approval decision), context-action (a hidden follow-up the client sent), recovery (context the runtime adds after tool failures), tool-follow-up (content a model reply hands to the next step, such as hosted images). Open: other kinds may appear.",
+      "additionalProperties": false,
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "approvalOutcome": {
+      "type": "string",
+      "enum": [
+        "allowed-once",
+        "rejected",
+        "cancelled",
+        "unavailable"
+      ]
+    },
+    "presentedFile": {
+      "type": "object",
+      "description": "A file a turn hands to the user; path is workspace-relative.",
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "todoItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "content",
+        "status"
+      ],
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "in_progress",
+            "completed"
+          ]
+        }
+      }
+    },
+    "llmFailure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "message",
+        "code"
+      ],
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        }
+      }
+    },
+    "toolResultMeta": {
+      "description": "Display-only data derived from the arguments and the value. The known shapes are listed; any other object may appear.",
+      "anyOf": [
+        {
+          "type": "object",
+          "description": "A canvas patch a whiteboard or design tool proposed.",
+          "required": [
+            "kind",
+            "patch"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "whiteboard.patch",
+                "design.patch"
+              ]
+            },
+            "patch": {
+              "type": "object"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "description": "A shell command that waits for the user's approval.",
+          "required": [
+            "kind",
+            "command",
+            "reason",
+            "requires",
+            "decision"
+          ],
+          "properties": {
+            "kind": {
+              "const": "shell.approval"
+            },
+            "command": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "requires": {
+              "const": "approval"
+            },
+            "decision": {
+              "const": "prompt"
+            },
+            "suggested": {
+              "type": "object",
+              "required": [
+                "prefix",
+                "decision"
+              ],
+              "properties": {
+                "prefix": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "decision": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "description": "One image variant of an image composer request; artifact is the artifact of agent-image-generation.schema.json.",
+          "required": [
+            "kind",
+            "request_id",
+            "artifact"
+          ],
+          "properties": {
+            "kind": {
+              "const": "image_generation.variant"
+            },
+            "request_id": {
+              "type": "string"
+            },
+            "artifact": {
+              "type": "object"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "description": "A call the provider ran itself (hosted web search or image generation).",
+          "required": [
+            "hosted"
+          ],
+          "properties": {
+            "hosted": {
+              "const": true
+            }
+          }
+        },
+        {
+          "type": "object"
+        }
+      ]
+    },
     "turnStartEvent": {
       "type": "object",
       "description": "A turn began.",
@@ -230,13 +413,14 @@
     },
     "userMessageEvent": {
       "type": "object",
-      "description": "What the user sent.",
+      "description": "A user-role message: what the person sent, or context the runtime adds (see source).",
       "additionalProperties": false,
       "required": [
         "seq",
         "at",
         "type",
-        "content"
+        "content",
+        "source"
       ],
       "properties": {
         "seq": {
@@ -253,6 +437,9 @@
           "items": {
             "$ref": "#/$defs/contentBlock"
           }
+        },
+        "source": {
+          "$ref": "#/$defs/messageSource"
         }
       }
     },
@@ -397,20 +584,21 @@
           "type": "boolean"
         },
         "meta": {
-          "description": "Display-only data derived from the arguments and the value."
+          "$ref": "#/$defs/toolResultMeta"
         }
       }
     },
     "approvalAskedEvent": {
       "type": "object",
-      "description": "A tool call that waits for the user's approval.",
+      "description": "A tool call that waits for the user's approval. id is approval:<callId>; the matching approval/decided carries the same id.",
       "additionalProperties": false,
       "required": [
         "seq",
         "at",
         "type",
-        "callId",
-        "reason"
+        "id",
+        "toolName",
+        "callId"
       ],
       "properties": {
         "seq": {
@@ -422,11 +610,209 @@
         "type": {
           "const": "approval/asked"
         },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "toolName": {
+          "type": "string"
+        },
         "callId": {
           "type": "string"
         },
         "reason": {
           "type": "string"
+        }
+      }
+    },
+    "approvalDecidedEvent": {
+      "type": "object",
+      "description": "How the user settled an approval/asked with the same id.",
+      "additionalProperties": false,
+      "required": [
+        "seq",
+        "at",
+        "type",
+        "id",
+        "outcome"
+      ],
+      "properties": {
+        "seq": {
+          "$ref": "#/$defs/seq"
+        },
+        "at": {
+          "$ref": "#/$defs/at"
+        },
+        "type": {
+          "const": "approval/decided"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "outcome": {
+          "$ref": "#/$defs/approvalOutcome"
+        }
+      }
+    },
+    "deliverablesPresentedEvent": {
+      "type": "object",
+      "description": "Files a successful tool result (callId) of a turn hands to the user.",
+      "additionalProperties": false,
+      "required": [
+        "seq",
+        "at",
+        "type",
+        "turn",
+        "callId",
+        "files"
+      ],
+      "properties": {
+        "seq": {
+          "$ref": "#/$defs/seq"
+        },
+        "at": {
+          "$ref": "#/$defs/at"
+        },
+        "type": {
+          "const": "deliverables/presented"
+        },
+        "turn": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "callId": {
+          "type": "string"
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/presentedFile"
+          }
+        }
+      }
+    },
+    "todoWriteEvent": {
+      "type": "object",
+      "description": "The agent's whole todo list; the latest write wins. Never model history.",
+      "additionalProperties": false,
+      "required": [
+        "seq",
+        "at",
+        "type",
+        "todos"
+      ],
+      "properties": {
+        "seq": {
+          "$ref": "#/$defs/seq"
+        },
+        "at": {
+          "$ref": "#/$defs/at"
+        },
+        "type": {
+          "const": "todo/write"
+        },
+        "todos": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/todoItem"
+          }
+        }
+      }
+    },
+    "llmRetryEvent": {
+      "type": "object",
+      "description": "A failed model request of a step that will be retried after delayMs.",
+      "additionalProperties": false,
+      "required": [
+        "seq",
+        "at",
+        "type",
+        "retryId",
+        "turn",
+        "step",
+        "provider",
+        "mode",
+        "policyKey",
+        "retry",
+        "maxRetries",
+        "delayMs",
+        "failure"
+      ],
+      "properties": {
+        "seq": {
+          "$ref": "#/$defs/seq"
+        },
+        "at": {
+          "$ref": "#/$defs/at"
+        },
+        "type": {
+          "const": "llm/retry"
+        },
+        "retryId": {
+          "type": "string"
+        },
+        "turn": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "step": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "provider": {
+          "type": "string"
+        },
+        "mode": {
+          "const": "normal"
+        },
+        "policyKey": {
+          "type": "string"
+        },
+        "retry": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxRetries": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "delayMs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failure": {
+          "$ref": "#/$defs/llmFailure"
+        }
+      }
+    },
+    "permissionPresetEvent": {
+      "type": "object",
+      "description": "The permission preset (execution mode) from this point on, logged when it changes.",
+      "additionalProperties": false,
+      "required": [
+        "seq",
+        "at",
+        "type",
+        "preset"
+      ],
+      "properties": {
+        "seq": {
+          "$ref": "#/$defs/seq"
+        },
+        "at": {
+          "$ref": "#/$defs/at"
+        },
+        "type": {
+          "const": "permission/preset"
+        },
+        "preset": {
+          "type": "string",
+          "enum": [
+            "research",
+            "preview",
+            "apply"
+          ]
         }
       }
     },
@@ -465,6 +851,21 @@
         },
         {
           "$ref": "#/$defs/approvalAskedEvent"
+        },
+        {
+          "$ref": "#/$defs/approvalDecidedEvent"
+        },
+        {
+          "$ref": "#/$defs/deliverablesPresentedEvent"
+        },
+        {
+          "$ref": "#/$defs/todoWriteEvent"
+        },
+        {
+          "$ref": "#/$defs/llmRetryEvent"
+        },
+        {
+          "$ref": "#/$defs/permissionPresetEvent"
         }
       ]
     },

@@ -38,6 +38,57 @@ export type AgentSessionEventsLoggedCall = {
 export type AgentSessionEventsTurnEndReason = "completed" | "cancelled" | "failed" | "awaiting-approval" | "step-limit"
 
 /**
+ * Who produced a user/message (DeepSeek Harness MessageSource). Known kinds: user (the person, shown as a bubble), approval (resumes a turn after an approval decision), context-action (a hidden follow-up the client sent), recovery (context the runtime adds after tool failures), tool-follow-up (content a model reply hands to the next step, such as hosted images). Open: other kinds may appear.
+ */
+export type AgentSessionEventsMessageSource = {
+  kind: string
+}
+
+export type AgentSessionEventsApprovalOutcome = "allowed-once" | "rejected" | "cancelled" | "unavailable"
+
+/**
+ * A file a turn hands to the user; path is workspace-relative.
+ */
+export type AgentSessionEventsPresentedFile = {
+  path: string
+  description?: string
+}
+
+export type AgentSessionEventsTodoItem = {
+  content: string
+  status: "pending" | "in_progress" | "completed"
+}
+
+export type AgentSessionEventsLlmFailure = {
+  message: string
+  code: string
+}
+
+/**
+ * Display-only data derived from the arguments and the value. The known shapes are listed; any other object may appear.
+ */
+export type AgentSessionEventsToolResultMeta = {
+  kind: "whiteboard.patch" | "design.patch"
+  patch: Record<string, unknown>
+} | {
+  kind: "shell.approval"
+  command: string
+  reason: string
+  requires: "approval"
+  decision: "prompt"
+  suggested?: {
+    prefix: string[]
+    decision: string
+  }
+} | {
+  kind: "image_generation.variant"
+  request_id: string
+  artifact: Record<string, unknown>
+} | {
+  hosted: true
+} | Record<string, unknown>
+
+/**
  * A turn began.
  */
 export type AgentSessionEventsTurnStartEvent = {
@@ -92,13 +143,14 @@ export type AgentSessionEventsSystemMessageEvent = {
 }
 
 /**
- * What the user sent.
+ * A user-role message: what the person sent, or context the runtime adds (see source).
  */
 export type AgentSessionEventsUserMessageEvent = {
   seq: AgentSessionEventsSeq
   at: AgentSessionEventsAt
   type: "user/message"
   content: AgentSessionEventsContentBlock[]
+  source: AgentSessionEventsMessageSource
 }
 
 /**
@@ -157,27 +209,88 @@ export type AgentSessionEventsToolResultEvent = {
    */
   content: AgentSessionEventsContentBlock[]
   isError: boolean
-  /**
-   * Display-only data derived from the arguments and the value.
-   */
-  meta?: unknown
+  meta?: AgentSessionEventsToolResultMeta
 }
 
 /**
- * A tool call that waits for the user's approval.
+ * A tool call that waits for the user's approval. id is approval:<callId>; the matching approval/decided carries the same id.
  */
 export type AgentSessionEventsApprovalAskedEvent = {
   seq: AgentSessionEventsSeq
   at: AgentSessionEventsAt
   type: "approval/asked"
+  id: string
+  toolName: string
   callId: string
-  reason: string
+  reason?: string
+}
+
+/**
+ * How the user settled an approval/asked with the same id.
+ */
+export type AgentSessionEventsApprovalDecidedEvent = {
+  seq: AgentSessionEventsSeq
+  at: AgentSessionEventsAt
+  type: "approval/decided"
+  id: string
+  outcome: AgentSessionEventsApprovalOutcome
+}
+
+/**
+ * Files a successful tool result (callId) of a turn hands to the user.
+ */
+export type AgentSessionEventsDeliverablesPresentedEvent = {
+  seq: AgentSessionEventsSeq
+  at: AgentSessionEventsAt
+  type: "deliverables/presented"
+  turn: number
+  callId: string
+  files: AgentSessionEventsPresentedFile[]
+}
+
+/**
+ * The agent's whole todo list; the latest write wins. Never model history.
+ */
+export type AgentSessionEventsTodoWriteEvent = {
+  seq: AgentSessionEventsSeq
+  at: AgentSessionEventsAt
+  type: "todo/write"
+  todos: AgentSessionEventsTodoItem[]
+}
+
+/**
+ * A failed model request of a step that will be retried after delayMs.
+ */
+export type AgentSessionEventsLlmRetryEvent = {
+  seq: AgentSessionEventsSeq
+  at: AgentSessionEventsAt
+  type: "llm/retry"
+  retryId: string
+  turn: number
+  step: number
+  provider: string
+  mode: "normal"
+  policyKey: string
+  retry: number
+  maxRetries: number
+  delayMs: number
+  failure: AgentSessionEventsLlmFailure
+}
+
+/**
+ * The permission preset (execution mode) from this point on, logged when it changes.
+ */
+export type AgentSessionEventsPermissionPresetEvent = {
+  seq: AgentSessionEventsSeq
+  at: AgentSessionEventsAt
+  type: "permission/preset"
+  preset: "research" | "preview" | "apply"
 }
 
 /**
  * One durable session event, named after DeepSeek Harness events.
  */
-export type AgentSessionEventsSessionEvent = AgentSessionEventsTurnStartEvent | AgentSessionEventsTurnEndEvent | AgentSessionEventsStepStartEvent | AgentSessionEventsStepEndEvent | AgentSessionEventsSystemMessageEvent | AgentSessionEventsUserMessageEvent | AgentSessionEventsAssistantMessageEvent | AgentSessionEventsAssistantAttemptEvent | AgentSessionEventsToolCallEvent | AgentSessionEventsToolResultEvent | AgentSessionEventsApprovalAskedEvent
+export type AgentSessionEventsSessionEvent = AgentSessionEventsTurnStartEvent | AgentSessionEventsTurnEndEvent | AgentSessionEventsStepStartEvent | AgentSessionEventsStepEndEvent | AgentSessionEventsSystemMessageEvent | AgentSessionEventsUserMessageEvent | AgentSessionEventsAssistantMessageEvent | AgentSessionEventsAssistantAttemptEvent | AgentSessionEventsToolCallEvent | AgentSessionEventsToolResultEvent | AgentSessionEventsApprovalAskedEvent | AgentSessionEventsApprovalDecidedEvent | AgentSessionEventsDeliverablesPresentedEvent | AgentSessionEventsTodoWriteEvent | AgentSessionEventsLlmRetryEvent | AgentSessionEventsPermissionPresetEvent
 
 export type AgentSessionEventsPage = {
   items: AgentSessionEventsSessionEvent[]
