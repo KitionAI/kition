@@ -87,6 +87,8 @@ test('lays out pages in the page with the Design engine and its own tools, and s
   try {
     await fs.writeFile(path.join(host.root, 'Flyer.designcraft'), await layoutFixture())
     await mockLocalWorkspaceApi(page)
+    // This spec covers Kition's own editor for the kit; the kit's embedded one has design-embedded.spec.ts.
+    await page.route('**/kits/design-ui/kit-ui.json', (route) => route.fulfill({ status: 404, body: '' }))
     await serveWorkspace(page, host.root)
     const saves: Array<{ path: string | null; bytes: Buffer }> = []
     await page.route('**/api/v1/kits/files?**', async (route) => {
@@ -153,6 +155,8 @@ test('creates a new layout from the create menu with the Design engine', async (
   const host = await installDesktopHost(page)
   try {
     await mockLocalWorkspaceApi(page)
+    // This spec covers Kition's own editor for the kit; the kit's embedded one has design-embedded.spec.ts.
+    await page.route('**/kits/design-ui/kit-ui.json', (route) => route.fulfill({ status: 404, body: '' }))
     await serveWorkspace(page, host.root)
     const written: string[] = []
     await page.route('**/api/v1/kits/files?**', async (route) => {

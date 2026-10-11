@@ -21,7 +21,7 @@ KIT_SHEET_REPO ?= $(REPO_ROOT)/../kit-sheet
 KIT_PDF_REPO ?= $(REPO_ROOT)/../kit-pdf
 KITS := photo film vector effect design cad presentation word sheet pdf
 # Kits that draw their own editor (Kit UI protocol), built into public/kits/<kit>-ui.
-KIT_UIS := presentation word sheet pdf cad vector
+KIT_UIS := presentation word sheet pdf cad vector design
 
 # The kits need a newer Rust than some system installs; prefer rustup's stable toolchain.
 STABLE_BIN := $(patsubst %/,%,$(dir $(shell rustup which --toolchain stable cargo 2>/dev/null)))
@@ -29,7 +29,7 @@ TOOLCHAIN_PATH := $(if $(STABLE_BIN),$(STABLE_BIN):,)$(PATH)
 # The e2e web server is probed through any HTTP proxy; run without one.
 NO_PROXY_ENV := env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy
 E2E_PORT ?= 3123
-WEB_KIT_E2E := e2e/photo-web-editor.spec.ts e2e/film-web-editor.spec.ts e2e/vector-web-editor.spec.ts e2e/effect-web-editor.spec.ts e2e/design-web-editor.spec.ts e2e/cad-web-editor.spec.ts e2e/presentation-web-editor.spec.ts e2e/word-web-editor.spec.ts e2e/sheet-web-editor.spec.ts e2e/pdf-web-editor.spec.ts e2e/presentation-embedded.spec.ts e2e/word-embedded.spec.ts e2e/sheet-embedded.spec.ts e2e/pdf-embedded.spec.ts e2e/cad-embedded.spec.ts e2e/vector-embedded.spec.ts e2e/kit-bridge.spec.ts
+WEB_KIT_E2E := e2e/photo-web-editor.spec.ts e2e/film-web-editor.spec.ts e2e/vector-web-editor.spec.ts e2e/effect-web-editor.spec.ts e2e/design-web-editor.spec.ts e2e/cad-web-editor.spec.ts e2e/presentation-web-editor.spec.ts e2e/word-web-editor.spec.ts e2e/sheet-web-editor.spec.ts e2e/pdf-web-editor.spec.ts e2e/presentation-embedded.spec.ts e2e/word-embedded.spec.ts e2e/sheet-embedded.spec.ts e2e/pdf-embedded.spec.ts e2e/cad-embedded.spec.ts e2e/vector-embedded.spec.ts e2e/design-embedded.spec.ts e2e/kit-bridge.spec.ts
 KIT_E2E := $(WEB_KIT_E2E) e2e/desktop-photo-kit.spec.ts
 PHOTO_BINARY := $(KIT_PHOTO_REPO)/target/debug/kit-photo
 # The SDK kits' headless executables for the agent (kit-film, kit-vector, ...), from kition-headless.

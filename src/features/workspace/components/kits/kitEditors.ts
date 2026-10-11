@@ -75,6 +75,7 @@ const SHEET_UI: EmbeddedKit = { kitId: 'kit.sheet', dir: 'sheet-ui' }
 const PDF_UI: EmbeddedKit = { kitId: 'kit.pdf', dir: 'pdf-ui' }
 const CAD_UI: EmbeddedKit = { kitId: 'kit.cad', dir: 'cad-ui' }
 const VECTOR_UI: EmbeddedKit = { kitId: 'kit.vector', dir: 'vector-ui' }
+const DESIGN_UI: EmbeddedKit = { kitId: 'kit.design', dir: 'design-ui' }
 
 const KIT_EDITORS: readonly KitEditorEntry[] = [
   {
@@ -111,6 +112,7 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
     sdk: DESIGN_SDK,
     Editor: lazy(() => import('../DesignWebEditor').then((module) => ({ default: module.DesignWebEditor }))),
     Fallback: DesignUnavailable,
+    embedded: DESIGN_UI,
     // US Letter, in points.
     create: { id: 'layout', extension: 'designcraft', baseName: 'Untitled layout', size: { width: 612, height: 792 }, label: 'createMenu.format.layout', icon: LayoutTemplate },
   },
