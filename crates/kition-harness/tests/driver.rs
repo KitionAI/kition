@@ -7,6 +7,7 @@ use futures::future::BoxFuture;
 use kition_harness::cancel::Cancel;
 use kition_harness::driver::{Driver, Live, TurnInput};
 use kition_harness::events::{ContentBlock, EventBody, SessionEvent, TurnEndReason};
+use kition_harness::history::HistoryBudget;
 use kition_harness::llm::{ChunkSink, Llm, LlmReply, LlmRequest};
 use kition_harness::log::{MemoryLog, SessionLog};
 use kition_harness::policy::{CallInfo, Decision, Pipeline, Policy, WritePermission};
@@ -160,6 +161,68 @@ async fn a_second_turn_keeps_history_and_does_not_relog_the_system_prompt() {
         .map(|message| message.role.clone())
         .collect();
     assert_eq!(roles, ["system", "user", "assistant", "user"]);
+}
+
+#[tokio::test]
+async fn older_turns_reach_the_model_without_their_tool_traffic() {
+    let mut replies = Vec::new();
+    for number in 1..=3 {
+        replies.push(LlmReply::calls(vec![call(
+            &format!("c{number}"),
+            "echo",
+            json!({ "text": "x" }),
+        )]));
+        replies.push(LlmReply::text(&format!("answer {number}")));
+    }
+    replies.push(LlmReply::text("answer 4"));
+    let setup = setup(replies);
+    let mut driver = setup.driver(Pipeline::default());
+    driver.history = HistoryBudget {
+        full_turns: 1,
+        older_messages: 16,
+    };
+    for number in 1..=4 {
+        let reason = driver
+            .run_turn(setup.input(&format!("ask {number}"), Cancel::default()))
+            .await
+            .unwrap_or_else(|error| panic!("{error}"));
+        assert_eq!(reason, TurnEndReason::Completed);
+    }
+    let requests = setup.llm.requests();
+    assert_eq!(requests.len(), 7);
+    let fourth = &requests[6];
+    assert!(
+        fourth.messages.iter().all(|message| message.role != "tool"),
+        "{:?}",
+        fourth.messages
+    );
+    let roles: Vec<String> = fourth
+        .messages
+        .iter()
+        .map(|message| message.role.clone())
+        .collect();
+    assert_eq!(
+        roles,
+        [
+            "system",
+            "user",
+            "assistant",
+            "user",
+            "assistant",
+            "user",
+            "assistant",
+            "user"
+        ]
+    );
+    assert!(
+        setup
+            .kinds()
+            .iter()
+            .filter(|kind| **kind == "tool/result")
+            .count()
+            == 3,
+        "the log itself keeps everything"
+    );
 }
 
 #[tokio::test]

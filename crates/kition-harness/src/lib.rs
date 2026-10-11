@@ -7,6 +7,7 @@ pub mod cancel;
 pub mod derive;
 pub mod driver;
 pub mod events;
+pub mod history;
 pub mod llm;
 pub mod log;
 pub mod policy;

@@ -10,6 +10,7 @@ use std::sync::Arc;
 use crate::cancel::Cancel;
 use crate::derive::derive_messages_for;
 use crate::events::{ContentBlock, EventBody, LoggedCall, SessionEvent, TurnEndReason};
+use crate::history::{HistoryBudget, bound_history};
 use crate::llm::{ChunkSink, Llm, LlmRequest};
 use crate::log::SessionLog;
 use crate::policy::{CallInfo, Decision, Pipeline};
@@ -70,6 +71,9 @@ pub struct Driver {
     /// Checked when the model stops calling tools, before the turn may end
     /// as completed.
     pub stop_checks: Vec<Arc<dyn StopCheck>>,
+    /// How much of the log each request carries; the log itself keeps
+    /// everything.
+    pub history: HistoryBudget,
 }
 
 impl std::fmt::Debug for Driver {
@@ -79,6 +83,7 @@ impl std::fmt::Debug for Driver {
             .field("pipeline", &self.pipeline)
             .field("max_steps", &self.max_steps)
             .field("stop_checks", &self.stop_checks.len())
+            .field("history", &self.history)
             .finish_non_exhaustive()
     }
 }
@@ -91,6 +96,7 @@ impl Driver {
             pipeline: Pipeline::default(),
             max_steps: MAX_STEPS,
             stop_checks: Vec::new(),
+            history: HistoryBudget::default(),
         }
     }
 
@@ -165,7 +171,10 @@ impl Driver {
                 self.append(input, events, EventBody::UserMessage { content })?;
             }
             let request = LlmRequest {
-                messages: derive_messages_for(events.as_slice(), input.model.as_deref()),
+                messages: derive_messages_for(
+                    &bound_history(events.as_slice(), self.history),
+                    input.model.as_deref(),
+                ),
                 tools: input.tools.specs(),
             };
             let live = input.live.clone();
@@ -423,6 +432,7 @@ mod tests {
         let debug = format!("{driver:?}");
         assert!(debug.starts_with("Driver {"), "{debug}");
         assert!(debug.contains("max_steps"), "{debug}");
+        assert!(debug.contains("history"), "{debug}");
 
         let input = TurnInput {
             session: "s".into(),
