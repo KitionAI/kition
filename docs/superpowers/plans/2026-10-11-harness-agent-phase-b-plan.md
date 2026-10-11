@@ -1362,6 +1362,31 @@ git commit -m "Prove harness turns match the original loop end to end"
 
 ---
 
+## Found in phase B reviews and deferred
+
+Before the flag is turned on outside development:
+
+- History has no message cap or compaction yet; only images from earlier
+  turns are dropped. Long sessions will grow without bound.
+- Sessions started without the flag have no history in harness mode.
+- A second turn for the same session waits silently for the first; send a
+  "queued" frame or reject it with a clear error.
+- Existing tool bodies ignore `cx.cancel`; a stopped turn's tool keeps running
+  until it finishes (its late result is dropped from history).
+- Failures settled before a tool runs (malformed arguments, cancel before
+  dispatch) have no `agent_tool_calls` row, frame, or timeline event.
+- `logged_arguments` in `harness_turn.rs` copies `persisted_input` from
+  `tools/mod.rs`; make that function shared once its owner agrees.
+- MCP tools whose names contain `.` or exceed 64 characters are not offered
+  in harness mode; map their names.
+- Image-generation turns and turns refused before the model call (missing
+  model, unsupported wire) are not logged.
+- Untested in harness mode: the Anthropic and DeepSeek wires, hosted search
+  and images, retries, the step limit. The real-key DeepSeek check (Task 3
+  Step 5) and the desktop-client try (Task 10 Step 4) need the user.
+- Reasoning effort for DeepSeek `max` with the 32768-token output floor is
+  unverified against the real API.
+
 ## Deferred to later phases (unchanged from the phase A plan)
 
 Pane providers (C), kit providers and the Kit AI bridge (D, E), the renderer
