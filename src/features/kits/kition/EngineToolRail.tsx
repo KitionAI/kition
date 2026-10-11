@@ -2,6 +2,11 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Blend,
+  Columns2,
+  File,
+  Package,
+  Palette,
+  StickyNote,
   Brush,
   Circle,
   Crop,
@@ -32,12 +37,22 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { ActionMenu, ActionMenuContent, ActionMenuItem, ActionMenuTrigger } from '@/components/ActionMenu'
-import type { EngineToolInfo } from '@/features/kits/public'
+import type { EngineToolInfo } from '../sdk/engineTools'
 import { cn } from '@/lib/utils'
 
-/** Kition's icon for an engine tool icon name; the engine's names are `tool-<kind>`. */
+/**
+ * Kition's icon for an engine tool icon name. The Craft engines name their icons `tool-<kind>`;
+ * a kit with other names gets the generic icon until they are added here.
+ */
 const ICONS: Array<[RegExp, LucideIcon]> = [
   [/^tool-selection$/, MousePointer2],
+  [/^tool-page$/, File],
+  [/^tool-gap$/, Columns2],
+  [/^tool-(collector|placer)/, Package],
+  [/^tool-(rect-frame|ellipse-frame|polygon-frame)/, Frame],
+  [/^tool-note/, StickyNote],
+  [/^tool-color-theme/, Palette],
+  [/^tool-gradient-feather/, Blend],
   [/^tool-(direct|group-select|live-select|perspective-select)/, MousePointer],
   [/^tool-magic-wand/, Wand2],
   [/^tool-lasso/, Lasso],
@@ -72,18 +87,20 @@ function iconFor(tool: EngineToolInfo) {
   return ICONS.find(([pattern]) => pattern.test(tool.icon))?.[1] ?? Shapes
 }
 
-type VectorToolRailProps = {
+type EngineToolRailProps = {
   tools: readonly EngineToolInfo[]
   active: string
   onSelect: (id: string) => void
+  /** Test ids are `<testId>-tool-<id>`, `<testId>-tool-group-<n>`, and `<testId>-tool-item-<id>`. */
+  testId: string
 }
 
 /**
- * The engine's tools, one slot per group as in Illustrator: the slot shows
- * the group's last-used tool, and right-click (or the corner mark) lists the
- * rest of the group.
+ * A kit engine's tools (the engine-tools capability), one slot per group as in
+ * Adobe's apps: the slot shows the group's last-used tool, and right-click (or
+ * the corner mark) lists the rest of the group.
  */
-export function VectorToolRail({ tools, active, onSelect }: VectorToolRailProps) {
+export function EngineToolRail({ tools, active, onSelect, testId }: EngineToolRailProps) {
   const { t } = useTranslation('workspace')
   const [chosen, setChosen] = useState<Record<number, string>>({})
   const [open, setOpen] = useState<number | null>(null)
@@ -96,7 +113,7 @@ export function VectorToolRail({ tools, active, onSelect }: VectorToolRailProps)
   }
 
   return (
-    <div className="flex w-11 shrink-0 flex-col items-center gap-0.5 overflow-y-auto border-r border-border py-2" role="toolbar" aria-orientation="vertical" aria-label={t('vectorKit.toolsLabel')} data-testid="vector-tool-rail">
+    <div className="flex w-11 shrink-0 flex-col items-center gap-0.5 overflow-y-auto border-r border-border py-2" role="toolbar" aria-orientation="vertical" aria-label={t('kitEditor.tools')} data-testid={`${testId}-tool-rail`}>
       {[...groups.entries()].map(([group, members]) => {
         const shown = members.find((tool) => tool.id === active) ?? members.find((tool) => tool.id === chosen[group]) ?? members[0]
         const Icon = iconFor(shown)
@@ -121,7 +138,7 @@ export function VectorToolRail({ tools, active, onSelect }: VectorToolRailProps)
                   event.preventDefault()
                   setOpen(group)
                 }}
-                data-testid={`vector-tool-${shown.id}`}
+                data-testid={`${testId}-tool-${shown.id}`}
               >
                 <Icon className="size-4" aria-hidden="true" />
               </button>
@@ -130,8 +147,8 @@ export function VectorToolRail({ tools, active, onSelect }: VectorToolRailProps)
                   <button
                     type="button"
                     className="absolute bottom-0.5 right-0.5 size-0 border-b-[4px] border-l-[4px] border-b-muted-foreground/70 border-l-transparent outline-none"
-                    aria-label={t('vectorKit.moreTools', { tool: shown.label })}
-                    data-testid={`vector-tool-group-${group}`}
+                    aria-label={t('kitEditor.moreTools', { tool: shown.label })}
+                    data-testid={`${testId}-tool-group-${group}`}
                   />
                 </ActionMenuTrigger>
               ) : null}
@@ -140,7 +157,7 @@ export function VectorToolRail({ tools, active, onSelect }: VectorToolRailProps)
               {members.map((tool) => {
                 const ToolIcon = iconFor(tool)
                 return (
-                  <ActionMenuItem key={tool.id} onSelect={() => select(tool)} data-testid={`vector-tool-item-${tool.id}`}>
+                  <ActionMenuItem key={tool.id} onSelect={() => select(tool)} data-testid={`${testId}-tool-item-${tool.id}`}>
                     <ToolIcon className="size-4 text-muted-foreground" aria-hidden="true" />
                     <span className="flex-1">{tool.label}</span>
                     {tool.shortcut ? <span className="text-xs text-muted-foreground">{tool.shortcut}</span> : null}

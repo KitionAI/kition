@@ -81,6 +81,16 @@ pub const KITS: &[KitDefinition] = &[
         embeds: false,
         exports: &["mp4"],
     },
+    // Edited in the page through its SDK.
+    KitDefinition {
+        id: "kit.design",
+        name: "Kition Design",
+        binary_env: "KITION_KIT_DESIGN_BINARY",
+        extensions: &["designcraft"],
+        creates: &[],
+        embeds: false,
+        exports: &[],
+    },
 ];
 
 /// Who is asking: a person in a kit tab or the agent.

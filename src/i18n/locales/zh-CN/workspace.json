@@ -9,7 +9,8 @@
       "image": "图片",
       "video": "视频项目",
       "drawing": "矢量图",
-      "motion": "动态图形"
+      "motion": "动态图形",
+      "layout": "版式"
     },
     "folder": "文件夹",
     "importSpreadsheet": "导入电子表格",
@@ -718,7 +719,9 @@
     "saveFailed": "无法保存这个文件",
     "saved": "已保存",
     "undo": "撤销",
-    "unsaved": "未保存"
+    "unsaved": "未保存",
+    "tools": "工具",
+    "moreTools": "与{{tool}}同组的更多工具"
   },
   "filmKit": {
     "play": "播放",
@@ -757,8 +760,6 @@
     "exportFailed": "无法导出视频"
   },
   "vectorKit": {
-    "toolsLabel": "矢量工具",
-    "moreTools": "与{{tool}}同组的更多工具",
     "layers": "图层",
     "hideLayer": "隐藏图层",
     "showLayer": "显示图层",
@@ -815,6 +816,25 @@
       "Layer": "图层",
       "Effect": "效果",
       "Animation": "动画",
+      "View": "视图",
+      "Window": "窗口",
+      "Help": "帮助"
+    }
+  },
+  "designKit": {
+    "pages": "页面",
+    "addPage": "添加页面",
+    "summary": "{{pages}} 页，{{stories}} 篇文章，已选中 {{selected}} 个",
+    "dialogUnavailable": "Kition 暂不支持此工具的选项对话框",
+    "unavailableTitle": "此版本不支持版式编辑",
+    "unavailableBody": "包含 Design 引擎时，版式文件会在 Kition 中打开。",
+    "menu": {
+      "File": "文件",
+      "Edit": "编辑",
+      "Layout": "版面",
+      "Type": "文字",
+      "Object": "对象",
+      "Table": "表",
       "View": "视图",
       "Window": "窗口",
       "Help": "帮助"

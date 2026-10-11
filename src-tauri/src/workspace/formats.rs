@@ -31,6 +31,8 @@ pub fn infer_format(path: &str) -> &'static str {
         ".vectorcraft" | ".drawcraft" => "vector",
         // Motion-graphics projects, edited in the Effect kit.
         ".ecproj" => "effect",
+        // Page layouts, edited in the Design kit.
+        ".designcraft" => "layout",
         ".mp4" | ".mov" | ".webm" => "video",
         ".mp3" | ".wav" | ".m4a" => "audio",
         _ => "binary",
@@ -89,6 +91,7 @@ pub fn is_supported(path: &str) -> bool {
             "vectorcraft",
             "drawcraft",
             "ecproj",
+            "designcraft",
             "mp4",
             "mov",
             "webm",
@@ -117,6 +120,8 @@ mod tests {
         assert!(is_supported("art/Logo.vectorcraft"));
         assert_eq!(infer_format("motion/Intro.ecproj"), "effect");
         assert!(is_supported("motion/Intro.ecproj"));
+        assert_eq!(infer_format("print/Flyer.designcraft"), "layout");
+        assert!(is_supported("print/Flyer.designcraft"));
         assert!(is_supported("art/poster.psb"));
         assert!(!is_text("art/poster.pcraft"));
         assert_eq!(infer_format(".md"), "binary");

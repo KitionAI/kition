@@ -9,7 +9,8 @@
       "image": "Image",
       "video": "Projet vidéo",
       "drawing": "Dessin",
-      "motion": "Animation graphique"
+      "motion": "Animation graphique",
+      "layout": "Mise en page"
     },
     "folder": "Dossier",
     "importSpreadsheet": "Importer une feuille de calcul",
@@ -718,7 +719,9 @@
     "saveFailed": "Impossible d'enregistrer le fichier",
     "saved": "Enregistré",
     "undo": "Annuler",
-    "unsaved": "Non enregistré"
+    "unsaved": "Non enregistré",
+    "tools": "Outils",
+    "moreTools": "Autres outils comme {{tool}}"
   },
   "filmKit": {
     "play": "Lecture",
@@ -757,8 +760,6 @@
     "exportFailed": "Impossible d'exporter la vidéo"
   },
   "vectorKit": {
-    "toolsLabel": "Outils vectoriels",
-    "moreTools": "Autres outils comme {{tool}}",
     "layers": "Calques",
     "hideLayer": "Masquer le calque",
     "showLayer": "Afficher le calque",
@@ -815,6 +816,25 @@
       "Layer": "Calque",
       "Effect": "Effet",
       "Animation": "Animation",
+      "View": "Affichage",
+      "Window": "Fenêtre",
+      "Help": "Aide"
+    }
+  },
+  "designKit": {
+    "pages": "Pages",
+    "addPage": "Ajouter une page",
+    "summary": "{{pages}} pages, {{stories}} articles, {{selected}} sélectionnés",
+    "dialogUnavailable": "La boîte d'options de cet outil n'est pas encore disponible dans Kition",
+    "unavailableTitle": "La mise en page n'est pas disponible dans cette version",
+    "unavailableBody": "Les mises en page s'ouvrent dans Kition lorsque le moteur Design est inclus.",
+    "menu": {
+      "File": "Fichier",
+      "Edit": "Édition",
+      "Layout": "Page",
+      "Type": "Texte",
+      "Object": "Objet",
+      "Table": "Tableau",
       "View": "Affichage",
       "Window": "Fenêtre",
       "Help": "Aide"

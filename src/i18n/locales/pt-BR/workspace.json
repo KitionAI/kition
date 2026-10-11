@@ -9,7 +9,8 @@
       "image": "Imagem",
       "video": "Projeto de vídeo",
       "drawing": "Desenho",
-      "motion": "Motion graphics"
+      "motion": "Motion graphics",
+      "layout": "Diagramação"
     },
     "folder": "Pasta",
     "importSpreadsheet": "Importar planilha",
@@ -718,7 +719,9 @@
     "saveFailed": "Não foi possível salvar o arquivo",
     "saved": "Salvo",
     "undo": "Desfazer",
-    "unsaved": "Não salvo"
+    "unsaved": "Não salvo",
+    "tools": "Ferramentas",
+    "moreTools": "Mais ferramentas como {{tool}}"
   },
   "filmKit": {
     "play": "Reproduzir",
@@ -757,8 +760,6 @@
     "exportFailed": "Não foi possível exportar o vídeo"
   },
   "vectorKit": {
-    "toolsLabel": "Ferramentas vetoriais",
-    "moreTools": "Mais ferramentas como {{tool}}",
     "layers": "Camadas",
     "hideLayer": "Ocultar camada",
     "showLayer": "Mostrar camada",
@@ -815,6 +816,25 @@
       "Layer": "Camada",
       "Effect": "Efeito",
       "Animation": "Animação",
+      "View": "Exibir",
+      "Window": "Janela",
+      "Help": "Ajuda"
+    }
+  },
+  "designKit": {
+    "pages": "Páginas",
+    "addPage": "Adicionar uma página",
+    "summary": "{{pages}} páginas, {{stories}} matérias, {{selected}} selecionados",
+    "dialogUnavailable": "A caixa de opções desta ferramenta ainda não está disponível no Kition",
+    "unavailableTitle": "A diagramação não está disponível nesta versão",
+    "unavailableBody": "Diagramações abrem no Kition quando o motor Design está incluído.",
+    "menu": {
+      "File": "Arquivo",
+      "Edit": "Editar",
+      "Layout": "Layout",
+      "Type": "Texto",
+      "Object": "Objeto",
+      "Table": "Tabela",
       "View": "Exibir",
       "Window": "Janela",
       "Help": "Ajuda"

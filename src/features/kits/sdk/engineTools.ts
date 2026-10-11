@@ -54,6 +54,11 @@ type EngineToolsOptions = {
   initial: string
   /** A dialog the engine asks for; the editor opens it, or says it cannot. */
   onDialog?: (name: string, params: unknown) => void
+  /**
+   * A key pressed while the engine was still answering an earlier event, which turned out not
+   * to be typed text: the editor handles it as it would have (a tool shortcut).
+   */
+  onDeferredKey?: (key: string, shift: boolean) => void
 }
 
 const ACCENT = '#5645d4'
@@ -196,11 +201,16 @@ export function useEngineTools(tool: ToolCall, ready: boolean, change: KitChange
 
   // Events go to the engine one at a time and in order; while one is out, only the newest
   // drag or hover waits (the others are stale), so a slow engine never falls behind the pointer.
+  // Printable keys pressed meanwhile wait in the same queue, so a fast typist's first letters
+  // after the click that starts a text frame go to the text, decided when the click is answered.
   const busy = useRef(false)
-  const queue = useRef<Array<{ name: KitToolMethod; args: unknown[]; settled: boolean; coalesce: boolean }>>([])
+  type Queued = { name: KitToolMethod; args: unknown[]; settled: boolean; coalesce: boolean } | { key: string; shift: boolean }
+  const queue = useRef<Queued[]>([])
+  const latestResponse = useRef<EngineToolResponse | null>(null)
 
   const answer = useCallback((next: EngineToolResponse | null) => {
     if (!next) return
+    latestResponse.current = next
     setResponse(next)
     for (const request of next.requests) {
       if (request.kind === 'switchTool') setActive(request.id)
@@ -214,6 +224,11 @@ export function useEngineTools(tool: ToolCall, ready: boolean, change: KitChange
     busy.current = true
     try {
       for (let next = queue.current.shift(); next; next = queue.current.shift()) {
+        if ('key' in next) {
+          if (latestResponse.current?.wantsText) answer(await tool<EngineToolResponse>('toolText', [next.key, zoom.current], true).catch(() => null))
+          else latest.current.onDeferredKey?.(next.key, next.shift)
+          continue
+        }
         answer(await tool<EngineToolResponse>(next.name, next.args, next.settled).catch(() => null))
       }
     } finally {
@@ -223,7 +238,7 @@ export function useEngineTools(tool: ToolCall, ready: boolean, change: KitChange
 
   const send = useCallback((name: KitToolMethod, args: unknown[], settled: boolean, coalesce = false) => {
     const tail = queue.current[queue.current.length - 1]
-    if (coalesce && tail?.coalesce && tail.name === name) queue.current[queue.current.length - 1] = { name, args, settled, coalesce }
+    if (coalesce && tail && 'name' in tail && tail.coalesce && tail.name === name) queue.current[queue.current.length - 1] = { name, args, settled, coalesce }
     else queue.current.push({ name, args, settled, coalesce })
     void pump()
   }, [pump])
@@ -277,8 +292,14 @@ export function useEngineTools(tool: ToolCall, ready: boolean, change: KitChange
    * Otherwise the editor's own shortcuts get it.
    */
   const keyDown = useCallback((event: { key: string; shiftKey: boolean; altKey: boolean; metaKey: boolean; ctrlKey: boolean }) => {
-    if (hostTool || !response) return false
+    if (hostTool) return false
     const command = event.metaKey || event.ctrlKey
+    if (!command && !event.altKey && event.key.length === 1 && (busy.current || queue.current.length)) {
+      queue.current.push({ key: event.key, shift: event.shiftKey })
+      void pump()
+      return true
+    }
+    if (!response) return false
     if (response.wantsText && !command) {
       if (event.key.length === 1) send('toolText', [event.key, zoom.current], true)
       else if (EDITING_KEYS.has(event.key)) send('toolKey', [event.key, JSON.stringify(mods({ shift: event.shiftKey, alt: event.altKey, meta: false })), zoom.current], true)
@@ -290,7 +311,7 @@ export function useEngineTools(tool: ToolCall, ready: boolean, change: KitChange
       return true
     }
     return false
-  }, [hostTool, response, send])
+  }, [hostTool, pump, response, send])
 
   /** The tool a single-key shortcut picks: the next one of that shortcut when one is active. */
   const toolForKey = useCallback((key: string, shift: boolean) => {

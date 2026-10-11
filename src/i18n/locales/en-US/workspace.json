@@ -9,7 +9,8 @@
       "image": "Image",
       "video": "Video project",
       "drawing": "Drawing",
-      "motion": "Motion graphics"
+      "motion": "Motion graphics",
+      "layout": "Page layout"
     },
     "folder": "Folder",
     "importSpreadsheet": "Import spreadsheet",
@@ -718,7 +719,9 @@
     "saveFailed": "Could not save the file",
     "saved": "Saved",
     "undo": "Undo",
-    "unsaved": "Unsaved"
+    "unsaved": "Unsaved",
+    "tools": "Tools",
+    "moreTools": "More tools like {{tool}}"
   },
   "filmKit": {
     "play": "Play",
@@ -757,8 +760,6 @@
     "exportFailed": "Could not export the movie"
   },
   "vectorKit": {
-    "toolsLabel": "Vector tools",
-    "moreTools": "More tools like {{tool}}",
     "layers": "Layers",
     "hideLayer": "Hide layer",
     "showLayer": "Show layer",
@@ -815,6 +816,25 @@
       "Layer": "Layer",
       "Effect": "Effect",
       "Animation": "Animation",
+      "View": "View",
+      "Window": "Window",
+      "Help": "Help"
+    }
+  },
+  "designKit": {
+    "pages": "Pages",
+    "addPage": "Add a page",
+    "summary": "{{pages}} pages, {{stories}} stories, {{selected}} selected",
+    "dialogUnavailable": "This tool's options dialog is not available in Kition yet",
+    "unavailableTitle": "Page layout is not available in this build",
+    "unavailableBody": "Layouts open in Kition when the Design engine is included.",
+    "menu": {
+      "File": "File",
+      "Edit": "Edit",
+      "Layout": "Layout",
+      "Type": "Type",
+      "Object": "Object",
+      "Table": "Table",
       "View": "View",
       "Window": "Window",
       "Help": "Help"

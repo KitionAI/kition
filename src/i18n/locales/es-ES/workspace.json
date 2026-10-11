@@ -9,7 +9,8 @@
       "image": "Imagen",
       "video": "Proyecto de vídeo",
       "drawing": "Dibujo",
-      "motion": "Gráficos animados"
+      "motion": "Gráficos animados",
+      "layout": "Maquetación"
     },
     "folder": "Carpeta",
     "importSpreadsheet": "Importar hoja de cálculo",
@@ -718,7 +719,9 @@
     "saveFailed": "No se pudo guardar el archivo",
     "saved": "Guardado",
     "undo": "Deshacer",
-    "unsaved": "Sin guardar"
+    "unsaved": "Sin guardar",
+    "tools": "Herramientas",
+    "moreTools": "Más herramientas como {{tool}}"
   },
   "filmKit": {
     "play": "Reproducir",
@@ -757,8 +760,6 @@
     "exportFailed": "No se pudo exportar el vídeo"
   },
   "vectorKit": {
-    "toolsLabel": "Herramientas vectoriales",
-    "moreTools": "Más herramientas como {{tool}}",
     "layers": "Capas",
     "hideLayer": "Ocultar capa",
     "showLayer": "Mostrar capa",
@@ -815,6 +816,25 @@
       "Layer": "Capa",
       "Effect": "Efecto",
       "Animation": "Animación",
+      "View": "Ver",
+      "Window": "Ventana",
+      "Help": "Ayuda"
+    }
+  },
+  "designKit": {
+    "pages": "Páginas",
+    "addPage": "Añadir una página",
+    "summary": "{{pages}} páginas, {{stories}} artículos, {{selected}} seleccionados",
+    "dialogUnavailable": "El cuadro de opciones de esta herramienta aún no está disponible en Kition",
+    "unavailableTitle": "La maquetación no está disponible en esta versión",
+    "unavailableBody": "Las maquetaciones se abren en Kition cuando se incluye el motor Design.",
+    "menu": {
+      "File": "Archivo",
+      "Edit": "Edición",
+      "Layout": "Maquetación",
+      "Type": "Texto",
+      "Object": "Objeto",
+      "Table": "Tabla",
       "View": "Ver",
       "Window": "Ventana",
       "Help": "Ayuda"

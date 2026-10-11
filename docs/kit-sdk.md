@@ -184,9 +184,9 @@ what the open Kit SDK will publish:
 | `KitEngine` | One document in its own worker; async calls answered in order; `info` (`width`, `height`, `revision`, `dirty`, `canUndo`, `canRedo`, `inspected`) is current after every change; `invoke(name, …args)` reaches an SDK's own extras; a worker failure rejects every waiting call |
 | `KitHost` | File IO: `read`, `stamp`, `write` |
 | `useKitDocument(host, manifest, path, active, describe)` | Loads the file, follows it on disk, runs commands with a repaint area, saves in place; `describe(info)` maps `inspected` to the kit's view model; `tool(name, args, settled)` calls an engine tool method and refreshes `info` only when the call changed the document or ends a gesture (`inspect()` costs, so mid-drag calls skip it) |
-| `KitCanvas` | The document on a canvas: the active `KitTool` gets gestures in document pixels; Space (unless `spacePans` is off, as in a player), the middle button, and `HAND_TOOL` pan; the wheel pans and zooms with Cmd or Ctrl; pointer capture and coalesced events; a preview overlay; `decorate` with `animated` for marching ants; HTML children for inline fields |
+| `KitCanvas` | The document on a canvas (`initialArea` fits a part of it first, as a layout's first spread; the handle's `show(area)` brings an area into view): the active `KitTool` gets gestures in document pixels; Space (unless `spacePans` is off, as in a player), the middle button, and `HAND_TOOL` pan; the wheel pans and zooms with Cmd or Ctrl; pointer capture and coalesced events; a preview overlay; `decorate` with `animated` for marching ants; HTML children for inline fields |
 | `KitTool`, `KitGesture`, `KitPointer`, `HAND_TOOL`, `ZOOM_TOOL`, `dragRect` | Tools: `begin(pointer, { viewport, overlay })` returns a gesture with `move`, `end`, `cancel`; optional `hover` (no button held) and `doubleClick` |
-| `useEngineTools(document.tool, ready, change, options)` | The engine-tools bridge (standard U3a) for kits whose engine owns its tools: the rail's tools from `tools()`, the active tool as a `KitTool`, its overlays as a `decorate` function, its cursor, `keyDown` (Enter, Escape, arrows, and typed text while the tool is mid-gesture or editing text), `toolForKey` for single-key shortcuts, `status`; `hostTools` keeps view tools (Hand, Zoom) with the host. Events go to the worker one at a time; while one is out only the newest drag or hover waits |
+| `useEngineTools(document.tool, ready, change, options)` | The engine-tools bridge (standard U3a) for kits whose engine owns its tools: the rail's tools from `tools()`, the active tool as a `KitTool`, its overlays as a `decorate` function, its cursor, `keyDown` (Enter, Escape, arrows, and typed text while the tool is mid-gesture or editing text), `toolForKey` for single-key shortcuts, `status`; `hostTools` keeps view tools (Hand, Zoom) with the host. Events go to the worker one at a time; while one is out only the newest drag or hover waits, and printable keys wait in the same queue (`onDeferredKey` gets those that turn out not to be text) |
 | `RasterViewport` | The canvas engine: cached frame, pan, zoom, fit, exact damage patches, sampling, `toScreen` |
 | `commandForShortcut` (internal) | Shortcut matching used by the frame |
 
@@ -198,6 +198,7 @@ what the open Kit SDK will publish:
 | `useKitEditor(document, { onOpenAgent })` | Command list (at once on open, then throttled to every 250 ms while the document changes), `run` returning the command's JSON result (or null after a notice), `runShortcut`, save notices, "save before asking the agent" |
 | `KitEditorFrame` | Header, menus, options, tools, canvas, panels, a `bottom` panel (timelines), status bar; opening, failure, and changed-on-disk states. Keys go to the kit first, then Cmd/Ctrl+S, then the command bound to the key (modified keys, Delete, Backspace, F-keys; never Kition's Cmd+N, W, O, P, Q, T, or comma); the engine is asked whether it can run at that moment |
 | `KitMenuBar` | Menus from the commands in a given top-level order |
+| `EngineToolRail` | The rail for engine tools: one slot per tool group, the rest of the group on right-click; Kition's icons for the Craft engines' `tool-<kind>` names |
 
 Shared test ids: `kit-editor`, `kit-unsaved`, `kit-save`, `kit-ask-agent`,
 `kit-menu-bar`, `kit-menu-<Menu>`, `kit-menu-command-<id>`,
@@ -236,8 +237,8 @@ Kition renderer:
 9. `src/features/workspace/components/<kit>/<kit>KitSdk.ts`: the manifest
    and `describe<Kit>(info)`. Tools come one of two ways. When the engine
    owns its tools (manifest capability `engine-tools`, as Vector), use
-   `useEngineTools` and write no tool code: `VectorWebEditor.tsx` shows it,
-   with a rail from the engine's tool groups. Otherwise write
+   `useEngineTools` and `EngineToolRail` and write no tool code:
+   `VectorWebEditor.tsx` and `DesignWebEditor.tsx` show it. Otherwise write
    `<kit>CanvasTools.ts` with the kit's `KitTool`s (Photo's
    `photoCanvasTools.ts` shows brushes, rectangles, lassos, clicks, and
    inline text).
@@ -402,6 +403,14 @@ Engine tools (Vector):
 - A resolution-independent engine renders sharp above 1:1: the viewport
   already asks `render` for `zoom × devicePixelRatio`, so the SDK draws at
   that scale instead of enlarging a 1:1 frame.
+- Keys pressed while the engine is still answering a click are decided when
+  the click is answered: the click may have started a text frame. Deciding at
+  once with the last answer sent a fast typist's first letters to tool
+  shortcuts (Design's e2e types right after the drag that makes a frame).
+- An engine whose document holds pages (Design) lays them out on one canvas;
+  the document pixels are that canvas, so the host's viewport, overlays, and
+  damage work unchanged. Open on the first spread with `initialArea`, not the
+  whole canvas shrunk to fit.
 - Build with an absolute `CARGO_TARGET_DIR`: `wasm-pack` runs cargo inside
   the crate's folder, so a relative one lands in a stray directory there.
 

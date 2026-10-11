@@ -6,13 +6,14 @@
  * See docs/kit-sdk.md. Re-export more of `sdk/` here when a kit needs it.
  */
 export { KitCanvas, type KitCanvasHandle } from './sdk/KitCanvas'
-export { useEngineTools, type EngineToolInfo } from './sdk/engineTools'
+export { useEngineTools } from './sdk/engineTools'
 export { createKitFile } from './sdk/createKitFile'
 export { KitEngine, type KitEngineInfo } from './sdk/kitEngine'
 export { kitSdkAvailable, type KitSdkManifest } from './sdk/kitSdk'
 export { HAND_TOOL, ZOOM_TOOL, dragRect, type KitPointer, type KitTool } from './sdk/kitTools'
 export type { RasterDecoration, RasterRect, RasterView, RasterViewportStats } from './sdk/rasterViewport'
 export { useKitDocument, type KitChange } from './sdk/useKitDocument'
+export { EngineToolRail } from './kition/EngineToolRail'
 export { KitEditorFrame } from './kition/KitEditorFrame'
 export { KitMenuBar } from './kition/KitMenuBar'
 export { KITION_KIT_HOST } from './kition/kitionHost'
