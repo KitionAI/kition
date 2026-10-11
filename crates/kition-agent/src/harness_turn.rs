@@ -202,7 +202,10 @@ pub(crate) fn log_key(session_id: i64) -> String {
 pub(crate) const EVENT_PAGE_LIMIT: usize = 500;
 
 /// The session events after `after`, in order, at most one page, and the
-/// cursor for the next page (the last seq returned, or `after`).
+/// cursor for the next page (the last seq returned, or `after`). Provider-
+/// native items are dropped from `assistant/message`: they exist only to
+/// replay the conversation to the provider and are not redacted (they can
+/// repeat tool inputs and images verbatim).
 pub(crate) fn read_events(
     log: &dyn SessionLog,
     session_id: i64,
@@ -213,6 +216,12 @@ pub(crate) fn read_events(
         .into_iter()
         .filter(|event| event.seq > after)
         .take(EVENT_PAGE_LIMIT)
+        .map(|mut event| {
+            if let EventBody::AssistantMessage { raw_items, .. } = &mut event.body {
+                raw_items.clear();
+            }
+            event
+        })
         .collect();
     let next_after = items.last().map_or(after, |event| event.seq);
     Ok((items, next_after))
@@ -771,6 +780,27 @@ mod tests {
         assert!(empty.is_empty());
         assert_eq!(same, last);
         let (missing, cursor) = read_events(&log, 6, 0).unwrap_or_else(|error| panic!("{error}"));
+        assert!(missing.is_empty());
+        assert_eq!(cursor, 0);
+
+        log.append(
+            &log_key(6),
+            EventBody::AssistantMessage {
+                content: "done".into(),
+                tool_calls: Vec::new(),
+                stop_reason: String::new(),
+                model: String::new(),
+                raw_items: vec![json!({ "type": "provider_note", "note": "fake-secret" })],
+            },
+        )
+        .unwrap_or_else(|error| panic!("{error}"));
+        let (page, _) = read_events(&log, 6, 0).unwrap_or_else(|error| panic!("{error}"));
+        assert!(matches!(
+            &page[0].body,
+            EventBody::AssistantMessage { raw_items, .. } if raw_items.is_empty()
+        ));
+        assert_eq!(log.read(&log_key(6)).map(|events| events.len()), Ok(1));
+        let (missing, cursor) = read_events(&log, 7, 0).unwrap_or_else(|error| panic!("{error}"));
         assert!(missing.is_empty());
         assert_eq!(cursor, 0);
     }

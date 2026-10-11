@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://kition.ai/contracts/runtime/agent-session-events.schema.json",
   "title": "Kition Agent Session Events",
-  "description": "GET /agent/sessions/{id}/session-events?after=<seq> answers the caller's own session event log in the runtime envelope: events with seq greater than after, in order, at most 500 per page. Another user's or an unknown session answers 404. Logged tool arguments are redacted by the harness.",
+  "description": "GET /agent/sessions/{id}/session-events?after=<seq> answers the caller's own session event log in the runtime envelope: events with seq greater than after, in order, at most 500 per page. Another user's or an unknown session answers 404. Tool-call arguments in tool/call and in assistant/message toolCalls are logged through each tool's projection (passwords redacted, search queries and patch text reduced to counts); other fields are logged as the model and tools produced them.",
   "$ref": "#/$defs/page",
   "$defs": {
     "seq": {
@@ -68,7 +68,7 @@
           "type": "string"
         },
         "arguments": {
-          "description": "The call arguments; secrets are redacted before they are logged."
+          "description": "The call arguments as the tool's log projection writes them (passwords redacted, search queries and patch text reduced to counts)."
         }
       }
     },
@@ -258,7 +258,7 @@
     },
     "assistantMessageEvent": {
       "type": "object",
-      "description": "What the model answered, with the tool calls it asked for.",
+      "description": "What the model answered, with the tool calls it asked for. Provider-native replay items are kept in the log but never returned.",
       "additionalProperties": false,
       "required": [
         "seq",
@@ -292,11 +292,6 @@
         },
         "model": {
           "type": "string"
-        },
-        "rawItems": {
-          "type": "array",
-          "description": "Provider-native items replayed verbatim on the Responses wire.",
-          "items": true
         }
       }
     },
@@ -327,7 +322,7 @@
     },
     "toolCallEvent": {
       "type": "object",
-      "description": "A tool call the runtime is about to run; secrets in the arguments are redacted.",
+      "description": "A tool call the runtime is about to run, with its arguments as the tool's log projection writes them.",
       "additionalProperties": false,
       "required": [
         "seq",
@@ -354,7 +349,7 @@
           "type": "string"
         },
         "arguments": {
-          "description": "The logged arguments, possibly summarized by the tool."
+          "description": "The logged arguments (passwords redacted, search queries and patch text reduced to counts)."
         }
       }
     },

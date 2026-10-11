@@ -463,6 +463,58 @@ async fn tool_call_turn(harness_mode: bool) {
     }
 }
 
+/// A provider-native output item that carries a secret-looking string.
+const RAW_SECRET: &str = "fake-raw-item-secret-4d1c";
+
+#[tokio::test(flavor = "multi_thread")]
+async fn the_session_events_api_keeps_provider_native_items_out() {
+    let Harness { app, db, .. } = app_with(true);
+    let session_id = new_session(&app).await;
+    let raw = json!({ "type": "provider_note", "id": "pn_1", "note": RAW_SECRET });
+    let item = json!({
+        "type": "function_call", "id": "fc_1", "call_id": "call_1", "name": "artifact_write",
+        "arguments": json!({ "path": "Notes/plan.md", "content": "# Plan" }).to_string(),
+    });
+    let first = sse(&[
+        json!({ "type": "response.output_item.done", "output_index": 1, "item": item }),
+        json!({ "type": "response.completed", "response": { "status": "completed", "output": [raw, item] } }),
+    ]);
+    let base_url = fake_provider(vec![first, answer(&["Saved."])]).await;
+    let frames = stream(&app, session_id, &base_url, json!({})).await;
+    assert_eq!(
+        frames.last().cloned().unwrap_or_default()["type"],
+        "done",
+        "{frames:?}"
+    );
+
+    let log = kition_harness::log::SqliteLog::new(db.clone());
+    let stored = kition_harness::log::SessionLog::read(&log, &format!("agent:{session_id}"))
+        .unwrap_or_else(|error| panic!("{error}"));
+    let stored = serde_json::to_string(&stored).unwrap_or_default();
+    assert!(
+        stored.contains(RAW_SECRET),
+        "the log keeps raw items for replay"
+    );
+    assert!(stored.contains("rawItems"));
+
+    let uri = format!("/agent/sessions/{session_id}/session-events");
+    let (status, body) = call(&app, "GET", &uri, json!({})).await;
+    assert_eq!(status, 200);
+    let text = String::from_utf8_lossy(&body);
+    assert!(!text.contains(RAW_SECRET), "{text}");
+    assert!(!text.contains("rawItems"), "{text}");
+    let page = data(&body);
+    check_session_events_contract("page", &page);
+    assert!(
+        page["items"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .any(|event| event["type"] == "assistant/message"),
+        "{page}"
+    );
+}
+
 /// Validates `instance` against one `$defs` entry of the session events contract.
 fn check_session_events_contract(def: &str, instance: &Value) {
     let mut schema: Value = serde_json::from_str(include_str!(

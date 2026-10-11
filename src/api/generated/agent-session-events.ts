@@ -30,7 +30,7 @@ export type AgentSessionEventsLoggedCall = {
   callId: string
   name: string
   /**
-   * The call arguments; secrets are redacted before they are logged.
+   * The call arguments as the tool's log projection writes them (passwords redacted, search queries and patch text reduced to counts).
    */
   arguments: unknown
 }
@@ -102,7 +102,7 @@ export type AgentSessionEventsUserMessageEvent = {
 }
 
 /**
- * What the model answered, with the tool calls it asked for.
+ * What the model answered, with the tool calls it asked for. Provider-native replay items are kept in the log but never returned.
  */
 export type AgentSessionEventsAssistantMessageEvent = {
   seq: AgentSessionEventsSeq
@@ -112,10 +112,6 @@ export type AgentSessionEventsAssistantMessageEvent = {
   toolCalls?: AgentSessionEventsLoggedCall[]
   stopReason: string
   model: string
-  /**
-   * Provider-native items replayed verbatim on the Responses wire.
-   */
-  rawItems?: unknown[]
 }
 
 /**
@@ -129,7 +125,7 @@ export type AgentSessionEventsAssistantAttemptEvent = {
 }
 
 /**
- * A tool call the runtime is about to run; secrets in the arguments are redacted.
+ * A tool call the runtime is about to run, with its arguments as the tool's log projection writes them.
  */
 export type AgentSessionEventsToolCallEvent = {
   seq: AgentSessionEventsSeq
@@ -138,7 +134,7 @@ export type AgentSessionEventsToolCallEvent = {
   callId: string
   name: string
   /**
-   * The logged arguments, possibly summarized by the tool.
+   * The logged arguments (passwords redacted, search queries and patch text reduced to counts).
    */
   arguments: unknown
 }
@@ -192,6 +188,6 @@ export type AgentSessionEventsPage = {
 }
 
 /**
- * GET /agent/sessions/{id}/session-events?after=<seq> answers the caller's own session event log in the runtime envelope: events with seq greater than after, in order, at most 500 per page. Another user's or an unknown session answers 404. Logged tool arguments are redacted by the harness.
+ * GET /agent/sessions/{id}/session-events?after=<seq> answers the caller's own session event log in the runtime envelope: events with seq greater than after, in order, at most 500 per page. Another user's or an unknown session answers 404. Tool-call arguments in tool/call and in assistant/message toolCalls are logged through each tool's projection (passwords redacted, search queries and patch text reduced to counts); other fields are logged as the model and tools produced them.
  */
 export type AgentSessionEventsContract = AgentSessionEventsPage
