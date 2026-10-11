@@ -6,6 +6,7 @@ import { notify } from '@/lib/notify'
 import { mountKit, type KitConnection, type KitTheme } from '../host/mountKit'
 import { KITION_KIT_HOST } from './kitionHost'
 import { registerBridgeEditor, reportBridgeChange } from './kitBridge'
+import { pickWorkspaceFile } from './pickWorkspaceFile'
 
 /** An embedded kit UI in Kition: its package under `public/kits/<dir>/`. */
 export type EmbeddedKit = { kitId: string; dir: string; entry?: string }
@@ -78,11 +79,16 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
     let closed = false
     let state = { dirty: false, revision: 0 }
     let withdraw: (() => void) | null = null
+    // A run of this effect that is cleaned up (StrictMode's first run, a closed tab) must not take
+    // the kit's one handshake from the run that replaces it.
+    const abandon = new AbortController()
     const start = async () => {
       try {
         const { bytes, stamp } = await KITION_KIT_HOST.read(path)
+        if (closed) return
         const lend = KITION_KIT_HOST.lend?.(path) ?? undefined
         mounted = await mountKit(element, {
+          signal: abandon.signal,
           origin: window.location.origin,
           host: { name: 'Kition', version: __APP_VERSION__ },
           document: { path, name: path.split('/').pop() ?? path, bytes, version: stamp, lend: lend ?? undefined },
@@ -101,6 +107,7 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
               await writeKitFile(target, new Uint8Array(bytes))
               return { path: target, version: (await KITION_KIT_HOST.stamp(target)) ?? '' }
             },
+            pick: async ({ accept }) => ({ path: await pickWorkspaceFile(path, accept) }),
             openAgent: latest.current.onOpenAgent ? () => latest.current.onOpenAgent?.() : undefined,
             changed: (next) => {
               const agentEdit = next.by === 'agent'
@@ -136,11 +143,12 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
         if (!closed) setFailure(error instanceof Error ? error.message : String(error))
       }
     }
-    const onLoad = () => void start()
-    element.addEventListener('load', onLoad, { once: true })
+    // The kit announces itself when it loads (Kit UI protocol section 1), so this need not
+    // wait for the frame's load event, which may already have fired.
+    void start()
     return () => {
       closed = true
-      element.removeEventListener('load', onLoad)
+      abandon.abort()
       withdraw?.()
       mounted?.close()
       setConnection(null)

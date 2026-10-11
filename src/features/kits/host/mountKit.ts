@@ -8,6 +8,7 @@ import {
   KIT_UI_PROTOCOL,
   KitPeer,
   KitRpcError,
+  isReady,
   type AiRunResult,
   type AiStep,
   type DocumentState,
@@ -50,6 +51,8 @@ export type MountOptions = {
   handlers: KitHostHandlers
   /** How long the kit may take to open the document. */
   timeoutMs?: number
+  /** Abandons the mount (the frame went away first): stops listening and rejects. */
+  signal?: AbortSignal
 }
 
 /** A mounted kit UI. */
@@ -79,41 +82,89 @@ function unsupported(method: string): never {
  * Hands `frame` (already loaded with the kit's UI entry) its port and initializes it. Resolves
  * when the kit has opened the document; rejects with the kit's error otherwise.
  */
-export async function mountKit(frame: HTMLIFrameElement, options: MountOptions): Promise<KitConnection> {
-  const target = frame.contentWindow
-  if (!target) throw new Error('the kit frame has no window')
-  const channel = new MessageChannel()
-  const peer: HostPeer = new KitPeer(channel.port1, 'h')
+export function mountKit(frame: HTMLIFrameElement, options: MountOptions): Promise<KitConnection> {
   const { handlers } = options
-  peer.handle('host/read', (params) => handlers.read(params))
-  peer.handle('host/stamp', (params) => handlers.stamp(params))
-  peer.handle('host/write', (params) => handlers.write(params))
-  peer.handle('host/pick', (params) => (handlers.pick ? handlers.pick(params) : unsupported('host/pick')))
-  peer.handle('host/openAgent', async (params) => {
-    if (!handlers.openAgent) unsupported('host/openAgent')
-    await handlers.openAgent(params)
-    return {}
-  })
-  peer.on('document/changed', (state) => handlers.changed(state))
-  peer.on('host/notify', (notice) => handlers.notify?.(notice))
-  peer.on('host/shortcut', (key) => handlers.shortcut?.(key))
-
-  target.postMessage({ kitionKitUi: 1, protocol: KIT_UI_PROTOCOL }, options.origin, [channel.port2])
   const capabilities = ['agent', 'pick-file'].filter((name) => (name === 'agent' ? handlers.openAgent : handlers.pick))
-  const document = options.document
   const timeout = options.timeoutMs ?? 120_000
-  let timer: ReturnType<typeof setTimeout> | undefined
-  const info = await Promise.race([
-    peer.request(
+
+  /** One attempt: a channel to the kit document that announced itself as `id`. */
+  const attempt = (target: Window, id: string) => {
+    const channel = new MessageChannel()
+    const peer: HostPeer = new KitPeer(channel.port1, 'h')
+    peer.handle('host/read', (params) => handlers.read(params))
+    peer.handle('host/stamp', (params) => handlers.stamp(params))
+    peer.handle('host/write', (params) => handlers.write(params))
+    peer.handle('host/pick', (params) => (handlers.pick ? handlers.pick(params) : unsupported('host/pick')))
+    peer.handle('host/openAgent', async (params) => {
+      if (!handlers.openAgent) unsupported('host/openAgent')
+      await handlers.openAgent(params)
+      return {}
+    })
+    peer.on('document/changed', (state) => handlers.changed(state))
+    peer.on('host/notify', (notice) => handlers.notify?.(notice))
+    peer.on('host/shortcut', (key) => handlers.shortcut?.(key))
+    target.postMessage({ kitionKitUi: 1, protocol: KIT_UI_PROTOCOL, id }, options.origin, [channel.port2])
+    // Each attempt sends the document's bytes; the transfer leaves this copy intact for the next.
+    const document = { ...options.document, bytes: options.document.bytes?.slice(0) }
+    const initialized = peer.request(
       'ui/initialize',
       { protocol: KIT_UI_PROTOCOL, host: options.host, document, theme: options.theme, locale: options.locale, shortcuts: options.shortcuts, capabilities },
       { transfer: true },
-    ),
-    new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new Error('the kit did not open the document in time')), timeout)
-    }),
-  ]).finally(() => clearTimeout(timer))
+    )
+    return { peer, initialized }
+  }
 
+  return new Promise((resolve, reject) => {
+    let current: { peer: HostPeer; id: string } | null = null
+    const finish = () => {
+      clearTimeout(timer)
+      window.removeEventListener('message', onMessage)
+      options.signal?.removeEventListener('abort', onAbort)
+    }
+    const onAbort = () => {
+      finish()
+      current?.peer.close()
+      reject(new Error('the kit mount was abandoned'))
+    }
+    if (options.signal?.aborted) {
+      reject(new Error('the kit mount was abandoned'))
+      return
+    }
+    options.signal?.addEventListener('abort', onAbort)
+    const timer = setTimeout(() => {
+      finish()
+      current?.peer.close()
+      reject(new Error('the kit did not open the document in time'))
+    }, timeout)
+    // A kit document announced itself: connect to it. A newer one (the frame navigated, or the
+    // first answer came from the page it replaced) starts over with a new channel.
+    const onMessage = (event: MessageEvent) => {
+      if (event.source !== frame.contentWindow || !isReady(event.data) || event.data.ready !== KIT_UI_PROTOCOL) return
+      if (options.origin !== '*' && event.origin !== options.origin) return
+      if (current?.id === event.data.id) return
+      current?.peer.close()
+      const { peer, initialized } = attempt(event.source as Window, event.data.id)
+      current = { peer, id: event.data.id }
+      initialized.then(
+        (info) => {
+          if (current?.peer !== peer) return
+          finish()
+          resolve(connection(peer, info))
+        },
+        (error: unknown) => {
+          if (current?.peer !== peer) return
+          finish()
+          reject(error instanceof Error ? error : new Error(String(error)))
+        },
+      )
+    }
+    window.addEventListener('message', onMessage)
+    // A kit that loaded before this listened announced itself to no one; ask it again.
+    frame.contentWindow?.postMessage({ kitionKitUi: 1, hello: KIT_UI_PROTOCOL }, options.origin)
+  })
+}
+
+function connection(peer: HostPeer, info: { kit: KitConnection['kit']; capabilities: string[] }): KitConnection {
   return {
     kit: info.kit,
     capabilities: info.capabilities,

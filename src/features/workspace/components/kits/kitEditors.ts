@@ -68,8 +68,9 @@ function standardKit(spec: StandardKitSpec, format: WorkspaceDocumentFormat, opt
   }
 }
 
-/** The Presentation kit's own editor, built by `scripts/build-kit-ui.sh presentation`. */
+/** The kits' own editors, built by `scripts/build-kit-ui.sh <kit>`. */
 const PRESENTATION_UI: EmbeddedKit = { kitId: 'kit.presentation', dir: 'presentation-ui' }
+const WORD_UI: EmbeddedKit = { kitId: 'kit.word', dir: 'word-ui' }
 
 const KIT_EDITORS: readonly KitEditorEntry[] = [
   {
@@ -114,7 +115,7 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
   // PowerPoint files open in the Presentation kit, and keep the file preview without it.
   standardKit(PRESENTATION_KIT, 'pptx', { preview: true, embedded: PRESENTATION_UI }),
   // Word files open in the Word kit, and keep the file preview without it. US Letter, in points.
-  standardKit(WORD_KIT, 'docx', { preview: true, create: { id: 'word', extension: 'docx', baseName: 'Untitled Word document', size: { width: 612, height: 792 }, label: 'createMenu.format.word', icon: FileText } }),
+  standardKit(WORD_KIT, 'docx', { preview: true, embedded: WORD_UI, create: { id: 'word', extension: 'docx', baseName: 'Untitled Word document', size: { width: 612, height: 792 }, label: 'createMenu.format.word', icon: FileText } }),
   // Excel files open in the Sheet kit, and keep the file preview without it.
   standardKit(SHEET_KIT, 'xlsx', { preview: true, create: { id: 'spreadsheet', extension: 'xlsx', baseName: 'Untitled spreadsheet', size: { width: 1710, height: 2021 }, label: 'createMenu.format.spreadsheet', icon: Sheet } }),
   // PDFs open in the PDF kit, and keep the file preview without it. US Letter, in points.
