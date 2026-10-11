@@ -854,3 +854,73 @@ async fn an_empty_model_reply_fails_the_turn() {
         })
     ));
 }
+
+#[tokio::test]
+async fn logged_tool_arguments_go_through_the_tools_projection() {
+    let received = Arc::new(Mutex::new(String::new()));
+    let seen = received.clone();
+    let login = define("login", "Log in")
+        .unchecked_parameters(json!({ "type": "object" }))
+        .log_arguments(|args| {
+            let mut safe = args.clone();
+            if safe.get("password").is_some() {
+                safe["password"] = json!("[redacted]");
+            }
+            safe
+        })
+        .execute(move |args, _cx| {
+            let seen = seen.clone();
+            async move {
+                *seen.lock().unwrap_or_else(PoisonError::into_inner) =
+                    args["password"].as_str().unwrap_or_default().to_owned();
+                Ok(json!({ "ok": true }))
+            }
+        })
+        .build()
+        .unwrap_or_else(|error| panic!("{error}"));
+    let setup = setup(vec![
+        LlmReply::calls(vec![call(
+            "c1",
+            "login",
+            json!({ "user": "a", "password": "hunter2" }),
+        )]),
+        LlmReply::text("done"),
+    ]);
+    let mut input = setup.input("log in", Cancel::default());
+    input
+        .tools
+        .register(login)
+        .unwrap_or_else(|error| panic!("{error}"));
+    setup
+        .driver(Pipeline::default())
+        .run_turn(input)
+        .await
+        .unwrap_or_else(|error| panic!("{error}"));
+    assert_eq!(
+        received
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .as_str(),
+        "hunter2"
+    );
+    let events = setup
+        .log
+        .read("s")
+        .unwrap_or_else(|error| panic!("{error}"));
+    let mut logged = Vec::new();
+    for event in &events {
+        match &event.body {
+            EventBody::AssistantMessage { tool_calls, .. } => {
+                logged.extend(tool_calls.iter().map(|call| call.arguments.clone()));
+            }
+            EventBody::ToolCall { arguments, .. } => logged.push(arguments.clone()),
+            _ => {}
+        }
+    }
+    assert_eq!(logged.len(), 2);
+    for arguments in logged {
+        assert_eq!(arguments, json!({ "user": "a", "password": "[redacted]" }));
+    }
+    let text = format!("{events:?}");
+    assert!(!text.contains("hunter2"), "{text}");
+}

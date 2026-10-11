@@ -71,6 +71,7 @@ pub type ToolFuture = BoxFuture<'static, Result<Value, ToolFailure>>;
 type Execute = Arc<dyn Fn(Value, ToolContext) -> ToolFuture + Send + Sync>;
 type Render = Arc<dyn Fn(&Value, &Value) -> Vec<ContentBlock> + Send + Sync>;
 type Present = Arc<dyn Fn(&Value, &Value) -> Value + Send + Sync>;
+type Project = Arc<dyn Fn(&Value) -> Value + Send + Sync>;
 
 /// A registered tool. Cheap to clone.
 #[derive(Clone)]
@@ -88,6 +89,7 @@ pub struct ToolDef {
     execute: Execute,
     render: Render,
     presentation_meta: Option<Present>,
+    log_arguments: Option<Project>,
 }
 
 impl std::fmt::Debug for ToolDef {
@@ -147,6 +149,7 @@ pub fn define(name: &str, description: &str) -> ToolBuilder {
         execute: None,
         render: None,
         presentation_meta: None,
+        log_arguments: None,
     }
 }
 
@@ -160,6 +163,7 @@ pub struct ToolBuilder {
     execute: Option<Execute>,
     render: Option<Render>,
     presentation_meta: Option<Present>,
+    log_arguments: Option<Project>,
 }
 
 impl ToolBuilder {
@@ -217,6 +221,18 @@ impl ToolBuilder {
         self
     }
 
+    /// Pure projection of the arguments to the copy written to the session
+    /// log (`assistant/message` and `tool/call`), for example to redact a
+    /// password. The body still receives the real arguments. Defaults to
+    /// the identity.
+    pub fn log_arguments(
+        mut self,
+        project: impl Fn(&Value) -> Value + Send + Sync + 'static,
+    ) -> Self {
+        self.log_arguments = Some(Arc::new(project));
+        self
+    }
+
     pub fn build(self) -> Result<ToolDef, String> {
         if !valid_name(&self.name) {
             return Err(format!(
@@ -260,6 +276,7 @@ impl ToolBuilder {
             execute,
             render,
             presentation_meta: self.presentation_meta,
+            log_arguments: self.log_arguments,
         })
     }
 }
@@ -306,6 +323,16 @@ fn valid_name(name: &str) -> bool {
 }
 
 impl ToolDef {
+    /// The arguments as they may be logged. A projection that panics logs
+    /// a placeholder rather than the real arguments.
+    pub fn logged_arguments(&self, args: &Value) -> Value {
+        match &self.log_arguments {
+            None => args.clone(),
+            Some(project) => std::panic::catch_unwind(AssertUnwindSafe(|| project(args)))
+                .unwrap_or_else(|_panic| json!("[arguments not logged]")),
+        }
+    }
+
     pub fn spec(&self) -> ToolSpec {
         ToolSpec {
             name: self.name.clone(),

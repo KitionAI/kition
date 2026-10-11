@@ -53,6 +53,15 @@ impl std::fmt::Debug for TurnInput {
     }
 }
 
+/// A call's arguments as its tool allows them to be logged; an unknown
+/// tool's arguments are logged as the model sent them.
+fn logged_arguments(tools: &ToolRegistry, call: &LoggedCall) -> serde_json::Value {
+    tools.get(&call.name).map_or_else(
+        || call.arguments.clone(),
+        |tool| tool.logged_arguments(&call.arguments),
+    )
+}
+
 pub struct Driver {
     pub log: Arc<dyn SessionLog>,
     pub llm: Arc<dyn Llm>,
@@ -196,7 +205,14 @@ impl Driver {
                 events,
                 EventBody::AssistantMessage {
                     content: reply.content.clone(),
-                    tool_calls: reply.tool_calls.clone(),
+                    tool_calls: reply
+                        .tool_calls
+                        .iter()
+                        .map(|call| LoggedCall {
+                            arguments: logged_arguments(&input.tools, call),
+                            ..call.clone()
+                        })
+                        .collect(),
                     stop_reason: reply.stop_reason,
                     model: reply.model,
                     raw_items: reply.raw_items,
@@ -277,7 +293,7 @@ impl Driver {
             EventBody::ToolCall {
                 call_id: call.call_id.clone(),
                 name: call.name.clone(),
-                arguments: call.arguments.clone(),
+                arguments: logged_arguments(&input.tools, call),
             },
         )?;
         let Some(tool) = input.tools.get(&call.name) else {

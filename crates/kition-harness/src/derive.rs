@@ -13,6 +13,10 @@ use kition_ai::engine::{Message, MessagePart, ToolCall};
 
 use crate::events::{ContentBlock, EventBody, SessionEvent};
 
+/// Stands in for an image from a turn before the current one, so old
+/// screenshots and photos do not ride along with every later request.
+pub const OMITTED_IMAGE: &str = "[image omitted from earlier turn]";
+
 /// Events after which any still-open tool call is no longer allowed to
 /// dangle, and after which pending tool-result images are flushed.
 fn is_boundary(body: &EventBody) -> bool {
@@ -47,7 +51,13 @@ pub fn derive_messages_for(events: &[SessionEvent], model: Option<&str>) -> Vec<
     let mut awaiting_approval: HashSet<String> = HashSet::new();
     let mut started: HashSet<String> = HashSet::new();
 
-    for event in events {
+    // Images before the newest `turn/start` are earlier turns' images.
+    let current_turn = events
+        .iter()
+        .rposition(|event| matches!(event.body, EventBody::TurnStart { .. }))
+        .unwrap_or(0);
+    for (index, event) in events.iter().enumerate() {
+        let keep_images = index >= current_turn;
         if is_boundary(&event.body) {
             repair_dangling_calls(
                 &mut open_calls,
@@ -59,7 +69,9 @@ pub fn derive_messages_for(events: &[SessionEvent], model: Option<&str>) -> Vec<
         }
         match &event.body {
             EventBody::SystemMessage { content } => system.clone_from(content),
-            EventBody::UserMessage { content } => history.push(user_message(content)),
+            EventBody::UserMessage { content } => {
+                history.push(user_message(content, keep_images));
+            }
             EventBody::AssistantMessage {
                 content,
                 tool_calls,
@@ -114,7 +126,13 @@ pub fn derive_messages_for(events: &[SessionEvent], model: Option<&str>) -> Vec<
                 content,
                 ..
             } => {
-                let (mut text, images) = split(content);
+                // A result for a call that is not open (already closed by a
+                // synthetic repair, or never asked for) would be a second or
+                // orphaned tool message, which every provider rejects.
+                if !open_calls.iter().any(|(id, _)| id == call_id) {
+                    continue;
+                }
+                let (mut text, images) = split(content, keep_images);
                 if text.is_empty() && !images.is_empty() {
                     text = "(image attached below)".into();
                 }
@@ -191,8 +209,8 @@ fn flush_images(pending_images: &mut Vec<MessagePart>, history: &mut Vec<Message
     }
 }
 
-fn user_message(content: &[ContentBlock]) -> Message {
-    let (text, images) = split(content);
+fn user_message(content: &[ContentBlock], keep_images: bool) -> Message {
+    let (text, images) = split(content, keep_images);
     if images.is_empty() {
         return Message::new("user", text);
     }
@@ -212,12 +230,15 @@ fn user_message(content: &[ContentBlock]) -> Message {
     }
 }
 
-fn split(content: &[ContentBlock]) -> (String, Vec<MessagePart>) {
+/// The text and images of some content; when `keep_images` is false each
+/// image becomes the [`OMITTED_IMAGE`] note in the text.
+fn split(content: &[ContentBlock], keep_images: bool) -> (String, Vec<MessagePart>) {
     let mut texts = Vec::new();
     let mut images = Vec::new();
     for block in content {
         match block {
             ContentBlock::Text { text } => texts.push(text.as_str()),
+            ContentBlock::Image { .. } if !keep_images => texts.push(OMITTED_IMAGE),
             ContentBlock::Image { url } => images.push(MessagePart {
                 kind: "image_url".into(),
                 image_url: url.clone(),
@@ -230,7 +251,7 @@ fn split(content: &[ContentBlock]) -> (String, Vec<MessagePart>) {
 
 #[cfg(test)]
 mod tests {
-    use serde_json::json;
+    use serde_json::{Value, json};
 
     use super::*;
     use crate::events::{LoggedCall, TurnEndReason};
@@ -733,5 +754,152 @@ mod tests {
             "The tool call was interrupted before the Harness recorded it as started. \
              Retry it if it is still needed."
         );
+    }
+
+    fn image(url: &str) -> ContentBlock {
+        ContentBlock::Image { url: url.into() }
+    }
+
+    fn has_image(message: &Message) -> bool {
+        message.parts.iter().any(|part| part.kind == "image_url")
+    }
+
+    #[test]
+    fn images_from_earlier_turns_become_a_note_and_the_current_turn_keeps_its_own() {
+        let call = LoggedCall {
+            call_id: "c1".into(),
+            name: "view_image".into(),
+            arguments: json!({}),
+        };
+        let events = vec![
+            at(1, EventBody::TurnStart { turn: 1 }),
+            at(
+                2,
+                EventBody::UserMessage {
+                    content: vec![ContentBlock::text("look"), image("data:old-user")],
+                },
+            ),
+            at(3, assistant_with_calls(vec![call.clone()])),
+            at(
+                4,
+                EventBody::ToolResult {
+                    call_id: "c1".into(),
+                    name: "view_image".into(),
+                    value: Value::Null,
+                    content: vec![ContentBlock::text("viewed"), image("data:old-tool")],
+                    is_error: false,
+                    meta: None,
+                },
+            ),
+            at(
+                5,
+                EventBody::TurnEnd {
+                    turn: 1,
+                    reason: TurnEndReason::Completed,
+                    error: String::new(),
+                },
+            ),
+            at(6, EventBody::TurnStart { turn: 2 }),
+            at(
+                7,
+                EventBody::UserMessage {
+                    content: vec![ContentBlock::text("again"), image("data:new-user")],
+                },
+            ),
+            at(
+                8,
+                assistant_with_calls(vec![LoggedCall {
+                    call_id: "c2".into(),
+                    ..call
+                }]),
+            ),
+            at(
+                9,
+                EventBody::ToolResult {
+                    call_id: "c2".into(),
+                    name: "view_image".into(),
+                    value: Value::Null,
+                    content: vec![ContentBlock::text("viewed"), image("data:new-tool")],
+                    is_error: false,
+                    meta: None,
+                },
+            ),
+        ];
+        let messages = derive_messages(&events);
+        let text = format!("{messages:?}");
+        assert!(!text.contains("data:old-user"), "{text}");
+        assert!(!text.contains("data:old-tool"), "{text}");
+        assert!(text.contains("data:new-user"), "{text}");
+        assert!(text.contains("data:new-tool"), "{text}");
+        let old_user = &messages[0];
+        assert_eq!(old_user.role, "user");
+        assert!(!has_image(old_user));
+        assert!(old_user.content.contains("look"), "{old_user:?}");
+        assert!(old_user.content.contains(OMITTED_IMAGE), "{old_user:?}");
+        let old_tool = &messages[2];
+        assert_eq!(old_tool.tool_call_id, "c1");
+        assert!(old_tool.content.contains(OMITTED_IMAGE), "{old_tool:?}");
+        assert_eq!(messages[3].role, "user");
+        assert!(has_image(&messages[3]), "{:?}", messages[3]);
+        assert!(has_image(messages.last().unwrap_or(&messages[0])));
+    }
+
+    #[test]
+    fn a_late_result_for_a_repaired_call_is_dropped() {
+        let events = vec![
+            at(1, EventBody::TurnStart { turn: 1 }),
+            at(
+                2,
+                assistant_with_calls(vec![LoggedCall {
+                    call_id: "c1".into(),
+                    name: "slow".into(),
+                    arguments: json!({}),
+                }]),
+            ),
+            at(
+                3,
+                EventBody::ToolCall {
+                    call_id: "c1".into(),
+                    name: "slow".into(),
+                    arguments: json!({}),
+                },
+            ),
+            at(
+                4,
+                EventBody::UserMessage {
+                    content: vec![ContentBlock::text("next")],
+                },
+            ),
+            at(
+                5,
+                EventBody::ToolResult {
+                    call_id: "c1".into(),
+                    name: "slow".into(),
+                    value: Value::Null,
+                    content: vec![ContentBlock::text("late")],
+                    is_error: false,
+                    meta: None,
+                },
+            ),
+            at(
+                6,
+                EventBody::ToolResult {
+                    call_id: "never".into(),
+                    name: "slow".into(),
+                    value: Value::Null,
+                    content: vec![ContentBlock::text("orphan")],
+                    is_error: false,
+                    meta: None,
+                },
+            ),
+        ];
+        let messages = derive_messages(&events);
+        let tools: Vec<&Message> = messages.iter().filter(|m| m.role == "tool").collect();
+        assert_eq!(tools.len(), 1, "{messages:?}");
+        assert_eq!(tools[0].tool_call_id, "c1");
+        assert!(!tools[0].content.contains("late"), "{messages:?}");
+        assert_eq!(messages[1].role, "tool");
+        assert_eq!(messages[2].role, "user");
+        assert_eq!(messages.len(), 3, "{messages:?}");
     }
 }
