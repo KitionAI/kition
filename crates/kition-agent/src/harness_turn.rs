@@ -22,7 +22,7 @@ use kition_harness::tool::{
 };
 use serde_json::{Value, json};
 
-use crate::providers::{self, ToolFactory, TurnFacts};
+use crate::providers::{self, ToolFactory, ToolShape, TurnFacts};
 use crate::run::{EventInput, Run};
 use crate::session;
 use crate::store::{self, AgentSession};
@@ -170,16 +170,12 @@ fn pipeline(notes: &Notes) -> Pipeline {
         .with(RecoveryPrompt)
 }
 
-/// The arguments as written to the session log. Mirrors `persisted_input`
-/// in `tools/mod.rs` (the source of these rules); keep the two in sync.
+/// The arguments as written to the session log for tools whose provider
+/// does not shape them. Mirrors `persisted_input` in `tools/mod.rs` (the
+/// source of these rules); keep the two in sync. Tools that need their own
+/// summary pass it through their provider's `ToolShape`.
 fn logged_arguments(name: &str, input: &Value) -> Value {
     match name {
-        "whiteboard_propose_patch" | "design_propose_patch" => json!({
-            "type": input["type"],
-            "schema_version": input["schema_version"],
-            "summary_chars": input["summary"].as_str().unwrap_or_default().chars().count(),
-            "operation_count": input["operations"].as_array().map_or(0, Vec::len),
-        }),
         "source_search" | "source_file_search" | "configure_smtp_connection" => {
             let mut safe = input.as_object().cloned().unwrap_or_default();
             if let Some(query) = safe.remove("query") {
@@ -261,16 +257,19 @@ impl Drop for AbortOnDrop {
     }
 }
 
-/// One offered tool as a harness tool that runs through `body`.
-fn harness_tool(spec: &ToolSpec, body: &Body) -> Result<HarnessTool, String> {
+/// One offered tool as a harness tool that runs through `body`, logged and
+/// presented as its provider's `shape` says.
+fn harness_tool(spec: &ToolSpec, shape: &ToolShape, body: &Body) -> Result<HarnessTool, String> {
     let (name, logged_name, body) = (spec.name.clone(), spec.name.clone(), body.clone());
     let schema = spec
         .input_schema
         .clone()
         .unwrap_or_else(|| json!({ "type": "object" }));
-    let mut builder = define(&spec.name, &spec.description)
-        .unchecked_parameters(schema)
-        .log_arguments(move |args| logged_arguments(&logged_name, args))
+    let generic_log: providers::LogArguments =
+        Arc::new(move |args: &Value| logged_arguments(&logged_name, args));
+    let builder = define(&spec.name, &spec.description).unchecked_parameters(schema);
+    let mut builder = shape
+        .apply(builder, Some(generic_log))
         .execute(move |args: Value, cx: ToolContext| body(name.clone(), args, cx))
         .render(|_args, value| {
             vec![ContentBlock::text(
@@ -291,13 +290,15 @@ fn harness_tool(spec: &ToolSpec, body: &Body) -> Result<HarnessTool, String> {
 /// MCP name with a `.`, or longer than 64 characters) is skipped rather
 /// than failing the turn.
 fn factory(body: Body) -> ToolFactory {
-    Arc::new(move |spec: &ToolSpec| match harness_tool(spec, &body) {
-        Ok(tool) => Some(tool),
-        Err(error) => {
-            tracing::warn!(tool = %spec.name, error = %error, "tool not offered on the harness");
-            None
-        }
-    })
+    Arc::new(
+        move |spec: &ToolSpec, shape: &ToolShape| match harness_tool(spec, shape, &body) {
+            Ok(tool) => Some(tool),
+            Err(error) => {
+                tracing::warn!(tool = %spec.name, error = %error, "tool not offered on the harness");
+                None
+            }
+        },
+    )
 }
 
 /// The existing tools, unchanged, as a harness tool factory. Each call
@@ -606,7 +607,10 @@ mod tests {
     fn registry(specs: &[ToolSpec], body: &Body) -> ToolRegistry {
         let build = factory(body.clone());
         let mut registry = ToolRegistry::default();
-        for tool in specs.iter().filter_map(|spec| build(spec)) {
+        for tool in specs
+            .iter()
+            .filter_map(|spec| build(spec, &ToolShape::default()))
+        {
             registry
                 .register(tool)
                 .unwrap_or_else(|error| panic!("{error}"));
@@ -631,6 +635,7 @@ mod tests {
             "\"design\"",
             "photo_",
             "kit.",
+            "_propose_patch",
         ] {
             assert!(!turn.contains(needle), "harness_turn.rs names {needle}");
         }
@@ -735,18 +740,6 @@ mod tests {
             assert_eq!(
                 logged_arguments(name, &json!({ "query": "hello", "limit": 3 })),
                 json!({ "query_chars": 5, "limit": 3 })
-            );
-        }
-        for name in ["whiteboard_propose_patch", "design_propose_patch"] {
-            assert_eq!(
-                logged_arguments(
-                    name,
-                    &json!({
-                        "type": "patch", "schema_version": 1, "summary": "abc",
-                        "operations": [{}, {}],
-                    })
-                ),
-                json!({ "type": "patch", "schema_version": 1, "summary_chars": 3, "operation_count": 2 })
             );
         }
         let args = json!({ "path": "a.md", "password": "kept" });

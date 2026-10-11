@@ -18,8 +18,8 @@ use std::sync::Arc;
 
 use kition_ai::engine::ToolSpec;
 use kition_harness::provider::Provider;
-use kition_harness::tool::ToolDef;
-use serde_json::Value;
+use kition_harness::tool::{ToolBuilder, ToolDef};
+use serde_json::{Value, json};
 
 use crate::catalog::SkillDef;
 use crate::run::Run;
@@ -35,9 +35,39 @@ pub struct TurnFacts {
     pub hosted_images: bool,
 }
 
-/// Builds one harness tool from a catalog or MCP spec; `None` when the
-/// harness cannot offer it (the factory logs why).
-pub type ToolFactory = Arc<dyn Fn(&ToolSpec) -> Option<ToolDef> + Send + Sync>;
+/// Projects a tool's arguments to the copy written to the session log.
+pub type LogArguments = Arc<dyn Fn(&Value) -> Value + Send + Sync>;
+
+/// Projects a tool's arguments and output value to display-only data.
+pub type PresentationMeta = Arc<dyn Fn(&Value, &Value) -> Value + Send + Sync>;
+
+/// What a provider says about how one of its tools is logged and shown.
+/// Unset projections keep the factory's defaults.
+#[derive(Clone, Default)]
+pub struct ToolShape {
+    pub log_arguments: Option<LogArguments>,
+    pub presentation_meta: Option<PresentationMeta>,
+}
+
+impl ToolShape {
+    /// `builder` with this shape's projections; an unset log projection
+    /// falls back to `default_log`.
+    pub fn apply(&self, builder: ToolBuilder, default_log: Option<LogArguments>) -> ToolBuilder {
+        let mut builder = builder;
+        if let Some(project) = self.log_arguments.clone().or(default_log) {
+            builder = builder.log_arguments(move |args| project(args));
+        }
+        if let Some(present) = self.presentation_meta.clone() {
+            builder = builder.presentation_meta(move |args, value| present(args, value));
+        }
+        builder
+    }
+}
+
+/// Builds one harness tool from a catalog or MCP spec and the providing
+/// provider's shape; `None` when the harness cannot offer it (the factory
+/// logs why).
+pub type ToolFactory = Arc<dyn Fn(&ToolSpec, &ToolShape) -> Option<ToolDef> + Send + Sync>;
 
 /// Tools a provider other than `CoreProvider` offers.
 pub fn owned_elsewhere(name: &str) -> bool {
@@ -93,11 +123,49 @@ pub fn catalog_spec(name: &str) -> Option<ToolSpec> {
 
 /// The catalog tools among `names`, built by `factory`.
 fn offer<'a>(factory: &ToolFactory, names: impl IntoIterator<Item = &'a str>) -> Vec<ToolDef> {
+    offer_shaped(factory, names, &ToolShape::default())
+}
+
+/// The catalog tools among `names`, built by `factory` with `shape`.
+fn offer_shaped<'a>(
+    factory: &ToolFactory,
+    names: impl IntoIterator<Item = &'a str>,
+    shape: &ToolShape,
+) -> Vec<ToolDef> {
     names
         .into_iter()
         .filter_map(catalog_spec)
-        .filter_map(|spec| factory(&spec))
+        .filter_map(|spec| factory(&spec, shape))
         .collect()
+}
+
+/// The shape of a canvas patch tool (`whiteboard.patch`, `design.patch`):
+/// the log keeps only the envelope and counts (the patch text can be long
+/// and holds user content), and the result carries the proposed patch for
+/// display. A successful call means the runtime accepted the patch as
+/// sent, so the arguments are the validated patch.
+fn patch_shape(kind: &'static str) -> ToolShape {
+    ToolShape {
+        log_arguments: Some(Arc::new(|input: &Value| {
+            json!({
+                "type": input["type"],
+                "schema_version": input["schema_version"],
+                "summary_chars": input["summary"].as_str().unwrap_or_default().chars().count(),
+                "operation_count": input["operations"].as_array().map_or(0, Vec::len),
+            })
+        })),
+        presentation_meta: Some(Arc::new(move |input: &Value, _value: &Value| {
+            json!({
+                "kind": kind,
+                "patch": {
+                    "type": input["type"],
+                    "schema_version": input["schema_version"],
+                    "summary": input["summary"],
+                    "operations": input["operations"],
+                },
+            })
+        })),
+    }
 }
 
 /// A finished tool list as the provider seam's future.
@@ -116,7 +184,7 @@ pub(crate) mod testing {
     use kition_harness::tool::define;
     use serde_json::Value;
 
-    use super::ToolFactory;
+    use super::{ToolFactory, ToolShape};
     use crate::run::{Agent, AgentConfig, Run};
     use crate::stream::Emitter;
 
@@ -170,13 +238,12 @@ pub(crate) mod testing {
         Fixture { run, _dirs: dirs }
     }
 
-    /// Builds every spec as a no-op tool.
+    /// Builds every spec as a no-op tool with its provider's shape.
     pub fn factory() -> ToolFactory {
-        Arc::new(|spec: &ToolSpec| {
-            define(&spec.name, &spec.description)
-                .execute(|_, _| async { Ok(Value::Null) })
-                .build()
-                .ok()
+        Arc::new(|spec: &ToolSpec, shape: &ToolShape| {
+            let builder =
+                define(&spec.name, &spec.description).execute(|_, _| async { Ok(Value::Null) });
+            shape.apply(builder, None).build().ok()
         })
     }
 

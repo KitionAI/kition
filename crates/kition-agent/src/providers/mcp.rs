@@ -7,7 +7,7 @@ use kition_ai::engine::ToolSpec;
 use kition_harness::provider::{Provider, TurnScene};
 use kition_harness::tool::ToolDef;
 
-use super::ToolFactory;
+use super::{ToolFactory, ToolShape};
 use crate::run::Run;
 
 /// The specs with each name once, the first listing kept: a server that
@@ -51,7 +51,7 @@ impl Provider for McpProvider {
             let specs = self.run.agent.mcp().tools().await;
             Ok(unique(specs.iter().map(|tool| tool.model_spec()).collect())
                 .iter()
-                .filter_map(|spec| (self.factory)(spec))
+                .filter_map(|spec| (self.factory)(spec, &ToolShape::default()))
                 .collect())
         })
     }
