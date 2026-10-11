@@ -304,17 +304,12 @@ function migrateDeepSeekRoute(config: DesktopProviderConfig): DesktopProviderCon
   return { ...config, baseUrl: 'https://api.deepseek.com/anthropic', wireApi: 'anthropic_messages', authScheme: 'x-api-key' }
 }
 
-/** Saved Kimi settings from when the preset used the Responses wire, which Moonshot does not serve. */
+/**
+ * Saved Kimi settings from when the preset used the Responses wire, which Moonshot does not serve.
+ * The wire selector is hidden for Kimi, so a saved 'responses' can only be that old default.
+ */
 function migrateKimiWire(config: DesktopProviderConfig): DesktopProviderConfig {
-  if (config.wireApi !== 'responses') return config
-  let url: URL
-  try {
-    url = new URL(config.baseUrl)
-  } catch {
-    return config
-  }
-  if (url.hostname !== 'api.moonshot.cn' && url.hostname !== 'api.moonshot.ai') return config
-  return { ...config, wireApi: 'chat_completions' }
+  return config.wireApi === 'responses' ? { ...config, wireApi: 'chat_completions' } : config
 }
 
 export function normalizeDesktopSettings(input?: Partial<DesktopSettingsState>): DesktopSettingsState {

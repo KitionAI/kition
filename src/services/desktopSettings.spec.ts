@@ -492,12 +492,13 @@ describe('Kimi provider route', () => {
     }
   })
 
-  it('leaves a Kimi gateway on its saved wire', async () => {
+  it('moves a Kimi gateway off the Responses wire too, keeping its URL', async () => {
     const { normalizeDesktopSettings } = await import('./desktopSettings')
     const gateway = normalizeDesktopSettings({
       providers: { kimi: { baseUrl: 'https://gateway.example.test/v1', wireApi: 'responses' } },
     } as never).providers.kimi
-    expect(gateway.wireApi).toBe('responses')
+    expect(gateway.wireApi).toBe('chat_completions')
+    expect(gateway.baseUrl).toBe('https://gateway.example.test/v1')
   })
 
   it('keeps OpenAI and custom defaults and a custom provider wire', async () => {
