@@ -302,6 +302,98 @@ async fn a_second_turn_is_refused_while_the_first_runs() {
     assert_eq!(status, 200, "the session is free once the first turn ends");
 }
 
+/// A 1x1 PNG.
+const PIXEL_PNG: &str = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+
+/// A provider whose image endpoint returns one pixel and whose `/responses`
+/// endpoint records each request and answers with plain text.
+async fn image_and_text_provider() -> (String, Bodies) {
+    let bodies = Bodies::default();
+    let recorded = bodies.clone();
+    let app = Router::new()
+        .route(
+            "/images/generations",
+            post(|| async { axum::Json(json!({ "data": [{ "b64_json": PIXEL_PNG }] })) }),
+        )
+        .route(
+            "/responses",
+            post(move |request: axum::body::Bytes| {
+                let recorded = recorded.clone();
+                async move {
+                    recorded
+                        .lock()
+                        .unwrap_or_else(PoisonError::into_inner)
+                        .push(serde_json::from_slice(&request).unwrap_or_default());
+                    (
+                        [(http::header::CONTENT_TYPE, "text/event-stream")],
+                        answer(&["It is a fox."]),
+                    )
+                }
+            }),
+        );
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .unwrap_or_else(|err| panic!("{err}"));
+    let addr = listener.local_addr().unwrap_or_else(|err| panic!("{err}"));
+    tokio::spawn(async move { axum::serve(listener, app).await });
+    (format!("http://{addr}"), bodies)
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn an_image_exchange_is_history_for_the_next_turn() {
+    let Harness { app, .. } = app();
+    let session_id = new_session(&app).await;
+    let (base_url, bodies) = image_and_text_provider().await;
+    // A first ordinary turn, so the session already has an event log.
+    let frames = stream(&app, session_id, &base_url, json!({ "content": "Hello" })).await;
+    assert_eq!(
+        frames.last().cloned().unwrap_or_default()["type"],
+        "done",
+        "{frames:?}"
+    );
+    let frames = stream(
+        &app,
+        session_id,
+        &base_url,
+        json!({
+            "content": "A red fox",
+            "image_generation_intent": {
+                "type": "image_generation.intent", "schema_version": 1, "request_id": "req-1",
+                "operation": "generate", "instruction": "A red fox", "locale": "en-US",
+                "aspect_ratio": "1:1", "quality": "low", "resolution": "1K", "variants": 1,
+                "text_mode": "no_text", "reference_paths": [], "surface": "chat",
+                "target": { "type": "image.target.chat" }, "placement_preference": "review",
+                "client_capability_version": 1,
+            },
+        }),
+    )
+    .await;
+    let done = frames.last().cloned().unwrap_or_default();
+    let reply = done["extra_data"]["message"]["content"].clone();
+    assert!(reply.is_string(), "{frames:?}");
+
+    let frames = stream(
+        &app,
+        session_id,
+        &base_url,
+        json!({ "content": "What did you draw?" }),
+    )
+    .await;
+    assert_eq!(
+        frames.last().cloned().unwrap_or_default()["type"],
+        "done",
+        "{frames:?}"
+    );
+    let bodies = bodies.lock().unwrap_or_else(PoisonError::into_inner);
+    assert_eq!(bodies.len(), 2, "two ordinary turns reach the model");
+    let history = Value::Array(conversation(&bodies[1])).to_string();
+    assert!(history.contains("A red fox"), "{history}");
+    assert!(
+        history.contains(reply.as_str().unwrap_or_default()),
+        "{history}"
+    );
+}
+
 /// A provider whose image endpoint signals `entered` and never answers,
 /// while `/responses` answers with plain text.
 async fn stuck_image_provider(entered: Arc<Notify>) -> String {

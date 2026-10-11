@@ -1,6 +1,6 @@
-//! Turn-ending rules and recovery prompts built on tool metadata, ported from
-//! Kition's original loop (DeepSeek Harness `agent/turn-stopping` and
-//! post-execute `additionalContexts`).
+//! Turn-ending rules and recovery prompts built on tool metadata, in the
+//! shape of DeepSeek Harness `agent/turn-stopping` and post-execute
+//! `additionalContexts`.
 
 use crate::events::{ContentBlock, EventBody, SessionEvent};
 use crate::policy::{CallInfo, Policy};
@@ -46,9 +46,8 @@ impl StopCheck for UnresolvedWrites {
 }
 
 /// After a failed call, tells the model the task is not complete and how to
-/// recover. The original loop recovers after every failed tool result,
-/// including one the model asked for that is not registered this turn, so
-/// `post_missing` carries the same text.
+/// recover. Every failed tool result gets it, including a call to a tool
+/// that is not registered this turn (`post_missing`).
 pub struct RecoveryPrompt;
 
 impl RecoveryPrompt {

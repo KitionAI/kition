@@ -6,6 +6,7 @@ mod attachments;
 pub mod catalog;
 pub mod execpolicy;
 mod fuzzy;
+mod log;
 pub mod mcp;
 mod model;
 mod prompts;

@@ -12,10 +12,10 @@ use crate::catalog::{self, SkillDef};
 use crate::providers::TurnFacts;
 use crate::run::{Agent, EventInput, Run, truncate_chars};
 use crate::sources::{self, LocalSourceInput};
-use crate::store::{self, AgentMessage, AgentSession};
+use crate::store::{self, AgentSession};
 use crate::stream::{Emitter, Frame, value};
 use crate::tools::{canvas, documents, exec, images};
-use crate::{attachments, prompts, table_plan, turn};
+use crate::{attachments, log, prompts, table_plan, turn};
 
 #[derive(Debug, Default, Deserialize)]
 #[serde(default)]
@@ -342,10 +342,14 @@ async fn drive(agent: Agent, user_id: i64, prepared: Prepared, emitter: Emitter)
     });
     if let Some(intent) = image_intent {
         // The session is released as soon as the client leaves; the image
-        // work keeps running in its own task and records its own outcome.
+        // work keeps running in its own task and records its own outcome,
+        // logging the exchange so later turns see it.
         let (task_run, portal) = (run.clone(), agent.portal_base_url().to_owned());
+        let request = content.clone();
         let work = tokio::spawn(async move {
-            images::stream_intent(&task_run, session, &portal, intent).await;
+            if let Some(reply) = images::stream_intent(&task_run, session, &portal, intent).await {
+                log::record_exchange(&task_run.agent, task_run.session_id, &request, &reply).await;
+            }
         });
         tokio::select! {
             result = work => {
@@ -526,33 +530,6 @@ async fn drive(agent: Agent, user_id: i64, prepared: Prepared, emitter: Emitter)
         hosted_images: supports_hosted_images(&run.model),
     };
     turn::drive(&run, session, &content, facts, turn).await;
-}
-
-/// The conversation before the triggering message as the model sees it:
-/// the last 16 earlier messages, only user and assistant ones, with the
-/// table plan block stripped from assistant replies. Load `history` with
-/// `store::recent_messages(.., 17)`.
-pub(crate) fn previous_conversation(
-    history: &[AgentMessage],
-    trigger_message_id: i64,
-) -> Vec<(String, String)> {
-    let previous: Vec<&AgentMessage> = history
-        .iter()
-        .filter(|m| m.id != trigger_message_id)
-        .collect();
-    previous
-        .iter()
-        .skip(previous.len().saturating_sub(16))
-        .filter(|message| message.role == "user" || message.role == "assistant")
-        .map(|message| {
-            let content = if message.role == "assistant" {
-                table_plan::strip_block(&message.content)
-            } else {
-                message.content.clone()
-            };
-            (message.role.clone(), content)
-        })
-        .collect()
 }
 
 pub(crate) async fn await_approval(run: &Run, mut session: AgentSession, output: Value) {

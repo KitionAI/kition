@@ -10,8 +10,8 @@ use futures::future::BoxFuture;
 use kition_ai::engine::{MessagePart, ToolSpec};
 use kition_harness::cancel::Cancel;
 use kition_harness::driver::{Driver, Live, TurnInput};
-use kition_harness::events::{ContentBlock, EventBody, TurnEndReason};
-use kition_harness::log::{SessionLog, SqliteLog};
+use kition_harness::events::{ContentBlock, TurnEndReason};
+use kition_harness::log::SqliteLog;
 use kition_harness::policy::{CallInfo, Pipeline, Policy};
 use kition_harness::provider::{TurnScene, assemble};
 use kition_harness::stop::{RecoveryPrompt, UnresolvedWrites};
@@ -21,7 +21,7 @@ use serde_json::{Value, json};
 use crate::model::{self, AgentLlm, blocks};
 use crate::providers::{self, ToolFactory, ToolShape, TurnFacts};
 use crate::run::{EventInput, Run};
-use crate::store::{self, AgentSession};
+use crate::store::AgentSession;
 use crate::{prompts, session, tools};
 
 /// The output of the call that paused the turn, for the approval frames.
@@ -97,40 +97,6 @@ fn logged_arguments(name: &str, input: &Value) -> Value {
         }
         _ => input.clone(),
     }
-}
-
-/// The event log key of an agent session.
-pub(crate) fn log_key(session_id: i64) -> String {
-    format!("agent:{session_id}")
-}
-
-/// The most session events one page answers.
-pub(crate) const EVENT_PAGE_LIMIT: usize = 500;
-
-/// The session events after `after`, in order, at most one page, and the
-/// cursor for the next page (the last seq returned, or `after`). Provider-
-/// native items are dropped from `assistant/message`: they exist only to
-/// replay the conversation to the provider and are not redacted (they can
-/// repeat tool inputs and images verbatim).
-pub(crate) fn read_events(
-    log: &dyn SessionLog,
-    session_id: i64,
-    after: u64,
-) -> Result<(Vec<kition_harness::events::SessionEvent>, u64), String> {
-    let items: Vec<_> = log
-        .read(&log_key(session_id))?
-        .into_iter()
-        .filter(|event| event.seq > after)
-        .take(EVENT_PAGE_LIMIT)
-        .map(|mut event| {
-            if let EventBody::AssistantMessage { raw_items, .. } = &mut event.body {
-                raw_items.clear();
-            }
-            event
-        })
-        .collect();
-    let next_after = items.last().map_or(after, |event| event.seq);
-    Ok((items, next_after))
 }
 
 /// One lock per session, so two turns of a session never interleave their
@@ -348,51 +314,6 @@ fn user_content(run: &Run) -> Vec<ContentBlock> {
     content
 }
 
-/// Logs a session's earlier conversation the first time it runs on the
-/// event log, so sessions from before the log keep their context.
-fn seed(log: &dyn SessionLog, key: &str, history: &[(String, String)]) -> Result<(), String> {
-    if !log.read(key)?.is_empty() {
-        return Ok(());
-    }
-    for (role, content) in history {
-        let body = match role.as_str() {
-            "user" => EventBody::UserMessage {
-                content: vec![ContentBlock::text(content.clone())],
-            },
-            "assistant" => EventBody::AssistantMessage {
-                content: content.clone(),
-                tool_calls: Vec::new(),
-                stop_reason: String::new(),
-                model: String::new(),
-                raw_items: Vec::new(),
-            },
-            _ => continue,
-        };
-        log.append(key, body)?;
-    }
-    Ok(())
-}
-
-/// Seeds the event log of a session whose earlier turns predate it. A
-/// failure is logged and the turn goes on without them.
-async fn carry_over(run: &Run, session: &AgentSession, log: &dyn SessionLog, key: &str) {
-    let (id, user) = (session.id, session.user_id);
-    let history = match run
-        .agent
-        .with_db(move |conn| store::recent_messages(conn, id, user, 17))
-        .await
-    {
-        Ok(history) => session::previous_conversation(&history, run.trigger_message_id),
-        Err(error) => {
-            tracing::warn!(session = id, error = %error, "could not load the conversation to carry over");
-            return;
-        }
-    };
-    if let Err(error) = seed(log, key, &history) {
-        tracing::warn!(session = id, error = %error, "could not carry the conversation into the event log");
-    }
-}
-
 /// Runs the turn, assembled from the providers, and finishes it.
 pub async fn drive(
     run: &Arc<Run>,
@@ -421,9 +342,8 @@ pub async fn drive(
     )
     .await;
     let llm = Arc::new(AgentLlm::new(run));
-    let key = log_key(run.session_id);
+    let key = crate::log::log_key(run.session_id);
     let log = Arc::new(SqliteLog::new(run.agent.db().clone()));
-    carry_over(run, &session, log.as_ref(), &key).await;
     let mut driver = Driver::new(log, llm.clone());
     driver.max_steps = model::MAX_STEPS;
     driver.pipeline = pipeline(&notes);
@@ -650,84 +570,6 @@ mod tests {
         }
         let args = json!({ "path": "a.md", "password": "kept" });
         assert_eq!(logged_arguments("document_read", &args), args);
-    }
-
-    #[test]
-    fn session_events_are_paged_after_a_cursor() {
-        use kition_harness::log::{MemoryLog, SessionLog};
-
-        let log = MemoryLog::default();
-        for turn in 0..(EVENT_PAGE_LIMIT as u32 + 3) {
-            log.append(&log_key(4), EventBody::TurnStart { turn })
-                .unwrap_or_else(|error| panic!("{error}"));
-        }
-        log.append(&log_key(5), EventBody::TurnStart { turn: 1 })
-            .unwrap_or_else(|error| panic!("{error}"));
-
-        let (first, next) = read_events(&log, 4, 0).unwrap_or_else(|error| panic!("{error}"));
-        assert_eq!(first.len(), EVENT_PAGE_LIMIT);
-        assert_eq!(first.first().map(|event| event.seq), Some(1));
-        assert_eq!(next, EVENT_PAGE_LIMIT as u64);
-        let (rest, last) = read_events(&log, 4, next).unwrap_or_else(|error| panic!("{error}"));
-        assert_eq!(
-            rest.iter().map(|event| event.seq).collect::<Vec<_>>(),
-            [501, 502, 503]
-        );
-        let (empty, same) = read_events(&log, 4, last).unwrap_or_else(|error| panic!("{error}"));
-        assert!(empty.is_empty());
-        assert_eq!(same, last);
-        let (missing, cursor) = read_events(&log, 6, 0).unwrap_or_else(|error| panic!("{error}"));
-        assert!(missing.is_empty());
-        assert_eq!(cursor, 0);
-
-        log.append(
-            &log_key(6),
-            EventBody::AssistantMessage {
-                content: "done".into(),
-                tool_calls: Vec::new(),
-                stop_reason: String::new(),
-                model: String::new(),
-                raw_items: vec![json!({ "type": "provider_note", "note": "fake-secret" })],
-            },
-        )
-        .unwrap_or_else(|error| panic!("{error}"));
-        let (page, _) = read_events(&log, 6, 0).unwrap_or_else(|error| panic!("{error}"));
-        assert!(matches!(
-            &page[0].body,
-            EventBody::AssistantMessage { raw_items, .. } if raw_items.is_empty()
-        ));
-        assert_eq!(log.read(&log_key(6)).map(|events| events.len()), Ok(1));
-        let (missing, cursor) = read_events(&log, 7, 0).unwrap_or_else(|error| panic!("{error}"));
-        assert!(missing.is_empty());
-        assert_eq!(cursor, 0);
-    }
-
-    #[test]
-    fn an_empty_log_is_seeded_with_the_previous_conversation() {
-        use kition_harness::log::{MemoryLog, SessionLog};
-
-        let log = MemoryLog::default();
-        let history = vec![
-            ("user".to_owned(), "first".to_owned()),
-            ("assistant".to_owned(), "reply".to_owned()),
-            ("tool".to_owned(), "ignored".to_owned()),
-        ];
-        seed(&log, "agent:7", &history).unwrap_or_else(|error| panic!("{error}"));
-        let kinds: Vec<&str> = log
-            .read("agent:7")
-            .unwrap_or_else(|error| panic!("{error}"))
-            .iter()
-            .map(|e| e.body.kind())
-            .collect();
-        assert_eq!(kinds, ["user/message", "assistant/message"]);
-        seed(&log, "agent:7", &history).unwrap_or_else(|error| panic!("{error}"));
-        assert_eq!(
-            log.read("agent:7")
-                .unwrap_or_else(|error| panic!("{error}"))
-                .len(),
-            2,
-            "a non-empty log is left alone"
-        );
     }
 
     #[tokio::test]

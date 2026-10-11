@@ -1,5 +1,5 @@
 //! Which logged events a request carries: recent turns in full, older turns
-//! as plain conversation, like the original loop's last 16 messages.
+//! as plain conversation, at most 16 messages of it by default.
 
 use crate::events::{EventBody, SessionEvent};
 
@@ -28,9 +28,9 @@ impl Default for HistoryBudget {
 /// only real conversation survives: the person's message (the first
 /// `user/message` after each `turn/start`; later ones are recovery context
 /// or hosted follow-ups), assistant text replies without tool calls, and
-/// every user message and text reply logged before the first `turn/start`
-/// (carried over from the original loop). At most `older_messages` of them
-/// are kept, newest first, plus the newest older system message.
+/// every user message logged outside a turn (before the first `turn/start`
+/// or after a `turn/end`). At most `older_messages` of them are kept,
+/// newest first, plus the newest older system message.
 pub fn bound_history(events: &[SessionEvent], budget: HistoryBudget) -> Vec<SessionEvent> {
     let starts: Vec<usize> = events
         .iter()
@@ -49,7 +49,7 @@ pub fn bound_history(events: &[SessionEvent], budget: HistoryBudget) -> Vec<Sess
             .unwrap_or(first)
     };
     let (older, recent) = events.split_at(full_from);
-    // Before any `turn/start` every user message is the person's.
+    // Outside a turn every user message is the person's.
     let mut awaiting_person = true;
     let mut in_turn = false;
     let conversation: Vec<usize> = older
@@ -58,6 +58,11 @@ pub fn bound_history(events: &[SessionEvent], budget: HistoryBudget) -> Vec<Sess
         .filter(|(_, event)| match &event.body {
             EventBody::TurnStart { .. } => {
                 in_turn = true;
+                awaiting_person = true;
+                false
+            }
+            EventBody::TurnEnd { .. } => {
+                in_turn = false;
                 awaiting_person = true;
                 false
             }
@@ -192,6 +197,60 @@ mod tests {
             })
             .collect();
         assert_eq!(texts, ["answer 1", "answer 2", "answer 3", "answer 4"]);
+    }
+
+    #[test]
+    fn messages_logged_between_turns_are_conversation() {
+        let mut seq = 0;
+        let mut events = turn(&mut seq, 1, "1");
+        for body in [
+            EventBody::UserMessage {
+                content: vec![ContentBlock::text("draw a fox")],
+            },
+            EventBody::AssistantMessage {
+                content: "drew a fox".into(),
+                tool_calls: Vec::new(),
+                stop_reason: String::new(),
+                model: String::new(),
+                raw_items: Vec::new(),
+            },
+        ] {
+            seq += 1;
+            events.push(at(seq, body));
+        }
+        for number in 2..=3 {
+            events.extend(turn(&mut seq, number, &number.to_string()));
+        }
+        let kept = bound_history(
+            &events,
+            HistoryBudget {
+                full_turns: 1,
+                older_messages: 16,
+            },
+        );
+        let texts: Vec<String> = kept
+            .iter()
+            .take_while(|event| !matches!(event.body, EventBody::TurnStart { turn: 3 }))
+            .filter_map(|event| match &event.body {
+                EventBody::UserMessage { content } => match &content[0] {
+                    ContentBlock::Text { text } => Some(text.clone()),
+                    ContentBlock::Image { .. } => None,
+                },
+                EventBody::AssistantMessage { content, .. } => Some(content.clone()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            texts,
+            [
+                "ask 1",
+                "answer 1",
+                "draw a fox",
+                "drew a fox",
+                "ask 2",
+                "answer 2"
+            ]
+        );
     }
 
     #[test]

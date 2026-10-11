@@ -608,7 +608,14 @@ async fn claim(run: &Run, intent: &ImageIntent) -> Result<bool, String> {
     Ok(true)
 }
 
-async fn fail_intent(run: &Run, intent: &ImageIntent, code: &str, message: String, count: i64) {
+/// Records a failed image request; `None`, as there is no reply.
+async fn fail_intent(
+    run: &Run,
+    intent: &ImageIntent,
+    code: &str,
+    message: String,
+    count: i64,
+) -> Option<String> {
     let message = crate::run::truncate_chars(&message, 1800);
     let canceled = run.emitter.is_closed();
     let status = if canceled { "canceled" } else { "failed" };
@@ -624,6 +631,7 @@ async fn fail_intent(run: &Run, intent: &ImageIntent, code: &str, message: Strin
         .with_db(move |conn| store::set_session_status(conn, session_id, status))
         .await;
     run.send(&Frame::error(message));
+    None
 }
 
 async fn resolve_prompt(run: &Run, portal: &str, intent: &ImageIntent) -> Result<String, String> {
@@ -725,18 +733,19 @@ fn references(run: &Run, paths: &[String]) -> Result<Vec<String>, String> {
 }
 
 /// Runs an image composer request: generates each variant, saves it, and
-/// streams progress, artifacts, and the final reply.
+/// streams progress, artifacts, and the final reply. Returns the reply, or
+/// `None` when the request was not claimed or failed.
 pub async fn stream_intent(
     run: &Run,
     mut session: AgentSession,
     portal: &str,
     intent: ImageIntent,
-) {
+) -> Option<String> {
     let claimed = match claim(run, &intent).await {
         Ok(claimed) => claimed,
         Err(error) => {
             run.send(&Frame::error(error));
-            return;
+            return None;
         }
     };
     if !claimed {
@@ -744,7 +753,7 @@ pub async fn stream_intent(
             done: true,
             ..Frame::new("done")
         });
-        return;
+        return None;
     }
     let session_id = session.id;
     let _ = run
@@ -981,6 +990,7 @@ pub async fn stream_intent(
         done = done.extra("artifact", artifact);
     }
     run.send(&done);
+    Some(message.content)
 }
 
 #[cfg(test)]
