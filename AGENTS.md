@@ -115,7 +115,7 @@ covers the three GFM table widget row and column button regressions.
   never import the rest of Kition (`pnpm check:deps` enforces it). Shared
   strings under `workspace:kitEditor.*` must never name a kit.
 - A kit SDK implements `KitDocument` from the private `KitionAI/kition-sdk`
-  crate (AGPL-3.0-only), exports it with `export_kit_document!`, and passes
+  crate (Apache-2.0), exports it with `export_kit_document!`, and passes
   `kition_sdk::testing::check_contract` in its tests and `pnpm check:kit-sdks`
   once built. Contract changes happen in kition-sdk and bump the version there
   and in `src/features/kits/sdk/kitSdk.ts` together.

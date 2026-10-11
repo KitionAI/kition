@@ -5,7 +5,7 @@ must follow this guide.
 
 This guide is how Kition implements the **Kition Kit Standard**, which is
 normative: [`docs/standard.md`](https://github.com/KitionAI/kition-sdk/blob/main/docs/standard.md)
-in the private `KitionAI/kition-sdk` repository (AGPL-3.0-only, aligned with
+in the private `KitionAI/kition-sdk` repository (Apache-2.0, aligned with
 DeepSeek Harness contracts), with its plan in `docs/roadmap.md` there. Where
 this guide and the standard disagree, the standard wins and this guide is
 fixed. Every kit ships a `kit.json` manifest checked by the standard's
@@ -577,8 +577,8 @@ keep up with; the status bar shows the frame rate reached.
 
 ## 8. The Kition SDK Repository
 
-`KitionAI/kition-sdk` (private for now, AGPL-3.0-only, like Kition and the
-kits) is the kit author's SDK:
+`KitionAI/kition-sdk` (private for now, Apache-2.0, like the kits and the shared
+kit UI library) is the kit author's SDK:
 
 - `crates/kition-sdk`: the contract trait, export macro, contract checker,
   lent files, and raster helpers;
