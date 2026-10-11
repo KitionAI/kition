@@ -1,5 +1,6 @@
-//! A streamed agent turn against a fake Responses provider: the model asks
-//! for `artifact_write`, the runtime runs it, and the model then answers.
+//! A streamed agent turn against a fake provider (Responses or Chat
+//! Completions): the model asks for `artifact_write`, the runtime runs it,
+//! and the model then answers.
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -44,12 +45,43 @@ fn answer(parts: &[&str]) -> String {
     sse(&events)
 }
 
+/// A Chat Completions tool call to `name`, split across chunks.
+fn chat_tool_call(name: &str, arguments: Value) -> String {
+    let arguments = arguments.to_string();
+    let (head, tail) = arguments.split_at(arguments.len() / 2);
+    sse(&[
+        json!({ "choices": [{ "index": 0, "delta": { "role": "assistant", "reasoning_content": "Save the plan." } }] }),
+        json!({ "choices": [{ "index": 0, "delta": { "tool_calls": [
+            { "index": 0, "id": "call_1", "type": "function", "function": { "name": name, "arguments": head } },
+        ] } }] }),
+        json!({ "choices": [{ "index": 0, "delta": { "tool_calls": [
+            { "index": 0, "function": { "arguments": tail } },
+        ] } }] }),
+        json!({ "choices": [{ "index": 0, "delta": {}, "finish_reason": "tool_calls" }] }),
+        json!({ "choices": [], "usage": { "prompt_tokens": 9, "completion_tokens": 4, "total_tokens": 13 } }),
+    ])
+}
+
+fn chat_answer(parts: &[&str]) -> String {
+    let mut chunks: Vec<Value> = parts
+        .iter()
+        .map(|part| json!({ "choices": [{ "index": 0, "delta": { "content": part } }] }))
+        .collect();
+    chunks.push(json!({ "choices": [{ "index": 0, "delta": {}, "finish_reason": "stop" }] }));
+    sse(&chunks)
+}
+
 /// Serves the scripted Responses bodies in order.
 async fn fake_provider(script: Vec<String>) -> String {
+    fake_provider_at("/responses", script).await
+}
+
+/// Serves the scripted bodies in order at `path`.
+async fn fake_provider_at(path: &str, script: Vec<String>) -> String {
     let calls = Arc::new(AtomicUsize::new(0));
     let script = Arc::new(script);
     let app = Router::new().route(
-        "/responses",
+        path,
         post(move || {
             let (calls, script) = (calls.clone(), script.clone());
             async move {
@@ -158,9 +190,19 @@ async fn new_session(app: &Router) -> i64 {
 }
 
 async fn stream(app: &Router, session_id: i64, base_url: &str, extra: Value) -> Vec<Value> {
+    stream_on(app, session_id, base_url, "responses", extra).await
+}
+
+async fn stream_on(
+    app: &Router,
+    session_id: i64,
+    base_url: &str,
+    wire_api: &str,
+    extra: Value,
+) -> Vec<Value> {
     let mut body = json!({
         "content": "Write a short plan",
-        "runtime_model": { "provider_type": "custom", "model_name": "test-model", "base_url": base_url, "wire_api": "responses", "api_key": "k" },
+        "runtime_model": { "provider_type": "custom", "model_name": "test-model", "base_url": base_url, "wire_api": wire_api, "api_key": "k" },
     });
     if let (Some(body), Some(extra)) = (body.as_object_mut(), extra.as_object()) {
         body.extend(extra.clone());
@@ -197,6 +239,47 @@ async fn commands_outside_the_policy_wait_for_approval() {
 #[tokio::test(flavor = "multi_thread")]
 async fn commands_outside_the_policy_wait_for_approval_on_the_harness() {
     approval_turns(true).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn streams_a_turn_over_chat_completions() {
+    chat_completions_turn(false).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn streams_a_turn_over_chat_completions_on_the_harness() {
+    chat_completions_turn(true).await;
+}
+
+async fn chat_completions_turn(harness_mode: bool) {
+    let Harness { app, workspace, .. } = app_with(harness_mode);
+    let session_id = new_session(&app).await;
+    let base_url = fake_provider_at(
+        "/chat/completions",
+        vec![
+            chat_tool_call(
+                "artifact_write",
+                json!({ "path": "Notes/plan.md", "content": "# Plan\n\nShip it." }),
+            ),
+            chat_answer(&["Saved ", "`Notes/plan.md`."]),
+        ],
+    )
+    .await;
+    let frames = stream_on(&app, session_id, &base_url, "chat_completions", json!({})).await;
+    let kinds: Vec<&str> = frames.iter().filter_map(|f| f["type"].as_str()).collect();
+    assert!(!kinds.contains(&"error"), "{frames:?}");
+    assert!(kinds.contains(&"artifact"), "{kinds:?}");
+    assert!(kinds.contains(&"model_delta"), "{kinds:?}");
+    let done = frames.last().cloned().unwrap_or_default();
+    assert_eq!(done["type"], "done", "{frames:?}");
+    assert_eq!(
+        done["extra_data"]["message"]["content"],
+        "Saved `Notes/plan.md`."
+    );
+    assert_eq!(
+        std::fs::read_to_string(workspace.path().join("Notes/plan.md")).unwrap_or_default(),
+        "# Plan\n\nShip it."
+    );
 }
 
 async fn tool_call_turn(harness_mode: bool) {

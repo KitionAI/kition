@@ -89,7 +89,7 @@ export interface RuntimeWritingModel {
   access_token?: string
   auth_header?: string
   auth_scheme?: 'bearer' | 'raw' | 'x-api-key'
-  wire_api?: 'responses' | 'anthropic_messages'
+  wire_api?: 'responses' | 'chat_completions' | 'anthropic_messages'
   reasoning_effort?: 'minimal' | 'low' | 'medium' | 'high'
   hosted_web_search_version?: '20260209' | '20250305'
   disable_response_storage?: boolean

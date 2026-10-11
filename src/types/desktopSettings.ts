@@ -40,7 +40,7 @@ export type DesktopHookEvent =
   | 'on_quit'
 
 export type CustomProviderAuthScheme = 'bearer' | 'raw' | 'x-api-key'
-export type CustomProviderWireAPI = 'responses' | 'anthropic_messages'
+export type CustomProviderWireAPI = 'responses' | 'chat_completions' | 'anthropic_messages'
 export type CustomProviderReasoningEffort = 'minimal' | 'low' | 'medium' | 'high'
 export type HostedWebSearchVersion = '20260209' | '20250305'
 

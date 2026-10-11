@@ -178,7 +178,10 @@ export function normalizeProviderBaseURL(kind: DesktopProviderKind, baseUrl?: st
 function createProviderConfig(kind: DesktopProviderKind): DesktopProviderConfig {
   const descriptor = desktopProviderCatalog.find((item) => item.kind === kind)!
   const messages = kind === 'anthropic' || kind === 'deepseek'
-  const wireApi: DesktopProviderConfig['wireApi'] = messages ? 'anthropic_messages' : 'responses'
+  // Moonshot serves only Chat Completions, not the Responses API.
+  const wireApi: DesktopProviderConfig['wireApi'] = messages
+    ? 'anthropic_messages'
+    : kind === 'kimi' ? 'chat_completions' : 'responses'
   const authScheme: DesktopProviderConfig['authScheme'] = messages ? 'x-api-key' : 'bearer'
   const authHeader = kind === 'custom' || kind === 'kition_console' ? 'Authorization' : ''
   return {
@@ -301,6 +304,19 @@ function migrateDeepSeekRoute(config: DesktopProviderConfig): DesktopProviderCon
   return { ...config, baseUrl: 'https://api.deepseek.com/anthropic', wireApi: 'anthropic_messages', authScheme: 'x-api-key' }
 }
 
+/** Saved Kimi settings from when the preset used the Responses wire, which Moonshot does not serve. */
+function migrateKimiWire(config: DesktopProviderConfig): DesktopProviderConfig {
+  if (config.wireApi !== 'responses') return config
+  let url: URL
+  try {
+    url = new URL(config.baseUrl)
+  } catch {
+    return config
+  }
+  if (url.hostname !== 'api.moonshot.cn' && url.hostname !== 'api.moonshot.ai') return config
+  return { ...config, wireApi: 'chat_completions' }
+}
+
 export function normalizeDesktopSettings(input?: Partial<DesktopSettingsState>): DesktopSettingsState {
   const fallback = createDefaultDesktopSettings()
   const providerMap = createProviderMap()
@@ -328,6 +344,7 @@ export function normalizeDesktopSettings(input?: Partial<DesktopSettingsState>):
     }
   }
   providerMap.deepseek = migrateDeepSeekRoute(providerMap.deepseek)
+  providerMap.kimi = migrateKimiWire(providerMap.kimi)
 
   const shortcutMap = new Map((input?.shortcuts || []).map((item) => [item.id, item]))
   const shortcuts = defaultShortcuts.map((shortcut) => ({

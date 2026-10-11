@@ -471,3 +471,43 @@ describe('DeepSeek provider route', () => {
     expect(normalizeProviderBaseURL('deepseek', 'https://api.deepseek.com')).toBe('https://api.deepseek.com/anthropic')
   })
 })
+
+describe('Kimi provider route', () => {
+  it('defaults to the Chat Completions wire with a bearer token', async () => {
+    const { normalizeDesktopSettings } = await import('./desktopSettings')
+    const kimi = normalizeDesktopSettings({}).providers.kimi
+    expect(kimi.wireApi).toBe('chat_completions')
+    expect(kimi.authScheme).toBe('bearer')
+  })
+
+  it('moves a saved Moonshot config off the Responses wire, keeping its URL', async () => {
+    const { normalizeDesktopSettings } = await import('./desktopSettings')
+    for (const baseUrl of ['https://api.moonshot.cn/v1', 'https://api.moonshot.ai/v1']) {
+      const saved = normalizeDesktopSettings({
+        providers: { kimi: { baseUrl, wireApi: 'responses', apiKey: 'sk-test' } },
+      } as never).providers.kimi
+      expect(saved.wireApi).toBe('chat_completions')
+      expect(saved.baseUrl).toBe(baseUrl)
+      expect(saved.apiKey).toBe('sk-test')
+    }
+  })
+
+  it('leaves a Kimi gateway on its saved wire', async () => {
+    const { normalizeDesktopSettings } = await import('./desktopSettings')
+    const gateway = normalizeDesktopSettings({
+      providers: { kimi: { baseUrl: 'https://gateway.example.test/v1', wireApi: 'responses' } },
+    } as never).providers.kimi
+    expect(gateway.wireApi).toBe('responses')
+  })
+
+  it('keeps OpenAI and custom defaults and a custom provider wire', async () => {
+    const { normalizeDesktopSettings } = await import('./desktopSettings')
+    const defaults = normalizeDesktopSettings({}).providers
+    expect(defaults.openai.wireApi).toBe('responses')
+    expect(defaults.custom.wireApi).toBe('responses')
+    const custom = normalizeDesktopSettings({
+      providers: { custom: { baseUrl: 'https://llm.example.test/v1', wireApi: 'chat_completions' } },
+    } as never).providers.custom
+    expect(custom.wireApi).toBe('chat_completions')
+  })
+})

@@ -538,9 +538,12 @@ async fn drive(agent: Agent, user_id: i64, prepared: Prepared, emitter: Emitter)
         return;
     }
     let wire = run.model.wire_api.trim();
-    if wire != "responses" && wire != "anthropic_messages" {
+    if !matches!(
+        wire,
+        "responses" | "chat_completions" | "anthropic_messages"
+    ) {
         let message = format!(
-            "Provider wire_api={wire:?} is no longer supported; switch to OpenAI Responses or Anthropic Messages in settings."
+            "Provider wire_api={wire:?} is no longer supported; switch to OpenAI Responses, OpenAI Chat Completions, or Anthropic Messages in settings."
         );
         fail(&run, "Unsupported wire_api", "final", &message).await;
         return;

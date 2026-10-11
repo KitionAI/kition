@@ -30,7 +30,7 @@
         "access_token": { "type": "string" },
         "auth_header": { "type": "string" },
         "auth_scheme": { "type": "string", "enum": ["bearer", "raw", "x-api-key"] },
-        "wire_api": { "type": "string", "enum": ["responses", "anthropic_messages"] },
+        "wire_api": { "type": "string", "enum": ["responses", "chat_completions", "anthropic_messages"] },
         "reasoning_effort": { "type": "string", "enum": ["minimal", "low", "medium", "high"] },
         "hosted_web_search_version": { "type": "string", "enum": ["20260209", "20250305"] },
         "disable_response_storage": { "type": "boolean" },
