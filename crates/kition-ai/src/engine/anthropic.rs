@@ -109,6 +109,22 @@ fn content_parts(message: &Message) -> Option<Vec<Value>> {
     Some(parts)
 }
 
+/// Reasoning blocks from an earlier response, replayed verbatim before the
+/// assistant's text and tool calls (DeepSeek and Anthropic thinking).
+fn thinking_blocks(message: &Message) -> Vec<Value> {
+    message
+        .raw_items
+        .iter()
+        .filter(|item| {
+            matches!(
+                item.get("type").and_then(Value::as_str),
+                Some("thinking" | "redacted_thinking")
+            )
+        })
+        .cloned()
+        .collect()
+}
+
 /// System messages become the system prompt; tool results become user
 /// turns.
 pub(crate) fn normalize_messages(messages: &[Message]) -> (String, Vec<Value>) {
@@ -135,7 +151,7 @@ pub(crate) fn normalize_messages(messages: &[Message]) -> (String, Vec<Value>) {
             continue;
         }
         if role == "assistant" && !message.tool_calls.is_empty() {
-            let mut blocks = Vec::new();
+            let mut blocks = thinking_blocks(message);
             if !content.is_empty() {
                 blocks.push(json!({ "type": "text", "text": content }));
             }
@@ -154,6 +170,17 @@ pub(crate) fn normalize_messages(messages: &[Message]) -> (String, Vec<Value>) {
                 out.push(json!({ "role": "assistant", "content": blocks }));
             }
             continue;
+        }
+        if role == "assistant" {
+            let thinking = thinking_blocks(message);
+            if !thinking.is_empty() {
+                let mut blocks = thinking;
+                if !content.is_empty() {
+                    blocks.push(json!({ "type": "text", "text": content }));
+                }
+                out.push(json!({ "role": "assistant", "content": blocks }));
+                continue;
+            }
         }
         let role = if role == "user" || role == "assistant" {
             role
@@ -754,5 +781,48 @@ mod tests {
             DEFAULT_WEB_SEARCH_TYPE
         );
         assert_eq!(thinking_budget("HIGH"), 16384);
+    }
+
+    #[test]
+    fn replays_thinking_blocks_before_text_and_tool_use() {
+        let thinking = json!({ "type": "thinking", "thinking": "plan", "signature": "sig" });
+        let messages = vec![
+            Message::new("user", "go"),
+            Message {
+                role: "assistant".into(),
+                content: "Calling".into(),
+                tool_calls: vec![ToolCall {
+                    id: "t1".into(),
+                    name: "read".into(),
+                    input: "{}".into(),
+                }],
+                raw_items: vec![
+                    thinking.clone(),
+                    json!({ "type": "text", "text": "Calling" }),
+                ],
+                ..Message::default()
+            },
+            Message {
+                role: "tool".into(),
+                tool_call_id: "t1".into(),
+                content: "ok".into(),
+                ..Message::default()
+            },
+            Message {
+                role: "assistant".into(),
+                content: "Done".into(),
+                raw_items: vec![json!({ "type": "redacted_thinking", "data": "x" })],
+                ..Message::default()
+            },
+        ];
+        let (_, items) = normalize_messages(&messages);
+        assert_eq!(items[1]["content"][0], thinking);
+        assert_eq!(items[1]["content"][1]["type"], "text");
+        assert_eq!(items[1]["content"][2]["type"], "tool_use");
+        assert_eq!(items[3]["content"][0]["type"], "redacted_thinking");
+        assert_eq!(
+            items[3]["content"][1],
+            json!({ "type": "text", "text": "Done" })
+        );
     }
 }
