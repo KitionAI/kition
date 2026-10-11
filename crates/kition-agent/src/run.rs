@@ -44,6 +44,8 @@ pub struct AgentConfig {
     pub workflow_prompt: Option<WorkflowPrompt>,
     /// Kits the agent can drive, such as the photo editor.
     pub kits: Option<kition_kits::KitManager>,
+    /// Run turns on `kition-harness` (`KITION_AGENT_HARNESS=1`).
+    pub harness: bool,
 }
 
 struct Inner {
@@ -59,6 +61,7 @@ struct Inner {
     mcp: crate::mcp::Manager,
     workflow_prompt: Option<WorkflowPrompt>,
     kits: Option<kition_kits::KitManager>,
+    harness: bool,
     web: reqwest::Client,
 }
 
@@ -84,6 +87,7 @@ impl Agent {
                 mcp: crate::mcp::Manager::new(config.mcp_path),
                 workflow_prompt: config.workflow_prompt,
                 kits: config.kits,
+                harness: config.harness,
                 web: reqwest::Client::builder()
                     .redirect(reqwest::redirect::Policy::none())
                     .connect_timeout(std::time::Duration::from_secs(10))
@@ -125,6 +129,11 @@ impl Agent {
 
     pub fn kits(&self) -> Option<&kition_kits::KitManager> {
         self.inner.kits.as_ref()
+    }
+
+    /// Whether turns run on `kition-harness`.
+    pub fn harness(&self) -> bool {
+        self.inner.harness
     }
 
     pub fn portal_base_url(&self) -> &str {

@@ -103,7 +103,7 @@ struct Harness {
     _config: tempfile::TempDir,
 }
 
-fn harness() -> Harness {
+fn app_with(harness_mode: bool) -> Harness {
     let workspace = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
     let uploads = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
     let config = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
@@ -123,6 +123,7 @@ fn harness() -> Harness {
         mcp_path: None,
         workflow_prompt: None,
         kits: None,
+        harness: harness_mode,
     });
     let app = router(AgentState {
         auth: AuthConfig {
@@ -177,7 +178,7 @@ async fn stream(app: &Router, session_id: i64, base_url: &str, extra: Value) -> 
 
 #[tokio::test(flavor = "multi_thread")]
 async fn streams_a_turn_with_a_tool_call() {
-    let Harness { app, workspace, .. } = harness();
+    let Harness { app, workspace, .. } = app_with(false);
     let session_id = new_session(&app).await;
     let base_url = fake_provider(vec![
         tool_call(
@@ -264,7 +265,7 @@ async fn streams_a_turn_with_a_tool_call() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn commands_outside_the_policy_wait_for_approval() {
-    let Harness { app, workspace, .. } = harness();
+    let Harness { app, workspace, .. } = app_with(false);
     let session_id = new_session(&app).await;
     let command = json!({ "cmd": ["ls && touch approved.txt"], "shell": "sh" });
     let base_url = fake_provider(vec![

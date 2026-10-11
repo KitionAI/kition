@@ -318,6 +318,7 @@ pub fn build(
         mcp_path: kition_agent::mcp::default_path(),
         workflow_prompt: Some(workflow_prompt),
         kits: Some(deps.kits.clone()),
+        harness: std::env::var("KITION_AGENT_HARNESS").is_ok_and(|value| value.trim() == "1"),
     });
     let background = agent.clone();
     tokio::spawn(async move {
