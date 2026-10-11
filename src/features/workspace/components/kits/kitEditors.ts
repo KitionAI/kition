@@ -1,5 +1,5 @@
 import { createElement, lazy, type ComponentType } from 'react'
-import { Clapperboard, DraftingCompass, Layers, LayoutTemplate, PenTool, Sparkles, type LucideIcon } from 'lucide-react'
+import { Clapperboard, DraftingCompass, Layers, LayoutTemplate, PenTool, Presentation, Sparkles, type LucideIcon } from 'lucide-react'
 import { kitSdkAvailable, type KitSdkManifest } from '@/features/kits/public'
 import type { WorkspaceDocumentFormat } from '@/services/desktop'
 import { PhotoKitPane } from '../PhotoKitPane'
@@ -13,7 +13,7 @@ import { EFFECT_SDK } from '../effect/effectKitSdk'
 import { VectorUnavailable } from '../vector/VectorUnavailable'
 import { VECTOR_SDK } from '../vector/vectorKitSdk'
 import { StandardKitUnavailable } from './StandardKitUnavailable'
-import { CAD_KIT, type StandardKitSpec } from './standardKits'
+import { CAD_KIT, PRESENTATION_KIT, type StandardKitSpec } from './standardKits'
 
 /** What every kit editor receives from the workspace tab. */
 export type KitEditorProps = {
@@ -33,7 +33,8 @@ export type KitEditorEntry = {
   format: WorkspaceDocumentFormat
   sdk: KitSdkManifest
   Editor: ComponentType<KitEditorProps>
-  Fallback: ComponentType<KitEditorProps>
+  /** What the tab shows without the SDK; none for formats the file preview already shows (PDF, Office). */
+  Fallback?: ComponentType<KitEditorProps>
   /** A create menu item: an empty document of this size, made by the SDK in the page. */
   create?: KitCreateSpec
 }
@@ -53,13 +54,14 @@ export type KitCreateSpec = {
 }
 
 /** A kit on the standard editor (StandardKitEditor), which needs no editor code of its own. */
-function standardKit(spec: StandardKitSpec, format: WorkspaceDocumentFormat, create?: KitCreateSpec): KitEditorEntry {
+function standardKit(spec: StandardKitSpec, format: WorkspaceDocumentFormat, options: { create?: KitCreateSpec; preview?: boolean } = {}): KitEditorEntry {
   return {
     format,
     sdk: spec.sdk,
     Editor: lazy(() => import('./StandardKitEditor').then((module) => ({ default: (props: KitEditorProps) => createElement(module.StandardKitEditor, { spec, ...props }) }))),
-    Fallback: () => createElement(StandardKitUnavailable, { spec }),
-    create,
+    // A format the file preview shows keeps that preview without the SDK.
+    Fallback: options.preview ? undefined : () => createElement(StandardKitUnavailable, { spec }),
+    create: options.create,
   }
 }
 
@@ -101,7 +103,10 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
     create: { id: 'layout', extension: 'designcraft', baseName: 'Untitled layout', size: { width: 612, height: 792 }, label: 'createMenu.format.layout', icon: LayoutTemplate },
   },
   // A3 in millimetres; the engine starts a metric drawing with those limits.
-  standardKit(CAD_KIT, 'cad', { id: 'cad', extension: 'dxf', baseName: 'Untitled CAD drawing', size: { width: 420, height: 297 }, label: 'createMenu.format.cad', icon: DraftingCompass }),
+  standardKit(CAD_KIT, 'cad', { create: { id: 'cad', extension: 'dxf', baseName: 'Untitled CAD drawing', size: { width: 420, height: 297 }, label: 'createMenu.format.cad', icon: DraftingCompass } }),
+  standardKit(PRESENTATION_KIT, 'presentation', { create: { id: 'presentation', extension: 'deckcraft', baseName: 'Untitled presentation', size: { width: 960, height: 540 }, label: 'createMenu.format.presentation', icon: Presentation } }),
+  // PowerPoint files open in the Presentation kit, and keep the file preview without it.
+  standardKit(PRESENTATION_KIT, 'pptx', { preview: true }),
 ]
 
 const availability = new Map<string, Promise<boolean>>()

@@ -218,6 +218,9 @@ pub fn label(name: &str) -> Option<String> {
 
 /// The instructions for a file of a kit: inspect and edit it through the kit's tools, never as
 /// text. `None` when no kit opens the file.
+/// Formats whose text `document_read` extracts (PDF and Office), which a kit also edits.
+const TEXT_EXTRACTED: &[&str] = &["pdf", "docx", "xlsx", "pptx"];
+
 pub fn linked_file_prompt(path: &str) -> Option<String> {
     let extension = path.trim().rsplit_once('.')?.1.to_ascii_lowercase();
     let kit = KITS
@@ -236,7 +239,11 @@ pub fn linked_file_prompt(path: &str) -> Option<String> {
                 "To edit it, find command ids with {commands} (search by keywords such as {}), then call {run} with the steps. {run} saves the file and returns a new preview; check it, and fix or undo (`edit.undo`) when the result is wrong.",
                 kit.agent.queries
             ),
-            "Do not use document_read, document_write, fs_read, or apply_patch on this file: it is binary data.".to_owned(),
+            if TEXT_EXTRACTED.contains(&extension.as_str()) {
+                "document_read extracts its text for reading; edit it only through the kit tools, never with document_write, fs_read, or apply_patch.".to_owned()
+            } else {
+                "Do not use document_read, document_write, fs_read, or apply_patch on this file: it is binary data.".to_owned()
+            },
         ]
         .join("\n"),
     )
@@ -583,6 +590,10 @@ mod tests {
         );
         assert!(prompt("motion/Intro.ECPROJ").contains("effect_commands"));
         assert!(prompt("print/Flyer.designcraft").contains("design_run"));
+        assert!(prompt("plans/Floor.dxf").contains("cad_run"));
+        assert!(prompt("talks/Launch.pptx").contains("presentation_run"));
+        assert!(prompt("talks/Launch.pptx").contains("document_read extracts its text"), "PowerPoint text stays readable");
+        assert!(prompt("talks/Launch.deckcraft").contains("it is binary data"));
         assert!(linked_file_prompt("notes/plan.md").is_none());
         let vector_kit = KITS
             .iter()

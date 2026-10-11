@@ -11,7 +11,8 @@
       "drawing": "Desenho",
       "motion": "Motion graphics",
       "layout": "Diagramação",
-      "cad": "Desenho CAD"
+      "cad": "Desenho CAD",
+      "presentation": "Apresentação"
     },
     "folder": "Pasta",
     "importSpreadsheet": "Importar planilha",
@@ -736,7 +737,21 @@
       "Tools": "Ferramentas",
       "Draw": "Desenhar",
       "Dimension": "Cota",
-      "Modify": "Modificar"
+      "Modify": "Modificar",
+      "Home": "Página Inicial",
+      "Design": "Design",
+      "Transitions": "Transições",
+      "Animations": "Animações",
+      "Slide Show": "Apresentação de Slides",
+      "Review": "Revisão",
+      "Arrange": "Organizar",
+      "Shape Format": "Formato da Forma",
+      "Picture Format": "Formato da Imagem",
+      "Table Design": "Design da Tabela",
+      "Table Layout": "Layout da Tabela",
+      "Chart Design": "Design do Gráfico",
+      "Slide Master": "Slide Mestre",
+      "Window": "Janela"
     }
   },
   "filmKit": {
@@ -860,5 +875,10 @@
     "summary": "{{objects}} objetos, {{selected}} selecionados, camada {{layer}}",
     "unavailableTitle": "A edição CAD não está disponível nesta versão",
     "unavailableBody": "Desenhos CAD abrem no Kition quando o mecanismo CAD está incluído."
+  },
+  "presentationKit": {
+    "summary": "Slide {{slide}} de {{slides}}, {{selected}} selecionados",
+    "unavailableTitle": "A edição de apresentações não está disponível nesta versão",
+    "unavailableBody": "Apresentações abrem no Kition quando o mecanismo de apresentações está incluído."
   }
 }

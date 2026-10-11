@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Terminal } from 'lucide-react'
 import {
@@ -49,6 +49,8 @@ export function StandardKitEditor({ spec, path, active, onOpenAgent }: StandardK
   const canvas = useRef<KitCanvasHandle>(null)
   const viewMemory = useRef<RasterView | null>(null)
   const [zoom, setZoom] = useState<number | null>(null)
+  const view = useRef<RasterView | null>(null)
+  const surface = useRef<HTMLDivElement>(null)
   const [line, setLine] = useState('')
   const hidden = spec.tools?.hidden ?? NO_TOOLS
   const tools = useEngineTools(document.tool, document.doc != null && spec.tools != null, document.change, {
@@ -97,6 +99,24 @@ export function StandardKitEditor({ spec, path, active, onOpenAgent }: StandardK
     event.preventDefault()
   }
 
+  // A page or slide made current some other way than on the canvas (a menu, PageDown) comes into
+  // view when most of it is offscreen; one clicked on the canvas is already in view.
+  const focus = document.state && spec.focusArea ? spec.focusArea(document.state) : null
+  const focusKey = focus ? `${focus.x0},${focus.y0},${focus.x1},${focus.y1}` : null
+  const focused = useRef<string | null>(null)
+  useEffect(() => {
+    if (!focus || !focusKey || focused.current === focusKey) return
+    const first = focused.current == null
+    focused.current = focusKey
+    const shown = view.current
+    const box = surface.current?.getBoundingClientRect()
+    if (first || !shown || !box?.height) return
+    const top = Math.max(focus.y0, shown.y)
+    const bottom = Math.min(focus.y1, shown.y + box.height / shown.zoom)
+    if (bottom - top < (focus.y1 - focus.y0) / 2) canvas.current?.show(focus)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per change of the area
+  }, [focusKey])
+
   const filename = path.split('/').filter(Boolean).pop() || path
   const values = document.state ? spec.summary(document.state) : null
 
@@ -141,6 +161,7 @@ export function StandardKitEditor({ spec, path, active, onOpenAgent }: StandardK
       statusEnd={zoom != null ? <span className="tabular-nums">{Math.round(zoom * 100)}%</span> : null}
     >
       {document.doc ? (
+        <div ref={surface} className="h-full w-full">
         <KitCanvas
           ref={canvas}
           viewMemory={viewMemory}
@@ -150,8 +171,12 @@ export function StandardKitEditor({ spec, path, active, onOpenAgent }: StandardK
           initialArea={document.state && spec.initialArea ? spec.initialArea(document.state) : null}
           decorate={tools.decorate}
           spacePans={!tools.wantsText}
-          onView={(view) => setZoom(view.zoom)}
+          onView={(next) => {
+            view.current = next
+            setZoom(next.zoom)
+          }}
         />
+        </div>
       ) : null}
     </KitEditorFrame>
   )

@@ -35,6 +35,8 @@ pub fn infer_format(path: &str) -> &'static str {
         ".designcraft" => "layout",
         // CAD drawings, edited in the CAD kit.
         ".dxf" => "cad",
+        // Presentations, edited in the Presentation kit (PowerPoint files too, as `pptx`).
+        ".deckcraft" => "presentation",
         ".mp4" | ".mov" | ".webm" => "video",
         ".mp3" | ".wav" | ".m4a" => "audio",
         _ => "binary",
@@ -95,6 +97,7 @@ pub fn is_supported(path: &str) -> bool {
             "ecproj",
             "designcraft",
             "dxf",
+            "deckcraft",
             "mp4",
             "mov",
             "webm",
@@ -127,6 +130,8 @@ mod tests {
         assert!(is_supported("print/Flyer.designcraft"));
         assert_eq!(infer_format("plans/Floor.DXF"), "cad");
         assert!(is_supported("plans/Floor.dxf"));
+        assert_eq!(infer_format("talks/Launch.deckcraft"), "presentation");
+        assert!(is_supported("talks/Launch.deckcraft"));
         assert!(is_supported("art/poster.psb"));
         assert!(!is_text("art/poster.pcraft"));
         assert_eq!(infer_format(".md"), "binary");

@@ -200,6 +200,9 @@ export function inferWorkspaceItemFormat(path: string, content?: string): Worksp
   if (/\.dxf$/i.test(path)) {
     return 'cad'
   }
+  if (/\.deckcraft$/i.test(path)) {
+    return 'presentation'
+  }
   if (/\.(mp4|mov|webm)$/i.test(path)) {
     return 'video'
   }
@@ -307,6 +310,8 @@ export function getWorkspaceItemIcon(format?: WorkspaceDocumentFormat): LucideIc
       return LayoutTemplate
     case 'cad':
       return DraftingCompass
+    case 'presentation':
+      return Presentation
     case 'video':
       return FileVideo2
     case 'audio':
@@ -349,6 +354,8 @@ export function getWorkspaceItemIconColorClass(format?: WorkspaceDocumentFormat)
     case 'layout':
     case 'cad':
       return 'text-violet-500'
+    case 'presentation':
+      return 'text-orange-500'
     case 'design':
     case 'board':
       return 'text-violet-500'
@@ -383,6 +390,7 @@ export function getWorkspaceItemFormatLabel(format?: WorkspaceDocumentFormat) {
     effect: 'Effect',
     layout: 'Layout',
     cad: 'CAD',
+    presentation: 'Presentation',
     video: 'Video',
     audio: 'Audio',
     binary: 'File',
@@ -438,7 +446,7 @@ export function isOrganizableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
 }
 
 export function isPreviewableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
-  return format === 'image' || format === 'pdf' || format === 'photo' || format === 'film' || format === 'vector' || format === 'effect' || format === 'layout' || format === 'cad' || format === 'video'
+  return format === 'image' || format === 'pdf' || format === 'photo' || format === 'film' || format === 'vector' || format === 'effect' || format === 'layout' || format === 'cad' || format === 'presentation' || format === 'video'
 }
 
 export function isSupportedWorkspaceFormat(format?: WorkspaceDocumentFormat) {

@@ -1,6 +1,6 @@
-# Kit (Photo, Film, Vector, Effect, Design, CAD) shortcuts for trying and testing the in-page kit editors.
+# Kit (Photo, Film, Vector, Effect, Design, CAD, Presentation) shortcuts for trying and testing the in-page kit editors.
 # See docs/kit-sdk.md. Kit repositories are sibling checkouts (../kit-photo,
-# ../kit-film, ../kit-vector, ../kit-effect, ../kit-design, ../kit-cad); set KIT_<KIT>_REPO, for example KIT_FILM_REPO,
+# ../kit-film, ../kit-vector, ../kit-effect, ../kit-design, ../kit-cad, ../kit-presentation); set KIT_<KIT>_REPO, for example KIT_FILM_REPO,
 # to use other paths.
 #
 #   make kit-dev      build what is missing, then run Kition with the kits
@@ -15,7 +15,8 @@ KIT_VECTOR_REPO ?= $(REPO_ROOT)/../kit-vector
 KIT_EFFECT_REPO ?= $(REPO_ROOT)/../kit-effect
 KIT_DESIGN_REPO ?= $(REPO_ROOT)/../kit-design
 KIT_CAD_REPO ?= $(REPO_ROOT)/../kit-cad
-KITS := photo film vector effect design cad
+KIT_PRESENTATION_REPO ?= $(REPO_ROOT)/../kit-presentation
+KITS := photo film vector effect design cad presentation
 
 # The kits need a newer Rust than some system installs; prefer rustup's stable toolchain.
 STABLE_BIN := $(patsubst %/,%,$(dir $(shell rustup which --toolchain stable cargo 2>/dev/null)))
@@ -23,11 +24,11 @@ TOOLCHAIN_PATH := $(if $(STABLE_BIN),$(STABLE_BIN):,)$(PATH)
 # The e2e web server is probed through any HTTP proxy; run without one.
 NO_PROXY_ENV := env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy
 E2E_PORT ?= 3123
-WEB_KIT_E2E := e2e/photo-web-editor.spec.ts e2e/film-web-editor.spec.ts e2e/vector-web-editor.spec.ts e2e/effect-web-editor.spec.ts e2e/design-web-editor.spec.ts e2e/cad-web-editor.spec.ts e2e/kit-bridge.spec.ts
+WEB_KIT_E2E := e2e/photo-web-editor.spec.ts e2e/film-web-editor.spec.ts e2e/vector-web-editor.spec.ts e2e/effect-web-editor.spec.ts e2e/design-web-editor.spec.ts e2e/cad-web-editor.spec.ts e2e/presentation-web-editor.spec.ts e2e/kit-bridge.spec.ts
 KIT_E2E := $(WEB_KIT_E2E) e2e/desktop-photo-kit.spec.ts
 PHOTO_BINARY := $(KIT_PHOTO_REPO)/target/debug/kit-photo
 # The SDK kits' headless executables for the agent (kit-film, kit-vector, ...), from kition-headless.
-SDK_KITS := film vector effect design cad
+SDK_KITS := film vector effect design cad presentation
 kit_binary = $(KIT_$(shell echo $(1) | tr a-z A-Z)_REPO)/target/debug/kit-$(1)
 SDK_BINARIES := $(foreach kit,$(SDK_KITS),$(call kit_binary,$(kit)))
 # Points the runtime at every kit executable (KITION_KIT_<KIT>_BINARY).
@@ -41,7 +42,7 @@ help:
 	@echo "make kit-e2e-headed  the kit e2e specs in a visible browser"
 	@echo "make kit-e2e-webkit  the in-page kit specs in WebKit, the desktop app's engine"
 	@echo "make kit-sdks        rebuild every kit engine to WebAssembly (public/kits/<kit>-sdk)"
-	@echo "make kit-sdk-photo   rebuild one kit engine (also kit-sdk-film, kit-sdk-vector, kit-sdk-effect, kit-sdk-design, kit-sdk-cad)"
+	@echo "make kit-sdk-photo   rebuild one kit engine (also kit-sdk-film, kit-sdk-vector, kit-sdk-effect, kit-sdk-design, kit-sdk-cad, kit-sdk-presentation)"
 	@echo "make kit-check       contract checks of the built kit engines only"
 	@echo "make kit-binaries    build every kit's headless executable for the agent"
 	@echo "make kit-clean       remove the built kit engines"
@@ -65,14 +66,14 @@ $(PHOTO_BINARY):
 
 kit-photo-binary: $(PHOTO_BINARY)
 
-# kit-film, kit-vector, kit-effect, kit-design, kit-cad: the kit's own document over the Kit Protocol.
+# kit-film, kit-vector, kit-effect, kit-design, kit-cad, kit-presentation: the kit's own document over the Kit Protocol.
 $(SDK_BINARIES):
 	@cd "$(abspath $(dir $@)/../..)" && PATH="$(TOOLCHAIN_PATH)" cargo build -p $(notdir $@)
 
 kit-binaries: $(PHOTO_BINARY) $(SDK_BINARIES)
 
 kit-dev: $(addprefix public/kits/,$(addsuffix -sdk/.built,$(KITS))) $(PHOTO_BINARY) $(SDK_BINARIES)
-	@echo "Kition with Photo, Film, Vector, Effect, Design, and CAD: open a .psd, .fcproj, .vectorcraft, .ecproj, .designcraft, or .dxf, or use the New menu."
+	@echo "Kition with Photo, Film, Vector, Effect, Design, CAD, and Presentation: open a .psd, .fcproj, .vectorcraft, .ecproj, .designcraft, .dxf, .deckcraft, or .pptx, or use the New menu."
 	$(NO_PROXY_ENV) $(KIT_BINARY_ENV) pnpm dev
 
 kit-check: $(addprefix public/kits/,$(addsuffix -sdk/.built,$(KITS)))

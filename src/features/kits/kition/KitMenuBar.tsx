@@ -80,7 +80,8 @@ export function KitMenuBar({ commands, onRun, onOpen, order, menuLabel = (label)
   const menus = useMemo(() => buildMenus(commands, order), [commands, order])
   return (
     <MenuBar
-      className="h-9 shrink-0 border-b border-border px-2"
+      // Ribbon-style kits (Presentation) have many menus: one line, scrolling sideways.
+      className="h-9 shrink-0 overflow-x-auto border-b border-border px-2"
       onValueChange={(value) => {
         if (value) onOpen()
       }}
@@ -88,7 +89,7 @@ export function KitMenuBar({ commands, onRun, onOpen, order, menuLabel = (label)
     >
       {menus.map((menu) => (
         <MenuBarMenu key={menu.label}>
-          <MenuBarTrigger data-testid={`${testId}-${menu.label}`}>{menuLabel(menu.label)}</MenuBarTrigger>
+          <MenuBarTrigger className="shrink-0 whitespace-nowrap" data-testid={`${testId}-${menu.label}`}>{menuLabel(menu.label)}</MenuBarTrigger>
           <MenuBarContent>
             {menu.commands.map((command) => <CommandItem key={command.id} command={command} onRun={onRun} testId={testId} />)}
             {menu.commands.length && menu.submenus.size ? <MenuBarSeparator /> : null}

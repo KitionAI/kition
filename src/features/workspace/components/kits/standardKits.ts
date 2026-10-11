@@ -1,4 +1,4 @@
-import { DraftingCompass, type LucideIcon } from 'lucide-react'
+import { DraftingCompass, Presentation, type LucideIcon } from 'lucide-react'
 import type { KitSdkManifest, RasterRect } from '@/features/kits/public'
 
 /**
@@ -20,6 +20,8 @@ export type StandardKitSpec = {
   commandLine?: boolean
   /** Where the canvas opens, from `inspect()`: the first page or slide rather than the whole canvas. */
   initialArea?: (inspected: Record<string, unknown>) => RasterRect | null
+  /** The current page or slide; the canvas brings it into view when it changes and is mostly offscreen. */
+  focusArea?: (inspected: Record<string, unknown>) => RasterRect | null
   /** The `<key>Kit.summary` values for the status line, from the engine's `inspect()`. */
   summary: (inspected: Record<string, unknown>) => Record<string, string | number> | null
 }
@@ -38,5 +40,30 @@ export const CAD_KIT: StandardKitSpec = {
     objects: count(inspected.entities),
     selected: count(inspected.selection),
     layer: typeof inspected.currentLayer === 'string' ? inspected.currentLayer : '0',
+  }),
+}
+
+type InspectedArea = { x: number; y: number; width: number; height: number }
+
+/** A slide's `{x, y, width, height}` from `inspect()` as a canvas rectangle. */
+function slideArea(inspected: Record<string, unknown>, index: number): RasterRect | null {
+  const area = (inspected.slides as Array<{ area?: InspectedArea }> | undefined)?.[index]?.area
+  return area ? { x0: area.x, y0: area.y, x1: area.x + area.width, y1: area.y + area.height } : null
+}
+
+/** The Presentation engine (`kition-presentation-sdk` in the kit-presentation repository), built by `scripts/build-kit-sdk.sh presentation`. */
+export const PRESENTATION_KIT: StandardKitSpec = {
+  sdk: { kitId: 'kit.presentation', dir: 'presentation-sdk', module: 'kition_presentation_sdk', documentClass: 'PresentationDocument' },
+  key: 'presentation',
+  icon: Presentation,
+  menuOrder: ['File', 'Edit', 'Home', 'Insert', 'Design', 'Transitions', 'Animations', 'Slide Show', 'Review', 'View', 'Arrange', 'Format', 'Shape Format', 'Picture Format', 'Table Design', 'Table Layout', 'Chart Design', 'Slide Master', 'Window'],
+  tools: { initial: 'select' },
+  // The slides are stacked on one canvas; open on the first.
+  initialArea: (inspected) => slideArea(inspected, 0),
+  focusArea: (inspected) => slideArea(inspected, count(inspected.slide)),
+  summary: (inspected) => ({
+    slide: count(inspected.slide) + 1,
+    slides: Array.isArray(inspected.slides) ? inspected.slides.length : 0,
+    selected: count(inspected.selection),
   }),
 }

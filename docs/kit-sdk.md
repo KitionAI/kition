@@ -26,7 +26,7 @@ over the Kit Protocol by kition-sdk's `kition-headless`, so it is a few lines
 (`apps/kit-<kit>` in each kit repository). The agent's tools for every kit are
 `<prefix>_inspect`, `<prefix>_commands`, and `<prefix>_run`, generated from
 the kit's definition (`photo_*`, `film_*`, `vector_*`, `effect_*`,
-`design_*`, `cad_*`).
+`design_*`, `cad_*`, `presentation_*`).
 
 When the file is open in a kit editor, those tools act on the editor itself
 through the **Kit AI bridge** (standard A7 to A10), not on a headless copy:
@@ -272,7 +272,10 @@ Kition renderer:
    (SDK manifest, test id key, icon, menu order, engine tools, an optional
    command line, and the status-line values from `inspect()`) and
    `standardKit(spec, format, create)` in `KIT_EDITORS` replace steps 9 and 10's
-   editor, fallback, and SDK files. CAD is one. Otherwise:
+   editor, fallback, and SDK files. CAD and Presentation are. A kit for a format the
+   file preview already shows (PDF, Office) passes `{ preview: true }`, so that
+   preview stays the fallback, and the linked-file prompt keeps `document_read`
+   for its text (`TEXT_EXTRACTED` in `crates/kition-kits/src/tools.rs`). Otherwise:
    `src/features/workspace/components/<kit>/<kit>KitSdk.ts`: the manifest
    and `describe<Kit>(info)`. Tools come one of two ways. When the engine
    owns its tools (manifest capability `engine-tools`, as Vector), use
@@ -477,6 +480,24 @@ Command-line kits (CAD):
   (erase) reach the engine.
 - Choose document pixels from the drawing alone (CAD: a power-of-two scale of
   limits and extents), so a saved drawing reopens to the same pixels.
+
+Slide and page kits (Presentation):
+
+- Stack the slides on one canvas in document pixels (points), so the host
+  scrolls the deck; a press on another slide makes it current before the tool
+  sees it, and the gesture keeps that slide until it ends. Give the spec an
+  `initialArea` (the first slide) and a `focusArea` (the current slide), which
+  the editor brings into view only when it is mostly offscreen, so a click
+  never moves the view.
+- Paint an opaque pasteboard around the slides; transparent gaps show the
+  canvas checkerboard.
+- Cache 1:1 slide images by the slide's `Arc` and its masters, so zoomed-out
+  views (exact reductions of 1:1) do not render every slide again.
+- An engine that types into the one selected shape (PowerPoint) reports
+  `wantsText` while one shape is selected; otherwise the host keeps the keys.
+- Engines built with craft-fonts need the checkout next to the kit
+  repository (`../craft-fonts`), or web builds have no fonts and text is
+  invisible.
 
 Time-based kits (Effect):
 

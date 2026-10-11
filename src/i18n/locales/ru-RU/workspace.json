@@ -11,7 +11,8 @@
       "drawing": "Рисунок",
       "motion": "Анимированная графика",
       "layout": "Вёрстка",
-      "cad": "Чертёж САПР"
+      "cad": "Чертёж САПР",
+      "presentation": "Презентация"
     },
     "folder": "Папка",
     "importSpreadsheet": "Импортировать таблицу",
@@ -736,7 +737,21 @@
       "Tools": "Сервис",
       "Draw": "Рисование",
       "Dimension": "Размеры",
-      "Modify": "Редактировать"
+      "Modify": "Редактировать",
+      "Home": "Главная",
+      "Design": "Конструктор",
+      "Transitions": "Переходы",
+      "Animations": "Анимация",
+      "Slide Show": "Слайд-шоу",
+      "Review": "Рецензирование",
+      "Arrange": "Упорядочить",
+      "Shape Format": "Формат фигуры",
+      "Picture Format": "Формат рисунка",
+      "Table Design": "Конструктор таблиц",
+      "Table Layout": "Макет таблицы",
+      "Chart Design": "Конструктор диаграмм",
+      "Slide Master": "Образец слайдов",
+      "Window": "Окно"
     }
   },
   "filmKit": {
@@ -860,5 +875,10 @@
     "summary": "Объектов: {{objects}}, выбрано: {{selected}}, слой {{layer}}",
     "unavailableTitle": "Редактирование САПР недоступно в этой сборке",
     "unavailableBody": "Чертежи САПР открываются в Kition, когда в сборку включён движок САПР."
+  },
+  "presentationKit": {
+    "summary": "Слайд {{slide}} из {{slides}}, выбрано: {{selected}}",
+    "unavailableTitle": "Редактирование презентаций недоступно в этой сборке",
+    "unavailableBody": "Презентации открываются в Kition, когда в сборку включён движок презентаций."
   }
 }

@@ -11,7 +11,8 @@
       "drawing": "矢量图",
       "motion": "动态图形",
       "layout": "版式",
-      "cad": "CAD 图纸"
+      "cad": "CAD 图纸",
+      "presentation": "演示文稿"
     },
     "folder": "文件夹",
     "importSpreadsheet": "导入电子表格",
@@ -736,7 +737,21 @@
       "Tools": "工具",
       "Draw": "绘图",
       "Dimension": "标注",
-      "Modify": "修改"
+      "Modify": "修改",
+      "Home": "开始",
+      "Design": "设计",
+      "Transitions": "切换",
+      "Animations": "动画",
+      "Slide Show": "幻灯片放映",
+      "Review": "审阅",
+      "Arrange": "排列",
+      "Shape Format": "形状格式",
+      "Picture Format": "图片格式",
+      "Table Design": "表设计",
+      "Table Layout": "表布局",
+      "Chart Design": "图表设计",
+      "Slide Master": "幻灯片母版",
+      "Window": "窗口"
     }
   },
   "filmKit": {
@@ -860,5 +875,10 @@
     "summary": "{{objects}} 个对象，已选 {{selected}} 个，图层 {{layer}}",
     "unavailableTitle": "此版本不支持 CAD 编辑",
     "unavailableBody": "包含 CAD 引擎时，CAD 图纸会在 Kition 中打开。"
+  },
+  "presentationKit": {
+    "summary": "第 {{slide}} 张，共 {{slides}} 张，已选 {{selected}} 个",
+    "unavailableTitle": "此版本不支持编辑演示文稿",
+    "unavailableBody": "包含演示文稿引擎时，演示文稿会在 Kition 中打开。"
   }
 }

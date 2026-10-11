@@ -76,6 +76,8 @@ const KIT_FILE_KINDS = [
   { format: 'effect', extensions: /\.ecproj$/i, prefix: 'effect', kit: 'Kition Effect', one: 'a motion graphics project', many: 'motion graphics projects', data: 'project data' },
   { format: 'layout', extensions: /\.designcraft$/i, prefix: 'design', kit: 'Kition Design', one: 'a page layout', many: 'page layouts', data: 'layout data' },
   { format: 'cad', extensions: /\.dxf$/i, prefix: 'cad', kit: 'Kition CAD', one: 'a CAD drawing', many: 'CAD drawings', data: 'drawing data' },
+  // PowerPoint files stay attachments whose text is extracted; only DeckCraft files are kit-only.
+  { format: 'presentation', extensions: /\.deckcraft$/i, prefix: 'presentation', kit: 'Kition Presentation', one: 'a presentation', many: 'presentations', data: 'presentation data' },
 ] as const
 
 type KitFileKind = (typeof KIT_FILE_KINDS)[number]

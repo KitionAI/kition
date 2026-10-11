@@ -28,6 +28,8 @@ describe('kit shortcuts', () => {
   it('binds modified and special keys but leaves bare letters and Kition shortcuts alone', () => {
     expect(bindableShortcut('Cmd+A')).toBe(true)
     expect(bindableShortcut('Delete')).toBe(true)
+    expect(bindableShortcut('PageDown')).toBe(true)
+    expect(bindableShortcut('Home')).toBe(false)
     expect(bindableShortcut('X')).toBe(false)
     expect(bindableShortcut('[')).toBe(false)
     expect(bindableShortcut('Cmd+W')).toBe(false)

@@ -43,10 +43,13 @@ export function shortcutMatches(shortcut: string, event: KeyLike, mac = isMac(),
   return event.key === key
 }
 
-/** Whether the frame binds `shortcut`: with a modifier, or Delete, Backspace, Enter, or a function key; never Kition's own. */
+/**
+ * Whether the frame binds `shortcut`: with a modifier, or Delete, Backspace, Page Up, Page Down,
+ * or a function key; never Kition's own.
+ */
 export function bindableShortcut(shortcut: string | null): shortcut is string {
   if (!shortcut || HOST_SHORTCUTS.has(shortcut)) return false
-  return shortcut.includes('+') || /^(Delete|Backspace|F[0-9]{1,2})$/.test(shortcut)
+  return shortcut.includes('+') || /^(Delete|Backspace|PageUp|PageDown|F[0-9]{1,2})$/.test(shortcut)
 }
 
 /**

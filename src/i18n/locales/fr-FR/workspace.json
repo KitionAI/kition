@@ -11,7 +11,8 @@
       "drawing": "Dessin",
       "motion": "Animation graphique",
       "layout": "Mise en page",
-      "cad": "Dessin CAO"
+      "cad": "Dessin CAO",
+      "presentation": "Présentation"
     },
     "folder": "Dossier",
     "importSpreadsheet": "Importer une feuille de calcul",
@@ -736,7 +737,21 @@
       "Tools": "Outils",
       "Draw": "Dessin",
       "Dimension": "Cotation",
-      "Modify": "Modification"
+      "Modify": "Modification",
+      "Home": "Accueil",
+      "Design": "Création",
+      "Transitions": "Transitions",
+      "Animations": "Animations",
+      "Slide Show": "Diaporama",
+      "Review": "Révision",
+      "Arrange": "Organiser",
+      "Shape Format": "Format de la forme",
+      "Picture Format": "Format de l’image",
+      "Table Design": "Création de tableau",
+      "Table Layout": "Disposition du tableau",
+      "Chart Design": "Création de graphique",
+      "Slide Master": "Masque des diapositives",
+      "Window": "Fenêtre"
     }
   },
   "filmKit": {
@@ -860,5 +875,10 @@
     "summary": "{{objects}} objets, {{selected}} sélectionnés, calque {{layer}}",
     "unavailableTitle": "L’édition CAO n’est pas disponible dans cette version",
     "unavailableBody": "Les dessins CAO s’ouvrent dans Kition lorsque le moteur CAO est inclus."
+  },
+  "presentationKit": {
+    "summary": "Diapositive {{slide}} sur {{slides}}, {{selected}} sélectionnés",
+    "unavailableTitle": "L’édition de présentations n’est pas disponible dans cette version",
+    "unavailableBody": "Les présentations s’ouvrent dans Kition lorsque le moteur de présentation est inclus."
   }
 }

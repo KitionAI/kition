@@ -61,6 +61,13 @@ const CASES: &[Case] = &[
         params: || json!({ "center": [200, 150], "radius": 40 }),
         file_command: ("saveas", || json!({ "path": "elsewhere.dxf" })),
     },
+    Case {
+        kit: "kit.presentation",
+        fixture: "Deck.deckcraft",
+        command: "shape.insert",
+        params: || json!({ "preset": "ellipse", "rect": [100, 100, 200, 120] }),
+        file_command: ("file.saveAs", || json!({ "path": "elsewhere.deckcraft" })),
+    },
 ];
 
 fn binary(kit: &kition_kits::KitDefinition) -> Option<PathBuf> {

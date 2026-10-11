@@ -177,6 +177,25 @@ pub const KITS: &[KitDefinition] = &[
             command: "circle",
         },
     },
+    // Edited in the page through its SDK; PowerPoint files too.
+    KitDefinition {
+        id: "kit.presentation",
+        name: "Kition Presentation",
+        binary_env: "KITION_KIT_PRESENTATION_BINARY",
+        extensions: &["deckcraft", "pptx"],
+        creates: &[],
+        embeds: false,
+        exports: &[],
+        agent: KitAgent {
+            prefix: "presentation",
+            noun: "presentation",
+            formats: ".deckcraft and .pptx",
+            reports: "its slides, the current slide, and the selection",
+            covers: "slides, layouts, text, shapes, pictures, tables, charts, transitions, animations, and more",
+            queries: "`new slide`, `text box`, or `transition`",
+            command: "shape.insert",
+        },
+    },
 ];
 
 /// Who is asking: a person in a kit tab or the agent.

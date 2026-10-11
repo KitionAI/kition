@@ -126,5 +126,24 @@
         "radius": 40
       }
     }
+  },
+  "presentation": {
+    "repository": "KitionAI/kit-presentation",
+    "crate": "kition-presentation-sdk",
+    "module": "kition_presentation_sdk",
+    "class": "PresentationDocument",
+    "name": "Deck.deckcraft",
+    "edit": {
+      "command": "shape.insert",
+      "params": {
+        "preset": "ellipse",
+        "rect": [
+          100,
+          100,
+          200,
+          120
+        ]
+      }
+    }
   }
 }

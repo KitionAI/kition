@@ -11,7 +11,8 @@
       "drawing": "Drawing",
       "motion": "Motion graphics",
       "layout": "Page layout",
-      "cad": "CAD drawing"
+      "cad": "CAD drawing",
+      "presentation": "Presentation"
     },
     "folder": "Folder",
     "importSpreadsheet": "Import spreadsheet",
@@ -736,7 +737,21 @@
       "Tools": "Tools",
       "Draw": "Draw",
       "Dimension": "Dimension",
-      "Modify": "Modify"
+      "Modify": "Modify",
+      "Home": "Home",
+      "Design": "Design",
+      "Transitions": "Transitions",
+      "Animations": "Animations",
+      "Slide Show": "Slide Show",
+      "Review": "Review",
+      "Arrange": "Arrange",
+      "Shape Format": "Shape Format",
+      "Picture Format": "Picture Format",
+      "Table Design": "Table Design",
+      "Table Layout": "Table Layout",
+      "Chart Design": "Chart Design",
+      "Slide Master": "Slide Master",
+      "Window": "Window"
     }
   },
   "filmKit": {
@@ -860,5 +875,10 @@
     "summary": "{{objects}} objects, {{selected}} selected, layer {{layer}}",
     "unavailableTitle": "CAD editing is not available in this build",
     "unavailableBody": "CAD drawings open in Kition when the CAD engine is included."
+  },
+  "presentationKit": {
+    "summary": "Slide {{slide}} of {{slides}}, {{selected}} selected",
+    "unavailableTitle": "Presentation editing is not available in this build",
+    "unavailableBody": "Presentations open in Kition when the Presentation engine is included."
   }
 }
