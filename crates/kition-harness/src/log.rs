@@ -59,23 +59,21 @@ impl SessionLog for SqliteLog {
         let conn = self.db.conn().map_err(|error| error.to_string())?;
         let text = serde_json::to_string(&body).map_err(|error| error.to_string())?;
         let at = now_millis();
+        // One statement: the next seq for this session and the insert are
+        // the same INSERT...SELECT, so two concurrent appends cannot read
+        // the same "next seq" and collide.
         let seq: i64 = conn
             .query_row(
-                "SELECT COALESCE(MAX(seq), 0) + 1 FROM agent_session_events WHERE session_key = ?1",
-                [session],
+                "INSERT INTO agent_session_events (session_key, seq, event_type, body, created_at) \
+                 SELECT ?1, COALESCE(MAX(seq), 0) + 1, ?2, ?3, ?4 FROM agent_session_events WHERE session_key = ?1 \
+                 RETURNING seq",
+                params![session, body.kind(), text, at],
                 |row| row.get(0),
             )
             .map_err(|error| error.to_string())?;
-        conn.execute(
-            "INSERT INTO agent_session_events (session_key, seq, event_type, body, created_at) VALUES (?1, ?2, ?3, ?4, ?5)",
-            params![session, seq, body.kind(), text, at],
-        )
-        .map_err(|error| error.to_string())?;
-        Ok(SessionEvent {
-            seq: u64::try_from(seq).unwrap_or(0),
-            at,
-            body,
-        })
+        let seq = u64::try_from(seq)
+            .map_err(|_| format!("session `{session}` has an invalid sequence number {seq}"))?;
+        Ok(SessionEvent { seq, at, body })
     }
 
     fn read(&self, session: &str) -> Result<Vec<SessionEvent>, String> {
@@ -97,11 +95,9 @@ impl SessionLog for SqliteLog {
             let (seq, at, text) = row.map_err(|error| error.to_string())?;
             let body: EventBody = serde_json::from_str(&text)
                 .map_err(|error| format!("session `{session}` event {seq}: {error}"))?;
-            events.push(SessionEvent {
-                seq: u64::try_from(seq).unwrap_or(0),
-                at,
-                body,
-            });
+            let seq = u64::try_from(seq)
+                .map_err(|_| format!("session `{session}` has an invalid sequence number {seq}"))?;
+            events.push(SessionEvent { seq, at, body });
         }
         Ok(events)
     }
@@ -162,5 +158,21 @@ mod tests {
                 .unwrap_or_else(|error| panic!("{error}"))
                 .is_empty()
         );
+    }
+
+    #[test]
+    fn sqlite_log_numbers_sessions_independently() {
+        let db = kition_store::Db::open_in_memory().unwrap_or_else(|error| panic!("{error}"));
+        let log = SqliteLog::new(db);
+        let first_a = log
+            .append("a", EventBody::TurnStart { turn: 1 })
+            .unwrap_or_else(|error| panic!("{error}"));
+        let first_b = log
+            .append("b", EventBody::TurnStart { turn: 1 })
+            .unwrap_or_else(|error| panic!("{error}"));
+        let second_a = log
+            .append("a", EventBody::StepStart { turn: 1, step: 1 })
+            .unwrap_or_else(|error| panic!("{error}"));
+        assert_eq!((first_a.seq, first_b.seq, second_a.seq), (1, 1, 2));
     }
 }

@@ -1,10 +1,30 @@
 //! Model history derived from the session log (DeepSeek Harness
 //! `deriveMessages`). Lifecycle events and failed attempts are not model
 //! history; the newest system message leads.
+//!
+//! Every provider wire (OpenAI/DeepSeek, Responses, Anthropic) rejects a
+//! request where an assistant tool call has no matching tool result, so a
+//! call left open by a crash, cancellation, or a pending approval is
+//! repaired at the next boundary with a synthetic `tool` message.
+
+use std::collections::HashSet;
 
 use kition_ai::engine::{Message, MessagePart, ToolCall};
 
 use crate::events::{ContentBlock, EventBody, SessionEvent};
+
+/// Events after which any still-open tool call is no longer allowed to
+/// dangle, and after which pending tool-result images are flushed.
+fn is_boundary(body: &EventBody) -> bool {
+    matches!(
+        body,
+        EventBody::UserMessage { .. }
+            | EventBody::AssistantMessage { .. }
+            | EventBody::StepEnd { .. }
+            | EventBody::TurnStart { .. }
+            | EventBody::TurnEnd { .. }
+    )
+}
 
 /// The messages a model request carries, rebuilt from the log. Images in
 /// tool results follow all results of their step as one user message, so
@@ -13,17 +33,13 @@ pub fn derive_messages(events: &[SessionEvent]) -> Vec<Message> {
     let mut system = String::new();
     let mut history = Vec::new();
     let mut pending_images: Vec<MessagePart> = Vec::new();
+    let mut open_calls: Vec<(String, String)> = Vec::new();
+    let mut awaiting_approval: HashSet<String> = HashSet::new();
+
     for event in events {
-        let flush = !matches!(
-            event.body,
-            EventBody::ToolResult { .. } | EventBody::ToolCall { .. }
-        );
-        if flush && !pending_images.is_empty() {
-            history.push(Message {
-                role: "user".into(),
-                parts: std::mem::take(&mut pending_images),
-                ..Message::default()
-            });
+        if is_boundary(&event.body) {
+            repair_dangling_calls(&mut open_calls, &mut awaiting_approval, &mut history);
+            flush_images(&mut pending_images, &mut history);
         }
         match &event.body {
             EventBody::SystemMessage { content } => system.clone_from(content),
@@ -51,6 +67,13 @@ pub fn derive_messages(events: &[SessionEvent]) -> Vec<Message> {
                     raw_items: raw_items.clone(),
                     ..Message::default()
                 });
+                open_calls = tool_calls
+                    .iter()
+                    .map(|call| (call.call_id.clone(), call.name.clone()))
+                    .collect();
+            }
+            EventBody::ApprovalAsked { call_id, .. } => {
+                awaiting_approval.insert(call_id.clone());
             }
             EventBody::ToolResult {
                 call_id,
@@ -58,7 +81,10 @@ pub fn derive_messages(events: &[SessionEvent]) -> Vec<Message> {
                 content,
                 ..
             } => {
-                let (text, images) = split(content);
+                let (mut text, images) = split(content);
+                if text.is_empty() && !images.is_empty() {
+                    text = "(image attached below)".into();
+                }
                 history.push(Message {
                     role: "tool".into(),
                     name: name.clone(),
@@ -67,21 +93,52 @@ pub fn derive_messages(events: &[SessionEvent]) -> Vec<Message> {
                     ..Message::default()
                 });
                 pending_images.extend(images);
+                open_calls.retain(|(id, _)| id != call_id);
+                awaiting_approval.remove(call_id);
             }
             _ => {}
         }
     }
-    if !pending_images.is_empty() {
-        history.push(Message {
-            role: "user".into(),
-            parts: pending_images,
-            ..Message::default()
-        });
-    }
+    repair_dangling_calls(&mut open_calls, &mut awaiting_approval, &mut history);
+    flush_images(&mut pending_images, &mut history);
     if !system.is_empty() {
         history.insert(0, Message::new("system", system));
     }
     history
+}
+
+/// Closes every still-open call with a synthetic `tool` message, in the
+/// order the calls were made, then clears them.
+fn repair_dangling_calls(
+    open_calls: &mut Vec<(String, String)>,
+    awaiting_approval: &mut HashSet<String>,
+    history: &mut Vec<Message>,
+) {
+    for (call_id, name) in open_calls.drain(..) {
+        let content = if awaiting_approval.remove(&call_id) {
+            "Error: this call is waiting for the person's approval and has not run."
+        } else {
+            "Error: this call was interrupted before it produced a result."
+        };
+        history.push(Message {
+            role: "tool".into(),
+            name,
+            tool_call_id: call_id,
+            content: content.into(),
+            ..Message::default()
+        });
+    }
+}
+
+/// Pushes every pending tool-result image as one `user` message.
+fn flush_images(pending_images: &mut Vec<MessagePart>, history: &mut Vec<Message>) {
+    if !pending_images.is_empty() {
+        history.push(Message {
+            role: "user".into(),
+            parts: std::mem::take(pending_images),
+            ..Message::default()
+        });
+    }
 }
 
 fn user_message(content: &[ContentBlock]) -> Message {
@@ -126,10 +183,20 @@ mod tests {
     use serde_json::json;
 
     use super::*;
-    use crate::events::LoggedCall;
+    use crate::events::{LoggedCall, TurnEndReason};
 
     fn at(seq: u64, body: EventBody) -> SessionEvent {
         SessionEvent { seq, at: 0, body }
+    }
+
+    fn assistant_with_calls(calls: Vec<LoggedCall>) -> EventBody {
+        EventBody::AssistantMessage {
+            content: String::new(),
+            tool_calls: calls,
+            stop_reason: "tool_use".into(),
+            model: "m".into(),
+            raw_items: Vec::new(),
+        }
     }
 
     #[test]
@@ -163,17 +230,11 @@ mod tests {
             ),
             at(
                 7,
-                EventBody::AssistantMessage {
-                    content: String::new(),
-                    tool_calls: vec![LoggedCall {
-                        call_id: "c1".into(),
-                        name: "photo_run".into(),
-                        arguments: json!({ "path": "a.psd" }),
-                    }],
-                    stop_reason: "tool_use".into(),
-                    model: "m".into(),
-                    raw_items: Vec::new(),
-                },
+                assistant_with_calls(vec![LoggedCall {
+                    call_id: "c1".into(),
+                    name: "photo_run".into(),
+                    arguments: json!({ "path": "a.psd" }),
+                }]),
             ),
             at(
                 8,
@@ -225,5 +286,222 @@ mod tests {
         assert_eq!(messages[3].tool_call_id, "c1");
         assert_eq!(messages[3].content, "Ran 1 command");
         assert_eq!(messages[4].parts[0].kind, "image_url");
+    }
+
+    #[test]
+    fn an_unanswered_call_is_repaired_as_interrupted_at_the_next_boundary() {
+        let events = vec![
+            at(
+                1,
+                assistant_with_calls(vec![
+                    LoggedCall {
+                        call_id: "c1".into(),
+                        name: "photo_run".into(),
+                        arguments: json!({}),
+                    },
+                    LoggedCall {
+                        call_id: "c2".into(),
+                        name: "photo_run".into(),
+                        arguments: json!({}),
+                    },
+                ]),
+            ),
+            at(
+                2,
+                EventBody::ToolCall {
+                    call_id: "c1".into(),
+                    name: "photo_run".into(),
+                    arguments: json!({}),
+                },
+            ),
+            at(
+                3,
+                EventBody::ToolResult {
+                    call_id: "c1".into(),
+                    name: "photo_run".into(),
+                    value: json!({}),
+                    content: vec![ContentBlock::text("ok")],
+                    is_error: false,
+                    meta: None,
+                },
+            ),
+            at(
+                4,
+                EventBody::UserMessage {
+                    content: vec![ContentBlock::text("next")],
+                },
+            ),
+        ];
+        let messages = derive_messages(&events);
+        let roles: Vec<&str> = messages
+            .iter()
+            .map(|message| message.role.as_str())
+            .collect();
+        assert_eq!(roles, ["assistant", "tool", "tool", "user"]);
+        assert_eq!(messages[1].tool_call_id, "c1");
+        assert_eq!(messages[1].content, "ok");
+        assert_eq!(messages[2].tool_call_id, "c2");
+        assert_eq!(
+            messages[2].content,
+            "Error: this call was interrupted before it produced a result."
+        );
+    }
+
+    #[test]
+    fn a_call_awaiting_approval_is_repaired_with_the_approval_message() {
+        let events = vec![
+            at(1, EventBody::TurnStart { turn: 1 }),
+            at(
+                2,
+                assistant_with_calls(vec![LoggedCall {
+                    call_id: "c1".into(),
+                    name: "photo_run".into(),
+                    arguments: json!({}),
+                }]),
+            ),
+            at(
+                3,
+                EventBody::ToolCall {
+                    call_id: "c1".into(),
+                    name: "photo_run".into(),
+                    arguments: json!({}),
+                },
+            ),
+            at(
+                4,
+                EventBody::ApprovalAsked {
+                    call_id: "c1".into(),
+                    reason: "writes outside the workspace".into(),
+                },
+            ),
+            at(
+                5,
+                EventBody::TurnEnd {
+                    turn: 1,
+                    reason: TurnEndReason::AwaitingApproval,
+                    error: String::new(),
+                },
+            ),
+        ];
+        let messages = derive_messages(&events);
+        let roles: Vec<&str> = messages
+            .iter()
+            .map(|message| message.role.as_str())
+            .collect();
+        assert_eq!(roles, ["assistant", "tool"]);
+        assert_eq!(messages[1].tool_call_id, "c1");
+        assert_eq!(
+            messages[1].content,
+            "Error: this call is waiting for the person's approval and has not run."
+        );
+    }
+
+    #[test]
+    fn images_from_two_results_in_one_step_land_in_one_trailing_user_message() {
+        let events = vec![
+            at(
+                1,
+                assistant_with_calls(vec![
+                    LoggedCall {
+                        call_id: "c1".into(),
+                        name: "photo_run".into(),
+                        arguments: json!({}),
+                    },
+                    LoggedCall {
+                        call_id: "c2".into(),
+                        name: "photo_run".into(),
+                        arguments: json!({}),
+                    },
+                ]),
+            ),
+            at(
+                2,
+                EventBody::ToolCall {
+                    call_id: "c1".into(),
+                    name: "photo_run".into(),
+                    arguments: json!({}),
+                },
+            ),
+            at(
+                3,
+                EventBody::ToolResult {
+                    call_id: "c1".into(),
+                    name: "photo_run".into(),
+                    value: json!({}),
+                    content: vec![ContentBlock::Image {
+                        url: "data:image/png;base64,AAA=".into(),
+                    }],
+                    is_error: false,
+                    meta: None,
+                },
+            ),
+            at(
+                4,
+                EventBody::ToolCall {
+                    call_id: "c2".into(),
+                    name: "photo_run".into(),
+                    arguments: json!({}),
+                },
+            ),
+            at(
+                5,
+                EventBody::ToolResult {
+                    call_id: "c2".into(),
+                    name: "photo_run".into(),
+                    value: json!({}),
+                    content: vec![ContentBlock::Image {
+                        url: "data:image/png;base64,BBB=".into(),
+                    }],
+                    is_error: false,
+                    meta: None,
+                },
+            ),
+            at(6, EventBody::StepEnd { turn: 1, step: 1 }),
+        ];
+        let messages = derive_messages(&events);
+        let roles: Vec<&str> = messages
+            .iter()
+            .map(|message| message.role.as_str())
+            .collect();
+        assert_eq!(roles, ["assistant", "tool", "tool", "user"]);
+        // Both results had only an image: the text falls back per rule 3.
+        assert_eq!(messages[1].content, "(image attached below)");
+        assert_eq!(messages[2].content, "(image attached below)");
+        assert_eq!(messages[3].parts.len(), 2);
+        assert_eq!(messages[3].parts[0].image_url, "data:image/png;base64,AAA=");
+        assert_eq!(messages[3].parts[1].image_url, "data:image/png;base64,BBB=");
+    }
+
+    #[test]
+    fn a_dangling_call_at_the_end_of_the_log_is_closed() {
+        let events = vec![
+            at(
+                1,
+                assistant_with_calls(vec![LoggedCall {
+                    call_id: "c1".into(),
+                    name: "photo_run".into(),
+                    arguments: json!({}),
+                }]),
+            ),
+            at(
+                2,
+                EventBody::ToolCall {
+                    call_id: "c1".into(),
+                    name: "photo_run".into(),
+                    arguments: json!({}),
+                },
+            ),
+        ];
+        let messages = derive_messages(&events);
+        let roles: Vec<&str> = messages
+            .iter()
+            .map(|message| message.role.as_str())
+            .collect();
+        assert_eq!(roles, ["assistant", "tool"]);
+        assert_eq!(messages[1].tool_call_id, "c1");
+        assert_eq!(
+            messages[1].content,
+            "Error: this call was interrupted before it produced a result."
+        );
     }
 }
