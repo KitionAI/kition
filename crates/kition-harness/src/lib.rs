@@ -3,6 +3,7 @@
 //! `defineTool` shape with a policy pipeline, and the provider seam through
 //! which panes and kits contribute to a turn.
 
+pub mod cancel;
 pub mod events;
 pub mod schema;
 
