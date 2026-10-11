@@ -24,10 +24,13 @@ impl Default for HistoryBudget {
 
 /// The events a request is derived from under `budget`. The newest
 /// `full_turns` turns are kept whole (`full_turns == 0` keeps everything
-/// since the first turn, so the current turn is never dropped). Before them,
-/// only system messages, user messages, and assistant text replies without
-/// tool calls survive, at most `older_messages` of the latter two, newest
-/// kept. Events logged before the first `turn/start` count as older.
+/// since the first turn, so the current turn is never dropped). Before them
+/// only real conversation survives: the person's message (the first
+/// `user/message` after each `turn/start`; later ones are recovery context
+/// or hosted follow-ups), assistant text replies without tool calls, and
+/// every user message and text reply logged before the first `turn/start`
+/// (carried over from the original loop). At most `older_messages` of them
+/// are kept, newest first, plus the newest older system message.
 pub fn bound_history(events: &[SessionEvent], budget: HistoryBudget) -> Vec<SessionEvent> {
     let starts: Vec<usize> = events
         .iter()
@@ -46,10 +49,23 @@ pub fn bound_history(events: &[SessionEvent], budget: HistoryBudget) -> Vec<Sess
             .unwrap_or(first)
     };
     let (older, recent) = events.split_at(full_from);
-    let conversation: Vec<&SessionEvent> = older
+    // Before any `turn/start` every user message is the person's.
+    let mut awaiting_person = true;
+    let mut in_turn = false;
+    let conversation: Vec<usize> = older
         .iter()
-        .filter(|event| match &event.body {
-            EventBody::UserMessage { .. } => true,
+        .enumerate()
+        .filter(|(_, event)| match &event.body {
+            EventBody::TurnStart { .. } => {
+                in_turn = true;
+                awaiting_person = true;
+                false
+            }
+            EventBody::UserMessage { .. } => {
+                let person = awaiting_person;
+                awaiting_person = !in_turn;
+                person
+            }
             EventBody::AssistantMessage {
                 tool_calls,
                 content,
@@ -57,16 +73,20 @@ pub fn bound_history(events: &[SessionEvent], budget: HistoryBudget) -> Vec<Sess
             } => tool_calls.is_empty() && !content.is_empty(),
             _ => false,
         })
+        .map(|(index, _)| index)
         .collect();
     let skip = conversation.len().saturating_sub(budget.older_messages);
+    let conversation = conversation.get(skip..).unwrap_or_default();
+    let system = older
+        .iter()
+        .rposition(|event| matches!(event.body, EventBody::SystemMessage { .. }));
+    // One pass in log order: no re-sorting needed.
     let mut kept: Vec<SessionEvent> = older
         .iter()
-        .filter(|event| matches!(event.body, EventBody::SystemMessage { .. }))
-        .cloned()
+        .enumerate()
+        .filter(|(index, _)| Some(*index) == system || conversation.binary_search(index).is_ok())
+        .map(|(_, event)| event.clone())
         .collect();
-    kept.extend(conversation.into_iter().skip(skip).cloned());
-    // Merging system messages with the conversation needs log order back.
-    kept.sort_by_key(|event| event.seq);
     kept.extend(recent.iter().cloned());
     kept
 }
@@ -200,6 +220,92 @@ mod tests {
             })
             .collect();
         assert_eq!(older_users, ["ask 8", "ask 9"]);
+    }
+
+    #[test]
+    fn older_turns_keep_the_persons_message_not_recovery_context() {
+        let user = |text: &str| EventBody::UserMessage {
+            content: vec![ContentBlock::text(text)],
+        };
+        let reply = |text: &str| EventBody::AssistantMessage {
+            content: text.into(),
+            tool_calls: Vec::new(),
+            stop_reason: "stop".into(),
+            model: "m".into(),
+            raw_items: Vec::new(),
+        };
+        let bodies = vec![
+            EventBody::SystemMessage {
+                content: "old sys".into(),
+            },
+            EventBody::TurnStart { turn: 1 },
+            EventBody::SystemMessage {
+                content: "newer sys".into(),
+            },
+            user("ask 1"),
+            EventBody::AssistantMessage {
+                content: String::new(),
+                tool_calls: vec![LoggedCall {
+                    call_id: "c1".into(),
+                    name: "write".into(),
+                    arguments: json!({}),
+                }],
+                stop_reason: "tool_use".into(),
+                model: "m".into(),
+                raw_items: Vec::new(),
+            },
+            EventBody::ToolCall {
+                call_id: "c1".into(),
+                name: "write".into(),
+                arguments: json!({}),
+            },
+            EventBody::ToolResult {
+                call_id: "c1".into(),
+                name: "write".into(),
+                value: json!(null),
+                content: vec![ContentBlock::text("failed")],
+                is_error: true,
+                meta: None,
+            },
+            user("[recovery] the write failed; recover now"),
+            reply("answer 1"),
+            EventBody::TurnEnd {
+                turn: 1,
+                reason: TurnEndReason::Completed,
+                error: String::new(),
+            },
+            EventBody::TurnStart { turn: 2 },
+            user("ask 2"),
+        ];
+        let events: Vec<SessionEvent> = bodies
+            .into_iter()
+            .enumerate()
+            .map(|(index, body)| at(index as u64 + 1, body))
+            .collect();
+        let kept = bound_history(
+            &events,
+            HistoryBudget {
+                full_turns: 1,
+                older_messages: 16,
+            },
+        );
+        let older: Vec<String> = kept
+            .iter()
+            .take_while(|event| !matches!(event.body, EventBody::TurnStart { turn: 2 }))
+            .map(|event| match &event.body {
+                EventBody::SystemMessage { content } => format!("system {content}"),
+                EventBody::UserMessage { content } => match &content[0] {
+                    ContentBlock::Text { text } => format!("user {text}"),
+                    ContentBlock::Image { .. } => "image".into(),
+                },
+                EventBody::AssistantMessage { content, .. } => format!("assistant {content}"),
+                other => other.kind().to_owned(),
+            })
+            .collect();
+        assert_eq!(
+            older,
+            ["system newer sys", "user ask 1", "assistant answer 1"]
+        );
     }
 
     #[test]
