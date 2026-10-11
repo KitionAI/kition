@@ -294,8 +294,10 @@ function migrateDeepSeekRoute(config: DesktopProviderConfig): DesktopProviderCon
   } catch {
     return config
   }
+  // Decided by URL alone: a default-merged wireApi of 'anthropic_messages' is not evidence
+  // the baseUrl was ever migrated, so it must not skip the rewrite below.
   const official = url.hostname === 'api.deepseek.com' && ['', '/', '/v1'].includes(url.pathname.replace(/\/$/, '') || '/')
-  if (!official || config.wireApi === 'anthropic_messages') return config
+  if (!official) return config
   return { ...config, baseUrl: 'https://api.deepseek.com/anthropic', wireApi: 'anthropic_messages', authScheme: 'x-api-key' }
 }
 

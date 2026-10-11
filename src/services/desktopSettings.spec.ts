@@ -455,4 +455,19 @@ describe('DeepSeek provider route', () => {
     expect(custom.baseUrl).toBe('https://gateway.example.test/v1')
     expect(custom.wireApi).toBe('responses')
   })
+
+  it('migrates a saved DeepSeek URL by its path alone, even once the default wire has merged in', async () => {
+    const { normalizeDesktopSettings } = await import('./desktopSettings')
+    const migrated = normalizeDesktopSettings({
+      providers: { deepseek: { baseUrl: 'https://api.deepseek.com/v1' } },
+    } as never).providers.deepseek
+    expect(migrated.baseUrl).toBe('https://api.deepseek.com/anthropic')
+    expect(migrated.wireApi).toBe('anthropic_messages')
+    expect(migrated.authScheme).toBe('x-api-key')
+  })
+
+  it('normalizes a bare DeepSeek host to the Messages path', async () => {
+    const { normalizeProviderBaseURL } = await import('./desktopSettings')
+    expect(normalizeProviderBaseURL('deepseek', 'https://api.deepseek.com')).toBe('https://api.deepseek.com/anthropic')
+  })
 })
