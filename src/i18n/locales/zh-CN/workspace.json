@@ -10,7 +10,8 @@
       "video": "视频项目",
       "drawing": "矢量图",
       "motion": "动态图形",
-      "layout": "版式"
+      "layout": "版式",
+      "cad": "CAD 图纸"
     },
     "folder": "文件夹",
     "importSpreadsheet": "导入电子表格",
@@ -723,7 +724,20 @@
     "tools": "工具",
     "moreTools": "与{{tool}}同组的更多工具",
     "agentEdited": "由智能体编辑",
-    "agentEditedNotice": "智能体编辑了 {{name}}"
+    "agentEditedNotice": "智能体编辑了 {{name}}",
+    "dialogUnavailable": "Kition 暂不支持此工具的选项对话框",
+    "commandLine": "输入命令",
+    "menu": {
+      "File": "文件",
+      "Edit": "编辑",
+      "View": "视图",
+      "Insert": "插入",
+      "Format": "格式",
+      "Tools": "工具",
+      "Draw": "绘图",
+      "Dimension": "标注",
+      "Modify": "修改"
+    }
   },
   "filmKit": {
     "play": "播放",
@@ -841,5 +855,10 @@
       "Window": "窗口",
       "Help": "帮助"
     }
+  },
+  "cadKit": {
+    "summary": "{{objects}} 个对象，已选 {{selected}} 个，图层 {{layer}}",
+    "unavailableTitle": "此版本不支持 CAD 编辑",
+    "unavailableBody": "包含 CAD 引擎时，CAD 图纸会在 Kition 中打开。"
   }
 }

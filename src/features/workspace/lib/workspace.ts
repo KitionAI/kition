@@ -10,6 +10,7 @@ import {
   Clapperboard,
   Layers,
   LayoutTemplate,
+  DraftingCompass,
   PenTool,
   Paintbrush,
   Presentation,
@@ -196,6 +197,9 @@ export function inferWorkspaceItemFormat(path: string, content?: string): Worksp
   if (/\.designcraft$/i.test(path)) {
     return 'layout'
   }
+  if (/\.dxf$/i.test(path)) {
+    return 'cad'
+  }
   if (/\.(mp4|mov|webm)$/i.test(path)) {
     return 'video'
   }
@@ -301,6 +305,8 @@ export function getWorkspaceItemIcon(format?: WorkspaceDocumentFormat): LucideIc
       return Sparkles
     case 'layout':
       return LayoutTemplate
+    case 'cad':
+      return DraftingCompass
     case 'video':
       return FileVideo2
     case 'audio':
@@ -341,6 +347,7 @@ export function getWorkspaceItemIconColorClass(format?: WorkspaceDocumentFormat)
     case 'vector':
     case 'effect':
     case 'layout':
+    case 'cad':
       return 'text-violet-500'
     case 'design':
     case 'board':
@@ -375,6 +382,7 @@ export function getWorkspaceItemFormatLabel(format?: WorkspaceDocumentFormat) {
     vector: 'Vector',
     effect: 'Effect',
     layout: 'Layout',
+    cad: 'CAD',
     video: 'Video',
     audio: 'Audio',
     binary: 'File',
@@ -430,7 +438,7 @@ export function isOrganizableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
 }
 
 export function isPreviewableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
-  return format === 'image' || format === 'pdf' || format === 'photo' || format === 'film' || format === 'vector' || format === 'effect' || format === 'layout' || format === 'video'
+  return format === 'image' || format === 'pdf' || format === 'photo' || format === 'film' || format === 'vector' || format === 'effect' || format === 'layout' || format === 'cad' || format === 'video'
 }
 
 export function isSupportedWorkspaceFormat(format?: WorkspaceDocumentFormat) {

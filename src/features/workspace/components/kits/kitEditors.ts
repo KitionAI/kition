@@ -1,5 +1,5 @@
-import { lazy, type ComponentType } from 'react'
-import { Clapperboard, Layers, LayoutTemplate, PenTool, Sparkles, type LucideIcon } from 'lucide-react'
+import { createElement, lazy, type ComponentType } from 'react'
+import { Clapperboard, DraftingCompass, Layers, LayoutTemplate, PenTool, Sparkles, type LucideIcon } from 'lucide-react'
 import { kitSdkAvailable, type KitSdkManifest } from '@/features/kits/public'
 import type { WorkspaceDocumentFormat } from '@/services/desktop'
 import { PhotoKitPane } from '../PhotoKitPane'
@@ -12,6 +12,8 @@ import { EffectUnavailable } from '../effect/EffectUnavailable'
 import { EFFECT_SDK } from '../effect/effectKitSdk'
 import { VectorUnavailable } from '../vector/VectorUnavailable'
 import { VECTOR_SDK } from '../vector/vectorKitSdk'
+import { StandardKitUnavailable } from './StandardKitUnavailable'
+import { CAD_KIT, type StandardKitSpec } from './standardKits'
 
 /** What every kit editor receives from the workspace tab. */
 export type KitEditorProps = {
@@ -48,6 +50,17 @@ export type KitCreateSpec = {
   icon: LucideIcon
   /** Without the SDK, the runtime's kit process can create it (`POST /v1/kits/documents/new`). */
   runtimeFallback?: boolean
+}
+
+/** A kit on the standard editor (StandardKitEditor), which needs no editor code of its own. */
+function standardKit(spec: StandardKitSpec, format: WorkspaceDocumentFormat, create?: KitCreateSpec): KitEditorEntry {
+  return {
+    format,
+    sdk: spec.sdk,
+    Editor: lazy(() => import('./StandardKitEditor').then((module) => ({ default: (props: KitEditorProps) => createElement(module.StandardKitEditor, { spec, ...props }) }))),
+    Fallback: () => createElement(StandardKitUnavailable, { spec }),
+    create,
+  }
 }
 
 const KIT_EDITORS: readonly KitEditorEntry[] = [
@@ -87,6 +100,8 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
     // US Letter, in points.
     create: { id: 'layout', extension: 'designcraft', baseName: 'Untitled layout', size: { width: 612, height: 792 }, label: 'createMenu.format.layout', icon: LayoutTemplate },
   },
+  // A3 in millimetres; the engine starts a metric drawing with those limits.
+  standardKit(CAD_KIT, 'cad', { id: 'cad', extension: 'dxf', baseName: 'Untitled CAD drawing', size: { width: 420, height: 297 }, label: 'createMenu.format.cad', icon: DraftingCompass }),
 ]
 
 const availability = new Map<string, Promise<boolean>>()

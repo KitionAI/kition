@@ -54,6 +54,13 @@ const CASES: &[Case] = &[
         params: || json!({ "color": "#0000ff", "seconds": 1 }),
         file_command: ("file.saveAs", || json!({ "path": "elsewhere.fcproj" })),
     },
+    Case {
+        kit: "kit.cad",
+        fixture: "Plan.dxf",
+        command: "circle",
+        params: || json!({ "center": [200, 150], "radius": 40 }),
+        file_command: ("saveas", || json!({ "path": "elsewhere.dxf" })),
+    },
 ];
 
 fn binary(kit: &kition_kits::KitDefinition) -> Option<PathBuf> {

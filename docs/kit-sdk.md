@@ -26,7 +26,7 @@ over the Kit Protocol by kition-sdk's `kition-headless`, so it is a few lines
 (`apps/kit-<kit>` in each kit repository). The agent's tools for every kit are
 `<prefix>_inspect`, `<prefix>_commands`, and `<prefix>_run`, generated from
 the kit's definition (`photo_*`, `film_*`, `vector_*`, `effect_*`,
-`design_*`).
+`design_*`, `cad_*`).
 
 When the file is open in a kit editor, those tools act on the editor itself
 through the **Kit AI bridge** (standard A7 to A10), not on a headless copy:
@@ -267,7 +267,13 @@ Kition renderer:
 
 8. An entry in `kits/sdks.json`, then `scripts/build-kit-sdk.sh <kit>` and
    `pnpm check:kit-sdks`.
-9. `src/features/workspace/components/<kit>/<kit>KitSdk.ts`: the manifest
+9. A kit that needs no panels of its own uses the standard editor
+   (`kits/StandardKitEditor.tsx`): a `StandardKitSpec` in `kits/standardKits.ts`
+   (SDK manifest, test id key, icon, menu order, engine tools, an optional
+   command line, and the status-line values from `inspect()`) and
+   `standardKit(spec, format, create)` in `KIT_EDITORS` replace steps 9 and 10's
+   editor, fallback, and SDK files. CAD is one. Otherwise:
+   `src/features/workspace/components/<kit>/<kit>KitSdk.ts`: the manifest
    and `describe<Kit>(info)`. Tools come one of two ways. When the engine
    owns its tools (manifest capability `engine-tools`, as Vector), use
    `useEngineTools` and `EngineToolRail` and write no tool code:
@@ -282,7 +288,9 @@ Kition renderer:
     base name, size, label, icon). The create menu then offers it: the SDK's
     own `create` makes the file in the page (`createKitFile`), under an
     unused name, written through the host.
-11. Strings in all six locales; menu labels under `<kit>Kit.menu.*`.
+11. Strings in all six locales; menu labels under `<kit>Kit.menu.*` (the
+    standard editor falls back to the shared `kitEditor.menu.*`, so add only
+    names those lack).
 12. An e2e spec like `e2e/photo-web-editor.spec.ts`. It generates a real
     fixture with the SDK in Node, serves `/workspace-files/<file>` with an
     `etag`, captures `PUT /v1/kits/files`, and covers open, edit, undo, redo,
@@ -449,6 +457,26 @@ Engine tools (Vector):
   whole canvas shrunk to fit.
 - Build with an absolute `CARGO_TARGET_DIR`: `wasm-pack` runs cargo inside
   the crate's folder, so a relative one lands in a stray directory there.
+
+Command-line kits (CAD):
+
+- An engine driven by prompts (pick a point, type a distance) maps onto engine
+  tools directly: a tool is the command of the same name, clicks answer its
+  prompts, and the prompt is a `status` request. When a command starts or ends
+  other than by the host's choice (the command line, a menu, Enter), the
+  engine sends `switchTool` so the rail follows, and treats a `selectTool` for
+  the command already running as a no-op, or following the switch cancels it.
+- Expose the command line as an ordinary command (`commandLine` with
+  `{text}`), so the host's bar and agents use the same path, and refuse
+  through it every command whose parameters name a file, as `kition-headless`
+  does; otherwise the command line is a way around the agent's file rules.
+- Below 1:1 the viewport shows exact reductions of the 1:1 pixels, so one-pixel
+  hairlines fade to light grey at a fitted zoom. Draw them two document pixels
+  wide at 1:1, thinning to one screen pixel as the view zooms in.
+- Report `busy` while objects are selected, so Escape (clear) and Delete
+  (erase) reach the engine.
+- Choose document pixels from the drawing alone (CAD: a power-of-two scale of
+  limits and extents), so a saved drawing reopens to the same pixels.
 
 Time-based kits (Effect):
 

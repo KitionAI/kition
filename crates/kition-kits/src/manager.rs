@@ -158,6 +158,25 @@ pub const KITS: &[KitDefinition] = &[
             command: "frame.create",
         },
     },
+    // Edited in the page through its SDK.
+    KitDefinition {
+        id: "kit.cad",
+        name: "Kition CAD",
+        binary_env: "KITION_KIT_CAD_BINARY",
+        extensions: &["dxf"],
+        creates: &[],
+        embeds: false,
+        exports: &[],
+        agent: KitAgent {
+            prefix: "cad",
+            noun: "CAD drawing",
+            formats: ".dxf",
+            reports: "its layers, object count, current layer, and command prompt",
+            covers: "drawing, modifying, dimensions, layers, blocks, and AutoCAD-style commands; `commandLine` runs any command-line entry",
+            queries: "`circle`, `layer`, or `dimension`",
+            command: "circle",
+        },
+    },
 ];
 
 /// Who is asking: a person in a kit tab or the agent.

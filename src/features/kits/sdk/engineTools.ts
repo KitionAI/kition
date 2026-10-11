@@ -323,10 +323,18 @@ export function useEngineTools(tool: ToolCall, ready: boolean, change: KitChange
     return matches[(index + 1) % matches.length].id
   }, [active, tools])
 
+  /** Asks the active tool for its state again, after something outside it ran (a command line entry). */
+  const refresh = useCallback(() => {
+    if (latest.current.hostTools?.[active]) return
+    const at = last.current ?? { x: 0, y: 0 }
+    send('toolState', [at.x, at.y, '{}', zoom.current], false, true)
+  }, [active, send])
+
   return {
     tools,
     active,
     select: setActive,
+    refresh,
     canvasTool,
     decorate,
     status,

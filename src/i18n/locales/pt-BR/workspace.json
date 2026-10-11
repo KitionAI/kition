@@ -10,7 +10,8 @@
       "video": "Projeto de vídeo",
       "drawing": "Desenho",
       "motion": "Motion graphics",
-      "layout": "Diagramação"
+      "layout": "Diagramação",
+      "cad": "Desenho CAD"
     },
     "folder": "Pasta",
     "importSpreadsheet": "Importar planilha",
@@ -723,7 +724,20 @@
     "tools": "Ferramentas",
     "moreTools": "Mais ferramentas como {{tool}}",
     "agentEdited": "Editado pelo agente",
-    "agentEditedNotice": "O agente editou {{name}}"
+    "agentEditedNotice": "O agente editou {{name}}",
+    "dialogUnavailable": "A caixa de opções desta ferramenta ainda não está disponível no Kition",
+    "commandLine": "Digite um comando",
+    "menu": {
+      "File": "Arquivo",
+      "Edit": "Editar",
+      "View": "Exibir",
+      "Insert": "Inserir",
+      "Format": "Formatar",
+      "Tools": "Ferramentas",
+      "Draw": "Desenhar",
+      "Dimension": "Cota",
+      "Modify": "Modificar"
+    }
   },
   "filmKit": {
     "play": "Reproduzir",
@@ -841,5 +855,10 @@
       "Window": "Janela",
       "Help": "Ajuda"
     }
+  },
+  "cadKit": {
+    "summary": "{{objects}} objetos, {{selected}} selecionados, camada {{layer}}",
+    "unavailableTitle": "A edição CAD não está disponível nesta versão",
+    "unavailableBody": "Desenhos CAD abrem no Kition quando o mecanismo CAD está incluído."
   }
 }

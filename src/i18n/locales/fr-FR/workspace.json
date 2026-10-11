@@ -10,7 +10,8 @@
       "video": "Projet vidéo",
       "drawing": "Dessin",
       "motion": "Animation graphique",
-      "layout": "Mise en page"
+      "layout": "Mise en page",
+      "cad": "Dessin CAO"
     },
     "folder": "Dossier",
     "importSpreadsheet": "Importer une feuille de calcul",
@@ -723,7 +724,20 @@
     "tools": "Outils",
     "moreTools": "Autres outils comme {{tool}}",
     "agentEdited": "Modifié par l'agent",
-    "agentEditedNotice": "L'agent a modifié {{name}}"
+    "agentEditedNotice": "L'agent a modifié {{name}}",
+    "dialogUnavailable": "La boîte d’options de cet outil n’est pas encore disponible dans Kition",
+    "commandLine": "Saisissez une commande",
+    "menu": {
+      "File": "Fichier",
+      "Edit": "Édition",
+      "View": "Affichage",
+      "Insert": "Insertion",
+      "Format": "Format",
+      "Tools": "Outils",
+      "Draw": "Dessin",
+      "Dimension": "Cotation",
+      "Modify": "Modification"
+    }
   },
   "filmKit": {
     "play": "Lecture",
@@ -841,5 +855,10 @@
       "Window": "Fenêtre",
       "Help": "Aide"
     }
+  },
+  "cadKit": {
+    "summary": "{{objects}} objets, {{selected}} sélectionnés, calque {{layer}}",
+    "unavailableTitle": "L’édition CAO n’est pas disponible dans cette version",
+    "unavailableBody": "Les dessins CAO s’ouvrent dans Kition lorsque le moteur CAO est inclus."
   }
 }

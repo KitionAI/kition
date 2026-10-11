@@ -75,6 +75,7 @@ const KIT_FILE_KINDS = [
   { format: 'vector', extensions: /\.(?:vectorcraft|drawcraft)$/i, prefix: 'vector', kit: 'Kition Vector', one: 'a vector drawing', many: 'vector drawings', data: 'drawing data' },
   { format: 'effect', extensions: /\.ecproj$/i, prefix: 'effect', kit: 'Kition Effect', one: 'a motion graphics project', many: 'motion graphics projects', data: 'project data' },
   { format: 'layout', extensions: /\.designcraft$/i, prefix: 'design', kit: 'Kition Design', one: 'a page layout', many: 'page layouts', data: 'layout data' },
+  { format: 'cad', extensions: /\.dxf$/i, prefix: 'cad', kit: 'Kition CAD', one: 'a CAD drawing', many: 'CAD drawings', data: 'drawing data' },
 ] as const
 
 type KitFileKind = (typeof KIT_FILE_KINDS)[number]

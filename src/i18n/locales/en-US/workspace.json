@@ -10,7 +10,8 @@
       "video": "Video project",
       "drawing": "Drawing",
       "motion": "Motion graphics",
-      "layout": "Page layout"
+      "layout": "Page layout",
+      "cad": "CAD drawing"
     },
     "folder": "Folder",
     "importSpreadsheet": "Import spreadsheet",
@@ -723,7 +724,20 @@
     "tools": "Tools",
     "moreTools": "More tools like {{tool}}",
     "agentEdited": "Edited by the agent",
-    "agentEditedNotice": "The agent edited {{name}}"
+    "agentEditedNotice": "The agent edited {{name}}",
+    "dialogUnavailable": "This tool's options dialog is not available in Kition yet",
+    "commandLine": "Type a command",
+    "menu": {
+      "File": "File",
+      "Edit": "Edit",
+      "View": "View",
+      "Insert": "Insert",
+      "Format": "Format",
+      "Tools": "Tools",
+      "Draw": "Draw",
+      "Dimension": "Dimension",
+      "Modify": "Modify"
+    }
   },
   "filmKit": {
     "play": "Play",
@@ -841,5 +855,10 @@
       "Window": "Window",
       "Help": "Help"
     }
+  },
+  "cadKit": {
+    "summary": "{{objects}} objects, {{selected}} selected, layer {{layer}}",
+    "unavailableTitle": "CAD editing is not available in this build",
+    "unavailableBody": "CAD drawings open in Kition when the CAD engine is included."
   }
 }

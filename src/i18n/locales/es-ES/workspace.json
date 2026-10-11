@@ -10,7 +10,8 @@
       "video": "Proyecto de vídeo",
       "drawing": "Dibujo",
       "motion": "Gráficos animados",
-      "layout": "Maquetación"
+      "layout": "Maquetación",
+      "cad": "Dibujo CAD"
     },
     "folder": "Carpeta",
     "importSpreadsheet": "Importar hoja de cálculo",
@@ -723,7 +724,20 @@
     "tools": "Herramientas",
     "moreTools": "Más herramientas como {{tool}}",
     "agentEdited": "Editado por el agente",
-    "agentEditedNotice": "El agente editó {{name}}"
+    "agentEditedNotice": "El agente editó {{name}}",
+    "dialogUnavailable": "El cuadro de opciones de esta herramienta aún no está disponible en Kition",
+    "commandLine": "Escribe un comando",
+    "menu": {
+      "File": "Archivo",
+      "Edit": "Edición",
+      "View": "Ver",
+      "Insert": "Insertar",
+      "Format": "Formato",
+      "Tools": "Herramientas",
+      "Draw": "Dibujo",
+      "Dimension": "Cota",
+      "Modify": "Modificar"
+    }
   },
   "filmKit": {
     "play": "Reproducir",
@@ -841,5 +855,10 @@
       "Window": "Ventana",
       "Help": "Ayuda"
     }
+  },
+  "cadKit": {
+    "summary": "{{objects}} objetos, {{selected}} seleccionados, capa {{layer}}",
+    "unavailableTitle": "La edición CAD no está disponible en esta versión",
+    "unavailableBody": "Los dibujos CAD se abren en Kition cuando se incluye el motor CAD."
   }
 }

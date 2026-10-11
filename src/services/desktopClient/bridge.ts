@@ -120,6 +120,7 @@ export type WorkspaceDocumentFormat =
   | 'vector'
   | 'effect'
   | 'layout'
+  | 'cad'
   | 'video'
   | 'audio'
   | 'binary'

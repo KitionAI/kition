@@ -109,5 +109,22 @@
         }
       }
     ]
+  },
+  "cad": {
+    "repository": "KitionAI/kit-cad",
+    "crate": "kition-cad-sdk",
+    "module": "kition_cad_sdk",
+    "class": "CadDocument",
+    "name": "Plan.dxf",
+    "edit": {
+      "command": "circle",
+      "params": {
+        "center": [
+          200,
+          150
+        ],
+        "radius": 40
+      }
+    }
   }
 }
