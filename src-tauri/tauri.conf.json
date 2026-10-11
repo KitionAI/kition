@@ -28,7 +28,7 @@
     "shortDescription": "Documents, tables, AI agents, and workflows",
     "longDescription": "Kition — documents, structured tables, AI agents, and visual workflows in one workspace.",
     "homepage": "https://kition.ai",
-    "license": "AGPL-3.0-only",
+    "license": "Apache-2.0",
     "licenseFile": "../LICENSE",
     "icon": [
       "icons/32x32.png",

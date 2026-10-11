@@ -21,7 +21,7 @@
 <p align="center">
   <a href="https://github.com/KitionAI/kition/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/KitionAI/kition/ci.yml?branch=main&amp;style=flat-square&amp;logo=githubactions&amp;logoColor=white&amp;label=CI" alt="CI-Status" /></a>
   <a href="https://github.com/KitionAI/kition/releases/latest"><img src="https://img.shields.io/github/v/release/KitionAI/kition?include_prereleases&amp;sort=semver&amp;style=flat-square&amp;color=5645d4" alt="Neueste Version" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/KitionAI/kition?style=flat-square&amp;color=5645d4" alt="Lizenz GNU AGPLv3" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/KitionAI/kition?style=flat-square&amp;color=5645d4" alt="Lizenz Apache 2.0" /></a>
 </p>
 
 <h3 align="center"><a href="https://github.com/KitionAI/kition/releases/latest"><ins>Kition herunterladen</ins></a></h3>
@@ -133,4 +133,4 @@ Issues und Pull Requests für den öffentlichen Client sind willkommen. Lesen Si
 
 ## Lizenz
 
-Der öffentliche Kition-Client steht unter der [GNU Affero General Public License v3.0 only](LICENSE). Die separat ausgelieferte Kition-Runtime unterliegt einer eigenen Lizenz.
+Kition, einschließlich der Runtime in `crates/`, steht unter der [Apache License 2.0](LICENSE).

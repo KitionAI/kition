@@ -615,7 +615,7 @@
     "reportIssueDescription": "Envía un error o una solicitud de función.",
     "openIssues": "Abrir incidencias",
     "license": "Licencia",
-    "licenseDescription": "AGPL-3.0-only. Sin garantía; se permite la redistribución conforme a la licencia.",
+    "licenseDescription": "Apache-2.0. Sin garantía; se permite la redistribución conforme a la licencia.",
     "viewLicense": "Ver LICENSE",
     "saveFailed": "No se pudieron guardar los ajustes",
     "update": {

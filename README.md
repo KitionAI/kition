@@ -22,7 +22,7 @@
   <a href="https://github.com/KitionAI/kition/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/KitionAI/kition/ci.yml?branch=main&amp;style=flat-square&amp;logo=githubactions&amp;logoColor=white&amp;label=CI" alt="CI status" /></a>
   <a href="https://github.com/KitionAI/kition/releases/latest"><img src="https://img.shields.io/github/v/release/KitionAI/kition?include_prereleases&amp;sort=semver&amp;style=flat-square&amp;color=5645d4" alt="Latest release" /></a>
   <a href="https://github.com/KitionAI/kition/releases"><img src="https://img.shields.io/github/downloads/KitionAI/kition/total?style=flat-square&amp;color=5645d4&amp;label=downloads" alt="Total GitHub release downloads" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/KitionAI/kition?style=flat-square&amp;color=5645d4" alt="License: GNU AGPLv3" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/KitionAI/kition?style=flat-square&amp;color=5645d4" alt="License: Apache 2.0" /></a>
   <img src="https://img.shields.io/badge/status-beta-f5d75e?style=flat-square" alt="Project status: beta" />
   <img src="https://img.shields.io/badge/macOS-supported-5645d4?style=flat-square&amp;logo=apple&amp;logoColor=white" alt="macOS supported" />
   <img src="https://img.shields.io/badge/Windows-supported-5645d4?style=flat-square&amp;logo=windows11&amp;logoColor=white" alt="Windows supported" />
@@ -342,8 +342,5 @@ For product questions, account help, and private workspace concerns, see
 
 ## License
 
-The Kition public client is licensed under the
-[GNU Affero General Public License v3.0 only](LICENSE).
-
-The separately distributed Kition runtime is governed by its own license and
-is not included in this repository.
+Kition, including its runtime in `crates/`, is licensed under the
+[Apache License 2.0](LICENSE).

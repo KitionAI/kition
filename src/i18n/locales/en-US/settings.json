@@ -615,7 +615,7 @@
     "reportIssueDescription": "File a bug or feature request.",
     "openIssues": "Open issues",
     "license": "License",
-    "licenseDescription": "AGPL-3.0-only. No warranty; redistribution is permitted under the license.",
+    "licenseDescription": "Apache-2.0. No warranty; redistribution is permitted under the license.",
     "viewLicense": "View LICENSE",
     "saveFailed": "Failed to save settings",
     "update": {

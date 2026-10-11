@@ -248,8 +248,8 @@ forks. Kition does not send pull requests upstream and expects to diverge.
 1. **Add, do not edit.** Kition code goes into new crates that upstream never
    touches: `crates/kition-*` (protocol server, theme, surface attachment,
    Kition integrations) and `apps/kit-<name>` (the kit executable). Kit
-   repositories keep their upstream license, so they do not link the
-   AGPL-licensed crates of this repository: each kit implements the protocol
+   repositories keep their upstream license and do not link the crates of
+   this repository: each kit implements the protocol
    in its own `kition-kit-server` crate, and the conformance suite, which runs
    as a separate program, proves it matches.
 2. **Hooks over rewrites.** When upstream code must change, make the smallest
@@ -452,4 +452,4 @@ latency, scrolling, focus) must still be validated in the real desktop client.
 | Kit crashes | Process isolation; the host restarts the kit and reopens documents from disk |
 | Bundle size | Only built-in kits ship with Kition; others install on demand |
 | Font licensing for bundled fonts | Review each font package before redistribution |
-| Protocol drift between Kition and kit repositories | Decided 2026-10-10: kits do not link `kition-kit-protocol` (AGPL-3.0-only); every kit release must pass the conformance suite built from this repository |
+| Protocol drift between Kition and kit repositories | Decided 2026-10-10: kits do not link `kition-kit-protocol`; every kit release must pass the conformance suite built from this repository |

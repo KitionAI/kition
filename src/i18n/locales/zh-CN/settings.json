@@ -615,7 +615,7 @@
     "reportIssueDescription": "提交缺陷或功能建议。",
     "openIssues": "打开 Issues",
     "license": "许可证",
-    "licenseDescription": "MIT — 开源。",
+    "licenseDescription": "Apache-2.0。无担保；可依许可证再分发。",
     "viewLicense": "查看 LICENSE",
     "saveFailed": "保存设置失败",
     "update": {

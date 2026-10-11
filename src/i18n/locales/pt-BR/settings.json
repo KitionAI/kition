@@ -615,7 +615,7 @@
     "reportIssueDescription": "Registre um bug ou solicitação de recurso.",
     "openIssues": "Abrir issues",
     "license": "Licença",
-    "licenseDescription": "AGPL-3.0-only. Sem garantia; redistribuição permitida nos termos da licença.",
+    "licenseDescription": "Apache-2.0. Sem garantia; redistribuição permitida nos termos da licença.",
     "viewLicense": "Ver LICENSE",
     "saveFailed": "Falha ao salvar as configurações",
     "update": {

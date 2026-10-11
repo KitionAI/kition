@@ -6,7 +6,7 @@
   "version": "0.0.0",
   "publisher": "Kition",
   "kitProtocol": 1,
-  "license": "AGPL-3.0-only",
+  "license": "Apache-2.0",
   "executable": "kition-kit-mock",
   "fileTypes": [
     {
