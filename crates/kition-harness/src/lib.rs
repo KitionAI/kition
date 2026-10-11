@@ -4,6 +4,7 @@
 //! which panes and kits contribute to a turn.
 
 pub mod events;
+pub mod schema;
 
 /// The DeepSeek Harness release whose contracts this crate follows (Kit
 /// Standard D4). Change it only together with a conformance re-run.
