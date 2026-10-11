@@ -3296,6 +3296,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "kition-harness"
+version = "0.0.0"
+dependencies = [
+ "futures",
+ "jsonschema",
+ "kition-ai",
+ "kition-core",
+ "kition-store",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "kition-http"
 version = "0.0.0"
 dependencies = [
