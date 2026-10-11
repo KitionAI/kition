@@ -791,13 +791,14 @@ fn prompt_lines(body: &Value) -> Vec<String> {
     lines
 }
 
-/// The first model request after writing `files` into the workspace.
+/// The first model request after writing `files` into the workspace, and
+/// the workspace path.
 async fn first_request_with(
     harness_mode: bool,
     wire_api: &str,
     files: &[(&str, &[u8])],
     extra: Value,
-) -> Value {
+) -> (Value, std::path::PathBuf) {
     let Harness { app, workspace, .. } = app_with(harness_mode);
     for (path, bytes) in files {
         let path = workspace.path().join(path);
@@ -818,88 +819,138 @@ async fn first_request_with(
         "{frames:?}"
     );
     let bodies = bodies.lock().unwrap_or_else(PoisonError::into_inner);
-    bodies.first().cloned().unwrap_or_default()
+    let body = bodies.first().cloned().unwrap_or_default();
+    (body, workspace.path().to_path_buf())
 }
 
-async fn assert_pane_parity_on(wire_api: &str, extra: Value) {
-    assert_parity_with(wire_api, &[], extra).await;
+/// One pane scenario: a stable name, the wire API, workspace files, and
+/// the request fields.
+struct Scenario<'a> {
+    name: String,
+    wire_api: &'static str,
+    files: &'a [(&'a str, &'a [u8])],
+    extra: Value,
 }
 
-/// Asserts both modes send the same request and returns the legacy one.
-async fn assert_parity_with(wire_api: &str, files: &[(&str, &[u8])], extra: Value) -> Value {
-    let legacy = first_request_with(false, wire_api, files, extra.clone()).await;
-    let harness = first_request_with(true, wire_api, files, extra.clone()).await;
-    assert!(!tools(&legacy).is_empty(), "no tools for {extra}");
-    assert!(!prompt_lines(&legacy).is_empty(), "no prompt for {extra}");
-    assert_eq!(
-        tools(&harness),
-        tools(&legacy),
-        "tools differ for {wire_api} {extra}"
-    );
-    assert_eq!(
-        prompt_lines(&harness),
-        prompt_lines(&legacy),
-        "prompt differs for {wire_api} {extra}"
-    );
-    assert_eq!(
-        conversation(&harness),
-        conversation(&legacy),
-        "user message differs for {wire_api} {extra}"
-    );
-    legacy
+fn scenario<'a>(name: &str, wire_api: &'static str, extra: Value) -> Scenario<'a> {
+    Scenario {
+        name: name.to_owned(),
+        wire_api,
+        files: &[],
+        extra,
+    }
 }
 
-async fn assert_pane_parity(extra: Value) {
-    assert_pane_parity_on("responses", extra).await;
+/// The tools, prompt lines, and user message of `body`, with every temp
+/// path replaced by `<workspace>` so the expectation holds on any host.
+fn expectation(body: &Value, temp_paths: &[std::path::PathBuf]) -> Value {
+    let mut paths: Vec<String> = Vec::new();
+    for path in temp_paths {
+        if let Ok(real) = path.canonicalize() {
+            paths.push(real.to_string_lossy().into_owned());
+        }
+        paths.push(path.to_string_lossy().into_owned());
+    }
+    // Longest first, so a canonical path is not left half replaced.
+    paths.sort_by_key(|path| std::cmp::Reverse(path.len()));
+    let mut text = json!({
+        "tools": tools(body),
+        "prompt": prompt_lines(body),
+        "conversation": conversation(body),
+    })
+    .to_string();
+    for path in paths.iter().filter(|path| !path.is_empty()) {
+        text = text.replace(path.as_str(), "<workspace>");
+    }
+    serde_json::from_str(&text).unwrap_or_else(|err| panic!("{err}"))
+}
+
+fn golden_path() -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/golden/panes.json")
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn panes_offer_the_same_tools_and_prompt_on_the_harness() {
+async fn panes_offer_the_expected_tools_and_prompt() {
+    let mut scenarios: Vec<Scenario<'_>> = Vec::new();
     for pane in ["document", "table", "workflow", "gallery"] {
-        assert_pane_parity(json!({ "pane_context": pane })).await;
+        scenarios.push(scenario(pane, "responses", json!({ "pane_context": pane })));
     }
-    assert_pane_parity(json!({ "pane_context": "document", "active_document_path": "Notes/a.md" }))
-        .await;
-    assert_pane_parity(
+    scenarios.push(scenario(
+        "document-active-markdown",
+        "responses",
+        json!({ "pane_context": "document", "active_document_path": "Notes/a.md" }),
+    ));
+    scenarios.push(scenario(
+        "document-active-psd",
+        "responses",
         json!({ "pane_context": "document", "active_document_path": "art/Cover.psd" }),
-    )
-    .await;
-    assert_pane_parity(
+    ));
+    scenarios.push(scenario(
+        "document-preview-table-task",
+        "responses",
         json!({ "pane_context": "document", "execution_mode": "preview", "task_mode": "table" }),
-    )
-    .await;
-    assert_pane_parity(json!({
-        "pane_context": "table",
-        "prompt_context": "Extra context from the client.",
-        "table_plan_context": { "summary": "Import", "final_unique_by": ["url"], "estimated_create": 2 },
-    }))
-    .await;
-    assert_pane_parity(json!({ "pane_context": "workflow", "active_workflow_id": "wf-1" })).await;
-    assert_pane_parity(json!({ "pane_context": "table", "active_data_document_id": 1, "active_data_table_id": 2, "execution_mode": "research" })).await;
-    assert_pane_parity(json!({ "pane_context": "document", "active_data_document_id": 1 })).await;
-    assert_pane_parity(json!({
-        "pane_context": "whiteboard",
-        "whiteboard_context": {
-            "type": "whiteboard.context", "schema_version": 1,
-            "board": { "id": "b1", "path": "Boards/a.kiboard", "title": "A" },
-            "scope": "viewport", "viewport": {}, "selected_element_ids": [],
-            "elements": [{ "id": "n1", "kind": "mind_node" }], "clusters": [], "recent_operations": [],
-        },
-    }))
-    .await;
-    assert_pane_parity(json!({ "pane_context": "whiteboard" })).await;
-    assert_pane_parity(json!({
-        "pane_context": "design",
-        "design_context": {
-            "type": "design.context", "schema_version": 1,
-            "design": { "id": "d1", "path": "a.kidesign", "title": "A" },
-            "artboard": { "width": 800, "height": 600, "background": "#ffffff" },
-            "selected_layer_ids": [], "recent_operations": [],
-            "layers": [{ "id": "t1", "kind": "text" }, { "id": "bg", "kind": "rectangle", "locked": true }],
-        },
-    }))
-    .await;
-    assert_pane_parity(json!({ "pane_context": "design" })).await;
+    ));
+    scenarios.push(scenario(
+        "table-plan-and-prompt-context",
+        "responses",
+        json!({
+            "pane_context": "table",
+            "prompt_context": "Extra context from the client.",
+            "table_plan_context": { "summary": "Import", "final_unique_by": ["url"], "estimated_create": 2 },
+        }),
+    ));
+    scenarios.push(scenario(
+        "workflow-active",
+        "responses",
+        json!({ "pane_context": "workflow", "active_workflow_id": "wf-1" }),
+    ));
+    scenarios.push(scenario(
+        "table-active-research",
+        "responses",
+        json!({ "pane_context": "table", "active_data_document_id": 1, "active_data_table_id": 2, "execution_mode": "research" }),
+    ));
+    scenarios.push(scenario(
+        "document-active-data-document",
+        "responses",
+        json!({ "pane_context": "document", "active_data_document_id": 1 }),
+    ));
+    scenarios.push(scenario(
+        "whiteboard-context",
+        "responses",
+        json!({
+            "pane_context": "whiteboard",
+            "whiteboard_context": {
+                "type": "whiteboard.context", "schema_version": 1,
+                "board": { "id": "b1", "path": "Boards/a.kiboard", "title": "A" },
+                "scope": "viewport", "viewport": {}, "selected_element_ids": [],
+                "elements": [{ "id": "n1", "kind": "mind_node" }], "clusters": [], "recent_operations": [],
+            },
+        }),
+    ));
+    scenarios.push(scenario(
+        "whiteboard",
+        "responses",
+        json!({ "pane_context": "whiteboard" }),
+    ));
+    scenarios.push(scenario(
+        "design-context",
+        "responses",
+        json!({
+            "pane_context": "design",
+            "design_context": {
+                "type": "design.context", "schema_version": 1,
+                "design": { "id": "d1", "path": "a.kidesign", "title": "A" },
+                "artboard": { "width": 800, "height": 600, "background": "#ffffff" },
+                "selected_layer_ids": [], "recent_operations": [],
+                "layers": [{ "id": "t1", "kind": "text" }, { "id": "bg", "kind": "rectangle", "locked": true }],
+            },
+        }),
+    ));
+    scenarios.push(scenario(
+        "design",
+        "responses",
+        json!({ "pane_context": "design" }),
+    ));
     let plain = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
     std::fs::write(plain.path().join("AGENTS.md"), "Prefer small diffs.")
         .unwrap_or_else(|err| panic!("{err}"));
@@ -911,8 +962,16 @@ async fn panes_offer_the_same_tools_and_prompt_on_the_harness() {
         .unwrap_or_else(|err| panic!("{err}"));
     assert!(status.success());
     let source = |id: &str, dir: &tempfile::TempDir| json!({ "id": id, "label": id, "root_path": dir.path().to_string_lossy(), "access": "read" });
-    assert_pane_parity(json!({ "local_sources": [source("notes", &plain)] })).await;
-    assert_pane_parity(json!({ "pane_context": "table", "local_sources": [source("notes", &plain), source("repo", &git)] })).await;
+    scenarios.push(scenario(
+        "local-source",
+        "responses",
+        json!({ "local_sources": [source("notes", &plain)] }),
+    ));
+    scenarios.push(scenario(
+        "table-local-sources-with-git",
+        "responses",
+        json!({ "pane_context": "table", "local_sources": [source("notes", &plain), source("repo", &git)] }),
+    ));
     // Attachments: a file the runtime cannot extract and an image, so the
     // attachment block and the image parts of the user message both show.
     const PNG: &[u8] = &[
@@ -924,20 +983,110 @@ async fn panes_offer_the_same_tools_and_prompt_on_the_harness() {
     ];
     let attached = json!({ "attachment_paths": ["Notes/brief.md", "Images/dot.png"] });
     for wire_api in ["responses", "chat_completions"] {
-        let legacy = assert_parity_with(wire_api, files, attached.clone()).await;
-        let lines = prompt_lines(&legacy);
-        for path in ["- Notes/brief.md (unknown)", "- Images/dot.png (image)"] {
-            assert!(
-                lines.iter().any(|line| line.starts_with(path)),
-                "{path} missing from {lines:?}"
-            );
-        }
-        let user = Value::Array(conversation(&legacy)).to_string();
-        assert!(user.contains("data:image/png;base64,"), "{user}");
+        scenarios.push(Scenario {
+            name: format!("attachments-{wire_api}"),
+            wire_api,
+            files,
+            extra: attached.clone(),
+        });
     }
     // Chat Completions has no hosted search or images, so `image_search`
     // is offered outside the gallery and `web_search` is not.
     for pane in ["document", "gallery", "whiteboard"] {
-        assert_pane_parity_on("chat_completions", json!({ "pane_context": pane })).await;
+        scenarios.push(scenario(
+            &format!("{pane}-chat-completions"),
+            "chat_completions",
+            json!({ "pane_context": pane }),
+        ));
+    }
+
+    let write = std::env::var("KITION_WRITE_GOLDEN").is_ok_and(|value| value == "1");
+    let golden: Value = if write {
+        Value::Null
+    } else {
+        serde_json::from_str(
+            &std::fs::read_to_string(golden_path()).unwrap_or_else(|err| panic!("{err}")),
+        )
+        .unwrap_or_else(|err| panic!("{err}"))
+    };
+    // Each tool's object is stored once under `tools`; a scenario lists the
+    // names it offers.
+    let mut written_tools = serde_json::Map::new();
+    let mut written = serde_json::Map::new();
+    for Scenario {
+        name,
+        wire_api,
+        files,
+        extra,
+    } in scenarios
+    {
+        // The golden data was frozen from the original loop's requests.
+        let (body, workspace) = first_request_with(!write, wire_api, files, extra.clone()).await;
+        let temp_paths = [
+            workspace,
+            plain.path().to_path_buf(),
+            git.path().to_path_buf(),
+        ];
+        let mut actual = expectation(&body, &temp_paths);
+        let offered = actual["tools"].as_array().cloned().unwrap_or_default();
+        assert!(!offered.is_empty(), "no tools for {name}");
+        assert!(
+            actual["prompt"]
+                .as_array()
+                .is_some_and(|lines| !lines.is_empty()),
+            "no prompt for {name}"
+        );
+        if name.starts_with("attachments-") {
+            let lines = prompt_lines(&body);
+            for path in ["- Notes/brief.md (unknown)", "- Images/dot.png (image)"] {
+                assert!(
+                    lines.iter().any(|line| line.starts_with(path)),
+                    "{path} missing from {lines:?}"
+                );
+            }
+            let user = Value::Array(conversation(&body)).to_string();
+            assert!(user.contains("data:image/png;base64,"), "{user}");
+        }
+        let names: Vec<String> = offered
+            .iter()
+            .map(|tool| tool["name"].as_str().unwrap_or_default().to_owned())
+            .collect();
+        actual["tools"] = json!(names);
+        if write {
+            for tool in offered {
+                let tool_name = tool["name"].as_str().unwrap_or_default().to_owned();
+                if let Some(known) = written_tools.get(&tool_name) {
+                    assert_eq!(known, &tool, "{tool_name} differs between scenarios");
+                }
+                written_tools.insert(tool_name, tool);
+            }
+            written.insert(name, actual);
+            continue;
+        }
+        let expected = &golden["scenarios"][&name];
+        assert!(expected.is_object(), "no golden entry for {name}");
+        for key in ["tools", "prompt", "conversation"] {
+            assert_eq!(
+                actual[key], expected[key],
+                "{key} differs from the golden data for {name}"
+            );
+        }
+        for tool in offered {
+            let tool_name = tool["name"].as_str().unwrap_or_default();
+            assert_eq!(
+                tool, golden["tools"][tool_name],
+                "{tool_name} differs from the golden data for {name}"
+            );
+        }
+    }
+    if write {
+        let path = golden_path();
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).unwrap_or_else(|err| panic!("{err}"));
+        }
+        written_tools.sort_keys();
+        let golden = json!({ "tools": written_tools, "scenarios": written });
+        let text = serde_json::to_string_pretty(&golden).unwrap_or_else(|err| panic!("{err}"));
+        std::fs::write(path, text + "\n").unwrap_or_else(|err| panic!("{err}"));
     }
 }
