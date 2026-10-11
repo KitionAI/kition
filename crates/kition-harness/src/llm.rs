@@ -12,7 +12,7 @@ use kition_ai::engine::{
 use kition_core::now_millis;
 use serde_json::{Value, json};
 
-use crate::events::LoggedCall;
+use crate::events::{ContentBlock, LoggedCall};
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct LlmRequest {
@@ -27,6 +27,9 @@ pub struct LlmReply {
     pub stop_reason: String,
     pub model: String,
     pub raw_items: Vec<Value>,
+    /// Model input produced by the provider call itself (hosted image
+    /// results), logged as a `user/message` after the step's tool results.
+    pub follow_up: Vec<ContentBlock>,
 }
 
 impl LlmReply {
@@ -153,6 +156,7 @@ impl Llm for EngineLlm {
                 stop_reason: result.stop_reason,
                 model: result.model,
                 raw_items: result.response_items,
+                follow_up: Vec::new(),
             })
         })
     }

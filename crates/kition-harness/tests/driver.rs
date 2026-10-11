@@ -624,6 +624,27 @@ async fn contexts_follow_the_step_and_stop_checks_can_fail_the_turn() {
 }
 
 #[tokio::test]
+async fn follow_up_content_is_logged_and_keeps_the_turn_going() {
+    let mut first = LlmReply::text("Here is a draft image");
+    first.follow_up = vec![ContentBlock::Image {
+        url: "data:image/png;base64,AA==".into(),
+    }];
+    let setup = setup(vec![first, LlmReply::text("Done")]);
+    let reason = setup
+        .driver(Pipeline::default())
+        .run_turn(setup.input("draw", Cancel::default()))
+        .await
+        .unwrap_or_else(|error| panic!("{error}"));
+    assert_eq!(reason, TurnEndReason::Completed);
+    assert_eq!(setup.llm.requests().len(), 2);
+    let second = &setup.llm.requests()[1];
+    assert_eq!(
+        second.messages.last().map(|message| message.parts.len()),
+        Some(1)
+    );
+}
+
+#[tokio::test]
 async fn an_empty_model_reply_fails_the_turn() {
     let setup = setup(vec![LlmReply::text("")]);
     let error = setup

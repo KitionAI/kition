@@ -198,7 +198,7 @@ impl Driver {
                     raw_items: reply.raw_items,
                 },
             )?;
-            if reply.tool_calls.is_empty() {
+            if reply.tool_calls.is_empty() && reply.follow_up.is_empty() {
                 self.append(input, events, EventBody::StepEnd { turn, step })?;
                 if reply.content.trim().is_empty() {
                     return Err("the model returned no content and no tool calls".into());
@@ -220,6 +220,15 @@ impl Driver {
             }
             if !contexts.is_empty() {
                 self.append(input, events, EventBody::UserMessage { content: contexts })?;
+            }
+            if end_reason.is_none() && !reply.follow_up.is_empty() {
+                self.append(
+                    input,
+                    events,
+                    EventBody::UserMessage {
+                        content: reply.follow_up,
+                    },
+                )?;
             }
             self.append(input, events, EventBody::StepEnd { turn, step })?;
             if let Some(reason) = end_reason {
