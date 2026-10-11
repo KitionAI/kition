@@ -291,7 +291,7 @@ async fn latest_editable_document(agent: &Agent, session: &AgentSession) -> Stri
         .unwrap_or_default()
 }
 
-async fn set_status(run: &Run, status: &'static str) {
+pub(crate) async fn set_status(run: &Run, status: &'static str) {
     let id = run.session_id;
     let _ = run
         .agent
@@ -299,7 +299,7 @@ async fn set_status(run: &Run, status: &'static str) {
         .await;
 }
 
-async fn fail(run: &Run, label: &str, stage: &str, message: &str) {
+pub(crate) async fn fail(run: &Run, label: &str, stage: &str, message: &str) {
     set_status(run, "failed").await;
     run.event(EventInput::new(
         "task.failed",
@@ -554,8 +554,12 @@ async fn drive(agent: Agent, user_id: i64, prepared: Prepared, emitter: Emitter)
     .await;
     let names: Vec<String> = specs.iter().map(|spec| spec.name.clone()).collect();
     let tool_prompt = prompts::tool_loop(&names, &run.pane);
-    let messages = match build_messages(&run, &session, &[context, tool_prompt].join("\n\n")).await
-    {
+    let context = [context, tool_prompt].join("\n\n");
+    if agent.harness() {
+        crate::harness_turn::drive(&run, session, &content, &context, specs).await;
+        return;
+    }
+    let messages = match build_messages(&run, &session, &context).await {
         Ok(messages) => messages,
         Err(error) => {
             fail(&run, "Execution failed", "final", &error).await;
@@ -742,7 +746,7 @@ async fn build_messages(
     Ok(messages)
 }
 
-async fn await_approval(run: &Run, mut session: AgentSession, output: Value) {
+pub(crate) async fn await_approval(run: &Run, mut session: AgentSession, output: Value) {
     let reason = output["reason"]
         .as_str()
         .filter(|r| !r.trim().is_empty())
@@ -796,7 +800,7 @@ async fn await_approval(run: &Run, mut session: AgentSession, output: Value) {
     );
 }
 
-async fn finish(
+pub(crate) async fn finish(
     run: &Run,
     mut session: AgentSession,
     prompt: &str,

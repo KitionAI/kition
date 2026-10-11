@@ -26,7 +26,7 @@ pub enum Outcome {
     AwaitingApproval(Value),
 }
 
-fn retry_handler(run: &Arc<Run>, turn: usize) -> RetryHandler {
+pub(crate) fn retry_handler(run: &Arc<Run>, turn: usize) -> RetryHandler {
     let run = run.clone();
     Arc::new(move |retry: RetryEvent| {
         let run = run.clone();
@@ -49,7 +49,11 @@ fn retry_handler(run: &Arc<Run>, turn: usize) -> RetryHandler {
     })
 }
 
-fn stream_handler(run: &Arc<Run>, turn: usize, streamed: Arc<AtomicBool>) -> StreamHandler {
+pub(crate) fn stream_handler(
+    run: &Arc<Run>,
+    turn: usize,
+    streamed: Arc<AtomicBool>,
+) -> StreamHandler {
     let emitter = run.emitter.clone();
     let model = run.model.model_name.clone();
     Arc::new(move |event: StreamEvent| {
@@ -85,7 +89,7 @@ fn stream_handler(run: &Arc<Run>, turn: usize, streamed: Arc<AtomicBool>) -> Str
 }
 
 /// Records searches the model ran with its hosted web search tool.
-async fn record_hosted_searches(run: &Run, result: &ChatResult) {
+pub(crate) async fn record_hosted_searches(run: &Run, result: &ChatResult) {
     for search in &result.hosted_web_search_calls {
         let mut input = json!({ "query": search.query, "hosted": true });
         if let Some(action) = &search.action {

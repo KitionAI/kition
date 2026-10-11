@@ -6,6 +6,7 @@ mod attachments;
 pub mod catalog;
 pub mod execpolicy;
 mod fuzzy;
+mod harness_turn;
 pub mod mcp;
 mod prompts;
 mod routes;
