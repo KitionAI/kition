@@ -15,6 +15,7 @@ use kition_ai::engine::Engine;
 use kition_http::AuthConfig;
 use kition_store::Db;
 use serde_json::{Value, json};
+use tokio::sync::Notify;
 use tower::ServiceExt;
 
 fn sse(events: &[Value]) -> String {
@@ -249,6 +250,68 @@ async fn streams_a_turn_over_chat_completions() {
 #[tokio::test(flavor = "multi_thread")]
 async fn streams_a_turn_over_chat_completions_on_the_harness() {
     chat_completions_turn(true).await;
+}
+
+/// A `/responses` provider whose first call signals `entered` and waits for
+/// `release`; every call then answers with plain text.
+async fn blocking_provider(entered: Arc<Notify>, release: Arc<Notify>) -> String {
+    let calls = Arc::new(AtomicUsize::new(0));
+    let app = Router::new().route(
+        "/responses",
+        post(move || {
+            let (calls, entered, release) = (calls.clone(), entered.clone(), release.clone());
+            async move {
+                if calls.fetch_add(1, Ordering::SeqCst) == 0 {
+                    entered.notify_one();
+                    release.notified().await;
+                }
+                (
+                    [(http::header::CONTENT_TYPE, "text/event-stream")],
+                    answer(&["Done."]),
+                )
+            }
+        }),
+    );
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .unwrap_or_else(|err| panic!("{err}"));
+    let addr = listener.local_addr().unwrap_or_else(|err| panic!("{err}"));
+    tokio::spawn(async move { axum::serve(listener, app).await });
+    format!("http://{addr}")
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_second_harness_turn_is_refused_while_the_first_runs() {
+    let Harness { app, .. } = app_with(true);
+    let session_id = new_session(&app).await;
+    let (entered, release) = (Arc::new(Notify::new()), Arc::new(Notify::new()));
+    let base_url = blocking_provider(entered.clone(), release.clone()).await;
+    let first = {
+        let (app, base_url) = (app.clone(), base_url.clone());
+        tokio::spawn(async move { stream(&app, session_id, &base_url, json!({})).await })
+    };
+    entered.notified().await;
+    let body = json!({
+        "content": "And another thing",
+        "runtime_model": { "provider_type": "custom", "model_name": "test-model", "base_url": base_url, "wire_api": "responses", "api_key": "k" },
+    });
+    let uri = format!("/agent/sessions/{session_id}/messages/stream");
+    let (status, bytes) = call(&app, "POST", &uri, body.clone()).await;
+    assert_eq!(status, 409, "{}", String::from_utf8_lossy(&bytes));
+    assert!(
+        String::from_utf8_lossy(&bytes).contains("still answering"),
+        "{}",
+        String::from_utf8_lossy(&bytes)
+    );
+    release.notify_one();
+    let frames = first.await.unwrap_or_else(|err| panic!("{err}"));
+    assert_eq!(
+        frames.last().cloned().unwrap_or_default()["type"],
+        "done",
+        "{frames:?}"
+    );
+    let (status, _) = call(&app, "POST", &uri, body).await;
+    assert_eq!(status, 200, "the session is free once the first turn ends");
 }
 
 async fn chat_completions_turn(harness_mode: bool) {

@@ -21,7 +21,6 @@ use serde_json::{Value, json};
 use crate::run::{EventInput, Run};
 use crate::session;
 use crate::store::{self, AgentArtifact, AgentSession};
-use crate::stream::Frame;
 use crate::tools::{self, images};
 use crate::{attachments, prompts, turn};
 
@@ -209,8 +208,18 @@ fn session_lock(locks: &SessionLocks, session_id: i64) -> Arc<tokio::sync::Mutex
 pub const BUSY: &str = "This session is still answering. Wait for the reply or stop it first.";
 
 /// Whether a harness turn of this session is running.
-pub fn is_busy(locks: &SessionLocks, session_id: i64) -> bool {
+#[cfg(test)]
+fn is_busy(locks: &SessionLocks, session_id: i64) -> bool {
     session_lock(locks, session_id).try_lock().is_err()
+}
+
+/// Held by one harness turn (or image request) of a session from the
+/// request's busy check to its last frame.
+pub type TurnGuard = tokio::sync::OwnedMutexGuard<()>;
+
+/// The session's turn guard, or `None` while another turn holds it.
+pub fn hold(locks: &SessionLocks, session_id: i64) -> Option<TurnGuard> {
+    session_lock(locks, session_id).try_lock_owned().ok()
 }
 
 /// Aborts the task when dropped, even if the turn panics.
@@ -273,14 +282,20 @@ fn legacy_tools(
 }
 
 /// Runs `work` in its own task and waits for it unless the turn is
-/// cancelled first; then it keeps running and its result is dropped. A
-/// panic in `work` is resumed here, as if it had run inline.
+/// cancelled first; then it keeps running and its result is dropped. An
+/// already cancelled turn does not start `work` at all. A panic in `work`
+/// is resumed here, as if it had run inline; `None` with the turn not
+/// cancelled means the task was interrupted (runtime shutdown).
 async fn unless_cancelled<T: Send + 'static>(
     work: impl std::future::Future<Output = T> + Send + 'static,
     cancel: &Cancel,
 ) -> Option<T> {
+    if cancel.is_cancelled() {
+        return None;
+    }
     let task = tokio::spawn(work);
     tokio::select! {
+        biased;
         result = task => match result {
             Ok(value) => Some(value),
             Err(error) if error.is_panic() => std::panic::resume_unwind(error.into_panic()),
@@ -308,9 +323,11 @@ async fn legacy_call(
     )
     .await
     else {
-        return Err(ToolFailure::from(
-            "stopped by the user; the tool may still finish in the background",
-        ));
+        return Err(ToolFailure::from(if cx.cancel.is_cancelled() {
+            "stopped by the user; the tool may still finish in the background"
+        } else {
+            "the tool was interrupted"
+        }));
     };
     if executed.interrupt == Some("await_shell_approval") {
         let reason = executed.output["reason"]
@@ -434,14 +451,11 @@ pub async fn drive(
     prompt: &str,
     context: &str,
     specs: Vec<ToolSpec>,
+    turn: Option<TurnGuard>,
 ) {
-    // Held for the whole turn, from before the log is read to the final
-    // frame. `session::prepare` already refuses a second turn while one is
-    // running; this catches the race between that check and here.
-    let Ok(_turn) = session_lock(run.agent.turns(), run.session_id).try_lock_owned() else {
-        run.send(&Frame::error(BUSY));
-        return;
-    };
+    // Taken by `session::prepare` and held for the whole turn, through the
+    // final frame, so a second turn of this session is refused meanwhile.
+    let _turn = turn;
     let pending: Pending = Arc::new(Mutex::new(None));
     let notes = Notes::default();
     let tools = legacy_tools(run, &specs, &pending, &notes);
@@ -719,6 +733,33 @@ mod tests {
             unless_cancelled(async { 8 }, &Cancel::default()).await,
             Some(8)
         );
+    }
+
+    #[tokio::test]
+    async fn a_held_turn_guard_keeps_its_session_busy_until_dropped() {
+        let locks = SessionLocks::default();
+        let guard = hold(&locks, 5).unwrap_or_else(|| panic!("session 5 is free"));
+        assert!(is_busy(&locks, 5));
+        assert!(hold(&locks, 5).is_none(), "a second turn is refused");
+        assert!(!is_busy(&locks, 6));
+        drop(guard);
+        assert!(!is_busy(&locks, 5));
+        assert!(hold(&locks, 5).is_some());
+    }
+
+    #[tokio::test]
+    async fn an_already_cancelled_turn_does_not_start_the_tool() {
+        let cancel = Cancel::default();
+        cancel.cancel();
+        let started = Arc::new(AtomicBool::new(false));
+        let flag = started.clone();
+        let work = async move {
+            flag.store(true, Ordering::SeqCst);
+            1
+        };
+        assert_eq!(unless_cancelled(work, &cancel).await, None);
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        assert!(!started.load(Ordering::SeqCst));
     }
 
     #[test]

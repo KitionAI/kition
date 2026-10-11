@@ -197,6 +197,9 @@ pub struct Prepared {
     image_intent: Option<images::ImageIntent>,
     approval: Option<exec::Approval>,
     local_sources: Vec<sources::LocalSource>,
+    /// In harness mode, the session's turn guard, taken by the busy check
+    /// and held until the turn's last frame.
+    turn: Option<crate::harness_turn::TurnGuard>,
 }
 
 /// Validates the request; failures become ordinary error responses.
@@ -207,9 +210,16 @@ pub async fn prepare(
     mut request: StreamRequest,
 ) -> AppResult<Prepared> {
     let session = owned_session(agent, session_id, user_id).await?;
-    if agent.harness() && crate::harness_turn::is_busy(agent.turns(), session_id) {
-        return Err(AppError::conflict(crate::harness_turn::BUSY));
-    }
+    // Taken here, not when the turn starts, so no second request can slip
+    // in between the check and the turn. Image requests hold it too.
+    let turn = if agent.harness() {
+        Some(
+            crate::harness_turn::hold(agent.turns(), session_id)
+                .ok_or_else(|| AppError::conflict(crate::harness_turn::BUSY))?,
+        )
+    } else {
+        None
+    };
     let image_intent = match &request.image_generation_intent {
         Some(raw) => {
             if request.hide_user_message {
@@ -272,6 +282,7 @@ pub async fn prepare(
         image_intent,
         approval,
         local_sources,
+        turn,
     })
 }
 
@@ -323,6 +334,7 @@ async fn drive(agent: Agent, user_id: i64, prepared: Prepared, emitter: Emitter)
         image_intent,
         approval,
         local_sources,
+        turn,
     } = prepared;
     let mut active_document = request.active_document_path.trim().to_owned();
     if active_document.is_empty() {
@@ -390,6 +402,7 @@ async fn drive(agent: Agent, user_id: i64, prepared: Prepared, emitter: Emitter)
     });
     if let Some(intent) = image_intent {
         images::stream_intent(&run, session, agent.portal_base_url(), intent).await;
+        drop(turn);
         return;
     }
     run.event(
@@ -562,7 +575,7 @@ async fn drive(agent: Agent, user_id: i64, prepared: Prepared, emitter: Emitter)
     let tool_prompt = prompts::tool_loop(&names, &run.pane);
     let context = [context, tool_prompt].join("\n\n");
     if agent.harness() {
-        crate::harness_turn::drive(&run, session, &content, &context, specs).await;
+        crate::harness_turn::drive(&run, session, &content, &context, specs, turn).await;
         return;
     }
     let messages = match build_messages(&run, &session, &context).await {
@@ -673,8 +686,6 @@ async fn active_data_document(run: &Run) -> String {
     lines.join("\n")
 }
 
-/// The conversation sent to the model: system prompts, the last 16
-/// messages, attachments, the turn context, and the user's message.
 /// The conversation before the triggering message as the model sees it:
 /// the last 16 earlier messages, only user and assistant ones, with the
 /// table plan block stripped from assistant replies. Load `history` with
@@ -702,6 +713,8 @@ pub(crate) fn previous_conversation(
         .collect()
 }
 
+/// The conversation sent to the model: system prompts, the last 16
+/// messages, attachments, the turn context, and the user's message.
 async fn build_messages(
     run: &Run,
     session: &AgentSession,
