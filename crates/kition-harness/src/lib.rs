@@ -6,8 +6,10 @@
 pub mod cancel;
 pub mod derive;
 pub mod events;
+pub mod llm;
 pub mod log;
 pub mod schema;
+pub mod testing;
 pub mod tool;
 
 /// The DeepSeek Harness release whose contracts this crate follows (Kit
