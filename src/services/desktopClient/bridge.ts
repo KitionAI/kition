@@ -118,6 +118,8 @@ export type WorkspaceDocumentFormat =
   | 'photo'
   | 'film'
   | 'vector'
+  | 'effect'
+  | 'layout'
   | 'video'
   | 'audio'
   | 'binary'

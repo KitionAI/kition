@@ -8,7 +8,9 @@
       "note": "Note",
       "image": "Image",
       "video": "Video project",
-      "drawing": "Drawing"
+      "drawing": "Drawing",
+      "motion": "Motion graphics",
+      "layout": "Page layout"
     },
     "folder": "Folder",
     "importSpreadsheet": "Import spreadsheet",
@@ -717,7 +719,9 @@
     "saveFailed": "Could not save the file",
     "saved": "Saved",
     "undo": "Undo",
-    "unsaved": "Unsaved"
+    "unsaved": "Unsaved",
+    "tools": "Tools",
+    "moreTools": "More tools like {{tool}}"
   },
   "filmKit": {
     "play": "Play",
@@ -756,8 +760,6 @@
     "exportFailed": "Could not export the movie"
   },
   "vectorKit": {
-    "toolsLabel": "Vector tools",
-    "moreTools": "More tools like {{tool}}",
     "layers": "Layers",
     "hideLayer": "Hide layer",
     "showLayer": "Show layer",
@@ -774,6 +776,65 @@
       "Type": "Type",
       "Select": "Select",
       "Effect": "Effect",
+      "View": "View",
+      "Window": "Window",
+      "Help": "Help"
+    }
+  },
+  "effectKit": {
+    "layers": "Layers",
+    "noLayers": "No layers yet. Add one with New layer.",
+    "newLayer": "New layer",
+    "layerKind": {
+      "text": "Text",
+      "shape": "Shape",
+      "solid": "Solid",
+      "null": "Null object",
+      "adjustment": "Adjustment layer"
+    },
+    "play": "Play",
+    "pause": "Pause",
+    "stepBack": "Previous frame",
+    "stepForward": "Next frame",
+    "goToStart": "Go to start",
+    "goToEnd": "Go to end",
+    "properties": "Transform",
+    "selectLayer": "Select a layer to see its Transform values.",
+    "addKey": "Add a {{name}} keyframe here",
+    "renderMovie": "Render MP4",
+    "rendering": "Rendering…",
+    "rendered": "Rendered {{name}}",
+    "renderFailed": "Could not render the movie",
+    "summary": "{{name}}: {{width}} × {{height}}, {{fps}} fps, {{layers}} layers",
+    "noComp": "This project has no composition yet.",
+    "unavailableTitle": "Motion editing is not available in this build",
+    "unavailableBody": "Motion projects open in Kition when the Effect engine is included.",
+    "menu": {
+      "File": "File",
+      "Edit": "Edit",
+      "Composition": "Composition",
+      "Layer": "Layer",
+      "Effect": "Effect",
+      "Animation": "Animation",
+      "View": "View",
+      "Window": "Window",
+      "Help": "Help"
+    }
+  },
+  "designKit": {
+    "pages": "Pages",
+    "addPage": "Add a page",
+    "summary": "{{pages}} pages, {{stories}} stories, {{selected}} selected",
+    "dialogUnavailable": "This tool's options dialog is not available in Kition yet",
+    "unavailableTitle": "Page layout is not available in this build",
+    "unavailableBody": "Layouts open in Kition when the Design engine is included.",
+    "menu": {
+      "File": "File",
+      "Edit": "Edit",
+      "Layout": "Layout",
+      "Type": "Type",
+      "Object": "Object",
+      "Table": "Table",
       "View": "View",
       "Window": "Window",
       "Help": "Help"

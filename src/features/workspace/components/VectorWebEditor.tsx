@@ -7,6 +7,7 @@ import {
   KitCanvas,
   KitEditorFrame,
   ZOOM_TOOL,
+  EngineToolRail,
   useEngineTools,
   useKitDocument,
   useKitEditor,
@@ -15,7 +16,6 @@ import {
 } from '@/features/kits/public'
 import { notify } from '@/lib/notify'
 import { VectorLayersPanel } from './vector/VectorLayersPanel'
-import { VectorToolRail } from './vector/VectorToolRail'
 import { VECTOR_SDK, describeVector } from './vector/vectorKitSdk'
 
 const VECTOR_MENU_ORDER = ['File', 'Edit', 'Object', 'Type', 'Select', 'Effect', 'View', 'Window', 'Help']
@@ -61,7 +61,16 @@ export function VectorWebEditor({ path, active, onOpenAgent }: VectorWebEditorPr
     hostTools: HOST_TOOLS,
     hidden: HIDDEN_TOOLS,
     onDialog: () => notify.info(t('vectorKit.dialogUnavailable')),
+    onDeferredKey: (key, shift) => {
+      const next = toolForKeyRef.current(key, shift)
+      if (next) selectRef.current(next)
+    },
   })
+  // Deferred keys arrive after a render; the latest shortcut lookup and selection handle them.
+  const toolForKeyRef = useRef(tools.toolForKey)
+  toolForKeyRef.current = tools.toolForKey
+  const selectRef = useRef(tools.select)
+  selectRef.current = tools.select
   const railTools = useMemo(() => tools.tools.filter((tool) => !HIDDEN_TOOLS.has(tool.id)), [tools.tools])
 
   const keyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -92,7 +101,7 @@ export function VectorWebEditor({ path, active, onOpenAgent }: VectorWebEditorPr
       menuOrder={VECTOR_MENU_ORDER}
       menuLabel={(label) => t(`vectorKit.menu.${label}`, { defaultValue: label })}
       onKeyDown={keyDown}
-      tools={<VectorToolRail tools={railTools} active={tools.active} onSelect={tools.select} />}
+      tools={<EngineToolRail tools={railTools} active={tools.active} onSelect={tools.select} testId="vector" />}
       side={<VectorLayersPanel state={state} onRun={(command, params) => void run(command, params)} />}
       status={(
         <span data-testid="vector-status">
@@ -118,6 +127,7 @@ export function VectorWebEditor({ path, active, onOpenAgent }: VectorWebEditorPr
           change={vector.change}
           tool={tools.canvasTool}
           decorate={tools.decorate}
+          spacePans={!tools.wantsText}
           onView={(view) => setZoom(view.zoom)}
         />
       ) : null}

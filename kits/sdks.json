@@ -65,5 +65,49 @@
         "height": 30
       }
     }
+  },
+  "effect": {
+    "repository": "KitionAI/kit-effect",
+    "crate": "kition-effect-sdk",
+    "module": "kition_effect_sdk",
+    "class": "EffectDocument",
+    "name": "Motion.ecproj",
+    "edit": {
+      "command": "layer.newSolid",
+      "params": {
+        "name": "Red",
+        "color": "#ff0000"
+      }
+    }
+  },
+  "design": {
+    "repository": "KitionAI/kit-design",
+    "crate": "kition-design-sdk",
+    "module": "kition_design_sdk",
+    "class": "DesignDocument",
+    "name": "Flyer.designcraft",
+    "edit": [
+      {
+        "command": "frame.create",
+        "params": {
+          "rect": [
+            10,
+            10,
+            40,
+            30
+          ],
+          "content": "unassigned"
+        }
+      },
+      {
+        "command": "object.fill",
+        "params": {
+          "swatch": "Black",
+          "ids": [
+            "$0.id"
+          ]
+        }
+      }
+    ]
   }
 }

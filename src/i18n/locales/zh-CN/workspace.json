@@ -8,7 +8,9 @@
       "note": "笔记",
       "image": "图片",
       "video": "视频项目",
-      "drawing": "矢量图"
+      "drawing": "矢量图",
+      "motion": "动态图形",
+      "layout": "版式"
     },
     "folder": "文件夹",
     "importSpreadsheet": "导入电子表格",
@@ -717,7 +719,9 @@
     "saveFailed": "无法保存这个文件",
     "saved": "已保存",
     "undo": "撤销",
-    "unsaved": "未保存"
+    "unsaved": "未保存",
+    "tools": "工具",
+    "moreTools": "与{{tool}}同组的更多工具"
   },
   "filmKit": {
     "play": "播放",
@@ -756,8 +760,6 @@
     "exportFailed": "无法导出视频"
   },
   "vectorKit": {
-    "toolsLabel": "矢量工具",
-    "moreTools": "与{{tool}}同组的更多工具",
     "layers": "图层",
     "hideLayer": "隐藏图层",
     "showLayer": "显示图层",
@@ -774,6 +776,65 @@
       "Type": "文字",
       "Select": "选择",
       "Effect": "效果",
+      "View": "视图",
+      "Window": "窗口",
+      "Help": "帮助"
+    }
+  },
+  "effectKit": {
+    "layers": "图层",
+    "noLayers": "还没有图层。用“新建图层”添加一个。",
+    "newLayer": "新建图层",
+    "layerKind": {
+      "text": "文本",
+      "shape": "形状",
+      "solid": "纯色",
+      "null": "空对象",
+      "adjustment": "调整图层"
+    },
+    "play": "播放",
+    "pause": "暂停",
+    "stepBack": "上一帧",
+    "stepForward": "下一帧",
+    "goToStart": "转到开头",
+    "goToEnd": "转到结尾",
+    "properties": "属性",
+    "selectLayer": "选择一个图层以查看其变换属性。",
+    "addKey": "在此处添加“{{name}}”关键帧",
+    "renderMovie": "渲染 MP4",
+    "rendering": "正在渲染…",
+    "rendered": "已渲染 {{name}}",
+    "renderFailed": "无法渲染影片",
+    "summary": "{{name}}：{{width}} × {{height}}，{{fps}} fps，{{layers}} 个图层",
+    "noComp": "此项目还没有合成。",
+    "unavailableTitle": "此版本不支持动态图形编辑",
+    "unavailableBody": "包含 Effect 引擎时，动态图形项目会在 Kition 中打开。",
+    "menu": {
+      "File": "文件",
+      "Edit": "编辑",
+      "Composition": "合成",
+      "Layer": "图层",
+      "Effect": "效果",
+      "Animation": "动画",
+      "View": "视图",
+      "Window": "窗口",
+      "Help": "帮助"
+    }
+  },
+  "designKit": {
+    "pages": "页面",
+    "addPage": "添加页面",
+    "summary": "{{pages}} 页，{{stories}} 篇文章，已选中 {{selected}} 个",
+    "dialogUnavailable": "Kition 暂不支持此工具的选项对话框",
+    "unavailableTitle": "此版本不支持版式编辑",
+    "unavailableBody": "包含 Design 引擎时，版式文件会在 Kition 中打开。",
+    "menu": {
+      "File": "文件",
+      "Edit": "编辑",
+      "Layout": "版面",
+      "Type": "文字",
+      "Object": "对象",
+      "Table": "表",
       "View": "视图",
       "Window": "窗口",
       "Help": "帮助"

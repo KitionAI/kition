@@ -1,11 +1,15 @@
 import { lazy, type ComponentType } from 'react'
-import { Clapperboard, Layers, PenTool, type LucideIcon } from 'lucide-react'
+import { Clapperboard, Layers, LayoutTemplate, PenTool, Sparkles, type LucideIcon } from 'lucide-react'
 import { kitSdkAvailable, type KitSdkManifest } from '@/features/kits/public'
 import type { WorkspaceDocumentFormat } from '@/services/desktop'
 import { PhotoKitPane } from '../PhotoKitPane'
 import { PHOTO_SDK } from '../photo/photoKitSdk'
 import { FilmUnavailable } from '../film/FilmUnavailable'
 import { FILM_SDK } from '../film/filmKitSdk'
+import { DesignUnavailable } from '../design/DesignUnavailable'
+import { DESIGN_SDK } from '../design/designKitSdk'
+import { EffectUnavailable } from '../effect/EffectUnavailable'
+import { EFFECT_SDK } from '../effect/effectKitSdk'
 import { VectorUnavailable } from '../vector/VectorUnavailable'
 import { VECTOR_SDK } from '../vector/vectorKitSdk'
 
@@ -67,6 +71,21 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
     Editor: lazy(() => import('../VectorWebEditor').then((module) => ({ default: module.VectorWebEditor }))),
     Fallback: VectorUnavailable,
     create: { id: 'drawing', extension: 'vectorcraft', baseName: 'Untitled drawing', size: { width: 1920, height: 1080 }, label: 'createMenu.format.drawing', icon: PenTool },
+  },
+  {
+    format: 'effect',
+    sdk: EFFECT_SDK,
+    Editor: lazy(() => import('../EffectWebEditor').then((module) => ({ default: module.EffectWebEditor }))),
+    Fallback: EffectUnavailable,
+    create: { id: 'motion', extension: 'ecproj', baseName: 'Untitled motion', size: { width: 1920, height: 1080 }, label: 'createMenu.format.motion', icon: Sparkles },
+  },
+  {
+    format: 'layout',
+    sdk: DESIGN_SDK,
+    Editor: lazy(() => import('../DesignWebEditor').then((module) => ({ default: module.DesignWebEditor }))),
+    Fallback: DesignUnavailable,
+    // US Letter, in points.
+    create: { id: 'layout', extension: 'designcraft', baseName: 'Untitled layout', size: { width: 612, height: 792 }, label: 'createMenu.format.layout', icon: LayoutTemplate },
   },
 ]
 

@@ -1,7 +1,7 @@
 import { useEffect, useImperativeHandle, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode, type Ref, type RefObject } from 'react'
 import type { KitEngine } from './kitEngine'
 import { HAND_TOOL, type KitGesture, type KitOverlay, type KitPointer, type KitTool, type KitToolContext } from './kitTools'
-import { RasterViewport, type RasterDecoration, type RasterView, type RasterViewportStats } from './rasterViewport'
+import { RasterViewport, type RasterDecoration, type RasterRect, type RasterView, type RasterViewportStats } from './rasterViewport'
 import type { KitChange } from './useKitDocument'
 
 const BACKDROP = '#f3f3f6'
@@ -10,6 +10,8 @@ const DECORATION_FRAME_MS = 100
 
 export type KitCanvasHandle = {
   fit: () => void
+  /** Fits an area of the document (a page, a spread) in view. */
+  show: (area: RasterRect) => void
   zoomTo: (zoom: number) => void
   zoomBy: (factor: number) => void
 }
@@ -25,6 +27,8 @@ type KitCanvasProps = {
   /** Drawn over the document on every frame; `animated` redraws it continuously (marching ants). */
   decorate?: RasterDecoration | null
   animated?: boolean
+  /** The area the first view fits (a layout's first spread); the whole document by default. */
+  initialArea?: RasterRect | null
   /** Whether holding Space pans (on by default); a player uses Space for play and pause. */
   spacePans?: boolean
   /** HTML laid over the canvas, for example an inline text field. */
@@ -83,14 +87,14 @@ function useOverlay(overlayRef: RefObject<HTMLCanvasElement | null>, viewportRef
  * tool gets gestures in document pixels; Space, the middle button, and the
  * Hand tool pan; the wheel pans, and zooms with Cmd or Ctrl (and pinch).
  */
-export function KitCanvas({ doc, change, tool, onView, viewMemory, decorate = null, animated = false, spacePans = true, children, ref }: KitCanvasProps) {
+export function KitCanvas({ doc, change, tool, onView, viewMemory, initialArea = null, decorate = null, animated = false, spacePans = true, children, ref }: KitCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const overlayRef = useRef<HTMLCanvasElement>(null)
   const viewportRef = useRef<RasterViewport | null>(null)
   const gesture = useRef<KitGesture | null>(null)
   const [spaceHeld, setSpaceHeld] = useState(false)
-  const latest = useRef({ onView })
-  latest.current = { onView }
+  const latest = useRef({ onView, initialArea })
+  latest.current = { onView, initialArea }
   const overlay = useOverlay(overlayRef, viewportRef)
 
   useEffect(() => {
@@ -107,7 +111,9 @@ export function KitCanvas({ doc, change, tool, onView, viewMemory, decorate = nu
     const observer = new ResizeObserver(() => {
       if (!placed && canvas.clientWidth > 0) {
         placed = true
-        viewport.fit()
+        const area = latest.current.initialArea
+        if (area) viewport.fitArea(area)
+        else viewport.fit()
       }
       void viewport.render()
     })
@@ -163,6 +169,7 @@ export function KitCanvas({ doc, change, tool, onView, viewMemory, decorate = nu
 
   useImperativeHandle(ref, () => ({
     fit: () => viewportRef.current?.fit(),
+    show: (area) => viewportRef.current?.fitArea(area),
     zoomTo: (zoom) => viewportRef.current?.zoomTo(zoom),
     zoomBy: (factor) => {
       const viewport = viewportRef.current

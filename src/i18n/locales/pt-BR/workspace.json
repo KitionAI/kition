@@ -8,7 +8,9 @@
       "note": "Nota",
       "image": "Imagem",
       "video": "Projeto de vídeo",
-      "drawing": "Desenho"
+      "drawing": "Desenho",
+      "motion": "Motion graphics",
+      "layout": "Diagramação"
     },
     "folder": "Pasta",
     "importSpreadsheet": "Importar planilha",
@@ -717,7 +719,9 @@
     "saveFailed": "Não foi possível salvar o arquivo",
     "saved": "Salvo",
     "undo": "Desfazer",
-    "unsaved": "Não salvo"
+    "unsaved": "Não salvo",
+    "tools": "Ferramentas",
+    "moreTools": "Mais ferramentas como {{tool}}"
   },
   "filmKit": {
     "play": "Reproduzir",
@@ -756,8 +760,6 @@
     "exportFailed": "Não foi possível exportar o vídeo"
   },
   "vectorKit": {
-    "toolsLabel": "Ferramentas vetoriais",
-    "moreTools": "Mais ferramentas como {{tool}}",
     "layers": "Camadas",
     "hideLayer": "Ocultar camada",
     "showLayer": "Mostrar camada",
@@ -774,6 +776,65 @@
       "Type": "Texto",
       "Select": "Selecionar",
       "Effect": "Efeito",
+      "View": "Exibir",
+      "Window": "Janela",
+      "Help": "Ajuda"
+    }
+  },
+  "effectKit": {
+    "layers": "Camadas",
+    "noLayers": "Ainda não há camadas. Adicione uma com Nova camada.",
+    "newLayer": "Nova camada",
+    "layerKind": {
+      "text": "Texto",
+      "shape": "Forma",
+      "solid": "Sólido",
+      "null": "Objeto nulo",
+      "adjustment": "Camada de ajuste"
+    },
+    "play": "Reproduzir",
+    "pause": "Pausar",
+    "stepBack": "Quadro anterior",
+    "stepForward": "Próximo quadro",
+    "goToStart": "Ir para o início",
+    "goToEnd": "Ir para o fim",
+    "properties": "Propriedades",
+    "selectLayer": "Selecione uma camada para ver as propriedades de Transformar.",
+    "addKey": "Adicionar aqui um quadro-chave de {{name}}",
+    "renderMovie": "Renderizar MP4",
+    "rendering": "Renderizando…",
+    "rendered": "{{name}} renderizado",
+    "renderFailed": "Não foi possível renderizar o filme",
+    "summary": "{{name}}: {{width}} × {{height}}, {{fps}} fps, {{layers}} camadas",
+    "noComp": "Este projeto ainda não tem composição.",
+    "unavailableTitle": "A edição de motion graphics não está disponível nesta versão",
+    "unavailableBody": "Projetos de motion graphics abrem no Kition quando o motor Effect está incluído.",
+    "menu": {
+      "File": "Arquivo",
+      "Edit": "Editar",
+      "Composition": "Composição",
+      "Layer": "Camada",
+      "Effect": "Efeito",
+      "Animation": "Animação",
+      "View": "Exibir",
+      "Window": "Janela",
+      "Help": "Ajuda"
+    }
+  },
+  "designKit": {
+    "pages": "Páginas",
+    "addPage": "Adicionar uma página",
+    "summary": "{{pages}} páginas, {{stories}} matérias, {{selected}} selecionados",
+    "dialogUnavailable": "A caixa de opções desta ferramenta ainda não está disponível no Kition",
+    "unavailableTitle": "A diagramação não está disponível nesta versão",
+    "unavailableBody": "Diagramações abrem no Kition quando o motor Design está incluído.",
+    "menu": {
+      "File": "Arquivo",
+      "Edit": "Editar",
+      "Layout": "Layout",
+      "Type": "Texto",
+      "Object": "Objeto",
+      "Table": "Tabela",
       "View": "Exibir",
       "Window": "Janela",
       "Help": "Ajuda"

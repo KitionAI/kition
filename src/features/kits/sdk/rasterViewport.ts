@@ -108,6 +108,16 @@ export class RasterViewport {
     this.setView({ zoom, x: this.doc.width / 2 - width / 2 / zoom, y: this.doc.height / 2 - height / 2 / zoom })
   }
 
+  /** Fits `area` (document pixels) in the canvas, centred: a page or spread brought into view. */
+  fitArea(area: RasterRect) {
+    const { width, height } = this.size
+    const w = area.x1 - area.x0
+    const h = area.y1 - area.y0
+    if (!width || !height || w <= 0 || h <= 0) return
+    const zoom = clampZoom(Math.min((width - FIT_MARGIN * 2) / w, (height - FIT_MARGIN * 2) / h))
+    this.setView({ zoom, x: area.x0 + w / 2 - width / 2 / zoom, y: area.y0 + h / 2 - height / 2 / zoom })
+  }
+
   /** Zooms to `zoom`, keeping the image point under (`clientX`, `clientY`) still; the centre by default. */
   zoomTo(zoom: number, clientX?: number, clientY?: number) {
     const rect = this.canvas.getBoundingClientRect()
