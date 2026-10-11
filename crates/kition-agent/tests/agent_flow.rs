@@ -2,8 +2,8 @@
 //! Completions): the model asks for `artifact_write`, the runtime runs it,
 //! and the model then answers.
 
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex, PoisonError};
 
 use axum::Router;
 use axum::body::Body;
@@ -79,13 +79,32 @@ async fn fake_provider(script: Vec<String>) -> String {
 
 /// Serves the scripted bodies in order at `path`.
 async fn fake_provider_at(path: &str, script: Vec<String>) -> String {
+    recording_provider_at(path, script).await.0
+}
+
+/// Every request body a fake provider received, in order.
+type Bodies = Arc<Mutex<Vec<Value>>>;
+
+/// Serves the scripted Responses bodies in order and records each request.
+async fn recording_provider(script: Vec<String>) -> (String, Bodies) {
+    recording_provider_at("/responses", script).await
+}
+
+/// Serves the scripted bodies in order at `path` and records each request.
+async fn recording_provider_at(path: &str, script: Vec<String>) -> (String, Bodies) {
     let calls = Arc::new(AtomicUsize::new(0));
     let script = Arc::new(script);
+    let bodies = Bodies::default();
+    let recorded = bodies.clone();
     let app = Router::new().route(
         path,
-        post(move || {
-            let (calls, script) = (calls.clone(), script.clone());
+        post(move |request: axum::body::Bytes| {
+            let (calls, script, recorded) = (calls.clone(), script.clone(), recorded.clone());
             async move {
+                recorded
+                    .lock()
+                    .unwrap_or_else(PoisonError::into_inner)
+                    .push(serde_json::from_slice(&request).unwrap_or_default());
                 let index = calls.fetch_add(1, Ordering::SeqCst);
                 let body = script
                     .get(index)
@@ -100,7 +119,7 @@ async fn fake_provider_at(path: &str, script: Vec<String>) -> String {
         .unwrap_or_else(|err| panic!("{err}"));
     let addr = listener.local_addr().unwrap_or_else(|err| panic!("{err}"));
     tokio::spawn(async move { axum::serve(listener, app).await });
-    format!("http://{addr}")
+    (format!("http://{addr}"), bodies)
 }
 
 async fn call(app: &Router, method: &str, uri: &str, body: Value) -> (u16, Vec<u8>) {
@@ -490,4 +509,162 @@ async fn approval_turns(harness_mode: bool) {
         "{frames:?}"
     );
     assert!(workspace.path().join("approved.txt").exists());
+}
+
+/// The offered tool names, sorted. Hosted tools (`web_search`,
+/// `image_generation` on Responses) carry their type instead of a name.
+fn tool_names(body: &Value) -> Vec<String> {
+    let mut names: Vec<String> = body["tools"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|tool| {
+            tool["name"]
+                .as_str()
+                .or_else(|| tool["function"]["name"].as_str())
+                .or_else(|| tool["type"].as_str())
+                .map(str::to_owned)
+        })
+        .collect();
+    names.sort();
+    names
+}
+
+/// The prompt as a sorted set of non-empty lines, without the tool list
+/// line, so the two modes can join sections differently. Reads Responses
+/// `instructions` and system or developer items, and Chat Completions
+/// system messages.
+fn prompt_lines(body: &Value) -> Vec<String> {
+    let mut text = body["instructions"].as_str().unwrap_or_default().to_owned();
+    for item in body["input"]
+        .as_array()
+        .into_iter()
+        .chain(body["messages"].as_array())
+        .flatten()
+    {
+        if item["role"] == "system" || item["role"] == "developer" {
+            text.push('\n');
+            text.push_str(
+                &item["content"]
+                    .as_str()
+                    .map(str::to_owned)
+                    .unwrap_or_else(|| item["content"].to_string()),
+            );
+        }
+    }
+    let mut lines: Vec<String> = text
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with("Available tools:"))
+        .map(str::to_owned)
+        .collect();
+    lines.sort();
+    lines.dedup();
+    lines
+}
+
+/// The first model request of a one-turn session in either mode.
+async fn first_request(harness_mode: bool, wire_api: &str, extra: Value) -> Value {
+    let Harness { app, .. } = app_with(harness_mode);
+    let session_id = new_session(&app).await;
+    let (base_url, bodies) = if wire_api == "chat_completions" {
+        recording_provider_at("/chat/completions", vec![chat_answer(&["ok"])]).await
+    } else {
+        recording_provider(vec![answer(&["ok"])]).await
+    };
+    let frames = stream_on(&app, session_id, &base_url, wire_api, extra).await;
+    assert!(
+        !frames.iter().any(|frame| frame["type"] == "error"),
+        "{frames:?}"
+    );
+    let bodies = bodies.lock().unwrap_or_else(PoisonError::into_inner);
+    bodies.first().cloned().unwrap_or_default()
+}
+
+async fn assert_pane_parity_on(wire_api: &str, extra: Value) {
+    let legacy = first_request(false, wire_api, extra.clone()).await;
+    let harness = first_request(true, wire_api, extra.clone()).await;
+    assert!(!tool_names(&legacy).is_empty(), "no tools for {extra}");
+    assert!(!prompt_lines(&legacy).is_empty(), "no prompt for {extra}");
+    assert_eq!(
+        tool_names(&harness),
+        tool_names(&legacy),
+        "tools differ for {wire_api} {extra}"
+    );
+    assert_eq!(
+        prompt_lines(&harness),
+        prompt_lines(&legacy),
+        "prompt differs for {wire_api} {extra}"
+    );
+}
+
+async fn assert_pane_parity(extra: Value) {
+    assert_pane_parity_on("responses", extra).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn panes_offer_the_same_tools_and_prompt_on_the_harness() {
+    for pane in ["document", "table", "workflow", "gallery"] {
+        assert_pane_parity(json!({ "pane_context": pane })).await;
+    }
+    assert_pane_parity(json!({ "pane_context": "document", "active_document_path": "Notes/a.md" }))
+        .await;
+    assert_pane_parity(
+        json!({ "pane_context": "document", "active_document_path": "art/Cover.psd" }),
+    )
+    .await;
+    assert_pane_parity(
+        json!({ "pane_context": "document", "execution_mode": "preview", "task_mode": "table" }),
+    )
+    .await;
+    assert_pane_parity(json!({
+        "pane_context": "table",
+        "prompt_context": "Extra context from the client.",
+        "table_plan_context": { "summary": "Import", "final_unique_by": ["url"], "estimated_create": 2 },
+    }))
+    .await;
+    assert_pane_parity(json!({ "pane_context": "workflow", "active_workflow_id": "wf-1" })).await;
+    assert_pane_parity(json!({ "pane_context": "table", "active_data_document_id": 1, "active_data_table_id": 2, "execution_mode": "research" })).await;
+    assert_pane_parity(json!({ "pane_context": "document", "active_data_document_id": 1 })).await;
+    assert_pane_parity(json!({
+        "pane_context": "whiteboard",
+        "whiteboard_context": {
+            "type": "whiteboard.context", "schema_version": 1,
+            "board": { "id": "b1", "path": "Boards/a.kiboard", "title": "A" },
+            "scope": "viewport", "viewport": {}, "selected_element_ids": [],
+            "elements": [{ "id": "n1", "kind": "mind_node" }], "clusters": [], "recent_operations": [],
+        },
+    }))
+    .await;
+    assert_pane_parity(json!({ "pane_context": "whiteboard" })).await;
+    assert_pane_parity(json!({
+        "pane_context": "design",
+        "design_context": {
+            "type": "design.context", "schema_version": 1,
+            "design": { "id": "d1", "path": "a.kidesign", "title": "A" },
+            "artboard": { "width": 800, "height": 600, "background": "#ffffff" },
+            "selected_layer_ids": [], "recent_operations": [],
+            "layers": [{ "id": "t1", "kind": "text" }, { "id": "bg", "kind": "rectangle", "locked": true }],
+        },
+    }))
+    .await;
+    assert_pane_parity(json!({ "pane_context": "design" })).await;
+    let plain = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
+    std::fs::write(plain.path().join("AGENTS.md"), "Prefer small diffs.")
+        .unwrap_or_else(|err| panic!("{err}"));
+    let git = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
+    let status = std::process::Command::new("git")
+        .args(["init", "-q"])
+        .current_dir(git.path())
+        .status()
+        .unwrap_or_else(|err| panic!("{err}"));
+    assert!(status.success());
+    let source = |id: &str, dir: &tempfile::TempDir| json!({ "id": id, "label": id, "root_path": dir.path().to_string_lossy(), "access": "read" });
+    assert_pane_parity(json!({ "local_sources": [source("notes", &plain)] })).await;
+    assert_pane_parity(json!({ "pane_context": "table", "local_sources": [source("notes", &plain), source("repo", &git)] })).await;
+    // Chat Completions has no hosted search or images, so `image_search`
+    // is offered outside the gallery and `web_search` is not.
+    for pane in ["document", "gallery", "whiteboard"] {
+        assert_pane_parity_on("chat_completions", json!({ "pane_context": pane })).await;
+    }
 }
