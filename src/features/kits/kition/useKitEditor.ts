@@ -4,6 +4,7 @@ import { notify } from '@/lib/notify'
 import type { KitCommand } from '../sdk/kitSdk'
 import type { RasterRect } from '../sdk/rasterViewport'
 import type { useKitDocument } from '../sdk/useKitDocument'
+import { useKitBridge } from './useKitBridge'
 
 type KitDocument = ReturnType<typeof useKitDocument<unknown>>
 
@@ -22,6 +23,8 @@ export function useKitEditor(document: KitDocument, options: { onOpenAgent?: () 
   const { t } = useTranslation('workspace')
   const [commands, setCommands] = useState<KitCommand[]>([])
   const { doc, run: runCommand, save: saveDocument, commands: listCommands, dirty, change } = document
+  // The agent edits this document live while it is open here (Kit AI bridge).
+  const { agentEdited } = useKitBridge(document)
 
   const refreshCommands = useCallback(() => {
     listCommands().then(setCommands, () => undefined)
@@ -82,5 +85,5 @@ export function useKitEditor(document: KitDocument, options: { onOpenAgent?: () 
     options.onOpenAgent?.()
   }, [dirty, options, save])
 
-  return { commands, refreshCommands, run, runShortcut, save, askAgent, canAskAgent: Boolean(options.onOpenAgent) }
+  return { commands, refreshCommands, run, runShortcut, save, askAgent, canAskAgent: Boolean(options.onOpenAgent), agentEdited }
 }

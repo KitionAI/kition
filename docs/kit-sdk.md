@@ -28,6 +28,17 @@ over the Kit Protocol by kition-sdk's `kition-headless`, so it is a few lines
 the kit's definition (`photo_*`, `film_*`, `vector_*`, `effect_*`,
 `design_*`).
 
+When the file is open in a kit editor, those tools act on the editor itself
+through the **Kit AI bridge** (standard A7 to A10), not on a headless copy:
+the person sees the edit at once, it joins the editor's undo history, and the
+header says "Edited by the agent" until the person edits again. The renderer
+holds one event stream per window (`GET /v1/kits/bridge`, one JSON-RPC
+message per event: `kit/documents`, `kit/call`, `kit/preview`) and answers
+with `POST /v1/kits/bridge?session=` (and sends `kit.changed`). Every editor
+on `useKitEditor` takes part with no kit code (`kition/useKitBridge.ts`,
+`kition/kitBridge.ts`; runtime side `crates/kition-kits/src/bridge.rs`). With
+no window open on the file, the agent uses the headless kit as before.
+
 Rejected on 2026-10-10 after a real-app trial: embedding the kit's native
 editor in an overlay window above the tab (`surface: embedded`, plan B). It
 felt like a second program, showed two canvases and extra scroll bars, and

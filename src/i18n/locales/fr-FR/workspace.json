@@ -721,7 +721,9 @@
     "undo": "Annuler",
     "unsaved": "Non enregistré",
     "tools": "Outils",
-    "moreTools": "Autres outils comme {{tool}}"
+    "moreTools": "Autres outils comme {{tool}}",
+    "agentEdited": "Modifié par l'agent",
+    "agentEditedNotice": "L'agent a modifié {{name}}"
   },
   "filmKit": {
     "play": "Lecture",

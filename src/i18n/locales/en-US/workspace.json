@@ -721,7 +721,9 @@
     "undo": "Undo",
     "unsaved": "Unsaved",
     "tools": "Tools",
-    "moreTools": "More tools like {{tool}}"
+    "moreTools": "More tools like {{tool}}",
+    "agentEdited": "Edited by the agent",
+    "agentEditedNotice": "The agent edited {{name}}"
   },
   "filmKit": {
     "play": "Play",

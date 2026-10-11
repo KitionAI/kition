@@ -73,6 +73,12 @@ export function KitEditorFrame(props: KitEditorFrameProps) {
             {t('kitEditor.unsaved')}
           </span>
         ) : null}
+        {editor.agentEdited ? (
+          <span className="flex shrink-0 items-center gap-1 rounded-md bg-accent px-1.5 py-0.5 text-xs text-accent-foreground" data-testid="kit-agent-edited">
+            <Sparkles className="size-3" aria-hidden="true" />
+            {t('kitEditor.agentEdited')}
+          </span>
+        ) : null}
         <div className="flex-1" />
         <Button variant="ghost" size="icon" className="size-8" aria-label={t('kitEditor.undo')} title={t('kitEditor.undo')} disabled={!document.info?.canUndo} onClick={() => void editor.run('edit.undo')}>
           <Undo2 className="size-4" aria-hidden="true" />

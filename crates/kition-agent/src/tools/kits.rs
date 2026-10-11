@@ -9,7 +9,7 @@ use std::sync::LazyLock;
 
 use base64::Engine as _;
 use kition_ai::engine::MessagePart;
-use kition_kits::{Caller, DocumentView, KITS, KitDefinition, KitManager};
+use kition_kits::{Caller, DocumentView, KITS, KitDefinition, KitManager, LiveDocument};
 use serde_json::{Map, Value, json};
 
 use crate::catalog::{READ_ONLY, ToolDef, WORKSPACE_WRITE};
@@ -282,9 +282,73 @@ async fn preview_parts(
     }
 }
 
+/// The editor in the renderer that has `path` open, if one does (the Kit AI bridge, A7): the
+/// agent's edits then go to it, so the person sees them and they join its undo history.
+async fn live(kits: &KitManager, kit: &KitDefinition, path: &str) -> Option<LiveDocument> {
+    kits.bridge()
+        .find(path)
+        .await
+        .filter(|document| document.kit == kit.id)
+}
+
+fn png_parts(kit: &KitDefinition, path: &str, png: &[u8]) -> Vec<MessagePart> {
+    vec![
+        MessagePart {
+            kind: "text".into(),
+            text: format!("Preview of `{path}` from {}.", kit.name),
+            ..MessagePart::default()
+        },
+        MessagePart {
+            kind: "image_url".into(),
+            image_url: format!(
+                "data:image/png;base64,{}",
+                base64::engine::general_purpose::STANDARD.encode(png)
+            ),
+            ..MessagePart::default()
+        },
+    ]
+}
+
+async fn live_preview(
+    kits: &KitManager,
+    kit: &KitDefinition,
+    document: &LiveDocument,
+) -> Vec<MessagePart> {
+    match kits.bridge().preview(document, PREVIEW_SIZE).await {
+        Ok(png) => png_parts(kit, &document.path, &png),
+        Err(error) => {
+            tracing::warn!(error = %error, kit = kit.id, "live kit preview failed");
+            Vec::new()
+        }
+    }
+}
+
 pub async fn inspect(run: &Run, kit: &KitDefinition, input: &Value) -> ToolResult {
     let kits = kits(run, kit)?;
     let path = kit_path(input, kit)?;
+    if let Some(document) = live(kits, kit, &path).await {
+        let mut answer = kits.bridge().call(&document, "inspect", json!({})).await?;
+        let follow_up = if input.get("preview").and_then(Value::as_bool) != Some(false) {
+            live_preview(kits, kit, &document).await
+        } else {
+            Vec::new()
+        };
+        let summary = answer["document"]["summary"]
+            .as_str()
+            .unwrap_or_default()
+            .to_owned();
+        answer["live"] = Value::Bool(true);
+        return Ok(ToolOutput {
+            follow_up,
+            ..ToolOutput::new(
+                format!(
+                    "Opened `{path}` in its open {} editor: {summary}",
+                    short(kit)
+                ),
+                answer,
+            )
+        });
+    }
     let view = kits
         .open(Caller::Agent, &path)
         .await
@@ -307,6 +371,14 @@ pub async fn commands(run: &Run, kit: &KitDefinition, input: &Value) -> ToolResu
     let kits = kits(run, kit)?;
     let path = kit_path(input, kit)?;
     let query = text_field(input, "query");
+    if let Some(document) = live(kits, kit, &path).await {
+        let answer = kits
+            .bridge()
+            .call(&document, "commands", json!({ "query": query }))
+            .await?;
+        let found = answer["commands"].as_array().cloned().unwrap_or_default();
+        return Ok(listed_commands(&query, found));
+    }
     let view = kits
         .open(Caller::Agent, &path)
         .await
@@ -320,10 +392,8 @@ pub async fn commands(run: &Run, kit: &KitDefinition, input: &Value) -> ToolResu
         )
         .await
         .map_err(|error| error.to_string())?;
-    let total = found.len();
-    let listed: Vec<Value> = found
+    let found = found
         .into_iter()
-        .take(MAX_COMMANDS)
         .map(|command| {
             json!({
                 "id": command.id,
@@ -334,6 +404,13 @@ pub async fn commands(run: &Run, kit: &KitDefinition, input: &Value) -> ToolResu
             })
         })
         .collect();
+    Ok(listed_commands(&query, found))
+}
+
+/// The commands that matched, at most [`MAX_COMMANDS`] of them, as the tool answers them.
+fn listed_commands(query: &str, found: Vec<Value>) -> ToolOutput {
+    let total = found.len();
+    let listed: Vec<Value> = found.into_iter().take(MAX_COMMANDS).collect();
     let summary = if total > listed.len() {
         format!(
             "{total} commands match `{query}`; showing {}. Use more specific keywords.",
@@ -342,10 +419,7 @@ pub async fn commands(run: &Run, kit: &KitDefinition, input: &Value) -> ToolResu
     } else {
         format!("{total} commands match `{query}`")
     };
-    Ok(ToolOutput::new(
-        summary,
-        json!({ "commands": listed, "total": total }),
-    ))
+    ToolOutput::new(summary, json!({ "commands": listed, "total": total }))
 }
 
 pub async fn run_steps(run: &Run, kit: &KitDefinition, input: &Value) -> ToolResult {
@@ -356,6 +430,36 @@ pub async fn run_steps(run: &Run, kit: &KitDefinition, input: &Value) -> ToolRes
         .and_then(Value::as_array)
         .filter(|steps| !steps.is_empty())
         .ok_or("`steps` must be a non-empty array")?;
+    let save = input.get("save").and_then(Value::as_bool) != Some(false);
+    if let Some(document) = live(kits, kit, &path).await {
+        let mut answer = kits
+            .bridge()
+            .call(&document, "run", json!({ "steps": steps, "save": save }))
+            .await
+            .map_err(|error| format!("in the open {} editor: {error}", short(kit)))?;
+        let follow_up = live_preview(kits, kit, &document).await;
+        let ran = answer["completed"].as_array().map_or(0, Vec::len);
+        let saved = if answer["saved"] == true {
+            "saved"
+        } else {
+            "not saved"
+        };
+        let summary = answer["document"]["summary"]
+            .as_str()
+            .unwrap_or_default()
+            .to_owned();
+        answer["live"] = Value::Bool(true);
+        return Ok(ToolOutput {
+            follow_up,
+            ..ToolOutput::new(
+                format!(
+                    "Ran {ran} commands on `{path}` in its open {} editor ({saved}): {summary}",
+                    short(kit)
+                ),
+                answer,
+            )
+        });
+    }
     let mut view = kits
         .open(Caller::Agent, &path)
         .await
@@ -395,7 +499,6 @@ pub async fn run_steps(run: &Run, kit: &KitDefinition, input: &Value) -> ToolRes
             }
         }
     }
-    let save = input.get("save").and_then(Value::as_bool) != Some(false);
     if save && view.dirty {
         view = kits
             .save(Caller::Agent, view.kit_id, &view.document_id)

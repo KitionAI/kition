@@ -170,5 +170,5 @@ export function useKitDocument<T>(host: KitHost, manifest: KitSdkManifest, path:
     })
   }, [host, path])
 
-  return { doc, info, state, change, dirty, failure, openMs, saving, conflict, run, tool, commands, save, reopen, keepMine }
+  return { path, manifest, doc, info, state, change, dirty, failure, openMs, saving, conflict, run, tool, commands, save, reopen, keepMine }
 }

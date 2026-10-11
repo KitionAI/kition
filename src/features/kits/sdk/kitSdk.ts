@@ -21,6 +21,8 @@ export type KitCommand = {
   shortcut: string | null
   /** The parameters as a DeepSeek Harness `ParameterSchemaSpec`; commands with one can be agent tools. */
   schema?: Record<string, unknown> | null
+  /** The engine's own parameter notes, as the agent reads them. */
+  params?: string | null
 }
 
 /** The contract version this host implements (`contractVersion()` in the Rust crate). */
@@ -126,7 +128,7 @@ export async function kitSdkAvailable(manifest: KitSdkManifest) {
 
 /** A kit's commands from its SDK's `commands()` JSON. */
 export function kitSdkCommands(json: string): KitCommand[] {
-  const commands = JSON.parse(json) as Array<{ id: string; title: string; menu: string[] | null; shortcut: string | null; mutates: boolean; enabled: boolean; description?: string | null; schema?: Record<string, unknown> | null }>
+  const commands = JSON.parse(json) as Array<{ id: string; title: string; menu: string[] | null; shortcut: string | null; mutates: boolean; enabled: boolean; description?: string | null; schema?: Record<string, unknown> | null; params?: string | null }>
   return commands.map((command) => ({
     id: command.id,
     title: command.title,
@@ -137,5 +139,6 @@ export function kitSdkCommands(json: string): KitCommand[] {
     menu: command.menu ?? [],
     shortcut: command.shortcut,
     schema: command.schema ?? null,
+    params: command.params ?? null,
   }))
 }

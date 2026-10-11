@@ -196,6 +196,95 @@ export type KitsExecuteResult = {
 }
 
 /**
+ * A document open in a kit editor in the renderer (Kit AI bridge, kit/documents).
+ */
+export type KitsBridgeDocument = {
+  path: KitsWorkspacePath
+  kit: KitsKitId
+  dirty: boolean
+  revision: number
+}
+
+export type KitsBridgeDocumentsResult = {
+  documents: KitsBridgeDocument[]
+}
+
+/**
+ * kit/call: one of the kit's document tools on the live document. `commands` takes {query}; `run` takes {steps: [{command, params?}], save}.
+ */
+export type KitsBridgeCallParams = {
+  path: KitsWorkspacePath
+  kit: KitsKitId
+  tool: "inspect" | "commands" | "run"
+  arguments: Record<string, unknown>
+}
+
+export type KitsBridgeLiveDocument = {
+  path: KitsWorkspacePath
+  summary: string
+  dirty: boolean
+  canUndo: boolean
+  canRedo: boolean
+  /**
+   * The kit engine's inspect() JSON.
+   */
+  details: Record<string, unknown>
+}
+
+export type KitsBridgeInspectResult = {
+  document: KitsBridgeLiveDocument
+}
+
+export type KitsBridgeCommand = {
+  id: string
+  title: string
+  description: string | null
+  enabled: boolean
+  mutates: boolean
+}
+
+export type KitsBridgeCommandsResult = {
+  commands: KitsBridgeCommand[]
+  total: number
+}
+
+export type KitsBridgeRunStep = {
+  command: string
+  changed: boolean
+  /**
+   * The command's JSON result.
+   */
+  result: unknown
+}
+
+export type KitsBridgeRunResult = {
+  completed: KitsBridgeRunStep[]
+  saved: boolean
+  document: KitsBridgeLiveDocument
+}
+
+export type KitsBridgePreviewParams = {
+  path: KitsWorkspacePath
+  maxSize: number
+}
+
+export type KitsBridgePreviewResult = {
+  /**
+   * The preview as base64 PNG.
+   */
+  png: string
+}
+
+/**
+ * kit.changed: a live document changed.
+ */
+export type KitsBridgeChanged = {
+  path: KitsWorkspacePath
+  revision: number
+  by: "person" | "agent"
+}
+
+/**
  * GET /v1/kits, POST /v1/kits/documents, and /v1/kits/{kitId}/documents/{documentId}[/commands|/save|/preview]. JSON answers use the runtime envelope; /preview answers image/png. Errors carry data.reason: not_installed, stopped, or a Kit Protocol reason such as document_not_found.
  */
 export type KitsContract = KitsKitList
