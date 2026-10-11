@@ -1,6 +1,6 @@
-//! Everything a pane, the local sources, the kits, or MCP add to a harness
-//! turn, one provider each. The harness turn assembles them and never names
-//! a pane or a kit.
+//! Everything a pane, the local sources, the kits, or MCP add to a turn,
+//! one provider each. The turn assembles them and never names a pane or a
+//! kit.
 
 mod core;
 mod design;
@@ -64,9 +64,8 @@ impl ToolShape {
     }
 }
 
-/// Builds one harness tool from a catalog or MCP spec and the providing
-/// provider's shape; `None` when the harness cannot offer it (the factory
-/// logs why).
+/// Builds one tool from a catalog or MCP spec and the providing provider's
+/// shape; `None` when the harness cannot offer it (the factory logs why).
 pub type ToolFactory = Arc<dyn Fn(&ToolSpec, &ToolShape) -> Option<ToolDef> + Send + Sync>;
 
 /// Tools a provider other than `CoreProvider` offers.
@@ -212,7 +211,6 @@ pub(crate) mod testing {
             mcp_path: None,
             workflow_prompt: None,
             kits: None,
-            harness: true,
         });
         let run = Run {
             agent,

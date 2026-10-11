@@ -9,6 +9,7 @@ use kition_harness::tool::ToolDef;
 
 use super::{ToolFactory, TurnFacts, catalog_spec, offer, ready};
 use crate::run::Run;
+use crate::tools::tables;
 use crate::{catalog, prompts};
 
 const PANE: &str = "table";
@@ -21,6 +22,23 @@ fn tool_names() -> Vec<&'static str> {
         .filter(|name| name.starts_with("data_table_") || *name == "table_upsert_records")
         .filter(|name| catalog_spec(name).is_some())
         .collect()
+}
+
+/// The data table the user has open, as a prompt block; empty without
+/// table support or an open table.
+async fn active_table_context(run: &Run) -> String {
+    let Some(state) = run.agent.tables().cloned() else {
+        return String::new();
+    };
+    let context = tables::TableContext {
+        user_id: run.user_id,
+        active_document_path: run.active_document_path.clone(),
+        document_id: run.active_data_document_id,
+        table_id: run.active_data_table_id,
+    };
+    tokio::task::spawn_blocking(move || tables::active_table_context(&state, &context))
+        .await
+        .unwrap_or_default()
 }
 
 pub struct TablesProvider {
@@ -36,7 +54,7 @@ impl TablesProvider {
             run: run.clone(),
             facts: facts.clone(),
             factory: factory.clone(),
-            table_context: crate::session::active_table_context(run).await,
+            table_context: active_table_context(run).await,
         }
     }
 }

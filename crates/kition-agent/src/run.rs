@@ -44,9 +44,6 @@ pub struct AgentConfig {
     pub workflow_prompt: Option<WorkflowPrompt>,
     /// Kits the agent can drive, such as the photo editor.
     pub kits: Option<kition_kits::KitManager>,
-    /// Run turns on `kition-harness`. The API turns this on by default;
-    /// `KITION_AGENT_HARNESS=0` falls back to the original loop.
-    pub harness: bool,
 }
 
 struct Inner {
@@ -62,10 +59,9 @@ struct Inner {
     mcp: crate::mcp::Manager,
     workflow_prompt: Option<WorkflowPrompt>,
     kits: Option<kition_kits::KitManager>,
-    harness: bool,
-    /// One lock per session for harness turns; session ids are unique only
+    /// One lock per session for its turns; session ids are unique only
     /// within this agent's database.
-    turns: crate::harness_turn::SessionLocks,
+    turns: crate::turn::SessionLocks,
     web: reqwest::Client,
 }
 
@@ -91,8 +87,7 @@ impl Agent {
                 mcp: crate::mcp::Manager::new(config.mcp_path),
                 workflow_prompt: config.workflow_prompt,
                 kits: config.kits,
-                harness: config.harness,
-                turns: crate::harness_turn::SessionLocks::default(),
+                turns: crate::turn::SessionLocks::default(),
                 web: reqwest::Client::builder()
                     .redirect(reqwest::redirect::Policy::none())
                     .connect_timeout(std::time::Duration::from_secs(10))
@@ -136,13 +131,8 @@ impl Agent {
         self.inner.kits.as_ref()
     }
 
-    /// Whether turns run on `kition-harness`.
-    pub fn harness(&self) -> bool {
-        self.inner.harness
-    }
-
-    /// The per-session locks harness turns hold while they run.
-    pub(crate) fn turns(&self) -> &crate::harness_turn::SessionLocks {
+    /// The per-session locks turns hold while they run.
+    pub(crate) fn turns(&self) -> &crate::turn::SessionLocks {
         &self.inner.turns
     }
 

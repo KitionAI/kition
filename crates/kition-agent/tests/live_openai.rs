@@ -1,5 +1,5 @@
-//! Agent turns against the real OpenAI API, on both wires and in both loop
-//! modes. Ignored by default; they cost a few cents and need a key.
+//! Agent turns against the real OpenAI API, on both wires. Ignored by
+//! default; they cost a few cents and need a key.
 //!
 //! Put the key in a file outside the repository (never in the command line or
 //! the repository), then run:
@@ -38,7 +38,7 @@ struct Live {
     _config: tempfile::TempDir,
 }
 
-fn app(harness_mode: bool) -> Live {
+fn app() -> Live {
     let workspace = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
     let uploads = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
     let config = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
@@ -58,7 +58,6 @@ fn app(harness_mode: bool) -> Live {
         mcp_path: None,
         workflow_prompt: None,
         kits: None,
-        harness: harness_mode,
     });
     let app = router(AgentState {
         auth: AuthConfig {
@@ -151,12 +150,12 @@ async fn turn(live: &Live, session_id: i64, key: &str, wire_api: &str, content: 
     done
 }
 
-async fn two_turns(wire_api: &str, harness_mode: bool) {
+async fn two_turns(wire_api: &str) {
     let Some(key) = api_key() else {
         println!("skipped: set KITION_LIVE_OPENAI_KEY_FILE");
         return;
     };
-    let live = app(harness_mode);
+    let live = app();
     let (status, body) = call(
         &live.app,
         "POST",
@@ -200,42 +199,28 @@ async fn two_turns(wire_api: &str, harness_mode: bool) {
         "the second turn lost the history: {reply}"
     );
 
-    if harness_mode {
-        let log = SqliteLog::new(live.db.clone());
-        let events = log
-            .read(&format!("agent:{session_id}"))
-            .unwrap_or_else(|error| panic!("{error}"));
-        let kinds: Vec<&str> = events.iter().map(|event| event.body.kind()).collect();
-        assert_eq!(
-            kinds.iter().filter(|kind| **kind == "turn/start").count(),
-            2,
-            "{kinds:?}"
-        );
-        assert!(kinds.contains(&"tool/result"), "{kinds:?}");
-        println!("[{wire_api}] harness log: {} events", events.len());
-    }
+    let log = SqliteLog::new(live.db.clone());
+    let events = log
+        .read(&format!("agent:{session_id}"))
+        .unwrap_or_else(|error| panic!("{error}"));
+    let kinds: Vec<&str> = events.iter().map(|event| event.body.kind()).collect();
+    assert_eq!(
+        kinds.iter().filter(|kind| **kind == "turn/start").count(),
+        2,
+        "{kinds:?}"
+    );
+    assert!(kinds.contains(&"tool/result"), "{kinds:?}");
+    println!("[{wire_api}] session log: {} events", events.len());
 }
 
 #[tokio::test(flavor = "multi_thread")]
 #[ignore = "calls the real OpenAI API"]
-async fn openai_responses_original_loop() {
-    two_turns("responses", false).await;
+async fn openai_responses() {
+    two_turns("responses").await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
 #[ignore = "calls the real OpenAI API"]
-async fn openai_responses_on_the_harness() {
-    two_turns("responses", true).await;
-}
-
-#[tokio::test(flavor = "multi_thread")]
-#[ignore = "calls the real OpenAI API"]
-async fn openai_chat_completions_original_loop() {
-    two_turns("chat_completions", false).await;
-}
-
-#[tokio::test(flavor = "multi_thread")]
-#[ignore = "calls the real OpenAI API"]
-async fn openai_chat_completions_on_the_harness() {
-    two_turns("chat_completions", true).await;
+async fn openai_chat_completions() {
+    two_turns("chat_completions").await;
 }

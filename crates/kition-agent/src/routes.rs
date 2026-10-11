@@ -194,7 +194,7 @@ async fn list_session_events(
     let session = session::owned_session(&state.agent, parse_id(&id)?, user.id).await?;
     let log = kition_harness::log::SqliteLog::new(state.agent.db().clone());
     let (items, next_after) = tokio::task::spawn_blocking(move || {
-        crate::harness_turn::read_events(&log, session.id, query.after)
+        crate::turn::read_events(&log, session.id, query.after)
     })
     .await
     .map_err(|_| AppError::internal("Failed to load agent session events"))?

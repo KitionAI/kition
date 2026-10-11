@@ -212,8 +212,8 @@ pub fn pane(pane: &str) -> &'static [&'static str] {
     }
 }
 
-/// The tool-loop guidance that does not depend on the offered tools or
-/// the pane: every `tool_loop` line before `Available tools:`.
+/// How to use the native tools, whichever are offered and whatever the
+/// pane.
 pub(crate) fn general_lines() -> Vec<String> {
     vec![
         "You can use Kition native tools to complete the task. Tool calls are executed by the backend and shown in the execution trace.".to_owned(),
@@ -242,20 +242,6 @@ pub(crate) fn table_lines() -> [&'static str; 3] {
         "For external web pages, posts, articles, or search results, first normalize them into structured records. Prefer data_table_record_draft to map source records onto the current schema before calling data_table_add_records. If stable fields such as URL, external ID, or title exist, pass unique_by to prevent duplicates.",
         "If records come from a list page or homepage, keep each record's own original URL. If the current table has no URL/link field, add one with data_table_add_fields before writing. Do not only bury the source in notes.",
     ]
-}
-
-/// How to use the native tools offered this turn.
-pub fn tool_loop(tool_names: &[String], pane_name: &str) -> String {
-    let mut lines = general_lines();
-    lines.push(format!("Available tools: {}", tool_names.join(", ")));
-    if tool_names
-        .iter()
-        .any(|n| n == "data_table_add_records" || n == "table_upsert_records")
-    {
-        lines.extend(table_lines().map(str::to_owned));
-    }
-    lines.extend(pane(pane_name).iter().map(|line| (*line).to_owned()));
-    lines.join("\n")
 }
 
 pub fn recent_images(images: &[AgentArtifact]) -> String {
@@ -330,12 +316,7 @@ mod tests {
         ));
         assert!(execution_mode("preview").starts_with("Current execution mode: preview."));
         assert!(table_execution("apply").contains("table_plan"));
-        let tools = tool_loop(
-            &["document_read".into(), "data_table_add_records".into()],
-            "table",
-        );
-        assert!(tools.contains("Available tools: document_read, data_table_add_records"));
-        assert!(tools.contains("Kition table pane"));
+        assert!(pane("table")[0].contains("Kition table pane"));
         let plan = table_plan(
             &json!({ "summary": "Import", "final_unique_by": ["url"], "estimated_create": 2 }),
         );

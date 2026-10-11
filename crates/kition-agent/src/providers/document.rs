@@ -9,9 +9,38 @@ use kition_harness::tool::ToolDef;
 
 use super::{ToolFactory, offer, ready};
 use crate::prompts;
-use crate::run::Run;
+use crate::run::{Run, truncate_chars};
 
 const PANE: &str = "document";
+
+/// The data document the user has open in the document pane.
+async fn active_data_document(run: &Run) -> String {
+    let (id, user) = (run.active_data_document_id, run.user_id);
+    let doc = run
+        .agent
+        .with_db(move |conn| kition_datadoc::index::find(conn, user, &id.to_string()))
+        .await
+        .ok()
+        .flatten();
+    let Some(doc) = doc else { return String::new() };
+    let mut lines = vec![
+        "Active document the user is reading (pane = document):".to_owned(),
+        format!("- ID: {}", doc.id),
+    ];
+    for (label, text) in [("Title", doc.title.trim()), ("Path", doc.path.trim())] {
+        if !text.is_empty() {
+            lines.push(format!("- {label}: {text}"));
+        }
+    }
+    if !doc.description.trim().is_empty() {
+        lines.push(format!(
+            "- Description: {}",
+            truncate_chars(doc.description.trim(), 240)
+        ));
+    }
+    lines.push("Use document_read to fetch the body before summarizing or editing; do not assume contents from the title alone.".into());
+    lines.join("\n")
+}
 
 pub struct DocumentProvider {
     factory: ToolFactory,
@@ -25,7 +54,7 @@ impl DocumentProvider {
             && run.active_data_document_id != 0
             && run.active_data_table_id == 0;
         let data_document = if open {
-            crate::session::active_data_document(run).await
+            active_data_document(run).await
         } else {
             String::new()
         };

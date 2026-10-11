@@ -156,7 +156,7 @@ struct Harness {
     _config: tempfile::TempDir,
 }
 
-fn app_with(harness_mode: bool) -> Harness {
+fn app() -> Harness {
     let workspace = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
     let uploads = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
     let config = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
@@ -176,7 +176,6 @@ fn app_with(harness_mode: bool) -> Harness {
         mcp_path: None,
         workflow_prompt: None,
         kits: None,
-        harness: harness_mode,
     });
     let db_handle = db.clone();
     let app = router(AgentState {
@@ -241,36 +240,6 @@ async fn stream_on(
         .collect()
 }
 
-#[tokio::test(flavor = "multi_thread")]
-async fn streams_a_turn_with_a_tool_call() {
-    tool_call_turn(false).await;
-}
-
-#[tokio::test(flavor = "multi_thread")]
-async fn streams_a_turn_with_a_tool_call_on_the_harness() {
-    tool_call_turn(true).await;
-}
-
-#[tokio::test(flavor = "multi_thread")]
-async fn commands_outside_the_policy_wait_for_approval() {
-    approval_turns(false).await;
-}
-
-#[tokio::test(flavor = "multi_thread")]
-async fn commands_outside_the_policy_wait_for_approval_on_the_harness() {
-    approval_turns(true).await;
-}
-
-#[tokio::test(flavor = "multi_thread")]
-async fn streams_a_turn_over_chat_completions() {
-    chat_completions_turn(false).await;
-}
-
-#[tokio::test(flavor = "multi_thread")]
-async fn streams_a_turn_over_chat_completions_on_the_harness() {
-    chat_completions_turn(true).await;
-}
-
 /// A `/responses` provider whose first call signals `entered` and waits for
 /// `release`; every call then answers with plain text.
 async fn blocking_provider(entered: Arc<Notify>, release: Arc<Notify>) -> String {
@@ -300,8 +269,8 @@ async fn blocking_provider(entered: Arc<Notify>, release: Arc<Notify>) -> String
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn a_second_harness_turn_is_refused_while_the_first_runs() {
-    let Harness { app, .. } = app_with(true);
+async fn a_second_turn_is_refused_while_the_first_runs() {
+    let Harness { app, .. } = app();
     let session_id = new_session(&app).await;
     let (entered, release) = (Arc::new(Notify::new()), Arc::new(Notify::new()));
     let base_url = blocking_provider(entered.clone(), release.clone()).await;
@@ -367,7 +336,7 @@ async fn stuck_image_provider(entered: Arc<Notify>) -> String {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn a_disconnected_image_turn_releases_its_session() {
-    let Harness { app, .. } = app_with(true);
+    let Harness { app, .. } = app();
     let session_id = new_session(&app).await;
     let entered = Arc::new(Notify::new());
     let base_url = stuck_image_provider(entered.clone()).await;
@@ -414,8 +383,9 @@ async fn a_disconnected_image_turn_releases_its_session() {
     assert_eq!(status, 200, "the session stays busy after the client left");
 }
 
-async fn chat_completions_turn(harness_mode: bool) {
-    let Harness { app, workspace, .. } = app_with(harness_mode);
+#[tokio::test(flavor = "multi_thread")]
+async fn streams_a_turn_over_chat_completions() {
+    let Harness { app, workspace, .. } = app();
     let session_id = new_session(&app).await;
     let base_url = fake_provider_at(
         "/chat/completions",
@@ -445,10 +415,11 @@ async fn chat_completions_turn(harness_mode: bool) {
     );
 }
 
-async fn tool_call_turn(harness_mode: bool) {
+#[tokio::test(flavor = "multi_thread")]
+async fn streams_a_turn_with_a_tool_call() {
     let Harness {
         app, db, workspace, ..
-    } = app_with(harness_mode);
+    } = app();
     let session_id = new_session(&app).await;
     let base_url = fake_provider(vec![
         tool_call(
@@ -532,16 +503,14 @@ async fn tool_call_turn(harness_mode: bool) {
             .is_some_and(|tools| tools.len() > 30)
     );
 
-    if harness_mode {
-        let log = kition_harness::log::SqliteLog::new(db.clone());
-        let events = kition_harness::log::SessionLog::read(&log, &format!("agent:{session_id}"))
-            .unwrap_or_else(|error| panic!("{error}"));
-        let kinds: Vec<&str> = events.iter().map(|event| event.body.kind()).collect();
-        assert_eq!(kinds.first(), Some(&"turn/start"), "{kinds:?}");
-        assert!(kinds.contains(&"tool/result"), "{kinds:?}");
-        assert_eq!(kinds.last(), Some(&"turn/end"), "{kinds:?}");
-        assert_session_events_api(&app, session_id).await;
-    }
+    let log = kition_harness::log::SqliteLog::new(db.clone());
+    let events = kition_harness::log::SessionLog::read(&log, &format!("agent:{session_id}"))
+        .unwrap_or_else(|error| panic!("{error}"));
+    let kinds: Vec<&str> = events.iter().map(|event| event.body.kind()).collect();
+    assert_eq!(kinds.first(), Some(&"turn/start"), "{kinds:?}");
+    assert!(kinds.contains(&"tool/result"), "{kinds:?}");
+    assert_eq!(kinds.last(), Some(&"turn/end"), "{kinds:?}");
+    assert_session_events_api(&app, session_id).await;
 }
 
 /// A provider-native output item that carries a secret-looking string.
@@ -549,7 +518,7 @@ const RAW_SECRET: &str = "fake-raw-item-secret-4d1c";
 
 #[tokio::test(flavor = "multi_thread")]
 async fn the_session_events_api_keeps_provider_native_items_out() {
-    let Harness { app, db, .. } = app_with(true);
+    let Harness { app, db, .. } = app();
     let session_id = new_session(&app).await;
     let raw = json!({ "type": "provider_note", "id": "pn_1", "note": RAW_SECRET });
     let item = json!({
@@ -661,8 +630,9 @@ async fn assert_session_events_api(app: &Router, session_id: i64) {
     assert_eq!(status, 404);
 }
 
-async fn approval_turns(harness_mode: bool) {
-    let Harness { app, workspace, .. } = app_with(harness_mode);
+#[tokio::test(flavor = "multi_thread")]
+async fn commands_outside_the_policy_wait_for_approval() {
+    let Harness { app, workspace, .. } = app();
     let session_id = new_session(&app).await;
     let command = json!({ "cmd": ["ls && touch approved.txt"], "shell": "sh" });
     let base_url = fake_provider(vec![
@@ -794,12 +764,11 @@ fn prompt_lines(body: &Value) -> Vec<String> {
 /// The first model request after writing `files` into the workspace, and
 /// the workspace path.
 async fn first_request_with(
-    harness_mode: bool,
     wire_api: &str,
     files: &[(&str, &[u8])],
     extra: Value,
 ) -> (Value, std::path::PathBuf) {
-    let Harness { app, workspace, .. } = app_with(harness_mode);
+    let Harness { app, workspace, .. } = app();
     for (path, bytes) in files {
         let path = workspace.path().join(path);
         if let Some(parent) = path.parent() {
@@ -1020,8 +989,7 @@ async fn panes_offer_the_expected_tools_and_prompt() {
         extra,
     } in scenarios
     {
-        // The golden data was frozen from the original loop's requests.
-        let (body, workspace) = first_request_with(!write, wire_api, files, extra.clone()).await;
+        let (body, workspace) = first_request_with(wire_api, files, extra.clone()).await;
         let temp_paths = [
             workspace,
             plain.path().to_path_buf(),

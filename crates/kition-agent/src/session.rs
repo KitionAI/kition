@@ -3,7 +3,7 @@
 use std::sync::{Arc, Mutex};
 
 use axum::response::Response;
-use kition_ai::engine::{KITION_CLOUD_PROVIDER, Message, MessagePart, RuntimeModel, ToolSpec};
+use kition_ai::engine::{KITION_CLOUD_PROVIDER, RuntimeModel};
 use kition_core::{AppError, AppResult, now_millis};
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -12,11 +12,10 @@ use crate::catalog::{self, SkillDef};
 use crate::providers::TurnFacts;
 use crate::run::{Agent, EventInput, Run, truncate_chars};
 use crate::sources::{self, LocalSourceInput};
-use crate::store::{self, AgentArtifact, AgentMessage, AgentSession};
+use crate::store::{self, AgentMessage, AgentSession};
 use crate::stream::{Emitter, Frame, value};
-use crate::tools::{canvas, documents, exec, images, tables};
-use crate::turn::{self, Outcome};
-use crate::{attachments, prompts, table_plan};
+use crate::tools::{canvas, documents, exec, images};
+use crate::{attachments, prompts, table_plan, turn};
 
 #[derive(Debug, Default, Deserialize)]
 #[serde(default)]
@@ -97,55 +96,10 @@ pub(crate) fn supports_hosted_images(model: &RuntimeModel) -> bool {
         ) || model.model_name.to_lowercase().contains("gpt"))
 }
 
-/// The tools offered to the model this turn.
-async fn tool_specs(run: &Run) -> Vec<ToolSpec> {
-    let mut hidden: Vec<&str> = Vec::new();
-    if !(run.pane == "whiteboard" && run.whiteboard.is_some()) {
-        hidden.push("whiteboard_propose_patch");
-    }
-    if !(run.pane == "design" && run.design.is_some()) {
-        hidden.push("design_propose_patch");
-    }
-    let offered_sources = sources::tool_names(&run.local_sources);
-    if run.local_sources.is_empty() {
-        hidden.extend_from_slice(sources::CORE_TOOLS);
-    }
-    for name in sources::GIT_TOOLS {
-        if !offered_sources.contains(name) {
-            hidden.push(name);
-        }
-    }
-    hidden.extend(crate::tools::kits::unavailable(run));
-    if !supports_hosted_web_search(&run.model) {
-        hidden.push("web_search");
-    }
-    if supports_hosted_images(&run.model) {
-        hidden.push("image_search");
-    } else {
-        hidden.push("image_generation");
-    }
-    match run.pane.as_str() {
-        "workflow" | "table" | "whiteboard" | "design" => hidden.push("document_write"),
-        "gallery" => hidden.extend(["document_write", "image_search"]),
-        _ => {}
-    }
-    let mut specs: Vec<ToolSpec> = catalog::tools()
-        .iter()
-        .filter(|tool| !hidden.contains(&tool.name.as_str()) && tool.exposure != "hidden")
-        .map(|tool| ToolSpec {
-            name: tool.name.clone(),
-            description: tool.description.clone(),
-            input_schema: tool.input_schema.clone(),
-        })
-        .collect();
-    for tool in run.agent.mcp().tools().await {
-        specs.push(tool.model_spec());
-    }
-    specs
-}
-
-pub(crate) fn turn_capabilities(specs: &[ToolSpec], model: &RuntimeModel) -> Value {
-    let mut names: Vec<&str> = specs.iter().map(|spec| spec.name.as_str()).collect();
+/// The offered tools and whether hosted web search is among them, for the
+/// `prompt.sent` event.
+pub(crate) fn turn_capabilities(tool_names: &[String], model: &RuntimeModel) -> Value {
+    let mut names: Vec<&str> = tool_names.iter().map(String::as_str).collect();
     names.sort_unstable();
     names.dedup();
     let search = names.contains(&"web_search");
@@ -189,9 +143,9 @@ pub struct Prepared {
     image_intent: Option<images::ImageIntent>,
     approval: Option<exec::Approval>,
     local_sources: Vec<sources::LocalSource>,
-    /// In harness mode, the session's turn guard, taken by the busy check
-    /// and held until the turn's last frame.
-    turn: Option<crate::harness_turn::TurnGuard>,
+    /// The session's turn guard, taken by the busy check and held until
+    /// the turn's last frame.
+    turn: turn::TurnGuard,
 }
 
 /// Validates the request; failures become ordinary error responses.
@@ -204,14 +158,8 @@ pub async fn prepare(
     let session = owned_session(agent, session_id, user_id).await?;
     // Taken here, not when the turn starts, so no second request can slip
     // in between the check and the turn. Image requests hold it too.
-    let turn = if agent.harness() {
-        Some(
-            crate::harness_turn::hold(agent.turns(), session_id)
-                .ok_or_else(|| AppError::conflict(crate::harness_turn::BUSY))?,
-        )
-    } else {
-        None
-    };
+    let turn =
+        turn::hold(agent.turns(), session_id).ok_or_else(|| AppError::conflict(turn::BUSY))?;
     let image_intent = match &request.image_generation_intent {
         Some(raw) => {
             if request.hide_user_message {
@@ -569,142 +517,15 @@ async fn drive(agent: Agent, user_id: i64, prepared: Prepared, emitter: Emitter)
         fail(&run, "Unsupported wire_api", "final", &message).await;
         return;
     }
-    if agent.harness() {
-        let facts = TurnFacts {
-            prompt_context: request.prompt_context,
-            active_workflow_id: request.active_workflow_id,
-            table_plan: request.table_plan_context,
-            skills,
-            hosted_web_search: supports_hosted_web_search(&run.model),
-            hosted_images: supports_hosted_images(&run.model),
-        };
-        crate::harness_turn::drive(&run, session, &content, facts, turn).await;
-        return;
-    }
-    let context = build_context(&run, &request, &skills).await;
-    let specs = tool_specs(&run).await;
-    run.event(
-        EventInput::new("prompt.sent", "intent", "completed", "Send model request", "Sent the user goal, session context, and available tools to the model")
-            .data(json!({ "model_id": session.model_id, "turn_capabilities": turn_capabilities(&specs, &run.model) })),
-    )
-    .await;
-    let names: Vec<String> = specs.iter().map(|spec| spec.name.clone()).collect();
-    let tool_prompt = prompts::tool_loop(&names, &run.pane);
-    let context = [context, tool_prompt].join("\n\n");
-    let messages = match build_messages(&run, &session, &context).await {
-        Ok(messages) => messages,
-        Err(error) => {
-            fail(&run, "Execution failed", "final", &error).await;
-            return;
-        }
+    let facts = TurnFacts {
+        prompt_context: request.prompt_context,
+        active_workflow_id: request.active_workflow_id,
+        table_plan: request.table_plan_context,
+        skills,
+        hosted_web_search: supports_hosted_web_search(&run.model),
+        hosted_images: supports_hosted_images(&run.model),
     };
-    match turn::run_loop(&run, messages, specs).await {
-        Err(error) => {
-            if run.emitter.is_closed() {
-                set_status(&run, "idle").await;
-                run.event(EventInput::new(
-                    "task.failed",
-                    "final",
-                    "failed",
-                    "Execution stopped",
-                    "The client stopped the request",
-                ))
-                .await;
-                return;
-            }
-            fail(&run, "Execution failed", "final", &error).await;
-        }
-        Ok(Outcome::AwaitingApproval(output)) => await_approval(&run, session, output).await,
-        Ok(Outcome::Reply {
-            content: reply,
-            streamed,
-            result,
-        }) => {
-            finish(&run, session, &content, reply, streamed, &result).await;
-        }
-    }
-}
-
-/// The skill, table, pane, and source context for the system prompt.
-async fn build_context(run: &Run, request: &StreamRequest, skills: &[SkillDef]) -> String {
-    let mut blocks = vec![catalog::skill_prompt(skills)];
-    if run.agent.tables().is_some() {
-        blocks.push(active_table_context(run).await);
-        if run.pane == "document"
-            && run.active_data_document_id != 0
-            && run.active_data_table_id == 0
-        {
-            blocks.push(active_data_document(run).await);
-        }
-    }
-    blocks.push(prompts::task_mode(&run.task_mode).to_owned());
-    blocks.push(prompts::WEB_RESEARCH.to_owned());
-    if run.active_data_table_id != 0 {
-        blocks.push(prompts::table_execution(&run.execution_mode));
-    }
-    if let Some(plan) = &request.table_plan_context {
-        blocks.push(prompts::table_plan(plan));
-    }
-    blocks.push(prompts::execution_mode(&run.execution_mode).to_owned());
-    if run.pane == "workflow" && !request.active_workflow_id.trim().is_empty() {
-        blocks.push(run.agent.workflow_prompt(request.active_workflow_id.trim()));
-    }
-    if let Some(context) = &run.whiteboard {
-        blocks.push(canvas::whiteboard_prompt(context));
-    }
-    if let Some(context) = &run.design {
-        blocks.push(canvas::design_prompt(context));
-    }
-    blocks.push(sources::prompt_context(&run.local_sources));
-    blocks.push(request.prompt_context.trim().to_owned());
-    blocks.retain(|block| !block.trim().is_empty());
-    blocks.join("\n\n")
-}
-
-/// The data table the user has open, as a prompt block; empty without
-/// table support or an open table.
-pub(crate) async fn active_table_context(run: &Run) -> String {
-    let Some(state) = run.agent.tables().cloned() else {
-        return String::new();
-    };
-    let context = tables::TableContext {
-        user_id: run.user_id,
-        active_document_path: run.active_document_path.clone(),
-        document_id: run.active_data_document_id,
-        table_id: run.active_data_table_id,
-    };
-    tokio::task::spawn_blocking(move || tables::active_table_context(&state, &context))
-        .await
-        .unwrap_or_default()
-}
-
-/// The data document the user has open in the document pane.
-pub(crate) async fn active_data_document(run: &Run) -> String {
-    let (id, user) = (run.active_data_document_id, run.user_id);
-    let doc = run
-        .agent
-        .with_db(move |conn| kition_datadoc::index::find(conn, user, &id.to_string()))
-        .await
-        .ok()
-        .flatten();
-    let Some(doc) = doc else { return String::new() };
-    let mut lines = vec![
-        "Active document the user is reading (pane = document):".to_owned(),
-        format!("- ID: {}", doc.id),
-    ];
-    for (label, text) in [("Title", doc.title.trim()), ("Path", doc.path.trim())] {
-        if !text.is_empty() {
-            lines.push(format!("- {label}: {text}"));
-        }
-    }
-    if !doc.description.trim().is_empty() {
-        lines.push(format!(
-            "- Description: {}",
-            truncate_chars(doc.description.trim(), 240)
-        ));
-    }
-    lines.push("Use document_read to fetch the body before summarizing or editing; do not assume contents from the title alone.".into());
-    lines.join("\n")
+    turn::drive(&run, session, &content, facts, turn).await;
 }
 
 /// The conversation before the triggering message as the model sees it:
@@ -732,75 +553,6 @@ pub(crate) fn previous_conversation(
             (message.role.clone(), content)
         })
         .collect()
-}
-
-/// The conversation sent to the model: system prompts, the last 16
-/// messages, attachments, the turn context, and the user's message.
-async fn build_messages(
-    run: &Run,
-    session: &AgentSession,
-    context: &str,
-) -> Result<Vec<Message>, String> {
-    let (id, user) = (session.id, session.user_id);
-    let history = run
-        .agent
-        .with_db(move |conn| store::recent_messages(conn, id, user, 17))
-        .await
-        .map_err(|_| "failed to load session context".to_owned())?;
-    let mut images: Vec<AgentArtifact> = run
-        .agent
-        .with_db(move |conn| store::recent_artifacts(conn, id, user, 40))
-        .await
-        .unwrap_or_default()
-        .into_iter()
-        .filter(|a| a.kind == "image" || a.mime_type.starts_with("image/"))
-        .take(8)
-        .collect();
-    images.reverse();
-    let mut messages = vec![Message::new(
-        "system",
-        prompts::system_prompt(&run.language),
-    )];
-    if !run.active_document_path.is_empty() {
-        messages.push(Message::new(
-            "system",
-            prompts::linked_document(&run.active_document_path),
-        ));
-    }
-    for (role, content) in previous_conversation(&history, run.trigger_message_id) {
-        messages.push(Message::new(&role, content));
-    }
-    let attachment_block = attachments::prompt_block(&run.attachments);
-    if !attachment_block.is_empty() {
-        messages.push(Message::new("system", attachment_block));
-    }
-    let mut context_blocks = vec![context.to_owned()];
-    let recent = prompts::recent_images(&images);
-    if !recent.is_empty() {
-        context_blocks.insert(0, recent);
-    }
-    messages.push(Message::new("system", context_blocks.join("\n\n")));
-    let mut user = Message::new("user", run.prompt.clone());
-    let image_parts: Vec<MessagePart> = run
-        .attachments
-        .iter()
-        .filter(|a| !a.image_url.is_empty())
-        .map(|a| MessagePart {
-            kind: "image_url".into(),
-            image_url: a.image_url.clone(),
-            ..MessagePart::default()
-        })
-        .collect();
-    if !image_parts.is_empty() {
-        user.parts.push(MessagePart {
-            kind: "text".into(),
-            text: run.prompt.clone(),
-            ..MessagePart::default()
-        });
-        user.parts.extend(image_parts);
-    }
-    messages.push(user);
-    Ok(messages)
 }
 
 pub(crate) async fn await_approval(run: &Run, mut session: AgentSession, output: Value) {
@@ -992,13 +744,7 @@ mod tests {
         };
         assert!(supports_hosted_web_search(&model));
         assert!(!supports_hosted_images(&model));
-        let caps = turn_capabilities(
-            &[ToolSpec {
-                name: "web_search".into(),
-                ..ToolSpec::default()
-            }],
-            &model,
-        );
+        let caps = turn_capabilities(&["web_search".to_owned()], &model);
         assert_eq!(caps["hosted_web_search"]["available"], true);
     }
 }
