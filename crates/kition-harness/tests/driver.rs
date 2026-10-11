@@ -84,6 +84,7 @@ impl Setup {
             model: None,
             source: MessageSource::user(),
             preset: None,
+            stream_revision: Arc::default(),
         }
     }
 
@@ -588,6 +589,7 @@ async fn cancelling_during_the_model_call_ends_the_turn_as_cancelled() {
         model: None,
         source: MessageSource::user(),
         preset: None,
+        stream_revision: Arc::default(),
     };
     let handle = tokio::spawn(async move { driver.run_turn(input).await });
     entered.notified().await;
@@ -691,6 +693,7 @@ async fn cancelling_inside_a_tool_body_stops_the_remaining_calls_in_the_step() {
         model: None,
         source: MessageSource::user(),
         preset: None,
+        stream_revision: Arc::default(),
     };
     let reason = setup
         .driver(Pipeline::default().with(RecoveryPrompt))
@@ -756,6 +759,7 @@ fn flaky_input(fail_at: usize) -> (Arc<FlakyLog>, TurnInput) {
         model: None,
         source: MessageSource::user(),
         preset: None,
+        stream_revision: Arc::default(),
     };
     (log, input)
 }
@@ -828,6 +832,7 @@ async fn a_paused_tool_records_its_result_and_awaits_approval() {
         model: None,
         source: MessageSource::user(),
         preset: None,
+        stream_revision: Arc::default(),
     };
     let reason = driver
         .run_turn(input)
@@ -873,6 +878,7 @@ async fn a_paused_tool_records_its_result_and_awaits_approval() {
         model: None,
         source: MessageSource::user(),
         preset: None,
+        stream_revision: Arc::default(),
     };
     let second_reason = driver
         .run_turn(second_input)
@@ -923,6 +929,7 @@ async fn a_failed_calls_pause_request_is_discarded_and_the_turn_continues() {
         model: None,
         source: MessageSource::user(),
         preset: None,
+        stream_revision: Arc::default(),
     };
     let reason = Driver::new(log.clone(), llm)
         .run_turn(input)
@@ -1200,6 +1207,7 @@ async fn run_presenter(fail: bool) -> Vec<SessionEvent> {
             model: None,
             source: MessageSource::user(),
             preset: None,
+            stream_revision: Arc::default(),
         })
         .await
         .unwrap_or_else(|error| panic!("{error}"));
@@ -1547,4 +1555,32 @@ async fn provider_retries_are_logged_as_one_retry_chain() {
         seqs.windows(2).all(|pair| pair[1] == pair[0] + 1),
         "{seqs:?}"
     );
+}
+
+#[tokio::test]
+async fn stream_revisions_continue_across_the_turns_of_a_session() {
+    let setup = setup(vec![LlmReply::text("one"), LlmReply::text("two")]);
+    let driver = setup.driver(Pipeline::default());
+    let revision = Arc::new(std::sync::atomic::AtomicU64::new(0));
+    for text in ["first", "second"] {
+        let mut input = setup.input(text, Cancel::default());
+        input.stream_revision = revision.clone();
+        driver
+            .run_turn(input)
+            .await
+            .unwrap_or_else(|error| panic!("{error}"));
+    }
+    let live = setup.live.lock().unwrap_or_else(PoisonError::into_inner);
+    let revisions: Vec<u64> = live
+        .iter()
+        .filter_map(|live| match live {
+            Live::AssistantStream(
+                AssistantStreamFrame::Start { revision, .. }
+                | AssistantStreamFrame::Chunk { revision, .. }
+                | AssistantStreamFrame::End { revision, .. },
+            ) => Some(*revision),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(revisions, (1..=6).collect::<Vec<u64>>());
 }

@@ -39,8 +39,9 @@ pub enum Live {
 }
 
 /// One live publication of a model attempt (dsh `AssistantStreamFrame`).
-/// `revision` counts the frames of one turn from 1; `index` counts the
-/// chunks of one attempt from 0, and `end` carries their number.
+/// `revision` counts the frames of one session from 1 (see
+/// `TurnInput::stream_revision`); `index` counts the chunks of one attempt
+/// from 0, and `end` carries their number.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(
     tag = "type",
@@ -173,6 +174,10 @@ pub struct TurnInput {
     /// The permission preset of this turn, logged as `permission/preset` at
     /// step 1 when it differs from the newest logged one.
     pub preset: Option<String>,
+    /// The last `revision` sent on this session's assistant stream. Owned
+    /// by the session, not the turn: dsh clients require each frame to be
+    /// the previous revision plus one for as long as they stay attached.
+    pub stream_revision: Arc<AtomicU64>,
     pub cancel: Cancel,
     pub live: LiveSink,
     /// The model id this turn will use. Provider-native `raw_items` on
@@ -370,7 +375,7 @@ impl Driver {
         turn: u32,
     ) -> Result<TurnEndReason, String> {
         let mut user = Some(input.user.clone());
-        let revision = Arc::new(AtomicU64::new(0));
+        let revision = &input.stream_revision;
         for step in 1..=self.max_steps {
             if input.cancel.is_cancelled() {
                 return Ok(TurnEndReason::Cancelled);
@@ -399,7 +404,7 @@ impl Driver {
             };
             let attempt_id = format!("{}#{turn}.{step}", input.session);
             let stream =
-                AttemptStream::start(&input.live, &revision, attempt_id.clone(), turn, step);
+                AttemptStream::start(&input.live, revision, attempt_id.clone(), turn, step);
             let retries = Arc::new(Mutex::new(RetryLog::default()));
             let sink = self.sink(input, &stream, &retries, &attempt_id, turn, step);
             let reply = tokio::select! {
@@ -632,6 +637,12 @@ impl Driver {
     /// retries are appended right away (`llm/retry` before the wait,
     /// `llm/retry-started` after it), all of one step under `attempt_id`
     /// as their retry chain id, and collected in `retries`.
+    ///
+    /// Deliberate deviation from dsh, which logs retries between settled
+    /// attempts: the engine retries inside one model call, so these events
+    /// land inside the open attempt, after its `start` frame and before
+    /// its first chunk. That is safe because `with_retry` never retries
+    /// once output has streamed.
     fn sink(
         &self,
         input: &TurnInput,
@@ -645,11 +656,19 @@ impl Driver {
             let (log, session) = (self.log.clone(), input.session.clone());
             let (live, retries) = (input.live.clone(), retries.clone());
             Arc::new(move |body: EventBody| {
-                let mut retries = retries.lock().unwrap_or_else(PoisonError::into_inner);
-                if retries.error.is_some() {
+                let failed = retries
+                    .lock()
+                    .unwrap_or_else(PoisonError::into_inner)
+                    .error
+                    .is_some();
+                if failed {
                     return;
                 }
-                match append_live(log.as_ref(), &session, &live, body) {
+                // Appended without holding the lock: the live sink may run
+                // arbitrary code.
+                let appended = append_live(log.as_ref(), &session, &live, body);
+                let mut retries = retries.lock().unwrap_or_else(PoisonError::into_inner);
+                match appended {
                     Ok(event) => retries.events.push(event),
                     Err(error) => retries.error = Some(error),
                 }
@@ -832,6 +851,7 @@ mod tests {
             model: None,
             source: MessageSource::user(),
             preset: None,
+            stream_revision: Arc::default(),
         };
         let debug = format!("{input:?}");
         assert!(debug.contains("\"s\""), "{debug}");

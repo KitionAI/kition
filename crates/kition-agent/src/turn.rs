@@ -380,6 +380,7 @@ pub async fn drive(
         live: Arc::new(|_: Live| {}),
         model: Some(run.model.model_name.clone()),
         preset: Some(run.execution_mode.clone()),
+        stream_revision: run.agent.stream_revision(run.session_id),
         source: MessageSource::new(run.source),
     };
     let outcome = driver.run_turn(input).await;
@@ -544,6 +545,7 @@ mod tests {
                 live: Arc::new(|_: Live| {}),
                 model: None,
                 preset: None,
+                stream_revision: Arc::default(),
                 source: MessageSource::user(),
             })
             .await

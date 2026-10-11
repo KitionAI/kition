@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex, PoisonError, RwLock};
 
 use kition_ai::engine::{Engine, MessagePart, RuntimeModel};
@@ -64,6 +65,10 @@ struct Inner {
     /// One lock per session for its turns; session ids are unique only
     /// within this agent's database.
     turns: SessionLocks,
+    /// The last assistant-stream revision of each session, so frames stay
+    /// dense across the turns of a session for as long as this process
+    /// runs.
+    stream_revisions: Mutex<HashMap<i64, Arc<AtomicU64>>>,
     web: reqwest::Client,
 }
 
@@ -91,6 +96,7 @@ impl Agent {
                 workflow_prompt: config.workflow_prompt,
                 kits: config.kits,
                 turns: SessionLocks::default(),
+                stream_revisions: Mutex::default(),
                 web: reqwest::Client::builder()
                     .redirect(reqwest::redirect::Policy::none())
                     .connect_timeout(std::time::Duration::from_secs(10))
@@ -168,6 +174,17 @@ impl Agent {
             .policy
             .write()
             .unwrap_or_else(PoisonError::into_inner)
+    }
+
+    /// The assistant-stream revision counter of a session.
+    pub fn stream_revision(&self, session_id: i64) -> Arc<AtomicU64> {
+        self.inner
+            .stream_revisions
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .entry(session_id)
+            .or_default()
+            .clone()
     }
 
     /// Runs blocking database work off the async executor.
@@ -572,6 +589,36 @@ mod tests {
         drop(guard);
         assert!(!is_busy(&locks, 5));
         assert!(hold(&locks, 5).is_some());
+    }
+
+    #[test]
+    fn a_session_keeps_one_stream_revision_counter() {
+        let dirs: Vec<tempfile::TempDir> = (0..2)
+            .map(|_| tempfile::tempdir().unwrap_or_else(|error| panic!("{error}")))
+            .collect();
+        let agent = Agent::new(AgentConfig {
+            db: Db::open_in_memory().unwrap_or_else(|error| panic!("{error}")),
+            engine: Engine::new(dirs[0].path().to_path_buf(), None),
+            workspace_dir: dirs[1].path().to_path_buf(),
+            upload_dir: dirs[0].path().to_path_buf(),
+            policy_path: None,
+            hooks: None,
+            smtp: None,
+            tables: None,
+            portal_base_url: String::new(),
+            mcp_path: None,
+            workflow_prompt: None,
+            kits: None,
+        });
+        let first = agent.stream_revision(3);
+        first.store(7, std::sync::atomic::Ordering::SeqCst);
+        assert!(Arc::ptr_eq(&first, &agent.stream_revision(3)));
+        assert_eq!(
+            agent
+                .stream_revision(4)
+                .load(std::sync::atomic::Ordering::SeqCst),
+            0
+        );
     }
 
     #[test]

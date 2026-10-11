@@ -409,6 +409,16 @@ pub(crate) struct SseLines {
 }
 
 impl SseLines {
+    /// Lines of a fixed stream body, for parser tests.
+    #[cfg(test)]
+    pub fn from_text(text: &str) -> Self {
+        Self {
+            stream: futures::stream::iter([Ok(bytes::Bytes::from(text.to_owned()))]).boxed(),
+            buffer: Vec::new(),
+            done: false,
+        }
+    }
+
     pub fn new(response: reqwest::Response) -> Self {
         Self {
             stream: response.bytes_stream().boxed(),

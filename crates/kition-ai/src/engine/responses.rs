@@ -555,6 +555,10 @@ async fn parse_stream(
     let mut usage_raw: Option<Value> = None;
     let mut status = String::new();
     let mut events = 0;
+    // Argument deltas name their output item; the call is logged under its
+    // `call_id`, so each function call item maps one to the other.
+    let mut calls: std::collections::HashMap<String, (String, String)> =
+        std::collections::HashMap::new();
     while let Some(data) = lines.next_data().await? {
         if data == "[DONE]" {
             break;
@@ -577,21 +581,35 @@ async fn parse_stream(
                     }
                 }
             }
+            "response.output_item.added" => {
+                if let Some(Value::Object(item)) = payload.get("item")
+                    && text_of(item.get("type")) == "function_call"
+                {
+                    calls.insert(
+                        trimmed(item.get("id")),
+                        (trimmed(item.get("call_id")), trimmed(item.get("name"))),
+                    );
+                }
+            }
             "response.function_call_arguments.delta" => {
                 if let Some(stream) = stream {
-                    let call_id = text_of(payload.get("call_id"));
-                    let item_id = text_of(payload.get("item_id"));
-                    let id = if call_id.trim().is_empty() {
-                        item_id.trim()
-                    } else {
-                        call_id.trim()
-                    };
+                    let item_id = text_of(payload.get("item_id")).trim();
+                    let (call_id, name) = calls.get(item_id).cloned().unwrap_or_default();
+                    let id = [
+                        text_of(payload.get("call_id")).trim(),
+                        call_id.as_str(),
+                        item_id,
+                    ]
+                    .into_iter()
+                    .find(|id| !id.is_empty())
+                    .unwrap_or_default();
                     stream(StreamEvent {
                         kind: "tool_call_delta",
                         tool_call_index: as_i64(
                             payload.get("output_index").unwrap_or(&Value::Null),
                         ),
                         tool_call_id: id.to_owned(),
+                        tool_name: name,
                         tool_arguments_delta: text_of(payload.get("delta")).to_owned(),
                         ..StreamEvent::default()
                     });
@@ -659,6 +677,48 @@ async fn parse_stream(
 mod tests {
     use super::super::types::MessagePart;
     use super::*;
+
+    #[tokio::test]
+    async fn tool_call_deltas_carry_the_logged_call_id() {
+        let events = [
+            json!({ "type": "response.output_item.added", "output_index": 0,
+                "item": { "type": "function_call", "id": "fc_1", "call_id": "call_1", "name": "document_write", "arguments": "" } }),
+            json!({ "type": "response.function_call_arguments.delta", "item_id": "fc_1", "output_index": 0, "delta": "{\"path\"" }),
+            json!({ "type": "response.function_call_arguments.delta", "item_id": "fc_2", "output_index": 1, "delta": "{}" }),
+            json!({ "type": "response.completed", "response": { "status": "completed", "output": [] } }),
+        ];
+        let body: String = events
+            .iter()
+            .map(|event| format!("data: {event}\n\n"))
+            .collect();
+        let seen = std::sync::Arc::new(std::sync::Mutex::new(Vec::<(String, String)>::new()));
+        let sink = seen.clone();
+        let handler: StreamHandler = std::sync::Arc::new(move |event: StreamEvent| {
+            if event.kind == "tool_call_delta" {
+                sink.lock()
+                    .map(|mut seen| seen.push((event.tool_call_id, event.tool_name)))
+                    .ok();
+            }
+        });
+        parse_stream(
+            SseLines::from_text(&body),
+            "",
+            "m",
+            Instant::now(),
+            Some(&handler),
+        )
+        .await
+        .unwrap_or_else(|error| panic!("{error}"));
+        assert_eq!(
+            *seen
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner),
+            [
+                ("call_1".to_owned(), "document_write".to_owned()),
+                ("fc_2".to_owned(), String::new()),
+            ]
+        );
+    }
 
     #[test]
     fn normalizes_messages_into_input_items() {
