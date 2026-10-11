@@ -39,6 +39,12 @@ on `useKitEditor` takes part with no kit code (`kition/useKitBridge.ts`,
 `kition/kitBridge.ts`; runtime side `crates/kition-kits/src/bridge.rs`). With
 no window open on the file, the agent uses the headless kit as before.
 
+The same kit tools serve other harnesses as an MCP server (`crates/kition-kits/src/tools.rs`,
+`mcp.rs`): `POST /v1/mcp/kits` on the running runtime (Streamable HTTP, loopback, with the live
+bridge) and the stdio `kition-kits-mcp --workspace <folder>` without Kition (headless kits).
+DeepSeek Harness mounts them through its own `dsh-mcp-client` with kition-sdk's
+`packages/dsh-kits` patches (standard D1); its `test/e2e.sh` proves it with a real dsh runtime.
+
 Rejected on 2026-10-10 after a real-app trial: embedding the kit's native
 editor in an overlay window above the tab (`surface: embedded`, plan B). It
 felt like a second program, showed two canvases and extra scroll bars, and

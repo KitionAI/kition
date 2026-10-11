@@ -47,6 +47,7 @@ pub fn router(state: KitsState) -> Router {
         )
         .route("/kits/{kit}/documents/{document}/save", post(save))
         .route("/kits/bridge", get(bridge_stream).post(bridge_message))
+        .route("/mcp/kits", post(mcp))
         .route("/kits/surfaces", post(open_surface))
         .route(
             "/kits/surfaces/{surface}",
@@ -113,6 +114,23 @@ async fn bridge_message(
         .receive(query.session, &message)
         .map_err(|message| AppError::new(404, 40402, message))?;
     Ok(ok(json!({})))
+}
+
+/// `POST /mcp/kits`: the kit tools as an MCP server over Streamable HTTP (`mcp.rs`). A request
+/// is answered with JSON; a notification is accepted with 202. (MCP 2025-06-18 has no batches.)
+async fn mcp(
+    State(state): State<KitsState>,
+    _user: CurrentUser,
+    JsonBody(message): JsonBody<Value>,
+) -> Response {
+    match crate::mcp::handle(&state.kits, &message).await {
+        Some(answer) => (
+            [(header::CONTENT_TYPE, "application/json")],
+            answer.to_string(),
+        )
+            .into_response(),
+        None => http::StatusCode::ACCEPTED.into_response(),
+    }
 }
 
 /// Maps kit failures to statuses the renderer can branch on.
