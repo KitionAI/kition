@@ -78,6 +78,7 @@ const VECTOR_UI: EmbeddedKit = { kitId: 'kit.vector', dir: 'vector-ui' }
 const DESIGN_UI: EmbeddedKit = { kitId: 'kit.design', dir: 'design-ui' }
 const PHOTO_UI: EmbeddedKit = { kitId: 'kit.photo', dir: 'photo-ui' }
 const EFFECT_UI: EmbeddedKit = { kitId: 'kit.effect', dir: 'effect-ui' }
+const FILM_UI: EmbeddedKit = { kitId: 'kit.film', dir: 'film-ui' }
 
 const KIT_EDITORS: readonly KitEditorEntry[] = [
   {
@@ -93,6 +94,7 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
     sdk: FILM_SDK,
     Editor: lazy(() => import('../FilmWebEditor').then((module) => ({ default: module.FilmWebEditor }))),
     Fallback: FilmUnavailable,
+    embedded: FILM_UI,
     create: { id: 'video', extension: 'fcproj', baseName: 'Untitled video', size: { width: 1920, height: 1080 }, label: 'createMenu.format.video', icon: Clapperboard },
   },
   {
