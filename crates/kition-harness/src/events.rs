@@ -176,6 +176,82 @@ mod tests {
     }
 
     #[test]
+    fn every_event_body_round_trips_and_covers_kinds() {
+        let bodies = vec![
+            EventBody::TurnStart { turn: 1 },
+            EventBody::TurnEnd {
+                turn: 1,
+                reason: TurnEndReason::Completed,
+                error: String::new(),
+            },
+            EventBody::StepStart { turn: 1, step: 1 },
+            EventBody::StepEnd { turn: 1, step: 1 },
+            EventBody::SystemMessage {
+                content: "be helpful".into(),
+            },
+            EventBody::UserMessage {
+                content: vec![ContentBlock::text("hi")],
+            },
+            EventBody::AssistantMessage {
+                content: String::new(),
+                tool_calls: Vec::new(),
+                stop_reason: String::new(),
+                model: String::new(),
+                raw_items: Vec::new(),
+            },
+            EventBody::AssistantAttempt {
+                error: "timed out".into(),
+            },
+            EventBody::ToolCall {
+                call_id: "c1".into(),
+                name: "echo".into(),
+                arguments: json!({}),
+            },
+            EventBody::ToolResult {
+                call_id: "c1".into(),
+                name: "echo".into(),
+                value: Value::Null,
+                content: vec![ContentBlock::text("done")],
+                is_error: false,
+                meta: None,
+            },
+            EventBody::ApprovalAsked {
+                call_id: "c1".into(),
+                reason: "writes outside the workspace".into(),
+            },
+        ];
+
+        let mut kinds = Vec::new();
+        for (index, body) in bodies.into_iter().enumerate() {
+            let kind = body.kind();
+            kinds.push(kind);
+            let event = SessionEvent {
+                seq: index as u64,
+                at: 0,
+                body,
+            };
+            let wire = serde_json::to_value(&event).unwrap_or_else(|error| panic!("{error}"));
+            assert_eq!(wire["type"], kind);
+            let back: SessionEvent =
+                serde_json::from_value(wire).unwrap_or_else(|error| panic!("{error}"));
+            assert_eq!(back, event);
+        }
+
+        assert_eq!(kinds.len(), EventBody::KINDS.len());
+        for kind in &kinds {
+            assert!(EventBody::KINDS.contains(kind), "{kind} missing from KINDS");
+        }
+        let mut deduped = kinds.clone();
+        deduped.sort_unstable();
+        deduped.dedup();
+        assert_eq!(
+            deduped.len(),
+            kinds.len(),
+            "duplicate kind in coverage list"
+        );
+    }
+
+    #[test]
     fn turn_end_reason_is_kebab_case() {
         let body = EventBody::TurnEnd {
             turn: 1,

@@ -17,6 +17,15 @@ struct Inner {
     notify: Notify,
 }
 
+impl std::fmt::Debug for Cancel {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("Cancel")
+            .field("cancelled", &self.is_cancelled())
+            .finish()
+    }
+}
+
 impl Cancel {
     pub fn cancel(&self) {
         self.inner.cancelled.store(true, Ordering::SeqCst);
@@ -55,5 +64,13 @@ mod tests {
         task.await.unwrap_or_else(|error| panic!("{error}"));
         assert!(cancel.is_cancelled());
         cancel.cancelled().await;
+    }
+
+    #[test]
+    fn debug_prints_the_cancelled_flag() {
+        let cancel = Cancel::default();
+        assert_eq!(format!("{cancel:?}"), "Cancel { cancelled: false }");
+        cancel.cancel();
+        assert_eq!(format!("{cancel:?}"), "Cancel { cancelled: true }");
     }
 }

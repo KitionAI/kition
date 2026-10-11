@@ -25,15 +25,31 @@ pub fn value_to_json_schema(spec: &Value) -> Result<Value, String> {
     compile(spec, "schema", false)
 }
 
-/// Path-qualified violations of `schema` by `instance`; empty means valid.
-pub fn violations(schema: &Value, instance: &Value) -> Vec<String> {
-    match jsonschema::validator_for(schema) {
-        Ok(validator) => validator
-            .iter_errors(instance)
-            .take(8)
-            .map(|error| format!("{error} at `{}`", error.instance_path()))
-            .collect(),
-        Err(error) => vec![format!("invalid schema: {error}")],
+/// Compiles `schema` into a reusable validator.
+pub fn validator(schema: &Value) -> Result<jsonschema::Validator, String> {
+    jsonschema::validator_for(schema).map_err(|error| format!("invalid schema: {error}"))
+}
+
+/// Path-qualified violations of `instance` by `validator`; empty means
+/// valid. At most 8 violations are reported.
+pub fn violations(validator: &jsonschema::Validator, instance: &Value) -> Vec<String> {
+    validator
+        .iter_errors(instance)
+        .take(8)
+        .map(|error| format!("{error} at `{}`", error.instance_path()))
+        .collect()
+}
+
+/// Whether `value` matches the given scalar `ValueSchemaSpec` type, for
+/// `enum` and `const` validation.
+fn scalar_matches(kind: &str, value: &Value) -> bool {
+    match kind {
+        "string" => value.is_string(),
+        "number" => value.is_number(),
+        "integer" => value.as_f64().is_some_and(|number| number.fract() == 0.0),
+        "boolean" => value.is_boolean(),
+        "null" => value.is_null(),
+        _ => false,
     }
 }
 
@@ -67,6 +83,17 @@ fn compile(spec: &Value, path: &str, allow_required: bool) -> Result<Value, Stri
         }
     }
     if let Some(branches) = object.get("oneOf") {
+        for key in object.keys() {
+            if key == "type" {
+                return Err(format!("{path} cannot declare both type and oneOf"));
+            }
+            let allowed = key == "oneOf"
+                || ANNOTATIONS.contains(&key.as_str())
+                || (allow_required && key == "required");
+            if !allowed {
+                return Err(format!("{path}.{key} is not allowed beside oneOf"));
+            }
+        }
         let branches = branches
             .as_array()
             .filter(|branches| branches.len() >= 2)
@@ -79,10 +106,14 @@ fn compile(spec: &Value, path: &str, allow_required: bool) -> Result<Value, Stri
         out.insert("oneOf".into(), Value::Array(compiled));
         return Ok(Value::Object(out));
     }
-    let kind = object
-        .get("type")
-        .and_then(Value::as_str)
-        .ok_or_else(|| format!("{path}.type is missing"))?;
+    let kind = match object.get("type") {
+        None => return Err(format!("{path}.type is missing")),
+        Some(value) => value.as_str().ok_or_else(|| {
+            format!(
+                "{path}.type must be string, number, integer, boolean, null, array, object, or json, or use oneOf"
+            )
+        })?,
+    };
     for key in object.keys() {
         let allowed = ANNOTATIONS.contains(&key.as_str())
             || (allow_required && key == "required")
@@ -104,10 +135,34 @@ fn compile(spec: &Value, path: &str, allow_required: bool) -> Result<Value, Stri
         "json" => {}
         "string" | "number" | "integer" | "boolean" | "null" => {
             out.insert("type".into(), json!(kind));
-            for key in ["enum", "const"] {
-                if let Some(value) = object.get(key) {
-                    out.insert(key.into(), value.clone());
+            let enum_values = match object.get("enum") {
+                Some(value) => {
+                    let values = value
+                        .as_array()
+                        .filter(|values| {
+                            !values.is_empty()
+                                && values.iter().all(|entry| scalar_matches(kind, entry))
+                        })
+                        .ok_or_else(|| {
+                            format!("{path}.enum must be a non-empty array of {kind} values")
+                        })?;
+                    out.insert("enum".into(), Value::Array(values.clone()));
+                    Some(values.clone())
                 }
+                None => None,
+            };
+            if let Some(value) = object.get("const") {
+                if !scalar_matches(kind, value) {
+                    return Err(format!("{path}.const must be a {kind} value"));
+                }
+                if let Some(values) = &enum_values
+                    && !values.contains(value)
+                {
+                    return Err(format!(
+                        "{path}.const must be one of {path}.enum when both are declared"
+                    ));
+                }
+                out.insert("const".into(), value.clone());
             }
         }
         "array" => {
@@ -179,11 +234,12 @@ mod tests {
             schema["properties"]["mode"]["oneOf"][1],
             json!({ "type": "null" })
         );
-        assert!(violations(&schema, &json!({ "path": "a.psd" })).is_empty());
-        assert!(!violations(&schema, &json!({ "steps": [] })).is_empty());
+        let validator = validator(&schema).unwrap_or_else(|error| panic!("{error}"));
+        assert!(violations(&validator, &json!({ "path": "a.psd" })).is_empty());
+        assert!(!violations(&validator, &json!({ "steps": [] })).is_empty());
         assert!(
             !violations(
-                &schema,
+                &validator,
                 &json!({ "path": "a", "steps": [{ "params": {} }] })
             )
             .is_empty()
@@ -209,5 +265,66 @@ mod tests {
             .err()
             .unwrap_or_default();
         assert!(stray.contains("not allowed"), "{stray}");
+    }
+
+    #[test]
+    fn one_of_rejects_sibling_type_and_other_keywords() {
+        let two = json!([{ "type": "string" }, { "type": "null" }]);
+        let with_type = value_to_json_schema(&json!({ "oneOf": two, "type": "string" }))
+            .err()
+            .unwrap_or_default();
+        assert_eq!(with_type, "schema cannot declare both type and oneOf");
+        let with_enum = value_to_json_schema(&json!({ "oneOf": two, "enum": ["a"] }))
+            .err()
+            .unwrap_or_default();
+        assert!(with_enum.contains("enum"), "{with_enum}");
+        assert!(with_enum.contains("oneOf"), "{with_enum}");
+        let with_properties = value_to_json_schema(&json!({ "oneOf": two, "properties": {} }))
+            .err()
+            .unwrap_or_default();
+        assert!(with_properties.contains("properties"), "{with_properties}");
+        assert!(with_properties.contains("oneOf"), "{with_properties}");
+    }
+
+    #[test]
+    fn scalar_enum_and_const_follow_dsh_rules() {
+        let bad_enum = value_to_json_schema(&json!({ "type": "string", "enum": [1] }))
+            .err()
+            .unwrap_or_default();
+        assert!(bad_enum.contains("enum"), "{bad_enum}");
+        let empty_enum = value_to_json_schema(&json!({ "type": "string", "enum": [] }))
+            .err()
+            .unwrap_or_default();
+        assert!(empty_enum.contains("enum"), "{empty_enum}");
+        let not_array = value_to_json_schema(&json!({ "type": "string", "enum": "a" }))
+            .err()
+            .unwrap_or_default();
+        assert!(not_array.contains("enum"), "{not_array}");
+        let bad_const = value_to_json_schema(&json!({ "type": "integer", "const": 1.5 }))
+            .err()
+            .unwrap_or_default();
+        assert!(bad_const.contains("const"), "{bad_const}");
+        let const_not_in_enum =
+            value_to_json_schema(&json!({ "type": "integer", "enum": [1, 2], "const": 3 }))
+                .err()
+                .unwrap_or_default();
+        assert!(const_not_in_enum.contains("const"), "{const_not_in_enum}");
+        assert!(const_not_in_enum.contains("enum"), "{const_not_in_enum}");
+        let ok = value_to_json_schema(&json!({ "type": "integer", "enum": [1, 2], "const": 2 }))
+            .unwrap_or_else(|error| panic!("{error}"));
+        assert_eq!(ok, json!({ "type": "integer", "enum": [1, 2], "const": 2 }));
+    }
+
+    #[test]
+    fn missing_type_and_non_string_type_report_different_errors() {
+        let missing = value_to_json_schema(&json!({})).err().unwrap_or_default();
+        assert_eq!(missing, "schema.type is missing");
+        let non_string = value_to_json_schema(&json!({ "type": 1 }))
+            .err()
+            .unwrap_or_default();
+        assert_eq!(
+            non_string,
+            "schema.type must be string, number, integer, boolean, null, array, object, or json, or use oneOf"
+        );
     }
 }
