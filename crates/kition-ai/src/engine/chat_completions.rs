@@ -10,8 +10,9 @@ use serde_json::{Map, Value, json};
 
 use super::error::{AiError, AiResult};
 use super::transport::{
-    MIB, SseLines, chat_headers, credits_exhausted, header, log_provider_failure, network_error,
-    normalize_base_url, read_limited, send, status_error, usage_from, validate_endpoint,
+    MIB, SseLines, chat_headers, credits_exhausted, header, json_request, log_provider_failure,
+    network_error, normalize_base_url, read_limited, send, status_error, usage_from,
+    validate_endpoint,
 };
 use super::types::{
     ChatResult, Message, RuntimeModel, StreamEvent, StreamHandler, ToolCall, ToolSpec, Usage,
@@ -526,7 +527,11 @@ pub(crate) async fn call(
     let payload = request_body(model, items, tools, choice, stream.is_some());
 
     let endpoint = validate_endpoint(&format!("{base_url}/chat/completions"))?;
-    let request = json_request(http.post(&endpoint).json(&payload), &headers, stream.is_some());
+    let request = json_request(
+        http.post(&endpoint).json(&payload),
+        &headers,
+        stream.is_some(),
+    );
     let started = Instant::now();
     let response = send(request, stream.is_some())
         .await

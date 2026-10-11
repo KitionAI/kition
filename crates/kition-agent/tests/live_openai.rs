@@ -137,6 +137,11 @@ async fn turn(live: &Live, session_id: i64, key: &str, wire_api: &str, content: 
     assert!(errors.is_empty(), "error frames: {errors:?}");
     let done = frames.last().cloned().unwrap_or_default();
     assert_eq!(done["type"], "done", "{frames:?}");
+    assert_ne!(
+        done["extra_data"]["awaiting_shell_approval"], true,
+        "the model chose a shell command, which waits for approval: {}",
+        done["extra_data"]["shell_approval_required"]["command"]
+    );
     let reply = done["extra_data"]["message"]["content"]
         .as_str()
         .unwrap_or_default()
@@ -170,8 +175,9 @@ async fn two_turns(wire_api: &str, harness_mode: bool) {
         &key,
         wire_api,
         &format!(
-            "Create the workspace file `{FILE}` containing exactly the line `{LINE}`. \
-             Then read the file back with a tool and tell me its first line."
+            "Create the workspace file `{FILE}` containing exactly the line `{LINE}` \
+             with the document tools (not shell commands). Then read the file back \
+             with a document tool and tell me its first line."
         ),
     )
     .await;

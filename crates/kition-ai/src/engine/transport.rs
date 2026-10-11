@@ -554,7 +554,9 @@ mod tests {
         let client = reqwest::Client::new();
         for (streaming, accept) in [(true, "text/event-stream"), (false, "application/json")] {
             let request = json_request(
-                client.post("http://127.0.0.1:9/v1/chat/completions").json(&serde_json::json!({})),
+                client
+                    .post("http://127.0.0.1:9/v1/chat/completions")
+                    .json(&serde_json::json!({})),
                 &headers,
                 streaming,
             )

@@ -10,8 +10,8 @@ use serde_json::{Map, Value, json};
 use super::error::{AiError, AiResult};
 use super::responses::content_text;
 use super::transport::{
-    MIB, SseLines, chat_headers, credits_exhausted, header, log_provider_failure, network_error,
-    normalize_base_url, read_limited, send, set_header, status_error, usage_from,
+    MIB, SseLines, chat_headers, credits_exhausted, header, json_request, log_provider_failure,
+    network_error, normalize_base_url, read_limited, send, set_header, status_error, usage_from,
     validate_endpoint,
 };
 use super::types::{
