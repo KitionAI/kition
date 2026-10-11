@@ -62,6 +62,9 @@ struct Inner {
     workflow_prompt: Option<WorkflowPrompt>,
     kits: Option<kition_kits::KitManager>,
     harness: bool,
+    /// One lock per session for harness turns; session ids are unique only
+    /// within this agent's database.
+    turns: crate::harness_turn::SessionLocks,
     web: reqwest::Client,
 }
 
@@ -88,6 +91,7 @@ impl Agent {
                 workflow_prompt: config.workflow_prompt,
                 kits: config.kits,
                 harness: config.harness,
+                turns: crate::harness_turn::SessionLocks::default(),
                 web: reqwest::Client::builder()
                     .redirect(reqwest::redirect::Policy::none())
                     .connect_timeout(std::time::Duration::from_secs(10))
@@ -134,6 +138,11 @@ impl Agent {
     /// Whether turns run on `kition-harness`.
     pub fn harness(&self) -> bool {
         self.inner.harness
+    }
+
+    /// The per-session locks harness turns hold while they run.
+    pub(crate) fn turns(&self) -> &crate::harness_turn::SessionLocks {
+        &self.inner.turns
     }
 
     pub fn portal_base_url(&self) -> &str {

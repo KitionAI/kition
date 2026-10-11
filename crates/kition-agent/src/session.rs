@@ -207,6 +207,9 @@ pub async fn prepare(
     mut request: StreamRequest,
 ) -> AppResult<Prepared> {
     let session = owned_session(agent, session_id, user_id).await?;
+    if agent.harness() && crate::harness_turn::is_busy(agent.turns(), session_id) {
+        return Err(AppError::conflict(crate::harness_turn::BUSY));
+    }
     let image_intent = match &request.image_generation_intent {
         Some(raw) => {
             if request.hide_user_message {

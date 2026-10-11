@@ -4,7 +4,7 @@
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::{Arc, LazyLock, Mutex, PoisonError};
+use std::sync::{Arc, Mutex, PoisonError};
 
 use futures::future::BoxFuture;
 use kition_ai::engine::{ChatResult, MessagePart, ToolSpec};
@@ -21,6 +21,7 @@ use serde_json::{Value, json};
 use crate::run::{EventInput, Run};
 use crate::session;
 use crate::store::{self, AgentArtifact, AgentSession};
+use crate::stream::Frame;
 use crate::tools::{self, images};
 use crate::{attachments, prompts, turn};
 
@@ -192,16 +193,24 @@ fn logged_arguments(name: &str, input: &Value) -> Value {
     }
 }
 
-type SessionLocks = Mutex<HashMap<i64, Arc<tokio::sync::Mutex<()>>>>;
-
 /// One lock per session, so two turns of a session never interleave their
-/// log appends. Entries nobody holds are pruned on the next lookup.
-static SESSION_LOCKS: LazyLock<SessionLocks> = LazyLock::new(SessionLocks::default);
+/// log appends. Each `Agent` owns one: session ids are only unique within
+/// its database.
+pub type SessionLocks = Mutex<HashMap<i64, Arc<tokio::sync::Mutex<()>>>>;
 
-fn session_lock(session_id: i64) -> Arc<tokio::sync::Mutex<()>> {
-    let mut locks = SESSION_LOCKS.lock().unwrap_or_else(PoisonError::into_inner);
+/// The session's lock. Entries nobody holds are pruned on the next lookup.
+fn session_lock(locks: &SessionLocks, session_id: i64) -> Arc<tokio::sync::Mutex<()>> {
+    let mut locks = locks.lock().unwrap_or_else(PoisonError::into_inner);
     locks.retain(|id, lock| *id == session_id || Arc::strong_count(lock) > 1);
     locks.entry(session_id).or_default().clone()
+}
+
+/// What a second turn of a session hears while the first is running.
+pub const BUSY: &str = "This session is still answering. Wait for the reply or stop it first.";
+
+/// Whether a harness turn of this session is running.
+pub fn is_busy(locks: &SessionLocks, session_id: i64) -> bool {
+    session_lock(locks, session_id).try_lock().is_err()
 }
 
 /// Aborts the task when dropped, even if the turn panics.
@@ -396,8 +405,12 @@ pub async fn drive(
     specs: Vec<ToolSpec>,
 ) {
     // Held for the whole turn, from before the log is read to the final
-    // frame, so a second turn of this session waits for this one.
-    let _turn = session_lock(run.session_id).lock_owned().await;
+    // frame. `session::prepare` already refuses a second turn while one is
+    // running; this catches the race between that check and here.
+    let Ok(_turn) = session_lock(run.agent.turns(), run.session_id).try_lock_owned() else {
+        run.send(&Frame::error(BUSY));
+        return;
+    };
     let pending: Pending = Arc::new(Mutex::new(None));
     let notes = Notes::default();
     let tools = legacy_tools(run, &specs, &pending, &notes);
@@ -642,11 +655,26 @@ mod tests {
         );
     }
 
+    #[tokio::test]
+    async fn a_running_turn_marks_its_session_busy() {
+        let locks = SessionLocks::default();
+        assert!(!is_busy(&locks, 9001));
+        let held = session_lock(&locks, 9001).lock_owned().await;
+        assert!(is_busy(&locks, 9001));
+        assert!(
+            !is_busy(&SessionLocks::default(), 9001),
+            "another agent's session 9001 is a different session"
+        );
+        drop(held);
+        assert!(!is_busy(&locks, 9001));
+    }
+
     #[test]
     fn turns_of_one_session_share_a_lock() {
-        let first = session_lock(7);
-        let again = session_lock(7);
-        let other = session_lock(8);
+        let locks = SessionLocks::default();
+        let first = session_lock(&locks, 7);
+        let again = session_lock(&locks, 7);
+        let other = session_lock(&locks, 8);
         assert!(Arc::ptr_eq(&first, &again));
         assert!(!Arc::ptr_eq(&first, &other));
     }
