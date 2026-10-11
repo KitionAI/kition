@@ -12,6 +12,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 use sha2::{Digest, Sha256};
 
+use kition_harness::llm::HostedCall;
+
 use crate::run::{EventInput, Run, ToolOutput, ToolResult, delivered, int_field, text_field};
 use crate::store::{self, AgentMessage, AgentSession};
 use crate::stream::{Frame, value};
@@ -170,14 +172,17 @@ pub async fn save_image_asset(run: &Run, tool_call_id: i64, input: &Value) -> To
 }
 
 /// Saves images the model made with its hosted tool, records each as an
-/// `image_generation` tool call, and returns the follow-up for the next
-/// model turn.
+/// `image_generation` tool call, and returns them as hosted calls for the
+/// log with the follow-up for the next model step. An image without an id
+/// gets `<id_prefix>_img_<i>`.
 pub async fn save_hosted_images(
     run: &Run,
     wire_api: &str,
+    id_prefix: &str,
     calls: &[HostedImageGenerationCall],
-) -> Vec<MessagePart> {
+) -> (Vec<HostedCall>, Vec<MessagePart>) {
     let mut saved = Vec::new();
+    let mut hosted = Vec::new();
     for (index, call) in calls.iter().enumerate() {
         let Ok(data) = base64::engine::general_purpose::STANDARD.decode(call.result.trim()) else {
             continue;
@@ -186,7 +191,7 @@ pub async fn save_hosted_images(
             continue;
         }
         let id = if call.id.trim().is_empty() {
-            format!("img_{}_{index}", run.session_id)
+            format!("{id_prefix}_img_{index}")
         } else {
             call.id.trim().to_owned()
         };
@@ -197,6 +202,17 @@ pub async fn save_hosted_images(
         };
         let input =
             json!({ "hosted": true, "revised_prompt": call.revised_prompt, "size": call.size });
+        hosted.push(HostedCall {
+            call_id: id.clone(),
+            name: "image_generation".into(),
+            arguments: input.clone(),
+            value: json!({
+                "provider": wire_api, "hosted": true, "status": call.status,
+                "path": path, "mime": "image/png",
+            }),
+            meta: Some(json!({ "hosted": true })),
+            files: vec![delivered(&path, "")],
+        });
         let Some(mut tool_call) =
             crate::tools::start_tool_call(run, "image_generation", input).await
         else {
@@ -232,7 +248,7 @@ pub async fn save_hosted_images(
         saved.push(path);
     }
     if saved.is_empty() {
-        return Vec::new();
+        return (hosted, Vec::new());
     }
     let mut lines = vec![
         "[image_generation system follow-up] The hosted image_generation tool produced the image(s) below and they have been saved into the workspace:".to_owned(),
@@ -247,7 +263,7 @@ pub async fn save_hosted_images(
         lines.push("If the original request asked for images or illustrations for this document or article, do not finish after generating artifacts: update this same document with Markdown image links at relevant positions before the final reply. Use document_write for a whole-document rewrite. Use apply_patch only for a small localized insertion whose exact surrounding text came from a complete recent document_read.".into());
         lines.push("If the user requested standalone image assets only, report the saved workspace-relative paths without modifying the document.".into());
     }
-    vec![text_part(lines.join("\n"))]
+    (hosted, vec![text_part(lines.join("\n"))])
 }
 
 // --- Image composer requests ---------------------------------------------

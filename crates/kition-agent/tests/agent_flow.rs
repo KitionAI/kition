@@ -647,6 +647,64 @@ async fn requests_without_a_usable_model_are_refused_before_streaming() {
     assert!(session_events(&app, session_id).await.is_empty());
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn hosted_search_and_image_calls_are_logged() {
+    let Fixture { app, workspace, .. } = app();
+    let session_id = new_session(&app).await;
+    let output = json!([
+        { "type": "web_search_call", "id": "ws_1", "status": "completed",
+          "action": { "type": "search", "query": "fox facts" } },
+        { "type": "image_generation_call", "id": "ig_1", "status": "completed",
+          "result": PIXEL_PNG, "size": "1024x1024" },
+        { "type": "message", "role": "assistant", "content": [{ "type": "output_text", "text": "Here is a fox." }] },
+    ]);
+    let hosted = sse(&[
+        json!({ "type": "response.output_text.delta", "delta": "Here is a fox." }),
+        json!({ "type": "response.completed", "response": { "status": "completed", "output": output } }),
+    ]);
+    let base_url = fake_provider(vec![hosted, answer(&["Done."])]).await;
+    stream(
+        &app,
+        session_id,
+        &base_url,
+        json!({ "content": "Draw a fox" }),
+    )
+    .await;
+    let events = session_events(&app, session_id).await;
+    let kinds: Vec<&str> = events.iter().filter_map(|e| e["type"].as_str()).collect();
+    let message = kinds
+        .iter()
+        .position(|kind| *kind == "assistant/message")
+        .unwrap_or_else(|| panic!("{kinds:?}"));
+    assert_eq!(
+        &kinds[message..message + 7],
+        [
+            "assistant/message",
+            "tool/call",
+            "tool/result",
+            "tool/call",
+            "tool/result",
+            "deliverables/presented",
+            "user/message",
+        ],
+        "{events:?}"
+    );
+    let search = &events[message + 1];
+    assert_eq!(
+        (search["name"].as_str(), search["callId"].as_str()),
+        (Some("web_search"), Some("ws_1"))
+    );
+    assert_eq!(search["arguments"]["query"], "fox facts");
+    assert_eq!(events[message + 2]["meta"]["hosted"], true);
+    assert_eq!(events[message + 2]["isError"], false);
+    assert_eq!(events[message + 3]["name"], "image_generation");
+    let image = &events[message + 5];
+    assert_eq!(image["callId"], "ig_1");
+    let path = image["files"][0]["path"].as_str().unwrap_or_default();
+    assert!(workspace.path().join(path).is_file(), "{path}");
+    assert_eq!(events[message + 6]["source"]["kind"], "tool-follow-up");
+}
+
 /// The session's logged events through `GET /session-events`, each checked
 /// against the contract.
 async fn session_events(app: &Router, session_id: i64) -> Vec<Value> {

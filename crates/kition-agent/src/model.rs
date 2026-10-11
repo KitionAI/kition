@@ -11,7 +11,7 @@ use kition_ai::engine::{
     ChatResult, MessagePart, RetryEvent, RetryHandler, StreamEvent, StreamHandler,
 };
 use kition_harness::events::ContentBlock;
-use kition_harness::llm::{Llm, LlmReply, LlmRequest, LlmSink, normalize_calls};
+use kition_harness::llm::{HostedCall, Llm, LlmReply, LlmRequest, LlmSink, normalize_calls};
 use serde_json::json;
 
 use crate::run::{EventInput, Run};
@@ -103,20 +103,39 @@ fn stream_handler(
     })
 }
 
-/// Records searches the model ran with its hosted web search tool.
-async fn record_hosted_searches(run: &Run, result: &ChatResult) {
-    for search in &result.hosted_web_search_calls {
+/// Records searches the model ran with its hosted web search tool, and
+/// returns them as hosted calls for the log; a search without an id gets
+/// `<id_prefix>_ws_<i>`.
+async fn record_hosted_searches(
+    run: &Run,
+    result: &ChatResult,
+    id_prefix: &str,
+) -> Vec<HostedCall> {
+    let mut hosted = Vec::new();
+    for (index, search) in result.hosted_web_search_calls.iter().enumerate() {
         let mut input = json!({ "query": search.query, "hosted": true });
         if let Some(action) = &search.action {
             input["action"] = json!(action);
         }
-        let Some(mut call) = tools::start_tool_call(run, "web_search", input).await else {
-            continue;
-        };
         let output = json!({
             "provider": result.wire_api, "hosted": true, "status": search.status,
             "query": search.query, "action": search.action,
         });
+        hosted.push(HostedCall {
+            call_id: if search.id.trim().is_empty() {
+                format!("{id_prefix}_ws_{index}")
+            } else {
+                search.id.trim().to_owned()
+            },
+            name: "web_search".into(),
+            arguments: input.clone(),
+            value: output.clone(),
+            meta: Some(json!({ "hosted": true })),
+            files: Vec::new(),
+        });
+        let Some(mut call) = tools::start_tool_call(run, "web_search", input).await else {
+            continue;
+        };
         tools::complete_tool_call(run, &mut call, output.clone()).await;
         let message = if search.query.is_empty() {
             "Used hosted web search".to_owned()
@@ -140,6 +159,7 @@ async fn record_hosted_searches(run: &Run, result: &ChatResult) {
             ..Frame::new("tool_call")
         });
     }
+    hosted
 }
 
 /// The id prefix for calls of model step `step` that came without an id.
@@ -196,15 +216,17 @@ impl Llm for AgentLlm {
                 )
                 .await
                 .map_err(|error| error.to_string())?;
-            record_hosted_searches(run, &result).await;
-            let follow_up = blocks(
-                &images::save_hosted_images(
-                    run,
-                    &result.wire_api,
-                    &result.hosted_image_generation_calls,
-                )
-                .await,
-            );
+            let id_prefix = call_id_prefix(index);
+            let mut hosted = record_hosted_searches(run, &result, &id_prefix).await;
+            let (images, follow_up) = images::save_hosted_images(
+                run,
+                &result.wire_api,
+                &id_prefix,
+                &result.hosted_image_generation_calls,
+            )
+            .await;
+            hosted.extend(images);
+            let follow_up = blocks(&follow_up);
             let tool_calls = normalize_calls(&result.tool_calls, &call_id_prefix(index));
             run.event(
                 EventInput::new(
@@ -230,7 +252,7 @@ impl Llm for AgentLlm {
                 model: result.model.clone(),
                 raw_items: result.response_items.clone(),
                 follow_up,
-                hosted: Vec::new(),
+                hosted,
             };
             *self.last.lock().unwrap_or_else(PoisonError::into_inner) =
                 Some((result, streamed.load(Ordering::SeqCst)));
