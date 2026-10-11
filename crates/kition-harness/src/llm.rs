@@ -8,9 +8,11 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use futures::future::BoxFuture;
 use kition_ai::engine::{
-    Engine, Message, RuntimeModel, StreamEvent, StreamHandler, ToolCall, ToolSpec,
+    Engine, Message, RetryEvent, RetryHandler, RuntimeModel, StreamEvent, StreamHandler, ToolCall,
+    ToolSpec,
 };
 use kition_core::now_millis;
+use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use crate::events::{ContentBlock, LoggedCall, PresentedFile};
@@ -68,15 +70,120 @@ impl LlmReply {
     }
 }
 
-/// Receives streamed assistant text.
-pub type ChunkSink = Arc<dyn Fn(&str) + Send + Sync>;
+/// A piece of a streaming model reply (dsh `StreamChunk`, the kinds Kition
+/// streams). Text uses block index 0, tool call `i` uses `1 + i`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(
+    tag = "type",
+    rename_all = "kebab-case",
+    rename_all_fields = "camelCase"
+)]
+pub enum StreamChunk {
+    TextDelta {
+        index: u32,
+        text: String,
+    },
+    ToolCallDelta {
+        index: u32,
+        id: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        name: Option<String>,
+        arguments_delta: String,
+    },
+}
+
+/// A failed provider request that will be retried.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RetryInfo {
+    /// The retry number, from 1.
+    pub retry: u32,
+    pub max_retries: u32,
+    pub delay_ms: u64,
+    pub code: String,
+    pub message: String,
+    pub provider: String,
+}
+
+/// Where a model call reports progress while it runs: streamed chunks, a
+/// retry being scheduled, and a retry's wait being over (with its number).
+#[derive(Clone)]
+pub struct LlmSink {
+    pub chunk: Arc<dyn Fn(StreamChunk) + Send + Sync>,
+    pub retry: Arc<dyn Fn(RetryInfo) + Send + Sync>,
+    pub retry_started: Arc<dyn Fn(u32) + Send + Sync>,
+}
+
+impl LlmSink {
+    /// A sink that drops everything.
+    pub fn discard() -> Self {
+        Self {
+            chunk: Arc::new(|_| {}),
+            retry: Arc::new(|_| {}),
+            retry_started: Arc::new(|_| {}),
+        }
+    }
+
+    /// The engine stream handler that forwards text and tool argument
+    /// deltas as chunks.
+    pub fn stream_handler(&self) -> StreamHandler {
+        let chunk = self.chunk.clone();
+        Arc::new(move |event: StreamEvent| {
+            if let Some(piece) = stream_chunk(&event) {
+                chunk(piece);
+            }
+        })
+    }
+
+    /// The engine retry handler that forwards scheduled and started retries
+    /// of `provider`.
+    pub fn retry_handler(&self, provider: &str) -> RetryHandler {
+        let (retry, started) = (self.retry.clone(), self.retry_started.clone());
+        let provider = provider.to_owned();
+        Arc::new(move |event: RetryEvent| {
+            if event.started {
+                started(event.attempt);
+            } else {
+                retry(RetryInfo {
+                    retry: event.attempt,
+                    max_retries: event.max_retries,
+                    delay_ms: u64::try_from(event.delay.as_millis()).unwrap_or(u64::MAX),
+                    code: event.reason,
+                    message: event.message,
+                    provider: provider.clone(),
+                });
+            }
+        })
+    }
+}
+
+impl std::fmt::Debug for LlmSink {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.debug_struct("LlmSink").finish_non_exhaustive()
+    }
+}
+
+/// An engine stream event as a chunk: text at block 0, tool call `i` at
+/// `1 + i`. Other events (a finished tool call) are not chunks.
+pub fn stream_chunk(event: &StreamEvent) -> Option<StreamChunk> {
+    match event.kind {
+        "delta" if !event.delta.is_empty() => Some(StreamChunk::TextDelta {
+            index: 0,
+            text: event.delta.clone(),
+        }),
+        "tool_call_delta" => Some(StreamChunk::ToolCallDelta {
+            index: u32::try_from(event.tool_call_index.max(0))
+                .unwrap_or(u32::MAX - 1)
+                .saturating_add(1),
+            id: event.tool_call_id.clone(),
+            name: Some(event.tool_name.clone()).filter(|name| !name.is_empty()),
+            arguments_delta: event.tool_arguments_delta.clone(),
+        }),
+        _ => None,
+    }
+}
 
 pub trait Llm: Send + Sync {
-    fn call(
-        &self,
-        request: LlmRequest,
-        on_text: ChunkSink,
-    ) -> BoxFuture<'_, Result<LlmReply, String>>;
+    fn call(&self, request: LlmRequest, sink: LlmSink) -> BoxFuture<'_, Result<LlmReply, String>>;
 }
 
 /// Fills blank call ids from `prefix` plus the call's index, trims names, and
@@ -142,17 +249,8 @@ impl EngineLlm {
 }
 
 impl Llm for EngineLlm {
-    fn call(
-        &self,
-        request: LlmRequest,
-        on_text: ChunkSink,
-    ) -> BoxFuture<'_, Result<LlmReply, String>> {
+    fn call(&self, request: LlmRequest, sink: LlmSink) -> BoxFuture<'_, Result<LlmReply, String>> {
         Box::pin(async move {
-            let handler: StreamHandler = Arc::new(move |event: StreamEvent| {
-                if event.kind == "delta" && !event.delta.is_empty() {
-                    on_text(&event.delta);
-                }
-            });
             let result = self
                 .engine
                 .chat_with_retry(
@@ -160,8 +258,8 @@ impl Llm for EngineLlm {
                     &request.tools,
                     "",
                     &self.model,
-                    Some(handler),
-                    None,
+                    Some(sink.stream_handler()),
+                    Some(sink.retry_handler(&self.model.provider_type)),
                 )
                 .await
                 .map_err(|error| error.to_string())?;
@@ -214,6 +312,95 @@ mod tests {
         assert_eq!(normalized[2].arguments, json!({ "raw": "{\"a\":" }));
         assert_eq!(normalized[3].call_id, "call_1_0_3");
         assert_eq!(normalized[3].arguments, json!({ "raw": "[1]" }));
+    }
+
+    #[test]
+    fn engine_events_become_dsh_chunks() {
+        let text = StreamEvent {
+            kind: "delta",
+            delta: "Hi".into(),
+            ..StreamEvent::default()
+        };
+        assert_eq!(
+            serde_json::to_value(stream_chunk(&text)).unwrap_or_default(),
+            json!({ "type": "text-delta", "index": 0, "text": "Hi" })
+        );
+        let tool = StreamEvent {
+            kind: "tool_call_delta",
+            tool_call_index: 1,
+            tool_call_id: "c2".into(),
+            tool_name: "document_write".into(),
+            tool_arguments_delta: "{\"pa".into(),
+            ..StreamEvent::default()
+        };
+        assert_eq!(
+            serde_json::to_value(stream_chunk(&tool)).unwrap_or_default(),
+            json!({ "type": "tool-call-delta", "index": 2, "id": "c2", "name": "document_write", "argumentsDelta": "{\"pa" })
+        );
+        let unnamed = StreamEvent {
+            tool_name: String::new(),
+            ..tool
+        };
+        assert_eq!(
+            serde_json::to_value(stream_chunk(&unnamed)).unwrap_or_default()["name"],
+            Value::Null
+        );
+        let ready = StreamEvent {
+            kind: "tool_call_ready",
+            ..StreamEvent::default()
+        };
+        assert_eq!(stream_chunk(&ready), None);
+        assert_eq!(
+            stream_chunk(&StreamEvent {
+                kind: "delta",
+                ..StreamEvent::default()
+            }),
+            None
+        );
+    }
+
+    #[test]
+    fn engine_retries_reach_the_sink() {
+        use std::sync::Mutex;
+        let seen = Arc::new(Mutex::new(Vec::new()));
+        let (scheduled, started) = (seen.clone(), seen.clone());
+        let sink = LlmSink {
+            retry: Arc::new(move |info: RetryInfo| {
+                scheduled
+                    .lock()
+                    .map(|mut seen| {
+                        seen.push(format!("{} {} {}", info.retry, info.code, info.provider))
+                    })
+                    .ok();
+            }),
+            retry_started: Arc::new(move |retry| {
+                started
+                    .lock()
+                    .map(|mut seen| seen.push(format!("started {retry}")))
+                    .ok();
+            }),
+            ..LlmSink::discard()
+        };
+        let handler = sink.retry_handler("openai");
+        let event = RetryEvent {
+            attempt: 1,
+            max_retries: 5,
+            delay: std::time::Duration::from_millis(250),
+            reason: "timeout".into(),
+            message: "timed out".into(),
+            started: false,
+        };
+        handler(event.clone());
+        handler(RetryEvent {
+            started: true,
+            ..event
+        });
+        assert_eq!(
+            *seen
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner),
+            ["1 timeout openai", "started 1"]
+        );
     }
 
     #[test]

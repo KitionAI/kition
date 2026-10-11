@@ -360,7 +360,7 @@ pub async fn drive(
         cancel,
         live: Arc::new(|_: Live| {}),
         model: Some(run.model.model_name.clone()),
-        preset: None,
+        preset: Some(run.execution_mode.clone()),
         source: MessageSource::new(run.source),
     };
     let outcome = driver.run_turn(input).await;

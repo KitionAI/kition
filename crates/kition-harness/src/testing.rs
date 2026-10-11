@@ -7,11 +7,20 @@ use futures::future::BoxFuture;
 use serde_json::Value;
 
 use crate::events::LoggedCall;
-use crate::llm::{ChunkSink, Llm, LlmReply, LlmRequest};
+use crate::llm::{Llm, LlmReply, LlmRequest, LlmSink, RetryInfo, StreamChunk};
+
+/// One scripted model call: the retries it reports (each scheduled, then
+/// started), the chunks it streams, and its reply.
+#[derive(Debug, Clone, Default)]
+pub struct ScriptedCall {
+    pub reply: LlmReply,
+    pub chunks: Vec<StreamChunk>,
+    pub retries: Vec<RetryInfo>,
+}
 
 /// A model that answers with fixed replies in order and records requests.
 pub struct ScriptedLlm {
-    replies: Mutex<VecDeque<LlmReply>>,
+    replies: Mutex<VecDeque<ScriptedCall>>,
     requests: Mutex<Vec<LlmRequest>>,
 }
 
@@ -30,9 +39,30 @@ impl std::fmt::Debug for ScriptedLlm {
 }
 
 impl ScriptedLlm {
+    /// Replies whose text, if any, streams as one `text-delta` chunk.
     pub fn new(replies: Vec<LlmReply>) -> Self {
+        Self::scripted(
+            replies
+                .into_iter()
+                .map(|reply| ScriptedCall {
+                    chunks: if reply.content.is_empty() {
+                        Vec::new()
+                    } else {
+                        vec![StreamChunk::TextDelta {
+                            index: 0,
+                            text: reply.content.clone(),
+                        }]
+                    },
+                    reply,
+                    retries: Vec::new(),
+                })
+                .collect(),
+        )
+    }
+
+    pub fn scripted(calls: Vec<ScriptedCall>) -> Self {
         Self {
-            replies: Mutex::new(replies.into()),
+            replies: Mutex::new(calls.into()),
             requests: Mutex::new(Vec::new()),
         }
     }
@@ -47,11 +77,7 @@ impl ScriptedLlm {
 }
 
 impl Llm for ScriptedLlm {
-    fn call(
-        &self,
-        request: LlmRequest,
-        on_text: ChunkSink,
-    ) -> BoxFuture<'_, Result<LlmReply, String>> {
+    fn call(&self, request: LlmRequest, sink: LlmSink) -> BoxFuture<'_, Result<LlmReply, String>> {
         Box::pin(async move {
             self.requests
                 .lock()
@@ -62,11 +88,16 @@ impl Llm for ScriptedLlm {
                 .lock()
                 .unwrap_or_else(PoisonError::into_inner)
                 .pop_front();
-            let reply = reply.ok_or("the scripted model has no more replies")?;
-            if !reply.content.is_empty() {
-                on_text(&reply.content);
+            let call = reply.ok_or("the scripted model has no more replies")?;
+            for retry in call.retries {
+                let number = retry.retry;
+                (sink.retry)(retry);
+                (sink.retry_started)(number);
             }
-            Ok(reply)
+            for chunk in call.chunks {
+                (sink.chunk)(chunk);
+            }
+            Ok(call.reply)
         })
     }
 }
@@ -90,12 +121,17 @@ mod tests {
     async fn scripted_llm_replays_and_records() {
         let llm = ScriptedLlm::new(vec![LlmReply::text("hello")]);
         let seen = Arc::new(Mutex::new(String::new()));
-        let sink = seen.clone();
-        let on_text: ChunkSink = Arc::new(move |delta: &str| {
-            sink.lock()
-                .unwrap_or_else(PoisonError::into_inner)
-                .push_str(delta);
-        });
+        let text = seen.clone();
+        let on_text = LlmSink {
+            chunk: Arc::new(move |chunk| {
+                if let StreamChunk::TextDelta { text: delta, .. } = chunk {
+                    text.lock()
+                        .unwrap_or_else(PoisonError::into_inner)
+                        .push_str(&delta);
+                }
+            }),
+            ..LlmSink::discard()
+        };
         let request = LlmRequest {
             messages: Vec::new(),
             tools: Vec::new(),
@@ -120,7 +156,7 @@ mod tests {
     #[test]
     fn call_does_not_record_or_pop_until_the_future_is_polled() {
         let llm = ScriptedLlm::new(vec![LlmReply::text("hello")]);
-        let on_text: ChunkSink = Arc::new(|_delta: &str| {});
+        let on_text = LlmSink::discard();
         let request = LlmRequest {
             messages: Vec::new(),
             tools: Vec::new(),

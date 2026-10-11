@@ -1,5 +1,6 @@
 //! The model seam of a turn: each engine call with its stream frames,
-//! reconnect events, timeline events, and hosted tool handling. Remembers
+//! reconnect events, timeline events, and hosted tool handling. Deltas and
+//! retries also reach the harness sink. Remembers
 //! the last result for the final reply.
 
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -10,7 +11,7 @@ use kition_ai::engine::{
     ChatResult, MessagePart, RetryEvent, RetryHandler, StreamEvent, StreamHandler,
 };
 use kition_harness::events::ContentBlock;
-use kition_harness::llm::{ChunkSink, Llm, LlmReply, LlmRequest, normalize_calls};
+use kition_harness::llm::{Llm, LlmReply, LlmRequest, LlmSink, normalize_calls};
 use serde_json::json;
 
 use crate::run::{EventInput, Run};
@@ -32,9 +33,14 @@ pub(crate) fn blocks(parts: &[MessagePart]) -> Vec<ContentBlock> {
         .collect()
 }
 
-fn retry_handler(run: &Arc<Run>, turn: usize) -> RetryHandler {
+fn retry_handler(run: &Arc<Run>, turn: usize, sink: &LlmSink) -> RetryHandler {
     let run = run.clone();
+    let forward = sink.retry_handler(&run.model.provider_type);
     Arc::new(move |retry: RetryEvent| {
+        forward(retry.clone());
+        if retry.started {
+            return;
+        }
         let run = run.clone();
         tokio::spawn(async move {
             run.event(
@@ -55,10 +61,17 @@ fn retry_handler(run: &Arc<Run>, turn: usize) -> RetryHandler {
     })
 }
 
-fn stream_handler(run: &Arc<Run>, turn: usize, streamed: Arc<AtomicBool>) -> StreamHandler {
+fn stream_handler(
+    run: &Arc<Run>,
+    turn: usize,
+    streamed: Arc<AtomicBool>,
+    sink: &LlmSink,
+) -> StreamHandler {
     let emitter = run.emitter.clone();
     let model = run.model.model_name.clone();
+    let forward = sink.stream_handler();
     Arc::new(move |event: StreamEvent| {
+        forward(event.clone());
         let frame = match event.kind {
             "delta" if !event.delta.is_empty() => {
                 streamed.store(true, Ordering::SeqCst);
@@ -160,11 +173,7 @@ impl AgentLlm {
 }
 
 impl Llm for AgentLlm {
-    fn call(
-        &self,
-        request: LlmRequest,
-        _on_text: ChunkSink,
-    ) -> BoxFuture<'_, Result<LlmReply, String>> {
+    fn call(&self, request: LlmRequest, sink: LlmSink) -> BoxFuture<'_, Result<LlmReply, String>> {
         Box::pin(async move {
             let index = self.calls.fetch_add(1, Ordering::SeqCst) + 1;
             let run = &self.run;
@@ -182,8 +191,8 @@ impl Llm for AgentLlm {
                     &request.tools,
                     "",
                     &run.model,
-                    Some(stream_handler(run, index, streamed.clone())),
-                    Some(retry_handler(run, index)),
+                    Some(stream_handler(run, index, streamed.clone(), &sink)),
+                    Some(retry_handler(run, index, &sink)),
                 )
                 .await
                 .map_err(|error| error.to_string())?;

@@ -5,16 +5,18 @@ use std::sync::{Arc, Mutex, PoisonError};
 
 use futures::future::BoxFuture;
 use kition_harness::cancel::Cancel;
-use kition_harness::driver::{Driver, Live, TurnInput, append_live, next_turn};
+use kition_harness::driver::{
+    AssistantStreamFrame, Driver, Live, StreamOutcome, TurnInput, append_live, next_turn,
+};
 use kition_harness::events::{
     ContentBlock, EventBody, MessageSource, PresentedFile, SessionEvent, TodoItem, TodoStatus,
     TurnEndReason,
 };
 use kition_harness::history::HistoryBudget;
-use kition_harness::llm::{ChunkSink, HostedCall, Llm, LlmReply, LlmRequest};
+use kition_harness::llm::{HostedCall, Llm, LlmReply, LlmRequest, LlmSink, RetryInfo, StreamChunk};
 use kition_harness::log::{MemoryLog, SessionLog};
 use kition_harness::policy::{CallInfo, Decision, Pipeline, Policy, WritePermission};
-use kition_harness::testing::{ScriptedLlm, call};
+use kition_harness::testing::{ScriptedCall, ScriptedLlm, call};
 use kition_harness::tool::{ToolDef, ToolRegistry, define};
 use serde_json::json;
 use tokio::sync::Notify;
@@ -133,9 +135,13 @@ async fn a_tool_turn_logs_the_dsh_lifecycle_and_feeds_results_back() {
     assert_eq!(tool.as_deref(), Some("hi"));
     assert_eq!(second.tools[0].name, "echo");
     let live = setup.live.lock().unwrap_or_else(PoisonError::into_inner);
-    assert!(live.contains(&Live::AssistantText {
-        delta: "done".into()
-    }));
+    assert!(live.iter().any(|live| matches!(
+        live,
+        Live::AssistantStream(AssistantStreamFrame::Chunk {
+            chunk: StreamChunk::TextDelta { text, .. },
+            ..
+        }) if text == "done"
+    )));
     assert_eq!(live.first(), Some(&Live::Status { running: true }));
     assert_eq!(live.last(), Some(&Live::Status { running: false }));
 }
@@ -513,7 +519,7 @@ impl Llm for BlockingLlm {
     fn call(
         &self,
         _request: LlmRequest,
-        _on_text: ChunkSink,
+        _sink: LlmSink,
     ) -> BoxFuture<'_, Result<LlmReply, String>> {
         Box::pin(async move {
             self.entered.notify_one();
@@ -530,13 +536,24 @@ async fn cancelling_during_the_model_call_ends_the_turn_as_cancelled() {
     let llm = Arc::new(BlockingLlm::new(entered.clone()));
     let driver = Driver::new(log.clone(), llm);
     let cancel = Cancel::default();
+    let frames = Arc::new(Mutex::new(Vec::new()));
     let input = TurnInput {
         session: "s".into(),
         system: "You are Kition.".into(),
         tools: ToolRegistry::default(),
         user: vec![ContentBlock::text("go")],
         cancel: cancel.clone(),
-        live: Arc::new(|_event: Live| {}),
+        live: {
+            let frames = frames.clone();
+            Arc::new(move |event: Live| {
+                if let Live::AssistantStream(frame) = event {
+                    frames
+                        .lock()
+                        .unwrap_or_else(PoisonError::into_inner)
+                        .push(frame);
+                }
+            })
+        },
         model: None,
         source: MessageSource::user(),
         preset: None,
@@ -558,6 +575,26 @@ async fn cancelling_during_the_model_call_ends_the_turn_as_cancelled() {
     assert_eq!(
         &kinds[kinds.len() - 3..],
         ["assistant/attempt", "step/end", "turn/end"]
+    );
+    let attempt_seq = log
+        .read("s")
+        .unwrap_or_else(|error| panic!("{error}"))
+        .iter()
+        .find(|event| event.body.kind() == "assistant/attempt")
+        .map(|event| event.seq)
+        .unwrap_or_default();
+    let frames = frames.lock().unwrap_or_else(PoisonError::into_inner);
+    assert_eq!(
+        frames.last(),
+        Some(&AssistantStreamFrame::End {
+            attempt_id: "s#1.1".into(),
+            revision: 2,
+            index: 0,
+            outcome: StreamOutcome::Committed {
+                event_type: "assistant/attempt".into(),
+                seq: attempt_seq,
+            },
+        })
     );
 }
 
@@ -1286,4 +1323,197 @@ async fn the_permission_preset_is_logged_when_it_changes() {
         })
         .collect();
     assert_eq!(presets, ["preview", "apply"]);
+}
+
+#[tokio::test]
+async fn assistant_text_streams_as_dsh_frames_around_the_message() {
+    let setup = Setup {
+        llm: Arc::new(ScriptedLlm::scripted(vec![ScriptedCall {
+            reply: LlmReply::text("Hello"),
+            chunks: vec![
+                StreamChunk::TextDelta {
+                    index: 0,
+                    text: "Hel".into(),
+                },
+                StreamChunk::TextDelta {
+                    index: 0,
+                    text: "lo".into(),
+                },
+            ],
+            retries: Vec::new(),
+        }])),
+        ..setup(Vec::new())
+    };
+    setup
+        .driver(Pipeline::default())
+        .run_turn(setup.input("hi", Cancel::default()))
+        .await
+        .unwrap_or_else(|error| panic!("{error}"));
+    let live = setup.live.lock().unwrap_or_else(PoisonError::into_inner);
+    let names: Vec<String> = live
+        .iter()
+        .map(|live| match live {
+            Live::Status { running } => format!("status {running}"),
+            Live::Event(event) => event.body.kind().to_owned(),
+            Live::AssistantStream(AssistantStreamFrame::Start { .. }) => "start".into(),
+            Live::AssistantStream(AssistantStreamFrame::Chunk { .. }) => "chunk".into(),
+            Live::AssistantStream(AssistantStreamFrame::End { .. }) => "end".into(),
+        })
+        .collect();
+    assert_eq!(
+        names,
+        [
+            "status true",
+            "turn/start",
+            "step/start",
+            "system/message",
+            "user/message",
+            "start",
+            "chunk",
+            "chunk",
+            "assistant/message",
+            "end",
+            "step/end",
+            "turn/end",
+            "status false",
+        ]
+    );
+    let frames: Vec<&AssistantStreamFrame> = live
+        .iter()
+        .filter_map(|live| match live {
+            Live::AssistantStream(frame) => Some(frame),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        frames[0],
+        &AssistantStreamFrame::Start {
+            attempt_id: "s#1.1".into(),
+            revision: 1,
+            turn: 1,
+            step: 1,
+        }
+    );
+    let AssistantStreamFrame::Chunk {
+        revision,
+        index,
+        chunk,
+        ..
+    } = frames[2]
+    else {
+        panic!("{:?}", frames[2]);
+    };
+    assert_eq!((*revision, *index), (3, 1));
+    assert_eq!(
+        chunk,
+        &StreamChunk::TextDelta {
+            index: 0,
+            text: "lo".into()
+        }
+    );
+    let message_seq = setup
+        .log
+        .read("s")
+        .unwrap_or_else(|error| panic!("{error}"))
+        .iter()
+        .find(|event| event.body.kind() == "assistant/message")
+        .map(|event| event.seq)
+        .unwrap_or_default();
+    assert_eq!(
+        frames[3],
+        &AssistantStreamFrame::End {
+            attempt_id: "s#1.1".into(),
+            revision: 4,
+            index: 2,
+            outcome: StreamOutcome::Committed {
+                event_type: "assistant/message".into(),
+                seq: message_seq,
+            },
+        }
+    );
+    let wire = serde_json::to_value(frames[3]).unwrap_or_else(|error| panic!("{error}"));
+    assert_eq!(
+        wire,
+        json!({ "type": "end", "attemptId": "s#1.1", "revision": 4, "index": 2,
+            "outcome": { "kind": "committed", "eventType": "assistant/message", "seq": message_seq } })
+    );
+}
+
+#[tokio::test]
+async fn provider_retries_are_logged_as_one_retry_chain() {
+    let retry = |retry| RetryInfo {
+        retry,
+        max_retries: 5,
+        delay_ms: 1000,
+        code: "server_unavailable".into(),
+        message: "busy".into(),
+        provider: "openai".into(),
+    };
+    let setup = Setup {
+        llm: Arc::new(ScriptedLlm::scripted(vec![ScriptedCall {
+            reply: LlmReply::text("ok"),
+            chunks: Vec::new(),
+            retries: vec![retry(1), retry(2)],
+        }])),
+        ..setup(Vec::new())
+    };
+    setup
+        .driver(Pipeline::default())
+        .run_turn(setup.input("hi", Cancel::default()))
+        .await
+        .unwrap_or_else(|error| panic!("{error}"));
+    let kinds = setup.kinds();
+    let user = kinds
+        .iter()
+        .position(|kind| *kind == "user/message")
+        .unwrap_or_default();
+    assert_eq!(
+        &kinds[user + 1..user + 6],
+        [
+            "llm/retry",
+            "llm/retry-started",
+            "llm/retry",
+            "llm/retry-started",
+            "assistant/message",
+        ]
+    );
+    let events = setup
+        .log
+        .read("s")
+        .unwrap_or_else(|error| panic!("{error}"));
+    let first = serde_json::to_value(&events[user + 1].body).unwrap_or_default();
+    assert_eq!(
+        first,
+        json!({
+            "type": "llm/retry", "retryId": "s#1.1", "turn": 1, "step": 1,
+            "provider": "openai", "mode": "normal", "policyKey": "engine", "retry": 1,
+            "maxRetries": 5, "delayMs": 1000,
+            "failure": { "message": "busy", "code": "server_unavailable" },
+        })
+    );
+    assert_eq!(
+        events[user + 4].body,
+        EventBody::LlmRetryStarted {
+            retry_id: "s#1.1".into(),
+            turn: 1,
+            step: 1,
+            retry: 2,
+        }
+    );
+    let live = setup.live.lock().unwrap_or_else(PoisonError::into_inner);
+    assert_eq!(
+        live.iter()
+            .filter(
+                |live| matches!(live, Live::Event(event) if event.body.kind().starts_with("llm/"))
+            )
+            .count(),
+        4,
+        "retries go live too"
+    );
+    drop(live);
+    let seqs: Vec<u64> = events.iter().map(|event| event.seq).collect();
+    assert!(
+        seqs.windows(2).all(|pair| pair[1] == pair[0] + 1),
+        "{seqs:?}"
+    );
 }

@@ -12,13 +12,20 @@ pub const DEFAULT_MAX_RETRIES: u32 = 5;
 pub(crate) const INITIAL_DELAY: Duration = Duration::from_secs(1);
 pub(crate) const MAX_DELAY: Duration = Duration::from_secs(8);
 
-/// Reported before each retry so the client can show progress.
+/// Reported twice per retry so the client can show progress: once when it
+/// is scheduled (`started == false`, before the wait) and once when the
+/// wait is over and the next attempt begins (`started == true`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RetryEvent {
+    /// The retry number, from 1.
     pub attempt: u32,
     pub max_retries: u32,
     pub delay: Duration,
+    /// The provider-neutral failure code, such as `server_unavailable`.
     pub reason: String,
+    /// The failure as text.
+    pub message: String,
+    pub started: bool,
 }
 
 pub type RetryHandler = Arc<dyn Fn(RetryEvent) + Send + Sync>;
@@ -89,15 +96,22 @@ where
                 retry_after
             };
         }
+        let mut event = RetryEvent {
+            attempt: retry_number,
+            max_retries: config.max_retries,
+            delay,
+            reason: reason.to_owned(),
+            message: error.to_string(),
+            started: false,
+        };
         if let Some(on_retry) = &config.on_retry {
-            on_retry(RetryEvent {
-                attempt: retry_number,
-                max_retries: config.max_retries,
-                delay,
-                reason: reason.to_owned(),
-            });
+            on_retry(event.clone());
         }
         tokio::time::sleep(delay).await;
+        if let Some(on_retry) = &config.on_retry {
+            event.started = true;
+            on_retry(event);
+        }
         attempt = retry_number;
     }
 }
@@ -158,7 +172,18 @@ mod tests {
         })
         .await;
         assert!(result.is_ok());
-        assert_eq!(events.lock().map(|e| e.len()).unwrap_or_default(), 2);
+        let seen: Vec<(u32, bool)> = events
+            .lock()
+            .map(|events| events.iter().map(|e| (e.attempt, e.started)).collect())
+            .unwrap_or_default();
+        assert_eq!(seen, [(1, false), (1, true), (2, false), (2, true)]);
+        let first = events
+            .lock()
+            .ok()
+            .and_then(|events| events.first().cloned())
+            .unwrap_or_else(|| panic!("no retry event"));
+        assert_eq!(first.reason, "server_unavailable");
+        assert!(first.message.contains("busy"), "{}", first.message);
 
         let failed = with_retry(None, config(Arc::default()), |_| async { Err(retryable()) }).await;
         assert!(failed.is_err());

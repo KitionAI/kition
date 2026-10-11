@@ -5,15 +5,20 @@
 //! turn; every event the turn itself appends also lands in that local copy,
 //! so no step re-reads the log store.
 
-use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex, PoisonError};
+
+use kition_core::now_millis;
+use serde::{Deserialize, Serialize};
 
 use crate::cancel::Cancel;
 use crate::derive::derive_messages_for;
 use crate::events::{
-    ContentBlock, EventBody, LoggedCall, MessageSource, PresentedFile, SessionEvent, TurnEndReason,
+    ContentBlock, EventBody, LlmFailure, LoggedCall, MessageSource, PresentedFile, RetryMode,
+    SessionEvent, TurnEndReason,
 };
 use crate::history::{HistoryBudget, bound_history};
-use crate::llm::{ChunkSink, HostedCall, Llm, LlmRequest};
+use crate::llm::{HostedCall, Llm, LlmRequest, LlmSink, RetryInfo, StreamChunk};
 use crate::log::SessionLog;
 use crate::policy::{CallInfo, Decision, Pipeline};
 use crate::stop::StopCheck;
@@ -25,9 +30,134 @@ pub const MAX_STEPS: u32 = 16;
 /// `agent/*`). Every durable event is also sent live as `Event`.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Live {
-    Status { running: bool },
-    AssistantText { delta: String },
+    Status {
+        running: bool,
+    },
+    /// dsh `agent/assistant-stream`.
+    AssistantStream(AssistantStreamFrame),
     Event(Box<SessionEvent>),
+}
+
+/// One live publication of a model attempt (dsh `AssistantStreamFrame`).
+/// `revision` counts the frames of one turn from 1; `index` counts the
+/// chunks of one attempt from 0, and `end` carries their number.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(
+    tag = "type",
+    rename_all = "lowercase",
+    rename_all_fields = "camelCase"
+)]
+pub enum AssistantStreamFrame {
+    Start {
+        attempt_id: String,
+        revision: u64,
+        turn: u32,
+        step: u32,
+    },
+    Chunk {
+        attempt_id: String,
+        revision: u64,
+        index: u64,
+        time: i64,
+        chunk: StreamChunk,
+    },
+    End {
+        attempt_id: String,
+        revision: u64,
+        index: u64,
+        outcome: StreamOutcome,
+    },
+}
+
+/// How an attempt settled: the durable event committed for it
+/// (`assistant/message` or `assistant/attempt`), or abandoned without one.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(
+    tag = "kind",
+    rename_all = "lowercase",
+    rename_all_fields = "camelCase"
+)]
+pub enum StreamOutcome {
+    Committed { event_type: String, seq: u64 },
+    Abandoned,
+}
+
+/// Publishes the frames of one model attempt.
+struct AttemptStream {
+    live: LiveSink,
+    attempt_id: String,
+    revision: Arc<AtomicU64>,
+    chunks: Arc<AtomicU64>,
+}
+
+impl AttemptStream {
+    fn start(
+        live: &LiveSink,
+        revision: &Arc<AtomicU64>,
+        attempt_id: String,
+        turn: u32,
+        step: u32,
+    ) -> Self {
+        let stream = Self {
+            live: live.clone(),
+            attempt_id,
+            revision: revision.clone(),
+            chunks: Arc::default(),
+        };
+        (stream.live)(Live::AssistantStream(AssistantStreamFrame::Start {
+            attempt_id: stream.attempt_id.clone(),
+            revision: stream.next_revision(),
+            turn,
+            step,
+        }));
+        stream
+    }
+
+    fn next_revision(&self) -> u64 {
+        self.revision.fetch_add(1, Ordering::SeqCst) + 1
+    }
+
+    fn chunk_sink(&self) -> Arc<dyn Fn(StreamChunk) + Send + Sync> {
+        let (live, attempt_id) = (self.live.clone(), self.attempt_id.clone());
+        let (revision, chunks) = (self.revision.clone(), self.chunks.clone());
+        Arc::new(move |chunk| {
+            live(Live::AssistantStream(AssistantStreamFrame::Chunk {
+                attempt_id: attempt_id.clone(),
+                revision: revision.fetch_add(1, Ordering::SeqCst) + 1,
+                index: chunks.fetch_add(1, Ordering::SeqCst),
+                time: now_millis(),
+                chunk,
+            }));
+        })
+    }
+
+    fn end(&self, outcome: StreamOutcome) {
+        (self.live)(Live::AssistantStream(AssistantStreamFrame::End {
+            attempt_id: self.attempt_id.clone(),
+            revision: self.next_revision(),
+            index: self.chunks.load(Ordering::SeqCst),
+            outcome,
+        }));
+    }
+
+    /// Ends the attempt with the outcome of appending its settling event.
+    fn settle(&self, appended: &Result<SessionEvent, String>) {
+        self.end(match appended {
+            Ok(event) => StreamOutcome::Committed {
+                event_type: event.body.kind().to_owned(),
+                seq: event.seq,
+            },
+            Err(_) => StreamOutcome::Abandoned,
+        });
+    }
+}
+
+/// The retry events one model call appended, in order, and the first
+/// append failure.
+#[derive(Default)]
+struct RetryLog {
+    events: Vec<SessionEvent>,
+    error: Option<String>,
 }
 
 pub type LiveSink = Arc<dyn Fn(Live) + Send + Sync>;
@@ -213,6 +343,7 @@ impl Driver {
         turn: u32,
     ) -> Result<TurnEndReason, String> {
         let mut user = Some(input.user.clone());
+        let revision = Arc::new(AtomicU64::new(0));
         for step in 1..=self.max_steps {
             if input.cancel.is_cancelled() {
                 return Ok(TurnEndReason::Cancelled);
@@ -239,16 +370,22 @@ impl Driver {
                 ),
                 tools: input.tools.specs(),
             };
-            let live = input.live.clone();
-            let on_text: ChunkSink = Arc::new(move |delta: &str| {
-                live(Live::AssistantText {
-                    delta: delta.to_owned(),
-                })
-            });
+            let attempt_id = format!("{}#{turn}.{step}", input.session);
+            let stream =
+                AttemptStream::start(&input.live, &revision, attempt_id.clone(), turn, step);
+            let retries = Arc::new(Mutex::new(RetryLog::default()));
+            let sink = self.sink(input, &stream, &retries, &attempt_id, turn, step);
             let reply = tokio::select! {
-                reply = self.llm.call(request, on_text) => reply,
+                reply = self.llm.call(request, sink) => reply,
                 () = input.cancel.cancelled() => Err("cancelled".to_owned()),
             };
+            let retries =
+                std::mem::take(&mut *retries.lock().unwrap_or_else(PoisonError::into_inner));
+            events.extend(retries.events);
+            if let Some(error) = retries.error {
+                stream.end(StreamOutcome::Abandoned);
+                return Err(error);
+            }
             let reply = match reply {
                 Ok(reply) => reply,
                 Err(error) => {
@@ -256,13 +393,14 @@ impl Driver {
                     // the model error itself: that is the one the caller
                     // needs, and `run_turn` still gets a chance to log
                     // `turn/end` for it.
-                    let _ = self.append(
+                    let appended = self.append(
                         input,
                         events,
                         EventBody::AssistantAttempt {
                             error: error.clone(),
                         },
                     );
+                    stream.settle(&appended);
                     self.append(input, events, EventBody::StepEnd { turn, step })?;
                     return if input.cancel.is_cancelled() {
                         Ok(TurnEndReason::Cancelled)
@@ -271,7 +409,7 @@ impl Driver {
                     };
                 }
             };
-            self.append(
+            let appended = self.append(
                 input,
                 events,
                 EventBody::AssistantMessage {
@@ -288,7 +426,9 @@ impl Driver {
                     model: reply.model,
                     raw_items: reply.raw_items,
                 },
-            )?;
+            );
+            stream.settle(&appended);
+            appended?;
             for hosted in reply.hosted {
                 self.record_hosted(input, events, turn, hosted)?;
             }
@@ -459,6 +599,72 @@ impl Driver {
             },
         )
         .map(|_| ())
+    }
+
+    /// The sink of one model call: chunks go out as frames of `stream`;
+    /// retries are appended right away (`llm/retry` before the wait,
+    /// `llm/retry-started` after it), all of one step under `attempt_id`
+    /// as their retry chain id, and collected in `retries`.
+    fn sink(
+        &self,
+        input: &TurnInput,
+        stream: &AttemptStream,
+        retries: &Arc<Mutex<RetryLog>>,
+        attempt_id: &str,
+        turn: u32,
+        step: u32,
+    ) -> LlmSink {
+        let append = {
+            let (log, session) = (self.log.clone(), input.session.clone());
+            let (live, retries) = (input.live.clone(), retries.clone());
+            Arc::new(move |body: EventBody| {
+                let mut retries = retries.lock().unwrap_or_else(PoisonError::into_inner);
+                if retries.error.is_some() {
+                    return;
+                }
+                match append_live(log.as_ref(), &session, &live, body) {
+                    Ok(event) => retries.events.push(event),
+                    Err(error) => retries.error = Some(error),
+                }
+            })
+        };
+        let scheduled = {
+            let (append, retry_id) = (append.clone(), attempt_id.to_owned());
+            Arc::new(move |info: RetryInfo| {
+                debug_assert!(info.retry >= 1, "retries count from 1");
+                append(EventBody::LlmRetry {
+                    retry_id: retry_id.clone(),
+                    turn,
+                    step,
+                    provider: info.provider,
+                    mode: RetryMode::Normal,
+                    policy_key: "engine".into(),
+                    retry: info.retry,
+                    max_retries: info.max_retries,
+                    delay_ms: info.delay_ms,
+                    failure: LlmFailure {
+                        message: info.message,
+                        code: info.code,
+                    },
+                });
+            })
+        };
+        let started = {
+            let retry_id = attempt_id.to_owned();
+            Arc::new(move |retry: u32| {
+                append(EventBody::LlmRetryStarted {
+                    retry_id: retry_id.clone(),
+                    turn,
+                    step,
+                    retry,
+                });
+            })
+        };
+        LlmSink {
+            chunk: stream.chunk_sink(),
+            retry: scheduled,
+            retry_started: started,
+        }
     }
 
     /// Logs an event a tool body emitted. A `deliverables/presented` gets
