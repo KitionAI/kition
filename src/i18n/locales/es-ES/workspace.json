@@ -14,7 +14,8 @@
       "cad": "Dibujo CAD",
       "presentation": "Presentación",
       "word": "Documento de Word",
-      "spreadsheet": "Hoja de cálculo"
+      "spreadsheet": "Hoja de cálculo",
+      "pdf": "PDF"
     },
     "folder": "Carpeta",
     "importSpreadsheet": "Importar hoja de cálculo",
@@ -765,7 +766,19 @@
       "Automate": "Automatizar",
       "Table": "Tabla",
       "PivotTable Analyze": "Análisis de tabla dinámica",
-      "PivotTable Design": "Diseño de tabla dinámica"
+      "PivotTable Design": "Diseño de tabla dinámica",
+      "Document": "Documento",
+      "Pages": "Páginas",
+      "Text": "Texto",
+      "Edit PDF": "Editar PDF",
+      "Comment": "Comentario",
+      "Forms": "Formularios",
+      "Bookmarks": "Marcadores",
+      "Links": "Vínculos",
+      "Redact": "Redactar",
+      "Measure": "Medir",
+      "Protect": "Proteger",
+      "Accessibility": "Accesibilidad"
     }
   },
   "filmKit": {
@@ -905,5 +918,10 @@
     "unavailableTitle": "La edición de hojas de cálculo no está disponible en esta versión",
     "unavailableBody": "Las hojas de cálculo se abren en Kition cuando se incluye el motor de hojas.",
     "commandLine": "Escribe un valor o una fórmula"
+  },
+  "pdfKit": {
+    "summary": "{{pages}} páginas",
+    "unavailableTitle": "La edición de PDF no está disponible en esta versión",
+    "unavailableBody": "Los PDF se abren en Kition cuando se incluye el motor de PDF."
   }
 }

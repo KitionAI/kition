@@ -14,7 +14,8 @@
       "cad": "Desenho CAD",
       "presentation": "Apresentação",
       "word": "Documento do Word",
-      "spreadsheet": "Planilha"
+      "spreadsheet": "Planilha",
+      "pdf": "PDF"
     },
     "folder": "Pasta",
     "importSpreadsheet": "Importar planilha",
@@ -765,7 +766,19 @@
       "Automate": "Automatizar",
       "Table": "Tabela",
       "PivotTable Analyze": "Análise de Tabela Dinâmica",
-      "PivotTable Design": "Design de Tabela Dinâmica"
+      "PivotTable Design": "Design de Tabela Dinâmica",
+      "Document": "Documento",
+      "Pages": "Páginas",
+      "Text": "Texto",
+      "Edit PDF": "Editar PDF",
+      "Comment": "Comentário",
+      "Forms": "Formulários",
+      "Bookmarks": "Marcadores",
+      "Links": "Links",
+      "Redact": "Redigir",
+      "Measure": "Medir",
+      "Protect": "Proteger",
+      "Accessibility": "Acessibilidade"
     }
   },
   "filmKit": {
@@ -905,5 +918,10 @@
     "unavailableTitle": "A edição de planilhas não está disponível nesta versão",
     "unavailableBody": "Planilhas abrem no Kition quando o mecanismo de planilhas está incluído.",
     "commandLine": "Digite um valor ou uma fórmula"
+  },
+  "pdfKit": {
+    "summary": "{{pages}} páginas",
+    "unavailableTitle": "A edição de PDF não está disponível nesta versão",
+    "unavailableBody": "PDFs abrem no Kition quando o mecanismo de PDF está incluído."
   }
 }

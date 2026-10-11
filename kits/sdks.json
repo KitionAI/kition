@@ -172,5 +172,21 @@
         "input": "99"
       }
     }
+  },
+  "pdf": {
+    "repository": "KitionAI/kit-pdf",
+    "crate": "kition-pdf-sdk",
+    "module": "kition_pdf_sdk",
+    "class": "PdfDocument",
+    "name": "Report.pdf",
+    "edit": {
+      "command": "page_rotate",
+      "params": {
+        "degrees": 90,
+        "pages": [
+          1
+        ]
+      }
+    }
   }
 }

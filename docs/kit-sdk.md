@@ -26,7 +26,7 @@ over the Kit Protocol by kition-sdk's `kition-headless`, so it is a few lines
 (`apps/kit-<kit>` in each kit repository). The agent's tools for every kit are
 `<prefix>_inspect`, `<prefix>_commands`, and `<prefix>_run`, generated from
 the kit's definition (`photo_*`, `film_*`, `vector_*`, `effect_*`,
-`design_*`, `cad_*`, `presentation_*`, `word_*`, `sheet_*`).
+`design_*`, `cad_*`, `presentation_*`, `word_*`, `sheet_*`, `pdf_*`).
 
 When the file is open in a kit editor, those tools act on the editor itself
 through the **Kit AI bridge** (standard A7 to A10), not on a headless copy:
@@ -272,7 +272,8 @@ Kition renderer:
    (SDK manifest, test id key, icon, menu order, engine tools, an optional
    command line, and the status-line values from `inspect()`) and
    `standardKit(spec, format, create)` in `KIT_EDITORS` replace steps 9 and 10's
-   editor, fallback, and SDK files. CAD, Presentation, Word, and Sheet are (Word
+   editor, fallback, and SDK files. CAD, Presentation, Word, Sheet, and PDF are
+   (PDF without `tools`: no engine tools yet, so the canvas pans) (Word
    and Sheet with `rail: false`: one tool needs no rail; Sheet's
    `commandLine: 'top'` is its formula bar). A kit for a format the
    file preview already shows (PDF, Office) passes `{ preview: true }`, so that
@@ -527,6 +528,19 @@ Grid kits (Sheet):
   not dirty) by keys alone.
 - Give a canvas much larger than a window an `initialArea` near 1:1 (the
   top-left cells), not the whole canvas shrunk to fit.
+
+Tool-table kits (PDF):
+
+- An upstream whose agent surface is a JSON tool table (PdfCraft's
+  `automation`) can be the kit's command list: fill in the document argument,
+  convert each JSON Schema to the standard's parameter schema (and check it
+  with `kition_sdk::schema::validate`), and map undo and redo to `edit.undo`
+  and `edit.redo`. Leave out tools that open, save, combine, or split other
+  files, that make new documents (`out`), reach printers, keychains, or trust
+  stores, or run any registry command; drop file parameters from schemas and
+  refuse them in `execute`.
+- An incremental save must be rebased on the exact bytes the host wrote: keep
+  them from `save` for `mark_saved`.
 
 Time-based kits (Effect):
 

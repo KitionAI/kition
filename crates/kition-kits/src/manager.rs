@@ -234,6 +234,25 @@ pub const KITS: &[KitDefinition] = &[
             command: "cell.set",
         },
     },
+    // Edited in the page through its SDK.
+    KitDefinition {
+        id: "kit.pdf",
+        name: "Kition PDF",
+        binary_env: "KITION_KIT_PDF_BINARY",
+        extensions: &["pdf"],
+        creates: &[],
+        embeds: false,
+        exports: &[],
+        agent: KitAgent {
+            prefix: "pdf",
+            noun: "PDF",
+            formats: ".pdf",
+            reports: "its pages and labels, whether it can be edited, and its form fields",
+            covers: "pages, text, comments, forms, bookmarks, links, watermarks, redaction, measuring, accessibility, and more",
+            queries: "`rotate`, `comment`, or `watermark`",
+            command: "page_rotate",
+        },
+    },
 ];
 
 /// Who is asking: a person in a kit tab or the agent.

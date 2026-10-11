@@ -1,5 +1,5 @@
 import { createElement, lazy, type ComponentType } from 'react'
-import { Clapperboard, DraftingCompass, FileText, Layers, LayoutTemplate, PenTool, Presentation, Sheet, Sparkles, type LucideIcon } from 'lucide-react'
+import { Clapperboard, DraftingCompass, FileText, FileType2, Layers, LayoutTemplate, PenTool, Presentation, Sheet, Sparkles, type LucideIcon } from 'lucide-react'
 import { kitSdkAvailable, type KitSdkManifest } from '@/features/kits/public'
 import type { WorkspaceDocumentFormat } from '@/services/desktop'
 import { PhotoKitPane } from '../PhotoKitPane'
@@ -13,7 +13,7 @@ import { EFFECT_SDK } from '../effect/effectKitSdk'
 import { VectorUnavailable } from '../vector/VectorUnavailable'
 import { VECTOR_SDK } from '../vector/vectorKitSdk'
 import { StandardKitUnavailable } from './StandardKitUnavailable'
-import { CAD_KIT, PRESENTATION_KIT, SHEET_KIT, WORD_KIT, type StandardKitSpec } from './standardKits'
+import { CAD_KIT, PDF_KIT, PRESENTATION_KIT, SHEET_KIT, WORD_KIT, type StandardKitSpec } from './standardKits'
 
 /** What every kit editor receives from the workspace tab. */
 export type KitEditorProps = {
@@ -111,6 +111,8 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
   standardKit(WORD_KIT, 'docx', { preview: true, create: { id: 'word', extension: 'docx', baseName: 'Untitled Word document', size: { width: 612, height: 792 }, label: 'createMenu.format.word', icon: FileText } }),
   // Excel files open in the Sheet kit, and keep the file preview without it.
   standardKit(SHEET_KIT, 'xlsx', { preview: true, create: { id: 'spreadsheet', extension: 'xlsx', baseName: 'Untitled spreadsheet', size: { width: 1710, height: 2021 }, label: 'createMenu.format.spreadsheet', icon: Sheet } }),
+  // PDFs open in the PDF kit, and keep the file preview without it. US Letter, in points.
+  standardKit(PDF_KIT, 'pdf', { preview: true, create: { id: 'pdf', extension: 'pdf', baseName: 'Untitled PDF', size: { width: 612, height: 792 }, label: 'createMenu.format.pdf', icon: FileType2 } }),
 ]
 
 const availability = new Map<string, Promise<boolean>>()

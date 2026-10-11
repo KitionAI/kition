@@ -14,7 +14,8 @@
       "cad": "Чертёж САПР",
       "presentation": "Презентация",
       "word": "Документ Word",
-      "spreadsheet": "Электронная таблица"
+      "spreadsheet": "Электронная таблица",
+      "pdf": "PDF"
     },
     "folder": "Папка",
     "importSpreadsheet": "Импортировать таблицу",
@@ -765,7 +766,19 @@
       "Automate": "Автоматизация",
       "Table": "Таблица",
       "PivotTable Analyze": "Анализ сводной таблицы",
-      "PivotTable Design": "Конструктор сводной таблицы"
+      "PivotTable Design": "Конструктор сводной таблицы",
+      "Document": "Документ",
+      "Pages": "Страницы",
+      "Text": "Текст",
+      "Edit PDF": "Редактировать PDF",
+      "Comment": "Комментарий",
+      "Forms": "Формы",
+      "Bookmarks": "Закладки",
+      "Links": "Ссылки",
+      "Redact": "Скрыть данные",
+      "Measure": "Измерение",
+      "Protect": "Защита",
+      "Accessibility": "Специальные возможности"
     }
   },
   "filmKit": {
@@ -905,5 +918,10 @@
     "unavailableTitle": "Редактирование таблиц недоступно в этой сборке",
     "unavailableBody": "Таблицы открываются в Kition, когда в сборку включён движок таблиц.",
     "commandLine": "Введите значение или формулу"
+  },
+  "pdfKit": {
+    "summary": "Страниц: {{pages}}",
+    "unavailableTitle": "Редактирование PDF недоступно в этой сборке",
+    "unavailableBody": "PDF открываются в Kition, когда в сборку включён движок PDF."
   }
 }

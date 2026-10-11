@@ -14,7 +14,8 @@
       "cad": "CAD 图纸",
       "presentation": "演示文稿",
       "word": "Word 文档",
-      "spreadsheet": "电子表格"
+      "spreadsheet": "电子表格",
+      "pdf": "PDF"
     },
     "folder": "文件夹",
     "importSpreadsheet": "导入电子表格",
@@ -765,7 +766,19 @@
       "Automate": "自动化",
       "Table": "表",
       "PivotTable Analyze": "数据透视表分析",
-      "PivotTable Design": "数据透视表设计"
+      "PivotTable Design": "数据透视表设计",
+      "Document": "文档",
+      "Pages": "页面",
+      "Text": "文本",
+      "Edit PDF": "编辑 PDF",
+      "Comment": "注释",
+      "Forms": "表单",
+      "Bookmarks": "书签",
+      "Links": "链接",
+      "Redact": "涂黑",
+      "Measure": "测量",
+      "Protect": "保护",
+      "Accessibility": "辅助功能"
     }
   },
   "filmKit": {
@@ -905,5 +918,10 @@
     "unavailableTitle": "此版本不支持编辑电子表格",
     "unavailableBody": "包含表格引擎时，电子表格会在 Kition 中打开。",
     "commandLine": "输入值或公式"
+  },
+  "pdfKit": {
+    "summary": "共 {{pages}} 页",
+    "unavailableTitle": "此版本不支持编辑 PDF",
+    "unavailableBody": "包含 PDF 引擎时，PDF 会在 Kition 中打开。"
   }
 }

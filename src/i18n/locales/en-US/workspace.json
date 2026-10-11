@@ -14,7 +14,8 @@
       "cad": "CAD drawing",
       "presentation": "Presentation",
       "word": "Word document",
-      "spreadsheet": "Spreadsheet"
+      "spreadsheet": "Spreadsheet",
+      "pdf": "PDF"
     },
     "folder": "Folder",
     "importSpreadsheet": "Import spreadsheet",
@@ -765,7 +766,19 @@
       "Automate": "Automate",
       "Table": "Table",
       "PivotTable Analyze": "PivotTable Analyze",
-      "PivotTable Design": "PivotTable Design"
+      "PivotTable Design": "PivotTable Design",
+      "Document": "Document",
+      "Pages": "Pages",
+      "Text": "Text",
+      "Edit PDF": "Edit PDF",
+      "Comment": "Comment",
+      "Forms": "Forms",
+      "Bookmarks": "Bookmarks",
+      "Links": "Links",
+      "Redact": "Redact",
+      "Measure": "Measure",
+      "Protect": "Protect",
+      "Accessibility": "Accessibility"
     }
   },
   "filmKit": {
@@ -905,5 +918,10 @@
     "unavailableTitle": "Spreadsheet editing is not available in this build",
     "unavailableBody": "Spreadsheets open in Kition when the Sheet engine is included.",
     "commandLine": "Enter a value or formula"
+  },
+  "pdfKit": {
+    "summary": "{{pages}} pages",
+    "unavailableTitle": "PDF editing is not available in this build",
+    "unavailableBody": "PDFs open in Kition when the PDF engine is included."
   }
 }

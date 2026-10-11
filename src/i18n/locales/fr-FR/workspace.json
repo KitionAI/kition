@@ -14,7 +14,8 @@
       "cad": "Dessin CAO",
       "presentation": "Présentation",
       "word": "Document Word",
-      "spreadsheet": "Feuille de calcul"
+      "spreadsheet": "Feuille de calcul",
+      "pdf": "PDF"
     },
     "folder": "Dossier",
     "importSpreadsheet": "Importer une feuille de calcul",
@@ -765,7 +766,19 @@
       "Automate": "Automatiser",
       "Table": "Tableau",
       "PivotTable Analyze": "Analyse du tableau croisé dynamique",
-      "PivotTable Design": "Création de tableau croisé dynamique"
+      "PivotTable Design": "Création de tableau croisé dynamique",
+      "Document": "Document",
+      "Pages": "Pages",
+      "Text": "Texte",
+      "Edit PDF": "Modifier le PDF",
+      "Comment": "Commentaire",
+      "Forms": "Formulaires",
+      "Bookmarks": "Signets",
+      "Links": "Liens",
+      "Redact": "Biffer",
+      "Measure": "Mesurer",
+      "Protect": "Protéger",
+      "Accessibility": "Accessibilité"
     }
   },
   "filmKit": {
@@ -905,5 +918,10 @@
     "unavailableTitle": "L’édition de feuilles de calcul n’est pas disponible dans cette version",
     "unavailableBody": "Les feuilles de calcul s’ouvrent dans Kition lorsque le moteur de feuilles est inclus.",
     "commandLine": "Saisissez une valeur ou une formule"
+  },
+  "pdfKit": {
+    "summary": "{{pages}} pages",
+    "unavailableTitle": "L’édition PDF n’est pas disponible dans cette version",
+    "unavailableBody": "Les PDF s’ouvrent dans Kition lorsque le moteur PDF est inclus."
   }
 }

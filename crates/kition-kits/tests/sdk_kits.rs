@@ -82,6 +82,13 @@ const CASES: &[Case] = &[
         params: || json!({ "cell": "C2", "input": "99" }),
         file_command: ("file.saveAs", || json!({ "path": "elsewhere.xlsx" })),
     },
+    Case {
+        kit: "kit.pdf",
+        fixture: "Report.pdf",
+        command: "page_rotate",
+        params: || json!({ "degrees": 90, "pages": [1] }),
+        file_command: ("doc_save", || json!({ "path": "elsewhere.pdf" })),
+    },
 ];
 
 fn binary(kit: &kition_kits::KitDefinition) -> Option<PathBuf> {

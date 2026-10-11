@@ -1,4 +1,4 @@
-import { DraftingCompass, FileText, Presentation, Sheet, type LucideIcon } from 'lucide-react'
+import { DraftingCompass, FileText, FileType2, Presentation, Sheet, type LucideIcon } from 'lucide-react'
 import type { KitSdkManifest, RasterRect } from '@/features/kits/public'
 
 /**
@@ -104,4 +104,15 @@ export const SHEET_KIT: StandardKitSpec = {
     sheet: typeof inspected.sheet === 'string' ? inspected.sheet : '',
     selection: typeof inspected.selection === 'string' ? inspected.selection : '',
   }),
+}
+
+/** The PDF engine (`kition-pdf-sdk` in the kit-pdf repository), built by `scripts/build-kit-sdk.sh pdf`. */
+export const PDF_KIT: StandardKitSpec = {
+  sdk: { kitId: 'kit.pdf', dir: 'pdf-sdk', module: 'kition_pdf_sdk', documentClass: 'PdfDocument' },
+  key: 'pdf',
+  icon: FileType2,
+  menuOrder: ['Edit', 'Document', 'Pages', 'Text', 'Edit PDF', 'Comment', 'Forms', 'Bookmarks', 'Links', 'Redact', 'Measure', 'Protect', 'Accessibility', 'Tools'],
+  // Pages and menus; no pointer tools yet, so the canvas pans.
+  initialArea: (inspected) => slideArea(inspected, 0, 'pages'),
+  summary: (inspected) => ({ pages: Array.isArray(inspected.pages) ? inspected.pages.length : 0 }),
 }
