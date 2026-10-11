@@ -1366,13 +1366,6 @@ git commit -m "Prove harness turns match the original loop end to end"
 
 Before the flag is turned on outside development:
 
-- History has no message cap or compaction yet; only images from earlier
-  turns are dropped. Long sessions will grow without bound.
-- Sessions started without the flag have no history in harness mode.
-- A second turn for the same session waits silently for the first; send a
-  "queued" frame or reject it with a clear error.
-- Existing tool bodies ignore `cx.cancel`; a stopped turn's tool keeps running
-  until it finishes (its late result is dropped from history).
 - Failures settled before a tool runs (malformed arguments, cancel before
   dispatch) have no `agent_tool_calls` row, frame, or timeline event.
 - `logged_arguments` in `harness_turn.rs` copies `persisted_input` from
