@@ -511,27 +511,57 @@ async fn approval_turns(harness_mode: bool) {
     assert!(workspace.path().join("approved.txt").exists());
 }
 
-/// The offered tool names, sorted. Hosted tools (`web_search`,
-/// `image_generation` on Responses) carry their type instead of a name.
-fn tool_names(body: &Value) -> Vec<String> {
-    let mut names: Vec<String> = body["tools"]
+/// The offered tools as `{ name, description, parameters }`, sorted by
+/// name. Hosted tools (`web_search`, `image_generation` on Responses) carry
+/// their type instead of a name and keep their whole object. Reads
+/// Responses and Chat Completions tool shapes.
+fn tools(body: &Value) -> Vec<Value> {
+    let mut tools: Vec<(String, Value)> = body["tools"]
         .as_array()
         .into_iter()
         .flatten()
-        .filter_map(|tool| {
-            tool["name"]
+        .map(|tool| {
+            let spec = if tool["function"].is_object() {
+                &tool["function"]
+            } else {
+                tool
+            };
+            let name = spec["name"]
                 .as_str()
-                .or_else(|| tool["function"]["name"].as_str())
                 .or_else(|| tool["type"].as_str())
-                .map(str::to_owned)
+                .unwrap_or_default()
+                .to_owned();
+            let normalized = if spec["name"].is_string() {
+                json!({
+                    "name": name,
+                    "description": spec["description"],
+                    "parameters": spec["parameters"],
+                })
+            } else {
+                json!({ "name": name, "hosted": tool })
+            };
+            (name, normalized)
         })
         .collect();
-    names.sort();
-    names
+    tools.sort_by(|a, b| a.0.cmp(&b.0));
+    tools.into_iter().map(|(_, tool)| tool).collect()
 }
 
-/// The prompt as a sorted set of non-empty lines, without the tool list
-/// line, so the two modes can join sections differently. Reads Responses
+/// Everything but the system prompt: the user's message with its parts.
+fn conversation(body: &Value) -> Vec<Value> {
+    body["input"]
+        .as_array()
+        .into_iter()
+        .chain(body["messages"].as_array())
+        .flatten()
+        .filter(|item| item["role"] != "system" && item["role"] != "developer")
+        .cloned()
+        .collect()
+}
+
+/// The prompt as a sorted list of non-empty lines, duplicates kept,
+/// without the tool list line, so the two modes can join sections
+/// differently. Reads Responses
 /// `instructions` and system or developer items, and Chat Completions
 /// system messages.
 fn prompt_lines(body: &Value) -> Vec<String> {
@@ -559,13 +589,24 @@ fn prompt_lines(body: &Value) -> Vec<String> {
         .map(str::to_owned)
         .collect();
     lines.sort();
-    lines.dedup();
     lines
 }
 
-/// The first model request of a one-turn session in either mode.
-async fn first_request(harness_mode: bool, wire_api: &str, extra: Value) -> Value {
-    let Harness { app, .. } = app_with(harness_mode);
+/// The first model request after writing `files` into the workspace.
+async fn first_request_with(
+    harness_mode: bool,
+    wire_api: &str,
+    files: &[(&str, &[u8])],
+    extra: Value,
+) -> Value {
+    let Harness { app, workspace, .. } = app_with(harness_mode);
+    for (path, bytes) in files {
+        let path = workspace.path().join(path);
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).unwrap_or_else(|err| panic!("{err}"));
+        }
+        std::fs::write(path, bytes).unwrap_or_else(|err| panic!("{err}"));
+    }
     let session_id = new_session(&app).await;
     let (base_url, bodies) = if wire_api == "chat_completions" {
         recording_provider_at("/chat/completions", vec![chat_answer(&["ok"])]).await
@@ -582,13 +623,18 @@ async fn first_request(harness_mode: bool, wire_api: &str, extra: Value) -> Valu
 }
 
 async fn assert_pane_parity_on(wire_api: &str, extra: Value) {
-    let legacy = first_request(false, wire_api, extra.clone()).await;
-    let harness = first_request(true, wire_api, extra.clone()).await;
-    assert!(!tool_names(&legacy).is_empty(), "no tools for {extra}");
+    assert_parity_with(wire_api, &[], extra).await;
+}
+
+/// Asserts both modes send the same request and returns the legacy one.
+async fn assert_parity_with(wire_api: &str, files: &[(&str, &[u8])], extra: Value) -> Value {
+    let legacy = first_request_with(false, wire_api, files, extra.clone()).await;
+    let harness = first_request_with(true, wire_api, files, extra.clone()).await;
+    assert!(!tools(&legacy).is_empty(), "no tools for {extra}");
     assert!(!prompt_lines(&legacy).is_empty(), "no prompt for {extra}");
     assert_eq!(
-        tool_names(&harness),
-        tool_names(&legacy),
+        tools(&harness),
+        tools(&legacy),
         "tools differ for {wire_api} {extra}"
     );
     assert_eq!(
@@ -596,6 +642,12 @@ async fn assert_pane_parity_on(wire_api: &str, extra: Value) {
         prompt_lines(&legacy),
         "prompt differs for {wire_api} {extra}"
     );
+    assert_eq!(
+        conversation(&harness),
+        conversation(&legacy),
+        "user message differs for {wire_api} {extra}"
+    );
+    legacy
 }
 
 async fn assert_pane_parity(extra: Value) {
@@ -662,6 +714,28 @@ async fn panes_offer_the_same_tools_and_prompt_on_the_harness() {
     let source = |id: &str, dir: &tempfile::TempDir| json!({ "id": id, "label": id, "root_path": dir.path().to_string_lossy(), "access": "read" });
     assert_pane_parity(json!({ "local_sources": [source("notes", &plain)] })).await;
     assert_pane_parity(json!({ "pane_context": "table", "local_sources": [source("notes", &plain), source("repo", &git)] })).await;
+    // Attachments: a file the runtime cannot extract and an image, so the
+    // attachment block and the image parts of the user message both show.
+    const PNG: &[u8] = &[
+        0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0x0d, b'I', b'H', b'D', b'R',
+    ];
+    let files: &[(&str, &[u8])] = &[
+        ("Notes/brief.md", b"# Brief\n\nShip it."),
+        ("Images/dot.png", PNG),
+    ];
+    let attached = json!({ "attachment_paths": ["Notes/brief.md", "Images/dot.png"] });
+    for wire_api in ["responses", "chat_completions"] {
+        let legacy = assert_parity_with(wire_api, files, attached.clone()).await;
+        let lines = prompt_lines(&legacy);
+        for path in ["- Notes/brief.md (unknown)", "- Images/dot.png (image)"] {
+            assert!(
+                lines.iter().any(|line| line.starts_with(path)),
+                "{path} missing from {lines:?}"
+            );
+        }
+        let user = Value::Array(conversation(&legacy)).to_string();
+        assert!(user.contains("data:image/png;base64,"), "{user}");
+    }
     // Chat Completions has no hosted search or images, so `image_search`
     // is offered outside the gallery and `web_search` is not.
     for pane in ["document", "gallery", "whiteboard"] {
