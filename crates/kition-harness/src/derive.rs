@@ -29,7 +29,17 @@ fn is_boundary(body: &EventBody) -> bool {
 /// The messages a model request carries, rebuilt from the log. Images in
 /// tool results follow all results of their step as one user message, so
 /// tool messages stay adjacent to the assistant message that called them.
+/// Equivalent to [`derive_messages_for`] with `model: None`.
 pub fn derive_messages(events: &[SessionEvent]) -> Vec<Message> {
+    derive_messages_for(events, None)
+}
+
+/// Like [`derive_messages`], but an assistant message's `raw_items` replay
+/// only when `model` is `None` or matches the message's own `model`
+/// (trimmed, case-sensitive): a provider-native item (such as an Anthropic
+/// thinking block's signature) is only ever valid for the model that
+/// produced it.
+pub fn derive_messages_for(events: &[SessionEvent], model: Option<&str>) -> Vec<Message> {
     let mut system = String::new();
     let mut history = Vec::new();
     let mut pending_images: Vec<MessagePart> = Vec::new();
@@ -54,11 +64,16 @@ pub fn derive_messages(events: &[SessionEvent]) -> Vec<Message> {
                 content,
                 tool_calls,
                 raw_items,
+                model: event_model,
                 ..
             } => {
                 if content.is_empty() && tool_calls.is_empty() {
                     continue;
                 }
+                let replays_to_this_model = match model {
+                    None => true,
+                    Some(requested) => event_model.trim() == requested,
+                };
                 history.push(Message {
                     role: "assistant".into(),
                     content: content.clone(),
@@ -70,7 +85,11 @@ pub fn derive_messages(events: &[SessionEvent]) -> Vec<Message> {
                             input: call.arguments.to_string(),
                         })
                         .collect(),
-                    raw_items: raw_items.clone(),
+                    raw_items: if replays_to_this_model {
+                        raw_items.clone()
+                    } else {
+                        Vec::new()
+                    },
                     ..Message::default()
                 });
                 open_calls = tool_calls
@@ -533,6 +552,48 @@ mod tests {
              retry only if the operation is read-only or idempotent; if it may have side \
              effects, first verify external state or ask the user. Do not retry blindly."
         );
+    }
+
+    #[test]
+    fn raw_items_replay_only_to_the_model_that_produced_them() {
+        let events = vec![
+            at(
+                1,
+                EventBody::UserMessage {
+                    content: vec![ContentBlock::text("draw")],
+                },
+            ),
+            at(
+                2,
+                EventBody::AssistantMessage {
+                    content: "hi".into(),
+                    tool_calls: Vec::new(),
+                    stop_reason: "stop".into(),
+                    model: "deepseek-chat".into(),
+                    raw_items: vec![
+                        json!({ "type": "thinking", "thinking": "t", "signature": "s" }),
+                    ],
+                },
+            ),
+            at(
+                3,
+                EventBody::UserMessage {
+                    content: vec![ContentBlock::text("continue")],
+                },
+            ),
+        ];
+        assert_eq!(
+            derive_messages_for(&events, Some("deepseek-chat"))[1]
+                .raw_items
+                .len(),
+            1
+        );
+        assert!(
+            derive_messages_for(&events, Some("claude-x"))[1]
+                .raw_items
+                .is_empty()
+        );
+        assert_eq!(derive_messages(&events)[1].raw_items.len(), 1);
     }
 
     #[test]

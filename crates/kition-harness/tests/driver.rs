@@ -75,6 +75,7 @@ impl Setup {
                     .unwrap_or_else(PoisonError::into_inner)
                     .push(event)
             }),
+            model: None,
         }
     }
 
@@ -375,6 +376,7 @@ async fn cancelling_during_the_model_call_ends_the_turn_as_cancelled() {
         user: vec![ContentBlock::text("go")],
         cancel: cancel.clone(),
         live: Arc::new(|_event: Live| {}),
+        model: None,
     };
     let handle = tokio::spawn(async move { driver.run_turn(input).await });
     entered.notified().await;
@@ -451,6 +453,7 @@ async fn cancelling_inside_a_tool_body_stops_the_remaining_calls_in_the_step() {
         user: vec![ContentBlock::text("go")],
         cancel,
         live: Arc::new(|_event: Live| {}),
+        model: None,
     };
     let reason = setup
         .driver(Pipeline::default())
@@ -502,6 +505,7 @@ fn flaky_input(fail_at: usize) -> (Arc<FlakyLog>, TurnInput) {
         user: vec![ContentBlock::text("go")],
         cancel: Cancel::default(),
         live: Arc::new(|_event: Live| {}),
+        model: None,
     };
     (log, input)
 }
@@ -567,6 +571,7 @@ async fn a_paused_tool_records_its_result_and_awaits_approval() {
         user: vec![ContentBlock::text("go")],
         cancel: Cancel::default(),
         live: Arc::new(|_: Live| {}),
+        model: None,
     };
     let reason = Driver::new(log.clone(), llm)
         .run_turn(input)

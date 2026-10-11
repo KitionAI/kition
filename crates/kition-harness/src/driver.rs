@@ -8,7 +8,7 @@
 use std::sync::Arc;
 
 use crate::cancel::Cancel;
-use crate::derive::derive_messages;
+use crate::derive::derive_messages_for;
 use crate::events::{ContentBlock, EventBody, LoggedCall, SessionEvent, TurnEndReason};
 use crate::llm::{ChunkSink, Llm, LlmRequest};
 use crate::log::SessionLog;
@@ -37,6 +37,10 @@ pub struct TurnInput {
     pub user: Vec<ContentBlock>,
     pub cancel: Cancel,
     pub live: LiveSink,
+    /// The model id this turn will use. Provider-native `raw_items` on
+    /// assistant messages from a different model are dropped before the
+    /// request is built; `None` keeps everything (model not yet known).
+    pub model: Option<String>,
 }
 
 impl std::fmt::Debug for TurnInput {
@@ -152,7 +156,7 @@ impl Driver {
                 self.append(input, events, EventBody::UserMessage { content })?;
             }
             let request = LlmRequest {
-                messages: derive_messages(events.as_slice()),
+                messages: derive_messages_for(events.as_slice(), input.model.as_deref()),
                 tools: input.tools.specs(),
             };
             let live = input.live.clone();
@@ -400,6 +404,7 @@ mod tests {
             user: Vec::new(),
             cancel: Cancel::default(),
             live: Arc::new(|_event: Live| {}),
+            model: None,
         };
         let debug = format!("{input:?}");
         assert!(debug.contains("\"s\""), "{debug}");
