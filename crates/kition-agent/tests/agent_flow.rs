@@ -947,6 +947,193 @@ fn expectation(body: &Value, temp_paths: &[std::path::PathBuf]) -> Value {
     serde_json::from_str(&text).unwrap_or_else(|err| panic!("{err}"))
 }
 
+/// `value` with every object's keys sorted, so equal definitions serialize
+/// the same way.
+fn canonical(value: &Value) -> Value {
+    match value {
+        Value::Object(map) => {
+            let mut keys: Vec<&String> = map.keys().collect();
+            keys.sort();
+            Value::Object(
+                keys.into_iter()
+                    .map(|key| (key.clone(), canonical(&map[key])))
+                    .collect(),
+            )
+        }
+        Value::Array(items) => Value::Array(items.iter().map(canonical).collect()),
+        other => other.clone(),
+    }
+}
+
+/// The first 16 hex digits of the SHA-256 of a tool's canonical JSON.
+fn tool_digest(tool: &Value) -> String {
+    use sha2::{Digest, Sha256};
+    let digest = Sha256::digest(canonical(tool).to_string().as_bytes());
+    digest
+        .iter()
+        .take(8)
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
+}
+
+/// `items` without one occurrence of each of `remove`.
+fn without(items: &[String], remove: &[String]) -> Vec<String> {
+    let mut counts: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
+    for item in remove {
+        *counts.entry(item).or_default() += 1;
+    }
+    items
+        .iter()
+        .filter(|item| match counts.get_mut(item.as_str()) {
+            Some(count) if *count > 0 => {
+                *count -= 1;
+                false
+            }
+            _ => true,
+        })
+        .cloned()
+        .collect()
+}
+
+/// What one scenario sent: tool digests by name, sorted prompt lines, and
+/// the user message.
+struct Observed {
+    tools: std::collections::BTreeMap<String, String>,
+    prompt: Vec<String>,
+    conversation: Value,
+}
+
+impl Observed {
+    fn new(expectation: &Value) -> Self {
+        let tools = expectation["tools"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|tool| {
+                (
+                    tool["name"].as_str().unwrap_or_default().to_owned(),
+                    tool_digest(tool),
+                )
+            })
+            .collect();
+        let prompt = expectation["prompt"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|line| line.as_str().map(str::to_owned))
+            .collect();
+        Self {
+            tools,
+            prompt,
+            conversation: expectation["conversation"].clone(),
+        }
+    }
+}
+
+/// The golden file: the prompt lines every scenario shares, each tool's
+/// digest, and per scenario its tool names, its other prompt lines, and
+/// the user message.
+fn golden_from(observed: &[(String, Observed)]) -> Value {
+    let mut shared = observed
+        .first()
+        .map(|(_, first)| first.prompt.clone())
+        .unwrap_or_default();
+    for (_, scenario) in observed {
+        let missing = without(&shared, &scenario.prompt);
+        shared = without(&shared, &missing);
+    }
+    let mut tools = std::collections::BTreeMap::new();
+    let mut scenarios = serde_json::Map::new();
+    for (name, scenario) in observed {
+        for (tool, digest) in &scenario.tools {
+            if let Some(known) = tools.insert(tool.clone(), digest.clone()) {
+                assert_eq!(&known, digest, "{tool} differs between scenarios");
+            }
+        }
+        scenarios.insert(
+            name.clone(),
+            json!({
+                "tools": scenario.tools.keys().collect::<Vec<_>>(),
+                "prompt": without(&scenario.prompt, &shared),
+                "conversation": scenario.conversation,
+            }),
+        );
+    }
+    json!({ "prompt": shared, "tools": tools, "scenarios": scenarios })
+}
+
+fn strings(value: &Value) -> Vec<String> {
+    value
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|item| item.as_str().map(str::to_owned))
+        .collect()
+}
+
+/// Every difference between `observed` and the golden data, readably.
+fn golden_differences(golden: &Value, observed: &[(String, Observed)]) -> Vec<String> {
+    let mut problems = Vec::new();
+    let expected: std::collections::BTreeSet<String> = golden["scenarios"]
+        .as_object()
+        .map(|scenarios| scenarios.keys().cloned().collect())
+        .unwrap_or_default();
+    let ran: std::collections::BTreeSet<String> =
+        observed.iter().map(|(name, _)| name.clone()).collect();
+    if expected != ran {
+        problems.push(format!(
+            "scenarios differ: golden only {:?}, test only {:?}",
+            expected.difference(&ran).collect::<Vec<_>>(),
+            ran.difference(&expected).collect::<Vec<_>>()
+        ));
+    }
+    let shared = strings(&golden["prompt"]);
+    for (name, scenario) in observed {
+        let entry = &golden["scenarios"][name];
+        if !entry.is_object() {
+            continue;
+        }
+        let names: Vec<String> = scenario.tools.keys().cloned().collect();
+        let golden_names = strings(&entry["tools"]);
+        let added = without(&names, &golden_names);
+        let removed = without(&golden_names, &names);
+        if !added.is_empty() || !removed.is_empty() {
+            problems.push(format!(
+                "{name}: tools added {added:?}, removed {removed:?}"
+            ));
+        }
+        let changed: Vec<&String> = scenario
+            .tools
+            .iter()
+            .filter(|(tool, digest)| {
+                golden["tools"][tool.as_str()]
+                    .as_str()
+                    .is_some_and(|known| known != digest.as_str())
+            })
+            .map(|(tool, _)| tool)
+            .collect();
+        if !changed.is_empty() {
+            problems.push(format!("{name}: tool definitions changed {changed:?}"));
+        }
+        let mut golden_prompt = shared.clone();
+        golden_prompt.extend(strings(&entry["prompt"]));
+        let added = without(&scenario.prompt, &golden_prompt);
+        let removed = without(&golden_prompt, &scenario.prompt);
+        if !added.is_empty() || !removed.is_empty() {
+            problems.push(format!(
+                "{name}: prompt lines added {added:#?}, removed {removed:#?}"
+            ));
+        }
+        if scenario.conversation != entry["conversation"] {
+            problems.push(format!(
+                "{name}: user message {} instead of {}",
+                scenario.conversation, entry["conversation"]
+            ));
+        }
+    }
+    problems
+}
+
 fn golden_path() -> std::path::PathBuf {
     std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/golden/panes.json")
 }
@@ -1083,18 +1270,7 @@ async fn panes_offer_the_expected_tools_and_prompt() {
     }
 
     let write = std::env::var("KITION_WRITE_GOLDEN").is_ok_and(|value| value == "1");
-    let golden: Value = if write {
-        Value::Null
-    } else {
-        serde_json::from_str(
-            &std::fs::read_to_string(golden_path()).unwrap_or_else(|err| panic!("{err}")),
-        )
-        .unwrap_or_else(|err| panic!("{err}"))
-    };
-    // Each tool's object is stored once under `tools`; a scenario lists the
-    // names it offers.
-    let mut written_tools = serde_json::Map::new();
-    let mut written = serde_json::Map::new();
+    let mut observed: Vec<(String, Observed)> = Vec::new();
     for Scenario {
         name,
         wire_api,
@@ -1108,9 +1284,13 @@ async fn panes_offer_the_expected_tools_and_prompt() {
             plain.path().to_path_buf(),
             git.path().to_path_buf(),
         ];
-        let mut actual = expectation(&body, &temp_paths);
-        let offered = actual["tools"].as_array().cloned().unwrap_or_default();
-        assert!(!offered.is_empty(), "no tools for {name}");
+        let actual = expectation(&body, &temp_paths);
+        assert!(
+            actual["tools"]
+                .as_array()
+                .is_some_and(|tools| !tools.is_empty()),
+            "no tools for {name}"
+        );
         assert!(
             actual["prompt"]
                 .as_array()
@@ -1128,46 +1308,26 @@ async fn panes_offer_the_expected_tools_and_prompt() {
             let user = Value::Array(conversation(&body)).to_string();
             assert!(user.contains("data:image/png;base64,"), "{user}");
         }
-        let names: Vec<String> = offered
-            .iter()
-            .map(|tool| tool["name"].as_str().unwrap_or_default().to_owned())
-            .collect();
-        actual["tools"] = json!(names);
-        if write {
-            for tool in offered {
-                let tool_name = tool["name"].as_str().unwrap_or_default().to_owned();
-                if let Some(known) = written_tools.get(&tool_name) {
-                    assert_eq!(known, &tool, "{tool_name} differs between scenarios");
-                }
-                written_tools.insert(tool_name, tool);
-            }
-            written.insert(name, actual);
-            continue;
-        }
-        let expected = &golden["scenarios"][&name];
-        assert!(expected.is_object(), "no golden entry for {name}");
-        for key in ["tools", "prompt", "conversation"] {
-            assert_eq!(
-                actual[key], expected[key],
-                "{key} differs from the golden data for {name}"
-            );
-        }
-        for tool in offered {
-            let tool_name = tool["name"].as_str().unwrap_or_default();
-            assert_eq!(
-                tool, golden["tools"][tool_name],
-                "{tool_name} differs from the golden data for {name}"
-            );
-        }
+        observed.push((name, Observed::new(&actual)));
     }
     if write {
         let path = golden_path();
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent).unwrap_or_else(|err| panic!("{err}"));
         }
-        written_tools.sort_keys();
-        let golden = json!({ "tools": written_tools, "scenarios": written });
-        let text = serde_json::to_string_pretty(&golden).unwrap_or_else(|err| panic!("{err}"));
+        let text = serde_json::to_string_pretty(&golden_from(&observed))
+            .unwrap_or_else(|err| panic!("{err}"));
         std::fs::write(path, text + "\n").unwrap_or_else(|err| panic!("{err}"));
+        return;
     }
+    let golden: Value = serde_json::from_str(
+        &std::fs::read_to_string(golden_path()).unwrap_or_else(|err| panic!("{err}")),
+    )
+    .unwrap_or_else(|err| panic!("{err}"));
+    let problems = golden_differences(&golden, &observed);
+    assert!(
+        problems.is_empty(),
+        "the requests differ from tests/golden/panes.json (KITION_WRITE_GOLDEN=1 rewrites it):\n{}",
+        problems.join("\n")
+    );
 }
