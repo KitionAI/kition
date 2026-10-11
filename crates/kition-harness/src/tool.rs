@@ -4,8 +4,10 @@
 
 use std::collections::BTreeMap;
 use std::future::Future;
+use std::panic::AssertUnwindSafe;
 use std::sync::Arc;
 
+use futures::FutureExt;
 use futures::future::BoxFuture;
 use kition_ai::engine::ToolSpec;
 use serde_json::{Value, json};
@@ -15,24 +17,27 @@ use crate::events::ContentBlock;
 use crate::schema;
 
 /// What a tool body knows about its call.
+#[derive(Debug)]
 pub struct ToolContext {
     pub session_id: String,
     pub call_id: String,
     pub cancel: Cancel,
 }
 
-/// A failed body: the message the model sees, plus optional partial output.
+/// A failed body: the message the model sees, plus optional partial progress.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ToolFailure {
     pub message: String,
-    pub output: Option<Value>,
+    /// Partial progress the model sees after the message; never logged as
+    /// the call's value.
+    pub detail: Option<Value>,
 }
 
 impl<T: Into<String>> From<T> for ToolFailure {
     fn from(message: T) -> Self {
         Self {
             message: message.into(),
-            output: None,
+            detail: None,
         }
     }
 }
@@ -60,6 +65,17 @@ pub struct ToolDef {
     presentation_meta: Option<Present>,
 }
 
+impl std::fmt::Debug for ToolDef {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("ToolDef")
+            .field("name", &self.name)
+            .field("writes", &self.writes)
+            .field("parameters", &self.parameters)
+            .finish_non_exhaustive()
+    }
+}
+
 /// The settled outcome of one call: the canonical value, what the model sees,
 /// and display-only data.
 #[derive(Debug, Clone, PartialEq)]
@@ -71,10 +87,19 @@ pub struct Settled {
 }
 
 impl Settled {
-    pub fn error(message: impl Into<String>, output: Option<Value>) -> Self {
+    /// An error outcome. `value` is always `Value::Null` (dsh logs `null` as
+    /// the `tool/result` value on failure) and `meta` is always `None`.
+    /// `content` carries the message, plus a second text block with
+    /// `detail` serialized as compact JSON when it is given, so the model
+    /// still sees partial progress such as completed steps.
+    pub fn error(message: impl Into<String>, detail: Option<Value>) -> Self {
+        let mut content = vec![ContentBlock::text(message)];
+        if let Some(detail) = detail {
+            content.push(ContentBlock::text(detail.to_string()));
+        }
         Self {
-            value: output.unwrap_or(Value::Null),
-            content: vec![ContentBlock::text(message)],
+            value: Value::Null,
+            content,
             is_error: true,
             meta: None,
         }
@@ -226,34 +251,61 @@ impl ToolDef {
     /// Validates the arguments, runs the body, checks the value against the
     /// output schema, and renders it. Never panics; failures are `Settled` errors.
     pub async fn run(&self, args: Value, cx: ToolContext) -> Settled {
+        if cx.cancel.is_cancelled() {
+            return Settled::error("tool call aborted before dispatch", None);
+        }
         let problems = schema::violations(&self.parameters_validator, &args);
         if !problems.is_empty() {
             return Settled::error(format!("invalid arguments: {}", problems.join("; ")), None);
         }
-        match (self.execute)(args.clone(), cx).await {
-            Err(failure) => Settled::error(failure.message, failure.output),
-            Ok(value) => {
-                let problems = schema::violations(&self.output_validator, &value);
-                if !problems.is_empty() {
-                    return Settled::error(
-                        format!(
-                            "{} returned output outside its schema: {}",
-                            self.name,
-                            problems.join("; ")
-                        ),
-                        None,
-                    );
-                }
-                Settled {
-                    content: (self.render)(&args, &value),
-                    meta: self
-                        .presentation_meta
-                        .as_ref()
-                        .map(|present| present(&args, &value)),
-                    value,
-                    is_error: false,
+        let outcome = AssertUnwindSafe((self.execute)(args.clone(), cx))
+            .catch_unwind()
+            .await;
+        let value = match outcome {
+            Err(_panic) => {
+                return Settled::error(format!("{} failed unexpectedly", self.name), None);
+            }
+            Ok(Err(failure)) => return Settled::error(failure.message, failure.detail),
+            Ok(Ok(value)) => value,
+        };
+        let problems = schema::violations(&self.output_validator, &value);
+        if !problems.is_empty() {
+            return Settled::error(
+                format!(
+                    "{} returned output outside its schema: {}",
+                    self.name,
+                    problems.join("; ")
+                ),
+                None,
+            );
+        }
+        let content = match std::panic::catch_unwind(AssertUnwindSafe(|| {
+            (self.render)(&args, &value)
+        })) {
+            Ok(content) => content,
+            Err(_panic) => {
+                return Settled::error(format!("{} could not present its output", self.name), None);
+            }
+        };
+        let meta = match self.presentation_meta.as_ref() {
+            None => None,
+            Some(present) => {
+                match std::panic::catch_unwind(AssertUnwindSafe(|| present(&args, &value))) {
+                    Ok(meta) => Some(meta),
+                    Err(_panic) => {
+                        return Settled::error(
+                            format!("{} could not present its output", self.name),
+                            None,
+                        );
+                    }
                 }
             }
+        };
+        Settled {
+            content,
+            meta,
+            value,
+            is_error: false,
         }
     }
 }
@@ -358,5 +410,113 @@ mod tests {
                 .is_err()
         );
         assert!(define("no_body", "x").build().is_err());
+    }
+
+    #[tokio::test]
+    async fn panic_in_body_settles_as_error() {
+        let boom = define("boom", "panics")
+            .execute(|_, _| async { panic!("kaboom") })
+            .build()
+            .unwrap_or_else(|error| panic!("{error}"));
+        let settled = boom.run(json!({}), cx()).await;
+        assert!(settled.is_error);
+        assert_eq!(settled.value, Value::Null);
+        assert_eq!(
+            settled.content,
+            vec![ContentBlock::text("boom failed unexpectedly")]
+        );
+    }
+
+    #[tokio::test]
+    async fn panic_in_render_settles_as_error() {
+        let boom = define("boom_render", "renders badly")
+            .execute(|_, _| async { Ok(Value::Null) })
+            .render(|_, _| panic!("kaboom"))
+            .build()
+            .unwrap_or_else(|error| panic!("{error}"));
+        let settled = boom.run(json!({}), cx()).await;
+        assert!(settled.is_error);
+        assert_eq!(settled.value, Value::Null);
+        assert_eq!(
+            settled.content,
+            vec![ContentBlock::text(
+                "boom_render could not present its output"
+            )]
+        );
+    }
+
+    #[tokio::test]
+    async fn failure_detail_becomes_a_second_content_block_value_stays_null() {
+        let tool = define("partial", "partial failure")
+            .execute(|_, _| async {
+                Err(ToolFailure {
+                    message: "boom".into(),
+                    detail: Some(json!({ "done": 1 })),
+                })
+            })
+            .build()
+            .unwrap_or_else(|error| panic!("{error}"));
+        let settled = tool.run(json!({}), cx()).await;
+        assert!(settled.is_error);
+        assert_eq!(settled.value, Value::Null);
+        assert_eq!(
+            settled.content,
+            vec![
+                ContentBlock::text("boom"),
+                ContentBlock::text("{\"done\":1}")
+            ]
+        );
+    }
+
+    #[tokio::test]
+    async fn plain_failure_has_a_single_content_block() {
+        let tool = define("plain_fail", "plain failure")
+            .execute(|_, _| async { Err("plain".into()) })
+            .build()
+            .unwrap_or_else(|error| panic!("{error}"));
+        let settled = tool.run(json!({}), cx()).await;
+        assert!(settled.is_error);
+        assert_eq!(settled.value, Value::Null);
+        assert_eq!(settled.content, vec![ContentBlock::text("plain")]);
+    }
+
+    #[tokio::test]
+    async fn cancelled_before_dispatch_skips_the_body() {
+        let context = cx();
+        context.cancel.cancel();
+        let settled = echo().run(json!({ "text": "hi" }), context).await;
+        assert!(settled.is_error);
+        assert_eq!(settled.value, Value::Null);
+        assert_eq!(
+            settled.content,
+            vec![ContentBlock::text("tool call aborted before dispatch")]
+        );
+    }
+
+    #[test]
+    fn writes_flag_is_set_by_the_builder() {
+        let tool = define("writer", "writes")
+            .writes()
+            .execute(|_, _| async { Ok(Value::Null) })
+            .build()
+            .unwrap_or_else(|error| panic!("{error}"));
+        assert!(tool.writes);
+    }
+
+    #[test]
+    fn spec_input_schema_matches_the_compiled_parameters() {
+        let tool = echo();
+        assert_eq!(tool.spec().input_schema, Some(tool.parameters.clone()));
+    }
+
+    #[test]
+    fn build_fails_on_an_invalid_parameter_spec_with_a_name_prefixed_error() {
+        let error = define("bad_params", "x")
+            .parameters(json!({ "x": { "type": "object" } }))
+            .execute(|_, _| async { Ok(Value::Null) })
+            .build()
+            .err()
+            .unwrap_or_default();
+        assert!(error.starts_with("bad_params:"), "{error}");
     }
 }
