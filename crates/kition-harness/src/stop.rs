@@ -46,14 +46,13 @@ impl StopCheck for UnresolvedWrites {
 }
 
 /// After a failed call, tells the model the task is not complete and how to
-/// recover.
+/// recover. The original loop recovers after every failed tool result,
+/// including one the model asked for that is not registered this turn, so
+/// `post_missing` carries the same text.
 pub struct RecoveryPrompt;
 
-impl Policy for RecoveryPrompt {
-    fn post_execute(&self, call: &CallInfo<'_>, settled: &mut Settled) {
-        if !settled.is_error {
-            return;
-        }
+impl RecoveryPrompt {
+    fn recover(name: &str, settled: &mut Settled) {
         let failure = settled
             .content
             .iter()
@@ -65,12 +64,25 @@ impl Policy for RecoveryPrompt {
         settled.context.push(ContentBlock::text(
             [
                 "[tool recovery required] The previous tool call failed and the user's task is not complete.".to_owned(),
-                format!("Failed tool: {}", call.tool.name),
+                format!("Failed tool: {name}"),
                 format!("Failure: {failure}"),
                 "Inspect the latest state and recover now. For a failed apply_patch, reread the target and retry with a smaller exact patch or use document_write for a whole-document rewrite. Do not return an empty response or claim completion while the write is unresolved.".to_owned(),
             ]
             .join("\n"),
         ));
+    }
+}
+
+impl Policy for RecoveryPrompt {
+    fn post_execute(&self, call: &CallInfo<'_>, settled: &mut Settled) {
+        if !settled.is_error {
+            return;
+        }
+        Self::recover(&call.tool.name, settled);
+    }
+
+    fn post_missing(&self, call_name: &str, settled: &mut Settled) {
+        Self::recover(call_name, settled);
     }
 }
 
@@ -149,5 +161,16 @@ mod tests {
         };
         RecoveryPrompt.post_execute(&call, &mut ok);
         assert!(ok.context.is_empty());
+    }
+
+    #[test]
+    fn a_missing_tool_gets_the_same_recovery_prompt() {
+        let mut settled = Settled::error("tool `ghost` is not available in this turn", None);
+        RecoveryPrompt.post_missing("ghost", &mut settled);
+        let ContentBlock::Text { text } = &settled.context[0] else {
+            panic!("expected text")
+        };
+        assert!(text.starts_with("[tool recovery required]"), "{text}");
+        assert!(text.contains("Failed tool: ghost"), "{text}");
     }
 }

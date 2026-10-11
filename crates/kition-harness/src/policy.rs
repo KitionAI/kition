@@ -31,6 +31,11 @@ pub trait Policy: Send + Sync {
     }
 
     fn post_execute(&self, _call: &CallInfo<'_>, _settled: &mut Settled) {}
+
+    /// Like `post_execute`, for a call whose tool name is not registered in
+    /// this turn: there is no `ToolDef` to put in a `CallInfo`, only the
+    /// name the model asked for.
+    fn post_missing(&self, _call_name: &str, _settled: &mut Settled) {}
 }
 
 /// Denies tools that change the workspace when the session may not write.
@@ -92,6 +97,13 @@ impl Pipeline {
     pub fn settle(&self, call: &CallInfo<'_>, settled: &mut Settled) {
         for policy in &self.policies {
             policy.post_execute(call, settled);
+        }
+    }
+
+    /// Like `settle`, for a call whose tool name is not registered.
+    pub fn settle_missing(&self, name: &str, settled: &mut Settled) {
+        for policy in &self.policies {
+            policy.post_missing(name, settled);
         }
     }
 }
@@ -195,6 +207,42 @@ mod tests {
             .with(AskForAll)
             .with(WritePermission { may_write: false });
         assert_eq!(pipeline.decide(&call), Decision::Ask("confirm".into()));
+    }
+
+    #[test]
+    fn settle_missing_runs_post_missing_on_every_policy() {
+        struct TagMissing;
+        impl Policy for TagMissing {
+            fn post_missing(&self, call_name: &str, settled: &mut Settled) {
+                settled
+                    .context
+                    .push(ContentBlock::text(format!("missing: {call_name}")));
+            }
+        }
+        let mut settled = Settled {
+            value: Value::Null,
+            content: Vec::new(),
+            is_error: true,
+            meta: None,
+            context: Vec::new(),
+        };
+        Pipeline::default()
+            .with(TagMissing)
+            .settle_missing("ghost_tool", &mut settled);
+        assert_eq!(
+            settled.context,
+            vec![ContentBlock::text("missing: ghost_tool")]
+        );
+        // The default `post_missing` is a no-op.
+        let mut untouched = Settled {
+            value: Value::Null,
+            content: Vec::new(),
+            is_error: true,
+            meta: None,
+            context: Vec::new(),
+        };
+        Pipeline::default().settle_missing("ghost_tool", &mut untouched);
+        assert!(untouched.context.is_empty());
     }
 
     #[test]

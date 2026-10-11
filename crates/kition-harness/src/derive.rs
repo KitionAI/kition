@@ -72,7 +72,7 @@ pub fn derive_messages_for(events: &[SessionEvent], model: Option<&str>) -> Vec<
                 }
                 let replays_to_this_model = match model {
                     None => true,
-                    Some(requested) => event_model.trim() == requested,
+                    Some(requested) => event_model.trim() == requested.trim(),
                 };
                 history.push(Message {
                     role: "assistant".into(),
@@ -101,7 +101,12 @@ pub fn derive_messages_for(events: &[SessionEvent], model: Option<&str>) -> Vec<
                 started.insert(call_id.clone());
             }
             EventBody::ApprovalAsked { call_id, .. } => {
-                awaiting_approval.insert(call_id.clone());
+                // A call already closed by a `tool/result` (the pause
+                // happens after the body's own result is recorded) is not
+                // reopened by its own stale approval request.
+                if open_calls.iter().any(|(id, _)| id == call_id) {
+                    awaiting_approval.insert(call_id.clone());
+                }
             }
             EventBody::ToolResult {
                 call_id,
@@ -555,6 +560,26 @@ mod tests {
     }
 
     #[test]
+    fn the_requested_model_is_trimmed_too_before_comparing() {
+        let events = vec![at(
+            1,
+            EventBody::AssistantMessage {
+                content: "hi".into(),
+                tool_calls: Vec::new(),
+                stop_reason: "stop".into(),
+                model: "deepseek-chat".into(),
+                raw_items: vec![json!({ "type": "thinking", "thinking": "t", "signature": "s" })],
+            },
+        )];
+        assert_eq!(
+            derive_messages_for(&events, Some(" deepseek-chat "))[0]
+                .raw_items
+                .len(),
+            1
+        );
+    }
+
+    #[test]
     fn raw_items_replay_only_to_the_model_that_produced_them() {
         let events = vec![
             at(
@@ -594,6 +619,69 @@ mod tests {
                 .is_empty()
         );
         assert_eq!(derive_messages(&events)[1].raw_items.len(), 1);
+    }
+
+    #[test]
+    fn an_approval_asked_for_an_already_resolved_call_does_not_mark_it_awaiting() {
+        let events = vec![
+            at(
+                1,
+                assistant_with_calls(vec![LoggedCall {
+                    call_id: "c1".into(),
+                    name: "photo_run".into(),
+                    arguments: json!({}),
+                }]),
+            ),
+            at(
+                2,
+                EventBody::ToolCall {
+                    call_id: "c1".into(),
+                    name: "photo_run".into(),
+                    arguments: json!({}),
+                },
+            ),
+            at(
+                3,
+                EventBody::ToolResult {
+                    call_id: "c1".into(),
+                    name: "photo_run".into(),
+                    value: json!({}),
+                    content: vec![ContentBlock::text("ok")],
+                    is_error: false,
+                    meta: None,
+                },
+            ),
+            // Stale: the call already has its result, so this must not mark
+            // `c1` as awaiting approval.
+            at(
+                4,
+                EventBody::ApprovalAsked {
+                    call_id: "c1".into(),
+                    reason: "writes outside the workspace".into(),
+                },
+            ),
+            // A later turn reuses the same call id and leaves it dangling.
+            at(
+                5,
+                assistant_with_calls(vec![LoggedCall {
+                    call_id: "c1".into(),
+                    name: "photo_run".into(),
+                    arguments: json!({}),
+                }]),
+            ),
+        ];
+        let messages = derive_messages(&events);
+        let roles: Vec<&str> = messages
+            .iter()
+            .map(|message| message.role.as_str())
+            .collect();
+        assert_eq!(roles, ["assistant", "tool", "assistant", "tool"]);
+        assert_eq!(messages[3].tool_call_id, "c1");
+        assert_eq!(
+            messages[3].content,
+            "The tool call was interrupted before the Harness recorded it as started. \
+             Retry it if it is still needed."
+        );
     }
 
     #[test]

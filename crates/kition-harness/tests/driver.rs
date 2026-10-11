@@ -188,6 +188,28 @@ async fn unknown_tools_and_denied_tools_become_error_results() {
     assert_eq!(errors, 2);
 }
 
+#[tokio::test]
+async fn unregistered_tools_get_the_recovery_prompt_too() {
+    use kition_harness::stop::RecoveryPrompt;
+    let setup = setup(vec![
+        LlmReply::calls(vec![call("c1", "missing", json!({}))]),
+        LlmReply::text("sorry"),
+    ]);
+    setup
+        .driver(Pipeline::default().with(RecoveryPrompt))
+        .run_turn(setup.input("go", Cancel::default()))
+        .await
+        .unwrap_or_else(|error| panic!("{error}"));
+    let second = &setup.llm.requests()[1];
+    let last = second
+        .messages
+        .last()
+        .map(|message| message.content.clone())
+        .unwrap_or_default();
+    assert!(last.starts_with("[tool recovery required]"), "{last}");
+    assert!(last.contains("Failed tool: missing"), "{last}");
+}
+
 struct AskEverything;
 impl Policy for AskEverything {
     fn pre_execute(&self, _call: &CallInfo<'_>) -> Decision {
@@ -411,14 +433,18 @@ async fn run_turn_future_is_send() {
 
 #[tokio::test]
 async fn cancelling_inside_a_tool_body_stops_the_remaining_calls_in_the_step() {
+    use kition_harness::stop::RecoveryPrompt;
     let cancel = Cancel::default();
     let cancel_for_tool = cancel.clone();
+    // Fails after cancelling, so a `RecoveryPrompt` policy would normally
+    // attach a "[tool recovery required]" context: a cancelled step must
+    // drop that context rather than log it.
     let canceller = define("canceller", "Cancels the turn from inside its body")
         .execute(move |_args, _cx| {
             let cancel = cancel_for_tool.clone();
             async move {
                 cancel.cancel();
-                Ok(json!({}))
+                Err("boom".into())
             }
         })
         .build()
@@ -456,12 +482,23 @@ async fn cancelling_inside_a_tool_body_stops_the_remaining_calls_in_the_step() {
         model: None,
     };
     let reason = setup
-        .driver(Pipeline::default())
+        .driver(Pipeline::default().with(RecoveryPrompt))
         .run_turn(input)
         .await
         .unwrap_or_else(|error| panic!("{error}"));
     assert_eq!(reason, TurnEndReason::Cancelled);
     assert!(!ran.load(Ordering::SeqCst));
+    let events = setup
+        .log
+        .read("s")
+        .unwrap_or_else(|error| panic!("{error}"));
+    let has_recovery_context = events.iter().any(|event| match &event.body {
+        EventBody::UserMessage { content } => content.iter().any(|block| {
+            matches!(block, ContentBlock::Text { text } if text.starts_with("[tool recovery required]"))
+        }),
+        _ => false,
+    });
+    assert!(!has_recovery_context, "{events:?}");
 }
 
 /// A `SessionLog` over `MemoryLog` whose `fail_at`-th append (1-indexed,
@@ -543,10 +580,13 @@ async fn when_the_turn_fails_and_turn_end_also_fails_to_append_the_original_erro
 #[tokio::test]
 async fn a_paused_tool_records_its_result_and_awaits_approval() {
     let log = Arc::new(MemoryLog::default());
-    let llm = Arc::new(ScriptedLlm::new(vec![LlmReply::calls(vec![
-        call("c1", "ask", json!({})),
-        call("c2", "ask", json!({})),
-    ])]));
+    let llm = Arc::new(ScriptedLlm::new(vec![
+        LlmReply::calls(vec![
+            call("c1", "ask", json!({})),
+            call("c2", "ask", json!({})),
+        ]),
+        LlmReply::text("ok"),
+    ]));
     let ran = Arc::new(AtomicUsize::new(0));
     let counter = ran.clone();
     let ask = define("ask", "Asks")
@@ -562,8 +602,9 @@ async fn a_paused_tool_records_its_result_and_awaits_approval() {
         .unwrap_or_else(|error| panic!("{error}"));
     let mut tools = ToolRegistry::default();
     tools
-        .register(ask)
+        .register(ask.clone())
         .unwrap_or_else(|error| panic!("{error}"));
+    let driver = Driver::new(log.clone(), llm.clone());
     let input = TurnInput {
         session: "s".into(),
         system: "sys".into(),
@@ -573,7 +614,7 @@ async fn a_paused_tool_records_its_result_and_awaits_approval() {
         live: Arc::new(|_: Live| {}),
         model: None,
     };
-    let reason = Driver::new(log.clone(), llm)
+    let reason = driver
         .run_turn(input)
         .await
         .unwrap_or_else(|error| panic!("{error}"));
@@ -598,6 +639,86 @@ async fn a_paused_tool_records_its_result_and_awaits_approval() {
             "step/end",
             "turn/end"
         ]
+    );
+
+    // A second turn: the never-started `c2` call must repair as
+    // "not started", not as the stale approval-pending text (fix for the
+    // `approval/asked` belonging to the already-resolved `c1`).
+    let mut tools_again = ToolRegistry::default();
+    tools_again
+        .register(ask)
+        .unwrap_or_else(|error| panic!("{error}"));
+    let second_input = TurnInput {
+        session: "s".into(),
+        system: "sys".into(),
+        tools: tools_again,
+        user: vec![ContentBlock::text("continue")],
+        cancel: Cancel::default(),
+        live: Arc::new(|_: Live| {}),
+        model: None,
+    };
+    let second_reason = driver
+        .run_turn(second_input)
+        .await
+        .unwrap_or_else(|error| panic!("{error}"));
+    assert_eq!(second_reason, TurnEndReason::Completed);
+    let requests = llm.requests();
+    let second_request = requests
+        .get(1)
+        .unwrap_or_else(|| panic!("no second request"));
+    let unstarted = second_request
+        .messages
+        .iter()
+        .find(|message| message.tool_call_id == "c2")
+        .unwrap_or_else(|| panic!("no c2 tool message in the second request"));
+    assert_eq!(
+        unstarted.content,
+        "The tool call was interrupted before the Harness recorded it as started. \
+         Retry it if it is still needed."
+    );
+}
+
+#[tokio::test]
+async fn a_failed_calls_pause_request_is_discarded_and_the_turn_continues() {
+    let log = Arc::new(MemoryLog::default());
+    let llm = Arc::new(ScriptedLlm::new(vec![
+        LlmReply::calls(vec![call("c1", "ask", json!({}))]),
+        LlmReply::text("done"),
+    ]));
+    let ask = define("ask", "Asks then fails")
+        .execute(|_, cx| async move {
+            cx.pause.request("Approve the command");
+            Err("boom".into())
+        })
+        .build()
+        .unwrap_or_else(|error| panic!("{error}"));
+    let mut tools = ToolRegistry::default();
+    tools
+        .register(ask)
+        .unwrap_or_else(|error| panic!("{error}"));
+    let input = TurnInput {
+        session: "s".into(),
+        system: "sys".into(),
+        tools,
+        user: vec![ContentBlock::text("go")],
+        cancel: Cancel::default(),
+        live: Arc::new(|_: Live| {}),
+        model: None,
+    };
+    let reason = Driver::new(log.clone(), llm)
+        .run_turn(input)
+        .await
+        .unwrap_or_else(|error| panic!("{error}"));
+    assert_eq!(reason, TurnEndReason::Completed);
+    let kinds: Vec<&str> = log
+        .read("s")
+        .unwrap_or_else(|error| panic!("{error}"))
+        .iter()
+        .map(|event| event.body.kind())
+        .collect();
+    assert!(
+        !kinds.contains(&"approval/asked"),
+        "a failed call's pause request must not reach the log: {kinds:?}"
     );
 }
 
@@ -646,6 +767,68 @@ async fn follow_up_content_is_logged_and_keeps_the_turn_going() {
     assert_eq!(
         second.messages.last().map(|message| message.parts.len()),
         Some(1)
+    );
+}
+
+#[tokio::test]
+async fn recovery_context_precedes_the_follow_up_message_in_the_same_step() {
+    use kition_harness::stop::RecoveryPrompt;
+    // `echo` fails validation on `{}` (it requires `text`), so its result
+    // is an error and `RecoveryPrompt` attaches a context; the same reply
+    // also carries hosted follow-up content. Both are logged after the
+    // tool result, context first.
+    let mut first = LlmReply::calls(vec![call("c1", "echo", json!({}))]);
+    first.follow_up = vec![ContentBlock::Image {
+        url: "data:image/png;base64,AA==".into(),
+    }];
+    let setup = setup(vec![first, LlmReply::text("done")]);
+    setup
+        .driver(Pipeline::default().with(RecoveryPrompt))
+        .run_turn(setup.input("go", Cancel::default()))
+        .await
+        .unwrap_or_else(|error| panic!("{error}"));
+    let events = setup
+        .log
+        .read("s")
+        .unwrap_or_else(|error| panic!("{error}"));
+    let user_messages: Vec<&Vec<ContentBlock>> = events
+        .iter()
+        .filter_map(|event| match &event.body {
+            EventBody::UserMessage { content } => Some(content),
+            _ => None,
+        })
+        .collect();
+    // [0] is the turn's own "go" input; [1] is the step's recovery
+    // context; [2] is its follow-up image.
+    assert_eq!(user_messages.len(), 3, "{user_messages:?}");
+    let ContentBlock::Text { text } = &user_messages[1][0] else {
+        panic!("expected text, got {:?}", user_messages[1])
+    };
+    assert!(text.starts_with("[tool recovery required]"), "{text}");
+    assert!(
+        matches!(&user_messages[2][0], ContentBlock::Image { .. }),
+        "{:?}",
+        user_messages[2]
+    );
+}
+
+#[tokio::test]
+async fn a_failed_write_is_reported_even_when_the_final_reply_is_empty() {
+    use kition_harness::stop::UnresolvedWrites;
+    let setup = setup(vec![
+        LlmReply::calls(vec![call("c1", "echo", json!({}))]),
+        LlmReply::text(""),
+    ]);
+    let mut driver = setup.driver(Pipeline::default());
+    driver.stop_checks.push(Arc::new(UnresolvedWrites));
+    let error = driver
+        .run_turn(setup.input("go", Cancel::default()))
+        .await
+        .err()
+        .unwrap_or_default();
+    assert!(
+        error.contains("did not recover from failed workspace tool echo"),
+        "{error}"
     );
 }
 

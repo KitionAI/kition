@@ -204,13 +204,16 @@ impl Driver {
             )?;
             if reply.tool_calls.is_empty() && reply.follow_up.is_empty() {
                 self.append(input, events, EventBody::StepEnd { turn, step })?;
+                // A stop check (an unresolved failed write, say) is the more
+                // useful error even when the reply is also empty: it names
+                // the real problem instead of the generic empty-reply text.
+                if let Some(message) = self.run_stop_checks(events, &input.tools) {
+                    return Err(message);
+                }
                 if reply.content.trim().is_empty() {
                     return Err("the model returned no content and no tool calls".into());
                 }
-                return match self.run_stop_checks(events, &input.tools) {
-                    Some(message) => Err(message),
-                    None => Ok(TurnEndReason::Completed),
-                };
+                return Ok(TurnEndReason::Completed);
             }
             let mut contexts: Vec<ContentBlock> = Vec::new();
             let mut end_reason = None;
@@ -222,7 +225,11 @@ impl Driver {
                     break;
                 }
             }
-            if !contexts.is_empty() {
+            // A cancelled call's step ends right there: its (and any
+            // earlier calls') recovery context would only tell the model to
+            // "recover now", which makes no sense once the turn is already
+            // tearing down.
+            if !contexts.is_empty() && end_reason != Some(TurnEndReason::Cancelled) {
                 self.append(input, events, EventBody::UserMessage { content: contexts })?;
             }
             if end_reason.is_none() && !reply.follow_up.is_empty() {
@@ -274,12 +281,14 @@ impl Driver {
             },
         )?;
         let Some(tool) = input.tools.get(&call.name) else {
-            let missing = Settled::error(
+            let mut missing = Settled::error(
                 format!("tool `{}` is not available in this turn", call.name),
                 None,
             );
+            self.pipeline.settle_missing(&call.name, &mut missing);
+            let context = std::mem::take(&mut missing.context);
             self.record(input, events, call, missing)?;
-            return Ok((None, Vec::new()));
+            return Ok((None, context));
         };
         let info = CallInfo {
             session: &input.session,
@@ -313,8 +322,16 @@ impl Driver {
         };
         self.pipeline.settle(&info, &mut settled);
         let context = std::mem::take(&mut settled.context);
+        let is_error = settled.is_error;
         self.record(input, events, call, settled)?;
-        if let Some(reason) = pause.take() {
+        // Cancel takes precedence over a pending pause, and a failed body's
+        // pause request is meaningless: discard it either way and only
+        // honour a pause when the call actually succeeded.
+        let pause_reason = pause.take();
+        if input.cancel.is_cancelled() {
+            return Ok((Some(TurnEndReason::Cancelled), context));
+        }
+        if let Some(reason) = pause_reason.filter(|_| !is_error) {
             self.append(
                 input,
                 events,
@@ -325,13 +342,7 @@ impl Driver {
             )?;
             return Ok((Some(TurnEndReason::AwaitingApproval), context));
         }
-        Ok((
-            input
-                .cancel
-                .is_cancelled()
-                .then_some(TurnEndReason::Cancelled),
-            context,
-        ))
+        Ok((None, context))
     }
 
     fn record(
