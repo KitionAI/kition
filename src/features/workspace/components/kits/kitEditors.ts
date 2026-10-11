@@ -71,6 +71,7 @@ function standardKit(spec: StandardKitSpec, format: WorkspaceDocumentFormat, opt
 /** The kits' own editors, built by `scripts/build-kit-ui.sh <kit>`. */
 const PRESENTATION_UI: EmbeddedKit = { kitId: 'kit.presentation', dir: 'presentation-ui' }
 const WORD_UI: EmbeddedKit = { kitId: 'kit.word', dir: 'word-ui' }
+const SHEET_UI: EmbeddedKit = { kitId: 'kit.sheet', dir: 'sheet-ui' }
 
 const KIT_EDITORS: readonly KitEditorEntry[] = [
   {
@@ -117,7 +118,7 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
   // Word files open in the Word kit, and keep the file preview without it. US Letter, in points.
   standardKit(WORD_KIT, 'docx', { preview: true, embedded: WORD_UI, create: { id: 'word', extension: 'docx', baseName: 'Untitled Word document', size: { width: 612, height: 792 }, label: 'createMenu.format.word', icon: FileText } }),
   // Excel files open in the Sheet kit, and keep the file preview without it.
-  standardKit(SHEET_KIT, 'xlsx', { preview: true, create: { id: 'spreadsheet', extension: 'xlsx', baseName: 'Untitled spreadsheet', size: { width: 1710, height: 2021 }, label: 'createMenu.format.spreadsheet', icon: Sheet } }),
+  standardKit(SHEET_KIT, 'xlsx', { preview: true, embedded: SHEET_UI, create: { id: 'spreadsheet', extension: 'xlsx', baseName: 'Untitled spreadsheet', size: { width: 1710, height: 2021 }, label: 'createMenu.format.spreadsheet', icon: Sheet } }),
   // PDFs open in the PDF kit, and keep the file preview without it. US Letter, in points.
   standardKit(PDF_KIT, 'pdf', { preview: true, create: { id: 'pdf', extension: 'pdf', baseName: 'Untitled PDF', size: { width: 612, height: 792 }, label: 'createMenu.format.pdf', icon: FileType2 } }),
 ]
