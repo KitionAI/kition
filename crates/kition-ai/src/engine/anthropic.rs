@@ -52,6 +52,31 @@ pub(crate) fn thinking_budget(effort: &str) -> i64 {
     }
 }
 
+/// Reasoning request fields. DeepSeek's Messages API takes
+/// `output_config.effort` (`low`, `high`, `max`) and `thinking.type =
+/// disabled` for off, as DeepSeek Harness's adapter sends them; Anthropic
+/// takes a thinking token budget.
+pub(crate) fn reasoning_fields(model: &RuntimeModel) -> Vec<(&'static str, Value)> {
+    let effort = model.reasoning_effort.trim().to_lowercase();
+    if model.provider_type.trim() == "deepseek" {
+        return match effort.as_str() {
+            "" => Vec::new(),
+            "off" | "none" | "minimal" => vec![("thinking", json!({ "type": "disabled" }))],
+            "low" => vec![("output_config", json!({ "effort": "low" }))],
+            "max" | "xhigh" => vec![("output_config", json!({ "effort": "max" }))],
+            _ => vec![("output_config", json!({ "effort": "high" }))],
+        };
+    }
+    if matches!(effort.as_str(), "low" | "medium" | "high") {
+        vec![(
+            "thinking",
+            json!({ "type": "enabled", "budget_tokens": thinking_budget(&effort) }),
+        )]
+    } else {
+        Vec::new()
+    }
+}
+
 /// A data URL as a base64 image source, or any other URL as a URL source.
 fn image_source(raw: &str) -> Option<Value> {
     let value = raw.trim();
@@ -379,12 +404,8 @@ pub(crate) async fn call(
             json!({ "type": "tool", "name": choice }),
         );
     }
-    let effort = model.reasoning_effort.trim();
-    if matches!(effort.to_lowercase().as_str(), "low" | "medium" | "high") {
-        payload.insert(
-            "thinking".into(),
-            json!({ "type": "enabled", "budget_tokens": thinking_budget(effort) }),
-        );
+    for (key, value) in reasoning_fields(model) {
+        payload.insert(key.into(), value);
     }
 
     let endpoint = validate_endpoint(&format!("{base_url}/v1/messages"))?;
@@ -824,5 +845,39 @@ mod tests {
             items[3]["content"][1],
             json!({ "type": "text", "text": "Done" })
         );
+    }
+
+    #[test]
+    fn deepseek_reasoning_uses_output_config_effort() {
+        let model = |provider: &str, effort: &str| RuntimeModel {
+            provider_type: provider.into(),
+            reasoning_effort: effort.into(),
+            ..RuntimeModel::default()
+        };
+        assert_eq!(
+            reasoning_fields(&model("deepseek", "medium")),
+            vec![("output_config", json!({ "effort": "high" }))]
+        );
+        assert_eq!(
+            reasoning_fields(&model("deepseek", "low")),
+            vec![("output_config", json!({ "effort": "low" }))]
+        );
+        assert_eq!(
+            reasoning_fields(&model("deepseek", "max")),
+            vec![("output_config", json!({ "effort": "max" }))]
+        );
+        assert_eq!(
+            reasoning_fields(&model("deepseek", "off")),
+            vec![("thinking", json!({ "type": "disabled" }))]
+        );
+        assert!(reasoning_fields(&model("deepseek", "")).is_empty());
+        assert_eq!(
+            reasoning_fields(&model("anthropic", "high")),
+            vec![(
+                "thinking",
+                json!({ "type": "enabled", "budget_tokens": 16384 })
+            )]
+        );
+        assert!(reasoning_fields(&model("anthropic", "off")).is_empty());
     }
 }
