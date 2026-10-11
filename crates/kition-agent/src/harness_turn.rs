@@ -2,8 +2,9 @@
 //! frames, and timeline as `turn.rs`, with the session event log as the
 //! source of model history. Selected by `KITION_AGENT_HARNESS=1`.
 
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::{Arc, LazyLock, Mutex, PoisonError};
 
 use futures::future::BoxFuture;
 use kition_ai::engine::{ChatResult, MessagePart, ToolSpec};
@@ -12,9 +13,9 @@ use kition_harness::driver::{Driver, Live, TurnInput};
 use kition_harness::events::{ContentBlock, TurnEndReason};
 use kition_harness::llm::{ChunkSink, Llm, LlmReply, LlmRequest, normalize_calls};
 use kition_harness::log::SqliteLog;
-use kition_harness::policy::Pipeline;
+use kition_harness::policy::{CallInfo, Pipeline, Policy};
 use kition_harness::stop::{RecoveryPrompt, UnresolvedWrites};
-use kition_harness::tool::{ToolContext, ToolFailure, ToolRegistry, define};
+use kition_harness::tool::{Settled, ToolContext, ToolFailure, ToolRegistry, define};
 use serde_json::{Value, json};
 
 use crate::run::{EventInput, Run};
@@ -25,6 +26,10 @@ use crate::{attachments, prompts, turn};
 
 /// The output of the call that paused the turn, for the approval frames.
 type Pending = Arc<Mutex<Option<Value>>>;
+
+/// Each call's follow-up content (`Executed::follow_up`), by call id, until
+/// the `FollowUp` policy appends it to that call's result.
+type Notes = Arc<Mutex<HashMap<String, Vec<ContentBlock>>>>;
 
 /// Runs one named tool call: `(name, arguments, context)`.
 type Body = Arc<
@@ -122,39 +127,115 @@ impl Llm for AgentLlm {
     }
 }
 
+/// Stores a call's follow-up for the `FollowUp` policy.
+fn remember(notes: &Notes, call_id: &str, follow_up: &[MessagePart]) {
+    let content = blocks(follow_up);
+    if !content.is_empty() {
+        notes
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .insert(call_id.to_owned(), content);
+    }
+}
+
+/// Appends a call's follow-up (notes such as the `image_search` system
+/// follow-up, image captions, and images) to its result content, after the
+/// result itself, on success and failure alike. The logged value stays the
+/// tool's record alone.
+struct FollowUp {
+    notes: Notes,
+}
+
+impl Policy for FollowUp {
+    fn post_execute(&self, call: &CallInfo<'_>, settled: &mut Settled) {
+        let notes = self
+            .notes
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .remove(call.call_id);
+        settled.content.extend(notes.unwrap_or_default());
+    }
+}
+
+fn pipeline(notes: &Notes) -> Pipeline {
+    Pipeline::default()
+        .with(FollowUp {
+            notes: notes.clone(),
+        })
+        .with(RecoveryPrompt)
+}
+
+/// The arguments as written to the session log. Mirrors `persisted_input`
+/// in `tools/mod.rs` (the source of these rules); keep the two in sync.
+fn logged_arguments(name: &str, input: &Value) -> Value {
+    match name {
+        "whiteboard_propose_patch" | "design_propose_patch" => json!({
+            "type": input["type"],
+            "schema_version": input["schema_version"],
+            "summary_chars": input["summary"].as_str().unwrap_or_default().chars().count(),
+            "operation_count": input["operations"].as_array().map_or(0, Vec::len),
+        }),
+        "source_search" | "source_file_search" | "configure_smtp_connection" => {
+            let mut safe = input.as_object().cloned().unwrap_or_default();
+            if let Some(query) = safe.remove("query") {
+                safe.insert(
+                    "query_chars".into(),
+                    json!(query.as_str().unwrap_or_default().chars().count()),
+                );
+            }
+            if safe.remove("password").is_some() {
+                safe.insert("password".into(), json!("[redacted]"));
+            }
+            Value::Object(safe)
+        }
+        _ => input.clone(),
+    }
+}
+
+type SessionLocks = Mutex<HashMap<i64, Arc<tokio::sync::Mutex<()>>>>;
+
+/// One lock per session, so two turns of a session never interleave their
+/// log appends. Entries nobody holds are pruned on the next lookup.
+static SESSION_LOCKS: LazyLock<SessionLocks> = LazyLock::new(SessionLocks::default);
+
+fn session_lock(session_id: i64) -> Arc<tokio::sync::Mutex<()>> {
+    let mut locks = SESSION_LOCKS.lock().unwrap_or_else(PoisonError::into_inner);
+    locks.retain(|id, lock| *id == session_id || Arc::strong_count(lock) > 1);
+    locks.entry(session_id).or_default().clone()
+}
+
+/// Aborts the task when dropped, even if the turn panics.
+struct AbortOnDrop(tokio::task::JoinHandle<()>);
+
+impl Drop for AbortOnDrop {
+    fn drop(&mut self) {
+        self.0.abort();
+    }
+}
+
 /// The offered tools as harness tools that all run through `body`. A tool
 /// the harness cannot register (an MCP name with a `.`, or longer than 64
 /// characters) is skipped rather than failing the turn.
 fn registry(specs: &[ToolSpec], body: &Body) -> ToolRegistry {
     let mut registry = ToolRegistry::default();
     for spec in specs {
-        let (name, body) = (spec.name.clone(), body.clone());
+        let (name, logged_name, body) = (spec.name.clone(), spec.name.clone(), body.clone());
         let schema = spec
             .input_schema
             .clone()
             .unwrap_or_else(|| json!({ "type": "object" }));
         let mut builder = define(&spec.name, &spec.description)
             .unchecked_parameters(schema)
+            .log_arguments(move |args| logged_arguments(&logged_name, args))
             .execute(move |args: Value, cx: ToolContext| body(name.clone(), args, cx))
             .render(|_args, value| {
-                let mut content = vec![ContentBlock::text(
+                vec![ContentBlock::text(
                     json!({
                         "name": value["name"], "summary": value["summary"],
                         "output": value["output"], "failed": false,
                     })
                     .to_string(),
-                )];
-                for url in value["images"]
-                    .as_array()
-                    .into_iter()
-                    .flatten()
-                    .filter_map(Value::as_str)
-                {
-                    content.push(ContentBlock::Image {
-                        url: url.to_owned(),
-                    });
-                }
-                content
+                )]
             });
         if tools::writes(&spec.name) {
             builder = builder.writes();
@@ -168,11 +249,16 @@ fn registry(specs: &[ToolSpec], body: &Body) -> ToolRegistry {
 
 /// The existing tools, unchanged, as harness tools. Each call still records
 /// its row, timeline events, and frames through `tools::execute`.
-fn legacy_tools(run: &Arc<Run>, specs: &[ToolSpec], pending: &Pending) -> ToolRegistry {
-    let (run, pending) = (run.clone(), pending.clone());
+fn legacy_tools(
+    run: &Arc<Run>,
+    specs: &[ToolSpec],
+    pending: &Pending,
+    notes: &Notes,
+) -> ToolRegistry {
+    let (run, pending, notes) = (run.clone(), pending.clone(), notes.clone());
     let body: Body = Arc::new(move |name: String, args: Value, cx: ToolContext| {
-        let (run, pending) = (run.clone(), pending.clone());
-        Box::pin(async move { legacy_call(&run, &name, args, &cx, &pending).await })
+        let (run, pending, notes) = (run.clone(), pending.clone(), notes.clone());
+        Box::pin(async move { legacy_call(&run, &name, args, &cx, &pending, &notes).await })
     });
     registry(specs, &body)
 }
@@ -183,6 +269,7 @@ async fn legacy_call(
     args: Value,
     cx: &ToolContext,
     pending: &Pending,
+    notes: &Notes,
 ) -> Result<Value, ToolFailure> {
     let executed = tools::execute(run, name, &args.to_string()).await;
     if executed.interrupt == Some("await_shell_approval") {
@@ -193,12 +280,7 @@ async fn legacy_call(
         *pending.lock().unwrap_or_else(PoisonError::into_inner) = Some(executed.output.clone());
         cx.pause.request(reason);
     }
-    let images: Vec<&str> = executed
-        .follow_up
-        .iter()
-        .filter(|part| part.kind == "image_url")
-        .map(|part| part.image_url.as_str())
-        .collect();
+    remember(notes, &cx.call_id, &executed.follow_up);
     if executed.failed {
         // The model sees the failure, then the same record the original loop
         // sends for a failed call.
@@ -218,7 +300,7 @@ async fn legacy_call(
     }
     Ok(json!({
         "name": executed.name, "summary": executed.summary,
-        "output": executed.output, "images": images,
+        "output": executed.output,
     }))
 }
 
@@ -268,8 +350,12 @@ pub async fn drive(
     context: &str,
     specs: Vec<ToolSpec>,
 ) {
+    // Held for the whole turn, from before the log is read to the final
+    // frame, so a second turn of this session waits for this one.
+    let _turn = session_lock(run.session_id).lock_owned().await;
     let pending: Pending = Arc::new(Mutex::new(None));
-    let tools = legacy_tools(run, &specs, &pending);
+    let notes = Notes::default();
+    let tools = legacy_tools(run, &specs, &pending, &notes);
     let llm = Arc::new(AgentLlm {
         run: run.clone(),
         calls: AtomicUsize::new(0),
@@ -280,17 +366,17 @@ pub async fn drive(
         llm.clone(),
     );
     driver.max_steps = u32::try_from(turn::MAX_TURNS).unwrap_or(16);
-    driver.pipeline = Pipeline::default().with(RecoveryPrompt);
+    driver.pipeline = pipeline(&notes);
     driver.stop_checks.push(Arc::new(UnresolvedWrites));
     let cancel = Cancel::default();
     let watcher = {
         let (emitter, cancel) = (run.emitter.clone(), cancel.clone());
-        // Holds an emitter clone, so it must be aborted when the turn ends or
-        // the response body would never close.
-        tokio::spawn(async move {
+        // Holds an emitter clone, so it must be aborted when the turn ends
+        // (or panics) or the response body would never close.
+        AbortOnDrop(tokio::spawn(async move {
             emitter.closed().await;
             cancel.cancel();
-        })
+        }))
     };
     let input = TurnInput {
         session: format!("agent:{}", run.session_id),
@@ -302,7 +388,7 @@ pub async fn drive(
         model: Some(run.model.model_name.clone()),
     };
     let outcome = driver.run_turn(input).await;
-    watcher.abort();
+    drop(watcher);
     match outcome {
         Ok(TurnEndReason::Cancelled) | Err(_) if run.emitter.is_closed() => {
             session::set_status(run, "idle").await;
@@ -380,5 +466,115 @@ mod tests {
         assert_eq!(registry.len(), 1);
         assert!(registry.get("document_read").is_some());
         assert!(registry.get("bad.name").is_none());
+    }
+
+    #[tokio::test]
+    async fn follow_up_text_reaches_the_next_model_request() {
+        use kition_harness::events::EventBody;
+        use kition_harness::llm::LlmReply;
+        use kition_harness::log::{MemoryLog, SessionLog};
+        use kition_harness::testing::{ScriptedLlm, call};
+
+        let notes = Notes::default();
+        let stored = notes.clone();
+        let body: Body = Arc::new(move |_name: String, _args: Value, cx: ToolContext| {
+            let stored = stored.clone();
+            Box::pin(async move {
+                remember(
+                    &stored,
+                    &cx.call_id,
+                    &[MessagePart {
+                        kind: "text".into(),
+                        text: "[image_search system follow-up] Do not call image_search again."
+                            .into(),
+                        ..MessagePart::default()
+                    }],
+                );
+                Ok(json!({ "name": "image_search", "summary": "found", "output": {} }))
+            })
+        });
+        let spec = ToolSpec {
+            name: "image_search".into(),
+            description: "d".into(),
+            input_schema: None,
+        };
+        let llm = Arc::new(ScriptedLlm::new(vec![
+            LlmReply::calls(vec![call("c1", "image_search", json!({ "query": "cats" }))]),
+            LlmReply::text("done"),
+        ]));
+        let log = Arc::new(MemoryLog::default());
+        let mut driver = Driver::new(log.clone(), llm.clone());
+        driver.pipeline = pipeline(&notes);
+        let reason = driver
+            .run_turn(TurnInput {
+                session: "s".into(),
+                system: "sys".into(),
+                tools: registry(&[spec], &body),
+                user: vec![ContentBlock::text("find cats")],
+                cancel: Cancel::default(),
+                live: Arc::new(|_: Live| {}),
+                model: None,
+            })
+            .await
+            .unwrap_or_else(|error| panic!("{error}"));
+        assert_eq!(reason, TurnEndReason::Completed);
+        let requests = llm.requests();
+        let tool = requests[1]
+            .messages
+            .iter()
+            .find(|message| message.role == "tool")
+            .map(|message| message.content.clone())
+            .unwrap_or_default();
+        assert!(tool.contains("\"summary\":\"found\""), "{tool}");
+        assert!(tool.contains("Do not call image_search again"), "{tool}");
+        let events = log.read("s").unwrap_or_else(|error| panic!("{error}"));
+        let value = events.iter().find_map(|event| match &event.body {
+            EventBody::ToolResult { value, .. } => Some(value.clone()),
+            _ => None,
+        });
+        assert_eq!(
+            value,
+            Some(json!({ "name": "image_search", "summary": "found", "output": {} }))
+        );
+    }
+
+    #[test]
+    fn logged_arguments_mirror_the_persisted_tool_input() {
+        assert_eq!(
+            logged_arguments(
+                "configure_smtp_connection",
+                &json!({ "host": "smtp.example.com", "password": "fake-secret" })
+            ),
+            json!({ "host": "smtp.example.com", "password": "[redacted]" })
+        );
+        for name in ["source_search", "source_file_search"] {
+            assert_eq!(
+                logged_arguments(name, &json!({ "query": "hello", "limit": 3 })),
+                json!({ "query_chars": 5, "limit": 3 })
+            );
+        }
+        for name in ["whiteboard_propose_patch", "design_propose_patch"] {
+            assert_eq!(
+                logged_arguments(
+                    name,
+                    &json!({
+                        "type": "patch", "schema_version": 1, "summary": "abc",
+                        "operations": [{}, {}],
+                    })
+                ),
+                json!({ "type": "patch", "schema_version": 1, "summary_chars": 3, "operation_count": 2 })
+            );
+        }
+        let args = json!({ "path": "a.md", "password": "kept" });
+        assert_eq!(logged_arguments("document_read", &args), args);
+    }
+
+    #[test]
+    fn turns_of_one_session_share_a_lock() {
+        let first = session_lock(7);
+        let again = session_lock(7);
+        let other = session_lock(8);
+        assert!(Arc::ptr_eq(&first, &again));
+        assert!(!Arc::ptr_eq(&first, &other));
     }
 }
