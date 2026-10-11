@@ -13,7 +13,7 @@ use crate::events::{ContentBlock, EventBody, LoggedCall, SessionEvent, TurnEndRe
 use crate::llm::{ChunkSink, Llm, LlmRequest};
 use crate::log::SessionLog;
 use crate::policy::{CallInfo, Decision, Pipeline};
-use crate::tool::{Settled, ToolContext, ToolRegistry};
+use crate::tool::{Pause, Settled, ToolContext, ToolRegistry};
 
 pub const MAX_STEPS: u32 = 16;
 
@@ -247,6 +247,7 @@ impl Driver {
                     session_id: input.session.clone(),
                     call_id: call.call_id.clone(),
                     cancel: input.cancel.clone(),
+                    pause: Pause::default(),
                 };
                 tool.run(call.arguments.clone(), cx).await
             }

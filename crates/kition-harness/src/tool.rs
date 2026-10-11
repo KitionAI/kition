@@ -22,6 +22,31 @@ pub struct ToolContext {
     pub session_id: String,
     pub call_id: String,
     pub cancel: Cancel,
+    pub pause: Pause,
+}
+
+/// Lets a tool body end the turn after its result is recorded, for example
+/// to wait for the person's approval. Cheap to clone.
+#[derive(Debug, Clone, Default)]
+pub struct Pause {
+    reason: Arc<std::sync::Mutex<Option<String>>>,
+}
+
+impl Pause {
+    pub fn request(&self, reason: impl Into<String>) {
+        *self
+            .reason
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(reason.into());
+    }
+
+    /// The requested reason, once.
+    pub fn take(&self) -> Option<String> {
+        self.reason
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .take()
+    }
 }
 
 /// A failed body: the message the model sees, plus optional partial progress.
@@ -112,6 +137,7 @@ pub fn define(name: &str, description: &str) -> ToolBuilder {
         name: name.to_owned(),
         description: description.to_owned(),
         parameters: json!({}),
+        unchecked: None,
         output: json!({ "type": "json" }),
         writes: false,
         execute: None,
@@ -124,6 +150,7 @@ pub struct ToolBuilder {
     name: String,
     description: String,
     parameters: Value,
+    unchecked: Option<Value>,
     output: Value,
     writes: bool,
     execute: Option<Execute>,
@@ -135,6 +162,14 @@ impl ToolBuilder {
     /// A `ParameterSchemaSpec`.
     pub fn parameters(mut self, spec: Value) -> Self {
         self.parameters = spec;
+        self
+    }
+
+    /// A raw JSON Schema sent to the model as is. Arguments are not validated
+    /// against it; the body validates its own input. For existing tools whose
+    /// schemas predate `ParameterSchemaSpec`.
+    pub fn unchecked_parameters(mut self, schema: Value) -> Self {
+        self.unchecked = Some(schema);
         self
     }
 
@@ -181,17 +216,23 @@ impl ToolBuilder {
     pub fn build(self) -> Result<ToolDef, String> {
         if !valid_name(&self.name) {
             return Err(format!(
-                "tool name `{}` must be 1 to 64 characters of [A-Za-z0-9_]",
+                "tool name `{}` must be 1 to 64 characters of [A-Za-z0-9_-]",
                 self.name
             ));
         }
-        let parameters = schema::parameters_to_json_schema(&self.parameters)
-            .map_err(|error| format!("{}: {error}", self.name))?;
+        let (parameters, parameters_validator) = match self.unchecked {
+            Some(schema) => (schema, schema::validator(&json!({}))),
+            None => {
+                let parameters = schema::parameters_to_json_schema(&self.parameters)
+                    .map_err(|error| format!("{}: {error}", self.name))?;
+                let validator = schema::validator(&parameters);
+                (parameters, validator)
+            }
+        };
+        let parameters_validator =
+            Arc::new(parameters_validator.map_err(|error| format!("{}: {error}", self.name))?);
         let output_schema = schema::value_to_json_schema(&self.output)
             .map_err(|error| format!("{}: {error}", self.name))?;
-        let parameters_validator = Arc::new(
-            schema::validator(&parameters).map_err(|error| format!("{}: {error}", self.name))?,
-        );
         let output_validator = Arc::new(
             schema::validator(&output_schema).map_err(|error| format!("{}: {error}", self.name))?,
         );
@@ -255,7 +296,9 @@ fn malformed_raw_argument<'a>(parameters: &Value, args: &'a Value) -> Option<&'a
 fn valid_name(name: &str) -> bool {
     !name.is_empty()
         && name.len() <= 64
-        && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+        && name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
 }
 
 impl ToolDef {
@@ -409,6 +452,7 @@ mod tests {
             session_id: "s".into(),
             call_id: "c".into(),
             cancel: Cancel::default(),
+            pause: Pause::default(),
         }
     }
 
@@ -603,6 +647,35 @@ mod tests {
         let settled = tool.run(json!({ "raw": "{\"a\":" }), cx()).await;
         assert!(!settled.is_error);
         assert_eq!(settled.value, json!({ "raw": "{\"a\":" }));
+    }
+
+    #[tokio::test]
+    async fn unchecked_parameters_are_sent_as_is_and_not_validated() {
+        let schema = json!({ "type": "object", "properties": { "n": { "type": "integer" } }, "required": ["n"] });
+        let tool = define("legacy-tool", "Legacy")
+            .unchecked_parameters(schema.clone())
+            .execute(|args, _| async move { Ok(args) })
+            .build()
+            .unwrap_or_else(|error| panic!("{error}"));
+        assert_eq!(tool.spec().input_schema, Some(schema));
+        let settled = tool.run(json!({ "n": "not a number" }), cx()).await;
+        assert!(!settled.is_error, "{settled:?}");
+    }
+
+    #[tokio::test]
+    async fn a_body_can_ask_to_pause_the_turn() {
+        let tool = define("ask", "Asks")
+            .execute(|_, cx| async move {
+                cx.pause.request("Run `rm`?");
+                Ok(json!({ "requires": "approval" }))
+            })
+            .build()
+            .unwrap_or_else(|error| panic!("{error}"));
+        let context = cx();
+        let pause = context.pause.clone();
+        assert!(!tool.run(json!({}), context).await.is_error);
+        assert_eq!(pause.take().as_deref(), Some("Run `rm`?"));
+        assert_eq!(pause.take(), None);
     }
 
     #[test]
