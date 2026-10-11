@@ -2,7 +2,7 @@
 //! streaming and not. Any OpenAI-compatible provider speaks it. No
 //! reasoning parameters are sent: providers disagree on their shape.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::time::Instant;
 
 use kition_core::coerce::{as_i64, as_str};
@@ -82,7 +82,14 @@ fn reasoning_of(message: &Message) -> String {
 pub(crate) fn build_messages(messages: &[Message]) -> Vec<Value> {
     let mut system = Vec::new();
     let mut out = Vec::new();
-    for message in messages {
+    // Reasoning replays only within the current tool loop: after the last
+    // user message. Earlier turns' reasoning is not needed and some
+    // providers reject it.
+    let loop_start = messages
+        .iter()
+        .rposition(|message| message.role.trim() == "user")
+        .map_or(0, |position| position + 1);
+    for (position, message) in messages.iter().enumerate() {
         let role = message.role.trim();
         let content = message.content.trim();
         match role {
@@ -128,7 +135,11 @@ pub(crate) fn build_messages(messages: &[Message]) -> Vec<Value> {
                         content.into()
                     },
                 );
-                let reasoning = reasoning_of(message);
+                let reasoning = if position >= loop_start {
+                    reasoning_of(message)
+                } else {
+                    String::new()
+                };
                 if !reasoning.is_empty() {
                     entry.insert("reasoning_content".into(), reasoning.into());
                 }
@@ -214,6 +225,7 @@ pub(crate) fn request_body(
         );
     }
     if model.max_output_tokens > 0 {
+        // OpenAI reasoning models need `max_completion_tokens`; use the Responses wire for them.
         payload.insert("max_tokens".into(), model.max_output_tokens.into());
     }
     Value::Object(payload)
@@ -233,6 +245,10 @@ pub(crate) struct State {
     content: String,
     reasoning: String,
     calls: BTreeMap<i64, PendingCall>,
+    /// The slot each provider `index` currently feeds.
+    routes: HashMap<i64, i64>,
+    /// The slot the last fragment went to.
+    latest: Option<i64>,
     stop_reason: String,
     usage: Option<Value>,
     announced: bool,
@@ -240,6 +256,38 @@ pub(crate) struct State {
 }
 
 impl State {
+    /// The slot a streamed tool-call fragment belongs to. A fragment
+    /// without an `index`, or whose id differs from the call already at its
+    /// index, starts a new slot; one with neither continues the latest.
+    fn slot_for(&mut self, fragment: &Value) -> i64 {
+        let next = self.calls.keys().next_back().map_or(0, |last| last + 1);
+        let id = text_of(fragment.get("id")).trim();
+        let slot = match fragment.get("index").filter(|index| !index.is_null()) {
+            Some(index) => {
+                let index = as_i64(index);
+                let routed = self.routes.get(&index).copied().unwrap_or(index);
+                let taken = self
+                    .calls
+                    .get(&routed)
+                    .is_some_and(|call| !id.is_empty() && !call.id.is_empty() && call.id != id);
+                let slot = if taken { next } else { routed };
+                self.routes.insert(index, slot);
+                slot
+            }
+            None => match self.latest {
+                Some(latest)
+                    if id.is_empty()
+                        || self.calls.get(&latest).is_some_and(|call| call.id == id) =>
+                {
+                    latest
+                }
+                _ => next,
+            },
+        };
+        self.latest = Some(slot);
+        slot
+    }
+
     /// Emits `tool_call_ready` for every call, in index order, once.
     fn announce(&mut self, stream: Option<&StreamHandler>) {
         if self.announced {
@@ -336,6 +384,17 @@ fn arguments(call: &PendingCall) -> String {
     }
 }
 
+/// Reasoning text: `reasoning_content` (DeepSeek, Kimi) or `reasoning`
+/// (vLLM, OpenRouter, LM Studio).
+fn reasoning_text(value: &Value) -> String {
+    let content = text_of(value.get("reasoning_content"));
+    if content.is_empty() {
+        text_of(value.get("reasoning")).to_owned()
+    } else {
+        content.to_owned()
+    }
+}
+
 /// Applies one decoded stream chunk to the in-progress result.
 pub(crate) fn apply_chunk(chunk: &Value, state: &mut State, stream: Option<&StreamHandler>) {
     state.chunks += 1;
@@ -349,6 +408,12 @@ pub(crate) fn apply_chunk(chunk: &Value, state: &mut State, stream: Option<&Stre
     else {
         return;
     };
+    // Moonshot reports streamed usage inside the choice.
+    if state.usage.is_none()
+        && let Some(usage) = choice.get("usage").filter(|usage| usage.is_object())
+    {
+        state.usage = Some(usage.clone());
+    }
     if let Some(delta) = choice.get("delta") {
         let text = text_of(delta.get("content"));
         if !text.is_empty() {
@@ -361,16 +426,14 @@ pub(crate) fn apply_chunk(chunk: &Value, state: &mut State, stream: Option<&Stre
                 });
             }
         }
-        state
-            .reasoning
-            .push_str(text_of(delta.get("reasoning_content")));
+        state.reasoning.push_str(&reasoning_text(delta));
         for fragment in delta
             .get("tool_calls")
             .and_then(Value::as_array)
             .into_iter()
             .flatten()
         {
-            let index = as_i64(fragment.get("index").unwrap_or(&Value::Null));
+            let index = state.slot_for(fragment);
             let call = state.calls.entry(index).or_default();
             let id = text_of(fragment.get("id")).trim();
             if !id.is_empty() {
@@ -419,9 +482,8 @@ pub(crate) fn parse_json(
         .and_then(|choices| choices.first());
     if let Some(choice) = choice {
         let message = choice.get("message");
-        let field = |key: &str| text_of(message.and_then(|m| m.get(key))).to_owned();
-        state.content = field("content");
-        state.reasoning = field("reasoning_content");
+        state.content = text_of(message.and_then(|m| m.get("content"))).to_owned();
+        state.reasoning = message.map(reasoning_text).unwrap_or_default();
         let calls = message
             .and_then(|m| m.get("tool_calls"))
             .and_then(Value::as_array);
@@ -771,6 +833,123 @@ mod tests {
         assert!(result.response_items.is_empty());
         assert!(result.tool_calls.is_empty());
         assert_eq!(result.usage.total_tokens, 8 + 16);
+    }
+
+    #[test]
+    fn replays_reasoning_only_in_the_current_tool_loop() {
+        let thinking = |text: &str, id: &str| Message {
+            role: "assistant".into(),
+            tool_calls: vec![ToolCall {
+                id: id.into(),
+                name: "read".into(),
+                input: "{}".into(),
+            }],
+            raw_items: vec![json!({ "type": "reasoning_content", "text": text })],
+            ..Message::default()
+        };
+        let messages = vec![
+            Message::new("user", "first"),
+            thinking("old", "c1"),
+            Message {
+                role: "tool".into(),
+                tool_call_id: "c1".into(),
+                content: "ok".into(),
+                ..Message::default()
+            },
+            Message::new("user", "second"),
+            thinking("new", "c2"),
+        ];
+        let built = build_messages(&messages);
+        assert!(built[1].get("reasoning_content").is_none(), "{built:?}");
+        assert_eq!(built[4]["reasoning_content"], "new");
+    }
+
+    fn calls_from(chunks: &[Value]) -> Vec<ToolCall> {
+        let mut state = State::default();
+        for chunk in chunks {
+            apply_chunk(chunk, &mut state, None);
+        }
+        state.finish(None, "", "m", Instant::now()).tool_calls
+    }
+
+    #[test]
+    fn splits_parallel_calls_without_an_index() {
+        let calls = calls_from(&[json!({ "choices": [{ "delta": { "tool_calls": [
+            { "id": "a", "type": "function", "function": { "name": "read", "arguments": "{\"p\":1}" } },
+            { "id": "b", "type": "function", "function": { "name": "list", "arguments": "{\"q\":2}" } },
+        ] } }] })]);
+        assert_eq!(
+            calls,
+            vec![
+                ToolCall {
+                    id: "a".into(),
+                    name: "read".into(),
+                    input: r#"{"p":1}"#.into(),
+                },
+                ToolCall {
+                    id: "b".into(),
+                    name: "list".into(),
+                    input: r#"{"q":2}"#.into(),
+                },
+            ]
+        );
+        let continued = calls_from(&[
+            json!({ "choices": [{ "delta": { "tool_calls": [
+                { "id": "a", "function": { "name": "read", "arguments": "{\"p\"" } },
+            ] } }] }),
+            json!({ "choices": [{ "delta": { "tool_calls": [
+                { "function": { "arguments": ":1}" } },
+            ] } }] }),
+        ]);
+        assert_eq!(continued.len(), 1);
+        assert_eq!(continued[0].input, r#"{"p":1}"#);
+    }
+
+    #[test]
+    fn splits_different_ids_that_claim_the_same_index() {
+        let calls = calls_from(&[
+            json!({ "choices": [{ "delta": { "tool_calls": [
+                { "index": 0, "id": "a", "function": { "name": "read", "arguments": "{}" } },
+            ] } }] }),
+            json!({ "choices": [{ "delta": { "tool_calls": [
+                { "index": 0, "id": "b", "function": { "name": "list", "arguments": "{\"q\"" } },
+            ] } }] }),
+            json!({ "choices": [{ "delta": { "tool_calls": [
+                { "index": 0, "function": { "arguments": ":2}" } },
+            ] } }] }),
+        ]);
+        let summary: Vec<(&str, &str, &str)> = calls
+            .iter()
+            .map(|call| (call.id.as_str(), call.name.as_str(), call.input.as_str()))
+            .collect();
+        assert_eq!(
+            summary,
+            vec![("a", "read", "{}"), ("b", "list", r#"{"q":2}"#)]
+        );
+    }
+
+    #[test]
+    fn reads_choice_usage_and_reasoning_aliases() {
+        let mut state = State::default();
+        for chunk in [
+            json!({ "choices": [{ "delta": { "reasoning": "Alias " } }] }),
+            json!({ "choices": [{ "delta": { "reasoning_content": "field." } }] }),
+            json!({ "choices": [{ "delta": { "content": "Hi" }, "finish_reason": "stop",
+                "usage": { "prompt_tokens": 4, "completion_tokens": 2, "total_tokens": 6 } }] }),
+        ] {
+            apply_chunk(&chunk, &mut state, None);
+        }
+        let result = state.finish(None, "", "m", Instant::now());
+        assert_eq!(result.usage.total_tokens, 6);
+        assert_eq!(
+            result.response_items,
+            vec![json!({ "type": "reasoning_content", "text": "Alias field." })]
+        );
+        let data = json!({ "choices": [{ "message": { "content": "x", "reasoning": "Why." } }] });
+        assert_eq!(
+            parse_json(&data, "", "m", Instant::now()).response_items,
+            vec![json!({ "type": "reasoning_content", "text": "Why." })]
+        );
     }
 
     #[test]

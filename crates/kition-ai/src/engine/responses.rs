@@ -79,13 +79,17 @@ fn content_parts(message: &Message) -> Option<Vec<Value>> {
     Some(parts)
 }
 
+/// Only Responses input item types replay; items another wire left in
+/// `raw_items` (Chat Completions `reasoning_content`, Anthropic `thinking`)
+/// are dropped.
 fn valid_input_item(item: &Map<String, Value>) -> bool {
     match trimmed(item.get("type")).as_str() {
         "function_call" => {
             !trimmed(item.get("call_id")).is_empty() && !trimmed(item.get("name")).is_empty()
         }
         "function_call_output" => !trimmed(item.get("call_id")).is_empty(),
-        _ => true,
+        "message" | "reasoning" | "web_search_call" => true,
+        _ => false,
     }
 }
 
@@ -103,22 +107,18 @@ pub(crate) fn normalize_input(messages: &[Message]) -> (String, Vec<Value>) {
             }
             continue;
         }
-        if !message.raw_items.is_empty() {
-            for raw in &message.raw_items {
-                let Value::Object(item) = raw else { continue };
-                if item.is_empty() {
-                    continue;
-                }
-                // Hosted image output is saved to the workspace before the
-                // next turn; with store=false the provider item cannot be
-                // referenced again.
-                if trimmed(item.get("type")) == "image_generation_call" {
-                    continue;
-                }
-                if valid_input_item(item) {
-                    items.push(raw.clone());
-                }
-            }
+        // Hosted image output (`image_generation_call`) is saved to the
+        // workspace before the next turn; with store=false the provider item
+        // cannot be referenced again, so it is not a valid input item. When
+        // nothing replayable remains, the message is rebuilt from its
+        // content and tool calls below.
+        let replayable: Vec<&Value> = message
+            .raw_items
+            .iter()
+            .filter(|raw| raw.as_object().is_some_and(valid_input_item))
+            .collect();
+        if !replayable.is_empty() {
+            items.extend(replayable.into_iter().cloned());
             continue;
         }
         if role == "tool" {
@@ -721,6 +721,41 @@ mod tests {
         );
         let (_, fallback) = normalize_input(&[]);
         assert_eq!(fallback.len(), 1);
+    }
+
+    #[test]
+    fn drops_raw_items_from_other_wires() {
+        let messages = vec![
+            Message::new("user", "go"),
+            Message {
+                role: "assistant".into(),
+                tool_calls: vec![ToolCall {
+                    id: "c1".into(),
+                    name: "read".into(),
+                    input: "{}".into(),
+                }],
+                raw_items: vec![json!({ "type": "reasoning_content", "text": "x" })],
+                ..Message::default()
+            },
+            Message {
+                role: "assistant".into(),
+                content: "kept".into(),
+                raw_items: vec![
+                    json!({ "type": "thinking", "thinking": "t" }),
+                    json!({ "type": "message", "role": "assistant", "content": [{ "type": "output_text", "text": "kept" }] }),
+                ],
+                ..Message::default()
+            },
+        ];
+        let (_, items) = normalize_input(&messages);
+        assert_eq!(
+            items,
+            vec![
+                json!({ "role": "user", "content": "go" }),
+                json!({ "type": "function_call", "call_id": "c1", "name": "read", "arguments": "{}" }),
+                json!({ "type": "message", "role": "assistant", "content": [{ "type": "output_text", "text": "kept" }] }),
+            ]
+        );
     }
 
     #[test]
