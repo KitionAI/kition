@@ -1,11 +1,13 @@
 import { lazy, type ComponentType } from 'react'
-import { Clapperboard, Layers, type LucideIcon } from 'lucide-react'
+import { Clapperboard, Layers, PenTool, type LucideIcon } from 'lucide-react'
 import { kitSdkAvailable, type KitSdkManifest } from '@/features/kits/public'
 import type { WorkspaceDocumentFormat } from '@/services/desktop'
 import { PhotoKitPane } from '../PhotoKitPane'
 import { PHOTO_SDK } from '../photo/photoKitSdk'
 import { FilmUnavailable } from '../film/FilmUnavailable'
 import { FILM_SDK } from '../film/filmKitSdk'
+import { VectorUnavailable } from '../vector/VectorUnavailable'
+import { VECTOR_SDK } from '../vector/vectorKitSdk'
 
 /** What every kit editor receives from the workspace tab. */
 export type KitEditorProps = {
@@ -58,6 +60,13 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
     Editor: lazy(() => import('../FilmWebEditor').then((module) => ({ default: module.FilmWebEditor }))),
     Fallback: FilmUnavailable,
     create: { id: 'video', extension: 'fcproj', baseName: 'Untitled video', size: { width: 1920, height: 1080 }, label: 'createMenu.format.video', icon: Clapperboard },
+  },
+  {
+    format: 'vector',
+    sdk: VECTOR_SDK,
+    Editor: lazy(() => import('../VectorWebEditor').then((module) => ({ default: module.VectorWebEditor }))),
+    Fallback: VectorUnavailable,
+    create: { id: 'drawing', extension: 'vectorcraft', baseName: 'Untitled drawing', size: { width: 1920, height: 1080 }, label: 'createMenu.format.drawing', icon: PenTool },
   },
 ]
 

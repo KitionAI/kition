@@ -49,5 +49,21 @@
         }
       }
     ]
+  },
+  "vector": {
+    "repository": "KitionAI/kit-vector",
+    "crate": "kition-vector-sdk",
+    "module": "kition_vector_sdk",
+    "class": "VectorDocument",
+    "name": "Drawing.vectorcraft",
+    "edit": {
+      "command": "shape.rectangle",
+      "params": {
+        "x": 20,
+        "y": 10,
+        "width": 50,
+        "height": 30
+      }
+    }
   }
 }

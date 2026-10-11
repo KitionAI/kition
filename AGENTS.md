@@ -106,6 +106,11 @@ covers the three GFM table widget row and column button regressions.
   `KitCanvas` with `KitTool`s, `useKitEditor`, `KitEditorFrame`) and register
   it in `src/features/workspace/components/kits/kitEditors.ts` and
   `kits/sdks.json`. Put shared behavior in the template, not in one kit.
+- When a kit's engine owns its tools (manifest capability `engine-tools`),
+  run them through `useEngineTools` and draw only the engine's overlays;
+  never re-implement an engine's tools or selection display in Kition. If the
+  upstream app draws something in its own UI, port it into the kit's SDK
+  crate as engine overlays.
 - `src/features/kits/sdk/` is the portable core of the open Kit SDK: it must
   never import the rest of Kition (`pnpm check:deps` enforces it). Shared
   strings under `workspace:kitEditor.*` must never name a kit.

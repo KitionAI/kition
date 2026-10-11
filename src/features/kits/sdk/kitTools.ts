@@ -46,6 +46,10 @@ export type KitTool = {
   id: string
   cursor: string
   begin: (pointer: KitPointer, context: KitToolContext) => KitGesture | void
+  /** The pointer moved with no button held (hover feedback, an open path's rubber band). */
+  hover?: (pointer: KitPointer, context: KitToolContext) => void
+  /** A double click, after its two presses reached `begin`. */
+  doubleClick?: (pointer: KitPointer, context: KitToolContext) => void
 }
 
 const MIN_ZOOM_DRAG = 4

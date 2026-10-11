@@ -7,7 +7,8 @@
       "page": "Page",
       "note": "Note",
       "image": "Image",
-      "video": "Video project"
+      "video": "Video project",
+      "drawing": "Drawing"
     },
     "folder": "Folder",
     "importSpreadsheet": "Import spreadsheet",
@@ -753,5 +754,29 @@
     "exportCancel": "Stop exporting",
     "exported": "Exported {{name}}",
     "exportFailed": "Could not export the movie"
+  },
+  "vectorKit": {
+    "toolsLabel": "Vector tools",
+    "moreTools": "More tools like {{tool}}",
+    "layers": "Layers",
+    "hideLayer": "Hide layer",
+    "showLayer": "Show layer",
+    "locked": "Locked",
+    "summary": "{{objects}} objects on {{artboards}} artboards, {{selected}} selected",
+    "selectionSize": "W {{width}} pt × H {{height}} pt",
+    "dialogUnavailable": "This tool's options dialog is not available in Kition yet",
+    "unavailableTitle": "Vector editing is not available in this build",
+    "unavailableBody": "Vector drawings open in Kition when the Vector engine is included.",
+    "menu": {
+      "File": "File",
+      "Edit": "Edit",
+      "Object": "Object",
+      "Type": "Type",
+      "Select": "Select",
+      "Effect": "Effect",
+      "View": "View",
+      "Window": "Window",
+      "Help": "Help"
+    }
   }
 }

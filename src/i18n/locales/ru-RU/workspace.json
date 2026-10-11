@@ -7,7 +7,8 @@
       "page": "Страница",
       "note": "Заметка",
       "image": "Изображение",
-      "video": "Видеопроект"
+      "video": "Видеопроект",
+      "drawing": "Рисунок"
     },
     "folder": "Папка",
     "importSpreadsheet": "Импортировать таблицу",
@@ -753,5 +754,29 @@
     "exportCancel": "Остановить экспорт",
     "exported": "Экспортировано: {{name}}",
     "exportFailed": "Не удалось экспортировать видео"
+  },
+  "vectorKit": {
+    "toolsLabel": "Векторные инструменты",
+    "moreTools": "Другие инструменты, как {{tool}}",
+    "layers": "Слои",
+    "hideLayer": "Скрыть слой",
+    "showLayer": "Показать слой",
+    "locked": "Заблокирован",
+    "summary": "Объектов: {{objects}}, монтажных областей: {{artboards}}, выделено: {{selected}}",
+    "selectionSize": "Ш {{width}} pt × В {{height}} pt",
+    "dialogUnavailable": "Диалог параметров этого инструмента пока недоступен в Kition",
+    "unavailableTitle": "Векторное редактирование недоступно в этой сборке",
+    "unavailableBody": "Векторные рисунки открываются в Kition, если в сборку входит движок Vector.",
+    "menu": {
+      "File": "Файл",
+      "Edit": "Редактирование",
+      "Object": "Объект",
+      "Type": "Текст",
+      "Select": "Выделение",
+      "Effect": "Эффект",
+      "View": "Просмотр",
+      "Window": "Окно",
+      "Help": "Справка"
+    }
   }
 }

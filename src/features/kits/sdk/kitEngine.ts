@@ -23,6 +23,10 @@ export type KitEngineRequest =
   | { method: 'save' }
   | { method: 'markSaved' }
   | { method: 'invoke'; name: string; args: unknown[] }
+  | { method: 'tool'; name: KitToolMethod; args: unknown[]; settled: boolean }
+
+/** The engine-tools capability's methods (Kition Kit Standard, U3a), each answering JSON. */
+export type KitToolMethod = 'tools' | 'tool' | 'selectTool' | 'pointer' | 'toolKey' | 'toolText' | 'toolState'
 
 export type KitEngineResponse = { id: number; ok: true; value: unknown } | { id: number; ok: false; error: string }
 
@@ -144,6 +148,17 @@ export class KitEngine {
    */
   async invoke<T = unknown>(name: string, ...args: unknown[]) {
     return (await this.call({ method: 'invoke', name, args })) as T
+  }
+
+  /**
+   * Calls one of the engine's tool methods and returns its parsed answer. `info` is brought up
+   * to date when the call changed the document, or always when `settled` (the end of a gesture,
+   * which may change only the selection); mid-drag calls skip that, since `inspect()` costs.
+   */
+  async tool<T = unknown>(name: KitToolMethod, args: unknown[] = [], settled = false) {
+    const { value, info } = (await this.call({ method: 'tool', name, args, settled })) as { value: T; info: KitEngineInfo | null }
+    if (info) this.info = info
+    return { value, changed: info != null }
   }
 
   dispose() {

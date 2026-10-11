@@ -188,6 +188,7 @@ export function KitCanvas({ doc, change, tool, onView, viewMemory, decorate = nu
   const pointerMove = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     const tools = context()
     const current = gesture.current
+    if (tools && !current && !spaceHeld && event.buttons === 0) tool.hover?.(pointerOf(event, tools.viewport), tools)
     if (!tools || !current?.move) return
     for (const sample of event.nativeEvent.getCoalescedEvents?.() ?? [event.nativeEvent]) {
       current.move(pointerOf(sample, tools.viewport), tools)
@@ -219,6 +220,10 @@ export function KitCanvas({ doc, change, tool, onView, viewMemory, decorate = nu
         onPointerMove={pointerMove}
         onPointerUp={pointerUp}
         onPointerCancel={pointerCancel}
+        onDoubleClick={(event) => {
+          const tools = context()
+          if (tools) tool.doubleClick?.(pointerOf({ ...event, clientX: event.clientX, clientY: event.clientY, pressure: 1 }, tools.viewport), tools)
+        }}
         onContextMenu={(event) => event.preventDefault()}
         data-testid="kit-canvas-surface"
       />

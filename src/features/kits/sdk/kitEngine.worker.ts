@@ -6,7 +6,7 @@
  * answered in the order they arrive.
  */
 import { createKitSdkDocument, kitSdkCommands, loadKitSdk, openKitSdkDocument, type KitSdkDocument } from './kitSdk'
-import type { KitEngineInfo, KitEngineRequest, KitEngineResponse } from './kitEngine'
+import type { KitEngineInfo, KitEngineRequest, KitEngineResponse, KitToolMethod } from './kitEngine'
 import { lendFiles } from './lentFiles'
 
 declare const self: DedicatedWorkerGlobalScope
@@ -28,6 +28,8 @@ function info(open: KitSdkDocument): KitEngineInfo {
     inspected,
   }
 }
+
+const TOOL_METHODS = new Set<KitToolMethod>(['tools', 'tool', 'selectTool', 'pointer', 'toolKey', 'toolText', 'toolState'])
 
 function opened() {
   if (!doc) throw new Error('no document is open')
@@ -76,6 +78,15 @@ async function handle(request: KitEngineRequest): Promise<{ value: unknown; tran
       }
       const value = (method as (...args: unknown[]) => unknown).apply(open, request.args)
       return ArrayBuffer.isView(value) ? { value, transfer: [value.buffer] } : { value }
+    }
+    case 'tool': {
+      const open = opened()
+      const method = (open as unknown as Record<string, unknown>)[request.name]
+      if (!TOOL_METHODS.has(request.name) || typeof method !== 'function') throw new Error(`the kit SDK has no engine tools (${request.name})`)
+      const before = open.revision
+      const answer = (method as (...args: unknown[]) => string).apply(open, request.args)
+      const value = request.name === 'tool' ? answer : JSON.parse(answer)
+      return { value: { value, info: request.settled || open.revision !== before ? info(open) : null } }
     }
     case 'markSaved':
       opened().markSaved()

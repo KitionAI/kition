@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { KitEngine, type KitEngineInfo } from './kitEngine'
+import { KitEngine, type KitEngineInfo, type KitToolMethod } from './kitEngine'
 import type { KitSdkManifest } from './kitSdk'
 import type { KitHost } from './kitHost'
 import type { RasterRect } from './rasterViewport'
 
 /** One edit: the canvas repaints `damage`, or everything when it is null. */
 export type KitChange = { revision: number; damage: RasterRect | null }
+
+/** A repaint of nothing: the state is refreshed, the pixels are known to be unchanged. */
+const NOTHING: RasterRect = { x0: 0, y0: 0, x1: 0, y1: 0 }
 
 /** How often an active tab checks whether something else (the agent) replaced the file. */
 const FILE_CHECK_MS = 2000
@@ -121,6 +124,20 @@ export function useKitDocument<T>(host: KitHost, manifest: KitSdkManifest, path:
     return result
   }, [refresh])
 
+  /**
+   * Calls an engine tool method (the engine-tools capability). A call that changed the document
+   * repaints it; a settled one that changed nothing (a click that only selects) refreshes the
+   * editor's state without repainting.
+   */
+  const tool = useCallback(async <R,>(name: KitToolMethod, args: unknown[] = [], settled = false) => {
+    const open = docRef.current
+    if (!open) return null
+    const before = open.info.revision
+    const { value, changed } = await open.tool<R>(name, args, settled)
+    if (docRef.current === open && changed) refresh(open.info.revision === before ? NOTHING : null)
+    return value
+  }, [refresh])
+
   const commands = useCallback(async () => (docRef.current ? docRef.current.commands() : []), [])
 
   /** Writes the document back to its workspace file. */
@@ -153,5 +170,5 @@ export function useKitDocument<T>(host: KitHost, manifest: KitSdkManifest, path:
     })
   }, [host, path])
 
-  return { doc, info, state, change, dirty, failure, openMs, saving, conflict, run, commands, save, reopen, keepMine }
+  return { doc, info, state, change, dirty, failure, openMs, saving, conflict, run, tool, commands, save, reopen, keepMine }
 }

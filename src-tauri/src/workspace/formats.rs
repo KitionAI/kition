@@ -27,6 +27,8 @@ pub fn infer_format(path: &str) -> &'static str {
         ".psd" | ".psb" | ".pcraft" => "photo",
         // Video projects, edited in the Film kit.
         ".fcproj" => "film",
+        // Vector drawings, edited in the Vector kit.
+        ".vectorcraft" | ".drawcraft" => "vector",
         ".mp4" | ".mov" | ".webm" => "video",
         ".mp3" | ".wav" | ".m4a" => "audio",
         _ => "binary",
@@ -55,10 +57,41 @@ pub fn is_supported(path: &str) -> bool {
     has_extension(
         path,
         &[
-            "md", "markdown", "kitable", "kiboard", "kidesign", "txt", "csv", "tsv", "json",
-            "html", "htm", "pdf", "docx", "xlsx", "xls", "pptx", "ppt", "png", "jpg", "jpeg",
-            "gif", "webp", "svg", "psd", "psb", "pcraft", "fcproj", "mp4", "mov", "webm", "mp3",
-            "wav", "m4a",
+            "md",
+            "markdown",
+            "kitable",
+            "kiboard",
+            "kidesign",
+            "txt",
+            "csv",
+            "tsv",
+            "json",
+            "html",
+            "htm",
+            "pdf",
+            "docx",
+            "xlsx",
+            "xls",
+            "pptx",
+            "ppt",
+            "png",
+            "jpg",
+            "jpeg",
+            "gif",
+            "webp",
+            "svg",
+            "psd",
+            "psb",
+            "pcraft",
+            "fcproj",
+            "vectorcraft",
+            "drawcraft",
+            "mp4",
+            "mov",
+            "webm",
+            "mp3",
+            "wav",
+            "m4a",
         ],
     )
 }
@@ -77,6 +110,8 @@ mod tests {
         assert_eq!(infer_format("art/Cover.PSD"), "photo");
         assert_eq!(infer_format("films/Trailer.fcproj"), "film");
         assert!(is_supported("films/Trailer.fcproj"));
+        assert_eq!(infer_format("art/Logo.vectorcraft"), "vector");
+        assert!(is_supported("art/Logo.vectorcraft"));
         assert!(is_supported("art/poster.psb"));
         assert!(!is_text("art/poster.pcraft"));
         assert_eq!(infer_format(".md"), "binary");

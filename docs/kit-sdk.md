@@ -183,9 +183,10 @@ what the open Kit SDK will publish:
 | `KitSdkManifest`, `kitSdkAvailable` | Where an SDK lives (`{ kitId, dir, module, documentClass }`) and whether this build has it |
 | `KitEngine` | One document in its own worker; async calls answered in order; `info` (`width`, `height`, `revision`, `dirty`, `canUndo`, `canRedo`, `inspected`) is current after every change; `invoke(name, …args)` reaches an SDK's own extras; a worker failure rejects every waiting call |
 | `KitHost` | File IO: `read`, `stamp`, `write` |
-| `useKitDocument(host, manifest, path, active, describe)` | Loads the file, follows it on disk, runs commands with a repaint area, saves in place; `describe(info)` maps `inspected` to the kit's view model |
+| `useKitDocument(host, manifest, path, active, describe)` | Loads the file, follows it on disk, runs commands with a repaint area, saves in place; `describe(info)` maps `inspected` to the kit's view model; `tool(name, args, settled)` calls an engine tool method and refreshes `info` only when the call changed the document or ends a gesture (`inspect()` costs, so mid-drag calls skip it) |
 | `KitCanvas` | The document on a canvas: the active `KitTool` gets gestures in document pixels; Space (unless `spacePans` is off, as in a player), the middle button, and `HAND_TOOL` pan; the wheel pans and zooms with Cmd or Ctrl; pointer capture and coalesced events; a preview overlay; `decorate` with `animated` for marching ants; HTML children for inline fields |
-| `KitTool`, `KitGesture`, `KitPointer`, `HAND_TOOL`, `ZOOM_TOOL`, `dragRect` | Tools: `begin(pointer, { viewport, overlay })` returns a gesture with `move`, `end`, `cancel` |
+| `KitTool`, `KitGesture`, `KitPointer`, `HAND_TOOL`, `ZOOM_TOOL`, `dragRect` | Tools: `begin(pointer, { viewport, overlay })` returns a gesture with `move`, `end`, `cancel`; optional `hover` (no button held) and `doubleClick` |
+| `useEngineTools(document.tool, ready, change, options)` | The engine-tools bridge (standard U3a) for kits whose engine owns its tools: the rail's tools from `tools()`, the active tool as a `KitTool`, its overlays as a `decorate` function, its cursor, `keyDown` (Enter, Escape, arrows, and typed text while the tool is mid-gesture or editing text), `toolForKey` for single-key shortcuts, `status`; `hostTools` keeps view tools (Hand, Zoom) with the host. Events go to the worker one at a time; while one is out only the newest drag or hover waits |
 | `RasterViewport` | The canvas engine: cached frame, pan, zoom, fit, exact damage patches, sampling, `toScreen` |
 | `commandForShortcut` (internal) | Shortcut matching used by the frame |
 
@@ -233,9 +234,13 @@ Kition renderer:
 8. An entry in `kits/sdks.json`, then `scripts/build-kit-sdk.sh <kit>` and
    `pnpm check:kit-sdks`.
 9. `src/features/workspace/components/<kit>/<kit>KitSdk.ts`: the manifest
-   and `describe<Kit>(info)`; `<kit>CanvasTools.ts`: the kit's `KitTool`s
-   (Photo's `photoCanvasTools.ts` shows brushes, rectangles, lassos, clicks,
-   and inline text).
+   and `describe<Kit>(info)`. Tools come one of two ways. When the engine
+   owns its tools (manifest capability `engine-tools`, as Vector), use
+   `useEngineTools` and write no tool code: `VectorWebEditor.tsx` shows it,
+   with a rail from the engine's tool groups. Otherwise write
+   `<kit>CanvasTools.ts` with the kit's `KitTool`s (Photo's
+   `photoCanvasTools.ts` shows brushes, rectangles, lassos, clicks, and
+   inline text).
    `<Kit>WebEditor.tsx`: `useKitDocument(KITION_KIT_HOST, …)`,
    `useKitEditor`, `KitEditorFrame`, and `KitCanvas` with the active tool.
 10. One entry in `KIT_EDITORS` (`kits/kitEditors.ts`): format, SDK, lazy
@@ -383,6 +388,22 @@ Product:
   the canvas region.
 - Status-bar timings (open, render, stroke) are part of the editor; keep them
   so performance can be checked in the real app.
+
+Engine tools (Vector):
+
+- An upstream desktop app often draws the selection itself (outlines,
+  anchors, the bounding box, the hover highlight) instead of returning it as
+  tool overlays. Port that drawing logic into the kit's SDK crate and return
+  it as engine overlays (Vector's `selection.rs`). Never redraw it in the
+  host: every host would have to, and it would drift from the engine.
+- Overlays are a `decorate` function, not the preview canvas, so they stay in
+  place across pans, zooms, and repaints. Assert one in e2e by its pixel
+  colour (Vector checks the layer colour of a square's centre point).
+- A resolution-independent engine renders sharp above 1:1: the viewport
+  already asks `render` for `zoom × devicePixelRatio`, so the SDK draws at
+  that scale instead of enlarging a 1:1 frame.
+- Build with an absolute `CARGO_TARGET_DIR`: `wasm-pack` runs cargo inside
+  the crate's folder, so a relative one lands in a stray directory there.
 
 ## 7. Performance Budget
 

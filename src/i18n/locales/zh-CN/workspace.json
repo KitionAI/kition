@@ -7,7 +7,8 @@
       "page": "页面",
       "note": "笔记",
       "image": "图片",
-      "video": "视频项目"
+      "video": "视频项目",
+      "drawing": "矢量图"
     },
     "folder": "文件夹",
     "importSpreadsheet": "导入电子表格",
@@ -753,5 +754,29 @@
     "exportCancel": "停止导出",
     "exported": "已导出 {{name}}",
     "exportFailed": "无法导出视频"
+  },
+  "vectorKit": {
+    "toolsLabel": "矢量工具",
+    "moreTools": "与{{tool}}同组的更多工具",
+    "layers": "图层",
+    "hideLayer": "隐藏图层",
+    "showLayer": "显示图层",
+    "locked": "已锁定",
+    "summary": "{{artboards}} 个画板上共 {{objects}} 个对象，已选中 {{selected}} 个",
+    "selectionSize": "宽 {{width}} pt × 高 {{height}} pt",
+    "dialogUnavailable": "Kition 暂不支持此工具的选项对话框",
+    "unavailableTitle": "此版本不支持矢量编辑",
+    "unavailableBody": "包含矢量引擎时，矢量图会在 Kition 中打开。",
+    "menu": {
+      "File": "文件",
+      "Edit": "编辑",
+      "Object": "对象",
+      "Type": "文字",
+      "Select": "选择",
+      "Effect": "效果",
+      "View": "视图",
+      "Window": "窗口",
+      "Help": "帮助"
+    }
   }
 }

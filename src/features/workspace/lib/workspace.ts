@@ -185,6 +185,9 @@ export function inferWorkspaceItemFormat(path: string, content?: string): Worksp
   if (/\.fcproj$/i.test(path)) {
     return 'film'
   }
+  if (/\.(vectorcraft|drawcraft)$/i.test(path)) {
+    return 'vector'
+  }
   if (/\.(mp4|mov|webm)$/i.test(path)) {
     return 'video'
   }
@@ -284,6 +287,8 @@ export function getWorkspaceItemIcon(format?: WorkspaceDocumentFormat): LucideIc
       return Layers
     case 'film':
       return Clapperboard
+    case 'vector':
+      return PenTool
     case 'video':
       return FileVideo2
     case 'audio':
@@ -321,6 +326,7 @@ export function getWorkspaceItemIconColorClass(format?: WorkspaceDocumentFormat)
     case 'image':
     case 'photo':
     case 'film':
+    case 'vector':
       return 'text-violet-500'
     case 'design':
     case 'board':
@@ -352,6 +358,7 @@ export function getWorkspaceItemFormatLabel(format?: WorkspaceDocumentFormat) {
     image: 'Image',
     photo: 'Photo',
     film: 'Film',
+    vector: 'Vector',
     video: 'Video',
     audio: 'Audio',
     binary: 'File',
@@ -407,7 +414,7 @@ export function isOrganizableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
 }
 
 export function isPreviewableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
-  return format === 'image' || format === 'pdf' || format === 'photo' || format === 'film' || format === 'video'
+  return format === 'image' || format === 'pdf' || format === 'photo' || format === 'film' || format === 'vector' || format === 'video'
 }
 
 export function isSupportedWorkspaceFormat(format?: WorkspaceDocumentFormat) {

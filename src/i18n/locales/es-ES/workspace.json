@@ -7,7 +7,8 @@
       "page": "Página",
       "note": "Nota",
       "image": "Imagen",
-      "video": "Proyecto de vídeo"
+      "video": "Proyecto de vídeo",
+      "drawing": "Dibujo"
     },
     "folder": "Carpeta",
     "importSpreadsheet": "Importar hoja de cálculo",
@@ -753,5 +754,29 @@
     "exportCancel": "Detener la exportación",
     "exported": "Exportado {{name}}",
     "exportFailed": "No se pudo exportar el vídeo"
+  },
+  "vectorKit": {
+    "toolsLabel": "Herramientas vectoriales",
+    "moreTools": "Más herramientas como {{tool}}",
+    "layers": "Capas",
+    "hideLayer": "Ocultar capa",
+    "showLayer": "Mostrar capa",
+    "locked": "Bloqueado",
+    "summary": "{{objects}} objetos en {{artboards}} mesas de trabajo, {{selected}} seleccionados",
+    "selectionSize": "An {{width}} pt × Al {{height}} pt",
+    "dialogUnavailable": "El cuadro de opciones de esta herramienta aún no está disponible en Kition",
+    "unavailableTitle": "La edición vectorial no está disponible en esta versión",
+    "unavailableBody": "Los dibujos vectoriales se abren en Kition cuando se incluye el motor Vector.",
+    "menu": {
+      "File": "Archivo",
+      "Edit": "Edición",
+      "Object": "Objeto",
+      "Type": "Texto",
+      "Select": "Seleccionar",
+      "Effect": "Efecto",
+      "View": "Ver",
+      "Window": "Ventana",
+      "Help": "Ayuda"
+    }
   }
 }

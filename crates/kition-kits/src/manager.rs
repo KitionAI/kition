@@ -61,6 +61,16 @@ pub const KITS: &[KitDefinition] = &[
         embeds: false,
         exports: &["mp4"],
     },
+    // Edited in the page through its SDK.
+    KitDefinition {
+        id: "kit.vector",
+        name: "Kition Vector",
+        binary_env: "KITION_KIT_VECTOR_BINARY",
+        extensions: &["vectorcraft", "drawcraft"],
+        creates: &[],
+        embeds: false,
+        exports: &[],
+    },
 ];
 
 /// Who is asking: a person in a kit tab or the agent.
