@@ -13,7 +13,8 @@
       "layout": "Mise en page",
       "cad": "Dessin CAO",
       "presentation": "Présentation",
-      "word": "Document Word"
+      "word": "Document Word",
+      "spreadsheet": "Feuille de calcul"
     },
     "folder": "Dossier",
     "importSpreadsheet": "Importer une feuille de calcul",
@@ -757,7 +758,14 @@
       "References": "Références",
       "Mailings": "Publipostage",
       "Header & Footer": "En-tête et pied de page",
-      "Equation": "Équation"
+      "Equation": "Équation",
+      "Page Layout": "Mise en page",
+      "Formulas": "Formules",
+      "Data": "Données",
+      "Automate": "Automatiser",
+      "Table": "Tableau",
+      "PivotTable Analyze": "Analyse du tableau croisé dynamique",
+      "PivotTable Design": "Création de tableau croisé dynamique"
     }
   },
   "filmKit": {
@@ -891,5 +899,11 @@
     "summary": "Page {{page}} sur {{pages}}, {{words}} mots",
     "unavailableTitle": "L’édition Word n’est pas disponible dans cette version",
     "unavailableBody": "Les documents Word s’ouvrent dans Kition lorsque le moteur Word est inclus."
+  },
+  "sheetKit": {
+    "summary": "{{sheet}}, {{selection}}",
+    "unavailableTitle": "L’édition de feuilles de calcul n’est pas disponible dans cette version",
+    "unavailableBody": "Les feuilles de calcul s’ouvrent dans Kition lorsque le moteur de feuilles est inclus.",
+    "commandLine": "Saisissez une valeur ou une formule"
   }
 }

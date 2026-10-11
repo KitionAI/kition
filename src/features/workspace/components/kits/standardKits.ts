@@ -1,4 +1,4 @@
-import { DraftingCompass, FileText, Presentation, type LucideIcon } from 'lucide-react'
+import { DraftingCompass, FileText, Presentation, Sheet, type LucideIcon } from 'lucide-react'
 import type { KitSdkManifest, RasterRect } from '@/features/kits/public'
 
 /**
@@ -16,8 +16,11 @@ export type StandardKitSpec = {
   menuOrder: readonly string[]
   /** The engine's tools (engine-tools capability): the first one, and any kept off the rail. */
   tools?: { initial: string; hidden?: ReadonlySet<string>; rail?: boolean }
-  /** A command-line bar under the canvas that runs the kit's `commandLine` command (CAD). */
-  commandLine?: boolean
+  /**
+   * A bar that runs the kit's `commandLine` command and shows the engine's status: CAD's command
+   * line under the canvas, or Sheet's formula bar above it.
+   */
+  commandLine?: boolean | 'top'
   /** Where the canvas opens, from `inspect()`: the first page or slide rather than the whole canvas. */
   initialArea?: (inspected: Record<string, unknown>) => RasterRect | null
   /** The current page or slide; the canvas brings it into view when it changes and is mostly offscreen. */
@@ -82,5 +85,23 @@ export const WORD_KIT: StandardKitSpec = {
     page: count(inspected.page) + 1,
     pages: Array.isArray(inspected.pages) ? inspected.pages.length : 0,
     words: count(inspected.words),
+  }),
+}
+
+/** The Sheet engine (`kition-sheet-sdk` in the kit-sheet repository), built by `scripts/build-kit-sdk.sh sheet`. */
+export const SHEET_KIT: StandardKitSpec = {
+  sdk: { kitId: 'kit.sheet', dir: 'sheet-sdk', module: 'kition_sheet_sdk', documentClass: 'SheetDocument' },
+  key: 'sheet',
+  icon: Sheet,
+  menuOrder: ['File', 'Edit', 'Home', 'Insert', 'Draw', 'Page Layout', 'Formulas', 'Data', 'Review', 'View', 'Automate', 'Format', 'Table', 'Table Design', 'Chart Design', 'PivotTable Analyze', 'PivotTable Design', 'Window'],
+  // Selecting and typing in the grid; no tools to choose.
+  tools: { initial: 'select', rail: false },
+  // The formula bar: the active cell and what it holds; Enter enters the text there.
+  commandLine: 'top',
+  // Open on the top-left cells at about 1:1, not the whole canvas shrunk to fit.
+  initialArea: () => ({ x0: 0, y0: 0, x1: 1100, y1: 640 }),
+  summary: (inspected) => ({
+    sheet: typeof inspected.sheet === 'string' ? inspected.sheet : '',
+    selection: typeof inspected.selection === 'string' ? inspected.selection : '',
   }),
 }

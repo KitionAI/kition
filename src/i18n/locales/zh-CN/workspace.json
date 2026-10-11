@@ -13,7 +13,8 @@
       "layout": "版式",
       "cad": "CAD 图纸",
       "presentation": "演示文稿",
-      "word": "Word 文档"
+      "word": "Word 文档",
+      "spreadsheet": "电子表格"
     },
     "folder": "文件夹",
     "importSpreadsheet": "导入电子表格",
@@ -757,7 +758,14 @@
       "References": "引用",
       "Mailings": "邮件",
       "Header & Footer": "页眉和页脚",
-      "Equation": "公式"
+      "Equation": "公式",
+      "Page Layout": "页面布局",
+      "Formulas": "公式",
+      "Data": "数据",
+      "Automate": "自动化",
+      "Table": "表",
+      "PivotTable Analyze": "数据透视表分析",
+      "PivotTable Design": "数据透视表设计"
     }
   },
   "filmKit": {
@@ -891,5 +899,11 @@
     "summary": "第 {{page}} 页，共 {{pages}} 页，{{words}} 个字",
     "unavailableTitle": "此版本不支持编辑 Word 文档",
     "unavailableBody": "包含 Word 引擎时，Word 文档会在 Kition 中打开。"
+  },
+  "sheetKit": {
+    "summary": "{{sheet}}，{{selection}}",
+    "unavailableTitle": "此版本不支持编辑电子表格",
+    "unavailableBody": "包含表格引擎时，电子表格会在 Kition 中打开。",
+    "commandLine": "输入值或公式"
   }
 }

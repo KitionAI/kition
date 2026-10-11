@@ -13,7 +13,8 @@
       "layout": "Вёрстка",
       "cad": "Чертёж САПР",
       "presentation": "Презентация",
-      "word": "Документ Word"
+      "word": "Документ Word",
+      "spreadsheet": "Электронная таблица"
     },
     "folder": "Папка",
     "importSpreadsheet": "Импортировать таблицу",
@@ -757,7 +758,14 @@
       "References": "Ссылки",
       "Mailings": "Рассылки",
       "Header & Footer": "Колонтитулы",
-      "Equation": "Уравнение"
+      "Equation": "Уравнение",
+      "Page Layout": "Разметка страницы",
+      "Formulas": "Формулы",
+      "Data": "Данные",
+      "Automate": "Автоматизация",
+      "Table": "Таблица",
+      "PivotTable Analyze": "Анализ сводной таблицы",
+      "PivotTable Design": "Конструктор сводной таблицы"
     }
   },
   "filmKit": {
@@ -891,5 +899,11 @@
     "summary": "Страница {{page}} из {{pages}}, слов: {{words}}",
     "unavailableTitle": "Редактирование Word недоступно в этой сборке",
     "unavailableBody": "Документы Word открываются в Kition, когда в сборку включён движок Word."
+  },
+  "sheetKit": {
+    "summary": "{{sheet}}, {{selection}}",
+    "unavailableTitle": "Редактирование таблиц недоступно в этой сборке",
+    "unavailableBody": "Таблицы открываются в Kition, когда в сборку включён движок таблиц.",
+    "commandLine": "Введите значение или формулу"
   }
 }

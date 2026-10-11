@@ -13,7 +13,8 @@
       "layout": "Diagramação",
       "cad": "Desenho CAD",
       "presentation": "Apresentação",
-      "word": "Documento do Word"
+      "word": "Documento do Word",
+      "spreadsheet": "Planilha"
     },
     "folder": "Pasta",
     "importSpreadsheet": "Importar planilha",
@@ -757,7 +758,14 @@
       "References": "Referências",
       "Mailings": "Correspondências",
       "Header & Footer": "Cabeçalho e Rodapé",
-      "Equation": "Equação"
+      "Equation": "Equação",
+      "Page Layout": "Layout da Página",
+      "Formulas": "Fórmulas",
+      "Data": "Dados",
+      "Automate": "Automatizar",
+      "Table": "Tabela",
+      "PivotTable Analyze": "Análise de Tabela Dinâmica",
+      "PivotTable Design": "Design de Tabela Dinâmica"
     }
   },
   "filmKit": {
@@ -891,5 +899,11 @@
     "summary": "Página {{page}} de {{pages}}, {{words}} palavras",
     "unavailableTitle": "A edição do Word não está disponível nesta versão",
     "unavailableBody": "Documentos do Word abrem no Kition quando o mecanismo do Word está incluído."
+  },
+  "sheetKit": {
+    "summary": "{{sheet}}, {{selection}}",
+    "unavailableTitle": "A edição de planilhas não está disponível nesta versão",
+    "unavailableBody": "Planilhas abrem no Kition quando o mecanismo de planilhas está incluído.",
+    "commandLine": "Digite um valor ou uma fórmula"
   }
 }

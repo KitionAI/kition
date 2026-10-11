@@ -158,5 +158,19 @@
         "text": "Hello"
       }
     }
+  },
+  "sheet": {
+    "repository": "KitionAI/kit-sheet",
+    "crate": "kition-sheet-sdk",
+    "module": "kition_sheet_sdk",
+    "class": "SheetDocument",
+    "name": "Budget.xlsx",
+    "edit": {
+      "command": "cell.set",
+      "params": {
+        "cell": "C2",
+        "input": "99"
+      }
+    }
   }
 }

@@ -75,6 +75,13 @@ const CASES: &[Case] = &[
         params: || json!({ "text": "Hello" }),
         file_command: ("file.saveAs", || json!({ "path": "elsewhere.docx" })),
     },
+    Case {
+        kit: "kit.sheet",
+        fixture: "Budget.xlsx",
+        command: "cell.set",
+        params: || json!({ "cell": "C2", "input": "99" }),
+        file_command: ("file.saveAs", || json!({ "path": "elsewhere.xlsx" })),
+    },
 ];
 
 fn binary(kit: &kition_kits::KitDefinition) -> Option<PathBuf> {

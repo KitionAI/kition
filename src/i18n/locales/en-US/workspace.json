@@ -13,7 +13,8 @@
       "layout": "Page layout",
       "cad": "CAD drawing",
       "presentation": "Presentation",
-      "word": "Word document"
+      "word": "Word document",
+      "spreadsheet": "Spreadsheet"
     },
     "folder": "Folder",
     "importSpreadsheet": "Import spreadsheet",
@@ -757,7 +758,14 @@
       "References": "References",
       "Mailings": "Mailings",
       "Header & Footer": "Header & Footer",
-      "Equation": "Equation"
+      "Equation": "Equation",
+      "Page Layout": "Page Layout",
+      "Formulas": "Formulas",
+      "Data": "Data",
+      "Automate": "Automate",
+      "Table": "Table",
+      "PivotTable Analyze": "PivotTable Analyze",
+      "PivotTable Design": "PivotTable Design"
     }
   },
   "filmKit": {
@@ -891,5 +899,11 @@
     "summary": "Page {{page}} of {{pages}}, {{words}} words",
     "unavailableTitle": "Word editing is not available in this build",
     "unavailableBody": "Word documents open in Kition when the Word engine is included."
+  },
+  "sheetKit": {
+    "summary": "{{sheet}}, {{selection}}",
+    "unavailableTitle": "Spreadsheet editing is not available in this build",
+    "unavailableBody": "Spreadsheets open in Kition when the Sheet engine is included.",
+    "commandLine": "Enter a value or formula"
   }
 }

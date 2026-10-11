@@ -26,7 +26,7 @@ over the Kit Protocol by kition-sdk's `kition-headless`, so it is a few lines
 (`apps/kit-<kit>` in each kit repository). The agent's tools for every kit are
 `<prefix>_inspect`, `<prefix>_commands`, and `<prefix>_run`, generated from
 the kit's definition (`photo_*`, `film_*`, `vector_*`, `effect_*`,
-`design_*`, `cad_*`, `presentation_*`, `word_*`).
+`design_*`, `cad_*`, `presentation_*`, `word_*`, `sheet_*`).
 
 When the file is open in a kit editor, those tools act on the editor itself
 through the **Kit AI bridge** (standard A7 to A10), not on a headless copy:
@@ -272,8 +272,9 @@ Kition renderer:
    (SDK manifest, test id key, icon, menu order, engine tools, an optional
    command line, and the status-line values from `inspect()`) and
    `standardKit(spec, format, create)` in `KIT_EDITORS` replace steps 9 and 10's
-   editor, fallback, and SDK files. CAD, Presentation, and Word are (Word with
-   `rail: false`: its one text tool needs no rail). A kit for a format the
+   editor, fallback, and SDK files. CAD, Presentation, Word, and Sheet are (Word
+   and Sheet with `rail: false`: one tool needs no rail; Sheet's
+   `commandLine: 'top'` is its formula bar). A kit for a format the
    file preview already shows (PDF, Office) passes `{ preview: true }`, so that
    preview stays the fallback, and the linked-file prompt keeps `document_read`
    for its text (`TEXT_EXTRACTED` in `crates/kition-kits/src/tools.rs`); add the
@@ -513,6 +514,19 @@ Text kits (Word):
   the document changed for a caret or selection move.
 - An engine that fills its whole output with paper (`render_region`) renders
   each page's visible piece separately and copies it into place.
+
+Grid kits (Sheet):
+
+- An engine whose upstream draws with its UI toolkit (GridCraft's grid is
+  egui) needs its own painting in the SDK: port the toolkit drawing (cell
+  fills, borders, text, alignment, number formats) into the SDK crate, with
+  the faces the upstream web build uses, and say in `KITION_CHANGES.md` what is
+  not drawn yet.
+- Typing goes to the active cell and is entered on Enter, Tab, or an arrow, as
+  in Excel; until then it is an overlay, so the document is not changed (and
+  not dirty) by keys alone.
+- Give a canvas much larger than a window an `initialArea` near 1:1 (the
+  top-left cells), not the whole canvas shrunk to fit.
 
 Time-based kits (Effect):
 

@@ -215,6 +215,25 @@ pub const KITS: &[KitDefinition] = &[
             command: "text.insert",
         },
     },
+    // Edited in the page through its SDK.
+    KitDefinition {
+        id: "kit.sheet",
+        name: "Kition Sheet",
+        binary_env: "KITION_KIT_SHEET_BINARY",
+        extensions: &["xlsx"],
+        creates: &[],
+        embeds: false,
+        exports: &[],
+        agent: KitAgent {
+            prefix: "sheet",
+            noun: "spreadsheet",
+            formats: ".xlsx",
+            reports: "its sheets, the used range, the selection, and the active cell",
+            covers: "cells, formulas, formatting, sorting, filtering, tables, charts, PivotTables, and more; `cell.set` enters a value or formula",
+            queries: "`cell`, `sort`, or `format`",
+            command: "cell.set",
+        },
+    },
 ];
 
 /// Who is asking: a person in a kit tab or the agent.

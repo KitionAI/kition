@@ -595,6 +595,7 @@ mod tests {
         assert!(prompt("talks/Launch.pptx").contains("document_read extracts its text"), "PowerPoint text stays readable");
         assert!(prompt("talks/Launch.deckcraft").contains("it is binary data"));
         assert!(prompt("letters/Hello.docx").contains("word_run"));
+        assert!(prompt("money/Budget.xlsx").contains("sheet_run"));
         assert!(linked_file_prompt("notes/plan.md").is_none());
         let vector_kit = KITS
             .iter()

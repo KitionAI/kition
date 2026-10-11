@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Terminal } from 'lucide-react'
+import { Sigma, Terminal } from 'lucide-react'
 import {
   HAND_TOOL,
   KITION_KIT_HOST,
@@ -120,6 +120,36 @@ export function StandardKitEditor({ spec, path, active, onOpenAgent }: StandardK
   const filename = path.split('/').filter(Boolean).pop() || path
   const values = document.state ? spec.summary(document.state) : null
 
+  const CommandIcon = spec.commandLine === 'top' ? Sigma : Terminal
+  const commandLabel = t(`${spec.key}Kit.commandLine`, { defaultValue: t('kitEditor.commandLine') })
+  const commandBar = (
+    <form
+      className={`flex h-9 shrink-0 items-center gap-2 ${spec.commandLine === 'top' ? 'border-b' : 'border-t'} border-border bg-background px-3`}
+      onSubmit={(event) => {
+        event.preventDefault()
+        void runLine()
+      }}
+    >
+      <CommandIcon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+      <span className="shrink-0 text-xs text-muted-foreground" data-testid={`${spec.key}-prompt`}>{tools.status ?? ''}</span>
+      <input
+        className="h-7 min-w-0 flex-1 rounded-lg border border-border bg-background px-2 font-mono text-xs text-foreground outline-none focus:border-primary"
+        value={line}
+        onChange={(event) => setLine(event.target.value)}
+        onKeyDown={(event) => {
+          // Escape clears the line and cancels the running command, as on the canvas.
+          if (event.key !== 'Escape') return
+          setLine('')
+          tools.keyDown({ key: 'Escape', shiftKey: false, altKey: false, metaKey: false, ctrlKey: false })
+        }}
+        placeholder={commandLabel}
+        aria-label={commandLabel}
+        spellCheck={false}
+        data-testid={`${spec.key}-command-line`}
+      />
+    </form>
+  )
+
   return (
     <KitEditorFrame
       document={document}
@@ -130,33 +160,8 @@ export function StandardKitEditor({ spec, path, active, onOpenAgent }: StandardK
       menuLabel={(label) => t(`${spec.key}Kit.menu.${label}`, { defaultValue: t(`kitEditor.menu.${label}`, { defaultValue: label }) })}
       onKeyDown={keyDown}
       tools={spec.tools && spec.tools.rail !== false ? <EngineToolRail tools={railTools} active={tools.active} onSelect={tools.select} testId={spec.key} /> : null}
-      bottom={spec.commandLine ? (
-        <form
-          className="flex h-9 shrink-0 items-center gap-2 border-t border-border bg-background px-3"
-          onSubmit={(event) => {
-            event.preventDefault()
-            void runLine()
-          }}
-        >
-          <Terminal className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-          <span className="shrink-0 text-xs text-muted-foreground" data-testid={`${spec.key}-prompt`}>{tools.status ?? ''}</span>
-          <input
-            className="h-7 min-w-0 flex-1 rounded-lg border border-border bg-background px-2 font-mono text-xs text-foreground outline-none focus:border-primary"
-            value={line}
-            onChange={(event) => setLine(event.target.value)}
-            onKeyDown={(event) => {
-              // Escape clears the line and cancels the running command, as on the canvas.
-              if (event.key !== 'Escape') return
-              setLine('')
-              tools.keyDown({ key: 'Escape', shiftKey: false, altKey: false, metaKey: false, ctrlKey: false })
-            }}
-            placeholder={t('kitEditor.commandLine')}
-            aria-label={t('kitEditor.commandLine')}
-            spellCheck={false}
-            data-testid={`${spec.key}-command-line`}
-          />
-        </form>
-      ) : null}
+      options={spec.commandLine === 'top' ? commandBar : null}
+      bottom={spec.commandLine === true ? commandBar : null}
       status={<span data-testid={`${spec.key}-status`}>{values ? t(`${spec.key}Kit.summary`, values) : ''}</span>}
       statusEnd={zoom != null ? <span className="tabular-nums">{Math.round(zoom * 100)}%</span> : null}
     >
