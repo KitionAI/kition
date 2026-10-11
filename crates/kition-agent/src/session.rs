@@ -70,6 +70,20 @@ fn task_mode(value: &str) -> String {
     }
 }
 
+/// Whether a model turn can run on `model`: one is configured and speaks a
+/// supported wire.
+fn check_model(model: Option<&RuntimeModel>) -> Result<(), String> {
+    let Some(model) = model else {
+        return Err("Configure a text model in Settings before using the agent.".into());
+    };
+    match model.wire_api.trim() {
+        "responses" | "chat_completions" | "anthropic_messages" => Ok(()),
+        wire => Err(format!(
+            "Provider wire_api={wire:?} is no longer supported; switch to OpenAI Responses, OpenAI Chat Completions, or Anthropic Messages in settings."
+        )),
+    }
+}
+
 /// The `user/message` source kind of a request: an approval resume, a
 /// hidden follow-up the client sent, or the person's own message.
 fn message_source(approval: bool, hidden: bool) -> &'static str {
@@ -156,6 +170,9 @@ pub async fn prepare(
     let content = request.content.trim().to_owned();
     if content.is_empty() {
         return Err(AppError::bad_request("Message content cannot be empty"));
+    }
+    if image_intent.is_none() {
+        check_model(request.runtime_model.as_ref()).map_err(AppError::bad_request)?;
     }
     let approval = match &request.shell_approval {
         Some(input) => Some(
@@ -465,27 +482,6 @@ async fn drive(agent: Agent, user_id: i64, prepared: Prepared, emitter: Emitter)
             .data(json!({ "skills": catalog::public_skills(&skills) })),
         )
         .await;
-    }
-    if request.runtime_model.is_none() {
-        fail(
-            &run,
-            "Missing model configuration",
-            "final",
-            "Configure a text model in Settings before using the agent.",
-        )
-        .await;
-        return;
-    }
-    let wire = run.model.wire_api.trim();
-    if !matches!(
-        wire,
-        "responses" | "chat_completions" | "anthropic_messages"
-    ) {
-        let message = format!(
-            "Provider wire_api={wire:?} is no longer supported; switch to OpenAI Responses, OpenAI Chat Completions, or Anthropic Messages in settings."
-        );
-        fail(&run, "Unsupported wire_api", "final", &message).await;
-        return;
     }
     let facts = TurnFacts {
         prompt_context: request.prompt_context,

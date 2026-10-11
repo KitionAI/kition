@@ -627,6 +627,26 @@ async fn streams_a_turn_with_a_tool_call() {
     assert_session_events_api(&app, session_id).await;
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn requests_without_a_usable_model_are_refused_before_streaming() {
+    let Fixture { app, .. } = app();
+    let session_id = new_session(&app).await;
+    let uri = format!("/agent/sessions/{session_id}/messages/stream");
+    let (status, body) = call(&app, "POST", &uri, json!({ "content": "hi" })).await;
+    assert_eq!(status, 400, "{}", String::from_utf8_lossy(&body));
+    assert!(String::from_utf8_lossy(&body).contains("Configure a text model"));
+    let (status, body) = call(
+        &app,
+        "POST",
+        &uri,
+        json!({ "content": "hi", "runtime_model": { "model_name": "m", "wire_api": "completions" } }),
+    )
+    .await;
+    assert_eq!(status, 400);
+    assert!(String::from_utf8_lossy(&body).contains("no longer supported"));
+    assert!(session_events(&app, session_id).await.is_empty());
+}
+
 /// The session's logged events through `GET /session-events`, each checked
 /// against the contract.
 async fn session_events(app: &Router, session_id: i64) -> Vec<Value> {
@@ -835,6 +855,17 @@ async fn commands_outside_the_policy_wait_for_approval() {
     );
     let pending = &done["extra_data"]["shell_approval_required"];
     assert_eq!(pending["requires"], "approval");
+    let events = session_events(&app, session_id).await;
+    let tail: Vec<&Value> = events.iter().rev().take(4).rev().collect();
+    assert_eq!(tail[0]["type"], "tool/result", "{tail:?}");
+    assert_eq!(tail[0]["meta"]["kind"], "shell.approval");
+    assert_eq!(tail[0]["meta"]["command"], "ls && touch approved.txt");
+    assert_eq!(tail[1]["type"], "approval/asked");
+    assert_eq!(tail[1]["toolName"], "exec_command");
+    assert_eq!(tail[1]["callId"], tail[0]["callId"]);
+    assert_eq!(tail[2]["type"], "step/end");
+    assert_eq!(tail[3]["type"], "turn/end");
+    assert_eq!(tail[3]["reason"], "awaiting-approval");
     assert!(!workspace.path().join("approved.txt").exists());
     let tool_call_id = pending["tool_call_id"].as_i64().unwrap_or_default();
 

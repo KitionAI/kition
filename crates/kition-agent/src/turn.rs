@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex, PoisonError};
 use futures::future::BoxFuture;
 use kition_ai::engine::{MessagePart, ToolSpec};
 use kition_harness::cancel::Cancel;
-use kition_harness::driver::{Driver, Live, TurnInput};
+use kition_harness::driver::{Driver, Live, LiveSink, TurnInput, fail_turn};
 use kition_harness::events::{ContentBlock, EventBody, MessageSource, TurnEndReason};
 use kition_harness::log::SqliteLog;
 use kition_harness::policy::{CallInfo, Pipeline, Policy};
@@ -336,6 +336,14 @@ pub async fn drive(
         match assemble_turn(run, facts, &tools_factory(run, &pending, &notes)).await {
             Ok(assembled) => assembled,
             Err(error) => {
+                let (log, key) = (
+                    SqliteLog::new(run.agent.db().clone()),
+                    crate::log::log_key(run.session_id),
+                );
+                let live: LiveSink = Arc::new(|_: Live| {});
+                if let Err(log_error) = fail_turn(&log, &key, &live, &error) {
+                    tracing::warn!(error = %log_error, "could not log the failed turn");
+                }
                 session::fail(run, "Execution failed", "final", &error).await;
                 return;
             }

@@ -423,8 +423,9 @@ impl ToolDef {
         let meta = match self.presentation_meta.as_ref() {
             None => None,
             Some(present) => {
+                // `null` means this result has nothing to present.
                 match std::panic::catch_unwind(AssertUnwindSafe(|| present(&args, &value))) {
-                    Ok(meta) => Some(meta),
+                    Ok(meta) => Some(meta).filter(|meta| !meta.is_null()),
                     Err(_panic) => {
                         return Settled::error(
                             format!("{} could not present its output", self.name),
@@ -507,6 +508,16 @@ mod tests {
             .presentation_meta(|args, _value| json!({ "title": format!("Echo {}", args["text"]) }))
             .build()
             .unwrap_or_else(|error| panic!("{error}"))
+    }
+
+    #[tokio::test]
+    async fn a_null_presentation_is_no_meta() {
+        let tool = define("quiet", "q")
+            .execute(|_, _| async { Ok(json!({})) })
+            .presentation_meta(|_, _| Value::Null)
+            .build()
+            .unwrap_or_else(|error| panic!("{error}"));
+        assert_eq!(tool.run(json!({}), cx()).await.meta, None);
     }
 
     fn cx() -> ToolContext {

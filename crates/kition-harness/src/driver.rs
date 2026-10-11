@@ -222,6 +222,33 @@ pub fn append_live(
     Ok(event)
 }
 
+/// Logs a turn that failed before it could run (its tools could not be
+/// assembled, say): `turn/start` and `turn/end {failed, error}`, live
+/// between `running` and `idle` like any turn.
+pub fn fail_turn(
+    log: &dyn SessionLog,
+    session: &str,
+    live: &LiveSink,
+    error: &str,
+) -> Result<(), String> {
+    let turn = next_turn(&log.read(session)?);
+    live(Live::Status { running: true });
+    let logged = append_live(log, session, live, EventBody::TurnStart { turn }).and_then(|_| {
+        append_live(
+            log,
+            session,
+            live,
+            EventBody::TurnEnd {
+                turn,
+                reason: TurnEndReason::Failed,
+                error: error.to_owned(),
+            },
+        )
+    });
+    live(Live::Status { running: false });
+    logged.map(|_| ())
+}
+
 /// A `deliverables/presented` for the files of `call_id` that have a path,
 /// or `None` when no file does.
 fn deliverables(turn: u32, call_id: &str, files: Vec<PresentedFile>) -> Option<EventBody> {

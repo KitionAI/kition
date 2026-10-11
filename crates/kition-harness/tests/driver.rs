@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex, PoisonError};
 use futures::future::BoxFuture;
 use kition_harness::cancel::Cancel;
 use kition_harness::driver::{
-    AssistantStreamFrame, Driver, Live, StreamOutcome, TurnInput, append_live, next_turn,
+    AssistantStreamFrame, Driver, Live, StreamOutcome, TurnInput, append_live, fail_turn, next_turn,
 };
 use kition_harness::events::{
     ContentBlock, EventBody, MessageSource, PresentedFile, SessionEvent, TodoItem, TodoStatus,
@@ -355,6 +355,37 @@ async fn user_messages_name_their_source() {
         })
         .collect();
     assert_eq!(sources, ["approval", "recovery", "tool-follow-up"]);
+}
+
+#[test]
+fn a_turn_that_cannot_start_is_logged_as_failed() {
+    let log = MemoryLog::default();
+    log.append("s", EventBody::TurnStart { turn: 1 })
+        .unwrap_or_else(|error| panic!("{error}"));
+    let live = Arc::new(Mutex::new(Vec::new()));
+    let sink = {
+        let live = live.clone();
+        Arc::new(move |event: Live| {
+            live.lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .push(event)
+        }) as kition_harness::driver::LiveSink
+    };
+    fail_turn(&log, "s", &sink, "no tools").unwrap_or_else(|error| panic!("{error}"));
+    let events = log.read("s").unwrap_or_else(|error| panic!("{error}"));
+    assert_eq!(events[1].body, EventBody::TurnStart { turn: 2 });
+    assert_eq!(
+        events[2].body,
+        EventBody::TurnEnd {
+            turn: 2,
+            reason: TurnEndReason::Failed,
+            error: "no tools".into(),
+        }
+    );
+    let live = live.lock().unwrap_or_else(PoisonError::into_inner);
+    assert_eq!(live.first(), Some(&Live::Status { running: true }));
+    assert_eq!(live.last(), Some(&Live::Status { running: false }));
+    assert_eq!(live.len(), 4);
 }
 
 #[test]
