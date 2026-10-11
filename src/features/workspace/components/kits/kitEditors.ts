@@ -74,6 +74,7 @@ const WORD_UI: EmbeddedKit = { kitId: 'kit.word', dir: 'word-ui' }
 const SHEET_UI: EmbeddedKit = { kitId: 'kit.sheet', dir: 'sheet-ui' }
 const PDF_UI: EmbeddedKit = { kitId: 'kit.pdf', dir: 'pdf-ui' }
 const CAD_UI: EmbeddedKit = { kitId: 'kit.cad', dir: 'cad-ui' }
+const VECTOR_UI: EmbeddedKit = { kitId: 'kit.vector', dir: 'vector-ui' }
 
 const KIT_EDITORS: readonly KitEditorEntry[] = [
   {
@@ -95,6 +96,7 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
     sdk: VECTOR_SDK,
     Editor: lazy(() => import('../VectorWebEditor').then((module) => ({ default: module.VectorWebEditor }))),
     Fallback: VectorUnavailable,
+    embedded: VECTOR_UI,
     create: { id: 'drawing', extension: 'vectorcraft', baseName: 'Untitled drawing', size: { width: 1920, height: 1080 }, label: 'createMenu.format.drawing', icon: PenTool },
   },
   {

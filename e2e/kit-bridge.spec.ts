@@ -52,13 +52,19 @@ function bridgeEvents(file: string) {
   return messages.map((message) => `data: ${JSON.stringify(message)}\n\n`).join('')
 }
 
-test('the agent edits a drawing open in the page through the Kit AI bridge', async ({ page, baseURL }) => {
+const UI_MARKER = path.join(process.cwd(), 'public', 'kits', 'vector-ui', 'kit-ui.json')
+
+// The same bridge, to Kition's own editor for the kit and to the kit's embedded editor (KitFrame).
+for (const editor of ['kition', 'embedded'] as const) {
+test(`the agent edits a drawing open in the page through the Kit AI bridge (${editor} editor)`, async ({ page, baseURL }) => {
   test.skip(!existsSync(SDK_WASM), 'the Vector engine is not built into public/kits/vector-sdk')
+  test.skip(editor === 'embedded' && !existsSync(UI_MARKER), 'the Vector kit editor is not built into public/kits/vector-ui')
   test.setTimeout(90_000)
   const host = await installDesktopHost(page)
   try {
     await fs.writeFile(path.join(host.root, 'Logo.vectorcraft'), await drawingFixture())
     await mockLocalWorkspaceApi(page)
+    if (editor === 'kition') await page.route('**/kits/vector-ui/kit-ui.json', (route) => route.fulfill({ status: 404, body: '' }))
     await serveWorkspace(page, host.root)
     let streams = 0
     await page.route('**/v1/kits/bridge', async (route) => {
@@ -79,7 +85,9 @@ test('the agent edits a drawing open in the page through the Kit AI bridge', asy
     await dismissFirstRunActivation(page)
     await page.locator('.document-tree-row', { hasText: 'Logo' }).first().click()
     // The editor offers the open drawing to the bridge as soon as it has opened it.
-    await expect(page.getByTestId('vector-status')).toContainText('objects', { timeout: 30_000 })
+    const view = editor === 'kition' ? page : page.frameLocator('[data-testid="kit-frame-window"]')
+    const marks = editor === 'kition' ? { unsaved: 'kit-unsaved', agent: 'kit-agent-edited' } : { unsaved: 'vector-unsaved', agent: 'vector-agent-edited' }
+    await expect(view.getByTestId('vector-status')).toContainText('objects', { timeout: 30_000 })
 
     const answer = async (id: number) => {
       await expect.poll(() => posted.find((entry) => entry.message.id === id), { timeout: 30_000 }).toBeTruthy()
@@ -98,9 +106,9 @@ test('the agent edits a drawing open in the page through the Kit AI bridge', asy
     expect(run.completed).toEqual([{ command: 'shape.ellipse', changed: true, result: expect.anything() }])
     expect(run.saved).toBe(false)
     expect(run.document).toMatchObject({ dirty: true, canUndo: true })
-    await expect(page.getByTestId('vector-status')).toContainText('2 objects')
-    await expect(page.getByTestId('kit-unsaved')).toBeVisible()
-    await expect(page.getByTestId('kit-agent-edited')).toBeVisible()
+    await expect(view.getByTestId('vector-status')).toContainText('2 objects')
+    await expect(view.getByTestId(marks.unsaved)).toBeVisible()
+    await expect(view.getByTestId(marks.agent)).toBeVisible()
     await expect.poll(() => posted.some((entry) => entry.message.method === 'kit.changed' && (entry.message.params as { by: string }).by === 'agent')).toBe(true)
 
     const preview = (await answer(4)).message.result as { png: string }
@@ -111,10 +119,11 @@ test('the agent edits a drawing open in the page through the Kit AI bridge', asy
     expect((await answer(6)).message.error).toMatchObject({ message: expect.stringContaining('not open in a kit editor') })
 
     // The agent's edit joined the undo history: the person undoes it like their own.
-    await page.getByRole('button', { name: 'Undo' }).click()
-    await expect(page.getByTestId('vector-status')).toContainText('1 objects')
-    await expect(page.getByTestId('kit-agent-edited')).toHaveCount(0)
+    await view.getByRole('button', { name: 'Undo' }).click()
+    await expect(view.getByTestId('vector-status')).toContainText('1 objects')
+    await expect(view.getByTestId(marks.agent)).toHaveCount(0)
   } finally {
     await host.dispose()
   }
 })
+}
