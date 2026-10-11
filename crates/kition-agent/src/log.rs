@@ -1,26 +1,19 @@
 //! The session event log: its key, the paged reader behind
-//! `GET /agent/sessions/{id}/session-events`, the exchanges that do not run
-//! a turn, and the one-time backfill of sessions from before the log.
+//! `GET /agent/sessions/{id}/session-events`, and the exchanges that do not
+//! run a turn.
 
 use kition_harness::events::{ContentBlock, EventBody, SessionEvent};
 use kition_harness::log::{SessionLog, SqliteLog};
-use kition_store::Db;
 
 use crate::run::Agent;
-use crate::store::{self, AgentMessage};
-use crate::table_plan;
 
-/// The event log key of an agent session. `backfill` builds the same key
-/// in SQL.
+/// The event log key of an agent session.
 pub(crate) fn log_key(session_id: i64) -> String {
     format!("agent:{session_id}")
 }
 
 /// The most session events one page answers.
 const EVENT_PAGE_LIMIT: usize = 500;
-
-/// The most earlier messages a backfilled session keeps.
-const BACKFILL_MESSAGES: usize = 16;
 
 /// The session events after `after`, in order, at most one page, and the
 /// cursor for the next page (the last seq returned, or `after`). Provider-
@@ -80,58 +73,6 @@ pub(crate) async fn record_exchange(agent: &Agent, session_id: i64, request: &st
     }
 }
 
-/// The conversation of `history` as the model sees it: user and assistant
-/// messages only, with the table plan block stripped from assistant replies.
-fn conversation(history: &[AgentMessage]) -> Vec<EventBody> {
-    history
-        .iter()
-        .filter_map(|message| match message.role.as_str() {
-            "user" => Some(user_message(&message.content)),
-            "assistant" => Some(assistant_message(&table_plan::strip_block(
-                &message.content,
-            ))),
-            _ => None,
-        })
-        .collect()
-}
-
-/// Gives every live session that has messages but no logged events its
-/// last 16 messages as conversation, so turns keep their context. Sessions
-/// with any event are skipped, so running it again appends nothing. Returns
-/// how many sessions were backfilled.
-pub(crate) fn backfill(db: &Db) -> Result<usize, String> {
-    let histories = {
-        let conn = db.conn().map_err(|error| error.to_string())?;
-        let mut statement = conn
-            .prepare(
-                "SELECT s.id, s.user_id FROM agent_sessions s \
-                 WHERE s.deleted_at IS NULL \
-                 AND EXISTS (SELECT 1 FROM agent_messages m WHERE m.session_id = s.id) \
-                 AND NOT EXISTS (SELECT 1 FROM agent_session_events e WHERE e.session_key = 'agent:' || s.id)",
-            )
-            .map_err(|error| error.to_string())?;
-        let sessions = statement
-            .query_map([], |row| Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?)))
-            .map_err(|error| error.to_string())?
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|error| error.to_string())?;
-        let mut histories = Vec::new();
-        for (id, user) in sessions {
-            let history = store::recent_messages(&conn, id, user, BACKFILL_MESSAGES)
-                .map_err(|error| error.to_string())?;
-            histories.push((id, conversation(&history)));
-        }
-        histories
-    };
-    let log = SqliteLog::new(db.clone());
-    for (id, bodies) in &histories {
-        for body in bodies {
-            log.append(&log_key(*id), body.clone())?;
-        }
-    }
-    Ok(histories.len())
-}
-
 #[cfg(test)]
 mod tests {
     use kition_harness::log::MemoryLog;
@@ -182,52 +123,5 @@ mod tests {
             EventBody::AssistantMessage { raw_items, .. } if raw_items.is_empty()
         ));
         assert_eq!(log.read(&log_key(6)).map(|events| events.len()), Ok(1));
-    }
-
-    #[test]
-    fn sessions_without_events_are_backfilled_once() {
-        let db = Db::open_in_memory().unwrap_or_else(|err| panic!("{err}"));
-        let conn = db.conn().unwrap_or_else(|err| panic!("{err}"));
-        kition_store::seed::run(&conn).unwrap_or_else(|err| panic!("{err}"));
-        let mut ids = Vec::new();
-        for title in ["old", "empty", "deleted"] {
-            let session = store::new_session(1, title, "", "", "");
-            ids.push(store::create(&conn, &session).unwrap_or_else(|err| panic!("{err}")));
-        }
-        let (old, empty, deleted) = (ids[0], ids[1], ids[2]);
-        for (session_id, role, content) in [
-            (old, "user", "first"),
-            (old, "assistant", "reply"),
-            (old, "tool", "ignored"),
-            (deleted, "user", "gone"),
-        ] {
-            let session = crate::store::AgentSession {
-                id: session_id,
-                user_id: 1,
-                ..Default::default()
-            };
-            store::insert_message(
-                &conn,
-                store::new_message(&session, role, content, json!({})),
-            )
-            .unwrap_or_else(|err| panic!("{err}"));
-        }
-        store::delete_session(&conn, deleted).unwrap_or_else(|err| panic!("{err}"));
-        drop(conn);
-
-        assert_eq!(backfill(&db), Ok(1));
-        let log = SqliteLog::new(db.clone());
-        let kinds = |id: i64| -> Vec<&'static str> {
-            log.read(&log_key(id))
-                .unwrap_or_else(|error| panic!("{error}"))
-                .iter()
-                .map(|event| event.body.kind())
-                .collect()
-        };
-        assert_eq!(kinds(old), ["user/message", "assistant/message"]);
-        assert!(kinds(empty).is_empty());
-        assert!(kinds(deleted).is_empty());
-        assert_eq!(backfill(&db), Ok(0), "a second backfill appends nothing");
-        assert_eq!(kinds(old).len(), 2);
     }
 }

@@ -73,16 +73,8 @@ pub struct Agent {
 }
 
 impl Agent {
-    /// The agent over `config`. Sessions from before the event log are
-    /// backfilled first, before any turn can append to their log.
+    /// The agent over `config`.
     pub fn new(config: AgentConfig) -> Self {
-        match crate::log::backfill(&config.db) {
-            Ok(0) => {}
-            Ok(count) => tracing::info!(sessions = count, "backfilled agent session event logs"),
-            Err(error) => {
-                tracing::warn!(error = %error, "could not backfill agent session event logs")
-            }
-        }
         Self {
             inner: Arc::new(Inner {
                 db: config.db,

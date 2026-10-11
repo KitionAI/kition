@@ -436,17 +436,6 @@ describe('DeepSeek provider route', () => {
     expect(deepseek.authScheme).toBe('x-api-key')
   })
 
-  it('moves saved settings from the OpenAI-compatible root to the Messages API', async () => {
-    const { normalizeDesktopSettings } = await import('./desktopSettings')
-    const saved = normalizeDesktopSettings({
-      providers: { deepseek: { baseUrl: 'https://api.deepseek.com/v1', wireApi: 'responses', authScheme: 'bearer', apiKey: 'sk-test' } },
-    } as never).providers.deepseek
-    expect(saved.baseUrl).toBe('https://api.deepseek.com/anthropic')
-    expect(saved.wireApi).toBe('anthropic_messages')
-    expect(saved.authScheme).toBe('x-api-key')
-    expect(saved.apiKey).toBe('sk-test')
-  })
-
   it('leaves a custom DeepSeek gateway alone', async () => {
     const { normalizeDesktopSettings } = await import('./desktopSettings')
     const custom = normalizeDesktopSettings({
@@ -454,16 +443,6 @@ describe('DeepSeek provider route', () => {
     } as never).providers.deepseek
     expect(custom.baseUrl).toBe('https://gateway.example.test/v1')
     expect(custom.wireApi).toBe('responses')
-  })
-
-  it('migrates a saved DeepSeek URL by its path alone, even once the default wire has merged in', async () => {
-    const { normalizeDesktopSettings } = await import('./desktopSettings')
-    const migrated = normalizeDesktopSettings({
-      providers: { deepseek: { baseUrl: 'https://api.deepseek.com/v1' } },
-    } as never).providers.deepseek
-    expect(migrated.baseUrl).toBe('https://api.deepseek.com/anthropic')
-    expect(migrated.wireApi).toBe('anthropic_messages')
-    expect(migrated.authScheme).toBe('x-api-key')
   })
 
   it('normalizes a bare DeepSeek host to the Messages path', async () => {
@@ -478,27 +457,6 @@ describe('Kimi provider route', () => {
     const kimi = normalizeDesktopSettings({}).providers.kimi
     expect(kimi.wireApi).toBe('chat_completions')
     expect(kimi.authScheme).toBe('bearer')
-  })
-
-  it('moves a saved Moonshot config off the Responses wire, keeping its URL', async () => {
-    const { normalizeDesktopSettings } = await import('./desktopSettings')
-    for (const baseUrl of ['https://api.moonshot.cn/v1', 'https://api.moonshot.ai/v1']) {
-      const saved = normalizeDesktopSettings({
-        providers: { kimi: { baseUrl, wireApi: 'responses', apiKey: 'sk-test' } },
-      } as never).providers.kimi
-      expect(saved.wireApi).toBe('chat_completions')
-      expect(saved.baseUrl).toBe(baseUrl)
-      expect(saved.apiKey).toBe('sk-test')
-    }
-  })
-
-  it('moves a Kimi gateway off the Responses wire too, keeping its URL', async () => {
-    const { normalizeDesktopSettings } = await import('./desktopSettings')
-    const gateway = normalizeDesktopSettings({
-      providers: { kimi: { baseUrl: 'https://gateway.example.test/v1', wireApi: 'responses' } },
-    } as never).providers.kimi
-    expect(gateway.wireApi).toBe('chat_completions')
-    expect(gateway.baseUrl).toBe('https://gateway.example.test/v1')
   })
 
   it('keeps OpenAI and custom defaults and a custom provider wire', async () => {

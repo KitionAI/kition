@@ -289,29 +289,6 @@ export async function saveDesktopSettings(
   return hydrated
 }
 
-/** Saved DeepSeek settings from before the Messages route used the official OpenAI-compatible root. */
-function migrateDeepSeekRoute(config: DesktopProviderConfig): DesktopProviderConfig {
-  let url: URL
-  try {
-    url = new URL(config.baseUrl)
-  } catch {
-    return config
-  }
-  // Decided by URL alone: a default-merged wireApi of 'anthropic_messages' is not evidence
-  // the baseUrl was ever migrated, so it must not skip the rewrite below.
-  const official = url.hostname === 'api.deepseek.com' && ['', '/', '/v1'].includes(url.pathname.replace(/\/$/, '') || '/')
-  if (!official) return config
-  return { ...config, baseUrl: 'https://api.deepseek.com/anthropic', wireApi: 'anthropic_messages', authScheme: 'x-api-key' }
-}
-
-/**
- * Saved Kimi settings from when the preset used the Responses wire, which Moonshot does not serve.
- * The wire selector is hidden for Kimi, so a saved 'responses' can only be that old default.
- */
-function migrateKimiWire(config: DesktopProviderConfig): DesktopProviderConfig {
-  return config.wireApi === 'responses' ? { ...config, wireApi: 'chat_completions' } : config
-}
-
 export function normalizeDesktopSettings(input?: Partial<DesktopSettingsState>): DesktopSettingsState {
   const fallback = createDefaultDesktopSettings()
   const providerMap = createProviderMap()
@@ -338,8 +315,6 @@ export function normalizeDesktopSettings(input?: Partial<DesktopSettingsState>):
       discoveredModels,
     }
   }
-  providerMap.deepseek = migrateDeepSeekRoute(providerMap.deepseek)
-  providerMap.kimi = migrateKimiWire(providerMap.kimi)
 
   const shortcutMap = new Map((input?.shortcuts || []).map((item) => [item.id, item]))
   const shortcuts = defaultShortcuts.map((shortcut) => ({
