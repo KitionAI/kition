@@ -281,15 +281,21 @@ async fn configure_smtp(
     Ok((summary, output))
 }
 
-/// Agent turns run on the harness unless `KITION_AGENT_HARNESS` is `0`,
-/// `off`, or `false` (the original loop stays as a fallback for one release).
+/// Agent turns run on the harness unless `KITION_AGENT_HARNESS` turns it
+/// off (`0`, `off`, `false`, `no`, `disable`, or `disabled`); the original
+/// loop stays as a fallback for one release.
 fn harness_enabled(value: Option<&str>) -> bool {
     !matches!(
         value
             .map(|value| value.trim().to_ascii_lowercase())
             .as_deref(),
-        Some("0" | "off" | "false")
+        Some("0" | "off" | "false" | "no" | "disable" | "disabled")
     )
+}
+
+/// The name logged for the loop agent turns run on.
+fn loop_name(harness: bool) -> &'static str {
+    if harness { "harness" } else { "original" }
 }
 
 pub fn build(
@@ -316,6 +322,8 @@ pub fn build(
     });
     let workflow_prompt: WorkflowPrompt =
         Arc::new(move |id| workflows.get(id).map(|def| describe_workflow(&def)));
+    let harness = harness_enabled(std::env::var("KITION_AGENT_HARNESS").ok().as_deref());
+    tracing::info!("loop" = loop_name(harness), "agent loop");
     let agent = Agent::new(AgentConfig {
         db: deps.db.clone(),
         engine: deps.ai.clone(),
@@ -329,7 +337,7 @@ pub fn build(
         mcp_path: kition_agent::mcp::default_path(),
         workflow_prompt: Some(workflow_prompt),
         kits: Some(deps.kits.clone()),
-        harness: harness_enabled(std::env::var("KITION_AGENT_HARNESS").ok().as_deref()),
+        harness,
     });
     let background = agent.clone();
     tokio::spawn(async move {
@@ -352,5 +360,15 @@ mod tests {
         assert!(!harness_enabled(Some("0")));
         assert!(!harness_enabled(Some(" off ")));
         assert!(!harness_enabled(Some("false")));
+        for off in ["no", "NO", "disable", " Disabled "] {
+            assert!(!harness_enabled(Some(off)), "{off}");
+        }
+        assert!(harness_enabled(Some("yes")));
+    }
+
+    #[test]
+    fn the_loop_name_follows_the_flag() {
+        assert_eq!(loop_name(true), "harness");
+        assert_eq!(loop_name(false), "original");
     }
 }
