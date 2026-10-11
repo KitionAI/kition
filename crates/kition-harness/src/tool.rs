@@ -233,6 +233,25 @@ pub fn tool_name(prefix: &str, command: &str) -> String {
         .collect()
 }
 
+/// `normalize_calls` (`llm.rs`) keeps a tool call's unparseable JSON visible
+/// as `{"raw": "..."}` rather than discarding it. If the tool itself does
+/// not declare a `raw` parameter, that shape can only mean the model's JSON
+/// did not parse; refusing it here, before schema validation, tells the
+/// model so directly instead of reporting a confusing schema violation (or,
+/// worse, running the body with an argument it never intended).
+fn malformed_raw_argument<'a>(parameters: &Value, args: &'a Value) -> Option<&'a str> {
+    let object = args.as_object()?;
+    if object.len() != 1 {
+        return None;
+    }
+    let raw = object.get("raw")?.as_str()?;
+    let declares_raw = parameters
+        .get("properties")
+        .and_then(|properties| properties.get("raw"))
+        .is_some();
+    if declares_raw { None } else { Some(raw) }
+}
+
 fn valid_name(name: &str) -> bool {
     !name.is_empty()
         && name.len() <= 64
@@ -253,6 +272,16 @@ impl ToolDef {
     pub async fn run(&self, args: Value, cx: ToolContext) -> Settled {
         if cx.cancel.is_cancelled() {
             return Settled::error("tool call aborted before dispatch", None);
+        }
+        if let Some(raw) = malformed_raw_argument(&self.parameters, &args) {
+            let truncated: String = raw.chars().take(200).collect();
+            return Settled::error(
+                format!(
+                    "Error: the arguments for {} were not valid JSON: {truncated}",
+                    self.name
+                ),
+                None,
+            );
         }
         let problems = schema::violations(&self.parameters_validator, &args);
         if !problems.is_empty() {
@@ -344,6 +373,8 @@ impl ToolRegistry {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::atomic::{AtomicBool, Ordering};
+
     use super::*;
 
     fn echo() -> ToolDef {
@@ -518,5 +549,50 @@ mod tests {
             .err()
             .unwrap_or_default();
         assert!(error.starts_with("bad_params:"), "{error}");
+    }
+
+    #[tokio::test]
+    async fn malformed_json_arguments_settle_as_an_error_without_running_the_body() {
+        let ran = Arc::new(AtomicBool::new(false));
+        let body_ran = ran.clone();
+        let tool = define("no_raw_param", "has no raw parameter")
+            .execute(move |_args, _cx| {
+                let body_ran = body_ran.clone();
+                async move {
+                    body_ran.store(true, Ordering::SeqCst);
+                    Ok(Value::Null)
+                }
+            })
+            .build()
+            .unwrap_or_else(|error| panic!("{error}"));
+        let settled = tool.run(json!({ "raw": "{\"a\":" }), cx()).await;
+        assert!(settled.is_error);
+        assert!(!ran.load(Ordering::SeqCst));
+        assert_eq!(settled.value, Value::Null);
+        assert!(
+            matches!(
+                &settled.content[0],
+                ContentBlock::Text { text }
+                    if text == "Error: the arguments for no_raw_param were not valid JSON: {\"a\":"
+            ),
+            "{:?}",
+            settled.content
+        );
+    }
+
+    #[tokio::test]
+    async fn a_tool_declaring_a_raw_parameter_still_runs() {
+        let tool = define("has_raw_param", "declares raw")
+            .parameters(json!({ "raw": { "type": "string", "required": true } }))
+            .execute(|args, _cx| async move { Ok(json!({ "raw": args["raw"] })) })
+            .output(json!({
+                "type": "object", "additionalProperties": false,
+                "properties": { "raw": { "type": "string", "required": true } }
+            }))
+            .build()
+            .unwrap_or_else(|error| panic!("{error}"));
+        let settled = tool.run(json!({ "raw": "{\"a\":" }), cx()).await;
+        assert!(!settled.is_error);
+        assert_eq!(settled.value, json!({ "raw": "{\"a\":" }));
     }
 }

@@ -35,10 +35,16 @@ pub fn derive_messages(events: &[SessionEvent]) -> Vec<Message> {
     let mut pending_images: Vec<MessagePart> = Vec::new();
     let mut open_calls: Vec<(String, String)> = Vec::new();
     let mut awaiting_approval: HashSet<String> = HashSet::new();
+    let mut started: HashSet<String> = HashSet::new();
 
     for event in events {
         if is_boundary(&event.body) {
-            repair_dangling_calls(&mut open_calls, &mut awaiting_approval, &mut history);
+            repair_dangling_calls(
+                &mut open_calls,
+                &mut awaiting_approval,
+                &mut started,
+                &mut history,
+            );
             flush_images(&mut pending_images, &mut history);
         }
         match &event.body {
@@ -72,6 +78,9 @@ pub fn derive_messages(events: &[SessionEvent]) -> Vec<Message> {
                     .map(|call| (call.call_id.clone(), call.name.clone()))
                     .collect();
             }
+            EventBody::ToolCall { call_id, .. } => {
+                started.insert(call_id.clone());
+            }
             EventBody::ApprovalAsked { call_id, .. } => {
                 awaiting_approval.insert(call_id.clone());
             }
@@ -95,11 +104,17 @@ pub fn derive_messages(events: &[SessionEvent]) -> Vec<Message> {
                 pending_images.extend(images);
                 open_calls.retain(|(id, _)| id != call_id);
                 awaiting_approval.remove(call_id);
+                started.remove(call_id);
             }
             _ => {}
         }
     }
-    repair_dangling_calls(&mut open_calls, &mut awaiting_approval, &mut history);
+    repair_dangling_calls(
+        &mut open_calls,
+        &mut awaiting_approval,
+        &mut started,
+        &mut history,
+    );
     flush_images(&mut pending_images, &mut history);
     if !system.is_empty() {
         history.insert(0, Message::new("system", system));
@@ -108,17 +123,28 @@ pub fn derive_messages(events: &[SessionEvent]) -> Vec<Message> {
 }
 
 /// Closes every still-open call with a synthetic `tool` message, in the
-/// order the calls were made, then clears them.
+/// order the calls were made, then clears them. A call awaiting approval
+/// keeps the approval-pending message; otherwise dsh tells the model whether
+/// the call was durably recorded as started (`tool/call`), since that
+/// changes whether retrying is safe (dsh marks `isError` for these
+/// separately, so the text itself carries no "Error: " prefix).
 fn repair_dangling_calls(
     open_calls: &mut Vec<(String, String)>,
     awaiting_approval: &mut HashSet<String>,
+    started: &mut HashSet<String>,
     history: &mut Vec<Message>,
 ) {
     for (call_id, name) in open_calls.drain(..) {
         let content = if awaiting_approval.remove(&call_id) {
             "Error: this call is waiting for the person's approval and has not run."
+        } else if started.remove(&call_id) {
+            "The tool call was interrupted after it was recorded, but no result was durably \
+             recorded. Its outcome is unknown. Decide whether to retry from the tool semantics: \
+             retry only if the operation is read-only or idempotent; if it may have side \
+             effects, first verify external state or ask the user. Do not retry blindly."
         } else {
-            "Error: this call was interrupted before it produced a result."
+            "The tool call was interrupted before the Harness recorded it as started. Retry it \
+             if it is still needed."
         };
         history.push(Message {
             role: "tool".into(),
@@ -343,7 +369,8 @@ mod tests {
         assert_eq!(messages[2].tool_call_id, "c2");
         assert_eq!(
             messages[2].content,
-            "Error: this call was interrupted before it produced a result."
+            "The tool call was interrupted before the Harness recorded it as started. \
+             Retry it if it is still needed."
         );
     }
 
@@ -501,7 +528,61 @@ mod tests {
         assert_eq!(messages[1].tool_call_id, "c1");
         assert_eq!(
             messages[1].content,
-            "Error: this call was interrupted before it produced a result."
+            "The tool call was interrupted after it was recorded, but no result was durably \
+             recorded. Its outcome is unknown. Decide whether to retry from the tool semantics: \
+             retry only if the operation is read-only or idempotent; if it may have side \
+             effects, first verify external state or ask the user. Do not retry blindly."
+        );
+    }
+
+    #[test]
+    fn an_open_call_is_repaired_differently_depending_on_whether_it_was_recorded_as_started() {
+        let events = vec![
+            at(
+                1,
+                assistant_with_calls(vec![
+                    LoggedCall {
+                        call_id: "c1".into(),
+                        name: "photo_run".into(),
+                        arguments: json!({}),
+                    },
+                    LoggedCall {
+                        call_id: "c2".into(),
+                        name: "photo_run".into(),
+                        arguments: json!({}),
+                    },
+                ]),
+            ),
+            // Only c1 gets a `tool/call`: c2 never started.
+            at(
+                2,
+                EventBody::ToolCall {
+                    call_id: "c1".into(),
+                    name: "photo_run".into(),
+                    arguments: json!({}),
+                },
+            ),
+            at(3, EventBody::StepEnd { turn: 1, step: 1 }),
+        ];
+        let messages = derive_messages(&events);
+        let roles: Vec<&str> = messages
+            .iter()
+            .map(|message| message.role.as_str())
+            .collect();
+        assert_eq!(roles, ["assistant", "tool", "tool"]);
+        assert_eq!(messages[1].tool_call_id, "c1");
+        assert_eq!(
+            messages[1].content,
+            "The tool call was interrupted after it was recorded, but no result was durably \
+             recorded. Its outcome is unknown. Decide whether to retry from the tool semantics: \
+             retry only if the operation is read-only or idempotent; if it may have side \
+             effects, first verify external state or ask the user. Do not retry blindly."
+        );
+        assert_eq!(messages[2].tool_call_id, "c2");
+        assert_eq!(
+            messages[2].content,
+            "The tool call was interrupted before the Harness recorded it as started. \
+             Retry it if it is still needed."
         );
     }
 }

@@ -62,7 +62,9 @@ pub trait Llm: Send + Sync {
 /// keeps arguments the model sent as malformed JSON visible as `{"raw": ...}`
 /// instead of silently discarding them (matches the loop in
 /// `kition-agent/src/tools/mod.rs::execute`, so the model's original text is
-/// preserved in the log and the tool's schema validation reports it).
+/// preserved in the log). `ToolDef::run` refuses that shape before schema
+/// validation and tells the model its JSON did not parse, unless the tool
+/// itself declares a `raw` parameter.
 pub fn normalize_calls(calls: &[ToolCall], prefix: &str) -> Vec<LoggedCall> {
     calls
         .iter()
