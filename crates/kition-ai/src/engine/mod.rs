@@ -3,6 +3,7 @@
 //! Kition Cloud provider are routed through the signed-in account.
 
 mod anthropic;
+mod chat_completions;
 pub mod error;
 pub mod image_prompt;
 mod images;
@@ -153,8 +154,11 @@ impl Engine {
             "anthropic_messages" => {
                 anthropic::call(&self.http, messages, tools, choice, model, stream).await
             }
+            "chat_completions" => {
+                chat_completions::call(&self.http, messages, tools, choice, model, stream).await
+            }
             other => Err(AiError::msg(format!(
-                "current provider wire_api={other} is not supported; switch to responses or anthropic_messages"
+                "current provider wire_api={other} is not supported; switch to responses, chat_completions, or anthropic_messages"
             ))),
         }
     }
@@ -425,7 +429,7 @@ mod tests {
     #[tokio::test]
     async fn rejects_unknown_wire_apis() {
         let model = RuntimeModel {
-            wire_api: "chat_completions".into(),
+            wire_api: "bogus".into(),
             ..RuntimeModel::default()
         };
         let error = engine(false)
@@ -434,6 +438,6 @@ mod tests {
             .err()
             .map(|e| e.to_string())
             .unwrap_or_default();
-        assert!(error.contains("wire_api=chat_completions is not supported"));
+        assert!(error.contains("wire_api=bogus is not supported"));
     }
 }
