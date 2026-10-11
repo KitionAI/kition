@@ -14,15 +14,19 @@ use kition_harness::events::{ContentBlock, EventBody, TurnEndReason};
 use kition_harness::llm::{ChunkSink, Llm, LlmReply, LlmRequest, normalize_calls};
 use kition_harness::log::{SessionLog, SqliteLog};
 use kition_harness::policy::{CallInfo, Pipeline, Policy};
+use kition_harness::provider::{TurnScene, assemble};
 use kition_harness::stop::{RecoveryPrompt, UnresolvedWrites};
-use kition_harness::tool::{Settled, ToolContext, ToolFailure, ToolRegistry, define};
+use kition_harness::tool::{
+    Settled, ToolContext, ToolDef as HarnessTool, ToolFailure, ToolRegistry, define,
+};
 use serde_json::{Value, json};
 
+use crate::providers::{self, ToolFactory, TurnFacts};
 use crate::run::{EventInput, Run};
 use crate::session;
-use crate::store::{self, AgentArtifact, AgentSession};
+use crate::store::{self, AgentSession};
 use crate::tools::{self, images};
-use crate::{attachments, prompts, turn};
+use crate::{prompts, turn};
 
 /// The output of the call that paused the turn, for the approval frames.
 type Pending = Arc<Mutex<Option<Value>>>;
@@ -231,54 +235,55 @@ impl Drop for AbortOnDrop {
     }
 }
 
-/// The offered tools as harness tools that all run through `body`. A tool
-/// the harness cannot register (an MCP name with a `.`, or longer than 64
-/// characters) is skipped rather than failing the turn.
-fn registry(specs: &[ToolSpec], body: &Body) -> ToolRegistry {
-    let mut registry = ToolRegistry::default();
-    for spec in specs {
-        let (name, logged_name, body) = (spec.name.clone(), spec.name.clone(), body.clone());
-        let schema = spec
-            .input_schema
-            .clone()
-            .unwrap_or_else(|| json!({ "type": "object" }));
-        let mut builder = define(&spec.name, &spec.description)
-            .unchecked_parameters(schema)
-            .log_arguments(move |args| logged_arguments(&logged_name, args))
-            .execute(move |args: Value, cx: ToolContext| body(name.clone(), args, cx))
-            .render(|_args, value| {
-                vec![ContentBlock::text(
-                    json!({
-                        "name": value["name"], "summary": value["summary"],
-                        "output": value["output"], "failed": false,
-                    })
-                    .to_string(),
-                )]
-            });
-        if tools::writes(&spec.name) {
-            builder = builder.writes();
-        }
-        if let Err(error) = builder.build().and_then(|tool| registry.register(tool)) {
-            tracing::warn!(tool = %spec.name, error = %error, "tool not offered on the harness");
-        }
+/// One offered tool as a harness tool that runs through `body`.
+fn harness_tool(spec: &ToolSpec, body: &Body) -> Result<HarnessTool, String> {
+    let (name, logged_name, body) = (spec.name.clone(), spec.name.clone(), body.clone());
+    let schema = spec
+        .input_schema
+        .clone()
+        .unwrap_or_else(|| json!({ "type": "object" }));
+    let mut builder = define(&spec.name, &spec.description)
+        .unchecked_parameters(schema)
+        .log_arguments(move |args| logged_arguments(&logged_name, args))
+        .execute(move |args: Value, cx: ToolContext| body(name.clone(), args, cx))
+        .render(|_args, value| {
+            vec![ContentBlock::text(
+                json!({
+                    "name": value["name"], "summary": value["summary"],
+                    "output": value["output"], "failed": false,
+                })
+                .to_string(),
+            )]
+        });
+    if tools::writes(&spec.name) {
+        builder = builder.writes();
     }
-    registry
+    builder.build()
 }
 
-/// The existing tools, unchanged, as harness tools. Each call still records
-/// its row, timeline events, and frames through `tools::execute`.
-fn legacy_tools(
-    run: &Arc<Run>,
-    specs: &[ToolSpec],
-    pending: &Pending,
-    notes: &Notes,
-) -> ToolRegistry {
+/// Builds offered tools on `body`. A tool the harness cannot define (an
+/// MCP name with a `.`, or longer than 64 characters) is skipped rather
+/// than failing the turn.
+fn factory(body: Body) -> ToolFactory {
+    Arc::new(move |spec: &ToolSpec| match harness_tool(spec, &body) {
+        Ok(tool) => Some(tool),
+        Err(error) => {
+            tracing::warn!(tool = %spec.name, error = %error, "tool not offered on the harness");
+            None
+        }
+    })
+}
+
+/// The existing tools, unchanged, as a harness tool factory. Each call
+/// still records its row, timeline events, and frames through
+/// `tools::execute`.
+fn legacy_factory(run: &Arc<Run>, pending: &Pending, notes: &Notes) -> ToolFactory {
     let (run, pending, notes) = (run.clone(), pending.clone(), notes.clone());
     let body: Body = Arc::new(move |name: String, args: Value, cx: ToolContext| {
         let (run, pending, notes) = (run.clone(), pending.clone(), notes.clone());
         Box::pin(async move { legacy_call(&run, &name, args, &cx, &pending, &notes).await })
     });
-    registry(specs, &body)
+    factory(body)
 }
 
 /// Runs `work` in its own task and waits for it unless the turn is
@@ -361,29 +366,33 @@ async fn legacy_call(
     }))
 }
 
-/// The per-turn system prompt: the same blocks `session::build_messages`
-/// sends as system messages, joined.
-async fn system_prompt(run: &Run, session: &AgentSession, context: &str) -> String {
-    let (id, user) = (session.id, session.user_id);
-    let mut images: Vec<AgentArtifact> = run
-        .agent
-        .with_db(move |conn| store::recent_artifacts(conn, id, user, 40))
-        .await
-        .unwrap_or_default()
+/// The system prompt and tools of this turn, assembled from the providers,
+/// with the offered tool names appended.
+async fn assemble_turn(
+    run: &Arc<Run>,
+    facts: TurnFacts,
+    factory: &ToolFactory,
+) -> Result<(String, ToolRegistry), String> {
+    let scene = TurnScene {
+        pane: run.pane.clone(),
+        active_path: run.active_document_path.clone(),
+        language: run.language.clone(),
+        extra: Value::Null,
+    };
+    let providers = providers::providers(run, &Arc::new(facts), factory).await;
+    let assembly = assemble(&prompts::system_prompt(&run.language), &providers, &scene).await?;
+    let names: Vec<String> = assembly
+        .tools
+        .specs()
         .into_iter()
-        .filter(|a| a.kind == "image" || a.mime_type.starts_with("image/"))
-        .take(8)
+        .map(|spec| spec.name)
         .collect();
-    images.reverse();
-    let mut blocks = vec![prompts::system_prompt(&run.language)];
-    if !run.active_document_path.is_empty() {
-        blocks.push(prompts::linked_document(&run.active_document_path));
-    }
-    blocks.push(attachments::prompt_block(&run.attachments));
-    blocks.push(prompts::recent_images(&images));
-    blocks.push(context.to_owned());
-    blocks.retain(|block| !block.trim().is_empty());
-    blocks.join("\n\n")
+    let system = format!(
+        "{}\n\nAvailable tools: {}",
+        assembly.system,
+        names.join(", ")
+    );
+    Ok((system, assembly.tools))
 }
 
 fn user_content(run: &Run) -> Vec<ContentBlock> {
@@ -444,13 +453,13 @@ async fn carry_over(run: &Run, session: &AgentSession, log: &dyn SessionLog, key
     }
 }
 
-/// Runs the turn and finishes it exactly as `session::drive` does.
+/// Runs the turn, assembled from the providers, and finishes it exactly as
+/// `session::drive` does.
 pub async fn drive(
     run: &Arc<Run>,
     session: AgentSession,
     prompt: &str,
-    context: &str,
-    specs: Vec<ToolSpec>,
+    facts: TurnFacts,
     turn: Option<TurnGuard>,
 ) {
     // Taken by `session::prepare` and held for the whole turn, through the
@@ -458,7 +467,19 @@ pub async fn drive(
     let _turn = turn;
     let pending: Pending = Arc::new(Mutex::new(None));
     let notes = Notes::default();
-    let tools = legacy_tools(run, &specs, &pending, &notes);
+    let (system, tools) =
+        match assemble_turn(run, facts, &legacy_factory(run, &pending, &notes)).await {
+            Ok(assembled) => assembled,
+            Err(error) => {
+                session::fail(run, "Execution failed", "final", &error).await;
+                return;
+            }
+        };
+    run.event(
+        EventInput::new("prompt.sent", "intent", "completed", "Send model request", "Sent the user goal, session context, and available tools to the model")
+            .data(json!({ "model_id": session.model_id, "turn_capabilities": session::turn_capabilities(&tools.specs(), &run.model) })),
+    )
+    .await;
     let llm = Arc::new(AgentLlm {
         run: run.clone(),
         calls: AtomicUsize::new(0),
@@ -483,7 +504,7 @@ pub async fn drive(
     };
     let input = TurnInput {
         session: key,
-        system: system_prompt(run, &session, context).await,
+        system,
         tools,
         user: user_content(run),
         cancel,
@@ -554,6 +575,40 @@ pub async fn drive(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The specs as harness tools on `body`, as `factory` builds them.
+    fn registry(specs: &[ToolSpec], body: &Body) -> ToolRegistry {
+        let build = factory(body.clone());
+        let mut registry = ToolRegistry::default();
+        for tool in specs.iter().filter_map(|spec| build(spec)) {
+            registry
+                .register(tool)
+                .unwrap_or_else(|error| panic!("{error}"));
+        }
+        registry
+    }
+
+    #[test]
+    fn the_harness_turn_names_no_pane_or_kit() {
+        let source = include_str!("harness_turn.rs");
+        let turn = source
+            .split("\n#[cfg(test)]\nmod tests")
+            .next()
+            .unwrap_or_default();
+        assert!(turn.len() < source.len());
+        for needle in [
+            "\"document\"",
+            "\"table\"",
+            "\"workflow\"",
+            "\"gallery\"",
+            "\"whiteboard\"",
+            "\"design\"",
+            "photo_",
+            "kit.",
+        ] {
+            assert!(!turn.contains(needle), "harness_turn.rs names {needle}");
+        }
+    }
 
     #[test]
     fn tools_the_harness_cannot_name_are_skipped() {

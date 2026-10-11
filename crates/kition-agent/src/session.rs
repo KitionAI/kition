@@ -9,6 +9,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use crate::catalog::{self, SkillDef};
+use crate::providers::TurnFacts;
 use crate::run::{Agent, EventInput, Run, truncate_chars};
 use crate::sources::{self, LocalSourceInput};
 use crate::store::{self, AgentArtifact, AgentMessage, AgentSession};
@@ -555,6 +556,18 @@ async fn drive(agent: Agent, user_id: i64, prepared: Prepared, emitter: Emitter)
         fail(&run, "Unsupported wire_api", "final", &message).await;
         return;
     }
+    if agent.harness() {
+        let facts = TurnFacts {
+            prompt_context: request.prompt_context,
+            active_workflow_id: request.active_workflow_id,
+            table_plan: request.table_plan_context,
+            skills,
+            hosted_web_search: supports_hosted_web_search(&run.model),
+            hosted_images: supports_hosted_images(&run.model),
+        };
+        crate::harness_turn::drive(&run, session, &content, facts, turn).await;
+        return;
+    }
     let context = build_context(&run, &request, &skills).await;
     let specs = tool_specs(&run).await;
     run.event(
@@ -565,10 +578,6 @@ async fn drive(agent: Agent, user_id: i64, prepared: Prepared, emitter: Emitter)
     let names: Vec<String> = specs.iter().map(|spec| spec.name.clone()).collect();
     let tool_prompt = prompts::tool_loop(&names, &run.pane);
     let context = [context, tool_prompt].join("\n\n");
-    if agent.harness() {
-        crate::harness_turn::drive(&run, session, &content, &context, specs, turn).await;
-        return;
-    }
     let messages = match build_messages(&run, &session, &context).await {
         Ok(messages) => messages,
         Err(error) => {
