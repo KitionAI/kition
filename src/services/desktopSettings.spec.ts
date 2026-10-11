@@ -166,7 +166,7 @@ describe('desktopSettings AI provider catalog', () => {
     expect(desktopProviderCatalog.map((provider) => provider.kind)).toContain('kimi')
 
     const settings = createDefaultDesktopSettings()
-    expect(settings.providers.deepseek.baseUrl).toBe('https://api.deepseek.com/v1')
+    expect(settings.providers.deepseek.baseUrl).toBe('https://api.deepseek.com/anthropic')
     expect(settings.providers.kimi.baseUrl).toBe('https://api.moonshot.cn/v1')
     expect(normalizeProviderBaseURL('kimi', 'https://api.moonshot.cn')).toBe('https://api.moonshot.cn/v1')
   })
@@ -424,5 +424,35 @@ describe('translation target language setting', () => {
     expect(normalizeDesktopSettings({}).general.translationTargetLanguage).toBe('auto')
     expect(normalizeDesktopSettings({ general: { translationTargetLanguage: 'ja' } } as never).general.translationTargetLanguage).toBe('ja')
     expect(normalizeDesktopSettings({ general: { translationTargetLanguage: 'klingon' } } as never).general.translationTargetLanguage).toBe('auto')
+  })
+})
+
+describe('DeepSeek provider route', () => {
+  it('defaults to the Anthropic-compatible Messages API', async () => {
+    const { normalizeDesktopSettings } = await import('./desktopSettings')
+    const deepseek = normalizeDesktopSettings({}).providers.deepseek
+    expect(deepseek.baseUrl).toBe('https://api.deepseek.com/anthropic')
+    expect(deepseek.wireApi).toBe('anthropic_messages')
+    expect(deepseek.authScheme).toBe('x-api-key')
+  })
+
+  it('moves saved settings from the OpenAI-compatible root to the Messages API', async () => {
+    const { normalizeDesktopSettings } = await import('./desktopSettings')
+    const saved = normalizeDesktopSettings({
+      providers: { deepseek: { baseUrl: 'https://api.deepseek.com/v1', wireApi: 'responses', authScheme: 'bearer', apiKey: 'sk-test' } },
+    } as never).providers.deepseek
+    expect(saved.baseUrl).toBe('https://api.deepseek.com/anthropic')
+    expect(saved.wireApi).toBe('anthropic_messages')
+    expect(saved.authScheme).toBe('x-api-key')
+    expect(saved.apiKey).toBe('sk-test')
+  })
+
+  it('leaves a custom DeepSeek gateway alone', async () => {
+    const { normalizeDesktopSettings } = await import('./desktopSettings')
+    const custom = normalizeDesktopSettings({
+      providers: { deepseek: { baseUrl: 'https://gateway.example.test/v1', wireApi: 'responses' } },
+    } as never).providers.deepseek
+    expect(custom.baseUrl).toBe('https://gateway.example.test/v1')
+    expect(custom.wireApi).toBe('responses')
   })
 })
