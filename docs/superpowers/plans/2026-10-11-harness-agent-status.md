@@ -50,7 +50,7 @@ Committed:
 | 6 review fixes (composer turns end once, failed start ends the turn, off-executor claim read, approval meta defaults, revision counter dropped on delete) | `ef6c183c` |
 | 7 Renderer view libraries (`agentSessionView`, `agentEventEffects`, `agentTablePlan`, `agentImageJob`) | `a82c4bf9` |
 | 8 + 9 Switch: notification stream (`agent-stream.schema.json`), `stream::TurnStream` live sink with desktop hooks, approval by `call_id` from the log with `approval/decided`, every custom frame / timeline event / old row write / old route deleted; renderer on session views, old libs deleted, e2e on `e2e/helpers/agentStream.ts` | `44b34efc` |
-| 10 Seven tables and two `agent_sessions` columns dropped; workspace state version 3 mirrors `agent_sessions` and `session-events.jsonl` | see `git log` (commit after `44b34efc`) |
+| 10 Seven tables and two `agent_sessions` columns dropped; workspace state version 3 mirrors `agent_sessions` and `session-events.jsonl` | `7d05d6ce` |
 
 Decisions taken in the switch (beyond the plan text): the stream says
 `running` before the turn and `idle` only after the session row is saved and
