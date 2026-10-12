@@ -1,7 +1,7 @@
 import type { KitsPhotoDetails } from '@/api/kits'
 import type { KitEngineInfo, KitSdkManifest, RasterRect } from '@/features/kits/public'
 
-/** The Photo engine (`kition-photo-sdk` in the kit-photo repository), built by `scripts/build-kit-sdk.sh photo`. */
+/** The Photo engine (`kition-photo-sdk` in the kition-photo repository), built by `scripts/build-kit-sdk.sh photo`. */
 export const PHOTO_SDK: KitSdkManifest = {
   kitId: 'kit.photo',
   dir: 'photo-sdk',

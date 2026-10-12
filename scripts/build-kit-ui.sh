@@ -4,12 +4,12 @@
 #
 #   scripts/build-kit-ui.sh presentation
 #
-# The kit repository defaults to a sibling checkout ../kit-<kit>; set KIT_REPO to use another
+# The kit repository defaults to a sibling checkout ../kition-<kit>; set KIT_REPO to use another
 # path. Its web/ app links kition-sdk's @kition/kit-ui from a sibling checkout too.
 set -euo pipefail
 kit="${1:?usage: scripts/build-kit-ui.sh <kit>, for example presentation}"
 repo_root="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
-kit_repo="${KIT_REPO:-$repo_root/../kit-$kit}"
+kit_repo="${KIT_REPO:-$repo_root/../kition-$kit}"
 web="$kit_repo/web"
 out="$repo_root/public/kits/$kit-ui"
 [[ -f "$web/package.json" ]] || { echo "$web has no kit editor (web/package.json)" >&2; exit 1; }

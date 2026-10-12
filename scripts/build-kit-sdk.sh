@@ -4,12 +4,12 @@
 #
 #   scripts/build-kit-sdk.sh photo
 #
-# The kit repository defaults to a sibling checkout ../kit-<kit>; set
+# The kit repository defaults to a sibling checkout ../kition-<kit>; set
 # KIT_REPO to use another path. Its SDK crate is crates/kition-<kit>-sdk.
 set -euo pipefail
 kit="${1:?usage: scripts/build-kit-sdk.sh <kit>, for example photo}"
 repo_root="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
-kit_repo="${KIT_REPO:-$repo_root/../kit-$kit}"
+kit_repo="${KIT_REPO:-$repo_root/../kition-$kit}"
 crate="crates/kition-$kit-sdk"
 if [[ ! -d "$kit_repo/$crate" ]]; then
   echo "$crate not found in $kit_repo; set KIT_REPO" >&2

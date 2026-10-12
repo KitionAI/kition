@@ -76,6 +76,9 @@ const PDF_UI: EmbeddedKit = { kitId: 'kit.pdf', dir: 'pdf-ui' }
 const CAD_UI: EmbeddedKit = { kitId: 'kit.cad', dir: 'cad-ui' }
 const VECTOR_UI: EmbeddedKit = { kitId: 'kit.vector', dir: 'vector-ui' }
 const DESIGN_UI: EmbeddedKit = { kitId: 'kit.design', dir: 'design-ui' }
+const PHOTO_UI: EmbeddedKit = { kitId: 'kit.photo', dir: 'photo-ui' }
+const EFFECT_UI: EmbeddedKit = { kitId: 'kit.effect', dir: 'effect-ui' }
+const FILM_UI: EmbeddedKit = { kitId: 'kit.film', dir: 'film-ui' }
 
 const KIT_EDITORS: readonly KitEditorEntry[] = [
   {
@@ -83,6 +86,7 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
     sdk: PHOTO_SDK,
     Editor: lazy(() => import('../PhotoWebEditor').then((module) => ({ default: module.PhotoWebEditor }))),
     Fallback: PhotoKitPane,
+    embedded: PHOTO_UI,
     create: { id: 'image', extension: 'psd', baseName: 'Untitled image', size: { width: 1920, height: 1080 }, label: 'createMenu.format.image', icon: Layers, runtimeFallback: true },
   },
   {
@@ -90,6 +94,7 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
     sdk: FILM_SDK,
     Editor: lazy(() => import('../FilmWebEditor').then((module) => ({ default: module.FilmWebEditor }))),
     Fallback: FilmUnavailable,
+    embedded: FILM_UI,
     create: { id: 'video', extension: 'fcproj', baseName: 'Untitled video', size: { width: 1920, height: 1080 }, label: 'createMenu.format.video', icon: Clapperboard },
   },
   {
@@ -105,6 +110,7 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
     sdk: EFFECT_SDK,
     Editor: lazy(() => import('../EffectWebEditor').then((module) => ({ default: module.EffectWebEditor }))),
     Fallback: EffectUnavailable,
+    embedded: EFFECT_UI,
     create: { id: 'motion', extension: 'ecproj', baseName: 'Untitled motion', size: { width: 1920, height: 1080 }, label: 'createMenu.format.motion', icon: Sparkles },
   },
   {

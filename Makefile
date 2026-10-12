@@ -1,6 +1,6 @@
 # Kit (Photo, Film, Vector, Effect, Design, CAD, Presentation, Word, Sheet, PDF) shortcuts for trying and testing the in-page kit editors.
-# See docs/kit-sdk.md. Kit repositories are sibling checkouts (../kit-photo,
-# ../kit-film, ../kit-vector, ../kit-effect, ../kit-design, ../kit-cad, ../kit-presentation, ../kit-word, ../kit-sheet, ../kit-pdf); set KIT_<KIT>_REPO, for example KIT_FILM_REPO,
+# See docs/kit-sdk.md. Kit repositories are sibling checkouts (../kition-photo,
+# ../kition-film, ../kition-vector, ../kition-effect, ../kition-design, ../kition-cad, ../kition-presentation, ../kition-word, ../kition-sheet, ../kition-pdf); set KIT_<KIT>_REPO, for example KIT_FILM_REPO,
 # to use other paths.
 #
 #   make kit-dev      build what is missing, then run Kition with the kits
@@ -9,19 +9,19 @@
 
 SHELL := /bin/bash
 REPO_ROOT := $(shell git rev-parse --show-toplevel)
-KIT_PHOTO_REPO ?= $(REPO_ROOT)/../kit-photo
-KIT_FILM_REPO ?= $(REPO_ROOT)/../kit-film
-KIT_VECTOR_REPO ?= $(REPO_ROOT)/../kit-vector
-KIT_EFFECT_REPO ?= $(REPO_ROOT)/../kit-effect
-KIT_DESIGN_REPO ?= $(REPO_ROOT)/../kit-design
-KIT_CAD_REPO ?= $(REPO_ROOT)/../kit-cad
-KIT_PRESENTATION_REPO ?= $(REPO_ROOT)/../kit-presentation
-KIT_WORD_REPO ?= $(REPO_ROOT)/../kit-word
-KIT_SHEET_REPO ?= $(REPO_ROOT)/../kit-sheet
-KIT_PDF_REPO ?= $(REPO_ROOT)/../kit-pdf
+KIT_PHOTO_REPO ?= $(REPO_ROOT)/../kition-photo
+KIT_FILM_REPO ?= $(REPO_ROOT)/../kition-film
+KIT_VECTOR_REPO ?= $(REPO_ROOT)/../kition-vector
+KIT_EFFECT_REPO ?= $(REPO_ROOT)/../kition-effect
+KIT_DESIGN_REPO ?= $(REPO_ROOT)/../kition-design
+KIT_CAD_REPO ?= $(REPO_ROOT)/../kition-cad
+KIT_PRESENTATION_REPO ?= $(REPO_ROOT)/../kition-presentation
+KIT_WORD_REPO ?= $(REPO_ROOT)/../kition-word
+KIT_SHEET_REPO ?= $(REPO_ROOT)/../kition-sheet
+KIT_PDF_REPO ?= $(REPO_ROOT)/../kition-pdf
 KITS := photo film vector effect design cad presentation word sheet pdf
 # Kits that draw their own editor (Kit UI protocol), built into public/kits/<kit>-ui.
-KIT_UIS := presentation word sheet pdf cad vector design
+KIT_UIS := presentation word sheet pdf cad vector design photo effect film
 
 # The kits need a newer Rust than some system installs; prefer rustup's stable toolchain.
 STABLE_BIN := $(patsubst %/,%,$(dir $(shell rustup which --toolchain stable cargo 2>/dev/null)))
@@ -29,7 +29,7 @@ TOOLCHAIN_PATH := $(if $(STABLE_BIN),$(STABLE_BIN):,)$(PATH)
 # The e2e web server is probed through any HTTP proxy; run without one.
 NO_PROXY_ENV := env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy
 E2E_PORT ?= 3123
-WEB_KIT_E2E := e2e/photo-web-editor.spec.ts e2e/film-web-editor.spec.ts e2e/vector-web-editor.spec.ts e2e/effect-web-editor.spec.ts e2e/design-web-editor.spec.ts e2e/cad-web-editor.spec.ts e2e/presentation-web-editor.spec.ts e2e/word-web-editor.spec.ts e2e/sheet-web-editor.spec.ts e2e/pdf-web-editor.spec.ts e2e/presentation-embedded.spec.ts e2e/word-embedded.spec.ts e2e/sheet-embedded.spec.ts e2e/pdf-embedded.spec.ts e2e/cad-embedded.spec.ts e2e/vector-embedded.spec.ts e2e/design-embedded.spec.ts e2e/kit-bridge.spec.ts
+WEB_KIT_E2E := e2e/photo-web-editor.spec.ts e2e/film-web-editor.spec.ts e2e/vector-web-editor.spec.ts e2e/effect-web-editor.spec.ts e2e/design-web-editor.spec.ts e2e/cad-web-editor.spec.ts e2e/presentation-web-editor.spec.ts e2e/word-web-editor.spec.ts e2e/sheet-web-editor.spec.ts e2e/pdf-web-editor.spec.ts e2e/presentation-embedded.spec.ts e2e/word-embedded.spec.ts e2e/sheet-embedded.spec.ts e2e/pdf-embedded.spec.ts e2e/cad-embedded.spec.ts e2e/vector-embedded.spec.ts e2e/design-embedded.spec.ts e2e/photo-embedded.spec.ts e2e/effect-embedded.spec.ts e2e/film-embedded.spec.ts e2e/kit-bridge.spec.ts
 KIT_E2E := $(WEB_KIT_E2E) e2e/desktop-photo-kit.spec.ts
 PHOTO_BINARY := $(KIT_PHOTO_REPO)/target/debug/kit-photo
 # The SDK kits' headless executables for the agent (kit-film, kit-vector, ...), from kition-headless.

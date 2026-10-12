@@ -95,7 +95,7 @@ fn vector_binary() -> Option<PathBuf> {
         return Some(PathBuf::from(path));
     }
     let sibling = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!(
-        "../../../kit-vector/target/debug/kit-vector{}",
+        "../../../kition-vector/target/debug/kit-vector{}",
         std::env::consts::EXE_SUFFIX
     ));
     sibling.is_file().then_some(sibling)

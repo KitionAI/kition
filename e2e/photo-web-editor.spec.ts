@@ -55,6 +55,8 @@ test('edits a PSD in the page with the Photo engine and saves it back to the wor
     const original = await psdFixture()
     await fs.writeFile(path.join(host.root, 'Poster.psd'), original)
     await mockLocalWorkspaceApi(page)
+    // This spec covers Kition's own editor for the kit; the kit's embedded one has photo-embedded.spec.ts.
+    await page.route('**/kits/photo-ui/kit-ui.json', (route) => route.fulfill({ status: 404, body: '' }))
     const saves: Array<{ path: string | null; bytes: Buffer }> = []
     const file = path.join(host.root, 'Poster.psd')
     await page.route('**/workspace-files/Poster.psd', async (route) => {
@@ -153,6 +155,8 @@ test('selects, fills, draws shapes and text, and crops with the in-page tools', 
     const file = path.join(host.root, 'Poster.psd')
     await fs.writeFile(file, await psdFixture())
     await mockLocalWorkspaceApi(page)
+    // This spec covers Kition's own editor for the kit; the kit's embedded one has photo-embedded.spec.ts.
+    await page.route('**/kits/photo-ui/kit-ui.json', (route) => route.fulfill({ status: 404, body: '' }))
     await page.route('**/workspace-files/Poster.psd', async (route) => {
       await route.fulfill({ contentType: 'image/vnd.adobe.photoshop', headers: { etag: '"1"' }, body: await fs.readFile(file) })
     })

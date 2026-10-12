@@ -1,6 +1,6 @@
 import type { KitEngineInfo, KitSdkManifest } from '@/features/kits/public'
 
-/** The Vector engine (`kition-vector-sdk` in the kit-vector repository), built by `scripts/build-kit-sdk.sh vector`. */
+/** The Vector engine (`kition-vector-sdk` in the kition-vector repository), built by `scripts/build-kit-sdk.sh vector`. */
 export const VECTOR_SDK: KitSdkManifest = {
   kitId: 'kit.vector',
   dir: 'vector-sdk',

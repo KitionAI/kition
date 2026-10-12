@@ -56,7 +56,7 @@ without the SDK and is slated for removal.
 ## 2. The Pieces
 
 ```text
-kit repository (for example KitionAI/kit-photo, standalone, private)
+kit repository (for example KitionAI/kition-photo, standalone, private)
   crates/<engine crates>          the upstream engine, changed as needed
   (git dependency) kition-sdk     KitionAI/kition-sdk: KitDocument, export_kit_document!,
                                   testing::check_contract, host (lent files), raster
@@ -235,8 +235,10 @@ kit repository's `web/` app (React, on kition-sdk's `@kition/kit-ui`) holds
 the ribbon, panels, canvas, and dialogs next to the engine, and Kition shows
 it in an iframe and talks to it over the Kit UI protocol (`kition-kit-ui/1`,
 kition-sdk `docs/ui-protocol.md`). Kition keeps the shell: files, the
-workspace, the agent, the theme, the language, and its own shortcuts. The
-first such kit is Presentation (`kit-presentation/web`).
+workspace, the agent, the theme, the language, and its own shortcuts. All ten
+kits have one: Presentation, Word, Sheet, PDF, and CAD (ribbon editors on
+kit-ui's `KitShell`), and Photo, Vector, Design, Effect, and Film (menu-bar
+editors on `KitAppShell`, with a tool rail of flyout slots and side panels).
 
 - `scripts/build-kit-ui.sh <kit>` builds the kit's engine and editor into
   `public/kits/<kit>-ui/` with a `kit-ui.json` marker (`make kit-ui-<kit>`;
@@ -244,8 +246,12 @@ first such kit is Presentation (`kit-presentation/web`).
 - `src/features/kits/kition/KitFrame.tsx` mounts it: the document's bytes,
   Kition's theme tokens and language, `host/read` and `host/write` through
   the workspace file API, paths confined to the workspace, new files and
-  exports under unused names, Kition's shortcuts forwarded back, and the Kit
-  AI bridge forwarded to the frame as `ai/*`.
+  exports under unused names (a rendered movie arrives as `host/write` in
+  export mode), `host/pick` (the person chooses a file, which Kition copies
+  next to the document), Kition's shortcuts forwarded back, and the Kit AI
+  bridge forwarded to the frame as `ai/*`. It mounts on the protocol's
+  `ready` handshake, never the frame's `load` event, and abandons a mount its
+  effect no longer needs.
 - A kit entry in `kits/kitEditors.ts` names its package with `embedded`;
   `KitFilePane` prefers it when the marker is present, then Kition's own
   editor on the kit's engine, then the fallback or the file preview.
@@ -253,8 +259,16 @@ first such kit is Presentation (`kit-presentation/web`).
   `@kition/kit-host` (kition-sdk is private, Kition public):
   `node scripts/sync-kit-host.mjs` copies them, and `pnpm check:kit-host`
   fails when they drift.
-- A kit's development host (`web/dev.html`) runs the editor without Kition,
-  with an in-memory workspace.
+- A kit's development host (`web/dev.html`, kition-sdk's `@kition/kit-dev-host`)
+  runs the editor without Kition, with an in-memory workspace; it can lend a
+  folder of linked media.
+- `e2e/<kit>-embedded.spec.ts` opens a file in each kit's own editor through
+  `e2e/helpers/embeddedKit.ts`; the older `<kit>-web-editor` specs answer the
+  kit's `kit-ui.json` with 404 to keep covering Kition's own editors, and
+  `kit-bridge.spec.ts` drives the agent bridge against both.
+- Web engines embed no CJK face; kits that draw text export `addFont`
+  (standard E9), and their editors ship Noto Sans CJK SC from the
+  `craft-fonts` checkout (`web/scripts/build-engine.sh`).
 
 ## 5. Adding A Kit: Checklist
 

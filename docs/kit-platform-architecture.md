@@ -228,7 +228,7 @@ forks. Kition does not send pull requests upstream and expects to diverge.
 
 - Each kit repository is `KitionAI/kit-<name>`, created empty and pushed from
   a clone of the upstream repository with its full history, so newer upstream
-  work can still be merged. `KitionAI/kit-photo` started from PhotoCraft
+  work can still be merged. `KitionAI/kition-photo` started from PhotoCraft
   `9c427a7a` (version 0.5.0).
 - The `README.md` of each kit repository opens with the upstream base: the
   upstream repository, version, and commit. Update it at every sync.
@@ -405,7 +405,7 @@ program has a foundation:
 | Phase | Deliverable | Exit criteria |
 | --- | --- | --- |
 | 0 | Kit crates in this repository (section 4.1): protocol types, host launch and client, mock kit, conformance suite | Types round-trip through the schemas; the mock kit passes the suite and each injected fault fails its check; `pnpm check:desktop` passes |
-| 1 | `KitionAI/kit-photo` repository: `kition-kit-server`, `apps/kit-photo` with a `headless` backend over the upstream automation engine, then a `window` backend over the upstream desktop app's control channel, `kition-theme`, branding | `headless` passes the conformance suite (reached 2026-10-10, 13 of 13 checks); `window` opens, edits, and saves in the real desktop client |
+| 1 | `KitionAI/kition-photo` repository: `kition-kit-server`, `apps/kit-photo` with a `headless` backend over the upstream automation engine, then a `window` backend over the upstream desktop app's control channel, `kition-theme`, branding | `headless` passes the conformance suite (reached 2026-10-10, 13 of 13 checks); `window` opens, edits, and saves in the real desktop client |
 | 2 | Runtime integration (`kition-kits`): the workspace lists `.psd`, `.psb`, and `.pcraft`; a Photo tab shows the rendered preview and layers with Undo, Redo, and Save; agent tools `photo_inspect`, `photo_commands`, `photo_run`; `/v1/kits` in `contracts/runtime/kits.schema.json`; `KITION_KIT_PHOTO_BINARY` override. Then a `window` surface for hands-on editing | Reached for `headless` on 2026-10-10: open, edit, and save a PSD from the workspace, and agent edits refresh the tab. The `window` surface remains |
 | 3a | In-page editing with `kit.photo` ([kit-sdk.md](kit-sdk.md)): `kition-photo-sdk` (WebAssembly) in a worker per file, `src/features/kits` template, exact damage repaint, saves through `PUT /v1/kits/files`, two-way sync with the agent | Reached 2026-10-10: checked in the real desktop client; a 4K PSD opens and saves with no main-thread long tasks |
 | 3 (rejected) | Embedding with `kit.photo`: the kit hosts its full desktop editor in-process (`embedded` surface); the runtime (`kition-kits` surfaces) keeps the borderless editor window over the tab from the tab's rectangle and the window position the shell reports, and hides it with the tab, dialogs, or when another app takes focus. macOS first (`overlay-window`), then Windows (`child-window`) | Prototyped on macOS 2026-10-10 and rejected in the real desktop client; superseded by 3a |
@@ -416,7 +416,7 @@ program has a foundation:
 ### 11.1 Trying `kit.photo` locally
 
 ```bash
-# In the kit-photo repository (needs Rust 1.95 or newer)
+# In the kition-photo repository (needs Rust 1.95 or newer)
 cargo build -p kit-photo
 
 # In this repository

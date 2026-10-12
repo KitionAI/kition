@@ -1,6 +1,6 @@
 import type { KitEngineInfo, KitSdkManifest, RasterRect } from '@/features/kits/public'
 
-/** The Design engine (`kition-design-sdk` in the kit-design repository), built by `scripts/build-kit-sdk.sh design`. */
+/** The Design engine (`kition-design-sdk` in the kition-design repository), built by `scripts/build-kit-sdk.sh design`. */
 export const DESIGN_SDK: KitSdkManifest = {
   kitId: 'kit.design',
   dir: 'design-sdk',

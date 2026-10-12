@@ -34,9 +34,10 @@ function photoView(overrides: Partial<View> = {}): View {
   }
 }
 
-// These cover the kit-process editors; the in-page engine has its own spec.
+// These cover the kit-process editors; the in-page engine and the kit's own editor have their own specs.
 test.beforeEach(async ({ page }) => {
   await page.route('**/kits/photo-sdk/**', (route) => route.fulfill({ status: 404, body: '' }))
+  await page.route('**/kits/photo-ui/kit-ui.json', (route) => route.fulfill({ status: 404, body: '' }))
 })
 
 test('opens a PSD from the workspace tree in the Photo tab and follows agent edits', async ({ page, baseURL }, testInfo) => {

@@ -38,8 +38,14 @@ async function serveWorkspace(page: Page, root: string) {
  * Opens `name` (written to the workspace from `bytes`) in Kition, where the kit's own editor
  * shows in a frame; answers the frame, and the files Kition saved through its file API.
  */
-export async function openInKitFrame(page: Page, baseURL: string, name: string, bytes: Buffer) {
+export async function openInKitFrame(page: Page, baseURL: string, name: string, bytes: Buffer, others: Record<string, Buffer> = {}) {
   const host = await installDesktopHost(page)
+  // Files the document links (media), workspace-relative.
+  for (const [other, content] of Object.entries(others)) {
+    await fs.mkdir(path.dirname(path.join(host.root, other)), { recursive: true })
+    await fs.writeFile(path.join(host.root, other), content)
+  }
+  await fs.mkdir(path.dirname(path.join(host.root, name)), { recursive: true })
   await fs.writeFile(path.join(host.root, name), bytes)
   await mockLocalWorkspaceApi(page)
   await serveWorkspace(page, host.root)
@@ -52,7 +58,9 @@ export async function openInKitFrame(page: Page, baseURL: string, name: string, 
   })
   await page.goto(new URL('/documents', baseURL).toString(), { waitUntil: 'domcontentloaded' })
   await dismissFirstRunActivation(page)
-  await page.locator('.document-tree-row', { hasText: name.replace(/\.[^.]+$/, '') }).first().click()
+  // A document in a folder: open the folder in the tree first.
+  for (const folder of name.split('/').slice(0, -1)) await page.locator('.document-tree-row', { hasText: folder }).first().click()
+  await page.locator('.document-tree-row', { hasText: (name.split('/').pop() ?? name).replace(/\.[^.]+$/, '') }).first().click()
   await expect(page.getByTestId('kit-frame')).toBeVisible()
   return { host, saves, kit: page.frameLocator('[data-testid="kit-frame-window"]') }
 }
