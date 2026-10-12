@@ -2,9 +2,10 @@
 //! importing them on startup, so a workspace folder carries its history.
 //!
 //! Layout:
-//! * `.kition/agents/<session id>/session.json` (the session row) and
-//!   `session-events.jsonl` (the session event log, one event per line as
-//!   `GET /agent/sessions/{id}/session-events` serves it);
+//! * `.kition/agents/<session id>/session.json` (the session row and the last
+//!   exported log `seq`) and `session-events.jsonl` (the session event log,
+//!   one event per line as `GET /agent/sessions/{id}/session-events` serves
+//!   it, without `system/message` events and with inline images omitted);
 //! * `.kition/sync/forms/state.json` and `.kition/sync/email/state.json`.
 
 use std::path::Path;
@@ -44,6 +45,10 @@ struct SessionSnapshot {
     schema_version: i64,
     #[serde(default)]
     session: AgentSession,
+    /// The last log `seq` written to `session-events.jsonl`; an export
+    /// rewrites the log only when the database has moved past it.
+    #[serde(default)]
+    events_seq: i64,
 }
 
 /// The log key of an agent session (`kition-agent`'s `log_key`).
@@ -51,16 +56,57 @@ fn log_key(session_id: i64) -> String {
     format!("agent:{session_id}")
 }
 
-/// A logged event as clients see it: `{seq, at, type, ...}` without the
-/// provider-native `rawItems` of `assistant/message`.
-fn portable_event(seq: i64, at: i64, body: &str) -> AppResult<Value> {
+/// What an exported image block becomes: inline image data would bloat the
+/// workspace file.
+const OMITTED_IMAGE: &str = "[image omitted]";
+
+/// Replaces inline (`data:`) image blocks in `content` with a text block.
+fn omit_inline_images(content: &mut Value) {
+    let Some(blocks) = content.as_array_mut() else {
+        return;
+    };
+    for block in blocks {
+        let inline = block.get("type").and_then(Value::as_str) == Some("image")
+            && block
+                .get("url")
+                .and_then(Value::as_str)
+                .is_some_and(|url| url.starts_with("data:"));
+        if inline {
+            *block = serde_json::json!({ "type": "text", "text": OMITTED_IMAGE });
+        }
+    }
+}
+
+/// A logged event as the workspace file keeps it: `{seq, at, type, ...}`
+/// without the provider-native `rawItems` of `assistant/message` and with
+/// inline images omitted. `None` for `system/message`, which every turn
+/// rebuilds.
+fn portable_event(seq: i64, at: i64, body: &str) -> AppResult<Option<Value>> {
     let mut event: Map<String, Value> = serde_json::from_str(body)?;
-    if event.get("type").and_then(Value::as_str) == Some("assistant/message") {
-        event.remove("rawItems");
+    match event.get("type").and_then(Value::as_str) {
+        Some("system/message") => return Ok(None),
+        Some("assistant/message") => {
+            event.remove("rawItems");
+        }
+        Some("user/message" | "tool/result") => {
+            if let Some(content) = event.get_mut("content") {
+                omit_inline_images(content);
+            }
+        }
+        _ => {}
     }
     event.insert("seq".into(), seq.into());
     event.insert("at".into(), at.into());
-    Ok(Value::Object(event))
+    Ok(Some(Value::Object(event)))
+}
+
+/// The session's last logged `seq`, 0 for an empty log.
+fn last_seq(conn: &Connection, session_id: i64) -> AppResult<i64> {
+    Ok(conn.query_row(
+        "SELECT COALESCE(MAX(seq), 0) FROM agent_session_events WHERE session_key = ?1",
+        [log_key(session_id)],
+        |row| row.get(0),
+    )?)
 }
 
 /// The session's logged events as `portable_event` writes them, in order.
@@ -77,9 +123,13 @@ fn session_events(conn: &Connection, session_id: i64) -> AppResult<Vec<Value>> {
             ))
         })?
         .collect::<Result<Vec<_>, _>>()?;
-    rows.iter()
-        .map(|(seq, at, body)| portable_event(*seq, *at, body))
-        .collect()
+    let mut events = Vec::with_capacity(rows.len());
+    for (seq, at, body) in &rows {
+        if let Some(event) = portable_event(*seq, *at, body)? {
+            events.push(event);
+        }
+    }
+    Ok(events)
 }
 
 /// Adds one exported event to the session's log unless its `seq` is there.
@@ -338,6 +388,39 @@ fn raw_json(text: &str) -> Value {
     serde_json::from_str(text).unwrap_or(Value::Null)
 }
 
+/// Restores one exported session and its log, all or nothing.
+fn import_session(conn: &mut Connection, dir: &Path, workspace_root: &str) -> AppResult<()> {
+    let Some(snapshot) = read_json::<SessionSnapshot>(&dir.join("session.json"))? else {
+        return Ok(());
+    };
+    if !importable(snapshot.schema_version) || snapshot.session.id == 0 {
+        return Ok(());
+    }
+    let events = read_json_lines::<Map<String, Value>>(&dir.join("session-events.jsonl"))?;
+    let tx = conn.transaction()?;
+    let existing: Option<String> = tx
+        .query_row(
+            "SELECT COALESCE(workspace_root, '') FROM agent_sessions WHERE id = ?1",
+            [snapshot.session.id],
+            |r| r.get(0),
+        )
+        .ok();
+    match existing {
+        None => {
+            let mut session = snapshot.session.clone();
+            session.workspace_root = workspace_root.to_owned();
+            rows::insert(&tx, &session)?;
+        }
+        Some(root) if root.trim() != workspace_root => return Ok(()),
+        Some(_) => {}
+    }
+    for event in events {
+        import_event(&tx, snapshot.session.id, event)?;
+    }
+    tx.commit()?;
+    Ok(())
+}
+
 /// Mirrors and restores workspace state.
 #[derive(Clone)]
 pub struct StateMirror {
@@ -394,40 +477,12 @@ impl StateMirror {
             Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(()),
             Err(err) => return Err(err.into()),
         };
-        let conn = self.db.conn()?;
+        let mut conn = self.db.conn()?;
         let workspace_root = self.root_text();
         for entry in entries.filter_map(Result::ok).filter(|e| e.path().is_dir()) {
             let dir = entry.path();
-            let snapshot: SessionSnapshot = match read_json(&dir.join("session.json")) {
-                Ok(Some(snapshot)) => snapshot,
-                Ok(None) => continue,
-                Err(err) => {
-                    tracing::warn!(path = %dir.display(), error = %err, "skipping unreadable agent session state");
-                    continue;
-                }
-            };
-            if !importable(snapshot.schema_version) || snapshot.session.id == 0 {
-                continue;
-            }
-            let existing: Option<String> = conn
-                .query_row(
-                    "SELECT COALESCE(workspace_root, '') FROM agent_sessions WHERE id = ?1",
-                    [snapshot.session.id],
-                    |r| r.get(0),
-                )
-                .ok();
-            match existing {
-                None => {
-                    let mut session = snapshot.session.clone();
-                    session.workspace_root = workspace_root.clone();
-                    rows::insert(&conn, &session)?;
-                }
-                Some(root) if root.trim() != workspace_root => continue,
-                Some(_) => {}
-            }
-            let events = read_json_lines::<Map<String, Value>>(&dir.join("session-events.jsonl"))?;
-            for event in events {
-                import_event(&conn, snapshot.session.id, event)?;
+            if let Err(err) = import_session(&mut conn, &dir, &workspace_root) {
+                tracing::warn!(path = %dir.display(), error = %err, "skipping unreadable agent session state");
             }
         }
         Ok(())
@@ -556,12 +611,22 @@ impl StateMirror {
             let snapshot = SessionSnapshot {
                 schema_version: STATE_SCHEMA_VERSION,
                 session: portable,
+                events_seq: last_seq(&conn, session.id)?,
             };
-            write_json_atomic(&dir.join("session.json"), &snapshot)?;
-            write_json_lines(
-                &dir.join("session-events.jsonl"),
-                &session_events(&conn, session.id)?,
-            )?;
+            let session_path = dir.join("session.json");
+            let previous = std::fs::read(&session_path).unwrap_or_default();
+            let exported = serde_json::from_slice::<SessionSnapshot>(&previous).ok();
+            let events_path = dir.join("session-events.jsonl");
+            if exported.as_ref().map(|old| old.events_seq) != Some(snapshot.events_seq)
+                || !events_path.exists()
+            {
+                write_json_lines(&events_path, &session_events(&conn, session.id)?)?;
+            }
+            let mut written = serde_json::to_vec_pretty(&snapshot)?;
+            written.push(b'\n');
+            if written != previous {
+                write_atomic(&session_path, &written)?;
+            }
         }
         for entry in std::fs::read_dir(&root)?.filter_map(Result::ok) {
             let name = entry.file_name().to_string_lossy().into_owned();
