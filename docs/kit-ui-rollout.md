@@ -1,6 +1,6 @@
 # Kit UI Rollout: Every Kit Draws Its Own Editor
 
-Status record, 2026-10-11. See `docs/kit-sdk.md` section 4a for how it works.
+Status record, 2026-10-12. See `docs/kit-sdk.md` section 4a for how it works.
 
 ## Decision
 
@@ -43,15 +43,16 @@ Status record, 2026-10-11. See `docs/kit-sdk.md` section 4a for how it works.
 | Effect | Menu bar | Timeline, transport, Transform keyframes, MP4 render |
 | Film | Menu bar | Track timeline, playback with sound, media through `host/pick`, stepped MP4 export |
 
-Every kit's flow was tested in its development host in Chromium and WebKit,
-and in Kition through its embedded spec in both browsers.
+Every kit keeps its editor flow test in its repository: `pnpm test:flow` in
+`web/` (or `node tests/flow.mjs webkit`) drives the development host in
+Chromium or WebKit; all ten pass in both. In Kition each kit also has its
+embedded spec, run in both browsers.
 
 ## Known Gaps
 
 - Sheet: frozen panes do not freeze on the single canvas.
 - PDF: fonts a PDF names but does not embed (common in Chinese PDFs) are not
   substituted with a CJK face.
-- Presentation: CJK text relies on the bundled BIZ UDPGothic; no `addFont` yet.
 - Kition's `host/pick` copies the chosen file next to the document, which is
   wasteful for large media.
 - `desktop-photo-kit.spec.ts` "imports a PSD dropped from the OS" fails in
@@ -62,6 +63,6 @@ and in Kition through its embedded spec in both browsers.
 
 1. Try every kit in the desktop app (WKWebView) and compare with the original apps.
 2. Close the gaps above.
-3. Rerun `pnpm run check`, `python3 scripts/check-i18n.py`, and
-   `pnpm test:table:e2e` before release; the last full check was interrupted
-   by the shutdown, after the kit e2e had passed.
+
+`pnpm run check`, `python3 scripts/check-i18n.py`, `pnpm test:table:e2e`,
+and `make kit-e2e-webkit` passed on 2026-10-12.
