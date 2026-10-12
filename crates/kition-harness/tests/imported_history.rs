@@ -2,7 +2,8 @@
 //! `rawItems` and no `system/message` events. Its derived history must still
 //! make a well-formed request on every wire: each tool call answered by its
 //! result right after it, and (on the Anthropic wire with thinking on) no
-//! thinking block demanded for turns that already ended.
+//! thinking block demanded for turns that already ended and a paused
+//! approval resumed with thinking off.
 
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpListener;
@@ -13,6 +14,18 @@ use kition_harness::derive::derive_messages_for;
 use kition_harness::events::SessionEvent;
 use serde_json::{Value, json};
 
+fn numbered(bodies: Vec<Value>) -> Vec<SessionEvent> {
+    bodies
+        .into_iter()
+        .enumerate()
+        .map(|(index, mut body)| {
+            body["seq"] = json!(index + 1);
+            body["at"] = json!(1000 + index);
+            serde_json::from_value(body).unwrap_or_else(|err| panic!("{err}"))
+        })
+        .collect()
+}
+
 /// The log as `session-events.jsonl` keeps it, plus the next turn's start,
 /// its rebuilt system prompt, and its user message.
 fn exported_log() -> Vec<SessionEvent> {
@@ -21,7 +34,7 @@ fn exported_log() -> Vec<SessionEvent> {
         json!({ "type": "tool/result", "callId": id, "name": name, "value": { "ok": true },
             "content": [{ "type": "text", "text": "ok" }], "isError": false })
     };
-    let bodies = [
+    let bodies = vec![
         json!({ "type": "turn/start", "turn": 1 }),
         json!({ "type": "user/message", "content": [{ "type": "text", "text": "Write a plan" }, { "type": "text", "text": "[image omitted]" }],
             "source": { "kind": "user" } }),
@@ -41,15 +54,29 @@ fn exported_log() -> Vec<SessionEvent> {
         json!({ "type": "system/message", "content": "You are Kition." }),
         json!({ "type": "user/message", "content": [{ "type": "text", "text": "Again" }], "source": { "kind": "user" } }),
     ];
-    bodies
-        .into_iter()
-        .enumerate()
-        .map(|(index, mut body)| {
-            body["seq"] = json!(index + 1);
-            body["at"] = json!(1000 + index);
-            serde_json::from_value(body).unwrap_or_else(|err| panic!("{err}"))
-        })
-        .collect()
+    numbered(bodies)
+}
+
+/// A restored log that paused on a command approval, resumed by the
+/// approval: the next request continues the open tool turn.
+fn paused_log() -> Vec<SessionEvent> {
+    numbered(vec![
+        json!({ "type": "turn/start", "turn": 1 }),
+        json!({ "type": "user/message", "content": [{ "type": "text", "text": "List files" }], "source": { "kind": "user" } }),
+        json!({ "type": "step/start", "turn": 1, "step": 1 }),
+        json!({ "type": "assistant/message", "content": "", "stopReason": "tool_use", "model": "m",
+            "toolCalls": [{ "callId": "c1", "name": "exec_command", "arguments": { "command": "ls" } }] }),
+        json!({ "type": "tool/call", "callId": "c1", "name": "exec_command", "arguments": { "command": "ls" } }),
+        json!({ "type": "tool/result", "callId": "c1", "name": "exec_command", "value": { "status": "awaiting_approval" },
+            "content": [{ "type": "text", "text": "waiting for approval" }], "isError": false }),
+        json!({ "type": "approval/asked", "id": "approval:c1", "toolName": "exec_command", "callId": "c1" }),
+        json!({ "type": "step/end", "turn": 1, "step": 1 }),
+        json!({ "type": "turn/end", "turn": 1, "reason": "awaiting-approval" }),
+        json!({ "type": "approval/decided", "id": "approval:c1", "outcome": "allowed-once" }),
+        json!({ "type": "turn/start", "turn": 2 }),
+        json!({ "type": "system/message", "content": "You are Kition." }),
+        json!({ "type": "user/message", "content": [{ "type": "text", "text": "Approved: ls" }], "source": { "kind": "approval" } }),
+    ])
 }
 
 /// A loopback server that records each request body and answers 500.
@@ -90,6 +117,11 @@ fn recording_server() -> (String, Arc<Mutex<Vec<Value>>>) {
 
 /// The request body `wire_api` sends for the derived history.
 async fn request_on(wire_api: &str) -> Value {
+    request_for(wire_api, &exported_log()).await
+}
+
+/// The request body `wire_api` sends for the history derived from `log`.
+async fn request_for(wire_api: &str, log: &[SessionEvent]) -> Value {
     let (base_url, bodies) = recording_server();
     let engine = Engine::new(std::env::temp_dir(), None);
     let model = RuntimeModel {
@@ -101,7 +133,7 @@ async fn request_on(wire_api: &str) -> Value {
         reasoning_effort: "high".into(),
         ..RuntimeModel::default()
     };
-    let messages = derive_messages_for(&exported_log(), Some("m"));
+    let messages = derive_messages_for(log, Some("m"));
     // The fake server refuses every call; only the request matters here.
     let _ = engine
         .chat_with_tools(&messages, &[], "", &model, None)
@@ -221,4 +253,25 @@ async fn anthropic_with_thinking_needs_no_thinking_blocks_for_ended_turns() {
         Some(json!("user"))
     );
     assert_eq!(messages[4]["role"], "assistant");
+}
+
+#[tokio::test]
+async fn anthropic_resumes_a_paused_approval_with_thinking_off() {
+    let body = request_for("anthropic_messages", &paused_log()).await;
+    assert_eq!(body["thinking"], json!({ "type": "disabled" }), "{body}");
+    assert!(body.get("output_config").is_none(), "{body}");
+    let messages = body["messages"].as_array().cloned().unwrap_or_default();
+    let last_assistant = messages
+        .iter()
+        .rposition(|message| message["role"] == "assistant")
+        .unwrap_or_else(|| panic!("{body}"));
+    assert_eq!(
+        messages[last_assistant]["content"][0]["type"], "tool_use",
+        "{body}"
+    );
+    assert_eq!(
+        messages[last_assistant + 1]["content"][0]["type"],
+        "tool_result",
+        "{body}"
+    );
 }

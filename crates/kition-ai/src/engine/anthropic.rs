@@ -82,6 +82,45 @@ pub(crate) fn reasoning_fields(model: &RuntimeModel) -> Vec<(&'static str, Value
     }
 }
 
+fn has_block(item: &Value, kinds: &[&str]) -> bool {
+    item["content"].as_array().is_some_and(|blocks| {
+        blocks.iter().any(|block| {
+            block["type"]
+                .as_str()
+                .is_some_and(|kind| kinds.contains(&kind))
+        })
+    })
+}
+
+/// Whether the request continues a tool turn whose assistant message has no
+/// thinking block: the last assistant message calls tools without one, and
+/// the user content after it answers with a `tool_result`. A log restored
+/// without provider-native items (a paused approval) ends like this.
+fn open_tool_turn_lacks_thinking(items: &[Value]) -> bool {
+    let Some(last) = items.iter().rposition(|item| item["role"] == "assistant") else {
+        return false;
+    };
+    has_block(&items[last], &["tool_use"])
+        && !has_block(&items[last], &["thinking", "redacted_thinking"])
+        && items
+            .get(last + 1)
+            .is_some_and(|next| next["role"] == "user" && has_block(next, &["tool_result"]))
+}
+
+/// The reasoning fields of one request. With thinking on, the API refuses an
+/// open tool turn whose assistant message lacks a thinking block, so that
+/// request goes with thinking off.
+fn request_reasoning(model: &RuntimeModel, items: &[Value]) -> Vec<(&'static str, Value)> {
+    let reasoning = reasoning_fields(model);
+    let enabled = reasoning
+        .iter()
+        .any(|(key, value)| *key == "thinking" && value["type"] == "enabled");
+    if enabled && open_tool_turn_lacks_thinking(items) {
+        return vec![("thinking", json!({ "type": "disabled" }))];
+    }
+    reasoning
+}
+
 /// `max_tokens` large enough for the configured reasoning budget. Anthropic
 /// requires `max_tokens` to exceed `thinking.budget_tokens`, so the budget
 /// gets headroom on top; DeepSeek's Messages API needs a generous ceiling
@@ -472,7 +511,7 @@ pub(crate) async fn call(
     }
     let (system, items) = normalize_messages(messages);
     let payload_tools = tools_payload(tools, &model.hosted_web_search_version);
-    let reasoning = reasoning_fields(model);
+    let reasoning = request_reasoning(model, &items);
     let max_tokens = resolve_max_tokens(model, &reasoning);
     let mut payload = Map::new();
     payload.insert("model".into(), model_name.clone().into());
@@ -1076,6 +1115,75 @@ mod tests {
         assert_eq!(items[0]["content"][1]["text"], "Calling");
         assert_eq!(items[0]["content"][2]["type"], "tool_use");
         assert_eq!(items[0]["content"][2]["id"], "t1");
+    }
+
+    fn tool_turn(assistant: Vec<Value>) -> Vec<Value> {
+        vec![
+            json!({ "role": "user", "content": "Run it" }),
+            json!({ "role": "assistant", "content": assistant }),
+            json!({ "role": "user", "content": [{ "type": "tool_result", "tool_use_id": "c1", "content": "ok" }] }),
+            json!({ "role": "user", "content": "approved" }),
+        ]
+    }
+
+    fn tool_use() -> Value {
+        json!({ "type": "tool_use", "id": "c1", "name": "exec_command", "input": {} })
+    }
+
+    fn thinking_model(provider: &str) -> RuntimeModel {
+        RuntimeModel {
+            provider_type: provider.into(),
+            reasoning_effort: "high".into(),
+            ..RuntimeModel::default()
+        }
+    }
+
+    #[test]
+    fn open_tool_turn_without_thinking_disables_thinking() {
+        let items = tool_turn(vec![tool_use()]);
+        assert!(open_tool_turn_lacks_thinking(&items));
+        for provider in ["deepseek", "anthropic"] {
+            let model = thinking_model(provider);
+            let reasoning = request_reasoning(&model, &items);
+            assert_eq!(
+                reasoning,
+                vec![("thinking", json!({ "type": "disabled" }))],
+                "{provider}"
+            );
+            assert_eq!(
+                resolve_max_tokens(&model, &reasoning),
+                DEFAULT_MAX_TOKENS,
+                "{provider}"
+            );
+        }
+        // Thinking off stays off: nothing to disable.
+        let off = RuntimeModel {
+            reasoning_effort: String::new(),
+            ..thinking_model("anthropic")
+        };
+        assert!(request_reasoning(&off, &items).is_empty());
+    }
+
+    #[test]
+    fn open_tool_turn_with_thinking_keeps_it() {
+        let thinking = json!({ "type": "thinking", "thinking": "plan", "signature": "sig" });
+        let items = tool_turn(vec![thinking, tool_use()]);
+        assert!(!open_tool_turn_lacks_thinking(&items));
+        let model = thinking_model("deepseek");
+        assert_eq!(request_reasoning(&model, &items), reasoning_fields(&model));
+    }
+
+    #[test]
+    fn ended_turn_keeps_thinking() {
+        let mut items = tool_turn(vec![tool_use()]);
+        items.truncate(3);
+        items
+            .push(json!({ "role": "assistant", "content": [{ "type": "text", "text": "Done." }] }));
+        items.push(json!({ "role": "user", "content": "Again" }));
+        assert!(!open_tool_turn_lacks_thinking(&items));
+        let model = thinking_model("anthropic");
+        assert_eq!(request_reasoning(&model, &items), reasoning_fields(&model));
+        assert!(!open_tool_turn_lacks_thinking(&[]));
     }
 
     #[test]
