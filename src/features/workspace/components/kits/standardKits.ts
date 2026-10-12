@@ -31,7 +31,7 @@ export type StandardKitSpec = {
 
 const count = (value: unknown) => (typeof value === 'number' ? value : 0)
 
-/** The CAD engine (`kition-cad-sdk` in the kit-cad repository), built by `scripts/build-kit-sdk.sh cad`. */
+/** The CAD engine (`kition-cad-sdk` in the kition-cad repository), built by `scripts/build-kit-sdk.sh cad`. */
 export const CAD_KIT: StandardKitSpec = {
   sdk: { kitId: 'kit.cad', dir: 'cad-sdk', module: 'kition_cad_sdk', documentClass: 'CadDocument' },
   key: 'cad',
@@ -54,7 +54,7 @@ function slideArea(inspected: Record<string, unknown>, index: number, key = 'sli
   return area ? { x0: area.x, y0: area.y, x1: area.x + area.width, y1: area.y + area.height } : null
 }
 
-/** The Presentation engine (`kition-presentation-sdk` in the kit-presentation repository), built by `scripts/build-kit-sdk.sh presentation`. */
+/** The Presentation engine (`kition-presentation-sdk` in the kition-presentation repository), built by `scripts/build-kit-sdk.sh presentation`. */
 export const PRESENTATION_KIT: StandardKitSpec = {
   sdk: { kitId: 'kit.presentation', dir: 'presentation-sdk', module: 'kition_presentation_sdk', documentClass: 'PresentationDocument' },
   key: 'presentation',
@@ -71,7 +71,7 @@ export const PRESENTATION_KIT: StandardKitSpec = {
   }),
 }
 
-/** The Word engine (`kition-word-sdk` in the kit-word repository), built by `scripts/build-kit-sdk.sh word`. */
+/** The Word engine (`kition-word-sdk` in the kition-word repository), built by `scripts/build-kit-sdk.sh word`. */
 export const WORD_KIT: StandardKitSpec = {
   sdk: { kitId: 'kit.word', dir: 'word-sdk', module: 'kition_word_sdk', documentClass: 'WordDocument' },
   key: 'word',
@@ -88,7 +88,7 @@ export const WORD_KIT: StandardKitSpec = {
   }),
 }
 
-/** The Sheet engine (`kition-sheet-sdk` in the kit-sheet repository), built by `scripts/build-kit-sdk.sh sheet`. */
+/** The Sheet engine (`kition-sheet-sdk` in the kition-sheet repository), built by `scripts/build-kit-sdk.sh sheet`. */
 export const SHEET_KIT: StandardKitSpec = {
   sdk: { kitId: 'kit.sheet', dir: 'sheet-sdk', module: 'kition_sheet_sdk', documentClass: 'SheetDocument' },
   key: 'sheet',
@@ -106,7 +106,7 @@ export const SHEET_KIT: StandardKitSpec = {
   }),
 }
 
-/** The PDF engine (`kition-pdf-sdk` in the kit-pdf repository), built by `scripts/build-kit-sdk.sh pdf`. */
+/** The PDF engine (`kition-pdf-sdk` in the kition-pdf repository), built by `scripts/build-kit-sdk.sh pdf`. */
 export const PDF_KIT: StandardKitSpec = {
   sdk: { kitId: 'kit.pdf', dir: 'pdf-sdk', module: 'kition_pdf_sdk', documentClass: 'PdfDocument' },
   key: 'pdf',

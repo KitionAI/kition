@@ -1,6 +1,6 @@
 import type { KitEngineInfo, KitSdkManifest } from '@/features/kits/public'
 
-/** The Film engine (`kition-film-sdk` in the kit-film repository), built by `scripts/build-kit-sdk.sh film`. */
+/** The Film engine (`kition-film-sdk` in the kition-film repository), built by `scripts/build-kit-sdk.sh film`. */
 export const FILM_SDK: KitSdkManifest = {
   kitId: 'kit.film',
   dir: 'film-sdk',

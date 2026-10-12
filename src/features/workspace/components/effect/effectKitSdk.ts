@@ -1,6 +1,6 @@
 import type { KitEngineInfo, KitSdkManifest } from '@/features/kits/public'
 
-/** The Effect engine (`kition-effect-sdk` in the kit-effect repository), built by `scripts/build-kit-sdk.sh effect`. */
+/** The Effect engine (`kition-effect-sdk` in the kition-effect repository), built by `scripts/build-kit-sdk.sh effect`. */
 export const EFFECT_SDK: KitSdkManifest = {
   kitId: 'kit.effect',
   dir: 'effect-sdk',

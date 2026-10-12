@@ -56,7 +56,7 @@ without the SDK and is slated for removal.
 ## 2. The Pieces
 
 ```text
-kit repository (for example KitionAI/kit-photo, standalone, private)
+kit repository (for example KitionAI/kition-photo, standalone, private)
   crates/<engine crates>          the upstream engine, changed as needed
   (git dependency) kition-sdk     KitionAI/kition-sdk: KitDocument, export_kit_document!,
                                   testing::check_contract, host (lent files), raster

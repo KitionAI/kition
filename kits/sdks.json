@@ -1,7 +1,7 @@
 {
   "$comment": "Kit SDKs built into public/kits/<kit>-sdk by scripts/build-kit-sdk.sh, and how scripts/check-kit-sdk.mjs checks each one (docs/kit-sdk.md).",
   "photo": {
-    "repository": "KitionAI/kit-photo",
+    "repository": "KitionAI/kition-photo",
     "crate": "kition-photo-sdk",
     "module": "kition_photo_sdk",
     "class": "PhotoDocument",
@@ -27,7 +27,7 @@
     }
   },
   "film": {
-    "repository": "KitionAI/kit-film",
+    "repository": "KitionAI/kition-film",
     "crate": "kition-film-sdk",
     "module": "kition_film_sdk",
     "class": "FilmDocument",
@@ -51,7 +51,7 @@
     ]
   },
   "vector": {
-    "repository": "KitionAI/kit-vector",
+    "repository": "KitionAI/kition-vector",
     "crate": "kition-vector-sdk",
     "module": "kition_vector_sdk",
     "class": "VectorDocument",
@@ -67,7 +67,7 @@
     }
   },
   "effect": {
-    "repository": "KitionAI/kit-effect",
+    "repository": "KitionAI/kition-effect",
     "crate": "kition-effect-sdk",
     "module": "kition_effect_sdk",
     "class": "EffectDocument",
@@ -81,7 +81,7 @@
     }
   },
   "design": {
-    "repository": "KitionAI/kit-design",
+    "repository": "KitionAI/kition-design",
     "crate": "kition-design-sdk",
     "module": "kition_design_sdk",
     "class": "DesignDocument",
@@ -111,7 +111,7 @@
     ]
   },
   "cad": {
-    "repository": "KitionAI/kit-cad",
+    "repository": "KitionAI/kition-cad",
     "crate": "kition-cad-sdk",
     "module": "kition_cad_sdk",
     "class": "CadDocument",
@@ -128,7 +128,7 @@
     }
   },
   "presentation": {
-    "repository": "KitionAI/kit-presentation",
+    "repository": "KitionAI/kition-presentation",
     "crate": "kition-presentation-sdk",
     "module": "kition_presentation_sdk",
     "class": "PresentationDocument",
@@ -147,7 +147,7 @@
     }
   },
   "word": {
-    "repository": "KitionAI/kit-word",
+    "repository": "KitionAI/kition-word",
     "crate": "kition-word-sdk",
     "module": "kition_word_sdk",
     "class": "WordDocument",
@@ -160,7 +160,7 @@
     }
   },
   "sheet": {
-    "repository": "KitionAI/kit-sheet",
+    "repository": "KitionAI/kition-sheet",
     "crate": "kition-sheet-sdk",
     "module": "kition_sheet_sdk",
     "class": "SheetDocument",
@@ -174,7 +174,7 @@
     }
   },
   "pdf": {
-    "repository": "KitionAI/kit-pdf",
+    "repository": "KitionAI/kition-pdf",
     "crate": "kition-pdf-sdk",
     "module": "kition_pdf_sdk",
     "class": "PdfDocument",

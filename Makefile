@@ -1,6 +1,6 @@
 # Kit (Photo, Film, Vector, Effect, Design, CAD, Presentation, Word, Sheet, PDF) shortcuts for trying and testing the in-page kit editors.
-# See docs/kit-sdk.md. Kit repositories are sibling checkouts (../kit-photo,
-# ../kit-film, ../kit-vector, ../kit-effect, ../kit-design, ../kit-cad, ../kit-presentation, ../kit-word, ../kit-sheet, ../kit-pdf); set KIT_<KIT>_REPO, for example KIT_FILM_REPO,
+# See docs/kit-sdk.md. Kit repositories are sibling checkouts (../kition-photo,
+# ../kition-film, ../kition-vector, ../kition-effect, ../kition-design, ../kition-cad, ../kition-presentation, ../kition-word, ../kition-sheet, ../kition-pdf); set KIT_<KIT>_REPO, for example KIT_FILM_REPO,
 # to use other paths.
 #
 #   make kit-dev      build what is missing, then run Kition with the kits
@@ -9,16 +9,16 @@
 
 SHELL := /bin/bash
 REPO_ROOT := $(shell git rev-parse --show-toplevel)
-KIT_PHOTO_REPO ?= $(REPO_ROOT)/../kit-photo
-KIT_FILM_REPO ?= $(REPO_ROOT)/../kit-film
-KIT_VECTOR_REPO ?= $(REPO_ROOT)/../kit-vector
-KIT_EFFECT_REPO ?= $(REPO_ROOT)/../kit-effect
-KIT_DESIGN_REPO ?= $(REPO_ROOT)/../kit-design
-KIT_CAD_REPO ?= $(REPO_ROOT)/../kit-cad
-KIT_PRESENTATION_REPO ?= $(REPO_ROOT)/../kit-presentation
-KIT_WORD_REPO ?= $(REPO_ROOT)/../kit-word
-KIT_SHEET_REPO ?= $(REPO_ROOT)/../kit-sheet
-KIT_PDF_REPO ?= $(REPO_ROOT)/../kit-pdf
+KIT_PHOTO_REPO ?= $(REPO_ROOT)/../kition-photo
+KIT_FILM_REPO ?= $(REPO_ROOT)/../kition-film
+KIT_VECTOR_REPO ?= $(REPO_ROOT)/../kition-vector
+KIT_EFFECT_REPO ?= $(REPO_ROOT)/../kition-effect
+KIT_DESIGN_REPO ?= $(REPO_ROOT)/../kition-design
+KIT_CAD_REPO ?= $(REPO_ROOT)/../kition-cad
+KIT_PRESENTATION_REPO ?= $(REPO_ROOT)/../kition-presentation
+KIT_WORD_REPO ?= $(REPO_ROOT)/../kition-word
+KIT_SHEET_REPO ?= $(REPO_ROOT)/../kition-sheet
+KIT_PDF_REPO ?= $(REPO_ROOT)/../kition-pdf
 KITS := photo film vector effect design cad presentation word sheet pdf
 # Kits that draw their own editor (Kit UI protocol), built into public/kits/<kit>-ui.
 KIT_UIS := presentation word sheet pdf cad vector design photo effect film

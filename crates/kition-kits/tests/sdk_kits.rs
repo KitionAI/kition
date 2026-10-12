@@ -3,7 +3,7 @@
 //! Protocol to the kit's own headless executable (`kit-<kit>`, from `kition-headless`).
 //!
 //! Each kit is tested when its executable is found: `KITION_KIT_<KIT>_BINARY`, or a debug build
-//! in the sibling kit checkout (`../kit-<kit>/target/debug/kit-<kit>`). Otherwise it is skipped.
+//! in the sibling kit checkout (`../kition-<kit>/target/debug/kit-<kit>`). Otherwise it is skipped.
 
 use std::path::PathBuf;
 
@@ -99,7 +99,7 @@ fn binary(kit: &kition_kits::KitDefinition) -> Option<PathBuf> {
     let sibling = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../..")
         .join(format!(
-            "kit-{name}/target/debug/kit-{name}{}",
+            "kition-{name}/target/debug/kit-{name}{}",
             std::env::consts::EXE_SUFFIX
         ));
     sibling.is_file().then_some(sibling)
