@@ -51,6 +51,11 @@ Committed:
 | 7 Renderer view libraries (`agentSessionView`, `agentEventEffects`, `agentTablePlan`, `agentImageJob`) | `a82c4bf9` |
 | 8 + 9 Switch: notification stream (`agent-stream.schema.json`), `stream::TurnStream` live sink with desktop hooks, approval by `call_id` from the log with `approval/decided`, every custom frame / timeline event / old row write / old route deleted; renderer on session views, old libs deleted, e2e on `e2e/helpers/agentStream.ts` | `44b34efc` |
 | 10 Seven tables and two `agent_sessions` columns dropped; workspace state version 3 mirrors `agent_sessions` and `session-events.jsonl` | `7d05d6ce` |
+| Switch review fixes: a failed or stopped stream cancels only an open provisional canvas preview; post-Stop log read cleared on delete, switch, unmount; unknown outcome dated at the turn's last event | `72d3b053` |
+| Mirror export drops `system/message`, replaces `data:` images with `[image omitted]`, rewrites a session only when its log grew (`events_seq` in `session.json`); a damaged session is skipped alone on import | `bd29fb04` |
+| Imported logs (no `rawItems`) make well-formed requests on all three wires; Anthropic with thinking needs no thinking block for ended turns | `dabb9502` |
+| Shell approval resolved last (no `allow_always` rule for a rejected request); approval plus image intent is a 400; one log read at turn start | `3287c498` |
+| Design contract describes the patch as `tool/result.meta`; e2e mocks validated against the stream and session-events contracts | `181d0257`, `e18f15bf` |
 
 Decisions taken in the switch (beyond the plan text): the stream says
 `running` before the turn and `idle` only after the session row is saved and
@@ -61,6 +66,11 @@ applies only `cursor + 1` and the hook reads the log on a gap, before each
 send, and after each stream; `CreateSession.language` is gone (the reply
 language travels with each message); a failed kit tool's summary names it by
 its kit label (keeps `tools/kits.rs`'s `label` re-export used).
+
+Known limit: a restored log has no `rawItems`. If it ends inside a turn
+(a paused approval) and the session resumes on the Anthropic wire with
+thinking on, the last assistant `tool_use` message carries no thinking
+block, which that API refuses; ended turns are unaffected.
 
 ## Next steps, in order
 
