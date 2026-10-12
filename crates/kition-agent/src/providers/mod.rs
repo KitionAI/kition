@@ -33,6 +33,8 @@ pub struct TurnFacts {
     pub skills: Vec<SkillDef>,
     pub hosted_web_search: bool,
     pub hosted_images: bool,
+    /// The session's last eight delivered images, oldest first.
+    pub recent_images: Vec<String>,
 }
 
 /// Projects a tool's arguments to the copy written to the session log.

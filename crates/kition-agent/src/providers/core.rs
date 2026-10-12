@@ -11,23 +11,13 @@ use serde_json::{Value, json};
 
 use super::{ToolFactory, ToolShape, TurnFacts, offer, offer_shaped, owned_elsewhere, ready};
 use crate::run::Run;
-use crate::{attachments, catalog, log, prompts};
+use crate::{attachments, catalog, prompts};
 
 pub struct CoreProvider {
     run: Arc<Run>,
     facts: Arc<TurnFacts>,
     factory: ToolFactory,
     recent_images: String,
-}
-
-/// The session's last eight delivered images, oldest first.
-async fn recent_images(run: &Run) -> Vec<String> {
-    let events = log::read_session(&run.agent, run.session_id)
-        .await
-        .unwrap_or_default();
-    let mut images = log::recent_deliverables(&events, 0, 8, log::is_image_path);
-    images.reverse();
-    images
 }
 
 /// Whether `CoreProvider` offers the catalog tool `name` for this model.
@@ -69,7 +59,7 @@ impl CoreProvider {
             run: run.clone(),
             facts: facts.clone(),
             factory: factory.clone(),
-            recent_images: prompts::recent_images(&recent_images(run).await),
+            recent_images: prompts::recent_images(&facts.recent_images),
         }
     }
 }

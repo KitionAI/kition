@@ -141,6 +141,11 @@ pub async fn prepare(
     mut request: StreamRequest,
 ) -> AppResult<Prepared> {
     let session = owned_session(agent, session_id, user_id).await?;
+    if request.shell_approval.is_some() && request.image_generation_intent.is_some() {
+        return Err(AppError::bad_request(
+            "a shell approval cannot carry an image generation intent",
+        ));
+    }
     // Taken here, not when the turn starts, so no second request can slip
     // in between the check and the turn. Image requests hold it too.
     let turn = agent
@@ -190,6 +195,17 @@ pub async fn prepare(
             false
         }
     };
+    let local_sources =
+        sources::normalize(&request.local_sources).map_err(AppError::bad_request)?;
+    let (document_id, table_id) = session_table(&session);
+    if request.active_data_document_id == 0 {
+        request.active_data_document_id = document_id;
+    }
+    if request.active_data_table_id == 0 {
+        request.active_data_table_id = table_id;
+    }
+    // Last: an `allow_always` decision saves a policy rule, which only an
+    // otherwise valid request may do.
     let approval = match &request.shell_approval {
         Some(input) => Some(
             exec::resolve_approval(
@@ -203,15 +219,6 @@ pub async fn prepare(
         ),
         None => None,
     };
-    let local_sources =
-        sources::normalize(&request.local_sources).map_err(AppError::bad_request)?;
-    let (document_id, table_id) = session_table(&session);
-    if request.active_data_document_id == 0 {
-        request.active_data_document_id = document_id;
-    }
-    if request.active_data_table_id == 0 {
-        request.active_data_table_id = table_id;
-    }
     Ok(Prepared {
         request,
         session,
@@ -229,17 +236,6 @@ pub async fn start(agent: Agent, user_id: i64, prepared: Prepared) -> Response {
     let (emitter, response) = Emitter::channel();
     tokio::spawn(async move { drive(agent, user_id, prepared, emitter).await });
     response
-}
-
-/// The newest editable document the session's turns delivered, or `""`.
-async fn latest_editable_document(agent: &Agent, session_id: i64) -> String {
-    let events = log::read_session(agent, session_id)
-        .await
-        .unwrap_or_default();
-    log::recent_deliverables(&events, 0, 1, documents::is_editable_document)
-        .into_iter()
-        .next()
-        .unwrap_or_default()
 }
 
 /// The `approval/decided` outcome of a decision: a rule the user saved is a
@@ -301,8 +297,16 @@ async fn drive(agent: Agent, user_id: i64, prepared: Prepared, emitter: Emitter)
     if active_document.is_empty() {
         active_document = session.active_document_path.trim().to_owned();
     }
+    // One read of the log before the turn serves the document and image
+    // defaults below.
+    let history = log::read_session(&agent, session.id)
+        .await
+        .unwrap_or_default();
     if active_document.is_empty() {
-        active_document = latest_editable_document(&agent, session.id).await;
+        active_document = log::recent_deliverables(&history, 0, 1, documents::is_editable_document)
+            .into_iter()
+            .next()
+            .unwrap_or_default();
     }
     session.active_document_path = active_document.clone();
     let attachments = attachments::resolve(agent.workspace(), &request.attachment_paths).await;
@@ -397,6 +401,11 @@ async fn drive(agent: Agent, user_id: i64, prepared: Prepared, emitter: Emitter)
         skills,
         hosted_web_search: run.model.supports_hosted_web_search(),
         hosted_images: run.model.supports_hosted_images(),
+        recent_images: {
+            let mut images = log::recent_deliverables(&history, 0, 8, log::is_image_path);
+            images.reverse();
+            images
+        },
     };
     turn::drive(&run, session, &content, facts, turn).await;
     stream.close();

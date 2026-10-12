@@ -1183,7 +1183,12 @@ async fn assert_session_events_api(app: &Router, session_id: i64) {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn approval_resolves_by_call_id_from_the_log() {
-    let Fixture { app, workspace, .. } = app();
+    let Fixture {
+        app,
+        workspace,
+        _config: config,
+        ..
+    } = app();
     let session_id = new_session(&app).await;
     let command = json!({ "cmd": ["ls && touch approved.txt"], "shell": "sh" });
     let base_url = fake_provider(vec![
@@ -1223,6 +1228,27 @@ async fn approval_resolves_by_call_id_from_the_log() {
     assert_eq!(status, 400, "{}", String::from_utf8_lossy(&body));
     let (status, _) = call(&app, "POST", &uri, approve(&call_id, "maybe")).await;
     assert_eq!(status, 400);
+    // A rejected request saves no rule, even with `allow_always`.
+    let policy =
+        || std::fs::read_to_string(config.path().join("execpolicy.toml")).unwrap_or_default();
+    let saved = policy();
+    let mut bad_source = approve(&call_id, "allow_always");
+    bad_source["local_sources"] =
+        json!([{ "id": "", "label": "x", "root_path": "/tmp", "access": "read" }]);
+    let (status, _) = call(&app, "POST", &uri, bad_source).await;
+    assert_eq!(status, 400);
+    assert_eq!(policy(), saved, "no rule saved for a bad local source");
+    let mut with_image = approve(&call_id, "allow_always");
+    with_image["hide_user_message"] = json!(false);
+    with_image["image_generation_intent"] = json!({ "prompt": "A fox" });
+    let (status, body) = call(&app, "POST", &uri, with_image).await;
+    assert_eq!(status, 400);
+    assert!(
+        String::from_utf8_lossy(&body).contains("shell approval"),
+        "{}",
+        String::from_utf8_lossy(&body)
+    );
+    assert_eq!(policy(), saved, "no rule saved for a rejected request");
 
     let allow = approve(&call_id, "allow_once");
     check_shell_approval_contract("response", &allow["shell_approval"]);
