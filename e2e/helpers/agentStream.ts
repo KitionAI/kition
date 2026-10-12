@@ -1,5 +1,7 @@
 import type { Page, Request } from '@playwright/test'
 
+import { expectMatchesContract } from '../../src/test/contracts'
+
 /**
  * Mocks the agent stream (`contracts/runtime/agent-stream.schema.json`): each
  * `POST /agent/sessions/{id}/messages/stream` answers the notifications a
@@ -31,8 +33,9 @@ export const notification = {
   }),
 }
 
-/** The NDJSON body of `lines`. */
+/** The NDJSON body of `lines`, each checked against the stream contract. */
 export function ndjson(lines: Line[]) {
+  for (const line of lines) expectMatchesContract(line, 'agent-stream')
   return lines.map((line) => JSON.stringify(line)).join('\n') + (lines.length ? '\n' : '')
 }
 
@@ -192,10 +195,12 @@ export async function mockAgentTurn(
     const sessionId = Number(url.pathname.match(/sessions\/(\d+)/)?.[1])
     const after = Number(url.searchParams.get('after') || 0)
     const items = (logs.get(sessionId) ?? []).filter((event) => Number(event.seq) > after)
+    const page = { items, next_after: items.length ? items.at(-1)!.seq : after }
+    expectMatchesContract(page, 'agent-session-events', 'page')
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ code: 200, data: { items, next_after: items.length ? items.at(-1)!.seq : after } }),
+      body: JSON.stringify({ code: 200, data: page }),
     })
   })
   return { requests, logs }

@@ -7,7 +7,7 @@
  */
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import Ajv2020, { type ValidateFunction } from 'ajv/dist/2020'
+import Ajv2020, { type ValidateFunction } from 'ajv/dist/2020.js'
 import addFormats from 'ajv-formats'
 
 const contractsDir = resolve(process.cwd(), 'contracts/runtime')
@@ -19,10 +19,11 @@ const loaded = new Set<string>()
 
 function loadContract(name: string) {
   if (loaded.has(name)) return
-  const schema = JSON.parse(readFileSync(resolve(contractsDir, `${name}.schema.json`), 'utf8')) as Record<string, unknown>
+  const text = readFileSync(resolve(contractsDir, `${name}.schema.json`), 'utf8')
   // Contracts reference each other by file name (for example "capabilities.schema.json").
-  ajv.addSchema(schema, `${name}.schema.json`)
+  ajv.addSchema(JSON.parse(text) as Record<string, unknown>, `${name}.schema.json`)
   loaded.add(name)
+  for (const [, sibling] of text.matchAll(/"\$ref":\s*"([a-z0-9-]+)\.schema\.json/g)) loadContract(sibling)
 }
 
 function validatorFor(name: string, definition?: string): ValidateFunction {
