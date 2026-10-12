@@ -64,6 +64,33 @@ export function isBinaryAttachmentMention(
   return binaryAttachmentExtensionPattern.test(path)
 }
 
+/**
+ * Files a kit opens, and the agent tools that edit them (`<prefix>_inspect`, `_commands`,
+ * `_run`): the runtime's kit definitions (`crates/kition-kits/src/manager.rs`) as the prompt
+ * names them.
+ */
+const KIT_FILE_KINDS = [
+  { format: 'photo', extensions: /\.(?:psd|psb|pcraft)$/i, prefix: 'photo', kit: 'Kition Photo', one: 'a layered image', many: 'layered images', data: 'image data' },
+  { format: 'film', extensions: /\.fcproj$/i, prefix: 'film', kit: 'Kition Film', one: 'a video project', many: 'video projects', data: 'project data' },
+  { format: 'vector', extensions: /\.(?:vectorcraft|drawcraft)$/i, prefix: 'vector', kit: 'Kition Vector', one: 'a vector drawing', many: 'vector drawings', data: 'drawing data' },
+  { format: 'effect', extensions: /\.ecproj$/i, prefix: 'effect', kit: 'Kition Effect', one: 'a motion graphics project', many: 'motion graphics projects', data: 'project data' },
+  { format: 'layout', extensions: /\.designcraft$/i, prefix: 'design', kit: 'Kition Design', one: 'a page layout', many: 'page layouts', data: 'layout data' },
+  { format: 'cad', extensions: /\.dxf$/i, prefix: 'cad', kit: 'Kition CAD', one: 'a CAD drawing', many: 'CAD drawings', data: 'drawing data' },
+  // PowerPoint files stay attachments whose text is extracted; only DeckCraft files are kit-only.
+  { format: 'presentation', extensions: /\.deckcraft$/i, prefix: 'presentation', kit: 'Kition Presentation', one: 'a presentation', many: 'presentations', data: 'presentation data' },
+] as const
+
+type KitFileKind = (typeof KIT_FILE_KINDS)[number]
+
+/** The kit that opens a file, by its workspace format or extension. */
+function kitFileKind(format: WorkspaceDocumentFormat | undefined, path: string): KitFileKind | null {
+  return KIT_FILE_KINDS.find((kind) => format === kind.format || kind.extensions.test(path)) ?? null
+}
+
+function kitToolsHint(kind: KitFileKind) {
+  return `Inspect it with ${kind.prefix}_inspect and edit it with ${kind.prefix}_commands and ${kind.prefix}_run; never use document_read or document_write on it, because it is binary ${kind.data}.`
+}
+
 export function flattenMentionableWorkspaceDocuments(
   items: WorkspaceDocumentTreeItem[],
 ): AgentMentionableDocument[] {
@@ -406,7 +433,10 @@ export function buildAgentDocumentMentionPromptContext(input: {
   if (activeDocumentPath) {
     lines.push('Current workspace document for this turn:')
     lines.push(`- ${activeDocumentPath}`)
-    if (isBinaryAttachmentMention(input.activeDocumentFormat, activeDocumentPath)) {
+    const activeKit = kitFileKind(input.activeDocumentFormat, activeDocumentPath)
+    if (activeKit) {
+      lines.push(`This current document is ${activeKit.one} open in ${activeKit.kit}. ${kitToolsHint(activeKit)}`)
+    } else if (isBinaryAttachmentMention(input.activeDocumentFormat, activeDocumentPath)) {
       lines.push(
         'This current document is attached to the turn. Analyze it before responding; it is implicit context even without an @ mention.',
       )
@@ -436,8 +466,10 @@ export function buildAgentDocumentMentionPromptContext(input: {
       || document.format === 'table'
       || document.path.toLowerCase().endsWith('.kitable'),
   )
+  const kitFiles = referencedFiles.filter((document) => kitFileKind(document.format, document.path))
   const textFiles = referencedFiles.filter(
     (document) => !structuredFiles.includes(document)
+      && !kitFiles.includes(document)
       && !isBinaryAttachmentMention(document.format, document.path),
   )
   const binaryFiles = referencedFiles.filter((document) => isBinaryAttachmentMention(document.format, document.path))
@@ -452,6 +484,15 @@ export function buildAgentDocumentMentionPromptContext(input: {
     lines.push(
       'If the user wants to update one referenced document, write back to that same path with document_write instead of creating a new file.',
     )
+  }
+  for (const kind of KIT_FILE_KINDS) {
+    const files = kitFiles.filter((document) => kitFileKind(document.format, document.path) === kind)
+    if (!files.length) continue
+    lines.push(`Referenced ${kind.many} in this turn (open them in ${kind.kit}):`)
+    for (const document of files) {
+      lines.push(`- ${document.path}`)
+    }
+    lines.push(kitToolsHint(kind))
   }
   if (binaryFiles.length) {
     lines.push('Referenced binary attachments in this turn (already embedded as multimodal/text parts of this turn):')

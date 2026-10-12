@@ -23,6 +23,20 @@ pub fn infer_format(path: &str) -> &'static str {
         ".txt" => "text",
         ".html" | ".htm" => "html",
         ".png" | ".jpg" | ".jpeg" | ".gif" | ".webp" | ".svg" => "image",
+        // Layered images, edited in the Photo kit.
+        ".psd" | ".psb" | ".pcraft" => "photo",
+        // Video projects, edited in the Film kit.
+        ".fcproj" => "film",
+        // Vector drawings, edited in the Vector kit.
+        ".vectorcraft" | ".drawcraft" => "vector",
+        // Motion-graphics projects, edited in the Effect kit.
+        ".ecproj" => "effect",
+        // Page layouts, edited in the Design kit.
+        ".designcraft" => "layout",
+        // CAD drawings, edited in the CAD kit.
+        ".dxf" => "cad",
+        // Presentations, edited in the Presentation kit (PowerPoint files too, as `pptx`).
+        ".deckcraft" => "presentation",
         ".mp4" | ".mov" | ".webm" => "video",
         ".mp3" | ".wav" | ".m4a" => "audio",
         _ => "binary",
@@ -51,9 +65,45 @@ pub fn is_supported(path: &str) -> bool {
     has_extension(
         path,
         &[
-            "md", "markdown", "kitable", "kiboard", "kidesign", "txt", "csv", "tsv", "json",
-            "html", "htm", "pdf", "docx", "xlsx", "xls", "pptx", "ppt", "png", "jpg", "jpeg",
-            "gif", "webp", "svg", "mp4", "mov", "webm", "mp3", "wav", "m4a",
+            "md",
+            "markdown",
+            "kitable",
+            "kiboard",
+            "kidesign",
+            "txt",
+            "csv",
+            "tsv",
+            "json",
+            "html",
+            "htm",
+            "pdf",
+            "docx",
+            "xlsx",
+            "xls",
+            "pptx",
+            "ppt",
+            "png",
+            "jpg",
+            "jpeg",
+            "gif",
+            "webp",
+            "svg",
+            "psd",
+            "psb",
+            "pcraft",
+            "fcproj",
+            "vectorcraft",
+            "drawcraft",
+            "ecproj",
+            "designcraft",
+            "dxf",
+            "deckcraft",
+            "mp4",
+            "mov",
+            "webm",
+            "mp3",
+            "wav",
+            "m4a",
         ],
     )
 }
@@ -69,6 +119,21 @@ mod tests {
         assert_eq!(infer_format("deck.kidesign"), "design");
         assert_eq!(infer_format("photo.JPEG"), "image");
         assert_eq!(infer_format("archive.zip"), "binary");
+        assert_eq!(infer_format("art/Cover.PSD"), "photo");
+        assert_eq!(infer_format("films/Trailer.fcproj"), "film");
+        assert!(is_supported("films/Trailer.fcproj"));
+        assert_eq!(infer_format("art/Logo.vectorcraft"), "vector");
+        assert!(is_supported("art/Logo.vectorcraft"));
+        assert_eq!(infer_format("motion/Intro.ecproj"), "effect");
+        assert!(is_supported("motion/Intro.ecproj"));
+        assert_eq!(infer_format("print/Flyer.designcraft"), "layout");
+        assert!(is_supported("print/Flyer.designcraft"));
+        assert_eq!(infer_format("plans/Floor.DXF"), "cad");
+        assert!(is_supported("plans/Floor.dxf"));
+        assert_eq!(infer_format("talks/Launch.deckcraft"), "presentation");
+        assert!(is_supported("talks/Launch.deckcraft"));
+        assert!(is_supported("art/poster.psb"));
+        assert!(!is_text("art/poster.pcraft"));
         assert_eq!(infer_format(".md"), "binary");
         assert!(is_editable("a/b.kiboard"));
         assert!(!is_editable("a/b.txt"));

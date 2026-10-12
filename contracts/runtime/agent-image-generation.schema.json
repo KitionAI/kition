@@ -2,13 +2,14 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://kition.ai/contracts/runtime/agent-image-generation.schema.json",
   "title": "Kition Agent Image Generation",
-  "description": "Typed image-generation intents and stream events shared by Agent conversations across documents, tables, and Boards.",
+  "description": "Typed image-generation intents shared by Agent conversations across documents, tables, and Boards, and how the runtime logs them: an image composer request is one session turn (agent-session-events.schema.json) whose variant i is a tool/call named image_generation with variantCall arguments and call id img_<first 24 hex of sha256(request_id)>_<i>, settled by a tool/result whose value is the artifact and whose meta is variantMeta (success, followed by deliverables/presented), or by a tool/result with isError whose content is the message and the error as JSON. A request id names one set of settings and is handled once: a repeat with the same settings changes nothing, even when the earlier attempt failed or was cancelled (retry with a new request id), and other settings are refused with HTTP 409.",
   "$comment": "Generation and editing allow up to 600 seconds per image request, including waiting for the provider response. User cancellation and earlier caller deadlines still apply. Multiple-image jobs may take longer overall; clients must keep consuming progress until completion, failure, or cancellation.",
   "x-runtime-capability": "agent_image_generation_v1",
   "x-chat-runtime-capability": "agent_image_generation_chat_v1",
   "oneOf": [
     { "$ref": "#/$defs/intent" },
-    { "$ref": "#/$defs/event" }
+    { "$ref": "#/$defs/variantCall" },
+    { "$ref": "#/$defs/variantMeta" }
   ],
   "$defs": {
     "identifier": {
@@ -238,7 +239,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "id",
+        "call_id",
         "path",
         "mime_type",
         "variant_index",
@@ -247,7 +248,7 @@
         "provenance"
       ],
       "properties": {
-        "id": { "type": "integer", "minimum": 1 },
+        "call_id": { "type": "string", "minLength": 1, "maxLength": 128 },
         "path": { "$ref": "#/$defs/portablePath" },
         "mime_type": { "type": "string", "pattern": "^image/[A-Za-z0-9.+-]+$" },
         "title": { "type": "string", "minLength": 1, "maxLength": 500 },
@@ -269,49 +270,32 @@
         "retryable": { "type": "boolean" }
       }
     },
-    "event": {
+    "variantCall": {
       "type": "object",
+      "description": "The arguments of the image_generation tool/call for one variant of a request.",
       "additionalProperties": false,
-      "required": ["type", "schema_version", "request_id", "event", "status"],
+      "required": ["request_id", "intent_sha256", "variant_index", "variant_count", "size", "quality", "reference_count"],
       "properties": {
-        "type": { "const": "image_generation.event" },
-        "schema_version": { "const": 1 },
         "request_id": { "$ref": "#/$defs/identifier" },
-        "event": {
-          "type": "string",
-          "enum": [
-            "image_generation.accepted",
-            "image_generation.progress",
-            "image_generation.artifact",
-            "image_generation.completed",
-            "image_generation.failed",
-            "image_generation.canceled"
-          ]
-        },
-        "status": {
-          "type": "string",
-          "enum": ["queued", "generating", "saving", "completed", "failed", "canceled"]
-        },
-        "progress": { "type": "number", "minimum": 0, "maximum": 1 },
-        "message": { "type": "string", "maxLength": 1000 },
-        "artifact": { "$ref": "#/$defs/artifact" },
-        "artifact_count": { "type": "integer", "minimum": 0, "maximum": 5 },
-        "error": { "$ref": "#/$defs/error" }
-      },
-      "allOf": [
-        {
-          "if": { "properties": { "event": { "const": "image_generation.progress" } } },
-          "then": { "required": ["progress"] }
-        },
-        {
-          "if": { "properties": { "event": { "const": "image_generation.artifact" } } },
-          "then": { "required": ["artifact"] }
-        },
-        {
-          "if": { "properties": { "event": { "const": "image_generation.failed" } } },
-          "then": { "required": ["error"] }
-        }
-      ]
+        "intent_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "variant_index": { "type": "integer", "minimum": 0, "maximum": 4 },
+        "variant_count": { "type": "integer", "minimum": 1, "maximum": 5 },
+        "size": { "type": "string", "pattern": "^[1-9][0-9]*x[1-9][0-9]*$" },
+        "quality": { "type": "string", "enum": ["low", "medium", "high"] },
+        "template_id": { "$ref": "#/$defs/identifier" },
+        "reference_count": { "type": "integer", "minimum": 0, "maximum": 8 }
+      }
+    },
+    "variantMeta": {
+      "type": "object",
+      "description": "The meta of a successful image_generation tool/result: the saved variant.",
+      "additionalProperties": false,
+      "required": ["kind", "request_id", "artifact"],
+      "properties": {
+        "kind": { "const": "image_generation.variant" },
+        "request_id": { "$ref": "#/$defs/identifier" },
+        "artifact": { "$ref": "#/$defs/artifact" }
+      }
     }
   }
 }

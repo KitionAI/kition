@@ -1,7 +1,7 @@
 import { lazy, Suspense, type ComponentProps } from 'react'
 
 import type { getKitionAccountLinks, useKitionAccount } from '@/features/account/public'
-import type { AgentTurnContext, useWorkspaceAgent } from '@/features/agent/public'
+import { emptyAgentSessionView, type AgentTurnContext, type useWorkspaceAgent } from '@/features/agent/public'
 import type { WorkspaceAgentSidebar as WorkspaceAgentSidebarComponent } from '@/features/workspace/components/WorkspaceAgentSidebar'
 import { deriveAgentPaneContext } from '@/features/workspace/lib/agentPaneContext'
 import { formatWorkspaceTime, type WorkspaceTab } from '@/features/workspace/lib/workspace'
@@ -36,10 +36,13 @@ export type WorkspaceAgentPaneProps = {
   onImportFiles: (files: File[], target: 'attachments') => Promise<string[]>
 }
 
+/** The view of a session whose log has not been read yet. */
+const EMPTY_VIEW = emptyAgentSessionView()
+
 /**
  * The Agent sidebar for the active session: wires the chat panel to the
- * session's messages, tool calls, events, drafts, artifacts, and local
- * sources, plus the model and hosted-account controls. Renders nothing when
+ * session's view (reduced from its event log), drafts, and local sources,
+ * plus the model and hosted-account controls. Renders nothing when
  * no session is active so the sidebar can show its empty state.
  */
 export function WorkspaceAgentPane({
@@ -63,12 +66,9 @@ export function WorkspaceAgentPane({
   const panelProps: PanelProps | null = session
     ? {
       session,
-      messages: agent.agentMessages[session.id] || [],
-      toolCalls: agent.agentToolCalls[session.id] || [],
-      events: agent.agentEvents[session.id] || [],
+      view: agent.agentSessionViews[session.id] ?? EMPTY_VIEW,
+      pendingUserText: agent.agentPendingUserText[session.id] || '',
       draft: agent.agentDrafts[session.id] || '',
-      streamingText: agent.agentStreamingText[session.id] || '',
-      artifacts: agent.agentArtifacts[session.id] || [],
       busy: agent.agentBusySessions.has(session.id),
       currentDocumentPath: activeWorkspaceDocumentPath,
       modelOptions: agent.agentModelOptions,
@@ -114,7 +114,6 @@ export function WorkspaceAgentPane({
       <WorkspaceAgentSidebar
         rootPath={rootPath}
         imageContext={imageContext}
-        imageEvents={agent.agentImageGenerationEvents[session?.id || 0] || []}
         panelProps={panelProps}
       />
     </Suspense>

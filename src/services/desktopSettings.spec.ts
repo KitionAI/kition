@@ -166,7 +166,7 @@ describe('desktopSettings AI provider catalog', () => {
     expect(desktopProviderCatalog.map((provider) => provider.kind)).toContain('kimi')
 
     const settings = createDefaultDesktopSettings()
-    expect(settings.providers.deepseek.baseUrl).toBe('https://api.deepseek.com/v1')
+    expect(settings.providers.deepseek.baseUrl).toBe('https://api.deepseek.com/anthropic')
     expect(settings.providers.kimi.baseUrl).toBe('https://api.moonshot.cn/v1')
     expect(normalizeProviderBaseURL('kimi', 'https://api.moonshot.cn')).toBe('https://api.moonshot.cn/v1')
   })
@@ -424,5 +424,49 @@ describe('translation target language setting', () => {
     expect(normalizeDesktopSettings({}).general.translationTargetLanguage).toBe('auto')
     expect(normalizeDesktopSettings({ general: { translationTargetLanguage: 'ja' } } as never).general.translationTargetLanguage).toBe('ja')
     expect(normalizeDesktopSettings({ general: { translationTargetLanguage: 'klingon' } } as never).general.translationTargetLanguage).toBe('auto')
+  })
+})
+
+describe('DeepSeek provider route', () => {
+  it('defaults to the Anthropic-compatible Messages API', async () => {
+    const { normalizeDesktopSettings } = await import('./desktopSettings')
+    const deepseek = normalizeDesktopSettings({}).providers.deepseek
+    expect(deepseek.baseUrl).toBe('https://api.deepseek.com/anthropic')
+    expect(deepseek.wireApi).toBe('anthropic_messages')
+    expect(deepseek.authScheme).toBe('x-api-key')
+  })
+
+  it('leaves a custom DeepSeek gateway alone', async () => {
+    const { normalizeDesktopSettings } = await import('./desktopSettings')
+    const custom = normalizeDesktopSettings({
+      providers: { deepseek: { baseUrl: 'https://gateway.example.test/v1', wireApi: 'responses' } },
+    } as never).providers.deepseek
+    expect(custom.baseUrl).toBe('https://gateway.example.test/v1')
+    expect(custom.wireApi).toBe('responses')
+  })
+
+  it('normalizes a bare DeepSeek host to the Messages path', async () => {
+    const { normalizeProviderBaseURL } = await import('./desktopSettings')
+    expect(normalizeProviderBaseURL('deepseek', 'https://api.deepseek.com')).toBe('https://api.deepseek.com/anthropic')
+  })
+})
+
+describe('Kimi provider route', () => {
+  it('defaults to the Chat Completions wire with a bearer token', async () => {
+    const { normalizeDesktopSettings } = await import('./desktopSettings')
+    const kimi = normalizeDesktopSettings({}).providers.kimi
+    expect(kimi.wireApi).toBe('chat_completions')
+    expect(kimi.authScheme).toBe('bearer')
+  })
+
+  it('keeps OpenAI and custom defaults and a custom provider wire', async () => {
+    const { normalizeDesktopSettings } = await import('./desktopSettings')
+    const defaults = normalizeDesktopSettings({}).providers
+    expect(defaults.openai.wireApi).toBe('responses')
+    expect(defaults.custom.wireApi).toBe('responses')
+    const custom = normalizeDesktopSettings({
+      providers: { custom: { baseUrl: 'https://llm.example.test/v1', wireApi: 'chat_completions' } },
+    } as never).providers.custom
+    expect(custom.wireApi).toBe('chat_completions')
   })
 })

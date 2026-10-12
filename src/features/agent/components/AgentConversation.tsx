@@ -1,48 +1,53 @@
 import { useTranslation } from 'react-i18next'
-import { getGeneratedImageToolOutputPaths, isGeneratedImageArtifact } from '@/features/media-generation/lib/generatedImageArtifacts'
+import { getGeneratedImageToolOutputPaths, isGeneratedImageArtifact } from '@/features/media-generation/public'
 import {
   Check, ChevronDown, ChevronRight, Clock3, FileImage, FileSpreadsheet,
   FileText, FileType2, FileVideo2, LoaderCircle, Presentation, Sparkles, Volume2, X,
   type LucideIcon,
 } from 'lucide-react'
 import { Fragment, useEffect, useState } from 'react'
-import type { AgentArtifact, AgentEvent, AgentMessage, AgentToolCall, AgentShellApprovalDecision, AgentShellApprovalRequest } from '@/api/agent'
+import type { AgentShellApprovalDecision, AgentShellApprovalRequest } from '@/api/agent'
 import { InteractiveAgentMarkdown } from './InteractiveAgentMarkdown'
-import { PlanCard, readLatestPlanSnapshot } from './PlanCard'
-import { AwaitUserInputModal, readLatestAwaitUserInputRequest } from './AwaitUserInputModal'
+import { PlanCard } from './PlanCard'
 import { AgentShellApprovalCard } from './AgentShellApprovalCard'
 import { AgentImageResultCards, type AgentImageResultActions } from './AgentImageResultCards'
-import { imageEventsForTurn, type AgentImageSessionEvent } from '../lib/agentImageJobs'
+import { imageJobOf } from '../lib/agentImageJob'
+import { agentModifiedDocumentPaths } from '../lib/agentEventEffects'
+import {
+  pendingApprovalOf,
+  type AgentLiveAttempt,
+  type AgentSessionView,
+  type AgentTurnView,
+} from '../lib/agentSessionView'
 import { useDesktopSettings } from '@/features/settings/hooks/useDesktopSettings'
 import { stripAgentDocumentMentions } from '../lib/documentMentions'
 import { cn } from '@/lib/utils'
 import { resolveAgentImageURL, resolveAgentImageWorkspacePath } from '@/services/workspaceFiles'
 import {
-  buildAgentConversationTurns, buildAgentRunLogItems, extractAgentToolImageResults,
-  formatAgentRunLogExpandedDetail, getAgentModifiedDocumentPaths, resolveAgentTimelineLocale,
-  resolveAgentToolIcon, scopeAgentTurnArtifacts, scopeAgentTurnEventsById, scopeAgentTurnToolCallsById,
+  buildAgentRunLogItems, extractAgentToolImageResults,
+  formatAgentRunLogExpandedDetail, resolveAgentTimelineLocale,
+  resolveAgentToolIcon,
   type AgentRunLogItem, type AgentTimelineLocale, type AgentToolImageResult,
 } from '../lib/agentTimeline'
 import { getAgentTimelineDict } from '../lib/agentTimelineI18n'
-import { readLatestAgentShellApprovalRequest } from '../lib/agentShellApproval'
 
+/** The files the session's turns changed, with the name each delivery gave them. */
 export function AgentChangedFilesCard({
-  toolCalls,
-  artifacts,
+  view,
   onOpen,
 }: {
-  toolCalls: AgentToolCall[]
-  artifacts: AgentArtifact[]
+  view: AgentSessionView
   onOpen: (path: string) => void
 }) {
   const { t } = useTranslation('agent')
-  const paths = Array.from(getAgentModifiedDocumentPaths(toolCalls))
+  const paths = Array.from(agentModifiedDocumentPaths(view.turns.flatMap((turn) => turn.toolRuns)))
   if (!paths.length) {
     return null
   }
 
+  const deliverables = view.turns.flatMap((turn) => turn.deliverables)
   const resolveName = (path: string) =>
-    artifacts.find((artifact) => artifact.path === path)?.title || path.split('/').pop() || path
+    deliverables.find((file) => file.path === path)?.description || path.split('/').pop() || path
 
   return (
     <details className="agent-changed-files">
@@ -74,143 +79,100 @@ export function AgentChangedFilesCard({
   )
 }
 
+/** The paused command of the session, for the approval card. */
+function approvalRequestOf(view: AgentSessionView): AgentShellApprovalRequest | null {
+  const approval = pendingApprovalOf(view)
+  return approval?.request ? { ...approval.request, call_id: approval.callId } : null
+}
+
 export function AgentConversation({
-  messages,
-  imageEvents = [],
+  view,
+  pendingUserText = '',
   imageActions,
-  toolCalls,
-  events,
-  artifacts,
   busy,
-  streamingText,
   onOpenPath,
   onOpenArtifact,
-  onAwaitUserInputSubmit,
   onShellApprovalDecision,
 }: {
-  messages: AgentMessage[]
-  imageEvents?: AgentImageSessionEvent[]
+  view: AgentSessionView
+  /** The visible message just sent, until its turn is logged. */
+  pendingUserText?: string
   imageActions?: AgentImageResultActions
-  toolCalls: AgentToolCall[]
-  events: AgentEvent[]
-  artifacts: AgentArtifact[]
   busy: boolean
-  streamingText: string
   onOpenPath: (path: string) => void
   onOpenArtifact: (path: string) => void
-  onAwaitUserInputSubmit?: (answer: string) => void
   onShellApprovalDecision?: (
     request: AgentShellApprovalRequest,
     decision: AgentShellApprovalDecision,
   ) => void
 }) {
-  const typedImagePaths = new Set(imageEvents.flatMap((event) => event.artifact ? [event.artifact.path] : []))
-  const turns = buildAgentConversationTurns(messages)
-  const shouldRenderStreaming = Boolean(streamingText)
-  const shellApprovalRequest = readLatestAgentShellApprovalRequest(toolCalls, messages)
-
-  if (!turns.length) {
-    const shouldRenderActivity = busy || toolCalls.length > 0 || events.length > 0 || artifacts.length > 0
-    if (!shouldRenderActivity && !shouldRenderStreaming) {
-      return null
-    }
-    return (
-      <>
-        {shouldRenderActivity ? (
-          <AgentInlineActivity
-            hiddenImagePaths={imageEvents.flatMap((event) => event.artifact ? [event.artifact.path] : [])}
-            toolCalls={toolCalls}
-            events={events}
-            artifacts={artifacts.filter((artifact) => !typedImagePaths.has(artifact.path))}
-            busy={busy}
-            streamingText={streamingText}
-            onOpenArtifact={onOpenArtifact}
-            onAwaitUserInputSubmit={onAwaitUserInputSubmit}
-            shellApprovalRequest={shellApprovalRequest}
-            onShellApprovalDecision={onShellApprovalDecision}
-          />
-        ) : null}
-        {shouldRenderStreaming ? <AgentStreamingMessageBubble content={streamingText} /> : null}
-      </>
-    )
-  }
-
-  const lastTurnIndex = turns.length - 1
+  const { i18n } = useTranslation('agent')
+  const shellApprovalRequest = approvalRequestOf(view)
+  const lastTurn = view.turns.at(-1)
+  // A send whose turn has not started yet still shows that the agent is working.
+  const waiting = busy && (!lastTurn || Boolean(lastTurn.end) || Boolean(pendingUserText))
 
   return (
     <>
-      {turns.map((turn, turnIndex) => {
-        const isActiveTurn = turnIndex === lastTurnIndex
-        const userMessageId = turn.userMessage?.id ?? 0
-        const turnToolCalls = scopeAgentTurnToolCallsById(toolCalls, userMessageId, isActiveTurn)
-        const turnEvents = scopeAgentTurnEventsById(events, userMessageId, isActiveTurn)
-        const nextTurnStart = turns[turnIndex + 1]?.userMessage?.created_at ?? null
-        const turnArtifacts = scopeAgentTurnArtifacts(
-          artifacts,
-          turn.userMessage?.created_at ?? null,
-          isActiveTurn ? null : nextTurnStart,
-        )
-        const turnBusy = isActiveTurn && busy
-        const turnStreaming = isActiveTurn ? streamingText : ''
-        const shouldRenderActivity =
-          turnBusy || turnToolCalls.length > 0 || turnEvents.length > 0 || turnArtifacts.length > 0
-
+      {view.turns.map((turn, turnIndex) => {
+        const isActiveTurn = turnIndex === view.turns.length - 1
+        const turnBusy = isActiveTurn && busy && !turn.end && !pendingUserText
+        const live = isActiveTurn && view.live?.turn === turn.turn ? view.live : null
+        const job = imageJobOf(turn)
         return (
-          <Fragment key={turn.key}>
-            {turn.userMessage ? (
-              <AgentMessageBubble message={turn.userMessage} onOpenPath={onOpenPath} />
+          <Fragment key={`turn-${turn.turn}`}>
+            {turn.source === 'user' && turn.userText ? (
+              <AgentMessageBubble role="user" content={turn.userText} onOpenPath={onOpenPath} />
             ) : null}
-            {shouldRenderActivity ? (
-              <AgentInlineActivity
-                hiddenImagePaths={imageEvents.flatMap((event) => event.artifact ? [event.artifact.path] : [])}
-                toolCalls={turnToolCalls}
-                events={turnEvents}
-                artifacts={turnArtifacts.filter((artifact) => !typedImagePaths.has(artifact.path))}
-                busy={turnBusy}
-                streamingText={turnStreaming}
-                onOpenArtifact={onOpenArtifact}
-                onAwaitUserInputSubmit={isActiveTurn ? onAwaitUserInputSubmit : undefined}
-                shellApprovalRequest={isActiveTurn ? shellApprovalRequest : null}
-                onShellApprovalDecision={isActiveTurn ? onShellApprovalDecision : undefined}
-              />
-            ) : null}
-            <AgentImageResultCards
-              events={imageEventsForTurn(imageEvents, turn.userMessage || undefined, nextTurnStart, isActiveTurn)}
-              busy={busy} onOpen={onOpenArtifact} {...imageActions}
+            <AgentInlineActivity
+              turn={turn}
+              live={live}
+              hiddenImagePaths={job?.artifacts.map((artifact) => artifact.path) ?? []}
+              busy={turnBusy}
+              onOpenArtifact={onOpenArtifact}
+              shellApprovalRequest={isActiveTurn ? shellApprovalRequest : null}
+              onShellApprovalDecision={isActiveTurn ? onShellApprovalDecision : undefined}
             />
-            {turn.replies.map((reply) => (
-              <AgentMessageBubble key={reply.id} message={reply} onOpenPath={onOpenPath} />
-            ))}
-            {isActiveTurn && shouldRenderStreaming ? (
-              <AgentStreamingMessageBubble content={streamingText} />
+            {job ? <AgentImageResultCards job={job} busy={busy} onOpen={onOpenArtifact} {...imageActions} /> : null}
+            {turn.reply ? <AgentMessageBubble role="assistant" content={turn.reply} onOpenPath={onOpenPath} /> : null}
+            {!turn.reply && turn.partialReply && !live?.text ? (
+              <AgentMessageBubble role="assistant" content={turn.partialReply} onOpenPath={onOpenPath} />
             ) : null}
+            {live?.text ? <AgentStreamingMessageBubble content={live.text} /> : null}
           </Fragment>
         )
       })}
+      {pendingUserText ? <AgentMessageBubble role="user" content={pendingUserText} onOpenPath={onOpenPath} /> : null}
+      {waiting ? <AgentThinking locale={resolveAgentTimelineLocale(i18n.resolvedLanguage)} /> : null}
     </>
   )
 }
 
+function AgentThinking({ locale }: { locale: AgentTimelineLocale }) {
+  return (
+    <div className="agent-inline-activity">
+      <div className="agent-exec-thinking">
+        <Sparkles className="size-3.5" />
+        <span>{getAgentTimelineDict(locale).activity.thinking}</span>
+      </div>
+    </div>
+  )
+}
+
 function AgentInlineActivity({
-  hiddenImagePaths = [],
-  toolCalls,
-  events,
-  artifacts,
+  turn,
+  live,
+  hiddenImagePaths,
   busy,
-  streamingText,
   onOpenArtifact,
-  onAwaitUserInputSubmit,
   shellApprovalRequest,
   onShellApprovalDecision,
 }: {
-  hiddenImagePaths?: string[]
-  toolCalls: AgentToolCall[]
-  events: AgentEvent[]
-  artifacts: AgentArtifact[]
+  turn: AgentTurnView
+  live: AgentLiveAttempt | null
+  hiddenImagePaths: string[]
   busy: boolean
-  streamingText: string
   onOpenArtifact: (path: string) => void
-  onAwaitUserInputSubmit?: (answer: string) => void
   shellApprovalRequest?: AgentShellApprovalRequest | null
   onShellApprovalDecision?: (
     request: AgentShellApprovalRequest,
@@ -222,31 +184,33 @@ function AgentInlineActivity({
   const locale = resolveAgentTimelineLocale(i18n.resolvedLanguage || settings.general.language)
   const localeDict = getAgentTimelineDict(locale)
   const runLogItems = buildAgentRunLogItems({
-    events,
-    toolCalls,
-    artifacts,
+    turn,
+    live,
     busy,
-    streamingText,
     debug: settings.general.debug,
     locale,
   })
-  const planSnapshot = readLatestPlanSnapshot(events)
-  const awaitRequest = readLatestAwaitUserInputRequest(toolCalls)
-  const modifiedPaths = getAgentModifiedDocumentPaths(toolCalls)
+  const modifiedPaths = agentModifiedDocumentPaths(turn.toolRuns)
   const shownImages = new Set(hiddenImagePaths)
-  const imageTools = toolCalls
-    .map((toolCall) => ({ id: toolCall.id, images: [
-      ...extractAgentToolImageResults(toolCall.output_data),
-      ...getGeneratedImageToolOutputPaths(toolCall).map((url) => ({ url })),
+  const imageTools = turn.toolRuns
+    .map((run) => ({ id: run.callId, images: [
+      ...extractAgentToolImageResults(run.output),
+      ...getGeneratedImageToolOutputPaths({ tool_name: run.name, status: run.status, output_data: run.output })
+        .map((url) => ({ url })),
     ].filter((image) => {
       if (shownImages.has(image.url)) return false
       shownImages.add(image.url)
       return true
     }) }))
     .filter((entry) => entry.images.length > 0)
+  const deliverables = turn.deliverables.filter((file) => !hiddenImagePaths.includes(file.path))
+  const deliveredImages = deliverables
+    .filter((file) => isGeneratedImageArtifact({ path: file.path }) && !shownImages.has(file.path))
+    .map((file) => ({ url: file.path, title: file.description }))
 
-  const artifactImages = artifacts.filter((artifact) => isGeneratedImageArtifact(artifact) && !shownImages.has(artifact.path))
-    .map((artifact) => ({ url: artifact.path, title: artifact.title }))
+  if (!busy && !runLogItems.length && !turn.todos && !shellApprovalRequest && !imageTools.length && !deliverables.length) {
+    return null
+  }
 
   return (
     <div className="agent-inline-activity">
@@ -256,13 +220,11 @@ function AgentInlineActivity({
           <span>{localeDict.activity.thinking}</span>
         </div>
       ) : null}
-      {planSnapshot ? <PlanCard snapshot={planSnapshot} /> : null}
-      {awaitRequest ? (
-        <AwaitUserInputModal
-          request={awaitRequest}
-          onSubmit={onAwaitUserInputSubmit}
-          busy={busy}
-        />
+      {turn.todos ? (
+        <PlanCard snapshot={{
+          explanation: turn.todos.explanation,
+          plan: turn.todos.items.map((item) => ({ step: item.content, status: item.status })),
+        }} />
       ) : null}
       {shellApprovalRequest ? (
         <AgentShellApprovalCard
@@ -272,26 +234,26 @@ function AgentInlineActivity({
         />
       ) : null}
       <AgentRunLog items={runLogItems} locale={locale} dict={localeDict} />
-      <AgentToolImageStrip images={artifactImages} onOpenArtifact={onOpenArtifact} />
+      <AgentToolImageStrip images={deliveredImages} onOpenArtifact={onOpenArtifact} />
       {imageTools.map((entry) => (
         <AgentToolImageStrip key={`images-${entry.id}`} images={entry.images} onOpenArtifact={onOpenArtifact} />
       ))}
-      {artifacts.length ? (
+      {deliverables.length ? (
         <div className="agent-artifacts is-inline">
-          {artifacts.map((artifact) => {
-            const ArtifactIcon = resolveAgentArtifactIcon(artifact.path)
-            const isModified = modifiedPaths.has(artifact.path)
+          {deliverables.map((file) => {
+            const ArtifactIcon = resolveAgentArtifactIcon(file.path)
+            const isModified = modifiedPaths.has(file.path)
             return (
               <button
-                key={artifact.id}
+                key={`${file.callId}-${file.path}`}
                 type="button"
                 className={cn('agent-artifact', isModified && 'is-modified')}
-                onClick={() => onOpenArtifact(artifact.path)}
-                title={isModified ? t('results.modifiedArtifact', { path: artifact.path }) : artifact.path}
+                onClick={() => onOpenArtifact(file.path)}
+                title={isModified ? t('results.modifiedArtifact', { path: file.path }) : file.path}
               >
                 {isModified ? <span className="agent-artifact-at">@</span> : null}
                 <ArtifactIcon className="size-4" />
-                <span>{artifact.path}</span>
+                <span>{file.path}</span>
               </button>
             )
           })}
@@ -302,13 +264,15 @@ function AgentInlineActivity({
 }
 
 function AgentMessageBubble({
-  message,
+  role,
+  content,
   onOpenPath,
 }: {
-  message: AgentMessage
+  role: 'user' | 'assistant'
+  content: string
   onOpenPath: (path: string) => void
 }) {
-  const isUser = message.role === 'user'
+  const isUser = role === 'user'
   return (
     <div
       className={cn('agent-message', isUser ? 'is-user' : 'is-assistant')}
@@ -316,12 +280,12 @@ function AgentMessageBubble({
     >
       {isUser ? (
         <div className="agent-message-content whitespace-pre-wrap">
-          {renderAgentUserMessageContent(message.content)}
+          {renderAgentUserMessageContent(content)}
         </div>
       ) : (
         <InteractiveAgentMarkdown
           className="agent-message-content"
-          content={message.content}
+          content={content}
           onOpenPath={onOpenPath}
         />
       )}

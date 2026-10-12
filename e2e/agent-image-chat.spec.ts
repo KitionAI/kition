@@ -1,4 +1,5 @@
-import { expect, test, type Page, type Route } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
+import { mockAgentTurn, type AgentTurnScript } from './helpers/agentStream'
 import { openWhiteboardFixture } from './helpers/whiteboard'
 
 const template = {
@@ -39,15 +40,9 @@ async function openImageChat(page: Page, chatTarget = false) {
 }
 
 test('keeps freeform generation, results, and follow-up edits in one visible chat during a catalog outage', async ({ page }) => {
-  const requests: Array<{ sessionId: string; body: any }> = []
   await page.route('https://kition.ai/api/media/image-templates**', (route) => route.fulfill({ status: 503 }))
   await openImageChat(page)
-  await page.route('**/api/v1/agent/sessions/*/messages/stream', async (route) => {
-    const body = route.request().postDataJSON()
-    const sessionId = route.request().url().match(/sessions\/(\d+)/)![1]
-    requests.push({ sessionId, body })
-    await fulfillImageStream(route, body, Number(sessionId), requests.length)
-  })
+  const { requests } = await mockAgentTurn(page, writeImageTurn)
   await expect(page.getByTestId('agent-image-templates')).toContainText('Templates are unavailable')
   await page.getByRole('button', { name: 'Start without a template' }).click()
   const composer = page.getByPlaceholder('Plan, write, or ask anything…')
@@ -75,7 +70,6 @@ test('keeps freeform generation, results, and follow-up edits in one visible cha
 test('searches and pages the server catalog, then submits a pinned template version', async ({ page }) => {
   const queries: URL[] = []
   let detailChecks = 0
-  let sent: any
   await page.route('https://kition.ai/api/media/image-templates**', (route) => {
     const url = new URL(route.request().url())
     if (url.pathname.endsWith('/launch')) {
@@ -98,10 +92,7 @@ test('searches and pages the server catalog, then submits a pinned template vers
     } })
   })
   await openImageChat(page)
-  await page.route('**/api/v1/agent/sessions/*/messages/stream', async (route) => {
-    sent = route.request().postDataJSON()
-    await fulfillImageStream(route, sent, Number(route.request().url().match(/sessions\/(\d+)/)![1]), 1)
-  })
+  const { requests } = await mockAgentTurn(page, writeImageTurn)
   await expect(page.getByTestId('agent-image-template-cover')).toBeVisible()
   await expect(page.getByTestId('agent-image-template-count')).toHaveText('1–24 of 541')
   await expect(page.getByTestId('agent-image-template-style-0-1')).toContainText('Needs image')
@@ -145,12 +136,12 @@ test('searches and pages the server catalog, then submits a pinned template vers
   await page.getByRole('button', { name: 'Send', exact: true }).click()
   await expect(page.getByTestId('agent-image-result')).toBeVisible()
   expect(detailChecks).toBe(1)
+  const sent = requests.at(-1)!.body as any
   expect(sent.content).toBe('Launch poster\nKition')
   expect(sent.image_generation_intent).toMatchObject({ template_id: 'launch', template_version: '2', template_variables: { subject: 'Kition' } })
 })
 
 test('generates from the template gallery with only a subject and no open editor', async ({ page }, testInfo) => {
-  const requests: Array<{ sessionId: number; body: any }> = []
   await page.route('https://kition.ai/api/media/image-templates**', (route) => route.fulfill({
     json: new URL(route.request().url()).pathname.endsWith('/launch')
       ? template : { catalog_revision: 'chat-r1', items: [template] },
@@ -168,12 +159,7 @@ test('generates from the template gallery with only a subject and no open editor
   const send = page.getByRole('button', { name: 'Send', exact: true })
   await expect(composer).toHaveValue('')
   await expect(send).toBeEnabled()
-  await page.route('**/api/v1/agent/sessions/*/messages/stream', async (route) => {
-    const body = route.request().postDataJSON()
-    const sessionId = Number(route.request().url().match(/sessions\/(\d+)/)![1])
-    requests.push({ sessionId, body })
-    await fulfillImageStream(route, body, sessionId, requests.length)
-  })
+  const { requests } = await mockAgentTurn(page, writeImageTurn)
   await send.click()
   await expect(page.getByTestId('agent-image-result')).toContainText('Images ready for review')
   expect(requests[0].body.image_generation_intent).toMatchObject({
@@ -196,19 +182,13 @@ test('generates from the template gallery with only a subject and no open editor
 })
 
 test('edits an image from ordinary chat without an open editor and changes its aspect ratio', async ({ page }) => {
-  const requests: Array<{ sessionId: number; body: any }> = []
   await page.route('https://kition.ai/api/media/image-templates**', (route) => route.fulfill({ status: 503 }))
   await openImageChat(page)
   await page.getByRole('button', { name: 'Start without a template' }).click()
   await page.getByRole('button', { name: 'Exit image mode', exact: true }).click()
   await page.locator('.document-tab-list').getByRole('button', { name: 'Close tab', exact: true }).click()
   await expect(page.getByTestId('whiteboard-svg-scene')).toHaveCount(0)
-  await page.route('**/api/v1/agent/sessions/*/messages/stream', async (route) => {
-    const body = route.request().postDataJSON()
-    const sessionId = Number(route.request().url().match(/sessions\/(\d+)/)![1])
-    requests.push({ sessionId, body })
-    await fulfillImageStream(route, body, sessionId, requests.length)
-  })
+  const { requests } = await mockAgentTurn(page, writeImageTurn)
   const composer = page.getByPlaceholder('Plan, write, or ask anything…')
   await composer.fill('Create a city travel poster')
   await composer.press('Enter')
@@ -247,18 +227,14 @@ test('edits an image from ordinary chat without an open editor and changes its a
 })
 
 test('exits image mode from the composer and sends the preserved draft as normal chat', async ({ page }) => {
-  let sent: any
   await page.route('https://kition.ai/api/media/image-templates**', (route) => route.fulfill({
     json: { catalog_revision: 'exit-r1', items: [template] },
   }))
   await openImageChat(page)
-  await page.route('**/api/v1/agent/sessions/*/messages/stream', async (route) => {
-    sent = route.request().postDataJSON()
-    await route.fulfill({
-      headers: { 'content-type': 'application/x-ndjson' },
-      body: JSON.stringify({ type: 'done', done: true, extra_data: {} }) + '\n',
-    })
+  const { requests } = await mockAgentTurn(page, (turn) => {
+    turn.reply('The board covers three ideas.')
   })
+  const sent = () => requests.at(-1)?.body as any
   await page.getByTestId('agent-image-template-launch').click()
   await page.getByRole('button', { name: 'Done', exact: true }).click()
   const composer = page.getByPlaceholder('Plan, write, or ask anything…')
@@ -273,8 +249,8 @@ test('exits image mode from the composer and sends the preserved draft as normal
   await expect(composer).toHaveValue('Summarize the ideas on this board.')
   await expect(composer).toBeFocused()
   await composer.press('Enter')
-  await expect.poll(() => sent?.content).toBe('Summarize the ideas on this board.')
-  expect(sent.image_generation_intent).toBeUndefined()
+  await expect.poll(() => sent()?.content).toBe('Summarize the ideas on this board.')
+  expect(sent().image_generation_intent).toBeUndefined()
 })
 
 test('browses the published image catalog with real previews', async ({ page }, testInfo) => {
@@ -437,22 +413,24 @@ async function expectImagePanelLeftOfChat(page: Page) {
   expect(panel.height).toBeGreaterThanOrEqual(500)
 }
 
-async function fulfillImageStream(route: Route, body: any, sessionId: number, turn: number) {
-  const createdAt = new Date().toISOString()
-  const requestId = body.image_generation_intent?.request_id || `chat-image-${turn}`
-  const imageEvent = { type: 'image_generation.event', schema_version: 1, request_id: requestId }
+/** One logged image variant for the request: `Agent/generated-<call>.png`. */
+function writeImageTurn(turn: AgentTurnScript, request: { body: Record<string, any>; call: number }) {
+  const requestId = request.body.image_generation_intent?.request_id || `chat-image-${request.call}`
+  const callId = `img_${request.call}_0`
   const artifact = {
-    id: 800 + turn, path: `Agent/generated-${turn}.png`, mime_type: 'image/png', title: 'Launch image',
-    variant_index: 0, variant_count: 1, created_at: createdAt,
+    call_id: callId, path: `Agent/generated-${request.call}.png`, mime_type: 'image/png', title: 'Launch image',
+    variant_index: 0, variant_count: 1, created_at: new Date().toISOString(),
     provenance: { request_id: requestId, model_id: 'test-image-model' },
   }
-  const events = [
-    { type: 'user_message', chat_message: { id: turn * 10, session_id: sessionId, user_id: 1, role: 'user', content: body.content, status: 'completed', created_at: createdAt } },
-    { type: 'image_generation_event', image_generation: { ...imageEvent, event: 'image_generation.progress', status: 'generating', progress: 0.5 } },
-    { type: 'image_generation_event', image_generation: { ...imageEvent, event: 'image_generation.artifact', status: 'saving', artifact } },
-    { type: 'image_generation_event', image_generation: { ...imageEvent, event: 'image_generation.artifact', status: 'saving', artifact } },
-    { type: 'image_generation_event', image_generation: { ...imageEvent, event: 'image_generation.completed', status: 'completed', artifact_count: 1 } },
-    { type: 'done', done: true, extra_data: { message: { id: turn * 10 + 1, session_id: sessionId, user_id: 1, role: 'assistant', content: 'Image generated for review.', status: 'completed', created_at: createdAt } } },
-  ]
-  await route.fulfill({ status: 200, headers: { 'content-type': 'application/x-ndjson' }, body: events.map((event) => JSON.stringify(event)).join('\n') + '\n' })
+  turn.event({
+    type: 'tool/call', callId, name: 'image_generation',
+    arguments: { request_id: requestId, intent_sha256: 'f'.repeat(64), variant_index: 0, variant_count: 1, size: '1024x1024', quality: 'medium', reference_count: 0 },
+  })
+  turn.event({
+    type: 'tool/result', callId, name: 'image_generation', isError: false, value: artifact,
+    content: [{ type: 'text', text: `Generated image 1: ${artifact.path}` }],
+    meta: { kind: 'image_generation.variant', request_id: requestId, artifact },
+  })
+  turn.deliver(callId, { path: artifact.path, description: artifact.title })
+  turn.reply('Image generated for review.')
 }

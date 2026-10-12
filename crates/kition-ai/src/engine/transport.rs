@@ -46,13 +46,38 @@ pub(crate) fn chat_headers(model: &RuntimeModel) -> AiResult<Vec<(String, String
     Ok(headers)
 }
 
+/// Adds the provider headers to a request whose body was set with `.json()`,
+/// which already sets `Content-Type`, and sends exactly one `Accept`. Some
+/// gateways reject a repeated `Content-Type` ("Unsupported content type").
+pub(crate) fn json_request(
+    mut request: reqwest::RequestBuilder,
+    headers: &[(String, String)],
+    streaming: bool,
+) -> reqwest::RequestBuilder {
+    for (key, value) in headers.iter().filter(|(key, _)| {
+        !key.eq_ignore_ascii_case("Content-Type") && !key.eq_ignore_ascii_case("Accept")
+    }) {
+        request = request.header(key, value);
+    }
+    request.header(
+        "Accept",
+        if streaming {
+            "text/event-stream"
+        } else {
+            "application/json"
+        },
+    )
+}
+
 /// Sets `name` to `value`, replacing any header of the same name.
 pub(crate) fn set_header(headers: &mut Vec<(String, String)>, name: &str, value: &str) {
     headers.retain(|(key, _)| !key.eq_ignore_ascii_case(name));
     headers.push((name.to_owned(), value.to_owned()));
 }
 
-/// OpenAI-compatible providers default to the `/v1` path.
+/// OpenAI-compatible providers default to the `/v1` path. DeepSeek's
+/// renderer-side settings already send the `/anthropic` Messages path, so a
+/// non-empty path here (including `/anthropic`) is left unchanged.
 pub(crate) fn normalize_base_url(provider_type: &str, raw: &str) -> String {
     let value = raw.trim();
     if value.is_empty() {
@@ -384,6 +409,16 @@ pub(crate) struct SseLines {
 }
 
 impl SseLines {
+    /// Lines of a fixed stream body, for parser tests.
+    #[cfg(test)]
+    pub fn from_text(text: &str) -> Self {
+        Self {
+            stream: futures::stream::iter([Ok(bytes::Bytes::from(text.to_owned()))]).boxed(),
+            buffer: Vec::new(),
+            done: false,
+        }
+    }
+
     pub fn new(response: reqwest::Response) -> Self {
         Self {
             stream: response.bytes_stream().boxed(),
@@ -524,6 +559,28 @@ mod tests {
     }
 
     #[test]
+    fn json_requests_send_each_content_header_once() {
+        let headers = chat_headers(&model("", "")).unwrap_or_default();
+        let client = reqwest::Client::new();
+        for (streaming, accept) in [(true, "text/event-stream"), (false, "application/json")] {
+            let request = json_request(
+                client
+                    .post("http://127.0.0.1:9/v1/chat/completions")
+                    .json(&serde_json::json!({})),
+                &headers,
+                streaming,
+            )
+            .build()
+            .unwrap_or_else(|error| panic!("{error}"));
+            let content_types: Vec<_> = request.headers().get_all("content-type").iter().collect();
+            assert_eq!(content_types, ["application/json"]);
+            let accepts: Vec<_> = request.headers().get_all("accept").iter().collect();
+            assert_eq!(accepts, [accept]);
+            assert!(request.headers().get("authorization").is_some());
+        }
+    }
+
+    #[test]
     fn builds_auth_headers() {
         let headers = chat_headers(&model("", "")).unwrap_or_default();
         assert!(headers.contains(&("Authorization".into(), "Bearer key".into())));
@@ -553,6 +610,10 @@ mod tests {
         assert_eq!(
             normalize_base_url("anthropic", "https://api.anthropic.com/"),
             "https://api.anthropic.com"
+        );
+        assert_eq!(
+            normalize_base_url("deepseek", "https://api.deepseek.com/anthropic"),
+            "https://api.deepseek.com/anthropic"
         );
         assert_eq!(normalize_base_url("openai", ""), "");
         assert!(validate_endpoint("localhost:8080/v1").is_err());

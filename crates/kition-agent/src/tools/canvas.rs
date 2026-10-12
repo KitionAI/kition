@@ -1,5 +1,6 @@
 //! Whiteboard and design pane support: the bounded context the client
-//! attaches, and patch proposals streamed back for the user to review.
+//! attaches, and patch proposals the user reviews (the client previews
+//! them from the streamed tool arguments and the logged result meta).
 //! The client validates each patch strictly before previewing it; the
 //! runtime checks the envelope, operations, identifiers, and references.
 
@@ -8,7 +9,6 @@ use std::collections::{HashMap, HashSet};
 use serde_json::{Value, json};
 
 use crate::run::{Run, ToolOutput, ToolResult};
-use crate::stream::Frame;
 use crate::workspace::clean_path;
 
 const WHITEBOARD_OPS: &[&str] = &[
@@ -114,42 +114,6 @@ pub fn whiteboard_prompt(context: &Value) -> String {
 pub fn design_prompt(context: &Value) -> String {
     format!(
         "Active Kition design context (pane = design):\nCoordinates are artboard pixels from the top-left corner. Layer ids are authoritative, roles are hints, and locked layers must not be edited. Selected ids identify the user's current focus.\n{context}"
-    )
-}
-
-pub fn whiteboard_event(context: &Value) -> (String, Value) {
-    (
-        format!(
-            "Attached {} scope with {} element(s) and {} selected",
-            text(context, "scope"),
-            items(context, "elements").len(),
-            items(context, "selected_element_ids").len()
-        ),
-        json!({
-            "board_id": context["board"]["id"], "board_path": context["board"]["path"],
-            "scope": context["scope"], "element_count": items(context, "elements").len(),
-            "selected_count": items(context, "selected_element_ids").len(),
-            "cluster_count": items(context, "clusters").len(),
-        }),
-    )
-}
-
-pub fn design_event(context: &Value) -> (String, Value) {
-    let artboard = &context["artboard"];
-    (
-        format!(
-            "Attached a {}x{} artboard with {} layer(s) and {} selected",
-            artboard["width"],
-            artboard["height"],
-            items(context, "layers").len(),
-            items(context, "selected_layer_ids").len()
-        ),
-        json!({
-            "design_id": context["design"]["id"], "design_path": context["design"]["path"],
-            "layer_count": items(context, "layers").len(),
-            "selected_count": items(context, "selected_layer_ids").len(),
-            "has_brand": context.get("brand").is_some_and(|b| !b.is_null()),
-        }),
     )
 }
 
@@ -312,26 +276,11 @@ pub async fn propose_whiteboard_patch(run: &Run, input: &Value) -> ToolResult {
         _ => return Err("whiteboard context is unavailable for this turn".into()),
     };
     let count = check_whiteboard(input, context)?;
-    let board_path = text(&context["board"], "path").to_owned();
-    if !run.send(&Frame {
-        whiteboard_patch: Some(input.clone()),
-        board_path: board_path.clone(),
-        ..Frame::new("whiteboard_patch")
-    }) {
-        return Err("whiteboard preview stream is unavailable".into());
-    }
     let summary = text(input, "summary").to_owned();
-    Ok(ToolOutput {
-        event_summary: Some(format!("Proposed {count} Whiteboard change(s) for review")),
-        event_output: Some(json!({
-            "awaiting_user_review": true, "board_path": board_path, "operation_count": count,
-            "summary_chars": summary.chars().count(), "whiteboard_patch": input,
-        })),
-        ..ToolOutput::new(
-            format!("Proposed {count} Whiteboard change(s) for user review: {summary}"),
-            json!({ "awaiting_user_review": true, "operation_count": count, "summary": summary }),
-        )
-    })
+    Ok(ToolOutput::new(
+        format!("Proposed {count} Whiteboard change(s) for user review: {summary}"),
+        json!({ "awaiting_user_review": true, "operation_count": count, "summary": summary }),
+    ))
 }
 
 pub async fn propose_design_patch(run: &Run, input: &Value) -> ToolResult {
@@ -340,26 +289,11 @@ pub async fn propose_design_patch(run: &Run, input: &Value) -> ToolResult {
         _ => return Err("design context is unavailable for this turn".into()),
     };
     let count = check_design(input, context)?;
-    let design_path = text(&context["design"], "path").to_owned();
-    if !run.send(&Frame {
-        design_patch: Some(input.clone()),
-        design_path: design_path.clone(),
-        ..Frame::new("design_patch")
-    }) {
-        return Err("design preview stream is unavailable".into());
-    }
     let summary = text(input, "summary").to_owned();
-    Ok(ToolOutput {
-        event_summary: Some(format!("Proposed {count} design change(s) for review")),
-        event_output: Some(json!({
-            "awaiting_user_review": true, "design_path": design_path, "operation_count": count,
-            "summary_chars": summary.chars().count(), "design_patch": input,
-        })),
-        ..ToolOutput::new(
-            format!("Proposed {count} design change(s) for user review: {summary}"),
-            json!({ "awaiting_user_review": true, "operation_count": count, "summary": summary }),
-        )
-    })
+    Ok(ToolOutput::new(
+        format!("Proposed {count} design change(s) for user review: {summary}"),
+        json!({ "awaiting_user_review": true, "operation_count": count, "summary": summary }),
+    ))
 }
 
 #[cfg(test)]

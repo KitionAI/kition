@@ -10,7 +10,9 @@ use std::time::Duration;
 use serde_json::{Value, json};
 use url::Url;
 
-use crate::run::{Run, ToolOutput, ToolResult, int_field, string_list, text_field, truncate_chars};
+use crate::run::{
+    Run, ToolOutput, ToolResult, delivered, int_field, string_list, text_field, truncate_chars,
+};
 use crate::workspace::{parent_folder, sanitize_filename};
 
 const MAX_REDIRECTS: usize = 5;
@@ -502,7 +504,7 @@ fn yaml_string(value: &str) -> String {
     )
 }
 
-pub async fn web_article_save(run: &Run, tool_call_id: i64, input: &Value) -> ToolResult {
+pub async fn web_article_save(run: &Run, input: &Value) -> ToolResult {
     let raw = text_field(input, "url");
     if raw.is_empty() {
         return Err("missing article URL".into());
@@ -639,21 +641,12 @@ pub async fn web_article_save(run: &Run, tool_call_id: i64, input: &Value) -> To
     let path = run
         .workspace()
         .write_new(&article_folder, "index.md", document.as_bytes())?;
-    let artifact = run
-        .record_artifact(
-            Some(tool_call_id),
-            "markdown",
-            &path,
-            "text/markdown",
-            &title,
-        )
-        .await;
     let mut summary = format!("Saved article: `{path}` ({saved} images)");
     if !warnings.is_empty() {
         summary.push_str(&format!("; {} image(s) skipped", warnings.len()));
     }
     Ok(ToolOutput {
-        artifact,
+        deliverables: vec![delivered(&path, &title)],
         ..ToolOutput::new(
             summary,
             json!({

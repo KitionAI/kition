@@ -87,6 +87,44 @@ covers the three GFM table widget row and column button regressions.
 - When reviewing screenshots, compare geometry, palette, hierarchy, and control
   emphasis against `docs/design.md`.
 
+## Kits (Mandatory)
+
+- Read `docs/kit-sdk.md` before any kit work. It is how Kition implements the
+  Kition Kit Standard (`docs/standard.md` in the private `KitionAI/kition-sdk`
+  repository), which is normative: kits, the host, and the agent conform to
+  it, and contract changes go there first. The checklist in `docs/kit-sdk.md`
+  is the definition of done for a new kit, and every kit ships a `kit.json`
+  that passes the standard's `tools/check-manifest.mjs`.
+- Kition is the standard's reference implementation, and its agent targets
+  DeepSeek Harness contracts (tool definitions, session event log, SDK
+  protocol) by contract, not by embedding another runtime.
+- Kit editors run in the page: the kit's engine is compiled to WebAssembly,
+  runs in a Web Worker, and paints into a canvas, while Kition draws all
+  chrome. Never embed a kit's native window over a tab; that was tried and
+  rejected. Native kit executables run only `headless`, for the agent.
+- Build every kit editor on `src/features/kits/public.ts` (`useKitDocument`,
+  `KitCanvas` with `KitTool`s, `useKitEditor`, `KitEditorFrame`) and register
+  it in `src/features/workspace/components/kits/kitEditors.ts` and
+  `kits/sdks.json`. Put shared behavior in the template, not in one kit.
+- When a kit's engine owns its tools (manifest capability `engine-tools`),
+  run them through `useEngineTools` and `EngineToolRail` and draw only the engine's overlays;
+  never re-implement an engine's tools or selection display in Kition. If the
+  upstream app draws something in its own UI, port it into the kit's SDK
+  crate as engine overlays.
+- `src/features/kits/sdk/` is the portable core of the open Kit SDK: it must
+  never import the rest of Kition (`pnpm check:deps` enforces it). Shared
+  strings under `workspace:kitEditor.*` must never name a kit.
+- A kit SDK implements `KitDocument` from the private `KitionAI/kition-sdk`
+  crate (Apache-2.0), exports it with `export_kit_document!`, and passes
+  `kition_sdk::testing::check_contract` in its tests and `pnpm check:kit-sdks`
+  once built. Contract changes happen in kition-sdk and bump the version there
+  and in `src/features/kits/sdk/kitSdk.ts` together.
+- Kit repositories are standalone clones (never GitHub forks). Log every
+  upstream file change in their `KITION_CHANGES.md`.
+- Never run a kit engine on the page's thread, never write a kit file except
+  through `PUT /v1/kits/files`, and never overwrite unsaved edits when the
+  file changes on disk.
+
 ## Repository Layout And Secrets (Mandatory)
 
 - `src/` is the React renderer, `src-tauri/` the Tauri desktop shell, and

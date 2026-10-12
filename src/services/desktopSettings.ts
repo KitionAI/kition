@@ -67,9 +67,9 @@ export const desktopProviderCatalog: DesktopProviderDescriptor[] = [
     label: 'DeepSeek',
     sublabel: 'V3 · R1',
     descriptor: 'DeepSeek · V3 / R1 models',
-    description: 'Connect to the DeepSeek OpenAI-compatible API using a DeepSeek API Key. Supports deepseek-chat and deepseek-reasoner.',
-    badge: 'OpenAI-compatible',
-    defaultBaseUrl: 'https://api.deepseek.com/v1',
+    description: 'Connect to DeepSeek through its Anthropic-compatible Messages API using a DeepSeek API Key, the route DeepSeek Harness uses.',
+    badge: 'Messages',
+    defaultBaseUrl: 'https://api.deepseek.com/anthropic',
     defaultModelsPath: '/models',
     authLabel: 'DeepSeek API Key',
   },
@@ -159,8 +159,13 @@ export function normalizeProviderBaseURL(kind: DesktopProviderKind, baseUrl?: st
 
   try {
     const parsed = new URL(raw)
+    // DeepSeek given a bare host goes through its Anthropic-compatible Messages path.
+    if (kind === 'deepseek' && (!parsed.pathname || parsed.pathname === '/')) {
+      parsed.pathname = '/anthropic'
+      return parsed.toString().replace(/\/$/, '')
+    }
     // OpenAI-compatible providers given a bare host need /v1 appended; an explicit path is kept as-is.
-    if ((kind === 'openai' || kind === 'deepseek' || kind === 'kimi' || kind === 'custom') && (!parsed.pathname || parsed.pathname === '/')) {
+    if ((kind === 'openai' || kind === 'kimi' || kind === 'custom') && (!parsed.pathname || parsed.pathname === '/')) {
       parsed.pathname = '/v1'
       return parsed.toString().replace(/\/$/, '')
     }
@@ -172,8 +177,12 @@ export function normalizeProviderBaseURL(kind: DesktopProviderKind, baseUrl?: st
 
 function createProviderConfig(kind: DesktopProviderKind): DesktopProviderConfig {
   const descriptor = desktopProviderCatalog.find((item) => item.kind === kind)!
-  const wireApi: DesktopProviderConfig['wireApi'] = kind === 'anthropic' ? 'anthropic_messages' : 'responses'
-  const authScheme: DesktopProviderConfig['authScheme'] = kind === 'anthropic' ? 'x-api-key' : 'bearer'
+  const messages = kind === 'anthropic' || kind === 'deepseek'
+  // Moonshot serves only Chat Completions, not the Responses API.
+  const wireApi: DesktopProviderConfig['wireApi'] = messages
+    ? 'anthropic_messages'
+    : kind === 'kimi' ? 'chat_completions' : 'responses'
+  const authScheme: DesktopProviderConfig['authScheme'] = messages ? 'x-api-key' : 'bearer'
   const authHeader = kind === 'custom' || kind === 'kition_console' ? 'Authorization' : ''
   return {
     kind,

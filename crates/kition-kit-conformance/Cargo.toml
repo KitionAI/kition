@@ -1,0 +1,27 @@
+[package]
+name = "kition-kit-conformance"
+description = "The Kit Protocol conformance suite: black-box checks every kit must pass before release."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "kition-kit-conformance"
+path = "src/main.rs"
+
+[dependencies]
+kition-kit-host = { workspace = true }
+kition-kit-protocol = { workspace = true, features = ["tokio"] }
+
+base64 = { workspace = true }
+clap = { workspace = true }
+jsonschema = { workspace = true }
+serde_json = { workspace = true }
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["io-util"] }
+url = { workspace = true }

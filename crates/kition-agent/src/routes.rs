@@ -1,7 +1,7 @@
 //! The `/agent` HTTP API.
 
 use axum::Router;
-use axum::extract::{FromRef, Path, State};
+use axum::extract::{FromRef, Path, Query, State};
 use axum::response::Response;
 use axum::routing::{get, post};
 use kition_ai::chat::{AiGate, require_ai};
@@ -10,12 +10,12 @@ use kition_http::{AuthConfig, CurrentUser, JsonBody, ok};
 use serde::Deserialize;
 use serde_json::{Value, json};
 
+use crate::catalog;
 use crate::execpolicy::{Decision, Policy, Rule};
 use crate::mcp::ServerConfig;
 use crate::run::Agent;
 use crate::session::{self, StreamRequest};
-use crate::store::{self, AgentEvent, AgentMessage, AgentToolCall};
-use crate::{catalog, prompts};
+use crate::store;
 
 #[derive(Clone)]
 pub struct AgentState {
@@ -40,9 +40,10 @@ pub fn router(state: AgentState) -> Router {
             "/agent/sessions/{id}",
             axum::routing::delete(delete_session),
         )
-        .route("/agent/sessions/{id}/messages", get(list_messages))
-        .route("/agent/sessions/{id}/tool-calls", get(list_tool_calls))
-        .route("/agent/sessions/{id}/events", get(list_events))
+        .route(
+            "/agent/sessions/{id}/session-events",
+            get(list_session_events),
+        )
         .route("/agent/sessions/{id}/messages/stream", post(stream))
         .route(
             "/agent/exec-policy/rules",
@@ -90,7 +91,6 @@ async fn list_sessions(State(state): State<AgentState>, user: CurrentUser) -> Ap
 struct CreateSession {
     title: String,
     active_document_path: String,
-    language: String,
 }
 
 async fn create_session(
@@ -107,7 +107,6 @@ async fn create_session(
         title,
         &state.agent.workspace().root_text(),
         request.active_document_path.trim(),
-        &prompts::system_prompt(&request.language),
     );
     let row = session.clone();
     session.id = state
@@ -129,49 +128,31 @@ async fn delete_session(
         .with_db(move |conn| store::delete_session(conn, session.id))
         .await
         .map_err(|_| AppError::internal("Failed to delete agent session"))?;
+    state.agent.forget_session(session.id);
     Ok(ok(json!({ "deleted": true })))
 }
 
-async fn session_rows<T>(
-    state: &AgentState,
-    user_id: i64,
-    id: &str,
-    what: &str,
-) -> AppResult<Response>
-where
-    T: kition_store::rows::TableRow + serde::Serialize + Send + 'static,
-{
-    let session = session::owned_session(&state.agent, parse_id(id)?, user_id).await?;
-    let items: Vec<T> = state
-        .agent
-        .with_db(move |conn| store::session_rows(conn, session.id, user_id))
-        .await
-        .map_err(|_| AppError::internal(format!("Failed to load agent {what}")))?;
-    Ok(ok(json!({ "items": items })))
+#[derive(Debug, Default, Deserialize)]
+#[serde(default)]
+struct EventsQuery {
+    after: u64,
 }
 
-async fn list_messages(
+/// The session event log (`contracts/runtime/agent-session-events.schema.json`).
+async fn list_session_events(
     State(state): State<AgentState>,
     user: CurrentUser,
     Path(id): Path<String>,
+    Query(query): Query<EventsQuery>,
 ) -> AppResult<Response> {
-    session_rows::<AgentMessage>(&state, user.id, &id, "messages").await
-}
-
-async fn list_tool_calls(
-    State(state): State<AgentState>,
-    user: CurrentUser,
-    Path(id): Path<String>,
-) -> AppResult<Response> {
-    session_rows::<AgentToolCall>(&state, user.id, &id, "tool calls").await
-}
-
-async fn list_events(
-    State(state): State<AgentState>,
-    user: CurrentUser,
-    Path(id): Path<String>,
-) -> AppResult<Response> {
-    session_rows::<AgentEvent>(&state, user.id, &id, "events").await
+    let session = session::owned_session(&state.agent, parse_id(&id)?, user.id).await?;
+    let log = kition_harness::log::SqliteLog::new(state.agent.db().clone());
+    let (items, next_after) =
+        tokio::task::spawn_blocking(move || crate::log::read_events(&log, session.id, query.after))
+            .await
+            .map_err(|_| AppError::internal("Failed to load agent session events"))?
+            .map_err(|_| AppError::internal("Failed to load agent session events"))?;
+    Ok(ok(json!({ "items": items, "next_after": next_after })))
 }
 
 async fn stream(

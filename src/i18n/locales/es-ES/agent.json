@@ -6,13 +6,6 @@
     "writeResult": "resultado de escritura",
     "writeToTable": "Escribir en la tabla"
   },
-  "awaitInput": {
-    "waitingForReply": "El agente está esperando tu respuesta",
-    "replyPlaceholder": "Escribe tu respuesta, pulsa Cmd/Ctrl+Enter para enviar",
-    "send": "Enviar",
-    "yes": "Sí",
-    "no": "No"
-  },
   "buildProgress": {
     "buildingBase": "Creando base...",
     "buildingInProgress": "Construcción en curso",
@@ -195,10 +188,7 @@
   },
   "timeline": {
     "status": {
-      "running": "Running",
-      "failed": "Failed",
-      "completed": "Completed",
-      "unknown": "Unknown"
+      "failed": "Failed"
     },
     "sections": {
       "tool": "Tool",
@@ -207,13 +197,8 @@
       "error": "Error",
       "status": "Status",
       "data": "Data",
-      "backendContent": "AI backend content",
-      "toolArguments": "Tool arguments",
       "path": "Path",
-      "type": "Type",
       "title": "Title",
-      "mimeType": "MIME type",
-      "createdAt": "Created at",
       "preview": "Preview",
       "noDetail": "This step is waiting for more execution data."
     },
@@ -226,41 +211,18 @@
       "expandedProcessing": "The model just received results from “{{tool}}” and is using the context to decide what to do next (run more tools, or reply directly)."
     },
     "activity": {
-      "running": "Running {{tool}}",
-      "failed": "{{tool}} failed",
-      "preparingFinal": "Preparing the final reply",
-      "planningNext": "Planning the next step",
-      "taskCompleted": "Task completed",
-      "waiting": "Waiting for task",
       "thinking": "Thinking…",
       "completionUnknown": "Completion not confirmed",
       "interruptedDetail": "The connection ended before completion was confirmed. Check saved results before retrying.",
       "stopped": "Task stopped"
     },
     "event": {
-      "understandingTask": "Understanding task",
-      "taskUnderstood": "Task understood",
-      "enableSkills": "Enable skills",
-      "sendModelRequest": "Send model request",
       "callingBackend": "Calling AI backend",
       "backendCalled": "AI backend called",
-      "backendStreaming": "AI backend streaming content",
-      "backendReturned": "AI backend returned content",
-      "generatingToolArgs": "Generating {{tool}} arguments",
-      "generatingToolArgsAnon": "Generating tool arguments",
-      "toolCallGenerated": "{{tool}} call generated",
-      "toolCallGeneratedAnon": "Tool call generated",
       "backendTurnCompleted": "AI backend turn completed",
-      "finalizeResponse": "Finalize response",
       "taskFailed": "Task failed",
-      "currentModel": "Current model",
-      "nativeToolLoop": "Native tool loop",
-      "standardChat": "Standard chat",
       "modelTurnFinished": "Model turn {{turn}} has finished",
       "requestingModelTurn": "Requesting model turn {{turn}}",
-      "requestingModel": "Requesting model",
-      "receivedChars": "Received {{chars}} characters from the backend",
-      "waitingBackendContent": "Waiting for backend content",
       "modelRequestedNTools": "The model requested {{count}} tools",
       "modelReturnedChars": "The model returned {{chars}} characters of final content",
       "thisTurnCompleted": "This model turn completed",
@@ -280,22 +242,16 @@
       },
       "taskCompleted": "Task completed",
       "reconnectingInSeconds_one": "Retrying in {{seconds}} second",
-      "reconnectingInSeconds_other": "Retrying in {{seconds}} seconds"
+      "reconnectingInSeconds_other": "Retrying in {{seconds}} seconds",
+      "stepLimit": "Se detuvo tras el número máximo de pasos del modelo por turno; acota la tarea o aclara el siguiente paso."
     },
     "tool": {
       "inProgress": "{{label}} in progress",
       "failed": "{{label}} failed",
       "completed": "{{label}} completed",
-      "pendingApproval": "Pending approval · $ {{command}}",
-      "searchPrefix": "Search: {{query}}",
-      "generateImagePrefix": "Generate image: {{query}}",
-      "previewNFiles": "Preview files: {{count}} · +{{added}} −{{removed}}",
-      "appliedNFiles": "Applied files: {{count}} · +{{added}} −{{removed}}",
-      "nMatches": "Matches: {{count}}",
       "nResults": "{{count}} results",
       "nImages": "{{count}} images",
-      "nEntries": "Entries: {{count}}",
-      "removed": "Removed {{path}}"
+      "nEntries": "Entries: {{count}}"
     },
     "artifact": {
       "title": "Save artifact"

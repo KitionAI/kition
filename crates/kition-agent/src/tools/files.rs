@@ -7,11 +7,12 @@ use serde_json::{Value, json};
 
 use crate::attachments::image_data_url;
 use crate::fuzzy;
+use kition_harness::events::{TodoItem, TodoStatus};
+
 use crate::run::{
-    EventInput, Run, ToolOutput, ToolResult, bool_field, int_field, string_list, text_field,
+    Run, ToolOutput, ToolResult, bool_field, delivered, int_field, string_list, text_field,
     truncate_chars,
 };
-use crate::store;
 
 const MAX_VIEW_IMAGE_BYTES: u64 = 5 * 1024 * 1024;
 
@@ -246,7 +247,7 @@ pub fn file_search(run: &Run, input: &Value) -> ToolResult {
     ))
 }
 
-pub async fn view_image(run: &Run, tool_call_id: i64, input: &Value) -> ToolResult {
+pub async fn view_image(run: &Run, input: &Value) -> ToolResult {
     let path = text_field(input, "path");
     if path.is_empty() {
         return Err("missing image path".into());
@@ -269,11 +270,8 @@ pub async fn view_image(run: &Run, tool_call_id: i64, input: &Value) -> ToolResu
         .unwrap_or_default()
         .to_owned();
     let name = relative.rsplit('/').next().unwrap_or(&relative).to_owned();
-    let artifact = run
-        .record_artifact(Some(tool_call_id), "image", &relative, &mime, &name)
-        .await;
     Ok(ToolOutput {
-        artifact,
+        deliverables: vec![delivered(&relative, &name)],
         follow_up: vec![
             MessagePart {
                 kind: "text".into(),
@@ -293,7 +291,7 @@ pub async fn view_image(run: &Run, tool_call_id: i64, input: &Value) -> ToolResu
     })
 }
 
-pub async fn update_plan(run: &Run, input: &Value) -> ToolResult {
+pub fn update_plan(input: &Value) -> ToolResult {
     let steps = input
         .get("plan")
         .and_then(Value::as_array)
@@ -326,39 +324,12 @@ pub async fn update_plan(run: &Run, input: &Value) -> ToolResult {
         return Err("at most one plan step may be in_progress at a time".into());
     }
     let explanation = text_field(input, "explanation");
-    let (session, user, message) = (
-        run.session_id,
-        run.user_id,
-        (run.trigger_message_id > 0).then_some(run.trigger_message_id),
-    );
-    let rows = normalized.clone();
-    run.agent
-        .with_db(move |conn| store::replace_plan(conn, session, user, message, &rows))
-        .await
-        .map_err(|error| format!("persist plan: {error}"))?;
     let plan: Vec<Value> = normalized
         .iter()
         .map(|(step, status)| json!({ "step": step, "status": status }))
         .collect();
-    let count = |wanted: &str| normalized.iter().filter(|(_, s)| s == wanted).count();
-    let message = if explanation.is_empty() {
-        format!(
-            "Plan updated: {} total ({} done, {} in progress, {} pending)",
-            normalized.len(),
-            count("completed"),
-            count("in_progress"),
-            count("pending")
-        )
-    } else {
-        explanation.clone()
-    };
     let output =
         json!({ "plan": plan, "explanation": explanation, "step_count": normalized.len() });
-    run.event(
-        EventInput::new("plan.updated", "plan", "completed", "Update plan", message)
-            .data(output.clone()),
-    )
-    .await;
     let mut rendered = String::new();
     if !explanation.is_empty() {
         rendered.push_str(&explanation);
@@ -372,5 +343,19 @@ pub async fn update_plan(run: &Run, input: &Value) -> ToolResult {
         };
         rendered.push_str(&format!("{}. {marker} {step}\n", index + 1));
     }
-    Ok(ToolOutput::new(rendered.trim_end().to_owned(), output))
+    let todos = normalized
+        .into_iter()
+        .map(|(content, status)| TodoItem {
+            content,
+            status: match status.as_str() {
+                "in_progress" => TodoStatus::InProgress,
+                "completed" => TodoStatus::Completed,
+                _ => TodoStatus::Pending,
+            },
+        })
+        .collect();
+    Ok(ToolOutput {
+        todos: Some(todos),
+        ..ToolOutput::new(rendered.trim_end().to_owned(), output)
+    })
 }

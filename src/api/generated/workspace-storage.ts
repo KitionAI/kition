@@ -46,7 +46,7 @@ export type WorkspaceStorageStatus = {
 }
 
 export type WorkspaceStorageInventoryItem = {
-  kind: "document" | "kitable" | "asset" | "workflow" | "workflow_run" | "agent_session" | "agent_message" | "agent_event" | "sync_state" | "workspace_metadata"
+  kind: "document" | "kitable" | "asset" | "workflow" | "workflow_run" | "agent_session" | "agent_session_events" | "sync_state" | "workspace_metadata"
   workspace_path: WorkspaceStoragePortablePath
   size_bytes: number
   sha256?: string

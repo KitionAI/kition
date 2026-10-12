@@ -1,6 +1,7 @@
 # Kit Protocol, Version 1
 
-Status: draft, 2026-10-09.
+Status: draft, 2026-10-09. The reference implementation is the
+`kition-kit-protocol` crate; see section 15.
 
 The Kit Protocol connects Kition to kits: native executables that open and edit
 one family of documents. Architecture and rationale are in
@@ -24,15 +25,19 @@ is fixed.
 | `host` | Kition desktop (Tauri shell) | Exactly one, connects first | Everything |
 | `agent` | Kition runtime | Zero or more | `kit.*` except `kit.shutdown`, `document.*`, `commands.*`, `view.*` |
 
-The kit is the server. Clients connect to it.
+The kit is the server. Clients connect to it. The Kition runtime runs inside
+the desktop process, but it still connects as a separate `agent` client so
+that the kit enforces agent limits itself.
 
 ## 2. Transport
 
 - JSON-RPC 2.0 messages, UTF-8, one message per line (newline-delimited JSON).
   A message must not contain a raw newline.
 - Endpoint: a Unix domain socket on macOS and Linux, a named pipe on Windows.
-  The host chooses the endpoint path inside a per-user directory with mode
-  `0700` (or an equivalent Windows ACL).
+  The host chooses the endpoint path inside a fresh per-launch directory with
+  mode `0700`. On Windows it chooses a random name under `\\.\pipe\` and the
+  kit creates the pipe with remote clients rejected; the launch token is the
+  access control.
 - Maximum message size is 64 MiB. Large binary payloads (screenshots, exports)
   should be written to files rather than inlined whenever a URI is acceptable.
 
@@ -218,9 +223,11 @@ Only valid when `KITION_KIT_SURFACE` is `embedded` or `window`.
 | `surface.snapshot` | none | `Image` of the full surface |
 | `surface.detach` | none | `{}`; the kit keeps documents open with no visible surface |
 
-`bounds` is `{ x, y, width, height }` in logical pixels, relative to the
-top-left of the host window content area. `scaleFactor` is the device pixel
-ratio.
+`bounds` is `{ x, y, width, height }` in logical pixels. For `child-window`
+and `shared-texture` it is relative to the top-left of the host window content
+area. For `overlay-window` and `top-level` the kit window is a top-level window,
+so `bounds` is in screen coordinates (top-left origin) and the host resends it
+whenever its own window moves. `scaleFactor` is the device pixel ratio.
 
 `mechanism` and `parent`:
 
@@ -328,3 +335,33 @@ Every kit must pass a shared black-box suite before release:
 
 Embedding behavior (section 8) is accepted manually in the real desktop client
 on each platform; automated headless runs cannot exercise it.
+
+The suite is the `kition-kit-conformance` command. A kit repository runs it in
+CI against its packaged executable with a fixture document and one command
+that changes it:
+
+```bash
+kition-kit-conformance --kit <executable> --manifest kit.json \
+  --fixture <document> --edit-command <command id> --edit-params '<json object>'
+```
+
+`kit.json` may be the Kition Kit Standard manifest (it has a `standard`
+version; schema `contracts/kit/kit-standard.schema.json`, a copy of
+kition-sdk's `schemas/kit.schema.json`), whose `headless` section names the
+executable and must say `kition-kit/1`; or the package manifest below. Kit ids
+are dotted, reverse-domain style (`kit.photo`, `com.example.cad`), in both.
+Kits built on the Kition SDK get their executable from `kition-headless`
+and pass the suite without kit-specific protocol code.
+
+Besides the numbered checks it validates `kit.json` against the manifest
+schema and validates `kit.initialize`, `document.open`, `commands.list`,
+`view.describe`, and `view.screenshot` results against the protocol schema.
+
+## 15. Reference Implementation
+
+| Crate | Contents |
+| --- | --- |
+| `kition-kit-protocol` | Types for every method in `contracts/kit/kit-protocol.schema.json`, error codes, launch constants, framing, and (with the `tokio` feature) the transport |
+| `kition-kit-host` | Host-side launch, endpoint, and client |
+| `kition-kit-mock` | A headless reference kit for `.mocktext` documents |
+| `kition-kit-conformance` | The conformance suite |

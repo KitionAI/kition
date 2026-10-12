@@ -7,9 +7,14 @@ import {
   FileText,
   FileType2,
   FileVideo2,
+  Clapperboard,
+  Layers,
+  LayoutTemplate,
+  DraftingCompass,
   PenTool,
   Paintbrush,
   Presentation,
+  Sparkles,
   Volume2,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -177,6 +182,27 @@ export function inferWorkspaceItemFormat(path: string, content?: string): Worksp
   if (/\.(png|jpe?g|gif|webp|svg)$/i.test(path)) {
     return 'image'
   }
+  if (/\.(psd|psb|pcraft)$/i.test(path)) {
+    return 'photo'
+  }
+  if (/\.fcproj$/i.test(path)) {
+    return 'film'
+  }
+  if (/\.(vectorcraft|drawcraft)$/i.test(path)) {
+    return 'vector'
+  }
+  if (/\.ecproj$/i.test(path)) {
+    return 'effect'
+  }
+  if (/\.designcraft$/i.test(path)) {
+    return 'layout'
+  }
+  if (/\.dxf$/i.test(path)) {
+    return 'cad'
+  }
+  if (/\.deckcraft$/i.test(path)) {
+    return 'presentation'
+  }
   if (/\.(mp4|mov|webm)$/i.test(path)) {
     return 'video'
   }
@@ -272,6 +298,20 @@ export function getWorkspaceItemIcon(format?: WorkspaceDocumentFormat): LucideIc
       return FileDown
     case 'image':
       return FileImage
+    case 'photo':
+      return Layers
+    case 'film':
+      return Clapperboard
+    case 'vector':
+      return PenTool
+    case 'effect':
+      return Sparkles
+    case 'layout':
+      return LayoutTemplate
+    case 'cad':
+      return DraftingCompass
+    case 'presentation':
+      return Presentation
     case 'video':
       return FileVideo2
     case 'audio':
@@ -307,7 +347,15 @@ export function getWorkspaceItemIconColorClass(format?: WorkspaceDocumentFormat)
     case 'html':
       return 'text-orange-600'
     case 'image':
+    case 'photo':
+    case 'film':
+    case 'vector':
+    case 'effect':
+    case 'layout':
+    case 'cad':
       return 'text-violet-500'
+    case 'presentation':
+      return 'text-orange-500'
     case 'design':
     case 'board':
       return 'text-violet-500'
@@ -336,6 +384,13 @@ export function getWorkspaceItemFormatLabel(format?: WorkspaceDocumentFormat) {
     text: 'TXT',
     html: 'HTML',
     image: 'Image',
+    photo: 'Photo',
+    film: 'Film',
+    vector: 'Vector',
+    effect: 'Effect',
+    layout: 'Layout',
+    cad: 'CAD',
+    presentation: 'Presentation',
     video: 'Video',
     audio: 'Audio',
     binary: 'File',
@@ -390,8 +445,12 @@ export function isOrganizableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
   return isEditableWorkspaceFormat(format) || format === 'board' || format === 'design'
 }
 
+/**
+ * Formats that open in a Kition tab rather than the system app. Office files a kit edits (Word,
+ * PowerPoint, Excel) open in the kit's editor, or the file preview when the kit's engine is not built in.
+ */
 export function isPreviewableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
-  return format === 'image' || format === 'pdf'
+  return format === 'image' || format === 'pdf' || format === 'photo' || format === 'film' || format === 'vector' || format === 'effect' || format === 'layout' || format === 'cad' || format === 'presentation' || format === 'pptx' || format === 'docx' || format === 'xlsx' || format === 'video'
 }
 
 export function isSupportedWorkspaceFormat(format?: WorkspaceDocumentFormat) {

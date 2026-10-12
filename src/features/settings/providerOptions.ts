@@ -6,6 +6,7 @@ export const customAuthSchemeOptions = [
 
 export const customWireApiOptions = [
   { label: 'OpenAI Responses (Agent)', value: 'responses' },
+  { label: 'OpenAI Chat Completions (Agent)', value: 'chat_completions' },
   { label: 'Anthropic Messages (Agent)', value: 'anthropic_messages' },
 ] as const
 

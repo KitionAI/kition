@@ -20,6 +20,7 @@ path = "src/main.rs"
 kition-agent = { workspace = true }
 kition-ai = { workspace = true }
 kition-connections = { workspace = true }
+kition-kits = { workspace = true }
 kition-core = { workspace = true }
 kition-datadoc = { workspace = true }
 kition-desktop = { workspace = true }

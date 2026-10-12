@@ -1,3 +1,4 @@
+import type { KitCreationItem, KitCreationSource } from './useKitCreations'
 import { useMemo } from 'react'
 
 import type { useWorkspaceCreateFlows } from '@/features/workspace/hooks/useWorkspaceCreateFlows'
@@ -19,6 +20,9 @@ type UseWorkspaceCreateMenuOptions = {
   openDocumentTemplateDialog: (folder?: string) => void
   openKitableTemplateDialog: (folder?: string) => void
   createDesign: (folder?: string) => Promise<unknown> | void
+  /** Present when an installed kit can create images. */
+  /** Kit items (Image, Video project), each making a file in a folder. */
+  kitCreations: readonly KitCreationSource[]
   openBoardTemplateDialog: (folder?: string) => void
   openWorkspaceWorkflow: () => void
   onCloseProfile?: () => void
@@ -40,6 +44,7 @@ export function useWorkspaceCreateMenu({
   openDocumentTemplateDialog,
   openKitableTemplateDialog,
   createDesign,
+  kitCreations,
   openBoardTemplateDialog,
   openWorkspaceWorkflow,
   onCloseProfile,
@@ -94,6 +99,16 @@ export function useWorkspaceCreateMenu({
       onCloseProfile?.()
       void createDesign(createMenuFolder)
     },
+    kitCreations: kitCreations.map<KitCreationItem>((kit) => ({
+      id: kit.id,
+      label: kit.label,
+      icon: kit.icon,
+      onCreate: () => {
+        onCloseProfile?.()
+        closeCreateMenu()
+        void kit.create(createMenuFolder)
+      },
+    })),
     onCreateBoard: () => {
       onCloseProfile?.()
       openBoardTemplateDialog(createMenuFolder)
@@ -101,6 +116,7 @@ export function useWorkspaceCreateMenu({
   }), [
     closeCreateMenu,
     createDesign,
+    kitCreations,
     createDocumentInside,
     createFlows,
     createMenuFolder,

@@ -1,25 +1,22 @@
 import request from './request'
 import { resolveApiURL } from '@/services/desktop'
-import { readAgentMessageStream } from './agentStream'
+import { readAgentMessageStream, type AgentStreamNotification } from './agentStream'
 import type { RuntimeWritingModel } from '@/types'
 import type { AgentImageGenerationIntent } from '@/types/imageGeneration'
 import type { AgentWhiteboardContext } from '@/types/whiteboardAgent'
 import type { AgentDesignContext } from '@/types/designAgent'
+import type { AgentSessionEventsPage } from './generated/agent-session-events'
 import type {
   AgentCapabilities,
-  AgentEvent,
   AgentExecutionMode,
   AgentLocalSource,
-  AgentMessage,
   AgentPaneContext,
   AgentSession,
   AgentShellApprovalResponse,
   AgentSkillSpec,
   AgentSourceAdapterSpec,
-  AgentStreamEvent,
   AgentTablePlanContext,
   AgentTaskMode,
-  AgentToolCall,
 } from './agentTypes'
 
 export type * from './agentTypes'
@@ -40,20 +37,15 @@ export async function listAgentSessions() {
   return request.get<{ items: AgentSession[] }>('/v1/agent/sessions')
 }
 
-export async function createAgentSession(input: { title?: string; active_document_path?: string; language?: string } = {}) {
+export async function createAgentSession(input: { title?: string; active_document_path?: string } = {}) {
   return request.post<AgentSession>('/v1/agent/sessions', input)
 }
 
-export async function listAgentMessages(sessionId: number) {
-  return request.get<{ items: AgentMessage[] }>(`/v1/agent/sessions/${sessionId}/messages`)
-}
-
-export async function listAgentToolCalls(sessionId: number) {
-  return request.get<{ items: AgentToolCall[] }>(`/v1/agent/sessions/${sessionId}/tool-calls`)
-}
-
-export async function listAgentEvents(sessionId: number) {
-  return request.get<{ items: AgentEvent[] }>(`/v1/agent/sessions/${sessionId}/events`)
+/** The session event log after `after` (`contracts/runtime/agent-session-events.schema.json`). */
+export async function listAgentSessionEvents(sessionId: number, after = 0) {
+  return request.get<AgentSessionEventsPage>(`/v1/agent/sessions/${sessionId}/session-events`, {
+    params: { after },
+  })
 }
 
 export async function deleteAgentSession(sessionId: number) {
@@ -178,8 +170,7 @@ export async function streamAgentMessage(options: {
   hideUserMessage?: boolean
   language?: string
   signal?: AbortSignal
-  onEvent?: (event: AgentStreamEvent) => void
-  onDelta?: (delta: string) => void
+  onNotification?: (notification: AgentStreamNotification) => void
 }) {
   const response = await fetch(resolveApiURL(`/v1/agent/sessions/${options.sessionId}/messages/stream`), {
     method: 'POST',
@@ -214,7 +205,8 @@ export async function streamAgentMessage(options: {
   })
 
   if (!response.ok) {
-    throw new Error(await response.text() || `Agent request failed (${response.status})`)
+    const message = await response.text() || `Agent request failed (${response.status})`
+    throw Object.assign(new Error(message), { status: response.status })
   }
   if (!response.body) {
     throw new Error('Agent streaming response is unavailable')

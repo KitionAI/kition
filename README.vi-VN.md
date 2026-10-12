@@ -21,7 +21,7 @@
 <p align="center">
   <a href="https://github.com/KitionAI/kition/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/KitionAI/kition/ci.yml?branch=main&amp;style=flat-square&amp;logo=githubactions&amp;logoColor=white&amp;label=CI" alt="Trạng thái CI" /></a>
   <a href="https://github.com/KitionAI/kition/releases/latest"><img src="https://img.shields.io/github/v/release/KitionAI/kition?include_prereleases&amp;sort=semver&amp;style=flat-square&amp;color=5645d4" alt="Bản phát hành mới nhất" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/KitionAI/kition?style=flat-square&amp;color=5645d4" alt="Giấy phép GNU AGPLv3" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/KitionAI/kition?style=flat-square&amp;color=5645d4" alt="Giấy phép Apache 2.0" /></a>
 </p>
 
 <h3 align="center"><a href="https://github.com/KitionAI/kition/releases/latest"><ins>Tải Kition</ins></a></h3>
@@ -133,4 +133,4 @@ Chúng tôi hoan nghênh Issue và Pull Request cho ứng dụng công khai. Hã
 
 ## Giấy phép
 
-Ứng dụng Kition công khai được cấp phép theo [GNU Affero General Public License v3.0 only](LICENSE). Kition runtime được phân phối riêng theo giấy phép riêng.
+Kition, bao gồm runtime trong `crates/`, được cấp phép theo [Apache License 2.0](LICENSE).

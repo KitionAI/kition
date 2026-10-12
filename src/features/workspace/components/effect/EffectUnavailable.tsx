@@ -1,0 +1,16 @@
+import { useTranslation } from 'react-i18next'
+import { Sparkles } from 'lucide-react'
+
+/** Shown for motion projects when this build has no Effect engine. */
+export function EffectUnavailable() {
+  const { t } = useTranslation('workspace')
+  return (
+    <div className="flex h-full items-center justify-center p-8" data-testid="effect-unavailable">
+      <div className="max-w-md rounded-xl border border-border bg-background p-6 text-center">
+        <Sparkles className="mx-auto mb-3 size-8 text-muted-foreground" aria-hidden="true" />
+        <p className="text-[15px] font-semibold text-foreground">{t('effectKit.unavailableTitle')}</p>
+        <p className="mt-2 text-[13px] text-muted-foreground">{t('effectKit.unavailableBody')}</p>
+      </div>
+    </div>
+  )
+}

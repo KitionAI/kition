@@ -1,0 +1,28 @@
+//! Kit Protocol, version 1.
+//!
+//! The wire contract between the Kition host and kits, the native executables
+//! that open and edit one family of documents. `docs/kit-protocol.md` describes
+//! the behavior and `contracts/kit/` holds the schemas these types mirror; when
+//! they disagree, the schemas win.
+//!
+//! This crate has no async runtime dependency so that kits built on plain
+//! threads can use it. The `tokio` feature adds async framing and the local
+//! socket transport.
+
+pub mod error;
+pub mod framing;
+pub mod index;
+pub mod jsonrpc;
+pub mod launch;
+pub mod manifest;
+pub mod methods;
+#[cfg(feature = "tokio")]
+pub mod transport;
+pub mod types;
+
+pub use error::{ErrorData, ErrorReason, RpcError};
+pub use jsonrpc::{Message, Notification, Request, RequestId, Response};
+pub use methods::{NotificationMethod, RequestMethod};
+
+/// The protocol version this crate implements.
+pub const PROTOCOL_VERSION: u32 = 1;

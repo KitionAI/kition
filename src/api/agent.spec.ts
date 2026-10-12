@@ -3,10 +3,7 @@ import { expectMatchesContract } from '@/test/contracts'
 
 import { streamAgentMessage } from './agent'
 import type { RuntimeWritingModel } from '@/types'
-import type {
-  AgentImageGenerationEvent,
-  AgentImageGenerationIntent,
-} from '@/types/imageGeneration'
+import type { AgentImageGenerationIntent } from '@/types/imageGeneration'
 import type { AgentWhiteboardContext } from '@/types/whiteboardAgent'
 
 vi.mock('@/services/desktop', () => ({
@@ -14,12 +11,43 @@ vi.mock('@/services/desktop', () => ({
   resolveApiURL: (path: string) => `http://runtime.test${path}`,
 }))
 
+const idle = JSON.stringify({ jsonrpc: '2.0', method: 'session.status', params: { sessionId: 'agent:7', status: 'idle' } })
+
+/** A logged image variant notification. */
+function variantResult(requestId: string) {
+  return {
+    jsonrpc: '2.0',
+    method: 'session.event',
+    params: {
+      sessionId: 'agent:9',
+      event: {
+        seq: 5, at: 1, type: 'tool/result', callId: 'img_1_0', name: 'image_generation', isError: false,
+        content: [{ type: 'text', text: 'Generated image 1: Agent/images/generated.png' }],
+        value: { call_id: 'img_1_0', path: 'Agent/images/generated.png' },
+        meta: { kind: 'image_generation.variant', request_id: requestId, artifact: { call_id: 'img_1_0' } },
+      },
+    },
+  }
+}
+
 afterEach(() => {
   vi.useRealTimers()
   vi.restoreAllMocks()
 })
 
 describe('streamAgentMessage', () => {
+  it('rejects a refused turn with the HTTP status', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(
+      '{"code":409,"message":"This session is still answering."}',
+      { status: 409 },
+    )))
+
+    await expect(streamAgentMessage({ sessionId: 7, content: 'again' })).rejects.toMatchObject({
+      status: 409,
+      message: expect.stringContaining('still answering'),
+    })
+  })
+
   it('forwards compact Whiteboard context on the public wire field', async () => {
     const whiteboardContext: AgentWhiteboardContext = {
       type: 'whiteboard.context',
@@ -36,10 +64,7 @@ describe('streamAgentMessage', () => {
     const fetchMock = vi.fn(async (
       _input: RequestInfo | URL,
       _init?: RequestInit,
-    ) => new Response(
-      `${JSON.stringify({ type: 'done', done: true })}\n`,
-      { status: 200 },
-    ))
+    ) => new Response(`${idle}\n`, { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
 
     await streamAgentMessage({
@@ -89,10 +114,7 @@ describe('streamAgentMessage', () => {
     const fetchMock = vi.fn(async (
       _input: RequestInfo | URL,
       _init?: RequestInit,
-    ) => new Response(
-      `${JSON.stringify({ type: 'done', done: true })}\n`,
-      { status: 200 },
-    ))
+    ) => new Response(`${idle}\n`, { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
 
     await streamAgentMessage({
@@ -136,28 +158,21 @@ describe('streamAgentMessage', () => {
       placement_preference: 'review',
       client_capability_version: 1,
     }
-    const imageEvent: AgentImageGenerationEvent = {
-      type: 'image_generation.event',
-      schema_version: 1,
-      request_id: imageGenerationIntent.request_id,
-      event: 'image_generation.completed',
-      status: 'completed',
-      artifact_count: 1,
-    }
+    const notification = variantResult(imageGenerationIntent.request_id)
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response([
-      JSON.stringify({ type: 'image_generation_event', image_generation: imageEvent }),
-      JSON.stringify({ type: 'done', done: true }),
+      JSON.stringify(notification),
+      idle,
       '',
     ].join('\n'), { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
-    const onEvent = vi.fn()
+    const onNotification = vi.fn()
 
     await streamAgentMessage({
       sessionId: 8,
       content: imageGenerationIntent.instruction,
       imageGenerationIntent,
       runtimeModel,
-      onEvent,
+      onNotification,
     })
 
     expect(fetchMock).toHaveBeenCalledOnce()
@@ -168,73 +183,21 @@ describe('streamAgentMessage', () => {
       runtime_model: runtimeModel,
     })
     expect(runtimeModel.model_name).toBe('gpt-5.5')
-    expect(onEvent).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'image_generation_event', image_generation: imageEvent,
-    }))
-  })
-
-  it('delivers typed image-generation events to the stream consumer', async () => {
-    const imageEvent: AgentImageGenerationEvent = {
-      type: 'image_generation.event',
-      schema_version: 1,
-      request_id: 'image-request-2',
-      event: 'image_generation.artifact',
-      status: 'saving',
-      artifact: {
-        id: 91,
-        path: 'Agent/images/generated.png',
-        mime_type: 'image/png',
-        variant_index: 0,
-        variant_count: 1,
-        created_at: '2026-09-05T00:00:00.000Z',
-        provenance: { request_id: 'image-request-2' },
-      },
-    }
-    const onEvent = vi.fn()
-    vi.stubGlobal('fetch', vi.fn(async () => new Response([
-      JSON.stringify({
-        type: 'image_generation_event',
-        image_generation: imageEvent,
-      }),
-      JSON.stringify({ type: 'done', done: true }),
-      '',
-    ].join('\n'), { status: 200 })))
-
-    await streamAgentMessage({
-      sessionId: 9,
-      content: 'Generate an image',
-      onEvent,
-    })
-
-    expect(onEvent).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'image_generation_event',
-      image_generation: imageEvent,
-    }))
+    expect(onNotification).toHaveBeenCalledWith(notification)
   })
 
   it('keeps a slow image stream open beyond ordinary request timeouts', async () => {
     vi.useFakeTimers()
-    const onEvent = vi.fn()
+    const onNotification = vi.fn()
     const abort = new AbortController()
     const encoder = new TextEncoder()
-    const imageEvent = {
-      type: 'image_generation.event', schema_version: 1, request_id: 'slow-image',
-    }
+    const running = JSON.stringify({ jsonrpc: '2.0', method: 'session.status', params: { sessionId: 'agent:10', status: 'running' } })
     const fetchMock = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) => new Response(
       new ReadableStream({
         start(controller) {
-          controller.enqueue(encoder.encode(`${JSON.stringify({
-            type: 'image_generation_event',
-            image_generation: { ...imageEvent, event: 'image_generation.progress', status: 'generating' },
-          })}\n`))
+          controller.enqueue(encoder.encode(`${running}\n`))
           setTimeout(() => {
-            controller.enqueue(encoder.encode([
-              JSON.stringify({
-                type: 'image_generation_event',
-                image_generation: { ...imageEvent, event: 'image_generation.completed', status: 'completed', artifact_count: 1 },
-              }),
-              JSON.stringify({ type: 'done', done: true }), '',
-            ].join('\n')))
+            controller.enqueue(encoder.encode([JSON.stringify(variantResult('slow-image')), idle, ''].join('\n')))
             controller.close()
           }, 9 * 60_000)
         },
@@ -244,21 +207,31 @@ describe('streamAgentMessage', () => {
 
     const completed = vi.fn()
     const streaming = streamAgentMessage({
-      sessionId: 10, content: 'Generate a detailed image', signal: abort.signal, onEvent,
+      sessionId: 10, content: 'Generate a detailed image', signal: abort.signal, onNotification,
     }).then(completed)
     await vi.advanceTimersByTimeAsync(8 * 60_000)
     expect(completed).not.toHaveBeenCalled()
-    expect(onEvent).toHaveBeenCalledWith(expect.objectContaining({
-      image_generation: expect.objectContaining({ status: 'generating' }),
-    }))
+    expect(onNotification).toHaveBeenCalledTimes(1)
     expect(fetchMock.mock.calls[0][1]?.signal).toBe(abort.signal)
     expect(abort.signal.aborted).toBe(false)
 
     await vi.advanceTimersByTimeAsync(60_000)
     await streaming
     expect(completed).toHaveBeenCalledOnce()
-    expect(onEvent).toHaveBeenCalledWith(expect.objectContaining({
-      image_generation: expect.objectContaining({ status: 'completed', artifact_count: 1 }),
-    }))
+    expect(onNotification).toHaveBeenCalledWith(variantResult('slow-image'))
+  })
+
+  it('sends a command approval by the paused call id', async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(`${idle}\n`, { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const shellApproval = { call_id: 'call_1', decision: 'allow_once' as const }
+    expectMatchesContract(shellApproval, 'agent-shell-approval', 'response')
+
+    await streamAgentMessage({ sessionId: 7, content: 'Approved', hideUserMessage: true, shellApproval })
+
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toMatchObject({
+      hide_user_message: true,
+      shell_approval: shellApproval,
+    })
   })
 })

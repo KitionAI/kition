@@ -1,5 +1,6 @@
-import { expect, test, type Page, type Route } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 
+import { mockAgentTurn } from './helpers/agentStream'
 import { installDesktopHost } from './helpers/desktopHost'
 import { mockLocalWorkspaceApi } from './helpers/mockApi'
 import { dismissFirstRunActivation } from './helpers/onboarding'
@@ -16,16 +17,6 @@ const initialMarkdown = [
 
 const transparentPngBase64 =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
-
-function fulfillNdjson(route: Route, events: unknown[]) {
-  return route.fulfill({
-    status: 200,
-    headers: {
-      'content-type': 'application/x-ndjson',
-    },
-    body: `${events.map((event) => JSON.stringify(event)).join('\n')}\n`,
-  })
-}
 
 async function configureMockAgent(page: Page) {
   await page.evaluate(async () => {
@@ -140,18 +131,10 @@ test('Agent image generation forwards a safe fenced-code cursor anchor and rende
       '',
       'Existing paragraph after the fenced code block.',
     ].join('\n')
-    const now = '2026-08-27T12:00:00.000Z'
-    let requestBody: Record<string, any> | null = null
-
-    await page.route('**/api/v1/agent/sessions/*/messages/stream', async (route) => {
-      requestBody = route.request().postDataJSON() as Record<string, any>
-      const streamSessionId = Number(
-        new URL(route.request().url()).pathname.match(/sessions\/(\d+)\/messages/)?.[1] || 901,
-      )
-
-      // The private runtime is outside this repository. Mock its final document
-      // write here so this E2E can exercise the public client request, revision,
-      // acceptance, and rendering chain. Resolver unit tests own placement policy.
+    const turns = await mockAgentTurn(page, async (turn) => {
+      // The runtime is outside this test. Mock its final document write here so
+      // this E2E can exercise the public client request, revision, acceptance,
+      // and rendering chain. Resolver unit tests own placement policy.
       await page.evaluate(async ({ documentPath, markdown }) => {
         const bridge = (window as typeof window & { kitionDesktop?: Record<string, any> }).kitionDesktop
         if (!bridge?.WriteWorkspaceDocument) {
@@ -159,82 +142,15 @@ test('Agent image generation forwards a safe fenced-code cursor anchor and rende
         }
         await bridge.WriteWorkspaceDocument({ path: documentPath, content: markdown })
       }, { documentPath: fixture.documentPath, markdown: updatedMarkdown })
-
-      await fulfillNdjson(route, [
-        {
-          type: 'user_message',
-          chat_message: {
-            id: 9801,
-            session_id: streamSessionId,
-            user_id: 1,
-            role: 'user',
-            content: 'Generate a pendant image and insert it into this document',
-            status: 'completed',
-            created_at: now,
-          },
-        },
-        {
-          type: 'tool_call',
-          tool_call: {
-            id: 9802,
-            session_id: streamSessionId,
-            message_id: 9801,
-            user_id: 1,
-            tool_name: 'image_generation',
-            input_data: { prompt: 'A silver pendant' },
-            output_data: {
-              path: fixture.assetPath,
-              mime_type: 'image/png',
-            },
-            status: 'completed',
-            created_at: now,
-            updated_at: now,
-          },
-        },
-        {
-          type: 'tool_call',
-          tool_call: {
-            id: 9803,
-            session_id: streamSessionId,
-            message_id: 9801,
-            user_id: 1,
-            tool_name: 'apply_patch',
-            input_data: { path: fixture.documentPath },
-            output_data: {
-              file_ops: [{ kind: 'update', path: fixture.documentPath }],
-            },
-            status: 'completed',
-            created_at: now,
-            updated_at: now,
-          },
-        },
-        {
-          type: 'done',
-          done: true,
-          extra_data: {
-            message: {
-              id: 9804,
-              session_id: streamSessionId,
-              user_id: 1,
-              role: 'assistant',
-              content: 'Generated the pendant image and inserted it after the fenced code block.',
-              status: 'completed',
-              created_at: now,
-            },
-            session: {
-              id: streamSessionId,
-              user_id: 1,
-              title: 'Chat',
-              workspace_root: 'browser-local-workspace',
-              active_document_path: fixture.documentPath,
-              status: 'completed',
-              created_at: now,
-              updated_at: now,
-            },
-          },
-        },
-      ])
+      turn.tool('ig_1', 'image_generation', { hosted: true }, { path: fixture.assetPath, mime: 'image/png' })
+      turn.deliver('ig_1', fixture.assetPath)
+      turn.tool('call_patch', 'apply_patch', { path: fixture.documentPath }, {
+        file_ops: [{ kind: 'update', path: fixture.documentPath }],
+      })
+      turn.nextStep()
+      turn.reply('Generated the pendant image and inserted it after the fenced code block.')
     })
+    const requestBody = () => turns.requests[0]?.body as Record<string, any> | undefined
 
     await page.evaluate((documentPath) => {
       window.localStorage.setItem('kition.document.last-active-path.v1', documentPath)
@@ -258,13 +174,13 @@ test('Agent image generation forwards a safe fenced-code cursor anchor and rende
     await expect(page.locator('.agent-message.is-assistant')).toContainText(
       'Generated the pendant image and inserted it after the fenced code block.',
     )
-    expect(requestBody).not.toBeNull()
-    expect(requestBody).toMatchObject({
+    expect(requestBody()).toBeDefined()
+    expect(requestBody()).toMatchObject({
       active_document_path: fixture.documentPath,
       active_data_document_id: 0,
       active_data_table_id: 0,
     })
-    const promptContext = String(requestBody?.prompt_context || '')
+    const promptContext = String(requestBody()?.prompt_context || '')
     expect(promptContext).toContain('Preferred safe image insertion: line 6')
     expect(promptContext).toContain('strategy: nearest-blank-line')
     expect(promptContext).toContain('Never insert a Markdown image inside fenced or inline code')

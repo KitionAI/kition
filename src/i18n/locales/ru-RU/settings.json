@@ -615,7 +615,7 @@
     "reportIssueDescription": "Создать отчёт об ошибке или запрос функции.",
     "openIssues": "Открыть задачи",
     "license": "Лицензия",
-    "licenseDescription": "AGPL-3.0-only. Без гарантий; распространение разрешено на условиях лицензии.",
+    "licenseDescription": "Apache-2.0. Без гарантий; распространение разрешено на условиях лицензии.",
     "viewLicense": "Посмотреть LICENSE",
     "saveFailed": "Не удалось сохранить настройки",
     "update": {

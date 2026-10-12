@@ -1,0 +1,118 @@
+import { DraftingCompass, FileText, FileType2, Presentation, Sheet, type LucideIcon } from 'lucide-react'
+import type { KitSdkManifest, RasterRect } from '@/features/kits/public'
+
+/**
+ * A kit whose editor is the standard one: menus from its commands, its engine's tools on the
+ * rail, the canvas, and a status line from its `inspect()`. Strings live under `<key>Kit` in the
+ * workspace strings: `summary` (filled from `summary` below) and any menu names that the shared
+ * `kitEditor.menu` names do not cover.
+ */
+export type StandardKitSpec = {
+  sdk: KitSdkManifest
+  /** Test ids (`<key>-status`, `<key>-tool-...`) and the string namespace `<key>Kit`. */
+  key: string
+  icon: LucideIcon
+  /** Top-level menus in display order (the kit's `kit.json` `ui.menus`). */
+  menuOrder: readonly string[]
+  /** The engine's tools (engine-tools capability): the first one, and any kept off the rail. */
+  tools?: { initial: string; hidden?: ReadonlySet<string>; rail?: boolean }
+  /**
+   * A bar that runs the kit's `commandLine` command and shows the engine's status: CAD's command
+   * line under the canvas, or Sheet's formula bar above it.
+   */
+  commandLine?: boolean | 'top'
+  /** Where the canvas opens, from `inspect()`: the first page or slide rather than the whole canvas. */
+  initialArea?: (inspected: Record<string, unknown>) => RasterRect | null
+  /** The current page or slide; the canvas brings it into view when it changes and is mostly offscreen. */
+  focusArea?: (inspected: Record<string, unknown>) => RasterRect | null
+  /** The `<key>Kit.summary` values for the status line, from the engine's `inspect()`. */
+  summary: (inspected: Record<string, unknown>) => Record<string, string | number> | null
+}
+
+const count = (value: unknown) => (typeof value === 'number' ? value : 0)
+
+/** The CAD engine (`kition-cad-sdk` in the kition-cad repository), built by `scripts/build-kit-sdk.sh cad`. */
+export const CAD_KIT: StandardKitSpec = {
+  sdk: { kitId: 'kit.cad', dir: 'cad-sdk', module: 'kition_cad_sdk', documentClass: 'CadDocument' },
+  key: 'cad',
+  icon: DraftingCompass,
+  menuOrder: ['File', 'Edit', 'View', 'Insert', 'Format', 'Tools', 'Draw', 'Dimension', 'Modify'],
+  tools: { initial: 'select' },
+  commandLine: true,
+  summary: (inspected) => ({
+    objects: count(inspected.entities),
+    selected: count(inspected.selection),
+    layer: typeof inspected.currentLayer === 'string' ? inspected.currentLayer : '0',
+  }),
+}
+
+type InspectedArea = { x: number; y: number; width: number; height: number }
+
+/** A slide's or page's `{x, y, width, height}` from `inspect()` (under `key`) as a canvas rectangle. */
+function slideArea(inspected: Record<string, unknown>, index: number, key = 'slides'): RasterRect | null {
+  const area = (inspected[key] as Array<{ area?: InspectedArea }> | undefined)?.[index]?.area
+  return area ? { x0: area.x, y0: area.y, x1: area.x + area.width, y1: area.y + area.height } : null
+}
+
+/** The Presentation engine (`kition-presentation-sdk` in the kition-presentation repository), built by `scripts/build-kit-sdk.sh presentation`. */
+export const PRESENTATION_KIT: StandardKitSpec = {
+  sdk: { kitId: 'kit.presentation', dir: 'presentation-sdk', module: 'kition_presentation_sdk', documentClass: 'PresentationDocument' },
+  key: 'presentation',
+  icon: Presentation,
+  menuOrder: ['File', 'Edit', 'Home', 'Insert', 'Design', 'Transitions', 'Animations', 'Slide Show', 'Review', 'View', 'Arrange', 'Format', 'Shape Format', 'Picture Format', 'Table Design', 'Table Layout', 'Chart Design', 'Slide Master', 'Window'],
+  tools: { initial: 'select' },
+  // The slides are stacked on one canvas; open on the first.
+  initialArea: (inspected) => slideArea(inspected, 0),
+  focusArea: (inspected) => slideArea(inspected, count(inspected.slide)),
+  summary: (inspected) => ({
+    slide: count(inspected.slide) + 1,
+    slides: Array.isArray(inspected.slides) ? inspected.slides.length : 0,
+    selected: count(inspected.selection),
+  }),
+}
+
+/** The Word engine (`kition-word-sdk` in the kition-word repository), built by `scripts/build-kit-sdk.sh word`. */
+export const WORD_KIT: StandardKitSpec = {
+  sdk: { kitId: 'kit.word', dir: 'word-sdk', module: 'kition_word_sdk', documentClass: 'WordDocument' },
+  key: 'word',
+  icon: FileText,
+  menuOrder: ['File', 'Home', 'Insert', 'Draw', 'Design', 'Layout', 'References', 'Mailings', 'Review', 'View', 'Table Design', 'Table Layout', 'Picture Format', 'Shape Format', 'Header & Footer', 'Equation'],
+  // One text tool (click, drag, type), so no rail.
+  tools: { initial: 'text', rail: false },
+  initialArea: (inspected) => slideArea(inspected, 0, 'pages'),
+  focusArea: (inspected) => slideArea(inspected, count(inspected.page), 'pages'),
+  summary: (inspected) => ({
+    page: count(inspected.page) + 1,
+    pages: Array.isArray(inspected.pages) ? inspected.pages.length : 0,
+    words: count(inspected.words),
+  }),
+}
+
+/** The Sheet engine (`kition-sheet-sdk` in the kition-sheet repository), built by `scripts/build-kit-sdk.sh sheet`. */
+export const SHEET_KIT: StandardKitSpec = {
+  sdk: { kitId: 'kit.sheet', dir: 'sheet-sdk', module: 'kition_sheet_sdk', documentClass: 'SheetDocument' },
+  key: 'sheet',
+  icon: Sheet,
+  menuOrder: ['File', 'Edit', 'Home', 'Insert', 'Draw', 'Page Layout', 'Formulas', 'Data', 'Review', 'View', 'Automate', 'Format', 'Table', 'Table Design', 'Chart Design', 'PivotTable Analyze', 'PivotTable Design', 'Window'],
+  // Selecting and typing in the grid; no tools to choose.
+  tools: { initial: 'select', rail: false },
+  // The formula bar: the active cell and what it holds; Enter enters the text there.
+  commandLine: 'top',
+  // Open on the top-left cells at about 1:1, not the whole canvas shrunk to fit.
+  initialArea: () => ({ x0: 0, y0: 0, x1: 1100, y1: 640 }),
+  summary: (inspected) => ({
+    sheet: typeof inspected.sheet === 'string' ? inspected.sheet : '',
+    selection: typeof inspected.selection === 'string' ? inspected.selection : '',
+  }),
+}
+
+/** The PDF engine (`kition-pdf-sdk` in the kition-pdf repository), built by `scripts/build-kit-sdk.sh pdf`. */
+export const PDF_KIT: StandardKitSpec = {
+  sdk: { kitId: 'kit.pdf', dir: 'pdf-sdk', module: 'kition_pdf_sdk', documentClass: 'PdfDocument' },
+  key: 'pdf',
+  icon: FileType2,
+  menuOrder: ['Edit', 'Document', 'Pages', 'Text', 'Edit PDF', 'Comment', 'Forms', 'Bookmarks', 'Links', 'Redact', 'Measure', 'Protect', 'Accessibility', 'Tools'],
+  // Pages and menus; no pointer tools yet, so the canvas pans.
+  initialArea: (inspected) => slideArea(inspected, 0, 'pages'),
+  summary: (inspected) => ({ pages: Array.isArray(inspected.pages) ? inspected.pages.length : 0 }),
+}

@@ -19,7 +19,7 @@ vi.mock('@/services/desktopSettings', async () => {
   }
 })
 
-import { createDefaultDesktopSettings } from '@/services/desktopSettings'
+import { createDefaultDesktopSettings, normalizeDesktopSettings } from '@/services/desktopSettings'
 import { syncProviderModelCatalog } from '@/services/providerModelCatalog'
 
 describe('syncProviderModelCatalog', () => {
@@ -57,5 +57,16 @@ describe('syncProviderModelCatalog', () => {
       preferredChatModel: 'gpt-5.5',
       preferredWritingModel: 'gpt-5.5',
     })
+  })
+
+  it('lists DeepSeek models from the API root, not the Messages path', async () => {
+    const settings = normalizeDesktopSettings({
+      providers: { deepseek: { baseUrl: 'https://api.deepseek.com/anthropic', apiKey: 'sk-test' } },
+    } as never)
+    apiMocks.discoverProviderModels.mockResolvedValueOnce({ models: ['deepseek-chat'] })
+
+    await syncProviderModelCatalog(settings, 'deepseek', 'none', false)
+
+    expect(apiMocks.discoverProviderModels.mock.calls.at(-1)?.[0].base_url).toBe('https://api.deepseek.com')
   })
 })

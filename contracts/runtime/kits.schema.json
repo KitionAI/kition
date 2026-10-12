@@ -1,0 +1,778 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kition.ai/contracts/runtime/kits.schema.json",
+  "title": "Kition Kits",
+  "description": "GET /v1/kits, POST /v1/kits/documents, and /v1/kits/{kitId}/documents/{documentId}[/commands|/save|/preview]. JSON answers use the runtime envelope; /preview answers image/png. Errors carry data.reason: not_installed, stopped, or a Kit Protocol reason such as document_not_found.",
+  "$ref": "#/$defs/kitList",
+  "$defs": {
+    "kitId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$"
+    },
+    "workspacePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+    },
+    "kitStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "extensions",
+        "creates",
+        "installed",
+        "embeddable",
+        "binaryEnv"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/kitId"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "extensions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+$"
+          }
+        },
+        "creates": {
+          "type": "array",
+          "description": "Extensions the kit can create new documents in.",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+$"
+          }
+        },
+        "installed": {
+          "type": "boolean"
+        },
+        "embeddable": {
+          "type": "boolean",
+          "description": "Kit tabs can show the kit's own editor here: the desktop app on a supported system."
+        },
+        "binaryEnv": {
+          "type": "string",
+          "description": "Environment variable that points at a local build of the kit executable."
+        }
+      }
+    },
+    "kitList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kits"
+      ],
+      "properties": {
+        "kits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/kitStatus"
+          }
+        }
+      }
+    },
+    "openRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/workspacePath"
+        }
+      }
+    },
+    "surfaceRect": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Logical pixels relative to the top-left of the window's web content.",
+      "required": [
+        "x",
+        "y",
+        "width",
+        "height"
+      ],
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "width": {
+          "type": "number",
+          "minimum": 0
+        },
+        "height": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "openSurfaceRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "POST /v1/kits/surfaces: opens the file in the kit's own editor, kept over `rect`.",
+      "required": [
+        "path",
+        "rect"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/workspacePath"
+        },
+        "rect": {
+          "$ref": "#/$defs/surfaceRect"
+        },
+        "visible": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "surfaceView": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "surfaceId",
+        "document"
+      ],
+      "properties": {
+        "surfaceId": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "document": {
+          "$ref": "#/$defs/documentView"
+        }
+      }
+    },
+    "updateSurfaceRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "PUT /v1/kits/surfaces/{surfaceId}. DELETE on the same path closes the editor.",
+      "properties": {
+        "rect": {
+          "$ref": "#/$defs/surfaceRect"
+        },
+        "visible": {
+          "type": "boolean"
+        }
+      }
+    },
+    "commandView": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "description",
+        "group",
+        "mutates",
+        "enabled",
+        "menu",
+        "shortcut"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "group": {
+          "type": "string"
+        },
+        "mutates": {
+          "type": "boolean"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "menu": {
+          "type": "array",
+          "description": "Menu path in the kit, for example [\"Layer\", \"New\"]; empty when the command is not in a menu.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "shortcut": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "commandList": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "GET /v1/kits/{kitId}/documents/{documentId}/commands[?query=]",
+      "required": [
+        "commands"
+      ],
+      "properties": {
+        "commands": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/commandView"
+          }
+        }
+      }
+    },
+    "writeFileQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "PUT /v1/kits/files?path=: replaces a workspace file a kit edits with the raw request body (application/octet-stream, up to 2 GiB), or writes a kit export (for example an .mp4 from a video project) as a new file; an export never replaces an existing file. In-page editors save and export through it.",
+      "required": [
+        "path"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/workspacePath"
+        }
+      }
+    },
+    "createRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "POST /v1/kits/documents/new: creates an `Untitled image` file in the folder and opens it.",
+      "properties": {
+        "folder": {
+          "type": "string",
+          "description": "Workspace-relative folder; empty for the workspace root."
+        },
+        "extension": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+$",
+          "default": "psd"
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30000,
+          "default": 1920
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30000,
+          "default": 1080
+        }
+      }
+    },
+    "documentView": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kitId",
+        "documentId",
+        "path",
+        "title",
+        "format",
+        "readOnly",
+        "dirty",
+        "canUndo",
+        "canRedo",
+        "version",
+        "summary",
+        "details"
+      ],
+      "properties": {
+        "kitId": {
+          "$ref": "#/$defs/kitId"
+        },
+        "documentId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "description": "Workspace-relative path; null until the document is saved.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/workspacePath"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "format": {
+          "type": "string"
+        },
+        "readOnly": {
+          "type": "boolean"
+        },
+        "dirty": {
+          "type": "boolean"
+        },
+        "canUndo": {
+          "type": "boolean"
+        },
+        "canRedo": {
+          "type": "boolean"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Increments whenever the kit reports a change, including agent edits."
+        },
+        "summary": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "description": "Kit-defined structure from view.describe. kit.photo reports width, height, mode, depth, and layers.",
+          "additionalProperties": true
+        }
+      }
+    },
+    "photoLayer": {
+      "type": "object",
+      "required": [
+        "name",
+        "kind",
+        "visible"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "visible": {
+          "type": "boolean"
+        },
+        "opacity": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "blend": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "selected": {
+          "type": "boolean"
+        },
+        "depth": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Nesting inside groups; 0 at the top level."
+        }
+      }
+    },
+    "photoColor": {
+      "type": "array",
+      "description": "RGBA, each 0 to 1.",
+      "items": {
+        "type": "number"
+      }
+    },
+    "photoDetails": {
+      "type": "object",
+      "required": [
+        "width",
+        "height",
+        "mode",
+        "depth",
+        "layers"
+      ],
+      "properties": {
+        "width": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mode": {
+          "type": "string"
+        },
+        "depth": {
+          "type": "integer"
+        },
+        "layers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/photoLayer"
+          }
+        },
+        "activeLayer": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "tool": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The embedded editor's active tool, for example Brush."
+        },
+        "brushSize": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "zoom": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "1 is 100%."
+        },
+        "foreground": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/photoColor"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "background": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/photoColor"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "executeRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "command"
+      ],
+      "properties": {
+        "command": {
+          "type": "string",
+          "minLength": 1
+        },
+        "params": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "executeResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "changed",
+        "result",
+        "document"
+      ],
+      "properties": {
+        "changed": {
+          "type": "boolean"
+        },
+        "result": {},
+        "document": {
+          "$ref": "#/$defs/documentView"
+        }
+      }
+    },
+    "bridgeDocument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "kit",
+        "dirty",
+        "revision"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/workspacePath"
+        },
+        "kit": {
+          "$ref": "#/$defs/kitId"
+        },
+        "dirty": {
+          "type": "boolean"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "description": "A document open in a kit editor in the renderer (Kit AI bridge, kit/documents)."
+    },
+    "bridgeDocumentsResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "documents"
+      ],
+      "properties": {
+        "documents": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/bridgeDocument"
+          }
+        }
+      }
+    },
+    "bridgeCallParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "kit",
+        "tool",
+        "arguments"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/workspacePath"
+        },
+        "kit": {
+          "$ref": "#/$defs/kitId"
+        },
+        "tool": {
+          "enum": [
+            "inspect",
+            "commands",
+            "run"
+          ]
+        },
+        "arguments": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "description": "kit/call: one of the kit's document tools on the live document. `commands` takes {query}; `run` takes {steps: [{command, params?}], save}."
+    },
+    "bridgeLiveDocument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "summary",
+        "dirty",
+        "canUndo",
+        "canRedo",
+        "details"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/workspacePath"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "dirty": {
+          "type": "boolean"
+        },
+        "canUndo": {
+          "type": "boolean"
+        },
+        "canRedo": {
+          "type": "boolean"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "The kit engine's inspect() JSON."
+        }
+      }
+    },
+    "bridgeInspectResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document"
+      ],
+      "properties": {
+        "document": {
+          "$ref": "#/$defs/bridgeLiveDocument"
+        }
+      }
+    },
+    "bridgeCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "description",
+        "enabled",
+        "mutates"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "mutates": {
+          "type": "boolean"
+        }
+      }
+    },
+    "bridgeCommandsResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "commands",
+        "total"
+      ],
+      "properties": {
+        "commands": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/bridgeCommand"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "bridgeRunStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "command",
+        "changed",
+        "result"
+      ],
+      "properties": {
+        "command": {
+          "type": "string",
+          "minLength": 1
+        },
+        "changed": {
+          "type": "boolean"
+        },
+        "result": {
+          "description": "The command's JSON result."
+        }
+      }
+    },
+    "bridgeRunResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "completed",
+        "saved",
+        "document"
+      ],
+      "properties": {
+        "completed": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/bridgeRunStep"
+          }
+        },
+        "saved": {
+          "type": "boolean"
+        },
+        "document": {
+          "$ref": "#/$defs/bridgeLiveDocument"
+        }
+      }
+    },
+    "bridgePreviewParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "maxSize"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/workspacePath"
+        },
+        "maxSize": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "bridgePreviewResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "png"
+      ],
+      "properties": {
+        "png": {
+          "type": "string",
+          "description": "The preview as base64 PNG."
+        }
+      }
+    },
+    "bridgeChanged": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "revision",
+        "by"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/workspacePath"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "by": {
+          "enum": [
+            "person",
+            "agent"
+          ]
+        }
+      },
+      "description": "kit.changed: a live document changed."
+    }
+  }
+}

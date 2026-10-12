@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/KitionAI/kition-sdk/schemas/kit.schema.json",
+  "title": "Kition kit manifest (kit.json), Kition Kit Standard 1.0",
+  "description": "See docs/standard.md section 3. tools/check-manifest.mjs checks these rules and K1 to K7.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["standard", "id", "name", "version", "license", "engine", "formats"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "standard": { "type": "string", "pattern": "^1\\.[0-9]+$", "description": "The standard version the kit conforms to (K2)." },
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$", "description": "Reverse-domain-style kit id (K1)." },
+    "name": { "type": "string", "minLength": 1 },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?$" },
+    "license": { "type": "string", "minLength": 1 },
+    "upstream": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "commit"],
+      "properties": {
+        "repository": { "type": "string" },
+        "version": { "type": "string" },
+        "commit": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" }
+      }
+    },
+    "engine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["module", "class", "contract"],
+      "properties": {
+        "module": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "description": "The wasm-pack module name." },
+        "class": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$", "description": "The exported document class." },
+        "contract": { "type": "integer", "minimum": 1, "description": "contractVersion() (K3)." },
+        "crate": { "type": "string" }
+      }
+    },
+    "formats": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "extensions", "role"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+          "extensions": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/extension" } },
+          "mime": { "type": "string" },
+          "role": { "enum": ["edit", "read"], "description": "edit: the kit owns and saves these files (K4)." }
+        }
+      }
+    },
+    "creates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "extension", "baseName", "size"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+          "extension": { "$ref": "#/$defs/extension" },
+          "baseName": { "type": "string", "minLength": 1 },
+          "size": { "$ref": "#/$defs/size" }
+        }
+      }
+    },
+    "exports": {
+      "type": "array",
+      "description": "Files the kit writes as new files only (K5).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["extension", "command"],
+        "properties": {
+          "extension": { "$ref": "#/$defs/extension" },
+          "mime": { "type": "string" },
+          "command": { "type": "string" }
+        }
+      }
+    },
+    "imports": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["extensions", "action"],
+        "properties": {
+          "extensions": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/extension" } },
+          "action": { "enum": ["project-from-clip", "open-as-document", "place"] }
+        }
+      }
+    },
+    "capabilities": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "enum": ["lent-files", "audio", "stepped-export", "selection-outline", "pages", "timeline", "engine-tools"] }
+    },
+    "extras": {
+      "type": "object",
+      "description": "Methods beyond the contract, reachable through invoke (K6).",
+      "propertyNames": { "pattern": "^[a-z][A-Za-z0-9]*$" },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["params", "returns"],
+        "properties": {
+          "params": { "type": "array", "items": { "type": "string" } },
+          "returns": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "ui": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "menus": { "type": "array", "items": { "type": "string" } },
+        "layout": { "enum": ["canvas", "timeline", "pages"] }
+      }
+    },
+    "agent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prefix"],
+      "properties": {
+        "prefix": { "type": "string", "pattern": "^[a-z][a-z0-9]*$", "description": "Tool name prefix (A2, A3)." },
+        "tools": { "enum": ["document", "commands"], "description": "document: only the three document tools (A3); commands: also one tool per agent-facing command (A1)." },
+        "include": { "type": "array", "items": { "type": "string" } },
+        "exclude": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "headless": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["executable", "protocol"],
+      "properties": {
+        "executable": { "type": "string" },
+        "protocol": { "const": "kition-kit/1" }
+      }
+    }
+  },
+  "$defs": {
+    "extension": { "type": "string", "pattern": "^[a-z0-9]{1,12}$" },
+    "size": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height"],
+      "properties": { "width": { "type": "integer", "minimum": 1 }, "height": { "type": "integer", "minimum": 1 } }
+    }
+  }
+}

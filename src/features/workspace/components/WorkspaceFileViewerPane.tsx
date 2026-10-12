@@ -14,11 +14,15 @@ import {
 } from '@/features/workspace/lib/workspace'
 import { cn } from '@/lib/utils'
 import { notify } from '@/lib/notify'
+import { EditInFilmButton } from './film/EditInFilmButton'
+import { KitFilePane } from './kits/KitFilePane'
+import { kitEditorFor } from './kits/kitEditors'
 
 type WorkspaceFileViewerPaneProps = {
   path: string
   format: WorkspaceDocumentFormat
   active: boolean
+  onOpenAgent?: () => void
 }
 
 function basenameFromPath(path: string) {
@@ -34,7 +38,15 @@ function parentFolderFromPath(path: string) {
   return segments.slice(0, -1).join('/')
 }
 
-export function WorkspaceFileViewerPane({ path, format, active }: WorkspaceFileViewerPaneProps) {
+export function WorkspaceFileViewerPane(props: WorkspaceFileViewerPaneProps) {
+  const kit = kitEditorFor(props.format)
+  if (kit) {
+    return <KitFilePane kit={kit} path={props.path} active={props.active} onOpenAgent={props.onOpenAgent} preview={<WorkspaceFilePreview {...props} />} />
+  }
+  return <WorkspaceFilePreview {...props} />
+}
+
+function WorkspaceFilePreview({ path, format, active }: WorkspaceFileViewerPaneProps) {
   const { t } = useTranslation('workspace')
   const url = resolveWorkspaceFileURL(path)
   const filename = basenameFromPath(path)
@@ -99,6 +111,7 @@ export function WorkspaceFileViewerPane({ path, format, active }: WorkspaceFileV
             <span className="workspace-file-viewer__format-chip">{label}</span>
           </div>
           <div className="workspace-file-viewer__actions">
+            {format === 'video' ? <EditInFilmButton path={path} /> : null}
             <button
               type="button"
               className="workspace-file-viewer__action"
@@ -142,6 +155,11 @@ export function WorkspaceFileViewerPane({ path, format, active }: WorkspaceFileV
                 const bounds = event.currentTarget.getBoundingClientRect()
                 setImageMenu({ x: bounds.left + 16, y: Math.max(8, bounds.top) + 16 })
               }} />
+          </div>
+        ) : format === 'video' ? (
+          <div className="flex h-full items-center justify-center bg-secondary/40 p-6">
+            {/* eslint-disable-next-line jsx-a11y/media-has-caption -- workspace clips carry no caption track */}
+            <video src={url} controls preload="metadata" className="max-h-full max-w-full rounded-xl bg-black shadow-sm" data-testid="workspace-video" />
           </div>
         ) : format === 'pdf' ? (
           <iframe

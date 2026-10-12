@@ -12,7 +12,7 @@ export function resolveAgentTimelineLocale(value: string | undefined | null): Ag
 type ToolLabelMap = Record<string, string>
 
 type AgentTimelineDict = {
-  status: { running: string; failed: string; completed: string; unknown: string }
+  status: { failed: string }
   sections: {
     tool: string
     input: string
@@ -20,13 +20,8 @@ type AgentTimelineDict = {
     error: string
     status: string
     data: string
-    backendContent: string
-    toolArguments: string
     path: string
-    type: string
     title: string
-    mimeType: string
-    createdAt: string
     preview: string
     noDetail: string
   }
@@ -39,42 +34,20 @@ type AgentTimelineDict = {
     expandedProcessing: (tool: string) => string
   }
   activity: {
-    running: (tool: string) => string
-    failed: (tool: string) => string
-    preparingFinal: string
-    planningNext: string
-    taskCompleted: string
-    waiting: string
     thinking: string
     completionUnknown: string
     interruptedDetail: string
     stopped: string
   }
   event: {
-    understandingTask: string
-    taskUnderstood: string
-    enableSkills: string
-    sendModelRequest: string
     callingBackend: string
     backendCalled: string
-    backendStreaming: string
-    backendReturned: string
-    generatingToolArgs: (tool: string) => string
-    generatingToolArgsAnon: string
-    toolCallGenerated: (tool: string) => string
-    toolCallGeneratedAnon: string
     backendTurnCompleted: string
-    finalizeResponse: string
     taskFailed: string
     taskCompleted: string
-    currentModel: string
-    nativeToolLoop: string
-    standardChat: string
+    stepLimit: string
     modelTurnFinished: (turn: number) => string
     requestingModelTurn: (turn: number) => string
-    requestingModel: string
-    receivedChars: (chars: number) => string
-    waitingBackendContent: string
     modelRequestedNTools: (count: number) => string
     modelReturnedChars: (chars: number) => string
     thisTurnCompleted: string
@@ -87,16 +60,9 @@ type AgentTimelineDict = {
     inProgress: (label: string) => string
     failed: (label: string) => string
     completed: (label: string) => string
-    pendingApproval: (command: string) => string
-    searchPrefix: (query: string) => string
-    generateImagePrefix: (query: string) => string
-    previewNFiles: (count: number, added: number, removed: number) => string
-    appliedNFiles: (count: number, added: number, removed: number) => string
-    nMatches: (count: number) => string
     nResults: (count: number) => string
     nImages: (count: number) => string
     nEntries: (count: number) => string
-    removed: (path: string) => string
   }
   artifact: { title: string }
   final: { streaming: string }
@@ -117,18 +83,10 @@ export function getAgentTimelineDict(locale: AgentTimelineLocale = DEFAULT_AGENT
       detailProcessing: (tool) => t('timeline.model.detailProcessing', { tool }),
       expandedProcessing: (tool) => t('timeline.model.expandedProcessing', { tool }),
     },
-    activity: {
-      ...strings.activity,
-      running: (tool) => t('timeline.activity.running', { tool }),
-      failed: (tool) => t('timeline.activity.failed', { tool }),
-    },
     event: {
       ...strings.event,
-      generatingToolArgs: (tool) => t('timeline.event.generatingToolArgs', { tool }),
-      toolCallGenerated: (tool) => t('timeline.event.toolCallGenerated', { tool }),
       modelTurnFinished: (turn) => t('timeline.event.modelTurnFinished', { turn }),
       requestingModelTurn: (turn) => t('timeline.event.requestingModelTurn', { turn }),
-      receivedChars: (chars) => t('timeline.event.receivedChars', { chars }),
       modelRequestedNTools: (count) => t('timeline.event.modelRequestedNTools', { count }),
       modelReturnedChars: (chars) => t('timeline.event.modelReturnedChars', { chars }),
       reconnecting: (attempt, maxRetries) => t('timeline.event.reconnecting', { attempt, maxRetries }),
@@ -139,16 +97,9 @@ export function getAgentTimelineDict(locale: AgentTimelineLocale = DEFAULT_AGENT
       inProgress: (label) => t('timeline.tool.inProgress', { label }),
       failed: (label) => t('timeline.tool.failed', { label }),
       completed: (label) => t('timeline.tool.completed', { label }),
-      pendingApproval: (command) => t('timeline.tool.pendingApproval', { command }),
-      searchPrefix: (query) => t('timeline.tool.searchPrefix', { query }),
-      generateImagePrefix: (query) => t('timeline.tool.generateImagePrefix', { query }),
-      previewNFiles: (count, added, removed) => t('timeline.tool.previewNFiles', { count, added, removed }),
-      appliedNFiles: (count, added, removed) => t('timeline.tool.appliedNFiles', { count, added, removed }),
-      nMatches: (count) => t('timeline.tool.nMatches', { count }),
       nResults: (count) => t('timeline.tool.nResults', { count }),
       nImages: (count) => t('timeline.tool.nImages', { count }),
       nEntries: (count) => t('timeline.tool.nEntries', { count }),
-      removed: (path) => t('timeline.tool.removed', { path }),
     },
     mcpActionTemplate: (server, tool) => t('timeline.mcpActionTemplate', { server, tool }),
   }

@@ -1,30 +1,27 @@
-import type { AgentEvent, AgentTablePlanContext } from '@/api/agent'
+import type { AgentTablePlanContext } from '@/api/agent'
 import { useTranslation } from 'react-i18next'
+import { deriveTablePlan } from '../lib/agentTablePlan'
+import type { AgentSessionView } from '../lib/agentSessionView'
 
-function readTablePlan(event: AgentEvent): AgentTablePlanContext | null {
-  if (!event.data || typeof event.data !== 'object') {
-    return null
+/** The table plan of the latest turn that planned or wrote table data. */
+function latestTablePlan(view: AgentSessionView): AgentTablePlanContext | null {
+  for (let index = view.turns.length - 1; index >= 0; index -= 1) {
+    const plan = deriveTablePlan(view.turns[index])
+    if (plan) return plan
   }
-  return event.data as AgentTablePlanContext
+  return null
 }
 
 export function AgentContextCards({
-  events,
+  view,
   busy,
   onApplyPlan,
 }: {
-  events: AgentEvent[]
+  view: AgentSessionView
   busy: boolean
   onApplyPlan?: (plan: AgentTablePlanContext) => void
 }) {
-  let planIndex = -1
-  events.forEach((event, index) => {
-    if (event.event_type === 'table.plan.generated') {
-      planIndex = index
-    }
-  })
-
-  const plan = planIndex >= 0 ? readTablePlan(events[planIndex]) : null
+  const plan = latestTablePlan(view)
 
   if (!plan || plan.applied === true) {
     return null

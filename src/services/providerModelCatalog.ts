@@ -38,9 +38,12 @@ export async function syncProviderModelCatalog(
   activateProvider: boolean,
 ) {
   const provider = settings.providers[kind]
+  const listingBaseUrl = kind === 'deepseek'
+    ? provider.baseUrl.replace(/\/anthropic\/?$/, '')
+    : provider.baseUrl
   const response = await discoverProviderModels({
     provider_type: kind,
-    base_url: provider.baseUrl || undefined,
+    base_url: listingBaseUrl || undefined,
     api_key: provider.apiKey || undefined,
     access_token: provider.accessToken || undefined,
     models_path: provider.modelsPath || undefined,

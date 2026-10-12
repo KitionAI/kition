@@ -2,6 +2,8 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import type { AgentSessionEventsSessionEvent } from '@/api/generated/agent-session-events'
+import { applySessionEvent, emptyAgentSessionView } from '../lib/agentSessionView'
 import { AgentContextCards } from './AgentContextCards'
 
 ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true
@@ -9,20 +11,32 @@ import { AgentContextCards } from './AgentContextCards'
 let container: HTMLDivElement
 let root: Root | null = null
 
-function tablePlanEvent(data: Record<string, unknown>) {
-  return {
-    id: 1,
-    session_id: 1,
-    user_id: 1,
-    event_type: 'table.plan.generated',
-    stage: 'plan',
-    status: 'completed',
-    label: 'Table plan generated',
-    message: '',
-    data,
-    created_at: '2026-08-04T00:00:00.000Z',
-  } as any
+type Body = { type: string } & Record<string, unknown>
+
+/** A one-turn session log in `preset`, numbered from seq 1. */
+function viewOf(preset: string, bodies: Body[]) {
+  const list = [
+    { type: 'turn/start', turn: 1 },
+    { type: 'step/start', turn: 1, step: 1 },
+    { type: 'permission/preset', preset },
+    ...bodies,
+    { type: 'turn/end', turn: 1, reason: 'completed' },
+  ].map((body, index) => ({ seq: index + 1, at: index + 1, ...body }) as AgentSessionEventsSessionEvent)
+  return list.reduce(applySessionEvent, emptyAgentSessionView())
 }
+
+const planReply = (plan: Record<string, unknown>): Body => ({
+  type: 'assistant/message', stopReason: 'stop', model: 'm',
+  content: `Here is the plan.\n\`\`\`table_plan\n${JSON.stringify(plan)}\n\`\`\``,
+})
+
+const wrote = (created: number, updated: number): Body[] => [
+  { type: 'tool/call', callId: 'c1', name: 'data_table_add_records', arguments: { unique_by: ['url'] } },
+  {
+    type: 'tool/result', callId: 'c1', name: 'data_table_add_records', isError: false, content: [],
+    value: { name: 'data_table_add_records', summary: 'Wrote', output: { created, updated, skipped: 0 } },
+  },
+]
 
 beforeEach(() => {
   container = document.createElement('div')
@@ -40,12 +54,7 @@ describe('AgentContextCards', () => {
     act(() => {
       root = createRoot(container)
       root.render(createElement(AgentContextCards, {
-        events: [tablePlanEvent({
-          applied: true,
-          actual_created: 0,
-          actual_updated: 0,
-          actual_skipped: 0,
-        })],
+        view: viewOf('apply', [...wrote(0, 0), planReply({ summary: 'Import' })]),
         busy: false,
       }))
     })
@@ -57,12 +66,7 @@ describe('AgentContextCards', () => {
     act(() => {
       root = createRoot(container)
       root.render(createElement(AgentContextCards, {
-        events: [tablePlanEvent({
-          applied: true,
-          actual_created: 1,
-          actual_updated: 2,
-          actual_skipped: 0,
-        })],
+        view: viewOf('apply', [...wrote(1, 2), planReply({ summary: 'Import' })]),
         busy: false,
       }))
     })
@@ -70,17 +74,11 @@ describe('AgentContextCards', () => {
     expect(container.innerHTML).toBe('')
   })
 
-  it('keeps an unapplied table plan available for confirmation', () => {
+  it('keeps a previewed table plan available for confirmation', () => {
     act(() => {
       root = createRoot(container)
       root.render(createElement(AgentContextCards, {
-        events: [tablePlanEvent({
-          applied: false,
-          estimated_create: 5,
-          estimated_update: 0,
-          estimated_skip: 0,
-          requires_apply_confirmation: true,
-        })],
+        view: viewOf('preview', [planReply({ summary: 'Import five rows', estimated_create: 5 })]),
         busy: false,
         onApplyPlan: () => {},
       }))

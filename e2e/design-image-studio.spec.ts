@@ -1,4 +1,5 @@
-import { expect, test, type Route } from '@playwright/test'
+import { expect, test } from '@playwright/test'
+import { mockAgentTurn } from './helpers/agentStream'
 import {
   createDesign,
   designLayers,
@@ -10,7 +11,6 @@ import {
 test('generates an image into the artboard and keeps the headline editable', async ({
   page,
 }) => {
-  const requests: Array<Record<string, any>> = []
   await installDesignAgentFixture(page, ['agent_design_v1', 'agent_image_generation_v1'])
   await createDesign(page)
   // Registered after the workspace mock so these routes win.
@@ -20,9 +20,11 @@ test('generates an image into the artboard and keeps the headline editable', asy
       path: 'src/features/media-generation/assets/image-templates/engineering-infographic.webp',
     }),
   )
-  await page.route('**/api/v1/agent/sessions/*/messages/stream', async (route) => {
-    requests.push(route.request().postDataJSON() as Record<string, any>)
-    await fulfillGeneratedImageStream(route)
+  const turns = await mockAgentTurn(page, (turn) => {
+    // A hosted image the model made: logged as a call with its delivered file.
+    turn.tool('ig_901', 'image_generation', { hosted: true }, { path: 'Agent/images/901/generated-launch.png', mime: 'image/png' })
+    turn.deliver('ig_901', 'Agent/images/901/generated-launch.png')
+    turn.reply('Generated one image artifact for review.')
   })
 
   await page.getByRole('button', { name: 'Generate image', exact: true }).click()
@@ -36,13 +38,13 @@ test('generates an image into the artboard and keeps the headline editable', asy
   await expect(page.getByTestId('design-image-advanced-settings')).toContainText('3:4')
   await page.getByTestId('design-image-generate').click()
 
-  await expect.poll(() => requests.length).toBe(1)
-  expect(requests[0]).toMatchObject({
+  await expect.poll(() => turns.requests.length).toBe(1)
+  expect(turns.requests[0].body).toMatchObject({
     pane_context: 'design',
     design_context: { design: { path: 'Untitled design.kidesign' } },
   })
-  expect(requests[0].content).toContain('image_generation tool')
-  expect(requests[0].content).toContain('Do not call design_propose_patch')
+  expect(turns.requests[0].body.content).toContain('image_generation tool')
+  expect(turns.requests[0].body.content).toContain('Do not call design_propose_patch')
 
   await expect(page.getByTestId('design-image-add-0')).toBeVisible()
   await page.getByTestId('design-image-add-0').click()
@@ -70,56 +72,3 @@ test('generates an image into the artboard and keeps the headline editable', asy
     page.getByRole('textbox', { name: 'Edit text', exact: true }),
   ).toHaveValue('LAUNCH WITH CLARITY')
 })
-
-async function fulfillGeneratedImageStream(route: Route) {
-  const sessionId = Number(
-    new URL(route.request().url()).pathname.match(/sessions\/(\d+)\/messages/)?.[1] || 701,
-  )
-  const now = '2026-09-29T00:00:00.000Z'
-  const events = [
-    {
-      type: 'tool_call',
-      tool_call: {
-        id: 901,
-        session_id: sessionId,
-        user_id: 1,
-        tool_name: 'image_generation',
-        input_data: { prompt: 'Generate a launch visual' },
-        output_data: { path: 'Agent/images/901/generated-launch.png', mime_type: 'image/png' },
-        status: 'completed',
-        created_at: now,
-        updated_at: now,
-      },
-    },
-    {
-      type: 'done',
-      done: true,
-      extra_data: {
-        session: {
-          id: sessionId,
-          user_id: 1,
-          title: 'Design image generation',
-          workspace_root: 'browser-local-workspace',
-          active_document_path: 'Untitled design.kidesign',
-          status: 'completed',
-          created_at: now,
-          updated_at: now,
-        },
-        message: {
-          id: 911,
-          session_id: sessionId,
-          user_id: 1,
-          role: 'assistant',
-          content: 'Generated one image artifact for review.',
-          status: 'completed',
-          created_at: now,
-        },
-      },
-    },
-  ]
-  await route.fulfill({
-    status: 200,
-    headers: { 'content-type': 'application/x-ndjson' },
-    body: `${events.map((event) => JSON.stringify(event)).join('\n')}\n`,
-  })
-}

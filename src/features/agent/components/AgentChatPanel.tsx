@@ -1,13 +1,13 @@
 import { AgentImageComposerControls, AgentImageComposerSummary } from './AgentImageComposerControls'
 import { useAgentImageMode } from '../hooks/useAgentImageMode'
-import type { AgentImageSessionEvent } from '../lib/agentImageJobs'
+import type { AgentSessionView } from '../lib/agentSessionView'
 import type { AgentImageGenerationIntent, AgentImageTarget } from '@/types/imageGeneration'
 import { useEffect, useRef } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
-  AgentArtifact, AgentEvent, AgentLocalSource, AgentMessage, AgentSession,
-  AgentShellApprovalDecision, AgentShellApprovalRequest, AgentTablePlanContext, AgentToolCall,
+  AgentLocalSource, AgentSession,
+  AgentShellApprovalDecision, AgentShellApprovalRequest, AgentTablePlanContext,
 } from '@/api/agent'
 import { KitionLogoMark } from '@/components/KitionLogoMark'
 import { AgentAiComposer } from './AgentAiComposer'
@@ -23,12 +23,11 @@ import { cn } from '@/lib/utils'
 
 type AgentChatPanelProps = {
   session: AgentSession
-  messages: AgentMessage[]
-  toolCalls: AgentToolCall[]
-  events: AgentEvent[]
+  /** The session as reduced from its event log and live stream. */
+  view: AgentSessionView
+  /** The visible message just sent, until its turn is logged. */
+  pendingUserText?: string
   draft: string
-  streamingText: string
-  artifacts: AgentArtifact[]
   busy: boolean
   currentDocumentPath?: string
   modelOptions: AgentModelOption[]
@@ -48,7 +47,6 @@ type AgentChatPanelProps = {
     available: boolean
     accessToken?: string
     target?: AgentImageTarget
-    events: AgentImageSessionEvent[]
   }
   onSend: (intent?: AgentImageGenerationIntent) => void
   onStop: () => void
@@ -79,12 +77,9 @@ type AgentChatPanelProps = {
 
 export function AgentChatPanel({
   session,
-  messages,
-  toolCalls,
-  events,
+  view,
+  pendingUserText = '',
   draft,
-  streamingText,
-  artifacts,
   busy,
   currentDocumentPath = '',
   modelOptions,
@@ -133,17 +128,14 @@ export function AgentChatPanel({
 
   const messagesContainerRef = useRef<HTMLDivElement | null>(null)
   const followLatestRef = useRef(true)
-  const previousLatestMessageIdRef = useRef<number | null>(null)
+  const previousPendingUserTextRef = useRef('')
 
   useEffect(() => {
-    const latestMessage = messages[messages.length - 1]
-    if (
-      latestMessage?.role === 'user'
-      && latestMessage.id !== previousLatestMessageIdRef.current
-    ) {
+    // A new message of the user's always scrolls back to the latest content.
+    if (pendingUserText && pendingUserText !== previousPendingUserTextRef.current) {
       followLatestRef.current = true
     }
-    previousLatestMessageIdRef.current = latestMessage?.id ?? null
+    previousPendingUserTextRef.current = pendingUserText
 
     if (!followLatestRef.current) {
       return
@@ -153,7 +145,7 @@ export function AgentChatPanel({
       return
     }
     container.scrollTop = container.scrollHeight
-  }, [artifacts, busy, events, imageGeneration?.events, messages, streamingText, toolCalls])
+  }, [busy, pendingUserText, view])
 
   function handleMessagesScroll() {
     const container = messagesContainerRef.current
@@ -195,16 +187,7 @@ export function AgentChatPanel({
     }
   }
 
-  // request_user_input interrupt → reuse the chat composer's send path so the
-  // user's answer goes through the same message pipeline as a normal reply.
-  // Codex parity §5: the runtime resumes the loop only after a fresh user
-  // message lands.
-  function handleAwaitUserInputSubmit(answer: string) {
-    onDraftChange(answer)
-    onSend()
-  }
-
-  const isEmptyChat = !messages.length && !streamingText
+  const isEmptyChat = !view.turns.length && !pendingUserText && !busy
   const { t } = useTranslation('agent')
 
   return (
@@ -283,26 +266,21 @@ export function AgentChatPanel({
           )
         })() : (
           <AgentConversation
-            imageEvents={imageGeneration?.events}
             imageActions={imageGeneration ? {
               onEdit: imageMode.edit, onRetry: imageMode.retry, canRetry: imageMode.canRetry,
               headlineFor: imageMode.headlineFor,
             } : undefined}
-            messages={messages}
-            toolCalls={toolCalls}
-            events={events}
-            artifacts={artifacts}
+            view={view}
+            pendingUserText={pendingUserText}
             busy={busy}
-            streamingText={streamingText}
             onOpenPath={onOpenArtifact}
             onOpenArtifact={onOpenArtifact}
-            onAwaitUserInputSubmit={handleAwaitUserInputSubmit}
             onShellApprovalDecision={onShellApprovalDecision}
           />
         )}
         {!isEmptyChat ? (
           <AgentContextCards
-            events={events}
+            view={view}
             busy={busy}
             onApplyPlan={onApplyPlan}
           />
@@ -311,8 +289,7 @@ export function AgentChatPanel({
       {progressCard ?? null}
       <div className="agent-chat-composer">
         <AgentChangedFilesCard
-          toolCalls={toolCalls}
-          artifacts={artifacts}
+          view={view}
           onOpen={onReviewModifiedArtifact || onOpenArtifact}
         />
         <AgentAiComposer

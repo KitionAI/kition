@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 
+import { mockAgentTurn } from './helpers/agentStream'
 import { mockLocalWorkspaceApi } from './helpers/mockApi'
 import { getWorkspaceStorageKey } from '../src/features/onboarding/workspaceStorageKey'
 
@@ -838,7 +839,8 @@ test.describe('app shell navigation', () => {
     await expect(defaultDocumentChip).not.toContainText('Current ·')
     await expect(page.getByText('Analysis sources', { exact: true })).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Add context' })).toBeVisible()
-    expect(sessionRequests.at(-1)).toMatchObject({ language: 'English' })
+    // The reply language travels with each message; the session itself only indexes the log.
+    expect(sessionRequests.at(-1)).toEqual({})
   })
 
   test('inserts a newline in the agent composer with Shift+Enter', async ({ page }) => {
@@ -892,7 +894,6 @@ test.describe('app shell navigation', () => {
   })
 
   test('removes the current document from agent context without closing the editor', async ({ page }) => {
-    const streamRequests: Array<Record<string, unknown>> = []
     await page.addInitScript(() => {
       window.localStorage.setItem('kition.desktop.settings.backup.v1', JSON.stringify({
         providers: {
@@ -911,13 +912,8 @@ test.describe('app shell navigation', () => {
         },
       }))
     })
-    await page.route('**/api/v1/agent/sessions/*/messages/stream', async (route) => {
-      streamRequests.push(route.request().postDataJSON() as Record<string, unknown>)
-      await route.fulfill({
-        status: 200,
-        headers: { 'content-type': 'application/x-ndjson' },
-        body: `${JSON.stringify({ type: 'done', done: true, extra_data: {} })}\n`,
-      })
+    const turns = await mockAgentTurn(page, (turn) => {
+      turn.reply('Answered without the document.')
     })
 
     await page.goto('/documents')
@@ -934,8 +930,8 @@ test.describe('app shell navigation', () => {
 
     await page.getByPlaceholder('Plan, write, or ask anything…').fill('Answer without document context')
     await page.getByRole('button', { name: 'Send' }).click()
-    await expect.poll(() => streamRequests.length).toBe(1)
-    expect(streamRequests[0]).toMatchObject({
+    await expect.poll(() => turns.requests.length).toBe(1)
+    expect(turns.requests[0].body).toMatchObject({
       active_document_path: '',
       content: 'Answer without document context',
     })

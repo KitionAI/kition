@@ -13730,23 +13730,6 @@
   {
     "type": "dependency",
     "from": "src/features/agent/components/AgentConversation.tsx",
-    "to": "src/features/media-generation/lib/generatedImageArtifacts.ts",
-    "unresolvedTo": "@/features/media-generation/lib/generatedImageArtifacts",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/agent/components/AgentConversation.tsx",
     "to": "src/features/settings/hooks/useDesktopSettings.ts",
     "unresolvedTo": "@/features/settings/hooks/useDesktopSettings",
     "dependencyTypes": [
@@ -15215,24 +15198,6 @@
       "aliased-tsconfig",
       "aliased-tsconfig-paths",
       "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceAgentSidebar.tsx",
-    "to": "src/features/agent/lib/agentImageJobs.ts",
-    "unresolvedTo": "@/features/agent/lib/agentImageJobs",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
       "import"
     ],
     "rule": {

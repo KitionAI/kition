@@ -8,8 +8,9 @@ use serde_json::{Map, Value, json};
 
 use super::error::{AiError, AiResult};
 use super::transport::{
-    MIB, SseLines, chat_headers, credits_exhausted, header, log_provider_failure, network_error,
-    normalize_base_url, read_limited, send, status_error, usage_from, validate_endpoint,
+    MIB, SseLines, chat_headers, credits_exhausted, header, json_request, log_provider_failure,
+    network_error, normalize_base_url, read_limited, send, status_error, usage_from,
+    validate_endpoint,
 };
 use super::types::{
     ChatResult, HostedImageGenerationCall, HostedWebSearchCall, HostedWebSearchResult, Message,
@@ -79,13 +80,17 @@ fn content_parts(message: &Message) -> Option<Vec<Value>> {
     Some(parts)
 }
 
+/// Only Responses input item types replay; items another wire left in
+/// `raw_items` (Chat Completions `reasoning_content`, Anthropic `thinking`)
+/// are dropped.
 fn valid_input_item(item: &Map<String, Value>) -> bool {
     match trimmed(item.get("type")).as_str() {
         "function_call" => {
             !trimmed(item.get("call_id")).is_empty() && !trimmed(item.get("name")).is_empty()
         }
         "function_call_output" => !trimmed(item.get("call_id")).is_empty(),
-        _ => true,
+        "message" | "reasoning" | "web_search_call" => true,
+        _ => false,
     }
 }
 
@@ -103,22 +108,18 @@ pub(crate) fn normalize_input(messages: &[Message]) -> (String, Vec<Value>) {
             }
             continue;
         }
-        if !message.raw_items.is_empty() {
-            for raw in &message.raw_items {
-                let Value::Object(item) = raw else { continue };
-                if item.is_empty() {
-                    continue;
-                }
-                // Hosted image output is saved to the workspace before the
-                // next turn; with store=false the provider item cannot be
-                // referenced again.
-                if trimmed(item.get("type")) == "image_generation_call" {
-                    continue;
-                }
-                if valid_input_item(item) {
-                    items.push(raw.clone());
-                }
-            }
+        // Hosted image output (`image_generation_call`) is saved to the
+        // workspace before the next turn; with store=false the provider item
+        // cannot be referenced again, so it is not a valid input item. When
+        // nothing replayable remains, the message is rebuilt from its
+        // content and tool calls below.
+        let replayable: Vec<&Value> = message
+            .raw_items
+            .iter()
+            .filter(|raw| raw.as_object().is_some_and(valid_input_item))
+            .collect();
+        if !replayable.is_empty() {
+            items.extend(replayable.into_iter().cloned());
             continue;
         }
         if role == "tool" {
@@ -472,16 +473,11 @@ pub(crate) async fn call(
     }
 
     let endpoint = validate_endpoint(&format!("{base_url}/responses"))?;
-    let mut request = http.post(&endpoint).json(&Value::Object(payload));
-    for (key, value) in &headers {
-        request = request.header(key, value);
-    }
-    let accept = if stream.is_some() {
-        "text/event-stream"
-    } else {
-        "application/json"
-    };
-    request = request.header("Accept", accept);
+    let request = json_request(
+        http.post(&endpoint).json(&Value::Object(payload)),
+        &headers,
+        stream.is_some(),
+    );
     let started = Instant::now();
     let response = send(request, stream.is_some())
         .await
@@ -559,6 +555,10 @@ async fn parse_stream(
     let mut usage_raw: Option<Value> = None;
     let mut status = String::new();
     let mut events = 0;
+    // Argument deltas name their output item; the call is logged under its
+    // `call_id`, so each function call item maps one to the other.
+    let mut calls: std::collections::HashMap<String, (String, String)> =
+        std::collections::HashMap::new();
     while let Some(data) = lines.next_data().await? {
         if data == "[DONE]" {
             break;
@@ -581,21 +581,35 @@ async fn parse_stream(
                     }
                 }
             }
+            "response.output_item.added" => {
+                if let Some(Value::Object(item)) = payload.get("item")
+                    && text_of(item.get("type")) == "function_call"
+                {
+                    calls.insert(
+                        trimmed(item.get("id")),
+                        (trimmed(item.get("call_id")), trimmed(item.get("name"))),
+                    );
+                }
+            }
             "response.function_call_arguments.delta" => {
                 if let Some(stream) = stream {
-                    let call_id = text_of(payload.get("call_id"));
-                    let item_id = text_of(payload.get("item_id"));
-                    let id = if call_id.trim().is_empty() {
-                        item_id.trim()
-                    } else {
-                        call_id.trim()
-                    };
+                    let item_id = text_of(payload.get("item_id")).trim();
+                    let (call_id, name) = calls.get(item_id).cloned().unwrap_or_default();
+                    let id = [
+                        text_of(payload.get("call_id")).trim(),
+                        call_id.as_str(),
+                        item_id,
+                    ]
+                    .into_iter()
+                    .find(|id| !id.is_empty())
+                    .unwrap_or_default();
                     stream(StreamEvent {
                         kind: "tool_call_delta",
                         tool_call_index: as_i64(
                             payload.get("output_index").unwrap_or(&Value::Null),
                         ),
                         tool_call_id: id.to_owned(),
+                        tool_name: name,
                         tool_arguments_delta: text_of(payload.get("delta")).to_owned(),
                         ..StreamEvent::default()
                     });
@@ -664,6 +678,48 @@ mod tests {
     use super::super::types::MessagePart;
     use super::*;
 
+    #[tokio::test]
+    async fn tool_call_deltas_carry_the_logged_call_id() {
+        let events = [
+            json!({ "type": "response.output_item.added", "output_index": 0,
+                "item": { "type": "function_call", "id": "fc_1", "call_id": "call_1", "name": "document_write", "arguments": "" } }),
+            json!({ "type": "response.function_call_arguments.delta", "item_id": "fc_1", "output_index": 0, "delta": "{\"path\"" }),
+            json!({ "type": "response.function_call_arguments.delta", "item_id": "fc_2", "output_index": 1, "delta": "{}" }),
+            json!({ "type": "response.completed", "response": { "status": "completed", "output": [] } }),
+        ];
+        let body: String = events
+            .iter()
+            .map(|event| format!("data: {event}\n\n"))
+            .collect();
+        let seen = std::sync::Arc::new(std::sync::Mutex::new(Vec::<(String, String)>::new()));
+        let sink = seen.clone();
+        let handler: StreamHandler = std::sync::Arc::new(move |event: StreamEvent| {
+            if event.kind == "tool_call_delta" {
+                sink.lock()
+                    .map(|mut seen| seen.push((event.tool_call_id, event.tool_name)))
+                    .ok();
+            }
+        });
+        parse_stream(
+            SseLines::from_text(&body),
+            "",
+            "m",
+            Instant::now(),
+            Some(&handler),
+        )
+        .await
+        .unwrap_or_else(|error| panic!("{error}"));
+        assert_eq!(
+            *seen
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner),
+            [
+                ("call_1".to_owned(), "document_write".to_owned()),
+                ("fc_2".to_owned(), String::new()),
+            ]
+        );
+    }
+
     #[test]
     fn normalizes_messages_into_input_items() {
         let messages = vec![
@@ -721,6 +777,41 @@ mod tests {
         );
         let (_, fallback) = normalize_input(&[]);
         assert_eq!(fallback.len(), 1);
+    }
+
+    #[test]
+    fn drops_raw_items_from_other_wires() {
+        let messages = vec![
+            Message::new("user", "go"),
+            Message {
+                role: "assistant".into(),
+                tool_calls: vec![ToolCall {
+                    id: "c1".into(),
+                    name: "read".into(),
+                    input: "{}".into(),
+                }],
+                raw_items: vec![json!({ "type": "reasoning_content", "text": "x" })],
+                ..Message::default()
+            },
+            Message {
+                role: "assistant".into(),
+                content: "kept".into(),
+                raw_items: vec![
+                    json!({ "type": "thinking", "thinking": "t" }),
+                    json!({ "type": "message", "role": "assistant", "content": [{ "type": "output_text", "text": "kept" }] }),
+                ],
+                ..Message::default()
+            },
+        ];
+        let (_, items) = normalize_input(&messages);
+        assert_eq!(
+            items,
+            vec![
+                json!({ "role": "user", "content": "go" }),
+                json!({ "type": "function_call", "call_id": "c1", "name": "read", "arguments": "{}" }),
+                json!({ "type": "message", "role": "assistant", "content": [{ "type": "output_text", "text": "kept" }] }),
+            ]
+        );
     }
 
     #[test]

@@ -28,6 +28,14 @@ module.exports = {
       },
     },
     {
+      name: 'kit-sdk-core-is-portable',
+      comment:
+        'src/features/kits/sdk is the portable core of the open Kit SDK (docs/kit-sdk.md): it may use npm packages and itself, never the rest of Kition.',
+      severity: 'error',
+      from: { path: '^src/features/kits/sdk/' },
+      to: { path: '^src/', pathNot: '^src/features/kits/sdk/' },
+    },
+    {
       name: 'shared-layers-do-not-import-features',
       severity: 'error',
       comment: 'src/components, src/lib, src/services, src/api, and src/types must stay feature-agnostic.',

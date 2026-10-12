@@ -55,6 +55,8 @@ import { WorkspaceDialogs } from '@/features/workspace/components/WorkspaceDialo
 import { WorkspaceAgentPane } from '@/features/workspace/components/WorkspaceAgentPane'
 import { useWorkspaceSidebarNavigation } from '@/features/workspace/hooks/useWorkspaceSidebarNavigation'
 import { useWorkspaceCreateMenu } from '@/features/workspace/hooks/useWorkspaceCreateMenu'
+import { useKitCreations } from '@/features/workspace/hooks/useKitCreations'
+import { onShowWorkspaceFile } from '@/features/workspace/lib/workspaceFileRequests'
 import { useWorkspaceDocumentTitleRename } from '@/features/workspace/hooks/useWorkspaceDocumentTitleRename'
 import { useWorkspaceAgentComposer } from '@/features/workspace/hooks/useWorkspaceAgentComposer'
 import { useWorkspaceErrorNotice } from '@/features/workspace/hooks/useWorkspaceErrorNotice'
@@ -306,13 +308,12 @@ export function WorkspaceScreen({
     getTurnContext: getAgentTurnContext,
   })
   const {
-    agentArtifacts,
     agentBusySessions,
     agentDrafts,
     agentLocalSources,
     agentModifiedDocumentPaths,
     agentSessions,
-    agentToolCalls,
+    agentSessionViews,
     clearPendingFocusedSessionId,
     clearModifiedDocumentPath,
     createNewAgentChat,
@@ -464,9 +465,8 @@ export function WorkspaceScreen({
   } = agentPanel
   const handleGenerateWhiteboardImage = useWhiteboardImageGeneration({
     activeSessionId: activeWorkspaceAgentSessionId,
-    agentArtifacts,
     agentBusySessions,
-    agentToolCalls,
+    agentSessionViews,
     available: whiteboardBridge.available,
     bridgesRef: whiteboardBridge.bridgesRef,
     createAgentChat: createNewAgentChat,
@@ -476,9 +476,8 @@ export function WorkspaceScreen({
   })
   const handleGenerateDesignImage = useAgentImageGeneration({
     activeSessionId: activeWorkspaceAgentSessionId,
-    agentArtifacts,
     agentBusySessions,
-    agentToolCalls,
+    agentSessionViews,
     available: designBridge.available,
     bridgesRef: designBridge.bridgesRef,
     buildInstruction: buildDesignImageAgentInstruction,
@@ -796,6 +795,20 @@ export function WorkspaceScreen({
     openDocument,
   })
 
+  // A kit wrote a new file (an export, a project from a clip): show it, and open it when asked.
+  useEffect(() => onShowWorkspaceFile(({ path, open }) => {
+    void Promise.resolve(refreshWorkspaceDocuments(path, { silent: true })).then(() => {
+      if (open) openSidebarPath(path)
+    })
+  }), [openSidebarPath, refreshWorkspaceDocuments])
+
+  const kitCreations = useKitCreations({
+    rootPath,
+    refreshWorkspaceDocuments,
+    openPath: openSidebarPath,
+    onError: setError,
+  })
+
   const createMenuActions = useWorkspaceCreateMenu({
     createFlows,
     createMenuFolder,
@@ -806,6 +819,7 @@ export function WorkspaceScreen({
     openDocumentTemplateDialog,
     openKitableTemplateDialog,
     createDesign: design.create,
+    kitCreations,
     openBoardTemplateDialog: boardCreation.openTemplateDialog,
     openWorkspaceWorkflow,
     onCloseProfile,

@@ -476,7 +476,6 @@ export async function mockLocalWorkspaceApi(page: Page, options: MockLocalWorksp
         title: payload.title || 'New chat',
         workspace_root: 'browser-local-workspace',
         active_document_path: payload.active_document_path || '',
-        status: 'idle',
         created_at: now,
         updated_at: now,
       }
@@ -489,32 +488,14 @@ export async function mockLocalWorkspaceApi(page: Page, options: MockLocalWorksp
       })
     }
 
-    const agentMessagesMatch = path.match(/^\/api\/v1\/agent\/sessions\/(\d+)\/messages$/)
-    if (method === 'GET' && agentMessagesMatch) {
+    const agentSessionEventsMatch = path.match(/^\/api\/v1\/agent\/sessions\/(\d+)\/session-events$/)
+    if (method === 'GET' && agentSessionEventsMatch) {
+      const after = Number(url.searchParams.get('after') || 0)
       return fulfill(route, {
         code: 200,
         data: {
           items: [],
-        },
-      })
-    }
-
-    const agentToolCallsMatch = path.match(/^\/api\/v1\/agent\/sessions\/(\d+)\/tool-calls$/)
-    if (method === 'GET' && agentToolCallsMatch) {
-      return fulfill(route, {
-        code: 200,
-        data: {
-          items: [],
-        },
-      })
-    }
-
-    const agentEventsMatch = path.match(/^\/api\/v1\/agent\/sessions\/(\d+)\/events$/)
-    if (method === 'GET' && agentEventsMatch) {
-      return fulfill(route, {
-        code: 200,
-        data: {
-          items: [],
+          next_after: after,
         },
       })
     }

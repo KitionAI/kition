@@ -94,6 +94,23 @@ pub struct ToolInfo {
     pub input_schema: Option<Value>,
 }
 
+impl ToolInfo {
+    /// The tool as the model sees it: the qualified name and a description
+    /// that names the server.
+    pub fn model_spec(&self) -> kition_ai::engine::ToolSpec {
+        let description = if self.description.trim().is_empty() {
+            format!("External MCP tool from {}", self.server)
+        } else {
+            format!("[MCP {}] {}", self.server, self.description.trim())
+        };
+        kition_ai::engine::ToolSpec {
+            name: self.qualified.clone(),
+            description,
+            input_schema: self.input_schema.clone(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct ServerStatus {
     pub name: String,

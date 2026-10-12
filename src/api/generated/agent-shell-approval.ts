@@ -5,19 +5,28 @@
  * Regenerate with: pnpm run contracts:generate
  */
 
+export type AgentShellApprovalRequest = {
+  kind: "shell.approval"
+  command: string
+  reason: string
+  requires: "approval"
+  decision: "prompt"
+  suggested?: AgentShellApprovalRule
+}
+
+export type AgentShellApprovalResponse = {
+  call_id: string
+  decision: AgentShellApprovalDecision
+}
+
+export type AgentShellApprovalDecision = "allow_once" | "allow_always" | "deny"
+
 export type AgentShellApprovalRule = {
   prefix: string[]
   decision: "allow"
 }
 
 /**
- * A resumable approval contract for an Agent shell command that was blocked by the execution policy.
+ * A shell command the execution policy paused for the user's approval. The request is the presentation meta of the paused exec_command tool/result (followed by approval/asked and turn/end awaiting-approval in the session log); the response is the stream request's shell_approval, naming the paused call by its callId.
  */
-export type AgentShellApprovalContract = {
-  tool_call_id: number
-  command: string
-  reason?: string
-  requires: "approval"
-  decision: "prompt"
-  suggested?: AgentShellApprovalRule
-}
+export type AgentShellApprovalContract = AgentShellApprovalRequest

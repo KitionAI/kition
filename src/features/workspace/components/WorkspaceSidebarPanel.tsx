@@ -1,3 +1,4 @@
+import type { KitCreationItem } from '@/features/workspace/hooks/useKitCreations'
 import { WorkspaceSidebar } from '@/features/workspace/components/WorkspaceSidebar'
 import { WorkspaceTree } from '@/features/workspace/components/WorkspaceTree'
 import type { DocumentCreateFormat } from '@/features/document/lib/documentCreation'
@@ -37,6 +38,8 @@ type WorkspaceSidebarPanelProps = {
   onOpenWorkflows?: () => void
   onCreateBoard?: () => void
   onCreateDesign?: () => void
+  /** The create menu's kit items (Image, Video project). */
+  kitCreations?: readonly KitCreationItem[]
   onRename: (node: WorkspaceTreeNode, nextTitle: string) => void
   onSetIcon: (path: string, icon: string | null) => void
   onToggleFolder: (path: string) => void
@@ -78,6 +81,7 @@ export function WorkspaceSidebarPanel({
   onOpenWorkflows,
   onCreateBoard,
   onCreateDesign,
+  kitCreations,
   onRename,
   onSetIcon,
   onToggleFolder,
@@ -120,6 +124,7 @@ export function WorkspaceSidebarPanel({
       onOpenWorkflows={onOpenWorkflows}
       onCreateBoard={onCreateBoard}
                   onCreateDesign={onCreateDesign}
+                  kitCreations={kitCreations}
       onOpenSearch={onOpenSearch}
       treeContent={(
         <>
@@ -153,6 +158,7 @@ export function WorkspaceSidebarPanel({
             onCreateTable={onCreateTable}
             onCreateBoard={onCreateBoard}
                   onCreateDesign={onCreateDesign}
+                  kitCreations={kitCreations}
           />
         </>
       )}

@@ -4,7 +4,7 @@ name = "kition-app"
 version = "0.0.0"
 description = "Kition desktop shell"
 authors = ["Heartie Technology Limited <support@kition.ai>"]
-license = "AGPL-3.0-only"
+license = "Apache-2.0"
 repository = "https://github.com/KitionAI/kition"
 edition = "2024"
 publish = false
@@ -22,6 +22,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 kition-api = { workspace = true }
+kition-kits = { workspace = true }
 kition-core = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }

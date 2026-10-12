@@ -1,0 +1,192 @@
+{
+  "$comment": "Kit SDKs built into public/kits/<kit>-sdk by scripts/build-kit-sdk.sh, and how scripts/check-kit-sdk.mjs checks each one (docs/kit-sdk.md).",
+  "photo": {
+    "repository": "KitionAI/kition-photo",
+    "crate": "kition-photo-sdk",
+    "module": "kition_photo_sdk",
+    "class": "PhotoDocument",
+    "name": "fixture.psd",
+    "edit": {
+      "command": "paint.stroke",
+      "params": {
+        "points": [
+          [
+            4,
+            4,
+            1
+          ],
+          [
+            30,
+            20,
+            1
+          ]
+        ],
+        "size": 6,
+        "color": "#ff0000"
+      }
+    }
+  },
+  "film": {
+    "repository": "KitionAI/kition-film",
+    "crate": "kition-film-sdk",
+    "module": "kition_film_sdk",
+    "class": "FilmDocument",
+    "name": "Edit.fcproj",
+    "edit": [
+      {
+        "command": "file.newColorMatte",
+        "params": {
+          "color": "#ff0000",
+          "seconds": 2
+        }
+      },
+      {
+        "command": "timeline.place",
+        "params": {
+          "item": "$0.item",
+          "track": "V1",
+          "seconds": 0
+        }
+      }
+    ]
+  },
+  "vector": {
+    "repository": "KitionAI/kition-vector",
+    "crate": "kition-vector-sdk",
+    "module": "kition_vector_sdk",
+    "class": "VectorDocument",
+    "name": "Drawing.vectorcraft",
+    "edit": {
+      "command": "shape.rectangle",
+      "params": {
+        "x": 20,
+        "y": 10,
+        "width": 50,
+        "height": 30
+      }
+    }
+  },
+  "effect": {
+    "repository": "KitionAI/kition-effect",
+    "crate": "kition-effect-sdk",
+    "module": "kition_effect_sdk",
+    "class": "EffectDocument",
+    "name": "Motion.ecproj",
+    "edit": {
+      "command": "layer.newSolid",
+      "params": {
+        "name": "Red",
+        "color": "#ff0000"
+      }
+    }
+  },
+  "design": {
+    "repository": "KitionAI/kition-design",
+    "crate": "kition-design-sdk",
+    "module": "kition_design_sdk",
+    "class": "DesignDocument",
+    "name": "Flyer.designcraft",
+    "edit": [
+      {
+        "command": "frame.create",
+        "params": {
+          "rect": [
+            10,
+            10,
+            40,
+            30
+          ],
+          "content": "unassigned"
+        }
+      },
+      {
+        "command": "object.fill",
+        "params": {
+          "swatch": "Black",
+          "ids": [
+            "$0.id"
+          ]
+        }
+      }
+    ]
+  },
+  "cad": {
+    "repository": "KitionAI/kition-cad",
+    "crate": "kition-cad-sdk",
+    "module": "kition_cad_sdk",
+    "class": "CadDocument",
+    "name": "Plan.dxf",
+    "edit": {
+      "command": "circle",
+      "params": {
+        "center": [
+          200,
+          150
+        ],
+        "radius": 40
+      }
+    }
+  },
+  "presentation": {
+    "repository": "KitionAI/kition-presentation",
+    "crate": "kition-presentation-sdk",
+    "module": "kition_presentation_sdk",
+    "class": "PresentationDocument",
+    "name": "Deck.deckcraft",
+    "edit": {
+      "command": "shape.insert",
+      "params": {
+        "preset": "ellipse",
+        "rect": [
+          100,
+          100,
+          200,
+          120
+        ]
+      }
+    }
+  },
+  "word": {
+    "repository": "KitionAI/kition-word",
+    "crate": "kition-word-sdk",
+    "module": "kition_word_sdk",
+    "class": "WordDocument",
+    "name": "Letter.docx",
+    "edit": {
+      "command": "text.insert",
+      "params": {
+        "text": "Hello"
+      }
+    }
+  },
+  "sheet": {
+    "repository": "KitionAI/kition-sheet",
+    "crate": "kition-sheet-sdk",
+    "module": "kition_sheet_sdk",
+    "class": "SheetDocument",
+    "name": "Budget.xlsx",
+    "edit": {
+      "command": "cell.set",
+      "params": {
+        "cell": "C2",
+        "input": "99"
+      }
+    }
+  },
+  "pdf": {
+    "repository": "KitionAI/kition-pdf",
+    "crate": "kition-pdf-sdk",
+    "module": "kition_pdf_sdk",
+    "class": "PdfDocument",
+    "name": "Report.pdf",
+    "edit": {
+      "command": "page_rotate",
+      "params": {
+        "degrees": 90,
+        "pages": [
+          1
+        ]
+      }
+    }
+  }
+}

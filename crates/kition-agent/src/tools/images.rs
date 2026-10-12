@@ -12,9 +12,14 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 use sha2::{Digest, Sha256};
 
-use crate::run::{EventInput, Run, ToolOutput, ToolResult, int_field, text_field};
-use crate::store::{self, AgentMessage, AgentSession};
-use crate::stream::{Frame, value};
+use std::sync::Arc;
+
+use kition_harness::driver::{LiveSink, append_live, next_turn};
+use kition_harness::events::{ContentBlock, EventBody, MessageSource, SessionEvent, TurnEndReason};
+use kition_harness::llm::HostedCall;
+use kition_harness::log::{SessionLog, SqliteLog};
+
+use crate::run::{Run, ToolOutput, ToolResult, delivered, int_field, text_field};
 use crate::tools::documents::default_folder;
 use crate::tools::web;
 use crate::workspace::{clean_path, sanitize_filename};
@@ -37,7 +42,7 @@ fn artifact_folder(run: &Run, title: &str, requested: &str) -> String {
     }
 }
 
-pub async fn image_search(run: &Run, tool_call_id: i64, input: &Value) -> ToolResult {
+pub async fn image_search(run: &Run, input: &Value) -> ToolResult {
     let query = text_field(input, "query");
     if query.is_empty() {
         return Err("missing image prompt".into());
@@ -72,7 +77,7 @@ pub async fn image_search(run: &Run, tool_call_id: i64, input: &Value) -> ToolRe
     let folder = artifact_folder(run, &title, &text_field(input, "folder"));
     let mut items = Vec::new();
     let mut paths = Vec::new();
-    let mut first = None;
+    let mut deliverables = Vec::new();
     for (index, image) in images.iter().enumerate() {
         let item_title = if images.len() > 1 {
             format!("{title} {}", index + 1)
@@ -93,18 +98,7 @@ pub async fn image_search(run: &Run, tool_call_id: i64, input: &Value) -> ToolRe
         };
         let filename = format!("{}{extension}", sanitize_filename(&item_title, "AI Image"));
         let path = run.workspace().write_new(&folder, &filename, &image.data)?;
-        let artifact = run
-            .record_artifact(
-                Some(tool_call_id),
-                "image",
-                &path,
-                &image.mime_type,
-                &item_title,
-            )
-            .await;
-        if first.is_none() {
-            first = artifact;
-        }
+        deliverables.push(delivered(&path, &item_title));
         items.push(json!({
             "path": path, "url": image.url, "preview_url": image.url, "title": item_title,
             "mime_type": image.mime_type,
@@ -116,7 +110,7 @@ pub async fn image_search(run: &Run, tool_call_id: i64, input: &Value) -> ToolRe
     }
     let rows: Vec<String> = paths.iter().map(|path| format!("- `{path}`")).collect();
     Ok(ToolOutput {
-        artifact: first,
+        deliverables,
         follow_up: vec![text_part(format!(
             "[image_search system follow-up] The image generation completed and the file(s) below have been saved into the workspace:\n  - {}\nTell the user the image is ready and quote the saved path(s) verbatim so they can click to open it. Do not call image_search again unless the user asks for another image.",
             paths.join("\n  - ")
@@ -128,7 +122,7 @@ pub async fn image_search(run: &Run, tool_call_id: i64, input: &Value) -> ToolRe
     })
 }
 
-pub async fn save_image_asset(run: &Run, tool_call_id: i64, input: &Value) -> ToolResult {
+pub async fn save_image_asset(run: &Run, input: &Value) -> ToolResult {
     let url = text_field(input, "url");
     if url.is_empty() {
         return Err("missing image URL".into());
@@ -153,11 +147,8 @@ pub async fn save_image_asset(run: &Run, tool_call_id: i64, input: &Value) -> To
         filename.push_str(asset.extension);
     }
     let path = run.workspace().write_new(&folder, &filename, &asset.data)?;
-    let artifact = run
-        .record_artifact(Some(tool_call_id), "image", &path, &asset.mime, &title)
-        .await;
     Ok(ToolOutput {
-        artifact,
+        deliverables: vec![delivered(&path, &title)],
         ..ToolOutput::new(
             format!("Saved image asset: `{path}`"),
             json!({ "path": path, "source_url": url, "mime_type": asset.mime, "bytes": asset.data.len() }),
@@ -165,14 +156,17 @@ pub async fn save_image_asset(run: &Run, tool_call_id: i64, input: &Value) -> To
     })
 }
 
-/// Saves images the model made with its hosted tool, records each as an
-/// `image_generation` tool call, and returns the follow-up for the next
-/// model turn.
-pub async fn save_hosted_images(
+/// Saves images the model made with its hosted tool and returns them as
+/// hosted `image_generation` calls for the log, with the follow-up for the
+/// next model step. An image without an id gets `<id_prefix>_img_<i>`.
+pub fn save_hosted_images(
     run: &Run,
+    wire_api: &str,
+    id_prefix: &str,
     calls: &[HostedImageGenerationCall],
-) -> Vec<MessagePart> {
+) -> (Vec<HostedCall>, Vec<MessagePart>) {
     let mut saved = Vec::new();
+    let mut hosted = Vec::new();
     for (index, call) in calls.iter().enumerate() {
         let Ok(data) = base64::engine::general_purpose::STANDARD.decode(call.result.trim()) else {
             continue;
@@ -181,7 +175,7 @@ pub async fn save_hosted_images(
             continue;
         }
         let id = if call.id.trim().is_empty() {
-            format!("img_{}_{index}", run.session_id)
+            format!("{id_prefix}_img_{index}")
         } else {
             call.id.trim().to_owned()
         };
@@ -192,42 +186,21 @@ pub async fn save_hosted_images(
         };
         let input =
             json!({ "hosted": true, "revised_prompt": call.revised_prompt, "size": call.size });
-        let Some(mut tool_call) =
-            crate::tools::start_tool_call(run, "image_generation", input).await
-        else {
-            continue;
-        };
-        let artifact = run
-            .record_artifact(Some(tool_call.id), "image", &path, "image/png", &id)
-            .await;
-        let mut output = json!({
-            "provider": "openai_responses", "hosted": true, "status": call.status,
-            "path": path, "mime": "image/png",
-        });
-        if let Some(artifact) = &artifact {
-            output["artifact_id"] = json!(artifact.id);
-        }
-        crate::tools::complete_tool_call(run, &mut tool_call, output.clone()).await;
-        run.event(
-            EventInput::new(
-                "tool.completed",
-                "artifact",
-                "completed",
-                "Image generated",
-                path.clone(),
-            )
-            .tool_call(Some(tool_call.id))
-            .data(json!({ "tool_name": "image_generation", "output": output })),
-        )
-        .await;
-        run.send(&Frame {
-            tool_call: value(&tool_call),
-            ..Frame::new("tool_call")
+        hosted.push(HostedCall {
+            call_id: id,
+            name: "image_generation".into(),
+            arguments: input,
+            value: json!({
+                "provider": wire_api, "hosted": true, "status": call.status,
+                "path": path, "mime": "image/png",
+            }),
+            meta: Some(json!({ "hosted": true })),
+            files: vec![delivered(&path, "")],
         });
         saved.push(path);
     }
     if saved.is_empty() {
-        return Vec::new();
+        return (hosted, Vec::new());
     }
     let mut lines = vec![
         "[image_generation system follow-up] The hosted image_generation tool produced the image(s) below and they have been saved into the workspace:".to_owned(),
@@ -242,7 +215,7 @@ pub async fn save_hosted_images(
         lines.push("If the original request asked for images or illustrations for this document or article, do not finish after generating artifacts: update this same document with Markdown image links at relevant positions before the final reply. Use document_write for a whole-document rewrite. Use apply_patch only for a small localized insertion whose exact surrounding text came from a complete recent document_read.".into());
         lines.push("If the user requested standalone image assets only, report the saved workspace-relative paths without modifying the document.".into());
     }
-    vec![text_part(lines.join("\n"))]
+    (hosted, vec![text_part(lines.join("\n"))])
 }
 
 // --- Image composer requests ---------------------------------------------
@@ -538,92 +511,240 @@ pub fn image_size(data: &[u8]) -> Option<(u32, u32)> {
     None
 }
 
-async fn emit_image_event(
-    run: &Run,
-    intent: &ImageIntent,
-    name: &str,
-    status: &str,
-    fields: Value,
-) -> Result<(), String> {
-    let mut event = json!({
-        "type": "image_generation.event", "schema_version": 1, "request_id": intent.request_id,
-        "event": format!("image_generation.{name}"), "status": status,
-    });
-    if let (Some(event), Some(fields)) = (event.as_object_mut(), fields.as_object()) {
-        event.extend(fields.clone());
-    }
-    let mut data = json!({ "image_generation": event });
-    if name == "accepted" {
-        data["image_intent_sha256"] =
-            json!(digest(&serde_json::to_vec(intent).unwrap_or_default()));
-    }
-    run.event(
-        EventInput::new(
-            &format!("image_generation.{name}"),
-            "artifact",
-            status,
-            "Image generation",
-            "",
-        )
-        .data(data),
-    )
-    .await
-    .map(|_| ())
-    .ok_or_else(|| "failed to persist image generation progress".to_owned())
+/// The fingerprint of an image composer request's settings.
+pub fn intent_sha256(intent: &ImageIntent) -> String {
+    digest(&serde_json::to_vec(intent).unwrap_or_default())
 }
 
-/// Accepts a request ID once; replays earlier progress for a repeat.
-async fn claim(run: &Run, intent: &ImageIntent) -> Result<bool, String> {
-    let (session, user) = (run.session_id, run.user_id);
-    let events: Vec<store::AgentEvent> = run
-        .agent
-        .with_db(move |conn| store::session_rows(conn, session, user))
-        .await
-        .map_err(|_| "failed to load image generation state".to_owned())?;
-    let fingerprint = digest(&serde_json::to_vec(intent).unwrap_or_default());
-    let mut found = false;
-    for event in events
-        .iter()
-        .filter(|e| e.event_type.starts_with("image_generation."))
-    {
-        if event.data["image_generation"]["request_id"].as_str() != Some(intent.request_id.as_str())
+/// The call id of variant `index` of request `request_id`.
+fn variant_call_id(request_id: &str, index: i64) -> String {
+    format!("img_{}_{index}", &digest(request_id.as_bytes())[..24])
+}
+
+/// Whether `intent` is new to the session log: `Ok(false)` when an
+/// `image_generation` call already logged its request id with the same
+/// settings, an error when it logged other settings.
+pub fn claim(events: &[SessionEvent], intent: &ImageIntent) -> Result<bool, String> {
+    let fingerprint = intent_sha256(intent);
+    for event in events {
+        let EventBody::ToolCall {
+            name, arguments, ..
+        } = &event.body
+        else {
+            continue;
+        };
+        if name != "image_generation"
+            || arguments["request_id"].as_str() != Some(intent.request_id.as_str())
         {
             continue;
         }
-        if let Some(previous) = event.data["image_intent_sha256"].as_str()
-            && previous != fingerprint
-        {
+        if arguments["intent_sha256"].as_str() != Some(fingerprint.as_str()) {
             return Err("image request ID was already used for different settings".into());
         }
-        found = true;
-        run.send(&Frame {
-            event: value(event),
-            ..Frame::new("agent_event")
-        });
-    }
-    if found {
         return Ok(false);
     }
-    emit_image_event(run, intent, "accepted", "queued", json!({})).await?;
     Ok(true)
 }
 
-async fn fail_intent(run: &Run, intent: &ImageIntent, code: &str, message: String, count: i64) {
+/// An image composer request as one logged turn without a model call:
+/// `turn/start`, `step/start`, the user's `user/message`, per variant an
+/// `image_generation` `tool/call` and its `tool/result`, then the reply,
+/// `step/end`, and `turn/end`. Every append happens under the session's
+/// turn guard, which `session::prepare` took.
+pub struct Composer {
+    log: Arc<dyn SessionLog>,
+    key: String,
+    live: LiveSink,
+    turn: u32,
+    request_id: String,
+    /// The variant call that has no result yet.
+    open: std::sync::Mutex<Option<String>>,
+    /// Set by the first `end`; later ends append nothing.
+    ended: std::sync::atomic::AtomicBool,
+}
+
+impl Composer {
+    /// Opens the turn with the user's message.
+    pub fn start(run: &Run, request_id: &str, content: &str) -> Result<Self, String> {
+        Self::begin(
+            Arc::new(SqliteLog::new(run.agent.db().clone())),
+            crate::log::log_key(run.session_id),
+            run.live.clone(),
+            request_id,
+            content,
+        )
+    }
+
+    /// Opens the turn on `key` of `log`, sending its events to `live`. When
+    /// the turn started but its step or message could not be logged, the
+    /// turn ends as failed.
+    fn begin(
+        log: Arc<dyn SessionLog>,
+        key: String,
+        live: LiveSink,
+        request_id: &str,
+        content: &str,
+    ) -> Result<Self, String> {
+        let turn = next_turn(&log.read(&key)?);
+        let composer = Self {
+            log,
+            key,
+            live,
+            turn,
+            request_id: request_id.to_owned(),
+            open: std::sync::Mutex::new(None),
+            ended: std::sync::atomic::AtomicBool::new(false),
+        };
+        composer.append(EventBody::TurnStart { turn })?;
+        let opened = composer
+            .append(EventBody::StepStart { turn, step: 1 })
+            .and_then(|()| {
+                composer.append(EventBody::UserMessage {
+                    content: vec![ContentBlock::text(content)],
+                    source: MessageSource::user(),
+                })
+            });
+        if let Err(error) = opened {
+            composer.append(EventBody::TurnEnd {
+                turn,
+                reason: TurnEndReason::Failed,
+                error: error.clone(),
+            })?;
+            return Err(error);
+        }
+        Ok(composer)
+    }
+
+    fn append(&self, body: EventBody) -> Result<(), String> {
+        append_live(self.log.as_ref(), &self.key, &self.live, body).map(|_| ())
+    }
+
+    fn open(&self) -> std::sync::MutexGuard<'_, Option<String>> {
+        self.open
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
+    /// Logs the call for variant `index`.
+    fn call(&self, index: i64, arguments: Value) -> Result<String, String> {
+        let call_id = variant_call_id(&self.request_id, index);
+        self.append(EventBody::ToolCall {
+            call_id: call_id.clone(),
+            name: "image_generation".into(),
+            arguments,
+        })?;
+        *self.open() = Some(call_id.clone());
+        Ok(call_id)
+    }
+
+    /// Logs the saved variant of the open call and hands its file over.
+    fn saved(&self, artifact: &Value, path: &str, title: &str) -> Result<(), String> {
+        let Some(call_id) = self.open().take() else {
+            return Err("no image variant is pending".into());
+        };
+        self.append(EventBody::ToolResult {
+            call_id: call_id.clone(),
+            name: "image_generation".into(),
+            value: artifact.clone(),
+            content: vec![ContentBlock::text(format!(
+                "Generated image {}: {path}",
+                artifact["variant_index"].as_i64().unwrap_or_default() + 1
+            ))],
+            is_error: false,
+            meta: Some(json!({
+                "kind": "image_generation.variant",
+                "request_id": self.request_id,
+                "artifact": artifact,
+            })),
+        })?;
+        self.append(EventBody::DeliverablesPresented {
+            turn: self.turn,
+            call_id,
+            files: vec![delivered(path, title)],
+        })
+    }
+
+    /// Ends the turn: a failed open call first, then the reply (when the
+    /// turn completed), `step/end`, and `turn/end`. Only the first end
+    /// appends anything, even when one of its appends failed.
+    fn end(
+        &self,
+        reason: TurnEndReason,
+        error: Option<(&str, &str, bool)>,
+        reply: Option<&str>,
+    ) -> Result<(), String> {
+        if self.ended.swap(true, std::sync::atomic::Ordering::SeqCst) {
+            return Ok(());
+        }
+        let open = self.open().take();
+        if let (Some(call_id), Some((code, message, retryable))) = (open, error) {
+            self.append(EventBody::ToolResult {
+                call_id,
+                name: "image_generation".into(),
+                value: Value::Null,
+                content: vec![
+                    ContentBlock::text(message),
+                    ContentBlock::text(
+                        json!({ "code": code, "message": message, "retryable": retryable })
+                            .to_string(),
+                    ),
+                ],
+                is_error: true,
+                meta: None,
+            })?;
+        }
+        if let Some(reply) = reply {
+            self.append(EventBody::AssistantMessage {
+                content: reply.to_owned(),
+                tool_calls: Vec::new(),
+                stop_reason: "stop".into(),
+                model: String::new(),
+                raw_items: Vec::new(),
+            })?;
+        }
+        self.append(EventBody::StepEnd {
+            turn: self.turn,
+            step: 1,
+        })?;
+        self.append(EventBody::TurnEnd {
+            turn: self.turn,
+            reason,
+            error: error
+                .map(|(_, message, _)| message.to_owned())
+                .unwrap_or_default(),
+        })
+    }
+
+    /// Ends the turn as cancelled (the client left) unless it already ended.
+    pub fn cancel(&self) {
+        let ended = self.end(
+            TurnEndReason::Cancelled,
+            Some(("image_generation_canceled", "canceled", true)),
+            None,
+        );
+        if let Err(error) = ended {
+            tracing::warn!(error = %error, "could not log the cancelled image request");
+        }
+    }
+}
+
+/// Ends the logged turn of a failed image request, or a cancelled one when
+/// the client has gone away.
+fn fail_intent(run: &Run, composer: &Composer, code: &str, message: String) {
+    if run.emitter.is_closed() {
+        composer.cancel();
+        return;
+    }
     let message = crate::run::truncate_chars(&message, 1800);
-    let canceled = run.emitter.is_closed();
-    let status = if canceled { "canceled" } else { "failed" };
-    let fields = if canceled {
-        json!({ "artifact_count": count })
-    } else {
-        json!({ "artifact_count": count, "error": { "code": code, "message": message, "retryable": code != "reference_invalid" } })
-    };
-    let _ = emit_image_event(run, intent, status, status, fields).await;
-    let session_id = run.session_id;
-    let _ = run
-        .agent
-        .with_db(move |conn| store::set_session_status(conn, session_id, status))
-        .await;
-    run.send(&Frame::error(message));
+    let retryable = code != "reference_invalid";
+    let ended = composer.end(
+        TurnEndReason::Failed,
+        Some((code, &message, retryable)),
+        None,
+    );
+    if let Err(error) = ended {
+        tracing::warn!(error = %error, "could not log the failed image request");
+    }
 }
 
 async fn resolve_prompt(run: &Run, portal: &str, intent: &ImageIntent) -> Result<String, String> {
@@ -724,45 +845,41 @@ fn references(run: &Run, paths: &[String]) -> Result<Vec<String>, String> {
         .collect()
 }
 
-/// Runs an image composer request: generates each variant, saves it, and
-/// streams progress, artifacts, and the final reply.
-pub async fn stream_intent(
-    run: &Run,
-    mut session: AgentSession,
-    portal: &str,
-    intent: ImageIntent,
-) {
-    let claimed = match claim(run, &intent).await {
-        Ok(claimed) => claimed,
-        Err(error) => {
-            run.send(&Frame::error(error));
-            return;
-        }
-    };
-    if !claimed {
-        run.send(&Frame {
-            done: true,
-            ..Frame::new("done")
-        });
-        return;
+/// Runs an image composer request that `claim` accepted: generates each
+/// variant, saves it, and logs it on `composer`'s turn, then the reply.
+pub async fn stream_intent(run: &Run, portal: &str, intent: &ImageIntent, composer: &Composer) {
+    if let Err((code, message)) = generate_intent(run, portal, intent, composer).await {
+        fail_intent(run, composer, code, message);
     }
-    let session_id = session.id;
-    let _ = run
-        .agent
-        .with_db(move |conn| store::set_session_status(conn, session_id, "running"))
-        .await;
-    let mut count = 0;
-    let refs = match references(run, &intent.reference_paths) {
-        Ok(refs) => refs,
-        Err(error) => return fail_intent(run, &intent, "reference_invalid", error, 0).await,
-    };
-    let prompt = match resolve_prompt(run, portal, &intent).await {
-        Ok(prompt) => prompt,
-        Err(error) => {
-            return fail_intent(run, &intent, "template_resolution_failed", error, 0).await;
+}
+
+async fn generate_intent(
+    run: &Run,
+    portal: &str,
+    intent: &ImageIntent,
+    composer: &Composer,
+) -> Result<(), (&'static str, String)> {
+    let (width, height) = intent_dimensions(intent);
+    let fingerprint = intent_sha256(intent);
+    let arguments = |index: i64| {
+        let mut arguments = json!({
+            "request_id": intent.request_id, "intent_sha256": fingerprint,
+            "variant_index": index, "variant_count": intent.variants,
+            "size": format!("{width}x{height}"), "quality": intent.quality,
+            "reference_count": intent.reference_paths.len(),
+        });
+        if !intent.template_id.is_empty() {
+            arguments["template_id"] = json!(intent.template_id);
         }
+        arguments
     };
-    let (width, height) = intent_dimensions(&intent);
+    let progress = |error: String| ("image_progress_failed", error);
+    let mut call_id = composer.call(0, arguments(0)).map_err(progress)?;
+    let refs =
+        references(run, &intent.reference_paths).map_err(|error| ("reference_invalid", error))?;
+    let prompt = resolve_prompt(run, portal, intent)
+        .await
+        .map_err(|error| ("template_resolution_failed", error))?;
     let folder = format!(
         "Agent/images/{}/{}",
         run.session_id,
@@ -779,22 +896,13 @@ pub async fn stream_intent(
         "connected_provider"
     };
     let prompt_digest = digest(prompt.as_bytes());
-    let mut last = None;
+    let mut count = 0;
     for index in 0..intent.variants {
         if run.emitter.is_closed() {
-            return fail_intent(
-                run,
-                &intent,
-                "image_generation_canceled",
-                "canceled".into(),
-                count,
-            )
-            .await;
+            return Err(("image_generation_canceled", "canceled".into()));
         }
-        let progress = json!({ "progress": index as f64 / intent.variants as f64 });
-        if let Err(error) = emit_image_event(run, &intent, "progress", "generating", progress).await
-        {
-            return fail_intent(run, &intent, "image_progress_failed", error, count).await;
+        if index > 0 {
+            call_id = composer.call(index, arguments(index)).map_err(progress)?;
         }
         let request = ImageRequest {
             prompt: prompt.clone(),
@@ -804,101 +912,55 @@ pub async fn stream_intent(
             height,
             quality: intent.quality.clone(),
         };
-        let images = match run
+        let images = run
             .agent
             .engine()
             .generate_images(&request, Some(&run.model))
             .await
-        {
-            Ok(images) => images,
-            Err(error) => {
-                return fail_intent(
-                    run,
-                    &intent,
-                    "image_provider_error",
-                    error.to_string(),
-                    count,
-                )
-                .await;
-            }
-        };
-        let Some(image) = images
+            .map_err(|error| ("image_provider_error", error.to_string()))?;
+        let image = images
             .into_iter()
             .next()
             .filter(|image| !image.data.is_empty())
-        else {
-            return fail_intent(
-                run,
-                &intent,
-                "image_result_missing",
-                "image provider returned no usable image".into(),
-                count,
-            )
-            .await;
-        };
+            .ok_or_else(|| {
+                (
+                    "image_result_missing",
+                    "image provider returned no usable image".to_owned(),
+                )
+            })?;
         let mime = kition_ai::engine::sniff_mime(&image.data);
-        let Some(extension) = ["image/png", "image/jpeg", "image/webp"]
+        let extension = ["image/png", "image/jpeg", "image/webp"]
             .contains(&mime)
             .then(|| web::extension_for_image_mime(mime))
             .flatten()
-        else {
-            return fail_intent(
-                run,
-                &intent,
-                "image_result_invalid",
-                "image provider returned an unsupported image format".into(),
-                count,
-            )
-            .await;
-        };
-        let Some((w, h)) = image_size(&image.data)
-            .filter(|(w, h)| (1..=65536).contains(w) && (1..=65536).contains(h))
-        else {
-            return fail_intent(
-                run,
-                &intent,
-                "image_result_invalid",
-                "image provider returned an invalid image".into(),
-                count,
-            )
-            .await;
-        };
-        let path = match run.workspace().write_new(
-            &folder,
-            &format!("variant-{}{extension}", index + 1),
-            &image.data,
-        ) {
-            Ok(path) => path,
-            Err(_) => {
-                return fail_intent(
-                    run,
-                    &intent,
-                    "image_save_failed",
-                    "failed to save the generated image".into(),
-                    count,
+            .ok_or_else(|| {
+                (
+                    "image_result_invalid",
+                    "image provider returned an unsupported image format".to_owned(),
                 )
-                .await;
-            }
-        };
-        let Some(artifact) = run
-            .record_artifact(
-                None,
-                "image",
-                &path,
-                mime,
-                &format!("Generated image {}", index + 1),
+            })?;
+        let (w, h) = image_size(&image.data)
+            .filter(|(w, h)| (1..=65536).contains(w) && (1..=65536).contains(h))
+            .ok_or_else(|| {
+                (
+                    "image_result_invalid",
+                    "image provider returned an invalid image".to_owned(),
+                )
+            })?;
+        let path = run
+            .workspace()
+            .write_new(
+                &folder,
+                &format!("variant-{}{extension}", index + 1),
+                &image.data,
             )
-            .await
-        else {
-            return fail_intent(
-                run,
-                &intent,
-                "image_save_failed",
-                "failed to record the generated image".into(),
-                count,
-            )
-            .await;
-        };
+            .map_err(|_| {
+                (
+                    "image_save_failed",
+                    "failed to save the generated image".to_owned(),
+                )
+            })?;
+        let title = format!("Generated image {}", index + 1);
         let mut provenance = json!({
             "request_id": intent.request_id, "provider_class": provider_class,
             "prompt_sha256": prompt_digest, "source_paths": intent.reference_paths,
@@ -908,79 +970,20 @@ pub async fn stream_intent(
             provenance["template_version"] = json!(intent.template_version);
         }
         let artifact_view = json!({
-            "id": artifact.id, "path": path, "mime_type": mime, "title": artifact.title,
+            "call_id": call_id, "path": path, "mime_type": mime, "title": title,
             "width": w, "height": h, "variant_index": index, "variant_count": intent.variants,
             "created_at": kition_core::time::to_rfc3339(kition_core::now_millis()),
             "provenance": provenance,
         });
-        if let Err(error) = emit_image_event(
-            run,
-            &intent,
-            "artifact",
-            "saving",
-            json!({ "artifact": artifact_view }),
-        )
-        .await
-        {
-            return fail_intent(run, &intent, "image_save_failed", error, count).await;
-        }
-        last = Some(artifact);
+        composer
+            .saved(&artifact_view, &path, &title)
+            .map_err(|error| ("image_save_failed", error))?;
         count += 1;
     }
-    let message = store::new_message(
-        &session,
-        "assistant",
-        &format!("Generated {count} image(s) for review."),
-        json!({ "image_generation_request_id": intent.request_id }),
-    );
-    let message: AgentMessage = match run
-        .agent
-        .with_db(move |conn| store::insert_message(conn, message))
-        .await
-    {
-        Ok(message) => message,
-        Err(_) => {
-            return fail_intent(
-                run,
-                &intent,
-                "image_reply_save_failed",
-                "failed to save the image generation reply".into(),
-                count,
-            )
-            .await;
-        }
-    };
-    if let Err(error) = emit_image_event(
-        run,
-        &intent,
-        "completed",
-        "completed",
-        json!({ "artifact_count": count }),
-    )
-    .await
-    {
-        return fail_intent(run, &intent, "image_progress_failed", error, count).await;
-    }
-    session.status = "idle".into();
-    let mut saved = session.clone();
-    let _ = run
-        .agent
-        .with_db(move |conn| store::save_session(conn, &mut saved))
-        .await;
-    run.send(&Frame {
-        chat: value(&message),
-        ..Frame::new("assistant_message")
-    });
-    let mut done = Frame {
-        done: true,
-        ..Frame::new("done")
-    }
-    .extra("message", &message)
-    .extra("session", &session);
-    if let Some(artifact) = &last {
-        done = done.extra("artifact", artifact);
-    }
-    run.send(&done);
+    let reply = format!("Generated {count} image(s) for review.");
+    composer
+        .end(TurnEndReason::Completed, None, Some(&reply))
+        .map_err(progress)
 }
 
 #[cfg(test)]
@@ -1015,6 +1018,92 @@ mod tests {
         assert!(parse_intent(&doc).is_ok());
         doc["target"]["document_path"] = json!("../a.md");
         assert!(parse_intent(&doc).is_err());
+    }
+
+    /// A memory log that refuses `step/start`.
+    #[derive(Default)]
+    struct NoSteps(kition_harness::log::MemoryLog);
+
+    impl SessionLog for NoSteps {
+        fn append(&self, session: &str, body: EventBody) -> Result<SessionEvent, String> {
+            if matches!(body, EventBody::StepStart { .. }) {
+                return Err("disk full".into());
+            }
+            self.0.append(session, body)
+        }
+
+        fn read(&self, session: &str) -> Result<Vec<SessionEvent>, String> {
+            self.0.read(session)
+        }
+    }
+
+    fn types(log: &dyn SessionLog) -> Vec<String> {
+        log.read("agent:1")
+            .unwrap_or_else(|error| panic!("{error}"))
+            .iter()
+            .map(|event| {
+                serde_json::to_value(&event.body).unwrap_or_default()["type"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_owned()
+            })
+            .collect()
+    }
+
+    #[test]
+    fn a_composer_turn_ends_once() {
+        let log = Arc::new(kition_harness::log::MemoryLog::default());
+        let composer = Composer::begin(
+            log.clone(),
+            "agent:1".into(),
+            Arc::new(|_| {}),
+            "req-1",
+            "A red fox",
+        )
+        .unwrap_or_else(|error| panic!("{error}"));
+        composer
+            .call(0, json!({ "request_id": "req-1" }))
+            .unwrap_or_else(|error| panic!("{error}"));
+        composer
+            .end(TurnEndReason::Completed, None, Some("Done."))
+            .unwrap_or_else(|error| panic!("{error}"));
+        composer.cancel();
+        composer
+            .end(TurnEndReason::Failed, Some(("x", "late", true)), None)
+            .unwrap_or_else(|error| panic!("{error}"));
+        assert_eq!(
+            types(log.as_ref()),
+            [
+                "turn/start",
+                "step/start",
+                "user/message",
+                "tool/call",
+                "assistant/message",
+                "step/end",
+                "turn/end",
+            ]
+        );
+    }
+
+    #[test]
+    fn a_composer_that_cannot_open_its_step_ends_the_turn_as_failed() {
+        let log = Arc::new(NoSteps::default());
+        let opened = Composer::begin(
+            log.clone(),
+            "agent:1".into(),
+            Arc::new(|_| {}),
+            "req-1",
+            "A red fox",
+        );
+        assert_eq!(opened.err(), Some("disk full".to_owned()));
+        let events = log
+            .read("agent:1")
+            .unwrap_or_else(|error| panic!("{error}"));
+        assert_eq!(types(log.as_ref()), ["turn/start", "turn/end"]);
+        assert!(matches!(
+            &events[1].body,
+            EventBody::TurnEnd { turn: 1, reason: TurnEndReason::Failed, error } if error == "disk full"
+        ));
     }
 
     #[test]

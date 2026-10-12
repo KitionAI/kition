@@ -1,24 +1,25 @@
-import { expect, test, type Route } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 
+import { mockAgentTurn } from './helpers/agentStream'
 import {
   openWhiteboardFixture,
   readWhiteboardSnapshot,
 } from './helpers/whiteboard'
 
 test('streams visible AI board actions and supports reject, accept, and undo', async ({ page }) => {
-  const requests: Array<Record<string, any>> = []
-  let streamCount = 0
-
   await openWhiteboardFixture(page, { agentAvailable: true })
-  await page.route('**/api/v1/agent/sessions/*/messages/stream', async (route) => {
-    streamCount += 1
-    const request = route.request().postDataJSON() as Record<string, any>
-    requests.push(request)
-    const sessionId = Number(
-      new URL(route.request().url()).pathname.match(/sessions\/(\d+)\/messages/)?.[1] || 701,
-    )
-    await fulfillWhiteboardStream(route, sessionId, createMindMapPatch())
+  const patch = createMindMapPatch()
+  const turns = await mockAgentTurn(page, (turn) => {
+    // The provisional preview comes from the streamed arguments, the final
+    // patch from the logged result.
+    turn.streamToolCall('call_patch', 'whiteboard_propose_patch', patch)
+    turn.tool('call_patch', 'whiteboard_propose_patch', { operation_count: 4 }, { awaiting_user_review: true }, {
+      meta: { kind: 'whiteboard.patch', patch },
+    })
+    turn.nextStep()
+    turn.reply('Prepared a connected whiteboard expansion for review.')
   })
+  const streamCount = () => turns.requests.length
 
   await page.locator('[data-element-id="node-a"]').click()
   await expect(page.getByTestId('whiteboard-ask-ai')).toBeEnabled()
@@ -36,8 +37,8 @@ test('streams visible AI board actions and supports reject, accept, and undo', a
   await expect(page.getByTestId('whiteboard-agent-operation-list')).toContainText('Create connector')
   await expect(page.getByTestId('whiteboard-agent-preview-layer')).toBeVisible()
 
-  await expect.poll(() => requests.length).toBe(1)
-  expect(requests[0]).toMatchObject({
+  await expect.poll(() => turns.requests.length).toBe(1)
+  expect(turns.requests[0].body).toMatchObject({
     pane_context: 'whiteboard',
     whiteboard_context: {
       type: 'whiteboard.context',
@@ -46,7 +47,7 @@ test('streams visible AI board actions and supports reject, accept, and undo', a
     },
   })
   // The wire payload carries only what the public contract documents.
-  expect(Object.keys(requests[0].whiteboard_context).sort()).toEqual([
+  expect(Object.keys(turns.requests[0].body.whiteboard_context as object).sort()).toEqual([
     'board', 'clusters', 'elements', 'recent_operations', 'schema_version', 'scope',
     'selected_element_ids', 'source_refs', 'type', 'viewport',
   ])
@@ -56,7 +57,7 @@ test('streams visible AI board actions and supports reject, accept, and undo', a
 
   await composer.fill('Apply the same connected expansion now.')
   await page.getByRole('button', { name: 'Send' }).click()
-  await expect.poll(() => streamCount).toBe(2)
+  await expect.poll(streamCount).toBe(2)
   await expect(page.getByTestId('whiteboard-agent-accept')).toBeVisible()
   await page.getByTestId('whiteboard-agent-accept').click()
 
@@ -111,70 +112,6 @@ function createMindMapPatch() {
       },
     ],
   }
-}
-
-async function fulfillWhiteboardStream(
-  route: Route,
-  sessionId: number,
-  patch: ReturnType<typeof createMindMapPatch>,
-) {
-  const now = '2026-08-27T00:00:00.000Z'
-  const events = [
-    {
-      type: 'user_message',
-      chat_message: {
-        id: 8801,
-        session_id: sessionId,
-        user_id: 1,
-        role: 'user',
-        content: 'Expand the board',
-        status: 'completed',
-        created_at: now,
-      },
-    },
-    {
-      type: 'whiteboard_patch_provisional',
-      provisional: true,
-      board_path: 'Whiteboard E2E.kiboard',
-      whiteboard_patch: patch,
-    },
-    {
-      type: 'whiteboard_patch',
-      provisional: false,
-      board_path: 'Whiteboard E2E.kiboard',
-      whiteboard_patch: patch,
-    },
-    {
-      type: 'done',
-      done: true,
-      extra_data: {
-        session: {
-          id: sessionId,
-          user_id: 1,
-          title: 'Whiteboard changes',
-          workspace_root: 'browser-local-workspace',
-          active_document_path: 'Whiteboard E2E.kiboard',
-          status: 'completed',
-          created_at: now,
-          updated_at: now,
-        },
-        message: {
-          id: 8802,
-          session_id: sessionId,
-          user_id: 1,
-          role: 'assistant',
-          content: 'Prepared a connected whiteboard expansion for review.',
-          status: 'completed',
-          created_at: now,
-        },
-      },
-    },
-  ]
-  await route.fulfill({
-    status: 200,
-    headers: { 'content-type': 'application/x-ndjson' },
-    body: `${events.map((event) => JSON.stringify(event)).join('\n')}\n`,
-  })
 }
 
 async function hasElement(page: Parameters<typeof readWhiteboardSnapshot>[0], id: string) {

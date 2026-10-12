@@ -1,259 +1,135 @@
 import { describe, expect, it } from 'vitest'
 
-import type { AgentEvent, AgentToolCall } from '@/api/agent'
+import type { AgentSessionEventsSessionEvent } from '@/api/generated/agent-session-events'
 import {
   buildAgentRunLogItems,
-  formatCurrentAgentActivity,
   formatAgentErrorSummary,
   formatAgentRunLogExpandedDetail,
-  getAgentModifiedDocumentPaths,
 } from './agentTimeline'
+import { applySessionEvent, emptyAgentSessionView, type AgentTurnView } from './agentSessionView'
 
-function event(eventType: string, overrides: Partial<AgentEvent> = {}): AgentEvent {
-  return {
-    id: overrides.id ?? Math.floor(Math.random() * 1_000_000),
-    session_id: 1,
-    user_id: 1,
-    event_type: eventType,
-    status: 'completed',
-    created_at: '2026-05-29T00:00:00.000Z',
-    ...overrides,
-  }
+type Body = { type: string } & Record<string, unknown>
+
+/** The one turn of a log made of `bodies` after `turn/start`, numbered from seq 1. */
+function turnOf(bodies: Body[]): AgentTurnView {
+  const list = [{ type: 'turn/start', turn: 1 }, ...bodies]
+    .map((body, index) => ({ seq: index + 1, at: Date.parse('2026-05-29T00:00:00.000Z') + index, ...body }) as AgentSessionEventsSessionEvent)
+  return list.reduce(applySessionEvent, emptyAgentSessionView()).turns[0]
 }
 
-function toolCall(overrides: Partial<AgentToolCall> = {}): AgentToolCall {
-  return {
-    id: overrides.id ?? 1,
-    session_id: 1,
-    user_id: 1,
-    tool_name: 'document_read',
-    status: 'completed',
-    created_at: '2026-05-29T00:00:01.000Z',
-    updated_at: '2026-05-29T00:00:01.000Z',
-    ...overrides,
-  }
-}
+const step = (n: number): Body => ({ type: 'step/start', turn: 1, step: n })
+const call = (callId: string, name: string, args: unknown = {}): Body => ({ type: 'tool/call', callId, name, arguments: args })
+const result = (callId: string, name: string, output: unknown): Body => ({
+  type: 'tool/result', callId, name, isError: false, content: [], value: { name, summary: 'Done', output },
+})
+const message = (content: string, toolCalls = 0): Body => ({
+  type: 'assistant/message', content, stopReason: 'stop', model: 'm',
+  ...(toolCalls ? { toolCalls: Array.from({ length: toolCalls }, (_, i) => ({ callId: `c${i}`, name: 'document_read', arguments: {} })) } : {}),
+})
+const end = (reason: string, error?: string): Body => ({ type: 'turn/end', turn: 1, reason, ...(error ? { error } : {}) })
+const retry = (n: number): Body => ({
+  type: 'llm/retry', retryId: 'agent:1#1.1', turn: 1, step: 1, provider: 'openai', mode: 'normal', policyKey: 'engine',
+  retry: n, maxRetries: 5, delayMs: 2000, failure: { message: 'handshake', code: 'tls_handshake_timeout' },
+})
 
-describe('getAgentModifiedDocumentPaths', () => {
-  it('collects every file changed by a completed patch', () => {
-    const paths = getAgentModifiedDocumentPaths([
-      toolCall({
-        tool_name: 'apply_patch',
-        output_data: {
-          file_ops: [{ path: 'Docs/Article.md' }],
-          changes: [
-            { path: 'Docs/Article.md' },
-            { path: 'Docs/Notes.md' },
-          ],
-        },
-      }),
+describe('buildAgentRunLogItems', () => {
+  const done = turnOf([
+    step(1), message('', 1), call('c1', 'document_read', { path: 'Docs/a.md' }), result('c1', 'document_read', { path: 'Docs/a.md' }),
+    step(2), message('Done.'), end('completed'),
+  ])
+
+  it('shows tool runs and the outcome, and model steps only in debug mode', () => {
+    const titles = buildAgentRunLogItems({ turn: done, busy: false, locale: 'en-US' }).map((item) => item.title)
+    expect(titles).toEqual(['Read document completed', 'Task completed'])
+    const debug = buildAgentRunLogItems({ turn: done, busy: false, debug: true, locale: 'en-US' }).map((item) => item.title)
+    expect(debug).toContain('AI backend called')
+    expect(debug).toContain('AI backend turn completed')
+  })
+
+  it('keeps unfinished runs unconfirmed when the stream stopped', () => {
+    const open = turnOf([step(1), call('c1', 'document_write', { path: 'Docs/a.md' })])
+    expect(buildAgentRunLogItems({ turn: open, busy: false }).map((item) => item.status)).toEqual(['pending'])
+    const running = buildAgentRunLogItems({ turn: open, busy: true })
+    expect(running.map((item) => item.status)).toEqual(['running'])
+  })
+
+  it('shows reconnect progress with earlier retries settled', () => {
+    const items = buildAgentRunLogItems({ turn: turnOf([step(1), retry(1), retry(2)]), busy: true, locale: 'en-US' })
+    const retries = items.filter((item) => item.key.startsWith('retry-'))
+    expect(retries.map((item) => [item.title, item.status])).toEqual([
+      ['Reconnecting... 1/5', 'completed'],
+      ['Reconnecting... 2/5', 'running'],
     ])
-
-    expect(Array.from(paths)).toEqual(['Docs/Article.md', 'Docs/Notes.md'])
+    expect(retries[1].detail).toBe('Retrying in 2 seconds · Secure connection timed out')
   })
 
-  it('ignores failed patches so stale drafts are not discarded', () => {
-    const paths = getAgentModifiedDocumentPaths([
-      toolCall({
-        tool_name: 'apply_patch',
-        status: 'failed',
-        output_data: { file_ops: [{ path: 'Docs/Article.md' }] },
-      }),
-    ])
-
-    expect(paths.size).toBe(0)
+  it('names how a turn failed, stopped, or hit the step limit', () => {
+    const failed = buildAgentRunLogItems({ turn: turnOf([step(1), end('failed', 'Error: provider refused')]), busy: false })
+    expect(failed.at(-1)).toMatchObject({ title: 'Task failed', detail: 'provider refused', status: 'failed' })
+    const limit = buildAgentRunLogItems({ turn: turnOf([step(1), end('step-limit')]), busy: false })
+    expect(limit.at(-1)?.detail).toContain('most model steps')
+    const stopped = buildAgentRunLogItems({ turn: turnOf([step(1), end('cancelled')]), busy: false })
+    expect(stopped.at(-1)?.title).toBe('Task stopped')
   })
 
-  it('collects a kitable created by the table creation tool', () => {
-    const paths = getAgentModifiedDocumentPaths([
-      toolCall({
-        tool_name: 'data_table_create',
-        output_data: {
-          path: 'Admissions/Low-threshold samples.kitable',
-          document_id: 42,
-          table_id: 7,
-        },
-      }),
-    ])
-
-    expect(Array.from(paths)).toEqual(['Admissions/Low-threshold samples.kitable'])
-  })
-})
-
-describe('buildAgentRunLogItems debug filtering', () => {
-  const events: AgentEvent[] = [
-    event('task.started', { id: 1 }),
-    event('prompt.sent', { id: 2 }),
-    event('model.turn.started', { id: 3 }),
-    event('model.tool_call.ready', { id: 4, data: { tool_name: 'document_read' } }),
-    event('model.turn.completed', { id: 5 }),
-    event('task.completed', { id: 6, label: 'Task completed' }),
-  ]
-  const toolCalls = [toolCall()]
-
-  it('hides model-protocol events when debug is off (en-US)', () => {
-    const items = buildAgentRunLogItems({
-      events,
-      toolCalls,
-      artifacts: [],
-      busy: false,
-      streamingText: '',
-      locale: 'en-US',
-    })
-
-    const titles = items.map((item) => item.title)
-    expect(titles).toContain('Task completed')
-    expect(items.some((item) => item.kind === 'tool')).toBe(true)
-    expect(titles).not.toContain('Task understood')
-    expect(titles).not.toContain('Send model request')
-    expect(titles).not.toContain('AI backend called')
-    expect(titles).not.toContain('AI backend turn completed')
+  it('says the outcome is unknown for an interrupted turn', () => {
+    const turn = { ...turnOf([step(1)]), interrupted: true }
+    const [item] = buildAgentRunLogItems({ turn, busy: false, locale: 'en-US' })
+    expect(item).toMatchObject({ title: 'Completion not confirmed', status: 'pending' })
   })
 
-  it('keeps model-protocol events when debug is on (en-US)', () => {
-    const items = buildAgentRunLogItems({
-      events,
-      toolCalls,
-      artifacts: [],
-      busy: false,
-      streamingText: '',
-      debug: true,
-      locale: 'en-US',
-    })
-
-    const titles = items.map((item) => item.title)
-    expect(titles).toContain('Task understood')
-    expect(titles).toContain('Send model request')
-    expect(titles).toContain('AI backend called')
-  })
-})
-
-describe('buildAgentRunLogItems reconnect progress', () => {
-  it('keeps reconnect progress visible outside debug mode', () => {
-    const items = buildAgentRunLogItems({
-      events: [
-        event('model.reconnecting', {
-          id: 10,
-          status: 'running',
-          message: 'Reconnecting... 2/5',
-          data: {
-            turn: 1,
-            attempt: 2,
-            max_retries: 5,
-            delay_ms: 2000,
-            reason: 'tls_handshake_timeout',
-          },
-        }),
-      ],
-      toolCalls: [],
-      artifacts: [],
-      busy: true,
-      streamingText: '',
-      locale: 'en-US',
-    })
-
-    const reconnect = items.find((item) => item.key === 'event-10')
-    expect(reconnect?.title).toBe('Reconnecting... 2/5')
-    expect(reconnect?.detail).toBe('Retrying in 2 seconds · Secure connection timed out')
-    expect(reconnect?.status).toBe('running')
+  it('dates an unknown outcome at the turn\'s last event, not the clock', () => {
+    const turn = { ...turnOf([step(1), call('c1', 'document_read'), result('c1', 'document_read', {})]), interrupted: true }
+    const outcome = buildAgentRunLogItems({ turn, busy: false }).find((item) => item.key === 'outcome')
+    // `tool/result` is the fourth event: 3 ms after the turn started.
+    expect(outcome?.createdAt).toBe('2026-05-29T00:00:00.003Z')
   })
 
-  it('marks earlier reconnect attempts complete while the latest remains active', () => {
-    const items = buildAgentRunLogItems({
-      events: [
-        event('model.reconnecting', { id: 11, status: 'running', data: { turn: 1, attempt: 1, max_retries: 5 } }),
-        event('model.reconnecting', { id: 12, status: 'running', data: { turn: 1, attempt: 2, max_retries: 5 } }),
-      ],
-      toolCalls: [],
-      artifacts: [],
-      busy: true,
-      streamingText: '',
-    })
-
-    expect(items.find((item) => item.key === 'event-11')?.status).toBe('completed')
-    expect(items.find((item) => item.key === 'event-12')?.status).toBe('running')
-  })
-
-  it('uses reconnect progress as the current activity', () => {
-    expect(formatCurrentAgentActivity({
-      events: [event('model.reconnecting', {
-        message: 'Reconnecting... 3/5',
-        status: 'running',
-      })],
-      toolCalls: [],
-      busy: true,
-      streamingText: '',
-    })).toBe('Reconnecting... 3/5')
-  })
-})
-
-describe('buildAgentRunLogItems locale switching', () => {
-  const events: AgentEvent[] = [event('task.started', { id: 1 })]
-  const toolCalls = [toolCall()]
-
-  it('emits an English model-thinking title under en-US', () => {
-    const items = buildAgentRunLogItems({
-      events,
-      toolCalls,
-      artifacts: [],
-      busy: true,
-      streamingText: '',
-      locale: 'en-US',
-    })
-    const modelItem = items.find((item) => item.kind === 'model')
-    expect(modelItem).toBeDefined()
-    expect(modelItem?.title).toBe('Processing tool results')
-    expect(modelItem?.detail).toContain('Read Document')
-  })
-
-  it('defaults to en-US when no locale is provided', () => {
-    const items = buildAgentRunLogItems({
-      events,
-      toolCalls,
-      artifacts: [],
-      busy: true,
-      streamingText: '',
-    })
-    const modelItem = items.find((item) => item.kind === 'model')
-    expect(modelItem?.title).toBe('Processing tool results')
-  })
-})
-
-describe('formatAgentRunLogExpandedDetail', () => {
-  it('returns English natural language for model kind instead of raw JSON', () => {
-    const items = buildAgentRunLogItems({
-      events: [],
-      toolCalls: [toolCall()],
-      artifacts: [],
-      busy: true,
-      streamingText: '',
-      locale: 'en-US',
-    })
-    const modelItem = items.find((item) => item.kind === 'model')
-    expect(modelItem).toBeDefined()
-    const expanded = formatAgentRunLogExpandedDetail(modelItem!, 'en-US')
+  it('shows the model thinking while busy without a running row', () => {
+    const turn = turnOf([step(1), call('c1', 'document_read'), result('c1', 'document_read', {})])
+    const model = buildAgentRunLogItems({ turn, busy: true, locale: 'en-US' }).find((item) => item.kind === 'model')
+    expect(model?.title).toBe('Processing tool results')
+    expect(model?.detail).toContain('Read Document')
+    const expanded = formatAgentRunLogExpandedDetail(model!, 'en-US')
     expect(expanded).not.toContain('processing_tool_result')
-    expect(expanded).not.toContain('"state"')
-    expect(expanded).not.toContain('"latest_tool"')
     expect(expanded).toContain('Read Document')
   })
 
-  it('uses English section labels for tool kind', () => {
+  it('streams the live text of its own turn', () => {
+    const turn = turnOf([step(1)])
     const items = buildAgentRunLogItems({
-      events: [],
-      toolCalls: [
-        toolCall({
-          id: 7,
-          input_data: { path: '/docs/a.md' },
-          output_data: { path: '/docs/a.md', text: 'hello' },
-        }),
-      ],
-      artifacts: [],
-      busy: false,
-      streamingText: '',
-      locale: 'en-US',
+      turn, busy: true, live: { attemptId: 'a', turn: 1, step: 1, text: 'Drafting', toolArgs: {} },
     })
-    const toolItem = items.find((item) => item.kind === 'tool')
+    expect(items.find((item) => item.kind === 'final')?.detail).toBe('Drafting')
+  })
+
+  it('lists delivered files no tool row names', () => {
+    const turn = turnOf([
+      step(1), call('c1', 'image_search', { query: 'fox' }), result('c1', 'image_search', { images: [] }),
+      { type: 'deliverables/presented', turn: 1, callId: 'c1', files: [{ path: 'Agent/fox.png', description: 'Fox' }] },
+    ])
+    const artifact = buildAgentRunLogItems({ turn, busy: false, locale: 'en-US' }).find((item) => item.kind === 'artifact')
+    expect(artifact).toMatchObject({ title: 'Save artifact', detail: 'Agent/fox.png' })
+    expect(formatAgentRunLogExpandedDetail(artifact!, 'en-US')).toContain('Fox')
+  })
+
+  it('shows a paused command as pending until its approval is decided', () => {
+    const paused: Body[] = [
+      step(1), call('c1', 'exec_command', { cmd: ['ls'] }),
+      { ...result('c1', 'exec_command', { requires: 'approval', command: 'ls' }), meta: {
+        kind: 'shell.approval', command: 'ls', reason: 'r', requires: 'approval', decision: 'prompt',
+      } },
+      { type: 'approval/asked', id: 'approval:c1', toolName: 'exec_command', callId: 'c1' },
+      end('awaiting-approval'),
+    ]
+    expect(buildAgentRunLogItems({ turn: turnOf(paused), busy: false })[0].status).toBe('pending')
+    const decided = [...paused, { type: 'approval/decided', id: 'approval:c1', outcome: 'rejected' }]
+    expect(buildAgentRunLogItems({ turn: turnOf(decided), busy: false })[0].status).toBe('failed')
+  })
+
+  it('uses English section labels for the expanded tool detail', () => {
+    const turn = turnOf([step(1), call('c7', 'document_read', { path: '/docs/a.md' }), result('c7', 'document_read', { path: '/docs/a.md', text: 'hello' })])
+    const toolItem = buildAgentRunLogItems({ turn, busy: false, locale: 'en-US' }).find((item) => item.kind === 'tool')
     const expanded = formatAgentRunLogExpandedDetail(toolItem!, 'en-US')
     expect(expanded).toContain('Tool')
     expect(expanded).toContain('Input')

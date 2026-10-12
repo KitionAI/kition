@@ -58,13 +58,25 @@ static CATALOG: LazyLock<Catalog> = LazyLock::new(|| {
     })
 });
 
+/// The catalog's tools and every kit's tools, sorted by name.
+static TOOLS: LazyLock<Vec<ToolDef>> = LazyLock::new(|| {
+    let mut tools: Vec<ToolDef> = CATALOG
+        .tools
+        .iter()
+        .chain(crate::tools::kits::tool_defs())
+        .cloned()
+        .collect();
+    tools.sort_by(|a, b| a.name.cmp(&b.name));
+    tools
+});
+
 /// Every built-in tool, sorted by name.
 pub fn tools() -> &'static [ToolDef] {
-    &CATALOG.tools
+    &TOOLS
 }
 
 pub fn tool(name: &str) -> Option<&'static ToolDef> {
-    CATALOG.tools.iter().find(|tool| tool.name == name)
+    TOOLS.iter().find(|tool| tool.name == name)
 }
 
 /// Built-in skills overridden or extended by the workspace's own.

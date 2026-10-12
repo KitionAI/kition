@@ -188,7 +188,7 @@ mod tests {
                 |row| row.get(0),
             )
             .unwrap_or_default();
-        assert_eq!(tables, 40);
+        assert_eq!(tables, 34);
         let version: i64 = conn
             .query_row("PRAGMA user_version", [], |row| row.get(0))
             .unwrap_or_default();

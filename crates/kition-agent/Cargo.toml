@@ -1,6 +1,6 @@
 [package]
 name = "kition-agent"
-description = "The workspace agent: sessions, the streaming tool loop, and its tools."
+description = "The workspace agent: sessions, the streamed agent turn, and its tools."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -11,9 +11,11 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+kition-kits = { workspace = true }
 kition-ai = { workspace = true }
 kition-core = { workspace = true }
 kition-datadoc = { workspace = true }
+kition-harness = { workspace = true }
 kition-http = { workspace = true }
 kition-kitable = { workspace = true }
 kition-store = { workspace = true }
@@ -45,5 +47,6 @@ zip = { workspace = true }
 
 [dev-dependencies]
 http-body-util = { workspace = true }
+jsonschema = { workspace = true }
 tempfile = { workspace = true }
 tower = { workspace = true }

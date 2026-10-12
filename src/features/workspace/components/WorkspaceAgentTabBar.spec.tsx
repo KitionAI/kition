@@ -65,7 +65,6 @@ describe('WorkspaceAgentTabBar', () => {
       id: 7,
       user_id: 1,
       title: 'Saved chat',
-      status: 'idle',
       created_at: '2026-08-16T10:00:00.000Z',
       updated_at: '2026-08-16T10:00:00.000Z',
     }
@@ -98,7 +97,6 @@ describe('WorkspaceAgentTabBar', () => {
       id: 8,
       user_id: 1,
       title: 'Retained chat',
-      status: 'idle',
       created_at: '2026-08-16T10:00:00.000Z',
       updated_at: new Date().toISOString(),
     }

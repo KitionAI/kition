@@ -1,3 +1,4 @@
+import type { KitCreationItem } from '@/features/workspace/hooks/useKitCreations'
 import { ChevronRight, Copy, CornerUpRight, FilePlus2, FileText, FolderOpen, GripVertical, LayoutDashboard, MessageSquareDashed, MessageSquarePlus, MoreHorizontal, Pencil, Plus, Smile, Trash2, Zap } from 'lucide-react'
 import type { DragEvent as ReactDragEvent, ReactNode } from 'react'
 import { useEffect, useRef, useState } from 'react'
@@ -66,6 +67,7 @@ export function WorkspaceTree({
   onCreateTable,
   onCreateBoard,
   onCreateDesign,
+  kitCreations,
   depth = 0,
 }: {
   nodes: WorkspaceTreeNode[]
@@ -110,6 +112,8 @@ export function WorkspaceTree({
   onCreateTable?: () => void
   onCreateBoard?: () => void
   onCreateDesign?: () => void
+  /** The create menu's kit items (Image, Video project). */
+  kitCreations?: readonly KitCreationItem[]
   depth?: number
 }) {
   const [localActionMenuPath, setLocalActionMenuPath] = useState('')
@@ -489,6 +493,7 @@ export function WorkspaceTree({
                             onCreateTable={onCreateTable ?? (() => undefined)}
                             onCreateBoard={onCreateBoard}
                             onCreateDesign={onCreateDesign}
+                            kitCreations={kitCreations}
                             onCreateWorkflow={canCreateWorkflowForTable ? () => onCreateWorkflowForTable?.(node) : undefined}
                           />
                         ) : null}
@@ -745,6 +750,7 @@ export function WorkspaceTree({
                 onCreateTable={onCreateTable}
                 onCreateBoard={onCreateBoard}
                             onCreateDesign={onCreateDesign}
+                            kitCreations={kitCreations}
                 depth={depth + 1}
               />
             ) : null}

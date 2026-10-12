@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "kit.mock",
+  "name": "Kition Mock Kit",
+  "description": "Plain-text documents for protocol and conformance tests.",
+  "version": "0.0.0",
+  "publisher": "Kition",
+  "kitProtocol": 1,
+  "license": "Apache-2.0",
+  "executable": "kition-kit-mock",
+  "fileTypes": [
+    {
+      "format": "mock.text",
+      "extensions": ["mocktext"],
+      "mimeTypes": ["text/plain"],
+      "roles": ["editor"]
+    }
+  ],
+  "surfaces": ["headless"],
+  "permissions": { "network": false },
+  "agent": {
+    "toolGroups": [
+      { "id": "text", "title": "Text", "description": "Append to and clear the document text." },
+      { "id": "edit", "title": "Edit", "description": "Undo the last change." }
+    ]
+  }
+}

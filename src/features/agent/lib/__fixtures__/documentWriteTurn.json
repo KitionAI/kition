@@ -1,0 +1,143 @@
+[
+  {
+    "seq": 1,
+    "at": 1791732515436,
+    "type": "turn/start",
+    "turn": 1
+  },
+  {
+    "seq": 2,
+    "at": 1791732515436,
+    "type": "step/start",
+    "turn": 1,
+    "step": 1
+  },
+  {
+    "seq": 3,
+    "at": 1791732515436,
+    "type": "system/message",
+    "content": "You are the built-in agent inside the Kition document system."
+  },
+  {
+    "seq": 4,
+    "at": 1791732515436,
+    "type": "permission/preset",
+    "preset": "apply"
+  },
+  {
+    "seq": 5,
+    "at": 1791732515436,
+    "type": "user/message",
+    "content": [
+      {
+        "type": "text",
+        "text": "Write a short plan"
+      }
+    ],
+    "source": {
+      "kind": "user"
+    }
+  },
+  {
+    "seq": 6,
+    "at": 1791732515442,
+    "type": "assistant/message",
+    "content": "",
+    "toolCalls": [
+      {
+        "callId": "call_1",
+        "name": "document_write",
+        "arguments": {
+          "path": "Notes/plan.md",
+          "content": "# Plan"
+        }
+      }
+    ],
+    "stopReason": "completed",
+    "model": "test-model"
+  },
+  {
+    "seq": 7,
+    "at": 1791732515442,
+    "type": "tool/call",
+    "callId": "call_1",
+    "name": "document_write",
+    "arguments": {
+      "path": "Notes/plan.md",
+      "content": "# Plan"
+    }
+  },
+  {
+    "seq": 8,
+    "at": 1791732515444,
+    "type": "tool/result",
+    "callId": "call_1",
+    "name": "document_write",
+    "value": {
+      "name": "document_write",
+      "summary": "Updated document: `Notes/plan.md`",
+      "output": {
+        "path": "Notes/plan.md",
+        "operation": "updated",
+        "chars": 6,
+        "at": true
+      }
+    },
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"name\":\"document_write\",\"summary\":\"Updated document: `Notes/plan.md`\",\"output\":{\"path\":\"Notes/plan.md\",\"operation\":\"updated\",\"chars\":6,\"at\":true},\"failed\":false}"
+      }
+    ],
+    "isError": false
+  },
+  {
+    "seq": 9,
+    "at": 1791732515444,
+    "type": "deliverables/presented",
+    "turn": 1,
+    "callId": "call_1",
+    "files": [
+      {
+        "path": "Notes/plan.md",
+        "description": "Updated: Notes/plan.md"
+      }
+    ]
+  },
+  {
+    "seq": 10,
+    "at": 1791732515444,
+    "type": "step/end",
+    "turn": 1,
+    "step": 1
+  },
+  {
+    "seq": 11,
+    "at": 1791732515444,
+    "type": "step/start",
+    "turn": 1,
+    "step": 2
+  },
+  {
+    "seq": 12,
+    "at": 1791732515449,
+    "type": "assistant/message",
+    "content": "Updated.",
+    "stopReason": "completed",
+    "model": "test-model"
+  },
+  {
+    "seq": 13,
+    "at": 1791732515449,
+    "type": "step/end",
+    "turn": 1,
+    "step": 2
+  },
+  {
+    "seq": 14,
+    "at": 1791732515449,
+    "type": "turn/end",
+    "turn": 1,
+    "reason": "completed"
+  }
+]

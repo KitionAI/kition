@@ -1,0 +1,171 @@
+[
+  {
+    "seq": 1,
+    "at": 1791732515298,
+    "type": "turn/start",
+    "turn": 1
+  },
+  {
+    "seq": 2,
+    "at": 1791732515298,
+    "type": "step/start",
+    "turn": 1,
+    "step": 1
+  },
+  {
+    "seq": 3,
+    "at": 1791732515298,
+    "type": "system/message",
+    "content": "You are the built-in agent inside the Kition document system."
+  },
+  {
+    "seq": 4,
+    "at": 1791732515298,
+    "type": "permission/preset",
+    "preset": "apply"
+  },
+  {
+    "seq": 5,
+    "at": 1791732515299,
+    "type": "user/message",
+    "content": [
+      {
+        "type": "text",
+        "text": "Write a short plan"
+      }
+    ],
+    "source": {
+      "kind": "user"
+    }
+  },
+  {
+    "seq": 6,
+    "at": 1791732515304,
+    "type": "assistant/message",
+    "content": "",
+    "toolCalls": [
+      {
+        "callId": "call_1",
+        "name": "update_plan",
+        "arguments": {
+          "explanation": "Two steps",
+          "plan": [
+            {
+              "step": "Draft",
+              "status": "in_progress"
+            },
+            {
+              "step": "Review",
+              "status": "pending"
+            }
+          ]
+        }
+      }
+    ],
+    "stopReason": "completed",
+    "model": "test-model"
+  },
+  {
+    "seq": 7,
+    "at": 1791732515304,
+    "type": "tool/call",
+    "callId": "call_1",
+    "name": "update_plan",
+    "arguments": {
+      "explanation": "Two steps",
+      "plan": [
+        {
+          "step": "Draft",
+          "status": "in_progress"
+        },
+        {
+          "step": "Review",
+          "status": "pending"
+        }
+      ]
+    }
+  },
+  {
+    "seq": 8,
+    "at": 1791732515305,
+    "type": "tool/result",
+    "callId": "call_1",
+    "name": "update_plan",
+    "value": {
+      "name": "update_plan",
+      "summary": "Two steps\n\n1. [~] Draft\n2. [ ] Review",
+      "output": {
+        "plan": [
+          {
+            "step": "Draft",
+            "status": "in_progress"
+          },
+          {
+            "step": "Review",
+            "status": "pending"
+          }
+        ],
+        "explanation": "Two steps",
+        "step_count": 2
+      }
+    },
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"name\":\"update_plan\",\"summary\":\"Two steps\\n\\n1. [~] Draft\\n2. [ ] Review\",\"output\":{\"plan\":[{\"step\":\"Draft\",\"status\":\"in_progress\"},{\"step\":\"Review\",\"status\":\"pending\"}],\"explanation\":\"Two steps\",\"step_count\":2},\"failed\":false}"
+      }
+    ],
+    "isError": false
+  },
+  {
+    "seq": 9,
+    "at": 1791732515305,
+    "type": "todo/write",
+    "todos": [
+      {
+        "content": "Draft",
+        "status": "in_progress"
+      },
+      {
+        "content": "Review",
+        "status": "pending"
+      }
+    ]
+  },
+  {
+    "seq": 10,
+    "at": 1791732515306,
+    "type": "step/end",
+    "turn": 1,
+    "step": 1
+  },
+  {
+    "seq": 11,
+    "at": 1791732515306,
+    "type": "step/start",
+    "turn": 1,
+    "step": 2
+  },
+  {
+    "seq": 12,
+    "at": 1791732515311,
+    "type": "assistant/message",
+    "content": "Planned.",
+    "stopReason": "completed",
+    "model": "test-model"
+  },
+  {
+    "seq": 13,
+    "at": 1791732515311,
+    "type": "step/end",
+    "turn": 1,
+    "step": 2
+  },
+  {
+    "seq": 14,
+    "at": 1791732515311,
+    "type": "turn/end",
+    "turn": 1,
+    "reason": "completed"
+  }
+]
