@@ -2,13 +2,13 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://kition.ai/contracts/runtime/agent-session-events.schema.json",
   "title": "Kition Agent Session Events",
-  "description": "GET /agent/sessions/{id}/session-events?after=<seq> answers the caller's own session event log in the runtime envelope: events with seq greater than after, in order, at most 500 per page. Another user's or an unknown session answers 404. Tool-call arguments in tool/call and in assistant/message toolCalls are logged through each tool's projection (passwords redacted, search queries and patch text reduced to counts); other fields are logged as the model and tools produced them.",
+  "description": "GET /agent/sessions/{id}/session-events[?after=<seq>] answers the caller's own session event log in the runtime envelope: events with seq greater than after (from the first event when after is omitted), in order, at most 500 per page. Another user's or an unknown session answers 404. Tool-call arguments in tool/call and in assistant/message toolCalls are logged through each tool's projection (passwords redacted, search queries and patch text reduced to counts); other fields are logged as the model and tools produced them.",
   "$ref": "#/$defs/page",
   "$defs": {
     "seq": {
       "type": "integer",
-      "minimum": 1,
-      "description": "Position of the event in its session, starting at 1."
+      "minimum": 0,
+      "description": "Position of the event in its session: from 0, contiguous (DeepSeek Harness numbering)."
     },
     "at": {
       "type": "integer",
@@ -916,8 +916,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "items",
-        "next_after"
+        "items"
       ],
       "properties": {
         "items": {
@@ -930,7 +929,7 @@
         "next_after": {
           "type": "integer",
           "minimum": 0,
-          "description": "Pass as after to read the next page: the last seq returned, or the given after when the page is empty."
+          "description": "Pass as after to read the next page: the last seq returned, or the given after when the page is empty; absent when the page and after are both empty."
         }
       }
     }

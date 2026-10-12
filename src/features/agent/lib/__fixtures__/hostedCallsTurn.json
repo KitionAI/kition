@@ -1,31 +1,31 @@
 [
   {
-    "seq": 1,
+    "seq": 0,
     "at": 1791732515403,
     "type": "turn/start",
     "turn": 1
   },
   {
-    "seq": 2,
+    "seq": 1,
     "at": 1791732515403,
     "type": "step/start",
     "turn": 1,
     "step": 1
   },
   {
-    "seq": 3,
+    "seq": 2,
     "at": 1791732515404,
     "type": "system/message",
     "content": "You are the built-in agent inside the Kition document system."
   },
   {
-    "seq": 4,
+    "seq": 3,
     "at": 1791732515404,
     "type": "permission/preset",
     "preset": "apply"
   },
   {
-    "seq": 5,
+    "seq": 4,
     "at": 1791732515404,
     "type": "user/message",
     "content": [
@@ -39,7 +39,7 @@
     }
   },
   {
-    "seq": 6,
+    "seq": 5,
     "at": 1791732515418,
     "type": "assistant/message",
     "content": "Here is a fox.",
@@ -47,7 +47,7 @@
     "model": "test-model"
   },
   {
-    "seq": 7,
+    "seq": 6,
     "at": 1791732515418,
     "type": "tool/call",
     "callId": "ws_1",
@@ -62,7 +62,7 @@
     }
   },
   {
-    "seq": 8,
+    "seq": 7,
     "at": 1791732515418,
     "type": "tool/result",
     "callId": "ws_1",
@@ -84,7 +84,7 @@
     }
   },
   {
-    "seq": 9,
+    "seq": 8,
     "at": 1791732515418,
     "type": "tool/call",
     "callId": "ig_1",
@@ -96,7 +96,7 @@
     }
   },
   {
-    "seq": 10,
+    "seq": 9,
     "at": 1791732515418,
     "type": "tool/result",
     "callId": "ig_1",
@@ -115,7 +115,7 @@
     }
   },
   {
-    "seq": 11,
+    "seq": 10,
     "at": 1791732515418,
     "type": "deliverables/presented",
     "turn": 1,
@@ -127,7 +127,7 @@
     ]
   },
   {
-    "seq": 12,
+    "seq": 11,
     "at": 1791732515418,
     "type": "user/message",
     "content": [
@@ -141,21 +141,21 @@
     }
   },
   {
-    "seq": 13,
+    "seq": 12,
     "at": 1791732515418,
     "type": "step/end",
     "turn": 1,
     "step": 1
   },
   {
-    "seq": 14,
+    "seq": 13,
     "at": 1791732515418,
     "type": "step/start",
     "turn": 1,
     "step": 2
   },
   {
-    "seq": 15,
+    "seq": 14,
     "at": 1791732515424,
     "type": "assistant/message",
     "content": "Done.",
@@ -163,14 +163,14 @@
     "model": "test-model"
   },
   {
-    "seq": 16,
+    "seq": 15,
     "at": 1791732515424,
     "type": "step/end",
     "turn": 1,
     "step": 2
   },
   {
-    "seq": 17,
+    "seq": 16,
     "at": 1791732515424,
     "type": "turn/end",
     "turn": 1,

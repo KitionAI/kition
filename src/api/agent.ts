@@ -41,10 +41,13 @@ export async function createAgentSession(input: { title?: string; active_documen
   return request.post<AgentSession>('/v1/agent/sessions', input)
 }
 
-/** The session event log after `after` (`contracts/runtime/agent-session-events.schema.json`). */
-export async function listAgentSessionEvents(sessionId: number, after = 0) {
+/**
+ * The session event log after `after`, from its first event when `after` is
+ * -1 (`contracts/runtime/agent-session-events.schema.json`).
+ */
+export async function listAgentSessionEvents(sessionId: number, after = -1) {
   return request.get<AgentSessionEventsPage>(`/v1/agent/sessions/${sessionId}/session-events`, {
-    params: { after },
+    params: after < 0 ? {} : { after },
   })
 }
 

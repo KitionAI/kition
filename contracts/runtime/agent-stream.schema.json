@@ -115,7 +115,7 @@
           "properties": {
             "kind": { "const": "committed" },
             "eventType": { "type": "string", "enum": ["assistant/message", "assistant/attempt"] },
-            "seq": { "type": "integer", "minimum": 1 }
+            "seq": { "type": "integer", "minimum": 0 }
           }
         },
         {

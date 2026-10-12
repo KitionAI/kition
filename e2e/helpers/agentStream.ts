@@ -56,7 +56,7 @@ export class AgentTurnScript {
 
   /** Appends one durable event. */
   event(body: EventBody) {
-    const line = notification.event(this.sessionId, this.log.length + 1, body)
+    const line = notification.event(this.sessionId, this.log.length, body)
     this.log.push((line.params as { event: Record<string, unknown> }).event)
     this.lines.push(line)
     return this
@@ -96,7 +96,7 @@ export class AgentTurnScript {
     this.event({ type: 'assistant/message', content: '', stopReason: 'tool_calls', model: 'gpt-test', toolCalls: [{ callId, name, arguments: args }] })
     this.lines.push(notification.frame(this.sessionId, {
       type: 'end', attemptId, revision: ++this.revision, index: 1,
-      outcome: { kind: 'committed', eventType: 'assistant/message', seq: this.log.length },
+      outcome: { kind: 'committed', eventType: 'assistant/message', seq: this.log.length - 1 },
     }))
     return this
   }
@@ -133,7 +133,7 @@ export class AgentTurnScript {
     this.event({ type: 'assistant/message', content, stopReason: 'stop', model: 'gpt-test' })
     this.lines.push(notification.frame(this.sessionId, {
       type: 'end', attemptId, revision: ++this.revision, index: 1,
-      outcome: { kind: 'committed', eventType: 'assistant/message', seq: this.log.length },
+      outcome: { kind: 'committed', eventType: 'assistant/message', seq: this.log.length - 1 },
     }))
     return this
   }
@@ -193,9 +193,11 @@ export async function mockAgentTurn(
   await page.route('**/api/v1/agent/sessions/*/session-events*', async (route) => {
     const url = new URL(route.request().url())
     const sessionId = Number(url.pathname.match(/sessions\/(\d+)/)?.[1])
-    const after = Number(url.searchParams.get('after') || 0)
+    const raw = url.searchParams.get('after')
+    const after = raw === null ? -1 : Number(raw)
     const items = (logs.get(sessionId) ?? []).filter((event) => Number(event.seq) > after)
-    const page = { items, next_after: items.length ? items.at(-1)!.seq : after }
+    const next = items.length ? Number(items.at(-1)!.seq) : after
+    const page = { items, ...(next < 0 ? {} : { next_after: next }) }
     expectMatchesContract(page, 'agent-session-events', 'page')
     await route.fulfill({
       status: 200,

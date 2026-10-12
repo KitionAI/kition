@@ -102,14 +102,14 @@ function makeMinimalProps(extra: Record<string, unknown> = {}) {
 
 type Body = { type: string } & Record<string, unknown>
 
-/** A one-turn session view: the user's `text`, then `bodies`, numbered from seq 1. */
+/** A one-turn session view: the user's `text`, then `bodies`, numbered from seq 0. */
 function viewOf(text: string, bodies: Body[] = []) {
   const list = [
     { type: 'turn/start', turn: 1 },
     { type: 'step/start', turn: 1, step: 1 },
     { type: 'user/message', content: [{ type: 'text', text }], source: { kind: 'user' } },
     ...bodies,
-  ].map((body, index) => ({ seq: index + 1, at: Date.parse('2026-08-10T00:00:00.000Z') + index, ...body }) as AgentSessionEventsSessionEvent)
+  ].map((body, index) => ({ seq: index, at: Date.parse('2026-08-10T00:00:00.000Z') + index, ...body }) as AgentSessionEventsSessionEvent)
   return list.reduce(applySessionEvent, emptyAgentSessionView())
 }
 

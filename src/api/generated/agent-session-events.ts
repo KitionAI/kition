@@ -6,7 +6,7 @@
  */
 
 /**
- * Position of the event in its session, starting at 1.
+ * Position of the event in its session: from 0, contiguous (DeepSeek Harness numbering).
  */
 export type AgentSessionEventsSeq = number
 
@@ -308,12 +308,12 @@ export type AgentSessionEventsSessionEvent = AgentSessionEventsTurnStartEvent | 
 export type AgentSessionEventsPage = {
   items: AgentSessionEventsSessionEvent[]
   /**
-   * Pass as after to read the next page: the last seq returned, or the given after when the page is empty.
+   * Pass as after to read the next page: the last seq returned, or the given after when the page is empty; absent when the page and after are both empty.
    */
-  next_after: number
+  next_after?: number
 }
 
 /**
- * GET /agent/sessions/{id}/session-events?after=<seq> answers the caller's own session event log in the runtime envelope: events with seq greater than after, in order, at most 500 per page. Another user's or an unknown session answers 404. Tool-call arguments in tool/call and in assistant/message toolCalls are logged through each tool's projection (passwords redacted, search queries and patch text reduced to counts); other fields are logged as the model and tools produced them.
+ * GET /agent/sessions/{id}/session-events[?after=<seq>] answers the caller's own session event log in the runtime envelope: events with seq greater than after (from the first event when after is omitted), in order, at most 500 per page. Another user's or an unknown session answers 404. Tool-call arguments in tool/call and in assistant/message toolCalls are logged through each tool's projection (passwords redacted, search queries and patch text reduced to counts); other fields are logged as the model and tools produced them.
  */
 export type AgentSessionEventsContract = AgentSessionEventsPage

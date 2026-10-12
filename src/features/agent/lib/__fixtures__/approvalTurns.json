@@ -1,31 +1,31 @@
 [
   {
-    "seq": 1,
+    "seq": 0,
     "at": 1791732515372,
     "type": "turn/start",
     "turn": 1
   },
   {
-    "seq": 2,
+    "seq": 1,
     "at": 1791732515372,
     "type": "step/start",
     "turn": 1,
     "step": 1
   },
   {
-    "seq": 3,
+    "seq": 2,
     "at": 1791732515372,
     "type": "system/message",
     "content": "You are the built-in agent inside the Kition document system."
   },
   {
-    "seq": 4,
+    "seq": 3,
     "at": 1791732515373,
     "type": "permission/preset",
     "preset": "apply"
   },
   {
-    "seq": 5,
+    "seq": 4,
     "at": 1791732515373,
     "type": "user/message",
     "content": [
@@ -39,7 +39,7 @@
     }
   },
   {
-    "seq": 6,
+    "seq": 5,
     "at": 1791732515378,
     "type": "assistant/message",
     "content": "",
@@ -59,7 +59,7 @@
     "model": "test-model"
   },
   {
-    "seq": 7,
+    "seq": 6,
     "at": 1791732515378,
     "type": "tool/call",
     "callId": "call_1",
@@ -72,7 +72,7 @@
     }
   },
   {
-    "seq": 8,
+    "seq": 7,
     "at": 1791732515379,
     "type": "tool/result",
     "callId": "call_1",
@@ -116,7 +116,7 @@
     }
   },
   {
-    "seq": 9,
+    "seq": 8,
     "at": 1791732515380,
     "type": "approval/asked",
     "id": "approval:call_1",
@@ -125,41 +125,41 @@
     "reason": "Command not covered by any rule; user approval required."
   },
   {
-    "seq": 10,
+    "seq": 9,
     "at": 1791732515380,
     "type": "step/end",
     "turn": 1,
     "step": 1
   },
   {
-    "seq": 11,
+    "seq": 10,
     "at": 1791732515380,
     "type": "turn/end",
     "turn": 1,
     "reason": "awaiting-approval"
   },
   {
-    "seq": 12,
+    "seq": 11,
     "at": 1791732515550,
     "type": "approval/decided",
     "id": "approval:call_1",
     "outcome": "allowed-once"
   },
   {
-    "seq": 13,
+    "seq": 12,
     "at": 1791732515550,
     "type": "turn/start",
     "turn": 2
   },
   {
-    "seq": 14,
+    "seq": 13,
     "at": 1791732515551,
     "type": "step/start",
     "turn": 2,
     "step": 1
   },
   {
-    "seq": 15,
+    "seq": 14,
     "at": 1791732515551,
     "type": "user/message",
     "content": [
@@ -173,7 +173,7 @@
     }
   },
   {
-    "seq": 16,
+    "seq": 15,
     "at": 1791732515555,
     "type": "assistant/message",
     "content": "",
@@ -193,7 +193,7 @@
     "model": "test-model"
   },
   {
-    "seq": 17,
+    "seq": 16,
     "at": 1791732515555,
     "type": "tool/call",
     "callId": "call_1",
@@ -206,7 +206,7 @@
     }
   },
   {
-    "seq": 18,
+    "seq": 17,
     "at": 1791732515577,
     "type": "tool/result",
     "callId": "call_1",
@@ -234,21 +234,21 @@
     "isError": false
   },
   {
-    "seq": 19,
+    "seq": 18,
     "at": 1791732515577,
     "type": "step/end",
     "turn": 2,
     "step": 1
   },
   {
-    "seq": 20,
+    "seq": 19,
     "at": 1791732515577,
     "type": "step/start",
     "turn": 2,
     "step": 2
   },
   {
-    "seq": 21,
+    "seq": 20,
     "at": 1791732515582,
     "type": "assistant/message",
     "content": "Done.",
@@ -256,14 +256,14 @@
     "model": "test-model"
   },
   {
-    "seq": 22,
+    "seq": 21,
     "at": 1791732515582,
     "type": "step/end",
     "turn": 2,
     "step": 2
   },
   {
-    "seq": 23,
+    "seq": 22,
     "at": 1791732515582,
     "type": "turn/end",
     "turn": 2,

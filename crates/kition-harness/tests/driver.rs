@@ -404,7 +404,7 @@ fn events_appended_outside_a_turn_go_live_and_count_turns() {
     assert_eq!(next_turn(&[]), 1);
     let event = append_live(&log, "s", &sink, EventBody::TurnStart { turn: 1 })
         .unwrap_or_else(|error| panic!("{error}"));
-    assert_eq!(event.seq, 1);
+    assert_eq!(event.seq, 0);
     assert_eq!(
         live.lock()
             .unwrap_or_else(PoisonError::into_inner)

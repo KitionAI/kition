@@ -22,7 +22,7 @@ const artifact = (index: number, count: number) => ({
 
 /** An image composer turn with `count` variants: `saved` succeed, then the events in `rest`. */
 function composer(count: number, saved: number, rest: AgentSessionEventsSessionEvent[] = []) {
-  let seq = 0
+  let seq = -1
   const next = () => {
     seq += 1
     return seq

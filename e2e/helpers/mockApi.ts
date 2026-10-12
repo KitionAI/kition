@@ -490,13 +490,10 @@ export async function mockLocalWorkspaceApi(page: Page, options: MockLocalWorksp
 
     const agentSessionEventsMatch = path.match(/^\/api\/v1\/agent\/sessions\/(\d+)\/session-events$/)
     if (method === 'GET' && agentSessionEventsMatch) {
-      const after = Number(url.searchParams.get('after') || 0)
+      const after = url.searchParams.get('after')
       return fulfill(route, {
         code: 200,
-        data: {
-          items: [],
-          next_after: after,
-        },
+        data: after === null ? { items: [] } : { items: [], next_after: Number(after) },
       })
     }
 

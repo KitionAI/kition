@@ -40,13 +40,16 @@ describe('listAgentSessionEvents', () => {
     expect(config).toMatchObject({ params: { after: 3 } })
   })
 
-  it('starts from the beginning by default', async () => {
-    const empty: AgentSessionEventsPage = { items: [], next_after: 0 }
+  it('starts from the first event without a cursor', async () => {
+    const empty: AgentSessionEventsPage = { items: [] }
     expectMatchesContract(empty, 'agent-session-events', 'page')
     vi.mocked(request.get).mockResolvedValue(empty as never)
 
     await listAgentSessionEvents(7)
+    await listAgentSessionEvents(7, -1)
+    await listAgentSessionEvents(7, 0)
 
-    expect(vi.mocked(request.get).mock.calls[0][1]).toMatchObject({ params: { after: 0 } })
+    const params = vi.mocked(request.get).mock.calls.map(([, config]) => config?.params)
+    expect(params).toEqual([{}, {}, { after: 0 }])
   })
 })

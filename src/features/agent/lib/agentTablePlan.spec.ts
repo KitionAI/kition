@@ -9,7 +9,7 @@ type Call = { name: string; output: unknown; args?: unknown; isError?: boolean }
 
 /** One completed turn in `preset` whose tools ran `calls` and whose final reply is `reply`. */
 function turnOf(reply: string, preset: 'research' | 'preview' | 'apply', calls: Call[], reason: 'completed' | 'failed' = 'completed') {
-  let seq = 0
+  let seq = -1
   const next = () => {
     seq += 1
     return seq

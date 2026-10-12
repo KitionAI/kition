@@ -32,7 +32,7 @@ function stream(view: AgentSessionView, frames: AgentAssistantStreamFrame[]) {
 describe('applySessionEvent', () => {
   it('turns a document write into one completed turn', () => {
     const view = reduce(events(documentWriteTurn))
-    expect(view.cursor).toBe(14)
+    expect(view.cursor).toBe(13)
     expect(view.turns).toHaveLength(1)
     const [turn] = view.turns
     expect(turn).toMatchObject({
@@ -163,33 +163,33 @@ describe('applySessionEvent', () => {
 
   it('fails runs still open when a turn ends', () => {
     const view = reduce([
-      { seq: 1, at: 1, type: 'turn/start', turn: 1 },
-      { seq: 2, at: 2, type: 'tool/call', callId: 'call_9', name: 'document_read', arguments: {} },
-      { seq: 3, at: 3, type: 'turn/end', turn: 1, reason: 'cancelled' },
+      { seq: 0, at: 1, type: 'turn/start', turn: 1 },
+      { seq: 1, at: 2, type: 'tool/call', callId: 'call_9', name: 'document_read', arguments: {} },
+      { seq: 2, at: 3, type: 'turn/end', turn: 1, reason: 'cancelled' },
     ])
     expect(view.turns[0].toolRuns[0]).toMatchObject({ status: 'failed', endedAt: 3 })
   })
 
   it('reads failure details and retries', () => {
     const view = reduce([
-      { seq: 1, at: 1, type: 'turn/start', turn: 1 },
-      { seq: 2, at: 2, type: 'step/start', turn: 1, step: 1 },
+      { seq: 0, at: 1, type: 'turn/start', turn: 1 },
+      { seq: 1, at: 2, type: 'step/start', turn: 1, step: 1 },
       {
-        seq: 3, at: 3, type: 'llm/retry', retryId: 'agent:7#1.1', turn: 1, step: 1, provider: 'openai',
+        seq: 2, at: 3, type: 'llm/retry', retryId: 'agent:7#1.1', turn: 1, step: 1, provider: 'openai',
         mode: 'normal', policyKey: 'engine', retry: 1, maxRetries: 5, delayMs: 500,
         failure: { message: 'overloaded', code: 'rate_limited' },
       },
-      { seq: 4, at: 4, type: 'llm/retry-started', retryId: 'agent:7#1.1', turn: 1, step: 1, retry: 1 },
-      { seq: 5, at: 5, type: 'tool/call', callId: 'call_1', name: 'apply_patch', arguments: { patch_chars: 12 } },
+      { seq: 3, at: 4, type: 'llm/retry-started', retryId: 'agent:7#1.1', turn: 1, step: 1, retry: 1 },
+      { seq: 4, at: 5, type: 'tool/call', callId: 'call_1', name: 'apply_patch', arguments: { patch_chars: 12 } },
       {
-        seq: 6, at: 6, type: 'tool/result', callId: 'call_1', name: 'apply_patch', value: null, isError: true,
+        seq: 5, at: 6, type: 'tool/result', callId: 'call_1', name: 'apply_patch', value: null, isError: true,
         content: [
           { type: 'text', text: 'patch did not apply' },
           { type: 'text', text: '{"name":"apply_patch","summary":"Patch failed","output":{"path":"Docs/a.md"},"failed":true}' },
         ],
       },
-      { seq: 7, at: 7, type: 'assistant/attempt', error: 'stream closed' },
-      { seq: 8, at: 8, type: 'turn/end', turn: 1, reason: 'failed', error: 'stream closed' },
+      { seq: 6, at: 7, type: 'assistant/attempt', error: 'stream closed' },
+      { seq: 7, at: 8, type: 'turn/end', turn: 1, reason: 'failed', error: 'stream closed' },
     ])
     const [turn] = view.turns
     expect(turn.retries).toEqual([{
@@ -205,13 +205,13 @@ describe('applySessionEvent', () => {
 
   it('strips the table plan block from the reply', () => {
     const view = reduce([
-      { seq: 1, at: 1, type: 'turn/start', turn: 1 },
-      { seq: 2, at: 2, type: 'step/start', turn: 1, step: 1 },
+      { seq: 0, at: 1, type: 'turn/start', turn: 1 },
+      { seq: 1, at: 2, type: 'step/start', turn: 1, step: 1 },
       {
-        seq: 3, at: 3, type: 'assistant/message', stopReason: 'completed', model: 'm',
+        seq: 2, at: 3, type: 'assistant/message', stopReason: 'completed', model: 'm',
         content: 'Ready.\n```table_plan\n{"summary":"Import"}\n```',
       },
-      { seq: 4, at: 4, type: 'turn/end', turn: 1, reason: 'completed' },
+      { seq: 3, at: 4, type: 'turn/end', turn: 1, reason: 'completed' },
     ])
     expect(view.turns[0].reply).toBe('Ready.')
   })
@@ -253,7 +253,7 @@ describe('applyAssistantStream', () => {
   it('follows the attempt a start opened, whatever its revision', () => {
     const ended = stream(opened, [start(41), text(42, 0, 'Hi'), {
       type: 'end', attemptId: 'agent:7#1.1', revision: 43, index: 1,
-      outcome: { kind: 'committed', eventType: 'assistant/message', seq: 6 },
+      outcome: { kind: 'committed', eventType: 'assistant/message', seq: 5 },
     }])
     expect(ended.live).toBeNull()
     expect(stream(ended, [text(44, 1, 'late')]).live).toBeNull()
@@ -265,7 +265,7 @@ describe('applyAssistantStream', () => {
   it('keeps the text of an attempt that settled without a message', () => {
     const view = stream(opened, [start(1), text(2, 0, 'Half an ans'), {
       type: 'end', attemptId: 'agent:7#1.1', revision: 3, index: 1,
-      outcome: { kind: 'committed', eventType: 'assistant/attempt', seq: 6 },
+      outcome: { kind: 'committed', eventType: 'assistant/attempt', seq: 5 },
     }])
     expect(view.live).toBeNull()
     expect(view.turns[0].partialReply).toBe('Half an ans')

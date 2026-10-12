@@ -25,7 +25,7 @@ function viewOf(bodies: Body[], ended = true) {
     { type: 'user/message', content: [{ type: 'text', text: 'Edit the poster' }], source: { kind: 'user' } },
     ...bodies,
     ...(ended ? [{ type: 'turn/end', turn: 1, reason: 'completed' }] : []),
-  ].map((body, index) => ({ seq: index + 1, at: index + 1, ...body }) as AgentSessionEventsSessionEvent)
+  ].map((body, index) => ({ seq: index, at: index + 1, ...body }) as AgentSessionEventsSessionEvent)
   return list.reduce(applySessionEvent, emptyAgentSessionView())
 }
 

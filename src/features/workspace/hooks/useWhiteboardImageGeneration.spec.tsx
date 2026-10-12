@@ -142,9 +142,9 @@ async function renderImageGenerationHook(
 
 /** A session whose turns delivered `paths`, one call each. */
 function delivered(paths: string[]): AgentSessionView {
-  const events: AgentSessionEventsSessionEvent[] = [{ seq: 1, at: 1, type: 'turn/start', turn: 1 }]
+  const events: AgentSessionEventsSessionEvent[] = [{ seq: 0, at: 1, type: 'turn/start', turn: 1 }]
   paths.forEach((path, index) => events.push({
-    seq: index + 2, at: index + 2, type: 'deliverables/presented', turn: 1, callId: `c${index}`, files: [{ path }],
+    seq: index + 1, at: index + 2, type: 'deliverables/presented', turn: 1, callId: `c${index}`, files: [{ path }],
   }))
   return events.reduce(applySessionEvent, emptyAgentSessionView())
 }

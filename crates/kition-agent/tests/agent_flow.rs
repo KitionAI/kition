@@ -1155,7 +1155,11 @@ async fn assert_session_events_api(app: &Router, session_id: i64) {
         check_session_events_contract("sessionEvent", item);
     }
     let seqs: Vec<u64> = items.iter().filter_map(|e| e["seq"].as_u64()).collect();
-    assert!(seqs.windows(2).all(|pair| pair[0] < pair[1]), "{seqs:?}");
+    assert_eq!(seqs.first(), Some(&0), "the log is numbered from 0");
+    assert!(
+        seqs.windows(2).all(|pair| pair[1] == pair[0] + 1),
+        "{seqs:?}"
+    );
     let last = seqs.last().copied().unwrap_or_default();
     assert_eq!(page["next_after"], json!(last));
 
@@ -1179,6 +1183,23 @@ async fn assert_session_events_api(app: &Router, session_id: i64) {
 
     let (status, _) = call(app, "GET", "/agent/sessions/999/session-events", json!({})).await;
     assert_eq!(status, 404);
+
+    let fresh = new_session(app).await;
+    let (status, body) = call(
+        app,
+        "GET",
+        &format!("/agent/sessions/{fresh}/session-events"),
+        json!({}),
+    )
+    .await;
+    assert_eq!(status, 200);
+    let none = data(&body);
+    assert_eq!(
+        none,
+        json!({ "items": [] }),
+        "no cursor before the first event"
+    );
+    check_session_events_contract("page", &none);
 }
 
 #[tokio::test(flavor = "multi_thread")]

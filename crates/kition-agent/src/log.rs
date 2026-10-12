@@ -36,22 +36,22 @@ pub(crate) fn public(mut event: SessionEvent) -> SessionEvent {
     event
 }
 
-/// The session events after `after`, in order, at most one page, and the
-/// cursor for the next page (the last seq returned, or `after`), as
-/// `public` shows them.
+/// The session events after `after` (from the first event when `None`), in
+/// order, at most one page, and the cursor for the next page (the last seq
+/// returned, or `after`), as `public` shows them.
 pub(crate) fn read_events(
     log: &dyn SessionLog,
     session_id: i64,
-    after: u64,
-) -> Result<(Vec<SessionEvent>, u64), String> {
+    after: Option<u64>,
+) -> Result<(Vec<SessionEvent>, Option<u64>), String> {
     let items: Vec<_> = log
         .read(&log_key(session_id))?
         .into_iter()
-        .filter(|event| event.seq > after)
+        .filter(|event| after.is_none_or(|after| event.seq > after))
         .take(EVENT_PAGE_LIMIT)
         .map(public)
         .collect();
-    let next_after = items.last().map_or(after, |event| event.seq);
+    let next_after = items.last().map(|event| event.seq).or(after);
     Ok((items, next_after))
 }
 
@@ -152,21 +152,22 @@ mod tests {
         log.append(&log_key(5), EventBody::TurnStart { turn: 1 })
             .unwrap_or_else(|error| panic!("{error}"));
 
-        let (first, next) = read_events(&log, 4, 0).unwrap_or_else(|error| panic!("{error}"));
+        let (first, next) = read_events(&log, 4, None).unwrap_or_else(|error| panic!("{error}"));
         assert_eq!(first.len(), EVENT_PAGE_LIMIT);
-        assert_eq!(first.first().map(|event| event.seq), Some(1));
-        assert_eq!(next, EVENT_PAGE_LIMIT as u64);
+        assert_eq!(first.first().map(|event| event.seq), Some(0));
+        assert_eq!(next, Some(EVENT_PAGE_LIMIT as u64 - 1));
         let (rest, last) = read_events(&log, 4, next).unwrap_or_else(|error| panic!("{error}"));
         assert_eq!(
             rest.iter().map(|event| event.seq).collect::<Vec<_>>(),
-            [501, 502, 503]
+            [500, 501, 502]
         );
         let (empty, same) = read_events(&log, 4, last).unwrap_or_else(|error| panic!("{error}"));
         assert!(empty.is_empty());
         assert_eq!(same, last);
-        let (missing, cursor) = read_events(&log, 6, 0).unwrap_or_else(|error| panic!("{error}"));
+        let (missing, cursor) =
+            read_events(&log, 6, None).unwrap_or_else(|error| panic!("{error}"));
         assert!(missing.is_empty());
-        assert_eq!(cursor, 0);
+        assert_eq!(cursor, None);
 
         log.append(
             &log_key(6),
@@ -179,7 +180,7 @@ mod tests {
             },
         )
         .unwrap_or_else(|error| panic!("{error}"));
-        let (page, _) = read_events(&log, 6, 0).unwrap_or_else(|error| panic!("{error}"));
+        let (page, _) = read_events(&log, 6, None).unwrap_or_else(|error| panic!("{error}"));
         assert!(matches!(
             &page[0].body,
             EventBody::AssistantMessage { raw_items, .. } if raw_items.is_empty()
