@@ -1220,6 +1220,90 @@ describe('useWorkspaceAgent session events', () => {
     await unmount()
   })
 
+  describe('when the stream fails after a canvas patch', () => {
+    const whiteboardTurn = () => ({
+      onWhiteboardPatch: vi.fn(),
+      onWhiteboardPatchCancelled: vi.fn(),
+      getTurnContext: () => ({ paneContext: 'whiteboard', whiteboardContext: { board: { path: 'Boards/a.kiboard' } } }),
+    })
+    const abortError = () => Object.assign(new Error('aborted'), { name: 'AbortError' })
+    // Index 12 is the `tool/result` carrying the final patch; index 5 the
+    // chunk that completes the provisional preview.
+    const throwAfter = (count: number, error: () => Error) => async (args: any) => {
+      for (const notification of turnNotifications().slice(0, count)) args.onNotification(notification)
+      throw error()
+    }
+
+    it.each([
+      ['an error', () => new Error('boom')],
+      ['Stop', abortError],
+    ])('keeps a final patch waiting for Accept after %s', async (_label, error) => {
+      const callbacks = whiteboardTurn()
+      mocks.streamAgentMessage.mockImplementation(throwAfter(13, error))
+      const { latest, unmount } = await mountHook(callbacks)
+      await send(latest, 30, 'Plan it')
+      expect(callbacks.onWhiteboardPatch.mock.calls.map(([input]) => input.provisional)).toEqual([true, false])
+      expect(callbacks.onWhiteboardPatchCancelled).not.toHaveBeenCalled()
+      await unmount()
+    })
+
+    it.each([
+      ['an error', () => new Error('boom')],
+      ['Stop', abortError],
+    ])('cancels an open provisional preview after %s', async (_label, error) => {
+      const callbacks = whiteboardTurn()
+      mocks.streamAgentMessage.mockImplementation(throwAfter(6, error))
+      const { latest, unmount } = await mountHook(callbacks)
+      await send(latest, 30, 'Plan it')
+      expect(callbacks.onWhiteboardPatch.mock.calls.map(([input]) => input.provisional)).toEqual([true])
+      expect(callbacks.onWhiteboardPatchCancelled).toHaveBeenCalledExactlyOnceWith({ boardPath: 'Boards/a.kiboard', sessionId: 30 })
+      await unmount()
+    })
+  })
+
+  describe('the log read after Stop', () => {
+    const stopMidTurn = async (args: any) => {
+      for (const notification of turnNotifications().slice(0, 4)) args.onNotification(notification)
+      throw Object.assign(new Error('aborted'), { name: 'AbortError' })
+    }
+    const waitPastResync = () => act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1100))
+    })
+
+    it('runs a second later while the session is open', async () => {
+      mocks.streamAgentMessage.mockImplementation(stopMidTurn)
+      const { latest, unmount } = await mountHook()
+      await send(latest, 30, 'Plan it')
+      const reads = mocks.listAgentSessionEvents.mock.calls.length
+      await waitPastResync()
+      expect(mocks.listAgentSessionEvents.mock.calls.length).toBe(reads + 1)
+      await unmount()
+    })
+
+    it('is dropped when the session is deleted', async () => {
+      mocks.streamAgentMessage.mockImplementation(stopMidTurn)
+      mocks.deleteAgentSession.mockResolvedValue(undefined)
+      const { latest, unmount } = await mountHook()
+      await send(latest, 30, 'Plan it')
+      await act(async () => latest.current.deleteAgentChat(30))
+      const reads = mocks.listAgentSessionEvents.mock.calls.length
+      await waitPastResync()
+      expect(mocks.listAgentSessionEvents.mock.calls.length).toBe(reads)
+      expect(latest.current.agentSessionViews[30]).toBeUndefined()
+      await unmount()
+    })
+
+    it('is dropped on unmount', async () => {
+      mocks.streamAgentMessage.mockImplementation(stopMidTurn)
+      const { latest, unmount } = await mountHook()
+      await send(latest, 30, 'Plan it')
+      await unmount()
+      const reads = mocks.listAgentSessionEvents.mock.calls.length
+      await waitPastResync()
+      expect(mocks.listAgentSessionEvents.mock.calls.length).toBe(reads)
+    })
+  })
+
   it('shows completion as unknown when the stream ends before idle', async () => {
     const { AgentStreamInterruptedError } = await import('@/api/agentStream')
     const onError = vi.fn()

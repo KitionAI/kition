@@ -141,7 +141,11 @@ type UseWorkspaceAgentOptions = {
     | Promise<WorkspaceAgentTurnContext | null | undefined>
 }
 
-/** One page of `GET /session-events` at most; a shorter page is the end of the log. */
+/**
+ * One page of `GET /session-events` at most; a shorter page is the end of the
+ * log. The contract states it as the page's `maxItems` (generated types carry
+ * no value) and the runtime as `EVENT_PAGE_LIMIT` in `kition-agent`'s `log.rs`.
+ */
 const SESSION_EVENTS_PAGE = 500
 
 /** The desktop notification a live session event raises. */
@@ -229,6 +233,17 @@ export function useWorkspaceAgent({
   const agentDocumentContextsRef = useRef<Record<number, AgentDocumentContextPaths>>({})
   const agentAbortControllers = useRef<Record<number, AbortController>>({})
   const agentSendInFlightSessions = useRef<Set<number>>(new Set())
+  // The delayed log read after Stop, per session; cleared when the session
+  // or the workspace goes away.
+  const agentResyncTimers = useRef<Map<number, number>>(new Map())
+  const clearResyncTimers = useCallback((sessionId?: number) => {
+    for (const [id, timer] of agentResyncTimers.current) {
+      if (sessionId !== undefined && id !== sessionId) continue
+      window.clearTimeout(timer)
+      agentResyncTimers.current.delete(id)
+    }
+  }, [])
+  useEffect(() => () => clearResyncTimers(), [clearResyncTimers])
 
   const commitSessionView = useCallback((sessionId: number, view: AgentSessionView) => {
     if (agentSessionViewsRef.current[sessionId] === view) return
@@ -438,6 +453,7 @@ export function useWorkspaceAgent({
     }
     agentAbortControllers.current = {}
     agentSendInFlightSessions.current.clear()
+    clearResyncTimers()
 
     setAgentSessions([])
     agentSessionViewsRef.current = {}
@@ -461,7 +477,7 @@ export function useWorkspaceAgent({
     if (workspaceTreeItems === undefined) {
       void refreshMentionableDocuments()
     }
-  }, [refreshAgentSessions, refreshMentionableDocuments, rootPath, silentInitialSessionLoad, workspaceTreeItems])
+  }, [clearResyncTimers, refreshAgentSessions, refreshMentionableDocuments, rootPath, silentInitialSessionLoad, workspaceTreeItems])
 
   const openAgentSession = useCallback(async (session: AgentSession) => {
     if (agentSessionViewsRef.current[session.id]) return
@@ -507,6 +523,7 @@ export function useWorkspaceAgent({
   const deleteAgentChat = useCallback(async (sessionId: number) => {
     agentAbortControllers.current[sessionId]?.abort()
     delete agentAbortControllers.current[sessionId]
+    clearResyncTimers(sessionId)
 
     try {
       await deleteAgentSession(sessionId)
@@ -538,7 +555,7 @@ export function useWorkspaceAgent({
     writeAgentDocumentContextsForSession(rootPath, sessionId, undefined)
     agentSendInFlightSessions.current.delete(sessionId)
     markSessionBusy(sessionId, false)
-  }, [dropSessionView, markSessionBusy, onError, rootPath])
+  }, [clearResyncTimers, dropSessionView, markSessionBusy, onError, rootPath])
 
   const markAgentModifiedDocuments = useCallback((paths: string[], sessionId: number) => {
     setAgentModifiedDocumentPaths((current) => {
@@ -640,6 +657,10 @@ export function useWorkspaceAgent({
     let documentsChanged = false
     let whiteboardPathForTurn = ''
     let designPathForTurn = ''
+    // Whether a provisional preview is on the canvas. A final patch waits
+    // for Accept, so a failed or stopped stream cancels only a preview.
+    let whiteboardPreviewOpen = false
+    let designPreviewOpen = false
 
     const runEffect = (effect: AgentEffect) => {
       switch (effect.type) {
@@ -661,19 +682,23 @@ export function useWorkspaceAgent({
           window.dispatchEvent(new CustomEvent('kition:connections:changed', { detail: effect.detail }))
           return
         case 'whiteboard-patch':
+          whiteboardPreviewOpen = effect.provisional
           if (whiteboardPathForTurn) {
             onWhiteboardPatch?.({ boardPath: whiteboardPathForTurn, patch: effect.patch, provisional: effect.provisional, sessionId })
           }
           return
         case 'whiteboard-patch-cancelled':
+          whiteboardPreviewOpen = false
           if (whiteboardPathForTurn) onWhiteboardPatchCancelled?.({ boardPath: whiteboardPathForTurn, sessionId })
           return
         case 'design-patch':
+          designPreviewOpen = effect.provisional
           if (designPathForTurn) {
             onDesignPatch?.({ designPath: designPathForTurn, patch: effect.patch, provisional: effect.provisional, sessionId })
           }
           return
         case 'design-patch-cancelled':
+          designPreviewOpen = false
           if (designPathForTurn) onDesignPatchCancelled?.({ designPath: designPathForTurn, sessionId })
       }
     }
@@ -847,8 +872,8 @@ export function useWorkspaceAgent({
       trackProductEventOnce('agent_first_request_completed', { result: 'success' })
     } catch (requestError: any) {
       // A preview whose turn never settled must not stay on the canvas.
-      if (whiteboardPathForTurn) onWhiteboardPatchCancelled?.({ boardPath: whiteboardPathForTurn, sessionId })
-      if (designPathForTurn) onDesignPatchCancelled?.({ designPath: designPathForTurn, sessionId })
+      if (whiteboardPreviewOpen && whiteboardPathForTurn) onWhiteboardPatchCancelled?.({ boardPath: whiteboardPathForTurn, sessionId })
+      if (designPreviewOpen && designPathForTurn) onDesignPatchCancelled?.({ designPath: designPathForTurn, sessionId })
       const canceled = requestError?.name === 'AbortError'
       const view = agentSessionViewsRef.current[sessionId] ?? emptyAgentSessionView()
       commitSessionView(sessionId, canceled || requestError instanceof AgentStreamInterruptedError
@@ -856,7 +881,11 @@ export function useWorkspaceAgent({
         : applyStatus(view, 'idle'))
       if (canceled) {
         // The runtime logs the stopped turn a moment after the stream closes.
-        window.setTimeout(() => void syncSessionEvents(sessionId).catch(() => undefined), 1000)
+        clearResyncTimers(sessionId)
+        agentResyncTimers.current.set(sessionId, window.setTimeout(() => {
+          agentResyncTimers.current.delete(sessionId)
+          void syncSessionEvents(sessionId).catch(() => undefined)
+        }, 1000))
       } else if (requestError instanceof AgentStreamInterruptedError) {
         onError(i18next.t('timeline.activity.interruptedDetail', { ns: 'agent' }))
       } else {
@@ -872,6 +901,7 @@ export function useWorkspaceAgent({
   }, [
     agentBusySessions,
     agentDrafts,
+    clearResyncTimers,
     commitSessionView,
     ensureHostedAccountReady,
     getTurnContext,

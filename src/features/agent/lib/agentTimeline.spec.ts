@@ -78,6 +78,13 @@ describe('buildAgentRunLogItems', () => {
     expect(item).toMatchObject({ title: 'Completion not confirmed', status: 'pending' })
   })
 
+  it('dates an unknown outcome at the turn\'s last event, not the clock', () => {
+    const turn = { ...turnOf([step(1), call('c1', 'document_read'), result('c1', 'document_read', {})]), interrupted: true }
+    const outcome = buildAgentRunLogItems({ turn, busy: false }).find((item) => item.key === 'outcome')
+    // `tool/result` is the fourth event: 3 ms after the turn started.
+    expect(outcome?.createdAt).toBe('2026-05-29T00:00:00.003Z')
+  })
+
   it('shows the model thinking while busy without a running row', () => {
     const turn = turnOf([step(1), call('c1', 'document_read'), result('c1', 'document_read', {})])
     const model = buildAgentRunLogItems({ turn, busy: true, locale: 'en-US' }).find((item) => item.kind === 'model')

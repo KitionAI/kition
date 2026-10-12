@@ -154,13 +154,23 @@ function stepItems(turn: AgentTurnView, busy: boolean, locale: AgentTimelineLoca
   })
 }
 
+/** The time of the turn's last known event. */
+function lastKnownAt(turn: AgentTurnView) {
+  return Math.max(
+    turn.startedAt,
+    ...turn.steps.flatMap((step) => [step.startedAt, step.endedAt ?? 0, step.message?.at ?? 0]),
+    ...turn.toolRuns.flatMap((run) => [run.startedAt, run.endedAt ?? 0]),
+    ...turn.retries.map((retry) => retry.at),
+  )
+}
+
 /** How the turn ended, or that its outcome is unknown. */
 function outcomeItem(turn: AgentTurnView, locale: AgentTimelineLocale): AgentRunLogItem | null {
   const dict = getAgentTimelineDict(locale)
   if (!turn.end) {
     return turn.interrupted ? {
       key: 'outcome', kind: 'event', title: dict.activity.completionUnknown,
-      detail: dict.activity.interruptedDetail, status: 'pending', createdAt: new Date().toISOString(),
+      detail: dict.activity.interruptedDetail, status: 'pending', createdAt: iso(lastKnownAt(turn)),
     } : null
   }
   const at = iso(turn.end.at)
