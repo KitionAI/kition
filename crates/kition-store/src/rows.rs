@@ -225,45 +225,13 @@ pub fn insert_if_absent<T: TableRow>(conn: &Connection, row: &T) -> rusqlite::Re
 }
 
 crate::row_type!(
-    /// An agent conversation.
+    /// An agent conversation's index entry; the conversation itself is the
+    /// session event log (`agent_session_events`).
     AgentSession, "agent_sessions", {
-        user_id: int, title: text, workspace_root: text, active_document_path: text, status: text,
-        model_id: text, system_prompt: text, extra_data: json, created_at: time, updated_at: time,
+        user_id: int, title: text, workspace_root: text, active_document_path: text,
+        model_id: text, extra_data: json, created_at: time, updated_at: time,
     }
 );
-
-crate::row_type!(AgentMessage, "agent_messages", {
-    session_id: int, user_id: int, role: text, content: text, parts: json, status: text, created_at: time,
-});
-
-crate::row_type!(AgentToolCall, "agent_tool_calls", {
-    session_id: int, message_id: opt, user_id: int, tool_name: text, input_data: json, output_data: json,
-    status: text, error_message: text, created_at: time, updated_at: time,
-});
-
-crate::row_type!(AgentArtifact, "agent_artifacts", {
-    session_id: int, user_id: int, tool_call_id: opt, kind: text, path: text, mime_type: text, title: text,
-    created_at: time,
-});
-
-crate::row_type!(AgentEvent, "agent_events", {
-    session_id: int, user_id: int, message_id: opt, tool_call_id: opt, artifact_id: opt, event_type: text,
-    stage: text, status: text, label: text, message: text, data: json, created_at: time,
-});
-
-crate::row_type!(AgentPlan, "agent_plans", {
-    session_id: int, user_id: int, message_id: opt, step_index: int, step_text: text, status: text, updated_at: time,
-});
-
-crate::row_type!(AgentGoal, "agent_goals", {
-    session_id: int, user_id: int, objective: text, status: text, token_budget: int, tokens_used: int,
-    time_used_seconds: int, started_at: time, completed_at: opt_time, updated_at: time,
-});
-
-crate::row_type!(AgentSubagent, "agent_subagents", {
-    parent_session_id: int, child_session_id: int, user_id: int, nickname: text, role: text, status: text,
-    final_message: text, created_at: time, updated_at: time, completed_at: opt_time,
-});
 
 #[cfg(test)]
 mod tests {
@@ -296,23 +264,25 @@ mod tests {
             select(&conn, "user_id = ?1", &[SqlValue::Integer(2)], "id ASC").unwrap_or_default();
         assert_eq!(listed[0].title, "U");
 
-        let legacy = json!({"id": 9, "session_id": 1, "user_id": 2, "objective": "o", "status": "active",
-            "started_at": "2026-10-09T03:57:06Z", "completed_at": null, "updated_at": "0001-01-01T00:00:00Z"});
-        let goal: AgentGoal = serde_json::from_value(legacy).unwrap_or_else(|err| panic!("{err}"));
-        assert_eq!(
-            (goal.started_at, goal.completed_at, goal.updated_at),
-            (1_791_518_226_000, None, 0)
-        );
-        insert_if_absent(&conn, &goal).unwrap_or_else(|err| panic!("{err}"));
-        insert_if_absent(&conn, &goal).unwrap_or_else(|err| panic!("{err}"));
+        let legacy = json!({"id": 9, "user_id": 2, "title": "Old",
+            "created_at": "2026-10-09T03:57:06Z", "updated_at": "0001-01-01T00:00:00Z"});
+        let old: AgentSession =
+            serde_json::from_value(legacy).unwrap_or_else(|err| panic!("{err}"));
+        assert_eq!((old.created_at, old.updated_at), (1_791_518_226_000, 0));
+        insert_if_absent(&conn, &old).unwrap_or_else(|err| panic!("{err}"));
+        insert_if_absent(&conn, &old).unwrap_or_else(|err| panic!("{err}"));
         let count: i64 = conn
-            .query_row("SELECT COUNT(*) FROM agent_goals", [], |r| r.get(0))
+            .query_row(
+                "SELECT COUNT(*) FROM agent_sessions WHERE id = 9",
+                [],
+                |r| r.get(0),
+            )
             .unwrap_or_default();
         assert_eq!(count, 1);
         assert_eq!(
-            serde_json::to_value(&goal)
+            serde_json::to_value(&old)
                 .ok()
-                .and_then(|v| v.get("started_at").cloned()),
+                .and_then(|v| v.get("created_at").cloned()),
             Some(json!(1_791_518_226_000_i64))
         );
     }

@@ -106,10 +106,8 @@ pub fn classify_path(path: &str) -> &'static str {
         "asset"
     } else if lower.starts_with(".kition/agents/") && lower.ends_with("/session.json") {
         "agent_session"
-    } else if lower.starts_with(".kition/agents/") && lower.ends_with("/messages.jsonl") {
-        "agent_message"
-    } else if lower.starts_with(".kition/agents/") && lower.ends_with("/events.jsonl") {
-        "agent_event"
+    } else if lower.starts_with(".kition/agents/") && lower.ends_with("/session-events.jsonl") {
+        "agent_session_events"
     } else if lower.starts_with(".kition/sync/") {
         "sync_state"
     } else if lower == "workflow.json"

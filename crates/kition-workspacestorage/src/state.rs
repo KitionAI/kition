@@ -2,39 +2,31 @@
 //! importing them on startup, so a workspace folder carries its history.
 //!
 //! Layout:
-//! * `.kition/agents/<session id>/session.json` plus `messages.jsonl` and
-//!   `events.jsonl`;
+//! * `.kition/agents/<session id>/session.json` (the session row) and
+//!   `session-events.jsonl` (the session event log, one event per line as
+//!   `GET /agent/sessions/{id}/session-events` serves it);
 //! * `.kition/sync/forms/state.json` and `.kition/sync/email/state.json`.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use kition_core::{AppError, AppResult, Millis};
 use kition_store::Db;
-use kition_store::rows::{
-    self, AgentArtifact, AgentEvent, AgentGoal, AgentMessage, AgentPlan, AgentSession,
-    AgentSubagent, AgentToolCall, TableRow,
-};
+use kition_store::rows::{self, AgentSession};
 use kition_workspace::AssetStore;
 use kition_workspace::fsutil::{write_atomic, write_json_atomic};
 use rusqlite::Connection;
 use rusqlite::types::Value as SqlValue;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Map, Value};
 
-/// Version 2 files store timestamps as milliseconds; version 1 files (text
-/// timestamps) are still imported.
-pub const STATE_SCHEMA_VERSION: i64 = 2;
+/// Version 3 files carry the agent session event log; older files are not
+/// imported.
+pub const STATE_SCHEMA_VERSION: i64 = 3;
 
 /// Tables whose changes are mirrored into workspace files.
-pub const MIRRORED_TABLES: [&str; 13] = [
+pub const MIRRORED_TABLES: [&str; 7] = [
     "agent_sessions",
-    "agent_messages",
-    "agent_tool_calls",
-    "agent_artifacts",
-    "agent_events",
-    "agent_plans",
-    "agent_goals",
-    "agent_subagents",
+    "agent_session_events",
     "form_sync_workflows",
     "form_sync_items",
     "workflows",
@@ -43,7 +35,7 @@ pub const MIRRORED_TABLES: [&str; 13] = [
 ];
 
 fn importable(version: i64) -> bool {
-    version == 1 || version == STATE_SCHEMA_VERSION
+    version == STATE_SCHEMA_VERSION
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -52,16 +44,70 @@ struct SessionSnapshot {
     schema_version: i64,
     #[serde(default)]
     session: AgentSession,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    tool_calls: Vec<AgentToolCall>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    artifacts: Vec<AgentArtifact>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    plans: Vec<AgentPlan>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    goals: Vec<AgentGoal>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    subagents: Vec<AgentSubagent>,
+}
+
+/// The log key of an agent session (`kition-agent`'s `log_key`).
+fn log_key(session_id: i64) -> String {
+    format!("agent:{session_id}")
+}
+
+/// A logged event as clients see it: `{seq, at, type, ...}` without the
+/// provider-native `rawItems` of `assistant/message`.
+fn portable_event(seq: i64, at: i64, body: &str) -> AppResult<Value> {
+    let mut event: Map<String, Value> = serde_json::from_str(body)?;
+    if event.get("type").and_then(Value::as_str) == Some("assistant/message") {
+        event.remove("rawItems");
+    }
+    event.insert("seq".into(), seq.into());
+    event.insert("at".into(), at.into());
+    Ok(Value::Object(event))
+}
+
+/// The session's logged events as `portable_event` writes them, in order.
+fn session_events(conn: &Connection, session_id: i64) -> AppResult<Vec<Value>> {
+    let mut statement = conn.prepare(
+        "SELECT seq, created_at, body FROM agent_session_events WHERE session_key = ?1 ORDER BY seq",
+    )?;
+    let rows = statement
+        .query_map([log_key(session_id)], |row| {
+            Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, i64>(1)?,
+                row.get::<_, String>(2)?,
+            ))
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    rows.iter()
+        .map(|(seq, at, body)| portable_event(*seq, *at, body))
+        .collect()
+}
+
+/// Adds one exported event to the session's log unless its `seq` is there.
+fn import_event(
+    conn: &Connection,
+    session_id: i64,
+    mut event: Map<String, Value>,
+) -> AppResult<()> {
+    let (Some(seq), Some(at)) = (
+        event.remove("seq").and_then(|seq| seq.as_i64()),
+        event.remove("at").and_then(|at| at.as_i64()),
+    ) else {
+        return Err(AppError::bad_request("session event without seq or at"));
+    };
+    let kind = event
+        .get("type")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_owned();
+    if seq < 1 || kind.is_empty() {
+        return Err(AppError::bad_request("session event without seq or type"));
+    }
+    conn.execute(
+        "INSERT OR IGNORE INTO agent_session_events (session_key, seq, event_type, body, created_at) \
+         VALUES (?1, ?2, ?3, ?4, ?5)",
+        rusqlite::params![log_key(session_id), seq, kind, Value::Object(event).to_string(), at],
+    )?;
+    Ok(())
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -330,15 +376,6 @@ fn write_json_lines<T: Serialize>(path: &Path, rows: &[T]) -> AppResult<()> {
     write_atomic(path, out.as_bytes())
 }
 
-fn by_session<T: TableRow>(conn: &Connection, column: &str, id: i64) -> AppResult<Vec<T>> {
-    Ok(rows::select(
-        conn,
-        &format!("{column} = ?1"),
-        &[SqlValue::Integer(id)],
-        "id ASC",
-    )?)
-}
-
 impl StateMirror {
     fn workspace(&self) -> &Path {
         self.assets.workspace_dir()
@@ -388,26 +425,9 @@ impl StateMirror {
                 Some(root) if root.trim() != workspace_root => continue,
                 Some(_) => {}
             }
-            for row in &snapshot.tool_calls {
-                rows::insert_if_absent(&conn, row)?;
-            }
-            for row in &snapshot.artifacts {
-                rows::insert_if_absent(&conn, row)?;
-            }
-            for row in &snapshot.plans {
-                rows::insert_if_absent(&conn, row)?;
-            }
-            for row in &snapshot.goals {
-                rows::insert_if_absent(&conn, row)?;
-            }
-            for row in &snapshot.subagents {
-                rows::insert_if_absent(&conn, row)?;
-            }
-            for row in read_json_lines::<AgentMessage>(&dir.join("messages.jsonl"))? {
-                rows::insert_if_absent(&conn, &row)?;
-            }
-            for row in read_json_lines::<AgentEvent>(&dir.join("events.jsonl"))? {
-                rows::insert_if_absent(&conn, &row)?;
+            let events = read_json_lines::<Map<String, Value>>(&dir.join("session-events.jsonl"))?;
+            for event in events {
+                import_event(&conn, snapshot.session.id, event)?;
             }
         }
         Ok(())
@@ -533,32 +553,14 @@ impl StateMirror {
             let dir = root.join(&name);
             let mut portable = session.clone();
             portable.workspace_root = ".".into();
-            let mut artifacts: Vec<AgentArtifact> = by_session(&conn, "session_id", session.id)?;
-            for artifact in &mut artifacts {
-                artifact.path = self.portable_artifact_path(&artifact.path);
-            }
             let snapshot = SessionSnapshot {
                 schema_version: STATE_SCHEMA_VERSION,
                 session: portable,
-                tool_calls: by_session(&conn, "session_id", session.id)?,
-                artifacts,
-                plans: by_session(&conn, "session_id", session.id)?,
-                goals: by_session(&conn, "session_id", session.id)?,
-                subagents: rows::select(
-                    &conn,
-                    "parent_session_id = ?1 OR child_session_id = ?1",
-                    &[SqlValue::Integer(session.id)],
-                    "id ASC",
-                )?,
             };
             write_json_atomic(&dir.join("session.json"), &snapshot)?;
             write_json_lines(
-                &dir.join("messages.jsonl"),
-                &by_session::<AgentMessage>(&conn, "session_id", session.id)?,
-            )?;
-            write_json_lines(
-                &dir.join("events.jsonl"),
-                &by_session::<AgentEvent>(&conn, "session_id", session.id)?,
+                &dir.join("session-events.jsonl"),
+                &session_events(&conn, session.id)?,
             )?;
         }
         for entry in std::fs::read_dir(&root)?.filter_map(Result::ok) {
@@ -568,30 +570,6 @@ impl StateMirror {
             }
         }
         Ok(())
-    }
-
-    /// Workspace-relative artifact paths; files outside the workspace are
-    /// copied into workspace assets.
-    fn portable_artifact_path(&self, raw: &str) -> String {
-        let raw = raw.trim();
-        let path = PathBuf::from(raw);
-        if raw.is_empty() || !path.is_absolute() {
-            return raw.replace('\\', "/");
-        }
-        if let Ok(relative) = path.strip_prefix(self.workspace()) {
-            return relative.to_string_lossy().replace('\\', "/");
-        }
-        let Ok(data) = std::fs::read(&path) else {
-            return String::new();
-        };
-        let name = path
-            .file_name()
-            .map(|n| n.to_string_lossy().into_owned())
-            .unwrap_or_default();
-        self.assets
-            .save_bytes(&data, &name, "application/octet-stream")
-            .map(|a| a.workspace_path)
-            .unwrap_or_default()
     }
 
     fn export_sync_state(&self) -> AppResult<()> {

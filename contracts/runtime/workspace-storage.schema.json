@@ -153,8 +153,7 @@
             "workflow",
             "workflow_run",
             "agent_session",
-            "agent_message",
-            "agent_event",
+            "agent_session_events",
             "sync_state",
             "workspace_metadata"
           ]

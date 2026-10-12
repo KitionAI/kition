@@ -35,7 +35,7 @@ passed against an OpenAI-compatible gateway on both wires.
 Plan: [2026-10-11-harness-phase-f2b-plan.md](2026-10-11-harness-phase-f2b-plan.md).
 Worktree used: `../kition-harness-g`.
 
-Committed (all gates green at `461fd326`):
+Committed:
 
 | Task | Commit(s) |
 | --- | --- |
@@ -48,28 +48,25 @@ Committed (all gates green at `461fd326`):
 | 6a–6d Complete log (deliverables, todos, approval meta, early failures, hosted calls, image composer turn, history by source) | `c9c85fd6`, `9cf8c17a`, `50cf560d`, `8d7c3d9f` |
 | Stream revision per session, Responses chunk ids | `461fd326` |
 | 6 review fixes (composer turns end once, failed start ends the turn, off-executor claim read, approval meta defaults, revision counter dropped on delete) | `ef6c183c` |
+| 7 Renderer view libraries (`agentSessionView`, `agentEventEffects`, `agentTablePlan`, `agentImageJob`) | `a82c4bf9` |
+| 8 + 9 Switch: notification stream (`agent-stream.schema.json`), `stream::TurnStream` live sink with desktop hooks, approval by `call_id` from the log with `approval/decided`, every custom frame / timeline event / old row write / old route deleted; renderer on session views, old libs deleted, e2e on `e2e/helpers/agentStream.ts` | `44b34efc` |
+| 10 Seven tables and two `agent_sessions` columns dropped; workspace state version 3 mirrors `agent_sessions` and `session-events.jsonl` | see `git log` (commit after `44b34efc`) |
 
-Task 7 (renderer view libraries) was stopped midway. Only its fixtures are
-committed (`src/features/agent/lib/__fixtures__/`); the modules
-`agentSessionView.ts`, `agentEventEffects.ts`, `agentTablePlan.ts`,
-`agentImageJob.ts` and their specs still have to be written.
-
-Known interim effect until the switch: the current renderer drops live image
-variant cards (the old `image_generation.artifact` events now carry `call_id`
-instead of a numeric `id`). Accepted; the switch fixes it.
+Decisions taken in the switch (beyond the plan text): the stream says
+`running` before the turn and `idle` only after the session row is saved and
+only when a `turn/end` was sent (the harness's own status updates are not
+forwarded); the view gates live frames by `attemptId` (no revision); an
+approval decision leaves the paused run's status alone; `applySessionEvent`
+applies only `cursor + 1` and the hook reads the log on a gap, before each
+send, and after each stream; `CreateSession.language` is gone (the reply
+language travels with each message); a failed kit tool's summary names it by
+its kit label (keeps `tools/kits.rs`'s `label` re-export used).
 
 ## Next steps, in order
 
-1. **Task 7**: the four renderer libraries with specs, from the committed
-   fixtures.
-2. **Switch and deletion in one step** (plan Tasks 8, 9 and 10 merged, per the
-   user's "no compatibility"): standard NDJSON notifications and the renderer
-   built from session events; delete every custom frame, the `agent_events`
-   timeline, `/messages`, `/tool-calls`, `/events`, the old row writes, the
-   seven dropped tables, and old renderer modules; workspace state version 3.
-3. **Task 11**: merge the latest `feat/kit-photo-tab`, run the full gate, then
+1. **Task 11**: merge the latest `feat/kit-photo-tab`, run the full gate, then
    the 14 real desktop-client checks in plan section 9 (needs the user).
-4. Later: phase G (DeepSeek Harness SDK protocol server, ACP, conformance
+2. Later: phase G (DeepSeek Harness SDK protocol server, ACP, conformance
    report), native rewrites of tool families.
 
 ## How to resume

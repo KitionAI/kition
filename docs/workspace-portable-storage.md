@@ -31,8 +31,7 @@ references, but never secret values.
     workflows/<workflow-id>/definition.json
     workflows/<workflow-id>/runs/<run-id>.jsonl
     agents/<session-id>/session.json
-    agents/<session-id>/messages.jsonl
-    agents/<session-id>/events.jsonl
+    agents/<session-id>/session-events.jsonl
     sync/email/
     sync/forms/
     journal/
@@ -78,8 +77,10 @@ migration. Private runtime implementation remains outside this repository.
   references during the compatibility window.
 - A stable `.kition/workspace.json` identity survives directory moves and Git
   clones.
-- Agent sessions, messages, events, tool calls, artifacts, plans, goals, and
-  subagent state are mirrored under `.kition/agents/` and restored at startup.
+- Agent sessions and their session event logs (one event per line, as
+  `GET /agent/sessions/{id}/session-events` serves them, without provider-native
+  replay items) are mirrored under `.kition/agents/` and restored at startup.
+  Only state files of the current version (3) are imported.
 - Form and email sync definitions, cursors, items, and run state are mirrored
   under `.kition/sync/` and restored at startup. Passwords, tokens, and email
   secret payloads are excluded and must be reconnected on a new device.
