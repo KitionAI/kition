@@ -47,6 +47,7 @@ Committed (all gates green at `461fd326`):
 | 5 `agent/assistant-stream` frames | `5bd5e518` |
 | 6a–6d Complete log (deliverables, todos, approval meta, early failures, hosted calls, image composer turn, history by source) | `c9c85fd6`, `9cf8c17a`, `50cf560d`, `8d7c3d9f` |
 | Stream revision per session, Responses chunk ids | `461fd326` |
+| 6 review fixes (composer turns end once, failed start ends the turn, off-executor claim read, approval meta defaults, revision counter dropped on delete) | `ef6c183c` |
 
 Task 7 (renderer view libraries) was stopped midway. Only its fixtures are
 committed (`src/features/agent/lib/__fixtures__/`); the modules
@@ -59,30 +60,16 @@ instead of a numeric `id`). Accepted; the switch fixes it.
 
 ## Next steps, in order
 
-1. **Task 6 review fixes** (review done, not yet applied):
-   - Important: the image composer can append a second `step/end` and
-     `turn/end` when the client disconnects after the turn ended
-     (`session.rs` select branch, `images.rs` `Composer::end`/`cancel`/
-     `fail_intent`). Add an `ended` state to `Composer` so ending is
-     idempotent; assert exactly one `turn/end` in
-     `a_disconnected_image_turn_releases_its_session`.
-   - If `Composer::start` fails after `turn/start`, append `turn/end {failed}`.
-   - Contract text: a repeated `request_id` counts as handled even when the
-     earlier attempt failed or was cancelled.
-   - `prepare` reads the log synchronously on the async executor; move it
-     through `with_db` / `spawn_blocking`.
-   - `exec_shape` meta: default `command` and `reason` to `""`.
-   - Remove a session's stream revision counter when the session is deleted.
-2. **Task 7**: the four renderer libraries with specs, from the committed
+1. **Task 7**: the four renderer libraries with specs, from the committed
    fixtures.
-3. **Switch and deletion in one step** (plan Tasks 8, 9 and 10 merged, per the
+2. **Switch and deletion in one step** (plan Tasks 8, 9 and 10 merged, per the
    user's "no compatibility"): standard NDJSON notifications and the renderer
    built from session events; delete every custom frame, the `agent_events`
    timeline, `/messages`, `/tool-calls`, `/events`, the old row writes, the
    seven dropped tables, and old renderer modules; workspace state version 3.
-4. **Task 11**: merge the latest `feat/kit-photo-tab`, run the full gate, then
+3. **Task 11**: merge the latest `feat/kit-photo-tab`, run the full gate, then
    the 14 real desktop-client checks in plan section 9 (needs the user).
-5. Later: phase G (DeepSeek Harness SDK protocol server, ACP, conformance
+4. Later: phase G (DeepSeek Harness SDK protocol server, ACP, conformance
    report), native rewrites of tool families.
 
 ## How to resume
@@ -96,3 +83,7 @@ CARGO_INCREMENTAL=0 cargo test -p kition-harness -p kition-agent -p kition-ai
 Gates: `pnpm check:desktop`, `pnpm check:contracts`, `pnpm check:knip`,
 `python3 scripts/check-i18n.py`, and with proxy variables unset
 `pnpm test:table:e2e`.
+
+If a test that runs `git` fails with "Bad CPU type in executable", the first
+`git` on `PATH` is an x86 build without Rosetta; put `/usr/bin` first on
+`PATH` for the gates.
