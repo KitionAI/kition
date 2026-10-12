@@ -579,8 +579,17 @@ async fn a_disconnected_image_turn_releases_its_session() {
     }
     assert_eq!(status, 200, "the session stays busy after the client left");
     let events = session_events(&app, session_id).await;
-    let ends: Vec<&Value> = events.iter().filter(|e| e["type"] == "turn/end").collect();
+    let of_image_turn = |kind: &str| -> Vec<&Value> {
+        events
+            .iter()
+            .filter(|e| e["type"] == kind && e["turn"] == 1)
+            .collect()
+    };
+    assert_eq!(of_image_turn("turn/start").len(), 1, "{events:?}");
+    let ends = of_image_turn("turn/end");
+    assert_eq!(ends.len(), 1, "{events:?}");
     assert_eq!(ends[0]["reason"], "cancelled", "{events:?}");
+    assert_eq!(of_image_turn("step/end").len(), 1, "{events:?}");
     let stopped = events
         .iter()
         .find(|e| e["type"] == "tool/result" && e["name"] == "image_generation")

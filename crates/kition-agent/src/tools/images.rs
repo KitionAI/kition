@@ -639,20 +639,36 @@ pub fn claim(events: &[SessionEvent], intent: &ImageIntent) -> Result<bool, Stri
 /// `step/end`, and `turn/end`. Every append happens under the session's
 /// turn guard, which `session::prepare` took.
 pub struct Composer {
-    log: SqliteLog,
+    log: Arc<dyn SessionLog>,
     key: String,
     live: LiveSink,
     turn: u32,
     request_id: String,
     /// The variant call that has no result yet.
     open: std::sync::Mutex<Option<String>>,
+    /// Set by the first `end`; later ends append nothing.
+    ended: std::sync::atomic::AtomicBool,
 }
 
 impl Composer {
     /// Opens the turn with the user's message.
     pub fn start(run: &Run, request_id: &str, content: &str) -> Result<Self, String> {
-        let log = SqliteLog::new(run.agent.db().clone());
-        let key = crate::log::log_key(run.session_id);
+        Self::begin(
+            Arc::new(SqliteLog::new(run.agent.db().clone())),
+            crate::log::log_key(run.session_id),
+            request_id,
+            content,
+        )
+    }
+
+    /// Opens the turn on `key` of `log`. When the turn started but its
+    /// step or message could not be logged, the turn ends as failed.
+    fn begin(
+        log: Arc<dyn SessionLog>,
+        key: String,
+        request_id: &str,
+        content: &str,
+    ) -> Result<Self, String> {
         let turn = next_turn(&log.read(&key)?);
         let composer = Self {
             log,
@@ -661,18 +677,30 @@ impl Composer {
             turn,
             request_id: request_id.to_owned(),
             open: std::sync::Mutex::new(None),
+            ended: std::sync::atomic::AtomicBool::new(false),
         };
         composer.append(EventBody::TurnStart { turn })?;
-        composer.append(EventBody::StepStart { turn, step: 1 })?;
-        composer.append(EventBody::UserMessage {
-            content: vec![ContentBlock::text(content)],
-            source: MessageSource::user(),
-        })?;
+        let opened = composer
+            .append(EventBody::StepStart { turn, step: 1 })
+            .and_then(|()| {
+                composer.append(EventBody::UserMessage {
+                    content: vec![ContentBlock::text(content)],
+                    source: MessageSource::user(),
+                })
+            });
+        if let Err(error) = opened {
+            composer.append(EventBody::TurnEnd {
+                turn,
+                reason: TurnEndReason::Failed,
+                error: error.clone(),
+            })?;
+            return Err(error);
+        }
         Ok(composer)
     }
 
     fn append(&self, body: EventBody) -> Result<(), String> {
-        append_live(&self.log, &self.key, &self.live, body).map(|_| ())
+        append_live(self.log.as_ref(), &self.key, &self.live, body).map(|_| ())
     }
 
     fn open(&self) -> std::sync::MutexGuard<'_, Option<String>> {
@@ -721,13 +749,17 @@ impl Composer {
     }
 
     /// Ends the turn: a failed open call first, then the reply (when the
-    /// turn completed), `step/end`, and `turn/end`.
+    /// turn completed), `step/end`, and `turn/end`. Only the first end
+    /// appends anything, even when one of its appends failed.
     fn end(
         &self,
         reason: TurnEndReason,
         error: Option<(&str, &str, bool)>,
         reply: Option<&str>,
     ) -> Result<(), String> {
+        if self.ended.swap(true, std::sync::atomic::Ordering::SeqCst) {
+            return Ok(());
+        }
         let open = self.open().take();
         if let (Some(call_id), Some((code, message, retryable))) = (open, error) {
             self.append(EventBody::ToolResult {
@@ -767,7 +799,7 @@ impl Composer {
         })
     }
 
-    /// Ends the turn as cancelled: the client left.
+    /// Ends the turn as cancelled (the client left) unless it already ended.
     pub fn cancel(&self) {
         let ended = self.end(
             TurnEndReason::Cancelled,
@@ -1285,6 +1317,80 @@ mod tests {
         assert!(parse_intent(&doc).is_ok());
         doc["target"]["document_path"] = json!("../a.md");
         assert!(parse_intent(&doc).is_err());
+    }
+
+    /// A memory log that refuses `step/start`.
+    #[derive(Default)]
+    struct NoSteps(kition_harness::log::MemoryLog);
+
+    impl SessionLog for NoSteps {
+        fn append(&self, session: &str, body: EventBody) -> Result<SessionEvent, String> {
+            if matches!(body, EventBody::StepStart { .. }) {
+                return Err("disk full".into());
+            }
+            self.0.append(session, body)
+        }
+
+        fn read(&self, session: &str) -> Result<Vec<SessionEvent>, String> {
+            self.0.read(session)
+        }
+    }
+
+    fn types(log: &dyn SessionLog) -> Vec<String> {
+        log.read("agent:1")
+            .unwrap_or_else(|error| panic!("{error}"))
+            .iter()
+            .map(|event| {
+                serde_json::to_value(&event.body).unwrap_or_default()["type"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_owned()
+            })
+            .collect()
+    }
+
+    #[test]
+    fn a_composer_turn_ends_once() {
+        let log = Arc::new(kition_harness::log::MemoryLog::default());
+        let composer = Composer::begin(log.clone(), "agent:1".into(), "req-1", "A red fox")
+            .unwrap_or_else(|error| panic!("{error}"));
+        composer
+            .call(0, json!({ "request_id": "req-1" }))
+            .unwrap_or_else(|error| panic!("{error}"));
+        composer
+            .end(TurnEndReason::Completed, None, Some("Done."))
+            .unwrap_or_else(|error| panic!("{error}"));
+        composer.cancel();
+        composer
+            .end(TurnEndReason::Failed, Some(("x", "late", true)), None)
+            .unwrap_or_else(|error| panic!("{error}"));
+        assert_eq!(
+            types(log.as_ref()),
+            [
+                "turn/start",
+                "step/start",
+                "user/message",
+                "tool/call",
+                "assistant/message",
+                "step/end",
+                "turn/end",
+            ]
+        );
+    }
+
+    #[test]
+    fn a_composer_that_cannot_open_its_step_ends_the_turn_as_failed() {
+        let log = Arc::new(NoSteps::default());
+        let opened = Composer::begin(log.clone(), "agent:1".into(), "req-1", "A red fox");
+        assert_eq!(opened.err(), Some("disk full".to_owned()));
+        let events = log
+            .read("agent:1")
+            .unwrap_or_else(|error| panic!("{error}"));
+        assert_eq!(types(log.as_ref()), ["turn/start", "turn/end"]);
+        assert!(matches!(
+            &events[1].body,
+            EventBody::TurnEnd { turn: 1, reason: TurnEndReason::Failed, error } if error == "disk full"
+        ));
     }
 
     #[test]

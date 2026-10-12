@@ -177,8 +177,10 @@ pub async fn prepare(
     let image_repeat = match &image_intent {
         Some(intent) => {
             let log = SqliteLog::new(agent.db().clone());
-            let events = log
-                .read(&log::log_key(session.id))
+            let key = log::log_key(session.id);
+            let events = tokio::task::spawn_blocking(move || log.read(&key))
+                .await
+                .map_err(|_| AppError::internal("Failed to read the session log"))?
                 .map_err(AppError::internal)?;
             !images::claim(&events, intent).map_err(AppError::conflict)?
         }

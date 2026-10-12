@@ -57,8 +57,8 @@ fn exec_shape() -> ToolShape {
             }
             let mut meta = json!({
                 "kind": "shell.approval",
-                "command": output["command"],
-                "reason": output["reason"],
+                "command": output["command"].as_str().unwrap_or_default(),
+                "reason": output["reason"].as_str().unwrap_or_default(),
                 "requires": "approval",
                 "decision": "prompt",
             });
@@ -166,6 +166,21 @@ mod tests {
         assert_eq!(present(&json!({}), &plain).get("suggested"), None);
         let ran = json!({ "name": "exec_command", "output": { "exit_code": 0 } });
         assert_eq!(present(&json!({}), &ran), Value::Null);
+    }
+
+    #[test]
+    fn an_approval_without_a_command_or_reason_still_has_both_fields() {
+        let present = exec_shape()
+            .presentation_meta
+            .unwrap_or_else(|| panic!("exec_command has a presentation"));
+        let bare = json!({ "output": { "requires": "approval" } });
+        assert_eq!(
+            present(&json!({}), &bare),
+            json!({
+                "kind": "shell.approval", "command": "", "reason": "",
+                "requires": "approval", "decision": "prompt",
+            })
+        );
     }
 
     #[tokio::test]

@@ -133,6 +133,7 @@ async fn delete_session(
         .with_db(move |conn| store::delete_session(conn, session.id))
         .await
         .map_err(|_| AppError::internal("Failed to delete agent session"))?;
+    state.agent.forget_session(session.id);
     Ok(ok(json!({ "deleted": true })))
 }
 

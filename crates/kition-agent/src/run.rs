@@ -187,6 +187,27 @@ impl Agent {
             .clone()
     }
 
+    /// Drops what this process keeps for a deleted session: its stream
+    /// revision counter and its turn lock, unless a turn still holds it.
+    pub(crate) fn forget_session(&self, session_id: i64) {
+        self.inner
+            .stream_revisions
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .remove(&session_id);
+        let mut turns = self
+            .inner
+            .turns
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        if turns
+            .get(&session_id)
+            .is_some_and(|lock| Arc::strong_count(lock) == 1)
+        {
+            turns.remove(&session_id);
+        }
+    }
+
     /// Runs blocking database work off the async executor.
     pub async fn with_db<T, F>(&self, work: F) -> AppResult<T>
     where
@@ -591,12 +612,8 @@ mod tests {
         assert!(hold(&locks, 5).is_some());
     }
 
-    #[test]
-    fn a_session_keeps_one_stream_revision_counter() {
-        let dirs: Vec<tempfile::TempDir> = (0..2)
-            .map(|_| tempfile::tempdir().unwrap_or_else(|error| panic!("{error}")))
-            .collect();
-        let agent = Agent::new(AgentConfig {
+    fn test_agent(dirs: &[tempfile::TempDir]) -> Agent {
+        Agent::new(AgentConfig {
             db: Db::open_in_memory().unwrap_or_else(|error| panic!("{error}")),
             engine: Engine::new(dirs[0].path().to_path_buf(), None),
             workspace_dir: dirs[1].path().to_path_buf(),
@@ -609,7 +626,54 @@ mod tests {
             mcp_path: None,
             workflow_prompt: None,
             kits: None,
-        });
+        })
+    }
+
+    #[test]
+    fn a_deleted_session_drops_its_stream_revision_and_lock() {
+        let dirs: Vec<tempfile::TempDir> = (0..2)
+            .map(|_| tempfile::tempdir().unwrap_or_else(|error| panic!("{error}")))
+            .collect();
+        let agent = test_agent(&dirs);
+        let counter = agent.stream_revision(3);
+        counter.store(7, std::sync::atomic::Ordering::SeqCst);
+        drop(agent.hold_turn(3));
+        let kept = agent.stream_revision(4);
+        agent.forget_session(3);
+        let revisions = |agent: &Agent| {
+            let map = agent
+                .inner
+                .stream_revisions
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner);
+            let mut ids: Vec<i64> = map.keys().copied().collect();
+            ids.sort_unstable();
+            ids
+        };
+        assert_eq!(revisions(&agent), [4]);
+        assert!(
+            !agent
+                .inner
+                .turns
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .contains_key(&3)
+        );
+        assert!(Arc::ptr_eq(&kept, &agent.stream_revision(4)));
+        assert_eq!(
+            agent
+                .stream_revision(3)
+                .load(std::sync::atomic::Ordering::SeqCst),
+            0
+        );
+    }
+
+    #[test]
+    fn a_session_keeps_one_stream_revision_counter() {
+        let dirs: Vec<tempfile::TempDir> = (0..2)
+            .map(|_| tempfile::tempdir().unwrap_or_else(|error| panic!("{error}")))
+            .collect();
+        let agent = test_agent(&dirs);
         let first = agent.stream_revision(3);
         first.store(7, std::sync::atomic::Ordering::SeqCst);
         assert!(Arc::ptr_eq(&first, &agent.stream_revision(3)));
