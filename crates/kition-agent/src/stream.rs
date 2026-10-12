@@ -217,6 +217,9 @@ mod tests {
             seq: 1,
             at: 5,
             body: EventBody::AssistantMessage {
+                turn: 1,
+                step: 1,
+                provider: String::new(),
                 content: "Hi".into(),
                 tool_calls: Vec::new(),
                 stop_reason: String::new(),
@@ -232,7 +235,8 @@ mod tests {
             [
                 json!({ "jsonrpc": "2.0", "method": "session.status", "params": { "sessionId": "agent:42", "status": "running" } }),
                 json!({ "jsonrpc": "2.0", "method": "session.event", "params": { "sessionId": "agent:42", "event": {
-                    "seq": 1, "at": 5, "type": "assistant/message", "content": "Hi", "stopReason": "", "model": "",
+                    "seq": 1, "at": 5, "type": "assistant/message", "turn": 1, "step": 1, "content": "Hi",
+                    "stopReason": "", "provider": "", "model": "",
                 } } }),
             ],
             "no idle without a turn/end, and raw items are left out"
@@ -277,6 +281,9 @@ mod tests {
         for body in [
             EventBody::TurnStart { turn: 1 },
             EventBody::ToolCall {
+                turn: 1,
+                step: 1,
+                hosted: false,
                 call_id: "c1".into(),
                 name: "exec_command".into(),
                 arguments: json!({}),

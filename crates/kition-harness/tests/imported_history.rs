@@ -31,27 +31,27 @@ fn numbered(bodies: Vec<Value>) -> Vec<SessionEvent> {
 fn exported_log() -> Vec<SessionEvent> {
     let call = |id: &str, name: &str| json!({ "callId": id, "name": name, "arguments": { "path": "Notes/a.md" } });
     let result = |id: &str, name: &str| {
-        json!({ "type": "tool/result", "callId": id, "name": name, "value": { "ok": true },
-            "content": [{ "type": "text", "text": "ok" }], "isError": false })
+        json!({ "type": "tool/result", "turn": 1, "step": 1, "callId": id, "name": name, "value": { "ok": true },
+            "content": [{ "type": "text", "text": "ok" }], "isError": false, "hosted": false })
     };
     let bodies = vec![
         json!({ "type": "turn/start", "turn": 1 }),
         json!({ "type": "user/message", "content": [{ "type": "text", "text": "Write a plan" }, { "type": "text", "text": "[image omitted]" }],
             "source": { "kind": "user" } }),
         json!({ "type": "step/start", "turn": 1, "step": 1 }),
-        json!({ "type": "assistant/message", "content": "", "stopReason": "tool_calls", "model": "m",
-            "toolCalls": [call("c1", "document_read"), call("c2", "document_write")] }),
-        json!({ "type": "tool/call", "callId": "c1", "name": "document_read", "arguments": {} }),
+        json!({ "type": "assistant/message", "turn": 1, "step": 1, "content": "", "stopReason": "tool_calls",
+            "provider": "p", "model": "m", "toolCalls": [call("c1", "document_read"), call("c2", "document_write")] }),
+        json!({ "type": "tool/call", "turn": 1, "step": 1, "callId": "c1", "name": "document_read", "arguments": {}, "hosted": false }),
         result("c1", "document_read"),
-        json!({ "type": "tool/call", "callId": "c2", "name": "document_write", "arguments": {} }),
+        json!({ "type": "tool/call", "turn": 1, "step": 1, "callId": "c2", "name": "document_write", "arguments": {}, "hosted": false }),
         result("c2", "document_write"),
         json!({ "type": "step/end", "turn": 1, "step": 1 }),
         json!({ "type": "step/start", "turn": 1, "step": 2 }),
-        json!({ "type": "assistant/message", "content": "Done.", "stopReason": "stop", "model": "m" }),
+        json!({ "type": "assistant/message", "turn": 1, "step": 2, "content": "Done.", "stopReason": "stop", "provider": "p", "model": "m" }),
         json!({ "type": "step/end", "turn": 1, "step": 2 }),
         json!({ "type": "turn/end", "turn": 1, "reason": "completed" }),
         json!({ "type": "turn/start", "turn": 2 }),
-        json!({ "type": "system/message", "content": "You are Kition." }),
+        json!({ "type": "system/message", "turn": 2, "step": 1, "content": "You are Kition." }),
         json!({ "type": "user/message", "content": [{ "type": "text", "text": "Again" }], "source": { "kind": "user" } }),
     ];
     numbered(bodies)
@@ -64,17 +64,19 @@ fn paused_log() -> Vec<SessionEvent> {
         json!({ "type": "turn/start", "turn": 1 }),
         json!({ "type": "user/message", "content": [{ "type": "text", "text": "List files" }], "source": { "kind": "user" } }),
         json!({ "type": "step/start", "turn": 1, "step": 1 }),
-        json!({ "type": "assistant/message", "content": "", "stopReason": "tool_use", "model": "m",
-            "toolCalls": [{ "callId": "c1", "name": "exec_command", "arguments": { "command": "ls" } }] }),
-        json!({ "type": "tool/call", "callId": "c1", "name": "exec_command", "arguments": { "command": "ls" } }),
-        json!({ "type": "tool/result", "callId": "c1", "name": "exec_command", "value": { "status": "awaiting_approval" },
-            "content": [{ "type": "text", "text": "waiting for approval" }], "isError": false }),
+        json!({ "type": "assistant/message", "turn": 1, "step": 1, "content": "", "stopReason": "tool_use", "provider": "p",
+            "model": "m", "toolCalls": [{ "callId": "c1", "name": "exec_command", "arguments": { "command": "ls" } }] }),
+        json!({ "type": "tool/call", "turn": 1, "step": 1, "callId": "c1", "name": "exec_command", "arguments": { "command": "ls" },
+            "hosted": false }),
+        json!({ "type": "tool/result", "turn": 1, "step": 1, "callId": "c1", "name": "exec_command",
+            "value": { "status": "awaiting_approval" }, "content": [{ "type": "text", "text": "waiting for approval" }],
+            "isError": false, "hosted": false }),
         json!({ "type": "approval/asked", "id": "approval:c1", "toolName": "exec_command", "callId": "c1" }),
         json!({ "type": "step/end", "turn": 1, "step": 1 }),
         json!({ "type": "turn/end", "turn": 1, "reason": "awaiting-approval" }),
         json!({ "type": "approval/decided", "id": "approval:c1", "outcome": "allowed-once" }),
         json!({ "type": "turn/start", "turn": 2 }),
-        json!({ "type": "system/message", "content": "You are Kition." }),
+        json!({ "type": "system/message", "turn": 2, "step": 1, "content": "You are Kition." }),
         json!({ "type": "user/message", "content": [{ "type": "text", "text": "Approved: ls" }], "source": { "kind": "approval" } }),
     ])
 }

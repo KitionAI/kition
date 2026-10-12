@@ -16,6 +16,8 @@
     "seq": 2,
     "at": 1791732515436,
     "type": "system/message",
+    "turn": 1,
+    "step": 1,
     "content": "You are the built-in agent inside the Kition document system."
   },
   {
@@ -42,6 +44,8 @@
     "seq": 5,
     "at": 1791732515442,
     "type": "assistant/message",
+    "turn": 1,
+    "step": 1,
     "content": "",
     "toolCalls": [
       {
@@ -54,23 +58,29 @@
       }
     ],
     "stopReason": "completed",
+    "provider": "test",
     "model": "test-model"
   },
   {
     "seq": 6,
     "at": 1791732515442,
     "type": "tool/call",
+    "turn": 1,
+    "step": 1,
     "callId": "call_1",
     "name": "document_write",
     "arguments": {
       "path": "Notes/plan.md",
       "content": "# Plan"
-    }
+    },
+    "hosted": false
   },
   {
     "seq": 7,
     "at": 1791732515444,
     "type": "tool/result",
+    "turn": 1,
+    "step": 1,
     "callId": "call_1",
     "name": "document_write",
     "value": {
@@ -89,7 +99,8 @@
         "text": "{\"name\":\"document_write\",\"summary\":\"Updated document: `Notes/plan.md`\",\"output\":{\"path\":\"Notes/plan.md\",\"operation\":\"updated\",\"chars\":6,\"at\":true},\"failed\":false}"
       }
     ],
-    "isError": false
+    "isError": false,
+    "hosted": false
   },
   {
     "seq": 8,
@@ -122,8 +133,11 @@
     "seq": 11,
     "at": 1791732515449,
     "type": "assistant/message",
+    "turn": 1,
+    "step": 2,
     "content": "Updated.",
     "stopReason": "completed",
+    "provider": "test",
     "model": "test-model"
   },
   {

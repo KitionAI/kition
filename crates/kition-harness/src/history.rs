@@ -101,6 +101,9 @@ mod tests {
                 source: crate::events::MessageSource::user(),
             }),
             next(EventBody::AssistantMessage {
+                turn: 1,
+                step: 1,
+                provider: String::new(),
                 content: String::new(),
                 tool_calls: vec![LoggedCall {
                     call_id: format!("c{number}"),
@@ -112,11 +115,17 @@ mod tests {
                 raw_items: Vec::new(),
             }),
             next(EventBody::ToolCall {
+                turn: 1,
+                step: 1,
+                hosted: false,
                 call_id: format!("c{number}"),
                 name: "read".into(),
                 arguments: json!({}),
             }),
             next(EventBody::ToolResult {
+                turn: 1,
+                step: 1,
+                hosted: false,
                 call_id: format!("c{number}"),
                 name: "read".into(),
                 value: json!({}),
@@ -125,6 +134,9 @@ mod tests {
                 meta: None,
             }),
             next(EventBody::AssistantMessage {
+                turn: 1,
+                step: 1,
+                provider: String::new(),
                 content: format!("answer {text}"),
                 tool_calls: Vec::new(),
                 stop_reason: "stop".into(),
@@ -145,6 +157,8 @@ mod tests {
         let mut events = vec![at(
             0,
             EventBody::SystemMessage {
+                turn: 1,
+                step: 1,
                 content: "sys".into(),
             },
         )];
@@ -218,6 +232,9 @@ mod tests {
         };
         let user = |text: &str| from("user", text);
         let reply = |text: &str| EventBody::AssistantMessage {
+            turn: 1,
+            step: 1,
+            provider: String::new(),
             content: text.into(),
             tool_calls: Vec::new(),
             stop_reason: "stop".into(),
@@ -226,14 +243,21 @@ mod tests {
         };
         let bodies = vec![
             EventBody::SystemMessage {
+                turn: 1,
+                step: 1,
                 content: "old sys".into(),
             },
             EventBody::TurnStart { turn: 1 },
             EventBody::SystemMessage {
+                turn: 1,
+                step: 1,
                 content: "newer sys".into(),
             },
             user("ask 1"),
             EventBody::AssistantMessage {
+                turn: 1,
+                step: 1,
+                provider: String::new(),
                 content: String::new(),
                 tool_calls: vec![LoggedCall {
                     call_id: "c1".into(),
@@ -245,11 +269,17 @@ mod tests {
                 raw_items: Vec::new(),
             },
             EventBody::ToolCall {
+                turn: 1,
+                step: 1,
+                hosted: false,
                 call_id: "c1".into(),
                 name: "write".into(),
                 arguments: json!({}),
             },
             EventBody::ToolResult {
+                turn: 1,
+                step: 1,
+                hosted: false,
                 call_id: "c1".into(),
                 name: "write".into(),
                 value: json!(null),
@@ -292,7 +322,7 @@ mod tests {
             .iter()
             .take_while(|event| !matches!(event.body, EventBody::TurnStart { turn: 3 }))
             .map(|event| match &event.body {
-                EventBody::SystemMessage { content } => format!("system {content}"),
+                EventBody::SystemMessage { content, .. } => format!("system {content}"),
                 EventBody::UserMessage { content, .. } => match &content[0] {
                     ContentBlock::Text { text } => format!("user {text}"),
                     ContentBlock::Image { .. } => "image".into(),

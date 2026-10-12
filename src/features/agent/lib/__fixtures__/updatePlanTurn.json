@@ -16,6 +16,8 @@
     "seq": 2,
     "at": 1791732515298,
     "type": "system/message",
+    "turn": 1,
+    "step": 1,
     "content": "You are the built-in agent inside the Kition document system."
   },
   {
@@ -42,6 +44,8 @@
     "seq": 5,
     "at": 1791732515304,
     "type": "assistant/message",
+    "turn": 1,
+    "step": 1,
     "content": "",
     "toolCalls": [
       {
@@ -63,12 +67,15 @@
       }
     ],
     "stopReason": "completed",
+    "provider": "test",
     "model": "test-model"
   },
   {
     "seq": 6,
     "at": 1791732515304,
     "type": "tool/call",
+    "turn": 1,
+    "step": 1,
     "callId": "call_1",
     "name": "update_plan",
     "arguments": {
@@ -83,12 +90,15 @@
           "status": "pending"
         }
       ]
-    }
+    },
+    "hosted": false
   },
   {
     "seq": 7,
     "at": 1791732515305,
     "type": "tool/result",
+    "turn": 1,
+    "step": 1,
     "callId": "call_1",
     "name": "update_plan",
     "value": {
@@ -115,7 +125,8 @@
         "text": "{\"name\":\"update_plan\",\"summary\":\"Two steps\\n\\n1. [~] Draft\\n2. [ ] Review\",\"output\":{\"plan\":[{\"step\":\"Draft\",\"status\":\"in_progress\"},{\"step\":\"Review\",\"status\":\"pending\"}],\"explanation\":\"Two steps\",\"step_count\":2},\"failed\":false}"
       }
     ],
-    "isError": false
+    "isError": false,
+    "hosted": false
   },
   {
     "seq": 8,
@@ -150,8 +161,11 @@
     "seq": 11,
     "at": 1791732515311,
     "type": "assistant/message",
+    "turn": 1,
+    "step": 2,
     "content": "Planned.",
     "stopReason": "completed",
+    "provider": "test",
     "model": "test-model"
   },
   {

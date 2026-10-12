@@ -629,9 +629,12 @@ impl Composer {
     fn call(&self, index: i64, arguments: Value) -> Result<String, String> {
         let call_id = variant_call_id(&self.request_id, index);
         self.append(EventBody::ToolCall {
+            turn: self.turn,
+            step: 1,
             call_id: call_id.clone(),
             name: "image_generation".into(),
             arguments,
+            hosted: true,
         })?;
         *self.open() = Some(call_id.clone());
         Ok(call_id)
@@ -643,6 +646,8 @@ impl Composer {
             return Err("no image variant is pending".into());
         };
         self.append(EventBody::ToolResult {
+            turn: self.turn,
+            step: 1,
             call_id: call_id.clone(),
             name: "image_generation".into(),
             value: artifact.clone(),
@@ -656,6 +661,7 @@ impl Composer {
                 "request_id": self.request_id,
                 "artifact": artifact,
             })),
+            hosted: true,
         })?;
         self.append(EventBody::DeliverablesPresented {
             turn: self.turn,
@@ -679,6 +685,8 @@ impl Composer {
         let open = self.open().take();
         if let (Some(call_id), Some((code, message, retryable))) = (open, error) {
             self.append(EventBody::ToolResult {
+                turn: self.turn,
+                step: 1,
                 call_id,
                 name: "image_generation".into(),
                 value: Value::Null,
@@ -691,14 +699,18 @@ impl Composer {
                 ],
                 is_error: true,
                 meta: None,
+                hosted: true,
             })?;
         }
         if let Some(reply) = reply {
             self.append(EventBody::AssistantMessage {
+                turn: self.turn,
+                step: 1,
                 content: reply.to_owned(),
                 tool_calls: Vec::new(),
                 stop_reason: "stop".into(),
-                model: String::new(),
+                provider: "kition".into(),
+                model: "image-composer".into(),
                 raw_items: Vec::new(),
             })?;
         }
@@ -1083,6 +1095,23 @@ mod tests {
                 "turn/end",
             ]
         );
+        let events = log
+            .read("agent:1")
+            .unwrap_or_else(|error| panic!("{error}"));
+        assert!(events.iter().any(|event| matches!(
+            &event.body,
+            EventBody::ToolCall {
+                turn: 1,
+                step: 1,
+                hosted: true,
+                ..
+            }
+        )));
+        assert!(events.iter().any(|event| matches!(
+            &event.body,
+            EventBody::AssistantMessage { turn: 1, step: 1, provider, model, .. }
+                if provider == "kition" && model == "image-composer"
+        )));
     }
 
     #[test]

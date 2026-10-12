@@ -172,6 +172,9 @@ mod tests {
         log.append(
             &log_key(6),
             EventBody::AssistantMessage {
+                turn: 1,
+                step: 1,
+                provider: String::new(),
                 content: "done".into(),
                 tool_calls: Vec::new(),
                 stop_reason: String::new(),

@@ -103,6 +103,9 @@ mod tests {
             seq,
             at: 0,
             body: EventBody::ToolResult {
+                turn: 1,
+                step: 1,
+                hosted: false,
                 call_id: format!("c{seq}"),
                 name: name.into(),
                 value: Value::Null,

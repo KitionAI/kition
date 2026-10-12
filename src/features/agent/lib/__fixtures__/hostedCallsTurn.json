@@ -16,6 +16,8 @@
     "seq": 2,
     "at": 1791732515404,
     "type": "system/message",
+    "turn": 1,
+    "step": 1,
     "content": "You are the built-in agent inside the Kition document system."
   },
   {
@@ -42,14 +44,19 @@
     "seq": 5,
     "at": 1791732515418,
     "type": "assistant/message",
+    "turn": 1,
+    "step": 1,
     "content": "Here is a fox.",
     "stopReason": "completed",
+    "provider": "test",
     "model": "test-model"
   },
   {
     "seq": 6,
     "at": 1791732515418,
     "type": "tool/call",
+    "turn": 1,
+    "step": 1,
     "callId": "ws_1",
     "name": "web_search",
     "arguments": {
@@ -59,12 +66,15 @@
         "type": "search",
         "query": "fox facts"
       }
-    }
+    },
+    "hosted": true
   },
   {
     "seq": 7,
     "at": 1791732515418,
     "type": "tool/result",
+    "turn": 1,
+    "step": 1,
     "callId": "ws_1",
     "name": "web_search",
     "value": {
@@ -81,24 +91,30 @@
     "isError": false,
     "meta": {
       "hosted": true
-    }
+    },
+    "hosted": true
   },
   {
     "seq": 8,
     "at": 1791732515418,
     "type": "tool/call",
+    "turn": 1,
+    "step": 1,
     "callId": "ig_1",
     "name": "image_generation",
     "arguments": {
       "hosted": true,
       "revised_prompt": "",
       "size": "1024x1024"
-    }
+    },
+    "hosted": true
   },
   {
     "seq": 9,
     "at": 1791732515418,
     "type": "tool/result",
+    "turn": 1,
+    "step": 1,
     "callId": "ig_1",
     "name": "image_generation",
     "value": {
@@ -112,7 +128,8 @@
     "isError": false,
     "meta": {
       "hosted": true
-    }
+    },
+    "hosted": true
   },
   {
     "seq": 10,
@@ -158,8 +175,11 @@
     "seq": 14,
     "at": 1791732515424,
     "type": "assistant/message",
+    "turn": 1,
+    "step": 2,
     "content": "Done.",
     "stopReason": "completed",
+    "provider": "test",
     "model": "test-model"
   },
   {

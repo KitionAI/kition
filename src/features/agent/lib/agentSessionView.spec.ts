@@ -164,7 +164,7 @@ describe('applySessionEvent', () => {
   it('fails runs still open when a turn ends', () => {
     const view = reduce([
       { seq: 0, at: 1, type: 'turn/start', turn: 1 },
-      { seq: 1, at: 2, type: 'tool/call', callId: 'call_9', name: 'document_read', arguments: {} },
+      { seq: 1, at: 2, type: 'tool/call', turn: 1, step: 1, callId: 'call_9', name: 'document_read', arguments: {}, hosted: false },
       { seq: 2, at: 3, type: 'turn/end', turn: 1, reason: 'cancelled' },
     ])
     expect(view.turns[0].toolRuns[0]).toMatchObject({ status: 'failed', endedAt: 3 })
@@ -180,15 +180,18 @@ describe('applySessionEvent', () => {
         failure: { message: 'overloaded', code: 'rate_limited' },
       },
       { seq: 3, at: 4, type: 'llm/retry-started', retryId: 'agent:7#1.1', turn: 1, step: 1, retry: 1 },
-      { seq: 4, at: 5, type: 'tool/call', callId: 'call_1', name: 'apply_patch', arguments: { patch_chars: 12 } },
       {
-        seq: 5, at: 6, type: 'tool/result', callId: 'call_1', name: 'apply_patch', value: null, isError: true,
+        seq: 4, at: 5, type: 'tool/call', turn: 1, step: 1, callId: 'call_1', name: 'apply_patch',
+        arguments: { patch_chars: 12 }, hosted: false,
+      },
+      {
+        seq: 5, at: 6, type: 'tool/result', turn: 1, step: 1, callId: 'call_1', name: 'apply_patch', value: null, isError: true, hosted: false,
         content: [
           { type: 'text', text: 'patch did not apply' },
           { type: 'text', text: '{"name":"apply_patch","summary":"Patch failed","output":{"path":"Docs/a.md"},"failed":true}' },
         ],
       },
-      { seq: 6, at: 7, type: 'assistant/attempt', error: 'stream closed' },
+      { seq: 6, at: 7, type: 'assistant/attempt', turn: 1, step: 1, error: 'stream closed', aborted: false },
       { seq: 7, at: 8, type: 'turn/end', turn: 1, reason: 'failed', error: 'stream closed' },
     ])
     const [turn] = view.turns
@@ -208,7 +211,7 @@ describe('applySessionEvent', () => {
       { seq: 0, at: 1, type: 'turn/start', turn: 1 },
       { seq: 1, at: 2, type: 'step/start', turn: 1, step: 1 },
       {
-        seq: 2, at: 3, type: 'assistant/message', stopReason: 'completed', model: 'm',
+        seq: 2, at: 3, type: 'assistant/message', turn: 1, step: 1, stopReason: 'completed', provider: 'p', model: 'm',
         content: 'Ready.\n```table_plan\n{"summary":"Import"}\n```',
       },
       { seq: 3, at: 4, type: 'turn/end', turn: 1, reason: 'completed' },

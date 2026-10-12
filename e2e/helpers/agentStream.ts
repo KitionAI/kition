@@ -54,6 +54,11 @@ export class AgentTurnScript {
     private readonly log: Array<Record<string, unknown>>,
   ) {}
 
+  /** The turn and step that step-scoped events carry. */
+  get scope() {
+    return { turn: this.turn, step: Math.max(1, this.step) }
+  }
+
   /** Appends one durable event. */
   event(body: EventBody) {
     const line = notification.event(this.sessionId, this.log.length, body)
@@ -93,7 +98,10 @@ export class AgentTurnScript {
         chunk: { type: 'tool-call-delta', index: 1, id: callId, name, argumentsDelta: JSON.stringify(args) },
       }),
     )
-    this.event({ type: 'assistant/message', content: '', stopReason: 'tool_calls', model: 'gpt-test', toolCalls: [{ callId, name, arguments: args }] })
+    this.event({
+      type: 'assistant/message', ...this.scope, content: '', stopReason: 'tool_calls', provider: 'test', model: 'gpt-test',
+      toolCalls: [{ callId, name, arguments: args }],
+    })
     this.lines.push(notification.frame(this.sessionId, {
       type: 'end', attemptId, revision: ++this.revision, index: 1,
       outcome: { kind: 'committed', eventType: 'assistant/message', seq: this.log.length - 1 },
@@ -103,9 +111,9 @@ export class AgentTurnScript {
 
   /** A tool call and its successful result (`output` is the tool's output). */
   tool(callId: string, name: string, args: unknown, output: unknown, extra: { meta?: unknown; summary?: string } = {}) {
-    this.event({ type: 'tool/call', callId, name, arguments: args })
+    this.event({ type: 'tool/call', ...this.scope, callId, name, arguments: args, hosted: false })
     return this.event({
-      type: 'tool/result', callId, name, isError: false,
+      type: 'tool/result', ...this.scope, callId, name, isError: false, hosted: false,
       content: [{ type: 'text', text: extra.summary ?? `${name} done` }],
       value: { name, summary: extra.summary ?? `${name} done`, output },
       ...(extra.meta ? { meta: extra.meta } : {}),
@@ -114,8 +122,11 @@ export class AgentTurnScript {
 
   /** A tool call that failed with `message`. */
   toolError(callId: string, name: string, args: unknown, message: string) {
-    this.event({ type: 'tool/call', callId, name, arguments: args })
-    return this.event({ type: 'tool/result', callId, name, isError: true, value: null, content: [{ type: 'text', text: message }] })
+    this.event({ type: 'tool/call', ...this.scope, callId, name, arguments: args, hosted: false })
+    return this.event({
+      type: 'tool/result', ...this.scope, callId, name, isError: true, hosted: false, value: null,
+      content: [{ type: 'text', text: message }],
+    })
   }
 
   /** Files a call hands to the user. */
@@ -130,7 +141,7 @@ export class AgentTurnScript {
   reply(content: string) {
     if (!this.step) this.nextStep()
     const attemptId = this.streamText(content)
-    this.event({ type: 'assistant/message', content, stopReason: 'stop', model: 'gpt-test' })
+    this.event({ type: 'assistant/message', ...this.scope, content, stopReason: 'stop', provider: 'test', model: 'gpt-test' })
     this.lines.push(notification.frame(this.sessionId, {
       type: 'end', attemptId, revision: ++this.revision, index: 1,
       outcome: { kind: 'committed', eventType: 'assistant/message', seq: this.log.length - 1 },

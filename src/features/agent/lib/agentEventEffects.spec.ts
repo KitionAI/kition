@@ -53,14 +53,14 @@ const turnStart = (): AgentSessionEventsSessionEvent => {
   return { seq: at(), at: seq, type: 'turn/start', turn: 1 }
 }
 const call = (callId: string, name: string, args: unknown = {}): AgentSessionEventsSessionEvent => ({
-  seq: at(), at: seq, type: 'tool/call', callId, name, arguments: args,
+  seq: at(), at: seq, type: 'tool/call', turn: 1, step: 1, callId, name, arguments: args, hosted: false,
 })
 const ok = (callId: string, name: string, output: unknown, meta?: Record<string, unknown>): AgentSessionEventsSessionEvent => ({
-  seq: at(), at: seq, type: 'tool/result', callId, name, isError: false, content: [],
+  seq: at(), at: seq, type: 'tool/result', turn: 1, step: 1, callId, name, isError: false, content: [], hosted: false,
   value: { name, summary: '', output }, ...(meta ? { meta } : {}),
 })
 const failed = (callId: string, name: string): AgentSessionEventsSessionEvent => ({
-  seq: at(), at: seq, type: 'tool/result', callId, name, isError: true, value: null,
+  seq: at(), at: seq, type: 'tool/result', turn: 1, step: 1, callId, name, isError: true, value: null, hosted: false,
   content: [{ type: 'text', text: 'invalid patch' }],
 })
 const turnEnd = (reason: 'completed' | 'cancelled' | 'failed'): AgentSessionEventsSessionEvent => ({
@@ -240,7 +240,7 @@ describe('effectsOfStream', () => {
 
   it('does not cancel a called patch when only its attempt ends', () => {
     const called = applySessionEvent(opened, {
-      seq: 1, at: 2, type: 'tool/call', callId: 'w9', name: 'whiteboard_propose_patch', arguments: {},
+      seq: 1, at: 2, type: 'tool/call', turn: 1, step: 1, callId: 'w9', name: 'whiteboard_propose_patch', arguments: {}, hosted: false,
     })
     const attempt = run([start, {
       type: 'end', attemptId: 'a', revision: 2, index: 0, outcome: { kind: 'abandoned' },

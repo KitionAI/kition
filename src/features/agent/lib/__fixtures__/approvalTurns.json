@@ -16,6 +16,8 @@
     "seq": 2,
     "at": 1791732515372,
     "type": "system/message",
+    "turn": 1,
+    "step": 1,
     "content": "You are the built-in agent inside the Kition document system."
   },
   {
@@ -42,6 +44,8 @@
     "seq": 5,
     "at": 1791732515378,
     "type": "assistant/message",
+    "turn": 1,
+    "step": 1,
     "content": "",
     "toolCalls": [
       {
@@ -56,12 +60,15 @@
       }
     ],
     "stopReason": "completed",
+    "provider": "test",
     "model": "test-model"
   },
   {
     "seq": 6,
     "at": 1791732515378,
     "type": "tool/call",
+    "turn": 1,
+    "step": 1,
     "callId": "call_1",
     "name": "exec_command",
     "arguments": {
@@ -69,12 +76,15 @@
         "ls && touch approved.txt"
       ],
       "shell": "sh"
-    }
+    },
+    "hosted": false
   },
   {
     "seq": 7,
     "at": 1791732515379,
     "type": "tool/result",
+    "turn": 1,
+    "step": 1,
     "callId": "call_1",
     "name": "exec_command",
     "value": {
@@ -113,7 +123,8 @@
         ],
         "decision": "allow"
       }
-    }
+    },
+    "hosted": false
   },
   {
     "seq": 8,
@@ -176,6 +187,8 @@
     "seq": 15,
     "at": 1791732515555,
     "type": "assistant/message",
+    "turn": 2,
+    "step": 1,
     "content": "",
     "toolCalls": [
       {
@@ -190,12 +203,15 @@
       }
     ],
     "stopReason": "completed",
+    "provider": "test",
     "model": "test-model"
   },
   {
     "seq": 16,
     "at": 1791732515555,
     "type": "tool/call",
+    "turn": 2,
+    "step": 1,
     "callId": "call_1",
     "name": "exec_command",
     "arguments": {
@@ -203,12 +219,15 @@
         "ls && touch approved.txt"
       ],
       "shell": "sh"
-    }
+    },
+    "hosted": false
   },
   {
     "seq": 17,
     "at": 1791732515577,
     "type": "tool/result",
+    "turn": 2,
+    "step": 1,
     "callId": "call_1",
     "name": "exec_command",
     "value": {
@@ -231,7 +250,8 @@
         "text": "{\"name\":\"exec_command\",\"summary\":\"Command completed: `ls && touch approved.txt`\\n\\n\",\"output\":{\"cmd\":[\"ls && touch approved.txt\"],\"cwd\":\"/home/test-user/workspace\",\"output\":\"\",\"done\":true,\"duration_ms\":20,\"exit_code\":0},\"failed\":false}"
       }
     ],
-    "isError": false
+    "isError": false,
+    "hosted": false
   },
   {
     "seq": 18,
@@ -251,8 +271,11 @@
     "seq": 20,
     "at": 1791732515582,
     "type": "assistant/message",
+    "turn": 2,
+    "step": 2,
     "content": "Done.",
     "stopReason": "completed",
+    "provider": "test",
     "model": "test-model"
   },
   {

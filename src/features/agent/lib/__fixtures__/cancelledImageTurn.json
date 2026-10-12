@@ -30,6 +30,8 @@
     "seq": 3,
     "at": 1791732515370,
     "type": "tool/call",
+    "turn": 1,
+    "step": 1,
     "callId": "img_9456bdfa12ea76959c94a357_0",
     "name": "image_generation",
     "arguments": {
@@ -40,12 +42,15 @@
       "size": "1024x1024",
       "quality": "low",
       "reference_count": 0
-    }
+    },
+    "hosted": true
   },
   {
     "seq": 4,
     "at": 1791732515373,
     "type": "tool/result",
+    "turn": 1,
+    "step": 1,
     "callId": "img_9456bdfa12ea76959c94a357_0",
     "name": "image_generation",
     "value": null,
@@ -59,7 +64,8 @@
         "text": "{\"code\":\"image_generation_canceled\",\"message\":\"canceled\",\"retryable\":true}"
       }
     ],
-    "isError": true
+    "isError": true,
+    "hosted": true
   },
   {
     "seq": 5,
@@ -93,6 +99,8 @@
     "seq": 9,
     "at": 1791732515380,
     "type": "system/message",
+    "turn": 2,
+    "step": 1,
     "content": "You are the built-in agent inside the Kition document system."
   },
   {
@@ -119,8 +127,11 @@
     "seq": 12,
     "at": 1791732515385,
     "type": "assistant/message",
+    "turn": 2,
+    "step": 1,
     "content": "Done.",
     "stopReason": "completed",
+    "provider": "test",
     "model": "test-model"
   },
   {

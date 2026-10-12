@@ -16,6 +16,8 @@
     "seq": 2,
     "at": 1791732515326,
     "type": "system/message",
+    "turn": 1,
+    "step": 1,
     "content": "You are the built-in agent inside the Kition document system."
   },
   {
@@ -42,8 +44,11 @@
     "seq": 5,
     "at": 1791732515332,
     "type": "assistant/message",
+    "turn": 1,
+    "step": 1,
     "content": "It is a fox.",
     "stopReason": "completed",
+    "provider": "test",
     "model": "test-model"
   },
   {
@@ -91,6 +96,8 @@
     "seq": 11,
     "at": 1791732515337,
     "type": "tool/call",
+    "turn": 2,
+    "step": 1,
     "callId": "img_9456bdfa12ea76959c94a357_0",
     "name": "image_generation",
     "arguments": {
@@ -101,12 +108,15 @@
       "size": "1024x1024",
       "quality": "low",
       "reference_count": 0
-    }
+    },
+    "hosted": true
   },
   {
     "seq": 12,
     "at": 1791732515342,
     "type": "tool/result",
+    "turn": 2,
+    "step": 1,
     "callId": "img_9456bdfa12ea76959c94a357_0",
     "name": "image_generation",
     "value": {
@@ -153,7 +163,8 @@
           "source_paths": []
         }
       }
-    }
+    },
+    "hosted": true
   },
   {
     "seq": 13,
@@ -172,9 +183,12 @@
     "seq": 14,
     "at": 1791732515343,
     "type": "assistant/message",
+    "turn": 2,
+    "step": 1,
     "content": "Generated 1 image(s) for review.",
     "stopReason": "stop",
-    "model": ""
+    "provider": "kition",
+    "model": "image-composer"
   },
   {
     "seq": 15,

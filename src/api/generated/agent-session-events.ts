@@ -139,6 +139,8 @@ export type AgentSessionEventsSystemMessageEvent = {
   seq: AgentSessionEventsSeq
   at: AgentSessionEventsAt
   type: "system/message"
+  turn: number
+  step: number
   content: string
 }
 
@@ -160,20 +162,32 @@ export type AgentSessionEventsAssistantMessageEvent = {
   seq: AgentSessionEventsSeq
   at: AgentSessionEventsAt
   type: "assistant/message"
+  turn: number
+  step: number
   content: string
   toolCalls?: AgentSessionEventsLoggedCall[]
   stopReason: string
+  /**
+   * The provider route that answered (DeepSeek Harness message.source.provider); kition for the image composer.
+   */
+  provider: string
   model: string
 }
 
 /**
- * A model call that settled without a message: failed or cancelled.
+ * A model call that settled without a message: failed, or aborted when the turn was cancelled.
  */
 export type AgentSessionEventsAssistantAttemptEvent = {
   seq: AgentSessionEventsSeq
   at: AgentSessionEventsAt
   type: "assistant/attempt"
+  turn: number
+  step: number
   error: string
+  /**
+   * The turn was cancelled during the call (otherwise the call failed).
+   */
+  aborted: boolean
 }
 
 /**
@@ -183,12 +197,18 @@ export type AgentSessionEventsToolCallEvent = {
   seq: AgentSessionEventsSeq
   at: AgentSessionEventsAt
   type: "tool/call"
+  turn: number
+  step: number
   callId: string
   name: string
   /**
    * The logged arguments (passwords redacted, search queries and patch text reduced to counts).
    */
   arguments: unknown
+  /**
+   * The provider ran the call itself (hosted web search, hosted image generation, the image composer); not model history.
+   */
+  hosted: boolean
 }
 
 /**
@@ -198,6 +218,8 @@ export type AgentSessionEventsToolResultEvent = {
   seq: AgentSessionEventsSeq
   at: AgentSessionEventsAt
   type: "tool/result"
+  turn: number
+  step: number
   callId: string
   name: string
   /**
@@ -210,6 +232,10 @@ export type AgentSessionEventsToolResultEvent = {
   content: AgentSessionEventsContentBlock[]
   isError: boolean
   meta?: AgentSessionEventsToolResultMeta
+  /**
+   * The provider ran the call itself (hosted web search, hosted image generation, the image composer); not model history.
+   */
+  hosted: boolean
 }
 
 /**

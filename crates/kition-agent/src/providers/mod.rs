@@ -229,6 +229,7 @@ pub(crate) mod testing {
             whiteboard: None,
             design: None,
             model: RuntimeModel::default(),
+            provider_route: String::new(),
             prompt: "hi".into(),
             attachments: Vec::new(),
             local_sources: Vec::new(),
