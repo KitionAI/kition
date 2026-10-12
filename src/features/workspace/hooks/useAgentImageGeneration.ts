@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import type { AgentArtifact, AgentToolCall } from '@/api/agent'
+import type { AgentSessionView } from '@/features/agent/public'
 import {
-  getGeneratedImageToolOutputPaths,
   isGeneratedImageArtifact,
   type ImageGenerationReceiver,
 } from '@/features/media-generation/public'
@@ -11,11 +10,19 @@ import {
 type PendingImageGeneration = {
   targetPath: string
   deliveredPaths: Set<string>
-  knownArtifactIds: Set<number>
-  knownToolCallIds: Set<number>
+  /** Images the session had delivered before the request. */
+  knownPaths: Set<string>
   observedBusy: boolean
   requestId: string
   timeoutId: number
+}
+
+/** Every image the session's turns delivered, in order. */
+function deliveredImagePaths(view: AgentSessionView | undefined) {
+  return (view?.turns ?? [])
+    .flatMap((turn) => turn.deliverables)
+    .map((file) => file.path)
+    .filter((path) => isGeneratedImageArtifact({ path }))
 }
 
 /**
@@ -26,9 +33,8 @@ type PendingImageGeneration = {
  */
 export function useAgentImageGeneration<TRequest extends { requestId: string; targetPath: string }>({
   activeSessionId,
-  agentArtifacts,
   agentBusySessions,
-  agentToolCalls,
+  agentSessionViews,
   available,
   bridgesRef,
   buildInstruction,
@@ -38,9 +44,8 @@ export function useAgentImageGeneration<TRequest extends { requestId: string; ta
   setActiveSessionId,
 }: {
   activeSessionId: number | null
-  agentArtifacts: Record<number, AgentArtifact[]>
   agentBusySessions: ReadonlySet<number>
-  agentToolCalls: Record<number, AgentToolCall[]>
+  agentSessionViews: Record<number, AgentSessionView>
   available: boolean
   bridgesRef: { current: Record<string, ImageGenerationReceiver> }
   buildInstruction: (request: TRequest) => string
@@ -65,8 +70,7 @@ export function useAgentImageGeneration<TRequest extends { requestId: string; ta
       return { accepted: false, error: t('errors.startFailed') }
     }
     setActiveSessionId(sessionId)
-    const knownArtifactIds = new Set((agentArtifacts[sessionId] || []).map((artifact) => artifact.id))
-    const knownToolCallIds = new Set((agentToolCalls[sessionId] || []).map((toolCall) => toolCall.id))
+    const knownPaths = new Set(deliveredImagePaths(agentSessionViews[sessionId]))
     const timeoutId = window.setTimeout(() => {
       const pending = pendingRef.current.get(sessionId)
       if (!pending || pending.requestId !== request.requestId) return
@@ -79,8 +83,7 @@ export function useAgentImageGeneration<TRequest extends { requestId: string; ta
     pendingRef.current.set(sessionId, {
       targetPath: request.targetPath,
       deliveredPaths: new Set(),
-      knownArtifactIds,
-      knownToolCallIds,
+      knownPaths,
       observedBusy: false,
       requestId: request.requestId,
       timeoutId,
@@ -89,9 +92,8 @@ export function useAgentImageGeneration<TRequest extends { requestId: string; ta
     return { accepted: true }
   }, [
     activeSessionId,
-    agentArtifacts,
     agentBusySessions,
-    agentToolCalls,
+    agentSessionViews,
     available,
     bridgesRef,
     buildInstruction,
@@ -106,14 +108,8 @@ export function useAgentImageGeneration<TRequest extends { requestId: string; ta
     for (const [sessionId, pending] of pendingRef.current) {
       const busy = agentBusySessions.has(sessionId)
       if (busy) pending.observedBusy = true
-      const artifactPaths = (agentArtifacts[sessionId] || [])
-        .filter((artifact) => !pending.knownArtifactIds.has(artifact.id) && isGeneratedImageArtifact(artifact))
-        .map((artifact) => artifact.path)
-      const toolOutputPaths = (agentToolCalls[sessionId] || [])
-        .filter((toolCall) => !pending.knownToolCallIds.has(toolCall.id))
-        .flatMap(getGeneratedImageToolOutputPaths)
-      const paths = Array.from(new Set([...artifactPaths, ...toolOutputPaths]))
-        .filter((path) => !pending.deliveredPaths.has(path))
+      const paths = Array.from(new Set(deliveredImagePaths(agentSessionViews[sessionId])))
+        .filter((path) => !pending.knownPaths.has(path) && !pending.deliveredPaths.has(path))
       if (paths.length) {
         paths.forEach((path) => pending.deliveredPaths.add(path))
         bridgesRef.current[pending.targetPath]?.receiveImageGenerationArtifacts?.({
@@ -130,7 +126,7 @@ export function useAgentImageGeneration<TRequest extends { requestId: string; ta
         pendingRef.current.delete(sessionId)
       }
     }
-  }, [agentArtifacts, agentBusySessions, agentToolCalls, bridgesRef, t])
+  }, [agentBusySessions, agentSessionViews, bridgesRef, t])
 
   useEffect(() => () => {
     for (const pending of pendingRef.current.values()) window.clearTimeout(pending.timeoutId)

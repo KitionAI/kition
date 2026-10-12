@@ -6,16 +6,16 @@ use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex, PoisonError, RwLock};
 
 use kition_ai::engine::{Engine, MessagePart, RuntimeModel};
-use kition_core::{AppResult, now_millis};
+use kition_core::AppResult;
+use kition_harness::driver::LiveSink;
 use kition_harness::events::{PresentedFile, TodoItem};
 use kition_store::Db;
 use rusqlite::Connection;
-use serde_json::{Map, Value, json};
+use serde_json::Value;
 
 use crate::execpolicy::Policy;
 use crate::sources::LocalSource;
-use crate::store::{self, AgentArtifact, AgentEvent};
-use crate::stream::{Emitter, Frame, value};
+use crate::stream::Emitter;
 use crate::workspace::Workspace;
 
 /// Runs the user's desktop hooks for an agent event:
@@ -140,6 +140,11 @@ impl Agent {
         self.inner.kits.as_ref()
     }
 
+    /// The user's desktop hooks, fired from the events of a turn.
+    pub fn hooks(&self) -> Option<HookDispatch> {
+        self.inner.hooks.clone()
+    }
+
     /// The session's turn guard, or `None` while another turn of it runs.
     pub(crate) fn hold_turn(&self, session_id: i64) -> Option<TurnGuard> {
         hold(&self.inner.turns, session_id)
@@ -257,67 +262,15 @@ pub fn permission_for_execution_mode(mode: &str) -> &'static str {
     }
 }
 
-/// One timeline event.
-#[derive(Debug, Clone, Default)]
-pub struct EventInput {
-    pub kind: String,
-    pub stage: String,
-    pub status: String,
-    pub label: String,
-    pub message: String,
-    pub tool_call_id: Option<i64>,
-    pub artifact_id: Option<i64>,
-    pub data: Option<Value>,
-}
-
-impl EventInput {
-    pub fn new(
-        kind: &str,
-        stage: &str,
-        status: &str,
-        label: &str,
-        message: impl Into<String>,
-    ) -> Self {
-        Self {
-            kind: kind.to_owned(),
-            stage: stage.to_owned(),
-            status: status.to_owned(),
-            label: label.to_owned(),
-            message: message.into(),
-            ..Self::default()
-        }
-    }
-
-    pub fn data(mut self, data: Value) -> Self {
-        self.data = Some(data);
-        self
-    }
-
-    pub fn tool_call(mut self, id: Option<i64>) -> Self {
-        self.tool_call_id = id;
-        self
-    }
-}
-
-/// Agent event types that also fire the user's desktop hooks.
-fn hook_name(event_type: &str) -> Option<&'static str> {
-    match event_type {
-        "task.started" => Some("task_started"),
-        "task.completed" => Some("task_completed"),
-        "task.failed" => Some("task_failed"),
-        "tool.called" => Some("tool_called"),
-        "user.input_needed" => Some("user_input_needed"),
-        _ => None,
-    }
-}
-
 /// Everything one streamed turn needs.
 pub struct Run {
     pub agent: Agent,
+    /// The request's response; closed when the client goes away.
     pub emitter: Emitter,
+    /// Where the turn's durable events and assistant-stream frames go.
+    pub live: LiveSink,
     pub user_id: i64,
     pub session_id: i64,
-    pub trigger_message_id: i64,
     pub active_document_path: String,
     pub active_data_document_id: i64,
     pub active_data_table_id: i64,
@@ -359,118 +312,13 @@ impl Run {
         }
         false
     }
-
-    pub fn send(&self, frame: &Frame) -> bool {
-        self.emitter.send(frame)
-    }
-
-    /// Records a timeline event and streams it.
-    pub async fn event(&self, input: EventInput) -> Option<AgentEvent> {
-        if self.session_id <= 0 {
-            return None;
-        }
-        let event = AgentEvent {
-            session_id: self.session_id,
-            user_id: self.user_id,
-            message_id: (self.trigger_message_id > 0).then_some(self.trigger_message_id),
-            tool_call_id: input.tool_call_id,
-            artifact_id: input.artifact_id,
-            event_type: if input.kind.trim().is_empty() {
-                "event".into()
-            } else {
-                input.kind.trim().to_owned()
-            },
-            stage: input.stage.trim().to_owned(),
-            status: input.status.trim().to_owned(),
-            label: input.label.trim().to_owned(),
-            message: input.message.trim().to_owned(),
-            data: input
-                .data
-                .clone()
-                .unwrap_or_else(|| Value::Object(Map::new())),
-            created_at: now_millis(),
-            ..AgentEvent::default()
-        };
-        let event = self
-            .agent
-            .with_db(move |conn| store::insert_event(conn, event))
-            .await
-            .ok()?;
-        self.send(&Frame {
-            event: value(&event),
-            ..Frame::new("agent_event")
-        });
-        if let (Some(name), Some(hooks)) = (hook_name(&event.event_type), &self.agent.inner.hooks) {
-            let tool_name = input
-                .data
-                .as_ref()
-                .and_then(|data| data.get("tool_name"))
-                .and_then(Value::as_str)
-                .unwrap_or_default();
-            hooks(self.user_id, name, tool_name, &event.stage, &event.status);
-        }
-        Some(event)
-    }
-
-    /// Saves an artifact made by a tool call and announces it.
-    pub async fn record_artifact(
-        &self,
-        tool_call_id: Option<i64>,
-        kind: &str,
-        path: &str,
-        mime_type: &str,
-        title: &str,
-    ) -> Option<AgentArtifact> {
-        if path.trim().is_empty() {
-            return None;
-        }
-        let artifact = AgentArtifact {
-            session_id: self.session_id,
-            user_id: self.user_id,
-            tool_call_id,
-            kind: kind.to_owned(),
-            path: path.to_owned(),
-            mime_type: mime_type.to_owned(),
-            title: title.to_owned(),
-            created_at: now_millis(),
-            ..AgentArtifact::default()
-        };
-        let artifact = self
-            .agent
-            .with_db(move |conn| store::insert_artifact(conn, artifact))
-            .await
-            .ok()?;
-        self.event(EventInput {
-            artifact_id: Some(artifact.id),
-            tool_call_id,
-            data: Some(json!({
-                "kind": kind,
-                "path": path,
-                "mime_type": mime_type,
-                "title": title,
-            })),
-            ..EventInput::new(
-                "artifact.created",
-                "artifact",
-                "completed",
-                "Save artifact",
-                path,
-            )
-        })
-        .await;
-        Some(artifact)
-    }
 }
 
-/// A tool's result for the model and the timeline.
+/// A tool's result for the model and the session log.
 #[derive(Debug, Clone, Default)]
 pub struct ToolOutput {
     pub summary: String,
     pub output: Value,
-    /// What the timeline stores when it must not keep the model view.
-    pub event_summary: Option<String>,
-    pub event_output: Option<Value>,
-    pub artifact: Option<AgentArtifact>,
     /// `await_shell_approval` pauses the turn for the user.
     pub interrupt: Option<&'static str>,
     /// Content shown to the model on its next turn, such as an image.
@@ -572,6 +420,8 @@ pub fn string_list(input: &Value, key: &str) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
+    use serde_json::json;
+
     use super::*;
 
     #[test]

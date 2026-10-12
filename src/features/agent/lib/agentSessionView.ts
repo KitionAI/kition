@@ -17,22 +17,10 @@ import type {
   AgentSessionEventsToolResultMeta,
   AgentSessionEventsTurnEndReason,
 } from '@/api/generated/agent-session-events'
+import type { AgentStreamAssistantStreamFrame, AgentStreamStreamChunk } from '@/api/generated/agent-stream'
 import { replyWithoutTablePlan } from './agentTablePlan'
 
-// The `agent/assistant-stream` shapes (DeepSeek Harness `AssistantStreamFrame`
-// and `StreamChunk`). Local until the stream contract generates them.
-type AgentStreamChunk =
-  | { type: 'text-delta'; index: number; text: string }
-  | { type: 'tool-call-delta'; index: number; id: string; name?: string; argumentsDelta: string }
-
-type AgentStreamOutcome =
-  | { kind: 'committed'; eventType: 'assistant/message' | 'assistant/attempt'; seq: number }
-  | { kind: 'abandoned' }
-
-export type AgentAssistantStreamFrame =
-  | { type: 'start'; attemptId: string; revision: number; turn: number; step: number }
-  | { type: 'chunk'; attemptId: string; revision: number; index: number; time: number; chunk: AgentStreamChunk }
-  | { type: 'end'; attemptId: string; revision: number; index: number; outcome: AgentStreamOutcome }
+export type AgentAssistantStreamFrame = AgentStreamAssistantStreamFrame
 
 type AgentShellApprovalRequest = Extract<AgentSessionEventsToolResultMeta, { kind: 'shell.approval' }>
 
@@ -69,7 +57,7 @@ type AgentRetry = {
   started: boolean
 }
 
-type AgentApproval = {
+export type AgentApproval = {
   id: string
   callId: string
   toolName: string
@@ -100,7 +88,7 @@ export type AgentTurnView = {
   interrupted?: boolean
 }
 
-type AgentLiveAttempt = {
+export type AgentLiveAttempt = {
   attemptId: string
   turn: number
   step: number
@@ -111,15 +99,13 @@ type AgentLiveAttempt = {
 export type AgentSessionView = {
   /** The last applied event `seq`. */
   cursor: number
-  /** The last applied assistant-stream `revision`. */
-  revision: number
   turns: AgentTurnView[]
   live: AgentLiveAttempt | null
   running: boolean
 }
 
 export function emptyAgentSessionView(): AgentSessionView {
-  return { cursor: 0, revision: 0, turns: [], live: null, running: false }
+  return { cursor: 0, turns: [], live: null, running: false }
 }
 
 /** `value[key]` when `value` is a plain JSON object. */
@@ -221,9 +207,13 @@ function lastReply(turn: AgentTurnView): string | undefined {
 }
 
 function endTurn(turn: AgentTurnView, event: Extract<AgentSessionEventsSessionEvent, { type: 'turn/end' }>): AgentTurnView {
-  const reply = event.reason === 'completed' ? lastReply(turn) : undefined
+  const completed = event.reason === 'completed'
+  const reply = completed ? lastReply(turn) : undefined
+  const base = { ...turn }
+  // A completed turn's reply is in the log; streamed text from an earlier attempt is stale.
+  if (completed) delete base.partialReply
   return {
-    ...turn,
+    ...base,
     toolRuns: turn.toolRuns.map((run) => (run.status === 'running' ? { ...run, status: 'failed', endedAt: event.at } : run)),
     ...(reply === undefined ? {} : { reply }),
     end: { reason: event.reason, error: event.error ?? '', at: event.at },
@@ -314,16 +304,12 @@ function reduceTurn(turn: AgentTurnView, event: AgentSessionEventsSessionEvent):
   }
 }
 
+/** Records the decision; the paused run keeps its status (the command runs in the next turn). */
 function decide(view: AgentSessionView, event: AgentSessionEventsApprovalDecidedEvent): AgentSessionView {
   const index = lastIndexWhere(view.turns, (turn) => turn.approval?.id === event.id)
   return updateTurnAt(view, index, (turn) => ({
     ...turn,
     approval: { ...turn.approval!, decided: event.outcome },
-    toolRuns: turn.toolRuns.map((run) => (
-      run.callId === turn.approval!.callId && run.status === 'awaiting_approval'
-        ? { ...run, status: event.outcome === 'allowed-once' ? 'completed' : 'failed' }
-        : run
-    )),
   }))
 }
 
@@ -336,9 +322,21 @@ function present(view: AgentSessionView, event: AgentSessionEventsDeliverablesPr
   }))
 }
 
-/** Applies one session event; events at or below the cursor are ignored. */
+/**
+ * Whether `event` skips past the next expected `seq`: the client missed events
+ * and must read the log after `view.cursor` before applying it.
+ */
+export function isGap(view: AgentSessionView, event: AgentSessionEventsSessionEvent) {
+  return event.seq > view.cursor + 1
+}
+
+/**
+ * Applies one session event. Only the next `seq` applies: events at or below
+ * the cursor were already applied, and one past a gap waits for the log read
+ * (`isGap`).
+ */
 export function applySessionEvent(view: AgentSessionView, event: AgentSessionEventsSessionEvent): AgentSessionView {
-  if (event.seq <= view.cursor) return view
+  if (event.seq !== view.cursor + 1) return view
   const next = { ...view, cursor: event.seq }
   switch (event.type) {
     case 'turn/start':
@@ -352,7 +350,7 @@ export function applySessionEvent(view: AgentSessionView, event: AgentSessionEve
   }
 }
 
-function accumulate(live: AgentLiveAttempt, chunk: AgentStreamChunk): AgentLiveAttempt {
+function accumulate(live: AgentLiveAttempt, chunk: AgentStreamStreamChunk): AgentLiveAttempt {
   if (chunk.type === 'text-delta') return { ...live, text: live.text + chunk.text }
   const previous = live.toolArgs[chunk.id]
   const name = chunk.name ?? previous?.name
@@ -366,19 +364,18 @@ function accumulate(live: AgentLiveAttempt, chunk: AgentStreamChunk): AgentLiveA
 }
 
 /**
- * Applies one assistant-stream frame. Revisions grow across the whole
- * session; a frame whose revision is not newer than the last one is ignored.
+ * Applies one assistant-stream frame of the connection the view follows:
+ * `start` opens the live attempt, and its chunks and end apply only while it
+ * is the live attempt. Frames of any other attempt are ignored.
  */
 export function applyAssistantStream(view: AgentSessionView, frame: AgentAssistantStreamFrame): AgentSessionView {
-  if (frame.revision <= view.revision) return view
-  const next = { ...view, revision: frame.revision }
   if (frame.type === 'start') {
-    return { ...next, live: { attemptId: frame.attemptId, turn: frame.turn, step: frame.step, text: '', toolArgs: {} } }
+    return { ...view, live: { attemptId: frame.attemptId, turn: frame.turn, step: frame.step, text: '', toolArgs: {} } }
   }
-  const live = next.live
-  if (!live || live.attemptId !== frame.attemptId) return next
-  if (frame.type === 'chunk') return { ...next, live: accumulate(live, frame.chunk) }
-  const settled = { ...next, live: null }
+  const live = view.live
+  if (!live || live.attemptId !== frame.attemptId) return view
+  if (frame.type === 'chunk') return { ...view, live: accumulate(live, frame.chunk) }
+  const settled = { ...view, live: null }
   const withoutMessage = frame.outcome.kind === 'abandoned' || frame.outcome.eventType === 'assistant/attempt'
   if (!withoutMessage || !live.text) return settled
   const index = lastIndexWhere(settled.turns, (turn) => turn.turn === live.turn)

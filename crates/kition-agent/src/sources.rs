@@ -161,14 +161,6 @@ pub fn prompt_context(sources: &[LocalSource]) -> String {
     rows.join("\n")
 }
 
-pub fn event_data(sources: &[LocalSource]) -> Value {
-    let items: Vec<Value> = sources
-        .iter()
-        .map(|source| json!({ "id": source.id, "label": source.label, "access": "read", "git": source.git }))
-        .collect();
-    json!({ "count": items.len(), "sources": items })
-}
-
 fn find<'a>(run: &'a Run, id: &str) -> Result<&'a LocalSource, String> {
     let id = id.trim().to_lowercase();
     run.local_sources
@@ -443,11 +435,6 @@ pub fn read(run: &Run, input: &Value) -> ToolResult {
     ));
     Ok(ToolOutput {
         summary: parts.join("\n\n"),
-        event_summary: Some(format!(
-            "Read `{uri}` lines {start}-{end} of {total}{}",
-            truncated_suffix(truncated)
-        )),
-        event_output: Some(output.clone()),
         output,
         ..ToolOutput::default()
     })
@@ -728,15 +715,6 @@ pub fn file_search(run: &Run, input: &Value) -> ToolResult {
     }
     Ok(ToolOutput {
         summary: format!("Local source path matches:\n{}", rows.join("\n")),
-        event_summary: Some(format!(
-            "Found {} path match(es) after scanning {} file candidates",
-            matches.len(),
-            walk.scanned
-        )),
-        event_output: Some(json!({
-            "query_chars": query.chars().count(), "matches": matches.len(),
-            "scanned": walk.scanned, "candidate_cap_reached": walk.capped,
-        })),
         output: json!({
             "query": query, "matches": matches, "scanned": walk.scanned,
             "candidate_cap_reached": walk.capped,
@@ -864,16 +842,6 @@ pub fn search(run: &Run, input: &Value) -> ToolResult {
     let items: Vec<&Value> = matches.iter().map(|m| &m.3).collect();
     Ok(ToolOutput {
         summary: format!("Local source content matches:\n{}", rows.join("\n")),
-        event_summary: Some(format!(
-            "Found {total} content match(es) across {} candidates",
-            walk.scanned
-        )),
-        event_output: Some(json!({
-            "query_chars": query.chars().count(), "mode": mode, "case_sensitive": case_sensitive,
-            "paths": paths, "total_matches": total, "scanned": walk.scanned,
-            "bytes_scanned": bytes_scanned, "candidate_cap_reached": walk.capped,
-            "search_budget_reached": budget_reached,
-        })),
         output: json!({
             "query": query, "mode": mode, "case_sensitive": case_sensitive, "paths": paths,
             "matches": items, "total_matches": total, "scanned": walk.scanned,
@@ -1128,12 +1096,6 @@ pub fn git_status(run: &Run, input: &Value) -> ToolResult {
             uri(&source.id, ""),
             truncated_suffix(truncated)
         ),
-        event_summary: Some(format!(
-            "Inspected Git status for {} ({count} changed path(s){})",
-            uri(&source.id, ""),
-            truncated_suffix(truncated)
-        )),
-        event_output: Some(output.clone()),
         output,
         ..ToolOutput::default()
     })
@@ -1172,11 +1134,6 @@ pub fn git_log(run: &Run, input: &Value) -> ToolResult {
             "Git history for `{display}`{}:\n\n{text}",
             truncated_suffix(truncated)
         ),
-        event_summary: Some(format!(
-            "Read {commits} Git commit(s) for {display}{}",
-            truncated_suffix(truncated)
-        )),
-        event_output: Some(output.clone()),
         output,
         ..ToolOutput::default()
     })
@@ -1232,11 +1189,6 @@ pub fn git_show(run: &Run, input: &Value) -> ToolResult {
             "Git {mode} output for `{display}`{}:\n\n{text}",
             truncated_suffix(truncated)
         ),
-        event_summary: Some(format!(
-            "Read Git {mode} output for revision {revision}{}",
-            truncated_suffix(truncated)
-        )),
-        event_output: Some(output.clone()),
         output,
         ..ToolOutput::default()
     })
@@ -1284,11 +1236,6 @@ pub fn git_blame(run: &Run, input: &Value) -> ToolResult {
             "Git blame for `{uri}` lines {start}-{end} at {revision}{}:\n\n{text}",
             truncated_suffix(truncated)
         ),
-        event_summary: Some(format!(
-            "Read Git blame for {uri} lines {start}-{end}{}",
-            truncated_suffix(truncated)
-        )),
-        event_output: Some(output.clone()),
         output,
         ..ToolOutput::default()
     })

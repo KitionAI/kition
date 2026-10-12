@@ -1,6 +1,7 @@
-//! A streamed agent turn against a fake provider (Responses or Chat
-//! Completions): the model asks for `artifact_write`, the runtime runs it,
-//! and the model then answers.
+//! Streamed agent turns against a fake provider (Responses or Chat
+//! Completions). Every line of every stream is checked against
+//! `contracts/runtime/agent-stream.schema.json`, and every logged event
+//! against `agent-session-events.schema.json`.
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
@@ -35,6 +36,88 @@ fn tool_call(name: &str, arguments: Value) -> String {
         json!({ "type": "response.output_item.done", "output_index": 0, "item": item }),
         json!({ "type": "response.completed", "response": { "status": "completed", "output": [item] } }),
     ])
+}
+
+/// A Responses tool call to `name` whose arguments stream in two deltas.
+fn tool_call_streamed(name: &str, arguments: Value) -> String {
+    let arguments = arguments.to_string();
+    let (head, tail) = arguments.split_at(arguments.len() / 2);
+    let item = json!({
+        "type": "function_call", "id": "fc_1", "call_id": "call_1", "name": name,
+        "arguments": arguments,
+    });
+    sse(&[
+        json!({ "type": "response.output_item.added", "output_index": 0, "item": {
+            "type": "function_call", "id": "fc_1", "call_id": "call_1", "name": name, "arguments": "",
+        } }),
+        json!({ "type": "response.function_call_arguments.delta", "output_index": 0, "item_id": "fc_1", "delta": head }),
+        json!({ "type": "response.function_call_arguments.delta", "output_index": 0, "item_id": "fc_1", "delta": tail }),
+        json!({ "type": "response.output_item.done", "output_index": 0, "item": item }),
+        json!({ "type": "response.completed", "response": { "status": "completed", "output": [item] } }),
+    ])
+}
+
+/// The text the assistant stream carried, in order.
+fn text_deltas(lines: &[Value]) -> String {
+    lines
+        .iter()
+        .filter(|line| line["params"]["frame"]["chunk"]["type"] == "text-delta")
+        .filter_map(|line| line["params"]["frame"]["chunk"]["text"].as_str())
+        .collect()
+}
+
+/// The streamed arguments of the tool call `id`.
+fn tool_deltas(lines: &[Value], id: &str) -> String {
+    lines
+        .iter()
+        .map(|line| &line["params"]["frame"]["chunk"])
+        .filter(|chunk| chunk["type"] == "tool-call-delta" && chunk["id"] == id)
+        .filter_map(|chunk| chunk["argumentsDelta"].as_str())
+        .collect()
+}
+
+/// Each attempt streams `start`, dense chunks, and an `end` committed to the
+/// `assistant/message` the stream carried just before it; revisions grow by
+/// one per frame.
+fn assert_attempts_settle(lines: &[Value]) {
+    let frames: Vec<&Value> = lines
+        .iter()
+        .filter(|line| line["method"] == "agent/assistant-stream")
+        .map(|line| &line["params"]["frame"])
+        .collect();
+    assert!(!frames.is_empty(), "{lines:?}");
+    let revisions: Vec<u64> = frames
+        .iter()
+        .filter_map(|frame| frame["revision"].as_u64())
+        .collect();
+    assert!(
+        revisions.windows(2).all(|pair| pair[1] == pair[0] + 1),
+        "{revisions:?}"
+    );
+    let mut last_message = 0;
+    let mut chunks = 0;
+    for line in lines {
+        if line["method"] == "session.event"
+            && line["params"]["event"]["type"] == "assistant/message"
+        {
+            last_message = line["params"]["event"]["seq"].as_u64().unwrap_or_default();
+        }
+        let frame = &line["params"]["frame"];
+        match frame["type"].as_str() {
+            Some("start") => chunks = 0,
+            Some("chunk") => {
+                assert_eq!(frame["index"], chunks, "{frame}");
+                chunks += 1;
+            }
+            Some("end") => {
+                assert_eq!(frame["index"], chunks, "{frame}");
+                assert_eq!(frame["outcome"]["kind"], "committed", "{frame}");
+                assert_eq!(frame["outcome"]["eventType"], "assistant/message");
+                assert_eq!(frame["outcome"]["seq"], last_message, "{frame}");
+            }
+            _ => {}
+        }
+    }
 }
 
 fn answer(parts: &[&str]) -> String {
@@ -234,10 +317,110 @@ async fn stream_on(
     )
     .await;
     assert_eq!(status, 200, "{}", String::from_utf8_lossy(&bytes));
-    String::from_utf8_lossy(&bytes)
+    notifications(&bytes)
+}
+
+/// The stream's lines, each checked against the stream contract.
+fn notifications(bytes: &[u8]) -> Vec<Value> {
+    String::from_utf8_lossy(bytes)
         .lines()
-        .filter_map(|line| serde_json::from_str(line).ok())
+        .map(|line| {
+            let line: Value =
+                serde_json::from_str(line).unwrap_or_else(|err| panic!("not JSON ({err}): {line}"));
+            check_stream_contract(&line);
+            line
+        })
         .collect()
+}
+
+/// Resolves the sibling session events contract the stream contract refers to.
+struct Contracts;
+
+impl jsonschema::Retrieve for Contracts {
+    fn retrieve(
+        &self,
+        uri: &jsonschema::Uri<String>,
+    ) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
+        if uri.as_str().ends_with("/agent-session-events.schema.json") {
+            return Ok(serde_json::from_str(include_str!(
+                "../../../contracts/runtime/agent-session-events.schema.json"
+            ))?);
+        }
+        Err(format!("unknown contract {uri}").into())
+    }
+}
+
+/// Validates one stream line against the stream contract.
+fn check_stream_contract(line: &Value) {
+    let schema: Value = serde_json::from_str(include_str!(
+        "../../../contracts/runtime/agent-stream.schema.json"
+    ))
+    .unwrap_or_else(|err| panic!("{err}"));
+    let validator = jsonschema::options()
+        .with_retriever(Contracts)
+        .build(&schema)
+        .unwrap_or_else(|err| panic!("{err}"));
+    let errors: Vec<String> = validator
+        .iter_errors(line)
+        .map(|error| format!("{error} at {}", error.instance_path()))
+        .collect();
+    assert!(errors.is_empty(), "{}\n{line}", errors.join("; "));
+}
+
+/// The session events a stream carried, in order.
+fn events(lines: &[Value]) -> Vec<Value> {
+    lines
+        .iter()
+        .filter(|line| line["method"] == "session.event")
+        .map(|line| line["params"]["event"].clone())
+        .collect()
+}
+
+/// The types of `events`.
+fn kinds(events: &[Value]) -> Vec<String> {
+    events
+        .iter()
+        .filter_map(|event| event["type"].as_str().map(str::to_owned))
+        .collect()
+}
+
+/// The last `turn/end` a stream carried.
+fn turn_end(lines: &[Value]) -> Value {
+    events(lines)
+        .into_iter()
+        .rev()
+        .find(|event| event["type"] == "turn/end")
+        .unwrap_or_else(|| panic!("no turn/end in {lines:?}"))
+}
+
+/// The text of the last `assistant/message` with content a stream carried.
+fn reply(lines: &[Value]) -> String {
+    events(lines)
+        .into_iter()
+        .rev()
+        .find_map(|event| {
+            (event["type"] == "assistant/message")
+                .then(|| event["content"].as_str().unwrap_or_default().to_owned())
+                .filter(|content| !content.is_empty())
+        })
+        .unwrap_or_default()
+}
+
+/// Asserts that a stream says `running` first and `idle` last.
+fn assert_closed_idle(lines: &[Value]) {
+    let status = |line: Option<&Value>| {
+        line.map(|line| (line["method"].clone(), line["params"]["status"].clone()))
+    };
+    assert_eq!(
+        status(lines.first()),
+        Some((json!("session.status"), json!("running"))),
+        "{lines:?}"
+    );
+    assert_eq!(
+        status(lines.last()),
+        Some((json!("session.status"), json!("idle"))),
+        "{lines:?}"
+    );
 }
 
 /// A `/responses` provider whose first call signals `entered` and waits for
@@ -292,12 +475,9 @@ async fn a_second_turn_is_refused_while_the_first_runs() {
         String::from_utf8_lossy(&bytes)
     );
     release.notify_one();
-    let frames = first.await.unwrap_or_else(|err| panic!("{err}"));
-    assert_eq!(
-        frames.last().cloned().unwrap_or_default()["type"],
-        "done",
-        "{frames:?}"
-    );
+    let lines = first.await.unwrap_or_else(|err| panic!("{err}"));
+    assert_closed_idle(&lines);
+    assert_eq!(turn_end(&lines)["reason"], "completed");
     let (status, _) = call(&app, "POST", &uri, body).await;
     assert_eq!(status, 200, "the session is free once the first turn ends");
 }
@@ -345,13 +525,9 @@ async fn an_image_exchange_is_history_for_the_next_turn() {
     let session_id = new_session(&app).await;
     let (base_url, bodies) = image_and_text_provider().await;
     // A first ordinary turn, so the session already has an event log.
-    let frames = stream(&app, session_id, &base_url, json!({ "content": "Hello" })).await;
-    assert_eq!(
-        frames.last().cloned().unwrap_or_default()["type"],
-        "done",
-        "{frames:?}"
-    );
-    let frames = stream(
+    let lines = stream(&app, session_id, &base_url, json!({ "content": "Hello" })).await;
+    assert_closed_idle(&lines);
+    let lines = stream(
         &app,
         session_id,
         &base_url,
@@ -368,10 +544,15 @@ async fn an_image_exchange_is_history_for_the_next_turn() {
         }),
     )
     .await;
-    let done = frames.last().cloned().unwrap_or_default();
-    let reply = done["extra_data"]["message"]["content"].clone();
-    assert!(reply.is_string(), "{frames:?}");
+    assert_closed_idle(&lines);
+    let reply = json!(reply(&lines));
+    assert_eq!(reply, "Generated 1 image(s) for review.");
     let events = session_events(&app, session_id).await;
+    assert_eq!(
+        kinds(&events[events.len() - 9..]),
+        kinds(&self::events(&lines)),
+        "the stream carries the composer turn as logged"
+    );
     let composer = events
         .iter()
         .rposition(|event| event["type"] == "turn/start")
@@ -432,13 +613,15 @@ async fn an_image_exchange_is_history_for_the_next_turn() {
         "client_capability_version": 1,
     });
     let before = events.len();
-    stream(
+    let repeat = stream(
         &app,
         session_id,
         &base_url,
         json!({ "content": "A red fox", "image_generation_intent": intent }),
     )
     .await;
+    assert_closed_idle(&repeat);
+    assert_eq!(repeat.len(), 2, "a repeat streams running and idle only");
     assert_eq!(
         session_events(&app, session_id).await.len(),
         before,
@@ -455,18 +638,14 @@ async fn an_image_exchange_is_history_for_the_next_turn() {
     .await;
     assert_eq!(status, 409, "a request id names one set of settings");
 
-    let frames = stream(
+    let lines = stream(
         &app,
         session_id,
         &base_url,
         json!({ "content": "What did you draw?" }),
     )
     .await;
-    assert_eq!(
-        frames.last().cloned().unwrap_or_default()["type"],
-        "done",
-        "{frames:?}"
-    );
+    assert_closed_idle(&lines);
     let bodies = bodies.lock().unwrap_or_else(PoisonError::into_inner);
     assert_eq!(bodies.len(), 2, "two ordinary turns reach the model");
     let history = Value::Array(conversation(&bodies[1])).to_string();
@@ -485,18 +664,14 @@ async fn a_turn_stops_at_the_step_limit() {
         .map(|_| tool_call("document_list", json!({})))
         .collect();
     let base_url = fake_provider(script).await;
-    let frames = stream(&app, session_id, &base_url, json!({})).await;
-    let error = frames
+    let lines = stream(&app, session_id, &base_url, json!({})).await;
+    assert_closed_idle(&lines);
+    assert_eq!(turn_end(&lines)["reason"], "step-limit", "{lines:?}");
+    let steps = events(&lines)
         .iter()
-        .find(|frame| frame["type"] == "error")
-        .cloned()
-        .unwrap_or_default();
-    assert!(
-        error
-            .to_string()
-            .contains("the turn exceeded 16 model steps; narrow the task or clarify the next step"),
-        "{frames:?}"
-    );
+        .filter(|event| event["type"] == "step/start")
+        .count();
+    assert_eq!(steps, 16);
 }
 
 /// A provider whose image endpoint signals `entered` and never answers,
@@ -632,17 +807,18 @@ async fn streams_a_turn_over_chat_completions() {
         ],
     )
     .await;
-    let frames = stream_on(&app, session_id, &base_url, "chat_completions", json!({})).await;
-    let kinds: Vec<&str> = frames.iter().filter_map(|f| f["type"].as_str()).collect();
-    assert!(!kinds.contains(&"error"), "{frames:?}");
-    assert!(kinds.contains(&"artifact"), "{kinds:?}");
-    assert!(kinds.contains(&"model_delta"), "{kinds:?}");
-    let done = frames.last().cloned().unwrap_or_default();
-    assert_eq!(done["type"], "done", "{frames:?}");
+    let lines = stream_on(&app, session_id, &base_url, "chat_completions", json!({})).await;
+    assert_closed_idle(&lines);
+    assert_eq!(turn_end(&lines)["reason"], "completed", "{lines:?}");
+    assert!(kinds(&events(&lines)).contains(&"deliverables/presented".to_owned()));
+    assert!(text_deltas(&lines).contains("Saved "), "{lines:?}");
+    let arguments = tool_deltas(&lines, "call_1");
     assert_eq!(
-        done["extra_data"]["message"]["content"],
-        "Saved `Notes/plan.md`."
+        serde_json::from_str::<Value>(&arguments).unwrap_or_default()["path"],
+        "Notes/plan.md",
+        "the streamed arguments of the call it is logged under"
     );
+    assert_eq!(reply(&lines), "Saved `Notes/plan.md`.");
     assert_eq!(
         std::fs::read_to_string(workspace.path().join("Notes/plan.md")).unwrap_or_default(),
         "# Plan\n\nShip it."
@@ -656,79 +832,71 @@ async fn streams_a_turn_with_a_tool_call() {
     } = app();
     let session_id = new_session(&app).await;
     let base_url = fake_provider(vec![
-        tool_call(
+        tool_call_streamed(
             "artifact_write",
             json!({ "path": "Notes/plan.md", "content": "# Plan\n\nShip it." }),
         ),
         answer(&["Saved ", "`Notes/plan.md`."]),
     ])
     .await;
-    let frames = stream(&app, session_id, &base_url, json!({})).await;
-    let kinds: Vec<&str> = frames.iter().filter_map(|f| f["type"].as_str()).collect();
-    assert_eq!(kinds.first(), Some(&"started"), "{kinds:?}");
-    assert!(kinds.contains(&"user_message"));
-    assert!(kinds.contains(&"artifact"), "{kinds:?}");
-    assert!(kinds.contains(&"model_delta"));
-    assert!(!kinds.contains(&"error"), "{frames:?}");
-    let done = frames.last().cloned().unwrap_or_default();
-    assert_eq!(done["type"], "done");
+    let lines = stream(&app, session_id, &base_url, json!({})).await;
+    assert_closed_idle(&lines);
+    let streamed = events(&lines);
+    let kinds = kinds(&streamed);
     assert_eq!(
-        done["extra_data"]["message"]["content"],
-        "Saved `Notes/plan.md`."
+        kinds.first().map(String::as_str),
+        Some("turn/start"),
+        "{kinds:?}"
     );
-    assert_eq!(done["extra_data"]["artifact"]["path"], "Notes/plan.md");
-    assert_eq!(done["extra_data"]["session"]["status"], "idle");
+    assert_eq!(
+        kinds.last().map(String::as_str),
+        Some("turn/end"),
+        "{kinds:?}"
+    );
+    for expected in [
+        "user/message",
+        "tool/call",
+        "tool/result",
+        "deliverables/presented",
+    ] {
+        assert!(
+            kinds.contains(&expected.to_owned()),
+            "missing {expected} in {kinds:?}"
+        );
+    }
+    assert_eq!(turn_end(&lines)["reason"], "completed");
+    assert_eq!(reply(&lines), "Saved `Notes/plan.md`.");
+    assert_eq!(text_deltas(&lines), "Saved `Notes/plan.md`.");
+    assert_attempts_settle(&lines);
     assert_eq!(
         std::fs::read_to_string(workspace.path().join("Notes/plan.md")).unwrap_or_default(),
         "# Plan\n\nShip it."
     );
+    assert_eq!(
+        streamed,
+        session_events(&app, session_id).await,
+        "the stream carries the log exactly"
+    );
 
-    let (_, body) = call(
-        &app,
-        "GET",
-        &format!("/agent/sessions/{session_id}/tool-calls"),
-        json!({}),
-    )
-    .await;
-    let calls = data(&body)["items"].clone();
-    assert_eq!(calls[0]["tool_name"], "artifact_write");
-    assert_eq!(calls[0]["status"], "completed");
-    let (_, body) = call(
-        &app,
-        "GET",
-        &format!("/agent/sessions/{session_id}/messages"),
-        json!({}),
-    )
-    .await;
-    assert_eq!(data(&body)["items"].as_array().map(Vec::len), Some(2));
-    let (_, body) = call(
-        &app,
-        "GET",
-        &format!("/agent/sessions/{session_id}/events"),
-        json!({}),
-    )
-    .await;
-    let events: Vec<String> = data(&body)["items"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter_map(|e| e["event_type"].as_str().map(str::to_owned))
-        .collect();
-    for expected in [
-        "task.created",
-        "tool.requested",
-        "artifact.created",
-        "tool.completed",
-        "task.completed",
-    ] {
-        assert!(
-            events.iter().any(|e| e == expected),
-            "missing {expected} in {events:?}"
-        );
+    let (_, body) = call(&app, "GET", "/agent/sessions", json!({})).await;
+    let session = data(&body)["items"][0].clone();
+    assert_eq!(session["id"], session_id);
+    assert_eq!(session["title"], "Write a short plan");
+    assert_eq!(
+        session["active_document_path"], "Notes/plan.md",
+        "the document the turn delivered"
+    );
+    assert!(session.get("status").is_none(), "{session}");
+    for gone in ["messages", "tool-calls", "events"] {
+        let (status, _) = call(
+            &app,
+            "GET",
+            &format!("/agent/sessions/{session_id}/{gone}"),
+            json!({}),
+        )
+        .await;
+        assert_eq!(status, 404, "{gone}");
     }
-
-    let (status, _) = call(&app, "GET", "/agent/sessions/999/messages", json!({})).await;
-    assert_eq!(status, 404);
     let (status, body) = call(&app, "GET", "/agent/capabilities", json!({})).await;
     assert_eq!(status, 200);
     assert!(
@@ -914,12 +1082,11 @@ async fn the_session_events_api_keeps_provider_native_items_out() {
         json!({ "type": "response.completed", "response": { "status": "completed", "output": [raw, item] } }),
     ]);
     let base_url = fake_provider(vec![first, answer(&["Saved."])]).await;
-    let frames = stream(&app, session_id, &base_url, json!({})).await;
-    assert_eq!(
-        frames.last().cloned().unwrap_or_default()["type"],
-        "done",
-        "{frames:?}"
-    );
+    let lines = stream(&app, session_id, &base_url, json!({})).await;
+    assert_closed_idle(&lines);
+    let streamed = Value::Array(lines).to_string();
+    assert!(!streamed.contains(RAW_SECRET), "{streamed}");
+    assert!(!streamed.contains("rawItems"), "{streamed}");
 
     let log = kition_harness::log::SqliteLog::new(db.clone());
     let stored = kition_harness::log::SessionLog::read(&log, &format!("agent:{session_id}"))
@@ -1015,7 +1182,7 @@ async fn assert_session_events_api(app: &Router, session_id: i64) {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn commands_outside_the_policy_wait_for_approval() {
+async fn approval_resolves_by_call_id_from_the_log() {
     let Fixture { app, workspace, .. } = app();
     let session_id = new_session(&app).await;
     let command = json!({ "cmd": ["ls && touch approved.txt"], "shell": "sh" });
@@ -1025,14 +1192,9 @@ async fn commands_outside_the_policy_wait_for_approval() {
         answer(&["Done."]),
     ])
     .await;
-    let frames = stream(&app, session_id, &base_url, json!({})).await;
-    let done = frames.last().cloned().unwrap_or_default();
-    assert_eq!(
-        done["extra_data"]["awaiting_shell_approval"], true,
-        "{frames:?}"
-    );
-    let pending = &done["extra_data"]["shell_approval_required"];
-    assert_eq!(pending["requires"], "approval");
+    let lines = stream(&app, session_id, &base_url, json!({})).await;
+    assert_closed_idle(&lines);
+    assert_eq!(turn_end(&lines)["reason"], "awaiting-approval");
     let events = session_events(&app, session_id).await;
     let tail: Vec<&Value> = events.iter().rev().take(4).rev().collect();
     assert_eq!(tail[0]["type"], "tool/result", "{tail:?}");
@@ -1044,42 +1206,53 @@ async fn commands_outside_the_policy_wait_for_approval() {
     assert_eq!(tail[2]["type"], "step/end");
     assert_eq!(tail[3]["type"], "turn/end");
     assert_eq!(tail[3]["reason"], "awaiting-approval");
+    check_shell_approval_contract("request", &tail[0]["meta"]);
     assert!(!workspace.path().join("approved.txt").exists());
-    let tool_call_id = pending["tool_call_id"].as_i64().unwrap_or_default();
-
-    let (status, _) = call(
-        &app,
-        "POST",
-        &format!("/agent/sessions/{session_id}/messages/stream"),
-        json!({ "content": "x", "shell_approval": { "tool_call_id": 9999, "decision": "allow_once" } }),
-    )
-    .await;
-    assert_eq!(status, 400);
-
-    let frames = stream(
-        &app,
-        session_id,
-        &base_url,
+    let call_id = tail[1]["callId"].as_str().unwrap_or_default().to_owned();
+    let uri = format!("/agent/sessions/{session_id}/messages/stream");
+    let approve = |call_id: &str, decision: &str| {
+        let response = json!({ "call_id": call_id, "decision": decision });
         json!({
             "content": "Approved",
             "hide_user_message": true,
-            "shell_approval": { "tool_call_id": tool_call_id, "decision": "allow_once" },
-        }),
-    )
-    .await;
-    let done = frames.last().cloned().unwrap_or_default();
+            "shell_approval": response,
+            "runtime_model": { "provider_type": "custom", "model_name": "test-model", "base_url": base_url, "wire_api": "responses", "api_key": "k" },
+        })
+    };
+    let (status, body) = call(&app, "POST", &uri, approve("call_9999", "allow_once")).await;
+    assert_eq!(status, 400, "{}", String::from_utf8_lossy(&body));
+    let (status, _) = call(&app, "POST", &uri, approve(&call_id, "maybe")).await;
+    assert_eq!(status, 400);
+
+    let allow = approve(&call_id, "allow_once");
+    check_shell_approval_contract("response", &allow["shell_approval"]);
+    let (status, bytes) = call(&app, "POST", &uri, allow).await;
+    assert_eq!(status, 200, "{}", String::from_utf8_lossy(&bytes));
+    let lines = notifications(&bytes);
+    assert_closed_idle(&lines);
+    let resumed = self::events(&lines);
     assert_eq!(
-        done["extra_data"]["message"]["content"], "Done.",
-        "{frames:?}"
+        (
+            resumed[0]["type"].clone(),
+            resumed[0]["id"].clone(),
+            resumed[0]["outcome"].clone()
+        ),
+        (
+            json!("approval/decided"),
+            json!(format!("approval:{call_id}")),
+            json!("allowed-once")
+        ),
+        "the decision lands before the resumed turn: {resumed:?}"
     );
+    assert_eq!(resumed[1]["type"], "turn/start");
+    assert_eq!(reply(&lines), "Done.");
     assert!(workspace.path().join("approved.txt").exists());
 
-    let uri = format!("/agent/sessions/{session_id}/session-events");
-    let (_, body) = call(&app, "GET", &uri, json!({})).await;
-    let items = data(&body)["items"].as_array().cloned().unwrap_or_default();
-    for item in &items {
-        check_session_events_contract("sessionEvent", item);
-    }
+    let (status, body) = call(&app, "POST", &uri, approve(&call_id, "deny")).await;
+    assert_eq!(status, 400, "a decided approval is no longer pending");
+    assert!(String::from_utf8_lossy(&body).contains("no longer pending"));
+
+    let items = session_events(&app, session_id).await;
     let sources: Vec<Value> = items
         .iter()
         .filter(|event| event["type"] == "user/message")
@@ -1091,13 +1264,31 @@ async fn commands_outside_the_policy_wait_for_approval() {
         .find(|event| event["type"] == "approval/asked")
         .cloned()
         .unwrap_or_default();
-    assert_eq!(asked["toolName"], "exec_command", "{asked}");
     assert_eq!(
         asked["id"],
         json!(format!(
             "approval:{}",
             asked["callId"].as_str().unwrap_or_default()
         ))
+    );
+}
+
+/// Validates `instance` against one `$defs` entry of the shell approval contract.
+fn check_shell_approval_contract(def: &str, instance: &Value) {
+    let mut schema: Value = serde_json::from_str(include_str!(
+        "../../../contracts/runtime/agent-shell-approval.schema.json"
+    ))
+    .unwrap_or_else(|err| panic!("{err}"));
+    schema["$ref"] = json!(format!("#/$defs/{def}"));
+    let validator = jsonschema::validator_for(&schema).unwrap_or_else(|err| panic!("{err}"));
+    let errors: Vec<String> = validator
+        .iter_errors(instance)
+        .map(|error| format!("{error} at {}", error.instance_path()))
+        .collect();
+    assert!(
+        errors.is_empty(),
+        "{def}: {}\n{instance}",
+        errors.join("; ")
     );
 }
 
@@ -1202,11 +1393,8 @@ async fn first_request_with(
     } else {
         recording_provider(vec![answer(&["ok"])]).await
     };
-    let frames = stream_on(&app, session_id, &base_url, wire_api, extra).await;
-    assert!(
-        !frames.iter().any(|frame| frame["type"] == "error"),
-        "{frames:?}"
-    );
+    let lines = stream_on(&app, session_id, &base_url, wire_api, extra).await;
+    assert_eq!(turn_end(&lines)["reason"], "completed", "{lines:?}");
     let bodies = bodies.lock().unwrap_or_else(PoisonError::into_inner);
     let body = bodies.first().cloned().unwrap_or_default();
     (body, workspace.path().to_path_buf())

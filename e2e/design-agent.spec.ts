@@ -1,4 +1,5 @@
-import { expect, test, type Page, type Route } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
+import { mockAgentTurn } from './helpers/agentStream'
 import {
   createDesign,
   designLayers,
@@ -19,60 +20,9 @@ function headlinePatch(layerId: string, text: string) {
   }
 }
 
-async function fulfillDesignStream(route: Route, sessionId: number, patch: unknown) {
-  const now = '2026-09-29T00:00:00.000Z'
-  const events = [
-    {
-      type: 'user_message',
-      chat_message: {
-        id: 9101,
-        session_id: sessionId,
-        user_id: 1,
-        role: 'user',
-        content: 'Rewrite the headline',
-        status: 'completed',
-        created_at: now,
-      },
-    },
-    {
-      type: 'design_patch_provisional',
-      provisional: true,
-      design_path: 'Untitled design.kidesign',
-      design_patch: patch,
-    },
-    {
-      type: 'design_patch',
-      provisional: false,
-      design_path: 'Untitled design.kidesign',
-      design_patch: patch,
-    },
-    {
-      type: 'done',
-      done: true,
-      extra_data: {
-        session: {
-          id: sessionId,
-          user_id: 1,
-          title: 'Design changes',
-          workspace_root: 'browser-local-workspace',
-          active_document_path: 'Untitled design.kidesign',
-          created_at: now,
-          updated_at: now,
-        },
-      },
-    },
-  ]
-  await route.fulfill({
-    status: 200,
-    contentType: 'application/x-ndjson',
-    body: events.map((event) => JSON.stringify(event)).join('\n') + '\n',
-  })
-}
-
 test('previews an agent design patch, applies it on accept, and reverts on reject', async ({
   page,
 }) => {
-  const requests: Array<Record<string, any>> = []
   await installDesignAgentFixture(page, ['agent_design_v1'])
   await createDesign(page)
   await page.getByRole('button', { name: 'Text', exact: true }).click()
@@ -82,14 +32,14 @@ test('previews an agent design patch, applies it on accept, and reverts on rejec
   await expectDesignSaved(page)
   const [headline] = designLayers(await readDesign(page))
 
-  await page.route('**/api/v1/agent/sessions/*/messages/stream', async (route) => {
-    const request = route.request().postDataJSON() as Record<string, any>
-    requests.push(request)
-    const sessionId = Number(
-      new URL(route.request().url()).pathname.match(/sessions\/(\d+)\/messages/)?.[1] || 701,
-    )
-    await fulfillDesignStream(route, sessionId, headlinePatch(headline.id, 'Launch night'))
+  const patch = headlinePatch(headline.id, 'Launch night')
+  const turns = await mockAgentTurn(page, (turn) => {
+    turn.streamToolCall('call_patch', 'design_propose_patch', patch)
+    turn.tool('call_patch', 'design_propose_patch', { operation_count: 2 }, { awaiting_user_review: true }, {
+      meta: { kind: 'design.patch', patch },
+    })
   })
+  const requests = turns.requests
 
   await page.getByRole('button', { name: 'Open AI Chat', exact: true }).click()
   const newChat = page.getByRole('button', { name: 'New chat' })
@@ -103,7 +53,7 @@ test('previews an agent design patch, applies it on accept, and reverts on rejec
   await expect(page.getByTestId('design-agent-operation-list')).toContainText('Change background')
   await expect(page.locator('.design-artwork text').first()).toContainText('Launch')
   await expect.poll(() => requests.length).toBe(1)
-  expect(requests[0]).toMatchObject({
+  expect(requests[0].body).toMatchObject({
     pane_context: 'design',
     design_context: {
       type: 'design.context',
@@ -112,7 +62,7 @@ test('previews an agent design patch, applies it on accept, and reverts on rejec
       artboard: { width: 1080, height: 1440 },
     },
   })
-  expect(Object.keys(requests[0].design_context).sort()).toEqual([
+  expect(Object.keys(requests[0].body.design_context as object).sort()).toEqual([
     'artboard', 'design', 'layers', 'recent_operations', 'schema_version', 'selected_layer_ids', 'type',
   ])
 

@@ -1,7 +1,10 @@
 import type { ApiTimestamp } from '@/types'
-import type { AgentImageGenerationEvent } from '@/types/imageGeneration'
-import type { AgentWhiteboardPatch } from '@/types/whiteboardAgent'
-import type { AgentDesignPatch } from '@/types/designAgent'
+import type { AgentShellApprovalRequest as AgentShellApprovalMeta } from './generated/agent-shell-approval'
+
+export type {
+  AgentShellApprovalDecision,
+  AgentShellApprovalResponse,
+} from './generated/agent-shell-approval'
 
 export type AgentExecutionMode = 'research' | 'preview' | 'apply'
 export type AgentTaskMode = 'auto' | 'browse' | 'table'
@@ -50,101 +53,13 @@ export type AgentSession = {
   title: string
   workspace_root?: string
   active_document_path?: string
-  status: 'idle' | 'running' | 'failed' | 'completed' | string
   model_id?: string
-  system_prompt?: string
   created_at: ApiTimestamp
   updated_at: ApiTimestamp
 }
 
-export type AgentMessage = {
-  id: number
-  session_id: number
-  user_id: number
-  role: 'user' | 'assistant' | 'tool' | 'system' | string
-  content: string
-  parts?: any
-  status: string
-  created_at: ApiTimestamp
-}
-
-export type AgentArtifact = {
-  id: number
-  session_id: number
-  user_id: number
-  kind: 'markdown' | 'image' | 'file' | string
-  path: string
-  mime_type?: string
-  title?: string
-  created_at: ApiTimestamp
-}
-
-export type AgentToolCall = {
-  id: number
-  session_id: number
-  message_id?: number
-  user_id: number
-  tool_name: string
-  input_data?: any
-  output_data?: any
-  status: 'running' | 'completed' | 'failed' | string
-  error_message?: string
-  created_at: ApiTimestamp
-  updated_at: ApiTimestamp
-}
-
-type AgentToolAvailability = {
-  available: boolean
-  reason: string
-}
-
-export type AgentTurnCapabilities = {
-  available_tools: string[]
-  hosted_web_search: AgentToolAvailability
-}
-
-export type AgentShellApprovalDecision = 'allow_once' | 'allow_always' | 'deny'
-
-type AgentShellApprovalRule = {
-  prefix: string[]
-  decision: 'allow'
-}
-
-export type AgentShellApprovalRequest = {
-  tool_call_id: number
-  command: string
-  reason?: string
-  suggested?: AgentShellApprovalRule
-}
-
-export type AgentShellApprovalResponse = {
-  tool_call_id: number
-  decision: AgentShellApprovalDecision
-}
-
-export type AgentEvent = {
-  id: number
-  session_id: number
-  user_id: number
-  message_id?: number
-  tool_call_id?: number
-  artifact_id?: number
-  event_type: string
-  stage?: string
-  status?: 'pending' | 'running' | 'completed' | 'failed' | string
-  label?: string
-  message?: string
-  data?: {
-    turn_capabilities?: AgentTurnCapabilities
-    turn?: number
-    attempt?: number
-    max_retries?: number
-    delay_ms?: number
-    reason?: string
-    [key: string]: any
-  }
-  created_at: ApiTimestamp
-}
+/** A paused command (the logged result meta) and the call it belongs to. */
+export type AgentShellApprovalRequest = AgentShellApprovalMeta & { call_id: string }
 
 type AgentToolSpec = {
   name: string
@@ -199,30 +114,5 @@ export type AgentCapabilities = {
     http: boolean
     ndjson_stream: boolean
     local_source_access?: boolean
-  }
-}
-
-export type AgentStreamEvent = {
-  type: string
-  board_path?: string
-  delta?: string
-  message?: string
-  session?: AgentSession
-  chat_message?: AgentMessage
-  artifact?: AgentArtifact
-  tool_call?: AgentToolCall
-  event?: AgentEvent
-  image_generation?: AgentImageGenerationEvent
-  whiteboard_patch?: AgentWhiteboardPatch
-  design_patch?: AgentDesignPatch
-  design_path?: string
-  provisional?: boolean
-  done?: boolean
-  extra_data?: {
-    message?: AgentMessage
-    session?: AgentSession
-    artifact?: AgentArtifact
-    image_generation?: AgentImageGenerationEvent
-    [key: string]: any
   }
 }

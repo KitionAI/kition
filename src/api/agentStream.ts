@@ -1,11 +1,6 @@
-import type { AgentStreamEvent } from './agentTypes'
+import type { AgentStreamNotification } from './generated/agent-stream'
 
-export class AgentExecutionError extends Error {
-  constructor(message = 'Agent execution failed') {
-    super(message)
-    this.name = 'AgentExecutionError'
-  }
-}
+export type { AgentStreamNotification } from './generated/agent-stream'
 
 export class AgentStreamInterruptedError extends Error {
   readonly code = 'agent_stream_interrupted'
@@ -16,39 +11,33 @@ export class AgentStreamInterruptedError extends Error {
   }
 }
 
-/** Transport EOF is not a task outcome. Preserve delivered events, but require
- * the runtime's terminal frame before the caller can record a completed request. */
+/**
+ * Reads the NDJSON notifications of a turn (`contracts/runtime/agent-stream.schema.json`)
+ * and resolves on `session.status idle`. Transport EOF before idle is not a
+ * task outcome: delivered notifications are kept, but the caller must read the
+ * session log to learn how the turn ended.
+ */
 export async function readAgentMessageStream(
   body: ReadableStream<Uint8Array>,
   options: {
     signal?: AbortSignal
-    onEvent?: (event: AgentStreamEvent) => void
-    onDelta?: (delta: string) => void
+    onNotification?: (notification: AgentStreamNotification) => void
   },
-): Promise<AgentStreamEvent> {
+): Promise<void> {
   const reader = body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
-  let doneEvent: AgentStreamEvent | undefined
+  let idle = false
 
   function consume(line: string) {
-    if (!line.trim()) return
-    const event = JSON.parse(line) as AgentStreamEvent
-    if (event.type === 'error') {
-      throw new AgentExecutionError(event.message || undefined)
-    }
-    if (event.type === 'delta' && event.delta) options.onDelta?.(event.delta)
-    options.onEvent?.(event)
-    if (event.type === 'done') {
-      if (event.extra_data?.session?.status === 'failed' || event.session?.status === 'failed') {
-        throw new AgentExecutionError(event.message || undefined)
-      }
-      doneEvent = event
-    }
+    if (!line.trim() || idle) return
+    const notification = JSON.parse(line) as AgentStreamNotification
+    options.onNotification?.(notification)
+    if (notification.method === 'session.status' && notification.params.status === 'idle') idle = true
   }
 
   try {
-    while (true) {
+    while (!idle) {
       options.signal?.throwIfAborted()
       const { value, done } = await reader.read()
       if (done) break
@@ -59,8 +48,7 @@ export async function readAgentMessageStream(
     }
     options.signal?.throwIfAborted()
     consume(buffer + decoder.decode())
-    if (!doneEvent) throw new AgentStreamInterruptedError()
-    return doneEvent
+    if (!idle) throw new AgentStreamInterruptedError()
   } finally {
     await reader.cancel().catch(() => undefined)
     reader.releaseLock()

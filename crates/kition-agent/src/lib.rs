@@ -17,7 +17,6 @@ mod session;
 mod sources;
 pub mod store;
 mod stream;
-mod table_plan;
 mod tools;
 mod turn;
 mod workspace;

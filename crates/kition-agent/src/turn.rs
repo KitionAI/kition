@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex, PoisonError};
 use futures::future::BoxFuture;
 use kition_ai::engine::{MessagePart, ToolSpec};
 use kition_harness::cancel::Cancel;
-use kition_harness::driver::{Driver, Live, LiveSink, TurnInput, fail_turn};
+use kition_harness::driver::{Driver, TurnInput, fail_turn};
 use kition_harness::events::{ContentBlock, EventBody, MessageSource, TurnEndReason};
 use kition_harness::log::SqliteLog;
 use kition_harness::policy::{CallInfo, Pipeline, Policy};
@@ -20,15 +20,12 @@ use serde_json::{Value, json};
 
 use crate::model::{AgentLlm, blocks};
 use crate::providers::{self, ToolFactory, ToolShape, TurnFacts};
-use crate::run::{EventInput, Run, TurnGuard};
+use crate::run::{Run, TurnGuard};
 use crate::store::AgentSession;
 use crate::{prompts, session, tools};
 
 /// The most model calls one turn makes.
 const MAX_STEPS: u32 = 16;
-
-/// The output of the call that paused the turn, for the approval frames.
-type Pending = Arc<Mutex<Option<Value>>>;
 
 /// Each call's follow-up content (`Executed::follow_up`), by call id, until
 /// the `FollowUp` policy appends it to that call's result.
@@ -80,9 +77,9 @@ fn pipeline(notes: &Notes) -> Pipeline {
 }
 
 /// The arguments as written to the session log for tools whose provider
-/// does not shape them. Mirrors `persisted_input` in `tools/mod.rs` (the
-/// source of these rules); keep the two in sync. Tools that need their own
-/// summary pass it through their provider's `ToolShape`.
+/// does not shape them: local search queries and credentials are left out.
+/// Tools that need their own summary pass it through their provider's
+/// `ToolShape`.
 fn logged_arguments(name: &str, input: &Value) -> Value {
     match name {
         "source_search" | "source_file_search" | "configure_smtp_connection" => {
@@ -155,13 +152,13 @@ fn factory(body: Body) -> ToolFactory {
     )
 }
 
-/// The agent's tools as a tool factory. Each call records its row,
-/// timeline events, and frames through `tools::execute`.
-fn tools_factory(run: &Arc<Run>, pending: &Pending, notes: &Notes) -> ToolFactory {
-    let (run, pending, notes) = (run.clone(), pending.clone(), notes.clone());
+/// The agent's tools as a tool factory; each call runs through
+/// `tools::execute`.
+fn tools_factory(run: &Arc<Run>, notes: &Notes) -> ToolFactory {
+    let (run, notes) = (run.clone(), notes.clone());
     let body: Body = Arc::new(move |name: String, args: Value, cx: ToolContext| {
-        let (run, pending, notes) = (run.clone(), pending.clone(), notes.clone());
-        Box::pin(async move { call_tool(&run, &name, args, &cx, &pending, &notes).await })
+        let (run, notes) = (run.clone(), notes.clone());
+        Box::pin(async move { call_tool(&run, &name, args, &cx, &notes).await })
     });
     factory(body)
 }
@@ -195,12 +192,10 @@ async fn call_tool(
     name: &str,
     args: Value,
     cx: &ToolContext,
-    pending: &Pending,
     notes: &Notes,
 ) -> Result<Value, ToolFailure> {
     // A stopped turn does not wait for a long tool: it finishes in the
-    // background (its row, events, and files complete normally) and its
-    // result is dropped.
+    // background (its files complete normally) and its result is dropped.
     let (task_run, task_name, raw) = (run.clone(), name.to_owned(), args.to_string());
     let Some(executed) = unless_cancelled(
         async move { tools::execute(&task_run, &task_name, &raw).await },
@@ -219,7 +214,6 @@ async fn call_tool(
             .as_str()
             .unwrap_or("Waiting for the user to approve the command")
             .to_owned();
-        *pending.lock().unwrap_or_else(PoisonError::into_inner) = Some(executed.output.clone());
         cx.pause.request(reason);
     }
     remember(notes, &cx.call_id, &executed.follow_up);
@@ -298,27 +292,8 @@ fn user_content(run: &Run) -> Vec<ContentBlock> {
     content
 }
 
-/// The offered tools and whether hosted web search is among them, for the
-/// `prompt.sent` event. `hosted_search` says whether the model supports it.
-fn turn_capabilities(tool_names: &[String], hosted_search: bool) -> Value {
-    let mut names: Vec<&str> = tool_names.iter().map(String::as_str).collect();
-    names.sort_unstable();
-    names.dedup();
-    let search = names.contains(&"web_search");
-    let reason = if search {
-        "available"
-    } else if hosted_search {
-        "not_exposed"
-    } else {
-        "provider_unsupported"
-    };
-    json!({
-        "available_tools": names,
-        "hosted_web_search": { "available": search, "reason": reason },
-    })
-}
-
-/// Runs the turn, assembled from the providers, and finishes it.
+/// Runs the turn, assembled from the providers, and saves the session row
+/// after it.
 pub async fn drive(
     run: &Arc<Run>,
     session: AgentSession,
@@ -327,36 +302,22 @@ pub async fn drive(
     turn: TurnGuard,
 ) {
     // Taken by `session::prepare` and held for the whole turn, through the
-    // final frame, so a second turn of this session is refused meanwhile.
+    // session save, so a second turn of this session is refused meanwhile.
     let _turn = turn;
-    let pending: Pending = Arc::new(Mutex::new(None));
     let notes = Notes::default();
-    let hosted_search = facts.hosted_web_search;
-    let (system, tools) =
-        match assemble_turn(run, facts, &tools_factory(run, &pending, &notes)).await {
-            Ok(assembled) => assembled,
-            Err(error) => {
-                let (log, key) = (
-                    SqliteLog::new(run.agent.db().clone()),
-                    crate::log::log_key(run.session_id),
-                );
-                let live: LiveSink = Arc::new(|_: Live| {});
-                if let Err(log_error) = fail_turn(&log, &key, &live, &error) {
-                    tracing::warn!(error = %log_error, "could not log the failed turn");
-                }
-                session::fail(run, "Execution failed", "final", &error).await;
-                return;
-            }
-        };
-    let names: Vec<String> = tools.specs().into_iter().map(|spec| spec.name).collect();
-    run.event(
-        EventInput::new("prompt.sent", "intent", "completed", "Send model request", "Sent the user goal, session context, and available tools to the model")
-            .data(json!({ "model_id": session.model_id, "turn_capabilities": turn_capabilities(&names, hosted_search) })),
-    )
-    .await;
-    let llm = Arc::new(AgentLlm::new(run));
     let key = crate::log::log_key(run.session_id);
     let log = Arc::new(SqliteLog::new(run.agent.db().clone()));
+    let (system, tools) = match assemble_turn(run, facts, &tools_factory(run, &notes)).await {
+        Ok(assembled) => assembled,
+        Err(error) => {
+            if let Err(log_error) = fail_turn(log.as_ref(), &key, &run.live, &error) {
+                tracing::warn!(error = %log_error, "could not log the failed turn");
+            }
+            session::finish(run, session, None).await;
+            return;
+        }
+    };
+    let llm = Arc::new(AgentLlm::new(run));
     let mut driver = Driver::new(log, llm.clone());
     driver.max_steps = MAX_STEPS;
     driver.pipeline = pipeline(&notes);
@@ -377,7 +338,7 @@ pub async fn drive(
         tools,
         user: user_content(run),
         cancel,
-        live: Arc::new(|_: Live| {}),
+        live: run.live.clone(),
         model: Some(run.model.model_name.clone()),
         preset: Some(run.execution_mode.clone()),
         stream_revision: run.agent.stream_revision(run.session_id),
@@ -385,57 +346,14 @@ pub async fn drive(
     };
     let outcome = driver.run_turn(input).await;
     drop(watcher);
-    match outcome {
-        Ok(TurnEndReason::Cancelled) | Err(_) if run.emitter.is_closed() => {
-            session::set_status(run, "idle").await;
-            run.event(EventInput::new(
-                "task.failed",
-                "final",
-                "failed",
-                "Execution stopped",
-                "The client stopped the request",
-            ))
-            .await;
-        }
-        Ok(TurnEndReason::Completed) => {
-            let Some((result, streamed)) = llm.take_last() else {
-                session::fail(
-                    run,
-                    "Execution failed",
-                    "final",
-                    "the model returned no reply",
-                )
-                .await;
-                return;
-            };
-            let reply = result.content.trim().to_owned();
-            session::finish(run, session, prompt, reply, streamed, &result).await;
-        }
-        Ok(TurnEndReason::AwaitingApproval) => {
-            let output = pending
-                .lock()
-                .unwrap_or_else(PoisonError::into_inner)
-                .take()
-                .unwrap_or_default();
-            session::await_approval(run, session, output).await;
-        }
-        Ok(TurnEndReason::StepLimit) => {
-            let message = format!(
-                "the turn exceeded {MAX_STEPS} model steps; narrow the task or clarify the next step"
-            );
-            session::fail(run, "Execution failed", "final", &message).await;
-        }
-        Ok(TurnEndReason::Cancelled | TurnEndReason::Failed) => {
-            session::fail(
-                run,
-                "Execution failed",
-                "final",
-                "the turn ended unexpectedly",
-            )
-            .await;
-        }
-        Err(error) => session::fail(run, "Execution failed", "final", &error).await,
+    if let Err(error) = &outcome {
+        tracing::warn!(error = %error, "agent turn failed");
     }
+    let titled = match outcome {
+        Ok(TurnEndReason::Completed) => llm.take_last().map(|reply| (prompt, reply)),
+        _ => None,
+    };
+    session::finish(run, session, titled).await;
 }
 
 #[cfg(test)]
@@ -500,6 +418,7 @@ mod tests {
 
     #[tokio::test]
     async fn follow_up_text_reaches_the_next_model_request() {
+        use kition_harness::driver::Live;
         use kition_harness::events::EventBody;
         use kition_harness::llm::LlmReply;
         use kition_harness::log::{MemoryLog, SessionLog};
@@ -572,18 +491,7 @@ mod tests {
     }
 
     #[test]
-    fn capabilities_say_why_web_search_is_missing() {
-        let caps = turn_capabilities(&["web_search".to_owned(), "web_search".to_owned()], false);
-        assert_eq!(caps["hosted_web_search"]["available"], true);
-        assert_eq!(caps["available_tools"], json!(["web_search"]));
-        let caps = turn_capabilities(&["document_read".to_owned()], true);
-        assert_eq!(caps["hosted_web_search"]["reason"], "not_exposed");
-        let caps = turn_capabilities(&[], false);
-        assert_eq!(caps["hosted_web_search"]["reason"], "provider_unsupported");
-    }
-
-    #[test]
-    fn logged_arguments_mirror_the_persisted_tool_input() {
+    fn logged_arguments_leave_out_queries_and_credentials() {
         assert_eq!(
             logged_arguments(
                 "configure_smtp_connection",

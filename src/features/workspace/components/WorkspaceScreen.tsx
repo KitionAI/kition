@@ -308,13 +308,12 @@ export function WorkspaceScreen({
     getTurnContext: getAgentTurnContext,
   })
   const {
-    agentArtifacts,
     agentBusySessions,
     agentDrafts,
     agentLocalSources,
     agentModifiedDocumentPaths,
     agentSessions,
-    agentToolCalls,
+    agentSessionViews,
     clearPendingFocusedSessionId,
     clearModifiedDocumentPath,
     createNewAgentChat,
@@ -466,9 +465,8 @@ export function WorkspaceScreen({
   } = agentPanel
   const handleGenerateWhiteboardImage = useWhiteboardImageGeneration({
     activeSessionId: activeWorkspaceAgentSessionId,
-    agentArtifacts,
     agentBusySessions,
-    agentToolCalls,
+    agentSessionViews,
     available: whiteboardBridge.available,
     bridgesRef: whiteboardBridge.bridgesRef,
     createAgentChat: createNewAgentChat,
@@ -478,9 +476,8 @@ export function WorkspaceScreen({
   })
   const handleGenerateDesignImage = useAgentImageGeneration({
     activeSessionId: activeWorkspaceAgentSessionId,
-    agentArtifacts,
     agentBusySessions,
-    agentToolCalls,
+    agentSessionViews,
     available: designBridge.available,
     bridgesRef: designBridge.bridgesRef,
     buildInstruction: buildDesignImageAgentInstruction,

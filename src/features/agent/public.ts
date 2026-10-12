@@ -9,5 +9,6 @@ export {
 } from './lib/agentTurnContext'
 export { appendAgentLocalSource, extractAgentLocalPathReference } from './lib/agentLocalSources'
 export { useWorkspaceAgent } from './hooks/useWorkspaceAgent'
+export { applySessionEvent, emptyAgentSessionView, type AgentSessionView } from './lib/agentSessionView'
 export { AgentFloatingLauncher } from './components/AgentFloatingLauncher'
 export type { AgentModelOption } from './lib/agentConfig'

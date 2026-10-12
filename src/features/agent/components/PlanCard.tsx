@@ -2,35 +2,16 @@ import { Check, Circle, LoaderCircle } from 'lucide-react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import type { AgentEvent } from '@/api/agent'
 import { cn } from '@/lib/utils'
 
-export type PlanStep = {
+type PlanStep = {
   step: string
   status: 'pending' | 'in_progress' | 'completed' | string
 }
 
-export type AgentPlanSnapshot = {
+type AgentPlanSnapshot = {
   explanation?: string
   plan: PlanStep[]
-}
-
-export function readLatestPlanSnapshot(events: AgentEvent[]): AgentPlanSnapshot | null {
-  for (let i = events.length - 1; i >= 0; i--) {
-    const event = events[i]
-    if (event.event_type !== 'plan.updated') continue
-    const data = event.data
-    if (!data || !Array.isArray(data.plan)) continue
-    const steps: PlanStep[] = data.plan
-      .filter((item: any) => item && typeof item.step === 'string')
-      .map((item: any) => ({ step: item.step, status: item.status ?? 'pending' }))
-    if (steps.length === 0) continue
-    return {
-      explanation: typeof data.explanation === 'string' ? data.explanation : undefined,
-      plan: steps,
-    }
-  }
-  return null
 }
 
 export function PlanCard({ snapshot }: { snapshot: AgentPlanSnapshot }) {

@@ -71,7 +71,8 @@ describe('imageJobOf', () => {
     ])
     expect(imageJobOf(generating)).toMatchObject({ status: 'generating', progress: 1 / 3 })
     expect(imageJobOf(generating)?.artifacts).toHaveLength(1)
-    expect(imageJobOf(composer(3, 2))).toMatchObject({ status: 'saving', progress: 2 / 3 })
+    expect(imageJobOf(composer(3, 2))).toMatchObject({ status: 'generating', progress: 2 / 3 })
+    expect(imageJobOf(composer(3, 3))).toMatchObject({ status: 'saving', progress: 1 })
   })
 
   it('sorts artifacts by variant and reads the variant error of a failed request', () => {

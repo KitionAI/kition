@@ -12,6 +12,7 @@ import {
   applySessionEvent,
   applyStatus,
   emptyAgentSessionView,
+  isGap,
   markInterrupted,
   pendingApprovalOf,
   type AgentAssistantStreamFrame,
@@ -72,6 +73,15 @@ describe('applySessionEvent', () => {
     expect(reduce(list.slice(4), partly)).toEqual(once)
   })
 
+  it('applies only the next seq and reports a gap', () => {
+    const list = events(documentWriteTurn)
+    const partly = reduce(list.slice(0, 3))
+    expect(isGap(partly, list[3])).toBe(false)
+    expect(isGap(partly, list[5])).toBe(true)
+    expect(applySessionEvent(partly, list[5])).toBe(partly)
+    expect(isGap(partly, list[1])).toBe(false)
+  })
+
   it('keeps hidden user sources out of the turn text', () => {
     const [turn] = reduce(events(hostedCallsTurn)).turns
     expect(turn.source).toBe('user')
@@ -121,18 +131,18 @@ describe('applySessionEvent', () => {
     const resumed = reduce(list.slice(11), asked)
     expect(pendingApprovalOf(resumed)).toBeNull()
     expect(resumed.turns[0].approval?.decided).toBe('allowed-once')
-    expect(resumed.turns[0].toolRuns[0].status).toBe('completed')
+    expect(resumed.turns[0].toolRuns[0].status).toBe('awaiting_approval')
     expect(resumed.turns[1]).toMatchObject({ source: 'approval', userText: 'Approved', reply: 'Done.' })
     expect(resumed.turns[1].toolRuns[0]).toMatchObject({ callId: 'call_1', status: 'completed' })
   })
 
-  it('marks a rejected approval as failed and clears the pending card', () => {
+  it('records a rejection without touching the paused run and clears the pending card', () => {
     const list = events(approvalTurns).slice(0, 12).map((event) => (
       event.type === 'approval/decided' ? { ...event, outcome: 'rejected' as const } : event
     ))
     const view = reduce(list)
     expect(view.turns[0].approval?.decided).toBe('rejected')
-    expect(view.turns[0].toolRuns[0].status).toBe('failed')
+    expect(view.turns[0].toolRuns[0].status).toBe('awaiting_approval')
     expect(pendingApprovalOf(view)).toBeNull()
   })
 
@@ -211,8 +221,8 @@ describe('applyAssistantStream', () => {
   const start = (revision: number, attemptId = 'agent:7#1.1'): AgentAssistantStreamFrame => ({
     type: 'start', attemptId, revision, turn: 1, step: 1,
   })
-  const text = (revision: number, index: number, value: string): AgentAssistantStreamFrame => ({
-    type: 'chunk', attemptId: 'agent:7#1.1', revision, index, time: revision,
+  const text = (revision: number, index: number, value: string, attemptId = 'agent:7#1.1'): AgentAssistantStreamFrame => ({
+    type: 'chunk', attemptId, revision, index, time: revision,
     chunk: { type: 'text-delta', index: 0, text: value },
   })
   const opened = reduce(events(documentWriteTurn).slice(0, 5))
@@ -231,7 +241,6 @@ describe('applyAssistantStream', () => {
         chunk: { type: 'tool-call-delta', index: 1, id: 'call_1', argumentsDelta: 'th":"a.md"}' },
       },
     ])
-    expect(view.revision).toBe(5)
     expect(view.live).toEqual({
       attemptId: 'agent:7#1.1',
       turn: 1,
@@ -241,16 +250,16 @@ describe('applyAssistantStream', () => {
     })
   })
 
-  it('ignores frames whose revision is not newer, across turns', () => {
-    const view = stream(opened, [start(1), text(2, 0, 'Hi'), text(2, 0, 'Hi'), text(1, 0, '!')])
-    expect(view.live?.text).toBe('Hi')
-    const ended = stream(view, [{
-      type: 'end', attemptId: 'agent:7#1.1', revision: 3, index: 1,
+  it('follows the attempt a start opened, whatever its revision', () => {
+    const ended = stream(opened, [start(41), text(42, 0, 'Hi'), {
+      type: 'end', attemptId: 'agent:7#1.1', revision: 43, index: 1,
       outcome: { kind: 'committed', eventType: 'assistant/message', seq: 6 },
     }])
     expect(ended.live).toBeNull()
-    expect(stream(ended, [start(3, 'agent:7#2.1')]).live).toBeNull()
-    expect(stream(ended, [start(4, 'agent:7#2.1')]).live?.attemptId).toBe('agent:7#2.1')
+    expect(stream(ended, [text(44, 1, 'late')]).live).toBeNull()
+    // A new connection after a runtime restart counts revisions from 1 again.
+    const next = stream(ended, [start(1, 'agent:7#2.1'), text(2, 0, 'Again', 'agent:7#2.1')])
+    expect(next.live).toMatchObject({ attemptId: 'agent:7#2.1', text: 'Again' })
   })
 
   it('keeps the text of an attempt that settled without a message', () => {
@@ -262,13 +271,19 @@ describe('applyAssistantStream', () => {
     expect(view.turns[0].partialReply).toBe('Half an ans')
   })
 
-  it('drops chunks of another attempt', () => {
-    const view = stream(opened, [start(1), {
-      type: 'chunk', attemptId: 'agent:7#9.1', revision: 2, index: 0, time: 2,
-      chunk: { type: 'text-delta', index: 0, text: 'stale' },
+  it('clears a partial reply once the turn completes', () => {
+    const partial = stream(opened, [start(1), text(2, 0, 'Half'), {
+      type: 'end', attemptId: 'agent:7#1.1', revision: 3, index: 1, outcome: { kind: 'abandoned' },
     }])
+    expect(partial.turns[0].partialReply).toBe('Half')
+    const completed = reduce(events(documentWriteTurn).slice(5), partial)
+    expect(completed.turns[0].partialReply).toBeUndefined()
+    expect(completed.turns[0].reply).toBe('Updated.')
+  })
+
+  it('drops chunks of another attempt', () => {
+    const view = stream(opened, [start(1), text(2, 0, 'stale', 'agent:7#9.1')])
     expect(view.live?.text).toBe('')
-    expect(view.revision).toBe(2)
   })
 })
 

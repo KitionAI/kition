@@ -54,7 +54,7 @@ export async function saveNotificationPolicy(
   return cachedPolicy
 }
 
-// notifyFromAgentEvent inspects a streamed agent_event and surfaces a system
+// notifyFromAgentEvent inspects a live agent session event and surfaces a system
 // notification when the cached policy says so. Returns true if a notification
 // was fired (useful for tests / debug). Never throws — notification failure
 // must not propagate into the agent stream.

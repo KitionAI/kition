@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 
-import type { AgentArtifact, AgentToolCall } from '@/api/agent'
+import type { AgentSessionView } from '@/features/agent/public'
 import type { WhiteboardAgentBridge } from '@/features/whiteboard/lib/whiteboardAgentBridge'
 import {
   buildWhiteboardImageAgentInstruction,
@@ -12,9 +12,8 @@ import { useAgentImageGeneration } from './useAgentImageGeneration'
 /** Image studio generation for boards: the shared flow keyed by board path. */
 export function useWhiteboardImageGeneration(input: {
   activeSessionId: number | null
-  agentArtifacts: Record<number, AgentArtifact[]>
   agentBusySessions: ReadonlySet<number>
-  agentToolCalls: Record<number, AgentToolCall[]>
+  agentSessionViews: Record<number, AgentSessionView>
   available: boolean
   bridgesRef: { current: Record<string, WhiteboardAgentBridge> }
   createAgentChat: (options?: { focusTab?: boolean }) => Promise<{ id: number } | null>

@@ -222,7 +222,7 @@
                   }
                 },
                 "decision": {
-                  "type": "string"
+                  "const": "allow"
                 }
               }
             }

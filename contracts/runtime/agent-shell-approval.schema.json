@@ -2,33 +2,53 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://kition.ai/contracts/runtime/agent-shell-approval.schema.json",
   "title": "Kition Agent Shell Approval",
-  "description": "A resumable approval contract for an Agent shell command that was blocked by the execution policy.",
-  "type": "object",
-  "additionalProperties": false,
-  "required": ["tool_call_id", "command", "requires", "decision"],
-  "properties": {
-    "tool_call_id": {
-      "type": "integer",
-      "minimum": 1
+  "description": "A shell command the execution policy paused for the user's approval. The request is the presentation meta of the paused exec_command tool/result (followed by approval/asked and turn/end awaiting-approval in the session log); the response is the stream request's shell_approval, naming the paused call by its callId.",
+  "$ref": "#/$defs/request",
+  "$defs": {
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "command", "reason", "requires", "decision"],
+      "properties": {
+        "kind": {
+          "const": "shell.approval"
+        },
+        "command": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string"
+        },
+        "requires": {
+          "const": "approval"
+        },
+        "decision": {
+          "const": "prompt"
+        },
+        "suggested": {
+          "$ref": "#/$defs/rule"
+        }
+      }
     },
-    "command": {
-      "type": "string",
-      "minLength": 1
-    },
-    "reason": {
-      "type": "string"
-    },
-    "requires": {
-      "const": "approval"
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["call_id", "decision"],
+      "properties": {
+        "call_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "decision": {
+          "$ref": "#/$defs/decision"
+        }
+      }
     },
     "decision": {
-      "const": "prompt"
+      "type": "string",
+      "enum": ["allow_once", "allow_always", "deny"]
     },
-    "suggested": {
-      "$ref": "#/$defs/rule"
-    }
-  },
-  "$defs": {
     "rule": {
       "type": "object",
       "additionalProperties": false,

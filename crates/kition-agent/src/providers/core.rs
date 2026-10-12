@@ -11,8 +11,7 @@ use serde_json::{Value, json};
 
 use super::{ToolFactory, ToolShape, TurnFacts, offer, offer_shaped, owned_elsewhere, ready};
 use crate::run::Run;
-use crate::store::{self, AgentArtifact};
-use crate::{attachments, catalog, prompts};
+use crate::{attachments, catalog, log, prompts};
 
 pub struct CoreProvider {
     run: Arc<Run>,
@@ -21,18 +20,12 @@ pub struct CoreProvider {
     recent_images: String,
 }
 
-/// The session's last eight saved images, oldest first.
-async fn recent_images(run: &Run) -> Vec<AgentArtifact> {
-    let (id, user) = (run.session_id, run.user_id);
-    let mut images: Vec<AgentArtifact> = run
-        .agent
-        .with_db(move |conn| store::recent_artifacts(conn, id, user, 40))
+/// The session's last eight delivered images, oldest first.
+async fn recent_images(run: &Run) -> Vec<String> {
+    let events = log::read_session(&run.agent, run.session_id)
         .await
-        .unwrap_or_default()
-        .into_iter()
-        .filter(|a| a.kind == "image" || a.mime_type.starts_with("image/"))
-        .take(8)
-        .collect();
+        .unwrap_or_default();
+    let mut images = log::recent_deliverables(&events, 0, 8, log::is_image_path);
     images.reverse();
     images
 }

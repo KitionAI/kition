@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { AgentExecutionError, AgentStreamInterruptedError, readAgentMessageStream } from './agentStream'
+import { AgentStreamInterruptedError, readAgentMessageStream } from './agentStream'
 
 function stream(text: string) {
   // Byte-sized chunks exercise JSON, line, and multi-byte UTF-8 boundaries.
@@ -12,44 +12,53 @@ function stream(text: string) {
   })
 }
 
+const status = (value: 'running' | 'idle') => ({
+  jsonrpc: '2.0', method: 'session.status', params: { sessionId: 'agent:1', status: value },
+})
+const text = (delta: string) => ({
+  jsonrpc: '2.0',
+  method: 'agent/assistant-stream',
+  params: {
+    sessionId: 'agent:1',
+    frame: { type: 'chunk', attemptId: 'agent:1#1.1', revision: 2, index: 0, time: 1, chunk: { type: 'text-delta', index: 0, text: delta } },
+  },
+})
+const lines = (...items: unknown[]) => items.map((item) => JSON.stringify(item)).join('\n')
+
 describe('Agent stream completion', () => {
-  it.each(['', '\n', '{"type":"model_delta","delta":"A partial article"}\n']) (
-    'rejects EOF without a terminal frame: %j', async (text) => {
-      const body = stream(text)
-      await expect(readAgentMessageStream(body, {})).rejects.toBeInstanceOf(AgentStreamInterruptedError)
-      expect(body.locked).toBe(false)
+  it.each(['', '\n', `${lines(status('running'), text('A partial article'))}\n`])(
+    'rejects EOF before idle: %j', async (body) => {
+      const readable = stream(body)
+      await expect(readAgentMessageStream(readable, {})).rejects.toBeInstanceOf(AgentStreamInterruptedError)
+      expect(readable.locked).toBe(false)
     },
   )
 
-  it('preserves an artifact received before interruption without claiming completion', async () => {
-    const artifact = { type: 'artifact', artifact: { id: 1, path: 'draft.md' } }
-    const onEvent = vi.fn()
-    await expect(readAgentMessageStream(stream(JSON.stringify(artifact)), { onEvent }))
+  it('keeps notifications received before an interruption', async () => {
+    const onNotification = vi.fn()
+    await expect(readAgentMessageStream(stream(lines(status('running'), text('Hi'))), { onNotification }))
       .rejects.toMatchObject({ code: 'agent_stream_interrupted' })
-    expect(onEvent).toHaveBeenCalledExactlyOnceWith(artifact)
+    expect(onNotification).toHaveBeenCalledTimes(2)
+    expect(onNotification).toHaveBeenLastCalledWith(text('Hi'))
   })
 
-  it('decodes split frames and accepts a terminal frame without a trailing newline', async () => {
-    const onDelta = vi.fn()
-    const done = { type: 'done', extra_data: { message: { content: 'Saved' } } }
-    const body = stream(`\n${JSON.stringify({ type: 'delta', delta: 'A → B' })}\r\n${JSON.stringify(done)}`)
-    await expect(readAgentMessageStream(body, { onDelta })).resolves.toEqual(done)
-    expect(onDelta).toHaveBeenCalledExactlyOnceWith('A → B')
+  it('decodes split lines and resolves on idle without a trailing newline', async () => {
+    const onNotification = vi.fn()
+    const body = stream(`\n${JSON.stringify(text('A → B'))}\r\n${JSON.stringify(status('idle'))}`)
+    await expect(readAgentMessageStream(body, { onNotification })).resolves.toBeUndefined()
+    expect(onNotification).toHaveBeenNthCalledWith(1, text('A → B'))
+    expect(onNotification).toHaveBeenNthCalledWith(2, status('idle'))
     expect(body.locked).toBe(false)
   })
 
-  it('keeps runtime errors authoritative even after a done frame', async () => {
-    await expect(readAgentMessageStream(stream('{"type":"done"}\n{"type":"error","message":"Write failed"}'), {}))
-      .rejects.toThrow('Write failed')
+  it('stops reading after idle', async () => {
+    const onNotification = vi.fn()
+    await readAgentMessageStream(stream(lines(status('idle'), text('late'))), { onNotification })
+    expect(onNotification).toHaveBeenCalledExactlyOnceWith(status('idle'))
   })
 
-  it('rejects a terminal frame that explicitly reports a failed session', async () => {
-    const frame = { type: 'done', extra_data: { session: { status: 'failed' } } }
-    await expect(readAgentMessageStream(stream(JSON.stringify(frame)), {})).rejects.toBeInstanceOf(AgentExecutionError)
-  })
-
-  it('rejects malformed frames and releases the reader', async () => {
-    const body = stream('{"type":')
+  it('rejects malformed lines and releases the reader', async () => {
+    const body = stream('{"jsonrpc":')
     await expect(readAgentMessageStream(body, {})).rejects.toBeInstanceOf(SyntaxError)
     expect(body.locked).toBe(false)
   })
@@ -57,7 +66,7 @@ describe('Agent stream completion', () => {
   it('keeps cancellation distinct from unconfirmed completion', async () => {
     const abort = new AbortController()
     abort.abort()
-    const body = stream('{"type":"done"}')
+    const body = stream(JSON.stringify(status('idle')))
     await expect(readAgentMessageStream(body, { signal: abort.signal }))
       .rejects.toMatchObject({ name: 'AbortError' })
     expect(body.locked).toBe(false)

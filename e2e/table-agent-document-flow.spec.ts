@@ -1,18 +1,9 @@
-import { expect, test, type Route } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 
+import { mockAgentTurn } from './helpers/agentStream'
 import { installDesktopHost } from './helpers/desktopHost'
 import { mockLocalWorkspaceApi } from './helpers/mockApi'
 import { dismissFirstRunActivation } from './helpers/onboarding'
-
-function fulfillNdjson(route: Route, events: unknown[]) {
-  return route.fulfill({
-    status: 200,
-    headers: {
-      'content-type': 'application/x-ndjson',
-    },
-    body: `${events.map((event) => JSON.stringify(event)).join('\n')}\n`,
-  })
-}
 
 test('workspace chat can auto-open saved docs and target @{mentions} without a bound table', async ({ page, baseURL }) => {
   test.setTimeout(90_000)
@@ -162,217 +153,29 @@ test('workspace chat can auto-open saved docs and target @{mentions} without a b
       .pop()
       ?.replace(/\.[^.]+$/, '') || 'Plan'
 
-    const now = '2026-05-20T12:00:00.000Z'
-    const requestBodies: Array<Record<string, any>> = []
-    let streamRequestCount = 0
-
-    await page.route('**/api/v1/agent/sessions/*/messages/stream', async (route) => {
-      streamRequestCount += 1
-      const payload = route.request().postDataJSON() as Record<string, any>
-      requestBodies.push(payload)
-
-      // Echo the session id the frontend addressed (real backend keeps the same
-      // session); hardcoding a different id would make the panel switch sessions
-      // and reload empty history after the first turn.
-      const streamSessionId = Number(
-        new URL(route.request().url()).pathname.match(/sessions\/(\d+)\/messages/)?.[1] || 901,
-      )
-
-      if (streamRequestCount === 1) {
-        await fulfillNdjson(route, [
-          {
-            type: 'user_message',
-            chat_message: {
-              id: 9901,
-              session_id: 901,
-              user_id: 1,
-              role: 'user',
-              content: 'Write a short launch brief',
-              status: 'completed',
-              created_at: now,
-            },
-          },
-          {
-            type: 'done',
-            done: true,
-            extra_data: {
-              artifact: {
-                id: 9902,
-                session_id: 901,
-                user_id: 1,
-                kind: 'markdown',
-                path: createdDocs.artifactPath,
-                mime_type: 'text/markdown',
-                title: 'Agent Notes',
-                created_at: now,
-              },
-              message: {
-                id: 9903,
-                session_id: 901,
-                user_id: 1,
-                role: 'assistant',
-                content: 'Saved a launch brief into Agent Notes.',
-                status: 'completed',
-                created_at: now,
-              },
-              session: {
-                id: streamSessionId,
-                user_id: 1,
-                title: 'Chat',
-                workspace_root: 'browser-local-workspace',
-                active_document_path: '',
-                status: 'completed',
-                created_at: now,
-                updated_at: now,
-              },
-            },
-          },
-        ])
+    const turns = await mockAgentTurn(page, (turn, request) => {
+      if (request.call === 1) {
+        turn.tool('call_brief', 'artifact_write', { path: createdDocs.artifactPath }, { path: createdDocs.artifactPath })
+        turn.deliver('call_brief', { path: createdDocs.artifactPath, description: 'Agent Notes' })
+        turn.nextStep()
+        turn.reply('Saved a launch brief into Agent Notes.')
         return
       }
-
-      if (streamRequestCount === 2) {
-        await fulfillNdjson(route, [
-          {
-            type: 'user_message',
-            chat_message: {
-              id: 9911,
-              session_id: 901,
-              user_id: 1,
-              role: 'user',
-              content: `Use @{${createdDocs.mentionPath}} and summarize it`,
-              status: 'completed',
-              created_at: now,
-            },
-          },
-          {
-            type: 'done',
-            done: true,
-            extra_data: {
-              message: {
-                id: 9912,
-                session_id: 901,
-                user_id: 1,
-                role: 'assistant',
-                content: `Summarized the referenced \`${createdDocs.mentionPath}\` document.`,
-                status: 'completed',
-                created_at: now,
-              },
-              session: {
-                id: streamSessionId,
-                user_id: 1,
-                title: 'Chat',
-                workspace_root: 'browser-local-workspace',
-                active_document_path: createdDocs.artifactPath,
-                status: 'completed',
-                created_at: now,
-                updated_at: now,
-              },
-            },
-          },
-        ])
+      if (request.call === 2) {
+        turn.reply(`Summarized the referenced \`${createdDocs.mentionPath}\` document.`)
         return
       }
-
-      await fulfillNdjson(route, [
-        {
-          type: 'user_message',
-          chat_message: {
-            id: 9921,
-            session_id: 901,
-            user_id: 1,
-            role: 'user',
-            content: 'Search the web for current admissions guidance, cite sources, and update this document',
-            status: 'completed',
-            created_at: now,
-          },
-        },
-        {
-          type: 'agent_event',
-          event: {
-            id: 9922,
-            session_id: 901,
-            user_id: 1,
-            event_type: 'prompt.sent',
-            stage: 'intent',
-            status: 'completed',
-            label: 'Send model request',
-            message: 'Sent the user goal, session context, and available tools to the model',
-            data: {
-              model_id: 'openai:gpt-test',
-              turn_capabilities: {
-                available_tools: ['apply_patch', 'document_read', 'web_search'],
-                hosted_web_search: { available: true, reason: 'available' },
-              },
-            },
-            created_at: now,
-          },
-        },
-        {
-          type: 'tool_call',
-          tool_call: {
-            id: 9923,
-            session_id: 901,
-            message_id: 9921,
-            user_id: 1,
-            tool_name: 'web_search',
-            input_data: { query: 'current university admissions guidance' },
-            output_data: {
-              query: 'current university admissions guidance',
-              results: [{
-                title: 'Official admissions source',
-                url: 'https://example.edu/admissions',
-              }],
-            },
-            status: 'completed',
-            created_at: now,
-            updated_at: now,
-          },
-        },
-        {
-          type: 'tool_call',
-          tool_call: {
-            id: 9924,
-            session_id: 901,
-            message_id: 9921,
-            user_id: 1,
-            tool_name: 'apply_patch',
-            input_data: { path: createdDocs.mentionPath },
-            output_data: {
-              file_ops: [{ kind: 'update', path: createdDocs.mentionPath }],
-            },
-            status: 'completed',
-            created_at: now,
-            updated_at: now,
-          },
-        },
-        {
-          type: 'done',
-          done: true,
-          extra_data: {
-            message: {
-              id: 9925,
-              session_id: 901,
-              user_id: 1,
-              role: 'assistant',
-              content: 'Updated the active document with current guidance. Source: [Official admissions source](https://example.edu/admissions).',
-              status: 'completed',
-              created_at: now,
-            },
-            session: {
-              id: streamSessionId,
-              user_id: 1,
-              title: 'Chat',
-              workspace_root: 'browser-local-workspace',
-              active_document_path: createdDocs.mentionPath,
-              status: 'completed',
-              created_at: now,
-              updated_at: now,
-            },
-          },
-        },
-      ])
+      turn.tool('ws_1', 'web_search', { query: 'current university admissions guidance', hosted: true }, {
+        query: 'current university admissions guidance',
+        results: [{ title: 'Official admissions source', url: 'https://example.edu/admissions' }],
+      }, { meta: { hosted: true } })
+      turn.tool('call_patch', 'apply_patch', { path: createdDocs.mentionPath }, {
+        file_ops: [{ kind: 'update', path: createdDocs.mentionPath }],
+      })
+      turn.nextStep()
+      turn.reply('Updated the active document with current guidance. Source: [Official admissions source](https://example.edu/admissions).')
     })
+    const requestBodies = turns.requests
 
     await page.reload({ waitUntil: 'domcontentloaded' })
     await expect(page.getByTestId('document-tree')).toBeVisible()
@@ -413,7 +216,7 @@ test('workspace chat can auto-open saved docs and target @{mentions} without a b
     // click-to-open card in the chat; it no longer auto-opens in the editor.
     await expect(page.locator('.agent-artifact').filter({ hasText: artifactTitle })).toBeVisible()
 
-    expect(requestBodies[0]).toMatchObject({
+    expect(requestBodies[0].body).toMatchObject({
       active_document_path: createdDocs.mentionPath,
       active_data_document_id: 0,
       active_data_table_id: 0,
@@ -438,13 +241,13 @@ test('workspace chat can auto-open saved docs and target @{mentions} without a b
       page.locator('.document-tab.is-active').filter({ hasText: mentionTitle }),
     ).toBeVisible()
 
-    expect(requestBodies[1]).toMatchObject({
+    expect(requestBodies[1].body).toMatchObject({
       active_document_path: createdDocs.mentionPath,
       active_data_document_id: 0,
       active_data_table_id: 0,
       save_markdown: false,
     })
-    expect(String(requestBodies[1].prompt_context || '')).toContain(createdDocs.mentionPath)
+    expect(String(requestBodies[1].body.prompt_context || '')).toContain(createdDocs.mentionPath)
 
     await composer.fill('Search the web for current admissions guidance, cite sources, and update this document')
     await sendButton.click()
@@ -456,7 +259,7 @@ test('workspace chat can auto-open saved docs and target @{mentions} without a b
     await expect(changedFilesCard).toBeVisible()
     await changedFilesCard.locator('.agent-changed-files-head').click()
     await expect(changedFilesCard.locator('.agent-changed-file').filter({ hasText: mentionTitle })).toBeVisible()
-    expect(requestBodies[2]).toMatchObject({
+    expect(requestBodies[2].body).toMatchObject({
       active_document_path: createdDocs.mentionPath,
       active_data_document_id: 0,
       active_data_table_id: 0,

@@ -5,23 +5,27 @@ use std::sync::{Arc, Mutex};
 use axum::response::Response;
 use kition_ai::engine::RuntimeModel;
 use kition_core::{AppError, AppResult, now_millis};
-use kition_harness::log::{SessionLog, SqliteLog};
+use kition_harness::driver::{append_live, next_turn};
+use kition_harness::events::{ApprovalOutcome, EventBody};
+use kition_harness::log::SqliteLog;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
 use crate::catalog::{self, SkillDef};
 use crate::providers::TurnFacts;
-use crate::run::{Agent, BUSY, EventInput, Run, TurnGuard, truncate_chars};
+use crate::run::{Agent, BUSY, Run, TurnGuard};
 use crate::sources::{self, LocalSourceInput};
 use crate::store::{self, AgentSession};
-use crate::stream::{Emitter, Frame, value};
+use crate::stream::{Emitter, TurnStream};
 use crate::tools::{canvas, documents, exec, images};
-use crate::{attachments, log, prompts, table_plan, turn};
+use crate::{attachments, log, prompts, turn};
 
+/// The user's answer to the command approval of the tool call `call_id`
+/// (`agent-shell-approval.schema.json#/$defs/response`).
 #[derive(Debug, Default, Deserialize)]
 #[serde(default)]
 pub struct ShellApprovalInput {
-    pub tool_call_id: i64,
+    pub call_id: String,
     pub decision: String,
 }
 
@@ -176,11 +180,8 @@ pub async fn prepare(
     }
     let image_repeat = match &image_intent {
         Some(intent) => {
-            let log = SqliteLog::new(agent.db().clone());
-            let key = log::log_key(session.id);
-            let events = tokio::task::spawn_blocking(move || log.read(&key))
+            let events = log::read_session(agent, session.id)
                 .await
-                .map_err(|_| AppError::internal("Failed to read the session log"))?
                 .map_err(AppError::internal)?;
             !images::claim(&events, intent).map_err(AppError::conflict)?
         }
@@ -193,9 +194,8 @@ pub async fn prepare(
         Some(input) => Some(
             exec::resolve_approval(
                 agent,
-                user_id,
                 session.id,
-                input.tool_call_id,
+                input.call_id.trim(),
                 input.decision.trim(),
             )
             .await
@@ -231,37 +231,53 @@ pub async fn start(agent: Agent, user_id: i64, prepared: Prepared) -> Response {
     response
 }
 
-async fn latest_editable_document(agent: &Agent, session: &AgentSession) -> String {
-    let (id, user) = (session.id, session.user_id);
-    agent
-        .with_db(move |conn| store::recent_artifacts(conn, id, user, 20))
+/// The newest editable document the session's turns delivered, or `""`.
+async fn latest_editable_document(agent: &Agent, session_id: i64) -> String {
+    let events = log::read_session(agent, session_id)
         .await
-        .unwrap_or_default()
+        .unwrap_or_default();
+    log::recent_deliverables(&events, 0, 1, documents::is_editable_document)
         .into_iter()
-        .find(|artifact| documents::is_editable_document(&artifact.path))
-        .map(|artifact| artifact.path)
+        .next()
         .unwrap_or_default()
 }
 
-pub(crate) async fn set_status(run: &Run, status: &'static str) {
-    let id = run.session_id;
+/// The `approval/decided` outcome of a decision: a rule the user saved is a
+/// policy change, not a session fact, so both allows are `allowed-once`.
+fn approval_outcome(decision: &str) -> ApprovalOutcome {
+    if decision == exec::DENY {
+        ApprovalOutcome::Rejected
+    } else {
+        ApprovalOutcome::AllowedOnce
+    }
+}
+
+/// Saves the session row after a turn: its title from the first completed
+/// reply (`titled` is the prompt and the reply), the document the turn
+/// delivered last, and `updated_at`.
+pub(crate) async fn finish(run: &Run, mut session: AgentSession, titled: Option<(&str, String)>) {
+    if let Some((prompt, reply)) = titled
+        && (session.title == "New chat" || session.title.trim().is_empty())
+    {
+        session.title = prompts::title_from(&reply, prompt);
+    }
+    session.active_document_path = run.active_document_path.clone();
+    let events = log::read_session(&run.agent, run.session_id)
+        .await
+        .unwrap_or_default();
+    let turn = next_turn(&events).saturating_sub(1);
+    if let Some(path) =
+        log::recent_deliverables(&events, turn.max(1), 1, documents::is_editable_document)
+            .into_iter()
+            .next()
+    {
+        session.active_document_path = path;
+    }
+    session.updated_at = now_millis();
     let _ = run
         .agent
-        .with_db(move |conn| store::set_session_status(conn, id, status))
+        .with_db(move |conn| store::save_session(conn, &mut session))
         .await;
-}
-
-pub(crate) async fn fail(run: &Run, label: &str, stage: &str, message: &str) {
-    set_status(run, "failed").await;
-    run.event(EventInput::new(
-        "task.failed",
-        stage,
-        "failed",
-        label,
-        message,
-    ))
-    .await;
-    run.send(&Frame::error(message));
 }
 
 async fn drive(agent: Agent, user_id: i64, prepared: Prepared, emitter: Emitter) {
@@ -275,57 +291,27 @@ async fn drive(agent: Agent, user_id: i64, prepared: Prepared, emitter: Emitter)
         local_sources,
         turn,
     } = prepared;
+    let stream = TurnStream::new(emitter.clone(), session.id);
     if image_repeat {
-        emitter.send(&Frame {
-            done: true,
-            ..Frame::new("done")
-        });
+        stream.close_unchanged();
         return;
     }
+    stream.status(true);
     let mut active_document = request.active_document_path.trim().to_owned();
     if active_document.is_empty() {
         active_document = session.active_document_path.trim().to_owned();
     }
     if active_document.is_empty() {
-        active_document = latest_editable_document(&agent, &session).await;
+        active_document = latest_editable_document(&agent, session.id).await;
     }
     session.active_document_path = active_document.clone();
-    emitter.send(&Frame {
-        session: value(&session),
-        ..Frame::new("started")
-    });
-    let parts = if request.hide_user_message {
-        let source = if approval.is_some() {
-            "internal_shell_approval"
-        } else {
-            "internal_continuation"
-        };
-        json!({ "hidden": true, "source": source })
-    } else {
-        Value::Null
-    };
-    let user_message = store::new_message(&session, "user", &content, parts);
-    let user_message = match agent
-        .with_db(move |conn| store::insert_message(conn, user_message))
-        .await
-    {
-        Ok(message) => message,
-        Err(_) => {
-            emitter.send(&Frame::error("Failed to save the user message"));
-            return;
-        }
-    };
-    emitter.send(&Frame {
-        chat: value(&user_message),
-        ..Frame::new("user_message")
-    });
     let attachments = attachments::resolve(agent.workspace(), &request.attachment_paths).await;
     let run = Arc::new(Run {
         agent: agent.clone(),
         emitter: emitter.clone(),
+        live: stream.live_sink(agent.hooks(), user_id),
         user_id,
         session_id: session.id,
-        trigger_message_id: user_message.id,
         active_document_path: active_document.clone(),
         active_data_document_id: request.active_data_document_id,
         active_data_table_id: request.active_data_table_id,
@@ -351,114 +337,35 @@ async fn drive(agent: Agent, user_id: i64, prepared: Prepared, emitter: Emitter)
         // The whole request is logged as one turn under the session's turn
         // guard. When the client leaves, the generation stops and the turn
         // ends as cancelled, which releases the session.
-        let composer = match images::Composer::start(&run, &intent.request_id, &content) {
-            Ok(composer) => composer,
-            Err(error) => {
-                emitter.send(&Frame::error(format!(
-                    "Failed to log the image request: {error}"
-                )));
-                return;
+        match images::Composer::start(&run, &intent.request_id, &content) {
+            Ok(composer) => {
+                let portal = agent.portal_base_url().to_owned();
+                tokio::select! {
+                    () = images::stream_intent(&run, &portal, &intent, &composer) => {}
+                    () = emitter.closed() => composer.cancel(),
+                }
             }
-        };
-        let portal = agent.portal_base_url().to_owned();
-        tokio::select! {
-            () = images::stream_intent(&run, session, &portal, &intent, &composer) => {}
-            () = emitter.closed() => composer.cancel(),
+            Err(error) => tracing::warn!(error = %error, "could not log the image request"),
         }
+        finish(&run, session, None).await;
         drop(turn);
+        stream.close();
         return;
     }
-    run.event(
-        EventInput::new(
-            "task.created",
-            "intent",
-            "completed",
-            "Understand task",
-            format!(
-                "{} \u{b7} {} / {}",
-                truncate_chars(&content, 160),
-                run.execution_mode,
-                run.task_mode
-            ),
-        )
-        .data(json!({
-            "execution_mode": run.execution_mode,
-            "permission_mode": run.permission(),
-            "task_mode": run.task_mode,
-        })),
-    )
-    .await;
     if let Some(approval) = &approval {
-        run.event(
-            EventInput::new(
-                "shell.approval_decided",
-                "execute",
-                "completed",
-                "Command approval decided",
-                "The user responded to the pending command approval",
-            )
-            .data(json!({ "tool_call_id": approval.tool_call_id, "decision": approval.decision })),
-        )
-        .await;
+        // The decision lands before the turn that resumes the paused call.
+        let log = SqliteLog::new(agent.db().clone());
+        let decided = EventBody::ApprovalDecided {
+            id: format!("approval:{}", approval.call_id),
+            outcome: approval_outcome(&approval.decision),
+        };
+        if let Err(error) = append_live(&log, &log::log_key(session.id), &run.live, decided) {
+            tracing::warn!(error = %error, "could not log the approval decision");
+            drop(turn);
+            stream.close();
+            return;
+        }
     }
-    if let Some(context) = &run.whiteboard {
-        let (message, data) = canvas::whiteboard_event(context);
-        run.event(
-            EventInput::new(
-                "whiteboard.context.attached",
-                "context",
-                "completed",
-                "Whiteboard context attached",
-                message,
-            )
-            .data(data),
-        )
-        .await;
-    }
-    if let Some(context) = &run.design {
-        let (message, data) = canvas::design_event(context);
-        run.event(
-            EventInput::new(
-                "design.context.attached",
-                "context",
-                "completed",
-                "Design context attached",
-                message,
-            )
-            .data(data),
-        )
-        .await;
-    }
-    if !run.local_sources.is_empty() {
-        run.event(
-            EventInput::new(
-                "local_sources.attached",
-                "context",
-                "completed",
-                "Local analysis folders attached",
-                format!(
-                    "Attached {} read-only local folder(s)",
-                    run.local_sources.len()
-                ),
-            )
-            .data(sources::event_data(&run.local_sources)),
-        )
-        .await;
-    }
-    if let Some(plan) = &request.table_plan_context {
-        run.event(
-            EventInput::new(
-                "table.plan.attached",
-                "context",
-                "completed",
-                "Reused prior plan",
-                prompts::table_plan_event(plan),
-            )
-            .data(plan.clone()),
-        )
-        .await;
-    }
-    session.status = "running".into();
     session.model_id = request.model_id.trim().to_owned();
     if run.active_data_document_id != 0 && run.active_data_table_id != 0 {
         let mut extra = session.extra_data.as_object().cloned().unwrap_or_default();
@@ -476,15 +383,6 @@ async fn drive(agent: Agent, user_id: i64, prepared: Prepared, emitter: Emitter)
     let _ = agent
         .with_db(move |conn| store::save_session(conn, &mut saved))
         .await;
-    run.event(EventInput::new(
-        "task.started",
-        "intent",
-        "running",
-        "Start execution",
-        "The agent has started planning and executing the task",
-    ))
-    .await;
-
     let has_table = run.active_data_table_id != 0;
     let has_documents = !active_document.is_empty()
         || !request.prompt_context.trim().is_empty()
@@ -492,20 +390,6 @@ async fn drive(agent: Agent, user_id: i64, prepared: Prepared, emitter: Emitter)
     let all_skills = catalog::skills(agent.workspace().root());
     let skills: Vec<SkillDef> =
         catalog::match_skills(&all_skills, &content, has_table, has_documents);
-    if !skills.is_empty() {
-        let names: Vec<&str> = skills.iter().map(|skill| skill.name.as_str()).collect();
-        run.event(
-            EventInput::new(
-                "skill.enabled",
-                "intent",
-                "completed",
-                "Skills enabled",
-                format!("Enabled: {}", names.join(", ")),
-            )
-            .data(json!({ "skills": catalog::public_skills(&skills) })),
-        )
-        .await;
-    }
     let facts = TurnFacts {
         prompt_context: request.prompt_context,
         active_workflow_id: request.active_workflow_id,
@@ -515,178 +399,7 @@ async fn drive(agent: Agent, user_id: i64, prepared: Prepared, emitter: Emitter)
         hosted_images: run.model.supports_hosted_images(),
     };
     turn::drive(&run, session, &content, facts, turn).await;
-}
-
-pub(crate) async fn await_approval(run: &Run, mut session: AgentSession, output: Value) {
-    let reason = output["reason"]
-        .as_str()
-        .filter(|r| !r.trim().is_empty())
-        .unwrap_or("Waiting for the user to approve the command")
-        .to_owned();
-    run.event(
-        EventInput::new(
-            "shell.approval_required",
-            "execute",
-            "pending",
-            "Command approval required",
-            reason,
-        )
-        .data(output.clone()),
-    )
-    .await;
-    run.event(
-        EventInput::new(
-            "task.awaiting_approval",
-            "execute",
-            "running",
-            "Await command approval",
-            "Waiting for the user to approve or deny the pending command",
-        )
-        .data(json!({ "tool_call_id": output["tool_call_id"] })),
-    )
-    .await;
-    run.event(EventInput::new(
-        "user.input_needed",
-        "execute",
-        "pending",
-        "Command approval required",
-        "A command is waiting for approval",
-    ))
-    .await;
-    session.status = "idle".into();
-    session.active_document_path = run.active_document_path.clone();
-    let mut saved = session.clone();
-    let _ = run
-        .agent
-        .with_db(move |conn| store::save_session(conn, &mut saved))
-        .await;
-    run.send(
-        &Frame {
-            done: true,
-            ..Frame::new("done")
-        }
-        .extra("awaiting_shell_approval", true)
-        .extra("shell_approval_required", &output)
-        .extra("session", &session),
-    );
-}
-
-pub(crate) async fn finish(
-    run: &Run,
-    mut session: AgentSession,
-    prompt: &str,
-    reply: String,
-    streamed: bool,
-    result: &kition_ai::engine::ChatResult,
-) {
-    let (id, user, message_id) = (run.session_id, run.user_id, run.trigger_message_id);
-    let calls: Vec<store::AgentToolCall> = run
-        .agent
-        .with_db(move |conn| store::session_rows(conn, id, user))
-        .await
-        .unwrap_or_default()
-        .into_iter()
-        .filter(|call: &store::AgentToolCall| call.message_id == Some(message_id))
-        .collect();
-    let (reply, plan) = table_plan::finalize(&reply, &run.execution_mode, &calls);
-    if let Some(plan) = plan {
-        let summary = plan["summary"]
-            .as_str()
-            .filter(|s| !s.is_empty())
-            .unwrap_or("Generated a structured table plan")
-            .to_owned();
-        run.event(
-            EventInput::new(
-                "table.plan.generated",
-                "artifact",
-                "completed",
-                "Table plan generated",
-                summary,
-            )
-            .data(plan),
-        )
-        .await;
-    }
-    if !streamed {
-        run.emitter.send_text_in_chunks(&reply).await;
-    }
-    run.event(EventInput::new(
-        "response.completed",
-        "final",
-        "completed",
-        "Finalize response",
-        "Generated the final reply",
-    ))
-    .await;
-    let message = store::new_message(
-        &session,
-        "assistant",
-        &reply,
-        json!({ "model": result.model, "usage": result.usage }),
-    );
-    let message = match run
-        .agent
-        .with_db(move |conn| store::insert_message(conn, message))
-        .await
-    {
-        Ok(message) => message,
-        Err(_) => {
-            run.event(EventInput::new(
-                "task.failed",
-                "final",
-                "failed",
-                "Reply save failed",
-                "Failed to save the agent reply",
-            ))
-            .await;
-            run.send(&Frame::error("Failed to save the agent reply"));
-            return;
-        }
-    };
-    let artifact = run
-        .agent
-        .with_db(move |conn| store::latest_artifact_for_message(conn, id, user, message_id))
-        .await
-        .ok()
-        .flatten();
-    if session.title == "New chat" || session.title.trim().is_empty() {
-        session.title = prompts::title_from(&reply, prompt);
-    }
-    session.status = "idle".into();
-    session.active_document_path = run.active_document_path.clone();
-    if let Some(artifact) = &artifact
-        && documents::is_editable_document(&artifact.path)
-    {
-        session.active_document_path = artifact.path.clone();
-    }
-    session.updated_at = now_millis();
-    let mut saved = session.clone();
-    let _ = run
-        .agent
-        .with_db(move |conn| store::save_session(conn, &mut saved))
-        .await;
-    run.send(&Frame {
-        chat: value(&message),
-        ..Frame::new("assistant_message")
-    });
-    run.event(EventInput::new(
-        "task.completed",
-        "final",
-        "completed",
-        "Task completed",
-        "The agent task is complete",
-    ))
-    .await;
-    let mut done = Frame {
-        done: true,
-        ..Frame::new("done")
-    }
-    .extra("message", &message)
-    .extra("session", &session);
-    if let Some(artifact) = &artifact {
-        done = done.extra("artifact", artifact);
-    }
-    run.send(&done);
+    stream.close();
 }
 
 #[cfg(test)]
@@ -699,6 +412,19 @@ mod tests {
         assert_eq!(pane("browser"), "document");
         assert_eq!(execution_mode("PREVIEW"), "preview");
         assert_eq!(task_mode("browse"), "auto");
+    }
+
+    #[test]
+    fn both_allows_are_allowed_once() {
+        assert_eq!(
+            approval_outcome(exec::ALLOW_ONCE),
+            ApprovalOutcome::AllowedOnce
+        );
+        assert_eq!(
+            approval_outcome(exec::ALLOW_ALWAYS),
+            ApprovalOutcome::AllowedOnce
+        );
+        assert_eq!(approval_outcome(exec::DENY), ApprovalOutcome::Rejected);
     }
 
     #[test]

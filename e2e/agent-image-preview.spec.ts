@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { mockAgentTurn } from './helpers/agentStream'
 import { openWhiteboardFixture } from './helpers/whiteboard'
 
 const imagePath = 'Agent/images/46/Edited poster.png'
@@ -22,28 +23,10 @@ for (const source of ['workspace path', 'runtime URL'] as const) {
     const newChat = page.getByRole('button', { name: 'New chat', exact: true })
     if (await newChat.isVisible().catch(() => false)) await newChat.click()
 
-    await page.route('**/api/v1/agent/sessions/*/messages/stream', async (route) => {
-      const sessionId = Number(route.request().url().match(/sessions\/(\d+)/)![1])
-      const createdAt = new Date().toISOString()
-      const frames = [
-        { type: 'user_message', chat_message: {
-          id: 10, session_id: sessionId, user_id: 1, role: 'user',
-          content: route.request().postDataJSON().content, status: 'completed', created_at: createdAt,
-        } },
-        { type: 'tool_call', tool_call: {
-          id: 20, session_id: sessionId, user_id: 1, message_id: 10,
-          tool_name: 'image_generation', status: 'completed', input_data: {},
-          output_data: source === 'workspace path' ? { path: imagePath } : { images: [{ url: imageURL }] },
-          created_at: createdAt, updated_at: createdAt,
-        } },
-        { type: 'done', done: true, extra_data: { message: {
-          id: 11, session_id: sessionId, user_id: 1, role: 'assistant', status: 'completed',
-          content: `The edited image is saved at: \`${imagePath}\``, created_at: createdAt,
-        } } },
-      ]
-      await route.fulfill({
-        contentType: 'application/x-ndjson', body: frames.map((frame) => JSON.stringify(frame)).join('\n') + '\n',
-      })
+    await mockAgentTurn(page, (turn) => {
+      turn.tool('call_image', 'image_generation', {},
+        source === 'workspace path' ? { path: imagePath } : { images: [{ url: imageURL }] })
+      turn.reply(`The edited image is saved at: \`${imagePath}\``)
     })
     const composer = page.getByPlaceholder('Plan, write, or ask anything…')
     await composer.fill('Edit this poster and save the image')

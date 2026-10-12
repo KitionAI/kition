@@ -14,7 +14,7 @@ use crate::run::{
     Agent, Run, ToolError, ToolOutput, ToolResult, int_field, string_list, text_field,
     truncate_chars,
 };
-use crate::store;
+use kition_harness::events::{EventBody, SessionEvent, TurnEndReason};
 
 const DEFAULT_TIMEOUT_MS: i64 = 30_000;
 const MAX_TIMEOUT_MS: i64 = 120_000;
@@ -84,8 +84,8 @@ fn drain(
     })
 }
 
-/// The pending approval, shaped by `agent-shell-approval.schema.json`
-/// (the runtime adds `tool_call_id`).
+/// The pending approval; `exec_shape` presents it as the
+/// `agent-shell-approval.schema.json#/$defs/request` meta.
 fn approval_output(argv: &[String], shell: bool, reason: &str) -> Value {
     let suggested = execpolicy::suggested_prefix(argv, shell);
     let mut output = json!({
@@ -206,66 +206,111 @@ pub async fn exec_command(run: &Run, input: &Value) -> ToolResult {
 /// The user's answer to a pending command approval.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Approval {
-    pub tool_call_id: i64,
+    pub call_id: String,
     pub decision: String,
     pub command: String,
 }
 
-/// Checks that `tool_call_id` is the session's pending approval and applies
-/// an `allow_always` decision to the policy.
+/// A command that waits for the user, read from the session log.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Pending {
+    pub id: String,
+    pub command: String,
+    pub suggested_prefix: Vec<String>,
+}
+
+const NOT_PENDING: &str = "shell approval request is no longer pending";
+
+/// The approval `call_id` waits for: the latest turn ended
+/// `awaiting-approval` after asking about this call, nothing decided it
+/// since, and the call's result is an `exec_command` that requires approval.
+pub fn pending_approval(events: &[SessionEvent], call_id: &str) -> Result<Pending, String> {
+    let ended = events
+        .iter()
+        .rposition(|event| matches!(event.body, EventBody::TurnEnd { .. }));
+    let Some(ended) = ended else {
+        return Err("shell approval request was not found".into());
+    };
+    if !matches!(
+        events[ended].body,
+        EventBody::TurnEnd {
+            reason: TurnEndReason::AwaitingApproval,
+            ..
+        }
+    ) {
+        return Err(NOT_PENDING.into());
+    }
+    let started = events[..ended]
+        .iter()
+        .rposition(|event| matches!(event.body, EventBody::TurnStart { .. }))
+        .unwrap_or(0);
+    let turn = &events[started..ended];
+    let id = turn
+        .iter()
+        .find_map(|event| match &event.body {
+            EventBody::ApprovalAsked {
+                id, call_id: asked, ..
+            } if asked == call_id => Some(id.clone()),
+            _ => None,
+        })
+        .ok_or_else(|| "shell approval request was not found".to_owned())?;
+    let decided = events[ended..].iter().any(|event| {
+        matches!(&event.body, EventBody::ApprovalDecided { id: decided, .. } if *decided == id)
+    });
+    if decided {
+        return Err(NOT_PENDING.into());
+    }
+    let output = turn
+        .iter()
+        .find_map(|event| match &event.body {
+            EventBody::ToolResult {
+                call_id: result,
+                name,
+                value,
+                is_error: false,
+                ..
+            } if result == call_id => Some((name.clone(), value["output"].clone())),
+            _ => None,
+        })
+        .ok_or_else(|| NOT_PENDING.to_owned())?;
+    let (name, output) = output;
+    if name != "exec_command" {
+        return Err("tool call is not a shell command".into());
+    }
+    let command = text_field(&output, "command");
+    if text_field(&output, "requires") != "approval" || command.is_empty() {
+        return Err(NOT_PENDING.into());
+    }
+    Ok(Pending {
+        id,
+        command,
+        suggested_prefix: string_list(&output["suggested"], "prefix"),
+    })
+}
+
+/// Checks that `call_id` is the session's pending approval and applies an
+/// `allow_always` decision to the policy.
 pub async fn resolve_approval(
     agent: &Agent,
-    user_id: i64,
     session_id: i64,
-    tool_call_id: i64,
+    call_id: &str,
     decision: &str,
 ) -> Result<Approval, String> {
     if ![ALLOW_ONCE, ALLOW_ALWAYS, DENY].contains(&decision) {
         return Err("shell approval decision must be allow_once, allow_always, or deny".into());
     }
-    if tool_call_id <= 0 {
-        return Err("shell approval tool_call_id is required".into());
+    if call_id.is_empty() {
+        return Err("shell approval call_id is required".into());
     }
-    let found = agent
-        .with_db(move |conn| {
-            let Some(call) = store::find_tool_call(conn, tool_call_id)? else {
-                return Ok(None);
-            };
-            let later: i64 = match call.message_id {
-                Some(message_id) => conn
-                    .query_row(
-                        "SELECT COUNT(*) FROM agent_messages WHERE session_id = ?1 AND user_id = ?2 AND id > ?3",
-                        rusqlite::params![session_id, user_id, message_id],
-                        |row| row.get(0),
-                    )
-                    .map_err(kition_core::AppError::unhandled)?,
-                None => 0,
-            };
-            Ok(Some((call, later)))
-        })
+    let events = crate::log::read_session(agent, session_id)
         .await
         .map_err(|_| "failed to verify shell approval state".to_owned())?;
-    let Some((call, later)) = found else {
-        return Err("shell approval request was not found".into());
-    };
-    if call.session_id != session_id || call.user_id != user_id {
-        return Err("shell approval request was not found".into());
-    }
-    if call.tool_name != "exec_command" {
-        return Err("tool call is not a shell command".into());
-    }
-    let command = text_field(&call.output_data, "command");
-    if call.status != "completed"
-        || text_field(&call.output_data, "requires") != "approval"
-        || command.is_empty()
-        || later > 0
-    {
-        return Err("shell approval request is no longer pending".into());
-    }
+    let pending = pending_approval(&events, call_id)?;
     if decision == ALLOW_ALWAYS {
-        let mut prefix = string_list(&call.output_data["suggested"], "prefix");
+        let mut prefix = pending.suggested_prefix.clone();
         if prefix.is_empty() {
-            prefix = command
+            prefix = pending
+                .command
                 .split_whitespace()
                 .take(1)
                 .map(str::to_owned)
@@ -285,8 +330,115 @@ pub async fn resolve_approval(
             .map_err(|error| format!("failed to persist shell approval: {error}"))?;
     }
     Ok(Approval {
-        tool_call_id,
+        call_id: call_id.to_owned(),
         decision: decision.to_owned(),
-        command,
+        command: pending.command,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use kition_harness::events::ApprovalOutcome;
+
+    use super::*;
+
+    fn at(seq: u64, body: EventBody) -> SessionEvent {
+        SessionEvent { seq, at: 0, body }
+    }
+
+    /// A turn whose `exec_command` call `c1` waits for approval.
+    fn paused(tool: &str) -> Vec<SessionEvent> {
+        vec![
+            at(1, EventBody::TurnStart { turn: 1 }),
+            at(
+                2,
+                EventBody::ToolCall {
+                    call_id: "c1".into(),
+                    name: tool.into(),
+                    arguments: json!({ "cmd": ["ls"] }),
+                },
+            ),
+            at(
+                3,
+                EventBody::ToolResult {
+                    call_id: "c1".into(),
+                    name: tool.into(),
+                    value: json!({ "name": tool, "summary": "wait", "output": {
+                        "requires": "approval", "command": "ls -la",
+                        "suggested": { "prefix": ["ls"] },
+                    } }),
+                    content: Vec::new(),
+                    is_error: false,
+                    meta: None,
+                },
+            ),
+            at(
+                4,
+                EventBody::ApprovalAsked {
+                    id: "approval:c1".into(),
+                    tool_name: tool.into(),
+                    call_id: "c1".into(),
+                    reason: String::new(),
+                },
+            ),
+            at(
+                5,
+                EventBody::TurnEnd {
+                    turn: 1,
+                    reason: TurnEndReason::AwaitingApproval,
+                    error: String::new(),
+                },
+            ),
+        ]
+    }
+
+    #[test]
+    fn a_paused_command_is_pending() {
+        assert_eq!(
+            pending_approval(&paused("exec_command"), "c1"),
+            Ok(Pending {
+                id: "approval:c1".into(),
+                command: "ls -la".into(),
+                suggested_prefix: vec!["ls".into()],
+            })
+        );
+        assert!(pending_approval(&paused("exec_command"), "c2").is_err());
+        assert!(pending_approval(&[], "c1").is_err());
+    }
+
+    #[test]
+    fn a_decided_approval_is_no_longer_pending() {
+        let mut events = paused("exec_command");
+        events.push(at(
+            6,
+            EventBody::ApprovalDecided {
+                id: "approval:c1".into(),
+                outcome: ApprovalOutcome::Rejected,
+            },
+        ));
+        assert_eq!(pending_approval(&events, "c1"), Err(NOT_PENDING.to_owned()));
+    }
+
+    #[test]
+    fn a_later_turn_ends_the_wait() {
+        let mut events = paused("exec_command");
+        events.push(at(6, EventBody::TurnStart { turn: 2 }));
+        events.push(at(
+            7,
+            EventBody::TurnEnd {
+                turn: 2,
+                reason: TurnEndReason::Completed,
+                error: String::new(),
+            },
+        ));
+        assert_eq!(pending_approval(&events, "c1"), Err(NOT_PENDING.to_owned()));
+    }
+
+    #[test]
+    fn only_shell_commands_wait_for_approval() {
+        assert_eq!(
+            pending_approval(&paused("fs_remove"), "c1"),
+            Err("tool call is not a shell command".to_owned())
+        );
+    }
 }

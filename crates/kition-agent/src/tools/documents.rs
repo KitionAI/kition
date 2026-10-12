@@ -62,26 +62,22 @@ pub async fn read(run: &Run, input: &Value) -> ToolResult {
         "total_bytes": read.total_bytes,
         "complete": complete,
     });
-    let (prefix, completeness) = if complete {
-        ("Complete contents", "complete")
+    let prefix = if complete {
+        "Complete contents"
     } else {
-        ("Truncated leading contents", "truncated")
+        "Truncated leading contents"
     };
     Ok(ToolOutput {
         summary: format!(
             "{prefix} of `{path}` ({chars} visible characters, {} total bytes, complete={complete}):\n\n{}",
             read.total_bytes, read.text
         ),
-        event_summary: Some(format!(
-            "Read document `{path}` ({chars} visible characters, {completeness})"
-        )),
-        event_output: Some(output.clone()),
         output,
         ..ToolOutput::default()
     })
 }
 
-pub async fn write(run: &Run, tool_call_id: i64, input: &Value) -> ToolResult {
+pub async fn write(run: &Run, input: &Value) -> ToolResult {
     let mut path = text_field(input, "path");
     if path.is_empty() {
         path = run.active_document_path.trim().to_owned();
@@ -94,17 +90,7 @@ pub async fn write(run: &Run, tool_call_id: i64, input: &Value) -> ToolResult {
         .and_then(Value::as_str)
         .unwrap_or_default();
     let path = run.workspace().write_existing(&path, content)?;
-    let artifact = run
-        .record_artifact(
-            Some(tool_call_id),
-            "markdown",
-            &path,
-            "text/markdown",
-            &format!("Updated: {path}"),
-        )
-        .await;
     Ok(ToolOutput {
-        artifact,
         deliverables: vec![delivered(&path, &format!("Updated: {path}"))],
         ..ToolOutput::new(
             format!("Updated document: `{path}`"),
@@ -159,7 +145,7 @@ pub async fn list(run: &Run, input: &Value) -> ToolResult {
     ))
 }
 
-pub async fn artifact_write(run: &Run, tool_call_id: i64, input: &Value) -> ToolResult {
+pub async fn artifact_write(run: &Run, input: &Value) -> ToolResult {
     let raw = text_field(input, "path");
     if raw.is_empty() {
         return Err("missing path".into());
@@ -172,10 +158,8 @@ pub async fn artifact_write(run: &Run, tool_call_id: i64, input: &Value) -> Tool
     let Some(ext) = workspace::extension(&filename) else {
         return Err("path must include a file extension (.md/.markdown/.txt/.html/.htm)".into());
     };
-    let (kind, mime) = match ext.as_str() {
-        "md" | "markdown" => ("markdown", "text/markdown"),
-        "txt" => ("markdown", "text/plain"),
-        "html" | "htm" => ("html", "text/html"),
+    match ext.as_str() {
+        "md" | "markdown" | "txt" | "html" | "htm" => {}
         "pptx" => {
             return Err(
                 "PPTX creation is only available through the whiteboard presentation workflow"
@@ -191,7 +175,7 @@ pub async fn artifact_write(run: &Run, tool_call_id: i64, input: &Value) -> Tool
             )
             .into());
         }
-    };
+    }
     let title = filename
         .rsplit_once('.')
         .map_or(filename.as_str(), |(stem, _)| stem)
@@ -208,11 +192,7 @@ pub async fn artifact_write(run: &Run, tool_call_id: i64, input: &Value) -> Tool
     let stored = run
         .workspace()
         .write_new(&folder, &filename, content.as_bytes())?;
-    let artifact = run
-        .record_artifact(Some(tool_call_id), kind, &stored, mime, &filename)
-        .await;
     Ok(ToolOutput {
-        artifact,
         deliverables: vec![delivered(&stored, &filename)],
         ..ToolOutput::new(
             format!("Saved artifact: `{stored}`"),
@@ -246,7 +226,7 @@ pub fn kind_for_mime(mime: &str) -> &'static str {
     }
 }
 
-pub async fn register_artifact(run: &Run, tool_call_id: i64, input: &Value) -> ToolResult {
+pub async fn register_artifact(run: &Run, input: &Value) -> ToolResult {
     let raw = text_field(input, "path");
     if raw.is_empty() {
         return Err("missing path".into());
@@ -273,11 +253,7 @@ pub async fn register_artifact(run: &Run, tool_call_id: i64, input: &Value) -> T
             .map_or(filename, |(stem, _)| stem)
             .to_owned();
     }
-    let artifact = run
-        .record_artifact(Some(tool_call_id), kind, &relative, &mime, &title)
-        .await;
     Ok(ToolOutput {
-        artifact,
         deliverables: vec![delivered(&relative, &title)],
         ..ToolOutput::new(
             format!("Registered artifact: `{relative}`"),

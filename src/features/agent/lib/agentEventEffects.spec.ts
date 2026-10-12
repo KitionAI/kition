@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { AgentSessionEventsSessionEvent } from '@/api/generated/agent-session-events'
 import documentWriteTurn from './__fixtures__/documentWriteTurn.json'
 import hostedCallsTurn from './__fixtures__/hostedCallsTurn.json'
-import { effectsOfEvent, effectsOfStream } from './agentEventEffects'
+import { effectsOfEvent, effectsOfStream, stepAgentSession } from './agentEventEffects'
 import {
   applyAssistantStream,
   applySessionEvent,
@@ -47,7 +47,11 @@ const at = () => {
   seq += 1
   return seq
 }
-const turnStart = (): AgentSessionEventsSessionEvent => ({ seq: at(), at: seq, type: 'turn/start', turn: 1 })
+/** Opens a fresh log: every list starts with it at seq 1. */
+const turnStart = (): AgentSessionEventsSessionEvent => {
+  seq = 0
+  return { seq: at(), at: seq, type: 'turn/start', turn: 1 }
+}
 const call = (callId: string, name: string, args: unknown = {}): AgentSessionEventsSessionEvent => ({
   seq: at(), at: seq, type: 'tool/call', callId, name, arguments: args,
 })
@@ -206,9 +210,18 @@ describe('effectsOfStream', () => {
     ])
   })
 
-  it('ignores replayed frames', () => {
+  it('previews a patch once, on the delta that completes its arguments', () => {
     const first = run([start, args(2, 'w1', JSON.stringify(whiteboardPatch), 'whiteboard_propose_patch')])
-    expect(run([args(2, 'w1', '', 'whiteboard_propose_patch')], first.view).effects).toEqual([])
+    expect(first.effects).toHaveLength(1)
+    expect(run([args(3, 'w1', '', 'whiteboard_propose_patch')], first.view).effects).toEqual([])
+  })
+
+  it('ignores frames of an attempt that is not live', () => {
+    const other: AgentAssistantStreamFrame = {
+      type: 'chunk', attemptId: 'b', revision: 2, index: 0, time: 2,
+      chunk: { type: 'tool-call-delta', index: 1, id: 'w1', name: 'whiteboard_propose_patch', argumentsDelta: JSON.stringify(whiteboardPatch) },
+    }
+    expect(run([start, other]).effects).toEqual([])
   })
 
   it('cancels a provisional patch when its attempt settles without a message', () => {
@@ -223,5 +236,48 @@ describe('effectsOfStream', () => {
       outcome: { kind: 'committed', eventType: 'assistant/message', seq: 2 },
     }], streamed.view)
     expect(message.effects).toEqual([])
+  })
+
+  it('does not cancel a called patch when only its attempt ends', () => {
+    const called = applySessionEvent(opened, {
+      seq: 2, at: 2, type: 'tool/call', callId: 'w9', name: 'whiteboard_propose_patch', arguments: {},
+    })
+    const attempt = run([start, {
+      type: 'end', attemptId: 'a', revision: 2, index: 0, outcome: { kind: 'abandoned' },
+    }], called)
+    expect(attempt.effects).toEqual([])
+  })
+})
+
+describe('stepAgentSession', () => {
+  const sessionId = 'agent:7'
+  it('applies the next event with its effects and stops at a gap', () => {
+    const list = events(documentWriteTurn)
+    let view = emptyAgentSessionView()
+    const effects: unknown[] = []
+    for (const event of list) {
+      const step = stepAgentSession(view, { jsonrpc: '2.0', method: 'session.event', params: { sessionId, event } })
+      expect(step.gap).toBe(false)
+      effects.push(...step.effects)
+      view = step.view
+    }
+    expect(view.cursor).toBe(14)
+    expect(effects).toHaveLength(2)
+    const gap = stepAgentSession(emptyAgentSessionView(), {
+      jsonrpc: '2.0', method: 'session.event', params: { sessionId, event: list[3] },
+    })
+    expect(gap).toEqual({ view: emptyAgentSessionView(), effects: [], gap: true })
+  })
+
+  it('tracks status and the live attempt', () => {
+    const running = stepAgentSession(emptyAgentSessionView(), {
+      jsonrpc: '2.0', method: 'session.status', params: { sessionId, status: 'running' },
+    }).view
+    expect(running.running).toBe(true)
+    const live = stepAgentSession(running, {
+      jsonrpc: '2.0', method: 'agent/assistant-stream',
+      params: { sessionId, frame: { type: 'start', attemptId: 'a', revision: 1, turn: 1, step: 1 } },
+    }).view
+    expect(live.live?.attemptId).toBe('a')
   })
 })

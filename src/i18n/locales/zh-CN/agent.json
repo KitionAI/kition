@@ -6,13 +6,6 @@
     "writeResult": "写入结果",
     "writeToTable": "写入表格"
   },
-  "awaitInput": {
-    "waitingForReply": "智能体正在等待你的回复",
-    "replyPlaceholder": "输入你的回复，按 Cmd/Ctrl+Enter 提交",
-    "send": "发送",
-    "yes": "是",
-    "no": "否"
-  },
   "buildProgress": {
     "buildingBase": "正在构建数据库…",
     "buildingInProgress": "构建进行中",
@@ -195,10 +188,7 @@
   },
   "timeline": {
     "status": {
-      "running": "进行中",
-      "failed": "失败",
-      "completed": "已完成",
-      "unknown": "未知"
+      "failed": "失败"
     },
     "sections": {
       "tool": "工具",
@@ -207,13 +197,8 @@
       "error": "错误",
       "status": "状态",
       "data": "数据",
-      "backendContent": "模型输出",
-      "toolArguments": "工具参数",
       "path": "路径",
-      "type": "类型",
       "title": "标题",
-      "mimeType": "文件类型",
-      "createdAt": "创建时间",
       "preview": "预览",
       "noDetail": "正在等待此步骤的执行信息。"
     },
@@ -226,41 +211,18 @@
       "expandedProcessing": "已收到“{{tool}}”的结果，正在结合上下文确定下一步操作。"
     },
     "activity": {
-      "running": "正在执行：{{tool}}",
-      "failed": "{{tool}}失败",
-      "preparingFinal": "正在整理最终回复",
-      "planningNext": "正在规划下一步",
-      "taskCompleted": "任务已完成",
-      "waiting": "等待任务",
       "thinking": "思考中…",
       "completionUnknown": "完成状态未确认",
       "interruptedDetail": "连接已结束，但尚未确认任务完成。请先检查已保存的结果，再决定是否重试。",
       "stopped": "任务已停止"
     },
     "event": {
-      "understandingTask": "理解任务",
-      "taskUnderstood": "已理解任务",
-      "enableSkills": "启用技能",
-      "sendModelRequest": "发送模型请求",
       "callingBackend": "正在请求模型",
       "backendCalled": "已请求模型",
-      "backendStreaming": "正在接收模型输出",
-      "backendReturned": "已收到模型输出",
-      "generatingToolArgs": "正在生成“{{tool}}”参数",
-      "generatingToolArgsAnon": "正在生成工具参数",
-      "toolCallGenerated": "已生成“{{tool}}”调用",
-      "toolCallGeneratedAnon": "已生成工具调用",
       "backendTurnCompleted": "本轮模型请求已结束",
-      "finalizeResponse": "整理回复",
       "taskFailed": "任务失败",
-      "currentModel": "当前模型",
-      "nativeToolLoop": "原生工具调用",
-      "standardChat": "普通对话",
       "modelTurnFinished": "第 {{turn}} 轮模型请求已结束",
       "requestingModelTurn": "正在请求第 {{turn}} 轮模型",
-      "requestingModel": "正在请求模型",
-      "receivedChars": "已收到 {{chars}} 个字符",
-      "waitingBackendContent": "等待模型输出",
       "modelRequestedNTools": "模型请求调用 {{count}} 个工具",
       "modelReturnedChars": "模型返回 {{chars}} 个字符的最终内容",
       "thisTurnCompleted": "本轮模型请求已结束",
@@ -280,22 +242,16 @@
       },
       "taskCompleted": "任务已完成",
       "reconnectingInSeconds_one": "{{seconds}} 秒后重试",
-      "reconnectingInSeconds_other": "{{seconds}} 秒后重试"
+      "reconnectingInSeconds_other": "{{seconds}} 秒后重试",
+      "stepLimit": "已达到单轮模型步数上限而停止；请缩小任务范围或明确下一步。"
     },
     "tool": {
       "inProgress": "正在{{label}}",
       "failed": "{{label}}失败",
       "completed": "{{label}}已完成",
-      "pendingApproval": "等待批准 · $ {{command}}",
-      "searchPrefix": "搜索：{{query}}",
-      "generateImagePrefix": "生成图片：{{query}}",
-      "previewNFiles": "预览 {{count}} 个文件 · +{{added}} −{{removed}}",
-      "appliedNFiles": "已修改 {{count}} 个文件 · +{{added}} −{{removed}}",
-      "nMatches": "{{count}} 处匹配",
       "nResults": "{{count}} 条结果",
       "nImages": "{{count}} 张图片",
-      "nEntries": "{{count}} 个条目",
-      "removed": "已删除 {{path}}"
+      "nEntries": "{{count}} 个条目"
     },
     "artifact": {
       "title": "保存产物"

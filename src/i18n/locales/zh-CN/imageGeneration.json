@@ -323,7 +323,6 @@
       "text_mode": "文字"
     },
     "status": {
-      "queued": "生图请求已排队",
       "generating": "正在生成图片…",
       "saving": "正在保存图片…",
       "completed": "图片已生成，等待确认",

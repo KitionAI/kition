@@ -6,6 +6,8 @@ import { createRoot, type Root } from 'react-dom/client'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { AgentSession } from '@/api/agent'
+import type { AgentSessionEventsSessionEvent } from '@/api/generated/agent-session-events'
+import { applySessionEvent, emptyAgentSessionView } from '../lib/agentSessionView'
 
 // ── Mocks ────────────────────────────────────────────────────────────────────
 
@@ -73,7 +75,6 @@ function makeSession(): AgentSession {
     id: 1,
     user_id: 1,
     title: 'Test session',
-    status: 'idle',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   }
@@ -82,12 +83,8 @@ function makeSession(): AgentSession {
 function makeMinimalProps(extra: Record<string, unknown> = {}) {
   return {
     session: makeSession(),
-    messages: [],
-    toolCalls: [],
-    events: [],
+    view: emptyAgentSessionView(),
     draft: '',
-    streamingText: '',
-    artifacts: [],
     busy: false,
     modelOptions: [],
     selectedModelKey: 'gpt-4o',
@@ -102,6 +99,24 @@ function makeMinimalProps(extra: Record<string, unknown> = {}) {
     ...extra,
   } as any
 }
+
+type Body = { type: string } & Record<string, unknown>
+
+/** A one-turn session view: the user's `text`, then `bodies`, numbered from seq 1. */
+function viewOf(text: string, bodies: Body[] = []) {
+  const list = [
+    { type: 'turn/start', turn: 1 },
+    { type: 'step/start', turn: 1, step: 1 },
+    { type: 'user/message', content: [{ type: 'text', text }], source: { kind: 'user' } },
+    ...bodies,
+  ].map((body, index) => ({ seq: index + 1, at: Date.parse('2026-08-10T00:00:00.000Z') + index, ...body }) as AgentSessionEventsSessionEvent)
+  return list.reduce(applySessionEvent, emptyAgentSessionView())
+}
+
+const ran = (callId: string, name: string, args: unknown, output: unknown): Body[] => [
+  { type: 'tool/call', callId, name, arguments: args },
+  { type: 'tool/result', callId, name, isError: false, content: [], value: { name, summary: 'Done', output } },
+]
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
@@ -299,36 +314,21 @@ describe('AgentChatPanel shell approval', () => {
 
   it('lets the user approve once, remember a prefix, or deny', async () => {
     const onShellApprovalDecision = vi.fn()
-    const requestToolCall = {
-      id: 21,
-      session_id: 1,
-      message_id: 10,
-      user_id: 1,
-      tool_name: 'exec_command',
-      input_data: { cmd: ['git', 'push'] },
-      output_data: {
-        tool_call_id: 21,
-        command: 'git push',
-        reason: 'Command not covered by any rule; user approval required.',
-        requires: 'approval',
-        decision: 'prompt',
-        suggested: { prefix: ['git'], decision: 'allow' },
-      },
-      status: 'completed',
-      created_at: '2026-08-19T12:00:00.000Z',
-      updated_at: '2026-08-19T12:00:00.000Z',
-    }
     await mount(createElement(AgentChatPanel, makeMinimalProps({
-      messages: [{
-        id: 10,
-        session_id: 1,
-        user_id: 1,
-        role: 'user',
-        content: 'Push the changes',
-        status: 'completed',
-        created_at: '2026-08-19T12:00:00.000Z',
-      }],
-      toolCalls: [requestToolCall],
+      view: viewOf('Push the changes', [
+        { type: 'tool/call', callId: 'call_21', name: 'exec_command', arguments: { cmd: ['git', 'push'] } },
+        {
+          type: 'tool/result', callId: 'call_21', name: 'exec_command', isError: false, content: [],
+          value: { name: 'exec_command', summary: 'Waiting', output: { requires: 'approval', command: 'git push' } },
+          meta: {
+            kind: 'shell.approval', command: 'git push', requires: 'approval', decision: 'prompt',
+            reason: 'Command not covered by any rule; user approval required.',
+            suggested: { prefix: ['git'], decision: 'allow' },
+          },
+        },
+        { type: 'approval/asked', id: 'approval:call_21', toolName: 'exec_command', callId: 'call_21' },
+        { type: 'turn/end', turn: 1, reason: 'awaiting-approval' },
+      ]),
       onShellApprovalDecision,
     })))
 
@@ -347,17 +347,17 @@ describe('AgentChatPanel shell approval', () => {
 
     expect(onShellApprovalDecision).toHaveBeenNthCalledWith(
       1,
-      expect.objectContaining({ tool_call_id: 21, command: 'git push' }),
+      expect.objectContaining({ call_id: 'call_21', command: 'git push' }),
       'allow_once',
     )
     expect(onShellApprovalDecision).toHaveBeenNthCalledWith(
       2,
-      expect.objectContaining({ tool_call_id: 21 }),
+      expect.objectContaining({ call_id: 'call_21' }),
       'allow_always',
     )
     expect(onShellApprovalDecision).toHaveBeenNthCalledWith(
       3,
-      expect.objectContaining({ tool_call_id: 21 }),
+      expect.objectContaining({ call_id: 'call_21' }),
       'deny',
     )
   })
@@ -374,17 +374,7 @@ describe('AgentChatPanel changed files', () => {
     await mount(createElement(AgentChatPanel, makeMinimalProps({
       onOpenArtifact,
       onReviewModifiedArtifact,
-      toolCalls: [{
-        id: 91,
-        session_id: 1,
-        user_id: 1,
-        tool_name: 'apply_patch',
-        status: 'completed',
-        input_data: {},
-        output_data: { file_ops: [{ path: 'Docs/Article.md' }] },
-        created_at: '2026-08-04T00:00:00.000Z',
-        updated_at: '2026-08-04T00:00:01.000Z',
-      }],
+      view: viewOf('Edit the article', ran('p1', 'apply_patch', {}, { file_ops: [{ path: 'Docs/Article.md' }] })),
     })))
 
     const changedFiles = container.querySelector<HTMLDetailsElement>('.agent-changed-files')
@@ -406,30 +396,10 @@ describe('AgentChatPanel changed files', () => {
 
   it('shows a created kitable in the same bottom changed-files card as documents', async () => {
     await mount(createElement(AgentChatPanel, makeMinimalProps({
-      toolCalls: [
-        {
-          id: 92,
-          session_id: 1,
-          user_id: 1,
-          tool_name: 'apply_patch',
-          status: 'completed',
-          input_data: {},
-          output_data: { file_ops: [{ path: 'Docs/Admissions guide.md' }] },
-          created_at: '2026-08-04T00:00:00.000Z',
-          updated_at: '2026-08-04T00:00:01.000Z',
-        },
-        {
-          id: 93,
-          session_id: 1,
-          user_id: 1,
-          tool_name: 'data_table_create',
-          status: 'completed',
-          input_data: {},
-          output_data: { path: 'Admissions/Low-threshold samples.kitable' },
-          created_at: '2026-08-04T00:00:02.000Z',
-          updated_at: '2026-08-04T00:00:03.000Z',
-        },
-      ],
+      view: viewOf('Write the guide and a table', [
+        ...ran('p1', 'apply_patch', {}, { file_ops: [{ path: 'Docs/Admissions guide.md' }] }),
+        ...ran('t1', 'data_table_create', {}, { path: 'Admissions/Low-threshold samples.kitable' }),
+      ]),
     })))
 
     const changedFiles = Array.from(container.querySelectorAll('.agent-changed-file-name'))
@@ -450,32 +420,12 @@ describe('AgentChatPanel activity updates', () => {
     await unmount()
   })
 
-  const userMessage = {
-    id: 51,
-    session_id: 1,
-    user_id: 1,
-    role: 'user' as const,
-    content: 'Read the document',
-    status: 'completed',
-    created_at: '2026-08-10T00:00:00.000Z',
-  }
-
   it('keeps running tool details collapsed until the user opens them', async () => {
     await mount(createElement(AgentChatPanel, makeMinimalProps({
-      messages: [userMessage],
+      view: viewOf('Read the document', [
+        { type: 'tool/call', callId: 'r1', name: 'document_read', arguments: { path: 'Docs/Plan.md' } },
+      ]),
       busy: true,
-      toolCalls: [{
-        id: 61,
-        session_id: 1,
-        user_id: 1,
-        message_id: userMessage.id,
-        tool_name: 'document_read',
-        status: 'running',
-        input_data: { path: 'Docs/Plan.md' },
-        output_data: {},
-        created_at: '2026-08-10T00:00:01.000Z',
-        updated_at: '2026-08-10T00:00:01.000Z',
-      }],
     })))
 
     const row = container.querySelector<HTMLButtonElement>('.agent-run-log-row')
@@ -492,7 +442,7 @@ describe('AgentChatPanel activity updates', () => {
 
   it('follows new execution updates while the conversation remains at the bottom', async () => {
     await mount(createElement(AgentChatPanel, makeMinimalProps({
-      messages: [userMessage],
+      view: viewOf('Read the document'),
     })))
 
     const messagesContainer = container.querySelector<HTMLElement>('[data-testid="agent-chat-messages"]')
@@ -502,20 +452,8 @@ describe('AgentChatPanel activity updates', () => {
     messagesContainer!.scrollTop = 320
 
     await render(createElement(AgentChatPanel, makeMinimalProps({
-      messages: [userMessage],
+      view: viewOf('Read the document', ran('r1', 'document_read', { path: 'Docs/Plan.md' }, { path: 'Docs/Plan.md', chars: 120 })),
       busy: true,
-      toolCalls: [{
-        id: 62,
-        session_id: 1,
-        user_id: 1,
-        message_id: userMessage.id,
-        tool_name: 'document_read',
-        status: 'completed',
-        input_data: { path: 'Docs/Plan.md' },
-        output_data: { path: 'Docs/Plan.md', chars: 120 },
-        created_at: '2026-08-10T00:00:01.000Z',
-        updated_at: '2026-08-10T00:00:02.000Z',
-      }],
     })))
 
     expect(messagesContainer!.scrollTop).toBe(640)
@@ -523,7 +461,7 @@ describe('AgentChatPanel activity updates', () => {
 
   it('does not pull the conversation down after the user scrolls up', async () => {
     await mount(createElement(AgentChatPanel, makeMinimalProps({
-      messages: [userMessage],
+      view: viewOf('Read the document'),
     })))
 
     const messagesContainer = container.querySelector<HTMLElement>('[data-testid="agent-chat-messages"]')
@@ -534,10 +472,10 @@ describe('AgentChatPanel activity updates', () => {
       messagesContainer!.dispatchEvent(new Event('scroll', { bubbles: true }))
     })
 
+    const working = viewOf('Read the document')
     await render(createElement(AgentChatPanel, makeMinimalProps({
-      messages: [userMessage],
+      view: { ...working, live: { attemptId: 'a', turn: 1, step: 1, text: 'Working on the next step', toolArgs: {} } },
       busy: true,
-      streamingText: 'Working on the next step',
     })))
 
     expect(messagesContainer!.scrollTop).toBe(80)
@@ -842,15 +780,7 @@ describe('AgentChatPanel document references', () => {
 
   it('renders sent messages without repeating document attachment chips', async () => {
     await mount(createElement(AgentChatPanel, makeMinimalProps({
-      messages: [{
-        id: 41,
-        session_id: 1,
-        user_id: 1,
-        role: 'user',
-        content: 'Summarize it',
-        status: 'completed',
-        created_at: new Date().toISOString(),
-      }],
+      view: viewOf('Summarize it'),
     })))
 
     const userMessage = container.querySelector('[data-role="user"]') as HTMLElement

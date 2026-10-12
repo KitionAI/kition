@@ -215,9 +215,9 @@ pub(crate) mod testing {
         let run = Run {
             agent,
             emitter: Emitter::channel().0,
+            live: std::sync::Arc::new(|_| {}),
             user_id: 1,
             session_id: 1,
-            trigger_message_id: 0,
             active_document_path: String::new(),
             active_data_document_id: 0,
             active_data_table_id: 0,

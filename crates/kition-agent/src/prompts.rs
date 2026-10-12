@@ -3,7 +3,6 @@
 use serde_json::Value;
 
 use crate::run::truncate_chars;
-use crate::store::AgentArtifact;
 
 pub fn system_prompt(language: &str) -> String {
     let language = match language.trim() {
@@ -168,18 +167,6 @@ pub fn table_plan(plan: &Value) -> String {
     lines.join("\n")
 }
 
-pub fn table_plan_event(plan: &Value) -> String {
-    let summary = field(plan, "summary");
-    if summary.is_empty() {
-        "Attached the previous table plan".into()
-    } else {
-        format!(
-            "Attached the previous table plan: {}",
-            truncate_chars(&summary, 80)
-        )
-    }
-}
-
 /// Guidance for the workbench pane the user has open.
 pub fn pane(pane: &str) -> &'static [&'static str] {
     match pane {
@@ -244,8 +231,10 @@ pub(crate) fn table_lines() -> [&'static str; 3] {
     ]
 }
 
-pub fn recent_images(images: &[AgentArtifact]) -> String {
-    if images.is_empty() {
+/// The prompt block naming the session's recent images (`paths`, oldest
+/// first).
+pub fn recent_images(paths: &[String]) -> String {
+    if paths.is_empty() {
         return String::new();
     }
     let mut lines = vec![
@@ -253,21 +242,15 @@ pub fn recent_images(images: &[AgentArtifact]) -> String {
         "If the user asks to place these images into the current document, write the document using the Markdown image links below instead of calling image_search again.".to_owned(),
         "Do not rewrite image paths into `../images/...`; prefer the workspace-relative paths provided below inside Kition documents.".to_owned(),
     ];
-    for (index, image) in images.iter().enumerate() {
-        let title = if image.title.trim().is_empty() {
-            std::path::Path::new(&image.path)
-                .file_stem()
-                .map(|s| s.to_string_lossy().into_owned())
-                .unwrap_or_default()
-        } else {
-            image.title.trim().to_owned()
-        };
+    for (index, path) in paths.iter().enumerate() {
+        let title = std::path::Path::new(path)
+            .file_stem()
+            .map(|s| s.to_string_lossy().into_owned())
+            .unwrap_or_default();
         lines.push(format!(
-            "{}. {title}: path=`{}`, markdown=![{}](<{}>)",
+            "{}. {title}: path=`{path}`, markdown=![{}](<{path}>)",
             index + 1,
-            image.path,
             title.replace(']', "\\]"),
-            image.path
         ));
     }
     lines.join("\n")

@@ -1,8 +1,3 @@
-import type { ApiTimestamp } from '@/types'
-import { toEpochMs, toIsoTimestamp } from '@/lib/timestamps'
-import type { AgentRunLogItem } from './agentTimelineTypes'
-import { agentEventTurn, agentReconnectAttempt, formatAgentRunLogEvent, normalizeAgentTaskStepStatus } from './agentTimelineEvents'
-import { compactAgentRunDetail, sanitizeAgentVisibleDetail } from './agentTimelineText'
 import {
   FileText,
   FileType2,
@@ -14,7 +9,8 @@ import {
   Wrench,
   type LucideIcon,
 } from 'lucide-react'
-import type { AgentArtifact, AgentEvent, AgentMessage, AgentSkillSpec, AgentToolCall } from '@/api/agent'
+import type { AgentRunLogItem, AgentTaskStep } from './agentTimelineTypes'
+import { compactAgentRunDetail, sanitizeAgentVisibleDetail } from './agentTimelineText'
 import {
   DEFAULT_AGENT_TIMELINE_LOCALE,
   type AgentTimelineLocale,
@@ -23,11 +19,12 @@ import {
   getAgentToolDisplayName,
   parseMcpToolName,
 } from './agentTimelineI18n'
+import type { AgentLiveAttempt, AgentToolRun, AgentTurnView } from './agentSessionView'
 
 export type { AgentTimelineLocale } from './agentTimelineI18n'
-export { DEFAULT_AGENT_TIMELINE_LOCALE, resolveAgentTimelineLocale } from './agentTimelineI18n'
+export { resolveAgentTimelineLocale } from './agentTimelineI18n'
 
-export type { AgentRunLogItem, AgentTaskStep } from './agentTimelineTypes'
+export type { AgentRunLogItem } from './agentTimelineTypes'
 
 export type AgentToolImageResult = {
   url: string
@@ -39,186 +36,177 @@ export type AgentToolImageResult = {
   source?: string
 }
 
-export type AgentConversationTurn = {
-  key: string
-  userMessage: AgentMessage | null
-  replies: AgentMessage[]
+/** Tool fields read as a loose record, as the formatters below expect. */
+type Fields = Record<string, any>
+
+function fields(value: unknown): Fields {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Fields : {}
 }
 
-// Group a flat message list into conversational turns. Each user message opens a
-// new turn; following assistant/image messages attach to it. Assistant messages
-// that arrive before any user message form a leading turn with no user bubble.
-export function buildAgentConversationTurns(messages: AgentMessage[]): AgentConversationTurn[] {
-  const turns: AgentConversationTurn[] = []
-  let current: AgentConversationTurn | null = null
-  for (const message of messages) {
-    if (message.role === 'user') {
-      current = { key: `turn-${message.id}`, userMessage: message, replies: [] }
-      turns.push(current)
-      continue
-    }
-    if (!current) {
-      current = { key: `turn-lead-${message.id}`, userMessage: null, replies: [] }
-      turns.push(current)
-    }
-    current.replies.push(message)
+function iso(ms: number) {
+  return new Date(ms).toISOString()
+}
+
+/** The run log status of a tool run; a paused command shows its approval decision. */
+function runStatus(run: AgentToolRun, turn: AgentTurnView, busy: boolean): AgentTaskStep['status'] {
+  if (run.status === 'running') return busy ? 'running' : 'pending'
+  if (run.status === 'awaiting_approval') {
+    const decided = turn.approval?.callId === run.callId ? turn.approval.decided : undefined
+    if (!decided) return 'pending'
+    return decided === 'allowed-once' ? 'completed' : 'failed'
   }
-  return turns
+  return run.status
 }
 
-// Attach execution items to the turn whose user message triggered them. Items
-// without a message_id (live streaming deltas, synthetic events) belong to the
-// active turn, so includeOrphans is set only for the last turn.
-export function scopeAgentTurnToolCallsById(
-  toolCalls: AgentToolCall[],
-  userMessageId: number,
-  includeOrphans: boolean,
-): AgentToolCall[] {
-  return toolCalls.filter((toolCall) => {
-    const messageId = toolCall.message_id ?? 0
-    return messageId > 0 ? messageId === userMessageId : includeOrphans
-  })
+function toolItem(run: AgentToolRun, turn: AgentTurnView, busy: boolean, locale: AgentTimelineLocale): AgentRunLogItem {
+  const status = runStatus(run, turn, busy)
+  return {
+    key: `tool-${run.callId}`,
+    kind: 'tool',
+    title: formatAgentToolRunTitle(run.name, status, locale),
+    detail: formatAgentToolRunDetail(run, locale),
+    status,
+    toolName: run.name,
+    payload: {
+      tool: run.name,
+      status: run.status,
+      input: run.arguments,
+      output: run.output,
+      error: run.error,
+    },
+    createdAt: iso(run.startedAt),
+  }
 }
 
-export function scopeAgentTurnEventsById(
-  events: AgentEvent[],
-  userMessageId: number,
-  includeOrphans: boolean,
-): AgentEvent[] {
-  return events.filter((event) => {
-    const messageId = event.message_id ?? 0
-    return messageId > 0 ? messageId === userMessageId : includeOrphans
-  })
+/** Files the turn delivered that no tool row already names by its output path. */
+function deliverableItems(turn: AgentTurnView, locale: AgentTimelineLocale): AgentRunLogItem[] {
+  const dict = getAgentTimelineDict(locale)
+  const toolPaths = new Set(turn.toolRuns
+    .map((run) => fields(run.output).path)
+    .filter((path): path is string => typeof path === 'string' && Boolean(path)))
+  return turn.deliverables
+    .filter((file) => !toolPaths.has(file.path))
+    .map((file) => {
+      const run = turn.toolRuns.find((candidate) => candidate.callId === file.callId)
+      return {
+        key: `artifact-${file.callId}-${file.path}`,
+        kind: 'artifact' as const,
+        title: dict.artifact.title,
+        detail: file.path,
+        status: 'completed' as const,
+        payload: { path: file.path, title: file.description },
+        createdAt: iso(run?.endedAt ?? run?.startedAt ?? turn.startedAt),
+      }
+    })
 }
 
-// Artifacts carry no message_id, so attribute them to a turn by created_at: the
-// open-ended (active) turn owns artifacts created at or after its user message.
-export function scopeAgentTurnArtifacts(
-  artifacts: AgentArtifact[],
-  startISO: ApiTimestamp | null,
-  endISO: ApiTimestamp | null,
-): AgentArtifact[] {
-  const start = startISO ? safeAgentTime(startISO) : 0
-  const end = endISO ? safeAgentTime(endISO) : Number.POSITIVE_INFINITY
-  return artifacts.filter((artifact) => {
-    const created = safeAgentTime(artifact.created_at)
-    if (!created) {
-      return end === Number.POSITIVE_INFINITY
+function retryItems(turn: AgentTurnView, busy: boolean, locale: AgentTimelineLocale): AgentRunLogItem[] {
+  const dict = getAgentTimelineDict(locale)
+  return turn.retries.map((retry) => {
+    const later = turn.retries.some((other) => other.retryId === retry.retryId && other.retry > retry.retry)
+    const step = turn.steps.find((candidate) => candidate.step === retry.step)
+    const settled = later || Boolean(step?.message || step?.attemptError || turn.end)
+    const seconds = Math.ceil(Math.max(0, retry.delayMs) / 1000)
+    const delay = seconds > 0 ? dict.event.reconnectingInSeconds(seconds) : dict.event.reconnectingNow
+    const reason = dict.event.reconnectReason[retry.failure.code] || ''
+    return {
+      key: `retry-${retry.retryId}-${retry.retry}`,
+      kind: 'event' as const,
+      title: dict.event.reconnecting(retry.retry, retry.maxRetries),
+      detail: reason ? `${delay} · ${reason}` : delay,
+      status: settled ? 'completed' as const : busy ? 'running' as const : 'pending' as const,
+      payload: { message: retry.failure.message, data: retry.failure },
+      createdAt: iso(retry.at),
     }
-    return created >= start && created < end
   })
 }
 
-// Model-protocol chatter that only matters when inspecting the run. Hidden unless debug mode is on,
-// leaving tool calls, artifacts, and task completion/failure as the default activity log.
-const AGENT_DEBUG_EVENT_TYPES = new Set<string>([
-  'task.started',
-  'skill.enabled',
-  'prompt.sent',
-  'model.turn.started',
-  'model.delta',
-  'model.tool_call.delta',
-  'model.tool_call.ready',
-  'model.turn.completed',
-  'response.completed',
-])
+/** Model steps and replies, shown in debug mode only. */
+function stepItems(turn: AgentTurnView, busy: boolean, locale: AgentTimelineLocale): AgentRunLogItem[] {
+  const dict = getAgentTimelineDict(locale)
+  return turn.steps.flatMap((step) => {
+    const settled = Boolean(step.message || step.attemptError || turn.end)
+    const items: AgentRunLogItem[] = [{
+      key: `step-${step.step}`,
+      kind: 'event',
+      title: settled || !busy ? dict.event.backendCalled : dict.event.callingBackend,
+      detail: settled ? dict.event.modelTurnFinished(step.step) : dict.event.requestingModelTurn(step.step),
+      status: settled ? 'completed' : busy ? 'running' : 'pending',
+      payload: { message: step.attemptError, data: { step: step.step } },
+      createdAt: iso(step.startedAt),
+    }]
+    const message = step.message
+    if (message) {
+      const chars = Array.from(message.content.trim()).length
+      items.push({
+        key: `message-${step.step}`,
+        kind: 'event',
+        title: dict.event.backendTurnCompleted,
+        detail: message.toolCallCount > 0
+          ? dict.event.modelRequestedNTools(message.toolCallCount)
+          : chars > 0 ? dict.event.modelReturnedChars(chars) : dict.event.thisTurnCompleted,
+        status: 'completed',
+        payload: { message: message.model, data: { model: message.model, stop_reason: message.stopReason } },
+        createdAt: iso(message.at),
+      })
+    }
+    return items
+  })
+}
 
+/** How the turn ended, or that its outcome is unknown. */
+function outcomeItem(turn: AgentTurnView, locale: AgentTimelineLocale): AgentRunLogItem | null {
+  const dict = getAgentTimelineDict(locale)
+  if (!turn.end) {
+    return turn.interrupted ? {
+      key: 'outcome', kind: 'event', title: dict.activity.completionUnknown,
+      detail: dict.activity.interruptedDetail, status: 'pending', createdAt: new Date().toISOString(),
+    } : null
+  }
+  const at = iso(turn.end.at)
+  switch (turn.end.reason) {
+    case 'completed':
+      return { key: 'outcome', kind: 'event', title: dict.event.taskCompleted, status: 'completed', createdAt: at }
+    case 'cancelled':
+      return { key: 'outcome', kind: 'event', title: dict.activity.stopped, detail: dict.activity.stopped, status: 'pending', createdAt: at }
+    case 'awaiting-approval':
+      return null
+    default: {
+      const error = turn.end.reason === 'step-limit' ? dict.event.stepLimit : turn.end.error
+      return {
+        key: 'outcome', kind: 'event', title: dict.event.taskFailed,
+        detail: error ? formatAgentErrorSummary(error, locale) : undefined,
+        status: 'failed', payload: { message: error }, createdAt: at,
+      }
+    }
+  }
+}
+
+/** The run log of one turn: its tool runs, delivered files, retries, and outcome. */
 export function buildAgentRunLogItems({
-  events,
-  toolCalls,
-  artifacts,
+  turn,
+  live = null,
   busy,
-  streamingText,
   debug = false,
   locale = DEFAULT_AGENT_TIMELINE_LOCALE,
 }: {
-  events: AgentEvent[]
-  toolCalls: AgentToolCall[]
-  artifacts: AgentArtifact[]
+  turn: AgentTurnView
+  live?: AgentLiveAttempt | null
   busy: boolean
-  streamingText: string
   debug?: boolean
   locale?: AgentTimelineLocale
 }): AgentRunLogItem[] {
   const dict = getAgentTimelineDict(locale)
-  const items: AgentRunLogItem[] = []
-  const artifactPathsFromTools = new Set<string>()
-  const completedModelTurns = new Set(
-    events
-      .filter((event) => event.event_type === 'model.turn.completed')
-      .map((event) => agentEventTurn(event))
-      .filter((turn): turn is number => turn > 0),
-  )
-  const latestReconnectAttemptByTurn = new Map<number, number>()
-  events.forEach((event) => {
-    if (event.event_type !== 'model.reconnecting') {
-      return
-    }
-    const turn = agentEventTurn(event)
-    const attempt = agentReconnectAttempt(event)
-    if (turn > 0 && attempt > (latestReconnectAttemptByTurn.get(turn) || 0)) {
-      latestReconnectAttemptByTurn.set(turn, attempt)
-    }
-  })
+  const items: AgentRunLogItem[] = [
+    ...turn.toolRuns.map((run) => toolItem(run, turn, busy, locale)),
+    ...deliverableItems(turn, locale),
+    ...retryItems(turn, busy, locale),
+    ...(debug ? stepItems(turn, busy, locale) : []),
+  ]
+  const outcome = outcomeItem(turn, locale)
+  if (outcome) items.push(outcome)
 
-  events
-    .filter((event) => !event.event_type.startsWith('tool.'))
-    .filter((event) => debug || !AGENT_DEBUG_EVENT_TYPES.has(event.event_type))
-    .forEach((event) => {
-      const item = formatAgentRunLogEvent(event, busy, completedModelTurns, latestReconnectAttemptByTurn, locale)
-      if (item) {
-        items.push(item)
-      }
-    })
-
-  toolCalls.forEach((toolCall) => {
-    const outputPath = typeof toolCall.output_data?.path === 'string' ? toolCall.output_data.path : ''
-    if (outputPath) {
-      artifactPathsFromTools.add(outputPath)
-    }
-
-    items.push({
-      key: `tool-${toolCall.id}`,
-      kind: 'tool',
-      title: formatAgentToolRunTitle(toolCall, locale),
-      detail: formatAgentToolRunDetail(toolCall, locale),
-      status: !busy && toolCall.status === 'running' ? 'pending' : normalizeAgentTaskStepStatus(toolCall.status),
-      toolName: toolCall.tool_name,
-      payload: {
-        tool: toolCall.tool_name,
-        status: toolCall.status,
-        input: toolCall.input_data,
-        output: toolCall.output_data,
-        error: toolCall.error_message,
-        created_at: toolCall.created_at,
-        updated_at: toolCall.updated_at,
-      },
-      createdAt: toIsoTimestamp(toolCall.created_at || toolCall.updated_at),
-    })
-  })
-
-  artifacts.forEach((artifact) => {
-    if (artifactPathsFromTools.has(artifact.path)) {
-      return
-    }
-
-    items.push({
-      key: `artifact-${artifact.id}`,
-      kind: 'artifact',
-      title: dict.artifact.title,
-      detail: artifact.path,
-      status: 'completed',
-      payload: {
-        kind: artifact.kind,
-        path: artifact.path,
-        mime_type: artifact.mime_type,
-        title: artifact.title,
-        created_at: artifact.created_at,
-      },
-      createdAt: toIsoTimestamp(artifact.created_at),
-    })
-  })
-
+  const streamingText = live?.turn === turn.turn ? live.text : ''
   if (streamingText) {
     items.push({
       key: 'final-streaming',
@@ -226,24 +214,19 @@ export function buildAgentRunLogItems({
       title: dict.final.streaming,
       detail: compactAgentRunDetail(streamingText, locale),
       status: 'running',
-      payload: {
-        preview: compactAgentRunDetail(streamingText, locale),
-      },
+      payload: { preview: compactAgentRunDetail(streamingText, locale) },
       createdAt: new Date().toISOString(),
     })
   }
 
-  const hasRunningItem = items.some((item) => item.status === 'running')
-  if (busy && !hasRunningItem) {
-    const latestTool = toolCalls[toolCalls.length - 1]
-    const toolLabel = latestTool ? getAgentToolDisplayName(latestTool.tool_name, locale) : ''
-    const detail = latestTool ? dict.model.detailProcessing(toolLabel) : dict.model.detailPlanning
-
+  if (busy && !items.some((item) => item.status === 'running')) {
+    const latestTool = turn.toolRuns.at(-1)
+    const toolLabel = latestTool ? getAgentToolDisplayName(latestTool.name, locale) : ''
     items.push({
       key: 'model-thinking',
       kind: 'model',
       title: latestTool ? dict.model.titleProcessing : dict.model.titlePlanning,
-      detail,
+      detail: latestTool ? dict.model.detailProcessing(toolLabel) : dict.model.detailPlanning,
       status: 'running',
       payload: {
         state: latestTool ? 'processing_tool_result' : 'planning',
@@ -258,48 +241,6 @@ export function buildAgentRunLogItems({
     .slice(-12)
 }
 
-export function extractAgentActiveSkills(events: AgentEvent[]): AgentSkillSpec[] {
-  const skillEvent = [...events].reverse().find(
-    (event) => event.event_type === 'skill.enabled' && Array.isArray(event.data?.skills),
-  )
-  if (!skillEvent) {
-    return []
-  }
-
-  return skillEvent.data.skills.filter(
-    (skill: Partial<AgentSkillSpec>) => typeof skill?.name === 'string',
-  ) as AgentSkillSpec[]
-}
-
-export function formatCurrentAgentActivity({
-  toolCalls, events, busy, streamingText, locale = DEFAULT_AGENT_TIMELINE_LOCALE,
-}: {
-  toolCalls: AgentToolCall[]
-  events: AgentEvent[]
-  busy: boolean
-  streamingText: string
-  locale?: AgentTimelineLocale
-}) {
-  const dict = getAgentTimelineDict(locale)
-  const latestEvent = events[events.length - 1]
-  if (latestEvent?.event_type === 'client.turn.interrupted') {
-    return latestEvent.data?.reason === 'canceled' ? dict.activity.stopped : dict.activity.completionUnknown
-  }
-  if (latestEvent?.event_type === 'task.completed') return dict.activity.taskCompleted
-  if (latestEvent?.event_type === 'task.failed') return dict.event.taskFailed
-  if (latestEvent?.event_type === 'model.reconnecting' && busy) {
-    const attempt = agentReconnectAttempt(latestEvent)
-    return attempt > 0 ? dict.event.reconnecting(attempt, latestEvent.data?.max_retries || 5) : latestEvent.message || dict.event.reconnecting(1, 5)
-  }
-  const runningTool = [...toolCalls].reverse().find((item) => item.status === 'running')
-  if (runningTool && busy) return dict.activity.running(getAgentToolDisplayName(runningTool.tool_name, locale))
-  if (streamingText && busy) return dict.activity.preparingFinal
-  if (busy) return dict.activity.planningNext
-  // A tool result proves only that step completed, not the whole task.
-  if (toolCalls.length || events.length) return dict.activity.completionUnknown
-  return dict.activity.waiting
-}
-
 export function formatAgentRunLogExpandedDetail(
   item: AgentRunLogItem,
   locale: AgentTimelineLocale = DEFAULT_AGENT_TIMELINE_LOCALE,
@@ -307,9 +248,6 @@ export function formatAgentRunLogExpandedDetail(
   const dict = getAgentTimelineDict(locale)
   if (item.payload == null) {
     return item.detail || ''
-  }
-  if (typeof item.payload === 'string') {
-    return item.payload
   }
   if (item.kind === 'tool') {
     const rows: string[] = []
@@ -325,32 +263,17 @@ export function formatAgentRunLogExpandedDetail(
     if (item.payload.error) {
       rows.push(`${dict.sections.error}\n${String(item.payload.error)}`)
     }
-    if (rows.length) {
-      return rows.join('\n\n')
-    }
-    return dict.sections.noDetail
+    return rows.length ? rows.join('\n\n') : dict.sections.noDetail
   }
   if (item.kind === 'event') {
     const rows: string[] = []
     if (item.payload.message) {
       rows.push(`${dict.sections.status}\n${String(item.payload.message)}`)
     }
-    if (item.payload.type === 'model.delta' && item.payload.data?.preview) {
-      rows.push(`${dict.sections.backendContent}\n${String(item.payload.data.preview)}`)
-    }
-    if (
-      (item.payload.type === 'model.tool_call.delta' || item.payload.type === 'model.tool_call.ready')
-      && item.payload.data?.arguments
-    ) {
-      rows.push(`${dict.sections.toolArguments}\n${String(item.payload.data.arguments)}`)
-    }
-    if (item.payload.data && !item.payload.data.preview && !item.payload.data.arguments) {
+    if (item.payload.data) {
       rows.push(`${dict.sections.data}\n${formatAgentToolDetail(item.payload.data)}`)
     }
-    if (rows.length) {
-      return rows.join('\n\n')
-    }
-    return item.detail || dict.sections.noDetail
+    return rows.length ? rows.join('\n\n') : item.detail || dict.sections.noDetail
   }
   if (item.kind === 'model') {
     const toolLabel = typeof item.payload.latest_tool === 'string' ? item.payload.latest_tool : ''
@@ -367,19 +290,7 @@ export function formatAgentRunLogExpandedDetail(
     if (item.payload.path) {
       rows.push(`${dict.sections.path}\n${String(item.payload.path)}`)
     }
-    if (item.payload.kind) {
-      rows.push(`${dict.sections.type}\n${String(item.payload.kind)}`)
-    }
-    if (item.payload.mime_type) {
-      rows.push(`${dict.sections.mimeType}\n${String(item.payload.mime_type)}`)
-    }
-    if (item.payload.created_at) {
-      rows.push(`${dict.sections.createdAt}\n${String(item.payload.created_at)}`)
-    }
-    if (rows.length) {
-      return rows.join('\n\n')
-    }
-    return dict.sections.noDetail
+    return rows.length ? rows.join('\n\n') : dict.sections.noDetail
   }
   if (item.kind === 'final') {
     if (typeof item.payload.preview === 'string' && item.payload.preview.trim()) {
@@ -388,64 +299,6 @@ export function formatAgentRunLogExpandedDetail(
     return item.detail || dict.sections.noDetail
   }
   return item.detail || dict.sections.noDetail
-}
-
-export function getAgentModifiedDocumentPaths(toolCalls: AgentToolCall[]) {
-  const paths = new Set<string>()
-  toolCalls.forEach((toolCall) => {
-    if (toolCall.status !== 'completed') {
-      return
-    }
-
-    if (toolCall.tool_name === 'document_write') {
-      const path = typeof toolCall.output_data?.path === 'string'
-        ? toolCall.output_data.path
-        : typeof toolCall.input_data?.path === 'string'
-          ? toolCall.input_data.path
-          : ''
-
-      if (path) {
-        paths.add(path)
-      }
-      return
-    }
-
-    if (toolCall.tool_name === 'data_table_create') {
-      const output = toolCall.output_data || {}
-      const input = toolCall.input_data || {}
-      const path = [
-        output.path,
-        output.document_path,
-        output.kitable_path,
-        output.vault_path,
-        output.document?.path,
-        output.data?.path,
-        input.path,
-        input.document_path,
-        input.kitable_path,
-        input.vault_path,
-      ].find((value) => typeof value === 'string' && value.trim())
-
-      if (typeof path === 'string') {
-        paths.add(path)
-      }
-      return
-    }
-
-    if (toolCall.tool_name === 'apply_patch') {
-      const output = toolCall.output_data || {}
-      const operations = [
-        ...(Array.isArray(output.file_ops) ? output.file_ops : []),
-        ...(Array.isArray(output.changes) ? output.changes : []),
-      ]
-      operations.forEach((operation: any) => {
-        if (typeof operation?.path === 'string' && operation.path) {
-          paths.add(operation.path)
-        }
-      })
-    }
-  })
-  return paths
 }
 
 export function resolveAgentToolIcon(toolName: string, outputPath?: string): LucideIcon {
@@ -489,125 +342,16 @@ export function resolveAgentToolIcon(toolName: string, outputPath?: string): Luc
   return Wrench
 }
 
-export { parseMcpToolName }
-
-export function formatAgentToolName(
-  toolName: string,
-  locale: AgentTimelineLocale = DEFAULT_AGENT_TIMELINE_LOCALE,
-) {
-  return getAgentToolDisplayName(toolName, locale)
+export function extractAgentToolImageResults(value: any): AgentToolImageResult[] {
+  if (!value || !Array.isArray(value.images)) {
+    return []
+  }
+  return value.images
+    .filter((item: Partial<AgentToolImageResult>) => typeof item?.url === 'string' && item.url.trim())
+    .map((item: AgentToolImageResult) => item)
 }
 
-export function formatAgentToolStatus(
-  status: string,
-  locale: AgentTimelineLocale = DEFAULT_AGENT_TIMELINE_LOCALE,
-) {
-  const dict = getAgentTimelineDict(locale)
-  if (status === 'running') {
-    return dict.status.running
-  }
-  if (status === 'failed') {
-    return dict.status.failed
-  }
-  if (status === 'completed') {
-    return dict.status.completed
-  }
-  return status || dict.status.unknown
-}
-
-export function formatAgentToolHeadline(
-  toolCall: AgentToolCall,
-  locale: AgentTimelineLocale = DEFAULT_AGENT_TIMELINE_LOCALE,
-) {
-  const dict = getAgentTimelineDict(locale)
-  const input = toolCall.input_data || {}
-  const output = toolCall.output_data || {}
-  if (toolCall.tool_name === 'source_adapter_catalog' && (input.host || input.site || input.domain)) {
-    return String(input.host || input.site || input.domain)
-  }
-  if (toolCall.tool_name === 'shell_exec' && input.command) {
-    if (output && output.requires === 'approval') {
-      return dict.tool.pendingApproval(String(input.command))
-    }
-    return `$ ${input.command}`
-  }
-  {
-    const mcp = parseMcpToolName(toolCall.tool_name)
-    if (mcp) {
-      const text = typeof output.text === 'string' ? output.text.trim() : ''
-      if (text) {
-        return `${mcp.server} · ${text.length > 80 ? `${text.slice(0, 80)}…` : text}`
-      }
-      return `${mcp.server} · ${mcp.tool}`
-    }
-  }
-  if (toolCall.tool_name === 'web_search' && input.query) {
-    return dict.tool.searchPrefix(String(input.query))
-  }
-  if (toolCall.tool_name === 'image_search' && input.query) {
-    return dict.tool.generateImagePrefix(String(input.query))
-  }
-  if (toolCall.tool_name === 'web_fetch' && Array.isArray(input.urls)) {
-    return input.urls.join(', ')
-  }
-  if (toolCall.tool_name === 'save_image_asset' && (output.path || input.url)) {
-    return String(output.path || input.url)
-  }
-  if (
-    (toolCall.tool_name === 'document_read'
-      || toolCall.tool_name === 'document_write'
-      || toolCall.tool_name === 'document_search')
-    && (input.path || input.query || output.path)
-  ) {
-    if (toolCall.tool_name === 'document_write') {
-      return `@ ${String(output.path || input.path)}`
-    }
-    return String(input.path || input.query)
-  }
-  if (toolCall.tool_name === 'apply_patch') {
-    const ops = Array.isArray(output.file_ops) ? output.file_ops : []
-    const fileCount = ops.length || (Array.isArray(output.changes) ? output.changes.length : 0)
-    const added = ops.reduce((sum: number, op: any) => sum + (Number(op?.lines_added) || 0), 0)
-    const removed = ops.reduce((sum: number, op: any) => sum + (Number(op?.lines_removed) || 0), 0)
-    if (fileCount) {
-      return output.dry_run
-        ? dict.tool.previewNFiles(fileCount, added, removed)
-        : dict.tool.appliedNFiles(fileCount, added, removed)
-    }
-  }
-  if (toolCall.tool_name === 'file_search') {
-    if (input.query) {
-      const total = Number(output.total_match_count) || 0
-      return total ? `${input.query} · ${dict.tool.nMatches(total)}` : String(input.query)
-    }
-  }
-  if (toolCall.tool_name === 'fs_read' || toolCall.tool_name === 'fs_stat' || toolCall.tool_name === 'fs_mkdir') {
-    if (output.path || input.path) {
-      return String(output.path || input.path)
-    }
-  }
-  if (toolCall.tool_name === 'fs_list') {
-    const count = Number(output.count) || 0
-    const path = String(output.path || input.path || '/')
-    return count ? `${path} · ${dict.tool.nEntries(count)}` : path
-  }
-  if (toolCall.tool_name === 'fs_remove') {
-    if (output.path || input.path) {
-      return dict.tool.removed(String(output.path || input.path))
-    }
-  }
-  if (toolCall.tool_name === 'fs_copy') {
-    if ((output.src || input.src) && (output.dst || input.dst)) {
-      return `${String(output.src || input.src)} → ${String(output.dst || input.dst)}`
-    }
-  }
-  if ((toolCall.tool_name.includes('create') || toolCall.tool_name.includes('markdown')) && (output.path || input.title)) {
-    return String(output.path || input.title)
-  }
-  return ''
-}
-
-export function formatAgentToolPayload(
+function formatAgentToolPayload(
   value: any,
   locale: AgentTimelineLocale = DEFAULT_AGENT_TIMELINE_LOCALE,
 ) {
@@ -639,16 +383,7 @@ export function formatAgentToolPayload(
   }
 }
 
-export function extractAgentToolImageResults(value: any): AgentToolImageResult[] {
-  if (!value || !Array.isArray(value.images)) {
-    return []
-  }
-  return value.images
-    .filter((item: Partial<AgentToolImageResult>) => typeof item?.url === 'string' && item.url.trim())
-    .map((item: AgentToolImageResult) => item)
-}
-
-export function formatAgentToolDetail(value: any) {
+function formatAgentToolDetail(value: any) {
   if (value == null) {
     return ''
   }
@@ -672,49 +407,33 @@ export function formatAgentToolDetail(value: any) {
   }
 }
 
-export function formatAgentToolDuration(toolCall: AgentToolCall) {
-  if (!toolCall.created_at || !toolCall.updated_at) {
-    return ''
-  }
-  const started = new Date(toolCall.created_at).getTime()
-  const ended = new Date(toolCall.updated_at).getTime()
-  if (!Number.isFinite(started) || !Number.isFinite(ended) || ended <= started) {
-    return ''
-  }
-  const diff = ended - started
-  if (diff < 1000) {
-    return `${diff}ms`
-  }
-  return `${(diff / 1000).toFixed(1)}s`
-}
-
-function formatAgentToolRunTitle(toolCall: AgentToolCall, locale: AgentTimelineLocale) {
+function formatAgentToolRunTitle(name: string, status: AgentTaskStep['status'], locale: AgentTimelineLocale) {
   const dict = getAgentTimelineDict(locale)
-  const label = getAgentToolActionLabel(toolCall.tool_name, locale)
-  if (toolCall.status === 'running') {
+  const label = getAgentToolActionLabel(name, locale)
+  if (status === 'running') {
     return dict.tool.inProgress(label)
   }
-  if (toolCall.status === 'failed') {
+  if (status === 'failed') {
     return dict.tool.failed(label)
   }
-  if (toolCall.status === 'completed') {
+  if (status === 'completed') {
     return dict.tool.completed(label)
   }
   return label
 }
 
-function formatAgentToolRunDetail(toolCall: AgentToolCall, locale: AgentTimelineLocale) {
+function formatAgentToolRunDetail(run: AgentToolRun, locale: AgentTimelineLocale) {
   const dict = getAgentTimelineDict(locale)
-  if (toolCall.error_message) {
-    return formatAgentErrorSummary(toolCall.error_message, locale)
+  if (run.error) {
+    return formatAgentErrorSummary(run.error, locale)
   }
-  const input = toolCall.input_data || {}
-  const output = toolCall.output_data || {}
-  if (toolCall.tool_name === 'shell_exec' && input.command) {
+  const input = fields(run.arguments)
+  const output = fields(run.output)
+  if (run.name === 'shell_exec' && input.command) {
     return `$ ${input.command}`
   }
   {
-    const mcp = parseMcpToolName(toolCall.tool_name)
+    const mcp = parseMcpToolName(run.name)
     if (mcp) {
       const text = typeof output.text === 'string' ? output.text.trim() : ''
       if (text) {
@@ -723,24 +442,24 @@ function formatAgentToolRunDetail(toolCall: AgentToolCall, locale: AgentTimeline
       return `${mcp.server} · ${mcp.tool}`
     }
   }
-  if ((toolCall.tool_name === 'web_search' || toolCall.tool_name === 'image_search') && input.query) {
+  if ((run.name === 'web_search' || run.name === 'image_search') && input.query) {
     return String(input.query)
   }
-  if (toolCall.tool_name === 'web_fetch' && Array.isArray(input.urls)) {
+  if (run.name === 'web_fetch' && Array.isArray(input.urls)) {
     return compactAgentRunDetail(input.urls.join(', '), locale)
   }
   if (
-    (toolCall.tool_name === 'document_read'
-      || toolCall.tool_name === 'document_write'
-      || toolCall.tool_name === 'document_search')
+    (run.name === 'document_read'
+      || run.name === 'document_write'
+      || run.name === 'document_search')
     && (input.path || input.query || output.path)
   ) {
-    if (toolCall.tool_name === 'document_write') {
+    if (run.name === 'document_write') {
       return `@ ${String(output.path || input.path)}`
     }
     return String(input.path || input.query)
   }
-  if (toolCall.tool_name === 'apply_patch') {
+  if (run.name === 'apply_patch') {
     const ops = Array.isArray(output.file_ops) ? output.file_ops : []
     if (ops.length) {
       const paths = ops.map((op: any) => String(op?.path || '')).filter(Boolean).slice(0, 2)
@@ -751,17 +470,17 @@ function formatAgentToolRunDetail(toolCall: AgentToolCall, locale: AgentTimeline
       return compactAgentRunDetail(input.patch, locale)
     }
   }
-  if (toolCall.tool_name === 'file_search') {
+  if (run.name === 'file_search') {
     if (input.query) {
       return String(input.query)
     }
   }
-  if (toolCall.tool_name === 'fs_copy') {
+  if (run.name === 'fs_copy') {
     if ((output.src || input.src) && (output.dst || input.dst)) {
       return `${String(output.src || input.src)} → ${String(output.dst || input.dst)}`
     }
   }
-  if (toolCall.tool_name === 'fs_list') {
+  if (run.name === 'fs_list') {
     const count = Number(output.count) || 0
     const path = String(output.path || input.path || '/')
     return count ? `${path} · ${dict.tool.nEntries(count)}` : path
@@ -846,7 +565,7 @@ export function formatAgentErrorSummary(
   return normalized.length > 120 ? `${normalized.slice(0, 120)}...` : normalized
 }
 
-function safeAgentTime(value: ApiTimestamp) {
-  const time = toEpochMs(value)
+function safeAgentTime(value: string) {
+  const time = Date.parse(value)
   return Number.isFinite(time) ? time : 0
 }

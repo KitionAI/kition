@@ -323,7 +323,6 @@
       "text_mode": "Texto"
     },
     "status": {
-      "queued": "Solicitação na fila",
       "generating": "Gerando imagens…",
       "saving": "Salvando imagens…",
       "completed": "Imagens prontas para revisão",

@@ -108,7 +108,7 @@ async fn call(app: &Router, method: &str, uri: &str, body: Value) -> (u16, Vec<u
     (status, bytes)
 }
 
-async fn turn(live: &Live, session_id: i64, key: &str, wire_api: &str, content: &str) -> Value {
+async fn turn(live: &Live, session_id: i64, key: &str, wire_api: &str, content: &str) -> String {
     let model = std::env::var("KITION_LIVE_OPENAI_MODEL").unwrap_or_else(|_| "gpt-4.1-mini".into());
     let base_url = std::env::var("KITION_LIVE_OPENAI_BASE_URL")
         .unwrap_or_else(|_| "https://api.openai.com/v1".into());
@@ -128,26 +128,43 @@ async fn turn(live: &Live, session_id: i64, key: &str, wire_api: &str, content: 
     .await;
     let text = String::from_utf8_lossy(&bytes).to_string();
     assert_eq!(status, 200, "{text}");
-    let frames: Vec<Value> = text
+    let lines: Vec<Value> = text
         .lines()
         .filter_map(|line| serde_json::from_str(line).ok())
         .collect();
-    let errors: Vec<&Value> = frames.iter().filter(|f| f["type"] == "error").collect();
-    assert!(errors.is_empty(), "error frames: {errors:?}");
-    let done = frames.last().cloned().unwrap_or_default();
-    assert_eq!(done["type"], "done", "{frames:?}");
-    assert_ne!(
-        done["extra_data"]["awaiting_shell_approval"], true,
-        "the model chose a shell command, which waits for approval: {}",
-        done["extra_data"]["shell_approval_required"]["command"]
+    let last = lines.last().cloned().unwrap_or_default();
+    assert_eq!(
+        (last["method"].as_str(), last["params"]["status"].as_str()),
+        (Some("session.status"), Some("idle")),
+        "{lines:?}"
     );
-    let reply = done["extra_data"]["message"]["content"]
-        .as_str()
+    let events: Vec<&Value> = lines
+        .iter()
+        .filter(|line| line["method"] == "session.event")
+        .map(|line| &line["params"]["event"])
+        .collect();
+    let end = events
+        .iter()
+        .rev()
+        .find(|event| event["type"] == "turn/end")
+        .copied()
+        .cloned()
+        .unwrap_or_default();
+    assert_ne!(
+        end["reason"], "awaiting-approval",
+        "the model chose a shell command, which waits for approval: {events:?}"
+    );
+    assert_eq!(end["reason"], "completed", "{end}");
+    let reply = events
+        .iter()
+        .rev()
+        .find(|event| event["type"] == "assistant/message")
+        .and_then(|event| event["content"].as_str())
         .unwrap_or_default()
         .to_owned();
     println!("[{wire_api}] reply: {reply}");
-    assert!(!reply.trim().is_empty(), "empty reply: {done}");
-    done
+    assert!(!reply.trim().is_empty(), "empty reply: {events:?}");
+    reply
 }
 
 async fn two_turns(wire_api: &str) {
@@ -183,7 +200,7 @@ async fn two_turns(wire_api: &str) {
     let written = std::fs::read_to_string(live.workspace.path().join(FILE)).unwrap_or_default();
     assert!(written.contains(LINE), "file content: {written:?}");
 
-    let done = turn(
+    let reply = turn(
         &live,
         session_id,
         &key,
@@ -191,9 +208,6 @@ async fn two_turns(wire_api: &str) {
         "Without using any tool: which file did you create in my previous message, and what line did it contain?",
     )
     .await;
-    let reply = done["extra_data"]["message"]["content"]
-        .as_str()
-        .unwrap_or_default();
     assert!(
         reply.contains("live.md"),
         "the second turn lost the history: {reply}"

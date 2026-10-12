@@ -1,25 +1,11 @@
+import type { AgentImageGenerationArtifact } from '@/api/generated/agent-image-generation'
+
 export const AGENT_IMAGE_GENERATION_CAPABILITY = 'agent_image_generation_v1' as const
 export const AGENT_IMAGE_GENERATION_CHAT_CAPABILITY = 'agent_image_generation_chat_v1' as const
 export const AGENT_IMAGE_GENERATION_SCHEMA_VERSION = 1 as const
 export const AGENT_IMAGE_GENERATION_CLIENT_CAPABILITY_VERSION = 1 as const
 export const AGENT_IMAGE_GENERATION_MAX_VARIANTS = 5 as const
 export const AGENT_IMAGE_GENERATION_MAX_REFERENCES = 8 as const
-export const AGENT_IMAGE_GENERATION_EVENT_NAMES = [
-  'image_generation.accepted',
-  'image_generation.progress',
-  'image_generation.artifact',
-  'image_generation.completed',
-  'image_generation.failed',
-  'image_generation.canceled',
-] as const
-export const AGENT_IMAGE_GENERATION_STATUSES = [
-  'queued',
-  'generating',
-  'saving',
-  'completed',
-  'failed',
-  'canceled',
-] as const
 
 export type AgentImageGenerationOperation = 'generate' | 'edit'
 export type AgentImageGenerationSurface = 'document' | 'table' | 'whiteboard' | 'design' | 'chat'
@@ -101,45 +87,5 @@ export type AgentImageGenerationIntent = {
   client_capability_version: typeof AGENT_IMAGE_GENERATION_CLIENT_CAPABILITY_VERSION
 }
 
-export type AgentImageArtifactProvenance = {
-  request_id: string
-  template_id?: string
-  template_version?: string
-  model_id?: string
-  provider_class?: 'kition_cloud' | 'connected_provider' | 'local_provider'
-  prompt_sha256?: string
-  source_paths?: string[]
-}
-
-export type AgentImageArtifact = {
-  id: number
-  path: string
-  mime_type: string
-  title?: string
-  width?: number
-  height?: number
-  variant_index: number
-  variant_count: number
-  created_at: string
-  provenance: AgentImageArtifactProvenance
-}
-
-export type AgentImageGenerationEventName = typeof AGENT_IMAGE_GENERATION_EVENT_NAMES[number]
-export type AgentImageGenerationStatus = typeof AGENT_IMAGE_GENERATION_STATUSES[number]
-
-export type AgentImageGenerationEvent = {
-  type: 'image_generation.event'
-  schema_version: typeof AGENT_IMAGE_GENERATION_SCHEMA_VERSION
-  request_id: string
-  event: AgentImageGenerationEventName
-  status: AgentImageGenerationStatus
-  progress?: number
-  message?: string
-  artifact?: AgentImageArtifact
-  artifact_count?: number
-  error?: {
-    code: string
-    message: string
-    retryable: boolean
-  }
-}
+/** A saved image variant (`agent-image-generation.schema.json#/$defs/artifact`). */
+export type AgentImageArtifact = AgentImageGenerationArtifact

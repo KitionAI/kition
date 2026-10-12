@@ -1,17 +1,21 @@
-import { expect, test, type Route } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 
+import { mockAgentTurn } from './helpers/agentStream'
 import {
   openWhiteboardFixture,
   readWhiteboardSnapshot,
 } from './helpers/whiteboard'
 
 test('generates an image artifact, places it on the Board, and keeps headline text editable', async ({ page }) => {
-  const requests: Array<Record<string, any>> = []
-
   await openWhiteboardFixture(page, { agentAvailable: true })
-  await page.route('**/api/v1/agent/sessions/*/messages/stream', async (route) => {
-    requests.push(route.request().postDataJSON() as Record<string, any>)
-    await fulfillGeneratedImageStream(route, requests.length)
+  const turns = await mockAgentTurn(page, (turn, request) => {
+    // A hosted image the model made: logged as a call with its delivered file.
+    const artifactPath = request.call === 1
+      ? 'Agent/images/901/generated-launch.png'
+      : 'Agent/images/902/revised-launch.png'
+    turn.tool(`ig_${900 + request.call}`, 'image_generation', { hosted: true }, { path: artifactPath, mime: 'image/png' })
+    turn.deliver(`ig_${900 + request.call}`, artifactPath)
+    turn.reply('Generated one image artifact for review.')
   })
 
   await page.locator('[data-element-id="node-a"]').click()
@@ -31,15 +35,15 @@ test('generates an image artifact, places it on the Board, and keeps headline te
   await page.getByTestId('whiteboard-image-exact-text').fill('LAUNCH WITH CLARITY')
   await page.getByTestId('whiteboard-image-generate').click()
 
-  await expect.poll(() => requests.length).toBe(1)
-  expect(requests[0]).toMatchObject({
+  await expect.poll(() => turns.requests.length).toBe(1)
+  expect((turns.requests[0].body as Record<string, any>)).toMatchObject({
     pane_context: 'whiteboard',
     whiteboard_context: {
       selected_element_ids: ['node-a'],
     },
   })
-  expect(requests[0].content).toContain('image_generation tool')
-  expect(requests[0].content).toContain('do not render readable words')
+  expect((turns.requests[0].body as Record<string, any>).content).toContain('image_generation tool')
+  expect((turns.requests[0].body as Record<string, any>).content).toContain('do not render readable words')
 
   await expect(page.getByTestId('whiteboard-image-add-0')).toBeVisible()
   await page.getByTestId('whiteboard-image-add-0').click()
@@ -103,8 +107,8 @@ test('generates an image artifact, places it on the Board, and keeps headline te
   await page.getByTestId('whiteboard-image-exact-text').fill('LAUNCH REVISED')
   await page.getByTestId('whiteboard-image-generate').click()
 
-  await expect.poll(() => requests.length).toBe(2)
-  expect(requests[1].content).toContain('@{Agent/images/901/generated-launch.png}')
+  await expect.poll(() => turns.requests.length).toBe(2)
+  expect((turns.requests[1].body as Record<string, any>).content).toContain('@{Agent/images/901/generated-launch.png}')
   await expect(page.getByTestId('whiteboard-image-replace-0')).toBeEnabled()
   await page.getByTestId('whiteboard-image-replace-0').click()
   await expect(page.getByTestId('whiteboard-image-replace-0')).toContainText('Replaced')
@@ -130,63 +134,3 @@ test('generates an image artifact, places it on the Board, and keeps headline te
       && headlineRecords[0].text === 'LAUNCH REVISED'
   }).toBe(true)
 })
-
-async function fulfillGeneratedImageStream(route: Route, requestNumber: number) {
-  const sessionId = Number(
-    new URL(route.request().url()).pathname.match(/sessions\/(\d+)\/messages/)?.[1] || 701,
-  )
-  const now = '2026-09-03T00:00:00.000Z'
-  const toolCallId = 900 + requestNumber
-  const artifactPath = requestNumber === 1
-    ? 'Agent/images/901/generated-launch.png'
-    : 'Agent/images/902/revised-launch.png'
-  const events = [
-    {
-      type: 'tool_call',
-      tool_call: {
-        id: toolCallId,
-        session_id: sessionId,
-        user_id: 1,
-        tool_name: 'image_generation',
-        input_data: { prompt: 'Generate a launch visual' },
-        output_data: {
-          path: artifactPath,
-          mime_type: 'image/png',
-        },
-        status: 'completed',
-        created_at: now,
-        updated_at: now,
-      },
-    },
-    {
-      type: 'done',
-      done: true,
-      extra_data: {
-        session: {
-          id: sessionId,
-          user_id: 1,
-          title: 'Whiteboard image generation',
-          workspace_root: 'browser-local-workspace',
-          active_document_path: 'Whiteboard E2E.kiboard',
-          status: 'completed',
-          created_at: now,
-          updated_at: now,
-        },
-        message: {
-          id: 910 + requestNumber,
-          session_id: sessionId,
-          user_id: 1,
-          role: 'assistant',
-          content: 'Generated one image artifact for review.',
-          status: 'completed',
-          created_at: now,
-        },
-      },
-    },
-  ]
-  await route.fulfill({
-    status: 200,
-    headers: { 'content-type': 'application/x-ndjson' },
-    body: `${events.map((event) => JSON.stringify(event)).join('\n')}\n`,
-  })
-}

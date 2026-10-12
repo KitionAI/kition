@@ -23,10 +23,10 @@ function isVariantError(value: unknown): value is AgentImageGenerationError {
     && typeof field(value, 'retryable') === 'boolean'
 }
 
-function statusOf(turn: AgentTurnView, runs: AgentToolRun[]): AgentImageJob['status'] {
+function statusOf(turn: AgentTurnView, settled: number, variantCount: number): AgentImageJob['status'] {
   switch (turn.end?.reason) {
     case undefined:
-      return runs.at(-1)?.status === 'running' ? 'generating' : 'saving'
+      return settled < variantCount ? 'generating' : 'saving'
     case 'completed':
       return 'completed'
     case 'cancelled':
@@ -50,7 +50,7 @@ export function imageJobOf(turn: AgentTurnView): AgentImageJob | null {
   if (!runs.length) return null
   const variantCount = Number(field(runs[0].arguments, 'variant_count')) || 1
   const settled = runs.filter((run) => run.status !== 'running').length
-  const status = statusOf(turn, runs)
+  const status = statusOf(turn, settled, variantCount)
   const artifacts = runs
     .filter((run) => run.status === 'completed' && field(run.meta, 'kind') === 'image_generation.variant')
     .map((run) => field(run.meta, 'artifact') as AgentImageGenerationArtifact)

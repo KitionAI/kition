@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kition.ai/contracts/runtime/agent-stream.schema.json",
+  "title": "Kition Agent Stream",
+  "description": "POST /agent/sessions/{id}/messages/stream answers NDJSON: one JSON-RPC 2.0 notification per line, in the DeepSeek Harness SDK shapes. session.status says running before the turn and idle once the turn ended and the session row is saved; the stream ends after idle. session.event carries each durable session event as it is appended (the same envelope GET /agent/sessions/{id}/session-events serves). agent/assistant-stream carries live model text and tool-call argument deltas. EOF before idle means the outcome is unknown: the client reads GET /agent/sessions/{id}/session-events?after=<cursor>. A request whose image request_id was already logged with the same settings streams only running and idle. Errors before streaming are HTTP errors; errors after it are turn/end {reason: failed, error}.",
+  "$ref": "#/$defs/notification",
+  "$defs": {
+    "sessionId": {
+      "type": "string",
+      "pattern": "^agent:[1-9][0-9]*$"
+    },
+    "sessionEventNotification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["jsonrpc", "method", "params"],
+      "properties": {
+        "jsonrpc": { "const": "2.0" },
+        "method": { "const": "session.event" },
+        "params": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sessionId", "event"],
+          "properties": {
+            "sessionId": { "$ref": "#/$defs/sessionId" },
+            "event": { "$ref": "agent-session-events.schema.json#/$defs/sessionEvent" }
+          }
+        }
+      }
+    },
+    "sessionStatusNotification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["jsonrpc", "method", "params"],
+      "properties": {
+        "jsonrpc": { "const": "2.0" },
+        "method": { "const": "session.status" },
+        "params": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sessionId", "status"],
+          "properties": {
+            "sessionId": { "$ref": "#/$defs/sessionId" },
+            "status": { "type": "string", "enum": ["running", "idle"] }
+          }
+        }
+      }
+    },
+    "assistantStreamNotification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["jsonrpc", "method", "params"],
+      "properties": {
+        "jsonrpc": { "const": "2.0" },
+        "method": { "const": "agent/assistant-stream" },
+        "params": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sessionId", "frame"],
+          "properties": {
+            "sessionId": { "$ref": "#/$defs/sessionId" },
+            "frame": { "$ref": "#/$defs/assistantStreamFrame" }
+          }
+        }
+      }
+    },
+    "assistantStreamFrame": {
+      "description": "DeepSeek Harness AssistantStreamFrame: one publication of a model attempt. revision counts the frames of a session from 1 for as long as the runtime runs; index counts the chunks of one attempt from 0, and end carries their number.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "attemptId", "revision", "turn", "step"],
+          "properties": {
+            "type": { "const": "start" },
+            "attemptId": { "type": "string", "minLength": 1 },
+            "revision": { "type": "integer", "minimum": 1 },
+            "turn": { "type": "integer", "minimum": 1 },
+            "step": { "type": "integer", "minimum": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "attemptId", "revision", "index", "time", "chunk"],
+          "properties": {
+            "type": { "const": "chunk" },
+            "attemptId": { "type": "string", "minLength": 1 },
+            "revision": { "type": "integer", "minimum": 1 },
+            "index": { "type": "integer", "minimum": 0 },
+            "time": { "type": "integer" },
+            "chunk": { "$ref": "#/$defs/streamChunk" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "attemptId", "revision", "index", "outcome"],
+          "properties": {
+            "type": { "const": "end" },
+            "attemptId": { "type": "string", "minLength": 1 },
+            "revision": { "type": "integer", "minimum": 1 },
+            "index": { "type": "integer", "minimum": 0 },
+            "outcome": { "$ref": "#/$defs/streamOutcome" }
+          }
+        }
+      ]
+    },
+    "streamOutcome": {
+      "description": "How the attempt settled: the durable event committed for it, or abandoned when none could be appended.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "eventType", "seq"],
+          "properties": {
+            "kind": { "const": "committed" },
+            "eventType": { "type": "string", "enum": ["assistant/message", "assistant/attempt"] },
+            "seq": { "type": "integer", "minimum": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": {
+            "kind": { "const": "abandoned" }
+          }
+        }
+      ]
+    },
+    "streamChunk": {
+      "description": "DeepSeek Harness StreamChunk. Text uses block index 0; tool call i of the attempt uses 1 + i, and id is the call id it is logged under.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "index", "text"],
+          "properties": {
+            "type": { "const": "text-delta" },
+            "index": { "type": "integer", "minimum": 0 },
+            "text": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "index", "id", "argumentsDelta"],
+          "properties": {
+            "type": { "const": "tool-call-delta" },
+            "index": { "type": "integer", "minimum": 0 },
+            "id": { "type": "string" },
+            "name": { "type": "string" },
+            "argumentsDelta": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "notification": {
+      "oneOf": [
+        { "$ref": "#/$defs/sessionEventNotification" },
+        { "$ref": "#/$defs/sessionStatusNotification" },
+        { "$ref": "#/$defs/assistantStreamNotification" }
+      ]
+    }
+  }
+}

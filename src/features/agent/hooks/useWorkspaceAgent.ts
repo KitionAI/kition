@@ -1,11 +1,7 @@
-import { describeAgentTurnFailure } from '../lib/agentTurnFailure'
-import { agentArtifactFromImageEvent, readAgentImageGenerationSessionEvent, type AgentImageSessionEvent } from '@/features/agent/lib/agentImageJobs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import i18next from 'i18next'
 import type {
-  AgentArtifact,
-  AgentEvent,
   AgentExecutionMode,
-  AgentMessage,
   AgentLocalSource,
   AgentSession,
   AgentShellApprovalDecision,
@@ -14,17 +10,23 @@ import type {
   AgentTablePlanContext,
   AgentPaneContext,
   AgentTaskMode,
-  AgentToolCall,
 } from '@/api/agent'
 import {
   createAgentSession,
   deleteAgentSession,
-  listAgentEvents,
-  listAgentMessages,
+  listAgentSessionEvents,
   listAgentSessions,
-  listAgentToolCalls,
   streamAgentMessage,
 } from '@/api/agent'
+import { AgentStreamInterruptedError, type AgentStreamNotification } from '@/api/agentStream'
+import {
+  applySessionEvent,
+  applyStatus,
+  emptyAgentSessionView,
+  markInterrupted,
+  type AgentSessionView,
+} from '@/features/agent/lib/agentSessionView'
+import { stepAgentSession, type AgentEffect } from '@/features/agent/lib/agentEventEffects'
 import { getCurrentLocale, getLanguageNameForLocale } from '@/i18n'
 import {
   buildAgentDocumentMentionPromptContext,
@@ -57,11 +59,6 @@ import {
 } from '@/features/agent/lib/agentDocumentEditing'
 import { ensurePortalAccountSessionRestored } from '@/services/portalAccount'
 import {
-  formatAgentToolName,
-  getAgentModifiedDocumentPaths,
-} from '@/features/agent/lib/agentTimeline'
-import { getAgentTimelineDict } from '@/features/agent/lib/agentTimelineI18n'
-import {
   isDesktopRuntime,
   listWorkspaceDocuments,
   type WorkspaceDocumentFormat,
@@ -83,11 +80,6 @@ import {
 } from '@/features/agent/lib/tableFileImportIntent'
 import { importWorkspaceFileIntoDataTable } from '@/features/table/lib/importWorkspaceFileIntoDataTable'
 import { buildAgentShellApprovalFollowup } from '@/features/agent/lib/agentShellApproval'
-import {
-  mergeAgentImageGenerationEvents,
-} from '@/features/agent/lib/agentImageGenerationStream'
-import { readAgentWhiteboardPatchFrame } from '@/features/agent/lib/agentWhiteboardStream'
-import { AGENT_DESIGN_PATCH_TOOL, readAgentDesignPatchFrame } from '@/features/agent/lib/agentDesignStream'
 import { retryWhileSessionBusy } from '@/features/agent/lib/agentSendRetry'
 import type { AgentDesignContext, AgentDesignPatch } from '@/types/designAgent'
 import type { MarkdownImageInsertionContext } from '@/features/document/editor/editor/markdown-image-insertion'
@@ -149,11 +141,24 @@ type UseWorkspaceAgentOptions = {
     | Promise<WorkspaceAgentTurnContext | null | undefined>
 }
 
-const TABLE_MUTATION_TOOL_NAMES = new Set([
-  'data_table_create',
-  'data_table_add_fields',
-  'data_table_add_records',
-])
+/** One page of `GET /session-events` at most; a shorter page is the end of the log. */
+const SESSION_EVENTS_PAGE = 500
+
+/** The desktop notification a live session event raises. */
+function notificationOf(notification: AgentStreamNotification) {
+  if (notification.method !== 'session.event') return null
+  const { event } = notification.params
+  const t = (key: string) => i18next.t(key, { ns: 'agent' })
+  if (event.type === 'approval/asked') {
+    return { event_type: 'user.input_needed', label: event.reason || '' }
+  }
+  if (event.type !== 'turn/end') return null
+  if (event.reason === 'completed') return { event_type: 'task.completed', label: t('timeline.event.taskCompleted') }
+  if (event.reason === 'failed' || event.reason === 'step-limit') {
+    return { event_type: 'task.failed', label: event.error || t('timeline.event.taskFailed') }
+  }
+  return null
+}
 
 export function useWorkspaceAgent({
   settings,
@@ -176,13 +181,15 @@ export function useWorkspaceAgent({
 }: UseWorkspaceAgentOptions) {
   const [agentSessions, setAgentSessions] = useState<AgentSession[]>([])
   const agentSessionsRevisionRef = useRef(0)
-  const [agentMessages, setAgentMessages] = useState<Record<number, AgentMessage[]>>({})
-  const [agentToolCalls, setAgentToolCalls] = useState<Record<number, AgentToolCall[]>>({})
-  const [agentEvents, setAgentEvents] = useState<Record<number, AgentEvent[]>>({})
-  const [agentImageGenerationEvents, setAgentImageGenerationEvents] = useState<Record<number, AgentImageSessionEvent[]>>({})
+  // Each session's view, reduced from its session events and live stream.
+  // The ref is the source of truth so notifications reduce in arrival order
+  // outside React's updaters; state mirrors it for rendering.
+  const [agentSessionViews, setAgentSessionViews] = useState<Record<number, AgentSessionView>>({})
+  const agentSessionViewsRef = useRef<Record<number, AgentSessionView>>({})
+  const agentSessionSyncs = useRef<Map<number, Promise<void>>>(new Map())
+  // The text a visible send shows until its `user/message` arrives.
+  const [agentPendingUserText, setAgentPendingUserText] = useState<Record<number, string>>({})
   const [agentDrafts, setAgentDrafts] = useState<Record<number, string>>({})
-  const [agentStreamingText, setAgentStreamingText] = useState<Record<number, string>>({})
-  const [agentArtifacts, setAgentArtifacts] = useState<Record<number, AgentArtifact[]>>({})
   const [agentModifiedDocumentPaths, setAgentModifiedDocumentPaths] = useState<Set<string>>(new Set())
   // Per-session busy set. Was `agentBusySessionId: number | null` until
   // we hit the cross-session silent-skip: a stale id from session A
@@ -222,6 +229,52 @@ export function useWorkspaceAgent({
   const agentDocumentContextsRef = useRef<Record<number, AgentDocumentContextPaths>>({})
   const agentAbortControllers = useRef<Record<number, AbortController>>({})
   const agentSendInFlightSessions = useRef<Set<number>>(new Set())
+
+  const commitSessionView = useCallback((sessionId: number, view: AgentSessionView) => {
+    if (agentSessionViewsRef.current[sessionId] === view) return
+    agentSessionViewsRef.current = { ...agentSessionViewsRef.current, [sessionId]: view }
+    setAgentSessionViews(agentSessionViewsRef.current)
+  }, [])
+
+  const dropSessionView = useCallback((sessionId: number) => {
+    if (!(sessionId in agentSessionViewsRef.current)) return
+    const next = { ...agentSessionViewsRef.current }
+    delete next[sessionId]
+    agentSessionViewsRef.current = next
+    setAgentSessionViews(next)
+  }, [])
+
+  const setPendingUserText = useCallback((sessionId: number, text: string) => {
+    setAgentPendingUserText((current) => {
+      if ((current[sessionId] || '') === text) return current
+      const next = { ...current }
+      if (text) next[sessionId] = text
+      else delete next[sessionId]
+      return next
+    })
+  }, [])
+
+  /**
+   * Reads the session log after the view's cursor, page by page, into the
+   * view. Synced events fire no effects: they already happened. One read
+   * per session runs at a time; a second call joins it.
+   */
+  const syncSessionEvents = useCallback((sessionId: number) => {
+    const running = agentSessionSyncs.current.get(sessionId)
+    if (running) return running
+    const sync = (async () => {
+      for (;;) {
+        const cursor = (agentSessionViewsRef.current[sessionId] ?? emptyAgentSessionView()).cursor
+        const page = await listAgentSessionEvents(sessionId, cursor)
+        const items = page.items || []
+        const view = items.reduce(applySessionEvent, agentSessionViewsRef.current[sessionId] ?? emptyAgentSessionView())
+        commitSessionView(sessionId, view)
+        if (items.length < SESSION_EVENTS_PAGE || view.cursor === cursor) return
+      }
+    })().finally(() => agentSessionSyncs.current.delete(sessionId))
+    agentSessionSyncs.current.set(sessionId, sync)
+    return sync
+  }, [commitSessionView])
 
   const agentModelOptions = useMemo(() => buildAgentModelOptions(settings), [settings])
   const resolvedAgentModelKey = useMemo(
@@ -387,13 +440,11 @@ export function useWorkspaceAgent({
     agentSendInFlightSessions.current.clear()
 
     setAgentSessions([])
-    setAgentMessages({})
-    setAgentToolCalls({})
-    setAgentEvents({})
-    setAgentImageGenerationEvents({})
+    agentSessionViewsRef.current = {}
+    agentSessionSyncs.current.clear()
+    setAgentSessionViews({})
+    setAgentPendingUserText({})
     setAgentDrafts({})
-    setAgentStreamingText({})
-    setAgentArtifacts({})
     setAgentModifiedDocumentPaths(new Set())
     setAgentBusySessions(new Set())
     setPendingFocusedSessionId(null)
@@ -413,41 +464,13 @@ export function useWorkspaceAgent({
   }, [refreshAgentSessions, refreshMentionableDocuments, rootPath, silentInitialSessionLoad, workspaceTreeItems])
 
   const openAgentSession = useCallback(async (session: AgentSession) => {
-    if (!agentMessages[session.id]) {
-      try {
-        const response = await listAgentMessages(session.id)
-        setAgentMessages((current) => ({ ...current, [session.id]: response.items || [] }))
-      } catch (requestError: any) {
-        onError(requestError?.message || 'Failed to load agent messages')
-      }
+    if (agentSessionViewsRef.current[session.id]) return
+    try {
+      await syncSessionEvents(session.id)
+    } catch (requestError: any) {
+      onError(requestError?.message || 'Failed to load agent messages')
     }
-
-    if (!agentToolCalls[session.id]) {
-      try {
-        const response = await listAgentToolCalls(session.id)
-        setAgentToolCalls((current) => ({ ...current, [session.id]: response.items || [] }))
-      } catch (requestError: any) {
-        onError(requestError?.message || 'Failed to load agent tool calls')
-      }
-    }
-
-    if (!agentEvents[session.id]) {
-      try {
-        const response = await listAgentEvents(session.id)
-        const events = response.items || []
-        setAgentEvents((current) => ({ ...current, [session.id]: events }))
-        setAgentImageGenerationEvents((current) => ({
-          ...current,
-          [session.id]: events.reduce<AgentImageSessionEvent[]>((items, event) => {
-            const imageEvent = readAgentImageGenerationSessionEvent({ type: 'agent_event', event })
-            return imageEvent ? mergeAgentImageGenerationEvents(items, imageEvent) : items
-          }, []),
-        }))
-      } catch (requestError: any) {
-        onError(requestError?.message || 'Failed to load agent events')
-      }
-    }
-  }, [agentEvents, agentMessages, agentToolCalls, onError])
+  }, [onError, syncSessionEvents])
 
   const createNewAgentChat = useCallback(async (options?: {
     focusTab?: boolean
@@ -457,13 +480,10 @@ export function useWorkspaceAgent({
     onFeedback('')
 
     try {
-      const session = await createAgentSession({ language: getLanguageNameForLocale(getCurrentLocale()) })
+      const session = await createAgentSession()
       agentSessionsRevisionRef.current += 1
       setAgentSessions((current) => [session, ...current.filter((item) => item.id !== session.id)])
-      setAgentMessages((current) => ({ ...current, [session.id]: [] }))
-      setAgentToolCalls((current) => ({ ...current, [session.id]: [] }))
-      setAgentEvents((current) => ({ ...current, [session.id]: [] }))
-      setAgentImageGenerationEvents((current) => ({ ...current, [session.id]: [] }))
+      commitSessionView(session.id, emptyAgentSessionView())
       const initialDocumentPaths = normalizeAgentDocumentContextPaths(options?.documentPaths || [])
       if (initialDocumentPaths.length) {
         const next = {
@@ -482,7 +502,7 @@ export function useWorkspaceAgent({
       onError(requestError?.message || 'Failed to create agent session')
       return null
     }
-  }, [onError, onFeedback, rootPath])
+  }, [commitSessionView, onError, onFeedback, rootPath])
 
   const deleteAgentChat = useCallback(async (sessionId: number) => {
     agentAbortControllers.current[sessionId]?.abort()
@@ -505,13 +525,9 @@ export function useWorkspaceAgent({
       delete next[sessionId]
       return next
     }
-    setAgentMessages(dropSession)
-    setAgentToolCalls(dropSession)
-    setAgentEvents(dropSession)
-    setAgentImageGenerationEvents(dropSession)
+    dropSessionView(sessionId)
+    setAgentPendingUserText(dropSession)
     setAgentDrafts(dropSession)
-    setAgentStreamingText(dropSession)
-    setAgentArtifacts(dropSession)
     setAgentLocalSources(dropSession)
     setAgentDocumentContexts((current) => {
       const next = dropSession(current)
@@ -522,21 +538,15 @@ export function useWorkspaceAgent({
     writeAgentDocumentContextsForSession(rootPath, sessionId, undefined)
     agentSendInFlightSessions.current.delete(sessionId)
     markSessionBusy(sessionId, false)
-  }, [markSessionBusy, onError, rootPath])
+  }, [dropSessionView, markSessionBusy, onError, rootPath])
 
-  const markAgentModifiedDocument = useCallback((toolCall: AgentToolCall, sessionId: number) => {
-    const paths = getAgentModifiedDocumentPaths([toolCall])
-    if (!paths.size) {
-      return false
-    }
-
+  const markAgentModifiedDocuments = useCallback((paths: string[], sessionId: number) => {
     setAgentModifiedDocumentPaths((current) => {
       const next = new Set(current)
       paths.forEach((path) => next.add(path))
       return next
     })
-    void onWorkspaceDocumentsModified?.(Array.from(paths), sessionId)
-    return true
+    void onWorkspaceDocumentsModified?.(paths, sessionId)
   }, [onWorkspaceDocumentsModified])
 
   const sendAgentMessage = useCallback(async (
@@ -582,44 +592,16 @@ export function useWorkspaceAgent({
       return
     }
 
-    const optimisticUserMessage: AgentMessage = {
-      id: Date.now() * -1,
-      session_id: sessionId,
-      user_id: 0,
-      role: 'user',
-      content,
-      status: 'completed',
-      created_at: new Date().toISOString(),
-    }
-
     setAgentDrafts((current) => ({
       ...current,
       [sessionId]: current[sessionId]?.trim() === content ? '' : current[sessionId] || '',
     }))
-    setAgentMessages((current) => ({
-      ...current,
-      [sessionId]: followup?.hideUserMessage
-        ? current[sessionId] || []
-        : [...(current[sessionId] || []), optimisticUserMessage],
-    }))
-    setAgentStreamingText((current) => ({ ...current, [sessionId]: '' }))
+    if (!followup?.hideUserMessage) setPendingUserText(sessionId, content)
     onError('')
     onFeedback('')
 
     const rollbackPendingSend = () => {
-      if (!followup?.hideUserMessage) {
-        setAgentMessages((current) => {
-          const remaining = (current[sessionId] || []).filter(
-            (message) => message.id !== optimisticUserMessage.id,
-          )
-          if (remaining.length) {
-            return { ...current, [sessionId]: remaining }
-          }
-          const next = { ...current }
-          delete next[sessionId]
-          return next
-        })
-      }
+      setPendingUserText(sessionId, '')
       if (followup?.content === undefined) {
         setAgentDrafts((current) => ({
           ...current,
@@ -649,16 +631,69 @@ export function useWorkspaceAgent({
     }
     markSessionBusy(sessionId, true)
     trackProductEventOnce('agent_first_request_started')
+    // Catch up with the log first, so live events continue from its end.
+    await syncSessionEvents(sessionId).catch(() => undefined)
 
     const abortController = new AbortController()
     agentAbortControllers.current[sessionId] = abortController
-    let turnMessageId = optimisticUserMessage.id
-    let partialResponse = ''
     let tableMutated = false
+    let documentsChanged = false
     let whiteboardPathForTurn = ''
-    let pendingWhiteboardPatch: AgentWhiteboardPatch | null = null
     let designPathForTurn = ''
-    let pendingDesignPatch: AgentDesignPatch | null = null
+
+    const runEffect = (effect: AgentEffect) => {
+      switch (effect.type) {
+        case 'documents-modified':
+          documentsChanged = true
+          markAgentModifiedDocuments(effect.paths, sessionId)
+          return
+        case 'deliverables-saved':
+          // Refresh the tree as soon as a file is saved, so the sidebar shows
+          // it even if the turn later fails.
+          void onWorkspaceArtifactsSaved?.(sessionId)
+          void refreshMentionableDocuments()
+          return
+        case 'table-mutated':
+          tableMutated = true
+          return
+        case 'connections-changed':
+          // The workflow drawer refreshes its connection list on this signal.
+          window.dispatchEvent(new CustomEvent('kition:connections:changed', { detail: effect.detail }))
+          return
+        case 'whiteboard-patch':
+          if (whiteboardPathForTurn) {
+            onWhiteboardPatch?.({ boardPath: whiteboardPathForTurn, patch: effect.patch, provisional: effect.provisional, sessionId })
+          }
+          return
+        case 'whiteboard-patch-cancelled':
+          if (whiteboardPathForTurn) onWhiteboardPatchCancelled?.({ boardPath: whiteboardPathForTurn, sessionId })
+          return
+        case 'design-patch':
+          if (designPathForTurn) {
+            onDesignPatch?.({ designPath: designPathForTurn, patch: effect.patch, provisional: effect.provisional, sessionId })
+          }
+          return
+        case 'design-patch-cancelled':
+          if (designPathForTurn) onDesignPatchCancelled?.({ designPath: designPathForTurn, sessionId })
+      }
+    }
+
+    const onNotification = (notification: AgentStreamNotification) => {
+      const before = agentSessionViewsRef.current[sessionId] ?? emptyAgentSessionView()
+      const step = stepAgentSession(before, notification)
+      if (step.gap) {
+        // Events went missing: read the log, then follow the stream again.
+        void syncSessionEvents(sessionId).catch(() => undefined)
+        return
+      }
+      commitSessionView(sessionId, step.view)
+      if (notification.method === 'session.event' && notification.params.event.type === 'user/message') {
+        setPendingUserText(sessionId, '')
+      }
+      step.effects.forEach(runEffect)
+      const desktopNotification = step.view.cursor > before.cursor ? notificationOf(notification) : null
+      if (desktopNotification) void notifyFromAgentEvent(desktopNotification)
+    }
 
     try {
       const turnContext = (await getTurnContext?.()) || undefined
@@ -772,8 +807,7 @@ export function useWorkspaceAgent({
           allowSaveMarkdown: true,
         })
 
-      let imageTurnMessageId = optimisticUserMessage.id
-      const done = await retryWhileSessionBusy(() => streamAgentMessage({
+      await retryWhileSessionBusy(() => streamAgentMessage({
         sessionId,
         content,
         promptContext,
@@ -797,349 +831,67 @@ export function useWorkspaceAgent({
         saveMarkdown,
         language: getLanguageNameForLocale(getCurrentLocale()),
         signal: abortController.signal,
-        onEvent: (event) => {
-          if (event.type === 'user_message' && event.chat_message) {
-            imageTurnMessageId = event.chat_message.id
-            turnMessageId = event.chat_message.id
-          }
-          const imageGenerationEvent = readAgentImageGenerationSessionEvent(event, optimisticUserMessage.created_at, imageTurnMessageId)
-          if (imageGenerationEvent) {
-            setAgentImageGenerationEvents((current) => ({
-              ...current,
-              [sessionId]: mergeAgentImageGenerationEvents(
-                current[sessionId] || [],
-                imageGenerationEvent,
-              ),
-            }))
-          }
-          const whiteboardFrame = readAgentWhiteboardPatchFrame(event)
-          if (whiteboardFrame && whiteboardPathForTurn) {
-            pendingWhiteboardPatch = whiteboardFrame.provisional
-              ? whiteboardFrame.patch
-              : null
-            onWhiteboardPatch?.({
-              boardPath: whiteboardFrame.boardPath || whiteboardPathForTurn,
-              patch: whiteboardFrame.patch,
-              provisional: whiteboardFrame.provisional,
-              sessionId,
-            })
-          }
-
-          if (
-            event.type === 'tool_call'
-            && event.tool_call?.status === 'completed'
-            && event.tool_call.tool_name === 'whiteboard_propose_patch'
-            && pendingWhiteboardPatch
-            && whiteboardPathForTurn
-          ) {
-            onWhiteboardPatch?.({
-              boardPath: whiteboardPathForTurn,
-              patch: pendingWhiteboardPatch,
-              provisional: false,
-              sessionId,
-            })
-            pendingWhiteboardPatch = null
-          }
-
-          if (
-            event.type === 'tool_error'
-            && event.tool_call?.tool_name === 'whiteboard_propose_patch'
-            && whiteboardPathForTurn
-          ) {
-            pendingWhiteboardPatch = null
-            onWhiteboardPatchCancelled?.({ boardPath: whiteboardPathForTurn, sessionId })
-          }
-
-          const designFrame = readAgentDesignPatchFrame(event)
-          if (designFrame && designPathForTurn) {
-            pendingDesignPatch = designFrame.provisional ? designFrame.patch : null
-            onDesignPatch?.({
-              designPath: designFrame.designPath || designPathForTurn,
-              patch: designFrame.patch,
-              provisional: designFrame.provisional,
-              sessionId,
-            })
-          }
-          if (
-            event.type === 'tool_call'
-            && event.tool_call?.status === 'completed'
-            && event.tool_call.tool_name === AGENT_DESIGN_PATCH_TOOL
-            && pendingDesignPatch
-            && designPathForTurn
-          ) {
-            onDesignPatch?.({ designPath: designPathForTurn, patch: pendingDesignPatch, provisional: false, sessionId })
-            pendingDesignPatch = null
-          }
-          if (
-            event.type === 'tool_error'
-            && event.tool_call?.tool_name === AGENT_DESIGN_PATCH_TOOL
-            && designPathForTurn
-          ) {
-            pendingDesignPatch = null
-            onDesignPatchCancelled?.({ designPath: designPathForTurn, sessionId })
-          }
-
-          if (
-            event.type === 'user_message' &&
-            event.chat_message &&
-            followup?.hideUserMessage !== true
-          ) {
-            setAgentMessages((current) => ({
-              ...current,
-              [sessionId]: [...(current[sessionId] || []).filter((item) => item.id !== optimisticUserMessage.id), event.chat_message!],
-            }))
-          }
-
-          if (event.type === 'model_delta' && event.delta) {
-            partialResponse += event.delta
-            setAgentStreamingText((current) => ({ ...current, [sessionId]: `${current[sessionId] || ''}${event.delta}` }))
-            setAgentEvents((current) => {
-              const existing = current[sessionId] || []
-              const eventId = -100000000 - sessionId
-              const previous = existing.find((item) => item.id === eventId)
-              const previousText = typeof previous?.data?.preview === 'string' ? previous.data.preview : ''
-              const nextText = `${previousText}${event.delta}`.slice(-4000)
-              const nextEvent: AgentEvent = {
-                id: eventId,
-                session_id: sessionId,
-                user_id: 0,
-                message_id: event.chat_message?.id,
-                event_type: 'model.delta',
-                stage: 'model',
-                status: 'running',
-                label: 'AI backend content',
-                message: `Returned ${Array.from(nextText).length} characters`,
-                data: {
-                  ...(previous?.data || {}),
-                  ...(event.extra_data || {}),
-                  preview: nextText,
-                  chars: Array.from(nextText).length,
-                },
-                created_at: previous?.created_at || new Date().toISOString(),
-              }
-
-              return {
-                ...current,
-                [sessionId]: existing.some((item) => item.id === eventId)
-                  ? existing.map((item) => item.id === eventId ? nextEvent : item)
-                  : [...existing, nextEvent],
-              }
-            })
-          }
-
-          if (event.type === 'model_tool_call_delta' || event.type === 'model_tool_call_ready') {
-            setAgentEvents((current) => {
-              const existing = current[sessionId] || []
-              const turn = Number(event.extra_data?.turn || 1)
-              const index = Number(event.extra_data?.tool_call_index || 0)
-              const eventId = -110000000 - (sessionId * 1000) - (turn * 100) - index
-              const previous = existing.find((item) => item.id === eventId)
-              const previousArguments = typeof previous?.data?.arguments === 'string' ? previous.data.arguments : ''
-              const delta = typeof event.extra_data?.arguments_delta === 'string' ? event.extra_data.arguments_delta : ''
-              const argumentsText = typeof event.extra_data?.arguments === 'string' && event.extra_data.arguments
-                ? event.extra_data.arguments
-                : `${previousArguments}${delta}`
-              const toolName = String(event.extra_data?.tool_name || previous?.data?.tool_name || 'tool')
-              const completed = event.type === 'model_tool_call_ready'
-              const nextEvent: AgentEvent = {
-                id: eventId,
-                session_id: sessionId,
-                user_id: 0,
-                event_type: completed ? 'model.tool_call.ready' : 'model.tool_call.delta',
-                stage: 'model',
-                status: completed ? 'completed' : 'running',
-                label: completed ? 'Tool call generated' : 'Generating tool arguments',
-                message: completed
-                  ? getAgentTimelineDict().event.toolCallGenerated(formatAgentToolName(toolName))
-                  : getAgentTimelineDict().event.generatingToolArgs(formatAgentToolName(toolName)),
-                data: {
-                  ...(previous?.data || {}),
-                  ...(event.extra_data || {}),
-                  tool_name: toolName,
-                  arguments: argumentsText,
-                },
-                created_at: previous?.created_at || new Date().toISOString(),
-              }
-
-              return {
-                ...current,
-                [sessionId]: existing.some((item) => item.id === eventId)
-                  ? existing.map((item) => item.id === eventId ? nextEvent : item)
-                  : [...existing, nextEvent],
-              }
-            })
-          }
-
-          const deliveredArtifact = event.artifact || agentArtifactFromImageEvent(imageGenerationEvent, sessionId)
-          if (deliveredArtifact) {
-            setAgentArtifacts((current) => ({
-              ...current,
-              [sessionId]: [...(current[sessionId] || []).filter((item) => item.id !== deliveredArtifact.id), deliveredArtifact],
-            }))
-            // Refresh the workspace tree as soon as the artifact is saved, so the
-            // sidebar reflects the new file even if the agent later fails (e.g. a
-            // hosted image_generation succeeds but the next Responses turn errors).
-            void onWorkspaceArtifactsSaved?.(sessionId)
-            void refreshMentionableDocuments()
-          }
-
-          if (event.type === 'agent_event' && event.event?.event_type === 'artifact.created') {
-            // Hosted tools (image_generation, etc.) record the artifact via an
-            // agent event instead of a dedicated stream artifact frame, so mirror
-            // the refresh here.
-            void onWorkspaceArtifactsSaved?.(sessionId)
-            void refreshMentionableDocuments()
-          }
-
-          if ((event.type === 'tool_call' || event.type === 'tool_error' || event.type === 'artifact') && event.tool_call) {
-            const trackedWorkspacePath = markAgentModifiedDocument(event.tool_call, sessionId)
-            if (
-              event.tool_call.status === 'completed' &&
-              TABLE_MUTATION_TOOL_NAMES.has(event.tool_call.tool_name)
-            ) {
-              tableMutated = true
-            }
-            if (
-              event.tool_call.status === 'completed'
-              && event.tool_call.tool_name === 'data_table_create'
-            ) {
-              if (!trackedWorkspacePath || !onWorkspaceDocumentsModified) {
-                void onWorkspaceArtifactsSaved?.(sessionId)
-              }
-              void refreshMentionableDocuments()
-            }
-            // Broadcast a connections-changed signal whenever the SMTP
-            // configure tool completes so the WorkflowHomePage drawer can
-            // refresh its connection dropdown without polling. The agent
-            // panel itself stays unaware of workflow internals — it just
-            // forwards the success notification on the same bus the rest
-            // of the app uses for workflow state. We attach the tool's
-            // output payload so listeners can also pick up the new
-            // connection id + whether the tool attached it to an workflow
-            // in the same call (saves a second roundtrip on the UI side).
-            if (
-              event.tool_call.status === 'completed' &&
-              event.tool_call.tool_name === 'configure_smtp_connection' &&
-              typeof window !== 'undefined'
-            ) {
-              const output = (event.tool_call.output_data || {}) as {
-                id?: string
-                workflow_id?: string
-                workflow_attached?: boolean
-              }
-              window.dispatchEvent(new CustomEvent('kition:connections:changed', {
-                detail: {
-                  source: 'configure_smtp_connection',
-                  connectionId: output.id || '',
-                  workflowId: output.workflow_id || '',
-                  workflowAttached: Boolean(output.workflow_attached),
-                },
-              }))
-            }
-            setAgentToolCalls((current) => {
-              const existing = current[sessionId] || []
-              const next = existing.some((item) => item.id === event.tool_call!.id)
-                ? existing.map((item) => item.id === event.tool_call!.id ? event.tool_call! : item)
-                : [...existing, event.tool_call!]
-              return { ...current, [sessionId]: next }
-            })
-          }
-
-          if (event.type === 'agent_event' && event.event) {
-            // The embedded browser was removed; ignore legacy open requests.
-            if (event.event.event_type === 'browser.open_required') {
-              return
-            }
-            const nextEvent = event.event
-            setAgentEvents((current) => {
-              const existing = current[sessionId] || []
-              const next = existing.some((item) => item.id === nextEvent.id)
-                ? existing.map((item) => item.id === nextEvent.id ? nextEvent : item)
-                : [...existing, nextEvent]
-              return { ...current, [sessionId]: next }
-            })
-            void notifyFromAgentEvent({
-              event_type: event.event.event_type,
-              label: event.event.label,
-              message: event.event.message,
-            })
-          }
-        },
+        onNotification,
       }), { signal: abortController.signal })
-
-      const assistantMessage = done?.extra_data?.message
-      const artifact = done?.extra_data?.artifact
-      const nextSession = done?.extra_data?.session
-
-      if (assistantMessage) {
-        setAgentMessages((current) => ({
-          ...current,
-          [sessionId]: (current[sessionId] || []).some((item) => item.id === assistantMessage.id)
-            ? (current[sessionId] || [])
-            : [...(current[sessionId] || []), assistantMessage],
-        }))
-      }
-
-      if (artifact) {
-        setAgentArtifacts((current) => ({
-          ...current,
-          [sessionId]: [...(current[sessionId] || []).filter((item) => item.id !== artifact.id), artifact],
-        }))
-        await onWorkspaceArtifactsSaved?.(sessionId)
-        await refreshMentionableDocuments()
-        onFeedback(`Agent saved an artifact: ${artifact.path}`)
-      }
-
-      if (nextSession) {
-        agentSessionsRevisionRef.current += 1
-        setAgentSessions((current) => [nextSession, ...current.filter((item) => item.id !== nextSession.id)])
-        setPendingFocusedSessionId(nextSession.id)
-      }
 
       if (tableMutated) {
         await onTableMutated?.()
       }
+      if (tableMutated || documentsChanged) {
+        await refreshMentionableDocuments()
+      }
+      void refreshAgentSessions(undefined, { silent: true })
+      setPendingFocusedSessionId(sessionId)
+      const delivered = agentSessionViewsRef.current[sessionId]?.turns.at(-1)?.deliverables.at(-1)
+      if (delivered) onFeedback(`Agent saved an artifact: ${delivered.path}`)
       trackProductEventOnce('agent_first_request_completed', { result: 'success' })
     } catch (requestError: any) {
-      if (whiteboardPathForTurn) {
-        onWhiteboardPatchCancelled?.({ boardPath: whiteboardPathForTurn, sessionId })
+      // A preview whose turn never settled must not stay on the canvas.
+      if (whiteboardPathForTurn) onWhiteboardPatchCancelled?.({ boardPath: whiteboardPathForTurn, sessionId })
+      if (designPathForTurn) onDesignPatchCancelled?.({ designPath: designPathForTurn, sessionId })
+      const canceled = requestError?.name === 'AbortError'
+      const view = agentSessionViewsRef.current[sessionId] ?? emptyAgentSessionView()
+      commitSessionView(sessionId, canceled || requestError instanceof AgentStreamInterruptedError
+        ? markInterrupted(view)
+        : applyStatus(view, 'idle'))
+      if (canceled) {
+        // The runtime logs the stopped turn a moment after the stream closes.
+        window.setTimeout(() => void syncSessionEvents(sessionId).catch(() => undefined), 1000)
+      } else if (requestError instanceof AgentStreamInterruptedError) {
+        onError(i18next.t('timeline.activity.interruptedDetail', { ns: 'agent' }))
+      } else {
+        onError(requestError?.message || i18next.t('timeline.event.taskFailed', { ns: 'agent' }))
       }
-      const failure = describeAgentTurnFailure(requestError, sessionId, turnMessageId)
-      if (partialResponse) setAgentMessages((current) => ({
-        ...current, [sessionId]: [...(current[sessionId] || []), {
-          ...optimisticUserMessage, id: failure.event.id, role: 'assistant', content: partialResponse, status: 'interrupted',
-        }],
-      }))
-      setAgentEvents((current) => ({
-        ...current, [sessionId]: [...(current[sessionId] || []), failure.event],
-      }))
-      if (failure.canceled) onFeedback(failure.message)
-      else onError(failure.message)
     } finally {
       delete agentAbortControllers.current[sessionId]
+      setPendingUserText(sessionId, '')
+      await syncSessionEvents(sessionId).catch(() => undefined)
       agentSendInFlightSessions.current.delete(sessionId)
-      setAgentStreamingText((current) => ({ ...current, [sessionId]: '' }))
       markSessionBusy(sessionId, false)
     }
   }, [
     agentBusySessions,
     agentDrafts,
-    agentSessions,
+    commitSessionView,
     ensureHostedAccountReady,
     getTurnContext,
     mentionableDocuments,
     agentLocalSources,
-    markAgentModifiedDocument,
+    markAgentModifiedDocuments,
     onError,
     onFeedback,
     onWorkspaceArtifactsSaved,
-    onWorkspaceDocumentsModified,
     onTableMutated,
     onWhiteboardPatch,
     onWhiteboardPatchCancelled,
+    onDesignPatch,
+    onDesignPatchCancelled,
     prepareActiveDocument,
-      refreshMentionableDocuments,
+    refreshAgentSessions,
+    refreshMentionableDocuments,
     selectedAgentModel,
+    setPendingUserText,
+    syncSessionEvents,
     markSessionBusy,
   ])
 
@@ -1160,7 +912,7 @@ export function useWorkspaceAgent({
       content: buildAgentShellApprovalFollowup(decision, request.command),
       hideUserMessage: true,
       shellApproval: {
-        tool_call_id: request.tool_call_id,
+        call_id: request.call_id,
         decision,
       },
     })
@@ -1187,26 +939,21 @@ export function useWorkspaceAgent({
   const stopAgentMessage = useCallback((sessionId: number) => {
     agentAbortControllers.current[sessionId]?.abort()
     delete agentAbortControllers.current[sessionId]
-    setAgentStreamingText((current) => ({ ...current, [sessionId]: '' }))
     markSessionBusy(sessionId, false)
     onFeedback('Agent task stopped')
   }, [markSessionBusy, onFeedback])
 
   return {
-    agentArtifacts,
     agentBusySessions,
     agentDrafts,
-    agentEvents,
-    agentImageGenerationEvents,
-    agentMessages,
     agentDocumentContexts,
     agentLocalSources,
     mentionableDocuments,
     agentModelOptions,
     agentModifiedDocumentPaths,
+    agentPendingUserText,
     agentSessions,
-    agentStreamingText,
-    agentToolCalls,
+    agentSessionViews,
     clearPendingFocusedSessionId: () => setPendingFocusedSessionId(null),
     createNewAgentChat,
     addAgentLocalSource,

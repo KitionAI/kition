@@ -78,7 +78,7 @@ export type AgentSessionEventsToolResultMeta = {
   decision: "prompt"
   suggested?: {
     prefix: string[]
-    decision: string
+    decision: "allow"
   }
 } | {
   kind: "image_generation.variant"

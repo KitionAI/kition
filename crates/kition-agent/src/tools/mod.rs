@@ -1,5 +1,5 @@
-//! Running one tool call: permission check, the persisted call record, the
-//! timeline events, and the result the model sees next.
+//! Running one tool call: the permission check, dispatch to the tool, and
+//! the result the model sees next. The driver logs the call and its result.
 
 pub mod apply_patch;
 pub mod canvas;
@@ -14,15 +14,12 @@ pub mod web;
 use std::sync::Arc;
 
 use kition_ai::engine::MessagePart;
-use kition_core::now_millis;
 use kition_harness::events::{PresentedFile, TodoItem};
 use serde_json::{Map, Value, json};
 
 use crate::catalog::{self, READ_ONLY, WORKSPACE_WRITE};
-use crate::run::{EventInput, Run, ToolError, ToolResult};
+use crate::run::{Run, ToolError, ToolResult};
 use crate::sources;
-use crate::store::{self, AgentToolCall};
-use crate::stream::{Frame, value};
 
 /// What the tool loop learns from a call.
 #[derive(Debug, Clone, Default)]
@@ -77,122 +74,6 @@ pub fn stage(name: &str) -> &'static str {
     }
 }
 
-pub fn label(name: &str) -> String {
-    match name {
-        "document_read" => "Read document",
-        "document_write" => "Update document",
-        "document_search" => "Search documents",
-        "document_list" => "List folder",
-        "source_read" => "Read local source",
-        "source_file_search" => "Find local source paths",
-        "source_search" => "Search local sources",
-        "source_list" => "List local source",
-        "source_git_status" => "Inspect source Git status",
-        "source_git_log" => "Read source Git history",
-        "source_git_show" => "Read source Git revision",
-        "source_git_blame" => "Trace source Git lines",
-        "web_search" => "Web search",
-        "web_fetch" => "Fetch web page",
-        "data_table_schema" => "Inspect table schema",
-        "data_table_records" => "Read table records",
-        "data_table_record_draft" => "Draft table records",
-        "data_table_add_fields" => "Add table fields",
-        "data_table_add_records" => "Write table records",
-        "table_upsert_records" => "Upsert table records",
-        "data_table_create" => "Create data table",
-        "image_search" | "image_generation" => "Generate images",
-        "save_image_asset" => "Save image",
-        "web_article_save" => "Archive web article",
-        "artifact_write" => "Save artifact",
-        "register_artifact" => "Register artifact",
-        "exec_command" => "Run command",
-        "update_plan" => "Update plan",
-        "view_image" => "View image",
-        "fs_read" => "Read file",
-        "fs_stat" => "Stat file",
-        "fs_list" => "List directory",
-        "fs_mkdir" => "Create directory",
-        "fs_remove" => "Remove file",
-        "fs_copy" => "Copy file",
-        "file_search" => "Search files",
-        "apply_patch" => "Apply patch",
-        "configure_smtp_connection" => "Configure SMTP connection",
-        "whiteboard_propose_patch" => "Propose Whiteboard changes",
-        "design_propose_patch" => "Propose design changes",
-        other => return kits::label(other).unwrap_or_else(|| other.to_owned()),
-    }
-    .to_owned()
-}
-
-/// The input as stored and shown in the timeline: patches are summarized,
-/// local search queries and credentials are left out.
-fn persisted_input(name: &str, input: &Value) -> Value {
-    match name {
-        "whiteboard_propose_patch" | "design_propose_patch" => json!({
-            "type": input["type"],
-            "schema_version": input["schema_version"],
-            "summary_chars": input["summary"].as_str().unwrap_or_default().chars().count(),
-            "operation_count": input["operations"].as_array().map_or(0, Vec::len),
-        }),
-        "source_search" | "source_file_search" | "configure_smtp_connection" => {
-            let mut safe = input.as_object().cloned().unwrap_or_default();
-            if let Some(query) = safe.remove("query") {
-                safe.insert(
-                    "query_chars".into(),
-                    json!(query.as_str().unwrap_or_default().chars().count()),
-                );
-            }
-            if safe.remove("password").is_some() {
-                safe.insert("password".into(), json!("[redacted]"));
-            }
-            Value::Object(safe)
-        }
-        _ => input.clone(),
-    }
-}
-
-pub async fn start_tool_call(run: &Run, name: &str, input: Value) -> Option<AgentToolCall> {
-    let now = now_millis();
-    let call = AgentToolCall {
-        session_id: run.session_id,
-        message_id: (run.trigger_message_id > 0).then_some(run.trigger_message_id),
-        user_id: run.user_id,
-        tool_name: name.to_owned(),
-        input_data: input,
-        status: "running".into(),
-        created_at: now,
-        updated_at: now,
-        ..AgentToolCall::default()
-    };
-    run.agent
-        .with_db(move |conn| store::insert_tool_call(conn, call))
-        .await
-        .ok()
-}
-
-pub async fn complete_tool_call(run: &Run, call: &mut AgentToolCall, output: Value) {
-    call.status = "completed".into();
-    call.output_data = output;
-    let mut saved = call.clone();
-    let _ = run
-        .agent
-        .with_db(move |conn| store::finish_tool_call(conn, &mut saved))
-        .await;
-}
-
-async fn fail_tool_call(run: &Run, call: &mut AgentToolCall, message: &str, output: Option<Value>) {
-    call.status = "failed".into();
-    call.error_message = message.to_owned();
-    if let Some(output) = output {
-        call.output_data = output;
-    }
-    let mut saved = call.clone();
-    let _ = run
-        .agent
-        .with_db(move |conn| store::finish_tool_call(conn, &mut saved))
-        .await;
-}
-
 /// Runs blocking file or table work off the async executor.
 async fn blocking(
     run: &Arc<Run>,
@@ -235,17 +116,17 @@ async fn configure_smtp(run: &Run, input: &Value) -> ToolResult {
     Ok(crate::run::ToolOutput::new(summary, output))
 }
 
-async fn dispatch(run: &Arc<Run>, call_id: i64, name: &str, input: &Value) -> ToolResult {
+async fn dispatch(run: &Arc<Run>, name: &str, input: &Value) -> ToolResult {
     if let Some((kit, _)) = kits::parse(name) {
         return kits::call(run, kit, name, input).await;
     }
     match name {
         "document_read" => documents::read(run, input).await,
-        "document_write" => documents::write(run, call_id, input).await,
+        "document_write" => documents::write(run, input).await,
         "document_search" => documents::search(run, input).await,
         "document_list" => documents::list(run, input).await,
-        "artifact_write" => documents::artifact_write(run, call_id, input).await,
-        "register_artifact" => documents::register_artifact(run, call_id, input).await,
+        "artifact_write" => documents::artifact_write(run, input).await,
+        "register_artifact" => documents::register_artifact(run, input).await,
         "fs_read" => blocking(run, input, files::read).await,
         "fs_stat" => blocking(run, input, files::stat).await,
         "fs_list" => blocking(run, input, files::list).await,
@@ -254,8 +135,8 @@ async fn dispatch(run: &Arc<Run>, call_id: i64, name: &str, input: &Value) -> To
         "fs_copy" => blocking(run, input, files::copy).await,
         "file_search" => blocking(run, input, files::file_search).await,
         "apply_patch" => blocking(run, input, apply_patch::apply).await,
-        "view_image" => files::view_image(run, call_id, input).await,
-        "update_plan" => files::update_plan(run, input).await,
+        "view_image" => files::view_image(run, input).await,
+        "update_plan" => files::update_plan(input),
         "source_read" => blocking(run, input, sources::read).await,
         "source_list" => blocking(run, input, sources::list).await,
         "source_file_search" => blocking(run, input, sources::file_search).await,
@@ -265,11 +146,11 @@ async fn dispatch(run: &Arc<Run>, call_id: i64, name: &str, input: &Value) -> To
         "source_git_show" => blocking(run, input, sources::git_show).await,
         "source_git_blame" => blocking(run, input, sources::git_blame).await,
         "web_fetch" => web::web_fetch(run, input).await,
-        "web_article_save" => web::web_article_save(run, call_id, input).await,
+        "web_article_save" => web::web_article_save(run, input).await,
         "web_search" => Err("web_search is provided as a hosted tool by the model; use its built-in web search instead of a function call".into()),
         "image_generation" => Err("image_generation is hosted by the model runtime and must not be invoked as a function call".into()),
-        "image_search" => images::image_search(run, call_id, input).await,
-        "save_image_asset" => images::save_image_asset(run, call_id, input).await,
+        "image_search" => images::image_search(run, input).await,
+        "save_image_asset" => images::save_image_asset(run, input).await,
         "exec_command" => exec::exec_command(run, input).await,
         "data_table_create" => table_tool(run, input, tables::create).await,
         "data_table_schema" => table_tool(run, input, tables::schema).await,
@@ -284,6 +165,15 @@ async fn dispatch(run: &Arc<Run>, call_id: i64, name: &str, input: &Value) -> To
     }
 }
 
+/// What a failed call's summary calls the tool: its catalog description,
+/// a kit tool's label, or its name.
+fn describe(name: &str) -> String {
+    catalog::tool(name)
+        .map(|tool| tool.description.clone())
+        .or_else(|| kits::label(name))
+        .unwrap_or_else(|| name.to_owned())
+}
+
 /// The permission a tool needs; MCP tools may write.
 fn required_permission(name: &str) -> String {
     catalog::tool(name)
@@ -296,7 +186,7 @@ pub fn writes(name: &str) -> bool {
     required_permission(name) != READ_ONLY
 }
 
-/// Runs a model tool call and records it on the timeline.
+/// Runs a model tool call.
 pub async fn execute(run: &Arc<Run>, name: &str, raw_input: &str) -> Executed {
     let failed = |message: String| Executed {
         name: name.to_owned(),
@@ -317,51 +207,14 @@ pub async fn execute(run: &Arc<Run>, name: &str, raw_input: &str) -> Executed {
         Ok(value @ Value::Object(_)) => value,
         _ => json!({ "raw": raw_input }),
     };
-    let stored_input = persisted_input(name, &input);
-    let stage = stage(name);
-    let label = label(name);
     let required = required_permission(name);
     if rank(run.permission()) < rank(&required) {
-        let message = format!(
+        return failed(format!(
             "Tool {name} requires {required} permission, current is {}",
             run.permission()
-        );
-        if let Some(mut call) = start_tool_call(run, name, stored_input.clone()).await {
-            fail_tool_call(run, &mut call, &message, None).await;
-            run.event(
-                EventInput::new("tool.denied", stage, "failed", &label, message.clone())
-                    .tool_call(Some(call.id))
-                    .data(json!({ "tool_name": name, "input": stored_input })),
-            )
-            .await;
-            run.send(&Frame {
-                message: message.clone(),
-                tool_call: value(&call),
-                ..Frame::new("tool_error")
-            });
-        }
-        return failed(format!("Tool {name} was blocked by permission policy"));
+        ));
     }
-    let Some(mut call) = start_tool_call(run, name, stored_input.clone()).await else {
-        return failed(format!("Failed to record tool {name}"));
-    };
-    run.send(&Frame {
-        tool_call: value(&call),
-        ..Frame::new("tool_call")
-    });
-    run.event(
-        EventInput::new(
-            "tool.requested",
-            stage,
-            "running",
-            &label,
-            format!("Starting tool {name}"),
-        )
-        .tool_call(Some(call.id))
-        .data(json!({ "tool_name": name, "input": stored_input })),
-    )
-    .await;
-    match dispatch(run, call.id, name, &input).await {
+    match dispatch(run, name, &input).await {
         Err(ToolError {
             message,
             summary,
@@ -372,25 +225,12 @@ pub async fn execute(run: &Arc<Run>, name: &str, raw_input: &str) -> Executed {
             } else {
                 message
             };
-            fail_tool_call(run, &mut call, &message, output.clone()).await;
-            run.event(
-                EventInput::new("tool.failed", stage, "failed", &label, message.clone())
-                    .tool_call(Some(call.id))
-                    .data(json!({ "tool_name": name })),
-            )
-            .await;
-            run.send(&Frame {
-                message: message.clone(),
-                tool_call: value(&call),
-                ..Frame::new("tool_error")
-            });
-            let description = catalog::tool(name).map_or(name, |tool| tool.description.as_str());
             Executed {
                 name: name.to_owned(),
                 summary: if summary.is_empty() {
                     format!(
                         "{} failed: {message}",
-                        crate::run::truncate_chars(description, 120)
+                        crate::run::truncate_chars(&describe(name), 120)
                     )
                 } else {
                     summary
@@ -405,42 +245,6 @@ pub async fn execute(run: &Arc<Run>, name: &str, raw_input: &str) -> Executed {
             if !result.output.is_object() {
                 result.output = Value::Object(Map::new());
             }
-            if result.interrupt == Some("await_shell_approval") {
-                result.output["tool_call_id"] = json!(call.id);
-            }
-            let stored_output = result
-                .event_output
-                .clone()
-                .unwrap_or_else(|| result.output.clone());
-            let stored_output = if result.interrupt.is_some() {
-                let mut output = stored_output;
-                output["tool_call_id"] = json!(call.id);
-                output
-            } else {
-                stored_output
-            };
-            complete_tool_call(run, &mut call, stored_output.clone()).await;
-            if let Some(artifact) = &result.artifact {
-                run.send(&Frame {
-                    artifact: value(artifact),
-                    tool_call: value(&call),
-                    ..Frame::new("artifact")
-                });
-            }
-            let event_summary = result
-                .event_summary
-                .clone()
-                .unwrap_or_else(|| result.summary.clone());
-            run.event(
-                EventInput::new("tool.completed", stage, "completed", &label, event_summary)
-                    .tool_call(Some(call.id))
-                    .data(json!({ "tool_name": name, "output": stored_output })),
-            )
-            .await;
-            run.send(&Frame {
-                tool_call: value(&call),
-                ..Frame::new("tool_call")
-            });
             Executed {
                 name: name.to_owned(),
                 summary: result.summary,
@@ -460,24 +264,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn redacts_and_summarizes_inputs() {
-        let smtp = persisted_input(
-            "configure_smtp_connection",
-            &json!({ "host": "h", "password": "secret" }),
-        );
-        assert_eq!(smtp, json!({ "host": "h", "password": "[redacted]" }));
-        let search = persisted_input(
-            "source_search",
-            &json!({ "query": "token", "source_id": "a" }),
-        );
-        assert_eq!(search, json!({ "query_chars": 5, "source_id": "a" }));
-        let patch = persisted_input(
-            "design_propose_patch",
-            &json!({ "type": "design.patch", "operations": [1, 2] }),
-        );
-        assert_eq!(patch["operation_count"], 2);
+    fn stages_and_ranks() {
         assert_eq!(stage("source_read"), "context");
-        assert_eq!(label("fs_copy"), "Copy file");
+        assert_eq!(stage("exec_command"), "execute");
         assert!(rank(WORKSPACE_WRITE) > rank(READ_ONLY));
+        assert_eq!(describe("not_a_tool"), "not_a_tool");
+        assert!(describe("document_read").len() > "document_read".len());
     }
 }

@@ -1,22 +1,19 @@
-//! The model seam of a turn: each engine call with its stream frames,
-//! reconnect events, timeline events, and hosted tool handling. Deltas and
-//! retries also reach the harness sink. Remembers
-//! the last result for the final reply.
+//! The model seam of a turn: each engine call, its streamed deltas and
+//! retries forwarded to the harness sink, and the model's hosted tool calls
+//! (web search, image generation) returned for the log. Remembers the last
+//! reply for the session title.
 
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 
 use futures::future::BoxFuture;
-use kition_ai::engine::{
-    ChatResult, MessagePart, RetryEvent, RetryHandler, StreamEvent, StreamHandler,
-};
+use kition_ai::engine::{ChatResult, MessagePart};
 use kition_harness::events::ContentBlock;
 use kition_harness::llm::{HostedCall, Llm, LlmReply, LlmRequest, LlmSink, normalize_calls};
 use serde_json::json;
 
-use crate::run::{EventInput, Run};
-use crate::stream::{Frame, value};
-use crate::tools::{self, images};
+use crate::run::Run;
+use crate::tools::images;
 
 /// Message parts as harness content blocks; parts with nothing to show are
 /// dropped.
@@ -33,133 +30,35 @@ pub(crate) fn blocks(parts: &[MessagePart]) -> Vec<ContentBlock> {
         .collect()
 }
 
-fn retry_handler(run: &Arc<Run>, turn: usize, sink: &LlmSink) -> RetryHandler {
-    let run = run.clone();
-    let forward = sink.retry_handler(&run.model.provider_type);
-    Arc::new(move |retry: RetryEvent| {
-        forward(retry.clone());
-        if retry.started {
-            return;
-        }
-        let run = run.clone();
-        tokio::spawn(async move {
-            run.event(
-                EventInput::new(
-                    "model.reconnecting",
-                    "model",
-                    "running",
-                    "Reconnecting to AI backend",
-                    format!("Reconnecting... {}/{}", retry.attempt, retry.max_retries),
-                )
-                .data(json!({
-                    "turn": turn, "attempt": retry.attempt, "max_retries": retry.max_retries,
-                    "delay_ms": retry.delay.as_millis() as u64, "reason": retry.reason,
-                })),
-            )
-            .await;
-        });
-    })
-}
-
-fn stream_handler(
-    run: &Arc<Run>,
-    turn: usize,
-    streamed: Arc<AtomicBool>,
-    sink: &LlmSink,
-) -> StreamHandler {
-    let emitter = run.emitter.clone();
-    let model = run.model.model_name.clone();
-    let forward = sink.stream_handler();
-    Arc::new(move |event: StreamEvent| {
-        forward(event.clone());
-        let frame = match event.kind {
-            "delta" if !event.delta.is_empty() => {
-                streamed.store(true, Ordering::SeqCst);
-                Frame {
-                    delta: event.delta,
-                    ..Frame::new("model_delta")
-                }
-                .extra("turn", turn)
-                .extra("model", &model)
+/// The searches the model ran with its hosted web search tool, as hosted
+/// calls for the log; a search without an id gets `<id_prefix>_ws_<i>`.
+fn hosted_searches(result: &ChatResult, id_prefix: &str) -> Vec<HostedCall> {
+    result
+        .hosted_web_search_calls
+        .iter()
+        .enumerate()
+        .map(|(index, search)| {
+            let mut input = json!({ "query": search.query, "hosted": true });
+            if let Some(action) = &search.action {
+                input["action"] = json!(action);
             }
-            "tool_call_delta" => Frame::new("model_tool_call_delta")
-                .extra("turn", turn)
-                .extra("tool_call_index", event.tool_call_index)
-                .extra("tool_call_id", &event.tool_call_id)
-                .extra("tool_name", &event.tool_name)
-                .extra("arguments_delta", &event.tool_arguments_delta)
-                .extra("arguments", &event.tool_arguments)
-                .extra("model", &model),
-            "tool_call_ready" => Frame::new("model_tool_call_ready")
-                .extra("turn", turn)
-                .extra("tool_call_index", event.tool_call_index)
-                .extra("tool_call_id", &event.tool_call_id)
-                .extra("tool_name", &event.tool_name)
-                .extra("arguments", &event.tool_arguments)
-                .extra("model", &model),
-            _ => return,
-        };
-        emitter.send(&frame);
-    })
-}
-
-/// Records searches the model ran with its hosted web search tool, and
-/// returns them as hosted calls for the log; a search without an id gets
-/// `<id_prefix>_ws_<i>`.
-async fn record_hosted_searches(
-    run: &Run,
-    result: &ChatResult,
-    id_prefix: &str,
-) -> Vec<HostedCall> {
-    let mut hosted = Vec::new();
-    for (index, search) in result.hosted_web_search_calls.iter().enumerate() {
-        let mut input = json!({ "query": search.query, "hosted": true });
-        if let Some(action) = &search.action {
-            input["action"] = json!(action);
-        }
-        let output = json!({
-            "provider": result.wire_api, "hosted": true, "status": search.status,
-            "query": search.query, "action": search.action,
-        });
-        hosted.push(HostedCall {
-            call_id: if search.id.trim().is_empty() {
-                format!("{id_prefix}_ws_{index}")
-            } else {
-                search.id.trim().to_owned()
-            },
-            name: "web_search".into(),
-            arguments: input.clone(),
-            value: output.clone(),
-            meta: Some(json!({ "hosted": true })),
-            files: Vec::new(),
-        });
-        let Some(mut call) = tools::start_tool_call(run, "web_search", input).await else {
-            continue;
-        };
-        tools::complete_tool_call(run, &mut call, output.clone()).await;
-        let message = if search.query.is_empty() {
-            "Used hosted web search".to_owned()
-        } else {
-            search.query.clone()
-        };
-        run.event(
-            EventInput::new(
-                "tool.completed",
-                "research",
-                "completed",
-                "Web search",
-                message,
-            )
-            .tool_call(Some(call.id))
-            .data(json!({ "tool_name": "web_search", "output": output })),
-        )
-        .await;
-        run.send(&Frame {
-            tool_call: value(&call),
-            ..Frame::new("tool_call")
-        });
-    }
-    hosted
+            HostedCall {
+                call_id: if search.id.trim().is_empty() {
+                    format!("{id_prefix}_ws_{index}")
+                } else {
+                    search.id.trim().to_owned()
+                },
+                name: "web_search".into(),
+                arguments: input,
+                value: json!({
+                    "provider": result.wire_api, "hosted": true, "status": search.status,
+                    "query": search.query, "action": search.action,
+                }),
+                meta: Some(json!({ "hosted": true })),
+                files: Vec::new(),
+            }
+        })
+        .collect()
 }
 
 /// The id prefix for calls of model step `step` that came without an id.
@@ -171,7 +70,7 @@ fn call_id_prefix(step: usize) -> String {
 pub(crate) struct AgentLlm {
     run: Arc<Run>,
     calls: AtomicUsize,
-    last: Mutex<Option<(ChatResult, bool)>>,
+    last: Mutex<Option<String>>,
 }
 
 impl AgentLlm {
@@ -183,8 +82,8 @@ impl AgentLlm {
         }
     }
 
-    /// The last call's result and whether its text was streamed.
-    pub(crate) fn take_last(&self) -> Option<(ChatResult, bool)> {
+    /// The last reply's text.
+    pub(crate) fn take_last(&self) -> Option<String> {
         self.last
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
@@ -197,12 +96,6 @@ impl Llm for AgentLlm {
         Box::pin(async move {
             let index = self.calls.fetch_add(1, Ordering::SeqCst) + 1;
             let run = &self.run;
-            run.event(
-                EventInput::new("model.turn.started", "model", "running", "Call AI backend", format!("Requesting model turn {index}"))
-                    .data(json!({ "turn": index, "model": run.model.model_name, "wire_api": run.model.wire_api })),
-            )
-            .await;
-            let streamed = Arc::new(AtomicBool::new(false));
             let result = run
                 .agent
                 .engine()
@@ -211,51 +104,30 @@ impl Llm for AgentLlm {
                     &request.tools,
                     "",
                     &run.model,
-                    Some(stream_handler(run, index, streamed.clone(), &sink)),
-                    Some(retry_handler(run, index, &sink)),
+                    Some(sink.stream_handler()),
+                    Some(sink.retry_handler(&run.model.provider_type)),
                 )
                 .await
                 .map_err(|error| error.to_string())?;
             let id_prefix = call_id_prefix(index);
-            let mut hosted = record_hosted_searches(run, &result, &id_prefix).await;
+            let mut hosted = hosted_searches(&result, &id_prefix);
             let (images, follow_up) = images::save_hosted_images(
                 run,
                 &result.wire_api,
                 &id_prefix,
                 &result.hosted_image_generation_calls,
-            )
-            .await;
+            );
             hosted.extend(images);
-            let follow_up = blocks(&follow_up);
-            let tool_calls = normalize_calls(&result.tool_calls, &call_id_prefix(index));
-            run.event(
-                EventInput::new(
-                    "model.turn.completed",
-                    "model",
-                    "completed",
-                    "AI backend returned",
-                    format!(
-                        "Turn {index} completed with {} tool calls",
-                        tool_calls.len()
-                    ),
-                )
-                .data(json!({
-                    "turn": index, "content_chars": result.content.trim().chars().count(),
-                    "tool_calls": tool_calls.len(), "stop_reason": result.stop_reason,
-                })),
-            )
-            .await;
             let reply = LlmReply {
                 content: result.content.trim().to_owned(),
-                tool_calls,
+                tool_calls: normalize_calls(&result.tool_calls, &id_prefix),
                 stop_reason: result.stop_reason.clone(),
                 model: result.model.clone(),
                 raw_items: result.response_items.clone(),
-                follow_up,
+                follow_up: blocks(&follow_up),
                 hosted,
             };
-            *self.last.lock().unwrap_or_else(PoisonError::into_inner) =
-                Some((result, streamed.load(Ordering::SeqCst)));
+            *self.last.lock().unwrap_or_else(PoisonError::into_inner) = Some(reply.content.clone());
             Ok(reply)
         })
     }
