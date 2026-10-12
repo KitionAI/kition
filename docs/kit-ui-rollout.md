@@ -15,6 +15,11 @@ Status record, 2026-10-12. See `docs/kit-sdk.md` section 4a for how it works.
   Apache-2.0.
 - The kit repositories are named `KitionAI/kition-<kit>` (`kition-word`,
   `kition-pdf`, …) and are checked out next to Kition as `../kition-<kit>`.
+- Chinese text in the web editors uses Droid Sans Fallback (Apache-2.0) from
+  `KitionAI/kition-fonts`, checked out as `../kition-fonts`, handed to each
+  engine's `addFont`. Noto CJK is Source Han renamed; the Craft apps' asset
+  rules forbid it, so no kit ships it. PDF also substitutes the face for
+  Chinese fonts a PDF names but does not embed.
 
 ## Where Things Are
 
@@ -35,9 +40,9 @@ Status record, 2026-10-12. See `docs/kit-sdk.md` section 4a for how it works.
 | Kit | Shell | Highlights |
 | --- | --- | --- |
 | Presentation | Ribbon | Pilot; thumbnails, notes, slide show |
-| Word | Ribbon | Styles gallery, find and replace, contextual tabs, CJK font |
+| Word | Ribbon | Styles gallery, find and replace, contextual tabs, Chinese face |
 | Sheet | Ribbon | Formula bar, sheet tabs, clipboard; grid draws conditional formats, wrapped text, charts; headings and frozen panes stay in view (Standard E10 pinned bands) |
-| PDF | Ribbon | Page tools, thumbnails, bookmarks, comments, form fields, find |
+| PDF | Ribbon | Page tools, thumbnails, bookmarks, comments, form fields, find; Chinese fonts a PDF does not embed |
 | CAD | Ribbon | Engine tools, layers palette, command line, drafting modes |
 | Photo | Menu bar | Ported canvas tools, options bar, layers, CJK type |
 | Vector | Menu bar | Tool flyouts, Transform, Appearance, Align, Pathfinder, Layers, Swatches |
@@ -52,14 +57,6 @@ embedded spec, run in both browsers.
 
 ## Known Gaps
 
-- PDF: fonts a PDF names but does not embed (common in Chinese PDFs) are not
-  substituted with a CJK face. Only Japanese is substituted (craft-fonts'
-  BIZ UD and Shippori faces); kition-pdf's AGENTS.md rules out Noto CJK, so a
-  Chinese face needs one that is neither Adobe's nor derived from Source Han.
-- Font policy: kition-presentation and kition-pdf rule out Noto CJK (Source
-  Han rebranded), so Presentation gives `addFont` nothing and draws Chinese
-  with its bundled Japanese face. Word, Sheet, Design, Photo, and Effect load
-  Noto Sans CJK SC from craft-fonts; their repositories have no such rule.
 - Kition's `host/pick` copies the chosen file next to the document, which is
   wasteful for large media.
 - `desktop-photo-kit.spec.ts` "imports a PSD dropped from the OS" fails in

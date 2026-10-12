@@ -266,9 +266,10 @@ editors on `KitAppShell`, with a tool rail of flyout slots and side panels).
   `e2e/helpers/embeddedKit.ts`; the older `<kit>-web-editor` specs answer the
   kit's `kit-ui.json` with 404 to keep covering Kition's own editors, and
   `kit-bridge.spec.ts` drives the agent bridge against both.
-- Web engines embed no CJK face; kits that draw text export `addFont`
-  (standard E9), and their editors ship Noto Sans CJK SC from the
-  `craft-fonts` checkout (`web/scripts/build-engine.sh`).
+- Web engines embed no Chinese face; kits that draw text export `addFont`
+  (standard E9), and their editors ship Droid Sans Fallback from the
+  `kition-fonts` checkout next to the kit (`web/scripts/build-engine.sh`).
+  Never Noto CJK or Source Han: the Craft apps' asset rules forbid them.
 
 ## 5. Adding A Kit: Checklist
 
@@ -544,7 +545,8 @@ Slide and page kits (Presentation):
   `wantsText` while one shape is selected; otherwise the host keeps the keys.
 - Engines built with craft-fonts need the checkout next to the kit
   repository (`../craft-fonts`), or web builds have no fonts and text is
-  invisible.
+  invisible. The faces an editor hands to `addFont` come from
+  `../kition-fonts` (`KITION_FONTS_DIR`), Kition's own font repository.
 
 Text kits (Word):
 
