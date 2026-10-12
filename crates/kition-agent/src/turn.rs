@@ -379,7 +379,8 @@ mod tests {
 
     #[test]
     fn the_turn_names_no_pane_or_kit() {
-        let source = include_str!("turn.rs");
+        // A Windows checkout has CRLF line endings.
+        let source = include_str!("turn.rs").replace("\r\n", "\n");
         let turn = source
             .split("\n#[cfg(test)]\nmod tests")
             .next()
