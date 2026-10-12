@@ -37,7 +37,12 @@ pub fn resolve_from_root(root: &str, path: &str) -> AppResult<PathBuf> {
     if relative.as_os_str().is_empty() || relative == Path::new(".") {
         return Err(AppError::bad_request("Invalid data document path"));
     }
-    if relative.is_absolute() || relative.starts_with("..") {
+    // On Windows a rooted `\\etc` or drive-relative `C:x` is not absolute,
+    // yet joining it replaces the workspace root.
+    if !relative
+        .components()
+        .all(|component| matches!(component, Component::Normal(_)))
+    {
         return Err(AppError::bad_request(
             "Data document path cannot escape the workspace",
         ));
@@ -186,6 +191,11 @@ mod tests {
         assert!(resolve_from_root("", "a.kitable").is_err());
         assert!(resolve_from_root("/ws", "../a.kitable").is_err());
         assert!(resolve_from_root("/ws", "/etc/a.kitable").is_err());
+        if cfg!(windows) {
+            assert!(resolve_from_root("C:\\ws", "\\etc\\a.kitable").is_err());
+            assert!(resolve_from_root("C:\\ws", "D:a.kitable").is_err());
+            assert!(resolve_from_root("C:\\ws", "D:\\a.kitable").is_err());
+        }
         assert!(resolve_from_root("/ws", "a.md").is_err());
         assert!(resolve_from_root("/ws", ".").is_err());
     }

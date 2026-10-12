@@ -30,10 +30,11 @@ export function describeTarget(triple) {
 export function plannedArtifacts({ bundleDir, version, triple }) {
   const { os, arch } = describeTarget(triple)
   const prefix = `Kition-${version}-${os}-${arch}`
-  const rustArch = triple.split('-')[0]
   if (os === 'macos') {
+    // The bundler names DMGs `aarch64` on Apple silicon and `x64` on Intel.
+    const dmgArch = arch === 'x64' ? 'x64' : 'aarch64'
     return [
-      { from: path.join(bundleDir, 'dmg', `Kition_${version}_${rustArch}.dmg`), to: `${prefix}.dmg` },
+      { from: path.join(bundleDir, 'dmg', `Kition_${version}_${dmgArch}.dmg`), to: `${prefix}.dmg` },
       { from: path.join(bundleDir, 'macos', 'Kition.app.tar.gz'), to: `${prefix}.app.tar.gz`, updater: true },
     ]
   }

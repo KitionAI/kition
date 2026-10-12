@@ -250,12 +250,18 @@ pub(crate) fn delete(conn: &Connection, user_id: i64, raw_id: &str) -> AppResult
     Ok(changed > 0)
 }
 
+/// The shell hooks run in: the user's login shell, or `cmd` on Windows.
 pub(crate) fn login_shell() -> String {
-    std::env::var("SHELL")
+    let (variable, fallback) = if cfg!(windows) {
+        ("ComSpec", "cmd.exe")
+    } else {
+        ("SHELL", "/bin/sh")
+    };
+    std::env::var(variable)
         .ok()
         .map(|s| s.trim().to_owned())
         .filter(|s| !s.is_empty())
-        .unwrap_or_else(|| "/bin/sh".into())
+        .unwrap_or_else(|| fallback.into())
 }
 
 /// Event metadata hooks can match against.
@@ -449,7 +455,7 @@ impl HookRunner {
     async fn run_shell(&self, hook: &Hook, workdir: Option<&Path>, timeout: Duration) -> i64 {
         let mut command = tokio::process::Command::new(login_shell());
         command
-            .arg("-lc")
+            .arg(if cfg!(windows) { "/C" } else { "-lc" })
             .arg(&hook.command)
             .stdin(Stdio::null())
             .kill_on_drop(true);
@@ -565,7 +571,12 @@ mod tests {
             Some("Unsupported hook event".to_owned())
         );
         assert_eq!(redact_workdir("rel/dir"), "rel/dir");
-        let redacted = redact_workdir("/tmp/project");
+        let absolute = if cfg!(windows) {
+            r"C:\tmp\project"
+        } else {
+            "/tmp/project"
+        };
+        let redacted = redact_workdir(absolute);
         assert!(redacted.starts_with("project#") && redacted.len() == "project#".len() + 8);
     }
 

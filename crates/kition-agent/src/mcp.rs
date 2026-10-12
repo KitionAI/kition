@@ -141,7 +141,7 @@ struct HttpClient {
 }
 
 enum Transport {
-    Stdio(StdioClient),
+    Stdio(Box<StdioClient>),
     Http(HttpClient),
 }
 
@@ -199,11 +199,11 @@ impl Client {
                         }
                     }
                 });
-                Transport::Stdio(StdioClient {
+                Transport::Stdio(Box::new(StdioClient {
                     stdin: Mutex::new(stdin),
                     pending,
                     _child: child,
-                })
+                }))
             }
             _ => Transport::Http(HttpClient {
                 http: reqwest::Client::new(),

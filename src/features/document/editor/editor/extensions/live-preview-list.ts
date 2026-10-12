@@ -8,7 +8,8 @@ class BulletWidget extends WidgetType {
     const dot = document.createElement('span')
     dot.className = 'cm-md-bullet'
     dot.style.marginInlineStart = `${this.indent}em`
-    dot.textContent = '•'
+    // A drawn dot keeps the gap to the text fixed; bullet glyph widths vary by font.
+    dot.appendChild(document.createElement('span')).className = 'cm-md-bullet-dot'
     return dot
   }
 
@@ -43,7 +44,14 @@ export const bulletListTheme = EditorView.baseTheme({
     display: 'inline-block',
     width: '0.8em',
     textIndent: '0',
-    color: 'hsl(var(--muted-foreground) / 0.55)',
-    fontWeight: '700',
+  },
+  '.cm-md-bullet-dot': {
+    display: 'inline-block',
+    width: '0.32em',
+    height: '0.32em',
+    marginInlineStart: '0.1em',
+    borderRadius: '50%',
+    verticalAlign: 'middle',
+    backgroundColor: 'hsl(var(--muted-foreground) / 0.55)',
   },
 })

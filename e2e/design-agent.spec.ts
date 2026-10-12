@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 import { mockAgentTurn } from './helpers/agentStream'
 import {
   createDesign,
@@ -18,6 +18,17 @@ function headlinePatch(layerId: string, text: string) {
       { op: 'artboard.background', background: '#f4f1ff' },
     ],
   }
+}
+
+// The chat panel resets its draft while the session loads, so retry the
+// fill until the text sticks and Send is enabled.
+async function sendPrompt(page: Page, composer: Locator, text: string) {
+  const send = page.getByRole('button', { name: 'Send' })
+  await expect(async () => {
+    await composer.fill(text)
+    await expect(send).toBeEnabled({ timeout: 1000 })
+  }).toPass()
+  await send.click()
 }
 
 test('previews an agent design patch, applies it on accept, and reverts on reject', async ({
@@ -45,8 +56,7 @@ test('previews an agent design patch, applies it on accept, and reverts on rejec
   const newChat = page.getByRole('button', { name: 'New chat' })
   if (await newChat.isVisible().catch(() => false)) await newChat.click()
   const composer = page.getByPlaceholder('Plan, write, or ask anything…')
-  await composer.fill('Rewrite the headline for a launch party.')
-  await page.getByRole('button', { name: 'Send' }).click()
+  await sendPrompt(page, composer, 'Rewrite the headline for a launch party.')
 
   await expect(page.getByTestId('design-agent-preview-controls')).toBeVisible()
   await expect(page.getByTestId('design-agent-operation-list')).toContainText('Set text')
@@ -70,8 +80,7 @@ test('previews an agent design patch, applies it on accept, and reverts on rejec
   await expect(page.getByTestId('design-agent-preview-controls')).toHaveCount(0)
   expect(designLayers(await readDesign(page))[0].text).toBe(headline.text)
 
-  await composer.fill('Apply that headline now.')
-  await page.getByRole('button', { name: 'Send' }).click()
+  await sendPrompt(page, composer, 'Apply that headline now.')
   await expect(page.getByTestId('design-agent-accept')).toBeVisible()
   await page.getByTestId('design-agent-accept').click()
   await expectDesignSaved(page)
