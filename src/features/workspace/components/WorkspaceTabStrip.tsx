@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronLeft, ChevronRight, FileSpreadsheet, FileText, FileVideo2, Image as ImageIcon, LayoutDashboard, PanelLeftOpen, Paintbrush, PenTool, X, Zap } from 'lucide-react'
+import { Bot, ChevronDown, ChevronLeft, ChevronRight, FileSpreadsheet, FileText, FileVideo2, Image as ImageIcon, LayoutDashboard, PanelLeftOpen, Paintbrush, PenTool, X, Zap } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkspaceTabContextMenu, type WorkspaceTabContextMenuItem } from '@/features/workspace/components/WorkspaceTabContextMenu'
@@ -18,6 +18,7 @@ export function WorkspaceTabStrip({
   onCloseReadOnly,
   onCopyTabRef,
   isTabModified,
+  isTabChangedByAgent,
   sidebarCollapsed,
   onToggleSidebar,
 }: {
@@ -33,6 +34,8 @@ export function WorkspaceTabStrip({
   onCloseReadOnly?: () => void
   onCopyTabRef?: (tab: WorkspaceTab) => void
   isTabModified?: (tab: WorkspaceTab) => boolean
+  /** The agent changed the tab's document and the change awaits review (shown on background tabs). */
+  isTabChangedByAgent?: (tab: WorkspaceTab) => boolean
   sidebarCollapsed?: boolean
   onToggleSidebar?: () => void
 }) {
@@ -268,6 +271,7 @@ export function WorkspaceTabStrip({
       >
         <WorkspaceTabIcon tab={tab} />
         <span>{tab.title}</span>
+        <AgentChangedMark show={activeTabId !== tab.id && Boolean(isTabChangedByAgent?.(tab))} />
         <button
           type="button"
           className="document-tab-close"
@@ -364,6 +368,7 @@ export function WorkspaceTabStrip({
                 >
                   <WorkspaceTabIcon tab={tab} />
                   <span>{tab.title}</span>
+                  <AgentChangedMark show={activeTabId !== tab.id && Boolean(isTabChangedByAgent?.(tab))} />
                   <button
                     type="button"
                     className="document-tab-close"
@@ -439,4 +444,15 @@ function WorkspaceTabIcon({ tab }: { tab: WorkspaceTab }) {
   return tab.format === 'data'
     ? <FileSpreadsheet className={cn('size-3.5', getWorkspaceItemIconColorClass('data'))} />
     : <FileText className={cn('size-3.5', getWorkspaceItemIconColorClass(tab.format))} />
+}
+
+/** A background tab whose document the agent changed: the change waits there for review. */
+function AgentChangedMark({ show }: { show: boolean }) {
+  const { t } = useTranslation('workspace')
+  if (!show) return null
+  return (
+    <span className="document-tab-agent-mark" data-testid="document-tab-agent-changed" role="img" aria-label={t('tree.modifiedByAgent')} title={t('tree.modifiedByAgent')}>
+      <Bot className="size-3" />
+    </span>
+  )
 }

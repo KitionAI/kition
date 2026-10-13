@@ -21,8 +21,12 @@ export type WorkspaceScreenEditorInput = {
   documentSession: Pick<
     WorkspaceEditorContentProps,
     'activeDocument' | 'activeDocumentFormat' | 'activeDocumentRevision' | 'activeDocumentSession' | 'draftContent'
-    | 'documentRevisionSaving' | 'getOpenedDocument'
+    | 'documentRevisionSaving' | 'getOpenedDocument' | 'activeAgentReview'
   > & {
+    acceptAgentReview: () => void
+    rejectAgentReview: () => unknown
+    showAgentReviewChanges: () => void
+    closeAgentReviewChanges: () => void
     decideDocumentRevisionChange: (path: string, changeId: string, decision: RevisionDecision) => void
     resolveAllDocumentRevisionChanges: (path: string, decision: RevisionDecision) => void
     openDocument: (path: string) => unknown
@@ -74,6 +78,11 @@ export function buildWorkspaceEditorContentProps(input: WorkspaceScreenEditorInp
     activeDocument: documentSession.activeDocument,
     activeDocumentFormat: documentSession.activeDocumentFormat,
     activeDocumentRevision: revision,
+    activeAgentReview: documentSession.activeAgentReview,
+    onAcceptAgentReview: documentSession.acceptAgentReview,
+    onRejectAgentReview: () => void documentSession.rejectAgentReview(),
+    onShowAgentReviewChanges: documentSession.showAgentReviewChanges,
+    onCloseAgentReviewChanges: documentSession.closeAgentReviewChanges,
     activeDocumentSession: documentSession.activeDocumentSession,
     activeWorkspaceTab: input.activeWorkspaceTab,
     activeWorkspaceTabId: input.activeWorkspaceTabId,

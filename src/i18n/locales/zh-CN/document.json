@@ -1257,6 +1257,12 @@
     "removedCharacters": "删除 {{count}} 字符",
     "addedCharacters": "新增 {{count}} 字符"
   },
+  "agentReview": {
+    "title": "已由 Agent 修改",
+    "summary_one": "文中标出了 {{count}} 处修改",
+    "summary_other": "文中标出了 {{count}} 处修改",
+    "backToText": "返回正文"
+  },
   "splitEditor": {
     "sourcePlaceholder": "在此编辑 Markdown 源文…",
     "dividerAriaLabel": "拖动调整窗格大小（双击重置）"

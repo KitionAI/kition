@@ -49,6 +49,14 @@ describe('buildWorkspaceTabStripProps', () => {
     expect(run.closed()).toEqual(['viewer', 'sites'])
   })
 
+  it('tells which document tabs the agent changed', () => {
+    const run = build({ isOpenedDocumentChangedByAgent: (path) => path === 'b.md' })
+    expect(run.props.isTabChangedByAgent!(tabs[1])).toBe(true)
+    expect(run.props.isTabChangedByAgent!(tabs[0])).toBe(false)
+    expect(run.props.isTabChangedByAgent!(tabs[2])).toBe(false)
+    expect(build().props.isTabChangedByAgent!(tabs[1])).toBe(false)
+  })
+
   it('keeps modified documents on close unmodified', () => {
     const run = build({ hasUnsavedChanges: true })
     run.props.onCloseUnmodified!()

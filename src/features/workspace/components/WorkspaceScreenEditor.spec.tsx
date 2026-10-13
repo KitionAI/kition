@@ -18,6 +18,11 @@ function buildInput(overrides: Partial<WorkspaceScreenEditorInput> = {}) {
     draftContent: 'draft',
     documentRevisionSaving: false,
     getOpenedDocument: () => null,
+    activeAgentReview: null,
+    acceptAgentReview: vi.fn(),
+    rejectAgentReview: vi.fn(async () => undefined),
+    showAgentReviewChanges: vi.fn(),
+    closeAgentReviewChanges: vi.fn(),
     decideDocumentRevisionChange: vi.fn(),
     resolveAllDocumentRevisionChanges: vi.fn(),
     openDocument: vi.fn(),
@@ -81,6 +86,19 @@ describe('buildWorkspaceEditorContentProps', () => {
     const none = buildInput({ documentSession: { ...documentSession, activeDocumentRevision: null } })
     buildWorkspaceEditorContentProps(none.input).onDecideDocumentRevisionChange('c1', 'accept' as never)
     expect(none.documentSession.decideDocumentRevisionChange).not.toHaveBeenCalled()
+  })
+
+  it('routes the decisions on the agent’s live edit to the document session', () => {
+    const { input, documentSession } = buildInput()
+    const props = buildWorkspaceEditorContentProps(input)
+    props.onAcceptAgentReview!()
+    props.onRejectAgentReview!()
+    props.onShowAgentReviewChanges!()
+    props.onCloseAgentReviewChanges!()
+    expect(documentSession.acceptAgentReview).toHaveBeenCalledTimes(1)
+    expect(documentSession.rejectAgentReview).toHaveBeenCalledTimes(1)
+    expect(documentSession.showAgentReviewChanges).toHaveBeenCalledTimes(1)
+    expect(documentSession.closeAgentReviewChanges).toHaveBeenCalledTimes(1)
   })
 
   it('opens the Agent panel and focuses the composer', () => {

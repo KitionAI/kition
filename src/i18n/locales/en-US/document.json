@@ -1257,6 +1257,12 @@
     "removedCharacters": "−{{count}} characters",
     "addedCharacters": "+{{count}} characters"
   },
+  "agentReview": {
+    "title": "Changed by the Agent",
+    "summary_one": "{{count}} change is marked in the text",
+    "summary_other": "{{count}} changes are marked in the text",
+    "backToText": "Back to the text"
+  },
   "splitEditor": {
     "sourcePlaceholder": "Edit Markdown source here...",
     "dividerAriaLabel": "Drag to resize panes (double-click to reset)"

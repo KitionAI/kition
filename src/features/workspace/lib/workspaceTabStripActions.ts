@@ -20,6 +20,8 @@ export type WorkspaceTabStripActionsInput = {
   hasUnsavedChanges: boolean
   /** Whether a document open in a background tab has edits its file does not have yet. */
   isOpenedDocumentModified: (path: string) => boolean
+  /** Whether the agent changed a document open in a tab and the change awaits review. */
+  isOpenedDocumentChangedByAgent?: (path: string) => boolean
   /** The full-screen workflow route is showing. */
   workflowOpen: boolean
   closeTab: (tabId: string) => void
@@ -80,6 +82,7 @@ export function buildWorkspaceTabStripProps(input: WorkspaceTabStripActionsInput
       }
     },
     isTabModified,
+    isTabChangedByAgent: (tab) => tab.type === 'document' && Boolean(input.isOpenedDocumentChangedByAgent?.(tab.path)),
     sidebarCollapsed: input.sidebarCollapsed,
     onToggleSidebar: input.onToggleSidebar,
   }

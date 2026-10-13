@@ -1257,6 +1257,12 @@
     "removedCharacters": "−{{count}} caractères",
     "addedCharacters": "+{{count}} caractères"
   },
+  "agentReview": {
+    "title": "Modifié par l’Agent",
+    "summary_one": "{{count}} modification est signalée dans le texte",
+    "summary_other": "{{count}} modifications sont signalées dans le texte",
+    "backToText": "Retour au texte"
+  },
   "splitEditor": {
     "sourcePlaceholder": "Modifier la source Markdown ici...",
     "dividerAriaLabel": "Faites glisser pour redimensionner les volets (double-clic pour réinitialiser)"

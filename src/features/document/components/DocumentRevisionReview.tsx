@@ -1,4 +1,4 @@
-import { Check, ChevronDown, ChevronUp, FileDiff, X } from 'lucide-react'
+import { ArrowLeft, Check, ChevronDown, ChevronUp, FileDiff, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -16,6 +16,10 @@ type DocumentRevisionReviewProps = {
   revision: PendingDocumentRevision
   saving: boolean
   titleSlot?: ReactNode
+  /** Replaces the summary line (an agent's edit already in the text is not a change "outside the editor"). */
+  summary?: string
+  /** Back to the text without deciding (the changes stay under review). */
+  onClose?: () => void
   onDecideChange: (changeId: string, decision: DocumentRevisionDecision) => void
   onResolveAll: (decision: DocumentRevisionDecision) => void
 }
@@ -24,6 +28,8 @@ export function DocumentRevisionReview({
   revision,
   saving,
   titleSlot,
+  summary,
+  onClose,
   onDecideChange,
   onResolveAll,
 }: DocumentRevisionReviewProps) {
@@ -70,63 +76,16 @@ export function DocumentRevisionReview({
 
   return (
     <div className="document-revision-review" data-testid="document-revision-review">
-      <div className="document-revision-toolbar">
-        <div className="document-revision-toolbar__summary">
-          <span className="document-revision-toolbar__icon" aria-hidden="true">
-            <FileDiff />
-          </span>
-          <span className="min-w-0">
-            <strong>{t('revision.title')}</strong>
-            <span>{t('revision.summary', { count: revision.comparison.changes.length })}</span>
-          </span>
-        </div>
-        <div className="document-revision-toolbar__actions">
-          <span className="document-revision-toolbar__pending">
-            {pendingChanges.length ? `${Math.min(activePendingIndex + 1, pendingChanges.length)} / ${pendingChanges.length}` : '0'}
-            {' · '}{t('revision.pending', { count: pendingChanges.length })}
-          </span>
-          <Button
-            variant="outline"
-            size="iconSm"
-            type="button"
-            disabled={saving || !pendingChanges.length}
-            onClick={() => navigatePendingChange(-1)}
-            label={t('revision.previous')}
-          >
-            <ChevronUp />
-          </Button>
-          <Button
-            variant="outline"
-            size="iconSm"
-            type="button"
-            disabled={saving || !pendingChanges.length}
-            onClick={() => navigatePendingChange(1)}
-            label={t('revision.next')}
-          >
-            <ChevronDown />
-          </Button>
-          <Button
-            variant="outline"
-            size="md"
-            type="button"
-            disabled={saving}
-            onClick={() => onResolveAll('rejected')}
-          >
-            <X />
-            {t(pendingChanges.length < revision.comparison.changes.length ? 'revision.rejectRemaining' : 'revision.rejectAll')}
-          </Button>
-          <Button
-            size="md"
-            type="button"
-            loading={saving}
-            disabled={saving}
-            onClick={() => onResolveAll('accepted')}
-          >
-            <Check />
-            {t(pendingChanges.length < revision.comparison.changes.length ? 'revision.acceptRemaining' : 'revision.acceptAll')}
-          </Button>
-        </div>
-      </div>
+      <DocumentRevisionToolbar
+        revision={revision}
+        saving={saving}
+        summary={summary}
+        pendingCount={pendingChanges.length}
+        activePendingIndex={activePendingIndex}
+        onNavigate={navigatePendingChange}
+        onClose={onClose}
+        onResolveAll={onResolveAll}
+      />
       <DocumentRevisionOptions layout={layout} setLayout={setLayout} changesOnly={changesOnly} setChangesOnly={setChangesOnly} />
       <div ref={scrollerRef} className="document-revision-review__scroller">
         {titleSlot ? (
@@ -220,6 +179,84 @@ export function DocumentRevisionReview({
             )
           })}
         </div>
+      </div>
+    </div>
+  )
+}
+
+function DocumentRevisionToolbar({ revision, saving, summary, pendingCount, activePendingIndex, onNavigate, onClose, onResolveAll }: {
+  revision: PendingDocumentRevision
+  saving: boolean
+  summary?: string
+  pendingCount: number
+  activePendingIndex: number
+  onNavigate: (offset: number) => void
+  onClose?: () => void
+  onResolveAll: (decision: DocumentRevisionDecision) => void
+}) {
+  const { t } = useTranslation('document')
+  return (
+    <div className="document-revision-toolbar">
+      <div className="document-revision-toolbar__summary">
+        <span className="document-revision-toolbar__icon" aria-hidden="true">
+          <FileDiff />
+        </span>
+        <span className="min-w-0">
+          <strong>{t('revision.title')}</strong>
+          <span>{summary ?? t('revision.summary', { count: revision.comparison.changes.length })}</span>
+        </span>
+      </div>
+      <div className="document-revision-toolbar__actions">
+        <span className="document-revision-toolbar__pending">
+          {pendingCount ? `${Math.min(activePendingIndex + 1, pendingCount)} / ${pendingCount}` : '0'}
+          {' · '}{t('revision.pending', { count: pendingCount })}
+        </span>
+        <Button
+          variant="outline"
+          size="iconSm"
+          type="button"
+          disabled={saving || !pendingCount}
+          onClick={() => onNavigate(-1)}
+          label={t('revision.previous')}
+        >
+          <ChevronUp />
+        </Button>
+        <Button
+          variant="outline"
+          size="iconSm"
+          type="button"
+          disabled={saving || !pendingCount}
+          onClick={() => onNavigate(1)}
+          label={t('revision.next')}
+        >
+          <ChevronDown />
+        </Button>
+        {onClose ? (
+          <Button variant="ghost" size="md" type="button" disabled={saving} onClick={onClose}>
+            <ArrowLeft />
+            {t('agentReview.backToText')}
+          </Button>
+        ) : null}
+        <Button
+          variant="outline"
+          size="md"
+          type="button"
+          disabled={saving}
+          onClick={() => onResolveAll('rejected')}
+        >
+          <X />
+          {t(pendingCount < revision.comparison.changes.length ? 'revision.rejectRemaining' : 'revision.rejectAll')}
+        </Button>
+        <Button
+          size="md"
+          type="button"
+          loading={saving}
+          disabled={saving}
+          onClick={() => onResolveAll('accepted')}
+        >
+          <Check />
+          {t(pendingCount < revision.comparison.changes.length ? 'revision.acceptRemaining' : 'revision.acceptAll')}
+        </Button>
       </div>
     </div>
   )

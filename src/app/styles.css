@@ -1358,6 +1358,10 @@
     @apply absolute size-1.5 rounded-full bg-amber-500;
   }
 
+  .document-tab-agent-mark {
+    @apply inline-flex shrink-0 items-center text-primary;
+  }
+
   .workspace-tab-context-menu {
     @apply fixed z-[200] min-w-[220px] overflow-hidden rounded-md border border-border bg-card py-1 text-sm text-foreground shadow-xl dark:border-border dark:bg-background dark:text-foreground;
   }
@@ -2031,6 +2035,24 @@
   .document-revision-comparison__text mark.is-added {
     background: hsl(var(--success-background));
     box-shadow: 0 1px 0 hsl(var(--success-border));
+  }
+
+  /* An agent's edit under review, marked in the editor like the review panel marks changes. */
+  .cm-agent-review-added {
+    background: hsl(var(--success-background));
+    box-shadow: 0 1px 0 hsl(var(--success-border));
+  }
+
+  .cm-agent-review-removed {
+    background: hsl(var(--destructive-background));
+    color: hsl(var(--destructive));
+    text-decoration: line-through;
+    text-decoration-color: hsl(var(--destructive) / 0.5);
+    white-space: pre-wrap;
+  }
+
+  .document-agent-review-bar {
+    @apply min-h-12;
   }
 
   .document-revision-comparison__empty {

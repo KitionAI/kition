@@ -1257,6 +1257,12 @@
     "removedCharacters": "−{{count}} caracteres",
     "addedCharacters": "+{{count}} caracteres"
   },
+  "agentReview": {
+    "title": "Modificado por el Agente",
+    "summary_one": "{{count}} cambio está marcado en el texto",
+    "summary_other": "{{count}} cambios están marcados en el texto",
+    "backToText": "Volver al texto"
+  },
   "splitEditor": {
     "sourcePlaceholder": "Edita el código Markdown aquí...",
     "dividerAriaLabel": "Arrastra para redimensionar los paneles (doble clic para restablecer)"

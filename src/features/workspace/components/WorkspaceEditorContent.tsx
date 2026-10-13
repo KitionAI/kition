@@ -1,4 +1,4 @@
-import type { DocumentSession, DocumentTranslationSupport, OpenedDocumentEntry } from '@/features/document/public'
+import type { DocumentAgentReview, DocumentSession, DocumentTranslationSupport, OpenedDocumentEntry } from '@/features/document/public'
 import type { ComponentProps } from 'react'
 import { lazy, Suspense, useCallback, useEffect, useMemo, type ReactNode } from 'react'
 import { BookOpen } from 'lucide-react'
@@ -38,6 +38,9 @@ const DocumentMarkdownEditorPane = lazy(() =>
 )
 const DocumentSplitEditorPane = lazy(() =>
   import('@/features/document/components/DocumentSplitEditorPane').then((module) => ({ default: module.DocumentSplitEditorPane })),
+)
+const DocumentAgentReviewBar = lazy(() =>
+  import('@/features/document/components/DocumentAgentReviewBar').then((module) => ({ default: module.DocumentAgentReviewBar })),
 )
 const DocumentRevisionReview = lazy(() =>
   import('@/features/document/components/DocumentRevisionReview').then((module) => ({ default: module.DocumentRevisionReview })),
@@ -119,6 +122,12 @@ type WorkspaceEditorContentProps = {
   activeDocument: WorkspaceDocument | null
   activeDocumentFormat: WorkspaceDocumentFormat
   activeDocumentRevision: PendingDocumentRevision | null
+  /** The agent's edit of the active document under review (already in the text, marked). */
+  activeAgentReview?: DocumentAgentReview | null
+  onAcceptAgentReview?: () => void
+  onRejectAgentReview?: () => void
+  onShowAgentReviewChanges?: () => void
+  onCloseAgentReviewChanges?: () => void
   /** The active Markdown document's session, once its replica is open (editors bind to it). */
   activeDocumentSession: DocumentSession | null
   activeWorkspaceTab: WorkspaceTab | undefined
@@ -180,6 +189,11 @@ export function WorkspaceEditorContent({
   activeDocument,
   activeDocumentFormat,
   activeDocumentRevision,
+  activeAgentReview = null,
+  onAcceptAgentReview,
+  onRejectAgentReview,
+  onShowAgentReviewChanges,
+  onCloseAgentReviewChanges,
   activeDocumentSession,
   activeWorkspaceTab,
   activeWorkspaceTabId,
@@ -493,6 +507,8 @@ export function WorkspaceEditorContent({
               revision={activeDocumentRevision}
               saving={documentRevisionSaving}
               titleSlot={inlineTitleElement}
+              summary={activeDocumentRevision.live ? td('agentReview.summary', { count: activeDocumentRevision.comparison.changes.length }) : undefined}
+              onClose={activeDocumentRevision.live ? onCloseAgentReviewChanges : undefined}
               onDecideChange={onDecideDocumentRevisionChange}
               onResolveAll={onResolveAllDocumentRevisionChanges}
             />
@@ -504,6 +520,16 @@ export function WorkspaceEditorContent({
       && activeDocumentFormat !== 'data'
       && activeDocumentFormat !== 'html' ? (
         <div className="workspace-document-shell">
+          {activeAgentReview && activeDocumentSession ? (
+            <Suspense fallback={null}>
+              <DocumentAgentReviewBar
+                review={activeAgentReview}
+                onAccept={() => onAcceptAgentReview?.()}
+                onReject={() => onRejectAgentReview?.()}
+                onShowChanges={() => onShowAgentReviewChanges?.()}
+              />
+            </Suspense>
+          ) : null}
           {editorMode === 'source' || editorMode === 'split' ? (
             <>
               <div className="document-top-actions-bar">

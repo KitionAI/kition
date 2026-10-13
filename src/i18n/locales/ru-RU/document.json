@@ -1257,6 +1257,12 @@
     "removedCharacters": "−{{count}} символов",
     "addedCharacters": "+{{count}} символов"
   },
+  "agentReview": {
+    "title": "Изменено Агентом",
+    "summary_one": "{{count}} изменение отмечено в тексте",
+    "summary_other": "Изменений отмечено в тексте: {{count}}",
+    "backToText": "Вернуться к тексту"
+  },
   "splitEditor": {
     "sourcePlaceholder": "Редактируйте исходный код Markdown здесь...",
     "dividerAriaLabel": "Перетащите для изменения размера панелей (двойной щелчок для сброса)"
