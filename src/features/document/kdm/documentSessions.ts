@@ -10,12 +10,6 @@ import { readWorkspaceDocument, writeWorkspaceDocument } from '@/services/deskto
 import { LOCAL_PERSON, type DocumentSession } from './documentSession'
 
 const sessions = new Map<string, DocumentSession>()
-const listeners = new Set<() => void>()
-
-function changed() {
-  for (const listener of listeners) listener()
-}
-
 /** The session open on `path`, if it is ready for editing. */
 export function getDocumentSession(path: string): DocumentSession | null {
   const session = sessions.get(path)
@@ -33,40 +27,29 @@ export function listDocumentSessions(): DocumentSession[] {
 
 export function registerDocumentSession(session: DocumentSession) {
   sessions.set(session.path, session)
-  changed()
 }
 
 /** Forgets `session` (it stays as it is: dispose or discard it separately). */
 export function unregisterDocumentSession(session: DocumentSession) {
   if (sessions.get(session.path) !== session) return
   sessions.delete(session.path)
-  changed()
 }
 
-/** Moves the sessions under `sourcePath` (a file or a folder) to `targetPath` after a rename or move. */
-export function remapDocumentSessions(sourcePath: string, targetPath: string) {
-  if (!sourcePath || !targetPath || sourcePath === targetPath) return
+/**
+ * Moves sessions after files were renamed or moved on disk: `rename` answers each open path's new
+ * path (the same path when it did not move).
+ */
+export function remapDocumentSessions(rename: (path: string) => string) {
   const moved: Array<[string, DocumentSession]> = []
   for (const [path, session] of sessions) {
-    const next = path === sourcePath
-      ? targetPath
-      : path.startsWith(`${sourcePath}/`) ? `${targetPath}${path.slice(sourcePath.length)}` : path
-    if (next !== path) moved.push([next, session])
+    const next = rename(path)
+    if (next && next !== path) moved.push([next, session])
   }
   if (!moved.length) return
   for (const [, session] of moved) sessions.delete(session.path)
   for (const [next, session] of moved) {
     session.setPath(next)
     sessions.set(next, session)
-  }
-  changed()
-}
-
-/** Calls `listener` when sessions are registered, removed, or moved. */
-export function subscribeDocumentSessions(listener: () => void) {
-  listeners.add(listener)
-  return () => {
-    listeners.delete(listener)
   }
 }
 

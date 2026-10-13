@@ -383,7 +383,7 @@ describe('DocumentSession: closing and failures', () => {
   it('saves to the new path after a rename', async () => {
     const session = await open('a', 'old.md')
     registerDocumentSession(session)
-    remapDocumentSessions('old.md', 'new.md')
+    remapDocumentSessions((path) => (path === 'old.md' ? 'new.md' : path))
     disk.files.set('new.md', 'a')
     disk.files.delete('old.md')
     expect(session.path).toBe('new.md')

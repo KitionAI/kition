@@ -14,7 +14,7 @@ export type DocumentHistory = {
 }
 
 /** The replica history of an editor, or `null` when it has none (CodeMirror's history then applies). */
-export const documentHistory = Facet.define<DocumentHistory, DocumentHistory | null>({
+const documentHistory = Facet.define<DocumentHistory, DocumentHistory | null>({
   combine: (values) => values[0] ?? null,
 })
 
@@ -37,7 +37,7 @@ export const redoDocument: Command = (view) => {
 }
 
 /** The bindings of CodeMirror's history keymap, running the replica's undo and redo. */
-export const documentHistoryKeymap = [
+const documentHistoryKeymap = [
   { key: 'Mod-z', run: undoDocument, preventDefault: true },
   { key: 'Mod-y', mac: 'Mod-Shift-z', run: redoDocument, preventDefault: true },
   { linux: 'Ctrl-Shift-z', run: redoDocument, preventDefault: true },

@@ -21,12 +21,12 @@ import { analyzeText, documentBody, renderText } from './documentText'
 /** The principal of edits made in this window. */
 export const LOCAL_PERSON = 'user:local'
 /** The principal of agent edits applied to an open document. */
-export const LOCAL_AGENT = 'agent:kition'
+const LOCAL_AGENT = 'agent:kition'
 
 /** Origin of typing and commands in an editor. */
-export const typingOrigin: Origin = person(LOCAL_PERSON, 'typing')
+const typingOrigin: Origin = person(LOCAL_PERSON, 'typing')
 
-export type DocumentSessionStatus = 'loading' | 'ready' | 'saving' | 'error'
+type DocumentSessionStatus = 'loading' | 'ready' | 'saving' | 'error'
 
 export type DocumentSessionState = {
   status: DocumentSessionStatus
@@ -84,8 +84,6 @@ export class DocumentSession {
   private opened: OpenedDocument | null = null
   /** The file text as last read or written: what the next guarded write expects on disk. */
   private fileText: string | null = null
-  /** The replica text of `fileText` (no BOM, `\n` endings): the base of the next merge. */
-  private baseText = ''
   /** The replica version the file holds, or `null` when it holds an older text. */
   private savedVersion: Version | null = null
   private state: DocumentSessionState = { status: 'loading', error: '', dirty: false }
@@ -147,7 +145,6 @@ export class DocumentSession {
     if (this.disposed) return
     this.opened = opened
     this.fileText = opened.fileText
-    this.baseText = analyzeText(opened.fileText).text
     this.savedVersion = this.rendered() === opened.fileText ? opened.replica.version() : null
     this.cleanups.push(opened.replica.subscribeText(opened.rootId, DOCUMENT_BODY, () => this.onReplicaChange()))
     this.cleanups.push(subscribeWorkspaceDocumentExternalChanges(this.onExternalChange))
@@ -269,10 +266,8 @@ export class DocumentSession {
     return this.enqueue(async () => {
       const opened = this.opened
       if (!opened || this.disposed) return
-      const file = analyzeText(fileText)
       this.fileText = fileText
-      this.baseText = file.text
-      opened.style = file.style
+      opened.style = analyzeText(fileText).style
       this.savedVersion = null
       this.replaceText(text, agent(LOCAL_AGENT, label))
       if (this.rendered() === fileText) this.savedVersion = opened.replica.version()
@@ -449,16 +444,15 @@ export class DocumentSession {
   private mergeFile(text: string) {
     const opened = this.requireOpened()
     if (text !== this.fileText) {
-      const incoming = analyzeText(text)
       this.importing += 1
       try {
-        mergeFileIntoReplica(opened, this.baseText, incoming.text)
+        // Both raw file texts: the base is the file as this session last read or wrote it.
+        mergeFileIntoReplica(opened, this.fileText ?? '', text)
       } finally {
         this.importing -= 1
       }
       this.fileText = text
-      this.baseText = incoming.text
-      opened.style = incoming.style
+      opened.style = analyzeText(text).style
     }
     if (this.rendered() === text) this.savedVersion = opened.replica.version()
   }
@@ -517,7 +511,6 @@ export class DocumentSession {
         continue
       }
       this.fileText = saved.fileText
-      this.baseText = analyzeText(saved.fileText).text
       opened.meta = saved.meta
       this.savedVersion = version
       this.retries = 0
