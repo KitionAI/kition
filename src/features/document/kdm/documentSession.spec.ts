@@ -2,7 +2,7 @@ import { isolateHistory } from '@codemirror/commands'
 import { EditorState, type ChangeSpec } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { WorkspaceDocumentExternalChange } from '@/services/desktop'
+import { readWorkspaceDocument, type WorkspaceDocumentExternalChange } from '@/services/desktop'
 import { flushWorkspaceEditSessions, discardWorkspaceEditSessions } from '@/services/workspaceEditSessions'
 import { redoDocument, undoDocument } from './documentHistory'
 import { DocumentSession, SAVE_DELAY_MS, TYPING_GROUP_MS } from './documentSession'
@@ -103,6 +103,7 @@ const sessions: DocumentSession[] = []
 
 beforeEach(() => {
   vi.useFakeTimers()
+  vi.mocked(readWorkspaceDocument).mockClear()
   disk.files.clear()
   disk.writes.length = 0
   disk.handlers.clear()
@@ -287,6 +288,34 @@ describe('DocumentSession: file changes', () => {
     expect(session.text()).toBe('external\nalpha\n')
     expect(session.undo()).toBe(false)
     expect(a.text()).toBe('external\nalpha\n')
+  })
+
+  it('merges a change made to the file while it was opening', async () => {
+    disk.files.set(PATH, 'alpha\nbeta\n')
+    const session = new DocumentSession(PATH, { root: '/vault' })
+    sessions.push(session)
+    await session.start('alpha\n')
+    await settle()
+    expect(session.text()).toBe('alpha\nbeta\n')
+    expect(session.isDirty()).toBe(false)
+  })
+
+  it('reads the file for merges and conflicts in the workspace it was opened in', async () => {
+    const session = await open('one\n')
+    const a = editor(session)
+    externalWrite('one\nexternal\n')
+    await settle()
+    let changedOnce = false
+    disk.beforeWrite = () => {
+      if (changedOnce) return
+      changedOnce = true
+      disk.files.set(PATH, 'zero\none\nexternal\n')
+    }
+    a.type({ from: 0, insert: 'x' })
+    await settle(SAVE_DELAY_MS)
+    const reads = vi.mocked(readWorkspaceDocument).mock.calls
+    expect(reads.length).toBeGreaterThanOrEqual(2)
+    for (const call of reads) expect(call).toEqual([PATH, '/vault'])
   })
 
   it('merges a file that changed between its last read and the save, then writes again', async () => {
@@ -576,8 +605,25 @@ describe('DocumentSession: before a save', () => {
 })
 
 describe('DocumentSession: closing and failures', () => {
-  it('edits the file without history when the store cannot open it', async () => {
+  it('refuses to open for a workspace that is no longer the open one', async () => {
     vi.mocked(openDocument).mockRejectedValueOnce(new Error('DESIGN_WORKSPACE_CHANGED'))
+    disk.files.set(PATH, 'kept\n')
+    const session = new DocumentSession(PATH, { root: '/vault' })
+    sessions.push(session)
+    await expect(session.start('kept\n')).rejects.toThrow('DESIGN_WORKSPACE_CHANGED')
+    expect(session.isReady()).toBe(false)
+  })
+
+  it('refuses to open without a workspace root', async () => {
+    disk.files.set(PATH, 'kept\n')
+    const session = new DocumentSession(PATH, { root: '' })
+    sessions.push(session)
+    await expect(session.start('kept\n')).rejects.toThrow()
+    expect(session.isReady()).toBe(false)
+  })
+
+  it('edits the file without history when the store cannot open it', async () => {
+    vi.mocked(openDocument).mockRejectedValueOnce(new Error('store entry unreadable'))
     vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     const session = await open('kept\n')
     expect(session.text()).toBe('kept\n')

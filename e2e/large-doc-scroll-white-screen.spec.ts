@@ -17,6 +17,7 @@
  */
 import { expect, test, type Page } from '@playwright/test'
 
+import { installDocumentStoreBridge } from './helpers/documentStore'
 import { mockLocalWorkspaceApi } from './helpers/mockApi'
 
 /**
@@ -173,6 +174,8 @@ async function mockDesktop(page: Page, docContent: string) {
     { vaultPath: VAULT_PATH, docPath: DOC_PATH, content: docContent },
   )
 
+  // The replica store of the same workspace root the bridge reports.
+  await installDocumentStoreBridge(page, { root: VAULT_PATH })
   await page.addInitScript(({ docPath }) => {
     window.localStorage.setItem('kition.document.last-active-path.v1', docPath)
     window.localStorage.removeItem('kition.document.workspace-tabs.v1')

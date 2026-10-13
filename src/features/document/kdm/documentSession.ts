@@ -84,6 +84,9 @@ const MAX_SAVE_ATTEMPTS = 3
 /** The guarded write's refusal (the file is not what this session last read or wrote). */
 const SAVE_CONFLICT = 'DESIGN_SAVE_CONFLICT'
 const NOT_SAVED = 'DOCUMENT_NOT_SAVED'
+const NO_WORKSPACE_ROOT = 'The workspace folder is not known, so the document cannot be saved safely.'
+/** The store's refusal when the workspace switched to another folder meanwhile. */
+const WORKSPACE_CHANGED = 'DESIGN_WORKSPACE_CHANGED'
 
 const message = (reason: unknown) => (reason instanceof Error ? reason.message : String(reason))
 const asError = (reason: unknown) => (reason instanceof Error ? reason : new Error(message(reason)))
@@ -171,6 +174,8 @@ export class DocumentSession {
    * the file. Rejects when the store cannot open it; the session is then unusable.
    */
   async start(fileText: string): Promise<void> {
+    // Every write and read is guarded by the workspace root; without one, nothing could be saved safely.
+    if (!this.root) throw new Error(NO_WORKSPACE_ROOT)
     const opened = await this.openReplica(fileText)
     if (this.disposed) return
     this.opened = opened
@@ -191,6 +196,8 @@ export class DocumentSession {
     this.setState({ status: 'ready', error: '', dirty: this.isDirty() })
     // The store held edits the file does not have (or the open merged a file change): save them.
     if (this.isDirty()) this.schedule(SAVE_DELAY_MS)
+    // The file may have changed between its read and now (no change event reaches a session not yet open).
+    void this.reconcile()
   }
 
   /** The document text the editors show (`\n` line endings, no byte order mark). */
@@ -438,14 +445,16 @@ export class DocumentSession {
 
   /**
    * The document's replica from the store. The `.md` file is the document and the store only adds
-   * history, so when the store refuses (a bridge without it, a damaged entry) the file is imported
+   * history, so when the store fails (a damaged entry, an unexpected error) the file is imported
    * as a new replica and edited without history; its saves still go through the guarded write.
+   * A workspace that switched meanwhile is not such a failure: the open is refused.
    */
   private async openReplica(fileText: string): Promise<OpenedDocument> {
     const actor = randomActor()
     try {
       return await openDocument(this.pathValue, fileText, actor, { expectedRoot: this.root })
     } catch (reason) {
+      if (message(reason).includes(WORKSPACE_CHANGED)) throw reason
       console.warn('[document] the replica store could not open this document; editing it without its history', reason)
       const { replica, rootId, style } = createDocumentReplica(fileText, actor)
       const meta: OpenedDocument['meta'] = { docId: replica.docId, kit: 'kit.document', path: this.pathValue, fileHash: '', fileStamp: null, exported: '', style: { ...style } }
@@ -602,7 +611,7 @@ export class DocumentSession {
     if (this.disposed || !this.opened || this.fileText === null) return
     let text: string
     try {
-      text = (await readWorkspaceDocument(this.pathValue)).content
+      text = (await readWorkspaceDocument(this.pathValue, this.root)).content
     } catch {
       return
     }
@@ -689,7 +698,7 @@ export class DocumentSession {
         }
         let current: string
         try {
-          current = (await readWorkspaceDocument(this.pathValue)).content
+          current = (await readWorkspaceDocument(this.pathValue, this.root)).content
         } catch (readFailure) {
           this.failed(readFailure)
           return
