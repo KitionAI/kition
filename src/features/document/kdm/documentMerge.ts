@@ -14,10 +14,29 @@ export type TextEdit = { from: number; to: number; insert: string }
 type Hunk = { aFrom: number; aTo: number; bFrom: number; bTo: number }
 
 const LF = 10
-/** The diff gives up on detail (not on correctness) past about this many token comparisons. */
+/** The line Myers gives up on detail (not on correctness) past about this many token comparisons. */
 const DIFF_WORK = 20_000_000
 /** And past this many edits, which bounds its memory (about the square of it). */
 const DIFF_MAX_EDITS = 2_000
+/** Character detail is kept for changes of up to this many code points, or an eighth of the changed range if more. */
+const REFINE_MIN_EDITS = 64
+/**
+ * Character refinement stops, leaving line-level edits, after about this many diff steps plus
+ * `REFINE_WORK_PER_UNIT` per UTF-16 unit of the changed middles of both texts (scattered edits
+ * of a few percent of a text take about a tenth of a step per unit; rewriting most of it, ten).
+ */
+const REFINE_WORK = 2_000_000
+const REFINE_WORK_PER_UNIT = 2
+/** Changed ranges longer than this (in UTF-16 units, on either side) are replaced as whole lines, without character detail. */
+const REFINE_MAX_LENGTH = 64 * 1024
+/**
+ * A range of lines without anchors no longer than this (in UTF-16 units, on either side) is left to
+ * the character diff whole: the line diff may express its changes in several equally short ways,
+ * not all of which keep a changed line within one hunk.
+ */
+const CHARACTER_GAP_LENGTH = 4 * 1024
+/** The line diff stops looking for anchors after scanning this many times the lines of both texts. */
+const ANCHOR_WORK_FACTOR = 32
 
 const isHighSurrogate = (unit: number) => unit >= 0xd800 && unit <= 0xdbff
 const isLowSurrogate = (unit: number) => unit >= 0xdc00 && unit <= 0xdfff
@@ -41,11 +60,14 @@ export function commonSuffixLength(a: string, b: string, limit = Math.min(a.leng
   return length
 }
 
+/** Counts the steps of the diffs it is given to, so that their total can be bounded. */
+type Meter = { work: number }
+
 /**
  * The shortest edit script from `a` to `b` (Myers), as hunks; `null` when it needs more than
- * `maxEdits` insertions and deletions.
+ * `maxEdits` insertions and deletions. Adds its steps to `meter`.
  */
-function myers(a: ArrayLike<number>, b: ArrayLike<number>, maxEdits: number): Hunk[] | null {
+function myers(a: ArrayLike<number>, b: ArrayLike<number>, maxEdits: number, meter: Meter = { work: 0 }): Hunk[] | null {
   const n = a.length
   const m = b.length
   const max = n + m
@@ -55,19 +77,27 @@ function myers(a: ArrayLike<number>, b: ArrayLike<number>, maxEdits: number): Hu
   /** `trace[d]`: the furthest x per diagonal before step d, for diagonals -d-1..d+1. */
   const trace: Int32Array[] = []
   const limit = Math.min(max, maxEdits)
+  let work = 0
   for (let d = 0; d <= limit; d += 1) {
     trace.push(v.slice(offset - d - 1, offset + d + 2))
+    work += 2 * d + 3
     for (let k = -d; k <= d; k += 2) {
       let x = k === -d || (k !== d && v[offset + k - 1] < v[offset + k + 1]) ? v[offset + k + 1] : v[offset + k - 1] + 1
       let y = x - k
+      const snakeFrom = x
       while (x < n && y < m && a[x] === b[y]) {
         x += 1
         y += 1
       }
+      work += x - snakeFrom
       v[offset + k] = x
-      if (x >= n && y >= m) return backtrack(trace, d, n, m)
+      if (x >= n && y >= m) {
+        meter.work += work
+        return backtrack(trace, d, n, m)
+      }
     }
   }
+  meter.work += work
   return null
 }
 
@@ -107,6 +137,109 @@ function diffTokens(a: ArrayLike<number>, b: ArrayLike<number>): Hunk[] {
   return myers(a, b, maxEdits) ?? [{ aFrom: 0, aTo: a.length, bFrom: 0, bTo: b.length }]
 }
 
+/** Indexes of a longest strictly increasing subsequence of `values`. */
+function longestIncreasing(values: readonly number[]): number[] {
+  /** `tails[length - 1]`: the index of the smallest value ending an increasing run of that length. */
+  const tails: number[] = []
+  const previous = new Int32Array(values.length)
+  for (let index = 0; index < values.length; index += 1) {
+    const value = values[index]
+    let low = 0
+    let high = tails.length
+    while (low < high) {
+      const middle = (low + high) >> 1
+      if (values[tails[middle]] < value) low = middle + 1
+      else high = middle
+    }
+    previous[index] = low > 0 ? tails[low - 1] : -1
+    tails[low] = index
+  }
+  const out = new Array<number>(tails.length)
+  for (let at = tails.length - 1, index = tails[at]; at >= 0; at -= 1, index = previous[index]) out[at] = index
+  return out
+}
+
+/**
+ * Hunks of the line ids `a` to `b` (ids below `idCount`), at a cost that grows with the number of
+ * changes rather than giving up on large texts: lines that occur once in both (within the range
+ * being diffed) and keep their order anchor the diff (patience diff); the ranges between anchors
+ * are diffed the same way. A range without such lines is one hunk when `gapLength` (its length in
+ * text) is at most `CHARACTER_GAP_LENGTH`, and diffed by a bounded Myers otherwise.
+ */
+function diffLines(a: Int32Array, b: Int32Array, idCount: number, gapLength: (aFrom: number, aTo: number, bFrom: number, bTo: number) => number): Hunk[] {
+  const out: Hunk[] = []
+  const emit = (aFrom: number, aTo: number, bFrom: number, bTo: number) => {
+    const last = out[out.length - 1]
+    if (last && last.aTo === aFrom && last.bTo === bFrom) {
+      last.aTo = aTo
+      last.bTo = bTo
+    } else out.push({ aFrom, aTo, bFrom, bTo })
+  }
+  const countA = new Int32Array(idCount)
+  const countB = new Int32Array(idCount)
+  const indexInA = new Int32Array(idCount)
+  let work = 0
+  const workLimit = ANCHOR_WORK_FACTOR * (a.length + b.length)
+  /** Ranges still to diff, as `aFrom, aTo, bFrom, bTo` quadruples, the next one last. */
+  const pending: number[] = [0, a.length, 0, b.length]
+  while (pending.length > 0) {
+    let bTo = pending.pop()!
+    let bFrom = pending.pop()!
+    let aTo = pending.pop()!
+    let aFrom = pending.pop()!
+    while (aFrom < aTo && bFrom < bTo && a[aFrom] === b[bFrom]) {
+      aFrom += 1
+      bFrom += 1
+    }
+    while (aFrom < aTo && bFrom < bTo && a[aTo - 1] === b[bTo - 1]) {
+      aTo -= 1
+      bTo -= 1
+    }
+    if (aFrom === aTo || bFrom === bTo) {
+      if (aFrom < aTo || bFrom < bTo) emit(aFrom, aTo, bFrom, bTo)
+      continue
+    }
+    // Lines unique to the range on both sides, in the order of `b`.
+    const anchorA: number[] = []
+    const anchorB: number[] = []
+    work += aTo - aFrom + (bTo - bFrom)
+    if (work <= workLimit) {
+      for (let i = aFrom; i < aTo; i += 1) {
+        countA[a[i]] += 1
+        indexInA[a[i]] = i
+      }
+      for (let j = bFrom; j < bTo; j += 1) countB[b[j]] += 1
+      for (let j = bFrom; j < bTo; j += 1) {
+        const id = b[j]
+        if (countA[id] === 1 && countB[id] === 1) {
+          anchorA.push(indexInA[id])
+          anchorB.push(j)
+        }
+      }
+      for (let i = aFrom; i < aTo; i += 1) countA[a[i]] = 0
+      for (let j = bFrom; j < bTo; j += 1) countB[b[j]] = 0
+    }
+    if (anchorA.length === 0) {
+      if (gapLength(aFrom, aTo, bFrom, bTo) <= CHARACTER_GAP_LENGTH) {
+        emit(aFrom, aTo, bFrom, bTo)
+        continue
+      }
+      for (const hunk of diffTokens(a.subarray(aFrom, aTo), b.subarray(bFrom, bTo))) {
+        emit(aFrom + hunk.aFrom, aFrom + hunk.aTo, bFrom + hunk.bFrom, bFrom + hunk.bTo)
+      }
+      continue
+    }
+    // The anchors that keep their order split the range; the gaps between them are diffed next, in order.
+    const kept = longestIncreasing(anchorA)
+    pending.push(anchorA[kept[kept.length - 1]] + 1, aTo, anchorB[kept[kept.length - 1]] + 1, bTo)
+    for (let k = kept.length - 1; k > 0; k -= 1) {
+      pending.push(anchorA[kept[k - 1]] + 1, anchorA[kept[k]], anchorB[kept[k - 1]] + 1, anchorB[kept[k]])
+    }
+    pending.push(aFrom, anchorA[kept[0]], bFrom, anchorB[kept[0]])
+  }
+  return out
+}
+
 const hunkSize = (hunk: Hunk) => Math.max(hunk.aTo - hunk.aFrom, hunk.bTo - hunk.bFrom)
 
 /**
@@ -142,36 +275,31 @@ function codePoints(text: string): { points: Int32Array; offsets: Int32Array } {
   return { points: Int32Array.from(points), offsets: Int32Array.from(offsets) }
 }
 
-/** Character-level edits from `x` to `y`, relative to `x`, offset by `at`. */
-function refine(x: string, y: string, at: number, out: TextEdit[]): void {
-  if (!x || !y) {
-    out.push({ from: at, to: at + x.length, insert: y })
-    return
-  }
+/**
+ * Character-level edits from `x` to `y`, relative to `x`, offset by `at`; `null` when they would
+ * change more than about an eighth of the characters (then detail is worth less than its cost).
+ */
+function refine(x: string, y: string, at: number, meter: Meter): TextEdit[] | null {
   const prefix = commonPrefixLength(x, y)
   const suffix = commonSuffixLength(x, y, Math.min(x.length, y.length) - prefix)
   const xs = x.slice(prefix, x.length - suffix)
   const ys = y.slice(prefix, y.length - suffix)
   const start = at + prefix
-  if (!xs || !ys) {
-    out.push({ from: start, to: start + xs.length, insert: ys })
-    return
-  }
+  if (!xs || !ys) return [{ from: start, to: start + xs.length, insert: ys }]
   const a = codePoints(xs)
   const b = codePoints(ys)
-  for (const hunk of joinNoise(diffTokens(a.points, b.points))) {
-    out.push({ from: start + a.offsets[hunk.aFrom], to: start + a.offsets[hunk.aTo], insert: ys.slice(b.offsets[hunk.bFrom], b.offsets[hunk.bTo]) })
-  }
+  const size = a.points.length + b.points.length
+  const hunks = myers(a.points, b.points, Math.min(DIFF_MAX_EDITS, Math.max(REFINE_MIN_EDITS, Math.floor(size / 8))), meter)
+  if (!hunks) return null
+  return joinNoise(hunks).map((hunk) => ({
+    from: start + a.offsets[hunk.aFrom],
+    to: start + a.offsets[hunk.aTo],
+    insert: ys.slice(b.offsets[hunk.bFrom], b.offsets[hunk.bTo]),
+  }))
 }
 
-/**
- * Character-level edits of a hunk of several lines, unless all they keep is white space (such
- * as the line endings of unrelated lines): then the lines are replaced as a whole, so that text
- * inserted between them elsewhere stays between whole lines.
- */
-function refineLines(x: string, y: string, at: number, out: TextEdit[]): void {
-  const edits: TextEdit[] = []
-  refine(x, y, at, edits)
+/** Whether all that `edits` (relative to `x`, offset by `at`) keep of `x` is white space. */
+function keepsOnlyWhiteSpace(x: string, at: number, edits: readonly TextEdit[]): boolean {
   let kept = ''
   let from = at
   for (const edit of edits) {
@@ -179,17 +307,19 @@ function refineLines(x: string, y: string, at: number, out: TextEdit[]): void {
     from = edit.to
   }
   kept += x.slice(from - at)
-  if (/^\s*$/.test(kept)) out.push({ from: at, to: at + x.length, insert: y })
-  else out.push(...edits)
+  return /^\s*$/.test(kept)
 }
 
-/** Lines of `text` (each with its `\n`, the last possibly without), as ids shared through `ids`, and their start offsets. */
-function lineTokens(text: string, ids: Map<string, number>): { tokens: Int32Array; starts: Int32Array } {
+/** Line ids of a text (from `ids`, shared by the texts diffed against each other) and the offset of each line (plus the end). */
+type Lines = { tokens: Int32Array; starts: Int32Array }
+
+/** The lines of `text` in `[from, to)` (each with its `\n`, the last possibly without), with offsets in `text`. */
+function lineTokens(text: string, ids: Map<string, number>, from = 0, to = text.length): Lines {
   const tokens: number[] = []
   const starts: number[] = []
-  for (let start = 0; start < text.length; ) {
+  for (let start = from; start < to; ) {
     const newline = text.indexOf('\n', start)
-    const end = newline === -1 ? text.length : newline + 1
+    const end = newline === -1 || newline >= to ? to : newline + 1
     const line = text.slice(start, end)
     let id = ids.get(line)
     if (id === undefined) {
@@ -200,16 +330,41 @@ function lineTokens(text: string, ids: Map<string, number>): { tokens: Int32Arra
     starts.push(start)
     start = end
   }
-  starts.push(text.length)
+  starts.push(to)
   return { tokens: Int32Array.from(tokens), starts: Int32Array.from(starts) }
 }
 
+/** The index of the line of `lines` that starts at `offset`. */
+function lineAt(lines: Lines, offset: number): number {
+  const { starts } = lines
+  let low = 0
+  let high = starts.length - 1
+  while (low < high) {
+    const middle = (low + high) >> 1
+    if (starts[middle] < offset) low = middle + 1
+    else high = middle
+  }
+  if (starts[low] !== offset) throw new Error('diffText: a line boundary is not a line start')
+  return low
+}
+
+/** The lines of a text being diffed against several others, cut once (on first use). */
+type LineCache = { ids: Map<string, number>; lines?: Lines }
+
 /**
  * The edits from `a` to `b`: a line diff, refined to characters inside changed lines. Edits are
- * sorted, separated, relative to `a`, and never split a surrogate pair. Large, heavily changed
- * texts get coarser edits rather than a slow diff.
+ * sorted, separated, relative to `a`, and never split a surrogate pair. The line diff's cost grows
+ * with the number of changes, not the size of the texts. Rather than a slow diff, a changed range
+ * longer than `REFINE_MAX_LENGTH` is replaced as whole lines, heavily rewritten texts get line-level
+ * edits once character refinement has used its budget, and a large, heavily changed range without
+ * lines unique to it may get coarser edits.
  */
 export function diffText(a: string, b: string): TextEdit[] {
+  return diffTextWith(a, b, { ids: new Map() })
+}
+
+/** `diffText`, with the lines of `a` from (and cut into) `cache`. */
+function diffTextWith(a: string, b: string, cache: LineCache): TextEdit[] {
   if (a === b) return []
   // The common start and end, cut back to whole lines.
   const rawPrefix = commonPrefixLength(a, b)
@@ -220,24 +375,52 @@ export function diffText(a: string, b: string): TextEdit[] {
     const newline = a.indexOf('\n', suffixStart)
     suffix = newline === -1 ? 0 : a.length - (newline + 1)
   }
-  const am = a.slice(start, a.length - suffix)
-  const bm = b.slice(start, b.length - suffix)
+  const aEnd = a.length - suffix
+  const bEnd = b.length - suffix
   const out: TextEdit[] = []
-  if (!am || !bm) {
-    out.push({ from: start, to: start + am.length, insert: bm })
+  if (start === aEnd || start === bEnd) {
+    out.push({ from: start, to: aEnd, insert: b.slice(start, bEnd) })
     return out
   }
-  const ids = new Map<string, number>()
-  const al = lineTokens(am, ids)
-  const bl = lineTokens(bm, ids)
-  for (const hunk of diffTokens(al.tokens, bl.tokens)) {
-    const aFrom = al.starts[hunk.aFrom]
-    const bFrom = bl.starts[hunk.bFrom]
-    const x = am.slice(aFrom, al.starts[hunk.aTo])
-    const y = bm.slice(bFrom, bl.starts[hunk.bTo])
-    if (hunk.aTo - hunk.aFrom === 1 && hunk.bTo - hunk.bFrom === 1) refine(x, y, start + aFrom, out)
-    else refineLines(x, y, start + aFrom, out)
+  cache.lines ??= lineTokens(a, cache.ids)
+  const al = cache.lines
+  const firstLine = lineAt(al, start)
+  const aTokens = al.tokens.subarray(firstLine, lineAt(al, aEnd))
+  const bl = lineTokens(b, cache.ids, start, bEnd)
+  const gapLength = (aFrom: number, aTo: number, bFrom: number, bTo: number) =>
+    Math.max(al.starts[firstLine + aTo] - al.starts[firstLine + aFrom], bl.starts[bTo] - bl.starts[bFrom])
+  const meter: Meter = { work: 0 }
+  const refineBudget = REFINE_WORK + REFINE_WORK_PER_UNIT * (aEnd - start + (bEnd - start))
+  /**
+   * Refines a hunk of lines to characters. A hunk of several lines whose character edits keep only
+   * white space (such as the line endings of unrelated lines) is replaced as a whole, so that text
+   * inserted between them elsewhere stays between whole lines. A hunk too large or too changed for
+   * character detail is diffed by lines first when `byLines`, and replaced as a whole otherwise.
+   */
+  const refineHunk = (hunk: Hunk, byLines: boolean) => {
+    const aFrom = al.starts[firstLine + hunk.aFrom]
+    const aTo = al.starts[firstLine + hunk.aTo]
+    const x = a.slice(aFrom, aTo)
+    const y = b.slice(bl.starts[hunk.bFrom], bl.starts[hunk.bTo])
+    const whole = { from: aFrom, to: aTo, insert: y }
+    const severalLines = hunk.aTo - hunk.aFrom > 1 || hunk.bTo - hunk.bFrom > 1
+    const refinable = x.length <= REFINE_MAX_LENGTH && y.length <= REFINE_MAX_LENGTH && meter.work <= refineBudget
+    const edits = refinable ? refine(x, y, aFrom, meter) : null
+    if (edits) {
+      if (severalLines && keepsOnlyWhiteSpace(x, aFrom, edits)) out.push(whole)
+      else out.push(...edits)
+      return
+    }
+    const parts = byLines && severalLines ? diffTokens(aTokens.subarray(hunk.aFrom, hunk.aTo), bl.tokens.subarray(hunk.bFrom, hunk.bTo)) : []
+    if (parts.length < 2) {
+      out.push(whole)
+      return
+    }
+    for (const part of parts) {
+      refineHunk({ aFrom: hunk.aFrom + part.aFrom, aTo: hunk.aFrom + part.aTo, bFrom: hunk.bFrom + part.bFrom, bTo: hunk.bFrom + part.bTo }, false)
+    }
   }
+  for (const hunk of diffLines(aTokens, bl.tokens, cache.ids.size, gapLength)) refineHunk(hunk, true)
   return out
 }
 
@@ -276,8 +459,9 @@ export function applyTextEdits(tx: Tx, id: ObjectId, field: string, edits: reado
  */
 export function mergeEdits(base: string, incoming: string, current: string): TextEdit[] {
   if (incoming === base || incoming === current) return []
-  const external = diffText(base, incoming)
-  const local = base === current ? [] : diffText(base, current)
+  const baseLines: LineCache = { ids: new Map() }
+  const external = diffTextWith(base, incoming, baseLines)
+  const local = base === current ? [] : diffTextWith(base, current, baseLines)
   const out: TextEdit[] = []
   const push = (from: number, to: number, insert: string) => {
     const last = out[out.length - 1]

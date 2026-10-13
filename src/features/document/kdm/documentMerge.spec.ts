@@ -1,8 +1,9 @@
+import { loadavg } from 'node:os'
 import { describe, expect, it } from 'vitest'
 import { Rng, type Origin } from '@/lib/kdm'
 import { DOCUMENT_BODY } from './documentSchema'
 import { createDocumentReplica, documentBody } from './documentText'
-import { applyEditsToString, diffText, mergeEdits, mergeExternalText, type TextEdit } from './documentMerge'
+import { applyEditsToString, commonPrefixLength, diffText, mergeEdits, mergeExternalText, type TextEdit } from './documentMerge'
 
 /** CJK text (U+5B63 U+5EA6), as a named constant: the repository keeps non-English text out of source files. */
 const QUARTER = String.fromCodePoint(0x5b63, 0x5ea6)
@@ -330,4 +331,129 @@ describe('mergeExternalText: a 1 MB document', () => {
       .join('\n') + '\n'
     expect(replica.text(rootId, DOCUMENT_BODY)).toBe(expected)
   }, 60_000)
+})
+
+/** Markdown of about `size` UTF-16 units: headings, prose with CJK and emoji, lists, tables, code blocks, blank lines. */
+function generatedMarkdown(size: number): string {
+  const blocks: string[] = []
+  for (let index = 0, length = 0; length < size; index += 1) {
+    const kind = index % 5
+    let block: string
+    if (kind === 0) block = `${'#'.repeat((index % 3) + 1)} Section ${index} 😀`
+    else if (kind === 1) block = `Paragraph ${index} covers the ${QUARTER} plan 🎉 in ordinary sentences, long enough to look like real prose, and a few more words.`
+    else if (kind === 2) block = Array.from({ length: 4 }, (_, item) => `- Item ${index}.${item}: a task 👍`).join('\n')
+    else if (kind === 3) block = ['| Name | Status |', '| --- | --- |', ...Array.from({ length: 3 }, (_, row) => `| Row ${index}.${row} | ${SEASON} |`)].join('\n')
+    else block = ['```ts', `function step${index}() {`, '  return 1', '}', '```'].join('\n')
+    blocks.push(block)
+    length += block.length + 2
+  }
+  return `${blocks.join('\n\n')}\n`
+}
+
+/** Text the generated Markdown never contains, so where an edit's insertion lands is unambiguous. */
+const LOCAL_INSERTS = ['@', '~', '🐱']
+const EXTERNAL_INSERTS = ['%', '=', '🦊']
+
+/**
+ * Scattered changes of `text` at random places at least `gap` units apart (one per `1 / density`
+ * units on average), each replacing up to two code points with up to two from its side's alphabet;
+ * about `localShare` of them are local, the rest external.
+ */
+function scatteredChanges(rng: Rng, text: string, density: number, localShare: number, gap = 24) {
+  const local: TextEdit[] = []
+  const external: TextEdit[] = []
+  const spacing = Math.max(gap + 1, Math.round(1 / density))
+  for (let at = rng.below(spacing); at < text.length; at += gap + rng.below(2 * (spacing - gap) + 1)) {
+    let from = at
+    if (from > 0 && /[\udc00-\udfff]/.test(text[from])) from += 1
+    let to = from
+    for (let count = rng.below(3); count > 0 && to < text.length; count -= 1) to += text.codePointAt(to)! > 0xffff ? 2 : 1
+    const isLocal = rng.below(1000) < localShare * 1000
+    const alphabet = isLocal ? LOCAL_INSERTS : EXTERNAL_INSERTS
+    let insert = Array.from({ length: rng.below(3) }, () => alphabet[rng.below(alphabet.length)]).join('')
+    if (from === to && !insert) insert = alphabet[0]
+    ;(isLocal ? local : external).push({ from, to, insert })
+  }
+  return { local, external, both: [...local, ...external].sort((a, b) => a.from - b.from) }
+}
+
+/** `actual` against `expected`: equal, or where they first differ, with some context. */
+function firstDifference(actual: string, expected: string): string {
+  if (actual === expected) return 'equal'
+  const at = commonPrefixLength(actual, expected)
+  return JSON.stringify({ at, actual: actual.slice(at - 40, at + 40), expected: expected.slice(at - 40, at + 40) })
+}
+
+const largestEdit = (edits: readonly TextEdit[]) => edits.reduce((most, edit) => Math.max(most, edit.to - edit.from, edit.insert.length), 0)
+const load = () => loadavg().map((value) => value.toFixed(2)).join(', ')
+
+describe('mergeExternalText: large documents', () => {
+  it('keeps every scattered local and external edit of a 2 MB document exactly, in small edits (property)', () => {
+    const base = generatedMarkdown(2_000_000)
+    for (const seed of [31, 32, 33]) {
+      const rng = new Rng(seed)
+      // 1% external and 0.5% local edits: one change every ~67 units, a third of them local.
+      const changes = scatteredChanges(rng, base, 1 / 67, 1 / 3)
+      const current = applyEditsToString(base, changes.local)
+      const incoming = applyEditsToString(base, changes.external)
+      const expected = applyEditsToString(base, changes.both)
+      const started = performance.now()
+      const edits = mergeEdits(base, incoming, current)
+      const elapsed = performance.now() - started
+      console.info(
+        `mergeEdits on ${(base.length / 1e6).toFixed(2)} MB, ${changes.external.length} external and ${changes.local.length} local changes: ${edits.length} edits in ${elapsed.toFixed(1)} ms (load average ${load()})`,
+      )
+      expectWellFormedEdits(edits, current.length)
+      expect(firstDifference(applyEditsToString(current, edits), expected), `seed ${seed}`).toBe('equal')
+      expect(largestEdit(edits)).toBeLessThanOrEqual(64 * 1024)
+      for (const [side, text] of [['external', incoming], ['local', current]]) {
+        const sideEdits = diffText(base, text)
+        expect(firstDifference(applyEditsToString(base, sideEdits), text), `seed ${seed}, ${side}`).toBe('equal')
+        expect(largestEdit(sideEdits)).toBeLessThanOrEqual(64 * 1024)
+      }
+    }
+  }, 120_000)
+
+  it('diffs a 5 MB document with scattered changes into many small edits (timing printed)', () => {
+    const base = generatedMarkdown(5_000_000)
+    const rng = new Rng(34)
+    const changes = scatteredChanges(rng, base, 1 / 67, 1 / 3)
+    const current = applyEditsToString(base, changes.local)
+    const incoming = applyEditsToString(base, changes.external)
+    let started = performance.now()
+    const external = diffText(base, incoming)
+    const diffElapsed = performance.now() - started
+    started = performance.now()
+    const edits = mergeEdits(base, incoming, current)
+    const mergeElapsed = performance.now() - started
+    console.info(
+      `on ${(base.length / 1e6).toFixed(2)} MB: diffText ${external.length} edits (of ${changes.external.length} changes) in ${diffElapsed.toFixed(1)} ms; mergeEdits ${edits.length} edits in ${mergeElapsed.toFixed(1)} ms (load average ${load()})`,
+    )
+    expect(external.length).toBeGreaterThan(changes.external.length / 2)
+    expect(largestEdit(external)).toBeLessThan(1_000)
+    expect(edits.length).toBeGreaterThan(changes.external.length / 2)
+    expect(largestEdit(edits)).toBeLessThan(1_000)
+    expect(firstDifference(applyEditsToString(current, edits), applyEditsToString(base, changes.both))).toBe('equal')
+  }, 120_000)
+
+  it('diffs a heavily rewritten 2 MB document quickly, into line-sized edits (timing printed)', () => {
+    const base = generatedMarkdown(2_000_000)
+    // Every paragraph and list item rewritten (its words reversed); headings, tables, and code kept.
+    const rewrite = (line: string) => (line.startsWith('Paragraph') || line.startsWith('- ') ? line.split(' ').reverse().join(' ') : line)
+    const incoming = base.split('\n').map(rewrite).join('\n')
+    const started = performance.now()
+    const edits = diffText(base, incoming)
+    console.info(`diffText of a rewritten ${(base.length / 1e6).toFixed(2)} MB: ${edits.length} edits in ${(performance.now() - started).toFixed(1)} ms (load average ${load()})`)
+    expectWellFormedEdits(edits, base.length)
+    expect(firstDifference(applyEditsToString(base, edits), incoming)).toBe('equal')
+    expect(largestEdit(edits)).toBeLessThan(1_000)
+  }, 120_000)
+
+  it('replaces a huge changed range by whole lines, without character detail', () => {
+    const rng = new Rng(35)
+    const block = (letters: string) => Array.from({ length: 100_000 }, () => letters[rng.below(letters.length)]).join('')
+    const base = `start\n${block('ab')}\nend\n`
+    const incoming = `start\n${block('ab')}\nend\n`
+    expect(diffText(base, incoming)).toEqual([{ from: 6, to: base.length - 4, insert: incoming.slice(6, incoming.length - 4) }])
+  })
 })
