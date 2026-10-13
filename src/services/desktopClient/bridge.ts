@@ -30,6 +30,11 @@ type KitionDesktopBridge = {
   StatWorkspaceDocument?: (request: { path: string }) => Promise<{ mtime_ms: number; size: number } | null>
   WriteWorkspaceDocument?: (request: WorkspaceDocumentWriteRequest) => Promise<WorkspaceDocument>
   CreateWorkspaceDocument?: (request: WorkspaceDocumentCreateRequest) => Promise<WorkspaceDocument>
+  ReadDocumentStore?: (request: DocumentStoreRequest) => Promise<DocumentStorePayload | null>
+  WriteDocumentStore?: (request: DocumentStoreWriteRequest) => Promise<void | null>
+  DeleteDocumentStore?: (request: DocumentStoreRequest) => Promise<void | null>
+  ReadDocumentIndex?: (request: DocumentIndexRequest) => Promise<DocumentIndexPayload>
+  WriteDocumentIndex?: (request: DocumentIndexWriteRequest) => Promise<{ version: string }>
   CreateWorkspaceFolder?: (request: WorkspaceFolderCreateRequest) => Promise<WorkspaceFolderCreateResponse>
   MoveWorkspaceDocument?: (request: WorkspaceDocumentMoveRequest) => Promise<WorkspaceDocument>
   MoveWorkspaceFolder?: (request: WorkspaceFolderMoveRequest) => Promise<WorkspaceFolderMoveResponse>
@@ -197,6 +202,46 @@ export type WorkspaceDocumentWriteRequest = {
   expected_content?: string | null
   path: string
   content: string
+}
+
+/** What the renderer keeps about a Markdown document's private replica in `.kition/docs/<docId>/meta.json`. */
+export type DocumentStoreMeta = {
+  docId: string
+  kit: 'kit.document'
+  /** The workspace path of the `.md` file when the replica was last stored. */
+  path: string
+  fileHash: string
+  fileStamp: string | null
+  /** The KDM version (hex) last exported to the file. */
+  exported: string
+  style: { eol: string; bom: boolean; finalNewline: boolean }
+}
+
+export type DocumentStoreRequest = {
+  expected_root?: string
+  doc_id: string
+}
+
+export type DocumentStorePayload = {
+  meta: DocumentStoreMeta
+  snapshot_base64: string
+}
+
+export type DocumentStoreWriteRequest = DocumentStoreRequest & DocumentStorePayload
+
+export type DocumentIndexRequest = {
+  expected_root?: string
+}
+
+/** The `.kition/docs/index.json` mapping of workspace paths to document ids; `version` is `null` before the first write. */
+export type DocumentIndexPayload = {
+  entries: Record<string, string>
+  version: string | null
+}
+
+export type DocumentIndexWriteRequest = DocumentIndexRequest & {
+  entries: Record<string, string>
+  expected_version: string | null
 }
 
 export type WorkspaceDocumentCreateRequest = {
