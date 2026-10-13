@@ -821,6 +821,7 @@ Kition's geometry is sober-editorial — `{rounded.md}` (8px) buttons distinguis
 - Don't mix link-blue ({colors.link-blue}) with primary-purple ({colors.primary}) — they have distinct roles
 - Don't apply heavy shadows on flat documentation cards
 - Don't replace Inter with a generic Inter
+- Don't let toasts cover the tab chrome: they appear below the tab strip, so a persistent one (a save that keeps failing) never hides the close button of the tab it is about
 
 ## Responsive Behavior
 

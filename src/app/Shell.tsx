@@ -197,6 +197,9 @@ function useSearchBoot(rootPath: string) {
   return { ready, start }
 }
 
+/** Where toasts start: below the workspace's tab strip (36px) with a gap. */
+const TOAST_TOP_OFFSET = 48
+
 export function AppShell() {
   const { t } = useTranslation('common')
   const { t: tLauncher } = useTranslation('workspaceLauncher')
@@ -817,7 +820,8 @@ export function AppShell() {
         </Suspense>
       ) : null}
       <ConsoleCreditsExhaustedBanner />
-      <Toaster position="top-center" richColors closeButton />
+      {/* Below the tab strip: a toast must never cover the tab chrome (docs/design.md). */}
+      <Toaster position="top-center" offset={{ top: TOAST_TOP_OFFSET }} mobileOffset={{ top: TOAST_TOP_OFFSET }} richColors closeButton />
     </div>
     </ConfirmProvider>
   )
