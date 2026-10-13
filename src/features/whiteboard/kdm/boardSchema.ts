@@ -4,7 +4,7 @@ const optionalString = { kind: 'string', optional: true } as const
 const optionalNumber = { kind: 'number', optional: true } as const
 const optionalJson = { kind: 'json', optional: true } as const
 
-const BOARD_KIT = 'kit.board'
+export const BOARD_KIT = 'kit.board'
 
 export const boardSchema: Schema = parseSchema({
   kdm: 1,
