@@ -167,6 +167,11 @@ export function resolveBoardConnectorAnchor(
   return rotatePoint(localPoint, center, target.rotation ?? 0)
 }
 
+/**
+ * The records with invalid bindings dropped, anchors clamped, and bound connector ends moved to
+ * their targets. Records it does not change are returned as they are (the same objects), so a
+ * caller can tell changed records by identity.
+ */
 export function repairBoardBindingRecords(
   records: readonly BoardRecord[],
 ) {
@@ -193,25 +198,30 @@ export function repairBoardBindingRecords(
     ) continue
 
     occupiedTerminals.add(terminalKey)
-    const normalizedBinding: BoardBindingRecord = {
-      ...cloneBoardRecord(record) as BoardBindingRecord,
-      terminal,
-      to_anchor: {
-        x: clamp(record.to_anchor.x, 0, 1),
-        y: clamp(record.to_anchor.y, 0, 1),
-      },
+    const anchor = {
+      x: clamp(record.to_anchor.x, 0, 1),
+      y: clamp(record.to_anchor.y, 0, 1),
     }
+    const normalizedBinding: BoardBindingRecord = record.terminal === terminal
+      && anchor.x === record.to_anchor.x
+      && anchor.y === record.to_anchor.y
+      ? record
+      : {
+        ...cloneBoardRecord(record) as BoardBindingRecord,
+        terminal,
+        to_anchor: anchor,
+      }
     repairedBindings.push(normalizedBinding)
-    const connector = boardElementFromRecord(
-      repairedElements.get(connectorRecord.id) || connectorRecord,
-    )
-    const target = boardElementFromRecord(targetRecord)
-    if (connector.kind !== 'connector') continue
-    repairedElements.set(connector.id, createBoardElementRecord({
+    const connectorBefore = repairedElements.get(connectorRecord.id) || connectorRecord
+    if (connectorBefore.kind !== 'connector') continue
+    const point = resolveBoardConnectorAnchor(boardElementFromRecord(targetRecord), anchor)
+    const current = connectorBefore[terminal]
+    if (current && current.x === point.x && current.y === point.y) continue
+    repairedElements.set(connectorRecord.id, createBoardElementRecord({
       element: {
-        ...connector,
-        [terminal]: resolveBoardConnectorAnchor(target, normalizedBinding.to_anchor!),
-      },
+        ...boardElementFromRecord(connectorBefore),
+        [terminal]: point,
+      } as WhiteboardElement,
       index: connectorRecord.index,
       pageId: connectorRecord.page_id,
     }))
@@ -220,7 +230,7 @@ export function repairBoardBindingRecords(
   return [
     ...records
       .filter((record) => record.record_type !== 'binding')
-      .map((record) => repairedElements.get(record.id) || cloneBoardRecord(record)),
+      .map((record) => repairedElements.get(record.id) || record),
     ...repairedBindings,
   ]
 }

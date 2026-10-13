@@ -7,14 +7,27 @@ import { open } from '@/lib/kdm/envelope'
 import { system, uuidFromBytes, type Origin, type Replica } from '@/lib/kdm'
 import type { BoardRecord } from '../lib/boardRecords'
 import type { BoardRecordDiff } from '../lib/boardRecordDiff'
-import { boardRootId, readBoardBindingRecords, readBoardElementRecords, readBoardPageRecords } from './boardKdmRead'
-import { repairBoardPlacements, writeBoardDiff, type BoardWriteResult } from './boardKdmWrite'
+import {
+  boardRootId,
+  duplicatePlacements,
+  readBoardBindingRecords,
+  readBoardElementRecords,
+  readBoardPageRecords,
+  readBoardView,
+  refreshBoardView,
+  type BoardDuplicatePlacement,
+  type BoardViewRead,
+} from './boardKdmRead'
+import { repairBoardPlacements, writeBoardDiff, type BoardWriteHint, type BoardWriteResult } from './boardKdmWrite'
 
 /** A committed record diff: whether the document changed, and what the write could not do as asked. */
 export type BoardCommit = BoardWriteResult & { changed: boolean }
 
 /** Records to put into and ids to remove from the view so that it shows what the replica has. */
 export type BoardViewPatch = { put: BoardRecord[]; removed: string[] }
+
+/** The board as the reader sees it (`readBoardRecords` by id) and the list entries it skips. */
+export type BoardRead = { records: ReadonlyMap<string, BoardRecord>; duplicates: BoardDuplicatePlacement[] }
 
 /**
  * One replica of a board and the undo steps the store has on its undo stack. A step is a committed
@@ -30,9 +43,36 @@ export class BoardReplicaHistory {
   private groupChanged = false
   /** Changes imported during an open undo group, applied when it ends. */
   private pendingImports: Uint8Array[] = []
+  /** The last read of the board, and the objects changed since (by any means: `Replica.takeChanged`). */
+  private lastRead: BoardViewRead
+  private changedSinceRead = new Set<string>()
 
   constructor(readonly replica: Replica) {
-    this.rootId = boardRootId(replica)
+    replica.takeChanged()
+    this.lastRead = readBoardView(replica)
+    this.rootId = this.lastRead.rootId ?? boardRootId(replica)
+  }
+
+  /**
+   * Reads the board. Only the objects changed since the last read and the pages' lists are read
+   * again, unless many changed or the root did; the result always equals a full read.
+   */
+  read(): BoardRead {
+    this.collectChanges()
+    const refreshed = refreshBoardView(this.replica, this.lastRead, this.changedSinceRead)
+    this.lastRead = refreshed ?? readBoardView(this.replica)
+    this.changedSinceRead.clear()
+    return { records: this.lastRead.records, duplicates: duplicatePlacements(this.lastRead.layout) }
+  }
+
+  /** What the writer may take from the last read: the objects not changed since keep their state. */
+  private writeHint(): BoardWriteHint {
+    this.collectChanges()
+    return { read: this.lastRead, changed: this.changedSinceRead }
+  }
+
+  private collectChanges() {
+    for (const id of this.replica.takeChanged()) this.changedSinceRead.add(id)
   }
 
   get depth() {
@@ -60,7 +100,8 @@ export class BoardReplicaHistory {
     const persisted = persistedBoardDiff(diff)
     if (isEmptyDiff(persisted)) return { changed: false, skipped: [], relocated: [] }
     const before = this.replica.version()
-    const result = this.replica.transact(origin, (tx) => writeBoardDiff(tx, this.rootId, persisted))
+    const hint = this.writeHint()
+    const result = this.replica.transact(origin, (tx) => writeBoardDiff(tx, this.rootId, persisted, hint))
     const changed = !this.replica.version().equals(before)
     if (changed) {
       if (this.groupOwner !== null) this.groupChanged = true
@@ -70,14 +111,17 @@ export class BoardReplicaHistory {
   }
 
   /**
-   * Writes the repair `diff` and removes duplicate list placements as one `system` transaction,
-   * which the KDM keeps out of the undo history.
+   * Writes the repair `diff` and removes the duplicate list placements of the last `read` as one
+   * `system` transaction, which the KDM keeps out of the undo history. Nothing to repair writes
+   * nothing.
    */
-  repair(diff: BoardRecordDiff) {
+  repair(diff: BoardRecordDiff, duplicates: readonly BoardDuplicatePlacement[]) {
     const persisted = persistedBoardDiff(diff)
+    if (isEmptyDiff(persisted) && duplicates.length === 0) return
+    const hint = this.writeHint()
     this.replica.transact(system('repair'), (tx) => {
-      if (!isEmptyDiff(persisted)) writeBoardDiff(tx, this.rootId, persisted)
-      repairBoardPlacements(tx, this.rootId)
+      if (!isEmptyDiff(persisted)) writeBoardDiff(tx, this.rootId, persisted, hint)
+      if (duplicates.length > 0) repairBoardPlacements(tx, this.rootId)
     })
   }
 

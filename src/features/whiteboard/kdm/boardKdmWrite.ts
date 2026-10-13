@@ -12,7 +12,7 @@ import type {
 } from '../lib/boardRecords'
 import type { BoardRecordDiff } from '../lib/boardRecordDiff'
 import type { WhiteboardElement } from '../lib/whiteboardTypes'
-import { BOARD_ELEMENT_KINDS, boardLayout, type BoardLayoutSource, type BoardPageLayout } from './boardKdmRead'
+import { BOARD_ELEMENT_KINDS, boardLayout, knownLayoutSource, type BoardLayoutSource, type BoardPageLayout, type BoardViewRead } from './boardKdmRead'
 import { BOARD_STYLE_FIELDS } from './boardSchema'
 
 type Terminal = 'start' | 'end'
@@ -37,6 +37,12 @@ const JSON_FIELDS = ['points', 'start', 'end', 'sourceRefIds'] as const
  */
 export type BoardWriteResult = { skipped: string[]; relocated: string[] }
 
+/**
+ * What the writer may take from an earlier read of the replica instead of reading every listed
+ * object again: `read`, and the objects `changed` since it (all others are as `read` saw them).
+ */
+export type BoardWriteHint = { read: BoardViewRead; changed: ReadonlySet<string> }
+
 type ElementUpdate = { before: BoardElementRecord; after: BoardElementRecord }
 type PageUpdate = { before: BoardPageRecord; after: BoardPageRecord }
 
@@ -49,7 +55,7 @@ const EMPTY_PAGE: BoardPageLayout = { id: '', items: [], states: [], elements: [
  * Applies `diff` to `tx`; `rootId` is the board's `Board` object. Throws before staging anything
  * when a value cannot be stored (a number that is not finite).
  */
-export function writeBoardDiff(tx: Tx, rootId: string, diff: BoardRecordDiff): BoardWriteResult {
+export function writeBoardDiff(tx: Tx, rootId: string, diff: BoardRecordDiff, hint?: BoardWriteHint): BoardWriteResult {
   const skipped: string[] = []
   const relocated: string[] = []
   const updates = diff.updated
@@ -78,7 +84,7 @@ export function writeBoardDiff(tx: Tx, rootId: string, diff: BoardRecordDiff): B
     || pageUpdates.some(({ before, after }) => before.index !== after.index)
   // The reader's view of the lists, read before any operation.
   const layout = creations.length > 0 || removedElements.length > 0 || moves.length > 0 || pagesTouched
-    ? boardLayout(txSource(tx, rootId))
+    ? boardLayout(hint ? knownLayoutSource(txSource(tx, rootId), hint.read, hint.changed) : txSource(tx, rootId))
     : null
   const layoutPages = new Map(layout?.pages.map((page) => [page.id, page]))
   const listedOn = new Map<string, Set<string>>()
@@ -123,16 +129,19 @@ export function writeBoardDiff(tx: Tx, rootId: string, diff: BoardRecordDiff): B
     const text = textOf(element)
     if (text) tx.textInsert(element.id, 'text', 0, text)
   }
+  // Before the deletions below, an element the hint knows as shown exists.
+  const known = (id: string) => hint !== undefined && !hint.changed.has(id) && hint.read.records.get(id)?.record_type === 'element'
+  const exists = (id: string) => known(id) || tx.exists(id)
   for (const { before, after, changed } of changes) {
     // An element a merge removed is not brought back by an edit made before the store saw it.
-    if (!tx.exists(after.id)) {
+    if (!exists(after.id)) {
       skipped.push(after.id)
       continue
     }
     for (const [field, value] of changed) tx.set(after.id, field, value)
     writeText(tx, after.id, textOf(before), textOf(after))
   }
-  for (const { after } of moves) if (tx.exists(after.id)) place(after)
+  for (const { after } of moves) if (exists(after.id)) place(after)
 
   for (const binding of diff.removed.filter(isBinding)) clearBinding(tx, binding)
   for (const binding of diff.added.filter(isBinding)) {

@@ -110,22 +110,148 @@ function readablePages(source: BoardLayoutSource): string[] {
 
 /** All records of the board: its pages, their elements in order, and connector bindings. */
 export function readBoardRecords(replica: Replica): BoardRecord[] {
+  return [...readBoardView(replica).records.values()]
+}
+
+/** An item the reader skips because its element is shown earlier (see `findBoardDuplicatePlacements`). */
+export type BoardDuplicatePlacement = { id: string; pageId: string; index: number }
+
+/**
+ * A full read of the board, kept so that later reads can re-read only what changed
+ * (`refreshBoardView`).
+ */
+export type BoardViewRead = {
+  /** The `Board` object, `null` for a document without one (it reads as no records). */
+  rootId: string | null
+  /** The records `readBoardRecords` gives, by id, in its order. */
+  records: ReadonlyMap<string, BoardRecord>
+  layout: BoardLayout
+  /** Objects listed on the shown pages that the reader does not show: kinds it does not know, and dangling ids. */
+  hidden: ReadonlyMap<string, 'unknown' | 'missing'>
+}
+
+const PLACEHOLDER: BoardPageRecord = { record_type: 'page', id: '', name: '', index: -1 }
+
+/** The whole board in one engine read: `readBoardRecords` with the layout behind it. */
+export function readBoardView(replica: Replica): BoardViewRead {
   const { objects } = replica.stateJson() as BoardState
   const root = findRoot(objects)
-  if (!root) return []
-  const records: BoardRecord[] = []
+  if (!root) return { rootId: null, records: new Map(), layout: { pages: [], placement: new Map() }, hidden: new Map() }
+  const records = new Map<string, BoardRecord>()
   const bindings: BoardBindingRecord[] = []
-  boardLayout(stateSource(objects, root)).pages.forEach((page, pageIndex) => {
-    records.push({ record_type: 'page', id: page.id, name: stringOr(objects[page.id].name, ''), index: pageIndex })
+  const layout = boardLayout(stateSource(objects, root))
+  layout.pages.forEach((page, pageIndex) => {
+    records.set(page.id, { record_type: 'page', id: page.id, name: stringOr(objects[page.id].name, ''), index: pageIndex })
     page.elements.forEach((id, index) => {
       const fields = objects[id]
       const element = elementFromFields(id, fields)
       if (!element) return
-      records.push(createBoardElementRecord({ element, index, pageId: page.id }))
+      records.set(id, createBoardElementRecord({ element, index, pageId: page.id }))
       if (element.kind === 'connector') bindings.push(...bindingsOf(id, fields))
     })
   })
-  return [...records, ...bindings]
+  for (const binding of bindings) records.set(binding.id, binding)
+  return { rootId: root, records, layout, hidden: hiddenItems(layout) }
+}
+
+/**
+ * `previous` (a read of this replica) brought up to date after the objects in `changed` changed,
+ * reading only those objects and the pages' lists: equal to a new `readBoardView`. `null` when a
+ * full read is the better choice: the root changed (title or page list) or more than `limit`
+ * (a share of the records) changed.
+ */
+export function refreshBoardView(replica: Replica, previous: BoardViewRead, changed: ReadonlySet<string>, limit = 0.25): BoardViewRead | null {
+  const root = previous.rootId
+  if (root === null || changed.has(root) || changed.size > Math.max(16, previous.records.size * limit)) return null
+  if (changed.size === 0) return previous
+  const base = replicaSource(replica, root)
+  const lists = new Map(previous.layout.pages.map((page) => [page.id, page.items]))
+  const source = knownLayoutSource({
+    pageIds: base.pageIds,
+    isPage: base.isPage,
+    items: (pageId) => (changed.has(pageId) ? undefined : lists.get(pageId)) ?? base.items(pageId),
+    objectState: base.objectState,
+  }, previous, changed)
+  const layout = boardLayout(source)
+  const records = new Map<string, BoardRecord>()
+  const bindings = new Map<string, BoardBindingRecord>()
+  const reread: string[] = []
+  layout.pages.forEach((page, pageIndex) => {
+    const before = previous.records.get(page.id)
+    records.set(page.id, before?.record_type === 'page' && before.index === pageIndex && !changed.has(page.id)
+      ? before
+      : { record_type: 'page', id: page.id, name: stringOr(replica.get(page.id, 'name'), ''), index: pageIndex })
+    page.elements.forEach((id, index) => {
+      const before = previous.records.get(id)
+      if (before?.record_type !== 'element' || changed.has(id)) {
+        reread.push(id)
+        records.set(id, PLACEHOLDER) // keeps the reading order; replaced below
+        return
+      }
+      records.set(id, before.page_id === page.id && before.index === index ? before : { ...before, page_id: page.id, index })
+      if (before.kind === 'connector') {
+        for (const terminal of TERMINALS) {
+          const binding = previous.records.get(`binding:${id}:${terminal}`)
+          if (binding?.record_type === 'binding') bindings.set(binding.id, binding)
+        }
+      }
+    })
+  })
+  for (const id of reread) {
+    const place = layout.placement.get(id)!
+    const fields = replicaFields(replica, id)
+    const element = elementFromFields(id, fields)
+    if (!element) {
+      records.delete(id)
+      continue
+    }
+    records.set(id, createBoardElementRecord({ element, index: place.index, pageId: place.pageId }))
+    if (element.kind === 'connector') for (const binding of bindingsOf(id, fields)) bindings.set(binding.id, binding)
+  }
+  for (const [id, binding] of bindings) records.set(id, binding)
+  return { rootId: root, records, layout, hidden: hiddenItems(layout) }
+}
+
+/**
+ * The layout reads of `base` answered from `read` where it can: objects not in `changed` keep
+ * the state and page-ness `read` saw. For the writer, which asks for the state of every listed
+ * item. @internal
+ */
+export function knownLayoutSource(base: BoardLayoutSource, read: BoardViewRead, changed: ReadonlySet<string>): BoardLayoutSource {
+  return {
+    pageIds: base.pageIds,
+    isPage: (id) => (!changed.has(id) && read.records.get(id)?.record_type === 'page') || base.isPage(id),
+    items: base.items,
+    objectState: (id) => {
+      if (!changed.has(id)) {
+        if (read.records.get(id)?.record_type === 'element') return 'element'
+        const hidden = read.hidden.get(id)
+        if (hidden) return hidden
+      }
+      return base.objectState(id)
+    },
+  }
+}
+
+/** The list entries of `layout` the reader skips because their element is shown earlier. */
+export function duplicatePlacements(layout: BoardLayout): BoardDuplicatePlacement[] {
+  const out: BoardDuplicatePlacement[] = []
+  for (const page of layout.pages) {
+    page.states.forEach((state, index) => {
+      if (state === 'duplicate') out.push({ id: page.items[index], pageId: page.id, index })
+    })
+  }
+  return out
+}
+
+function hiddenItems(layout: BoardLayout): Map<string, 'unknown' | 'missing'> {
+  const hidden = new Map<string, 'unknown' | 'missing'>()
+  for (const page of layout.pages) {
+    page.states.forEach((state, index) => {
+      if (state === 'unknown' || state === 'missing') hidden.set(page.items[index], state)
+    })
+  }
+  return hidden
 }
 
 /**
@@ -170,16 +296,10 @@ export function readBoardBindingRecords(replica: Replica, connectorIds: readonly
  * `index` is the entry's position in the page's stored list. A repair transaction removes them
  * (`repairBoardPlacements`).
  */
-export function findBoardDuplicatePlacements(replica: Replica, rootId?: string): { id: string; pageId: string; index: number }[] {
+export function findBoardDuplicatePlacements(replica: Replica, rootId?: string): BoardDuplicatePlacement[] {
   const root = rootId ?? rootOf(replica)
   if (root === null || !replica.exists(root)) return []
-  const out: { id: string; pageId: string; index: number }[] = []
-  for (const page of boardLayout(replicaSource(replica, root)).pages) {
-    page.states.forEach((state, index) => {
-      if (state === 'duplicate') out.push({ id: page.items[index], pageId: page.id, index })
-    })
-  }
-  return out
+  return duplicatePlacements(boardLayout(replicaSource(replica, root)))
 }
 
 export function readBoardTitle(replica: Replica): string {

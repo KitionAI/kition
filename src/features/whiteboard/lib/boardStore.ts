@@ -422,19 +422,17 @@ export class BoardStore {
   }
 
   /**
-   * Rebuilds the view from the replica, keeping the current page. With `repair`, what
-   * `normalizeBoardRecords` corrects in persisted data (dangling parents and bindings, connector
-   * ends) and duplicate list placements left by merges are repaired in one `system` transaction,
-   * which is not an undo step.
+   * Rebuilds the view from the replica, keeping the current page: re-reads what changed since the
+   * last read (`BoardReplicaHistory.read`) and normalizes the result, keeping the records it does
+   * not change. With `repair`, what `normalizeBoardRecords` corrects in persisted data (dangling
+   * parents and bindings, connector ends) and duplicate list placements left by merges are
+   * repaired in one `system` transaction, which is not an undo step; a healthy board writes nothing.
    */
   private rebuildView(options: { repair: boolean }) {
-    const raw = readBoardRecords(this.history.replica)
+    const { records, duplicates } = this.history.read()
     const meta = this.records.get(BOARD_META_RECORD_ID)
-    if (meta) raw.unshift(meta)
-    const view = normalizeBoardRecords(raw)
-    if (options.repair) {
-      this.history.repair(diffBoardRecords(new Map(raw.map((record) => [record.id, record])), view))
-    }
+    const view = normalizeBoardRecords(meta ? [meta, ...records.values()] : records.values())
+    if (options.repair) this.history.repair(diffBoardRecords(records, view), duplicates)
     this.records = view
     this.invalidateCaches()
   }
@@ -610,10 +608,15 @@ export class BoardTransaction {
   }
 }
 
+/**
+ * The view of `records`: one page at least, a meta record naming an existing page, pages indexed
+ * in order, elements on existing pages, and hierarchy and bindings repaired. Records it does not
+ * change are kept as they are (the same objects), so diffs against the previous view stay cheap.
+ */
 function normalizeBoardRecords(records: Iterable<BoardRecord>) {
   const normalized = new Map<string, BoardRecord>()
   for (const record of records) {
-    if (!normalized.has(record.id)) normalized.set(record.id, cloneBoardRecord(record))
+    if (!normalized.has(record.id)) normalized.set(record.id, record)
   }
 
   const pages = [...normalized.values()]
@@ -623,37 +626,36 @@ function normalizeBoardRecords(records: Iterable<BoardRecord>) {
     normalized.set(page.id, page)
     pages.push(page)
   }
+  const pageIds = new Set(pages.map((page) => page.id))
 
   const meta = normalized.get(BOARD_META_RECORD_ID)
-  const activePageId = meta?.record_type === 'meta'
-    && pages.some((page) => page.id === meta.active_page_id)
+  const activePageId = meta?.record_type === 'meta' && pageIds.has(meta.active_page_id)
     ? meta.active_page_id
     : pages[0].id
-  const normalizedMeta: BoardMetaRecord = {
-    record_type: 'meta',
-    id: BOARD_META_RECORD_ID,
-    active_page_id: activePageId,
-  }
-  normalized.set(normalizedMeta.id, normalizedMeta)
+  normalized.set(BOARD_META_RECORD_ID, meta?.record_type === 'meta' && meta.active_page_id === activePageId
+    ? meta
+    : createMetaRecord(activePageId))
 
   pages
     .sort((left, right) => left.index - right.index || left.id.localeCompare(right.id))
-    .forEach((page, index) => normalized.set(page.id, { ...page, index }))
+    .forEach((page, index) => {
+      if (page.index !== index) normalized.set(page.id, { ...page, index })
+    })
 
+  const elements: BoardElementRecord[] = []
   for (const record of normalized.values()) {
-    if (
-      record.record_type === 'element'
-      && !pages.some((page) => page.id === record.page_id)
-    ) {
-      normalized.set(record.id, { ...record, page_id: activePageId })
+    if (record.record_type !== 'element') continue
+    if (pageIds.has(record.page_id)) elements.push(record)
+    else {
+      const moved = { ...record, page_id: activePageId }
+      normalized.set(record.id, moved)
+      elements.push(moved)
     }
   }
-  const repairedElements = repairBoardHierarchyRecords(
-    [...normalized.values()].filter((record): record is BoardElementRecord => (
-      record.record_type === 'element'
-    )),
-  )
-  for (const record of repairedElements) normalized.set(record.id, record)
+  const repairedElements = repairBoardHierarchyRecords(elements)
+  repairedElements.forEach((record, index) => {
+    if (record !== elements[index]) normalized.set(record.id, record)
+  })
   const repairedRecords = repairBoardBindingRecords([...normalized.values()])
   normalized.clear()
   for (const record of repairedRecords) normalized.set(record.id, record)
