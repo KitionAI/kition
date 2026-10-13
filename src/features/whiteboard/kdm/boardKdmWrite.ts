@@ -10,7 +10,7 @@ import type {
   BoardPageRecord,
   BoardRecord,
 } from '../lib/boardRecords'
-import type { BoardRecordDiff } from '../lib/boardStore'
+import type { BoardRecordDiff } from '../lib/boardRecordDiff'
 import type { WhiteboardElement } from '../lib/whiteboardTypes'
 import { BOARD_STYLE_FIELDS } from './boardSchema'
 

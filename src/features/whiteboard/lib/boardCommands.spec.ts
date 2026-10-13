@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { BoardCommandRegistry } from './boardCommands'
-import { createBoardRecordsFromElements } from './boardRecords'
+import { createBoardRecordsFromElements, type BoardElementRecord } from './boardRecords'
 import { BoardStore } from './boardStore'
 import type { WhiteboardElement } from './whiteboardTypes'
 
@@ -171,5 +171,75 @@ describe('BoardCommandRegistry page commands', () => {
     expect(store.getPages()).toHaveLength(2)
     store.undo()
     expect(store.getPages()).toHaveLength(3)
+  })
+})
+
+describe('BoardCommandRegistry page activation', () => {
+  it('switches pages as view state, not as an undo step', () => {
+    const store = new BoardStore(createBoardRecordsFromElements(ELEMENTS.slice(0, 1), 'Main'))
+    const commands = new BoardCommandRegistry(store)
+    commands.execute({ type: 'page.create', pageId: 'page:two', name: 'Second', activate: false })
+    const version = store.getReplica().version()
+
+    expect(commands.execute({ type: 'page.activate', pageId: 'page:two' })).not.toBeNull()
+    expect(store.getCurrentPageId()).toBe('page:two')
+    expect(store.getReplica().version().equals(version)).toBe(true)
+    expect(commands.execute({ type: 'page.activate', pageId: 'page:two' })).toBeNull()
+
+    store.undo()
+    expect(store.getRecord('page:two')).toBeNull()
+    expect(store.getCurrentPageId()).toBe('page:main')
+  })
+})
+
+describe('BoardCommandRegistry applyAgentDiff', () => {
+  it('applies an agent update when only other fields changed since the preview', () => {
+    const store = new BoardStore(createBoardRecordsFromElements(ELEMENTS.slice(0, 1)))
+    const commands = new BoardCommandRegistry(store)
+    const before = store.getElementRecord('one')!
+    commands.execute({
+      type: 'element.update',
+      elements: [{ ...ELEMENTS[0], style: { fillColor: 'red' } }],
+    })
+
+    commands.applyAgentDiff('Agent move', {
+      added: [],
+      updated: [{ before, after: { ...before, x: 500 } as BoardElementRecord }],
+      removed: [],
+    })
+    expect(store.getElementRecord('one')).toMatchObject({ x: 500, style: { fillColor: 'red' } })
+  })
+
+  it('refuses an agent update when a field it changed has changed since the preview', () => {
+    const store = new BoardStore(createBoardRecordsFromElements(ELEMENTS.slice(0, 1)))
+    const commands = new BoardCommandRegistry(store)
+    const before = store.getElementRecord('one')!
+    commands.execute({ type: 'element.update', elements: [{ ...ELEMENTS[0], x: 42 } as WhiteboardElement] })
+
+    expect(() => commands.applyAgentDiff('Agent move', {
+      added: [],
+      updated: [{ before, after: { ...before, x: 500 } as BoardElementRecord }],
+      removed: [],
+    })).toThrow(/AI preview/)
+    expect(store.getElementRecord('one')).toMatchObject({ x: 42 })
+  })
+
+  it('checks style keys one by one', () => {
+    const store = new BoardStore(createBoardRecordsFromElements([
+      { ...ELEMENTS[0], style: { fillColor: 'blue' } },
+    ]))
+    const commands = new BoardCommandRegistry(store)
+    const before = store.getElementRecord('one')!
+    commands.execute({
+      type: 'element.update',
+      elements: [{ ...ELEMENTS[0], style: { fillColor: 'blue', strokeColor: 'green' } }],
+    })
+
+    commands.applyAgentDiff('Agent recolour', {
+      added: [],
+      updated: [{ before, after: { ...before, style: { fillColor: 'yellow' } } }],
+      removed: [],
+    })
+    expect(store.getElementRecord('one')?.style).toEqual({ fillColor: 'yellow', strokeColor: 'green' })
   })
 })

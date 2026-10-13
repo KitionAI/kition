@@ -1,3 +1,8 @@
+import { agent, person, randomActor, Replica, system } from '@/lib/kdm'
+import { createBoardFromRecords, createEmptyBoard } from '../kdm/boardKdmFile'
+import { readBoardRecords, readBoardTitle } from '../kdm/boardKdmRead'
+import { BoardReplicaHistory } from '../kdm/boardReplicaBridge'
+import { boardSchema } from '../kdm/boardSchema'
 import {
   BOARD_META_RECORD_ID,
   DEFAULT_BOARD_PAGE_ID,
@@ -14,17 +19,15 @@ import { repairBoardHierarchyRecords } from './boardHierarchy'
 import { repairBoardBindingRecords } from './boardBindingEngine'
 import { BoardSpatialIndex } from './boardSpatialIndex'
 import type { WhiteboardBounds, WhiteboardElement, WhiteboardPoint } from './whiteboardTypes'
+import {
+  boardRecordsEqual,
+  diffBoardRecords,
+  isBoardRecordDiffEmpty,
+  type BoardRecordDiff,
+} from './boardRecordDiff'
 
-export type BoardRecordUpdate = {
-  before: BoardRecord
-  after: BoardRecord
-}
-
-export type BoardRecordDiff = {
-  added: BoardRecord[]
-  updated: BoardRecordUpdate[]
-  removed: BoardRecord[]
-}
+export type { BoardRecordDiff } from './boardRecordDiff'
+export { reverseBoardRecordDiff, squashBoardRecordDiffs } from './boardRecordDiff'
 
 export type BoardHistoryEntry = {
   label: string
@@ -32,9 +35,19 @@ export type BoardHistoryEntry = {
   source: 'agent' | 'user'
 }
 
+/**
+ * A point in the undo history that later commands can be squashed into one undo step or bailed
+ * back to. The outermost open mark holds the replica's undo group.
+ */
 export type BoardHistoryMark = {
   generation: number
+  /** Undo steps of this store when the mark was taken. */
   depth: number
+  serial: number
+  /** The record view when the mark was taken. */
+  baseline: ReadonlyMap<string, BoardRecord>
+  /** The user operation count when the mark was taken. */
+  operations: number
 }
 
 export type BoardStoreSnapshot = {
@@ -49,32 +62,49 @@ type BoardTransactionOptions = {
   source?: BoardHistoryEntry['source']
 }
 
-const EMPTY_DIFF: BoardRecordDiff = {
-  added: [],
-  updated: [],
-  removed: [],
-}
+/** The principals of local transactions; authorization never relies on them. */
+const LOCAL_PERSON = 'user:local'
+const LOCAL_AGENT = 'agent:whiteboard'
+const RECENT_OPERATION_LIMIT = 100
 
+/**
+ * The whiteboard's records, backed by a KDM replica. The `Map` of records is the view the editor
+ * reads and edits: transactions change it directly (live gestures notify on every change) and
+ * write their diff to the replica as one field-level KDM transaction when they commit. Undo,
+ * redo, imports, and loads rebuild the view from the replica. The meta record (current page) is
+ * view state: it is never written to the replica and never an undo step.
+ */
 export class BoardStore {
+  private history!: BoardReplicaHistory
   private records = new Map<string, BoardRecord>()
   private listeners = new Set<() => void>()
-  private past: BoardHistoryEntry[] = []
-  private future: BoardHistoryEntry[] = []
   private activeTransaction: BoardTransaction | null = null
+  /** Bumped when the history restarts (a new replica); older marks are void. */
   private historyGeneration = 0
+  private markSerial = 0
+  /** Set when an import arrived during a transaction: the view is rebuilt when it ends. */
+  private viewStale = false
+  private recentOperations: Array<{ serial: number; label: string }> = []
+  private operationSerial = 0
   private recordsCache: readonly BoardRecord[] | null = null
   private elementsCache: readonly WhiteboardElement[] | null = null
   private readonly spatialIndex = new BoardSpatialIndex()
   private revision = 0
-  private snapshot: BoardStoreSnapshot = {
+  private storeSnapshot: BoardStoreSnapshot = {
     revision: 0,
     canUndo: false,
     canRedo: false,
     isTransacting: false,
   }
 
-  constructor(records: readonly BoardRecord[] = createBoardBaseRecords()) {
-    this.replaceRecords(records, { notify: false })
+  /**
+   * A store over `source`: a replica (repaired once if its records need it), records (built into
+   * a new replica, as `replaceRecords` does), or nothing (a new empty board).
+   */
+  constructor(source?: Replica | readonly BoardRecord[]) {
+    if (source instanceof Replica) this.adopt(source, { repair: true })
+    else if (source) this.replaceRecords(source, { notify: false })
+    else this.adopt(createEmptyBoard('Board', randomActor()), { repair: false })
   }
 
   readonly subscribe = (listener: () => void) => {
@@ -84,7 +114,17 @@ export class BoardStore {
     }
   }
 
-  readonly getSnapshot = () => this.snapshot
+  readonly getSnapshot = () => this.storeSnapshot
+
+  /** The KDM document behind the view. Change it only through this store. */
+  getReplica(): Replica {
+    return this.history.replica
+  }
+
+  /** The whole document as KDM snapshot bytes. */
+  snapshot(): Uint8Array {
+    return this.history.replica.snapshot()
+  }
 
   getRecords(): readonly BoardRecord[] {
     if (!this.recordsCache) {
@@ -112,6 +152,16 @@ export class BoardStore {
     return meta?.record_type === 'meta'
       ? meta.active_page_id
       : DEFAULT_BOARD_PAGE_ID
+  }
+
+  /** Shows the page `pageId`: view state only, not an undo step. Answers whether the page changed. */
+  setActivePage(pageId: string) {
+    if (this.records.get(pageId)?.record_type !== 'page') return false
+    if (this.getCurrentPageId() === pageId) return false
+    this.records.set(BOARD_META_RECORD_ID, createMetaRecord(pageId))
+    this.invalidateCaches()
+    this.notify()
+    return true
   }
 
   getPages() {
@@ -153,25 +203,46 @@ export class BoardStore {
     return next
   }
 
+  /** Labels of the latest committed user operations, newest first (context for the agent). */
   getRecentUserOperations(limit = 50) {
-    return this.past
-      .filter((entry) => entry.source === 'user')
+    return this.recentOperations
       .slice(-Math.max(0, limit))
       .reverse()
       .map((entry) => entry.label)
   }
 
+  /**
+   * Replaces the board with `records` in a new replica whose history starts empty: the board is
+   * built in the replica's creating commit, so it is not an undo step.
+   */
   replaceRecords(
     records: readonly BoardRecord[],
     options: { notify?: boolean } = {},
   ) {
     if (this.activeTransaction) this.activeTransaction.cancel()
-    this.records = normalizeBoardRecords(records)
-    this.past = []
-    this.future = []
-    this.historyGeneration += 1
-    this.invalidateCaches()
+    const normalized = normalizeBoardRecords(records)
+    const previous = this.history?.replica
+    const title = previous ? readBoardTitle(previous) : 'Board'
+    const replica = createBoardFromRecords(title, previous?.actor ?? randomActor(), [...normalized.values()])
+    this.records = new Map([[BOARD_META_RECORD_ID, normalized.get(BOARD_META_RECORD_ID)!]])
+    this.adopt(replica, { repair: false })
     if (options.notify !== false) this.notify()
+  }
+
+  /**
+   * Merges changes from another copy of the document (`Replica.exportChanges` or a snapshot) and
+   * rebuilds the view, repairing what the merge left inconsistent. During a marked gesture (an open
+   * undo group) the changes wait until it ends; during a transaction the view is rebuilt when the
+   * transaction ends. Changes of another document are refused (`wrong-document`).
+   */
+  importChanges(bytes: Uint8Array) {
+    if (!this.history.importChanges(bytes)) return
+    if (this.activeTransaction) {
+      this.viewStale = true
+      return
+    }
+    this.rebuildView({ repair: true })
+    this.notify()
   }
 
   transact(
@@ -206,66 +277,73 @@ export class BoardStore {
     return transaction
   }
 
+  /** Undoes this replica's last undo step (an open undo group ends first). */
   undo() {
-    if (this.activeTransaction) this.activeTransaction.cancel()
-    const entry = this.past.pop()
-    if (!entry) return null
-    this.applyDiff(entry.diff, 'inverse')
-    this.future.push(entry)
-    this.notify()
-    return entry.diff
+    return this.step('undo')
   }
 
   redo() {
-    if (this.activeTransaction) this.activeTransaction.cancel()
-    const entry = this.future.pop()
-    if (!entry) return null
-    this.applyDiff(entry.diff, 'forward')
-    this.past.push(entry)
-    this.notify()
-    return entry.diff
+    return this.step('redo')
   }
 
+  /** Starts the history afresh: the same document in a new replica without undo steps. */
   clearHistory() {
-    if (this.past.length === 0 && this.future.length === 0) return
-    this.past = []
-    this.future = []
-    this.historyGeneration += 1
+    this.history.closeGroup()
+    if (!this.history.canUndo() && !this.history.canRedo()) return
+    const { replica } = this.history
+    this.adopt(Replica.load(boardSchema, replica.snapshot(), replica.actor), { repair: false, keepView: true })
     this.notify()
   }
 
+  /**
+   * Marks the history: the commands until `squashToMark` become one undo step. The outermost open
+   * mark opens the replica's undo group; inner marks share it.
+   */
   markHistory(): BoardHistoryMark {
+    this.markSerial += 1
+    this.history.openGroup(this.markSerial)
     return {
       generation: this.historyGeneration,
-      depth: this.past.length,
+      depth: this.history.depth,
+      serial: this.markSerial,
+      baseline: new Map(this.records),
+      operations: this.operationSerial,
     }
   }
 
+  /**
+   * Makes the changes since `mark` one undo step labelled `label`. A mark whose group already
+   * ended may be squashed again: its later undo steps are merged into one.
+   */
   squashToMark(mark: BoardHistoryMark, label: string) {
     if (!this.isUsableHistoryMark(mark)) return null
-    const entries = this.past.slice(mark.depth)
-    if (entries.length === 0) return null
-    const diff = squashBoardRecordDiffs(entries.map((entry) => entry.diff))
-    this.past = this.past.slice(0, mark.depth)
-    if (!isBoardRecordDiffEmpty(diff)) {
-      const source = entries.some((entry) => entry.source === 'agent') ? 'agent' : 'user'
-      this.past.push({ label, diff, source })
-    }
-    this.future = []
+    if (this.history.group === mark.serial) this.history.closeGroup()
+    else if (this.history.group === null && this.history.depth - mark.depth > 1) this.mergeStepsSince(mark)
+    if (this.dropOperationsSince(mark)) this.recordOperation(label)
+    const diff = diffBoardRecords(mark.baseline, this.records)
+    if (this.history.flushImports()) this.rebuildView({ repair: true })
     this.notify()
-    return diff
+    return isBoardRecordDiffEmpty(diff) ? null : diff
   }
 
+  /** Reverts the changes since `mark` without leaving a redo step. */
   bailToMark(mark: BoardHistoryMark) {
     if (!this.isUsableHistoryMark(mark)) return null
-    const entries = this.past.slice(mark.depth)
-    if (entries.length === 0) return null
-    const diff = squashBoardRecordDiffs(entries.map((entry) => entry.diff))
-    this.applyDiff(diff, 'inverse')
-    this.past = this.past.slice(0, mark.depth)
-    this.future = []
+    if (this.activeTransaction) this.activeTransaction.cancel()
+    const diff = diffBoardRecords(mark.baseline, this.records)
+    const group = this.history.group
+    if (group === null || group === mark.serial) {
+      this.history.closeGroup()
+      if (this.history.undoTo(mark.depth)) this.history.clearRedo()
+    } else {
+      // An inner mark: the way back joins the outer mark's undo group.
+      this.history.commit(diffBoardRecords(this.records, mark.baseline), person(LOCAL_PERSON))
+    }
+    this.dropOperationsSince(mark)
+    this.history.flushImports()
+    this.rebuildView({ repair: false })
     this.notify()
-    return diff
+    return isBoardRecordDiffEmpty(diff) ? null : diff
   }
 
   finishTransaction(transaction: BoardTransaction, mode: 'commit' | 'cancel') {
@@ -276,21 +354,29 @@ export class BoardStore {
 
     if (mode === 'cancel') {
       const restored = transaction.restoreBeforeRecords()
-      if (restored || transaction.live) this.notify()
+      if (this.refreshStaleView() || restored || transaction.live) this.notify()
       return null
     }
 
     const diff = transaction.createDiff()
     if (isBoardRecordDiffEmpty(diff)) {
-      if (transaction.live) this.notify()
+      if (this.refreshStaleView() || transaction.live) this.notify()
       return null
     }
-    this.past.push({
-      label: transaction.label,
-      diff,
-      source: transaction.source,
-    })
-    this.future = []
+    const origin = transaction.source === 'agent'
+      ? agent(LOCAL_AGENT, transaction.label)
+      : person(LOCAL_PERSON, transaction.label)
+    let changed: boolean
+    try {
+      changed = this.history.commit(diff, origin)
+    } catch (error) {
+      transaction.restoreBeforeRecords()
+      this.refreshStaleView()
+      this.notify()
+      throw error
+    }
+    if (changed && transaction.source === 'user') this.recordOperation(transaction.label)
+    if (!this.refreshStaleView()) this.dropGhosts(diff)
     this.notify()
     return diff
   }
@@ -316,26 +402,91 @@ export class BoardStore {
     return true
   }
 
-  private applyDiff(diff: BoardRecordDiff, direction: 'forward' | 'inverse') {
-    if (direction === 'forward') {
-      for (const record of diff.removed) this.records.delete(record.id)
-      for (const update of diff.updated) {
-        this.records.set(update.after.id, cloneBoardRecord(update.after))
-      }
-      for (const record of diff.added) {
-        this.records.set(record.id, cloneBoardRecord(record))
-      }
-    } else {
-      for (const record of diff.added) this.records.delete(record.id)
-      for (const update of diff.updated) {
-        this.records.set(update.before.id, cloneBoardRecord(update.before))
-      }
-      for (const record of diff.removed) {
-        this.records.set(record.id, cloneBoardRecord(record))
-      }
+  /** Makes `replica` the document of this store, with a fresh history. */
+  private adopt(replica: Replica, options: { repair: boolean; keepView?: boolean }) {
+    this.history = new BoardReplicaHistory(replica)
+    this.historyGeneration += 1
+    this.viewStale = false
+    if (options.keepView) this.invalidateCaches()
+    else this.rebuildView({ repair: options.repair })
+  }
+
+  /**
+   * Rebuilds the view from the replica, keeping the current page. With `repair`, what
+   * `normalizeBoardRecords` corrects in persisted data (dangling parents and bindings, connector
+   * ends) is written back as one `system` transaction.
+   */
+  private rebuildView(options: { repair: boolean }) {
+    const raw = readBoardRecords(this.history.replica)
+    const meta = this.records.get(BOARD_META_RECORD_ID)
+    if (meta) raw.unshift(meta)
+    const view = normalizeBoardRecords(raw)
+    if (options.repair) {
+      this.history.commit(diffBoardRecords(new Map(raw.map((record) => [record.id, record])), view), system('repair'))
     }
-    this.records = normalizeBoardRecords(this.records.values())
+    this.records = view
     this.invalidateCaches()
+  }
+
+  /**
+   * Drops from the view what a commit could not write because the replica no longer has it (an
+   * element or page an import deleted during the gesture), so no ghost stays on the canvas.
+   */
+  private dropGhosts(diff: BoardRecordDiff) {
+    const { replica } = this.history
+    const exists = (id: string) => replica.exists(id)
+    for (const record of [...diff.added, ...diff.updated.map((update) => update.after)]) {
+      const ghost = record.record_type === 'element' || record.record_type === 'page'
+        ? !exists(record.id)
+        : record.record_type === 'binding' && (!exists(record.from_id) || !exists(record.to_id))
+      if (ghost) this.removeInternalRecord(record.id, false)
+    }
+  }
+
+  /** Rebuilds a view that imports made stale during a transaction; answers whether it did. */
+  private refreshStaleView() {
+    if (!this.viewStale) return false
+    this.viewStale = false
+    this.rebuildView({ repair: true })
+    return true
+  }
+
+  private step(direction: 'undo' | 'redo') {
+    if (this.activeTransaction) this.activeTransaction.cancel()
+    this.history.closeGroup()
+    if (this.history.flushImports()) this.rebuildView({ repair: true })
+    const before = this.records
+    if (!(direction === 'undo' ? this.history.undo() : this.history.redo())) return null
+    this.rebuildView({ repair: false })
+    this.notify()
+    return diffBoardRecords(before, this.records)
+  }
+
+  /**
+   * Turns the undo steps since `mark` into one: undoes them, then writes the difference to the
+   * state they had reached as one transaction.
+   */
+  private mergeStepsSince(mark: BoardHistoryMark) {
+    const target = this.records
+    this.history.undoTo(mark.depth)
+    this.rebuildView({ repair: false })
+    this.history.commit(diffBoardRecords(this.records, target), person(LOCAL_PERSON))
+    this.history.clearRedo()
+    this.rebuildView({ repair: false })
+  }
+
+  private recordOperation(label: string) {
+    this.operationSerial += 1
+    this.recentOperations.push({ serial: this.operationSerial, label })
+    if (this.recentOperations.length > RECENT_OPERATION_LIMIT) this.recentOperations.shift()
+  }
+
+  /** Forgets the user operations recorded since `mark`; answers whether there were any. */
+  private dropOperationsSince(mark: BoardHistoryMark) {
+    const kept = this.recentOperations.filter((entry) => entry.serial <= mark.operations)
+    const removed = kept.length !== this.recentOperations.length
+    this.recentOperations = kept
+    return removed
   }
 
   private invalidateCaches() {
@@ -346,15 +497,15 @@ export class BoardStore {
   private isUsableHistoryMark(mark: BoardHistoryMark) {
     return mark.generation === this.historyGeneration
       && mark.depth >= 0
-      && mark.depth <= this.past.length
+      && mark.depth <= this.history.depth
   }
 
   private notify() {
     this.revision += 1
-    this.snapshot = {
+    this.storeSnapshot = {
       revision: this.revision,
-      canUndo: this.past.length > 0,
-      canRedo: this.future.length > 0,
+      canUndo: this.history.canUndo(),
+      canRedo: this.history.canRedo(),
       isTransacting: this.activeTransaction !== null,
     }
     for (const listener of this.listeners) listener()
@@ -447,82 +598,6 @@ export class BoardTransaction {
   }
 }
 
-export function reverseBoardRecordDiff(diff: BoardRecordDiff): BoardRecordDiff {
-  return {
-    added: diff.removed.map(cloneBoardRecord),
-    updated: diff.updated.map((update) => ({
-      before: cloneBoardRecord(update.after),
-      after: cloneBoardRecord(update.before),
-    })),
-    removed: diff.added.map(cloneBoardRecord),
-  }
-}
-
-export function squashBoardRecordDiffs(
-  diffs: readonly BoardRecordDiff[],
-): BoardRecordDiff {
-  const transitions = new Map<string, {
-    before: BoardRecord | undefined
-    after: BoardRecord | undefined
-  }>()
-
-  for (const diff of diffs) {
-    for (const record of diff.added) {
-      const transition = transitions.get(record.id)
-      transitions.set(record.id, {
-        before: transition?.before,
-        after: cloneBoardRecord(record),
-      })
-    }
-    for (const update of diff.updated) {
-      const transition = transitions.get(update.after.id)
-      transitions.set(update.after.id, {
-        before: transition ? transition.before : cloneBoardRecord(update.before),
-        after: cloneBoardRecord(update.after),
-      })
-    }
-    for (const record of diff.removed) {
-      const transition = transitions.get(record.id)
-      transitions.set(record.id, {
-        before: transition ? transition.before : cloneBoardRecord(record),
-        after: undefined,
-      })
-    }
-  }
-
-  const squashed: BoardRecordDiff = {
-    added: [],
-    updated: [],
-    removed: [],
-  }
-  for (const transition of transitions.values()) {
-    if (transition.before === undefined && transition.after) {
-      squashed.added.push(cloneBoardRecord(transition.after))
-    } else if (transition.before && transition.after === undefined) {
-      squashed.removed.push(cloneBoardRecord(transition.before))
-    } else if (
-      transition.before
-      && transition.after
-      && !boardRecordsEqual(transition.before, transition.after)
-    ) {
-      squashed.updated.push({
-        before: cloneBoardRecord(transition.before),
-        after: cloneBoardRecord(transition.after),
-      })
-    }
-  }
-  squashed.added.sort(compareBoardRecords)
-  squashed.removed.sort(compareBoardRecords)
-  squashed.updated.sort((left, right) => compareBoardRecords(left.after, right.after))
-  return squashed
-}
-
-export function isBoardRecordDiffEmpty(diff: BoardRecordDiff) {
-  return diff.added.length === 0
-    && diff.updated.length === 0
-    && diff.removed.length === 0
-}
-
 function normalizeBoardRecords(records: Iterable<BoardRecord>) {
   const normalized = new Map<string, BoardRecord>()
   for (const record of records) {
@@ -573,14 +648,10 @@ function normalizeBoardRecords(records: Iterable<BoardRecord>) {
   return normalized
 }
 
-function boardRecordsEqual(left: BoardRecord, right: BoardRecord) {
-  return JSON.stringify(left) === JSON.stringify(right)
-}
-
-export function createEmptyBoardRecordDiff(): BoardRecordDiff {
+function createMetaRecord(pageId: string): BoardMetaRecord {
   return {
-    added: [...EMPTY_DIFF.added],
-    updated: [...EMPTY_DIFF.updated],
-    removed: [...EMPTY_DIFF.removed],
+    record_type: 'meta',
+    id: BOARD_META_RECORD_ID,
+    active_page_id: pageId,
   }
 }

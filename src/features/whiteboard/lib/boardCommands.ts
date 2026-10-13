@@ -14,7 +14,9 @@ import {
   type BoardElementRecord,
   type BoardMetaRecord,
   type BoardPageRecord,
+  type BoardRecord,
 } from './boardRecords'
+import { boardRecordsEqual, boardValuesEqual } from './boardRecordDiff'
 import { instantiateBoardClipboardRecords } from './boardClipboard'
 import {
   getBoardElementsWithDescendants,
@@ -139,6 +141,7 @@ export class BoardCommandRegistry {
   constructor(private store: BoardStore) {}
 
   execute(command: BoardCommand): BoardRecordDiff | null {
+    if (command.type === 'page.activate') return activateBoardPage(this.store, command.pageId)
     return this.store.transact(
       BOARD_COMMAND_LABELS[command.type],
       (transaction) => applyBoardCommand(this.store, transaction, command),
@@ -152,6 +155,11 @@ export class BoardCommandRegistry {
     )
   }
 
+  /**
+   * Applies an agent's previewed diff. An update is stale only if a field the agent changed has
+   * changed since the preview; other fields keep their current values, so edits made meanwhile
+   * survive.
+   */
   applyAgentDiff(label: string, diff: BoardRecordDiff) {
     return this.store.transact(label, (transaction) => {
       for (const record of diff.added) {
@@ -162,14 +170,15 @@ export class BoardCommandRegistry {
       }
       for (const update of diff.updated) {
         const current = this.store.getRecord(update.before.id)
-        if (!current || !boardRecordMatches(current, update.before)) {
+        const merged = current && mergeAgentUpdate(current, update.before, update.after)
+        if (!merged) {
           throw new Error(`Board changed while the AI preview was open: ${update.before.id}`)
         }
-        transaction.put(update.after)
+        transaction.put(merged)
       }
       for (const record of diff.removed) {
         const current = this.store.getRecord(record.id)
-        if (!current || !boardRecordMatches(current, record)) {
+        if (!current || !boardRecordsEqual(current, record)) {
           throw new Error(`Board changed while the AI preview was open: ${record.id}`)
         }
         transaction.remove(record.id)
@@ -316,7 +325,6 @@ function applyBoardCommand(
       renameBoardPage(store, transaction, command.pageId, command.name)
       break
     case 'page.activate':
-      activateBoardPage(store, transaction, command.pageId)
       break
     case 'page.duplicate':
       duplicateBoardPage(store, transaction, command)
@@ -359,13 +367,15 @@ function renameBoardPage(
   transaction.put({ ...page, name: normalizePageName(name, page.index + 1) })
 }
 
-function activateBoardPage(
-  store: BoardStore,
-  transaction: BoardTransaction,
-  pageId: string,
-) {
-  if (store.getRecord(pageId)?.record_type !== 'page') return
-  transaction.put(createBoardMetaRecord(pageId))
+/** Shows another page: view state, so neither a store transaction nor an undo step. */
+function activateBoardPage(store: BoardStore, pageId: string): BoardRecordDiff | null {
+  const before = store.getRecord(BOARD_META_RECORD_ID)
+  if (!before || !store.setActivePage(pageId)) return null
+  return {
+    added: [],
+    updated: [{ before, after: createBoardMetaRecord(pageId) }],
+    removed: [],
+  }
 }
 
 function duplicateBoardPage(
@@ -614,6 +624,37 @@ function updateElementRecord(
   })
 }
 
-function boardRecordMatches(left: unknown, right: unknown) {
-  return JSON.stringify(left) === JSON.stringify(right)
+/**
+ * `current` with the fields the agent changed from `before` to `after`, or `null` when one of
+ * those fields no longer has its `before` value. Style keys count as fields of their own, as the
+ * document stores them.
+ */
+function mergeAgentUpdate(
+  current: BoardRecord,
+  before: BoardRecord,
+  after: BoardRecord,
+): BoardRecord | null {
+  if (current.record_type !== after.record_type) return null
+  const merged: Record<string, unknown> = { ...current }
+  const currentFields = current as Record<string, unknown>
+  const beforeFields = before as Record<string, unknown>
+  const afterFields = after as Record<string, unknown>
+  for (const key of new Set([...Object.keys(beforeFields), ...Object.keys(afterFields)])) {
+    if (key === 'style') continue
+    if (boardValuesEqual(beforeFields[key], afterFields[key])) continue
+    if (!boardValuesEqual(currentFields[key], beforeFields[key])) return null
+    merged[key] = afterFields[key]
+  }
+  const beforeStyle = (beforeFields.style ?? {}) as Record<string, unknown>
+  const afterStyle = (afterFields.style ?? {}) as Record<string, unknown>
+  const style: Record<string, unknown> = { ...(currentFields.style ?? {}) as Record<string, unknown> }
+  let styleChanged = false
+  for (const key of new Set([...Object.keys(beforeStyle), ...Object.keys(afterStyle)])) {
+    if (boardValuesEqual(beforeStyle[key], afterStyle[key])) continue
+    if (!boardValuesEqual(style[key], beforeStyle[key])) return null
+    style[key] = afterStyle[key]
+    styleChanged = true
+  }
+  if (styleChanged) merged.style = style
+  return merged as BoardRecord
 }
