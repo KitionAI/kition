@@ -175,7 +175,7 @@ export class DocumentSession {
     if (this.disposed) return
     this.opened = opened
     this.fileText = opened.fileText
-    this.savedVersion = this.rendered() === opened.fileText ? opened.replica.version() : null
+    this.savedVersion = this.holdsFileText(opened.fileText) ? opened.replica.version() : null
     this.cleanups.push(opened.replica.subscribeText(opened.rootId, DOCUMENT_BODY, (delta) => this.onReplicaChange(delta)))
     this.cleanups.push(subscribeWorkspaceDocumentExternalChanges(this.onExternalChange))
     this.registerFlush()
@@ -631,7 +631,16 @@ export class DocumentSession {
       this.fileText = text
       opened.style = analyzeText(text).style
     }
-    if (this.rendered() === text) this.savedVersion = opened.replica.version()
+    if (this.holdsFileText(text)) this.savedVersion = opened.replica.version()
+  }
+
+  /**
+   * Whether the replica holds what the file text `fileText` says: the same text, whatever its line
+   * endings. A file with mixed (or lone CR) line endings is not rewritten in the normalised style
+   * until a real edit is saved.
+   */
+  private holdsFileText(fileText: string) {
+    return this.text() === analyzeText(fileText).text
   }
 
   private save(): Promise<void> {

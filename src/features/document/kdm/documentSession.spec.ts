@@ -334,6 +334,28 @@ describe('DocumentSession: file changes', () => {
     expect(disk.files.get(PATH)).toBe(`${bom}a\r\nb\r\nc\r\n`)
   })
 
+  it('does not rewrite a file with mixed line endings just because it was opened', async () => {
+    const session = await open('a\r\nb\nc\n')
+    expect(session.isDirty()).toBe(false)
+    await settle(SAVE_DELAY_MS * 2)
+    expect(disk.writes).toEqual([])
+    // A real edit writes the text in the normalised style.
+    session.replaceText('a\nb\nc\nd\n', { kind: 'person', principal: 'user:local' })
+    await settle(SAVE_DELAY_MS)
+    expect(disk.files.get(PATH)).toBe('a\nb\nc\nd\n')
+  })
+
+  it('does not rewrite a file with lone CR line endings after merging a change', async () => {
+    const session = await open('a\rb\r')
+    await settle(SAVE_DELAY_MS * 2)
+    expect(disk.writes).toEqual([])
+    externalWrite('a\rb\rc\r')
+    await settle(SAVE_DELAY_MS * 2)
+    expect(session.text()).toBe('a\nb\nc\n')
+    expect(session.isDirty()).toBe(false)
+    expect(disk.writes).toEqual([])
+  })
+
   it('applies an agent’s text as one undo step and answers the saved file', async () => {
     const session = await open('a\nb\n')
     const result = session.applyAgentContent('a\nB\nc\n', { tool: 'document_write' })
