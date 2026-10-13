@@ -11,7 +11,7 @@ import {
   type WorkspaceDocumentExternalChange,
 } from '@/services/desktop'
 import { notify } from '@/lib/notify'
-import { flushWorkspaceEditSessions } from '@/services/workspaceEditSessions'
+import { discardWorkspaceEditSessions, flushWorkspaceEditSessions } from '@/services/workspaceEditSessions'
 import { boardRootId, readBoardRecords } from '../kdm/boardKdmRead'
 import { writeBoardDiff } from '../kdm/boardKdmWrite'
 import { createBoardFromRecords, decodeBoardFile, encodeBoardFile } from '../kdm/boardKdmFile'
@@ -667,6 +667,81 @@ describe('useBoardDocument', () => {
 
     await advance(1000)
     expect(writes()).toHaveLength(2)
+    expect(elementIdsIn(disk)).toEqual(['mine', 'rect-1'])
+  })
+
+  it('discards unsaved edits on request: no write, no retry, the file left as it is', async () => {
+    const { harness } = await mount()
+    const opened = disk
+    vi.mocked(writeWorkspaceDocument).mockRejectedValue(new Error('disk full'))
+    await addElement(harness, 'mine')
+    await act(async () => {
+      expect(await outcomeOf(flushWorkspaceEditSessions(PATH))).toEqual(new Error('disk full'))
+    })
+    expect(writes()).toHaveLength(1)
+
+    await act(async () => discardWorkspaceEditSessions(PATH))
+    // Nothing is left to save: the window may close and file operations need not wait.
+    expect(dispatchBeforeUnload().defaultPrevented).toBe(false)
+    await act(async () => {
+      expect(await outcomeOf(flushWorkspaceEditSessions(PATH))).toBeNull()
+    })
+    await addElement(harness, 'after', 300)
+    await act(async () => root?.unmount())
+    root = null
+    await advance(10_000)
+    expect(writes()).toHaveLength(1)
+    expect(disk).toBe(opened)
+    expect(notify.error).not.toHaveBeenCalled()
+  })
+
+  it('does not retry a write that was running when its edits were discarded', async () => {
+    const { harness } = await mount()
+    const opened = disk
+    await addElement(harness, 'mine')
+    const settle = heldWrite()
+    await advance(600)
+    expect(writes()).toHaveLength(1)
+
+    await act(async () => discardWorkspaceEditSessions(PATH))
+    await act(async () => {
+      settle(new Error('disk full'))
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    await act(async () => root?.unmount())
+    root = null
+    await advance(10_000)
+    expect(writes()).toHaveLength(1)
+    expect(disk).toBe(opened)
+    expect(notify.error).not.toHaveBeenCalled()
+  })
+
+  it('discards edits that can no longer be saved because the file became a different board', async () => {
+    const { harness } = await mount()
+    await addElement(harness, 'mine')
+    disk = encodeBoardFile(createBoardFromRecords('Other', randomActor(), []))
+    const other = disk
+    await act(async () => {
+      for (const listener of externalListeners) listener({ path: PATH, eventType: 'change' })
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(harness.current?.document).toMatchObject({ saveRefused: 'different-board' })
+
+    await act(async () => discardWorkspaceEditSessions(PATH))
+    await act(async () => root?.unmount())
+    root = null
+    await advance(10_000)
+    expect(writeWorkspaceDocument).not.toHaveBeenCalled()
+    expect(disk).toBe(other)
+    expect(notify.error).not.toHaveBeenCalled()
+  })
+
+  it('discards only the edits of the board at the given path', async () => {
+    const { harness } = await mount()
+    await addElement(harness, 'mine')
+    await act(async () => discardWorkspaceEditSessions('Planning/Other.kiboard'))
+    await advance(600)
+    expect(writes()).toHaveLength(1)
     expect(elementIdsIn(disk)).toEqual(['mine', 'rect-1'])
   })
 })

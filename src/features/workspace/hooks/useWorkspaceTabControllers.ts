@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { useConfirm } from '@/components/confirm'
 import type { WorkspaceTab } from '@/features/workspace/lib/workspace'
 import { getWorkspaceItemTitle, inferWorkspaceItemFormat } from '@/features/workspace/lib/workspace'
 import { notify } from '@/lib/notify'
 import { useShortcut } from '@/lib/useShortcut'
 import type { WorkspaceDocument, WorkspaceDocumentFormat } from '@/services/desktop'
-import { flushWorkspaceEditSessions } from '@/services/workspaceEditSessions'
+import { discardWorkspaceEditSessions, flushWorkspaceEditSessions } from '@/services/workspaceEditSessions'
 
 type UseWorkspaceTabControllersOptions = {
   workspaceTabs: WorkspaceTab[]
@@ -31,7 +32,9 @@ function documentUid() {
 
 /**
  * Tab-strip behavior that is not tab-list state: closing a tab (flushing a
- * design or Board editor first, closing the workflow workbench with its last tab),
+ * design or Board editor first; a Board whose save fails may be closed without
+ * its unsaved changes once the user confirms; closing the workflow workbench
+ * with its last tab),
  * the Cmd/Ctrl+W shortcut, keeping the tree focused on the active tab's
  * file, opening a file into the right tab type, and the search palette's
  * open-path requests.
@@ -51,14 +54,48 @@ export function useWorkspaceTabControllers({
   openDocument,
 }: UseWorkspaceTabControllersOptions) {
   const { t } = useTranslation('workspace')
+  const confirm = useConfirm()
   const workspaceTabsRef = useRef<WorkspaceTab[]>([])
   workspaceTabsRef.current = workspaceTabs
+  /** Board tabs whose close is saving or waiting for the user's answer: closing again does nothing. */
+  const closingBoardTabsRef = useRef(new Set<string>())
+
+  /** Closes a Board tab once its pending save is written, or after the user discards what could not be saved. */
+  const closeBoardTab = useCallback(async (tabId: string, path: string) => {
+    const closing = closingBoardTabsRef.current
+    if (closing.has(tabId)) return
+    closing.add(tabId)
+    try {
+      try {
+        await flushWorkspaceEditSessions(path)
+      } catch {
+        const discard = await confirm({
+          message: t('whiteboard.file.closeUnsavedMessage'),
+          confirmLabel: t('whiteboard.file.closeUnsavedDiscard'),
+          cancelLabel: t('whiteboard.file.closeUnsavedKeep'),
+          variant: 'destructive',
+          testId: 'board-close-unsaved-confirm',
+        })
+        // Keeping the tab keeps its edits and the session's retries.
+        if (!discard) return
+        // Stop saving first, so closing the editor writes nothing and leaves the file as it is.
+        discardWorkspaceEditSessions(path)
+      }
+      closeWorkspaceTab(tabId)
+    } finally {
+      closing.delete(tabId)
+    }
+  }, [closeWorkspaceTab, confirm, t])
 
   const handleCloseWorkspaceTabById = useCallback((tabId: string) => {
     const tabs = workspaceTabsRef.current
     const closing = tabs.find((tab) => tab.id === tabId)
     if (!closing) return
-    if (closing.type === 'design' || closing.type === 'board') {
+    if (closing.type === 'board') {
+      void closeBoardTab(tabId, closing.path)
+      return
+    }
+    if (closing.type === 'design') {
       // Write the editor's pending save first; a failed save keeps the tab and its edits open.
       void flushWorkspaceEditSessions(closing.path)
         .then(() => closeWorkspaceTab(tabId))
@@ -70,7 +107,7 @@ export function useWorkspaceTabControllers({
       const remainingWorkflow = tabs.some((tab) => tab.id !== tabId && tab.type === 'workflow')
       if (!remainingWorkflow) onCloseWorkflow?.()
     }
-  }, [closeWorkspaceTab, onCloseWorkflow, t, workflowOpen])
+  }, [closeBoardTab, closeWorkspaceTab, onCloseWorkflow, t, workflowOpen])
 
   // Cmd/Ctrl+W closes the active tab. Disabled without one so an empty
   // workspace lets the key reach the desktop shell and the browser.

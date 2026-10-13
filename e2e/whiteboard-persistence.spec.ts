@@ -185,6 +185,39 @@ test('explains a save that kept conflicting and saves once the file settles', as
   })
 })
 
+test('closes a Board whose save keeps failing only after its changes are discarded, leaving the file as it was', async ({ page }) => {
+  await openWhiteboardFixture(page)
+  const opened = await readWhiteboardFileText(page)
+  expect(opened).not.toBeNull()
+  await failWhiteboardFileWrites(page, 'The folder is gone')
+
+  await dragElementBy(page, 'node-a', { x: 90, y: 60 })
+  await expect(page.getByTestId('board-save-status')).toHaveText(workspaceCopy.board.status.error)
+
+  // Keeping the tab open keeps the Board and its unsaved move.
+  const close = page.locator('.document-tab-list .document-tab-close')
+  const confirmation = page.getByTestId('board-close-unsaved-confirm')
+  await close.click()
+  await expect(confirmation).toContainText(workspaceCopy.whiteboard.file.closeUnsavedMessage)
+  await expect(confirmation.getByTestId('confirm-btn')).toHaveText(workspaceCopy.whiteboard.file.closeUnsavedDiscard)
+  await expect(confirmation.getByTestId('cancel-btn')).toHaveText(workspaceCopy.whiteboard.file.closeUnsavedKeep)
+  await confirmation.getByTestId('cancel-btn').click()
+  await expect(confirmation).toHaveCount(0)
+  await expect(page.getByTestId('whiteboard-editor-pane')).toBeVisible()
+  expect(elementRecords((await readWhiteboardSnapshot(page)).records).find((record) => record.id === 'node-a'))
+    .toMatchObject({ x: 210, y: 200 })
+
+  await close.click()
+  await confirmation.getByTestId('confirm-btn').click()
+  await expect(page.getByTestId('whiteboard-editor-pane')).toHaveCount(0)
+  const writes = await countWhiteboardFileWrites(page)
+  // Writes would succeed now, so any save or retry left after discarding would change the file.
+  await failWhiteboardFileWrites(page, null)
+  await page.waitForTimeout(2_500)
+  expect(await countWhiteboardFileWrites(page)).toBe(writes)
+  expect(await readWhiteboardFileText(page)).toBe(opened)
+})
+
 function elementRecords(records: readonly { record_type: string }[]) {
   return records.filter((record): record is BoardElementRecord => record.record_type === 'element')
 }

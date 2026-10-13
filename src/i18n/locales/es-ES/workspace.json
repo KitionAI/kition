@@ -220,7 +220,10 @@
       "reload": "Reintentar",
       "differentBoard": "Este archivo ahora contiene otro tablero. El archivo no se ha modificado.",
       "savePaused": "El guardado está en pausa. Tus cambios siguen abiertos aquí, pero no se escriben en el archivo.",
-      "closeSaveFailed": "No se pudo guardar {{title}} antes de cerrarlo."
+      "closeSaveFailed": "No se pudo guardar {{title}} antes de cerrarlo.",
+      "closeUnsavedMessage": "No se pudieron guardar tus últimos cambios en este tablero. ¿Cerrarlo y descartarlos?",
+      "closeUnsavedDiscard": "Descartar cambios y cerrar",
+      "closeUnsavedKeep": "Mantener abierto"
     }
   },
   "board": {

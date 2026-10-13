@@ -220,7 +220,10 @@
       "reload": "Tentar novamente",
       "differentBoard": "Este arquivo agora contém outro quadro. O arquivo não foi alterado.",
       "savePaused": "O salvamento está pausado. Suas alterações continuam abertas aqui, mas não são gravadas no arquivo.",
-      "closeSaveFailed": "Não foi possível salvar {{title}} antes de fechá-lo."
+      "closeSaveFailed": "Não foi possível salvar {{title}} antes de fechá-lo.",
+      "closeUnsavedMessage": "Não foi possível salvar suas últimas alterações neste quadro. Fechá-lo e descartá-las?",
+      "closeUnsavedDiscard": "Descartar alterações e fechar",
+      "closeUnsavedKeep": "Manter aberto"
     }
   },
   "board": {

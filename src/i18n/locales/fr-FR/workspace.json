@@ -220,7 +220,10 @@
       "reload": "Réessayer",
       "differentBoard": "Ce fichier contient désormais un autre tableau. Le fichier n’a pas été modifié.",
       "savePaused": "L’enregistrement est en pause. Vos modifications restent ouvertes ici mais ne sont pas écrites dans le fichier.",
-      "closeSaveFailed": "Impossible d’enregistrer {{title}} avant sa fermeture."
+      "closeSaveFailed": "Impossible d’enregistrer {{title}} avant sa fermeture.",
+      "closeUnsavedMessage": "Vos dernières modifications de ce tableau n’ont pas pu être enregistrées. Le fermer et les abandonner ?",
+      "closeUnsavedDiscard": "Abandonner les modifications et fermer",
+      "closeUnsavedKeep": "Garder ouvert"
     }
   },
   "board": {

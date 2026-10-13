@@ -205,8 +205,16 @@ Flushing and closing:
   not flushed yet); callers treat that as a failed save. A flush during a
   running save does not queue behind other file work: the newest edit is
   written right after the running write, expecting the text it wrote.
-- Closing a Board tab works like closing a Design tab: the tab waits for the
-  flush and stays open with the save-failure notice if it rejects.
+- Closing a Board tab waits for the flush. If it rejects, a confirmation
+  asks whether to close the Board and discard the changes that could not be
+  saved; keeping it (the default) leaves the tab, its edits, and the retries
+  as they were. Discarding calls `discard()` (registered with
+  `registerWorkspaceEditSession` and reached through
+  `discardWorkspaceEditSessions`) before the tab closes: the session stops
+  saving and retrying, writes nothing more (a write already running is not
+  retried), no longer holds the window open, and leaves the file on disk as
+  it is. Design tabs keep the earlier behavior: a failed flush keeps the tab
+  open with the save-failure notice.
 - On `beforeunload`, while the board is unsaved or a save is running, the
   editor calls `preventDefault()` (the window asks before closing, like the
   Document and Design editors) and flushes.
@@ -266,8 +274,8 @@ native entry for `loro-crdt` (`tooling/vitest.config.ts` has no such alias).
   writes like the runtime (`DESIGN_SAVE_CONFLICT`), raises the external-change
   event on request, and can decode or edit the file on disk with the same
   in-page modules; `e2e/whiteboard-persistence.spec.ts` uses these to cover
-  saving, reloading, merging a change made on disk, the save on close, and
-  version-1 files.
+  saving, reloading, merging a change made on disk, the save on close,
+  discarding changes that cannot be saved on close, and version-1 files.
 - The page's test bridge (`window.__KITION_WHITEBOARD_TEST__`, development
   builds only) exposes the record view as `records`, plus the document's
   `docId` and `kdmVersion` (the encoded replica version as hex).

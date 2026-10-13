@@ -101,6 +101,8 @@ class BoardDocumentSession {
   private seenVersion: Version | null = null
   private queue: Promise<void> = Promise.resolve()
   private disposed = false
+  /** The unsaved edits were discarded: nothing is saved or retried any more. */
+  private discarded = false
   private readonly cleanups: Array<() => void> = []
 
   constructor(
@@ -112,7 +114,7 @@ class BoardDocumentSession {
   start() {
     this.cleanups.push(this.store.subscribe(this.onStoreChange))
     this.cleanups.push(subscribeWorkspaceDocumentExternalChanges(this.onExternalChange))
-    this.cleanups.push(registerWorkspaceEditSession(this.flush, this.path))
+    this.cleanups.push(registerWorkspaceEditSession(this.flush, this.path, { discard: this.discard }))
     const beforeUnload = (event: BeforeUnloadEvent) => {
       if (!this.hasUnsavedChanges()) return
       // Like the Document and Design editors: ask the window to stay open while the save runs.
@@ -139,11 +141,27 @@ class BoardDocumentSession {
   }
 
   /**
+   * Drops the edits not saved yet, ahead of the editor closing without them: stops saving and
+   * retrying, and never writes again. The file is left as it is; a write already running ends
+   * on its own but is not retried.
+   */
+  readonly discard = () => {
+    this.discarded = true
+    clearTimeout(this.saveTimer)
+    this.saveTimer = undefined
+    clearTimeout(this.retryTimer)
+    this.retryTimer = undefined
+    this.flushRequested = false
+  }
+
+  /**
    * Saves a pending change now. Resolves once every edit made before the call is in the file;
    * rejects when it is not (the write failed, the file is no longer this board, or a gesture
    * holds back changes merged from the file).
    */
   readonly flush = async (): Promise<void> => {
+    // Discarded edits are not this session's to save any more.
+    if (this.discarded) return
     clearTimeout(this.saveTimer)
     this.saveTimer = undefined
     const target = this.replica?.version() ?? null
@@ -153,6 +171,7 @@ class BoardDocumentSession {
     } else {
       await this.enqueue(() => this.save())
     }
+    if (this.discarded) return
     this.checkFlushed(target)
   }
 
@@ -333,6 +352,7 @@ class BoardDocumentSession {
       return
     }
     for (let attempt = 1; ; attempt += 1) {
+      if (this.discarded) return
       if (!this.settleDeferred(replica)) {
         // Writing now would drop the file's changes the gesture holds back: save after it ends.
         this.saveFailure = new Error(SAVE_HELD_BACK)
@@ -400,6 +420,7 @@ class BoardDocumentSession {
 
   /** Whether leaving now could lose an edit: a save is running, or the board is not saved. */
   private hasUnsavedChanges() {
+    if (this.discarded) return false
     if (this.saveRun) return true
     return this.replica !== null && this.problem === null && this.isDirty()
   }
@@ -449,6 +470,7 @@ class BoardDocumentSession {
 
   /** A save failed: show it and retry with backoff (also after the editor closed, for the final write). */
   private failed(reason: unknown) {
+    if (this.discarded) return
     this.saveFailure = asError(reason)
     this.setState({ status: 'error', error: message(reason) })
     if (this.retries >= RETRY_DELAYS_MS.length) return
@@ -470,7 +492,7 @@ class BoardDocumentSession {
   }
 
   private schedule(delay: number) {
-    if (this.disposed) return
+    if (this.disposed || this.discarded) return
     clearTimeout(this.saveTimer)
     this.saveTimer = setTimeout(() => {
       this.saveTimer = undefined

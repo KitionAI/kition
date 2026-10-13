@@ -291,7 +291,6 @@
   "types src/api/workflows.ts WorkflowNodeKind",
   "types src/components/AppErrorBoundary.tsx AppErrorBoundaryScope",
   "types src/components/confirm/index.ts ConfirmFn",
-  "types src/components/confirm/index.ts ConfirmOpts",
   "types src/features/agent/lib/paneEmptyState.ts AgentEmptySuggestion",
   "types src/features/analytics/lib/productAnalytics.ts ProductAnalyticsBuildIdentity",
   "types src/features/analytics/lib/productAnalytics.ts ProductAnalyticsResult",

@@ -220,7 +220,10 @@
       "reload": "Try again",
       "differentBoard": "This file now holds a different Board. The file has not been changed.",
       "savePaused": "Saving is paused. Your changes stay open here but are not written to the file.",
-      "closeSaveFailed": "Couldn’t save {{title}} before it closed."
+      "closeSaveFailed": "Couldn’t save {{title}} before it closed.",
+      "closeUnsavedMessage": "Your latest changes to this Board could not be saved. Close it and discard them?",
+      "closeUnsavedDiscard": "Discard changes and close",
+      "closeUnsavedKeep": "Keep open"
     }
   },
   "board": {

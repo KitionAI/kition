@@ -220,7 +220,10 @@
       "reload": "重试",
       "differentBoard": "此文件现在保存的是另一个画板。文件未被更改。",
       "savePaused": "保存已暂停。你的更改仍在此处打开，但不会写入文件。",
-      "closeSaveFailed": "关闭前无法保存 {{title}}。"
+      "closeSaveFailed": "关闭前无法保存 {{title}}。",
+      "closeUnsavedMessage": "此画板的最新更改无法保存。要关闭它并舍弃这些更改吗？",
+      "closeUnsavedDiscard": "舍弃更改并关闭",
+      "closeUnsavedKeep": "保持打开"
     }
   },
   "board": {
