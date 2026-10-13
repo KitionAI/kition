@@ -154,11 +154,28 @@ function objectJson(doc: LoroDoc, schema: Schema, id: ObjectId): Record<string, 
   return out
 }
 
+/** The keys of a declared type's objects in `stateJson` (`$type` and its fields), in canonical order. */
+const canonicalKeys = new WeakMap<Schema, Map<string, string[]>>()
+
+function keysOf(schema: Schema, ty: string): string[] {
+  let byType = canonicalKeys.get(schema)
+  if (!byType) canonicalKeys.set(schema, (byType = new Map()))
+  let keys = byType.get(ty)
+  if (!keys) byType.set(ty, (keys = [TYPE_KEY, ...Object.keys(schema.types[ty].fields)].sort(compareKeys)))
+  return keys
+}
+
+/** A value of the engine's deep JSON in canonical form: plain values as they are, objects and arrays copied by `canonical`. */
+const canonicalValue = (value: unknown): unknown => (value !== null && typeof value === 'object' ? canonical(value) : value)
+
 /**
  * The whole document in canonical form, from one engine read rather than one per field. An
  * object of a type the schema does not declare reads as its `$type` only; a field the stored
  * object lacks reads as empty (`null`, `""`, `[]`, `{}`). Only `canonicalText` of it is the
  * canonical form.
+ *
+ * Objects are built with their keys already in canonical order, so only the values the engine
+ * hands over as objects (JSON registers, map fields, `meta`) go through `canonical`.
  */
 export function stateJson(doc: LoroDoc, schema: Schema): unknown {
   const deep = doc.toJSON() as Record<string, unknown>
@@ -166,21 +183,29 @@ export function stateJson(doc: LoroDoc, schema: Schema): unknown {
   const objectsMap = doc.getMap(OBJECTS)
   const ids = Object.keys(stored)
   if (objectsMap.get(PROTO) !== undefined) ids.push(PROTO)
+  ids.sort(compareKeys)
   const objects: Record<string, unknown> = {}
   for (const id of ids) {
     const raw = stored[id]
     const ty = isRecord(raw) ? raw[TYPE_KEY] : undefined
     const declared = typeof ty === 'string' && Object.hasOwn(schema.types, ty)
     if (id === PROTO || (declared && Object.hasOwn(schema.types[ty].fields, PROTO))) {
-      setKey(objects, id, objectJson(doc, schema, id))
+      setKey(objects, id, canonical(objectJson(doc, schema, id)))
       continue
     }
     if (!isRecord(raw) || typeof ty !== 'string') throw errors.notFound(id)
-    const out: Record<string, unknown> = { [TYPE_KEY]: ty }
+    if (!declared) {
+      objects[id] = { [TYPE_KEY]: ty }
+      continue
+    }
+    const out: Record<string, unknown> = {}
     objects[id] = out
-    if (!declared) continue
     const fields = schema.types[ty].fields
-    for (const name of Object.keys(fields)) {
+    for (const name of keysOf(schema, ty)) {
+      if (name === TYPE_KEY) {
+        out[name] = ty
+        continue
+      }
       const value = raw[name]
       const wrong = () => wrongContainer(id, name)
       switch (fields[name].kind) {
@@ -202,13 +227,13 @@ export function stateJson(doc: LoroDoc, schema: Schema): unknown {
           const engineMap = objectMap(doc, id).get(name)
           const proto = engineMap instanceof LoroMap ? engineMap.get(PROTO) : undefined
           if (proto !== undefined) setKey(entries, PROTO, deepValue(proto))
-          out[name] = entries
+          out[name] = canonical(entries)
           break
         }
         default:
-          out[name] = value ?? null
+          out[name] = value === undefined ? null : canonicalValue(value)
       }
     }
   }
-  return canonical({ meta: isRecord(deep[META]) ? deep[META] : {}, objects })
+  return { meta: canonical(isRecord(deep[META]) ? deep[META] : {}), objects }
 }

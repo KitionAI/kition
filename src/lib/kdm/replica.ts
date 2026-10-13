@@ -1,5 +1,5 @@
 // Copied from kition-sdk packages/kdm/src/replica.ts by scripts/sync-kit-host.mjs; change it there, not here.
-import { isContainer as isEngineContainer, LoroDoc, UndoManager, type LoroEventBatch, type LoroTreeNode } from 'loro-crdt'
+import { isContainer as isEngineContainer, LoroDoc, LoroMap, UndoManager, type LoroEventBatch, type LoroTreeNode } from 'loro-crdt'
 import { canonicalText, compareKeys } from './canonical'
 import { checkString } from './args'
 import { open, sameBytes, Version, wrap } from './envelope'
@@ -285,16 +285,14 @@ export class Replica {
     return out
   }
 
-  /** Ids of the objects of type `ty`, sorted. */
+  /** Ids of the objects of type `ty`, sorted. One pass over the objects, so it suits large documents. */
   objectsOfType(ty: string): ObjectId[] {
     checkString('a type name', ty)
-    return read.objectIds(this.doc).filter((id) => {
-      try {
-        return read.objectType(this.doc, id) === ty
-      } catch {
-        return false
-      }
-    })
+    const ids: ObjectId[] = []
+    for (const [id, value] of this.doc.getMap(read.OBJECTS).entries()) {
+      if (value instanceof LoroMap && value.get(read.TYPE_KEY) === ty) ids.push(id)
+    }
+    return ids.sort(compareKeys)
   }
 
   /** The changes this replica has that a replica at `since` lacks, labelled with this document's id. */
