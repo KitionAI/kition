@@ -66,16 +66,27 @@ export type BoardLayoutSource = {
 
 /**
  * The reader's layout of the board. With `until`, it stops reading once every id of `until` is
- * placed, so its last page may be partial. @internal Shared by the readers and `boardKdmWrite`.
+ * placed, so its last page may be partial. With `only`, it lays out only those pages (an element
+ * listed on an earlier page is still a duplicate on them) and reads no states of the others.
+ * @internal Shared by the readers and `boardKdmWrite`.
  */
-export function boardLayout(source: BoardLayoutSource, until?: ReadonlySet<string>): BoardLayout {
+export function boardLayout(source: BoardLayoutSource, until?: ReadonlySet<string>, only?: ReadonlySet<string>): BoardLayout {
   const placement = new Map<string, { pageId: string; index: number }>()
   const known = new Map<string, Exclude<BoardItemState, 'duplicate'>>()
   const pages: BoardPageLayout[] = []
+  const readable = readablePages(source)
+  /** Items of the pages before this one that were not laid out (`only`). */
+  const listedEarlier = new Set<string>()
   let pending = until?.size ?? -1
-  for (const pageId of readablePages(source)) {
-    if (pending === 0) break
+  let remaining = only ? readable.filter((id) => only.has(id)).length : -1
+  for (const pageId of readable) {
+    if (pending === 0 || remaining === 0) break
     const items = source.items(pageId)
+    if (only && !only.has(pageId)) {
+      for (const id of items) listedEarlier.add(id)
+      continue
+    }
+    remaining -= 1
     const elements: string[] = []
     const states: BoardItemState[] = []
     for (const id of items) {
@@ -87,7 +98,7 @@ export function boardLayout(source: BoardLayoutSource, until?: ReadonlySet<strin
       }
       if (object !== 'element') {
         states.push(object)
-      } else if (placement.has(id)) {
+      } else if (placement.has(id) || listedEarlier.has(id)) {
         states.push('duplicate')
       } else {
         placement.set(id, { pageId, index: elements.length })
@@ -101,8 +112,8 @@ export function boardLayout(source: BoardLayoutSource, until?: ReadonlySet<strin
   return { pages, placement }
 }
 
-/** The root's pages the reader shows, in order, each once. */
-function readablePages(source: BoardLayoutSource): string[] {
+/** The root's pages the reader shows, in order, each once. @internal */
+export function readablePages(source: BoardLayoutSource): string[] {
   const pages = new Set<string>()
   for (const id of source.pageIds()) if (!pages.has(id) && source.isPage(id)) pages.add(id)
   return [...pages]

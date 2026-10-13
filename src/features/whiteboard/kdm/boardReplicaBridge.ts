@@ -46,6 +46,11 @@ export class BoardReplicaHistory {
   /** The last read of the board, and the objects changed since (by any means: `Replica.takeChanged`). */
   private lastRead: BoardViewRead
   private changedSinceRead = new Set<string>()
+  /**
+   * The changed objects whose state for the writer (shown element, other object, or none) may
+   * differ from the last read: all of them except elements this store's commits only edited.
+   */
+  private unsettledSinceRead = new Set<string>()
 
   constructor(readonly replica: Replica) {
     replica.takeChanged()
@@ -62,17 +67,42 @@ export class BoardReplicaHistory {
     const refreshed = refreshBoardView(this.replica, this.lastRead, this.changedSinceRead)
     this.lastRead = refreshed ?? readBoardView(this.replica)
     this.changedSinceRead.clear()
+    this.unsettledSinceRead.clear()
     return { records: this.lastRead.records, duplicates: duplicatePlacements(this.lastRead.layout) }
   }
 
   /** What the writer may take from the last read: the objects not changed since keep their state. */
   private writeHint(): BoardWriteHint {
     this.collectChanges()
-    return { read: this.lastRead, changed: this.changedSinceRead }
+    return { read: this.lastRead, changed: this.unsettledSinceRead }
   }
 
   private collectChanges() {
-    for (const id of this.replica.takeChanged()) this.changedSinceRead.add(id)
+    for (const id of this.replica.takeChanged()) {
+      this.changedSinceRead.add(id)
+      this.unsettledSinceRead.add(id)
+    }
+  }
+
+  /**
+   * Collects what the commit of `diff` changed. An element it edited without deleting it or
+   * changing its kind is still the shown element the last read saw, so the writer keeps trusting
+   * the read for it; everything else it changed is unsettled.
+   */
+  private collectCommit(diff: BoardRecordDiff) {
+    const removesPages = diff.removed.some((record) => record.record_type === 'page')
+    const removed = new Set(diff.removed.map((record) => record.id))
+    for (const { before, after } of diff.updated) {
+      if (before.record_type === 'element' && (after.record_type !== 'element' || before.kind !== after.kind)) removed.add(after.id)
+    }
+    for (const id of this.replica.takeChanged()) {
+      this.changedSinceRead.add(id)
+      const settled = !removesPages
+        && !removed.has(id)
+        && !this.unsettledSinceRead.has(id)
+        && this.lastRead.records.get(id)?.record_type === 'element'
+      if (!settled) this.unsettledSinceRead.add(id)
+    }
   }
 
   get depth() {
@@ -102,6 +132,7 @@ export class BoardReplicaHistory {
     const before = this.replica.version()
     const hint = this.writeHint()
     const result = this.replica.transact(origin, (tx) => writeBoardDiff(tx, this.rootId, persisted, hint))
+    this.collectCommit(persisted)
     const changed = !this.replica.version().equals(before)
     if (changed) {
       if (this.groupOwner !== null) this.groupChanged = true

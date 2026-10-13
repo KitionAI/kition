@@ -12,7 +12,7 @@ import type {
 } from '../lib/boardRecords'
 import type { BoardRecordDiff } from '../lib/boardRecordDiff'
 import type { WhiteboardElement } from '../lib/whiteboardTypes'
-import { BOARD_ELEMENT_KINDS, boardLayout, knownLayoutSource, type BoardLayoutSource, type BoardPageLayout, type BoardViewRead } from './boardKdmRead'
+import { BOARD_ELEMENT_KINDS, boardLayout, knownLayoutSource, readablePages, type BoardLayoutSource, type BoardPageLayout, type BoardViewRead } from './boardKdmRead'
 import { BOARD_STYLE_FIELDS } from './boardSchema'
 
 type Terminal = 'start' | 'end'
@@ -69,10 +69,12 @@ export function writeBoardDiff(tx: Tx, rootId: string, diff: BoardRecordDiff, hi
 
   // Everything to store, checked before the first operation.
   const creations = diff.added.filter(isElement).map((element) => ({ element, fields: checkedFields(element.id, withoutNulls(fieldsFromElement(element))) }))
-  const changes = elementUpdates.map(({ before, after }) => {
+  const changes = elementUpdates.flatMap(({ before, after }) => {
+    // Most updates of a reorder only change the element's place.
+    if (sameExceptPlacement(before, after)) return []
     const previous = fieldsFromElement(before)
     const changed = Object.entries(fieldsFromElement(after)).filter(([field, value]) => !sameValue(previous[field], value))
-    return { before, after, changed: Object.entries(checkedFields(after.id, Object.fromEntries(changed))) }
+    return [{ before, after, changed: Object.entries(checkedFields(after.id, Object.fromEntries(changed))) }]
   })
   for (const binding of [...diff.added, ...updates.map((u) => u.after)]) {
     if (isBinding(binding)) checkedFields(binding.from_id, { [`${bindingTerminal(binding) ?? 'binding'}Binding`]: bindingValue(binding) })
@@ -82,18 +84,19 @@ export function writeBoardDiff(tx: Tx, rootId: string, diff: BoardRecordDiff, hi
   const pagesTouched = addedPages.length > 0
     || removedPages.length > 0
     || pageUpdates.some(({ before, after }) => before.index !== after.index)
-  // The reader's view of the lists, read before any operation.
-  const layout = creations.length > 0 || removedElements.length > 0 || moves.length > 0 || pagesTouched
-    ? boardLayout(hint ? knownLayoutSource(txSource(tx, rootId), hint.read, hint.changed) : txSource(tx, rootId))
-    : null
-  const layoutPages = new Map(layout?.pages.map((page) => [page.id, page]))
+  // The reader's view of the lists, read before any operation: the hint answers for the objects
+  // it knows, and every page's list is read once.
+  const source = hint ? knownLayoutSource(txSource(tx, rootId), hint.read, hint.changed) : txSource(tx, rootId)
+  const readsLists = creations.length > 0 || removedElements.length > 0 || moves.length > 0 || pagesTouched
+  const readable = readsLists ? readablePages(source) : []
+  const lists = new Map(readable.map((pageId) => [pageId, source.items(pageId)]))
   const listedOn = new Map<string, Set<string>>()
-  for (const page of layout?.pages ?? []) {
-    for (const id of page.items) listedOn.set(id, (listedOn.get(id) ?? new Set()).add(page.id))
+  for (const [pageId, items] of lists) {
+    for (const id of items) listedOn.set(id, (listedOn.get(id) ?? new Set()).add(pageId))
   }
 
   // Page order after the diff; its first page receives elements whose page does not exist.
-  const pageOrder = new Map(layout?.pages.map((page, index) => [page.id, index]))
+  const pageOrder = new Map(readable.map((pageId, index) => [pageId, index]))
   for (const id of removedPageIds) pageOrder.delete(id)
   for (const page of addedPages) pageOrder.set(page.id, page.index)
   for (const { after } of pageUpdates) if (pageOrder.has(after.id)) pageOrder.set(after.id, after.index)
@@ -101,21 +104,43 @@ export function writeBoardDiff(tx: Tx, rootId: string, diff: BoardRecordDiff, hi
   const livePages = new Set(pageIds)
   const firstPage = pageIds[0] as string | undefined
 
-  // The page and order key of every element the diff adds or moves.
-  const placed = new Map<string, { pageId: string; key: number }>()
-  const place = (element: BoardElementRecord): boolean => {
-    if (livePages.has(element.page_id)) {
-      placed.set(element.id, { pageId: element.page_id, key: element.index })
-      return true
-    }
-    if (firstPage === undefined) {
-      skipped.push(element.id)
-      return false
-    }
-    placed.set(element.id, { pageId: firstPage, key: RELOCATED + element.index })
-    relocated.push(element.id)
-    return true
+  // Before any operation, an element the hint knows as shown exists.
+  const known = (id: string) => hint !== undefined && !hint.changed.has(id) && hint.read.records.get(id)?.record_type === 'element'
+  const exists = (id: string) => known(id) || tx.exists(id)
+
+  // The page and order key of every element the diff adds or moves (`null`: no page to put it
+  // on), decided before any operation so that only the pages they touch are laid out.
+  type Place = { pageId: string; key: number; relocated: boolean } | null
+  const placeOf = (element: BoardElementRecord): Place => {
+    if (livePages.has(element.page_id)) return { pageId: element.page_id, key: element.index, relocated: false }
+    return firstPage === undefined ? null : { pageId: firstPage, key: RELOCATED + element.index, relocated: true }
   }
+  const creationPlaces = creations.map(({ element }) => placeOf(element))
+  // `undefined`: the element no longer exists (a merge removed it), so it is not moved.
+  const movePlaces = moves.map(({ after }) => (exists(after.id) ? placeOf(after) : undefined))
+  const placed = new Map<string, { pageId: string; key: number }>()
+  creations.forEach(({ element }, index) => {
+    const where = creationPlaces[index]
+    if (where) placed.set(element.id, where)
+  })
+  moves.forEach(({ after }, index) => {
+    const where = movePlaces[index]
+    if (where) placed.set(after.id, where)
+  })
+
+  // Lists whose order changes: the pages of added, moved, and removed elements, wherever the
+  // replica lists them (a merge may have listed one element on two pages).
+  const touchedPages = new Set<string>()
+  for (const [id, { pageId }] of placed) {
+    touchedPages.add(pageId)
+    for (const pageWithId of listedOn.get(id) ?? []) touchedPages.add(pageWithId)
+  }
+  for (const id of removedElementIds) for (const pageWithId of listedOn.get(id) ?? []) touchedPages.add(pageWithId)
+  // Removing a page needs every element's placement; otherwise only the touched pages are laid out.
+  const layout = readsLists
+    ? boardLayout({ ...source, items: (pageId) => lists.get(pageId) ?? source.items(pageId) }, undefined, removedPages.length > 0 ? undefined : touchedPages)
+    : null
+  const layoutPages = new Map(layout?.pages.map((page) => [page.id, page]))
 
   for (const page of addedPages) tx.create('Page', { name: wellFormed(page.name) }, { id: page.id })
   for (const { before, after } of pageUpdates) {
@@ -123,15 +148,17 @@ export function writeBoardDiff(tx: Tx, rootId: string, diff: BoardRecordDiff, hi
     else if (before.name !== after.name) tx.set(after.id, 'name', wellFormed(after.name))
   }
 
-  for (const { element, fields } of creations) {
-    if (!place(element)) continue
+  creations.forEach(({ element, fields }, index) => {
+    const where = creationPlaces[index]
+    if (!where) {
+      skipped.push(element.id)
+      return
+    }
+    if (where.relocated) relocated.push(element.id)
     tx.create('Element', fields, { id: element.id })
     const text = textOf(element)
     if (text) tx.textInsert(element.id, 'text', 0, text)
-  }
-  // Before the deletions below, an element the hint knows as shown exists.
-  const known = (id: string) => hint !== undefined && !hint.changed.has(id) && hint.read.records.get(id)?.record_type === 'element'
-  const exists = (id: string) => known(id) || tx.exists(id)
+  })
   for (const { before, after, changed } of changes) {
     // An element a merge removed is not brought back by an edit made before the store saw it.
     if (!exists(after.id)) {
@@ -141,7 +168,11 @@ export function writeBoardDiff(tx: Tx, rootId: string, diff: BoardRecordDiff, hi
     for (const [field, value] of changed) tx.set(after.id, field, value)
     writeText(tx, after.id, textOf(before), textOf(after))
   }
-  for (const { after } of moves) if (exists(after.id)) place(after)
+  moves.forEach(({ after }, index) => {
+    const where = movePlaces[index]
+    if (where === null) skipped.push(after.id)
+    else if (where?.relocated) relocated.push(after.id)
+  })
 
   for (const binding of diff.removed.filter(isBinding)) clearBinding(tx, binding)
   for (const binding of diff.added.filter(isBinding)) {
@@ -159,14 +190,6 @@ export function writeBoardDiff(tx: Tx, rootId: string, diff: BoardRecordDiff, hi
     if (tx.exists(element.id)) tx.delete(element.id)
   }
 
-  // Lists whose order changes: the pages of added, moved, and removed elements, wherever the
-  // replica lists them (a merge may have listed one element on two pages).
-  const touchedPages = new Set<string>()
-  for (const [id, { pageId }] of placed) {
-    touchedPages.add(pageId)
-    for (const pageWithId of listedOn.get(id) ?? []) touchedPages.add(pageWithId)
-  }
-  for (const id of removedElementIds) for (const pageWithId of listedOn.get(id) ?? []) touchedPages.add(pageWithId)
   for (const pageId of touchedPages) {
     if (removedPageIds.has(pageId) || !tx.exists(pageId)) continue
     const page = layoutPages.get(pageId) ?? EMPTY_PAGE
@@ -505,6 +528,19 @@ function textOf(element: WhiteboardElement): string {
 
 function withoutNulls(fields: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== null))
+}
+
+/** Whether two element records differ at most in their page and index. */
+function sameExceptPlacement(before: BoardElementRecord, after: BoardElementRecord): boolean {
+  const left = before as Record<string, unknown>
+  const right = after as Record<string, unknown>
+  for (const key of Object.keys(right)) {
+    if (key !== 'index' && key !== 'page_id' && !sameValue(left[key], right[key])) return false
+  }
+  for (const key of Object.keys(left)) {
+    if (key !== 'index' && key !== 'page_id' && !Object.hasOwn(right, key) && left[key] !== undefined) return false
+  }
+  return true
 }
 
 function sameValue(left: unknown, right: unknown): boolean {

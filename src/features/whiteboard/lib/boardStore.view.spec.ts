@@ -13,6 +13,12 @@ const other = person('user:other')
 
 const viewOf = (records: readonly BoardRecord[]) => new Map(records.filter((record) => record.record_type !== 'meta').map((record) => [record.id, record]))
 const fullView = (store: BoardStore) => viewOf(new BoardStore(Replica.load(boardSchema, store.snapshot(), 99n)).getRecords())
+/** Each page's elements in order. */
+const orderOf = (records: readonly BoardRecord[]) => {
+  const elements = records.filter((record): record is BoardElementRecord => record.record_type === 'element')
+  elements.sort((a, b) => a.page_id.localeCompare(b.page_id) || a.index - b.index || a.id.localeCompare(b.id))
+  return elements.map((record) => `${record.page_id}/${record.id}`)
+}
 
 function element(id: string, kind: 'rectangle' | 'frame' | 'connector', pageId: string, index: number, rng: Rng): BoardElementRecord {
   const x = rng.below(400)
@@ -154,6 +160,8 @@ describe('BoardStore view after undo, redo, and imports', () => {
         else if (action === 2) remoteEdit()
         else {
           local()
+          // The commit placed every element where the view shows it.
+          expect(orderOf(store.getRecords()), `seed ${seed}, step ${step}`).toEqual(orderOf([...fullView(store).values()]))
           continue
         }
         // Local commands keep the records they were given; only a re-read is compared.
@@ -163,6 +171,30 @@ describe('BoardStore view after undo, redo, and imports', () => {
       }
       expect(checks).toBeGreaterThan(20)
     }
+  })
+})
+
+
+describe('BoardStore writes after changes it has not read yet', () => {
+  it('places an element by what the replica has, not by its last read', () => {
+    const store = new BoardStore()
+    const page = store.getCurrentPageId()
+    const rng = new Rng(1)
+    store.transact('add', (tx) => {
+      for (const [index, id] of ['a', 'b', 'c'].entries()) tx.put({ ...element(id, 'rectangle', page, index, rng), text: undefined } as BoardElementRecord)
+    })
+    // Undo and redo re-read the board, so the store's last read shows a, b, and c.
+    store.undo()
+    store.redo()
+    const remote = Replica.load(boardSchema, store.snapshot(), 7n)
+    // Deletes the object and leaves its id in the list, as a merge can.
+    remote.transact(other, (tx) => tx.delete('b'))
+    const gesture = store.beginTransaction('add')
+    store.importChanges(remote.exportChanges())
+    gesture.put(element('d', 'rectangle', page, 1, rng))
+    gesture.commit()
+    expect(store.getReplica().list(page, 'elements')).toEqual(['a', 'c', 'd'])
+    expect(orderOf(store.getRecords())).toEqual([`${page}/a`, `${page}/c`, `${page}/d`])
   })
 })
 

@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { Network, newDocId, parseSchema, person, Replica } from '@/lib/kdm'
+import { Network, newDocId, parseSchema, person, Replica, Rng } from '@/lib/kdm'
 import { createBoardElementRecord, type BoardBindingRecord, type BoardElementRecord, type BoardPageRecord } from '../lib/boardRecords'
 import type { BoardRecordDiff } from '../lib/boardStore'
 import type { WhiteboardElement } from '../lib/whiteboardTypes'
 import { boardSchema } from './boardSchema'
-import { boardRootId, findBoardDuplicatePlacements, readBoardElementRecord, readBoardRecords } from './boardKdmRead'
+import { boardRootId, findBoardDuplicatePlacements, readBoardElementRecord, readBoardRecords, readBoardView } from './boardKdmRead'
 import { createBoardFromRecords, createEmptyBoard } from './boardKdmFile'
 import { repairBoardPlacements, writeBoardDiff } from './boardKdmWrite'
 
@@ -382,5 +382,70 @@ describe('writeBoardDiff', () => {
     findBoardDuplicatePlacements(doc, root)
     const duplicates = performance.now() - started
     console.info(`[timing] ${count} elements: create ${create.toFixed(1)} ms, readBoardRecords ${read.toFixed(1)} ms, reverse ${reverse.toFixed(1)} ms, add one ${addOne.toFixed(1)} ms, readBoardElementRecord first ${readFirst.toFixed(1)} ms, last ${readLast.toFixed(1)} ms, findBoardDuplicatePlacements ${duplicates.toFixed(1)} ms`)
+  })
+
+  it('places added, moved, and removed elements as the records ask, with or without a read hint', () => {
+    const future = (() => {
+      const source = JSON.parse(JSON.stringify(boardSchema)) as { types: { Element: { fields: { kind: { values: string[] } } } } }
+      source.types.Element.fields.kind.values.push('sticker')
+      return parseSchema(source)
+    })()
+    for (const seed of [21, 22, 23, 24, 25, 26]) {
+      const rng = new Rng(seed)
+      const pages = ['page:main', 'page:2', 'page:3']
+      const original = Replica.create(future, newDocId(), 1n)
+      original.transact(me, (tx) => {
+        tx.create('Board', { title: 'Plan' }, { id: 'board' })
+        pages.forEach((id, index) => {
+          tx.create('Page', { name: id }, { id })
+          tx.listInsert('board', 'pages', index, id)
+        })
+        for (let index = 0; index < 30; index += 1) {
+          const id = `e${index}`
+          tx.create('Element', { kind: rng.below(6) === 0 ? 'sticker' : 'rectangle', x: 0, y: 0, width: 1, height: 1 }, { id })
+          const pageId = pages[rng.below(pages.length)]
+          tx.listInsert(pageId, 'elements', rng.below(tx.listItems(pageId, 'elements').length + 1), id)
+        }
+        // Merge leftovers: an element listed twice, and a dangling id.
+        tx.listInsert('page:3', 'elements', 0, tx.listItems('page:main', 'elements')[0] ?? 'e0')
+        tx.listInsert('page:2', 'elements', 0, 'gone')
+      })
+      for (let round = 0; round < 6; round += 1) {
+        const [plain, hinted] = [Replica.load(boardSchema, original.snapshot(), 2n), Replica.load(boardSchema, original.snapshot(), 3n)]
+        const before = elementsOf(plain)
+        const diff: BoardRecordDiff = { added: [], updated: [], removed: [] }
+        const touched = new Set<string>()
+        for (let change = 0; change < 1 + rng.below(3); change += 1) {
+          const pageId = pages[rng.below(pages.length)]
+          const kind = rng.below(3)
+          const candidates = before.filter((record) => !touched.has(record.id))
+          if (kind === 0 || candidates.length === 0) {
+            const id = `n${round}-${change}`
+            diff.added.push(onPage(rect(id, 0), pageId, rng.below(12)))
+          } else {
+            const record = candidates[rng.below(candidates.length)]
+            touched.add(record.id)
+            if (kind === 1) diff.removed.push(record)
+            else diff.updated.push({ before: record, after: onPage(record, pageId, rng.below(12)) })
+          }
+        }
+        apply(plain, diff)
+        hinted.transact(me, (tx) => writeBoardDiff(tx, 'board', diff, { read: readBoardView(hinted), changed: new Set() }))
+
+        // The order keys the writer promises: kept elements keep their index, added and moved ones
+        // take theirs, ties broken by id.
+        const keys = new Map<string, Map<string, number>>()
+        const keyOn = (pageId: string) => keys.get(pageId) ?? keys.set(pageId, new Map()).get(pageId)!
+        const moved = new Set([...diff.removed, ...diff.updated.map((update) => update.after)].map((record) => record.id))
+        for (const record of before) if (!moved.has(record.id)) keyOn(record.page_id).set(record.id, record.index)
+        for (const record of [...diff.added, ...diff.updated.map((update) => update.after)] as BoardElementRecord[]) keyOn(record.page_id).set(record.id, record.index)
+        for (const pageId of pages) {
+          const expected = [...keyOn(pageId)].sort(([left, a], [right, b]) => a - b || left.localeCompare(right)).map(([id]) => id)
+          const shown = elementsOf(plain).filter((record) => record.page_id === pageId).map((record) => record.id)
+          expect(shown, `seed ${seed}, round ${round}, ${pageId}`).toEqual(expected)
+          expect(hinted.list(pageId, 'elements'), `seed ${seed}, round ${round}, ${pageId}`).toEqual(plain.list(pageId, 'elements'))
+        }
+      }
+    }
   })
 })
