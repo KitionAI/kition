@@ -26,6 +26,8 @@ const disk = vi.hoisted(() => ({
   failReads: null as Error | null,
   /** Called before each write lands: tests change the file meanwhile. */
   beforeWrite: null as null | ((path: string) => void),
+  /** The text a document's stored replica holds, when it differs from the file. */
+  stored: new Map<string, string>(),
 }))
 
 vi.mock('@/services/desktop', async (importOriginal) => ({
@@ -57,9 +59,14 @@ vi.mock('./documentStore', async () => {
   const desktop = await import('@/services/desktop')
   return {
     openDocument: vi.fn(async (path: string, fileText: string, actor: bigint) => {
-      const { replica, rootId, style } = createDocumentReplica(fileText, actor)
+      // A stored replica that held `disk.stored[path]` merges the file on open, as the store does.
+      const stored = disk.stored.get(path)
+      const { replica, rootId, style } = createDocumentReplica(stored ?? fileText, actor)
       const meta = { docId: replica.docId, kit: 'kit.document', path, fileHash: '', fileStamp: null, exported: '', style }
-      return { replica, rootId, meta, style, fileText, isNew: true, merged: false }
+      if (stored === undefined || stored === fileText) return { replica, rootId, meta, style, fileText, isNew: stored === undefined, merged: false }
+      const previousText = documentBody(replica, rootId)
+      replica.transact({ kind: 'import', principal: 'file' }, (tx: any) => mergeExternalText(tx, rootId, previousText, analyzeText(fileText).text, previousText))
+      return { replica, rootId, meta, style, fileText, isNew: false, merged: true, previousText }
     }),
     saveDocument: vi.fn(async (input: { path: string; opened: any; expectedFileText: string; expectedRoot?: string }) => {
       const fileText = renderText(documentBody(input.opened.replica, input.opened.rootId), input.opened.style)
@@ -73,6 +80,23 @@ vi.mock('./documentStore', async () => {
   }
 })
 
+/** The documents this window offers the agent (`registerOpenDocument`), in memory. */
+const bridge = vi.hoisted(() => ({
+  open: new Map<string, { read: () => string; apply: (content: string, meta: { tool: string; turnId?: string }) => Promise<unknown> }>(),
+  log: [] as string[],
+}))
+
+vi.mock('./documentAgentBridge', () => ({
+  registerOpenDocument: (path: string, handlers: { read: () => string; apply: (content: string, meta: { tool: string }) => Promise<unknown> }) => {
+    bridge.open.set(path, handlers)
+    bridge.log.push(`+${path}`)
+    return () => {
+      if (bridge.open.get(path) === handlers) bridge.open.delete(path)
+      bridge.log.push(`-${path}`)
+    }
+  },
+}))
+
 const PATH = 'notes/plan.md'
 const views: EditorView[] = []
 const sessions: DocumentSession[] = []
@@ -85,6 +109,9 @@ beforeEach(() => {
   disk.failWrites = null
   disk.failReads = null
   disk.beforeWrite = null
+  disk.stored.clear()
+  bridge.open.clear()
+  bridge.log.length = 0
 })
 
 afterEach(() => {
@@ -109,7 +136,7 @@ async function open(text: string, path = PATH) {
 function editor(session: DocumentSession) {
   const binding = session.createBinding()
   const view = new EditorView({
-    state: EditorState.create({ doc: session.text(), extensions: [binding.extension, session.historyExtension()] }),
+    state: EditorState.create({ doc: session.text(), extensions: [binding.extension, session.historyExtension(), session.agentReviewExtension()] }),
     parent: document.body,
   })
   views.push(view)
@@ -307,22 +334,6 @@ describe('DocumentSession: file changes', () => {
     expect(disk.files.get(PATH)).toBe(`${bom}a\r\nb\r\nc\r\n`)
   })
 
-  it('leaves a held-back change to the review and applies the reviewed text as one agent step', async () => {
-    const held = { value: true }
-    disk.files.set(PATH, 'draft\n')
-    const session = new DocumentSession(PATH, { root: '/vault' }, { holdsExternalChange: () => held.value })
-    sessions.push(session)
-    await session.start('draft\n')
-    externalWrite('draft\nproposal\n')
-    await settle()
-    expect(session.text()).toBe('draft\n')
-    await session.acceptReviewedText('draft\nproposal\n', 'draft\nkept\n')
-    await settle()
-    expect(disk.files.get(PATH)).toBe('draft\nkept\n')
-    session.undo()
-    expect(session.text()).toBe('draft\n')
-  })
-
   it('applies an agent’s text as one undo step and answers the saved file', async () => {
     const session = await open('a\nb\n')
     const result = session.applyAgentContent('a\nB\nc\n', { tool: 'document_write' })
@@ -332,6 +343,181 @@ describe('DocumentSession: file changes', () => {
     expect(session.replica!.canUndo()).toBe(true)
     session.undo()
     expect(session.text()).toBe('a\nb\n')
+  })
+})
+
+describe('DocumentSession: live agent edits', () => {
+  const agentEdit = (session: DocumentSession, content: string) => session.applyAgentContent(content, { tool: 'document_write', turnId: 't1' })
+
+  it('shows the agent’s edit at once, saved, under review', async () => {
+    const session = await open('# Plan\n\nThe pilot starts in October.\n')
+    const a = editor(session)
+    const result = agentEdit(session, '# Plan\n\nThe pilot starts in November.\n')
+    // Live: the editor has it before the save finishes.
+    expect(a.text()).toBe('# Plan\n\nThe pilot starts in November.\n')
+    await settle()
+    await expect(result).resolves.toEqual({ applied: true, content: '# Plan\n\nThe pilot starts in November.\n' })
+    expect(disk.files.get(PATH)).toBe('# Plan\n\nThe pilot starts in November.\n')
+    const review = session.agentReview()
+    expect(review).toMatchObject({ before: '# Plan\n\nThe pilot starts in October.\n', after: '# Plan\n\nThe pilot starts in November.\n', tool: 'document_write' })
+    expect(review!.marks.added.map((range) => session.text().slice(range.from, range.to))).toEqual(['November'])
+    expect(review!.marks.removed.map((point) => point.text)).toEqual(['October'])
+    expect(a.view.dom.querySelector('.cm-agent-review-added')?.textContent).toBe('November')
+  })
+
+  it('keeps an accepted edit and ends the review', async () => {
+    const session = await open('a\n')
+    const listener = vi.fn()
+    session.subscribeAgentReview(listener)
+    await agentEdit(session, 'a\nb\n')
+    expect(listener).toHaveBeenCalledTimes(1)
+    const writes = disk.writes.length
+    session.acceptAgentReview()
+    expect(session.agentReview()).toBeNull()
+    expect(listener).toHaveBeenCalledTimes(2)
+    await settle(SAVE_DELAY_MS)
+    expect(session.text()).toBe('a\nb\n')
+    expect(disk.writes).toHaveLength(writes)
+  })
+
+  it('undoes a rejected edit as the agent’s undo step and saves', async () => {
+    const session = await open('a\nb\n')
+    const a = editor(session)
+    a.type({ from: 0, insert: 'x' })
+    await settle(TYPING_GROUP_MS + SAVE_DELAY_MS)
+    await agentEdit(session, 'xa\nB\nc\n')
+    await session.rejectAgentReview()
+    expect(session.text()).toBe('xa\nb\n')
+    expect(a.text()).toBe('xa\nb\n')
+    expect(disk.files.get(PATH)).toBe('xa\nb\n')
+    expect(session.agentReview()).toBeNull()
+    // The agent's step is gone from the history: the next undo is the person's typing.
+    session.undo()
+    expect(session.text()).toBe('a\nb\n')
+  })
+
+  it('rejects the edit after the person typed elsewhere, keeping the typing', async () => {
+    const session = await open('one\ntwo\nthree\n')
+    const a = editor(session)
+    await agentEdit(session, 'one\nTWO\nthree\n')
+    a.type({ from: 14, insert: 'four\n' })
+    a.type({ from: 0, insert: '> ' })
+    expect(session.text()).toBe('> one\nTWO\nthree\nfour\n')
+    // The marks followed the typing.
+    const review = session.agentReview()!
+    expect(review.marks.added.map((range) => session.text().slice(range.from, range.to))).toEqual(['TWO'])
+    await session.rejectAgentReview()
+    expect(session.text()).toBe('> one\ntwo\nthree\nfour\n')
+    expect(disk.files.get(PATH)).toBe('> one\ntwo\nthree\nfour\n')
+    expect(session.agentReview()).toBeNull()
+  })
+
+  it('ends the review when undo takes the edit back', async () => {
+    const session = await open('a\n')
+    const a = editor(session)
+    await agentEdit(session, 'a\nagent\n')
+    a.type({ from: 0, insert: 'mine ' })
+    await settle(TYPING_GROUP_MS + 10)
+    expect(undoDocument(a.view)).toBe(true)
+    expect(session.text()).toBe('a\nagent\n')
+    expect(session.agentReview()).not.toBeNull()
+    expect(undoDocument(a.view)).toBe(true)
+    expect(session.text()).toBe('a\n')
+    expect(session.agentReview()).toBeNull()
+  })
+
+  it('reviews several edits of one turn together', async () => {
+    const session = await open('a\nb\nc\n')
+    await agentEdit(session, 'A\nb\nc\n')
+    await agentEdit(session, 'A\nb\nC\n')
+    const review = session.agentReview()!
+    expect(review.before).toBe('a\nb\nc\n')
+    expect(review.after).toBe('A\nb\nC\n')
+    expect(review.marks.added.map((range) => session.text().slice(range.from, range.to))).toEqual(['A', 'C'])
+    // One undo takes back the newest edit; the first stays under review.
+    session.undo()
+    expect(session.text()).toBe('A\nb\nc\n')
+    expect(session.agentReview()!.after).toBe('A\nb\nc\n')
+    await agentEdit(session, 'A\nb\nC\n')
+    await session.rejectAgentReview()
+    expect(session.text()).toBe('a\nb\nc\n')
+  })
+
+  it('keeps the reviewer’s choice of single changes', async () => {
+    const session = await open('a\nb\nc\n')
+    await agentEdit(session, 'A\nb\nC\n')
+    await session.settleAgentReview('A\nb\nc\n')
+    expect(session.text()).toBe('A\nb\nc\n')
+    expect(disk.files.get(PATH)).toBe('A\nb\nc\n')
+    expect(session.agentReview()).toBeNull()
+  })
+
+  it('treats the watcher’s report of its own save as nothing new', async () => {
+    const session = await open('a\n')
+    const a = editor(session)
+    await agentEdit(session, 'a\nb\n')
+    const writes = disk.writes.length
+    const review = session.agentReview()
+    // The watcher reports the session's own write after it finished.
+    externalWrite(disk.files.get(PATH)!)
+    await settle(SAVE_DELAY_MS)
+    expect(session.text()).toBe('a\nb\n')
+    expect(a.text()).toBe('a\nb\n')
+    expect(disk.writes).toHaveLength(writes)
+    expect(session.agentReview()).toBe(review)
+    expect(session.agentReview()!.marks.added).toHaveLength(1)
+  })
+
+  it('applies nothing for an unchanged text and starts no review', async () => {
+    const session = await open('same\n')
+    await expect(agentEdit(session, 'same\n')).resolves.toEqual({ applied: true, content: 'same\n' })
+    expect(session.agentReview()).toBeNull()
+  })
+
+  it('reviews what a file change merged on open brought, and rejects it as the person’s edit', async () => {
+    disk.stored.set(PATH, 'a\nb\n')
+    const session = await open('a\nB\nc\n')
+    expect(session.text()).toBe('a\nB\nc\n')
+    expect(session.reviewOpenMerge()).toBe(true)
+    expect(session.agentReview()).toMatchObject({ before: 'a\nb\n', after: 'a\nB\nc\n' })
+    await session.rejectAgentReview()
+    expect(session.text()).toBe('a\nb\n')
+    expect(disk.files.get(PATH)).toBe('a\nb\n')
+    // The rejection is an undoable edit of the person.
+    session.undo()
+    expect(session.text()).toBe('a\nB\nc\n')
+  })
+
+  it('has nothing to review when the file did not change since the last save', async () => {
+    const session = await open('a\n')
+    expect(session.reviewOpenMerge()).toBe(false)
+    expect(session.agentReview()).toBeNull()
+  })
+})
+
+describe('DocumentSession: the agent’s way in', () => {
+  it('offers the open document to the agent until it closes, under its current path', async () => {
+    const session = await open('live\n', 'old.md')
+    expect(bridge.log).toEqual(['+old.md'])
+    const handlers = bridge.open.get('old.md')!
+    session.replaceText('live, unsaved\n', { kind: 'person', principal: 'user:local' })
+    expect(handlers.read()).toBe('live, unsaved\n')
+    await expect(handlers.apply('agent\n', { tool: 'apply_patch' })).resolves.toEqual({ applied: true, content: 'agent\n' })
+    expect(session.text()).toBe('agent\n')
+    expect(session.agentReview()?.tool).toBe('apply_patch')
+    disk.files.set('new.md', disk.files.get('old.md')!)
+    session.setPath('new.md')
+    expect(bridge.log).toEqual(['+old.md', '-old.md', '+new.md'])
+    expect([...bridge.open.keys()]).toEqual(['new.md'])
+    session.dispose()
+    expect(bridge.log.at(-1)).toBe('-new.md')
+    expect(bridge.open.size).toBe(0)
+  })
+
+  it('offers nothing before the document is open', () => {
+    const session = new DocumentSession(PATH, { root: '/vault' })
+    sessions.push(session)
+    expect(bridge.open.size).toBe(0)
   })
 })
 

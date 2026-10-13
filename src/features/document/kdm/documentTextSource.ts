@@ -13,6 +13,8 @@ import type { DocumentSession } from './documentSession'
 import { analyzeText, createDocumentReplica, documentBody } from './documentText'
 
 export type DocumentTextSource = Pick<DocumentSession, 'text' | 'createBinding' | 'releaseBinding' | 'historyExtension' | 'replaceText'>
+  /** A session marks the agent's edit under review in its editors; a standalone source has no reviews. */
+  & Partial<Pick<DocumentSession, 'agentReviewExtension'>>
 
 const LOCAL_ORIGIN: Origin = { kind: 'person', principal: 'user:local', label: 'typing' }
 

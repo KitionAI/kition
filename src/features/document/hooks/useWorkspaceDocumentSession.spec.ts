@@ -13,6 +13,22 @@ const disk = vi.hoisted(() => ({
   writes: [] as Array<{ path: string; content: string; expected?: string | null }>,
   reads: [] as string[],
   handlers: new Set<(change: WorkspaceDocumentExternalChange) => void>(),
+  /** The text a document's stored replica holds, when it differs from the file. */
+  stored: new Map<string, string>(),
+}))
+
+/** The documents this window offers the agent (`registerOpenDocument`), in memory. */
+const bridge = vi.hoisted(() => ({
+  open: new Map<string, { read: () => string; apply: (content: string, meta: { tool: string; turnId?: string }) => Promise<unknown> }>(),
+}))
+
+vi.mock('@/features/document/kdm/documentAgentBridge', () => ({
+  registerOpenDocument: (path: string, handlers: { read: () => string; apply: (content: string, meta: { tool: string }) => Promise<unknown> }) => {
+    bridge.open.set(path, handlers)
+    return () => {
+      if (bridge.open.get(path) === handlers) bridge.open.delete(path)
+    }
+  },
 }))
 
 vi.mock('@/services/desktop', async (importOriginal) => ({
@@ -45,9 +61,14 @@ vi.mock('@/features/document/kdm/documentStore', async () => {
   const desktop = await import('@/services/desktop')
   return {
     openDocument: vi.fn(async (path: string, fileText: string, actor: bigint) => {
-      const { replica, rootId, style } = createDocumentReplica(fileText, actor)
+      // A stored replica that held `disk.stored[path]` merges the file on open, as the store does.
+      const stored = disk.stored.get(path)
+      const { replica, rootId, style } = createDocumentReplica(stored ?? fileText, actor)
       const meta = { docId: replica.docId, kit: 'kit.document', path, fileHash: '', fileStamp: null, exported: '', style }
-      return { replica, rootId, meta, style, fileText, isNew: true, merged: false }
+      if (stored === undefined || stored === fileText) return { replica, rootId, meta, style, fileText, isNew: stored === undefined, merged: false }
+      const previousText = documentBody(replica, rootId)
+      replica.transact({ kind: 'import', principal: 'file' }, (tx: any) => mergeExternalText(tx, rootId, previousText, analyzeText(fileText).text, previousText))
+      return { replica, rootId, meta, style, fileText, isNew: false, merged: true, previousText }
     }),
     saveDocument: vi.fn(async (input: { path: string; opened: any; expectedFileText: string; expectedRoot?: string }) => {
       const fileText = renderText(documentBody(input.opened.replica, input.opened.rootId), input.opened.style)
@@ -131,6 +152,7 @@ beforeEach(() => {
   disk.writes.length = 0
   disk.reads.length = 0
   disk.handlers.clear()
+  disk.stored.clear()
   window.localStorage.clear()
 })
 
@@ -292,93 +314,7 @@ describe('useWorkspaceDocumentSession: external changes', () => {
     expect(disk.files.get(PATH)).toBe('local line\nline one\nexternal line\n')
   })
 
-  it('opens revision review when the Agent reports a completed document patch', async () => {
-    disk.files.set(PATH, '# Original article')
-    const modified = new Set<string>()
-    const { ref } = await renderSession(modified)
-    await open(ref)
-    modified.add(PATH)
-    externalWrite('# Improved article')
-    await settle()
-    expect(ref.current.draftContent).toBe('# Original article')
-    await act(async () => {
-      await ref.current.reviewModifiedDocuments(['notes\\today.md'])
-    })
-    expect(ref.current.draftContent).toBe('# Original article')
-    expect(ref.current.activeDocumentRevision?.proposedDocument.content).toBe('# Improved article')
-    expect(ref.current.activeDocumentRevision?.comparison.changes).toHaveLength(1)
-
-    await act(async () => {
-      ref.current.resolveAllDocumentRevisionChanges(PATH, 'accepted')
-    })
-    await settle(200)
-    expect(ref.current.activeDocumentRevision).toBeNull()
-    expect(ref.current.draftContent).toBe('# Improved article')
-    expect(disk.writes).toEqual([])
-    expect(modified.has(PATH)).toBe(false)
-    // The accepted proposal is one undo step of the person's history.
-    ref.current.activeDocumentSession!.undo()
-    expect(ref.current.activeDocumentSession!.text()).toBe('# Original article')
-  })
-
-  it('opens revision review from the modified-file View action', async () => {
-    disk.files.set(PATH, '# Original article')
-    const modified = new Set<string>()
-    const { ref } = await renderSession(modified)
-    await open(ref)
-    modified.add(PATH)
-    disk.files.set(PATH, '# Improved article')
-    await act(async () => {
-      await ref.current.openModifiedDocumentReview('/workspace/notes/today.md')
-    })
-    expect(ref.current.activeDocumentRevision?.proposedDocument.content).toBe('# Improved article')
-  })
-
-  it('writes the original content back, guarded, when all agent changes are rejected', async () => {
-    disk.files.set(PATH, 'Original paragraph.\n')
-    const modified = new Set<string>()
-    const { ref } = await renderSession(modified)
-    await open(ref)
-    modified.add(PATH)
-    externalWrite('Rewritten paragraph.\n')
-    await act(async () => {
-      await ref.current.reviewModifiedDocuments([PATH])
-    })
-    await act(async () => {
-      ref.current.resolveAllDocumentRevisionChanges(PATH, 'rejected')
-    })
-    await settle(200)
-    expect(disk.writes).toEqual([{ path: PATH, content: 'Original paragraph.\n', expected: 'Rewritten paragraph.\n' }])
-    expect(ref.current.activeDocumentRevision).toBeNull()
-    expect(ref.current.draftContent).toBe('Original paragraph.\n')
-  })
-
-  it.each(['individual', 'remaining'])('combines decisions before writing (%s)', async (mode) => {
-    disk.files.set(PATH, 'Old start.\nStable.\nOld ending.\n')
-    const modified = new Set<string>([PATH])
-    const { ref } = await renderSession(modified)
-    await act(async () => {
-      await ref.current.applyWorkspaceDocument({ path: PATH, name: 'today.md', content: 'Old start.\nStable.\nOld ending.\n' })
-    })
-    externalWrite('New start.\nStable.\nNew ending.\n')
-    await act(async () => {
-      await ref.current.reviewModifiedDocuments([PATH])
-    })
-    const changes = ref.current.activeDocumentRevision?.comparison.changes || []
-    expect(changes).toHaveLength(2)
-    act(() => {
-      ref.current.decideDocumentRevisionChange(PATH, changes[0].id, 'accepted')
-    })
-    await act(async () => {
-      if (mode === 'remaining') ref.current.resolveAllDocumentRevisionChanges(PATH, 'rejected')
-      else ref.current.decideDocumentRevisionChange(PATH, changes[1].id, 'rejected')
-    })
-    await settle(200)
-    expect(disk.files.get(PATH)).toBe('New start.\nStable.\nOld ending.\n')
-    expect(ref.current.draftContent).toBe('New start.\nStable.\nOld ending.\n')
-  })
-
-  it('merges an agent change into a document with unsaved edits instead of reviewing it', async () => {
+  it('merges an agent change the runtime wrote to the file, keeping unsaved edits, without a review', async () => {
     disk.files.set(PATH, 'a\n')
     const modified = new Set<string>()
     const { ref, options } = await renderSession(modified)
@@ -391,8 +327,170 @@ describe('useWorkspaceDocumentSession: external changes', () => {
     })
     await settle(400)
     expect(ref.current.activeDocumentRevision).toBeNull()
+    expect(ref.current.activeAgentReview).toBeNull()
     expect(ref.current.draftContent).toBe('mine\na\nagent\n')
     expect(disk.files.get(PATH)).toBe('mine\na\nagent\n')
     expect(options.onClearModifiedDocumentPath).toHaveBeenCalledWith(PATH)
+  })
+})
+
+describe('useWorkspaceDocumentSession: live agent edits', () => {
+  /** The agent's edit as the runtime sends it to this window (`document/apply`). */
+  async function agentApply(path: string, content: string) {
+    const handlers = bridge.open.get(path)
+    if (!handlers) throw new Error(`${path} is not offered to the agent`)
+    let result: unknown
+    await act(async () => {
+      result = await handlers.apply(content, { tool: 'document_write', turnId: 't1' })
+    })
+    await settle(200)
+    return result
+  }
+
+  it('offers every open document to the agent: background tabs too, under a new name, until it closes', async () => {
+    disk.files.set(PATH, 'a\n')
+    disk.files.set('notes/other.md', 'b\n')
+    const { ref } = await renderSession()
+    await open(ref)
+    expect([...bridge.open.keys()]).toEqual([PATH])
+    await open(ref, 'notes/other.md')
+    expect([...bridge.open.keys()].sort()).toEqual(['notes/other.md', PATH])
+    expect(bridge.open.get(PATH)!.read()).toBe('a\n')
+    disk.files.set('notes/renamed.md', 'a\n')
+    disk.files.delete(PATH)
+    await act(async () => {
+      ref.current.remapOpenedDocuments(PATH, 'notes/renamed.md')
+    })
+    expect([...bridge.open.keys()].sort()).toEqual(['notes/other.md', 'notes/renamed.md'])
+    await act(async () => {
+      ref.current.closeOpenedDocument('notes/other.md')
+    })
+    await settle()
+    expect([...bridge.open.keys()]).toEqual(['notes/renamed.md'])
+    act(() => root?.unmount())
+    root = null
+    expect(bridge.open.size).toBe(0)
+  })
+
+  it('shows the edit live for review; the agent’s report keeps it; accept keeps the text', async () => {
+    disk.files.set(PATH, '# Plan\n\nStarts in October.\n')
+    const modified = new Set<string>()
+    const { ref, options } = await renderSession(modified)
+    await open(ref)
+    expect(await agentApply(PATH, '# Plan\n\nStarts in November.\n')).toEqual({ applied: true, content: '# Plan\n\nStarts in November.\n' })
+    expect(ref.current.draftContent).toBe('# Plan\n\nStarts in November.\n')
+    expect(disk.files.get(PATH)).toBe('# Plan\n\nStarts in November.\n')
+    expect(ref.current.activeAgentReview).toMatchObject({ before: '# Plan\n\nStarts in October.\n', after: '# Plan\n\nStarts in November.\n' })
+    // The tool's result arrives afterwards: no second review, no reload.
+    modified.add(PATH)
+    externalWrite(disk.files.get(PATH)!)
+    await act(async () => {
+      await ref.current.reviewModifiedDocuments([PATH])
+    })
+    expect(ref.current.activeDocumentRevision).toBeNull()
+    expect(ref.current.activeAgentReview).not.toBeNull()
+    expect(modified.has(PATH)).toBe(true)
+    const writes = disk.writes.length
+    act(() => ref.current.acceptAgentReview())
+    expect(ref.current.activeAgentReview).toBeNull()
+    expect(modified.has(PATH)).toBe(false)
+    expect(options.onFeedback).toHaveBeenLastCalledWith('Reviewed changes accepted.')
+    await settle(400)
+    expect(disk.writes).toHaveLength(writes)
+    expect(ref.current.draftContent).toBe('# Plan\n\nStarts in November.\n')
+  })
+
+  it('rejects the edit, keeping what the person typed meanwhile', async () => {
+    disk.files.set(PATH, 'one\ntwo\n')
+    const { ref } = await renderSession()
+    await open(ref)
+    await agentApply(PATH, 'one\nTWO\n')
+    ref.current.activeDocumentSession!.replaceText('zero\none\nTWO\n', { kind: 'person', principal: 'user:local' })
+    await act(async () => {
+      await ref.current.rejectAgentReview()
+    })
+    await settle(400)
+    expect(ref.current.activeAgentReview).toBeNull()
+    expect(ref.current.draftContent).toBe('zero\none\ntwo\n')
+    expect(disk.files.get(PATH)).toBe('zero\none\ntwo\n')
+  })
+
+  it('marks a background tab changed by the agent and keeps its review for when it is shown', async () => {
+    disk.files.set(PATH, 'a\n')
+    disk.files.set('notes/other.md', 'b\n')
+    const { ref } = await renderSession()
+    await open(ref)
+    await open(ref, 'notes/other.md')
+    await agentApply(PATH, 'a\nagent\n')
+    expect(ref.current.isOpenedDocumentChangedByAgent(PATH)).toBe(true)
+    expect(ref.current.isOpenedDocumentChangedByAgent('notes/other.md')).toBe(false)
+    expect(ref.current.activeAgentReview).toBeNull()
+    expect(disk.files.get(PATH)).toBe('a\nagent\n')
+    await open(ref)
+    expect(ref.current.activeAgentReview?.after).toBe('a\nagent\n')
+    await open(ref, 'notes/other.md')
+    await open(ref)
+    expect(ref.current.activeAgentReview?.after).toBe('a\nagent\n')
+  })
+
+  it('decides change by change in the review panel', async () => {
+    disk.files.set(PATH, 'Old start.\nStable.\nOld ending.\n')
+    const { ref } = await renderSession()
+    await open(ref)
+    await agentApply(PATH, 'New start.\nStable.\nNew ending.\n')
+    act(() => ref.current.showAgentReviewChanges())
+    const changes = ref.current.activeDocumentRevision?.comparison.changes || []
+    expect(ref.current.activeDocumentRevision?.live).toBe(true)
+    expect(changes).toHaveLength(2)
+    act(() => ref.current.decideDocumentRevisionChange(PATH, changes[0].id, 'accepted'))
+    await act(async () => {
+      ref.current.decideDocumentRevisionChange(PATH, changes[1].id, 'rejected')
+    })
+    await settle(400)
+    expect(ref.current.activeDocumentRevision).toBeNull()
+    expect(ref.current.activeAgentReview).toBeNull()
+    expect(ref.current.draftContent).toBe('New start.\nStable.\nOld ending.\n')
+    expect(disk.files.get(PATH)).toBe('New start.\nStable.\nOld ending.\n')
+  })
+
+  it('closes the review panel without deciding, and when undo takes the edit back', async () => {
+    disk.files.set(PATH, 'a\n')
+    const { ref } = await renderSession()
+    await open(ref)
+    await agentApply(PATH, 'a\nb\n')
+    act(() => ref.current.showAgentReviewChanges())
+    act(() => ref.current.closeAgentReviewChanges())
+    expect(ref.current.activeDocumentRevision).toBeNull()
+    expect(ref.current.activeAgentReview).not.toBeNull()
+    act(() => ref.current.showAgentReviewChanges())
+    act(() => {
+      ref.current.activeDocumentSession!.undo()
+    })
+    expect(ref.current.activeDocumentRevision).toBeNull()
+    expect(ref.current.activeAgentReview).toBeNull()
+  })
+
+  it('reviews on open what the agent wrote to a document that was closed', async () => {
+    disk.files.set(PATH, 'a\nB\nc\n')
+    disk.stored.set(PATH, 'a\nb\n')
+    disk.files.set('notes/other.md', 'x\ny\n')
+    disk.stored.set('notes/other.md', 'x\n')
+    const modified = new Set<string>([PATH])
+    const { ref } = await renderSession(modified)
+    await open(ref)
+    expect(ref.current.draftContent).toBe('a\nB\nc\n')
+    expect(ref.current.activeAgentReview).toMatchObject({ before: 'a\nb\n', after: 'a\nB\nc\n' })
+    expect(modified.has(PATH)).toBe(true)
+    // Another writer's change merged on open (no agent mark) is not offered for review.
+    await open(ref, 'notes/other.md')
+    expect(ref.current.draftContent).toBe('x\ny\n')
+    expect(ref.current.activeAgentReview).toBeNull()
+    await open(ref)
+    await act(async () => {
+      await ref.current.rejectAgentReview()
+    })
+    await settle(400)
+    expect(disk.files.get(PATH)).toBe('a\nb\n')
+    expect(modified.has(PATH)).toBe(false)
   })
 })

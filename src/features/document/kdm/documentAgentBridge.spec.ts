@@ -98,6 +98,27 @@ describe('documentAgentBridge', () => {
     expect(await request('document/read', { path: 'a.md' })).toEqual({ open: true, content: 'new' })
   })
 
+  it('answers only for the documents open in its own window', async () => {
+    // Two windows, each with its own stream; the runtime sends an edit to the window that announced the path.
+    const first = fakeTransport()
+    const second = fakeTransport()
+    const firstWindow = createDocumentAgentBridge(first.transport)
+    const secondWindow = createDocumentAgentBridge(second.transport)
+    const applied = vi.fn(async (content: string) => ({ applied: true, content }))
+    firstWindow.registerOpenDocument('a.md', handlers('first window', applied))
+    const closeSecond = secondWindow.registerOpenDocument('b.md', handlers('second window'))
+    expect(first.announced()).toEqual([['a.md']])
+    expect(second.announced()).toEqual([['b.md']])
+    expect(await second.request('document/read', { path: 'a.md' })).toEqual({ open: false })
+    expect(await second.request('document/apply', { path: 'a.md', content: 'x', tool: 'document_write' })).toEqual({ applied: false, reason: 'not-open' })
+    expect(applied).not.toHaveBeenCalled()
+    expect(await first.request('document/apply', { path: 'a.md', content: 'x', tool: 'document_write' })).toEqual({ applied: true, content: 'x' })
+    // A window that closed its document no longer takes edits: the runtime writes the file instead.
+    closeSecond()
+    expect(second.state.channel).toBeNull()
+    expect(second.announced().at(-1)).toEqual([])
+  })
+
   it('uses the window bridge stream by default', async () => {
     const { registerOpenDocument } = await import('./documentAgentBridge')
     const close = registerOpenDocument('Notes/a.md', handlers('a'))

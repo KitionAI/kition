@@ -44,6 +44,8 @@ export type OpenedDocument = {
   isNew: boolean
   /** The file changed since the last save and was merged into the replica on open. */
   merged: boolean
+  /** When `merged`: the replica's text before the merge (what this machine last saved). */
+  previousText?: string
 }
 
 export type SavedDocument = { fileText: string; meta: DocumentStoreMeta }
@@ -288,12 +290,14 @@ export async function openDocument(path: string, fileText: string, actor: bigint
   const { replica, rootId } = loaded
   const { text, style } = analyzeText(fileText)
   let merged = false
+  let previousText: string | undefined
   let meta: DocumentStoreMeta = { ...loaded.meta, path }
   if (meta.fileHash !== fileHash) {
     // What this machine last saved is what the replica holds (edits are saved from an open session), so the
     // replica's text is the base, and merging makes the replica the file's text in small edits.
     const body = documentBody(replica, rootId)
     merged = replica.transact(FILE_IMPORT_ORIGIN, (tx) => mergeExternalText(tx, rootId, body, text, body)) === 'merged'
+    if (merged) previousText = body
     meta = makeMeta(replica, path, fileHash, null, style)
     try {
       await storeReplica(replica, meta, options)
@@ -302,7 +306,7 @@ export async function openDocument(path: string, fileText: string, actor: bigint
       warn('could not store a document after merging its file', error)
     }
   }
-  return { replica, rootId, meta, style, fileText, isNew: false, merged }
+  return { replica, rootId, meta, style, fileText, isNew: false, merged, ...(previousText === undefined ? {} : { previousText }) }
 }
 
 // --- Save -------------------------------------------------------------------

@@ -44,6 +44,8 @@ export type PendingDocumentRevision = {
   proposedDocument: WorkspaceDocument
   comparison: DocumentRevisionComparison
   decisions: Record<string, DocumentRevisionDecision>
+  /** The agent's edit is in the open document already (applied live); deciding keeps or takes back its changes. */
+  live?: boolean
 }
 
 type SequenceDiffPart<T> = {

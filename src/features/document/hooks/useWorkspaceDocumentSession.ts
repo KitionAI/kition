@@ -12,7 +12,7 @@ import {
   type DocumentRevisionDecision,
   type PendingDocumentRevision,
 } from '@/features/document/lib/documentRevision'
-import { DocumentSession, isDocumentSaveConflict, LOCAL_PERSON, type DocumentSessionState } from '@/features/document/kdm/documentSession'
+import { DocumentSession, isDocumentSaveConflict, LOCAL_PERSON, type DocumentAgentReview, type DocumentSessionState } from '@/features/document/kdm/documentSession'
 import {
   findDocumentSession,
   getDocumentSession,
@@ -132,6 +132,7 @@ export function useWorkspaceDocumentSession({
   const externalRefreshVersionRef = useRef(0)
   const rootPathRef = useRef(rootPath)
   const isModifiedRef = useRef(isModifiedDocumentPath)
+  const clearModifiedRef = useRef(onClearModifiedDocumentPath)
   const translateRef = useRef(t)
   /** The session whose text `draftContent` follows. */
   const publishedRef = useRef<{ session: DocumentSession; unsubscribe: () => void; timer: number | null } | null>(null)
@@ -143,6 +144,7 @@ export function useWorkspaceDocumentSession({
   documentRevisionsRef.current = documentRevisions
   revisionSavingPathRef.current = revisionSavingPath
   isModifiedRef.current = isModifiedDocumentPath
+  clearModifiedRef.current = onClearModifiedDocumentPath
   translateRef.current = t
   if (rootPath) rootPathRef.current = rootPath
 
@@ -156,6 +158,8 @@ export function useWorkspaceDocumentSession({
   const activeDocumentRevision = activeDocument
     ? documentRevisions[activeDocument.path] || null
     : null
+  /** The agent's edit of the active document under review (shown in the text), if any. */
+  const activeAgentReview = activeDocumentSession?.agentReview() ?? null
 
   function updateEntries(update: (current: Record<string, OpenedDocumentEntry>) => Record<string, OpenedDocumentEntry>) {
     const next = update(openedEntriesRef.current)
@@ -208,9 +212,33 @@ export function useWorkspaceDocumentSession({
 
   // --- sessions ----------------------------------------------------------------
 
+  /** The review of `session`'s agent edit started, grew, or ended. */
+  function onAgentReviewChange(session: DocumentSession) {
+    setSessionTick((tick) => tick + 1)
+    const review = session.agentReview()
+    const path = session.path
+    const details = documentRevisionsRef.current[path]
+    if (!review) {
+      // Accepted, rejected, or undone: the agent's mark on the file has nothing left to show.
+      if (isModifiedRef.current(path)) clearModifiedRef.current(path)
+      if (details?.live) {
+        updateDocumentRevisions((current) => {
+          const next = { ...current }
+          delete next[path]
+          return next
+        })
+      }
+      return
+    }
+    if (details?.live) {
+      updateDocumentRevisions((current) => ({ ...current, [path]: liveRevision(details.originalDocument, review) }))
+    }
+  }
+
   function watchSession(session: DocumentSession) {
     const toastId = () => `doc-autosave:${session.path}`
-    const unsubscribe = session.subscribeState((state) => {
+    const unsubscribeReview = session.subscribeAgentReview(() => onAgentReviewChange(session))
+    const unsubscribeState = session.subscribeState((state) => {
       setSessionTick((tick) => tick + 1)
       if (state.status === 'error') {
         notify.persistentError(translateRef.current('document:autosave.failed'), {
@@ -226,7 +254,10 @@ export function useWorkspaceDocumentSession({
         notify.dismiss(toastId())
       }
     })
-    sessionWatchersRef.current.set(session, unsubscribe)
+    sessionWatchersRef.current.set(session, () => {
+      unsubscribeReview()
+      unsubscribeState()
+    })
   }
 
   function closeSession(session: DocumentSession) {
@@ -239,7 +270,6 @@ export function useWorkspaceDocumentSession({
 
   function createSession(document: WorkspaceDocument): DocumentSession {
     const session = new DocumentSession(document.path, { root: rootPathRef.current }, {
-      holdsExternalChange: (path) => isModifiedRef.current(path) || Boolean(documentRevisionsRef.current[path]),
       onSaved: (path, fileText) => {
         const updated_at = new Date().toISOString()
         const entry = openedEntriesRef.current[path]
@@ -477,22 +507,15 @@ export function useWorkspaceDocumentSession({
     }))
 
     try {
-      const finalContent = applyDocumentRevisionDecisions(revision.comparison, decisions)
       const session = getDocumentSession(revision.path)
-      let finalDocument: WorkspaceDocument = { ...revision.proposedDocument, content: finalContent }
-      if (session) {
-        await session.acceptReviewedText(revision.proposedDocument.content, finalContent)
-        finalDocument = { ...finalDocument, content: session.savedText() ?? finalContent }
-      } else if (finalContent !== revision.proposedDocument.content) {
-        finalDocument = await writeWorkspaceDocument(revision.path, finalContent)
-      }
-
+      if (!session?.agentReview()) throw new Error(t('revision.saveFailed'))
+      // The agent's edit is in the text already: keep what the reviewer kept of it (saved by the session).
+      await session.settleAgentReview(applyDocumentRevisionDecisions(revision.comparison, decisions))
       updateDocumentRevisions((current) => {
         const next = { ...current }
         delete next[revision.path]
         return next
       })
-      setTreeItems((items) => updateWorkspaceTreeDocumentItem(items, finalDocument))
       onClearModifiedDocumentPath(revision.path)
       onFeedback(t(feedbackKey))
     } catch (requestError: unknown) {
@@ -546,76 +569,33 @@ export function useWorkspaceDocumentSession({
   }
 
   /**
-   * Shows the agent's change to the active document for review. A document with unsaved edits
-   * merges the change instead (D4: nothing is dropped or overwritten).
+   * The agent changed the open document `path`. A Markdown document had the edit applied live by
+   * its session (under review there), or, when the runtime wrote the file instead, merges it (D4).
+   * A data document is re-read and the difference offered for review.
    */
   async function refreshDocumentRevision(path: string) {
     const normalizedPath = normalizeDocumentRevisionPath(path)
-    const currentDocument = activeDocumentRef.current
-    if (!normalizedPath || currentDocument?.path !== normalizedPath) {
+    const session = findDocumentSession(normalizedPath)
+    if (session) {
+      if (!session.agentReview()) {
+        await session.reconcile()
+        onClearModifiedDocumentPath(normalizedPath)
+      }
       return
     }
-
-    const session = getDocumentSession(normalizedPath)
-    if (session?.isDirty()) {
-      await session.reconcile()
-      onClearModifiedDocumentPath(normalizedPath)
+    const currentDocument = activeDocumentRef.current
+    if (!normalizedPath || currentDocument?.path !== normalizedPath || activeDocumentFormatRef.current !== 'data') {
       return
     }
 
     const refreshVersion = ++externalRefreshVersionRef.current
-    const revisionBeforeRead = documentRevisionsRef.current[normalizedPath]
-    const comparedBeforeRead = revisionBeforeRead?.proposedDocument.content
-      ?? session?.read() ?? currentDocument.content
-
     try {
       const nextDocument = await readWorkspaceDocument(normalizedPath)
       if (externalRefreshVersionRef.current !== refreshVersion) return
-
-      const latestDocument = activeDocumentRef.current
-      const latestRevision = documentRevisionsRef.current[normalizedPath]
-      const latestSession = getDocumentSession(normalizedPath)
-      const latestCompared = latestRevision?.proposedDocument.content
-        ?? latestSession?.read() ?? latestDocument?.content
-      if (latestDocument?.path !== normalizedPath || latestCompared !== comparedBeforeRead) return
-      if (latestSession?.isDirty()) {
-        await latestSession.reconcile()
-        onClearModifiedDocumentPath(normalizedPath)
-        return
-      }
-      if (latestRevision?.proposedDocument.content === nextDocument.content) return
-
-      if (activeDocumentFormatRef.current === 'data') {
-        void applyWorkspaceDocument(nextDocument)
-        setTreeItems((items) => updateWorkspaceTreeDocumentItem(items, nextDocument))
-        onClearModifiedDocumentPath(normalizedPath)
-        return
-      }
-
-      const originalContent = latestRevision?.originalDocument.content ?? latestSession?.read() ?? latestDocument.content
-      const comparison = createDocumentRevisionComparison(originalContent, nextDocument.content)
-      if (!comparison.changes.length) {
-        updateDocumentRevisions((current) => {
-          const next = { ...current }
-          delete next[normalizedPath]
-          return next
-        })
-        await latestSession?.reconcile()
-        onClearModifiedDocumentPath(normalizedPath)
-      } else {
-        updateDocumentRevisions((current) => ({
-          ...current,
-          [normalizedPath]: {
-            path: normalizedPath,
-            originalDocument: { ...latestDocument, content: originalContent },
-            proposedDocument: nextDocument,
-            comparison,
-            decisions: {},
-          },
-        }))
-        onFeedback(t('revision.externalChangeReady', { count: comparison.changes.length }))
-      }
+      if (activeDocumentRef.current?.path !== normalizedPath) return
+      void applyWorkspaceDocument(nextDocument)
       setTreeItems((items) => updateWorkspaceTreeDocumentItem(items, nextDocument))
+      onClearModifiedDocumentPath(normalizedPath)
     } catch (requestError: unknown) {
       if (externalRefreshVersionRef.current === refreshVersion) {
         onError(errorMessage(requestError) || t('revision.refreshFailed'))
@@ -623,13 +603,74 @@ export function useWorkspaceDocumentSession({
     }
   }
 
+  /**
+   * The agent reports documents it changed. Open ones already have the change (applied live, or
+   * merged from the file); a closed one keeps the agent's mark and is reviewed when it opens.
+   */
   function reviewModifiedDocuments(paths: string[]) {
-    const activePath = activeDocumentRef.current?.path || ''
-    const hasActivePath = paths.some((path) => documentRevisionPathsMatch(path, activePath))
-    if (!activePath || !hasActivePath) {
-      return Promise.resolve()
+    const openPaths = [
+      ...listDocumentSessions().map((session) => session.path),
+      activeDocumentRef.current?.path || '',
+    ].filter(Boolean)
+    const targets = new Set(openPaths.filter((openPath) => paths.some((path) => documentRevisionPathsMatch(path, openPath))))
+    return Promise.all([...targets].map((path) => refreshDocumentRevision(path))).then(() => undefined)
+  }
+
+  /** A comparison of the agent's edit under review, for the review panel. */
+  function liveRevision(document: WorkspaceDocument, review: DocumentAgentReview): PendingDocumentRevision {
+    return {
+      path: document.path,
+      originalDocument: { ...document, content: review.before },
+      proposedDocument: { ...document, content: review.after },
+      comparison: createDocumentRevisionComparison(review.before, review.after),
+      decisions: {},
+      live: true,
     }
-    return refreshDocumentRevision(activePath)
+  }
+
+  /** Keeps the active document's agent edit under review. */
+  function acceptAgentReview() {
+    const session = activeSessionRef.current
+    if (!session?.agentReview()) return
+    session.acceptAgentReview()
+    onFeedback(t('revision.acceptedFeedback'))
+  }
+
+  /** Takes the active document's agent edit back (the person's edits since are kept). */
+  async function rejectAgentReview() {
+    const session = activeSessionRef.current
+    if (!session?.agentReview()) return
+    try {
+      await session.rejectAgentReview()
+      onFeedback(t('revision.rejectedFeedback'))
+    } catch (reason: unknown) {
+      onError(errorMessage(reason) || t('revision.saveFailed'))
+    }
+  }
+
+  /** Opens the review panel on the active document's agent edit, to decide change by change. */
+  function showAgentReviewChanges() {
+    const session = activeSessionRef.current
+    const document = activeDocumentRef.current
+    const review = session?.agentReview()
+    if (!session || !document || !review || document.path !== session.path) return
+    updateDocumentRevisions((current) => ({ ...current, [document.path]: liveRevision(document, review) }))
+  }
+
+  /** Back from the review panel to the text, deciding nothing. */
+  function closeAgentReviewChanges() {
+    const path = activeDocumentRef.current?.path
+    if (!path || !documentRevisionsRef.current[path]?.live) return
+    updateDocumentRevisions((current) => {
+      const next = { ...current }
+      delete next[path]
+      return next
+    })
+  }
+
+  /** Whether the agent changed the open document `path` and the change awaits review. */
+  function isOpenedDocumentChangedByAgent(path: string) {
+    return Boolean(findDocumentSession(path)?.agentReview())
   }
 
   async function openModifiedDocumentReview(path: string) {
@@ -758,7 +799,9 @@ export function useWorkspaceDocumentSession({
 
       const nextDocument = await readWorkspaceDocument(path)
       await applyWorkspaceDocument(nextDocument)
-      onClearModifiedDocumentPath(path)
+      // The agent wrote the file while it was closed: what the open merged is shown for review.
+      const opened = getDocumentSession(path)
+      if (!(isModifiedDocumentPath(path) && opened?.reviewOpenMerge())) onClearModifiedDocumentPath(path)
     } catch (requestError: unknown) {
       setActiveResourcePath(previousActivePath)
       onError(errorMessage(requestError) || 'Failed to open document')
@@ -768,12 +811,15 @@ export function useWorkspaceDocumentSession({
   return {
     activeDocument,
     activeDocumentFormat,
+    acceptAgentReview,
+    activeAgentReview,
     activeDocumentRevision,
     activeDocumentSession,
     activeResourcePath,
     applyWorkspaceDocument,
     autoSaveStatus,
     clearActiveDocumentSession,
+    closeAgentReviewChanges,
     closeOpenedDocument,
     draftContent,
     documentRevisionSaving: Boolean(
@@ -784,10 +830,12 @@ export function useWorkspaceDocumentSession({
     forgetOpenedDocuments,
     getOpenedDocument,
     hasUnsavedChanges,
+    isOpenedDocumentChangedByAgent,
     isOpenedDocumentModified,
     openModifiedDocumentReview,
     openDocument,
     persistActiveDocument,
+    rejectAgentReview,
     remapOpenedDocuments,
     replaceActiveDocumentText,
     restoreSavedVersion,
@@ -798,5 +846,6 @@ export function useWorkspaceDocumentSession({
     setActiveResourcePath,
     setSaving,
     setSelectedPlatform,
+    showAgentReviewChanges,
   }
 }

@@ -8,12 +8,14 @@
 import { isolateHistory } from '@codemirror/commands'
 import { Transaction } from '@codemirror/state'
 import { VersionVector } from 'loro-crdt'
-import { agent, person, randomActor, type Origin, type Replica, type Version } from '@/lib/kdm'
+import { agent, person, randomActor, type Origin, type Replica, type TextDelta, type Version } from '@/lib/kdm'
 import { readWorkspaceDocument, subscribeWorkspaceDocumentExternalChanges, type WorkspaceDocumentExternalChange } from '@/services/desktop'
 import { registerWorkspaceEditSession } from '@/services/workspaceEditSessions'
 import { TextBinding } from './codeMirrorBinding'
+import { registerOpenDocument } from './documentAgentBridge'
+import { addAgentReviewMarks, agentReviewHighlight, agentReviewMarks, mapAgentReviewMarks, type AgentReviewMarks } from './documentAgentReview'
 import { documentHistoryExtension, type DocumentHistory } from './documentHistory'
-import { applyTextEdits, diffText } from './documentMerge'
+import { applyTextEdits, diffText, mergeEdits } from './documentMerge'
 import { DOCUMENT_BODY } from './documentSchema'
 import { mergeFileIntoReplica, openDocument, saveDocument, type OpenedDocument } from './documentStore'
 import { analyzeText, createDocumentReplica, documentBody, renderText } from './documentText'
@@ -36,12 +38,30 @@ export type DocumentSessionState = {
   dirty: boolean
 }
 
+/**
+ * An agent's edit of the open document, already in the text (and saved), that the person has not
+ * accepted or rejected yet. Several edits before a decision are reviewed together.
+ */
+export type DocumentAgentReview = {
+  /** The text before the first edit under review. */
+  before: string
+  /** The text right after the newest edit under review. */
+  after: string
+  /** What the edits changed, positioned in the current text. */
+  marks: AgentReviewMarks
+  /** The agent tool that made the newest edit (`file` for a file change merged on open). */
+  tool: string
+  turnId?: string
+}
+
+type AgentReviewState = DocumentAgentReview & {
+  /** The undo steps of the agent's edits under review (none for a change merged on open). */
+  groups: number
+  /** Nothing else changed the text since the newest edit: undo takes the edits back exactly. */
+  untouched: boolean
+}
+
 export type DocumentSessionHost = {
-  /**
-   * Whether a change of the file on disk is left to the review flow (an agent proposal) instead
-   * of being merged now. The session then expects the review to settle it (`acceptFileText`).
-   */
-  holdsExternalChange?: (path: string) => boolean
   /** The file now holds `fileText` (a save of this session). */
   onSaved?: (path: string, fileText: string) => void
   /** The save made when the session closed failed; it keeps retrying. */
@@ -110,6 +130,11 @@ export class DocumentSession {
   private readonly bindings = new Set<TextBinding>()
   /** The open typing undo group, if any. */
   private typing: { kind: TypingKind; at: number; timer: ReturnType<typeof setTimeout> } | null = null
+  private review: AgentReviewState | null = null
+  /** Set while the session applies an agent's edit (the edit does not touch its own review). */
+  private applyingAgent = false
+  private readonly reviewListeners = new Set<() => void>()
+  private unregisterAgent: (() => void) | null = null
   readonly history: DocumentHistory = {
     undo: () => this.undo(),
     redo: () => this.redo(),
@@ -151,9 +176,10 @@ export class DocumentSession {
     this.opened = opened
     this.fileText = opened.fileText
     this.savedVersion = this.rendered() === opened.fileText ? opened.replica.version() : null
-    this.cleanups.push(opened.replica.subscribeText(opened.rootId, DOCUMENT_BODY, () => this.onReplicaChange()))
+    this.cleanups.push(opened.replica.subscribeText(opened.rootId, DOCUMENT_BODY, (delta) => this.onReplicaChange(delta)))
     this.cleanups.push(subscribeWorkspaceDocumentExternalChanges(this.onExternalChange))
     this.registerFlush()
+    this.registerAgentAccess()
     const beforeUnload = (event: BeforeUnloadEvent) => {
       if (!this.hasUnsavedChanges()) return
       event.preventDefault()
@@ -218,6 +244,11 @@ export class DocumentSession {
     return documentHistoryExtension(this.history)
   }
 
+  /** Marks the agent's edit under review in an editor bound to this session. */
+  agentReviewExtension() {
+    return agentReviewHighlight(this)
+  }
+
   /**
    * Replaces the document text by `next` as the smallest text edits, in one transaction with
    * `origin` (one undo step). Every whole-text setter (a dialog's result, an import, a restore, an
@@ -234,18 +265,90 @@ export class DocumentSession {
     return true
   }
 
-  /** Applies an agent's whole new file text as one agent-origin undo step, saves, and answers the saved file text. */
+  /**
+   * Applies an agent's whole new file text as one agent-origin undo step, shows it for review
+   * (`agentReview`), saves, and answers the saved file text.
+   */
   async applyAgentContent(content: string, meta: { tool: string; turnId?: string }): Promise<{ applied: boolean; content?: string; reason?: string }> {
     if (!this.opened) return { applied: false, reason: 'not-open' }
-    this.replaceText(content, agent(LOCAL_AGENT, meta.tool || 'agent'))
+    const before = this.text()
+    let changed: boolean
+    this.applyingAgent = true
+    try {
+      changed = this.replaceText(content, agent(LOCAL_AGENT, meta.tool || 'agent'))
+    } finally {
+      this.applyingAgent = false
+    }
+    if (changed) this.reviewEdit(before, meta, 1)
     await this.flush()
     return { applied: true, content: this.fileText ?? this.read() }
+  }
+
+  /** The agent's edit under review, if any. */
+  agentReview(): DocumentAgentReview | null {
+    return this.review
+  }
+
+  /** Called when a review starts, grows, or ends (not when its marks only moved with the text). */
+  subscribeAgentReview(listener: () => void) {
+    this.reviewListeners.add(listener)
+    return () => {
+      this.reviewListeners.delete(listener)
+    }
+  }
+
+  /** Keeps the edit under review as it is. */
+  acceptAgentReview() {
+    this.setReview(null)
+  }
+
+  /** Takes the edit under review back (the person's edits since are kept) and saves. */
+  rejectAgentReview(): Promise<void> {
+    return this.review ? this.settleAgentReview(this.review.before) : Promise.resolve()
+  }
+
+  /**
+   * Ends the review with `text` as what the reviewer kept of the edit (`before` with some of its
+   * changes), applied to the current text so that the person's edits since are kept, and saves.
+   * When nothing else changed the text since the edit, rejecting it all undoes the agent's steps.
+   */
+  async settleAgentReview(text: string): Promise<void> {
+    const review = this.review
+    const opened = this.opened
+    if (!review || !opened) return
+    if (text !== review.after) {
+      this.endTyping()
+      if (text === review.before && review.untouched && review.groups > 0) {
+        for (let step = 0; step < review.groups; step += 1) opened.replica.undo()
+      } else {
+        const edits = mergeEdits(review.after, analyzeText(text).text, this.text())
+        if (edits.length) opened.replica.transact(person(LOCAL_PERSON, 'review'), (tx) => applyTextEdits(tx, opened.rootId, DOCUMENT_BODY, edits))
+      }
+    }
+    if (this.review === review) this.setReview(null)
+    await this.flush()
+  }
+
+  /**
+   * Shows what the file change merged when the document opened (the agent wrote the file while
+   * it was closed) as an edit under review. Answers whether there was such a change.
+   */
+  reviewOpenMerge(): boolean {
+    const opened = this.opened
+    if (!opened?.merged || opened.previousText === undefined || this.review) return false
+    if (opened.previousText === this.text()) return false
+    this.reviewEdit(opened.previousText, { tool: 'file' }, 0)
+    return true
   }
 
   undo(): boolean {
     if (!this.opened) return false
     this.endTyping()
-    return this.opened.replica.undo()
+    const review = this.review
+    const exact = Boolean(review?.untouched && review.groups > 0)
+    const undone = this.opened.replica.undo()
+    if (undone && review && this.review === review) this.afterUndo(review, exact)
+    return undone
   }
 
   redo(): boolean {
@@ -259,25 +362,7 @@ export class DocumentSession {
     if (path === this.pathValue) return
     this.pathValue = path
     if (this.unregisterFlush) this.registerFlush()
-  }
-
-  /**
-   * Settles a file change the review flow held back (`holdsExternalChange`): the file now holds
-   * `fileText` (the proposal); the document text becomes `text` (what the reviewer kept) as one
-   * agent-origin undo step, so undo returns to the text before the proposal. Saves the result
-   * unless the file already holds it.
-   */
-  acceptReviewedText(fileText: string, text: string, label = 'review'): Promise<void> {
-    return this.enqueue(async () => {
-      const opened = this.opened
-      if (!opened || this.disposed) return
-      this.fileText = fileText
-      opened.style = analyzeText(fileText).style
-      this.savedVersion = null
-      this.replaceText(text, agent(LOCAL_AGENT, label))
-      if (this.rendered() === fileText) this.savedVersion = opened.replica.version()
-      this.setState({ dirty: this.isDirty() })
-    }).then(() => this.flush())
+    if (this.unregisterAgent) this.registerAgentAccess()
   }
 
   /** Merges what the file holds now (after another writer changed it); local edits are kept. */
@@ -342,8 +427,10 @@ export class DocumentSession {
     this.bindings.clear()
     for (const cleanup of this.cleanups.splice(0)) cleanup()
     this.unregisterFlush = null
+    this.unregisterAgent = null
     this.textListeners.clear()
     this.stateListeners.clear()
+    this.reviewListeners.clear()
     final.catch((reason: unknown) => this.host.closedSaveFailed?.(this.pathValue, reason))
   }
 
@@ -376,17 +463,68 @@ export class DocumentSession {
     return renderText(documentBody(opened.replica, opened.rootId), opened.style)
   }
 
+  /** Runs and forgets the cleanup `previous` (a registration under the old path), if any. */
+  private dropCleanup(previous: (() => void) | null) {
+    if (!previous) return
+    previous()
+    const index = this.cleanups.indexOf(previous)
+    if (index >= 0) this.cleanups.splice(index, 1)
+  }
+
   private registerFlush() {
-    // Deleted from the cleanups when re-registered under a new path.
-    const previous = this.unregisterFlush
-    if (previous) {
-      previous()
-      const index = this.cleanups.indexOf(previous)
-      if (index >= 0) this.cleanups.splice(index, 1)
-    }
+    this.dropCleanup(this.unregisterFlush)
     const unregister = registerWorkspaceEditSession(this.flush, this.pathValue, { discard: this.discard })
     this.unregisterFlush = unregister
     this.cleanups.push(unregister)
+  }
+
+  /** Lets the agent read and edit this document through the session (`documentAgentBridge`), under its current path. */
+  private registerAgentAccess() {
+    this.dropCleanup(this.unregisterAgent)
+    const unregister = registerOpenDocument(this.pathValue, {
+      read: () => this.read(),
+      apply: (content, meta) => this.applyAgentContent(content, meta),
+    })
+    this.unregisterAgent = unregister
+    this.cleanups.push(unregister)
+  }
+
+  /** The text changed from `before` by an agent's edit (`groups` undo steps): starts or grows the review. */
+  private reviewEdit(before: string, meta: { tool: string; turnId?: string }, groups: number) {
+    const after = this.text()
+    const current = this.review
+    // Untouched since the earlier edits: the edits together are `before → after`.
+    const marks = !current ? agentReviewMarks(before, after)
+      : current.untouched ? agentReviewMarks(current.before, after)
+        : addAgentReviewMarks(current.marks, agentReviewMarks(before, after))
+    this.setReview({
+      before: current?.before ?? before,
+      after,
+      marks,
+      tool: meta.tool,
+      ...(meta.turnId ? { turnId: meta.turnId } : {}),
+      groups: (current?.groups ?? 0) + groups,
+      untouched: current ? current.untouched : true,
+    })
+  }
+
+  /** An undo while `review` lasts: it took back the newest agent step (`exact`), or maybe the last of them. */
+  private afterUndo(review: AgentReviewState, exact: boolean) {
+    const text = this.text()
+    if (exact) {
+      const groups = review.groups - 1
+      if (groups <= 0) this.setReview(null)
+      else this.setReview({ ...review, after: text, marks: agentReviewMarks(review.before, text), groups, untouched: true })
+      return
+    }
+    // The edits are no longer in the text when taking them back would change nothing.
+    if (mergeEdits(review.after, review.before, text).length === 0) this.setReview(null)
+  }
+
+  private setReview(review: AgentReviewState | null) {
+    if (review === null && this.review === null) return
+    this.review = review
+    for (const listener of [...this.reviewListeners]) listener()
   }
 
   /** Groups typing like CodeMirror's history: a run of keystrokes of one kind undoes as one step. */
@@ -425,8 +563,13 @@ export class DocumentSession {
     }
   }
 
-  private onReplicaChange() {
+  private onReplicaChange(delta: TextDelta[]) {
     if (this.disposed) return
+    const review = this.review
+    if (review) {
+      review.marks = mapAgentReviewMarks(review.marks, delta)
+      if (!this.applyingAgent) review.untouched = false
+    }
     const text = this.text()
     for (const listener of this.textListeners) listener(text)
     if (this.importing > 0) return
@@ -439,7 +582,6 @@ export class DocumentSession {
 
   private readonly onExternalChange = (change: WorkspaceDocumentExternalChange) => {
     if (this.disposed || change.path !== this.pathValue || change.eventType === 'unlink') return
-    if (this.host.holdsExternalChange?.(this.pathValue)) return
     void this.reconcile()
   }
 

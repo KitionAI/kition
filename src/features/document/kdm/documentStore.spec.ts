@@ -112,12 +112,15 @@ describe('openDocument', () => {
     const again = await open('Plan.md', 2n)
     expect(again.isNew).toBe(false)
     expect(again.merged).toBe(true)
+    expect(again.previousText).toBe('one\ntwo\n')
     expect(again.replica.docId).toBe(first.replica.docId)
     expect(documentBody(again.replica, again.rootId)).toBe('one\n2\nthree\n')
     expect(again.replica.canUndo()).toBe(false)
     // The merge is stored, so the next open has nothing to merge.
     expect(again.meta.fileHash).toBe(await hashFileText('one\n2\nthree\n'))
-    expect((await open('Plan.md', 3n)).merged).toBe(false)
+    const third = await open('Plan.md', 3n)
+    expect(third.merged).toBe(false)
+    expect(third.previousText).toBeUndefined()
   })
 
   it('records a change of line endings alone without merging text', async () => {
