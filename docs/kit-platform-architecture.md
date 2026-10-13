@@ -135,7 +135,7 @@ injected faults that each check must catch.
 
 | Kind | Examples | Implementation | Delivery |
 | --- | --- | --- | --- |
-| Built-in | Markdown documents, tables, whiteboard, presentations | React inside the renderer | Ships with Kition |
+| Built-in | Markdown documents, tables, whiteboard, slides | React inside the renderer | Ships with Kition |
 | Installable | `kit.photo` first, then `kit.pdf`, `kit.vector`, `kit.film`, `kit.audio` | Native executable speaking the Kit Protocol | Downloaded on first use |
 
 Built-in kits stay Kition's own products. Upstream word processing,

@@ -26,7 +26,7 @@ over the Kit Protocol by kition-sdk's `kition-headless`, so it is a few lines
 (`apps/kit-<kit>` in each kit repository). The agent's tools for every kit are
 `<prefix>_inspect`, `<prefix>_commands`, and `<prefix>_run`, generated from
 the kit's definition (`photo_*`, `film_*`, `vector_*`, `effect_*`,
-`design_*`, `cad_*`, `presentation_*`, `word_*`, `sheet_*`, `pdf_*`).
+`design_*`, `cad_*`, `slide_*`, `word_*`, `sheet_*`, `pdf_*`).
 
 When the file is open in a kit editor, those tools act on the editor itself
 through the **Kit AI bridge** (standard A7 to A10), not on a headless copy:
@@ -236,7 +236,7 @@ the ribbon, panels, canvas, and dialogs next to the engine, and Kition shows
 it in an iframe and talks to it over the Kit UI protocol (`kition-kit-ui/1`,
 kition-sdk `docs/ui-protocol.md`). Kition keeps the shell: files, the
 workspace, the agent, the theme, the language, and its own shortcuts. All ten
-kits have one: Presentation, Word, Sheet, PDF, and CAD (ribbon editors on
+kits have one: Slides, Word, Sheet, PDF, and CAD (ribbon editors on
 kit-ui's `KitShell`), and Photo, Vector, Design, Effect, and Film (menu-bar
 editors on `KitAppShell`, with a tool rail of flyout slots and side panels).
 
@@ -315,7 +315,7 @@ Kition renderer:
    (SDK manifest, test id key, icon, menu order, engine tools, an optional
    command line, and the status-line values from `inspect()`) and
    `standardKit(spec, format, create)` in `KIT_EDITORS` replace steps 9 and 10's
-   editor, fallback, and SDK files. CAD, Presentation, Word, Sheet, and PDF are
+   editor, fallback, and SDK files. CAD, Slides, Word, Sheet, and PDF are
    (PDF without `tools`: no engine tools yet, so the canvas pans) (Word
    and Sheet with `rail: false`: one tool needs no rail; Sheet's
    `commandLine: 'top'` is its formula bar). A kit for a format the
@@ -529,10 +529,10 @@ Command-line kits (CAD):
 - Choose document pixels from the drawing alone (CAD: a power-of-two scale of
   limits and extents), so a saved drawing reopens to the same pixels.
 
-Slide and page kits (Presentation):
+Slide and page kits (Slides):
 
 - Stack the slides on one canvas in document pixels (points), so the host
-  scrolls the deck; a press on another slide makes it current before the tool
+  scrolls the slides; a press on another slide makes it current before the tool
   sees it, and the gesture keeps that slide until it ends. Give the spec an
   `initialArea` (the first slide) and a `focusArea` (the current slide), which
   the editor brings into view only when it is mostly offscreen, so a click
