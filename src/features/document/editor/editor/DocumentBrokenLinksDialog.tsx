@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from '@/registry/ui/dialog'
 import { notify } from '@/lib/notify'
-import { readWorkspaceDocument, writeWorkspaceDocument } from '@/services/desktop'
+import { readWorkspaceMarkdown, writeWorkspaceMarkdown } from '@/features/document/kdm/documentSessions'
 
 import { parseWikilinks } from '../lib/wikilink-parser'
 import { clearVaultFileCache, loadVaultMarkdownFiles } from '../vault/vault-files'
@@ -78,8 +78,7 @@ export function DocumentBrokenLinksDialog({
           if (cancelled) return
           const path = files[i].path
           try {
-            const doc = await readWorkspaceDocument(path)
-            const content = doc.content ?? ''
+            const content = await readWorkspaceMarkdown(path)
             const links = parseWikilinks(content)
             const broken: BrokenRef[] = []
             for (const link of links) {
@@ -114,7 +113,7 @@ export function DocumentBrokenLinksDialog({
     const cleanTarget = target.replace(/\.md$/i, '')
     const newPath = `${dir}${cleanTarget}.md`
     try {
-      await writeWorkspaceDocument(newPath, `# ${cleanTarget}\n\n`)
+      await writeWorkspaceMarkdown(newPath, `# ${cleanTarget}\n\n`, 'create note')
       clearVaultFileCache()
       onOpenChange(false)
       onOpen(newPath)

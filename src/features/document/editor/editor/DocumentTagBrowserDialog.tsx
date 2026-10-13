@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/registry/ui/dialog'
-import { readWorkspaceDocument, writeWorkspaceDocument } from '@/services/desktop'
+import { readWorkspaceMarkdown, updateWorkspaceMarkdown } from '@/features/document/kdm/documentSessions'
 
 import { parseTags } from '../lib/tag-parser'
 import { loadVaultMarkdownFiles } from '../vault/vault-files'
@@ -69,8 +69,7 @@ export function DocumentTagBrowserDialog({
         for (let i = 0; i < limit; i++) {
           if (cancelled) return
           try {
-            const doc = await readWorkspaceDocument(files[i].path)
-            const tags = parseTags(doc.content ?? '')
+            const tags = parseTags(await readWorkspaceMarkdown(files[i].path))
             for (const t of tags) {
               counts.set(t.name, (counts.get(t.name) ?? 0) + 1)
               if (!filesIdx.has(t.name)) filesIdx.set(t.name, new Set())
@@ -119,10 +118,8 @@ export function DocumentTagBrowserDialog({
       )
       for (const p of paths) {
         try {
-          const doc = await readWorkspaceDocument(p)
-          const orig = doc.content ?? ''
-          const next = orig.replace(tokenRegex, (_m, lead) => `${lead}#${newName}`)
-          if (next !== orig) await writeWorkspaceDocument(p, next)
+          // An open document takes the rename as an edit of its replica; other files are rewritten.
+          await updateWorkspaceMarkdown(p, (orig) => orig.replace(tokenRegex, (_m, lead) => `${lead}#${newName}`), 'rename tag')
         } catch {
           /* skip */
         }

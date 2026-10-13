@@ -1,4 +1,5 @@
-import { readWorkspaceDocument, writeWorkspaceDocument } from '@/services/desktop'
+import { updateWorkspaceMarkdown, writeWorkspaceMarkdown } from '@/features/document/kdm/documentSessions'
+import { readWorkspaceDocument } from '@/services/desktop'
 
 export type DailyNoteOptions = {
 
@@ -43,7 +44,7 @@ export async function ensureDailyNote(options: DailyNoteOptions = {}): Promise<s
   }
   const template = (options.template ?? DEFAULT_TEMPLATE).replace(/\{\{date\}\}/g, todayString())
   try {
-    await writeWorkspaceDocument(path, template)
+    await writeWorkspaceMarkdown(path, template, 'daily note')
   } catch {
     // Return the path even if writing fails so the caller can still try opening it.
   }
@@ -60,7 +61,7 @@ export async function ensureDailyNoteFor(date: Date, options: DailyNoteOptions =
   }
   const template = (options.template ?? DEFAULT_TEMPLATE).replace(/\{\{date\}\}/g, dateString(date))
   try {
-    await writeWorkspaceDocument(path, template)
+    await writeWorkspaceMarkdown(path, template, 'daily note')
   } catch {
     /* tolerate */
   }
@@ -70,11 +71,11 @@ export async function ensureDailyNoteFor(date: Date, options: DailyNoteOptions =
 export async function appendToDailyNote(line: string, options: DailyNoteOptions = {}): Promise<string> {
   const path = await ensureDailyNote(options)
   try {
-    const existing = await readWorkspaceDocument(path)
-    const prev = existing?.content ?? ''
-    const needsNewline = prev.length > 0 && !prev.endsWith('\n')
-    const next = (prev + (needsNewline ? '\n' : '') + line + '\n')
-    await writeWorkspaceDocument(path, next)
+    // Through the open daily note when it is open, so the editor keeps both the line and its own edits.
+    await updateWorkspaceMarkdown(path, (prev) => {
+      const needsNewline = prev.length > 0 && !prev.endsWith('\n')
+      return prev + (needsNewline ? '\n' : '') + line + '\n'
+    }, 'append to daily note')
   } catch {
     /* tolerate */
   }
