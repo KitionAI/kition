@@ -27,7 +27,7 @@ const REFINE_MIN_EDITS = 64
  */
 const REFINE_WORK = 2_000_000
 const REFINE_WORK_PER_UNIT = 2
-/** Changed ranges longer than this (in UTF-16 units, on either side) are replaced as whole lines, without character detail. */
+/** A changed line longer than this (in UTF-16 units, on either side) is replaced as a whole, without character detail. */
 const REFINE_MAX_LENGTH = 64 * 1024
 /**
  * A range of lines without anchors no longer than this (in UTF-16 units, on either side) is left to
@@ -354,10 +354,9 @@ type LineCache = { ids: Map<string, number>; lines?: Lines }
 /**
  * The edits from `a` to `b`: a line diff, refined to characters inside changed lines. Edits are
  * sorted, separated, relative to `a`, and never split a surrogate pair. The line diff's cost grows
- * with the number of changes, not the size of the texts. Rather than a slow diff, a changed range
- * longer than `REFINE_MAX_LENGTH` is replaced as whole lines, heavily rewritten texts get line-level
- * edits once character refinement has used its budget, and a large, heavily changed range without
- * lines unique to it may get coarser edits.
+ * with the number of changes, not the size of the texts. Rather than a slow diff, a changed line
+ * longer than `REFINE_MAX_LENGTH` is replaced as a whole, and heavily rewritten texts get
+ * line-level edits once character refinement has used its budget.
  */
 export function diffText(a: string, b: string): TextEdit[] {
   return diffTextWith(a, b, { ids: new Map() })
@@ -389,13 +388,23 @@ function diffTextWith(a: string, b: string, cache: LineCache): TextEdit[] {
   const bl = lineTokens(b, cache.ids, start, bEnd)
   const gapLength = (aFrom: number, aTo: number, bFrom: number, bTo: number) =>
     Math.max(al.starts[firstLine + aTo] - al.starts[firstLine + aFrom], bl.starts[bTo] - bl.starts[bFrom])
+  /** Adds an edit, joined to the previous one when they touch, so that edits stay separated. */
+  const push = (edit: TextEdit) => {
+    const last = out[out.length - 1]
+    if (last && last.to === edit.from) {
+      last.to = edit.to
+      last.insert += edit.insert
+    } else out.push({ ...edit })
+  }
   const meter: Meter = { work: 0 }
   const refineBudget = REFINE_WORK + REFINE_WORK_PER_UNIT * (aEnd - start + (bEnd - start))
   /**
    * Refines a hunk of lines to characters. A hunk of several lines whose character edits keep only
    * white space (such as the line endings of unrelated lines) is replaced as a whole, so that text
-   * inserted between them elsewhere stays between whole lines. A hunk too large or too changed for
-   * character detail is diffed by lines first when `byLines`, and replaced as a whole otherwise.
+   * inserted between them elsewhere stays between whole lines. A hunk of several lines longer than
+   * `CHARACTER_GAP_LENGTH`, or too changed for character detail, is diffed by lines first when
+   * `byLines`; what that leaves changed is refined line by line, pairing lines in order. Other
+   * hunks too large or too changed for character detail are replaced as a whole.
    */
   const refineHunk = (hunk: Hunk, byLines: boolean) => {
     const aFrom = al.starts[firstLine + hunk.aFrom]
@@ -404,21 +413,27 @@ function diffTextWith(a: string, b: string, cache: LineCache): TextEdit[] {
     const y = b.slice(bl.starts[hunk.bFrom], bl.starts[hunk.bTo])
     const whole = { from: aFrom, to: aTo, insert: y }
     const severalLines = hunk.aTo - hunk.aFrom > 1 || hunk.bTo - hunk.bFrom > 1
-    const refinable = x.length <= REFINE_MAX_LENGTH && y.length <= REFINE_MAX_LENGTH && meter.work <= refineBudget
-    const edits = refinable ? refine(x, y, aFrom, meter) : null
+    const limit = severalLines ? CHARACTER_GAP_LENGTH : REFINE_MAX_LENGTH
+    const edits = x.length <= limit && y.length <= limit && meter.work <= refineBudget ? refine(x, y, aFrom, meter) : null
     if (edits) {
-      if (severalLines && keepsOnlyWhiteSpace(x, aFrom, edits)) out.push(whole)
-      else out.push(...edits)
+      if (severalLines && keepsOnlyWhiteSpace(x, aFrom, edits)) push(whole)
+      else for (const edit of edits) push(edit)
       return
     }
-    const parts = byLines && severalLines ? diffTokens(aTokens.subarray(hunk.aFrom, hunk.aTo), bl.tokens.subarray(hunk.bFrom, hunk.bTo)) : []
-    if (parts.length < 2) {
-      out.push(whole)
+    if (!severalLines) {
+      push(whole)
       return
     }
-    for (const part of parts) {
-      refineHunk({ aFrom: hunk.aFrom + part.aFrom, aTo: hunk.aFrom + part.aTo, bFrom: hunk.bFrom + part.bFrom, bTo: hunk.bFrom + part.bTo }, false)
+    const parts = byLines ? diffTokens(aTokens.subarray(hunk.aFrom, hunk.aTo), bl.tokens.subarray(hunk.bFrom, hunk.bTo)) : []
+    if (parts.length > 1) {
+      for (const part of parts) refineHunk({ aFrom: hunk.aFrom + part.aFrom, aTo: hunk.aFrom + part.aTo, bFrom: hunk.bFrom + part.bFrom, bTo: hunk.bFrom + part.bTo }, false)
+      return
     }
+    // No line in common (or too many changes to tell): pair the lines in order; the lines left over on one side are inserted or deleted.
+    const pairs = Math.min(hunk.aTo - hunk.aFrom, hunk.bTo - hunk.bFrom)
+    for (let k = 0; k < pairs; k += 1) refineHunk({ aFrom: hunk.aFrom + k, aTo: hunk.aFrom + k + 1, bFrom: hunk.bFrom + k, bTo: hunk.bFrom + k + 1 }, false)
+    const rest = { from: al.starts[firstLine + hunk.aFrom + pairs], to: aTo, insert: b.slice(bl.starts[hunk.bFrom + pairs], bl.starts[hunk.bTo]) }
+    if (rest.from < rest.to || rest.insert) push(rest)
   }
   for (const hunk of diffLines(aTokens, bl.tokens, cache.ids.size, gapLength)) refineHunk(hunk, true)
   return out

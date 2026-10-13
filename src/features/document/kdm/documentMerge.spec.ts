@@ -449,7 +449,20 @@ describe('mergeExternalText: large documents', () => {
     expect(largestEdit(edits)).toBeLessThan(1_000)
   }, 120_000)
 
-  it('replaces a huge changed range by whole lines, without character detail', () => {
+  it('refines a block whose every line changed line by line, however large (property)', () => {
+    for (const count of [100, 2_000]) {
+      // No line in common, ~14% of the characters changed: a 5 KB and a 100 KB block.
+      const base = Array.from({ length: count }, (_, index) => `Line ${index}, some ordinary text for the document.\n`).join('')
+      const incoming = base.replaceAll('ordinary', 'plain')
+      const edits = diffText(base, incoming)
+      expect(edits).toHaveLength(count)
+      expect(largestEdit(edits)).toBe('ordinary'.length)
+      const current = base.replace('Line 7, some', 'Line 7, one')
+      expect(merged(base, incoming, current)).toBe(incoming.replace('Line 7, some', 'Line 7, one'))
+    }
+  })
+
+  it('replaces a huge changed line as a whole, without character detail', () => {
     const rng = new Rng(35)
     const block = (letters: string) => Array.from({ length: 100_000 }, () => letters[rng.below(letters.length)]).join('')
     const base = `start\n${block('ab')}\nend\n`
