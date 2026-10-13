@@ -22,7 +22,7 @@ import { loadavg } from 'node:os'
 import { performance } from 'node:perf_hooks'
 import { randomActor, Replica, Rng, person, type ObjectId, type Origin } from '@/lib/kdm'
 import { TextBinding } from './codeMirrorBinding'
-import { applyEditsToString, mergeExternalText, type TextEdit } from './documentMerge'
+import { applyEditsToString, mergeEdits, mergeExternalText, type TextEdit } from './documentMerge'
 import { DOCUMENT_BODY, documentSchema } from './documentSchema'
 import { createDocumentReplica, documentBody, documentRootId, renderText, type LineStyle } from './documentText'
 
@@ -249,17 +249,23 @@ function measurePaste(markdown: string, pasteText: string): number {
 
 const EXTERNAL_MERGE_ORIGIN: Origin = { kind: 'import', principal: 'bench:file' }
 
-function measureMerge(markdown: string): number {
+/** The external merge, whole (diff, merge, and the replica transaction) and its diff and merge alone, with the number of edits. */
+function measureMerge(markdown: string): { whole: number; diff: number; edits: number } {
   const base = markdown
   const current = scatterEdits(base, 0.005, 1001)
   const incoming = scatterEdits(base, 0.01, 2002)
-  return benchmark(
+  const whole = benchmark(
     MERGE_RUNS,
     () => createDocumentReplica(current, randomActor()),
     ({ replica, rootId }) => {
       replica.transact(EXTERNAL_MERGE_ORIGIN, (tx) => mergeExternalText(tx, rootId, base, incoming, current))
     },
   )
+  let edits = 0
+  const diff = benchmark(MERGE_RUNS, () => undefined, () => {
+    edits = mergeEdits(base, incoming, current).length
+  })
+  return { whole, diff, edits }
 }
 
 function measureSave(replica: Replica, rootId: ObjectId, style: LineStyle): number {
@@ -323,7 +329,9 @@ function measureDocument(label: string, targetBytes: number): void {
 
   const pasteText = markdownOfSize(100_000)
   addTiming(label, '100 KB paste', measurePaste(markdown, pasteText), '–')
-  addTiming(label, 'mergeExternalText (1% external, 0.5% local)', measureMerge(markdown), '–')
+  const merge = measureMerge(markdown)
+  addTiming(label, 'mergeExternalText (1% external, 0.5% local)', merge.whole, '–')
+  addTiming(label, `mergeEdits alone (diff + merge, ${merge.edits} edits)`, merge.diff, label === '1 MB' ? '< 100 ms' : label === '5 MB' ? '< 500 ms' : '–')
   addTiming(label, 'renderText + snapshot() (save)', measureSave(sourceReplica, rootId, style), '< 300 ms')
   addTiming(label, 'undo of the last keystroke', measureUndo(markdown), '–')
 
