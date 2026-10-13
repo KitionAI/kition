@@ -5,7 +5,7 @@
  * temporary workspace folder. Dialogs, the clipboard, and notifications are
  * recorded instead of touching the host machine.
  */
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
@@ -171,6 +171,47 @@ export async function installDesktopHost(page: Page, options: DesktopHostOptions
     }
   }
 
+  // The document replica store under `.kition/docs/`, laid out like the desktop shell's.
+  const docIdPattern = /^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$/
+  const sha256 = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex')
+  const storeDir = () => path.join(activeRoot, '.kition', 'docs')
+  const indexFile = () => path.join(storeDir(), 'index.json')
+  const isIndexPath = (value: string) => {
+    try {
+      return normalize(value) === value
+    } catch {
+      return false
+    }
+  }
+  function entryDir(docId: unknown) {
+    if (typeof docId !== 'string' || !docIdPattern.test(docId)) throw new Error('invalid document id')
+    return path.join(storeDir(), docId.replace(/:/g, '%3A'))
+  }
+  async function readIfPresent(file: string) {
+    return fs.readFile(file).catch((error: NodeJS.ErrnoException) => {
+      if (error.code === 'ENOENT') return null
+      throw error
+    })
+  }
+  async function ensureStore() {
+    await fs.mkdir(storeDir(), { recursive: true })
+    const gitignore = path.join(storeDir(), '.gitignore')
+    if (!await exists(gitignore)) await fs.writeFile(gitignore, '*\n!.gitignore\n')
+  }
+  async function readIndex() {
+    const bytes = await readIfPresent(indexFile())
+    if (!bytes) return { entries: {}, version: null }
+    let stored: { entries?: Record<string, unknown> } = {}
+    try {
+      stored = JSON.parse(bytes.toString('utf8'))
+    } catch {
+      stored = {}
+    }
+    const entries = Object.fromEntries(Object.entries(stored.entries || {})
+      .filter(([file, docId]) => isIndexPath(file) && typeof docId === 'string' && docIdPattern.test(docId)))
+    return { entries, version: sha256(bytes) }
+  }
+
   async function saveTo(defaultName: string, write: (target: string) => Promise<void>) {
     const target = host.saveDialogPath === null ? '' : host.saveDialogPath || path.join(dataDir, 'exports', defaultName)
     if (!target) return ''
@@ -262,6 +303,54 @@ export async function installDesktopHost(page: Page, options: DesktopHostOptions
       await fs.mkdir(path.dirname(absolute), { recursive: true })
       await fs.writeFile(absolute, String(request?.content ?? ''))
       return documentResponse(relative, absolute)
+    },
+    read_document_store: async ({ request }) => {
+      checkRoot(request || {})
+      const dir = entryDir(request?.doc_id)
+      const [metaBytes, snapshot] = await Promise.all([readIfPresent(path.join(dir, 'meta.json')), readIfPresent(path.join(dir, 'snapshot.bin'))])
+      if (!metaBytes || !snapshot) return null
+      try {
+        const stored = JSON.parse(metaBytes.toString('utf8'))
+        if (stored?.snapshot?.sha256 !== sha256(snapshot) || stored?.meta?.docId !== request?.doc_id) return null
+        return { meta: stored.meta, snapshot_base64: snapshot.toString('base64') }
+      } catch {
+        return null
+      }
+    },
+    write_document_store: async ({ request }) => {
+      checkRoot(request || {})
+      const dir = entryDir(request?.doc_id)
+      const meta = request?.meta as { docId?: unknown } | undefined
+      if (!meta || meta.docId !== request?.doc_id) throw new Error('document store meta names another document')
+      const snapshot = Buffer.from(String(request?.snapshot_base64 ?? ''), 'base64')
+      await ensureStore()
+      await fs.mkdir(dir, { recursive: true })
+      await fs.writeFile(path.join(dir, 'snapshot.bin'), snapshot)
+      const stored = { format: 1, meta, snapshot: { sha256: sha256(snapshot), size: snapshot.length } }
+      await fs.writeFile(path.join(dir, 'meta.json'), `${JSON.stringify(stored, null, 2)}\n`)
+      return null
+    },
+    delete_document_store: async ({ request }) => {
+      checkRoot(request || {})
+      await fs.rm(entryDir(request?.doc_id), { recursive: true, force: true })
+      return null
+    },
+    read_document_index: async ({ request }) => {
+      checkRoot(request || {})
+      return readIndex()
+    },
+    write_document_index: async ({ request }) => {
+      checkRoot(request || {})
+      const entries = (request?.entries || {}) as Record<string, unknown>
+      for (const [file, docId] of Object.entries(entries)) {
+        if (!isIndexPath(file)) throw new Error('invalid document path in the document index')
+        if (typeof docId !== 'string' || !docIdPattern.test(docId)) throw new Error('invalid document id')
+      }
+      if ((await readIndex()).version !== (request?.expected_version ?? null)) throw new Error('DOCUMENT_INDEX_CONFLICT')
+      const bytes = Buffer.from(`${JSON.stringify({ format: 1, entries }, null, 2)}\n`)
+      await ensureStore()
+      await fs.writeFile(indexFile(), bytes)
+      return { version: sha256(bytes) }
     },
     create_workspace_document: async ({ request }) => {
       const folder = normalize(request?.folder, true)

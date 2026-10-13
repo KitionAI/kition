@@ -1,9 +1,12 @@
 /**
  * Mounts the workspace with an in-memory desktop bridge that serves one
- * Markdown document (plus optional extra documents), so editor specs can
- * run against the real renderer without the desktop shell or the runtime.
+ * Markdown document (plus optional extra documents) and an in-memory document
+ * replica store (`./documentStore`), so editor specs can run against the real
+ * renderer without the desktop shell or the runtime.
  */
 import type { Page } from '@playwright/test'
+
+import { installDocumentStoreBridge } from './documentStore'
 
 const VAULT_PATH = '/tmp/kition-e2e-vault'
 export const DEFAULT_DOC_PATH = 'table-test.md'
@@ -116,6 +119,8 @@ export async function mockDesktopBridge(
       secureValues: options.secureValues ?? {},
     },
   )
+
+  await installDocumentStoreBridge(page, { root: VAULT_PATH })
 
   await page.addInitScript(() => {
     const idleWindow = window as typeof window & {
