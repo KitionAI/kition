@@ -264,3 +264,23 @@ test('undo after a reload reverts only the typing of the new page load', async (
   expect(await readMarkdownFileText(page)).toBe('# History\n\nLine. One\n')
   await expect(editor(page)).toContainText('Line. One')
 })
+
+test('the browser’s own undo and redo (the Edit menu) run on the replica, not as typing', async ({ page }) => {
+  await openFixture(page, '# Menu\n\nLine.\n')
+  await caretAtEndOf(page, 'Line.')
+  await page.keyboard.type(' Typed')
+  await expectFileText(page, '# Menu\n\nLine. Typed\n')
+
+  // The desktop shell's Edit > Undo and Redo reach the editor as `beforeinput` history events.
+  const nativeHistory = (inputType: 'historyUndo' | 'historyRedo') => editor(page).evaluate((content, type) => {
+    const event = new InputEvent('beforeinput', { inputType: type, bubbles: true, cancelable: true })
+    content.dispatchEvent(event)
+    return event.defaultPrevented
+  }, inputType)
+  expect(await nativeHistory('historyUndo')).toBe(true)
+  await expectFileText(page, '# Menu\n\nLine.\n')
+  await expect(editor(page)).not.toContainText('Typed')
+  expect(await nativeHistory('historyRedo')).toBe(true)
+  await expectFileText(page, '# Menu\n\nLine. Typed\n')
+  await expect(editor(page)).toContainText('Line. Typed')
+})

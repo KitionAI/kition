@@ -5,7 +5,7 @@
  */
 import { redo, undo } from '@codemirror/commands'
 import { Facet, Prec, type Extension } from '@codemirror/state'
-import { keymap, type Command } from '@codemirror/view'
+import { EditorView, keymap, type Command } from '@codemirror/view'
 
 /** What an editor's undo and redo run against. */
 export type DocumentHistory = {
@@ -43,7 +43,23 @@ const documentHistoryKeymap = [
   { linux: 'Ctrl-Shift-z', run: redoDocument, preventDefault: true },
 ]
 
+/**
+ * The browser's own undo and redo of the editor's content (the Edit menu of the desktop shell, a
+ * context menu, `execCommand('undo')`) arrive as `beforeinput` with `historyUndo` / `historyRedo`.
+ * Left to the browser, they would change the content behind CodeMirror, which would then publish
+ * the result as typing; they run the replica's undo and redo instead.
+ */
+const nativeHistoryHandlers = EditorView.domEventHandlers({
+  beforeinput(event, view) {
+    const command = event.inputType === 'historyUndo' ? undoDocument : event.inputType === 'historyRedo' ? redoDocument : null
+    if (!command) return false
+    event.preventDefault()
+    command(view)
+    return true
+  },
+})
+
 /** Gives an editor the replica's undo and redo (the editor must not load CodeMirror's `history()`). */
 export function documentHistoryExtension(history: DocumentHistory): Extension {
-  return [documentHistory.of(history), Prec.high(keymap.of(documentHistoryKeymap))]
+  return [documentHistory.of(history), Prec.high(keymap.of(documentHistoryKeymap)), Prec.high(nativeHistoryHandlers)]
 }

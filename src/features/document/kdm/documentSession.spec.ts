@@ -229,6 +229,28 @@ describe('DocumentSession: editing', () => {
     expect(a.text()).toBe('word')
   })
 
+  it('runs the browser’s native undo and redo (Edit menu, execCommand) on the replica', async () => {
+    const session = await open('Hello')
+    const a = editor(session)
+    a.type({ from: 5, insert: ' there' })
+    await settle(TYPING_GROUP_MS + 10)
+    const native = (inputType: string) => {
+      const event = new InputEvent('beforeinput', { inputType, bubbles: true, cancelable: true })
+      a.view.contentDOM.dispatchEvent(event)
+      return event
+    }
+    const undo = native('historyUndo')
+    expect(undo.defaultPrevented).toBe(true)
+    await settle()
+    expect(session.text()).toBe('Hello')
+    expect(a.text()).toBe('Hello')
+    const redo = native('historyRedo')
+    expect(redo.defaultPrevented).toBe(true)
+    await settle()
+    expect(session.text()).toBe('Hello there')
+    expect(a.text()).toBe('Hello there')
+  })
+
   it('keeps an isolated transaction (a translation) its own undo step', async () => {
     const session = await open('Hello')
     const a = editor(session)
