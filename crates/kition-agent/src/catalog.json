@@ -24,7 +24,7 @@
     },
     {
       "name": "artifact_write",
-      "description": "Save a deliverable into the Kition document workspace at the given relative path. Supported extensions: .md / .markdown / .txt for readable text and .html / .htm for complete standalone HTML pages. DOCX and XLSX generation are not supported; PPTX creation is reserved for the whiteboard presentation workflow.",
+      "description": "Save a deliverable into the Kition document workspace at the given relative path. Supported extensions: .md / .markdown / .txt for readable text and .html / .htm for complete standalone HTML pages. DOCX and XLSX generation are not supported; PPTX creation is reserved for the whiteboard slides workflow.",
       "category": "artifact",
       "input_schema": {
         "type": "object",
@@ -2032,7 +2032,7 @@
     },
     {
       "name": "visual-assets",
-      "description": "Generate AI visuals, save visual assets, and use them in documents and decks.",
+      "description": "Generate AI visuals, save visual assets, and use them in documents and slides.",
       "triggers": [
         "image",
         "visual",

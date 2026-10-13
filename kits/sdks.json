@@ -127,12 +127,12 @@
       }
     }
   },
-  "presentation": {
-    "repository": "KitionAI/kition-presentation",
-    "crate": "kition-presentation-sdk",
-    "module": "kition_presentation_sdk",
-    "class": "PresentationDocument",
-    "name": "Deck.deckcraft",
+  "slide": {
+    "repository": "KitionAI/kition-slide",
+    "crate": "kition-slide-sdk",
+    "module": "kition_slide_sdk",
+    "class": "SlideDocument",
+    "name": "Slides.kislide",
     "edit": {
       "command": "shape.insert",
       "params": {

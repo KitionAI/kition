@@ -35,8 +35,8 @@ pub fn infer_format(path: &str) -> &'static str {
         ".designcraft" => "layout",
         // CAD drawings, edited in the CAD kit.
         ".dxf" => "cad",
-        // Presentations, edited in the Presentation kit (PowerPoint files too, as `pptx`).
-        ".deckcraft" => "presentation",
+        // Slides, edited in the Slides kit (PowerPoint files too, as `pptx`).
+        ".kislide" => "slide",
         ".mp4" | ".mov" | ".webm" => "video",
         ".mp3" | ".wav" | ".m4a" => "audio",
         _ => "binary",
@@ -97,7 +97,7 @@ pub fn is_supported(path: &str) -> bool {
             "ecproj",
             "designcraft",
             "dxf",
-            "deckcraft",
+            "kislide",
             "mp4",
             "mov",
             "webm",
@@ -116,7 +116,7 @@ mod tests {
     fn classifies_workspace_files() {
         assert_eq!(infer_format("notes/Plan.MD"), "markdown");
         assert_eq!(infer_format("data/table.kitable"), "data");
-        assert_eq!(infer_format("deck.kidesign"), "design");
+        assert_eq!(infer_format("poster.kidesign"), "design");
         assert_eq!(infer_format("photo.JPEG"), "image");
         assert_eq!(infer_format("archive.zip"), "binary");
         assert_eq!(infer_format("art/Cover.PSD"), "photo");
@@ -130,8 +130,8 @@ mod tests {
         assert!(is_supported("print/Flyer.designcraft"));
         assert_eq!(infer_format("plans/Floor.DXF"), "cad");
         assert!(is_supported("plans/Floor.dxf"));
-        assert_eq!(infer_format("talks/Launch.deckcraft"), "presentation");
-        assert!(is_supported("talks/Launch.deckcraft"));
+        assert_eq!(infer_format("talks/Launch.kislide"), "slide");
+        assert!(is_supported("talks/Launch.kislide"));
         assert!(is_supported("art/poster.psb"));
         assert!(!is_text("art/poster.pcraft"));
         assert_eq!(infer_format(".md"), "binary");

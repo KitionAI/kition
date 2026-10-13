@@ -179,7 +179,7 @@ function TemplatePreviewContent({ templateId }: { templateId: WhiteboardTemplate
           <rect x="131" y="23" width="34" height="13" rx="3" className="fill-accent stroke-brand" />
         </>
       )
-    case 'presentation-storyboard':
+    case 'slide-storyboard':
       return (
         <>
           {[8, 66, 124].flatMap((x) => [5, 36].map((y) => (

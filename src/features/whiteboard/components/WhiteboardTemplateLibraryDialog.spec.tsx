@@ -88,13 +88,13 @@ describe('WhiteboardTemplateLibraryDialog', () => {
 
     await act(async () => {
       const category = document.querySelector(
-        '[data-testid="workspace-template-category-presentation"]',
+        '[data-testid="workspace-template-category-slide"]',
       ) as HTMLButtonElement
       category.click()
       await Promise.resolve()
     })
 
-    expect(document.querySelector('[data-testid="whiteboard-template-create-presentation-storyboard"]')).not.toBeNull()
+    expect(document.querySelector('[data-testid="whiteboard-template-create-slide-storyboard"]')).not.toBeNull()
     expect(document.querySelector('[data-testid="whiteboard-template-create-mind-map"]')).toBeNull()
     expect(document.querySelector('[data-testid="whiteboard-template-blank"]')).toBeNull()
   })

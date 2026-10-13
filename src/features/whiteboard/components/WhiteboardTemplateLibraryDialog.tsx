@@ -50,7 +50,7 @@ export function WhiteboardTemplateLibraryDialog({
     { id: 'recommended' as const, label: t('board.templates.categories.recommended'), icon: Sparkles },
     { id: 'planning' as const, label: t('board.templates.categories.planning'), icon: ListChecks },
     { id: 'meetings' as const, label: t('board.templates.categories.meetings'), icon: MessagesSquare },
-    { id: 'presentation' as const, label: t('board.templates.categories.presentation'), icon: Presentation },
+    { id: 'slide' as const, label: t('board.templates.categories.slide'), icon: Presentation },
   ], [t])
 
   useEffect(() => {

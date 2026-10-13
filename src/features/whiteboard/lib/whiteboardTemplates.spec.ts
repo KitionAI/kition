@@ -15,7 +15,7 @@ describe('whiteboard templates', () => {
       'project-roadmap',
       'kanban-board',
       'meeting-retrospective',
-      'presentation-storyboard',
+      'slide-storyboard',
     ])
 
     for (const template of WHITEBOARD_TEMPLATES) {

@@ -162,8 +162,7 @@ pub async fn artifact_write(run: &Run, input: &Value) -> ToolResult {
         "md" | "markdown" | "txt" | "html" | "htm" => {}
         "pptx" => {
             return Err(
-                "PPTX creation is only available through the whiteboard presentation workflow"
-                    .into(),
+                "PPTX creation is only available through the whiteboard slides workflow".into(),
             );
         }
         "docx" | "xlsx" => {

@@ -8,26 +8,26 @@ import { fulfillJson, mockLocalWorkspaceApi } from './helpers/mockApi'
 import { dismissFirstRunActivation } from './helpers/onboarding'
 import { canReadBlobBodies } from './helpers/requestBody'
 
-const SDK_DIR = path.join(process.cwd(), 'public', 'kits', 'presentation-sdk')
-const UI_MARKER = path.join(process.cwd(), 'public', 'kits', 'presentation-ui', 'kit-ui.json')
-const SDK_WASM = path.join(SDK_DIR, 'kition_presentation_sdk_bg.wasm')
+const SDK_DIR = path.join(process.cwd(), 'public', 'kits', 'slide-sdk')
+const UI_MARKER = path.join(process.cwd(), 'public', 'kits', 'slide-ui', 'kit-ui.json')
+const SDK_WASM = path.join(SDK_DIR, 'kition_slide_sdk_bg.wasm')
 
-type NodePresentationDocument = { save(): Uint8Array; execute(command: string, params: string): string; inspect(): string; free(): void }
-type NodePresentationSdk = {
+type NodeSlideDocument = { save(): Uint8Array; execute(command: string, params: string): string; inspect(): string; free(): void }
+type NodeSlideSdk = {
   default: (input: { module_or_path: Buffer }) => Promise<unknown>
-  PresentationDocument: { create(name: string, width: number, height: number): NodePresentationDocument; open(name: string, bytes: Uint8Array): NodePresentationDocument }
+  SlideDocument: { create(name: string, width: number, height: number): NodeSlideDocument; open(name: string, bytes: Uint8Array): NodeSlideDocument }
 }
 
 async function loadSdk() {
-  const sdk = (await import(pathToFileURL(path.join(SDK_DIR, 'kition_presentation_sdk.js')).href)) as NodePresentationSdk
+  const sdk = (await import(pathToFileURL(path.join(SDK_DIR, 'kition_slide_sdk.js')).href)) as NodeSlideSdk
   await sdk.default({ module_or_path: await fs.readFile(SDK_WASM) })
   return sdk
 }
 
-/** A real deck made by the same engine the page runs: a title slide, and a second slide with a square. */
-async function deckFixture() {
+/** Real slides made by the same engine the page runs: a title slide, and a second slide with a square. */
+async function slidesFixture() {
   const sdk = await loadSdk()
-  const doc = sdk.PresentationDocument.create('Launch.deckcraft', 960, 540)
+  const doc = sdk.SlideDocument.create('Launch.kislide', 960, 540)
   doc.execute('slide.new', '{}')
   doc.execute('shape.insert', JSON.stringify({ preset: 'rect', rect: [380, 170, 200, 200] }))
   doc.execute('slide.go', JSON.stringify({ index: 0 }))
@@ -38,10 +38,10 @@ async function deckFixture() {
 
 type InspectedSlide = { shapes: Array<{ preset?: string; text?: string }> }
 
-/** The shapes on slide `index` of a saved deck. */
+/** The shapes on slide `index` of a saved slides file. */
 async function shapesIn(bytes: Buffer, index: number) {
   const sdk = await loadSdk()
-  const doc = sdk.PresentationDocument.open('Saved.deckcraft', bytes)
+  const doc = sdk.SlideDocument.open('Saved.kislide', bytes)
   const slide = JSON.parse(doc.execute('slide.inspect', JSON.stringify({ index }))) as InspectedSlide
   doc.free()
   return slide.shapes
@@ -60,13 +60,13 @@ async function serveWorkspace(page: Page, root: string) {
   })
 }
 
-test('opens a deck in the Presentation kit’s own editor, edits it there, and saves it through Kition', async ({ page, baseURL, browserName }, testInfo) => {
-  test.skip(!existsSync(SDK_WASM) || !existsSync(UI_MARKER), 'the Presentation kit editor is not built into public/kits/presentation-ui')
+test('opens slides in the Slides kit’s own editor, edits it there, and saves it through Kition', async ({ page, baseURL, browserName }, testInfo) => {
+  test.skip(!existsSync(SDK_WASM) || !existsSync(UI_MARKER), 'the Slides kit editor is not built into public/kits/slide-ui')
   test.setTimeout(120_000)
   const host = await installDesktopHost(page)
   try {
-    const fixture = await deckFixture()
-    await fs.writeFile(path.join(host.root, 'Launch.deckcraft'), fixture)
+    const fixture = await slidesFixture()
+    await fs.writeFile(path.join(host.root, 'Launch.kislide'), fixture)
     await mockLocalWorkspaceApi(page)
     await serveWorkspace(page, host.root)
     const saves: Array<{ path: string | null; bytes: Buffer }> = []
@@ -84,12 +84,12 @@ test('opens a deck in the Presentation kit’s own editor, edits it there, and s
     // Kition shows the kit's editor in a frame, and the kit draws everything in it.
     await expect(page.getByTestId('kit-frame')).toBeVisible()
     const kit = page.frameLocator('[data-testid="kit-frame-window"]')
-    await expect(kit.getByTestId('deck-status')).toHaveText('Slide 1 of 2', { timeout: 60_000 })
+    await expect(kit.getByTestId('slides-status')).toHaveText('Slide 1 of 2', { timeout: 60_000 })
     await expect(kit.getByTestId('ribbon-tab-home')).toHaveText('Home')
-    await expect(kit.getByTestId('deck-slide-1')).toBeVisible()
+    await expect(kit.getByTestId('slides-slide-1')).toBeVisible()
     // The slide list draws each slide: the second one has its square.
     const darkPixels = () =>
-      kit.getByTestId('deck-slide-1').locator('canvas').evaluate((canvas: HTMLCanvasElement) => {
+      kit.getByTestId('slides-slide-1').locator('canvas').evaluate((canvas: HTMLCanvasElement) => {
         const data = canvas.getContext('2d')?.getImageData(0, 0, canvas.width, canvas.height).data
         let dark = 0
         for (let index = 0; data && index < data.length; index += 4) if (data[index] < 200) dark += 1
@@ -99,24 +99,24 @@ test('opens a deck in the Presentation kit’s own editor, edits it there, and s
     await expect(page.getByTestId('kit-opening')).toHaveCount(0)
 
     // The slide list goes to slide 2; a new slide and Undo work in the kit.
-    await kit.getByTestId('deck-slide-1').click()
-    await expect(kit.getByTestId('deck-status')).toHaveText('Slide 2 of 2')
-    await kit.getByTestId('deck-add-slide').click()
-    await expect(kit.getByTestId('deck-status')).toHaveText('Slide 3 of 3')
-    await expect(kit.getByTestId('deck-unsaved')).toBeVisible()
+    await kit.getByTestId('slides-slide-1').click()
+    await expect(kit.getByTestId('slides-status')).toHaveText('Slide 2 of 2')
+    await kit.getByTestId('slides-add-slide').click()
+    await expect(kit.getByTestId('slides-status')).toHaveText('Slide 3 of 3')
+    await expect(kit.getByTestId('slides-unsaved')).toBeVisible()
     await kit.getByRole('button', { name: 'Undo' }).click()
-    await expect(kit.getByTestId('deck-status')).toHaveText(/of 2$/)
-    await kit.getByTestId('deck-add-slide').click()
-    await expect(kit.getByTestId('deck-status')).toHaveText(/of 3$/)
-    await page.screenshot({ path: testInfo.outputPath('presentation-embedded.png') })
+    await expect(kit.getByTestId('slides-status')).toHaveText(/of 2$/)
+    await kit.getByTestId('slides-add-slide').click()
+    await expect(kit.getByTestId('slides-status')).toHaveText(/of 3$/)
+    await page.screenshot({ path: testInfo.outputPath('slide-embedded.png') })
 
     // Save goes through Kition's file API (host/write).
-    await kit.getByTestId('deck-save').click()
-    await expect(kit.getByTestId('deck-unsaved')).toHaveCount(0)
-    expect(saves.map((save) => save.path)).toEqual(['Launch.deckcraft'])
+    await kit.getByTestId('slides-save').click()
+    await expect(kit.getByTestId('slides-unsaved')).toHaveCount(0)
+    expect(saves.map((save) => save.path)).toEqual(['Launch.kislide'])
     if (canReadBlobBodies(browserName)) {
       const sdk = await loadSdk()
-      const reopened = sdk.PresentationDocument.open('Saved.deckcraft', saves[0].bytes)
+      const reopened = sdk.SlideDocument.open('Saved.kislide', saves[0].bytes)
       expect((JSON.parse(reopened.inspect()) as { slides: unknown[] }).slides).toHaveLength(3)
       reopened.free()
     }

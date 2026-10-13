@@ -54,10 +54,10 @@ function slideArea(inspected: Record<string, unknown>, index: number, key = 'sli
   return area ? { x0: area.x, y0: area.y, x1: area.x + area.width, y1: area.y + area.height } : null
 }
 
-/** The Presentation engine (`kition-presentation-sdk` in the kition-presentation repository), built by `scripts/build-kit-sdk.sh presentation`. */
-export const PRESENTATION_KIT: StandardKitSpec = {
-  sdk: { kitId: 'kit.presentation', dir: 'presentation-sdk', module: 'kition_presentation_sdk', documentClass: 'PresentationDocument' },
-  key: 'presentation',
+/** The Slides engine (`kition-slide-sdk` in the kition-slide repository), built by `scripts/build-kit-sdk.sh slide`. */
+export const SLIDE_KIT: StandardKitSpec = {
+  sdk: { kitId: 'kit.slide', dir: 'slide-sdk', module: 'kition_slide_sdk', documentClass: 'SlideDocument' },
+  key: 'slide',
   icon: Presentation,
   menuOrder: ['File', 'Edit', 'Home', 'Insert', 'Design', 'Transitions', 'Animations', 'Slide Show', 'Review', 'View', 'Arrange', 'Format', 'Shape Format', 'Picture Format', 'Table Design', 'Table Layout', 'Chart Design', 'Slide Master', 'Window'],
   tools: { initial: 'select' },

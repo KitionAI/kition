@@ -12,7 +12,7 @@
       "motion": "Motion graphics",
       "layout": "Diagramação",
       "cad": "Desenho CAD",
-      "presentation": "Apresentação",
+      "slide": "Slides",
       "word": "Documento do Word",
       "spreadsheet": "Planilha",
       "pdf": "PDF"
@@ -291,7 +291,7 @@
         "recommended": "Recomendados",
         "planning": "Planejamento e diagramas",
         "meetings": "Reuniões",
-        "presentation": "Apresentações"
+        "slide": "Slides"
       },
       "creation": {
         "title": "Central de modelos de quadro",
@@ -325,9 +325,9 @@
           "name": "Retrospectiva de reunião",
           "description": "Registre acertos, melhorias e próximas ações."
         },
-        "presentation-storyboard": {
-          "name": "Storyboard de apresentação",
-          "description": "Esboce uma narrativa de seis slides antes de montar a apresentação."
+        "slide-storyboard": {
+          "name": "Storyboard de slides",
+          "description": "Esboce uma narrativa de seis slides antes de montá-los."
         }
       },
       "content": {
@@ -390,7 +390,7 @@
           "review": "Revisar o progresso na próxima semana"
         },
         "storyboard": {
-          "title": "Storyboard de apresentação",
+          "title": "Storyboard de slides",
           "cover": "Abertura",
           "problem": "Problema",
           "insight": "Insight principal",
@@ -903,10 +903,10 @@
     "unavailableTitle": "A edição CAD não está disponível nesta versão",
     "unavailableBody": "Desenhos CAD abrem no Kition quando o mecanismo CAD está incluído."
   },
-  "presentationKit": {
+  "slideKit": {
     "summary": "Slide {{slide}} de {{slides}}, {{selected}} selecionados",
-    "unavailableTitle": "A edição de apresentações não está disponível nesta versão",
-    "unavailableBody": "Apresentações abrem no Kition quando o mecanismo de apresentações está incluído."
+    "unavailableTitle": "A edição de Slides não está disponível nesta versão",
+    "unavailableBody": "Os slides abrem no Kition quando o mecanismo Slides está incluído."
   },
   "wordKit": {
     "summary": "Página {{page}} de {{pages}}, {{words}} palavras",

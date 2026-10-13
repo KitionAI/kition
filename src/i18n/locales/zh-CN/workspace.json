@@ -12,7 +12,7 @@
       "motion": "动态图形",
       "layout": "版式",
       "cad": "CAD 图纸",
-      "presentation": "演示文稿",
+      "slide": "幻灯片",
       "word": "Word 文档",
       "spreadsheet": "电子表格",
       "pdf": "PDF"
@@ -291,7 +291,7 @@
         "recommended": "推荐",
         "planning": "规划与图表",
         "meetings": "会议",
-        "presentation": "演示"
+        "slide": "幻灯片"
       },
       "creation": {
         "title": "画板模板中心",
@@ -325,9 +325,9 @@
           "name": "会议复盘",
           "description": "记录做得好的地方、待改进项和后续行动。"
         },
-        "presentation-storyboard": {
-          "name": "演示分镜",
-          "description": "在制作演示文稿前先梳理六页叙事结构。"
+        "slide-storyboard": {
+          "name": "幻灯片分镜",
+          "description": "在制作幻灯片前先梳理六页叙事结构。"
         }
       },
       "content": {
@@ -390,7 +390,7 @@
           "review": "下周回顾执行进展"
         },
         "storyboard": {
-          "title": "演示分镜",
+          "title": "幻灯片分镜",
           "cover": "开场",
           "problem": "问题",
           "insight": "关键洞察",
@@ -903,10 +903,10 @@
     "unavailableTitle": "此版本不支持 CAD 编辑",
     "unavailableBody": "包含 CAD 引擎时，CAD 图纸会在 Kition 中打开。"
   },
-  "presentationKit": {
+  "slideKit": {
     "summary": "第 {{slide}} 张，共 {{slides}} 张，已选 {{selected}} 个",
-    "unavailableTitle": "此版本不支持编辑演示文稿",
-    "unavailableBody": "包含演示文稿引擎时，演示文稿会在 Kition 中打开。"
+    "unavailableTitle": "此版本不支持编辑幻灯片",
+    "unavailableBody": "包含幻灯片引擎时，幻灯片会在 Kition 中打开。"
   },
   "wordKit": {
     "summary": "第 {{page}} 页，共 {{pages}} 页，{{words}} 个字",

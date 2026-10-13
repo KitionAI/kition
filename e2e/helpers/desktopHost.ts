@@ -40,7 +40,7 @@ export type DesktopHost = {
 
 const editable = /\.(md|markdown|kitable|kiboard|kidesign)$/i
 const textual = /\.(md|markdown|kiboard|kidesign|txt|csv|tsv|json|html|htm)$/i
-const supported = /\.(md|markdown|kitable|kiboard|kidesign|txt|csv|tsv|json|html|htm|pdf|docx|xlsx|xls|pptx|ppt|png|jpe?g|gif|webp|svg|psd|psb|pcraft|fcproj|vectorcraft|drawcraft|ecproj|designcraft|dxf|deckcraft|mp4|mov|webm|mp3|wav|m4a)$/i
+const supported = /\.(md|markdown|kitable|kiboard|kidesign|txt|csv|tsv|json|html|htm|pdf|docx|xlsx|xls|pptx|ppt|png|jpe?g|gif|webp|svg|psd|psb|pcraft|fcproj|vectorcraft|drawcraft|ecproj|designcraft|dxf|kislide|mp4|mov|webm|mp3|wav|m4a)$/i
 
 function formatOf(file: string) {
   const extension = path.extname(file).toLowerCase()
@@ -49,7 +49,7 @@ function formatOf(file: string) {
     '.docx': 'docx', '.xlsx': 'xlsx', '.xls': 'xlsx', '.pptx': 'pptx', '.ppt': 'pptx', '.pdf': 'pdf',
     '.csv': 'csv', '.tsv': 'csv', '.json': 'json', '.txt': 'text', '.html': 'html', '.htm': 'html',
     '.png': 'image', '.jpg': 'image', '.jpeg': 'image', '.gif': 'image', '.webp': 'image', '.svg': 'image',
-    '.psd': 'photo', '.psb': 'photo', '.pcraft': 'photo', '.fcproj': 'film', '.vectorcraft': 'vector', '.drawcraft': 'vector', '.ecproj': 'effect', '.designcraft': 'layout', '.dxf': 'cad', '.deckcraft': 'presentation',
+    '.psd': 'photo', '.psb': 'photo', '.pcraft': 'photo', '.fcproj': 'film', '.vectorcraft': 'vector', '.drawcraft': 'vector', '.ecproj': 'effect', '.designcraft': 'layout', '.dxf': 'cad', '.kislide': 'slide',
     '.mp4': 'video', '.mov': 'video', '.webm': 'video', '.mp3': 'audio', '.wav': 'audio', '.m4a': 'audio',
   }
   return formats[extension] || 'binary'

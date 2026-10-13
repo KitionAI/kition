@@ -13,7 +13,7 @@ import { EFFECT_SDK } from '../effect/effectKitSdk'
 import { VectorUnavailable } from '../vector/VectorUnavailable'
 import { VECTOR_SDK } from '../vector/vectorKitSdk'
 import { StandardKitUnavailable } from './StandardKitUnavailable'
-import { CAD_KIT, PDF_KIT, PRESENTATION_KIT, SHEET_KIT, WORD_KIT, type StandardKitSpec } from './standardKits'
+import { CAD_KIT, PDF_KIT, SHEET_KIT, SLIDE_KIT, WORD_KIT, type StandardKitSpec } from './standardKits'
 
 /** What every kit editor receives from the workspace tab. */
 export type KitEditorProps = {
@@ -69,7 +69,7 @@ function standardKit(spec: StandardKitSpec, format: WorkspaceDocumentFormat, opt
 }
 
 /** The kits' own editors, built by `scripts/build-kit-ui.sh <kit>`. */
-const PRESENTATION_UI: EmbeddedKit = { kitId: 'kit.presentation', dir: 'presentation-ui' }
+const SLIDE_UI: EmbeddedKit = { kitId: 'kit.slide', dir: 'slide-ui' }
 const WORD_UI: EmbeddedKit = { kitId: 'kit.word', dir: 'word-ui' }
 const SHEET_UI: EmbeddedKit = { kitId: 'kit.sheet', dir: 'sheet-ui' }
 const PDF_UI: EmbeddedKit = { kitId: 'kit.pdf', dir: 'pdf-ui' }
@@ -124,9 +124,9 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
   },
   // A3 in millimetres; the engine starts a metric drawing with those limits.
   standardKit(CAD_KIT, 'cad', { embedded: CAD_UI, create: { id: 'cad', extension: 'dxf', baseName: 'Untitled CAD drawing', size: { width: 420, height: 297 }, label: 'createMenu.format.cad', icon: DraftingCompass } }),
-  standardKit(PRESENTATION_KIT, 'presentation', { embedded: PRESENTATION_UI, create: { id: 'presentation', extension: 'deckcraft', baseName: 'Untitled presentation', size: { width: 960, height: 540 }, label: 'createMenu.format.presentation', icon: Presentation } }),
-  // PowerPoint files open in the Presentation kit, and keep the file preview without it.
-  standardKit(PRESENTATION_KIT, 'pptx', { preview: true, embedded: PRESENTATION_UI }),
+  standardKit(SLIDE_KIT, 'slide', { embedded: SLIDE_UI, create: { id: 'slide', extension: 'kislide', baseName: 'Untitled slides', size: { width: 960, height: 540 }, label: 'createMenu.format.slide', icon: Presentation } }),
+  // PowerPoint files open in the Slides kit, and keep the file preview without it.
+  standardKit(SLIDE_KIT, 'pptx', { preview: true, embedded: SLIDE_UI }),
   // Word files open in the Word kit, and keep the file preview without it. US Letter, in points.
   standardKit(WORD_KIT, 'docx', { preview: true, embedded: WORD_UI, create: { id: 'word', extension: 'docx', baseName: 'Untitled Word document', size: { width: 612, height: 792 }, label: 'createMenu.format.word', icon: FileText } }),
   // Excel files open in the Sheet kit, and keep the file preview without it.

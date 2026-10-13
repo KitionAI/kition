@@ -33,7 +33,7 @@ const TEMPLATE_IDS = [
   'project-roadmap',
   'kanban-board',
   'meeting-retrospective',
-  'presentation-storyboard',
+  'slide-storyboard',
 ] as const
 
 test.beforeEach(async ({ page }) => {

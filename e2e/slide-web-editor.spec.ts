@@ -8,25 +8,25 @@ import { fulfillJson, mockLocalWorkspaceApi } from './helpers/mockApi'
 import { dismissFirstRunActivation } from './helpers/onboarding'
 import { canReadBlobBodies } from './helpers/requestBody'
 
-const SDK_DIR = path.join(process.cwd(), 'public', 'kits', 'presentation-sdk')
-const SDK_WASM = path.join(SDK_DIR, 'kition_presentation_sdk_bg.wasm')
+const SDK_DIR = path.join(process.cwd(), 'public', 'kits', 'slide-sdk')
+const SDK_WASM = path.join(SDK_DIR, 'kition_slide_sdk_bg.wasm')
 
-type NodePresentationDocument = { save(): Uint8Array; execute(command: string, params: string): string; inspect(): string; free(): void }
-type NodePresentationSdk = {
+type NodeSlideDocument = { save(): Uint8Array; execute(command: string, params: string): string; inspect(): string; free(): void }
+type NodeSlideSdk = {
   default: (input: { module_or_path: Buffer }) => Promise<unknown>
-  PresentationDocument: { create(name: string, width: number, height: number): NodePresentationDocument; open(name: string, bytes: Uint8Array): NodePresentationDocument }
+  SlideDocument: { create(name: string, width: number, height: number): NodeSlideDocument; open(name: string, bytes: Uint8Array): NodeSlideDocument }
 }
 
 async function loadSdk() {
-  const sdk = (await import(pathToFileURL(path.join(SDK_DIR, 'kition_presentation_sdk.js')).href)) as NodePresentationSdk
+  const sdk = (await import(pathToFileURL(path.join(SDK_DIR, 'kition_slide_sdk.js')).href)) as NodeSlideSdk
   await sdk.default({ module_or_path: await fs.readFile(SDK_WASM) })
   return sdk
 }
 
-/** A real deck made by the same engine the page runs: a title slide, and a second slide with a square. */
-async function deckFixture() {
+/** Real slides made by the same engine the page runs: a title slide, and a second slide with a square. */
+async function slidesFixture() {
   const sdk = await loadSdk()
-  const doc = sdk.PresentationDocument.create('Launch.deckcraft', 960, 540)
+  const doc = sdk.SlideDocument.create('Launch.kislide', 960, 540)
   doc.execute('slide.new', '{}')
   doc.execute('shape.insert', JSON.stringify({ preset: 'rect', rect: [380, 170, 200, 200] }))
   doc.execute('slide.go', JSON.stringify({ index: 0 }))
@@ -37,10 +37,10 @@ async function deckFixture() {
 
 type InspectedSlide = { shapes: Array<{ preset?: string; text?: string }> }
 
-/** The shapes on slide `index` of a saved deck. */
+/** The shapes on slide `index` of a saved slides file. */
 async function shapesIn(bytes: Buffer, index: number) {
   const sdk = await loadSdk()
-  const doc = sdk.PresentationDocument.open('Saved.deckcraft', bytes)
+  const doc = sdk.SlideDocument.open('Saved.kislide', bytes)
   const slide = JSON.parse(doc.execute('slide.inspect', JSON.stringify({ index }))) as InspectedSlide
   doc.free()
   return slide.shapes
@@ -66,16 +66,16 @@ async function drag(page: Page, from: { x: number; y: number }, to: { x: number;
   await page.mouse.up()
 }
 
-test('edits a deck in the page with the Presentation engine and its own tools, and saves it back', async ({ page, baseURL, browserName }, testInfo) => {
-  test.skip(!existsSync(SDK_WASM), 'the Presentation engine is not built into public/kits/presentation-sdk')
+test('edits slides in the page with the Slides engine and its own tools, and saves them back', async ({ page, baseURL, browserName }, testInfo) => {
+  test.skip(!existsSync(SDK_WASM), 'the Slides engine is not built into public/kits/slide-sdk')
   test.setTimeout(90_000)
   const host = await installDesktopHost(page)
   try {
-    await fs.writeFile(path.join(host.root, 'Launch.deckcraft'), await deckFixture())
+    await fs.writeFile(path.join(host.root, 'Launch.kislide'), await slidesFixture())
     await mockLocalWorkspaceApi(page)
     await serveWorkspace(page, host.root)
-    // Kition's own editor on the kit's engine, not the kit's embedded one (presentation-embedded.spec.ts).
-    await page.route('**/kits/presentation-ui/kit-ui.json', (route) => route.fulfill({ status: 404, body: '' }))
+    // Kition's own editor on the kit's engine, not the kit's embedded one (slide-embedded.spec.ts).
+    await page.route('**/kits/slide-ui/kit-ui.json', (route) => route.fulfill({ status: 404, body: '' }))
     const saves: Array<{ path: string | null; bytes: Buffer }> = []
     await page.route('**/api/v1/kits/files?**', async (route) => {
       const target = new URL(route.request().url()).searchParams.get('path')
@@ -88,19 +88,19 @@ test('edits a deck in the page with the Presentation engine and its own tools, a
     await dismissFirstRunActivation(page)
     await page.locator('.document-tree-row', { hasText: 'Launch' }).first().click()
 
-    await expect(page.getByTestId('presentation-status')).toContainText('Slide 1 of 2, 0 selected', { timeout: 30_000 })
+    await expect(page.getByTestId('slide-status')).toContainText('Slide 1 of 2, 0 selected', { timeout: 30_000 })
     await expect(page.getByTestId('kit-menu-Home')).toBeVisible()
-    await expect(page.getByTestId('presentation-tool-select')).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.getByTestId('slide-tool-select')).toHaveAttribute('aria-pressed', 'true')
 
     // The Oval tool draws on the current slide, then the rail returns to Select with the oval selected.
     const box = (await page.getByTestId('kit-canvas-surface').boundingBox())!
     // O picks the Oval, which shares the Rectangle's place on the rail.
     await page.getByTestId('kit-editor').focus()
     await page.keyboard.press('o')
-    await expect(page.getByTestId('presentation-tool-ellipse')).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.getByTestId('slide-tool-ellipse')).toHaveAttribute('aria-pressed', 'true')
     await drag(page, { x: box.x + box.width * 0.35, y: box.y + box.height * 0.6 }, { x: box.x + box.width * 0.55, y: box.y + box.height * 0.8 })
-    await expect(page.getByTestId('presentation-status')).toContainText('1 selected')
-    await expect(page.getByTestId('presentation-tool-select')).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.getByTestId('slide-status')).toContainText('1 selected')
+    await expect(page.getByTestId('slide-tool-select')).toHaveAttribute('aria-pressed', 'true')
     await expect(page.getByTestId('kit-unsaved')).toBeVisible()
 
     // Typing on the selected oval gives it text; Escape leaves the text, then the selection.
@@ -108,17 +108,17 @@ test('edits a deck in the page with the Presentation engine and its own tools, a
     await page.keyboard.type('Hello')
     await page.keyboard.press('Escape')
     await page.keyboard.press('Escape')
-    await expect(page.getByTestId('presentation-status')).toContainText('0 selected')
-    await page.screenshot({ path: testInfo.outputPath('presentation-web-editor.png') })
+    await expect(page.getByTestId('slide-status')).toContainText('0 selected')
+    await page.screenshot({ path: testInfo.outputPath('slide-web-editor.png') })
 
     // PageDown goes to the next slide, which comes into view.
     await page.keyboard.press('PageDown')
-    await expect(page.getByTestId('presentation-status')).toContainText('Slide 2 of 2')
+    await expect(page.getByTestId('slide-status')).toContainText('Slide 2 of 2')
 
     await page.getByTestId('kit-save').click()
     await expect(page.getByText('Saved', { exact: true })).toBeVisible()
     await expect(page.getByTestId('kit-unsaved')).toHaveCount(0)
-    expect(saves.map((save) => save.path)).toEqual(['Launch.deckcraft'])
+    expect(saves.map((save) => save.path)).toEqual(['Launch.kislide'])
     if (canReadBlobBodies(browserName)) {
       const shapes = await shapesIn(saves[0].bytes, 0)
       expect(shapes).toContainEqual(expect.objectContaining({ preset: 'ellipse', text: expect.stringContaining('Hello') }))
@@ -128,16 +128,16 @@ test('edits a deck in the page with the Presentation engine and its own tools, a
   }
 })
 
-test('creates a new presentation from the create menu with the Presentation engine', async ({ page, baseURL, browserName }) => {
+test('creates new slides from the create menu with the Slides engine', async ({ page, baseURL, browserName }) => {
   test.skip(!canReadBlobBodies(browserName), 'it opens the file it wrote, and Playwright cannot read Blob bodies in WebKit')
-  test.skip(!existsSync(SDK_WASM), 'the Presentation engine is not built into public/kits/presentation-sdk')
+  test.skip(!existsSync(SDK_WASM), 'the Slides engine is not built into public/kits/slide-sdk')
   test.setTimeout(90_000)
   const host = await installDesktopHost(page)
   try {
     await mockLocalWorkspaceApi(page)
     await serveWorkspace(page, host.root)
-    // Kition's own editor on the kit's engine, not the kit's embedded one (presentation-embedded.spec.ts).
-    await page.route('**/kits/presentation-ui/kit-ui.json', (route) => route.fulfill({ status: 404, body: '' }))
+    // Kition's own editor on the kit's engine, not the kit's embedded one (slide-embedded.spec.ts).
+    await page.route('**/kits/slide-ui/kit-ui.json', (route) => route.fulfill({ status: 404, body: '' }))
     const written: string[] = []
     // The runtime writes the new file; here the host's folder plays the workspace.
     await page.route('**/api/v1/kits/files?**', async (route) => {
@@ -149,12 +149,12 @@ test('creates a new presentation from the create menu with the Presentation engi
     await page.goto(new URL('/documents', baseURL!).toString(), { waitUntil: 'domcontentloaded' })
     await dismissFirstRunActivation(page)
     await page.locator('.document-private-heading .document-create-menu-anchor > button').click()
-    await page.getByTestId('workspace-create-presentation').click()
+    await page.getByTestId('workspace-create-slide').click()
 
-    await expect.poll(() => written, { timeout: 60_000 }).toEqual(['Untitled presentation.deckcraft'])
-    await expect(page.getByTestId('presentation-status')).toContainText('Slide 1 of 1', { timeout: 60_000 })
-    await expect(page.locator('.document-tree-row', { hasText: 'Untitled presentation' })).toBeVisible()
-    expect((await shapesIn(await fs.readFile(path.join(host.root, 'Untitled presentation.deckcraft')), 0)).length).toBe(2)
+    await expect.poll(() => written, { timeout: 60_000 }).toEqual(['Untitled slides.kislide'])
+    await expect(page.getByTestId('slide-status')).toContainText('Slide 1 of 1', { timeout: 60_000 })
+    await expect(page.locator('.document-tree-row', { hasText: 'Untitled slides' })).toBeVisible()
+    expect((await shapesIn(await fs.readFile(path.join(host.root, 'Untitled slides.kislide')), 0)).length).toBe(2)
   } finally {
     await host.dispose()
   }

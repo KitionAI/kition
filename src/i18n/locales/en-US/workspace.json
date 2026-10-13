@@ -12,7 +12,7 @@
       "motion": "Motion graphics",
       "layout": "Page layout",
       "cad": "CAD drawing",
-      "presentation": "Presentation",
+      "slide": "Slides",
       "word": "Word document",
       "spreadsheet": "Spreadsheet",
       "pdf": "PDF"
@@ -291,7 +291,7 @@
         "recommended": "Recommended",
         "planning": "Planning and diagrams",
         "meetings": "Meetings",
-        "presentation": "Presentations"
+        "slide": "Slides"
       },
       "creation": {
         "title": "Board template center",
@@ -325,9 +325,9 @@
           "name": "Meeting retrospective",
           "description": "Capture wins, improvements, and next actions."
         },
-        "presentation-storyboard": {
-          "name": "Presentation storyboard",
-          "description": "Outline a six-slide narrative before building a deck."
+        "slide-storyboard": {
+          "name": "Slide storyboard",
+          "description": "Outline a six-slide narrative before building the slides."
         }
       },
       "content": {
@@ -390,7 +390,7 @@
           "review": "Review progress next week"
         },
         "storyboard": {
-          "title": "Presentation storyboard",
+          "title": "Slide storyboard",
           "cover": "Opening",
           "problem": "Problem",
           "insight": "Key insight",
@@ -903,10 +903,10 @@
     "unavailableTitle": "CAD editing is not available in this build",
     "unavailableBody": "CAD drawings open in Kition when the CAD engine is included."
   },
-  "presentationKit": {
+  "slideKit": {
     "summary": "Slide {{slide}} of {{slides}}, {{selected}} selected",
-    "unavailableTitle": "Presentation editing is not available in this build",
-    "unavailableBody": "Presentations open in Kition when the Presentation engine is included."
+    "unavailableTitle": "Slides editing is not available in this build",
+    "unavailableBody": "Slides open in Kition when the Slides engine is included."
   },
   "wordKit": {
     "summary": "Page {{page}} of {{pages}}, {{words}} words",

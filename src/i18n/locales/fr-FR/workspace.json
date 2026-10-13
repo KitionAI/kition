@@ -12,7 +12,7 @@
       "motion": "Animation graphique",
       "layout": "Mise en page",
       "cad": "Dessin CAO",
-      "presentation": "Présentation",
+      "slide": "Diapositives",
       "word": "Document Word",
       "spreadsheet": "Feuille de calcul",
       "pdf": "PDF"
@@ -291,7 +291,7 @@
         "recommended": "Recommandés",
         "planning": "Planification et diagrammes",
         "meetings": "Réunions",
-        "presentation": "Présentations"
+        "slide": "Diapositives"
       },
       "creation": {
         "title": "Centre de modèles de tableau",
@@ -325,9 +325,9 @@
           "name": "Rétrospective de réunion",
           "description": "Notez les réussites, les améliorations et les prochaines actions."
         },
-        "presentation-storyboard": {
-          "name": "Storyboard de présentation",
-          "description": "Esquissez un récit en six diapositives avant de construire le support."
+        "slide-storyboard": {
+          "name": "Storyboard de diapositives",
+          "description": "Esquissez un récit en six diapositives avant de les construire."
         }
       },
       "content": {
@@ -390,7 +390,7 @@
           "review": "Faire le point la semaine prochaine"
         },
         "storyboard": {
-          "title": "Storyboard de présentation",
+          "title": "Storyboard de diapositives",
           "cover": "Ouverture",
           "problem": "Problème",
           "insight": "Idée clé",
@@ -903,10 +903,10 @@
     "unavailableTitle": "L’édition CAO n’est pas disponible dans cette version",
     "unavailableBody": "Les dessins CAO s’ouvrent dans Kition lorsque le moteur CAO est inclus."
   },
-  "presentationKit": {
+  "slideKit": {
     "summary": "Diapositive {{slide}} sur {{slides}}, {{selected}} sélectionnés",
-    "unavailableTitle": "L’édition de présentations n’est pas disponible dans cette version",
-    "unavailableBody": "Les présentations s’ouvrent dans Kition lorsque le moteur de présentation est inclus."
+    "unavailableTitle": "L’édition de Diapositives n’est pas disponible dans cette version",
+    "unavailableBody": "Les diapositives s’ouvrent dans Kition lorsque le moteur Diapositives est inclus."
   },
   "wordKit": {
     "summary": "Page {{page}} sur {{pages}}, {{words}} mots",

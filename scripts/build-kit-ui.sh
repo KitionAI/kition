@@ -2,12 +2,12 @@
 # Builds a kit's own editor (Kition Kit Standard 6.1: the kit's web/ app and its engine) and puts
 # it in public/kits/<kit>-ui, where Kition shows it in an iframe (KitFrame). See docs/kit-sdk.md.
 #
-#   scripts/build-kit-ui.sh presentation
+#   scripts/build-kit-ui.sh slide
 #
 # The kit repository defaults to a sibling checkout ../kition-<kit>; set KIT_REPO to use another
 # path. Its web/ app links kition-sdk's @kition/kit-ui from a sibling checkout too.
 set -euo pipefail
-kit="${1:?usage: scripts/build-kit-ui.sh <kit>, for example presentation}"
+kit="${1:?usage: scripts/build-kit-ui.sh <kit>, for example slide}"
 repo_root="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
 kit_repo="${KIT_REPO:-$repo_root/../kition-$kit}"
 web="$kit_repo/web"

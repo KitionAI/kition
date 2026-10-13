@@ -80,7 +80,7 @@ export function KitMenuBar({ commands, onRun, onOpen, order, menuLabel = (label)
   const menus = useMemo(() => buildMenus(commands, order), [commands, order])
   return (
     <MenuBar
-      // Ribbon-style kits (Presentation) have many menus: one line, scrolling sideways.
+      // Ribbon-style kits (Slides) have many menus: one line, scrolling sideways.
       className="h-9 shrink-0 overflow-x-auto border-b border-border px-2"
       onValueChange={(value) => {
         if (value) onOpen()

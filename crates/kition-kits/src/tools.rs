@@ -591,12 +591,12 @@ mod tests {
         assert!(prompt("motion/Intro.ECPROJ").contains("effect_commands"));
         assert!(prompt("print/Flyer.designcraft").contains("design_run"));
         assert!(prompt("plans/Floor.dxf").contains("cad_run"));
-        assert!(prompt("talks/Launch.pptx").contains("presentation_run"));
+        assert!(prompt("talks/Launch.pptx").contains("slide_run"));
         assert!(
             prompt("talks/Launch.pptx").contains("document_read extracts its text"),
             "PowerPoint text stays readable"
         );
-        assert!(prompt("talks/Launch.deckcraft").contains("it is binary data"));
+        assert!(prompt("talks/Launch.kislide").contains("it is binary data"));
         assert!(prompt("letters/Hello.docx").contains("word_run"));
         assert!(prompt("money/Budget.xlsx").contains("sheet_run"));
         assert!(

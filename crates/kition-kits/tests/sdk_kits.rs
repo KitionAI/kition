@@ -62,11 +62,11 @@ const CASES: &[Case] = &[
         file_command: ("saveas", || json!({ "path": "elsewhere.dxf" })),
     },
     Case {
-        kit: "kit.presentation",
-        fixture: "Deck.deckcraft",
+        kit: "kit.slide",
+        fixture: "Slides.kislide",
         command: "shape.insert",
         params: || json!({ "preset": "ellipse", "rect": [100, 100, 200, 120] }),
-        file_command: ("file.saveAs", || json!({ "path": "elsewhere.deckcraft" })),
+        file_command: ("file.saveAs", || json!({ "path": "elsewhere.kislide" })),
     },
     Case {
         kit: "kit.word",

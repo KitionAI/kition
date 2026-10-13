@@ -200,8 +200,8 @@ export function inferWorkspaceItemFormat(path: string, content?: string): Worksp
   if (/\.dxf$/i.test(path)) {
     return 'cad'
   }
-  if (/\.deckcraft$/i.test(path)) {
-    return 'presentation'
+  if (/\.kislide$/i.test(path)) {
+    return 'slide'
   }
   if (/\.(mp4|mov|webm)$/i.test(path)) {
     return 'video'
@@ -310,7 +310,7 @@ export function getWorkspaceItemIcon(format?: WorkspaceDocumentFormat): LucideIc
       return LayoutTemplate
     case 'cad':
       return DraftingCompass
-    case 'presentation':
+    case 'slide':
       return Presentation
     case 'video':
       return FileVideo2
@@ -354,7 +354,7 @@ export function getWorkspaceItemIconColorClass(format?: WorkspaceDocumentFormat)
     case 'layout':
     case 'cad':
       return 'text-violet-500'
-    case 'presentation':
+    case 'slide':
       return 'text-orange-500'
     case 'design':
     case 'board':
@@ -390,7 +390,7 @@ export function getWorkspaceItemFormatLabel(format?: WorkspaceDocumentFormat) {
     effect: 'Effect',
     layout: 'Layout',
     cad: 'CAD',
-    presentation: 'Presentation',
+    slide: 'Slides',
     video: 'Video',
     audio: 'Audio',
     binary: 'File',
@@ -450,7 +450,7 @@ export function isOrganizableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
  * PowerPoint, Excel) open in the kit's editor, or the file preview when the kit's engine is not built in.
  */
 export function isPreviewableWorkspaceFormat(format?: WorkspaceDocumentFormat) {
-  return format === 'image' || format === 'pdf' || format === 'photo' || format === 'film' || format === 'vector' || format === 'effect' || format === 'layout' || format === 'cad' || format === 'presentation' || format === 'pptx' || format === 'docx' || format === 'xlsx' || format === 'video'
+  return format === 'image' || format === 'pdf' || format === 'photo' || format === 'film' || format === 'vector' || format === 'effect' || format === 'layout' || format === 'cad' || format === 'slide' || format === 'pptx' || format === 'docx' || format === 'xlsx' || format === 'video'
 }
 
 export function isSupportedWorkspaceFormat(format?: WorkspaceDocumentFormat) {

@@ -17,7 +17,7 @@ export const WHITEBOARD_TEMPLATE_IDS = [
   'project-roadmap',
   'kanban-board',
   'meeting-retrospective',
-  'presentation-storyboard',
+  'slide-storyboard',
 ] as const
 
 export type WhiteboardTemplateId = typeof WHITEBOARD_TEMPLATE_IDS[number]
@@ -26,7 +26,7 @@ export type WhiteboardTemplateCategory =
   | 'recommended'
   | 'planning'
   | 'meetings'
-  | 'presentation'
+  | 'slide'
 
 export type WhiteboardTemplateDefinition = {
   categories: readonly WhiteboardTemplateCategory[]
@@ -53,7 +53,7 @@ export const WHITEBOARD_TEMPLATES: readonly WhiteboardTemplateDefinition[] = [
   { id: 'project-roadmap', categories: ['planning'], width: 960, height: 560 },
   { id: 'kanban-board', categories: ['recommended', 'planning'], width: 960, height: 600 },
   { id: 'meeting-retrospective', categories: ['meetings'], width: 960, height: 580 },
-  { id: 'presentation-storyboard', categories: ['presentation'], width: 1000, height: 650 },
+  { id: 'slide-storyboard', categories: ['slide'], width: 1000, height: 650 },
 ]
 
 export function instantiateWhiteboardTemplate(
@@ -67,7 +67,7 @@ export function instantiateWhiteboardTemplate(
     case 'project-roadmap': return createProjectRoadmapTemplate(origin, resolveText)
     case 'kanban-board': return createKanbanTemplate(origin, resolveText)
     case 'meeting-retrospective': return createRetrospectiveTemplate(origin, resolveText)
-    case 'presentation-storyboard': return createStoryboardTemplate(origin, resolveText)
+    case 'slide-storyboard': return createStoryboardTemplate(origin, resolveText)
   }
 }
 
