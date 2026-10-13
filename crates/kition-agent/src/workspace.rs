@@ -2,7 +2,9 @@
 //! relative, normalized, and checked to stay inside the workspace, also
 //! through symlinks.
 
+use std::io::Write as _;
 use std::path::{Component, Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde::Serialize;
 
@@ -147,6 +149,51 @@ pub fn snippet(text: &str, index: Option<usize>) -> String {
     out
 }
 
+/// Writes through a temporary sibling (a dot file the workspace walk skips)
+/// and renames it into place, so a reader never sees a half-written file.
+/// Keeps an existing file's permissions; a symlink's target is replaced, not
+/// the link.
+pub fn write_atomically(path: &Path, data: &[u8]) -> std::io::Result<()> {
+    static NEXT: AtomicU64 = AtomicU64::new(0);
+    let target = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+    let directory = target.parent().unwrap_or(Path::new("."));
+    std::fs::create_dir_all(directory)?;
+    let filename = target
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let existing = std::fs::metadata(&target).ok();
+    let (temporary, mut file) = loop {
+        let candidate = directory.join(format!(
+            ".{filename}.{}.{}.tmp",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        match std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&candidate)
+        {
+            Ok(file) => break (candidate, file),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
+            Err(error) => return Err(error),
+        }
+    };
+    let result = (|| {
+        if let Some(existing) = &existing {
+            file.set_permissions(existing.permissions())?;
+        }
+        file.write_all(data)?;
+        file.sync_all()?;
+        drop(file);
+        std::fs::rename(&temporary, &target)
+    })();
+    if result.is_err() {
+        let _ = std::fs::remove_file(&temporary);
+    }
+    result
+}
+
 impl Workspace {
     pub fn new(root: impl Into<PathBuf>) -> Self {
         Self { root: root.into() }
@@ -239,7 +286,8 @@ impl Workspace {
         if meta.is_dir() {
             return Err("cannot write to a directory".into());
         }
-        std::fs::write(&path, content).map_err(|_| "failed to write document".to_owned())?;
+        write_atomically(&path, content.as_bytes())
+            .map_err(|_| "failed to write document".to_owned())?;
         Ok(relative)
     }
 
@@ -289,7 +337,7 @@ impl Workspace {
             std::fs::create_dir_all(parent)
                 .map_err(|_| "failed to create document directory".to_owned())?;
         }
-        std::fs::write(&path, data).map_err(|_| "failed to write file".to_owned())?;
+        write_atomically(&path, data).map_err(|_| "failed to write file".to_owned())?;
         Ok(relative)
     }
 
@@ -438,6 +486,66 @@ mod tests {
         assert_eq!(hits[0].path, "Notes/a.md");
         let entries = ws.list_entries("", 10).unwrap_or_default();
         assert_eq!(entries.len(), 2);
+    }
+
+    #[test]
+    fn writes_replace_files_atomically() {
+        let dir = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
+        let ws = Workspace::new(dir.path());
+        assert_eq!(
+            ws.write_at("Notes/new.md", b"first").as_deref(),
+            Ok("Notes/new.md")
+        );
+        let file = dir.path().join("Notes/new.md");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o640))
+                .unwrap_or_else(|err| panic!("{err}"));
+        }
+        // A reader holding the old file keeps the old content: the new one is a new inode.
+        let old = std::fs::File::open(&file).unwrap_or_else(|err| panic!("{err}"));
+        assert_eq!(
+            ws.write_existing("Notes/new.md", "second").as_deref(),
+            Ok("Notes/new.md")
+        );
+        let mut kept = String::new();
+        std::io::Read::read_to_string(&mut &old, &mut kept).unwrap_or_else(|err| panic!("{err}"));
+        assert_eq!(kept, "first");
+        assert_eq!(std::fs::read_to_string(&file).unwrap_or_default(), "second");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = std::fs::metadata(&file)
+                .map(|meta| meta.permissions().mode() & 0o777)
+                .unwrap_or_default();
+            assert_eq!(mode, 0o640, "the file keeps its permissions");
+        }
+        let leftovers: Vec<String> = std::fs::read_dir(dir.path().join("Notes"))
+            .unwrap_or_else(|err| panic!("{err}"))
+            .flatten()
+            .map(|entry| entry.file_name().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(leftovers, ["new.md"], "no temporary file is left behind");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn writes_through_a_symlink_to_its_target() {
+        let dir = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
+        std::fs::write(dir.path().join("real.md"), "a").unwrap_or_else(|err| panic!("{err}"));
+        std::os::unix::fs::symlink(dir.path().join("real.md"), dir.path().join("alias.md"))
+            .unwrap_or_else(|err| panic!("{err}"));
+        let ws = Workspace::new(dir.path());
+        assert!(ws.write_existing("alias.md", "b").is_ok());
+        assert_eq!(
+            std::fs::read_to_string(dir.path().join("real.md")).unwrap_or_default(),
+            "b"
+        );
+        assert!(
+            std::fs::symlink_metadata(dir.path().join("alias.md"))
+                .is_ok_and(|meta| meta.file_type().is_symlink())
+        );
     }
 
     #[cfg(unix)]
