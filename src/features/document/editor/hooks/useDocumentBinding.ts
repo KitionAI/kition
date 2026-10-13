@@ -14,7 +14,8 @@ const ignoreValueSync = EditorState.transactionFilter.of((transaction) => (
 
 /**
  * Connects one CodeMirror editor to a document replica: answers the text to create the editor
- * with and the extensions that keep it bound (the `TextBinding`, the replica's undo and redo).
+ * with and the extensions that keep it bound (the `TextBinding`, the replica's undo and redo, the
+ * marks of an agent's edit under review).
  *
  * A binding follows the replica from the moment it is made, so it is made in an effect, never
  * during render: a render React discards or repeats (StrictMode, an interrupted transition) would
@@ -40,7 +41,7 @@ export function useDocumentBinding(source: DocumentTextSource) {
   const binding = bound?.source === source ? bound.binding : null
 
   const extension = useMemo<Extension>(
-    () => [...(binding ? [binding.extension] : []), source.historyExtension(), ignoreValueSync],
+    () => [...(binding ? [binding.extension] : []), source.historyExtension(), source.agentReviewExtension?.() ?? [], ignoreValueSync],
     [binding, source],
   )
 
