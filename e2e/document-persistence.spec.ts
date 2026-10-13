@@ -208,8 +208,8 @@ test('closes a document whose save keeps failing only after its changes are disc
   await page.keyboard.type(' Unsaved.')
   await expect.poll(() => countMarkdownFileWrites(page)).toBeGreaterThan(0)
 
-  // Keeping the tab open keeps the document and its unsaved typing. The tab closes with Mod+W:
-  // the save failure's toast covers the tab's close button at this window size.
+  // Keeping the tab open keeps the document and its unsaved typing. The tab closes with Mod+W
+  // (toast-placement.spec.ts covers closing it with its close button while the toast shows).
   const confirmation = page.getByTestId('document-close-unsaved-confirm')
   await pressMod(page, 'w')
   await expect(confirmation).toContainText(workspaceCopy.documentFile.closeUnsavedMessage)
