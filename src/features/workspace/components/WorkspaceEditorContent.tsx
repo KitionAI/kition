@@ -1,4 +1,5 @@
 import type { DocumentAgentReview, DocumentSession, DocumentTranslationSupport, OpenedDocumentEntry } from '@/features/document/public'
+import { loadDocumentAgentReviewBar } from '@/features/document/public'
 import type { ComponentProps } from 'react'
 import { lazy, Suspense, useCallback, useEffect, useMemo, type ReactNode } from 'react'
 import { BookOpen } from 'lucide-react'
@@ -40,7 +41,7 @@ const DocumentSplitEditorPane = lazy(() =>
   import('@/features/document/components/DocumentSplitEditorPane').then((module) => ({ default: module.DocumentSplitEditorPane })),
 )
 const DocumentAgentReviewBar = lazy(() =>
-  import('@/features/document/components/DocumentAgentReviewBar').then((module) => ({ default: module.DocumentAgentReviewBar })),
+  loadDocumentAgentReviewBar().then((module) => ({ default: module.DocumentAgentReviewBar })),
 )
 const DocumentRevisionReview = lazy(() =>
   import('@/features/document/components/DocumentRevisionReview').then((module) => ({ default: module.DocumentRevisionReview })),
