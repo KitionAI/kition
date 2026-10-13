@@ -12,7 +12,7 @@ import {
   BOARD_DOCUMENT_VERSION,
   parseBoardDocument,
 } from './boardSerialization'
-import { createWhiteboardElementId } from './whiteboardElementId'
+import { createWhiteboardObjectId } from './whiteboardElementId'
 import { translateWhiteboardElement } from './whiteboardGeometry'
 import type { WhiteboardElement, WhiteboardPoint } from './whiteboardTypes'
 
@@ -95,7 +95,7 @@ export function instantiateBoardClipboardRecords(
   ))
   const idMap = new Map(elementRecords.map((record) => [
     record.id,
-    createWhiteboardElementId(record.kind),
+    createWhiteboardObjectId(),
   ]))
   const elements = elementRecords.map((record) => {
     const element = boardElementFromRecord(record)

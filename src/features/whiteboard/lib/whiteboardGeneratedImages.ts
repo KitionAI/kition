@@ -1,6 +1,6 @@
 import type { ImagePromptAspectRatio } from '@/features/media-generation/lib/imagePromptTemplates'
 
-import { createWhiteboardElementId } from './whiteboardElementId'
+import { createWhiteboardObjectId } from './whiteboardElementId'
 import type {
   WhiteboardElement,
   WhiteboardImageElement,
@@ -57,7 +57,7 @@ export function buildEditableImageTextOverlay(input: {
   if (!text) return null
   const fontSize = Math.max(18, Math.min(48, input.image.width / 10))
   const overlay: WhiteboardTextElement = {
-    id: existing?.id || createWhiteboardElementId('text'),
+    id: existing?.id || createWhiteboardObjectId(),
     kind: 'text',
     x: input.image.x + Math.max(20, input.image.width * 0.07),
     y: input.image.y + Math.max(42, input.image.height * 0.14),

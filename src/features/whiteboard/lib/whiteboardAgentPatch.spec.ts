@@ -11,6 +11,8 @@ import {
   translateAgentWhiteboardPatch,
 } from './whiteboardAgentPatch'
 
+const UUID_V7 = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+
 describe('AI Board patches', () => {
   it('translates create, update, delete, and reorder operations into one reversible diff', () => {
     const store = new BoardStore(createBoardRecordsFromElements([
@@ -39,8 +41,9 @@ describe('AI Board patches', () => {
     const preview = buildWhiteboardAgentPatchPreview(diff)
 
     expect(preview.added).toEqual([
-      expect.objectContaining({ id: 'three', shapeStyle: 'sticky', text: 'Next' }),
+      expect.objectContaining({ id: expect.stringMatching(UUID_V7), shapeStyle: 'sticky', text: 'Next' }),
     ])
+    const threeId = preview.added[0].id
     expect(preview.updated).toEqual([
       expect.objectContaining({ id: 'one', shapeStyle: 'mind-node', text: 'Start' }),
     ])
@@ -48,7 +51,7 @@ describe('AI Board patches', () => {
 
     const commands = new BoardCommandRegistry(store)
     commands.applyAgentDiff(patch.summary, diff)
-    expect(store.getCurrentPageElements().map((element) => element.id)).toEqual(['three', 'one'])
+    expect(store.getCurrentPageElements().map((element) => element.id)).toEqual([threeId, 'one'])
     expect(store.getSnapshot().canUndo).toBe(true)
 
     store.undo()
@@ -126,10 +129,22 @@ describe('AI Board patches', () => {
     })
 
     const diff = translateAgentWhiteboardPatch({ patch, store })
+    const addedId = (text: string) => {
+      const record = diff.added.find((item) => item.record_type === 'element' && 'text' in item && item.text === text)
+      expect(record?.id).toMatch(UUID_V7)
+      return record!.id
+    }
+    const rootId = addedId('Root')
+    const branchId = addedId('Branch')
+    const connectorId = diff.added.find((record) => (
+      record.record_type === 'element' && record.kind === 'connector'
+    ))!.id
+    expect(connectorId).toMatch(UUID_V7)
+    expect(new Set([rootId, branchId, connectorId]).size).toBe(3)
     expect(diff.added).toEqual(expect.arrayContaining([
       expect.objectContaining({
         record_type: 'element',
-        id: 'root-branch',
+        id: connectorId,
         kind: 'connector',
         connectorRole: 'mind-map-branch',
         connectorType: 'curved',
@@ -140,23 +155,92 @@ describe('AI Board patches', () => {
       }),
       expect.objectContaining({
         record_type: 'binding',
-        id: 'binding:root-branch:start',
-        from_id: 'root-branch',
-        to_id: 'root',
+        id: `binding:${connectorId}:start`,
+        from_id: connectorId,
+        to_id: rootId,
         to_anchor: { x: 1, y: 0.5 },
       }),
       expect.objectContaining({
         record_type: 'binding',
-        id: 'binding:root-branch:end',
-        from_id: 'root-branch',
-        to_id: 'branch',
+        id: `binding:${connectorId}:end`,
+        from_id: connectorId,
+        to_id: branchId,
         to_anchor: { x: 0, y: 0.5 },
       }),
     ]))
+    expect(JSON.stringify(diff)).not.toMatch(/"(root|branch|root-branch)"|binding:root-branch/)
 
     new BoardCommandRegistry(store).applyAgentDiff(patch.summary, diff)
-    expect(store.getCurrentPageElements().find((element) => element.id === 'root-branch'))
+    expect(store.getCurrentPageElements().find((element) => element.id === connectorId))
       .toMatchObject({ kind: 'connector' })
+  })
+
+  it('gives agent-created elements new ids and rewrites every reference to them', () => {
+    const store = new BoardStore(createBoardRecordsFromElements([
+      { id: 'existing', kind: 'rectangle', x: 0, y: 0, width: 100, height: 60, text: 'Existing' },
+    ]))
+    const patch = parseAgentWhiteboardPatch({
+      type: 'whiteboard.patch',
+      schema_version: 1,
+      summary: 'Connect a new note',
+      operations: [
+        {
+          op: 'element.create',
+          element: { id: 'n1', kind: 'frame', bounds: { x: 200, y: -40, width: 400, height: 300 } },
+        },
+        {
+          op: 'element.create',
+          element: { id: 'n2', kind: 'sticky', text: 'New', parent_id: 'n1', bounds: { x: 240, y: 0, width: 120, height: 90 } },
+        },
+        { op: 'element.reorder', element_id: 'n2', after_element_id: 'existing' },
+        { op: 'connector.create', connector: { id: 'c1', from_id: 'existing', to_id: 'n2' } },
+        { op: 'element.update', element_id: 'existing', changes: { parent_id: 'n1' } },
+      ],
+    })
+
+    const diff = translateAgentWhiteboardPatch({ patch, store })
+    const elements = diff.added.filter((record) => record.record_type === 'element')
+    const frame = elements.find((record) => record.kind === 'rectangle' && record.shapeStyle === 'frame')!
+    const note = elements.find((record) => record.kind === 'rectangle' && record.shapeStyle === 'sticky')!
+    const connector = elements.find((record) => record.kind === 'connector')!
+    for (const record of [frame, note, connector]) expect(record.id).toMatch(UUID_V7)
+    expect(new Set([frame.id, note.id, connector.id]).size).toBe(3)
+    expect(note.parentId).toBe(frame.id)
+    expect(diff.updated).toEqual([expect.objectContaining({
+      before: expect.objectContaining({ id: 'existing', parentId: undefined }),
+      after: expect.objectContaining({ id: 'existing', parentId: frame.id }),
+    })])
+    expect(diff.added.filter((record) => record.record_type === 'binding')).toEqual([
+      expect.objectContaining({ id: `binding:${connector.id}:end`, from_id: connector.id, to_id: note.id }),
+      expect.objectContaining({ id: `binding:${connector.id}:start`, from_id: connector.id, to_id: 'existing' }),
+    ])
+    expect(JSON.stringify(diff)).not.toMatch(/"(n1|n2|c1)"|binding:c1/)
+
+    const createdIds = new Map<string, string>()
+    const first = translateAgentWhiteboardPatch({ createdIds, patch, store })
+    expect(translateAgentWhiteboardPatch({ createdIds, patch, store })).toEqual(first)
+    expect([...createdIds.keys()].sort()).toEqual(['c1', 'n1', 'n2'])
+
+    new BoardCommandRegistry(store).applyAgentDiff(patch.summary, diff)
+    expect(store.getCurrentPageElements().map((element) => element.id))
+      .toEqual(['existing', note.id, frame.id, connector.id])
+  })
+
+  it('rejects agent-created ids that already exist, before remapping them', () => {
+    const store = new BoardStore(createBoardRecordsFromElements([
+      { id: 'n2', kind: 'rectangle', x: 0, y: 0, width: 100, height: 60 },
+    ]))
+    const patch = parseAgentWhiteboardPatch({
+      type: 'whiteboard.patch',
+      schema_version: 1,
+      summary: 'Reuse an id',
+      operations: [{
+        op: 'element.create',
+        element: { id: 'n2', kind: 'shape', bounds: { x: 0, y: 0, width: 80, height: 40 } },
+      }],
+    })
+    expect(() => translateAgentWhiteboardPatch({ patch, store }))
+      .toThrow('AI Board patch reuses an existing id: n2')
   })
 
   it('sanitizes and previews transform, style, layout, and grouping actions', () => {
@@ -201,12 +285,13 @@ describe('AI Board patches', () => {
     const diff = translateAgentWhiteboardPatch({ patch, store })
     const preview = buildWhiteboardAgentPatchPreview(diff)
     expect(preview.added).toEqual([
-      expect.objectContaining({ id: 'frame', shapeStyle: 'frame' }),
+      expect.objectContaining({ id: expect.stringMatching(UUID_V7), shapeStyle: 'frame' }),
     ])
+    const frameId = preview.added[0].id
     expect(preview.updated).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'one', parentId: 'frame', style: expect.objectContaining({ fillColor: 'purple' }) }),
-      expect.objectContaining({ id: 'two', parentId: 'frame', rotation: 90 }),
-      expect.objectContaining({ id: 'three', parentId: 'frame', width: 150 }),
+      expect.objectContaining({ id: 'one', parentId: frameId, style: expect.objectContaining({ fillColor: 'purple' }) }),
+      expect.objectContaining({ id: 'two', parentId: frameId, rotation: 90 }),
+      expect.objectContaining({ id: 'three', parentId: frameId, width: 150 }),
     ]))
   })
 })

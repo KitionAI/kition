@@ -7,7 +7,7 @@ import {
 import type { BoardCommandRegistry } from '../lib/boardCommands'
 import type { BoardBindingRecord, BoardRecord } from '../lib/boardRecords'
 import type { BoardHistoryMark, BoardStore } from '../lib/boardStore'
-import { createWhiteboardElementId } from '../lib/whiteboardElementId'
+import { createWhiteboardObjectId } from '../lib/whiteboardElementId'
 import { getWhiteboardElementCenter } from '../lib/whiteboardGeometry'
 import {
   getWhiteboardMindMapBranchSide,
@@ -115,7 +115,7 @@ export function useWhiteboardMindMapActions(input: {
     if (!placement) return false
     const color = getNewNodeBranchColor(graph, parent)
     const node: WhiteboardRectangleElement = {
-      id: createWhiteboardElementId('rectangle'),
+      id: createWhiteboardObjectId(),
       kind: 'rectangle',
       x: placement.x,
       y: placement.y,
@@ -136,7 +136,7 @@ export function useWhiteboardMindMapActions(input: {
       },
     }
     const connector: WhiteboardConnectorElement = {
-      id: createWhiteboardElementId('connector'),
+      id: createWhiteboardObjectId(),
       kind: 'connector',
       start: getWhiteboardElementCenter(parent),
       end: getWhiteboardElementCenter(node),

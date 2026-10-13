@@ -4,7 +4,7 @@ import {
   createBoardElementRecord,
   type BoardElementRecord,
 } from './boardRecords'
-import { createWhiteboardElementId } from './whiteboardElementId'
+import { createWhiteboardObjectId } from './whiteboardElementId'
 import {
   getWhiteboardElementBounds,
   translateWhiteboardElement,
@@ -105,7 +105,7 @@ export function cloneBoardElementTrees(
   const treeIds = new Set(treeElements.map((element) => element.id))
   const idMap = new Map(treeElements.map((element) => [
     element.id,
-    createWhiteboardElementId(element.kind),
+    createWhiteboardObjectId(),
   ]))
   return {
     elements: treeElements.map((element) => ({

@@ -1,14 +1,9 @@
-import type { WhiteboardElement } from './whiteboardTypes'
+import { newObjectId } from '@/lib/kdm/ids'
 
-let nextElementSequence = 0
-let nextPageSequence = 0
-
-export function createWhiteboardElementId(kind: WhiteboardElement['kind']) {
-  nextElementSequence += 1
-  return `${kind}-${Date.now().toString(36)}-${nextElementSequence.toString(36)}`
-}
-
-export function createWhiteboardPageId() {
-  nextPageSequence += 1
-  return `page-${Date.now().toString(36)}-${nextPageSequence.toString(36)}`
+/**
+ * A new id for a whiteboard object (element or page): a UUID v7 from the KDM, unique across
+ * replicas without coordination.
+ */
+export function createWhiteboardObjectId() {
+  return newObjectId()
 }

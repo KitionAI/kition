@@ -41,6 +41,7 @@ import {
   getWhiteboardElementStyle,
   normalizeWhiteboardStyle,
 } from './whiteboardStyle'
+import { createWhiteboardObjectId } from './whiteboardElementId'
 import { isWhiteboardMindMapNode } from './whiteboardMindMap'
 import type {
   WhiteboardElement,
@@ -216,6 +217,11 @@ export function parseAgentWhiteboardPatch(value: unknown): AgentWhiteboardPatch 
 export function translateAgentWhiteboardPatch(input: {
   patch: AgentWhiteboardPatch
   store: BoardStore
+  /**
+   * The object id given to each element the agent named, filled in as new names appear. Passing
+   * the same map while a patch streams in keeps its preview's ids stable.
+   */
+  createdIds?: Map<string, string>
 }): BoardRecordDiff {
   const pageId = input.store.getCurrentPageId()
   const originalRecords = input.store.getRecords()
@@ -509,10 +515,55 @@ export function translateAgentWhiteboardPatch(input: {
   diff.removed.push(...originalBindings
     .filter((binding) => !validBindingIds.has(binding.id))
     .map(cloneBoardRecord))
+  remapAgentCreatedIds(diff, input.createdIds ?? new Map())
   diff.added.sort(compareBoardRecords)
   diff.removed.sort(compareBoardRecords)
   diff.updated.sort((left, right) => compareBoardRecords(left.after, right.after))
   return diff
+}
+
+/**
+ * Gives every element the patch creates a collision-free id. The agent names new elements with
+ * ids of its own choosing (such as `n2`) so that later operations can refer to them; those names
+ * are only meaningful inside one patch. Each one becomes a new object id, and every reference to
+ * it in the diff follows: parents, connector bindings, and the bindings' own ids. Existing
+ * elements keep their ids.
+ */
+function remapAgentCreatedIds(diff: BoardRecordDiff, createdIds: Map<string, string>) {
+  const created = new Set<string>()
+  for (const record of diff.added) {
+    if (record.record_type !== 'element') continue
+    created.add(record.id)
+    if (!createdIds.has(record.id)) createdIds.set(record.id, createWhiteboardObjectId())
+  }
+  if (created.size === 0) return
+  const remap = (id: string) => (created.has(id) ? createdIds.get(id)! : id)
+  const remapRecord = (record: BoardRecord): BoardRecord => {
+    if (record.record_type === 'element') {
+      return {
+        ...record,
+        id: remap(record.id),
+        parentId: record.parentId === undefined ? undefined : remap(record.parentId),
+      }
+    }
+    if (record.record_type === 'binding') {
+      const fromId = remap(record.from_id)
+      return {
+        ...record,
+        id: record.terminal && fromId !== record.from_id
+          ? `binding:${fromId}:${record.terminal}`
+          : record.id,
+        from_id: fromId,
+        to_id: remap(record.to_id),
+      }
+    }
+    return record
+  }
+  diff.added = diff.added.map(remapRecord)
+  diff.updated = diff.updated.map((update) => ({
+    before: update.before,
+    after: remapRecord(update.after),
+  }))
 }
 
 function getAgentMindMapConnectorAnchors(input: {

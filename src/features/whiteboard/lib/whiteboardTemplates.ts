@@ -1,6 +1,6 @@
 import { createBoardConnectorBindingRecord } from './boardBindingEngine'
 import type { BoardBindingRecord } from './boardRecords'
-import { createWhiteboardElementId } from './whiteboardElementId'
+import { createWhiteboardObjectId } from './whiteboardElementId'
 import type {
   WhiteboardColorToken,
   WhiteboardConnectorElement,
@@ -335,7 +335,7 @@ function createTemplateBuilder(
     x: origin.x - width / 2,
     y: origin.y - height / 2,
   }
-  const rootId = createWhiteboardElementId('rectangle')
+  const rootId = createWhiteboardObjectId()
   const elements: WhiteboardElement[] = [{
     id: rootId,
     kind: 'rectangle',
@@ -360,7 +360,7 @@ function createTemplateBuilder(
   }
 
   function addFrame(x: number, y: number, frameWidth: number, frameHeight: number) {
-    const id = createWhiteboardElementId('rectangle')
+    const id = createWhiteboardObjectId()
     elements.push({
       id,
       kind: 'rectangle',
@@ -391,7 +391,7 @@ function createTemplateBuilder(
     options: TemplateNodeOptions = {},
   ) {
     const element: WhiteboardRectangleElement = {
-      id: createWhiteboardElementId('rectangle'),
+      id: createWhiteboardObjectId(),
       kind: 'rectangle',
       parentId: options.parentId || rootId,
       x: offset.x + x,
@@ -426,7 +426,7 @@ function createTemplateBuilder(
       strokeColor?: WhiteboardColorToken
     } = {},
   ) {
-    const id = createWhiteboardElementId('text')
+    const id = createWhiteboardObjectId()
     elements.push({
       id,
       kind: 'text',
@@ -458,7 +458,7 @@ function createTemplateBuilder(
     const from = nodes.get(fromKey)
     const to = nodes.get(toKey)
     if (!from || !to) return
-    const connectorId = createWhiteboardElementId('connector')
+    const connectorId = createWhiteboardObjectId()
     const start = getAnchorPoint(from, fromAnchor)
     const end = getAnchorPoint(to, toAnchor)
     elements.push({

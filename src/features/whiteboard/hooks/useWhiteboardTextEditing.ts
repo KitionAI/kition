@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 
 import type { BoardCommandRegistry } from '../lib/boardCommands'
-import { createWhiteboardElementId } from '../lib/whiteboardElementId'
+import { createWhiteboardObjectId } from '../lib/whiteboardElementId'
 import type {
   WhiteboardElement,
   WhiteboardElementStyle,
@@ -42,7 +42,7 @@ export function useWhiteboardTextEditing(input: {
 
   const beginNewTextEdit = useCallback((point: WhiteboardPoint, parentId?: string) => {
     const next: WhiteboardTextEditingState = {
-      elementId: createWhiteboardElementId('text'),
+      elementId: createWhiteboardObjectId(),
       elementKind: 'text',
       parentId,
       x: point.x,

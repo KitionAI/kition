@@ -24,10 +24,7 @@ import {
   stackBoardElements,
   type BoardStackDirection,
 } from '../lib/boardLayout'
-import {
-  createWhiteboardElementId,
-  createWhiteboardPageId,
-} from '../lib/whiteboardElementId'
+import { createWhiteboardObjectId } from '../lib/whiteboardElementId'
 import {
   flipWhiteboardElements,
   getWhiteboardSelectionBounds,
@@ -202,7 +199,7 @@ export function useWhiteboardElementActions(input: {
       input.selectedElements.filter((element) => !element.locked).map((element) => element.id),
     )
     if (rootIds.length < (containerKind === 'group' ? 2 : 1)) return false
-    const containerId = createWhiteboardElementId('rectangle')
+    const containerId = createWhiteboardObjectId()
     const diff = input.commands.execute({
       type: 'element.group',
       containerId,
@@ -249,7 +246,7 @@ export function useWhiteboardElementActions(input: {
   }, [input.commands, input.elements, input.selectedElements])
 
   const createPage = useCallback(() => {
-    const pageId = createWhiteboardPageId()
+    const pageId = createWhiteboardObjectId()
     const pages = input.store.getPages()
     const diff = input.commands.execute({
       type: 'page.create',
@@ -267,7 +264,7 @@ export function useWhiteboardElementActions(input: {
     const diff = input.commands.execute({
       type: 'page.duplicate',
       sourcePageId: source.id,
-      pageId: createWhiteboardPageId(),
+      pageId: createWhiteboardObjectId(),
       name: `${source.name} copy`,
     })
     if (!diff) return false
@@ -391,7 +388,7 @@ export function useWhiteboardElementActions(input: {
     const center = image.center || defaultCenter
     const frame = getBoardFrameAtPoint(input.elements, center)
     const element: WhiteboardImageElement = {
-      id: createWhiteboardElementId('image'),
+      id: createWhiteboardObjectId(),
       kind: 'image',
       x: center.x - width / 2,
       y: center.y - height / 2,

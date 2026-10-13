@@ -16,6 +16,8 @@ import { createBoardRecordsFromElements } from '../lib/boardRecords'
 import { WhiteboardEditorPane } from './WhiteboardEditorPane'
 import type { WhiteboardAgentBridge } from '../lib/whiteboardAgentBridge'
 
+const UUID_V7 = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean })
   .IS_REACT_ACT_ENVIRONMENT = true
 
@@ -512,8 +514,10 @@ describe('WhiteboardEditorPane', () => {
     }
 
     await act(async () => bridge?.receivePatch(patch, true))
-    expect(container.querySelector('[data-agent-element-id="launch-node"]')).not.toBeNull()
-    expect(container.querySelector('[data-element-id="launch-node"]')).toBeNull()
+    // The agent's own id (`launch-node`) becomes a new object id.
+    const launchId = container.querySelector('[data-agent-element-id]')?.getAttribute('data-agent-element-id')
+    expect(launchId).toMatch(UUID_V7)
+    expect(container.querySelector(`[data-element-id="${launchId}"]`)).toBeNull()
     expect(container.querySelector('[data-testid="whiteboard-agent-cancel"]')).not.toBeNull()
 
     await act(async () => bridge?.receivePatch({
@@ -532,20 +536,23 @@ describe('WhiteboardEditorPane', () => {
     expect(accept).not.toBeNull()
     await act(async () => accept.click())
 
-    expect(container.querySelector('[data-agent-element-id="launch-node"]')).toBeNull()
-    expect(container.querySelector('[data-element-id="launch-node"]')?.textContent).toContain('Launch plan')
+    expect(container.querySelector('[data-agent-element-id]')).toBeNull()
+    // Refining a streamed element keeps the id its preview showed.
+    expect(container.querySelector(`[data-element-id="${launchId}"]`)?.textContent).toContain('Launch plan')
 
     const undo = container.querySelector('[data-testid="whiteboard-undo"]') as HTMLButtonElement
     await act(async () => undo.click())
-    expect(container.querySelector('[data-element-id="launch-node"]')).toBeNull()
+    expect(container.querySelector(`[data-element-id="${launchId}"]`)).toBeNull()
 
     await act(async () => bridge?.receivePatch(patch, false))
     const reject = container.querySelector(
       '[data-testid="whiteboard-agent-reject"]',
     ) as HTMLButtonElement
+    const rejectedId = container.querySelector('[data-agent-element-id]')?.getAttribute('data-agent-element-id')
+    expect(rejectedId).toMatch(UUID_V7)
     await act(async () => reject.click())
-    expect(container.querySelector('[data-agent-element-id="launch-node"]')).toBeNull()
-    expect(container.querySelector('[data-element-id="launch-node"]')).toBeNull()
+    expect(container.querySelector('[data-agent-element-id]')).toBeNull()
+    expect(container.querySelector(`[data-element-id="${rejectedId}"]`)).toBeNull()
 
     await act(async () => bridge?.receivePatch(patch, true))
     const cancel = container.querySelector(
@@ -553,7 +560,7 @@ describe('WhiteboardEditorPane', () => {
     ) as HTMLButtonElement
     await act(async () => cancel.click())
     expect(onCancelAgent).toHaveBeenCalledOnce()
-    expect(container.querySelector('[data-agent-element-id="launch-node"]')).toBeNull()
+    expect(container.querySelector('[data-agent-element-id]')).toBeNull()
   })
 
   it('previews AI mind-map connectors between bound nodes', async () => {
@@ -605,8 +612,11 @@ describe('WhiteboardEditorPane', () => {
       ],
     }, false))
 
-    expect(container.querySelector('[data-agent-element-id="root-branch-connector"]'))
-      .not.toBeNull()
+    const previewIds = [...container.querySelectorAll('[data-agent-element-id]')]
+      .map((element) => element.getAttribute('data-agent-element-id'))
+    expect(new Set(previewIds).size).toBe(3)
+    for (const id of previewIds) expect(id).toMatch(UUID_V7)
+    expect(container.querySelector('path[data-agent-element-id]')).not.toBeNull()
     expect(container.querySelector('[data-testid="whiteboard-agent-accept"]'))
       .not.toBeNull()
   })

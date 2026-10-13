@@ -24,7 +24,7 @@ import {
   resolveBoardSelectableElementId,
 } from '../lib/boardHierarchy'
 import type { BoardStore } from '../lib/boardStore'
-import { createWhiteboardElementId } from '../lib/whiteboardElementId'
+import { createWhiteboardObjectId } from '../lib/whiteboardElementId'
 import {
   getWhiteboardConnectionHandleAnchor,
   isWhiteboardQuickConnectElement,
@@ -661,7 +661,7 @@ export function useWhiteboardInteractionMachine(input: {
         }
         if (bounds.width >= MIN_DRAW_SIZE && bounds.height >= MIN_DRAW_SIZE) {
           const element: WhiteboardElement = {
-            id: createWhiteboardElementId('rectangle'),
+            id: createWhiteboardObjectId(),
             kind: 'rectangle',
             locked: false,
             parentId: getBoardFrameAtPoint(input.elements, {
@@ -693,7 +693,7 @@ export function useWhiteboardInteractionMachine(input: {
           endWorld.y - interaction.startWorld.y,
         ) >= MIN_DRAW_SIZE) {
           const element: Extract<WhiteboardElement, { kind: 'connector' }> = {
-            id: createWhiteboardElementId('connector'),
+            id: createWhiteboardObjectId(),
             kind: 'connector',
             locked: false,
             parentId: getBoardFrameAtPoint(input.elements, {
@@ -744,7 +744,7 @@ export function useWhiteboardInteractionMachine(input: {
             Math.max(0.5, 1.25 / input.viewport.zoom),
           )
           const element: WhiteboardElement = {
-            id: createWhiteboardElementId('stroke'),
+            id: createWhiteboardObjectId(),
             kind: 'stroke',
             locked: false,
             parentId: getBoardFrameAtPoint(

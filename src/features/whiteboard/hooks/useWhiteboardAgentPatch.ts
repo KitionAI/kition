@@ -12,6 +12,8 @@ import {
 } from '../lib/whiteboardAgentPatch'
 
 export type WhiteboardAgentPreviewState = {
+  /** The object ids given to the elements the patch creates, kept while it streams. */
+  createdIds: Map<string, string>
   diff: ReturnType<typeof translateAgentWhiteboardPatch> | null
   error: string
   patch: AgentWhiteboardPatch | null
@@ -21,6 +23,7 @@ export type WhiteboardAgentPreviewState = {
 }
 
 const INITIAL_STATE: WhiteboardAgentPreviewState = {
+  createdIds: new Map(),
   diff: null,
   error: '',
   patch: null,
@@ -38,7 +41,9 @@ export function useWhiteboardAgentPatch(input: {
   const receivePatch = useCallback((value: unknown, provisional: boolean) => {
     try {
       let patch = parseAgentWhiteboardPatch(value)
+      let createdIds = new Map<string, string>()
       if (state.patch && state.status === 'streaming') {
+        createdIds = new Map(state.createdIds)
         patch = parseAgentWhiteboardPatch({
           ...patch,
           operations: mergeAgentPatchOperations(
@@ -47,8 +52,9 @@ export function useWhiteboardAgentPatch(input: {
           ),
         })
       }
-      const diff = translateAgentWhiteboardPatch({ patch, store: input.store })
+      const diff = translateAgentWhiteboardPatch({ createdIds, patch, store: input.store })
       setState({
+        createdIds,
         diff,
         error: '',
         patch,
@@ -63,7 +69,7 @@ export function useWhiteboardAgentPatch(input: {
         status: 'error',
       })
     }
-  }, [input.store, state.patch, state.status])
+  }, [input.store, state.createdIds, state.patch, state.status])
 
   const reject = useCallback(() => setState(INITIAL_STATE), [])
 

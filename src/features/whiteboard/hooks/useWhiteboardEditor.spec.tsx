@@ -10,6 +10,8 @@ import { createBoardClipboardText } from '../lib/boardClipboard'
 import { createBoardRecordsFromElements } from '../lib/boardRecords'
 import type { WhiteboardElement } from '../lib/whiteboardTypes'
 
+const UUID_V7 = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+
 let container: HTMLDivElement
 let root: Root | null = null
 
@@ -887,6 +889,26 @@ describe('useWhiteboardEditor', () => {
 
     await act(async () => ref.current?.undo())
     expect(ref.current?.elements.map((element) => element.id)).toEqual(['rect-1', 'rect-2'])
+  })
+
+  it('gives created and duplicated pages and their copied elements collision-free ids', async () => {
+    const ref = await renderHook()
+    await replaceElements(ref, [
+      { id: 'rect-1', kind: 'rectangle', x: 10, y: 20, width: 100, height: 60 },
+    ])
+    const firstPageId = ref.current!.currentPageId
+
+    await act(async () => ref.current?.createPage())
+    const createdPageId = ref.current!.currentPageId
+    expect(createdPageId).toMatch(UUID_V7)
+
+    await act(async () => ref.current?.duplicatePage(firstPageId))
+    const duplicatedPageId = ref.current!.currentPageId
+    expect(duplicatedPageId).toMatch(UUID_V7)
+    expect(new Set([firstPageId, createdPageId, duplicatedPageId]).size).toBe(3)
+    expect(ref.current?.elements).toEqual([
+      expect.objectContaining({ id: expect.stringMatching(UUID_V7), x: 10, y: 20 }),
+    ])
   })
 
   it('inserts a portable workspace image at the viewport center', async () => {

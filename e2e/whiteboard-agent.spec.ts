@@ -53,7 +53,7 @@ test('streams visible AI board actions and supports reject, accept, and undo', a
   ])
 
   await page.getByTestId('whiteboard-agent-reject').click()
-  await expect.poll(async () => hasElement(page, 'ai-node-1')).toBe(false)
+  await expect.poll(async () => elementIdWithText(page, 'Customer insight')).toBeUndefined()
 
   await composer.fill('Apply the same connected expansion now.')
   await page.getByRole('button', { name: 'Send' }).click()
@@ -61,18 +61,26 @@ test('streams visible AI board actions and supports reject, accept, and undo', a
   await expect(page.getByTestId('whiteboard-agent-accept')).toBeVisible()
   await page.getByTestId('whiteboard-agent-accept').click()
 
-  await expect.poll(async () => hasElement(page, 'ai-node-1')).toBe(true)
-  await expect.poll(async () => hasElement(page, 'ai-node-2')).toBe(true)
-  await expect.poll(async () => (await readWhiteboardSnapshot(page)).records.some((record) => (
-    record.record_type === 'binding'
-      && record.from_id === 'ai-connector-1'
-      && record.to_id === 'ai-node-1'
+  // The agent's own ids (`ai-node-1`, ...) become new object ids on the board.
+  await expect.poll(async () => elementIdWithText(page, 'Customer insight')).toMatch(UUID_V7)
+  await expect.poll(async () => elementIdWithText(page, 'Launch experiment')).toMatch(UUID_V7)
+  const firstNodeId = await elementIdWithText(page, 'Customer insight')
+  const secondNodeId = await elementIdWithText(page, 'Launch experiment')
+  const records = (await readWhiteboardSnapshot(page)).records
+  const bindings = records.flatMap((record) => (record.record_type === 'binding' ? [record] : []))
+  const connectorId = bindings.find((binding) => binding.to_id === firstNodeId)?.from_id
+  expect(connectorId).toMatch(UUID_V7)
+  expect(bindings.some((binding) => (
+    binding.from_id === connectorId && binding.to_id === secondNodeId
   ))).toBe(true)
+  expect(JSON.stringify(records)).not.toMatch(/ai-node-|ai-connector-/)
 
   await page.getByTestId('whiteboard-undo').click()
-  await expect.poll(async () => hasElement(page, 'ai-node-1')).toBe(false)
-  await expect.poll(async () => hasElement(page, 'ai-node-2')).toBe(false)
+  await expect.poll(async () => elementIdWithText(page, 'Customer insight')).toBeUndefined()
+  await expect.poll(async () => elementIdWithText(page, 'Launch experiment')).toBeUndefined()
 })
+
+const UUID_V7 = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 
 function createMindMapPatch() {
   return {
@@ -114,8 +122,8 @@ function createMindMapPatch() {
   }
 }
 
-async function hasElement(page: Parameters<typeof readWhiteboardSnapshot>[0], id: string) {
-  return (await readWhiteboardSnapshot(page)).records.some((record) => (
-    record.record_type === 'element' && record.id === id
-  ))
+async function elementIdWithText(page: Parameters<typeof readWhiteboardSnapshot>[0], text: string) {
+  return (await readWhiteboardSnapshot(page)).records.find((record) => (
+    record.record_type === 'element' && 'text' in record && record.text === text
+  ))?.id
 }
