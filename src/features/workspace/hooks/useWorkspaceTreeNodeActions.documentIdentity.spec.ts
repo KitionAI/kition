@@ -1,7 +1,7 @@
 /**
  * Tree operations keep Markdown documents' identities: renames and moves of files (with their child pages) and of
- * folders remap the replica store's path index, deletes forget entries and their replicas, and a duplicate gets no
- * entry. Store failures never block the file operation. The store is the real browser-preview backend.
+ * folders remap the replica store's path index, deletes forget entries (their replicas are kept until the next
+ * workspace open prunes them), and a duplicate gets no entry. Store failures never block the file operation. The store is the real browser-preview backend.
  */
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
@@ -202,18 +202,21 @@ describe('useWorkspaceTreeNodeActions — document identity', () => {
     expect(await index()).not.toHaveProperty('Notes/Other.md')
   })
 
-  it('forgets a deleted file with its child pages and deletes their replicas', async () => {
+  /** The index entries on workspace paths (deleted documents wait for the next prune under `.kition/`). */
+  const livePaths = async () => Object.fromEntries(Object.entries(await index()).filter(([path]) => !path.startsWith('.kition/')))
+
+  it('forgets a deleted file with its child pages and keeps their replicas until the next prune', async () => {
     await run(() => api!.deleteDocumentNode(node('Notes/Plan.md')))
-    expect(await index()).toEqual({ 'Notes/Other.md': 'doc-other', 'Team/Sub/Deep.md': 'doc-deep' })
-    expect(await desktop.readDocumentStore('doc-plan')).toBeNull()
-    expect(await desktop.readDocumentStore('doc-child')).toBeNull()
+    expect(await livePaths()).toEqual({ 'Notes/Other.md': 'doc-other', 'Team/Sub/Deep.md': 'doc-deep' })
+    expect(await desktop.readDocumentStore('doc-plan')).not.toBeNull()
+    expect(await desktop.readDocumentStore('doc-child')).not.toBeNull()
     expect(await desktop.readDocumentStore('doc-other')).not.toBeNull()
   })
 
   it('forgets the documents of a deleted folder', async () => {
     await run(() => api!.deleteDocumentNode(node('Team')))
-    expect(await index()).not.toHaveProperty('Team/Sub/Deep.md')
-    expect(await desktop.readDocumentStore('doc-deep')).toBeNull()
+    expect(await livePaths()).not.toHaveProperty('Team/Sub/Deep.md')
+    expect(await desktop.readDocumentStore('doc-deep')).not.toBeNull()
   })
 
   it('leaves a duplicate without an entry so that it opens as a new document', async () => {

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { person } from '@/lib/kdm'
+import { person, Replica } from '@/lib/kdm'
 import * as desktop from '@/services/desktop'
 import { DOCUMENT_BODY } from './documentSchema'
 import { documentBody } from './documentText'
@@ -10,7 +10,10 @@ import {
   forgetDocumentFolder,
   hashFileText,
   mergeFileIntoReplica,
+  noteWorkspaceFiles,
   openDocument,
+  pruneDocumentStore,
+  pruneDocumentStoreOnOpen,
   renameDocument,
   renameDocumentFolder,
   saveDocument,
@@ -56,7 +59,9 @@ async function save(path: string, opened: OpenedDocument, onStoreError?: (error:
 
 beforeEach(() => {
   window.localStorage.clear()
+  vi.restoreAllMocks()
   vi.clearAllMocks()
+  noteWorkspaceFiles(ROOT, null)
   vi.spyOn(console, 'warn').mockImplementation(() => {})
 })
 
@@ -220,6 +225,38 @@ describe('openDocument', () => {
     expect(await index()).toEqual({ 'Moved/New.md': first.replica.docId })
   })
 
+  it('compares the stored file hash before loading a snapshot', async () => {
+    await writeFile('Old.md', 'old text\n')
+    await open('Old.md')
+    await desktop.deleteWorkspaceDocument('Old.md')
+    await writeFile('New.md', 'other text\n')
+    const load = vi.spyOn(Replica, 'load')
+    expect((await open('New.md', 2n)).isNew).toBe(true)
+    expect(load).not.toHaveBeenCalled()
+  })
+
+  it('uses the workspace files the app knows instead of listing the workspace on every open', async () => {
+    await writeFile('A.md', 'a\n')
+    await open('A.md')
+    await writeFile('B.md', 'b\n')
+    noteWorkspaceFiles(ROOT, (await desktop.listWorkspaceDocuments()).items)
+    vi.mocked(desktop.listWorkspaceDocuments).mockClear()
+    expect((await open('B.md', 2n)).isNew).toBe(true)
+    expect(desktop.listWorkspaceDocuments).not.toHaveBeenCalled()
+  })
+
+  it('checks the workspace again before taking an identity the known files suggest', async () => {
+    await writeFile('Source.md', 'shared\n')
+    const source = await open('Source.md')
+    // The known files are stale: they do not show Source.md, which still exists.
+    noteWorkspaceFiles(ROOT, [{ type: 'file', path: 'Other.md', name: 'Other.md', format: 'markdown' }] as never)
+    await writeFile('Copy.md', 'shared\n')
+    const copy = await open('Copy.md', 2n)
+    expect(copy.isNew).toBe(true)
+    expect(copy.replica.docId).not.toBe(source.replica.docId)
+    expect((await index())['Source.md']).toBe(source.replica.docId)
+  })
+
   it('does not take the identity of a file that still exists or whose text differs', async () => {
     await writeFile('Source.md', 'shared\n')
     const source = await open('Source.md')
@@ -362,9 +399,20 @@ describe('identity across tree operations', () => {
     })
   })
 
-  it('forgets a deleted file and its child pages and deletes their replicas', async () => {
+  /** The index entries on workspace paths (without the deleted documents kept until the next prune). */
+  const livePaths = async () => Object.fromEntries(Object.entries(await index()).filter(([path]) => !path.startsWith('.kition/')))
+
+  it('forgets a deleted file and its child pages, keeping their replicas until the next prune', async () => {
     const ids = await seed(['Page.md', 'Page/Child.md', 'Pages.md'])
     await forgetDocument('Page.md')
+    expect(await livePaths()).toEqual({ 'Pages.md': ids['Pages.md'] })
+    expect(await desktop.readDocumentStore(ids['Page.md'])).not.toBeNull()
+    expect(await desktop.readDocumentStore(ids['Page/Child.md'])).not.toBeNull()
+
+    // Deleting a page deletes its child pages with it.
+    await desktop.deleteWorkspaceDocument('Page.md')
+    await desktop.deleteWorkspaceDocument('Page/Child.md').catch(() => undefined)
+    await pruneDocumentStore({ expectedRoot: ROOT })
     expect(await index()).toEqual({ 'Pages.md': ids['Pages.md'] })
     expect(await desktop.readDocumentStore(ids['Page.md'])).toBeNull()
     expect(await desktop.readDocumentStore(ids['Page/Child.md'])).toBeNull()
@@ -374,8 +422,47 @@ describe('identity across tree operations', () => {
   it('forgets the documents of a deleted folder', async () => {
     const ids = await seed(['Team/Notes.md', 'Team/Sub/Deep.md', 'Teamwork/Keep.md'])
     await forgetDocumentFolder('Team')
-    expect(await index()).toEqual({ 'Teamwork/Keep.md': ids['Teamwork/Keep.md'] })
-    expect(await desktop.readDocumentStore(ids['Team/Notes.md'])).toBeNull()
+    expect(await livePaths()).toEqual({ 'Teamwork/Keep.md': ids['Teamwork/Keep.md'] })
+    expect(await desktop.readDocumentStore(ids['Team/Notes.md'])).not.toBeNull()
+  })
+
+  it('gives a deleted document its identity back when its file is restored', async () => {
+    const ids = await seed(['Plan.md'])
+    const text = await fileText('Plan.md')
+    await desktop.deleteWorkspaceDocument('Plan.md')
+    await forgetDocument('Plan.md')
+    await writeFile('Plan.md', text)
+    const restored = await open('Plan.md', 2n)
+    expect(restored.isNew).toBe(false)
+    expect(restored.replica.docId).toBe(ids['Plan.md'])
+    expect(await index()).toEqual({ 'Plan.md': ids['Plan.md'] })
+  })
+
+  it('keeps an entry whose file went away outside Kition for one more workspace open, then drops it', async () => {
+    const ids = await seed(['Gone.md', 'Kept.md'])
+    await desktop.deleteWorkspaceDocument('Gone.md')
+    await pruneDocumentStore({ expectedRoot: ROOT })
+    expect(await livePaths()).toEqual({ 'Kept.md': ids['Kept.md'] })
+    expect(await desktop.readDocumentStore(ids['Gone.md'])).not.toBeNull()
+    await pruneDocumentStore({ expectedRoot: ROOT })
+    expect(await index()).toEqual({ 'Kept.md': ids['Kept.md'] })
+    expect(await desktop.readDocumentStore(ids['Gone.md'])).toBeNull()
+  })
+
+  it('prunes once per workspace in a window', async () => {
+    const ids = await seed(['Gone.md'])
+    await desktop.deleteWorkspaceDocument('Gone.md')
+    await pruneDocumentStoreOnOpen(ROOT)
+    await pruneDocumentStoreOnOpen(ROOT)
+    // Aged once (kept until the next workspace open), not dropped by the second call.
+    expect(await desktop.readDocumentStore(ids['Gone.md'])).not.toBeNull()
+  })
+
+  it('does not prune when the workspace lists no files', async () => {
+    const ids = await seed(['Plan.md'])
+    vi.mocked(desktop.listWorkspaceDocuments).mockResolvedValueOnce({ root_path: ROOT, items: [] })
+    await pruneDocumentStore({ expectedRoot: ROOT })
+    expect(await index()).toEqual({ 'Plan.md': ids['Plan.md'] })
   })
 
   it('gives a duplicate its own identity when opened', async () => {

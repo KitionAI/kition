@@ -3,6 +3,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { WorkspaceDocumentExternalChange } from '@/services/desktop'
 import { getDocumentSession, listDocumentSessions, writeWorkspaceMarkdown } from '@/features/document/kdm/documentSessions'
+import { noteWorkspaceFiles, pruneDocumentStoreOnOpen } from '@/features/document/kdm/documentStore'
 import { useWorkspaceDocumentSession } from './useWorkspaceDocumentSession'
 
 ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true
@@ -79,6 +80,8 @@ vi.mock('@/features/document/kdm/documentStore', async () => {
       { kind: 'import', principal: 'file' },
       (tx: any) => mergeExternalText(tx, opened.rootId, analyzeText(baseText).text, analyzeText(fileText).text, tx.text(opened.rootId, 'body')),
     )),
+    pruneDocumentStoreOnOpen: vi.fn(async () => undefined),
+    noteWorkspaceFiles: vi.fn(),
   }
 })
 
@@ -161,6 +164,15 @@ afterEach(() => {
   root = null
   container.remove()
   vi.useRealTimers()
+})
+
+describe('useWorkspaceDocumentSession: the workspace’s store', () => {
+  it('prunes the replica store when the workspace opens and shares its files with the store', async () => {
+    vi.mocked(pruneDocumentStoreOnOpen).mockClear()
+    const { options } = await renderSession()
+    expect(pruneDocumentStoreOnOpen).toHaveBeenCalledWith('/vault')
+    expect(noteWorkspaceFiles).toHaveBeenLastCalledWith('/vault', options.files)
+  })
 })
 
 describe('useWorkspaceDocumentSession: opening', () => {

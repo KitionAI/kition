@@ -21,6 +21,7 @@ import {
   remapDocumentSessions,
   unregisterDocumentSession,
 } from '@/features/document/kdm/documentSessions'
+import { noteWorkspaceFiles, pruneDocumentStoreOnOpen } from '@/features/document/kdm/documentStore'
 import {
   inferWorkspaceItemFormat,
   isEditableWorkspaceFormat,
@@ -726,6 +727,15 @@ export function useWorkspaceDocumentSession({
     updateEntries(() => ({}))
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs on workspace switches only.
   }, [rootPath])
+
+  // The workspace opened: drop the replicas of documents deleted before (once per window). The tree's files
+  // spare the store a listing of the workspace each time a document opens.
+  useEffect(() => {
+    void pruneDocumentStoreOnOpen(rootPath)
+  }, [rootPath])
+  useEffect(() => {
+    noteWorkspaceFiles(rootPath, files)
+  }, [rootPath, files])
 
   // Unmount: write what is pending and stop every session.
   useEffect(() => () => {

@@ -183,12 +183,35 @@ function removeEntries(entries: Record<string, string>, drop: (path: string) => 
 
 const branchTarget = (path: string, fromPrefix: string, toPrefix: string) => (path.startsWith(fromPrefix) ? toPrefix + path.slice(fromPrefix.length) : null)
 
+/**
+ * Where the index keeps a document whose file is gone until the next prune (`pruneDocumentStore`): a path no file
+ * has, so the document is not opened by path, yet a restored or moved file with its hash is still recognised.
+ */
+const DELETED_PREFIX = '.kition/docs/deleted/'
+const deletedPath = (docId: string) => `${DELETED_PREFIX}${docId}`
+const isDeletedPath = (path: string) => path.startsWith(DELETED_PREFIX)
+
+/** `entries` with the keys `drop` selects moved to their deleted paths; `null` when none. */
+function buryEntries(entries: Record<string, string>, drop: (path: string) => boolean): Record<string, string> | null {
+  const paths = Object.keys(entries).filter((path) => !isDeletedPath(path) && drop(path))
+  if (paths.length === 0) return null
+  for (const path of paths) {
+    const docId = entries[path]
+    delete entries[path]
+    entries[deletedPath(docId)] = docId
+  }
+  return entries
+}
+
 // --- Open -------------------------------------------------------------------
 
 type Loaded = { replica: Replica; rootId: ObjectId; meta: DocumentStoreMeta }
 
-/** The stored replica of `docId`, or `null` when it is missing, damaged, or not this document. */
-async function loadStored(docId: string, actor: bigint, options?: Options): Promise<Loaded | null> {
+/**
+ * The stored replica of `docId`, or `null` when it is missing, damaged, or not this document. With `fileHash`, also
+ * `null` when the entry's last saved file had another hash; that is checked before the snapshot is loaded.
+ */
+async function loadStored(docId: string, actor: bigint, options?: Options, fileHash?: string): Promise<Loaded | null> {
   let entry
   try {
     entry = await readDocumentStore(docId, storeOptions(options))
@@ -198,6 +221,7 @@ async function loadStored(docId: string, actor: bigint, options?: Options): Prom
     return null
   }
   if (!entry || entry.meta?.docId !== docId || entry.meta.kit !== DOCUMENT_KIT || typeof entry.meta.fileHash !== 'string') return null
+  if (fileHash !== undefined && entry.meta.fileHash !== fileHash) return null
   try {
     const replica = Replica.load(documentSchema, entry.snapshot, actor)
     if (replica.docId !== docId) return null
@@ -216,27 +240,62 @@ function filePaths(items: readonly WorkspaceDocumentTreeItem[], into = new Set<s
   return into
 }
 
+// --- The workspace's files ---------------------------------------------------
+
+/** The files of the workspace as last listed or as the app's tree shows them, for one root. */
+let knownFiles: { root: string; paths: Set<string> } | null = null
+
 /**
- * A stored document whose file was renamed or moved outside Kition: an index entry whose path no longer exists
- * and whose last saved file had this file's hash. Rebinds it to `path`.
+ * The workspace's files as the app's tree shows them (it follows the workspace's changes), so that opening a
+ * document does not list the whole workspace to recognise a renamed file. `null` (or an empty tree) forgets them.
+ */
+export function noteWorkspaceFiles(root: string, items: readonly WorkspaceDocumentTreeItem[] | null) {
+  knownFiles = root && items?.length ? { root, paths: filePaths(items) } : null
+}
+
+/** Lists the workspace's files now (and keeps them as the known files); `null` when that fails or the root changed. */
+async function listFiles(options?: Options): Promise<Set<string> | null> {
+  try {
+    const workspace = await listWorkspaceDocuments()
+    if (options?.expectedRoot && workspace.root_path !== options.expectedRoot) return null
+    const paths = filePaths(workspace.items || [])
+    knownFiles = paths.size ? { root: workspace.root_path, paths } : null
+    return paths
+  } catch (error) {
+    warn('could not list the workspace', error)
+    return null
+  }
+}
+
+/** The index entries other than `path` that no existing file holds: documents whose files went away. */
+function orphans(others: [string, string][], existing: Set<string>): [string, string][] {
+  const live = new Set(others.filter(([entryPath]) => existing.has(entryPath)).map(([, docId]) => docId))
+  return others.filter(([entryPath, docId]) => !existing.has(entryPath) && !live.has(docId))
+}
+
+/**
+ * A stored document whose file was renamed or moved outside Kition (or deleted and restored): an index entry
+ * whose path no longer exists and whose last saved file had this file's hash. Rebinds it to `path`. The known
+ * files spare listing the workspace; a match they suggest is checked against a fresh listing before it is taken.
  */
 async function recogniseRenamed(path: string, fileHash: string, entries: Record<string, string>, actor: bigint, options?: Options): Promise<Loaded | null> {
   const others = Object.entries(entries).filter(([entryPath]) => entryPath !== path)
   if (others.length === 0) return null
-  let existing: Set<string>
-  try {
-    const workspace = await listWorkspaceDocuments()
-    if (options?.expectedRoot && workspace.root_path !== options.expectedRoot) return null
-    existing = filePaths(workspace.items)
-  } catch (error) {
-    warn('could not list the workspace to recognise a renamed document', error)
-    return null
-  }
-  const liveDocIds = new Set(others.filter(([entryPath]) => existing.has(entryPath)).map(([, docId]) => docId))
-  for (const [oldPath, docId] of others) {
-    if (existing.has(oldPath) || liveDocIds.has(docId)) continue
-    const loaded = await loadStored(docId, actor, options)
-    if (!loaded || loaded.meta.fileHash !== fileHash) continue
+  const known = options?.expectedRoot && knownFiles?.root === options.expectedRoot ? knownFiles.paths : null
+  const existing = known ?? (await listFiles(options))
+  if (!existing) return null
+  /** The orphans' paths by a listing made now; `null` until one was needed. */
+  let confirmed: Set<string> | null = known ? null : new Set(orphans(others, existing).map(([entryPath]) => entryPath))
+  for (const [oldPath, docId] of orphans(others, existing)) {
+    if (confirmed && !confirmed.has(oldPath)) continue
+    const loaded = await loadStored(docId, actor, options, fileHash)
+    if (!loaded) continue
+    if (!confirmed) {
+      const fresh = await listFiles(options)
+      if (!fresh) return null
+      confirmed = new Set(orphans(others, fresh).map(([entryPath]) => entryPath))
+      if (!confirmed.has(oldPath)) continue
+    }
     try {
       await updateIndex((current) => {
         if (current[oldPath] !== docId) return withEntry(path, docId)(current)
@@ -374,18 +433,60 @@ export async function renameDocumentFolder(oldFolder: string, newFolder: string,
   await updateIndex((entries) => remapEntries(entries, (path) => branchTarget(path, `${oldFolder}/`, `${newFolder}/`)), options)
 }
 
-/** The file at `path` (and its child pages) was deleted: forgets their ids and deletes their stored replicas. */
+/**
+ * The file at `path` (and its child pages) was deleted: their paths no longer name them. Their stored replicas
+ * are kept until the next workspace open prunes them (`pruneDocumentStore`), so a file restored meanwhile gets
+ * its identity and history back.
+ */
 export async function forgetDocument(path: string, options?: Options): Promise<void> {
   if (!path) return
   const prefix = `${childFolderPath(path)}/`
-  const change = await updateIndex((entries) => removeEntries(entries, (entry) => entry === path || entry.startsWith(prefix)), options)
-  await dropUnreferenced(change, options)
+  await updateIndex((entries) => buryEntries(entries, (entry) => entry === path || entry.startsWith(prefix)), options)
 }
 
-/** The folder was deleted: forgets the ids of the documents inside it and deletes their stored replicas. */
+/** The folder was deleted: its documents' paths no longer name them; their replicas are kept until the next prune. */
 export async function forgetDocumentFolder(folder: string, options?: Options): Promise<void> {
   if (!folder) return
-  const change = await updateIndex((entries) => removeEntries(entries, (entry) => entry.startsWith(`${folder}/`)), options)
+  await updateIndex((entries) => buryEntries(entries, (entry) => entry.startsWith(`${folder}/`)), options)
+}
+
+const prunedRoots = new Set<string>()
+
+/** Prunes the store of the workspace at `root` the first time it opens in this window (best effort, never throws). */
+export async function pruneDocumentStoreOnOpen(root: string): Promise<void> {
+  if (!root || prunedRoots.has(root)) return
+  prunedRoots.add(root)
+  try {
+    await pruneDocumentStore({ expectedRoot: root })
+  } catch (error) {
+    warn('could not prune the document store', error)
+  }
+}
+
+/**
+ * Prunes the store when a workspace opens (best effort): deletes the replicas of documents deleted before (in
+ * Kition, or outside it and not seen since the previous prune), and keeps the documents whose files went away
+ * outside Kition until the next prune, so a file renamed or restored meanwhile is still recognised by its hash.
+ */
+export async function pruneDocumentStore(options?: Options): Promise<void> {
+  const existing = await listFiles(options)
+  // An empty listing is more likely a failure than a workspace whose every document is gone.
+  if (!existing || existing.size === 0) return
+  const change = await updateIndex((entries) => {
+    let changed = false
+    const next: Record<string, string> = {}
+    for (const [path, docId] of Object.entries(entries)) {
+      if (isDeletedPath(path)) {
+        changed = true
+      } else if (existing.has(path)) {
+        next[path] = docId
+      } else {
+        next[deletedPath(docId)] = docId
+        changed = true
+      }
+    }
+    return changed ? next : null
+  }, options)
   await dropUnreferenced(change, options)
 }
 

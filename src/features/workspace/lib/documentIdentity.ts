@@ -28,7 +28,7 @@ export function syncDocumentFolderMoved(rootPath: string, fromPath: string, toPa
   return sync(rootPath, (store, options) => store.renameDocumentFolder(fromPath, toPath, options))
 }
 
-/** A file (with its child pages) was deleted. */
+/** A file (with its child pages) was deleted; its replica is kept until the next workspace open prunes it. */
 export function syncDocumentFileDeleted(rootPath: string, path: string) {
   return sync(rootPath, (store, options) => store.forgetDocument(path, options))
 }
