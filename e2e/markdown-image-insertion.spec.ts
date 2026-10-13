@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 
 import { mockAgentTurn } from './helpers/agentStream'
 import { installDesktopHost } from './helpers/desktopHost'
+import { mockDocumentBridge } from './helpers/documentBridge'
 import { mockLocalWorkspaceApi } from './helpers/mockApi'
 import { dismissFirstRunActivation } from './helpers/onboarding'
 
@@ -68,7 +69,7 @@ async function configureMockAgent(page: Page) {
   })
 }
 
-test('Agent image generation forwards a safe fenced-code cursor anchor and renders the mocked revision', async ({ page, baseURL }) => {
+test('Agent image generation forwards a safe fenced-code cursor anchor and renders the mocked live edit', async ({ page, baseURL }) => {
   test.setTimeout(90_000)
   expect(baseURL).toBeTruthy()
 
@@ -131,17 +132,14 @@ test('Agent image generation forwards a safe fenced-code cursor anchor and rende
       '',
       'Existing paragraph after the fenced code block.',
     ].join('\n')
+    const documentBridge = await mockDocumentBridge(page)
     const turns = await mockAgentTurn(page, async (turn) => {
-      // The runtime is outside this test. Mock its final document write here so
-      // this E2E can exercise the public client request, revision, acceptance,
-      // and rendering chain. Resolver unit tests own placement policy.
-      await page.evaluate(async ({ documentPath, markdown }) => {
-        const bridge = (window as typeof window & { kitionDesktop?: Record<string, any> }).kitionDesktop
-        if (!bridge?.WriteWorkspaceDocument) {
-          throw new Error('workspace document writer is unavailable')
-        }
-        await bridge.WriteWorkspaceDocument({ path: documentPath, content: markdown })
-      }, { documentPath: fixture.documentPath, markdown: updatedMarkdown })
+      // The runtime is outside this test. Mock its final edit of the open document here
+      // (`document/apply` over the document bridge, as the runtime sends it) so this E2E
+      // can exercise the public client request, live edit, acceptance, and rendering
+      // chain. Resolver unit tests own placement policy.
+      const answer = await documentBridge.request('document/apply', { path: fixture.documentPath, content: updatedMarkdown, tool: 'apply_patch' })
+      expect(answer.result).toMatchObject({ applied: true })
       turn.tool('ig_1', 'image_generation', { hosted: true }, { path: fixture.assetPath, mime: 'image/png' })
       turn.deliver('ig_1', fixture.assetPath)
       turn.tool('call_patch', 'apply_patch', { path: fixture.documentPath }, {
@@ -186,11 +184,11 @@ test('Agent image generation forwards a safe fenced-code cursor anchor and rende
     expect(promptContext).toContain('Never insert a Markdown image inside fenced or inline code')
     expect(promptContext).toContain('If no top-level blank line is available')
 
-    const revisionReview = page.locator('.document-revision-review')
-    await expect(revisionReview).toBeVisible()
-    await expect(revisionReview).toContainText(`![Generated pendant](${fixture.assetPath})`)
-    await revisionReview.getByRole('button', { name: 'Accept all' }).click()
-    await expect(revisionReview).toBeHidden()
+    const agentReview = page.getByTestId('document-agent-review')
+    await expect(agentReview).toBeVisible()
+    await expect(page.locator('.document-markdown-source .cm-agent-review-added').first()).toContainText(`![Generated pendant](${fixture.assetPath})`)
+    await agentReview.getByRole('button', { name: 'Accept all' }).click()
+    await expect(agentReview).toBeHidden()
 
     const storedMarkdown = await page.evaluate(async (documentPath) => {
       const bridge = (window as typeof window & { kitionDesktop?: Record<string, any> }).kitionDesktop
