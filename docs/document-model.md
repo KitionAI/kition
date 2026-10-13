@@ -71,8 +71,11 @@ path-to-document-id **index** (`.kition/docs/index.json` by way of
   again.
 - **A path renamed or moved outside Kition.** If the index has no entry for the path,
   `recogniseRenamed` looks for another index entry whose file no longer exists in the workspace and
-  whose last-saved file hash equals this file's hash; if it finds exactly one, it rebinds that
-  document id to the new path instead of treating the file as new. (A rename done inside Kition's
+  whose last-saved file hash equals this file's hash; if it finds one, it rebinds that document id
+  to the new path instead of treating the file as new. It compares the stored hash before loading
+  any snapshot, and it takes the workspace's files from the app's tree (`noteWorkspaceFiles`)
+  instead of listing the workspace on every open; a match the tree suggests is confirmed against a
+  fresh listing before it is taken. (A rename done inside Kition's
   own file tree does not need this: it is tracked directly, see Identity below.)
 - **Anything else (a genuinely new file, or a store that could not resolve it).** The file is
   **imported** as a new replica (`createDocumentReplica`) and recorded in the store and the index.
@@ -168,6 +171,12 @@ be saved, or to keep the tab open with its pending edits and retries. Discarding
 saving and retrying for good and leaves the file exactly as it is; a write already in flight when
 discard is called is not retried, but is also not undone.
 
+If the open document's file is deleted (or moved away) outside Kition, the session notices — the
+`unlink` event, or a save whose conflict read finds no file — stops saving and retrying, and says so
+with a **Save to recreate** action. That save expects no file at the path (`expected_missing`), so a
+file that appeared meanwhile is merged first rather than overwritten; a file that comes back on its
+own is simply followed again.
+
 ## External changes
 
 When the workspace reports a change to an open document's file (another program, Git, a sync tool),
@@ -251,8 +260,11 @@ blocks or undoes the file operation that triggered it):
 - **Rename or move outside Kition** (the terminal, another editor, Git) leaves a stale index entry;
   the next open recognises it by content hash (`recogniseRenamed`, above) rather than losing
   history.
-- **Delete** (`forgetDocument`/`forgetDocumentFolder`) removes the index entry (and the file's child
-  pages') and deletes the now-unreferenced stored replicas.
+- **Delete** (`forgetDocument`/`forgetDocumentFolder`) moves the index entry (and the file's child
+  pages') to a deleted path under `.kition/docs/deleted/`, keeping the stored replica: a file
+  restored (or moved back) meanwhile is still recognised by its hash. The first workspace open in a
+  window prunes the store (`pruneDocumentStoreOnOpen`): replicas of deleted documents are deleted,
+  and entries whose files went away outside Kition are kept for one more open before they go.
 - **Duplicate** (`duplicateDocumentIdentity`) gives the copy no index entry at all, so opening it
   imports a fresh document id: two files never share one document's identity, even right after a
   copy.
@@ -269,7 +281,10 @@ notes, the document properties dialog — never write a `.md` file out from unde
 (`documentSessions.ts`) check the session registry first: when the path is open, the read is the
 session's live text and the write is one more undoable, origin-labelled edit of the replica (which
 the session then saves normally); only a path with no open session is read or written as a plain
-file.
+file. A result made from an earlier text — the properties dialog edits the text it opened on, an
+agent edit's review starts from the text after the edit — is applied with
+`DocumentSession.applyFrom(base, next, origin)`, a three-way merge onto the text as it is now, so
+changes made meanwhile are kept.
 
 ## Line endings and BOM
 
