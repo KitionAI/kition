@@ -347,7 +347,8 @@ kition-kit-conformance --kit <executable> --manifest kit.json \
 
 `kit.json` may be the Kition Kit Standard manifest (it has a `standard`
 version; schema `contracts/kit/kit-standard.schema.json`, a copy of
-kition-sdk's `schemas/kit.schema.json`), whose `headless` section names the
+kition-sdk's `schemas/kit.schema.json` that `node scripts/sync-kit-host.mjs`
+refreshes and `pnpm check:kit-host` keeps current), whose `headless` section names the
 executable and must say `kition-kit/1`; or the package manifest below. Kit ids
 are dotted, reverse-domain style (`kit.photo`, `com.example.cad`), in both.
 Kits built on the Kition SDK get their executable from `kition-headless`

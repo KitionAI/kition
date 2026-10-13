@@ -718,7 +718,10 @@ impl Context<'_> {
             .describe(host, &reopened.document_id, describes)
             .await?;
         if described != redescribed {
-            return Err("view.describe differs after saving and reopening".into());
+            return Err(format!(
+                "view.describe differs after saving and reopening (state keys: {}); list session-only keys as volatile in the kit's headless executable",
+                differing_keys(described.as_ref(), redescribed.as_ref()).join(", ")
+            ));
         }
         expect_reason(
             host.call::<methods::DocumentSave>(&DocumentRef {
@@ -828,6 +831,22 @@ impl Context<'_> {
     }
 }
 
+/// The top-level keys whose values differ between two `view.describe` states.
+fn differing_keys(before: Option<&Value>, after: Option<&Value>) -> Vec<String> {
+    let empty = Map::new();
+    let before = before.and_then(Value::as_object).unwrap_or(&empty);
+    let after = after.and_then(Value::as_object).unwrap_or(&empty);
+    let mut keys: Vec<String> = before
+        .keys()
+        .chain(after.keys())
+        .filter(|key| before.get(*key) != after.get(*key))
+        .cloned()
+        .collect();
+    keys.sort_unstable();
+    keys.dedup();
+    keys
+}
+
 /// Reads the width and height from a PNG's IHDR chunk.
 fn png_size(bytes: &[u8]) -> Option<(u32, u32)> {
     const SIGNATURE: &[u8] = b"\x89PNG\r\n\x1a\n";
@@ -850,6 +869,39 @@ mod tests {
             .unwrap_or_else(|err| panic!("{err}"));
         assert_eq!(png_size(&pixel), Some((1, 1)));
         assert_eq!(png_size(b"GIF89a"), None);
+    }
+
+    #[test]
+    fn names_the_describe_keys_that_differ() {
+        let before = json!({ "slides": 2, "selectedKinds": ["shape"], "title": "a" });
+        let after = json!({ "slides": 2, "selectedKinds": [], "zoom": 1 });
+        assert_eq!(
+            differing_keys(Some(&before), Some(&after)),
+            ["selectedKinds", "title", "zoom"]
+        );
+    }
+
+    #[test]
+    fn accepts_a_standard_manifest_with_an_embedded_editor() {
+        let schemas = Schemas::load().unwrap_or_else(|err| panic!("{err}"));
+        let mut manifest = json!({
+            "standard": "1.1",
+            "id": "kit.example",
+            "name": "Example",
+            "version": "0.1.0",
+            "license": "Apache-2.0",
+            "engine": { "module": "kition_example_sdk", "class": "ExampleDocument", "contract": 1 },
+            "formats": [{ "id": "example", "extensions": ["example"], "role": "edit" }],
+            "ui": { "mode": "embedded", "entry": "ui/index.html", "layout": "canvas" }
+        });
+        schemas
+            .standard(&manifest)
+            .unwrap_or_else(|err| panic!("{err}"));
+        manifest["ui"].as_object_mut().map(|ui| ui.remove("entry"));
+        assert!(
+            schemas.standard(&manifest).is_err(),
+            "an embedded editor needs an entry"
+        );
     }
 
     #[test]

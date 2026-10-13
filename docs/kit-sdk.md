@@ -258,7 +258,9 @@ editors on `KitAppShell`, with a tool rail of flyout slots and side panels).
 - `src/features/kits/host/` is Kition's copy of `@kition/kit-protocol` and
   `@kition/kit-host` (kition-sdk is private, Kition public):
   `node scripts/sync-kit-host.mjs` copies them, and `pnpm check:kit-host`
-  fails when they drift.
+  fails when they drift. The same script copies the standard's `kit.json`
+  schema into `contracts/kit/kit-standard.schema.json`, which the conformance
+  suite checks manifests against.
 - A kit's development host (`web/dev.html`, kition-sdk's `@kition/kit-dev-host`)
   runs the editor without Kition, with an in-memory workspace; it can lend a
   folder of linked media.
