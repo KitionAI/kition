@@ -155,32 +155,64 @@ the document, and viewport/current-page live in per-user view state (above).
 - `encodeBoardFile` produces the envelope text; `decodeBoardFile` parses it
   back into a writable replica, or reports `unsupported` with reason
   `'version-1'` (an old record-JSON file, recognized but refused),
-  `'newer-version'` (a board written under a newer schema than this build
-  reads), or `'not-a-board'` (anything else unreadable). A leading byte
-  order mark is ignored.
+  `'newer-version'` (a board of a newer Kition: an envelope version above 2,
+  or a snapshot whose `meta.kit` is `kit.board` but that the schema refuses —
+  a newer schema or KDM version), or `'not-a-board'` (anything else
+  unreadable). A leading byte order mark is ignored.
 - `mergeBoardFile` imports another copy's changes (`Replica.importChanges`)
   into an open replica, answering `'merged'`, `'unchanged'`, or
   `'unsupported'` (not a v2 board, another document, or a newer schema —
   nothing is imported then). `readBoardFileCopy` checks a copy without
-  importing it, and `replicaIncludes` tells whether a replica already holds
-  a copy's changes.
+  importing it, and `replicaIncludes` / `versionIncludes` tell whether a
+  replica or version already holds a copy's changes.
+- Duplicating a `.kiboard` in the file tree writes a new document
+  (`duplicateBoardFileText` in `lib/boardFile.ts`: decode, then
+  `createBoardFromRecords` with the records, so the copy has its own KDM
+  document id and nothing to undo); a file this build cannot open is copied
+  byte for byte.
 
 `useBoardDocument` opens a file by decoding it into a `BoardStore`; a file
 it cannot open (version-1, newer version, not a board) shows a **read-only**
 notice instead of the canvas and is never migrated or written back on its
-own — the notice offers to start a new Board in its place, except for a
-newer Kition's Board. Saves run 600 ms after an edit commits. Saving is
-guarded: writes pass the file's last-known contents as `expected_content`
-to `writeWorkspaceDocument`, so a write that would clobber a
-change made elsewhere is rejected; on that conflict, the document re-reads
-the file, merges it with `mergeBoardFile`, and saves again (with a bounded
-number of attempts; a failed save retries after 1 s, 2 s, and 4 s). External
-changes to the file on disk are merged the same way, without discarding
-unsaved local edits; while a gesture holds an import back, saving waits so a
-write never drops the file's changes. A file replaced by something that is
-not this board is never overwritten. A pending save is flushed
-immediately on unmount, on `beforeunload`, and when the open document's path
-changes, so no edit is lost to a debounce window.
+own. For a version-1 or damaged file the notice offers to start a new Board
+in its place, after a confirmation dialog; a newer Kition's Board is never
+offered for replacement. A file that could not be read (an I/O error) also
+stays read-only, with the error and a **Try again** button; no editable board
+is shown that could never be saved.
+
+Saves run 600 ms after an edit commits. Saving is guarded: writes pass the
+file's last-known contents as `expected_content` to `writeWorkspaceDocument`,
+so a write that would clobber a change made elsewhere is rejected; on that
+conflict, the document re-reads the file, merges it with `mergeBoardFile`,
+and saves again (at most 3 attempts). A failed save — including an
+unexpected exception while encoding or merging — shows the error status and
+retries after 1 s, 2 s, and 4 s; a new edit resets the retries, so an edit
+made during the last failing retry is still saved. External changes to the
+file on disk are merged the same way, without discarding unsaved local
+edits; while a gesture holds an import back, saving waits so a write never
+drops the file's changes. When the file becomes something that is not this
+board (another Board, another file, a newer Kition's Board), saving stops
+and a notice says so; the local edits stay open in the editor and the file
+is never written automatically.
+
+Flushing and closing:
+
+- `flush()` (registered with `registerWorkspaceEditSession`, so
+  `flushWorkspaceEditSessions` and file operations wait for it) resolves only
+  when every edit made before the call is in the file. It rejects when the
+  write failed, when saving stopped because the file is no longer this board,
+  or when a gesture holds back changes merged from the file (the board is
+  not flushed yet); callers treat that as a failed save. A flush during a
+  running save does not queue behind other file work: the newest edit is
+  written right after the running write, expecting the text it wrote.
+- Closing a Board tab works like closing a Design tab: the tab waits for the
+  flush and stays open with the save-failure notice if it rejects.
+- On `beforeunload`, while the board is unsaved or a save is running, the
+  editor calls `preventDefault()` (the window asks before closing, like the
+  Document and Design editors) and flushes.
+- On unmount or a path change, the pending save is flushed; if that final
+  write fails, a notification reports it and the write is retried with the
+  same backoff.
 
 ## Performance rules
 

@@ -5,7 +5,8 @@ import {
   type WorkspaceDocumentTreeItem,
 } from '@/services/desktop'
 import { randomActor } from '@/lib/kdm'
-import { createBoardFromRecords, encodeBoardFile } from '../kdm/boardKdmFile'
+import { createBoardFromRecords, decodeBoardFile, encodeBoardFile } from '../kdm/boardKdmFile'
+import { readBoardRecords } from '../kdm/boardKdmRead'
 import {
   DEFAULT_BOARD_PAGE_ID,
   createBoardElementRecord,
@@ -47,6 +48,17 @@ export async function createBoardWorkspaceFile(options: {
   const board = createBoardFromRecords(boardTitle, randomActor(), records)
   const created = await writeWorkspaceDocument(path, encodeBoardFile(board))
   return { ...created, format: 'board' }
+}
+
+/**
+ * The file text of a copy of the board in `text`: a new document (its own KDM document id) titled
+ * `title`, holding the same pages, elements, and bindings, written in its creating commit so there
+ * is nothing to undo. `null` when `text` is not a board this build opens; copy its bytes then.
+ */
+export function duplicateBoardFileText(text: string, title: string): string | null {
+  const decoded = decodeBoardFile(text, randomActor())
+  if (decoded.kind !== 'board') return null
+  return encodeBoardFile(createBoardFromRecords(title, randomActor(), readBoardRecords(decoded.replica)))
 }
 
 function flattenPaths(items: readonly WorkspaceDocumentTreeItem[]): string[] {

@@ -2,7 +2,7 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { Replica, system } from '@/lib/kdm'
+import { Replica, randomActor, system } from '@/lib/kdm'
 import {
   listWorkspaceDocuments,
   readWorkspaceDocument,
@@ -10,6 +10,7 @@ import {
   writeWorkspaceDocument,
   type WorkspaceDocumentExternalChange,
 } from '@/services/desktop'
+import { notify } from '@/lib/notify'
 import { flushWorkspaceEditSessions } from '@/services/workspaceEditSessions'
 import { boardRootId, readBoardRecords } from '../kdm/boardKdmRead'
 import { writeBoardDiff } from '../kdm/boardKdmWrite'
@@ -19,6 +20,10 @@ import { createBoardElementRecord, createBoardRecordsFromElements } from '../lib
 import type { WhiteboardElement } from '../lib/whiteboardTypes'
 import { useWhiteboardEditor } from './useWhiteboardEditor'
 import { useBoardDocument } from './useBoardDocument'
+
+vi.mock('@/lib/notify', () => ({
+  notify: { error: vi.fn(), success: vi.fn(), info: vi.fn(), warning: vi.fn() },
+}))
 
 vi.mock('@/services/desktop', () => ({
   listWorkspaceDocuments: vi.fn(),
@@ -122,6 +127,35 @@ async function addElement(harness: { current: Harness | null }, id: string, x = 
       elements: [{ id, kind: 'rectangle', x, y: 100, width: 50, height: 50 } as WhiteboardElement],
     })
   })
+}
+
+/** A write that waits until the test settles it. */
+function heldWrite() {
+  let settle!: (outcome: Error | null) => void
+  vi.mocked(writeWorkspaceDocument).mockImplementationOnce(async (path, content, guard) => {
+    const outcome = await new Promise<Error | null>((resolve) => {
+      settle = resolve
+    })
+    if (outcome) throw outcome
+    return guardedWrite(path, content, guard)
+  })
+  return (outcome: Error | null = null) => settle(outcome)
+}
+
+function dispatchBeforeUnload() {
+  const event = new Event('beforeunload', { cancelable: true })
+  window.dispatchEvent(event)
+  return event
+}
+
+/** Settles `promise` and answers its rejection, or `null` when it resolved. */
+async function outcomeOf(promise: Promise<unknown>) {
+  try {
+    await promise
+    return null
+  } catch (error) {
+    return error as Error
+  }
 }
 
 async function advance(ms: number) {
@@ -416,5 +450,223 @@ describe('useBoardDocument', () => {
     expect(writes()).toHaveLength(1)
     expect(disk).toBe('replaced by another program')
     expect(harness.current?.document).toMatchObject({ status: 'error', saveRefused: 'not-a-board' })
+  })
+
+  it('asks the window to stay open on beforeunload while the board is dirty or saving, and flushes', async () => {
+    const { harness } = await mount()
+    expect(dispatchBeforeUnload().defaultPrevented).toBe(false)
+
+    await addElement(harness, 'mine')
+    const release = heldWrite()
+    let event!: Event
+    await act(async () => {
+      event = dispatchBeforeUnload()
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(event.defaultPrevented).toBe(true)
+    expect(writes()).toHaveLength(1)
+    // The write is in flight: leaving would still lose it.
+    expect(dispatchBeforeUnload().defaultPrevented).toBe(true)
+
+    await act(async () => {
+      release()
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(dispatchBeforeUnload().defaultPrevented).toBe(false)
+  })
+
+  it('writes the newest edit right after an in-flight save when flushed, without waiting for the debounce', async () => {
+    const { harness } = await mount()
+    await addElement(harness, 'first')
+    const release = heldWrite()
+    await advance(600)
+    expect(writes()).toHaveLength(1)
+    const first = lastWrite()[1]
+
+    await addElement(harness, 'second', 200)
+    // A file notification arrives meanwhile; its read is slow. The flush must not wait behind it.
+    let finishRead!: () => void
+    vi.mocked(readWorkspaceDocument).mockImplementationOnce(async (path) => {
+      await new Promise<void>((resolve) => {
+        finishRead = resolve
+      })
+      return { path, name: path, content: disk, format: 'board' }
+    })
+    await act(async () => {
+      for (const listener of externalListeners) listener({ path: PATH, eventType: 'change' })
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    let flushed = false
+    let flush!: Promise<void>
+    await act(async () => {
+      flush = flushWorkspaceEditSessions(PATH).then(() => {
+        flushed = true
+      })
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(writes()).toHaveLength(1)
+
+    await act(async () => {
+      release()
+      // No timers advance: the flushed edit goes out as soon as the first write lands.
+      for (let tick = 0; tick < 10; tick += 1) await Promise.resolve()
+    })
+    expect(writes()).toHaveLength(2)
+    expect(lastWrite()[2]).toEqual({ expected_root: ROOT, expected_content: first })
+    expect(elementIdsIn(lastWrite()[1])).toEqual(['first', 'rect-1', 'second'])
+    await act(async () => {
+      await flush
+    })
+    expect(flushed).toBe(true)
+    await act(async () => {
+      finishRead()
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(writes()).toHaveLength(2)
+  })
+
+  it('rejects a flush whose write fails, and the retry still saves', async () => {
+    const { harness } = await mount()
+    vi.mocked(writeWorkspaceDocument).mockRejectedValueOnce(new Error('disk full'))
+    await addElement(harness, 'mine')
+    let failure: Error | null = null
+    await act(async () => {
+      failure = await outcomeOf(flushWorkspaceEditSessions(PATH))
+    })
+    expect(failure).toEqual(new Error('disk full'))
+    expect(harness.current?.document).toMatchObject({ status: 'error', error: 'disk full' })
+
+    await advance(1000)
+    expect(elementIdsIn(disk)).toEqual(['mine', 'rect-1'])
+    await act(async () => {
+      expect(await outcomeOf(flushWorkspaceEditSessions(PATH))).toBeNull()
+    })
+  })
+
+  it('reports a flush during a gesture that holds back the file’s changes as not flushed', async () => {
+    const { harness } = await mount()
+    const store = harness.current!.editor.store
+    let mark!: ReturnType<typeof store.markHistory>
+    await act(async () => {
+      mark = store.markHistory()
+    })
+    await addElement(harness, 'mine')
+    disk = editedElsewhere(disk, 'theirs')
+    await act(async () => {
+      for (const listener of externalListeners) listener({ path: PATH, eventType: 'change' })
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    let failure: Error | null = null
+    await act(async () => {
+      failure = await outcomeOf(flushWorkspaceEditSessions(PATH))
+    })
+    expect(failure).toBeInstanceOf(Error)
+    expect(writeWorkspaceDocument).not.toHaveBeenCalled()
+    expect(dispatchBeforeUnload().defaultPrevented).toBe(true)
+
+    await act(async () => {
+      store.squashToMark(mark, 'gesture')
+    })
+    await act(async () => {
+      expect(await outcomeOf(flushWorkspaceEditSessions(PATH))).toBeNull()
+    })
+    expect(elementIdsIn(disk)).toEqual(['mine', 'rect-1', 'theirs'])
+  })
+
+  it('reschedules an edit made during the last failing retry', async () => {
+    const { harness } = await mount()
+    vi.mocked(writeWorkspaceDocument).mockRejectedValue(new Error('disk full'))
+    await addElement(harness, 'first')
+    await advance(600)
+    await advance(1000)
+    await advance(2000)
+    expect(writes()).toHaveLength(3)
+    const release = heldWrite()
+    await advance(4000)
+    expect(writes()).toHaveLength(4)
+
+    await addElement(harness, 'late', 300)
+    vi.mocked(writeWorkspaceDocument).mockImplementation(guardedWrite)
+    await act(async () => {
+      release(new Error('disk full'))
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(harness.current?.document.status).toBe('error')
+    await advance(1000)
+    expect(writes()).toHaveLength(5)
+    expect(elementIdsIn(disk)).toEqual(['first', 'late', 'rect-1'])
+    expect(harness.current?.document.status).toBe('ready')
+  })
+
+  it('turns an unexpected failure while saving into an error status with a retry', async () => {
+    const { harness } = await mount()
+    const snapshot = vi.spyOn(Replica.prototype, 'snapshot').mockImplementationOnce(() => {
+      throw new Error('engine fault')
+    })
+    await addElement(harness, 'mine')
+    await advance(600)
+    expect(harness.current?.document).toMatchObject({ status: 'error', error: 'engine fault' })
+    expect(writeWorkspaceDocument).not.toHaveBeenCalled()
+
+    await advance(1000)
+    expect(writes()).toHaveLength(1)
+    expect(harness.current?.document.status).toBe('ready')
+    snapshot.mockRestore()
+  })
+
+  it('keeps a board whose file could not be read read-only, and reads it again on request', async () => {
+    vi.mocked(readWorkspaceDocument).mockRejectedValueOnce(new Error('permission denied'))
+    const { harness } = await mount()
+    expect(harness.current?.document).toMatchObject({ status: 'error', error: 'permission denied', problem: 'read-failed' })
+    await act(async () => {
+      expect(await outcomeOf(flushWorkspaceEditSessions(PATH))).toBeNull()
+    })
+
+    await act(async () => {
+      harness.current?.document.reload()
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(harness.current?.document).toMatchObject({ status: 'ready', error: '', problem: null })
+    expect(harness.current?.editor.elements.map((element) => element.id)).toEqual(['rect-1'])
+    await addElement(harness, 'mine')
+    await advance(650)
+    expect(elementIdsIn(disk)).toEqual(['mine', 'rect-1'])
+  })
+
+  it('stops saving when the file becomes a different board, keeping local edits in memory', async () => {
+    const { harness } = await mount()
+    await addElement(harness, 'mine')
+    disk = encodeBoardFile(createBoardFromRecords('Other', randomActor(), []))
+    const other = disk
+    await act(async () => {
+      for (const listener of externalListeners) listener({ path: PATH, eventType: 'change' })
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(harness.current?.document).toMatchObject({ status: 'error', saveRefused: 'different-board' })
+
+    await addElement(harness, 'more', 300)
+    await advance(5000)
+    expect(writeWorkspaceDocument).not.toHaveBeenCalled()
+    expect(disk).toBe(other)
+    expect(harness.current?.editor.elements.map((element) => element.id).sort()).toEqual(['mine', 'more', 'rect-1'])
+    await act(async () => {
+      expect(await outcomeOf(flushWorkspaceEditSessions(PATH))).toBeInstanceOf(Error)
+    })
+    expect(dispatchBeforeUnload().defaultPrevented).toBe(true)
+  })
+
+  it('reports a final write that fails after the editor closed, and keeps retrying it', async () => {
+    const { harness } = await mount()
+    vi.mocked(writeWorkspaceDocument).mockRejectedValueOnce(new Error('disk full'))
+    await addElement(harness, 'mine')
+    await act(async () => root?.unmount())
+    root = null
+    await advance(0)
+    expect(writes()).toHaveLength(1)
+    expect(notify.error).toHaveBeenCalledTimes(1)
+
+    await advance(1000)
+    expect(writes()).toHaveLength(2)
+    expect(elementIdsIn(disk)).toEqual(['mine', 'rect-1'])
   })
 })

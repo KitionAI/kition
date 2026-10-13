@@ -1,5 +1,6 @@
 import { flushWorkspaceEditSessions } from '@/services/workspaceEditSessions'
 import { loadDesignLib } from '@/features/design/public'
+import { loadBoardFile } from '@/features/whiteboard/public'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { renameDataDocumentByPath } from '@/api/dataDocuments'
@@ -425,7 +426,14 @@ export function useWorkspaceTreeNodeActions({
         window.dispatchEvent(new CustomEvent('kition:search:open-path', { detail: { path: created.path } }))
         return
       }
-      const created = await writeWorkspaceDocument(copyPath, source.content)
+      let content = source.content
+      if (node.path.toLowerCase().endsWith('.kiboard')) {
+        // A copy of a Board is a new document: two files must never share a KDM document id.
+        const { duplicateBoardFileText } = await loadBoardFile()
+        const title = (copyPath.split('/').pop() || copyPath).replace(/\.kiboard$/i, '')
+        content = duplicateBoardFileText(source.content, title) ?? source.content
+      }
+      const created = await writeWorkspaceDocument(copyPath, content)
       setFeedback(`Duplicated "${node.title}"`)
       await refreshWorkspaceDocuments(created.path)
     } catch (requestError: any) {

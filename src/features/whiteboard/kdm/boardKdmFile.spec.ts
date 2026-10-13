@@ -1,5 +1,7 @@
+import { LoroDoc } from 'loro-crdt'
 import { describe, expect, it } from 'vitest'
 import { KdmError, person, Replica, system } from '@/lib/kdm'
+import { open, wrap } from '@/lib/kdm/envelope'
 import { createBoardElementRecord, type BoardBindingRecord, type BoardElementRecord, type BoardRecord } from '../lib/boardRecords'
 import type { WhiteboardElement } from '../lib/whiteboardTypes'
 import { boardRootId, readBoardRecords, readBoardTitle } from './boardKdmRead'
@@ -25,6 +27,20 @@ function newerBoardText(docId: string = createEmptyBoard('Plan', 9n).docId): str
     tx.listInsert(root, 'pages', 0, page)
   }).replica
   return encodeBoardFile(replica)
+}
+
+/** `text` (a v2 board file) with its snapshot's `meta` entries replaced by `patch`, as another build might write it. */
+function withMeta(text: string, patch: Record<string, string | number>): string {
+  const binary = atob((JSON.parse(text) as { kdm: string }).kdm)
+  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0))
+  const { docId, engine } = open(bytes)
+  const doc = new LoroDoc()
+  doc.import(engine)
+  const meta = doc.getMap('meta')
+  for (const [key, value] of Object.entries(patch)) meta.set(key, value)
+  doc.commit()
+  const out = wrap(docId, doc.export({ mode: 'snapshot' }))
+  return `${JSON.stringify({ format: 'kition-board', version: 2, kdm: btoa(String.fromCharCode(...out)) })}\n`
 }
 
 const me = person('user:test')
@@ -88,6 +104,20 @@ describe('boardKdmFile', () => {
     expect(decodeBoardFile(newerBoardText(), 1n)).toEqual({ kind: 'unsupported', reason: 'newer-version' })
   })
 
+  it('refuses a newer envelope version as newer-version, whatever it holds', () => {
+    expect(decodeBoardFile(JSON.stringify({ format: 'kition-board', version: 3, kdm: 'not base64 at all' }), 1n))
+      .toEqual({ kind: 'unsupported', reason: 'newer-version' })
+    expect(decodeBoardFile(JSON.stringify({ format: 'kition-board', version: 7 }), 1n))
+      .toEqual({ kind: 'unsupported', reason: 'newer-version' })
+  })
+
+  it('refuses a board the schema refuses for any reason as newer-version, even without a Board object', () => {
+    const plan = encodeBoardFile(createEmptyBoard('Plan', 9n))
+    expect(decodeBoardFile(withMeta(plan, { kdm: 2 }), 1n)).toEqual({ kind: 'unsupported', reason: 'newer-version' })
+    const rootless = Replica.create({ ...boardSchema, schemaVersion: boardSchema.schemaVersion + 1 }, createEmptyBoard('x', 9n).docId, 9n)
+    expect(decodeBoardFile(encodeBoardFile(rootless), 1n)).toEqual({ kind: 'unsupported', reason: 'newer-version' })
+  })
+
   it('refuses a KDM document of another kit as not-a-board', () => {
     const other = Replica.create({ ...boardSchema, kit: 'kit.other' }, createEmptyBoard('x', 9n).docId, 9n)
     expect(decodeBoardFile(encodeBoardFile(other), 1n)).toEqual({ kind: 'unsupported', reason: 'not-a-board' })
@@ -103,7 +133,7 @@ describe('boardKdmFile', () => {
     ['an empty file', ''],
     ['a JSON array', '[]'],
     ['another format', JSON.stringify({ format: 'kition-sheet', version: 2, kdm: '' })],
-    ['an unknown version', JSON.stringify({ format: 'kition-board', version: 3, kdm: '' })],
+    ['a version that is not a number', JSON.stringify({ format: 'kition-board', version: '3', kdm: '' })],
     ['bad base64', JSON.stringify({ format: 'kition-board', version: 2, kdm: '@@not base64@@' })],
     ['base64 that is not a KDM snapshot', JSON.stringify({ format: 'kition-board', version: 2, kdm: btoa('hello world!') })],
   ])('refuses %s as not-a-board', (_name, text) => {

@@ -328,8 +328,9 @@ export function WhiteboardEditorPane({
         data-board-path={path}
       >
         <WhiteboardFileNotice
-          busy={documentState.status === 'saving'}
+          busy={documentState.status === 'saving' || documentState.status === 'loading'}
           error={documentState.status === 'error' ? documentState.error : ''}
+          onReload={documentState.reload}
           onStartNew={documentState.startNewBoard}
           problem={documentState.problem}
           title={title}
@@ -402,6 +403,17 @@ export function WhiteboardEditorPane({
         onReplaceResult={(workspacePath, options) => placeGeneratedImage(workspacePath, options, true)}
         open={imageStudioOpen}
       />
+      {documentState.saveRefused ? (
+        <div
+          className="absolute bottom-12 right-4 z-20 max-w-sm space-y-1 rounded-xl border bg-card px-3 py-2 text-xs text-card-foreground shadow-soft"
+          role="alert"
+          data-testid="board-save-refused"
+          data-reason={documentState.saveRefused}
+        >
+          <p className="font-medium">{t(BOARD_FILE_PROBLEM_MESSAGES[documentState.saveRefused])}</p>
+          <p className="text-muted-foreground">{t('whiteboard.file.savePaused')}</p>
+        </div>
+      ) : null}
       <div
         className="absolute bottom-4 right-4 z-20 rounded-md border bg-background/95 px-2.5 py-1 text-xs text-muted-foreground shadow-[var(--shadow-toolbar)] backdrop-blur"
         role={documentState.status === 'error' ? 'alert' : 'status'}

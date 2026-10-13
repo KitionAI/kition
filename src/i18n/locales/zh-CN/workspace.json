@@ -212,7 +212,15 @@
       "notABoard": "此文件不是 Kition 画板，或已损坏。文件未被更改。",
       "startNew": "新建画板",
       "startNewHint": "新画板将替换此文件的内容。",
-      "saveConflict": "保存期间此画板的文件一直在变化。你的编辑已保留，稍后会再次保存。"
+      "saveConflict": "保存期间此画板的文件一直在变化。你的编辑已保留，稍后会再次保存。",
+      "startNewConfirmTitle": "要用新画板替换此文件吗？",
+      "startNewConfirmMessage": "{{title}} 的全部内容将被一个空白画板替换。此操作无法撤销。",
+      "startNewConfirm": "替换为新画板",
+      "readFailed": "Kition 无法读取此文件。文件未被更改。",
+      "reload": "重试",
+      "differentBoard": "此文件现在保存的是另一个画板。文件未被更改。",
+      "savePaused": "保存已暂停。你的更改仍在此处打开，但不会写入文件。",
+      "closeSaveFailed": "关闭前无法保存 {{title}}。"
     }
   },
   "board": {

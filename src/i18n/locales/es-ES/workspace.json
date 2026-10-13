@@ -212,7 +212,15 @@
       "notABoard": "Este archivo no es un tablero de Kition o está dañado. El archivo no se ha modificado.",
       "startNew": "Empezar un tablero nuevo",
       "startNewHint": "El tablero nuevo reemplaza el contenido de este archivo.",
-      "saveConflict": "El archivo de este tablero cambió repetidamente mientras Kition lo guardaba. Tus cambios se conservan y se volverán a guardar."
+      "saveConflict": "El archivo de este tablero cambió repetidamente mientras Kition lo guardaba. Tus cambios se conservan y se volverán a guardar.",
+      "startNewConfirmTitle": "¿Reemplazar este archivo por un tablero nuevo?",
+      "startNewConfirmMessage": "Todo el contenido de {{title}} se reemplaza por un tablero vacío. No se puede deshacer.",
+      "startNewConfirm": "Reemplazar por un tablero nuevo",
+      "readFailed": "Kition no pudo leer este archivo. El archivo no se ha modificado.",
+      "reload": "Reintentar",
+      "differentBoard": "Este archivo ahora contiene otro tablero. El archivo no se ha modificado.",
+      "savePaused": "El guardado está en pausa. Tus cambios siguen abiertos aquí, pero no se escriben en el archivo.",
+      "closeSaveFailed": "No se pudo guardar {{title}} antes de cerrarlo."
     }
   },
   "board": {

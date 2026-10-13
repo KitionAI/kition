@@ -212,7 +212,15 @@
       "notABoard": "This file isn’t a Kition Board, or it is damaged. The file has not been changed.",
       "startNew": "Start a new Board",
       "startNewHint": "The new Board replaces this file’s contents.",
-      "saveConflict": "This Board’s file kept changing while Kition was saving it. Your edits are kept and will be saved again."
+      "saveConflict": "This Board’s file kept changing while Kition was saving it. Your edits are kept and will be saved again.",
+      "startNewConfirmTitle": "Replace this file with a new Board?",
+      "startNewConfirmMessage": "Everything in {{title}} is replaced by an empty Board. This can’t be undone.",
+      "startNewConfirm": "Replace with a new Board",
+      "readFailed": "Kition couldn’t read this file. The file has not been changed.",
+      "reload": "Try again",
+      "differentBoard": "This file now holds a different Board. The file has not been changed.",
+      "savePaused": "Saving is paused. Your changes stay open here but are not written to the file.",
+      "closeSaveFailed": "Couldn’t save {{title}} before it closed."
     }
   },
   "board": {

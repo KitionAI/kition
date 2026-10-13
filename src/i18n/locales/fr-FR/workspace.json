@@ -212,7 +212,15 @@
       "notABoard": "Ce fichier n’est pas un tableau Kition ou il est endommagé. Le fichier n’a pas été modifié.",
       "startNew": "Commencer un nouveau tableau",
       "startNewHint": "Le nouveau tableau remplace le contenu de ce fichier.",
-      "saveConflict": "Le fichier de ce tableau a changé à plusieurs reprises pendant que Kition l’enregistrait. Vos modifications sont conservées et seront enregistrées à nouveau."
+      "saveConflict": "Le fichier de ce tableau a changé à plusieurs reprises pendant que Kition l’enregistrait. Vos modifications sont conservées et seront enregistrées à nouveau.",
+      "startNewConfirmTitle": "Remplacer ce fichier par un nouveau tableau ?",
+      "startNewConfirmMessage": "Tout le contenu de {{title}} est remplacé par un tableau vide. Cette action est irréversible.",
+      "startNewConfirm": "Remplacer par un nouveau tableau",
+      "readFailed": "Kition n’a pas pu lire ce fichier. Le fichier n’a pas été modifié.",
+      "reload": "Réessayer",
+      "differentBoard": "Ce fichier contient désormais un autre tableau. Le fichier n’a pas été modifié.",
+      "savePaused": "L’enregistrement est en pause. Vos modifications restent ouvertes ici mais ne sont pas écrites dans le fichier.",
+      "closeSaveFailed": "Impossible d’enregistrer {{title}} avant sa fermeture."
     }
   },
   "board": {

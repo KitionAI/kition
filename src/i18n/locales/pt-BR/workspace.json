@@ -212,7 +212,15 @@
       "notABoard": "Este arquivo não é um quadro do Kition ou está danificado. O arquivo não foi alterado.",
       "startNew": "Começar um novo quadro",
       "startNewHint": "O novo quadro substitui o conteúdo deste arquivo.",
-      "saveConflict": "O arquivo deste quadro mudou várias vezes enquanto o Kition o salvava. Suas edições foram mantidas e serão salvas novamente."
+      "saveConflict": "O arquivo deste quadro mudou várias vezes enquanto o Kition o salvava. Suas edições foram mantidas e serão salvas novamente.",
+      "startNewConfirmTitle": "Substituir este arquivo por um novo quadro?",
+      "startNewConfirmMessage": "Todo o conteúdo de {{title}} será substituído por um quadro vazio. Isso não pode ser desfeito.",
+      "startNewConfirm": "Substituir por um novo quadro",
+      "readFailed": "O Kition não conseguiu ler este arquivo. O arquivo não foi alterado.",
+      "reload": "Tentar novamente",
+      "differentBoard": "Este arquivo agora contém outro quadro. O arquivo não foi alterado.",
+      "savePaused": "O salvamento está pausado. Suas alterações continuam abertas aqui, mas não são gravadas no arquivo.",
+      "closeSaveFailed": "Não foi possível salvar {{title}} antes de fechá-lo."
     }
   },
   "board": {

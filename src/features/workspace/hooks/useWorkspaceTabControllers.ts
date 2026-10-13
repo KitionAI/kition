@@ -31,7 +31,7 @@ function documentUid() {
 
 /**
  * Tab-strip behavior that is not tab-list state: closing a tab (flushing a
- * design editor first, closing the workflow workbench with its last tab),
+ * design or Board editor first, closing the workflow workbench with its last tab),
  * the Cmd/Ctrl+W shortcut, keeping the tree focused on the active tab's
  * file, opening a file into the right tab type, and the search palette's
  * open-path requests.
@@ -58,7 +58,8 @@ export function useWorkspaceTabControllers({
     const tabs = workspaceTabsRef.current
     const closing = tabs.find((tab) => tab.id === tabId)
     if (!closing) return
-    if (closing.type === 'design') {
+    if (closing.type === 'design' || closing.type === 'board') {
+      // Write the editor's pending save first; a failed save keeps the tab and its edits open.
       void flushWorkspaceEditSessions(closing.path)
         .then(() => closeWorkspaceTab(tabId))
         .catch(() => notify.error(t('design:errors.save')))

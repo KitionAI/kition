@@ -8,6 +8,7 @@ import {
   readWorkspaceDocument,
   writeWorkspaceDocument,
 } from '@/services/desktop'
+import { ConfirmProvider } from '@/components/confirm'
 import { newDocId, Replica, system } from '@/lib/kdm'
 import { createBoardFromRecords, encodeBoardFile } from '../kdm/boardKdmFile'
 import { boardSchema } from '../kdm/boardSchema'
@@ -64,7 +65,7 @@ afterEach(async () => {
 })
 
 describe('WhiteboardEditorPane', () => {
-  it('shows a read-only notice for a version-1 file and can start a new Board in its place', async () => {
+  it('shows a read-only notice for a version-1 file and can start a new Board in its place after confirming', async () => {
     const v1 = `${JSON.stringify({ format: 'kition-board', version: 1, title: 'Old', records: [] }, null, 2)}\n`
     vi.mocked(readWorkspaceDocument).mockResolvedValue({
       path: 'Planning.kiboard',
@@ -75,10 +76,10 @@ describe('WhiteboardEditorPane', () => {
 
     await act(async () => {
       root = createRoot(container)
-      root.render(createElement(WhiteboardEditorPane, {
+      root.render(createElement(ConfirmProvider, null, createElement(WhiteboardEditorPane, {
         path: 'Planning.kiboard',
         title: 'Planning',
-      }))
+      })))
       await Promise.resolve()
     })
 
@@ -88,9 +89,28 @@ describe('WhiteboardEditorPane', () => {
     expect(container.querySelector('[data-testid="whiteboard-svg-scene"]')).toBeNull()
     expect(writeWorkspaceDocument).not.toHaveBeenCalled()
 
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 0))
+    // Cancelling the confirmation keeps the file.
     await act(async () => {
       container.querySelector<HTMLButtonElement>('[data-testid="whiteboard-file-start-new"]')?.click()
-      await new Promise((resolve) => setTimeout(resolve, 0))
+      await settle()
+    })
+    const dialog = document.querySelector('[data-testid="whiteboard-start-new-confirm"]')
+    expect(dialog?.textContent).toContain('replaced by an empty Board')
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>('[data-testid="cancel-btn"]')?.click()
+      await settle()
+    })
+    expect(writeWorkspaceDocument).not.toHaveBeenCalled()
+    expect(container.querySelector('[data-testid="whiteboard-file-notice"]')).not.toBeNull()
+
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('[data-testid="whiteboard-file-start-new"]')?.click()
+      await settle()
+    })
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>('[data-testid="confirm-btn"]')?.click()
+      await settle()
     })
     expect(writeWorkspaceDocument).toHaveBeenCalledWith(
       'Planning.kiboard',
@@ -114,10 +134,10 @@ describe('WhiteboardEditorPane', () => {
 
     await act(async () => {
       root = createRoot(container)
-      root.render(createElement(WhiteboardEditorPane, {
+      root.render(createElement(ConfirmProvider, null, createElement(WhiteboardEditorPane, {
         path: 'Planning.kiboard',
         title: 'Planning',
-      }))
+      })))
       await Promise.resolve()
     })
 
@@ -125,6 +145,33 @@ describe('WhiteboardEditorPane', () => {
     expect(notice?.getAttribute('data-problem')).toBe('newer-version')
     expect(notice?.textContent).toContain('newer version of Kition')
     expect(container.querySelector('[data-testid="whiteboard-file-start-new"]')).toBeNull()
+  })
+
+  it('keeps a Board whose file could not be read read-only, and reads it again on request', async () => {
+    vi.mocked(readWorkspaceDocument).mockRejectedValueOnce(new Error('permission denied'))
+
+    await act(async () => {
+      root = createRoot(container)
+      root.render(createElement(ConfirmProvider, null, createElement(WhiteboardEditorPane, {
+        path: 'Planning.kiboard',
+        title: 'Planning',
+      })))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+
+    const notice = container.querySelector('[data-testid="whiteboard-file-notice"]')
+    expect(notice?.getAttribute('data-problem')).toBe('read-failed')
+    expect(notice?.textContent).toContain('permission denied')
+    expect(container.querySelector('[data-testid="whiteboard-file-start-new"]')).toBeNull()
+    expect(container.querySelector('[data-testid="whiteboard-svg-scene"]')).toBeNull()
+
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('[data-testid="whiteboard-file-reload"]')?.click()
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+    expect(container.querySelector('[data-testid="whiteboard-file-notice"]')).toBeNull()
+    expect(container.querySelector('[data-testid="whiteboard-svg-scene"]')).not.toBeNull()
+    expect(writeWorkspaceDocument).not.toHaveBeenCalled()
   })
 
   it('culls distant committed elements from the SVG scene while retaining Board records', async () => {

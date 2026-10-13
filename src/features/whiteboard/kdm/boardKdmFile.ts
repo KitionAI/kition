@@ -6,21 +6,21 @@
  * ```
  *
  * The file is the KDM document itself: no record JSON, no viewport. Version-1 files (record JSON)
- * and boards of a newer schema are recognised so the editor can refuse them with a clear message;
- * version-1 files are not migrated. A leading byte order mark is ignored.
+ * and boards of a newer Kition (a newer envelope, KDM, or schema version) are recognised so the
+ * editor can refuse them with a clear message and never replace them; version-1 files are not
+ * migrated. A leading byte order mark is ignored.
  */
-import { VersionVector } from 'loro-crdt'
+import { LoroDoc, VersionVector } from 'loro-crdt'
 import { KdmError, newDocId, newObjectId, Replica, system, type Version } from '@/lib/kdm'
+import { open } from '@/lib/kdm/envelope'
 import { checkActor } from '@/lib/kdm/ids'
 import type { BoardElementRecord, BoardPageRecord, BoardRecord } from '../lib/boardRecords'
-import { boardSchema } from './boardSchema'
+import { BOARD_KIT, boardSchema } from './boardSchema'
 import { writeBoardDiff } from './boardKdmWrite'
 
 const BOARD_FILE_FORMAT = 'kition-board'
 const BOARD_FILE_VERSION = 2
 const BYTE_ORDER_MARK = String.fromCodePoint(0xfeff)
-/** The largest schema version the KDM stores (`u32`). */
-const MAX_SCHEMA_VERSION = 2 ** 32 - 1
 
 /** Why a file cannot be opened: an old record-JSON board, a board of a newer Kition, or not a board. */
 export type BoardFileProblem = 'version-1' | 'newer-version' | 'not-a-board'
@@ -85,14 +85,14 @@ export function encodeBoardFile(replica: Replica): string {
 export function decodeBoardFile(text: string, actor: bigint): DecodedBoardFile {
   checkActor(actor)
   const bytes = boardFileBytes(text)
-  if (bytes === 'version-1') return { kind: 'unsupported', reason: 'version-1' }
+  if (bytes === 'version-1' || bytes === 'newer-version') return { kind: 'unsupported', reason: bytes }
   if (bytes === null) return { kind: 'unsupported', reason: 'not-a-board' }
   let replica: Replica
   try {
     replica = Replica.load(boardSchema, bytes, actor)
   } catch (error) {
     if (!isRefusal(error)) throw error
-    const reason = error.reason === 'schema' && isNewerBoard(bytes, actor) ? 'newer-version' : 'not-a-board'
+    const reason = error.reason === 'schema' && snapshotKit(bytes) === BOARD_KIT ? 'newer-version' : 'not-a-board'
     return { kind: 'unsupported', reason }
   }
   if (replica.objectsOfType('Board').length === 0) return { kind: 'unsupported', reason: 'not-a-board' }
@@ -109,7 +109,7 @@ export type BoardFileCopy = { changes: Uint8Array; version: Version }
  */
 export function readBoardFileCopy(replica: Replica, text: string): BoardFileCopy | null {
   const bytes = boardFileBytes(text)
-  if (bytes === 'version-1' || bytes === null) return null
+  if (typeof bytes === 'string' || bytes === null) return null
   let copy: Replica
   try {
     copy = Replica.load(boardSchema, bytes, replica.actor)
@@ -142,7 +142,12 @@ export function mergeBoardFile(replica: Replica, text: string): 'merged' | 'unch
 
 /** Whether `replica` holds every change of `version` (for instance, of a file it merged). */
 export function replicaIncludes(replica: Replica, version: Version): boolean {
-  const order = VersionVector.decode(replica.version().encode()).compare(VersionVector.decode(version.encode()))
+  return versionIncludes(replica.version(), version)
+}
+
+/** Whether `version` holds every change of `other`. */
+export function versionIncludes(version: Version, other: Version): boolean {
+  const order = VersionVector.decode(version.encode()).compare(VersionVector.decode(other.encode()))
   return order === 0 || order === 1
 }
 
@@ -152,20 +157,25 @@ function isRefusal(error: unknown): error is KdmError {
 }
 
 /**
- * Whether bytes the board schema refused are a board of a newer schema version: they open under
- * the same schema with any schema version allowed. The probe replica is never written.
+ * The kit a KDM snapshot names in its `meta`, read without loading it as a document, or `null`.
+ * A board the schema refused (a newer KDM or schema version) still names `kit.board`: it belongs
+ * to a newer Kition and must never be treated as replaceable.
  */
-function isNewerBoard(bytes: Uint8Array, actor: bigint): boolean {
+function snapshotKit(bytes: Uint8Array): unknown {
   try {
-    const probe = Replica.load({ ...boardSchema, schemaVersion: MAX_SCHEMA_VERSION }, bytes, actor)
-    return probe.objectsOfType('Board').length > 0
+    const doc = new LoroDoc()
+    doc.import(open(bytes).engine)
+    return doc.getMap('meta').get('kit') ?? null
   } catch {
-    return false
+    return null
   }
 }
 
-/** The snapshot bytes of a v2 file, `'version-1'` for a version-1 file, or `null`. */
-function boardFileBytes(text: string): Uint8Array | 'version-1' | null {
+/**
+ * The snapshot bytes of a v2 file, `'version-1'` for a version-1 file, `'newer-version'` for an
+ * envelope of a newer version (whatever it holds), or `null`.
+ */
+function boardFileBytes(text: string): Uint8Array | 'version-1' | 'newer-version' | null {
   let parsed: unknown
   try {
     parsed = JSON.parse(text.startsWith(BYTE_ORDER_MARK) ? text.slice(1) : text)
@@ -176,6 +186,7 @@ function boardFileBytes(text: string): Uint8Array | 'version-1' | null {
   const envelope = parsed as Record<string, unknown>
   if (envelope.format !== BOARD_FILE_FORMAT) return null
   if (envelope.version === 1) return 'version-1'
+  if (typeof envelope.version === 'number' && Number.isInteger(envelope.version) && envelope.version > BOARD_FILE_VERSION) return 'newer-version'
   if (envelope.version !== BOARD_FILE_VERSION || typeof envelope.kdm !== 'string') return null
   return base64ToBytes(envelope.kdm)
 }
