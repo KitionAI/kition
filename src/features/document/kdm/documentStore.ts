@@ -324,13 +324,18 @@ export async function saveDocument(input: {
   onStoreError?: (error: unknown) => void
 }): Promise<SavedDocument> {
   const { path, opened, expectedFileText } = input
+  // The text, the snapshot, and the version are taken together, before anything is awaited: edits made while the
+  // file is written are not in it, so the store must not hold them either (a later discard would resurrect them).
   const fileText = renderText(documentBody(opened.replica, opened.rootId), opened.style)
+  const snapshot = opened.replica.snapshot()
+  const exported = versionHex(opened.replica)
+  const style = { ...opened.style }
   const root = input.expectedRoot || (await listWorkspaceDocuments()).root_path
   const written = await writeWorkspaceDocument(path, fileText, { expected_root: root, expected_content: expectedFileText })
   const stamp = written?.mtime_ms !== undefined ? String(written.mtime_ms) : (written?.updated_at ?? null)
-  const meta = makeMeta(opened.replica, path, await hashFileText(fileText), stamp, opened.style)
+  const meta: DocumentStoreMeta = { ...makeMeta(opened.replica, path, await hashFileText(fileText), stamp, style), exported }
   try {
-    await storeReplica(opened.replica, meta, { expectedRoot: root })
+    await writeDocumentStore(meta.docId, { meta, snapshot }, storeOptions({ expectedRoot: root }))
   } catch (error) {
     if (input.onStoreError) input.onStoreError(error)
     else warn('could not store a saved document', error)

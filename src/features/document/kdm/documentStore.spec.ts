@@ -30,6 +30,7 @@ vi.mock('@/services/desktop', async (importOriginal) => {
     readDocumentIndex: vi.fn(actual.readDocumentIndex),
     writeDocumentIndex: vi.fn(actual.writeDocumentIndex),
     listWorkspaceDocuments: vi.fn(actual.listWorkspaceDocuments),
+    writeWorkspaceDocument: vi.fn(actual.writeWorkspaceDocument),
   }
 })
 
@@ -259,6 +260,26 @@ describe('saveDocument', () => {
     expect(onStoreError).toHaveBeenCalledWith(expect.objectContaining({ message: 'disk full' }))
     expect(saved.fileText).toBe('zero\none\n')
     expect(await fileText('Plan.md')).toBe('zero\none\n')
+  })
+
+  it('stores exactly the replica it wrote, not edits made while the file was written', async () => {
+    await writeFile('Plan.md', 'one\n')
+    const opened = await open('Plan.md')
+    type(opened, 4, 'two\n')
+    const written = versionHex(opened.replica)
+    const actual = vi.mocked(desktop.writeWorkspaceDocument).getMockImplementation()!
+    vi.mocked(desktop.writeWorkspaceDocument).mockImplementationOnce(async (...args) => {
+      type(opened, 0, 'typed meanwhile ')
+      return actual(...args)
+    })
+
+    const saved = await save('Plan.md', opened)
+    expect(saved.fileText).toBe('one\ntwo\n')
+    expect(saved.meta.exported).toBe(written)
+    // The typing was never saved (the session discards it): reopening shows the file, not the typing.
+    const again = await open('Plan.md', 2n)
+    expect(again.merged).toBe(false)
+    expect(documentBody(again.replica, again.rootId)).toBe('one\ntwo\n')
   })
 
   it('writes the new path, hash, and exported version into the meta', async () => {
