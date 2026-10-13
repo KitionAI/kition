@@ -52,10 +52,6 @@ async function selectSource(page: Page) {
 const readDoc = (page: Page) => page.evaluate(() => (document.querySelector('.cm-editor .cm-content') as any).cmTile.root.view.state.doc.toString())
 
 test('translates a selection inline, replaces it, and undoes in one step', async ({ page }) => {
-  let commandsModuleUrl = ''
-  page.on('request', (request) => {
-    if (request.url().includes('@codemirror_commands.js')) commandsModuleUrl = request.url()
-  })
   const requests = await openDocument(page, MODEL_SETTINGS)
   await selectSource(page)
 
@@ -72,16 +68,17 @@ test('translates a selection inline, replaces it, and undoes in one step', async
   expect(await readDoc(page)).toContain(TRANSLATION)
   expect(await readDoc(page)).not.toContain(SOURCE)
 
-  // Run the app's own undo command. Headless Chromium drops the first Cmd+Z of
-  // a session before it reaches CodeMirror's keymap, so the key path is not
-  // reliable here; the history itself is what this asserts.
-  const undone = await page.evaluate(async (url) => {
+  // Run the app's own undo command (the document replica's history). Headless
+  // Chromium drops the first Cmd+Z of a session before it reaches CodeMirror's
+  // keymap, so the key path is not reliable here; the history itself is what
+  // this asserts.
+  const undone = await page.evaluate(async (modulePath) => {
     const view = (document.querySelector('.cm-editor .cm-content') as any).cmTile.root.view
-    const commands: any = await import(url)
-    return commands.undo(view)
-  }, commandsModuleUrl)
+    const history: any = await import(/* @vite-ignore */ new URL(modulePath, window.location.href).href)
+    return history.undoDocument(view)
+  }, '/src/features/document/kdm/documentHistory.ts')
   expect(undone).toBe(true)
-  expect(await readDoc(page)).toContain(SOURCE)
+  await expect.poll(() => readDoc(page)).toContain(SOURCE)
   expect(await readDoc(page)).not.toContain(TRANSLATION)
 })
 
