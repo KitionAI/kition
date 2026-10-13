@@ -70,6 +70,11 @@ export function deltaToChanges(delta: readonly TextDelta[]): ChangeSpec[] {
 export type TextBindingOptions = {
   /** Called when a local change could not be published; the editor is then reset to the replica's text. */
   onError?: (error: unknown) => void
+  /**
+   * Called with each local transaction right before it is published, outside any KDM
+   * transaction: a session uses it to open or close undo groups (typing runs, isolated steps).
+   */
+  beforeLocal?: (transaction: Transaction) => void
 }
 
 /**
@@ -128,6 +133,7 @@ export class TextBinding {
       changes = transaction.changes.map(pending)
       this.pending = pending.map(transaction.changes, true)
     }
+    this.options.beforeLocal?.(transaction)
     this.publishing = true
     try {
       this.replica.transact(this.origin, (tx) => applyChangeSet(tx, this.id, this.field, changes, before))
