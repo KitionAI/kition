@@ -8,6 +8,7 @@ pub mod exec;
 pub mod files;
 pub mod images;
 pub mod kits;
+pub mod live_documents;
 pub mod tables;
 pub mod web;
 
@@ -134,7 +135,7 @@ async fn dispatch(run: &Arc<Run>, name: &str, input: &Value) -> ToolResult {
         "fs_remove" => blocking(run, input, files::remove).await,
         "fs_copy" => blocking(run, input, files::copy).await,
         "file_search" => blocking(run, input, files::file_search).await,
-        "apply_patch" => blocking(run, input, apply_patch::apply).await,
+        "apply_patch" => apply_patch::apply(run, input).await,
         "view_image" => files::view_image(run, input).await,
         "update_plan" => files::update_plan(input),
         "source_read" => blocking(run, input, sources::read).await,

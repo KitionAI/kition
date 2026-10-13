@@ -2,6 +2,7 @@
 
 use serde_json::{Value, json};
 
+use super::live_documents::LiveDocuments;
 use crate::attachments::Kind;
 use crate::run::{Run, ToolOutput, ToolResult, delivered, text_field};
 use crate::workspace::{self, parent_folder, sanitize_filename};
@@ -89,12 +90,20 @@ pub async fn write(run: &Run, input: &Value) -> ToolResult {
         .get("content")
         .and_then(Value::as_str)
         .unwrap_or_default();
-    let path = run.workspace().write_existing(&path, content)?;
+    let workspace = run.workspace();
+    let (path, _) = workspace.locate_existing(&path)?;
+    let delivery = LiveDocuments::of(run)
+        .write(&path, content, "document_write", || {
+            workspace.write_existing(&path, content).map(|_| ())
+        })
+        .await?;
+    let mut output = json!({ "path": path, "operation": "updated", "chars": content.chars().count(), "at": true });
+    delivery.record(&mut output);
     Ok(ToolOutput {
         deliverables: vec![delivered(&path, &format!("Updated: {path}"))],
         ..ToolOutput::new(
-            format!("Updated document: `{path}`"),
-            json!({ "path": path, "operation": "updated", "chars": content.chars().count(), "at": true }),
+            format!("Updated document: `{path}`{}", delivery.note()),
+            output,
         )
     })
 }
@@ -274,5 +283,66 @@ mod tests {
         assert!(blocked_office("a.docx", ""));
         assert!(is_editable_document("a.MD"));
         assert!(!is_editable_document("a.html"));
+    }
+
+    #[tokio::test]
+    async fn writes_an_open_document_through_its_window() {
+        use std::sync::PoisonError;
+        use std::time::Duration;
+
+        use crate::providers::testing::fixture_with_kits;
+        use crate::tools::live_documents::testing::window;
+
+        let kits = kition_kits::KitManager::new(None, Vec::new());
+        let fixture = fixture_with_kits("document", Some(kits.clone()));
+        let root = fixture.run.workspace().root().to_path_buf();
+        std::fs::write(root.join("open.md"), "old").unwrap_or_else(|err| panic!("{err}"));
+        std::fs::write(root.join("closed.md"), "old").unwrap_or_else(|err| panic!("{err}"));
+        let applied = window(
+            kits.bridge(),
+            "open.md",
+            "",
+            json!({ "applied": true, "content": "new" }),
+            Duration::ZERO,
+        );
+
+        let live = write(
+            &fixture.run,
+            &json!({ "path": "./open.md", "content": "new" }),
+        )
+        .await
+        .unwrap_or_else(|err| panic!("{}", err.message));
+        assert_eq!(live.output["live"], true);
+        assert_eq!(live.output["path"], "open.md");
+        assert_eq!(
+            *applied.lock().unwrap_or_else(PoisonError::into_inner),
+            [json!({ "path": "open.md", "content": "new", "tool": "document_write" })]
+        );
+        assert_eq!(
+            std::fs::read_to_string(root.join("open.md")).unwrap_or_default(),
+            "old",
+            "the window's session saves it"
+        );
+
+        let file = write(
+            &fixture.run,
+            &json!({ "path": "closed.md", "content": "new" }),
+        )
+        .await
+        .unwrap_or_else(|err| panic!("{}", err.message));
+        assert_eq!(file.output["live"], false);
+        assert_eq!(
+            std::fs::read_to_string(root.join("closed.md")).unwrap_or_default(),
+            "new"
+        );
+        assert!(
+            write(
+                &fixture.run,
+                &json!({ "path": "missing.md", "content": "x" })
+            )
+            .await
+            .is_err(),
+            "document_write only updates existing documents"
+        );
     }
 }

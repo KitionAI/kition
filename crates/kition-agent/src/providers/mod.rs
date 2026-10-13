@@ -196,6 +196,11 @@ pub(crate) mod testing {
     }
 
     pub fn fixture(pane: &str) -> Fixture {
+        fixture_with_kits(pane, None)
+    }
+
+    /// A test agent that reaches renderer windows through `kits`' bridge.
+    pub fn fixture_with_kits(pane: &str, kits: Option<kition_kits::KitManager>) -> Fixture {
         let dirs: Vec<tempfile::TempDir> = (0..3)
             .map(|_| tempfile::tempdir().unwrap_or_else(|error| panic!("{error}")))
             .collect();
@@ -212,7 +217,7 @@ pub(crate) mod testing {
             portal_base_url: String::new(),
             mcp_path: None,
             workflow_prompt: None,
-            kits: None,
+            kits,
         });
         let run = Run {
             agent,

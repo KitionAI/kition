@@ -279,13 +279,19 @@ impl Workspace {
         })
     }
 
-    /// Overwrites an existing file.
-    pub fn write_existing(&self, raw: &str, content: &str) -> Result<String> {
+    /// Cleans and resolves the path of an existing file (not a directory).
+    pub fn locate_existing(&self, raw: &str) -> Result<(String, PathBuf)> {
         let (relative, path) = self.locate(raw, false)?;
         let meta = std::fs::metadata(&path).map_err(|_| "failed to read document".to_owned())?;
         if meta.is_dir() {
             return Err("cannot write to a directory".into());
         }
+        Ok((relative, path))
+    }
+
+    /// Overwrites an existing file.
+    pub fn write_existing(&self, raw: &str, content: &str) -> Result<String> {
+        let (relative, path) = self.locate_existing(raw)?;
         write_atomically(&path, content.as_bytes())
             .map_err(|_| "failed to write document".to_owned())?;
         Ok(relative)
