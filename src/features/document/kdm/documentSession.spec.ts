@@ -283,6 +283,33 @@ describe('DocumentSession: editing', () => {
   })
 })
 
+describe('DocumentSession: edits made from an earlier text', () => {
+  it('applies a dialog’s result three-way, keeping changes made since the dialog opened', async () => {
+    const base = '---\ntitle: Plan\ntags: a\n---\n\nBody\n'
+    const session = await open(base)
+    const a = editor(session)
+    // While the dialog is open, the file changes elsewhere and the person types in the body.
+    externalWrite('---\ntitle: Plan\ntags: a\n---\n\nBody\nExternal\n')
+    await settle()
+    a.type({ from: session.text().indexOf('Body') + 4, insert: '!' })
+    await settle(TYPING_GROUP_MS + 10)
+    const next = '---\ntitle: Roadmap\ntags: a\n---\n\nBody\n'
+    expect(session.applyFrom(base, next, { kind: 'person', principal: 'user:local', label: 'properties' })).toBe(true)
+    await settle()
+    expect(session.text()).toBe('---\ntitle: Roadmap\ntags: a\n---\n\nBody!\nExternal\n')
+    expect(a.text()).toBe(session.text())
+    // One undo step: the dialog's change only.
+    session.undo()
+    expect(session.text()).toBe('---\ntitle: Plan\ntags: a\n---\n\nBody!\nExternal\n')
+  })
+
+  it('answers false when the result does not change the text', async () => {
+    const session = await open('same\n')
+    expect(session.applyFrom('same\n', 'same\n', { kind: 'person', principal: 'user:local' })).toBe(false)
+    expect(session.replica!.canUndo()).toBe(false)
+  })
+})
+
 describe('DocumentSession: file changes', () => {
   it('merges an external change while the person types, keeping both', async () => {
     const session = await open('alpha\nbeta\n')

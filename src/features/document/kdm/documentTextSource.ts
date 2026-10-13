@@ -7,12 +7,12 @@ import type { Extension } from '@codemirror/state'
 import { randomActor, type ObjectId, type Origin, type Replica } from '@/lib/kdm'
 import { TextBinding } from './codeMirrorBinding'
 import { documentHistoryExtension } from './documentHistory'
-import { applyTextEdits, diffText } from './documentMerge'
+import { applyTextEdits, diffText, mergeEdits } from './documentMerge'
 import { DOCUMENT_BODY } from './documentSchema'
 import type { DocumentSession } from './documentSession'
 import { analyzeText, createDocumentReplica, documentBody } from './documentText'
 
-export type DocumentTextSource = Pick<DocumentSession, 'text' | 'createBinding' | 'releaseBinding' | 'historyExtension' | 'replaceText'>
+export type DocumentTextSource = Pick<DocumentSession, 'text' | 'createBinding' | 'releaseBinding' | 'historyExtension' | 'replaceText' | 'applyFrom'>
   /** A session marks the agent's edit under review in its editors; a standalone source has no reviews. */
   & Partial<Pick<DocumentSession, 'agentReviewExtension'>>
 
@@ -44,6 +44,12 @@ export function createReplicaTextSource(text: string): DocumentTextSource & { re
       const target = analyzeText(next).text
       if (current === target) return false
       const edits = diffText(current, target)
+      replica.transact(origin, (tx) => applyTextEdits(tx, rootId, DOCUMENT_BODY, edits))
+      return true
+    },
+    applyFrom: (base: string, next: string, origin: Origin) => {
+      const edits = mergeEdits(analyzeText(base).text, analyzeText(next).text, documentBody(replica, rootId))
+      if (!edits.length) return false
       replica.transact(origin, (tx) => applyTextEdits(tx, rootId, DOCUMENT_BODY, edits))
       return true
     },

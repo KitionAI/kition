@@ -273,6 +273,22 @@ export class DocumentSession {
   }
 
   /**
+   * Applies `next`, a text made from the earlier text `base` (a dialog opened on it, an agent's edit
+   * under review, a rewrite before a save), as a three-way merge onto the text as it is now: the
+   * change `base → next` is applied and edits that reached the text since `base` (typing, merged
+   * file changes) are kept — never a whole-text replacement. One transaction with `origin` (one
+   * undo step for person and agent origins). Answers whether the text changed.
+   */
+  applyFrom(base: string, next: string, origin: Origin): boolean {
+    const opened = this.requireOpened()
+    const edits = mergeEdits(analyzeText(base).text, analyzeText(next).text, this.text())
+    if (!edits.length) return false
+    this.endTyping()
+    opened.replica.transact(origin, (tx) => applyTextEdits(tx, opened.rootId, DOCUMENT_BODY, edits))
+    return true
+  }
+
+  /**
    * Applies an agent's whole new file text as one agent-origin undo step, shows it for review
    * (`agentReview`), saves, and answers the saved file text.
    */
@@ -496,19 +512,6 @@ export class DocumentSession {
     })
     this.unregisterAgent = unregister
     this.cleanups.push(unregister)
-  }
-
-  /**
-   * Applies the change `base → next` to the current text (which may hold edits made since `base`)
-   * as one transaction with `origin`: a three-way merge, never a whole-text replacement, so edits
-   * that reached the text since `base` are kept. Answers whether the text changed.
-   */
-  private applyFrom(base: string, next: string, origin: Origin): boolean {
-    const opened = this.requireOpened()
-    const edits = mergeEdits(analyzeText(base).text, analyzeText(next).text, this.text())
-    if (!edits.length) return false
-    opened.replica.transact(origin, (tx) => applyTextEdits(tx, opened.rootId, DOCUMENT_BODY, edits))
-    return true
   }
 
   /** The text changed from `before` by an agent's edit (`groups` undo steps): starts or grows the review. */

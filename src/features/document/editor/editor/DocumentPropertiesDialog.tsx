@@ -23,8 +23,13 @@ import {
 export type DocumentPropertiesDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** The document text; the dialog reads it when it opens and edits that text. */
   source: string
-  onApply: (nextSource: string) => void
+  /**
+   * The result: `next` is the text the dialog opened on (`base`) with the edited properties. The
+   * document may have changed meanwhile, so the caller applies it three-way (`applyFrom`).
+   */
+  onApply: (base: string, next: string) => void
 }
 
 type FieldKind = 'text' | 'list'
@@ -40,7 +45,15 @@ export function DocumentPropertiesDialog({
   onApply,
 }: DocumentPropertiesDialogProps) {
   const { t } = useTranslation('document')
-  const parsed = useMemo(() => parseFrontmatter(source), [source])
+  // The text as it was when the dialog opened: a change of the document while it is open (a merged
+  // file change, typing elsewhere) neither resets the fields being edited nor is overwritten on save.
+  const [base, setBase] = useState(source)
+  const [wasOpen, setWasOpen] = useState(open)
+  if (open !== wasOpen) {
+    setWasOpen(open)
+    if (open) setBase(source)
+  }
+  const parsed = useMemo(() => parseFrontmatter(base), [base])
   const [fields, setFields] = useState<EditableField[]>(() =>
     parsed ? fieldsFromParsed(parsed.fields) : [],
   )
@@ -107,8 +120,8 @@ export function DocumentPropertiesDialog({
     const cleaned = fields
       .map((f) => ({ key: f.key.trim(), value: f.value }))
       .filter((f) => f.key)
-    const next = applyFrontmatter(source, cleaned, parsed ? { from: parsed.from, to: parsed.to } : null)
-    onApply(next)
+    const next = applyFrontmatter(base, cleaned, parsed ? { from: parsed.from, to: parsed.to } : null)
+    onApply(base, next)
     onOpenChange(false)
   }
 

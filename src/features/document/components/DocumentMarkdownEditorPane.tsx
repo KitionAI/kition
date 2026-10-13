@@ -571,8 +571,8 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
   })
 
   const applyProperties = useCallback(
-    (next: string) => {
-      source.replaceText(next, person(LOCAL_PERSON, 'properties'))
+    (base: string, next: string) => {
+      source.applyFrom(base, next, person(LOCAL_PERSON, 'properties'))
     },
     [source],
   )
@@ -1210,7 +1210,7 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
       <DocumentPropertiesDialog
         open={propertiesOpen}
         onOpenChange={setPropertiesOpen}
-        // The live text when it opens: its result replaces the whole text.
+        // The live text when it opens; its result is merged three-way into the text as it is then.
         source={propertiesOpen ? source.text() : value}
         onApply={applyProperties}
       />
