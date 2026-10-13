@@ -260,39 +260,42 @@ export function useWorkspaceDocumentSession({
     return session
   }
 
+  /** Sessions being opened, by path: concurrent opens of one document share one session. */
+  const openingRef = useRef(new Map<string, Promise<DocumentSession>>())
+
   /** Opens (or reuses) the session of a Markdown document; resolves once it is ready. */
-  async function ensureSession(document: WorkspaceDocument): Promise<DocumentSession> {
-    const existing = findDocumentSession(document.path)
-    if (existing?.isReady()) {
-      if (document.content !== existing.savedText()) void existing.reconcile()
-      return existing
+  function ensureSession(document: WorkspaceDocument): Promise<DocumentSession> {
+    const ready = getDocumentSession(document.path)
+    if (ready) {
+      if (document.content !== ready.savedText()) void ready.reconcile()
+      return Promise.resolve(ready)
     }
-    if (existing) {
-      await startingRef.current.get(existing)
-      if (existing.isReady()) return existing
-      throw new Error(t('document:session.openFailed'))
-    }
-    if (!rootPathRef.current) {
-      try {
-        rootPathRef.current = (await listWorkspaceDocuments()).root_path || ''
-      } catch {
-        // Saves then fail their guard and are retried; the document still opens.
+    const pending = openingRef.current.get(document.path)
+    if (pending) return pending
+    const opening = (async () => {
+      if (!rootPathRef.current) {
+        try {
+          rootPathRef.current = (await listWorkspaceDocuments()).root_path || ''
+        } catch {
+          // Saves then fail their guard and are retried; the document still opens.
+        }
       }
+      const session = createSession(document)
+      try {
+        await session.start(document.content)
+      } catch (reason) {
+        closeSession(session)
+        throw reason
+      }
+      return session
+    })()
+    openingRef.current.set(document.path, opening)
+    const forget = () => {
+      if (openingRef.current.get(document.path) === opening) openingRef.current.delete(document.path)
     }
-    const session = createSession(document)
-    const start = session.start(document.content)
-    startingRef.current.set(session, start)
-    try {
-      await start
-    } catch (reason) {
-      closeSession(session)
-      throw reason
-    } finally {
-      startingRef.current.delete(session)
-    }
-    return session
+    opening.then(forget, forget)
+    return opening
   }
-  const startingRef = useRef(new Map<DocumentSession, Promise<void>>())
   /** The latest activation: an older one that finishes later does not take over the editor. */
   const activationRef = useRef(0)
 

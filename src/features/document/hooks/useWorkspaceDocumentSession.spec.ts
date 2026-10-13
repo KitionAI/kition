@@ -153,6 +153,17 @@ describe('useWorkspaceDocumentSession: opening', () => {
     expect(options.onOpenDocumentTab).toHaveBeenCalledWith(expect.objectContaining({ path: PATH }))
   })
 
+  it('opens one session when a document is opened twice at once', async () => {
+    disk.files.set(PATH, 'once\n')
+    const { ref } = await renderSession()
+    const document = { path: PATH, name: 'today.md', content: 'once\n' }
+    await act(async () => {
+      await Promise.all([ref.current.applyWorkspaceDocument(document), ref.current.applyWorkspaceDocument(document)])
+    })
+    expect(listDocumentSessions()).toHaveLength(1)
+    expect(ref.current.activeDocumentSession).toBe(listDocumentSessions()[0])
+  })
+
   it('reports an unreadable file and opens nothing', async () => {
     const { ref, options } = await renderSession()
     await open(ref, 'notes/missing.md')
