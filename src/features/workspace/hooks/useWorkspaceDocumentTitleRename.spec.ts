@@ -4,12 +4,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockMoveWorkspaceDocument = vi.fn()
 const mockRenameDataDocumentByPath = vi.fn()
+const mockSyncDocumentFileMoved = vi.fn(async (..._args: unknown[]) => {})
 
 vi.mock('@/services/desktop', () => ({
   moveWorkspaceDocument: (...args: unknown[]) => mockMoveWorkspaceDocument(...args),
 }))
 vi.mock('@/api/dataDocuments', () => ({
   renameDataDocumentByPath: (...args: unknown[]) => mockRenameDataDocumentByPath(...args),
+}))
+vi.mock('@/features/workspace/lib/documentIdentity', () => ({
+  syncDocumentFileMoved: (...args: unknown[]) => mockSyncDocumentFileMoved(...args),
 }))
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -76,6 +80,7 @@ beforeEach(() => {
   mockMoveWorkspaceDocument.mockReset()
   mockRenameDataDocumentByPath.mockReset()
   mockRenameDataDocumentByPath.mockResolvedValue({ renamed: true })
+  mockSyncDocumentFileMoved.mockClear()
 })
 
 afterEach(async () => {
@@ -101,6 +106,23 @@ describe('useWorkspaceDocumentTitleRename', () => {
     expect(mockRenameDataDocumentByPath).not.toHaveBeenCalled()
     // Optimistic update, then the moved item replaces it; no rollback.
     expect(calls.setTreeItems).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps the document identity on the new path before the rename completes', async () => {
+    mockMoveWorkspaceDocument.mockResolvedValue({ path: 'notes/new.md', name: 'new.md', content: 'body' })
+    const { api, calls } = await mount()
+
+    await act(async () => { await api.saveDocumentTitle('new') })
+
+    expect(mockSyncDocumentFileMoved).toHaveBeenCalledWith('/vault', 'notes/old.md', 'notes/new.md')
+    expect(mockSyncDocumentFileMoved.mock.invocationCallOrder[0]).toBeLessThan(calls.setFeedback.mock.invocationCallOrder.at(-1)!)
+  })
+
+  it('does not touch the document store when the move fails', async () => {
+    mockMoveWorkspaceDocument.mockRejectedValue(new Error('disk full'))
+    const { api } = await mount()
+    await act(async () => { await api.saveDocumentTitle('new') })
+    expect(mockSyncDocumentFileMoved).not.toHaveBeenCalled()
   })
 
   it('syncs the runtime index for a .kitable rename', async () => {

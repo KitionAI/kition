@@ -21,3 +21,5 @@ export const loadMarkdownImageInsertionResolver = () =>
   import('./editor/editor/markdown-image-insertion').then((module) => module.resolveMarkdownImageInsertionContext)
 /** Loads the clipboard inspection helpers; they carry the HTML-to-Markdown converter. */
 export const loadDocumentClipboard = () => import('./lib/documentClipboard')
+/** Loads the Markdown document replica store (opening, saving, identity across renames); it carries the KDM. */
+export const loadDocumentStore = () => import('./kdm/documentStore')

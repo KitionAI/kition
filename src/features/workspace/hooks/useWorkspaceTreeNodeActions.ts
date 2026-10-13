@@ -6,6 +6,13 @@ import { useTranslation } from 'react-i18next'
 import { renameDataDocumentByPath } from '@/api/dataDocuments'
 import { useConfirm } from '@/components/confirm'
 import { getDocumentParentPath } from '@/features/document/lib/documentCreation'
+import {
+  syncDocumentFileDeleted,
+  syncDocumentFileDuplicated,
+  syncDocumentFileMoved,
+  syncDocumentFolderDeleted,
+  syncDocumentFolderMoved,
+} from '@/features/workspace/lib/documentIdentity'
 import { readDocumentSnapshots } from '@/features/document/lib/documentSnapshots'
 import type { UseWorkspaceTreeStateResult } from '@/features/workspace/hooks/useWorkspaceTreeState'
 import type { WorkspaceTab, WorkspaceTreeDropPosition, WorkspaceTreeNode } from '@/features/workspace/lib/workspace'
@@ -175,6 +182,7 @@ export function useWorkspaceTreeNodeActions({
       const response = isFolder
         ? await deleteWorkspaceFolder(node.path)
         : await deleteWorkspaceDocument(node.path)
+      await (isFolder ? syncDocumentFolderDeleted(rootPath, node.path) : syncDocumentFileDeleted(rootPath, node.path))
       // Keep the DataDocument mapping for .kitable files so restoring the file
       // from the system Trash also restores its records and workflows.
       updateTreeMetadata((current) => removeWorkspaceTreeBranchMetadata(current, node.path, childFolderPath))
@@ -314,6 +322,7 @@ export function useWorkspaceTreeNodeActions({
           target_folder: destinationFolder,
         })
         const movedPath = response.moved_path
+        await syncDocumentFolderMoved(rootPath, draggedNode.path, movedPath)
         updateTreeMetadata((current) => applyMovedMetadata(current, movedPath))
         remapWorkspaceTabPaths(draggedNode.path, movedPath)
         if (destinationFolder) {
@@ -362,6 +371,7 @@ export function useWorkspaceTreeNodeActions({
         target_folder: destinationFolder,
       })
       syncKitableBackendPath(draggedNode.path, movedDocument.path, rootPath, renameKitableChildrenIndexPath)
+      await syncDocumentFileMoved(rootPath, draggedNode.path, movedDocument.path)
       updateTreeMetadata((current) => applyMovedMetadata(current, movedDocument.path))
       remapWorkspaceTabPaths(draggedNode.path, movedDocument.path)
       const expandTargets: string[] = []
@@ -434,6 +444,10 @@ export function useWorkspaceTreeNodeActions({
         content = duplicateBoardFileText(source.content, title) ?? source.content
       }
       const created = await writeWorkspaceDocument(copyPath, content)
+      if (/\.(md|markdown)$/i.test(created.path)) {
+        // The copy is a new document: it gets its own identity when first opened.
+        await syncDocumentFileDuplicated(rootPath, node.path, created.path)
+      }
       setFeedback(`Duplicated "${node.title}"`)
       await refreshWorkspaceDocuments(created.path)
     } catch (requestError: any) {
@@ -465,6 +479,7 @@ export function useWorkspaceTreeNodeActions({
       if (node.type === 'folder') {
         const response = await moveWorkspaceFolder({ path: node.path, target_name: trimmed })
         const movedPath = response.moved_path
+        await syncDocumentFolderMoved(rootPath, node.path, movedPath)
         updateTreeMetadata((current) => (
           renameWorkspaceTreeBranchMetadata(current, flatTreeNodes, node, movedPath)
         ))
@@ -494,6 +509,7 @@ export function useWorkspaceTreeNodeActions({
       const targetName = renameWorkspaceDocumentPath(node.path, trimmed).split('/').pop() || ''
       const moved = await moveWorkspaceDocument({ path: node.path, target_name: targetName })
       syncKitableBackendPath(node.path, moved.path, rootPath, renameKitableChildrenIndexPath)
+      await syncDocumentFileMoved(rootPath, node.path, moved.path)
       updateTreeMetadata((current) => (
         renameWorkspaceTreeBranchMetadata(current, flatTreeNodes, node, moved.path)
       ))
@@ -553,6 +569,7 @@ export function useWorkspaceTreeNodeActions({
       try {
         const response = await moveWorkspaceFolder({ path: node.path, target_folder: destinationFolder })
         const movedPath = response.moved_path
+        await syncDocumentFolderMoved(rootPath, node.path, movedPath)
         updateTreeMetadata((current) => moveWorkspaceTreeBranchMetadata(current, node, movedPath))
         remapWorkspaceTabPaths(node.path, movedPath)
         {
@@ -600,6 +617,7 @@ export function useWorkspaceTreeNodeActions({
     try {
       const moved = await moveWorkspaceDocument({ path: node.path, target_folder: destinationFolder })
       syncKitableBackendPath(node.path, moved.path, rootPath, renameKitableChildrenIndexPath)
+      await syncDocumentFileMoved(rootPath, node.path, moved.path)
       updateTreeMetadata((current) => moveWorkspaceTreeBranchMetadata(current, node, moved.path))
       remapWorkspaceTabPaths(node.path, moved.path)
       {

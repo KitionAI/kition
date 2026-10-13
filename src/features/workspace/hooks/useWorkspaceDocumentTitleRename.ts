@@ -1,13 +1,15 @@
 /**
  * Renaming the active document from its inline title. Moves the file,
  * then updates every client record that named the old path: the tree, the
- * kitable index, snapshots, Agent-modified paths, tabs, and drafts. Errors
- * are thrown so the title editor can roll back its optimistic text.
+ * kitable index, the document store index, snapshots, Agent-modified paths,
+ * tabs, and drafts. Errors are thrown so the title editor can roll back its
+ * optimistic text.
  */
 import { useCallback, type Dispatch, type SetStateAction } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { renameDataDocumentByPath } from '@/api/dataDocuments'
+import { syncDocumentFileMoved } from '@/features/workspace/lib/documentIdentity'
 import { remapPathSetAfterMove, remapSnapshotsAfterMove } from '@/features/workspace/lib/documentRename'
 import {
   getWorkspaceItemTitle,
@@ -97,6 +99,9 @@ export function useWorkspaceDocumentTitleRename<Snapshot extends { path: string;
             console.warn('[workspace] failed to sync kitable backend index', cleanupError)
           })
       }
+
+      // Keep the document's identity (and its child pages') on the new path; best effort too.
+      await syncDocumentFileMoved(rootPath, path, movedDocument.path)
 
       if (renamedNode) {
         treeState.updateTreeMetadata((current) => (
