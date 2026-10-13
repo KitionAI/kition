@@ -90,9 +90,11 @@ export function writeBoardDiff(tx: Tx, rootId: string, diff: BoardRecordDiff, hi
   const readsLists = creations.length > 0 || removedElements.length > 0 || moves.length > 0 || pagesTouched
   const readable = readsLists ? readablePages(source) : []
   const lists = new Map(readable.map((pageId) => [pageId, source.items(pageId)]))
+  // The pages listing each element the diff adds, moves, or removes.
   const listedOn = new Map<string, Set<string>>()
+  for (const id of [...removedElementIds, ...creations.map(({ element }) => element.id), ...moves.map(({ after }) => after.id)]) listedOn.set(id, new Set())
   for (const [pageId, items] of lists) {
-    for (const id of items) listedOn.set(id, (listedOn.get(id) ?? new Set()).add(pageId))
+    for (const id of items) listedOn.get(id)?.add(pageId)
   }
 
   // Page order after the diff; its first page receives elements whose page does not exist.
@@ -397,6 +399,19 @@ function syncListOrder(tx: Tx, ownerId: string, field: string, wanted: readonly 
     if (!keep[index]) tx.listRemove(ownerId, field, index)
   }
   const current = listed.filter((_, index) => keep[index])
+  // Usually what is left is already in order and the rest are insertions (an add, a delete).
+  let previous = -1
+  if (current.every((id) => {
+    const at = position.get(id) ?? -1
+    const ordered = at > previous
+    previous = at
+    return ordered
+  })) {
+    target.forEach((id, index) => {
+      if (!seen.has(id)) tx.listInsert(ownerId, field, index, id)
+    })
+    return
+  }
   const stable = new Set(longestIncreasingRun(current.map((id) => position.get(id) ?? 0)).map((index) => current[index]))
 
   const width = target.length + 2
