@@ -4,9 +4,10 @@
  * document plus this overlay, so a transaction sees its own earlier operations while nothing is
  * written to the engine until it succeeds.
  *
- * The overlay never copies a whole container: a list keeps its length and its pending edits, a
- * text its UTF-16 length and its pending edits, a tree the parents of the nodes this transaction
- * created or moved. The engine is asked for the rest.
+ * The overlay never copies a whole container, with one exception: a list keeps its length and its
+ * pending edits, a text its UTF-16 length and its pending edits (and reads the committed text once
+ * when a transaction checks more positions in it than the engine answers cheaply), a tree the
+ * parents of the nodes this transaction created or moved. The engine is asked for the rest.
  */
 import type { LoroText, LoroTree, TreeID } from 'loro-crdt'
 import { errors } from './errors'
@@ -21,47 +22,126 @@ export const pendingKey = (index: number): NodeKey => `p:${index}`
 export const pendingIndex = (key: NodeKey): number | null => (key.startsWith('p:') ? Number(key.slice(2)) : null)
 export const treeId = (key: NodeKey): TreeID => key.slice(2) as TreeID
 
-/** One pending change of a text, in UTF-16 code units, with the engine operation's index meaning. */
-type TextEdit = { index: number; insert: string } | { index: number; delete: number }
+/**
+ * A run of a text as a transaction sees it: `length` code units of `text` from `start`, where a
+ * `null` text is the committed text.
+ */
+type Piece = { text: string | null; start: number; length: number }
 
-/** A text as a transaction sees it: the committed text (`null`: empty), its pending length, and the pending edits. */
+/**
+ * How many positions in the committed text a transaction checks through the engine before it
+ * reads the whole committed text instead. The engine's check costs little on a text built from
+ * many insertions but scans a text inserted at once, and reading the text costs about as much as
+ * one such scan; a keystroke checks one or two positions.
+ */
+const ENGINE_CHECKS = 4
+
+/**
+ * A text as a transaction sees it: the committed text (`null`: empty), its pending length, and
+ * the pending edits, kept as a sequence of pieces of the committed text and of inserted strings.
+ * A cursor remembers the last piece looked at, so edits at nearby positions (such as a sorted
+ * list of edits, or typing) find their piece in amortised constant time.
+ */
 export class TextState {
-  readonly edits: TextEdit[] = []
+  private readonly pieces: Piece[]
+  /** The index of the piece at the cursor, and the position where that piece starts. */
+  private cursor = 0
+  private cursorAt = 0
+  /** The committed text, once read. */
+  private committedString: string | null = null
+  private engineChecks = 0
 
   constructor(
     readonly committed: LoroText | null,
     public len: number,
-  ) {}
+  ) {
+    this.pieces = len > 0 ? [{ text: null, start: 0, length: len }] : []
+  }
 
   /**
    * Whether `position` falls between the two halves of a surrogate pair. Every stored string is
-   * well formed, so that is when the code unit at `position` is a low surrogate. The position is
-   * traced back through the pending edits to an inserted string or to the committed text.
+   * well formed, so that is when the code unit at `position` is a low surrogate, in an inserted
+   * string or in the committed text.
    */
   splits(position: number): boolean {
     if (position <= 0 || position >= this.len) return false
-    let at = position
-    for (let index = this.edits.length - 1; index >= 0; index -= 1) {
-      const edit = this.edits[index]
-      if ('insert' in edit) {
-        if (at < edit.index) continue
-        if (at < edit.index + edit.insert.length) return isLowSurrogate(edit.insert.charCodeAt(at - edit.index))
-        at -= edit.insert.length
-      } else if (at >= edit.index) at += edit.delete
-    }
-    const text = this.committed
-    if (!text || at <= 0 || at >= text.length) return false
-    const scalar = text.convertPos(at, 'utf16', 'unicode')
-    return scalar === undefined || text.convertPos(scalar, 'unicode', 'utf16') !== at
+    this.seek(position)
+    const piece = this.pieces[this.cursor]
+    const at = piece.start + position - this.cursorAt
+    return piece.text !== null ? isLowSurrogate(piece.text.charCodeAt(at)) : this.committedSplits(at)
   }
 
-  /** The committed text with the pending edits applied. */
-  replay(committed: string): string {
-    let text = committed
-    for (const edit of this.edits) {
-      text = 'insert' in edit ? text.slice(0, edit.index) + edit.insert + text.slice(edit.index) : text.slice(0, edit.index) + text.slice(edit.index + edit.delete)
+  /** Inserts `content` (well formed) at `index`. */
+  insert(index: number, content: string): void {
+    if (!content) return
+    const at = this.boundary(index)
+    this.pieces.splice(at, 0, { text: content, start: 0, length: content.length })
+    this.len += content.length
+  }
+
+  /** Deletes `count` code units from `index`. */
+  delete(index: number, count: number): void {
+    if (count === 0) return
+    const from = this.boundary(index)
+    const to = this.boundary(index + count)
+    this.pieces.splice(from, to - from)
+    this.cursor = from
+    this.cursorAt = index
+    this.len -= count
+  }
+
+  /** The text with the pending edits applied. */
+  text(): string {
+    const committed = this.pieces.some((piece) => piece.text === null) ? this.committedText() : ''
+    let out = ''
+    for (const piece of this.pieces) out += (piece.text ?? committed).slice(piece.start, piece.start + piece.length)
+    return out
+  }
+
+  private committedText(): string {
+    this.committedString ??= this.committed?.toString() ?? ''
+    return this.committedString
+  }
+
+  /** Whether position `at` of the committed text falls inside a surrogate pair. */
+  private committedSplits(at: number): boolean {
+    const text = this.committed
+    if (!text || at <= 0 || at >= text.length) return false
+    if (this.committedString === null && this.engineChecks < ENGINE_CHECKS) {
+      this.engineChecks += 1
+      const scalar = text.convertPos(at, 'utf16', 'unicode')
+      return scalar === undefined || text.convertPos(scalar, 'unicode', 'utf16') !== at
     }
-    return text
+    return isLowSurrogate(this.committedText().charCodeAt(at))
+  }
+
+  /**
+   * Moves the cursor to the piece holding `position`, or past the last piece when `position` is
+   * the length.
+   */
+  private seek(position: number): void {
+    const pieces = this.pieces
+    while (this.cursor > 0 && this.cursorAt > position) {
+      this.cursor -= 1
+      this.cursorAt -= pieces[this.cursor].length
+    }
+    while (this.cursor < pieces.length && this.cursorAt + pieces[this.cursor].length <= position) {
+      this.cursorAt += pieces[this.cursor].length
+      this.cursor += 1
+    }
+  }
+
+  /** Splits the piece holding `position` there, if it does not start there; answers the index of the piece starting at `position` (the cursor is on it). */
+  private boundary(position: number): number {
+    this.seek(position)
+    if (this.cursor === this.pieces.length || this.cursorAt === position) return this.cursor
+    const piece = this.pieces[this.cursor]
+    const head = position - this.cursorAt
+    this.pieces.splice(this.cursor + 1, 0, { text: piece.text, start: piece.start + head, length: piece.length - head })
+    piece.length = head
+    this.cursorAt = position
+    this.cursor += 1
+    return this.cursor
   }
 }
 

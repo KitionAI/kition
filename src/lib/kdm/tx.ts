@@ -169,8 +169,7 @@ export class Tx {
     if (text.splits(index)) throw splitError(index)
     const stored = wellFormed(content)
     this.texts.set(fieldKey(id, field), text)
-    text.edits.push({ index, insert: stored })
-    text.len += stored.length
+    text.insert(index, stored)
     this.ops.push({ op: 'textInsert', id, field, index, content: stored })
   }
 
@@ -187,8 +186,7 @@ export class Tx {
     if (text.splits(index)) throw splitError(index)
     if (text.splits(end)) throw splitError(end)
     this.texts.set(fieldKey(id, field), text)
-    text.edits.push({ index, delete: count })
-    text.len -= count
+    text.delete(index, count)
     this.ops.push({ op: 'textDelete', id, field, index, count })
   }
 
@@ -205,8 +203,7 @@ export class Tx {
     this.live()
     checkField(id, field)
     this.containerField(id, field, 'text')
-    const text = this.textState(id, field, false)
-    return text.replay(text.committed?.toString() ?? '')
+    return this.textState(id, field, false).text()
   }
 
   listInsert(id: ObjectId, field: string, index: number, item: ObjectId): void {
