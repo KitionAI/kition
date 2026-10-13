@@ -452,6 +452,23 @@ describe('DocumentSession: live agent edits', () => {
     expect(session.agentReview()).toBeNull()
   })
 
+  it('keeps a merged file change and another writer’s edit made during the review, on reject and on a partial accept', async () => {
+    for (const keep of ['none', 'first'] as const) {
+      const session = await open('#old a\nb\nc\n')
+      registerDocumentSession(session)
+      await agentEdit(session, '#old A\nb\nC\n')
+      externalWrite('#old A\nb\nC\nfrom disk\n')
+      await settle()
+      expect(await updateWorkspaceMarkdown(PATH, (text) => text.replace('#old', '#new'))).toBe(true)
+      expect(session.text()).toBe('#new A\nb\nC\nfrom disk\n')
+      if (keep === 'none') await session.rejectAgentReview()
+      else await session.settleAgentReview('#old A\nb\nc\n')
+      expect(session.text()).toBe(keep === 'none' ? '#new a\nb\nc\nfrom disk\n' : '#new A\nb\nc\nfrom disk\n')
+      expect(disk.files.get(PATH)).toBe(session.text())
+      unregisterDocumentSession(session)
+    }
+  })
+
   it('treats the watcher’s report of its own save as nothing new', async () => {
     const session = await open('a\n')
     const a = editor(session)

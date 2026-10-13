@@ -321,8 +321,8 @@ export class DocumentSession {
       if (text === review.before && review.untouched && review.groups > 0) {
         for (let step = 0; step < review.groups; step += 1) opened.replica.undo()
       } else {
-        const edits = mergeEdits(review.after, analyzeText(text).text, this.text())
-        if (edits.length) opened.replica.transact(person(LOCAL_PERSON, 'review'), (tx) => applyTextEdits(tx, opened.rootId, DOCUMENT_BODY, edits))
+        // Three-way: only what the reviewer took back changes; edits that reached the text since stay.
+        this.applyFrom(review.after, text, person(LOCAL_PERSON, 'review'))
       }
     }
     if (this.review === review) this.setReview(null)
@@ -487,6 +487,19 @@ export class DocumentSession {
     })
     this.unregisterAgent = unregister
     this.cleanups.push(unregister)
+  }
+
+  /**
+   * Applies the change `base → next` to the current text (which may hold edits made since `base`)
+   * as one transaction with `origin`: a three-way merge, never a whole-text replacement, so edits
+   * that reached the text since `base` are kept. Answers whether the text changed.
+   */
+  private applyFrom(base: string, next: string, origin: Origin): boolean {
+    const opened = this.requireOpened()
+    const edits = mergeEdits(analyzeText(base).text, analyzeText(next).text, this.text())
+    if (!edits.length) return false
+    opened.replica.transact(origin, (tx) => applyTextEdits(tx, opened.rootId, DOCUMENT_BODY, edits))
+    return true
   }
 
   /** The text changed from `before` by an agent's edit (`groups` undo steps): starts or grows the review. */
