@@ -249,8 +249,14 @@ function measurePaste(markdown: string, pasteText: string): number {
 
 const EXTERNAL_MERGE_ORIGIN: Origin = { kind: 'import', principal: 'bench:file' }
 
-/** The external merge, whole (diff, merge, and the replica transaction) and its diff and merge alone, with the number of edits. */
-function measureMerge(markdown: string): { whole: number; diff: number; edits: number } {
+/** The opt-in coalescing measured next to the default merge: joins edits at most 64 code units apart once a merge has over 2,000 edits. */
+const COALESCE = { above: 2_000, gap: 64 }
+
+/**
+ * The external merge, whole (diff, merge, and the replica transaction), the same with `COALESCE`,
+ * and its diff and merge alone, with the number of edits.
+ */
+function measureMerge(markdown: string): { whole: number; coalesced: number; diff: number; edits: number } {
   const base = markdown
   const current = scatterEdits(base, 0.005, 1001)
   const incoming = scatterEdits(base, 0.01, 2002)
@@ -261,11 +267,18 @@ function measureMerge(markdown: string): { whole: number; diff: number; edits: n
       replica.transact(EXTERNAL_MERGE_ORIGIN, (tx) => mergeExternalText(tx, rootId, base, incoming, current))
     },
   )
+  const coalesced = benchmark(
+    MERGE_RUNS,
+    () => createDocumentReplica(current, randomActor()),
+    ({ replica, rootId }) => {
+      replica.transact(EXTERNAL_MERGE_ORIGIN, (tx) => mergeExternalText(tx, rootId, base, incoming, current, { coalesce: COALESCE }))
+    },
+  )
   let edits = 0
   const diff = benchmark(MERGE_RUNS, () => undefined, () => {
     edits = mergeEdits(base, incoming, current).length
   })
-  return { whole, diff, edits }
+  return { whole, coalesced, diff, edits }
 }
 
 const DELETE_COUNT = 500
@@ -355,8 +368,10 @@ function measureDocument(label: string, targetBytes: number): void {
   addTiming(label, `${DELETE_COUNT} scattered deletes, body in pieces (createDocumentReplica)`, measureDeletes(markdown, (text) => createDocumentReplica(text, randomActor())), '–')
   addTiming(label, `${DELETE_COUNT} scattered deletes, body in one insertion (before)`, measureDeletes(markdown, singleInsertReplica), '–')
   const merge = measureMerge(markdown)
-  addTiming(label, 'mergeExternalText (1% external, 0.5% local)', merge.whole, '–')
-  addTiming(label, `mergeEdits alone (diff + merge, ${merge.edits} edits)`, merge.diff, label === '1 MB' ? '< 100 ms' : label === '5 MB' ? '< 500 ms' : '–')
+  const mergeBudget = label === '1 MB' ? '< 100 ms' : label === '5 MB' ? '< 500 ms' : '–'
+  addTiming(label, 'mergeExternalText (1% external, 0.5% local)', merge.whole, mergeBudget)
+  addTiming(label, `mergeExternalText, coalescing above ${COALESCE.above} edits (gap ${COALESCE.gap}, opt-in)`, merge.coalesced, mergeBudget)
+  addTiming(label, `mergeEdits alone (diff + merge, ${merge.edits} edits)`, merge.diff, '–')
   addTiming(label, 'renderText + snapshot() (save)', measureSave(sourceReplica, rootId, style), '< 300 ms')
   addTiming(label, 'undo of the last keystroke', measureUndo(markdown), '–')
 
