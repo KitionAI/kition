@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from 'react'
 import { startTransition, useCallback, useEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { useTranslation } from 'react-i18next'
+import { persistBlobImageLinks } from '@/features/document/lib/documentAssetPersistence'
 import { inferDocumentPlatform, readWorkspaceDocumentDraft } from '@/features/document/lib/documentDraft'
 import type { DocumentPlatform } from '@/features/document/lib/documentCreation'
 import {
@@ -247,6 +248,8 @@ export function useWorkspaceDocumentSession({
         setActiveDocument((current) => (current?.path === path ? saved : current))
         setTreeItems((items) => updateWorkspaceTreeDocumentItem(items, saved))
       },
+      // Temporary `blob:` image links are saved as workspace assets before the text is written.
+      prepareSave: (text, path) => (text.includes('](blob:') ? persistBlobImageLinks(text, path) : Promise.resolve(text)),
       closedSaveFailed: (path, reason) => notify.error(
         translateRef.current('document:session.closeSaveFailed', { title: path.split('/').pop() || path }),
         { description: isDocumentSaveConflict(reason) ? translateRef.current('document:session.saveConflict') : errorMessage(reason) },

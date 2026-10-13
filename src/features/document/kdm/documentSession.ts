@@ -46,6 +46,11 @@ export type DocumentSessionHost = {
   onSaved?: (path: string, fileText: string) => void
   /** The save made when the session closed failed; it keeps retrying. */
   closedSaveFailed?: (path: string, reason: unknown) => void
+  /**
+   * Rewrites the text before a save (temporary `blob:` image links become workspace assets).
+   * Answers the text unchanged when there is nothing to rewrite; a failure leaves it for the next save.
+   */
+  prepareSave?: (text: string, path: string) => Promise<string>
 }
 
 /** Debounce of saves after an edit. */
@@ -478,6 +483,7 @@ export class DocumentSession {
   private async saveAttempts() {
     const opened = this.opened
     if (!opened || this.fileText === null) return
+    await this.prepare()
     for (let attempt = 1; ; attempt += 1) {
       if (this.discarded) return
       if (!this.isDirty()) {
@@ -526,6 +532,21 @@ export class DocumentSession {
       if (this.saveTimer === undefined) this.schedule(SAVE_DELAY_MS)
       return
     }
+  }
+
+  /** Lets the host rewrite the text before it is written, as one edit, unless the text changed meanwhile. */
+  private async prepare() {
+    const prepareSave = this.host.prepareSave
+    if (!prepareSave || !this.opened) return
+    const text = this.text()
+    let next: string
+    try {
+      next = await prepareSave(text, this.pathValue)
+    } catch {
+      return
+    }
+    if (next === text || this.disposed || this.text() !== text) return
+    this.replaceText(next, person(LOCAL_PERSON, 'save'))
   }
 
   /** Whether the version `saved` holds every change of `target`. */

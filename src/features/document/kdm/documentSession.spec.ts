@@ -334,6 +334,21 @@ describe('DocumentSession: file changes', () => {
   })
 })
 
+describe('DocumentSession: before a save', () => {
+  it('lets the host rewrite temporary image links as one edit', async () => {
+    disk.files.set(PATH, 'x')
+    const session = new DocumentSession(PATH, { root: '/vault' }, {
+      prepareSave: async (text) => text.replace('blob:temp', 'assets/a.png'),
+    })
+    sessions.push(session)
+    await session.start('x')
+    session.replaceText('x ![a](blob:temp)', { kind: 'person', principal: 'user:local' })
+    await settle(SAVE_DELAY_MS)
+    expect(disk.files.get(PATH)).toBe('x ![a](assets/a.png)')
+    expect(session.text()).toBe('x ![a](assets/a.png)')
+  })
+})
+
 describe('DocumentSession: closing and failures', () => {
   it('writes the pending edit when the workspace flushes and when it closes', async () => {
     const session = await open('a')
