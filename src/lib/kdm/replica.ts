@@ -16,6 +16,12 @@ import { Tx } from './tx'
  */
 const ROLLBACK = 'kdm-rollback'
 
+/**
+ * The commit origin of `system` transactions (repairs, migrations). They are not undo steps: undo
+ * skips them like changes from another replica, and they survive the undo of earlier transactions.
+ */
+const SYSTEM: Origin['kind'] = 'system'
+
 /** A text change as the engine reports it, in UTF-16 code units. */
 export type TextDelta = { retain: number } | { insert: string } | { delete: number }
 
@@ -83,7 +89,7 @@ export class Replica {
   ) {
     this.docIdBytes = docIdBytes.slice()
     doc.setPeerId(actor)
-    this.undoManager = new UndoManager(doc, { mergeInterval: 0, excludeOriginPrefixes: [ROLLBACK] })
+    this.undoManager = new UndoManager(doc, { mergeInterval: 0, excludeOriginPrefixes: [ROLLBACK, SYSTEM] })
   }
 
   /** A new, empty document. Only one replica creates a document; others `load` it. */
