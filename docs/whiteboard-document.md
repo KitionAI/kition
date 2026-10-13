@@ -230,4 +230,12 @@ native entry for `loro-crdt` (`tooling/vitest.config.ts` has no such alias).
   than hand-built record JSON, so an end-to-end test opens exactly the file
   format the editor itself writes. The page encodes them, importing
   `boardKdmFile.ts` from the Vite dev server, because Playwright's own
-  TypeScript transform cannot load the KDM.
+  TypeScript transform cannot load the KDM. Its mock desktop bridge guards
+  writes like the runtime (`DESIGN_SAVE_CONFLICT`), raises the external-change
+  event on request, and can decode or edit the file on disk with the same
+  in-page modules; `e2e/whiteboard-persistence.spec.ts` uses these to cover
+  saving, reloading, merging a change made on disk, the save on close, and
+  version-1 files.
+- The page's test bridge (`window.__KITION_WHITEBOARD_TEST__`, development
+  builds only) exposes the record view as `records`, plus the document's
+  `docId` and `kdmVersion` (the encoded replica version as hex).

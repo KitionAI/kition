@@ -211,7 +211,8 @@
       "newerVersion": "Este tablero se creó con una versión más reciente de Kition. Actualiza Kition para abrirlo. El archivo no se ha modificado.",
       "notABoard": "Este archivo no es un tablero de Kition o está dañado. El archivo no se ha modificado.",
       "startNew": "Empezar un tablero nuevo",
-      "startNewHint": "El tablero nuevo reemplaza el contenido de este archivo."
+      "startNewHint": "El tablero nuevo reemplaza el contenido de este archivo.",
+      "saveConflict": "El archivo de este tablero cambió repetidamente mientras Kition lo guardaba. Tus cambios se conservan y se volverán a guardar."
     }
   },
   "board": {

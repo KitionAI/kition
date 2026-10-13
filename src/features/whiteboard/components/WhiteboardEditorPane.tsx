@@ -22,7 +22,7 @@ import {
   WhiteboardFileNotice,
 } from '@/features/whiteboard/components/WhiteboardFileNotice'
 import { useWhiteboardAgentPatch } from '@/features/whiteboard/hooks/useWhiteboardAgentPatch'
-import { useBoardDocument } from '@/features/whiteboard/hooks/useBoardDocument'
+import { isBoardSaveConflict, useBoardDocument } from '@/features/whiteboard/hooks/useBoardDocument'
 import { useWhiteboardEditor } from '@/features/whiteboard/hooks/useWhiteboardEditor'
 import { buildWhiteboardAgentContext, type WhiteboardAgentScope } from '@/features/whiteboard/lib/whiteboardAgentContext'
 import type { WhiteboardAgentBridge } from '@/features/whiteboard/lib/whiteboardAgentBridge'
@@ -40,6 +40,7 @@ import type { WhiteboardPoint } from '@/features/whiteboard/lib/whiteboardTypes'
 import {
   cloneWhiteboardTestRecords,
   installWhiteboardTestBridge,
+  readWhiteboardTestReplica,
 } from '@/features/whiteboard/testing/whiteboardTestBridge'
 import { useTranslation } from 'react-i18next'
 
@@ -229,6 +230,7 @@ export function WhiteboardEditorPane({
     interactionState: controller.interactionState,
     path,
     records: cloneWhiteboardTestRecords(controller.records),
+    ...readWhiteboardTestReplica(controller.store.getReplica()),
     selectedElementIds: [...controller.selectedElementIds],
     shapeType: controller.shapeType,
     tool: controller.tool,
@@ -405,7 +407,9 @@ export function WhiteboardEditorPane({
         role={documentState.status === 'error' ? 'alert' : 'status'}
         title={documentState.saveRefused
           ? t(BOARD_FILE_PROBLEM_MESSAGES[documentState.saveRefused])
-          : documentState.error || undefined}
+          : isBoardSaveConflict(documentState.error)
+            ? t('whiteboard.file.saveConflict')
+            : documentState.error || undefined}
         data-testid="board-save-status"
       >
         {t(`board.status.${documentState.status}`)}

@@ -211,7 +211,8 @@
       "newerVersion": "Ce tableau a été créé avec une version plus récente de Kition. Mettez Kition à jour pour l’ouvrir. Le fichier n’a pas été modifié.",
       "notABoard": "Ce fichier n’est pas un tableau Kition ou il est endommagé. Le fichier n’a pas été modifié.",
       "startNew": "Commencer un nouveau tableau",
-      "startNewHint": "Le nouveau tableau remplace le contenu de ce fichier."
+      "startNewHint": "Le nouveau tableau remplace le contenu de ce fichier.",
+      "saveConflict": "Le fichier de ce tableau a changé à plusieurs reprises pendant que Kition l’enregistrait. Vos modifications sont conservées et seront enregistrées à nouveau."
     }
   },
   "board": {

@@ -211,7 +211,8 @@
       "newerVersion": "Este quadro foi criado com uma versão mais recente do Kition. Atualize o Kition para abri-lo. O arquivo não foi alterado.",
       "notABoard": "Este arquivo não é um quadro do Kition ou está danificado. O arquivo não foi alterado.",
       "startNew": "Começar um novo quadro",
-      "startNewHint": "O novo quadro substitui o conteúdo deste arquivo."
+      "startNewHint": "O novo quadro substitui o conteúdo deste arquivo.",
+      "saveConflict": "O arquivo deste quadro mudou várias vezes enquanto o Kition o salvava. Suas edições foram mantidas e serão salvas novamente."
     }
   },
   "board": {

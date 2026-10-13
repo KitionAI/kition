@@ -124,7 +124,7 @@ class BoardDocumentSession {
         await writeWorkspaceDocument(this.path, text, { expected_root: this.root, expected_content: expected })
       } catch (reason) {
         if (this.disposed) return
-        if (!isConflict(reason)) {
+        if (!isBoardSaveConflict(reason)) {
           this.setState({ status: 'error', error: message(reason) })
           return
         }
@@ -250,7 +250,7 @@ class BoardDocumentSession {
           expected_content: this.fileText,
         })
       } catch (reason) {
-        if (!isConflict(reason) || attempt >= MAX_SAVE_ATTEMPTS) {
+        if (!isBoardSaveConflict(reason) || attempt >= MAX_SAVE_ATTEMPTS) {
           this.failed(reason)
           return
         }
@@ -362,7 +362,8 @@ class BoardDocumentSession {
   }
 }
 
-function isConflict(reason: unknown) {
+/** Whether a save failure (an error or its message) is the guarded write's conflict refusal. */
+export function isBoardSaveConflict(reason: unknown) {
   return message(reason).includes(SAVE_CONFLICT)
 }
 

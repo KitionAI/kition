@@ -142,9 +142,10 @@ async function mockReadmeWorkspace(page: Page, activePath = WELCOME_PATH) {
       const updatedAt = '2026-07-24T00:00:00.000Z'
       let boardContent: Promise<string> | null = null
       const readBoardContent = () => {
+        // Resolved against the page: WebKit resolves an init script's bare paths against the script.
         boardContent ??= Promise.all([
-          import(/* @vite-ignore */ boardFileModule),
-          import(/* @vite-ignore */ kdmModule),
+          import(/* @vite-ignore */ new URL(boardFileModule, window.location.href).href),
+          import(/* @vite-ignore */ new URL(kdmModule, window.location.href).href),
         ]).then(([{ createBoardFromRecords, encodeBoardFile }, { randomActor }]) => (
           encodeBoardFile(createBoardFromRecords('Product Launch', randomActor(), boardRecords)) as string
         ))

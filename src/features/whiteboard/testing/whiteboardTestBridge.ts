@@ -1,3 +1,5 @@
+import type { Replica } from '@/lib/kdm'
+
 import type { BoardRecord } from '../lib/boardRecords'
 import type {
   WhiteboardElementStyle,
@@ -10,7 +12,11 @@ export type WhiteboardTestSnapshot = {
   canRedo: boolean
   canUndo: boolean
   currentPageId: string
+  /** The open document's KDM id. */
+  docId: string
   interactionState: string
+  /** The replica's encoded version (`Version.encode()`) as lowercase hex: changes with every commit or merge. */
+  kdmVersion: string
   path: string
   records: BoardRecord[]
   selectedElementIds: string[]
@@ -35,6 +41,15 @@ export function installWhiteboardTestBridge(read: () => WhiteboardTestSnapshot) 
     if (window.__KITION_WHITEBOARD_TEST__ === bridge) {
       delete window.__KITION_WHITEBOARD_TEST__
     }
+  }
+}
+
+/** The replica fields of a test snapshot. */
+export function readWhiteboardTestReplica(replica: Replica): Pick<WhiteboardTestSnapshot, 'docId' | 'kdmVersion'> {
+  const version = replica.version().encode()
+  return {
+    docId: replica.docId,
+    kdmVersion: Array.from(version, (byte) => byte.toString(16).padStart(2, '0')).join(''),
   }
 }
 

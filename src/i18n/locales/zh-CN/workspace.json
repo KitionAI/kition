@@ -211,7 +211,8 @@
       "newerVersion": "此画板由更新版本的 Kition 创建。请更新 Kition 后再打开。文件未被更改。",
       "notABoard": "此文件不是 Kition 画板，或已损坏。文件未被更改。",
       "startNew": "新建画板",
-      "startNewHint": "新画板将替换此文件的内容。"
+      "startNewHint": "新画板将替换此文件的内容。",
+      "saveConflict": "保存期间此画板的文件一直在变化。你的编辑已保留，稍后会再次保存。"
     }
   },
   "board": {
