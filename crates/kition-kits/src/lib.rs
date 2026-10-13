@@ -3,6 +3,7 @@
 //! connection to them.
 
 pub mod bridge;
+pub mod document_bridge;
 pub mod host;
 pub mod manager;
 pub mod mcp;
@@ -11,6 +12,7 @@ pub mod surfaces;
 pub mod tools;
 
 pub use bridge::{Bridge, LiveDocument};
+pub use document_bridge::{DocumentApplied, DocumentApply};
 pub use manager::{
     Caller, DocumentView, ExecuteView, KITS, KitAgent, KitDefinition, KitError, KitManager,
 };

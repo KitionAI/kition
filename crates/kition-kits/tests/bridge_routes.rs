@@ -190,3 +190,75 @@ async fn the_agent_reaches_the_window_with_the_file_open() {
     assert!(!kits.bridge().connected());
     assert!(kits.bridge().find("art/Logo.vectorcraft").await.is_none());
 }
+
+#[tokio::test]
+async fn the_agent_edits_a_document_open_in_a_window() {
+    let (app, kits) = app();
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/kits/bridge")
+                .body(Body::empty())
+                .unwrap_or_else(|err| panic!("{err}")),
+        )
+        .await
+        .unwrap_or_else(|err| panic!("{err}"));
+    let mut events = Events {
+        body: response.into_body(),
+        buffer: String::new(),
+    };
+    let session = events.next().await["params"]["session"]
+        .as_u64()
+        .unwrap_or_else(|| panic!("a session id"));
+    let announced = json!({ "jsonrpc": "2.0", "method": "documents.open", "params": { "paths": ["Notes/Plan.md"] } });
+    assert_eq!(post(&app, session, announced).await, StatusCode::OK);
+    assert_eq!(
+        kits.bridge().document_window("Notes/Plan.md"),
+        Some(session)
+    );
+
+    let window = {
+        let app = app.clone();
+        tokio::spawn(async move {
+            let apply = events.next().await;
+            assert_eq!(apply["method"], "document/apply");
+            assert_eq!(
+                apply["params"],
+                json!({ "path": "Notes/Plan.md", "content": "# Plan\n", "tool": "document_write" })
+            );
+            let result = json!({ "applied": true, "content": "# Plan\n" });
+            assert_eq!(
+                post(
+                    &app,
+                    session,
+                    json!({ "jsonrpc": "2.0", "id": apply["id"], "result": result })
+                )
+                .await,
+                StatusCode::OK
+            );
+            events
+        })
+    };
+    let applied = kits
+        .bridge()
+        .apply_document(
+            session,
+            &kition_kits::DocumentApply {
+                path: "Notes/Plan.md".into(),
+                content: "# Plan\n".into(),
+                tool: "document_write".into(),
+                turn_id: None,
+            },
+            kition_kits::document_bridge::DOCUMENT_APPLY_TIMEOUT,
+        )
+        .await
+        .unwrap_or_else(|err| panic!("{err}"));
+    assert_eq!(
+        (applied.applied, applied.content.as_deref()),
+        (true, Some("# Plan\n"))
+    );
+    drop(window.await.unwrap_or_else(|err| panic!("{err}")));
+    tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+    assert_eq!(kits.bridge().document_window("Notes/Plan.md"), None);
+}
