@@ -23,6 +23,7 @@ vi.mock('@/components/confirm', () => ({
 
 const BOARD: WorkspaceTab = { id: 'board:Plan.kiboard', type: 'board', title: 'Plan', path: 'Plan.kiboard' }
 const DESIGN: WorkspaceTab = { id: 'design:Poster.kidesign', type: 'design', title: 'Poster', path: 'Poster.kidesign' }
+const DOCUMENT: WorkspaceTab = { id: 'document:Notes.md', type: 'document', title: 'Notes', path: 'Notes.md', format: 'markdown', uid: 'notes' }
 
 let container: HTMLDivElement
 let root: Root | null = null
@@ -82,6 +83,7 @@ function heldConfirm() {
 beforeEach(async () => {
   vi.clearAllMocks()
   confirm.mockReset()
+  closeWorkspaceTab.mockReset()
   container = document.createElement('div')
   document.body.appendChild(container)
   await act(async () => {
@@ -166,6 +168,32 @@ describe('useWorkspaceTabControllers', () => {
     confirm.mockResolvedValueOnce(false)
     await closeTab(BOARD.id)
     expect(confirm).toHaveBeenCalledTimes(2)
+  })
+
+  it('commits the table cell being edited in a document before its close saves', async () => {
+    await act(async () => {
+      root!.render(createElement(Surface, { tabs: [DOCUMENT, BOARD] }))
+    })
+    const order: string[] = []
+    // A table cell being edited: its text reaches the document when the cell loses focus.
+    const editorDom = document.createElement('div')
+    editorDom.className = 'cm-editor'
+    const cell = document.createElement('div')
+    cell.setAttribute('contenteditable', 'true')
+    cell.tabIndex = 0
+    editorDom.appendChild(cell)
+    document.body.appendChild(editorDom)
+    cell.addEventListener('blur', () => order.push('cell committed'))
+    cell.focus()
+    expect(document.activeElement).toBe(cell)
+    openEditor(DOCUMENT.path, async () => {
+      order.push('flushed')
+    })
+
+    await closeTab(DOCUMENT.id)
+    expect(order).toEqual(['cell committed', 'flushed'])
+    expect(closeWorkspaceTab).toHaveBeenCalledWith(DOCUMENT.id)
+    editorDom.remove()
   })
 
   it('keeps a Design tab open and shows the save failure when its save fails', async () => {

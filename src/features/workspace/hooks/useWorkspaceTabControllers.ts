@@ -24,6 +24,18 @@ type UseWorkspaceTabControllersOptions = {
   openDocument: (path: string) => Promise<void>
 }
 
+/**
+ * Commits what the person is editing inside a document editor before its tab's save: a table cell
+ * (or another widget's contentEditable) writes its text to the document only when it loses focus.
+ */
+function commitFocusedEditorInput() {
+  if (typeof document === 'undefined') return
+  const active = document.activeElement
+  if (!(active instanceof HTMLElement) || !active.closest('.cm-editor')) return
+  if (!active.isContentEditable && active.getAttribute('contenteditable') !== 'true') return
+  active.blur()
+}
+
 function documentUid() {
   return typeof crypto !== 'undefined' && 'randomUUID' in crypto
     ? crypto.randomUUID()
@@ -70,6 +82,7 @@ export function useWorkspaceTabControllers({
     closing.add(tabId)
     try {
       try {
+        if (kind === 'document') commitFocusedEditorInput()
         await flushWorkspaceEditSessions(path)
       } catch {
         const copy = kind === 'board' ? 'whiteboard.file' : 'documentFile'
