@@ -1,0 +1,11 @@
+// Copied from kition-sdk packages/kdm/src/index.ts by scripts/sync-kit-host.mjs; change it there, not here.
+export { canonicalText } from './canonical'
+export { KdmError, type KdmErrorReason } from './errors'
+export { newDocId, newObjectId, NodeRef, randomActor, uuidFromBytes, uuidToBytes, uuidV7, type ObjectId } from './ids'
+export { agent, decodeOrigin, encodeOrigin, person, system, type Origin, type OriginKind } from './origin'
+export { Version } from './envelope'
+export { Replica, type TextDelta, type TreeEntry } from './replica'
+export { checkValue, fieldDef, isContainer, KDM_VERSION, parseSchema, typeDef, type FieldDef, type FieldKind, type Schema, type TypeDef } from './schema'
+export { Network, Rng } from './testing'
+export { Tx } from './tx'
+export type { JsonValue } from './value'

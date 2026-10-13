@@ -1,0 +1,113 @@
+// Copied from kition-sdk packages/kdm/src/op.ts by scripts/sync-kit-host.mjs; change it there, not here.
+/**
+ * A transaction's buffered operations and their application to the engine. `Tx` validates each
+ * operation when it is called and records it here; nothing reaches the engine until the
+ * transaction's function has returned. The engine cannot abort a transaction (its operations take
+ * effect as they are applied), so staging is what makes a failed transaction leave no operations.
+ */
+import { LoroDoc, LoroMap, LoroMovableList, LoroText, LoroTree, type TreeID } from 'loro-crdt'
+import { errors, KdmError } from './errors'
+import { resolveNode, type NodeRef, type ObjectId } from './ids'
+import { pendingIndex, treeId, type NodeKey } from './overlay'
+import * as read from './read'
+import { sortedKeys, type Schema } from './schema'
+import type { JsonValue } from './value'
+
+export type JsonFields = Record<string, JsonValue>
+
+export type Op =
+  | { op: 'create'; id: ObjectId; ty: string; fields: JsonFields }
+  | { op: 'set'; id: ObjectId; field: string; value: JsonValue }
+  | { op: 'delete'; id: ObjectId }
+  | { op: 'textInsert'; id: ObjectId; field: string; index: number; content: string }
+  | { op: 'textDelete'; id: ObjectId; field: string; index: number; count: number }
+  | { op: 'listInsert'; id: ObjectId; field: string; index: number; item: ObjectId }
+  | { op: 'listMove'; id: ObjectId; field: string; from: number; to: number }
+  | { op: 'listRemove'; id: ObjectId; field: string; index: number }
+  | { op: 'mapSet'; id: ObjectId; field: string; key: string; value: JsonValue }
+  | { op: 'mapDelete'; id: ObjectId; field: string; key: string }
+  /** Creates the transaction's `node`-th node. */
+  | { op: 'treeCreate'; id: ObjectId; field: string; parent: NodeKey | null; object: ObjectId; node: number }
+  | { op: 'treeMove'; id: ObjectId; field: string; node: NodeKey; parent: NodeKey | null }
+
+/** Applies validated operations in order and resolves the created nodes' handles. Does not commit. */
+export function apply(doc: LoroDoc, schema: Schema, ops: Op[], nodes: NodeRef[], touched: (id: ObjectId) => void): void {
+  const created: Array<TreeID | undefined> = new Array(nodes.length)
+  for (const op of ops) {
+    touched(op.id)
+    try {
+      applyOne(doc, schema, op, created)
+    } catch (error) {
+      throw error instanceof KdmError ? error : errors.engine(error instanceof Error ? error.message : String(error))
+    }
+  }
+  nodes.forEach((node, index) => {
+    const id = created[index]
+    if (id !== undefined) resolveNode(node, id)
+  })
+}
+
+function applyOne(doc: LoroDoc, schema: Schema, op: Op, created: Array<TreeID | undefined>): void {
+  switch (op.op) {
+    case 'create': {
+      const map = doc.getMap(read.OBJECTS).setContainer(op.id, new LoroMap())
+      map.set(read.TYPE_KEY, op.ty)
+      for (const name of sortedKeys(op.fields)) map.set(name, op.fields[name])
+      const fields = schema.types[op.ty].fields
+      for (const name of sortedKeys(fields)) {
+        const kind = fields[name].kind
+        if (kind === 'text') map.setContainer(name, new LoroText())
+        else if (kind === 'list') map.setContainer(name, new LoroMovableList())
+        else if (kind === 'tree') map.setContainer(name, new LoroTree())
+        else if (kind === 'map') map.setContainer(name, new LoroMap())
+      }
+      return
+    }
+    case 'set':
+      return read.objectMap(doc, op.id).set(op.field, op.value)
+    case 'delete':
+      return doc.getMap(read.OBJECTS).delete(op.id)
+    case 'textInsert':
+      return engineContainer(doc, op.id, op.field, 'text').insert(op.index, op.content)
+    case 'textDelete':
+      return engineContainer(doc, op.id, op.field, 'text').delete(op.index, op.count)
+    case 'listInsert':
+      return engineContainer(doc, op.id, op.field, 'list').insert(op.index, op.item)
+    case 'listMove':
+      return engineContainer(doc, op.id, op.field, 'list').move(op.from, op.to)
+    case 'listRemove':
+      return engineContainer(doc, op.id, op.field, 'list').delete(op.index, 1)
+    case 'mapSet':
+      return engineContainer(doc, op.id, op.field, 'map').set(op.key, op.value)
+    case 'mapDelete':
+      return engineContainer(doc, op.id, op.field, 'map').delete(op.key)
+    case 'treeCreate': {
+      const node = engineContainer(doc, op.id, op.field, 'tree').createNode(nodeId(created, op.parent))
+      node.data.set(read.NODE_OBJECT, op.object)
+      created[op.node] = node.id
+      return
+    }
+    case 'treeMove': {
+      const node = nodeId(created, op.node)
+      if (node === undefined) throw errors.engine('a staged tree move has no node')
+      return engineContainer(doc, op.id, op.field, 'tree').move(node, nodeId(created, op.parent))
+    }
+  }
+}
+
+/** The container in a field, without schema checks. */
+function engineContainer<K extends read.ContainerKind>(doc: LoroDoc, id: ObjectId, field: string, kind: K) {
+  const found = read.asContainer(read.objectMap(doc, id).get(field), kind, id, field)
+  if (!found) throw errors.notFound(`${id}.${field}`)
+  return found
+}
+
+/** The engine id of a node key; `undefined` for no node (a root's parent). */
+function nodeId(created: Array<TreeID | undefined>, key: NodeKey | null): TreeID | undefined {
+  if (key === null) return undefined
+  const index = pendingIndex(key)
+  if (index === null) return treeId(key)
+  const id = created[index]
+  if (id === undefined) throw errors.engine(`tree node ${index} is used before it exists`)
+  return id
+}

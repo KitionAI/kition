@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import wasm from 'vite-plugin-wasm'
 import { execSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
@@ -49,17 +50,26 @@ export default defineConfig(({ mode }) => ({
   root: repositoryDir,
   publicDir: resolve(repositoryDir, 'public'),
   base: '/',
-  plugins: [react()],
+  // vite-plugin-wasm loads WebAssembly that a module imports as an ES module, as loro-crdt's
+  // bundler entry does (see the alias below).
+  plugins: [react(), wasm()],
   resolve: {
-    alias: {
-      '@': resolve(repositoryDir, 'src'),
-    },
+    alias: [
+      { find: '@', replacement: resolve(repositoryDir, 'src') },
+      // loro-crdt's default browser entry downloads and compiles its WebAssembly synchronously on
+      // the page's thread. Its bundler entry imports the WebAssembly instead, which
+      // vite-plugin-wasm fetches and instantiates asynchronously, in development and in builds
+      // alike. Vitest keeps the Node entry (tooling/vitest.config.ts has no such alias).
+      { find: /^loro-crdt$/, replacement: 'loro-crdt/bundler' },
+    ],
   },
   optimizeDeps: {
     // Search runs in a worker and starts on idle, so Vite's cold-start scanner
     // cannot discover these dependencies from index.html. Pre-bundle them to
     // prevent a full-page reload when the worker starts during renderer E2E.
-    include: ['@orama/orama', 'idb'],
+    // loro-crdt is only reached through dynamic imports for now (the e2e smoke test imports
+    // src/lib/kdm), so pre-bundle it as well.
+    include: ['@orama/orama', 'idb', 'loro-crdt'],
   },
   css: {
     postcss: resolve(repositoryDir, 'tooling'),
