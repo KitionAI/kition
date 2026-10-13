@@ -39,14 +39,16 @@ const ENGINE_CHECKS = 4
 /**
  * A text as a transaction sees it: the committed text (`null`: empty), its pending length, and
  * the pending edits, kept as a sequence of pieces of the committed text and of inserted strings.
- * A cursor remembers the last piece looked at, so edits at nearby positions (such as a sorted
- * list of edits, or typing) find their piece in amortised constant time.
+ * The sequence is a gap buffer: the pieces before a cursor in order, and those after it in
+ * reverse, so that edits at nearby positions (a sorted list of edits, or typing) cost amortised
+ * constant time, and moving the cursor costs the pieces it passes.
  */
 export class TextState {
-  private readonly pieces: Piece[]
-  /** The index of the piece at the cursor, and the position where that piece starts. */
-  private cursor = 0
-  private cursorAt = 0
+  /** The pieces before the cursor, in order, and their total length (the cursor's position). */
+  private readonly before: Piece[] = []
+  private beforeLength = 0
+  /** The pieces after the cursor, last first: the piece right after the cursor is the last element. */
+  private readonly after: Piece[]
   /** The committed text, once read. */
   private committedString: string | null = null
   private engineChecks = 0
@@ -55,7 +57,7 @@ export class TextState {
     readonly committed: LoroText | null,
     public len: number,
   ) {
-    this.pieces = len > 0 ? [{ text: null, start: 0, length: len }] : []
+    this.after = len > 0 ? [{ text: null, start: 0, length: len }] : []
   }
 
   /**
@@ -66,35 +68,42 @@ export class TextState {
   splits(position: number): boolean {
     if (position <= 0 || position >= this.len) return false
     this.seek(position)
-    const piece = this.pieces[this.cursor]
-    const at = piece.start + position - this.cursorAt
+    const piece = this.after[this.after.length - 1]
+    const at = piece.start + position - this.beforeLength
     return piece.text !== null ? isLowSurrogate(piece.text.charCodeAt(at)) : this.committedSplits(at)
   }
 
   /** Inserts `content` (well formed) at `index`. */
   insert(index: number, content: string): void {
     if (!content) return
-    const at = this.boundary(index)
-    this.pieces.splice(at, 0, { text: content, start: 0, length: content.length })
+    this.cut(index)
+    this.before.push({ text: content, start: 0, length: content.length })
+    this.beforeLength += content.length
     this.len += content.length
   }
 
   /** Deletes `count` code units from `index`. */
   delete(index: number, count: number): void {
     if (count === 0) return
-    const from = this.boundary(index)
-    const to = this.boundary(index + count)
-    this.pieces.splice(from, to - from)
-    this.cursor = from
-    this.cursorAt = index
+    this.cut(index)
+    for (let left = count; left > 0; ) {
+      const piece = this.after.pop()!
+      if (piece.length > left) {
+        this.after.push({ text: piece.text, start: piece.start + left, length: piece.length - left })
+        break
+      }
+      left -= piece.length
+    }
     this.len -= count
   }
 
   /** The text with the pending edits applied. */
   text(): string {
-    const committed = this.pieces.some((piece) => piece.text === null) ? this.committedText() : ''
+    const committed = this.before.some((piece) => piece.text === null) || this.after.some((piece) => piece.text === null) ? this.committedText() : ''
+    const slice = (piece: Piece) => (piece.text ?? committed).slice(piece.start, piece.start + piece.length)
     let out = ''
-    for (const piece of this.pieces) out += (piece.text ?? committed).slice(piece.start, piece.start + piece.length)
+    for (const piece of this.before) out += slice(piece)
+    for (let index = this.after.length - 1; index >= 0; index -= 1) out += slice(this.after[index])
     return out
   }
 
@@ -116,32 +125,32 @@ export class TextState {
   }
 
   /**
-   * Moves the cursor to the piece holding `position`, or past the last piece when `position` is
-   * the length.
+   * Moves the cursor to the start of the piece holding `position` (`position` < `len`), or to the
+   * end when `position` is the length.
    */
   private seek(position: number): void {
-    const pieces = this.pieces
-    while (this.cursor > 0 && this.cursorAt > position) {
-      this.cursor -= 1
-      this.cursorAt -= pieces[this.cursor].length
+    const { before, after } = this
+    while (this.beforeLength > position) {
+      const piece = before.pop()!
+      this.beforeLength -= piece.length
+      after.push(piece)
     }
-    while (this.cursor < pieces.length && this.cursorAt + pieces[this.cursor].length <= position) {
-      this.cursorAt += pieces[this.cursor].length
-      this.cursor += 1
+    while (after.length > 0 && this.beforeLength + after[after.length - 1].length <= position) {
+      const piece = after.pop()!
+      this.beforeLength += piece.length
+      before.push(piece)
     }
   }
 
-  /** Splits the piece holding `position` there, if it does not start there; answers the index of the piece starting at `position` (the cursor is on it). */
-  private boundary(position: number): number {
+  /** Moves the cursor to `position`, splitting the piece there if `position` falls inside it. */
+  private cut(position: number): void {
     this.seek(position)
-    if (this.cursor === this.pieces.length || this.cursorAt === position) return this.cursor
-    const piece = this.pieces[this.cursor]
-    const head = position - this.cursorAt
-    this.pieces.splice(this.cursor + 1, 0, { text: piece.text, start: piece.start + head, length: piece.length - head })
-    piece.length = head
-    this.cursorAt = position
-    this.cursor += 1
-    return this.cursor
+    const head = position - this.beforeLength
+    if (head === 0) return
+    const piece = this.after.pop()!
+    this.before.push({ text: piece.text, start: piece.start, length: head })
+    this.after.push({ text: piece.text, start: piece.start + head, length: piece.length - head })
+    this.beforeLength = position
   }
 }
 
