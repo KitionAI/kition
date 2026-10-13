@@ -178,6 +178,12 @@ describe('BoardStore repairs and read-back on the KDM', () => {
     expect(replica.canUndo()).toBe(false)
     expect(store.getSnapshot().canUndo).toBe(false)
 
+    const reloaded = new BoardStore()
+    reloaded.load(Replica.load(boardSchema, damaged.snapshot(), 9n))
+    expect(reloaded.getReplica().get('child', 'parent')).toBeNull()
+    expect(findBoardDuplicatePlacements(reloaded.getReplica())).toEqual([])
+    expect(reloaded.getSnapshot().canUndo).toBe(false)
+
     store.transact('move', (tx) => tx.put({ ...store.getElementRecord('child')!, x: 5 } as BoardElementRecord))
     expect(store.getSnapshot().canUndo).toBe(true)
     store.undo()
