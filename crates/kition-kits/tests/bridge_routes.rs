@@ -31,6 +31,24 @@ fn app() -> (Router, KitManager) {
     )
 }
 
+/// Validates a bridge message against one `$defs` entry of `contracts/runtime/kits.schema.json`.
+fn check_contract(def: &str, instance: &Value) {
+    let mut schema: Value =
+        serde_json::from_str(include_str!("../../../contracts/runtime/kits.schema.json"))
+            .unwrap_or_else(|err| panic!("{err}"));
+    schema["$ref"] = json!(format!("#/$defs/{def}"));
+    let validator = jsonschema::validator_for(&schema).unwrap_or_else(|err| panic!("{err}"));
+    let errors: Vec<String> = validator
+        .iter_errors(instance)
+        .map(|error| format!("{error} at {}", error.instance_path()))
+        .collect();
+    assert!(
+        errors.is_empty(),
+        "{def}: {}\n{instance}",
+        errors.join("; ")
+    );
+}
+
 /// Reads server-sent events from a response body, one JSON message per `data:` line.
 struct Events {
     body: Body,
@@ -212,6 +230,7 @@ async fn the_agent_edits_a_document_open_in_a_window() {
         .as_u64()
         .unwrap_or_else(|| panic!("a session id"));
     let announced = json!({ "jsonrpc": "2.0", "method": "documents.open", "params": { "paths": ["Notes/Plan.md"] } });
+    check_contract("bridgeDocumentsOpen", &announced["params"]);
     assert_eq!(post(&app, session, announced).await, StatusCode::OK);
     assert_eq!(
         kits.bridge().document_window("Notes/Plan.md"),
@@ -223,11 +242,13 @@ async fn the_agent_edits_a_document_open_in_a_window() {
         tokio::spawn(async move {
             let apply = events.next().await;
             assert_eq!(apply["method"], "document/apply");
+            check_contract("bridgeDocumentApplyParams", &apply["params"]);
             assert_eq!(
                 apply["params"],
                 json!({ "path": "Notes/Plan.md", "content": "# Plan\n", "tool": "document_write" })
             );
             let result = json!({ "applied": true, "content": "# Plan\n" });
+            check_contract("bridgeDocumentApplyResult", &result);
             assert_eq!(
                 post(
                     &app,
@@ -259,6 +280,33 @@ async fn the_agent_edits_a_document_open_in_a_window() {
         (true, Some("# Plan\n"))
     );
     drop(window.await.unwrap_or_else(|err| panic!("{err}")));
+    for (def, valid, invalid) in [
+        (
+            "bridgeDocumentApplyResult",
+            json!({ "applied": false, "reason": "not-open" }),
+            json!({ "applied": true }),
+        ),
+        (
+            "bridgeDocumentReadResult",
+            json!({ "open": true, "content": "" }),
+            json!({ "open": false, "content": "x" }),
+        ),
+        (
+            "bridgeDocumentReadParams",
+            json!({ "path": "Notes/Plan.md" }),
+            json!({ "path": "../Plan.md" }),
+        ),
+    ] {
+        check_contract(def, &valid);
+        let mut schema: Value =
+            serde_json::from_str(include_str!("../../../contracts/runtime/kits.schema.json"))
+                .unwrap_or_else(|err| panic!("{err}"));
+        schema["$ref"] = json!(format!("#/$defs/{def}"));
+        assert!(
+            !jsonschema::is_valid(&schema, &invalid),
+            "{def} accepts {invalid}"
+        );
+    }
     tokio::time::sleep(std::time::Duration::from_millis(20)).await;
     assert_eq!(kits.bridge().document_window("Notes/Plan.md"), None);
 }
