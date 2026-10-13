@@ -7,7 +7,7 @@ import type { BoardRecord } from './boardRecords'
  * rebuilt in another shape, such as those read back from the KDM.
  */
 export function boardRecordsEqual(a: BoardRecord, b: BoardRecord): boolean {
-  return deepEqual(normalized(a), normalized(b))
+  return boardValuesEqual(normalized(a), normalized(b))
 }
 
 function normalized(record: BoardRecord): Record<string, unknown> {
@@ -28,19 +28,20 @@ function isEmptyStyle(style: unknown): boolean {
     && Object.values(style).every((value) => value === undefined)
 }
 
-function deepEqual(left: unknown, right: unknown): boolean {
+/** Deep equality of record values, ignoring key order and `undefined` members. */
+export function boardValuesEqual(left: unknown, right: unknown): boolean {
   if (left === right) return true
   if (typeof left === 'number' && typeof right === 'number') return Number.isNaN(left) && Number.isNaN(right)
   if (left === null || right === null || typeof left !== 'object' || typeof right !== 'object') return false
   if (Array.isArray(left) || Array.isArray(right)) {
     if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false
-    return left.every((item, index) => deepEqual(item, right[index]))
+    return left.every((item, index) => boardValuesEqual(item, right[index]))
   }
   const leftRecord = left as Record<string, unknown>
   const rightRecord = right as Record<string, unknown>
   const keys = definedKeys(leftRecord)
   if (keys.length !== definedKeys(rightRecord).length) return false
-  return keys.every((key) => rightRecord[key] !== undefined && deepEqual(leftRecord[key], rightRecord[key]))
+  return keys.every((key) => rightRecord[key] !== undefined && boardValuesEqual(leftRecord[key], rightRecord[key]))
 }
 
 function definedKeys(record: Record<string, unknown>): string[] {

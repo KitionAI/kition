@@ -4,11 +4,17 @@
  * groups.
  */
 import { open } from '@/lib/kdm/envelope'
-import { uuidFromBytes, type Origin, type Replica } from '@/lib/kdm'
+import { system, uuidFromBytes, type Origin, type Replica } from '@/lib/kdm'
 import type { BoardRecord } from '../lib/boardRecords'
 import type { BoardRecordDiff } from '../lib/boardRecordDiff'
-import { boardRootId } from './boardKdmRead'
-import { writeBoardDiff } from './boardKdmWrite'
+import { boardRootId, readBoardBindingRecords, readBoardElementRecords, readBoardPageRecords } from './boardKdmRead'
+import { repairBoardPlacements, writeBoardDiff, type BoardWriteResult } from './boardKdmWrite'
+
+/** A committed record diff: whether the document changed, and what the write could not do as asked. */
+export type BoardCommit = BoardWriteResult & { changed: boolean }
+
+/** Records to put into and ids to remove from the view so that it shows what the replica has. */
+export type BoardViewPatch = { put: BoardRecord[]; removed: string[] }
 
 /**
  * One replica of a board and the undo steps the store has on its undo stack. A step is a committed
@@ -47,20 +53,85 @@ export class BoardReplicaHistory {
   }
 
   /**
-   * Writes the persisted part of `diff` as one transaction of `origin`. Answers whether the
+   * Writes the persisted part of `diff` as one transaction of `origin`. `changed` tells whether the
    * document changed, that is whether the transaction is (part of) an undo step.
    */
-  commit(diff: BoardRecordDiff, origin: Origin) {
+  commit(diff: BoardRecordDiff, origin: Origin): BoardCommit {
     const persisted = persistedBoardDiff(diff)
-    if (isEmptyDiff(persisted)) return false
+    if (isEmptyDiff(persisted)) return { changed: false, skipped: [], relocated: [] }
     const before = this.replica.version()
-    this.replica.transact(origin, (tx) => writeBoardDiff(tx, this.rootId, persisted))
+    const result = this.replica.transact(origin, (tx) => writeBoardDiff(tx, this.rootId, persisted))
     const changed = !this.replica.version().equals(before)
     if (changed) {
       if (this.groupOwner !== null) this.groupChanged = true
       else this.undoDepth += 1
     }
-    return changed
+    return { changed, ...result }
+  }
+
+  /**
+   * Writes the repair `diff` and removes duplicate list placements as one `system` transaction,
+   * which the KDM keeps out of the undo history.
+   */
+  repair(diff: BoardRecordDiff) {
+    const persisted = persistedBoardDiff(diff)
+    this.replica.transact(system('repair'), (tx) => {
+      if (!isEmptyDiff(persisted)) writeBoardDiff(tx, this.rootId, persisted)
+      repairBoardPlacements(tx, this.rootId)
+    })
+  }
+
+  /**
+   * Re-reads from the replica what the commit of `diff` could not write as asked (`skipped` and
+   * `relocated` ids), so the view shows what the document has. `view` is the record view.
+   */
+  readBack(view: ReadonlyMap<string, BoardRecord>, diff: BoardRecordDiff, written: BoardWriteResult): BoardViewPatch {
+    const patch: BoardViewPatch = { put: [], removed: [] }
+    if (written.skipped.length === 0 && written.relocated.length === 0) return patch
+    const diffRecords = new Map<string, BoardRecord>()
+    for (const record of [...diff.added, ...diff.updated.map((update) => update.after)]) diffRecords.set(record.id, record)
+    const elements = new Set<string>()
+    const connectors = new Set<string>()
+    // A relocated element's page is missing from the document, so the view's pages are re-read too.
+    let readPages = written.relocated.length > 0
+    for (const id of [...written.skipped, ...written.relocated]) {
+      const record = diffRecords.get(id) ?? view.get(id)
+      if (record?.record_type === 'page') readPages = true
+      else if (record?.record_type === 'binding') {
+        // A binding is skipped when its connector is gone: the view's connector is re-read as well.
+        elements.add(record.from_id)
+        connectors.add(record.from_id)
+      } else if (record?.record_type === 'element') {
+        elements.add(id)
+        if (record.kind === 'connector') connectors.add(id)
+      }
+    }
+    if (readPages) {
+      const pages = readBoardPageRecords(this.replica, this.rootId)
+      const live = new Set(pages.map((page) => page.id))
+      patch.put.push(...pages)
+      for (const record of view.values()) {
+        if (record.record_type === 'page' && !live.has(record.id)) patch.removed.push(record.id)
+        // Elements the view still shows on a page the document no longer has.
+        else if (record.record_type === 'element' && !live.has(record.page_id)) {
+          elements.add(record.id)
+          if (record.kind === 'connector') connectors.add(record.id)
+        }
+      }
+    }
+    for (const [id, record] of readBoardElementRecords(this.replica, [...elements], this.rootId)) {
+      if (record) patch.put.push(record)
+      else patch.removed.push(id)
+    }
+    if (connectors.size > 0) {
+      const bindings = readBoardBindingRecords(this.replica, [...connectors], this.rootId)
+      const kept = new Set(bindings.map((binding) => binding.id))
+      for (const record of view.values()) {
+        if (record.record_type === 'binding' && connectors.has(record.from_id) && !kept.has(record.id)) patch.removed.push(record.id)
+      }
+      patch.put.push(...bindings)
+    }
+    return patch
   }
 
   /** Opens an undo group owned by `owner` unless one is open; answers whether it opened one. */

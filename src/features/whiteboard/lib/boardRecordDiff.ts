@@ -1,5 +1,8 @@
 /** Record diffs (computing, reversing, squashing them) and record equality. */
 import { cloneBoardRecord, compareBoardRecords, type BoardRecord } from './boardRecords'
+import { boardRecordsEqual } from './boardRecordEquality'
+
+export { boardRecordsEqual, boardValuesEqual } from './boardRecordEquality'
 
 type BoardRecordUpdate = {
   before: BoardRecord
@@ -108,37 +111,4 @@ export function diffBoardRecords(
   diff.removed.sort(compareBoardRecords)
   diff.updated.sort((left, right) => compareBoardRecords(left.after, right.after))
   return diff
-}
-
-/**
- * Whether two records hold the same data, as the replica stores it: key order does not matter,
- * and `undefined` members, an empty element text, and an empty style count as absent.
- */
-export function boardRecordsEqual(left: BoardRecord, right: BoardRecord): boolean {
-  return boardValuesEqual(comparable(left), comparable(right))
-}
-
-function comparable(record: BoardRecord): Record<string, unknown> {
-  if (record.record_type !== 'element') return record
-  const out: Record<string, unknown> = { ...record }
-  if (out.text === '') delete out.text
-  const style = out.style as Record<string, unknown> | undefined
-  if (style && Object.values(style).every((value) => value === undefined)) delete out.style
-  return out
-}
-
-/** Deep equality of record values, ignoring key order and `undefined` members. */
-export function boardValuesEqual(left: unknown, right: unknown): boolean {
-  if (left === right) return true
-  if (left === null || right === null || typeof left !== 'object' || typeof right !== 'object') return false
-  if (Array.isArray(left) !== Array.isArray(right)) return false
-  if (Array.isArray(left)) {
-    const other = right as unknown[]
-    return left.length === other.length && left.every((item, index) => boardValuesEqual(item, other[index]))
-  }
-  const leftRecord = left as Record<string, unknown>
-  const rightRecord = right as Record<string, unknown>
-  const keys = Object.keys(leftRecord).filter((key) => leftRecord[key] !== undefined)
-  if (keys.length !== Object.keys(rightRecord).filter((key) => rightRecord[key] !== undefined).length) return false
-  return keys.every((key) => boardValuesEqual(leftRecord[key], rightRecord[key]))
 }

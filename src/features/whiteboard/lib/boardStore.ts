@@ -1,7 +1,7 @@
-import { agent, person, randomActor, Replica, system } from '@/lib/kdm'
+import { agent, person, randomActor, Replica } from '@/lib/kdm'
 import { createBoardFromRecords, createEmptyBoard } from '../kdm/boardKdmFile'
 import { readBoardRecords, readBoardTitle } from '../kdm/boardKdmRead'
-import { BoardReplicaHistory } from '../kdm/boardReplicaBridge'
+import { BoardReplicaHistory, type BoardCommit } from '../kdm/boardReplicaBridge'
 import { boardSchema } from '../kdm/boardSchema'
 import {
   BOARD_META_RECORD_ID,
@@ -376,17 +376,17 @@ export class BoardStore {
     const origin = transaction.source === 'agent'
       ? agent(LOCAL_AGENT, transaction.label)
       : person(LOCAL_PERSON, transaction.label)
-    let changed: boolean
+    let committed: BoardCommit
     try {
-      changed = this.history.commit(diff, origin)
+      committed = this.history.commit(diff, origin)
     } catch (error) {
       transaction.restoreBeforeRecords()
       this.refreshStaleView()
       this.notify()
       throw error
     }
-    if (changed && transaction.source === 'user') this.recordOperation(transaction.label)
-    if (!this.refreshStaleView()) this.dropGhosts(diff)
+    if (committed.changed && transaction.source === 'user') this.recordOperation(transaction.label)
+    if (!this.refreshStaleView()) this.readBack(diff, committed)
     this.notify()
     return diff
   }
@@ -424,7 +424,8 @@ export class BoardStore {
   /**
    * Rebuilds the view from the replica, keeping the current page. With `repair`, what
    * `normalizeBoardRecords` corrects in persisted data (dangling parents and bindings, connector
-   * ends) is written back as one `system` transaction.
+   * ends) and duplicate list placements left by merges are repaired in one `system` transaction,
+   * which is not an undo step.
    */
   private rebuildView(options: { repair: boolean }) {
     const raw = readBoardRecords(this.history.replica)
@@ -432,24 +433,25 @@ export class BoardStore {
     if (meta) raw.unshift(meta)
     const view = normalizeBoardRecords(raw)
     if (options.repair) {
-      this.history.commit(diffBoardRecords(new Map(raw.map((record) => [record.id, record])), view), system('repair'))
+      this.history.repair(diffBoardRecords(new Map(raw.map((record) => [record.id, record])), view))
     }
     this.records = view
     this.invalidateCaches()
   }
 
   /**
-   * Drops from the view what a commit could not write because the replica no longer has it (an
-   * element or page an import deleted during the gesture), so no ghost stays on the canvas.
+   * Re-reads from the replica what a commit could not write as asked (an element or page an import
+   * deleted during the gesture, an element placed on a page the document lacks), so the view shows
+   * what the document has and no ghost stays on the canvas.
    */
-  private dropGhosts(diff: BoardRecordDiff) {
-    const { replica } = this.history
-    const exists = (id: string) => replica.exists(id)
-    for (const record of [...diff.added, ...diff.updated.map((update) => update.after)]) {
-      const ghost = record.record_type === 'element' || record.record_type === 'page'
-        ? !exists(record.id)
-        : record.record_type === 'binding' && (!exists(record.from_id) || !exists(record.to_id))
-      if (ghost) this.removeInternalRecord(record.id, false)
+  private readBack(diff: BoardRecordDiff, written: BoardCommit) {
+    const { put, removed } = this.history.readBack(this.records, diff, written)
+    for (const id of removed) this.removeInternalRecord(id, false)
+    for (const record of put) this.writeInternalRecord(record, false)
+    if (removed.length > 0 && this.records.get(this.getCurrentPageId())?.record_type !== 'page') {
+      const first = this.getPages()[0]
+      if (first) this.records.set(BOARD_META_RECORD_ID, createMetaRecord(first.id))
+      this.invalidateCaches()
     }
   }
 
