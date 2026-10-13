@@ -16,7 +16,7 @@ import { documentHistoryExtension, type DocumentHistory } from './documentHistor
 import { applyTextEdits, diffText } from './documentMerge'
 import { DOCUMENT_BODY } from './documentSchema'
 import { mergeFileIntoReplica, openDocument, saveDocument, type OpenedDocument } from './documentStore'
-import { analyzeText, documentBody, renderText } from './documentText'
+import { analyzeText, createDocumentReplica, documentBody, renderText } from './documentText'
 
 /** The principal of edits made in this window. */
 export const LOCAL_PERSON = 'user:local'
@@ -146,7 +146,7 @@ export class DocumentSession {
    * the file. Rejects when the store cannot open it; the session is then unusable.
    */
   async start(fileText: string): Promise<void> {
-    const opened = await openDocument(this.pathValue, fileText, randomActor(), { expectedRoot: this.root })
+    const opened = await this.openReplica(fileText)
     if (this.disposed) return
     this.opened = opened
     this.fileText = opened.fileText
@@ -348,6 +348,23 @@ export class DocumentSession {
   }
 
   // --- internals ---------------------------------------------------------
+
+  /**
+   * The document's replica from the store. The `.md` file is the document and the store only adds
+   * history, so when the store refuses (a bridge without it, a damaged entry) the file is imported
+   * as a new replica and edited without history; its saves still go through the guarded write.
+   */
+  private async openReplica(fileText: string): Promise<OpenedDocument> {
+    const actor = randomActor()
+    try {
+      return await openDocument(this.pathValue, fileText, actor, { expectedRoot: this.root })
+    } catch (reason) {
+      console.warn('[document] the replica store could not open this document; editing it without its history', reason)
+      const { replica, rootId, style } = createDocumentReplica(fileText, actor)
+      const meta: OpenedDocument['meta'] = { docId: replica.docId, kit: 'kit.document', path: this.pathValue, fileHash: '', fileStamp: null, exported: '', style: { ...style } }
+      return { replica, rootId, meta, style, fileText, isNew: true, merged: false }
+    }
+  }
 
   private requireOpened(): OpenedDocument {
     if (!this.opened) throw new Error('The document is not open.')

@@ -6,6 +6,7 @@ import type { WorkspaceDocumentExternalChange } from '@/services/desktop'
 import { flushWorkspaceEditSessions, discardWorkspaceEditSessions } from '@/services/workspaceEditSessions'
 import { redoDocument, undoDocument } from './documentHistory'
 import { DocumentSession, SAVE_DELAY_MS, TYPING_GROUP_MS } from './documentSession'
+import { openDocument } from './documentStore'
 import {
   readWorkspaceMarkdown,
   registerDocumentSession,
@@ -350,6 +351,16 @@ describe('DocumentSession: before a save', () => {
 })
 
 describe('DocumentSession: closing and failures', () => {
+  it('edits the file without history when the store cannot open it', async () => {
+    vi.mocked(openDocument).mockRejectedValueOnce(new Error('DESIGN_WORKSPACE_CHANGED'))
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const session = await open('kept\n')
+    expect(session.text()).toBe('kept\n')
+    session.replaceText('kept\nedited\n', { kind: 'person', principal: 'user:local' })
+    await settle(SAVE_DELAY_MS)
+    expect(disk.files.get(PATH)).toBe('kept\nedited\n')
+  })
+
   it('writes the pending edit when the workspace flushes and when it closes', async () => {
     const session = await open('a')
     const a = editor(session)
