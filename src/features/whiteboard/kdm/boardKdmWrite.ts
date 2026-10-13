@@ -314,7 +314,7 @@ function storedValue(value: unknown): unknown {
  * The string the KDM stores for `text`: every lone surrogate replaced with U+FFFD. The store may
  * use it so its records hold what the replica reads back.
  */
-export function wellFormed(text: string): string {
+function wellFormed(text: string): string {
   let out = ''
   let start = 0
   for (let index = 0; index < text.length; index += 1) {

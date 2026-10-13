@@ -31,7 +31,7 @@ const ELEMENT_FIELDS = Object.entries(boardSchema.types.Element.fields)
  * element it already showed earlier (on an earlier page or earlier in this list), an object it
  * cannot show (a kind this build does not know), or a dangling id.
  */
-export type BoardItemState = 'element' | 'duplicate' | 'unknown' | 'missing'
+type BoardItemState = 'element' | 'duplicate' | 'unknown' | 'missing'
 
 /** One page as the reader sees it. */
 export type BoardPageLayout = {

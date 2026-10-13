@@ -159,7 +159,6 @@
   "exports src/features/table/lib/tableEditorShared.tsx gridRowHeightPresets",
   "exports src/features/updates/UpdateDownloadProgress.tsx formatUpdateBytes",
   "exports src/features/whiteboard/components/WhiteboardShapePalette.tsx WHITEBOARD_SHAPE_TYPES",
-  "exports src/features/whiteboard/hooks/useWhiteboardCamera.ts DEFAULT_WHITEBOARD_VIEWPORT",
   "exports src/features/whiteboard/hooks/useWhiteboardExport.ts downloadWhiteboardSvg",
   "exports src/features/whiteboard/hooks/useWhiteboardExport.ts renderWhiteboardSvgToPng",
   "exports src/features/whiteboard/lib/boardClipboard.ts BOARD_CLIPBOARD_PREFIX",
