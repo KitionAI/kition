@@ -8,7 +8,7 @@
 import { isolateHistory } from '@codemirror/commands'
 import { Transaction } from '@codemirror/state'
 import { VersionVector } from 'loro-crdt'
-import { agent, person, randomActor, type Origin, type Replica, type TextDelta, type Version } from '@/lib/kdm'
+import { agent, person, randomActor, system, type Origin, type Replica, type TextDelta, type Version } from '@/lib/kdm'
 import { readWorkspaceDocument, subscribeWorkspaceDocumentExternalChanges, type WorkspaceDocumentExternalChange } from '@/services/desktop'
 import { registerWorkspaceEditSession } from '@/services/workspaceEditSessions'
 import { TextBinding } from './codeMirrorBinding'
@@ -25,6 +25,8 @@ export const LOCAL_PERSON = 'user:local'
 /** The principal of agent edits applied to an open document. */
 const LOCAL_AGENT = 'agent:kition'
 
+/** Origin of the rewrite before a save (temporary image links to assets): not an undo step. */
+const SAVE_REWRITE_ORIGIN: Origin = system('save')
 /** Origin of typing and commands in an editor. */
 const typingOrigin: Origin = person(LOCAL_PERSON, 'typing')
 
@@ -676,8 +678,10 @@ export class DocumentSession {
   private async saveAttempts() {
     const opened = this.opened
     if (!opened || this.fileText === null) return
-    await this.prepare()
     for (let attempt = 1; ; attempt += 1) {
+      if (this.discarded) return
+      // Before every write, also the ones a flush or a conflict starts: no temporary link reaches the file.
+      await this.prepare()
       if (this.discarded) return
       if (!this.isDirty()) {
         if (this.state.status === 'saving') this.setState({ status: 'ready', dirty: false })
@@ -727,7 +731,11 @@ export class DocumentSession {
     }
   }
 
-  /** Lets the host rewrite the text before it is written, as one edit, unless the text changed meanwhile. */
+  /**
+   * Lets the host rewrite the text before it is written (temporary image links become assets). The
+   * rewrite is merged three-way, so typing done meanwhile is kept, and it is not an undo step (undo
+   * must never bring a temporary link back). It also runs for the final save of a closing session.
+   */
   private async prepare() {
     const prepareSave = this.host.prepareSave
     if (!prepareSave || !this.opened) return
@@ -738,8 +746,13 @@ export class DocumentSession {
     } catch {
       return
     }
-    if (next === text || this.disposed || this.text() !== text) return
-    this.replaceText(next, person(LOCAL_PERSON, 'save'))
+    if (next === text || !this.opened) return
+    this.importing += 1
+    try {
+      this.applyFrom(text, next, SAVE_REWRITE_ORIGIN)
+    } finally {
+      this.importing -= 1
+    }
   }
 
   /** Whether the version `saved` holds every change of `target`. */

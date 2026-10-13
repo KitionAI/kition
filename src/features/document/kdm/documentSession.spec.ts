@@ -651,6 +651,57 @@ describe('DocumentSession: before a save', () => {
     expect(disk.files.get(PATH)).toBe('x ![a](assets/a.png)')
     expect(session.text()).toBe('x ![a](assets/a.png)')
   })
+
+  /** A session whose host saves temporary image links as assets (asynchronously, like the real one). */
+  async function openWithAssets(text: string) {
+    disk.files.set(PATH, text)
+    const session = new DocumentSession(PATH, { root: '/vault' }, {
+      prepareSave: async (current) => {
+        await Promise.resolve()
+        return current.replace(/blob:(\w+)/g, 'assets/$1.png')
+      },
+    })
+    sessions.push(session)
+    await session.start(text)
+    return session
+  }
+
+  it('does not make the rewrite an undo step', async () => {
+    const session = await openWithAssets('x')
+    session.replaceText('x ![a](blob:temp)', { kind: 'person', principal: 'user:local' })
+    await settle(SAVE_DELAY_MS)
+    expect(session.text()).toBe('x ![a](assets/temp.png)')
+    // Undo reverts the person's edit, never back to the temporary link.
+    expect(session.undo()).toBe(true)
+    expect(session.text()).not.toContain('blob:')
+    expect(session.text()).not.toBe('x ![a](assets/temp.png)')
+    expect(session.replica!.canUndo()).toBe(false)
+  })
+
+  it('rewrites the links when the session closes before its save', async () => {
+    const session = await openWithAssets('x')
+    session.replaceText('x ![a](blob:temp)', { kind: 'person', principal: 'user:local' })
+    session.dispose()
+    await settle()
+    expect(disk.files.get(PATH)).toBe('x ![a](assets/temp.png)')
+    expect(disk.writes.every((write) => !write.content.includes('blob:'))).toBe(true)
+  })
+
+  it('rewrites links added while a save was writing before a flush writes them', async () => {
+    const session = await openWithAssets('x')
+    let typed = false
+    disk.beforeWrite = () => {
+      if (typed) return
+      typed = true
+      session.replaceText(`${session.text()} ![b](blob:late)`, { kind: 'person', principal: 'user:local' })
+      void session.flush().catch(() => undefined)
+    }
+    session.replaceText('x ![a](blob:temp)', { kind: 'person', principal: 'user:local' })
+    await settle(SAVE_DELAY_MS)
+    await settle()
+    expect(disk.files.get(PATH)).toBe('x ![a](assets/temp.png) ![b](assets/late.png)')
+    expect(disk.writes.every((write) => !write.content.includes('blob:'))).toBe(true)
+  })
 })
 
 describe('DocumentSession: closing and failures', () => {
