@@ -43,7 +43,7 @@ Recommended ownership for editor content panes:
 Current feature split:
 
 - `src/features/agent`: AI chat, agent execution timeline, model selection, and agent-only interaction flows
-- `src/features/document`: rich-text document editing and document workspace flows
+- `src/features/document`: rich-text document editing and document workspace flows, with Markdown files on a KDM-backed document model (see [document-model.md](document-model.md))
 - `src/features/table`: structured table editing and table-specific panels
 - `src/features/whiteboard`: the Whiteboard editor and its KDM-backed document model (see [whiteboard-document.md](whiteboard-document.md))
 - `src/features/workspace`: editor chrome, workspace navigation, tabs, tree, and media navigation
