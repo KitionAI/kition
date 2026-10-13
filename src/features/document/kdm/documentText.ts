@@ -25,6 +25,8 @@ export type LineStyle = { eol: LineEnding | 'mixed'; bom: boolean; finalNewline:
 
 const CR = 13
 const LF = 10
+/** The body is written in pieces of about this many UTF-16 units (see `bodyPieces`). */
+const BODY_PIECE = 4 * 1024
 
 /** The file's text for the replica (no BOM, `\n` endings) and the style to write it back with. */
 export function analyzeText(raw: string): { text: string; style: LineStyle } {
@@ -66,16 +68,45 @@ export function renderText(text: string, style: LineStyle): string {
 
 const normalise = (text: string): string => text.replace(/\r\n?/g, '\n')
 
+const isHighSurrogate = (unit: number) => unit >= 0xd800 && unit <= 0xdbff
+const isLowSurrogate = (unit: number) => unit >= 0xdc00 && unit <= 0xdfff
+
+/**
+ * `text` cut into pieces of about `BODY_PIECE` code units, each ending after a line break when
+ * there is one within another `BODY_PIECE`, and never between the halves of a surrogate pair.
+ */
+function bodyPieces(text: string): string[] {
+  const pieces: string[] = []
+  for (let start = 0; start < text.length; ) {
+    let end = start + BODY_PIECE
+    if (end >= text.length) end = text.length
+    else {
+      const newline = text.indexOf('\n', end - 1)
+      if (newline !== -1 && newline < end + BODY_PIECE) end = newline + 1
+      else if (isHighSurrogate(text.charCodeAt(end - 1)) && isLowSurrogate(text.charCodeAt(end))) end += 1
+    }
+    pieces.push(text.slice(start, end))
+    start = end
+  }
+  return pieces
+}
+
 /**
  * A new document replica holding the file text `raw`, written in the creating commit so that
  * nothing about the import can be undone. Answers the replica, its `Document` object, and the
  * file's line style.
+ *
+ * The body is inserted in pieces of a few KB, last first. The engine joins text appended in one
+ * run into a single element, and an edit inside an element costs time in proportion to its length
+ * (with non-ASCII text, every edit of a body inserted at once scans it all); pieces inserted last
+ * first stay separate elements, in the replica and in its snapshots.
  */
 export function createDocumentReplica(raw: string, actor: bigint, docId: string = newDocId()): { replica: Replica; rootId: ObjectId; style: LineStyle } {
   const { text, style } = analyzeText(raw)
   const { replica, result: rootId } = Replica.createWith(documentSchema, docId, actor, system('create'), (tx) => {
     const id = tx.create(DOCUMENT_ROOT, {})
-    if (text) tx.textInsert(id, DOCUMENT_BODY, 0, text)
+    const pieces = bodyPieces(text)
+    for (let index = pieces.length - 1; index >= 0; index -= 1) tx.textInsert(id, DOCUMENT_BODY, 0, pieces[index])
     return id
   })
   return { replica, rootId, style }

@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { newDocId, person, Replica, Rng } from '@/lib/kdm'
+import { describe, expect, it, vi } from 'vitest'
+import { newDocId, person, Replica, Rng, Tx } from '@/lib/kdm'
 import { DOCUMENT_BODY, DOCUMENT_KIT, documentSchema } from './documentSchema'
 import { analyzeText, createDocumentReplica, documentBody, documentRootId, renderText, type LineStyle } from './documentText'
 
@@ -144,6 +144,27 @@ describe('createDocumentReplica', () => {
     replica.transact(me, (tx) => tx.textInsert(rootId, DOCUMENT_BODY, 3, 'd'))
     expect(replica.undo()).toBe(true)
     expect(documentBody(replica)).toBe('abc')
+    expect(replica.canUndo()).toBe(false)
+  })
+
+  it('writes a large body in pieces of whole lines, never splitting a surrogate pair', () => {
+    const lines = Array.from({ length: 3_000 }, (_, index) => `Line ${index}: ${QUARTER} 😀 words`).join('\r\n')
+    // A long run without line breaks, of emoji only, so that some pieces must end inside it.
+    const raw = `${lines}\r\n${'😀👍'.repeat(6_000)}\r\n${lines}\r\n`
+    const body = raw.replace(/\r\n/g, '\n')
+    const spy = vi.spyOn(Tx.prototype, 'textInsert')
+    const { replica } = createDocumentReplica(raw, 1n)
+    const pieces = spy.mock.calls.map((call) => call[3])
+    spy.mockRestore()
+    expect(documentBody(replica) === body).toBe(true)
+    expect(pieces.length).toBeGreaterThan(20)
+    for (const piece of pieces) {
+      expect(piece.length).toBeLessThanOrEqual(8 * 1024)
+      expect(/^[\udc00-\udfff]|[\ud800-\udbff]$/.test(piece)).toBe(false)
+    }
+    // Only the pieces cut inside the long run end elsewhere than after a line break.
+    expect(pieces.filter((piece) => !piece.endsWith('\n')).length).toBeLessThanOrEqual(6)
+    expect(documentBody(Replica.load(documentSchema, replica.snapshot(), 2n)) === body).toBe(true)
     expect(replica.canUndo()).toBe(false)
   })
 
