@@ -40,11 +40,13 @@ for (const name of fs.readdirSync(path.join(sdk, kdmSource)).filter((name) => na
   const source = `${kdmSource}/${name}`
   files.push({ source, out: `src/lib/kdm/${name}`, rewrite: (text) => header(source) + text })
 }
-// A KDM copy whose source file is gone is stale too.
+// A KDM copy whose source file is gone is stale too. Only files this script wrote (they start
+// with its header) count, so a hand-written file in src/lib/kdm/ is never removed.
 const kdmOut = path.join(repo, 'src/lib/kdm')
 const kdmCopies = new Set(files.filter((file) => file.out.startsWith('src/lib/kdm/')).map((file) => path.basename(file.out)))
+const copiedHere = (name) => fs.readFileSync(path.join(kdmOut, name), 'utf8').startsWith('// Copied from kition-sdk ')
 const kdmOrphans = fs.existsSync(kdmOut)
-  ? fs.readdirSync(kdmOut).filter((name) => name.endsWith('.ts') && !name.endsWith('.spec.ts') && !kdmCopies.has(name))
+  ? fs.readdirSync(kdmOut).filter((name) => name.endsWith('.ts') && !kdmCopies.has(name) && copiedHere(name))
   : []
 
 let stale = 0

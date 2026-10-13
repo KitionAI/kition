@@ -29,7 +29,7 @@ TOOLCHAIN_PATH := $(if $(STABLE_BIN),$(STABLE_BIN):,)$(PATH)
 # The e2e web server is probed through any HTTP proxy; run without one.
 NO_PROXY_ENV := env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy
 E2E_PORT ?= 3123
-WEB_KIT_E2E := e2e/photo-web-editor.spec.ts e2e/film-web-editor.spec.ts e2e/vector-web-editor.spec.ts e2e/effect-web-editor.spec.ts e2e/design-web-editor.spec.ts e2e/cad-web-editor.spec.ts e2e/slide-web-editor.spec.ts e2e/word-web-editor.spec.ts e2e/sheet-web-editor.spec.ts e2e/pdf-web-editor.spec.ts e2e/slide-embedded.spec.ts e2e/word-embedded.spec.ts e2e/sheet-embedded.spec.ts e2e/pdf-embedded.spec.ts e2e/cad-embedded.spec.ts e2e/vector-embedded.spec.ts e2e/design-embedded.spec.ts e2e/photo-embedded.spec.ts e2e/effect-embedded.spec.ts e2e/film-embedded.spec.ts e2e/kit-bridge.spec.ts
+WEB_KIT_E2E := e2e/photo-web-editor.spec.ts e2e/film-web-editor.spec.ts e2e/vector-web-editor.spec.ts e2e/effect-web-editor.spec.ts e2e/design-web-editor.spec.ts e2e/cad-web-editor.spec.ts e2e/slide-web-editor.spec.ts e2e/word-web-editor.spec.ts e2e/sheet-web-editor.spec.ts e2e/pdf-web-editor.spec.ts e2e/slide-embedded.spec.ts e2e/word-embedded.spec.ts e2e/sheet-embedded.spec.ts e2e/pdf-embedded.spec.ts e2e/cad-embedded.spec.ts e2e/vector-embedded.spec.ts e2e/design-embedded.spec.ts e2e/photo-embedded.spec.ts e2e/effect-embedded.spec.ts e2e/film-embedded.spec.ts e2e/kit-bridge.spec.ts e2e/kdm-smoke.spec.ts
 KIT_E2E := $(WEB_KIT_E2E) e2e/desktop-photo-kit.spec.ts
 PHOTO_BINARY := $(KIT_PHOTO_REPO)/target/debug/kit-photo
 # The SDK kits' headless executables for the agent (kit-film, kit-vector, ...), from kition-headless.
