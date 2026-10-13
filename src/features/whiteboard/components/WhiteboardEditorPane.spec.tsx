@@ -544,7 +544,17 @@ describe('WhiteboardEditorPane', () => {
     await act(async () => undo.click())
     expect(container.querySelector(`[data-element-id="${launchId}"]`)).toBeNull()
 
+    // The accepted patch's name now belongs to the board, so a new element needs a new name.
     await act(async () => bridge?.receivePatch(patch, false))
+    expect(container.querySelector('[data-agent-element-id]')).toBeNull()
+    const nextPatch = {
+      ...patch,
+      operations: [{
+        ...patch.operations[0],
+        element: { ...patch.operations[0].element, id: 'launch-node-2' },
+      }],
+    }
+    await act(async () => bridge?.receivePatch(nextPatch, false))
     const reject = container.querySelector(
       '[data-testid="whiteboard-agent-reject"]',
     ) as HTMLButtonElement
@@ -554,7 +564,7 @@ describe('WhiteboardEditorPane', () => {
     expect(container.querySelector('[data-agent-element-id]')).toBeNull()
     expect(container.querySelector(`[data-element-id="${rejectedId}"]`)).toBeNull()
 
-    await act(async () => bridge?.receivePatch(patch, true))
+    await act(async () => bridge?.receivePatch(nextPatch, true))
     const cancel = container.querySelector(
       '[data-testid="whiteboard-agent-cancel"]',
     ) as HTMLButtonElement

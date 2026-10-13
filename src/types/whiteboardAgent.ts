@@ -85,6 +85,11 @@ export type AgentWhiteboardContext = {
   clusters: AgentWhiteboardCluster[]
   recent_operations: string[]
   source_refs: AgentWhiteboardSourceReference[]
+  /**
+   * The object ids that elements created by earlier accepted patches received, keyed by the id the
+   * agent chose for them. Bounded to the most recent 200 entries.
+   */
+  renamed_ids?: Record<string, string>
 }
 
 export type AgentWhiteboardElementChanges = {

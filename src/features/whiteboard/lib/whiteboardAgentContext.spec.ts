@@ -90,4 +90,27 @@ describe('buildWhiteboardAgentContext', () => {
       viewport: { x: 0, y: 0, zoom: 1 },
     })).toBeNull()
   })
+
+  it('includes the most recent names of accepted agent elements, bounded', () => {
+    const store = new BoardStore()
+    const renamedIds = new Map(Array.from({ length: 250 }, (_, index) => (
+      [`n${index}`, `id-${index}`] as const
+    )))
+    const common = {
+      canvasSize: { x: 800, y: 600 },
+      path: 'Boards/Names.kiboard',
+      scope: 'board' as const,
+      selectedElementIds: [],
+      store,
+      title: 'Names',
+      viewport: { x: 0, y: 0, zoom: 1 },
+    }
+
+    const renamed = buildWhiteboardAgentContext({ ...common, renamedIds })?.renamed_ids
+    expect(Object.keys(renamed!)).toHaveLength(200)
+    expect(renamed).not.toHaveProperty('n49')
+    expect(renamed).toHaveProperty('n50', 'id-50')
+    expect(renamed).toHaveProperty('n249', 'id-249')
+    expect(buildWhiteboardAgentContext(common)?.renamed_ids).toEqual({})
+  })
 })

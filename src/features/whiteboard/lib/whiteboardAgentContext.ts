@@ -9,6 +9,7 @@ import {
   getWhiteboardElementStyle,
 } from './whiteboardStyle'
 import type { BoardStore } from './boardStore'
+import { AGENT_RENAMED_ID_LIMIT } from './whiteboardAgentPatch'
 import {
   getWhiteboardElementBounds,
   unionWhiteboardBounds,
@@ -31,6 +32,8 @@ const CLUSTER_SIZE = 100
 export function buildWhiteboardAgentContext(input: {
   canvasSize: WhiteboardPoint
   path: string
+  /** Names the agent gave to elements of accepted patches, mapped to their object ids. */
+  renamedIds?: ReadonlyMap<string, string>
   scope: WhiteboardAgentScope
   selectedElementIds: readonly string[]
   store: BoardStore
@@ -83,6 +86,9 @@ export function buildWhiteboardAgentContext(input: {
     clusters: buildOmittedClusters(omitted),
     recent_operations: input.store.getRecentUserOperations(50),
     source_refs: [],
+    renamed_ids: Object.fromEntries(
+      [...input.renamedIds ?? []].slice(-AGENT_RENAMED_ID_LIMIT),
+    ),
   }
 }
 

@@ -9,12 +9,15 @@ import {
 test('streams visible AI board actions and supports reject, accept, and undo', async ({ page }) => {
   await openWhiteboardFixture(page, { agentAvailable: true })
   const patch = createMindMapPatch()
-  const turns = await mockAgentTurn(page, (turn) => {
+  const followUp = createFollowUpPatch()
+  const turns = await mockAgentTurn(page, (turn, request) => {
     // The provisional preview comes from the streamed arguments, the final
-    // patch from the logged result.
-    turn.streamToolCall('call_patch', 'whiteboard_propose_patch', patch)
-    turn.tool('call_patch', 'whiteboard_propose_patch', { operation_count: 4 }, { awaiting_user_review: true }, {
-      meta: { kind: 'whiteboard.patch', patch },
+    // patch from the logged result. The third turn edits a node by the id the
+    // agent gave it earlier.
+    const proposal = request.call === 3 ? followUp : patch
+    turn.streamToolCall('call_patch', 'whiteboard_propose_patch', proposal)
+    turn.tool('call_patch', 'whiteboard_propose_patch', { operation_count: proposal.operations.length }, { awaiting_user_review: true }, {
+      meta: { kind: 'whiteboard.patch', patch: proposal },
     })
     turn.nextStep()
     turn.reply('Prepared a connected whiteboard expansion for review.')
@@ -48,9 +51,10 @@ test('streams visible AI board actions and supports reject, accept, and undo', a
   })
   // The wire payload carries only what the public contract documents.
   expect(Object.keys(turns.requests[0].body.whiteboard_context as object).sort()).toEqual([
-    'board', 'clusters', 'elements', 'recent_operations', 'schema_version', 'scope',
-    'selected_element_ids', 'source_refs', 'type', 'viewport',
+    'board', 'clusters', 'elements', 'recent_operations', 'renamed_ids', 'schema_version',
+    'scope', 'selected_element_ids', 'source_refs', 'type', 'viewport',
   ])
+  expect(turns.requests[0].body.whiteboard_context).toMatchObject({ renamed_ids: {} })
 
   await page.getByTestId('whiteboard-agent-reject').click()
   await expect.poll(async () => elementIdWithText(page, 'Customer insight')).toBeUndefined()
@@ -75,6 +79,23 @@ test('streams visible AI board actions and supports reject, accept, and undo', a
   ))).toBe(true)
   expect(JSON.stringify(records)).not.toMatch(/ai-node-|ai-connector-/)
 
+  // A later turn learns the new ids and may still use its own names for them.
+  await composer.fill('Rename the first new idea.')
+  await page.getByRole('button', { name: 'Send' }).click()
+  await expect.poll(streamCount).toBe(3)
+  expect(turns.requests[2].body.whiteboard_context).toMatchObject({
+    renamed_ids: {
+      'ai-connector-1': connectorId,
+      'ai-node-1': firstNodeId,
+      'ai-node-2': secondNodeId,
+    },
+  })
+  await expect(page.getByTestId('whiteboard-agent-accept')).toBeVisible()
+  await page.getByTestId('whiteboard-agent-accept').click()
+  await expect.poll(async () => elementIdWithText(page, 'Customer insight, revised')).toBe(firstNodeId)
+
+  await page.getByTestId('whiteboard-undo').click()
+  await expect.poll(async () => elementIdWithText(page, 'Customer insight')).toBe(firstNodeId)
   await page.getByTestId('whiteboard-undo').click()
   await expect.poll(async () => elementIdWithText(page, 'Customer insight')).toBeUndefined()
   await expect.poll(async () => elementIdWithText(page, 'Launch experiment')).toBeUndefined()
@@ -117,6 +138,21 @@ function createMindMapPatch() {
         element_ids: ['ai-node-1', 'ai-node-2'],
         direction: 'horizontal' as const,
         gap: 40,
+      },
+    ],
+  }
+}
+
+function createFollowUpPatch() {
+  return {
+    type: 'whiteboard.patch' as const,
+    schema_version: 1 as const,
+    summary: 'Rename the first idea.',
+    operations: [
+      {
+        op: 'element.update' as const,
+        element_id: 'ai-node-1',
+        changes: { text: 'Customer insight, revised' },
       },
     ],
   }

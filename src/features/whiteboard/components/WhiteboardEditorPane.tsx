@@ -164,6 +164,7 @@ export function WhiteboardEditorPane({
       ? buildWhiteboardAgentContext({
           canvasSize,
           path,
+          renamedIds: agentPatch.getRenamedIds(),
           scope: agentScope,
           selectedElementIds: controller.selectedElementIds,
           store: controller.store,
@@ -199,6 +200,7 @@ export function WhiteboardEditorPane({
   }), [
     agentAvailable,
     agentPatch.cancel,
+    agentPatch.getRenamedIds,
     agentPatch.receivePatch,
     agentScope,
     controller.activeStyle,

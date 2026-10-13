@@ -46,6 +46,24 @@ fn text<'a>(value: &'a Value, key: &str) -> &'a str {
     value.get(key).and_then(Value::as_str).unwrap_or_default()
 }
 
+/// Most entries a Whiteboard context may carry in `renamed_ids`.
+const RENAMED_ID_LIMIT: usize = 200;
+
+/// The `renamed_ids` of a Whiteboard context: the ids the agent chose for
+/// elements of earlier accepted patches, mapped to the ids they received.
+fn renamed_ids(context: &Value) -> HashMap<&str, &str> {
+    context
+        .get("renamed_ids")
+        .and_then(Value::as_object)
+        .map(|renamed| {
+            renamed
+                .iter()
+                .filter_map(|(name, id)| Some((name.as_str(), id.as_str()?)))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
 fn items<'a>(value: &'a Value, key: &str) -> &'a [Value] {
     value
         .get(key)
@@ -68,7 +86,17 @@ pub fn validate_whiteboard_context(context: &Value) -> Result<(), String> {
         && items(context, "selected_element_ids").len() <= 100
         && items(context, "elements")
             .iter()
-            .all(|element| identifier(text(element, "id")));
+            .all(|element| identifier(text(element, "id")))
+        && match context.get("renamed_ids") {
+            None => true,
+            Some(Value::Object(renamed)) => {
+                renamed.len() <= RENAMED_ID_LIMIT
+                    && renamed
+                        .iter()
+                        .all(|(name, id)| identifier(name) && id.as_str().is_some_and(identifier))
+            }
+            Some(_) => false,
+        };
     if ok {
         Ok(())
     } else {
@@ -141,7 +169,7 @@ fn patch_envelope<'a>(
     Ok(operations)
 }
 
-fn check_whiteboard(input: &Value, context: &Value) -> Result<usize, String> {
+fn check_whiteboard<'a>(input: &'a Value, context: &'a Value) -> Result<usize, String> {
     let operations = patch_envelope(input, "whiteboard.patch", 250, WHITEBOARD_OPS)?;
     let mut kinds: HashMap<String, String> = items(context, "elements")
         .iter()
@@ -152,6 +180,10 @@ fn check_whiteboard(input: &Value, context: &Value) -> Result<usize, String> {
             )
         })
         .collect();
+    // Names from earlier accepted patches resolve to the ids those elements
+    // received; the client resolves them the same way.
+    let renamed = renamed_ids(context);
+    let resolve = |id: &'a str| renamed.get(id).copied().unwrap_or(id);
     let mut deleted = HashSet::new();
     for operation in operations {
         let (id, kind) = match text(operation, "op") {
@@ -166,7 +198,7 @@ fn check_whiteboard(input: &Value, context: &Value) -> Result<usize, String> {
                     return Err(format!("invalid {op} operation: element_id"));
                 }
                 if op == "element.delete" {
-                    deleted.insert(id.to_owned());
+                    deleted.insert(resolve(id).to_owned());
                 }
                 continue;
             }
@@ -174,7 +206,7 @@ fn check_whiteboard(input: &Value, context: &Value) -> Result<usize, String> {
         if !identifier(id) {
             return Err("Whiteboard patch has an invalid id".into());
         }
-        if kinds.insert(id.to_owned(), kind.to_owned()).is_some() {
+        if renamed.contains_key(id) || kinds.insert(id.to_owned(), kind.to_owned()).is_some() {
             return Err(format!("Whiteboard patch reuses an existing id {id:?}"));
         }
     }
@@ -184,9 +216,10 @@ fn check_whiteboard(input: &Value, context: &Value) -> Result<usize, String> {
     {
         let connector = &operation["connector"];
         for endpoint in [text(connector, "from_id"), text(connector, "to_id")] {
-            match kinds.get(endpoint) {
+            let resolved = resolve(endpoint);
+            match kinds.get(resolved) {
                 Some(kind)
-                    if !deleted.contains(endpoint) && kind != "connector" && kind != "freehand" => {
+                    if !deleted.contains(resolved) && kind != "connector" && kind != "freehand" => {
                 }
                 _ => {
                     return Err(format!(
@@ -326,6 +359,42 @@ mod tests {
         let mut reused = patch;
         reused["operations"][0]["element"]["id"] = json!("n1");
         assert!(check_whiteboard(&reused, &board()).is_err());
+    }
+
+    #[test]
+    fn resolves_names_from_accepted_patches() {
+        let uuid = "0192f4c4-9a3b-7c1d-8e2f-123456789abc";
+        let mut context = board();
+        context["elements"] =
+            json!([{ "id": "n1", "kind": "mind_node" }, { "id": uuid, "kind": "sticky" }]);
+        context["renamed_ids"] = json!({ "n2": uuid });
+        assert!(validate_whiteboard_context(&context).is_ok());
+        let patch = |ops: Value| json!({ "type": "whiteboard.patch", "schema_version": 1, "summary": "s", "operations": ops });
+
+        let connect = patch(json!([
+            { "op": "connector.create", "connector": { "id": "c1", "from_id": "n1", "to_id": "n2" } },
+        ]));
+        assert_eq!(check_whiteboard(&connect, &context), Ok(1));
+        let deleted = patch(json!([
+            { "op": "element.delete", "element_id": "n2" },
+            { "op": "connector.create", "connector": { "id": "c1", "from_id": "n1", "to_id": uuid } },
+        ]));
+        assert!(check_whiteboard(&deleted, &context).is_err());
+        let recreate = patch(json!([
+            { "op": "element.create", "element": { "id": "n2", "kind": "sticky", "bounds": {} } },
+        ]));
+        assert!(check_whiteboard(&recreate, &context).is_err());
+
+        let mut oversized = context.clone();
+        oversized["renamed_ids"] = Value::Object(
+            (0..=RENAMED_ID_LIMIT)
+                .map(|index| (format!("n{index}"), json!(uuid)))
+                .collect(),
+        );
+        assert!(validate_whiteboard_context(&oversized).is_err());
+        let mut invalid = context;
+        invalid["renamed_ids"] = json!({ "n2": "/not an id" });
+        assert!(validate_whiteboard_context(&invalid).is_err());
     }
 
     #[test]

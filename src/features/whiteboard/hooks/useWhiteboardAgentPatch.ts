@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 
 import type { AgentWhiteboardPatch } from '@/types/whiteboardAgent'
 
@@ -7,6 +7,7 @@ import type { BoardStore } from '../lib/boardStore'
 import {
   buildWhiteboardAgentPatchPreview,
   parseAgentWhiteboardPatch,
+  rememberAgentRenamedIds,
   translateAgentWhiteboardPatch,
   type WhiteboardAgentPatchPreview,
 } from '../lib/whiteboardAgentPatch'
@@ -22,37 +23,60 @@ export type WhiteboardAgentPreviewState = {
   status: 'error' | 'idle' | 'ready' | 'streaming'
 }
 
-const INITIAL_STATE: WhiteboardAgentPreviewState = {
-  createdIds: new Map(),
-  diff: null,
-  error: '',
-  patch: null,
-  preview: null,
-  provisional: false,
-  status: 'idle',
+function createInitialState(): WhiteboardAgentPreviewState {
+  return {
+    createdIds: new Map(),
+    diff: null,
+    error: '',
+    patch: null,
+    preview: null,
+    provisional: false,
+    status: 'idle',
+  }
 }
 
 export function useWhiteboardAgentPatch(input: {
   commands: BoardCommandRegistry
   store: BoardStore
 }) {
-  const [state, setState] = useState<WhiteboardAgentPreviewState>(INITIAL_STATE)
+  const [state, setRenderedState] = useState(createInitialState)
+  /**
+   * The latest state, updated as soon as it changes. Streamed chunks can arrive faster than React
+   * renders, so each chunk builds on this rather than on the state of the last render.
+   */
+  const stateRef = useRef(state)
+  /**
+   * The names the agent gave to elements of accepted patches on this board, mapped to the object
+   * ids the elements got. Later patches may keep using those names.
+   */
+  const renamedIdsRef = useRef(new Map<string, string>())
+
+  const setState = useCallback((next: WhiteboardAgentPreviewState) => {
+    stateRef.current = next
+    setRenderedState(next)
+  }, [])
 
   const receivePatch = useCallback((value: unknown, provisional: boolean) => {
+    const current = stateRef.current
     try {
       let patch = parseAgentWhiteboardPatch(value)
       let createdIds = new Map<string, string>()
-      if (state.patch && state.status === 'streaming') {
-        createdIds = new Map(state.createdIds)
+      if (current.patch && current.status === 'streaming') {
+        createdIds = current.createdIds
         patch = parseAgentWhiteboardPatch({
           ...patch,
           operations: mergeAgentPatchOperations(
-            state.patch.operations,
+            current.patch.operations,
             patch.operations,
           ),
         })
       }
-      const diff = translateAgentWhiteboardPatch({ createdIds, patch, store: input.store })
+      const diff = translateAgentWhiteboardPatch({
+        createdIds,
+        patch,
+        renamedIds: renamedIdsRef.current,
+        store: input.store,
+      })
       setState({
         createdIds,
         diff,
@@ -64,41 +88,53 @@ export function useWhiteboardAgentPatch(input: {
       })
     } catch (error) {
       setState({
-        ...INITIAL_STATE,
+        ...createInitialState(),
         error: error instanceof Error ? error.message : 'Invalid AI Board patch',
         status: 'error',
       })
     }
-  }, [input.store, state.createdIds, state.patch, state.status])
+  }, [input.store, setState])
 
-  const reject = useCallback(() => setState(INITIAL_STATE), [])
+  const reject = useCallback(() => setState(createInitialState()), [setState])
 
   const accept = useCallback(() => {
-    if (!state.diff || !state.patch || state.provisional) return false
+    const current = stateRef.current
+    if (!current.diff || !current.patch || current.provisional) return false
     try {
       input.commands.applyAgentDiff(
-        state.patch.summary || 'Apply AI Board change',
-        state.diff,
+        current.patch.summary || 'Apply AI Board change',
+        current.diff,
       )
-      setState(INITIAL_STATE)
+      rememberAgentRenamedIds({
+        createdIds: current.createdIds,
+        diff: current.diff,
+        renamedIds: renamedIdsRef.current,
+      })
+      setState(createInitialState())
       return true
     } catch (error) {
-      setState((current) => ({
+      setState({
         ...current,
         error: error instanceof Error ? error.message : 'AI Board preview could not be applied',
         status: 'error',
-      }))
+      })
       return false
     }
-  }, [input.commands, state.diff, state.patch, state.provisional])
+  }, [input.commands, setState])
+
+  const getRenamedIds = useCallback(
+    (): ReadonlyMap<string, string> => renamedIdsRef.current,
+    [],
+  )
 
   return useMemo(() => ({
     accept,
     cancel: reject,
+    getRenamedIds,
     receivePatch,
     reject,
     state,
-  }), [accept, receivePatch, reject, state])
+  }), [accept, getRenamedIds, receivePatch, reject, state])
 }
 
 function mergeAgentPatchOperations(

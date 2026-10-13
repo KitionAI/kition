@@ -6,8 +6,10 @@ import { BoardCommandRegistry } from './boardCommands'
 import { createBoardRecordsFromElements } from './boardRecords'
 import { BoardStore } from './boardStore'
 import {
+  AGENT_RENAMED_ID_LIMIT,
   buildWhiteboardAgentPatchPreview,
   parseAgentWhiteboardPatch,
+  rememberAgentRenamedIds,
   translateAgentWhiteboardPatch,
 } from './whiteboardAgentPatch'
 
@@ -241,6 +243,138 @@ describe('AI Board patches', () => {
     })
     expect(() => translateAgentWhiteboardPatch({ patch, store }))
       .toThrow('AI Board patch reuses an existing id: n2')
+  })
+
+  it('resolves names from accepted patches in later patches and rejects creating them again', () => {
+    const store = new BoardStore(createBoardRecordsFromElements([
+      { id: 'existing', kind: 'rectangle', x: 0, y: 0, width: 100, height: 60, text: 'Existing' },
+    ]))
+    const commands = new BoardCommandRegistry(store)
+    const first = parseAgentWhiteboardPatch({
+      type: 'whiteboard.patch',
+      schema_version: 1,
+      summary: 'Add a frame and a note',
+      operations: [
+        {
+          op: 'element.create',
+          element: { id: 'n1', kind: 'frame', bounds: { x: 200, y: -40, width: 400, height: 300 } },
+        },
+        {
+          op: 'element.create',
+          element: { id: 'n2', kind: 'sticky', text: 'Note', bounds: { x: 240, y: 0, width: 120, height: 90 } },
+        },
+      ],
+    })
+    const createdIds = new Map<string, string>()
+    const firstDiff = translateAgentWhiteboardPatch({ createdIds, patch: first, store })
+    commands.applyAgentDiff(first.summary, firstDiff)
+    const renamedIds = new Map<string, string>()
+    rememberAgentRenamedIds({ createdIds, diff: firstDiff, renamedIds })
+    const frameId = createdIds.get('n1')!
+    const noteId = createdIds.get('n2')!
+    expect(frameId).toMatch(UUID_V7)
+    expect([...renamedIds]).toEqual([['n1', frameId], ['n2', noteId]])
+
+    const followUp = parseAgentWhiteboardPatch({
+      type: 'whiteboard.patch',
+      schema_version: 1,
+      summary: 'Edit the note',
+      operations: [
+        { op: 'element.update', element_id: 'n2', changes: { text: 'Edited', parent_id: 'n1' } },
+        { op: 'element.reorder', element_id: 'existing', after_element_id: 'n2' },
+        { op: 'connector.create', connector: { id: 'c1', from_id: 'existing', to_id: 'n2' } },
+      ],
+    })
+    const diff = translateAgentWhiteboardPatch({ patch: followUp, renamedIds, store })
+    expect(diff.updated).toEqual(expect.arrayContaining([expect.objectContaining({
+      after: expect.objectContaining({ id: noteId, parentId: frameId, text: 'Edited' }),
+    })]))
+    expect(diff.added.filter((record) => record.record_type === 'binding')).toEqual(
+      expect.arrayContaining([expect.objectContaining({ to_id: noteId })]),
+    )
+    expect(JSON.stringify(diff)).not.toMatch(/"(n1|n2|c1)"/)
+
+    const deletion = parseAgentWhiteboardPatch({
+      type: 'whiteboard.patch',
+      schema_version: 1,
+      summary: 'Remove the note',
+      operations: [{ op: 'element.delete', element_id: 'n2' }],
+    })
+    expect(translateAgentWhiteboardPatch({ patch: deletion, renamedIds, store }).removed)
+      .toEqual([expect.objectContaining({ id: noteId })])
+
+    const reuse = parseAgentWhiteboardPatch({
+      type: 'whiteboard.patch',
+      schema_version: 1,
+      summary: 'Create n2 again',
+      operations: [{
+        op: 'element.create',
+        element: { id: 'n2', kind: 'shape', bounds: { x: 0, y: 0, width: 80, height: 40 } },
+      }],
+    })
+    expect(() => translateAgentWhiteboardPatch({ patch: reuse, renamedIds, store }))
+      .toThrow('AI Board patch reuses an existing id: n2')
+    const reusedConnector = parseAgentWhiteboardPatch({
+      type: 'whiteboard.patch',
+      schema_version: 1,
+      summary: 'Connect with an old name',
+      operations: [{ op: 'connector.create', connector: { id: 'n1', from_id: 'existing', to_id: 'n2' } }],
+    })
+    expect(() => translateAgentWhiteboardPatch({ patch: reusedConnector, renamedIds, store }))
+      .toThrow('AI Board patch reuses an existing id: n1')
+  })
+
+  it('keeps only the most recent accepted names', () => {
+    const renamedIds = new Map<string, string>()
+    const createdIds = new Map<string, string>()
+    const diff = { added: [], removed: [], updated: [] } as Parameters<typeof rememberAgentRenamedIds>[0]['diff']
+    for (let index = 0; index < AGENT_RENAMED_ID_LIMIT + 5; index += 1) {
+      createdIds.set(`n${index}`, `id-${index}`)
+      diff.added.push({ id: `id-${index}`, record_type: 'element' } as (typeof diff.added)[number])
+    }
+    createdIds.set('dropped', 'never-added')
+    rememberAgentRenamedIds({ createdIds, diff, renamedIds })
+    expect(renamedIds.size).toBe(AGENT_RENAMED_ID_LIMIT)
+    expect(renamedIds.has('n4')).toBe(false)
+    expect(renamedIds.get('n5')).toBe('id-5')
+    expect(renamedIds.has('dropped')).toBe(false)
+  })
+
+  it('remaps source reference ids that name elements created in the same patch', () => {
+    const store = new BoardStore(createBoardRecordsFromElements([
+      { id: 'existing', kind: 'rectangle', x: 0, y: 0, width: 100, height: 60, text: 'Existing' },
+    ]))
+    const patch = parseAgentWhiteboardPatch({
+      type: 'whiteboard.patch',
+      schema_version: 1,
+      summary: 'Cite a new note',
+      operations: [
+        {
+          op: 'element.create',
+          element: { id: 'n1', kind: 'sticky', text: 'Source', bounds: { x: 200, y: 0, width: 120, height: 90 } },
+        },
+        {
+          op: 'element.create',
+          element: {
+            id: 'n2',
+            kind: 'sticky',
+            text: 'Derived',
+            source_ref_ids: ['n1', 'doc-1'],
+            bounds: { x: 400, y: 0, width: 120, height: 90 },
+          },
+        },
+        { op: 'element.update', element_id: 'existing', changes: { source_ref_ids: ['n2'] } },
+      ],
+    })
+    const createdIds = new Map<string, string>()
+    const diff = translateAgentWhiteboardPatch({ createdIds, patch, store })
+    const derived = diff.added.find((record) => record.id === createdIds.get('n2'))
+    expect(derived).toEqual(expect.objectContaining({
+      sourceRefIds: [createdIds.get('n1'), 'doc-1'],
+    }))
+    expect(diff.updated).toEqual([expect.objectContaining({
+      after: expect.objectContaining({ id: 'existing', sourceRefIds: [createdIds.get('n2')] }),
+    })])
   })
 
   it('sanitizes and previews transform, style, layout, and grouping actions', () => {

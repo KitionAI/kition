@@ -197,6 +197,9 @@ const patchSchema = z.object({
   operations: z.array(operationSchema).min(1).max(AGENT_WHITEBOARD_PATCH_OPERATION_LIMIT),
 }).strict()
 
+/** How many names of accepted agent elements a board remembers and shows to the agent. */
+export const AGENT_RENAMED_ID_LIMIT = 200
+
 export type WhiteboardAgentPatchPreview = {
   added: WhiteboardElement[]
   deleted: WhiteboardElement[]
@@ -222,7 +225,16 @@ export function translateAgentWhiteboardPatch(input: {
    * the same map while a patch streams in keeps its preview's ids stable.
    */
   createdIds?: Map<string, string>
+  /**
+   * The object ids that the elements of earlier accepted patches got, keyed by the name the agent
+   * gave them. References to those names resolve to the object ids, and creating a new element
+   * with one of them is rejected.
+   */
+  renamedIds?: ReadonlyMap<string, string>
 }): BoardRecordDiff {
+  const patch = input.renamedIds?.size
+    ? resolveAgentRenamedIds(input.patch, input.renamedIds)
+    : input.patch
   const pageId = input.store.getCurrentPageId()
   const originalRecords = input.store.getRecords()
     .filter((record): record is BoardElementRecord => (
@@ -242,7 +254,7 @@ export function translateAgentWhiteboardPatch(input: {
     op: 'connector.create'
   }>> = []
 
-  for (const operation of input.patch.operations) {
+  for (const operation of patch.operations) {
     switch (operation.op) {
       case 'element.create': {
         if (input.store.getRecord(operation.element.id) || working.has(operation.element.id)) {
@@ -523,11 +535,109 @@ export function translateAgentWhiteboardPatch(input: {
 }
 
 /**
+ * Records the names of the elements an accepted patch created, so that later patches can still
+ * refer to them by those names. Only names whose object ids the diff actually added are kept; the
+ * oldest names are dropped beyond {@link AGENT_RENAMED_ID_LIMIT}.
+ */
+export function rememberAgentRenamedIds(input: {
+  createdIds: ReadonlyMap<string, string>
+  diff: BoardRecordDiff
+  renamedIds: Map<string, string>
+}) {
+  const added = new Set(input.diff.added
+    .filter((record) => record.record_type === 'element')
+    .map((record) => record.id))
+  for (const [name, id] of input.createdIds) {
+    if (!added.has(id)) continue
+    input.renamedIds.delete(name)
+    input.renamedIds.set(name, id)
+  }
+  for (const name of input.renamedIds.keys()) {
+    if (input.renamedIds.size <= AGENT_RENAMED_ID_LIMIT) break
+    input.renamedIds.delete(name)
+  }
+}
+
+/**
+ * Rewrites every reference in a patch to a name from an earlier accepted patch into that element's
+ * object id. A create that reuses such a name is rejected, as reusing any existing id is.
+ */
+function resolveAgentRenamedIds(
+  patch: AgentWhiteboardPatch,
+  renamedIds: ReadonlyMap<string, string>,
+): AgentWhiteboardPatch {
+  const resolve = (id: string) => renamedIds.get(id) ?? id
+  const resolveAll = (ids: readonly string[]) => ids.map(resolve)
+  const rejectReuse = (id: string) => {
+    if (renamedIds.has(id)) throw new Error(`AI Board patch reuses an existing id: ${id}`)
+  }
+  const operations = patch.operations.map((operation): AgentWhiteboardPatch['operations'][number] => {
+    switch (operation.op) {
+      case 'element.create':
+        rejectReuse(operation.element.id)
+        return {
+          ...operation,
+          element: {
+            ...operation.element,
+            parent_id: operation.element.parent_id === undefined
+              ? undefined
+              : resolve(operation.element.parent_id),
+            source_ref_ids: operation.element.source_ref_ids
+              && resolveAll(operation.element.source_ref_ids),
+          },
+        }
+      case 'connector.create':
+        rejectReuse(operation.connector.id)
+        return {
+          ...operation,
+          connector: {
+            ...operation.connector,
+            from_id: resolve(operation.connector.from_id),
+            to_id: resolve(operation.connector.to_id),
+          },
+        }
+      case 'element.update':
+        return {
+          ...operation,
+          element_id: resolve(operation.element_id),
+          changes: {
+            ...operation.changes,
+            ...(typeof operation.changes.parent_id === 'string'
+              ? { parent_id: resolve(operation.changes.parent_id) }
+              : {}),
+            ...(operation.changes.source_ref_ids
+              ? { source_ref_ids: resolveAll(operation.changes.source_ref_ids) }
+              : {}),
+          },
+        }
+      case 'element.delete':
+        return { ...operation, element_id: resolve(operation.element_id) }
+      case 'element.reorder':
+        return {
+          ...operation,
+          element_id: resolve(operation.element_id),
+          after_element_id: operation.after_element_id === null
+            ? null
+            : resolve(operation.after_element_id),
+        }
+      case 'element.group':
+        rejectReuse(operation.container_id)
+        return { ...operation, element_ids: resolveAll(operation.element_ids) }
+      case 'element.ungroup':
+        return { ...operation, container_ids: resolveAll(operation.container_ids) }
+      default:
+        return { ...operation, element_ids: resolveAll(operation.element_ids) }
+    }
+  })
+  return { ...patch, operations }
+}
+
+/**
  * Gives every element the patch creates a collision-free id. The agent names new elements with
  * ids of its own choosing (such as `n2`) so that later operations can refer to them; those names
  * are only meaningful inside one patch. Each one becomes a new object id, and every reference to
- * it in the diff follows: parents, connector bindings, and the bindings' own ids. Existing
- * elements keep their ids.
+ * it in the diff follows: parents, source references, connector bindings, and the bindings' own
+ * ids. Existing elements keep their ids.
  */
 function remapAgentCreatedIds(diff: BoardRecordDiff, createdIds: Map<string, string>) {
   const created = new Set<string>()
@@ -544,6 +654,7 @@ function remapAgentCreatedIds(diff: BoardRecordDiff, createdIds: Map<string, str
         ...record,
         id: remap(record.id),
         parentId: record.parentId === undefined ? undefined : remap(record.parentId),
+        sourceRefIds: record.sourceRefIds?.map(remap),
       }
     }
     if (record.record_type === 'binding') {
