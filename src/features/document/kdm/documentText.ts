@@ -9,7 +9,7 @@ import { DOCUMENT_BODY, DOCUMENT_ROOT, documentSchema } from './documentSchema'
 
 const BYTE_ORDER_MARK = String.fromCodePoint(0xfeff)
 
-export type LineEnding = '\n' | '\r\n'
+type LineEnding = '\n' | '\r\n'
 
 /**
  * How a file writes what the replica keeps as plain `\n` text.
