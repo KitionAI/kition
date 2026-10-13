@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
 
+import { installDocumentStoreBridge } from './helpers/documentStore'
 import { mockLocalWorkspaceApi } from './helpers/mockApi'
 import { getWorkspaceStorageKey } from '../src/features/onboarding/workspaceStorageKey'
 import { createBoardRecordsFromElements } from '../src/features/whiteboard/lib/boardRecords'
@@ -281,6 +282,8 @@ async function mockReadmeWorkspace(page: Page, activePath = WELCOME_PATH) {
     },
   )
 
+  // The replica store of the same workspace root the bridge reports.
+  await installDocumentStoreBridge(page, { root: VAULT_PATH })
   await page.addInitScript(({ activePath, onboardingKey }) => {
     window.localStorage.setItem('kition.document.last-active-path.v1', activePath)
     window.localStorage.removeItem('kition.document.workspace-tabs.v1')

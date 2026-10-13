@@ -42,7 +42,8 @@ async function openFixture(page: Page, reload = false) {
     await page.reload()
   } else {
     await mockLocalWorkspaceApi(page)
-    await mockDesktopBridge(page, '# Store\n')
+    // `other.md` exists, so the store prune of a workspace open keeps the index entry the tests give it.
+    await mockDesktopBridge(page, '# Store\n', { 'other.md': '# Other\n' })
     await page.goto('/')
   }
   await expect(page.getByTestId('document-editor')).toBeVisible({ timeout: 15_000 })
