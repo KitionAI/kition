@@ -73,6 +73,11 @@ type UseDocumentExportOptions = {
   activeDocument: WorkspaceDocument | null
   activeDocumentFormat: WorkspaceDocumentFormat
   draftContent: string
+  /**
+   * The document's text as it is now (the open session's `read()`). The published `draftContent`
+   * lags behind typing, so an export reads this when given.
+   */
+  readContent?: () => string
   onError: (message: string) => void
   onFeedback: (message: string) => void
 }
@@ -80,6 +85,7 @@ type UseDocumentExportOptions = {
 export function useDocumentExport({
   activeDocument,
   draftContent,
+  readContent,
   onError,
   onFeedback,
 }: UseDocumentExportOptions) {
@@ -114,12 +120,13 @@ export function useDocumentExport({
     onFeedback('')
 
     try {
+      const content = readContent?.() ?? draftContent
       const title = getWorkspaceItemTitle(activeDocument.name)
       const formatOption = documentExportFormats.find((item) => item.value === exportFormat) || documentExportFormats[0]
       const filename = getDocumentExportFilename(title, formatOption.extension)
 
       if (exportFormat === 'markdown') {
-        const savedPath = await saveTextExport(filename, draftContent, 'text/markdown', t('export.dialogTitle.markdown'))
+        const savedPath = await saveTextExport(filename, content, 'text/markdown', t('export.dialogTitle.markdown'))
         onFeedback(savedPath ? t('export.feedback.markdownExported') : t('export.feedback.canceled'))
         setExportDialogOpen(false)
         return
@@ -128,7 +135,7 @@ export function useDocumentExport({
       if (exportFormat === 'html') {
         const { markdownToHtml } = await import('@/services/markdownRenderer')
         const bodyHtml = await inlineMermaidBlocksInHtml(
-          resolveWorkspaceImageSources(markdownToHtml(draftContent), activeDocument.path),
+          resolveWorkspaceImageSources(markdownToHtml(content), activeDocument.path),
         )
         const html = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title></head><body>${bodyHtml}</body></html>`
         const savedPath = await saveTextExport(filename, html, 'text/html', t('export.dialogTitle.html'))
@@ -145,7 +152,7 @@ export function useDocumentExport({
         }
         const { markdownToHtml } = await import('@/services/markdownRenderer')
         const bodyHtml = await inlineMermaidBlocksInHtml(
-          resolveWorkspaceImageSources(markdownToHtml(draftContent), activeDocument.path),
+          resolveWorkspaceImageSources(markdownToHtml(content), activeDocument.path),
         )
         const { buildPdfExportHtml } = await import('@/features/document/lib/pdfExportHtml')
         const html = buildPdfExportHtml({

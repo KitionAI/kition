@@ -245,6 +245,7 @@ export function WorkspaceScreen({
   const {
     activeDocument,
     activeDocumentFormat,
+    activeDocumentSession,
     activeResourcePath,
     applyWorkspaceDocument,
     clearActiveDocumentSession,
@@ -271,6 +272,7 @@ export function WorkspaceScreen({
     activeDocument,
     activeDocumentFormat,
     draftContent,
+    readContent: activeDocumentSession?.isReady() ? () => activeDocumentSession.read() : undefined,
     onError: setError,
     onFeedback: setFeedback,
   })

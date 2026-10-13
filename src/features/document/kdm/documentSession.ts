@@ -130,7 +130,7 @@ export class DocumentSession {
   private discarded = false
   private readonly cleanups: Array<() => void> = []
   private unregisterFlush: (() => void) | null = null
-  private readonly textListeners = new Set<(text: string) => void>()
+  private readonly textListeners = new Set<() => void>()
   private readonly stateListeners = new Set<(state: DocumentSessionState) => void>()
   private readonly bindings = new Set<TextBinding>()
   /** The open typing undo group, if any. */
@@ -217,7 +217,8 @@ export class DocumentSession {
     return this.fileText
   }
 
-  subscribeText(listener: (text: string) => void) {
+  /** Calls `listener` after every change of the text (read it with `text()`). */
+  subscribeText(listener: () => void) {
     this.textListeners.add(listener)
     return () => {
       this.textListeners.delete(listener)
@@ -597,8 +598,8 @@ export class DocumentSession {
       review.marks = mapAgentReviewMarks(review.marks, delta)
       if (!this.applyingAgent) review.untouched = false
     }
-    const text = this.text()
-    for (const listener of this.textListeners) listener(text)
+    // Listeners read the text when they need it: rendering it on every keystroke is not free.
+    for (const listener of this.textListeners) listener()
     if (this.importing > 0) return
     // A new edit starts new save attempts.
     this.retries = 0
