@@ -139,13 +139,24 @@ test('opens a version-1 file read-only and leaves it unchanged', async ({ page }
   expect(await countWhiteboardFileWrites(page)).toBe(0)
 })
 
-test('replaces a version-1 file with a new Board only after Start a new Board', async ({ page }) => {
+test('replaces a version-1 file with a new Board only after Start a new Board is confirmed', async ({ page }) => {
   await openWhiteboardFixture(page, { fileContent: VERSION_1_FILE, expectView: 'notice' })
   await page.waitForTimeout(800)
   expect(await readWhiteboardFileText(page)).toBe(VERSION_1_FILE)
   expect(await countWhiteboardFileWrites(page)).toBe(0)
 
+  // Cancelling the confirmation keeps the file.
+  const confirmation = page.getByTestId('whiteboard-start-new-confirm')
   await page.getByTestId('whiteboard-file-start-new').click()
+  await expect(confirmation).toContainText(workspaceCopy.whiteboard.file.startNewConfirmTitle)
+  await confirmation.getByTestId('cancel-btn').click()
+  await expect(confirmation).toHaveCount(0)
+  await expect(page.getByTestId('whiteboard-file-notice')).toBeVisible()
+  expect(await readWhiteboardFileText(page)).toBe(VERSION_1_FILE)
+  expect(await countWhiteboardFileWrites(page)).toBe(0)
+
+  await page.getByTestId('whiteboard-file-start-new').click()
+  await confirmation.getByTestId('confirm-btn').click()
   await waitForWhiteboard(page)
   expect(await countWhiteboardFileWrites(page)).toBe(1)
   const file = await readWhiteboardFile(page)

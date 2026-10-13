@@ -538,7 +538,11 @@ export function useBoardDocument(options: {
       onState: setState,
       closedSaveFailed: (reason) => notify.error(
         translateRef.current('whiteboard.file.closeSaveFailed', { title: titleRef.current }),
-        { description: message(reason) },
+        {
+          description: isBoardSaveConflict(reason)
+            ? translateRef.current('whiteboard.file.saveConflict')
+            : message(reason),
+        },
       ),
     })
     sessionRef.current = session
