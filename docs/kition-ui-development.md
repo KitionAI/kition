@@ -45,6 +45,7 @@ Current feature split:
 - `src/features/agent`: AI chat, agent execution timeline, model selection, and agent-only interaction flows
 - `src/features/document`: rich-text document editing and document workspace flows
 - `src/features/table`: structured table editing and table-specific panels
+- `src/features/whiteboard`: the Whiteboard editor and its KDM-backed document model (see [whiteboard-document.md](whiteboard-document.md))
 - `src/features/workspace`: editor chrome, workspace navigation, tabs, tree, and media navigation
 - `src/features/settings`: desktop settings surfaces
 
