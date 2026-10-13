@@ -157,9 +157,9 @@ describe('createDocumentReplica', () => {
     const pieces = spy.mock.calls.map((call) => call[3])
     spy.mockRestore()
     expect(documentBody(replica) === body).toBe(true)
-    expect(pieces.length).toBeGreaterThan(20)
+    expect(pieces.length).toBeGreaterThan(5)
     for (const piece of pieces) {
-      expect(piece.length).toBeLessThanOrEqual(8 * 1024)
+      expect(piece.length).toBeLessThanOrEqual(32 * 1024)
       expect(/^[\udc00-\udfff]|[\ud800-\udbff]$/.test(piece)).toBe(false)
     }
     // Only the pieces cut inside the long run end elsewhere than after a line break.

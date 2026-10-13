@@ -26,7 +26,7 @@ export type LineStyle = { eol: LineEnding | 'mixed'; bom: boolean; finalNewline:
 const CR = 13
 const LF = 10
 /** The body is written in pieces of about this many UTF-16 units (see `bodyPieces`). */
-const BODY_PIECE = 4 * 1024
+const BODY_PIECE = 16 * 1024
 
 /** The file's text for the replica (no BOM, `\n` endings) and the style to write it back with. */
 export function analyzeText(raw: string): { text: string; style: LineStyle } {
