@@ -3,6 +3,9 @@ import { newDocId, person, Replica, Rng } from '@/lib/kdm'
 import { DOCUMENT_BODY, DOCUMENT_KIT, documentSchema } from './documentSchema'
 import { analyzeText, createDocumentReplica, documentBody, documentRootId, renderText, type LineStyle } from './documentText'
 
+/** CJK text (U+5B63 U+5EA6), as a named constant: the repository keeps non-English text out of source files. */
+const QUARTER = String.fromCodePoint(0x5b63, 0x5ea6)
+
 const BOM = String.fromCodePoint(0xfeff)
 const me = person('user:test')
 
@@ -32,7 +35,7 @@ describe('analyzeText', () => {
   it('treats an empty file and a file without line endings as LF', () => {
     expect(analyzeText('')).toEqual({ text: '', style: { eol: '\n', bom: false, finalNewline: false } })
     expect(analyzeText(BOM)).toEqual({ text: '', style: { eol: '\n', bom: true, finalNewline: false } })
-    expect(analyzeText('季度😀')).toEqual({ text: '季度😀', style: { eol: '\n', bom: false, finalNewline: false } })
+    expect(analyzeText(`${QUARTER}😀`)).toEqual({ text: `${QUARTER}😀`, style: { eol: '\n', bom: false, finalNewline: false } })
   })
 
   it('records mixed endings with the majority ending', () => {
@@ -75,7 +78,7 @@ describe('renderText', () => {
 
 /** A random file of lines in one ending style, with CJK, emoji, empty lines, and an optional BOM. */
 function randomFile(rng: Rng, eol: '\n' | '\r\n'): string {
-  const pieces = ['a', 'Plan', ' ', '#', '|', '季度', '😀', '👩‍💻', '\t', BOM, 'é', '']
+  const pieces = ['a', 'Plan', ' ', '#', '|', QUARTER, '😀', '👩‍💻', '\t', BOM, 'é', '']
   const lines: string[] = []
   const count = rng.below(8)
   for (let line = 0; line < count; line += 1) {
@@ -113,9 +116,9 @@ describe('analyzeText and renderText round trip', () => {
 
 describe('createDocumentReplica', () => {
   it('writes the normalised body at creation, with nothing to undo', () => {
-    const { replica, rootId, style } = createDocumentReplica(`${BOM}# 季度 😀\r\nBody\r\n`, 3n)
+    const { replica, rootId, style } = createDocumentReplica(`${BOM}# ${QUARTER} 😀\r\nBody\r\n`, 3n)
     expect(style).toEqual({ eol: '\r\n', bom: true, finalNewline: true })
-    expect(documentBody(replica)).toBe('# 季度 😀\nBody\n')
+    expect(documentBody(replica)).toBe(`# ${QUARTER} 😀\nBody\n`)
     expect(documentRootId(replica)).toBe(rootId)
     expect(replica.objectType(rootId)).toBe('Document')
     expect(replica.canUndo()).toBe(false)

@@ -4,6 +4,11 @@ import { DOCUMENT_BODY } from './documentSchema'
 import { createDocumentReplica, documentBody } from './documentText'
 import { applyEditsToString, diffText, mergeEdits, mergeExternalText, type TextEdit } from './documentMerge'
 
+/** CJK text (U+5B63 U+5EA6), as a named constant: the repository keeps non-English text out of source files. */
+const QUARTER = String.fromCodePoint(0x5b63, 0x5ea6)
+const SEASON = String.fromCodePoint(0x5b63)
+const DEGREE = String.fromCodePoint(0x5ea6)
+
 const fromFile: Origin = { kind: 'import', principal: 'file:test' }
 
 /** Merges through a real replica holding `current`; answers the outcome and the replica's text. */
@@ -64,7 +69,7 @@ describe('diffText', () => {
   it('never splits a surrogate pair', () => {
     expect(diffText('a😀b', 'a😁b')).toEqual([{ from: 1, to: 3, insert: '😁' }])
     expect(diffText('😀', '😀😀')).toEqual([{ from: 2, to: 2, insert: '😀' }])
-    expect(diffText('季度😀\n', '季度👍\n')).toEqual([{ from: 2, to: 4, insert: '👍' }])
+    expect(diffText(`${QUARTER}😀\n`, `${QUARTER}👍\n`)).toEqual([{ from: 2, to: 4, insert: '👍' }])
   })
 
   it('merges character noise into one replacement', () => {
@@ -73,7 +78,7 @@ describe('diffText', () => {
 
   it('reproduces the target for random texts (property)', () => {
     const rng = new Rng(11)
-    const alphabet = ['a', 'b', '\n', ' ', '季', '😀', '👍', '\n\n']
+    const alphabet = ['a', 'b', '\n', ' ', SEASON, '😀', '👍', '\n\n']
     const randomText = () => Array.from({ length: rng.below(40) }, () => alphabet[rng.below(alphabet.length)]).join('')
     for (let run = 0; run < 3000; run += 1) {
       const a = randomText()
@@ -185,7 +190,7 @@ describe('mergeExternalText: overlapping edits', () => {
 
   it('never splits a surrogate pair when both sides edit emoji', () => {
     expect(merged('😀😀', '😀🎉', '👍😀')).toBe('👍🎉')
-    expect(merged('季😀度', '季🎉度', '季😀😀度')).toMatch(/^季.*度$/)
+    expect(merged(`${SEASON}😀${DEGREE}`, `${SEASON}🎉${DEGREE}`, `${SEASON}😀😀${DEGREE}`)).toMatch(new RegExp(`^${SEASON}.*${DEGREE}$`))
     expect(hasLoneSurrogate(merged('😀😀😀', '😁😀😂', '😀👍😀'))).toBe(false)
   })
 })
@@ -246,7 +251,7 @@ describe('mergeExternalText: properties', () => {
 
   it('answers unchanged for an unchanged file and the file for no local edits (property)', () => {
     const rng = new Rng(22)
-    const alphabet = ['a', 'b', '\n', '季', '😀', '👍']
+    const alphabet = ['a', 'b', '\n', SEASON, '😀', '👍']
     for (let run = 0; run < 1000; run += 1) {
       const base = Array.from({ length: rng.below(30) }, () => alphabet[rng.below(alphabet.length)]).join('')
       const edited = mutate(rng, base, alphabet)
@@ -261,7 +266,7 @@ describe('mergeExternalText: properties', () => {
 
   it('never throws on random edit pairs and keeps every insertion (property)', () => {
     const rng = new Rng(23)
-    const baseAlphabet = ['a', 'b', ' ', '\n', '季', '😀']
+    const baseAlphabet = ['a', 'b', ' ', '\n', SEASON, '😀']
     const only = (text: string, alphabet: string[]) => Array.from(text).filter((point) => alphabet.includes(point) && point !== '\n').join('')
     for (let run = 0; run < 1500; run += 1) {
       const points = Array.from({ length: rng.below(25) }, () => baseAlphabet[rng.below(baseAlphabet.length)])
@@ -295,7 +300,7 @@ describe('mergeExternalText: a 1 MB document', () => {
   it('merges scattered edits on both sides (timing printed)', () => {
     const lines: string[] = []
     for (let size = 0, index = 0; size < 1_000_000; index += 1) {
-      const line = `Line ${index}: 季度 report 😀 with some ordinary words to fill the paragraph.`
+      const line = `Line ${index}: ${QUARTER} report 😀 with some ordinary words to fill the paragraph.`
       lines.push(line)
       size += line.length + 1
     }
