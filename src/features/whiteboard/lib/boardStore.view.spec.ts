@@ -198,6 +198,25 @@ describe('BoardStore writes after changes it has not read yet', () => {
   })
 })
 
+
+describe('BoardStore opening a healthy board', () => {
+  it('writes no repair', () => {
+    const rng = new Rng(3)
+    const source = new BoardStore()
+    const page = source.getCurrentPageId()
+    source.transact('add', (tx) => {
+      tx.put(element('frame', 'frame', page, 0, rng))
+      tx.put({ ...element('child', 'rectangle', page, 1, rng), parentId: 'frame' } as BoardElementRecord)
+      tx.put(element('c', 'connector', page, 2, rng))
+    })
+    const replica = Replica.load(boardSchema, source.snapshot(), 5n)
+    const version = replica.version()
+    const store = new BoardStore(replica)
+    expect(replica.version().equals(version)).toBe(true)
+    expect(viewOf(store.getRecords())).toEqual(viewOf(source.getRecords()))
+  })
+})
+
 function rootOf(replica: Replica) {
   return replica.objectsOfType('Board')[0]
 }
