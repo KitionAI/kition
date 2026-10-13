@@ -20,12 +20,11 @@ export type WorkspaceScreenEditorInput = {
   activeWorkspaceTabId: string
   documentSession: Pick<
     WorkspaceEditorContentProps,
-    'activeDocument' | 'activeDocumentFormat' | 'activeDocumentRevision' | 'draftContent'
-    | 'editorResetVersions' | 'documentRevisionSaving' | 'getOpenedDocumentDraftEntry'
+    'activeDocument' | 'activeDocumentFormat' | 'activeDocumentRevision' | 'activeDocumentSession' | 'draftContent'
+    | 'documentRevisionSaving' | 'getOpenedDocument'
   > & {
     decideDocumentRevisionChange: (path: string, changeId: string, decision: RevisionDecision) => void
     resolveAllDocumentRevisionChanges: (path: string, decision: RevisionDecision) => void
-    handleDraftContentChange: (value: string) => void
     openDocument: (path: string) => unknown
   }
   editorView: { locked: boolean; editorMode: WorkspaceEditorContentProps['editorMode'] }
@@ -61,8 +60,6 @@ export type WorkspaceScreenEditorInput = {
   onSaveDocumentTitle: (nextTitle: string) => unknown
   onToolbarMount: WorkspaceEditorContentProps['onToolbarMount']
   onSetEditorMode: WorkspaceEditorContentProps['onSetEditorMode']
-  /** Clears the transient feedback line when the split editor changes. */
-  clearFeedback: () => void
 }
 
 export function buildWorkspaceEditorContentProps(input: WorkspaceScreenEditorInput): WorkspaceEditorContentProps {
@@ -77,6 +74,7 @@ export function buildWorkspaceEditorContentProps(input: WorkspaceScreenEditorInp
     activeDocument: documentSession.activeDocument,
     activeDocumentFormat: documentSession.activeDocumentFormat,
     activeDocumentRevision: revision,
+    activeDocumentSession: documentSession.activeDocumentSession,
     activeWorkspaceTab: input.activeWorkspaceTab,
     activeWorkspaceTabId: input.activeWorkspaceTabId,
     documentTitle: documentSession.activeDocument ? getWorkspaceItemTitle(documentSession.activeDocument.name) : '',
@@ -85,11 +83,10 @@ export function buildWorkspaceEditorContentProps(input: WorkspaceScreenEditorInp
     editorLocked: input.editorView.locked,
     editorMode: input.editorView.editorMode,
     editorPreviewHtml: input.editorPreviewHtml,
-    editorResetVersions: documentSession.editorResetVersions,
     documentRevisionSaving: documentSession.documentRevisionSaving,
     documentEditorFocusRequest: templateDialogs.documentEditorFocusRequest,
     galleryPanelProps: input.galleryPanelProps,
-    getOpenedDocumentDraftEntry: documentSession.getOpenedDocumentDraftEntry,
+    getOpenedDocument: documentSession.getOpenedDocument,
     whiteboardAgentAvailable: whiteboard.available,
     whiteboardAgentBusy: activeAgentSession ? input.agentBusySessions.has(activeAgentSession.id) : false,
     onWhiteboardAgentBridgeChange: whiteboard.onBridgeChange,
@@ -119,10 +116,6 @@ export function buildWorkspaceEditorContentProps(input: WorkspaceScreenEditorInp
     },
     onResolveAllDocumentRevisionChanges: (decision) => {
       if (revision) documentSession.resolveAllDocumentRevisionChanges(revision.path, decision)
-    },
-    onSplitEditorChange: (value) => {
-      documentSession.handleDraftContentChange(value)
-      input.clearFeedback()
     },
     onOpenDocument: (path) => void documentSession.openDocument(path),
     onToolbarMount: input.onToolbarMount,

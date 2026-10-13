@@ -18,7 +18,6 @@ type UseWorkspaceTreeCreateActionsOptions = {
   activeDocumentPath: string
   applyWorkspaceDocument: ApplyWorkspaceDocument
   refreshWorkspaceDocuments: (preferredPath?: string, options?: { silent?: boolean; treeOnly?: boolean }) => Promise<boolean>
-  rememberDocumentSnapshot: (document: WorkspaceDocument, content: string, reason: string) => void
   rootPath: string
   setEditorMode: (mode: 'rich' | 'split') => void
   setError: (message: string) => void
@@ -35,7 +34,6 @@ export function useWorkspaceTreeCreateActions({
   activeDocumentPath,
   applyWorkspaceDocument,
   refreshWorkspaceDocuments,
-  rememberDocumentSnapshot,
   rootPath,
   setEditorMode,
   setError,
@@ -65,10 +63,9 @@ export function useWorkspaceTreeCreateActions({
         preset,
       })
       setSelectedPlatform(platform)
-      applyWorkspaceDocument(document)
+      void applyWorkspaceDocument(document)
       expandFolders(getAncestorFolderPaths(document.path))
       setEditorMode('rich')
-      rememberDocumentSnapshot(document, document.content, 'New document')
       setFeedback(t('workspace:feedback.documentCreated'))
 
       setTreeItems((current) => insertWorkspaceTreeDocumentItem(current, document))
@@ -83,7 +80,6 @@ export function useWorkspaceTreeCreateActions({
     activeDocumentPath,
     applyWorkspaceDocument,
     expandFolders,
-    rememberDocumentSnapshot,
     setCreateMenuOpen,
     setEditorMode,
     setError,

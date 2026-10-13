@@ -1,5 +1,4 @@
 import type { Dispatch, SetStateAction } from 'react'
-import type { DocumentSnapshot } from '@/features/document/lib/documentSnapshots'
 import type { DocumentPlatform } from '@/features/document/lib/documentCreation'
 import { useWorkspaceTreeCreateActions } from '@/features/workspace/hooks/useWorkspaceTreeCreateActions'
 import { useWorkspaceTreeLoader } from '@/features/workspace/hooks/useWorkspaceTreeLoader'
@@ -15,11 +14,9 @@ type UseWorkspaceTreeActionsOptions = {
   applyWorkspaceDocument: ApplyWorkspaceDocument
   clearActiveDocumentSession: () => void
   filterWorkspaceTabs: (predicate: (tab: WorkspaceTab) => boolean) => void
-  hasDocumentSnapshot: (path: string) => boolean
   hasUnsavedChanges: boolean
   persistActiveDocument: (reason?: 'auto' | 'shortcut') => Promise<boolean>
-  pruneOpenedDocumentDrafts: (predicate: (path: string) => boolean) => void
-  rememberDocumentSnapshot: (document: WorkspaceDocument, content: string, reason: string) => void
+  forgetOpenedDocuments: (predicate: (path: string) => boolean) => void
   remapWorkspaceTabPaths: (sourcePath: string, targetPath: string) => void
   renameWorkspaceTabPath: (fromPath: string, toPath: string) => void
   renameKitableChildrenIndexPath?: (fromPath: string, toPath: string) => void
@@ -32,7 +29,6 @@ type UseWorkspaceTreeActionsOptions = {
   setSaving: Dispatch<SetStateAction<boolean>>
   setSelectedPlatform: Dispatch<SetStateAction<DocumentPlatform>>
   treeState: UseWorkspaceTreeStateResult
-  updateSnapshots: (nextSnapshots: DocumentSnapshot[]) => void
 }
 
 export function useWorkspaceTreeActions({
@@ -41,11 +37,9 @@ export function useWorkspaceTreeActions({
   applyWorkspaceDocument,
   clearActiveDocumentSession,
   filterWorkspaceTabs,
-  hasDocumentSnapshot,
+  forgetOpenedDocuments,
   hasUnsavedChanges,
   persistActiveDocument,
-  pruneOpenedDocumentDrafts,
-  rememberDocumentSnapshot,
   remapWorkspaceTabPaths,
   renameWorkspaceTabPath,
   renameKitableChildrenIndexPath,
@@ -58,14 +52,11 @@ export function useWorkspaceTreeActions({
   setSaving,
   setSelectedPlatform,
   treeState,
-  updateSnapshots,
 }: UseWorkspaceTreeActionsOptions) {
   const loaderActions = useWorkspaceTreeLoader({
     activeDocumentPath: activeDocument?.path || '',
     applyWorkspaceDocument,
     clearActiveDocumentSession,
-    hasDocumentSnapshot,
-    rememberDocumentSnapshot,
     setError,
     setFeedback,
     treeState,
@@ -75,7 +66,6 @@ export function useWorkspaceTreeActions({
     activeDocumentPath: activeDocument?.path || '',
     applyWorkspaceDocument,
     refreshWorkspaceDocuments: loaderActions.refreshWorkspaceDocuments,
-    rememberDocumentSnapshot,
     rootPath: treeState.rootPath,
     setEditorMode,
     setError,
@@ -92,7 +82,7 @@ export function useWorkspaceTreeActions({
     filterWorkspaceTabs,
     hasUnsavedChanges,
     persistActiveDocument,
-    pruneOpenedDocumentDrafts,
+    forgetOpenedDocuments,
     refreshWorkspaceDocuments: loaderActions.refreshWorkspaceDocuments,
     remapWorkspaceTabPaths,
     renameWorkspaceTabPath,
@@ -105,7 +95,6 @@ export function useWorkspaceTreeActions({
     setFeedback,
     setSaving,
     treeState,
-    updateSnapshots,
   })
 
   return {

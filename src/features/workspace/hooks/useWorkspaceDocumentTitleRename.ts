@@ -1,8 +1,8 @@
 /**
  * Renaming the active document from its inline title. Moves the file,
  * then updates every client record that named the old path: the tree, the
- * kitable index, the document store index, snapshots, Agent-modified paths,
- * tabs, and drafts. Errors are thrown so the title editor can roll back its
+ * kitable index, the document store index, Agent-modified paths, tabs, and
+ * open document sessions. Errors are thrown so the title editor can roll back its
  * optimistic text.
  */
 import { useCallback, type Dispatch, type SetStateAction } from 'react'
@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next'
 
 import { renameDataDocumentByPath } from '@/api/dataDocuments'
 import { syncDocumentFileMoved } from '@/features/workspace/lib/documentIdentity'
-import { remapPathSetAfterMove, remapSnapshotsAfterMove } from '@/features/workspace/lib/documentRename'
+import { remapPathSetAfterMove } from '@/features/workspace/lib/documentRename'
 import {
   getWorkspaceItemTitle,
   remapWorkspaceBranchPath,
@@ -24,7 +24,7 @@ import {
 import type { UseWorkspaceTreeStateResult } from '@/features/workspace/hooks/useWorkspaceTreeState'
 import { moveWorkspaceDocument, type WorkspaceDocument, type WorkspaceDocumentFormat } from '@/services/desktop'
 
-type UseWorkspaceDocumentTitleRenameOptions<Snapshot extends { path: string; name: string }> = {
+type UseWorkspaceDocumentTitleRenameOptions = {
   rootPath: string
   activeDocument: WorkspaceDocument | null
   activeDocumentFormat: WorkspaceDocumentFormat | null | undefined
@@ -32,18 +32,16 @@ type UseWorkspaceDocumentTitleRenameOptions<Snapshot extends { path: string; nam
   treeState: Pick<UseWorkspaceTreeStateResult, 'flatTreeNodes' | 'setTreeItems' | 'updateTreeMetadata'>
   renameKitableChildrenIndexPath: (sourcePath: string, targetPath: string) => void
   ensureActiveDocumentSaved: () => Promise<boolean>
-  snapshots: Snapshot[]
-  updateSnapshots: (next: Snapshot[]) => void
   setAgentModifiedDocumentPaths: Dispatch<SetStateAction<Set<string>>>
   remapWorkspaceTabPaths: (sourcePath: string, targetPath: string) => void
-  remapOpenedDocumentDrafts: (sourcePath: string, targetPath: string) => void
+  remapOpenedDocuments: (sourcePath: string, targetPath: string) => void
   setActiveResourcePath: (path: string) => void
   setSaving: (saving: boolean) => void
   setError: (message: string) => void
   setFeedback: (message: string) => void
 }
 
-export function useWorkspaceDocumentTitleRename<Snapshot extends { path: string; name: string }>({
+export function useWorkspaceDocumentTitleRename({
   rootPath,
   activeDocument,
   activeDocumentFormat,
@@ -51,16 +49,14 @@ export function useWorkspaceDocumentTitleRename<Snapshot extends { path: string;
   treeState,
   renameKitableChildrenIndexPath,
   ensureActiveDocumentSaved,
-  snapshots,
-  updateSnapshots,
   setAgentModifiedDocumentPaths,
   remapWorkspaceTabPaths,
-  remapOpenedDocumentDrafts,
+  remapOpenedDocuments,
   setActiveResourcePath,
   setSaving,
   setError,
   setFeedback,
-}: UseWorkspaceDocumentTitleRenameOptions<Snapshot>) {
+}: UseWorkspaceDocumentTitleRenameOptions) {
   const { t } = useTranslation('workspace')
 
   const renameDocument = useCallback(async ({ path, title }: { path: string; title: string }) => {
@@ -109,10 +105,9 @@ export function useWorkspaceDocumentTitleRename<Snapshot extends { path: string;
         ))
       }
       treeState.setTreeItems((current) => replaceWorkspaceTreeDocumentItem(current, path, movedDocument))
-      updateSnapshots(remapSnapshotsAfterMove(snapshots, path, movedDocument.path, movedDocument.name))
       setAgentModifiedDocumentPaths((current) => remapPathSetAfterMove(current, path, movedDocument.path))
       remapWorkspaceTabPaths(path, movedDocument.path)
-      remapOpenedDocumentDrafts(path, movedDocument.path)
+      remapOpenedDocuments(path, movedDocument.path)
       if (activeResourcePath && remapWorkspaceBranchPath(activeResourcePath, path, movedDocument.path) !== activeResourcePath) {
         setActiveResourcePath('')
       }
@@ -130,7 +125,7 @@ export function useWorkspaceDocumentTitleRename<Snapshot extends { path: string;
     activeDocument,
     activeResourcePath,
     ensureActiveDocumentSaved,
-    remapOpenedDocumentDrafts,
+    remapOpenedDocuments,
     remapWorkspaceTabPaths,
     renameKitableChildrenIndexPath,
     rootPath,
@@ -139,10 +134,8 @@ export function useWorkspaceDocumentTitleRename<Snapshot extends { path: string;
     setError,
     setFeedback,
     setSaving,
-    snapshots,
     t,
     treeState,
-    updateSnapshots,
   ])
 
   /** Inline title edit: shows the new name at once and rolls back when the rename fails. */

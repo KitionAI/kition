@@ -32,9 +32,9 @@ function documentUid() {
 
 /**
  * Tab-strip behavior that is not tab-list state: closing a tab (flushing a
- * design or Board editor first; a Board whose save fails may be closed without
- * its unsaved changes once the user confirms; closing the workflow workbench
- * with its last tab),
+ * design, Board, or Markdown document editor first; a Board or document whose
+ * save fails may be closed without its unsaved changes once the user confirms;
+ * closing the workflow workbench with its last tab),
  * the Cmd/Ctrl+W shortcut, keeping the tree focused on the active tab's
  * file, opening a file into the right tab type, and the search palette's
  * open-path requests.
@@ -57,24 +57,28 @@ export function useWorkspaceTabControllers({
   const confirm = useConfirm()
   const workspaceTabsRef = useRef<WorkspaceTab[]>([])
   workspaceTabsRef.current = workspaceTabs
-  /** Board tabs whose close is saving or waiting for the user's answer: closing again does nothing. */
-  const closingBoardTabsRef = useRef(new Set<string>())
+  /** Board and document tabs whose close is saving or waiting for the user's answer: closing again does nothing. */
+  const closingEditedTabsRef = useRef(new Set<string>())
 
-  /** Closes a Board tab once its pending save is written, or after the user discards what could not be saved. */
-  const closeBoardTab = useCallback(async (tabId: string, path: string) => {
-    const closing = closingBoardTabsRef.current
+  /**
+   * Closes a Board or Markdown document tab once its pending save is written, or after the user
+   * discards what could not be saved.
+   */
+  const closeEditedTab = useCallback(async (tabId: string, path: string, kind: 'board' | 'document') => {
+    const closing = closingEditedTabsRef.current
     if (closing.has(tabId)) return
     closing.add(tabId)
     try {
       try {
         await flushWorkspaceEditSessions(path)
       } catch {
+        const copy = kind === 'board' ? 'whiteboard.file' : 'documentFile'
         const discard = await confirm({
-          message: t('whiteboard.file.closeUnsavedMessage'),
-          confirmLabel: t('whiteboard.file.closeUnsavedDiscard'),
-          cancelLabel: t('whiteboard.file.closeUnsavedKeep'),
+          message: t(`${copy}.closeUnsavedMessage`),
+          confirmLabel: t(`${copy}.closeUnsavedDiscard`),
+          cancelLabel: t(`${copy}.closeUnsavedKeep`),
           variant: 'destructive',
-          testId: 'board-close-unsaved-confirm',
+          testId: `${kind}-close-unsaved-confirm`,
         })
         // Keeping the tab keeps its edits and the session's retries.
         if (!discard) return
@@ -91,8 +95,8 @@ export function useWorkspaceTabControllers({
     const tabs = workspaceTabsRef.current
     const closing = tabs.find((tab) => tab.id === tabId)
     if (!closing) return
-    if (closing.type === 'board') {
-      void closeBoardTab(tabId, closing.path)
+    if (closing.type === 'board' || closing.type === 'document') {
+      void closeEditedTab(tabId, closing.path, closing.type)
       return
     }
     if (closing.type === 'design') {
@@ -107,7 +111,7 @@ export function useWorkspaceTabControllers({
       const remainingWorkflow = tabs.some((tab) => tab.id !== tabId && tab.type === 'workflow')
       if (!remainingWorkflow) onCloseWorkflow?.()
     }
-  }, [closeBoardTab, closeWorkspaceTab, onCloseWorkflow, t, workflowOpen])
+  }, [closeEditedTab, closeWorkspaceTab, onCloseWorkflow, t, workflowOpen])
 
   // Cmd/Ctrl+W closes the active tab. Disabled without one so an empty
   // workspace lets the key reach the desktop shell and the browser.

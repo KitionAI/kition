@@ -61,7 +61,7 @@ function Surface() {
     filterWorkspaceTabs: () => {},
     hasUnsavedChanges: false,
     persistActiveDocument: async () => true,
-    pruneOpenedDocumentDrafts: () => {},
+    forgetOpenedDocuments: () => {},
     refreshWorkspaceDocuments: async () => true,
     remapWorkspaceTabPaths: () => {},
     renameWorkspaceTabPath: () => {},
@@ -77,7 +77,6 @@ function Surface() {
       flatTreeNodes: [boardNode],
       updateTreeMetadata: () => {},
     },
-    updateSnapshots: () => {},
   })
   return null
 }

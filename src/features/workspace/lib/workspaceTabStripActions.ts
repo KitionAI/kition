@@ -18,8 +18,8 @@ export type WorkspaceTabStripActionsInput = {
   activeTabId: string
   activeDocumentPath: string | undefined
   hasUnsavedChanges: boolean
-  /** Unsaved draft of a document that is open in a background tab, or null. */
-  getOpenedDocumentDraftEntry: (path: string) => unknown
+  /** Whether a document open in a background tab has edits its file does not have yet. */
+  isOpenedDocumentModified: (path: string) => boolean
   /** The full-screen workflow route is showing. */
   workflowOpen: boolean
   closeTab: (tabId: string) => void
@@ -46,7 +46,7 @@ export function buildWorkspaceTabStripProps(input: WorkspaceTabStripActionsInput
     if (tab.type !== 'document') return false
     return tab.path === input.activeDocumentPath
       ? input.hasUnsavedChanges
-      : input.getOpenedDocumentDraftEntry(tab.path) !== null
+      : input.isOpenedDocumentModified(tab.path)
   }
 
   return {

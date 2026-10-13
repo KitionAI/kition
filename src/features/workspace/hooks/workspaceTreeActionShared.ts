@@ -1,6 +1,4 @@
 import type { WorkspaceDocument } from '@/services/desktop'
 
-export type ApplyWorkspaceDocument = (
-  document: WorkspaceDocument,
-  options?: { resetEditor?: boolean; restoreFromCache?: boolean },
-) => void
+/** Shows a document read from disk in the editor (a Markdown one opens or reuses its session). */
+export type ApplyWorkspaceDocument = (document: WorkspaceDocument) => void | Promise<void>

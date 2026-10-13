@@ -226,6 +226,11 @@
       "closeUnsavedKeep": "Keep open"
     }
   },
+  "documentFile": {
+    "closeUnsavedMessage": "Your latest changes to this document could not be saved. Close it and discard them?",
+    "closeUnsavedDiscard": "Discard changes and close",
+    "closeUnsavedKeep": "Keep open"
+  },
   "board": {
     "canvasTitle": "{{title}} Board canvas",
     "canvasDescription": "An interactive native SVG Board with drawing and diagram tools.",

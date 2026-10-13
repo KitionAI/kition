@@ -226,6 +226,11 @@
       "closeUnsavedKeep": "Оставить открытой"
     }
   },
+  "documentFile": {
+    "closeUnsavedMessage": "Последние изменения этого документа не удалось сохранить. Закрыть его и отменить их?",
+    "closeUnsavedDiscard": "Отменить изменения и закрыть",
+    "closeUnsavedKeep": "Оставить открытым"
+  },
   "board": {
     "canvasTitle": "Холст доски {{title}}",
     "canvasDescription": "Интерактивная нативная SVG-доска с инструментами рисования и диаграмм.",

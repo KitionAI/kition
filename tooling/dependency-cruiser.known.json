@@ -14129,23 +14129,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/document/hooks/useWorkspaceDocumentAutosave.ts",
-    "to": "src/features/workspace/lib/workspaceTree.ts",
-    "unresolvedTo": "@/features/workspace/lib/workspaceTree",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/features/document/hooks/useWorkspaceDocumentSession.ts",
     "to": "src/features/workspace/lib/workspace.ts",
     "unresolvedTo": "@/features/workspace/lib/workspace",
@@ -15518,24 +15501,6 @@
   {
     "type": "dependency",
     "from": "src/features/workspace/components/WorkspaceEditorContent.tsx",
-    "to": "src/features/document/lib/openedDocumentDrafts.ts",
-    "unresolvedTo": "@/features/document/lib/openedDocumentDrafts",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/components/WorkspaceEditorContent.tsx",
     "to": "src/features/emailSync/EmailSyncWorkflowPage.tsx",
     "unresolvedTo": "@/features/emailSync/EmailSyncWorkflowPage",
     "dependencyTypes": [
@@ -16280,24 +16245,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/workspace/hooks/useWorkspaceTreeActions.ts",
-    "to": "src/features/document/lib/documentSnapshots.ts",
-    "unresolvedTo": "@/features/document/lib/documentSnapshots",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/features/workspace/hooks/useWorkspaceTreeCreateActions.ts",
     "to": "src/features/document/lib/documentCreation.ts",
     "unresolvedTo": "@/features/document/lib/documentCreation",
@@ -16353,23 +16300,6 @@
     "from": "src/features/workspace/hooks/useWorkspaceTreeNodeActions.ts",
     "to": "src/features/document/lib/documentCreation.ts",
     "unresolvedTo": "@/features/document/lib/documentCreation",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/workspace/hooks/useWorkspaceTreeNodeActions.ts",
-    "to": "src/features/document/lib/documentSnapshots.ts",
-    "unresolvedTo": "@/features/document/lib/documentSnapshots",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",

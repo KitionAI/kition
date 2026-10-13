@@ -7,7 +7,8 @@
  * through `applyColOp` and the row helpers so undo history and the
  * `tableSyncAnnotation` stay consistent with the source document.
  */
-import { redo, undo } from '@codemirror/commands'
+// The replica's undo and redo when the editor is bound to a document session, else CodeMirror's.
+import { redoDocument as redo, undoDocument as undo } from '@/features/document/kdm/documentHistory'
 import { Annotation, type EditorState } from '@codemirror/state'
 import { EditorView, WidgetType } from '@codemirror/view'
 import i18next from 'i18next'

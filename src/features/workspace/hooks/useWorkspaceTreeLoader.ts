@@ -26,8 +26,6 @@ type UseWorkspaceTreeLoaderOptions = {
   activeDocumentPath: string
   applyWorkspaceDocument: ApplyWorkspaceDocument
   clearActiveDocumentSession: () => void
-  hasDocumentSnapshot: (path: string) => boolean
-  rememberDocumentSnapshot: (document: WorkspaceDocument, content: string, reason: string) => void
   setError: (message: string) => void
   setFeedback: (message: string) => void
   treeState: Pick<
@@ -44,8 +42,6 @@ export function useWorkspaceTreeLoader({
   activeDocumentPath,
   applyWorkspaceDocument,
   clearActiveDocumentSession,
-  hasDocumentSnapshot,
-  rememberDocumentSnapshot,
   setError,
   setFeedback,
   treeState,
@@ -89,16 +85,11 @@ export function useWorkspaceTreeLoader({
     }
 
     const nextDocument = await readWorkspaceDocument(nextPath)
-    applyWorkspaceDocument(nextDocument)
-    if (!hasDocumentSnapshot(nextDocument.path)) {
-      rememberDocumentSnapshot(nextDocument, nextDocument.content, 'Initial version')
-    }
+    void applyWorkspaceDocument(nextDocument)
   }, [
     activeDocumentPath,
     applyWorkspaceDocument,
     clearActiveDocumentSession,
-    hasDocumentSnapshot,
-    rememberDocumentSnapshot,
     setRecentWorkspacePaths,
     setRootPath,
     setTreeItems,

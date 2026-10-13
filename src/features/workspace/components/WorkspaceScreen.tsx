@@ -228,6 +228,7 @@ export function WorkspaceScreen({
     editorLocked: editorView.locked,
     editorMode: editorView.editorMode,
     files,
+    rootPath,
     isModifiedDocumentPath: (path) =>
       agentDocumentStateRef.current.modifiedPaths.has(path),
     onClearModifiedDocumentPath: (path) =>
@@ -246,27 +247,23 @@ export function WorkspaceScreen({
     activeDocumentFormat,
     activeResourcePath,
     applyWorkspaceDocument,
-    autoSaveStatus,
-    bumpEditorReset,
     clearActiveDocumentSession,
+    closeOpenedDocument,
     draftContent,
     ensureActiveDocumentSaved,
-    getOpenedDocumentDraftEntry,
+    forgetOpenedDocuments,
     hasUnsavedChanges,
     openModifiedDocumentReview,
     openDocument,
     persistActiveDocument,
-    pruneOpenedDocumentDrafts,
-    remapOpenedDocumentDrafts,
+    remapOpenedDocuments,
+    replaceActiveDocumentText,
+    restoreSavedVersion,
     saving,
     selectedPlatform,
     setActiveResourcePath,
-    setDraftContent,
     setSaving,
     setSelectedPlatform,
-    snapshots,
-    updateSnapshots,
-    rememberDocumentSnapshot,
     reviewModifiedDocuments,
   } = documentSession
 
@@ -354,23 +351,9 @@ export function WorkspaceScreen({
       setActiveResourcePath('')
       setSidebarSectionsExpanded((current) => ({ ...current, [kind]: true }))
     },
-    onCloseDocumentTab: (tab) => {
-      const matchesActive = activeDocument?.path === tab.path
-      console.warn('[KITION/close] tab=%s active=%s draftLen=%d hasUnsaved=%s',
-        tab.path,
-        activeDocument?.path || '(none)',
-        draftContent.length,
-        hasUnsavedChanges,
-      )
-      if (matchesActive) {
-        void persistActiveDocument('shortcut').then((ok) => {
-          console.warn('[KITION/close] persist resolved ok=%s path=%s', ok, tab.path)
-        })
-      }
-      // Intentionally keep the draft cache: the save is async, and if the user
-      // reopens the document immediately we need the latest input from cache;
-      // otherwise the on-disk content is still stale and the input would appear lost.
-    },
+    // The tab controllers wrote (or, with the user's consent, discarded) the pending save first;
+    // the session stops here, and a final write that still fails keeps retrying.
+    onCloseDocumentTab: (tab) => closeOpenedDocument(tab.path),
   })
   setActiveWorkspaceTabIdRef.current = setActiveWorkspaceTabId
 
@@ -493,22 +476,21 @@ export function WorkspaceScreen({
     )
     : []
 
-  const hasDocumentSnapshot = useCallback(
-    (path: string) => snapshots.some((item) => item.path === path),
-    [snapshots],
-  )
+  // Files renamed or moved on disk: their tabs and their open document sessions follow.
+  const remapOpenedPaths = useCallback((sourcePath: string, targetPath: string) => {
+    remapWorkspaceTabPaths(sourcePath, targetPath)
+    remapOpenedDocuments(sourcePath, targetPath)
+  }, [remapOpenedDocuments, remapWorkspaceTabPaths])
   const treeActions = useWorkspaceTreeActions({
     activeDocument,
     activeResourcePath,
     applyWorkspaceDocument,
     clearActiveDocumentSession,
     filterWorkspaceTabs,
-    hasDocumentSnapshot,
+    forgetOpenedDocuments,
     hasUnsavedChanges,
     persistActiveDocument,
-    pruneOpenedDocumentDrafts,
-    rememberDocumentSnapshot,
-    remapWorkspaceTabPaths,
+    remapWorkspaceTabPaths: remapOpenedPaths,
     renameWorkspaceTabPath,
     renameKitableChildrenIndexPath: kitableChildrenIndex.renameKitablePath,
     setActiveResourcePath,
@@ -521,7 +503,6 @@ export function WorkspaceScreen({
     setSaving,
     setSelectedPlatform,
     treeState: workspaceTree,
-    updateSnapshots,
   })
   const {
     createDocument,
@@ -698,11 +679,10 @@ export function WorkspaceScreen({
     hasPendingRevision: Boolean(documentSession.activeDocumentRevision),
     activeDocument,
     activeDocumentFormat,
-    applyWorkspaceDocument,
-    bumpEditorReset,
+    restoreSavedVersion,
+    replaceActiveDocumentText,
     editorLocked: editorView.locked,
     importInputRef,
-    setDraftContent,
     setEditorView,
     setError,
     setFeedback,
@@ -735,11 +715,9 @@ export function WorkspaceScreen({
     treeState: workspaceTree,
     renameKitableChildrenIndexPath: kitableChildrenIndex.renameKitablePath,
     ensureActiveDocumentSaved,
-    snapshots,
-    updateSnapshots,
     setAgentModifiedDocumentPaths,
     remapWorkspaceTabPaths,
-    remapOpenedDocumentDrafts,
+    remapOpenedDocuments,
     setActiveResourcePath,
     setSaving,
     setError,
@@ -960,7 +938,6 @@ export function WorkspaceScreen({
               onSaveDocumentTitle: saveDocumentTitle,
               onToolbarMount: handleDocumentToolbarMount,
               onSetEditorMode: setEditorMode,
-              clearFeedback: () => setFeedback(''),
             }}
           />
         )}

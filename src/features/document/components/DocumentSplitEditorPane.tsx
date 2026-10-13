@@ -2,6 +2,7 @@ import { EditorView } from '@codemirror/view'
 import { type PointerEvent as ReactPointerEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MarkdownSourceEditor, type MarkdownCursorSnapshot } from './MarkdownSourceEditor'
+import type { DocumentTextSource } from '@/features/document/kdm/documentTextSource'
 import {
   clampSplitEditorRatio,
   readSplitEditorRatio,
@@ -10,17 +11,15 @@ import {
 import { hydrateMermaidBlocks } from '@/services/mermaid'
 
 export function DocumentSplitEditorPane({
-  value,
+  source,
   previewHtml,
   readOnly,
-  onChange,
   onCursorChange,
   documentPath,
 }: {
-  value: string
+  source: DocumentTextSource
   previewHtml: string
   readOnly: boolean
-  onChange: (value: string) => void
   onCursorChange?: (snapshot: MarkdownCursorSnapshot) => void
   documentPath?: string
 }) {
@@ -145,9 +144,8 @@ export function DocumentSplitEditorPane({
       >
         <div className="document-markdown-pane">
           <MarkdownSourceEditor
-            value={value}
+            source={source}
             readOnly={readOnly}
-            onChange={onChange}
             placeholder={t('splitEditor.sourcePlaceholder')}
             onCreateEditor={handleCreateEditor}
             onCursorChange={onCursorChange}

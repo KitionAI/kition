@@ -26,7 +26,7 @@ export type WorkspaceScreenTopbarInput = {
     activeDocument: WorkspaceDocument | null
     activeDocumentFormat: WorkspaceDocumentFormat
     hasUnsavedChanges: boolean
-    getOpenedDocumentDraftEntry: (path: string) => unknown
+    isOpenedDocumentModified: (path: string) => boolean
   }
   tabs: {
     workspaceTabs: WorkspaceTab[]
@@ -53,7 +53,7 @@ export function buildWorkspaceTopbarProps(input: WorkspaceScreenTopbarInput): To
       activeTabId: tabs.activeWorkspaceTabId,
       activeDocumentPath: activeDocument?.path,
       hasUnsavedChanges: documentSession.hasUnsavedChanges,
-      getOpenedDocumentDraftEntry: documentSession.getOpenedDocumentDraftEntry,
+      isOpenedDocumentModified: documentSession.isOpenedDocumentModified,
       workflowOpen: input.workflowOpen,
       closeTab: tabs.closeTab,
       activateTab: tabs.activateWorkspaceTab,

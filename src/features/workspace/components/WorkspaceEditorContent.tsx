@@ -1,4 +1,4 @@
-import type { DocumentTranslationSupport } from '@/features/document/public'
+import type { DocumentSession, DocumentTranslationSupport, OpenedDocumentEntry } from '@/features/document/public'
 import type { ComponentProps } from 'react'
 import { lazy, Suspense, useCallback, useEffect, useMemo, type ReactNode } from 'react'
 import { BookOpen } from 'lucide-react'
@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/registry/ui/button'
 import { AppErrorBoundary } from '@/components/AppErrorBoundary'
 import { PaneErrorTrigger } from '@/features/workspace/testing/paneErrorTrigger'
-import type { OpenedDocumentDraftCacheEntry } from '@/features/document/lib/openedDocumentDrafts'
 import type {
   DocumentRevisionDecision,
   PendingDocumentRevision,
@@ -120,6 +119,8 @@ type WorkspaceEditorContentProps = {
   activeDocument: WorkspaceDocument | null
   activeDocumentFormat: WorkspaceDocumentFormat
   activeDocumentRevision: PendingDocumentRevision | null
+  /** The active Markdown document's session, once its replica is open (editors bind to it). */
+  activeDocumentSession: DocumentSession | null
   activeWorkspaceTab: WorkspaceTab | undefined
   activeWorkspaceTabId: string
   documentTitle: string
@@ -128,11 +129,10 @@ type WorkspaceEditorContentProps = {
   editorLocked: boolean
   editorMode: 'rich' | 'split' | 'source' | 'preview'
   editorPreviewHtml: string
-  editorResetVersions: Record<string, number>
   documentRevisionSaving: boolean
   documentEditorFocusRequest?: number
   galleryPanelProps: ComponentProps<typeof WorkspaceMediaPanel> | null
-  getOpenedDocumentDraftEntry: (path: string) => OpenedDocumentDraftCacheEntry | null
+  getOpenedDocument: (path: string) => OpenedDocumentEntry | null
   whiteboardAgentAvailable?: boolean
   whiteboardAgentBusy?: boolean
   onWhiteboardAgentBridgeChange?: (path: string, bridge: WhiteboardAgentBridge | null) => void
@@ -159,7 +159,6 @@ type WorkspaceEditorContentProps = {
   onSaveDocumentTitle: (nextTitle: string) => void
   onDecideDocumentRevisionChange: (changeId: string, decision: DocumentRevisionDecision) => void
   onResolveAllDocumentRevisionChanges: (decision: DocumentRevisionDecision) => void
-  onSplitEditorChange: (value: string) => void
 
   onOpenDocument?: (path: string, opts?: { line?: number; section?: string }) => void
   onTableAgentOpenChange: (open: boolean) => void
@@ -181,6 +180,7 @@ export function WorkspaceEditorContent({
   activeDocument,
   activeDocumentFormat,
   activeDocumentRevision,
+  activeDocumentSession,
   activeWorkspaceTab,
   activeWorkspaceTabId,
   documentTitle,
@@ -189,11 +189,10 @@ export function WorkspaceEditorContent({
   editorLocked,
   editorMode,
   editorPreviewHtml,
-  editorResetVersions,
   documentRevisionSaving,
   documentEditorFocusRequest = 0,
   galleryPanelProps,
-  getOpenedDocumentDraftEntry,
+  getOpenedDocument,
   whiteboardAgentAvailable = false,
   whiteboardAgentBusy = false,
   designAgentAvailable = false,
@@ -217,7 +216,6 @@ export function WorkspaceEditorContent({
   onSaveDocumentTitle,
   onDecideDocumentRevisionChange,
   onResolveAllDocumentRevisionChanges,
-  onSplitEditorChange,
   onOpenDocument,
   onTableAgentOpenChange,
   onToolbarMount,
@@ -408,7 +406,7 @@ export function WorkspaceEditorContent({
         {workspaceTabs
           .filter((tab): tab is Extract<WorkspaceTab, { type: 'document' }> => tab.type === 'document')
           .map((tab) => {
-            const entry = getOpenedDocumentDraftEntry(tab.path)
+            const entry = getOpenedDocument(tab.path)
             if (!entry || entry.format !== 'data') {
               return null
             }
@@ -535,27 +533,29 @@ export function WorkspaceEditorContent({
             </>
           ) : null}
           <div className="workspace-document-shell__body">
-            {editorMode === 'split' ? (
+            {editorMode === 'split' && !activeDocumentSession ? <EditorPaneFallback /> : null}
+            {editorMode === 'split' && activeDocumentSession ? (
               <EditorPaneBoundary>
                 <DocumentSplitEditorPane
-                  value={draftContent}
+                  key={activeDocumentSession.path}
+                  source={activeDocumentSession}
                   previewHtml={editorPreviewHtml}
                   readOnly={!hasActiveDocument || editorLocked}
-                  onChange={onSplitEditorChange}
                   onCursorChange={handleMarkdownCursorChange}
                   documentPath={activeDocument?.path ?? ''}
                 />
               </EditorPaneBoundary>
             ) : null}
-            {editorMode === 'source' ? (
+            {editorMode === 'source' && !activeDocumentSession ? <EditorPaneFallback /> : null}
+            {editorMode === 'source' && activeDocumentSession ? (
               <div className="document-editor-view is-active">
                 <div className="document-markdown-split document-markdown-split--single">
                   <div className="document-markdown-pane">
                     <EditorPaneBoundary>
                       <MarkdownSourceEditor
-                        value={draftContent}
+                        key={activeDocumentSession.path}
+                        source={activeDocumentSession}
                         readOnly={!hasActiveDocument || editorLocked}
-                        onChange={onSplitEditorChange}
                         placeholder={t('editor.sourcePlaceholder')}
                         onCursorChange={handleMarkdownCursorChange}
                         documentPath={activeDocument?.path ?? ''}
@@ -574,7 +574,7 @@ export function WorkspaceEditorContent({
               {workspaceTabs
                 .filter((tab): tab is Extract<WorkspaceTab, { type: 'document' }> => tab.type === 'document')
                 .map((tab) => {
-                  const entry = getOpenedDocumentDraftEntry(tab.path)
+                  const entry = getOpenedDocument(tab.path)
                   if (!entry || entry.format === 'data' || entry.format === 'html') {
                     return null
                   }
@@ -586,18 +586,22 @@ export function WorkspaceEditorContent({
                   if (!isActiveDocumentTab) {
                     return null
                   }
+                  // The editor binds to the session once the document's replica is open.
+                  if (activeDocumentSession?.path !== entry.document.path) {
+                    return <EditorPaneFallback key={`${tab.uid || tab.path}:opening`} />
+                  }
 
                   return (
                     <div
-                      key={`${tab.uid || tab.path}:${editorResetVersions[tab.path] || 0}`}
+                      key={tab.uid || tab.path}
                       className="document-rich-editor-stack__pane is-active"
                     >
                       <EditorPaneBoundary paneId="document">
                         <DocumentMarkdownEditorPane
                           documentPath={entry.document.path}
+                          source={activeDocumentSession}
                           value={draftContent}
                           readOnly={editorLocked}
-                          onChange={onSplitEditorChange}
                           onNavigate={onOpenDocument}
                           inlineTitleSlot={inlineTitleElement}
                           onToolbarMount={onToolbarMount}

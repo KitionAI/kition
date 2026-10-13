@@ -3,7 +3,8 @@ import { markdown as markdownLanguage } from '@codemirror/lang-markdown'
 import { EditorView } from '@codemirror/view'
 import CodeMirror, { type ReactCodeMirrorRef } from '@uiw/react-codemirror'
 import { forwardRef, useCallback, useMemo } from 'react'
-import { useBufferedCodeMirrorValue } from '@/features/document/editor/hooks/useBufferedCodeMirrorValue'
+import { useDocumentBinding } from '@/features/document/editor/hooks/useDocumentBinding'
+import type { DocumentTextSource } from '@/features/document/kdm/documentTextSource'
 import {
   canPasteNativeDocumentClipboardImage,
   collectDocumentClipboardImages,
@@ -20,6 +21,9 @@ const basicSetup = {
   highlightSelectionMatches: false,
   autocompletion: false,
   searchKeymap: false,
+  // Undo and redo are the replica's (`useDocumentBinding`).
+  history: false,
+  historyKeymap: false,
 } as const
 
 export type MarkdownCursorSnapshot = {
@@ -28,9 +32,9 @@ export type MarkdownCursorSnapshot = {
 }
 
 type MarkdownSourceEditorProps = {
-  value: string
+  /** The document text the editor edits (a session's replica). */
+  source: DocumentTextSource
   readOnly: boolean
-  onChange: (value: string) => void
   placeholder?: string
   className?: string
   onCreateEditor?: (view: EditorView) => void
@@ -80,19 +84,15 @@ function createImagePasteExtension(documentPath: string) {
 
 export const MarkdownSourceEditor = forwardRef<ReactCodeMirrorRef, MarkdownSourceEditorProps>(
   function MarkdownSourceEditor(
-    { value, readOnly, onChange, placeholder, className, onCreateEditor, onCursorChange, documentPath = '' },
+    { source, readOnly, placeholder, className, onCreateEditor, onCursorChange, documentPath = '' },
     ref,
   ) {
-    const {
-      compositionExtension,
-      editorValue,
-      handleEditorChange,
-    } = useBufferedCodeMirrorValue({ value, onChange })
+    const { initialText, extension: bindingExtension } = useDocumentBinding(source)
 
     const extensions = useMemo(
       () => [
         markdownLanguage(),
-        compositionExtension,
+        bindingExtension,
         EditorView.lineWrapping,
         createImagePasteExtension(documentPath),
         ...(onCursorChange
@@ -128,7 +128,7 @@ export const MarkdownSourceEditor = forwardRef<ReactCodeMirrorRef, MarkdownSourc
           },
         }),
       ],
-      [compositionExtension, onCursorChange, documentPath],
+      [bindingExtension, onCursorChange, documentPath],
     )
 
     const handleCreateEditor = useCallback((view: EditorView) => {
@@ -142,8 +142,7 @@ export const MarkdownSourceEditor = forwardRef<ReactCodeMirrorRef, MarkdownSourc
     return (
       <CodeMirror
         ref={ref}
-        value={editorValue}
-        onChange={handleEditorChange}
+        value={initialText}
         readOnly={readOnly}
         extensions={extensions}
         basicSetup={basicSetup}

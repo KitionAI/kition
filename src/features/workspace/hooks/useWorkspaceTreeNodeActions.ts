@@ -13,7 +13,6 @@ import {
   syncDocumentFolderDeleted,
   syncDocumentFolderMoved,
 } from '@/features/workspace/lib/documentIdentity'
-import { readDocumentSnapshots } from '@/features/document/lib/documentSnapshots'
 import type { UseWorkspaceTreeStateResult } from '@/features/workspace/hooks/useWorkspaceTreeState'
 import type { WorkspaceTab, WorkspaceTreeDropPosition, WorkspaceTreeNode } from '@/features/workspace/lib/workspace'
 import {
@@ -55,7 +54,7 @@ type UseWorkspaceTreeNodeActionsOptions = {
   filterWorkspaceTabs: (predicate: (tab: WorkspaceTab) => boolean) => void
   hasUnsavedChanges: boolean
   persistActiveDocument: (reason?: 'auto' | 'shortcut') => Promise<boolean>
-  pruneOpenedDocumentDrafts: (predicate: (path: string) => boolean) => void
+  forgetOpenedDocuments: (predicate: (path: string) => boolean) => void
   refreshWorkspaceDocuments: (preferredPath?: string, options?: { silent?: boolean; treeOnly?: boolean }) => Promise<boolean>
   remapWorkspaceTabPaths: (sourcePath: string, targetPath: string) => void
   renameWorkspaceTabPath: (fromPath: string, toPath: string) => void
@@ -73,7 +72,6 @@ type UseWorkspaceTreeNodeActionsOptions = {
     UseWorkspaceTreeStateResult,
     'expandFolders' | 'flatTreeNodes' | 'updateTreeMetadata'
   >
-  updateSnapshots: (nextSnapshots: ReturnType<typeof readDocumentSnapshots>) => void
 }
 
 // Keep the backend's DataDocument path column in sync with the on-disk file
@@ -123,7 +121,7 @@ export function useWorkspaceTreeNodeActions({
   filterWorkspaceTabs,
   hasUnsavedChanges,
   persistActiveDocument,
-  pruneOpenedDocumentDrafts,
+  forgetOpenedDocuments,
   refreshWorkspaceDocuments,
   remapWorkspaceTabPaths,
   renameWorkspaceTabPath,
@@ -136,7 +134,6 @@ export function useWorkspaceTreeNodeActions({
   setFeedback,
   setSaving,
   treeState,
-  updateSnapshots,
 }: UseWorkspaceTreeNodeActionsOptions) {
   const { expandFolders, flatTreeNodes, updateTreeMetadata } = treeState
   const confirm = useConfirm()
@@ -186,11 +183,6 @@ export function useWorkspaceTreeNodeActions({
       // Keep the DataDocument mapping for .kitable files so restoring the file
       // from the system Trash also restores its records and workflows.
       updateTreeMetadata((current) => removeWorkspaceTreeBranchMetadata(current, node.path, childFolderPath))
-      updateSnapshots(
-        readDocumentSnapshots().filter(
-          (snapshot) => snapshot.path !== node.path && !snapshot.path.startsWith(childPrefix),
-        ),
-      )
       setAgentModifiedDocumentPaths(
         (current) => new Set([...current].filter((path) => path !== node.path && !path.startsWith(childPrefix))),
       )
@@ -200,7 +192,7 @@ export function useWorkspaceTreeNodeActions({
           || (tab.path !== node.path && !tab.path.startsWith(childPrefix))
         ),
       )
-      pruneOpenedDocumentDrafts((path) => path === node.path || path.startsWith(childPrefix))
+      forgetOpenedDocuments((path) => path === node.path || path.startsWith(childPrefix))
 
       if (activeResourcePath === node.path || activeResourcePath.startsWith(childPrefix)) {
         setActiveResourcePath('')
@@ -230,7 +222,7 @@ export function useWorkspaceTreeNodeActions({
     flatTreeNodes,
     hasUnsavedChanges,
     persistActiveDocument,
-    pruneOpenedDocumentDrafts,
+    forgetOpenedDocuments,
     rootPath,
     setActiveResourcePath,
     setActiveWorkspaceTabId,
@@ -239,7 +231,6 @@ export function useWorkspaceTreeNodeActions({
     setFeedback,
     setSaving,
     t,
-    updateSnapshots,
     updateTreeMetadata,
   ])
 

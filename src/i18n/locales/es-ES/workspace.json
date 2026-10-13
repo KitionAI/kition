@@ -226,6 +226,11 @@
       "closeUnsavedKeep": "Mantener abierto"
     }
   },
+  "documentFile": {
+    "closeUnsavedMessage": "No se pudieron guardar tus últimos cambios en este documento. ¿Cerrarlo y descartarlos?",
+    "closeUnsavedDiscard": "Descartar cambios y cerrar",
+    "closeUnsavedKeep": "Mantener abierto"
+  },
   "board": {
     "canvasTitle": "Lienzo del tablero {{title}}",
     "canvasDescription": "Un tablero SVG nativo interactivo con herramientas de dibujo y diagramas.",

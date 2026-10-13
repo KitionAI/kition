@@ -41,10 +41,9 @@ async function mount(overrides: Partial<Options> = {}) {
   ]
   const calls = {
     setTreeItems: vi.fn((updater: unknown) => { if (typeof updater === 'function') updater(treeItems) }),
-    updateSnapshots: vi.fn(),
     setAgentModifiedDocumentPaths: vi.fn(),
     remapWorkspaceTabPaths: vi.fn(),
-    remapOpenedDocumentDrafts: vi.fn(),
+    remapOpenedDocuments: vi.fn(),
     setActiveResourcePath: vi.fn(),
     renameKitableChildrenIndexPath: vi.fn(),
     setSaving: vi.fn(),
@@ -62,7 +61,6 @@ async function mount(overrides: Partial<Options> = {}) {
       setTreeItems: calls.setTreeItems as never,
       updateTreeMetadata: vi.fn(),
     },
-    snapshots: [{ path: 'notes/old.md', name: 'old.md' }],
     ...calls,
     ...overrides,
   }
@@ -90,16 +88,15 @@ afterEach(async () => {
 })
 
 describe('useWorkspaceDocumentTitleRename', () => {
-  it('moves the file and remaps snapshots, tabs, drafts, and modified paths', async () => {
+  it('moves the file and remaps tabs, open document sessions, and modified paths', async () => {
     mockMoveWorkspaceDocument.mockResolvedValue({ path: 'notes/new.md', name: 'new.md', content: 'body' })
     const { api, calls } = await mount()
 
     await act(async () => { await api.saveDocumentTitle('new') })
 
     expect(mockMoveWorkspaceDocument).toHaveBeenCalledWith({ path: 'notes/old.md', target_folder: 'notes', target_name: 'new.md' })
-    expect(calls.updateSnapshots).toHaveBeenCalledWith([{ path: 'notes/new.md', name: 'new.md' }])
     expect(calls.remapWorkspaceTabPaths).toHaveBeenCalledWith('notes/old.md', 'notes/new.md')
-    expect(calls.remapOpenedDocumentDrafts).toHaveBeenCalledWith('notes/old.md', 'notes/new.md')
+    expect(calls.remapOpenedDocuments).toHaveBeenCalledWith('notes/old.md', 'notes/new.md')
     expect(calls.setAgentModifiedDocumentPaths).toHaveBeenCalledTimes(1)
     expect(calls.setFeedback).toHaveBeenLastCalledWith('feedback.nameUpdated')
     expect(calls.setSaving.mock.calls.map(([value]) => value)).toEqual([true, false])

@@ -21,8 +21,8 @@ function renderActions(save: () => Promise<boolean>, hasPendingRevision = false)
     actions = useWorkspaceTopbarActions({
       activeDocument: { path: 'draft.md', name: 'draft.md', content: 'Saved', format: 'markdown' },
       activeDocumentFormat: 'markdown', ensureActiveDocumentSaved: save, hasPendingRevision,
-      applyWorkspaceDocument: vi.fn(), bumpEditorReset: vi.fn(), editorLocked: false,
-      setDraftContent: vi.fn(), setEditorView: vi.fn(), setError: error, setFeedback: vi.fn(),
+      restoreSavedVersion: vi.fn(() => true), replaceActiveDocumentText: vi.fn(() => true), editorLocked: false,
+      setEditorView: vi.fn(), setError: error, setFeedback: vi.fn(),
       setItemMenuOpen: vi.fn(), importInputRef: { current: null },
     })
     return null

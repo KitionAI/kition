@@ -1264,5 +1264,10 @@
   "autosave": {
     "contentLoadingSkipped": "Le contenu du document n'a pas fini de charger ; cette sauvegarde automatique a été ignorée.",
     "failed": "Échec de la sauvegarde automatique du document"
+  },
+  "session": {
+    "saveConflict": "Le fichier de ce document a continué de changer pendant que Kition l’enregistrait. Vos modifications sont conservées et seront de nouveau enregistrées.",
+    "closeSaveFailed": "Impossible d’enregistrer {{title}} avant sa fermeture.",
+    "openFailed": "Kition n’a pas pu ouvrir ce document."
   }
 }

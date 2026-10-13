@@ -1,4 +1,4 @@
-import { redo, undo } from '@codemirror/commands'
+import { redoDocument as redo, undoDocument as undo } from '@/features/document/kdm/documentHistory'
 import { openSearchPanel } from '@codemirror/search'
 import type { EditorView } from '@codemirror/view'
 import {

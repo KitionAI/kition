@@ -14,13 +14,12 @@ function buildInput(overrides: Partial<WorkspaceScreenEditorInput> = {}) {
     activeDocument: { path: 'notes/plan.md', name: 'plan.md', content: '' },
     activeDocumentFormat: 'markdown' as const,
     activeDocumentRevision: { path: 'notes/plan.md' } as never,
+    activeDocumentSession: null,
     draftContent: 'draft',
-    editorResetVersions: {},
     documentRevisionSaving: false,
-    getOpenedDocumentDraftEntry: () => null,
+    getOpenedDocument: () => null,
     decideDocumentRevisionChange: vi.fn(),
     resolveAllDocumentRevisionChanges: vi.fn(),
-    handleDraftContentChange: vi.fn(),
     openDocument: vi.fn(),
   }
   const agentPanel = { open: false, setOpen: vi.fn(), setHistoryOpen: vi.fn() }
@@ -49,7 +48,6 @@ function buildInput(overrides: Partial<WorkspaceScreenEditorInput> = {}) {
     onSaveDocumentTitle: vi.fn(),
     onToolbarMount: vi.fn(),
     onSetEditorMode: vi.fn(),
-    clearFeedback: vi.fn(),
     ...overrides,
   }
   return { input, documentSession, agentPanel, templateDialogs }
@@ -85,8 +83,8 @@ describe('buildWorkspaceEditorContentProps', () => {
     expect(none.documentSession.decideDocumentRevisionChange).not.toHaveBeenCalled()
   })
 
-  it('opens the Agent panel and focuses the composer, and clears feedback on split edits', () => {
-    const { input, agentPanel, documentSession } = buildInput()
+  it('opens the Agent panel and focuses the composer', () => {
+    const { input, agentPanel } = buildInput()
     const props = buildWorkspaceEditorContentProps(input)
     const listener = vi.fn()
     window.addEventListener('kition:agent:focus-composer', listener)
@@ -98,10 +96,6 @@ describe('buildWorkspaceEditorContentProps', () => {
 
     props.onTableAgentOpenChange(false)
     expect(agentPanel.setOpen).toHaveBeenLastCalledWith(false)
-
-    props.onSplitEditorChange('next')
-    expect(documentSession.handleDraftContentChange).toHaveBeenCalledWith('next')
-    expect(input.clearFeedback).toHaveBeenCalled()
   })
 
   it('opens template dialogs at the workspace root from the empty state', () => {

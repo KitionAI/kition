@@ -62,7 +62,10 @@ import { useWordGoal } from '@/features/document/editor/hooks/useWordGoal'
 import { useDocumentAgentActions } from '@/features/document/hooks/useDocumentAgentActions'
 import { pickRandomMarkdownFile } from '@/features/document/editor/vault/vault-files'
 import { clearVaultFileCache } from '@/features/document/editor/vault/vault-files'
-import { writeWorkspaceDocument } from '@/services/desktop'
+import { person } from '@/lib/kdm'
+import { LOCAL_PERSON } from '@/features/document/kdm/documentSession'
+import { writeWorkspaceMarkdown } from '@/features/document/kdm/documentSessions'
+import type { DocumentTextSource } from '@/features/document/kdm/documentTextSource'
 import { DocumentEditorToolbar } from '@/features/document/editor/editor/DocumentEditorToolbar'
 import { DocumentTitleHostPortal } from '@/features/document/components/DocumentTitleHostPortal'
 import {
@@ -76,9 +79,11 @@ import { notify } from '@/lib/notify'
 import { cn } from '@/lib/utils'
 
 export type DocumentMarkdownEditorPaneProps = {
+  /** The document text the editor edits (the session's replica). */
+  source: DocumentTextSource
+  /** The document text as last published, for statistics and side panels (never written back). */
   value: string
   readOnly: boolean
-  onChange: (value: string) => void
   documentPath: string
   suggestProviders?: SuggestProviders
 
@@ -140,9 +145,9 @@ function countWords(text: string): number {
 }
 
 export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPane({
+  source,
   value,
   readOnly,
-  onChange,
   documentPath,
   suggestProviders,
   onNavigate,
@@ -539,7 +544,7 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
       const slash = newPath.lastIndexOf('/')
       const base = (slash >= 0 ? newPath.slice(slash + 1) : newPath).replace(/\.md$/i, '')
       try {
-        await writeWorkspaceDocument(newPath, `# ${base}\n\n`)
+        await writeWorkspaceMarkdown(newPath, `# ${base}\n\n`, 'create note')
         invalidateVaultWikilinkResolver()
         onNavigate?.(newPath)
       } catch (err) {
@@ -565,11 +570,11 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
     onNavigate,
   })
 
-  const handleChange = useCallback(
+  const applyProperties = useCallback(
     (next: string) => {
-      onChange(next)
+      source.replaceText(next, person(LOCAL_PERSON, 'properties'))
     },
-    [onChange],
+    [source],
   )
 
   const openSideTab = useCallback((tab: SideTab) => {
@@ -625,7 +630,7 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
     const newPath = `${dir}${trimmed}.md`
     try {
       const body = `# ${trimmed}\n\n${selected.trim()}\n`
-      await writeWorkspaceDocument(newPath, body)
+      await writeWorkspaceMarkdown(newPath, body, 'extract to note')
       clearVaultFileCache()
 
       view.dispatch({
@@ -1017,9 +1022,8 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
           <div className="relative min-h-0 min-w-0 flex-1">
             <DocumentEditor
               ref={editorRef}
-              value={value}
+              source={source}
               readOnly={readOnly || readingView}
-              onChange={handleChange}
               sourcePath={documentPath}
               revealSourceOnFocus={!readingView}
               drawSelection={!readingView}
@@ -1206,8 +1210,9 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
       <DocumentPropertiesDialog
         open={propertiesOpen}
         onOpenChange={setPropertiesOpen}
-        source={value}
-        onApply={onChange}
+        // The live text when it opens: its result replaces the whole text.
+        source={propertiesOpen ? source.text() : value}
+        onApply={applyProperties}
       />
       <DocumentBrokenLinksDialog
         open={brokenLinksOpen}
@@ -1269,7 +1274,7 @@ export const DocumentMarkdownEditorPane = memo(function DocumentMarkdownEditorPa
   && prev.onSetReadingView === next.onSetReadingView
   && prev.onAskAgent === next.onAskAgent
   && prev.onNavigate === next.onNavigate
-  && prev.onChange === next.onChange
+  && prev.source === next.source
   && prev.suggestProviders === next.suggestProviders)
 
 function SideTabButton({

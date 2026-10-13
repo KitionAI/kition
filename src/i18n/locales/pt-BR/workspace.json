@@ -226,6 +226,11 @@
       "closeUnsavedKeep": "Manter aberto"
     }
   },
+  "documentFile": {
+    "closeUnsavedMessage": "Não foi possível salvar suas últimas alterações neste documento. Fechá-lo e descartá-las?",
+    "closeUnsavedDiscard": "Descartar alterações e fechar",
+    "closeUnsavedKeep": "Manter aberto"
+  },
   "board": {
     "canvasTitle": "Tela do quadro {{title}}",
     "canvasDescription": "Um quadro SVG nativo interativo com ferramentas de desenho e diagrama.",

@@ -3,6 +3,7 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { createReplicaTextSource } from '@/features/document/kdm/documentTextSource'
 import { MarkdownSourceEditor } from './MarkdownSourceEditor'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -27,9 +28,8 @@ describe('MarkdownSourceEditor cursor context', () => {
     await act(async () => {
       root = createRoot(container!)
       root.render(createElement(MarkdownSourceEditor, {
-        value: 'A\n\nB',
+        source: createReplicaTextSource('A\n\nB'),
         readOnly: false,
-        onChange: vi.fn(),
         onCursorChange,
         onCreateEditor: (nextView) => {
           view = nextView

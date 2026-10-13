@@ -67,7 +67,6 @@ function baseProps() {
     editorLocked: false,
     editorMode: 'rich',
     editorPreviewHtml: '',
-    editorResetVersions: {},
     galleryPanelProps: null,
     browserPanelPhase: 'empty',
     browserToolbarStatus: {
@@ -81,9 +80,9 @@ function baseProps() {
     onBrowserForward: vi.fn(),
     onBrowserReload: vi.fn(),
     onBrowserStop: vi.fn(),
-    getOpenedDocumentDraftEntry: vi.fn(() => null),
+    getOpenedDocument: vi.fn(() => null),
+    activeDocumentSession: null,
     onSaveDocumentTitle: vi.fn(),
-    onSplitEditorChange: vi.fn(),
     onOpenWorkflows: vi.fn(),
     onCreateDocument: vi.fn(),
     onCreateTable: vi.fn(),
@@ -143,7 +142,8 @@ describe('WorkspaceEditorContent workflow routing', () => {
       hasActiveDocument: true,
       documentEditorFocusRequest: 1,
       onAgentInsertionContextChange,
-      getOpenedDocumentDraftEntry: vi.fn(() => ({ document, format: 'markdown' })),
+      getOpenedDocument: vi.fn(() => ({ document, format: 'markdown' })),
+      activeDocumentSession: { path: document.path } as never,
     })
 
     expect(container.querySelector('[data-testid="mock-document-editor"]')?.getAttribute('data-focus-request')).toBe('1')
@@ -178,7 +178,8 @@ describe('WorkspaceEditorContent workflow routing', () => {
       editorMode: 'source',
       draftContent: document.content,
       onAgentInsertionContextChange,
-      getOpenedDocumentDraftEntry: vi.fn(() => ({ document, format: 'markdown' })),
+      getOpenedDocument: vi.fn(() => ({ document, format: 'markdown' })),
+      activeDocumentSession: { path: document.path } as never,
     })
 
     const sourceProps = mocks.markdownSourceEditorProps.mock.calls.at(-1)?.[0] as {
@@ -223,7 +224,8 @@ describe('WorkspaceEditorContent workflow routing', () => {
       editorMode: 'source' as const,
       draftContent: document.content,
       onAgentInsertionContextChange,
-      getOpenedDocumentDraftEntry: vi.fn(() => ({ document, format: 'markdown' as const })),
+      getOpenedDocument: vi.fn(() => ({ document, format: 'markdown' as const })),
+      activeDocumentSession: { path: document.path } as never,
     }
     await render(props)
 
@@ -266,7 +268,8 @@ describe('WorkspaceEditorContent workflow routing', () => {
       editorMode: 'split',
       draftContent: document.content,
       onAgentInsertionContextChange: vi.fn(),
-      getOpenedDocumentDraftEntry: vi.fn(() => ({ document, format: 'markdown' })),
+      getOpenedDocument: vi.fn(() => ({ document, format: 'markdown' })),
+      activeDocumentSession: { path: document.path } as never,
     })
 
     await vi.waitFor(() => {

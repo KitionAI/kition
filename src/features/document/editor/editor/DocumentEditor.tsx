@@ -9,7 +9,8 @@ import { forwardRef, useMemo } from 'react'
 import { cn } from '@/lib/utils'
 import type { DocumentAgentActionRequest } from '@/features/document/lib/documentAgentActions'
 
-import { useBufferedCodeMirrorValue } from '../hooks/useBufferedCodeMirrorValue'
+import type { DocumentTextSource } from '@/features/document/kdm/documentTextSource'
+import { useDocumentBinding } from '../hooks/useDocumentBinding'
 import type { WikilinkParsed } from '../lib/wikilink-parser'
 import type { TagParsed } from '../lib/tag-parser'
 import {
@@ -59,6 +60,9 @@ const basicSetup = {
   highlightSelectionMatches: false,
   autocompletion: false,
   searchKeymap: true,
+  // Undo and redo are the replica's (`useDocumentBinding`).
+  history: false,
+  historyKeymap: false,
 
   syntaxHighlighting: false,
 } as const
@@ -106,11 +110,11 @@ export type CursorInfo = {
 }
 
 export type DocumentEditorProps = {
-  value: string
+  /** The document text the editor edits (a session's replica); edits go to it, not through React state. */
+  source: DocumentTextSource
   readOnly?: boolean
   /** Whether the content DOM is focusable/editable. Default true. */
   editable?: boolean
-  onChange: (value: string) => void
   placeholder?: string
   className?: string
 
@@ -159,10 +163,9 @@ export type DocumentEditorProps = {
 export const DocumentEditor = forwardRef<ReactCodeMirrorRef, DocumentEditorProps>(
   function DocumentEditor(
     {
-      value,
+      source,
       readOnly = false,
       editable = true,
-      onChange,
       placeholder,
       className,
       sourcePath,
@@ -187,16 +190,12 @@ export const DocumentEditor = forwardRef<ReactCodeMirrorRef, DocumentEditorProps
     },
     ref,
   ) {
-    const {
-      compositionExtension,
-      editorValue,
-      handleEditorChange,
-    } = useBufferedCodeMirrorValue({ value, onChange })
+    const { initialText, extension: bindingExtension } = useDocumentBinding(source)
 
     const extensions = useMemo(
       () => [
         markdownExtension,
-        compositionExtension,
+        bindingExtension,
         preserveHighlightExtension(),
         clickPositionFixExtension(),
         documentSearchExtension(),
@@ -275,7 +274,7 @@ export const DocumentEditor = forwardRef<ReactCodeMirrorRef, DocumentEditorProps
         ...(extraExtensions ?? []),
         editorTheme,
       ],
-      [compositionExtension, sourcePath, revealSourceOnFocus, resolveWikilink, onWikilinkNavigate, onCreateMissingNote, onTagNavigate, onCursorLineChange, onCursorChange, suggestProviders, loadEmbed, onEmbedNavigate, onMarkdownLinkNavigate, onImagePreview, onCopySelection, onAskAgent, onTranslate, extraExtensions],
+      [bindingExtension, sourcePath, revealSourceOnFocus, resolveWikilink, onWikilinkNavigate, onCreateMissingNote, onTagNavigate, onCursorLineChange, onCursorChange, suggestProviders, loadEmbed, onEmbedNavigate, onMarkdownLinkNavigate, onImagePreview, onCopySelection, onAskAgent, onTranslate, extraExtensions],
     )
 
     const effectiveBasicSetup = useMemo(
@@ -286,8 +285,7 @@ export const DocumentEditor = forwardRef<ReactCodeMirrorRef, DocumentEditorProps
     return (
       <CodeMirror
         ref={ref}
-        value={editorValue}
-        onChange={handleEditorChange}
+        value={initialText}
         readOnly={readOnly}
         editable={editable}
         extensions={extensions}

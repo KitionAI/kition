@@ -88,7 +88,7 @@ function Surface() {
     filterWorkspaceTabs: () => {},
     hasUnsavedChanges: false,
     persistActiveDocument: async () => true,
-    pruneOpenedDocumentDrafts: () => {},
+    forgetOpenedDocuments: () => {},
     refreshWorkspaceDocuments,
     remapWorkspaceTabPaths: () => {},
     renameWorkspaceTabPath: () => {},
@@ -100,7 +100,6 @@ function Surface() {
     setFeedback: () => {},
     setSaving: () => {},
     treeState: { expandFolders: () => {}, flatTreeNodes: nodes, updateTreeMetadata: () => {} },
-    updateSnapshots: () => {},
   })
   return null
 }

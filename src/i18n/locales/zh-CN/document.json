@@ -1264,5 +1264,10 @@
   "autosave": {
     "contentLoadingSkipped": "文档内容尚未加载完成，已跳过本次自动保存。",
     "failed": "文档自动保存失败"
+  },
+  "session": {
+    "saveConflict": "Kition 保存此文档时，其文件仍在不断变化。你的编辑已保留，稍后会再次保存。",
+    "closeSaveFailed": "关闭前无法保存 {{title}}。",
+    "openFailed": "Kition 无法打开此文档。"
   }
 }

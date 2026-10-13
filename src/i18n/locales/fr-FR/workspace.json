@@ -226,6 +226,11 @@
       "closeUnsavedKeep": "Garder ouvert"
     }
   },
+  "documentFile": {
+    "closeUnsavedMessage": "Vos dernières modifications de ce document n’ont pas pu être enregistrées. Le fermer et les abandonner ?",
+    "closeUnsavedDiscard": "Abandonner les modifications et fermer",
+    "closeUnsavedKeep": "Garder ouvert"
+  },
   "board": {
     "canvasTitle": "Canevas du tableau {{title}}",
     "canvasDescription": "Un tableau SVG natif interactif avec des outils de dessin et de diagramme.",

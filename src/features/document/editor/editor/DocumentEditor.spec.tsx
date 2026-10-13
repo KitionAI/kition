@@ -3,6 +3,8 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { createReplicaTextSource, type DocumentTextSource } from '@/features/document/kdm/documentTextSource'
+import { undoDocument } from '@/features/document/kdm/documentHistory'
 import { DocumentEditor, type DocumentEditorProps } from './DocumentEditor'
 
 ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true
@@ -14,14 +16,13 @@ let container: HTMLDivElement | null = null
 let root: Root | null = null
 
 async function renderEditor(
-  value: string,
-  onChange: (nextValue: string) => void,
+  source: DocumentTextSource,
   onCreateEditor?: (view: EditorView) => void,
   props: Partial<DocumentEditorProps> = {},
 ) {
   await act(async () => {
     root ??= createRoot(container!)
-    root.render(createElement(DocumentEditor, { ...props, value, onChange, onCreateEditor }))
+    root.render(createElement(DocumentEditor, { ...props, source, onCreateEditor }))
     await Promise.resolve()
   })
 }
@@ -33,8 +34,8 @@ afterEach(async () => {
   container = null
 })
 
-describe('DocumentEditor IME input', () => {
-  it('keeps the composed text and selection when a delayed controlled value arrives', async () => {
+describe('DocumentEditor on a document replica', () => {
+  it('publishes an IME composition’s edits and shows a replica change after it ends', async () => {
     container = document.createElement('div')
     document.body.appendChild(container)
 
@@ -42,10 +43,10 @@ describe('DocumentEditor IME input', () => {
     const latinComposition = `${initialValue}z`
     const intermediateValue = `${initialValue}${HAN_ZHONG}`
     const finalValue = `${intermediateValue}${HAN_WEN}`
-    const onChange = vi.fn<(nextValue: string) => void>()
+    const source = createReplicaTextSource(initialValue)
     let view: EditorView | null = null
 
-    await renderEditor(initialValue, onChange, (nextView) => {
+    await renderEditor(source, (nextView) => {
       view = nextView
     })
 
@@ -60,22 +61,23 @@ describe('DocumentEditor IME input', () => {
       editorView.dispatch({
         changes: { from: initialValue.length, insert: 'z' },
         selection: { anchor: latinComposition.length },
+        userEvent: 'input.type.compose',
       })
     })
-    await renderEditor(latinComposition, onChange)
+    expect(source.text()).toBe(latinComposition)
+    // A parent render while composing changes nothing: the editor is not driven by a value.
+    await renderEditor(source)
 
     await act(async () => {
       editorView.dispatch({
-        changes: {
-          from: initialValue.length,
-          to: latinComposition.length,
-          insert: HAN_ZHONG,
-        },
+        changes: { from: initialValue.length, to: latinComposition.length, insert: HAN_ZHONG },
         selection: { anchor: intermediateValue.length },
+        userEvent: 'input.type.compose',
       })
       editorView.dispatch({
         changes: { from: intermediateValue.length, insert: HAN_WEN },
         selection: { anchor: finalValue.length },
+        userEvent: 'input.type.compose',
       })
       editorView.contentDOM.dispatchEvent(new CompositionEvent('compositionend', {
         bubbles: true,
@@ -83,22 +85,45 @@ describe('DocumentEditor IME input', () => {
       }))
     })
 
-    await renderEditor(intermediateValue, onChange)
     await vi.waitFor(() => {
       expect(editorView.state.doc.toString()).toBe(finalValue)
       expect(editorView.state.selection.main.head).toBe(finalValue.length)
-      expect(onChange).toHaveBeenLastCalledWith(finalValue)
-    }, {
-      timeout: 3000,
-    })
+      expect(source.text()).toBe(finalValue)
+    }, { timeout: 3000 })
 
-    await renderEditor(finalValue, onChange)
-    await renderEditor('External replacement', onChange)
+    // A whole-text setter (a dialog, an import) reaches the editor as a minimal change.
+    await act(async () => {
+      source.replaceText('External replacement', { kind: 'person', principal: 'user:local', label: 'import' })
+    })
     await vi.waitFor(() => {
       expect(editorView.state.doc.toString()).toBe('External replacement')
-    }, {
-      timeout: 3000,
+    }, { timeout: 3000 })
+  })
+
+  it('undoes with the replica’s history, which survives a remount', async () => {
+    container = document.createElement('div')
+    document.body.appendChild(container)
+    const source = createReplicaTextSource('Draft')
+    let view: EditorView | null = null
+    await renderEditor(source, (nextView) => {
+      view = nextView
     })
+    await act(async () => {
+      view!.dispatch({ changes: { from: 5, insert: ' one' }, userEvent: 'input.type' })
+    })
+    expect(source.text()).toBe('Draft one')
+    await act(async () => root?.unmount())
+    root = null
+    await renderEditor(source, (nextView) => {
+      view = nextView
+    })
+    expect(view!.state.doc.toString()).toBe('Draft one')
+    await act(async () => {
+      expect(undoDocument(view!)).toBe(true)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+    expect(source.text()).toBe('Draft')
+    expect(view!.state.doc.toString()).toBe('Draft')
   })
 })
 
@@ -113,7 +138,7 @@ describe('DocumentEditor publishing copy', () => {
     })
     let view: EditorView | null = null
 
-    await renderEditor(source, vi.fn(), (nextView) => {
+    await renderEditor(createReplicaTextSource(source), (nextView) => {
       view = nextView
     }, { onCopySelection })
 
@@ -143,7 +168,7 @@ describe('DocumentEditor publishing copy', () => {
     const source = '# Heading\n\nParagraph with **formatting**.'
     let view: EditorView | null = null
 
-    await renderEditor(source, vi.fn(), (nextView) => {
+    await renderEditor(createReplicaTextSource(source), (nextView) => {
       view = nextView
     }, {
       readOnly: true,

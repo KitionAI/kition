@@ -30,7 +30,7 @@ function buildInput(overrides: Partial<WorkspaceScreenTopbarInput> = {}) {
       activeDocument: { path: 'plan.md', name: 'plan.md', content: '', updated_at: '2026-09-01T00:00:00Z' },
       activeDocumentFormat: 'markdown',
       hasUnsavedChanges: false,
-      getOpenedDocumentDraftEntry: () => null,
+      isOpenedDocumentModified: () => false,
     },
     tabs: { workspaceTabs: [documentTab], activeWorkspaceTab: documentTab, activeWorkspaceTabId: 'doc', activateWorkspaceTab: vi.fn(), closeTab: vi.fn() },
     workflowOpen: false,
@@ -59,7 +59,7 @@ describe('buildWorkspaceTopbarProps', () => {
     props.onOpenWorkspaceFolder()
     expect(input.openWorkspaceFolder).toHaveBeenCalledWith('plan.md')
 
-    const empty = buildInput({ documentSession: { activeDocument: null, activeDocumentFormat: 'markdown', hasUnsavedChanges: false, getOpenedDocumentDraftEntry: () => null } })
+    const empty = buildInput({ documentSession: { activeDocument: null, activeDocumentFormat: 'markdown', hasUnsavedChanges: false, isOpenedDocumentModified: () => false } })
     const emptyProps = buildWorkspaceTopbarProps(empty.input)
     emptyProps.onOpenWorkspaceFolder()
     expect(empty.input.openWorkspaceFolder).not.toHaveBeenCalled()

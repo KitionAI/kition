@@ -226,6 +226,11 @@
       "closeUnsavedKeep": "保持打开"
     }
   },
+  "documentFile": {
+    "closeUnsavedMessage": "此文档的最新更改无法保存。要关闭它并舍弃这些更改吗？",
+    "closeUnsavedDiscard": "舍弃更改并关闭",
+    "closeUnsavedKeep": "保持打开"
+  },
   "board": {
     "canvasTitle": "{{title}}画板画布",
     "canvasDescription": "一个带有绘图和图表工具的交互式原生 SVG 画板。",

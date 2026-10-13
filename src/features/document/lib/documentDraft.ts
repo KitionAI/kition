@@ -25,23 +25,3 @@ export function readWorkspaceDocumentDraft(document: WorkspaceDocument) {
     markdown: document.content,
   }
 }
-
-export function visibleDraftLength(markdown: string) {
-  return String(markdown || '').replace(/[\s​‌‍﻿]/g, '').length
-}
-
-export function getWorkspaceDocumentStoredContent(options: {
-  document: WorkspaceDocument | null
-  format: WorkspaceDocumentFormat
-  markdown: string
-}) {
-  if (!options.document) {
-    return ''
-  }
-
-  if (options.format === 'data') {
-    return options.document.content
-  }
-
-  return options.markdown
-}

@@ -10,10 +10,11 @@ type UseWorkspaceTopbarActionsOptions = {
   activeDocumentFormat: WorkspaceDocumentFormat
   ensureActiveDocumentSaved: () => Promise<boolean>
   hasPendingRevision: boolean
-  applyWorkspaceDocument: (document: WorkspaceDocument, options?: { resetEditor?: boolean; restoreFromCache?: boolean }) => void
-  bumpEditorReset: () => void
+  /** Puts the active document back to its saved file text, as an undoable edit. */
+  restoreSavedVersion: () => boolean
+  /** Replaces the active document's text as one undoable edit (its session saves it). */
+  replaceActiveDocumentText: (text: string, label: string) => boolean
   editorLocked: boolean
-  setDraftContent: Dispatch<SetStateAction<string>>
   setEditorView: Dispatch<SetStateAction<EditorViewPreferences>>
   setError: (message: string) => void
   setFeedback: (message: string) => void
@@ -26,11 +27,10 @@ export function useWorkspaceTopbarActions({
   activeDocumentFormat,
   ensureActiveDocumentSaved,
   hasPendingRevision,
-  applyWorkspaceDocument,
-  bumpEditorReset,
+  restoreSavedVersion,
+  replaceActiveDocumentText,
   editorLocked,
   importInputRef,
-  setDraftContent,
   setEditorView,
   setError,
   setFeedback,
@@ -60,20 +60,20 @@ export function useWorkspaceTopbarActions({
   }, [activeDocument, activeDocumentFormat, ensureActiveDocumentSaved, hasPendingRevision, setError, setItemMenuOpen, t])
 
   const setEditorMode = useCallback((mode: EditorMode) => {
+    // The editors of each mode bind to the same replica: switching keeps the text and its undo history.
     setEditorView((current) => ({ ...current, editorMode: mode }))
-    bumpEditorReset()
     setItemMenuOpen(false)
-  }, [bumpEditorReset, setEditorView, setItemMenuOpen])
+  }, [setEditorView, setItemMenuOpen])
 
   const restoreSavedDraft = useCallback(() => {
     if (!activeDocument) {
       return
     }
 
-    applyWorkspaceDocument(activeDocument)
+    restoreSavedVersion()
     setFeedback(t('feedback.restoredSavedVersion'))
     setItemMenuOpen(false)
-  }, [activeDocument, applyWorkspaceDocument, setFeedback, setItemMenuOpen, t])
+  }, [activeDocument, restoreSavedVersion, setFeedback, setItemMenuOpen, t])
 
   const runActiveDataTableAction = useCallback((action: TableAction) => {
     if (!activeDocument || activeDocumentFormat !== 'data') {
@@ -93,8 +93,7 @@ export function useWorkspaceTopbarActions({
 
     try {
       const content = await file.text()
-      setDraftContent(content)
-      bumpEditorReset()
+      replaceActiveDocumentText(content, 'import')
       setFeedback(`Imported ${file.name}. It will be saved back to the current document automatically.`)
     } catch {
       setError(t('errors.importMarkdownFailed'))
@@ -105,10 +104,9 @@ export function useWorkspaceTopbarActions({
       }
     }
   }, [
-    bumpEditorReset,
     editorLocked,
     importInputRef,
-    setDraftContent,
+    replaceActiveDocumentText,
     setError,
     setFeedback,
     setItemMenuOpen,

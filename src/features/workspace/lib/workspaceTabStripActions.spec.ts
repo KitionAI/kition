@@ -21,7 +21,7 @@ function build(overrides: Partial<WorkspaceTabStripActionsInput> = {}) {
     activeTabId: 'doc-a',
     activeDocumentPath: 'a.md',
     hasUnsavedChanges: false,
-    getOpenedDocumentDraftEntry: (path) => (path === 'b.md' ? { content: 'draft' } : null),
+    isOpenedDocumentModified: (path) => path === 'b.md',
     workflowOpen: false,
     closeTab,
     activateTab,

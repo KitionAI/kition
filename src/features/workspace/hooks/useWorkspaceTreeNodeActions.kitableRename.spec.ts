@@ -55,7 +55,7 @@ function Surface({ apiRef, remapWorkspaceTabPaths, renameWorkspaceTabPath }: Har
     filterWorkspaceTabs: () => {},
     hasUnsavedChanges: false,
     persistActiveDocument: async () => true,
-    pruneOpenedDocumentDrafts: () => {},
+    forgetOpenedDocuments: () => {},
     refreshWorkspaceDocuments: async () => true,
     remapWorkspaceTabPaths,
     renameWorkspaceTabPath,
@@ -71,7 +71,6 @@ function Surface({ apiRef, remapWorkspaceTabPaths, renameWorkspaceTabPath }: Har
       flatTreeNodes: [],
       updateTreeMetadata: () => {},
     },
-    updateSnapshots: () => {},
   })
   useEffect(() => { apiRef.current = api })
   apiRef.current = api
