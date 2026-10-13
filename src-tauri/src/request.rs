@@ -25,6 +25,11 @@ impl Request {
         }
     }
 
+    /// The raw field, for structured values such as objects.
+    pub fn value(&self, key: &str) -> Option<&Value> {
+        self.field(key)
+    }
+
     pub fn trimmed(&self, key: &str) -> String {
         self.str(key).trim().to_owned()
     }

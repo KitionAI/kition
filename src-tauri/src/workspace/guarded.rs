@@ -23,13 +23,18 @@ impl GuardedWrites {
         expected: Option<&str>,
         write: impl FnOnce() -> io::Result<T>,
     ) -> io::Result<T> {
+        self.exclusive(path, || check(path, expected).and_then(|()| write()))
+    }
+
+    /// Runs `work` while no other guarded call touches `path`.
+    pub fn exclusive<T>(&self, path: &Path, work: impl FnOnce() -> io::Result<T>) -> io::Result<T> {
         let lock = {
             let mut locks = self.locks.lock().unwrap_or_else(PoisonError::into_inner);
             locks.entry(path.to_path_buf()).or_default().clone()
         };
         let result = {
             let _guard = lock.lock().unwrap_or_else(PoisonError::into_inner);
-            check(path, expected).and_then(|()| write())
+            work()
         };
         let mut locks = self.locks.lock().unwrap_or_else(PoisonError::into_inner);
         if locks

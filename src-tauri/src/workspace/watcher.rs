@@ -185,6 +185,8 @@ mod tests {
     #[test]
     fn ignores_internal_paths() {
         assert!(is_ignored(".kition/state.json"));
+        assert!(is_ignored(".kition/docs/index.json"));
+        assert!(is_ignored(".kition/docs/doc-1/snapshot.bin"));
         assert!(is_ignored("a/node_modules/x.js"));
         assert!(is_ignored("a/.DS_Store"));
         assert!(is_ignored("a/.doc.md.1.x.tmp"));

@@ -21,8 +21,8 @@ use crate::proxy::ProxyManager;
 use crate::request::Request;
 use crate::supervisor::portal_base_url;
 use crate::updates::UpdateManager;
-use crate::workspace::files;
 use crate::workspace::safety::write_atomically;
+use crate::workspace::{docstore, files};
 use crate::{feedback, pdf, window, workspace_window};
 
 type CommandResult<T = Value> = Result<T, String>;
@@ -416,6 +416,27 @@ pub async fn write_workspace_document(app: AppHandle, request: Option<Value>) ->
     })
     .await
 }
+
+// --- Document replica store (`.kition/docs`) -----------------------------
+
+macro_rules! document_store_command {
+    ($name:ident, $op:path) => {
+        #[tauri::command]
+        pub async fn $name(app: AppHandle, request: Option<Value>) -> CommandResult {
+            blocking(move || {
+                let state = app.state::<Desktop>();
+                $op(&state.workspace_root(), &state.guarded, &req(request))
+            })
+            .await
+        }
+    };
+}
+
+document_store_command!(read_document_store, docstore::read_entry_request);
+document_store_command!(write_document_store, docstore::write_entry_request);
+document_store_command!(delete_document_store, docstore::delete_entry_request);
+document_store_command!(read_document_index, docstore::read_index_request);
+document_store_command!(write_document_index, docstore::write_index_request);
 
 #[tauri::command]
 pub async fn open_workspace_file(
