@@ -20,10 +20,10 @@ import { EditorView } from '@codemirror/view'
 import { afterEach, afterAll, describe, expect, it } from 'vitest'
 import { loadavg } from 'node:os'
 import { performance } from 'node:perf_hooks'
-import { randomActor, Replica, Rng, person, type ObjectId, type Origin } from '@/lib/kdm'
+import { newDocId, randomActor, Replica, Rng, person, system, type ObjectId, type Origin } from '@/lib/kdm'
 import { TextBinding } from './codeMirrorBinding'
 import { applyEditsToString, mergeEdits, mergeExternalText, type TextEdit } from './documentMerge'
-import { DOCUMENT_BODY, documentSchema } from './documentSchema'
+import { DOCUMENT_BODY, DOCUMENT_ROOT, documentSchema } from './documentSchema'
 import { createDocumentReplica, documentBody, documentRootId, renderText, type LineStyle } from './documentText'
 
 const RUN = process.env.KITION_DOC_BENCH === '1'
@@ -268,6 +268,29 @@ function measureMerge(markdown: string): { whole: number; diff: number; edits: n
   return { whole, diff, edits }
 }
 
+const DELETE_COUNT = 500
+
+/** A replica holding `markdown` inserted in one piece, as `createDocumentReplica` did before it wrote the body in pieces. */
+function singleInsertReplica(markdown: string): { replica: Replica; rootId: ObjectId } {
+  const { replica, result: rootId } = Replica.createWith(documentSchema, newDocId(), randomActor(), system('create'), (tx) => {
+    const id = tx.create(DOCUMENT_ROOT, {})
+    tx.textInsert(id, DOCUMENT_BODY, 0, markdown)
+    return id
+  })
+  return { replica, rootId }
+}
+
+/** `DELETE_COUNT` one-character deletes at line starts spread over the text, in one transaction (last first, so positions stay put). */
+function measureDeletes(markdown: string, build: (markdown: string) => { replica: Replica; rootId: ObjectId }): number {
+  const positions: number[] = []
+  for (let index = 0; index < DELETE_COUNT; index += 1) positions.push(markdown.lastIndexOf('\n', Math.floor(((index + 0.5) / DELETE_COUNT) * markdown.length)) + 1)
+  return benchmark(1, () => build(markdown), ({ replica, rootId }) => {
+    replica.transact(person('bench:delete'), (tx) => {
+      for (let index = positions.length - 1; index >= 0; index -= 1) tx.textDelete(rootId, DOCUMENT_BODY, positions[index], 1)
+    })
+  })
+}
+
 function measureSave(replica: Replica, rootId: ObjectId, style: LineStyle): number {
   return benchmark(SAVE_RUNS, () => undefined, () => {
     renderText(documentBody(replica, rootId), style)
@@ -329,6 +352,8 @@ function measureDocument(label: string, targetBytes: number): void {
 
   const pasteText = markdownOfSize(100_000)
   addTiming(label, '100 KB paste', measurePaste(markdown, pasteText), '–')
+  addTiming(label, `${DELETE_COUNT} scattered deletes, body in pieces (createDocumentReplica)`, measureDeletes(markdown, (text) => createDocumentReplica(text, randomActor())), '–')
+  addTiming(label, `${DELETE_COUNT} scattered deletes, body in one insertion (before)`, measureDeletes(markdown, singleInsertReplica), '–')
   const merge = measureMerge(markdown)
   addTiming(label, 'mergeExternalText (1% external, 0.5% local)', merge.whole, '–')
   addTiming(label, `mergeEdits alone (diff + merge, ${merge.edits} edits)`, merge.diff, label === '1 MB' ? '< 100 ms' : label === '5 MB' ? '< 500 ms' : '–')
