@@ -1,5 +1,7 @@
 import { EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view'
 
+import { replicaChange } from '@/features/document/kdm/codeMirrorBinding'
+
 import { expandSnippet, loadSnippets } from '../../hooks/useSnippets'
 
 const STOP_CHARS = new Set([' ', '\t', '\n'])
@@ -65,18 +67,22 @@ export function snippetExpandExtension(options: SnippetExtensionOptions = {}) {
         if (!update.docChanged) return
 
         let injectedWhitespace = false
-        update.changes.iterChanges((_fromA, _toA, _fromB, _toB, inserted) => {
-          if (injectedWhitespace) return
-          const text = inserted.toString()
-          if (!text) return
+        for (const transaction of update.transactions) {
+          // Text from the replica (a merged file change, another view, an undo) was not typed here.
+          if (!transaction.docChanged || transaction.annotation(replicaChange)) continue
+          transaction.changes.iterChanges((_fromA, _toA, _fromB, _toB, inserted) => {
+            if (injectedWhitespace) return
+            const text = inserted.toString()
+            if (!text) return
 
-          for (const ch of text) {
-            if (STOP_CHARS.has(ch)) {
-              injectedWhitespace = true
-              break
+            for (const ch of text) {
+              if (STOP_CHARS.has(ch)) {
+                injectedWhitespace = true
+                break
+              }
             }
-          }
-        })
+          })
+        }
         if (!injectedWhitespace) return
 
         queueMicrotask(() => tryExpand(update.view, loader, title))
