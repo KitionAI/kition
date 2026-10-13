@@ -1,10 +1,31 @@
 import { describe, expect, it } from 'vitest'
-import { person, type Replica } from '@/lib/kdm'
+import { KdmError, person, Replica, system } from '@/lib/kdm'
 import { createBoardElementRecord, type BoardBindingRecord, type BoardElementRecord, type BoardRecord } from '../lib/boardRecords'
 import type { WhiteboardElement } from '../lib/whiteboardTypes'
 import { boardRootId, readBoardRecords, readBoardTitle } from './boardKdmRead'
 import { writeBoardDiff } from './boardKdmWrite'
-import { createBoardFromRecords, createEmptyBoard, decodeBoardFile, encodeBoardFile, mergeBoardFile } from './boardKdmFile'
+import { boardSchema } from './boardSchema'
+import {
+  createBoardFromRecords,
+  createEmptyBoard,
+  decodeBoardFile,
+  encodeBoardFile,
+  mergeBoardFile,
+  readBoardFileCopy,
+  replicaIncludes,
+} from './boardKdmFile'
+
+const BOM = String.fromCodePoint(0xfeff)
+
+/** A board written by a build whose schema is one version ahead, optionally of document `docId`. */
+function newerBoardText(docId: string = createEmptyBoard('Plan', 9n).docId): string {
+  const replica = Replica.createWith({ ...boardSchema, schemaVersion: boardSchema.schemaVersion + 1 }, docId, 9n, system('create'), (tx) => {
+    const page = tx.create('Page', { name: 'Page 1' })
+    const root = tx.create('Board', { title: 'Plan' })
+    tx.listInsert(root, 'pages', 0, page)
+  }).replica
+  return encodeBoardFile(replica)
+}
 
 const me = person('user:test')
 
@@ -56,6 +77,27 @@ describe('boardKdmFile', () => {
     expect(decodeBoardFile(v1, 1n)).toEqual({ kind: 'unsupported', reason: 'version-1' })
   })
 
+  it('accepts a leading byte order mark', () => {
+    const v1 = JSON.stringify({ format: 'kition-board', version: 1, records: [] })
+    expect(decodeBoardFile(`${BOM}${v1}`, 1n)).toEqual({ kind: 'unsupported', reason: 'version-1' })
+    const board = createBoardFromRecords('Plan', 1n, sampleRecords())
+    expect(readBoardRecords(decodeBoard(`${BOM}${encodeBoardFile(board)}`, 2n))).toEqual(readBoardRecords(board))
+  })
+
+  it('refuses a board of a newer schema as newer-version', () => {
+    expect(decodeBoardFile(newerBoardText(), 1n)).toEqual({ kind: 'unsupported', reason: 'newer-version' })
+  })
+
+  it('refuses a KDM document of another kit as not-a-board', () => {
+    const other = Replica.create({ ...boardSchema, kit: 'kit.other' }, createEmptyBoard('x', 9n).docId, 9n)
+    expect(decodeBoardFile(encodeBoardFile(other), 1n)).toEqual({ kind: 'unsupported', reason: 'not-a-board' })
+  })
+
+  it('throws for an invalid actor whatever the text', () => {
+    expect(() => decodeBoardFile('garbage', -1n)).toThrow(KdmError)
+    expect(() => decodeBoardFile(encodeBoardFile(createEmptyBoard('Plan', 1n)), (1n << 64n) - 1n)).toThrow(KdmError)
+  })
+
   it.each([
     ['garbage', 'not json at all'],
     ['an empty file', ''],
@@ -94,11 +136,51 @@ describe('boardKdmFile', () => {
     expect(mergeBoardFile(mine, 'garbage')).toBe('unsupported')
   })
 
+  it('refuses to merge a copy written under a newer schema and imports nothing', () => {
+    const mine = createEmptyBoard('Plan', 1n)
+    const before = mine.stateText()
+    expect(mergeBoardFile(mine, newerBoardText(mine.docId))).toBe('unsupported')
+    expect(mine.stateText()).toBe(before)
+  })
+
+  it('throws instead of reporting unsupported when called inside a transaction', () => {
+    const mine = createEmptyBoard('Plan', 1n)
+    const theirs = decodeBoard(encodeBoardFile(mine), 2n)
+    addElement(theirs, rect('theirs', 0, readBoardRecords(theirs)[0].id))
+    const text = encodeBoardFile(theirs)
+    expect(() => mine.transact(me, () => mergeBoardFile(mine, text))).toThrow(/transactions do not nest/)
+  })
+
+  it('reads a copy without importing it and tells whether a replica includes it', () => {
+    const mine = createEmptyBoard('Plan', 1n)
+    const theirs = decodeBoard(encodeBoardFile(mine), 2n)
+    addElement(theirs, rect('theirs', 0, readBoardRecords(theirs)[0].id))
+    const copy = readBoardFileCopy(mine, encodeBoardFile(theirs))
+    expect(copy).not.toBeNull()
+    expect(replicaIncludes(mine, copy!.version)).toBe(false)
+    expect(elementIds(mine)).toEqual([])
+    mine.importChanges(copy!.changes)
+    expect(replicaIncludes(mine, copy!.version)).toBe(true)
+    addElement(mine, rect('mine', 1, readBoardRecords(mine)[0].id))
+    expect(replicaIncludes(mine, copy!.version)).toBe(true)
+    expect(replicaIncludes(theirs, mine.version())).toBe(false)
+    expect(readBoardFileCopy(mine, encodeBoardFile(createEmptyBoard('Other', 3n)))).toBeNull()
+    expect(readBoardFileCopy(mine, 'garbage')).toBeNull()
+  })
+
   it('builds a board from records with nothing to undo', () => {
     const board = createBoardFromRecords('Plan', 1n, sampleRecords())
     expect(board.canUndo()).toBe(false)
     expect(board.undo()).toBe(false)
     expect(elementIds(board)).toEqual(['c1', 'r1', 'r2', 'r3'])
+  })
+
+  it('throws for ids outside the KDM pattern or shared by a page and an element', () => {
+    expect(() => createBoardFromRecords('Plan', 1n, [rect('bad id!', 0, 'page:a')])).toThrow(KdmError)
+    expect(() => createBoardFromRecords('Plan', 1n, [
+      { record_type: 'page', id: 'shared', name: 'P', index: 0 },
+      rect('shared', 0, 'shared'),
+    ])).toThrow(KdmError)
   })
 
   it('gives records without pages one default page', () => {

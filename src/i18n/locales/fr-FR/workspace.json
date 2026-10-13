@@ -204,6 +204,16 @@
   "editor": {
     "sourcePlaceholder": "Modifier la source Markdown ici…"
   },
+  "whiteboard": {
+    "file": {
+      "title": "Impossible d’ouvrir {{title}}",
+      "unsupported": "Ce tableau a été enregistré dans un ancien format que cette version de Kition n’ouvre plus. Le fichier n’a pas été modifié.",
+      "newerVersion": "Ce tableau a été créé avec une version plus récente de Kition. Mettez Kition à jour pour l’ouvrir. Le fichier n’a pas été modifié.",
+      "notABoard": "Ce fichier n’est pas un tableau Kition ou il est endommagé. Le fichier n’a pas été modifié.",
+      "startNew": "Commencer un nouveau tableau",
+      "startNewHint": "Le nouveau tableau remplace le contenu de ce fichier."
+    }
+  },
   "board": {
     "canvasTitle": "Canevas du tableau {{title}}",
     "canvasDescription": "Un tableau SVG natif interactif avec des outils de dessin et de diagramme.",

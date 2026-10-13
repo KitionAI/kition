@@ -3,10 +3,6 @@ import { expect, test, type Page } from '@playwright/test'
 
 import { mockLocalWorkspaceApi } from './helpers/mockApi'
 import { getWorkspaceStorageKey } from '../src/features/onboarding/workspaceStorageKey'
-import {
-  buildBoardDocument,
-  serializeBoardDocument,
-} from '../src/features/whiteboard/lib/boardSerialization'
 import { createBoardRecordsFromElements } from '../src/features/whiteboard/lib/boardRecords'
 
 const CAPTURE_ENABLED = process.env.KITION_CAPTURE_README_ASSETS === '1'
@@ -16,135 +12,144 @@ const TABLE_PATH = 'Content Pipeline.kitable'
 const BOARD_PATH = 'Product Launch.kiboard'
 const WELCOME_CONTENT = readFileSync(new URL('../public/onboarding/welcome.md', import.meta.url), 'utf8')
 const LOGO_CONTENT = readFileSync(new URL('../public/onboarding/logo.png', import.meta.url))
-const BOARD_CONTENT = serializeBoardDocument(buildBoardDocument({
-  title: 'Product Launch',
-  viewport: { x: 0, y: 0, zoom: 1 },
-  records: createBoardRecordsFromElements([
-    {
-      id: 'research-to-strategy',
-      kind: 'connector',
-      start: { x: 230, y: 145 },
-      end: { x: 300, y: 220 },
-      style: { strokeColor: 'blue' },
-    },
-    {
-      id: 'strategy-to-message',
-      kind: 'connector',
-      start: { x: 480, y: 220 },
-      end: { x: 540, y: 145 },
-      style: { strokeColor: 'green' },
-    },
-    {
-      id: 'strategy-to-audience',
-      kind: 'connector',
-      start: { x: 300, y: 260 },
-      end: { x: 230, y: 335 },
-      style: { strokeColor: 'orange' },
-    },
-    {
-      id: 'strategy-to-channels',
-      kind: 'connector',
-      start: { x: 480, y: 260 },
-      end: { x: 540, y: 335 },
-      style: { strokeColor: 'orange' },
-    },
-    {
-      id: 'research',
-      kind: 'rectangle',
-      x: 80,
-      y: 100,
-      width: 150,
-      height: 90,
-      text: 'Research',
-      style: { fillColor: 'blue', strokeColor: 'blue' },
-    },
-    {
-      id: 'launch-strategy',
-      kind: 'rectangle',
-      x: 300,
-      y: 195,
-      width: 180,
-      height: 90,
-      text: 'Launch strategy',
-      style: { fillColor: 'purple', strokeColor: 'purple' },
-    },
-    {
-      id: 'messaging',
-      kind: 'rectangle',
-      x: 540,
-      y: 100,
-      width: 120,
-      height: 90,
-      text: 'Messaging',
-      style: { fillColor: 'green', strokeColor: 'green' },
-    },
-    {
-      id: 'audience',
-      kind: 'rectangle',
-      x: 80,
-      y: 290,
-      width: 150,
-      height: 90,
-      text: 'Audience',
-      style: { fillColor: 'orange', strokeColor: 'orange' },
-    },
-    {
-      id: 'channels',
-      kind: 'rectangle',
-      x: 540,
-      y: 290,
-      width: 120,
-      height: 90,
-      text: 'Channels',
-      style: { fillColor: 'orange', strokeColor: 'orange' },
-    },
-    {
-      id: 'x-box-example',
-      kind: 'rectangle',
-      x: 80,
-      y: 430,
-      width: 92,
-      height: 72,
-      shapeType: 'x-box',
-      style: { fillStyle: 'none', strokeColor: 'red' },
-    },
-    {
-      id: 'x-box-label',
-      kind: 'text',
-      x: 190,
-      y: 474,
-      text: 'Needs revision',
-      fontSize: 18,
-      style: { strokeColor: 'red' },
-    },
-    {
-      id: 'check-box-example',
-      kind: 'rectangle',
-      x: 280,
-      y: 430,
-      width: 92,
-      height: 72,
-      shapeType: 'check-box',
-      style: { fillStyle: 'none', strokeColor: 'green' },
-    },
-    {
-      id: 'check-box-label',
-      kind: 'text',
-      x: 390,
-      y: 474,
-      text: 'Ready to launch',
-      fontSize: 18,
-      style: { strokeColor: 'green' },
-    },
-  ], 'Product Launch'),
-}))
+/** Encoded by the page through the Vite dev server: Playwright's TypeScript transform cannot load the KDM. */
+const BOARD_FILE_MODULE = '/src/features/whiteboard/kdm/boardKdmFile.ts'
+const KDM_MODULE = '/src/lib/kdm/index.ts'
+const BOARD_RECORDS = createBoardRecordsFromElements([
+  {
+    id: 'research-to-strategy',
+    kind: 'connector',
+    start: { x: 230, y: 145 },
+    end: { x: 300, y: 220 },
+    style: { strokeColor: 'blue' },
+  },
+  {
+    id: 'strategy-to-message',
+    kind: 'connector',
+    start: { x: 480, y: 220 },
+    end: { x: 540, y: 145 },
+    style: { strokeColor: 'green' },
+  },
+  {
+    id: 'strategy-to-audience',
+    kind: 'connector',
+    start: { x: 300, y: 260 },
+    end: { x: 230, y: 335 },
+    style: { strokeColor: 'orange' },
+  },
+  {
+    id: 'strategy-to-channels',
+    kind: 'connector',
+    start: { x: 480, y: 260 },
+    end: { x: 540, y: 335 },
+    style: { strokeColor: 'orange' },
+  },
+  {
+    id: 'research',
+    kind: 'rectangle',
+    x: 80,
+    y: 100,
+    width: 150,
+    height: 90,
+    text: 'Research',
+    style: { fillColor: 'blue', strokeColor: 'blue' },
+  },
+  {
+    id: 'launch-strategy',
+    kind: 'rectangle',
+    x: 300,
+    y: 195,
+    width: 180,
+    height: 90,
+    text: 'Launch strategy',
+    style: { fillColor: 'purple', strokeColor: 'purple' },
+  },
+  {
+    id: 'messaging',
+    kind: 'rectangle',
+    x: 540,
+    y: 100,
+    width: 120,
+    height: 90,
+    text: 'Messaging',
+    style: { fillColor: 'green', strokeColor: 'green' },
+  },
+  {
+    id: 'audience',
+    kind: 'rectangle',
+    x: 80,
+    y: 290,
+    width: 150,
+    height: 90,
+    text: 'Audience',
+    style: { fillColor: 'orange', strokeColor: 'orange' },
+  },
+  {
+    id: 'channels',
+    kind: 'rectangle',
+    x: 540,
+    y: 290,
+    width: 120,
+    height: 90,
+    text: 'Channels',
+    style: { fillColor: 'orange', strokeColor: 'orange' },
+  },
+  {
+    id: 'x-box-example',
+    kind: 'rectangle',
+    x: 80,
+    y: 430,
+    width: 92,
+    height: 72,
+    shapeType: 'x-box',
+    style: { fillStyle: 'none', strokeColor: 'red' },
+  },
+  {
+    id: 'x-box-label',
+    kind: 'text',
+    x: 190,
+    y: 474,
+    text: 'Needs revision',
+    fontSize: 18,
+    style: { strokeColor: 'red' },
+  },
+  {
+    id: 'check-box-example',
+    kind: 'rectangle',
+    x: 280,
+    y: 430,
+    width: 92,
+    height: 72,
+    shapeType: 'check-box',
+    style: { fillStyle: 'none', strokeColor: 'green' },
+  },
+  {
+    id: 'check-box-label',
+    kind: 'text',
+    x: 390,
+    y: 474,
+    text: 'Ready to launch',
+    fontSize: 18,
+    style: { strokeColor: 'green' },
+  },
+], 'Product Launch')
 
 async function mockReadmeWorkspace(page: Page, activePath = WELCOME_PATH) {
   await page.addInitScript(
-    ({ boardContent, boardPath, vaultPath, welcomePath, tablePath, welcomeContent }) => {
+    ({ boardFileModule, boardPath, boardRecords, kdmModule, vaultPath, welcomePath, tablePath, welcomeContent }) => {
       const stateWindow = window as typeof window & Record<string, unknown>
       const secureStore = new Map<string, string>()
       const updatedAt = '2026-07-24T00:00:00.000Z'
+      let boardContent: Promise<string> | null = null
+      const readBoardContent = () => {
+        boardContent ??= Promise.all([
+          import(/* @vite-ignore */ boardFileModule),
+          import(/* @vite-ignore */ kdmModule),
+        ]).then(([{ createBoardFromRecords, encodeBoardFile }, { randomActor }]) => (
+          encodeBoardFile(createBoardFromRecords('Product Launch', randomActor(), boardRecords)) as string
+        ))
+        return boardContent
+      }
       const vault = {
         path: vaultPath,
         name: 'Kition Demo',
@@ -160,7 +165,7 @@ async function mockReadmeWorkspace(page: Page, activePath = WELCOME_PATH) {
             path: boardPath,
             name: boardPath,
             format: 'board' as const,
-            size: boardContent.length,
+            size: 0,
             updated_at: updatedAt,
           },
           {
@@ -233,13 +238,14 @@ async function mockReadmeWorkspace(page: Page, activePath = WELCOME_PATH) {
         ListWorkspaceDocuments: async () => makeListResponse(),
         ReadWorkspaceDocument: async (request: { path: string }) => {
           if (request.path === boardPath) {
+            const content = await readBoardContent()
             return {
               path: boardPath,
               name: boardPath,
-              content: boardContent,
+              content,
               format: 'board',
               updated_at: updatedAt,
-              size: boardContent.length,
+              size: content.length,
             }
           }
           if (request.path !== welcomePath) throw new Error(`document not found: ${request.path}`)
@@ -265,7 +271,9 @@ async function mockReadmeWorkspace(page: Page, activePath = WELCOME_PATH) {
     {
       vaultPath: VAULT_PATH,
       boardPath: BOARD_PATH,
-      boardContent: BOARD_CONTENT,
+      boardFileModule: BOARD_FILE_MODULE,
+      boardRecords: BOARD_RECORDS,
+      kdmModule: KDM_MODULE,
       welcomePath: WELCOME_PATH,
       tablePath: TABLE_PATH,
       welcomeContent: WELCOME_CONTENT,

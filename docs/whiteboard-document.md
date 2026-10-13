@@ -154,20 +154,31 @@ the document, and viewport/current-page live in per-user view state (above).
   commit, so a new board from a template starts with nothing to undo).
 - `encodeBoardFile` produces the envelope text; `decodeBoardFile` parses it
   back into a writable replica, or reports `unsupported` with reason
-  `'version-1'` (an old record-JSON file, recognized but refused) or
-  `'not-a-board'` (anything else unreadable).
+  `'version-1'` (an old record-JSON file, recognized but refused),
+  `'newer-version'` (a board written under a newer schema than this build
+  reads), or `'not-a-board'` (anything else unreadable). A leading byte
+  order mark is ignored.
 - `mergeBoardFile` imports another copy's changes (`Replica.importChanges`)
   into an open replica, answering `'merged'`, `'unchanged'`, or
-  `'unsupported'`.
+  `'unsupported'` (not a v2 board, another document, or a newer schema —
+  nothing is imported then). `readBoardFileCopy` checks a copy without
+  importing it, and `replicaIncludes` tells whether a replica already holds
+  a copy's changes.
 
-`useBoardDocument` opens a file by decoding it into a `BoardStore`; a
-version-1 file opens **read-only**, with a notice, and is never migrated or
-written back. Saving is guarded: writes pass the file's last-known contents
-as `expected` to `writeWorkspaceDocument`, so a write that would clobber a
+`useBoardDocument` opens a file by decoding it into a `BoardStore`; a file
+it cannot open (version-1, newer version, not a board) shows a **read-only**
+notice instead of the canvas and is never migrated or written back on its
+own — the notice offers to start a new Board in its place, except for a
+newer Kition's Board. Saves run 600 ms after an edit commits. Saving is
+guarded: writes pass the file's last-known contents as `expected_content`
+to `writeWorkspaceDocument`, so a write that would clobber a
 change made elsewhere is rejected; on that conflict, the document re-reads
 the file, merges it with `mergeBoardFile`, and saves again (with a bounded
-number of attempts). External changes to the file on disk are merged the
-same way, without discarding unsaved local edits. A pending save is flushed
+number of attempts; a failed save retries after 1 s, 2 s, and 4 s). External
+changes to the file on disk are merged the same way, without discarding
+unsaved local edits; while a gesture holds an import back, saving waits so a
+write never drops the file's changes. A file replaced by something that is
+not this board is never overwritten. A pending save is flushed
 immediately on unmount, on `beforeunload`, and when the open document's path
 changes, so no edit is lost to a debounce window.
 
@@ -217,4 +228,6 @@ native entry for `loro-crdt` (`tooling/vitest.config.ts` has no such alias).
 - `e2e/helpers/whiteboard.ts` builds `.kiboard` fixtures for Playwright specs
   using the v2 envelope (`encodeBoardFile`/`createBoardFromRecords`) rather
   than hand-built record JSON, so an end-to-end test opens exactly the file
-  format the editor itself writes.
+  format the editor itself writes. The page encodes them, importing
+  `boardKdmFile.ts` from the Vite dev server, because Playwright's own
+  TypeScript transform cannot load the KDM.

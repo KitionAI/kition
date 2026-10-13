@@ -1,7 +1,6 @@
 import type {
   WhiteboardElement,
   WhiteboardPoint,
-  WhiteboardViewport,
 } from './whiteboardTypes'
 
 export const BOARD_META_RECORD_ID = 'meta:board' as const
@@ -57,15 +56,6 @@ export type BoardRecord =
   | BoardElementRecord
   | BoardBindingRecord
   | BoardAssetRecord
-
-export type BoardDocument = {
-  format: 'kition-board'
-  version: 1
-  title: string
-  viewport: WhiteboardViewport
-  records: BoardRecord[]
-  updated_at: string
-}
 
 export function createBoardBaseRecords(title = 'Board'): BoardRecord[] {
   return [

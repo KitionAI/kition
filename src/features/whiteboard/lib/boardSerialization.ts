@@ -1,98 +1,36 @@
+/**
+ * Parsing and normalising board records from untrusted JSON: the `kition-board-clipboard` payload
+ * pasted from the system clipboard. The `.kiboard` file is a KDM document (`kdm/boardKdmFile.ts`).
+ */
 import {
   BOARD_META_RECORD_ID,
   DEFAULT_BOARD_PAGE_ID,
   cloneBoardRecord,
   compareBoardRecords,
-  createBoardBaseRecords,
   createBoardElementRecord,
   type BoardAssetRecord,
   type BoardBindingRecord,
-  type BoardDocument,
   type BoardMetaRecord,
   type BoardPageRecord,
   type BoardRecord,
 } from './boardRecords'
-import { clampWhiteboardZoom } from './whiteboardGeometry'
 import { normalizeWhiteboardStyle } from './whiteboardStyle'
 import type {
   WhiteboardElement,
   WhiteboardPoint,
   WhiteboardShapeType,
-  WhiteboardViewport,
 } from './whiteboardTypes'
 
-export const BOARD_FILE_EXTENSION = '.kiboard' as const
-export const BOARD_DOCUMENT_FORMAT = 'kition-board' as const
-export const BOARD_DOCUMENT_VERSION = 1 as const
 const MAX_BOARD_RECORDS = 20000
 const MAX_STROKE_POINTS = 10000
 
-export function createEmptyBoardDocument(title: string): BoardDocument {
-  const normalizedTitle = normalizeBoardTitle(title)
-  return {
-    format: BOARD_DOCUMENT_FORMAT,
-    version: BOARD_DOCUMENT_VERSION,
-    title: normalizedTitle,
-    viewport: { x: 0, y: 0, zoom: 1 },
-    records: createBoardBaseRecords(normalizedTitle),
-    updated_at: new Date().toISOString(),
-  }
-}
-
-export function buildBoardDocument(input: {
-  title: string
-  viewport: WhiteboardViewport
-  records: readonly BoardRecord[]
-}): BoardDocument {
-  return {
-    format: BOARD_DOCUMENT_FORMAT,
-    version: BOARD_DOCUMENT_VERSION,
-    title: normalizeBoardTitle(input.title),
-    viewport: normalizeViewport(input.viewport),
-    records: normalizeBoardRecords(input.records),
-    updated_at: new Date().toISOString(),
-  }
-}
-
-export function serializeBoardDocument(document: BoardDocument) {
-  return `${JSON.stringify(document, null, 2)}\n`
-}
-
-export function parseBoardDocument(
-  content: string,
-  fallbackTitle = 'Untitled board',
-): BoardDocument {
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(content)
-  } catch {
-    throw new Error('Board file contains invalid JSON')
-  }
-  if (!isRecord(parsed)) {
-    throw new Error('Board file must contain a JSON object')
-  }
-  if (parsed.format !== BOARD_DOCUMENT_FORMAT) {
-    throw new Error('Board file format or version is unsupported')
-  }
-  if (parsed.version !== BOARD_DOCUMENT_VERSION) {
-    throw new Error('Board file format or version is unsupported')
-  }
-  if (!Array.isArray(parsed.records)) {
-    throw new Error('Board file must contain normalized records')
-  }
-
-  const title = normalizeBoardTitle(parsed.title, fallbackTitle)
-  const rawRecords = parsed.records.slice(0, MAX_BOARD_RECORDS)
-  return {
-    format: BOARD_DOCUMENT_FORMAT,
-    version: BOARD_DOCUMENT_VERSION,
-    title,
-    viewport: normalizeViewport(parsed.viewport),
-    records: normalizeBoardRecords(rawRecords.flatMap(parseBoardRecord), title),
-    updated_at: typeof parsed.updated_at === 'string'
-      ? parsed.updated_at
-      : new Date(0).toISOString(),
-  }
+/**
+ * Board records from untrusted JSON values: invalid records are dropped, ids are deduplicated, and
+ * the result always has a page and a meta record (elements naming a missing page move to the
+ * current one).
+ */
+export function parseBoardRecords(values: readonly unknown[], title = 'Board'): BoardRecord[] {
+  return normalizeBoardRecords(values.slice(0, MAX_BOARD_RECORDS).flatMap(parseBoardRecord), title)
 }
 
 function parseBoardRecord(value: unknown): BoardRecord[] {
@@ -433,15 +371,6 @@ function parsePoint(value: unknown): WhiteboardPoint[] {
   const x = finiteNumber(value.x)
   const y = finiteNumber(value.y)
   return x == null || y == null ? [] : [{ x, y }]
-}
-
-function normalizeViewport(value: unknown): WhiteboardViewport {
-  if (!isRecord(value)) return { x: 0, y: 0, zoom: 1 }
-  return {
-    x: finiteNumber(value.x) ?? 0,
-    y: finiteNumber(value.y) ?? 0,
-    zoom: clampWhiteboardZoom(finiteNumber(value.zoom) ?? 1),
-  }
 }
 
 function normalizeBoardTitle(value: unknown, fallback = 'Untitled board') {

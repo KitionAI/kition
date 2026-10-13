@@ -6,19 +6,28 @@
  * ```
  *
  * The file is the KDM document itself: no record JSON, no viewport. Version-1 files (record JSON)
- * are recognised so the editor can refuse them with a clear message; they are not migrated.
+ * and boards of a newer schema are recognised so the editor can refuse them with a clear message;
+ * version-1 files are not migrated. A leading byte order mark is ignored.
  */
-import { newDocId, newObjectId, Replica, system } from '@/lib/kdm'
+import { VersionVector } from 'loro-crdt'
+import { KdmError, newDocId, newObjectId, Replica, system, type Version } from '@/lib/kdm'
+import { checkActor } from '@/lib/kdm/ids'
 import type { BoardElementRecord, BoardPageRecord, BoardRecord } from '../lib/boardRecords'
 import { boardSchema } from './boardSchema'
 import { writeBoardDiff } from './boardKdmWrite'
 
-export const BOARD_FILE_FORMAT = 'kition-board' as const
-export const BOARD_FILE_VERSION = 2 as const
+const BOARD_FILE_FORMAT = 'kition-board'
+const BOARD_FILE_VERSION = 2
+const BYTE_ORDER_MARK = String.fromCodePoint(0xfeff)
+/** The largest schema version the KDM stores (`u32`). */
+const MAX_SCHEMA_VERSION = 2 ** 32 - 1
+
+/** Why a file cannot be opened: an old record-JSON board, a board of a newer Kition, or not a board. */
+export type BoardFileProblem = 'version-1' | 'newer-version' | 'not-a-board'
 
 export type DecodedBoardFile =
   | { kind: 'board'; replica: Replica }
-  | { kind: 'unsupported'; reason: 'version-1' | 'not-a-board' }
+  | { kind: 'unsupported'; reason: BoardFileProblem }
 
 /**
  * A new board document: the `Board` root titled `title` and one page. The ids default to new KDM
@@ -40,7 +49,9 @@ export function createEmptyBoard(
  * A new board titled `title` holding `records` (pages, elements, bindings; other record types are
  * ignored), written in the creating commit so there is nothing to undo. Without page records the
  * board gets one page holding every element; an element naming a page that is not among the
- * records goes to the first page.
+ * records goes to the first page. Throws a `KdmError` (`invalid-value`) when a page or element id
+ * does not match the KDM object id pattern (`[A-Za-z0-9][A-Za-z0-9:_-]{0,127}`) or when a page and
+ * an element share an id; records come from templates and fixtures, so that is a programming error.
  */
 export function createBoardFromRecords(title: string, actor: bigint, records: readonly BoardRecord[]): Replica {
   const unique = uniqueRecords(records)
@@ -67,42 +78,97 @@ export function encodeBoardFile(replica: Replica): string {
   return `${JSON.stringify({ format: BOARD_FILE_FORMAT, version: BOARD_FILE_VERSION, kdm: bytesToBase64(replica.snapshot()) })}\n`
 }
 
-/** Opens file text as a writable replica of `actor`. Never throws. */
+/**
+ * Opens file text as a writable replica of `actor`. Never throws for bad text; an invalid `actor`
+ * is a programming error and throws.
+ */
 export function decodeBoardFile(text: string, actor: bigint): DecodedBoardFile {
+  checkActor(actor)
   const bytes = boardFileBytes(text)
   if (bytes === 'version-1') return { kind: 'unsupported', reason: 'version-1' }
   if (bytes === null) return { kind: 'unsupported', reason: 'not-a-board' }
+  let replica: Replica
   try {
-    const replica = Replica.load(boardSchema, bytes, actor)
-    if (replica.objectsOfType('Board').length === 0) return { kind: 'unsupported', reason: 'not-a-board' }
-    return { kind: 'board', replica }
-  } catch {
-    return { kind: 'unsupported', reason: 'not-a-board' }
+    replica = Replica.load(boardSchema, bytes, actor)
+  } catch (error) {
+    if (!isRefusal(error)) throw error
+    const reason = error.reason === 'schema' && isNewerBoard(bytes, actor) ? 'newer-version' : 'not-a-board'
+    return { kind: 'unsupported', reason }
   }
+  if (replica.objectsOfType('Board').length === 0) return { kind: 'unsupported', reason: 'not-a-board' }
+  return { kind: 'board', replica }
+}
+
+/** Another copy of the board, read from file text: its changes and the version they reach. */
+export type BoardFileCopy = { changes: Uint8Array; version: Version }
+
+/**
+ * Reads file text as another copy of `replica`'s document, or `null` when it is not a v2 board, is
+ * another document, or was written under a newer schema than this build reads (importing it would
+ * mix changes this build does not understand into the document). Nothing is imported.
+ */
+export function readBoardFileCopy(replica: Replica, text: string): BoardFileCopy | null {
+  const bytes = boardFileBytes(text)
+  if (bytes === 'version-1' || bytes === null) return null
+  let copy: Replica
+  try {
+    copy = Replica.load(boardSchema, bytes, replica.actor)
+  } catch (error) {
+    if (isRefusal(error)) return null
+    throw error
+  }
+  if (copy.docId !== replica.docId) return null
+  return { changes: bytes, version: copy.version() }
 }
 
 /**
  * Imports the changes another copy of the board (file text) has into `replica`. `'unchanged'` when
- * it had nothing new; `'unsupported'` for text that is not a v2 board or holds another document.
- * Never throws.
+ * it had nothing new; `'unsupported'` for text that is not a v2 board, holds another document, or
+ * comes from a newer schema. Errors that are not about the text (a call during one of `replica`'s
+ * transactions) are thrown.
  */
 export function mergeBoardFile(replica: Replica, text: string): 'merged' | 'unchanged' | 'unsupported' {
-  const bytes = boardFileBytes(text)
-  if (bytes === 'version-1' || bytes === null) return 'unsupported'
+  const copy = readBoardFileCopy(replica, text)
+  if (copy === null) return 'unsupported'
   const before = replica.version()
   try {
-    replica.importChanges(bytes)
-  } catch {
-    return 'unsupported'
+    replica.importChanges(copy.changes)
+  } catch (error) {
+    if (isRefusal(error)) return 'unsupported'
+    throw error
   }
   return replica.version().equals(before) ? 'unchanged' : 'merged'
+}
+
+/** Whether `replica` holds every change of `version` (for instance, of a file it merged). */
+export function replicaIncludes(replica: Replica, version: Version): boolean {
+  const order = VersionVector.decode(replica.version().encode()).compare(VersionVector.decode(version.encode()))
+  return order === 0 || order === 1
+}
+
+/** KDM refusals of the bytes themselves; anything else (a reentrant call, an engine fault) is not. */
+function isRefusal(error: unknown): error is KdmError {
+  return error instanceof KdmError && (error.reason === 'encoding' || error.reason === 'schema' || error.reason === 'wrong-document')
+}
+
+/**
+ * Whether bytes the board schema refused are a board of a newer schema version: they open under
+ * the same schema with any schema version allowed. The probe replica is never written.
+ */
+function isNewerBoard(bytes: Uint8Array, actor: bigint): boolean {
+  try {
+    const probe = Replica.load({ ...boardSchema, schemaVersion: MAX_SCHEMA_VERSION }, bytes, actor)
+    return probe.objectsOfType('Board').length > 0
+  } catch {
+    return false
+  }
 }
 
 /** The snapshot bytes of a v2 file, `'version-1'` for a version-1 file, or `null`. */
 function boardFileBytes(text: string): Uint8Array | 'version-1' | null {
   let parsed: unknown
   try {
-    parsed = JSON.parse(text)
+    parsed = JSON.parse(text.startsWith(BYTE_ORDER_MARK) ? text.slice(1) : text)
   } catch {
     return null
   }

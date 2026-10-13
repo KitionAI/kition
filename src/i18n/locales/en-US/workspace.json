@@ -204,6 +204,16 @@
   "editor": {
     "sourcePlaceholder": "Edit Markdown source here..."
   },
+  "whiteboard": {
+    "file": {
+      "title": "{{title}} can’t be opened",
+      "unsupported": "This Board was saved in an earlier format that this version of Kition no longer opens. The file has not been changed.",
+      "newerVersion": "This Board was made with a newer version of Kition. Update Kition to open it. The file has not been changed.",
+      "notABoard": "This file isn’t a Kition Board, or it is damaged. The file has not been changed.",
+      "startNew": "Start a new Board",
+      "startNewHint": "The new Board replaces this file’s contents."
+    }
+  },
   "board": {
     "canvasTitle": "{{title}} Board canvas",
     "canvasDescription": "An interactive native SVG Board with drawing and diagram tools.",

@@ -4,17 +4,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   importWorkspaceImageFromFile,
+  listWorkspaceDocuments,
   readWorkspaceDocument,
   writeWorkspaceDocument,
 } from '@/services/desktop'
-import {
-  buildBoardDocument,
-  createEmptyBoardDocument,
-  serializeBoardDocument,
-} from '../lib/boardSerialization'
+import { newDocId, Replica, system } from '@/lib/kdm'
+import { createBoardFromRecords, encodeBoardFile } from '../kdm/boardKdmFile'
+import { boardSchema } from '../kdm/boardSchema'
 import { createBoardRecordsFromElements } from '../lib/boardRecords'
+import type { WhiteboardElement } from '../lib/whiteboardTypes'
 import { WhiteboardEditorPane } from './WhiteboardEditorPane'
 import type { WhiteboardAgentBridge } from '../lib/whiteboardAgentBridge'
+
+/** A `.kiboard` file holding `elements` on one page. */
+const boardText = (elements: WhiteboardElement[] = []) => (
+  encodeBoardFile(createBoardFromRecords('Planning', 1n, createBoardRecordsFromElements(elements, 'Planning')))
+)
 
 const UUID_V7 = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 
@@ -24,8 +29,10 @@ const UUID_V7 = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f
 vi.mock('@/services/desktop', () => ({
   importWorkspaceImageFromFile: vi.fn(),
   isDesktopRuntime: vi.fn(() => true),
+  listWorkspaceDocuments: vi.fn(),
   readWorkspaceDocument: vi.fn(),
   resolvePublicFileURL: vi.fn((path: string) => path),
+  subscribeWorkspaceDocumentExternalChanges: vi.fn(() => () => {}),
   writeWorkspaceDocument: vi.fn(),
 }))
 
@@ -39,8 +46,9 @@ beforeEach(() => {
     path: 'Planning.kiboard',
     name: 'Planning.kiboard',
     format: 'board',
-    content: serializeBoardDocument(createEmptyBoardDocument('Planning')),
+    content: boardText(),
   })
+  vi.mocked(listWorkspaceDocuments).mockResolvedValue({ root_path: '/workspace', items: [] })
   vi.mocked(writeWorkspaceDocument).mockResolvedValue({} as never)
   vi.mocked(importWorkspaceImageFromFile).mockResolvedValue({
     importedPath: 'attachments/imported.png',
@@ -56,19 +64,78 @@ afterEach(async () => {
 })
 
 describe('WhiteboardEditorPane', () => {
+  it('shows a read-only notice for a version-1 file and can start a new Board in its place', async () => {
+    const v1 = `${JSON.stringify({ format: 'kition-board', version: 1, title: 'Old', records: [] }, null, 2)}\n`
+    vi.mocked(readWorkspaceDocument).mockResolvedValue({
+      path: 'Planning.kiboard',
+      name: 'Planning.kiboard',
+      format: 'board',
+      content: v1,
+    })
+
+    await act(async () => {
+      root = createRoot(container)
+      root.render(createElement(WhiteboardEditorPane, {
+        path: 'Planning.kiboard',
+        title: 'Planning',
+      }))
+      await Promise.resolve()
+    })
+
+    const notice = container.querySelector('[data-testid="whiteboard-file-notice"]')
+    expect(notice?.getAttribute('data-problem')).toBe('version-1')
+    expect(notice?.textContent).toContain('earlier format')
+    expect(container.querySelector('[data-testid="whiteboard-svg-scene"]')).toBeNull()
+    expect(writeWorkspaceDocument).not.toHaveBeenCalled()
+
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('[data-testid="whiteboard-file-start-new"]')?.click()
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+    expect(writeWorkspaceDocument).toHaveBeenCalledWith(
+      'Planning.kiboard',
+      expect.stringContaining('"version":2'),
+      { expected_root: '/workspace', expected_content: v1 },
+    )
+    expect(container.querySelector('[data-testid="whiteboard-file-notice"]')).toBeNull()
+    expect(container.querySelector('[data-testid="whiteboard-svg-scene"]')).not.toBeNull()
+  })
+
+  it('offers no replacement for a Board made by a newer Kition', async () => {
+    const newer = Replica.createWith({ ...boardSchema, schemaVersion: boardSchema.schemaVersion + 1 }, newDocId(), 9n, system('create'), (tx) => {
+      tx.create('Board', { title: 'Future' })
+    }).replica
+    vi.mocked(readWorkspaceDocument).mockResolvedValue({
+      path: 'Planning.kiboard',
+      name: 'Planning.kiboard',
+      format: 'board',
+      content: encodeBoardFile(newer),
+    })
+
+    await act(async () => {
+      root = createRoot(container)
+      root.render(createElement(WhiteboardEditorPane, {
+        path: 'Planning.kiboard',
+        title: 'Planning',
+      }))
+      await Promise.resolve()
+    })
+
+    const notice = container.querySelector('[data-testid="whiteboard-file-notice"]')
+    expect(notice?.getAttribute('data-problem')).toBe('newer-version')
+    expect(notice?.textContent).toContain('newer version of Kition')
+    expect(container.querySelector('[data-testid="whiteboard-file-start-new"]')).toBeNull()
+  })
+
   it('culls distant committed elements from the SVG scene while retaining Board records', async () => {
     vi.mocked(readWorkspaceDocument).mockResolvedValueOnce({
       path: 'Planning.kiboard',
       name: 'Planning.kiboard',
       format: 'board',
-      content: serializeBoardDocument(buildBoardDocument({
-        title: 'Planning',
-        viewport: { x: 0, y: 0, zoom: 1 },
-        records: createBoardRecordsFromElements([
+      content: boardText([
           { id: 'visible', kind: 'rectangle', x: 40, y: 40, width: 100, height: 80 },
           { id: 'distant', kind: 'rectangle', x: 5000, y: 5000, width: 100, height: 80 },
-        ], 'Planning'),
-      })),
+        ]),
     })
 
     await act(async () => {
@@ -393,15 +460,11 @@ describe('WhiteboardEditorPane', () => {
       path: 'Planning.kiboard',
       name: 'Planning.kiboard',
       format: 'board',
-      content: serializeBoardDocument(buildBoardDocument({
-        title: 'Planning',
-        viewport: { x: 0, y: 0, zoom: 1 },
-        records: createBoardRecordsFromElements([{
+      content: boardText([{
           id: 'board-stroke-one',
           kind: 'stroke',
           points: [{ x: 80, y: 80 }, { x: 140, y: 180 }, { x: 220, y: 240 }],
-        }], 'Planning'),
-      })),
+        }]),
     })
 
     await act(async () => {
@@ -700,10 +763,7 @@ describe('WhiteboardEditorPane', () => {
       path: 'Planning.kiboard',
       name: 'Planning.kiboard',
       format: 'board',
-      content: serializeBoardDocument(buildBoardDocument({
-        title: 'Planning',
-        viewport: { x: 0, y: 0, zoom: 1 },
-        records: createBoardRecordsFromElements([{
+      content: boardText([{
           id: 'shape-center',
           kind: 'rectangle',
           x: 40,
@@ -713,8 +773,7 @@ describe('WhiteboardEditorPane', () => {
           rotation: 30,
           shapeType: 'diamond',
           text: 'Draft',
-        }], 'Planning'),
-      })),
+        }]),
     })
 
     await act(async () => {

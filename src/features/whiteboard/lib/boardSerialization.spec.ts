@@ -1,78 +1,26 @@
 import { describe, expect, it } from 'vitest'
 
-import {
-  buildBoardDocument,
-  createEmptyBoardDocument,
-  parseBoardDocument,
-  serializeBoardDocument,
-} from './boardSerialization'
-import { createBoardRecordsFromElements } from './boardRecords'
+import { parseBoardRecords } from './boardSerialization'
+import { createBoardRecordsFromElements, type BoardRecord } from './boardRecords'
 
-describe('Board .kiboard serialization', () => {
-  it('creates a readable Git-friendly versioned JSON document', () => {
-    const content = serializeBoardDocument(buildBoardDocument({
-      title: 'Product map',
-      viewport: { x: 12, y: 24, zoom: 1.5 },
-      records: createBoardRecordsFromElements([{
-        id: 'rect-1',
-        kind: 'rectangle',
-        x: 10,
-        y: 20,
-        width: 120,
-        height: 80,
-      }], 'Product map'),
-    }))
+/** Records as they arrive from untrusted JSON (the clipboard payload). */
+const throughJson = (records: readonly BoardRecord[]) => (
+  parseBoardRecords(JSON.parse(JSON.stringify(records)) as unknown[])
+)
 
-    expect(content.endsWith('\n')).toBe(true)
-    expect(content).toContain('"format": "kition-board"')
-    expect(parseBoardDocument(content)).toMatchObject({
-      format: 'kition-board',
-      version: 1,
-      title: 'Product map',
-      records: expect.arrayContaining([
-        expect.objectContaining({
-          id: 'rect-1',
-          record_type: 'element',
-        }),
-      ]),
-    })
+describe('Board record parsing', () => {
+  it('always yields a page and a meta record', () => {
+    expect(parseBoardRecords([])).toEqual(expect.arrayContaining([
+      expect.objectContaining({ record_type: 'meta' }),
+      expect.objectContaining({ record_type: 'page' }),
+    ]))
+    expect(parseBoardRecords([null, 'x', { record_type: 'unknown' }]).every((record) => (
+      record.record_type === 'meta' || record.record_type === 'page'
+    ))).toBe(true)
   })
 
-  it('rejects invalid or unsupported Board files', () => {
-    expect(() => parseBoardDocument('{')).toThrow('invalid JSON')
-    expect(() => parseBoardDocument(JSON.stringify({
-      format: 'other-board',
-      version: 1,
-    }))).toThrow('unsupported')
-    expect(() => parseBoardDocument(JSON.stringify({
-      format: 'kition-board',
-      version: 2,
-      records: [],
-    }))).toThrow('unsupported')
-    expect(() => parseBoardDocument(JSON.stringify({
-      format: 'kition-board',
-      version: 1,
-      elements: [],
-    }))).toThrow('normalized records')
-  })
-
-  it('creates an empty Board with the portable format marker', () => {
-    expect(createEmptyBoardDocument('Untitled board')).toMatchObject({
-      format: 'kition-board',
-      version: 1,
-      title: 'Untitled board',
-      records: expect.arrayContaining([
-        expect.objectContaining({ record_type: 'meta' }),
-        expect.objectContaining({ record_type: 'page' }),
-      ]),
-    })
-  })
-
-  it('round-trips semantic AI node labels and portable source references', () => {
-    const document = parseBoardDocument(serializeBoardDocument(buildBoardDocument({
-      title: 'Mind map',
-      viewport: { x: 0, y: 0, zoom: 1 },
-      records: createBoardRecordsFromElements([{
+  it('keeps semantic AI node labels and portable source references', () => {
+    const records = throughJson(createBoardRecordsFromElements([{
         id: 'mind-1',
         kind: 'rectangle',
         x: 20,
@@ -85,10 +33,9 @@ describe('Board .kiboard serialization', () => {
         shapeStyle: 'mind-node',
         text: 'Launch plan',
         sourceRefIds: ['document:brief'],
-      }], 'Mind map'),
-    })))
+      }], 'Mind map'))
 
-    expect(document.records).toEqual(expect.arrayContaining([
+    expect(records).toEqual(expect.arrayContaining([
       expect.objectContaining({
         id: 'mind-1',
         mindMapBranchSide: 'right',
@@ -101,11 +48,8 @@ describe('Board .kiboard serialization', () => {
     ]))
   })
 
-  it('round-trips commercial shape styles and portable workspace images', () => {
-    const document = parseBoardDocument(serializeBoardDocument(buildBoardDocument({
-      title: 'Launch board',
-      viewport: { x: 0, y: 0, zoom: 1 },
-      records: createBoardRecordsFromElements([
+  it('keeps commercial shape styles and portable workspace images', () => {
+    const records = throughJson(createBoardRecordsFromElements([
         {
           id: 'shape-1',
           kind: 'rectangle',
@@ -134,10 +78,9 @@ describe('Board .kiboard serialization', () => {
           alt: 'Launch image',
           style: { opacity: 0.8 },
         },
-      ], 'Launch board'),
-    })))
+    ], 'Launch board'))
 
-    expect(document.records).toEqual(expect.arrayContaining([
+    expect(records).toEqual(expect.arrayContaining([
       expect.objectContaining({
         id: 'shape-1',
         shapeType: 'diamond',
@@ -159,11 +102,8 @@ describe('Board .kiboard serialization', () => {
     ]))
   })
 
-  it('round-trips optional connector binding terminals without changing the Board version', () => {
-    const document = parseBoardDocument(serializeBoardDocument(buildBoardDocument({
-      title: 'Connected board',
-      viewport: { x: 0, y: 0, zoom: 1 },
-      records: [
+  it('keeps optional connector binding terminals', () => {
+    const records = throughJson([
         ...createBoardRecordsFromElements([
           { id: 'target', kind: 'rectangle', x: 0, y: 0, width: 100, height: 80 },
           {
@@ -184,11 +124,9 @@ describe('Board .kiboard serialization', () => {
           terminal: 'start',
           to_anchor: { x: 1, y: 0.5 },
         },
-      ],
-    })))
+      ])
 
-    expect(document.version).toBe(1)
-    expect(document.records).toEqual(expect.arrayContaining([
+    expect(records).toEqual(expect.arrayContaining([
       expect.objectContaining({
         id: 'connector',
         connectorRole: 'mind-map-branch',
@@ -202,18 +140,14 @@ describe('Board .kiboard serialization', () => {
     ]))
   })
 
-  it('round-trips checkbox shapes while keeping legacy check marks readable', () => {
-    const document = parseBoardDocument(serializeBoardDocument(buildBoardDocument({
-      title: 'Checklist',
-      viewport: { x: 0, y: 0, zoom: 1 },
-      records: createBoardRecordsFromElements([
+  it('keeps checkbox shapes while keeping legacy check marks readable', () => {
+    const records = throughJson(createBoardRecordsFromElements([
         { id: 'x-box', kind: 'rectangle', x: 0, y: 0, width: 80, height: 80, shapeType: 'x-box' },
         { id: 'check-box', kind: 'rectangle', x: 100, y: 0, width: 80, height: 80, shapeType: 'check-box' },
         { id: 'legacy-check', kind: 'rectangle', x: 200, y: 0, width: 80, height: 80, shapeType: 'check' },
-      ], 'Checklist'),
-    })))
+      ], 'Checklist'))
 
-    expect(document.records).toEqual(expect.arrayContaining([
+    expect(records).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: 'x-box', shapeType: 'x-box' }),
       expect.objectContaining({ id: 'check-box', shapeType: 'check-box' }),
       expect.objectContaining({ id: 'legacy-check', shapeType: 'check' }),
@@ -221,10 +155,7 @@ describe('Board .kiboard serialization', () => {
   })
 
   it('drops image elements that contain host or traversal paths', () => {
-    const unsafe = buildBoardDocument({
-      title: 'Unsafe',
-      viewport: { x: 0, y: 0, zoom: 1 },
-      records: createBoardRecordsFromElements([{
+    const records = throughJson(createBoardRecordsFromElements([{
         id: 'image-1',
         kind: 'image',
         x: 0,
@@ -232,9 +163,7 @@ describe('Board .kiboard serialization', () => {
         width: 100,
         height: 100,
         workspacePath: '../private.png',
-      }]),
-    })
-    const parsed = parseBoardDocument(JSON.stringify(unsafe))
-    expect(parsed.records.some((record) => record.id === 'image-1')).toBe(false)
+    }]))
+    expect(records.some((record) => record.id === 'image-1')).toBe(false)
   })
 })

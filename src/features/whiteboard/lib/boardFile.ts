@@ -4,16 +4,16 @@ import {
   type WorkspaceDocument,
   type WorkspaceDocumentTreeItem,
 } from '@/services/desktop'
-import {
-  BOARD_FILE_EXTENSION,
-  createEmptyBoardDocument,
-  serializeBoardDocument,
-} from './boardSerialization'
+import { randomActor } from '@/lib/kdm'
+import { createBoardFromRecords, encodeBoardFile } from '../kdm/boardKdmFile'
 import {
   DEFAULT_BOARD_PAGE_ID,
   createBoardElementRecord,
+  type BoardRecord,
 } from './boardRecords'
 import type { WhiteboardTemplateInstance } from './whiteboardTemplates'
+
+const BOARD_FILE_EXTENSION = '.kiboard'
 
 export async function createBoardWorkspaceFile(options: {
   folder?: string
@@ -32,21 +32,20 @@ export async function createBoardWorkspaceFile(options: {
     path = buildPath(folder, `${title} ${index}${BOARD_FILE_EXTENSION}`)
   }
 
-  const document = createEmptyBoardDocument(
-    path.split('/').pop()?.replace(/\.kiboard$/i, '') || title,
-  )
-  if (options.template) {
-    document.records = [
-      ...document.records,
-      ...options.template.elements.map((element, elementIndex) => createBoardElementRecord({
-        element,
-        index: elementIndex,
-        pageId: DEFAULT_BOARD_PAGE_ID,
-      })),
-      ...options.template.bindings,
-    ]
-  }
-  const created = await writeWorkspaceDocument(path, serializeBoardDocument(document))
+  const boardTitle = path.split('/').pop()?.replace(/\.kiboard$/i, '') || title
+  // The template is part of the new document's creating commit, so it is not an undo step.
+  const records: BoardRecord[] = options.template
+    ? [
+        ...options.template.elements.map((element, elementIndex) => createBoardElementRecord({
+          element,
+          index: elementIndex,
+          pageId: DEFAULT_BOARD_PAGE_ID,
+        })),
+        ...options.template.bindings,
+      ]
+    : []
+  const board = createBoardFromRecords(boardTitle, randomActor(), records)
+  const created = await writeWorkspaceDocument(path, encodeBoardFile(board))
   return { ...created, format: 'board' }
 }
 

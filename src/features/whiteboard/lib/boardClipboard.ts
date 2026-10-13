@@ -7,11 +7,7 @@ import {
   type BoardElementRecord,
   type BoardRecord,
 } from './boardRecords'
-import {
-  BOARD_DOCUMENT_FORMAT,
-  BOARD_DOCUMENT_VERSION,
-  parseBoardDocument,
-} from './boardSerialization'
+import { parseBoardRecords } from './boardSerialization'
 import { createWhiteboardObjectId } from './whiteboardElementId'
 import { translateWhiteboardElement } from './whiteboardGeometry'
 import type { WhiteboardElement, WhiteboardPoint } from './whiteboardTypes'
@@ -64,21 +60,14 @@ export function parseBoardClipboardText(text: string) {
   if (!isClipboardPayload(payload)) return null
 
   try {
-    const document = parseBoardDocument(JSON.stringify({
-      format: BOARD_DOCUMENT_FORMAT,
-      version: BOARD_DOCUMENT_VERSION,
-      title: 'Clipboard',
-      viewport: { x: 0, y: 0, zoom: 1 },
-      records: [
-        ...createBoardBaseRecords('Clipboard'),
-        ...payload.records.filter((record) => (
-          isRecord(record)
-          && (record.record_type === 'element' || record.record_type === 'binding')
-        )),
-      ],
-      updated_at: new Date(0).toISOString(),
-    }))
-    return document.records.filter((record) => (
+    const records = parseBoardRecords([
+      ...createBoardBaseRecords('Clipboard'),
+      ...payload.records.filter((record) => (
+        isRecord(record)
+        && (record.record_type === 'element' || record.record_type === 'binding')
+      )),
+    ], 'Clipboard')
+    return records.filter((record) => (
       record.record_type === 'element' || record.record_type === 'binding'
     ))
   } catch {

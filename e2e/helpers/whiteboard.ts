@@ -2,10 +2,6 @@ import { expect, type Page } from '@playwright/test'
 
 import { getWorkspaceStorageKey } from '../../src/features/onboarding/workspaceStorageKey'
 import {
-  buildBoardDocument,
-  serializeBoardDocument,
-} from '../../src/features/whiteboard/lib/boardSerialization'
-import {
   createBoardRecordsFromElements,
   type BoardRecord,
 } from '../../src/features/whiteboard/lib/boardRecords'
@@ -16,6 +12,13 @@ import { mockLocalWorkspaceApi } from './mockApi'
 export const WHITEBOARD_E2E_PATH = 'Whiteboard E2E.kiboard'
 const WHITEBOARD_E2E_VAULT = '/tmp/Kition Whiteboard E2E'
 const BOARD_STORAGE_KEY = 'kition.e2e.whiteboard.content'
+const BOARD_TITLE = 'Whiteboard E2E'
+/**
+ * The app's `.kiboard` encoder, imported by the page from the Vite dev server: Playwright's own
+ * TypeScript transform cannot load the KDM, so fixtures are encoded in the browser.
+ */
+const BOARD_FILE_MODULE = '/src/features/whiteboard/kdm/boardKdmFile.ts'
+const KDM_MODULE = '/src/lib/kdm/index.ts'
 
 export const DEFAULT_WHITEBOARD_ELEMENTS: WhiteboardElement[] = [
   {
@@ -56,15 +59,10 @@ export async function openWhiteboardFixture(page: Page, options: {
   records?: BoardRecord[]
 } = {}) {
   const records = options.records
-    || createBoardRecordsFromElements(options.elements || DEFAULT_WHITEBOARD_ELEMENTS, 'Whiteboard E2E')
-  const content = serializeBoardDocument(buildBoardDocument({
-    title: 'Whiteboard E2E',
-    viewport: { x: 0, y: 0, zoom: 1 },
-    records,
-  }))
+    || createBoardRecordsFromElements(options.elements || DEFAULT_WHITEBOARD_ELEMENTS, BOARD_TITLE)
 
   await mockLocalWorkspaceApi(page)
-  await installWhiteboardDesktopBridge(page, content, options.agentAvailable !== false)
+  await installWhiteboardDesktopBridge(page, records, options.agentAvailable !== false)
   await page.goto('/documents')
   await page.getByText(WHITEBOARD_E2E_PATH, { exact: true }).click()
   await expect(page.getByTestId('whiteboard-svg-scene')).toBeVisible()
@@ -85,11 +83,11 @@ export async function readWhiteboardElements(page: Page) {
 
 async function installWhiteboardDesktopBridge(
   page: Page,
-  initialContent: string,
+  records: BoardRecord[],
   agentAvailable: boolean,
 ) {
   await page.addInitScript(
-    ({ boardPath, initialBoardContent, storageKey, vaultPath, whiteboardCapability }) => {
+    ({ boardFileModule, boardPath, boardRecords, boardTitle, kdmModule, storageKey, vaultPath, whiteboardCapability }) => {
       const stateWindow = window as typeof window & Record<string, unknown>
       const updatedAt = '2026-08-27T00:00:00.000Z'
       const vault = {
@@ -98,10 +96,18 @@ async function installWhiteboardDesktopBridge(
         added_at: updatedAt,
         last_opened_at: updatedAt,
       }
-      if (!window.localStorage.getItem(storageKey)) {
-        window.localStorage.setItem(storageKey, initialBoardContent)
+      // The board file (a v2 `.kiboard`) is encoded on first read and then kept in local storage.
+      const readContent = async () => {
+        const stored = window.localStorage.getItem(storageKey)
+        if (stored !== null) return stored
+        const [{ createBoardFromRecords, encodeBoardFile }, { randomActor }] = await Promise.all([
+          import(/* @vite-ignore */ boardFileModule),
+          import(/* @vite-ignore */ kdmModule),
+        ])
+        const content: string = encodeBoardFile(createBoardFromRecords(boardTitle, randomActor(), boardRecords))
+        window.localStorage.setItem(storageKey, content)
+        return content
       }
-      const readContent = () => window.localStorage.getItem(storageKey) || initialBoardContent
       const registry = () => ({ vaults: [vault], active_vault_path: vaultPath })
       const list = () => ({
         root_path: vaultPath,
@@ -110,7 +116,7 @@ async function installWhiteboardDesktopBridge(
           path: boardPath,
           name: boardPath,
           format: 'board' as const,
-          size: readContent().length,
+          size: (window.localStorage.getItem(storageKey) || '').length,
           updated_at: updatedAt,
         }],
       })
@@ -172,7 +178,7 @@ async function installWhiteboardDesktopBridge(
         ChooseDirectory: async () => ({ canceled: true, path: '' }),
         ListWorkspaceDocuments: async () => list(),
         ReadWorkspaceDocument: async (request: { path: string }) => {
-          const content = readContent()
+          const content = await readContent()
           return {
             path: request.path,
             name: request.path.split('/').pop() || request.path,
@@ -200,8 +206,11 @@ async function installWhiteboardDesktopBridge(
       }
     },
     {
+      boardFileModule: BOARD_FILE_MODULE,
       boardPath: WHITEBOARD_E2E_PATH,
-      initialBoardContent: initialContent,
+      boardRecords: records,
+      boardTitle: BOARD_TITLE,
+      kdmModule: KDM_MODULE,
       storageKey: BOARD_STORAGE_KEY,
       vaultPath: WHITEBOARD_E2E_VAULT,
       whiteboardCapability: agentAvailable,

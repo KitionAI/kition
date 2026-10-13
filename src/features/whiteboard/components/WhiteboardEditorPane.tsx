@@ -17,6 +17,10 @@ import { WhiteboardMinimap } from '@/features/whiteboard/components/WhiteboardMi
 import { WhiteboardToolbar } from '@/features/whiteboard/components/WhiteboardToolbar'
 import { WhiteboardStylePanel } from '@/features/whiteboard/components/WhiteboardStylePanel'
 import { WhiteboardTopActions } from '@/features/whiteboard/components/WhiteboardTopActions'
+import {
+  BOARD_FILE_PROBLEM_MESSAGES,
+  WhiteboardFileNotice,
+} from '@/features/whiteboard/components/WhiteboardFileNotice'
 import { useWhiteboardAgentPatch } from '@/features/whiteboard/hooks/useWhiteboardAgentPatch'
 import { useBoardDocument } from '@/features/whiteboard/hooks/useBoardDocument'
 import { useWhiteboardEditor } from '@/features/whiteboard/hooks/useWhiteboardEditor'
@@ -70,8 +74,7 @@ export function WhiteboardEditorPane({
   const documentState = useBoardDocument({
     path,
     title,
-    isTransacting: controller.isTransacting,
-    records: controller.records,
+    store: controller.store,
     replaceDocument: controller.replaceDocument,
   })
   const [canvasSize, setCanvasSize] = useState<WhiteboardPoint>({ x: 1200, y: 760 })
@@ -315,6 +318,24 @@ export function WhiteboardEditorPane({
     })
   }, [canvasSize, controller.viewport, placeGeneratedImage])
 
+  if (documentState.problem) {
+    return (
+      <div
+        className="relative flex h-full min-h-0 w-full items-center justify-center bg-background p-6"
+        data-testid="whiteboard-editor-pane"
+        data-board-path={path}
+      >
+        <WhiteboardFileNotice
+          busy={documentState.status === 'saving'}
+          error={documentState.status === 'error' ? documentState.error : ''}
+          onStartNew={documentState.startNewBoard}
+          problem={documentState.problem}
+          title={title}
+        />
+      </div>
+    )
+  }
+
   return (
     <div
       className="relative h-full min-h-0 w-full bg-background"
@@ -382,7 +403,9 @@ export function WhiteboardEditorPane({
       <div
         className="absolute bottom-4 right-4 z-20 rounded-md border bg-background/95 px-2.5 py-1 text-xs text-muted-foreground shadow-[var(--shadow-toolbar)] backdrop-blur"
         role={documentState.status === 'error' ? 'alert' : 'status'}
-        title={documentState.error || undefined}
+        title={documentState.saveRefused
+          ? t(BOARD_FILE_PROBLEM_MESSAGES[documentState.saveRefused])
+          : documentState.error || undefined}
         data-testid="board-save-status"
       >
         {t(`board.status.${documentState.status}`)}

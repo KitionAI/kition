@@ -204,6 +204,16 @@
   "editor": {
     "sourcePlaceholder": "在此编辑 Markdown 源码…"
   },
+  "whiteboard": {
+    "file": {
+      "title": "无法打开{{title}}",
+      "unsupported": "此画板以旧格式保存，当前版本的 Kition 已无法打开。文件未被更改。",
+      "newerVersion": "此画板由更新版本的 Kition 创建。请更新 Kition 后再打开。文件未被更改。",
+      "notABoard": "此文件不是 Kition 画板，或已损坏。文件未被更改。",
+      "startNew": "新建画板",
+      "startNewHint": "新画板将替换此文件的内容。"
+    }
+  },
   "board": {
     "canvasTitle": "{{title}}画板画布",
     "canvasDescription": "一个带有绘图和图表工具的交互式原生 SVG 画板。",
