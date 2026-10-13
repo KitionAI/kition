@@ -1,9 +1,9 @@
 import { loadavg } from 'node:os'
-import { describe, expect, it } from 'vitest'
-import { Rng, type Origin } from '@/lib/kdm'
+import { describe, expect, it, vi } from 'vitest'
+import { Rng, Tx, type Origin } from '@/lib/kdm'
 import { DOCUMENT_BODY } from './documentSchema'
 import { createDocumentReplica, documentBody } from './documentText'
-import { applyEditsToString, commonPrefixLength, diffText, mergeEdits, mergeExternalText, type TextEdit } from './documentMerge'
+import { applyEditsToString, coalesceEdits, commonPrefixLength, diffText, mergeEdits, mergeExternalText, type TextEdit } from './documentMerge'
 
 /** CJK text (U+5B63 U+5EA6), as a named constant: the repository keeps non-English text out of source files. */
 const QUARTER = String.fromCodePoint(0x5b63, 0x5ea6)
@@ -468,5 +468,52 @@ describe('mergeExternalText: large documents', () => {
     const base = `start\n${block('ab')}\nend\n`
     const incoming = `start\n${block('ab')}\nend\n`
     expect(diffText(base, incoming)).toEqual([{ from: 6, to: base.length - 4, insert: incoming.slice(6, incoming.length - 4) }])
+  })
+})
+
+describe('mergeExternalText: coalescing a large merge (opt-in)', () => {
+  it('joins edits separated by a short unchanged run, keeping the text and every surrogate pair', () => {
+    const text = 'ab😀cd😀efghij'
+    // Replace "b" and "c", delete the second emoji, replace "j"; the runs between are 2, 1 and 5 code units.
+    const edits: TextEdit[] = [
+      { from: 1, to: 2, insert: 'B' },
+      { from: 4, to: 5, insert: 'C' },
+      { from: 6, to: 8, insert: '' },
+      { from: 13, to: 14, insert: 'J' },
+    ]
+    const joined = coalesceEdits(edits, text, 2)
+    expect(joined).toEqual([
+      { from: 1, to: 8, insert: 'B😀Cd' },
+      { from: 13, to: 14, insert: 'J' },
+    ])
+    expect(applyEditsToString(text, joined)).toBe(applyEditsToString(text, edits))
+    expect(coalesceEdits(edits, text, 0)).toEqual(edits)
+  })
+
+  it('leaves merges at or below the threshold alone, and gives the same text above it', () => {
+    const base = generatedMarkdown(200_000)
+    const changes = scatteredChanges(new Rng(36), base, 1 / 67, 1 / 3)
+    const current = applyEditsToString(base, changes.local)
+    const incoming = applyEditsToString(base, changes.external)
+    const expected = applyEditsToString(base, changes.both)
+    const edits = mergeEdits(base, incoming, current)
+    const operations = edits.reduce((count, edit) => count + Number(edit.to > edit.from) + Number(edit.insert !== ''), 0)
+    const inserts = vi.spyOn(Tx.prototype, 'textInsert')
+    const deletes = vi.spyOn(Tx.prototype, 'textDelete')
+    for (const [above, joins] of [
+      [edits.length, false],
+      [edits.length - 1, true],
+    ] as const) {
+      const { replica, rootId } = createDocumentReplica(current, 1n)
+      inserts.mockClear()
+      deletes.mockClear()
+      replica.transact(fromFile, (tx) => mergeExternalText(tx, rootId, base, incoming, current, { coalesce: { above, gap: 64 } }))
+      expect(firstDifference(documentBody(replica), expected)).toBe('equal')
+      const performed = inserts.mock.calls.length + deletes.mock.calls.length
+      if (joins) expect(performed).toBeLessThan(operations * 0.8)
+      else expect(performed).toBe(operations)
+    }
+    inserts.mockRestore()
+    deletes.mockRestore()
   })
 })

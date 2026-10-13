@@ -526,16 +526,57 @@ export function mergeEdits(base: string, incoming: string, current: string): Tex
 }
 
 /**
+ * `edits` (sorted and separated, relative to `text`) with each run of edits separated by at most
+ * `gap` unchanged code units joined into one edit, which replaces the unchanged text between them
+ * by itself. Applying the result gives the same text; boundaries stay those of `edits`, so no
+ * surrogate pair is split.
+ */
+export function coalesceEdits(edits: readonly TextEdit[], text: string, gap: number): TextEdit[] {
+  const out: TextEdit[] = []
+  for (const edit of edits) {
+    const last = out[out.length - 1]
+    if (last && edit.from - last.to <= gap) {
+      last.insert += text.slice(last.to, edit.from) + edit.insert
+      last.to = edit.to
+    } else out.push({ ...edit })
+  }
+  return out
+}
+
+/** How `mergeExternalText` may trade the detail of a large merge for its speed. */
+export type MergeOptions = {
+  /**
+   * Opt-in, off by default: when the merge has more than `above` edits, join edits separated by
+   * at most `gap` unchanged code units (`coalesceEdits`). The engine's cost grows with the number
+   * of edits, so this makes a large merge cheaper, but the unchanged text between joined edits is
+   * deleted and inserted again: a concurrent edit of another replica inside it is lost or
+   * duplicated when the replicas sync, the person's undo of an earlier edit there finds nothing to
+   * undo, cursors and remote selections in it move to its edge, and the replica's history
+   * attributes it to the file.
+   */
+  coalesce?: { above: number; gap: number }
+}
+
+/**
  * Merges the file change `base → incoming` into the `Document` object `id` of the transaction's
  * replica, whose body text is `current`: `base` is the text last exported to or read from the
  * file, `incoming` the file now. Answers `unchanged` when the replica needs no change (the file
  * did not change, or already holds the replica's text).
  */
-export function mergeExternalText(tx: Tx, id: ObjectId, base: string, incoming: string, current: string): 'unchanged' | 'merged' {
+export function mergeExternalText(
+  tx: Tx,
+  id: ObjectId,
+  base: string,
+  incoming: string,
+  current: string,
+  options: MergeOptions = {},
+): 'unchanged' | 'merged' {
   if (incoming === base) return 'unchanged'
   if (tx.textLength(id, DOCUMENT_BODY) !== current.length) throw new Error('mergeExternalText: `current` is not the replica text')
-  const edits = mergeEdits(base, incoming, current)
+  let edits = mergeEdits(base, incoming, current)
   if (edits.length === 0) return 'unchanged'
+  const { coalesce } = options
+  if (coalesce && edits.length > coalesce.above) edits = coalesceEdits(edits, current, coalesce.gap)
   applyTextEdits(tx, id, DOCUMENT_BODY, edits)
   return 'merged'
 }
