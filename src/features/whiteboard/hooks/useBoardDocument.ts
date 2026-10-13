@@ -6,7 +6,7 @@ import {
   serializeBoardDocument,
 } from '@/features/whiteboard/lib/boardSerialization'
 import type { BoardRecord } from '@/features/whiteboard/lib/boardRecords'
-import type { WhiteboardViewport } from '@/features/whiteboard/lib/whiteboardTypes'
+import { DEFAULT_WHITEBOARD_VIEWPORT } from '@/features/whiteboard/lib/whiteboardViewport'
 import {
   readWorkspaceDocument,
   writeWorkspaceDocument,
@@ -19,11 +19,7 @@ export function useBoardDocument(options: {
   title: string
   isTransacting?: boolean
   records: readonly BoardRecord[]
-  viewport: WhiteboardViewport
-  replaceDocument: (input: {
-    records: readonly BoardRecord[]
-    viewport: WhiteboardViewport
-  }) => void
+  replaceDocument: (input: { records: readonly BoardRecord[] }) => void
 }) {
   const [status, setStatus] = useState<BoardDocumentStatus>('loading')
   const [error, setError] = useState('')
@@ -41,10 +37,7 @@ export function useBoardDocument(options: {
         if (!active) return
         const parsed = parseBoardDocument(document.content, options.title)
         skipNextSaveRef.current = true
-        options.replaceDocument({
-          records: parsed.records,
-          viewport: parsed.viewport,
-        })
+        options.replaceDocument({ records: parsed.records })
         loadedPathRef.current = options.path
         setStatus('ready')
       })
@@ -71,7 +64,8 @@ export function useBoardDocument(options: {
       const content = serializeBoardDocument(buildBoardDocument({
         title: options.title,
         records: options.records,
-        viewport: options.viewport,
+        // The viewport is per-person view state, not part of the document.
+        viewport: DEFAULT_WHITEBOARD_VIEWPORT,
       }))
       setStatus('saving')
       setError('')
@@ -89,7 +83,6 @@ export function useBoardDocument(options: {
     options.path,
     options.records,
     options.title,
-    options.viewport,
   ])
 
   return { error, status }

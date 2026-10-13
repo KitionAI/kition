@@ -6,8 +6,15 @@ import {
   useWhiteboardEditor,
   type WhiteboardEditorController,
 } from './useWhiteboardEditor'
+import { randomActor, Replica } from '@/lib/kdm'
+import { createBoardFromRecords } from '../kdm/boardKdmFile'
+import { boardSchema } from '../kdm/boardSchema'
 import { createBoardClipboardText } from '../lib/boardClipboard'
-import { createBoardRecordsFromElements } from '../lib/boardRecords'
+import {
+  createBoardElementRecord,
+  createBoardRecordsFromElements,
+  type BoardRecord,
+} from '../lib/boardRecords'
 import type { WhiteboardElement } from '../lib/whiteboardTypes'
 
 const UUID_V7 = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
@@ -34,7 +41,6 @@ async function replaceElements(
 ) {
   await act(async () => ref.current?.replaceDocument({
     records: createBoardRecordsFromElements(elements),
-    viewport: { x: 0, y: 0, zoom: 1 },
   }))
 }
 
@@ -1072,5 +1078,176 @@ describe('useWhiteboardEditor', () => {
     expect(createObjectURL).toHaveBeenCalledTimes(2)
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:kition-1')
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:kition-2')
+  })
+})
+
+describe('useWhiteboardEditor per-user view state', () => {
+  /** A board with three pages, one element on each: `page:main`, `page:two`, `page:three`. */
+  function createThreePageBoard() {
+    const records: BoardRecord[] = [
+      ...createBoardRecordsFromElements([
+        { id: 'main-rect', kind: 'rectangle', x: 0, y: 0, width: 10, height: 10 },
+      ], 'Board'),
+      { record_type: 'page', id: 'page:two', name: 'Two', index: 1 },
+      { record_type: 'page', id: 'page:three', name: 'Three', index: 2 },
+      createBoardElementRecord({
+        element: { id: 'two-rect', kind: 'rectangle', x: 0, y: 0, width: 10, height: 10 },
+        index: 0,
+        pageId: 'page:two',
+      }),
+      createBoardElementRecord({
+        element: { id: 'three-rect', kind: 'rectangle', x: 0, y: 0, width: 10, height: 10 },
+        index: 0,
+        pageId: 'page:three',
+      }),
+    ]
+    return createBoardFromRecords('Board', randomActor(), records)
+  }
+
+  function reopen(replica: Replica) {
+    return Replica.load(boardSchema, replica.snapshot(), randomActor())
+  }
+
+  function storedViewState(docId: string) {
+    const raw = window.localStorage.getItem(`kition.board.view.${docId}`)
+    return raw ? JSON.parse(raw) as { viewport: unknown; activePageId: unknown } : null
+  }
+
+  async function openBoard(
+    ref: { current: WhiteboardEditorController | null },
+    replica: Replica,
+  ) {
+    await act(async () => ref.current?.replaceDocument({ replica }))
+  }
+
+  beforeEach(() => {
+    window.localStorage.clear()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    window.localStorage.clear()
+  })
+
+  it('opens a board on its stored page and viewport', async () => {
+    const replica = createThreePageBoard()
+    window.localStorage.setItem(`kition.board.view.${replica.docId}`, JSON.stringify({
+      viewport: { x: 40, y: 50, zoom: 2 },
+      activePageId: 'page:two',
+    }))
+    const ref = await renderHook()
+    await openBoard(ref, replica)
+
+    expect(ref.current?.currentPageId).toBe('page:two')
+    expect(ref.current?.elements.map((element) => element.id)).toEqual(['two-rect'])
+    expect(ref.current?.viewport).toEqual({ x: 40, y: 50, zoom: 2 })
+    expect(ref.current?.canUndo).toBe(false)
+  })
+
+  it('opens a board without stored view state on its first page at the default viewport', async () => {
+    const ref = await renderHook()
+    await openBoard(ref, createThreePageBoard())
+
+    expect(ref.current?.currentPageId).toBe('page:main')
+    expect(ref.current?.viewport).toEqual({ x: 0, y: 0, zoom: 1 })
+  })
+
+  it('falls back to the first page when the stored page no longer exists', async () => {
+    const replica = createThreePageBoard()
+    window.localStorage.setItem(`kition.board.view.${replica.docId}`, JSON.stringify({
+      viewport: { x: 0, y: 0, zoom: 1 },
+      activePageId: 'page:gone',
+    }))
+    const ref = await renderHook()
+    await openBoard(ref, replica)
+
+    expect(ref.current?.currentPageId).toBe('page:main')
+  })
+
+  it('stores a page switch per document without making it an undo step or a document change', async () => {
+    const replica = createThreePageBoard()
+    const ref = await renderHook()
+    await openBoard(ref, replica)
+    const version = ref.current!.store.getReplica().version()
+
+    await act(async () => ref.current?.activatePage('page:three'))
+
+    expect(ref.current?.currentPageId).toBe('page:three')
+    expect(storedViewState(replica.docId)?.activePageId).toBe('page:three')
+    expect(ref.current?.canUndo).toBe(false)
+    expect(ref.current!.store.getReplica().version().equals(version)).toBe(true)
+
+    await act(async () => ref.current?.undo())
+    expect(ref.current?.currentPageId).toBe('page:three')
+  })
+
+  it('stores pans and zooms after the debounce, never in the document', async () => {
+    vi.useFakeTimers()
+    const replica = createThreePageBoard()
+    const ref = await renderHook()
+    await openBoard(ref, replica)
+    const version = ref.current!.store.getReplica().version()
+
+    await act(async () => ref.current?.panBy({ x: 30, y: 60 }))
+    await act(async () => ref.current?.zoomBy(2, { x: 0, y: 0 }))
+    expect(ref.current?.viewport).toEqual({ x: 30, y: 60, zoom: 2 })
+    expect(storedViewState(replica.docId)).toBeNull()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300)
+    })
+    expect(storedViewState(replica.docId)?.viewport).toEqual({ x: 30, y: 60, zoom: 2 })
+    expect(ref.current!.store.getReplica().version().equals(version)).toBe(true)
+    expect(ref.current?.canUndo).toBe(false)
+  })
+
+  it('keeps independent view state for two boards', async () => {
+    vi.useFakeTimers()
+    const first = createThreePageBoard()
+    const second = createThreePageBoard()
+    const ref = await renderHook()
+
+    await openBoard(ref, first)
+    await act(async () => ref.current?.activatePage('page:two'))
+    await act(async () => ref.current?.panBy({ x: 10, y: 20 }))
+
+    await openBoard(ref, second)
+    expect(ref.current?.currentPageId).toBe('page:main')
+    expect(ref.current?.viewport).toEqual({ x: 0, y: 0, zoom: 1 })
+    await act(async () => ref.current?.activatePage('page:three'))
+    await act(async () => ref.current?.panBy({ x: -5, y: -5 }))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300)
+    })
+
+    expect(storedViewState(first.docId)).toEqual({
+      viewport: { x: 10, y: 20, zoom: 1 },
+      activePageId: 'page:two',
+    })
+    expect(storedViewState(second.docId)).toEqual({
+      viewport: { x: -5, y: -5, zoom: 1 },
+      activePageId: 'page:three',
+    })
+
+    await openBoard(ref, reopen(first))
+    expect(ref.current?.currentPageId).toBe('page:two')
+    expect(ref.current?.viewport).toEqual({ x: 10, y: 20, zoom: 1 })
+
+    await openBoard(ref, reopen(second))
+    expect(ref.current?.currentPageId).toBe('page:three')
+    expect(ref.current?.viewport).toEqual({ x: -5, y: -5, zoom: 1 })
+  })
+
+  it('falls back to the first page when the active page is deleted', async () => {
+    const replica = createThreePageBoard()
+    const ref = await renderHook()
+    await openBoard(ref, replica)
+    await act(async () => ref.current?.activatePage('page:two'))
+
+    await act(async () => ref.current?.deletePage('page:two'))
+
+    expect(ref.current?.currentPageId).toBe('page:main')
+    expect(ref.current?.elements.map((element) => element.id)).toEqual(['main-rect'])
+    expect(storedViewState(replica.docId)?.activePageId).toBe('page:main')
   })
 })

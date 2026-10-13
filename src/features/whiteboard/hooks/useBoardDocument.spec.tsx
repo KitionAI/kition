@@ -60,7 +60,6 @@ describe('useBoardDocument', () => {
         path: 'Planning/Product.kiboard',
         title: 'Product',
         records: editor.records,
-        viewport: editor.viewport,
         replaceDocument: editor.replaceDocument,
       })
       return null
@@ -107,7 +106,6 @@ describe('useBoardDocument', () => {
         title: 'Product',
         isTransacting: editor.isTransacting,
         records: editor.records,
-        viewport: editor.viewport,
         replaceDocument: editor.replaceDocument,
       })
       return null

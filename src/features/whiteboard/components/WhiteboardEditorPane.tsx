@@ -72,7 +72,6 @@ export function WhiteboardEditorPane({
     title,
     isTransacting: controller.isTransacting,
     records: controller.records,
-    viewport: controller.viewport,
     replaceDocument: controller.replaceDocument,
   })
   const [canvasSize, setCanvasSize] = useState<WhiteboardPoint>({ x: 1200, y: 760 })

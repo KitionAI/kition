@@ -230,6 +230,16 @@ export class BoardStore {
   }
 
   /**
+   * Opens `replica` (a loaded document) as this store's board, repaired once if its records need
+   * it, with a history that starts empty. The current page is kept when the board has it.
+   */
+  load(replica: Replica) {
+    if (this.activeTransaction) this.activeTransaction.cancel()
+    this.adopt(replica, { repair: true })
+    this.notify()
+  }
+
+  /**
    * Merges changes from another copy of the document (`Replica.exportChanges` or a snapshot) and
    * rebuilds the view, repairing what the merge left inconsistent. During a marked gesture (an open
    * undo group) the changes wait until it ends; during a transaction the view is rebuilt when the

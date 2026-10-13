@@ -1,11 +1,20 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+
+import type { Replica } from '@/lib/kdm'
 
 import {
   cloneBoardElement,
   type BoardBindingRecord,
   type BoardRecord,
 } from '../lib/boardRecords'
-import type { BoardHistoryMark } from '../lib/boardStore'
+import type { BoardHistoryMark, BoardStore } from '../lib/boardStore'
 import {
   getBoardElementsWithDescendants,
   getBoardFrameAtPoint,
@@ -13,6 +22,7 @@ import {
 } from '../lib/boardHierarchy'
 import { translateWhiteboardElement } from '../lib/whiteboardGeometry'
 import { lintWhiteboard } from '../lib/whiteboardLint'
+import { normalizeWhiteboardViewport } from '../lib/whiteboardViewport'
 import { getWhiteboardMindMapPresentation } from '../lib/whiteboardMindMap'
 import {
   instantiateWhiteboardTemplate,
@@ -32,7 +42,8 @@ import type {
   WhiteboardViewport,
 } from '../lib/whiteboardTypes'
 import { useBoardEditorStore } from './useBoardEditorStore'
-import { useWhiteboardCamera } from './useWhiteboardCamera'
+import { resolveActivePageId, useBoardViewState } from './useBoardViewState'
+import { useWhiteboardCamera, whiteboardViewportsEqual } from './useWhiteboardCamera'
 import { useWhiteboardClipboard } from './useWhiteboardClipboard'
 import { useWhiteboardElementActions } from './useWhiteboardElementActions'
 import { useWhiteboardExport } from './useWhiteboardExport'
@@ -50,6 +61,9 @@ export function useWhiteboardEditor() {
     snapshot,
     store,
   } = useBoardEditorStore()
+  // The person's view of this document (page and camera), kept outside the document.
+  const docId = store.getReplica().docId
+  const viewState = useBoardViewState(docId)
   const boardBindings = useMemo(() => records.filter((record): record is BoardBindingRecord => (
     record.record_type === 'binding'
   )), [records])
@@ -75,7 +89,15 @@ export function useWhiteboardEditor() {
     setViewport,
     viewport,
     zoomBy,
-  } = useWhiteboardCamera(visibleElements)
+  } = useWhiteboardCamera(visibleElements, { initialViewport: viewState.viewport })
+  useBoardViewStateSync({
+    docId,
+    replaceViewport,
+    revision: snapshot.revision,
+    store,
+    viewState,
+    viewport,
+  })
   const {
     clearSelection,
     replaceSelection,
@@ -414,17 +436,21 @@ export function useWhiteboardEditor() {
     viewport,
   ])
 
-  const replaceDocument = useCallback((input: {
-    records: readonly BoardRecord[]
-    viewport: WhiteboardViewport
-  }) => {
+  /**
+   * Opens a document: a loaded replica, or records built into a new one. The page and viewport
+   * shown come from the person's view state for the document (see `useBoardViewStateSync`).
+   */
+  const replaceDocument = useCallback((input:
+    | { replica: Replica }
+    | { records: readonly BoardRecord[] }
+  ) => {
     cancelInteraction()
-    store.replaceRecords(input.records)
-    replaceViewport(input.viewport)
+    if ('replica' in input) store.load(input.replica)
+    else store.replaceRecords(input.records)
     clearSelection()
     dismissEditingText()
     setTool('select')
-  }, [cancelInteraction, clearSelection, dismissEditingText, replaceViewport, store])
+  }, [cancelInteraction, clearSelection, dismissEditingText, store])
 
   const addMindMapChildFromKeyboard = useCallback(() => (
     Boolean(mindMapActions.addMindMapChild(''))
@@ -569,3 +595,73 @@ export function useWhiteboardEditor() {
 }
 
 export type WhiteboardEditorController = ReturnType<typeof useWhiteboardEditor>
+
+/**
+ * Keeps the shown page and the camera in step with the person's view state for the document
+ * `docId`. When the document changes, its stored page (or the first page, when the stored one is
+ * gone) and stored viewport are shown. Afterwards a page switch, from any source, is stored, and a
+ * shown page that disappears (deleted, undone, merged away) falls back to the first page; pans
+ * and zooms are stored too (the view state debounces them). None of this touches the document.
+ */
+function useBoardViewStateSync(input: {
+  docId: string
+  replaceViewport: (viewport: WhiteboardViewport) => void
+  revision: number
+  store: BoardStore
+  viewState: ReturnType<typeof useBoardViewState>
+  viewport: WhiteboardViewport
+}) {
+  const { docId, replaceViewport, revision, store, viewState, viewport } = input
+  const { activePageId: storedPageId, setActivePageId, setViewport } = viewState
+  const appliedDocIdRef = useRef<string | null>(null)
+  // The viewport applied on open, until the camera shows it: viewports before it belong to the
+  // previous document and must not be stored for this one.
+  const openingViewportRef = useRef<WhiteboardViewport | null>(null)
+
+  useLayoutEffect(() => {
+    if (appliedDocIdRef.current === docId) return
+    appliedDocIdRef.current = docId
+    const pageId = resolveActivePageId(storedPageId, orderedPageIds(store))
+    if (pageId) store.setActivePage(pageId)
+    // Replacing (not setting) the viewport also starts the camera history afresh.
+    if (whiteboardViewportsEqual(viewport, viewState.viewport)) {
+      replaceViewport(viewport)
+    } else {
+      openingViewportRef.current = viewState.viewport
+      replaceViewport(viewState.viewport)
+    }
+  }, [docId, replaceViewport, store, storedPageId, viewState.viewport, viewport])
+
+  useLayoutEffect(() => {
+    if (appliedDocIdRef.current !== docId) return
+    const pageIds = orderedPageIds(store)
+    const currentPageId = store.getCurrentPageId()
+    if (storedPageId !== null && !pageIds.includes(storedPageId)) {
+      const fallback = resolveActivePageId(storedPageId, pageIds)
+      if (fallback && fallback !== currentPageId) store.setActivePage(fallback)
+      setActivePageId(fallback)
+      return
+    }
+    if (currentPageId !== resolveActivePageId(storedPageId, pageIds)) {
+      setActivePageId(currentPageId)
+    }
+  }, [docId, revision, setActivePageId, store, storedPageId])
+
+  useEffect(() => {
+    const opening = openingViewportRef.current
+    if (opening) {
+      if (viewport === opening) openingViewportRef.current = null
+      return
+    }
+    // Compared as stored (normalised), so a viewport the view state would clamp is not stored
+    // again on every render.
+    const stored = normalizeWhiteboardViewport(viewport, viewState.viewport)
+    if (!whiteboardViewportsEqual(stored, viewState.viewport)) setViewport(stored)
+  }, [setViewport, viewState.viewport, viewport])
+}
+
+function orderedPageIds(store: BoardStore) {
+  return store.getPages()
+    .sort((left, right) => left.index - right.index)
+    .map((page) => page.id)
+}

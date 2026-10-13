@@ -192,6 +192,20 @@ describe('BoardCommandRegistry page activation', () => {
   })
 })
 
+describe('BoardCommandRegistry page deletion', () => {
+  it('shows the first page after deleting the active page', () => {
+    const store = new BoardStore(createBoardRecordsFromElements(ELEMENTS.slice(0, 1), 'Main'))
+    const commands = new BoardCommandRegistry(store)
+    commands.execute({ type: 'page.create', pageId: 'page:two', name: 'Second', activate: false })
+    commands.execute({ type: 'page.create', pageId: 'page:three', name: 'Third', activate: false })
+    commands.execute({ type: 'page.activate', pageId: 'page:two' })
+
+    commands.execute({ type: 'page.delete', pageId: 'page:two' })
+
+    expect(store.getCurrentPageId()).toBe('page:main')
+  })
+})
+
 describe('BoardCommandRegistry applyAgentDiff', () => {
   it('applies an agent update when only other fields changed since the preview', () => {
     const store = new BoardStore(createBoardRecordsFromElements(ELEMENTS.slice(0, 1)))

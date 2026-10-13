@@ -189,7 +189,6 @@ async function renderMindMapEditor() {
       ...createBoardRecordsFromElements(instance.elements, 'Mind map'),
       ...instance.bindings,
     ],
-    viewport: { x: 0, y: 0, zoom: 1 },
   }))
   return ref
 }

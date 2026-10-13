@@ -11,12 +11,9 @@ import type {
   WhiteboardPoint,
   WhiteboardViewport,
 } from '../lib/whiteboardTypes'
+import { DEFAULT_WHITEBOARD_VIEWPORT } from '../lib/whiteboardViewport'
 
-export const DEFAULT_WHITEBOARD_VIEWPORT: WhiteboardViewport = {
-  x: 0,
-  y: 0,
-  zoom: 1,
-}
+export { DEFAULT_WHITEBOARD_VIEWPORT }
 
 const MAX_CAMERA_HISTORY = 50
 
@@ -26,12 +23,19 @@ type WhiteboardCameraState = {
   future: WhiteboardViewport[]
 }
 
-export function useWhiteboardCamera(elements: readonly WhiteboardElement[]) {
-  const [camera, setCamera] = useState<WhiteboardCameraState>({
-    viewport: DEFAULT_WHITEBOARD_VIEWPORT,
+/**
+ * The editor's camera. It starts at `options.initialViewport` (the person's stored view of the
+ * board, or the default viewport); the camera is view state and never part of the document.
+ */
+export function useWhiteboardCamera(
+  elements: readonly WhiteboardElement[],
+  options: { initialViewport?: WhiteboardViewport } = {},
+) {
+  const [camera, setCamera] = useState<WhiteboardCameraState>(() => ({
+    viewport: options.initialViewport ?? DEFAULT_WHITEBOARD_VIEWPORT,
     past: [],
     future: [],
-  })
+  }))
 
   const setViewport = useCallback((action: SetStateAction<WhiteboardViewport>) => {
     setCamera((current) => ({
@@ -188,7 +192,7 @@ function resolveViewportAction(
   return typeof action === 'function' ? action(current) : action
 }
 
-function whiteboardViewportsEqual(
+export function whiteboardViewportsEqual(
   left: WhiteboardViewport,
   right: WhiteboardViewport,
 ) {

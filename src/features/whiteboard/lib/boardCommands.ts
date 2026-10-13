@@ -426,15 +426,12 @@ function deleteBoardPage(
   removeBoardConnectorBindings(store, transaction, elementIds)
   for (const elementId of elementIds) transaction.remove(elementId)
   transaction.remove(pageId)
-  pages
+  const remaining = pages
     .filter((item) => item.id !== pageId)
     .sort((left, right) => left.index - right.index)
-    .forEach((item, index) => transaction.put({ ...item, index }))
-  if (store.getCurrentPageId() === pageId) {
-    const fallback = pages.find((item) => item.index > page.index)
-      || [...pages].reverse().find((item) => item.index < page.index)
-    if (fallback) transaction.put(createBoardMetaRecord(fallback.id))
-  }
+  remaining.forEach((item, index) => transaction.put({ ...item, index }))
+  // Deleting the shown page shows the first page, as opening a board whose stored page is gone does.
+  if (store.getCurrentPageId() === pageId) transaction.put(createBoardMetaRecord(remaining[0].id))
 }
 
 function reorderBoardPage(
