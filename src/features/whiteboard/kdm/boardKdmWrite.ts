@@ -12,6 +12,7 @@ import type {
 } from '../lib/boardRecords'
 import type { BoardRecordDiff } from '../lib/boardRecordDiff'
 import type { WhiteboardElement } from '../lib/whiteboardTypes'
+import { BOARD_ELEMENT_KINDS, boardLayout, type BoardLayoutSource, type BoardPageLayout } from './boardKdmRead'
 import { BOARD_STYLE_FIELDS } from './boardSchema'
 
 type Terminal = 'start' | 'end'
@@ -28,176 +29,415 @@ const PLAIN_FIELDS = [
 /** Element fields holding JSON values. */
 const JSON_FIELDS = ['points', 'start', 'end', 'sourceRefIds'] as const
 
-/** Applies `diff` to `tx`; `rootId` is the board's `Board` object. */
-export function writeBoardDiff(tx: Tx, rootId: string, diff: BoardRecordDiff): void {
+/**
+ * What a write could not do as the diff asked; the store re-reads these ids from the replica.
+ * `skipped`: updates of elements or pages the replica no longer has, and added or updated bindings
+ * whose connector it no longer has (binding record ids). `relocated`: elements the diff put on a
+ * page that neither the replica nor the diff has; they were placed last on the board's first page.
+ */
+export type BoardWriteResult = { skipped: string[]; relocated: string[] }
+
+type ElementUpdate = { before: BoardElementRecord; after: BoardElementRecord }
+type PageUpdate = { before: BoardPageRecord; after: BoardPageRecord }
+
+/** Order keys of relocated elements: after every element of the page, in diff index order. */
+const RELOCATED = 2 ** 40
+
+const EMPTY_PAGE: BoardPageLayout = { id: '', items: [], states: [], elements: [] }
+
+/**
+ * Applies `diff` to `tx`; `rootId` is the board's `Board` object. Throws before staging anything
+ * when a value cannot be stored (a number that is not finite).
+ */
+export function writeBoardDiff(tx: Tx, rootId: string, diff: BoardRecordDiff): BoardWriteResult {
+  const skipped: string[] = []
+  const relocated: string[] = []
   const updates = diff.updated
   const addedPages = diff.added.filter(isPage)
-  const addedElements = diff.added.filter(isElement)
   const removedPages = diff.removed.filter(isPage)
   const removedElements = diff.removed.filter(isElement)
-  const elementUpdates = updates.filter((u): u is { before: BoardElementRecord; after: BoardElementRecord } => isElement(u.before) && isElement(u.after))
-  const pageUpdates = updates.filter((u): u is { before: BoardPageRecord; after: BoardPageRecord } => isPage(u.before) && isPage(u.after))
+  const elementUpdates = updates.filter((u): u is ElementUpdate => isElement(u.before) && isElement(u.after))
+  const pageUpdates = updates.filter((u): u is PageUpdate => isPage(u.before) && isPage(u.after))
   const removedPageIds = new Set(removedPages.map((page) => page.id))
-
-  // Every element's page after the diff, for those the diff names.
-  const placed = new Map<string, BoardElementRecord>()
-  for (const element of addedElements) placed.set(element.id, element)
-  for (const { after } of elementUpdates) placed.set(after.id, after)
   const removedElementIds = new Set(removedElements.map((element) => element.id))
 
-  // Lists whose order may change, with their current order read before any operation.
-  const touchedPages = new Set<string>()
-  for (const element of addedElements) touchedPages.add(element.page_id)
-  for (const element of removedElements) touchedPages.add(element.page_id)
-  for (const { before, after } of elementUpdates) {
-    if (before.page_id === after.page_id && before.index === after.index) continue
-    touchedPages.add(before.page_id)
-    touchedPages.add(after.page_id)
+  // Everything to store, checked before the first operation.
+  const creations = diff.added.filter(isElement).map((element) => ({ element, fields: checkedFields(element.id, withoutNulls(fieldsFromElement(element))) }))
+  const changes = elementUpdates.map(({ before, after }) => {
+    const previous = fieldsFromElement(before)
+    const changed = Object.entries(fieldsFromElement(after)).filter(([field, value]) => !sameValue(previous[field], value))
+    return { before, after, changed: Object.entries(checkedFields(after.id, Object.fromEntries(changed))) }
+  })
+  for (const binding of [...diff.added, ...updates.map((u) => u.after)]) {
+    if (isBinding(binding)) checkedFields(binding.from_id, { [`${bindingTerminal(binding) ?? 'binding'}Binding`]: bindingValue(binding) })
   }
-  for (const id of removedPageIds) touchedPages.delete(id)
-  const elementOrder = new Map<string, Map<string, number>>()
-  for (const pageId of touchedPages) elementOrder.set(pageId, currentOrder(tx, pageId, 'elements'))
+
+  const moves = elementUpdates.filter(({ before, after }) => before.page_id !== after.page_id || before.index !== after.index)
   const pagesTouched = addedPages.length > 0
     || removedPages.length > 0
     || pageUpdates.some(({ before, after }) => before.index !== after.index)
-  const pageOrder = pagesTouched ? currentOrder(tx, rootId, 'pages') : null
-
-  for (const page of addedPages) tx.create('Page', { name: page.name }, { id: page.id })
-  for (const { before, after } of pageUpdates) {
-    if (before.name !== after.name && tx.exists(after.id)) tx.set(after.id, 'name', after.name)
+  // The reader's view of the lists, read before any operation.
+  const layout = creations.length > 0 || removedElements.length > 0 || moves.length > 0 || pagesTouched
+    ? boardLayout(txSource(tx, rootId))
+    : null
+  const layoutPages = new Map(layout?.pages.map((page) => [page.id, page]))
+  const listedOn = new Map<string, Set<string>>()
+  for (const page of layout?.pages ?? []) {
+    for (const id of page.items) listedOn.set(id, (listedOn.get(id) ?? new Set()).add(page.id))
   }
 
-  for (const element of addedElements) {
-    tx.create('Element', withoutNulls(fieldsFromElement(element)), { id: element.id })
+  // Page order after the diff; its first page receives elements whose page does not exist.
+  const pageOrder = new Map(layout?.pages.map((page, index) => [page.id, index]))
+  for (const id of removedPageIds) pageOrder.delete(id)
+  for (const page of addedPages) pageOrder.set(page.id, page.index)
+  for (const { after } of pageUpdates) if (pageOrder.has(after.id)) pageOrder.set(after.id, after.index)
+  const pageIds = sortedIds(pageOrder)
+  const livePages = new Set(pageIds)
+  const firstPage = pageIds[0] as string | undefined
+
+  // The page and order key of every element the diff adds or moves.
+  const placed = new Map<string, { pageId: string; key: number }>()
+  const place = (element: BoardElementRecord): boolean => {
+    if (livePages.has(element.page_id)) {
+      placed.set(element.id, { pageId: element.page_id, key: element.index })
+      return true
+    }
+    if (firstPage === undefined) {
+      skipped.push(element.id)
+      return false
+    }
+    placed.set(element.id, { pageId: firstPage, key: RELOCATED + element.index })
+    relocated.push(element.id)
+    return true
+  }
+
+  for (const page of addedPages) tx.create('Page', { name: wellFormed(page.name) }, { id: page.id })
+  for (const { before, after } of pageUpdates) {
+    if (!tx.exists(after.id)) skipped.push(after.id)
+    else if (before.name !== after.name) tx.set(after.id, 'name', wellFormed(after.name))
+  }
+
+  for (const { element, fields } of creations) {
+    if (!place(element)) continue
+    tx.create('Element', fields, { id: element.id })
     const text = textOf(element)
     if (text) tx.textInsert(element.id, 'text', 0, text)
   }
-  for (const { before, after } of elementUpdates) {
+  for (const { before, after, changed } of changes) {
     // An element a merge removed is not brought back by an edit made before the store saw it.
-    if (!tx.exists(after.id)) continue
-    const previous = fieldsFromElement(before)
-    const next = fieldsFromElement(after)
-    for (const [field, value] of Object.entries(next)) {
-      if (!sameValue(previous[field], value)) tx.set(after.id, field, value)
+    if (!tx.exists(after.id)) {
+      skipped.push(after.id)
+      continue
     }
-    if (textOf(before) !== textOf(after)) writeText(tx, after.id, textOf(after))
+    for (const [field, value] of changed) tx.set(after.id, field, value)
+    writeText(tx, after.id, textOf(before), textOf(after))
   }
+  for (const { after } of moves) if (tx.exists(after.id)) place(after)
 
   for (const binding of diff.removed.filter(isBinding)) clearBinding(tx, binding)
-  for (const binding of diff.added.filter(isBinding)) writeBinding(tx, binding)
+  for (const binding of diff.added.filter(isBinding)) {
+    if (!writeBinding(tx, binding)) skipped.push(binding.id)
+  }
   for (const { before, after } of updates) {
     if (!isBinding(before) || !isBinding(after)) continue
     const previous = bindingTerminal(before)
     if (previous && (previous !== bindingTerminal(after) || before.from_id !== after.from_id)) clearBinding(tx, before)
     else if (sameValue(bindingValue(before), bindingValue(after))) continue
-    writeBinding(tx, after)
+    if (!writeBinding(tx, after)) skipped.push(after.id)
   }
 
   for (const element of removedElements) {
     if (tx.exists(element.id)) tx.delete(element.id)
   }
 
-  for (const [pageId, order] of elementOrder) {
-    if (!tx.exists(pageId)) continue
+  // Lists whose order changes: the pages of added, moved, and removed elements, wherever the
+  // replica lists them (a merge may have listed one element on two pages).
+  const touchedPages = new Set<string>()
+  for (const [id, { pageId }] of placed) {
+    touchedPages.add(pageId)
+    for (const pageWithId of listedOn.get(id) ?? []) touchedPages.add(pageWithId)
+  }
+  for (const id of removedElementIds) for (const pageWithId of listedOn.get(id) ?? []) touchedPages.add(pageWithId)
+  for (const pageId of touchedPages) {
+    if (removedPageIds.has(pageId) || !tx.exists(pageId)) continue
+    const page = layoutPages.get(pageId) ?? EMPTY_PAGE
+    const order = new Map(page.elements.map((id, index) => [id, index]))
     for (const id of removedElementIds) order.delete(id)
-    for (const [id, element] of placed) {
-      if (element.page_id === pageId && tx.exists(id)) order.set(id, element.index)
+    for (const [id, target] of placed) {
+      if (target.pageId === pageId) order.set(id, target.key)
       else order.delete(id)
     }
-    syncListOrder(tx, pageId, 'elements', sortedIds(order))
+    const unknown = new Set(page.items.filter((_, index) => page.states[index] === 'unknown'))
+    syncListOrder(tx, pageId, 'elements', sortedIds(order), unknown)
   }
 
-  if (pageOrder) {
-    for (const id of removedPageIds) pageOrder.delete(id)
-    for (const page of addedPages) pageOrder.set(page.id, page.index)
-    for (const { after } of pageUpdates) if (pageOrder.has(after.id)) pageOrder.set(after.id, after.index)
-    syncListOrder(tx, rootId, 'pages', sortedIds(pageOrder))
-  }
+  if (pagesTouched) syncListOrder(tx, rootId, 'pages', pageIds)
 
   for (const pageId of removedPageIds) {
     if (!tx.exists(pageId)) continue
     for (const id of tx.listItems(pageId, 'elements')) {
-      const movedTo = placed.get(id)?.page_id
-      if (movedTo !== undefined && movedTo !== pageId) continue
-      if (tx.exists(id)) tx.delete(id)
+      const home = placed.get(id)?.pageId ?? layout?.placement.get(id)?.pageId
+      if ((home === undefined || home === pageId) && tx.exists(id)) tx.delete(id)
     }
     tx.delete(pageId)
   }
+  return { skipped, relocated }
+}
+
+/**
+ * Removes the list entries the reader skips because their element is shown on an earlier page or
+ * earlier in the same list (see `findBoardDuplicatePlacements`). Answers how many it removed.
+ */
+export function repairBoardPlacements(tx: Tx, rootId: string): number {
+  let removed = 0
+  for (const page of boardLayout(txSource(tx, rootId)).pages) {
+    for (let index = page.items.length - 1; index >= 0; index -= 1) {
+      if (page.states[index] !== 'duplicate') continue
+      tx.listRemove(page.id, 'elements', index)
+      removed += 1
+    }
+  }
+  return removed
+}
+
+/** The reads of `boardLayout` through a transaction, so pending operations count. */
+function txSource(tx: Tx, rootId: string): BoardLayoutSource {
+  return {
+    pageIds: () => (tx.exists(rootId) ? tx.listItems(rootId, 'pages') : []),
+    isPage: (id) => tx.exists(id) && hasField(tx, id, 'name'),
+    items: (pageId) => tx.listItems(pageId, 'elements'),
+    objectState: (id) => {
+      let kind: unknown
+      try {
+        kind = tx.get(id, 'kind')
+      } catch {
+        // No such object, or one without `kind` (not an element).
+        return tx.exists(id) ? 'unknown' : 'missing'
+      }
+      return typeof kind === 'string' && BOARD_ELEMENT_KINDS.has(kind) ? 'element' : 'unknown'
+    },
+  }
+}
+
+/** Whether the object's type has `field` (`Page` has `name`, `Element` has `kind`). */
+function hasField(tx: Tx, id: string, field: string): boolean {
+  try {
+    tx.get(id, field)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** `fields`, after refusing a number that is not finite anywhere in them. */
+function checkedFields(id: string, fields: Record<string, unknown>): Record<string, unknown> {
+  for (const [field, value] of Object.entries(fields)) {
+    if (!allFinite(value)) throw new Error(`Whiteboard element "${id}" has a number that is not finite in \`${field}\`; it cannot be saved.`)
+  }
+  return fields
+}
+
+function allFinite(value: unknown): boolean {
+  if (typeof value === 'number') return Number.isFinite(value)
+  if (value === null || typeof value !== 'object') return true
+  return Object.values(value).every(allFinite)
 }
 
 /**
  * The KDM fields of an element: every register field of the schema except the connector bindings
- * (written from binding records), `null` when absent, with the style flattened. Text is not a
- * register and is written with `writeText`.
+ * (written from binding records), `null` when absent, with the style flattened and strings as the
+ * KDM stores them (`wellFormed`). Text is not a register and is written with `writeText`.
  */
 function fieldsFromElement(element: WhiteboardElement): Record<string, unknown> {
   const source = element as Record<string, unknown>
   const fields: Record<string, unknown> = { kind: element.kind }
-  for (const key of PLAIN_FIELDS) fields[key] = source[key] ?? null
-  for (const key of JSON_FIELDS) fields[key] = source[key] === undefined || source[key] === null ? null : plainJson(source[key])
-  fields.parent = element.parentId ?? null
-  for (const key of BOARD_STYLE_FIELDS) fields[key] = element.style?.[key] ?? null
+  for (const key of PLAIN_FIELDS) fields[key] = storedValue(source[key])
+  for (const key of JSON_FIELDS) fields[key] = storedValue(source[key])
+  fields.parent = storedValue(element.parentId)
+  for (const key of BOARD_STYLE_FIELDS) fields[key] = storedValue(element.style?.[key])
   fields.image = element.kind === 'image'
-    ? (element.alt === undefined ? { workspacePath: element.workspacePath } : { workspacePath: element.workspacePath, alt: element.alt })
+    ? storedValue({ workspacePath: element.workspacePath, alt: element.alt })
     : null
   return fields
 }
 
 /**
- * Replaces the element's text with `next` as one deletion and one insertion between the common
- * prefix and suffix, never cutting a surrogate pair.
+ * `value` as the KDM stores it: `null` for `undefined`, object members holding `undefined` left
+ * out, and lone surrogates in strings replaced with U+FFFD. Numbers are copied as they are, so
+ * `checkedFields` can refuse one that is not finite.
  */
-function writeText(tx: Tx, id: string, next: string): void {
-  const current = tx.text(id, 'text')
-  if (current === next) return
-  const shorter = Math.min(current.length, next.length)
+function storedValue(value: unknown): unknown {
+  if (value === undefined || value === null) return null
+  if (typeof value === 'string') return wellFormed(value)
+  if (typeof value !== 'object') return value
+  if (Array.isArray(value)) return value.map(storedValue)
+  const out: Record<string, unknown> = {}
+  for (const [key, member] of Object.entries(value)) if (member !== undefined) out[wellFormed(key)] = storedValue(member)
+  return out
+}
+
+/**
+ * The string the KDM stores for `text`: every lone surrogate replaced with U+FFFD. The store may
+ * use it so its records hold what the replica reads back.
+ */
+export function wellFormed(text: string): string {
+  let out = ''
   let start = 0
-  while (start < shorter && current.charCodeAt(start) === next.charCodeAt(start)) start += 1
-  if (start > 0 && isHighSurrogate(current.charCodeAt(start - 1))) start -= 1
+  for (let index = 0; index < text.length; index += 1) {
+    const unit = text.charCodeAt(index)
+    if (unit < 0xd800 || unit > 0xdfff) continue
+    if (isHighSurrogate(unit) && isLowSurrogate(text.charCodeAt(index + 1))) {
+      index += 1
+      continue
+    }
+    out += `${text.slice(start, index)}\ufffd`
+    start = index + 1
+  }
+  return start === 0 ? text : out + text.slice(start)
+}
+
+/**
+ * Applies the store's label edit `before` → `after` to the element's text as one deletion and one
+ * insertion. The edit is the span between the common prefix and suffix of the two (never cutting
+ * a surrogate pair). It is applied at its place when the replica's text still holds the store's
+ * text up to the end of the span (an edit merged in after it) or from its start (an edit merged
+ * in before it), so a concurrent edit elsewhere in the label survives; otherwise the replica's
+ * text is replaced by `after` the same way.
+ */
+function writeText(tx: Tx, id: string, before: string, after: string): void {
+  if (before === after) return
+  const current = tx.text(id, 'text')
+  if (current === after) return
+  const edit = textEdit(before, after)
+  const prefix = before.slice(0, edit.start)
+  const removed = before.slice(edit.start, edit.end)
+  const suffix = before.slice(edit.end)
+  const removedLength = edit.end - edit.start
+  const fromEnd = current.length - suffix.length - removedLength
+  if (current.startsWith(prefix) && current.startsWith(removed, edit.start)) {
+    applyEdit(tx, id, edit.start, removedLength, edit.inserted)
+  } else if (fromEnd >= 0 && current.endsWith(suffix) && current.startsWith(removed, fromEnd)) {
+    applyEdit(tx, id, fromEnd, removedLength, edit.inserted)
+  } else {
+    const fallback = textEdit(current, after)
+    applyEdit(tx, id, fallback.start, fallback.end - fallback.start, fallback.inserted)
+  }
+}
+
+/** The span `[start, end)` of `from` that `to` replaces with `inserted`, cut between characters. */
+function textEdit(from: string, to: string): { start: number; end: number; inserted: string } {
+  const shorter = Math.min(from.length, to.length)
+  let start = 0
+  while (start < shorter && from.charCodeAt(start) === to.charCodeAt(start)) start += 1
+  if (start > 0 && isHighSurrogate(from.charCodeAt(start - 1))) start -= 1
   let end = 0
-  while (end < shorter - start && current.charCodeAt(current.length - 1 - end) === next.charCodeAt(next.length - 1 - end)) end += 1
-  if (end > 0 && isLowSurrogate(current.charCodeAt(current.length - end))) end -= 1
-  const removed = current.length - end - start
-  if (removed > 0) tx.textDelete(id, 'text', start, removed)
-  const inserted = next.slice(start, next.length - end)
-  if (inserted) tx.textInsert(id, 'text', start, inserted)
+  while (end < shorter - start && from.charCodeAt(from.length - 1 - end) === to.charCodeAt(to.length - 1 - end)) end += 1
+  if (end > 0 && isLowSurrogate(from.charCodeAt(from.length - end))) end -= 1
+  return { start, end: from.length - end, inserted: to.slice(start, to.length - end) }
+}
+
+function applyEdit(tx: Tx, id: string, index: number, count: number, inserted: string): void {
+  if (count > 0) tx.textDelete(id, 'text', index, count)
+  if (inserted) tx.textInsert(id, 'text', index, inserted)
 }
 
 /**
  * Makes a list equal to `target`: removes items not in it (and repeated items), keeps the longest
- * run already in order, and moves or inserts every other item right after its predecessor.
+ * run already in order, and moves or inserts every other item right after its predecessor. Items
+ * in `anchored` (objects the reader cannot show) are kept, after the target item they follow now.
+ *
+ * Positions are tracked without rescanning the list: every item has an order key, `(slot, 0)` for
+ * the item at `slot` of the current list and `(slot of the last kept item before it in target,
+ * distance from that item)` for an item moved or inserted; a Fenwick tree counts the keys present,
+ * so an item's index is the number of present keys below its key.
  */
-function syncListOrder(tx: Tx, ownerId: string, field: string, target: readonly string[]): void {
-  const current = tx.listItems(ownerId, field)
+function syncListOrder(tx: Tx, ownerId: string, field: string, wanted: readonly string[], anchored: ReadonlySet<string> = new Set()): void {
+  const listed = tx.listItems(ownerId, field)
+  const target = anchored.size > 0 ? withAnchored(listed, wanted, anchored) : wanted
   const position = new Map(target.map((id, index) => [id, index]))
   const seen = new Set<string>()
-  const keep = current.map((id) => {
+  const keep = listed.map((id) => {
     if (!position.has(id) || seen.has(id)) return false
     seen.add(id)
     return true
   })
-  for (let index = current.length - 1; index >= 0; index -= 1) {
-    if (keep[index]) continue
-    tx.listRemove(ownerId, field, index)
-    current.splice(index, 1)
+  for (let index = listed.length - 1; index >= 0; index -= 1) {
+    if (!keep[index]) tx.listRemove(ownerId, field, index)
   }
-  const stable = longestIncreasingRun(current.map((id) => position.get(id) ?? 0))
-    .reduce((ids, index) => ids.add(current[index]), new Set<string>())
-  target.forEach((id, index) => {
-    if (stable.has(id)) return
-    let to = index === 0 ? 0 : current.indexOf(target[index - 1]) + 1
-    const from = current.indexOf(id)
-    if (from === -1) {
-      tx.listInsert(ownerId, field, to, id)
-      current.splice(to, 0, id)
-      return
-    }
-    if (from < to) to -= 1
-    if (from === to) return
-    tx.listMove(ownerId, field, from, to)
-    current.splice(from, 1)
-    current.splice(to, 0, id)
+  const current = listed.filter((_, index) => keep[index])
+  const stable = new Set(longestIncreasingRun(current.map((id) => position.get(id) ?? 0)).map((index) => current[index]))
+
+  const width = target.length + 2
+  const keyOf = new Map(current.map((id, slot) => [id, (slot + 1) * width]))
+  let anchorBase = 0
+  let anchorIndex = -1
+  const newKeys = target.map((id, index) => {
+    if (!stable.has(id)) return anchorBase + index - anchorIndex
+    anchorBase = keyOf.get(id) ?? 0
+    anchorIndex = index
+    return -1
   })
+  const sorted = Float64Array.from([...keyOf.values(), ...newKeys.filter((key) => key >= 0)]).sort()
+  const rank = new Map<number, number>()
+  sorted.forEach((key, index) => rank.set(key, index))
+  const present = new Counts(sorted.length)
+  for (const key of keyOf.values()) present.add(rank.get(key) ?? 0, 1)
+
+  target.forEach((id, index) => {
+    const key = newKeys[index]
+    if (key < 0) return
+    const old = keyOf.get(id)
+    let from = -1
+    if (old !== undefined) {
+      const oldRank = rank.get(old) ?? 0
+      from = present.below(oldRank)
+      present.add(oldRank, -1)
+    }
+    const newRank = rank.get(key) ?? 0
+    const to = present.below(newRank)
+    present.add(newRank, 1)
+    keyOf.set(id, key)
+    if (from === -1) tx.listInsert(ownerId, field, to, id)
+    else if (from !== to) tx.listMove(ownerId, field, from, to)
+  })
+}
+
+/** A Fenwick tree of counts at positions `0..size-1`. */
+class Counts {
+  private readonly tree: Int32Array
+
+  constructor(size: number) {
+    this.tree = new Int32Array(size + 1)
+  }
+
+  add(position: number, delta: number): void {
+    for (let node = position + 1; node < this.tree.length; node += node & -node) this.tree[node] += delta
+  }
+
+  /** The total count at positions below `position`. */
+  below(position: number): number {
+    let total = 0
+    for (let node = position; node > 0; node -= node & -node) total += this.tree[node]
+    return total
+  }
+}
+
+/** `target` with each `anchored` item of `current` right after the target item it follows in `current`. */
+function withAnchored(current: readonly string[], target: readonly string[], anchored: ReadonlySet<string>): string[] {
+  const inTarget = new Set(target)
+  const following = new Map<string | null, string[]>()
+  const kept = new Set<string>()
+  let anchor: string | null = null
+  for (const id of current) {
+    if (inTarget.has(id)) anchor = id
+    else if (anchored.has(id) && !kept.has(id)) {
+      kept.add(id)
+      following.set(anchor, [...(following.get(anchor) ?? []), id])
+    }
+  }
+  const out = [...(following.get(null) ?? [])]
+  for (const id of target) out.push(id, ...(following.get(id) ?? []))
+  return out
 }
 
 /** Indexes (into `values`) of one longest strictly increasing subsequence. */
@@ -220,27 +460,17 @@ function longestIncreasingRun(values: readonly number[]): number[] {
   return run.reverse()
 }
 
-/**
- * The current order of a list as record indexes: the position of each live item among the live
- * items, as `readBoardRecords` numbers them. Empty when the owner does not exist yet.
- */
-function currentOrder(tx: Tx, ownerId: string, field: string): Map<string, number> {
-  const order = new Map<string, number>()
-  if (!tx.exists(ownerId)) return order
-  for (const id of tx.listItems(ownerId, field)) {
-    if (!order.has(id) && tx.exists(id)) order.set(id, order.size)
-  }
-  return order
-}
-
 /** Ids by index, then id, as the store orders records. */
 function sortedIds(order: Map<string, number>): string[] {
   return [...order].sort(([left, a], [right, b]) => a - b || left.localeCompare(right)).map(([id]) => id)
 }
 
-function writeBinding(tx: Tx, binding: BoardBindingRecord): void {
+/** Stores a binding on its connector; `false` when the connector no longer exists. */
+function writeBinding(tx: Tx, binding: BoardBindingRecord): boolean {
   const terminal = bindingTerminal(binding)
-  if (terminal && tx.exists(binding.from_id)) tx.set(binding.from_id, `${terminal}Binding`, bindingValue(binding))
+  if (!tx.exists(binding.from_id)) return false
+  if (terminal) tx.set(binding.from_id, `${terminal}Binding`, bindingValue(binding))
+  return true
 }
 
 function clearBinding(tx: Tx, binding: BoardBindingRecord): void {
@@ -261,20 +491,16 @@ function bindingTerminal(binding: BoardBindingRecord): Terminal | null {
 }
 
 function textOf(element: WhiteboardElement): string {
-  return element.kind === 'rectangle' || element.kind === 'text' ? element.text ?? '' : ''
+  return element.kind === 'rectangle' || element.kind === 'text' ? wellFormed(element.text ?? '') : ''
 }
 
 function withoutNulls(fields: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== null))
 }
 
-/** A JSON copy without `undefined` members, which the KDM refuses. */
-function plainJson(value: unknown): unknown {
-  return JSON.parse(JSON.stringify(value)) as unknown
-}
-
 function sameValue(left: unknown, right: unknown): boolean {
   if (left === right) return true
+  if (typeof left === 'number' && typeof right === 'number') return Number.isNaN(left) && Number.isNaN(right)
   if (left === null || right === null || typeof left !== 'object' || typeof right !== 'object') return false
   if (Array.isArray(left) !== Array.isArray(right)) return false
   const leftRecord = left as Record<string, unknown>

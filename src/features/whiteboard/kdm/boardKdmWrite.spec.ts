@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { Network, person, type Replica } from '@/lib/kdm'
-import { createBoardElementRecord, type BoardElementRecord } from '../lib/boardRecords'
+import { Network, newDocId, parseSchema, person, Replica } from '@/lib/kdm'
+import { createBoardElementRecord, type BoardBindingRecord, type BoardElementRecord, type BoardPageRecord } from '../lib/boardRecords'
 import type { BoardRecordDiff } from '../lib/boardStore'
 import type { WhiteboardElement } from '../lib/whiteboardTypes'
 import { boardSchema } from './boardSchema'
-import { readBoardRecords } from './boardKdmRead'
-import { createEmptyBoard } from './boardKdmFile'
-import { writeBoardDiff } from './boardKdmWrite'
+import { boardRootId, findBoardDuplicatePlacements, readBoardElementRecord, readBoardRecords } from './boardKdmRead'
+import { createBoardFromRecords, createEmptyBoard } from './boardKdmFile'
+import { repairBoardPlacements, writeBoardDiff } from './boardKdmWrite'
 
 const me = person('user:test')
 const rect = (id: string, index: number, extra: Record<string, unknown> = {}) =>
@@ -14,8 +14,14 @@ const rect = (id: string, index: number, extra: Record<string, unknown> = {}) =>
 const added = (...records: BoardElementRecord[]): BoardRecordDiff => ({ added: records, updated: [], removed: [] })
 
 function apply(doc: Replica, diff: BoardRecordDiff) {
-  doc.transact(me, (tx) => writeBoardDiff(tx, 'board', diff))
+  return doc.transact(me, (tx) => writeBoardDiff(tx, 'board', diff))
 }
+
+const page = (id: string, index: number, name = id): BoardPageRecord => ({ record_type: 'page', id, name, index })
+const onPage = (record: BoardElementRecord, pageId: string, index: number) => ({ ...record, page_id: pageId, index }) as BoardElementRecord
+const elementsOf = (doc: Replica) => readBoardRecords(doc).filter((r): r is BoardElementRecord => r.record_type === 'element')
+const recordOf = (doc: Replica, id: string) => elementsOf(doc).find((r) => r.id === id)!
+const update = (before: BoardElementRecord, after: BoardElementRecord): BoardRecordDiff => ({ added: [], removed: [], updated: [{ before, after }] })
 
 /** Replicas of one document whose first replica created the board root and page; synced. */
 function seededNetwork(seed: number) {
@@ -160,5 +166,221 @@ describe('writeBoardDiff', () => {
     expect(doc.exists('b')).toBe(false)
     expect(doc.exists('z')).toBe(false)
     expect(doc.exists('page:2')).toBe(false)
+  })
+
+  describe('an element on a page that does not exist', () => {
+    it('places an added element on the first page, after its elements', () => {
+      const doc = createEmptyBoard('Plan', 1n, { rootId: 'board', pageId: 'page:main' })
+      apply(doc, { added: [page('page:0', 0), rect('a', 0), onPage(rect('b', 0), 'page:0', 0)], updated: [], removed: [] })
+      expect(doc.list('board', 'pages')).toEqual(['page:0', 'page:main'])
+      const result = apply(doc, added(onPage(rect('x', 0), 'page:gone', 0)))
+      expect(recordOf(doc, 'x')).toMatchObject({ page_id: 'page:0', index: 1 })
+      expect(doc.list('page:0', 'elements')).toEqual(['b', 'x'])
+      expect(result.relocated).toEqual(['x'])
+    })
+
+    it('moves an element to the first page instead of dropping it', () => {
+      const doc = createEmptyBoard('Plan', 1n, { rootId: 'board', pageId: 'page:main' })
+      apply(doc, { added: [page('page:2', 1), rect('a', 0), onPage(rect('z', 0), 'page:2', 0)], updated: [], removed: [] })
+      const z = recordOf(doc, 'z')
+      const result = apply(doc, update(z, onPage(z, 'page:gone', 0)))
+      expect(doc.list('page:2', 'elements')).toEqual([])
+      expect(doc.list('page:main', 'elements')).toEqual(['a', 'z'])
+      expect(recordOf(doc, 'z')).toMatchObject({ page_id: 'page:main', index: 1 })
+      expect(result.relocated).toEqual(['z'])
+    })
+
+    it('treats a page added in the same diff as existing', () => {
+      const doc = createEmptyBoard('Plan', 1n, { rootId: 'board', pageId: 'page:main' })
+      const result = apply(doc, { added: [page('page:2', 1), onPage(rect('z', 0), 'page:2', 0)], updated: [], removed: [] })
+      expect(recordOf(doc, 'z')).toMatchObject({ page_id: 'page:2', index: 0 })
+      expect(result).toEqual({ skipped: [], relocated: [] })
+    })
+  })
+
+  describe('elements placed on two pages by a merge', () => {
+    /** Two replicas that concurrently move `a` from page:main to page:2 and page:3. */
+    function crossPageMoves() {
+      const net = seededNetwork(11)
+      net.replicas[0].transact(me, (tx) => writeBoardDiff(tx, 'board', { added: [page('page:2', 1), page('page:3', 2), rect('a', 0), rect('b', 1)], updated: [], removed: [] }))
+      net.syncAll()
+      const a = recordOf(net.replicas[0], 'a')
+      net.replicas[0].transact(me, (tx) => writeBoardDiff(tx, 'board', update(a, onPage(a, 'page:3', 0))))
+      net.replicas[1].transact(me, (tx) => writeBoardDiff(tx, 'board', update(a, onPage(a, 'page:2', 0))))
+      net.syncAll()
+      net.converged()
+      return net
+    }
+
+    it('keeps the element on both page lists after the merge, read once on the first page', () => {
+      const doc = crossPageMoves().replicas[0]
+      expect(doc.list('page:2', 'elements')).toEqual(['a'])
+      expect(doc.list('page:3', 'elements')).toEqual(['a'])
+      expect(elementsOf(doc).map((r) => [r.id, r.page_id, r.index])).toEqual([['b', 'page:main', 0], ['a', 'page:2', 0]])
+    })
+
+    it('reports the extra placements and repairs them so replicas converge on one placement', () => {
+      const net = crossPageMoves()
+      expect(findBoardDuplicatePlacements(net.replicas[1])).toEqual([{ id: 'a', pageId: 'page:3', index: 0 }])
+      net.replicas[1].transact(me, (tx) => repairBoardPlacements(tx, 'board'))
+      net.syncAll()
+      net.converged()
+      expect(findBoardDuplicatePlacements(net.replicas[0])).toEqual([])
+      expect(net.replicas[0].list('page:3', 'elements')).toEqual([])
+      expect(recordOf(net.replicas[0], 'a')).toMatchObject({ page_id: 'page:2', index: 0 })
+    })
+
+    it('moves a doubly placed element to a third page without leaving a copy behind', () => {
+      const doc = crossPageMoves().replicas[0]
+      const a = recordOf(doc, 'a')
+      apply(doc, update(a, onPage(a, 'page:main', 1)))
+      expect(doc.list('page:main', 'elements')).toEqual(['b', 'a'])
+      expect(doc.list('page:2', 'elements')).toEqual([])
+      expect(doc.list('page:3', 'elements')).toEqual([])
+    })
+  })
+
+  describe('text edits next to concurrent edits', () => {
+    function remoteLabel(remote: string) {
+      const net = seededNetwork(13)
+      const [local, other] = net.replicas
+      local.transact(me, (tx) => writeBoardDiff(tx, 'board', added(rect('a', 0, { text: 'Hello world' }))))
+      net.syncAll()
+      const before = recordOf(local, 'a')
+      other.transact(me, (tx) => writeBoardDiff(tx, 'board', update(before, { ...before, text: remote } as BoardElementRecord)))
+      net.syncAll()
+      return { local, before }
+    }
+
+    it('applies the edit at its place when the label changed after it', () => {
+      const { local, before } = remoteLabel('Hello world!')
+      apply(local, update(before, { ...before, text: 'Hello big world' } as BoardElementRecord))
+      expect(local.text('a', 'text')).toBe('Hello big world!')
+    })
+
+    it('applies the edit at its place when the label changed before it', () => {
+      const { local, before } = remoteLabel('Oh, Hello world')
+      apply(local, update(before, { ...before, text: 'Hello big world' } as BoardElementRecord))
+      expect(local.text('a', 'text')).toBe('Oh, Hello big world')
+    })
+
+    it('falls back to the store text when the label changed on both sides', () => {
+      const { local, before } = remoteLabel('Oh, Hello world!')
+      apply(local, update(before, { ...before, text: 'Hello big world' } as BoardElementRecord))
+      expect(local.text('a', 'text')).toBe('Hello big world')
+    })
+
+    it('matches a label holding a lone surrogate against the stored replacement character', () => {
+      const net = seededNetwork(17)
+      const [local, other] = net.replicas
+      local.transact(me, (tx) => writeBoardDiff(tx, 'board', added(rect('a', 0, { text: 'x\uD800y z' }))))
+      net.syncAll()
+      expect(local.text('a', 'text')).toBe('x�y z')
+      const view = rect('a', 0, { text: 'x\uD800y z' })
+      const synced = recordOf(local, 'a')
+      other.transact(me, (tx) => writeBoardDiff(tx, 'board', update(synced, { ...synced, text: 'x�y z!' } as BoardElementRecord)))
+      net.syncAll()
+      apply(local, update(view, { ...view, text: 'x\uD800y Q z' } as BoardElementRecord))
+      expect(local.text('a', 'text')).toBe('x�y Q z!')
+    })
+  })
+
+  describe('writes it cannot apply', () => {
+    it('reports updates of missing elements and bindings of missing connectors', () => {
+      const doc = createEmptyBoard('Plan', 1n, { rootId: 'board', pageId: 'page:main' })
+      const ghost = rect('ghost', 0)
+      const binding: BoardBindingRecord = { record_type: 'binding', id: 'binding:c:end', binding_type: 'connector', from_id: 'c', to_id: 'a', terminal: 'end' }
+      const result = apply(doc, { added: [binding], removed: [], updated: [
+        { before: ghost, after: { ...ghost, x: 5 } as BoardElementRecord },
+        { before: page('page:gone', 3), after: page('page:gone', 3, 'Renamed') },
+      ] })
+      expect(result).toEqual({ skipped: ['page:gone', 'ghost', 'binding:c:end'], relocated: [] })
+      expect(doc.exists('ghost')).toBe(false)
+    })
+
+    it('refuses non-finite numbers before writing anything, naming the element and field', () => {
+      const doc = createEmptyBoard('Plan', 1n, { rootId: 'board', pageId: 'page:main' })
+      const before = doc.stateText()
+      expect(() => apply(doc, added(rect('a', 0), rect('b', 1, { x: Number.NaN })))).toThrow(/"b".*\bx\b/)
+      expect(() => apply(doc, added(rect('c', 0, { style: { opacity: Infinity } })))).toThrow(/"c".*opacity/)
+      expect(() => apply(doc, added(createBoardElementRecord({ element: { id: 's', kind: 'stroke', points: [{ x: 0, y: Number.NaN }] }, index: 0, pageId: 'page:main' })))).toThrow(/"s".*points/)
+      expect(doc.stateText()).toBe(before)
+      apply(doc, added(rect('a', 0)))
+      const a = recordOf(doc, 'a')
+      expect(() => apply(doc, update(a, { ...a, width: -Infinity } as BoardElementRecord))).toThrow(/"a".*width/)
+    })
+
+    it('stores lone surrogates in string fields as replacement characters', () => {
+      const doc = createEmptyBoard('Plan', 1n, { rootId: 'board', pageId: 'page:main' })
+      apply(doc, { added: [page('page:2', 1, 'P\uDC00'), createBoardElementRecord({ element: { id: 'i', kind: 'image', x: 0, y: 0, width: 1, height: 1, workspacePath: 'a\uD800.png', alt: 'x' }, index: 0, pageId: 'page:main' })], updated: [], removed: [] })
+      expect(readBoardRecords(doc).find((r) => r.id === 'page:2')).toMatchObject({ name: 'P�' })
+      expect(recordOf(doc, 'i')).toMatchObject({ workspacePath: 'a�.png' })
+    })
+  })
+
+  describe('positions of items the reader skips', () => {
+    it('does not count an element placed on an earlier page', () => {
+      const doc = createEmptyBoard('Plan', 1n, { rootId: 'board', pageId: 'page:main' })
+      apply(doc, { added: [page('page:2', 1), rect('a', 0), onPage(rect('b', 0), 'page:2', 0), onPage(rect('c', 1), 'page:2', 1)], updated: [], removed: [] })
+      doc.transact(me, (tx) => tx.listInsert('page:2', 'elements', 1, 'a'))
+      expect(doc.list('page:2', 'elements')).toEqual(['b', 'a', 'c'])
+      apply(doc, added(onPage(rect('aa', 2), 'page:2', 2)))
+      expect(elementsOf(doc).filter((r) => r.page_id === 'page:2').map((r) => [r.id, r.index])).toEqual([['b', 0], ['c', 1], ['aa', 2]])
+      expect(doc.list('page:main', 'elements')).toEqual(['a'])
+    })
+
+    it('keeps elements of kinds it does not know where they are', () => {
+      const source = JSON.parse(JSON.stringify(boardSchema)) as { types: { Element: { fields: { kind: { values: string[] } } } } }
+      source.types.Element.fields.kind.values.push('sticker')
+      const future = parseSchema(source)
+      const original = Replica.create(future, newDocId(), 1n)
+      original.transact(me, (tx) => {
+        const root = tx.create('Board', { title: 'Plan' }, { id: 'board' })
+        const main = tx.create('Page', { name: 'Page 1' }, { id: 'page:main' })
+        tx.listInsert(root, 'pages', 0, main)
+        for (const [index, [id, kind]] of [['a', 'rectangle'], ['s', 'sticker'], ['b', 'rectangle']].entries()) {
+          tx.create('Element', { kind, x: 0, y: 0, width: 1, height: 1 }, { id })
+          tx.listInsert(main, 'elements', index, id)
+        }
+      })
+      const doc = Replica.load(boardSchema, original.snapshot(), 2n)
+      expect(elementsOf(doc).map((r) => [r.id, r.index])).toEqual([['a', 0], ['b', 1]])
+      apply(doc, added(rect('aa', 2)))
+      expect(doc.list('page:main', 'elements')).toEqual(['a', 's', 'b', 'aa'])
+      const [a, b] = elementsOf(doc)
+      apply(doc, { added: [], removed: [], updated: [{ before: a, after: { ...a, index: 1 } }, { before: b, after: { ...b, index: 0 } }] })
+      expect(elementsOf(doc).map((r) => [r.id, r.index])).toEqual([['b', 0], ['a', 1], ['aa', 2]])
+      expect(doc.list('page:main', 'elements')).toContain('s')
+    })
+  })
+
+  it('reorders 5,000 elements quickly (timing printed)', () => {
+    const count = 5_000
+    const records = Array.from({ length: count }, (_, index) => rect(`e${index}`, index))
+    let started = performance.now()
+    const doc = createBoardFromRecords('Plan', 1n, [page('page:main', 0), ...records])
+    const create = performance.now() - started
+    const root = boardRootId(doc)
+    started = performance.now()
+    const current = elementsOf(doc)
+    const read = performance.now() - started
+    started = performance.now()
+    const result = doc.transact(me, (tx) => writeBoardDiff(tx, root, { added: [], removed: [], updated: current.map((before) => ({ before, after: { ...before, index: count - 1 - before.index } })) }))
+    const reverse = performance.now() - started
+    expect(result.skipped).toEqual([])
+    expect(doc.list('page:main', 'elements')[0]).toBe(`e${count - 1}`)
+    started = performance.now()
+    doc.transact(me, (tx) => writeBoardDiff(tx, root, added(rect('new', count))))
+    const addOne = performance.now() - started
+    started = performance.now()
+    readBoardElementRecord(doc, 'e10', root)
+    const readFirst = performance.now() - started
+    started = performance.now()
+    readBoardElementRecord(doc, `e${count - 10}`, root)
+    const readLast = performance.now() - started
+    started = performance.now()
+    findBoardDuplicatePlacements(doc, root)
+    const duplicates = performance.now() - started
+    console.info(`[timing] ${count} elements: create ${create.toFixed(1)} ms, readBoardRecords ${read.toFixed(1)} ms, reverse ${reverse.toFixed(1)} ms, add one ${addOne.toFixed(1)} ms, readBoardElementRecord first ${readFirst.toFixed(1)} ms, last ${readLast.toFixed(1)} ms, findBoardDuplicatePlacements ${duplicates.toFixed(1)} ms`)
   })
 })
