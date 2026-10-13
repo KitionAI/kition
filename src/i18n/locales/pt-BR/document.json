@@ -1274,6 +1274,9 @@
   "session": {
     "saveConflict": "O arquivo deste documento continuou mudando enquanto o Kition o salvava. Suas edições foram mantidas e serão salvas novamente.",
     "closeSaveFailed": "Não foi possível salvar {{title}} antes de fechá-lo.",
-    "openFailed": "O Kition não conseguiu abrir este documento."
+    "openFailed": "O Kition não conseguiu abrir este documento.",
+    "fileMissing": "O arquivo deste documento foi excluído fora do Kition",
+    "fileMissingDescription": "Seu texto continua aberto aqui. Salve-o para criar o arquivo de novo ou feche a aba para descartá-lo.",
+    "recreate": "Salvar para recriar"
   }
 }

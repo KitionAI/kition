@@ -1,10 +1,12 @@
 import { expect, test, type Page } from '@playwright/test'
 
+import documentCopy from '../src/i18n/locales/en-US/document.json' with { type: 'json' }
 import workspaceCopy from '../src/i18n/locales/en-US/workspace.json' with { type: 'json' }
 import { readDocumentStoreState } from './helpers/documentStore'
 import {
   countMarkdownFileWrites,
   DEFAULT_DOC_PATH,
+  deleteMarkdownFileExternally,
   failMarkdownFileWrites,
   mockDesktopBridge,
   readDocumentIdOf,
@@ -283,4 +285,23 @@ test('the browser’s own undo and redo (the Edit menu) run on the replica, not 
   expect(await nativeHistory('historyRedo')).toBe(true)
   await expectFileText(page, '# Menu\n\nLine. Typed\n')
   await expect(editor(page)).toContainText('Line. Typed')
+})
+
+test('a file deleted outside Kition while open is saved again only when the person asks', async ({ page }) => {
+  await openFixture(page, '# Gone\n\nKeep this.\n')
+  await caretAtEndOf(page, 'Keep this.')
+  await page.keyboard.type(' Typed.')
+  await expectFileText(page, '# Gone\n\nKeep this. Typed.\n')
+
+  await deleteMarkdownFileExternally(page)
+  await page.keyboard.type(' More.')
+  const notice = page.locator('[data-sonner-toast]', { hasText: documentCopy.session.fileMissing })
+  await expect(notice).toBeVisible({ timeout: 10_000 })
+  await expect(notice).toContainText(documentCopy.session.fileMissingDescription)
+  await page.waitForTimeout(SAVE_DELAY_MS * 3)
+  expect(await readMarkdownFileText(page)).toBeNull()
+
+  await notice.getByRole('button', { name: documentCopy.session.recreate }).click()
+  await expectFileText(page, '# Gone\n\nKeep this. Typed. More.\n')
+  await expect(notice).toHaveCount(0)
 })

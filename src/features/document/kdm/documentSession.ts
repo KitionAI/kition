@@ -93,6 +93,19 @@ const WORKSPACE_CHANGED = 'DESIGN_WORKSPACE_CHANGED'
 const message = (reason: unknown) => (reason instanceof Error ? reason.message : String(reason))
 const asError = (reason: unknown) => (reason instanceof Error ? reason : new Error(message(reason)))
 
+/** The error of a session whose file was deleted (or moved away) outside Kition. */
+const FILE_MISSING = 'DOCUMENT_FILE_MISSING'
+
+/** Whether a failure says the file is gone: the session keeps the text and can recreate the file (`recreate`). */
+export function isDocumentFileMissing(reason: unknown) {
+  return message(reason).includes(FILE_MISSING)
+}
+
+/** Whether reading the file failed because there is no file (the shells' and the browser store's wording). */
+function isNotFound(reason: unknown) {
+  return /not found|no such file|cannot find|os error 2\b/i.test(message(reason))
+}
+
 /** Whether a save failure is the guarded write's conflict refusal. */
 export function isDocumentSaveConflict(reason: unknown) {
   return message(reason).includes(SAVE_CONFLICT)
@@ -123,6 +136,10 @@ export class DocumentSession {
   private saveRun: Promise<void> | null = null
   private flushRequested = false
   private saveFailure: Error | null = null
+  /** The file is gone (deleted or moved outside Kition): saves wait for `recreate`. */
+  private fileMissing = false
+  /** The next save writes the file again where it is missing (guarded: only while it is still missing). */
+  private recreating = false
   /** Above zero while this session changes the replica itself (merges): not an edit to save. */
   private importing = 0
   private queue: Promise<void> = Promise.resolve()
@@ -396,6 +413,21 @@ export class DocumentSession {
     return this.enqueue(() => this.reconcileNow())
   }
 
+  /**
+   * Writes the document's text to its path again after its file was deleted outside Kition. The write
+   * expects no file there: a file that appeared meanwhile is merged first, never overwritten. Rejects
+   * like `flush` when the text is not saved.
+   */
+  async recreate(): Promise<void> {
+    if (!this.fileMissing) return this.flush()
+    this.recreating = true
+    try {
+      await this.flush()
+    } finally {
+      this.recreating = false
+    }
+  }
+
   /** Whether leaving now could lose an edit: a save is running, or the replica is not saved. */
   hasUnsavedChanges() {
     if (this.discarded) return false
@@ -609,7 +641,8 @@ export class DocumentSession {
   }
 
   private readonly onExternalChange = (change: WorkspaceDocumentExternalChange) => {
-    if (this.disposed || change.path !== this.pathValue || change.eventType === 'unlink') return
+    if (this.disposed || change.path !== this.pathValue) return
+    // A deletion is checked like any change: the read finds the file gone (or back already).
     void this.reconcile()
   }
 
@@ -618,10 +651,18 @@ export class DocumentSession {
     let text: string
     try {
       text = (await readWorkspaceDocument(this.pathValue, this.root)).content
-    } catch {
+    } catch (reason) {
+      if (!this.disposed && isNotFound(reason)) this.markMissing()
       return
     }
-    if (this.disposed || text === this.fileText) return
+    if (this.disposed) return
+    const wasMissing = this.fileMissing
+    this.fileMissing = false
+    if (wasMissing) this.setState({ status: 'ready', error: '' })
+    if (text === this.fileText) {
+      if (wasMissing && this.isDirty() && this.saveTimer === undefined && !this.saveRun) this.schedule(SAVE_DELAY_MS)
+      return
+    }
     try {
       this.mergeFile(text)
     } catch (reason) {
@@ -688,14 +729,21 @@ export class DocumentSession {
         if (this.state.status === 'saving') this.setState({ status: 'ready', dirty: false })
         return
       }
+      if (this.fileMissing && !this.recreating) {
+        // Writing over the old text's guard cannot succeed; the person decides (`recreate`).
+        this.saveFailure = new Error(FILE_MISSING)
+        return
+      }
       const version = opened.replica.version()
+      const recreate = this.fileMissing
       this.setState({ status: 'saving', error: '' })
       let saved: { fileText: string; meta: OpenedDocument['meta'] }
       try {
         saved = await saveDocument({
           path: this.pathValue,
           opened,
-          expectedFileText: this.fileText,
+          // `null`: the file must still be missing.
+          expectedFileText: recreate ? null : this.fileText,
           expectedRoot: this.root,
           onStoreError: (error) => console.warn('[document] store write failed', error),
         })
@@ -708,12 +756,16 @@ export class DocumentSession {
         try {
           current = (await readWorkspaceDocument(this.pathValue, this.root)).content
         } catch (readFailure) {
-          this.failed(readFailure)
+          if (isNotFound(readFailure)) this.markMissing()
+          else this.failed(readFailure)
           return
         }
+        // The file is there (again): merge it, and write over it guarded by what it holds.
+        this.fileMissing = false
         this.mergeFile(current)
         continue
       }
+      this.fileMissing = false
       this.fileText = saved.fileText
       opened.meta = saved.meta
       this.savedVersion = version
@@ -762,6 +814,18 @@ export class DocumentSession {
     return order === 0 || order === 1
   }
 
+  /** The file is gone: say so and stop retrying; the text stays here until it is recreated or discarded. */
+  private markMissing() {
+    if (this.discarded) return
+    this.fileMissing = true
+    this.saveFailure = new Error(FILE_MISSING)
+    clearTimeout(this.retryTimer)
+    this.retryTimer = undefined
+    clearTimeout(this.saveTimer)
+    this.saveTimer = undefined
+    this.setState({ status: 'error', error: FILE_MISSING, dirty: this.isDirty() })
+  }
+
   /** A save failed: show it and retry with backoff (also after the editor closed, for the final write). */
   private failed(reason: unknown) {
     if (this.discarded) return
@@ -777,7 +841,7 @@ export class DocumentSession {
   }
 
   private schedule(delay: number) {
-    if (this.disposed || this.discarded) return
+    if (this.disposed || this.discarded || this.fileMissing) return
     clearTimeout(this.saveTimer)
     this.saveTimer = setTimeout(() => {
       this.saveTimer = undefined

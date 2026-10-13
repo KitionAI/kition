@@ -200,6 +200,8 @@ export type AgentAnalysisDirectoryRequest = {
 export type WorkspaceDocumentWriteRequest = {
   expected_root?: string
   expected_content?: string | null
+  /** The write is refused when the file exists. */
+  expected_missing?: boolean
   path: string
   content: string
 }

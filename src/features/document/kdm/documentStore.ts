@@ -378,7 +378,8 @@ export async function openDocument(path: string, fileText: string, actor: bigint
 export async function saveDocument(input: {
   path: string
   opened: Pick<OpenedDocument, 'replica' | 'rootId' | 'meta' | 'style'>
-  expectedFileText: string
+  /** What the file holds now; `null` when there must be no file (it is written again after it was deleted). */
+  expectedFileText: string | null
   expectedRoot?: string
   onStoreError?: (error: unknown) => void
 }): Promise<SavedDocument> {
@@ -390,7 +391,10 @@ export async function saveDocument(input: {
   const exported = versionHex(opened.replica)
   const style = { ...opened.style }
   const root = input.expectedRoot || (await listWorkspaceDocuments()).root_path
-  const written = await writeWorkspaceDocument(path, fileText, { expected_root: root, expected_content: expectedFileText })
+  const guard = expectedFileText === null
+    ? { expected_root: root, expected_content: null, expected_missing: true }
+    : { expected_root: root, expected_content: expectedFileText }
+  const written = await writeWorkspaceDocument(path, fileText, guard)
   const stamp = written?.mtime_ms !== undefined ? String(written.mtime_ms) : (written?.updated_at ?? null)
   const meta: DocumentStoreMeta = { ...makeMeta(opened.replica, path, await hashFileText(fileText), stamp, style), exported }
   try {

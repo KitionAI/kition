@@ -26,6 +26,21 @@ impl GuardedWrites {
         self.exclusive(path, || check(path, expected).and_then(|()| write()))
     }
 
+    /// Runs `write` while no other guarded write touches `path`, only when
+    /// there is no file at `path` (a document written again after it was
+    /// deleted must not replace a file that appeared meanwhile).
+    pub fn write_missing<T>(
+        &self,
+        path: &Path,
+        write: impl FnOnce() -> io::Result<T>,
+    ) -> io::Result<T> {
+        self.exclusive(path, || match fs::symlink_metadata(path) {
+            Err(error) if error.kind() == io::ErrorKind::NotFound => write(),
+            Err(error) => Err(error),
+            Ok(_) => Err(io::Error::other(SAVE_CONFLICT)),
+        })
+    }
+
     /// Runs `work` while no other guarded call touches `path`.
     pub fn exclusive<T>(&self, path: &Path, work: impl FnOnce() -> io::Result<T>) -> io::Result<T> {
         let lock = {
@@ -83,6 +98,18 @@ mod tests {
         assert!(writes.write(&file, None, || fs::write(&file, "v4")).is_ok());
         let missing = dir.path().join("missing.kidesign");
         assert!(writes.write(&missing, Some(""), || Ok(())).is_err());
+        let present = writes
+            .write_missing(&file, || fs::write(&file, "v5"))
+            .err()
+            .map(|err| err.to_string());
+        assert_eq!(present.as_deref(), Some(SAVE_CONFLICT));
+        assert_eq!(fs::read_to_string(&file).ok().as_deref(), Some("v4"));
+        assert!(
+            writes
+                .write_missing(&missing, || fs::write(&missing, "new"))
+                .is_ok()
+        );
+        assert_eq!(fs::read_to_string(&missing).ok().as_deref(), Some("new"));
         assert!(
             writes
                 .locks

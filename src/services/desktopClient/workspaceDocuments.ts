@@ -390,7 +390,11 @@ export async function statWorkspaceDocument(
   return null
 }
 
-export async function writeWorkspaceDocument(path: string, content: string, guard?: { expected_root: string; expected_content: string | null }): Promise<WorkspaceDocument> {
+/**
+ * Writes a workspace document. With `guard`, the write is refused (`DESIGN_SAVE_CONFLICT`) unless the workspace
+ * is still `expected_root` and the file holds `expected_content`; `expected_missing` requires that there is no file.
+ */
+export async function writeWorkspaceDocument(path: string, content: string, guard?: { expected_root: string; expected_content: string | null; expected_missing?: boolean }): Promise<WorkspaceDocument> {
   const normalizedPath = normalizeWorkspaceDocumentPath(path)
   const bridge = getDesktopBridge()
   if (bridge?.WriteWorkspaceDocument) {

@@ -1274,6 +1274,9 @@
   "session": {
     "saveConflict": "Le fichier de ce document a continué de changer pendant que Kition l’enregistrait. Vos modifications sont conservées et seront de nouveau enregistrées.",
     "closeSaveFailed": "Impossible d’enregistrer {{title}} avant sa fermeture.",
-    "openFailed": "Kition n’a pas pu ouvrir ce document."
+    "openFailed": "Kition n’a pas pu ouvrir ce document.",
+    "fileMissing": "Le fichier de ce document a été supprimé en dehors de Kition",
+    "fileMissingDescription": "Votre texte est toujours ouvert ici. Enregistrez-le pour recréer le fichier, ou fermez l’onglet pour l’abandonner.",
+    "recreate": "Enregistrer pour recréer"
   }
 }

@@ -1274,6 +1274,9 @@
   "session": {
     "saveConflict": "This document’s file kept changing while Kition was saving it. Your edits are kept and will be saved again.",
     "closeSaveFailed": "Couldn’t save {{title}} before it closed.",
-    "openFailed": "Kition couldn’t open this document."
+    "openFailed": "Kition couldn’t open this document.",
+    "fileMissing": "This document’s file was deleted outside Kition",
+    "fileMissingDescription": "Your text is still open here. Save it to create the file again, or close the tab to discard it.",
+    "recreate": "Save to recreate"
   }
 }

@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { readWorkspaceDocument, type WorkspaceDocumentExternalChange } from '@/services/desktop'
 import { flushWorkspaceEditSessions, discardWorkspaceEditSessions } from '@/services/workspaceEditSessions'
 import { redoDocument, undoDocument } from './documentHistory'
-import { DocumentSession, SAVE_DELAY_MS, TYPING_GROUP_MS } from './documentSession'
+import { DocumentSession, isDocumentFileMissing, SAVE_DELAY_MS, TYPING_GROUP_MS } from './documentSession'
 import { openDocument } from './documentStore'
 import {
   readWorkspaceMarkdown,
@@ -701,6 +701,74 @@ describe('DocumentSession: before a save', () => {
     await settle()
     expect(disk.files.get(PATH)).toBe('x ![a](assets/temp.png) ![b](assets/late.png)')
     expect(disk.writes.every((write) => !write.content.includes('blob:'))).toBe(true)
+  })
+})
+
+describe('DocumentSession: a file deleted outside Kition', () => {
+  function deleteExternally(path = PATH) {
+    disk.files.delete(path)
+    for (const handler of disk.handlers) handler({ path, eventType: 'unlink' })
+  }
+
+  it('says the file is gone instead of retrying, and recreates it on request', async () => {
+    const session = await open('kept\n')
+    session.replaceText('kept\nedited\n', { kind: 'person', principal: 'user:local' })
+    deleteExternally()
+    await settle(SAVE_DELAY_MS)
+    expect(isDocumentFileMissing(session.getState().error)).toBe(true)
+    expect(session.getState()).toMatchObject({ status: 'error', dirty: true })
+    const writes = disk.writes.length
+    await settle(10_000)
+    expect(disk.writes).toHaveLength(writes)
+    expect(disk.files.has(PATH)).toBe(false)
+    const flushed = expect(session.flush()).rejects.toSatisfy(isDocumentFileMissing)
+    await settle()
+    await flushed
+
+    const recreated = session.recreate()
+    await settle()
+    await recreated
+    expect(disk.files.get(PATH)).toBe('kept\nedited\n')
+    // The write expected no file: it never replaces one that appeared meanwhile.
+    expect(disk.writes[disk.writes.length - 1].expected).toBeNull()
+    expect(session.getState()).toMatchObject({ status: 'ready', error: '', dirty: false })
+  })
+
+  it('notices a missing file when a save finds it gone', async () => {
+    const session = await open('kept\n')
+    disk.files.delete(PATH)
+    session.replaceText('kept\nedited\n', { kind: 'person', principal: 'user:local' })
+    await settle(SAVE_DELAY_MS)
+    expect(isDocumentFileMissing(session.getState().error)).toBe(true)
+    const writes = disk.writes.length
+    await settle(10_000)
+    expect(disk.writes).toHaveLength(writes)
+  })
+
+  it('merges a file that reappeared before it recreates it', async () => {
+    const session = await open('one\n')
+    session.replaceText('one\nmine\n', { kind: 'person', principal: 'user:local' })
+    deleteExternally()
+    await settle(SAVE_DELAY_MS)
+    expect(isDocumentFileMissing(session.getState().error)).toBe(true)
+    // Restored by another writer, with a change, without an event reaching the session.
+    disk.files.set(PATH, 'zero\none\n')
+    const recreated = session.recreate()
+    await settle()
+    await recreated
+    expect(disk.files.get(PATH)).toBe('zero\none\nmine\n')
+    expect(session.getState()).toMatchObject({ status: 'ready', dirty: false })
+  })
+
+  it('follows a file that comes back on its own', async () => {
+    const session = await open('one\n')
+    deleteExternally()
+    await settle()
+    expect(isDocumentFileMissing(session.getState().error)).toBe(true)
+    externalWrite('one\ntwo\n')
+    await settle()
+    expect(session.getState()).toMatchObject({ status: 'ready', error: '' })
+    expect(session.text()).toBe('one\ntwo\n')
   })
 })
 

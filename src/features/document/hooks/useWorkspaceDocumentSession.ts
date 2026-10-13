@@ -12,7 +12,7 @@ import {
   type DocumentRevisionDecision,
   type PendingDocumentRevision,
 } from '@/features/document/lib/documentRevision'
-import { DocumentSession, isDocumentSaveConflict, LOCAL_PERSON, type DocumentAgentReview, type DocumentSessionState } from '@/features/document/kdm/documentSession'
+import { DocumentSession, isDocumentFileMissing, isDocumentSaveConflict, LOCAL_PERSON, type DocumentAgentReview, type DocumentSessionState } from '@/features/document/kdm/documentSession'
 import {
   findDocumentSession,
   getDocumentSession,
@@ -241,7 +241,16 @@ export function useWorkspaceDocumentSession({
     const unsubscribeReview = session.subscribeAgentReview(() => onAgentReviewChange(session))
     const unsubscribeState = session.subscribeState((state) => {
       setSessionTick((tick) => tick + 1)
-      if (state.status === 'error') {
+      if (state.status === 'error' && isDocumentFileMissing(state.error)) {
+        // Retrying cannot help: the file is gone. The text stays; the person recreates it or closes the tab.
+        notify.persistentError(translateRef.current('document:session.fileMissing'), {
+          label: translateRef.current('document:session.recreate'),
+          onClick: () => void session.recreate().catch(() => undefined),
+        }, {
+          id: toastId(),
+          description: translateRef.current('document:session.fileMissingDescription'),
+        })
+      } else if (state.status === 'error') {
         notify.persistentError(translateRef.current('document:autosave.failed'), {
           label: translateRef.current('common:actions.retry'),
           onClick: () => void session.flush().catch(() => undefined),
@@ -283,7 +292,11 @@ export function useWorkspaceDocumentSession({
       prepareSave: (text, path) => (text.includes('](blob:') ? persistBlobImageLinks(text, path) : Promise.resolve(text)),
       closedSaveFailed: (path, reason) => notify.error(
         translateRef.current('document:session.closeSaveFailed', { title: path.split('/').pop() || path }),
-        { description: isDocumentSaveConflict(reason) ? translateRef.current('document:session.saveConflict') : errorMessage(reason) },
+        {
+          description: isDocumentSaveConflict(reason) ? translateRef.current('document:session.saveConflict')
+            : isDocumentFileMissing(reason) ? translateRef.current('document:session.fileMissing')
+              : errorMessage(reason),
+        },
       ),
     })
     registerDocumentSession(session)

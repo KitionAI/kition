@@ -28,6 +28,8 @@ type MarkdownE2EFiles = {
   read: (path: string) => string | null
   /** Replaces (or creates) the file on disk without telling the app (see `emitChange`). */
   write: (path: string, content: string) => void
+  /** Deletes the file on disk without telling the app (see `emitChange`). */
+  remove: (path: string) => void
   /** Raises the desktop bridge's external-change event for `path`. */
   emitChange: (path: string, eventType?: 'add' | 'change' | 'unlink') => void
   /** `WriteWorkspaceDocument` calls per path in this page load, refused ones included. */
@@ -81,6 +83,10 @@ export async function mockDesktopBridge(
         read: (path) => docs.get(path)?.content ?? null,
         write: (path, next) => {
           docs.set(path, { content: next, updated_at: new Date().toISOString() })
+          persist()
+        },
+        remove: (path) => {
+          docs.delete(path)
           persist()
         },
         emitChange: (path, eventType = 'change') => {
@@ -164,13 +170,14 @@ export async function mockDesktopBridge(
           return toDocument(req.path, record)
         },
         // Guarded like the desktop shell: a write expecting other contents than the file holds is refused.
-        WriteWorkspaceDocument: async (req: { path: string; content: string; expected_root?: string; expected_content?: string | null }) => {
+        WriteWorkspaceDocument: async (req: { path: string; content: string; expected_root?: string; expected_content?: string | null; expected_missing?: boolean }) => {
           files.writes[req.path] = (files.writes[req.path] ?? 0) + 1
           if (files.failWrites !== null) throw new Error(files.failWrites)
           if (typeof req.expected_root === 'string' && req.expected_root !== vaultPath) throw new Error('DESIGN_WORKSPACE_CHANGED')
           if (typeof req.expected_content === 'string' && files.read(req.path) !== req.expected_content) {
             throw new Error('DESIGN_SAVE_CONFLICT')
           }
+          if (req.expected_missing === true && files.read(req.path) !== null) throw new Error('DESIGN_SAVE_CONFLICT')
           const record = { content: req.content, updated_at: new Date().toISOString() }
           docs.set(req.path, record)
           persist()
@@ -250,6 +257,16 @@ export async function writeMarkdownFileExternally(page: Page, content: string, o
     files.write(path, next)
     if (emit) files.emitChange(path)
   }, { path: options.path ?? DEFAULT_DOC_PATH, next: content, emit: options.emit !== false })
+}
+
+/** Another program deletes the file at `path`, and the app hears of it (the `unlink` event). */
+export async function deleteMarkdownFileExternally(page: Page, path: string = DEFAULT_DOC_PATH) {
+  await page.evaluate((target) => {
+    const files = window.__KITION_MARKDOWN_E2E_FILES__
+    if (!files) throw new Error('The Markdown e2e files are unavailable')
+    files.remove(target)
+    files.emitChange(target, 'unlink')
+  }, path)
 }
 
 /** How many writes the app has made to the file at `path` in this page load, refused ones included. */

@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { WorkspaceDocumentExternalChange } from '@/services/desktop'
 import { getDocumentSession, listDocumentSessions, writeWorkspaceMarkdown } from '@/features/document/kdm/documentSessions'
 import { noteWorkspaceFiles, pruneDocumentStoreOnOpen } from '@/features/document/kdm/documentStore'
+import enDocument from '@/i18n/locales/en-US/document.json'
+import { notify } from '@/lib/notify'
 import { useWorkspaceDocumentSession } from './useWorkspaceDocumentSession'
 
 ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true
@@ -172,6 +174,31 @@ describe('useWorkspaceDocumentSession: the workspace’s store', () => {
     const { options } = await renderSession()
     expect(pruneDocumentStoreOnOpen).toHaveBeenCalledWith('/vault')
     expect(noteWorkspaceFiles).toHaveBeenLastCalledWith('/vault', options.files)
+  })
+})
+
+describe('useWorkspaceDocumentSession: a file deleted outside Kition', () => {
+  it('says the file is gone and offers to save it again', async () => {
+    const persistentError = vi.spyOn(notify, 'persistentError')
+    disk.files.set(PATH, 'a\n')
+    const { ref } = await renderSession()
+    await open(ref)
+    ref.current.activeDocumentSession!.replaceText('a\nb\n', { kind: 'person', principal: 'user:local' })
+    disk.files.delete(PATH)
+    for (const handler of [...disk.handlers]) handler({ path: PATH, eventType: 'unlink', mtimeMs: Date.now() })
+    await settle(400)
+    expect(persistentError).toHaveBeenLastCalledWith(
+      enDocument.session.fileMissing,
+      expect.objectContaining({ label: enDocument.session.recreate }),
+      expect.objectContaining({ description: enDocument.session.fileMissingDescription }),
+    )
+    const action = persistentError.mock.calls[persistentError.mock.calls.length - 1][1]!
+    await act(async () => {
+      action.onClick()
+    })
+    await settle()
+    expect(disk.files.get(PATH)).toBe('a\nb\n')
+    persistentError.mockRestore()
   })
 })
 

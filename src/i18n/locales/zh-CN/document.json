@@ -1274,6 +1274,9 @@
   "session": {
     "saveConflict": "Kition 保存此文档时，其文件仍在不断变化。你的编辑已保留，稍后会再次保存。",
     "closeSaveFailed": "关闭前无法保存 {{title}}。",
-    "openFailed": "Kition 无法打开此文档。"
+    "openFailed": "Kition 无法打开此文档。",
+    "fileMissing": "此文档的文件已在 Kition 之外被删除",
+    "fileMissingDescription": "你的文本仍在这里打开。保存即可重新创建文件，或关闭标签页以放弃它。",
+    "recreate": "保存以重新创建"
   }
 }

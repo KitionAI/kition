@@ -407,11 +407,14 @@ pub async fn write_workspace_document(app: AppHandle, request: Option<Value>) ->
         state.mark_self_write(&resolved.absolute);
         let expected = request.exact_string("expected_content");
         let content = request.str("content");
-        let response = state
-            .guarded
-            .write(&resolved.absolute, expected.as_deref(), || {
-                files::write_document(&resolved, &content)
-            })?;
+        let write = || files::write_document(&resolved, &content);
+        let response = if request.bool("expected_missing") {
+            state.guarded.write_missing(&resolved.absolute, write)?
+        } else {
+            state
+                .guarded
+                .write(&resolved.absolute, expected.as_deref(), write)?
+        };
         Ok(serde_json::to_value(response).unwrap_or_default())
     })
     .await
