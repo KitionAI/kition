@@ -320,6 +320,7 @@ export class Replica {
       }
     })
     for (const id of changed) this.changed.add(id)
+    this.reopenUndoGroup()
     return sorted(changed)
   }
 
@@ -368,8 +369,9 @@ export class Replica {
 
   /**
    * Starts an undo group: the transactions until `endUndoGroup` undo and redo as one step. Groups
-   * do not nest (`invalid-value`). The engine ends a group early when an import changes what the
-   * group changed; the group's later transactions are then steps of their own.
+   * do not nest (`invalid-value`). An undo or a redo ends the open group first, so undo while
+   * grouping reverts the group as one step. An import that changes what the group changed splits
+   * it in two undo steps: the transactions before the import and those after it.
    */
   beginUndoGroup(): void {
     this.idle()
@@ -385,9 +387,7 @@ export class Replica {
   /** Ends the open undo group; does nothing when none is open. */
   endUndoGroup(): void {
     this.idle()
-    if (!this.grouping) return
-    this.undoManager.groupEnd()
-    this.grouping = false
+    this.closeUndoGroup()
   }
 
   /** Drops the redo stack, keeping the undo stack. */
@@ -422,8 +422,30 @@ export class Replica {
     if (this.busy) throw errors.engine('the document cannot change while a transaction runs; transactions do not nest')
   }
 
+  private closeUndoGroup(): void {
+    if (!this.grouping) return
+    this.undoManager.groupEnd()
+    this.grouping = false
+  }
+
+  /**
+   * After an import, makes sure the open group is still open in the engine: the engine ends it
+   * when the import changes what the group changed, and then the group goes on as a new one.
+   * Starting a group the engine still has open changes nothing; if the engine can start none, no
+   * group is open any more.
+   */
+  private reopenUndoGroup(): void {
+    if (!this.grouping) return
+    try {
+      this.undoManager.groupStart()
+    } catch (error) {
+      if (!engineMessage(error).includes('already an active undo group')) this.grouping = false
+    }
+  }
+
   private history(run: () => boolean): boolean {
     this.idle()
+    this.closeUndoGroup()
     const { value, changed } = observeChanges(this.doc, () => {
       try {
         return run()

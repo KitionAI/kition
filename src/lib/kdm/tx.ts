@@ -100,6 +100,8 @@ export class Tx {
     let chosen: string | undefined
     if (options !== undefined) {
       checkRecord('the options', options)
+      const unknown = Object.keys(options).find((key) => key !== 'id')
+      if (unknown !== undefined) throw new KdmError('invalid-value', `the options take only \`id\`, not \`${unknown}\``)
       chosen = options.id
       if (chosen !== undefined) checkString('an object id', chosen)
     }
