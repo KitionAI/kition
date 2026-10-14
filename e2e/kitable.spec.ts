@@ -1,10 +1,14 @@
 import { expect, test, type Page } from '@playwright/test'
 
 import { fulfillJson, mockLocalWorkspaceApi } from './helpers/mockApi'
-import { mockKitableDataDocumentApi, mockKitableDesktopBridge } from './helpers/kitableApi'
+import { emitTableChanged, mockKitableDataDocumentApi, mockKitableDesktopBridge } from './helpers/kitableApi'
 
 // Date editor fixtures expect local time eight hours ahead of UTC.
 test.use({ timezoneId: 'Asia/Shanghai' })
+
+// The fixture desktop bridge reports this as backend_base_url; the editor's
+// own requests resolve to it, so a test's own fetches use it too.
+const API_BASE_URL = 'http://127.0.0.1:18101/api'
 
 async function waitForKitableEditor(page: Page) {
   await expect(page.getByTestId('kitable-editor')).toBeVisible({ timeout: 15_000 })
@@ -511,5 +515,116 @@ test.describe('kitable editor — toolbar interactions', () => {
         foreground: 'rgb(255, 255, 255)',
       },
     })
+  })
+})
+
+// Groundwork for the KDM switch-over (not called by the editor yet): the mock
+// handlers these tests exercise cover the contracts in
+// contracts/runtime/data-documents-transact.schema.json and
+// contracts/runtime/table-changed.schema.json.
+test.describe('kitable editor — table transaction mocks', () => {
+  test.beforeEach(async ({ page }) => {
+    await mockLocalWorkspaceApi(page)
+    await mockKitableDataDocumentApi(page)
+    await mockKitableDesktopBridge(page)
+    await page.goto('/')
+    await waitForKitableEditor(page)
+  })
+
+  async function transact(page: Page, ops: unknown[]) {
+    return page.evaluate(
+      async ({ baseUrl, body }) => {
+        const response = await fetch(`${baseUrl}/v1/data-documents/1/transact`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        })
+        return response.json()
+      },
+      { baseUrl: API_BASE_URL, body: { ops } },
+    )
+  }
+
+  test('applies cells.set, records.create, and records.delete to the mock records', async ({ page }) => {
+    const setResult = await transact(page, [
+      { op: 'cells.set', tableId: 11, records: [{ rowKey: 'r_one', values: { title: 'Updated title' } }] },
+    ])
+    expect(setResult.data.change.recordsUpserted).toEqual([[11, 'r_one']])
+
+    const createResult = await transact(page, [
+      { op: 'records.create', tableId: 11, at: null, records: [{ title: 'New row' }] },
+    ])
+    expect(createResult.data.created).toHaveLength(1)
+    const [newRowKey] = createResult.data.created as string[]
+
+    const records = await page.evaluate(
+      (baseUrl) => fetch(`${baseUrl}/v1/data-documents/1/tables/11/records`).then((response) => response.json()),
+      API_BASE_URL,
+    )
+    const updated = records.data.items.find((item: { row_key: string }) => item.row_key === 'r_one')
+    expect(updated.values.title).toBe('Updated title')
+    expect(records.data.total).toBe(3)
+
+    const deleteResult = await transact(page, [{ op: 'records.delete', tableId: 11, rowKeys: [newRowKey] }])
+    expect(deleteResult.data.change.recordsDeleted).toEqual([[11, newRowKey]])
+  })
+
+  test('POST /undo and /redo answer done: false, and GET /history-state reports no history', async ({ page }) => {
+    const fetchJson = (path: string, init?: RequestInit) => page.evaluate(
+      ({ baseUrl, path: requestPath, init: requestInit }) => fetch(`${baseUrl}${requestPath}`, requestInit).then((response) => response.json()),
+      { baseUrl: API_BASE_URL, path, init },
+    )
+
+    const undo = await fetchJson('/v1/data-documents/1/undo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+    expect(undo.data.done).toBe(false)
+
+    const redo = await fetchJson('/v1/data-documents/1/redo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+    expect(redo.data.done).toBe(false)
+
+    const historyState = await fetchJson('/v1/data-documents/1/history-state')
+    expect(historyState.data).toEqual({ canUndo: false, canRedo: false })
+  })
+})
+
+test.describe('kitable editor — table/changed bridge event', () => {
+  test.beforeEach(async ({ page }) => {
+    await mockLocalWorkspaceApi(page)
+    await mockKitableDataDocumentApi(page)
+    await mockKitableDesktopBridge(page)
+  })
+
+  test('emitTableChanged delivers a table/changed notification on the kit bridge stream', async ({ page }) => {
+    await page.goto('/')
+    await waitForKitableEditor(page)
+
+    const received = page.evaluate(
+      (baseUrl) => new Promise((resolve) => {
+        const source = new EventSource(`${baseUrl}/v1/kits/bridge`)
+        source.onmessage = (event) => {
+          const message = JSON.parse(event.data)
+          if (message.method === 'table/changed') {
+            source.close()
+            resolve(message.params)
+          }
+        }
+      }),
+      API_BASE_URL,
+    )
+
+    await emitTableChanged(page, {
+      documentId: '1',
+      origin: 'agent:turn-1',
+      tables: [],
+      schema: [],
+      views: [],
+      recordsUpserted: [[11, 'r_one']],
+      recordsDeleted: [],
+      recordsReordered: [],
+      dashboards: false,
+      documentPath: 'table-test.kitable',
+    })
+
+    const params = await received
+    expect(params).toMatchObject({ documentId: '1', origin: 'agent:turn-1', recordsUpserted: [[11, 'r_one']] })
   })
 })
