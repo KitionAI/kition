@@ -1,7 +1,15 @@
 import { expect, test, type Page } from '@playwright/test'
 
 import { fulfillJson, mockLocalWorkspaceApi } from './helpers/mockApi'
-import { emitTableChanged, mockKitableDataDocumentApi, mockKitableDesktopBridge } from './helpers/kitableApi'
+import {
+  applyMockTableOps,
+  emitTableChanged,
+  FIXTURE_DOCUMENT,
+  FIXTURE_RECORDS,
+  freshMockTableCounters,
+  mockKitableDataDocumentApi,
+  mockKitableDesktopBridge,
+} from './helpers/kitableApi'
 
 // Date editor fixtures expect local time eight hours ahead of UTC.
 test.use({ timezoneId: 'Asia/Shanghai' })
@@ -518,71 +526,127 @@ test.describe('kitable editor — toolbar interactions', () => {
   })
 })
 
-// Groundwork for the KDM switch-over (not called by the editor yet): the mock
-// handlers these tests exercise cover the contracts in
-// contracts/runtime/data-documents-transact.schema.json and
-// contracts/runtime/table-changed.schema.json.
-test.describe('kitable editor — table transaction mocks', () => {
-  test.beforeEach(async ({ page }) => {
-    await mockLocalWorkspaceApi(page)
-    await mockKitableDataDocumentApi(page)
-    await mockKitableDesktopBridge(page)
-    await page.goto('/')
-    await waitForKitableEditor(page)
-  })
-
-  async function transact(page: Page, ops: unknown[]) {
-    return page.evaluate(
-      async ({ baseUrl, body }) => {
-        const response = await fetch(`${baseUrl}/v1/data-documents/1/transact`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        })
-        return response.json()
-      },
-      { baseUrl: API_BASE_URL, body: { ops } },
-    )
+// Groundwork for the KDM switch-over (not called by the editor yet). These
+// check the mock helper itself, not the app, so they touch neither a page
+// nor a route: a pure-logic check of applyMockTableOps's fidelity (the real
+// coverage for the contracts in contracts/runtime/data-documents-transact.schema.json),
+// and one tiny smoke test that emitTableChanged reaches the kit bridge
+// stream, using a single fetch rather than its own EventSource so it cannot
+// race whatever stream the editor itself opens once Task 10 wires it up.
+test.describe('kitable editor — table transaction mock fidelity', () => {
+  function freshState() {
+    return {
+      document: structuredClone(FIXTURE_DOCUMENT),
+      records: FIXTURE_RECORDS.items.map((item) => ({ ...item, values: { ...item.values } })),
+      counters: freshMockTableCounters(),
+    }
   }
 
-  test('applies cells.set, records.create, and records.delete to the mock records', async ({ page }) => {
-    const setResult = await transact(page, [
-      { op: 'cells.set', tableId: 11, records: [{ rowKey: 'r_one', values: { title: 'Updated title' } }] },
-    ])
-    expect(setResult.data.change.recordsUpserted).toEqual([[11, 'r_one']])
-
-    const createResult = await transact(page, [
-      { op: 'records.create', tableId: 11, at: null, records: [{ title: 'New row' }] },
-    ])
-    expect(createResult.data.created).toHaveLength(1)
-    const [newRowKey] = createResult.data.created as string[]
-
-    const records = await page.evaluate(
-      (baseUrl) => fetch(`${baseUrl}/v1/data-documents/1/tables/11/records`).then((response) => response.json()),
-      API_BASE_URL,
-    )
-    const updated = records.data.items.find((item: { row_key: string }) => item.row_key === 'r_one')
-    expect(updated.values.title).toBe('Updated title')
-    expect(records.data.total).toBe(3)
-
-    const deleteResult = await transact(page, [{ op: 'records.delete', tableId: 11, rowKeys: [newRowKey] }])
-    expect(deleteResult.data.change.recordsDeleted).toEqual([[11, newRowKey]])
+  test('rejects an empty ops array', () => {
+    const { document, records, counters } = freshState()
+    const result = applyMockTableOps(document, records, [], '1', 'person:session:a', counters)
+    expect(result.ok).toBe(false)
+    expect(result.error).toBeTruthy()
   })
 
-  test('POST /undo and /redo answer done: false, and GET /history-state reports no history', async ({ page }) => {
-    const fetchJson = (path: string, init?: RequestInit) => page.evaluate(
-      ({ baseUrl, path: requestPath, init: requestInit }) => fetch(`${baseUrl}${requestPath}`, requestInit).then((response) => response.json()),
-      { baseUrl: API_BASE_URL, path, init },
+  test('records.create honors at.before and at.after, not just append', () => {
+    const { document, records, counters } = freshState()
+    applyMockTableOps(
+      document,
+      records,
+      [{ op: 'records.create', tableId: 11, at: { before: 'r_one' }, records: [{ title: 'Before r_one' }] }],
+      '1',
+      'person:session:a',
+      counters,
     )
+    expect(records.map((record) => record.row_key)).toEqual(['e2e_0', 'r_one', 'r_two'])
 
-    const undo = await fetchJson('/v1/data-documents/1/undo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
-    expect(undo.data.done).toBe(false)
+    applyMockTableOps(
+      document,
+      records,
+      [{ op: 'records.create', tableId: 11, at: { after: 'r_one' }, records: [{ title: 'After r_one' }] }],
+      '1',
+      'person:session:a',
+      counters,
+    )
+    expect(records.map((record) => record.row_key)).toEqual(['e2e_0', 'r_one', 'e2e_1', 'r_two'])
+  })
 
-    const redo = await fetchJson('/v1/data-documents/1/redo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
-    expect(redo.data.done).toBe(false)
+  test('recomputes order per table after every op', () => {
+    const { document, records, counters } = freshState()
+    applyMockTableOps(
+      document,
+      records,
+      [{ op: 'records.create', tableId: 11, at: { before: 'r_one' }, records: [{ title: 'New first row' }] }],
+      '1',
+      'person:session:a',
+      counters,
+    )
+    expect(records.map((record) => record.order)).toEqual([0, 1, 2])
 
-    const historyState = await fetchJson('/v1/data-documents/1/history-state')
-    expect(historyState.data).toEqual({ canUndo: false, canRedo: false })
+    applyMockTableOps(
+      document,
+      records,
+      [{ op: 'records.delete', tableId: 11, rowKeys: ['r_one'] }],
+      '1',
+      'person:session:a',
+      counters,
+    )
+    expect(records.map((record) => record.order)).toEqual([0, 1])
+  })
+
+  test('records.move actually reorders the records', () => {
+    const { document, records, counters } = freshState()
+    const result = applyMockTableOps(
+      document,
+      records,
+      [{ op: 'records.move', tableId: 11, rowKeys: ['r_two'], before: 'r_one' }],
+      '1',
+      'person:session:a',
+      counters,
+    )
+    expect(records.map((record) => record.row_key)).toEqual(['r_two', 'r_one'])
+    expect(result.change.recordsReordered).toEqual([11])
+  })
+
+  test('fields.move actually reorders the table fields', () => {
+    const { document, records, counters } = freshState()
+    const result = applyMockTableOps(
+      document,
+      records,
+      [{ op: 'fields.move', tableId: 11, fieldIds: [102], toIndex: 0 }],
+      '1',
+      'person:session:a',
+      counters,
+    )
+    expect(document.tables[0].fields.map((field) => field.id)).toEqual([102, 101, 103])
+    expect(document.tables[0].fields.map((field) => field.order)).toEqual([0, 1, 2])
+    expect(result.change.schema).toEqual([11])
+  })
+
+  test('cells.set and records.delete ignore a row that belongs to a different table', () => {
+    const { document, records, counters } = freshState()
+    const setResult = applyMockTableOps(
+      document,
+      records,
+      [{ op: 'cells.set', tableId: 999, records: [{ rowKey: 'r_one', values: { title: 'should not apply' } }] }],
+      '1',
+      'person:session:a',
+      counters,
+    )
+    expect(setResult.change.recordsUpserted).toEqual([])
+    expect(records.find((record) => record.row_key === 'r_one')?.values.title).toBe('Phase 2 wrap')
+
+    const deleteResult = applyMockTableOps(
+      document,
+      records,
+      [{ op: 'records.delete', tableId: 999, rowKeys: ['r_one'] }],
+      '1',
+      'person:session:a',
+      counters,
+    )
+    expect(deleteResult.change.recordsDeleted).toEqual([])
+    expect(records.some((record) => record.row_key === 'r_one')).toBe(true)
   })
 })
 
@@ -593,23 +657,9 @@ test.describe('kitable editor — table/changed bridge event', () => {
     await mockKitableDesktopBridge(page)
   })
 
-  test('emitTableChanged delivers a table/changed notification on the kit bridge stream', async ({ page }) => {
+  test('emitTableChanged queues a table/changed notification for the next bridge poll', async ({ page }) => {
     await page.goto('/')
     await waitForKitableEditor(page)
-
-    const received = page.evaluate(
-      (baseUrl) => new Promise((resolve) => {
-        const source = new EventSource(`${baseUrl}/v1/kits/bridge`)
-        source.onmessage = (event) => {
-          const message = JSON.parse(event.data)
-          if (message.method === 'table/changed') {
-            source.close()
-            resolve(message.params)
-          }
-        }
-      }),
-      API_BASE_URL,
-    )
 
     await emitTableChanged(page, {
       documentId: '1',
@@ -624,7 +674,14 @@ test.describe('kitable editor — table/changed bridge event', () => {
       documentPath: 'table-test.kitable',
     })
 
-    const params = await received
-    expect(params).toMatchObject({ documentId: '1', origin: 'agent:turn-1', recordsUpserted: [[11, 'r_one']] })
+    // A plain fetch (not an EventSource) so this never races a stream the
+    // editor itself opens once Task 10 wires in useTableLiveChanges.
+    const body = await page.evaluate(
+      (baseUrl) => fetch(`${baseUrl}/v1/kits/bridge`).then((response) => response.text()),
+      API_BASE_URL,
+    )
+    expect(body).toContain('"method":"table/changed"')
+    expect(body).toContain('"documentId":"1"')
+    expect(body).toContain('"origin":"agent:turn-1"')
   })
 })

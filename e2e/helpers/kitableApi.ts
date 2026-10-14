@@ -1,6 +1,8 @@
 import type { Page } from '@playwright/test'
 
 import { fulfillJson } from './mockApi'
+import type { DataDocumentsTransactOp, DataDocumentsTransactTableChange } from '../../src/api/generated/data-documents-transact'
+import type { TableChangedParams } from '../../src/api/generated/table-changed'
 
 /**
  * Mocks for the Kitable (Table kit) editor: the desktop shell bridge
@@ -9,7 +11,12 @@ import { fulfillJson } from './mockApi'
  *
  * Also mocks the kit bridge SSE stream (`GET /v1/kits/bridge`) lazily, the
  * first time a spec calls `emitTableChanged`, so a spec that never needs a
- * live `table/changed` event does not pay for it.
+ * live `table/changed` event does not pay for it. This duplicates (does not
+ * share) the queue/session plumbing in `e2e/helpers/documentBridge.ts`: that
+ * one layers a request/response protocol (`document/read`, `document/apply`,
+ * answered by id) over the same stream, while this one only ever sends
+ * fire-and-forget notifications, so there is no common abstraction simple
+ * enough to be worth factoring out yet.
  */
 
 export const VAULT_PATH = '/tmp/kition-kitable-e2e-vault'
@@ -244,29 +251,164 @@ export async function mockKitableDesktopBridge(page: Page) {
   })
 }
 
-type MockOp = {
-  op: string
-  tableId: number
-  records?: Array<{ rowKey: string; values?: Record<string, unknown> } | Record<string, unknown>>
-  rowKeys?: string[]
-  before?: string | null
-  fieldIds?: number[]
+export type MockTableOp = DataDocumentsTransactOp
+export type MockTableChange = DataDocumentsTransactTableChange
+export type MockTableDocument = typeof FIXTURE_DOCUMENT
+export type MockRecord = (typeof FIXTURE_RECORDS.items)[number]
+
+/** Mutable counters `applyMockTableOps` draws new ids and row keys from, across calls. */
+export type MockTableCounters = { nextRecordId: number; nextRowKey: number }
+
+export function freshMockTableCounters(): MockTableCounters {
+  return { nextRecordId: 2000, nextRowKey: 0 }
 }
 
-type MockRecord = (typeof FIXTURE_RECORDS.items)[number]
-
 /** An empty TableChange, for an undo/redo that had nothing to do. */
-function emptyChange(documentId: string, origin: string) {
+export function emptyMockTableChange(documentId: string, origin: string): MockTableChange {
   return {
     documentId,
     origin,
-    tables: [] as number[],
-    schema: [] as number[],
-    views: [] as number[],
-    recordsUpserted: [] as Array<[number, string]>,
-    recordsDeleted: [] as Array<[number, string]>,
-    recordsReordered: [] as number[],
+    tables: [],
+    schema: [],
+    views: [],
+    recordsUpserted: [],
+    recordsDeleted: [],
+    recordsReordered: [],
     dashboards: false,
+  }
+}
+
+/** Keeps each table's records' `order` sequential and zero-based after a mutation. */
+function renumberRecordOrders(records: MockRecord[]) {
+  const next = new Map<number, number>()
+  for (const record of records) {
+    const order = next.get(record.table_id) ?? 0
+    record.order = order
+    next.set(record.table_id, order + 1)
+  }
+}
+
+/**
+ * Applies a transaction's ops to the mock's in-memory `records` (and, for
+ * `fields.move`, `document`'s field order), the same way the real runtime
+ * will apply them to the KDM. Exported so a plain unit test can check its
+ * fidelity (honoring `records.create`'s `at`, actually reordering for
+ * `records.move`/`fields.move`, matching `table_id`) without touching a page,
+ * a route, or the app.
+ */
+export function applyMockTableOps(
+  document: MockTableDocument,
+  records: MockRecord[],
+  ops: MockTableOp[],
+  documentId: string,
+  origin: string,
+  counters: MockTableCounters,
+): { ok: boolean; change: MockTableChange; created: string[]; error?: string } {
+  // A flat (not discriminated-union) result: the repo's tsconfig runs with
+  // strict: false, under which this version of TypeScript does not narrow a
+  // `{ok:true,...}|{ok:false,...}` union on its `ok: false` side (only on
+  // `ok: true`), so callers checking `!result.ok` could not reach `.error`.
+  if (ops.length === 0) {
+    return { ok: false, change: emptyMockTableChange(documentId, origin), created: [], error: 'ops must not be empty' }
+  }
+
+  const created: string[] = []
+  const upserted: Array<[number, string]> = []
+  const deleted: Array<[number, string]> = []
+  const reordered = new Set<number>()
+  const schemaChanged = new Set<number>()
+
+  for (const op of ops) {
+    if (op.op === 'cells.set') {
+      for (const entry of op.records) {
+        const target = records.find((record) => record.row_key === entry.rowKey && record.table_id === op.tableId)
+        if (!target) continue
+        Object.assign(target.values, entry.values)
+        upserted.push([op.tableId, entry.rowKey])
+      }
+    } else if (op.op === 'records.create') {
+      const newRows: MockRecord[] = op.records.map((values) => {
+        const rowKey = `e2e_${counters.nextRowKey++}`
+        created.push(rowKey)
+        upserted.push([op.tableId, rowKey])
+        return {
+          id: counters.nextRecordId++,
+          user_id: 1,
+          document_id: Number(documentId),
+          table_id: op.tableId,
+          row_key: rowKey,
+          order: 0,
+          values: { ...values },
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        } as MockRecord
+      })
+      const at = op.at
+      let insertIndex = records.length
+      if (at && 'before' in at) {
+        const anchor = records.findIndex((record) => record.row_key === at.before)
+        if (anchor >= 0) insertIndex = anchor
+      } else if (at && 'after' in at) {
+        const anchor = records.findIndex((record) => record.row_key === at.after)
+        if (anchor >= 0) insertIndex = anchor + 1
+      }
+      records.splice(insertIndex, 0, ...newRows)
+    } else if (op.op === 'records.delete') {
+      for (const rowKey of op.rowKeys) {
+        const index = records.findIndex((record) => record.row_key === rowKey && record.table_id === op.tableId)
+        if (index < 0) continue
+        records.splice(index, 1)
+        deleted.push([op.tableId, rowKey])
+      }
+    } else if (op.op === 'records.move') {
+      const movingKeys = op.rowKeys.filter((rowKey) =>
+        records.some((record) => record.row_key === rowKey && record.table_id === op.tableId))
+      if (movingKeys.length > 0) {
+        const movingSet = new Set(movingKeys)
+        const movingRecords = movingKeys
+          .map((rowKey) => records.find((record) => record.row_key === rowKey))
+          .filter((record): record is MockRecord => Boolean(record))
+        const remaining = records.filter((record) => !movingSet.has(record.row_key))
+        let insertIndex = remaining.length
+        if (op.before) {
+          const anchor = remaining.findIndex((record) => record.row_key === op.before)
+          if (anchor >= 0) insertIndex = anchor
+        }
+        remaining.splice(insertIndex, 0, ...movingRecords)
+        records.splice(0, records.length, ...remaining)
+        reordered.add(op.tableId)
+      }
+    } else if (op.op === 'fields.move') {
+      const table = document.tables.find((item) => item.id === op.tableId)
+      if (table) {
+        const movingIds = new Set(op.fieldIds)
+        const movingFields = table.fields.filter((field) => movingIds.has(field.id))
+        const remainingFields = table.fields.filter((field) => !movingIds.has(field.id))
+        const insertIndex = Math.max(0, Math.min(op.toIndex, remainingFields.length))
+        remainingFields.splice(insertIndex, 0, ...movingFields)
+        remainingFields.forEach((field, index) => { field.order = index })
+        table.fields.splice(0, table.fields.length, ...remainingFields)
+        schemaChanged.add(op.tableId)
+      }
+    }
+  }
+
+  renumberRecordOrders(records)
+
+  return {
+    ok: true,
+    created,
+    change: {
+      documentId,
+      origin,
+      tables: [],
+      schema: [...schemaChanged],
+      views: [],
+      recordsUpserted: upserted,
+      recordsDeleted: deleted,
+      recordsReordered: [...reordered],
+      dashboards: false,
+    },
   }
 }
 
@@ -276,9 +418,9 @@ function originFromRequestHeaders(headers: Record<string, string>) {
 }
 
 export async function mockKitableDataDocumentApi(page: Page) {
+  const document: MockTableDocument = structuredClone(FIXTURE_DOCUMENT)
   const records: MockRecord[] = FIXTURE_RECORDS.items.map((item) => ({ ...item, values: { ...item.values } }))
-  let nextRecordId = 2000
-  let nextRowKey = 0
+  const counters = freshMockTableCounters()
 
   function recordsResponse() {
     return { items: records, total: records.length, offset: 0, limit: 200 }
@@ -288,7 +430,7 @@ export async function mockKitableDataDocumentApi(page: Page) {
     if (route.request().method() !== 'GET') return route.fallback()
     return fulfillJson(route, {
       code: 200,
-      data: { items: [FIXTURE_DOCUMENT], total: 1, offset: 0, limit: 200 },
+      data: { items: [document], total: 1, offset: 0, limit: 200 },
     })
   })
 
@@ -300,12 +442,12 @@ export async function mockKitableDataDocumentApi(page: Page) {
 
     // POST /data-documents/open → resolve a path to the doc
     if (method === 'POST' && path === '/api/v1/data-documents/open') {
-      return fulfillJson(route, { code: 200, data: FIXTURE_DOCUMENT })
+      return fulfillJson(route, { code: 200, data: document })
     }
 
     // GET /data-documents/1 → full document with embedded tables + fields + views
     if (method === 'GET' && /^\/api\/v1\/data-documents\/\d+$/.test(path)) {
-      return fulfillJson(route, { code: 200, data: FIXTURE_DOCUMENT })
+      return fulfillJson(route, { code: 200, data: document })
     }
 
     // GET /data-documents/1/tables/11/records?limit=
@@ -346,65 +488,12 @@ export async function mockKitableDataDocumentApi(page: Page) {
     if (method === 'POST' && transactMatch) {
       const documentId = transactMatch[1]
       const origin = originFromRequestHeaders(request.headers())
-      const body = (request.postDataJSON() ?? {}) as { ops?: MockOp[] }
-      const created: string[] = []
-      const upserted: Array<[number, string]> = []
-      const deleted: Array<[number, string]> = []
-      const reordered = new Set<number>()
-      const schemaChanged = new Set<number>()
-
-      for (const op of body.ops ?? []) {
-        if (op.op === 'cells.set') {
-          for (const entry of op.records ?? []) {
-            const { rowKey, values } = entry as { rowKey: string; values?: Record<string, unknown> }
-            const target = records.find((record) => record.row_key === rowKey)
-            if (!target) continue
-            Object.assign(target.values, values)
-            upserted.push([op.tableId, rowKey])
-          }
-        } else if (op.op === 'records.create') {
-          for (const values of (op.records ?? []) as Array<Record<string, unknown>>) {
-            const rowKey = `e2e_${nextRowKey++}`
-            records.push({
-              id: nextRecordId++,
-              user_id: 1,
-              document_id: Number(documentId),
-              table_id: op.tableId,
-              row_key: rowKey,
-              order: records.length,
-              values,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            } as MockRecord)
-            created.push(rowKey)
-            upserted.push([op.tableId, rowKey])
-          }
-        } else if (op.op === 'records.delete') {
-          for (const rowKey of op.rowKeys ?? []) {
-            const index = records.findIndex((record) => record.row_key === rowKey)
-            if (index < 0) continue
-            records.splice(index, 1)
-            deleted.push([op.tableId, rowKey])
-          }
-        } else if (op.op === 'records.move') {
-          reordered.add(op.tableId)
-        } else if (op.op === 'fields.move') {
-          schemaChanged.add(op.tableId)
-        }
+      const body = (request.postDataJSON() ?? {}) as { ops?: MockTableOp[] }
+      const result = applyMockTableOps(document, records, body.ops ?? [], documentId, origin, counters)
+      if (!result.ok) {
+        return fulfillJson(route, { code: 400, message: result.error }, 400)
       }
-
-      const change = {
-        documentId,
-        origin,
-        tables: [] as number[],
-        schema: [...schemaChanged],
-        views: [] as number[],
-        recordsUpserted: upserted,
-        recordsDeleted: deleted,
-        recordsReordered: [...reordered],
-        dashboards: false,
-      }
-      return fulfillJson(route, { code: 200, data: { change, created } })
+      return fulfillJson(route, { code: 200, data: { change: result.change, created: result.created } })
     }
 
     // POST /data-documents/1/undo and /redo → minimal mock: never anything to undo or redo.
@@ -412,7 +501,7 @@ export async function mockKitableDataDocumentApi(page: Page) {
     if (method === 'POST' && undoRedoMatch) {
       const [, documentId] = undoRedoMatch
       const origin = originFromRequestHeaders(request.headers())
-      return fulfillJson(route, { code: 200, data: { done: false, change: emptyChange(documentId, origin) } })
+      return fulfillJson(route, { code: 200, data: { done: false, change: emptyMockTableChange(documentId, origin) } })
     }
 
     // GET /data-documents/1/history-state → minimal mock: nothing to undo or redo yet.
@@ -424,7 +513,7 @@ export async function mockKitableDataDocumentApi(page: Page) {
     return fulfillJson(route, { code: 200, data: {} })
   })
 
-  return { records }
+  return { document, records }
 }
 
 type BridgeMessage = { jsonrpc: '2.0'; id?: number; method?: string; params?: Record<string, unknown> }
@@ -439,7 +528,8 @@ async function ensureKitBridgeStream(page: Page) {
 
   // Mirrors e2e/helpers/documentBridge.ts: the GET answers with bridge.ready plus
   // whatever queued since the last poll, then ends; the browser reconnects at
-  // once (`retry`), so a queued message reaches the page within moments.
+  // once (`retry`), so a queued message reaches the page within moments. See
+  // the file-level comment for why this is not shared code with that helper.
   await page.route('**/v1/kits/bridge', async (route) => {
     if (route.request().method() !== 'GET') return route.fallback()
     session += 1
@@ -456,7 +546,7 @@ async function ensureKitBridgeStream(page: Page) {
 }
 
 /** Injects a `table/changed` notification into the page's kit bridge stream. */
-export async function emitTableChanged(page: Page, params: Record<string, unknown>) {
+export async function emitTableChanged(page: Page, params: TableChangedParams) {
   await ensureKitBridgeStream(page)
   kitBridgeQueues.get(page)!.push({ jsonrpc: '2.0', method: 'table/changed', params })
 }
