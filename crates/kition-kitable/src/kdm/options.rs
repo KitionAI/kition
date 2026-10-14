@@ -140,8 +140,9 @@ fn target<'a>(value: &'a mut Value, parent: Option<&str>) -> Option<&'a mut Map<
 }
 
 /// A relational id as the legacy readers accept it: a number or a decimal string; `0`, blank,
-/// and `null` are no id.
-fn local_id(value: &Value) -> Result<Option<i64>> {
+/// and `null` are no id. `pub(crate)` so [`super::migrate`] can tell "not an id at all" (refused
+/// here) apart from "an id naming nothing kept" (which it nulls out itself before converting).
+pub(crate) fn local_id(value: &Value) -> Result<Option<i64>> {
     let invalid = || KitableError::invalid(format!("option value {value} is not an id"));
     let id = match value {
         Value::Null => return Ok(None),

@@ -305,7 +305,9 @@ fn build_content(
     }
 
     for (field_object, raw_options) in pending_options {
-        let resolved = options::options_to_kdm(&raw_options, |kind, id| match kind {
+        let sanitized =
+            null_out_dangling_references(&raw_options, &table_object_by_id, &field_object_by_id)?;
+        let resolved = options::options_to_kdm(&sanitized, |kind, id| match kind {
             IdKind::Table => table_object_by_id.get(&id).cloned(),
             IdKind::Field => field_object_by_id.get(&id).cloned(),
         })?;
@@ -350,6 +352,47 @@ fn strip_relational_ids(options: &Value) -> Value {
         }
     }
     Value::Object(out)
+}
+
+/// `options` with every id-valued key of [`options::ID_KEYS`] that names a table or field this
+/// migration did not keep (soft-deleted, or otherwise gone by the time it ran) replaced by
+/// `null`, the KDM's own "no reference". Real files pick up such dangling references once a
+/// table or field is deleted (the relational store keeps the id, not a live foreign key); without
+/// this, [`options::options_to_kdm`] would refuse the whole file over a reference nothing but
+/// history still remembers. A value that is not an id at all is still refused
+/// ([`KitableError::Invalid`], via [`options::local_id`]); everything else is kept as is.
+fn null_out_dangling_references(
+    options: &Value,
+    table_object_by_id: &HashMap<i64, ObjectId>,
+    field_object_by_id: &HashMap<i64, ObjectId>,
+) -> Result<Value> {
+    let Value::Object(map) = options else {
+        return Ok(options.clone());
+    };
+    let mut out = map.clone();
+    for id_key in options::ID_KEYS {
+        let target = match id_key.parent {
+            None => Some(&mut out),
+            Some(parent) => out.get_mut(parent).and_then(Value::as_object_mut),
+        };
+        let Some(target) = target else {
+            continue;
+        };
+        let Some(raw) = target.get(id_key.relational) else {
+            continue;
+        };
+        let Some(id) = options::local_id(raw)? else {
+            continue;
+        };
+        let known = match id_key.kind {
+            IdKind::Table => table_object_by_id.contains_key(&id),
+            IdKind::Field => field_object_by_id.contains_key(&id),
+        };
+        if !known {
+            target.insert(id_key.relational.to_owned(), Value::Null);
+        }
+    }
+    Ok(Value::Object(out))
 }
 
 // ---------------------------------------------------------------------------

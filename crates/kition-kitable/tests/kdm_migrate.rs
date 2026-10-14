@@ -606,6 +606,172 @@ fn a_link_to_a_table_created_later_migrates() {
     );
 }
 
+#[test]
+fn dangling_option_references_become_null() {
+    let dir = temp();
+    let path = dir.path().join("doc.kitable");
+    let mut file = ok(KitableFile::create(
+        &path,
+        &CreateOptions {
+            title: "Doc".into(),
+            ..Default::default()
+        },
+    ));
+    let gone = ok(file.create_table(&TableSpec {
+        title: "Gone".into(),
+        ..Default::default()
+    }));
+    let main = ok(file.create_table(&TableSpec {
+        title: "Main".into(),
+        fields: vec![
+            FieldSpec {
+                title: "Name".into(),
+                field_type: "text".into(),
+                primary: true,
+                required: true,
+                ..Default::default()
+            },
+            FieldSpec {
+                title: "Dead Link".into(),
+                field_type: "text".into(),
+                ..Default::default()
+            },
+            FieldSpec {
+                title: "Dead Source".into(),
+                field_type: "text".into(),
+                ..Default::default()
+            },
+        ],
+        ..Default::default()
+    }));
+    let name_field = main
+        .fields
+        .iter()
+        .find(|field| field.name == "name")
+        .unwrap_or_else(|| panic!("a name field"));
+    let dead_link_field = main
+        .fields
+        .iter()
+        .find(|field| field.name == "dead_link")
+        .unwrap_or_else(|| panic!("a dead_link field"));
+    let dead_source_field = main
+        .fields
+        .iter()
+        .find(|field| field.name == "dead_source")
+        .unwrap_or_else(|| panic!("a dead_source field"));
+
+    // A link field whose target table will be deleted.
+    let related = ok(file.create_field(
+        main.id,
+        &FieldSpec {
+            title: "Related".into(),
+            field_type: "link_to_record".into(),
+            options: json!({ "target_table_id": gone.id, "allow_multiple": true }),
+            ..Default::default()
+        },
+    ));
+    // A lookup whose link field will be deleted; its target field (Name) stays.
+    let lookup = ok(file.create_field(
+        main.id,
+        &FieldSpec {
+            title: "Lookup".into(),
+            field_type: "lookup".into(),
+            options: json!({ "link_field_id": dead_link_field.id, "target_field_id": name_field.id }),
+            ..Default::default()
+        },
+    ));
+    // An AI field whose source field will be deleted.
+    let ai = ok(file.create_field(
+        main.id,
+        &FieldSpec {
+            title: "Thumb".into(),
+            field_type: "ai".into(),
+            options: json!({ "ai_config": { "source_field_id": dead_source_field.id, "type": "x" } }),
+            ..Default::default()
+        },
+    ));
+
+    ok(file.delete_table(gone.id));
+    ok(file.delete_field(main.id, dead_link_field.id));
+    ok(file.delete_field(main.id, dead_source_field.id));
+    file.close();
+
+    let mut conn = Connection::open(&path).unwrap_or_else(|err| panic!("open: {err}"));
+    ok(migrate::upgrade(&mut conn, actor(1)));
+
+    let field_kdm = kdm_ids(&conn, "kition_fields");
+    let table_kdm = kdm_ids(&conn, "kition_tables");
+    let mut local_any: HashMap<ObjectId, i64> = HashMap::new();
+    for (id, object) in &table_kdm {
+        local_any.insert(object.clone(), *id);
+    }
+    for (id, object) in &field_kdm {
+        local_any.insert(object.clone(), *id);
+    }
+    let replica =
+        ok(store::load(&conn, schema(), actor(2))).unwrap_or_else(|| panic!("expected a replica"));
+    let view = ModelView::new(&replica);
+
+    let related_object = field_kdm
+        .get(&related.id)
+        .cloned()
+        .unwrap_or_else(|| panic!("missing kdm_id for Related"));
+    let related_data = ok(view.field(&related_object));
+    assert_eq!(related_data.options.get("target_table"), Some(&Value::Null));
+    assert_eq!(
+        options_from_kdm(&related_data.options, |id| local_any.get(id).copied())
+            .get("target_table_id"),
+        Some(&Value::Null)
+    );
+
+    let lookup_object = field_kdm
+        .get(&lookup.id)
+        .cloned()
+        .unwrap_or_else(|| panic!("missing kdm_id for Lookup"));
+    let lookup_data = ok(view.field(&lookup_object));
+    assert_eq!(lookup_data.options.get("link_field"), Some(&Value::Null));
+    // The target field (Name) was kept, so it still resolves.
+    assert_eq!(
+        lookup_data.options.get("target_field"),
+        Some(&Value::String(
+            field_kdm
+                .get(&name_field.id)
+                .unwrap_or_else(|| panic!("missing kdm_id for Name"))
+                .to_string()
+        ))
+    );
+    let lookup_relational = options_from_kdm(&lookup_data.options, |id| local_any.get(id).copied());
+    assert_eq!(lookup_relational.get("link_field_id"), Some(&Value::Null));
+    assert_eq!(
+        lookup_relational.get("target_field_id"),
+        Some(&json!(name_field.id))
+    );
+
+    let ai_object = field_kdm
+        .get(&ai.id)
+        .cloned()
+        .unwrap_or_else(|| panic!("missing kdm_id for Thumb"));
+    let ai_data = ok(view.field(&ai_object));
+    let ai_config = ai_data
+        .options
+        .get("ai_config")
+        .unwrap_or_else(|| panic!("ai_config"));
+    assert_eq!(ai_config.get("source_field"), Some(&Value::Null));
+    assert_eq!(ai_config.get("type"), Some(&json!("x")));
+
+    // The rest of the file is intact: Main's live fields and its Name cell still migrate.
+    let main_object = table_kdm
+        .get(&main.id)
+        .cloned()
+        .unwrap_or_else(|| panic!("missing kdm_id for Main"));
+    let main_fields = ok(view.fields(&main_object));
+    let names: Vec<&str> = main_fields
+        .iter()
+        .map(|field| field.name.as_str())
+        .collect();
+    assert_eq!(names, vec!["name", "related", "lookup", "thumb"]);
+}
+
 /// Builds a 10k-record table through the relational API, upgrades it, and prints how long it
 /// takes. Run with `cargo test -p kition-kitable --test kdm_migrate -- --ignored large_table`.
 #[test]
