@@ -2,9 +2,9 @@
 
 use std::collections::{HashMap, HashSet};
 
-use kition_datadoc::DataDocState;
 use kition_datadoc::index::{DataDocument, NewDocument};
-use kition_kitable::{Field, FieldSpec, KitableFile, Record, Table, TableSpec, ViewSpec};
+use kition_datadoc::{DataDocState, TableHandle};
+use kition_kitable::{Field, FieldSpec, Record, Table, TableSpec, ViewSpec};
 use serde_json::{Map, Value, json};
 
 use crate::run::{ToolOutput, ToolResult, int_field, string_list, text_field, truncate_chars};
@@ -37,7 +37,7 @@ pub struct TableContext {
 
 struct TableRef {
     doc: DataDocument,
-    file: KitableFile,
+    file: TableHandle,
     table: Table,
 }
 

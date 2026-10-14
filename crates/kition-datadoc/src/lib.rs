@@ -19,7 +19,7 @@ mod transact;
 mod view_config;
 pub mod workflow_api;
 
-pub use table_documents::TableDocuments;
+pub use table_documents::{TableDocuments, TableHandle};
 
 pub use import_write::ImportStore;
 
