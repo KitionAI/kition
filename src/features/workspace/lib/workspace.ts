@@ -1,23 +1,8 @@
 import type { ApiTimestamp } from '@/types'
 import { toEpochMs } from '@/lib/timestamps'
-import {
-  FileDown,
-  FileImage,
-  FileSpreadsheet,
-  FileText,
-  FileType2,
-  FileVideo2,
-  Clapperboard,
-  Layers,
-  LayoutTemplate,
-  DraftingCompass,
-  PenTool,
-  Paintbrush,
-  Presentation,
-  Sparkles,
-  Volume2,
-} from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
+import { FileImage, FileText, FileVideo2, Volume2 } from 'lucide-react'
+import type { ComponentType } from 'react'
+import { kitIconComponent, type KitIconId } from '@/components/KitIcon'
 import { getCurrentLocale } from '@/i18n'
 import type {
   WorkspaceDocumentFormat,
@@ -283,43 +268,51 @@ export function remapWorkspaceBranchPath(path: string, sourcePath: string, targe
   return `${targetChildPrefix}${normalizedPath.slice(sourceChildPrefix.length)}`
 }
 
-export function getWorkspaceItemIcon(format?: WorkspaceDocumentFormat): LucideIcon {
+export type WorkspaceItemIcon = ComponentType<{ className?: string; 'aria-hidden'?: boolean | 'true' | 'false' }>
+
+/** The kit that owns a format; plain files (images, media, text) have none. */
+export function getWorkspaceItemKitIcon(format?: WorkspaceDocumentFormat): KitIconId | null {
   switch (format) {
+    case 'markdown':
+      return 'document'
     case 'data':
-      return FileSpreadsheet
+    case 'table':
+      return 'table'
     case 'docx':
-      return FileType2
+      return 'word'
     case 'xlsx':
     case 'csv':
-      return FileSpreadsheet
+      return 'sheet'
     case 'pptx':
-      return Presentation
+    case 'slide':
+      return 'slide'
     case 'pdf':
-      return FileDown
+    case 'design':
+    case 'layout':
+    case 'board':
+    case 'photo':
+    case 'film':
+    case 'vector':
+    case 'effect':
+    case 'cad':
+      return format
+    default:
+      return null
+  }
+}
+
+export function getWorkspaceItemIcon(format?: WorkspaceDocumentFormat): WorkspaceItemIcon {
+  const kit = getWorkspaceItemKitIcon(format)
+  if (kit) {
+    return kitIconComponent(kit)
+  }
+  switch (format) {
     case 'image':
       return FileImage
-    case 'photo':
-      return Layers
-    case 'film':
-      return Clapperboard
-    case 'vector':
-      return PenTool
-    case 'effect':
-      return Sparkles
-    case 'layout':
-      return LayoutTemplate
-    case 'cad':
-      return DraftingCompass
-    case 'slide':
-      return Presentation
     case 'video':
       return FileVideo2
     case 'audio':
       return Volume2
-    case 'design':
-      return Paintbrush
-    case 'board':
-      return PenTool
     default:
       return FileText
   }

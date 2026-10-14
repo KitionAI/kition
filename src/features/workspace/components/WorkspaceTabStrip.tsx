@@ -1,8 +1,9 @@
-import { Bot, ChevronDown, ChevronLeft, ChevronRight, FileSpreadsheet, FileText, FileVideo2, Image as ImageIcon, LayoutDashboard, PanelLeftOpen, Paintbrush, PenTool, X, Zap } from 'lucide-react'
+import { Bot, ChevronDown, ChevronLeft, ChevronRight, FileVideo2, Image as ImageIcon, LayoutDashboard, PanelLeftOpen, X, Zap } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkspaceTabContextMenu, type WorkspaceTabContextMenuItem } from '@/features/workspace/components/WorkspaceTabContextMenu'
 import { getWorkspaceItemIcon, getWorkspaceItemIconColorClass, type WorkspaceTab } from '@/features/workspace/lib/workspace'
+import { KitIcon } from '@/components/KitIcon'
 import { cn } from '@/lib/utils'
 
 export function WorkspaceTabStrip({
@@ -430,20 +431,16 @@ function WorkspaceTabIcon({ tab }: { tab: WorkspaceTab }) {
   }
   if (tab.type === 'workflow') {
     if (tab.kitablePath) {
-      return <FileSpreadsheet className={cn('size-3.5', getWorkspaceItemIconColorClass('data'))} />
+      return <KitIcon kit="table" className="size-3.5" />
     }
     return <Zap className="size-3.5 text-brand" />
   }
   if (tab.type === 'dashboard') {
     return <LayoutDashboard className="size-3.5 text-brand" />
   }
-  if (tab.type === 'design') return <Paintbrush className="size-3.5 text-brand" />
-  if (tab.type === 'board') {
-    return <PenTool className="size-3.5 text-brand" />
-  }
-  return tab.format === 'data'
-    ? <FileSpreadsheet className={cn('size-3.5', getWorkspaceItemIconColorClass('data'))} />
-    : <FileText className={cn('size-3.5', getWorkspaceItemIconColorClass(tab.format))} />
+  if (tab.type === 'design') return <KitIcon kit="design" className="size-3.5" />
+  if (tab.type === 'board') return <KitIcon kit="board" className="size-3.5" />
+  return <KitIcon kit={tab.format === 'data' ? 'table' : 'document'} className="size-3.5" />
 }
 
 /** A background tab whose document the agent changed: the change waits there for review. */
