@@ -12,15 +12,19 @@ use crate::app;
 
 /// Serves until Ctrl-C or SIGTERM. Used by the standalone binary.
 pub async fn run(config: AppConfig) -> Result<()> {
-    let (router, listener) = prepare(config).await?;
+    let (router, listener, tables) = prepare(config).await?;
     tracing::info!(addr = %listener.local_addr()?, "http server listening");
-    axum::serve(listener, router)
+    let served = axum::serve(listener, router)
         .with_graceful_shutdown(shutdown_signal())
         .await
-        .context("http server")
+        .context("http server");
+    tables.close_all();
+    served
 }
 
-async fn prepare(config: AppConfig) -> Result<(axum::Router, TcpListener)> {
+async fn prepare(
+    config: AppConfig,
+) -> Result<(axum::Router, TcpListener, kition_datadoc::TableDocuments)> {
     let port = u16::try_from(config.http_port).context("http port out of range")?;
     let deps = tokio::task::spawn_blocking(move || app::build_deps(config))
         .await
@@ -31,7 +35,7 @@ async fn prepare(config: AppConfig) -> Result<(axum::Router, TcpListener)> {
     let listener = TcpListener::bind(SocketAddr::from((Ipv4Addr::LOCALHOST, port)))
         .await
         .with_context(|| format!("listen on 127.0.0.1:{port}"))?;
-    Ok((router, listener))
+    Ok((router, listener, deps.tables))
 }
 
 /// A runtime serving on its own thread and tokio runtime. Stopping it also
@@ -84,7 +88,7 @@ pub fn start(config: AppConfig) -> Result<RunningServer> {
                 }
             };
             runtime.block_on(async move {
-                let (router, listener) = match prepare(config).await {
+                let (router, listener, tables) = match prepare(config).await {
                     Ok(prepared) => prepared,
                     Err(err) => {
                         let _ = ready_tx.send(Err(err));
@@ -104,6 +108,7 @@ pub fn start(config: AppConfig) -> Result<RunningServer> {
                         let _ = stop_rx.await;
                     })
                     .await;
+                tables.close_all();
                 if let Err(err) = served {
                     tracing::error!(error = %err, "http server stopped");
                 }

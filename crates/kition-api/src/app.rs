@@ -31,6 +31,10 @@ pub struct Deps {
     pub ai: kition_ai::engine::Engine,
     /// Kits for this workspace; they stop when the runtime restarts.
     pub kits: kition_kits::KitManager,
+    /// Every `.kitable` file open anywhere in the runtime (HTTP routes, the Agent, email/form
+    /// sync, workflows); shared so they reuse one `KitableFile` per path. `server.rs` closes it
+    /// on shutdown.
+    pub tables: kition_datadoc::TableDocuments,
 }
 
 impl Deps {
@@ -102,6 +106,7 @@ pub fn build_deps(config: AppConfig) -> AppResult<Deps> {
         upload_dir,
         workspace_dir,
         events: EventBus::default(),
+        tables: kition_datadoc::TableDocuments::default(),
         connections: kition_connections::Store {
             db: db_for_connections,
             secrets: kition_connections::SecretStore::new(&sqlite_path, &upload_dir_text),
@@ -110,6 +115,7 @@ pub fn build_deps(config: AppConfig) -> AppResult<Deps> {
 }
 
 pub fn router(deps: &Deps) -> Router {
+    deps.kits.forward_table_changes(deps.events.clone());
     let api = Router::new()
         .merge(crate::system::api_router(deps))
         .merge(kition_ai::models::router(deps.auth()))
@@ -231,6 +237,7 @@ pub(crate) fn datadoc_state(
         ai_gate: deps.ai_gate(),
         imports: kition_datadoc::ImportStore::default(),
         ai: Some(deps.ai.clone()),
+        tables: deps.tables.clone(),
     })
 }
 
