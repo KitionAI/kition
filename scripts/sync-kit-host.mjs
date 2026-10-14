@@ -52,7 +52,10 @@ for (const dir of ['src', 'tests']) {
     files.push({ source, out: source, rewrite: (text) => header(source) + allow + text })
   }
 }
-for (const name of fs.readdirSync(path.join(sdk, rustKdm, 'tests/fixtures')).sort()) {
+// ts-page.json is the TypeScript fixture's state as non-ASCII JSON, which this English-only
+// repository does not carry; the Rust test compares its SHA-256 (ts-page.sha256) instead.
+const skippedFixtures = new Set(['ts-page.json'])
+for (const name of fs.readdirSync(path.join(sdk, rustKdm, 'tests/fixtures')).filter((name) => !skippedFixtures.has(name)).sort()) {
   const source = `${rustKdm}/tests/fixtures/${name}`
   files.push({ source, out: source, binary: true })
 }

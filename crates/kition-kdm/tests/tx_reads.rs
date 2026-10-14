@@ -254,3 +254,21 @@ fn a_map_field_the_stored_object_lacks_reads_as_empty() {
     })
     .unwrap();
 }
+
+#[test]
+fn transaction_reads_object_types_including_its_own_creations_and_deletions() {
+    let mut replica = replica();
+    let (page, shape) = page_with_shape(&mut replica);
+    let sheet = replica
+        .transact(&person(), |tx| {
+            assert_eq!(tx.object_type(&page)?, "Page");
+            let sheet = tx.create("Sheet", fields(json!({})))?;
+            assert_eq!(tx.object_type(&sheet)?, "Sheet");
+            tx.delete(&shape)?;
+            assert!(matches!(tx.object_type(&shape), Err(KdmError::NotFound(_))));
+            assert!(matches!(tx.object_type(&ObjectId::from_string("missing")), Err(KdmError::NotFound(_))));
+            Ok(sheet)
+        })
+        .unwrap();
+    assert_eq!(replica.object_type(&sheet).unwrap(), "Sheet");
+}

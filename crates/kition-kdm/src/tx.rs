@@ -147,6 +147,12 @@ impl<'a> Tx<'a> {
         self.overlay.exists(id, || read::object_map(self.doc, id).is_ok())
     }
 
+    /// The type of a live object, including one this transaction created; [`KdmError::NotFound`]
+    /// for an object it deleted or that does not exist.
+    pub fn object_type(&self, id: &ObjectId) -> Result<String> {
+        self.type_of(id).map(str::to_owned)
+    }
+
     pub fn get(&self, id: &ObjectId, field: &str) -> Result<Value> {
         let (ty, name, def) = self.field(id, field)?;
         if def.kind.is_container() {

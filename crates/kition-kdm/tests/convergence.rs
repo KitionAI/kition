@@ -6,7 +6,7 @@ use kition_kdm::testing::{Network, Rng};
 use serde_json::json;
 
 mod common;
-use common::{fields, page_with_shape, person, schema};
+use common::{CHARACTER, QUARTER, fields, from_code_points, page_with_shape, person, schema};
 
 fn network(count: usize, seed: u64) -> Network {
     Network::new(schema(), count, seed).unwrap()
@@ -66,12 +66,12 @@ fn concurrent_text_at_one_position_keeps_both_insertions() {
     let (_, shape) = page_with_shape(&mut net.replicas[0]);
     net.replicas[0].transact(&person(), |tx| tx.text_insert(&shape, "label", 0, "ab")).unwrap();
     net.sync_all().unwrap();
-    net.replicas[0].transact(&person(), |tx| tx.text_insert(&shape, "label", 1, "季度😀")).unwrap();
+    net.replicas[0].transact(&person(), |tx| tx.text_insert(&shape, "label", 1, &format!("{}😀", from_code_points(&QUARTER)))).unwrap();
     net.replicas[1].transact(&person(), |tx| tx.text_insert(&shape, "label", 1, "XY")).unwrap();
     net.sync_all().unwrap();
     net.converged().unwrap();
     let text = net.replicas[0].text(&shape, "label").unwrap();
-    assert!(text.contains("季度😀") && text.contains("XY") && text.starts_with('a') && text.ends_with('b'), "{text}");
+    assert!(text.contains(&format!("{}😀", from_code_points(&QUARTER))) && text.contains("XY") && text.starts_with('a') && text.ends_with('b'), "{text}");
 }
 
 #[test]
@@ -179,7 +179,7 @@ fn random_edits_converge_in_any_delivery_order() {
                             tx.list_insert(&page, "shapes", at, &shape)
                         }
                         1 => tx.set(&target, "x", json!(n)),
-                        2 => tx.text_insert(&target, "label", 0, &format!("{n}字")),
+                        2 => tx.text_insert(&target, "label", 0, &format!("{n}{}", from_code_points(&CHARACTER))),
                         _ => tx.list_move(&page, "shapes", at, 0),
                     })
                     .unwrap();

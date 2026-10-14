@@ -11,6 +11,20 @@ pub fn schema() -> Arc<Schema> {
     Arc::new(Schema::parse(include_str!("fixtures/test-schema.json")).expect("test schema parses"))
 }
 
+/// Text from Unicode code points. Tests that need multi-byte text (three UTF-8 bytes per ideograph)
+/// build it from named code points, so the sources stay ASCII and English-only for hosts that
+/// carry this crate (Kition's public repository checks that).
+pub fn from_code_points(points: &[u32]) -> String {
+    points.iter().map(|&point| char::from_u32(point).unwrap_or(char::REPLACEMENT_CHARACTER)).collect()
+}
+
+/// Two CJK ideographs ("quarter").
+pub const QUARTER: [u32; 2] = [0x5B63, 0x5EA6];
+/// Two CJK ideographs ("review").
+pub const REVIEW: [u32; 2] = [0x56DE, 0x987E];
+/// One CJK ideograph ("character").
+pub const CHARACTER: [u32; 1] = [0x5B57];
+
 pub fn person() -> Origin {
     Origin::person("user:test")
 }

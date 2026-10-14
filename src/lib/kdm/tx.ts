@@ -155,6 +155,13 @@ export class Tx {
     return !this.deleted.has(id) && (this.created.has(id) || this.doc.getMap(read.OBJECTS).get(id) instanceof LoroMap)
   }
 
+  /** The type of a live object, including one this transaction created; not-found for an object it deleted. */
+  objectType(id: ObjectId): string {
+    this.live()
+    checkString('an object id', id)
+    return this.typeOf(id)
+  }
+
   get(id: ObjectId, field: string): unknown {
     this.live()
     checkField(id, field)

@@ -1,9 +1,11 @@
 // Copied from kition-sdk crates/kition-kdm/tests/cross_language.rs by scripts/sync-kit-host.mjs; change it there, not here.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 //! Documents made by the TypeScript KDM (`packages/kdm`) open in this crate to the same canonical
-//! state. `fixtures/ts-page.{bin,json}` are written by
+//! state. `fixtures/ts-page.{bin,json,sha256}` are written by
 //! `KDM_WRITE_FIXTURE=1 pnpm vitest run packages/kdm/test/write-ts-fixture.test.ts`; never
-//! regenerate them to make this test pass.
+//! regenerate them to make this test pass. This test compares the state's SHA-256
+//! (`ts-page.sha256`) rather than its JSON (`ts-page.json`, compared by the TypeScript suite), so
+//! hosts that carry this crate without the non-ASCII fixture text run it too.
 
 use kition_kdm::{ActorId, DocId, Replica};
 
@@ -14,7 +16,8 @@ use common::{person, schema};
 fn a_typescript_document_opens_to_the_identical_canonical_state() {
     let replica = Replica::load(schema(), include_bytes!("fixtures/ts-page.bin"), ActorId::from_u64(9).unwrap()).unwrap();
     assert_eq!(replica.doc_id(), DocId::parse("01920000-0000-7000-8000-0000000000aa").unwrap());
-    assert_eq!(replica.state_json().unwrap().to_string(), include_str!("fixtures/ts-page.json"));
+    let state = replica.state_json().unwrap().to_string();
+    assert_eq!(replica.state_hash().unwrap(), include_str!("fixtures/ts-page.sha256"), "canonical state differs from fixtures/ts-page.json:\n{state}");
 }
 
 #[test]

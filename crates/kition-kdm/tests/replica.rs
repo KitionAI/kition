@@ -4,7 +4,7 @@ use kition_kdm::{ActorId, DocId, KdmError, NodeRef, ObjectId, Origin, Replica};
 use serde_json::json;
 
 mod common;
-use common::{fields, page_with_shape, person, schema};
+use common::{QUARTER, REVIEW, fields, from_code_points, page_with_shape, person, schema};
 
 fn replica() -> Replica {
     Replica::create(schema(), DocId::new(), ActorId::from_u64(1).unwrap()).unwrap()
@@ -73,11 +73,11 @@ fn a_failed_transaction_leaves_no_trace_and_cannot_be_undone_into_existence() {
 fn edits_text_by_unicode_scalar_values() {
     let mut replica = replica();
     let (_, shape) = page_with_shape(&mut replica);
-    replica.transact(&person(), |tx| tx.text_insert(&shape, "label", 0, "季度😀回顾")).unwrap();
+    replica.transact(&person(), |tx| tx.text_insert(&shape, "label", 0, &format!("{}😀{}", from_code_points(&QUARTER), from_code_points(&REVIEW)))).unwrap();
     replica.transact(&person(), |tx| tx.text_insert(&shape, "label", 3, "!")).unwrap();
-    assert_eq!(replica.text(&shape, "label").unwrap(), "季度😀!回顾");
+    assert_eq!(replica.text(&shape, "label").unwrap(), format!("{}😀!{}", from_code_points(&QUARTER), from_code_points(&REVIEW)));
     replica.transact(&person(), |tx| tx.text_delete(&shape, "label", 2, 2)).unwrap();
-    assert_eq!(replica.text(&shape, "label").unwrap(), "季度回顾");
+    assert_eq!(replica.text(&shape, "label").unwrap(), format!("{}{}", from_code_points(&QUARTER), from_code_points(&REVIEW)));
     let error = replica.transact(&person(), |tx| tx.text_insert(&shape, "label", 10, "x")).unwrap_err();
     assert_eq!(error, KdmError::OutOfRange { index: 10, len: 4 });
 }
@@ -221,7 +221,7 @@ fn reads_inside_a_transaction_see_its_pending_effects() {
             assert_eq!(tx.list_items(&page, "shapes")?, vec![shape.clone(), created.clone()]);
             tx.list_remove(&page, "shapes", 0)?;
             assert_eq!(tx.list_items(&page, "shapes")?, vec![created.clone()]);
-            tx.text_insert(&shape, "label", 0, "季度😀")?;
+            tx.text_insert(&shape, "label", 0, &format!("{}😀", from_code_points(&QUARTER)))?;
             assert_eq!(tx.text_len(&shape, "label")?, 3);
             tx.text_delete(&shape, "label", 0, 1)?;
             assert_eq!(tx.text_len(&shape, "label")?, 2);
