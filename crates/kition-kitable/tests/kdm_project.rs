@@ -2,7 +2,8 @@
 //!
 //! The equivalence test applies one seeded random operation sequence twice: through the legacy
 //! `KitableFile` methods on one file, and through the model on a replica projected into a second
-//! file. Both files must then read the same through the public read methods, ignoring timestamps,
+//! file. (`KitableFile` itself now writes through the KDM, so the "legacy" side exercises its
+//! commit path: id translation, the checks it keeps, and its own projection.) Both files must then read the same through the public read methods, ignoring timestamps,
 //! actors, and integer ids (mapped by names and row keys). Where the legacy path is known to be
 //! wrong and the KDM design fixes it, the sequence avoids the case or normalizes it, and a
 //! targeted test asserts the new behavior:
@@ -3279,6 +3280,11 @@ fn rebuild_refuses_rows_the_replica_does_not_know() {
     let dir = temp();
     let mut file = new_file(dir.path(), "legacy.kitable", true);
     ok(file.create_table(&table_spec("Old", Vec::new())));
+    // `create_table` goes through the KDM now; rows a legacy writer made have no `kdm_id`.
+    ok(file.conn().execute_batch(
+        "UPDATE kition_tables SET kdm_id = NULL; UPDATE kition_fields SET kdm_id = NULL; \
+         UPDATE kition_views SET kdm_id = NULL;",
+    ));
     let mut replica = new_replica(1);
     base_in(&mut replica);
     let tx = ok(file.conn().unchecked_transaction());

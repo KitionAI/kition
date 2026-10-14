@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use kition_kdm::{ActorId, DocId, ObjectId, Origin, Replica, Schema};
-use kition_kitable::kdm::store;
+use kition_kitable::kdm::{migrate, store};
 use kition_kitable::{CreateOptions, KitableFile};
 use rusqlite::{Connection, Transaction, params};
 use serde_json::{Map, json};
@@ -35,18 +35,34 @@ fn temp() -> tempfile::TempDir {
     tempfile::tempdir().unwrap_or_else(|err| panic!("tempdir: {err}"))
 }
 
-/// A fresh `.kitable` file with the KDM tables and columns installed.
-fn create_file(dir: &Path) -> KitableFile {
-    let file = KitableFile::create(
-        &dir.join("doc.kitable"),
+/// A schema-3 file (no replica yet), as the store's callers start from.
+struct RawFile {
+    conn: Connection,
+}
+
+impl RawFile {
+    fn conn(&self) -> &Connection {
+        &self.conn
+    }
+}
+
+/// A fresh `.kitable` file with the KDM tables and columns installed and no replica stored:
+/// files are created with a replica now, so it is stripped back to schema 3 first.
+fn create_file(dir: &Path) -> RawFile {
+    let path = dir.join("doc.kitable");
+    KitableFile::create(
+        &path,
         &CreateOptions {
             title: "Test".into(),
             ..Default::default()
         },
     )
-    .unwrap_or_else(|err| panic!("create: {err}"));
-    store::ensure_tables(file.conn()).unwrap_or_else(|err| panic!("ensure_tables: {err}"));
-    file
+    .unwrap_or_else(|err| panic!("create: {err}"))
+    .close();
+    let mut conn = Connection::open(&path).unwrap_or_else(|err| panic!("open: {err}"));
+    migrate::downgrade(&mut conn).unwrap_or_else(|err| panic!("downgrade: {err}"));
+    store::ensure_tables(&conn).unwrap_or_else(|err| panic!("ensure_tables: {err}"));
+    RawFile { conn }
 }
 
 fn schema() -> Arc<Schema> {

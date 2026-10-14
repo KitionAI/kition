@@ -2,10 +2,8 @@
 //!
 //! [`replica_from_relational`] only reads the file; [`upgrade`] does the one-time, idempotent
 //! write into it (`ensure_tables`, build, record `kdm_id` on every live row, `save_initial`).
-//! Neither function is wired into [`crate::KitableFile::open`] yet, and neither bumps
-//! `SCHEMA_VERSION`: the legacy relational writers stay the source of truth until a later task
-//! wires this migration into `open` and starts projecting the replica back onto the relational
-//! tables.
+//! [`crate::KitableFile::open`] runs [`upgrade`] on a file without a replica and then records
+//! schema version 4.
 //!
 //! Tables, fields, and views get fresh object ids; a record's object id is its `row_key` (already
 //! a KDM-shaped id by construction, but checked, since nothing else can tell a bad one apart from
@@ -56,8 +54,7 @@ pub fn replica_from_relational(conn: &Connection, actor: ActorId) -> Result<Repl
 /// (for instance a record whose `row_key` is not a valid object id) leaves the file exactly as it
 /// was: nothing commits.
 ///
-/// Does not bump `SCHEMA_VERSION` (a later task does, together with wiring this into `open`). Does
-/// not touch the normalised view-configuration tables (filter groups and conditions, sorts,
+/// Does not record the schema version ([`crate::KitableFile::open`] does). Does not touch the normalised view-configuration tables (filter groups and conditions, sorts,
 /// groups): a view's `config` already carries the UI's own representation, and those tables stay
 /// in place.
 ///
@@ -96,6 +93,36 @@ pub fn upgrade(conn: &mut Connection, actor: ActorId) -> Result<()> {
     store::save_initial(&tx, &built.replica, now_millis())?;
     let position = store::stored_position(&tx)?;
     store::set_projected_position(&tx, position)?;
+    tx.commit()?;
+    Ok(())
+}
+
+/// Turns a schema-4 file back into the schema-3 relational file the legacy writers produced:
+/// drops the replica, its change log, the `kdm_id` columns and indexes, and the KDM bookkeeping
+/// in `kition_meta`. Test support for the migration, which needs schema-3 files to start from.
+#[doc(hidden)]
+pub fn downgrade(conn: &mut Connection) -> Result<()> {
+    let tx = conn.transaction()?;
+    tx.execute_batch(
+        "DROP TABLE IF EXISTS kition_kdm;
+         DROP TABLE IF EXISTS kition_kdm_changes;
+         DELETE FROM sqlite_sequence WHERE name = 'kition_kdm_changes';
+         DELETE FROM kition_meta WHERE key LIKE 'kdm\\_%' ESCAPE '\\';",
+    )?;
+    for index in crate::schema::KDM_INDEXES {
+        if let Some(name) = index.split_whitespace().nth(6) {
+            tx.execute_batch(&format!("DROP INDEX IF EXISTS {name}"))?;
+        }
+    }
+    for (table, column) in crate::schema::KDM_COLUMNS {
+        if crate::file::column_names(&tx, table)?
+            .iter()
+            .any(|name| name == column)
+        {
+            tx.execute_batch(&format!("ALTER TABLE {table} DROP COLUMN {column}"))?;
+        }
+    }
+    crate::file::set_meta(&tx, "schema_version", "3")?;
     tx.commit()?;
     Ok(())
 }

@@ -391,6 +391,8 @@ fn check_bundled_file(original: &Path) -> std::time::Duration {
 
     let mut conn =
         Connection::open(&path).unwrap_or_else(|err| panic!("open {}: {err}", path.display()));
+    // Reading through `KitableFile` migrated the copy; start the upgrade from schema 3 again.
+    ok(migrate::downgrade(&mut conn));
     let start = Instant::now();
     ok(migrate::upgrade(&mut conn, actor(1)));
     let elapsed = start.elapsed();
@@ -442,6 +444,7 @@ fn check_store_round_trip(original: &Path) {
 
     let mut conn =
         Connection::open(&path).unwrap_or_else(|err| panic!("open {}: {err}", path.display()));
+    ok(migrate::downgrade(&mut conn));
     let replica = ok(migrate::replica_from_relational(&conn, actor(1)));
     {
         let tx = conn
@@ -498,6 +501,8 @@ fn upgrading_twice_is_a_no_op() {
     file.close();
 
     let mut conn = Connection::open(&path).unwrap_or_else(|err| panic!("open: {err}"));
+    // Files are written with a replica now; start from the schema-3 file the legacy writers made.
+    ok(migrate::downgrade(&mut conn));
     ok(migrate::upgrade(&mut conn, actor(1)));
     let position = ok(store::stored_position(&conn));
     ok(migrate::upgrade(&mut conn, actor(1)));
@@ -534,6 +539,8 @@ fn a_failed_upgrade_leaves_the_file_unchanged() {
     file.close();
 
     let mut conn = Connection::open(&path).unwrap_or_else(|err| panic!("open: {err}"));
+    // Files are written with a replica now; start from the schema-3 file the legacy writers made.
+    ok(migrate::downgrade(&mut conn));
     assert!(migrate::upgrade(&mut conn, actor(1)).is_err());
 
     let kdm_table_exists: i64 = conn
@@ -598,6 +605,8 @@ fn a_link_to_a_table_created_later_migrates() {
     file.close();
 
     let mut conn = Connection::open(&path).unwrap_or_else(|err| panic!("open: {err}"));
+    // Files are written with a replica now; start from the schema-3 file the legacy writers made.
+    ok(migrate::downgrade(&mut conn));
     ok(migrate::upgrade(&mut conn, actor(1)));
 
     let replica =
@@ -657,6 +666,8 @@ fn tables_with_zero_live_views_or_fields_migrate_without_seeding_defaults() {
     file.close();
 
     let mut conn = Connection::open(&path).unwrap_or_else(|err| panic!("open: {err}"));
+    // Files are written with a replica now; start from the schema-3 file the legacy writers made.
+    ok(migrate::downgrade(&mut conn));
     ok(migrate::upgrade(&mut conn, actor(1)));
 
     let table_kdm = kdm_ids(&conn, "kition_tables");
@@ -775,6 +786,8 @@ fn dangling_option_references_become_null() {
     file.close();
 
     let mut conn = Connection::open(&path).unwrap_or_else(|err| panic!("open: {err}"));
+    // Files are written with a replica now; start from the schema-3 file the legacy writers made.
+    ok(migrate::downgrade(&mut conn));
     ok(migrate::upgrade(&mut conn, actor(1)));
 
     let field_kdm = kdm_ids(&conn, "kition_fields");
@@ -891,6 +904,8 @@ fn large_table_upgrade_timings() {
     file.close();
 
     let mut conn = Connection::open(&path).unwrap_or_else(|err| panic!("open: {err}"));
+    // Files are written with a replica now; start from the schema-3 file the legacy writers made.
+    ok(migrate::downgrade(&mut conn));
     let start = Instant::now();
     ok(migrate::upgrade(&mut conn, actor(1)));
     println!(
