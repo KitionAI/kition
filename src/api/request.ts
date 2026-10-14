@@ -14,6 +14,8 @@ import {
 import { windowSessionId } from './windowSession'
 
 const DEFAULT_TIMEOUT_MS = 300000
+/** Matches `/v1/data-documents`, `/v1/data-documents/...`, and `/v1/data-documents?...`, not a path that merely starts with the same text. */
+const DATA_DOCUMENTS_PATH = /^\/v1\/data-documents(?:[/?]|$)/
 
 function reportRequestError(message: string) {
     console.error(message)
@@ -192,7 +194,9 @@ async function send<T>(method: string, url: string, dataArgument: unknown, confi
         'X-Locale': getCurrentLocale(),
         // Every data-document request carries this window's session, so the runtime
         // can tag the change's origin and the caller can ignore its own live events.
-        ...(url.startsWith('/v1/data-documents') ? { 'Kition-Session': windowSessionId() } : {}),
+        // The boundary (a slash, a query string, or the end of the path) keeps this
+        // from also matching an unrelated route that merely starts with the same text.
+        ...(DATA_DOCUMENTS_PATH.test(url) ? { 'Kition-Session': windowSessionId() } : {}),
         ...(config.headers || {}),
     }
     if (config.origin) headers['Kition-Origin'] = config.origin

@@ -137,6 +137,22 @@ describe('request api client', () => {
     expect(new Headers(otherInit.headers).get('Kition-Session')).toBeNull()
   })
 
+  it('matches the data-documents path at a boundary, not just a shared prefix', async () => {
+    fetchMock.mockImplementation(() => jsonResponse({ code: 200, data: {} }))
+    const mod = await loadRequestModule()
+
+    await mod.default.get('/v1/data-documents')
+    await mod.default.get('/v1/data-documents?workspace_root=%2Fvault')
+    await mod.default.get('/v1/data-documents-unrelated-route')
+
+    const [, bareInit] = fetchMock.mock.calls[0] as [string, RequestInit]
+    const [, queryInit] = fetchMock.mock.calls[1] as [string, RequestInit]
+    const [, unrelatedInit] = fetchMock.mock.calls[2] as [string, RequestInit]
+    expect(new Headers(bareInit.headers).has('Kition-Session')).toBe(true)
+    expect(new Headers(queryInit.headers).has('Kition-Session')).toBe(true)
+    expect(new Headers(unrelatedInit.headers).has('Kition-Session')).toBe(false)
+  })
+
   it('sends Kition-Origin only when the caller opts in', async () => {
     fetchMock.mockImplementation(() => jsonResponse({ code: 200, data: {} }))
     const mod = await loadRequestModule()

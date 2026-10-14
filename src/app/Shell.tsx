@@ -4,11 +4,11 @@ import { Menu, X } from 'lucide-react'
 import { toast, Toaster } from 'sonner'
 import { ConfirmProvider } from '@/components/confirm'
 import { ConsoleCreditsExhaustedBanner } from '@/app/ConsoleCreditsExhaustedBanner'
-import type { TableSchema } from '@/features/workflow/components/BodyTemplateEditor.types'
 import type { SettingsSectionKey } from '@/features/settings/DesktopSettingsPage'
 import { appLocationPathname, leaveAppView, readAppLocation, resolveSettingsSection, type AppLocation } from '@/app/appLocation'
 import { useShortcut } from '@/lib/useShortcut'
 import type { WorkflowRouteContext } from '@/features/workflow/public'
+import { fetchWorkflowTableSchema } from '@/features/workflow/lib/workflowTableSchema'
 import { useGlobalShortcuts } from '@/features/settings/useGlobalShortcuts'
 import { WorkspaceScreen } from '@/features/workspace/components/WorkspaceScreen'
 import { WorkspaceLauncherScreen } from '@/features/workspace/components/WorkspaceLauncherScreen'
@@ -23,7 +23,6 @@ import {
   getDesktopBackendStatus,
   getDesktopInfo,
   openWorkspaceWindow,
-  resolveApiURL,
 } from '@/services/desktop'
 import { restorePortalAccountSession } from '@/services/portalAccount'
 import { SearchService } from '@/features/search/service/searchService'
@@ -827,15 +826,3 @@ export function AppShell() {
   )
 }
 
-async function fetchWorkflowTableSchema(documentId: string, tableId: string, tableName: string): Promise<TableSchema> {
-  const res = await fetch(resolveApiURL(`/v1/data-documents/${documentId}/tables/${tableId}/fields`))
-  if (!res.ok) throw new Error(`schema fetch failed (${res.status})`)
-  const envelope = await res.json() as { data?: { items?: Array<{ id: number | string; name: string; title?: string; type: string }> } }
-  const items = envelope.data?.items ?? []
-  const fields = items.map((f) => ({
-    id: String(f.id),
-    name: (f.title ?? '').trim() ? (f.title as string) : f.name,
-    type: f.type,
-  }))
-  return { id: tableId, name: tableName, fields }
-}
