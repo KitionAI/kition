@@ -7,10 +7,9 @@ vi.mock('@/api/dataDocuments', () => ({
   listDataDocuments: vi.fn(),
   listDataRecords: vi.fn(),
   openDataDocumentByPath: vi.fn(),
-  updateDataField: vi.fn(),
 }))
 
-import { openDataDocumentByPath, updateDataField } from '@/api/dataDocuments'
+import { openDataDocumentByPath } from '@/api/dataDocuments'
 
 import { useTableEditorData } from './useTableEditorData'
 
@@ -101,7 +100,7 @@ describe('useTableEditorData pinnedTableId', () => {
     expect(result.activeTableId).toBe(7)
   })
 
-  it('removes legacy required constraints before exposing the table', async () => {
+  it('opening a document does not write anything, even with required fields present', async () => {
     vi.mocked(openDataDocumentByPath).mockResolvedValueOnce({
       id: 1,
       path: 'Leads.kitable',
@@ -112,11 +111,9 @@ describe('useTableEditorData pinnedTableId', () => {
         fields: [{ id: 11, name: 'name', title: 'Name', required: true }],
       }],
     } as any)
-    vi.mocked(updateDataField).mockResolvedValueOnce({ required: false } as any)
 
     const result = await mountAndSettle('Leads.kitable')
 
-    expect(updateDataField).toHaveBeenCalledWith(1, 7, 11, { required: false })
-    expect(result.document?.tables?.[0]?.fields?.[0]?.required).toBe(false)
+    expect(result.document?.tables?.[0]?.fields?.[0]?.required).toBe(true)
   })
 })

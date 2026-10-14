@@ -67,7 +67,12 @@ export function useTableViewState({
     setCoverFieldName(config.cover_field_name || '')
     setRowHeightKey(config.row_height || 'medium')
     setFrozenColumnCount(typeof config.frozen_column_count === 'number' ? config.frozen_column_count : 1)
-  }, [activeTable?.id, activeView?.id])
+    // Depends on the `activeView` object itself, not just its id: a live
+    // `table/changed` event (another window editing the same view) or an
+    // undo/redo replaces the document with a freshly fetched `activeView`
+    // that keeps the same id but carries a different `config`, and the
+    // local view state below needs to pick that up.
+  }, [activeTable?.id, activeView])
 
   useEffect(() => {
     if (!document || !activeTable || !activeView) return

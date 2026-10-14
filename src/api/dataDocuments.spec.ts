@@ -173,6 +173,26 @@ describe('table transaction API', () => {
     await expect(getDataDocumentHistoryState(1)).resolves.toEqual({ canUndo: true, canRedo: false })
     expect(mocks.get).toHaveBeenCalledWith('/v1/data-documents/1/history-state')
   })
+
+  it('createDataRecord sends no origin override by default', async () => {
+    mocks.post.mockResolvedValue({ code: 200, data: { id: 1 } })
+    const { createDataRecord } = await import('./dataDocuments')
+
+    await createDataRecord(1, 11, { title: 'a' })
+    expect(mocks.post).toHaveBeenCalledWith('/v1/data-documents/1/tables/11/records', { values: { title: 'a' } }, undefined)
+  })
+
+  it('createDataRecord sends Kition-Origin: template when seeding a template', async () => {
+    mocks.post.mockResolvedValue({ code: 200, data: { id: 1 } })
+    const { createDataRecord } = await import('./dataDocuments')
+
+    await createDataRecord(1, 11, { title: 'a' }, { origin: 'template' })
+    expect(mocks.post).toHaveBeenCalledWith(
+      '/v1/data-documents/1/tables/11/records',
+      { values: { title: 'a' } },
+      { origin: 'template' },
+    )
+  })
 })
 
 describe('data dashboards API', () => {

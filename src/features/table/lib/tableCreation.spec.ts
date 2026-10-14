@@ -152,11 +152,11 @@ describe('createTableWorkspaceEntry', () => {
     expect(createDataRecord).toHaveBeenNthCalledWith(1, 7, 11, {
       project: 'Website refresh',
       status: 'Active',
-    })
+    }, { origin: 'template' })
     expect(createDataRecord).toHaveBeenNthCalledWith(2, 7, 11, {
       project: 'Mobile launch',
       status: 'Done',
-    })
+    }, { origin: 'template' })
     expect(result).toMatchObject({
       documentId: 7,
       tableId: 11,
@@ -295,7 +295,7 @@ describe('createTableWorkspaceEntry', () => {
         }),
       },
     })
-    expect(createDataRecord).toHaveBeenCalledWith(8, 12, { key_message: 'Build faster' })
+    expect(createDataRecord).toHaveBeenCalledWith(8, 12, { key_message: 'Build faster' }, { origin: 'template' })
   })
 
   it('seeds bundled image references without uploading and materializes per-view field layout', async () => {
@@ -414,7 +414,7 @@ describe('createTableWorkspaceEntry', () => {
     expect(createDataRecord).toHaveBeenCalledWith(9, 13, {
       project: 'Website refresh',
       preview: [bundledAttachment],
-    })
+    }, { origin: 'template' })
   })
 
   it('materializes dashboard seeds after table IDs are assigned', async () => {

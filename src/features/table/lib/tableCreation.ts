@@ -45,7 +45,7 @@ export async function seedDefaultEmptyRows(documentId: number, tableId: number) 
   try {
     await Promise.all(
       Array.from({ length: DEFAULT_EMPTY_ROW_COUNT }, () =>
-        createDataRecord(documentId, tableId, {}),
+        createDataRecord(documentId, tableId, {}, { origin: 'template' }),
       ),
     )
   } catch {
@@ -321,7 +321,7 @@ async function seedKitableTemplateRecords(
             : []
         }),
       )
-      return createDataRecord(dataDocument.id, createdTable.id, values)
+      return createDataRecord(dataDocument.id, createdTable.id, values, { origin: 'template' })
     }))
   }
 }

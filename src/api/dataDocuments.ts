@@ -209,21 +209,24 @@ export function listDataRecords(documentId: number, tableId: number, params?: { 
     .then(unwrapResponseData<DataListResponse<DataRecord>>)
 }
 
-export function createDataRecord(documentId: number, tableId: number, values: Record<string, DataRecordValue>) {
+export function createDataRecord(
+  documentId: number,
+  tableId: number,
+  values: Record<string, DataRecordValue>,
+  options?: { origin?: 'template' },
+) {
   return request
-    .post<DataRecord | { data?: DataRecord }>(`/v1/data-documents/${documentId}/tables/${tableId}/records`, { values })
+    .post<DataRecord | { data?: DataRecord }>(
+      `/v1/data-documents/${documentId}/tables/${tableId}/records`,
+      { values },
+      options?.origin ? { origin: options.origin } : undefined,
+    )
     .then(unwrapResponseData<DataRecord>)
 }
 
 export function updateDataRecord(documentId: number, tableId: number, recordId: number, values: Record<string, DataRecordValue>) {
   return request
     .patch<DataRecord | { data?: DataRecord }>(`/v1/data-documents/${documentId}/tables/${tableId}/records/${recordId}`, { values })
-    .then(unwrapResponseData<DataRecord>)
-}
-
-export function updateDataRecordOrder(documentId: number, tableId: number, recordId: number, order: number) {
-  return request
-    .patch<DataRecord | { data?: DataRecord }>(`/v1/data-documents/${documentId}/tables/${tableId}/records/${recordId}`, { order })
     .then(unwrapResponseData<DataRecord>)
 }
 
