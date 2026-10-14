@@ -8,6 +8,9 @@ const shared = vi.hoisted(() => ({
   listeners: new Set<Listener>(),
   subscribeCalls: 0,
   unsubscribeCalls: 0,
+  resyncListeners: new Set<() => void>(),
+  resyncSubscribeCalls: 0,
+  resyncUnsubscribeCalls: 0,
 }))
 
 vi.mock('@/services/runtimeBridge', () => ({
@@ -17,6 +20,14 @@ vi.mock('@/services/runtimeBridge', () => ({
     return () => {
       shared.listeners.delete(listener)
       shared.unsubscribeCalls += 1
+    }
+  },
+  onTableChangedResync: (listener: () => void) => {
+    shared.resyncListeners.add(listener)
+    shared.resyncSubscribeCalls += 1
+    return () => {
+      shared.resyncListeners.delete(listener)
+      shared.resyncUnsubscribeCalls += 1
     }
   },
 }))
@@ -42,6 +53,10 @@ function emit(overrides: Record<string, unknown> = {}) {
     ...overrides,
   }
   for (const listener of [...shared.listeners]) listener(event)
+}
+
+function emitResync() {
+  for (const listener of [...shared.resyncListeners]) listener()
 }
 
 let container: HTMLDivElement
@@ -71,6 +86,9 @@ beforeEach(() => {
   shared.listeners.clear()
   shared.subscribeCalls = 0
   shared.unsubscribeCalls = 0
+  shared.resyncListeners.clear()
+  shared.resyncSubscribeCalls = 0
+  shared.resyncUnsubscribeCalls = 0
 })
 
 afterEach(() => {
@@ -166,11 +184,44 @@ describe('useTableLiveChanges', () => {
   it('unsubscribes when documentId becomes null and resubscribes for a new document', async () => {
     await mount(1, {})
     expect(shared.subscribeCalls).toBe(1)
+    expect(shared.resyncSubscribeCalls).toBe(1)
 
     await update(null, {})
     expect(shared.unsubscribeCalls).toBe(1)
+    expect(shared.resyncUnsubscribeCalls).toBe(1)
 
     await update(2, {})
     expect(shared.subscribeCalls).toBe(2)
+    expect(shared.resyncSubscribeCalls).toBe(2)
+  })
+
+  it('calls onResync after the bridge stream resyncs', async () => {
+    const onResync = vi.fn()
+    await mount(1, { onResync })
+
+    emitResync()
+    expect(onResync).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not call onResync once documentId becomes null', async () => {
+    const onResync = vi.fn()
+    await mount(1, { onResync })
+    await update(null, { onResync })
+
+    emitResync()
+    expect(onResync).not.toHaveBeenCalled()
+  })
+
+  it('calls the latest onResync handler without resubscribing', async () => {
+    const firstResync = vi.fn()
+    const secondResync = vi.fn()
+    await mount(1, { onResync: firstResync })
+    await update(1, { onResync: secondResync })
+
+    expect(shared.resyncSubscribeCalls).toBe(1)
+
+    emitResync()
+    expect(firstResync).not.toHaveBeenCalled()
+    expect(secondResync).toHaveBeenCalledTimes(1)
   })
 })

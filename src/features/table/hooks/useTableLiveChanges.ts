@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 
 import { windowSessionOrigin } from '@/api/windowSession'
-import { onTableChanged } from '@/services/runtimeBridge'
+import { onTableChanged, onTableChangedResync } from '@/services/runtimeBridge'
 import type { TableChangedParams } from '@/api/generated/table-changed'
 
 /** [tableId, rowKey] tuples, as `TableChange.recordsUpserted` and `.recordsDeleted` carry them. */
@@ -15,6 +15,12 @@ export type TableLiveChangeHandlers = {
   /** Table ids whose row order changed. */
   onReorder?: (tableIds: number[]) => void
   onDashboards?: () => void
+  /**
+   * The bridge stream reconnected after the first time: events may have
+   * been lost while it was down, so the editor should refetch rather than
+   * trust its last known state.
+   */
+  onResync?: () => void
 }
 
 /**
@@ -36,7 +42,7 @@ export function useTableLiveChanges(documentId: number | string | null, handlers
     const expectedDocumentId = String(documentId)
     const ownOrigin = windowSessionOrigin()
 
-    return onTableChanged((event) => {
+    const unsubscribeChanged = onTableChanged((event) => {
       if (event.documentId !== expectedDocumentId) return
       if (event.origin === ownOrigin) return
 
@@ -57,5 +63,14 @@ export function useTableLiveChanges(documentId: number | string | null, handlers
         current.onDashboards?.()
       }
     })
+
+    const unsubscribeResync = onTableChangedResync(() => {
+      handlersRef.current.onResync?.()
+    })
+
+    return () => {
+      unsubscribeChanged()
+      unsubscribeResync()
+    }
   }, [documentId])
 }

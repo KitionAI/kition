@@ -116,6 +116,22 @@ describe('runtimeBridge', () => {
 })
 
 describe('createTableChangedChannel', () => {
+  function wellFormedEvent(overrides: Record<string, unknown> = {}) {
+    return {
+      documentId: '1',
+      origin: 'agent:t1',
+      tables: [],
+      schema: [],
+      views: [],
+      recordsUpserted: [],
+      recordsDeleted: [],
+      recordsReordered: [],
+      dashboards: false,
+      documentPath: 'a.kitable',
+      ...overrides,
+    }
+  }
+
   function fakeTransport() {
     const state = { channel: null as BridgeChannel | null, opens: 0, closes: 0 }
     const transport: BridgeTransport = {
@@ -130,7 +146,8 @@ describe('createTableChangedChannel', () => {
       notify: () => undefined,
     }
     const emit = (params: Record<string, unknown>) => state.channel?.handle('table/changed', params)
-    return { transport, state, emit }
+    const ready = () => state.channel?.ready?.()
+    return { transport, state, emit, ready }
   }
 
   it('opens the stream only while at least one listener is subscribed', () => {
@@ -146,14 +163,14 @@ describe('createTableChangedChannel', () => {
     expect(state.closes).toBe(1)
   })
 
-  it('delivers table/changed to every subscriber', () => {
+  it('delivers a well-formed table/changed to every subscriber', () => {
     const { transport, emit } = fakeTransport()
     const channel = createTableChangedChannel(transport)
     const first = vi.fn()
     const second = vi.fn()
     channel.subscribe(first)
     channel.subscribe(second)
-    const params = { documentId: '1', origin: 'agent:t1', documentPath: 'a.kitable' }
+    const params = wellFormedEvent()
     emit(params)
     expect(first).toHaveBeenCalledWith(params)
     expect(second).toHaveBeenCalledWith(params)
@@ -165,7 +182,69 @@ describe('createTableChangedChannel', () => {
     const listener = vi.fn()
     const unsubscribe = channel.subscribe(listener)
     unsubscribe()
-    emit({ documentId: '1' })
+    emit(wellFormedEvent())
     expect(listener).not.toHaveBeenCalled()
+  })
+
+  it('drops a malformed event with a console warning instead of dispatching it', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const { transport, emit } = fakeTransport()
+    const channel = createTableChangedChannel(transport)
+    const listener = vi.fn()
+    channel.subscribe(listener)
+
+    emit({ documentId: '1' }) // missing origin, the TableChange arrays, dashboards, documentPath
+    emit(null as unknown as Record<string, unknown>)
+    emit({ ...wellFormedEvent(), dashboards: 'not-a-boolean' })
+
+    expect(listener).not.toHaveBeenCalled()
+    expect(warn).toHaveBeenCalledTimes(3)
+    warn.mockRestore()
+  })
+
+  it('does not resync on the first bridge.ready, only on a later one', () => {
+    const { transport, ready } = fakeTransport()
+    const channel = createTableChangedChannel(transport)
+    const resync = vi.fn()
+    channel.subscribe(() => undefined)
+    channel.onResync(resync)
+
+    ready() // the initial connection's announcement — nothing could have been missed yet
+    expect(resync).not.toHaveBeenCalled()
+
+    ready() // a reconnect — events may have been lost while the stream was down
+    expect(resync).toHaveBeenCalledTimes(1)
+    ready()
+    expect(resync).toHaveBeenCalledTimes(2)
+  })
+
+  it('treats the next subscription after a full unsubscribe as a fresh first connection', () => {
+    const { transport, ready } = fakeTransport()
+    const channel = createTableChangedChannel(transport)
+    const resync = vi.fn()
+    channel.onResync(resync)
+
+    const unsubscribe = channel.subscribe(() => undefined)
+    ready()
+    unsubscribe()
+
+    channel.subscribe(() => undefined)
+    ready()
+    expect(resync).not.toHaveBeenCalled()
+    ready()
+    expect(resync).toHaveBeenCalledTimes(1)
+  })
+
+  it('stops notifying an unsubscribed resync listener', () => {
+    const { transport, ready } = fakeTransport()
+    const channel = createTableChangedChannel(transport)
+    const resync = vi.fn()
+    channel.subscribe(() => undefined)
+    const unsubscribeResync = channel.onResync(resync)
+
+    ready()
+    unsubscribeResync()
+    ready()
+    expect(resync).not.toHaveBeenCalled()
   })
 })

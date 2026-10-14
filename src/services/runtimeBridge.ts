@@ -118,22 +118,53 @@ export const runtimeBridge = createRuntimeBridge(browserConnection)
 
 type TableChangedListener = (params: TableChangedParams) => void
 
+/** Cheap shape check: rejects anything that is not a well-formed TableChange plus documentPath. */
+function isTableChangedEvent(value: unknown): value is TableChangedParams {
+  if (!value || typeof value !== 'object') return false
+  const event = value as Record<string, unknown>
+  return typeof event.documentId === 'string'
+    && typeof event.origin === 'string'
+    && Array.isArray(event.tables)
+    && Array.isArray(event.schema)
+    && Array.isArray(event.views)
+    && Array.isArray(event.recordsUpserted)
+    && Array.isArray(event.recordsDeleted)
+    && Array.isArray(event.recordsReordered)
+    && typeof event.dashboards === 'boolean'
+    && typeof event.documentPath === 'string'
+}
+
 /**
  * The `table/changed` channel: a notification (no reply) the runtime sends
  * after a data-document transaction, undo, redo, or dashboard write lands,
  * including ones this window made itself. Opens the shared stream only while
  * at least one listener is subscribed. Exported for tests; `onTableChanged`
- * below is the window's one instance, over the shared bridge stream.
+ * and `onTableChangedResync` below are the window's one instance, over the
+ * shared bridge stream.
  */
 export function createTableChangedChannel(transport: BridgeTransport) {
   const listeners = new Set<TableChangedListener>()
+  const resyncListeners = new Set<() => void>()
   let close: (() => void) | null = null
+  // The stream announces bridge.ready on the very first connection too; that one is
+  // not a reconnect, so it does not need a resync (nothing could have been missed yet).
+  let announcedOnce = false
 
   const channel: BridgeChannel = {
     handles: (method) => method === 'table/changed',
     handle(_method, params) {
-      const event = params as unknown as TableChangedParams
-      for (const listener of listeners) listener(event)
+      if (!isTableChangedEvent(params)) {
+        console.warn('[runtimeBridge] dropped a malformed table/changed event', params)
+        return
+      }
+      for (const listener of listeners) listener(params)
+    },
+    ready() {
+      if (!announcedOnce) {
+        announcedOnce = true
+        return
+      }
+      for (const listener of resyncListeners) listener()
     },
   }
 
@@ -145,13 +176,29 @@ export function createTableChangedChannel(transport: BridgeTransport) {
       if (listeners.size) return
       close?.()
       close = null
+      announcedOnce = false
     }
   }
 
-  return { subscribe }
+  /** Called after the bridge stream reconnects, when `table/changed` events may have been lost. */
+  function onResync(listener: () => void) {
+    resyncListeners.add(listener)
+    return () => resyncListeners.delete(listener)
+  }
+
+  return { subscribe, onResync }
 }
 
 const tableChangedChannel = createTableChangedChannel(runtimeBridge)
 
 /** Subscribes to this window's `table/changed` notifications; returns the function that unsubscribes. */
 export const onTableChanged = tableChangedChannel.subscribe
+
+/**
+ * Subscribes to this window's bridge stream reconnecting after the first
+ * time (a dropped connection, a sleeping laptop, …): `table/changed` events
+ * may have been lost while it was down, so a subscriber should refetch
+ * instead of trusting its last known state. Returns the function that
+ * unsubscribes.
+ */
+export const onTableChangedResync = tableChangedChannel.onResync
