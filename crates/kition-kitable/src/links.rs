@@ -2,12 +2,12 @@
 
 use kition_core::now_millis;
 use rusqlite::types::Value as SqlValue;
-use rusqlite::{OptionalExtension, params, params_from_iter};
+use rusqlite::{Connection, OptionalExtension, params, params_from_iter};
 use serde::Serialize;
 use serde_json::Value;
 
 use crate::json;
-use crate::source::Field;
+use crate::source::{self, Field};
 use crate::{KitableError, KitableFile, Result};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -53,25 +53,14 @@ impl KitableFile {
         field_id: i64,
     ) -> Result<Vec<LinkRef>> {
         let (target, primary) = self.resolve_link_target(field_id)?;
-        let mut statement = self.conn.prepare(
-            "SELECT r.row_key, r.values_json FROM kition_record_links l \
-             JOIN kition_records r ON r.id = l.to_record_id \
-             WHERE l.from_table_id = ?1 AND l.from_record_id = ?2 AND l.from_field_id = ?3 AND l.to_table_id = ?4 \
-             AND r.deleted_at IS NULL ORDER BY l.id ASC",
-        )?;
-        let refs = statement
-            .query_map(
-                params![from_table_id, from_record_id, field_id, target],
-                |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
-            )?
-            .collect::<std::result::Result<Vec<_>, _>>()?
-            .into_iter()
-            .map(|(row_key, values)| LinkRef {
-                row_key,
-                display: display(&values, primary.as_ref()),
-            })
-            .collect();
-        Ok(refs)
+        link_refs(
+            &self.conn,
+            from_table_id,
+            from_record_id,
+            field_id,
+            target,
+            primary.as_ref(),
+        )
     }
 
     /// Replaces the field's links from one record with `target_row_keys`, in
@@ -221,35 +210,74 @@ impl KitableFile {
 
     /// The link field's target table and that table's primary field.
     pub(crate) fn resolve_link_target(&self, field_id: i64) -> Result<(i64, Option<Field>)> {
-        let (_, options_json): (i64, String) = self
-            .conn
-            .query_row(
-                "SELECT table_id, options_json FROM kition_fields WHERE id = ?1 AND deleted_at IS NULL",
-                [field_id],
-                |row| Ok((row.get(0)?, row.get(1)?)),
-            )
-            .map_err(|err| KitableError::invalid(format!("link field not found: {}", KitableError::from(err))))?;
-        let target_table_id = json::int_option(&json::object(&options_json), "target_table_id");
-        if target_table_id == 0 {
-            return Err(KitableError::invalid(
-                "link field is missing target_table_id",
-            ));
-        }
-        let primary_id: Option<i64> = self
-            .conn
-            .query_row(
-                "SELECT primary_field_id FROM kition_tables WHERE id = ?1 AND deleted_at IS NULL",
-                [target_table_id],
-                |row| row.get(0),
-            )
-            .optional()?
-            .ok_or_else(|| {
-                KitableError::invalid(format!(
-                    "link target table not found: {}",
-                    KitableError::NotFound
-                ))
-            })?;
-        let primary = primary_id.and_then(|id| self.get_field(target_table_id, id).ok());
-        Ok((target_table_id, primary))
+        resolve_link_target(&self.conn, field_id)
     }
+}
+
+/// The live records one record links to through `field_id` in the `target` table, in link order,
+/// with their display text (their value of `primary`).
+pub(crate) fn link_refs(
+    conn: &Connection,
+    from_table_id: i64,
+    from_record_id: i64,
+    field_id: i64,
+    target: i64,
+    primary: Option<&Field>,
+) -> Result<Vec<LinkRef>> {
+    let mut statement = conn.prepare_cached(
+        "SELECT r.row_key, r.values_json FROM kition_record_links l \
+         JOIN kition_records r ON r.id = l.to_record_id \
+         WHERE l.from_table_id = ?1 AND l.from_record_id = ?2 AND l.from_field_id = ?3 AND l.to_table_id = ?4 \
+         AND r.deleted_at IS NULL ORDER BY l.id ASC",
+    )?;
+    let refs = statement
+        .query_map(
+            params![from_table_id, from_record_id, field_id, target],
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+        )?
+        .collect::<std::result::Result<Vec<_>, _>>()?
+        .into_iter()
+        .map(|(row_key, values)| LinkRef {
+            row_key,
+            display: display(&values, primary),
+        })
+        .collect();
+    Ok(refs)
+}
+
+/// The link field's target table and that table's primary field.
+pub(crate) fn resolve_link_target(
+    conn: &Connection,
+    field_id: i64,
+) -> Result<(i64, Option<Field>)> {
+    let (_, options_json): (i64, String) = conn
+        .query_row(
+            "SELECT table_id, options_json FROM kition_fields WHERE id = ?1 AND deleted_at IS NULL",
+            [field_id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .map_err(|err| {
+            KitableError::invalid(format!("link field not found: {}", KitableError::from(err)))
+        })?;
+    let target_table_id = json::int_option(&json::object(&options_json), "target_table_id");
+    if target_table_id == 0 {
+        return Err(KitableError::invalid(
+            "link field is missing target_table_id",
+        ));
+    }
+    let primary_id: Option<i64> = conn
+        .query_row(
+            "SELECT primary_field_id FROM kition_tables WHERE id = ?1 AND deleted_at IS NULL",
+            [target_table_id],
+            |row| row.get(0),
+        )
+        .optional()?
+        .ok_or_else(|| {
+            KitableError::invalid(format!(
+                "link target table not found: {}",
+                KitableError::NotFound
+            ))
+        })?;
+    let primary = primary_id.and_then(|id| source::field_in(conn, target_table_id, id).ok());
+    Ok((target_table_id, primary))
 }

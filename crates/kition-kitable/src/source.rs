@@ -195,7 +195,7 @@ pub struct Attachment {
 }
 
 const TABLE_COLUMNS: &str = "id, document_id, name, title, description, position, primary_field_id, meta_json, created_at, updated_at";
-const FIELD_COLUMNS: &str = "id, document_id, table_id, name, title, type, required, unique_value, readonly, \
+pub(crate) const FIELD_COLUMNS: &str = "id, document_id, table_id, name, title, type, required, unique_value, readonly, \
     is_primary, position, options_json, formula, ai_prompt, meta_json, created_at, updated_at";
 const VIEW_COLUMNS: &str =
     "id, document_id, table_id, title, type, position, locked, config_json, created_at, updated_at";
@@ -854,20 +854,7 @@ impl KitableFile {
     }
 
     pub fn get_field(&self, table_id: i64, field_id: i64) -> Result<Field> {
-        Ok(self.conn.query_row(
-            &format!("SELECT {FIELD_COLUMNS} FROM kition_fields WHERE id = ?1 AND table_id = ?2 AND deleted_at IS NULL"),
-            params![field_id, table_id],
-            field_from_row,
-        )?)
-    }
-
-    pub(crate) fn get_field_by_id(&self, field_id: i64) -> Result<Field> {
-        let table_id: i64 = self.conn.query_row(
-            "SELECT table_id FROM kition_fields WHERE id = ?1 AND deleted_at IS NULL",
-            [field_id],
-            |row| row.get(0),
-        )?;
-        self.get_field(table_id, field_id)
+        field_in(&self.conn, table_id, field_id)
     }
 
     pub fn get_view(&self, table_id: i64, view_id: i64) -> Result<View> {
@@ -877,6 +864,25 @@ impl KitableFile {
             view_from_row,
         )?)
     }
+}
+
+/// A live field of a table.
+pub(crate) fn field_in(conn: &Connection, table_id: i64, field_id: i64) -> Result<Field> {
+    Ok(conn.query_row(
+        &format!("SELECT {FIELD_COLUMNS} FROM kition_fields WHERE id = ?1 AND table_id = ?2 AND deleted_at IS NULL"),
+        params![field_id, table_id],
+        field_from_row,
+    )?)
+}
+
+/// A live field of any table.
+pub(crate) fn field_by_id(conn: &Connection, field_id: i64) -> Result<Field> {
+    let table_id: i64 = conn.query_row(
+        "SELECT table_id FROM kition_fields WHERE id = ?1 AND deleted_at IS NULL",
+        [field_id],
+        |row| row.get(0),
+    )?;
+    field_in(conn, table_id, field_id)
 }
 
 fn create_field_tx(

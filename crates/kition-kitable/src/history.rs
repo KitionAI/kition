@@ -1,7 +1,7 @@
 //! Per-record change history.
 
 use kition_core::{Millis, now_millis};
-use rusqlite::{Row, params};
+use rusqlite::{Connection, Row, params};
 use serde::Serialize;
 use serde_json::Value;
 
@@ -115,21 +115,30 @@ impl KitableFile {
     }
 
     pub(crate) fn write_record_history(&self, write: &HistoryWrite<'_>) -> Result<()> {
-        self.conn.execute(
-            "INSERT INTO kition_record_history (document_id, table_id, record_id, field_id, action, before_json, after_json, actor, created_at) \
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
-            params![
-                write.document_id,
-                write.table_id,
-                write.record_id,
-                write.field_id,
-                write.action.as_str(),
-                write.before.to_string(),
-                write.after.to_string(),
-                write.actor,
-                now_millis()
-            ],
-        )?;
-        Ok(())
+        insert_history(&self.conn, write, now_millis())
     }
+}
+
+/// Inserts one history row created at `created_at`.
+pub(crate) fn insert_history(
+    conn: &Connection,
+    write: &HistoryWrite<'_>,
+    created_at: Millis,
+) -> Result<()> {
+    conn.prepare_cached(
+        "INSERT INTO kition_record_history (document_id, table_id, record_id, field_id, action, before_json, after_json, actor, created_at) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+    )?
+    .execute(params![
+        write.document_id,
+        write.table_id,
+        write.record_id,
+        write.field_id,
+        write.action.as_str(),
+        write.before.to_string(),
+        write.after.to_string(),
+        write.actor,
+        created_at
+    ])?;
+    Ok(())
 }

@@ -1,13 +1,15 @@
 //! Derived values: `link_to_record` chips, lookups, rollups, and formulas.
 
+use std::cell::RefCell;
 use std::collections::HashMap;
 
-use rusqlite::params;
+use rusqlite::{Connection, params};
 use serde_json::{Map, Value, json};
 
 use crate::json::{self, number, to_bool, to_number, to_text};
-use crate::source::{Field, Table};
-use crate::{KitableFile, Result};
+use crate::links;
+use crate::source::{self, Field, Table};
+use crate::{KitableError, KitableFile, Result};
 
 impl KitableFile {
     /// Recomputes derived fields for one record. Returns the new values and
@@ -18,27 +20,7 @@ impl KitableFile {
         record_id: i64,
         values: &Map<String, Value>,
     ) -> Result<(Map<String, Value>, bool)> {
-        let mut next = values.clone();
-        let mut changed = false;
-        for field in &table.fields {
-            let computed = match field.field_type.as_str() {
-                "lookup" => self.compute_lookup(record_id, field),
-                "rollup" => self.compute_rollup(record_id, field),
-                "link_to_record" => self.compute_link_refs(record_id, field),
-                "formula" => match compute_formula(&field.formula, &next) {
-                    Ok(value) => Ok(value),
-                    Err(message) => Ok(Value::String(format!("#ERROR: {message}"))),
-                },
-                _ => continue,
-            }?;
-            // A missing value counts as null, as in the legacy comparison.
-            let current = next.get(&field.name).unwrap_or(&Value::Null);
-            if !json::equal(current, &computed) {
-                next.insert(field.name.clone(), computed);
-                changed = true;
-            }
-        }
-        Ok((next, changed))
+        Deriver::new(&self.conn, false).recompute(&table.fields, record_id, values)
     }
 
     pub(crate) fn apply_recomputed_values(
@@ -68,9 +50,96 @@ impl KitableFile {
         };
         let _ = self.apply_recomputed_values(&table, record_id, &record.values);
     }
+}
 
-    fn compute_link_refs(&self, record_id: i64, field: &Field) -> Result<Value> {
-        let refs = self.list_record_links(field.table_id, record_id, field.id)?;
+/// Computes derived values from the relational rows of one connection: link chips, lookups and
+/// rollups read the linked records' stored `values_json`. Field and link-target reads are cached
+/// for the deriver's lifetime, so use one per pass during which fields do not change.
+pub(crate) struct Deriver<'c> {
+    conn: &'c Connection,
+    /// A link field whose target cannot be resolved derives `[]` instead of failing the record.
+    lenient: bool,
+    fields: RefCell<HashMap<i64, Option<Field>>>,
+    targets: RefCell<HashMap<i64, Option<(i64, Option<Field>)>>>,
+}
+
+impl<'c> Deriver<'c> {
+    pub(crate) fn new(conn: &'c Connection, lenient: bool) -> Self {
+        Self {
+            conn,
+            lenient,
+            fields: RefCell::new(HashMap::new()),
+            targets: RefCell::new(HashMap::new()),
+        }
+    }
+
+    /// The record's values with its derived fields recomputed in field order (a formula sees the
+    /// values derived before it), and whether anything changed.
+    pub(crate) fn recompute(
+        &self,
+        fields: &[Field],
+        record_id: i64,
+        values: &Map<String, Value>,
+    ) -> Result<(Map<String, Value>, bool)> {
+        let mut next = values.clone();
+        let mut changed = false;
+        for field in fields {
+            let computed = match field.field_type.as_str() {
+                "lookup" => self.lookup(record_id, field),
+                "rollup" => self.rollup(record_id, field),
+                "link_to_record" => self.link_refs(record_id, field),
+                "formula" => match compute_formula(&field.formula, &next) {
+                    Ok(value) => Ok(value),
+                    Err(message) => Ok(Value::String(format!("#ERROR: {message}"))),
+                },
+                _ => continue,
+            }?;
+            // A missing value counts as null, as in the legacy comparison.
+            let current = next.get(&field.name).unwrap_or(&Value::Null);
+            if !json::equal(current, &computed) {
+                next.insert(field.name.clone(), computed);
+                changed = true;
+            }
+        }
+        Ok((next, changed))
+    }
+
+    /// A live field by id, any table.
+    fn field(&self, field_id: i64) -> Option<Field> {
+        if let Some(found) = self.fields.borrow().get(&field_id) {
+            return found.clone();
+        }
+        let found = source::field_by_id(self.conn, field_id).ok();
+        self.fields.borrow_mut().insert(field_id, found.clone());
+        found
+    }
+
+    fn link_target(&self, field_id: i64) -> Option<(i64, Option<Field>)> {
+        if let Some(found) = self.targets.borrow().get(&field_id) {
+            return found.clone();
+        }
+        let found = links::resolve_link_target(self.conn, field_id).ok();
+        self.targets.borrow_mut().insert(field_id, found.clone());
+        found
+    }
+
+    fn link_refs(&self, record_id: i64, field: &Field) -> Result<Value> {
+        let Some((target, primary)) = self.link_target(field.id) else {
+            if self.lenient {
+                return Ok(Value::Array(Vec::new()));
+            }
+            return Err(KitableError::invalid(
+                "link field target cannot be resolved",
+            ));
+        };
+        let refs = links::link_refs(
+            self.conn,
+            field.table_id,
+            record_id,
+            field.id,
+            target,
+            primary.as_ref(),
+        )?;
         Ok(Value::Array(
             refs.into_iter()
                 .map(|r| json!({ "row_key": r.row_key, "display": r.display }))
@@ -85,7 +154,7 @@ impl KitableFile {
         ordered: bool,
     ) -> Result<Vec<Map<String, Value>>> {
         let order = if ordered { " ORDER BY l.id ASC" } else { "" };
-        let mut statement = self.conn.prepare(&format!(
+        let mut statement = self.conn.prepare_cached(&format!(
             "SELECT r.values_json FROM kition_record_links l JOIN kition_records r ON r.id = l.to_record_id \
              WHERE l.from_record_id = ?1 AND l.from_field_id = ?2 AND r.deleted_at IS NULL{order}"
         ))?;
@@ -97,13 +166,13 @@ impl KitableFile {
         Ok(rows.iter().map(|raw| json::object(raw)).collect())
     }
 
-    fn compute_lookup(&self, record_id: i64, field: &Field) -> Result<Value> {
+    fn lookup(&self, record_id: i64, field: &Field) -> Result<Value> {
         let link_field_id = json::int_option(&field.options, "link_field_id");
         let target_field_id = json::int_option(&field.options, "target_field_id");
         if link_field_id == 0 || target_field_id == 0 {
             return Ok(Value::Null);
         }
-        let Ok(target) = self.get_field_by_id(target_field_id) else {
+        let Some(target) = self.field(target_field_id) else {
             return Ok(Value::Null);
         };
         let collected: Vec<Value> = self
@@ -124,7 +193,7 @@ impl KitableFile {
         Ok(Value::Array(collected))
     }
 
-    fn compute_rollup(&self, record_id: i64, field: &Field) -> Result<Value> {
+    fn rollup(&self, record_id: i64, field: &Field) -> Result<Value> {
         let link_field_id = json::int_option(&field.options, "link_field_id");
         let target_field_id = json::int_option(&field.options, "target_field_id");
         let aggregation = field
@@ -136,7 +205,7 @@ impl KitableFile {
             return Ok(Value::Null);
         }
         let target_name = self
-            .get_field_by_id(target_field_id)
+            .field(target_field_id)
             .map(|f| f.name)
             .unwrap_or_default();
         let values: Vec<Value> = self
