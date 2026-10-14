@@ -102,7 +102,7 @@ export function useWorkspaceCreateMenu({
     kitCreations: kitCreations.map<KitCreationItem>((kit) => ({
       id: kit.id,
       label: kit.label,
-      icon: kit.icon,
+      kit: kit.kit,
       onCreate: () => {
         onCloseProfile?.()
         closeCreateMenu()

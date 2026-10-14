@@ -1,5 +1,6 @@
 import type { KitCreationItem } from '@/features/workspace/hooks/useKitCreations'
-import { FileInput, FileSpreadsheet, FileText, FolderPlus, Layers, LayoutDashboard, Paintbrush, PenTool, Upload, Zap } from 'lucide-react'
+import { KitIcon, kitIconComponent } from '@/components/KitIcon'
+import { FileInput, FolderPlus, LayoutDashboard, Upload, Zap } from 'lucide-react'
 import { type CSSProperties, type ReactNode, useLayoutEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
@@ -71,7 +72,7 @@ export function WorkspaceCreateMenu({
         className="document-create-option"
         onClick={onCreateTable}
       >
-        <FileSpreadsheet className="size-4" />
+        <KitIcon kit="table" className="size-5" />
         <span>{t('createMenu.newTable')}</span>
       </button>
       {onCreateDashboard ? (
@@ -125,21 +126,18 @@ export function WorkspaceCreateMenu({
               onCreateDocument(item.value)
             }}
           >
-            <FormatIcon className="size-4" />
+            <FormatIcon className="size-5" />
             <span>{t('createMenu.format.' + item.value)}</span>
           </button>
         )
       })}
-      {kitCreations?.map((kit) => {
-        const KitIcon = kit.icon
-        return (
-          <button key={kit.id} type="button" className="document-create-option" data-testid={`workspace-create-${kit.id}`} onClick={kit.onCreate}>
-            <KitIcon className="size-4" /><span>{t(kit.label)}</span>
-          </button>
-        )
-      })}
+      {kitCreations?.map((kit) => (
+        <button key={kit.id} type="button" className="document-create-option" data-testid={`workspace-create-${kit.id}`} onClick={kit.onCreate}>
+          <KitIcon kit={kit.kit} className="size-5" /><span>{t(kit.label)}</span>
+        </button>
+      ))}
       {onCreateDesign ? <button type="button" className="document-create-option" data-testid="workspace-create-design" onClick={onCreateDesign}>
-        <Paintbrush className="size-4" /><span>{t('design:suite')}</span>
+        <KitIcon kit="design" className="size-5" /><span>{t('design:suite')}</span>
       </button> : null}
       {onCreateBoard ? (
         <button
@@ -148,7 +146,7 @@ export function WorkspaceCreateMenu({
           data-testid="workspace-create-board"
           onClick={onCreateBoard}
         >
-          <PenTool className="size-4" />
+          <KitIcon kit="board" className="size-5" />
           <span>{t('createMenu.format.board')}</span>
         </button>
       ) : null}
@@ -207,10 +205,7 @@ export function WorkspaceCreateMenu({
 }
 
 function resolveWorkspaceCreateIcon(format: DocumentCreateFormat) {
-  if (format === 'table') {
-    return FileSpreadsheet
-  }
-  return FileText
+  return kitIconComponent(format === 'table' ? 'table' : 'document')
 }
 
 // Anchored menu placement: pin the top-left of the menu near the

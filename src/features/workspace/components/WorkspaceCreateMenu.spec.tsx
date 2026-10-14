@@ -66,4 +66,31 @@ describe('WorkspaceCreateMenu', () => {
     await act(async () => root?.unmount())
     container.remove()
   })
+
+  it('shows kit icons for the kits it creates', async () => {
+    const { WorkspaceCreateMenu } = await import('./WorkspaceCreateMenu')
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    let root: Root | null = null
+
+    await act(async () => {
+      root = createRoot(container)
+      root.render(createElement(WorkspaceCreateMenu, {
+        open: true,
+        onCreateDocument: vi.fn(),
+        onCreateFolder: vi.fn(),
+        onCreateTable: vi.fn(),
+        onCreateBoard: vi.fn(),
+        onCreateDesign: vi.fn(),
+        kitCreations: [{ id: 'video', label: 'createMenu.format.video', kit: 'film', onCreate: vi.fn() }],
+      }))
+    })
+
+    const kits = Array.from(container.querySelectorAll<HTMLImageElement>('img[data-kit-icon]'))
+      .map((image) => image.dataset.kitIcon)
+    expect(kits).toEqual(['document', 'table', 'film', 'design', 'board'])
+
+    await act(async () => root?.unmount())
+    container.remove()
+  })
 })

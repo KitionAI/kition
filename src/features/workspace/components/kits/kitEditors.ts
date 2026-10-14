@@ -1,5 +1,5 @@
 import { createElement, lazy, type ComponentType } from 'react'
-import { Clapperboard, DraftingCompass, FileText, FileType2, Layers, LayoutTemplate, PenTool, Presentation, Sheet, Sparkles, type LucideIcon } from 'lucide-react'
+import type { KitIconId } from '@/components/KitIcon'
 import { kitSdkAvailable, type EmbeddedKit, type KitSdkManifest } from '@/features/kits/public'
 import type { WorkspaceDocumentFormat } from '@/services/desktop'
 import { PhotoKitPane } from '../PhotoKitPane'
@@ -50,7 +50,8 @@ export type KitCreateSpec = {
   size: { width: number; height: number }
   /** A key in the workspace strings. */
   label: string
-  icon: LucideIcon
+  /** The kit icon shown in the create menu. */
+  kit: KitIconId
   /** Without the SDK, the runtime's kit process can create it (`POST /v1/kits/documents/new`). */
   runtimeFallback?: boolean
 }
@@ -87,7 +88,7 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
     Editor: lazy(() => import('../PhotoWebEditor').then((module) => ({ default: module.PhotoWebEditor }))),
     Fallback: PhotoKitPane,
     embedded: PHOTO_UI,
-    create: { id: 'image', extension: 'psd', baseName: 'Untitled image', size: { width: 1920, height: 1080 }, label: 'createMenu.format.image', icon: Layers, runtimeFallback: true },
+    create: { id: 'image', extension: 'psd', baseName: 'Untitled image', size: { width: 1920, height: 1080 }, label: 'createMenu.format.image', kit: 'photo', runtimeFallback: true },
   },
   {
     format: 'film',
@@ -95,7 +96,7 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
     Editor: lazy(() => import('../FilmWebEditor').then((module) => ({ default: module.FilmWebEditor }))),
     Fallback: FilmUnavailable,
     embedded: FILM_UI,
-    create: { id: 'video', extension: 'fcproj', baseName: 'Untitled video', size: { width: 1920, height: 1080 }, label: 'createMenu.format.video', icon: Clapperboard },
+    create: { id: 'video', extension: 'fcproj', baseName: 'Untitled video', size: { width: 1920, height: 1080 }, label: 'createMenu.format.video', kit: 'film' },
   },
   {
     format: 'vector',
@@ -103,7 +104,7 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
     Editor: lazy(() => import('../VectorWebEditor').then((module) => ({ default: module.VectorWebEditor }))),
     Fallback: VectorUnavailable,
     embedded: VECTOR_UI,
-    create: { id: 'drawing', extension: 'vectorcraft', baseName: 'Untitled drawing', size: { width: 1920, height: 1080 }, label: 'createMenu.format.drawing', icon: PenTool },
+    create: { id: 'drawing', extension: 'vectorcraft', baseName: 'Untitled drawing', size: { width: 1920, height: 1080 }, label: 'createMenu.format.drawing', kit: 'vector' },
   },
   {
     format: 'effect',
@@ -111,7 +112,7 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
     Editor: lazy(() => import('../EffectWebEditor').then((module) => ({ default: module.EffectWebEditor }))),
     Fallback: EffectUnavailable,
     embedded: EFFECT_UI,
-    create: { id: 'motion', extension: 'ecproj', baseName: 'Untitled motion', size: { width: 1920, height: 1080 }, label: 'createMenu.format.motion', icon: Sparkles },
+    create: { id: 'motion', extension: 'ecproj', baseName: 'Untitled motion', size: { width: 1920, height: 1080 }, label: 'createMenu.format.motion', kit: 'effect' },
   },
   {
     format: 'layout',
@@ -120,19 +121,19 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
     Fallback: DesignUnavailable,
     embedded: DESIGN_UI,
     // US Letter, in points.
-    create: { id: 'layout', extension: 'designcraft', baseName: 'Untitled layout', size: { width: 612, height: 792 }, label: 'createMenu.format.layout', icon: LayoutTemplate },
+    create: { id: 'layout', extension: 'designcraft', baseName: 'Untitled layout', size: { width: 612, height: 792 }, label: 'createMenu.format.layout', kit: 'layout' },
   },
   // A3 in millimetres; the engine starts a metric drawing with those limits.
-  standardKit(CAD_KIT, 'cad', { embedded: CAD_UI, create: { id: 'cad', extension: 'dxf', baseName: 'Untitled CAD drawing', size: { width: 420, height: 297 }, label: 'createMenu.format.cad', icon: DraftingCompass } }),
-  standardKit(SLIDE_KIT, 'slide', { embedded: SLIDE_UI, create: { id: 'slide', extension: 'kislide', baseName: 'Untitled slides', size: { width: 960, height: 540 }, label: 'createMenu.format.slide', icon: Presentation } }),
+  standardKit(CAD_KIT, 'cad', { embedded: CAD_UI, create: { id: 'cad', extension: 'dxf', baseName: 'Untitled CAD drawing', size: { width: 420, height: 297 }, label: 'createMenu.format.cad', kit: 'cad' } }),
+  standardKit(SLIDE_KIT, 'slide', { embedded: SLIDE_UI, create: { id: 'slide', extension: 'kislide', baseName: 'Untitled slides', size: { width: 960, height: 540 }, label: 'createMenu.format.slide', kit: 'slide' } }),
   // PowerPoint files open in the Slides kit, and keep the file preview without it.
   standardKit(SLIDE_KIT, 'pptx', { preview: true, embedded: SLIDE_UI }),
   // Word files open in the Word kit, and keep the file preview without it. US Letter, in points.
-  standardKit(WORD_KIT, 'docx', { preview: true, embedded: WORD_UI, create: { id: 'word', extension: 'docx', baseName: 'Untitled Word document', size: { width: 612, height: 792 }, label: 'createMenu.format.word', icon: FileText } }),
+  standardKit(WORD_KIT, 'docx', { preview: true, embedded: WORD_UI, create: { id: 'word', extension: 'docx', baseName: 'Untitled Word document', size: { width: 612, height: 792 }, label: 'createMenu.format.word', kit: 'word' } }),
   // Excel files open in the Sheet kit, and keep the file preview without it.
-  standardKit(SHEET_KIT, 'xlsx', { preview: true, embedded: SHEET_UI, create: { id: 'spreadsheet', extension: 'xlsx', baseName: 'Untitled spreadsheet', size: { width: 1710, height: 2021 }, label: 'createMenu.format.spreadsheet', icon: Sheet } }),
+  standardKit(SHEET_KIT, 'xlsx', { preview: true, embedded: SHEET_UI, create: { id: 'spreadsheet', extension: 'xlsx', baseName: 'Untitled spreadsheet', size: { width: 1710, height: 2021 }, label: 'createMenu.format.spreadsheet', kit: 'sheet' } }),
   // PDFs open in the PDF kit, and keep the file preview without it. US Letter, in points.
-  standardKit(PDF_KIT, 'pdf', { preview: true, embedded: PDF_UI, create: { id: 'pdf', extension: 'pdf', baseName: 'Untitled PDF', size: { width: 612, height: 792 }, label: 'createMenu.format.pdf', icon: FileType2 } }),
+  standardKit(PDF_KIT, 'pdf', { preview: true, embedded: PDF_UI, create: { id: 'pdf', extension: 'pdf', baseName: 'Untitled PDF', size: { width: 612, height: 792 }, label: 'createMenu.format.pdf', kit: 'pdf' } }),
 ]
 
 const availability = new Map<string, Promise<boolean>>()
