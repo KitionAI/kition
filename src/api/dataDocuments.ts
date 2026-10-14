@@ -479,14 +479,14 @@ export function listDataDashboards(documentId: number) {
 export function putDataDashboard(documentId: number, dashboard: DataDashboard) {
   return request
     .put<DataDashboard | { data?: DataDashboard }>(
-      `/v1/data-documents/${documentId}/dashboards/${dashboard.id}`,
+      `/v1/data-documents/${documentId}/dashboards/${encodeURIComponent(dashboard.id)}`,
       dashboard,
     )
     .then(unwrapResponseData<DataDashboard>)
 }
 
 export function deleteDataDashboard(documentId: number, dashboardId: string) {
-  return request.delete(`/v1/data-documents/${documentId}/dashboards/${dashboardId}`)
+  return request.delete(`/v1/data-documents/${documentId}/dashboards/${encodeURIComponent(dashboardId)}`)
 }
 
 /** Runtimes with this capability list tables from the workspace file system (data-documents-listing contract). */

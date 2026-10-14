@@ -210,4 +210,17 @@ describe('data dashboards API', () => {
     await deleteDataDashboard(1, 'd1')
     expect(mocks.delete).toHaveBeenCalledWith('/v1/data-documents/1/dashboards/d1')
   })
+
+  it('putDataDashboard and deleteDataDashboard encode a dashboard id with path-breaking characters', async () => {
+    mocks.put.mockResolvedValue({ code: 200, data: dashboard })
+    mocks.delete.mockResolvedValue({ code: 200, data: {} })
+    const { putDataDashboard, deleteDataDashboard } = await import('./dataDocuments')
+    const trickyDashboard = { ...dashboard, id: 'a/b c?d' }
+
+    await putDataDashboard(1, trickyDashboard)
+    expect(mocks.put).toHaveBeenCalledWith('/v1/data-documents/1/dashboards/a%2Fb%20c%3Fd', trickyDashboard)
+
+    await deleteDataDashboard(1, 'a/b c?d')
+    expect(mocks.delete).toHaveBeenCalledWith('/v1/data-documents/1/dashboards/a%2Fb%20c%3Fd')
+  })
 })
