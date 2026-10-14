@@ -1,9 +1,11 @@
 //! Reads of the `kit.table` document: plain data with object ids.
 //!
-//! Readers skip what a merge can leave behind until [`crate::kdm::repair`] runs: list entries
-//! naming deleted objects, repeated entries (the first counts), cells of deleted or computed
-//! fields, and links whose ends are gone.
+//! Readers skip what a merge can leave behind: list entries naming deleted objects, repeated
+//! entries (the first counts; [`crate::kdm::repair`] never removes them), cells of deleted or
+//! computed fields, links whose ends are gone or not listed, repeated links, and extra links of
+//! single-target fields (the lowest id counts), so they show what repair will leave.
 
+use std::cell::OnceCell;
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 use kition_kdm::{ObjectId, Replica};
@@ -94,15 +96,35 @@ pub struct DashboardData {
     pub widgets: Map<String, Value>,
 }
 
-/// A read view of one replica.
-#[derive(Clone, Copy)]
+/// A read view of one replica. Indexes of records and links are built on first use, once per
+/// view (O(records + objects)); make a new view after the replica changes.
 pub struct ModelView<'a> {
     replica: &'a Replica,
+    structure: OnceCell<Structure>,
+    links: OnceCell<LinkIndex>,
+}
+
+/// Where each listed record and field lives, and each table's stored (not computed) fields.
+struct Structure {
+    record_table: HashMap<ObjectId, ObjectId>,
+    field_table: HashMap<ObjectId, ObjectId>,
+    stored: HashMap<ObjectId, HashSet<String>>,
+}
+
+/// The links readers show, sorted by link id (creation order).
+struct LinkIndex {
+    all: Vec<LinkData>,
+    from: HashMap<(ObjectId, ObjectId), Vec<ObjectId>>,
+    to: HashMap<ObjectId, Vec<(ObjectId, ObjectId)>>,
 }
 
 impl<'a> ModelView<'a> {
     pub fn new(replica: &'a Replica) -> Self {
-        Self { replica }
+        Self {
+            replica,
+            structure: OnceCell::new(),
+            links: OnceCell::new(),
+        }
     }
 
     pub fn replica(&self) -> &'a Replica {
@@ -179,11 +201,14 @@ impl<'a> ModelView<'a> {
     }
 
     /// The field of the table named `name`.
-    pub fn field_by_name(&self, table: &ObjectId, name: &str) -> Option<ObjectId> {
-        let fields = self.live(table, "fields").ok()?;
-        fields
-            .into_iter()
-            .find(|field| self.string(field, "name").is_ok_and(|found| found == name))
+    pub fn field_by_name(&self, table: &ObjectId, name: &str) -> Result<Option<ObjectId>> {
+        self.expect(table, TABLE)?;
+        for field in self.live(table, "fields")? {
+            if self.string(&field, "name")? == name {
+                return Ok(Some(field));
+            }
+        }
+        Ok(None)
     }
 
     /// The table's views in order; widths and visibility only of the table's live fields.
@@ -200,9 +225,14 @@ impl<'a> ModelView<'a> {
             .collect()
     }
 
-    /// One view; widths and visibility of every live field.
+    /// One view; widths and visibility of every listed field.
     pub fn view(&self, id: &ObjectId) -> Result<ViewData> {
-        self.view_of(id, |key| self.is(&ObjectId::from_string(key), FIELD))
+        let structure = self.structure()?;
+        self.view_of(id, |key| {
+            structure
+                .field_table
+                .contains_key(&ObjectId::from_string(key))
+        })
     }
 
     /// The table's record ids (row keys) in order.
@@ -211,17 +241,22 @@ impl<'a> ModelView<'a> {
         self.live(table, "records")
     }
 
+    /// The table that lists `record`.
+    pub fn table_of_record(&self, record: &ObjectId) -> Result<Option<ObjectId>> {
+        Ok(self.structure()?.record_table.get(record).cloned())
+    }
+
     /// One record with its cells, as [`ModelView::cells`] reads them.
     pub fn record(&self, id: &ObjectId) -> Result<RecordData> {
         let cells = self.cells(id)?;
         self.record_data(id, cells)
     }
 
-    /// The table's records in order, with the cells of the table's stored (not computed) fields.
+    /// The table's records in order, with the cells of the table's stored fields.
     pub fn records(&self, table: &ObjectId) -> Result<Vec<RecordData>> {
+        let ids = self.record_ids(table)?;
         let stored = self.stored_fields(table)?;
-        self.record_ids(table)?
-            .iter()
+        ids.iter()
             .map(|record| {
                 let cells = self.cells_where(record, |key| stored.contains(key))?;
                 self.record_data(record, cells)
@@ -229,63 +264,49 @@ impl<'a> ModelView<'a> {
             .collect()
     }
 
-    /// A record's stored cells by field id: only cells of live fields that are not computed.
+    /// A record's stored cells by field id: only cells of its own table's live fields that are
+    /// not computed. A record no table lists is [`KitableError::NotFound`].
     pub fn cells(&self, record: &ObjectId) -> Result<Map<String, Value>> {
-        self.cells_where(record, |key| {
-            let field = ObjectId::from_string(key);
-            self.is(&field, FIELD)
-                && self
-                    .string(&field, "type")
-                    .is_ok_and(|field_type| !is_computed(&field_type))
-        })
+        let structure = self.structure()?;
+        let table = structure
+            .record_table
+            .get(record)
+            .ok_or(KitableError::NotFound)?;
+        let empty = HashSet::new();
+        let stored = structure.stored.get(table).unwrap_or(&empty);
+        self.cells_where(record, |key| stored.contains(key))
     }
 
-    /// Every link whose three ends exist, sorted by link id (creation order).
+    /// Every link readers show: ends that exist and are listed, once per `(from, field, to)`,
+    /// one per `(from, field)` for single-target fields; sorted by link id (creation order).
     pub fn links(&self) -> Result<Vec<LinkData>> {
-        let mut links = Vec::new();
-        for id in self.replica.objects_of_type(LINK) {
-            let end = |name: &str| -> Result<ObjectId> {
-                Ok(ObjectId::from_string(
-                    self.replica.get(&id, name)?.as_str().unwrap_or_default(),
-                ))
-            };
-            let link = LinkData {
-                from: end("from")?,
-                field: end("field")?,
-                to: end("to")?,
-                id: id.clone(),
-            };
-            if self.is(&link.from, RECORD)
-                && self.is(&link.field, FIELD)
-                && self.is(&link.to, RECORD)
-            {
-                links.push(link);
-            }
-        }
-        Ok(links)
+        Ok(self.link_index()?.all.clone())
     }
 
-    /// The records `record` links to through `field`, in link creation order, once each.
+    /// The records `record` links to through `field`, in link creation order.
     pub fn links_from(&self, record: &ObjectId, field: &ObjectId) -> Result<Vec<ObjectId>> {
-        let mut seen = HashSet::new();
-        Ok(self
-            .links()?
-            .into_iter()
-            .filter(|link| link.from == *record && link.field == *field)
-            .filter(|link| seen.insert(link.to.clone()))
-            .map(|link| link.to)
-            .collect())
+        let index = self.link_index()?;
+        Ok(index
+            .from
+            .get(&(record.clone(), field.clone()))
+            .cloned()
+            .unwrap_or_default())
     }
 
-    /// The `(from record, field)` pairs that link to `record`, in link creation order, once each.
+    /// The `(from record, field)` pairs that link to `record`, in link creation order.
     pub fn links_to(&self, record: &ObjectId) -> Result<Vec<(ObjectId, ObjectId)>> {
-        let mut seen = HashSet::new();
-        Ok(self
-            .links()?
-            .into_iter()
-            .filter(|link| link.to == *record)
-            .map(|link| (link.from, link.field))
-            .filter(|pair| seen.insert(pair.clone()))
+        let index = self.link_index()?;
+        Ok(index.to.get(record).cloned().unwrap_or_default())
+    }
+
+    /// The links of one field, grouped by source record, targets in link creation order.
+    pub fn links_of_field(&self, field: &ObjectId) -> Result<HashMap<ObjectId, Vec<ObjectId>>> {
+        let index = self.link_index()?;
+        Ok(index
+            .from
+            .iter()
+            .filter(|((_, link_field), _)| link_field == field)
+            .map(|((from, _), targets)| (from.clone(), targets.clone()))
             .collect())
     }
 
@@ -310,6 +331,94 @@ impl<'a> ModelView<'a> {
                 })
             })
             .collect()
+    }
+
+    fn structure(&self) -> Result<&Structure> {
+        if let Some(structure) = self.structure.get() {
+            return Ok(structure);
+        }
+        let mut built = Structure {
+            record_table: HashMap::new(),
+            field_table: HashMap::new(),
+            stored: HashMap::new(),
+        };
+        for table in self.tables()? {
+            for record in self.live(&table, "records")? {
+                built
+                    .record_table
+                    .entry(record)
+                    .or_insert_with(|| table.clone());
+            }
+            for field in self.live(&table, "fields")? {
+                built
+                    .field_table
+                    .entry(field)
+                    .or_insert_with(|| table.clone());
+            }
+            let stored = self.stored_fields(&table)?;
+            built.stored.insert(table, stored);
+        }
+        Ok(self.structure.get_or_init(|| built))
+    }
+
+    fn link_index(&self) -> Result<&LinkIndex> {
+        if let Some(index) = self.links.get() {
+            return Ok(index);
+        }
+        let structure = self.structure()?;
+        let mut index = LinkIndex {
+            all: Vec::new(),
+            from: HashMap::new(),
+            to: HashMap::new(),
+        };
+        let mut seen = HashSet::new();
+        let mut single: HashMap<ObjectId, bool> = HashMap::new();
+        for id in self.replica.objects_of_type(LINK) {
+            let end = |name: &str| -> Result<ObjectId> {
+                Ok(ObjectId::from_string(
+                    self.replica.get(&id, name)?.as_str().unwrap_or_default(),
+                ))
+            };
+            let link = LinkData {
+                from: end("from")?,
+                field: end("field")?,
+                to: end("to")?,
+                id: id.clone(),
+            };
+            let listed = structure.record_table.contains_key(&link.from)
+                && structure.record_table.contains_key(&link.to)
+                && structure.field_table.contains_key(&link.field);
+            if !listed || !seen.insert((link.from.clone(), link.field.clone(), link.to.clone())) {
+                continue;
+            }
+            let is_single = match single.get(&link.field) {
+                Some(found) => *found,
+                None => {
+                    let found = self
+                        .replica
+                        .get(&link.field, "options")?
+                        .get("allow_multiple")
+                        == Some(&Value::Bool(false));
+                    single.insert(link.field.clone(), found);
+                    found
+                }
+            };
+            let targets = index
+                .from
+                .entry((link.from.clone(), link.field.clone()))
+                .or_default();
+            if is_single && !targets.is_empty() {
+                continue;
+            }
+            targets.push(link.to.clone());
+            index
+                .to
+                .entry(link.to.clone())
+                .or_default()
+                .push((link.from.clone(), link.field.clone()));
+            index.all.push(link);
+        }
+        Ok(self.links.get_or_init(|| index))
     }
 
     fn view_of(&self, id: &ObjectId, keep: impl Fn(&str) -> bool) -> Result<ViewData> {
@@ -368,17 +477,16 @@ impl<'a> ModelView<'a> {
 
     /// The ids of the table's live fields that are not computed.
     fn stored_fields(&self, table: &ObjectId) -> Result<HashSet<String>> {
-        let mut types = HashMap::new();
+        let mut stored = HashSet::new();
         for field in self.live(table, "fields")? {
-            types.insert(field.to_string(), self.string(&field, "type")?);
+            if !is_computed(&self.string(&field, "type")?) {
+                stored.insert(field.to_string());
+            }
         }
-        Ok(types
-            .into_iter()
-            .filter(|(_, field_type)| !is_computed(field_type))
-            .map(|(id, _)| id)
-            .collect())
+        Ok(stored)
     }
 
+    /// The items of a list naming existing objects, first occurrence only.
     fn live(&self, id: &ObjectId, field: &str) -> Result<Vec<ObjectId>> {
         let mut seen = HashSet::new();
         Ok(self

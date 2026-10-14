@@ -7,11 +7,16 @@
 //!
 //! Every function here only stages operations: run them inside [`transact`] (or
 //! [`kition_kdm::Replica::transact`]) so a failure anywhere leaves the document unchanged. Object
-//! ids are UUID v7 except a record's, which is its `row_key` (a UUID v4).
+//! ids are UUID v7 except a record's, which is its `row_key` (a UUID v4). Options and configs
+//! name tables and fields by object id; see [`super::options`] for the relational form.
 //!
-//! Functions that look up many links scan the document's `Link` objects once per call, O(objects).
+//! Lists can hold an id more than once after a merge (two replicas inserting one object); the
+//! first occurrence counts and later ones are ignored, by readers and by positions here
+//! ("the n-th field" counts live, distinct items). Functions that look up links scan the
+//! document's `Link` objects once per call, O(objects); batch link edits go through
+//! [`replace_links_many`].
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use kition_kdm::{KdmError, ObjectId, Origin, Replica, Tx};
 use serde_json::{Map, Value, json};
@@ -121,9 +126,9 @@ pub fn create_table(
     index: Option<usize>,
 ) -> Result<TableIds> {
     require(tx, base, BASE)?;
-    let tables = tx.list_items(base, "tables")?;
+    let tables = Listing::read(tx, base, "tables")?;
     let title = fallback(&spec.title, "Table");
-    let taken = names_of(tx, &tables)?;
+    let taken = names_of(tx, &tables.ids())?;
     let name = unique_name(&json::internal_name(&fallback(&spec.name, &title)), &taken);
     let mut fields = registers(json!({
         "name": name,
@@ -132,7 +137,7 @@ pub fn create_table(
     }));
     put_json(&mut fields, "meta", &spec.meta)?;
     let table = tx.create(TABLE, fields)?;
-    let at = index.unwrap_or(tables.len()).min(tables.len());
+    let at = tables.insert_index(index.unwrap_or(usize::MAX));
     tx.list_insert(base, "tables", at, &table)?;
 
     let default_fields = [FieldSpec {
@@ -152,14 +157,11 @@ pub fn create_table(
         create_field(tx, &table, field_spec)?;
         primary |= field_spec.primary;
     }
-    if !primary {
-        let first = tx.list_items(&table, "fields")?.into_iter().next();
-        if let Some(first) = first {
-            tx.set(&table, "primaryField", json!(first.as_str()))?;
-        }
-    }
     // Fields inserted at an `order` may not be in creation order.
     let in_order = tx.list_items(&table, "fields")?;
+    if !primary && let Some(first) = in_order.first() {
+        tx.set(&table, "primaryField", json!(first.as_str()))?;
+    }
 
     let default_views = [ViewSpec {
         title: "All".to_owned(),
@@ -182,9 +184,10 @@ pub fn create_table(
     })
 }
 
-/// Patches a table. `TablePatch::primary_field_id` (a relational id) is ignored: the primary
-/// field is `primary_field`, which must be one of the table's fields ([`KitableError::NotFound`]
-/// otherwise); `None` keeps the current one.
+/// Patches a table. The primary field is `primary_field`, which must be one of the table's
+/// fields ([`KitableError::NotFound`] otherwise); `None` keeps the current one.
+/// `TablePatch::primary_field_id` is a relational id and is refused ([`KitableError::Invalid`]):
+/// resolve it to the field's object id and pass that.
 pub fn update_table(
     tx: &mut Tx<'_>,
     table: &ObjectId,
@@ -192,6 +195,11 @@ pub fn update_table(
     primary_field: Option<&ObjectId>,
 ) -> Result<()> {
     require(tx, table, TABLE)?;
+    if patch.primary_field_id.is_some() {
+        return Err(KitableError::invalid(
+            "primary_field_id is a relational id; pass the primary field's object id",
+        ));
+    }
     if let Some(title) = patch.title.as_deref().map(str::trim)
         && !title.is_empty()
     {
@@ -204,7 +212,7 @@ pub fn update_table(
         set_if_changed(tx, table, "meta", decode_json(meta)?)?;
     }
     if let Some(primary) = primary_field {
-        if !live_items(tx, table, "fields")?.contains(primary) {
+        if !Listing::read(tx, table, "fields")?.contains(primary) {
             return Err(KitableError::NotFound);
         }
         set_if_changed(tx, table, "primaryField", json!(primary.as_str()))?;
@@ -215,6 +223,7 @@ pub fn update_table(
 /// Deletes a table with its fields, views, records, and every link from, to, or through them.
 pub fn delete_table(tx: &mut Tx<'_>, base: &ObjectId, table: &ObjectId) -> Result<()> {
     require(tx, base, BASE)?;
+    require(tx, table, TABLE)?;
     if !remove_all(tx, base, "tables", table)? {
         return Err(KitableError::NotFound);
     }
@@ -246,15 +255,20 @@ pub fn delete_table(tx: &mut Tx<'_>, base: &ObjectId, table: &ObjectId) -> Resul
 
 /// Creates a field. Its name is `spec.name` (else its title) as an internal name, suffixed
 /// `_2`, `_3`, ... until unique in the table. `spec.order` is a 1-based position as in
-/// [`crate::KitableFile::create_field`]: the field is inserted at index `order - 1` (clamped);
+/// [`crate::KitableFile::create_field`]: the field becomes the `order`-th field (clamped);
 /// `None` appends. `spec.primary` makes it the table's primary field.
+///
+/// Field names are immutable internal keys: view configs and formulas name fields by them. Two
+/// replicas can still create one name concurrently; [`super::repair`] then renames the field with
+/// the higher id (`status` to `status_2`), which can happen again in a later merge (`status_2`
+/// to `status_3`), and references by name follow the field that keeps the name.
 pub fn create_field(tx: &mut Tx<'_>, table: &ObjectId, spec: &FieldSpec) -> Result<ObjectId> {
     require(tx, table, TABLE)?;
     let field_type = fallback(&spec.field_type, "text");
     check_field_type(&field_type)?;
     let title = fallback(&spec.title, "Field");
-    let fields = tx.list_items(table, "fields")?;
-    let taken = names_of(tx, &fields)?;
+    let fields = Listing::read(tx, table, "fields")?;
+    let taken = names_of(tx, &fields.ids())?;
     let name = unique_name(&json::internal_name(&fallback(&spec.name, &title)), &taken);
     let readonly = spec.readonly || forces_readonly(&field_type);
     let mut values = registers(json!({
@@ -266,14 +280,18 @@ pub fn create_field(tx: &mut Tx<'_>, table: &ObjectId, spec: &FieldSpec) -> Resu
         "formula": spec.formula.trim(),
         "aiPrompt": spec.ai_prompt.trim(),
     }));
-    put_json(&mut values, "options", &spec.options)?;
+    put_json(
+        &mut values,
+        "options",
+        &object_ids_only(decode_json(&spec.options)?)?,
+    )?;
     put_json(&mut values, "meta", &spec.meta)?;
     let field = tx.create(FIELD, values)?;
-    let at = match spec.order {
+    let position = match spec.order {
         Some(order) => usize::try_from(order.max(1) - 1).unwrap_or(usize::MAX),
-        None => fields.len(),
+        None => usize::MAX,
     };
-    tx.list_insert(table, "fields", at.min(fields.len()), &field)?;
+    tx.list_insert(table, "fields", fields.insert_index(position), &field)?;
     if spec.primary {
         tx.set(table, "primaryField", json!(field.as_str()))?;
     }
@@ -313,7 +331,12 @@ pub fn update_field(tx: &mut Tx<'_>, field: &ObjectId, patch: &FieldPatch) -> Re
         json!(readonly || forces_readonly(&field_type)),
     )?;
     if let Some(options) = &patch.options {
-        set_if_changed(tx, field, "options", decode_json(options)?)?;
+        set_if_changed(
+            tx,
+            field,
+            "options",
+            object_ids_only(decode_json(options)?)?,
+        )?;
     }
     if let Some(formula) = &patch.formula {
         set_if_changed(tx, field, "formula", json!(formula))?;
@@ -346,7 +369,7 @@ pub fn update_field(tx: &mut Tx<'_>, field: &ObjectId, patch: &FieldPatch) -> Re
 /// another replica may still be making; keeping them keeps every concurrent edit mergeable.
 pub fn delete_field(tx: &mut Tx<'_>, table: &ObjectId, field: &ObjectId) -> Result<()> {
     require(tx, table, TABLE)?;
-    if !tx.list_items(table, "fields")?.contains(field) {
+    if !Listing::read(tx, table, "fields")?.contains(field) {
         return Err(KitableError::NotFound);
     }
     if tx.get(table, "primaryField")? == json!(field.as_str()) {
@@ -358,14 +381,13 @@ pub fn delete_field(tx: &mut Tx<'_>, table: &ObjectId, field: &ObjectId) -> Resu
             tx.delete(&link.id)?;
         }
     }
-    if tx.exists(field) {
-        tx.delete(field)?;
-    }
+    tx.delete(field)?;
     Ok(())
 }
 
-/// Moves `fields` (in the given order) so that the first lands at `to_index` among the table's
-/// other fields (past the end: last). Every field must be in the table ([`KitableError::NotFound`]).
+/// Moves `fields` (in the given order) so that the first becomes the `to_index`-th of the
+/// table's other fields (past the end: last). Every field must be in the table
+/// ([`KitableError::NotFound`]).
 pub fn move_fields(
     tx: &mut Tx<'_>,
     table: &ObjectId,
@@ -373,18 +395,18 @@ pub fn move_fields(
     to_index: usize,
 ) -> Result<()> {
     require(tx, table, TABLE)?;
-    let items = tx.list_items(table, "fields")?;
+    let listing = Listing::read(tx, table, "fields")?;
     let moved = distinct(fields);
-    let moving: HashSet<&ObjectId> = moved.iter().collect();
-    if moved.iter().any(|field| !items.contains(field)) {
+    if moved.iter().any(|field| !listing.contains(field)) {
         return Err(KitableError::NotFound);
     }
-    let anchor = items
-        .iter()
+    let moving: HashSet<&ObjectId> = moved.iter().collect();
+    let anchor = listing
+        .ids()
+        .into_iter()
         .filter(|item| !moving.contains(item))
-        .nth(to_index)
-        .cloned();
-    place(tx, table, "fields", items, &moved, anchor)
+        .nth(to_index);
+    place(tx, table, "fields", listing.raw, &moved, anchor)
 }
 
 // ---------------------------------------------------------------------------
@@ -481,8 +503,8 @@ pub fn delete_view(tx: &mut Tx<'_>, table: &ObjectId, view: &ObjectId) -> Result
 
 /// Creates one record per row at `at` (`None`: at the end), in order, with `createdAt = now`
 /// (Unix milliseconds) and `createdBy = created_by`. Rows are keyed by field object id; keys that
-/// are not fields of the table, computed fields, and `null` values are skipped. Required fields
-/// are not checked here. An anchor that is not a record of the table is
+/// are not stored fields of the table (unknown or computed) and `null` values are skipped.
+/// Required fields are not checked here. An anchor that is not a record of the table is
 /// [`KitableError::NotFound`].
 pub fn create_records(
     tx: &mut Tx<'_>,
@@ -494,17 +516,12 @@ pub fn create_records(
 ) -> Result<Vec<ObjectId>> {
     require(tx, table, TABLE)?;
     let stored = stored_fields(tx, table)?;
-    let records = tx.list_items(table, "records")?;
-    let position = |anchor: &ObjectId| {
-        records
-            .iter()
-            .position(|item| item == anchor)
-            .ok_or(KitableError::NotFound)
-    };
+    let records = Listing::read(tx, table, "records")?;
+    let raw_of = |anchor: &ObjectId| records.raw_index(anchor).ok_or(KitableError::NotFound);
     let mut index = match at {
-        None => records.len(),
-        Some(Anchor::Before(anchor)) => position(anchor)?,
-        Some(Anchor::After(anchor)) => position(anchor)? + 1,
+        None => records.raw.len(),
+        Some(Anchor::Before(anchor)) => raw_of(anchor)?,
+        Some(Anchor::After(anchor)) => raw_of(anchor)? + 1,
     };
     let mut ids = Vec::with_capacity(rows.len());
     for row in rows {
@@ -523,23 +540,44 @@ pub fn create_records(
     Ok(ids)
 }
 
-/// Writes cells of one record, keyed by field object id: one write per cell whose value differs
-/// from the stored one (`null` clears). Keys that are not live fields, and computed fields, are
-/// skipped.
-pub fn set_cells(tx: &mut Tx<'_>, record: &ObjectId, cells: &Map<String, Value>) -> Result<()> {
-    require(tx, record, RECORD)?;
-    for (key, value) in cells {
-        let field = ObjectId::from_string(key.as_str());
-        if !is_a(tx, &field, FIELD) || is_computed(&string(tx, &field, "type")?) {
-            continue;
+/// Writes cells of one record of `table`, keyed by field object id: one write per cell whose
+/// value differs from the stored one (`null` clears). Keys that are not stored fields of the
+/// table (unknown or computed) are skipped. A record the table does not list is
+/// [`KitableError::NotFound`].
+pub fn set_cells(
+    tx: &mut Tx<'_>,
+    table: &ObjectId,
+    record: &ObjectId,
+    cells: &Map<String, Value>,
+) -> Result<()> {
+    set_cells_many(tx, table, &[(record.clone(), cells.clone())])
+}
+
+/// [`set_cells`] for many records of one table, reading the table once.
+pub fn set_cells_many(
+    tx: &mut Tx<'_>,
+    table: &ObjectId,
+    edits: &[(ObjectId, Map<String, Value>)],
+) -> Result<()> {
+    require(tx, table, TABLE)?;
+    let records = Listing::read(tx, table, "records")?;
+    let stored = stored_fields(tx, table)?;
+    for (record, cells) in edits {
+        if !records.contains(record) {
+            return Err(KitableError::NotFound);
         }
-        let current = tx.map_get(record, "cells", key)?;
-        if value.is_null() {
-            if !current.is_null() {
-                tx.map_delete(record, "cells", key)?;
+        for (key, value) in cells {
+            if !stored.contains(key.as_str()) {
+                continue;
             }
-        } else if !json::equal(&current, value) {
-            tx.map_set(record, "cells", key, value.clone())?;
+            let current = tx.map_get(record, "cells", key)?;
+            if value.is_null() {
+                if !current.is_null() {
+                    tx.map_delete(record, "cells", key)?;
+                }
+            } else if !json::equal(&current, value) {
+                tx.map_set(record, "cells", key, value.clone())?;
+            }
         }
     }
     Ok(())
@@ -566,12 +604,14 @@ pub fn delete_records(tx: &mut Tx<'_>, table: &ObjectId, records: &[ObjectId]) -
             tx.delete(&link.id)?;
         }
     }
+    let mut count = 0;
     for record in &deleted {
         if tx.exists(record) {
             tx.delete(record)?;
+            count += 1;
         }
     }
-    Ok(deleted.len())
+    Ok(count)
 }
 
 /// Moves `records` (in the given order) to just before `before` (`None`: to the end), with one
@@ -585,28 +625,26 @@ pub fn move_records(
     before: Option<&ObjectId>,
 ) -> Result<()> {
     require(tx, table, TABLE)?;
-    let items = tx.list_items(table, "records")?;
+    let listing = Listing::read(tx, table, "records")?;
     let moved = distinct(records);
-    let moving: HashSet<&ObjectId> = moved.iter().collect();
-    let present: HashSet<&ObjectId> = items.iter().collect();
-    if moved.iter().any(|record| !present.contains(record)) {
+    if moved.iter().any(|record| !listing.contains(record)) {
         return Err(KitableError::NotFound);
     }
+    let moving: HashSet<&ObjectId> = moved.iter().collect();
     let anchor = match before {
         None => None,
         Some(before) => {
-            let start = items
+            let live = listing.ids();
+            let start = live
                 .iter()
                 .position(|item| item == before)
                 .ok_or(KitableError::NotFound)?;
-            items
-                .iter()
+            live.into_iter()
                 .skip(start)
                 .find(|item| !moving.contains(item))
-                .cloned()
         }
     };
-    place(tx, table, "records", items, &moved, anchor)
+    place(tx, table, "records", listing.raw, &moved, anchor)
 }
 
 // ---------------------------------------------------------------------------
@@ -617,13 +655,25 @@ pub fn move_records(
 /// targets follow kept ones. `field` must be a `link_to_record` field
 /// ([`KitableError::Invalid`]); `from` and every target must be records
 /// ([`KitableError::NotFound`]).
+///
+/// Concurrent replaces of one field of one record merge as a union: each replica only adds and
+/// removes its own difference. For a single-target field (`allow_multiple: false`),
+/// [`super::repair`] then keeps the link with the lowest id.
 pub fn replace_links(
     tx: &mut Tx<'_>,
     from: &ObjectId,
     field: &ObjectId,
     targets: &[ObjectId],
 ) -> Result<()> {
-    require(tx, from, RECORD)?;
+    replace_links_many(tx, field, &[(from.clone(), targets.to_vec())])
+}
+
+/// [`replace_links`] for many records and one field, scanning the links once.
+pub fn replace_links_many(
+    tx: &mut Tx<'_>,
+    field: &ObjectId,
+    edits: &[(ObjectId, Vec<ObjectId>)],
+) -> Result<()> {
     require(tx, field, FIELD)?;
     if string(tx, field, "type")? != "link_to_record" {
         return Err(KitableError::invalid(format!(
@@ -631,35 +681,37 @@ pub fn replace_links(
             string(tx, field, "name")?
         )));
     }
-    let targets = distinct(targets);
-    let allow_multiple = tx
-        .get(field, "options")?
-        .get("allow_multiple")
-        .and_then(Value::as_bool)
-        .unwrap_or(true);
-    if !allow_multiple && targets.len() > 1 {
-        return Err(KitableError::invalid(
-            "field does not allow multiple link targets",
-        ));
-    }
-    for target in &targets {
-        require(tx, target, RECORD)?;
-    }
-    let wanted: HashSet<&ObjectId> = targets.iter().collect();
-    let mut kept = HashSet::new();
+    let single = is_single_target(tx, field)?;
+    let mut existing: HashMap<ObjectId, Vec<LinkEnds>> = HashMap::new();
     for link in all_links(tx)? {
-        if link.from != *from || link.field != *field {
-            continue;
-        }
-        if wanted.contains(&link.to) && !kept.contains(&link.to) {
-            kept.insert(link.to);
-        } else {
-            tx.delete(&link.id)?;
+        if link.field == *field {
+            existing.entry(link.from.clone()).or_default().push(link);
         }
     }
-    for target in &targets {
-        if !kept.contains(target) {
-            add_link(tx, from, field, target)?;
+    for (from, targets) in edits {
+        require(tx, from, RECORD)?;
+        let targets = distinct(targets);
+        if single && targets.len() > 1 {
+            return Err(KitableError::invalid(
+                "field does not allow multiple link targets",
+            ));
+        }
+        for target in &targets {
+            require(tx, target, RECORD)?;
+        }
+        let wanted: HashSet<&ObjectId> = targets.iter().collect();
+        let mut kept = HashSet::new();
+        for link in existing.remove(from).unwrap_or_default() {
+            if wanted.contains(&link.to) && !kept.contains(&link.to) {
+                kept.insert(link.to);
+            } else {
+                tx.delete(&link.id)?;
+            }
+        }
+        for target in &targets {
+            if !kept.contains(target) {
+                add_link(tx, from, field, target)?;
+            }
         }
     }
     Ok(())
@@ -710,14 +762,21 @@ pub(crate) fn all_links(tx: &Tx<'_>) -> Result<Vec<LinkEnds>> {
     Ok(links)
 }
 
+/// Whether a link field takes one target (`options.allow_multiple: false`).
+pub(crate) fn is_single_target(tx: &Tx<'_>, field: &ObjectId) -> Result<bool> {
+    Ok(tx.get(field, "options")?.get("allow_multiple") == Some(&Value::Bool(false)))
+}
+
 // ---------------------------------------------------------------------------
 // Dashboards.
 
-/// Creates or updates a dashboard of the base. `id: None` creates one with a new id; an id that
-/// names no object creates one under that id (it must match the KDM object id pattern). On
-/// update, `name` and `config` are set when they differ and `widgets` (keyed by widget id) are
-/// diffed key by key: changed widgets are written, missing ones deleted. `null` widgets are
-/// skipped. A dashboard missing from the base's list is (re)listed last.
+/// Creates or updates a dashboard of the base. `config` is the dashboard without its widgets
+/// (title, order, layout, `source_table` as an object id; see [`super::options`]); `widgets` are
+/// keyed by widget id and unordered, so their order belongs in `config` (its layout).
+/// `id: None` creates one with a new id; an id that names no object creates one under that id
+/// (it must match the KDM object id pattern). On update, `name` and `config` are set when they
+/// differ and widgets are diffed key by key: changed widgets are written, missing ones deleted.
+/// `null` widgets are skipped. A dashboard missing from the base's list is (re)listed last.
 pub fn upsert_dashboard(
     tx: &mut Tx<'_>,
     base: &ObjectId,
@@ -727,7 +786,7 @@ pub fn upsert_dashboard(
     widgets: &Map<String, Value>,
 ) -> Result<ObjectId> {
     require(tx, base, BASE)?;
-    let config = decode_json(&config)?;
+    let config = object_ids_only(decode_json(&config)?)?;
     let dashboard = match id {
         Some(id) if tx.exists(id) => {
             require(tx, id, DASHBOARD)?;
@@ -787,20 +846,54 @@ pub fn delete_dashboard(tx: &mut Tx<'_>, base: &ObjectId, id: &ObjectId) -> Resu
 // ---------------------------------------------------------------------------
 // Helpers shared with `repair`.
 
-/// Whether `id` is a live object of type `ty`. A transaction cannot read an object's type, so
-/// this probes a register that, in `kit.table`, only `ty` declares.
+/// A list as the model reads it: the raw items, and the live ones (naming existing objects,
+/// first occurrence only) with their raw index.
+pub(crate) struct Listing {
+    pub raw: Vec<ObjectId>,
+    pub live: Vec<(usize, ObjectId)>,
+    first: HashMap<ObjectId, usize>,
+}
+
+impl Listing {
+    pub fn read(tx: &Tx<'_>, id: &ObjectId, field: &str) -> Result<Self> {
+        let raw = tx.list_items(id, field)?;
+        let mut first = HashMap::with_capacity(raw.len());
+        let mut live = Vec::with_capacity(raw.len());
+        for (index, item) in raw.iter().enumerate() {
+            if !first.contains_key(item) && tx.exists(item) {
+                first.insert(item.clone(), index);
+                live.push((index, item.clone()));
+            }
+        }
+        Ok(Self { raw, live, first })
+    }
+
+    /// The live items in order.
+    pub fn ids(&self) -> Vec<ObjectId> {
+        self.live.iter().map(|(_, id)| id.clone()).collect()
+    }
+
+    pub fn contains(&self, id: &ObjectId) -> bool {
+        self.first.contains_key(id)
+    }
+
+    /// The raw index of a live item.
+    pub fn raw_index(&self, id: &ObjectId) -> Option<usize> {
+        self.first.get(id).copied()
+    }
+
+    /// The raw index at which an insert makes the new item the `position`-th live item (past
+    /// the end: last).
+    pub fn insert_index(&self, position: usize) -> usize {
+        self.live
+            .get(position)
+            .map_or(self.raw.len(), |(index, _)| *index)
+    }
+}
+
+/// Whether `id` is a live object of type `ty`.
 pub(crate) fn is_a(tx: &Tx<'_>, id: &ObjectId, ty: &str) -> bool {
-    let probe = match ty {
-        BASE => "icon",
-        TABLE => "primaryField",
-        FIELD => "aiPrompt",
-        VIEW => "locked",
-        RECORD => "createdBy",
-        LINK => "to",
-        DASHBOARD => return tx.map_get(id, "widgets", "").is_ok(),
-        _ => return false,
-    };
-    tx.get(id, probe).is_ok()
+    tx.object_type(id).is_ok_and(|found| found == ty)
 }
 
 /// [`KitableError::NotFound`] unless `id` is a live object of type `ty`.
@@ -814,16 +907,6 @@ pub(crate) fn require(tx: &Tx<'_>, id: &ObjectId, ty: &str) -> Result<()> {
 
 pub(crate) fn string(tx: &Tx<'_>, id: &ObjectId, field: &str) -> Result<String> {
     Ok(tx.get(id, field)?.as_str().unwrap_or_default().to_owned())
-}
-
-/// The items of a list that name live objects, first occurrence only, in order.
-pub(crate) fn live_items(tx: &Tx<'_>, id: &ObjectId, field: &str) -> Result<Vec<ObjectId>> {
-    let mut seen = HashSet::new();
-    Ok(tx
-        .list_items(id, field)?
-        .into_iter()
-        .filter(|item| tx.exists(item) && seen.insert(item.clone()))
-        .collect())
 }
 
 /// `base`, or `base_2`, `base_3`, ... : the first that is not taken.
@@ -844,28 +927,21 @@ pub(crate) fn set_if_changed(
     field: &str,
     value: Value,
 ) -> Result<()> {
-    let current = tx.get(id, field)?;
-    if !json::equal(&current, &value) {
+    if !json::equal(&tx.get(id, field)?, &value) {
         tx.set(id, field, value)?;
     }
     Ok(())
 }
 
-/// The names of the live objects among `ids`.
+/// The names of the objects `ids`.
 fn names_of(tx: &Tx<'_>, ids: &[ObjectId]) -> Result<HashSet<String>> {
-    let mut names = HashSet::new();
-    for id in ids {
-        if tx.exists(id) {
-            names.insert(string(tx, id, "name")?);
-        }
-    }
-    Ok(names)
+    ids.iter().map(|id| string(tx, id, "name")).collect()
 }
 
-/// The ids of the table's fields whose values are stored in cells.
+/// The ids of the table's live fields whose values are stored in cells.
 fn stored_fields(tx: &Tx<'_>, table: &ObjectId) -> Result<HashSet<String>> {
     let mut stored = HashSet::new();
-    for field in live_items(tx, table, "fields")? {
+    for field in Listing::read(tx, table, "fields")?.ids() {
         if !is_computed(&string(tx, &field, "type")?) {
             stored.insert(field.to_string());
         }
@@ -896,10 +972,12 @@ fn remove_all(tx: &mut Tx<'_>, id: &ObjectId, field: &str, item: &ObjectId) -> R
     Ok(found)
 }
 
-/// Moves `moved` (in order, all in `items`, `items` being the list's current content) to just
-/// before `anchor` (an item not moved; `None`: the end), with at most one list move per item.
+/// Moves `moved` (in order, all in `items`, `items` being the list's raw content) to just before
+/// `anchor` (an item not moved; `None`: the end), with at most one list move per occurrence.
 /// Each moved item, from the last, is placed right before its successor in the target order, so
-/// items not moved keep their order.
+/// items not moved keep their order. Every occurrence of a moved item moves, so its first
+/// occurrence (the one readers use) is where it was put; no occurrence is removed, which keeps
+/// concurrent moves from losing an item.
 fn place(
     tx: &mut Tx<'_>,
     id: &ObjectId,
@@ -908,7 +986,7 @@ fn place(
     moved: &[ObjectId],
     anchor: Option<ObjectId>,
 ) -> Result<()> {
-    let index_of = |items: &[ObjectId], wanted: &ObjectId| {
+    let first = |items: &[ObjectId], wanted: &ObjectId| {
         items
             .iter()
             .position(|item| item == wanted)
@@ -916,16 +994,25 @@ fn place(
     };
     let mut successor = anchor;
     for item in moved.iter().rev() {
-        let from = index_of(&items, item)?;
-        let before = match &successor {
-            Some(next) => index_of(&items, next)?,
-            None => items.len(),
-        };
-        let to = if from < before { before - 1 } else { before };
-        if from != to {
-            tx.list_move(id, field, from, to)?;
-            let value = items.remove(from);
-            items.insert(to, value);
+        let count = items.iter().filter(|current| *current == item).count();
+        for placed in 0..count {
+            let before = match &successor {
+                Some(next) => first(&items, next)?,
+                None => items.len(),
+            };
+            // The occurrences already placed sit just before `before`.
+            let block = before.saturating_sub(placed)..before;
+            let from = items
+                .iter()
+                .enumerate()
+                .position(|(index, current)| current == item && !block.contains(&index))
+                .ok_or(KitableError::NotFound)?;
+            let to = if from < before { before - 1 } else { before };
+            if from != to {
+                tx.list_move(id, field, from, to)?;
+                let value = items.remove(from);
+                items.insert(to, value);
+            }
         }
         successor = Some(item.clone());
     }
@@ -968,6 +1055,18 @@ fn put_json(values: &mut Map<String, Value>, field: &str, value: &Value) -> Resu
         values.insert(field.to_owned(), value);
     }
     Ok(())
+}
+
+/// Refuses options or a config naming tables or fields by relational id
+/// ([`KitableError::Invalid`]): the document holds object ids; convert with
+/// [`super::options::options_to_kdm`].
+fn object_ids_only(value: Value) -> Result<Value> {
+    if let Some(key) = super::options::relational_key(&value) {
+        return Err(KitableError::invalid(format!(
+            "option {key} is a relational id; convert options with options_to_kdm"
+        )));
+    }
+    Ok(value)
 }
 
 /// A JSON document as the relational API accepts it: a value, or a string holding encoded JSON

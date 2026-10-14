@@ -6,6 +6,7 @@ use std::fmt::Display;
 use kition_kdm::testing::{Network, Rng};
 use kition_kdm::{ActorId, DocId, ObjectId, Origin, Replica, Tx};
 use kition_kitable::kdm::model::{self, Anchor, BaseSpec, TableIds};
+use kition_kitable::kdm::options::{IdKind, options_from_kdm, options_to_kdm};
 use kition_kitable::kdm::read::{FieldData, ModelView};
 use kition_kitable::kdm::{repair, schema};
 use kition_kitable::{
@@ -381,7 +382,7 @@ fn template_shapes_round_trip() {
             ..field("Start Date", "date")
         },
         FieldSpec {
-            options: json!({ "target_table_id": companies.table.as_str(), "allow_multiple": true }),
+            options: json!({ "target_table": companies.table.as_str(), "allow_multiple": true }),
             ..field("Parent", "link_to_record")
         },
         FieldSpec {
@@ -443,10 +444,10 @@ fn template_shapes_round_trip() {
         );
     }
     assert_eq!(
-        read.field_by_name(&leads.table, "parent"),
+        ok(read.field_by_name(&leads.table, "parent")),
         Some(by_name(&stored, "parent").id.clone())
     );
-    assert_eq!(read.field_by_name(&leads.table, "nope"), None);
+    assert_eq!(ok(read.field_by_name(&leads.table, "nope")), None);
 
     // Links between the two tables.
     let link_field = by_name(&stored, "parent").id.clone();
@@ -800,6 +801,7 @@ fn set_cells_writes_only_what_differs() {
     write(&mut replica, |tx| {
         model::set_cells(
             tx,
+            &ids.table,
             &record,
             &object(
                 json!({ name.as_str(): "a", count.as_str(): 2, total.as_str(): 9, "unknown": 1 }),
@@ -819,6 +821,7 @@ fn set_cells_writes_only_what_differs() {
     write(&mut replica, |tx| {
         model::set_cells(
             tx,
+            &ids.table,
             &record,
             &object(json!({ name.as_str(): "a", count.as_str(): 2.0 })),
         )
@@ -826,7 +829,12 @@ fn set_cells_writes_only_what_differs() {
     assert_eq!(replica.version(), version);
     // Null clears.
     write(&mut replica, |tx| {
-        model::set_cells(tx, &record, &object(json!({ name.as_str(): null })))
+        model::set_cells(
+            tx,
+            &ids.table,
+            &record,
+            &object(json!({ name.as_str(): null })),
+        )
     });
     assert_eq!(
         ok(ModelView::new(&replica).cells(&record)),
@@ -930,7 +938,7 @@ fn dashboards_upsert_and_delete() {
         "w1": { "id": "w1", "title": "Count", "type": "metric", "query": { "aggregation": "count" } },
         "w2": { "id": "w2", "title": "By stage", "type": "bar", "query": { "aggregation": "count", "group_by_field_name": "stage" } },
     }));
-    let config = json!({ "title": "Sales", "order": 1, "source_table_id": "t", "layout": [{ "widget_id": "w1", "x": 0, "y": 0, "w": 3, "h": 2 }] });
+    let config = json!({ "title": "Sales", "order": 1, "source_table": "t", "layout": [{ "widget_id": "w1", "x": 0, "y": 0, "w": 3, "h": 2 }] });
     let id = write(&mut replica, |tx| {
         model::upsert_dashboard(tx, &base, None, "Sales", config.clone(), &widgets)
     });
@@ -1001,9 +1009,11 @@ fn repair_fixes_lists_primary_fields_and_links() {
         "a valid document needs no repair"
     );
     let name = nth(&ids.fields, 0);
+    let other = simple_table(&mut replica, &base, "Other");
     // Break the document behind the model's back: a duplicate record entry, an entry naming no
-    // object, the primary field deleted, a dangling link, and a duplicate link.
-    ok(replica.transact(&person(), |tx| {
+    // object, the primary field deleted, a dangling link, a duplicate link, and orphans (a
+    // record, a field, a table, and a dashboard nothing lists, and a link to the orphan record).
+    let orphans = ok(replica.transact(&person(), |tx| {
         tx.list_insert(&ids.table, "records", 2, &a)?;
         tx.list_insert(&ids.table, "records", 0, &ObjectId::from_string("ghost"))?;
         let index = tx
@@ -1013,21 +1023,48 @@ fn repair_fixes_lists_primary_fields_and_links() {
             .unwrap_or_default();
         tx.list_remove(&ids.table, "fields", index)?;
         tx.delete(&name)?;
-        let mut fields = Map::new();
-        fields.insert("from".into(), json!(a.as_str()));
-        fields.insert("field".into(), json!(link.as_str()));
-        fields.insert("to".into(), json!("missing-record"));
-        tx.create("Link", fields.clone())?;
-        fields.insert("to".into(), json!(b.as_str()));
-        tx.create("Link", fields)?;
-        Ok(())
+        let mut ends = Map::new();
+        ends.insert("from".into(), json!(a.as_str()));
+        ends.insert("field".into(), json!(link.as_str()));
+        ends.insert("to".into(), json!("missing-record"));
+        tx.create("Link", ends.clone())?;
+        ends.insert("to".into(), json!(b.as_str()));
+        tx.create("Link", ends.clone())?;
+        let record = tx.create_with_id(
+            "Record",
+            &ObjectId::from_string("orphan-record"),
+            object(json!({ "createdAt": 1, "createdBy": "" })),
+        )?;
+        ends.insert("to".into(), json!(record.as_str()));
+        tx.create("Link", ends)?;
+        let field = tx.create(
+            "Field",
+            object(
+                json!({ "name": "x", "title": "X", "type": "text", "required": false,
+                "readonly": false, "formula": "", "aiPrompt": "" }),
+            ),
+        )?;
+        let table = tx.create(
+            "Table",
+            object(json!({ "name": "lost", "title": "Lost", "description": "" })),
+        )?;
+        let dashboard = tx.create("Dashboard", object(json!({ "name": "lost" })))?;
+        // The other table's list removed from the base: the table and its contents are orphans.
+        let index = tx
+            .list_items(&base, "tables")?
+            .iter()
+            .position(|id| *id == other.table)
+            .unwrap_or_default();
+        tx.list_remove(&base, "tables", index)?;
+        Ok(vec![record, field, table, dashboard])
     }));
     assert!(repair_now(&mut replica));
     let read = ModelView::new(&replica);
     assert_eq!(ok(read.record_ids(&ids.table)), vec![a.clone(), b.clone()]);
+    // The repeated entry stays (which copy to drop depends on the replica); readers skip it.
     assert_eq!(
         ok(replica.list(&ids.table, "records")),
-        vec![a.clone(), b.clone()]
+        vec![a.clone(), b.clone(), a.clone()]
     );
     assert_eq!(
         ok(read.table(&ids.table)).primary_field,
@@ -1035,7 +1072,308 @@ fn repair_fixes_lists_primary_fields_and_links() {
     );
     assert_eq!(ok(read.links()).len(), 1);
     assert_eq!(ok(read.links_from(&a, &link)), vec![b.clone()]);
+    assert_eq!(replica.objects_of_type("Link").len(), 1);
+    for orphan in orphans
+        .iter()
+        .chain(std::iter::once(&other.table))
+        .chain(&other.fields)
+        .chain(&other.views)
+    {
+        assert!(!replica.exists(orphan), "{orphan} is collected");
+    }
     assert!(!repair_now(&mut replica));
+}
+
+#[test]
+fn readers_and_positions_use_the_first_of_repeated_entries() {
+    let mut replica = new_replica();
+    let base = base_in(&mut replica);
+    let ids = simple_table(&mut replica, &base, "T");
+    let rows = records(
+        &mut replica,
+        &ids.table,
+        vec![json!({}), json!({}), json!({})],
+    );
+    let (a, b, c) = (nth(&rows, 0), nth(&rows, 1), nth(&rows, 2));
+    // Raw [a, b, a, c]: readers see [a, b, c].
+    ok(replica.transact(&person(), |tx| tx.list_insert(&ids.table, "records", 2, &a)));
+    let list = |replica: &Replica| ok(ModelView::new(replica).record_ids(&ids.table));
+    assert_eq!(list(&replica), vec![a.clone(), b.clone(), c.clone()]);
+    write(&mut replica, |tx| {
+        model::move_records(tx, &ids.table, std::slice::from_ref(&a), None)
+    });
+    assert_eq!(list(&replica), vec![b.clone(), c.clone(), a.clone()]);
+    assert_eq!(
+        ok(replica.list(&ids.table, "records")).len(),
+        4,
+        "no copy is removed"
+    );
+    write(&mut replica, |tx| {
+        model::move_records(tx, &ids.table, std::slice::from_ref(&a), Some(&c))
+    });
+    assert_eq!(list(&replica), vec![b.clone(), a.clone(), c.clone()]);
+    let created = write(&mut replica, |tx| {
+        model::create_records(
+            tx,
+            &ids.table,
+            Some(&Anchor::After(a.clone())),
+            &[Map::new()],
+            1,
+            "",
+        )
+    });
+    assert_eq!(
+        list(&replica),
+        vec![b.clone(), a.clone(), nth(&created, 0), c.clone()]
+    );
+    // A field created at a position counts live fields only.
+    let extra = write(&mut replica, |tx| {
+        // Raw [ghost, name, notes, name]: live [name, notes].
+        tx.list_insert(&ids.table, "fields", 0, &ObjectId::from_string("ghost"))?;
+        tx.list_insert(&ids.table, "fields", 3, &nth(&ids.fields, 0))?;
+        model::create_field(
+            tx,
+            &ids.table,
+            &FieldSpec {
+                order: Some(2),
+                ..field("Extra", "text")
+            },
+        )
+    });
+    let fields: Vec<ObjectId> = ok(ModelView::new(&replica).fields(&ids.table))
+        .into_iter()
+        .map(|field| field.id)
+        .collect();
+    assert_eq!(
+        fields,
+        vec![nth(&ids.fields, 0), extra, nth(&ids.fields, 1)]
+    );
+}
+
+#[test]
+fn single_target_links_keep_the_lowest_id() {
+    let (mut net, _, ids) = shared(2, 8);
+    let link = write(replica(&mut net, 0), |tx| {
+        model::create_field(
+            tx,
+            &ids.table,
+            &FieldSpec {
+                options: json!({ "allow_multiple": false }),
+                ..field("Owner", "link_to_record")
+            },
+        )
+    });
+    let rows = records(
+        replica(&mut net, 0),
+        &ids.table,
+        vec![json!({}), json!({}), json!({})],
+    );
+    ok(net.sync_all());
+    let (from, a, b) = (nth(&rows, 0), nth(&rows, 1), nth(&rows, 2));
+    let too_many = model::transact(replica(&mut net, 0), &person(), |tx| {
+        model::replace_links(tx, &from, &link, &[a.clone(), b.clone()])
+    });
+    assert!(matches!(too_many, Err(KitableError::Invalid(_))));
+    write(replica(&mut net, 0), |tx| {
+        model::replace_links(tx, &from, &link, std::slice::from_ref(&a))
+    });
+    write(replica(&mut net, 1), |tx| {
+        model::replace_links(tx, &from, &link, std::slice::from_ref(&b))
+    });
+    ok(net.sync_all());
+    let lowest = replica(&mut net, 0)
+        .objects_of_type("Link")
+        .into_iter()
+        .next()
+        .unwrap_or_else(|| panic!("a link"));
+    let expected = ok(replica(&mut net, 0).get(&lowest, "to"));
+    // Readers already show one target; repair deletes the other link.
+    assert_eq!(
+        ok(ModelView::new(replica(&mut net, 0)).links_from(&from, &link)).len(),
+        1
+    );
+    converge(&mut net);
+    for replica in &net.replicas {
+        assert_eq!(replica.objects_of_type("Link"), vec![lowest.clone()]);
+        let targets = ok(ModelView::new(replica).links_from(&from, &link));
+        assert_eq!(
+            targets
+                .iter()
+                .map(|id| json!(id.as_str()))
+                .collect::<Vec<_>>(),
+            vec![expected.clone()]
+        );
+    }
+}
+
+#[test]
+fn links_group_by_field() {
+    let mut replica = new_replica();
+    let base = base_in(&mut replica);
+    let ids = simple_table(&mut replica, &base, "T");
+    let link = write(&mut replica, |tx| {
+        model::create_field(tx, &ids.table, &field("Rel", "link_to_record"))
+    });
+    let rows = records(
+        &mut replica,
+        &ids.table,
+        vec![json!({}), json!({}), json!({})],
+    );
+    let (a, b, c) = (nth(&rows, 0), nth(&rows, 1), nth(&rows, 2));
+    write(&mut replica, |tx| {
+        model::replace_links_many(
+            tx,
+            &link,
+            &[
+                (a.clone(), vec![b.clone(), c.clone()]),
+                (b.clone(), vec![c.clone()]),
+            ],
+        )
+    });
+    let grouped = ok(ModelView::new(&replica).links_of_field(&link));
+    assert_eq!(grouped.len(), 2);
+    assert_eq!(grouped.get(&a), Some(&vec![b.clone(), c.clone()]));
+    assert_eq!(grouped.get(&b), Some(&vec![c.clone()]));
+    let read = ModelView::new(&replica);
+    let mut to_c = ok(read.links_to(&c));
+    to_c.sort();
+    let mut expected = vec![(a.clone(), link.clone()), (b.clone(), link.clone())];
+    expected.sort();
+    assert_eq!(to_c, expected);
+}
+
+#[test]
+fn options_convert_between_relational_and_object_ids() {
+    let table = ObjectId::from_string("table-a");
+    let field = ObjectId::from_string("field-b");
+    let resolve = |kind: IdKind, id: i64| match (kind, id) {
+        (IdKind::Table, 3) => Some(table.clone()),
+        (IdKind::Field, 7) => Some(field.clone()),
+        _ => None,
+    };
+    let relational = json!({
+        "target_table_id": 3,
+        "symmetric_field_id": null,
+        "link_field_id": "7",
+        "target_field_id": 0,
+        "allow_multiple": false,
+        "ai_config": { "type": "summarize", "source_field_id": 7 },
+    });
+    let kdm = ok(options_to_kdm(&relational, resolve));
+    assert_eq!(
+        kdm,
+        json!({
+            "target_table": "table-a",
+            "symmetric_field": null,
+            "link_field": "field-b",
+            "target_field": null,
+            "allow_multiple": false,
+            "ai_config": { "type": "summarize", "source_field": "field-b" },
+        })
+    );
+    let local = |id: &ObjectId| match id.as_str() {
+        "table-a" => Some(3),
+        "field-b" => Some(7),
+        _ => None,
+    };
+    assert_eq!(
+        options_from_kdm(&kdm, local),
+        json!({
+            "target_table_id": 3,
+            "symmetric_field_id": null,
+            "link_field_id": 7,
+            "target_field_id": null,
+            "allow_multiple": false,
+            "ai_config": { "type": "summarize", "source_field_id": 7 },
+        })
+    );
+    let dashboard = ok(options_to_kdm(
+        &json!({ "source_table_id": 3, "order": 1 }),
+        resolve,
+    ));
+    assert_eq!(dashboard, json!({ "source_table": "table-a", "order": 1 }));
+    // A dangling reference reads back as null.
+    assert_eq!(
+        options_from_kdm(&json!({ "target_table": "gone" }), local),
+        json!({ "target_table_id": null })
+    );
+    for bad in [
+        json!({ "target_table_id": 99 }),
+        json!({ "link_field_id": "x" }),
+    ] {
+        assert!(matches!(
+            options_to_kdm(&bad, resolve),
+            Err(KitableError::Invalid(_))
+        ));
+    }
+    assert_eq!(ok(options_to_kdm(&Value::Null, resolve)), Value::Null);
+}
+
+#[test]
+fn relational_ids_and_foreign_records_are_refused() {
+    let mut replica = new_replica();
+    let base = base_in(&mut replica);
+    let one = simple_table(&mut replica, &base, "One");
+    let two = simple_table(&mut replica, &base, "Two");
+    let refused = model::transact(&mut replica, &person(), |tx| {
+        model::update_table(
+            tx,
+            &one.table,
+            &TablePatch {
+                primary_field_id: Some(1),
+                ..TablePatch::default()
+            },
+            None,
+        )
+    });
+    assert!(matches!(refused, Err(KitableError::Invalid(_))));
+    let relational = model::transact(&mut replica, &person(), |tx| {
+        model::create_field(
+            tx,
+            &one.table,
+            &FieldSpec {
+                options: json!({ "ai_config": { "source_field_id": 1 } }),
+                ..field("AI", "ai")
+            },
+        )
+    });
+    assert!(matches!(relational, Err(KitableError::Invalid(_))));
+    let relational = model::transact(&mut replica, &person(), |tx| {
+        model::upsert_dashboard(
+            tx,
+            &base,
+            None,
+            "D",
+            json!({ "source_table_id": 1 }),
+            &Map::new(),
+        )
+    });
+    assert!(matches!(relational, Err(KitableError::Invalid(_))));
+    let record = nth(&records(&mut replica, &two.table, vec![json!({})]), 0);
+    let foreign = model::transact(&mut replica, &person(), |tx| {
+        model::set_cells(
+            tx,
+            &one.table,
+            &record,
+            &object(json!({ nth(&one.fields, 0).as_str(): "x" })),
+        )
+    });
+    assert!(matches!(foreign, Err(KitableError::NotFound)));
+    // Cells keyed by another table's field are not that record's cells.
+    write(&mut replica, |tx| {
+        model::set_cells(
+            tx,
+            &two.table,
+            &record,
+            &object(
+                json!({ nth(&one.fields, 0).as_str(): "x", nth(&two.fields, 0).as_str(): "y" }),
+            ),
+        )
+    });
+    assert_eq!(
+        ok(ModelView::new(&replica).cells(&record)),
+        object(json!({ nth(&two.fields, 0).as_str(): "y" }))
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -1084,10 +1422,20 @@ fn concurrent_edits_of_different_cells_both_survive() {
     );
     ok(net.sync_all());
     write(replica(&mut net, 0), |tx| {
-        model::set_cells(tx, &record, &object(json!({ name.as_str(): "zero" })))
+        model::set_cells(
+            tx,
+            &ids.table,
+            &record,
+            &object(json!({ name.as_str(): "zero" })),
+        )
     });
     write(replica(&mut net, 1), |tx| {
-        model::set_cells(tx, &record, &object(json!({ notes.as_str(): "one" })))
+        model::set_cells(
+            tx,
+            &ids.table,
+            &record,
+            &object(json!({ notes.as_str(): "one" })),
+        )
     });
     converge(&mut net);
     for replica in &net.replicas {
@@ -1142,19 +1490,16 @@ fn concurrent_identical_links_dedupe_to_the_lowest_id() {
         });
     }
     ok(net.sync_all());
-    let mut both: Vec<ObjectId> = ok(ModelView::new(replica(&mut net, 0)).links())
-        .into_iter()
-        .map(|data| data.id)
-        .collect();
-    both.sort();
+    let both = replica(&mut net, 0).objects_of_type("Link");
     assert_eq!(both.len(), 2);
+    assert_eq!(
+        ok(ModelView::new(replica(&mut net, 0)).links()).len(),
+        1,
+        "readers show one"
+    );
     converge(&mut net);
     for replica in &net.replicas {
-        let kept: Vec<ObjectId> = ok(ModelView::new(replica).links())
-            .into_iter()
-            .map(|data| data.id)
-            .collect();
-        assert_eq!(kept, vec![nth(&both, 0)]);
+        assert_eq!(replica.objects_of_type("Link"), vec![nth(&both, 0)]);
     }
 }
 
@@ -1252,17 +1597,170 @@ fn a_link_to_a_record_deleted_concurrently_is_removed() {
     }
 }
 
+#[test]
+fn replicas_repairing_different_states_converge() {
+    let (mut net, _, ids) = shared(2, 9);
+    let a = write(replica(&mut net, 0), |tx| {
+        model::create_field(tx, &ids.table, &field("Status", "text"))
+    });
+    let b = write(replica(&mut net, 1), |tx| {
+        model::create_field(tx, &ids.table, &field("Status", "text"))
+    });
+    // Replica 0 sees both and repairs; replica 1 goes on alone and names a third field
+    // `status_2`, which replica 0's repair also gave one of the first two.
+    ok(net.deliver(1, 0));
+    assert!(repair_now(replica(&mut net, 0)));
+    let c = write(replica(&mut net, 1), |tx| {
+        model::create_field(tx, &ids.table, &field("Status", "text"))
+    });
+    assert!(!repair_now(replica(&mut net, 1)));
+    converge(&mut net);
+    let mut ids_sorted = vec![a.clone(), b.clone()];
+    ids_sorted.sort();
+    for replica in &net.replicas {
+        let read = ModelView::new(replica);
+        let fields = ok(read.fields(&ids.table));
+        let names: BTreeSet<&str> = fields.iter().map(|field| field.name.as_str()).collect();
+        assert_eq!(names.len(), fields.len());
+        assert_eq!(ok(read.field(&nth(&ids_sorted, 0))).name, "status");
+        for id in [&a, &b, &c] {
+            assert!(ok(read.field(id)).name.starts_with("status"));
+        }
+    }
+}
+
+#[test]
+fn records_anchored_on_a_record_deleted_concurrently_survive() {
+    let (mut net, _, ids) = shared(2, 10);
+    let rows = records(
+        replica(&mut net, 0),
+        &ids.table,
+        vec![json!({}), json!({}), json!({})],
+    );
+    ok(net.sync_all());
+    let (a, b, c) = (nth(&rows, 0), nth(&rows, 1), nth(&rows, 2));
+    write(replica(&mut net, 0), |tx| {
+        model::delete_records(tx, &ids.table, std::slice::from_ref(&b))
+    });
+    let created = write(replica(&mut net, 1), |tx| {
+        model::create_records(
+            tx,
+            &ids.table,
+            Some(&Anchor::Before(b.clone())),
+            &[Map::new()],
+            1,
+            "",
+        )
+    });
+    converge(&mut net);
+    for replica in &net.replicas {
+        assert_eq!(
+            ok(ModelView::new(replica).record_ids(&ids.table)),
+            vec![a.clone(), nth(&created, 0), c.clone()]
+        );
+    }
+}
+
+#[test]
+fn a_cell_written_while_its_field_is_deleted_is_hidden() {
+    let (mut net, _, ids) = shared(2, 11);
+    let (name, notes) = (nth(&ids.fields, 0), nth(&ids.fields, 1));
+    let record = nth(
+        &records(replica(&mut net, 0), &ids.table, vec![json!({})]),
+        0,
+    );
+    ok(net.sync_all());
+    write(replica(&mut net, 0), |tx| {
+        model::delete_field(tx, &ids.table, &notes)
+    });
+    write(replica(&mut net, 1), |tx| {
+        model::set_cells(
+            tx,
+            &ids.table,
+            &record,
+            &object(json!({ name.as_str(): "kept", notes.as_str(): "late" })),
+        )
+    });
+    converge(&mut net);
+    for replica in &net.replicas {
+        let read = ModelView::new(replica);
+        assert_eq!(ok(read.fields(&ids.table)).len(), 1);
+        assert_eq!(
+            ok(read.cells(&record)),
+            object(json!({ name.as_str(): "kept" }))
+        );
+    }
+}
+
+#[test]
+fn a_table_deleted_while_another_replica_adds_to_it_leaves_no_orphans() {
+    let (mut net, base, ids) = shared(2, 12);
+    let other = simple_table(replica(&mut net, 0), &base, "Other");
+    let link = write(replica(&mut net, 0), |tx| {
+        model::create_field(tx, &other.table, &field("Rel", "link_to_record"))
+    });
+    let source = nth(
+        &records(replica(&mut net, 0), &other.table, vec![json!({})]),
+        0,
+    );
+    ok(net.sync_all());
+    write(replica(&mut net, 0), |tx| {
+        model::delete_table(tx, &base, &ids.table)
+    });
+    let (added, field_id) = write(replica(&mut net, 1), |tx| {
+        let added = model::create_records(tx, &ids.table, None, &[Map::new(), Map::new()], 1, "")?;
+        let field_id = model::create_field(tx, &ids.table, &field("Late", "text"))?;
+        model::replace_links(tx, &source, &link, &added)?;
+        Ok((added, field_id))
+    });
+    converge(&mut net);
+    for replica in &net.replicas {
+        for id in added.iter().chain(std::iter::once(&field_id)) {
+            assert!(!replica.exists(id), "{id} is collected");
+        }
+        assert!(replica.objects_of_type("Link").is_empty());
+        assert_eq!(
+            ok(ModelView::new(replica).tables()),
+            vec![other.table.clone()]
+        );
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Randomized convergence.
 
 const NAMES: [&str; 4] = ["Status", "Owner", "Due", "Notes"];
-const TYPES: [&str; 6] = [
+const TYPES: [&str; 8] = [
     "text",
     "number",
     "checkbox",
     "formula",
     "link_to_record",
     "link_to_record",
+    "link_to_record",
+    "link_to_record",
+];
+const OPS: [&str; 20] = [
+    "create_field",
+    "delete_field",
+    "create_records",
+    "delete_records",
+    "set_cells",
+    "move_records",
+    "replace_links",
+    "add_link",
+    "set_view_width",
+    "set_view_hidden",
+    "create_view",
+    "delete_view",
+    "update_view",
+    "update_table",
+    "update_field",
+    "move_fields",
+    "create_table",
+    "delete_table",
+    "upsert_dashboard",
+    "delete_dashboard",
 ];
 
 fn pick<T: Clone>(rng: &mut Rng, items: &[T]) -> Option<T> {
@@ -1273,147 +1771,378 @@ fn pick<T: Clone>(rng: &mut Rng, items: &[T]) -> Option<T> {
     }
 }
 
-/// One random model operation on one replica. Operations the model refuses (deleting the primary
-/// field, ...) change nothing and are fine.
-fn random_op(replica: &mut Replica, rng: &mut Rng, base: &ObjectId) {
+fn some<T>(value: Option<T>) -> kition_kitable::Result<T> {
+    value.ok_or(KitableError::NotFound)
+}
+
+/// What one replica sees, read before a random operation.
+struct Seen {
+    tables: Vec<ObjectId>,
+    table: Option<ObjectId>,
+    fields: Vec<FieldData>,
+    records: Vec<ObjectId>,
+    all_records: Vec<ObjectId>,
+    views: Vec<ObjectId>,
+    dashboards: Vec<ObjectId>,
+}
+
+fn seen(replica: &Replica, rng: &mut Rng) -> Seen {
     let read = ModelView::new(replica);
     let tables = ok(read.tables());
     // Mostly the first table, so replicas edit the same objects.
-    let preferred = if rng.below(4) == 0 {
+    let table = if rng.below(4) == 0 {
         pick(rng, &tables)
     } else {
         tables.first().cloned()
     };
-    let Some(table) = preferred else {
-        let _ = model::transact(replica, &person(), |tx| {
-            model::create_table(tx, base, &TableSpec::default(), None)
-        });
-        return;
-    };
-    let fields = ok(read.fields(&table));
-    let field_ids: Vec<ObjectId> = fields.iter().map(|field| field.id.clone()).collect();
-    let records = ok(read.record_ids(&table));
-    let views: Vec<ObjectId> = ok(read.views(&table))
-        .into_iter()
-        .map(|view| view.id)
+    let all_records = tables
+        .iter()
+        .flat_map(|table| ok(read.record_ids(table)))
         .collect();
-    let links: Vec<ObjectId> = fields
+    let (fields, records, views) = match &table {
+        Some(table) => (
+            ok(read.fields(table)),
+            ok(read.record_ids(table)),
+            ok(read.views(table))
+                .into_iter()
+                .map(|view| view.id)
+                .collect(),
+        ),
+        None => (Vec::new(), Vec::new(), Vec::new()),
+    };
+    let dashboards = ok(read.dashboards())
+        .into_iter()
+        .map(|data| data.id)
+        .collect();
+    Seen {
+        tables,
+        table,
+        fields,
+        records,
+        all_records,
+        views,
+        dashboards,
+    }
+}
+
+/// One random model operation on one replica; answers its kind when the model accepted it.
+/// Operations the model refuses (deleting the primary field, ...) change nothing and are fine.
+fn random_op(replica: &mut Replica, rng: &mut Rng, base: &ObjectId) -> Option<&'static str> {
+    let seen = seen(replica, rng);
+    let kind = if seen.table.is_none() {
+        16
+    } else {
+        match rng.below(26) {
+            20..=22 => 4,
+            23 | 24 => 2,
+            25 => 6,
+            other => other,
+        }
+    };
+    let field_ids: Vec<ObjectId> = seen.fields.iter().map(|field| field.id.clone()).collect();
+    let links: Vec<ObjectId> = seen
+        .fields
         .iter()
         .filter(|field| field.field_type == "link_to_record")
         .map(|field| field.id.clone())
         .collect();
-    let choice = rng.below(16);
     let value = json!(rng.below(100));
-    let _ = model::transact(replica, &person(), |tx| -> kition_kitable::Result<()> {
-        match choice {
+    let result = model::transact(replica, &person(), |tx| -> kition_kitable::Result<()> {
+        let table = seen.table.clone().unwrap_or_default();
+        match kind {
             0 => {
-                let name = pick(rng, &NAMES).unwrap_or("Status");
                 let ty = pick(rng, &TYPES).unwrap_or("text");
-                let order = Some(rng.below(4) as i64);
-                model::create_field(
-                    tx,
-                    &table,
-                    &FieldSpec {
-                        order,
-                        ..field(name, ty)
-                    },
-                )?;
+                let options = if ty == "link_to_record" && rng.below(2) == 0 {
+                    json!({ "allow_multiple": false })
+                } else {
+                    Value::Null
+                };
+                let spec = FieldSpec {
+                    order: Some(rng.below(4) as i64),
+                    options,
+                    ..field(pick(rng, &NAMES).unwrap_or("Status"), ty)
+                };
+                model::create_field(tx, &table, &spec)?;
             }
             1 => {
-                if let Some(field) = pick(rng, &field_ids) {
-                    model::delete_field(tx, &table, &field)?;
-                }
+                let primary = tx.get(&table, "primaryField")?;
+                let others: Vec<ObjectId> = field_ids
+                    .iter()
+                    .filter(|field| json!(field.as_str()) != primary)
+                    .cloned()
+                    .collect();
+                model::delete_field(tx, &table, &some(pick(rng, &others))?)?;
             }
-            2 | 3 => {
+            2 => {
                 let mut row = Map::new();
                 if let Some(field) = pick(rng, &field_ids) {
                     row.insert(field.to_string(), value);
                 }
-                let at = match (pick(rng, &records), rng.below(3)) {
+                let at = match (pick(rng, &seen.records), rng.below(3)) {
                     (Some(record), 0) => Some(Anchor::Before(record)),
                     (Some(record), 1) => Some(Anchor::After(record)),
                     _ => None,
                 };
-                let count = 1 + rng.below(3);
-                model::create_records(tx, &table, at.as_ref(), &vec![row; count], 7, "user:rand")?;
+                let rows = vec![row; 1 + rng.below(3)];
+                model::create_records(tx, &table, at.as_ref(), &rows, 7, "user:rand")?;
             }
-            4 => {
+            3 => {
                 let doomed: Vec<ObjectId> = (0..1 + rng.below(2))
-                    .filter_map(|_| pick(rng, &records))
+                    .filter_map(|_| pick(rng, &seen.records))
                     .collect();
-                model::delete_records(tx, &table, &doomed)?;
-            }
-            5..=7 => {
-                if let (Some(record), Some(field)) = (pick(rng, &records), pick(rng, &field_ids)) {
-                    let mut cells = Map::new();
-                    let value = if rng.below(5) == 0 {
-                        Value::Null
-                    } else {
-                        value
-                    };
-                    cells.insert(field.to_string(), value);
-                    model::set_cells(tx, &record, &cells)?;
+                if model::delete_records(tx, &table, &doomed)? == 0 {
+                    return Err(KitableError::NotFound);
                 }
             }
-            8 => {
+            4 => {
+                let record = some(pick(rng, &seen.records))?;
+                let field = some(pick(rng, &field_ids))?;
+                let value = if rng.below(5) == 0 {
+                    Value::Null
+                } else {
+                    value
+                };
+                let mut cells = Map::new();
+                cells.insert(field.to_string(), value);
+                model::set_cells(tx, &table, &record, &cells)?;
+            }
+            5 => {
                 let moved: Vec<ObjectId> = (0..1 + rng.below(3))
-                    .filter_map(|_| pick(rng, &records))
+                    .filter_map(|_| pick(rng, &seen.records))
                     .collect();
                 let before = if rng.below(3) == 0 {
                     None
                 } else {
-                    pick(rng, &records)
+                    pick(rng, &seen.records)
                 };
                 model::move_records(tx, &table, &moved, before.as_ref())?;
             }
-            9 | 10 => {
-                if let (Some(from), Some(field)) = (pick(rng, &records), pick(rng, &links)) {
-                    let targets: Vec<ObjectId> = (0..rng.below(3))
-                        .filter_map(|_| pick(rng, &records))
-                        .collect();
-                    model::replace_links(tx, &from, &field, &targets)?;
-                }
+            6 => {
+                let from = some(pick(rng, &seen.records))?;
+                let field = some(pick(rng, &links))?;
+                let targets: Vec<ObjectId> = (0..rng.below(3))
+                    .filter_map(|_| pick(rng, &seen.all_records))
+                    .collect();
+                model::replace_links(tx, &from, &field, &targets)?;
             }
-            11 => {
-                if let (Some(view), Some(field)) = (pick(rng, &views), pick(rng, &field_ids)) {
-                    model::set_view_width(tx, &view, &field, 40 + rng.below(400) as i64)?;
-                }
+            7 => {
+                let from = some(pick(rng, &seen.records))?;
+                let field = some(pick(rng, &links))?;
+                let to = some(pick(rng, &seen.all_records))?;
+                model::add_link(tx, &from, &field, &to)?;
             }
+            8 => {
+                let view = some(pick(rng, &seen.views))?;
+                let field = some(pick(rng, &field_ids))?;
+                model::set_view_width(tx, &view, &field, 40 + rng.below(400) as i64)?;
+            }
+            9 => {
+                let view = some(pick(rng, &seen.views))?;
+                let field = some(pick(rng, &field_ids))?;
+                model::set_view_hidden(tx, &view, &field, rng.below(2) == 0)?;
+            }
+            10 => {
+                model::create_view(tx, &table, &view("V", "kanban"))?;
+            }
+            11 => model::delete_view(tx, &table, &some(pick(rng, &seen.views))?)?,
             12 => {
-                if let (Some(view), Some(field)) = (pick(rng, &views), pick(rng, &field_ids)) {
-                    model::set_view_hidden(tx, &view, &field, rng.below(2) == 0)?;
-                }
+                let patch = ViewPatch {
+                    title: Some(format!("View {}", rng.below(5))),
+                    view_type: pick(rng, &VIEW_TYPES).map(str::to_owned),
+                    config: Some(json!({ "sorts": [rng.below(3)] })),
+                };
+                model::update_view(tx, &some(pick(rng, &seen.views))?, &patch)?;
             }
             13 => {
-                if rng.below(2) == 0 {
-                    model::create_view(tx, &table, &view("V", "kanban"))?;
-                } else if let Some(view) = pick(rng, &views) {
-                    model::delete_view(tx, &table, &view)?;
-                }
+                let primary = some(pick(rng, &field_ids))?;
+                let patch = TablePatch {
+                    title: Some(format!("Table {}", rng.below(5))),
+                    ..TablePatch::default()
+                };
+                model::update_table(tx, &table, &patch, Some(&primary))?;
             }
             14 => {
-                let primary = pick(rng, &field_ids);
-                model::update_table(tx, &table, &TablePatch::default(), primary.as_ref())?;
+                let field = some(pick(rng, &field_ids))?;
+                let patch = match rng.below(3) {
+                    0 => FieldPatch {
+                        field_type: pick(rng, &TYPES).map(str::to_owned),
+                        ..FieldPatch::default()
+                    },
+                    1 => FieldPatch {
+                        is_primary: Some(true),
+                        ..FieldPatch::default()
+                    },
+                    _ => FieldPatch {
+                        title: Some(format!("Title {}", rng.below(5))),
+                        options: Some(json!({ "choices": ["A", "B"] })),
+                        ..FieldPatch::default()
+                    },
+                };
+                model::update_field(tx, &field, &patch)?;
             }
-            _ => {
-                if tables.len() < 2 && rng.below(2) == 0 {
-                    model::create_table(tx, base, &TableSpec::default(), None)?;
-                } else {
-                    let moved: Vec<ObjectId> = pick(rng, &field_ids).into_iter().collect();
-                    model::move_fields(tx, &table, &moved, rng.below(4))?;
+            15 => {
+                let moved = some(pick(rng, &field_ids))?;
+                model::move_fields(tx, &table, &[moved], rng.below(4))?;
+            }
+            16 => {
+                if seen.tables.len() >= 4 {
+                    return Err(KitableError::NotFound);
                 }
+                let spec = TableSpec {
+                    fields: vec![
+                        FieldSpec {
+                            primary: true,
+                            ..field("Title", "text")
+                        },
+                        field("Rel", "link_to_record"),
+                    ],
+                    ..TableSpec::default()
+                };
+                model::create_table(tx, base, &spec, Some(rng.below(3)))?;
             }
+            17 => {
+                if seen.tables.len() < 2 {
+                    return Err(KitableError::NotFound);
+                }
+                model::delete_table(tx, base, &some(pick(rng, &seen.tables))?)?;
+            }
+            18 => {
+                let id = if rng.below(2) == 0 {
+                    pick(rng, &seen.dashboards)
+                } else {
+                    None
+                };
+                let mut widgets = Map::new();
+                for key in ["w1", "w2", "w3"] {
+                    if rng.below(2) == 0 {
+                        widgets.insert(key.into(), json!({ "id": key, "n": rng.below(9) }));
+                    }
+                }
+                let config = json!({ "source_table": table.as_str(), "layout": [] });
+                model::upsert_dashboard(tx, base, id.as_ref(), "D", config, &widgets)?;
+            }
+            _ => model::delete_dashboard(tx, base, &some(pick(rng, &seen.dashboards))?)?,
         }
         Ok(())
     });
+    result.ok().and_then(|()| OPS.get(kind).copied())
+}
+
+/// Every invariant repair restores, on a repaired replica.
+fn check_invariants(replica: &Replica, seed: u64) {
+    let read = ModelView::new(replica);
+    let mut reachable = BTreeSet::new();
+    let base = read.base().unwrap_or_else(|| panic!("seed {seed}: a base"));
+    let raw_live = |id: &ObjectId, field: &str| {
+        let items = ok(replica.list(id, field));
+        for item in &items {
+            assert!(
+                replica.exists(item),
+                "seed {seed}: dangling entry {item} in {field}"
+            );
+        }
+        items
+    };
+    let tables = ok(read.tables());
+    assert_eq!(
+        tables.iter().collect::<BTreeSet<_>>().len(),
+        tables.len(),
+        "seed {seed}: tables once"
+    );
+    raw_live(&base, "tables");
+    reachable.extend(raw_live(&base, "dashboards"));
+    let table_names: BTreeSet<String> = tables
+        .iter()
+        .map(|table| ok(read.table(table)).name)
+        .collect();
+    assert_eq!(
+        table_names.len(),
+        tables.len(),
+        "seed {seed}: unique table names"
+    );
+    let mut single = BTreeSet::new();
+    for table in &tables {
+        reachable.insert(table.clone());
+        for list in ["fields", "views", "records"] {
+            reachable.extend(raw_live(table, list));
+        }
+        let fields = ok(read.fields(table));
+        let names: BTreeSet<&str> = fields.iter().map(|field| field.name.as_str()).collect();
+        assert_eq!(names.len(), fields.len(), "seed {seed}: unique field names");
+        let ids: BTreeSet<&ObjectId> = fields.iter().map(|field| &field.id).collect();
+        assert_eq!(ids.len(), fields.len(), "seed {seed}: fields once");
+        let records = ok(read.record_ids(table));
+        assert_eq!(
+            records.iter().collect::<BTreeSet<_>>().len(),
+            records.len(),
+            "seed {seed}: records once"
+        );
+        let primary = ok(read.table(table)).primary_field;
+        assert_eq!(
+            primary.is_some(),
+            !fields.is_empty(),
+            "seed {seed}: a primary field"
+        );
+        if let Some(primary) = primary {
+            assert!(
+                ids.contains(&primary),
+                "seed {seed}: the primary field is listed"
+            );
+        }
+        for field in &fields {
+            if field.options.get("allow_multiple") == Some(&json!(false)) {
+                single.insert(field.id.clone());
+            }
+        }
+    }
+    for ty in ["Table", "Field", "View", "Record", "Dashboard"] {
+        for id in replica.objects_of_type(ty) {
+            assert!(reachable.contains(&id), "seed {seed}: orphan {ty} {id}");
+        }
+    }
+    let mut triples = BTreeSet::new();
+    let mut singles = BTreeSet::new();
+    let raw_links = replica.objects_of_type("Link");
+    for link in &raw_links {
+        let end = |name: &str| {
+            ObjectId::from_string(ok(replica.get(link, name)).as_str().unwrap_or_default())
+        };
+        let (from, field, to) = (end("from"), end("field"), end("to"));
+        assert!(
+            reachable.contains(&from) && reachable.contains(&to) && reachable.contains(&field),
+            "seed {seed}: live link ends"
+        );
+        assert!(
+            triples.insert((from.clone(), field.clone(), to)),
+            "seed {seed}: links once"
+        );
+        if single.contains(&field) {
+            assert!(
+                singles.insert((from, field)),
+                "seed {seed}: one link for a single-target field"
+            );
+        }
+    }
+    assert_eq!(
+        ok(read.links()).len(),
+        raw_links.len(),
+        "seed {seed}: readers show every link"
+    );
 }
 
 fn run_random(seed: u64, count: usize, steps: usize) {
-    let (mut net, base, _) = shared(count, seed);
+    let (mut net, base, ids) = shared(count, seed);
+    write(replica(&mut net, 0), |tx| {
+        model::create_field(tx, &ids.table, &field("Rel", "link_to_record"))
+    });
+    ok(net.sync_all());
     let mut rng = Rng::new(seed.wrapping_add(1000));
+    let mut accepted: std::collections::BTreeMap<&str, usize> = std::collections::BTreeMap::new();
     for _ in 0..steps {
         let index = rng.below(count);
-        random_op(replica(&mut net, index), &mut rng, &base);
+        if let Some(kind) = random_op(replica(&mut net, index), &mut rng, &base) {
+            *accepted.entry(kind).or_default() += 1;
+        }
         if rng.below(5) == 0 {
             let from = rng.below(count);
             let to = rng.below(count);
@@ -1426,49 +2155,34 @@ fn run_random(seed: u64, count: usize, steps: usize) {
         }
     }
     converge(&mut net);
-    // After repair the document is valid: unique field names, live primary fields and links.
-    let replica = replica(&mut net, 0);
-    assert!(!repair_now(replica), "seed {seed}: repair is idempotent");
-    let read = ModelView::new(replica);
-    for table in ok(read.tables()) {
-        let fields = ok(read.fields(&table));
-        let names: BTreeSet<&str> = fields.iter().map(|field| field.name.as_str()).collect();
-        assert_eq!(names.len(), fields.len(), "seed {seed}: unique names");
-        let primary = ok(read.table(&table)).primary_field;
-        if fields.is_empty() {
-            assert_eq!(primary, None, "seed {seed}");
-        }
-        if let Some(primary) = primary {
-            assert!(
-                fields.iter().any(|field| field.id == primary),
-                "seed {seed}: live primary"
-            );
-        }
-        let ids = ok(read.record_ids(&table));
-        assert_eq!(
-            ok(replica.list(&table, "records")),
-            ids,
-            "seed {seed}: clean record list"
-        );
+    for index in 0..count {
+        let replica = replica(&mut net, index);
+        check_invariants(replica, seed);
+        let wrote = ok(model::transact(replica, &Origin::system("repair"), |tx| {
+            repair::repair_all(tx)
+        }));
+        assert!(!wrote, "seed {seed}: repair is idempotent");
     }
-    for link in ok(read.links()) {
+    for kind in OPS {
+        let done = accepted.get(kind).copied().unwrap_or_default();
         assert!(
-            replica.exists(&link.from) && replica.exists(&link.to) && replica.exists(&link.field)
+            done >= 5,
+            "seed {seed}: {kind} succeeded {done} times: {accepted:?}"
         );
     }
 }
 
 #[test]
 fn random_operations_converge_on_two_replicas() {
-    for seed in [11, 12, 13] {
-        run_random(seed, 2, 200);
+    for seed in [11, 12, 13, 14] {
+        run_random(seed, 2, 500);
     }
 }
 
 #[test]
 fn random_operations_converge_on_three_replicas() {
-    for seed in [21, 22, 23] {
-        run_random(seed, 3, 200);
+    for seed in [21, 22, 23, 24] {
+        run_random(seed, 3, 500);
     }
 }
 
@@ -1503,6 +2217,7 @@ fn repair_cost_on_ten_thousand_records() {
     write(replica(&mut net, 1), |tx| {
         model::set_cells(
             tx,
+            &ids.table,
             &nth(&created, 5),
             &object(json!({ name.as_str(): "edited" })),
         )
@@ -1512,14 +2227,6 @@ fn repair_cost_on_ten_thousand_records() {
     let changed = replica.take_changed();
     let started = std::time::Instant::now();
     let wrote = ok(repair::run(replica, &changed));
-    let scoped = started.elapsed();
-    let started = std::time::Instant::now();
-    let full = ok(model::transact(replica, &Origin::system("repair"), |tx| {
-        repair::repair_all(tx)
-    }));
-    let all = started.elapsed();
-    println!(
-        "repair after a cell edit: {scoped:?} (wrote {wrote}); full pass: {all:?} (wrote {full})"
-    );
-    assert!(!wrote && !full);
+    println!("repair pass: {:?} (wrote {wrote})", started.elapsed());
+    assert!(!wrote);
 }
