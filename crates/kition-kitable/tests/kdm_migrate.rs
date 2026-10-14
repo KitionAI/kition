@@ -228,6 +228,18 @@ fn assert_matches(
                 table.name
             );
         }
+        assert_eq!(
+            ok(view.fields(&table_object)).len(),
+            table.fields.len(),
+            "field count of {}",
+            table.name
+        );
+        assert_eq!(
+            ok(view.views(&table_object)).len(),
+            table.views.len(),
+            "view count of {}",
+            table.name
+        );
 
         for field in &table.fields {
             let object = field_kdm
@@ -604,6 +616,72 @@ fn a_link_to_a_table_created_later_migrates() {
         field_data.options.get("target_table"),
         Some(&Value::String(second_object.to_string()))
     );
+}
+
+#[test]
+fn tables_with_zero_live_views_or_fields_migrate_without_seeding_defaults() {
+    let dir = temp();
+    let path = dir.path().join("doc.kitable");
+    let mut file = ok(KitableFile::create(
+        &path,
+        &CreateOptions {
+            title: "Doc".into(),
+            ..Default::default()
+        },
+    ));
+    // A table whose one (default) view gets deleted: nothing stops a user from deleting every
+    // view of a table through the legacy API.
+    let no_views = ok(file.create_table(&TableSpec {
+        title: "No Views".into(),
+        ..Default::default()
+    }));
+    let default_view = no_views
+        .views
+        .first()
+        .unwrap_or_else(|| panic!("a default view"));
+    ok(file.delete_view(no_views.id, default_view.id));
+
+    // A table left with no live fields at all. The legacy API refuses deleting the primary
+    // field, so this state can only come from a damaged file; corrupt it directly, as such a
+    // file would already be.
+    let no_fields = ok(file.create_table(&TableSpec {
+        title: "No Fields".into(),
+        ..Default::default()
+    }));
+    file.conn()
+        .execute(
+            "UPDATE kition_fields SET deleted_at = 1 WHERE table_id = ?1",
+            [no_fields.id],
+        )
+        .unwrap_or_else(|err| panic!("soft-delete fields: {err}"));
+    file.close();
+
+    let mut conn = Connection::open(&path).unwrap_or_else(|err| panic!("open: {err}"));
+    ok(migrate::upgrade(&mut conn, actor(1)));
+
+    let table_kdm = kdm_ids(&conn, "kition_tables");
+    let replica =
+        ok(store::load(&conn, schema(), actor(2))).unwrap_or_else(|| panic!("expected a replica"));
+    let view = ModelView::new(&replica);
+
+    let no_views_object = table_kdm
+        .get(&no_views.id)
+        .cloned()
+        .unwrap_or_else(|| panic!("missing kdm_id for No Views"));
+    assert!(
+        ok(view.views(&no_views_object)).is_empty(),
+        "a table with no live views must not get a seeded default view"
+    );
+
+    let no_fields_object = table_kdm
+        .get(&no_fields.id)
+        .cloned()
+        .unwrap_or_else(|| panic!("missing kdm_id for No Fields"));
+    assert!(
+        ok(view.fields(&no_fields_object)).is_empty(),
+        "a table with no live fields must not get a seeded default field"
+    );
+    assert_eq!(ok(view.table(&no_fields_object)).primary_field, None);
 }
 
 #[test]

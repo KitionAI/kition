@@ -125,6 +125,28 @@ pub fn create_table(
     spec: &TableSpec,
     index: Option<usize>,
 ) -> Result<TableIds> {
+    create_table_as(tx, base, spec, index, true)
+}
+
+/// [`create_table`] without seeding a default field or view when `spec` has none: for migrations
+/// and other bulk builds that must reproduce a source exactly, including a table a user left with
+/// no live fields or no live views.
+pub fn create_table_unseeded(
+    tx: &mut Tx<'_>,
+    base: &ObjectId,
+    spec: &TableSpec,
+    index: Option<usize>,
+) -> Result<TableIds> {
+    create_table_as(tx, base, spec, index, false)
+}
+
+fn create_table_as(
+    tx: &mut Tx<'_>,
+    base: &ObjectId,
+    spec: &TableSpec,
+    index: Option<usize>,
+    seed: bool,
+) -> Result<TableIds> {
     require(tx, base, BASE)?;
     let tables = Listing::read(tx, base, "tables")?;
     let title = fallback(&spec.title, "Table");
@@ -147,7 +169,7 @@ pub fn create_table(
         required: true,
         ..FieldSpec::default()
     }];
-    let field_specs: &[FieldSpec] = if spec.fields.is_empty() {
+    let field_specs: &[FieldSpec] = if spec.fields.is_empty() && seed {
         &default_fields
     } else {
         &spec.fields
@@ -168,7 +190,7 @@ pub fn create_table(
         view_type: "grid".to_owned(),
         config: Value::Null,
     }];
-    let view_specs: &[ViewSpec] = if spec.views.is_empty() {
+    let view_specs: &[ViewSpec] = if spec.views.is_empty() && seed {
         &default_views
     } else {
         &spec.views

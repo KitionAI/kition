@@ -236,7 +236,7 @@ fn build_content(
             views: view_specs,
             meta: Value::Object(json::object(&table.meta_json)),
         };
-        let ids = model::create_table(tx, &base, &table_spec, None)?;
+        let ids = model::create_table_unseeded(tx, &base, &table_spec, None)?;
         table_object_by_id.insert(table.id, ids.table.clone());
         assigned.tables.push((table.id, ids.table.clone()));
 
