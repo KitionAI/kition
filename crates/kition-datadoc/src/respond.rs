@@ -54,8 +54,23 @@ pub fn tables_of(doc: &DataDocument, file: &KitableFile) -> Vec<Value> {
         .collect()
 }
 
+/// A dashboard, summarized for the workspace tree: `id`, `title`, and `order`
+/// (`KitableDashboardSummary` on the frontend), not its widgets or layout.
+pub fn dashboards_of(file: &KitableFile) -> Vec<Value> {
+    file.list_dashboards()
+        .unwrap_or_default()
+        .iter()
+        .map(|d| {
+            json!({
+                "id": d.id, "title": d.name,
+                "order": d.config.get("order").cloned().unwrap_or(json!(0)),
+            })
+        })
+        .collect()
+}
+
 impl DataDocState {
-    /// A document with its tables (and their schema) when requested.
+    /// A document with its tables (and their schema) and dashboard summaries when requested.
     pub(crate) fn document_response(&self, doc: &DataDocument, include_tables: bool) -> Value {
         let mut value = json!({
             "id": doc.id, "user_id": doc.user_id, "workspace_root": doc.workspace_root, "path": doc.path,
@@ -63,19 +78,21 @@ impl DataDocState {
             "meta": doc.meta, "created_at": doc.created_at, "updated_at": doc.updated_at,
         });
         if include_tables {
-            let tables = if doc.is_file_backed() {
+            let (tables, dashboards) = if doc.is_file_backed() {
                 match self.open_document(doc) {
                     Ok(file) => {
                         let tables = tables_of(doc, &file);
+                        let dashboards = dashboards_of(&file);
                         file.close();
-                        tables
+                        (tables, dashboards)
                     }
-                    Err(_) => Vec::new(),
+                    Err(_) => (Vec::new(), Vec::new()),
                 }
             } else {
-                Vec::new()
+                (Vec::new(), Vec::new())
             };
             value["tables"] = Value::Array(tables);
+            value["dashboards"] = Value::Array(dashboards);
         }
         value
     }

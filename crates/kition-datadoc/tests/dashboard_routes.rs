@@ -193,6 +193,21 @@ async fn dashboard_route_round_trip() {
     assert_eq!(updated["id"], "d1", "the same id names the same dashboard");
     assert_eq!(updated["title"], "Overview 2");
 
+    let (status, detail) = call(
+        &f.app,
+        "GET",
+        &format!("/data-documents/{}", f.document_id),
+        &[(SESSION, "abc")],
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(
+        detail["dashboards"],
+        json!([{ "id": "d1", "title": "Overview 2", "order": 0 }]),
+        "the document detail summarizes its dashboards for the workspace tree"
+    );
+
     let (status, deleted) = call(
         &f.app,
         "DELETE",
