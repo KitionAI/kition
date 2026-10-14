@@ -3,6 +3,7 @@
 
 use kition_datadoc::DataDocState;
 use kition_formsync::{TableField, TableRecord, TableWriter};
+use kition_kdm::Origin;
 use serde_json::{Map, Value};
 
 /// Form sync writes submissions through the data document API.
@@ -17,7 +18,7 @@ impl TableWriter for DataDocTableWriter {
     ) -> Result<Vec<TableField>, String> {
         let (_, fields) = self
             .0
-            .fetch_table_schema(user_id, document_id, table_id)
+            .fetch_table_schema(user_id, document_id, table_id, Origin::system("formsync"))
             .map_err(|e| e.message.clone())?;
         Ok(fields
             .into_iter()
@@ -36,7 +37,7 @@ impl TableWriter for DataDocTableWriter {
     ) -> Result<Vec<TableRecord>, String> {
         let records = self
             .0
-            .fetch_table_records(user_id, document_id, table_id)
+            .fetch_table_records(user_id, document_id, table_id, Origin::system("formsync"))
             .map_err(|e| e.message.clone())?;
         Ok(records
             .into_iter()
@@ -55,7 +56,13 @@ impl TableWriter for DataDocTableWriter {
         values: &Map<String, Value>,
     ) -> Result<String, String> {
         self.0
-            .create_record_for_workflow(user_id, document_id, table_id, values)
+            .create_record_for_workflow(
+                user_id,
+                document_id,
+                table_id,
+                values,
+                Origin::system("formsync"),
+            )
             .map_err(|e| e.message.clone())
     }
 }

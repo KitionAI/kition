@@ -88,7 +88,12 @@ fn open(state: &DataDocState, ctx: &TableContext, input: &Value) -> Result<Table
                 && ctx.table_id != 0
                 && (ctx.document_id, ctx.table_id) != (document_id, table_id);
             if active {
-                state.agent_table(ctx.user_id, ctx.document_id, ctx.table_id, ctx.origin.clone())
+                state.agent_table(
+                    ctx.user_id,
+                    ctx.document_id,
+                    ctx.table_id,
+                    ctx.origin.clone(),
+                )
             } else {
                 Err(error)
             }
@@ -976,9 +981,11 @@ mod tests {
             .unwrap_or_else(|| panic!("seed::run did not leave a local user"))
             .id;
         let absolute = workspace_dir.join("Test.kitable");
-        let mut file =
-            kition_kitable::KitableFile::create(&absolute, &kition_kitable::CreateOptions::default())
-                .unwrap_or_else(|err| panic!("{err}"));
+        let mut file = kition_kitable::KitableFile::create(
+            &absolute,
+            &kition_kitable::CreateOptions::default(),
+        )
+        .unwrap_or_else(|err| panic!("{err}"));
         let table = file
             .create_table(&TableSpec {
                 name: "items".into(),

@@ -3354,6 +3354,7 @@ dependencies = [
  "kition-emailsync",
  "kition-formsync",
  "kition-http",
+ "kition-kdm",
  "kition-kits",
  "kition-store",
  "kition-workflow",

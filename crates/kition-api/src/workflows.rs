@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use kition_datadoc::DataDocState;
+use kition_kdm::Origin;
 use kition_workflow::store::{Dedup, RunHistory, Store};
 use kition_workflow::types::{FieldSchema, TableSchema};
 use kition_workflow::{Connections, Engine, LegacySmtp, RecordView, Tables, WorkflowState};
@@ -72,7 +73,7 @@ impl Tables for DataDocTables {
     ) -> Result<TableSchema, String> {
         let (name, fields) = self
             .0
-            .fetch_table_schema(user_id, document_id, table_id)
+            .fetch_table_schema(user_id, document_id, table_id, Origin::system("workflow"))
             .map_err(|e| e.message.clone())?;
         Ok(TableSchema {
             id: table_id.to_owned(),
@@ -96,7 +97,7 @@ impl Tables for DataDocTables {
     ) -> Result<Vec<RecordView>, String> {
         let records = self
             .0
-            .fetch_table_records(user_id, document_id, table_id)
+            .fetch_table_records(user_id, document_id, table_id, Origin::system("workflow"))
             .map_err(|e| e.message.clone())?;
         Ok(records
             .into_iter()
@@ -116,7 +117,13 @@ impl Tables for DataDocTables {
         values: &Map<String, Value>,
     ) -> Result<String, String> {
         self.0
-            .create_record_for_workflow(user_id, document_id, table_id, values)
+            .create_record_for_workflow(
+                user_id,
+                document_id,
+                table_id,
+                values,
+                Origin::system("workflow"),
+            )
             .map_err(|e| e.message.clone())
     }
 
@@ -129,7 +136,14 @@ impl Tables for DataDocTables {
         values: &Map<String, Value>,
     ) -> Result<Map<String, Value>, String> {
         self.0
-            .update_record_for_workflow(user_id, document_id, table_id, record_id, values)
+            .update_record_for_workflow(
+                user_id,
+                document_id,
+                table_id,
+                record_id,
+                values,
+                Origin::system("workflow"),
+            )
             .map_err(|e| e.message.clone())
     }
 }
