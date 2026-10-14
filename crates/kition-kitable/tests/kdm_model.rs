@@ -2463,3 +2463,75 @@ fn repair_cost_on_ten_thousand_records() {
     println!("repair pass: {:?} (wrote {wrote})", started.elapsed());
     assert!(!wrote);
 }
+
+#[test]
+fn making_a_field_primary_cannot_close_a_cycle_through_link_chips() {
+    let mut replica = new_replica();
+    let base = base_in(&mut replica);
+    let tasks = simple_table(&mut replica, &base, "Tasks");
+    let people = simple_table(&mut replica, &base, "People");
+    write(&mut replica, |tx| {
+        model::create_field(
+            tx,
+            &tasks.table,
+            &with_options(
+                "Owner",
+                "link_to_record",
+                json!({ "target_table": people.table.as_str() }),
+            ),
+        )
+    });
+    write(&mut replica, |tx| {
+        model::create_field(
+            tx,
+            &people.table,
+            &with_options(
+                "Assigned",
+                "link_to_record",
+                json!({ "target_table": tasks.table.as_str() }),
+            ),
+        )
+    });
+    // Each table gets a formula reading its link chips, which show the other table's primary field.
+    let task_label = write(&mut replica, |tx| {
+        model::create_field(
+            tx,
+            &tasks.table,
+            &FieldSpec {
+                formula: "{owner}".into(),
+                ..field("Label", "formula")
+            },
+        )
+    });
+    let person_label = write(&mut replica, |tx| {
+        model::create_field(
+            tx,
+            &people.table,
+            &FieldSpec {
+                formula: "{assigned}".into(),
+                ..field("Label", "formula")
+            },
+        )
+    });
+    let make_primary = |replica: &mut Replica, field: &ObjectId| {
+        model::transact(replica, &person(), |tx| {
+            model::update_field(
+                tx,
+                field,
+                &FieldPatch {
+                    is_primary: Some(true),
+                    ..FieldPatch::default()
+                },
+            )
+            .map(|()| field.clone())
+        })
+    };
+    assert!(
+        make_primary(&mut replica, &task_label).is_ok(),
+        "one primary formula alone is no cycle"
+    );
+    assert!(
+        circular(make_primary(&mut replica, &person_label)),
+        "the second closes Label -> chips -> Label"
+    );
+}

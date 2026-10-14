@@ -397,7 +397,12 @@ pub fn update_field(tx: &mut Tx<'_>, field: &ObjectId, patch: &FieldPatch) -> Re
             ));
         }
     }
-    if patch.field_type.is_some() || patch.options.is_some() || patch.formula.is_some() {
+    // A new primary field changes what link chips of other tables read, so it can close a cycle too.
+    if patch.field_type.is_some()
+        || patch.options.is_some()
+        || patch.formula.is_some()
+        || patch.is_primary.is_some()
+    {
         check_acyclic(tx, field)?;
     }
     Ok(())
