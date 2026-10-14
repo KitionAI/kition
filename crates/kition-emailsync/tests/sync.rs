@@ -120,6 +120,7 @@ fn setup() -> Setup {
         WorkspaceWriter {
             root: workspace,
             db,
+            tables: kition_datadoc::TableDocuments::default(),
         },
     );
     Setup {
@@ -216,6 +217,10 @@ async fn imports_messages_and_skips_on_resync() {
     let tables = file.list_tables().unwrap_or_default();
     assert_eq!(tables[0].name, "email_messages");
     assert_eq!(file.count_records(tables[0].id).unwrap_or_default(), 3);
+    assert!(
+        !file.can_undo(),
+        "email sync writes are system:emailsync, not undo steps"
+    );
 
     let listed = service.list(user_id).await.unwrap_or_default();
     assert_eq!(listed[0].synced_messages, 3);

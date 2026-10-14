@@ -7,6 +7,8 @@ use std::sync::OnceLock;
 use kition_core::now_millis;
 use kition_core::time::to_rfc3339;
 use kition_datadoc::index::{self, NewDocument, STORAGE_KITABLE_FILE};
+use kition_datadoc::{TableDocuments, TableHandle};
+use kition_kdm::Origin;
 use kition_kitable::{
     CreateOptions, FieldSpec, KitableError, KitableFile, Table, TablePatch, TableSpec, ViewPatch,
     ViewSpec,
@@ -22,6 +24,12 @@ use crate::types::{TargetConfig, Workflow};
 
 const EMAIL_TABLE_NAME: &str = "email_messages";
 
+/// This service's origin on every write to a `.kitable` file: a non-undo system write, like
+/// every other background sync.
+fn origin() -> Origin {
+    Origin::system("emailsync")
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct WriteResult {
     pub document_path: String,
@@ -32,6 +40,10 @@ pub struct WriteResult {
 pub struct WorkspaceWriter {
     pub root: PathBuf,
     pub db: Db,
+    /// Every `.kitable` file the runtime has open, shared with the HTTP routes, the Agent, and
+    /// form sync: writing through it (rather than opening the file on its own) keeps an open
+    /// window's handle current instead of racing it at the SQLite level.
+    pub tables: TableDocuments,
 }
 
 fn unsafe_name_pattern() -> &'static Regex {
@@ -339,36 +351,39 @@ impl WorkspaceWriter {
         Ok(links)
     }
 
-    /// Opens (creating when needed) the destination table and makes sure the
-    /// file is indexed as a data document.
+    /// Opens (creating when needed) the destination table, through the shared manager, and
+    /// makes sure the file is indexed as a data document.
     fn open_email_table(
         &self,
         user_id: i64,
         target: &TargetConfig,
-    ) -> Result<(KitableFile, Table), String> {
+    ) -> Result<(TableHandle, Table), String> {
         let relative = normalize_relative_path(&target.table_path, ".kitable")?;
         let absolute = self.root.join(&relative);
-        let (mut file, created) = match KitableFile::open(&absolute) {
-            Ok(file) => (file, false),
-            Err(KitableError::Io(err)) if err.kind() == std::io::ErrorKind::NotFound => {
-                let stem = relative
-                    .file_stem()
-                    .map(|s| s.to_string_lossy().into_owned())
-                    .unwrap_or_default();
-                let file = KitableFile::create(
-                    &absolute,
-                    &CreateOptions {
-                        title: stem,
-                        document_id: format!("email-sync-{}", uuid::Uuid::new_v4().simple()),
-                        meta_json: r#"{"source":"email_sync"}"#.into(),
-                        ..CreateOptions::default()
-                    },
-                )
-                .map_err(|e| format!("open email table: {e}"))?;
-                (file, true)
-            }
-            Err(err) => return Err(format!("open email table: {err}")),
-        };
+        let created = std::fs::metadata(&absolute).is_err();
+        if created {
+            let stem = relative
+                .file_stem()
+                .map(|s| s.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            // A brand-new file: created directly, then handed to the manager below so every
+            // write after this one goes through the one shared connection.
+            KitableFile::create(
+                &absolute,
+                &CreateOptions {
+                    title: stem,
+                    document_id: format!("email-sync-{}", uuid::Uuid::new_v4().simple()),
+                    meta_json: r#"{"source":"email_sync"}"#.into(),
+                    ..CreateOptions::default()
+                },
+            )
+            .map_err(|e| format!("open email table: {e}"))?
+            .close();
+        }
+        let (mut file, _merge) = self
+            .tables
+            .open(&absolute, origin())
+            .map_err(|e| format!("open email table: {e}"))?;
         if let Err(err) = self.ensure_document_index(user_id, &slash(&relative), &file) {
             drop(file);
             if created {
@@ -409,7 +424,7 @@ impl WorkspaceWriter {
         &self,
         user_id: i64,
         path: &str,
-        file: &KitableFile,
+        file: &TableHandle,
     ) -> Result<(), String> {
         let conn = self.db.conn().map_err(|e| e.to_string())?;
         let root = self.root.to_string_lossy().into_owned();

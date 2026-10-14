@@ -179,6 +179,7 @@ pub fn router(deps: &Deps) -> Router {
                 kition_emailsync::workspace::WorkspaceWriter {
                     root: state.workspace_dir.clone(),
                     db: deps.db.clone(),
+                    tables: state.tables.clone(),
                 },
             );
             kition_emailsync::start_scheduler(mail.clone());
