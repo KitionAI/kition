@@ -1,4 +1,5 @@
 pub mod model;
+pub mod options;
 pub mod read;
 pub mod repair;
 pub mod store;
