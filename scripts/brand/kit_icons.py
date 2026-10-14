@@ -72,10 +72,12 @@ def glyph(kit):
                 + f'<rect x="101" y="102" width="54" height="50" fill="none" stroke="{h}" stroke-width="9"/>'
                 + f'<rect x="147" y="144" width="14" height="14" rx="3" fill="{h}"/>')
     if kit.id == 'board':
-        return (f'<rect x="40" y="44" width="100" height="100" rx="14" {W} transform="rotate(-6 90 94)"/>'
-                + f'<rect x="124" y="120" width="92" height="92" rx="14" {W2}/>'
-                + _line('M90 150V166Q90 176 100 176H112', '#fff', 10) + '<path d="M110 164L126 176L110 188Z" fill="#fff"/>'
-                + _line('M64 84H112M64 108H96', h, 10, .6) + _line('M144 152H196M144 176H180', '#fff', 9, .9))
+        dots = ''.join(f'<circle cx="{x}" cy="{y}" r="3.2" fill="#fff" opacity=".35"/>'
+                       for x in range(52, 220, 24) for y in range(52, 220, 24))
+        return (dots + f'<rect x="40" y="48" width="104" height="104" rx="14" {W} transform="rotate(-6 92 100)"/>'
+                + _line('M66 88H118M66 112H104', h, 10, .6)
+                + '<circle cx="176" cy="180" r="34" fill="#fff" fill-opacity=".25" stroke="#fff" stroke-width="9"/>'
+                + _line('M108 164Q112 196 138 190', '#fff', 9) + '<path d="M132 176L146 190L128 200Z" fill="#fff"/>')
     if kit.id == 'slide':
         return (f'<rect x="64" y="52" width="160" height="104" rx="14" {W2}/>'
                 + f'<rect x="32" y="88" width="176" height="116" rx="16" {W}/>'
@@ -103,11 +105,13 @@ def glyph(kit):
                 + f'<path d="M56 196L102 136L132 172L152 152L186 196Z" fill="{h}" opacity=".7"/>'
                 + f'<circle cx="160" cy="112" r="14" fill="{h}" opacity=".7"/>')
     if kit.id == 'effect':
-        g = ('<circle cx="80" cy="104" r="20" fill="#fff" opacity=".3"/><circle cx="120" cy="92" r="24" fill="#fff" opacity=".55"/>'
-             f'<circle cx="170" cy="86" r="30" {W}/>' + _line('M44 178H212', '#fff', 8, .6))
-        for x in (72, 128, 184):
-            g += f'<rect x="{x - 14}" y="164" width="28" height="28" rx="5" {W} transform="rotate(45 {x} 178)"/>'
-        return g
+        path = _line('M52 196C92 196 108 92 180 84', '#fff', 6, .55)
+        g = path.replace('stroke-linejoin="round"', 'stroke-linejoin="round" stroke-dasharray="2 14"')
+        for x, y, r, opacity in [(76, 191, 13, .28), (108, 160, 16, .42), (138, 116, 19, .6)]:
+            g += f'<circle cx="{x}" cy="{y}" r="{r}" fill="#fff" opacity="{opacity}"/>'
+        return (g + f'<circle cx="184" cy="82" r="30" {W}/>'
+                + '<rect x="40" y="184" width="24" height="24" rx="4" fill="#fff" transform="rotate(45 52 196)"/>'
+                + f'<rect x="40" y="184" width="24" height="24" rx="4" fill="none" stroke="{h}" stroke-width="4" transform="rotate(45 52 196)"/>')
     if kit.id == 'film':
         g = (f'<rect x="44" y="104" width="168" height="108" rx="18" {W}/>'
              f'<path d="M48 72L200 44Q210 42 212 52L216 74L52 104Z" {W}/>')
