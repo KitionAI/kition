@@ -784,4 +784,79 @@ test.describe('kitable editor — table/changed bridge event', () => {
     })).toBe(true)
     expect(reloaded).toBe(false)
   })
+
+  // A workflow or form-sync write lands through the manager, not through this window's own
+  // `transact` — see `crates/kition-datadoc/tests/kdm_e2e.rs`'s
+  // `workflow_created_record_appears_live_in_open_table` for the runtime side (the
+  // `table/changed` event itself, with a `system` origin rendered as just its label, here
+  // `workflow`). This mocks only the bridge delivery and the open grid's reaction to it.
+  test('a workflow-created record appears live in the open table', async ({ page }) => {
+    await page.addInitScript(() => {
+      const stateWindow = window as typeof window & Record<string, unknown>
+      const textDraws: string[] = []
+      stateWindow.__kitionTextDraws = textDraws
+      const originalFillText = CanvasRenderingContext2D.prototype.fillText
+      CanvasRenderingContext2D.prototype.fillText = function fillText(text: string, x: number, y: number, maxWidth?: number) {
+        textDraws.push(text)
+        if (maxWidth === undefined) return originalFillText.call(this, text, x, y)
+        return originalFillText.call(this, text, x, y, maxWidth)
+      }
+    })
+    const { records } = await mockKitableDataDocumentApi(page)
+
+    // Pre-registers the kit bridge SSE route (emitTableChanged sets it up
+    // lazily) before the editor's own EventSource makes its first
+    // connection attempt, so that attempt succeeds immediately instead of
+    // waiting out the browser's default reconnect backoff on a 404.
+    await emitTableChanged(page, {
+      documentId: '1',
+      origin: 'agent:warmup',
+      tables: [],
+      schema: [],
+      views: [],
+      recordsUpserted: [],
+      recordsDeleted: [],
+      recordsReordered: [],
+      dashboards: false,
+      documentPath: 'table-test.kitable',
+    })
+
+    await page.goto('/')
+    await waitForKitableEditor(page)
+    let reloaded = false
+    page.on('load', () => { reloaded = true })
+
+    // The workflow's write already landed in the file (the mock stands in for the manager's
+    // shared handle); the window only learns of it from the bridge event, the same as it would
+    // from a `GET .../records` refetch.
+    records.push({
+      id: 1003,
+      user_id: 1,
+      document_id: 1,
+      table_id: 11,
+      row_key: 'r_workflow',
+      order: records.length,
+      values: { title: 'From a workflow', score: 0, received_at: '2026-07-25T00:00:00Z' },
+      created_at: '2026-06-01T00:00:00.000Z',
+      updated_at: '2026-06-01T00:00:00.000Z',
+    })
+    await emitTableChanged(page, {
+      documentId: '1',
+      origin: 'workflow',
+      tables: [],
+      schema: [],
+      views: [],
+      recordsUpserted: [[11, 'r_workflow']],
+      recordsDeleted: [],
+      recordsReordered: [],
+      dashboards: false,
+      documentPath: 'table-test.kitable',
+    })
+
+    await expect.poll(() => page.evaluate(() => {
+      const stateWindow = window as typeof window & Record<string, unknown>
+      return (stateWindow.__kitionTextDraws as string[]).includes('From a workflow')
+    })).toBe(true)
+    expect(reloaded).toBe(false)
+  })
 })

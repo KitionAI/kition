@@ -10,7 +10,7 @@ use serde_json::{Map, Value};
 use crate::DataDocState;
 use crate::index::DataDocument;
 use crate::source::parse_id;
-use crate::table_documents::TableHandle;
+use crate::table_documents::{TableHandle, table_changed_event};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FieldInfo {
@@ -114,6 +114,11 @@ impl DataDocState {
     }
 
     /// Creates a record from values keyed by field ID or name; returns its ID.
+    ///
+    /// Publishes both `RecordCreated` (which drives `record.created` workflow triggers) and
+    /// `TableChanged` (which reaches an open table live, over the kit bridge, exactly like a
+    /// person's own `transact`): a workflow or form-sync write must appear in an already-open
+    /// table without the person having to reload it.
     pub fn create_record_for_workflow(
         &self,
         user_id: i64,
@@ -129,6 +134,7 @@ impl DataDocState {
             return Err(AppError::bad_request("tableId required"));
         }
         let doc = self.workflow_document(user_id, document_id)?;
+        let event_origin = origin.clone();
         let (mut file, table, table_id) = self.workflow_table(&doc, table_id, origin)?;
         let record = file
             .create_record(table_id, &values_by_name(&table, values))
@@ -142,10 +148,22 @@ impl DataDocState {
                 fields: record.values.clone(),
                 created_at: now_millis(),
             }));
+        let change = kition_kitable::TableChange {
+            records_upserted: vec![(table_id, record.row_key.clone())],
+            ..Default::default()
+        };
+        self.events
+            .publish(DomainEvent::TableChanged(table_changed_event(
+                &doc.id.to_string(),
+                &event_origin,
+                &doc.path,
+                &change,
+            )));
         Ok(record.id.to_string())
     }
 
-    /// Applies a partial update from values keyed by field ID or name.
+    /// Applies a partial update from values keyed by field ID or name. Publishes `TableChanged`
+    /// alongside `RecordUpdated` for the same reason `create_record_for_workflow` does.
     pub fn update_record_for_workflow(
         &self,
         user_id: i64,
@@ -165,12 +183,12 @@ impl DataDocState {
         }
         let doc = self.workflow_document(user_id, document_id)?;
         let table_id_text = table_id.to_owned();
+        let event_origin = origin.clone();
         let (mut file, table, table_id) = self.workflow_table(&doc, table_id, origin)?;
         let record_id_number = parse_id(record_id)?;
-        let previous = file
-            .get_record(table_id, record_id_number)
-            .ok()
-            .map(|r| r.values);
+        let before = file.get_record(table_id, record_id_number).ok();
+        let previous = before.as_ref().map(|r| r.values.clone());
+        let row_key = before.map(|r| r.row_key).unwrap_or_default();
         let updated = file
             .update_record(
                 table_id,
@@ -189,6 +207,17 @@ impl DataDocState {
                 previous,
                 updated_at: now_millis(),
             }));
+        let change = kition_kitable::TableChange {
+            records_upserted: vec![(table_id, row_key)],
+            ..Default::default()
+        };
+        self.events
+            .publish(DomainEvent::TableChanged(table_changed_event(
+                &doc.id.to_string(),
+                &event_origin,
+                &doc.path,
+                &change,
+            )));
         Ok(updated.values)
     }
 }
@@ -310,5 +339,45 @@ mod tests {
             !file.can_undo(),
             "system-origin writes (workflow, formsync) are not undo steps"
         );
+    }
+
+    /// A workflow-created record publishes `table/changed`, the same event an open table's
+    /// `transact` publishes, so an already-open table sees it live rather than only on its next
+    /// manual reload.
+    #[test]
+    fn workflow_record_create_publishes_table_changed() {
+        let (state, user_id, document_id, table_id) = fixture();
+        let mut events = state.events.subscribe();
+        let record_id = state
+            .create_record_for_workflow(
+                user_id,
+                &document_id,
+                &table_id,
+                &Map::from_iter([("title".to_owned(), Value::from("from a workflow"))]),
+                Origin::system("workflow"),
+            )
+            .unwrap_or_else(|err| panic!("{err}"));
+
+        // The create publishes RecordCreated (drives `record.created` triggers) first, then
+        // TableChanged (reaches an open table live); both are expected, in that order.
+        let first = events
+            .try_recv()
+            .unwrap_or_else(|err| panic!("expected RecordCreated: {err}"));
+        assert!(matches!(first, DomainEvent::RecordCreated(_)), "{first:?}");
+
+        let second = events
+            .try_recv()
+            .unwrap_or_else(|err| panic!("expected TableChanged: {err}"));
+        let DomainEvent::TableChanged(payload) = second else {
+            panic!("expected a TableChanged event, got {second:?}");
+        };
+        assert_eq!(payload["documentId"], document_id);
+        assert_eq!(payload["origin"], "workflow");
+        assert_eq!(
+            payload["recordsUpserted"].as_array().map(Vec::len),
+            Some(1),
+            "{payload}"
+        );
+        assert!(!record_id.is_empty());
     }
 }
