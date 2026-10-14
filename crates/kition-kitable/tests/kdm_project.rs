@@ -2297,6 +2297,17 @@ fn a_merge_projects_like_a_rebuild() {
 // ---------------------------------------------------------------------------
 // Timings.
 
+/// Projects what changed and answers how long the projection took, the commit excluded.
+fn timed_projection(file: &KitableFile, replica: &mut Replica, now: i64) -> std::time::Duration {
+    let changed = replica.take_changed();
+    let tx = ok(file.conn().unchecked_transaction());
+    let started = Instant::now();
+    ok(project::project_changes(&tx, replica, &changed, "", now));
+    let elapsed = started.elapsed();
+    ok(tx.commit());
+    elapsed
+}
+
 #[test]
 #[ignore = "timing; run with --release -- --ignored --nocapture"]
 fn projection_timings() {
@@ -2339,9 +2350,11 @@ fn projection_timings() {
     });
     replica.take_changed();
 
+    let tx = ok(file.conn().unchecked_transaction());
     let started = Instant::now();
-    rebuild_into(&file, &replica, 2);
+    ok(project::rebuild(&tx, &replica, 2));
     let rebuild = started.elapsed();
+    ok(tx.commit());
 
     let edits: Vec<(ObjectId, Map<String, Value>)> = records
         .iter()
@@ -2351,18 +2364,14 @@ fn projection_timings() {
     write(&mut replica, |tx| {
         model::set_cells_many(tx, &ids.table, &edits)
     });
-    let started = Instant::now();
-    project_into(&file, &mut replica, "", 3);
-    let many = started.elapsed();
+    let many = timed_projection(&file, &mut replica, 3);
 
     let record = nth(&records, 5_000);
     let table = ids.table.clone();
     write(&mut replica, |tx| {
         model::set_cells(tx, &table, &record, &object(json!({ count.as_str(): 7 })))
     });
-    let started = Instant::now();
-    project_into(&file, &mut replica, "", 4);
-    let one = started.elapsed();
+    let one = timed_projection(&file, &mut replica, 4);
 
     write(&mut replica, |tx| {
         model::create_records(
@@ -2374,13 +2383,82 @@ fn projection_timings() {
             "",
         )
     });
+    let create = timed_projection(&file, &mut replica, 5);
+
+    // A second table of 1,000 records linking to the first, with a lookup of the title.
+    let refs = write(&mut replica, |tx| {
+        model::create_table(tx, &base, &table_spec("Refs", vec![primary("Name")]), None)
+    });
+    let target = ids.table.clone();
+    let link = write(&mut replica, |tx| {
+        model::create_field(
+            tx,
+            &refs.table,
+            &FieldSpec {
+                options: json!({ "target_table": target.as_str() }),
+                ..field("Big", "link_to_record")
+            },
+        )
+    });
+    write(&mut replica, |tx| {
+        model::create_field(
+            tx,
+            &refs.table,
+            &FieldSpec {
+                options: json!({ "link_field": link.as_str(), "target_field": title.as_str() }),
+                ..field("Big title", "lookup")
+            },
+        )
+    });
+    let name = nth(&refs.fields, 0);
+    let rows: Vec<Map<String, Value>> = (0..1_000)
+        .map(|index| object(json!({ name.as_str(): format!("ref{index}") })))
+        .collect();
+    let sources = write(&mut replica, |tx| {
+        model::create_records(tx, &refs.table, None, &rows, 6, "")
+    });
+    timed_projection(&file, &mut replica, 6);
+    let edits: Vec<(ObjectId, Vec<ObjectId>)> = sources
+        .iter()
+        .enumerate()
+        .map(|(index, source)| (source.clone(), vec![nth(&records, index % 10)]))
+        .collect();
+    write(&mut replica, |tx| {
+        model::replace_links_many(tx, &link, &edits)
+    });
+    let links = timed_projection(&file, &mut replica, 7);
+
+    // One title edit refreshes the lookups of the 100 records linking to it.
+    let linked = nth(&records, 3);
+    write(&mut replica, |tx| {
+        model::set_cells(
+            tx,
+            &table,
+            &linked,
+            &object(json!({ title.as_str(): "renamed" })),
+        )
+    });
+    let fan_out = timed_projection(&file, &mut replica, 8);
+
+    let fresh = new_file(dir.path(), "fresh.kitable", true);
+    let tx = ok(fresh.conn().unchecked_transaction());
     let started = Instant::now();
-    project_into(&file, &mut replica, "", 5);
-    let create = started.elapsed();
+    ok(project::rebuild(&tx, &replica, 9));
+    let rebuild_links = started.elapsed();
+    ok(tx.commit());
 
     println!(
-        "rebuild of 10k records: {rebuild:?}; 1,000-cell set_cells_many: {many:?}; one cell: {one:?}; one new record: {create:?}"
+        "rebuild of 10k records: {rebuild:?}; 1,000-cell set_cells_many: {many:?}; one cell: {one:?}; \
+         one new record: {create:?}; 1,000 link replacements: {links:?}; one cell under 100 lookups: {fan_out:?}; \
+         rebuild of 11k records and 1,000 links: {rebuild_links:?}"
     );
+    let source = some(
+        ok(file.list_records(table_id(&file, "refs")))
+            .into_iter()
+            .find(|record| record.row_key == nth(&sources, 3).as_str()),
+        "source",
+    );
+    assert_eq!(source.values.get("big_title"), Some(&json!(["renamed"])));
     let values = record_values(&file, "big", &record);
     assert_eq!(values.get("double"), Some(&json!(14)));
 }

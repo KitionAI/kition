@@ -104,6 +104,9 @@ const MAX_RECOMPUTES: u32 = 8;
 
 const DASHBOARDS_KEY: &str = "kdm_projected_dashboards";
 
+/// The base's object id, so a projection need not scan every object to find it.
+const BASE_KEY: &str = "kdm_base_id";
+
 #[derive(Default)]
 struct Out {
     tables: BTreeSet<i64>,
@@ -182,6 +185,8 @@ struct Projector<'a> {
     document_id: String,
     out: Out,
 
+    /// The document's base: the Base with the lowest id, as [`ModelView::base`] answers.
+    base: Option<ObjectId>,
     /// The base's live tables in order, and each one's live fields and views.
     tables: Vec<ObjectId>,
     table_fields: HashMap<ObjectId, Vec<ObjectId>>,
@@ -229,6 +234,7 @@ impl<'a> Projector<'a> {
             history: !rebuild,
             document_id,
             out: Out::default(),
+            base: None,
             tables: Vec::new(),
             table_fields: HashMap::new(),
             table_views: HashMap::new(),
@@ -324,6 +330,7 @@ impl<'a> Projector<'a> {
     }
 
     fn run(&mut self, mut plan: Plan) -> Result<()> {
+        self.find_base(plan.base)?;
         self.load_structure()?;
         if plan.base {
             self.project_document()?;
@@ -341,9 +348,30 @@ impl<'a> Projector<'a> {
         self.derive()
     }
 
+    /// Finds the base: the one remembered in `kition_meta` while no Base changed and it is
+    /// still a Base, else the lowest id of the Base objects (one pass over every object).
+    fn find_base(&mut self, base_changed: bool) -> Result<()> {
+        if !base_changed && let Some(stored) = file::get_meta(self.conn, BASE_KEY)? {
+            let id = ObjectId::from_string(stored);
+            if self.replica.object_type(&id).is_ok_and(|ty| ty == BASE) {
+                self.base = Some(id);
+                return Ok(());
+            }
+        }
+        self.base = self.view.base();
+        let stored = file::get_meta(self.conn, BASE_KEY)?;
+        match &self.base {
+            Some(base) if stored.as_deref() != Some(base.as_str()) => {
+                file::set_meta(self.conn, BASE_KEY, base.as_str())?;
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
     fn load_structure(&mut self) -> Result<()> {
-        if let Some(base) = self.view.base() {
-            self.tables = live(self.replica, &base, "tables")?;
+        if let Some(base) = &self.base {
+            self.tables = live(self.replica, base, "tables")?;
         }
         for table in &self.tables {
             let fields = live(self.replica, table, "fields")?;
@@ -378,8 +406,24 @@ impl<'a> Projector<'a> {
     // The document and dashboards.
 
     fn project_document(&mut self) -> Result<()> {
-        let Some(base) = self.view.base_data()? else {
+        let Some(id) = &self.base else {
             return Ok(());
+        };
+        let text = |field: &str| -> Result<String> {
+            Ok(self
+                .replica
+                .get(id, field)?
+                .as_str()
+                .unwrap_or_default()
+                .to_owned())
+        };
+        let base = super::read::BaseData {
+            id: id.clone(),
+            title: text("title")?,
+            description: text("description")?,
+            icon: text("icon")?,
+            color: text("color")?,
+            meta: self.replica.get(id, "meta")?,
         };
         let meta = json_text(&base.meta);
         let current: Option<(String, String, String, String, String, bool)> = self
@@ -420,8 +464,8 @@ impl<'a> Projector<'a> {
 
     /// Compares the base's dashboards with the list last projected.
     fn check_dashboards(&mut self) -> Result<()> {
-        let listed: Vec<String> = match self.view.base() {
-            Some(base) => live(self.replica, &base, "dashboards")?
+        let listed: Vec<String> = match &self.base {
+            Some(base) => live(self.replica, base, "dashboards")?
                 .into_iter()
                 .map(|id| id.to_string())
                 .collect(),
