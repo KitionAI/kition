@@ -8,8 +8,9 @@ writes when no window has the file open — and the replica adds editing history
 concurrent edits on top of it, privately, on this machine. This page describes that model and how
 the editor, the desktop shell, and the agent read and write it. See
 [whiteboard-document.md](whiteboard-document.md) for the Whiteboard's own (differently shaped) KDM
-document, and [kit-sdk.md](kit-sdk.md) for the separate Kit SDK system; a Markdown document is a
-built-in document type, not a kit.
+document, [table-document.md](table-document.md) for the Table's (a relational projection of its
+KDM replica, rather than a direct view of it), and [kit-sdk.md](kit-sdk.md) for the separate Kit
+SDK system; a Markdown document is a built-in document type, not a kit.
 
 ## Where the KDM comes from
 

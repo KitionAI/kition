@@ -109,6 +109,10 @@ migration. Private runtime implementation remains outside this repository.
 - Confirm that no workspace-owned persisted record contains a real absolute
   host path or secret value.
 
-Git provides complete backup and restoration in the first release. Concurrent
-line-level merging of `.kitable` files and binary assets is a separate problem
-and is not guaranteed by this storage contract.
+Git provides complete backup and restoration in the first release. `.kitable`
+files are a Kit Data Model (KDM) replica and merge concurrent edits
+automatically at the object level — including a sync tool or another machine
+replacing the file on disk with an edited copy — as
+[table-document.md](table-document.md) describes; this storage contract does
+not add anything on top of that. Concurrent merging of binary assets is a
+separate problem and is not guaranteed by this storage contract.
