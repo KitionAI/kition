@@ -255,6 +255,38 @@ fn append_with_no_new_changes_is_a_no_op() {
 }
 
 #[test]
+fn append_is_a_no_op_when_since_is_ahead_of_the_replica() {
+    let dir = temp();
+    let file = create_file(dir.path());
+    let conn = file.conn();
+    let (replica, base) = seed_replica(schema(), actor(1), 1);
+    with_tx(conn, |tx| store::save_initial(tx, &replica, 1_000));
+
+    // `ahead`: a second replica of the same document that has imported a change `replica` does
+    // not have yet, as if another writer already stored more than `replica` knows about.
+    let mut ahead = kok(Replica::load(schema(), &kok(replica.snapshot()), actor(3)));
+    add_record(&mut ahead, &base, "already-stored-elsewhere");
+    let since = ahead.version();
+
+    let seq = with_tx(conn, |tx| {
+        store::append(tx, &replica, &since, "test", 1_000)
+    });
+    assert_eq!(
+        seq, 0,
+        "append should be a no-op when since is ahead of the replica"
+    );
+    let change_rows: i64 = conn
+        .query_row("SELECT COUNT(*) FROM kition_kdm_changes", [], |row| {
+            row.get(0)
+        })
+        .unwrap_or_else(|err| panic!("query: {err}"));
+    assert_eq!(
+        change_rows, 0,
+        "append should write no row when since is ahead of the replica"
+    );
+}
+
+#[test]
 fn compact_snapshots_and_clears_the_change_log() {
     let dir = temp();
     let file = create_file(dir.path());
@@ -429,6 +461,37 @@ fn corrupted_snapshot_bytes_error_instead_of_panicking() {
     assert!(
         result.is_err(),
         "corrupted snapshot bytes should error, not panic"
+    );
+}
+
+#[test]
+fn a_gap_in_the_change_log_is_detected_on_load() {
+    let dir = temp();
+    let file = create_file(dir.path());
+    let conn = file.conn();
+    let (mut replica, base) = seed_replica(schema(), actor(1), 1);
+    // The stored snapshot only ever holds the seed content: nothing from the two transactions
+    // below reaches it.
+    with_tx(conn, |tx| store::save_initial(tx, &replica, 1_000));
+
+    add_record(&mut replica, &base, "first");
+    let since_first = replica.version();
+    add_record(&mut replica, &base, "second");
+
+    // A change row exported since `since_first` holds only the second transaction; the first
+    // transaction, which it depends on, never reaches the log. Loading from the snapshot plus
+    // this row leaves that dependency missing.
+    let gap_bytes = kok(replica.export_changes(&since_first));
+    conn.execute(
+        "INSERT INTO kition_kdm_changes (bytes, origin, created_at) VALUES (?1, 'test', 1000)",
+        params![gap_bytes],
+    )
+    .unwrap_or_else(|err| panic!("insert: {err}"));
+
+    let result = store::load(conn, schema(), actor(2));
+    assert!(
+        result.is_err(),
+        "a change log with a gap should error, not load an incomplete replica"
     );
 }
 

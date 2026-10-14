@@ -55,12 +55,12 @@ fn has_column(conn: &Connection, table: &str, column: &str) -> Result<bool> {
 /// Loads the stored replica: the snapshot, then every change row in `seq` order. `None` when
 /// `kition_kdm` has no row (the file predates the KDM, or has not been initialized yet).
 ///
-/// TODO(kdm-gap-detection): a change row can depend on a change missing from the log (one lost
-/// between `append` calls, or applied out of the order the engine needs), and importing the rest
-/// would then silently build an incomplete replica. Once `Replica::has_pending_changes()` lands in
-/// kition-sdk and is synced into this crate, call it here after the import loop below and return
-/// `KitableError::Kdm("broken change chain: ...")` when it reports true, instead of returning the
-/// replica as if it were complete.
+/// [`KitableError::Kdm`] when, after importing every row, the replica still has changes pending on
+/// others that the log does not hold ([`Replica::has_pending_changes`]): the change log is broken,
+/// for instance a row was lost between `append` calls, or one was written against a `since` the
+/// log never actually reached. The store's invariant is that importing the whole log in `seq`
+/// order always leaves nothing pending; this is never silently swallowed into an incomplete
+/// replica.
 pub fn load(conn: &Connection, schema: Arc<Schema>, actor: ActorId) -> Result<Option<Replica>> {
     let snapshot: Option<Vec<u8>> = conn
         .query_row("SELECT snapshot FROM kition_kdm WHERE id = 1", [], |row| {
@@ -77,6 +77,11 @@ pub fn load(conn: &Connection, schema: Arc<Schema>, actor: ActorId) -> Result<Op
         .collect::<std::result::Result<Vec<_>, _>>()?;
     for bytes in rows {
         replica.import_changes(&bytes)?;
+    }
+    if replica.has_pending_changes() {
+        return Err(KitableError::Kdm(
+            "the kdm change log is broken: a stored change depends on changes the log does not hold".into(),
+        ));
     }
     Ok(Some(replica))
 }
@@ -109,8 +114,11 @@ fn check_doc_id(conn: &Connection, replica: &Replica) -> Result<()> {
 }
 
 /// Appends one change row holding every change `replica` has beyond `since`. Returns its `seq`.
-/// A no-op (returns the last existing `seq`, or 0 when the log has never held a row) when
-/// `replica` has nothing beyond `since`.
+/// A no-op (returns the last existing `seq`, or 0 when the log has never held a row) when `since`
+/// already includes everything `replica` has: not only when the two versions are equal, but also
+/// when `since` is strictly ahead of `replica` (another writer already stored more than `replica`
+/// knows about) or holds concurrent changes `replica` lacks. There is nothing to export either
+/// way: [`Version::includes`] is the right comparison, not equality.
 ///
 /// `since` must be the version the store last accepted: the stored replica's own version right
 /// after the last successful [`save_initial`] or `append` (for instance, [`load`]'s version, or an
@@ -126,9 +134,7 @@ pub fn append(
     now: i64,
 ) -> Result<i64> {
     check_doc_id(conn, replica)?;
-    // TODO: once `Version::includes` lands, also skip exporting when `since` already includes
-    // `replica.version()`, not only when the two versions are exactly equal.
-    if replica.version() == *since {
+    if since.includes(&replica.version()) {
         return last_seq(conn);
     }
     let bytes = replica.export_changes(since)?;
