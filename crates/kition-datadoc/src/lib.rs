@@ -5,6 +5,7 @@
 mod agent_api;
 mod ai_field;
 mod csvutil;
+mod dashboards;
 mod documents;
 mod import_parse;
 mod import_write;
@@ -104,6 +105,7 @@ pub fn router(state: DataDocState) -> Router {
         .merge(ai_field::routes())
         .merge(scenario::routes())
         .merge(transact::routes())
+        .merge(dashboards::routes())
         .layer(axum::extract::DefaultBodyLimit::max(
             import_write::MAX_SOURCE_BYTES + 1024 * 1024,
         ))

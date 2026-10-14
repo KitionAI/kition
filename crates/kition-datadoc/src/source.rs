@@ -130,11 +130,12 @@ impl DataDocState {
                 continue;
             }
             match self.tables.open(&path, origin.clone()) {
-                Ok((handle, merge)) => {
+                Ok((mut handle, merge)) => {
                     if doc.id != 0 && doc.workspace_root.trim() != root {
                         let conn = self.db.conn()?;
                         index::set_workspace_root(&conn, doc.id, &root)?;
                     }
+                    self.migrate_dashboards_from_meta(doc, &mut handle);
                     if let Some(change) = merge {
                         self.events
                             .publish(DomainEvent::TableChanged(table_changed_event(
