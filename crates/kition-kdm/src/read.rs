@@ -100,10 +100,44 @@ pub(crate) fn register(doc: &LoroDoc, schema: &Schema, id: &ObjectId, field: &st
     if schema.field(&ty, field)?.kind.is_container() {
         return Err(KdmError::InvalidValue { ty, field: field.to_owned(), reason: "is a container; read it with its accessor".into() });
     }
-    Ok(match map.get(field) {
+    Ok(stored_value(map.get(field)))
+}
+
+/// A value read from the engine in canonical form; a missing value, or a container (in a map
+/// field, only written outside the KDM), reads as `null`.
+fn stored_value(found: Option<ValueOrContainer>) -> Value {
+    match found {
         Some(ValueOrContainer::Value(value)) => canonical(value.to_json_value()),
         _ => Value::Null,
-    })
+    }
+}
+
+/// One key of a map field, as [`stored_value`] reads it.
+pub(crate) fn map_value(map: &LoroMap, key: &str) -> Value {
+    stored_value(map.get(key))
+}
+
+/// A map field's keys and values as [`map_value`] reads them, sorted by key.
+pub(crate) fn map_entries(map: &LoroMap) -> Vec<(String, Value)> {
+    let mut entries = Vec::with_capacity(map.len());
+    map.for_each(|key, value| entries.push((key.to_owned(), stored_value(Some(value)))));
+    entries.sort_by(|a, b| a.0.cmp(&b.0));
+    entries
+}
+
+/// Ids of the objects of type `ty`, sorted. One pass over every object of the document.
+pub(crate) fn objects_of_type(doc: &LoroDoc, ty: &str) -> Vec<ObjectId> {
+    let mut ids = Vec::new();
+    doc.get_map(OBJECTS).for_each(|key, value| {
+        if let ValueOrContainer::Container(Container::Map(map)) = value {
+            let id = ObjectId::from_string(key.to_string());
+            if type_of(&map, &id).is_ok_and(|found| found == ty) {
+                ids.push(id);
+            }
+        }
+    });
+    ids.sort();
+    ids
 }
 
 /// A list's items. Every item of a KDM list is an object id; anything else was written outside

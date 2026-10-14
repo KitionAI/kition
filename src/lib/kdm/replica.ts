@@ -1,5 +1,5 @@
 // Copied from kition-sdk packages/kdm/src/replica.ts by scripts/sync-kit-host.mjs; change it there, not here.
-import { isContainer as isEngineContainer, LoroDoc, LoroMap, UndoManager, type LoroEventBatch, type LoroTreeNode } from 'loro-crdt'
+import { isContainer as isEngineContainer, LoroDoc, UndoManager, type ImportStatus, type LoroEventBatch, type LoroTreeNode, type PeerID } from 'loro-crdt'
 import { canonicalText, compareKeys } from './canonical'
 import { checkString } from './args'
 import { open, sameBytes, Version, wrap } from './envelope'
@@ -81,6 +81,11 @@ export class Replica {
   private busy = false
   /** Set between `beginUndoGroup` and `endUndoGroup`. */
   private grouping = false
+  /**
+   * For each replica whose changes an import could not apply yet, the counter just past the last
+   * of them. They are applied (and no longer pending) once `version` reaches it.
+   */
+  private readonly pending = new Map<PeerID, number>()
 
   private constructor(
     private readonly doc: LoroDoc,
@@ -131,13 +136,18 @@ export class Replica {
    * Opens a snapshot (or a full change export) as a new writable replica of `actor`. Refuses
    * (`schema`) a document of another kit, of another KDM version, or written under a newer version
    * of the schema than `schema`; bytes that are not a KDM snapshot are `encoding` errors.
+   *
+   * A snapshot holds the changes its replica applied, not those still pending on it (see
+   * `hasPendingChanges`): the loaded replica has none pending, and fetches those changes again
+   * when it syncs.
    */
   static load(schema: Schema, bytes: Uint8Array, actor: bigint): Replica {
     checkActor(actor)
     const { docId, engine } = open(bytes)
     const doc = new LoroDoc()
+    let status: ImportStatus
     try {
-      doc.import(engine)
+      status = doc.import(engine)
     } catch (error) {
       throw errors.encoding(engineMessage(error))
     }
@@ -164,7 +174,9 @@ export class Replica {
       storedBytes = null
     }
     if (!storedBytes || !sameBytes(storedBytes, docId)) throw errors.encoding(`the bytes are labelled as document ${uuidFromBytes(docId)}, but hold another`)
-    return new Replica(doc, docId, schema, actor)
+    const replica = new Replica(doc, docId, schema, actor)
+    replica.notePending(status)
+    return replica
   }
 
   /** The document's durable identity, as a lowercase hyphenated UUID. */
@@ -266,6 +278,16 @@ export class Replica {
   }
 
   /**
+   * A map field's keys and values, sorted by key (code point order, as in the canonical state),
+   * each as `mapGet` reads it. Reads the whole map.
+   */
+  mapEntries(id: ObjectId, field: string): Array<[string, unknown]> {
+    checkField(id, field)
+    const map = read.container(this.doc, this.schema, id, field, 'map')
+    return map ? read.mapEntries(map) : []
+  }
+
+  /**
    * The tree's nodes in pre-order (each parent before its children, siblings in order). A node
    * that names no object is skipped with its subtree, as in `stateJson`.
    */
@@ -286,14 +308,13 @@ export class Replica {
     return out
   }
 
-  /** Ids of the objects of type `ty`, sorted. One pass over the objects, so it suits large documents. */
+  /**
+   * Ids of the objects of type `ty`, sorted. One pass over the objects, so it suits large
+   * documents; it costs O(objects) per call.
+   */
   objectsOfType(ty: string): ObjectId[] {
     checkString('a type name', ty)
-    const ids: ObjectId[] = []
-    for (const [id, value] of this.doc.getMap(read.OBJECTS).entries()) {
-      if (value instanceof LoroMap && value.get(read.TYPE_KEY) === ty) ids.push(id)
-    }
-    return ids.sort(compareKeys)
+    return read.objectsOfType(this.doc, ty)
   }
 
   /** The changes this replica has that a replica at `since` lacks, labelled with this document's id. */
@@ -317,16 +338,30 @@ export class Replica {
     this.idle()
     const { docId, engine } = open(bytes)
     if (!sameBytes(docId, this.docIdBytes)) throw errors.wrongDocument(this.docId, uuidFromBytes(docId))
-    const { changed } = observeChanges(this.doc, () => {
+    const { value: status, changed } = observeChanges(this.doc, () => {
       try {
-        this.doc.import(engine)
+        return this.doc.import(engine)
       } catch (error) {
         throw errors.encoding(engineMessage(error))
       }
     })
+    this.notePending(status)
     for (const id of changed) this.changed.add(id)
     this.reopenUndoGroup()
     return sorted(changed)
+  }
+
+  /**
+   * Whether this replica holds imported changes it could not apply yet, because they depend on
+   * changes it has not received. Importing changes out of order is legitimate (they are applied as
+   * soon as what they depend on arrives); a replica that stays in this state is missing changes,
+   * which a sync from `version` fetches. Pending changes are not in `version`, the state, or the
+   * exports.
+   */
+  hasPendingChanges(): boolean {
+    const applied = this.doc.oplogVersion()
+    for (const [peer, end] of this.pending) if ((applied.get(peer) ?? 0) < end) return true
+    return false
   }
 
   /** The objects changed since the last call, by local transactions, imports, undo, and redo. */
@@ -421,6 +456,14 @@ export class Replica {
   /** The canonical state as text; equal to the Rust `state_json().to_string()` for the same changes. */
   stateText(): string {
     return canonicalText(this.stateJson())
+  }
+
+  /** Records the changes an import left pending, and forgets those applied since. */
+  private notePending(status: ImportStatus): void {
+    for (const [peer, { end }] of status.pending ?? []) this.pending.set(peer, Math.max(end, this.pending.get(peer) ?? 0))
+    if (this.pending.size === 0) return
+    const applied = this.doc.oplogVersion()
+    for (const [peer, end] of this.pending) if ((applied.get(peer) ?? 0) >= end) this.pending.delete(peer)
   }
 
   private idle(): void {

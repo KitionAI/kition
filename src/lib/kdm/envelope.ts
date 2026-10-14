@@ -2,7 +2,7 @@
 /** Versions, and the envelope every byte string a replica exports carries. */
 import { VersionVector, type PeerID } from 'loro-crdt'
 import { compareKeys } from './canonical'
-import { errors } from './errors'
+import { errors, KdmError } from './errors'
 
 /** A replica's version: the set of changes it contains. Exchanged to ask for what is missing. */
 export class Version {
@@ -39,6 +39,16 @@ export class Version {
 
   encode(): Uint8Array {
     return this.toEngine().encode()
+  }
+
+  /**
+   * Whether every change in `other` is in this version. Versions are partially ordered: of two
+   * replicas that changed concurrently, neither version includes the other.
+   */
+  includes(other: Version): boolean {
+    if (!(other instanceof Version)) throw new KdmError('invalid-value', 'a version must be a `Version`')
+    const mine = new Map(this.counters)
+    return other.counters.every(([peer, counter]) => counter <= (mine.get(peer) ?? 0))
   }
 
   equals(other: Version): boolean {

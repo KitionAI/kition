@@ -1,4 +1,5 @@
 // Copied from kition-sdk crates/kition-kdm/src/tx.rs by scripts/sync-kit-host.mjs; change it there, not here.
+use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, OnceLock};
 
@@ -21,6 +22,11 @@ fn is_object_id(id: &str) -> bool {
     bytes.next().is_some_and(|first| first.is_ascii_alphanumeric())
         && id.len() <= 128
         && bytes.all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b':' | b'_' | b'-'))
+}
+
+/// A value in the canonical form the engine stores and reads it in.
+fn stored_form(value: &Value) -> Value {
+    canonical(to_loro(value.clone()).to_json_value())
 }
 
 /// Distinguishes transactions, so a node handle from one is never taken for another's.
@@ -109,6 +115,7 @@ impl<'a> Tx<'a> {
             Some(id) => self.free_id(ty, id)?,
         };
         self.overlay.created.insert(id.clone(), (ty.as_str(), self.ops.len()));
+        self.overlay.created_by_type.entry(ty.as_str()).or_default().push(id.clone());
         self.ops.push(Op::Create { id: id.clone(), ty, fields });
         Ok(id)
     }
@@ -242,14 +249,70 @@ impl<'a> Tx<'a> {
             let (ty, _, _) = self.field(id, field)?;
             return Err(KdmError::InvalidValue { ty: ty.to_owned(), field: name.to_owned(), reason: reason.into() });
         }
+        self.overlay.maps.entry((id.clone(), name)).or_default().insert(key.to_owned(), Some(self.ops.len()));
         self.ops.push(Op::MapSet { id: id.clone(), field: name, key: key.to_owned(), value });
         Ok(())
     }
 
     pub fn map_delete(&mut self, id: &ObjectId, field: &str, key: &str) -> Result<()> {
         let name = self.writable_map(id, field)?;
+        self.overlay.maps.entry((id.clone(), name)).or_default().insert(key.to_owned(), None);
         self.ops.push(Op::MapDelete { id: id.clone(), field: name, key: key.to_owned() });
         Ok(())
+    }
+
+    /// One key of a map field including this transaction's writes, or `null`, as
+    /// [`crate::Replica::map_get`] reads it. Costs one lookup in the transaction's writes of the
+    /// field and at most one in the document, however large the transaction.
+    pub fn map_get(&self, id: &ObjectId, field: &str, key: &str) -> Result<Value> {
+        let name = self.container_field(id, field, FieldKind::Map)?;
+        if let Some(write) = self.overlay.maps.get(&(id.clone(), name)).and_then(|keys| keys.get(key)) {
+            return Ok(write.map_or(Value::Null, |index| self.pending_map_value(index)));
+        }
+        Ok(match self.stored(id, name, false)? {
+            None => Value::Null,
+            Some(Container::Map(map)) => read::map_value(&map, key),
+            Some(_) => return Err(read::wrong_container(id, name)),
+        })
+    }
+
+    /// A map field's keys and values including this transaction's writes, sorted by key (code
+    /// point order, as in the canonical state), each as [`Tx::map_get`] reads it. Reads the whole
+    /// map and sorts the result on every call, O(n log n) in its keys: call it only when every
+    /// entry is wanted.
+    pub fn map_entries(&self, id: &ObjectId, field: &str) -> Result<Vec<(String, Value)>> {
+        let name = self.container_field(id, field, FieldKind::Map)?;
+        let committed = match self.stored(id, name, false)? {
+            None => Vec::new(),
+            Some(Container::Map(map)) => read::map_entries(&map),
+            Some(_) => return Err(read::wrong_container(id, name)),
+        };
+        let Some(writes) = self.overlay.maps.get(&(id.clone(), name)) else { return Ok(committed) };
+        let mut entries: BTreeMap<String, Value> = committed.into_iter().collect();
+        for (key, write) in writes {
+            match write {
+                Some(index) => entries.insert(key.clone(), self.pending_map_value(*index)),
+                None => entries.remove(key),
+            };
+        }
+        Ok(entries.into_iter().collect())
+    }
+
+    /// Ids of the live objects of type `ty`, including those this transaction created and without
+    /// those it deleted, sorted as [`crate::Replica::objects_of_type`] sorts them. One pass over
+    /// every object of the document, O(objects) per call, plus this transaction's creations of `ty`;
+    /// when it created any, the whole result is sorted again, O(n log n) per call.
+    pub fn objects_of_type(&self, ty: &str) -> Vec<ObjectId> {
+        let deleted = &self.overlay.deleted;
+        let mut ids = read::objects_of_type(self.doc, ty);
+        if !deleted.is_empty() {
+            ids.retain(|id| !deleted.contains(id));
+        }
+        if let Some(created) = self.overlay.created_by_type.get(ty) {
+            ids.extend(created.iter().filter(|id| !deleted.contains(*id)).cloned());
+            ids.sort();
+        }
+        ids
     }
 
     /// Adds a node naming `object` under `parent` (`None`: a root), last among its siblings.
@@ -373,14 +436,21 @@ impl<'a> Tx<'a> {
         }
     }
 
+    /// The value of the `MapSet` operation at `index`, as the engine will store it.
+    fn pending_map_value(&self, index: usize) -> Value {
+        match self.ops.get(index) {
+            Some(Op::MapSet { value, .. }) => stored_form(value),
+            _ => Value::Null,
+        }
+    }
+
     fn pending_register(&self, id: &ObjectId, name: &str) -> Option<Value> {
-        let stored = |value: &Value| canonical(to_loro(value.clone()).to_json_value());
         if let Some(Op::Set { value, .. }) = self.overlay.registers.get(&(id.clone(), name)).and_then(|index| self.ops.get(*index)) {
-            return Some(stored(value));
+            return Some(stored_form(value));
         }
         let (_, index) = self.overlay.created.get(id)?;
         match self.ops.get(*index) {
-            Some(Op::Create { fields, .. }) => Some(fields.get(name).map_or(Value::Null, stored)),
+            Some(Op::Create { fields, .. }) => Some(fields.get(name).map_or(Value::Null, stored_form)),
             _ => None,
         }
     }

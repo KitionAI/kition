@@ -66,6 +66,23 @@ export function register(doc: LoroDoc, schema: Schema, id: ObjectId, field: stri
 /** A value read from the engine in canonical form; a missing value or a container reads as `null`. */
 export const storedValue = (value: unknown): unknown => (value === undefined || isEngineContainer(value) ? null : canonical(value))
 
+/** A map field's keys and values as `storedValue` reads them, sorted by key in code point order. */
+export function mapEntries(map: LoroMap): Array<[string, unknown]> {
+  return map
+    .keys()
+    .sort(compareKeys)
+    .map((key): [string, unknown] => [key, storedValue(map.get(key))])
+}
+
+/** Ids of the objects of type `ty`, sorted. One pass over every object of the document. */
+export function objectsOfType(doc: LoroDoc, ty: string): ObjectId[] {
+  const ids: ObjectId[] = []
+  for (const [id, value] of doc.getMap(OBJECTS).entries()) {
+    if (value instanceof LoroMap && value.get(TYPE_KEY) === ty) ids.push(id)
+  }
+  return ids.sort(compareKeys)
+}
+
 /**
  * A list's items. Every item of a KDM list is an object id; anything else was written outside the
  * KDM and is an `encoding` error, so indices never disagree with the engine's.

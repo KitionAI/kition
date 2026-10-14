@@ -7,7 +7,7 @@
  */
 import { LoroMap, type LoroDoc } from 'loro-crdt'
 import { checkIndex as checkWhole, checkObjectIdSyntax, checkRecord, checkString } from './args'
-import { canonical, setKey } from './canonical'
+import { canonical, compareKeys, setKey } from './canonical'
 import { errors, KdmError } from './errors'
 import { newObjectId, nodeState, pendingNode, type NodeRef, type ObjectId } from './ids'
 import { apply, type JsonFields, type Op } from './op'
@@ -59,6 +59,10 @@ export class Tx {
   private readonly texts = new Map<string, TextState>()
   private readonly lists = new Map<string, ListState>()
   private readonly trees = new Map<string, TreeState>()
+  /** Map writes by field: for each key written, the index of its latest `mapSet` operation, or `null` when the latest write deleted it. */
+  private readonly maps = new Map<string, Map<string, number | null>>()
+  /** The ids of `created` by type, in creation order (deleted ones included). */
+  private readonly createdByType = new Map<string, ObjectId[]>()
   private readonly nodes: NodeRef[] = []
   private ended = false
 
@@ -120,6 +124,9 @@ export class Tx {
     }
     const id = chosen === undefined ? newObjectId() : this.freeId(ty, chosen)
     this.created.set(id, { ty, op: this.ops.length })
+    const ofType = this.createdByType.get(ty)
+    if (ofType) ofType.push(id)
+    else this.createdByType.set(ty, [id])
     this.ops.push({ op: 'create', id, ty, fields: copy })
     return id
   }
@@ -267,7 +274,9 @@ export class Tx {
     checkString('a map key', key)
     const ty = this.writableMap(id, field)
     const stored = toJson(value, (reason) => errors.invalidValue(ty, field, reason))
-    this.ops.push({ op: 'mapSet', id, field, key: wellFormed(key), value: stored })
+    const storedKey = wellFormed(key)
+    this.mapWrites(id, field).set(storedKey, this.ops.length)
+    this.ops.push({ op: 'mapSet', id, field, key: storedKey, value: stored })
   }
 
   mapDelete(id: ObjectId, field: string, key: string): void {
@@ -275,7 +284,64 @@ export class Tx {
     checkField(id, field)
     checkString('a map key', key)
     this.writableMap(id, field)
-    this.ops.push({ op: 'mapDelete', id, field, key: wellFormed(key) })
+    const storedKey = wellFormed(key)
+    this.mapWrites(id, field).set(storedKey, null)
+    this.ops.push({ op: 'mapDelete', id, field, key: storedKey })
+  }
+
+  /**
+   * One key of a map field including this transaction's writes, or `null`, as `Replica.mapGet`
+   * reads it. Costs one lookup in the transaction's writes of the field and at most one in the
+   * document, however large the transaction.
+   */
+  mapGet(id: ObjectId, field: string, key: string): unknown {
+    this.live()
+    checkField(id, field)
+    checkString('a map key', key)
+    this.containerField(id, field, 'map')
+    const storedKey = wellFormed(key)
+    const write = this.maps.get(fieldKey(id, field))?.get(storedKey)
+    if (write !== undefined) return this.pendingMapValue(write)
+    const committed = read.asContainer(this.stored(id, field, false), 'map', id, field)
+    return committed ? read.storedValue(committed.get(storedKey)) : null
+  }
+
+  /**
+   * A map field's keys and values including this transaction's writes, sorted by key (code point
+   * order, as in the canonical state), each as `mapGet` reads it. Reads the whole map and sorts
+   * the result on every call, O(n log n) in its keys: call it only when every entry is wanted.
+   */
+  mapEntries(id: ObjectId, field: string): Array<[string, unknown]> {
+    this.live()
+    checkField(id, field)
+    this.containerField(id, field, 'map')
+    const committed = read.asContainer(this.stored(id, field, false), 'map', id, field)
+    const entries = committed ? read.mapEntries(committed) : []
+    const writes = this.maps.get(fieldKey(id, field))
+    if (!writes) return entries
+    const merged = new Map(entries)
+    for (const [key, write] of writes) {
+      if (write === null) merged.delete(key)
+      else merged.set(key, this.pendingMapValue(write))
+    }
+    return [...merged].sort((a, b) => compareKeys(a[0], b[0]))
+  }
+
+  /**
+   * Ids of the live objects of type `ty`, including those this transaction created and without
+   * those it deleted, sorted as `Replica.objectsOfType` sorts them. One pass over every object of
+   * the document, O(objects) per call, plus this transaction's creations of `ty`; when it created
+   * any, the whole result is sorted again, O(n log n) per call.
+   */
+  objectsOfType(ty: string): ObjectId[] {
+    this.live()
+    checkString('a type name', ty)
+    const live = (id: ObjectId) => !this.deleted.has(id)
+    let ids = read.objectsOfType(this.doc, ty)
+    if (this.deleted.size > 0) ids = ids.filter(live)
+    const created = this.createdByType.get(ty)
+    if (!created) return ids
+    return ids.concat(created.filter(live)).sort(compareKeys)
   }
 
   /** Adds a node naming `object` under `parent` (`null`: a root), last among its siblings. The handle resolves when the transaction commits. */
@@ -379,6 +445,21 @@ export class Tx {
     const found = read.objectMap(this.doc, id).get(field)
     if (found === undefined && write) throw errors.notFound(`${id}.${field}`)
     return found
+  }
+
+  /** The pending writes of a map field, made on first use. */
+  private mapWrites(id: ObjectId, field: string): Map<string, number | null> {
+    const key = fieldKey(id, field)
+    let writes = this.maps.get(key)
+    if (!writes) this.maps.set(key, (writes = new Map()))
+    return writes
+  }
+
+  /** The value of the `mapSet` operation at `index` (`null`: a deletion), as the engine will store it. */
+  private pendingMapValue(index: number | null): unknown {
+    if (index === null) return null
+    const op = this.ops[index]
+    return op.op === 'mapSet' ? canonical(op.value) : null
   }
 
   private pendingRegister(id: ObjectId, field: string): unknown {

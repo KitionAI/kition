@@ -5,9 +5,10 @@
 //!
 //! The overlay never copies a whole container: a list keeps its length and its pending edits, a
 //! tree keeps the parents of the nodes this transaction created or moved and asks the engine for
-//! the rest. Validation is O(1) per list operation and O(depth) per tree move.
+//! the rest, a map keeps the latest write of each key it wrote. Validation is O(1) per list
+//! operation and O(depth) per tree move; reading one map key is O(log keys written).
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use loro::{LoroTree, TreeID, TreeParentId};
 
@@ -28,6 +29,8 @@ pub(crate) struct Overlay<'a> {
     /// Objects this transaction created: their type and the index of their `Create` operation,
     /// whose fields hold the initial register values.
     pub(crate) created: HashMap<ObjectId, (&'a str, usize)>,
+    /// The ids of [`Overlay::created`] by type, in creation order (deleted ones included).
+    pub(crate) created_by_type: HashMap<&'a str, Vec<ObjectId>>,
     pub(crate) deleted: HashSet<ObjectId>,
     /// Register writes: the index of the latest `Set` operation of each field.
     pub(crate) registers: HashMap<FieldKey<'a>, usize>,
@@ -35,6 +38,9 @@ pub(crate) struct Overlay<'a> {
     pub(crate) texts: HashMap<FieldKey<'a>, usize>,
     pub(crate) lists: HashMap<FieldKey<'a>, ListState>,
     pub(crate) trees: HashMap<FieldKey<'a>, TreeState>,
+    /// Map writes: for each key written, the index of its latest `MapSet` operation, or `None`
+    /// when the latest write deleted it.
+    pub(crate) maps: HashMap<FieldKey<'a>, BTreeMap<String, Option<usize>>>,
 }
 
 impl Overlay<'_> {

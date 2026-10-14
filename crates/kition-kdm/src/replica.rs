@@ -1,10 +1,10 @@
 // Copied from kition-sdk crates/kition-kdm/src/replica.rs by scripts/sync-kit-host.mjs; change it there, not here.
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 use std::mem;
 use std::sync::{Arc, Mutex};
 
 use loro::event::Diff;
-use loro::{Container, ExportMode, Index, LoroDoc, LoroError, ToJson, TreeID, TreeParentId, UndoManager, ValueOrContainer, VersionVector};
+use loro::{Counter, ExportMode, Index, LoroDoc, LoroError, PeerID, ToJson, TreeID, TreeParentId, UndoManager, ValueOrContainer, VersionRange, VersionVector};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 
@@ -32,6 +32,12 @@ impl Version {
     pub fn decode(bytes: &[u8]) -> Result<Self> {
         VersionVector::decode(bytes).map(Self).map_err(|error| KdmError::Encoding(error.to_string()))
     }
+
+    /// Whether every change in `other` is in this version. Versions are partially ordered: of two
+    /// replicas that changed concurrently, neither version includes the other.
+    pub fn includes(&self, other: &Version) -> bool {
+        self.0.includes_vv(&other.0)
+    }
 }
 
 /// One node of a tree field, as [`Replica::tree`] lists it.
@@ -57,6 +63,9 @@ pub struct Replica {
     /// Set between [`Replica::begin_undo_group`] and [`Replica::end_undo_group`].
     grouping: bool,
     changed: BTreeSet<ObjectId>,
+    /// For each replica whose changes an import could not apply yet, the counter just past the
+    /// last of them. They are applied (and no longer pending) once [`Replica::version`] reaches it.
+    pending: HashMap<PeerID, Counter>,
 }
 
 impl Replica {
@@ -98,10 +107,14 @@ impl Replica {
     /// Opens a snapshot (or a full change export) as a new writable replica of `actor`. Refuses
     /// ([`KdmError::Schema`]) a document of another kit, of another KDM version, or written under
     /// a newer version of the schema than `schema`.
+    ///
+    /// A snapshot holds the changes its replica applied, not those still pending on it (see
+    /// [`Replica::has_pending_changes`]): the loaded replica has none pending, and fetches those
+    /// changes again when it syncs.
     pub fn load(schema: Arc<Schema>, bytes: &[u8], actor: ActorId) -> Result<Self> {
         let (doc_id, bytes) = envelope::open(bytes)?;
         let doc = LoroDoc::new();
-        doc.import(bytes).map_err(|error| KdmError::Encoding(error.to_string()))?;
+        let status = doc.import(bytes).map_err(|error| KdmError::Encoding(error.to_string()))?;
         let meta = |key: &str| match doc.get_map(META).get(key) {
             Some(ValueOrContainer::Value(value)) => value.to_json_value(),
             _ => Value::Null,
@@ -131,7 +144,9 @@ impl Replica {
         if meta("docId").as_str().map(DocId::parse).and_then(std::result::Result::ok) != Some(doc_id) {
             return Err(KdmError::Encoding(format!("the bytes are labelled as document {doc_id}, but hold another")));
         }
-        Self::attach(doc, doc_id, schema, actor)
+        let mut replica = Self::attach(doc, doc_id, schema, actor)?;
+        replica.note_pending(status.pending.as_ref());
+        Ok(replica)
     }
 
     fn attach(doc: LoroDoc, doc_id: DocId, schema: Arc<Schema>, actor: ActorId) -> Result<Self> {
@@ -145,7 +160,7 @@ impl Replica {
         // `import` transactions (changes merged from a file edited elsewhere) are not undo steps
         // either: a person's undo never reverts another tool's edit.
         undo.add_exclude_origin_prefix(OriginKind::Import.as_str());
-        Ok(Self { doc, doc_id, schema, actor, undo, grouping: false, changed: BTreeSet::new() })
+        Ok(Self { doc, doc_id, schema, actor, undo, grouping: false, changed: BTreeSet::new(), pending: HashMap::new() })
     }
 
     pub fn doc_id(&self) -> DocId {
@@ -226,11 +241,13 @@ impl Replica {
 
     /// One key of a map field, or `null`.
     pub fn map_get(&self, id: &ObjectId, field: &str, key: &str) -> Result<Value> {
-        let Some(map) = read::map(&self.doc, &self.schema, id, field)? else { return Ok(Value::Null) };
-        Ok(match map.get(key) {
-            Some(ValueOrContainer::Value(value)) => crate::value::canonical(value.to_json_value()),
-            _ => Value::Null,
-        })
+        Ok(read::map(&self.doc, &self.schema, id, field)?.map_or(Value::Null, |map| read::map_value(&map, key)))
+    }
+
+    /// A map field's keys and values, sorted by key (code point order, as in the canonical state).
+    /// Each value reads as [`Replica::map_get`] reads it. Reads the whole map.
+    pub fn map_entries(&self, id: &ObjectId, field: &str) -> Result<Vec<(String, Value)>> {
+        Ok(read::map(&self.doc, &self.schema, id, field)?.map(|map| read::map_entries(&map)).unwrap_or_default())
     }
 
     /// The tree's nodes in pre-order (each parent before its children, siblings in order). A node
@@ -254,19 +271,10 @@ impl Replica {
         Ok(out)
     }
 
-    /// Ids of the objects of type `ty`, sorted. One pass over the objects, so it suits large documents.
+    /// Ids of the objects of type `ty`, sorted. One pass over the objects, so it suits large
+    /// documents; it costs O(objects) per call.
     pub fn objects_of_type(&self, ty: &str) -> Vec<ObjectId> {
-        let mut ids = Vec::new();
-        self.doc.get_map(OBJECTS).for_each(|key, value| {
-            if let ValueOrContainer::Container(Container::Map(map)) = value {
-                let id = ObjectId::from_string(key.to_string());
-                if read::type_of(&map, &id).is_ok_and(|found| found == ty) {
-                    ids.push(id);
-                }
-            }
-        });
-        ids.sort();
-        ids
+        read::objects_of_type(&self.doc, ty)
     }
 
     /// The changes this replica has that a replica at `since` lacks.
@@ -287,10 +295,31 @@ impl Replica {
         }
         let doc = &self.doc;
         let (imported, changed) = observe_changes(doc, || doc.import(bytes).map_err(|error| KdmError::Encoding(error.to_string())));
-        imported?;
+        let status = imported?;
+        self.note_pending(status.pending.as_ref());
         self.changed.extend(changed.iter().cloned());
         self.reopen_undo_group();
         Ok(changed)
+    }
+
+    /// Whether this replica holds imported changes it could not apply yet, because they depend on
+    /// changes it has not received. Importing changes out of order is legitimate (they are applied
+    /// as soon as what they depend on arrives); a replica that stays in this state is missing
+    /// changes, which a sync from [`Replica::version`] fetches. Pending changes are not in
+    /// [`Replica::version`], the state, or the exports.
+    pub fn has_pending_changes(&self) -> bool {
+        let applied = self.doc.oplog_vv();
+        self.pending.iter().any(|(peer, end)| applied.get(peer).copied().unwrap_or(0) < *end)
+    }
+
+    /// Records the changes an import left pending, and forgets those applied since.
+    fn note_pending(&mut self, parked: Option<&VersionRange>) {
+        for (peer, (_, end)) in parked.into_iter().flat_map(VersionRange::iter) {
+            let known = self.pending.entry(*peer).or_insert(*end);
+            *known = (*known).max(*end);
+        }
+        let applied = self.doc.oplog_vv();
+        self.pending.retain(|peer, end| applied.get(peer).copied().unwrap_or(0) < *end);
     }
 
     /// The objects changed since the last call, by local transactions or imports.
