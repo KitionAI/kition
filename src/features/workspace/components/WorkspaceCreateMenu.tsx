@@ -82,7 +82,7 @@ export function WorkspaceCreateMenu({
           data-testid="kitable-action-create-dashboard"
           onClick={onCreateDashboard}
         >
-          <LayoutDashboard className="size-4" />
+          <LayoutDashboard className="m-0.5 size-4" />
           <span>{t('createMenu.newDashboard')}</span>
         </button>
       ) : null}
@@ -93,7 +93,7 @@ export function WorkspaceCreateMenu({
           data-testid="kitable-action-create-form"
           onClick={onCreateForm}
         >
-          <FileInput className="size-4" />
+          <FileInput className="m-0.5 size-4" />
           <span>{t('createMenu.newForm')}</span>
         </button>
       ) : null}
@@ -104,7 +104,7 @@ export function WorkspaceCreateMenu({
           data-testid="kitable-action-create-workflow"
           onClick={onCreateWorkflow}
         >
-          <Zap className="size-4" />
+          <Zap className="m-0.5 size-4" />
           <span>{t('createMenu.newWorkflow')}</span>
         </button>
       ) : null}
@@ -156,7 +156,7 @@ export function WorkspaceCreateMenu({
           className="document-create-option"
           onClick={onImportTableFile}
         >
-          <Upload className="size-4" />
+          <Upload className="m-0.5 size-4" />
           <span>{t('createMenu.importSpreadsheet')}</span>
         </button>
       ) : null}
@@ -165,7 +165,7 @@ export function WorkspaceCreateMenu({
         className="document-create-option"
         onClick={onCreateFolder}
       >
-        <FolderPlus className="size-4" />
+        <FolderPlus className="m-0.5 size-4" />
         <span>{t('createMenu.folder')}</span>
       </button>
     </>
