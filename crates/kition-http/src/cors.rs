@@ -191,7 +191,11 @@ mod tests {
             [EXPOSE_HEADERS]
         );
         assert!(ALLOW_HEADERS.split(',').any(|name| name == "Range"));
-        assert!(ALLOW_HEADERS.split(',').any(|name| name == "Kition-Session"));
+        assert!(
+            ALLOW_HEADERS
+                .split(',')
+                .any(|name| name == "Kition-Session")
+        );
         assert!(ALLOW_HEADERS.split(',').any(|name| name == "Kition-Origin"));
     }
 
