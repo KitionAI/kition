@@ -45,6 +45,9 @@ pub enum KitableError {
     Newer(i64),
     #[error("kdm: {0}")]
     Kdm(String),
+    /// The handle was opened read-only (see [`KitableFile::open`]); it refuses every write.
+    #[error("kitable file is read-only: {0}")]
+    ReadOnly(String),
     #[error(transparent)]
     Sql(rusqlite::Error),
     #[error(transparent)]

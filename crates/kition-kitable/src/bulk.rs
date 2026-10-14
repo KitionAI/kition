@@ -49,6 +49,7 @@ impl KitableFile {
         table_id: i64,
         row_keys: &[String],
     ) -> Result<BulkDeleteResult> {
+        self.writable()?;
         if table_id <= 0 {
             return Err(KitableError::invalid("table_id is required"));
         }
@@ -85,6 +86,7 @@ impl KitableFile {
         row_keys: &[String],
         target_position: i64,
     ) -> Result<BulkCopyResult> {
+        self.writable()?;
         if table_id <= 0 {
             return Err(KitableError::invalid("table_id is required"));
         }

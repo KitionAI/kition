@@ -41,8 +41,10 @@ fn is_object_id(id: &str) -> bool {
 
 /// Builds the replica of a schema-3 file's content (one creating commit, origin `system:migrate`).
 ///
-/// The document id is the file's `kition_meta.document_id` when it parses as a UUID; otherwise a
-/// new id is minted and the original string is kept at `Base.meta.legacy_document_id`.
+/// The document id is always new, and the file's `kition_meta.document_id` is kept at
+/// `Base.meta.legacy_document_id`: object ids are minted per migration, so two copies of one
+/// schema-3 file migrated separately are different documents (merging them as one would
+/// duplicate every table and field).
 pub fn replica_from_relational(conn: &Connection, actor: ActorId) -> Result<Replica> {
     Ok(build(conn, actor)?.replica)
 }
@@ -54,16 +56,20 @@ pub fn replica_from_relational(conn: &Connection, actor: ActorId) -> Result<Repl
 /// (for instance a record whose `row_key` is not a valid object id) leaves the file exactly as it
 /// was: nothing commits.
 ///
-/// Does not record the schema version ([`crate::KitableFile::open`] does). Does not touch the normalised view-configuration tables (filter groups and conditions, sorts,
-/// groups): a view's `config` already carries the UI's own representation, and those tables stay
-/// in place.
+/// Records schema version 4 in the same transaction. Does not touch the normalised
+/// view-configuration tables (filter groups and conditions, sorts, groups): a view's `config`
+/// already carries the UI's own representation, and those tables stay in place.
 ///
-/// Idempotent: a file that already has a `kition_kdm` row is left unchanged.
+/// Idempotent: a file that already has a `kition_kdm` row is left unchanged. The check runs under
+/// the write lock, so two processes upgrading one file at once upgrade it once.
 pub fn upgrade(conn: &mut Connection, actor: ActorId) -> Result<()> {
     if already_upgraded(conn)? {
         return Ok(());
     }
-    let tx = conn.transaction()?;
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+    if already_upgraded(&tx)? {
+        return Ok(());
+    }
     store::ensure_tables(&tx)?;
     let built = build(&tx, actor)?;
     for (id, object) in &built.assigned.tables {
@@ -93,6 +99,11 @@ pub fn upgrade(conn: &mut Connection, actor: ActorId) -> Result<()> {
     store::save_initial(&tx, &built.replica, now_millis())?;
     let position = store::stored_position(&tx)?;
     store::set_projected_position(&tx, position)?;
+    crate::file::set_meta(
+        &tx,
+        "schema_version",
+        &crate::file::SCHEMA_VERSION.to_string(),
+    )?;
     tx.commit()?;
     Ok(())
 }
@@ -187,10 +198,7 @@ fn build(conn: &Connection, actor: ActorId) -> Result<Built> {
 }
 
 fn parse_doc_id(document_id: &str) -> (DocId, Option<String>) {
-    match DocId::parse(document_id) {
-        Ok(id) => (id, None),
-        Err(_) => (DocId::new(), Some(document_id.to_owned())),
-    }
+    (DocId::new(), Some(document_id.to_owned()))
 }
 
 /// Builds the whole document in `tx`: the base, then each table's fields, views, and records in

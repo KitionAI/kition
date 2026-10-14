@@ -333,6 +333,7 @@ impl KitableFile {
     }
 
     pub fn create_table(&mut self, spec: &TableSpec) -> Result<Table> {
+        self.writable()?;
         let base = self.require_base()?;
         let spec = TableSpec {
             fields: spec
@@ -348,6 +349,7 @@ impl KitableFile {
     }
 
     pub fn update_table(&mut self, table_id: i64, patch: &TablePatch) -> Result<Table> {
+        self.writable()?;
         let table = table_object(&self.conn, table_id)?;
         let primary = match patch.primary_field_id {
             Some(field_id) => Some(field_object(&self.conn, table_id, field_id)?),
@@ -362,6 +364,7 @@ impl KitableFile {
     }
 
     pub fn delete_table(&mut self, table_id: i64) -> Result<()> {
+        self.writable()?;
         let base = self.require_base()?;
         let table = table_object(&self.conn, table_id)?;
         self.commit(|tx| model::delete_table(tx, &base, &table))?;
@@ -369,6 +372,7 @@ impl KitableFile {
     }
 
     pub fn create_field(&mut self, table_id: i64, spec: &FieldSpec) -> Result<Field> {
+        self.writable()?;
         let table = table_object(&self.conn, table_id)?;
         let spec = self.field_spec_in(spec)?;
         let (field, _) = self.commit(|tx| model::create_field(tx, &table, &spec))?;
@@ -379,6 +383,7 @@ impl KitableFile {
     /// Copies a field's settings into a new non-primary field placed right
     /// after it, titled "<title> copy".
     pub fn duplicate_field(&mut self, table_id: i64, field_id: i64) -> Result<Field> {
+        self.writable()?;
         let source = self.get_field(table_id, field_id)?;
         let spec = FieldSpec {
             name: String::new(),
@@ -402,6 +407,7 @@ impl KitableFile {
         field_id: i64,
         patch: &FieldPatch,
     ) -> Result<Field> {
+        self.writable()?;
         let field = field_object(&self.conn, table_id, field_id)?;
         let patch = FieldPatch {
             options: match &patch.options {
@@ -415,6 +421,7 @@ impl KitableFile {
     }
 
     pub fn delete_field(&mut self, table_id: i64, field_id: i64) -> Result<()> {
+        self.writable()?;
         let table = table_object(&self.conn, table_id)?;
         let field = field_object(&self.conn, table_id, field_id)?;
         self.commit(|tx| model::delete_field(tx, &table, &field))?;
@@ -422,6 +429,7 @@ impl KitableFile {
     }
 
     pub fn create_view(&mut self, table_id: i64, spec: &ViewSpec) -> Result<View> {
+        self.writable()?;
         let table = table_object(&self.conn, table_id)?;
         let (view, _) = self.commit(|tx| model::create_view(tx, &table, spec))?;
         let view_id = view_id_of(&self.conn, &view)?;
@@ -432,6 +440,7 @@ impl KitableFile {
     /// written by [`KitableFile::replace_view_sorts`] and [`KitableFile::replace_view_groups`]
     /// are kept when the new config does not name them.
     pub fn update_view(&mut self, table_id: i64, view_id: i64, patch: &ViewPatch) -> Result<View> {
+        self.writable()?;
         let view = view_object(&self.conn, table_id, view_id)?;
         let current = self.get_view(table_id, view_id)?;
         let config = match &patch.config {
@@ -447,6 +456,7 @@ impl KitableFile {
     }
 
     pub fn delete_view(&mut self, table_id: i64, view_id: i64) -> Result<()> {
+        self.writable()?;
         let table = table_object(&self.conn, table_id)?;
         let view = view_object(&self.conn, table_id, view_id)?;
         self.commit(|tx| model::delete_view(tx, &table, &view))?;
@@ -536,6 +546,7 @@ impl KitableFile {
         table_id: i64,
         rows: &[Map<String, Value>],
     ) -> Result<Vec<Record>> {
+        self.writable()?;
         let table = self.get_table(table_id)?;
         let names = field_objects_by_name(&self.conn, table_id)?;
         let cells = rows
@@ -570,6 +581,7 @@ impl KitableFile {
         values: &Map<String, Value>,
         order: Option<i64>,
     ) -> Result<Record> {
+        self.writable()?;
         let table = self.get_table(table_id)?;
         let record = self.get_record(table_id, record_id)?;
         let mut next = record.values.clone();
@@ -610,6 +622,7 @@ impl KitableFile {
     }
 
     pub fn delete_record(&mut self, table_id: i64, record_id: i64) -> Result<()> {
+        self.writable()?;
         let table = table_object(&self.conn, table_id)?;
         let record = record_object(&self.conn, table_id, record_id)?;
         let (deleted, _) =
@@ -623,6 +636,7 @@ impl KitableFile {
     /// Records an attachment. Attachments are file bookkeeping outside the table document (the
     /// KDM has no attachment objects), so this is a plain SQL write, not a KDM transaction.
     pub fn add_attachment(&self, spec: &AttachmentSpec) -> Result<Attachment> {
+        self.writable()?;
         let document_id = match spec.document_id.trim() {
             "" => self.document_id()?,
             id => id.to_owned(),

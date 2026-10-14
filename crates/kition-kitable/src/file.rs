@@ -61,14 +61,16 @@ pub struct KitableFile {
     pub(crate) origin: Origin,
     /// The stored replica's version: the `since` of the next append.
     pub(crate) since: Version,
-    /// The stored position `(generation, seq)` this handle last read or wrote.
-    pub(crate) position: (i64, i64),
+    /// The store's head as this handle last read or wrote it.
+    pub(crate) head: store::Head,
     pub(crate) base: Option<ObjectId>,
     /// The file's identity right after this handle's open or last own write.
     pub(crate) identity: Option<FileIdentity>,
     pub(crate) last_change: Option<TableChange>,
     /// A failed write could not reload the replica; the next write reloads it first.
     pub(crate) stale: bool,
+    /// Why this handle refuses writes, when it does.
+    pub(crate) read_only: Option<String>,
 }
 
 /// What tells one file on disk from another, or from itself after a write.
@@ -146,7 +148,7 @@ impl KitableFile {
                 store::set_projected_position(&tx, position)?;
                 tx.commit()?;
             }
-            Self::attach(conn, absolute, replica)
+            Self::attach(conn, absolute)
         })();
         if result.is_err() {
             let _ = std::fs::remove_file(&path);
@@ -157,33 +159,52 @@ impl KitableFile {
     /// Opens an existing file, migrating it to the current schema: a file from before the KDM
     /// gets its replica ([`migrate::upgrade`]), and a projection behind the stored replica is
     /// rebuilt.
+    ///
+    /// A file that cannot be written (read-only permissions or mount) or whose migration fails
+    /// opens read-only: it reads as it is, and every write is refused
+    /// ([`KitableError::ReadOnly`]). Such a file from before the KDM gets an in-memory replica
+    /// only; the file itself is left exactly as it was.
     pub fn open(path: &Path) -> Result<Self> {
         if path.as_os_str().is_empty() {
             return Err(KitableError::invalid("kitable path is required"));
         }
         std::fs::metadata(path)?;
         let (mut conn, absolute) = open_sqlite(path)?;
+        let cannot_write = conn.is_readonly(rusqlite::MAIN_DB)?;
         migrate_schema(&mut conn)?;
         validate(&conn)?;
         if !has_replica(&conn)? {
-            migrate::upgrade(&mut conn, ActorId::random())?;
+            if cannot_write {
+                return Self::read_only_relational(conn, absolute, "the file cannot be written");
+            }
+            if let Err(err) = migrate::upgrade(&mut conn, ActorId::random()) {
+                tracing::warn!(path = %absolute.display(), error = %err, "kitable migration failed; opening read-only");
+                let reason = format!("the file could not be migrated: {err}");
+                return Self::read_only_relational(conn, absolute, &reason);
+            }
         }
-        if schema_version(&conn)? != SCHEMA_VERSION {
-            set_meta(&conn, "schema_version", &SCHEMA_VERSION.to_string())?;
+        if cannot_write {
+            let mut file = Self::attach(conn, absolute)?;
+            file.read_only = Some("the file cannot be written".into());
+            return Ok(file);
         }
-        let replica = load_replica(&conn)?;
-        let stored = store::stored_position(&conn)?;
-        if store::projected_position(&conn)? != stored {
-            let tx = conn.transaction()?;
-            project::rebuild(&tx, &replica, now_millis())?;
-            store::set_projected_position(&tx, stored)?;
-            tx.commit()?;
+        if let Err(err) = refresh_projection(&conn) {
+            tracing::warn!(path = %absolute.display(), error = %err, "kitable projection could not be rebuilt; opening read-only");
+            let mut file = Self::attach(conn, absolute)?;
+            file.read_only = Some(format!("the file could not be brought up to date: {err}"));
+            return Ok(file);
         }
-        Self::attach(conn, absolute, replica)
+        Self::attach(conn, absolute)
     }
 
-    fn attach(conn: Connection, path: PathBuf, replica: Replica) -> Result<Self> {
-        let position = store::stored_position(&conn)?;
+    /// A read-only handle on a file without a stored replica: the replica is built in memory
+    /// from the relational tables (empty when even that fails; reads go to the tables anyway).
+    fn read_only_relational(conn: Connection, path: PathBuf, reason: &str) -> Result<Self> {
+        let actor = ActorId::random();
+        let replica = match migrate::replica_from_relational(&conn, actor) {
+            Ok(replica) => replica,
+            Err(_) => Replica::create(schema(), DocId::new(), actor)?,
+        };
         let base = ModelView::new(&replica).base();
         Ok(Self {
             since: replica.version(),
@@ -192,11 +213,36 @@ impl KitableFile {
             path,
             replica,
             origin: Origin::system("unknown"),
-            position,
+            head: store::Head::default(),
             base,
             last_change: None,
             stale: false,
+            read_only: Some(reason.to_owned()),
         })
+    }
+
+    /// Loads the stored replica and the store's head together (one read transaction).
+    fn attach(conn: Connection, path: PathBuf) -> Result<Self> {
+        let (head, replica) = load_consistent(&conn)?;
+        let base = ModelView::new(&replica).base();
+        Ok(Self {
+            since: replica.version(),
+            identity: FileIdentity::of(&path),
+            conn,
+            path,
+            replica,
+            origin: Origin::system("unknown"),
+            head,
+            base,
+            last_change: None,
+            stale: false,
+            read_only: None,
+        })
+    }
+
+    /// Why this handle refuses writes; `None` when it accepts them.
+    pub fn read_only(&self) -> Option<&str> {
+        self.read_only.as_deref()
     }
 
     pub fn path(&self) -> &Path {
@@ -263,6 +309,7 @@ impl KitableFile {
     /// Writes one key of the file's own bookkeeping (`kition_meta`: format, versions, ...).
     /// This is not part of the table document, so it is no KDM transaction.
     pub fn set_meta(&self, key: &str, value: &str) -> Result<()> {
+        self.writable()?;
         set_meta(&self.conn, key, value)
     }
 }
@@ -278,6 +325,35 @@ pub(crate) fn open_sqlite(path: &Path) -> Result<(Connection, PathBuf)> {
          PRAGMA synchronous = NORMAL;",
     )?;
     Ok((conn, absolute))
+}
+
+/// Rebuilds the projection when it is not at the store's head, under the write lock (positions
+/// re-checked and the replica loaded inside it, so a concurrent writer cannot be rolled back).
+/// Also records the current schema version.
+fn refresh_projection(conn: &Connection) -> Result<()> {
+    if store::projection_is_current(conn)? && schema_version(conn)? == SCHEMA_VERSION {
+        return Ok(());
+    }
+    let tx = rusqlite::Transaction::new_unchecked(conn, rusqlite::TransactionBehavior::Immediate)?;
+    if !store::projection_is_current(&tx)? {
+        let replica = load_replica(&tx)?;
+        project::rebuild(&tx, &replica, now_millis())?;
+        store::set_projected_position(&tx, store::stored_position(&tx)?)?;
+    }
+    if schema_version(&tx)? != SCHEMA_VERSION {
+        set_meta(&tx, "schema_version", &SCHEMA_VERSION.to_string())?;
+    }
+    tx.commit()?;
+    Ok(())
+}
+
+/// The store's head and its replica, read in one transaction so they agree.
+pub(crate) fn load_consistent(conn: &Connection) -> Result<(store::Head, Replica)> {
+    let tx = rusqlite::Transaction::new_unchecked(conn, rusqlite::TransactionBehavior::Deferred)?;
+    let head = store::head(&tx)?;
+    let replica = load_replica(&tx)?;
+    tx.commit()?;
+    Ok((head, replica))
 }
 
 /// Loads the stored replica with a new random actor.

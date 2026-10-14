@@ -25,6 +25,13 @@ const COMPACT_MAX_BYTES: i64 = 1024 * 1024;
 const PROJECTED_GENERATION_KEY: &str = "kdm_projected_generation";
 const PROJECTED_SEQ_KEY: &str = "kdm_projected_seq";
 
+/// A random value replaced by every write of the store ([`save_initial`], [`append`],
+/// [`compact`]): two copies of one file at the same `(generation, seq)` that were written
+/// separately still differ in it. Its projected counterpart is recorded with the projected
+/// position.
+const EPOCH_KEY: &str = "kdm_epoch";
+const PROJECTED_EPOCH_KEY: &str = "kdm_projected_epoch";
+
 /// The document id [`save_initial`] records, so [`append`] and [`compact`] can refuse a replica of
 /// another document (one loaded from the wrong file, or a programming mistake).
 const DOC_ID_KEY: &str = "kdm_doc_id";
@@ -95,7 +102,34 @@ pub fn save_initial(conn: &Connection, replica: &Replica, now: i64) -> Result<()
         params![snapshot, now],
     )?;
     file::set_meta(conn, DOC_ID_KEY, &replica.doc_id().to_string())?;
-    Ok(())
+    new_epoch(conn)
+}
+
+fn new_epoch(conn: &Connection) -> Result<()> {
+    file::set_meta(conn, EPOCH_KEY, &uuid::Uuid::new_v4().to_string())
+}
+
+/// The store's identity as of its last write: its position and its epoch. Equal heads mean
+/// nothing was stored in between, even by another copy of the file written over this one.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct Head {
+    pub position: (i64, i64),
+    pub epoch: String,
+}
+
+/// The stored replica's [`Head`]. The epoch is empty for a store that predates epochs.
+pub fn head(conn: &Connection) -> Result<Head> {
+    Ok(Head {
+        position: stored_position(conn)?,
+        epoch: file::get_meta(conn, EPOCH_KEY)?.unwrap_or_default(),
+    })
+}
+
+/// Whether the projection was last recorded at the store's current [`Head`].
+pub fn projection_is_current(conn: &Connection) -> Result<bool> {
+    let stored = head(conn)?;
+    Ok(projected_position(conn)? == stored.position
+        && file::get_meta(conn, PROJECTED_EPOCH_KEY)?.unwrap_or_default() == stored.epoch)
 }
 
 /// Refuses `replica` if a document id was recorded (by [`save_initial`]) and it does not match.
@@ -142,7 +176,9 @@ pub fn append(
         "INSERT INTO kition_kdm_changes (bytes, origin, created_at) VALUES (?1, ?2, ?3)",
         params![bytes, origin, now],
     )?;
-    Ok(conn.last_insert_rowid())
+    let seq = conn.last_insert_rowid();
+    new_epoch(conn)?;
+    Ok(seq)
 }
 
 /// The highest `seq` ever inserted into `kition_kdm_changes`, including generations [`compact`]
@@ -176,7 +212,7 @@ pub fn compact(conn: &Connection, replica: &Replica, now: i64) -> Result<()> {
         ));
     }
     conn.execute("DELETE FROM kition_kdm_changes", [])?;
-    Ok(())
+    new_epoch(conn)
 }
 
 /// Whether the change log has grown enough that [`compact`] is worth running: more than 500
@@ -212,11 +248,12 @@ pub fn projected_position(conn: &Connection) -> Result<(i64, i64)> {
     ))
 }
 
-/// Records the projection's last-applied position.
+/// Records the projection's last-applied position, with the store's current epoch.
 pub fn set_projected_position(conn: &Connection, position: (i64, i64)) -> Result<()> {
     set_meta_i64(conn, PROJECTED_GENERATION_KEY, position.0)?;
     set_meta_i64(conn, PROJECTED_SEQ_KEY, position.1)?;
-    Ok(())
+    let epoch = file::get_meta(conn, EPOCH_KEY)?.unwrap_or_default();
+    file::set_meta(conn, PROJECTED_EPOCH_KEY, &epoch)
 }
 
 /// `None` when `key` is unset; [`KitableError::Invalid`] when it is set but is not an integer

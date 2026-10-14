@@ -10,7 +10,12 @@
 //! ahead of the file, and an error leaves nothing behind.
 //!
 //! The `since` of each append is the stored version this handle last read or wrote, never the
-//! in-memory replica's own version.
+//! in-memory replica's own version. The store's [`store::Head`] (position and a random epoch
+//! every store write replaces) tells whether anything was stored since, even by another copy of
+//! the file written over this one. When the store lacks changes this handle has (an older or
+//! different copy replaced the file), they are stored again in a write of their own before the
+//! next mutation runs, so a failing mutation never discards them. Undo and redo are repaired
+//! before projecting: they can bring back what others changed meanwhile (a name since taken).
 
 use std::collections::BTreeSet;
 
@@ -43,8 +48,8 @@ enum CatchUp {
     Current,
     /// Changes other handles stored were imported.
     Imported,
-    /// The store lacks changes this handle has (the file was replaced by an older copy): they are
-    /// appended again, and the projection is rebuilt.
+    /// The store lacks changes this handle has (the file was replaced by an older copy, or by
+    /// another copy): [`KitableFile::resync`] appends them again and rebuilds the projection.
     Diverged,
 }
 
@@ -80,7 +85,7 @@ impl KitableFile {
         f: impl FnOnce(&mut Tx<'_>) -> Result<R>,
     ) -> Result<(R, TableChange)> {
         let label = origin.encode();
-        self.write(&label, |replica| model::transact(replica, origin, f))
+        self.write(&label, false, |replica| model::transact(replica, origin, f))
     }
 
     /// The history label of this handle's writes: the principal, or nothing for `system` writes
@@ -96,44 +101,129 @@ impl KitableFile {
     fn write<R>(
         &mut self,
         label: &str,
+        repair_after: bool,
         step: impl FnOnce(&mut Replica) -> Result<R>,
     ) -> Result<(R, TableChange)> {
+        self.writable()?;
         if self.stale {
             self.reload()?;
         }
         let actor = self.actor();
         let now = now_millis();
+        // A store that lacks changes of this handle (the file was replaced by an older copy) gets
+        // them back in a write of their own first, so a failing step can never discard them.
+        let resynced = self.resync(now)?;
+        let mut since = self.since.clone();
+        let mut head = self.head.clone();
         let outcome = (|| {
             let tx = Transaction::new_unchecked(&self.conn, TransactionBehavior::Immediate)?;
+            if matches!(
+                catch_up(&tx, &mut self.replica, &mut since, &mut head)?,
+                CatchUp::Diverged
+            ) {
+                // Replaced again since the resync. Nothing is written, and `since` stays where
+                // the handle left it, so the next write resyncs.
+                return Ok(None);
+            }
             let written = write_in(
                 &tx,
                 &mut self.replica,
-                &mut self.since,
-                &mut self.position,
+                &since,
+                &head,
                 label,
                 &actor,
                 now,
+                repair_after,
                 step,
             )?;
             tx.commit()?;
-            Ok(written)
+            Ok(Some(written))
         })();
         match outcome {
-            Ok((value, change, position)) => {
+            Ok(None) => Err(KitableError::invalid(
+                "the kitable file was replaced during the write; try again",
+            )),
+            Ok(Some((value, change, written_head))) => {
                 self.since = self.replica.version();
-                self.position = position;
+                self.head = written_head;
                 self.identity = FileIdentity::of(&self.path);
                 if self.base.is_none() {
                     self.base = ModelView::new(&self.replica).base();
                 }
+                let change = match resynced {
+                    Some(earlier) => merge_changes(earlier, change),
+                    None => change,
+                };
                 self.last_change = Some(change.clone());
                 Ok((value, change))
             }
             Err(err) => {
-                if !self.since.includes(&self.replica.version()) && self.reload().is_err() {
-                    self.stale = true;
+                // The store holds `since` (the catch-up imported only stored changes); anything
+                // beyond it in memory is this failed write's own.
+                if !since.includes(&self.replica.version()) {
+                    if self.reload().is_err() {
+                        self.stale = true;
+                    }
+                } else {
+                    self.since = since;
+                    self.head = head;
                 }
                 Err(err)
+            }
+        }
+    }
+
+    /// Refuses writes on a handle opened read-only.
+    pub(crate) fn writable(&self) -> Result<()> {
+        match &self.read_only {
+            Some(reason) => Err(KitableError::ReadOnly(reason.clone())),
+            None => Ok(()),
+        }
+    }
+
+    /// Brings this handle up to the store before a write. When other handles stored changes,
+    /// they are imported (they are already projected). When the store lacks changes this handle
+    /// has, they are appended again, repaired, and the projection rebuilt, in a committed write
+    /// of their own; on failure nothing in memory is discarded, so the next write retries.
+    /// Answers what a resync projected.
+    fn resync(&mut self, now: i64) -> Result<Option<TableChange>> {
+        if store::head(&self.conn)? == self.head {
+            return Ok(None);
+        }
+        let mut since = self.since.clone();
+        let mut head = self.head.clone();
+        let outcome = (|| -> Result<Option<(TableChange, store::Head)>> {
+            let tx = Transaction::new_unchecked(&self.conn, TransactionBehavior::Immediate)?;
+            let caught = catch_up(&tx, &mut self.replica, &mut since, &mut head)?;
+            if !matches!(caught, CatchUp::Diverged) {
+                // Imported changes were projected by the handle that stored them.
+                self.replica.take_changed();
+                tx.commit()?;
+                return Ok(None);
+            }
+            let changed = self.replica.take_changed();
+            repair::run(&mut self.replica, &changed)?;
+            self.replica.take_changed();
+            let label = Origin::system("resync").encode();
+            store::append(&tx, &self.replica, &since, &label, now)?;
+            project::rebuild(&tx, &self.replica, now)?;
+            let change = everything(&tx)?;
+            let position = store::stored_position(&tx)?;
+            store::set_projected_position(&tx, position)?;
+            let written = store::head(&tx)?;
+            tx.commit()?;
+            Ok(Some((change, written)))
+        })();
+        match outcome? {
+            None => {
+                self.since = since;
+                self.head = head;
+                Ok(None)
+            }
+            Some((change, written)) => {
+                self.since = self.replica.version();
+                self.head = written;
+                Ok(Some(change))
             }
         }
     }
@@ -141,8 +231,8 @@ impl KitableFile {
     /// Replaces the replica with the stored one (under a new actor: the discarded replica's
     /// counters must never be reused). Undo history is lost.
     pub(crate) fn reload(&mut self) -> Result<()> {
-        let replica = file::load_replica(&self.conn)?;
-        self.position = store::stored_position(&self.conn)?;
+        let (head, replica) = file::load_consistent(&self.conn)?;
+        self.head = head;
         self.since = replica.version();
         self.base = ModelView::new(&replica).base();
         self.replica = replica;
@@ -153,6 +243,7 @@ impl KitableFile {
     /// Applies every op as one transaction (one change row, one undo step). Answers the row keys
     /// `records.create` ops created, in order, and what the write projected.
     pub fn transact(&mut self, ops: &[TableOp]) -> Result<(Vec<String>, TableChange)> {
+        self.writable()?;
         let resolved = ops
             .iter()
             .map(|op| self.resolve_op(op))
@@ -249,14 +340,17 @@ impl KitableFile {
 
     /// Undoes this handle's last undo step; `false` when there was none.
     pub fn undo(&mut self) -> Result<(bool, TableChange)> {
+        self.writable()?;
         let label = self.origin.clone().with_label("undo").encode();
-        self.write(&label, |replica| Ok(replica.undo()?))
+        // An undo can bring back what others changed meanwhile (a name since taken): repaired.
+        self.write(&label, true, |replica| Ok(replica.undo()?))
     }
 
     /// Redoes the last undone step; `false` when there was none.
     pub fn redo(&mut self) -> Result<(bool, TableChange)> {
+        self.writable()?;
         let label = self.origin.clone().with_label("redo").encode();
-        self.write(&label, |replica| Ok(replica.redo()?))
+        self.write(&label, true, |replica| Ok(replica.redo()?))
     }
 
     pub fn can_undo(&self) -> bool {
@@ -310,7 +404,7 @@ impl KitableFile {
             let bytes = self.replica.export_changes(&theirs)?;
             let import = Origin::new(OriginKind::Import, "import");
             fresh.origin = import.clone();
-            let merged = fresh.write(&import.encode(), |replica| {
+            let merged = fresh.write(&import.encode(), false, |replica| {
                 let changed = replica.import_changes(&bytes)?;
                 repair::run(replica, &changed)?;
                 Ok(())
@@ -335,56 +429,54 @@ impl KitableFile {
     }
 }
 
-/// The body of one write, inside its SQL transaction. Answers the step's value, what the
-/// projection changed, and the stored position afterwards. `since` and `position` are updated by
-/// the catch-up only (to what the store held before this write).
+/// The body of one write, inside its SQL transaction, after the catch-up: `since` and `head`
+/// are what the store holds. Answers the step's value, what the projection changed, and the
+/// store's head afterwards.
 #[allow(clippy::too_many_arguments)]
 fn write_in<R>(
     conn: &Connection,
     replica: &mut Replica,
-    since: &mut Version,
-    position: &mut (i64, i64),
+    since: &Version,
+    head: &store::Head,
     label: &str,
     actor: &str,
     now: i64,
+    repair_after: bool,
     step: impl FnOnce(&mut Replica) -> Result<R>,
-) -> Result<(R, TableChange, (i64, i64))> {
-    let caught = catch_up(conn, replica, since, position)?;
+) -> Result<(R, TableChange, store::Head)> {
+    // Changes imported by the catch-up were projected by the handle that stored them; projecting
+    // them again is harmless and keeps this write's change complete.
     let mut changed: BTreeSet<ObjectId> = replica.take_changed();
-    if !matches!(caught, CatchUp::Current) {
-        repair::run(replica, &changed)?;
-        changed.extend(replica.take_changed());
-    }
     let value = step(replica)?;
+    let stepped = replica.take_changed();
+    if repair_after {
+        repair::run(replica, &stepped)?;
+    }
+    changed.extend(stepped);
     changed.extend(replica.take_changed());
     if since.includes(&replica.version()) && changed.is_empty() {
-        return Ok((value, TableChange::default(), *position));
+        return Ok((value, TableChange::default(), head.clone()));
     }
     store::append(conn, replica, since, label, now)?;
-    let change = if matches!(caught, CatchUp::Diverged) {
-        project::rebuild(conn, replica, now)?;
-        everything(conn)?
-    } else {
-        project::project_changes(conn, replica, &changed, actor, now)?
-    };
+    let change = project::project_changes(conn, replica, &changed, actor, now)?;
     if store::should_compact(conn)? {
         store::compact(conn, replica, now)?;
     }
     let stored = store::stored_position(conn)?;
     store::set_projected_position(conn, stored)?;
-    Ok((value, change, stored))
+    Ok((value, change, store::head(conn)?))
 }
 
-/// Imports what other handles stored since `position`, and moves `since` and `position` to the
-/// store's current state.
+/// Imports what other handles stored since `head`, and moves `since` and `head` to the store's
+/// current state.
 fn catch_up(
     conn: &Connection,
     replica: &mut Replica,
     since: &mut Version,
-    position: &mut (i64, i64),
+    head: &mut store::Head,
 ) -> Result<CatchUp> {
-    let stored = store::stored_position(conn)?;
-    if stored == *position {
+    let stored = store::head(conn)?;
+    if stored == *head {
         return Ok(CatchUp::Current);
     }
     let file = file::load_replica(conn)?;
@@ -400,12 +492,29 @@ fn catch_up(
     }
     let diverged = !theirs.includes(&ours);
     *since = theirs;
-    *position = stored;
+    *head = stored;
     Ok(if diverged {
         CatchUp::Diverged
     } else {
         CatchUp::Imported
     })
+}
+
+/// Both changes in one, every list sorted and without repeats.
+fn merge_changes(mut a: TableChange, b: TableChange) -> TableChange {
+    fn join<T: Ord>(a: &mut Vec<T>, b: Vec<T>) {
+        a.extend(b);
+        a.sort();
+        a.dedup();
+    }
+    join(&mut a.tables, b.tables);
+    join(&mut a.schema, b.schema);
+    join(&mut a.views, b.views);
+    join(&mut a.records_upserted, b.records_upserted);
+    join(&mut a.records_deleted, b.records_deleted);
+    join(&mut a.records_reordered, b.records_reordered);
+    a.dashboards |= b.dashboards;
+    a
 }
 
 /// A change naming every live table, view, and record: for when the state a reader holds may

@@ -373,6 +373,7 @@ impl KitableFile {
     /// Replaces the view's filters; `None` clears them. Written to the view's config
     /// (`filter_tree`), in the table editor's form (fields by name).
     pub fn save_filter_tree(&mut self, view_id: i64, tree: Option<&FilterTree>) -> Result<()> {
+        self.writable()?;
         self.assert_view_exists(view_id)?;
         if let Some(tree) = tree {
             validate_tree(tree)?;
@@ -438,6 +439,7 @@ impl KitableFile {
         view_id: i64,
         items: &[ViewSort],
     ) -> Result<()> {
+        self.writable()?;
         self.assert_view_exists(view_id)?;
         for (index, item) in items.iter().enumerate() {
             validate_direction(&item.direction)
@@ -521,6 +523,7 @@ impl KitableFile {
         field_id: i64,
         patch: &ViewFieldPatch,
     ) -> Result<ViewField> {
+        self.writable()?;
         self.assert_view_exists(view_id)?;
         self.assert_field_exists(field_id)?;
         let (table_id, _) = self.view_config(view_id)?;

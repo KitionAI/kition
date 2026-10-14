@@ -435,8 +435,8 @@ fn check_bundled_file(original: &Path) -> std::time::Duration {
 }
 
 /// Builds the replica directly, saves and loads it, and checks the two have the same state hash.
-/// Done on a separate copy: `upgrade`'s own build mints a fresh document id for a non-UUID legacy
-/// one, so it cannot be compared against an independent build of the same file.
+/// Done on a separate copy: `upgrade`'s own build mints a fresh document id, so it cannot be
+/// compared against an independent build of the same file.
 fn check_store_round_trip(original: &Path) {
     let dir = temp();
     let path = copy_into(dir.path(), original);

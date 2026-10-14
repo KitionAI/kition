@@ -75,6 +75,7 @@ impl KitableFile {
         field_id: i64,
         target_row_keys: &[String],
     ) -> Result<Vec<LinkRef>> {
+        self.writable()?;
         let field = self
             .get_field(from_table_id, field_id)
             .map_err(|err| KitableError::invalid(format!("field not found: {err}")))?;
@@ -143,6 +144,7 @@ impl KitableFile {
         field_id: i64,
         target_row_keys: &[String],
     ) -> Result<()> {
+        self.writable()?;
         let cleaned = dedupe(target_row_keys);
         if cleaned.is_empty() {
             return Ok(());
