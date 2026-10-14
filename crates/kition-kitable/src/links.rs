@@ -35,7 +35,8 @@ pub(crate) fn placeholders(start: usize, count: usize) -> String {
         .join(", ")
 }
 
-fn display(values_json: &str, primary: Option<&Field>) -> String {
+/// A record's display text: its value of the primary field.
+pub(crate) fn display(values_json: &str, primary: Option<&Field>) -> String {
     let Some(primary) = primary else {
         return String::new();
     };
@@ -224,25 +225,39 @@ pub(crate) fn link_refs(
     target: i64,
     primary: Option<&Field>,
 ) -> Result<Vec<LinkRef>> {
+    Ok(
+        link_rows(conn, from_table_id, from_record_id, field_id, target)?
+            .into_iter()
+            .map(|(_, row_key, values)| LinkRef {
+                row_key,
+                display: display(&values, primary),
+            })
+            .collect(),
+    )
+}
+
+/// `(id, row_key, values_json)` of the live records one record links to through `field_id` in
+/// the `target` table, in link order.
+pub(crate) fn link_rows(
+    conn: &Connection,
+    from_table_id: i64,
+    from_record_id: i64,
+    field_id: i64,
+    target: i64,
+) -> Result<Vec<(i64, String, String)>> {
     let mut statement = conn.prepare_cached(
-        "SELECT r.row_key, r.values_json FROM kition_record_links l \
+        "SELECT r.id, r.row_key, r.values_json FROM kition_record_links l \
          JOIN kition_records r ON r.id = l.to_record_id \
          WHERE l.from_table_id = ?1 AND l.from_record_id = ?2 AND l.from_field_id = ?3 AND l.to_table_id = ?4 \
          AND r.deleted_at IS NULL ORDER BY l.id ASC",
     )?;
-    let refs = statement
+    let rows = statement
         .query_map(
             params![from_table_id, from_record_id, field_id, target],
-            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
         )?
-        .collect::<std::result::Result<Vec<_>, _>>()?
-        .into_iter()
-        .map(|(row_key, values)| LinkRef {
-            row_key,
-            display: display(&values, primary),
-        })
-        .collect();
-    Ok(refs)
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+    Ok(rows)
 }
 
 /// The link field's target table and that table's primary field.
@@ -256,8 +271,11 @@ pub(crate) fn resolve_link_target(
             [field_id],
             |row| Ok((row.get(0)?, row.get(1)?)),
         )
-        .map_err(|err| {
-            KitableError::invalid(format!("link field not found: {}", KitableError::from(err)))
+        .map_err(|err| match err {
+            rusqlite::Error::QueryReturnedNoRows => {
+                KitableError::invalid(format!("link field not found: {}", KitableError::NotFound))
+            }
+            other => KitableError::from(other),
         })?;
     let target_table_id = json::int_option(&json::object(&options_json), "target_table_id");
     if target_table_id == 0 {
@@ -278,6 +296,13 @@ pub(crate) fn resolve_link_target(
                 KitableError::NotFound
             ))
         })?;
-    let primary = primary_id.and_then(|id| source::field_in(conn, target_table_id, id).ok());
+    let primary = match primary_id {
+        None => None,
+        Some(id) => match source::field_in(conn, target_table_id, id) {
+            Ok(field) => Some(field),
+            Err(KitableError::NotFound) => None,
+            Err(error) => return Err(error),
+        },
+    };
     Ok((target_table_id, primary))
 }

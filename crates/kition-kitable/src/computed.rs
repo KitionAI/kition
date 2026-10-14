@@ -55,6 +55,22 @@ impl KitableFile {
 /// A link field's target table and that table's primary field, or `None` when unresolvable.
 type LinkTarget = Option<(i64, Option<Field>)>;
 
+/// Which inputs a derived value may not read: `hidden(record, name)` names the cycle of
+/// `(record, field name)`, if it is on one. A field on a cycle reads the fields of its own cycle
+/// as missing, so cycles yield bounded values.
+pub(crate) type Hidden<'h> = &'h dyn Fn(i64, &str) -> Option<usize>;
+
+/// No cycles.
+pub(crate) fn nothing_hidden(_: i64, _: &str) -> Option<usize> {
+    None
+}
+
+/// Errors that mean "no such row" (absorbed into an empty derived value); anything else, such as
+/// a busy database or an I/O error, is a real failure.
+fn missing(error: &KitableError) -> bool {
+    matches!(error, KitableError::NotFound | KitableError::Invalid(_))
+}
+
 /// Computes derived values from the relational rows of one connection: link chips, lookups and
 /// rollups read the linked records' stored `values_json`. Field and link-target reads are cached
 /// for the deriver's lifetime, so use one per pass during which fields do not change.
@@ -84,17 +100,43 @@ impl<'c> Deriver<'c> {
         record_id: i64,
         values: &Map<String, Value>,
     ) -> Result<(Map<String, Value>, bool)> {
+        self.recompute_hiding(fields, record_id, values, &nothing_hidden)
+    }
+
+    /// [`Deriver::recompute`] where a field on a cycle ([`Hidden`]) reads the other fields of its
+    /// cycle as missing.
+    pub(crate) fn recompute_hiding(
+        &self,
+        fields: &[Field],
+        record_id: i64,
+        values: &Map<String, Value>,
+        hidden: Hidden<'_>,
+    ) -> Result<(Map<String, Value>, bool)> {
         let mut next = values.clone();
         let mut changed = false;
         for field in fields {
+            let cycle = hidden(record_id, &field.name);
             let computed = match field.field_type.as_str() {
-                "lookup" => self.lookup(record_id, field),
-                "rollup" => self.rollup(record_id, field),
-                "link_to_record" => self.link_refs(record_id, field),
-                "formula" => match compute_formula(&field.formula, &next) {
-                    Ok(value) => Ok(value),
-                    Err(message) => Ok(Value::String(format!("#ERROR: {message}"))),
-                },
+                "lookup" => self.lookup(record_id, field, cycle, hidden),
+                "rollup" => self.rollup(record_id, field, cycle, hidden),
+                "link_to_record" => self.link_refs(record_id, field, cycle, hidden),
+                "formula" => {
+                    let result = match cycle {
+                        None => compute_formula(&field.formula, &next),
+                        Some(cycle) => {
+                            let visible: Map<String, Value> = next
+                                .iter()
+                                .filter(|(name, _)| hidden(record_id, name) != Some(cycle))
+                                .map(|(name, value)| (name.clone(), value.clone()))
+                                .collect();
+                            compute_formula(&field.formula, &visible)
+                        }
+                    };
+                    match result {
+                        Ok(value) => Ok(value),
+                        Err(message) => Ok(Value::String(format!("#ERROR: {message}"))),
+                    }
+                }
                 _ => continue,
             }?;
             // A missing value counts as null, as in the legacy comparison.
@@ -107,27 +149,41 @@ impl<'c> Deriver<'c> {
         Ok((next, changed))
     }
 
-    /// A live field by id, any table.
-    fn field(&self, field_id: i64) -> Option<Field> {
+    /// A live field by id, any table; `None` when there is none.
+    fn field(&self, field_id: i64) -> Result<Option<Field>> {
         if let Some(found) = self.fields.borrow().get(&field_id) {
-            return found.clone();
+            return Ok(found.clone());
         }
-        let found = source::field_by_id(self.conn, field_id).ok();
+        let found = match source::field_by_id(self.conn, field_id) {
+            Ok(field) => Some(field),
+            Err(error) if missing(&error) => None,
+            Err(error) => return Err(error),
+        };
         self.fields.borrow_mut().insert(field_id, found.clone());
-        found
+        Ok(found)
     }
 
-    fn link_target(&self, field_id: i64) -> LinkTarget {
+    fn link_target(&self, field_id: i64) -> Result<LinkTarget> {
         if let Some(found) = self.targets.borrow().get(&field_id) {
-            return found.clone();
+            return Ok(found.clone());
         }
-        let found = links::resolve_link_target(self.conn, field_id).ok();
+        let found = match links::resolve_link_target(self.conn, field_id) {
+            Ok(target) => Some(target),
+            Err(error) if missing(&error) => None,
+            Err(error) => return Err(error),
+        };
         self.targets.borrow_mut().insert(field_id, found.clone());
-        found
+        Ok(found)
     }
 
-    fn link_refs(&self, record_id: i64, field: &Field) -> Result<Value> {
-        let Some((target, primary)) = self.link_target(field.id) else {
+    fn link_refs(
+        &self,
+        record_id: i64,
+        field: &Field,
+        cycle: Option<usize>,
+        hidden: Hidden<'_>,
+    ) -> Result<Value> {
+        let Some((target, primary)) = self.link_target(field.id)? else {
             if self.lenient {
                 return Ok(Value::Array(Vec::new()));
             }
@@ -135,51 +191,74 @@ impl<'c> Deriver<'c> {
                 "link field target cannot be resolved",
             ));
         };
-        let refs = links::link_refs(
-            self.conn,
-            field.table_id,
-            record_id,
-            field.id,
-            target,
-            primary.as_ref(),
-        )?;
+        let rows = links::link_rows(self.conn, field.table_id, record_id, field.id, target)?;
         Ok(Value::Array(
-            refs.into_iter()
-                .map(|r| json!({ "row_key": r.row_key, "display": r.display }))
+            rows.into_iter()
+                .map(|(to, row_key, values)| {
+                    let shown = match (cycle, &primary) {
+                        (Some(cycle), Some(primary)) => hidden(to, &primary.name) != Some(cycle),
+                        _ => true,
+                    };
+                    let display = if shown {
+                        links::display(&values, primary.as_ref())
+                    } else {
+                        String::new()
+                    };
+                    json!({ "row_key": row_key, "display": display })
+                })
                 .collect(),
         ))
     }
 
+    /// The values of the live records `record_id` links to through `link_field_id`, without the
+    /// fields of `cycle`.
     fn linked_values(
         &self,
         record_id: i64,
         link_field_id: i64,
         ordered: bool,
+        cycle: Option<usize>,
+        hidden: Hidden<'_>,
     ) -> Result<Vec<Map<String, Value>>> {
         let order = if ordered { " ORDER BY l.id ASC" } else { "" };
         let mut statement = self.conn.prepare_cached(&format!(
-            "SELECT r.values_json FROM kition_record_links l JOIN kition_records r ON r.id = l.to_record_id \
+            "SELECT r.id, r.values_json FROM kition_record_links l JOIN kition_records r ON r.id = l.to_record_id \
              WHERE l.from_record_id = ?1 AND l.from_field_id = ?2 AND r.deleted_at IS NULL{order}"
         ))?;
         let rows = statement
             .query_map(params![record_id, link_field_id], |row| {
-                row.get::<_, String>(0)
+                Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
             })?
             .collect::<std::result::Result<Vec<_>, _>>()?;
-        Ok(rows.iter().map(|raw| json::object(raw)).collect())
+        Ok(rows
+            .iter()
+            .map(|(to, raw)| {
+                let mut values = json::object(raw);
+                if let Some(cycle) = cycle {
+                    values.retain(|name, _| hidden(*to, name) != Some(cycle));
+                }
+                values
+            })
+            .collect())
     }
 
-    fn lookup(&self, record_id: i64, field: &Field) -> Result<Value> {
+    fn lookup(
+        &self,
+        record_id: i64,
+        field: &Field,
+        cycle: Option<usize>,
+        hidden: Hidden<'_>,
+    ) -> Result<Value> {
         let link_field_id = json::int_option(&field.options, "link_field_id");
         let target_field_id = json::int_option(&field.options, "target_field_id");
         if link_field_id == 0 || target_field_id == 0 {
             return Ok(Value::Null);
         }
-        let Some(target) = self.field(target_field_id) else {
+        let Some(target) = self.field(target_field_id)? else {
             return Ok(Value::Null);
         };
         let collected: Vec<Value> = self
-            .linked_values(record_id, link_field_id, true)?
+            .linked_values(record_id, link_field_id, true, cycle, hidden)?
             .into_iter()
             .filter_map(|mut values| values.remove(&target.name).filter(|v| !v.is_null()))
             .collect();
@@ -196,7 +275,13 @@ impl<'c> Deriver<'c> {
         Ok(Value::Array(collected))
     }
 
-    fn rollup(&self, record_id: i64, field: &Field) -> Result<Value> {
+    fn rollup(
+        &self,
+        record_id: i64,
+        field: &Field,
+        cycle: Option<usize>,
+        hidden: Hidden<'_>,
+    ) -> Result<Value> {
         let link_field_id = json::int_option(&field.options, "link_field_id");
         let target_field_id = json::int_option(&field.options, "target_field_id");
         let aggregation = field
@@ -208,11 +293,11 @@ impl<'c> Deriver<'c> {
             return Ok(Value::Null);
         }
         let target_name = self
-            .field(target_field_id)
+            .field(target_field_id)?
             .map(|f| f.name)
             .unwrap_or_default();
         let values: Vec<Value> = self
-            .linked_values(record_id, link_field_id, false)?
+            .linked_values(record_id, link_field_id, false, cycle, hidden)?
             .into_iter()
             .filter_map(|mut values| {
                 if target_name.is_empty() {
