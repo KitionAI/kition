@@ -283,6 +283,41 @@ pub const TABLES: [(&str, &str, &[&str]); 16] = [
     ),
 ];
 
+/// The two tables that hold a table's KDM replica: a compacted snapshot plus an append-only log
+/// of changes since that snapshot. See `crate::kdm::store`.
+pub const KDM_TABLES: &[&str] = &[
+    "CREATE TABLE kition_kdm (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        snapshot BLOB NOT NULL,
+        generation INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+    )",
+    "CREATE TABLE kition_kdm_changes (
+        seq INTEGER PRIMARY KEY AUTOINCREMENT,
+        bytes BLOB NOT NULL,
+        origin TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+    )",
+];
+
+/// `(table, column)` pairs this table's relational projection gains to link each row to the KDM
+/// object it projects. Every column is a nullable `TEXT`.
+pub const KDM_COLUMNS: &[(&str, &str)] = &[
+    ("kition_tables", "kdm_id"),
+    ("kition_fields", "kdm_id"),
+    ("kition_views", "kdm_id"),
+    ("kition_record_links", "kdm_id"),
+];
+
+/// Indexes that keep each live row's `kdm_id` unique. `kition_record_links` has no `deleted_at`
+/// column, so its index covers every row.
+pub const KDM_INDEXES: &[&str] = &[
+    "CREATE UNIQUE INDEX IF NOT EXISTS uq_kition_tables_kdm_id ON kition_tables(kdm_id) WHERE deleted_at IS NULL",
+    "CREATE UNIQUE INDEX IF NOT EXISTS uq_kition_fields_kdm_id ON kition_fields(kdm_id) WHERE deleted_at IS NULL",
+    "CREATE UNIQUE INDEX IF NOT EXISTS uq_kition_views_kdm_id ON kition_views(kdm_id) WHERE deleted_at IS NULL",
+    "CREATE UNIQUE INDEX IF NOT EXISTS uq_kition_record_links_kdm_id ON kition_record_links(kdm_id)",
+];
+
 pub const INDEXES: [&str; 18] = [
     "CREATE UNIQUE INDEX IF NOT EXISTS uq_kition_tables_document_name ON kition_tables(document_id, name) WHERE deleted_at IS NULL",
     "CREATE UNIQUE INDEX IF NOT EXISTS uq_kition_fields_table_name ON kition_fields(table_id, name) WHERE deleted_at IS NULL",

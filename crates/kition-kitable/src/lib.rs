@@ -9,6 +9,7 @@ mod computed;
 mod file;
 mod history;
 mod json;
+pub mod kdm;
 mod links;
 mod schema;
 mod source;
@@ -39,6 +40,8 @@ pub enum KitableError {
     InvalidFilterTree(String),
     #[error("kitable schema version {0} is newer than supported version {SCHEMA_VERSION}")]
     Newer(i64),
+    #[error("kdm: {0}")]
+    Kdm(String),
     #[error(transparent)]
     Sql(rusqlite::Error),
     #[error(transparent)]
@@ -53,6 +56,12 @@ impl From<rusqlite::Error> for KitableError {
             rusqlite::Error::QueryReturnedNoRows => KitableError::NotFound,
             other => KitableError::Sql(other),
         }
+    }
+}
+
+impl From<kition_kdm::KdmError> for KitableError {
+    fn from(error: kition_kdm::KdmError) -> Self {
+        KitableError::Kdm(error.to_string())
     }
 }
 
