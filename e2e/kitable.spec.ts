@@ -427,15 +427,14 @@ test.describe('kitable editor — toolbar interactions', () => {
     expect(timeMenuBox?.height).toBeLessThanOrEqual(250)
   })
 
-  test('Ctrl/Cmd+Z undoes a saved cell edit and Ctrl/Cmd+Shift+Z redoes it', async ({ page }) => {
-    const patches: Array<{ values?: Record<string, unknown> }> = []
+  test('Ctrl/Cmd+Z calls /undo and Ctrl/Cmd+Shift+Z calls /redo', async ({ page }) => {
+    const undoRequests: string[] = []
+    const redoRequests: string[] = []
     page.on('request', (request) => {
-      if (
-        request.method() === 'PATCH'
-        && /\/api\/v1\/data-documents\/1\/tables\/11\/records\/1001$/.test(request.url())
-      ) {
-        patches.push(request.postDataJSON() as { values?: Record<string, unknown> })
-      }
+      if (request.method() !== 'POST') return
+      const path = new URL(request.url()).pathname
+      if (path === '/api/v1/data-documents/1/undo') undoRequests.push(path)
+      if (path === '/api/v1/data-documents/1/redo') redoRequests.push(path)
     })
 
     await mockKitableDesktopBridge(page)
@@ -449,25 +448,70 @@ test.describe('kitable editor — toolbar interactions', () => {
 
     const gridStage = page.locator('.data-inline-grid-canvas [data-t-grid-stage="true"]')
     await gridStage.click({ position: { x: 145, y: 48 } })
-    await gridStage.dblclick({ position: { x: 145, y: 48 } })
-    const editor = page.locator('.data-inline-grid-canvas input.cursor-text')
-    await expect(editor).toBeFocused()
-    await editor.fill('Undoable title')
-    await editor.press('Enter')
-
-    await expect.poll(() => patches.length).toBe(1)
-    expect(patches[0]).toEqual({ values: { title: 'Undoable title' } })
-    await expect(undoButton).toBeEnabled()
-    await page.keyboard.press('Escape')
 
     await page.keyboard.press('Control+z')
-    await expect.poll(() => patches.length).toBe(2)
-    expect(patches[1]).toEqual({ values: { title: 'Phase 2 wrap' } })
-    await expect(redoButton).toBeEnabled()
+    await expect.poll(() => undoRequests.length).toBe(1)
 
     await page.keyboard.press('Control+Shift+z')
-    await expect.poll(() => patches.length).toBe(3)
-    expect(patches[2]).toEqual({ values: { title: 'Undoable title' } })
+    await expect.poll(() => redoRequests.length).toBe(1)
+  })
+
+  test('pastes a 3x3 block (2 existing rows + 1 new row) as a single transact request', async ({ page }) => {
+    const transactBodies: Array<{ ops: unknown[] }> = []
+    page.on('request', (request) => {
+      if (request.method() === 'POST' && /\/api\/v1\/data-documents\/1\/transact$/.test(request.url())) {
+        transactBodies.push(request.postDataJSON())
+      }
+    })
+
+    await mockKitableDesktopBridge(page)
+    await page.goto('/')
+    await waitForKitableEditor(page)
+
+    const gridStage = page.locator('.data-inline-grid-canvas [data-t-grid-stage="true"]')
+    await gridStage.click({ position: { x: 145, y: 48 } })
+
+    const tsv = ['a1\tb1\t2026-01-01', 'a2\tb2\t2026-01-02', 'a3\tb3\t2026-01-03'].join('\n')
+    await page.evaluate((text) => {
+      const clipboardData = new DataTransfer()
+      clipboardData.setData('text/plain', text)
+      window.dispatchEvent(new ClipboardEvent('paste', { clipboardData, bubbles: true, cancelable: true }))
+    }, tsv)
+
+    await expect.poll(() => transactBodies.length).toBe(1)
+    const ops = transactBodies[0].ops as Array<{ op: string }>
+    expect(ops.map((op) => op.op)).toEqual(['cells.set', 'records.create'])
+  })
+
+  test('dragging a row to a new position sends a single records.move transact request', async ({ page }) => {
+    const transactBodies: Array<{ ops: unknown[] }> = []
+    page.on('request', (request) => {
+      if (request.method() === 'POST' && /\/api\/v1\/data-documents\/1\/transact$/.test(request.url())) {
+        transactBodies.push(request.postDataJSON())
+      }
+    })
+
+    await mockKitableDesktopBridge(page)
+    await page.goto('/')
+    await waitForKitableEditor(page)
+
+    const gridStage = page.locator('.data-inline-grid-canvas [data-t-grid-stage="true"]')
+    const box = (await gridStage.boundingBox())!
+
+    // Drag the second row's drag handle (row-header column, ~x=12) up onto
+    // the first row (row0 center y=48, row1 center y=80; see rowControl.ts).
+    await page.mouse.move(box.x + 12, box.y + 80)
+    await page.mouse.down()
+    await page.mouse.move(box.x + 12, box.y + 48, { steps: 8 })
+    await page.mouse.up()
+
+    await expect.poll(() => transactBodies.length).toBe(1)
+    expect(transactBodies[0].ops).toEqual([{
+      op: 'records.move',
+      tableId: 11,
+      rowKeys: ['r_two'],
+      before: 'r_one',
+    }])
   })
 
   test('keeps active table controls readable in dark mode', async ({ page }) => {
@@ -683,5 +727,45 @@ test.describe('kitable editor — table/changed bridge event', () => {
     expect(body).toContain('"method":"table/changed"')
     expect(body).toContain('"documentId":"1"')
     expect(body).toContain('"origin":"agent:turn-1"')
+  })
+
+  test('an injected table/changed event updates the open grid without a reload', async ({ page }) => {
+    await page.addInitScript(() => {
+      const stateWindow = window as typeof window & Record<string, unknown>
+      const textDraws: string[] = []
+      stateWindow.__kitionTextDraws = textDraws
+      const originalFillText = CanvasRenderingContext2D.prototype.fillText
+      CanvasRenderingContext2D.prototype.fillText = function fillText(text: string, x: number, y: number, maxWidth?: number) {
+        textDraws.push(text)
+        if (maxWidth === undefined) return originalFillText.call(this, text, x, y)
+        return originalFillText.call(this, text, x, y, maxWidth)
+      }
+    })
+    const { records } = await mockKitableDataDocumentApi(page)
+
+    await page.goto('/')
+    await waitForKitableEditor(page)
+    let reloaded = false
+    page.on('load', () => { reloaded = true })
+
+    records[0].values.title = 'Changed remotely'
+    await emitTableChanged(page, {
+      documentId: '1',
+      origin: 'person:session:00000000-0000-0000-0000-000000000000',
+      tables: [],
+      schema: [],
+      views: [],
+      recordsUpserted: [[11, records[0].row_key]],
+      recordsDeleted: [],
+      recordsReordered: [],
+      dashboards: false,
+      documentPath: 'table-test.kitable',
+    })
+
+    await expect.poll(() => page.evaluate(() => {
+      const stateWindow = window as typeof window & Record<string, unknown>
+      return (stateWindow.__kitionTextDraws as string[]).includes('Changed remotely')
+    })).toBe(true)
+    expect(reloaded).toBe(false)
   })
 })
