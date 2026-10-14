@@ -2,7 +2,15 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import * as api from '@/api/dataDocuments'
+const apiMocks = vi.hoisted(() => ({
+  createDataRecord: vi.fn(),
+  transactDataDocument: vi.fn(),
+  updateDataRecord: vi.fn(),
+  uploadDataAttachment: vi.fn(),
+}))
+
+vi.mock('@/api/dataDocuments', () => apiMocks)
+
 import type { DataField, DataRecord } from '@/types/dataDocument'
 
 import { useTableClipboard } from './useTableClipboard'
@@ -70,7 +78,10 @@ function makeClipboardEvent(text: string) {
 
 describe('useTableClipboard paste', () => {
   beforeEach(() => {
-    vi.restoreAllMocks()
+    apiMocks.createDataRecord.mockReset()
+    apiMocks.transactDataDocument.mockReset()
+    apiMocks.updateDataRecord.mockReset()
+    apiMocks.uploadDataAttachment.mockReset()
   })
 
   it('sends one transact call with cells.set and records.create for a 3x3 paste that overflows the table', async () => {
@@ -80,7 +91,7 @@ describe('useTableClipboard paste', () => {
     const r1 = record(100, 'row-1')
     const r2 = record(101, 'row-2')
 
-    const transactSpy = vi.spyOn(api, 'transactDataDocument').mockResolvedValue({ change: {} as any, created: ['row-3'] })
+    apiMocks.transactDataDocument.mockResolvedValue({ change: {} as any, created: ['row-3'] })
     const setRecords = vi.fn()
     const reloadRecords = vi.fn()
 
@@ -106,8 +117,8 @@ describe('useTableClipboard paste', () => {
       await Promise.resolve()
     })
 
-    expect(transactSpy).toHaveBeenCalledTimes(1)
-    expect(transactSpy).toHaveBeenCalledWith(1, [
+    expect(apiMocks.transactDataDocument).toHaveBeenCalledTimes(1)
+    expect(apiMocks.transactDataDocument).toHaveBeenCalledWith(1, [
       {
         op: 'cells.set',
         tableId: 11,

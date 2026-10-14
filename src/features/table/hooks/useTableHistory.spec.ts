@@ -2,8 +2,15 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import * as api from '@/api/dataDocuments'
+const apiMocks = vi.hoisted(() => ({
+  getDataDocumentHistoryState: vi.fn(),
+  undoDataDocument: vi.fn(),
+  redoDataDocument: vi.fn(),
+}))
 
+vi.mock('@/api/dataDocuments', () => apiMocks)
+
+import type { TableChange } from '@/api/dataDocuments'
 import { useTableHistory } from './useTableHistory'
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean })
@@ -49,7 +56,7 @@ afterEach(async () => {
   latest = null
 })
 
-function makeEmptyChange(): api.TableChange {
+function makeEmptyChange(): TableChange {
   return {
     documentId: '1',
     origin: 'person:session:abc',
@@ -65,25 +72,27 @@ function makeEmptyChange(): api.TableChange {
 
 describe('useTableHistory', () => {
   beforeEach(() => {
-    vi.restoreAllMocks()
+    apiMocks.getDataDocumentHistoryState.mockReset()
+    apiMocks.undoDataDocument.mockReset()
+    apiMocks.redoDataDocument.mockReset()
   })
 
   it('loads the enabled state for the document on mount', async () => {
-    vi.spyOn(api, 'getDataDocumentHistoryState').mockResolvedValue({ canUndo: true, canRedo: false })
+    apiMocks.getDataDocumentHistoryState.mockResolvedValue({ canUndo: true, canRedo: false })
 
     await mountHistory({ documentId: 1 })
 
-    expect(api.getDataDocumentHistoryState).toHaveBeenCalledWith(1)
+    expect(apiMocks.getDataDocumentHistoryState).toHaveBeenCalledWith(1)
     expect(latest?.canUndo).toBe(true)
     expect(latest?.canRedo).toBe(false)
   })
 
   it('undo calls the server, applies the change, and refreshes the enabled state', async () => {
-    vi.spyOn(api, 'getDataDocumentHistoryState')
+    apiMocks.getDataDocumentHistoryState
       .mockResolvedValueOnce({ canUndo: true, canRedo: false })
       .mockResolvedValueOnce({ canUndo: false, canRedo: true })
     const change = { ...makeEmptyChange(), recordsUpserted: [[11, 'r1']] as Array<[number, string]> }
-    const undoSpy = vi.spyOn(api, 'undoDataDocument').mockResolvedValue({ done: true, change })
+    apiMocks.undoDataDocument.mockResolvedValue({ done: true, change })
     const onApplyChange = vi.fn().mockResolvedValue(undefined)
 
     await mountHistory({ documentId: 1, onApplyChange })
@@ -92,7 +101,7 @@ describe('useTableHistory', () => {
       await latest!.undo()
     })
 
-    expect(undoSpy).toHaveBeenCalledWith(1)
+    expect(apiMocks.undoDataDocument).toHaveBeenCalledWith(1)
     expect(onApplyChange).toHaveBeenCalledWith(change)
     expect(latest?.canUndo).toBe(false)
     expect(latest?.canRedo).toBe(true)
@@ -100,8 +109,8 @@ describe('useTableHistory', () => {
   })
 
   it('redo calls the server and skips applying the change when done is false', async () => {
-    vi.spyOn(api, 'getDataDocumentHistoryState').mockResolvedValue({ canUndo: false, canRedo: false })
-    const redoSpy = vi.spyOn(api, 'redoDataDocument').mockResolvedValue({ done: false, change: makeEmptyChange() })
+    apiMocks.getDataDocumentHistoryState.mockResolvedValue({ canUndo: false, canRedo: false })
+    apiMocks.redoDataDocument.mockResolvedValue({ done: false, change: makeEmptyChange() })
     const onApplyChange = vi.fn()
 
     await mountHistory({ documentId: 1, onApplyChange })
@@ -111,15 +120,12 @@ describe('useTableHistory', () => {
       result = await latest!.redo()
     })
 
-    expect(redoSpy).toHaveBeenCalledWith(1)
+    expect(apiMocks.redoDataDocument).toHaveBeenCalledWith(1)
     expect(onApplyChange).not.toHaveBeenCalled()
     expect(result).toBe(false)
   })
 
   it('does nothing when there is no document id', async () => {
-    const undoSpy = vi.spyOn(api, 'undoDataDocument')
-    vi.spyOn(api, 'getDataDocumentHistoryState')
-
     await mountHistory({ documentId: null })
 
     let result: boolean | undefined
@@ -128,11 +134,11 @@ describe('useTableHistory', () => {
     })
 
     expect(result).toBe(false)
-    expect(undoSpy).not.toHaveBeenCalled()
+    expect(apiMocks.undoDataDocument).not.toHaveBeenCalled()
   })
 
   it('resets the enabled state when the document id changes to null', async () => {
-    vi.spyOn(api, 'getDataDocumentHistoryState').mockResolvedValue({ canUndo: true, canRedo: true })
+    apiMocks.getDataDocumentHistoryState.mockResolvedValue({ canUndo: true, canRedo: true })
     await mountHistory({ documentId: 1 })
     expect(latest?.canUndo).toBe(true)
 

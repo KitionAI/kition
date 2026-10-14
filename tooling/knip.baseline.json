@@ -340,7 +340,6 @@
   "types src/features/table/filter/index.ts FilterOperator",
   "types src/features/table/filter/index.ts FilterValue",
   "types src/features/table/grid/Grid.tsx IGridExternalProps",
-  "types src/features/table/grid/interface.ts ICellRange",
   "types src/features/table/grid/interface.ts IColumnRange",
   "types src/features/table/grid/interface.ts IColumnStatistic",
   "types src/features/table/grid/interface.ts IGroupAddButtonPoint",
