@@ -118,6 +118,24 @@ impl Bridge {
             .is_empty()
     }
 
+    /// Sends `method` with `params` as a notification (no reply expected) to every connected
+    /// renderer window, such as `table/changed`. A window whose stream has gone away silently
+    /// drops the message; it reconnects and resyncs on its own.
+    pub fn broadcast(&self, method: &str, params: Value) {
+        let sessions: Vec<Arc<Session>> = self
+            .sessions
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .values()
+            .cloned()
+            .collect();
+        for session in sessions {
+            let _ = session
+                .tx
+                .send(json!({ "jsonrpc": "2.0", "method": method, "params": params }));
+        }
+    }
+
     fn session(&self, id: u64) -> Option<Arc<Session>> {
         self.sessions
             .lock()
@@ -426,5 +444,30 @@ mod tests {
             bridge.last_change("/a.designcraft"),
             Some((7, "agent".to_owned()))
         );
+    }
+
+    #[tokio::test]
+    async fn broadcast_reaches_every_connected_window_as_a_notification() {
+        let bridge = Arc::new(Bridge::default());
+        let (first, mut first_rx) = bridge.connect();
+        let (second, mut second_rx) = bridge.connect();
+        // Drain the `bridge.ready` each session gets on connect.
+        let _ = first_rx.recv().await;
+        let _ = second_rx.recv().await;
+
+        bridge.broadcast("table/changed", json!({ "documentId": "1" }));
+
+        let expected = json!({
+            "jsonrpc": "2.0",
+            "method": "table/changed",
+            "params": { "documentId": "1" },
+        });
+        assert_eq!(first_rx.recv().await, Some(expected.clone()));
+        assert_eq!(second_rx.recv().await, Some(expected));
+
+        bridge.disconnect(first);
+        bridge.disconnect(second);
+        // A broadcast with no connected window is a no-op, not an error.
+        bridge.broadcast("table/changed", json!({}));
     }
 }

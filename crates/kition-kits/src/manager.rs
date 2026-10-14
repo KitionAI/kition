@@ -495,6 +495,32 @@ impl KitManager {
         &self.inner.bridge
     }
 
+    /// Forwards every `DomainEvent::TableChanged` on `events` to the bridge stream as a
+    /// `table/changed` notification, for the life of the process (the task ends when `events`
+    /// is dropped and every sender with it). `kition-datadoc` publishes the event; this is how
+    /// it reaches the renderer windows that `useTableLiveChanges` (`src/features/table/hooks`)
+    /// subscribes from.
+    pub fn forward_table_changes(&self, events: kition_core::events::EventBus) {
+        let bridge = self.inner.bridge.clone();
+        // Subscribed before spawning, so a `publish` right after this call is never missed
+        // waiting for the task to start.
+        let mut events = events.subscribe();
+        tokio::spawn(async move {
+            loop {
+                match events.recv().await {
+                    Ok(kition_core::events::DomainEvent::TableChanged(payload)) => {
+                        bridge.broadcast("table/changed", payload);
+                    }
+                    Ok(_) => {}
+                    Err(tokio::sync::broadcast::error::RecvError::Lagged(skipped)) => {
+                        tracing::warn!(skipped, "table/changed forwarder fell behind");
+                    }
+                    Err(tokio::sync::broadcast::error::RecvError::Closed) => return,
+                }
+            }
+        });
+    }
+
     pub fn statuses(&self) -> Vec<KitStatus> {
         let host = crate::host::current();
         self.inner
@@ -1157,5 +1183,28 @@ mod tests {
             "s3::art/cover.psd"
         );
         assert_eq!(split_document_id("sx::a"), (Target::Headless, "sx::a"));
+    }
+
+    #[tokio::test]
+    async fn table_changed_events_reach_a_connected_window() {
+        use kition_core::events::{DomainEvent, EventBus};
+
+        let manager = KitManager::new(None, Vec::new());
+        let (_session, mut rx) = manager.bridge().connect();
+        let _ = rx.recv().await; // bridge.ready
+
+        let events = EventBus::default();
+        manager.forward_table_changes(events.clone());
+        events.publish(DomainEvent::TableChanged(
+            serde_json::json!({ "documentId": "1", "documentPath": "a.kitable" }),
+        ));
+
+        let message = tokio::time::timeout(std::time::Duration::from_secs(1), rx.recv())
+            .await
+            .unwrap_or_else(|_| panic!("the forwarder did not deliver in time"))
+            .unwrap_or_else(|| panic!("the bridge stream closed"));
+        assert_eq!(message["method"], "table/changed");
+        assert_eq!(message["params"]["documentId"], "1");
+        assert_eq!(message["params"]["documentPath"], "a.kitable");
     }
 }
