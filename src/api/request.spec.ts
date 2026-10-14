@@ -118,6 +118,38 @@ describe('request api client', () => {
     await expect(mod.default.get('/v1/x')).rejects.toThrow('Network error, please check your connection')
   })
 
+  it('sends a stable Kition-Session header on data-document requests only', async () => {
+    fetchMock.mockImplementation(() => jsonResponse({ code: 200, data: {} }))
+    const mod = await loadRequestModule()
+    const { windowSessionId, resetWindowSessionIdForTests } = await import('./windowSession')
+    resetWindowSessionIdForTests()
+
+    await mod.default.get('/v1/data-documents/1')
+    await mod.default.post('/v1/data-documents/1/transact', { ops: [] })
+    await mod.default.get('/v1/workflows')
+
+    const [, dataDocInit] = fetchMock.mock.calls[0] as [string, RequestInit]
+    const [, transactInit] = fetchMock.mock.calls[1] as [string, RequestInit]
+    const [, otherInit] = fetchMock.mock.calls[2] as [string, RequestInit]
+    const sessionId = windowSessionId()
+    expect(new Headers(dataDocInit.headers).get('Kition-Session')).toBe(sessionId)
+    expect(new Headers(transactInit.headers).get('Kition-Session')).toBe(sessionId)
+    expect(new Headers(otherInit.headers).get('Kition-Session')).toBeNull()
+  })
+
+  it('sends Kition-Origin only when the caller opts in', async () => {
+    fetchMock.mockImplementation(() => jsonResponse({ code: 200, data: {} }))
+    const mod = await loadRequestModule()
+
+    await mod.default.post('/v1/data-documents/1/tables/1/records', { values: {} }, { origin: 'template' })
+    await mod.default.get('/v1/data-documents/1')
+
+    const [, templatedInit] = fetchMock.mock.calls[0] as [string, RequestInit]
+    const [, plainInit] = fetchMock.mock.calls[1] as [string, RequestInit]
+    expect(new Headers(templatedInit.headers).get('Kition-Origin')).toBe('template')
+    expect(new Headers(plainInit.headers).get('Kition-Origin')).toBeNull()
+  })
+
   it('rethrows the caller abort untouched', async () => {
     const controller = new AbortController()
     fetchMock.mockImplementation((_url: string, init: RequestInit) => new Promise((_resolve, reject) => {

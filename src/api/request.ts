@@ -11,6 +11,7 @@ import {
     pinConsoleCreditsExhausted,
     tryReportConsoleCreditsExhausted,
 } from '@/services/consoleCredits'
+import { windowSessionId } from './windowSession'
 
 const DEFAULT_TIMEOUT_MS = 300000
 
@@ -82,6 +83,12 @@ export interface RequestConfig {
     suppressErrorMessage?: boolean
     /** Request body for methods without a data argument (DELETE). */
     data?: unknown
+    /**
+     * Marks this as a template-seeding request: sent as `Kition-Origin:
+     * template` so the runtime records `template` instead of this window's
+     * session as the change's origin. Reserved for `tableCreation.ts`.
+     */
+    origin?: 'template'
 }
 
 /** What a failed request rejects with: an Error carrying the HTTP details. */
@@ -181,7 +188,14 @@ async function send<T>(method: string, url: string, dataArgument: unknown, confi
     }
     const data = dataArgument ?? config.data
 
-    const headers: Record<string, string> = { 'X-Locale': getCurrentLocale(), ...(config.headers || {}) }
+    const headers: Record<string, string> = {
+        'X-Locale': getCurrentLocale(),
+        // Every data-document request carries this window's session, so the runtime
+        // can tag the change's origin and the caller can ignore its own live events.
+        ...(url.startsWith('/v1/data-documents') ? { 'Kition-Session': windowSessionId() } : {}),
+        ...(config.headers || {}),
+    }
+    if (config.origin) headers['Kition-Origin'] = config.origin
     const isFormData = typeof FormData !== 'undefined' && data instanceof FormData
     if (isFormData) {
         // Fetch must generate the Content-Type boundary to match its multipart body.
