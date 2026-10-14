@@ -202,7 +202,10 @@ pub fn change_json(document_id: &str, origin: &Origin, change: &TableChange) -> 
     let mut value = serde_json::to_value(change)
         .unwrap_or_else(|_| serde_json::Value::Object(serde_json::Map::new()));
     if let serde_json::Value::Object(map) = &mut value {
-        map.insert("documentId".to_owned(), serde_json::Value::from(document_id));
+        map.insert(
+            "documentId".to_owned(),
+            serde_json::Value::from(document_id),
+        );
         map.insert(
             "origin".to_owned(),
             serde_json::Value::from(render_origin(origin)),
