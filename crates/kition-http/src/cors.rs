@@ -18,7 +18,11 @@ const DESKTOP_SHELL_ORIGINS: [&str; 3] = [
 ];
 const ALLOW_METHODS: &str = "GET,POST,PUT,PATCH,DELETE,OPTIONS";
 // `Range` lets kit workers read workspace media in ranges (lent files in docs/kit-sdk.md).
-const ALLOW_HEADERS: &str = "Authorization,Content-Type,X-Request-Id,X-Locale,Range";
+// `Kition-Session` tags a data-document request with this window's session so the
+// runtime can skip the origin's own `table/changed` events; `Kition-Origin` marks
+// template seeding requests that run before any window session exists.
+const ALLOW_HEADERS: &str =
+    "Authorization,Content-Type,X-Request-Id,X-Locale,Range,Kition-Session,Kition-Origin";
 // Kit editors follow a file by its `ETag`, and lent reads check `Content-Range`.
 const EXPOSE_HEADERS: &str = "ETag,Content-Range,Accept-Ranges";
 
@@ -187,6 +191,8 @@ mod tests {
             [EXPOSE_HEADERS]
         );
         assert!(ALLOW_HEADERS.split(',').any(|name| name == "Range"));
+        assert!(ALLOW_HEADERS.split(',').any(|name| name == "Kition-Session"));
+        assert!(ALLOW_HEADERS.split(',').any(|name| name == "Kition-Origin"));
     }
 
     #[tokio::test]
