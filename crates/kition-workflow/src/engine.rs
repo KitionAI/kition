@@ -889,6 +889,9 @@ impl Engine {
                     Err(tokio::sync::broadcast::error::RecvError::Closed) => return,
                 };
                 let (topic, delivery) = match event {
+                    // Workflows trigger off record events only; a table/changed event (from a
+                    // transact/undo/redo route, or an external-change merge) is not one.
+                    DomainEvent::TableChanged(_) => continue,
                     DomainEvent::RecordCreated(e) => (
                         RECORD_CREATED_TOPIC,
                         DeliveryEvent {
