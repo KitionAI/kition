@@ -1,4 +1,5 @@
 import { kitBridgeURL, postKitBridgeMessage } from '@/api/kits'
+import type { TableChangedParams } from '@/api/generated/table-changed'
 
 /**
  * This window's one stream from the runtime, `GET /v1/kits/bridge`: the
@@ -114,3 +115,43 @@ const browserConnection: BridgeConnection = {
 
 /** This window's bridge stream. */
 export const runtimeBridge = createRuntimeBridge(browserConnection)
+
+type TableChangedListener = (params: TableChangedParams) => void
+
+/**
+ * The `table/changed` channel: a notification (no reply) the runtime sends
+ * after a data-document transaction, undo, redo, or dashboard write lands,
+ * including ones this window made itself. Opens the shared stream only while
+ * at least one listener is subscribed. Exported for tests; `onTableChanged`
+ * below is the window's one instance, over the shared bridge stream.
+ */
+export function createTableChangedChannel(transport: BridgeTransport) {
+  const listeners = new Set<TableChangedListener>()
+  let close: (() => void) | null = null
+
+  const channel: BridgeChannel = {
+    handles: (method) => method === 'table/changed',
+    handle(_method, params) {
+      const event = params as unknown as TableChangedParams
+      for (const listener of listeners) listener(event)
+    },
+  }
+
+  function subscribe(listener: TableChangedListener) {
+    listeners.add(listener)
+    close ??= transport.open(channel)
+    return () => {
+      if (!listeners.delete(listener)) return
+      if (listeners.size) return
+      close?.()
+      close = null
+    }
+  }
+
+  return { subscribe }
+}
+
+const tableChangedChannel = createTableChangedChannel(runtimeBridge)
+
+/** Subscribes to this window's `table/changed` notifications; returns the function that unsubscribes. */
+export const onTableChanged = tableChangedChannel.subscribe

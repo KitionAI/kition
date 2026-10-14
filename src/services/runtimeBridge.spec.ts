@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createRuntimeBridge, type BridgeChannel, type BridgeConnection } from './runtimeBridge'
+import { createRuntimeBridge, createTableChangedChannel, type BridgeChannel, type BridgeConnection, type BridgeTransport } from './runtimeBridge'
 
 function fakeConnection() {
   const posted: Array<{ session: number; message: Record<string, unknown> }> = []
@@ -112,5 +112,60 @@ describe('runtimeBridge', () => {
       { session: 9, message: { jsonrpc: '2.0', method: 'documents.open', params: { paths: ['a.md'] } } },
       { session: 9, message: { jsonrpc: '2.0', id: 1, error: { code: -32000, message: 'refused' } } },
     ])
+  })
+})
+
+describe('createTableChangedChannel', () => {
+  function fakeTransport() {
+    const state = { channel: null as BridgeChannel | null, opens: 0, closes: 0 }
+    const transport: BridgeTransport = {
+      open(channel) {
+        state.opens += 1
+        state.channel = channel
+        return () => {
+          state.closes += 1
+          state.channel = null
+        }
+      },
+      notify: () => undefined,
+    }
+    const emit = (params: Record<string, unknown>) => state.channel?.handle('table/changed', params)
+    return { transport, state, emit }
+  }
+
+  it('opens the stream only while at least one listener is subscribed', () => {
+    const { transport, state } = fakeTransport()
+    const channel = createTableChangedChannel(transport)
+    const unsubscribeA = channel.subscribe(() => undefined)
+    const unsubscribeB = channel.subscribe(() => undefined)
+    expect(state.opens).toBe(1)
+    unsubscribeA()
+    unsubscribeA()
+    expect(state.closes).toBe(0)
+    unsubscribeB()
+    expect(state.closes).toBe(1)
+  })
+
+  it('delivers table/changed to every subscriber', () => {
+    const { transport, emit } = fakeTransport()
+    const channel = createTableChangedChannel(transport)
+    const first = vi.fn()
+    const second = vi.fn()
+    channel.subscribe(first)
+    channel.subscribe(second)
+    const params = { documentId: '1', origin: 'agent:t1', documentPath: 'a.kitable' }
+    emit(params)
+    expect(first).toHaveBeenCalledWith(params)
+    expect(second).toHaveBeenCalledWith(params)
+  })
+
+  it('stops delivering to an unsubscribed listener', () => {
+    const { transport, emit } = fakeTransport()
+    const channel = createTableChangedChannel(transport)
+    const listener = vi.fn()
+    const unsubscribe = channel.subscribe(listener)
+    unsubscribe()
+    emit({ documentId: '1' })
+    expect(listener).not.toHaveBeenCalled()
   })
 })
