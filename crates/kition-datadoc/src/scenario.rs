@@ -13,6 +13,7 @@ use axum::routing::post;
 use kition_ai::engine::{Message, RuntimeModel};
 use kition_core::{AppError, AppResult};
 use kition_http::CurrentUser;
+use kition_kdm::Origin;
 use kition_kitable::{FieldSpec, TableSpec, ViewSpec};
 use serde::Deserialize;
 use serde_json::{Map, Value, json};
@@ -487,7 +488,7 @@ async fn run(
             let primary = table.fields.iter().find(|f| f.is_primary).map(|f| f.name.clone());
             let attachment_fields: Vec<String> =
                 table.fields.iter().filter(|f| f.field_type == "attachment").map(|f| f.name.clone()).collect();
-            let mut file = state.open_or_500(&doc)?;
+            let mut file = state.open_or_500_as(&doc, Origin::system("scenario"))?;
             let mut records = Vec::new();
             for upload in &uploads {
                 let asset = state.assets.save_bytes(&upload.data, &upload.name, &upload.mime)?;
@@ -586,7 +587,7 @@ async fn save_cell(
     let (doc, name) = (doc.clone(), name.to_owned());
     state
         .blocking(move |state| {
-            let mut file = state.open_or_500(&doc)?;
+            let mut file = state.open_or_500_as(&doc, Origin::system("scenario"))?;
             let mut values = Map::new();
             values.insert(name, value);
             file.update_record(table_id, record_id, &values, None)

@@ -13,6 +13,7 @@ use axum::routing::{get, post};
 use kition_core::coerce::nullable;
 use kition_core::{AppError, AppResult, Millis, now_millis};
 use kition_http::{CurrentUser, ok};
+use kition_kdm::{Origin, OriginKind};
 use kition_kitable::{Field, FieldPatch, FieldSpec, KitableFile, Record, TableSpec};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
@@ -25,6 +26,11 @@ use crate::tables::{FieldSeed, TableSeed, ViewSeed};
 
 const PREVIEW_TTL_MS: Millis = 30 * 60 * 1000;
 pub const MAX_SOURCE_BYTES: usize = 100 << 20;
+
+/// An import write's origin: not a person or an agent, and (like `system`) not an undo step.
+fn import_origin() -> Origin {
+    Origin::new(OriginKind::Import, "import")
+}
 
 /// A float as JSON, written as an integer when it has no fraction.
 pub fn float_value(value: f64) -> Value {
@@ -626,7 +632,9 @@ fn write_import(
     std::fs::copy(&absolute, &backup)
         .map_err(|_| "failed to prepare import rollback".to_owned())?;
     let outcome = (|| -> Result<ImportResult, String> {
-        let mut file = state.open_document(&doc).map_err(|e| e.to_string())?;
+        let mut file = state
+            .open_document_as(&doc, import_origin())
+            .map_err(|e| e.to_string())?;
         let (table, fields_created, fields_updated) = if request.target.kind == "new_table" {
             let table = file
                 .create_table(&import_table_spec(&request.target.table_title, &fields))
@@ -734,7 +742,7 @@ fn write_new_document(
     };
     let outcome = (|| -> Result<ImportResult, String> {
         let mut file = state
-            .open_document(&doc)
+            .open_document_as(&doc, import_origin())
             .map_err(|_| "failed to open Kitable import target".to_owned())?;
         let tables = file
             .list_tables()

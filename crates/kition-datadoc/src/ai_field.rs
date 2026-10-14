@@ -9,6 +9,7 @@ use base64::Engine as _;
 use kition_ai::engine::{ImageRequest, Message, MessagePart, RuntimeModel, image_prompt};
 use kition_core::{AppError, AppResult, now_millis};
 use kition_http::{CurrentUser, JsonBody, ok};
+use kition_kdm::Origin;
 use kition_kitable::{Field, Record};
 use serde::Deserialize;
 use serde_json::{Map, Value, json};
@@ -788,7 +789,7 @@ async fn fill(
     let name = target.field.name.clone();
     let updated = state
         .blocking(move |state| {
-            let mut file = state.open_or_500(&doc)?;
+            let mut file = state.open_or_500_as(&doc, Origin::system("aifield"))?;
             let mut values = Map::new();
             values.insert(name, output);
             file.update_record(table_id, record_id, &values, None)

@@ -15,6 +15,7 @@ kition-core = { workspace = true }
 kition-emailsync = { workspace = true }
 kition-formsync = { workspace = true }
 kition-http = { workspace = true }
+kition-kdm = { workspace = true }
 kition-kitable = { workspace = true }
 kition-store = { workspace = true }
 kition-workspace = { workspace = true }

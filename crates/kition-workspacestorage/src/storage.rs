@@ -6,6 +6,7 @@ use std::path::Path;
 use std::sync::LazyLock;
 
 use kition_core::{AppError, AppResult};
+use kition_kdm::Origin;
 use kition_kitable::{CellEdit, KitableFile, TableOp};
 use kition_workspace::assets::Asset;
 use kition_workspace::fsutil::write_atomic;
@@ -520,7 +521,12 @@ impl Migration<'_> {
     }
 
     fn migrate_kitable(&mut self, path: &Path) -> AppResult<()> {
+        // A one-off sweep over every `.kitable` file in the workspace, not a per-document
+        // writer with a `DataDocState` to reach the shared manager through: its own handle is
+        // safe (a later handle catches up with whatever this writes), so it keeps one, tagged
+        // with this migration's own origin instead of the handle's `system:unknown` default.
         let mut file = KitableFile::open(path).map_err(AppError::unhandled)?;
+        file.set_origin(Origin::system("storage"));
         let mut record_updates: Vec<TableOp> = Vec::new();
         {
             let conn = file.conn();
