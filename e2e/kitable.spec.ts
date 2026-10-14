@@ -251,17 +251,12 @@ test.describe('kitable editor — toolbar interactions', () => {
     ).toBe('ew-resize')
   })
 
-  test('drags a grid column and persists the reordered field positions', async ({ page }) => {
-    const fieldOrderPatches: Array<{ fieldId: number; order?: number }> = []
+  test('drags a grid column and sends one fields.move transact request', async ({ page }) => {
+    const transactBodies: Array<{ ops: unknown[] }> = []
     page.on('request', (request) => {
-      const match = request.url().match(
-        /\/api\/v1\/data-documents\/1\/tables\/11\/fields\/(\d+)$/,
-      )
-      if (request.method() !== 'PATCH' || !match) return
-      fieldOrderPatches.push({
-        fieldId: Number(match[1]),
-        ...(request.postDataJSON() as { order?: number }),
-      })
+      if (request.method() === 'POST' && /\/api\/v1\/data-documents\/1\/transact$/.test(request.url())) {
+        transactBodies.push(request.postDataJSON())
+      }
     })
 
     await mockKitableDesktopBridge(page)
@@ -278,10 +273,13 @@ test.describe('kitable editor — toolbar interactions', () => {
     await page.mouse.move(box!.x + 85, box!.y + 16, { steps: 8 })
     await page.mouse.up()
 
-    await expect.poll(() => fieldOrderPatches).toEqual([
-      { fieldId: 102, order: 0 },
-      { fieldId: 101, order: 1 },
-    ])
+    await expect.poll(() => transactBodies.length).toBe(1)
+    expect(transactBodies[0].ops).toEqual([{
+      op: 'fields.move',
+      tableId: 11,
+      fieldIds: [102],
+      toIndex: 0,
+    }])
   })
 
   test('text cell editing uses one brand-purple focus border', async ({ page }) => {
@@ -498,11 +496,12 @@ test.describe('kitable editor — toolbar interactions', () => {
     const gridStage = page.locator('.data-inline-grid-canvas [data-t-grid-stage="true"]')
     const box = (await gridStage.boundingBox())!
 
-    // Drag the second row's drag handle (row-header column, ~x=12) up onto
-    // the first row (row0 center y=48, row1 center y=80; see rowControl.ts).
-    await page.mouse.move(box.x + 12, box.y + 80)
+    // Drag the second row's drag handle (row-header column, x~12) up onto
+    // the first row. Measured empirically: the drag-handle icon's hit zone
+    // is centered at y~52 for row0 and y~92 for row1.
+    await page.mouse.move(box.x + 12, box.y + 92)
     await page.mouse.down()
-    await page.mouse.move(box.x + 12, box.y + 48, { steps: 8 })
+    await page.mouse.move(box.x + 12, box.y + 52, { steps: 8 })
     await page.mouse.up()
 
     await expect.poll(() => transactBodies.length).toBe(1)
@@ -742,6 +741,23 @@ test.describe('kitable editor — table/changed bridge event', () => {
       }
     })
     const { records } = await mockKitableDataDocumentApi(page)
+
+    // Pre-registers the kit bridge SSE route (emitTableChanged sets it up
+    // lazily) before the editor's own EventSource makes its first
+    // connection attempt, so that attempt succeeds immediately instead of
+    // waiting out the browser's default reconnect backoff on a 404.
+    await emitTableChanged(page, {
+      documentId: '1',
+      origin: 'agent:warmup',
+      tables: [],
+      schema: [],
+      views: [],
+      recordsUpserted: [],
+      recordsDeleted: [],
+      recordsReordered: [],
+      dashboards: false,
+      documentPath: 'table-test.kitable',
+    })
 
     await page.goto('/')
     await waitForKitableEditor(page)
