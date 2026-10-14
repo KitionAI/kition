@@ -52,6 +52,9 @@ impl KitableFile {
     }
 }
 
+/// A link field's target table and that table's primary field, or `None` when unresolvable.
+type LinkTarget = Option<(i64, Option<Field>)>;
+
 /// Computes derived values from the relational rows of one connection: link chips, lookups and
 /// rollups read the linked records' stored `values_json`. Field and link-target reads are cached
 /// for the deriver's lifetime, so use one per pass during which fields do not change.
@@ -60,7 +63,7 @@ pub(crate) struct Deriver<'c> {
     /// A link field whose target cannot be resolved derives `[]` instead of failing the record.
     lenient: bool,
     fields: RefCell<HashMap<i64, Option<Field>>>,
-    targets: RefCell<HashMap<i64, Option<(i64, Option<Field>)>>>,
+    targets: RefCell<HashMap<i64, LinkTarget>>,
 }
 
 impl<'c> Deriver<'c> {
@@ -114,7 +117,7 @@ impl<'c> Deriver<'c> {
         found
     }
 
-    fn link_target(&self, field_id: i64) -> Option<(i64, Option<Field>)> {
+    fn link_target(&self, field_id: i64) -> LinkTarget {
         if let Some(found) = self.targets.borrow().get(&field_id) {
             return found.clone();
         }

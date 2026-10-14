@@ -1,6 +1,7 @@
 pub mod migrate;
 pub mod model;
 pub mod options;
+pub mod project;
 pub mod read;
 pub mod repair;
 pub mod store;
