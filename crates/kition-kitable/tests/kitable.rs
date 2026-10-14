@@ -902,3 +902,40 @@ fn dashboards_round_trip_through_the_relational_api() {
         Err(KitableError::NotFound)
     ));
 }
+
+#[test]
+fn import_dashboards_moves_legacy_dashboards_in_as_one_transaction() {
+    let dir = temp();
+    let (_, mut file) = create(dir.path(), "import-dashboards.kitable");
+    let table = ok(file.create_table(&TableSpec {
+        fields: vec![primary("name")],
+        ..Default::default()
+    }));
+
+    ok(file.import_dashboards(&[
+        (
+            "legacy-a".into(),
+            "Legacy A".into(),
+            json!({ "source_table_id": table.id, "order": 0 }),
+            values(json!({ "w1": { "id": "w1", "type": "metric" } })),
+        ),
+        (
+            "legacy-b".into(),
+            "Legacy B".into(),
+            json!({ "source_table_id": table.id, "order": 1 }),
+            Map::new(),
+        ),
+    ]));
+
+    let mut listed = ok(file.list_dashboards());
+    listed.sort_by(|a, b| a.id.cmp(&b.id));
+    assert_eq!(listed.len(), 2);
+    assert_eq!(listed[0].id, "legacy-a");
+    assert_eq!(listed[0].name, "Legacy A");
+    assert_eq!(listed[0].config["source_table_id"], json!(table.id));
+    assert_eq!(listed[1].id, "legacy-b");
+    assert!(
+        !file.can_undo(),
+        "import_dashboards keeps the file's own origin"
+    );
+}

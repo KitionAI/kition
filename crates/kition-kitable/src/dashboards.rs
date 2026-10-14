@@ -48,6 +48,19 @@ impl KitableFile {
             .ok_or(KitableError::NotFound)
     }
 
+    /// `config` in the document's form: its relational table (and field, though no current
+    /// caller's config has one) references resolved to KDM object ids.
+    fn dashboard_config_in(&self, config: &Value) -> Result<Value> {
+        options::options_to_kdm(config, |kind, local| match kind {
+            IdKind::Table => any_object(&self.conn, "kition_tables", local)
+                .ok()
+                .flatten(),
+            IdKind::Field => any_object(&self.conn, "kition_fields", local)
+                .ok()
+                .flatten(),
+        })
+    }
+
     /// Creates or updates a dashboard; `id: None` creates one with a new id, matching
     /// [`model::upsert_dashboard`]. `config` and widget values are in the relational API's
     /// shape (see [`Dashboard`]).
@@ -60,14 +73,7 @@ impl KitableFile {
     ) -> Result<Dashboard> {
         self.writable()?;
         let base = self.require_base()?;
-        let kdm_config = options::options_to_kdm(&config, |kind, local| match kind {
-            IdKind::Table => any_object(&self.conn, "kition_tables", local)
-                .ok()
-                .flatten(),
-            IdKind::Field => any_object(&self.conn, "kition_fields", local)
-                .ok()
-                .flatten(),
-        })?;
+        let kdm_config = self.dashboard_config_in(&config)?;
         let object_id = id.map(ObjectId::from_string);
         let (dashboard_id, _) = self.commit(|tx| {
             model::upsert_dashboard(tx, &base, object_id.as_ref(), name, kdm_config, widgets)
@@ -80,6 +86,34 @@ impl KitableFile {
         let base = self.require_base()?;
         let object_id = ObjectId::from_string(id);
         self.commit(|tx| model::delete_dashboard(tx, &base, &object_id))?;
+        Ok(())
+    }
+
+    /// Moves dashboards (typically the workspace-DB's legacy `meta.dashboards`) into the file
+    /// as KDM objects, keeping each one's id, as one transaction.
+    pub fn import_dashboards(
+        &mut self,
+        dashboards: &[(String, String, Value, Map<String, Value>)],
+    ) -> Result<()> {
+        self.writable()?;
+        let base = self.require_base()?;
+        let converted = dashboards
+            .iter()
+            .map(|(id, name, config, widgets)| {
+                Ok((
+                    ObjectId::from_string(id.clone()),
+                    name.clone(),
+                    self.dashboard_config_in(config)?,
+                    widgets.clone(),
+                ))
+            })
+            .collect::<Result<Vec<_>>>()?;
+        self.commit(|tx| {
+            for (id, name, config, widgets) in &converted {
+                model::upsert_dashboard(tx, &base, Some(id), name, config.clone(), widgets)?;
+            }
+            Ok(())
+        })?;
         Ok(())
     }
 }
