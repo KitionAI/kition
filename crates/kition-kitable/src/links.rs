@@ -1,12 +1,14 @@
 //! `link_to_record` fields: links between records and link candidates.
 
-use kition_core::now_millis;
+use kition_kdm::ObjectId;
 use rusqlite::types::Value as SqlValue;
 use rusqlite::{Connection, OptionalExtension, params, params_from_iter};
 use serde::Serialize;
 use serde_json::Value;
 
 use crate::json;
+use crate::kdm::commit::{field_object, record_object};
+use crate::kdm::model;
 use crate::source::{self, Field};
 use crate::{KitableError, KitableFile, Result};
 
@@ -64,8 +66,8 @@ impl KitableFile {
         )
     }
 
-    /// Replaces the field's links from one record with `target_row_keys`, in
-    /// the given order.
+    /// Replaces the field's links from one record with `target_row_keys`. Links already there
+    /// keep their place; new ones follow, in the given order. Answers the links in link order.
     pub fn replace_record_links(
         &mut self,
         from_table_id: i64,
@@ -95,54 +97,43 @@ impl KitableFile {
             ));
         }
 
-        let tx = self.conn.transaction()?;
-        tx.execute(
-            "DELETE FROM kition_record_links WHERE from_table_id = ?1 AND from_record_id = ?2 AND from_field_id = ?3",
-            params![from_table_id, from_record_id, field_id],
-        )?;
+        let mut targets = Vec::with_capacity(cleaned.len());
+        if !cleaned.is_empty() {
+            let mut args = vec![SqlValue::Integer(target_table_id)];
+            args.extend(cleaned.iter().map(|key| SqlValue::Text(key.clone())));
+            let live: Vec<String> = {
+                let mut statement = self.conn.prepare(&format!(
+                    "SELECT row_key FROM kition_records \
+                     WHERE table_id = ?1 AND deleted_at IS NULL AND row_key IN ({})",
+                    placeholders(2, cleaned.len())
+                ))?;
+                statement
+                    .query_map(params_from_iter(args.iter()), |row| row.get(0))?
+                    .collect::<std::result::Result<Vec<_>, _>>()?
+            };
+            for key in &cleaned {
+                if !live.contains(key) {
+                    return Err(KitableError::invalid(format!(
+                        "link target not found: {key}"
+                    )));
+                }
+                targets.push(ObjectId::from_string(key.clone()));
+            }
+        }
+        let from = record_object(&self.conn, from_table_id, from_record_id)?;
+        let field_object = field_object(&self.conn, from_table_id, field_id)?;
+        self.commit(|tx| model::replace_links(tx, &from, &field_object, &targets))?;
         if cleaned.is_empty() {
-            tx.commit()?;
             return Ok(Vec::new());
         }
-        let mut args = vec![SqlValue::Integer(target_table_id)];
-        args.extend(cleaned.iter().map(|key| SqlValue::Text(key.clone())));
-        let rows = {
-            let mut statement = tx.prepare(&format!(
-                "SELECT id, document_id, row_key, values_json FROM kition_records \
-                 WHERE table_id = ?1 AND deleted_at IS NULL AND row_key IN ({})",
-                placeholders(2, cleaned.len())
-            ))?;
-            statement
-                .query_map(params_from_iter(args.iter()), |row| {
-                    Ok((
-                        row.get::<_, i64>(0)?,
-                        row.get::<_, String>(1)?,
-                        row.get::<_, String>(2)?,
-                        row.get::<_, String>(3)?,
-                    ))
-                })?
-                .collect::<std::result::Result<Vec<_>, _>>()?
-        };
-        let now = now_millis();
-        let mut ordered = Vec::with_capacity(cleaned.len());
-        for key in &cleaned {
-            let (id, document_id, row_key, values) = rows
-                .iter()
-                .find(|(_, _, row_key, _)| row_key == key)
-                .ok_or_else(|| KitableError::invalid(format!("link target not found: {key}")))?;
-            tx.execute(
-                "INSERT INTO kition_record_links (document_id, from_table_id, from_record_id, from_field_id, to_table_id, to_record_id, created_at) \
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-                params![document_id, from_table_id, from_record_id, field_id, target_table_id, id, now],
-            )?;
-            ordered.push(LinkRef {
-                row_key: row_key.clone(),
-                display: display(values, primary.as_ref()),
-            });
-        }
-        tx.commit()?;
-        self.recompute_after_link_change(from_table_id, from_record_id);
-        Ok(ordered)
+        link_refs(
+            &self.conn,
+            from_table_id,
+            from_record_id,
+            field_id,
+            target_table_id,
+            primary.as_ref(),
+        )
     }
 
     pub fn delete_record_links(
@@ -156,21 +147,28 @@ impl KitableFile {
         if cleaned.is_empty() {
             return Ok(());
         }
-        let mut args = vec![
-            SqlValue::Integer(from_table_id),
-            SqlValue::Integer(from_record_id),
-            SqlValue::Integer(field_id),
-        ];
-        args.extend(cleaned.iter().map(|key| SqlValue::Text(key.clone())));
-        self.conn.execute(
-            &format!(
-                "DELETE FROM kition_record_links WHERE from_table_id = ?1 AND from_record_id = ?2 AND from_field_id = ?3 \
-                 AND to_record_id IN (SELECT id FROM kition_records WHERE row_key IN ({}))",
-                placeholders(4, cleaned.len())
-            ),
-            params_from_iter(args.iter()),
-        )?;
-        self.recompute_after_link_change(from_table_id, from_record_id);
+        let current: Vec<String> = {
+            let mut statement = self.conn.prepare(
+                "SELECT r.row_key FROM kition_record_links l JOIN kition_records r ON r.id = l.to_record_id \
+                 WHERE l.from_table_id = ?1 AND l.from_record_id = ?2 AND l.from_field_id = ?3 ORDER BY l.id ASC",
+            )?;
+            statement
+                .query_map(params![from_table_id, from_record_id, field_id], |row| {
+                    row.get(0)
+                })?
+                .collect::<std::result::Result<Vec<_>, _>>()?
+        };
+        let kept: Vec<ObjectId> = current
+            .iter()
+            .filter(|key| !cleaned.contains(key))
+            .map(|key| ObjectId::from_string(key.clone()))
+            .collect();
+        if kept.len() == current.len() {
+            return Ok(());
+        }
+        let from = record_object(&self.conn, from_table_id, from_record_id)?;
+        let field_object = field_object(&self.conn, from_table_id, field_id)?;
+        self.commit(|tx| model::replace_links(tx, &from, &field_object, &kept))?;
         Ok(())
     }
 

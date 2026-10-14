@@ -1,5 +1,7 @@
+pub mod commit;
 pub mod migrate;
 pub mod model;
+pub mod ops;
 pub mod options;
 pub mod project;
 pub mod read;

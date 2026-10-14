@@ -172,7 +172,8 @@ fn migrates_legacy_text_timestamps_to_v3() {
     }
     let file = ok(KitableFile::open(&path));
     let info = ok(file.info());
-    assert_eq!(info.schema_version, 3);
+    // Opening also adds the KDM replica (schema 4) after the rebuild into schema 3.
+    assert_eq!(info.schema_version, SCHEMA_VERSION);
     assert_eq!(info.created_at, 1_791_518_226_334);
     assert_eq!(info.title, "Old");
     let (created, deleted): (i64, i64) = ok(file
@@ -281,7 +282,9 @@ fn record_crud_validation_and_history() {
     ));
     assert_eq!(updated.values["status"], "done");
     assert_eq!(updated.values["title"], "Write");
-    assert_eq!(updated.order, 5);
+    // Positions follow the record list: `order` moves the record before the first other record
+    // at that position or later, so the only record keeps its place.
+    assert_eq!(updated.order, 1);
     assert!(matches!(
         file.update_record(table.id, record.id, &values(json!({"title": " "})), None),
         Err(KitableError::Invalid(_))

@@ -1,13 +1,18 @@
 //! Tables, fields, views, records, and attachments.
 
 use kition_core::{Millis, now_millis};
-use rusqlite::types::Value as SqlValue;
-use rusqlite::{Connection, OptionalExtension, Row, params, params_from_iter};
+use kition_kdm::ObjectId;
+use rusqlite::{Connection, OptionalExtension, Row, params};
 use serde::Serialize;
 use serde_json::{Map, Value};
 
-use crate::history::{HistoryAction, HistoryWrite};
 use crate::json::{self, encode_default, fallback};
+use crate::kdm::commit::{
+    any_object, by_field_id, field_id_of, field_object, field_objects_by_name, record_id_of,
+    record_object, table_id_of, table_object, view_id_of, view_object,
+};
+use crate::kdm::model;
+use crate::kdm::options::{self, IdKind};
 use crate::{KitableError, KitableFile, Result};
 
 pub const FIELD_TYPES: [&str; 24] = [
@@ -269,14 +274,6 @@ pub(crate) fn record_from_row(row: &Row<'_>) -> rusqlite::Result<Record> {
     })
 }
 
-fn affected_or_not_found(count: usize) -> Result<()> {
-    if count == 0 {
-        Err(KitableError::NotFound)
-    } else {
-        Ok(())
-    }
-}
-
 impl KitableFile {
     pub fn kind(&self) -> &'static str {
         "kitable"
@@ -336,156 +333,47 @@ impl KitableFile {
     }
 
     pub fn create_table(&mut self, spec: &TableSpec) -> Result<Table> {
-        let document_id = self.document_id()?;
-        let title = fallback(&spec.title, "Table");
-        let name = unique_name(
-            &self.conn,
-            "kition_tables",
-            "document_id",
-            &SqlValue::Text(document_id.clone()),
-            &spec.name,
-            &title,
-        )?;
-        let now = now_millis();
-        let position = next_position(
-            &self.conn,
-            "kition_tables",
-            "document_id",
-            &SqlValue::Text(document_id.clone()),
-        )?;
-        let meta_json = encode_default(&spec.meta, "{}")?;
-
-        let tx = self.conn.transaction()?;
-        tx.execute(
-            "INSERT INTO kition_tables (document_id, name, title, description, position, meta_json, created_at, updated_at) \
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7)",
-            params![document_id, name, title, spec.description.trim(), position, meta_json, now],
-        )?;
-        let table_id = tx.last_insert_rowid();
-        let default_fields = [FieldSpec {
-            title: "Title".to_owned(),
-            field_type: "text".to_owned(),
-            primary: true,
-            required: true,
-            ..FieldSpec::default()
-        }];
-        let fields: &[FieldSpec] = if spec.fields.is_empty() {
-            &default_fields
-        } else {
-            &spec.fields
+        let base = self.require_base()?;
+        let spec = TableSpec {
+            fields: spec
+                .fields
+                .iter()
+                .map(|field| self.field_spec_in(field))
+                .collect::<Result<Vec<_>>>()?,
+            ..spec.clone()
         };
-        let mut primary_field_id = None;
-        for field_spec in fields {
-            let field = create_field_tx(&tx, &document_id, table_id, field_spec)?;
-            if field.is_primary {
-                primary_field_id = Some(field.id);
-            }
-        }
-        let primary_field_id = match primary_field_id {
-            Some(id) => id,
-            None => {
-                let id: i64 = tx.query_row(
-                    "SELECT id FROM kition_fields WHERE table_id = ?1 AND deleted_at IS NULL ORDER BY position ASC, id ASC LIMIT 1",
-                    [table_id],
-                    |row| row.get(0),
-                )?;
-                tx.execute(
-                    "UPDATE kition_fields SET is_primary = 1 WHERE id = ?1",
-                    [id],
-                )?;
-                id
-            }
-        };
-        tx.execute(
-            "UPDATE kition_tables SET primary_field_id = ?1, updated_at = ?2 WHERE id = ?3",
-            params![primary_field_id, now, table_id],
-        )?;
-        let default_views = [ViewSpec {
-            title: "All".to_owned(),
-            view_type: "grid".to_owned(),
-            config: Value::Null,
-        }];
-        let views: &[ViewSpec] = if spec.views.is_empty() {
-            &default_views
-        } else {
-            &spec.views
-        };
-        for view_spec in views {
-            create_view_tx(&tx, &document_id, table_id, view_spec)?;
-        }
-        tx.commit()?;
+        let (ids, _) = self.commit(|tx| model::create_table(tx, &base, &spec, None))?;
+        let table_id = table_id_of(&self.conn, &ids.table)?;
         self.get_table(table_id)
     }
 
     pub fn update_table(&mut self, table_id: i64, patch: &TablePatch) -> Result<Table> {
-        let table = self.get_table(table_id)?;
-        let title = match patch.title.as_deref().map(str::trim) {
-            Some(title) if !title.is_empty() => title.to_owned(),
-            _ => table.title.clone(),
+        let table = table_object(&self.conn, table_id)?;
+        let primary = match patch.primary_field_id {
+            Some(field_id) => Some(field_object(&self.conn, table_id, field_id)?),
+            None => None,
         };
-        let description = patch
-            .description
-            .clone()
-            .unwrap_or_else(|| table.description.clone());
-        let meta_json = match &patch.meta {
-            Some(meta) => encode_default(meta, "{}")?,
-            None => serde_json::to_string(&table.meta)?,
+        let patch = TablePatch {
+            primary_field_id: None,
+            ..patch.clone()
         };
-        let mut primary_field_id = table.primary_field_id;
-        if let Some(requested) = patch.primary_field_id {
-            if !table.fields.iter().any(|field| field.id == requested) {
-                return Err(KitableError::NotFound);
-            }
-            primary_field_id = Some(requested);
-        }
-        let now = now_millis();
-        let tx = self.conn.transaction()?;
-        if let Some(primary) = primary_field_id {
-            tx.execute(
-                "UPDATE kition_fields SET is_primary = CASE WHEN id = ?1 THEN 1 ELSE 0 END WHERE table_id = ?2",
-                params![primary, table_id],
-            )?;
-        }
-        let count = tx.execute(
-            "UPDATE kition_tables SET title = ?1, description = ?2, primary_field_id = ?3, meta_json = ?4, updated_at = ?5 \
-             WHERE id = ?6 AND deleted_at IS NULL",
-            params![title, description, primary_field_id, meta_json, now, table_id],
-        )?;
-        affected_or_not_found(count)?;
-        tx.commit()?;
+        self.commit(|tx| model::update_table(tx, &table, &patch, primary.as_ref()))?;
         self.get_table(table_id)
     }
 
     pub fn delete_table(&mut self, table_id: i64) -> Result<()> {
-        let now = now_millis();
-        let tx = self.conn.transaction()?;
-        let count = tx.execute(
-            "UPDATE kition_tables SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2 AND deleted_at IS NULL",
-            params![now, table_id],
-        )?;
-        affected_or_not_found(count)?;
-        for table in ["kition_fields", "kition_views", "kition_records"] {
-            tx.execute(
-                &format!("UPDATE {table} SET deleted_at = ?1, updated_at = ?1 WHERE table_id = ?2 AND deleted_at IS NULL"),
-                params![now, table_id],
-            )?;
-        }
-        tx.commit()?;
+        let base = self.require_base()?;
+        let table = table_object(&self.conn, table_id)?;
+        self.commit(|tx| model::delete_table(tx, &base, &table))?;
         Ok(())
     }
 
     pub fn create_field(&mut self, table_id: i64, spec: &FieldSpec) -> Result<Field> {
-        let table = self.get_table(table_id)?;
-        let tx = self.conn.transaction()?;
-        let field = create_field_tx(&tx, &table.document_id, table_id, spec)?;
-        if field.is_primary {
-            tx.execute(
-                "UPDATE kition_tables SET primary_field_id = ?1, updated_at = ?2 WHERE id = ?3",
-                params![field.id, field.updated_at, table_id],
-            )?;
-        }
-        tx.commit()?;
-        Ok(field)
+        let table = table_object(&self.conn, table_id)?;
+        let spec = self.field_spec_in(spec)?;
+        let (field, _) = self.commit(|tx| model::create_field(tx, &table, &spec))?;
+        let field_id = field_id_of(&self.conn, &field)?;
+        self.get_field(table_id, field_id)
     }
 
     /// Copies a field's settings into a new non-primary field placed right
@@ -503,7 +391,7 @@ impl KitableFile {
             formula: source.formula.clone(),
             ai_prompt: source.ai_prompt.clone(),
             meta: Value::Object(source.meta.clone()),
-            order: Some(source.order + 1),
+            order: Some(self.field_index(table_id, field_id)? + 2),
         };
         self.create_field(table_id, &spec)
     }
@@ -514,156 +402,80 @@ impl KitableFile {
         field_id: i64,
         patch: &FieldPatch,
     ) -> Result<Field> {
-        let field = self.get_field(table_id, field_id)?;
-        let title = match patch.title.as_deref().map(str::trim) {
-            Some(title) if !title.is_empty() => title.to_owned(),
-            _ => field.title.clone(),
+        let field = field_object(&self.conn, table_id, field_id)?;
+        let patch = FieldPatch {
+            options: match &patch.options {
+                Some(options) => Some(options_in(&self.conn, options)?),
+                None => None,
+            },
+            ..patch.clone()
         };
-        let mut field_type = field.field_type.clone();
-        if let Some(requested) = patch
-            .field_type
-            .as_deref()
-            .map(str::trim)
-            .filter(|t| !t.is_empty())
-        {
-            if !FIELD_TYPES.contains(&requested) {
-                return Err(KitableError::invalid(format!(
-                    "unsupported field type {requested:?}"
-                )));
-            }
-            field_type = requested.to_owned();
-        }
-        let required = patch.required.unwrap_or(field.required);
-        let mut readonly = patch.readonly.unwrap_or(field.readonly);
-        if field_type == "formula" || field_type == "ai" {
-            readonly = true;
-        }
-        let is_primary = patch.is_primary.unwrap_or(field.is_primary);
-        let options_json = match &patch.options {
-            Some(options) => encode_default(options, "{}")?,
-            None => serde_json::to_string(&field.options)?,
-        };
-        let formula = patch
-            .formula
-            .clone()
-            .unwrap_or_else(|| field.formula.clone());
-        let ai_prompt = patch
-            .ai_prompt
-            .clone()
-            .unwrap_or_else(|| field.ai_prompt.clone());
-        let meta_json = match &patch.meta {
-            Some(meta) => encode_default(meta, "{}")?,
-            None => serde_json::to_string(&field.meta)?,
-        };
-        if field.is_primary && !is_primary {
-            return Err(KitableError::invalid(
-                "primary field cannot be unset directly",
-            ));
-        }
-        let now = now_millis();
-        let tx = self.conn.transaction()?;
-        if is_primary {
-            tx.execute(
-                "UPDATE kition_fields SET is_primary = 0 WHERE table_id = ?1",
-                [table_id],
-            )?;
-            tx.execute(
-                "UPDATE kition_tables SET primary_field_id = ?1, updated_at = ?2 WHERE id = ?3",
-                params![field_id, now, table_id],
-            )?;
-        }
-        let count = tx.execute(
-            "UPDATE kition_fields SET title = ?1, type = ?2, required = ?3, readonly = ?4, is_primary = ?5, \
-             options_json = ?6, formula = ?7, ai_prompt = ?8, meta_json = ?9, updated_at = ?10 \
-             WHERE id = ?11 AND table_id = ?12 AND deleted_at IS NULL",
-            params![
-                title,
-                field_type,
-                required,
-                readonly,
-                is_primary,
-                options_json,
-                formula,
-                ai_prompt,
-                meta_json,
-                now,
-                field_id,
-                table_id
-            ],
-        )?;
-        affected_or_not_found(count)?;
-        tx.commit()?;
+        self.commit(|tx| model::update_field(tx, &field, &patch))?;
         self.get_field(table_id, field_id)
     }
 
     pub fn delete_field(&mut self, table_id: i64, field_id: i64) -> Result<()> {
-        let field = self.get_field(table_id, field_id)?;
-        if field.is_primary {
-            return Err(KitableError::invalid("primary field cannot be deleted"));
-        }
-        let now = now_millis();
-        let count = self.conn.execute(
-            "UPDATE kition_fields SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2 AND table_id = ?3 AND deleted_at IS NULL",
-            params![now, field_id, table_id],
-        )?;
-        affected_or_not_found(count)
+        let table = table_object(&self.conn, table_id)?;
+        let field = field_object(&self.conn, table_id, field_id)?;
+        self.commit(|tx| model::delete_field(tx, &table, &field))?;
+        Ok(())
     }
 
     pub fn create_view(&mut self, table_id: i64, spec: &ViewSpec) -> Result<View> {
-        let table = self.get_table(table_id)?;
-        let tx = self.conn.transaction()?;
-        let view = create_view_tx(&tx, &table.document_id, table_id, spec)?;
-        tx.commit()?;
-        Ok(view)
+        let table = table_object(&self.conn, table_id)?;
+        let (view, _) = self.commit(|tx| model::create_view(tx, &table, spec))?;
+        let view_id = view_id_of(&self.conn, &view)?;
+        self.get_view(table_id, view_id)
     }
 
+    /// Patches a view. A new `config` replaces the old one, except that the sorts and groups
+    /// written by [`KitableFile::replace_view_sorts`] and [`KitableFile::replace_view_groups`]
+    /// are kept when the new config does not name them.
     pub fn update_view(&mut self, table_id: i64, view_id: i64, patch: &ViewPatch) -> Result<View> {
-        let view = self.get_view(table_id, view_id)?;
-        let title = match patch.title.as_deref().map(str::trim) {
-            Some(title) if !title.is_empty() => title.to_owned(),
-            _ => view.title.clone(),
+        let view = view_object(&self.conn, table_id, view_id)?;
+        let current = self.get_view(table_id, view_id)?;
+        let config = match &patch.config {
+            Some(config) => Some(crate::view_config::keep_orderings(&current.config, config)?),
+            None => None,
         };
-        let mut view_type = view.view_type.clone();
-        if let Some(requested) = patch
-            .view_type
-            .as_deref()
-            .map(str::trim)
-            .filter(|t| !t.is_empty())
-        {
-            if !VIEW_TYPES.contains(&requested) {
-                return Err(KitableError::invalid(format!(
-                    "unsupported view type {requested:?}"
-                )));
-            }
-            view_type = requested.to_owned();
-        }
-        let config_json = match &patch.config {
-            Some(config) => encode_default(config, "{}")?,
-            None => serde_json::to_string(&view.config)?,
+        let patch = ViewPatch {
+            config,
+            ..patch.clone()
         };
-        let count = self.conn.execute(
-            "UPDATE kition_views SET title = ?1, type = ?2, config_json = ?3, updated_at = ?4 \
-             WHERE id = ?5 AND table_id = ?6 AND deleted_at IS NULL",
-            params![
-                title,
-                view_type,
-                config_json,
-                now_millis(),
-                view_id,
-                table_id
-            ],
-        )?;
-        affected_or_not_found(count)?;
+        self.commit(|tx| model::update_view(tx, &view, &patch))?;
         self.get_view(table_id, view_id)
     }
 
     pub fn delete_view(&mut self, table_id: i64, view_id: i64) -> Result<()> {
-        let now = now_millis();
-        let count = self.conn.execute(
-            "UPDATE kition_views SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2 AND table_id = ?3 AND deleted_at IS NULL",
-            params![now, view_id, table_id],
-        )?;
-        affected_or_not_found(count)
+        let table = table_object(&self.conn, table_id)?;
+        let view = view_object(&self.conn, table_id, view_id)?;
+        self.commit(|tx| model::delete_view(tx, &table, &view))?;
+        Ok(())
+    }
+
+    /// The document's base, or [`KitableError::Invalid`] for a replica without one.
+    pub(crate) fn require_base(&self) -> Result<ObjectId> {
+        self.base
+            .clone()
+            .ok_or_else(|| KitableError::invalid("the table document has no base"))
+    }
+
+    /// A field spec with its options in the document's form (object ids).
+    fn field_spec_in(&self, spec: &FieldSpec) -> Result<FieldSpec> {
+        Ok(FieldSpec {
+            options: options_in(&self.conn, &spec.options)?,
+            ..spec.clone()
+        })
+    }
+
+    /// The 0-based index of a live field among its table's live fields, in order.
+    fn field_index(&self, table_id: i64, field_id: i64) -> Result<i64> {
+        let fields = self.list_fields(table_id)?;
+        let index = fields
+            .iter()
+            .position(|field| field.id == field_id)
+            .ok_or(KitableError::NotFound)?;
+        Ok(i64::try_from(index).unwrap_or(i64::MAX))
     }
 
     pub fn list_records(&self, table_id: i64) -> Result<Vec<Record>> {
@@ -713,35 +525,20 @@ impl KitableFile {
     pub fn create_record(&mut self, table_id: i64, values: &Map<String, Value>) -> Result<Record> {
         let table = self.get_table(table_id)?;
         let clean = validate_record_values(&table.fields, values)?;
-        let values_json = serde_json::to_string(&clean)?;
-        let position = next_position(
-            &self.conn,
-            "kition_records",
-            "table_id",
-            &SqlValue::Integer(table_id),
-        )?;
-        let now = now_millis();
-        self.conn.execute(
-            "INSERT INTO kition_records (document_id, table_id, row_key, position, values_json, created_at, updated_at) \
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6)",
-            params![table.document_id, table_id, uuid::Uuid::new_v4().to_string(), position, values_json, now],
-        )?;
-        let record_id = self.conn.last_insert_rowid();
-        let _ = self.write_record_history(&HistoryWrite {
-            document_id: &table.document_id,
-            table_id,
-            record_id,
-            field_id: None,
-            action: HistoryAction::Create,
-            before: Value::Null,
-            after: Value::Object(clean.clone()),
-            actor: "",
-        });
-        let _ = self.apply_recomputed_values(&table, record_id, &clean);
+        let table_object = table_object(&self.conn, table_id)?;
+        let cells = by_field_id(&field_objects_by_name(&self.conn, table_id)?, &clean);
+        let created_by = self.actor();
+        let (ids, _) = self.commit(|tx| {
+            model::create_records(tx, &table_object, None, &[cells], now_millis(), &created_by)
+        })?;
+        let key = ids.first().ok_or(KitableError::NotFound)?;
+        let record_id = record_id_of(&self.conn, key.as_str())?;
         self.get_record(table_id, record_id)
     }
 
-    /// Merges `values` over the record's current values; `order > 0` moves it.
+    /// Writes the given cells of a record (other cells are left as they are; `null` clears);
+    /// `order > 0` moves the record to just before the first other record at that position or
+    /// later (the end when there is none). Required fields are checked on the merged values.
     pub fn update_record(
         &mut self,
         table_id: i64,
@@ -755,72 +552,52 @@ impl KitableFile {
         for (key, value) in values {
             next.insert(key.clone(), value.clone());
         }
-        let clean = validate_record_values(&table.fields, &next)?;
-        let values_json = serde_json::to_string(&clean)?;
-        let next_order = order.filter(|o| *o > 0).unwrap_or(record.order);
-        self.conn.execute(
-            "UPDATE kition_records SET values_json = ?1, position = ?2, updated_at = ?3 \
-             WHERE id = ?4 AND table_id = ?5 AND deleted_at IS NULL",
-            params![values_json, next_order, now_millis(), record_id, table_id],
-        )?;
-        for change in diff_record_values(&table.fields, &record.values, &clean) {
-            let _ = self.write_record_history(&HistoryWrite {
-                document_id: &table.document_id,
-                table_id,
-                record_id,
-                field_id: Some(change.field_id),
-                action: HistoryAction::Update,
-                before: change.before,
-                after: change.after,
-                actor: "",
-            });
-        }
-        let _ = self.apply_recomputed_values(&table, record_id, &clean);
+        validate_record_values(&table.fields, &next)?;
+        let table_object = table_object(&self.conn, table_id)?;
+        let record_object = ObjectId::from_string(record.row_key.clone());
+        let cells = by_field_id(&field_objects_by_name(&self.conn, table_id)?, values);
+        let moved = match order.filter(|order| *order > 0) {
+            Some(order) => Some(
+                self.conn
+                    .query_row(
+                        "SELECT row_key FROM kition_records WHERE table_id = ?1 AND deleted_at IS NULL \
+                         AND id != ?2 AND position >= ?3 ORDER BY position ASC, id ASC LIMIT 1",
+                        params![table_id, record_id, order],
+                        |row| row.get::<_, String>(0),
+                    )
+                    .optional()?
+                    .map(ObjectId::from_string),
+            ),
+            None => None,
+        };
+        self.commit(|tx| {
+            model::set_cells(tx, &table_object, &record_object, &cells)?;
+            if let Some(before) = &moved {
+                model::move_records(
+                    tx,
+                    &table_object,
+                    std::slice::from_ref(&record_object),
+                    before.as_ref(),
+                )?;
+            }
+            Ok(())
+        })?;
         self.get_record(table_id, record_id)
     }
 
     pub fn delete_record(&mut self, table_id: i64, record_id: i64) -> Result<()> {
-        let record = self.get_record(table_id, record_id);
-        let back_links = self
-            .collect_back_link_sources(record_id)
-            .unwrap_or_default();
-        let now = now_millis();
-        let count = self.conn.execute(
-            "UPDATE kition_records SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2 AND table_id = ?3 AND deleted_at IS NULL",
-            params![now, record_id, table_id],
-        )?;
-        affected_or_not_found(count)?;
-        self.conn.execute(
-            "DELETE FROM kition_record_links WHERE from_record_id = ?1 OR to_record_id = ?1",
-            [record_id],
-        )?;
-        for (source_table, source_record) in back_links {
-            self.recompute_after_link_change(source_table, source_record);
-        }
-        if let Ok(record) = record {
-            let _ = self.write_record_history(&HistoryWrite {
-                document_id: &record.document_id,
-                table_id,
-                record_id,
-                field_id: None,
-                action: HistoryAction::Delete,
-                before: Value::Object(record.values),
-                after: Value::Null,
-                actor: "",
-            });
+        let table = table_object(&self.conn, table_id)?;
+        let record = record_object(&self.conn, table_id, record_id)?;
+        let (deleted, _) =
+            self.commit(|tx| model::delete_records(tx, &table, std::slice::from_ref(&record)))?;
+        if deleted == 0 {
+            return Err(KitableError::NotFound);
         }
         Ok(())
     }
 
-    fn collect_back_link_sources(&self, to_record_id: i64) -> Result<Vec<(i64, i64)>> {
-        let mut statement = self.conn.prepare(
-            "SELECT DISTINCT from_table_id, from_record_id FROM kition_record_links WHERE to_record_id = ?1",
-        )?;
-        Ok(statement
-            .query_map([to_record_id], |row| Ok((row.get(0)?, row.get(1)?)))?
-            .collect::<std::result::Result<Vec<_>, _>>()?)
-    }
-
+    /// Records an attachment. Attachments are file bookkeeping outside the table document (the
+    /// KDM has no attachment objects), so this is a plain SQL write, not a KDM transaction.
     pub fn add_attachment(&self, spec: &AttachmentSpec) -> Result<Attachment> {
         let document_id = match spec.document_id.trim() {
             "" => self.document_id()?,
@@ -885,176 +662,6 @@ pub(crate) fn field_by_id(conn: &Connection, field_id: i64) -> Result<Field> {
     field_in(conn, table_id, field_id)
 }
 
-fn create_field_tx(
-    conn: &Connection,
-    document_id: &str,
-    table_id: i64,
-    spec: &FieldSpec,
-) -> Result<Field> {
-    let field_type = fallback(&spec.field_type, "text");
-    if !FIELD_TYPES.contains(&field_type.as_str()) {
-        return Err(KitableError::invalid(format!(
-            "unsupported field type {field_type:?}"
-        )));
-    }
-    let title = fallback(&spec.title, "Field");
-    let name = unique_name(
-        conn,
-        "kition_fields",
-        "table_id",
-        &SqlValue::Integer(table_id),
-        &spec.name,
-        &title,
-    )?;
-    let position = match spec.order {
-        Some(order) => {
-            let position = order.max(1);
-            conn.execute(
-                "UPDATE kition_fields SET position = position + 1 WHERE table_id = ?1 AND position >= ?2 AND deleted_at IS NULL",
-                params![table_id, position],
-            )?;
-            position
-        }
-        None => next_position(
-            conn,
-            "kition_fields",
-            "table_id",
-            &SqlValue::Integer(table_id),
-        )?,
-    };
-    let options_json = encode_default(&spec.options, "{}")?;
-    let meta_json = encode_default(&spec.meta, "{}")?;
-    let now = now_millis();
-    let readonly = spec.readonly || field_type == "formula" || field_type == "ai";
-    if spec.primary {
-        conn.execute(
-            "UPDATE kition_fields SET is_primary = 0 WHERE table_id = ?1",
-            [table_id],
-        )?;
-    }
-    let formula = spec.formula.trim().to_owned();
-    let ai_prompt = spec.ai_prompt.trim().to_owned();
-    conn.execute(
-        "INSERT INTO kition_fields (document_id, table_id, name, title, type, required, readonly, is_primary, position, \
-         options_json, formula, ai_prompt, meta_json, created_at, updated_at) \
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?14)",
-        params![
-            document_id,
-            table_id,
-            name,
-            title,
-            field_type,
-            spec.required,
-            readonly,
-            spec.primary,
-            position,
-            options_json,
-            formula,
-            ai_prompt,
-            meta_json,
-            now
-        ],
-    )?;
-    Ok(Field {
-        id: conn.last_insert_rowid(),
-        document_id: document_id.to_owned(),
-        table_id,
-        name,
-        title,
-        field_type,
-        required: spec.required,
-        unique: false,
-        readonly,
-        is_primary: spec.primary,
-        order: position,
-        options: json::object(&options_json),
-        formula,
-        ai_prompt,
-        meta: json::object(&meta_json),
-        created_at: now,
-        updated_at: now,
-    })
-}
-
-fn create_view_tx(
-    conn: &Connection,
-    document_id: &str,
-    table_id: i64,
-    spec: &ViewSpec,
-) -> Result<View> {
-    let mut view_type = fallback(&spec.view_type, "grid");
-    if !VIEW_TYPES.contains(&view_type.as_str()) {
-        view_type = "grid".to_owned();
-    }
-    let title = fallback(&spec.title, "All");
-    let position = next_position(
-        conn,
-        "kition_views",
-        "table_id",
-        &SqlValue::Integer(table_id),
-    )?;
-    let config_json = encode_default(&spec.config, "{}")?;
-    let now = now_millis();
-    conn.execute(
-        "INSERT INTO kition_views (document_id, table_id, title, type, position, config_json, created_at, updated_at) \
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7)",
-        params![document_id, table_id, title, view_type, position, config_json, now],
-    )?;
-    Ok(View {
-        id: conn.last_insert_rowid(),
-        document_id: document_id.to_owned(),
-        table_id,
-        title,
-        view_type,
-        order: position,
-        locked: false,
-        config: json::object(&config_json),
-        created_at: now,
-        updated_at: now,
-    })
-}
-
-fn next_position(
-    conn: &Connection,
-    table: &str,
-    scope_column: &str,
-    scope: &SqlValue,
-) -> Result<i64> {
-    let max: i64 = conn.query_row(
-        &format!("SELECT COALESCE(MAX(position), 0) FROM {table} WHERE {scope_column} = ?1"),
-        [scope],
-        |row| row.get(0),
-    )?;
-    Ok(max + 1)
-}
-
-/// `explicit` (or `fallback_title`) as an internal name, suffixed `_2`, `_3`,
-/// ... until no live row in the scope uses it.
-fn unique_name(
-    conn: &Connection,
-    table: &str,
-    scope_column: &str,
-    scope: &SqlValue,
-    explicit: &str,
-    fallback_title: &str,
-) -> Result<String> {
-    let base = json::internal_name(&fallback(explicit, fallback_title));
-    let mut name = base.clone();
-    let mut suffix = 2;
-    loop {
-        let count: i64 = conn.query_row(
-            &format!("SELECT COUNT(*) FROM {table} WHERE {scope_column} = ?1 AND name = ?2 AND deleted_at IS NULL"),
-            params_from_iter([scope.clone(), SqlValue::Text(name.clone())]),
-            |row| row.get(0),
-        )?;
-        if count == 0 {
-            return Ok(name);
-        }
-        name = format!("{base}_{suffix}");
-        suffix += 1;
-    }
-}
-
 /// Drops values for unknown fields and rejects blank required fields.
 pub(crate) fn validate_record_values(
     fields: &[Field],
@@ -1076,42 +683,59 @@ pub(crate) fn validate_record_values(
     Ok(clean)
 }
 
-pub(crate) struct FieldChange {
-    pub field_id: i64,
-    pub before: Value,
-    pub after: Value,
-}
-
-/// Per-field changes between two value maps, in field-name order.
-pub(crate) fn diff_record_values(
-    fields: &[Field],
-    before: &Map<String, Value>,
-    after: &Map<String, Value>,
-) -> Vec<FieldChange> {
-    let mut keys: Vec<&String> = before.keys().chain(after.keys()).collect();
-    keys.sort();
-    keys.dedup();
-    keys.into_iter()
-        .filter_map(|key| {
-            let old = before.get(key).cloned().unwrap_or(Value::Null);
-            let new = after.get(key).cloned().unwrap_or(Value::Null);
-            if json::equal(&old, &new) {
-                return None;
-            }
-            let field = fields.iter().find(|field| &field.name == key)?;
-            Some(FieldChange {
-                field_id: field.id,
-                before: old,
-                after: new,
-            })
-        })
-        .collect()
-}
-
 /// Looks up a live row ID or reports `NotFound`.
 pub(crate) fn exists(conn: &Connection, sql: &str, id: i64) -> Result<()> {
     conn.query_row(sql, [id], |row| row.get::<_, i64>(0))
         .optional()?
         .ok_or(KitableError::NotFound)?;
     Ok(())
+}
+
+/// Options from the relational API in the document's form: integer table and field ids become
+/// object ids. An id naming no row the replica knows becomes `null` (a dangling reference, as a
+/// deleted table or field leaves behind); a value that is no id is [`KitableError::Invalid`].
+pub(crate) fn options_in(conn: &Connection, options: &Value) -> Result<Value> {
+    let Value::Object(map) = options else {
+        return Ok(options.clone());
+    };
+    let mut out = map.clone();
+    for id_key in options::ID_KEYS {
+        let target = match id_key.parent {
+            None => Some(&mut out),
+            Some(parent) => out.get_mut(parent).and_then(Value::as_object_mut),
+        };
+        let Some(target) = target else {
+            continue;
+        };
+        let Some(raw) = target.get(id_key.relational) else {
+            continue;
+        };
+        let Some(id) = options::local_id(raw)? else {
+            continue;
+        };
+        if lookup_object(conn, id_key.kind, id)?.is_none() {
+            target.insert(id_key.relational.to_owned(), Value::Null);
+        }
+    }
+    let resolved: std::cell::RefCell<Option<KitableError>> = std::cell::RefCell::new(None);
+    let value = options::options_to_kdm(&Value::Object(out), |kind, id| {
+        match lookup_object(conn, kind, id) {
+            Ok(found) => found,
+            Err(err) => {
+                resolved.replace(Some(err));
+                None
+            }
+        }
+    });
+    if let Some(err) = resolved.take() {
+        return Err(err);
+    }
+    value
+}
+
+fn lookup_object(conn: &Connection, kind: IdKind, id: i64) -> Result<Option<ObjectId>> {
+    match kind {
+        IdKind::Table => any_object(conn, "kition_tables", id),
+        IdKind::Field => any_object(conn, "kition_fields", id),
+    }
 }

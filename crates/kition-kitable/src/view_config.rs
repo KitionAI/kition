@@ -1,13 +1,147 @@
 //! View configuration: nested filter trees, sorts, groups, and per-view
 //! field layout.
 
+use std::collections::HashMap;
+
 use kition_core::now_millis;
+use kition_kdm::{ObjectId, Origin};
 use rusqlite::{Connection, OptionalExtension, params};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Map, Value, json};
 
-use crate::source::exists;
-use crate::{KitableError, KitableFile, Result};
+use crate::kdm::commit::view_object;
+use crate::kdm::model;
+use crate::source::{ViewPatch, exists};
+use crate::{KitableError, KitableFile, Result, json};
+
+/// The view config keys the filter tree, sorts, and groups are kept under.
+const FILTER_TREE_KEY: &str = "filter_tree";
+const SORTS_KEY: &str = "sorts";
+const GROUPS_KEY: &str = "groups";
+
+fn ordering_key(table: &str) -> &'static str {
+    if table == "kition_view_groups" {
+        GROUPS_KEY
+    } else {
+        SORTS_KEY
+    }
+}
+
+/// A new view config that keeps the sorts and groups of `current` unless it names its own:
+/// the table editor writes whole configs and knows nothing of them.
+pub(crate) fn keep_orderings(current: &Map<String, Value>, config: &Value) -> Result<Value> {
+    let mut parsed = match config {
+        Value::String(raw) if !raw.trim().is_empty() => match serde_json::from_str(raw) {
+            Ok(value) => value,
+            Err(_) => return Ok(config.clone()),
+        },
+        other => other.clone(),
+    };
+    if let Value::Object(map) = &mut parsed {
+        for key in [SORTS_KEY, GROUPS_KEY] {
+            if !map.contains_key(key)
+                && let Some(kept) = current.get(key)
+            {
+                map.insert(key.to_owned(), kept.clone());
+            }
+        }
+    }
+    Ok(parsed)
+}
+
+fn field_names_by_id(conn: &Connection, table_id: i64) -> Result<HashMap<i64, String>> {
+    let mut statement = conn
+        .prepare("SELECT id, name FROM kition_fields WHERE table_id = ?1 AND deleted_at IS NULL")?;
+    let rows = statement
+        .query_map([table_id], |row| Ok((row.get(0)?, row.get(1)?)))?
+        .collect::<std::result::Result<_, _>>()?;
+    Ok(rows)
+}
+
+fn field_ids_by_name(conn: &Connection, table_id: i64) -> Result<HashMap<String, i64>> {
+    Ok(field_names_by_id(conn, table_id)?
+        .into_iter()
+        .map(|(id, name)| (name, id))
+        .collect())
+}
+
+/// A config entry's field: by `field_name` when it names a live field, else its `field_id`.
+fn config_field_id(item: &Value, ids: &HashMap<String, i64>) -> i64 {
+    item.get("field_name")
+        .and_then(Value::as_str)
+        .and_then(|name| ids.get(name).copied())
+        .or_else(|| item.get("field_id").and_then(Value::as_i64))
+        .unwrap_or(0)
+}
+
+/// A filter tree in the table editor's form: `{id, kind: "group", conjunction, children}` and
+/// `{id, kind: "condition", field_name, operator, value}`, plus the field's integer id.
+fn tree_to_config(tree: &FilterTree, names: &HashMap<i64, String>) -> Value {
+    let children: Vec<Value> = tree
+        .children
+        .iter()
+        .filter_map(|child| match (&child.group, &child.condition) {
+            (Some(group), _) => Some(tree_to_config(group, names)),
+            (None, Some(rule)) => Some(json!({
+                "id": uuid::Uuid::new_v4().to_string(),
+                "kind": "condition",
+                "field_name": names.get(&rule.field_id).cloned().unwrap_or_default(),
+                "field_id": rule.field_id,
+                "operator": rule.operator,
+                "value": rule.value,
+            })),
+            (None, None) => None,
+        })
+        .collect();
+    json!({
+        "id": uuid::Uuid::new_v4().to_string(),
+        "kind": "group",
+        "conjunction": normalize_conjunction(&tree.conjunction),
+        "children": children,
+    })
+}
+
+/// The API form of a config's filter tree; `None` when it holds no group.
+fn tree_from_config(value: &Value, ids: &HashMap<String, i64>) -> Option<FilterTree> {
+    if value.get("kind").and_then(Value::as_str) != Some("group") {
+        return None;
+    }
+    let children = value
+        .get("children")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|child| match child.get("kind").and_then(Value::as_str) {
+            Some("group") => tree_from_config(child, ids).map(|group| FilterTreeChild {
+                group: Some(Box::new(group)),
+                condition: None,
+            }),
+            Some("condition") => Some(FilterTreeChild {
+                group: None,
+                condition: Some(FilterRule {
+                    field_id: config_field_id(child, ids),
+                    operator: child
+                        .get("operator")
+                        .and_then(Value::as_str)
+                        .unwrap_or_default()
+                        .to_owned(),
+                    value: child.get("value").cloned().unwrap_or(Value::Null),
+                }),
+            }),
+            _ => None,
+        })
+        .collect();
+    Some(FilterTree {
+        conjunction: normalize_conjunction(
+            value
+                .get("conjunction")
+                .and_then(Value::as_str)
+                .unwrap_or_default(),
+        )
+        .to_owned(),
+        children,
+    })
+}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct FilterTree {
@@ -117,35 +251,6 @@ fn validate_tree(tree: &FilterTree) -> Result<()> {
     Ok(())
 }
 
-fn insert_group(
-    conn: &Connection,
-    view_id: i64,
-    parent: Option<i64>,
-    position: i64,
-    tree: &FilterTree,
-) -> Result<i64> {
-    let now = now_millis();
-    conn.execute(
-        "INSERT INTO kition_filter_groups (view_id, parent_group_id, conjunction, position, created_at, updated_at) \
-         VALUES (?1, ?2, ?3, ?4, ?5, ?5)",
-        params![view_id, parent, normalize_conjunction(&tree.conjunction), position, now],
-    )?;
-    let group_id = conn.last_insert_rowid();
-    for (index, child) in tree.children.iter().enumerate() {
-        let index = i64::try_from(index).unwrap_or(i64::MAX);
-        if let Some(group) = &child.group {
-            insert_group(conn, view_id, Some(group_id), index, group)?;
-        } else if let Some(condition) = &child.condition {
-            conn.execute(
-                "INSERT INTO kition_filter_conditions (view_id, group_id, field_id, operator, value_json, position, created_at, updated_at) \
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7)",
-                params![view_id, group_id, condition.field_id, condition.operator, condition.value.to_string(), index, now],
-            )?;
-        }
-    }
-    Ok(group_id)
-}
-
 impl KitableFile {
     fn assert_view_exists(&self, view_id: i64) -> Result<()> {
         exists(
@@ -163,9 +268,16 @@ impl KitableFile {
         )
     }
 
-    /// The view's filter tree, or `None` when it has no filters.
+    /// The view's filter tree, or `None` when it has no filters: the one in the view's config
+    /// (`filter_tree`, as the table editor writes it), else, for a view whose config never held
+    /// one, the legacy filter tables.
     pub fn load_filter_tree(&self, view_id: i64) -> Result<Option<FilterTree>> {
         self.assert_view_exists(view_id)?;
+        let (table_id, config) = self.view_config(view_id)?;
+        if let Some(tree) = config.get(FILTER_TREE_KEY) {
+            let ids = field_ids_by_name(&self.conn, table_id)?;
+            return Ok(tree_from_config(tree, &ids));
+        }
         let root: Option<(i64, String)> = self
             .conn
             .query_row(
@@ -258,26 +370,17 @@ impl KitableFile {
         })
     }
 
-    /// Replaces the view's filters; `None` clears them.
+    /// Replaces the view's filters; `None` clears them. Written to the view's config
+    /// (`filter_tree`), in the table editor's form (fields by name).
     pub fn save_filter_tree(&mut self, view_id: i64, tree: Option<&FilterTree>) -> Result<()> {
         self.assert_view_exists(view_id)?;
         if let Some(tree) = tree {
             validate_tree(tree)?;
         }
-        let tx = self.conn.transaction()?;
-        tx.execute(
-            "DELETE FROM kition_filter_conditions WHERE view_id = ?1",
-            [view_id],
-        )?;
-        tx.execute(
-            "DELETE FROM kition_filter_groups WHERE view_id = ?1",
-            [view_id],
-        )?;
-        if let Some(tree) = tree {
-            insert_group(&tx, view_id, None, 0, tree)?;
-        }
-        tx.commit()?;
-        Ok(())
+        let (table_id, _) = self.view_config(view_id)?;
+        let names = field_names_by_id(&self.conn, table_id)?;
+        let value = tree.map_or(Value::Null, |tree| tree_to_config(tree, &names));
+        self.set_view_config_key(view_id, FILTER_TREE_KEY, value)
     }
 
     pub fn list_view_sorts(&self, view_id: i64) -> Result<Vec<ViewSort>> {
@@ -290,6 +393,23 @@ impl KitableFile {
 
     fn list_ordering(&self, table: &str, view_id: i64) -> Result<Vec<ViewSort>> {
         self.assert_view_exists(view_id)?;
+        let (table_id, config) = self.view_config(view_id)?;
+        if let Some(items) = config.get(ordering_key(table)) {
+            let ids = field_ids_by_name(&self.conn, table_id)?;
+            return Ok(items
+                .as_array()
+                .into_iter()
+                .flatten()
+                .map(|item| ViewSort {
+                    field_id: config_field_id(item, &ids),
+                    direction: item
+                        .get("direction")
+                        .and_then(Value::as_str)
+                        .unwrap_or("asc")
+                        .to_owned(),
+                })
+                .collect());
+        }
         let mut statement = self.conn.prepare(&format!(
             "SELECT field_id, direction FROM {table} WHERE view_id = ?1 ORDER BY position ASC, id ASC"
         ))?;
@@ -328,22 +448,48 @@ impl KitableFile {
                 )));
             }
         }
-        let tx = self.conn.transaction()?;
-        tx.execute(
-            &format!("DELETE FROM {table} WHERE view_id = ?1"),
+        let (table_id, _) = self.view_config(view_id)?;
+        let names = field_names_by_id(&self.conn, table_id)?;
+        let value = Value::Array(
+            items
+                .iter()
+                .map(|item| {
+                    let mut entry = Map::new();
+                    if let Some(name) = names.get(&item.field_id) {
+                        entry.insert("field_name".into(), Value::String(name.clone()));
+                    }
+                    entry.insert("field_id".into(), Value::from(item.field_id));
+                    entry.insert(
+                        "direction".into(),
+                        Value::String(normalize_direction(&item.direction).to_owned()),
+                    );
+                    Value::Object(entry)
+                })
+                .collect(),
+        );
+        self.set_view_config_key(view_id, ordering_key(table), value)
+    }
+
+    /// The view's table and its config as projected.
+    fn view_config(&self, view_id: i64) -> Result<(i64, Map<String, Value>)> {
+        let (table_id, config): (i64, String) = self.conn.query_row(
+            "SELECT table_id, config_json FROM kition_views WHERE id = ?1 AND deleted_at IS NULL",
             [view_id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
         )?;
-        let now = now_millis();
-        for (index, item) in items.iter().enumerate() {
-            tx.execute(
-                &format!(
-                    "INSERT INTO {table} (view_id, field_id, direction, position, created_at, updated_at) \
-                     VALUES (?1, ?2, ?3, ?4, ?5, ?5)"
-                ),
-                params![view_id, item.field_id, normalize_direction(&item.direction), i64::try_from(index).unwrap_or(0), now],
-            )?;
-        }
-        tx.commit()?;
+        Ok((table_id, json::object(&config)))
+    }
+
+    /// Sets one key of the view's config, in one transaction.
+    fn set_view_config_key(&mut self, view_id: i64, key: &str, value: Value) -> Result<()> {
+        let (table_id, mut config) = self.view_config(view_id)?;
+        config.insert(key.to_owned(), value);
+        let view = view_object(&self.conn, table_id, view_id)?;
+        let patch = ViewPatch {
+            config: Some(Value::Object(config)),
+            ..ViewPatch::default()
+        };
+        self.commit(|tx| model::update_view(tx, &view, &patch))?;
         Ok(())
     }
 
@@ -377,49 +523,60 @@ impl KitableFile {
     ) -> Result<ViewField> {
         self.assert_view_exists(view_id)?;
         self.assert_field_exists(field_id)?;
-        let tx = self.conn.transaction()?;
-        let mut current = ViewField {
-            view_id,
-            field_id,
-            visible: true,
-            width: 180,
-            position: 0,
-            frozen: false,
-        };
-        let existing: Option<(i64, i64, i64, i64)> = tx
+        let (table_id, _) = self.view_config(view_id)?;
+        let view = view_object(&self.conn, table_id, view_id)?;
+        let field: Option<String> = self
+            .conn
             .query_row(
-                "SELECT visible, width, position, frozen FROM kition_view_fields WHERE view_id = ?1 AND field_id = ?2",
-                params![view_id, field_id],
-                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+                "SELECT kdm_id FROM kition_fields WHERE id = ?1 AND deleted_at IS NULL",
+                [field_id],
+                |row| row.get(0),
             )
-            .optional()?;
-        if let Some((visible, width, position, frozen)) = existing {
-            current.visible = visible != 0;
-            current.width = width;
-            current.position = position;
-            current.frozen = frozen != 0;
+            .optional()?
+            .flatten();
+        let field = field
+            .map(ObjectId::from_string)
+            .ok_or(KitableError::NotFound)?;
+        if let Some(width) = patch.width {
+            // Resizing a column is no undo step.
+            self.commit_as(&Origin::system("view-width"), |tx| {
+                model::set_view_width(tx, &view, &field, width)
+            })?;
         }
         if let Some(visible) = patch.visible {
-            current.visible = visible;
+            self.commit(|tx| model::set_view_hidden(tx, &view, &field, !visible))?;
         }
-        if let Some(width) = patch.width {
-            current.width = width.clamp(40, 1200);
-        }
+        // Column position and freezing are not part of the table document: plain SQL.
+        let now = now_millis();
+        self.conn.execute(
+            "INSERT INTO kition_view_fields (view_id, field_id, visible, width, position, frozen, created_at, updated_at) \
+             VALUES (?1, ?2, 1, 180, 0, 0, ?3, ?3) ON CONFLICT(view_id, field_id) DO NOTHING",
+            params![view_id, field_id, now],
+        )?;
         if let Some(position) = patch.position {
-            current.position = position;
+            self.conn.execute(
+                "UPDATE kition_view_fields SET position = ?1, updated_at = ?2 WHERE view_id = ?3 AND field_id = ?4",
+                params![position, now, view_id, field_id],
+            )?;
         }
         if let Some(frozen) = patch.frozen {
-            current.frozen = frozen;
+            self.conn.execute(
+                "UPDATE kition_view_fields SET frozen = ?1, updated_at = ?2 WHERE view_id = ?3 AND field_id = ?4",
+                params![frozen, now, view_id, field_id],
+            )?;
         }
-        let now = now_millis();
-        tx.execute(
-            "INSERT INTO kition_view_fields (view_id, field_id, visible, width, position, frozen, created_at, updated_at) \
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7) \
-             ON CONFLICT(view_id, field_id) DO UPDATE SET visible = excluded.visible, width = excluded.width, \
-             position = excluded.position, frozen = excluded.frozen, updated_at = excluded.updated_at",
-            params![view_id, field_id, current.visible, current.width, current.position, current.frozen, now],
+        let (visible, width, position, frozen): (i64, i64, i64, i64) = self.conn.query_row(
+            "SELECT visible, width, position, frozen FROM kition_view_fields WHERE view_id = ?1 AND field_id = ?2",
+            params![view_id, field_id],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
         )?;
-        tx.commit()?;
-        Ok(current)
+        Ok(ViewField {
+            view_id,
+            field_id,
+            visible: visible != 0,
+            width,
+            position,
+            frozen: frozen != 0,
+        })
     }
 }

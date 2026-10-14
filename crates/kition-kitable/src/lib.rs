@@ -18,6 +18,9 @@ mod view_config;
 pub use bulk::{BulkCopyResult, BulkDeleteResult};
 pub use file::{CreateOptions, FORMAT, FORMAT_VERSION, Info, KitableFile, SCHEMA_VERSION};
 pub use history::{HistoryAction, HistoryEntry};
+pub use kdm::commit::MergeOutcome;
+pub use kdm::ops::{CellEdit, CreateAt, TableOp};
+pub use kdm::project::TableChange;
 pub use links::LinkRef;
 pub use source::{
     Attachment, AttachmentSpec, FIELD_TYPES, Field, FieldPatch, FieldSpec, Record, Table,

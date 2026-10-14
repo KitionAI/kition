@@ -8,49 +8,8 @@ use serde_json::{Map, Value, json};
 
 use crate::json::{self, number, to_bool, to_number, to_text};
 use crate::links;
-use crate::source::{self, Field, Table};
-use crate::{KitableError, KitableFile, Result};
-
-impl KitableFile {
-    /// Recomputes derived fields for one record. Returns the new values and
-    /// whether anything changed.
-    pub(crate) fn recompute_derived_fields(
-        &self,
-        table: &Table,
-        record_id: i64,
-        values: &Map<String, Value>,
-    ) -> Result<(Map<String, Value>, bool)> {
-        Deriver::new(&self.conn, false).recompute(&table.fields, record_id, values)
-    }
-
-    pub(crate) fn apply_recomputed_values(
-        &self,
-        table: &Table,
-        record_id: i64,
-        values: &Map<String, Value>,
-    ) -> Result<()> {
-        let (next, changed) = self.recompute_derived_fields(table, record_id, values)?;
-        if changed {
-            self.conn.execute(
-                "UPDATE kition_records SET values_json = ?1 WHERE id = ?2",
-                params![serde_json::to_string(&next)?, record_id],
-            )?;
-        }
-        Ok(())
-    }
-
-    /// Refreshes derived values on the source record after its links change.
-    /// Failures are ignored; the link change itself already succeeded.
-    pub(crate) fn recompute_after_link_change(&self, table_id: i64, record_id: i64) {
-        let Ok(table) = self.get_table(table_id) else {
-            return;
-        };
-        let Ok(record) = self.get_record(table_id, record_id) else {
-            return;
-        };
-        let _ = self.apply_recomputed_values(&table, record_id, &record.values);
-    }
-}
+use crate::source::{self, Field};
+use crate::{KitableError, Result};
 
 /// A link field's target table and that table's primary field, or `None` when unresolvable.
 type LinkTarget = Option<(i64, Option<Field>)>;
@@ -59,11 +18,6 @@ type LinkTarget = Option<(i64, Option<Field>)>;
 /// `(record, field name)`, if it is on one. A field on a cycle reads the fields of its own cycle
 /// as missing, so cycles yield bounded values.
 pub(crate) type Hidden<'h> = &'h dyn Fn(i64, &str) -> Option<usize>;
-
-/// No cycles.
-pub(crate) fn nothing_hidden(_: i64, _: &str) -> Option<usize> {
-    None
-}
 
 /// Errors that mean "no such row" (absorbed into an empty derived value); anything else, such as
 /// a busy database or an I/O error, is a real failure.
@@ -93,18 +47,8 @@ impl<'c> Deriver<'c> {
     }
 
     /// The record's values with its derived fields recomputed in field order (a formula sees the
-    /// values derived before it), and whether anything changed.
-    pub(crate) fn recompute(
-        &self,
-        fields: &[Field],
-        record_id: i64,
-        values: &Map<String, Value>,
-    ) -> Result<(Map<String, Value>, bool)> {
-        self.recompute_hiding(fields, record_id, values, &nothing_hidden)
-    }
-
-    /// [`Deriver::recompute`] where a field on a cycle ([`Hidden`]) reads the other fields of its
-    /// cycle as missing.
+    /// values derived before it), and whether anything changed. A field on a cycle ([`Hidden`])
+    /// reads the other fields of its cycle as missing.
     pub(crate) fn recompute_hiding(
         &self,
         fields: &[Field],

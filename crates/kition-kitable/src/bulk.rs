@@ -1,10 +1,15 @@
 //! Bulk record operations addressed by row key.
 
 use kition_core::now_millis;
+use kition_kdm::ObjectId;
 use rusqlite::types::Value as SqlValue;
-use rusqlite::{params, params_from_iter};
+use rusqlite::{OptionalExtension, params, params_from_iter};
 use serde::Serialize;
+use serde_json::{Map, Value};
 
+use crate::json;
+use crate::kdm::commit::{by_field_id, field_objects_by_name, table_object};
+use crate::kdm::model::{self, Anchor};
 use crate::links::{dedupe, placeholders};
 use crate::{KitableError, KitableFile, Result};
 
@@ -21,6 +26,24 @@ pub struct BulkCopyResult {
 }
 
 impl KitableFile {
+    /// The given row keys that name live records of the table, in the given order.
+    fn live_row_keys(&self, table_id: i64, keys: &[String]) -> Result<Vec<String>> {
+        let mut args = vec![SqlValue::Integer(table_id)];
+        args.extend(keys.iter().map(|key| SqlValue::Text(key.clone())));
+        let mut statement = self.conn.prepare(&format!(
+            "SELECT row_key FROM kition_records WHERE table_id = ?1 AND deleted_at IS NULL AND row_key IN ({})",
+            placeholders(2, keys.len())
+        ))?;
+        let existing: Vec<String> = statement
+            .query_map(params_from_iter(args.iter()), |row| row.get(0))?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        Ok(keys
+            .iter()
+            .filter(|key| existing.contains(key))
+            .cloned()
+            .collect())
+    }
+
     pub fn bulk_delete_records(
         &mut self,
         table_id: i64,
@@ -33,42 +56,29 @@ impl KitableFile {
         if cleaned.is_empty() {
             return Ok(BulkDeleteResult::default());
         }
-        let tx = self.conn.transaction()?;
-        let mut args = vec![SqlValue::Integer(table_id)];
-        args.extend(cleaned.iter().map(|key| SqlValue::Text(key.clone())));
-        let existing: Vec<String> = {
-            let mut statement = tx.prepare(&format!(
-                "SELECT row_key FROM kition_records WHERE table_id = ?1 AND deleted_at IS NULL AND row_key IN ({})",
-                placeholders(2, cleaned.len())
-            ))?;
-            statement
-                .query_map(params_from_iter(args.iter()), |row| row.get(0))?
-                .collect::<std::result::Result<Vec<_>, _>>()?
-        };
-        let now = now_millis();
-        let mut update_args = vec![SqlValue::Integer(now), SqlValue::Integer(table_id)];
-        update_args.extend(cleaned.iter().map(|key| SqlValue::Text(key.clone())));
-        let affected = tx.execute(
-            &format!(
-                "UPDATE kition_records SET deleted_at = ?1, updated_at = ?1 \
-                 WHERE table_id = ?2 AND deleted_at IS NULL AND row_key IN ({})",
-                placeholders(3, cleaned.len())
-            ),
-            params_from_iter(update_args.iter()),
-        )?;
-        tx.commit()?;
-        let missing_keys = cleaned
-            .into_iter()
+        let existing = self.live_row_keys(table_id, &cleaned)?;
+        let missing_keys: Vec<String> = cleaned
+            .iter()
             .filter(|key| !existing.contains(key))
+            .cloned()
             .collect();
+        if existing.is_empty() {
+            return Ok(BulkDeleteResult {
+                deleted_count: 0,
+                missing_keys,
+            });
+        }
+        let table = table_object(&self.conn, table_id)?;
+        let records: Vec<ObjectId> = existing.iter().map(ObjectId::from_string).collect();
+        let (deleted, _) = self.commit(|tx| model::delete_records(tx, &table, &records))?;
         Ok(BulkDeleteResult {
-            deleted_count: i64::try_from(affected).unwrap_or(i64::MAX),
+            deleted_count: i64::try_from(deleted).unwrap_or(i64::MAX),
             missing_keys,
         })
     }
 
-    /// Copies records (in the order given) to `target_position`, shifting
-    /// later records; `target_position <= 0` appends.
+    /// Copies records (in the order given) to `target_position`: just before the first record at
+    /// that position or later. `target_position <= 0` appends.
     pub fn bulk_copy_records(
         &mut self,
         table_id: i64,
@@ -82,66 +92,43 @@ impl KitableFile {
         if cleaned.is_empty() {
             return Ok(BulkCopyResult::default());
         }
-        let tx = self.conn.transaction()?;
-        let mut args = vec![SqlValue::Integer(table_id)];
-        args.extend(cleaned.iter().map(|key| SqlValue::Text(key.clone())));
-        let sources: Vec<(String, String, String)> = {
-            let mut statement = tx.prepare(&format!(
-                "SELECT row_key, document_id, values_json FROM kition_records \
-                 WHERE table_id = ?1 AND deleted_at IS NULL AND row_key IN ({})",
-                placeholders(2, cleaned.len())
-            ))?;
-            statement
-                .query_map(params_from_iter(args.iter()), |row| {
-                    Ok((row.get(0)?, row.get(1)?, row.get(2)?))
-                })?
-                .collect::<std::result::Result<Vec<_>, _>>()?
-        };
-        let ordered: Vec<&(String, String, String)> = cleaned
-            .iter()
-            .filter_map(|key| sources.iter().find(|(row_key, _, _)| row_key == key))
-            .collect();
+        let ordered = self.live_row_keys(table_id, &cleaned)?;
         if ordered.is_empty() {
             return Ok(BulkCopyResult::default());
         }
-        let count = i64::try_from(ordered.len()).unwrap_or(i64::MAX);
-        let target = if target_position <= 0 {
-            let max: Option<i64> = tx.query_row(
-                "SELECT MAX(position) FROM kition_records WHERE table_id = ?1 AND deleted_at IS NULL",
-                [table_id],
-                |row| row.get(0),
-            )?;
-            max.unwrap_or(0) + 1
+        let table = table_object(&self.conn, table_id)?;
+        let at = if target_position <= 0 {
+            None
         } else {
-            tx.execute(
-                "UPDATE kition_records SET position = position + ?1 WHERE table_id = ?2 AND deleted_at IS NULL AND position >= ?3",
-                params![count, table_id, target_position],
-            )?;
-            target_position
+            self.conn
+                .query_row(
+                    "SELECT row_key FROM kition_records WHERE table_id = ?1 AND deleted_at IS NULL \
+                     AND position >= ?2 ORDER BY position ASC, id ASC LIMIT 1",
+                    params![table_id, target_position],
+                    |row| row.get::<_, String>(0),
+                )
+                .optional()?
+                .map(|key| Anchor::Before(ObjectId::from_string(key)))
         };
-        let now = now_millis();
-        let mut new_row_keys = Vec::with_capacity(ordered.len());
-        for (offset, (_, document_id, values)) in ordered.into_iter().enumerate() {
-            let new_key = uuid::Uuid::new_v4().to_string();
-            let cloned = if values.trim().is_empty() {
-                "{}".to_owned()
-            } else {
-                let parsed: serde_json::Map<String, serde_json::Value> =
-                    serde_json::from_str(values)
-                        .map_err(|err| KitableError::invalid(format!("decode values: {err}")))?;
-                serde_json::to_string(&parsed)?
-            };
-            tx.execute(
-                "INSERT INTO kition_records (document_id, table_id, row_key, position, values_json, created_at, updated_at) \
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6)",
-                params![document_id, table_id, new_key, target + i64::try_from(offset).unwrap_or(0), cloned, now],
-            )?;
-            new_row_keys.push(new_key);
-        }
-        tx.commit()?;
+        let names = field_objects_by_name(&self.conn, table_id)?;
+        let rows: Vec<Map<String, Value>> = ordered
+            .iter()
+            .map(|key| {
+                let values: String = self.conn.query_row(
+                    "SELECT values_json FROM kition_records WHERE table_id = ?1 AND row_key = ?2 AND deleted_at IS NULL",
+                    params![table_id, key],
+                    |row| row.get(0),
+                )?;
+                Ok(by_field_id(&names, &json::object(&values)))
+            })
+            .collect::<Result<_>>()?;
+        let created_by = self.actor();
+        let (ids, _) = self.commit(|tx| {
+            model::create_records(tx, &table, at.as_ref(), &rows, now_millis(), &created_by)
+        })?;
         Ok(BulkCopyResult {
-            copied_count: count,
-            new_row_keys,
+            copied_count: i64::try_from(ids.len()).unwrap_or(i64::MAX),
+            new_row_keys: ids.into_iter().map(|id| id.to_string()).collect(),
         })
     }
 }

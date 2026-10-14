@@ -75,7 +75,8 @@ use crate::{KitableError, Result, file, json};
 
 /// What one projection changed in the relational tables, by integer id. Every list is sorted and
 /// holds no repeats.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TableChange {
     /// Tables whose own row changed: created, deleted, renamed, moved, or given a new primary
     /// field.

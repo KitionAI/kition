@@ -1,6 +1,6 @@
 //! Per-record change history.
 
-use kition_core::{Millis, now_millis};
+use kition_core::Millis;
 use rusqlite::{Connection, Row, params};
 use serde::Serialize;
 use serde_json::Value;
@@ -112,10 +112,6 @@ impl KitableFile {
                 .collect::<std::result::Result<Vec<_>, _>>()?
         };
         Ok((entries, total))
-    }
-
-    pub(crate) fn write_record_history(&self, write: &HistoryWrite<'_>) -> Result<()> {
-        insert_history(&self.conn, write, now_millis())
     }
 }
 
