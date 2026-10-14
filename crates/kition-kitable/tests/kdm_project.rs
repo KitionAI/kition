@@ -9,8 +9,8 @@
 //!
 //! - Legacy derived values go stale: a lookup, rollup, or link chip refreshes only when its own
 //!   record is saved, and a formula or schema change refreshes nothing. After each operation the
-//!   test re-saves every legacy record (twice, so a lookup of a formula settles), which is what
-//!   the next edit of each record does; the projector refreshes dependents itself
+//!   test re-saves every legacy record until nothing changes, which is what the next edits of the
+//!   records do; the projector refreshes dependents itself
 //!   (`a_lookup_refreshes_when_its_target_record_changes`).
 //! - Legacy `values_json` keeps a deleted field's value until the record is saved again (the
 //!   re-save above drops it); the projection drops it at once
@@ -32,9 +32,19 @@
 //! - Options naming a deleted table or field: legacy keeps the integer id; the projection keeps it
 //!   while that row exists, and a rebuild into an empty file has no such row (null). Options
 //!   naming a row that is not live compare as null.
-//! - Formulas reference stored fields only: legacy evaluates a formula over the record's previous
-//!   derived values, the projection over the values derived so far in field order.
+//! - A formula reading a value derived after it: legacy evaluates formulas over the record's
+//!   previous derived values, so it settles after re-saves; the projection evaluates such a
+//!   formula again once the later value is known (`a_formula_reads_values_derived_after_it`).
+//! - A rollup whose target field is gone aggregates whole records (legacy and projection alike);
+//!   over a link back to its own table such a rollup feeds on itself and never settles, and both
+//!   stop at an arbitrary depth. Rollup targets are not deleted.
 //! - Filter trees, sorts, and groups have their own legacy tables, which the model does not have.
+//!
+//! At the end of each sequence, a rebuild into an empty file and a rebuild in place must match
+//! the incremental projection (ids kept), and a migrated copy of the legacy file
+//! ([`migrate::upgrade`]) rebuilt in place must still read like the legacy file, with the ids the
+//! migration recorded. Tables keep at least one view: the migration gives a table without views
+//! a default "All" view, which a rebuild would then add.
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::{Debug, Display};
@@ -46,7 +56,7 @@ use kition_kdm::{ActorId, DocId, ObjectId, Origin, Replica, Tx};
 use kition_kitable::kdm::model::{self, BaseSpec, TableIds};
 use kition_kitable::kdm::project::{self, TableChange};
 use kition_kitable::kdm::read::ModelView;
-use kition_kitable::kdm::{repair, schema, store};
+use kition_kitable::kdm::{migrate, repair, schema, store};
 use kition_kitable::{
     CreateOptions, Field, FieldPatch, FieldSpec, KitableFile, Table, TablePatch, TableSpec,
     ViewFieldPatch, ViewPatch, ViewSpec,
@@ -505,19 +515,23 @@ fn assert_same(left: &Snapshot, right: &Snapshot, context: &str) {
     );
 }
 
-/// Integer ids of the projected rows by object id: tables, fields, views, links, and records.
+/// Integer ids of the projected rows by object id: live tables, fields, views, and records, and
+/// links that have an object id.
 fn projected_ids(file: &KitableFile) -> BTreeMap<String, i64> {
+    connection_ids(file.conn())
+}
+
+fn connection_ids(conn: &rusqlite::Connection) -> BTreeMap<String, i64> {
     let mut ids = BTreeMap::new();
     for (table, key, filter) in [
         ("kition_tables", "kdm_id", "deleted_at IS NULL"),
         ("kition_fields", "kdm_id", "deleted_at IS NULL"),
         ("kition_views", "kdm_id", "deleted_at IS NULL"),
-        ("kition_record_links", "kdm_id", "1"),
+        ("kition_record_links", "kdm_id", "kdm_id IS NOT NULL"),
         ("kition_records", "row_key", "deleted_at IS NULL"),
     ] {
-        let mut statement = ok(file
-            .conn()
-            .prepare(&format!("SELECT {key}, id FROM {table} WHERE {filter}")));
+        let mut statement =
+            ok(conn.prepare(&format!("SELECT {key}, id FROM {table} WHERE {filter}")));
         let rows = ok(statement.query_map([], |row| {
             Ok((row.get::<_, Option<String>>(0)?, row.get::<_, i64>(1)?))
         }));
@@ -914,9 +928,17 @@ impl Twin {
         }
     }
 
-    /// Re-saves every legacy record twice, refreshing its derived values.
+    /// Re-saves every legacy record until no derived value changes (at most eight passes).
     fn refresh_legacy(&mut self) {
-        for _ in 0..2 {
+        let values = |legacy: &KitableFile| -> Vec<Value> {
+            ok(legacy.list_tables())
+                .iter()
+                .flat_map(|table| ok(legacy.list_records(table.id)))
+                .map(|record| Value::Object(record.values))
+                .collect()
+        };
+        let mut before = values(&self.legacy);
+        for _ in 0..8 {
             for table in ok(self.legacy.list_tables()) {
                 for record in ok(self.legacy.list_records(table.id)) {
                     ok(self
@@ -924,6 +946,11 @@ impl Twin {
                         .update_record(table.id, record.id, &Map::new(), None));
                 }
             }
+            let after = values(&self.legacy);
+            if after == before {
+                return;
+            }
+            before = after;
         }
     }
 
@@ -1441,10 +1468,21 @@ impl Twin {
                 op
             }
             5 => {
-                let used: HashSet<i64> = fields
+                let mut used: HashSet<i64> = fields
                     .iter()
                     .filter_map(|field| field.options.get("link_field_id").and_then(Value::as_i64))
                     .collect();
+                // A rollup whose target is gone aggregates whole records, which over a self-link
+                // feeds on itself without end.
+                used.extend(
+                    state
+                        .iter()
+                        .flat_map(|s| &s.table.fields)
+                        .filter(|field| field.field_type == "rollup")
+                        .filter_map(|field| {
+                            field.options.get("target_field_id").and_then(Value::as_i64)
+                        }),
+                );
                 let candidates: Vec<&Field> = fields
                     .iter()
                     .filter(|field| !field.is_primary && !used.contains(&field.id))
@@ -1471,7 +1509,8 @@ impl Twin {
                 view_type: coin(rng, 30).then(|| ["grid", "calendar"][rng.below(2)].to_owned()),
                 config: coin(rng, 50).then(|| json!({ "hidden": [rng.below(3)] })),
             },
-            8 if view_count > 0 => Op::DeleteView {
+            // The last view stays: migrating a table without views gives it an "All" view.
+            8 if view_count > 1 => Op::DeleteView {
                 table,
                 view: rng.below(view_count),
             },
@@ -1615,6 +1654,33 @@ fn run_equivalence(seed: u64, steps: usize) {
         ids,
         projected_ids(&twin.proj),
         "seed {seed}: ids after rebuild"
+    );
+
+    // A migrated copy of the legacy file, rebuilt in place, reads like the legacy file and keeps
+    // the ids the migration recorded.
+    let copy = dir.path().join("migrated.kitable");
+    ok(std::fs::copy(twin.legacy.path(), &copy));
+    {
+        let mut conn = ok(rusqlite::Connection::open(&copy));
+        let actor = ok(ActorId::from_u64(9));
+        ok(migrate::upgrade(&mut conn, actor));
+        let replica = some(ok(store::load(&conn, schema(), actor)), "migrated replica");
+        let migrated = connection_ids(&conn);
+        let tx = ok(conn.unchecked_transaction());
+        ok(project::rebuild(&tx, &replica, twin.clock + 3));
+        ok(tx.commit());
+        assert_eq!(
+            migrated,
+            connection_ids(&conn),
+            "seed {seed}: ids after migrating and rebuilding"
+        );
+    }
+    let migrated = ok(KitableFile::open(&copy));
+    let labels = twin.legacy_labels();
+    assert_same(
+        &snapshot(&twin.legacy, &labels, true),
+        &snapshot(&migrated, &labels, true),
+        &format!("seed {seed}: migrated and rebuilt"),
     );
 }
 
@@ -1870,6 +1936,62 @@ fn deleting_a_field_drops_its_values_at_once() {
 }
 
 #[test]
+fn a_lookup_whose_target_field_is_deleted_is_null_even_without_links() {
+    let mut t = linked();
+    let people = t.people.table.clone();
+    let tasks = t.tasks.table.clone();
+    let owner = t.owner.clone();
+    let nick = write(&mut t.replica, |tx| {
+        model::create_field(tx, &people, &field("Nick", "text"))
+    });
+    write(&mut t.replica, |tx| {
+        model::create_field(
+            tx,
+            &tasks,
+            &FieldSpec {
+                options: json!({ "link_field": owner.as_str(), "target_field": nick.as_str() }),
+                ..field("Owner nick", "lookup")
+            },
+        )
+    });
+    let title = nth(&t.tasks.fields, 0);
+    let lonely = nth(
+        &write(&mut t.replica, |tx| {
+            model::create_records(
+                tx,
+                &tasks,
+                None,
+                &[object(json!({ title.as_str(): "Alone" }))],
+                11,
+                "",
+            )
+        }),
+        0,
+    );
+    project_into(&t.file, &mut t.replica, "", 11);
+    assert_eq!(
+        record_values(&t.file, "tasks", &lonely).get("owner_nick"),
+        Some(&json!([]))
+    );
+    write(&mut t.replica, |tx| model::delete_field(tx, &people, &nick));
+    let change = project_into(&t.file, &mut t.replica, "", 12);
+    assert_eq!(
+        record_values(&t.file, "tasks", &lonely).get("owner_nick"),
+        None
+    );
+    assert_eq!(
+        record_values(&t.file, "tasks", &t.task).get("owner_nick"),
+        None
+    );
+    let tasks_id = table_id(&t.file, "tasks");
+    assert!(
+        change
+            .records_upserted
+            .contains(&(tasks_id, lonely.to_string()))
+    );
+}
+
+#[test]
 fn a_formula_field_computes_for_existing_records() {
     let mut t = linked();
     let tasks = t.tasks.table.clone();
@@ -1910,6 +2032,34 @@ fn a_formula_field_computes_for_existing_records() {
         .map(str::to_owned)
         .unwrap_or_default();
     assert!(shout.starts_with("#ERROR: "), "{shout}");
+}
+
+#[test]
+fn a_formula_reads_values_derived_after_it() {
+    let mut t = linked();
+    let tasks = t.tasks.table.clone();
+    // Placed first, so it comes before the lookup it reads.
+    write(&mut t.replica, |tx| {
+        model::create_field(
+            tx,
+            &tasks,
+            &FieldSpec {
+                formula: "concat('by ', {owner_name})".into(),
+                order: Some(1),
+                ..field("Byline", "formula")
+            },
+        )
+    });
+    project_into(&t.file, &mut t.replica, "user:test", 11);
+    let values = record_values(&t.file, "tasks", &t.task);
+    assert_eq!(values.get("byline"), Some(&json!("by [Alice]")));
+    let fresh = new_file(t.dir.path(), "fresh.kitable", true);
+    rebuild_into(&fresh, &t.replica, 12);
+    assert_same(
+        &snapshot(&t.file, &Labels::identity(), false),
+        &snapshot(&fresh, &Labels::identity(), false),
+        "forward formula",
+    );
 }
 
 #[test]

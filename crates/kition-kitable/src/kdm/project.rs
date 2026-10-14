@@ -22,7 +22,9 @@
 //!   of the object's live row, else of its latest deleted row, else `null`.
 //! - A record's `values_json` holds its stored cells by field name and its derived values
 //!   (formula, lookup, rollup, `link_to_record` chips), computed by the legacy derivation over the
-//!   projected rows. A record is recomputed when it changes, when its links change, when its
+//!   projected rows, in field order; a formula that reads a value derived after it is evaluated
+//!   again once that value is known (up to three passes), which is what a legacy record shows
+//!   after being saved again. A record is recomputed when it changes, when its links change, when its
 //!   table's fields change in a way that affects values, and when a record it links to changes
 //!   value (transitively), so lookups and chips never go stale. Field types the legacy code does
 //!   not derive (`auto_number`, created and last-modified time and by) have no value, as before.
@@ -102,6 +104,9 @@ pub fn rebuild(conn: &Connection, replica: &Replica, now: i64) -> Result<()> {
 /// feed each other in a cycle.
 const MAX_RECOMPUTES: u32 = 8;
 
+/// Passes over a record's derived fields when a formula may read a value derived after it.
+const FORMULA_PASSES: usize = 3;
+
 const DASHBOARDS_KEY: &str = "kdm_projected_dashboards";
 
 /// The base's object id, so a projection need not scan every object to find it.
@@ -158,6 +163,8 @@ struct TableSchema {
     stored: HashMap<String, String>,
     /// Stored fields `(name, id)` in name order, for history.
     stored_by_name: Vec<(String, i64)>,
+    /// A formula comes before another derived field, so it may read a value derived after it.
+    forward_formulas: bool,
 }
 
 struct FieldRow {
@@ -203,6 +210,9 @@ struct Projector<'a> {
     reconcile: BTreeSet<ObjectId>,
     /// Tables whose every record is recomputed.
     recompute_tables: BTreeSet<i64>,
+    /// Fields that appeared, disappeared, or changed in a way that affects values: lookups and
+    /// rollups naming them are recomputed.
+    fields_changed: HashSet<i64>,
     /// Tables whose primary field changed: records linking to them are recomputed.
     primary_changed: BTreeSet<i64>,
     /// Link fields whose options changed: their links are reconciled.
@@ -245,6 +255,7 @@ impl<'a> Projector<'a> {
             schemas: HashMap::new(),
             reconcile: BTreeSet::new(),
             recompute_tables: BTreeSet::new(),
+            fields_changed: HashSet::new(),
             primary_changed: BTreeSet::new(),
             link_fields: BTreeSet::new(),
             seeds: Vec::new(),
@@ -341,6 +352,7 @@ impl<'a> Projector<'a> {
         }
         self.project_tables(&plan)?;
         self.project_fields(&plan)?;
+        self.recompute_users_of_changed_fields()?;
         self.project_primary_fields(&plan)?;
         self.project_views(&plan)?;
         self.project_records(&mut plan)?;
@@ -624,6 +636,12 @@ impl<'a> Projector<'a> {
             return Ok(());
         }
         self.out.tables.insert(id);
+        let mut statement = self
+            .conn
+            .prepare("SELECT id FROM kition_fields WHERE table_id = ?1 AND deleted_at IS NULL")?;
+        for field in statement.query_map([id], |row| row.get::<_, i64>(0))? {
+            self.fields_changed.insert(field?);
+        }
         let mut statement = self.conn.prepare(
             "SELECT row_key FROM kition_records WHERE table_id = ?1 AND deleted_at IS NULL",
         )?;
@@ -746,6 +764,7 @@ impl<'a> Projector<'a> {
             )?;
             if count > 0 {
                 self.field_changed(*table, true);
+                self.fields_changed.insert(*id);
             }
         }
         let doomed_ids: HashSet<i64> = doomed.iter().map(|(id, _)| *id).collect();
@@ -797,6 +816,7 @@ impl<'a> Projector<'a> {
             }
             let id = self.revive_or_insert_field(field, *table_id, *position, wanted)?;
             self.field_changed(*table_id, true);
+            self.fields_changed.insert(id);
             rows.insert(
                 field.clone(),
                 FieldRow {
@@ -876,6 +896,9 @@ impl<'a> Projector<'a> {
                     row.id
                 ])?;
             self.field_changed(*table_id, affects_values);
+            if affects_values {
+                self.fields_changed.insert(row.id);
+            }
             if wanted.field_type == "link_to_record" || row.field_type == "link_to_record" {
                 self.link_fields.insert(field.clone());
             }
@@ -902,6 +925,33 @@ impl<'a> Projector<'a> {
             }
             if moved {
                 self.field_changed(table_id, true);
+            }
+        }
+        Ok(())
+    }
+
+    /// Recomputes the tables whose lookups or rollups name a field in [`Self::fields_changed`]:
+    /// their values depend on the field even when they have no links (`null` once it is gone).
+    fn recompute_users_of_changed_fields(&mut self) -> Result<()> {
+        if self.fields_changed.is_empty() {
+            return Ok(());
+        }
+        let mut statement = self.conn.prepare_cached(
+            "SELECT table_id, options_json FROM kition_fields \
+             WHERE type IN ('lookup', 'rollup') AND deleted_at IS NULL",
+        )?;
+        let rows = statement.query_map([], |row| {
+            Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
+        })?;
+        for row in rows {
+            let (table, options) = row?;
+            let options = json::object(&options);
+            let names = |key: &str| {
+                self.fields_changed
+                    .contains(&json::int_option(&options, key))
+            };
+            if names("link_field_id") || names("target_field_id") {
+                self.recompute_tables.insert(table);
             }
         }
         Ok(())
@@ -1462,10 +1512,21 @@ impl<'a> Projector<'a> {
             fields.push(field);
         }
         stored_by_name.sort();
+        let derived = |field: &Field| {
+            matches!(
+                field.field_type.as_str(),
+                "formula" | "lookup" | "rollup" | "link_to_record"
+            )
+        };
+        let forward_formulas = fields
+            .iter()
+            .position(|field| field.field_type == "formula")
+            .is_some_and(|first| fields.iter().skip(first + 1).any(derived));
         let schema = Rc::new(TableSchema {
             fields,
             stored,
             stored_by_name,
+            forward_formulas,
         });
         self.schemas.insert(table_id, Rc::clone(&schema));
         Ok(schema)
@@ -1726,7 +1787,18 @@ impl<'a> Projector<'a> {
             };
             let schema = self.schema(table_id)?;
             let stored = self.stored_values(&schema, &ObjectId::from_string(key.clone()))?;
-            let (values, _) = deriver.recompute(&schema.fields, id, &stored)?;
+            let (mut values, _) = deriver.recompute(&schema.fields, id, &stored)?;
+            // A formula reading a value derived after it sees it on the next pass, as a legacy
+            // record does once saved again.
+            if schema.forward_formulas {
+                for _ in 1..FORMULA_PASSES {
+                    let (again, changed) = deriver.recompute(&schema.fields, id, &values)?;
+                    values = again;
+                    if !changed {
+                        break;
+                    }
+                }
+            }
             let values = Value::Object(values);
             if json::equal(&Value::Object(json::object(&current)), &values) {
                 if self.created.contains(&id) {
