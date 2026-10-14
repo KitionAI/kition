@@ -1,3 +1,4 @@
+pub mod migrate;
 pub mod model;
 pub mod options;
 pub mod read;
