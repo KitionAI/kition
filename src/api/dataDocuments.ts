@@ -9,6 +9,7 @@ import type {
   CreateDataTablePayload,
   CreateDataViewPayload,
   DataAttachment,
+  DataDashboard,
   DataDocument,
   DataField,
   DataListResponse,
@@ -30,6 +31,20 @@ import type {
 import type { RuntimeWritingModel } from '@/types'
 import { normalizeAIConfig, type AnyAIConfig } from '@/types/aiConfig'
 import { statWorkspaceDocument } from '@/services/desktop'
+import type {
+  DataDocumentsTransactHistoryStateResponse,
+  DataDocumentsTransactOp,
+  DataDocumentsTransactTableChange,
+  DataDocumentsTransactTransactResponse,
+  DataDocumentsTransactUndoRedoResponse,
+} from './generated/data-documents-transact'
+
+/** One step of a table transaction (contracts/runtime/data-documents-transact.schema.json). */
+export type TableOp = DataDocumentsTransactOp
+/** What a transaction, undo, redo, or dashboard write touched. */
+export type TableChange = DataDocumentsTransactTableChange
+/** GET /v1/data-documents/{id}/history-state. */
+export type TableHistoryState = DataDocumentsTransactHistoryStateResponse
 
 function unwrapResponseData<T>(response: T | { data?: T }) {
   return (response as { data?: T })?.data ?? (response as T)
@@ -414,6 +429,64 @@ export function bulkCopyDataRecords(documentId: number, tableId: number, payload
       payload
     )
     .then(unwrapResponseData<BulkCopyRecordsResult>)
+}
+
+/**
+ * Applies every op as one transaction and one undo step
+ * (contracts/runtime/data-documents-transact.schema.json).
+ */
+export function transactDataDocument(documentId: number, ops: TableOp[]) {
+  return request
+    .post<DataDocumentsTransactTransactResponse | { data?: DataDocumentsTransactTransactResponse }>(
+      `/v1/data-documents/${documentId}/transact`,
+      { ops },
+    )
+    .then(unwrapResponseData<DataDocumentsTransactTransactResponse>)
+}
+
+export function undoDataDocument(documentId: number) {
+  return request
+    .post<DataDocumentsTransactUndoRedoResponse | { data?: DataDocumentsTransactUndoRedoResponse }>(
+      `/v1/data-documents/${documentId}/undo`,
+      {},
+    )
+    .then(unwrapResponseData<DataDocumentsTransactUndoRedoResponse>)
+}
+
+export function redoDataDocument(documentId: number) {
+  return request
+    .post<DataDocumentsTransactUndoRedoResponse | { data?: DataDocumentsTransactUndoRedoResponse }>(
+      `/v1/data-documents/${documentId}/redo`,
+      {},
+    )
+    .then(unwrapResponseData<DataDocumentsTransactUndoRedoResponse>)
+}
+
+export function getDataDocumentHistoryState(documentId: number) {
+  return request
+    .get<TableHistoryState | { data?: TableHistoryState }>(`/v1/data-documents/${documentId}/history-state`)
+    .then(unwrapResponseData<TableHistoryState>)
+}
+
+export function listDataDashboards(documentId: number) {
+  return request
+    .get<DataListResponse<DataDashboard> | { data?: DataListResponse<DataDashboard> }>(
+      `/v1/data-documents/${documentId}/dashboards`,
+    )
+    .then(unwrapResponseData<DataListResponse<DataDashboard>>)
+}
+
+export function putDataDashboard(documentId: number, dashboard: DataDashboard) {
+  return request
+    .put<DataDashboard | { data?: DataDashboard }>(
+      `/v1/data-documents/${documentId}/dashboards/${dashboard.id}`,
+      dashboard,
+    )
+    .then(unwrapResponseData<DataDashboard>)
+}
+
+export function deleteDataDashboard(documentId: number, dashboardId: string) {
+  return request.delete(`/v1/data-documents/${documentId}/dashboards/${dashboardId}`)
 }
 
 /** Runtimes with this capability list tables from the workspace file system (data-documents-listing contract). */
