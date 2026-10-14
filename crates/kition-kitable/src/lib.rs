@@ -6,6 +6,7 @@
 
 mod bulk;
 mod computed;
+mod dashboards;
 mod file;
 mod history;
 mod json;
@@ -16,6 +17,7 @@ mod source;
 mod view_config;
 
 pub use bulk::{BulkCopyResult, BulkDeleteResult};
+pub use dashboards::Dashboard;
 pub use file::{CreateOptions, FORMAT, FORMAT_VERSION, Info, KitableFile, SCHEMA_VERSION};
 pub use history::{HistoryAction, HistoryEntry};
 pub use kdm::commit::MergeOutcome;

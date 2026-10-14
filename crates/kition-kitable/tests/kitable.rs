@@ -853,3 +853,52 @@ fn view_configuration() {
         Err(KitableError::NotFound)
     ));
 }
+
+#[test]
+fn dashboards_round_trip_through_the_relational_api() {
+    let dir = temp();
+    let (_, mut file) = create(dir.path(), "dashboards.kitable");
+    let table = ok(file.create_table(&TableSpec {
+        fields: vec![primary("name")],
+        ..Default::default()
+    }));
+
+    assert_eq!(ok(file.list_dashboards()), Vec::new());
+
+    let widgets = values(json!({ "w1": { "kind": "chart", "title": "Sales" } }));
+    let created = ok(file.upsert_dashboard(
+        None,
+        "Overview",
+        json!({ "source_table_id": table.id, "layout": [] }),
+        &widgets,
+    ));
+    assert_eq!(created.name, "Overview");
+    assert_eq!(created.config["source_table_id"], json!(table.id));
+    assert!(created.config.get("source_table").is_none());
+    assert_eq!(created.widgets, widgets);
+
+    let listed = ok(file.list_dashboards());
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].id, created.id);
+
+    let renamed = ok(file.upsert_dashboard(
+        Some(&created.id),
+        "Overview 2",
+        json!({ "source_table_id": table.id }),
+        &Map::new(),
+    ));
+    assert_eq!(renamed.id, created.id);
+    assert_eq!(renamed.name, "Overview 2");
+    assert_eq!(
+        renamed.widgets,
+        Map::new(),
+        "an empty widgets map clears it"
+    );
+
+    ok(file.delete_dashboard(&created.id));
+    assert_eq!(ok(file.list_dashboards()), Vec::new());
+    assert!(matches!(
+        file.delete_dashboard(&created.id),
+        Err(KitableError::NotFound)
+    ));
+}
