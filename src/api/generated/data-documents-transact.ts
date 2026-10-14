@@ -80,7 +80,7 @@ export type DataDocumentsTransactTransactRequest = {
 export type DataDocumentsTransactTableRowRef = [number, DataDocumentsTransactRowKey]
 
 /**
- * What a transaction, undo, redo, or dashboard write touched, for a window to apply to its own state without refetching. Also the params of the table/changed bridge event (table-changed.schema.json), plus documentPath there.
+ * What a transaction, undo, redo, or dashboard write touched, for a window to apply to its own state without refetching. Also the params of the table/changed bridge event (table-changed.schema.json), plus documentPath there. Deliberately open (no additionalProperties: false): table-changed.schema.json composes this with documentPath via allOf, and a closed schema here would reject that sibling property; table-changed.schema.json closes the composed shape with unevaluatedProperties instead.
  */
 export type DataDocumentsTransactTableChange = {
   documentId: string

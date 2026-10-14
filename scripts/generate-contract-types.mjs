@@ -145,6 +145,11 @@ class Generator {
   }
 
   arrayType(schema, indent) {
+    // 2020-12 tuples: a fixed prefix of per-position schemas, `items: false` (or a
+    // trailing-items schema, not modeled here) closing or extending the tail.
+    if (Array.isArray(schema.prefixItems)) {
+      return `[${schema.prefixItems.map((item) => this.typeOf(item, indent)).join(', ')}]`
+    }
     if (Array.isArray(schema.items)) {
       return `[${schema.items.map((item) => this.typeOf(item, indent)).join(', ')}]`
     }

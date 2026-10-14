@@ -7,6 +7,8 @@
   "$defs": {
     "params": {
       "description": "The transact/undo/redo TableChange (data-documents-transact.schema.json) plus the document's workspace-relative path.",
+      "type": "object",
+      "unevaluatedProperties": false,
       "allOf": [
         { "$ref": "data-documents-transact.schema.json#/$defs/tableChange" },
         {

@@ -150,15 +150,17 @@
     "tableRowRef": {
       "type": "array",
       "description": "[tableId, rowKey] tuple.",
-      "items": [
+      "prefixItems": [
         { "type": "integer", "minimum": 1 },
         { "$ref": "#/$defs/rowKey" }
-      ]
+      ],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
     },
     "tableChange": {
       "type": "object",
-      "additionalProperties": false,
-      "description": "What a transaction, undo, redo, or dashboard write touched, for a window to apply to its own state without refetching. Also the params of the table/changed bridge event (table-changed.schema.json), plus documentPath there.",
+      "description": "What a transaction, undo, redo, or dashboard write touched, for a window to apply to its own state without refetching. Also the params of the table/changed bridge event (table-changed.schema.json), plus documentPath there. Deliberately open (no additionalProperties: false): table-changed.schema.json composes this with documentPath via allOf, and a closed schema here would reject that sibling property; table-changed.schema.json closes the composed shape with unevaluatedProperties instead.",
       "required": [
         "documentId",
         "origin",
