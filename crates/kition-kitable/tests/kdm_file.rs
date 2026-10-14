@@ -837,3 +837,206 @@ fn sequential_write_timings() {
         start.elapsed()
     );
 }
+
+// ---------------------------------------------------------------------------
+// Review fixes: read-only files, store identity, document ids, resync, repair after undo.
+
+/// A schema-3 file (no replica) at `path` with one table "Tasks" and one record.
+fn legacy_file(dir: &Path, name: &str) -> (PathBuf, i64, i64) {
+    let (path, mut file) = create(dir, name);
+    let (table_id, record_id) = tasks(&mut file);
+    file.close();
+    let mut conn = ok(Connection::open(&path));
+    ok(kition_kitable::kdm::migrate::downgrade(&mut conn));
+    (path, table_id, record_id)
+}
+
+fn set_read_only(path: &Path, read_only: bool) {
+    let mut permissions = ok(fs::metadata(path)).permissions();
+    permissions.set_readonly(read_only);
+    ok(fs::set_permissions(path, permissions));
+}
+
+fn assert_refused<T: std::fmt::Debug>(result: kition_kitable::Result<T>) {
+    assert!(
+        matches!(result, Err(kition_kitable::KitableError::ReadOnly(_))),
+        "expected a read-only refusal, got {result:?}"
+    );
+}
+
+#[test]
+fn a_read_only_schema_3_file_opens_read_only() {
+    let dir = temp();
+    let (path, table_id, record_id) = legacy_file(dir.path(), "old.kitable");
+    set_read_only(&path, true);
+    let mut file = open(&path);
+    assert!(file.read_only().is_some());
+    assert_eq!(
+        ok(file.get_record(table_id, record_id)).values.get("title"),
+        Some(&json!("Write"))
+    );
+    assert_eq!(ok(file.list_tables()).len(), 1);
+    assert_refused(file.create_record(table_id, &values(json!({ "title": "No" }))));
+    assert_refused(file.update_record(
+        table_id,
+        record_id,
+        &values(json!({ "status": "x" })),
+        None,
+    ));
+    set_read_only(&path, false);
+}
+
+#[test]
+fn a_read_only_schema_4_file_opens_read_only() {
+    let dir = temp();
+    let (path, mut file) = create(dir.path(), "new.kitable");
+    let (table_id, record_id) = tasks(&mut file);
+    file.close();
+    set_read_only(&path, true);
+    let mut file = open(&path);
+    assert!(file.read_only().is_some());
+    assert_eq!(ok(file.list_records(table_id)).len(), 1);
+    assert_refused(file.delete_record(table_id, record_id));
+    set_read_only(&path, false);
+}
+
+#[test]
+fn a_schema_3_file_that_fails_migration_opens_read_only() {
+    let dir = temp();
+    let (path, table_id, _) = legacy_file(dir.path(), "broken.kitable");
+    {
+        let conn = ok(Connection::open(&path));
+        ok(conn.execute("UPDATE kition_records SET row_key = 'bad key!'", []));
+    }
+    let mut file = open(&path);
+    assert!(file.read_only().is_some());
+    assert_eq!(ok(file.list_records(table_id)).len(), 1);
+    assert_refused(file.create_record(table_id, &values(json!({ "title": "No" }))));
+    file.close();
+    let conn = ok(Connection::open(&path));
+    let version: String = ok(conn.query_row(
+        "SELECT value FROM kition_meta WHERE key = 'schema_version'",
+        [],
+        |row| row.get(0),
+    ));
+    assert_eq!(version, "3", "a failed migration leaves the file as it was");
+}
+
+#[test]
+fn an_overwrite_by_another_copy_at_the_same_position_is_caught_up() {
+    let dir = temp();
+    let (path, mut file) = create(dir.path(), "shared.kitable");
+    let (table_id, record_id) = tasks(&mut file);
+    file.close();
+    let other = dir.path().join("other.kitable");
+    ok(fs::copy(&path, &other));
+
+    let mut here = open(&path);
+    ok(here.update_record(
+        table_id,
+        record_id,
+        &values(json!({ "status": "here" })),
+        None,
+    ));
+    let mut there = open(&other);
+    ok(there.update_record(
+        table_id,
+        record_id,
+        &values(json!({ "title": "There" })),
+        None,
+    ));
+    // One more SQL commit so the copy's change counter differs, as a real copy's would.
+    ok(there.set_meta("touched", "1"));
+    there.close();
+    assert_eq!(
+        ok(store::stored_position(&ok(Connection::open(&other)))),
+        ok(store::stored_position(here.conn())),
+        "both copies are at the same position"
+    );
+    // Overwritten in place: the handle's connection now reads the other copy.
+    ok(fs::copy(&other, &path));
+    ok(here.update_record(table_id, record_id, &values(json!({ "done": true })), None));
+    here.close();
+
+    let again = open(&path);
+    let record = ok(again.get_record(table_id, record_id));
+    assert_eq!(record.values.get("status"), Some(&json!("here")));
+    assert_eq!(record.values.get("title"), Some(&json!("There")));
+    assert_eq!(record.values.get("done"), Some(&json!(true)));
+}
+
+#[test]
+fn separately_migrated_copies_are_different_documents() {
+    let dir = temp();
+    let (path, _, _) = legacy_file(dir.path(), "old.kitable");
+    let copy = dir.path().join("copy.kitable");
+    ok(fs::copy(&path, &copy));
+    let mut first = open(&path);
+    open(&copy).close();
+    replace_with(&path, &copy);
+    assert_eq!(ok(first.reopen_merging()), MergeOutcome::DifferentDocument);
+    assert_eq!(ok(first.list_tables()).len(), 1, "no table was duplicated");
+}
+
+#[test]
+fn changes_missing_from_an_older_copy_survive_a_failed_write() {
+    let dir = temp();
+    let (path, mut file) = create(dir.path(), "older.kitable");
+    let (table_id, record_id) = tasks(&mut file);
+    file.close();
+    let older = dir.path().join("older-copy.kitable");
+    ok(fs::copy(&path, &older));
+
+    let mut here = open(&path);
+    ok(here.update_record(
+        table_id,
+        record_id,
+        &values(json!({ "status": "only here" })),
+        None,
+    ));
+    // The file goes back to the older copy, in place: it lacks the edit above.
+    ok(fs::copy(&older, &path));
+    let failed = here.transact(&[TableOp::RecordsMove {
+        table_id,
+        row_keys: vec!["no-such-record".into()],
+        before: None,
+    }]);
+    assert!(failed.is_err());
+    here.close();
+
+    let again = open(&path);
+    assert_eq!(
+        ok(again.get_record(table_id, record_id))
+            .values
+            .get("status"),
+        Some(&json!("only here")),
+        "the edit the older copy lacked was stored again"
+    );
+}
+
+#[test]
+fn an_undo_that_revives_a_taken_name_is_repaired() {
+    let dir = temp();
+    let (path, mut first) = create(dir.path(), "names.kitable");
+    let (table_id, _) = tasks(&mut first);
+    let status = ok(first.list_fields(table_id))
+        .into_iter()
+        .find(|field| field.name == "status")
+        .unwrap_or_else(|| panic!("a status field"));
+    ok(first.delete_field(table_id, status.id));
+    let mut second = open(&path);
+    let taken = ok(second.create_field(table_id, &field("Status", "text")));
+    assert_eq!(taken.name, "status");
+    let (done, _) = ok(first.undo());
+    assert!(done);
+    let mut names: Vec<String> = ok(first.list_fields(table_id))
+        .into_iter()
+        .map(|field| field.name)
+        .collect();
+    let count = names.len();
+    names.sort();
+    names.dedup();
+    assert_eq!(names.len(), count, "field names stay unique: {names:?}");
+    assert!(names.contains(&"status".to_owned()));
+    assert!(names.contains(&"status_2".to_owned()));
+}
