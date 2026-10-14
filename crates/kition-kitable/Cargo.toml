@@ -12,6 +12,7 @@ workspace = true
 
 [dependencies]
 kition-core = { workspace = true }
+kition-kdm = { workspace = true }
 
 rusqlite = { workspace = true }
 serde = { workspace = true }

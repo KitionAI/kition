@@ -1,0 +1,31 @@
+{
+  "kdm": 1,
+  "kit": "kit.test",
+  "schemaVersion": 1,
+  "root": "Page",
+  "types": {
+    "Page": {
+      "fields": {
+        "title": { "kind": "string" },
+        "shapes": { "kind": "list", "of": "Shape" },
+        "outline": { "kind": "tree", "of": "Shape" }
+      }
+    },
+    "Shape": {
+      "fields": {
+        "kind": { "kind": "enum", "values": ["rect", "ellipse"] },
+        "x": { "kind": "number" },
+        "y": { "kind": "number" },
+        "fill": { "kind": "string", "optional": true },
+        "transform": { "kind": "json", "optional": true },
+        "image": { "kind": "blob", "optional": true },
+        "label": { "kind": "text" }
+      }
+    },
+    "Sheet": {
+      "fields": {
+        "cells": { "kind": "map" }
+      }
+    }
+  }
+}

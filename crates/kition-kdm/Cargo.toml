@@ -1,0 +1,24 @@
+# Copied from kition-sdk crates/kition-kdm by scripts/sync-kit-host.mjs; change it there, not here.
+[package]
+name = "kition-kdm"
+description = "Kit Data Model: the typed, replicated document model every Kition kit declares its document in."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+loro = "=1.16.2"
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = "0.10"
+thiserror = { workspace = true }
+uuid = { version = "1", features = ["v4", "v7"] }
+
+# Browsers have no OS randomness: ids draw theirs from `crypto.getRandomValues`.
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
+uuid = { version = "1", features = ["js"] }

@@ -15,6 +15,7 @@ kition-store = { path = "crates/kition-store" }
 kition-http = { path = "crates/kition-http" }
 kition-ai = { path = "crates/kition-ai" }
 kition-workspace = { path = "crates/kition-workspace" }
+kition-kdm = { path = "crates/kition-kdm" }
 kition-kitable = { path = "crates/kition-kitable" }
 kition-datadoc = { path = "crates/kition-datadoc" }
 kition-connections = { path = "crates/kition-connections" }
