@@ -10,6 +10,12 @@ use crate::Millis;
 pub enum DomainEvent {
     RecordCreated(RecordCreated),
     RecordUpdated(RecordUpdated),
+    /// A data document's `table/changed` payload
+    /// (`contracts/runtime/table-changed.schema.json`), already built as JSON by the producer
+    /// (`kition-datadoc`) so this crate does not need to depend on the table document format to
+    /// carry it. `kition-kits` forwards it verbatim to the kit bridge stream as a `table/changed`
+    /// notification.
+    TableChanged(Value),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -93,5 +99,28 @@ mod tests {
             previous: None,
             updated_at: 0,
         }));
+    }
+
+    #[tokio::test]
+    async fn table_changed_carries_its_json_payload_to_every_subscriber() {
+        let bus = EventBus::new(4);
+        let mut subscriber = bus.subscribe();
+        let payload = serde_json::json!({
+            "documentId": "1",
+            "origin": "person:session:abc",
+            "tables": [],
+            "schema": [],
+            "views": [],
+            "recordsUpserted": [[1, "r1"]],
+            "recordsDeleted": [],
+            "recordsReordered": [],
+            "dashboards": false,
+            "documentPath": "Notes/a.kitable",
+        });
+        bus.publish(DomainEvent::TableChanged(payload.clone()));
+        assert_eq!(
+            subscriber.recv().await.ok(),
+            Some(DomainEvent::TableChanged(payload))
+        );
     }
 }
