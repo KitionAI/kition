@@ -2,7 +2,7 @@ import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
 
 import { LayoutDashboard, Lock, RefreshCw, Unlock } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Responsive,
   WidthProvider,
@@ -14,6 +14,7 @@ import { listDataRecords } from '@/api/dataDocuments'
 import { openDataDashboardByPath, updateDataDashboard } from '@/api/dashboards'
 import { DashboardWidgetCard } from '@/features/dashboard/components/DashboardWidgetCard'
 import { executeDashboardWidgetQuery } from '@/features/dashboard/lib/dashboardQuery'
+import { useTableLiveChanges } from '@/features/table/hooks/useTableLiveChanges'
 import { Button } from '@/registry/ui/button'
 import type {
   DashboardLayoutItem,
@@ -25,6 +26,9 @@ import type {
 
 const ResponsiveDashboardGrid = WidthProvider(Responsive)
 type DashboardBreakpoint = 'lg' | 'md' | 'sm' | 'xs' | 'xxs'
+/** A drag or resize fires its own stop event; debounced so a quick run of them (or a drag
+ * immediately followed by a resize) saves once instead of once per gesture. */
+const LAYOUT_SAVE_DEBOUNCE_MS = 300
 
 export function DashboardEditorPane({
   dashboardId,
@@ -85,6 +89,17 @@ export function DashboardEditorPane({
     }
   }, [documentPath, load, sourceTable?.id])
 
+  // Another window edited this dashboard (its config, or another of the document's dashboards
+  // whose widgets this one doesn't share) — reload to pick it up.
+  useTableLiveChanges(document?.id ?? null, {
+    onDashboards: () => void load(),
+  })
+
+  const layoutSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => {
+    if (layoutSaveTimer.current) clearTimeout(layoutSaveTimer.current)
+  }, [])
+
   const widgetResults = useMemo(() => {
     const results = new Map<string, ReturnType<typeof executeDashboardWidgetQuery>>()
     if (!dashboard || !sourceTable) return results
@@ -119,15 +134,18 @@ export function DashboardEditorPane({
     }
     setDashboard(nextDashboard)
     setSavingLayout(true)
-    void updateDataDashboard(document, nextDashboard)
-      .then((updated) => {
-        setDocument(updated.document)
-        setDashboard(updated.dashboard)
-      })
-      .catch((saveError) => {
-        setError(saveError instanceof Error ? saveError.message : 'Dashboard layout could not be saved')
-      })
-      .finally(() => setSavingLayout(false))
+    if (layoutSaveTimer.current) clearTimeout(layoutSaveTimer.current)
+    layoutSaveTimer.current = setTimeout(() => {
+      void updateDataDashboard(document, nextDashboard)
+        .then((updated) => {
+          setDocument(updated.document)
+          setDashboard(updated.dashboard)
+        })
+        .catch((saveError) => {
+          setError(saveError instanceof Error ? saveError.message : 'Dashboard layout could not be saved')
+        })
+        .finally(() => setSavingLayout(false))
+    }, LAYOUT_SAVE_DEBOUNCE_MS)
   }, [dashboard, document, smallScreen])
 
   if (phase === 'loading') {

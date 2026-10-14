@@ -220,7 +220,15 @@ describe('data dashboards API', () => {
     const { putDataDashboard } = await import('./dataDocuments')
 
     await expect(putDataDashboard(1, dashboard)).resolves.toEqual(dashboard)
-    expect(mocks.put).toHaveBeenCalledWith('/v1/data-documents/1/dashboards/d1', dashboard)
+    expect(mocks.put).toHaveBeenCalledWith('/v1/data-documents/1/dashboards/d1', dashboard, undefined)
+  })
+
+  it('putDataDashboard sends a Kition-Origin: template request when seeding from a template', async () => {
+    mocks.put.mockResolvedValue({ code: 200, data: dashboard })
+    const { putDataDashboard } = await import('./dataDocuments')
+
+    await putDataDashboard(1, dashboard, { origin: 'template' })
+    expect(mocks.put).toHaveBeenCalledWith('/v1/data-documents/1/dashboards/d1', dashboard, { origin: 'template' })
   })
 
   it('deleteDataDashboard deletes the dashboard by id', async () => {
@@ -238,7 +246,7 @@ describe('data dashboards API', () => {
     const trickyDashboard = { ...dashboard, id: 'a/b c?d' }
 
     await putDataDashboard(1, trickyDashboard)
-    expect(mocks.put).toHaveBeenCalledWith('/v1/data-documents/1/dashboards/a%2Fb%20c%3Fd', trickyDashboard)
+    expect(mocks.put).toHaveBeenCalledWith('/v1/data-documents/1/dashboards/a%2Fb%20c%3Fd', trickyDashboard, undefined)
 
     await deleteDataDashboard(1, 'a/b c?d')
     expect(mocks.delete).toHaveBeenCalledWith('/v1/data-documents/1/dashboards/a%2Fb%20c%3Fd')

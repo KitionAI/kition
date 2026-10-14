@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { listDataDocuments } from '@/api/dataDocuments'
-import { readDataDashboards } from '@/features/dashboard/lib/dashboardMetadata'
 import { listWorkflows } from '@/api/workflows'
 import { listFormSyncWorkflows } from '@/features/formSync/api'
 import { queryKeys, workspaceRootKey } from '@/api/queryKeys'
@@ -74,7 +73,7 @@ async function loadKitableChildrenSnapshot(rootPath?: string): Promise<KitableCh
       order: Number(t.order ?? 0),
       primaryFieldId: t.primary_field_id != null ? Number(t.primary_field_id) : null,
     }))
-    dashboardsByKitablePath[path] = readDataDashboards(doc.meta).map((dashboard) => ({
+    dashboardsByKitablePath[path] = (doc.dashboards || []).map((dashboard) => ({
       id: dashboard.id,
       title: dashboard.title,
       order: dashboard.order,

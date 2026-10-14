@@ -1,9 +1,9 @@
-import { openDataDocumentByPath, updateDataDocument } from '@/api/dataDocuments'
 import {
-  readDataDashboards,
-  replaceDataDashboard,
-  writeDataDashboards,
-} from '@/features/dashboard/lib/dashboardMetadata'
+  deleteDataDashboard,
+  listDataDashboards,
+  openDataDocumentByPath,
+  putDataDashboard,
+} from '@/api/dataDocuments'
 import { createStarterDataDashboard } from '@/features/dashboard/lib/dashboardCreation'
 import type { DataDashboard, DataDocument } from '@/types/dataDocument'
 
@@ -19,8 +19,10 @@ export async function createDataDashboardByPath(
   if (!sourceTable) {
     throw new Error('Create a table before adding a dashboard.')
   }
-  const dashboard = createStarterDataDashboard(sourceTable, readDataDashboards(document.meta))
-  return updateDataDashboard(document, dashboard)
+  const existing = await listDataDashboards(document.id)
+  const dashboard = createStarterDataDashboard(sourceTable, existing.items || [])
+  const created = await putDataDashboard(document.id, dashboard)
+  return { dashboard: created, document }
 }
 
 export async function openDataDashboardByPath(
@@ -28,7 +30,8 @@ export async function openDataDashboardByPath(
   dashboardId: string,
 ): Promise<{ dashboard: DataDashboard; document: DataDocument }> {
   const document = await openDataDocumentByPath({ path })
-  const dashboard = readDataDashboards(document.meta).find((item) => item.id === dashboardId)
+  const listed = await listDataDashboards(document.id)
+  const dashboard = (listed.items || []).find((item) => item.id === dashboardId)
   if (!dashboard) {
     throw new Error('Dashboard not found')
   }
@@ -39,12 +42,8 @@ export async function updateDataDashboard(
   document: DataDocument,
   dashboard: DataDashboard,
 ): Promise<{ dashboard: DataDashboard; document: DataDocument }> {
-  const updatedDocument = await updateDataDocument(document.id, {
-    meta: replaceDataDashboard(document.meta, dashboard),
-  })
-  const updatedDashboard = readDataDashboards(updatedDocument.meta)
-    .find((item) => item.id === dashboard.id) || dashboard
-  return { dashboard: updatedDashboard, document: updatedDocument }
+  const updated = await putDataDashboard(document.id, dashboard)
+  return { dashboard: updated, document }
 }
 
 export async function renameDataDashboardByPath(
@@ -61,9 +60,5 @@ export async function renameDataDashboardByPath(
 
 export async function deleteDataDashboardByPath(path: string, dashboardId: string) {
   const document = await openDataDocumentByPath({ path })
-  const dashboards = readDataDashboards(document.meta)
-    .filter((dashboard) => dashboard.id !== dashboardId)
-  return updateDataDocument(document.id, {
-    meta: writeDataDashboards(document.meta, dashboards),
-  })
+  return deleteDataDashboard(document.id, dashboardId)
 }

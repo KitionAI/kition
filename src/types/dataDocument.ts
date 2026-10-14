@@ -233,6 +233,9 @@ export type DataDocument = {
   color: string
   meta?: Record<string, unknown> | null
   tables?: DataTable[]
+  /** Dashboard summaries (id, title, order) — the dashboards themselves live in the file;
+   * fetch one with `listDataDashboards`/`putDataDashboard` (`@/api/dataDocuments`). */
+  dashboards?: { id: string; title: string; order: number }[]
   created_at: ApiTimestamp
   updated_at: ApiTimestamp
 }

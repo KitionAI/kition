@@ -479,11 +479,16 @@ export function listDataDashboards(documentId: number) {
     .then(unwrapResponseData<DataListResponse<DataDashboard>>)
 }
 
-export function putDataDashboard(documentId: number, dashboard: DataDashboard) {
+export function putDataDashboard(
+  documentId: number,
+  dashboard: DataDashboard,
+  options?: { origin?: 'template' },
+) {
   return request
     .put<DataDashboard | { data?: DataDashboard }>(
       `/v1/data-documents/${documentId}/dashboards/${encodeURIComponent(dashboard.id)}`,
       dashboard,
+      options?.origin ? { origin: options.origin } : undefined,
     )
     .then(unwrapResponseData<DataDashboard>)
 }

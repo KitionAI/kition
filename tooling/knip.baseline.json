@@ -35,7 +35,6 @@
   "exports src/features/agent/components/AgentPanelChrome.tsx AgentPanelHeader",
   "exports src/features/agent/lib/documentMentions.ts isMentionableWorkspaceFormat",
   "exports src/features/analytics/lib/productAnalytics.ts normalizeAnalyticsPlatform",
-  "exports src/features/dashboard/lib/dashboardMetadata.ts DATA_DASHBOARDS_META_KEY",
   "exports src/features/design/lib/designAssets.ts loadDesignAssetBlob",
   "exports src/features/design/lib/designGeometry.ts identity",
   "exports src/features/design/lib/designGeometry.ts point",

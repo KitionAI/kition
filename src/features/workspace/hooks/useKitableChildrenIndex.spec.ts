@@ -97,16 +97,7 @@ describe('useKitableChildrenIndex', () => {
         {
           id: 1,
           path: 'Leads.kitable',
-          meta: {
-            dashboards: [{
-              id: 'sales-dashboard',
-              title: 'Sales Dashboard',
-              order: 0,
-              source_table_id: 7,
-              layout: [],
-              widgets: [],
-            }],
-          },
+          dashboards: [{ id: 'sales-dashboard', title: 'Sales Dashboard', order: 0 }],
           tables: [
             { id: 7, title: 'Leads', order: 10, primary_field_id: 100 },
             { id: 8, title: 'Companies', order: 20, primary_field_id: 101 },

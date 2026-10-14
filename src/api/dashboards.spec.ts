@@ -1,15 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { openDataDocumentByPath, updateDataDocument } from '@/api/dataDocuments'
+import { deleteDataDashboard, listDataDashboards, openDataDocumentByPath, putDataDashboard } from '@/api/dataDocuments'
 import {
   createDataDashboardByPath,
+  deleteDataDashboardByPath,
   openDataDashboardByPath,
   updateDataDashboard,
 } from './dashboards'
 
 vi.mock('@/api/dataDocuments', () => ({
+  deleteDataDashboard: vi.fn(),
+  listDataDashboards: vi.fn(),
   openDataDocumentByPath: vi.fn(),
-  updateDataDocument: vi.fn(),
+  putDataDashboard: vi.fn(),
 }))
 
 const dashboard = {
@@ -24,7 +27,6 @@ const dashboard = {
 const document = {
   id: 7,
   path: 'Tasks.kitable',
-  meta: { dashboards: [dashboard] },
   tables: [{
     id: 11,
     title: 'Tasks',
@@ -43,35 +45,30 @@ const document = {
 describe('dashboard API', () => {
   beforeEach(() => {
     vi.mocked(openDataDocumentByPath).mockReset()
-    vi.mocked(updateDataDocument).mockReset()
+    vi.mocked(listDataDashboards).mockReset()
+    vi.mocked(putDataDashboard).mockReset()
+    vi.mocked(deleteDataDashboard).mockReset()
     vi.mocked(openDataDocumentByPath).mockResolvedValue(document as never)
-    vi.mocked(updateDataDocument).mockResolvedValue(document as never)
+    vi.mocked(listDataDashboards).mockResolvedValue({ items: [dashboard], total: 1 } as never)
+    vi.mocked(putDataDashboard).mockImplementation(async (_documentId, saved) => saved as never)
   })
 
-  it('opens a dashboard stored in document metadata', async () => {
+  it('opens a dashboard through the dashboards route', async () => {
     await expect(openDataDashboardByPath('Tasks.kitable', 'task-dashboard')).resolves.toEqual({
       dashboard,
       document,
     })
+    expect(listDataDashboards).toHaveBeenCalledWith(7)
   })
 
-  it('persists a changed dashboard without discarding existing metadata', async () => {
+  it('persists a changed dashboard by putting it, not rewriting the whole document', async () => {
     const changed = { ...dashboard, title: 'Delivery Dashboard' }
     await updateDataDashboard(document as never, changed)
 
-    expect(updateDataDocument).toHaveBeenCalledWith(7, {
-      meta: {
-        dashboards: [changed],
-      },
-    })
+    expect(putDataDashboard).toHaveBeenCalledWith(7, changed)
   })
 
   it('creates a generated dashboard for the selected source table', async () => {
-    vi.mocked(updateDataDocument).mockImplementation(async (_documentId, payload) => ({
-      ...document,
-      meta: payload.meta,
-    }) as never)
-
     const created = await createDataDashboardByPath('Tasks.kitable', 11)
 
     expect(created.dashboard).toMatchObject({
@@ -84,11 +81,7 @@ describe('dashboard API', () => {
       'total-records',
       'records',
     ])
-    expect(updateDataDocument).toHaveBeenCalledWith(7, {
-      meta: {
-        dashboards: [dashboard, created.dashboard],
-      },
-    })
+    expect(putDataDashboard).toHaveBeenCalledWith(7, created.dashboard)
   })
 
   it('requires a table before creating a dashboard', async () => {
@@ -97,5 +90,11 @@ describe('dashboard API', () => {
     await expect(createDataDashboardByPath('Tasks.kitable')).rejects.toThrow(
       'Create a table before adding a dashboard.',
     )
+  })
+
+  it('deletes a dashboard through the dashboards route', async () => {
+    await deleteDataDashboardByPath('Tasks.kitable', 'task-dashboard')
+
+    expect(deleteDataDashboard).toHaveBeenCalledWith(7, 'task-dashboard')
   })
 })

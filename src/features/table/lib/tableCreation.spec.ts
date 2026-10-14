@@ -3,8 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   createDataDocument,
   createDataRecord,
+  getDataDocument,
   listViewFields,
   patchViewField,
+  putDataDashboard,
   updateDataView,
   uploadDataAttachment,
   updateDataDocument,
@@ -18,8 +20,10 @@ import { createTableWorkspaceEntry } from './tableCreation'
 vi.mock('@/api/dataDocuments', () => ({
   createDataDocument: vi.fn(),
   createDataRecord: vi.fn(),
+  getDataDocument: vi.fn(),
   listViewFields: vi.fn(),
   patchViewField: vi.fn(),
+  putDataDashboard: vi.fn(),
   updateDataView: vi.fn(),
   uploadDataAttachment: vi.fn(),
   updateDataDocument: vi.fn(),
@@ -81,6 +85,8 @@ describe('createTableWorkspaceEntry', () => {
     vi.mocked(uploadDataAttachment).mockReset()
     vi.mocked(updateDataDocument).mockReset()
     vi.mocked(updateDataField).mockReset()
+    vi.mocked(getDataDocument).mockReset()
+    vi.mocked(putDataDashboard).mockReset()
     vi.mocked(deleteWorkspaceDocument).mockReset()
     vi.mocked(getDesktopBackendStatus).mockReset()
     vi.mocked(instantiateTemplatePackage).mockReset()
@@ -133,6 +139,8 @@ describe('createTableWorkspaceEntry', () => {
       ...(await createDataDocument({} as never)),
       meta: payload.meta,
     }))
+    vi.mocked(putDataDashboard).mockImplementation(async (_documentId, dashboard) => dashboard)
+    vi.mocked(getDataDocument).mockImplementation(async () => createDataDocument({} as never))
     vi.mocked(updateDataField).mockResolvedValue({} as never)
   })
 
@@ -438,13 +446,14 @@ describe('createTableWorkspaceEntry', () => {
     await createTableWorkspaceEntry({ rootPath: '/workspace', template: dashboardTemplate })
 
     expect(instantiateTemplatePackage).not.toHaveBeenCalled()
-    expect(updateDataDocument).toHaveBeenCalledWith(7, {
-      meta: expect.objectContaining({
-        dashboards: [expect.objectContaining({
-          id: 'project-dashboard',
-          source_table_id: 11,
-        })],
+    expect(putDataDashboard).toHaveBeenCalledWith(
+      7,
+      expect.objectContaining({
+        id: 'project-dashboard',
+        source_table_id: 11,
       }),
-    })
+      { origin: 'template' },
+    )
+    expect(getDataDocument).toHaveBeenCalledWith(7)
   })
 })

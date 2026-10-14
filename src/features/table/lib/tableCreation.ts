@@ -1,18 +1,15 @@
 import {
   createDataDocument,
   createDataRecord,
+  getDataDocument,
   listViewFields,
   patchViewField,
-  updateDataDocument,
+  putDataDashboard,
   updateDataField,
   updateDataView,
 } from '@/api/dataDocuments'
 import { instantiateTemplatePackage } from '@/api/templates'
-import {
-  materializeDashboardSeeds,
-  readDataDashboards,
-  writeDataDashboards,
-} from '@/features/dashboard/lib/dashboardMetadata'
+import { materializeDashboardSeeds } from '@/features/dashboard/lib/dashboardMetadata'
 import type { KitableTemplateDefinition } from '@/features/table/templates/kitableTemplates'
 import type { DataFieldSeed, DataViewSeed } from '@/types/dataDocument'
 import {
@@ -144,11 +141,12 @@ export async function createTableWorkspaceEntry({
     await seedDefaultEmptyRows(dataDocument.id, seededTable.id)
   }
 
-  if (template?.dashboards?.length && readDataDashboards(dataDocument.meta).length === 0) {
+  if (template?.dashboards?.length && (dataDocument.dashboards || []).length === 0) {
     const dashboards = materializeDashboardSeeds(dataDocument, template.dashboards)
-    dataDocument = await updateDataDocument(dataDocument.id, {
-      meta: writeDataDashboards(dataDocument.meta, dashboards),
-    })
+    for (const dashboard of dashboards) {
+      await putDataDashboard(dataDocument.id, dashboard, { origin: 'template' })
+    }
+    dataDocument = await getDataDocument(dataDocument.id)
   }
 
   if (markerDocument.path !== markerPath) {
