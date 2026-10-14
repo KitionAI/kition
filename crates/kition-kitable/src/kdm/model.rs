@@ -176,7 +176,8 @@ fn create_table_as(
     };
     let mut primary = false;
     for field_spec in field_specs {
-        create_field(tx, &table, field_spec)?;
+        // A migration reproduces the source as it is, circular references included.
+        create_field_as(tx, &table, field_spec, seed)?;
         primary |= field_spec.primary;
     }
     // Fields inserted at an `order` may not be in creation order.
@@ -284,7 +285,19 @@ pub fn delete_table(tx: &mut Tx<'_>, base: &ObjectId, table: &ObjectId) -> Resul
 /// replicas can still create one name concurrently; [`super::repair`] then renames the field with
 /// the higher id (`status` to `status_2`), which can happen again in a later merge (`status_2`
 /// to `status_3`), and references by name follow the field that keeps the name.
+///
+/// A derived field whose value would depend on itself is refused ([`KitableError::Invalid`],
+/// "circular reference"); see [`check_acyclic`].
 pub fn create_field(tx: &mut Tx<'_>, table: &ObjectId, spec: &FieldSpec) -> Result<ObjectId> {
+    create_field_as(tx, table, spec, true)
+}
+
+fn create_field_as(
+    tx: &mut Tx<'_>,
+    table: &ObjectId,
+    spec: &FieldSpec,
+    check_cycles: bool,
+) -> Result<ObjectId> {
     require(tx, table, TABLE)?;
     let field_type = fallback(&spec.field_type, "text");
     check_field_type(&field_type)?;
@@ -317,11 +330,15 @@ pub fn create_field(tx: &mut Tx<'_>, table: &ObjectId, spec: &FieldSpec) -> Resu
     if spec.primary {
         tx.set(table, "primaryField", json!(field.as_str()))?;
     }
+    if check_cycles {
+        check_acyclic(tx, &field)?;
+    }
     Ok(field)
 }
 
 /// Patches a field. Field names are immutable. `is_primary: Some(true)` makes it its table's
-/// primary field; `Some(false)` on the primary field is refused ([`KitableError::Invalid`]).
+/// primary field; `Some(false)` on the primary field is refused ([`KitableError::Invalid`]), and
+/// so is a change that makes a derived field depend on itself ([`check_acyclic`]).
 pub fn update_field(tx: &mut Tx<'_>, field: &ObjectId, patch: &FieldPatch) -> Result<()> {
     require(tx, field, FIELD)?;
     if let Some(title) = patch.title.as_deref().map(str::trim)
@@ -378,6 +395,114 @@ pub fn update_field(tx: &mut Tx<'_>, field: &ObjectId, patch: &FieldPatch) -> Re
             return Err(KitableError::invalid(
                 "primary field cannot be unset directly",
             ));
+        }
+    }
+    if patch.field_type.is_some() || patch.options.is_some() || patch.formula.is_some() {
+        check_acyclic(tx, field)?;
+    }
+    Ok(())
+}
+
+/// Refuses ([`KitableError::Invalid`], "circular reference") when the derived value of `field`
+/// depends on itself through the document's field dependencies, as spreadsheets refuse circular
+/// references. A formula depends on the fields of its table it names; a lookup on its target
+/// field; a rollup on its target field, or without one on every field of its link field's target
+/// table; a `link_to_record` field on the primary field of its target table. The graph is per
+/// field, not per record: a running total (a rollup of the previous record's formula that adds
+/// the rollup) is refused too. Concurrent edits can still merge into a cycle; the projector
+/// gives such fields bounded values ([`super::project`]).
+pub fn check_acyclic(tx: &Tx<'_>, field: &ObjectId) -> Result<()> {
+    if !is_a(tx, field, FIELD) {
+        return Ok(());
+    }
+    let derived = |ty: &str| matches!(ty, "formula" | "lookup" | "rollup" | "link_to_record");
+    if !derived(&string(tx, field, "type")?) {
+        return Ok(());
+    }
+    struct Node {
+        table: ObjectId,
+        name: String,
+        ty: String,
+        options: Value,
+        formula: String,
+    }
+    let mut nodes: HashMap<ObjectId, Node> = HashMap::new();
+    let mut table_fields: HashMap<ObjectId, Vec<ObjectId>> = HashMap::new();
+    let mut primaries: HashMap<ObjectId, ObjectId> = HashMap::new();
+    for base in tx.objects_of_type(BASE) {
+        for table in Listing::read(tx, &base, "tables")?.ids() {
+            let fields = Listing::read(tx, &table, "fields")?.ids();
+            for id in &fields {
+                nodes.entry(id.clone()).or_insert(Node {
+                    table: table.clone(),
+                    name: string(tx, id, "name")?,
+                    ty: string(tx, id, "type")?,
+                    options: tx.get(id, "options")?,
+                    formula: string(tx, id, "formula")?,
+                });
+            }
+            if let Some(primary) = tx.get(&table, "primaryField")?.as_str() {
+                primaries.insert(table.clone(), ObjectId::from_string(primary));
+            }
+            table_fields.insert(table, fields);
+        }
+    }
+    let option = |node: &Node, key: &str| -> Option<ObjectId> {
+        node.options
+            .get(key)
+            .and_then(Value::as_str)
+            .map(ObjectId::from_string)
+    };
+    let edges = |id: &ObjectId| -> Vec<ObjectId> {
+        let Some(node) = nodes.get(id) else {
+            return Vec::new();
+        };
+        let table_of_link = |link: Option<ObjectId>| -> Option<ObjectId> {
+            option(nodes.get(&link?)?, "target_table")
+        };
+        match node.ty.as_str() {
+            "formula" => {
+                let names = crate::computed::formula_references(&node.formula);
+                table_fields
+                    .get(&node.table)
+                    .into_iter()
+                    .flatten()
+                    .filter(|other| {
+                        nodes
+                            .get(*other)
+                            .is_some_and(|other| names.contains(&other.name))
+                    })
+                    .cloned()
+                    .collect()
+            }
+            "lookup" => option(node, "target_field").into_iter().collect(),
+            "rollup" => match option(node, "target_field").filter(|f| nodes.contains_key(f)) {
+                Some(target) => vec![target],
+                None => table_of_link(option(node, "link_field"))
+                    .and_then(|table| table_fields.get(&table).cloned())
+                    .unwrap_or_default(),
+            },
+            "link_to_record" => option(node, "target_table")
+                .and_then(|table| primaries.get(&table).cloned())
+                .into_iter()
+                .collect(),
+            _ => Vec::new(),
+        }
+    };
+    let mut seen = HashSet::new();
+    let mut stack = edges(field);
+    while let Some(next) = stack.pop() {
+        if next == *field {
+            let name = nodes
+                .get(field)
+                .map(|node| node.name.clone())
+                .unwrap_or_default();
+            return Err(KitableError::invalid(format!(
+                "circular reference: field {name} depends on itself"
+            )));
+        }
+        if seen.insert(next.clone()) {
+            stack.extend(edges(&next));
         }
     }
     Ok(())

@@ -889,6 +889,239 @@ fn replace_links_changes_only_the_difference() {
     assert!(matches!(not_link, Err(KitableError::Invalid(_))));
 }
 
+fn circular(result: kition_kitable::Result<ObjectId>) -> bool {
+    matches!(&result, Err(KitableError::Invalid(message)) if message.starts_with("circular reference"))
+}
+
+fn try_field(
+    replica: &mut Replica,
+    table: &ObjectId,
+    spec: FieldSpec,
+) -> kition_kitable::Result<ObjectId> {
+    model::transact(replica, &person(), |tx| {
+        model::create_field(tx, table, &spec)
+    })
+}
+
+fn with_options(title: &str, field_type: &str, options: Value) -> FieldSpec {
+    FieldSpec {
+        options,
+        ..field(title, field_type)
+    }
+}
+
+#[test]
+fn circular_references_are_refused() {
+    let mut replica = new_replica();
+    let base = base_in(&mut replica);
+    let tasks = simple_table(&mut replica, &base, "Tasks");
+    let people = simple_table(&mut replica, &base, "People");
+    let to_people = write(&mut replica, |tx| {
+        model::create_field(
+            tx,
+            &tasks.table,
+            &with_options(
+                "Owner",
+                "link_to_record",
+                json!({ "target_table": people.table.as_str() }),
+            ),
+        )
+    });
+    let to_tasks = write(&mut replica, |tx| {
+        model::create_field(
+            tx,
+            &people.table,
+            &with_options(
+                "Tasks",
+                "link_to_record",
+                json!({ "target_table": tasks.table.as_str() }),
+            ),
+        )
+    });
+    let self_link = write(&mut replica, |tx| {
+        model::create_field(
+            tx,
+            &tasks.table,
+            &with_options(
+                "Parent",
+                "link_to_record",
+                json!({ "target_table": tasks.table.as_str() }),
+            ),
+        )
+    });
+
+    // A formula naming itself, or two formulas naming each other.
+    let selfish = FieldSpec {
+        formula: "{me} + 1".into(),
+        ..field("Me", "formula")
+    };
+    assert!(circular(try_field(&mut replica, &tasks.table, selfish)));
+    let first = write(&mut replica, |tx| {
+        model::create_field(
+            tx,
+            &tasks.table,
+            &FieldSpec {
+                formula: "{second} + 1".into(),
+                ..field("First", "formula")
+            },
+        )
+    });
+    let second = FieldSpec {
+        formula: "{first} + 1".into(),
+        ..field("Second", "formula")
+    };
+    assert!(circular(try_field(&mut replica, &tasks.table, second)));
+    // A name inside a string literal is not a reference.
+    let quoted = FieldSpec {
+        formula: "concat('{first}', {notes})".into(),
+        ..field("Quoted", "formula")
+    };
+    assert!(try_field(&mut replica, &tasks.table, quoted).is_ok());
+
+    // A lookup of itself through a link to its own table.
+    let lookup = write(&mut replica, |tx| {
+        model::create_field(
+            tx,
+            &tasks.table,
+            &with_options(
+                "Up",
+                "lookup",
+                json!({ "link_field": self_link.as_str(), "target_field": first.as_str() }),
+            ),
+        )
+    });
+    let refused = model::transact(&mut replica, &person(), |tx| {
+        model::update_field(
+            tx,
+            &lookup,
+            &FieldPatch {
+                options: Some(
+                    json!({ "link_field": self_link.as_str(), "target_field": lookup.as_str() }),
+                ),
+                ..FieldPatch::default()
+            },
+        )
+        .map(|()| lookup.clone())
+    });
+    assert!(circular(refused));
+
+    // Two lookups across tables reading each other.
+    let back = write(&mut replica, |tx| {
+        model::create_field(
+            tx,
+            &people.table,
+            &with_options(
+                "Task up",
+                "lookup",
+                json!({ "link_field": to_tasks.as_str(), "target_field": lookup.as_str() }),
+            ),
+        )
+    });
+    let mutual = with_options(
+        "Owner back",
+        "lookup",
+        json!({ "link_field": to_people.as_str(), "target_field": back.as_str() }),
+    );
+    let mutual_id = try_field(&mut replica, &tasks.table, mutual.clone());
+    assert!(mutual_id.is_ok(), "no cycle yet: Up reads First");
+    // ... until Up reads Owner back, which reads Task up, which reads Up.
+    let refused = model::transact(&mut replica, &person(), |tx| {
+        let target = ok(mutual_id.as_ref().map_err(ToString::to_string)).clone();
+        model::update_field(
+            tx,
+            &lookup,
+            &FieldPatch {
+                options: Some(
+                    json!({ "link_field": self_link.as_str(), "target_field": target.as_str() }),
+                ),
+                ..FieldPatch::default()
+            },
+        )
+        .map(|()| target)
+    });
+    assert!(circular(refused));
+
+    // A rollup of whole records of its own table, and two rollups reading each other.
+    let whole = with_options(
+        "All",
+        "rollup",
+        json!({ "link_field": self_link.as_str(), "aggregation": "count" }),
+    );
+    assert!(circular(try_field(&mut replica, &tasks.table, whole)));
+    let count = write(&mut replica, |tx| {
+        model::create_field(
+            tx,
+            &people.table,
+            &with_options(
+                "Count",
+                "rollup",
+                json!({ "link_field": to_tasks.as_str(), "target_field": first.as_str(), "aggregation": "sum" }),
+            ),
+        )
+    });
+    let reads_count = with_options(
+        "Owner count",
+        "rollup",
+        json!({ "link_field": to_people.as_str(), "target_field": count.as_str(), "aggregation": "sum" }),
+    );
+    let reads_count = ok(try_field(&mut replica, &tasks.table, reads_count));
+    let refused = model::transact(&mut replica, &person(), |tx| {
+        model::update_field(
+            tx,
+            &count,
+            &FieldPatch {
+                options: Some(json!({ "link_field": to_tasks.as_str(), "target_field": reads_count.as_str(), "aggregation": "sum" })),
+                ..FieldPatch::default()
+            },
+        )
+        .map(|()| count.clone())
+    });
+    assert!(circular(refused));
+
+    // A running total is circular per field, though not per record.
+    let cum = write(&mut replica, |tx| {
+        model::create_field(
+            tx,
+            &tasks.table,
+            &FieldSpec {
+                formula: "{prev_cum} + 1".into(),
+                ..field("Cum", "formula")
+            },
+        )
+    });
+    let prev = with_options(
+        "Prev cum",
+        "rollup",
+        json!({ "link_field": self_link.as_str(), "target_field": cum.as_str(), "aggregation": "sum" }),
+    );
+    assert!(circular(try_field(&mut replica, &tasks.table, prev)));
+
+    // A table spec with formulas naming each other.
+    let refused = model::transact(&mut replica, &person(), |tx| {
+        model::create_table(
+            tx,
+            &base,
+            &TableSpec {
+                title: "Loop".into(),
+                fields: vec![
+                    FieldSpec {
+                        formula: "{b}".into(),
+                        ..field("A", "formula")
+                    },
+                    FieldSpec {
+                        formula: "{a}".into(),
+                        ..field("B", "formula")
+                    },
+                ],
+                ..TableSpec::default()
+            },
+            None,
+        )
+        .map(|ids| ids.table)
+    });
+    assert!(circular(refused));
+}
+
 #[test]
 fn deleting_records_and_tables_removes_their_links() {
     let mut replica = new_replica();

@@ -737,6 +737,23 @@ impl Twin {
         out
     }
 
+    /// Writes and projects like [`Twin::write`], unless the model refuses a circular reference
+    /// (which legacy accepts): then nothing is applied and the operation is skipped.
+    fn try_write(&mut self, f: impl FnOnce(&mut Tx<'_>) -> kition_kitable::Result<()>) -> bool {
+        match model::transact(&mut self.replica, &person(), f) {
+            Err(kition_kitable::KitableError::Invalid(message))
+                if message.starts_with("circular reference") =>
+            {
+                false
+            }
+            other => {
+                ok(other);
+                self.project();
+                true
+            }
+        }
+    }
+
     fn legacy_labels(&self) -> Labels {
         Labels(
             self.keys
@@ -1044,8 +1061,10 @@ impl Twin {
                     ..spec
                 };
                 let m_table = self.m_table(table);
+                if !self.try_write(|tx| model::create_field(tx, &m_table, &m_spec).map(|_| ())) {
+                    return;
+                }
                 ok(self.legacy.create_field(legacy.id, &l_spec));
-                self.write(|tx| model::create_field(tx, &m_table, &m_spec));
             }
             Op::UpdateField {
                 table,
@@ -1077,10 +1096,12 @@ impl Twin {
                     ..patch
                 };
                 let m_field = self.m_field(table, name);
+                if !self.try_write(|tx| model::update_field(tx, &m_field, &m_patch)) {
+                    return;
+                }
                 ok(self
                     .legacy
                     .update_field(legacy.table_id, legacy.id, &l_patch));
-                self.write(|tx| model::update_field(tx, &m_field, &m_patch));
             }
             Op::DeleteField { table, field: name } => {
                 let legacy = self.l_field(table, name);

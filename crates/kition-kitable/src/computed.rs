@@ -247,6 +247,41 @@ fn aggregate(aggregation: &str, values: &[Value]) -> Value {
     }
 }
 
+/// The field names a formula references (`{name}`), outside string literals, in order and
+/// without repeats.
+pub fn formula_references(expression: &str) -> Vec<String> {
+    let bytes = expression.as_bytes();
+    let mut names: Vec<String> = Vec::new();
+    let mut pos = 0;
+    while let Some(&byte) = bytes.get(pos) {
+        match byte {
+            b'\'' | b'"' => {
+                pos += 1;
+                while bytes.get(pos).is_some_and(|other| *other != byte) {
+                    pos += 1;
+                }
+                pos += 1;
+            }
+            b'{' => {
+                let start = pos + 1;
+                pos = start;
+                while bytes.get(pos).is_some_and(|other| *other != b'}') {
+                    pos += 1;
+                }
+                if let Some(name) = expression.get(start..pos)
+                    && pos < bytes.len()
+                    && !names.iter().any(|known| known == name)
+                {
+                    names.push(name.to_owned());
+                }
+                pos += 1;
+            }
+            _ => pos += 1,
+        }
+    }
+    names
+}
+
 /// Evaluates a formula over the record's values. `{name}` references a
 /// field; supports `+ - * /`, parentheses, unary minus, string and number
 /// literals, `true`/`false`/`null`, and `if`, `concat`, `upper`, `lower`,
