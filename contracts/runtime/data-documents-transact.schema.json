@@ -1,0 +1,257 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kition.ai/contracts/runtime/data-documents-transact.schema.json",
+  "title": "Kition Data Document Transactions",
+  "description": "POST /v1/data-documents/{id}/transact, POST /v1/data-documents/{id}/undo, POST /v1/data-documents/{id}/redo, and GET /v1/data-documents/{id}/history-state. Every request to these routes, and to the rest of /v1/data-documents, carries a Kition-Session header (one UUID per window); the runtime records person:session:<uuid> as the resulting change's origin. table/changed on the kit bridge stream (table-changed.schema.json) carries the same TableChange shape.",
+  "$ref": "#/$defs/transactResponse",
+  "$defs": {
+    "rowKey": {
+      "type": "string",
+      "minLength": 1
+    },
+    "cellValues": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Field name to new value."
+    },
+    "recordFields": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Field name to initial value for a created record."
+    },
+    "createAt": {
+      "description": "Where records.create inserts the new rows; null appends them at the end.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["before"],
+          "properties": {
+            "before": { "$ref": "#/$defs/rowKey" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["after"],
+          "properties": {
+            "after": { "$ref": "#/$defs/rowKey" }
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "opCellsSet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "tableId", "records"],
+      "properties": {
+        "op": { "const": "cells.set" },
+        "tableId": { "type": "integer", "minimum": 1 },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["rowKey", "values"],
+            "properties": {
+              "rowKey": { "$ref": "#/$defs/rowKey" },
+              "values": { "$ref": "#/$defs/cellValues" }
+            }
+          }
+        }
+      }
+    },
+    "opRecordsCreate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "tableId", "at", "records"],
+      "properties": {
+        "op": { "const": "records.create" },
+        "tableId": { "type": "integer", "minimum": 1 },
+        "at": { "$ref": "#/$defs/createAt" },
+        "records": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/recordFields" }
+        }
+      }
+    },
+    "opRecordsDelete": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "tableId", "rowKeys"],
+      "properties": {
+        "op": { "const": "records.delete" },
+        "tableId": { "type": "integer", "minimum": 1 },
+        "rowKeys": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/rowKey" }
+        }
+      }
+    },
+    "opRecordsMove": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "tableId", "rowKeys", "before"],
+      "properties": {
+        "op": { "const": "records.move" },
+        "tableId": { "type": "integer", "minimum": 1 },
+        "rowKeys": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/rowKey" }
+        },
+        "before": {
+          "anyOf": [
+            { "$ref": "#/$defs/rowKey" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "opFieldsMove": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "tableId", "fieldIds", "toIndex"],
+      "properties": {
+        "op": { "const": "fields.move" },
+        "tableId": { "type": "integer", "minimum": 1 },
+        "fieldIds": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 1 }
+        },
+        "toIndex": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "op": {
+      "description": "One step of a transaction, tagged by op.",
+      "oneOf": [
+        { "$ref": "#/$defs/opCellsSet" },
+        { "$ref": "#/$defs/opRecordsCreate" },
+        { "$ref": "#/$defs/opRecordsDelete" },
+        { "$ref": "#/$defs/opRecordsMove" },
+        { "$ref": "#/$defs/opFieldsMove" }
+      ]
+    },
+    "transactRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "POST /v1/data-documents/{id}/transact: applies every op as one transaction and one undo step.",
+      "required": ["ops"],
+      "properties": {
+        "ops": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/op" }
+        }
+      }
+    },
+    "tableRowRef": {
+      "type": "array",
+      "description": "[tableId, rowKey] tuple.",
+      "items": [
+        { "type": "integer", "minimum": 1 },
+        { "$ref": "#/$defs/rowKey" }
+      ]
+    },
+    "tableChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "What a transaction, undo, redo, or dashboard write touched, for a window to apply to its own state without refetching. Also the params of the table/changed bridge event (table-changed.schema.json), plus documentPath there.",
+      "required": [
+        "documentId",
+        "origin",
+        "tables",
+        "schema",
+        "views",
+        "recordsUpserted",
+        "recordsDeleted",
+        "recordsReordered",
+        "dashboards"
+      ],
+      "properties": {
+        "documentId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "origin": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Who made the change: person:session:<uuid> for a window, agent:<turnId> for the agent, or template for seeding."
+        },
+        "tables": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 1 },
+          "description": "Table ids whose definition (not rows) changed."
+        },
+        "schema": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 1 },
+          "description": "Table ids whose fields changed."
+        },
+        "views": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 1 },
+          "description": "View ids that changed."
+        },
+        "recordsUpserted": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/tableRowRef" }
+        },
+        "recordsDeleted": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/tableRowRef" }
+        },
+        "recordsReordered": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 1 },
+          "description": "Table ids whose row order changed."
+        },
+        "dashboards": {
+          "type": "boolean"
+        }
+      }
+    },
+    "transactResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["change", "created"],
+      "properties": {
+        "change": { "$ref": "#/$defs/tableChange" },
+        "created": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/rowKey" },
+          "description": "Row keys created by records.create ops, in request order."
+        }
+      }
+    },
+    "undoRedoRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "POST /v1/data-documents/{id}/undo and /redo: empty body."
+    },
+    "undoRedoResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["done", "change"],
+      "properties": {
+        "done": {
+          "type": "boolean",
+          "description": "False when there was nothing to undo or redo; change is then a no-op."
+        },
+        "change": { "$ref": "#/$defs/tableChange" }
+      }
+    },
+    "historyStateResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "GET /v1/data-documents/{id}/history-state",
+      "required": ["canUndo", "canRedo"],
+      "properties": {
+        "canUndo": { "type": "boolean" },
+        "canRedo": { "type": "boolean" }
+      }
+    }
+  }
+}
