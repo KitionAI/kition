@@ -25,6 +25,57 @@ const DOC_MARKER = JSON.stringify({ data_document_id: 1 })
 
 // ─── Fixture: data document with 3 tables ──────────────────────────────────
 
+// A dashboard now lives in the .kitable file itself (GET/PUT/DELETE
+// /data-documents/:id/dashboards[/:dashboardId]), not the document's meta
+// column; mockKitableTreeDataDocumentApi below keeps this list mutable so
+// "creates a generated dashboard" can add to it.
+const FIXTURE_DASHBOARDS = [{
+  id: 'task-dashboard',
+  title: 'Task Dashboard',
+  order: 0,
+  source_table_id: 12,
+  layout: [
+    { widget_id: 'total', x: 0, y: 0, w: 3, h: 2 },
+    { widget_id: 'completed', x: 3, y: 0, w: 3, h: 2 },
+    { widget_id: 'important', x: 6, y: 0, w: 3, h: 2 },
+    { widget_id: 'not-started', x: 9, y: 0, w: 3, h: 2 },
+    { widget_id: 'progress', x: 0, y: 2, w: 5, h: 4 },
+  ],
+  widgets: [
+    { id: 'total', title: 'Total tasks', type: 'metric', query: { aggregation: 'count' } },
+    {
+      id: 'completed',
+      title: 'Completed',
+      type: 'metric',
+      query: {
+        aggregation: 'count',
+        filters: [{ field_name: 'progress', operator: 'equals', value: 'Completed' }],
+      },
+    },
+    {
+      id: 'important',
+      title: 'Important',
+      type: 'metric',
+      query: { aggregation: 'count_true', field_name: 'important' },
+    },
+    {
+      id: 'not-started',
+      title: 'Not started',
+      type: 'metric',
+      query: {
+        aggregation: 'count',
+        filters: [{ field_name: 'progress', operator: 'equals', value: 'Not Started' }],
+      },
+    },
+    {
+      id: 'progress',
+      title: 'Progress distribution',
+      type: 'pie',
+      query: { aggregation: 'count', group_by_field_name: 'progress' },
+    },
+  ],
+}]
+
 const FIXTURE_DOCUMENT = {
   id: 1,
   user_id: 1,
@@ -34,54 +85,7 @@ const FIXTURE_DOCUMENT = {
   description: '',
   icon: '',
   color: '',
-  meta: {
-    dashboards: [{
-      id: 'task-dashboard',
-      title: 'Task Dashboard',
-      order: 0,
-      source_table_id: 12,
-      layout: [
-        { widget_id: 'total', x: 0, y: 0, w: 3, h: 2 },
-        { widget_id: 'completed', x: 3, y: 0, w: 3, h: 2 },
-        { widget_id: 'important', x: 6, y: 0, w: 3, h: 2 },
-        { widget_id: 'not-started', x: 9, y: 0, w: 3, h: 2 },
-        { widget_id: 'progress', x: 0, y: 2, w: 5, h: 4 },
-      ],
-      widgets: [
-        { id: 'total', title: 'Total tasks', type: 'metric', query: { aggregation: 'count' } },
-        {
-          id: 'completed',
-          title: 'Completed',
-          type: 'metric',
-          query: {
-            aggregation: 'count',
-            filters: [{ field_name: 'progress', operator: 'equals', value: 'Completed' }],
-          },
-        },
-        {
-          id: 'important',
-          title: 'Important',
-          type: 'metric',
-          query: { aggregation: 'count_true', field_name: 'important' },
-        },
-        {
-          id: 'not-started',
-          title: 'Not started',
-          type: 'metric',
-          query: {
-            aggregation: 'count',
-            filters: [{ field_name: 'progress', operator: 'equals', value: 'Not Started' }],
-          },
-        },
-        {
-          id: 'progress',
-          title: 'Progress distribution',
-          type: 'pie',
-          query: { aggregation: 'count', group_by_field_name: 'progress' },
-        },
-      ],
-    }],
-  },
+  meta: null as Record<string, unknown> | null,
   created_at: '2026-06-01T00:00:00.000Z',
   updated_at: '2026-06-01T00:00:00.000Z',
   tables: [
@@ -461,6 +465,17 @@ async function mockKitableTreeDesktopBridge(page: Page) {
 
 async function mockKitableTreeDataDocumentApi(page: Page) {
   const document = structuredClone(FIXTURE_DOCUMENT)
+  const dashboards = structuredClone(FIXTURE_DASHBOARDS)
+
+  function dashboardSummaries() {
+    return dashboards.map(({ id, title, order }) => ({ id, title, order }))
+  }
+
+  // document_response (kition-datadoc) summarizes dashboards alongside tables.
+  function documentWithDashboards() {
+    return { ...document, dashboards: dashboardSummaries() }
+  }
+
   await page.route('**/api/v1/data-documents**', async (route) => {
     const request = route.request()
     const url = new URL(request.url())
@@ -472,7 +487,7 @@ async function mockKitableTreeDataDocumentApi(page: Page) {
       return fulfillJson(route, {
         code: 200,
         data: {
-          items: [document],
+          items: [documentWithDashboards()],
           total: 1,
           offset: 0,
           limit: 100,
@@ -482,18 +497,18 @@ async function mockKitableTreeDataDocumentApi(page: Page) {
 
     // POST /data-documents/open — resolve path → document
     if (method === 'POST' && path === '/api/v1/data-documents/open') {
-      return fulfillJson(route, { code: 200, data: document })
+      return fulfillJson(route, { code: 200, data: documentWithDashboards() })
     }
 
     // GET /data-documents/1 — full document (tables + fields + views)
     if (method === 'GET' && /^\/api\/v1\/data-documents\/\d+$/.test(path)) {
-      return fulfillJson(route, { code: 200, data: document })
+      return fulfillJson(route, { code: 200, data: documentWithDashboards() })
     }
 
     if (method === 'PATCH' && /^\/api\/v1\/data-documents\/\d+$/.test(path)) {
       const payload = await request.postDataJSON() as { meta?: typeof document.meta }
       if (payload.meta) document.meta = payload.meta
-      return fulfillJson(route, { code: 200, data: document })
+      return fulfillJson(route, { code: 200, data: documentWithDashboards() })
     }
 
     const tableMatch = path.match(/^\/api\/v1\/data-documents\/\d+\/tables\/(\d+)$/)
@@ -520,6 +535,32 @@ async function mockKitableTreeDataDocumentApi(page: Page) {
         ? { items: TASK_RECORDS, total: TASK_RECORDS.length, offset: 0, limit: 200 }
         : EMPTY_RECORDS
       return fulfillJson(route, { code: 200, data: records })
+    }
+
+    // GET /data-documents/1/dashboards
+    if (method === 'GET' && /^\/api\/v1\/data-documents\/\d+\/dashboards$/.test(path)) {
+      return fulfillJson(route, { code: 200, data: { items: dashboards, total: dashboards.length } })
+    }
+
+    // PUT /data-documents/1/dashboards/:dashboardId
+    const putDashboardMatch = path.match(/^\/api\/v1\/data-documents\/\d+\/dashboards\/([^/]+)$/)
+    if (method === 'PUT' && putDashboardMatch) {
+      const dashboardId = decodeURIComponent(putDashboardMatch[1])
+      const payload = await request.postDataJSON() as typeof dashboards[number]
+      const saved = { ...payload, id: dashboardId }
+      const existingIndex = dashboards.findIndex((item) => item.id === dashboardId)
+      if (existingIndex >= 0) dashboards[existingIndex] = saved
+      else dashboards.push(saved)
+      return fulfillJson(route, { code: 200, data: saved })
+    }
+
+    // DELETE /data-documents/1/dashboards/:dashboardId
+    const deleteDashboardMatch = path.match(/^\/api\/v1\/data-documents\/\d+\/dashboards\/([^/]+)$/)
+    if (method === 'DELETE' && deleteDashboardMatch) {
+      const dashboardId = decodeURIComponent(deleteDashboardMatch[1])
+      const index = dashboards.findIndex((item) => item.id === dashboardId)
+      if (index >= 0) dashboards.splice(index, 1)
+      return fulfillJson(route, { code: 200, data: { deleted: index >= 0 } })
     }
 
     // Fallback — empty success for PATCH view etc.
