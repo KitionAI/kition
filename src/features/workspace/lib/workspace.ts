@@ -304,7 +304,7 @@ export function getWorkspaceItemKitIcon(format?: WorkspaceDocumentFormat): KitIc
 export function getWorkspaceItemIcon(format?: WorkspaceDocumentFormat): WorkspaceItemIcon {
   const kit = getWorkspaceItemKitIcon(format)
   if (kit) {
-    return kitIconComponent(kit)
+    return kitIconComponent(kit, { small: true })
   }
   switch (format) {
     case 'image':

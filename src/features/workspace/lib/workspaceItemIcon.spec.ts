@@ -35,10 +35,10 @@ describe('getWorkspaceItemKitIcon', () => {
 })
 
 describe('getWorkspaceItemIcon', () => {
-  it('returns the bound kit icon for kit formats', () => {
-    expect(getWorkspaceItemIcon('pptx')).toBe(kitIconComponent('slide'))
-    expect(getWorkspaceItemIcon('markdown')).toBe(kitIconComponent('document'))
-    expect(getWorkspaceItemIcon('photo')).toBe(kitIconComponent('photo'))
+  it('returns the small kit icon for kit formats', () => {
+    expect(getWorkspaceItemIcon('pptx')).toBe(kitIconComponent('slide', { small: true }))
+    expect(getWorkspaceItemIcon('markdown')).toBe(kitIconComponent('document', { small: true }))
+    expect(getWorkspaceItemIcon('photo')).toBe(kitIconComponent('photo', { small: true }))
   })
 
   it('keeps Lucide icons for plain files', () => {

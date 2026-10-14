@@ -12,12 +12,22 @@ export type KitIconId = (typeof KIT_ICON_IDS)[number]
 
 type KitIconImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, 'src'>
 
-/** A kit's app icon (docs/design.md, Kit icons). Decorative unless `alt` is given. */
-export function KitIcon({ kit, alt = '', className, draggable = false, ...props }: KitIconImageProps & { kit: KitIconId }) {
+/**
+ * A kit's app icon (docs/design.md, Kit icons). Decorative unless `alt` is given.
+ * Pass `small` at 32 px and below for the bold cut that stays legible.
+ */
+export function KitIcon({
+  kit,
+  small = false,
+  alt = '',
+  className,
+  draggable = false,
+  ...props
+}: KitIconImageProps & { kit: KitIconId; small?: boolean }) {
   return (
     <img
       {...props}
-      src={resolveBundledAssetURL(`kit-icons/${kit}.svg`)}
+      src={resolveBundledAssetURL(`kit-icons/${kit}${small ? '-small' : ''}.svg`)}
       alt={alt}
       className={cn('shrink-0', className)}
       draggable={draggable}
@@ -26,16 +36,17 @@ export function KitIcon({ kit, alt = '', className, draggable = false, ...props 
   )
 }
 
-const boundKitIcons = new Map<KitIconId, ComponentType<KitIconImageProps>>()
+const boundKitIcons = new Map<string, ComponentType<KitIconImageProps>>()
 
 /** A stable component for one kit, usable where an icon component is expected. */
-export function kitIconComponent(kit: KitIconId): ComponentType<KitIconImageProps> {
-  let component = boundKitIcons.get(kit)
+export function kitIconComponent(kit: KitIconId, { small = false }: { small?: boolean } = {}): ComponentType<KitIconImageProps> {
+  const key = `${kit}${small ? ':small' : ''}`
+  let component = boundKitIcons.get(key)
   if (!component) {
-    const Bound = (props: KitIconImageProps) => <KitIcon {...props} kit={kit} />
-    Bound.displayName = `KitIcon(${kit})`
+    const Bound = (props: KitIconImageProps) => <KitIcon {...props} kit={kit} small={small} />
+    Bound.displayName = `KitIcon(${key})`
     component = Bound
-    boundKitIcons.set(kit, component)
+    boundKitIcons.set(key, component)
   }
   return component
 }

@@ -47,4 +47,17 @@ describe('KitIcon', () => {
     expect(image.getAttribute('src')).toBe('/kit-icons/table.svg')
     expect(image.getAttribute('aria-hidden')).toBe('true')
   })
+
+  it('uses the bold small cut when asked', async () => {
+    const image = await render(createElement(KitIcon, { kit: 'film', small: true, className: 'size-4' }))
+    expect(image.getAttribute('src')).toBe('/kit-icons/film-small.svg')
+  })
+
+  it('binds the small cut separately from the full icon', async () => {
+    expect(kitIconComponent('table', { small: true })).toBe(kitIconComponent('table', { small: true }))
+    expect(kitIconComponent('table', { small: true })).not.toBe(kitIconComponent('table'))
+    const Bound = kitIconComponent('table', { small: true })
+    const image = await render(createElement(Bound, { className: 'size-4' }))
+    expect(image.getAttribute('src')).toBe('/kit-icons/table-small.svg')
+  })
 })

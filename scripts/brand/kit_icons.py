@@ -140,3 +140,78 @@ def icon_svg(kit):
             '<path d="M0 0H256V100Q128 130 0 100Z" fill="url(#gloss)"/>'
             '<rect x="1.5" y="1.5" width="253" height="253" rx="56.5" fill="none" stroke="#fff" stroke-opacity=".3" stroke-width="3"/></g>'
             f'<g filter="url(#sh)">{glyph(kit)}</g></svg>\n')
+
+
+def _small_page(fold=True):
+    """A page that fills the small tile, with an optional folded corner."""
+    if not fold:
+        return '<rect x="52" y="28" width="152" height="200" rx="20" fill="#fff"/>'
+    return ('<path d="M72 28H160L204 72V208Q204 228 184 228H72Q52 228 52 208V48Q52 28 72 28Z" fill="#fff"/>'
+            '<path d="M160 28V60Q160 72 172 72H204Z" fill="#000" opacity=".14"/>')
+
+
+def small_glyph(kit):
+    """Bold glyphs for 32 px and below: one shape, strokes at least 2 px at 16 px (32 units)."""
+    h = kit.deep
+    if kit.id == 'document':
+        return _small_page() + _line('M84 112H172M84 152H172M84 192H140', h, 22)
+    if kit.id == 'word':
+        letter, end = outline('W', 0, 0, 104, h, weight=800)
+        return _small_page() + f'<g transform="translate({128 - end / 2:.1f} 196)">{letter}</g>'
+    if kit.id == 'table':
+        return ('<rect x="32" y="44" width="192" height="168" rx="26" fill="#fff"/>'
+                f'<path d="M32 70Q32 44 58 44H198Q224 44 224 70V100H32Z" fill="{h}"/>'
+                + _line('M64 140H192M64 180H192', h, 20))
+    if kit.id == 'sheet':
+        return ('<rect x="32" y="40" width="192" height="176" rx="24" fill="#fff"/>'
+                + _line('M32 98H224M32 158H224M96 40V216M160 40V216', h, 14)
+                + f'<rect x="96" y="98" width="64" height="60" fill="{h}"/>')
+    if kit.id == 'board':
+        return ('<path d="M48 36H208V172L160 220H48Z" fill="#fff"/>'
+                f'<path d="M208 172H172Q160 172 160 184V220Z" fill="{h}" opacity=".5"/>'
+                + _line('M80 92H176M80 136H144', h, 22))
+    if kit.id == 'slide':
+        return ('<rect x="24" y="52" width="208" height="136" rx="22" fill="#fff"/>'
+                + _line('M128 188V222M96 222H160', '#fff', 20)
+                + f'<rect x="56" y="84" width="88" height="22" rx="11" fill="{h}"/>'
+                + f'<circle cx="176" cy="140" r="26" fill="{h}"/>')
+    if kit.id == 'design':
+        g = '<rect x="58" y="58" width="140" height="140" fill="none" stroke="#fff" stroke-width="20"/>'
+        for x, y in [(58, 58), (198, 58), (58, 198), (198, 198)]:
+            g += f'<rect x="{x - 26}" y="{y - 26}" width="52" height="52" rx="10" fill="#fff"/>'
+        return g
+    if kit.id == 'layout':
+        return (_small_page(fold=False) + f'<rect x="76" y="52" width="104" height="56" rx="10" fill="{h}"/>'
+                + _line('M84 144H116M84 184H116M140 144H172M140 184H172', h, 20))
+    if kit.id == 'vector':
+        return (_line('M56 200C72 96 184 160 200 56', '#fff', 26)
+                + '<rect x="28" y="172" width="56" height="56" rx="12" fill="#fff"/>'
+                + f'<rect x="172" y="28" width="56" height="56" rx="12" fill="#fff" stroke="{h}" stroke-width="10"/>')
+    if kit.id == 'photo':
+        return ('<rect x="28" y="44" width="200" height="168" rx="26" fill="#fff"/>'
+                f'<path d="M52 192L104 120L140 164L162 140L204 192Z" fill="{h}"/>'
+                f'<circle cx="168" cy="92" r="22" fill="{h}"/>')
+    if kit.id == 'effect':
+        return ('<circle cx="68" cy="188" r="26" fill="#fff" opacity=".45"/>'
+                '<circle cx="112" cy="140" r="34" fill="#fff" opacity=".7"/>'
+                '<circle cx="172" cy="80" r="50" fill="#fff"/>')
+    if kit.id == 'film':
+        return ('<rect x="28" y="100" width="200" height="124" rx="22" fill="#fff"/>'
+                '<rect x="28" y="36" width="200" height="48" rx="14" fill="#fff"/>'
+                f'<path d="M76 36H112L88 84H52ZM148 36H184L160 84H124Z" fill="{h}"/>'
+                f'<path d="M108 128L168 162L108 196Z" fill="{h}"/>')
+    if kit.id == 'pdf':
+        return _small_page() + f'<rect x="40" y="124" width="140" height="72" rx="16" fill="{h}"/>' + _line('M72 160H148', '#fff', 20)
+    if kit.id == 'cad':
+        return ('<path d="M44 36V220H220Z" fill="#fff"/>'
+                f'<path d="M84 124V180H140Z" fill="{h}"/>')
+    raise ValueError(f'unknown kit {kit.id}')
+
+
+def small_icon_svg(kit):
+    """The kit icon for 32 px and below: flat hue tile, one bold white glyph, no gloss or shadow."""
+    gradient = (f'<linearGradient id="hue" x1="0" y1="0" x2=".7" y2="1"><stop offset="0" stop-color="{kit.light}"/>'
+                f'<stop offset="1" stop-color="{kit.mid}"/></linearGradient>')
+    return ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">'
+            f'<defs>{gradient}</defs><rect width="256" height="256" rx="58" fill="url(#hue)"/>'
+            f'{small_glyph(kit)}</svg>\n')

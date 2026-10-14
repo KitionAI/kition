@@ -42,6 +42,7 @@ def main():
     write(brand / 'kition-lockup.svg', mark.lockup_svg())
     for kit in kit_icons.KITS:
         write(ROOT / 'public/kit-icons' / f'{kit.id}.svg', kit_icons.icon_svg(kit))
+        write(ROOT / 'public/kit-icons' / f'{kit.id}-small.svg', kit_icons.small_icon_svg(kit))
 
     tile = mark.icon_3d_tile(512).resize((256, 256), mark.Image.LANCZOS)
     for target in ('public/logo-mark.png', 'public/onboarding/logo.png', 'docs/readme/kition-logo-mark.png'):

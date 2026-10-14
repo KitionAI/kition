@@ -45,6 +45,14 @@ class KitIconTests(unittest.TestCase):
             self.assertNotIn('<text', svg, kit.id)
             self.assertIn(kit.mid, svg, kit.id)
 
+    def test_small_icons_are_flat_and_bold(self):
+        for kit in kit_icons.KITS:
+            svg = kit_icons.small_icon_svg(kit)
+            self.assertTrue(svg.startswith('<svg'), kit.id)
+            self.assertNotIn('<text', svg, kit.id)
+            self.assertNotIn('filter', svg, kit.id)
+            self.assertNotIn('url(#gloss)', svg, kit.id)
+
     def test_brand_purple_is_reserved_for_kition(self):
         for kit in kit_icons.KITS:
             self.assertNotIn('#5645d4', kit_icons.icon_svg(kit).lower(), kit.id)
