@@ -484,7 +484,7 @@ async fn import_csv(
                 .get_table(table_id)
                 .map_err(|_| AppError::not_found("Table does not exist"))?;
             let headers = &rows[0];
-            let mut created = 0;
+            let mut batch = Vec::with_capacity(rows.len().saturating_sub(1));
             for row in &rows[1..] {
                 let mut values = Map::new();
                 for (index, header) in headers.iter().enumerate() {
@@ -497,10 +497,13 @@ async fn import_csv(
                         values.insert(field.name.clone(), Value::String(cell.clone()));
                     }
                 }
-                file.create_record(table_id, &values)
-                    .map_err(|_| AppError::internal("Failed to import CSV"))?;
-                created += 1;
+                batch.push(values);
             }
+            // One transaction for the whole file.
+            let created = file
+                .create_records(table_id, &batch)
+                .map_err(|_| AppError::internal("Failed to import CSV"))?
+                .len();
             Ok(json!({ "created": created }))
         })
         .await?;

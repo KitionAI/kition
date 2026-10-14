@@ -523,17 +523,41 @@ impl KitableFile {
     }
 
     pub fn create_record(&mut self, table_id: i64, values: &Map<String, Value>) -> Result<Record> {
+        self.create_records(table_id, std::slice::from_ref(values))?
+            .pop()
+            .ok_or(KitableError::NotFound)
+    }
+
+    /// Creates records at the end of the table, in order, as one transaction (one change row,
+    /// one undo step): much faster than one [`KitableFile::create_record`] per row for imports.
+    /// Every row is checked like `create_record` before anything is written.
+    pub fn create_records(
+        &mut self,
+        table_id: i64,
+        rows: &[Map<String, Value>],
+    ) -> Result<Vec<Record>> {
         let table = self.get_table(table_id)?;
-        let clean = validate_record_values(&table.fields, values)?;
+        let names = field_objects_by_name(&self.conn, table_id)?;
+        let cells = rows
+            .iter()
+            .map(|values| {
+                Ok(by_field_id(
+                    &names,
+                    &validate_record_values(&table.fields, values)?,
+                ))
+            })
+            .collect::<Result<Vec<_>>>()?;
         let table_object = table_object(&self.conn, table_id)?;
-        let cells = by_field_id(&field_objects_by_name(&self.conn, table_id)?, &clean);
         let created_by = self.actor();
         let (ids, _) = self.commit(|tx| {
-            model::create_records(tx, &table_object, None, &[cells], now_millis(), &created_by)
+            model::create_records(tx, &table_object, None, &cells, now_millis(), &created_by)
         })?;
-        let key = ids.first().ok_or(KitableError::NotFound)?;
-        let record_id = record_id_of(&self.conn, key.as_str())?;
-        self.get_record(table_id, record_id)
+        ids.iter()
+            .map(|key| {
+                let record_id = record_id_of(&self.conn, key.as_str())?;
+                self.get_record(table_id, record_id)
+            })
+            .collect()
     }
 
     /// Writes the given cells of a record (other cells are left as they are; `null` clears);

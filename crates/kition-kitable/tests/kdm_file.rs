@@ -786,3 +786,36 @@ fn stored_only(picture: &Value, path: &Path) -> Value {
     }
     out
 }
+
+/// Timings of one-record writes into a growing table (each one transaction): run with
+/// `--release --ignored --nocapture`.
+#[test]
+#[ignore]
+fn sequential_write_timings() {
+    let dir = temp();
+    let (_, mut file) = create(dir.path(), "timings.kitable");
+    let (table_id, record_id) = tasks(&mut file);
+    let start = Instant::now();
+    for index in 0..2000 {
+        ok(file.create_record(
+            table_id,
+            &values(json!({ "title": format!("Row {index}") })),
+        ));
+        if (index + 1) % 500 == 0 {
+            println!("{} create_record calls: {:?}", index + 1, start.elapsed());
+        }
+    }
+    let start = Instant::now();
+    for index in 0..200 {
+        ok(file.update_record(
+            table_id,
+            record_id,
+            &values(json!({ "status": format!("v{index}") })),
+            None,
+        ));
+    }
+    println!(
+        "200 update_record calls at 2,000 records: {:?}",
+        start.elapsed()
+    );
+}

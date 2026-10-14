@@ -891,6 +891,9 @@ fn values_key(fields: &[Field], values: &Map<String, Value>, unique_by: &[String
     parts.join("\u{1f}")
 }
 
+/// Rows written per transaction by an import.
+const IMPORT_BATCH: usize = 500;
+
 #[allow(clippy::too_many_arguments)]
 fn write_rows(
     file: &mut KitableFile,
@@ -904,9 +907,13 @@ fn write_rows(
 ) -> Result<(usize, usize, usize), String> {
     let map_err = |e: kition_kitable::KitableError| e.to_string();
     if request.write_mode == "replace" {
-        for record in file.list_records(table_id).map_err(map_err)? {
-            file.delete_record(table_id, record.id).map_err(map_err)?;
-        }
+        let keys: Vec<String> = file
+            .list_records(table_id)
+            .map_err(map_err)?
+            .into_iter()
+            .map(|record| record.row_key)
+            .collect();
+        file.bulk_delete_records(table_id, &keys).map_err(map_err)?;
     }
     let mut existing: HashMap<String, Record> = HashMap::new();
     if !request.unique_by.is_empty() {
@@ -922,6 +929,8 @@ fn write_rows(
         .map(|f| (f.title.trim().to_lowercase(), f))
         .collect();
     let (mut created, mut updated, mut skipped) = (0, 0, 0);
+    // New records are written in batches: one transaction each, not one per row.
+    let mut pending: Vec<Map<String, Value>> = Vec::new();
     for (index, row) in rows.iter().enumerate() {
         if canceled.load(Ordering::SeqCst) {
             return Err("context canceled".into());
@@ -954,11 +963,18 @@ fn write_rows(
                 continue;
             }
         }
-        file.create_record(table_id, &values).map_err(map_err)?;
+        pending.push(values);
         created += 1;
+        if pending.len() >= IMPORT_BATCH {
+            file.create_records(table_id, &pending).map_err(map_err)?;
+            pending.clear();
+        }
         if index % 100 == 0 || index + 1 == rows.len() {
             progress("writing_records", index + 1);
         }
+    }
+    if !pending.is_empty() {
+        file.create_records(table_id, &pending).map_err(map_err)?;
     }
     Ok((created, updated, skipped))
 }
