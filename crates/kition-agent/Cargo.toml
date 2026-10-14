@@ -17,6 +17,7 @@ kition-core = { workspace = true }
 kition-datadoc = { workspace = true }
 kition-harness = { workspace = true }
 kition-http = { workspace = true }
+kition-kdm = { workspace = true }
 kition-kitable = { workspace = true }
 kition-store = { workspace = true }
 
@@ -48,5 +49,6 @@ zip = { workspace = true }
 [dev-dependencies]
 http-body-util = { workspace = true }
 jsonschema = { workspace = true }
+kition-workspace = { workspace = true }
 tempfile = { workspace = true }
 tower = { workspace = true }

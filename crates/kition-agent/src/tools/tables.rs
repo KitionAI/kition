@@ -4,6 +4,7 @@ use std::collections::{HashMap, HashSet};
 
 use kition_datadoc::index::{DataDocument, NewDocument};
 use kition_datadoc::{DataDocState, TableHandle};
+use kition_kdm::Origin;
 use kition_kitable::{Field, FieldSpec, Record, Table, TableSpec, ViewSpec};
 use serde_json::{Map, Value, json};
 
@@ -27,12 +28,38 @@ const FIELD_TYPES: &[&str] = &[
 ];
 
 /// What a table tool needs to know about the turn.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct TableContext {
     pub user_id: i64,
     pub active_document_path: String,
     pub document_id: i64,
     pub table_id: i64,
+    /// This agent run's origin for every write the turn's table tools make: `agent:run:<run
+    /// id>` when the run is known, `agent:unknown` otherwise.
+    pub origin: Origin,
+}
+
+impl Default for TableContext {
+    fn default() -> Self {
+        Self {
+            user_id: 0,
+            active_document_path: String::new(),
+            document_id: 0,
+            table_id: 0,
+            origin: Origin::agent("unknown"),
+        }
+    }
+}
+
+/// The origin every write a session's table tools make this run carries: `run:<session id>`
+/// when the session is known, `unknown` otherwise (matches [`Origin::agent`]'s `agent:<id>`
+/// rendering).
+pub fn run_origin(session_id: i64) -> Origin {
+    if session_id > 0 {
+        Origin::agent(format!("run:{session_id}"))
+    } else {
+        Origin::agent("unknown")
+    }
 }
 
 struct TableRef {
@@ -54,20 +81,35 @@ fn open(state: &DataDocState, ctx: &TableContext, input: &Value) -> Result<Table
         return Err("missing current data-table context".into());
     }
     let opened = state
-        .agent_table(ctx.user_id, document_id, table_id)
+        .agent_table(ctx.user_id, document_id, table_id, ctx.origin.clone())
         .or_else(|error| {
             // Fall back to the active table when the model names a stale one.
             let active = ctx.document_id != 0
                 && ctx.table_id != 0
                 && (ctx.document_id, ctx.table_id) != (document_id, table_id);
             if active {
-                state.agent_table(ctx.user_id, ctx.document_id, ctx.table_id)
+                state.agent_table(ctx.user_id, ctx.document_id, ctx.table_id, ctx.origin.clone())
             } else {
                 Err(error)
             }
         });
     let (doc, file, table) = opened.map_err(|error| error.to_string())?;
     Ok(TableRef { doc, file, table })
+}
+
+/// Runs `work` as one undo step: every write `work` makes through the file groups into a
+/// single undo/redo, regardless of how many transactions it commits. The group always ends,
+/// even when `work` fails, so a later call on the same (possibly shared) file never finds one
+/// still open.
+fn in_undo_group<T>(
+    file: &mut TableHandle,
+    work: impl FnOnce(&mut TableHandle) -> Result<T, String>,
+) -> Result<T, String> {
+    file.begin_undo_group()
+        .map_err(|error| format!("failed to start undo group: {error}"))?;
+    let result = work(file);
+    file.end_undo_group();
+    result
 }
 
 fn display(field: &Field) -> &str {
@@ -644,19 +686,22 @@ pub fn add_fields(state: &DataDocState, ctx: &TableContext, input: &Value) -> To
         return Err("missing fields".into());
     }
     specs.truncate(MAX_FIELD_WRITE);
-    let mut created = Vec::new();
-    let mut skipped = Vec::new();
-    for spec in specs {
-        if existing.contains_key(&spec.title.to_lowercase()) {
-            skipped.push(spec.title);
-            continue;
+    let table_id = target.table.id;
+    let (created, skipped) = in_undo_group(&mut target.file, |file| {
+        let mut created = Vec::new();
+        let mut skipped = Vec::new();
+        for spec in specs {
+            if existing.contains_key(&spec.title.to_lowercase()) {
+                skipped.push(spec.title);
+                continue;
+            }
+            let field = file
+                .create_field(table_id, &spec)
+                .map_err(|error| format!("failed to add fields: {error}"))?;
+            created.push(field_summary(&field));
         }
-        let field = target
-            .file
-            .create_field(target.table.id, &spec)
-            .map_err(|error| format!("failed to add fields: {error}"))?;
-        created.push(field_summary(&field));
-    }
+        Ok((created, skipped))
+    })?;
     Ok(ToolOutput::new(
         format!(
             "Added {} fields to table `{}` and skipped {} existing fields.",
@@ -715,66 +760,67 @@ pub fn add_records(state: &DataDocState, ctx: &TableContext, input: &Value) -> T
             .list_records(target.table.id)
             .map_err(|_| "failed to read table records".to_owned())?
     };
-    let (mut created, mut updated, mut skipped) = (Vec::new(), Vec::new(), Vec::new());
-    for row in rows {
-        let values: Map<String, Value> = row
-            .iter()
-            .filter_map(|(key, value)| {
-                let field = fields.get(&key.trim().to_lowercase())?;
-                let value = coerce(field, value);
-                (!value.is_null()).then(|| (field.name.clone(), value))
-            })
-            .collect();
-        let matched = if unique.is_empty()
-            || unique
+    let table_id = target.table.id;
+    let required_fields = target.table.fields.clone();
+    let doc = target.doc.clone();
+    let (created, updated, skipped) = in_undo_group(&mut target.file, |file| {
+        let (mut created, mut updated, mut skipped) = (Vec::new(), Vec::new(), Vec::new());
+        for row in rows {
+            let values: Map<String, Value> = row
                 .iter()
-                .any(|f| values.get(&f.name).is_none_or(is_blank))
-        {
-            None
-        } else {
-            existing.iter().position(|record| {
-                unique
+                .filter_map(|(key, value)| {
+                    let field = fields.get(&key.trim().to_lowercase())?;
+                    let value = coerce(field, value);
+                    (!value.is_null()).then(|| (field.name.clone(), value))
+                })
+                .collect();
+            let matched = if unique.is_empty()
+                || unique
                     .iter()
-                    .all(|f| values_equal(record.values.get(&f.name), values.get(&f.name)))
-            })
-        };
-        if let Some(index) = matched {
-            if !update_existing {
-                skipped.push(existing[index].id);
+                    .any(|f| values.get(&f.name).is_none_or(is_blank))
+            {
+                None
+            } else {
+                existing.iter().position(|record| {
+                    unique
+                        .iter()
+                        .all(|f| values_equal(record.values.get(&f.name), values.get(&f.name)))
+                })
+            };
+            if let Some(index) = matched {
+                if !update_existing {
+                    skipped.push(existing[index].id);
+                    continue;
+                }
+                let previous = existing[index].values.clone();
+                let record = file
+                    .update_record(table_id, existing[index].id, &values, None)
+                    .map_err(|error| format!("failed to add records: {error}"))?;
+                state.publish_record_updated(&doc, &record, Some(previous));
+                updated.push(record.id);
+                existing[index] = record;
                 continue;
             }
-            let previous = existing[index].values.clone();
-            let record = target
-                .file
-                .update_record(target.table.id, existing[index].id, &values, None)
+            if let Some(field) = required_fields
+                .iter()
+                .find(|f| f.required && values.get(&f.name).is_none_or(is_blank))
+            {
+                return Err(format!(
+                    "failed to add records: required field {} is empty",
+                    display(field)
+                ));
+            }
+            let record = file
+                .create_record(table_id, &values)
                 .map_err(|error| format!("failed to add records: {error}"))?;
-            state.publish_record_updated(&target.doc, &record, Some(previous));
-            updated.push(record.id);
-            existing[index] = record;
-            continue;
+            state.publish_record_created(&doc, &record);
+            created.push(record.id);
+            if !unique.is_empty() {
+                existing.push(record);
+            }
         }
-        if let Some(field) = target
-            .table
-            .fields
-            .iter()
-            .find(|f| f.required && values.get(&f.name).is_none_or(is_blank))
-        {
-            return Err(format!(
-                "failed to add records: required field {} is empty",
-                display(field)
-            )
-            .into());
-        }
-        let record = target
-            .file
-            .create_record(target.table.id, &values)
-            .map_err(|error| format!("failed to add records: {error}"))?;
-        state.publish_record_created(&target.doc, &record);
-        created.push(record.id);
-        if !unique.is_empty() {
-            existing.push(record);
-        }
-    }
+        Ok((created, updated, skipped))
+    })?;
     Ok(ToolOutput::new(
         format!(
             "Wrote records to table `{}`: created {}, updated {}, skipped {}.",
@@ -915,6 +961,143 @@ mod tests {
         assert_eq!(
             specs.iter().map(|s| s.name.as_str()).collect::<Vec<_>>(),
             ["name", "name_2"]
+        );
+    }
+
+    /// A workspace with one data document and one table, ready for the table tools.
+    fn fixture() -> (DataDocState, i64, i64, std::path::PathBuf, i64) {
+        let dir = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
+        let workspace_dir = dir.keep();
+        let db = kition_store::Db::open_in_memory().unwrap_or_else(|err| panic!("{err}"));
+        let conn = db.conn().unwrap_or_else(|err| panic!("{err}"));
+        kition_store::seed::run(&conn).unwrap_or_else(|err| panic!("{err}"));
+        let user_id = kition_store::users::find_local_user(&conn)
+            .unwrap_or_else(|err| panic!("{err}"))
+            .unwrap_or_else(|| panic!("seed::run did not leave a local user"))
+            .id;
+        let absolute = workspace_dir.join("Test.kitable");
+        let mut file =
+            kition_kitable::KitableFile::create(&absolute, &kition_kitable::CreateOptions::default())
+                .unwrap_or_else(|err| panic!("{err}"));
+        let table = file
+            .create_table(&TableSpec {
+                name: "items".into(),
+                fields: vec![FieldSpec {
+                    name: "title".into(),
+                    title: "Title".into(),
+                    field_type: "text".into(),
+                    primary: true,
+                    required: true,
+                    ..Default::default()
+                }],
+                ..Default::default()
+            })
+            .unwrap_or_else(|err| panic!("{err}"));
+        file.close();
+        let doc = kition_datadoc::index::insert(
+            &conn,
+            kition_datadoc::index::NewDocument {
+                user_id,
+                workspace_root: workspace_dir.to_string_lossy().into_owned(),
+                path: "Test.kitable".into(),
+                title: "Test".into(),
+                description: String::new(),
+                icon: String::new(),
+                color: String::new(),
+                meta: json!({ "storage": "kitable_file" })
+                    .as_object()
+                    .cloned()
+                    .unwrap_or_default(),
+            },
+        )
+        .unwrap_or_else(|err| panic!("{err}"));
+        drop(conn);
+        let assets = kition_workspace::AssetStore::new(&workspace_dir, None)
+            .unwrap_or_else(|err| panic!("{err}"));
+        let state = DataDocState {
+            auth: kition_http::AuthConfig {
+                db: db.clone(),
+                jwt_secret: "test".into(),
+                disabled: true,
+            },
+            db,
+            workspace_dir,
+            assets,
+            events: kition_core::events::EventBus::default(),
+            workflow_cleaner: None,
+            ai_gate: std::sync::Arc::new(|| false),
+            imports: kition_datadoc::ImportStore::default(),
+            ai: None,
+            tables: kition_datadoc::TableDocuments::default(),
+        };
+        (state, doc.id, table.id, absolute, user_id)
+    }
+
+    #[test]
+    fn add_records_writes_with_the_run_origin() {
+        let (state, document_id, table_id, path, user_id) = fixture();
+        let ctx = TableContext {
+            user_id,
+            active_document_path: String::new(),
+            document_id,
+            table_id,
+            origin: run_origin(42),
+        };
+        let input = json!({ "records": [{ "title": "a" }, { "title": "b" }] });
+        let output = add_records(&state, &ctx, &input).unwrap_or_else(|err| panic!("{err:?}"));
+        let created: Vec<i64> =
+            serde_json::from_value(output.output["created_ids"].clone()).unwrap_or_default();
+        assert_eq!(created.len(), 2);
+
+        let (handle, _) = state
+            .tables
+            .open(&path, Origin::person("session:check"))
+            .unwrap_or_else(|err| panic!("{err}"));
+        for id in created {
+            let (entries, _) = handle
+                .list_record_history(table_id, id, 10, 0)
+                .unwrap_or_else(|err| panic!("{err}"));
+            let create_entry = entries
+                .iter()
+                .find(|e| e.action == "create")
+                .unwrap_or_else(|| panic!("missing create history entry"));
+            assert_eq!(create_entry.actor, "run:42");
+        }
+    }
+
+    #[test]
+    fn add_records_groups_the_whole_call_into_one_undo_step() {
+        let (state, document_id, table_id, path, user_id) = fixture();
+        let ctx = TableContext {
+            user_id,
+            active_document_path: String::new(),
+            document_id,
+            table_id,
+            origin: run_origin(7),
+        };
+        let input = json!({ "records": [{ "title": "a" }, { "title": "b" }] });
+        add_records(&state, &ctx, &input).unwrap_or_else(|err| panic!("{err:?}"));
+
+        let (mut handle, _) = state
+            .tables
+            .open(&path, Origin::person("session:undo"))
+            .unwrap_or_else(|err| panic!("{err}"));
+        assert_eq!(
+            handle
+                .list_records(table_id)
+                .unwrap_or_else(|err| panic!("{err}"))
+                .len(),
+            2
+        );
+        let (undone, _change) = handle.undo().unwrap_or_else(|err| panic!("{err}"));
+        assert!(undone, "the batch left an undo step");
+        assert_eq!(
+            handle
+                .list_records(table_id)
+                .unwrap_or_else(|err| panic!("{err}"))
+                .len(),
+            0,
+            "one undo reverts every record the tool call wrote"
         );
     }
 }

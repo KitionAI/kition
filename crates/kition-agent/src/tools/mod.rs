@@ -100,6 +100,7 @@ async fn table_tool(
         active_document_path: run.active_document_path.clone(),
         document_id: run.active_data_document_id,
         table_id: run.active_data_table_id,
+        origin: tables::run_origin(run.session_id),
     };
     let input = input.clone();
     tokio::task::spawn_blocking(move || work(&state, &context, &input))

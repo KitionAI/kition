@@ -3,6 +3,7 @@
 
 use kition_core::events::{DomainEvent, RecordCreated, RecordUpdated};
 use kition_core::{AppError, AppResult, now_millis};
+use kition_kdm::Origin;
 use kition_kitable::{CreateOptions, FORMAT, KitableFile, Record, Table, TableSpec};
 use serde_json::{Map, Value, json};
 
@@ -12,17 +13,19 @@ use crate::source::resolve_from_root;
 use crate::table_documents::TableHandle;
 
 impl DataDocState {
-    /// The caller's document, its open file, and one of its tables.
+    /// The caller's document, its open file (set to `origin`, normally the agent run's), and
+    /// one of its tables.
     pub fn agent_table(
         &self,
         user_id: i64,
         document_id: i64,
         table_id: i64,
+        origin: Origin,
     ) -> AppResult<(DataDocument, TableHandle, Table)> {
         let doc = self
             .load_document(user_id, &document_id.to_string())
             .map_err(|_| AppError::not_found("data document does not exist"))?;
-        let file = self.open_or_500(&doc)?;
+        let file = self.open_or_500_as(&doc, origin)?;
         let table = file
             .get_table(table_id)
             .map_err(|_| AppError::not_found("table does not exist"))?;

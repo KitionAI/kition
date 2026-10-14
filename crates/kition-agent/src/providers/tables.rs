@@ -35,6 +35,7 @@ async fn active_table_context(run: &Run) -> String {
         active_document_path: run.active_document_path.clone(),
         document_id: run.active_data_document_id,
         table_id: run.active_data_table_id,
+        origin: tables::run_origin(run.session_id),
     };
     tokio::task::spawn_blocking(move || tables::active_table_context(&state, &context))
         .await
