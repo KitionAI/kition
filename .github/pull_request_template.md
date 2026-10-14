@@ -13,6 +13,7 @@ Describe the user-visible change and why it is useful.
 - [ ] `pnpm run build:check`
 - [ ] `pnpm test:e2e`
 - [ ] `pnpm test:table:e2e`
+- [ ] `pnpm test:kitable:e2e`
 - [ ] Added or updated a regression test, or explained why one was not needed
 
 List the exact commands that were run and note any platform-specific coverage.

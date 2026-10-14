@@ -46,15 +46,18 @@ Before any AI agent declares a task complete, it must run:
 
 ```bash
 pnpm test:table:e2e
+pnpm test:kitable:e2e
 ```
 
-The exit code must be 0. Fix failures before reporting completion.
+The exit code of both must be 0. Fix failures before reporting completion.
 
-- Claude Code enforces this through the `Stop` hook in
-  `.claude/settings.local.json`, which calls `scripts/post-task-e2e.sh`.
+- Claude Code enforces `pnpm test:table:e2e` through the `Stop` hook in
+  `.claude/settings.local.json`, which calls `scripts/post-task-e2e.sh`;
+  `pnpm test:kitable:e2e` is not wired into that hook and must be run
+  manually.
 - Emergency Claude-only bypass for the current session:
   `export KITION_SKIP_E2E_HOOK=1`.
-- Codex has no blocking Stop hook and must run the command manually.
+- Codex has no blocking Stop hook and must run both commands manually.
 
 The inspection implementation is `scripts/inspect-table-widget.sh`. It
 covers the three GFM table widget row and column button regressions.

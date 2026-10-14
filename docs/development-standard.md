@@ -97,7 +97,7 @@ Verification:
 - List focused tests for the affected surface.
 - Run pnpm run build:check for UI or TypeScript changes.
 - Run python3 scripts/check-i18n.py.
-- Run pnpm test:table:e2e before completion.
+- Run pnpm test:table:e2e and pnpm test:kitable:e2e before completion.
 ```
 
 ## Implementation Rules
@@ -159,6 +159,7 @@ Before completion, always run:
 ```bash
 python3 scripts/check-i18n.py
 pnpm test:table:e2e
+pnpm test:kitable:e2e
 ```
 
 For normal code changes, also run:
