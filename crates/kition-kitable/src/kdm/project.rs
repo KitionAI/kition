@@ -8,13 +8,27 @@
 //! ([`super::store::set_projected_position`]) in the same transaction, so a crash keeps both or
 //! neither.
 //!
+//! # Failures
+//!
+//! On any error the caller must roll the SQL transaction back **and** reload the replica from the
+//! store ([`super::store::load`]), or otherwise restore the change set it passed: the replica
+//! already holds the changes and [`Replica::take_changed`] already handed them out, so neither
+//! retrying with an empty change set nor keeping the in-memory replica would ever project them.
+//! Imports must be repaired ([`super::repair::run`]) before projecting, with the repair's own
+//! changes included in `changed`: the relational unique indexes require unique table names and
+//! unique field names per table, and an unrepaired replica that breaks them is refused with
+//! [`KitableError::Invalid`] ("unrepaired replica: duplicate ... name").
+//!
+//! # What is projected
+//!
 //! The projection is what the legacy write path writes, from the replica as [`ModelView`] reads
 //! it:
 //!
 //! - Integer ids are local to the file. Rows are matched to objects by `kdm_id` (tables, fields,
 //!   views, links) or `row_key` (records) and keep their id; a deleted row whose object comes back
 //!   (an undo) is revived with its id; new objects get new ids.
-//! - Positions are 1-based indexes of the live, distinct list items.
+//! - Positions follow list order and keep the gaps legacy positions have: a delete renumbers
+//!   nothing, and an insert or a move rewrites only the rows whose position must change.
 //! - Deletes are soft (`deleted_at`) except links, as in the legacy code. Deleting a table
 //!   soft-deletes its fields, views, and records, without record history (as legacy
 //!   `delete_table` does).
@@ -22,32 +36,39 @@
 //!   of the object's live row, else of its latest deleted row, else `null`.
 //! - A record's `values_json` holds its stored cells by field name and its derived values
 //!   (formula, lookup, rollup, `link_to_record` chips), computed by the legacy derivation over the
-//!   projected rows, in field order; a formula that reads a value derived after it is evaluated
-//!   again once that value is known (up to three passes), which is what a legacy record shows
-//!   after being saved again. A record is recomputed when it changes, when its links change, when its
-//!   table's fields change in a way that affects values, and when a record it links to changes
-//!   value (transitively), so lookups and chips never go stale. Field types the legacy code does
-//!   not derive (`auto_number`, created and last-modified time and by) have no value, as before.
+//!   projected rows in field order; a formula reading a value derived after it is evaluated again
+//!   until nothing changes (at most once per derived field), which is what a legacy record shows
+//!   after being saved again. Records are recomputed in dependency order: a record when it
+//!   changes, when its links change, when its table's fields change in a way that affects
+//!   values, and when a record it reads changes a value it reads (transitively), so lookups,
+//!   rollups, and chips never go stale (see `derive`). Derived fields that depend on themselves
+//!   (a cycle of `(record, field)` pairs, which the model refuses but concurrent edits can merge
+//!   into) read the other fields of their cycle as missing, so their values stay bounded. Field
+//!   types the legacy code does not derive (`auto_number`, created and last-modified time and by)
+//!   have no value, as before.
 //! - History: one `update` row per stored cell that changed, in field-name order, and the whole
 //!   record on `create` and `delete`, with the caller's actor; before values come from the row
 //!   being replaced. A rebuild writes no history.
 //! - Dashboards are not relational; [`TableChange::dashboards`] says when they changed (the
 //!   projected list of dashboards is kept in `kition_meta` to notice reorders).
-//!
-//! The projection expects a repaired replica ([`super::repair`]): table names and field names
-//! unique, as the relational unique indexes require.
 
-use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
+mod derive;
+mod positions;
+
+use std::cell::Cell;
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::rc::Rc;
 
 use kition_kdm::{ObjectId, Replica};
 use rusqlite::{Connection, OptionalExtension, params};
 use serde_json::{Map, Value};
 
+use self::derive::Seed;
+use self::positions::place;
 use super::model::{BASE, DASHBOARD, FIELD, LINK, RECORD, TABLE, VIEW, is_computed};
 use super::options::options_from_kdm;
 use super::read::{LinkData, ModelView};
-use crate::computed::Deriver;
+use crate::computed::formula_references;
 use crate::history::{HistoryAction, HistoryWrite, insert_history};
 use crate::source::{FIELD_COLUMNS, Field, field_from_row};
 use crate::{KitableError, Result, file, json};
@@ -76,6 +97,7 @@ pub struct TableChange {
 /// Projects the objects in `changed` (what [`Replica::take_changed`] reported) into the
 /// relational tables, inside the caller's SQL transaction. `actor` labels the history rows;
 /// `now` (Unix milliseconds) stamps the rows written. Does not record the projected position.
+/// See the module documentation for what the caller must do on failure.
 pub fn project_changes(
     conn: &Connection,
     replica: &Replica,
@@ -84,28 +106,120 @@ pub fn project_changes(
     now: i64,
 ) -> Result<TableChange> {
     let mut projector = Projector::new(conn, replica, actor, now, false)?;
-    let plan = projector.classify(changed)?;
-    projector.run(plan)?;
+    let outcome = projector
+        .classify(changed)
+        .and_then(|plan| projector.run(plan));
+    LAST_RECOMPUTES.with(|count| count.set(projector.recomputed));
+    outcome.map_err(unrepaired)?;
     Ok(projector.out.finish())
 }
 
 /// Projects the whole replica, inside the caller's SQL transaction: afterwards the relational
-/// tables hold exactly what [`project_changes`] would have written from an empty file, with the
-/// ids of rows that already existed kept, and rows of objects that are gone deleted. Writes no
+/// tables hold what [`project_changes`] would have written from an empty file, with the ids of
+/// rows that already existed kept, and rows of objects the replica deleted deleted. Writes no
 /// history. Does not record the projected position.
+///
+/// Refuses ([`KitableError::Invalid`]) to delete rows the replica never knew: live tables,
+/// fields, or views without a `kdm_id`, links between live records without one, and live records
+/// whose `row_key` is no record of the replica. A file written by the legacy code is migrated
+/// first ([`super::migrate::upgrade`] records every `kdm_id`), and a rebuild right after keeps
+/// every row.
 pub fn rebuild(conn: &Connection, replica: &Replica, now: i64) -> Result<()> {
+    unknown_rows(conn, replica)?;
     let mut projector = Projector::new(conn, replica, "", now, true)?;
-    let plan = Projector::everything();
-    projector.run(plan)?;
-    Ok(())
+    let outcome = projector.run(Plan {
+        full: true,
+        base: true,
+        dashboards: true,
+        ..Plan::default()
+    });
+    LAST_RECOMPUTES.with(|count| count.set(projector.recomputed));
+    outcome.map_err(unrepaired)
 }
 
-/// Each record is recomputed at most this many times per projection, which bounds lookups that
-/// feed each other in a cycle.
-const MAX_RECOMPUTES: u32 = 8;
+thread_local! {
+    static LAST_RECOMPUTES: Cell<u64> = const { Cell::new(0) };
+}
 
-/// Passes over a record's derived fields when a formula may read a value derived after it.
-const FORMULA_PASSES: usize = 3;
+/// How many record recomputations the last projection on this thread ran. For tests and
+/// diagnostics.
+#[doc(hidden)]
+pub fn last_recompute_count() -> u64 {
+    LAST_RECOMPUTES.with(Cell::get)
+}
+
+/// A unique-index violation on table or field names: the replica was not repaired.
+fn unrepaired(error: KitableError) -> KitableError {
+    let KitableError::Sql(rusqlite::Error::SqliteFailure(failure, message)) = &error else {
+        return error;
+    };
+    if failure.extended_code != rusqlite::ffi::SQLITE_CONSTRAINT_UNIQUE {
+        return error;
+    }
+    let message = message.clone().unwrap_or_default();
+    let kind = if message.contains("kition_fields") {
+        "field"
+    } else if message.contains("kition_tables") {
+        "table"
+    } else {
+        return error;
+    };
+    KitableError::invalid(format!(
+        "unrepaired replica: duplicate {kind} name ({message}); repair the replica before projecting"
+    ))
+}
+
+/// Refuses a rebuild that would delete rows the replica never knew.
+fn unknown_rows(conn: &Connection, replica: &Replica) -> Result<()> {
+    let count = |sql: &str| -> Result<i64> { Ok(conn.query_row(sql, [], |row| row.get(0))?) };
+    let tables =
+        count("SELECT COUNT(*) FROM kition_tables WHERE deleted_at IS NULL AND kdm_id IS NULL")?;
+    let fields = count(
+        "SELECT COUNT(*) FROM kition_fields f JOIN kition_tables t ON t.id = f.table_id \
+         WHERE f.deleted_at IS NULL AND t.deleted_at IS NULL AND f.kdm_id IS NULL",
+    )?;
+    let views = count(
+        "SELECT COUNT(*) FROM kition_views v JOIN kition_tables t ON t.id = v.table_id \
+         WHERE v.deleted_at IS NULL AND t.deleted_at IS NULL AND v.kdm_id IS NULL",
+    )?;
+    let links = count(
+        "SELECT COUNT(*) FROM kition_record_links l \
+         JOIN kition_records a ON a.id = l.from_record_id JOIN kition_records b ON b.id = l.to_record_id \
+         JOIN kition_fields f ON f.id = l.from_field_id \
+         WHERE l.kdm_id IS NULL AND a.deleted_at IS NULL AND b.deleted_at IS NULL AND f.deleted_at IS NULL",
+    )?;
+    let mut records = 0_i64;
+    {
+        let mut statement = conn.prepare(
+            "SELECT r.row_key FROM kition_records r JOIN kition_tables t ON t.id = r.table_id \
+             WHERE r.deleted_at IS NULL AND t.deleted_at IS NULL",
+        )?;
+        for key in statement.query_map([], |row| row.get::<_, String>(0))? {
+            let key = ObjectId::from_string(key?);
+            if !replica.object_type(&key).is_ok_and(|ty| ty == RECORD) {
+                records += 1;
+            }
+        }
+    }
+    if tables + fields + views + links + records == 0 {
+        return Ok(());
+    }
+    let plural = |count: i64, word: &str| {
+        if count == 1 {
+            format!("{count} {word}")
+        } else {
+            format!("{count} {word}s")
+        }
+    };
+    Err(KitableError::invalid(format!(
+        "rebuild would delete rows the replica does not know: {}, {}, {}, {}, {}; migrate the file first",
+        plural(tables, "table"),
+        plural(fields, "field"),
+        plural(views, "view"),
+        plural(links, "link"),
+        plural(records, "record"),
+    )))
+}
 
 const DASHBOARDS_KEY: &str = "kdm_projected_dashboards";
 
@@ -143,6 +257,8 @@ struct Plan {
     /// Project everything: every table is reconciled and rows of missing objects are deleted.
     full: bool,
     base: bool,
+    /// The Base objects that changed.
+    bases: Vec<ObjectId>,
     dashboards: bool,
     tables: BTreeSet<ObjectId>,
     fields: BTreeSet<ObjectId>,
@@ -157,7 +273,7 @@ struct Plan {
 }
 
 /// A table's live fields as projected, in order.
-struct TableSchema {
+pub(crate) struct TableSchema {
     fields: Vec<Field>,
     /// Stored (not computed) fields: name by object id.
     stored: HashMap<String, String>,
@@ -217,12 +333,14 @@ struct Projector<'a> {
     primary_changed: BTreeSet<i64>,
     /// Link fields whose options changed: their links are reconciled.
     link_fields: BTreeSet<ObjectId>,
-    /// Records to recompute, in order.
-    seeds: Vec<i64>,
+    /// Records to recompute, with what may have changed in them.
+    seeds: HashMap<i64, Vec<Seed>>,
     /// Records created or revived by this projection.
     created: HashSet<i64>,
     /// Records whose object changed.
     touched: HashSet<i64>,
+    /// Record recomputations run.
+    recomputed: u64,
 }
 
 impl<'a> Projector<'a> {
@@ -258,10 +376,15 @@ impl<'a> Projector<'a> {
             fields_changed: HashSet::new(),
             primary_changed: BTreeSet::new(),
             link_fields: BTreeSet::new(),
-            seeds: Vec::new(),
+            seeds: HashMap::new(),
             created: HashSet::new(),
             touched: HashSet::new(),
+            recomputed: 0,
         })
+    }
+
+    fn seed(&mut self, record: i64, seed: Seed) {
+        self.seeds.entry(record).or_default().push(seed);
     }
 
     // -----------------------------------------------------------------------
@@ -275,7 +398,10 @@ impl<'a> Projector<'a> {
                 continue;
             };
             match ty.as_str() {
-                BASE => plan.base = true,
+                BASE => {
+                    plan.base = true;
+                    plan.bases.push(id.clone());
+                }
                 TABLE => {
                     plan.tables.insert(id.clone());
                 }
@@ -330,18 +456,8 @@ impl<'a> Projector<'a> {
         Ok(())
     }
 
-    /// A plan covering the whole replica.
-    fn everything() -> Plan {
-        Plan {
-            full: true,
-            base: true,
-            dashboards: true,
-            ..Plan::default()
-        }
-    }
-
     fn run(&mut self, mut plan: Plan) -> Result<()> {
-        self.find_base(plan.base)?;
+        self.find_base(&plan)?;
         self.load_structure()?;
         if plan.base {
             self.project_document()?;
@@ -360,18 +476,21 @@ impl<'a> Projector<'a> {
         self.derive()
     }
 
-    /// Finds the base: the one remembered in `kition_meta` while no Base changed and it is
-    /// still a Base, else the lowest id of the Base objects (one pass over every object).
-    fn find_base(&mut self, base_changed: bool) -> Result<()> {
-        if !base_changed && let Some(stored) = file::get_meta(self.conn, BASE_KEY)? {
-            let id = ObjectId::from_string(stored);
-            if self.replica.object_type(&id).is_ok_and(|ty| ty == BASE) {
+    /// Finds the base: the one remembered in `kition_meta` while it is still a Base and no other
+    /// Base changed, else the lowest id of the Base objects (one pass over every object).
+    fn find_base(&mut self, plan: &Plan) -> Result<()> {
+        let stored = file::get_meta(self.conn, BASE_KEY)?;
+        if !plan.full
+            && let Some(stored) = &stored
+        {
+            let id = ObjectId::from_string(stored.clone());
+            let still = self.replica.object_type(&id).is_ok_and(|ty| ty == BASE);
+            if still && plan.bases.iter().all(|base| *base == id) {
                 self.base = Some(id);
                 return Ok(());
             }
         }
         self.base = self.view.base();
-        let stored = file::get_meta(self.conn, BASE_KEY)?;
         match &self.base {
             Some(base) if stored.as_deref() != Some(base.as_str()) => {
                 file::set_meta(self.conn, BASE_KEY, base.as_str())?;
@@ -429,15 +548,13 @@ impl<'a> Projector<'a> {
                 .unwrap_or_default()
                 .to_owned())
         };
-        let base = super::read::BaseData {
-            id: id.clone(),
-            title: text("title")?,
-            description: text("description")?,
-            icon: text("icon")?,
-            color: text("color")?,
-            meta: self.replica.get(id, "meta")?,
-        };
-        let meta = json_text(&base.meta);
+        let (title, description, icon, color) = (
+            text("title")?,
+            text("description")?,
+            text("icon")?,
+            text("color")?,
+        );
+        let meta = json_text(&self.replica.get(id, "meta")?);
         let current: Option<(String, String, String, String, String, bool)> = self
             .conn
             .query_row(
@@ -447,10 +564,10 @@ impl<'a> Projector<'a> {
             )
             .optional()?;
         let wanted = (
-            base.title.clone(),
-            base.description.clone(),
-            base.icon.clone(),
-            base.color.clone(),
+            title.clone(),
+            description.clone(),
+            icon.clone(),
+            color.clone(),
             meta.clone(),
             true,
         );
@@ -460,14 +577,14 @@ impl<'a> Projector<'a> {
                 self.conn.execute(
                     "UPDATE kition_documents SET title = ?1, description = ?2, icon = ?3, color = ?4, meta_json = ?5, \
                      updated_at = ?6, deleted_at = NULL WHERE id = ?7",
-                    params![base.title, base.description, base.icon, base.color, meta, self.now, self.document_id],
+                    params![title, description, icon, color, meta, self.now, self.document_id],
                 )?;
             }
             None => {
                 self.conn.execute(
                     "INSERT INTO kition_documents (id, title, description, icon, color, meta_json, created_at, updated_at) \
                      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7)",
-                    params![self.document_id, base.title, base.description, base.icon, base.color, meta, self.now],
+                    params![self.document_id, title, description, icon, color, meta, self.now],
                 )?;
             }
         }
@@ -498,15 +615,10 @@ impl<'a> Projector<'a> {
     // Tables.
 
     fn project_tables(&mut self, plan: &Plan) -> Result<()> {
-        let listed: HashMap<ObjectId, usize> = self
-            .tables
-            .iter()
-            .enumerate()
-            .map(|(index, id)| (id.clone(), index))
-            .collect();
+        let listed: HashSet<ObjectId> = self.tables.iter().cloned().collect();
         let mut doomed: BTreeSet<i64> = plan.gone_tables.iter().copied().collect();
         for table in &plan.tables {
-            if !listed.contains_key(table)
+            if !listed.contains(table)
                 && let Some(id) = self.table_ids.get(table)
             {
                 doomed.insert(*id);
@@ -514,23 +626,15 @@ impl<'a> Projector<'a> {
         }
         if plan.base {
             for (kdm, id) in &self.table_ids {
-                if !listed.contains_key(kdm) {
+                if !listed.contains(kdm) {
                     doomed.insert(*id);
                 }
-            }
-        }
-        if plan.full {
-            let mut statement = self.conn.prepare_cached(
-                "SELECT id FROM kition_tables WHERE deleted_at IS NULL AND kdm_id IS NULL",
-            )?;
-            for id in statement.query_map([], |row| row.get::<_, i64>(0))? {
-                doomed.insert(id?);
             }
         }
         for id in doomed {
             self.delete_table(id)?;
         }
-        self.table_ids.retain(|kdm, _| listed.contains_key(kdm));
+        self.table_ids.retain(|kdm, _| listed.contains(kdm));
 
         let targets: Vec<ObjectId> = self
             .tables
@@ -554,16 +658,17 @@ impl<'a> Projector<'a> {
                     .execute(params![temporary_name(&table.id), id, table.name])?;
             }
         }
+        let mut fresh: HashSet<i64> = HashSet::new();
         for table in &data {
-            let position = listed.get(&table.id).map_or(0, |index| *index as i64 + 1);
             let meta = json_text(&table.meta);
             let id = match self.table_ids.get(&table.id) {
                 Some(id) => *id,
                 None => {
-                    let id = self.revive_or_insert_table(table, position, &meta)?;
+                    let id = self.revive_or_insert_table(table, &meta)?;
                     self.table_ids.insert(table.id.clone(), id);
                     self.out.tables.insert(id);
                     self.reconcile.insert(table.id.clone());
+                    fresh.insert(id);
                     continue;
                 }
             };
@@ -584,43 +689,61 @@ impl<'a> Projector<'a> {
             }
         }
         // Positions follow the base's list.
-        if plan.base || !self.reconcile.is_empty() {
-            for (index, table) in self.tables.iter().enumerate() {
-                let Some(id) = self.table_ids.get(table) else {
-                    continue;
-                };
-                let moved = self
-                    .conn
-                    .prepare_cached(
-                        "UPDATE kition_tables SET position = ?1 WHERE id = ?2 AND position != ?1",
-                    )?
-                    .execute(params![index as i64 + 1, id])?;
-                if moved > 0 {
-                    self.out.tables.insert(*id);
-                }
+        if plan.base || !fresh.is_empty() {
+            let ids: Vec<i64> = self
+                .tables
+                .iter()
+                .filter_map(|table| self.table_ids.get(table).copied())
+                .collect();
+            for id in self.place_rows("kition_tables", &ids, &fresh)? {
+                self.out.tables.insert(id);
             }
         }
         Ok(())
     }
 
-    fn revive_or_insert_table(
-        &self,
-        table: &super::read::TableData,
-        position: i64,
-        meta: &str,
-    ) -> Result<i64> {
+    /// Gives the rows `ids` (in list order) increasing positions, rewriting as few as possible;
+    /// `fresh` rows' positions do not count. Answers the rows whose position changed.
+    fn place_rows(&self, table: &str, ids: &[i64], fresh: &HashSet<i64>) -> Result<Vec<i64>> {
+        let mut current = Vec::with_capacity(ids.len());
+        {
+            let mut statement = self
+                .conn
+                .prepare_cached(&format!("SELECT position FROM {table} WHERE id = ?1"))?;
+            for id in ids {
+                let position: Option<i64> =
+                    statement.query_row([id], |row| row.get(0)).optional()?;
+                current.push(position.filter(|_| !fresh.contains(id)));
+            }
+        }
+        let mut moved = Vec::new();
+        let mut update = self
+            .conn
+            .prepare_cached(&format!("UPDATE {table} SET position = ?1 WHERE id = ?2"))?;
+        for ((id, before), position) in ids.iter().zip(&current).zip(place(&current)) {
+            if *before != Some(position) {
+                update.execute(params![position, id])?;
+                if before.is_some() {
+                    moved.push(*id);
+                }
+            }
+        }
+        Ok(moved)
+    }
+
+    fn revive_or_insert_table(&self, table: &super::read::TableData, meta: &str) -> Result<i64> {
         if let Some(id) = latest_row(self.conn, "kition_tables", table.id.as_str())? {
             self.conn.execute(
-                "UPDATE kition_tables SET document_id = ?1, name = ?2, title = ?3, description = ?4, position = ?5, \
-                 meta_json = ?6, updated_at = ?7, deleted_at = NULL WHERE id = ?8",
-                params![self.document_id, table.name, table.title, table.description, position, meta, self.now, id],
+                "UPDATE kition_tables SET document_id = ?1, name = ?2, title = ?3, description = ?4, \
+                 meta_json = ?5, updated_at = ?6, deleted_at = NULL WHERE id = ?7",
+                params![self.document_id, table.name, table.title, table.description, meta, self.now, id],
             )?;
             return Ok(id);
         }
         self.conn.execute(
             "INSERT INTO kition_tables (document_id, name, title, description, position, meta_json, created_at, updated_at, kdm_id) \
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7, ?8)",
-            params![self.document_id, table.name, table.title, table.description, position, meta, self.now, table.id.as_str()],
+             VALUES (?1, ?2, ?3, ?4, 0, ?5, ?6, ?6, ?7)",
+            params![self.document_id, table.name, table.title, table.description, meta, self.now, table.id.as_str()],
         )?;
         Ok(self.conn.last_insert_rowid())
     }
@@ -654,11 +777,17 @@ impl<'a> Projector<'a> {
                 params![self.now, id],
             )?;
         }
-        let mut statement = self.conn.prepare(
-            "SELECT DISTINCT from_record_id FROM kition_record_links WHERE to_table_id = ?1 AND from_table_id != ?1",
-        )?;
-        for record in statement.query_map([id], |row| row.get::<_, i64>(0))? {
-            self.seeds.push(record?);
+        let linkers: Vec<(i64, i64)> = {
+            let mut statement = self.conn.prepare(
+                "SELECT DISTINCT from_record_id, from_field_id FROM kition_record_links \
+                 WHERE to_table_id = ?1 AND from_table_id != ?1",
+            )?;
+            statement
+                .query_map([id], |row| Ok((row.get(0)?, row.get(1)?)))?
+                .collect::<std::result::Result<Vec<_>, _>>()?
+        };
+        for (record, link) in linkers {
+            self.seed(record, Seed::Link(link));
         }
         self.conn.execute(
             "DELETE FROM kition_record_links WHERE from_table_id = ?1 OR to_table_id = ?1",
@@ -675,17 +804,16 @@ impl<'a> Projector<'a> {
         if plan.fields.is_empty() && plan.gone_fields.is_empty() && self.reconcile.is_empty() {
             return Ok(());
         }
-        // Live field rows of the document, by object id.
+        // Live field rows linked to an object, by object id.
         let mut rows: HashMap<ObjectId, FieldRow> = HashMap::new();
-        let mut unlinked: Vec<(i64, i64)> = Vec::new();
         {
             let mut statement = self.conn.prepare_cached(
-                "SELECT id, kdm_id, table_id, name, title, type, required, readonly, options_json, formula, ai_prompt, meta_json \
-                 FROM kition_fields WHERE deleted_at IS NULL",
+                "SELECT id, kdm_id, table_id, name, title, type, required, readonly, options_json, formula, ai_prompt, \
+                 meta_json FROM kition_fields WHERE deleted_at IS NULL AND kdm_id IS NOT NULL",
             )?;
             let found = statement.query_map([], |row| {
                 Ok((
-                    row.get::<_, Option<String>>(1)?,
+                    row.get::<_, String>(1)?,
                     FieldRow {
                         id: row.get(0)?,
                         table_id: row.get(2)?,
@@ -703,12 +831,7 @@ impl<'a> Projector<'a> {
             })?;
             for item in found {
                 let (kdm, row) = item?;
-                match kdm {
-                    Some(kdm) => {
-                        rows.insert(ObjectId::from_string(kdm), row);
-                    }
-                    None => unlinked.push((row.id, row.table_id)),
-                }
+                rows.insert(ObjectId::from_string(kdm), row);
             }
         }
         let table_of = |field: &ObjectId| -> Option<i64> {
@@ -747,22 +870,13 @@ impl<'a> Projector<'a> {
                 doomed.push((row.id, row.table_id));
             }
         }
-        if plan.full {
-            doomed.extend(unlinked.iter().copied());
-        } else {
-            doomed.extend(
-                unlinked
-                    .iter()
-                    .filter(|(_, table)| reconciled.contains(table))
-                    .copied(),
-            );
-        }
         for (id, table) in &doomed {
             let count = self.conn.execute(
                 "UPDATE kition_fields SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2 AND deleted_at IS NULL",
                 params![self.now, id],
             )?;
             if count > 0 {
+                // Its values leave every record of the table.
                 self.field_changed(*table, true);
                 self.fields_changed.insert(*id);
             }
@@ -771,19 +885,13 @@ impl<'a> Projector<'a> {
         rows.retain(|_, row| !doomed_ids.contains(&row.id));
 
         // Targets: changed listed fields, and listed fields of reconciled tables without a row.
-        let mut targets: Vec<(ObjectId, i64, i64)> = Vec::new();
+        let mut targets: Vec<(ObjectId, i64)> = Vec::new();
         for table in &self.tables {
             let Some(table_id) = self.table_ids.get(table).copied() else {
                 continue;
             };
             let reconciled = self.reconcile.contains(table);
-            for (index, field) in self
-                .table_fields
-                .get(table)
-                .into_iter()
-                .flatten()
-                .enumerate()
-            {
+            for field in self.table_fields.get(table).into_iter().flatten() {
                 if self.field_table.get(field) != Some(table) {
                     continue;
                 }
@@ -791,16 +899,16 @@ impl<'a> Projector<'a> {
                     || plan.fields.contains(field)
                     || (reconciled && !rows.contains_key(field))
                 {
-                    targets.push((field.clone(), table_id, index as i64 + 1));
+                    targets.push((field.clone(), table_id));
                 }
             }
         }
         let mut data = Vec::with_capacity(targets.len());
-        for (field, _, _) in &targets {
+        for (field, _) in &targets {
             data.push(self.view.field(field)?);
         }
         // Names are unique per table: move renamed rows out of the way first.
-        for ((field, table_id, _), wanted) in targets.iter().zip(&data) {
+        for ((field, table_id), wanted) in targets.iter().zip(&data) {
             if let Some(row) = rows.get(field)
                 && (row.name != wanted.name || row.table_id != *table_id)
             {
@@ -810,13 +918,22 @@ impl<'a> Projector<'a> {
             }
         }
         // New rows first, so options can name them.
-        for ((field, table_id, position), wanted) in targets.iter().zip(&data) {
+        let mut fresh: HashSet<i64> = HashSet::new();
+        let mut new_stored: Vec<(i64, String)> = Vec::new();
+        for ((field, table_id), wanted) in targets.iter().zip(&data) {
             if rows.contains_key(field) {
                 continue;
             }
-            let id = self.revive_or_insert_field(field, *table_id, *position, wanted)?;
-            self.field_changed(*table_id, true);
+            let (id, revived) = self.revive_or_insert_field(field, *table_id, wanted)?;
+            fresh.insert(id);
             self.fields_changed.insert(id);
+            // A brand-new stored field has no cells yet: only formulas naming it can change.
+            if revived || is_derived_type(&wanted.field_type) {
+                self.field_changed(*table_id, true);
+            } else {
+                self.field_changed(*table_id, false);
+                new_stored.push((*table_id, wanted.name.clone()));
+            }
             rows.insert(
                 field.clone(),
                 FieldRow {
@@ -824,7 +941,7 @@ impl<'a> Projector<'a> {
                     table_id: *table_id,
                     name: wanted.name.clone(),
                     title: String::new(),
-                    field_type: String::new(),
+                    field_type: wanted.field_type.clone(),
                     required: false,
                     readonly: false,
                     options_json: String::new(),
@@ -836,7 +953,7 @@ impl<'a> Projector<'a> {
         }
         self.field_ids = None;
         let field_ids = self.field_ids()?.clone();
-        for ((field, table_id, _), wanted) in targets.iter().zip(&data) {
+        for ((field, table_id), wanted) in targets.iter().zip(&data) {
             let Some(row) = rows.get(field) else {
                 continue;
             };
@@ -871,11 +988,15 @@ impl<'a> Projector<'a> {
             if same {
                 continue;
             }
-            let affects_values = row.table_id != *table_id
-                || row.name != wanted.name
-                || row.field_type != wanted.field_type
-                || row.options_json != options_json
-                || row.formula != wanted.formula;
+            let derived = is_derived_type(&row.field_type) || is_derived_type(&wanted.field_type);
+            let affects_values = !fresh.contains(&row.id)
+                && (row.table_id != *table_id
+                    || row.name != wanted.name
+                    || is_computed(&row.field_type) != is_computed(&wanted.field_type)
+                    || (derived
+                        && (row.field_type != wanted.field_type
+                            || row.options_json != options_json
+                            || row.formula != wanted.formula)));
             self.conn
                 .prepare_cached(
                     "UPDATE kition_fields SET table_id = ?1, name = ?2, title = ?3, type = ?4, required = ?5, readonly = ?6, \
@@ -899,35 +1020,61 @@ impl<'a> Projector<'a> {
             if affects_values {
                 self.fields_changed.insert(row.id);
             }
-            if wanted.field_type == "link_to_record" || row.field_type == "link_to_record" {
+            if !fresh.contains(&row.id)
+                && (wanted.field_type == "link_to_record" || row.field_type == "link_to_record")
+            {
                 self.link_fields.insert(field.clone());
             }
         }
-        // Positions follow each reconciled table's list; the order of derivation follows them.
+        // A new stored field changes values only through formulas naming it.
+        for (table_id, name) in new_stored {
+            if self.formulas_name(table_id, Some(&name))? {
+                self.recompute_tables.insert(table_id);
+            }
+        }
+        // Positions follow each reconciled table's list; a reorder changes values only through
+        // formulas reading values derived after them.
         let reconcile: Vec<ObjectId> = self.reconcile.iter().cloned().collect();
         for table in reconcile {
             let Some(table_id) = self.table_ids.get(&table).copied() else {
                 continue;
             };
-            let fields = self.table_fields.get(&table).cloned().unwrap_or_default();
-            let mut moved = false;
-            for (index, field) in fields.iter().enumerate() {
-                let Some(id) = field_ids.get(field) else {
-                    continue;
-                };
-                moved |= self
-                    .conn
-                    .prepare_cached(
-                        "UPDATE kition_fields SET position = ?1 WHERE id = ?2 AND position != ?1",
-                    )?
-                    .execute(params![index as i64 + 1, id])?
-                    > 0;
-            }
-            if moved {
-                self.field_changed(table_id, true);
+            let ids: Vec<i64> = self
+                .table_fields
+                .get(&table)
+                .into_iter()
+                .flatten()
+                .filter_map(|field| field_ids.get(field).copied())
+                .collect();
+            let moved = self.place_rows("kition_fields", &ids, &fresh)?;
+            if !moved.is_empty() {
+                let formulas = self.formulas_name(table_id, None)?;
+                self.field_changed(table_id, formulas);
             }
         }
         Ok(())
+    }
+
+    /// Whether a live formula of the table names `name` (`None`: whether it has formulas).
+    fn formulas_name(&self, table_id: i64, name: Option<&str>) -> Result<bool> {
+        let mut statement = self.conn.prepare_cached(
+            "SELECT formula FROM kition_fields WHERE table_id = ?1 AND type = 'formula' AND deleted_at IS NULL",
+        )?;
+        for formula in statement.query_map([table_id], |row| row.get::<_, String>(0))? {
+            let formula = formula?;
+            match name {
+                None => return Ok(true),
+                Some(name) => {
+                    if formula_references(&formula)
+                        .iter()
+                        .any(|named| named == name)
+                    {
+                        return Ok(true);
+                    }
+                }
+            }
+        }
+        Ok(false)
     }
 
     /// Recomputes the tables whose lookups or rollups name a field in [`Self::fields_changed`]:
@@ -965,28 +1112,29 @@ impl<'a> Projector<'a> {
         }
     }
 
+    /// Answers the row's id, and whether it is a revived deleted row (whose object may have
+    /// cells in the records).
     fn revive_or_insert_field(
         &self,
         field: &ObjectId,
         table_id: i64,
-        position: i64,
         wanted: &super::read::FieldData,
-    ) -> Result<i64> {
+    ) -> Result<(i64, bool)> {
         if let Some(id) = latest_row(self.conn, "kition_fields", field.as_str())? {
             self.conn.execute(
-                "UPDATE kition_fields SET table_id = ?1, name = ?2, position = ?3, options_json = '', updated_at = ?4, \
-                 deleted_at = NULL WHERE id = ?5",
-                params![table_id, wanted.name, position, self.now, id],
+                "UPDATE kition_fields SET table_id = ?1, name = ?2, options_json = '', updated_at = ?3, \
+                 deleted_at = NULL WHERE id = ?4",
+                params![table_id, wanted.name, self.now, id],
             )?;
-            return Ok(id);
+            return Ok((id, true));
         }
-        // Everything but the name and position is written by the update that follows.
+        // Everything but the name is written by the update that follows.
         self.conn.execute(
             "INSERT INTO kition_fields (document_id, table_id, name, title, type, position, options_json, created_at, updated_at, kdm_id) \
-             VALUES (?1, ?2, ?3, '', '', ?4, '', ?5, ?5, ?6)",
-            params![self.document_id, table_id, wanted.name, position, self.now, field.as_str()],
+             VALUES (?1, ?2, ?3, '', '', 0, '', ?4, ?4, ?5)",
+            params![self.document_id, table_id, wanted.name, self.now, field.as_str()],
         )?;
-        Ok(self.conn.last_insert_rowid())
+        Ok((self.conn.last_insert_rowid(), false))
     }
 
     /// Live field rows by object id.
@@ -1066,28 +1214,22 @@ impl<'a> Projector<'a> {
         if plan.views.is_empty() && plan.gone_views.is_empty() && self.reconcile.is_empty() {
             return Ok(());
         }
-        // Live view rows of the reconciled tables and of the changed views, by object id.
+        // Live view rows linked to an object, by object id.
         let mut rows: HashMap<ObjectId, (i64, i64)> = HashMap::new();
-        let mut unlinked: Vec<(i64, i64)> = Vec::new();
         {
             let mut statement = self.conn.prepare_cached(
-                "SELECT id, kdm_id, table_id FROM kition_views WHERE deleted_at IS NULL",
+                "SELECT id, kdm_id, table_id FROM kition_views WHERE deleted_at IS NULL AND kdm_id IS NOT NULL",
             )?;
             let found = statement.query_map([], |row| {
                 Ok((
                     row.get::<_, i64>(0)?,
-                    row.get::<_, Option<String>>(1)?,
+                    row.get::<_, String>(1)?,
                     row.get::<_, i64>(2)?,
                 ))
             })?;
             for item in found {
                 let (id, kdm, table) = item?;
-                match kdm {
-                    Some(kdm) => {
-                        rows.insert(ObjectId::from_string(kdm), (id, table));
-                    }
-                    None => unlinked.push((id, table)),
-                }
+                rows.insert(ObjectId::from_string(kdm), (id, table));
             }
         }
         let reconciled: HashSet<i64> = self
@@ -1108,12 +1250,6 @@ impl<'a> Projector<'a> {
                 doomed.push(*id);
             }
         }
-        doomed.extend(
-            unlinked
-                .iter()
-                .filter(|(_, table)| plan.full || reconciled.contains(table))
-                .map(|(id, _)| *id),
-        );
         for id in &doomed {
             let count = self.conn.execute(
                 "UPDATE kition_views SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2 AND deleted_at IS NULL",
@@ -1126,19 +1262,13 @@ impl<'a> Projector<'a> {
         let doomed: HashSet<i64> = doomed.into_iter().collect();
         rows.retain(|_, (id, _)| !doomed.contains(id));
 
-        let mut targets: Vec<(ObjectId, ObjectId, i64, i64)> = Vec::new();
+        let mut targets: Vec<(ObjectId, ObjectId, i64)> = Vec::new();
         for table in &self.tables {
             let Some(table_id) = self.table_ids.get(table).copied() else {
                 continue;
             };
             let reconciled = self.reconcile.contains(table);
-            for (index, view) in self
-                .table_views
-                .get(table)
-                .into_iter()
-                .flatten()
-                .enumerate()
-            {
+            for view in self.table_views.get(table).into_iter().flatten() {
                 if self.view_table.get(view) != Some(table) {
                     continue;
                 }
@@ -1146,11 +1276,12 @@ impl<'a> Projector<'a> {
                     || plan.views.contains(view)
                     || (reconciled && !rows.contains_key(view))
                 {
-                    targets.push((view.clone(), table.clone(), table_id, index as i64 + 1));
+                    targets.push((view.clone(), table.clone(), table_id));
                 }
             }
         }
-        for (view, table, table_id, position) in &targets {
+        let mut fresh: HashSet<i64> = HashSet::new();
+        for (view, table, table_id) in &targets {
             let data = read_view(self.replica, view)?;
             let config = json_text(&data.config);
             let id = match rows.get(view) {
@@ -1171,23 +1302,24 @@ impl<'a> Projector<'a> {
                     let id = match latest_row(self.conn, "kition_views", view.as_str())? {
                         Some(id) => {
                             self.conn.execute(
-                                "UPDATE kition_views SET document_id = ?1, table_id = ?2, title = ?3, type = ?4, position = ?5, \
-                                 locked = ?6, config_json = ?7, updated_at = ?8, deleted_at = NULL WHERE id = ?9",
-                                params![self.document_id, table_id, data.title, data.view_type, position, data.locked, config, self.now, id],
+                                "UPDATE kition_views SET document_id = ?1, table_id = ?2, title = ?3, type = ?4, \
+                                 locked = ?5, config_json = ?6, updated_at = ?7, deleted_at = NULL WHERE id = ?8",
+                                params![self.document_id, table_id, data.title, data.view_type, data.locked, config, self.now, id],
                             )?;
                             id
                         }
                         None => {
                             self.conn.execute(
                                 "INSERT INTO kition_views (document_id, table_id, title, type, position, locked, config_json, created_at, updated_at, kdm_id) \
-                                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?8, ?9)",
-                                params![self.document_id, table_id, data.title, data.view_type, position, data.locked, config, self.now, view.as_str()],
+                                 VALUES (?1, ?2, ?3, ?4, 0, ?5, ?6, ?7, ?7, ?8)",
+                                params![self.document_id, table_id, data.title, data.view_type, data.locked, config, self.now, view.as_str()],
                             )?;
                             self.conn.last_insert_rowid()
                         }
                     };
                     rows.insert(view.clone(), (id, *table_id));
                     self.out.views.insert(id);
+                    fresh.insert(id);
                     id
                 }
             };
@@ -1231,25 +1363,15 @@ impl<'a> Projector<'a> {
             }
         }
         for table in &self.reconcile {
-            for (index, view) in self
+            let ids: Vec<i64> = self
                 .table_views
                 .get(table)
                 .into_iter()
                 .flatten()
-                .enumerate()
-            {
-                let Some((id, _)) = rows.get(view) else {
-                    continue;
-                };
-                let moved = self
-                    .conn
-                    .prepare_cached(
-                        "UPDATE kition_views SET position = ?1 WHERE id = ?2 AND position != ?1",
-                    )?
-                    .execute(params![index as i64 + 1, id])?;
-                if moved > 0 {
-                    self.out.views.insert(*id);
-                }
+                .filter_map(|view| rows.get(view).map(|(id, _)| *id))
+                .collect();
+            for id in self.place_rows("kition_views", &ids, &fresh)? {
+                self.out.views.insert(id);
             }
         }
         Ok(())
@@ -1281,15 +1403,22 @@ impl<'a> Projector<'a> {
                 continue;
             };
             self.touched.insert(id);
-            if self.history {
-                self.write_cell_history(id, table_id, &record, &before)?;
+            if !self.history || self.created.contains(&id) {
+                if self.history {
+                    self.write_create_history(id, table_id, &record)?;
+                }
+                self.seed(id, Seed::All);
+                continue;
             }
-            self.seeds.push(id);
+            let changed = self.write_cell_history(id, table_id, &record, &before)?;
+            if !changed.is_empty() {
+                self.seed(id, Seed::Names(changed));
+            }
         }
         Ok(())
     }
 
-    /// Inserts, revives, deletes, and renumbers a table's record rows to match its list.
+    /// Inserts, revives, and deletes a table's record rows to match its list, and positions them.
     fn reconcile_records(&mut self, table: &ObjectId, plan: &mut Plan) -> Result<()> {
         let Some(table_id) = self.table_ids.get(table).copied() else {
             return Ok(());
@@ -1308,12 +1437,16 @@ impl<'a> Projector<'a> {
                 existing.insert(key, (id, position));
             }
         }
+        let current: Vec<Option<i64>> = listed
+            .iter()
+            .map(|record| existing.get(record.as_str()).map(|(_, position)| *position))
+            .collect();
+        let placed = place(&current);
         let mut reordered = false;
-        for (index, record) in listed.iter().enumerate() {
-            let position = index as i64 + 1;
+        for ((record, before), position) in listed.iter().zip(&current).zip(placed) {
             match existing.remove(record.as_str()) {
-                Some((id, current)) => {
-                    if current != position {
+                Some((id, _)) => {
+                    if *before != Some(position) {
                         self.conn
                             .prepare_cached(
                                 "UPDATE kition_records SET position = ?1 WHERE id = ?2",
@@ -1382,7 +1515,8 @@ impl<'a> Projector<'a> {
         Ok(self.conn.last_insert_rowid())
     }
 
-    /// Soft-deletes a live record row, drops its links, and queues the records that linked to it.
+    /// Soft-deletes a live record row, drops its links, and seeds the records that linked to it.
+    /// Positions of the other records stay.
     fn delete_record(&mut self, id: i64) -> Result<()> {
         let row: Option<(i64, String, String)> = self
             .conn
@@ -1394,15 +1528,17 @@ impl<'a> Projector<'a> {
         let Some((table_id, key, values)) = row else {
             return Ok(());
         };
-        {
+        let linkers: Vec<(i64, i64)> = {
             let mut statement = self.conn.prepare_cached(
-                "SELECT DISTINCT from_record_id FROM kition_record_links WHERE to_table_id = ?1 AND to_record_id = ?2",
+                "SELECT DISTINCT from_record_id, from_field_id FROM kition_record_links WHERE to_table_id = ?1 AND to_record_id = ?2",
             )?;
-            for record in statement.query_map(params![table_id, id], |row| row.get::<_, i64>(0))? {
-                let record = record?;
-                if record != id {
-                    self.seeds.push(record);
-                }
+            statement
+                .query_map(params![table_id, id], |row| Ok((row.get(0)?, row.get(1)?)))?
+                .collect::<std::result::Result<Vec<_>, _>>()?
+        };
+        for (record, link) in linkers {
+            if record != id {
+                self.seed(record, Seed::Link(link));
             }
         }
         self.conn
@@ -1435,40 +1571,45 @@ impl<'a> Projector<'a> {
         Ok(())
     }
 
-    /// History of a changed record: the whole record when it was created, else one row per
-    /// stored cell that differs from the row being replaced.
+    fn write_create_history(&mut self, id: i64, table_id: i64, record: &ObjectId) -> Result<()> {
+        let schema = self.schema(table_id)?;
+        let cells = self.stored_values(&schema, record)?;
+        insert_history(
+            self.conn,
+            &HistoryWrite {
+                document_id: &self.document_id,
+                table_id,
+                record_id: id,
+                field_id: None,
+                action: HistoryAction::Create,
+                before: Value::Null,
+                after: Value::Object(cells),
+                actor: self.actor,
+            },
+            self.now,
+        )
+    }
+
+    /// One history row per stored cell that differs from the row being replaced. Answers the
+    /// names of those cells.
     fn write_cell_history(
         &mut self,
         id: i64,
         table_id: i64,
         record: &ObjectId,
         before: &str,
-    ) -> Result<()> {
+    ) -> Result<HashSet<String>> {
         let schema = self.schema(table_id)?;
         let cells = self.stored_values(&schema, record)?;
-        if self.created.contains(&id) {
-            return insert_history(
-                self.conn,
-                &HistoryWrite {
-                    document_id: &self.document_id,
-                    table_id,
-                    record_id: id,
-                    field_id: None,
-                    action: HistoryAction::Create,
-                    before: Value::Null,
-                    after: Value::Object(cells),
-                    actor: self.actor,
-                },
-                self.now,
-            );
-        }
         let before = json::object(before);
+        let mut changed = HashSet::new();
         for (name, field_id) in &schema.stored_by_name {
             let old = before.get(name).unwrap_or(&Value::Null);
             let new = cells.get(name).unwrap_or(&Value::Null);
             if json::equal(old, new) {
                 continue;
             }
+            changed.insert(name.clone());
             insert_history(
                 self.conn,
                 &HistoryWrite {
@@ -1484,7 +1625,7 @@ impl<'a> Projector<'a> {
                 self.now,
             )?;
         }
-        Ok(())
+        Ok(changed)
     }
 
     fn schema(&mut self, table_id: i64) -> Result<Rc<TableSchema>> {
@@ -1512,16 +1653,15 @@ impl<'a> Projector<'a> {
             fields.push(field);
         }
         stored_by_name.sort();
-        let derived = |field: &Field| {
-            matches!(
-                field.field_type.as_str(),
-                "formula" | "lookup" | "rollup" | "link_to_record"
-            )
-        };
         let forward_formulas = fields
             .iter()
             .position(|field| field.field_type == "formula")
-            .is_some_and(|first| fields.iter().skip(first + 1).any(derived));
+            .is_some_and(|first| {
+                fields
+                    .iter()
+                    .skip(first)
+                    .any(|field| is_derived_type(&field.field_type))
+            });
         let schema = Rc::new(TableSchema {
             fields,
             stored,
@@ -1550,56 +1690,57 @@ impl<'a> Projector<'a> {
     // Links.
 
     fn project_links(&mut self, plan: &Plan) -> Result<()> {
-        if plan.links.is_empty()
-            && plan.gone_links.is_empty()
-            && self.link_fields.is_empty()
-            && !plan.full
-        {
+        let scan = plan.full || !self.link_fields.is_empty();
+        if plan.links.is_empty() && plan.gone_links.is_empty() && !scan {
             return Ok(());
         }
         let mut groups: BTreeSet<(ObjectId, ObjectId)> = BTreeSet::new();
+        let mut changed: HashMap<(ObjectId, ObjectId), Vec<LinkData>> = HashMap::new();
         for link in &plan.links {
-            let end = |name: &str| -> Result<ObjectId> {
-                Ok(ObjectId::from_string(
-                    self.replica.get(link, name)?.as_str().unwrap_or_default(),
-                ))
-            };
-            groups.insert((end("from")?, end("field")?));
+            let data = read_link(self.replica, link)?;
+            groups.insert((data.from.clone(), data.field.clone()));
+            changed
+                .entry((data.from.clone(), data.field.clone()))
+                .or_default()
+                .push(data);
         }
         for id in &plan.gone_links {
             if let Some(group) = self.delete_link_row(*id)? {
                 groups.insert(group);
             }
         }
-        let shown = self.view.links()?;
-        let mut by_group: HashMap<(ObjectId, ObjectId), Vec<LinkData>> = HashMap::new();
-        for link in shown {
-            if plan.full || self.link_fields.contains(&link.field) {
-                groups.insert((link.from.clone(), link.field.clone()));
+        // A full projection or a link field's new options: the links readers show, from one
+        // scan of the document.
+        let mut shown: HashMap<(ObjectId, ObjectId), Vec<LinkData>> = HashMap::new();
+        if scan {
+            for link in self.view.links()? {
+                if plan.full || self.link_fields.contains(&link.field) {
+                    groups.insert((link.from.clone(), link.field.clone()));
+                    shown
+                        .entry((link.from.clone(), link.field.clone()))
+                        .or_default()
+                        .push(link);
+                }
             }
-            by_group
-                .entry((link.from.clone(), link.field.clone()))
-                .or_default()
-                .push(link);
         }
         if plan.full {
             // Rows of links that are gone or not shown.
-            let keep: HashSet<String> = by_group
+            let keep: HashSet<String> = shown
                 .values()
                 .flatten()
                 .map(|link| link.id.to_string())
                 .collect();
             let mut doomed = Vec::new();
             {
-                let mut statement = self
-                    .conn
-                    .prepare_cached("SELECT id, kdm_id FROM kition_record_links")?;
+                let mut statement = self.conn.prepare_cached(
+                    "SELECT id, kdm_id FROM kition_record_links WHERE kdm_id IS NOT NULL",
+                )?;
                 let rows = statement.query_map([], |row| {
-                    Ok((row.get::<_, i64>(0)?, row.get::<_, Option<String>>(1)?))
+                    Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
                 })?;
                 for row in rows {
                     let (id, kdm) = row?;
-                    if kdm.is_none_or(|kdm| !keep.contains(&kdm)) {
+                    if !keep.contains(&kdm) {
                         doomed.push(id);
                     }
                 }
@@ -1622,35 +1763,91 @@ impl<'a> Projector<'a> {
                 groups.insert((ObjectId::from_string(key?), field.clone()));
             }
         }
-        let empty = Vec::new();
         for (from, field) in groups {
-            let wanted = by_group
-                .get(&(from.clone(), field.clone()))
-                .unwrap_or(&empty);
-            self.reconcile_links(&from, &field, wanted)?;
+            let key = (from.clone(), field.clone());
+            let wanted = match shown.remove(&key) {
+                Some(links) => links,
+                None if plan.full || self.link_fields.contains(&field) => Vec::new(),
+                None => self.group_links(&from, &field, changed.get(&key))?,
+            };
+            self.reconcile_links(&from, &field, &wanted)?;
         }
         Ok(())
     }
 
-    /// Deletes a link row and queues its source record. Answers the row's `(from record, field)`
+    /// The links readers show for one `(from record, field)`, from the group's projected rows
+    /// and its changed links, without scanning the document: ends that are live rows, once per
+    /// target, one for a single-target field, lowest id first.
+    fn group_links(
+        &mut self,
+        from: &ObjectId,
+        field: &ObjectId,
+        changed: Option<&Vec<LinkData>>,
+    ) -> Result<Vec<LinkData>> {
+        let mut candidates: Vec<LinkData> = changed.cloned().unwrap_or_default();
+        if let (Some((from_id, _)), Some(field_id)) = (
+            self.live_record(from)?,
+            self.field_ids()?.get(field).copied(),
+        ) {
+            let mut statement = self.conn.prepare_cached(
+                "SELECT kdm_id FROM kition_record_links WHERE from_record_id = ?1 AND from_field_id = ?2 AND kdm_id IS NOT NULL",
+            )?;
+            let ids = statement
+                .query_map(params![from_id, field_id], |row| row.get::<_, String>(0))?
+                .collect::<std::result::Result<Vec<_>, _>>()?;
+            for id in ids {
+                let id = ObjectId::from_string(id);
+                if self.replica.object_type(&id).is_ok_and(|ty| ty == LINK) {
+                    candidates.push(read_link(self.replica, &id)?);
+                }
+            }
+        }
+        candidates.sort_by(|a, b| a.id.cmp(&b.id));
+        candidates.dedup_by(|a, b| a.id == b.id);
+        let single = self
+            .replica
+            .get(field, "options")
+            .ok()
+            .and_then(|options| options.get("allow_multiple").cloned())
+            == Some(Value::Bool(false));
+        let mut seen = HashSet::new();
+        let mut out = Vec::new();
+        for link in candidates {
+            if link.from != *from || link.field != *field {
+                continue;
+            }
+            if self.live_record(&link.to)?.is_none() || !seen.insert(link.to.clone()) {
+                continue;
+            }
+            out.push(link);
+            if single {
+                break;
+            }
+        }
+        Ok(out)
+    }
+
+    /// Deletes a link row and seeds its source record. Answers the row's `(from record, field)`
     /// as object ids, so the group is reconciled too.
     fn delete_link_row(&mut self, id: i64) -> Result<Option<(ObjectId, ObjectId)>> {
-        let row: Option<(i64, String, Option<String>)> = self
+        let row: Option<(i64, i64, String, Option<String>)> = self
             .conn
             .prepare_cached(
-                "SELECT l.from_record_id, r.row_key, f.kdm_id FROM kition_record_links l \
+                "SELECT l.from_record_id, l.from_field_id, r.row_key, f.kdm_id FROM kition_record_links l \
                  JOIN kition_records r ON r.id = l.from_record_id JOIN kition_fields f ON f.id = l.from_field_id \
                  WHERE l.id = ?1",
             )?
-            .query_row([id], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
+            .query_row([id], |row| {
+                Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
+            })
             .optional()?;
         self.conn
             .prepare_cached("DELETE FROM kition_record_links WHERE id = ?1")?
             .execute([id])?;
-        let Some((from_id, from, field)) = row else {
+        let Some((from_id, field_id, from, field)) = row else {
             return Ok(None);
         };
-        self.seeds.push(from_id);
+        self.seed(from_id, Seed::Link(field_id));
         Ok(field.map(|field| (ObjectId::from_string(from), ObjectId::from_string(field))))
     }
 
@@ -1727,7 +1924,7 @@ impl<'a> Projector<'a> {
                 )?
                 .execute(params![self.document_id, from_table, from_id, field_id, to_table, to_id, self.now, kdm])?;
         }
-        self.seeds.push(from_id);
+        self.seed(from_id, Seed::Link(field_id));
         Ok(())
     }
 
@@ -1740,101 +1937,28 @@ impl<'a> Projector<'a> {
             .query_row([record.as_str()], |row| Ok((row.get(0)?, row.get(1)?)))
             .optional()?)
     }
-
-    // -----------------------------------------------------------------------
-    // Derived values.
-
-    fn derive(&mut self) -> Result<()> {
-        let mut queue: VecDeque<i64> = VecDeque::new();
-        let mut queued: HashSet<i64> = HashSet::new();
-        for id in std::mem::take(&mut self.seeds) {
-            push(&mut queue, &mut queued, id);
-        }
-        for table in self.recompute_tables.clone() {
-            let mut statement = self.conn.prepare_cached(
-                "SELECT id FROM kition_records WHERE table_id = ?1 AND deleted_at IS NULL ORDER BY position ASC, id ASC",
-            )?;
-            for id in statement.query_map([table], |row| row.get::<_, i64>(0))? {
-                push(&mut queue, &mut queued, id?);
-            }
-        }
-        for table in self.primary_changed.clone() {
-            let mut statement = self.conn.prepare_cached(
-                "SELECT DISTINCT from_record_id FROM kition_record_links WHERE to_table_id = ?1",
-            )?;
-            for id in statement.query_map([table], |row| row.get::<_, i64>(0))? {
-                push(&mut queue, &mut queued, id?);
-            }
-        }
-        let deriver = Deriver::new(self.conn, true);
-        let mut runs: HashMap<i64, u32> = HashMap::new();
-        while let Some(id) = queue.pop_front() {
-            queued.remove(&id);
-            let count = runs.entry(id).or_insert(0);
-            *count += 1;
-            if *count > MAX_RECOMPUTES {
-                continue;
-            }
-            let row: Option<(i64, String, String)> = self
-                .conn
-                .prepare_cached(
-                    "SELECT table_id, row_key, values_json FROM kition_records WHERE id = ?1 AND deleted_at IS NULL",
-                )?
-                .query_row([id], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
-                .optional()?;
-            let Some((table_id, key, current)) = row else {
-                continue;
-            };
-            let schema = self.schema(table_id)?;
-            let stored = self.stored_values(&schema, &ObjectId::from_string(key.clone()))?;
-            let (mut values, _) = deriver.recompute(&schema.fields, id, &stored)?;
-            // A formula reading a value derived after it sees it on the next pass, as a legacy
-            // record does once saved again.
-            if schema.forward_formulas {
-                for _ in 1..FORMULA_PASSES {
-                    let (again, changed) = deriver.recompute(&schema.fields, id, &values)?;
-                    values = again;
-                    if !changed {
-                        break;
-                    }
-                }
-            }
-            let values = Value::Object(values);
-            if json::equal(&Value::Object(json::object(&current)), &values) {
-                if self.created.contains(&id) {
-                    self.out.upserted.insert((table_id, key));
-                }
-                continue;
-            }
-            if self.touched.contains(&id) {
-                self.conn
-                    .prepare_cached(
-                        "UPDATE kition_records SET values_json = ?1, updated_by = ?2, updated_at = ?3 WHERE id = ?4",
-                    )?
-                    .execute(params![values.to_string(), self.actor, self.now, id])?;
-            } else {
-                self.conn
-                    .prepare_cached(
-                        "UPDATE kition_records SET values_json = ?1, updated_at = ?2 WHERE id = ?3",
-                    )?
-                    .execute(params![values.to_string(), self.now, id])?;
-            }
-            self.out.upserted.insert((table_id, key));
-            let mut statement = self.conn.prepare_cached(
-                "SELECT DISTINCT from_record_id FROM kition_record_links WHERE to_table_id = ?1 AND to_record_id = ?2",
-            )?;
-            for linker in statement.query_map(params![table_id, id], |row| row.get::<_, i64>(0))? {
-                push(&mut queue, &mut queued, linker?);
-            }
-        }
-        Ok(())
-    }
 }
 
-fn push(queue: &mut VecDeque<i64>, queued: &mut HashSet<i64>, id: i64) {
-    if queued.insert(id) {
-        queue.push_back(id);
-    }
+fn is_derived_type(field_type: &str) -> bool {
+    matches!(
+        field_type,
+        "formula" | "lookup" | "rollup" | "link_to_record"
+    )
+}
+
+/// A `Link` object's ends.
+fn read_link(replica: &Replica, id: &ObjectId) -> Result<LinkData> {
+    let end = |name: &str| -> Result<ObjectId> {
+        Ok(ObjectId::from_string(
+            replica.get(id, name)?.as_str().unwrap_or_default(),
+        ))
+    };
+    Ok(LinkData {
+        id: id.clone(),
+        from: end("from")?,
+        field: end("field")?,
+        to: end("to")?,
+    })
 }
 
 /// A view's registers and column layout; widths and visibility keyed by field object id.

@@ -15,11 +15,16 @@
 //! - Legacy `values_json` keeps a deleted field's value until the record is saved again (the
 //!   re-save above drops it); the projection drops it at once
 //!   (`deleting_a_field_drops_its_values_at_once`).
-//! - Legacy positions are sparse (`MAX(position) + 1` over deleted rows too) and a move writes a
-//!   raw position; the projection numbers live items 1..n. Only the order is compared, and moves
-//!   go to the end, which both express.
+//! - Positions: both leave gaps, but legacy appends after `MAX(position)` over deleted rows too and
+//!   a move writes a raw position, while the projection rewrites only the rows a move or insert
+//!   must (`positions_keep_gaps_and_rewrite_few_rows`). Only the order is compared, and moves go
+//!   to the end, which both express.
 //! - Replacing links rewrites the legacy rows in the given order; the model keeps existing links
-//!   and appends new ones, so replacements here keep kept targets in their order.
+//!   and appends new ones, so replacements here keep kept targets in their order (a product
+//!   follow-up: reordering links needs its own operation).
+//! - Column layouts (`kition_view_fields`) of deleted fields: legacy keeps the rows, the
+//!   projection writes rows only for live fields; only live fields' layouts are compared (a
+//!   product follow-up: whether a restored field gets its old width back).
 //! - Field type changes between stored and computed types: the model keeps the stored cells under
 //!   a computed type (they show again after changing back), legacy overwrites them. Only
 //!   stored-to-stored changes are generated.
@@ -35,16 +40,19 @@
 //! - A formula reading a value derived after it: legacy evaluates formulas over the record's
 //!   previous derived values, so it settles after re-saves; the projection evaluates such a
 //!   formula again once the later value is known (`a_formula_reads_values_derived_after_it`).
-//! - A rollup whose target field is gone aggregates whole records (legacy and projection alike);
-//!   over a link back to its own table such a rollup feeds on itself and never settles, and both
-//!   stop at an arbitrary depth. Rollup targets are not deleted.
+//! - Circular references: the model refuses them ([`model::check_acyclic`]), legacy accepts
+//!   them; operations the model refuses are skipped. A rollup whose target field is deleted
+//!   aggregates whole records, which can close a cycle the model cannot refuse; legacy has no
+//!   cycle handling and nests such values one level deeper on every save, without bound, so the
+//!   sequence does not delete rollup targets. Cycles and long chains are covered against
+//!   rebuilds and the arithmetic instead (`random_cycles_and_chains_stay_bounded_and_match_rebuilds`,
+//!   `a_running_total_of_two_hundred_records_is_exact`, and the cycle tests).
 //! - Filter trees, sorts, and groups have their own legacy tables, which the model does not have.
 //!
 //! At the end of each sequence, a rebuild into an empty file and a rebuild in place must match
 //! the incremental projection (ids kept), and a migrated copy of the legacy file
 //! ([`migrate::upgrade`]) rebuilt in place must still read like the legacy file, with the ids the
-//! migration recorded. Tables keep at least one view: the migration gives a table without views
-//! a default "All" view, which a rebuild would then add.
+//! migration recorded.
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::{Debug, Display};
@@ -1530,8 +1538,7 @@ impl Twin {
                 view_type: coin(rng, 30).then(|| ["grid", "calendar"][rng.below(2)].to_owned()),
                 config: coin(rng, 50).then(|| json!({ "hidden": [rng.below(3)] })),
             },
-            // The last view stays: migrating a table without views gives it an "All" view.
-            8 if view_count > 1 => Op::DeleteView {
+            8 if view_count > 0 => Op::DeleteView {
                 table,
                 view: rng.below(view_count),
             },
@@ -2466,6 +2473,1123 @@ fn a_merge_projects_like_a_rebuild() {
 }
 
 // ---------------------------------------------------------------------------
+// Cycles, chains, fan-out, positions, and failures.
+
+/// Sets a field's options without the model's checks, as a merge of concurrent edits can.
+fn force_options(replica: &mut Replica, field: &ObjectId, options: Value) {
+    write(replica, |tx| {
+        tx.set(field, "options", options)
+            .map_err(kition_kitable::KitableError::from)
+    });
+}
+
+fn link_field(
+    replica: &mut Replica,
+    table: &ObjectId,
+    title: &str,
+    target: &ObjectId,
+    single: bool,
+) -> ObjectId {
+    let mut options = json!({ "target_table": target.as_str() });
+    if single {
+        options["allow_multiple"] = json!(false);
+    }
+    write(replica, |tx| {
+        model::create_field(
+            tx,
+            table,
+            &FieldSpec {
+                options,
+                ..field(title, "link_to_record")
+            },
+        )
+    })
+}
+
+fn derived_field(
+    replica: &mut Replica,
+    table: &ObjectId,
+    title: &str,
+    field_type: &str,
+    options: Value,
+) -> ObjectId {
+    write(replica, |tx| {
+        model::create_field(
+            tx,
+            table,
+            &FieldSpec {
+                options,
+                ..field(title, field_type)
+            },
+        )
+    })
+}
+
+fn formula_field(replica: &mut Replica, table: &ObjectId, title: &str, formula: &str) -> ObjectId {
+    write(replica, |tx| {
+        model::create_field(
+            tx,
+            table,
+            &FieldSpec {
+                formula: formula.into(),
+                ..field(title, "formula")
+            },
+        )
+    })
+}
+
+fn named_records(
+    replica: &mut Replica,
+    table: &ObjectId,
+    name: &ObjectId,
+    names: &[&str],
+) -> Vec<ObjectId> {
+    let rows: Vec<Map<String, Value>> = names
+        .iter()
+        .map(|value| object(json!({ name.as_str(): value })))
+        .collect();
+    write(replica, |tx| {
+        model::create_records(tx, table, None, &rows, 1, "")
+    })
+}
+
+/// The longest `values_json` of a live record.
+fn largest_values(file: &KitableFile) -> usize {
+    ok(file.conn().query_row(
+        "SELECT COALESCE(MAX(LENGTH(values_json)), 0) FROM kition_records WHERE deleted_at IS NULL",
+        [],
+        |row| row.get::<_, i64>(0),
+    )) as usize
+}
+
+/// Projects, checks that values stay small, and that a rebuild into an empty file reads the same.
+fn project_bounded(dir: &Path, file: &KitableFile, replica: &mut Replica, now: i64, context: &str) {
+    project_within(dir, file, replica, now, context, 4_000);
+}
+
+/// [`project_bounded`] with a size limit. Values are a function of the document (a rebuild into an
+/// empty file reads the same, and a rebuild in place changes nothing), so they cannot grow from
+/// one projection to the next.
+fn project_within(
+    dir: &Path,
+    file: &KitableFile,
+    replica: &mut Replica,
+    now: i64,
+    context: &str,
+    limit: usize,
+) {
+    let started = Instant::now();
+    project_into(file, replica, "", now);
+    assert!(
+        started.elapsed().as_secs() < 5,
+        "{context}: projection took {:?}",
+        started.elapsed()
+    );
+    assert!(
+        largest_values(file) < limit,
+        "{context}: values grew to {} bytes",
+        largest_values(file)
+    );
+    let fresh = new_file(dir, &format!("fresh-{now}.kitable"), true);
+    rebuild_into(&fresh, replica, now);
+    assert_same(
+        &snapshot(file, &Labels::identity(), false),
+        &snapshot(&fresh, &Labels::identity(), false),
+        context,
+    );
+    let settled = snapshot(file, &Labels::identity(), true);
+    rebuild_into(file, replica, now);
+    assert_same(
+        &settled,
+        &snapshot(file, &Labels::identity(), true),
+        &format!("{context}: rebuild in place"),
+    );
+}
+
+/// A table of four records, each linking to the other three.
+struct Ring {
+    dir: tempfile::TempDir,
+    file: KitableFile,
+    replica: Replica,
+    base: ObjectId,
+    table: TableIds,
+    peers: ObjectId,
+    records: Vec<ObjectId>,
+}
+
+fn ring() -> Ring {
+    let dir = temp();
+    let file = new_file(dir.path(), "ring.kitable", true);
+    let mut replica = new_replica(1);
+    let base = base_in(&mut replica);
+    let table = write(&mut replica, |tx| {
+        model::create_table(tx, &base, &table_spec("Nodes", vec![primary("Name")]), None)
+    });
+    let peers = link_field(&mut replica, &table.table, "Peers", &table.table, false);
+    let name = nth(&table.fields, 0);
+    let records = named_records(&mut replica, &table.table, &name, &["a", "b", "c", "d"]);
+    let edits: Vec<(ObjectId, Vec<ObjectId>)> = records
+        .iter()
+        .map(|record| {
+            (
+                record.clone(),
+                records
+                    .iter()
+                    .filter(|other| *other != record)
+                    .cloned()
+                    .collect(),
+            )
+        })
+        .collect();
+    write(&mut replica, |tx| {
+        model::replace_links_many(tx, &peers, &edits)
+    });
+    project_into(&file, &mut replica, "", 2);
+    Ring {
+        dir,
+        file,
+        replica,
+        base,
+        table,
+        peers,
+        records,
+    }
+}
+
+#[test]
+fn a_self_lookup_stays_bounded() {
+    let mut r = ring();
+    let name = nth(&r.table.fields, 0);
+    let table = r.table.table.clone();
+    let lookup = derived_field(
+        &mut r.replica,
+        &table,
+        "Echo",
+        "lookup",
+        json!({ "link_field": r.peers.as_str(), "target_field": name.as_str() }),
+    );
+    project_into(&r.file, &mut r.replica, "", 3);
+    assert_eq!(
+        record_values(&r.file, "nodes", &nth(&r.records, 0)).get("echo"),
+        Some(&json!(["b", "c", "d"]))
+    );
+    // The lookup now reads itself: a cycle, so it reads its own field as empty.
+    force_options(
+        &mut r.replica,
+        &lookup,
+        json!({ "link_field": r.peers.as_str(), "target_field": lookup.as_str() }),
+    );
+    formula_field(&mut r.replica, &table, "Shown", "concat({name}, {echo})");
+    project_bounded(r.dir.path(), &r.file, &mut r.replica, 4, "self lookup");
+    let values = record_values(&r.file, "nodes", &nth(&r.records, 0));
+    assert_eq!(values.get("echo"), Some(&json!([])));
+    assert_eq!(values.get("shown"), Some(&json!("a[]")));
+    for (step, value) in ["x", "y", "z"].iter().enumerate() {
+        let record = nth(&r.records, step);
+        write(&mut r.replica, |tx| {
+            model::set_cells(
+                tx,
+                &table,
+                &record,
+                &object(json!({ name.as_str(): value })),
+            )
+        });
+        project_bounded(
+            r.dir.path(),
+            &r.file,
+            &mut r.replica,
+            5 + step as i64,
+            "self lookup edit",
+        );
+    }
+}
+
+#[test]
+fn whole_record_rollups_of_their_own_table_stay_bounded() {
+    let mut r = ring();
+    let table = r.table.table.clone();
+    let rollup = derived_field(
+        &mut r.replica,
+        &table,
+        "Everything",
+        "rollup",
+        json!({ "link_field": r.peers.as_str(), "aggregation": "concat", "target_field": nth(&r.table.fields, 0).as_str() }),
+    );
+    force_options(
+        &mut r.replica,
+        &rollup,
+        json!({ "link_field": r.peers.as_str(), "aggregation": "concat" }),
+    );
+    project_bounded(
+        r.dir.path(),
+        &r.file,
+        &mut r.replica,
+        3,
+        "whole-record rollup",
+    );
+    let values = record_values(&r.file, "nodes", &nth(&r.records, 0));
+    let text = values
+        .get("everything")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_owned();
+    assert!(
+        text.contains("name:b") && !text.contains("everything:map"),
+        "{text}"
+    );
+    let _ = &r.base;
+}
+
+/// Tables A and B linking to each other, a name each, and two records each, all cross-linked.
+struct Pair {
+    dir: tempfile::TempDir,
+    file: KitableFile,
+    replica: Replica,
+    a: TableIds,
+    b: TableIds,
+    a_to_b: ObjectId,
+    b_to_a: ObjectId,
+    a_records: Vec<ObjectId>,
+    b_records: Vec<ObjectId>,
+}
+
+fn pair() -> Pair {
+    let dir = temp();
+    let file = new_file(dir.path(), "pair.kitable", true);
+    let mut replica = new_replica(1);
+    let base = base_in(&mut replica);
+    let a = write(&mut replica, |tx| {
+        model::create_table(
+            tx,
+            &base,
+            &table_spec("A", vec![primary("Name"), field("Num", "number")]),
+            None,
+        )
+    });
+    let b = write(&mut replica, |tx| {
+        model::create_table(
+            tx,
+            &base,
+            &table_spec("B", vec![primary("Name"), field("Num", "number")]),
+            None,
+        )
+    });
+    let a_to_b = link_field(&mut replica, &a.table, "To B", &b.table, false);
+    let b_to_a = link_field(&mut replica, &b.table, "To A", &a.table, false);
+    let rows = |prefix: &str, name: &ObjectId, num: &ObjectId| -> Vec<Map<String, Value>> {
+        (1..=2)
+            .map(|index| {
+                object(json!({ name.as_str(): format!("{prefix}{index}"), num.as_str(): index }))
+            })
+            .collect()
+    };
+    let a_rows = rows("a", &nth(&a.fields, 0), &nth(&a.fields, 1));
+    let b_rows = rows("b", &nth(&b.fields, 0), &nth(&b.fields, 1));
+    let a_records = write(&mut replica, |tx| {
+        model::create_records(tx, &a.table, None, &a_rows, 1, "")
+    });
+    let b_records = write(&mut replica, |tx| {
+        model::create_records(tx, &b.table, None, &b_rows, 1, "")
+    });
+    let to_b: Vec<(ObjectId, Vec<ObjectId>)> = a_records
+        .iter()
+        .map(|record| (record.clone(), b_records.clone()))
+        .collect();
+    let to_a: Vec<(ObjectId, Vec<ObjectId>)> = b_records
+        .iter()
+        .map(|record| (record.clone(), a_records.clone()))
+        .collect();
+    write(&mut replica, |tx| {
+        model::replace_links_many(tx, &a_to_b, &to_b)
+    });
+    write(&mut replica, |tx| {
+        model::replace_links_many(tx, &b_to_a, &to_a)
+    });
+    project_into(&file, &mut replica, "", 2);
+    Pair {
+        dir,
+        file,
+        replica,
+        a,
+        b,
+        a_to_b,
+        b_to_a,
+        a_records,
+        b_records,
+    }
+}
+
+#[test]
+fn mutual_lookups_across_tables_stay_bounded() {
+    let mut p = pair();
+    let (a, b) = (p.a.table.clone(), p.b.table.clone());
+    let l1 = derived_field(
+        &mut p.replica,
+        &a,
+        "From B",
+        "lookup",
+        json!({ "link_field": p.a_to_b.as_str(), "target_field": nth(&p.b.fields, 0).as_str() }),
+    );
+    let l2 = derived_field(
+        &mut p.replica,
+        &b,
+        "From A",
+        "lookup",
+        json!({ "link_field": p.b_to_a.as_str(), "target_field": l1.as_str() }),
+    );
+    project_into(&p.file, &mut p.replica, "", 3);
+    assert_eq!(
+        record_values(&p.file, "b", &nth(&p.b_records, 0)).get("from_a"),
+        Some(&json!([["b1", "b2"], ["b1", "b2"]]))
+    );
+    force_options(
+        &mut p.replica,
+        &l1,
+        json!({ "link_field": p.a_to_b.as_str(), "target_field": l2.as_str() }),
+    );
+    project_bounded(p.dir.path(), &p.file, &mut p.replica, 4, "mutual lookups");
+    let values = record_values(&p.file, "a", &nth(&p.a_records, 0));
+    assert_eq!(values.get("from_b"), Some(&json!([])));
+    let num = nth(&p.a.fields, 1);
+    let record = nth(&p.a_records, 1);
+    write(&mut p.replica, |tx| {
+        model::set_cells(tx, &a, &record, &object(json!({ num.as_str(): 9 })))
+    });
+    project_bounded(
+        p.dir.path(),
+        &p.file,
+        &mut p.replica,
+        5,
+        "mutual lookups edit",
+    );
+}
+
+#[test]
+fn mutual_rollups_stay_bounded() {
+    let mut p = pair();
+    let (a, b) = (p.a.table.clone(), p.b.table.clone());
+    let r1 = derived_field(
+        &mut p.replica,
+        &a,
+        "B sum",
+        "rollup",
+        json!({ "link_field": p.a_to_b.as_str(), "target_field": nth(&p.b.fields, 1).as_str(), "aggregation": "sum" }),
+    );
+    let r2 = derived_field(
+        &mut p.replica,
+        &b,
+        "A sum",
+        "rollup",
+        json!({ "link_field": p.b_to_a.as_str(), "target_field": r1.as_str(), "aggregation": "sum" }),
+    );
+    project_into(&p.file, &mut p.replica, "", 3);
+    // b's A sum: two a records each with B sum 1 + 2.
+    assert_eq!(
+        record_values(&p.file, "b", &nth(&p.b_records, 0)).get("a_sum"),
+        Some(&json!(6))
+    );
+    force_options(
+        &mut p.replica,
+        &r1,
+        json!({ "link_field": p.a_to_b.as_str(), "target_field": r2.as_str(), "aggregation": "sum" }),
+    );
+    project_bounded(p.dir.path(), &p.file, &mut p.replica, 4, "mutual rollups");
+    let values = record_values(&p.file, "a", &nth(&p.a_records, 0));
+    assert_eq!(values.get("b_sum"), Some(&json!(0)));
+}
+
+#[test]
+fn a_cycle_made_by_concurrent_edits_stays_bounded() {
+    let mut p = pair();
+    let (a, b) = (p.a.table.clone(), p.b.table.clone());
+    let l1 = derived_field(
+        &mut p.replica,
+        &a,
+        "From B",
+        "lookup",
+        json!({ "link_field": p.a_to_b.as_str(), "target_field": nth(&p.b.fields, 0).as_str() }),
+    );
+    let l2 = derived_field(
+        &mut p.replica,
+        &b,
+        "From A",
+        "lookup",
+        json!({ "link_field": p.b_to_a.as_str(), "target_field": nth(&p.a.fields, 0).as_str() }),
+    );
+    project_into(&p.file, &mut p.replica, "", 3);
+    let mut other = ok(Replica::load(
+        schema(),
+        &ok(p.replica.snapshot()),
+        ok(ActorId::from_u64(2)),
+    ));
+    let since = p.replica.version();
+    // Each edit alone is fine: here L1 reads L2, which reads A's name ...
+    write(&mut p.replica, |tx| {
+        model::update_field(
+            tx,
+            &l1,
+            &FieldPatch {
+                options: Some(
+                    json!({ "link_field": p.a_to_b.as_str(), "target_field": l2.as_str() }),
+                ),
+                ..FieldPatch::default()
+            },
+        )
+    });
+    // ... there L2 reads L1, which reads B's name.
+    write(&mut other, |tx| {
+        model::update_field(
+            tx,
+            &l2,
+            &FieldPatch {
+                options: Some(
+                    json!({ "link_field": p.b_to_a.as_str(), "target_field": l1.as_str() }),
+                ),
+                ..FieldPatch::default()
+            },
+        )
+    });
+    ok(p.replica.import_changes(&ok(other.export_changes(&since))));
+    let imported = p.replica.take_changed();
+    ok(repair::run(&mut p.replica, &imported));
+    let mut changed = imported;
+    changed.extend(p.replica.take_changed());
+    let tx = ok(p.file.conn().unchecked_transaction());
+    ok(project::project_changes(
+        &tx, &p.replica, &changed, "import", 4,
+    ));
+    ok(tx.commit());
+    assert!(largest_values(&p.file) < 4_000);
+    project_bounded(p.dir.path(), &p.file, &mut p.replica, 5, "concurrent cycle");
+    let _ = &b;
+}
+
+/// A running total over a chain of `n` records (`cum = num + prev_cum`, `prev_cum` the previous
+/// record's `cum`) and a summary record summing every `cum`. Checks incremental, rebuilt, and
+/// edited values against the arithmetic.
+fn running_total(n: i64, reverse: bool) {
+    let dir = temp();
+    let file = new_file(dir.path(), "chain.kitable", true);
+    let mut replica = new_replica(1);
+    let base = base_in(&mut replica);
+    let chain = write(&mut replica, |tx| {
+        model::create_table(
+            tx,
+            &base,
+            &table_spec("Chain", vec![primary("Name"), field("Num", "number")]),
+            None,
+        )
+    });
+    let table = chain.table.clone();
+    let (name, num) = (nth(&chain.fields, 0), nth(&chain.fields, 1));
+    let prev = link_field(&mut replica, &table, "Prev", &table, true);
+    let prev_cum = derived_field(
+        &mut replica,
+        &table,
+        "Prev cum",
+        "rollup",
+        json!({ "aggregation": "sum" }),
+    );
+    let cum = formula_field(&mut replica, &table, "Cum", "{num} + {prev_cum}");
+    // Circular per field (refused by the model), not per record.
+    force_options(
+        &mut replica,
+        &prev_cum,
+        json!({ "link_field": prev.as_str(), "target_field": cum.as_str(), "aggregation": "sum" }),
+    );
+    let summary = write(&mut replica, |tx| {
+        model::create_table(
+            tx,
+            &base,
+            &table_spec("Summary", vec![primary("Name")]),
+            None,
+        )
+    });
+    let all = link_field(&mut replica, &summary.table, "All", &table, false);
+    derived_field(
+        &mut replica,
+        &summary.table,
+        "Total",
+        "rollup",
+        json!({ "link_field": all.as_str(), "target_field": cum.as_str(), "aggregation": "sum" }),
+    );
+    let mut rows: Vec<Map<String, Value>> = (1..=n)
+        .map(|index| object(json!({ name.as_str(): format!("c{index}"), num.as_str(): index })))
+        .collect();
+    if reverse {
+        rows.reverse();
+    }
+    let mut records = write(&mut replica, |tx| {
+        model::create_records(tx, &table, None, &rows, 1, "")
+    });
+    if reverse {
+        records.reverse();
+    }
+    let mut edits: Vec<(ObjectId, Vec<ObjectId>)> = records
+        .windows(2)
+        .map(|pair| (nth(pair, 1), vec![nth(pair, 0)]))
+        .collect();
+    if reverse {
+        edits.reverse();
+    }
+    write(&mut replica, |tx| {
+        model::replace_links_many(tx, &prev, &edits)
+    });
+    let total_row = nth(
+        &named_records(
+            &mut replica,
+            &summary.table,
+            &nth(&summary.fields, 0),
+            &["total"],
+        ),
+        0,
+    );
+    write(&mut replica, |tx| {
+        model::replace_links(tx, &total_row, &all, &records)
+    });
+    project_into(&file, &mut replica, "", 2);
+
+    let expected_total = |offset: i64| n * (n + 1) * (n + 2) / 6 + offset * n;
+    let total = |file: &KitableFile| {
+        record_values(file, "summary", &total_row)
+            .get("total")
+            .cloned()
+    };
+    assert_eq!(
+        total(&file),
+        Some(json!(expected_total(0))),
+        "incremental, n = {n}"
+    );
+    let last = nth(&records, usize::try_from(n - 1).unwrap_or(0));
+    assert_eq!(
+        record_values(&file, "chain", &last).get("cum"),
+        Some(&json!(n * (n + 1) / 2))
+    );
+    let fresh = new_file(dir.path(), "fresh.kitable", true);
+    rebuild_into(&fresh, &replica, 3);
+    assert_eq!(
+        total(&fresh),
+        Some(json!(expected_total(0))),
+        "rebuild, n = {n}"
+    );
+
+    // The first number changes: every cum moves, once each.
+    let first = nth(&records, 0);
+    write(&mut replica, |tx| {
+        model::set_cells(tx, &table, &first, &object(json!({ num.as_str(): 10 })))
+    });
+    project_into(&file, &mut replica, "", 4);
+    assert_eq!(
+        total(&file),
+        Some(json!(expected_total(9))),
+        "edited, n = {n}"
+    );
+    let recomputed = project::last_recompute_count();
+    assert!(
+        recomputed <= (n + 1) as u64,
+        "{recomputed} recomputes for n = {n}"
+    );
+}
+
+#[test]
+fn a_running_total_of_thirty_records_is_exact() {
+    running_total(30, false);
+    running_total(30, true);
+}
+
+#[test]
+fn a_running_total_of_two_hundred_records_is_exact() {
+    running_total(200, false);
+    running_total(200, true);
+}
+
+#[test]
+fn editing_a_field_nobody_reads_recomputes_only_its_record() {
+    let dir = temp();
+    let file = new_file(dir.path(), "fan.kitable", true);
+    let mut replica = new_replica(1);
+    let base = base_in(&mut replica);
+    let target = write(&mut replica, |tx| {
+        model::create_table(
+            tx,
+            &base,
+            &table_spec("Target", vec![primary("Title"), field("Note", "text")]),
+            None,
+        )
+    });
+    let refs = write(&mut replica, |tx| {
+        model::create_table(tx, &base, &table_spec("Refs", vec![primary("Name")]), None)
+    });
+    let link = link_field(&mut replica, &refs.table, "Target", &target.table, false);
+    let title = nth(&target.fields, 0);
+    let note = nth(&target.fields, 1);
+    derived_field(
+        &mut replica,
+        &refs.table,
+        "Target title",
+        "lookup",
+        json!({ "link_field": link.as_str(), "target_field": title.as_str() }),
+    );
+    let x = nth(
+        &named_records(&mut replica, &target.table, &title, &["x"]),
+        0,
+    );
+    let rows: Vec<Map<String, Value>> = (0..10_000)
+        .map(|index| object(json!({ nth(&refs.fields, 0).as_str(): format!("r{index}") })))
+        .collect();
+    let sources = write(&mut replica, |tx| {
+        model::create_records(tx, &refs.table, None, &rows, 1, "")
+    });
+    let edits: Vec<(ObjectId, Vec<ObjectId>)> = sources
+        .iter()
+        .map(|source| (source.clone(), vec![x.clone()]))
+        .collect();
+    write(&mut replica, |tx| {
+        model::replace_links_many(tx, &link, &edits)
+    });
+    project_into(&file, &mut replica, "", 2);
+
+    let table = target.table.clone();
+    write(&mut replica, |tx| {
+        model::set_cells(tx, &table, &x, &object(json!({ note.as_str(): "n" })))
+    });
+    project_into(&file, &mut replica, "", 3);
+    assert_eq!(project::last_recompute_count(), 1);
+    // The primary field is read by every chip and lookup.
+    write(&mut replica, |tx| {
+        model::set_cells(tx, &table, &x, &object(json!({ title.as_str(): "y" })))
+    });
+    project_into(&file, &mut replica, "", 4);
+    assert_eq!(project::last_recompute_count(), 10_001);
+    assert_eq!(
+        record_values(&file, "refs", &nth(&sources, 77)).get("target_title"),
+        Some(&json!(["y"]))
+    );
+}
+
+#[test]
+fn schema_changes_recompute_only_tables_that_need_it() {
+    let mut t = linked();
+    let people = t.people.table.clone();
+    // A stored field nobody names: no record changes.
+    let age = write(&mut t.replica, |tx| {
+        model::create_field(tx, &people, &field("Age", "number"))
+    });
+    project_into(&t.file, &mut t.replica, "", 11);
+    assert_eq!(project::last_recompute_count(), 0);
+    // Moving fields of a table without formulas changes no value either.
+    write(&mut t.replica, |tx| {
+        model::move_fields(tx, &people, std::slice::from_ref(&age), 0)
+    });
+    project_into(&t.file, &mut t.replica, "", 12);
+    assert_eq!(project::last_recompute_count(), 0);
+    // A formula naming a new field recomputes its table's records.
+    formula_field(&mut t.replica, &people, "Older", "{years} + 1");
+    project_into(&t.file, &mut t.replica, "", 13);
+    assert_eq!(project::last_recompute_count(), 2);
+    write(&mut t.replica, |tx| {
+        model::create_field(tx, &people, &field("Years", "number"))
+    });
+    project_into(&t.file, &mut t.replica, "", 14);
+    assert_eq!(project::last_recompute_count(), 2);
+}
+
+#[test]
+fn formulas_settle_through_long_forward_chains() {
+    let mut t = linked();
+    let tasks = t.tasks.table.clone();
+    // f1 reads f2 ... f5 reads the title: each placed before the one it reads.
+    for (index, formula) in [
+        "concat({f5}, '!')",
+        "concat({f4}, '!')",
+        "concat({f3}, '!')",
+        "concat({f2}, '!')",
+    ]
+    .iter()
+    .enumerate()
+    {
+        let title = format!("F{}", 4 - index);
+        write(&mut t.replica, |tx| {
+            model::create_field(
+                tx,
+                &tasks,
+                &FieldSpec {
+                    formula: (*formula).into(),
+                    order: Some(1),
+                    ..field(&title, "formula")
+                },
+            )
+        });
+    }
+    formula_field(&mut t.replica, &tasks, "F5", "upper({title})");
+    project_into(&t.file, &mut t.replica, "", 11);
+    let values = record_values(&t.file, "tasks", &t.task);
+    assert_eq!(values.get("f1"), Some(&json!("WRITE!!!!")));
+    assert_eq!(values.get("f2"), Some(&json!("WRITE!!!")));
+    let fresh = new_file(t.dir.path(), "fresh.kitable", true);
+    rebuild_into(&fresh, &t.replica, 12);
+    assert_same(
+        &snapshot(&t.file, &Labels::identity(), false),
+        &snapshot(&fresh, &Labels::identity(), false),
+        "forward chain",
+    );
+}
+
+#[test]
+fn an_unrepaired_replica_with_duplicate_names_is_refused() {
+    let mut t = linked();
+    let tasks = t.tasks.table.clone();
+    let notes = write(&mut t.replica, |tx| {
+        model::create_field(tx, &tasks, &field("Notes", "text"))
+    });
+    project_into(&t.file, &mut t.replica, "", 11);
+    write(&mut t.replica, |tx| {
+        tx.set(&notes, "name", json!("title"))
+            .map_err(kition_kitable::KitableError::from)
+    });
+    let changed = t.replica.take_changed();
+    let tx = ok(t.file.conn().unchecked_transaction());
+    let failed = project::project_changes(&tx, &t.replica, &changed, "", 12);
+    match failed {
+        Err(kition_kitable::KitableError::Invalid(message)) => {
+            assert!(
+                message.starts_with("unrepaired replica: duplicate field name"),
+                "{message}"
+            );
+        }
+        other => panic!("expected a refusal, got {other:?}"),
+    }
+    drop(tx);
+
+    let people = t.people.table.clone();
+    write(&mut t.replica, |tx| {
+        tx.set(&people, "name", json!("tasks"))
+            .map_err(kition_kitable::KitableError::from)
+    });
+    let tx = ok(t.file.conn().unchecked_transaction());
+    let failed = project::rebuild(&tx, &t.replica, 13);
+    assert!(
+        matches!(&failed, Err(kition_kitable::KitableError::Invalid(message)) if message.starts_with("unrepaired replica: duplicate")),
+        "{failed:?}"
+    );
+}
+
+#[test]
+fn rebuild_refuses_rows_the_replica_does_not_know() {
+    let dir = temp();
+    let mut file = new_file(dir.path(), "legacy.kitable", true);
+    ok(file.create_table(&table_spec("Old", Vec::new())));
+    let mut replica = new_replica(1);
+    base_in(&mut replica);
+    let tx = ok(file.conn().unchecked_transaction());
+    let failed = project::rebuild(&tx, &replica, 2);
+    match failed {
+        Err(kition_kitable::KitableError::Invalid(message)) => {
+            assert!(message.contains("1 table, 1 field, 1 view"), "{message}");
+        }
+        other => panic!("expected a refusal, got {other:?}"),
+    }
+    drop(tx);
+    assert_eq!(ok(file.list_tables()).len(), 1, "nothing was deleted");
+
+    // A record row with no record in the replica.
+    let mut t = linked();
+    let tasks_id = table_id(&t.file, "tasks");
+    ok(t.file.conn().execute(
+        "INSERT INTO kition_records (document_id, table_id, row_key, position, values_json, created_at, updated_at) \
+         SELECT document_id, table_id, 'not-in-the-replica', 99, '{}', 0, 0 FROM kition_records WHERE table_id = ?1 LIMIT 1",
+        [tasks_id],
+    ));
+    let tx = ok(t.file.conn().unchecked_transaction());
+    let failed = project::rebuild(&tx, &t.replica, 11);
+    assert!(
+        matches!(&failed, Err(kition_kitable::KitableError::Invalid(message)) if message.contains("1 record")),
+        "{failed:?}"
+    );
+    drop(tx);
+    let _ = &mut t;
+    let _ = &mut file;
+}
+
+fn positions(file: &KitableFile, table: &str) -> Vec<(String, i64)> {
+    ok(file.list_records(table_id(file, table)))
+        .into_iter()
+        .map(|record| {
+            (
+                record
+                    .values
+                    .get("name")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_owned(),
+                record.order,
+            )
+        })
+        .collect()
+}
+
+#[test]
+fn positions_keep_gaps_and_rewrite_few_rows() {
+    let mut r = ring();
+    let table = r.table.table.clone();
+    let name = nth(&r.table.fields, 0);
+    let pairs = |list: &[(&str, i64)]| -> Vec<(String, i64)> {
+        list.iter()
+            .map(|(name, position)| ((*name).to_owned(), *position))
+            .collect()
+    };
+    assert_eq!(
+        positions(&r.file, "nodes"),
+        pairs(&[("a", 1), ("b", 2), ("c", 3), ("d", 4)])
+    );
+    // A delete renumbers nothing.
+    let a = nth(&r.records, 0);
+    write(&mut r.replica, |tx| model::delete_records(tx, &table, &[a]));
+    let change = project_into(&r.file, &mut r.replica, "", 3);
+    assert!(change.records_reordered.is_empty());
+    assert_eq!(
+        positions(&r.file, "nodes"),
+        pairs(&[("b", 2), ("c", 3), ("d", 4)])
+    );
+    // A move to the end rewrites the moved row.
+    let b = nth(&r.records, 1);
+    write(&mut r.replica, |tx| {
+        model::move_records(tx, &table, std::slice::from_ref(&b), None)
+    });
+    let change = project_into(&r.file, &mut r.replica, "", 4);
+    assert_eq!(change.records_reordered, vec![table_id(&r.file, "nodes")]);
+    assert_eq!(
+        positions(&r.file, "nodes"),
+        pairs(&[("c", 3), ("d", 4), ("b", 5)])
+    );
+    // An insert at the top takes the free position there.
+    let c = nth(&r.records, 2);
+    let rows = [object(json!({ name.as_str(): "e" }))];
+    write(&mut r.replica, |tx| {
+        model::create_records(
+            tx,
+            &table,
+            Some(&model::Anchor::Before(c.clone())),
+            &rows,
+            5,
+            "",
+        )
+    });
+    project_into(&r.file, &mut r.replica, "", 5);
+    assert_eq!(
+        positions(&r.file, "nodes"),
+        pairs(&[("e", 1), ("c", 3), ("d", 4), ("b", 5)])
+    );
+    // Two more at the top: the first takes 2, then the block from 1 moves forward.
+    let e = some(
+        ok(r.file.list_records(table_id(&r.file, "nodes")))
+            .into_iter()
+            .next()
+            .map(|record| ObjectId::from_string(record.row_key)),
+        "e",
+    );
+    let rows = [
+        object(json!({ name.as_str(): "f" })),
+        object(json!({ name.as_str(): "g" })),
+    ];
+    write(&mut r.replica, |tx| {
+        model::create_records(
+            tx,
+            &table,
+            Some(&model::Anchor::Before(e.clone())),
+            &rows,
+            6,
+            "",
+        )
+    });
+    project_into(&r.file, &mut r.replica, "", 6);
+    let order: Vec<String> = positions(&r.file, "nodes")
+        .into_iter()
+        .map(|(name, _)| name)
+        .collect();
+    assert_eq!(order, vec!["f", "g", "e", "c", "d", "b"]);
+    let fresh = new_file(r.dir.path(), "fresh.kitable", true);
+    rebuild_into(&fresh, &r.replica, 7);
+    assert_same(
+        &snapshot(&r.file, &Labels::identity(), false),
+        &snapshot(&fresh, &Labels::identity(), false),
+        "positions",
+    );
+}
+
+/// Random derived fields wired without the model's cycle check (self and mutual lookups,
+/// rollups, formulas, chains), random cells, links, and records: every projection stays bounded
+/// and reads like a rebuild into an empty file.
+fn run_cycles(seed: u64, steps: usize) {
+    let mut rng = Rng::new(seed);
+    let mut p = pair();
+    let (a, b) = (p.a.table.clone(), p.b.table.clone());
+    let a_self = link_field(&mut p.replica, &a, "Self", &a, false);
+    project_into(&p.file, &mut p.replica, "", 3);
+    let tables = [a.clone(), b.clone()];
+    let mut now = 10;
+    for step in 0..steps {
+        let table_index = rng.below(2);
+        let table = nth(&tables, table_index);
+        let other = nth(&tables, 1 - table_index);
+        let view = ModelView::new(&p.replica);
+        let fields = ok(view.fields(&table));
+        let other_fields = ok(view.fields(&other));
+        let records = ok(view.record_ids(&table));
+        let other_records = ok(view.record_ids(&other));
+        let links: Vec<(ObjectId, ObjectId)> = if table == a {
+            vec![(a_self.clone(), a.clone()), (p.a_to_b.clone(), b.clone())]
+        } else {
+            vec![(p.b_to_a.clone(), a.clone())]
+        };
+        let pick_field = |rng: &mut Rng, fields: &[kition_kitable::kdm::read::FieldData]| {
+            fields
+                .get(rng.below(fields.len()))
+                .map(|field| field.id.clone())
+        };
+        match rng.below(10) {
+            0..=2 if fields.len() < 12 => {
+                let (link, target_table) = nth(&links, rng.below(links.len()));
+                let targets = if target_table == table {
+                    fields.clone()
+                } else if target_table == other {
+                    other_fields.clone()
+                } else {
+                    Vec::new()
+                };
+                let kind = rng.below(3);
+                let title = format!("D{step}");
+                let id = match kind {
+                    0 | 1 => derived_field(
+                        &mut p.replica,
+                        &table,
+                        &title,
+                        if kind == 0 { "lookup" } else { "rollup" },
+                        json!({ "aggregation": "sum" }),
+                    ),
+                    _ => formula_field(&mut p.replica, &table, &title, "1"),
+                };
+                let options = match kind {
+                    0 => {
+                        json!({ "link_field": link.as_str(), "target_field": pick_field(&mut rng, &targets).map(|f| f.to_string()) })
+                    }
+                    1 => {
+                        let aggregation = ["sum", "count", "concat", "max"][rng.below(4)];
+                        match pick_field(&mut rng, &targets).filter(|_| rng.below(4) != 0) {
+                            Some(target) => {
+                                json!({ "link_field": link.as_str(), "target_field": target.as_str(), "aggregation": aggregation })
+                            }
+                            None => {
+                                json!({ "link_field": link.as_str(), "aggregation": aggregation })
+                            }
+                        }
+                    }
+                    _ => Value::Null,
+                };
+                if kind == 2 {
+                    let names: Vec<String> = fields
+                        .iter()
+                        .map(|field| field.name.clone())
+                        .chain([format!("d{step}")])
+                        .collect();
+                    let first = nth(&names, rng.below(names.len()));
+                    let second = nth(&names, rng.below(names.len()));
+                    let formula = format!("concat({{{first}}}, '+', {{{second}}})");
+                    write(&mut p.replica, |tx| {
+                        tx.set(&id, "formula", json!(formula))
+                            .map_err(kition_kitable::KitableError::from)
+                    });
+                } else {
+                    force_options(&mut p.replica, &id, options);
+                }
+            }
+            3 if !records.is_empty() => {
+                let record = nth(&records, rng.below(records.len()));
+                let cell = nth(&fields, rng.below(2.min(fields.len())));
+                let value = if cell.field_type == "number" {
+                    json!(rng.below(9))
+                } else {
+                    json!(format!("v{}", rng.below(5)))
+                };
+                write(&mut p.replica, |tx| {
+                    model::set_cells(
+                        tx,
+                        &table,
+                        &record,
+                        &object(json!({ cell.id.as_str(): value })),
+                    )
+                });
+            }
+            4..=6 if !records.is_empty() => {
+                let (link, target_table) = nth(&links, rng.below(links.len()));
+                let pool = if target_table == table {
+                    &records
+                } else {
+                    &other_records
+                };
+                let record = nth(&records, rng.below(records.len()));
+                let targets: Vec<ObjectId> =
+                    pool.iter().filter(|_| rng.below(2) == 0).cloned().collect();
+                write(&mut p.replica, |tx| {
+                    model::replace_links(tx, &record, &link, &targets)
+                });
+            }
+            7 if records.len() < 8 => {
+                let name = nth(&fields, 0);
+                let rows = [object(json!({ name.id.as_str(): format!("n{step}") }))];
+                write(&mut p.replica, |tx| {
+                    model::create_records(tx, &table, None, &rows, now, "")
+                });
+            }
+            8 if records.len() > 1 => {
+                let record = nth(&records, rng.below(records.len()));
+                write(&mut p.replica, |tx| {
+                    model::delete_records(tx, &table, &[record]).map(|_| ())
+                });
+            }
+            _ => {
+                let derived: Vec<&kition_kitable::kdm::read::FieldData> = fields
+                    .iter()
+                    .filter(|field| field.field_type == "lookup" || field.field_type == "rollup")
+                    .collect();
+                if let Some(field) = derived.get(rng.below(derived.len().max(1))) {
+                    let (link, target_table) = nth(&links, rng.below(links.len()));
+                    let targets = if target_table == table {
+                        &fields
+                    } else {
+                        &other_fields
+                    };
+                    let target = pick_field(&mut rng, targets);
+                    force_options(
+                        &mut p.replica,
+                        &field.id,
+                        json!({ "link_field": link.as_str(), "target_field": target.map(|f| f.to_string()), "aggregation": "concat" }),
+                    );
+                }
+            }
+        }
+        now += 1;
+        // Whole-record rollups of whole-record rollups nest once per field: the ceiling is the
+        // structure's; the rebuild checks show values do not grow between projections.
+        project_within(
+            p.dir.path(),
+            &p.file,
+            &mut p.replica,
+            now,
+            &format!("cycles seed {seed} step {step}"),
+            1 << 20,
+        );
+    }
+}
+
+#[test]
+fn random_cycles_and_chains_stay_bounded_and_match_rebuilds() {
+    for seed in 1..=4 {
+        run_cycles(seed, 40);
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Timings.
 
 /// Projects what changed and answers how long the projection took, the commit excluded.
@@ -2623,6 +3747,58 @@ fn projection_timings() {
          one new record: {create:?}; 1,000 link replacements: {links:?}; one cell under 100 lookups: {fan_out:?}; \
          rebuild of 11k records and 1,000 links: {rebuild_links:?}"
     );
+    // Positions on 100,000 records: a delete at the top, a move from top to bottom, an insert at
+    // the top.
+    let huge = write(&mut replica, |tx| {
+        model::create_table(tx, &base, &table_spec("Huge", vec![primary("Title")]), None)
+    });
+    let huge_title = nth(&huge.fields, 0);
+    let rows: Vec<Map<String, Value>> = (0..100_000)
+        .map(|index| object(json!({ huge_title.as_str(): format!("h{index}") })))
+        .collect();
+    let huge_records = write(&mut replica, |tx| {
+        model::create_records(tx, &huge.table, None, &rows, 10, "")
+    });
+    timed_projection(&file, &mut replica, 10);
+    let huge_table = huge.table.clone();
+    let top = nth(&huge_records, 0);
+    write(&mut replica, |tx| {
+        model::delete_records(tx, &huge_table, &[top]).map(|_| ())
+    });
+    let delete_top = timed_projection(&file, &mut replica, 11);
+    let second = nth(&huge_records, 1);
+    write(&mut replica, |tx| {
+        model::move_records(tx, &huge_table, std::slice::from_ref(&second), None)
+    });
+    let move_down = timed_projection(&file, &mut replica, 12);
+    let third = nth(&huge_records, 2);
+    write(&mut replica, |tx| {
+        model::create_records(
+            tx,
+            &huge_table,
+            Some(&model::Anchor::Before(third.clone())),
+            &[object(json!({ huge_title.as_str(): "top" }))],
+            13,
+            "",
+        )
+    });
+    let insert_top = timed_projection(&file, &mut replica, 13);
+    write(&mut replica, |tx| {
+        model::create_records(
+            tx,
+            &huge_table,
+            Some(&model::Anchor::Before(third.clone())),
+            &[object(json!({ huge_title.as_str(): "top 2" }))],
+            14,
+            "",
+        )
+    });
+    let insert_dense = timed_projection(&file, &mut replica, 14);
+    println!(
+        "100k records: delete at the top {delete_top:?}; move top to bottom {move_down:?}; \
+         insert at the top (into the gap) {insert_top:?}; insert at the top (no gap, shifts the block) {insert_dense:?}"
+    );
+
     let source = some(
         ok(file.list_records(table_id(&file, "refs")))
             .into_iter()
