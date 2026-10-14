@@ -5,7 +5,7 @@ import { onTableChanged } from '@/services/runtimeBridge'
 import type { TableChangedParams } from '@/api/generated/table-changed'
 
 /** [tableId, rowKey] tuples, as `TableChange.recordsUpserted` and `.recordsDeleted` carry them. */
-export type TableLiveRowRefs = TableChangedParams['recordsUpserted']
+type TableLiveRowRefs = TableChangedParams['recordsUpserted']
 
 export type TableLiveChangeHandlers = {
   onRecords?: (upserted: TableLiveRowRefs, deleted: TableLiveRowRefs) => void
