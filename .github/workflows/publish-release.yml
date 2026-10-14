@@ -123,6 +123,9 @@ jobs:
       - name: Run the table regression completion gate
         run: pnpm run test:table:e2e
 
+      - name: Run the Table kit (Kitable) completion gate
+        run: pnpm run test:kitable:e2e
+
   build-desktop:
     needs:
       - validate-release

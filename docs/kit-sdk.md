@@ -355,8 +355,9 @@ Kition renderer:
 (`KITION_KIT_<KIT>_BINARY`).
 
 Finish with `pnpm run check`, `pnpm check:desktop`, `python3
-scripts/check-i18n.py`, the kit's e2e, and `pnpm test:table:e2e`. Then try it
-in the real desktop app (`pnpm dev`) with a large file.
+scripts/check-i18n.py`, the kit's e2e, `pnpm test:table:e2e`, and
+`pnpm test:kitable:e2e`. Then try it in the real desktop app (`pnpm dev`)
+with a large file.
 
 ## 6. Rules Learned The Hard Way
 

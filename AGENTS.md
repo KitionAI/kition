@@ -51,10 +51,9 @@ pnpm test:kitable:e2e
 
 The exit code of both must be 0. Fix failures before reporting completion.
 
-- Claude Code enforces `pnpm test:table:e2e` through the `Stop` hook in
-  `.claude/settings.local.json`, which calls `scripts/post-task-e2e.sh`;
-  `pnpm test:kitable:e2e` is not wired into that hook and must be run
-  manually.
+- Claude Code enforces both through the `Stop` hook in
+  `.claude/settings.local.json`, which calls `scripts/post-task-e2e.sh` and
+  runs each gate in turn.
 - Emergency Claude-only bypass for the current session:
   `export KITION_SKIP_E2E_HOOK=1`.
 - Codex has no blocking Stop hook and must run both commands manually.

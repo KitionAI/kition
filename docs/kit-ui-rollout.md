@@ -69,4 +69,4 @@ embedded spec, run in both browsers.
 2. Close the gaps above.
 
 `pnpm run check`, `python3 scripts/check-i18n.py`, `pnpm test:table:e2e`,
-and `make kit-e2e-webkit` passed on 2026-10-12.
+`pnpm test:kitable:e2e`, and `make kit-e2e-webkit` passed on 2026-10-12.

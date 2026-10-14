@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 #
-# Claude Code Stop hook: refuse to end a task while the mandatory table widget
-# e2e gate (pnpm test:table:e2e) is failing.
+# Claude Code Stop hook: refuse to end a task while either mandatory e2e gate
+# (pnpm test:table:e2e, the GFM table widget; pnpm test:kitable:e2e, the Table
+# kit) is failing.
 #
 # Reads the hook payload from stdin. When stop_hook_active is already true the
 # hook is re-entering itself and exits 0 to avoid recursion. Set
@@ -42,22 +43,27 @@ fi
 
 cd "$APP_DIR"
 
-echo "[post-task-e2e] running pnpm test:table:e2e in $APP_DIR" >&2
+GATES=("test:table:e2e" "test:kitable:e2e")
 
-if pnpm run test:table:e2e >"$LOG_FILE" 2>&1; then
-  echo "[post-task-e2e] ✓ e2e all green" >&2
-  exit 0
-fi
+for gate in "${GATES[@]}"; do
+  echo "[post-task-e2e] running pnpm run $gate in $APP_DIR" >&2
 
+  if pnpm run "$gate" >"$LOG_FILE" 2>&1; then
+    echo "[post-task-e2e] ✓ $gate all green" >&2
+    continue
+  fi
 
-{
-  echo ""
-echo "[post-task-e2e] E2E FAILED. The task cannot be declared complete."
-echo "[post-task-e2e] Full log: $LOG_FILE"
-  echo "[post-task-e2e] ---- log tail (last 80 lines) ----"
-  tail -n 80 "$LOG_FILE" || true
-  echo "[post-task-e2e] ---- end log tail ----"
-echo "[post-task-e2e] Fix the failure and retry. Emergency bypass: restart the session with KITION_SKIP_E2E_HOOK=1."
-} >&2
+  {
+    echo ""
+    echo "[post-task-e2e] E2E FAILED ($gate). The task cannot be declared complete."
+    echo "[post-task-e2e] Full log: $LOG_FILE"
+    echo "[post-task-e2e] ---- log tail (last 80 lines) ----"
+    tail -n 80 "$LOG_FILE" || true
+    echo "[post-task-e2e] ---- end log tail ----"
+    echo "[post-task-e2e] Fix the failure and retry. Emergency bypass: restart the session with KITION_SKIP_E2E_HOOK=1."
+  } >&2
 
-exit 2
+  exit 2
+done
+
+exit 0
