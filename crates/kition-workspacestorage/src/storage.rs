@@ -5,8 +5,8 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
 use std::sync::LazyLock;
 
-use kition_core::{AppError, AppResult, now_millis};
-use kition_kitable::KitableFile;
+use kition_core::{AppError, AppResult};
+use kition_kitable::{CellEdit, KitableFile, TableOp};
 use kition_workspace::assets::Asset;
 use kition_workspace::fsutil::write_atomic;
 use regex::Regex;
@@ -520,21 +520,36 @@ impl Migration<'_> {
     }
 
     fn migrate_kitable(&mut self, path: &Path) -> AppResult<()> {
-        let file = KitableFile::open(path).map_err(AppError::unhandled)?;
-        let mut record_updates = Vec::new();
+        let mut file = KitableFile::open(path).map_err(AppError::unhandled)?;
+        let mut record_updates: Vec<TableOp> = Vec::new();
         {
             let conn = file.conn();
-            let mut statement = conn
-                .prepare("SELECT id, values_json FROM kition_records WHERE deleted_at IS NULL")?;
+            let mut statement = conn.prepare(
+                "SELECT table_id, row_key, values_json FROM kition_records WHERE deleted_at IS NULL",
+            )?;
             let rows = statement
-                .query_map([], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?)))?
+                .query_map([], |r| {
+                    Ok((
+                        r.get::<_, i64>(0)?,
+                        r.get::<_, String>(1)?,
+                        r.get::<_, String>(2)?,
+                    ))
+                })?
                 .collect::<Result<Vec<_>, _>>()?;
-            for (id, raw) in rows {
+            for (table_id, row_key, raw) in rows {
                 let Ok(mut value) = serde_json::from_str::<Value>(&raw) else {
                     continue;
                 };
-                if self.migrate_value(&mut value)? && !self.dry_run {
-                    record_updates.push((id, value.to_string()));
+                if self.migrate_value(&mut value)?
+                    && !self.dry_run
+                    && let Value::Object(values) = value
+                {
+                    // Cells are written through the table document; derived values are skipped
+                    // and recomputed from the new cells.
+                    record_updates.push(TableOp::CellsSet {
+                        table_id,
+                        records: vec![CellEdit { row_key, values }],
+                    });
                 }
             }
         }
@@ -572,14 +587,12 @@ impl Migration<'_> {
         if self.dry_run || record_updates.is_empty() && attachment_updates.is_empty() {
             return Ok(());
         }
-        let tx = file.conn().unchecked_transaction()?;
-        let now = now_millis();
-        for (id, raw) in record_updates {
-            tx.execute(
-                "UPDATE kition_records SET values_json = ?1, updated_at = ?2 WHERE id = ?3",
-                rusqlite::params![raw, now, id],
-            )?;
+        if !record_updates.is_empty() {
+            file.transact(&record_updates)
+                .map_err(AppError::unhandled)?;
         }
+        // Attachments are file bookkeeping outside the table document.
+        let tx = file.conn().unchecked_transaction()?;
         for (id, path, meta) in attachment_updates {
             tx.execute(
                 "UPDATE kition_attachments SET path = ?1, meta_json = ?2 WHERE id = ?3",
