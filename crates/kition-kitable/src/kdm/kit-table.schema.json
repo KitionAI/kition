@@ -1,0 +1,75 @@
+{
+  "kdm": 1,
+  "kit": "kit.table",
+  "schemaVersion": 1,
+  "root": "Base",
+  "types": {
+    "Base": {
+      "fields": {
+        "title": { "kind": "string" },
+        "description": { "kind": "string" },
+        "icon": { "kind": "string" },
+        "color": { "kind": "string" },
+        "meta": { "kind": "json", "optional": true },
+        "tables": { "kind": "list", "of": "Table" },
+        "dashboards": { "kind": "list", "of": "Dashboard" }
+      }
+    },
+    "Table": {
+      "fields": {
+        "name": { "kind": "string" },
+        "title": { "kind": "string" },
+        "description": { "kind": "string" },
+        "meta": { "kind": "json", "optional": true },
+        "primaryField": { "kind": "ref", "of": "Field", "optional": true },
+        "fields": { "kind": "list", "of": "Field" },
+        "views": { "kind": "list", "of": "View" },
+        "records": { "kind": "list", "of": "Record" }
+      }
+    },
+    "Field": {
+      "fields": {
+        "name": { "kind": "string" },
+        "title": { "kind": "string" },
+        "type": { "kind": "string" },
+        "required": { "kind": "boolean" },
+        "readonly": { "kind": "boolean" },
+        "options": { "kind": "json", "optional": true },
+        "formula": { "kind": "string" },
+        "aiPrompt": { "kind": "string" },
+        "meta": { "kind": "json", "optional": true }
+      }
+    },
+    "View": {
+      "fields": {
+        "type": { "kind": "string" },
+        "title": { "kind": "string" },
+        "locked": { "kind": "boolean" },
+        "config": { "kind": "json", "optional": true },
+        "widths": { "kind": "map" },
+        "hidden": { "kind": "map" }
+      }
+    },
+    "Record": {
+      "fields": {
+        "cells": { "kind": "map" },
+        "createdAt": { "kind": "integer" },
+        "createdBy": { "kind": "string" }
+      }
+    },
+    "Link": {
+      "fields": {
+        "from": { "kind": "ref", "of": "Record" },
+        "field": { "kind": "ref", "of": "Field" },
+        "to": { "kind": "ref", "of": "Record" }
+      }
+    },
+    "Dashboard": {
+      "fields": {
+        "name": { "kind": "string" },
+        "config": { "kind": "json", "optional": true },
+        "widgets": { "kind": "map" }
+      }
+    }
+  }
+}
