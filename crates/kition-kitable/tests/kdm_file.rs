@@ -818,4 +818,22 @@ fn sequential_write_timings() {
         "200 update_record calls at 2,000 records: {:?}",
         start.elapsed()
     );
+
+    let rows: Vec<Map<String, Value>> = (0..10_000)
+        .map(|index| values(json!({ "title": format!("Bulk {index}"), "status": "new" })))
+        .collect();
+    let start = Instant::now();
+    for chunk in rows.chunks(500) {
+        ok(file.create_records(table_id, chunk));
+    }
+    println!("10,000 rows in batches of 500: {:?}", start.elapsed());
+    let path = file.path().to_path_buf();
+    file.close();
+    let start = Instant::now();
+    let reopened = open(&path);
+    println!(
+        "open with {} records: {:?}",
+        ok(reopened.count_records(table_id)),
+        start.elapsed()
+    );
 }
