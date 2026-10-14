@@ -39,4 +39,7 @@ url = { workspace = true }
 uuid = { workspace = true }
 
 [dev-dependencies]
+http-body-util = { workspace = true }
+jsonschema = { workspace = true }
 tempfile = { workspace = true }
+tower = { workspace = true }
