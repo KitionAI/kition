@@ -12,6 +12,7 @@ import {
   exportDataTableCSV,
   listViewFields,
   patchViewField,
+  transactDataDocument,
   updateDataField,
   updateDataTable,
   updateDataView,
@@ -60,6 +61,8 @@ type UseTableStructureActionsArgs = {
   loadRecords: (window?: DataRecordWindow) => Promise<void>
   setStatus: (message: string) => void
   copyTextToClipboard: (text: string, successMessage: string) => Promise<void>
+  /** Refreshes the undo/redo toolbar state after a server write; optional so existing callers and tests keep working untouched. */
+  refreshHistoryState?: () => void
 }
 
 export function useTableStructureActions({
@@ -84,6 +87,7 @@ export function useTableStructureActions({
   loadRecords,
   setStatus,
   copyTextToClipboard,
+  refreshHistoryState,
 }: UseTableStructureActionsArgs) {
   const confirm = useConfirm()
   const { t } = useTranslation('table')
@@ -126,6 +130,7 @@ export function useTableStructureActions({
       window.dispatchEvent(new CustomEvent('kition:data-document:table:rename', {
         detail: { vaultPath: documentPath, tableId: activeTable.id, newName: updatedTable.title },
       }))
+      refreshHistoryState?.()
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Failed to save table name')
     }
@@ -149,6 +154,7 @@ export function useTableStructureActions({
       }))
       await refreshDocument(created.id)
       setStatus(t('feedback.tableDuplicated'))
+      refreshHistoryState?.()
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Failed to duplicate table')
     } finally {
@@ -186,6 +192,7 @@ export function useTableStructureActions({
       await refreshDocument(null)
       setRecords([])
       setStatus(t('feedback.tableDeleted'))
+      refreshHistoryState?.()
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Failed to delete table')
     } finally {
@@ -251,6 +258,7 @@ export function useTableStructureActions({
       window.dispatchEvent(new CustomEvent('kition:data-document:view:upsert', {
         detail: { vaultPath: documentPath, tableId: activeTable.id, viewId: view.id },
       }))
+      refreshHistoryState?.()
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Failed to create view')
     } finally {
@@ -275,6 +283,7 @@ export function useTableStructureActions({
       window.dispatchEvent(new CustomEvent('kition:data-document:view:upsert', {
         detail: { vaultPath: documentPath, tableId: activeTable.id, viewId },
       }))
+      refreshHistoryState?.()
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Failed to rename view')
     }
@@ -327,6 +336,7 @@ export function useTableStructureActions({
         detail: { vaultPath: documentPath, tableId: activeTable.id, viewId: created.id },
       }))
       setStatus(t('feedback.viewDuplicated'))
+      refreshHistoryState?.()
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Failed to duplicate view')
     } finally {
@@ -362,6 +372,7 @@ export function useTableStructureActions({
         detail: { vaultPath: documentPath, tableId: activeTable.id, viewId: view.id },
       }))
       setStatus(t('feedback.viewDeleted'))
+      refreshHistoryState?.()
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Failed to delete view')
     } finally {
@@ -384,6 +395,7 @@ export function useTableStructureActions({
       })
       setNewFieldTitle('')
       await refreshDocument(activeTable.id)
+      refreshHistoryState?.()
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Failed to add property')
     } finally {
@@ -407,6 +419,7 @@ export function useTableStructureActions({
         required: false,
       })
       await refreshDocument(activeTable.id)
+      refreshHistoryState?.()
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Failed to add property')
     } finally {
@@ -438,6 +451,7 @@ export function useTableStructureActions({
       window.dispatchEvent(new CustomEvent('kition:data-document:field:upsert', {
         detail: { vaultPath: documentPath, tableId: activeTable.id, fieldId: field.id },
       }))
+      refreshHistoryState?.()
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Failed to save field')
     }
@@ -452,12 +466,8 @@ export function useTableStructureActions({
     if (!document || !activeTable || visibleFields[fromIndex]?.id !== field.id) return
     const reorderedFields = reorderTableFields(fields, visibleFields, field.id, dropIndex)
     if (reorderedFields === fields) return
-
-    const currentOrderById = new Map(fields.map((item) => [item.id, item.order]))
-    const changedFields = reorderedFields.filter((item) => (
-      currentOrderById.get(item.id) !== item.order
-    ))
-    if (!changedFields.length) return
+    const toIndex = reorderedFields.findIndex((item) => item.id === field.id)
+    if (toIndex < 0) return
 
     setBusy(true)
     setDocument((current) => current ? {
@@ -469,9 +479,13 @@ export function useTableStructureActions({
     } : current)
 
     try {
-      for (const item of changedFields) {
-        await updateDataField(document.id, activeTable.id, item.id, { order: item.order })
-      }
+      await transactDataDocument(document.id, [{
+        op: 'fields.move',
+        tableId: activeTable.id,
+        fieldIds: [field.id],
+        toIndex,
+      }])
+      refreshHistoryState?.()
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Failed to reorder field')
       try {
@@ -495,6 +509,7 @@ export function useTableStructureActions({
       window.dispatchEvent(new CustomEvent('kition:data-document:field:delete', {
         detail: { vaultPath: documentPath, tableId: activeTable.id, fieldId: field.id },
       }))
+      refreshHistoryState?.()
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Failed to delete field')
     } finally {

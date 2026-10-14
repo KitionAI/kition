@@ -7,8 +7,9 @@ import {
   deleteDataRecord,
   runDataAIFieldBatch,
   runDataAIFieldCell,
+  transactDataDocument,
   updateDataRecord,
-  updateDataRecordOrder,
+  type TableOp,
 } from '@/api/dataDocuments'
 import type {
   DataDocument,
@@ -99,6 +100,8 @@ type UseTableRecordActionsArgs = {
   loadRecords: (window?: DataRecordWindow) => Promise<void>
   setStatus: (message: string) => void
   copyTextToClipboard: (text: string, successMessage: string) => Promise<void>
+  /** Refreshes the undo/redo toolbar state after a server write; optional so existing callers and tests keep working untouched. */
+  refreshHistoryState?: () => void
 }
 
 export function useTableRecordActions({
@@ -119,6 +122,7 @@ export function useTableRecordActions({
   loadRecords,
   setStatus,
   copyTextToClipboard,
+  refreshHistoryState,
 }: UseTableRecordActionsArgs) {
   const { t } = useTranslation('table')
   async function createRecordFromValues(
@@ -165,6 +169,7 @@ export function useTableRecordActions({
     setBusy(true)
     try {
       await createRecordFromValues(initialValues)
+      refreshHistoryState?.()
     } catch (requestError) {
       setError(
         requestError instanceof Error ? requestError.message : 'Failed to create record',
@@ -183,43 +188,22 @@ export function useTableRecordActions({
   ) {
     if (!document || !activeTable) return
     const safeCount = Math.max(1, Math.min(50, Math.floor(count) || 1))
+    const at = canReorderRows && anchorRecord.row_key
+      ? (position === 'after' ? { after: anchorRecord.row_key } : { before: anchorRecord.row_key })
+      : null
     setBusy(true)
     try {
-      const createdRecords = await Promise.all(
-        Array.from({ length: safeCount }, () =>
-          createDataRecord(document.id, activeTable.id, valuesForRecord()),
-        ),
-      )
-
-      if (canReorderRows) {
-        const anchorIndex = records.findIndex(
-          (item) => item.id === anchorRecord.id,
-        )
-        const insertIndex =
-          anchorIndex >= 0
-            ? anchorIndex + (position === 'after' ? 1 : 0)
-            : records.length
-        const nextRecords = [
-          ...records.slice(0, insertIndex),
-          ...createdRecords,
-          ...records.slice(insertIndex),
-        ].map((record, index) => ({ ...record, order: index + 1 }))
-        setRecords(nextRecords)
-        await Promise.all(
-          nextRecords.map((record) =>
-            updateDataRecordOrder(
-              document.id,
-              activeTable.id,
-              record.id,
-              record.order,
-            ),
-          ),
-        )
-      } else {
-        setRecords((items) => [...items, ...createdRecords])
-      }
-
+      await transactDataDocument(document.id, [{
+        op: 'records.create',
+        tableId: activeTable.id,
+        at,
+        records: Array.from({ length: safeCount }, () => valuesForRecord()),
+      }])
+      // The transaction only returns the new row keys, not full records, so
+      // refetch to pick up the created rows (and their server-assigned ids).
+      await loadRecords()
       setStatus(successMessage)
+      refreshHistoryState?.()
     } catch (requestError) {
       setError(
         requestError instanceof Error ? requestError.message : 'Record creation failed',
@@ -303,6 +287,7 @@ export function useTableRecordActions({
       window.dispatchEvent(new CustomEvent('kition:data-document:record:upsert', {
         detail: { vaultPath: document.path, tableId: activeTable.id, recordIds: [record.id] },
       }))
+      refreshHistoryState?.()
       await runAutoUpdateAIFields(updatedRecord, field)
       return true
     } catch (requestError) {
@@ -535,12 +520,14 @@ export function useTableRecordActions({
     }
     if (!byRecord.size) return
 
-    const updates: Array<{ recordId: number; values: Record<string, DataRecordValue> }> = []
+    const updates: Array<{ recordId: number; rowKey: string; values: Record<string, DataRecordValue> }> = []
     for (const { record, fields } of byRecord.values()) {
+      if (!record.row_key) continue
       const values: Record<string, DataRecordValue> = {}
       for (const field of fields) values[field.name] = coerceValue(field, null)
-      updates.push({ recordId: record.id, values })
+      updates.push({ recordId: record.id, rowKey: record.row_key, values })
     }
+    if (!updates.length) return
 
     const patchByRecordId = new Map(updates.map((entry) => [entry.recordId, entry.values]))
     setRecords((items) =>
@@ -559,11 +546,11 @@ export function useTableRecordActions({
 
     setBusy(true)
     try {
-      await Promise.all(
-        updates.map((entry) =>
-          updateDataRecord(docId, tableIdActive, entry.recordId, entry.values),
-        ),
-      )
+      await transactDataDocument(docId, [{
+        op: 'cells.set',
+        tableId: tableIdActive,
+        records: updates.map((entry) => ({ rowKey: entry.rowKey, values: entry.values })),
+      }])
       const cleared = updates.reduce(
         (total, entry) => total + Object.keys(entry.values).length,
         0,
@@ -572,6 +559,7 @@ export function useTableRecordActions({
       window.dispatchEvent(new CustomEvent('kition:data-document:record:upsert', {
         detail: { vaultPath: document.path, tableId: tableIdActive, recordIds: updates.map((u) => u.recordId) },
       }))
+      refreshHistoryState?.()
     } catch (requestError) {
       setError(
         requestError instanceof Error ? requestError.message : 'Clear cells failed',
@@ -599,6 +587,7 @@ export function useTableRecordActions({
       window.dispatchEvent(new CustomEvent('kition:data-document:record:delete', {
         detail: { vaultPath: document.path, tableId: activeTable.id, recordIds: [recordId] },
       }))
+      refreshHistoryState?.()
     } catch (requestError) {
       setError(
         requestError instanceof Error ? requestError.message : 'Delete failed',
@@ -634,6 +623,7 @@ export function useTableRecordActions({
       window.dispatchEvent(new CustomEvent('kition:data-document:record:delete', {
         detail: { vaultPath: document.path, tableId: activeTable.id, recordIds: Array.from(idsSnapshot) },
       }))
+      refreshHistoryState?.()
     } catch (requestError) {
       setError(
         requestError instanceof Error ? requestError.message : 'Bulk delete failed',
@@ -656,6 +646,7 @@ export function useTableRecordActions({
         row_keys: rowKeys,
       })
       await loadRecords()
+      refreshHistoryState?.()
     } catch (requestError) {
       setError(
         requestError instanceof Error ? requestError.message : 'Bulk copy failed',
@@ -677,24 +668,26 @@ export function useTableRecordActions({
       sourceRecordId === targetRecordId
     )
       return
+    const sourceRecord = records.find((item) => item.id === sourceRecordId)
+    if (!sourceRecord?.row_key) return
     const nextRecords = reorderByIdAtPosition(
       records,
       sourceRecordId,
       targetRecordId,
       position,
-    ).map((record, index) => ({ ...record, order: index + 1 }))
+    )
+    if (nextRecords === records) return
     setRecords(nextRecords)
+    const movedIndex = nextRecords.findIndex((item) => item.id === sourceRecordId)
+    const beforeRowKey = nextRecords[movedIndex + 1]?.row_key ?? null
     try {
-      await Promise.all(
-        nextRecords.map((record) =>
-          updateDataRecordOrder(
-            document.id,
-            activeTable.id,
-            record.id,
-            record.order,
-          ),
-        ),
-      )
+      await transactDataDocument(document.id, [{
+        op: 'records.move',
+        tableId: activeTable.id,
+        rowKeys: [sourceRecord.row_key],
+        before: beforeRowKey,
+      }])
+      refreshHistoryState?.()
     } catch (requestError) {
       setError(
         requestError instanceof Error ? requestError.message : 'Failed to save row order',
@@ -710,7 +703,7 @@ export function useTableRecordActions({
   ) {
     if (!document || !activeTable || !groupField || !canMoveKanbanCards) return
     const record = records.find((item) => item.id === recordId)
-    if (!record) return
+    if (!record?.row_key) return
     const nextGroupValue = kanbanGroupToValue(groupField, group)
     const nextGroupDisplay = displayValue(nextGroupValue) || 'Empty'
     let nextRecords = records.map((item) =>
@@ -746,31 +739,75 @@ export function useTableRecordActions({
       }
     }
 
-    const orderedRecords = nextRecords.map((item, index) => ({
-      ...item,
-      order: index + 1,
-    }))
-    setRecords(orderedRecords)
+    setRecords(nextRecords)
+    const movedIndex = nextRecords.findIndex((item) => item.id === recordId)
+    const beforeRowKey = nextRecords[movedIndex + 1]?.row_key ?? null
     try {
-      await updateDataRecord(document.id, activeTable.id, recordId, {
-        [groupField.name]: nextGroupValue,
-      })
-      await Promise.all(
-        orderedRecords.map((item) =>
-          updateDataRecordOrder(
-            document.id,
-            activeTable.id,
-            item.id,
-            item.order,
-          ),
-        ),
-      )
+      await transactDataDocument(document.id, [
+        {
+          op: 'cells.set',
+          tableId: activeTable.id,
+          records: [{ rowKey: record.row_key, values: { [groupField.name]: nextGroupValue } }],
+        },
+        {
+          op: 'records.move',
+          tableId: activeTable.id,
+          rowKeys: [record.row_key],
+          before: beforeRowKey,
+        },
+      ])
+      refreshHistoryState?.()
     } catch (requestError) {
       setError(
         requestError instanceof Error
           ? requestError.message
           : 'Failed to save card move',
       )
+      void loadRecords()
+    }
+  }
+
+  async function fillCells(
+    cells: Array<{ record: DataRecord; field: DataField; value: DataRecordValue }>,
+  ) {
+    if (!document || !activeTable || !cells.length) return
+    const byRecord = new Map<number, { record: DataRecord; values: Record<string, DataRecordValue> }>()
+    for (const { record, field, value } of cells) {
+      if (field.readonly || !record.row_key) continue
+      const entry = byRecord.get(record.id) ?? { record, values: {} }
+      entry.values[field.name] = coerceValue(field, value)
+      if (!byRecord.has(record.id)) byRecord.set(record.id, entry)
+    }
+    if (!byRecord.size) return
+
+    const patchByRecordId = new Map(
+      [...byRecord.values()].map((entry) => [entry.record.id, entry.values]),
+    )
+    setRecords((items) =>
+      items.map((item) => {
+        const patch = patchByRecordId.get(item.id)
+        return patch ? { ...item, values: { ...item.values, ...patch } } : item
+      }),
+    )
+    setSelectedRecord((current) => {
+      if (!current) return current
+      const patch = patchByRecordId.get(current.id)
+      return patch ? { ...current, values: { ...current.values, ...patch } } : current
+    })
+
+    const ops: TableOp[] = [{
+      op: 'cells.set',
+      tableId: activeTable.id,
+      records: [...byRecord.values()].map((entry) => ({
+        rowKey: entry.record.row_key,
+        values: entry.values,
+      })),
+    }]
+    try {
+      await transactDataDocument(document.id, ops)
+      refreshHistoryState?.()
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Fill failed')
       void loadRecords()
     }
   }
@@ -790,6 +827,7 @@ export function useTableRecordActions({
     copyRecordURL,
     duplicateRecord,
     duplicateSelectedRecords,
+    fillCells,
     insertRecordsNear,
     moveKanbanRecord,
     removeRecord,

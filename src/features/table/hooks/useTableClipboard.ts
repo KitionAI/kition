@@ -1,5 +1,5 @@
 import { useEffect, type ClipboardEvent as ReactClipboardEvent, type Dispatch, type SetStateAction } from 'react'
-import { createDataRecord, updateDataRecord, uploadDataAttachment } from '@/api/dataDocuments'
+import { createDataRecord, transactDataDocument, updateDataRecord, uploadDataAttachment, type TableOp } from '@/api/dataDocuments'
 import type { DataField, DataRecord, DataRecordValue } from '@/types/dataDocument'
 import {
   coerceValue,
@@ -23,6 +23,8 @@ type UseTableClipboardArgs = {
   setStatus: (message: string) => void
   setRecords: Dispatch<SetStateAction<DataRecord[]>>
   reloadRecords: () => void
+  /** Refreshes the undo/redo toolbar state after a server write; optional so existing callers and tests keep working untouched. */
+  refreshHistoryState?: () => void
 }
 
 export function useTableClipboard({
@@ -38,6 +40,7 @@ export function useTableClipboard({
   setStatus,
   setRecords,
   reloadRecords,
+  refreshHistoryState,
 }: UseTableClipboardArgs) {
   function isEditablePasteTarget(target: EventTarget | null) {
     if (!(target instanceof HTMLElement)) return false
@@ -79,6 +82,7 @@ export function useTableClipboard({
         setRecords((items) => [...items, created])
       }
       setStatus(`Added ${uploaded.length} attachment${uploaded.length === 1 ? '' : 's'}`)
+      refreshHistoryState?.()
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Attachment paste failed')
       reloadRecords()
@@ -106,14 +110,40 @@ export function useTableClipboard({
         if (targetRecord) existingUpdates.push({ record: targetRecord, values })
         else newRows.push(values)
       })
+      const writableUpdates = existingUpdates.filter((item) => item.record.row_key)
+      if (!writableUpdates.length && !newRows.length) return
 
-      const updatedRecords = await Promise.all(existingUpdates.map((item) => updateDataRecord(documentId, tableId, item.record.id, item.values)))
-      const createdRecords = await Promise.all(newRows.map((values) => createDataRecord(documentId, tableId, values)))
-      setRecords((items) => {
-        const updatedById = new Map(updatedRecords.map((record) => [record.id, record]))
-        return [...items.map((record) => updatedById.get(record.id) || record), ...createdRecords]
-      })
-      setStatus(`Pasted ${existingUpdates.length + createdRecords.length} row${existingUpdates.length + createdRecords.length === 1 ? '' : 's'}`)
+      // One transaction for the whole pasted block: existing cells via
+      // cells.set, rows past the end of the table via records.create.
+      const ops: TableOp[] = []
+      if (writableUpdates.length) {
+        ops.push({
+          op: 'cells.set',
+          tableId,
+          records: writableUpdates.map((item) => ({ rowKey: item.record.row_key, values: item.values })),
+        })
+      }
+      if (newRows.length) {
+        ops.push({ op: 'records.create', tableId, at: null, records: newRows })
+      }
+
+      await transactDataDocument(documentId, ops)
+
+      if (writableUpdates.length) {
+        const patchByRecordId = new Map(writableUpdates.map((item) => [item.record.id, item.values]))
+        setRecords((items) => items.map((item) => {
+          const patch = patchByRecordId.get(item.id)
+          return patch ? { ...item, values: { ...item.values, ...patch } } : item
+        }))
+      }
+      if (newRows.length) {
+        // The transaction only returns the new row keys, not full records,
+        // so refetch to pick up the created rows (and their server ids).
+        reloadRecords()
+      }
+      const total = writableUpdates.length + newRows.length
+      setStatus(`Pasted ${total} row${total === 1 ? '' : 's'}`)
+      refreshHistoryState?.()
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Paste import failed')
       reloadRecords()

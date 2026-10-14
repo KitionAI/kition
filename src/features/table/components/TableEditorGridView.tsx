@@ -22,6 +22,7 @@ import {
   RowControlType,
   type CombinedSelection,
   type IAIOverlayCell,
+  type ICellRange,
   type IGridRef,
   type IGroupCollection,
   type IGroupPoint,
@@ -84,6 +85,7 @@ type GridViewProps = {
   onRegenerate?: (record: DataRecord, field: DataField) => void
   onUpdateCell: (record: DataRecord, field: DataField, value: DataRecordValue) => void
   onClearCells: (cells: Array<{ record: DataRecord; field: DataField }>) => void
+  onFillCells?: (cells: Array<{ record: DataRecord; field: DataField; value: DataRecordValue }>) => void
   onPreviewAttachments: (items: DataAttachment[], index: number) => void
   onPaste: (event: ReactClipboardEvent<HTMLDivElement>) => void
   onAddRecord: (initialValues?: Record<string, DataRecordValue>) => void
@@ -116,6 +118,7 @@ export const GridView = forwardRef<IGridRef, GridViewProps>(function GridView(pr
     onRegenerate,
     onUpdateCell,
     onClearCells,
+    onFillCells,
     onPaste,
     onAddRecord,
     onOpenFieldCreator,
@@ -323,6 +326,47 @@ export const GridView = forwardRef<IGridRef, GridViewProps>(function GridView(pr
     [sortedAndFilteredRecords, visibleFields, onClearCells],
   )
 
+  const handleFillSelection = useCallback(
+    (selectionRanges: [IRange, IRange], targetEndRealRowIndex: number) => {
+      if (!onFillCells) return
+      const [start, end] = selectionRanges as [ICellRange, ICellRange]
+      const minCol = Math.min(start[0], end[0])
+      const maxCol = Math.max(start[0], end[0])
+      const minRow = Math.min(start[1], end[1])
+      const maxRow = Math.max(start[1], end[1])
+      const sourceRowCount = maxRow - minRow + 1
+      const fillingDown = targetEndRealRowIndex > maxRow
+      const targetRows: number[] = []
+      if (fillingDown) {
+        for (let row = maxRow + 1; row <= targetEndRealRowIndex; row++) targetRows.push(row)
+      } else {
+        for (let row = minRow - 1; row >= targetEndRealRowIndex; row--) targetRows.push(row)
+      }
+      if (!targetRows.length) return
+
+      const cells: Array<{ record: DataRecord; field: DataField; value: DataRecordValue }> = []
+      targetRows.forEach((rowIndex, step) => {
+        const record = sortedAndFilteredRecords[rowIndex]
+        if (!record) return
+        // Cycle through the selected rows' pattern, repeating it past the
+        // selection's edge in the drag direction (the usual spreadsheet
+        // fill-handle behavior).
+        const sourceRowIndex = fillingDown
+          ? minRow + (step % sourceRowCount)
+          : maxRow - (step % sourceRowCount)
+        const sourceRecord = sortedAndFilteredRecords[sourceRowIndex]
+        if (!sourceRecord) return
+        for (let col = minCol; col <= maxCol; col++) {
+          const field = visibleFields[col]
+          if (!field || field.readonly) continue
+          cells.push({ record, field, value: sourceRecord.values?.[field.name] ?? null })
+        }
+      })
+      if (cells.length) onFillCells(cells)
+    },
+    [sortedAndFilteredRecords, visibleFields, onFillCells],
+  )
+
   const handleCopy = useCallback(
     (selection: CombinedSelection, event: ReactClipboardEvent) => {
       const text = serializeTableSelection(selection, visibleFields, sortedAndFilteredRecords)
@@ -415,6 +459,7 @@ export const GridView = forwardRef<IGridRef, GridViewProps>(function GridView(pr
         getClipboardText={getClipboardText}
         onCopy={handleCopy}
         onDelete={handleDelete}
+        onFillSelection={onFillCells ? handleFillSelection : undefined}
         onUndo={onUndo}
         onRedo={onRedo}
         onColumnHeaderMenuClick={onOpenColumnHeaderMenu ? handleColumnHeaderMenuClick : undefined}

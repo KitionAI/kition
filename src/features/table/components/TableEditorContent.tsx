@@ -122,6 +122,7 @@ type TableEditorContentProps = {
     value: DataRecordValue,
   ) => void
   onClearCells: (cells: Array<{ record: DataRecord; field: DataField }>) => void
+  onFillCells?: (cells: Array<{ record: DataRecord; field: DataField; value: DataRecordValue }>) => void
   onPaste: (event: ReactClipboardEvent<HTMLDivElement>) => void
   onOpenFieldCreator: () => void
   onRegenerate?: (record: DataRecord, field: DataField) => void
@@ -192,6 +193,7 @@ export const TableEditorContent = forwardRef<TableEditorHandle, TableEditorConte
       onReorderRecords,
       onUpdateCell,
       onClearCells,
+      onFillCells,
       onPaste,
       onOpenFieldCreator,
       onRegenerate,
@@ -348,6 +350,7 @@ export const TableEditorContent = forwardRef<TableEditorHandle, TableEditorConte
         onRegenerate={onRegenerate}
         onUpdateCell={onUpdateCell}
         onClearCells={onClearCells}
+        onFillCells={onFillCells}
         onPreviewAttachments={onPreviewAttachments}
         onPaste={onPaste}
         onAddRecord={(initialValues) => void onAddRecord(initialValues)}

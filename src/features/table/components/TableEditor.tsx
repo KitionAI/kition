@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
   DataField,
@@ -21,6 +21,7 @@ import {
   gridRecordPageSize,
   resolveGridRowHeight,
 } from '@/features/table/lib/tableEditorShared'
+import { buildTableLiveChangeHandlers } from '@/features/table/lib/tableLiveChangeDispatch'
 
 import { TableColumnHeaderMenu } from './TableColumnHeaderMenu'
 import { TableEditorContent } from './TableEditorContent'
@@ -39,7 +40,8 @@ import { useGridCollapsedGroup } from '../hooks/useGridCollapsedGroup'
 import { useTableEditorData } from '../hooks/useTableEditorData'
 import { useTableEditorDerivedState } from '../hooks/useTableEditorDerivedState'
 import { useTableEditorUiState } from '../hooks/useTableEditorUiState'
-import { useTableCellHistory } from '../hooks/useTableCellHistory'
+import { useTableHistory } from '../hooks/useTableHistory'
+import { useTableLiveChanges } from '../hooks/useTableLiveChanges'
 import { useTableViewState } from '../hooks/useTableViewState'
 
 export function TableEditor({
@@ -270,6 +272,35 @@ export function TableEditor({
     await loadRecords()
   }
 
+  const documentId = document?.id ?? null
+  const onApplyHistoryChange = useCallback(() => refreshAgentChanges(), [
+    activeTable?.id,
+    activeTableId,
+    activeView?.id,
+    activeViewId,
+    refreshDocument,
+    loadRecords,
+  ])
+  const {
+    canUndo,
+    canRedo,
+    historyBusy,
+    refreshHistoryState,
+    undo,
+    redo,
+  } = useTableHistory({
+    documentId,
+    onApplyChange: onApplyHistoryChange,
+  })
+
+  useTableLiveChanges(documentId, buildTableLiveChangeHandlers({
+    activeTableId: activeTable?.id ?? activeTableId,
+    activeViewId: activeView?.id ?? activeViewId,
+    loadRecords: () => void loadRecords(),
+    refreshDocument: () => void refreshDocument(activeTable?.id ?? activeTableId, activeView?.id ?? activeViewId),
+    refreshHistoryState,
+  }))
+
   useEffect(() => {
     onAgentContextChange?.({
       documentPath,
@@ -303,7 +334,6 @@ export function TableEditor({
     setEditingField(null)
   }, [activeTable?.id, setEditingField])
 
-  const documentId = document?.id
   useEffect(() => {
     const id = `table-sync:${activeTableId ?? 'unknown'}`
     if (!error || !documentId || !activeTableId) {
@@ -324,6 +354,7 @@ export function TableEditor({
     deleteView,
     duplicateRecord,
     duplicateView,
+    fillCells,
     insertRecordsNear,
     moveKanbanRecord,
     openAttachmentPreview,
@@ -367,6 +398,7 @@ export function TableEditor({
     setImagePreview,
     refreshDocument,
     loadRecords,
+    refreshHistoryState,
   })
 
   const columnActions = useTableColumnHeaderActions({
@@ -387,20 +419,7 @@ export function TableEditor({
     refreshDocument,
     copyTextToClipboard,
     setStatus,
-  })
-
-  const {
-    canUndo,
-    canRedo,
-    historyBusy,
-    updateCellWithHistory,
-    undo,
-    redo,
-  } = useTableCellHistory({
-    fields,
-    records,
-    resetKey: `${document?.id ?? 'none'}:${activeTable?.id ?? 'none'}`,
-    updateCell,
+    refreshHistoryState,
   })
 
   function handleColumnAIBatch(field: DataField) {
@@ -435,6 +454,7 @@ export function TableEditor({
     reloadRecords: () => {
       void loadRecords()
     },
+    refreshHistoryState,
   })
 
   function closeRecordContextMenu() {
@@ -680,9 +700,10 @@ export function TableEditor({
           }
           onRegenerate={(record, field) => void runAIField(record, field)}
           onUpdateCell={(record, field, value) =>
-            void updateCellWithHistory(record, field, value)
+            void updateCell(record, field, value)
           }
           onClearCells={(cells) => void clearCells(cells)}
+          onFillCells={(cells) => void fillCells(cells)}
           onPaste={(event) => void pasteRecords(event)}
           onOpenFieldCreator={() => void addDefaultField()}
           onUndo={() => void undo()}
@@ -792,7 +813,7 @@ export function TableEditor({
               setSelectedRecord(null)
             }}
             onUpdate={(field, value) =>
-              void updateCellWithHistory(selectedRecord, field, value)
+              void updateCell(selectedRecord, field, value)
             }
             onReplaceLinks={async (field: DataField, rowKeys: string[]): Promise<LinkRef[] | null> => {
               try {

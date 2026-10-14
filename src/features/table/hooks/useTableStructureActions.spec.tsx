@@ -2,13 +2,14 @@ import { act, createElement, createRef } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { DataDocument, DataTable, DataView } from '@/types/dataDocument'
+import type { DataDocument, DataField, DataTable, DataView } from '@/types/dataDocument'
 
 const apiMocks = vi.hoisted(() => ({
   createDataView: vi.fn(),
   deleteDataView: vi.fn(),
   listViewFields: vi.fn(),
   patchViewField: vi.fn(),
+  transactDataDocument: vi.fn(),
 }))
 const confirmMock = vi.hoisted(() => vi.fn())
 
@@ -103,6 +104,7 @@ beforeEach(() => {
   apiMocks.deleteDataView.mockReset()
   apiMocks.listViewFields.mockReset()
   apiMocks.patchViewField.mockReset()
+  apiMocks.transactDataDocument.mockReset()
   confirmMock.mockReset()
 })
 
@@ -159,5 +161,28 @@ describe('useTableStructureActions view actions', () => {
     expect(confirmMock).toHaveBeenCalled()
     expect(apiMocks.deleteDataView).toHaveBeenCalledWith(11, 21, 31)
     expect(setActiveViewId).toHaveBeenCalledWith(32)
+  })
+})
+
+describe('useTableStructureActions reorderField', () => {
+  const fieldA = { id: 41, name: 'a', title: 'A', order: 0 } as DataField
+  const fieldB = { id: 42, name: 'b', title: 'B', order: 1 } as DataField
+  const fieldC = { id: 43, name: 'c', title: 'C', order: 2 } as DataField
+
+  it('sends one fields.move transaction for the moved field', async () => {
+    apiMocks.transactDataDocument.mockResolvedValue({ change: {}, created: [] })
+    await mount({ fields: [fieldA, fieldB, fieldC] })
+
+    await act(async () => {
+      await actions.reorderField(fieldA, 0, 2, [fieldA, fieldB, fieldC])
+    })
+
+    expect(apiMocks.transactDataDocument).toHaveBeenCalledTimes(1)
+    expect(apiMocks.transactDataDocument).toHaveBeenCalledWith(11, [{
+      op: 'fields.move',
+      tableId: 21,
+      fieldIds: [41],
+      toIndex: 1,
+    }])
   })
 })

@@ -37,6 +37,8 @@ type UseTableEditorActionsArgs = {
   setImagePreview: Dispatch<SetStateAction<ImagePreviewState>>
   refreshDocument: (preferredTableId?: number | null, preferredViewId?: number | null) => Promise<void>
   loadRecords: (window?: DataRecordWindow) => Promise<void>
+  /** Refreshes the undo/redo toolbar state after a server write; optional so existing callers and tests keep working untouched. */
+  refreshHistoryState?: () => void
 }
 
 export function useTableEditorActions({
@@ -67,6 +69,7 @@ export function useTableEditorActions({
   setImagePreview,
   refreshDocument,
   loadRecords,
+  refreshHistoryState,
 }: UseTableEditorActionsArgs) {
   function setStatus(message: string) {
     notify.success(message)
@@ -109,6 +112,7 @@ export function useTableEditorActions({
     loadRecords,
     setStatus,
     copyTextToClipboard,
+    refreshHistoryState,
   })
 
   const recordActions = useTableRecordActions({
@@ -129,6 +133,7 @@ export function useTableEditorActions({
     loadRecords,
     setStatus,
     copyTextToClipboard,
+    refreshHistoryState,
   })
 
   return {

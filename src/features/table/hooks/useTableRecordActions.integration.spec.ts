@@ -672,11 +672,9 @@ describe('useTableRecordActions clearCells', () => {
     const r1 = { id: 200, row_key: 'r-200', values: { title: 'a', notes: 'n', locked: 'L' }, order: 1 } as unknown as DataRecord
     const r2 = { id: 201, row_key: 'r-201', values: { title: 'b', notes: 'm' }, order: 2 } as unknown as DataRecord
 
-    const updateSpy = vi
-      .spyOn(api, 'updateDataRecord')
-      .mockImplementation(async (_d: number, _t: number, recordId: number, values: Record<string, any>) =>
-        ({ ...(recordId === r1.id ? r1 : r2), values: { ...((recordId === r1.id ? r1 : r2).values || {}), ...values } } as unknown as DataRecord),
-      )
+    const transactSpy = vi
+      .spyOn(api, 'transactDataDocument')
+      .mockResolvedValue({ change: {} as any, created: [] })
 
     const setRecords = vi.fn()
     const setSelectedRecord = vi.fn()
@@ -712,9 +710,15 @@ describe('useTableRecordActions clearCells', () => {
       { record: r2, field: textField }, // dedup
     ])
 
-    expect(updateSpy).toHaveBeenCalledTimes(2)
-    expect(updateSpy).toHaveBeenCalledWith(1, 2, r1.id, { title: null, notes: null })
-    expect(updateSpy).toHaveBeenCalledWith(1, 2, r2.id, { title: null })
+    expect(transactSpy).toHaveBeenCalledTimes(1)
+    expect(transactSpy).toHaveBeenCalledWith(1, [{
+      op: 'cells.set',
+      tableId: 2,
+      records: [
+        { rowKey: 'r-200', values: { title: null, notes: null } },
+        { rowKey: 'r-201', values: { title: null } },
+      ],
+    }])
     expect(setRecords).toHaveBeenCalled()
     expect(setError).not.toHaveBeenCalled()
     expect(setStatus).toHaveBeenCalledWith('Cleared 3 cells')
@@ -732,7 +736,7 @@ describe('useTableRecordActions clearCells', () => {
     } as unknown as DataField
     const r = { id: 300, row_key: 'r-300', values: {}, order: 1 } as unknown as DataRecord
 
-    const updateSpy = vi.spyOn(api, 'updateDataRecord').mockResolvedValue(r)
+    const transactSpy = vi.spyOn(api, 'transactDataDocument').mockResolvedValue({ change: {} as any, created: [] })
 
     const actions = await mountRecordActions({
       document: { id: 1 } as any,
@@ -755,6 +759,154 @@ describe('useTableRecordActions clearCells', () => {
     })
 
     await actions.clearCells([{ record: r, field: formulaField }])
-    expect(updateSpy).not.toHaveBeenCalled()
+    expect(transactSpy).not.toHaveBeenCalled()
+  })
+})
+
+describe('useTableRecordActions row reorder, kanban move, and fill', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  const titleField = {
+    id: 1,
+    name: 'title',
+    title: 'Title',
+    type: 'text',
+    is_primary: true,
+    readonly: false,
+    options: {},
+  } as unknown as DataField
+
+  const statusField = {
+    id: 2,
+    name: 'status',
+    title: 'Status',
+    type: 'single_select',
+    is_primary: false,
+    readonly: false,
+    options: {},
+  } as unknown as DataField
+
+  const rowA = { id: 1, row_key: 'row-a', values: { title: 'A', status: 'todo' }, order: 1 } as unknown as DataRecord
+  const rowB = { id: 2, row_key: 'row-b', values: { title: 'B', status: 'todo' }, order: 2 } as unknown as DataRecord
+  const rowC = { id: 3, row_key: 'row-c', values: { title: 'C', status: 'done' }, order: 3 } as unknown as DataRecord
+
+  it('reorderRecords sends one records.move transaction', async () => {
+    const transactSpy = vi.spyOn(api, 'transactDataDocument').mockResolvedValue({ change: {} as any, created: [] })
+    const setRecords = vi.fn()
+
+    const actions = await mountRecordActions({
+      document: { id: 1 } as any,
+      activeTable: { id: 2 } as any,
+      fields: [titleField, statusField],
+      records: [rowA, rowB, rowC],
+      groupField: null,
+      canReorderRows: true,
+      canMoveKanbanCards: false,
+      selectedRecordIds: new Set(),
+      setBusy: vi.fn(),
+      setError: vi.fn(),
+      setRecords,
+      setSelectedRecord: vi.fn(),
+      setSelectedRecordIds: vi.fn(),
+      setRecordContextMenu: vi.fn(),
+      loadRecords: vi.fn().mockResolvedValue(undefined),
+      setStatus: vi.fn(),
+      copyTextToClipboard: vi.fn().mockResolvedValue(undefined),
+    })
+
+    await actions.reorderRecords(rowC.id, rowA.id, 'before')
+
+    expect(transactSpy).toHaveBeenCalledTimes(1)
+    expect(transactSpy).toHaveBeenCalledWith(1, [{
+      op: 'records.move',
+      tableId: 2,
+      rowKeys: ['row-c'],
+      before: 'row-a',
+    }])
+    expect(setRecords).toHaveBeenCalledWith([rowC, rowA, rowB])
+  })
+
+  it('moveKanbanRecord sends cells.set and records.move in one transaction', async () => {
+    const transactSpy = vi.spyOn(api, 'transactDataDocument').mockResolvedValue({ change: {} as any, created: [] })
+    const setRecords = vi.fn()
+
+    const actions = await mountRecordActions({
+      document: { id: 1 } as any,
+      activeTable: { id: 2 } as any,
+      fields: [titleField, statusField],
+      records: [rowA, rowB, rowC],
+      groupField: statusField,
+      canReorderRows: true,
+      canMoveKanbanCards: true,
+      selectedRecordIds: new Set(),
+      setBusy: vi.fn(),
+      setError: vi.fn(),
+      setRecords,
+      setSelectedRecord: vi.fn(),
+      setSelectedRecordIds: vi.fn(),
+      setRecordContextMenu: vi.fn(),
+      loadRecords: vi.fn().mockResolvedValue(undefined),
+      setStatus: vi.fn(),
+      copyTextToClipboard: vi.fn().mockResolvedValue(undefined),
+    })
+
+    await actions.moveKanbanRecord(rowA.id, 'done', rowC.id)
+
+    // Dragging rowA (index 0) onto rowC (index 2) lands it right after rowC,
+    // at the end of the list, so there is no "before" row left.
+    expect(transactSpy).toHaveBeenCalledTimes(1)
+    expect(transactSpy).toHaveBeenCalledWith(1, [
+      {
+        op: 'cells.set',
+        tableId: 2,
+        records: [{ rowKey: 'row-a', values: { status: 'done' } }],
+      },
+      {
+        op: 'records.move',
+        tableId: 2,
+        rowKeys: ['row-a'],
+        before: null,
+      },
+    ])
+  })
+
+  it('fillCells sends one cells.set transaction and skips readonly fields', async () => {
+    const transactSpy = vi.spyOn(api, 'transactDataDocument').mockResolvedValue({ change: {} as any, created: [] })
+    const readonlyField = { ...statusField, id: 3, name: 'locked', readonly: true } as unknown as DataField
+    const setRecords = vi.fn()
+
+    const actions = await mountRecordActions({
+      document: { id: 1 } as any,
+      activeTable: { id: 2 } as any,
+      fields: [titleField, statusField, readonlyField],
+      records: [rowA, rowB],
+      groupField: null,
+      canReorderRows: true,
+      canMoveKanbanCards: false,
+      selectedRecordIds: new Set(),
+      setBusy: vi.fn(),
+      setError: vi.fn(),
+      setRecords,
+      setSelectedRecord: vi.fn(),
+      setSelectedRecordIds: vi.fn(),
+      setRecordContextMenu: vi.fn(),
+      loadRecords: vi.fn().mockResolvedValue(undefined),
+      setStatus: vi.fn(),
+      copyTextToClipboard: vi.fn().mockResolvedValue(undefined),
+    })
+
+    await actions.fillCells([
+      { record: rowB, field: titleField, value: 'A' },
+      { record: rowB, field: readonlyField, value: 'nope' },
+    ])
+
+    expect(transactSpy).toHaveBeenCalledTimes(1)
+    expect(transactSpy).toHaveBeenCalledWith(1, [{
+      op: 'cells.set',
+      tableId: 2,
+      records: [{ rowKey: 'row-b', values: { title: 'A' } }],
+    }])
   })
 })

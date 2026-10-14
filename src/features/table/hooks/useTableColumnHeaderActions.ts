@@ -40,6 +40,8 @@ type UseTableColumnHeaderActionsArgs = {
   refreshDocument: (preferredTableId?: number | null, preferredViewId?: number | null) => Promise<void>
   copyTextToClipboard: (text: string, successMessage: string) => Promise<void>
   setStatus: (message: string) => void
+  /** Refreshes the undo/redo toolbar state after a server write; optional so existing callers and tests keep working untouched. */
+  refreshHistoryState?: () => void
 }
 
 export function useTableColumnHeaderActions({
@@ -60,6 +62,7 @@ export function useTableColumnHeaderActions({
   refreshDocument,
   copyTextToClipboard,
   setStatus,
+  refreshHistoryState,
 }: UseTableColumnHeaderActionsArgs) {
   const { t } = useTranslation('table')
   async function duplicateField(field: DataField) {
@@ -73,6 +76,7 @@ export function useTableColumnHeaderActions({
       await refreshDocument(activeTable.id)
       setStatus(t('feedback.fieldDuplicated'))
       setEditingField(created)
+      refreshHistoryState?.()
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Failed to duplicate field')
     } finally {
@@ -93,6 +97,7 @@ export function useTableColumnHeaderActions({
       })
       await refreshDocument(activeTable.id)
       setEditingField(created)
+      refreshHistoryState?.()
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Failed to insert field')
     } finally {

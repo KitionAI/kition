@@ -14,9 +14,12 @@ vi.mock('@/api/dataDocuments', () => ({
   uploadDataAttachment,
 }))
 
+const fillSelectionTrigger = vi.hoisted(() => ({ current: null as null | ((ranges: unknown, targetRow: number) => void) }))
+
 vi.mock('@/features/table/grid', async () => {
   const React = await import('react')
   const Grid = React.forwardRef(function GridMock(props: any, _ref) {
+    fillSelectionTrigger.current = props.onFillSelection ?? null
     return React.createElement('button', {
       type: 'button',
       'data-testid': 'mock-grid-add-attachment',
@@ -181,6 +184,119 @@ describe('GridView attachment picker', () => {
     expect(onUpdateCell).toHaveBeenCalledWith(row, field, [
       { name: 'existing.png', url: '/uploads/existing.png' },
       { name: 'selected.png', url: '/uploads/selected.png', mimeType: 'image/png' },
+    ])
+  })
+})
+
+function textField(id: number, name: string): DataField {
+  return {
+    id,
+    user_id: 1,
+    document_id: 1,
+    table_id: 11,
+    name,
+    title: name,
+    type: 'text',
+    required: false,
+    unique: false,
+    readonly: false,
+    is_primary: id === 1,
+    order: id,
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+  }
+}
+
+function textRecord(id: number, rowKey: string, values: Record<string, unknown>): DataRecord {
+  return {
+    id,
+    user_id: 1,
+    document_id: 1,
+    table_id: 11,
+    row_key: rowKey,
+    order: id,
+    values,
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+  } as unknown as DataRecord
+}
+
+describe('GridView fill handle', () => {
+  beforeEach(async () => {
+    await unmount()
+    fillSelectionTrigger.current = null
+  })
+
+  it('wires onFillSelection to onFillCells, cycling the selected rows and skipping readonly fields', async () => {
+    const titleField = textField(1, 'title')
+    const readonlyField = { ...textField(2, 'locked'), readonly: true }
+    const rowA = textRecord(201, 'row-a', { title: 'A', locked: 'x' })
+    const rowB = textRecord(202, 'row-b', { title: 'B', locked: 'y' })
+    const rowC = textRecord(203, 'row-c', { title: '', locked: '' })
+    const onFillCells = vi.fn()
+
+    container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+
+    await act(async () => {
+      root?.render(createElement(GridView, {
+        documentId: 1,
+        tableId: 11,
+        fields: [titleField, readonlyField],
+        visibleFields: [titleField, readonlyField],
+        groupedRecords: [],
+        groupFieldName: '',
+        groupFieldNames: [],
+        groupPoints: null,
+        groupCollection: null,
+        collapsedGroupIds: new Set<string>(),
+        onCollapsedGroupChanged: vi.fn(),
+        selectedRecordIds: new Set<number>(),
+        selectedGridCell: null,
+        sortedAndFilteredRecords: [rowA, rowB, rowC],
+        renderedGridRecords: [rowA, rowB, rowC],
+        canReorderRows: false,
+        canUseVirtualGrid: false,
+        gridVirtualCanvasHeight: 0,
+        gridVirtualBlockTop: 0,
+        gridTableStyle: {},
+        recordOffset: 0,
+        recordTotal: 3,
+        pageSize: 100,
+        overscanRows: 20,
+        allVisibleSelected: false,
+        resetScrollKey: 'test',
+        onLoadWindow: vi.fn(),
+        onToggleAllSelected: vi.fn(),
+        onToggleRecordSelected: vi.fn(),
+        onSelectCell: vi.fn(),
+        onOpenRecord: vi.fn(),
+        onOpenRecordContextMenu: vi.fn(),
+        onReorderField: vi.fn(),
+        onReorderRecords: vi.fn(),
+        onUpdateCell: vi.fn(),
+        onClearCells: vi.fn(),
+        onFillCells,
+        onPreviewAttachments: vi.fn(),
+        onPaste: vi.fn(),
+        onAddRecord: vi.fn(),
+        onOpenFieldCreator: vi.fn(),
+        onUndo: vi.fn(),
+        onRedo: vi.fn(),
+      }))
+    })
+
+    // Selection covers row A (both columns); fill extends down to row C
+    // (real row index 2).
+    await act(async () => {
+      fillSelectionTrigger.current?.([[0, 0], [1, 0]], 2)
+    })
+
+    expect(onFillCells).toHaveBeenCalledTimes(1)
+    expect(onFillCells).toHaveBeenCalledWith([
+      { record: rowB, field: titleField, value: 'A' },
+      { record: rowC, field: titleField, value: 'A' },
     ])
   })
 })
