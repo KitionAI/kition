@@ -240,9 +240,7 @@ async fn agent_write_is_one_undo_step() {
         .state
         .agent_table(
             f.user_id,
-            f.document_id
-                .parse()
-                .unwrap_or_else(|err| panic!("{err}")),
+            f.document_id.parse().unwrap_or_else(|err| panic!("{err}")),
             f.table_id,
             origin,
         )

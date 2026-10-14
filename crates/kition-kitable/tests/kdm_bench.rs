@@ -44,7 +44,12 @@ fn field_specs() -> Vec<FieldSpec> {
 
 fn row(seed: usize) -> Map<String, Value> {
     (0..FIELD_COUNT)
-        .map(|index| (format!("field_{index}"), Value::from(format!("v{seed}-{index}"))))
+        .map(|index| {
+            (
+                format!("field_{index}"),
+                Value::from(format!("v{seed}-{index}")),
+            )
+        })
         .collect()
 }
 
@@ -68,7 +73,9 @@ fn build(path: &Path, count: usize) -> (i64, Vec<String>) {
     let mut created = 0usize;
     while created < count {
         let chunk = CREATE_CHUNK.min(count - created);
-        let records = (0..chunk).map(|index| row(created + index)).collect::<Vec<_>>();
+        let records = (0..chunk)
+            .map(|index| row(created + index))
+            .collect::<Vec<_>>();
         let (ids, _) = ok(file.transact(&[TableOp::RecordsCreate {
             table_id: table.id,
             at: None,
@@ -202,7 +209,15 @@ fn kdm_bench() {
     println!();
     println!(
         "{:>9} | {:>10} | {:>14} | {:>9} | {:>10} | {:>11} | {:>11} | {:>9} | {:>9}",
-        "records", "open", "open+migrate", "edit", "1k-paste", "undo 1st", "undo 2nd", "compact", "rebuild",
+        "records",
+        "open",
+        "open+migrate",
+        "edit",
+        "1k-paste",
+        "undo 1st",
+        "undo 2nd",
+        "compact",
+        "rebuild",
     );
     for t in &rows {
         println!(
@@ -222,7 +237,9 @@ fn kdm_bench() {
 
     // This phase's budgets, reported against 10k (100k is printed above for context only): a
     // miss is logged, not failed — see the module doc.
-    let ten_k = rows.first().unwrap_or_else(|| panic!("expected a 10k result"));
+    let ten_k = rows
+        .first()
+        .unwrap_or_else(|| panic!("expected a 10k result"));
     report_budget("open at 10k", ten_k.open, Duration::from_millis(1_500));
     report_budget("edit at 10k", ten_k.edit, Duration::from_millis(16));
     report_budget(
@@ -233,6 +250,10 @@ fn kdm_bench() {
 }
 
 fn report_budget(label: &str, actual: Duration, budget: Duration) {
-    let verdict = if actual < budget { "within budget" } else { "OVER budget" };
+    let verdict = if actual < budget {
+        "within budget"
+    } else {
+        "OVER budget"
+    };
     println!("[budget] {label}: {actual:?} ({verdict}: {budget:?})");
 }
