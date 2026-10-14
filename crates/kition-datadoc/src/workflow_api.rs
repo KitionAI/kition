@@ -3,12 +3,13 @@
 
 use kition_core::events::{DomainEvent, RecordCreated, RecordUpdated};
 use kition_core::{AppError, AppResult, Millis, now_millis};
-use kition_kitable::{KitableFile, Table};
+use kition_kitable::Table;
 use serde_json::{Map, Value};
 
 use crate::DataDocState;
 use crate::index::DataDocument;
 use crate::source::parse_id;
+use crate::table_documents::TableHandle;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FieldInfo {
@@ -55,7 +56,7 @@ impl DataDocState {
         &self,
         doc: &DataDocument,
         table_id: &str,
-    ) -> AppResult<(KitableFile, Table, i64)> {
+    ) -> AppResult<(TableHandle, Table, i64)> {
         let table_id = parse_id(table_id)?;
         let file = self.open_or_500(doc)?;
         let table = file

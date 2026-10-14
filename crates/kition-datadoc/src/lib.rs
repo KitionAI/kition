@@ -13,9 +13,13 @@ mod records;
 mod respond;
 mod scenario;
 mod source;
+mod table_documents;
 mod tables;
+mod transact;
 mod view_config;
 pub mod workflow_api;
+
+pub use table_documents::TableDocuments;
 
 pub use import_write::ImportStore;
 
@@ -51,6 +55,9 @@ pub struct DataDocState {
     pub imports: import_write::ImportStore,
     /// Model calls for AI fields.
     pub ai: Option<kition_ai::engine::Engine>,
+    /// Every `.kitable` file this workspace has open, shared by every caller (routes, the
+    /// Agent, email/form sync, workflows) instead of each opening its own connection.
+    pub tables: TableDocuments,
 }
 
 impl FromRef<DataDocState> for AuthConfig {
@@ -96,6 +103,7 @@ pub fn router(state: DataDocState) -> Router {
         .merge(import_write::routes())
         .merge(ai_field::routes())
         .merge(scenario::routes())
+        .merge(transact::routes())
         .layer(axum::extract::DefaultBodyLimit::max(
             import_write::MAX_SOURCE_BYTES + 1024 * 1024,
         ))

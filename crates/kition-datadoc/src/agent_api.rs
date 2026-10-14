@@ -9,6 +9,7 @@ use serde_json::{Map, Value, json};
 use crate::DataDocState;
 use crate::index::{self, DataDocument, NewDocument, STORAGE_KITABLE_FILE};
 use crate::source::resolve_from_root;
+use crate::table_documents::TableHandle;
 
 impl DataDocState {
     /// The caller's document, its open file, and one of its tables.
@@ -17,7 +18,7 @@ impl DataDocState {
         user_id: i64,
         document_id: i64,
         table_id: i64,
-    ) -> AppResult<(DataDocument, KitableFile, Table)> {
+    ) -> AppResult<(DataDocument, TableHandle, Table)> {
         let doc = self
             .load_document(user_id, &document_id.to_string())
             .map_err(|_| AppError::not_found("data document does not exist"))?;

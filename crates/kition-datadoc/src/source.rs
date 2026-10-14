@@ -2,11 +2,13 @@
 
 use std::path::{Component, Path, PathBuf};
 
+use kition_core::events::DomainEvent;
 use kition_core::{AppError, AppResult};
-use kition_kitable::KitableFile;
+use kition_kdm::Origin;
 
 use crate::DataDocState;
 use crate::index::{self, DataDocument};
+use crate::table_documents::{TableHandle, default_origin, table_changed_event};
 
 /// `path`, or `<title>.kitable` when blank.
 pub fn default_document_path(path: &str, title: &str) -> String {
@@ -91,9 +93,15 @@ impl DataDocState {
         }
     }
 
-    /// Opens the document's file, trying its recorded root and then the
-    /// runtime's workspace. Records the root that worked.
-    pub(crate) fn open_document(&self, doc: &DataDocument) -> AppResult<KitableFile> {
+    /// Opens the document's file as `origin`, trying its recorded root and then the runtime's
+    /// workspace. Records the root that worked. When the file had changed on disk since the
+    /// last handle to it closed, publishes the merge as a `table/changed` event, attributed to
+    /// `Origin::system("external")` since whoever wrote it is not this request's caller.
+    pub(crate) fn open_document_as(
+        &self,
+        doc: &DataDocument,
+        origin: Origin,
+    ) -> AppResult<TableHandle> {
         let mut roots: Vec<String> = Vec::new();
         for candidate in [
             doc.workspace_root.trim().to_owned(),
@@ -112,32 +120,59 @@ impl DataDocState {
                     continue;
                 }
             };
-            match KitableFile::open(&path) {
-                Ok(file) => {
+            if let Err(err) = std::fs::metadata(&path) {
+                if err.kind() == std::io::ErrorKind::NotFound {
+                    tracing::debug!(path = %path.display(), document_id = doc.id, "kitable file missing");
+                } else {
+                    tracing::error!(path = %path.display(), document_id = doc.id, error = %err, "kitable open failed");
+                }
+                last_error = AppError::from(err);
+                continue;
+            }
+            match self.tables.open(&path, origin.clone()) {
+                Ok((handle, merge)) => {
                     if doc.id != 0 && doc.workspace_root.trim() != root {
                         let conn = self.db.conn()?;
                         index::set_workspace_root(&conn, doc.id, &root)?;
                     }
-                    return Ok(file);
+                    if let Some(change) = merge {
+                        self.events
+                            .publish(DomainEvent::TableChanged(table_changed_event(
+                                &doc.id.to_string(),
+                                &Origin::system("external"),
+                                &doc.path,
+                                &change,
+                            )));
+                    }
+                    return Ok(handle);
                 }
                 Err(err) => {
-                    if matches!(&err, kition_kitable::KitableError::Io(io) if io.kind() == std::io::ErrorKind::NotFound)
-                    {
-                        tracing::debug!(path = %path.display(), document_id = doc.id, "kitable file missing");
-                    } else {
-                        tracing::error!(path = %path.display(), document_id = doc.id, error = %err, "kitable open failed");
-                    }
-                    last_error = AppError::unhandled(err);
+                    tracing::error!(path = %path.display(), document_id = doc.id, error = %err, "kitable open failed");
+                    last_error = err;
                 }
             }
         }
         Err(last_error)
     }
 
-    /// Opens the file or fails with the legacy 500 message.
-    pub(crate) fn open_or_500(&self, doc: &DataDocument) -> AppResult<KitableFile> {
-        self.open_document(doc)
+    /// Opens the document's file as the default origin.
+    pub(crate) fn open_document(&self, doc: &DataDocument) -> AppResult<TableHandle> {
+        self.open_document_as(doc, default_origin())
+    }
+
+    /// Opens the file as `origin` or fails with the legacy 500 message.
+    pub(crate) fn open_or_500_as(
+        &self,
+        doc: &DataDocument,
+        origin: Origin,
+    ) -> AppResult<TableHandle> {
+        self.open_document_as(doc, origin)
             .map_err(|_| AppError::internal("Failed to open data document"))
+    }
+
+    /// Opens the file or fails with the legacy 500 message.
+    pub(crate) fn open_or_500(&self, doc: &DataDocument) -> AppResult<TableHandle> {
+        self.open_or_500_as(doc, default_origin())
     }
 
     /// Loads the caller's document named by the `documentId` path segment.

@@ -14,6 +14,7 @@ workspace = true
 kition-ai = { workspace = true }
 kition-core = { workspace = true }
 kition-http = { workspace = true }
+kition-kdm = { workspace = true }
 kition-kitable = { workspace = true }
 kition-store = { workspace = true }
 kition-workspace = { workspace = true }
@@ -26,6 +27,7 @@ csv = { workspace = true }
 futures = { workspace = true }
 hex = { workspace = true }
 http = { workspace = true }
+parking_lot = { workspace = true }
 regex = { workspace = true }
 rusqlite = { workspace = true }
 serde = { workspace = true }

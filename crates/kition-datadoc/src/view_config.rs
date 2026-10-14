@@ -9,14 +9,14 @@ use kition_core::coerce::nullable;
 use kition_core::{AppError, AppResult};
 use kition_http::{CurrentUser, JsonBody, ok};
 use kition_kitable::{
-    FilterRule, FilterTree, FilterTreeChild, KitableError, KitableFile, ViewFieldPatch, ViewPatch,
-    ViewSort,
+    FilterRule, FilterTree, FilterTreeChild, KitableError, ViewFieldPatch, ViewPatch, ViewSort,
 };
 use serde::Deserialize;
 use serde_json::{Value, json};
 
 use crate::DataDocState;
 use crate::source::parse_id;
+use crate::table_documents::TableHandle;
 
 pub fn routes() -> Router<DataDocState> {
     let view = "/data-documents/{documentId}/tables/{tableId}/views/{viewId}";
@@ -73,7 +73,7 @@ impl DataDocState {
         document_id: &str,
         table_id: &str,
         view_id: &str,
-    ) -> AppResult<(KitableFile, i64, i64)> {
+    ) -> AppResult<(TableHandle, i64, i64)> {
         let doc = self.load_document(user_id, document_id)?;
         let table_id = parse_id(table_id)?;
         let view_id = parse_id(view_id)?;
@@ -85,7 +85,7 @@ impl DataDocState {
         user_id: i64,
         document_id: &str,
         table_id: &str,
-    ) -> AppResult<(KitableFile, i64)> {
+    ) -> AppResult<(TableHandle, i64)> {
         let doc = self.load_document(user_id, document_id)?;
         let table_id = parse_id(table_id)?;
         Ok((self.open_or_500(&doc)?, table_id))

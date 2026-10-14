@@ -49,6 +49,7 @@ hex = "0.4"
 jsonschema = { version = "0.58", default-features = false }
 jsonwebtoken = "9"
 mime_guess = "2"
+parking_lot = { version = "0.12", features = ["arc_lock"] }
 pdf-extract = "0.12"
 quick-xml = "0.37"
 r2d2 = "0.8"
