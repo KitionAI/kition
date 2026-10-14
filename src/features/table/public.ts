@@ -4,3 +4,4 @@
  */
 export type { KitableTemplateDefinition } from './templates/kitableTemplates'
 export { resolveAIConfigRuntimeModel } from './lib/tableEditorShared'
+export { useTableLiveChanges } from './hooks/useTableLiveChanges'

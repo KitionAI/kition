@@ -14,7 +14,7 @@ import { listDataRecords } from '@/api/dataDocuments'
 import { openDataDashboardByPath, updateDataDashboard } from '@/api/dashboards'
 import { DashboardWidgetCard } from '@/features/dashboard/components/DashboardWidgetCard'
 import { executeDashboardWidgetQuery } from '@/features/dashboard/lib/dashboardQuery'
-import { useTableLiveChanges } from '@/features/table/hooks/useTableLiveChanges'
+import { useTableLiveChanges } from '@/features/table/public'
 import { Button } from '@/registry/ui/button'
 import type {
   DashboardLayoutItem,
