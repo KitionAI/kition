@@ -205,10 +205,10 @@ fn save_initial_fails_when_a_row_already_exists() {
     let conn = file.conn();
     let (replica, _base) = seed_replica(schema(), actor(1), 1);
     with_tx(conn, |tx| store::save_initial(tx, &replica, 1_000));
-    let result = conn
+    let tx = conn
         .unchecked_transaction()
         .unwrap_or_else(|err| panic!("begin: {err}"));
-    assert!(store::save_initial(&result, &replica, 2_000).is_err());
+    assert!(store::save_initial(&tx, &replica, 2_000).is_err());
 }
 
 #[test]
@@ -277,7 +277,8 @@ fn compact_snapshots_and_clears_the_change_log() {
 
     let (generation_after, seq_after) = ok(store::stored_position(conn));
     assert_eq!(generation_after, 2);
-    assert_eq!(seq_after, 0);
+    // The seq counter is not reset by compact: it keeps increasing across generations.
+    assert_eq!(seq_after, seq_before);
     let change_rows: i64 = conn
         .query_row("SELECT COUNT(*) FROM kition_kdm_changes", [], |row| {
             row.get(0)
@@ -288,6 +289,68 @@ fn compact_snapshots_and_clears_the_change_log() {
     let loaded =
         ok(store::load(conn, schema(), actor(2))).unwrap_or_else(|| panic!("expected a replica"));
     assert_eq!(kok(loaded.state_hash()), kok(replica.state_hash()));
+}
+
+#[test]
+fn seq_keeps_increasing_across_compaction() {
+    let dir = temp();
+    let file = create_file(dir.path());
+    let conn = file.conn();
+    let (mut replica, base) = seed_replica(schema(), actor(1), 1);
+    with_tx(conn, |tx| store::save_initial(tx, &replica, 1_000));
+
+    let since = replica.version();
+    add_record(&mut replica, &base, "before-compact");
+    let seq_before_compact = with_tx(conn, |tx| {
+        store::append(tx, &replica, &since, "test", 1_000)
+    });
+    assert_eq!(seq_before_compact, 1);
+
+    with_tx(conn, |tx| store::compact(tx, &replica, 2_000));
+
+    // A no-op append right after a compact must still report the highest seq ever issued
+    // (SQLite's AUTOINCREMENT counter), not 0, even though the change log is now empty.
+    let since_after_compact = replica.version();
+    let noop_seq = with_tx(conn, |tx| {
+        store::append(tx, &replica, &since_after_compact, "test", 2_000)
+    });
+    assert_eq!(noop_seq, seq_before_compact);
+
+    let since_next = replica.version();
+    add_record(&mut replica, &base, "after-compact");
+    let seq_after_compact = with_tx(conn, |tx| {
+        store::append(tx, &replica, &since_next, "test", 3_000)
+    });
+    assert!(
+        seq_after_compact > seq_before_compact,
+        "seq should keep increasing across compaction: {seq_after_compact} should be greater than {seq_before_compact}"
+    );
+}
+
+#[test]
+fn append_and_compact_refuse_a_replica_of_another_document() {
+    let dir = temp();
+    let file = create_file(dir.path());
+    let conn = file.conn();
+    let (replica, _base) = seed_replica(schema(), actor(1), 1);
+    with_tx(conn, |tx| store::save_initial(tx, &replica, 1_000));
+
+    // A second, unrelated document: `seed_replica` mints a fresh random doc id each call.
+    let (mut other, other_base) = seed_replica(schema(), actor(1), 1);
+    let since = other.version();
+    add_record(&mut other, &other_base, "wrong-document");
+
+    let tx = conn
+        .unchecked_transaction()
+        .unwrap_or_else(|err| panic!("begin: {err}"));
+    assert!(
+        store::append(&tx, &other, &since, "test", 1_000).is_err(),
+        "append should refuse a replica of another document"
+    );
+    assert!(
+        store::compact(&tx, &other, 1_000).is_err(),
+        "compact should refuse a replica of another document"
+    );
 }
 
 #[test]
@@ -349,6 +412,35 @@ fn corrupted_change_bytes_error_instead_of_panicking() {
 }
 
 #[test]
+fn corrupted_snapshot_bytes_error_instead_of_panicking() {
+    let dir = temp();
+    let file = create_file(dir.path());
+    let conn = file.conn();
+    let (replica, _base) = seed_replica(schema(), actor(1), 1);
+    with_tx(conn, |tx| store::save_initial(tx, &replica, 1_000));
+
+    conn.execute(
+        "UPDATE kition_kdm SET snapshot = ?1 WHERE id = 1",
+        params![vec![0xFFu8; 16]],
+    )
+    .unwrap_or_else(|err| panic!("corrupt: {err}"));
+
+    let result = store::load(conn, schema(), actor(2));
+    assert!(
+        result.is_err(),
+        "corrupted snapshot bytes should error, not panic"
+    );
+}
+
+fn insert_dummy_change(conn: &Connection, bytes: usize) {
+    conn.execute(
+        "INSERT INTO kition_kdm_changes (bytes, origin, created_at) VALUES (?1, 'test', 0)",
+        params![vec![0u8; bytes]],
+    )
+    .unwrap_or_else(|err| panic!("insert: {err}"));
+}
+
+#[test]
 fn should_compact_reports_too_many_rows_or_too_many_bytes() {
     let dir = temp();
     let file = create_file(dir.path());
@@ -357,25 +449,35 @@ fn should_compact_reports_too_many_rows_or_too_many_bytes() {
     with_tx(conn, |tx| store::save_initial(tx, &replica, 1_000));
     assert!(!ok(store::should_compact(conn)));
 
-    for seq in 0..501 {
-        conn.execute(
-            "INSERT INTO kition_kdm_changes (bytes, origin, created_at) VALUES (?1, 'test', ?2)",
-            params![vec![0u8; 4], seq],
-        )
-        .unwrap_or_else(|err| panic!("insert: {err}"));
+    // Exactly 500 one-byte rows: at the row-count threshold, not past it.
+    for _ in 0..500 {
+        insert_dummy_change(conn, 1);
     }
-    assert!(ok(store::should_compact(conn)), "too many change rows");
+    assert!(
+        !ok(store::should_compact(conn)),
+        "500 rows should not trigger a compact"
+    );
+    insert_dummy_change(conn, 1);
+    assert!(
+        ok(store::should_compact(conn)),
+        "501 rows should trigger a compact"
+    );
 
     conn.execute("DELETE FROM kition_kdm_changes", [])
         .unwrap_or_else(|err| panic!("delete: {err}"));
     assert!(!ok(store::should_compact(conn)));
 
-    conn.execute(
-        "INSERT INTO kition_kdm_changes (bytes, origin, created_at) VALUES (?1, 'test', 0)",
-        params![vec![0u8; 1_200_000]],
-    )
-    .unwrap_or_else(|err| panic!("insert large: {err}"));
-    assert!(ok(store::should_compact(conn)), "too many change bytes");
+    // Exactly 1 MiB of change bytes: at the byte threshold, not past it.
+    insert_dummy_change(conn, 1_048_576);
+    assert!(
+        !ok(store::should_compact(conn)),
+        "exactly 1 MiB should not trigger a compact"
+    );
+    insert_dummy_change(conn, 1);
+    assert!(
+        ok(store::should_compact(conn)),
+        "past 1 MiB should trigger a compact"
+    );
 }
 
 #[test]
@@ -388,6 +490,19 @@ fn projected_position_round_trips_through_kition_meta() {
     assert_eq!(ok(store::projected_position(conn)), (3, 42));
     ok(store::set_projected_position(conn, (4, 43)));
     assert_eq!(ok(store::projected_position(conn)), (4, 43));
+}
+
+#[test]
+fn a_non_numeric_projected_position_is_an_error_not_zero() {
+    let dir = temp();
+    let file = create_file(dir.path());
+    let conn = file.conn();
+    conn.execute(
+        "INSERT INTO kition_meta (key, value) VALUES ('kdm_projected_seq', 'not-a-number')",
+        [],
+    )
+    .unwrap_or_else(|err| panic!("insert: {err}"));
+    assert!(store::projected_position(conn).is_err());
 }
 
 #[test]

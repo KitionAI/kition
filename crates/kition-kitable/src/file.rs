@@ -344,7 +344,7 @@ impl KitableFile {
     }
 }
 
-fn set_meta(conn: &Connection, key: &str, value: &str) -> Result<()> {
+pub(crate) fn set_meta(conn: &Connection, key: &str, value: &str) -> Result<()> {
     conn.execute(
         "INSERT INTO kition_meta (key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
         params![key, value],
@@ -352,7 +352,19 @@ fn set_meta(conn: &Connection, key: &str, value: &str) -> Result<()> {
     Ok(())
 }
 
-fn column_names(conn: &Connection, table: &str) -> Result<Vec<String>> {
+/// `None` when `key` is not set. Shared with `crate::kdm::store`, which also keys its bookkeeping
+/// off `kition_meta`.
+pub(crate) fn get_meta(conn: &Connection, key: &str) -> Result<Option<String>> {
+    Ok(conn
+        .query_row(
+            "SELECT value FROM kition_meta WHERE key = ?1",
+            [key],
+            |row| row.get(0),
+        )
+        .optional()?)
+}
+
+pub(crate) fn column_names(conn: &Connection, table: &str) -> Result<Vec<String>> {
     let mut statement = conn.prepare(&format!("PRAGMA table_info({table})"))?;
     let names = statement
         .query_map([], |row| row.get::<_, String>(1))?

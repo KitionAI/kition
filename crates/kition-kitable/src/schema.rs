@@ -286,13 +286,13 @@ pub const TABLES: [(&str, &str, &[&str]); 16] = [
 /// The two tables that hold a table's KDM replica: a compacted snapshot plus an append-only log
 /// of changes since that snapshot. See `crate::kdm::store`.
 pub const KDM_TABLES: &[&str] = &[
-    "CREATE TABLE kition_kdm (
+    "CREATE TABLE IF NOT EXISTS kition_kdm (
         id INTEGER PRIMARY KEY CHECK (id = 1),
         snapshot BLOB NOT NULL,
         generation INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
     )",
-    "CREATE TABLE kition_kdm_changes (
+    "CREATE TABLE IF NOT EXISTS kition_kdm_changes (
         seq INTEGER PRIMARY KEY AUTOINCREMENT,
         bytes BLOB NOT NULL,
         origin TEXT NOT NULL,
