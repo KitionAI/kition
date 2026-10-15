@@ -85,3 +85,6 @@ test-workspace-desktop/
 
 # Generated README capture intermediates
 docs/readme/whiteboards.png
+
+# Implementation plans and design specs are kept outside this public repository.
+/docs/superpowers/
