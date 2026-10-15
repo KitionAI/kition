@@ -18,11 +18,15 @@
       "pdf": "PDF"
     },
     "folder": "文件夹",
-    "importSpreadsheet": "导入电子表格",
     "newDashboard": "新仪表板",
     "newForm": "新表单",
     "newTable": "新建表格",
-    "newWorkflow": "新建工作流"
+    "newWorkflow": "新建工作流",
+    "group": {
+      "kition": "Kition",
+      "office": "办公",
+      "creative": "创意"
+    }
   },
   "emptyState": {
     "title": "将创意转化为有组织的工作",

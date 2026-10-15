@@ -20,7 +20,6 @@ type UseWorkspaceCreateMenuOptions = {
   openDocumentTemplateDialog: (folder?: string) => void
   openKitableTemplateDialog: (folder?: string) => void
   createDesign: (folder?: string) => Promise<unknown> | void
-  /** Present when an installed kit can create images. */
   /** Kit items (Image, Video project), each making a file in a folder. */
   kitCreations: readonly KitCreationSource[]
   openBoardTemplateDialog: (folder?: string) => void
@@ -85,12 +84,6 @@ export function useWorkspaceCreateMenu({
       closeCreateMenu()
       openKitableTemplateDialog(createMenuFolder)
     },
-    onImportTableFile: createMenuVariant === 'workspace'
-      ? () => {
-          closeCreateMenu()
-          createFlows.requestTableFileImport(createMenuFolder ?? '')
-        }
-      : undefined,
     onOpenWorkflows: () => {
       onCloseProfile?.()
       openWorkspaceWorkflow()
@@ -103,6 +96,7 @@ export function useWorkspaceCreateMenu({
       id: kit.id,
       label: kit.label,
       kit: kit.kit,
+      group: kit.group,
       onCreate: () => {
         onCloseProfile?.()
         closeCreateMenu()

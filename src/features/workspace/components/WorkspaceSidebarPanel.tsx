@@ -17,7 +17,6 @@ type WorkspaceSidebarPanelProps = {
   onCreateDocument: (format: DocumentCreateFormat) => void
   onCreateInside: (node: WorkspaceTreeNode) => void
   onCreateTable: () => void
-  onImportTableFile?: () => void
   onDelete: (node: WorkspaceTreeNode) => void
   onDuplicate: (node: WorkspaceTreeNode) => void
   onMoveToFolder: (node: WorkspaceTreeNode, targetNode: WorkspaceTreeNode | null) => void
@@ -70,7 +69,6 @@ export function WorkspaceSidebarPanel({
   onCreateDocument,
   onCreateInside,
   onCreateTable,
-  onImportTableFile,
   onDelete,
   onDuplicate,
   onMoveToFolder,
@@ -117,7 +115,6 @@ export function WorkspaceSidebarPanel({
       onCloseCreateMenu={onCloseCreateMenu}
       onCreateFolder={onCreateFolder}
       onCreateTable={onCreateTable}
-      onImportTableFile={onImportTableFile}
       onCreateDocument={onCreateDocument}
       onPasteFiles={onPasteFiles}
       onRefresh={onRefresh}

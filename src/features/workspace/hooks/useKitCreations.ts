@@ -2,16 +2,17 @@ import { useCallback, useEffect, useState } from 'react'
 import type { KitIconId } from '@/components/KitIcon'
 import { KITION_KIT_HOST, createKitFile } from '@/features/kits/public'
 import { unusedWorkspacePath } from '@/features/workspace/lib/unusedWorkspacePath'
-import { creatableKits, kitAvailable, type KitCreateSpec, type KitEditorEntry } from '../components/kits/kitEditors'
+import { creatableKits, kitAvailable, type KitCreateGroup, type KitCreateSpec, type KitEditorEntry } from '../components/kits/kitEditors'
 
 /** A kit item as the create menu shows it. */
-export type KitCreationItem = { id: string; label: string; kit: KitIconId; onCreate: () => void }
+export type KitCreationItem = { id: string; label: string; kit: KitIconId; group: KitCreateGroup; onCreate: () => void }
 
 /** A kit's create menu item: what it makes, and how to make one in a folder. */
 export type KitCreationSource = {
   id: string
   label: string
   kit: KitIconId
+  group: KitCreateGroup
   create: (folder?: string) => Promise<void>
 }
 
@@ -53,5 +54,5 @@ export function useKitCreations({ refreshWorkspaceDocuments, openPath, onError }
 
   return creatableKits()
     .filter((entry) => available.has(entry.create.id))
-    .map<KitCreationSource>((entry) => ({ id: entry.create.id, label: entry.create.label, kit: entry.icon, create: (folder) => create(entry, folder) }))
+    .map<KitCreationSource>((entry) => ({ id: entry.create.id, label: entry.create.label, kit: entry.icon, group: entry.create.group, create: (folder) => create(entry, folder) }))
 }

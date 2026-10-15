@@ -2271,6 +2271,33 @@
     @apply shrink-0 text-muted-foreground;
   }
 
+  /* The workspace's create menu: Kition's file types and the kits in groups, two columns. */
+  .document-create-menu--grouped,
+  .document-create-menu--grouped.document-create-menu--portal {
+    @apply w-80 p-1.5;
+  }
+
+  .document-create-menu__group + .document-create-menu__group {
+    @apply mt-1;
+  }
+
+  .document-create-menu__group-label {
+    @apply px-2.5 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground;
+  }
+
+  .document-create-menu__grid {
+    @apply grid grid-cols-2 gap-x-1;
+  }
+
+  .document-create-menu__grid .document-create-option span {
+    @apply min-w-0 truncate;
+  }
+
+  .document-create-menu__separator {
+    @apply mx-1 my-1.5 h-px;
+    background: var(--document-border, hsl(var(--border)));
+  }
+
   .document-style-option {
     @apply flex min-h-16 flex-col items-center justify-center gap-1 rounded-md text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground;
   }

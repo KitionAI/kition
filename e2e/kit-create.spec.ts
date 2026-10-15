@@ -3,12 +3,16 @@ import { kitEngine, openKitWorkspace } from './helpers/embeddedKit'
 
 const photo = kitEngine('photo', 'kition_photo_sdk')
 
-test('makes a new image with the engine in the Photo kit’s package and opens it in the kit’s editor', async ({ page, baseURL }) => {
+test('makes a new image with the engine in the Photo kit’s package and opens it in the kit’s editor', async ({ page, baseURL }, testInfo) => {
   test.skip(!photo.built, 'the Photo kit is not built into public/kits/photo-ui')
   test.setTimeout(120_000)
   const { host, saves } = await openKitWorkspace(page, baseURL!, {}, { persist: true })
   try {
     await page.locator('.document-private-heading .document-create-menu-anchor > button').click()
+    // The kits sit in their groups of the create menu.
+    await expect(page.getByRole('group', { name: 'Creative' }).getByTestId('workspace-create-image')).toBeVisible()
+    await expect(page.getByRole('group', { name: 'Office' }).getByTestId('workspace-create-word')).toBeVisible()
+    await page.locator('.document-create-menu--portal').screenshot({ path: testInfo.outputPath('create-menu.png') })
     await page.getByTestId('workspace-create-image').click()
 
     // The page made the file with the kit's engine and wrote it to the workspace…

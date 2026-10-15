@@ -25,7 +25,6 @@ export function WorkspaceSidebar({
   onCreateFolder,
   onCreateDocument,
   onCreateTable,
-  onImportTableFile,
   onPasteFiles,
   onRefresh,
   onOpenWorkflows,
@@ -50,7 +49,6 @@ export function WorkspaceSidebar({
   onCreateFolder: () => void
   onCreateDocument: (format: DocumentCreateFormat) => void
   onCreateTable: () => void
-  onImportTableFile?: () => void
   onPasteFiles?: (entries: WorkspaceImportEntry[]) => void
   onRefresh?: () => void
   /** Opens the workspace-global Workflows tab. Replaces the old root-level
@@ -248,7 +246,6 @@ export function WorkspaceSidebar({
                   onCreateBoard={onCreateBoard}
                   onCreateDesign={onCreateDesign}
                   kitCreations={kitCreations}
-                  onImportTableFile={onImportTableFile}
                   onCreateDocument={onCreateDocument}
                 />
               </span>

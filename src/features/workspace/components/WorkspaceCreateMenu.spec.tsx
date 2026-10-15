@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true
 
 describe('WorkspaceCreateMenu', () => {
-  it('places the Board entry after Table', async () => {
+  it('groups Kition\'s file types and the kits, with Folder last', async () => {
     const { WorkspaceCreateMenu } = await import('./WorkspaceCreateMenu')
     const onCreateBoard = vi.fn()
     const container = document.createElement('div')
@@ -20,18 +20,25 @@ describe('WorkspaceCreateMenu', () => {
         onCreateFolder: vi.fn(),
         onCreateTable: vi.fn(),
         onCreateBoard,
-        onImportTableFile: vi.fn(),
+        kitCreations: [
+          { id: 'image', label: 'createMenu.format.image', kit: 'photo', group: 'creative', onCreate: vi.fn() },
+          { id: 'word', label: 'createMenu.format.word', kit: 'word', group: 'office', onCreate: vi.fn() },
+        ],
       }))
     })
 
-    const options = Array.from(container.querySelectorAll('button'))
-    expect(options.map((button) => button.textContent?.trim())).toEqual([
-      'Document',
-      'Table',
-      'Board',
-      'Import spreadsheet',
-      'Folder',
+    const groups = Array.from(container.querySelectorAll('[role="group"]')).map((group) => ({
+      label: group.getAttribute('aria-label'),
+      items: Array.from(group.querySelectorAll('button')).map((button) => button.textContent?.trim()),
+    }))
+    expect(groups).toEqual([
+      { label: 'Kition', items: ['Document', 'Table', 'Board'] },
+      { label: 'Office', items: ['Word document'] },
+      { label: 'Creative', items: ['Image'] },
     ])
+    const options = Array.from(container.querySelectorAll('button'))
+    expect(options.at(-1)?.textContent?.trim()).toBe('Folder')
+    expect(options.some((button) => /import/i.test(button.textContent ?? ''))).toBe(false)
     await act(async () => options[2].click())
     expect(onCreateBoard).toHaveBeenCalledOnce()
 
@@ -39,9 +46,8 @@ describe('WorkspaceCreateMenu', () => {
     container.remove()
   })
 
-  it('exposes the spreadsheet-to-Kitable entry point', async () => {
+  it('leaves out a kit group with no kits in this build', async () => {
     const { WorkspaceCreateMenu } = await import('./WorkspaceCreateMenu')
-    const onImportTableFile = vi.fn()
     const container = document.createElement('div')
     document.body.appendChild(container)
     let root: Root | null = null
@@ -53,15 +59,10 @@ describe('WorkspaceCreateMenu', () => {
         onCreateDocument: vi.fn(),
         onCreateFolder: vi.fn(),
         onCreateTable: vi.fn(),
-        onImportTableFile,
       }))
     })
 
-    const importButton = Array.from(container.querySelectorAll('button'))
-      .find((button) => button.textContent?.trim() === 'Import spreadsheet') as HTMLButtonElement
-    expect(importButton).toBeTruthy()
-    await act(async () => importButton.click())
-    expect(onImportTableFile).toHaveBeenCalledOnce()
+    expect(Array.from(container.querySelectorAll('[role="group"]')).map((group) => group.getAttribute('aria-label'))).toEqual(['Kition'])
 
     await act(async () => root?.unmount())
     container.remove()
@@ -82,13 +83,13 @@ describe('WorkspaceCreateMenu', () => {
         onCreateTable: vi.fn(),
         onCreateBoard: vi.fn(),
         onCreateDesign: vi.fn(),
-        kitCreations: [{ id: 'video', label: 'createMenu.format.video', kit: 'film', onCreate: vi.fn() }],
+        kitCreations: [{ id: 'video', label: 'createMenu.format.video', kit: 'film', group: 'creative', onCreate: vi.fn() }],
       }))
     })
 
     const kits = Array.from(container.querySelectorAll<HTMLImageElement>('img[data-kit-icon]'))
       .map((image) => image.dataset.kitIcon)
-    expect(kits).toEqual(['document', 'table', 'film', 'design', 'board'])
+    expect(kits).toEqual(['document', 'table', 'board', 'design', 'film'])
     const sources = Array.from(container.querySelectorAll<HTMLImageElement>('img[data-kit-icon]'))
       .map((image) => image.getAttribute('src'))
     expect(sources.every((src) => src?.endsWith('-small.svg'))).toBe(true)

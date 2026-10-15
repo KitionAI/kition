@@ -1,6 +1,7 @@
 import type { KitCreationItem } from '@/features/workspace/hooks/useKitCreations'
+import type { KitCreateGroup } from '@/features/workspace/components/kits/kitEditors'
 import { KitIcon, kitIconComponent } from '@/components/KitIcon'
-import { FileInput, FolderPlus, LayoutDashboard, Upload, Zap } from 'lucide-react'
+import { FileInput, FolderPlus, LayoutDashboard, Zap } from 'lucide-react'
 import { type CSSProperties, type ReactNode, useLayoutEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
@@ -13,6 +14,12 @@ type WorkspaceCreateMenuPlacement = 'top' | 'bottom'
 // content/fonts but these are close enough to pick a side without flicker.
 const ESTIMATED_MENU_WIDTH = 192
 const ESTIMATED_MENU_HEIGHT = 240
+// The workspace menu: three groups in two columns.
+const ESTIMATED_GROUPED_MENU_WIDTH = 320
+const ESTIMATED_GROUPED_MENU_HEIGHT = 420
+
+/** The kit groups after Kition's own file types, in menu order. */
+const KIT_GROUPS: readonly KitCreateGroup[] = ['office', 'creative']
 
 export function WorkspaceCreateMenu({
   open,
@@ -26,7 +33,6 @@ export function WorkspaceCreateMenu({
   onCreateBoard,
   onCreateDesign,
   kitCreations,
-  onImportTableFile,
   onCreateForm,
   onCreateWorkflow,
 }: {
@@ -46,7 +52,6 @@ export function WorkspaceCreateMenu({
   onCreateDesign?: () => void
   /** The create menu's kit items (Image, Video project). */
   kitCreations?: readonly KitCreationItem[]
-  onImportTableFile?: () => void
   onCreateForm?: () => void
   /** Kitable variant only — adds a "Create Workflow" entry that defers to
    *  the table picker / mode dialog the same way the legacy "..." menu
@@ -55,7 +60,8 @@ export function WorkspaceCreateMenu({
   onCreateWorkflow?: () => void
 }) {
   const { t } = useTranslation('workspace')
-  const coords = useAnchoredMenuCoords(open, anchorEl ?? null)
+  const grouped = variant === 'workspace'
+  const coords = useAnchoredMenuCoords(open, anchorEl ?? null, grouped ? { estimatedWidth: ESTIMATED_GROUPED_MENU_WIDTH, estimatedHeight: ESTIMATED_GROUPED_MENU_HEIGHT } : undefined)
 
   if (!open) {
     return null
@@ -110,56 +116,57 @@ export function WorkspaceCreateMenu({
       ) : null}
     </>
   ) : (
+    // Kition's own file types, then the kits by group, in two columns; Folder last.
     <>
-      {documentCreateFormatOptions.map((item) => {
-        const FormatIcon = resolveWorkspaceCreateIcon(item.value)
-        return (
-          <button
-            key={item.value}
-            type="button"
-            className="document-create-option"
-            onClick={() => {
-              if (item.value === 'table') {
-                onCreateTable()
-                return
-              }
-              onCreateDocument(item.value)
-            }}
-          >
-            <FormatIcon className="size-4" />
-            <span>{t('createMenu.format.' + item.value)}</span>
+      <CreateMenuGroup label={t('createMenu.group.kition')}>
+        {documentCreateFormatOptions.map((item) => {
+          const FormatIcon = resolveWorkspaceCreateIcon(item.value)
+          return (
+            <button
+              key={item.value}
+              type="button"
+              className="document-create-option"
+              onClick={() => {
+                if (item.value === 'table') {
+                  onCreateTable()
+                  return
+                }
+                onCreateDocument(item.value)
+              }}
+            >
+              <FormatIcon className="size-4" />
+              <span>{t('createMenu.format.' + item.value)}</span>
+            </button>
+          )
+        })}
+        {onCreateBoard ? (
+          <button type="button" className="document-create-option" data-testid="workspace-create-board" onClick={onCreateBoard}>
+            <KitIcon kit="board" small className="size-4" />
+            <span>{t('createMenu.format.board')}</span>
           </button>
+        ) : null}
+        {onCreateDesign ? (
+          <button type="button" className="document-create-option" data-testid="workspace-create-design" onClick={onCreateDesign}>
+            <KitIcon kit="design" small className="size-4" />
+            <span>{t('design:suite')}</span>
+          </button>
+        ) : null}
+      </CreateMenuGroup>
+      {KIT_GROUPS.map((group) => {
+        const items = kitCreations?.filter((kit) => kit.group === group) ?? []
+        if (!items.length) return null
+        return (
+          <CreateMenuGroup key={group} label={t(`createMenu.group.${group}`)}>
+            {items.map((kit) => (
+              <button key={kit.id} type="button" className="document-create-option" data-testid={`workspace-create-${kit.id}`} onClick={kit.onCreate}>
+                <KitIcon kit={kit.kit} small className="size-4" />
+                <span>{t(kit.label)}</span>
+              </button>
+            ))}
+          </CreateMenuGroup>
         )
       })}
-      {kitCreations?.map((kit) => (
-        <button key={kit.id} type="button" className="document-create-option" data-testid={`workspace-create-${kit.id}`} onClick={kit.onCreate}>
-          <KitIcon kit={kit.kit} small className="size-4" /><span>{t(kit.label)}</span>
-        </button>
-      ))}
-      {onCreateDesign ? <button type="button" className="document-create-option" data-testid="workspace-create-design" onClick={onCreateDesign}>
-        <KitIcon kit="design" small className="size-4" /><span>{t('design:suite')}</span>
-      </button> : null}
-      {onCreateBoard ? (
-        <button
-          type="button"
-          className="document-create-option"
-          data-testid="workspace-create-board"
-          onClick={onCreateBoard}
-        >
-          <KitIcon kit="board" small className="size-4" />
-          <span>{t('createMenu.format.board')}</span>
-        </button>
-      ) : null}
-      {onImportTableFile ? (
-        <button
-          type="button"
-          className="document-create-option"
-          onClick={onImportTableFile}
-        >
-          <Upload className="size-4" />
-          <span>{t('createMenu.importSpreadsheet')}</span>
-        </button>
-      ) : null}
+      <div className="document-create-menu__separator" role="separator" />
       <button
         type="button"
         className="document-create-option"
@@ -170,6 +177,8 @@ export function WorkspaceCreateMenu({
       </button>
     </>
   )
+
+  const menuClassName = grouped ? 'document-create-menu document-create-menu--grouped' : 'document-create-menu'
 
   if (anchorEl !== undefined) {
     if (!coords) {
@@ -187,7 +196,7 @@ export function WorkspaceCreateMenu({
     }
     return createPortal(
       <div
-        className="document-create-menu document-create-menu-anchor document-create-menu--portal"
+        className={`${menuClassName} document-create-menu-anchor document-create-menu--portal`}
         data-placement={placement}
         style={portalStyle}
       >
@@ -198,9 +207,18 @@ export function WorkspaceCreateMenu({
   }
 
   return (
-    <span className="document-create-menu" data-placement={placement}>
+    <span className={menuClassName} data-placement={placement}>
       {content}
     </span>
+  )
+}
+
+function CreateMenuGroup({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="document-create-menu__group" role="group" aria-label={label}>
+      <div className="document-create-menu__group-label" aria-hidden="true">{label}</div>
+      <div className="document-create-menu__grid">{children}</div>
+    </div>
   )
 }
 

@@ -18,11 +18,15 @@
       "pdf": "PDF"
     },
     "folder": "Carpeta",
-    "importSpreadsheet": "Importar hoja de cálculo",
     "newDashboard": "New dashboard",
     "newForm": "New form",
     "newTable": "Nueva tabla",
-    "newWorkflow": "Nuevo flujo de trabajo"
+    "newWorkflow": "Nuevo flujo de trabajo",
+    "group": {
+      "kition": "Kition",
+      "office": "Oficina",
+      "creative": "Creatividad"
+    }
   },
   "emptyState": {
     "title": "Turn ideas into organized work",
