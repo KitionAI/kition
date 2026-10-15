@@ -14,8 +14,10 @@ use sha2::{Digest, Sha256};
 
 use std::sync::Arc;
 
-use kition_harness::driver::{LiveSink, append_live, next_turn};
-use kition_harness::events::{ContentBlock, EventBody, MessageSource, SessionEvent, TurnEndReason};
+use kition_harness::driver::{LiveSink, append_live, next_turn, open_turn};
+use kition_harness::events::{
+    ContentBlock, EventBody, MessageSource, QueuedMessage, SessionEvent, TurnEndReason,
+};
 use kition_harness::llm::HostedCall;
 use kition_harness::log::{SessionLog, SqliteLog};
 
@@ -571,19 +573,23 @@ impl Composer {
             crate::log::log_key(run.session_id),
             run.live.clone(),
             request_id,
-            content,
+            QueuedMessage {
+                id: run.message_id.clone(),
+                content: vec![ContentBlock::text(content)],
+                source: MessageSource::user(),
+            },
         )
     }
 
-    /// Opens the turn on `key` of `log`, sending its events to `live`. When
-    /// the turn started but its step or message could not be logged, the
-    /// turn ends as failed.
+    /// Opens the turn with `message` on `key` of `log`, sending its events
+    /// to `live`. When the turn started but its step or message could not be
+    /// logged, the turn ends as failed.
     fn begin(
         log: Arc<dyn SessionLog>,
         key: String,
         live: LiveSink,
         request_id: &str,
-        content: &str,
+        message: QueuedMessage,
     ) -> Result<Self, String> {
         let turn = next_turn(&log.read(&key)?);
         let composer = Self {
@@ -595,13 +601,20 @@ impl Composer {
             open: std::sync::Mutex::new(None),
             ended: std::sync::atomic::AtomicBool::new(false),
         };
-        composer.append(EventBody::TurnStart { turn })?;
+        open_turn(
+            composer.log.as_ref(),
+            &composer.key,
+            &composer.live,
+            turn,
+            Some(&message),
+        )?;
         let opened = composer
             .append(EventBody::StepStart { turn, step: 1 })
             .and_then(|()| {
                 composer.append(EventBody::UserMessage {
-                    content: vec![ContentBlock::text(content)],
-                    source: MessageSource::user(),
+                    id: message.id,
+                    content: message.content,
+                    source: message.source,
                 })
             });
         if let Err(error) = opened {
@@ -1049,6 +1062,14 @@ mod tests {
         }
     }
 
+    fn fox() -> QueuedMessage {
+        QueuedMessage {
+            id: "msg-1".into(),
+            content: vec![ContentBlock::text("A red fox")],
+            source: MessageSource::user(),
+        }
+    }
+
     fn types(log: &dyn SessionLog) -> Vec<String> {
         log.read("agent:1")
             .unwrap_or_else(|error| panic!("{error}"))
@@ -1070,7 +1091,7 @@ mod tests {
             "agent:1".into(),
             Arc::new(|_| {}),
             "req-1",
-            "A red fox",
+            fox(),
         )
         .unwrap_or_else(|error| panic!("{error}"));
         composer
@@ -1086,7 +1107,9 @@ mod tests {
         assert_eq!(
             types(log.as_ref()),
             [
+                "agent/inbox/spliced",
                 "turn/start",
+                "agent/inbox/spliced",
                 "step/start",
                 "user/message",
                 "tool/call",
@@ -1122,15 +1145,23 @@ mod tests {
             "agent:1".into(),
             Arc::new(|_| {}),
             "req-1",
-            "A red fox",
+            fox(),
         );
         assert_eq!(opened.err(), Some("disk full".to_owned()));
         let events = log
             .read("agent:1")
             .unwrap_or_else(|error| panic!("{error}"));
-        assert_eq!(types(log.as_ref()), ["turn/start", "turn/end"]);
+        assert_eq!(
+            types(log.as_ref()),
+            [
+                "agent/inbox/spliced",
+                "turn/start",
+                "agent/inbox/spliced",
+                "turn/end"
+            ]
+        );
         assert!(matches!(
-            &events[1].body,
+            &events[3].body,
             EventBody::TurnEnd { turn: 1, reason: TurnEndReason::Failed, error } if error == "disk full"
         ));
     }

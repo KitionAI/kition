@@ -149,6 +149,7 @@ mod tests {
         log.append("agent:1", EventBody::TurnStart { turn: 1 })
             .unwrap_or_else(|error| panic!("{error}"));
         let body = EventBody::UserMessage {
+            id: String::new(),
             content: vec![crate::events::ContentBlock::text("hi")],
             source: crate::events::MessageSource::user(),
         };

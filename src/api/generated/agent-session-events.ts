@@ -44,6 +44,15 @@ export type AgentSessionEventsMessageSource = {
   kind: string
 }
 
+/**
+ * A message in the session inbox (DeepSeek Harness UserMessage).
+ */
+export type AgentSessionEventsQueuedMessage = {
+  id: string
+  content: AgentSessionEventsContentBlock[]
+  source: AgentSessionEventsMessageSource
+}
+
 export type AgentSessionEventsApprovalOutcome = "allowed-once" | "rejected" | "cancelled" | "unavailable"
 
 /**
@@ -151,8 +160,25 @@ export type AgentSessionEventsUserMessageEvent = {
   seq: AgentSessionEventsSeq
   at: AgentSessionEventsAt
   type: "user/message"
+  /**
+   * The message id: the inbox id of a prompt (agent/inbox/spliced), else one the runtime mints.
+   */
+  id: string
   content: AgentSessionEventsContentBlock[]
   source: AgentSessionEventsMessageSource
+}
+
+/**
+ * The session inbox changed (DeepSeek Harness agent/inbox/spliced): a prompt entered it (inserted), or a turn claimed it (removedCount). Every turn with a prompt opens with the prompt inserted, turn/start, and the claim; its user/message carries the same id.
+ */
+export type AgentSessionEventsInboxSplicedEvent = {
+  seq: AgentSessionEventsSeq
+  at: AgentSessionEventsAt
+  type: "agent/inbox/spliced"
+  target: "next-turn" | "next-step"
+  start: number
+  inserted: AgentSessionEventsQueuedMessage[]
+  removedCount?: number
 }
 
 /**
@@ -329,7 +355,7 @@ export type AgentSessionEventsPermissionPresetEvent = {
 /**
  * One durable session event, named after DeepSeek Harness events.
  */
-export type AgentSessionEventsSessionEvent = AgentSessionEventsTurnStartEvent | AgentSessionEventsTurnEndEvent | AgentSessionEventsStepStartEvent | AgentSessionEventsStepEndEvent | AgentSessionEventsSystemMessageEvent | AgentSessionEventsUserMessageEvent | AgentSessionEventsAssistantMessageEvent | AgentSessionEventsAssistantAttemptEvent | AgentSessionEventsToolCallEvent | AgentSessionEventsToolResultEvent | AgentSessionEventsApprovalAskedEvent | AgentSessionEventsApprovalDecidedEvent | AgentSessionEventsDeliverablesPresentedEvent | AgentSessionEventsTodoWriteEvent | AgentSessionEventsLlmRetryEvent | AgentSessionEventsLlmRetryStartedEvent | AgentSessionEventsPermissionPresetEvent
+export type AgentSessionEventsSessionEvent = AgentSessionEventsTurnStartEvent | AgentSessionEventsTurnEndEvent | AgentSessionEventsStepStartEvent | AgentSessionEventsStepEndEvent | AgentSessionEventsSystemMessageEvent | AgentSessionEventsUserMessageEvent | AgentSessionEventsInboxSplicedEvent | AgentSessionEventsAssistantMessageEvent | AgentSessionEventsAssistantAttemptEvent | AgentSessionEventsToolCallEvent | AgentSessionEventsToolResultEvent | AgentSessionEventsApprovalAskedEvent | AgentSessionEventsApprovalDecidedEvent | AgentSessionEventsDeliverablesPresentedEvent | AgentSessionEventsTodoWriteEvent | AgentSessionEventsLlmRetryEvent | AgentSessionEventsLlmRetryStartedEvent | AgentSessionEventsPermissionPresetEvent
 
 export type AgentSessionEventsPage = {
   items: AgentSessionEventsSessionEvent[]

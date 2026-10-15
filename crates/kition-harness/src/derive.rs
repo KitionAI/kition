@@ -282,6 +282,7 @@ mod tests {
             at(
                 seq,
                 EventBody::UserMessage {
+                    id: String::new(),
                     content: vec![ContentBlock::text(text)],
                     source: crate::events::MessageSource::user(),
                 },
@@ -380,6 +381,7 @@ mod tests {
             at(
                 5,
                 EventBody::UserMessage {
+                    id: String::new(),
                     content: vec![ContentBlock::text("Brighten it")],
                     source: crate::events::MessageSource::user(),
                 },
@@ -508,6 +510,7 @@ mod tests {
             at(
                 4,
                 EventBody::UserMessage {
+                    id: String::new(),
                     content: vec![ContentBlock::text("next")],
                     source: crate::events::MessageSource::user(),
                 },
@@ -739,6 +742,7 @@ mod tests {
             at(
                 1,
                 EventBody::UserMessage {
+                    id: String::new(),
                     content: vec![ContentBlock::text("draw")],
                     source: crate::events::MessageSource::user(),
                 },
@@ -761,6 +765,7 @@ mod tests {
             at(
                 3,
                 EventBody::UserMessage {
+                    id: String::new(),
                     content: vec![ContentBlock::text("continue")],
                     source: crate::events::MessageSource::user(),
                 },
@@ -925,6 +930,7 @@ mod tests {
             at(
                 2,
                 EventBody::UserMessage {
+                    id: String::new(),
                     content: vec![ContentBlock::text("look"), image("data:old-user")],
                     source: crate::events::MessageSource::user(),
                 },
@@ -956,6 +962,7 @@ mod tests {
             at(
                 7,
                 EventBody::UserMessage {
+                    id: String::new(),
                     content: vec![ContentBlock::text("again"), image("data:new-user")],
                     source: crate::events::MessageSource::user(),
                 },
@@ -1027,6 +1034,7 @@ mod tests {
             at(
                 4,
                 EventBody::UserMessage {
+                    id: String::new(),
                     content: vec![ContentBlock::text("next")],
                     source: crate::events::MessageSource::user(),
                 },

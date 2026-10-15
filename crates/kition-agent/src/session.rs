@@ -128,6 +128,8 @@ pub struct Prepared {
     image_repeat: bool,
     approval: Option<exec::Approval>,
     local_sources: Vec<sources::LocalSource>,
+    /// The inbox id of the turn's message: minted here, or the client's.
+    message_id: String,
     /// The session's turn guard, taken by the busy check and held until
     /// the turn's last frame.
     turn: TurnGuard,
@@ -227,8 +229,17 @@ pub async fn prepare(
         image_repeat,
         approval,
         local_sources,
+        message_id: uuid::Uuid::new_v4().to_string(),
         turn,
     })
+}
+
+impl Prepared {
+    /// The turn's message goes into the inbox under `id`.
+    pub fn with_message_id(mut self, id: String) -> Self {
+        self.message_id = id;
+        self
+    }
 }
 
 /// Starts the turn and returns the streaming response.
@@ -285,6 +296,7 @@ async fn drive(agent: Agent, user_id: i64, prepared: Prepared, emitter: Emitter)
         image_repeat,
         approval,
         local_sources,
+        message_id,
         turn,
     } = prepared;
     let stream = TurnStream::new(emitter.clone(), session.id);
@@ -341,6 +353,7 @@ async fn drive(agent: Agent, user_id: i64, prepared: Prepared, emitter: Emitter)
         ),
         language: request.language.trim().to_owned(),
         source: message_source(approval.is_some(), request.hide_user_message),
+        message_id,
     });
     if let Some(intent) = image_intent {
         // The whole request is logged as one turn under the session's turn

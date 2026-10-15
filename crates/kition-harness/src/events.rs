@@ -72,6 +72,23 @@ impl MessageSource {
     }
 }
 
+/// A message waiting in the session inbox (dsh `UserMessage` in
+/// `agent/inbox/spliced`).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct QueuedMessage {
+    pub id: String,
+    pub content: Vec<ContentBlock>,
+    pub source: MessageSource,
+}
+
+/// Where an inbox splice lands (dsh `InboxTarget`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum InboxTarget {
+    NextTurn,
+    NextStep,
+}
+
 /// How an `approval/asked` was settled.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -143,10 +160,22 @@ pub enum EventBody {
         step: u32,
         content: String,
     },
+    /// `id` is the inbox message id for a prompt, else minted by the driver.
     #[serde(rename = "user/message")]
     UserMessage {
+        id: String,
         content: Vec<ContentBlock>,
         source: MessageSource,
+    },
+    /// The inbox changed: `inserted` entered it at `start`, or
+    /// `removed_count` entries left it there (claimed by a turn).
+    #[serde(rename = "agent/inbox/spliced")]
+    InboxSpliced {
+        target: InboxTarget,
+        start: u32,
+        inserted: Vec<QueuedMessage>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        removed_count: Option<u32>,
     },
     #[serde(rename = "assistant/message")]
     AssistantMessage {
@@ -257,6 +286,7 @@ pub enum EventBody {
 impl EventBody {
     /// Every event name this crate writes, for the conformance check.
     pub const KINDS: &[&str] = &[
+        "agent/inbox/spliced",
         "turn/start",
         "turn/end",
         "step/start",
@@ -284,6 +314,7 @@ impl EventBody {
             Self::StepEnd { .. } => "step/end",
             Self::SystemMessage { .. } => "system/message",
             Self::UserMessage { .. } => "user/message",
+            Self::InboxSpliced { .. } => "agent/inbox/spliced",
             Self::AssistantMessage { .. } => "assistant/message",
             Self::AssistantAttempt { .. } => "assistant/attempt",
             Self::ToolCall { .. } => "tool/call",
@@ -358,8 +389,19 @@ mod tests {
                 content: "be helpful".into(),
             },
             EventBody::UserMessage {
+                id: "m1".into(),
                 content: vec![ContentBlock::text("hi")],
                 source: MessageSource::new("context-action"),
+            },
+            EventBody::InboxSpliced {
+                target: InboxTarget::NextTurn,
+                start: 0,
+                inserted: vec![QueuedMessage {
+                    id: "m1".into(),
+                    content: vec![ContentBlock::text("hi")],
+                    source: MessageSource::user(),
+                }],
+                removed_count: Some(1),
             },
             EventBody::AssistantMessage {
                 turn: 1,
@@ -481,15 +523,25 @@ mod tests {
         let wire = |body: EventBody| serde_json::to_value(&body).unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(
             wire(EventBody::UserMessage {
+                id: "m1".into(),
                 content: vec![ContentBlock::text("hi")],
                 source: MessageSource::user(),
             }),
-            json!({ "type": "user/message", "content": [{ "type": "text", "text": "hi" }], "source": { "kind": "user" } })
+            json!({ "type": "user/message", "id": "m1", "content": [{ "type": "text", "text": "hi" }], "source": { "kind": "user" } })
         );
         assert!(
-            serde_json::from_value::<EventBody>(json!({ "type": "user/message", "content": [] }))
-                .is_err(),
+            serde_json::from_value::<EventBody>(
+                json!({ "type": "user/message", "id": "m1", "content": [] })
+            )
+            .is_err(),
             "a user message names its source"
+        );
+        assert!(
+            serde_json::from_value::<EventBody>(
+                json!({ "type": "user/message", "content": [], "source": { "kind": "user" } })
+            )
+            .is_err(),
+            "a user message has an id"
         );
         assert_eq!(
             wire(EventBody::ApprovalAsked {

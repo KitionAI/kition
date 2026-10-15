@@ -36,7 +36,7 @@ fn exported_log() -> Vec<SessionEvent> {
     };
     let bodies = vec![
         json!({ "type": "turn/start", "turn": 1 }),
-        json!({ "type": "user/message", "content": [{ "type": "text", "text": "Write a plan" }, { "type": "text", "text": "[image omitted]" }],
+        json!({ "type": "user/message", "id": "u1", "content": [{ "type": "text", "text": "Write a plan" }, { "type": "text", "text": "[image omitted]" }],
             "source": { "kind": "user" } }),
         json!({ "type": "step/start", "turn": 1, "step": 1 }),
         json!({ "type": "assistant/message", "turn": 1, "step": 1, "content": "", "stopReason": "tool_calls",
@@ -52,7 +52,7 @@ fn exported_log() -> Vec<SessionEvent> {
         json!({ "type": "turn/end", "turn": 1, "reason": "completed" }),
         json!({ "type": "turn/start", "turn": 2 }),
         json!({ "type": "system/message", "turn": 2, "step": 1, "content": "You are Kition." }),
-        json!({ "type": "user/message", "content": [{ "type": "text", "text": "Again" }], "source": { "kind": "user" } }),
+        json!({ "type": "user/message", "id": "u2", "content": [{ "type": "text", "text": "Again" }], "source": { "kind": "user" } }),
     ];
     numbered(bodies)
 }
@@ -62,7 +62,7 @@ fn exported_log() -> Vec<SessionEvent> {
 fn paused_log() -> Vec<SessionEvent> {
     numbered(vec![
         json!({ "type": "turn/start", "turn": 1 }),
-        json!({ "type": "user/message", "content": [{ "type": "text", "text": "List files" }], "source": { "kind": "user" } }),
+        json!({ "type": "user/message", "id": "u3", "content": [{ "type": "text", "text": "List files" }], "source": { "kind": "user" } }),
         json!({ "type": "step/start", "turn": 1, "step": 1 }),
         json!({ "type": "assistant/message", "turn": 1, "step": 1, "content": "", "stopReason": "tool_use", "provider": "p",
             "model": "m", "toolCalls": [{ "callId": "c1", "name": "exec_command", "arguments": { "command": "ls" } }] }),
@@ -77,7 +77,7 @@ fn paused_log() -> Vec<SessionEvent> {
         json!({ "type": "approval/decided", "id": "approval:c1", "outcome": "allowed-once" }),
         json!({ "type": "turn/start", "turn": 2 }),
         json!({ "type": "system/message", "turn": 2, "step": 1, "content": "You are Kition." }),
-        json!({ "type": "user/message", "content": [{ "type": "text", "text": "Approved: ls" }], "source": { "kind": "approval" } }),
+        json!({ "type": "user/message", "id": "u4", "content": [{ "type": "text", "text": "Approved: ls" }], "source": { "kind": "approval" } }),
     ])
 }
 

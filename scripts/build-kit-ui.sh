@@ -3,11 +3,13 @@
 # it in public/kits/<kit>-ui, where Kition shows it in an iframe (KitFrame). See docs/kit-sdk.md.
 #
 #   scripts/build-kit-ui.sh presentation
+#   scripts/build-kit-ui.sh presentation --ui-only  # reuse an already built, unchanged engine
 #
 # The kit repository defaults to a sibling checkout ../kition-<kit>; set KIT_REPO to use another
 # path. Its web/ app links kition-sdk's @kition/kit-ui from a sibling checkout too.
 set -euo pipefail
 kit="${1:?usage: scripts/build-kit-ui.sh <kit>, for example presentation}"
+[[ -z "${2:-}" || "${2:-}" == "--ui-only" ]] || { echo "unknown option: $2" >&2; exit 2; }
 repo_root="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
 kit_repo="${KIT_REPO:-$repo_root/../kition-$kit}"
 web="$kit_repo/web"
@@ -16,7 +18,11 @@ out="$repo_root/public/kits/$kit-ui"
 command -v pnpm >/dev/null || { echo "pnpm is required" >&2; exit 1; }
 [[ -d "$web/node_modules" ]] || pnpm --dir "$web" install --frozen-lockfile
 export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$kit_repo/target}"
-pnpm --dir "$web" run engine
+if [[ "${2:-}" == "--ui-only" ]]; then
+  compgen -G "$web/public/engine/*_bg.wasm" >/dev/null || { echo "build the engine before using --ui-only" >&2; exit 1; }
+else
+  pnpm --dir "$web" run engine
+fi
 pnpm --dir "$web" run build
 rm -rf "$out"
 mkdir -p "$out"

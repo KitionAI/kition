@@ -236,6 +236,7 @@ pub(crate) mod testing {
             approved_command: Mutex::new(None),
             language: String::new(),
             source: "user",
+            message_id: "m".into(),
         };
         Fixture { run, _dirs: dirs }
     }

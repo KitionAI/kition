@@ -7,12 +7,13 @@ import { installDesktopHost } from './helpers/desktopHost'
 import { fulfillJson, mockLocalWorkspaceApi } from './helpers/mockApi'
 import { dismissFirstRunActivation } from './helpers/onboarding'
 import { canReadBlobBodies } from './helpers/requestBody'
+import { openInKitFrame } from './helpers/embeddedKit'
 
 const SDK_DIR = path.join(process.cwd(), 'public', 'kits', 'presentation-sdk')
 const UI_MARKER = path.join(process.cwd(), 'public', 'kits', 'presentation-ui', 'kit-ui.json')
 const SDK_WASM = path.join(SDK_DIR, 'kition_presentation_sdk_bg.wasm')
 
-type NodePresentationDocument = { save(): Uint8Array; execute(command: string, params: string): string; inspect(): string; free(): void }
+type NodePresentationDocument = { save(name?: string): Uint8Array; execute(command: string, params: string): string; inspect(): string; free(): void }
 type NodePresentationSdk = {
   default: (input: { module_or_path: Buffer }) => Promise<unknown>
   PresentationDocument: { create(name: string, width: number, height: number): NodePresentationDocument; open(name: string, bytes: Uint8Array): NodePresentationDocument }
@@ -59,6 +60,128 @@ async function serveWorkspace(page: Page, root: string) {
     return route.fulfill({ status: 200, headers, body: await fs.readFile(file) })
   })
 }
+
+test('pages a fitted deck with the wheel in the packaged editor without moving its canvas', async ({ page, baseURL }, testInfo) => {
+  test.skip(!existsSync(SDK_WASM) || !existsSync(UI_MARKER), 'the Presentation editor package is not built')
+  test.setTimeout(120_000)
+  await page.setViewportSize({ width: 1594, height: 887 })
+  const sdk = await loadSdk()
+  const doc = sdk.PresentationDocument.create('Scrolling.deckcraft', 960, 540)
+  for (let index = 1; index < 7; index += 1) doc.execute('slide.new', JSON.stringify({ title: `Slide ${index + 1}` }))
+  doc.execute('slide.go', JSON.stringify({ index: 0 }))
+  const bytes = Buffer.from(doc.save())
+  doc.free()
+  const { host, kit } = await openInKitFrame(page, baseURL!, 'Scrolling.deckcraft', bytes)
+  try {
+    await expect(kit.getByTestId('deck-status')).toHaveText('Slide 1 of 7', { timeout: 60_000 })
+    const surface = kit.getByTestId('kit-canvas-surface')
+    await kit.getByRole('button', { name: 'Fit', exact: true }).click()
+    await page.waitForTimeout(500)
+    // Compare the paper edges: engine hover outlines may change pixels after the mouse enters.
+    const paperBounds = () => surface.evaluate((canvas: HTMLCanvasElement) => {
+      const data = canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height).data
+      let left = canvas.width, top = canvas.height, right = -1, bottom = -1
+      for (let y = 0; y < canvas.height; y += 1) {
+        for (let x = 0; x < canvas.width; x += 1) {
+          const offset = (y * canvas.width + x) * 4
+          if (data[offset] > 250 && data[offset + 1] > 250 && data[offset + 2] > 250) {
+            left = Math.min(left, x)
+            top = Math.min(top, y)
+            right = Math.max(right, x)
+            bottom = Math.max(bottom, y)
+          }
+        }
+      }
+      return { left, top, right, bottom }
+    })
+    const first = await paperBounds()
+    expect(first.right).toBeGreaterThan(first.left)
+    await surface.screenshot({ path: testInfo.outputPath('presentation-before-wheel.png') })
+    const bounds = (await surface.boundingBox())!
+    const wheel = async (dy: number) => {
+      await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)
+      await page.mouse.wheel(0, dy)
+      await page.waitForTimeout(450)
+    }
+    await wheel(120)
+    await expect(kit.getByTestId('deck-status')).toHaveText('Slide 2 of 7')
+    await wheel(-120)
+    await expect(kit.getByTestId('deck-status')).toHaveText('Slide 1 of 7')
+    await page.waitForTimeout(300)
+    expect(await paperBounds()).toEqual(first)
+    expect(await surface.boundingBox()).toEqual(bounds)
+    await wheel(-600)
+    expect(await paperBounds()).toEqual(first)
+
+    for (let index = 1; index < 7; index += 1) {
+      await wheel(120)
+      await expect(kit.getByTestId('deck-status')).toHaveText(`Slide ${index + 1} of 7`)
+    }
+    await expect(kit.getByTestId('deck-slide-6')).toBeInViewport()
+    await page.waitForTimeout(300)
+    const last = await paperBounds()
+    await wheel(600)
+    expect(await paperBounds()).toEqual(last)
+    const list = (await kit.locator('.deck-slides-list').boundingBox())!
+    await page.mouse.move(list.x + list.width / 2, list.y + list.height / 2)
+    await page.mouse.wheel(0, -600)
+    await page.waitForTimeout(450)
+    await expect(kit.getByTestId('deck-status')).toHaveText('Slide 7 of 7')
+    expect(await paperBounds()).toEqual(last)
+    expect(await surface.boundingBox()).toEqual(bounds)
+    await page.screenshot({ path: testInfo.outputPath('presentation-wheel.png') })
+  } finally {
+    await host.dispose()
+  }
+})
+
+test('loads the native ribbon and functional views from the Presentation package used by Kition', async ({ page, baseURL }, testInfo) => {
+  test.skip(!existsSync(SDK_WASM) || !existsSync(UI_MARKER), 'the Presentation editor package is not built')
+  test.setTimeout(120_000)
+  await page.setViewportSize({ width: 1594, height: 887 })
+  const sdk = await loadSdk()
+  const doc = sdk.PresentationDocument.open('Ribbon.deckcraft', await deckFixture())
+  const bytes = Buffer.from(doc.save('Ribbon.pptx'))
+  doc.free()
+  const { host, kit } = await openInKitFrame(page, baseURL!, 'Ribbon.pptx', bytes)
+  try {
+    await expect(kit.getByTestId('deck-status')).toHaveText('Slide 1 of 2', { timeout: 60_000 })
+    for (const id of ['home', 'insert', 'draw', 'design', 'transitions', 'animations', 'slideShow', 'record', 'review', 'view']) await expect(kit.getByTestId(`ribbon-tab-${id}`)).toBeVisible()
+    await kit.getByTestId('ribbon-tab-view').click()
+    for (const label of ['Normal', 'Outline View', 'Slide Sorter', 'Notes Page', 'Reading View', 'Slide Master', 'Handout Master', 'Notes Master', 'Notes', 'Zoom', 'Fit', 'Grayscale', 'Dark Mode']) await expect(kit.getByRole('tabpanel').getByRole('button', { name: label, exact: true })).toBeVisible()
+    await kit.getByTestId('deck-view-sorter').click()
+    await expect(kit.getByTestId('deck-sorter')).toBeVisible()
+    await kit.getByTestId('deck-slide-1').click()
+    await expect(kit.getByTestId('deck-status')).toHaveText('Slide 2 of 2')
+    await kit.getByTestId('deck-view-outline').click()
+    await expect(kit.locator('.deck-outline-text')).toHaveCount(2)
+    await kit.getByTestId('deck-view-notesPage').click()
+    await expect(kit.getByTestId('deck-notes-page')).toBeVisible()
+    await kit.getByTestId('deck-view-normal').click()
+    await kit.getByTestId('deck-view-ruler').check()
+    await expect(kit.getByTestId('deck-ruler-x')).toBeVisible()
+    await kit.getByTestId('deck-view-ruler').uncheck()
+    await kit.getByTestId('deck-view-master').click()
+    await expect(kit.getByTestId('deck-master-list')).toBeVisible()
+    await expect(kit.getByTestId('ribbon-tab-slideMaster')).toBeVisible()
+    await kit.getByTestId('ribbon-tab-slideMaster').click()
+    await kit.getByTestId('deck-cmd-view.closeMaster').click()
+    await kit.getByTestId('ribbon-tab-insert').click()
+    await kit.getByTestId('deck-insert-chart').click()
+    await kit.getByTestId('deck-chart-line').click()
+    await expect(kit.getByTestId('ribbon-tab-chartDesign')).toBeVisible()
+    await kit.getByTestId('ribbon-tab-chartDesign').click()
+    await kit.getByTestId('deck-cmd-chart.type').click()
+    await expect(kit.getByRole('dialog')).toBeVisible()
+    await kit.locator('#param-type').fill('pie')
+    await kit.getByTestId('command-dialog-run').click()
+    await expect(kit.getByRole('dialog')).toHaveCount(0)
+    await kit.getByTestId('ribbon-tab-view').click()
+    await page.screenshot({ path: testInfo.outputPath('presentation-ribbon.png') })
+  } finally {
+    await host.dispose()
+  }
+})
 
 test('opens a deck in the Presentation kit’s own editor, edits it there, and saves it through Kition', async ({ page, baseURL, browserName }, testInfo) => {
   test.skip(!existsSync(SDK_WASM) || !existsSync(UI_MARKER), 'the Presentation kit editor is not built into public/kits/presentation-ui')
