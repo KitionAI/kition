@@ -89,6 +89,9 @@ describe('WorkspaceCreateMenu', () => {
     const kits = Array.from(container.querySelectorAll<HTMLImageElement>('img[data-kit-icon]'))
       .map((image) => image.dataset.kitIcon)
     expect(kits).toEqual(['document', 'table', 'film', 'design', 'board'])
+    const sources = Array.from(container.querySelectorAll<HTMLImageElement>('img[data-kit-icon]'))
+      .map((image) => image.getAttribute('src'))
+    expect(sources.every((src) => src?.endsWith('-small.svg'))).toBe(true)
 
     await act(async () => root?.unmount())
     container.remove()

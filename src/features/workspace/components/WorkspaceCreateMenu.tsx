@@ -72,7 +72,7 @@ export function WorkspaceCreateMenu({
         className="document-create-option"
         onClick={onCreateTable}
       >
-        <KitIcon kit="table" className="size-5" />
+        <KitIcon kit="table" small className="size-4" />
         <span>{t('createMenu.newTable')}</span>
       </button>
       {onCreateDashboard ? (
@@ -82,7 +82,7 @@ export function WorkspaceCreateMenu({
           data-testid="kitable-action-create-dashboard"
           onClick={onCreateDashboard}
         >
-          <LayoutDashboard className="m-0.5 size-4" />
+          <LayoutDashboard className="size-4" />
           <span>{t('createMenu.newDashboard')}</span>
         </button>
       ) : null}
@@ -93,7 +93,7 @@ export function WorkspaceCreateMenu({
           data-testid="kitable-action-create-form"
           onClick={onCreateForm}
         >
-          <FileInput className="m-0.5 size-4" />
+          <FileInput className="size-4" />
           <span>{t('createMenu.newForm')}</span>
         </button>
       ) : null}
@@ -104,7 +104,7 @@ export function WorkspaceCreateMenu({
           data-testid="kitable-action-create-workflow"
           onClick={onCreateWorkflow}
         >
-          <Zap className="m-0.5 size-4" />
+          <Zap className="size-4" />
           <span>{t('createMenu.newWorkflow')}</span>
         </button>
       ) : null}
@@ -126,18 +126,18 @@ export function WorkspaceCreateMenu({
               onCreateDocument(item.value)
             }}
           >
-            <FormatIcon className="size-5" />
+            <FormatIcon className="size-4" />
             <span>{t('createMenu.format.' + item.value)}</span>
           </button>
         )
       })}
       {kitCreations?.map((kit) => (
         <button key={kit.id} type="button" className="document-create-option" data-testid={`workspace-create-${kit.id}`} onClick={kit.onCreate}>
-          <KitIcon kit={kit.kit} className="size-5" /><span>{t(kit.label)}</span>
+          <KitIcon kit={kit.kit} small className="size-4" /><span>{t(kit.label)}</span>
         </button>
       ))}
       {onCreateDesign ? <button type="button" className="document-create-option" data-testid="workspace-create-design" onClick={onCreateDesign}>
-        <KitIcon kit="design" className="size-5" /><span>{t('design:suite')}</span>
+        <KitIcon kit="design" small className="size-4" /><span>{t('design:suite')}</span>
       </button> : null}
       {onCreateBoard ? (
         <button
@@ -146,7 +146,7 @@ export function WorkspaceCreateMenu({
           data-testid="workspace-create-board"
           onClick={onCreateBoard}
         >
-          <KitIcon kit="board" className="size-5" />
+          <KitIcon kit="board" small className="size-4" />
           <span>{t('createMenu.format.board')}</span>
         </button>
       ) : null}
@@ -156,7 +156,7 @@ export function WorkspaceCreateMenu({
           className="document-create-option"
           onClick={onImportTableFile}
         >
-          <Upload className="m-0.5 size-4" />
+          <Upload className="size-4" />
           <span>{t('createMenu.importSpreadsheet')}</span>
         </button>
       ) : null}
@@ -165,7 +165,7 @@ export function WorkspaceCreateMenu({
         className="document-create-option"
         onClick={onCreateFolder}
       >
-        <FolderPlus className="m-0.5 size-4" />
+        <FolderPlus className="size-4" />
         <span>{t('createMenu.folder')}</span>
       </button>
     </>
@@ -205,7 +205,7 @@ export function WorkspaceCreateMenu({
 }
 
 function resolveWorkspaceCreateIcon(format: DocumentCreateFormat) {
-  return kitIconComponent(format === 'table' ? 'table' : 'document')
+  return kitIconComponent(format === 'table' ? 'table' : 'document', { small: true })
 }
 
 // Anchored menu placement: pin the top-left of the menu near the
