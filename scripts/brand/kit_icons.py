@@ -142,76 +142,65 @@ def icon_svg(kit):
             f'<g filter="url(#sh)">{glyph(kit)}</g></svg>\n')
 
 
-def _small_page(fold=True):
-    """A page that fills the small tile, with an optional folded corner."""
-    if not fold:
-        return '<rect x="52" y="28" width="152" height="200" rx="20" fill="#fff"/>'
-    return ('<path d="M72 28H160L204 72V208Q204 228 184 228H72Q52 228 52 208V48Q52 28 72 28Z" fill="#fff"/>'
-            '<path d="M160 28V60Q160 72 172 72H204Z" fill="#000" opacity=".14"/>')
+# Small cut: solid silhouettes on a 16x16 pixel grid for file trees and tabs. Each kit is its own
+# coloured shape with 1-2 px white cut-outs; every edge sits on a whole pixel so 1x screens stay crisp.
+_PAGE = 'M3 1H10L14 5V14Q14 15 13 15H3Q2 15 2 14V2Q2 1 3 1Z'
+_FOLD = 'M10 1V4Q10 5 11 5H14Z'
+_WHITE = '#fff'
+
+
+def _p(d, fill, opacity=None):
+    return f'<path d="{d}" fill="{fill}"' + (f' fill-opacity="{opacity}"' if opacity else '') + '/>'
+
+
+def _r(x, y, w, h, fill, opacity=None, rx=0):
+    return (f'<rect x="{x}" y="{y}" width="{w}" height="{h}"' + (f' rx="{rx}"' if rx else '')
+            + f' fill="{fill}"' + (f' fill-opacity="{opacity}"' if opacity else '') + '/>')
 
 
 def small_glyph(kit):
-    """Bold glyphs for 32 px and below: one shape, strokes at least 2 px at 16 px (32 units)."""
-    h = kit.deep
+    c, d, w = kit.mid, kit.deep, _WHITE
+    page = _p(_PAGE, c) + _p(_FOLD, w, '.5')
     if kit.id == 'document':
-        return _small_page() + _line('M84 112H172M84 152H172M84 192H140', h, 22)
+        return page + _r(5, 7, 6, 1, w) + _r(5, 9, 6, 1, w) + _r(5, 11, 4, 1, w)
     if kit.id == 'word':
-        letter, end = outline('W', 0, 0, 104, h, weight=800)
-        return _small_page() + f'<g transform="translate({128 - end / 2:.1f} 196)">{letter}</g>'
-    if kit.id == 'table':
-        return ('<rect x="32" y="44" width="192" height="168" rx="26" fill="#fff"/>'
-                f'<path d="M32 70Q32 44 58 44H198Q224 44 224 70V100H32Z" fill="{h}"/>'
-                + _line('M64 140H192M64 180H192', h, 20))
-    if kit.id == 'sheet':
-        return ('<rect x="32" y="40" width="192" height="176" rx="24" fill="#fff"/>'
-                + _line('M32 98H224M32 158H224M96 40V216M160 40V216', h, 14)
-                + f'<rect x="96" y="98" width="64" height="60" fill="{h}"/>')
-    if kit.id == 'board':
-        return ('<path d="M48 36H208V172L160 220H48Z" fill="#fff"/>'
-                f'<path d="M208 172H172Q160 172 160 184V220Z" fill="{h}" opacity=".5"/>'
-                + _line('M80 92H176M80 136H144', h, 22))
-    if kit.id == 'slide':
-        return ('<rect x="24" y="52" width="208" height="136" rx="22" fill="#fff"/>'
-                + _line('M128 188V222M96 222H160', '#fff', 20)
-                + f'<rect x="56" y="84" width="88" height="22" rx="11" fill="{h}"/>'
-                + f'<circle cx="176" cy="140" r="26" fill="{h}"/>')
-    if kit.id == 'design':
-        g = '<rect x="58" y="58" width="140" height="140" fill="none" stroke="#fff" stroke-width="20"/>'
-        for x, y in [(58, 58), (198, 58), (58, 198), (198, 198)]:
-            g += f'<rect x="{x - 26}" y="{y - 26}" width="52" height="52" rx="10" fill="#fff"/>'
-        return g
-    if kit.id == 'layout':
-        return (_small_page(fold=False) + f'<rect x="76" y="52" width="104" height="56" rx="10" fill="{h}"/>'
-                + _line('M84 144H116M84 184H116M140 144H172M140 184H172', h, 20))
-    if kit.id == 'vector':
-        return (_line('M56 200C72 96 184 160 200 56', '#fff', 26)
-                + '<rect x="28" y="172" width="56" height="56" rx="12" fill="#fff"/>'
-                + f'<rect x="172" y="28" width="56" height="56" rx="12" fill="#fff" stroke="{h}" stroke-width="10"/>')
-    if kit.id == 'photo':
-        return ('<rect x="28" y="44" width="200" height="168" rx="26" fill="#fff"/>'
-                f'<path d="M52 192L104 120L140 164L162 140L204 192Z" fill="{h}"/>'
-                f'<circle cx="168" cy="92" r="22" fill="{h}"/>')
-    if kit.id == 'effect':
-        return ('<circle cx="68" cy="188" r="26" fill="#fff" opacity=".45"/>'
-                '<circle cx="112" cy="140" r="34" fill="#fff" opacity=".7"/>'
-                '<circle cx="172" cy="80" r="50" fill="#fff"/>')
-    if kit.id == 'film':
-        return ('<rect x="28" y="100" width="200" height="124" rx="22" fill="#fff"/>'
-                '<rect x="28" y="36" width="200" height="48" rx="14" fill="#fff"/>'
-                f'<path d="M76 36H112L88 84H52ZM148 36H184L160 84H124Z" fill="{h}"/>'
-                f'<path d="M108 128L168 162L108 196Z" fill="{h}"/>')
+        return page + _p('M4 7H5.4L6 10.2L6.9 7H8.1L9 10.2L9.6 7H11L9.7 12H8.4L7.5 9L6.6 12H5.3Z', w)
     if kit.id == 'pdf':
-        return _small_page() + f'<rect x="40" y="124" width="140" height="72" rx="16" fill="{h}"/>' + _line('M72 160H148', '#fff', 20)
+        return page + _r(4, 8, 8, 4, w) + _r(5, 9, 6, 2, d)
+    if kit.id == 'layout':
+        return (_p('M3 1H13Q14 1 14 2V14Q14 15 13 15H3Q2 15 2 14V2Q2 1 3 1Z', c) + _r(4, 3, 8, 4, w)
+                + _r(4, 9, 3, 1, w) + _r(9, 9, 3, 1, w) + _r(4, 12, 3, 1, w) + _r(9, 12, 3, 1, w))
+    if kit.id == 'table':
+        return (_r(1, 2, 14, 12, c, rx=2) + _r(2, 6, 12, 7, w) + _r(2, 8, 12, 1, c) + _r(2, 10, 12, 1, c)
+                + _r(5, 6, 1, 7, c))
+    if kit.id == 'sheet':
+        return (_r(1, 1, 14, 14, c, rx=2) + _r(2, 2, 12, 12, w) + _r(6, 2, 1, 12, c) + _r(10, 2, 1, 12, c)
+                + _r(2, 6, 12, 1, c) + _r(2, 10, 12, 1, c) + _r(7, 7, 3, 3, c))
+    if kit.id == 'board':
+        return (_p('M2 2H14V10L10 14H2Z', c) + _p('M14 10H11Q10 10 10 11V14Z', w, '.6')
+                + _r(4, 5, 7, 1, w) + _r(4, 8, 5, 1, w))
+    if kit.id == 'slide':
+        return (_r(1, 2, 14, 9, c, rx=1.5) + _r(3, 4, 5, 2, w) + _r(10, 6, 3, 3, w)
+                + _r(7, 11, 2, 3, c) + _r(4, 14, 8, 1, c))
+    if kit.id == 'design':
+        return (_r(4, 4, 8, 8, c, '.3') + _r(3, 3, 10, 1, c) + _r(3, 12, 10, 1, c) + _r(3, 3, 1, 10, c)
+                + _r(12, 3, 1, 10, c) + _r(1, 1, 4, 4, c) + _r(11, 1, 4, 4, c) + _r(1, 11, 4, 4, c) + _r(11, 11, 4, 4, c))
+    if kit.id == 'vector':
+        return (_p('M2.8 12.4C4.2 5.6 9.4 10.4 12.2 3.2L14.8 4.3C11 14 5.8 9.4 5.4 13.4Z', c) + _r(1, 11, 4, 4, c)
+                + _r(11, 1, 4, 4, w) + _p('M11 1H15V5H11ZM12 2V4H14V2Z', c))
+    if kit.id == 'photo':
+        return _r(1, 2, 14, 12, c, rx=2) + _p('M3 12L6.5 7.5L9 10.5L10.5 9L13 12Z', w) + _r(10, 4, 2, 2, w)
+    if kit.id == 'effect':
+        return (_p('M10.5 1A4.5 4.5 0 1 1 10.49 1Z', c) + _p('M5.5 7A3 3 0 1 1 5.49 7Z', c, '.7')
+                + _p('M2.5 11.5A2 2 0 1 1 2.49 11.5Z', c, '.45'))
+    if kit.id == 'film':
+        return (_r(1, 6, 14, 9, c, rx=1.5) + _p('M1 2H15V5H1Z', c) + _p('M4 2H6L5 5H3ZM9 2H11L10 5H8Z', w)
+                + _p('M6 8L11 10.5L6 13Z', w))
     if kit.id == 'cad':
-        return ('<path d="M44 36V220H220Z" fill="#fff"/>'
-                f'<path d="M84 124V180H140Z" fill="{h}"/>')
+        return _p('M2 1V15H16Z', c) + _p('M4 7V13H10Z', w)
     raise ValueError(f'unknown kit {kit.id}')
 
 
 def small_icon_svg(kit):
-    """The kit icon for 32 px and below: flat hue tile, one bold white glyph, no gloss or shadow."""
-    gradient = (f'<linearGradient id="hue" x1="0" y1="0" x2=".7" y2="1"><stop offset="0" stop-color="{kit.light}"/>'
-                f'<stop offset="1" stop-color="{kit.mid}"/></linearGradient>')
-    return ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">'
-            f'<defs>{gradient}</defs><rect width="256" height="256" rx="58" fill="url(#hue)"/>'
-            f'{small_glyph(kit)}</svg>\n')
+    """The kit icon for 16 px trees and tabs: the kit's own solid silhouette, no tile."""
+    return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">{small_glyph(kit)}</svg>\n'
