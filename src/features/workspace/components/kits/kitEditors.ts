@@ -1,19 +1,6 @@
-import { createElement, lazy, type ComponentType } from 'react'
 import type { KitIconId } from '@/components/KitIcon'
-import { kitSdkAvailable, type EmbeddedKit, type KitSdkManifest } from '@/features/kits/public'
+import type { EmbeddedKit, KitSdkManifest } from '@/features/kits/public'
 import type { WorkspaceDocumentFormat } from '@/services/desktop'
-import { PhotoKitPane } from '../PhotoKitPane'
-import { PHOTO_SDK } from '../photo/photoKitSdk'
-import { FilmUnavailable } from '../film/FilmUnavailable'
-import { FILM_SDK } from '../film/filmKitSdk'
-import { DesignUnavailable } from '../design/DesignUnavailable'
-import { DESIGN_SDK } from '../design/designKitSdk'
-import { EffectUnavailable } from '../effect/EffectUnavailable'
-import { EFFECT_SDK } from '../effect/effectKitSdk'
-import { VectorUnavailable } from '../vector/VectorUnavailable'
-import { VECTOR_SDK } from '../vector/vectorKitSdk'
-import { StandardKitUnavailable } from './StandardKitUnavailable'
-import { CAD_KIT, PDF_KIT, SHEET_KIT, SLIDE_KIT, WORD_KIT, type StandardKitSpec } from './standardKits'
 
 /** What every kit editor receives from the workspace tab. */
 export type KitEditorProps = {
@@ -24,20 +11,24 @@ export type KitEditorProps = {
 }
 
 /**
- * One kit in the workspace: the file format it opens (from the desktop
- * format table, src-tauri/src/workspace/formats.rs), its SDK, the in-page
- * editor used when the SDK is built into the app, and what the tab shows
- * otherwise. Adding a kit adds one entry here; see docs/kit-sdk.md.
+ * One kit in the workspace: the file format it opens (from the desktop format table,
+ * src-tauri/src/workspace/formats.rs) and the kit's package, which release builds always
+ * include (`scripts/build-kits.sh`). The package holds the kit's own editor, shown in an
+ * iframe (standard 6.1), and its engine, which Kition also uses to make new files.
+ * Adding a kit adds one entry here; see docs/kit-sdk.md.
  */
 export type KitEditorEntry = {
   format: WorkspaceDocumentFormat
-  sdk: KitSdkManifest
-  Editor: ComponentType<KitEditorProps>
-  /** What the tab shows without the SDK; none for formats the file preview already shows (PDF, Office). */
-  Fallback?: ComponentType<KitEditorProps>
-  /** The kit's own editor (standard 6.1), shown in an iframe when its package is built in; it wins over `Editor`. */
-  embedded?: EmbeddedKit
-  /** A create menu item: an empty document of this size, made by the SDK in the page. */
+  /** The kit's package under `public/kits/<dir>/`. */
+  embedded: EmbeddedKit
+  /** The kit's engine inside its package. */
+  engine: KitSdkManifest
+  /** The `<key>Kit` strings and the kit icon. */
+  key: string
+  icon: KitIconId
+  /** The file preview shows this format, and keeps showing it in a build without the kit. */
+  preview?: boolean
+  /** A create menu item: an empty document of this size, made by the kit's engine in the page. */
   create?: KitCreateSpec
 }
 
@@ -50,118 +41,53 @@ export type KitCreateSpec = {
   size: { width: number; height: number }
   /** A key in the workspace strings. */
   label: string
-  /** The kit icon shown in the create menu. */
-  kit: KitIconId
-  /** Without the SDK, the runtime's kit process can create it (`POST /v1/kits/documents/new`). */
-  runtimeFallback?: boolean
 }
 
-/** A kit on the standard editor (StandardKitEditor), which needs no editor code of its own. */
-function standardKit(spec: StandardKitSpec, format: WorkspaceDocumentFormat, options: { create?: KitCreateSpec; preview?: boolean; embedded?: EmbeddedKit } = {}): KitEditorEntry {
+/** A kit packaged by `scripts/build-kit-ui.sh <kit>` into `public/kits/<kit>-ui/`. */
+function kit(name: string, documentClass: string, entry: Omit<KitEditorEntry, 'embedded' | 'engine' | 'key'> & { key?: string }): KitEditorEntry {
+  const dir = `${name}-ui`
   return {
-    format,
-    sdk: spec.sdk,
-    Editor: lazy(() => import('./StandardKitEditor').then((module) => ({ default: (props: KitEditorProps) => createElement(module.StandardKitEditor, { spec, ...props }) }))),
-    // A format the file preview shows keeps that preview without the SDK.
-    Fallback: options.preview ? undefined : () => createElement(StandardKitUnavailable, { spec }),
-    create: options.create,
-    embedded: options.embedded,
+    ...entry,
+    key: entry.key ?? name,
+    embedded: { kitId: `kit.${name}`, dir },
+    engine: { kitId: `kit.${name}`, dir: `${dir}/engine`, module: `kition_${name}_sdk`, documentClass },
   }
 }
 
-/** The kits' own editors, built by `scripts/build-kit-ui.sh <kit>`. */
-const SLIDE_UI: EmbeddedKit = { kitId: 'kit.slide', dir: 'slide-ui' }
-const WORD_UI: EmbeddedKit = { kitId: 'kit.word', dir: 'word-ui' }
-const SHEET_UI: EmbeddedKit = { kitId: 'kit.sheet', dir: 'sheet-ui' }
-const PDF_UI: EmbeddedKit = { kitId: 'kit.pdf', dir: 'pdf-ui' }
-const CAD_UI: EmbeddedKit = { kitId: 'kit.cad', dir: 'cad-ui' }
-const VECTOR_UI: EmbeddedKit = { kitId: 'kit.vector', dir: 'vector-ui' }
-const DESIGN_UI: EmbeddedKit = { kitId: 'kit.design', dir: 'design-ui' }
-const PHOTO_UI: EmbeddedKit = { kitId: 'kit.photo', dir: 'photo-ui' }
-const EFFECT_UI: EmbeddedKit = { kitId: 'kit.effect', dir: 'effect-ui' }
-const FILM_UI: EmbeddedKit = { kitId: 'kit.film', dir: 'film-ui' }
-
 const KIT_EDITORS: readonly KitEditorEntry[] = [
-  {
-    format: 'photo',
-    sdk: PHOTO_SDK,
-    Editor: lazy(() => import('../PhotoWebEditor').then((module) => ({ default: module.PhotoWebEditor }))),
-    Fallback: PhotoKitPane,
-    embedded: PHOTO_UI,
-    create: { id: 'image', extension: 'psd', baseName: 'Untitled image', size: { width: 1920, height: 1080 }, label: 'createMenu.format.image', kit: 'photo', runtimeFallback: true },
-  },
-  {
-    format: 'film',
-    sdk: FILM_SDK,
-    Editor: lazy(() => import('../FilmWebEditor').then((module) => ({ default: module.FilmWebEditor }))),
-    Fallback: FilmUnavailable,
-    embedded: FILM_UI,
-    create: { id: 'video', extension: 'fcproj', baseName: 'Untitled video', size: { width: 1920, height: 1080 }, label: 'createMenu.format.video', kit: 'film' },
-  },
-  {
-    format: 'vector',
-    sdk: VECTOR_SDK,
-    Editor: lazy(() => import('../VectorWebEditor').then((module) => ({ default: module.VectorWebEditor }))),
-    Fallback: VectorUnavailable,
-    embedded: VECTOR_UI,
-    create: { id: 'drawing', extension: 'vectorcraft', baseName: 'Untitled drawing', size: { width: 1920, height: 1080 }, label: 'createMenu.format.drawing', kit: 'vector' },
-  },
-  {
-    format: 'effect',
-    sdk: EFFECT_SDK,
-    Editor: lazy(() => import('../EffectWebEditor').then((module) => ({ default: module.EffectWebEditor }))),
-    Fallback: EffectUnavailable,
-    embedded: EFFECT_UI,
-    create: { id: 'motion', extension: 'ecproj', baseName: 'Untitled motion', size: { width: 1920, height: 1080 }, label: 'createMenu.format.motion', kit: 'effect' },
-  },
-  {
-    format: 'layout',
-    sdk: DESIGN_SDK,
-    Editor: lazy(() => import('../DesignWebEditor').then((module) => ({ default: module.DesignWebEditor }))),
-    Fallback: DesignUnavailable,
-    embedded: DESIGN_UI,
-    // US Letter, in points.
-    create: { id: 'layout', extension: 'designcraft', baseName: 'Untitled layout', size: { width: 612, height: 792 }, label: 'createMenu.format.layout', kit: 'layout' },
-  },
+  kit('photo', 'PhotoDocument', { format: 'photo', icon: 'photo', create: { id: 'image', extension: 'psd', baseName: 'Untitled image', size: { width: 1920, height: 1080 }, label: 'createMenu.format.image' } }),
+  kit('film', 'FilmDocument', { format: 'film', icon: 'film', create: { id: 'video', extension: 'fcproj', baseName: 'Untitled video', size: { width: 1920, height: 1080 }, label: 'createMenu.format.video' } }),
+  kit('vector', 'VectorDocument', { format: 'vector', icon: 'vector', create: { id: 'drawing', extension: 'vectorcraft', baseName: 'Untitled drawing', size: { width: 1920, height: 1080 }, label: 'createMenu.format.drawing' } }),
+  kit('effect', 'EffectDocument', { format: 'effect', icon: 'effect', create: { id: 'motion', extension: 'ecproj', baseName: 'Untitled motion', size: { width: 1920, height: 1080 }, label: 'createMenu.format.motion' } }),
+  // US Letter, in points.
+  kit('design', 'DesignDocument', { format: 'layout', icon: 'layout', create: { id: 'layout', extension: 'designcraft', baseName: 'Untitled layout', size: { width: 612, height: 792 }, label: 'createMenu.format.layout' } }),
   // A3 in millimetres; the engine starts a metric drawing with those limits.
-  standardKit(CAD_KIT, 'cad', { embedded: CAD_UI, create: { id: 'cad', extension: 'dxf', baseName: 'Untitled CAD drawing', size: { width: 420, height: 297 }, label: 'createMenu.format.cad', kit: 'cad' } }),
-  standardKit(SLIDE_KIT, 'slide', { embedded: SLIDE_UI, create: { id: 'slide', extension: 'kislide', baseName: 'Untitled slides', size: { width: 960, height: 540 }, label: 'createMenu.format.slide', kit: 'slide' } }),
-  // PowerPoint files open in the Slides kit, and keep the file preview without it.
-  standardKit(SLIDE_KIT, 'pptx', { preview: true, embedded: SLIDE_UI }),
-  // Word files open in the Word kit, and keep the file preview without it. US Letter, in points.
-  standardKit(WORD_KIT, 'docx', { preview: true, embedded: WORD_UI, create: { id: 'word', extension: 'docx', baseName: 'Untitled Word document', size: { width: 612, height: 792 }, label: 'createMenu.format.word', kit: 'word' } }),
-  // Excel files open in the Sheet kit, and keep the file preview without it.
-  standardKit(SHEET_KIT, 'xlsx', { preview: true, embedded: SHEET_UI, create: { id: 'spreadsheet', extension: 'xlsx', baseName: 'Untitled spreadsheet', size: { width: 1710, height: 2021 }, label: 'createMenu.format.spreadsheet', kit: 'sheet' } }),
-  // PDFs open in the PDF kit, and keep the file preview without it. US Letter, in points.
-  standardKit(PDF_KIT, 'pdf', { preview: true, embedded: PDF_UI, create: { id: 'pdf', extension: 'pdf', baseName: 'Untitled PDF', size: { width: 612, height: 792 }, label: 'createMenu.format.pdf', kit: 'pdf' } }),
+  kit('cad', 'CadDocument', { format: 'cad', icon: 'cad', create: { id: 'cad', extension: 'dxf', baseName: 'Untitled CAD drawing', size: { width: 420, height: 297 }, label: 'createMenu.format.cad' } }),
+  kit('slide', 'SlideDocument', { format: 'slide', icon: 'slide', create: { id: 'slide', extension: 'kislide', baseName: 'Untitled slides', size: { width: 960, height: 540 }, label: 'createMenu.format.slide' } }),
+  // PowerPoint files open in the Slides kit.
+  kit('slide', 'SlideDocument', { format: 'pptx', icon: 'slide', preview: true }),
+  // US Letter, in points.
+  kit('word', 'WordDocument', { format: 'docx', icon: 'word', preview: true, create: { id: 'word', extension: 'docx', baseName: 'Untitled Word document', size: { width: 612, height: 792 }, label: 'createMenu.format.word' } }),
+  kit('sheet', 'SheetDocument', { format: 'xlsx', icon: 'sheet', preview: true, create: { id: 'spreadsheet', extension: 'xlsx', baseName: 'Untitled spreadsheet', size: { width: 1710, height: 2021 }, label: 'createMenu.format.spreadsheet' } }),
+  // US Letter, in points.
+  kit('pdf', 'PdfDocument', { format: 'pdf', icon: 'pdf', preview: true, create: { id: 'pdf', extension: 'pdf', baseName: 'Untitled PDF', size: { width: 612, height: 792 }, label: 'createMenu.format.pdf' } }),
 ]
 
 const availability = new Map<string, Promise<boolean>>()
-const embeddedAvailability = new Map<string, Promise<boolean>>()
 
 /**
- * Whether this build has the kit's own editor: its `kit-ui.json` marker, which a missing package
- * cannot fake (the dev server answers unknown paths with the app's page).
+ * Whether this build includes the kit's package: its `kit-ui.json` marker, which a missing
+ * package cannot fake (the dev server answers unknown paths with the app's page). Release
+ * builds always do; a development build has the kits `make kit-uis` built.
  */
-export function embeddedAvailable(entry: KitEditorEntry) {
-  const kit = entry.embedded
-  if (!kit) return Promise.resolve(false)
-  let known = embeddedAvailability.get(kit.dir)
+export function kitAvailable(entry: KitEditorEntry) {
+  const { dir, kitId } = entry.embedded
+  let known = availability.get(dir)
   if (!known) {
-    known = fetch(`/kits/${kit.dir}/kit-ui.json`, { cache: 'no-store' })
-      .then(async (response) => response.ok && /json/i.test(response.headers.get('content-type') ?? '') && (await response.json()).kitId === kit.kitId)
+    known = fetch(`/kits/${dir}/kit-ui.json`, { cache: 'no-store' })
+      .then(async (response) => response.ok && /json/i.test(response.headers.get('content-type') ?? '') && (await response.json()).kitId === kitId)
       .catch(() => false)
-    embeddedAvailability.set(kit.dir, known)
-  }
-  return known
-}
-
-/** Whether this build has the kit's SDK; asked once per kit. */
-export function sdkAvailable(entry: KitEditorEntry) {
-  let known = availability.get(entry.sdk.kitId)
-  if (!known) {
-    known = kitSdkAvailable(entry.sdk)
-    availability.set(entry.sdk.kitId, known)
+    availability.set(dir, known)
   }
   return known
 }

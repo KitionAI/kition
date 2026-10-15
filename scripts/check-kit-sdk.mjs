@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Checks a built kit SDK (public/kits/<kit>-sdk) against the Kit SDK contract in
+// Checks a built kit engine (public/kits/<kit>-ui/engine, in the kit's package) against the Kit SDK contract in
 // docs/kit-sdk.md, through its JavaScript interface, the way Kition uses it.
 //
 //   node scripts/check-kit-sdk.mjs --kit photo            one kit from kits/sdks.json
@@ -26,9 +26,9 @@ const registry = JSON.parse(fs.readFileSync(path.join(repoRoot, 'kits', 'sdks.js
 if (process.argv.includes('--all')) {
   let failures = 0
   for (const kit of Object.keys(registry).filter((key) => !key.startsWith('$'))) {
-    const built = fs.existsSync(path.join(repoRoot, 'public', 'kits', `${kit}-sdk`, `${registry[kit].module}_bg.wasm`))
+    const built = fs.existsSync(path.join(repoRoot, 'public', 'kits', `${kit}-ui`, 'engine', `${registry[kit].module}_bg.wasm`))
     if (!built) {
-      console.log(`SKIP ${kit}: not built (scripts/build-kit-sdk.sh ${kit})`)
+      console.log(`SKIP ${kit}: not built (make kit-ui-${kit})`)
       continue
     }
     console.log(`== ${kit}`)
@@ -44,7 +44,7 @@ if (kit && !entry) {
   console.error(`kits/sdks.json has no kit "${kit}"`)
   process.exit(2)
 }
-const dir = path.resolve(argument('dir', entry ? path.join(repoRoot, 'public', 'kits', `${kit}-sdk`) : ''))
+const dir = path.resolve(argument('dir', entry ? path.join(repoRoot, 'public', 'kits', `${kit}-ui`, 'engine') : ''))
 const moduleName = argument('module', entry?.module ?? '')
 const className = argument('class', entry?.class ?? '')
 const name = argument('name', entry?.name ?? 'fixture')

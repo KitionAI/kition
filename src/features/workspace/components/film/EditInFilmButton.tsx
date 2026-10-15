@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Clapperboard, Loader2 } from 'lucide-react'
 import { notify } from '@/lib/notify'
 import { requestShowWorkspaceFile } from '@/features/workspace/lib/workspaceFileRequests'
-import { kitEditorFor, sdkAvailable } from '../kits/kitEditors'
+import { kitAvailable, kitEditorFor } from '../kits/kitEditors'
 import { createProjectFromClip } from './filmMovies'
 
 /** "Edit in Film" on a video file: a new project beside it with the clip on a sequence, opened. */
@@ -16,7 +16,7 @@ export function EditInFilmButton({ path }: { path: string }) {
     const film = kitEditorFor('film')
     if (!film) return undefined
     let current = true
-    void sdkAvailable(film).then((yes) => {
+    void kitAvailable(film).then((yes) => {
       if (current) setAvailable(yes)
     })
     return () => {

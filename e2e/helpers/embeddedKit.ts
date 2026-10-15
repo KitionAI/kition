@@ -7,9 +7,9 @@ import { installDesktopHost } from './desktopHost'
 import { fulfillJson, mockLocalWorkspaceApi } from './mockApi'
 import { dismissFirstRunActivation } from './onboarding'
 
-/** A kit's engine built into `public/kits/<kit>-sdk`, loaded in Node to make and read fixtures. */
+/** A kit's engine in its package, `public/kits/<kit>-ui/engine`, loaded in Node to make and read fixtures. */
 export function kitEngine<T>(kit: string, module: string) {
-  const dir = path.join(process.cwd(), 'public', 'kits', `${kit}-sdk`)
+  const dir = path.join(process.cwd(), 'public', 'kits', `${kit}-ui`, 'engine')
   const wasm = path.join(dir, `${module}_bg.wasm`)
   return {
     built: existsSync(wasm) && existsSync(path.join(process.cwd(), 'public', 'kits', `${kit}-ui`, 'kit-ui.json')),
@@ -35,18 +35,15 @@ async function serveWorkspace(page: Page, root: string) {
 }
 
 /**
- * Opens `name` (written to the workspace from `bytes`) in Kition, where the kit's own editor
- * shows in a frame; answers the frame, and the files Kition saved through its file API.
+ * Kition on a desktop workspace whose files kits read through the file server. Files Kition saves
+ * through its file API are recorded in `saves`, and with `persist` also written to the workspace.
  */
-export async function openInKitFrame(page: Page, baseURL: string, name: string, bytes: Buffer, others: Record<string, Buffer> = {}) {
+export async function openKitWorkspace(page: Page, baseURL: string, files: Record<string, Buffer> = {}, { persist = false } = {}) {
   const host = await installDesktopHost(page)
-  // Files the document links (media), workspace-relative.
-  for (const [other, content] of Object.entries(others)) {
-    await fs.mkdir(path.dirname(path.join(host.root, other)), { recursive: true })
-    await fs.writeFile(path.join(host.root, other), content)
+  for (const [name, content] of Object.entries(files)) {
+    await fs.mkdir(path.dirname(path.join(host.root, name)), { recursive: true })
+    await fs.writeFile(path.join(host.root, name), content)
   }
-  await fs.mkdir(path.dirname(path.join(host.root, name)), { recursive: true })
-  await fs.writeFile(path.join(host.root, name), bytes)
   await mockLocalWorkspaceApi(page)
   await serveWorkspace(page, host.root)
   const saves: Array<{ path: string | null; bytes: Buffer }> = []
@@ -54,10 +51,20 @@ export async function openInKitFrame(page: Page, baseURL: string, name: string, 
     const target = new URL(route.request().url()).searchParams.get('path')
     const body = route.request().postDataBuffer() ?? Buffer.alloc(0)
     saves.push({ path: target, bytes: body })
+    if (persist && target) await fs.writeFile(path.join(host.root, target), body)
     await fulfillJson(route, { code: 200, message: 'success', data: { path: target, bytes: body.length } })
   })
   await page.goto(new URL('/documents', baseURL).toString(), { waitUntil: 'domcontentloaded' })
   await dismissFirstRunActivation(page)
+  return { host, saves }
+}
+
+/**
+ * Opens `name` (written to the workspace from `bytes`) in Kition, where the kit's own editor
+ * shows in a frame; answers the frame, and the files Kition saved through its file API.
+ */
+export async function openInKitFrame(page: Page, baseURL: string, name: string, bytes: Buffer, others: Record<string, Buffer> = {}) {
+  const { host, saves } = await openKitWorkspace(page, baseURL, { ...others, [name]: bytes })
   // A document in a folder: open the folder in the tree first.
   for (const folder of name.split('/').slice(0, -1)) await page.locator('.document-tree-row', { hasText: folder }).first().click()
   await page.locator('.document-tree-row', { hasText: (name.split('/').pop() ?? name).replace(/\.[^.]+$/, '') }).first().click()

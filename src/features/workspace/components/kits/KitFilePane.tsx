@@ -1,35 +1,40 @@
-import { Suspense, useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
+import { KitIcon } from '@/components/KitIcon'
 import { KitFrame } from '@/features/kits/public'
-import { embeddedAvailable, sdkAvailable, type KitEditorEntry, type KitEditorProps } from './kitEditors'
+import { kitAvailable, type KitEditorEntry, type KitEditorProps } from './kitEditors'
 
 /**
- * A file a kit opens: the kit's in-page editor when its SDK is built in; otherwise the kit's
- * fallback, or `preview` (the file preview) for a kit without one.
+ * A file a kit opens, in the kit's own editor. Release builds include every kit; a development
+ * build without the kit's package shows the file preview for formats it shows, or says so.
  */
 export function KitFilePane({ kit, preview, ...props }: KitEditorProps & { kit: KitEditorEntry; preview: ReactNode }) {
-  const [inPage, setInPage] = useState<boolean | null>(null)
-  const [own, setOwn] = useState<boolean | null>(null)
+  const [available, setAvailable] = useState<boolean | null>(null)
 
   useEffect(() => {
     let current = true
-    void Promise.all([embeddedAvailable(kit), sdkAvailable(kit)]).then(([embedded, available]) => {
-      if (!current) return
-      setOwn(embedded)
-      setInPage(available)
+    void kitAvailable(kit).then((yes) => {
+      if (current) setAvailable(yes)
     })
     return () => {
       current = false
     }
   }, [kit])
 
-  if (inPage == null || own == null) return null
-  // The kit's own editor first (standard 6.1), then Kition's editor on the kit's engine.
-  if (own && kit.embedded) return <KitFrame kit={kit.embedded} {...props} />
-  const Editor = inPage ? kit.Editor : kit.Fallback
-  if (!Editor) return preview
+  if (available == null) return null
+  if (available) return <KitFrame kit={kit.embedded} {...props} />
+  return kit.preview ? preview : <KitUnavailable kit={kit} />
+}
+
+function KitUnavailable({ kit }: { kit: KitEditorEntry }) {
+  const { t } = useTranslation('workspace')
   return (
-    <Suspense fallback={null}>
-      <Editor {...props} />
-    </Suspense>
+    <div className="flex h-full items-center justify-center p-8" data-testid={`${kit.key}-unavailable`}>
+      <div className="max-w-md rounded-xl border border-border bg-background p-6 text-center">
+        <KitIcon kit={kit.icon} className="mx-auto mb-3 size-8" />
+        <p className="text-[15px] font-semibold text-foreground">{t(`${kit.key}Kit.unavailableTitle`)}</p>
+        <p className="mt-2 text-[13px] text-muted-foreground">{t(`${kit.key}Kit.unavailableBody`)}</p>
+      </div>
+    </div>
   )
 }

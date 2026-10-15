@@ -783,7 +783,6 @@ export function WorkspaceScreen({
   }), [openSidebarPath, refreshWorkspaceDocuments])
 
   const kitCreations = useKitCreations({
-    rootPath,
     refreshWorkspaceDocuments,
     openPath: openSidebarPath,
     onError: setError,

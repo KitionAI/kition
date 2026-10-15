@@ -1,6 +1,7 @@
 # Kit UI Rollout: Every Kit Draws Its Own Editor
 
-Status record, 2026-10-12. See `docs/kit-sdk.md` section 4a for how it works.
+Status record, 2026-10-12; updated 2026-10-15 when Kition's own kit editors
+were removed. See `docs/kit-sdk.md` section 4 for how it works.
 
 ## Decision
 
@@ -31,9 +32,9 @@ Status record, 2026-10-12. See `docs/kit-sdk.md` section 4a for how it works.
 | Development host | kition-sdk `packages/kit-dev-host` (each kit's `web/dev.html`) |
 | Scaffold, command listing | kition-sdk `tools/new-kit-ui.mjs`, `tools/kit-commands.mjs` |
 | Kition frame | `src/features/kits/kition/KitFrame.tsx`, `pickWorkspaceFile.ts` |
-| Registration | `src/features/workspace/components/kits/kitEditors.ts` (`embedded`) |
+| Registration | `src/features/workspace/components/kits/kitEditors.ts` |
 | Build | `make kit-uis` or `make kit-ui-<kit>` into `public/kits/<kit>-ui/` |
-| Tests | `e2e/<kit>-embedded.spec.ts`, `e2e/helpers/embeddedKit.ts`, `e2e/kit-bridge.spec.ts` (both editors) |
+| Tests | `e2e/<kit>-embedded.spec.ts`, `e2e/helpers/embeddedKit.ts`, `e2e/kit-bridge.spec.ts` |
 
 ## The Kits
 
@@ -59,8 +60,6 @@ embedded spec, run in both browsers.
 
 - Kition's `host/pick` copies the chosen file next to the document, which is
   wasteful for large media.
-- `desktop-photo-kit.spec.ts` "imports a PSD dropped from the OS" fails in
-  WebKit, also without these changes; the WebKit gate does not run that spec.
 - The full kit e2e is flaky under heavy machine load; two workers are stable.
 
 ## Next Steps

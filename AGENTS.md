@@ -100,22 +100,23 @@ covers the three GFM table widget row and column button regressions.
 - Kition is the standard's reference implementation, and its agent targets
   DeepSeek Harness contracts (tool definitions, session event log, SDK
   protocol) by contract, not by embedding another runtime.
-- Kit editors run in the page: the kit's engine is compiled to WebAssembly,
-  runs in a Web Worker, and paints into a canvas, while Kition draws all
-  chrome. Never embed a kit's native window over a tab; that was tried and
-  rejected. Native kit executables run only `headless`, for the agent.
-- Build every kit editor on `src/features/kits/public.ts` (`useKitDocument`,
-  `KitCanvas` with `KitTool`s, `useKitEditor`, `KitEditorFrame`) and register
-  it in `src/features/workspace/components/kits/kitEditors.ts` and
-  `kits/sdks.json`. Put shared behavior in the template, not in one kit.
-- When a kit's engine owns its tools (manifest capability `engine-tools`),
-  run them through `useEngineTools` and `EngineToolRail` and draw only the engine's overlays;
-  never re-implement an engine's tools or selection display in Kition. If the
-  upstream app draws something in its own UI, port it into the kit's SDK
-  crate as engine overlays.
-- `src/features/kits/sdk/` is the portable core of the open Kit SDK: it must
-  never import the rest of Kition (`pnpm check:deps` enforces it). Shared
-  strings under `workspace:kitEditor.*` must never name a kit.
+- Kit editors run in the page: the kit's engine is compiled to WebAssembly
+  and runs in a Web Worker, and the kit draws its own editor (its repository's
+  `web/` on kition-sdk's `@kition/kit-ui`), which Kition shows in an iframe
+  over the Kit UI protocol (`KitFrame`). Never embed a kit's native window over
+  a tab, and never build kit editors inside Kition; both were tried and
+  removed. Native kit executables run only `headless`, for the agent.
+- A kit's package (`public/kits/<kit>-ui/`: editor, engine, fonts) must stay
+  self-contained (standard UI-K1) so other applications can embed it. Kition
+  ships every kit's package inside the app. Register a kit in
+  `src/features/workspace/components/kits/kitEditors.ts` and
+  `kits/sdks.json`; see `docs/kit-sdk.md`.
+- If the upstream app draws something in its own UI, port it into the kit's
+  SDK crate as engine overlays or into the kit's editor, never into Kition.
+- `src/features/kits/sdk/` loads a kit's engine in the page (Kition makes new
+  files with it): it must never import the rest of Kition (`pnpm check:deps`
+  enforces it). Shared strings under `workspace:kitEditor.*` must never name a
+  kit.
 - A kit SDK implements `KitDocument` from the private `KitionAI/kition-sdk`
   crate (Apache-2.0), exports it with `export_kit_document!`, and passes
   `kition_sdk::testing::check_contract` in its tests and `pnpm check:kit-sdks`

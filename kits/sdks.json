@@ -1,5 +1,5 @@
 {
-  "$comment": "Kit SDKs built into public/kits/<kit>-sdk by scripts/build-kit-sdk.sh, and how scripts/check-kit-sdk.mjs checks each one (docs/kit-sdk.md).",
+  "$comment": "Kit engines, built into each kit's package public/kits/<kit>-ui/engine by scripts/build-kit-ui.sh, and how scripts/check-kit-sdk.mjs checks each one (docs/kit-sdk.md).",
   "photo": {
     "repository": "KitionAI/kition-photo",
     "crate": "kition-photo-sdk",

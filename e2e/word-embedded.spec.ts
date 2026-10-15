@@ -8,7 +8,7 @@ import { fulfillJson, mockLocalWorkspaceApi } from './helpers/mockApi'
 import { dismissFirstRunActivation } from './helpers/onboarding'
 import { canReadBlobBodies } from './helpers/requestBody'
 
-const SDK_DIR = path.join(process.cwd(), 'public', 'kits', 'word-sdk')
+const SDK_DIR = path.join(process.cwd(), 'public', 'kits', 'word-ui', 'engine')
 const UI_MARKER = path.join(process.cwd(), 'public', 'kits', 'word-ui', 'kit-ui.json')
 const SDK_WASM = path.join(SDK_DIR, 'kition_word_sdk_bg.wasm')
 

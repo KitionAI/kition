@@ -1,7 +1,11 @@
 # Kit Platform Architecture
 
 Status: proposal, 2026-10-09; revised 2026-10-10 for the in-process Rust
-runtime and for `kit.photo` as the first kit.
+runtime and for `kit.photo` as the first kit. Partly superseded: kits draw
+their own editors in the page as WebAssembly packages, and Kition ships every
+package inside the app (2026-10-15), so the native surfaces (section 6) and the
+per-platform download flow (section 8) no longer apply to kit editors. See
+[kit-sdk.md](kit-sdk.md).
 
 Kition is a workspace for documents, data, media, and an AI agent that works
 across all of them. This document defines how professional editors (images,
@@ -438,8 +442,9 @@ mock kit; `tests/photo.rs` runs against a real build when
 Ordinary PNG and JPEG files keep opening in Kition's own preview; they open in
 `kit.photo` only when the user chooses to edit them there.
 
-With the Photo SDK built (`scripts/build-kit-sdk.sh photo`), the tab edits the
-image in the page instead; see [kit-sdk.md](kit-sdk.md). Editor feel (stroke
+Superseded on 2026-10-10 and removed from the renderer on 2026-10-15: every
+kit now draws its own editor in the page, and Kition ships every kit's
+package inside the app; see [kit-sdk.md](kit-sdk.md). Editor feel (stroke
 latency, scrolling, focus) must still be validated in the real desktop client.
 
 ## 12. Risks

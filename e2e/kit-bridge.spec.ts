@@ -7,7 +7,7 @@ import { installDesktopHost } from './helpers/desktopHost'
 import { fulfillJson, mockLocalWorkspaceApi } from './helpers/mockApi'
 import { dismissFirstRunActivation } from './helpers/onboarding'
 
-const SDK_DIR = path.join(process.cwd(), 'public', 'kits', 'vector-sdk')
+const SDK_DIR = path.join(process.cwd(), 'public', 'kits', 'vector-ui', 'engine')
 const SDK_WASM = path.join(SDK_DIR, 'kition_vector_sdk_bg.wasm')
 
 type NodeVectorSdk = {
@@ -54,17 +54,14 @@ function bridgeEvents(file: string) {
 
 const UI_MARKER = path.join(process.cwd(), 'public', 'kits', 'vector-ui', 'kit-ui.json')
 
-// The same bridge, to Kition's own editor for the kit and to the kit's embedded editor (KitFrame).
-for (const editor of ['kition', 'embedded'] as const) {
-test(`the agent edits a drawing open in the page through the Kit AI bridge (${editor} editor)`, async ({ page, baseURL }) => {
-  test.skip(!existsSync(SDK_WASM), 'the Vector engine is not built into public/kits/vector-sdk')
-  test.skip(editor === 'embedded' && !existsSync(UI_MARKER), 'the Vector kit editor is not built into public/kits/vector-ui')
+// The bridge to the kit's own editor (KitFrame).
+test('the agent edits a drawing open in the page through the Kit AI bridge', async ({ page, baseURL }) => {
+  test.skip(!existsSync(SDK_WASM) || !existsSync(UI_MARKER), 'the Vector kit is not built into public/kits/vector-ui')
   test.setTimeout(90_000)
   const host = await installDesktopHost(page)
   try {
     await fs.writeFile(path.join(host.root, 'Logo.vectorcraft'), await drawingFixture())
     await mockLocalWorkspaceApi(page)
-    if (editor === 'kition') await page.route('**/kits/vector-ui/kit-ui.json', (route) => route.fulfill({ status: 404, body: '' }))
     await serveWorkspace(page, host.root)
     let streams = 0
     await page.route('**/v1/kits/bridge', async (route) => {
@@ -85,8 +82,8 @@ test(`the agent edits a drawing open in the page through the Kit AI bridge (${ed
     await dismissFirstRunActivation(page)
     await page.locator('.document-tree-row', { hasText: 'Logo' }).first().click()
     // The editor offers the open drawing to the bridge as soon as it has opened it.
-    const view = editor === 'kition' ? page : page.frameLocator('[data-testid="kit-frame-window"]')
-    const marks = editor === 'kition' ? { unsaved: 'kit-unsaved', agent: 'kit-agent-edited' } : { unsaved: 'vector-unsaved', agent: 'vector-agent-edited' }
+    const view = page.frameLocator('[data-testid="kit-frame-window"]')
+    const marks = { unsaved: 'vector-unsaved', agent: 'vector-agent-edited' }
     await expect(view.getByTestId('vector-status')).toContainText('objects', { timeout: 30_000 })
 
     const answer = async (id: number) => {
@@ -126,4 +123,3 @@ test(`the agent edits a drawing open in the page through the Kit AI bridge (${ed
     await host.dispose()
   }
 })
-}

@@ -118,16 +118,6 @@ export function createKitSdkDocument(module: KitSdkModule, manifest: KitSdkManif
   return documentClass.create(name, width, height)
 }
 
-/** Whether a kit's SDK is built into this app (a missing file falls back to the app page). */
-export async function kitSdkAvailable(manifest: KitSdkManifest) {
-  try {
-    const response = await fetch(sdkURL(manifest, `${manifest.module}.js`), { method: 'HEAD' })
-    return response.ok && /javascript/i.test(response.headers.get('content-type') ?? '')
-  } catch {
-    return false
-  }
-}
-
 /** A kit's commands from its SDK's `commands()` JSON. */
 export function kitSdkCommands(json: string): KitCommand[] {
   const commands = JSON.parse(json) as Array<{ id: string; title: string; menu: string[] | null; shortcut: string | null; mutates: boolean; enabled: boolean; description?: string | null; schema?: Record<string, unknown> | null; params?: string | null }>

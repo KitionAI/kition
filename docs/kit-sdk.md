@@ -1,7 +1,7 @@
 # Kit SDK: Editing Kit Files Inside Kition
 
-Status: in use for `kit.photo` and `kit.film` since 2026-10-10. Every new kit
-must follow this guide.
+Status: in use for all ten kits. Revised 2026-10-15: every kit draws its own
+editor, and Kition's own kit editors are gone. Every new kit must follow this guide.
 
 This guide is how Kition implements the **Kition Kit Standard**, which is
 normative: [`docs/standard.md`](https://github.com/KitionAI/kition-sdk/blob/main/docs/standard.md)
@@ -14,10 +14,13 @@ fixed. Every kit ships a `kit.json` manifest checked by the standard's
 ## 1. The Decision
 
 A kit's editor runs **inside the Kition tab**. The kit's engine is compiled to
-WebAssembly (its *SDK*), runs in a Web Worker, and paints pixels into a
-`<canvas>`. Kition draws everything else: header, menus, tool rail, options
-bar, panels, status bar, notices. The person sees one product, like the suites
-of an office package, not a separate program.
+WebAssembly (its *SDK*) and runs in a Web Worker. The kit's own editor (React,
+on kition-sdk's `@kition/kit-ui`, in the kit repository's `web/`) draws the
+menus, panels, and canvas around it, and Kition shows that editor in an
+iframe over the Kit UI protocol (section 4). The kit's engine and editor form
+one **kit package**, which needs nothing from Kition, so other applications
+can embed the same package with `@kition/kit-host`. Kition ships every kit's
+package inside the app; there is no install step.
 
 The kit's native executable still exists, but only `headless`: the runtime
 starts it for the agent and for conversions. It never shows a window. For a
@@ -34,9 +37,9 @@ the person sees the edit at once, it joins the editor's undo history, and the
 header says "Edited by the agent" until the person edits again. The renderer
 holds one event stream per window (`GET /v1/kits/bridge`, one JSON-RPC
 message per event: `kit/documents`, `kit/call`, `kit/preview`) and answers
-with `POST /v1/kits/bridge?session=` (and sends `kit.changed`). Every editor
-on `useKitEditor` takes part with no kit code (`kition/useKitBridge.ts`,
-`kition/kitBridge.ts`; runtime side `crates/kition-kits/src/bridge.rs`). With
+with `POST /v1/kits/bridge?session=` (and sends `kit.changed`). `KitFrame`
+forwards it to the kit's editor as `ai/*` (`kition/kitBridge.ts`; runtime
+side `crates/kition-kits/src/bridge.rs`). With
 no window open on the file, the agent uses the headless kit as before.
 
 The same kit tools serve other harnesses as an MCP server (`crates/kition-kits/src/tools.rs`,
@@ -49,9 +52,15 @@ Rejected on 2026-10-10 after a real-app trial: embedding the kit's native
 editor in an overlay window above the tab (`surface: embedded`, plan B). It
 felt like a second program, showed two canvases and extra scroll bars, and
 could not share Kition's menus, dialogs, or focus. Do not build new kits that
-way. The plan B code (`PhotoKitEditor`, `/v1/kits/surfaces`,
-`src-tauri/src/kit_host.rs`) remains only as Photo's fallback for builds
-without the SDK and is slated for removal.
+way. The renderer side of plan B (`PhotoKitPane`, `PhotoKitEditor`) was
+removed on 2026-10-15; the runtime's `/v1/kits/surfaces` and document routes
+are next.
+
+Also removed on 2026-10-15: Kition's own editors on a kit's engine
+(`<Kit>WebEditor`, `StandardKitEditor`, `KitEditorFrame`, `KitCanvas`), which
+predated the kits' own editors, and the separate `public/kits/<kit>-sdk`
+engine builds. Kition loads a kit's engine from its package
+(`public/kits/<kit>-ui/engine/`) only to make new files.
 
 ## 2. The Pieces
 
@@ -61,21 +70,24 @@ kit repository (for example KitionAI/kition-photo, standalone, private)
   (git dependency) kition-sdk     KitionAI/kition-sdk: KitDocument, export_kit_document!,
                                   testing::check_contract, host (lent files), raster
   crates/kition-<kit>-sdk         the kit's SDK: its engine behind KitDocument, as WebAssembly
+  web/                            the kit's own editor on @kition/kit-ui; with the engine,
+                                  the kit package (web/scripts/build-engine.sh, pnpm build)
   apps/kit-<kit>                  the headless Kit Protocol executable (agent)
   KITION_CHANGES.md               every upstream file Kition changed, and why
 
 Kition (this repository)
-  kits/sdks.json                  every kit SDK: crate, module, class, and its contract-check edit
-  public/kits/<kit>-sdk/          the built SDK (not committed; scripts/build-kit-sdk.sh <kit>)
-  src/features/kits/sdk/          the portable TypeScript core of the Kit SDK (section 4); it
-                                  imports nothing else from Kition (enforced by check:deps)
-  src/features/kits/kition/       Kition's editor chrome and workspace host for kits
+  kits/sdks.json                  every kit engine: crate, module, class, and its contract-check edit
+  public/kits/<kit>-ui/           the kit package: editor, engine/, fonts/, kit-ui.json
+                                  (not committed; scripts/build-kit-ui.sh <kit>, make kit-uis)
+  src/features/kits/kition/       KitFrame (the kit's editor in an iframe), the workspace
+                                  host, and the Kit AI bridge
+  src/features/kits/host/         Kition's copy of @kition/kit-protocol and @kition/kit-host
+  src/features/kits/sdk/          loads a kit's engine in the page; Kition makes new files
+                                  with it (createKitFile); imports nothing else from Kition
   src/features/workspace/components/kits/kitEditors.ts
-                                  the registry: format -> SDK, editor, fallback
-  src/features/workspace/components/<Kit>WebEditor.tsx and <kit>/
-                                  the kit's own tools, panels, and options
-  scripts/check-kit-sdk.mjs       checks a built SDK against the contract (pnpm check:kit-sdks)
-  crates/kition-kits/             the runtime side: kit definitions, /v1/kits routes,
+                                  the registry: format -> kit package, engine, create menu item
+  scripts/check-kit-sdk.mjs       checks a built engine against the contract (pnpm check:kit-sdks)
+  crates/kition-kits/             the runtime side: kit definitions, the bridge,
                                   PUT /v1/kits/files for in-page saves
   crates/kition-agent/src/tools/kits.rs
                                   the agent tools, which drive the headless kit
@@ -171,10 +183,11 @@ entry in `kits/sdks.json`. `pnpm check:kit-sdks` checks every built kit. A
 third party checks any SDK with `--dir`, `--module`, `--class`, `--name`, and
 `--edit`.
 
-Build it with `scripts/build-kit-sdk.sh <kit>`. It needs `wasm-pack` and a
-Rust toolchain new enough for the kit; kit-photo needs 1.95, and the script
-handles macOS `rust-lld`'s library path. The output, about 20 MB for Photo, is
-not committed. wasm-pack writes a `.gitignore` of `*` into it.
+The kit package's build (`scripts/build-kit-ui.sh <kit>`, through the kit's
+`web/scripts/build-engine.sh`) builds the engine into `engine/`. It needs
+`wasm-pack` and a Rust toolchain new enough for the kit; kit-photo needs 1.95,
+and the script handles macOS `rust-lld`'s library path. The output, about
+20 MB for Photo, is not committed.
 
 Lent files: `kition_sdk::host::{size, read_range, read}` are synchronous.
 Kition's worker answers them (`src/features/kits/sdk/lentFiles.ts`) with
@@ -191,70 +204,38 @@ changed since it read it and nothing is unsaved there. Otherwise the agent
 edits a stale copy and its save overwrites the person's work. See
 `PhotoHeadless::open` and `file_times` in kit-photo.
 
-## 4. The Template (Kition Side)
+## 4. Kits In Kition (Standard 6.1)
 
-`src/features/kits/public.ts` is the only import path; it re-exports what
-kits use, and more of `sdk/` can be added when a kit needs it. The template
-has two layers.
-
-**`sdk/`, the portable core.** It depends on React and itself only, and is
-what the open Kit SDK will publish:
-
-| Export | Role |
-| --- | --- |
-| `KitSdkManifest`, `kitSdkAvailable` | Where an SDK lives (`{ kitId, dir, module, documentClass }`) and whether this build has it |
-| `KitEngine` | One document in its own worker; async calls answered in order; `info` (`width`, `height`, `revision`, `dirty`, `canUndo`, `canRedo`, `inspected`) is current after every change; `invoke(name, …args)` reaches an SDK's own extras; a worker failure rejects every waiting call |
-| `KitHost` | File IO: `read`, `stamp`, `write` |
-| `useKitDocument(host, manifest, path, active, describe)` | Loads the file, follows it on disk, runs commands with a repaint area, saves in place; `describe(info)` maps `inspected` to the kit's view model; `tool(name, args, settled)` calls an engine tool method and refreshes `info` only when the call changed the document or ends a gesture (`inspect()` costs, so mid-drag calls skip it) |
-| `KitCanvas` | The document on a canvas (`initialArea` fits a part of it first, as a layout's first spread; the handle's `show(area)` brings an area into view): the active `KitTool` gets gestures in document pixels; Space (unless `spacePans` is off, as in a player), the middle button, and `HAND_TOOL` pan; the wheel pans and zooms with Cmd or Ctrl; pointer capture and coalesced events; a preview overlay; `decorate` with `animated` for marching ants; HTML children for inline fields |
-| `KitTool`, `KitGesture`, `KitPointer`, `HAND_TOOL`, `ZOOM_TOOL`, `dragRect` | Tools: `begin(pointer, { viewport, overlay })` returns a gesture with `move`, `end`, `cancel`; optional `hover` (no button held) and `doubleClick` |
-| `useEngineTools(document.tool, ready, change, options)` | The engine-tools bridge (standard U3a) for kits whose engine owns its tools: the rail's tools from `tools()`, the active tool as a `KitTool`, its overlays as a `decorate` function, its cursor, `keyDown` (Enter, Escape, arrows, and typed text while the tool is mid-gesture or editing text), `toolForKey` for single-key shortcuts, `status`; `hostTools` keeps view tools (Hand, Zoom) with the host. Events go to the worker one at a time; while one is out only the newest drag or hover waits, and printable keys wait in the same queue (`onDeferredKey` gets those that turn out not to be text) |
-| `RasterViewport` | The canvas engine: cached frame, pan, zoom, fit, exact damage patches, sampling, `toScreen` |
-| `commandForShortcut` (internal) | Shortcut matching used by the frame |
-
-**`kition/`, Kition's chrome.**
-
-| Export | Role |
-| --- | --- |
-| `KITION_KIT_HOST` | The workspace as a `KitHost` |
-| `useKitEditor(document, { onOpenAgent })` | Command list (at once on open, then throttled to every 250 ms while the document changes), `run` returning the command's JSON result (or null after a notice), `runShortcut`, save notices, "save before asking the agent" |
-| `KitEditorFrame` | Header, menus, options, tools, canvas, panels, a `bottom` panel (timelines), status bar; opening, failure, and changed-on-disk states. Keys go to the kit first, then Cmd/Ctrl+S, then the command bound to the key (modified keys, Delete, Backspace, F-keys; never Kition's Cmd+N, W, O, P, Q, T, or comma); the engine is asked whether it can run at that moment |
-| `KitMenuBar` | Menus from the commands in a given top-level order |
-| `EngineToolRail` | The rail for engine tools: one slot per tool group, the rest of the group on right-click; Kition's icons for the Craft engines' `tool-<kind>` names |
-
-Shared test ids: `kit-editor`, `kit-unsaved`, `kit-save`, `kit-ask-agent`,
-`kit-menu-bar`, `kit-menu-<Menu>`, `kit-menu-command-<id>`,
-`kit-canvas-region`, `kit-canvas`, `kit-canvas-surface`, `kit-opening`,
-`kit-file-changed`, `kit-file-reload`, `kit-status-bar`. Shared strings live
-under `workspace:kitEditor.*` and must never name a kit.
-
-## 4a. Kits With Their Own Editor (Standard 6.1)
-
-From standard 1.1 a kit draws its own editor, the way new kits should: the
-kit repository's `web/` app (React, on kition-sdk's `@kition/kit-ui`) holds
-the ribbon, panels, canvas, and dialogs next to the engine, and Kition shows
-it in an iframe and talks to it over the Kit UI protocol (`kition-kit-ui/1`,
-kition-sdk `docs/ui-protocol.md`). Kition keeps the shell: files, the
-workspace, the agent, the theme, the language, and its own shortcuts. All ten
-kits have one: Slides, Word, Sheet, PDF, and CAD (ribbon editors on
-kit-ui's `KitShell`), and Photo, Vector, Design, Effect, and Film (menu-bar
-editors on `KitAppShell`, with a tool rail of flyout slots and side panels).
+A kit draws its own editor: the kit repository's `web/` app (React, on
+kition-sdk's `@kition/kit-ui`) holds the ribbon, panels, canvas, and dialogs
+next to the engine, and Kition shows it in an iframe and talks to it over the
+Kit UI protocol (`kition-kit-ui/1`, kition-sdk `docs/ui-protocol.md`). Kition
+keeps the shell: files, the workspace, the agent, the theme, the language, and
+its own shortcuts. All ten kits have one: Slides, Word, Sheet, PDF, and CAD
+(ribbon editors on kit-ui's `KitShell`), and Photo, Vector, Design, Effect,
+and Film (menu-bar editors on `KitAppShell`, with a tool rail of flyout slots
+and side panels).
 
 - `scripts/build-kit-ui.sh <kit>` builds the kit's engine and editor into
   `public/kits/<kit>-ui/` with a `kit-ui.json` marker (`make kit-ui-<kit>`;
-  `make kit-uis` for all of `KIT_UIS`).
-- `src/features/kits/kition/KitFrame.tsx` mounts it: the document's bytes,
-  Kition's theme tokens and language, `host/read` and `host/write` through
-  the workspace file API, paths confined to the workspace, new files and
-  exports under unused names (a rendered movie arrives as `host/write` in
+  `make kit-uis` for all of `KIT_UIS`). The package keeps its own fonts and
+  assets (UI-K1), so it stays embeddable without Kition.
+- `src/features/kits/kition/KitFrame.tsx` mounts a package: the document's
+  bytes, Kition's theme tokens and language, `host/read` and `host/write`
+  through the workspace file API, paths confined to the workspace, new files
+  and exports under unused names (a rendered movie arrives as `host/write` in
   export mode), `host/pick` (the person chooses a file, which Kition copies
   next to the document), Kition's shortcuts forwarded back, and the Kit AI
   bridge forwarded to the frame as `ai/*`. It mounts on the protocol's
   `ready` handshake, never the frame's `load` event, and abandons a mount its
   effect no longer needs.
-- A kit entry in `kits/kitEditors.ts` names its package with `embedded`;
-  `KitFilePane` prefers it when the marker is present, then Kition's own
-  editor on the kit's engine, then the fallback or the file preview.
+- `KIT_EDITORS` in `kits/kitEditors.ts` maps a format to its kit package.
+  `KitFilePane` shows the package when its `kit-ui.json` is present. A
+  development build without the package shows the file preview for formats
+  the preview shows (`preview: true`: PDF and Office), or a short notice.
+- New files (the create menu, Film's "Edit in Film") are made in the page by
+  the engine inside the package (`createKitFile`, the `engine` manifest of the
+  entry), under an unused name, written through the host.
 - `src/features/kits/host/` is Kition's copy of `@kition/kit-protocol` and
   `@kition/kit-host` (kition-sdk is private, Kition public):
   `node scripts/sync-kit-host.mjs` copies them, and `pnpm check:kit-host`
@@ -263,11 +244,11 @@ editors on `KitAppShell`, with a tool rail of flyout slots and side panels).
   suite checks manifests against.
 - A kit's development host (`web/dev.html`, kition-sdk's `@kition/kit-dev-host`)
   runs the editor without Kition, with an in-memory workspace; it can lend a
-  folder of linked media.
-- `e2e/<kit>-embedded.spec.ts` opens a file in each kit's own editor through
-  `e2e/helpers/embeddedKit.ts`; the older `<kit>-web-editor` specs answer the
-  kit's `kit-ui.json` with 404 to keep covering Kition's own editors, and
-  `kit-bridge.spec.ts` drives the agent bridge against both.
+  folder of linked media. It is also the reference for other hosts.
+- `e2e/<kit>-embedded.spec.ts` opens a file in each kit's editor through
+  `e2e/helpers/embeddedKit.ts`, and `kit-bridge.spec.ts` drives the agent
+  bridge against it. They make fixtures with the package's engine in Node and
+  skip themselves when the package is not built.
 - Web engines embed no Chinese face; kits that draw text export `addFont`
   (standard E9), and their editors ship Droid Sans Fallback from the
   `kition-fonts` checkout next to the kit (`web/scripts/build-engine.sh`).
@@ -310,49 +291,27 @@ Kition runtime and desktop:
 
 Kition renderer:
 
-8. An entry in `kits/sdks.json`, then `scripts/build-kit-sdk.sh <kit>` and
-   `pnpm check:kit-sdks`.
-9. A kit that needs no panels of its own uses the standard editor
-   (`kits/StandardKitEditor.tsx`): a `StandardKitSpec` in `kits/standardKits.ts`
-   (SDK manifest, test id key, icon, menu order, engine tools, an optional
-   command line, and the status-line values from `inspect()`) and
-   `standardKit(spec, format, create)` in `KIT_EDITORS` replace steps 9 and 10's
-   editor, fallback, and SDK files. CAD, Slides, Word, Sheet, and PDF are
-   (PDF without `tools`: no engine tools yet, so the canvas pans) (Word
-   and Sheet with `rail: false`: one tool needs no rail; Sheet's
-   `commandLine: 'top'` is its formula bar). A kit for a format the
-   file preview already shows (PDF, Office) passes `{ preview: true }`, so that
-   preview stays the fallback, and the linked-file prompt keeps `document_read`
-   for its text (`TEXT_EXTRACTED` in `crates/kition-kits/src/tools.rs`); add the
-   format to `isPreviewableWorkspaceFormat`, or it opens in the system app instead
-   of a tab. Otherwise:
-   `src/features/workspace/components/<kit>/<kit>KitSdk.ts`: the manifest
-   and `describe<Kit>(info)`. Tools come one of two ways. When the engine
-   owns its tools (manifest capability `engine-tools`, as Vector), use
-   `useEngineTools` and `EngineToolRail` and write no tool code:
-   `VectorWebEditor.tsx` and `DesignWebEditor.tsx` show it. Otherwise write
-   `<kit>CanvasTools.ts` with the kit's `KitTool`s (Photo's
-   `photoCanvasTools.ts` shows brushes, rectangles, lassos, clicks, and
-   inline text).
-   `<Kit>WebEditor.tsx`: `useKitDocument(KITION_KIT_HOST, …)`,
-   `useKitEditor`, `KitEditorFrame`, and `KitCanvas` with the active tool.
-10. One entry in `KIT_EDITORS` (`kits/kitEditors.ts`): format, SDK, lazy
-    editor, fallback, and `create` when the kit makes new files (id, extension,
-    base name, size, label, icon). The create menu then offers it: the SDK's
-    own `create` makes the file in the page (`createKitFile`), under an
-    unused name, written through the host.
-11. Strings in all six locales; menu labels under `<kit>Kit.menu.*` (the
-    standard editor falls back to the shared `kitEditor.menu.*`, so add only
-    names those lack).
-12. An e2e spec like `e2e/photo-web-editor.spec.ts`. It generates a real
-    fixture with the SDK in Node, serves `/workspace-files/<file>` with an
-    `etag`, captures `PUT /v1/kits/files`, and covers open, edit, undo, redo,
-    save, the agent's clean reload, and the conflict notice. It skips itself
-    when the SDK is not built. Kit-process specs must route
-    `**/kits/<kit>-sdk/**` to 404 so they test the fallback deterministically.
+8. An entry in `kits/sdks.json` (the contract check) and the kit in
+   `KIT_UIS` in the `Makefile`. Then
+   `make kit-ui-<kit>` and `pnpm check:kit-sdks`.
+9. One entry in `KIT_EDITORS` (`kits/kitEditors.ts`): format, icon, the
+   engine's document class, `preview: true` for a format the file preview
+   already shows (PDF, Office; the linked-file prompt then keeps
+   `document_read` for its text, `TEXT_EXTRACTED` in
+   `crates/kition-kits/src/tools.rs`; add the format to
+   `isPreviewableWorkspaceFormat`, or it opens in the system app instead of a
+   tab), and `create` when the kit makes new files (id, extension, base name,
+   size, label).
+10. `<kit>Kit.unavailableTitle` and `<kit>Kit.unavailableBody` in all six
+    locales, for development builds without the package.
+11. An e2e spec like `e2e/photo-embedded.spec.ts` on
+    `e2e/helpers/embeddedKit.ts`. It makes a real fixture with the package's
+    engine in Node and covers open, edit, and save in the kit's editor; it
+    skips itself when the package is not built. Add it to `KIT_E2E` in the
+    `Makefile`.
 
-`make kit-dev` builds every kit executable and points the runtime at it
-(`KITION_KIT_<KIT>_BINARY`).
+`make kit-dev` builds every missing kit package and kit executable and points
+the runtime at the executables (`KITION_KIT_<KIT>_BINARY`).
 
 Finish with `pnpm run check`, `pnpm check:desktop`, `python3
 scripts/check-i18n.py`, the kit's e2e, `pnpm test:table:e2e`, and
@@ -360,6 +319,9 @@ scripts/check-i18n.py`, the kit's e2e, `pnpm test:table:e2e`, and
 with a large file.
 
 ## 6. Rules Learned The Hard Way
+
+These rules came from Kition's former in-page editors; they apply to the
+kits' own editors (kit-ui's canvas and engine worker) in the same way.
 
 Loading and security:
 
