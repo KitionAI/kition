@@ -2,8 +2,8 @@
 //! importing them on startup, so a workspace folder carries its history.
 //!
 //! Layout:
-//! * `.kition/agents/<session id>/session.json` (the session row and the last
-//!   exported log `seq`) and `session-events.jsonl` (the session event log,
+//! * `.kition/agents/<session id>/session.json` (the session row and the
+//!   number of exported log events) and `session-events.jsonl` (the session event log,
 //!   one event per line as `GET /agent/sessions/{id}/session-events` serves
 //!   it, without `system/message` events and with inline images omitted);
 //! * `.kition/sync/forms/state.json` and `.kition/sync/email/state.json`.
@@ -45,10 +45,10 @@ struct SessionSnapshot {
     schema_version: i64,
     #[serde(default)]
     session: AgentSession,
-    /// The last log `seq` written to `session-events.jsonl`; an export
-    /// rewrites the log only when the database has moved past it.
+    /// How many logged events `session-events.jsonl` was written from; an
+    /// export rewrites the log only when the database holds more.
     #[serde(default)]
-    events_seq: i64,
+    events_count: i64,
 }
 
 /// The log key of an agent session (`kition-agent`'s `log_key`).
@@ -100,10 +100,10 @@ fn portable_event(seq: i64, at: i64, body: &str) -> AppResult<Option<Value>> {
     Ok(Some(Value::Object(event)))
 }
 
-/// The session's last logged `seq`, 0 for an empty log.
-fn last_seq(conn: &Connection, session_id: i64) -> AppResult<i64> {
+/// How many events the session has logged.
+fn events_count(conn: &Connection, session_id: i64) -> AppResult<i64> {
     Ok(conn.query_row(
-        "SELECT COALESCE(MAX(seq), 0) FROM agent_session_events WHERE session_key = ?1",
+        "SELECT COUNT(*) FROM agent_session_events WHERE session_key = ?1",
         [log_key(session_id)],
         |row| row.get(0),
     )?)
@@ -149,7 +149,7 @@ fn import_event(
         .and_then(Value::as_str)
         .unwrap_or_default()
         .to_owned();
-    if seq < 1 || kind.is_empty() {
+    if seq < 0 || kind.is_empty() {
         return Err(AppError::bad_request("session event without seq or type"));
     }
     conn.execute(
@@ -611,13 +611,13 @@ impl StateMirror {
             let snapshot = SessionSnapshot {
                 schema_version: STATE_SCHEMA_VERSION,
                 session: portable,
-                events_seq: last_seq(&conn, session.id)?,
+                events_count: events_count(&conn, session.id)?,
             };
             let session_path = dir.join("session.json");
             let previous = std::fs::read(&session_path).unwrap_or_default();
             let exported = serde_json::from_slice::<SessionSnapshot>(&previous).ok();
             let events_path = dir.join("session-events.jsonl");
-            if exported.as_ref().map(|old| old.events_seq) != Some(snapshot.events_seq)
+            if exported.as_ref().map(|old| old.events_count) != Some(snapshot.events_count)
                 || !events_path.exists()
             {
                 write_json_lines(&events_path, &session_events(&conn, session.id)?)?;

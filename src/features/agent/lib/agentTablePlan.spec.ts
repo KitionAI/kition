@@ -9,7 +9,7 @@ type Call = { name: string; output: unknown; args?: unknown; isError?: boolean }
 
 /** One completed turn in `preset` whose tools ran `calls` and whose final reply is `reply`. */
 function turnOf(reply: string, preset: 'research' | 'preview' | 'apply', calls: Call[], reason: 'completed' | 'failed' = 'completed') {
-  let seq = 0
+  let seq = -1
   const next = () => {
     seq += 1
     return seq
@@ -21,22 +21,26 @@ function turnOf(reply: string, preset: 'research' | 'preview' | 'apply', calls: 
   ]
   calls.forEach((call, index) => {
     const callId = `call_${index}`
-    list.push({ seq: next(), at: seq, type: 'tool/call', callId, name: call.name, arguments: call.args ?? {} })
+    list.push({
+      seq: next(), at: seq, type: 'tool/call', turn: 1, step: 1, callId, name: call.name, arguments: call.args ?? {}, hosted: false,
+    })
     list.push(call.isError
       ? {
-        seq: next(), at: seq, type: 'tool/result', callId, name: call.name, value: null, isError: true,
+        seq: next(), at: seq, type: 'tool/result', turn: 1, step: 1, callId, name: call.name, value: null, isError: true, hosted: false,
         content: [
           { type: 'text', text: 'failed' },
           { type: 'text', text: JSON.stringify({ name: call.name, summary: '', output: call.output, failed: true }) },
         ],
       }
       : {
-        seq: next(), at: seq, type: 'tool/result', callId, name: call.name, isError: false, content: [],
+        seq: next(), at: seq, type: 'tool/result', turn: 1, step: 1, callId, name: call.name, isError: false, content: [], hosted: false,
         value: { name: call.name, summary: '', output: call.output },
       })
   })
   list.push(
-    { seq: next(), at: seq, type: 'assistant/message', content: reply, stopReason: 'completed', model: 'm' },
+    {
+      seq: next(), at: seq, type: 'assistant/message', turn: 1, step: 1, content: reply, stopReason: 'completed', provider: 'p', model: 'm',
+    },
     { seq: next(), at: seq, type: 'turn/end', turn: 1, reason },
   )
   return list.reduce(applySessionEvent, emptyAgentSessionView()).turns[0]

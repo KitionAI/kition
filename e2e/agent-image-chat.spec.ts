@@ -423,11 +423,11 @@ function writeImageTurn(turn: AgentTurnScript, request: { body: Record<string, a
     provenance: { request_id: requestId, model_id: 'test-image-model' },
   }
   turn.event({
-    type: 'tool/call', callId, name: 'image_generation',
+    type: 'tool/call', ...turn.scope, callId, name: 'image_generation', hosted: true,
     arguments: { request_id: requestId, intent_sha256: 'f'.repeat(64), variant_index: 0, variant_count: 1, size: '1024x1024', quality: 'medium', reference_count: 0 },
   })
   turn.event({
-    type: 'tool/result', callId, name: 'image_generation', isError: false, value: artifact,
+    type: 'tool/result', ...turn.scope, callId, name: 'image_generation', isError: false, hosted: true, value: artifact,
     content: [{ type: 'text', text: `Generated image 1: ${artifact.path}` }],
     meta: { kind: 'image_generation.variant', request_id: requestId, artifact },
   })

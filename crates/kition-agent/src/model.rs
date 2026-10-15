@@ -105,7 +105,7 @@ impl Llm for AgentLlm {
                     "",
                     &run.model,
                     Some(sink.stream_handler()),
-                    Some(sink.retry_handler(&run.model.provider_type)),
+                    Some(sink.retry_handler(&run.provider_route)),
                 )
                 .await
                 .map_err(|error| error.to_string())?;
@@ -122,6 +122,7 @@ impl Llm for AgentLlm {
                 content: result.content.trim().to_owned(),
                 tool_calls: normalize_calls(&result.tool_calls, &id_prefix),
                 stop_reason: result.stop_reason.clone(),
+                provider: run.provider_route.clone(),
                 model: result.model.clone(),
                 raw_items: result.response_items.clone(),
                 follow_up: blocks(&follow_up),

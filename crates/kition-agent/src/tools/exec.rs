@@ -353,6 +353,9 @@ mod tests {
             at(
                 2,
                 EventBody::ToolCall {
+                    turn: 1,
+                    step: 1,
+                    hosted: false,
                     call_id: "c1".into(),
                     name: tool.into(),
                     arguments: json!({ "cmd": ["ls"] }),
@@ -361,6 +364,9 @@ mod tests {
             at(
                 3,
                 EventBody::ToolResult {
+                    turn: 1,
+                    step: 1,
+                    hosted: false,
                     call_id: "c1".into(),
                     name: tool.into(),
                     value: json!({ "name": tool, "summary": "wait", "output": {

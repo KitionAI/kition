@@ -1,31 +1,33 @@
 [
   {
-    "seq": 1,
+    "seq": 0,
     "at": 1791732515325,
     "type": "turn/start",
     "turn": 1
   },
   {
-    "seq": 2,
+    "seq": 1,
     "at": 1791732515326,
     "type": "step/start",
     "turn": 1,
     "step": 1
   },
   {
-    "seq": 3,
+    "seq": 2,
     "at": 1791732515326,
     "type": "system/message",
+    "turn": 1,
+    "step": 1,
     "content": "You are the built-in agent inside the Kition document system."
   },
   {
-    "seq": 4,
+    "seq": 3,
     "at": 1791732515326,
     "type": "permission/preset",
     "preset": "apply"
   },
   {
-    "seq": 5,
+    "seq": 4,
     "at": 1791732515326,
     "type": "user/message",
     "content": [
@@ -39,42 +41,45 @@
     }
   },
   {
-    "seq": 6,
+    "seq": 5,
     "at": 1791732515332,
     "type": "assistant/message",
+    "turn": 1,
+    "step": 1,
     "content": "It is a fox.",
     "stopReason": "completed",
+    "provider": "test",
     "model": "test-model"
   },
   {
-    "seq": 7,
+    "seq": 6,
     "at": 1791732515332,
     "type": "step/end",
     "turn": 1,
     "step": 1
   },
   {
-    "seq": 8,
+    "seq": 7,
     "at": 1791732515332,
     "type": "turn/end",
     "turn": 1,
     "reason": "completed"
   },
   {
-    "seq": 9,
+    "seq": 8,
     "at": 1791732515337,
     "type": "turn/start",
     "turn": 2
   },
   {
-    "seq": 10,
+    "seq": 9,
     "at": 1791732515337,
     "type": "step/start",
     "turn": 2,
     "step": 1
   },
   {
-    "seq": 11,
+    "seq": 10,
     "at": 1791732515337,
     "type": "user/message",
     "content": [
@@ -88,9 +93,11 @@
     }
   },
   {
-    "seq": 12,
+    "seq": 11,
     "at": 1791732515337,
     "type": "tool/call",
+    "turn": 2,
+    "step": 1,
     "callId": "img_9456bdfa12ea76959c94a357_0",
     "name": "image_generation",
     "arguments": {
@@ -101,12 +108,15 @@
       "size": "1024x1024",
       "quality": "low",
       "reference_count": 0
-    }
+    },
+    "hosted": true
   },
   {
-    "seq": 13,
+    "seq": 12,
     "at": 1791732515342,
     "type": "tool/result",
+    "turn": 2,
+    "step": 1,
     "callId": "img_9456bdfa12ea76959c94a357_0",
     "name": "image_generation",
     "value": {
@@ -153,10 +163,11 @@
           "source_paths": []
         }
       }
-    }
+    },
+    "hosted": true
   },
   {
-    "seq": 14,
+    "seq": 13,
     "at": 1791732515342,
     "type": "deliverables/presented",
     "turn": 2,
@@ -169,22 +180,25 @@
     ]
   },
   {
-    "seq": 15,
+    "seq": 14,
     "at": 1791732515343,
     "type": "assistant/message",
+    "turn": 2,
+    "step": 1,
     "content": "Generated 1 image(s) for review.",
     "stopReason": "stop",
-    "model": ""
+    "provider": "kition",
+    "model": "image-composer"
   },
   {
-    "seq": 16,
+    "seq": 15,
     "at": 1791732515343,
     "type": "step/end",
     "turn": 2,
     "step": 1
   },
   {
-    "seq": 17,
+    "seq": 16,
     "at": 1791732515343,
     "type": "turn/end",
     "turn": 2,

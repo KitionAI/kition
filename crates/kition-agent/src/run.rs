@@ -280,6 +280,9 @@ pub struct Run {
     pub whiteboard: Option<Value>,
     pub design: Option<Value>,
     pub model: RuntimeModel,
+    /// The provider route the model is reached through: logged as the
+    /// provider of each reply and retry.
+    pub provider_route: String,
     pub prompt: String,
     pub attachments: Vec<crate::attachments::Attachment>,
     pub local_sources: Vec<LocalSource>,

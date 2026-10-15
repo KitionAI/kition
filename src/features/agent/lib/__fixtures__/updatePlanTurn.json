@@ -1,31 +1,33 @@
 [
   {
-    "seq": 1,
+    "seq": 0,
     "at": 1791732515298,
     "type": "turn/start",
     "turn": 1
   },
   {
-    "seq": 2,
+    "seq": 1,
     "at": 1791732515298,
     "type": "step/start",
     "turn": 1,
     "step": 1
   },
   {
-    "seq": 3,
+    "seq": 2,
     "at": 1791732515298,
     "type": "system/message",
+    "turn": 1,
+    "step": 1,
     "content": "You are the built-in agent inside the Kition document system."
   },
   {
-    "seq": 4,
+    "seq": 3,
     "at": 1791732515298,
     "type": "permission/preset",
     "preset": "apply"
   },
   {
-    "seq": 5,
+    "seq": 4,
     "at": 1791732515299,
     "type": "user/message",
     "content": [
@@ -39,9 +41,11 @@
     }
   },
   {
-    "seq": 6,
+    "seq": 5,
     "at": 1791732515304,
     "type": "assistant/message",
+    "turn": 1,
+    "step": 1,
     "content": "",
     "toolCalls": [
       {
@@ -63,12 +67,15 @@
       }
     ],
     "stopReason": "completed",
+    "provider": "test",
     "model": "test-model"
   },
   {
-    "seq": 7,
+    "seq": 6,
     "at": 1791732515304,
     "type": "tool/call",
+    "turn": 1,
+    "step": 1,
     "callId": "call_1",
     "name": "update_plan",
     "arguments": {
@@ -83,12 +90,15 @@
           "status": "pending"
         }
       ]
-    }
+    },
+    "hosted": false
   },
   {
-    "seq": 8,
+    "seq": 7,
     "at": 1791732515305,
     "type": "tool/result",
+    "turn": 1,
+    "step": 1,
     "callId": "call_1",
     "name": "update_plan",
     "value": {
@@ -115,10 +125,11 @@
         "text": "{\"name\":\"update_plan\",\"summary\":\"Two steps\\n\\n1. [~] Draft\\n2. [ ] Review\",\"output\":{\"plan\":[{\"step\":\"Draft\",\"status\":\"in_progress\"},{\"step\":\"Review\",\"status\":\"pending\"}],\"explanation\":\"Two steps\",\"step_count\":2},\"failed\":false}"
       }
     ],
-    "isError": false
+    "isError": false,
+    "hosted": false
   },
   {
-    "seq": 9,
+    "seq": 8,
     "at": 1791732515305,
     "type": "todo/write",
     "todos": [
@@ -133,36 +144,39 @@
     ]
   },
   {
-    "seq": 10,
+    "seq": 9,
     "at": 1791732515306,
     "type": "step/end",
     "turn": 1,
     "step": 1
   },
   {
-    "seq": 11,
+    "seq": 10,
     "at": 1791732515306,
     "type": "step/start",
     "turn": 1,
     "step": 2
   },
   {
-    "seq": 12,
+    "seq": 11,
     "at": 1791732515311,
     "type": "assistant/message",
+    "turn": 1,
+    "step": 2,
     "content": "Planned.",
     "stopReason": "completed",
+    "provider": "test",
     "model": "test-model"
   },
   {
-    "seq": 13,
+    "seq": 12,
     "at": 1791732515311,
     "type": "step/end",
     "turn": 1,
     "step": 2
   },
   {
-    "seq": 14,
+    "seq": 13,
     "at": 1791732515311,
     "type": "turn/end",
     "turn": 1,

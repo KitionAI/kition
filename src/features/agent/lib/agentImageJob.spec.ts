@@ -22,7 +22,7 @@ const artifact = (index: number, count: number) => ({
 
 /** An image composer turn with `count` variants: `saved` succeed, then the events in `rest`. */
 function composer(count: number, saved: number, rest: AgentSessionEventsSessionEvent[] = []) {
-  let seq = 0
+  let seq = -1
   const next = () => {
     seq += 1
     return seq
@@ -34,9 +34,12 @@ function composer(count: number, saved: number, rest: AgentSessionEventsSessionE
   ]
   for (let index = 0; index < saved; index += 1) {
     list.push(
-      { seq: next(), at: seq, type: 'tool/call', callId: `img_abc_${index}`, name: 'image_generation', arguments: arguments_(index, count) },
       {
-        seq: next(), at: seq, type: 'tool/result', callId: `img_abc_${index}`, name: 'image_generation', isError: false,
+        seq: next(), at: seq, type: 'tool/call', turn: 1, step: 1, callId: `img_abc_${index}`, name: 'image_generation',
+        arguments: arguments_(index, count), hosted: true,
+      },
+      {
+        seq: next(), at: seq, type: 'tool/result', turn: 1, step: 1, callId: `img_abc_${index}`, name: 'image_generation', isError: false, hosted: true,
         value: artifact(index, count), content: [{ type: 'text', text: `Generated image ${index + 1}` }],
         meta: { kind: 'image_generation.variant', request_id: 'req-2', artifact: artifact(index, count) },
       },

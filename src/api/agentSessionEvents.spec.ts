@@ -20,11 +20,14 @@ describe('listAgentSessionEvents', () => {
           seq: 5,
           at: 1760140800001,
           type: 'tool/result',
+          turn: 2,
+          step: 1,
           callId: 'call_1',
           name: 'artifact_write',
           value: { path: 'Notes/plan.md' },
           content: [{ type: 'text', text: 'Saved Notes/plan.md' }],
           isError: false,
+          hosted: false,
         },
         { seq: 6, at: 1760140800002, type: 'turn/end', turn: 2, reason: 'completed' },
       ],
@@ -40,13 +43,16 @@ describe('listAgentSessionEvents', () => {
     expect(config).toMatchObject({ params: { after: 3 } })
   })
 
-  it('starts from the beginning by default', async () => {
-    const empty: AgentSessionEventsPage = { items: [], next_after: 0 }
+  it('starts from the first event without a cursor', async () => {
+    const empty: AgentSessionEventsPage = { items: [] }
     expectMatchesContract(empty, 'agent-session-events', 'page')
     vi.mocked(request.get).mockResolvedValue(empty as never)
 
     await listAgentSessionEvents(7)
+    await listAgentSessionEvents(7, -1)
+    await listAgentSessionEvents(7, 0)
 
-    expect(vi.mocked(request.get).mock.calls[0][1]).toMatchObject({ params: { after: 0 } })
+    const params = vi.mocked(request.get).mock.calls.map(([, config]) => config?.params)
+    expect(params).toEqual([{}, {}, { after: 0 }])
   })
 })

@@ -1,19 +1,19 @@
 [
   {
-    "seq": 1,
+    "seq": 0,
     "at": 1791732515369,
     "type": "turn/start",
     "turn": 1
   },
   {
-    "seq": 2,
+    "seq": 1,
     "at": 1791732515370,
     "type": "step/start",
     "turn": 1,
     "step": 1
   },
   {
-    "seq": 3,
+    "seq": 2,
     "at": 1791732515370,
     "type": "user/message",
     "content": [
@@ -27,9 +27,11 @@
     }
   },
   {
-    "seq": 4,
+    "seq": 3,
     "at": 1791732515370,
     "type": "tool/call",
+    "turn": 1,
+    "step": 1,
     "callId": "img_9456bdfa12ea76959c94a357_0",
     "name": "image_generation",
     "arguments": {
@@ -40,12 +42,15 @@
       "size": "1024x1024",
       "quality": "low",
       "reference_count": 0
-    }
+    },
+    "hosted": true
   },
   {
-    "seq": 5,
+    "seq": 4,
     "at": 1791732515373,
     "type": "tool/result",
+    "turn": 1,
+    "step": 1,
     "callId": "img_9456bdfa12ea76959c94a357_0",
     "name": "image_generation",
     "value": null,
@@ -59,17 +64,18 @@
         "text": "{\"code\":\"image_generation_canceled\",\"message\":\"canceled\",\"retryable\":true}"
       }
     ],
-    "isError": true
+    "isError": true,
+    "hosted": true
   },
   {
-    "seq": 6,
+    "seq": 5,
     "at": 1791732515373,
     "type": "step/end",
     "turn": 1,
     "step": 1
   },
   {
-    "seq": 7,
+    "seq": 6,
     "at": 1791732515373,
     "type": "turn/end",
     "turn": 1,
@@ -77,32 +83,34 @@
     "error": "canceled"
   },
   {
-    "seq": 8,
+    "seq": 7,
     "at": 1791732515380,
     "type": "turn/start",
     "turn": 2
   },
   {
-    "seq": 9,
+    "seq": 8,
     "at": 1791732515380,
     "type": "step/start",
     "turn": 2,
     "step": 1
   },
   {
-    "seq": 10,
+    "seq": 9,
     "at": 1791732515380,
     "type": "system/message",
+    "turn": 2,
+    "step": 1,
     "content": "You are the built-in agent inside the Kition document system."
   },
   {
-    "seq": 11,
+    "seq": 10,
     "at": 1791732515380,
     "type": "permission/preset",
     "preset": "apply"
   },
   {
-    "seq": 12,
+    "seq": 11,
     "at": 1791732515380,
     "type": "user/message",
     "content": [
@@ -116,22 +124,25 @@
     }
   },
   {
-    "seq": 13,
+    "seq": 12,
     "at": 1791732515385,
     "type": "assistant/message",
+    "turn": 2,
+    "step": 1,
     "content": "Done.",
     "stopReason": "completed",
+    "provider": "test",
     "model": "test-model"
   },
   {
-    "seq": 14,
+    "seq": 13,
     "at": 1791732515385,
     "type": "step/end",
     "turn": 2,
     "step": 1
   },
   {
-    "seq": 15,
+    "seq": 14,
     "at": 1791732515385,
     "type": "turn/end",
     "turn": 2,

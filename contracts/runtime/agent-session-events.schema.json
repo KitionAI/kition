@@ -2,13 +2,13 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://kition.ai/contracts/runtime/agent-session-events.schema.json",
   "title": "Kition Agent Session Events",
-  "description": "GET /agent/sessions/{id}/session-events?after=<seq> answers the caller's own session event log in the runtime envelope: events with seq greater than after, in order, at most 500 per page. Another user's or an unknown session answers 404. Tool-call arguments in tool/call and in assistant/message toolCalls are logged through each tool's projection (passwords redacted, search queries and patch text reduced to counts); other fields are logged as the model and tools produced them.",
+  "description": "GET /agent/sessions/{id}/session-events[?after=<seq>] answers the caller's own session event log in the runtime envelope: events with seq greater than after (from the first event when after is omitted), in order, at most 500 per page. Another user's or an unknown session answers 404. Tool-call arguments in tool/call and in assistant/message toolCalls are logged through each tool's projection (passwords redacted, search queries and patch text reduced to counts); other fields are logged as the model and tools produced them.",
   "$ref": "#/$defs/page",
   "$defs": {
     "seq": {
       "type": "integer",
-      "minimum": 1,
-      "description": "Position of the event in its session, starting at 1."
+      "minimum": 0,
+      "description": "Position of the event in its session: from 0, contiguous (DeepSeek Harness numbering)."
     },
     "at": {
       "type": "integer",
@@ -394,6 +394,8 @@
         "seq",
         "at",
         "type",
+        "turn",
+        "step",
         "content"
       ],
       "properties": {
@@ -405,6 +407,14 @@
         },
         "type": {
           "const": "system/message"
+        },
+        "turn": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "step": {
+          "type": "integer",
+          "minimum": 0
         },
         "content": {
           "type": "string"
@@ -451,8 +461,11 @@
         "seq",
         "at",
         "type",
+        "turn",
+        "step",
         "content",
         "stopReason",
+        "provider",
         "model"
       ],
       "properties": {
@@ -464,6 +477,14 @@
         },
         "type": {
           "const": "assistant/message"
+        },
+        "turn": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "step": {
+          "type": "integer",
+          "minimum": 0
         },
         "content": {
           "type": "string"
@@ -477,6 +498,10 @@
         "stopReason": {
           "type": "string"
         },
+        "provider": {
+          "type": "string",
+          "description": "The provider route that answered (DeepSeek Harness message.source.provider); kition for the image composer."
+        },
         "model": {
           "type": "string"
         }
@@ -484,13 +509,16 @@
     },
     "assistantAttemptEvent": {
       "type": "object",
-      "description": "A model call that settled without a message: failed or cancelled.",
+      "description": "A model call that settled without a message: failed, or aborted when the turn was cancelled.",
       "additionalProperties": false,
       "required": [
         "seq",
         "at",
         "type",
-        "error"
+        "turn",
+        "step",
+        "error",
+        "aborted"
       ],
       "properties": {
         "seq": {
@@ -502,8 +530,20 @@
         "type": {
           "const": "assistant/attempt"
         },
+        "turn": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "step": {
+          "type": "integer",
+          "minimum": 0
+        },
         "error": {
           "type": "string"
+        },
+        "aborted": {
+          "type": "boolean",
+          "description": "The turn was cancelled during the call (otherwise the call failed)."
         }
       }
     },
@@ -515,9 +555,12 @@
         "seq",
         "at",
         "type",
+        "turn",
+        "step",
         "callId",
         "name",
-        "arguments"
+        "arguments",
+        "hosted"
       ],
       "properties": {
         "seq": {
@@ -529,6 +572,14 @@
         "type": {
           "const": "tool/call"
         },
+        "turn": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "step": {
+          "type": "integer",
+          "minimum": 0
+        },
         "callId": {
           "type": "string"
         },
@@ -537,6 +588,10 @@
         },
         "arguments": {
           "description": "The logged arguments (passwords redacted, search queries and patch text reduced to counts)."
+        },
+        "hosted": {
+          "type": "boolean",
+          "description": "The provider ran the call itself (hosted web search, hosted image generation, the image composer); not model history."
         }
       }
     },
@@ -548,11 +603,14 @@
         "seq",
         "at",
         "type",
+        "turn",
+        "step",
         "callId",
         "name",
         "value",
         "content",
-        "isError"
+        "isError",
+        "hosted"
       ],
       "properties": {
         "seq": {
@@ -563,6 +621,14 @@
         },
         "type": {
           "const": "tool/result"
+        },
+        "turn": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "step": {
+          "type": "integer",
+          "minimum": 0
         },
         "callId": {
           "type": "string"
@@ -585,6 +651,10 @@
         },
         "meta": {
           "$ref": "#/$defs/toolResultMeta"
+        },
+        "hosted": {
+          "type": "boolean",
+          "description": "The provider ran the call itself (hosted web search, hosted image generation, the image composer); not model history."
         }
       }
     },
@@ -916,8 +986,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "items",
-        "next_after"
+        "items"
       ],
       "properties": {
         "items": {
@@ -930,7 +999,7 @@
         "next_after": {
           "type": "integer",
           "minimum": 0,
-          "description": "Pass as after to read the next page: the last seq returned, or the given after when the page is empty."
+          "description": "Pass as after to read the next page: the last seq returned, or the given after when the page is empty; absent when the page and after are both empty."
         }
       }
     }

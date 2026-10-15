@@ -28,6 +28,8 @@ pub struct LlmReply {
     pub content: String,
     pub tool_calls: Vec<LoggedCall>,
     pub stop_reason: String,
+    /// The provider route that answered.
+    pub provider: String,
     pub model: String,
     pub raw_items: Vec<Value>,
     /// Model input produced by the provider call itself (hosted image
@@ -270,6 +272,7 @@ impl Llm for EngineLlm {
                 content: result.content.trim().to_owned(),
                 tool_calls,
                 stop_reason: result.stop_reason,
+                provider: self.model.provider_type.clone(),
                 model: result.model,
                 raw_items: result.response_items,
                 follow_up: Vec::new(),

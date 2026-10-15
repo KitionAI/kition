@@ -68,7 +68,7 @@ pub fn derive_messages_for(events: &[SessionEvent], model: Option<&str>) -> Vec<
             flush_images(&mut pending_images, &mut history);
         }
         match &event.body {
-            EventBody::SystemMessage { content } => system.clone_from(content),
+            EventBody::SystemMessage { content, .. } => system.clone_from(content),
             EventBody::UserMessage { content, .. } => {
                 history.push(user_message(content, keep_images));
             }
@@ -262,6 +262,9 @@ mod tests {
 
     fn assistant_with_calls(calls: Vec<LoggedCall>) -> EventBody {
         EventBody::AssistantMessage {
+            turn: 1,
+            step: 1,
+            provider: String::new(),
             content: String::new(),
             tool_calls: calls,
             stop_reason: "tool_use".into(),
@@ -361,12 +364,16 @@ mod tests {
             at(
                 3,
                 EventBody::SystemMessage {
+                    turn: 1,
+                    step: 1,
                     content: "old".into(),
                 },
             ),
             at(
                 4,
                 EventBody::SystemMessage {
+                    turn: 1,
+                    step: 1,
                     content: "You are Kition.".into(),
                 },
             ),
@@ -380,6 +387,9 @@ mod tests {
             at(
                 6,
                 EventBody::AssistantAttempt {
+                    turn: 1,
+                    step: 1,
+                    aborted: false,
                     error: "timeout".into(),
                 },
             ),
@@ -394,6 +404,9 @@ mod tests {
             at(
                 8,
                 EventBody::ToolCall {
+                    turn: 1,
+                    step: 1,
+                    hosted: false,
                     call_id: "c1".into(),
                     name: "photo_run".into(),
                     arguments: json!({ "path": "a.psd" }),
@@ -402,6 +415,9 @@ mod tests {
             at(
                 9,
                 EventBody::ToolResult {
+                    turn: 1,
+                    step: 1,
+                    hosted: false,
                     call_id: "c1".into(),
                     name: "photo_run".into(),
                     value: json!({}),
@@ -419,6 +435,9 @@ mod tests {
             at(
                 11,
                 EventBody::AssistantMessage {
+                    turn: 1,
+                    step: 1,
+                    provider: String::new(),
                     content: "Done.".into(),
                     tool_calls: Vec::new(),
                     stop_reason: "stop".into(),
@@ -464,6 +483,9 @@ mod tests {
             at(
                 2,
                 EventBody::ToolCall {
+                    turn: 1,
+                    step: 1,
+                    hosted: false,
                     call_id: "c1".into(),
                     name: "photo_run".into(),
                     arguments: json!({}),
@@ -472,6 +494,9 @@ mod tests {
             at(
                 3,
                 EventBody::ToolResult {
+                    turn: 1,
+                    step: 1,
+                    hosted: false,
                     call_id: "c1".into(),
                     name: "photo_run".into(),
                     value: json!({}),
@@ -519,6 +544,9 @@ mod tests {
             at(
                 3,
                 EventBody::ToolCall {
+                    turn: 1,
+                    step: 1,
+                    hosted: false,
                     call_id: "c1".into(),
                     name: "photo_run".into(),
                     arguments: json!({}),
@@ -576,6 +604,9 @@ mod tests {
             at(
                 2,
                 EventBody::ToolCall {
+                    turn: 1,
+                    step: 1,
+                    hosted: false,
                     call_id: "c1".into(),
                     name: "photo_run".into(),
                     arguments: json!({}),
@@ -584,6 +615,9 @@ mod tests {
             at(
                 3,
                 EventBody::ToolResult {
+                    turn: 1,
+                    step: 1,
+                    hosted: false,
                     call_id: "c1".into(),
                     name: "photo_run".into(),
                     value: json!({}),
@@ -597,6 +631,9 @@ mod tests {
             at(
                 4,
                 EventBody::ToolCall {
+                    turn: 1,
+                    step: 1,
+                    hosted: false,
                     call_id: "c2".into(),
                     name: "photo_run".into(),
                     arguments: json!({}),
@@ -605,6 +642,9 @@ mod tests {
             at(
                 5,
                 EventBody::ToolResult {
+                    turn: 1,
+                    step: 1,
+                    hosted: false,
                     call_id: "c2".into(),
                     name: "photo_run".into(),
                     value: json!({}),
@@ -645,6 +685,9 @@ mod tests {
             at(
                 2,
                 EventBody::ToolCall {
+                    turn: 1,
+                    step: 1,
+                    hosted: false,
                     call_id: "c1".into(),
                     name: "photo_run".into(),
                     arguments: json!({}),
@@ -672,6 +715,9 @@ mod tests {
         let events = vec![at(
             1,
             EventBody::AssistantMessage {
+                turn: 1,
+                step: 1,
+                provider: String::new(),
                 content: "hi".into(),
                 tool_calls: Vec::new(),
                 stop_reason: "stop".into(),
@@ -700,6 +746,9 @@ mod tests {
             at(
                 2,
                 EventBody::AssistantMessage {
+                    turn: 1,
+                    step: 1,
+                    provider: String::new(),
                     content: "hi".into(),
                     tool_calls: Vec::new(),
                     stop_reason: "stop".into(),
@@ -745,6 +794,9 @@ mod tests {
             at(
                 2,
                 EventBody::ToolCall {
+                    turn: 1,
+                    step: 1,
+                    hosted: false,
                     call_id: "c1".into(),
                     name: "photo_run".into(),
                     arguments: json!({}),
@@ -753,6 +805,9 @@ mod tests {
             at(
                 3,
                 EventBody::ToolResult {
+                    turn: 1,
+                    step: 1,
+                    hosted: false,
                     call_id: "c1".into(),
                     name: "photo_run".into(),
                     value: json!({}),
@@ -818,6 +873,9 @@ mod tests {
             at(
                 2,
                 EventBody::ToolCall {
+                    turn: 1,
+                    step: 1,
+                    hosted: false,
                     call_id: "c1".into(),
                     name: "photo_run".into(),
                     arguments: json!({}),
@@ -875,6 +933,9 @@ mod tests {
             at(
                 4,
                 EventBody::ToolResult {
+                    turn: 1,
+                    step: 1,
+                    hosted: false,
                     call_id: "c1".into(),
                     name: "view_image".into(),
                     value: Value::Null,
@@ -909,6 +970,9 @@ mod tests {
             at(
                 9,
                 EventBody::ToolResult {
+                    turn: 1,
+                    step: 1,
+                    hosted: false,
                     call_id: "c2".into(),
                     name: "view_image".into(),
                     value: Value::Null,
@@ -952,6 +1016,9 @@ mod tests {
             at(
                 3,
                 EventBody::ToolCall {
+                    turn: 1,
+                    step: 1,
+                    hosted: false,
                     call_id: "c1".into(),
                     name: "slow".into(),
                     arguments: json!({}),
@@ -967,6 +1034,9 @@ mod tests {
             at(
                 5,
                 EventBody::ToolResult {
+                    turn: 1,
+                    step: 1,
+                    hosted: false,
                     call_id: "c1".into(),
                     name: "slow".into(),
                     value: Value::Null,
@@ -978,6 +1048,9 @@ mod tests {
             at(
                 6,
                 EventBody::ToolResult {
+                    turn: 1,
+                    step: 1,
+                    hosted: false,
                     call_id: "never".into(),
                     name: "slow".into(),
                     value: Value::Null,

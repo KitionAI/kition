@@ -10,7 +10,8 @@ use rusqlite::params;
 
 use crate::events::{EventBody, SessionEvent};
 
-/// Where session events live. Appends are ordered per session.
+/// Where session events live. Appends are ordered per session and numbered
+/// from 0, contiguous, as DeepSeek Harness numbers them.
 pub trait SessionLog: Send + Sync {
     /// Appends one event and returns it with its sequence number and time.
     fn append(&self, session: &str, body: EventBody) -> Result<SessionEvent, String>;
@@ -29,7 +30,7 @@ impl SessionLog for MemoryLog {
         let mut sessions = self.sessions.lock().unwrap_or_else(PoisonError::into_inner);
         let events = sessions.entry(session.to_owned()).or_default();
         let event = SessionEvent {
-            seq: events.len() as u64 + 1,
+            seq: events.len() as u64,
             at: now_millis(),
             body,
         };
@@ -71,7 +72,7 @@ impl SessionLog for SqliteLog {
         let seq: i64 = conn
             .query_row(
                 "INSERT INTO agent_session_events (session_key, seq, event_type, body, created_at) \
-                 SELECT ?1, COALESCE(MAX(seq), 0) + 1, ?2, ?3, ?4 FROM agent_session_events WHERE session_key = ?1 \
+                 SELECT ?1, COALESCE(MAX(seq), -1) + 1, ?2, ?3, ?4 FROM agent_session_events WHERE session_key = ?1 \
                  RETURNING seq",
                 params![session, body.kind(), text, at],
                 |row| row.get(0),
@@ -125,7 +126,7 @@ mod tests {
         let other = log
             .append("b", EventBody::TurnStart { turn: 1 })
             .unwrap_or_else(|error| panic!("{error}"));
-        assert_eq!((first.seq, second.seq, other.seq), (1, 2, 1));
+        assert_eq!((first.seq, second.seq, other.seq), (0, 1, 0));
         let events = log.read("a").unwrap_or_else(|error| panic!("{error}"));
         assert_eq!(
             events
@@ -154,7 +155,7 @@ mod tests {
         let appended = log
             .append("agent:1", body.clone())
             .unwrap_or_else(|error| panic!("{error}"));
-        assert_eq!(appended.seq, 2);
+        assert_eq!(appended.seq, 1);
         let events = log
             .read("agent:1")
             .unwrap_or_else(|error| panic!("{error}"));
@@ -180,7 +181,7 @@ mod tests {
         let second_a = log
             .append("a", EventBody::StepStart { turn: 1, step: 1 })
             .unwrap_or_else(|error| panic!("{error}"));
-        assert_eq!((first_a.seq, first_b.seq, second_a.seq), (1, 1, 2));
+        assert_eq!((first_a.seq, first_b.seq, second_a.seq), (0, 0, 1));
     }
 
     #[test]

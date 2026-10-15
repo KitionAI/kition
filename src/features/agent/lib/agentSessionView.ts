@@ -97,7 +97,7 @@ export type AgentLiveAttempt = {
 }
 
 export type AgentSessionView = {
-  /** The last applied event `seq`. */
+  /** The last applied event `seq`; -1 before the first (seq counts from 0). */
   cursor: number
   turns: AgentTurnView[]
   live: AgentLiveAttempt | null
@@ -105,7 +105,7 @@ export type AgentSessionView = {
 }
 
 export function emptyAgentSessionView(): AgentSessionView {
-  return { cursor: 0, turns: [], live: null, running: false }
+  return { cursor: -1, turns: [], live: null, running: false }
 }
 
 /** `value[key]` when `value` is a plain JSON object. */

@@ -382,7 +382,7 @@ impl Driver {
             }
             self.append(input, events, EventBody::StepStart { turn, step })?;
             if step == 1 {
-                self.reconcile_system(input, events)?;
+                self.reconcile_system(input, events, turn)?;
                 self.reconcile_preset(input, events)?;
             }
             if let Some(content) = user.take() {
@@ -429,7 +429,10 @@ impl Driver {
                         input,
                         events,
                         EventBody::AssistantAttempt {
+                            turn,
+                            step,
                             error: error.clone(),
+                            aborted: input.cancel.is_cancelled(),
                         },
                     );
                     stream.settle(&appended);
@@ -445,6 +448,8 @@ impl Driver {
                 input,
                 events,
                 EventBody::AssistantMessage {
+                    turn,
+                    step,
                     content: reply.content.clone(),
                     tool_calls: reply
                         .tool_calls
@@ -455,6 +460,7 @@ impl Driver {
                         })
                         .collect(),
                     stop_reason: reply.stop_reason,
+                    provider: reply.provider,
                     model: reply.model,
                     raw_items: reply.raw_items,
                 },
@@ -462,7 +468,7 @@ impl Driver {
             stream.settle(&appended);
             appended?;
             for hosted in reply.hosted {
-                self.record_hosted(input, events, turn, hosted)?;
+                self.record_hosted(input, events, (turn, step), hosted)?;
             }
             if reply.tool_calls.is_empty() && reply.follow_up.is_empty() {
                 self.append(input, events, EventBody::StepEnd { turn, step })?;
@@ -480,7 +486,7 @@ impl Driver {
             let mut contexts: Vec<ContentBlock> = Vec::new();
             let mut end_reason = None;
             for call in &reply.tool_calls {
-                let (reason, context) = self.run_call(input, events, turn, call).await?;
+                let (reason, context) = self.run_call(input, events, (turn, step), call).await?;
                 contexts.extend(context);
                 if reason.is_some() {
                     end_reason = reason;
@@ -539,16 +545,19 @@ impl Driver {
         &self,
         input: &TurnInput,
         events: &mut Vec<SessionEvent>,
-        turn: u32,
+        (turn, step): (u32, u32),
         call: &LoggedCall,
     ) -> Result<(Option<TurnEndReason>, Vec<ContentBlock>), String> {
         self.append(
             input,
             events,
             EventBody::ToolCall {
+                turn,
+                step,
                 call_id: call.call_id.clone(),
                 name: call.name.clone(),
                 arguments: logged_arguments(&input.tools, call),
+                hosted: false,
             },
         )?;
         let Some(tool) = input.tools.get(&call.name) else {
@@ -558,7 +567,7 @@ impl Driver {
             );
             self.pipeline.settle_missing(&call.name, &mut missing);
             let context = std::mem::take(&mut missing.context);
-            self.record(input, events, call, missing)?;
+            self.record(input, events, (turn, step), call, missing)?;
             return Ok((None, context));
         };
         let info = CallInfo {
@@ -590,7 +599,7 @@ impl Driver {
         self.pipeline.settle(&info, &mut settled);
         let context = std::mem::take(&mut settled.context);
         let is_error = settled.is_error;
-        self.record(input, events, call, settled)?;
+        self.record(input, events, (turn, step), call, settled)?;
         let emitted = emit.take();
         if !is_error {
             for body in emitted {
@@ -615,6 +624,7 @@ impl Driver {
         &self,
         input: &TurnInput,
         events: &mut Vec<SessionEvent>,
+        (turn, step): (u32, u32),
         call: &LoggedCall,
         settled: Settled,
     ) -> Result<(), String> {
@@ -622,12 +632,15 @@ impl Driver {
             input,
             events,
             EventBody::ToolResult {
+                turn,
+                step,
                 call_id: call.call_id.clone(),
                 name: call.name.clone(),
                 value: settled.value,
                 content: settled.content,
                 is_error: settled.is_error,
                 meta: settled.meta,
+                hosted: false,
             },
         )
         .map(|_| ())
@@ -737,34 +750,40 @@ impl Driver {
     }
 
     /// Logs a call the provider ran itself: `tool/call`, a successful
-    /// `tool/result`, and its files. No `tool/call` of the model is open for
-    /// it, so `derive` skips the pair.
+    /// `tool/result`, both marked `hosted`, and its files. No `tool/call` of
+    /// the model is open for it, so `derive` skips the pair.
     fn record_hosted(
         &self,
         input: &TurnInput,
         events: &mut Vec<SessionEvent>,
-        turn: u32,
+        (turn, step): (u32, u32),
         hosted: HostedCall,
     ) -> Result<(), String> {
         self.append(
             input,
             events,
             EventBody::ToolCall {
+                turn,
+                step,
                 call_id: hosted.call_id.clone(),
                 name: hosted.name.clone(),
                 arguments: hosted.arguments,
+                hosted: true,
             },
         )?;
         self.append(
             input,
             events,
             EventBody::ToolResult {
+                turn,
+                step,
                 call_id: hosted.call_id.clone(),
                 name: hosted.name,
                 value: hosted.value,
                 content: Vec::new(),
                 is_error: false,
                 meta: hosted.meta,
+                hosted: true,
             },
         )?;
         if let Some(body) = deliverables(turn, &hosted.call_id, hosted.files) {
@@ -805,9 +824,10 @@ impl Driver {
         &self,
         input: &TurnInput,
         events: &mut Vec<SessionEvent>,
+        turn: u32,
     ) -> Result<(), String> {
         let current = events.iter().rev().find_map(|event| match &event.body {
-            EventBody::SystemMessage { content } => Some(content.clone()),
+            EventBody::SystemMessage { content, .. } => Some(content.clone()),
             _ => None,
         });
         if current.as_deref() != Some(input.system.as_str()) {
@@ -815,6 +835,8 @@ impl Driver {
                 input,
                 events,
                 EventBody::SystemMessage {
+                    turn,
+                    step: 1,
                     content: input.system.clone(),
                 },
             )?;

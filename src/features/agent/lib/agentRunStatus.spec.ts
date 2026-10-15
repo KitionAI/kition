@@ -8,10 +8,10 @@ import { getAgentTimelineDict, resolveAgentTimelineLocale } from './agentTimelin
 import { applySessionEvent, emptyAgentSessionView, markInterrupted } from './agentSessionView'
 
 const opened = ([
-  { seq: 1, at: 1, type: 'turn/start', turn: 1 },
-  { seq: 2, at: 2, type: 'step/start', turn: 1, step: 1 },
+  { seq: 0, at: 1, type: 'turn/start', turn: 1 },
+  { seq: 1, at: 2, type: 'step/start', turn: 1, step: 1 },
   {
-    seq: 3, at: 3, type: 'llm/retry', retryId: 'agent:1#1.1', turn: 1, step: 1, provider: 'openai', mode: 'normal',
+    seq: 2, at: 3, type: 'llm/retry', retryId: 'agent:1#1.1', turn: 1, step: 1, provider: 'openai', mode: 'normal',
     policyKey: 'engine', retry: 2, maxRetries: 5, delayMs: 0, failure: { message: 'closed', code: 'connection_closed' },
   },
 ] as AgentSessionEventsSessionEvent[]).reduce(applySessionEvent, emptyAgentSessionView())

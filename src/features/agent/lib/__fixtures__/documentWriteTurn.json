@@ -1,31 +1,33 @@
 [
   {
-    "seq": 1,
+    "seq": 0,
     "at": 1791732515436,
     "type": "turn/start",
     "turn": 1
   },
   {
-    "seq": 2,
+    "seq": 1,
     "at": 1791732515436,
     "type": "step/start",
     "turn": 1,
     "step": 1
   },
   {
-    "seq": 3,
+    "seq": 2,
     "at": 1791732515436,
     "type": "system/message",
+    "turn": 1,
+    "step": 1,
     "content": "You are the built-in agent inside the Kition document system."
   },
   {
-    "seq": 4,
+    "seq": 3,
     "at": 1791732515436,
     "type": "permission/preset",
     "preset": "apply"
   },
   {
-    "seq": 5,
+    "seq": 4,
     "at": 1791732515436,
     "type": "user/message",
     "content": [
@@ -39,9 +41,11 @@
     }
   },
   {
-    "seq": 6,
+    "seq": 5,
     "at": 1791732515442,
     "type": "assistant/message",
+    "turn": 1,
+    "step": 1,
     "content": "",
     "toolCalls": [
       {
@@ -54,23 +58,29 @@
       }
     ],
     "stopReason": "completed",
+    "provider": "test",
     "model": "test-model"
   },
   {
-    "seq": 7,
+    "seq": 6,
     "at": 1791732515442,
     "type": "tool/call",
+    "turn": 1,
+    "step": 1,
     "callId": "call_1",
     "name": "document_write",
     "arguments": {
       "path": "Notes/plan.md",
       "content": "# Plan"
-    }
+    },
+    "hosted": false
   },
   {
-    "seq": 8,
+    "seq": 7,
     "at": 1791732515444,
     "type": "tool/result",
+    "turn": 1,
+    "step": 1,
     "callId": "call_1",
     "name": "document_write",
     "value": {
@@ -89,10 +99,11 @@
         "text": "{\"name\":\"document_write\",\"summary\":\"Updated document: `Notes/plan.md`\",\"output\":{\"path\":\"Notes/plan.md\",\"operation\":\"updated\",\"chars\":6,\"at\":true},\"failed\":false}"
       }
     ],
-    "isError": false
+    "isError": false,
+    "hosted": false
   },
   {
-    "seq": 9,
+    "seq": 8,
     "at": 1791732515444,
     "type": "deliverables/presented",
     "turn": 1,
@@ -105,36 +116,39 @@
     ]
   },
   {
-    "seq": 10,
+    "seq": 9,
     "at": 1791732515444,
     "type": "step/end",
     "turn": 1,
     "step": 1
   },
   {
-    "seq": 11,
+    "seq": 10,
     "at": 1791732515444,
     "type": "step/start",
     "turn": 1,
     "step": 2
   },
   {
-    "seq": 12,
+    "seq": 11,
     "at": 1791732515449,
     "type": "assistant/message",
+    "turn": 1,
+    "step": 2,
     "content": "Updated.",
     "stopReason": "completed",
+    "provider": "test",
     "model": "test-model"
   },
   {
-    "seq": 13,
+    "seq": 12,
     "at": 1791732515449,
     "type": "step/end",
     "turn": 1,
     "step": 2
   },
   {
-    "seq": 14,
+    "seq": 13,
     "at": 1791732515449,
     "type": "turn/end",
     "turn": 1,

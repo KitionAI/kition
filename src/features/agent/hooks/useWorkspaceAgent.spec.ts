@@ -110,7 +110,7 @@ describe('useWorkspaceAgent hosted console restore', () => {
     }
     mocks.listWorkspaceDocuments.mockResolvedValue({ items: [] })
     mocks.listAgentSessions.mockResolvedValue({ items: [] })
-    mocks.listAgentSessionEvents.mockResolvedValue({ items: [], next_after: 0 })
+    mocks.listAgentSessionEvents.mockResolvedValue({ items: [] })
     mocks.streamAgentMessage.mockResolvedValue(undefined)
     mocks.importWorkspaceFileIntoDataTable.mockResolvedValue({
       created: 0,
@@ -696,13 +696,13 @@ describe('useWorkspaceAgent hosted console restore', () => {
       client_capability_version: 1,
     }
     const variantCall = {
-      seq: 3, at: 3, type: 'tool/call', callId: 'img_abc_0', name: 'image_generation',
+      seq: 2, at: 3, type: 'tool/call', callId: 'img_abc_0', name: 'image_generation',
       arguments: { request_id: imageGenerationIntent.request_id, variant_index: 0, variant_count: 1 },
     }
     mocks.streamAgentMessage.mockImplementation(async (args: any) => {
       for (const event of [
-        { seq: 1, at: 1, type: 'turn/start', turn: 1 },
-        { seq: 2, at: 2, type: 'user/message', content: [{ type: 'text', text: imageGenerationIntent.instruction }], source: { kind: 'user' } },
+        { seq: 0, at: 1, type: 'turn/start', turn: 1 },
+        { seq: 1, at: 2, type: 'user/message', content: [{ type: 'text', text: imageGenerationIntent.instruction }], source: { kind: 'user' } },
         variantCall,
       ]) {
         args.onNotification?.({ jsonrpc: '2.0', method: 'session.event', params: { sessionId: 'agent:25', event } })
@@ -1103,7 +1103,7 @@ describe('useWorkspaceAgent session events', () => {
     }
     mocks.listWorkspaceDocuments.mockResolvedValue({ items: [] })
     mocks.listAgentSessions.mockResolvedValue({ items: [] })
-    mocks.listAgentSessionEvents.mockResolvedValue({ items: [], next_after: 0 })
+    mocks.listAgentSessionEvents.mockResolvedValue({ items: [] })
     mocks.isDesktopRuntime.mockReturnValue(true)
   })
 
@@ -1120,7 +1120,7 @@ describe('useWorkspaceAgent session events', () => {
 
   /** A turn that writes a document, previews and proposes a board patch, and answers. */
   function turnNotifications() {
-    let seq = 0
+    let seq = -1
     const logged = (body: Record<string, unknown>) => {
       seq += 1
       return event({ seq, at: seq, ...body })
@@ -1133,7 +1133,7 @@ describe('useWorkspaceAgent session events', () => {
       frame({ type: 'start', attemptId: 'a1', revision: 1, turn: 1, step: 1 }),
       frame({ type: 'chunk', attemptId: 'a1', revision: 2, index: 0, time: 1, chunk: { type: 'tool-call-delta', index: 1, id: 'w1', name: 'whiteboard_propose_patch', argumentsDelta: JSON.stringify(patch) } }),
       logged({ type: 'assistant/message', content: '', stopReason: 'tool_calls', model: 'm' }),
-      frame({ type: 'end', attemptId: 'a1', revision: 3, index: 1, outcome: { kind: 'committed', eventType: 'assistant/message', seq: 4 } }),
+      frame({ type: 'end', attemptId: 'a1', revision: 3, index: 1, outcome: { kind: 'committed', eventType: 'assistant/message', seq: 3 } }),
       logged({ type: 'tool/call', callId: 'd1', name: 'document_write', arguments: { path: 'Notes/plan.md' } }),
       logged({ type: 'tool/result', callId: 'd1', name: 'document_write', isError: false, content: [], value: { name: 'document_write', summary: 'Updated', output: { path: 'Notes/plan.md' } } }),
       logged({ type: 'deliverables/presented', turn: 1, callId: 'd1', files: [{ path: 'Notes/plan.md' }] }),
@@ -1145,7 +1145,7 @@ describe('useWorkspaceAgent session events', () => {
       frame({ type: 'start', attemptId: 'a2', revision: 4, turn: 1, step: 2 }),
       frame({ type: 'chunk', attemptId: 'a2', revision: 5, index: 0, time: 2, chunk: { type: 'text-delta', index: 0, text: 'Done.' } }),
       logged({ type: 'assistant/message', content: 'Done.', stopReason: 'stop', model: 'm' }),
-      frame({ type: 'end', attemptId: 'a2', revision: 6, index: 1, outcome: { kind: 'committed', eventType: 'assistant/message', seq: 13 } }),
+      frame({ type: 'end', attemptId: 'a2', revision: 6, index: 1, outcome: { kind: 'committed', eventType: 'assistant/message', seq: 12 } }),
       logged({ type: 'turn/end', turn: 1, reason: 'completed' }),
       status('idle'),
     ]
@@ -1201,7 +1201,7 @@ describe('useWorkspaceAgent session events', () => {
     await send(latest, 30, 'Plan it')
 
     const view = latest.current.agentSessionViews[30]
-    expect(view.cursor).toBe(14)
+    expect(view.cursor).toBe(13)
     expect(view.running).toBe(false)
     expect(view.turns[0]).toMatchObject({ userText: 'Plan it', reply: 'Done.', end: { reason: 'completed' } })
     expect(latest.current.agentPendingUserText[30]).toBeUndefined()
@@ -1216,7 +1216,7 @@ describe('useWorkspaceAgent session events', () => {
     expect(mocks.listAgentSessions).toHaveBeenCalled()
     expect(mocks.notifyFromAgentEvent).toHaveBeenCalledWith(expect.objectContaining({ event_type: 'task.completed' }))
     // The log is read before the send and again after the stream ends.
-    expect(mocks.listAgentSessionEvents.mock.calls.map(([id, after]) => [id, after])).toEqual([[30, 0], [30, 14]])
+    expect(mocks.listAgentSessionEvents.mock.calls.map(([id, after]) => [id, after])).toEqual([[30, -1], [30, 13]])
     await unmount()
   })
 
@@ -1326,11 +1326,11 @@ describe('useWorkspaceAgent session events', () => {
 
   it('reads the log when a live event skips past the cursor', async () => {
     mocks.streamAgentMessage.mockImplementation(async (args: any) => {
-      args.onNotification(event({ seq: 3, at: 3, type: 'turn/start', turn: 2 }))
+      args.onNotification(event({ seq: 2, at: 3, type: 'turn/start', turn: 2 }))
     })
     const { latest, unmount } = await mountHook()
     await send(latest, 30, 'Again')
-    expect(latest.current.agentSessionViews[30]?.cursor ?? 0).toBe(0)
+    expect(latest.current.agentSessionViews[30]?.cursor ?? -1).toBe(-1)
     // Once before the send, once for the gap (joined by the read after the stream).
     expect(mocks.listAgentSessionEvents.mock.calls.length).toBeGreaterThanOrEqual(2)
     await unmount()
@@ -1339,18 +1339,18 @@ describe('useWorkspaceAgent session events', () => {
   it('loads a session from its log when it is opened', async () => {
     mocks.listAgentSessionEvents.mockResolvedValueOnce({
       items: [
-        { seq: 1, at: 1, type: 'turn/start', turn: 1 },
-        { seq: 2, at: 2, type: 'user/message', content: [{ type: 'text', text: 'Hi' }], source: { kind: 'user' } },
-        { seq: 3, at: 3, type: 'turn/end', turn: 1, reason: 'completed' },
+        { seq: 0, at: 1, type: 'turn/start', turn: 1 },
+        { seq: 1, at: 2, type: 'user/message', content: [{ type: 'text', text: 'Hi' }], source: { kind: 'user' } },
+        { seq: 2, at: 3, type: 'turn/end', turn: 1, reason: 'completed' },
       ],
-      next_after: 3,
+      next_after: 2,
     })
     const { latest, unmount } = await mountHook()
     await act(async () => {
       await latest.current.openAgentSession({ id: 31 })
     })
     expect(latest.current.agentSessionViews[31].turns[0].userText).toBe('Hi')
-    expect(mocks.listAgentSessionEvents).toHaveBeenCalledWith(31, 0)
+    expect(mocks.listAgentSessionEvents).toHaveBeenCalledWith(31, -1)
     await unmount()
   })
 })

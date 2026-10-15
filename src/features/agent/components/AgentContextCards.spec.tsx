@@ -13,7 +13,7 @@ let root: Root | null = null
 
 type Body = { type: string } & Record<string, unknown>
 
-/** A one-turn session log in `preset`, numbered from seq 1. */
+/** A one-turn session log in `preset`, numbered from seq 0. */
 function viewOf(preset: string, bodies: Body[]) {
   const list = [
     { type: 'turn/start', turn: 1 },
@@ -21,7 +21,7 @@ function viewOf(preset: string, bodies: Body[]) {
     { type: 'permission/preset', preset },
     ...bodies,
     { type: 'turn/end', turn: 1, reason: 'completed' },
-  ].map((body, index) => ({ seq: index + 1, at: index + 1, ...body }) as AgentSessionEventsSessionEvent)
+  ].map((body, index) => ({ seq: index, at: index + 1, ...body }) as AgentSessionEventsSessionEvent)
   return list.reduce(applySessionEvent, emptyAgentSessionView())
 }
 

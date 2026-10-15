@@ -42,25 +42,25 @@ const designPatch = {
   operations: [{ op: 'layer.update' as const, layer_id: 'title', changes: { text: 'Launch' } }],
 }
 
-let seq = 0
+let seq = -1
 const at = () => {
   seq += 1
   return seq
 }
-/** Opens a fresh log: every list starts with it at seq 1. */
+/** Opens a fresh log: every list starts with it at seq 0. */
 const turnStart = (): AgentSessionEventsSessionEvent => {
-  seq = 0
+  seq = -1
   return { seq: at(), at: seq, type: 'turn/start', turn: 1 }
 }
 const call = (callId: string, name: string, args: unknown = {}): AgentSessionEventsSessionEvent => ({
-  seq: at(), at: seq, type: 'tool/call', callId, name, arguments: args,
+  seq: at(), at: seq, type: 'tool/call', turn: 1, step: 1, callId, name, arguments: args, hosted: false,
 })
 const ok = (callId: string, name: string, output: unknown, meta?: Record<string, unknown>): AgentSessionEventsSessionEvent => ({
-  seq: at(), at: seq, type: 'tool/result', callId, name, isError: false, content: [],
+  seq: at(), at: seq, type: 'tool/result', turn: 1, step: 1, callId, name, isError: false, content: [], hosted: false,
   value: { name, summary: '', output }, ...(meta ? { meta } : {}),
 })
 const failed = (callId: string, name: string): AgentSessionEventsSessionEvent => ({
-  seq: at(), at: seq, type: 'tool/result', callId, name, isError: true, value: null,
+  seq: at(), at: seq, type: 'tool/result', turn: 1, step: 1, callId, name, isError: true, value: null, hosted: false,
   content: [{ type: 'text', text: 'invalid patch' }],
 })
 const turnEnd = (reason: 'completed' | 'cancelled' | 'failed'): AgentSessionEventsSessionEvent => ({
@@ -178,7 +178,7 @@ describe('effectsOfEvent', () => {
 })
 
 describe('effectsOfStream', () => {
-  const opened = applySessionEvent(emptyAgentSessionView(), { seq: 1, at: 1, type: 'turn/start', turn: 1 })
+  const opened = applySessionEvent(emptyAgentSessionView(), { seq: 0, at: 1, type: 'turn/start', turn: 1 })
   const start: AgentAssistantStreamFrame = { type: 'start', attemptId: 'a', revision: 1, turn: 1, step: 1 }
   const args = (revision: number, id: string, delta: string, name?: string): AgentAssistantStreamFrame => ({
     type: 'chunk', attemptId: 'a', revision, index: revision - 2, time: revision,
@@ -228,19 +228,19 @@ describe('effectsOfStream', () => {
     const streamed = run([start, args(2, 'w1', JSON.stringify(whiteboardPatch), 'whiteboard_propose_patch')])
     const attempt = run([{
       type: 'end', attemptId: 'a', revision: 3, index: 1,
-      outcome: { kind: 'committed', eventType: 'assistant/attempt', seq: 2 },
+      outcome: { kind: 'committed', eventType: 'assistant/attempt', seq: 1 },
     }], streamed.view)
     expect(attempt.effects).toEqual([{ type: 'whiteboard-patch-cancelled' }])
     const message = run([{
       type: 'end', attemptId: 'a', revision: 3, index: 1,
-      outcome: { kind: 'committed', eventType: 'assistant/message', seq: 2 },
+      outcome: { kind: 'committed', eventType: 'assistant/message', seq: 1 },
     }], streamed.view)
     expect(message.effects).toEqual([])
   })
 
   it('does not cancel a called patch when only its attempt ends', () => {
     const called = applySessionEvent(opened, {
-      seq: 2, at: 2, type: 'tool/call', callId: 'w9', name: 'whiteboard_propose_patch', arguments: {},
+      seq: 1, at: 2, type: 'tool/call', turn: 1, step: 1, callId: 'w9', name: 'whiteboard_propose_patch', arguments: {}, hosted: false,
     })
     const attempt = run([start, {
       type: 'end', attemptId: 'a', revision: 2, index: 0, outcome: { kind: 'abandoned' },
@@ -261,7 +261,7 @@ describe('stepAgentSession', () => {
       effects.push(...step.effects)
       view = step.view
     }
-    expect(view.cursor).toBe(14)
+    expect(view.cursor).toBe(13)
     expect(effects).toHaveLength(2)
     const gap = stepAgentSession(emptyAgentSessionView(), {
       jsonrpc: '2.0', method: 'session.event', params: { sessionId, event: list[3] },

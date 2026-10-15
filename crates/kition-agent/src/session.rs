@@ -325,6 +325,11 @@ async fn drive(agent: Agent, user_id: i64, prepared: Prepared, emitter: Emitter)
         whiteboard: request.whiteboard_context.clone(),
         design: request.design_context.clone(),
         model: request.runtime_model.clone().unwrap_or_default(),
+        provider_route: request
+            .runtime_model
+            .as_ref()
+            .map(|model| model.provider_type.trim().to_owned())
+            .unwrap_or_default(),
         prompt: content.clone(),
         attachments,
         local_sources,

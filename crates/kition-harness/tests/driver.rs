@@ -404,7 +404,7 @@ fn events_appended_outside_a_turn_go_live_and_count_turns() {
     assert_eq!(next_turn(&[]), 1);
     let event = append_live(&log, "s", &sink, EventBody::TurnStart { turn: 1 })
         .unwrap_or_else(|error| panic!("{error}"));
-    assert_eq!(event.seq, 1);
+    assert_eq!(event.seq, 0);
     assert_eq!(
         live.lock()
             .unwrap_or_else(PoisonError::into_inner)
@@ -1583,4 +1583,174 @@ async fn stream_revisions_continue_across_the_turns_of_a_session() {
         })
         .collect();
     assert_eq!(revisions, (1..=6).collect::<Vec<u64>>());
+}
+
+/// The turn and step a step-scoped event names, if it is one.
+fn scope(body: &EventBody) -> Option<(u32, u32)> {
+    match body {
+        EventBody::SystemMessage { turn, step, .. }
+        | EventBody::AssistantMessage { turn, step, .. }
+        | EventBody::AssistantAttempt { turn, step, .. }
+        | EventBody::ToolCall { turn, step, .. }
+        | EventBody::ToolResult { turn, step, .. } => Some((*turn, *step)),
+        _ => None,
+    }
+}
+
+#[tokio::test]
+async fn step_scoped_events_carry_turn_and_step() {
+    let mut first = LlmReply::calls(vec![call("c1", "echo", json!({ "text": "hi" }))]);
+    first.provider = "gateway".into();
+    let mut second = LlmReply::text("done");
+    second.provider = "gateway".into();
+    let setup = setup(vec![first, second, LlmReply::text("again")]);
+    let driver = setup.driver(Pipeline::default());
+    for text in ["say hi", "again"] {
+        driver
+            .run_turn(setup.input(text, Cancel::default()))
+            .await
+            .unwrap_or_else(|error| panic!("{error}"));
+    }
+    let events = setup
+        .log
+        .read("s")
+        .unwrap_or_else(|error| panic!("{error}"));
+    let mut open = None;
+    let mut scoped = Vec::new();
+    for event in &events {
+        if let EventBody::StepStart { turn, step } = event.body {
+            open = Some((turn, step));
+        }
+        if let Some(scope) = scope(&event.body) {
+            assert_eq!(Some(scope), open, "{event:?}");
+            scoped.push((event.body.kind(), scope));
+        }
+    }
+    assert_eq!(
+        scoped,
+        [
+            ("system/message", (1, 1)),
+            ("assistant/message", (1, 1)),
+            ("tool/call", (1, 1)),
+            ("tool/result", (1, 1)),
+            ("assistant/message", (1, 2)),
+            ("assistant/message", (2, 1)),
+        ]
+    );
+    let providers: Vec<&str> = events
+        .iter()
+        .filter_map(|event| match &event.body {
+            EventBody::AssistantMessage { provider, .. } => Some(provider.as_str()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(providers, ["gateway", "gateway", ""]);
+}
+
+#[tokio::test]
+async fn hosted_calls_are_marked() {
+    let mut reply = LlmReply::calls(vec![call("c1", "echo", json!({ "text": "hi" }))]);
+    reply.hosted = vec![HostedCall {
+        call_id: "ws_1".into(),
+        name: "web_search".into(),
+        arguments: json!({ "query": "kition" }),
+        value: json!({ "status": "completed" }),
+        meta: None,
+        files: Vec::new(),
+    }];
+    let setup = setup(vec![reply, LlmReply::text("done")]);
+    setup
+        .driver(Pipeline::default())
+        .run_turn(setup.input("search", Cancel::default()))
+        .await
+        .unwrap_or_else(|error| panic!("{error}"));
+    let marks: Vec<(&'static str, String, bool, (u32, u32))> = setup
+        .log
+        .read("s")
+        .unwrap_or_else(|error| panic!("{error}"))
+        .iter()
+        .filter_map(|event| match &event.body {
+            EventBody::ToolCall {
+                call_id,
+                hosted,
+                turn,
+                step,
+                ..
+            }
+            | EventBody::ToolResult {
+                call_id,
+                hosted,
+                turn,
+                step,
+                ..
+            } => Some((event.body.kind(), call_id.clone(), *hosted, (*turn, *step))),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        marks,
+        [
+            ("tool/call", "ws_1".to_owned(), true, (1, 1)),
+            ("tool/result", "ws_1".to_owned(), true, (1, 1)),
+            ("tool/call", "c1".to_owned(), false, (1, 1)),
+            ("tool/result", "c1".to_owned(), false, (1, 1)),
+        ]
+    );
+}
+
+#[tokio::test]
+async fn a_cancelled_attempt_is_aborted() {
+    let log = Arc::new(MemoryLog::default());
+    let entered = Arc::new(Notify::new());
+    let driver = Driver::new(log.clone(), Arc::new(BlockingLlm::new(entered.clone())));
+    let cancel = Cancel::default();
+    let input = TurnInput {
+        session: "s".into(),
+        system: "You are Kition.".into(),
+        tools: ToolRegistry::default(),
+        user: vec![ContentBlock::text("go")],
+        cancel: cancel.clone(),
+        live: Arc::new(|_: Live| {}),
+        model: None,
+        source: MessageSource::user(),
+        preset: None,
+        stream_revision: Arc::default(),
+    };
+    let handle = tokio::spawn(async move { driver.run_turn(input).await });
+    entered.notified().await;
+    cancel.cancel();
+    let _ = handle.await;
+    let attempt = log
+        .read("s")
+        .unwrap_or_else(|error| panic!("{error}"))
+        .into_iter()
+        .find_map(|event| match event.body {
+            body @ EventBody::AssistantAttempt { .. } => Some(body),
+            _ => None,
+        });
+    assert_eq!(
+        attempt,
+        Some(EventBody::AssistantAttempt {
+            turn: 1,
+            step: 1,
+            error: "cancelled".into(),
+            aborted: true,
+        })
+    );
+
+    let failed = setup(Vec::new());
+    let _ = failed
+        .driver(Pipeline::default())
+        .run_turn(failed.input("go", Cancel::default()))
+        .await;
+    let attempt = failed
+        .log
+        .read("s")
+        .unwrap_or_else(|error| panic!("{error}"))
+        .into_iter()
+        .find_map(|event| match event.body {
+            EventBody::AssistantAttempt { aborted, step, .. } => Some((aborted, step)),
+            _ => None,
+        });
+    assert_eq!(attempt, Some((false, 1)), "a model failure is not aborted");
 }

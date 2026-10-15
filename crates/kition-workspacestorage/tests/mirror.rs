@@ -58,11 +58,11 @@ fn restores_agent_sessions_with_their_log_and_email_state_without_secrets() {
         append(
             &conn,
             &format!("agent:{id}"),
-            1,
+            0,
             &json!({ "type": "turn/start", "turn": 1 }),
         );
-        append(&conn, &format!("agent:{id}"), 2, &user);
-        append(&conn, &format!("agent:{id}"), 3, &reply);
+        append(&conn, &format!("agent:{id}"), 1, &user);
+        append(&conn, &format!("agent:{id}"), 2, &reply);
         let elsewhere = AgentSession {
             user_id: 1,
             title: "Other".into(),
@@ -87,6 +87,7 @@ fn restores_agent_sessions_with_their_log_and_email_state_without_secrets() {
         serde_json::from_slice(&std::fs::read(dir.join("session.json")).unwrap_or_default())
             .unwrap_or_default();
     assert_eq!(snapshot["schema_version"], json!(3));
+    assert_eq!(snapshot["events_count"], json!(3));
     assert_eq!(snapshot["session"]["workspace_root"], json!("."));
     let lines: Vec<Value> = std::fs::read_to_string(dir.join("session-events.jsonl"))
         .unwrap_or_default()
@@ -96,7 +97,7 @@ fn restores_agent_sessions_with_their_log_and_email_state_without_secrets() {
     assert_eq!(lines.len(), 3);
     assert_eq!(
         lines[0],
-        json!({ "seq": 1, "at": 101, "type": "turn/start", "turn": 1 })
+        json!({ "seq": 0, "at": 100, "type": "turn/start", "turn": 1 })
     );
     assert_eq!(lines[2]["content"], "Hello");
     assert!(lines[2].get("rawItems").is_none(), "{}", lines[2]);
@@ -136,9 +137,9 @@ fn restores_agent_sessions_with_their_log_and_email_state_without_secrets() {
     assert_eq!(
         logged(&conn, "agent:1"),
         [
-            (1, 101, json!({ "type": "turn/start", "turn": 1 })),
-            (2, 102, user),
-            (3, 103, stripped),
+            (0, 100, json!({ "type": "turn/start", "turn": 1 })),
+            (1, 101, user),
+            (2, 102, stripped),
         ],
         "imported once, without provider-native items"
     );
@@ -222,17 +223,17 @@ fn exports_the_log_without_inline_images_or_system_prompts() {
     {
         let conn = db.conn().unwrap_or_else(|err| panic!("{err}"));
         let key = format!("agent:{}", session_in(&conn, &root));
-        append(&conn, &key, 1, &json!({ "type": "turn/start", "turn": 1 }));
+        append(&conn, &key, 0, &json!({ "type": "turn/start", "turn": 1 }));
         append(
             &conn,
             &key,
-            2,
+            1,
             &json!({ "type": "system/message", "content": "You are Kition." }),
         );
         append(
             &conn,
             &key,
-            3,
+            2,
             &json!({ "type": "user/message", "source": { "kind": "user" }, "content": [
             { "type": "text", "text": "What is this?" },
             { "type": "image", "url": "data:image/png;base64,AAAA" },
@@ -242,7 +243,7 @@ fn exports_the_log_without_inline_images_or_system_prompts() {
         append(
             &conn,
             &key,
-            4,
+            3,
             &json!({ "type": "tool/result", "callId": "c1", "name": "image_read", "isError": false,
             "content": [{ "type": "image", "url": "data:image/jpeg;base64,BBBB" }] }),
         );
@@ -260,7 +261,7 @@ fn exports_the_log_without_inline_images_or_system_prompts() {
     let seqs: Vec<_> = lines.iter().map(|line| line["seq"].clone()).collect();
     assert_eq!(
         seqs,
-        [json!(1), json!(3), json!(4)],
+        [json!(0), json!(2), json!(3)],
         "system/message is not exported"
     );
     let omitted = json!({ "type": "text", "text": "[image omitted]" });
@@ -279,7 +280,7 @@ fn an_unchanged_session_is_not_rewritten() {
     let key = {
         let conn = db.conn().unwrap_or_else(|err| panic!("{err}"));
         let key = format!("agent:{}", session_in(&conn, &root));
-        append(&conn, &key, 1, &json!({ "type": "turn/start", "turn": 1 }));
+        append(&conn, &key, 0, &json!({ "type": "turn/start", "turn": 1 }));
         key
     };
     let target = mirror(workspace.path(), db.clone());
@@ -306,7 +307,7 @@ fn an_unchanged_session_is_not_rewritten() {
         append(
             &conn,
             &key,
-            2,
+            1,
             &json!({ "type": "turn/end", "turn": 1, "reason": "completed" }),
         );
     }
@@ -315,7 +316,7 @@ fn an_unchanged_session_is_not_rewritten() {
         .iter()
         .map(|line| line["seq"].clone())
         .collect();
-    assert_eq!(seqs, [json!(1), json!(2)], "a grown log is written again");
+    assert_eq!(seqs, [json!(0), json!(1)], "a grown log is written again");
 }
 
 #[test]
@@ -330,7 +331,7 @@ fn a_damaged_session_is_skipped_and_the_rest_imported() {
         std::fs::create_dir_all(agents.join(dir)).unwrap_or_else(|err| panic!("{err}"));
         std::fs::write(agents.join(dir).join(name), text).unwrap_or_else(|err| panic!("{err}"));
     };
-    let start = json!({ "seq": 1, "at": 1, "type": "turn/start", "turn": 1 }).to_string();
+    let start = json!({ "seq": 0, "at": 1, "type": "turn/start", "turn": 1 }).to_string();
     // Session 1: a malformed log line. Session 2: an event without seq.
     // Session 3: a malformed session.json. Session 4: intact.
     write("1", "session.json", session(1).to_string());

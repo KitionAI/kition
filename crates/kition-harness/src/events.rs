@@ -138,7 +138,11 @@ pub enum EventBody {
     #[serde(rename = "step/end")]
     StepEnd { turn: u32, step: u32 },
     #[serde(rename = "system/message")]
-    SystemMessage { content: String },
+    SystemMessage {
+        turn: u32,
+        step: u32,
+        content: String,
+    },
     #[serde(rename = "user/message")]
     UserMessage {
         content: Vec<ContentBlock>,
@@ -146,28 +150,44 @@ pub enum EventBody {
     },
     #[serde(rename = "assistant/message")]
     AssistantMessage {
+        turn: u32,
+        step: u32,
         content: String,
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         tool_calls: Vec<LoggedCall>,
         #[serde(default)]
         stop_reason: String,
+        /// The provider route that answered (dsh `message.source.provider`).
+        provider: String,
         #[serde(default)]
         model: String,
         /// Provider-native items replayed verbatim on the Responses wire.
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         raw_items: Vec<Value>,
     },
-    /// A model call that settled without a message: failed or cancelled.
+    /// A model call that settled without a message: failed, or `aborted`
+    /// when the turn was cancelled.
     #[serde(rename = "assistant/attempt")]
-    AssistantAttempt { error: String },
+    AssistantAttempt {
+        turn: u32,
+        step: u32,
+        error: String,
+        aborted: bool,
+    },
+    /// `hosted`: the provider ran the call itself (not model history).
     #[serde(rename = "tool/call")]
     ToolCall {
+        turn: u32,
+        step: u32,
         call_id: String,
         name: String,
         arguments: Value,
+        hosted: bool,
     },
     #[serde(rename = "tool/result")]
     ToolResult {
+        turn: u32,
+        step: u32,
         call_id: String,
         name: String,
         /// The canonical output value (standard A4); `null` on failure.
@@ -178,6 +198,7 @@ pub enum EventBody {
         /// Display-only data derived from arguments and value.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         meta: Option<Value>,
+        hosted: bool,
     },
     /// `id` is `approval:<callId>`; the matching `approval/decided` uses it.
     #[serde(rename = "approval/asked")]
@@ -300,15 +321,19 @@ mod tests {
             seq: 3,
             at: 10,
             body: EventBody::ToolCall {
+                turn: 1,
+                step: 2,
                 call_id: "c1".into(),
                 name: "echo".into(),
                 arguments: json!({ "text": "hi" }),
+                hosted: false,
             },
         };
         let wire = serde_json::to_value(&event).unwrap_or_else(|error| panic!("{error}"));
         assert_eq!(
             wire,
-            json!({ "seq": 3, "at": 10, "type": "tool/call", "callId": "c1", "name": "echo", "arguments": { "text": "hi" } })
+            json!({ "seq": 3, "at": 10, "type": "tool/call", "turn": 1, "step": 2, "callId": "c1", "name": "echo",
+                "arguments": { "text": "hi" }, "hosted": false })
         );
         let back: SessionEvent =
             serde_json::from_value(wire).unwrap_or_else(|error| panic!("{error}"));
@@ -328,6 +353,8 @@ mod tests {
             EventBody::StepStart { turn: 1, step: 1 },
             EventBody::StepEnd { turn: 1, step: 1 },
             EventBody::SystemMessage {
+                turn: 1,
+                step: 1,
                 content: "be helpful".into(),
             },
             EventBody::UserMessage {
@@ -335,27 +362,39 @@ mod tests {
                 source: MessageSource::new("context-action"),
             },
             EventBody::AssistantMessage {
+                turn: 1,
+                step: 1,
                 content: String::new(),
                 tool_calls: Vec::new(),
                 stop_reason: String::new(),
+                provider: "deepseek-official".into(),
                 model: String::new(),
                 raw_items: Vec::new(),
             },
             EventBody::AssistantAttempt {
+                turn: 1,
+                step: 2,
                 error: "timed out".into(),
+                aborted: true,
             },
             EventBody::ToolCall {
+                turn: 1,
+                step: 1,
                 call_id: "c1".into(),
                 name: "echo".into(),
                 arguments: json!({}),
+                hosted: true,
             },
             EventBody::ToolResult {
+                turn: 1,
+                step: 1,
                 call_id: "c1".into(),
                 name: "echo".into(),
                 value: Value::Null,
                 content: vec![ContentBlock::text("done")],
                 is_error: false,
                 meta: None,
+                hosted: false,
             },
             EventBody::ApprovalAsked {
                 id: "approval:c1".into(),
@@ -553,6 +592,23 @@ mod tests {
             }),
             json!({ "type": "permission/preset", "preset": "apply" })
         );
+    }
+
+    #[test]
+    fn step_scoped_events_require_their_new_fields() {
+        for event in [
+            json!({ "type": "system/message", "content": "x" }),
+            json!({ "type": "assistant/message", "turn": 1, "step": 1, "content": "", "model": "m" }),
+            json!({ "type": "assistant/attempt", "turn": 1, "step": 1, "error": "x" }),
+            json!({ "type": "tool/call", "turn": 1, "step": 1, "callId": "c", "name": "n", "arguments": {} }),
+            json!({ "type": "tool/result", "turn": 1, "step": 1, "callId": "c", "name": "n", "value": null,
+                "content": [], "isError": false }),
+        ] {
+            assert!(
+                serde_json::from_value::<EventBody>(event.clone()).is_err(),
+                "{event}"
+            );
+        }
     }
 
     #[test]

@@ -135,7 +135,7 @@ async fn delete_session(
 #[derive(Debug, Default, Deserialize)]
 #[serde(default)]
 struct EventsQuery {
-    after: u64,
+    after: Option<u64>,
 }
 
 /// The session event log (`contracts/runtime/agent-session-events.schema.json`).
@@ -152,7 +152,11 @@ async fn list_session_events(
             .await
             .map_err(|_| AppError::internal("Failed to load agent session events"))?
             .map_err(|_| AppError::internal("Failed to load agent session events"))?;
-    Ok(ok(json!({ "items": items, "next_after": next_after })))
+    let mut page = json!({ "items": items });
+    if let Some(next_after) = next_after {
+        page["next_after"] = json!(next_after);
+    }
+    Ok(ok(page))
 }
 
 async fn stream(

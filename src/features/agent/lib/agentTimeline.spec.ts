@@ -10,10 +10,10 @@ import { applySessionEvent, emptyAgentSessionView, type AgentTurnView } from './
 
 type Body = { type: string } & Record<string, unknown>
 
-/** The one turn of a log made of `bodies` after `turn/start`, numbered from seq 1. */
+/** The one turn of a log made of `bodies` after `turn/start`, numbered from seq 0. */
 function turnOf(bodies: Body[]): AgentTurnView {
   const list = [{ type: 'turn/start', turn: 1 }, ...bodies]
-    .map((body, index) => ({ seq: index + 1, at: Date.parse('2026-05-29T00:00:00.000Z') + index, ...body }) as AgentSessionEventsSessionEvent)
+    .map((body, index) => ({ seq: index, at: Date.parse('2026-05-29T00:00:00.000Z') + index, ...body }) as AgentSessionEventsSessionEvent)
   return list.reduce(applySessionEvent, emptyAgentSessionView()).turns[0]
 }
 
