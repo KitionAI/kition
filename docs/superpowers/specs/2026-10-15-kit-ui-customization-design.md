@@ -196,8 +196,9 @@ A click sends `ui/action`. Kits write no code for them.
 Shown only when the host has the `customize` capability:
 
 - entry: a "Customize interface…" item in a new "More" menu in the document
-  actions (`action:more`), in the same place in every kit; and "Hide" on the
-  context menu of menu items, tools, and ribbon buttons;
+  actions (`action:more`), in the same place in every kit; "Hide" on the
+  context menu of menu items and ribbon buttons; and "Hide" at the end of a
+  tool slot's flyout (the rail's context menu already opens the flyout);
 - a checkbox tree: menus and their commands, tools, panels, ribbon tabs and
   their groups, document actions; with search and "Restore defaults";
 - host-hidden elements are not listed;
@@ -209,9 +210,9 @@ Shown only when the host has the `customize` capability:
 `@kition/kit-dev-host` gets a configuration panel: paste a JSON configuration
 and send it live, log received `ui/action`s, switch theme presets, and keep
 `host/customize` results in `localStorage`. It also exports
-`checkUiIds(frame)` for flow tests: every interactive element (buttons, menu
-items, tools) carries a declared id, and every declared id that should be
-visible is found.
+`checkUiIds(frame, elements)` for flow tests: every control in the chrome (menu
+bar, ribbon, options bar, tool rail, panels) sits in an element with an id,
+and every id drawn is one the editor lists in `ui/elements`.
 
 ## Part 3: The ten kits
 
