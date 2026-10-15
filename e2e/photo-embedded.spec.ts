@@ -1,13 +1,16 @@
-import { expect, test } from '@playwright/test'
-import { kitEngine, openInKitFrame } from './helpers/embeddedKit'
+import fs from 'node:fs/promises'
+import path from 'node:path'
+import { expect, test, type Page } from '@playwright/test'
+import { kitEngine, openInKitFrame, openTreeFile } from './helpers/embeddedKit'
+import { dismissFirstRunActivation } from './helpers/onboarding'
 
 type NodePhotoDocument = { save(): Uint8Array; execute(command: string, params: string): string; free(): void }
 const engine = kitEngine<{ PhotoDocument: { create(name: string, width: number, height: number): NodePhotoDocument } }>('photo', 'kition_photo_sdk')
 
 /** A real image made by the same engine the page runs: a background and one pixel layer. */
-async function posterFixture() {
+async function posterFixture(width = 480, height = 320) {
   const sdk = await engine.load()
-  const doc = sdk.PhotoDocument.create('Poster.psd', 480, 320)
+  const doc = sdk.PhotoDocument.create('Poster.psd', width, height)
   doc.execute('layer.new.layer', JSON.stringify({ name: 'Ink' }))
   const bytes = doc.save()
   doc.free()
@@ -37,6 +40,55 @@ test('opens an image in the Photo kit’s own editor, paints in it, and saves it
     await kit.getByTestId('photo-save').click()
     await expect(kit.getByTestId('photo-unsaved')).toHaveCount(0, { timeout: 30_000 })
     expect(saves.map((save) => save.path)).toEqual(['Poster.psd'])
+  } finally {
+    await host.dispose()
+  }
+})
+
+/** The replica version of the kit editor showing `path`, as hex (Kition's development test hook). */
+function replicaVersion(page: Page, path: string) {
+  return page.evaluate(async (wanted) => (window.__KITION_KIT_TEST__ ? window.__KITION_KIT_TEST__.replicaVersion(wanted) : ''), path)
+}
+
+test('keeps a PSD’s replica across a save and a reopen, and opens a file changed elsewhere plainly', async ({ page, baseURL }) => {
+  test.skip(!engine.built, 'the Photo kit editor is not built into public/kits/photo-ui')
+  test.setTimeout(180_000)
+  const name = 'Replica.psd'
+  const { host, kit } = await openInKitFrame(page, baseURL!, name, await posterFixture(96, 64), {}, { persist: true })
+  const reopen = async () => {
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await dismissFirstRunActivation(page)
+    return openTreeFile(page, name)
+  }
+  try {
+    await expect(kit.getByTestId('photo-status')).toContainText('2 layers', { timeout: 60_000 })
+    await kit.getByTestId('photo-layer-new').click()
+    await expect(kit.getByTestId('photo-status')).toContainText('3 layers')
+    await kit.getByTestId('photo-save').click()
+    await expect(kit.getByTestId('photo-unsaved')).toHaveCount(0, { timeout: 30_000 })
+
+    // The replica sits in the document store under the file's identity, with the saved file's stamp.
+    const store = path.join(host.root, '.kition', 'docs')
+    const readJson = async (file: string) => JSON.parse(await fs.readFile(path.join(store, file), 'utf8').catch(() => '{}'))
+    await expect.poll(async () => (await readJson('index.json')).entries?.[name] ?? null, { timeout: 15_000 }).not.toBeNull()
+    const docId = (await readJson('index.json')).entries[name] as string
+    await expect.poll(async () => (await readJson(`${docId}/meta.json`)).meta?.kit ?? null).toBe('kit.photo')
+    expect(await fs.stat(path.join(store, docId, 'blobs.bin'))).toBeTruthy()
+    const saved = await replicaVersion(page, name)
+    expect(saved).not.toBe('')
+
+    // Reopened, the image is the replica it was saved with.
+    const reopened = await reopen()
+    await expect(reopened.getByTestId('photo-status')).toContainText('3 layers', { timeout: 60_000 })
+    await expect.poll(() => replicaVersion(page, name).catch(() => ''), { timeout: 15_000 }).toBe(saved)
+    await expect(reopened.getByTestId('photo-unsaved')).toHaveCount(0)
+
+    // A file changed elsewhere (a new stamp) opens plainly: what the file holds, a new replica.
+    await fs.writeFile(path.join(host.root, name), await posterFixture(96, 64))
+    const changed = await reopen()
+    await expect(changed.getByTestId('photo-status')).toContainText('2 layers', { timeout: 60_000 })
+    await expect.poll(() => replicaVersion(page, name).catch(() => ''), { timeout: 15_000 }).not.toBe('')
+    expect(await replicaVersion(page, name)).not.toBe(saved)
   } finally {
     await host.dispose()
   }

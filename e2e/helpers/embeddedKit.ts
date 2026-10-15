@@ -59,15 +59,21 @@ export async function openKitWorkspace(page: Page, baseURL: string, files: Recor
   return { host, saves }
 }
 
-/**
- * Opens `name` (written to the workspace from `bytes`) in Kition, where the kit's own editor
- * shows in a frame; answers the frame, and the files Kition saved through its file API.
- */
-export async function openInKitFrame(page: Page, baseURL: string, name: string, bytes: Buffer, others: Record<string, Buffer> = {}) {
-  const { host, saves } = await openKitWorkspace(page, baseURL, { ...others, [name]: bytes })
+/** Opens the workspace file `name` from the tree, where the kit's own editor shows in a frame. */
+export async function openTreeFile(page: Page, name: string) {
   // A document in a folder: open the folder in the tree first.
   for (const folder of name.split('/').slice(0, -1)) await page.locator('.document-tree-row', { hasText: folder }).first().click()
   await page.locator('.document-tree-row', { hasText: (name.split('/').pop() ?? name).replace(/\.[^.]+$/, '') }).first().click()
   await expect(page.getByTestId('kit-frame')).toBeVisible()
-  return { host, saves, kit: page.frameLocator('[data-testid="kit-frame-window"]') }
+  return page.frameLocator('[data-testid="kit-frame-window"]')
+}
+
+/**
+ * Opens `name` (written to the workspace from `bytes`) in Kition, where the kit's own editor
+ * shows in a frame; answers the frame, and the files Kition saved through its file API (with
+ * `persist`, also written to the workspace).
+ */
+export async function openInKitFrame(page: Page, baseURL: string, name: string, bytes: Buffer, others: Record<string, Buffer> = {}, { persist = false } = {}) {
+  const { host, saves } = await openKitWorkspace(page, baseURL, { ...others, [name]: bytes }, { persist })
+  return { host, saves, kit: await openTreeFile(page, name) }
 }

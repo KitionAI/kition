@@ -4,8 +4,9 @@ import { Loader2 } from 'lucide-react'
 import { writeKitFile } from '@/api/kits'
 import { notify } from '@/lib/notify'
 import { mountKit, type KitConnection, type KitTheme } from '../host/mountKit'
-import { KITION_KIT_HOST } from './kitionHost'
+import { KITION_KIT_HOST, readKitReplica, writeKitReplica } from './kitionHost'
 import { registerBridgeEditor, reportBridgeChange } from './kitBridge'
+import { registerKitTestFrame } from './kitTestBridge'
 import { pickWorkspaceFile } from './pickWorkspaceFile'
 
 /** An embedded kit UI in Kition: its package under `public/kits/<dir>/`. */
@@ -44,6 +45,13 @@ function workspacePath(path: string) {
   const parts = path.replace(/\\/g, '/').split('/').filter((part) => part && part !== '.')
   if (path.startsWith('/') || parts.some((part) => part === '..') || !parts.length) throw new Error(`${path} is outside the workspace`)
   return parts.join('/')
+}
+
+/** The document's own path: a kit keeps only its document's replica. */
+function documentPath(wanted: string, path: string) {
+  const checked = workspacePath(wanted)
+  if (checked !== workspacePath(path)) throw new Error(`${wanted} is not this editor's document`)
+  return checked
 }
 
 /** A file name not taken yet: `name.ext`, then `name 2.ext`, … (exports and new files, H5). */
@@ -108,6 +116,9 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
               return { path: target, version: (await KITION_KIT_HOST.stamp(target)) ?? '' }
             },
             pick: async ({ accept }) => ({ path: await pickWorkspaceFile(path, accept) }),
+            // The replica the kit keeps next to its file (a PSD's), in the document store.
+            replicaRead: ({ path: wanted }) => readKitReplica(documentPath(wanted, path), kit.kitId),
+            replicaWrite: ({ path: wanted, ...replica }) => writeKitReplica(documentPath(wanted, path), kit.kitId, replica),
             openAgent: latest.current.onOpenAgent ? () => latest.current.onOpenAgent?.() : undefined,
             changed: (next) => {
               const agentEdit = next.by === 'agent'
@@ -128,7 +139,7 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
           mounted.close()
           return
         }
-        withdraw = registerBridgeEditor({
+        const withdrawEditor = registerBridgeEditor({
           path,
           kitId: kit.kitId,
           revision: () => state.revision,
@@ -138,6 +149,11 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
           run: async (steps, save) => (await mounted!.ai.run(steps, save)) as never,
           preview: async (maxSize) => (await mounted!.ai.preview(maxSize)).png,
         })
+        const withdrawTest = registerKitTestFrame(path, mounted)
+        withdraw = () => {
+          withdrawEditor()
+          withdrawTest()
+        }
         setConnection(mounted)
       } catch (error) {
         if (!closed) setFailure(error instanceof Error ? error.message : String(error))
