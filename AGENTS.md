@@ -108,7 +108,10 @@ covers the three GFM table widget row and column button regressions.
   removed. Native kit executables run only `headless`, for the agent.
 - A kit's package (`public/kits/<kit>-ui/`: editor, engine, fonts) must stay
   self-contained (standard UI-K1) so other applications can embed it. Kition
-  ships every kit's package inside the app. Register a kit in
+  ships every kit's package inside the app, as published by
+  `scripts/publish-kit.sh` on a developer machine and pinned in
+  `kits/kits.lock.json`. Never add builds or workflows to the private kit
+  repositories' CI; their Actions minutes are limited. Register a kit in
   `src/features/workspace/components/kits/kitEditors.ts` and
   `kits/sdks.json`; see `docs/kit-sdk.md`.
 - If the upstream app draws something in its own UI, port it into the kit's

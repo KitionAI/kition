@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url'
 import { portalBaseURLForBuildIdentity, resolveBuildIdentity } from './build-identity.mjs'
 import { collectArtifacts, describeTarget } from './release-artifacts.mjs'
 import { validateDesktopRenderer } from './validate-desktop-renderer.mjs'
+import { kitPackageProblems } from '../../scripts/lib/kitPackages.mjs'
 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url))
 const appDir = path.resolve(moduleDir, '..', '..')
@@ -75,6 +76,13 @@ requireOfficialSecrets()
 
 await run(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', ['exec', 'vite', 'build', '--config', 'tooling/vite.config.ts'], { cwd: appDir })
 await validateDesktopRenderer({ rootDir: appDir })
+
+// Kition ships every kit: official builds need the pinned packages (`node scripts/fetch-kits.mjs`).
+const kitProblems = kitPackageProblems(appDir, path.join(appDir, 'dist', 'kits'))
+if (kitProblems.length && buildIdentity !== 'dev') {
+  throw new Error(`[build] official builds ship every pinned kit; run node scripts/fetch-kits.mjs first:\n${kitProblems.join('\n')}`)
+}
+for (const problem of kitProblems) console.warn(`[build] kit package: ${problem}`)
 
 const portalBaseURL = portalBaseURLForBuildIdentity(buildIdentity)
 console.log(`[build] identity=${buildIdentity} portalBaseURL=${portalBaseURL} target=${triple}`)

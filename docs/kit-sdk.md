@@ -220,6 +220,9 @@ and side panels).
   `public/kits/<kit>-ui/` with a `kit-ui.json` marker (`make kit-ui-<kit>`;
   `make kit-uis` for all of `KIT_UIS`). The package keeps its own fonts and
   assets (UI-K1), so it stays embeddable without Kition.
+- Release builds use the published packages pinned in `kits/kits.lock.json`
+  instead (section 4b); `make kit-fetch` puts the same ones in a development
+  checkout.
 - `src/features/kits/kition/KitFrame.tsx` mounts a package: the document's
   bytes, Kition's theme tokens and language, `host/read` and `host/write`
   through the workspace file API, paths confined to the workspace, new files
@@ -253,6 +256,42 @@ and side panels).
   (standard E9), and their editors ship Droid Sans Fallback from the
   `kition-fonts` checkout next to the kit (`web/scripts/build-engine.sh`).
   Never Noto CJK or Source Han: the Craft apps' asset rules forbid them.
+
+## 4b. Kit Packages And Releases
+
+Kition ships every kit's package inside the app (decided 2026-10-15). All ten
+packages add about 57 MB compressed; the renderer is embedded in the
+executable with brotli, so the installer and the installed app grow by about
+that much, and every app update downloads it again.
+
+A kit package is also the kit's SDK deliverable: the same `.tgz` is what
+another application embeds with `@kition/kit-host`. Kition consumes it the way
+any other host would, so it never builds kits in its release.
+
+- **Publishing** runs on a developer machine, never in the private kit
+  repositories' CI (their Actions minutes are limited):
+  `scripts/publish-kit.sh <kit>` clones the pushed `origin/main` of the kit,
+  kition-sdk, and kition-fonts side by side in a scratch folder (local changes
+  never reach a package), builds the package with `scripts/build-kit-ui.sh`,
+  uploads `kition-<kit>-<version>.tgz` to a `package-v<version>` Release of
+  the kit's repository with `gh`, and pins it in `kits/kits.lock.json`
+  (version, commit, size, SHA-256, and the kition-sdk and kition-fonts
+  commits). A version is published once: bump `version` in the kit's
+  `kit.json` to publish a change. `--dry-run` builds and packs only.
+- **Fetching**: `node scripts/fetch-kits.mjs` (`make kit-fetch`) downloads the
+  pinned packages into `public/kits/` with `gh release download`, checks size
+  and SHA-256, and checks the extracted `kit-ui.json` (kit id, version,
+  commit). `--check` only compares. Locally it uses your gh login; the release
+  workflow uses the `KITION_KITS_TOKEN` secret, a read-only token for the kit
+  repositories' contents. The kit repositories stay private.
+- **Releasing**: Kition's release workflow (a public repository, so its CI is
+  free) fetches the packages, checks every engine against the contract
+  (`pnpm check:kit-sdks`), runs the kit e2e specs in its sweep, and fetches
+  them again for every platform's desktop build.
+  `src-tauri/scripts/build.mjs` refuses an rc or stable build unless every kit
+  in `kits/sdks.json` is pinned and in `dist/kits/` as pinned.
+- The packages carry minified JavaScript and WebAssembly without source maps
+  or debug names, so shipping them does not publish kit source.
 
 ## 5. Adding A Kit: Checklist
 
@@ -292,8 +331,9 @@ Kition runtime and desktop:
 Kition renderer:
 
 8. An entry in `kits/sdks.json` (the contract check) and the kit in
-   `KIT_UIS` in the `Makefile`. Then
-   `make kit-ui-<kit>` and `pnpm check:kit-sdks`.
+   `KIT_UIS` in the `Makefile`. Then `make kit-ui-<kit>` and
+   `pnpm check:kit-sdks`, and when it is ready to ship,
+   `scripts/publish-kit.sh <kit>`.
 9. One entry in `KIT_EDITORS` (`kits/kitEditors.ts`): format, icon, the
    engine's document class, `preview: true` for a format the file preview
    already shows (PDF, Office; the linked-file prompt then keeps

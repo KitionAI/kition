@@ -37,7 +37,7 @@ SDK_BINARIES := $(foreach kit,$(SDK_KITS),$(call kit_binary,$(kit)))
 # Points the runtime at every kit executable (KITION_KIT_<KIT>_BINARY).
 KIT_BINARY_ENV := KITION_KIT_PHOTO_BINARY="$(PHOTO_BINARY)" $(foreach kit,$(SDK_KITS),KITION_KIT_$(shell echo $(kit) | tr a-z A-Z)_BINARY="$(call kit_binary,$(kit))")
 
-.PHONY: help kit-e2e-webkit kit-dev kit-uis $(addprefix kit-ui-,$(KIT_UIS)) kit-photo-binary kit-binaries kit-check kit-test kit-e2e kit-e2e-headed kit-clean
+.PHONY: help kit-e2e-webkit kit-dev kit-fetch kit-uis $(addprefix kit-ui-,$(KIT_UIS)) kit-photo-binary kit-binaries kit-check kit-test kit-e2e kit-e2e-headed kit-clean
 
 help:
 	@echo "make kit-dev         build missing kit engines and kit executables, then run Kition (pnpm dev)"
@@ -45,6 +45,7 @@ help:
 	@echo "make kit-e2e-headed  the kit e2e specs in a visible browser"
 	@echo "make kit-e2e-webkit  the in-page kit specs in WebKit, the desktop app's engine"
 	@echo "make kit-uis         rebuild every kit's package, its editor and engine (public/kits/<kit>-ui); one: make kit-ui-slide"
+	@echo "make kit-fetch       download the kit packages pinned in kits/kits.lock.json into public/kits"
 	@echo "make kit-check       contract checks of the built kit engines only"
 	@echo "make kit-binaries    build every kit's headless executable for the agent"
 	@echo "make kit-clean       remove the built kit packages"
@@ -58,6 +59,10 @@ $(addprefix kit-ui-,$(KIT_UIS)): kit-ui-%:
 	@$(MAKE) --no-print-directory public/kits/$*-ui/kit-ui.json
 
 kit-uis: $(addprefix kit-ui-,$(KIT_UIS))
+
+# The published packages instead of local builds (scripts/publish-kit.sh publishes them).
+kit-fetch:
+	node scripts/fetch-kits.mjs
 
 # The headless Photo kit the agent uses (photo_inspect, photo_commands, photo_run; each kit's
 # tools are <prefix>_inspect, _commands, and _run).

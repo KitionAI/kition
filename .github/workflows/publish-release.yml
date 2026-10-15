@@ -108,6 +108,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
 
+      - name: Fetch the kit packages
+        env:
+          # Reads the Releases of the private kit repositories (kits/kits.lock.json).
+          GH_TOKEN: ${{ secrets.KITION_KITS_TOKEN }}
+        run: node scripts/fetch-kits.mjs
+
+      - name: Check the kit engines against the Kit SDK contract
+        run: pnpm run check:kit-sdks
+
       - name: Run repository, security, build, and unit checks
         run: pnpm run check
 
@@ -184,6 +193,12 @@ jobs:
 
       - name: Install client dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Fetch the kit packages
+        env:
+          # Reads the Releases of the private kit repositories (kits/kits.lock.json).
+          GH_TOKEN: ${{ secrets.KITION_KITS_TOKEN }}
+        run: node scripts/fetch-kits.mjs
 
       - name: Configure macOS signing and notarization
         if: runner.os == 'macOS'

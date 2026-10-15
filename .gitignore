@@ -66,6 +66,8 @@ node_modules/
 dist/
 dist-ssr/
 dist-desktop/
+# Kit packages: built by scripts/build-kit-ui.sh or fetched by scripts/fetch-kits.mjs.
+/public/kits/
 # Output of desktop builds made before the Tauri shell.
 dist-electron/
 playwright-report/
