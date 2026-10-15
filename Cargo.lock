@@ -3365,6 +3365,7 @@ dependencies = [
  "sha2",
  "tempfile",
  "tokio",
+ "tokio-stream",
  "tower",
  "tower-http",
  "tracing",
