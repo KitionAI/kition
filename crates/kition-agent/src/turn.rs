@@ -10,7 +10,9 @@ use futures::future::BoxFuture;
 use kition_ai::engine::{MessagePart, ToolSpec};
 use kition_harness::cancel::Cancel;
 use kition_harness::driver::{Driver, TurnInput, fail_turn};
-use kition_harness::events::{ContentBlock, EventBody, MessageSource, TurnEndReason};
+use kition_harness::events::{
+    ContentBlock, EventBody, MessageSource, QueuedMessage, TurnEndReason,
+};
 use kition_harness::log::SqliteLog;
 use kition_harness::policy::{CallInfo, Pipeline, Policy};
 use kition_harness::provider::{TurnScene, assemble};
@@ -310,7 +312,13 @@ pub async fn drive(
     let (system, tools) = match assemble_turn(run, facts, &tools_factory(run, &notes)).await {
         Ok(assembled) => assembled,
         Err(error) => {
-            if let Err(log_error) = fail_turn(log.as_ref(), &key, &run.live, &error) {
+            let message = QueuedMessage {
+                id: run.message_id.clone(),
+                content: user_content(run),
+                source: MessageSource::new(run.source),
+            };
+            if let Err(log_error) = fail_turn(log.as_ref(), &key, &run.live, Some(&message), &error)
+            {
                 tracing::warn!(error = %log_error, "could not log the failed turn");
             }
             session::finish(run, session, None).await;
@@ -343,6 +351,7 @@ pub async fn drive(
         preset: Some(run.execution_mode.clone()),
         stream_revision: run.agent.stream_revision(run.session_id),
         source: MessageSource::new(run.source),
+        message_id: run.message_id.clone(),
     };
     let outcome = driver.run_turn(input).await;
     drop(watcher);
@@ -467,6 +476,7 @@ mod tests {
                 preset: None,
                 stream_revision: Arc::default(),
                 source: MessageSource::user(),
+                message_id: "m".into(),
             })
             .await
             .unwrap_or_else(|error| panic!("{error}"));

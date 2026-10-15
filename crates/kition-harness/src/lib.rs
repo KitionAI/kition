@@ -28,6 +28,7 @@ mod tests {
     /// From `packages/core/session/src/known-event-types.ts` at the pinned
     /// release. A name outside this list would be an invented event.
     const DSH_KNOWN: &[&str] = &[
+        "agent/inbox/spliced",
         "approval/asked",
         "approval/decided",
         "assistant/attempt",

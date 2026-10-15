@@ -9,8 +9,8 @@ use kition_harness::driver::{
     AssistantStreamFrame, Driver, Live, StreamOutcome, TurnInput, append_live, fail_turn, next_turn,
 };
 use kition_harness::events::{
-    ContentBlock, EventBody, MessageSource, PresentedFile, SessionEvent, TodoItem, TodoStatus,
-    TurnEndReason,
+    ContentBlock, EventBody, InboxTarget, MessageSource, PresentedFile, QueuedMessage,
+    SessionEvent, TodoItem, TodoStatus, TurnEndReason,
 };
 use kition_harness::history::HistoryBudget;
 use kition_harness::llm::{HostedCall, Llm, LlmReply, LlmRequest, LlmSink, RetryInfo, StreamChunk};
@@ -83,6 +83,7 @@ impl Setup {
             }),
             model: None,
             source: MessageSource::user(),
+            message_id: "m".into(),
             preset: None,
             stream_revision: Arc::default(),
         }
@@ -113,7 +114,9 @@ async fn a_tool_turn_logs_the_dsh_lifecycle_and_feeds_results_back() {
     assert_eq!(
         setup.kinds(),
         [
+            "agent/inbox/spliced",
             "turn/start",
+            "agent/inbox/spliced",
             "step/start",
             "system/message",
             "user/message",
@@ -372,7 +375,7 @@ fn a_turn_that_cannot_start_is_logged_as_failed() {
                 .push(event)
         }) as kition_harness::driver::LiveSink
     };
-    fail_turn(&log, "s", &sink, "no tools").unwrap_or_else(|error| panic!("{error}"));
+    fail_turn(&log, "s", &sink, None, "no tools").unwrap_or_else(|error| panic!("{error}"));
     let events = log.read("s").unwrap_or_else(|error| panic!("{error}"));
     assert_eq!(events[1].body, EventBody::TurnStart { turn: 2 });
     assert_eq!(
@@ -449,7 +452,15 @@ async fn a_cancelled_turn_ends_without_a_model_call() {
         .unwrap_or_else(|error| panic!("{error}"));
     assert_eq!(reason, TurnEndReason::Cancelled);
     assert!(setup.llm.requests().is_empty());
-    assert_eq!(setup.kinds(), ["turn/start", "turn/end"]);
+    assert_eq!(
+        setup.kinds(),
+        [
+            "agent/inbox/spliced",
+            "turn/start",
+            "agent/inbox/spliced",
+            "turn/end"
+        ]
+    );
 }
 
 #[tokio::test]
@@ -588,6 +599,7 @@ async fn cancelling_during_the_model_call_ends_the_turn_as_cancelled() {
         },
         model: None,
         source: MessageSource::user(),
+        message_id: "m".into(),
         preset: None,
         stream_revision: Arc::default(),
     };
@@ -692,6 +704,7 @@ async fn cancelling_inside_a_tool_body_stops_the_remaining_calls_in_the_step() {
         live: Arc::new(|_event: Live| {}),
         model: None,
         source: MessageSource::user(),
+        message_id: "m".into(),
         preset: None,
         stream_revision: Arc::default(),
     };
@@ -758,6 +771,7 @@ fn flaky_input(fail_at: usize) -> (Arc<FlakyLog>, TurnInput) {
         live: Arc::new(|_event: Live| {}),
         model: None,
         source: MessageSource::user(),
+        message_id: "m".into(),
         preset: None,
         stream_revision: Arc::default(),
     };
@@ -775,9 +789,10 @@ async fn an_append_failure_mid_turn_returns_an_error_without_panicking() {
 
 #[tokio::test]
 async fn an_assistant_attempt_append_failure_does_not_shadow_the_model_error() {
-    // Appends: 1 turn/start, 2 step/start, 3 system/message, 4 user/message,
-    // 5 assistant/attempt (fails here), 6 step/end, 7 turn/end.
-    let (log, input) = flaky_input(5);
+    // Appends: 1 agent/inbox/spliced, 2 turn/start, 3 agent/inbox/spliced,
+    // 4 step/start, 5 system/message, 6 user/message, 7 assistant/attempt
+    // (fails here), 8 step/end, 9 turn/end.
+    let (log, input) = flaky_input(7);
     let llm = Arc::new(ScriptedLlm::new(Vec::new()));
     let driver = Driver::new(log, llm);
     let error = driver.run_turn(input).await.err().unwrap_or_default();
@@ -786,7 +801,7 @@ async fn an_assistant_attempt_append_failure_does_not_shadow_the_model_error() {
 
 #[tokio::test]
 async fn when_the_turn_fails_and_turn_end_also_fails_to_append_the_original_error_wins() {
-    let (log, input) = flaky_input(7);
+    let (log, input) = flaky_input(9);
     let llm = Arc::new(ScriptedLlm::new(Vec::new()));
     let driver = Driver::new(log, llm);
     let error = driver.run_turn(input).await.err().unwrap_or_default();
@@ -831,6 +846,7 @@ async fn a_paused_tool_records_its_result_and_awaits_approval() {
         live: Arc::new(|_: Live| {}),
         model: None,
         source: MessageSource::user(),
+        message_id: "m".into(),
         preset: None,
         stream_revision: Arc::default(),
     };
@@ -877,6 +893,7 @@ async fn a_paused_tool_records_its_result_and_awaits_approval() {
         live: Arc::new(|_: Live| {}),
         model: None,
         source: MessageSource::user(),
+        message_id: "m".into(),
         preset: None,
         stream_revision: Arc::default(),
     };
@@ -928,6 +945,7 @@ async fn a_failed_calls_pause_request_is_discarded_and_the_turn_continues() {
         live: Arc::new(|_: Live| {}),
         model: None,
         source: MessageSource::user(),
+        message_id: "m".into(),
         preset: None,
         stream_revision: Arc::default(),
     };
@@ -1206,6 +1224,7 @@ async fn run_presenter(fail: bool) -> Vec<SessionEvent> {
             live: Arc::new(|_: Live| {}),
             model: None,
             source: MessageSource::user(),
+            message_id: "m".into(),
             preset: None,
             stream_revision: Arc::default(),
         })
@@ -1403,7 +1422,9 @@ async fn assistant_text_streams_as_dsh_frames_around_the_message() {
         names,
         [
             "status true",
+            "agent/inbox/spliced",
             "turn/start",
+            "agent/inbox/spliced",
             "step/start",
             "system/message",
             "user/message",
@@ -1713,6 +1734,7 @@ async fn a_cancelled_attempt_is_aborted() {
         live: Arc::new(|_: Live| {}),
         model: None,
         source: MessageSource::user(),
+        message_id: "m".into(),
         preset: None,
         stream_revision: Arc::default(),
     };
@@ -1753,4 +1775,129 @@ async fn a_cancelled_attempt_is_aborted() {
             _ => None,
         });
     assert_eq!(attempt, Some((false, 1)), "a model failure is not aborted");
+}
+
+#[tokio::test]
+async fn a_turn_splices_its_prompt_in_and_claims_it() {
+    let setup = setup(vec![LlmReply::text("hello")]);
+    let mut input = setup.input("hi", Cancel::default());
+    input.message_id = "msg-1".into();
+    setup
+        .driver(Pipeline::default())
+        .run_turn(input)
+        .await
+        .unwrap_or_else(|error| panic!("{error}"));
+    assert_eq!(
+        setup.kinds(),
+        [
+            "agent/inbox/spliced",
+            "turn/start",
+            "agent/inbox/spliced",
+            "step/start",
+            "system/message",
+            "user/message",
+            "assistant/message",
+            "step/end",
+            "turn/end",
+        ]
+    );
+    let events = setup
+        .log
+        .read("s")
+        .unwrap_or_else(|error| panic!("{error}"));
+    let queued = QueuedMessage {
+        id: "msg-1".into(),
+        content: vec![ContentBlock::text("hi")],
+        source: MessageSource::user(),
+    };
+    assert_eq!(
+        events[0].body,
+        EventBody::InboxSpliced {
+            target: InboxTarget::NextTurn,
+            start: 0,
+            inserted: vec![queued],
+            removed_count: None,
+        }
+    );
+    assert_eq!(
+        events[2].body,
+        EventBody::InboxSpliced {
+            target: InboxTarget::NextTurn,
+            start: 0,
+            inserted: Vec::new(),
+            removed_count: Some(1),
+        }
+    );
+    assert_eq!(
+        events[5].body,
+        EventBody::UserMessage {
+            id: "msg-1".into(),
+            content: vec![ContentBlock::text("hi")],
+            source: MessageSource::user(),
+        }
+    );
+    assert_eq!(
+        serde_json::to_value(&events[0].body).unwrap_or_default(),
+        json!({ "type": "agent/inbox/spliced", "target": "next-turn", "start": 0,
+            "inserted": [{ "id": "msg-1", "content": [{ "type": "text", "text": "hi" }], "source": { "kind": "user" } }] })
+    );
+    assert_eq!(
+        serde_json::to_value(&events[2].body).unwrap_or_default(),
+        json!({ "type": "agent/inbox/spliced", "target": "next-turn", "start": 0, "inserted": [], "removedCount": 1 })
+    );
+    let history = kition_harness::derive::derive_messages(&events);
+    assert_eq!(
+        history
+            .iter()
+            .map(|message| message.role.as_str())
+            .collect::<Vec<_>>(),
+        ["system", "user", "assistant"],
+        "inbox events are not model history"
+    );
+}
+
+#[tokio::test]
+async fn a_turn_without_input_splices_nothing() {
+    let setup = setup(Vec::new());
+    let mut input = setup.input("", Cancel::default());
+    input.user = Vec::new();
+    setup
+        .driver(Pipeline::default())
+        .run_turn(input)
+        .await
+        .unwrap_or_else(|error| panic!("{error}"));
+    assert_eq!(setup.kinds(), ["turn/start", "turn/end"]);
+}
+
+#[test]
+fn a_failed_start_still_claims_its_prompt() {
+    let log = MemoryLog::default();
+    let queued = QueuedMessage {
+        id: "msg-2".into(),
+        content: vec![ContentBlock::text("hi")],
+        source: MessageSource::user(),
+    };
+    fail_turn(
+        &log,
+        "s",
+        &(Arc::new(|_: Live| {}) as kition_harness::driver::LiveSink),
+        Some(&queued),
+        "no tools",
+    )
+    .unwrap_or_else(|error| panic!("{error}"));
+    let kinds: Vec<&str> = log
+        .read("s")
+        .unwrap_or_else(|error| panic!("{error}"))
+        .iter()
+        .map(|event| event.body.kind())
+        .collect();
+    assert_eq!(
+        kinds,
+        [
+            "agent/inbox/spliced",
+            "turn/start",
+            "agent/inbox/spliced",
+            "turn/end"
+        ]
+    );
 }

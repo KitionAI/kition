@@ -96,6 +96,31 @@
         }
       }
     },
+    "queuedMessage": {
+      "type": "object",
+      "description": "A message in the session inbox (DeepSeek Harness UserMessage).",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "content",
+        "source"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "content": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/contentBlock"
+          }
+        },
+        "source": {
+          "$ref": "#/$defs/messageSource"
+        }
+      }
+    },
     "approvalOutcome": {
       "type": "string",
       "enum": [
@@ -429,6 +454,7 @@
         "seq",
         "at",
         "type",
+        "id",
         "content",
         "source"
       ],
@@ -442,6 +468,11 @@
         "type": {
           "const": "user/message"
         },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The message id: the inbox id of a prompt (agent/inbox/spliced), else one the runtime mints."
+        },
         "content": {
           "type": "array",
           "items": {
@@ -450,6 +481,51 @@
         },
         "source": {
           "$ref": "#/$defs/messageSource"
+        }
+      }
+    },
+    "inboxSplicedEvent": {
+      "type": "object",
+      "description": "The session inbox changed (DeepSeek Harness agent/inbox/spliced): a prompt entered it (inserted), or a turn claimed it (removedCount). Every turn with a prompt opens with the prompt inserted, turn/start, and the claim; its user/message carries the same id.",
+      "additionalProperties": false,
+      "required": [
+        "seq",
+        "at",
+        "type",
+        "target",
+        "start",
+        "inserted"
+      ],
+      "properties": {
+        "seq": {
+          "$ref": "#/$defs/seq"
+        },
+        "at": {
+          "$ref": "#/$defs/at"
+        },
+        "type": {
+          "const": "agent/inbox/spliced"
+        },
+        "target": {
+          "type": "string",
+          "enum": [
+            "next-turn",
+            "next-step"
+          ]
+        },
+        "start": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "inserted": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/queuedMessage"
+          }
+        },
+        "removedCount": {
+          "type": "integer",
+          "minimum": 1
         }
       }
     },
@@ -946,6 +1022,9 @@
         },
         {
           "$ref": "#/$defs/userMessageEvent"
+        },
+        {
+          "$ref": "#/$defs/inboxSplicedEvent"
         },
         {
           "$ref": "#/$defs/assistantMessageEvent"

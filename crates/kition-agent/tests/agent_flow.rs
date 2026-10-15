@@ -549,7 +549,7 @@ async fn an_image_exchange_is_history_for_the_next_turn() {
     assert_eq!(reply, "Generated 1 image(s) for review.");
     let events = session_events(&app, session_id).await;
     assert_eq!(
-        kinds(&events[events.len() - 9..]),
+        kinds(&events[events.len() - 11..]),
         kinds(&self::events(&lines)),
         "the stream carries the composer turn as logged"
     );
@@ -557,7 +557,19 @@ async fn an_image_exchange_is_history_for_the_next_turn() {
         .iter()
         .rposition(|event| event["type"] == "turn/start")
         .unwrap_or_default();
-    let turn: Vec<&Value> = events[composer..].iter().collect();
+    assert_eq!(
+        (&events[composer - 1]["type"], &events[composer + 1]["type"]),
+        (&json!("agent/inbox/spliced"), &json!("agent/inbox/spliced"))
+    );
+    let turn: Vec<&Value> = events[composer..]
+        .iter()
+        .filter(|event| event["type"] != "agent/inbox/spliced")
+        .collect();
+    assert_eq!(
+        events[composer - 1]["inserted"][0]["id"],
+        turn[2]["id"],
+        "the composer prompt is claimed under its inbox id"
+    );
     let kinds: Vec<&str> = turn.iter().filter_map(|e| e["type"].as_str()).collect();
     assert_eq!(
         kinds,
@@ -844,8 +856,8 @@ async fn streams_a_turn_with_a_tool_call() {
     let streamed = events(&lines);
     let kinds = kinds(&streamed);
     assert_eq!(
-        kinds.first().map(String::as_str),
-        Some("turn/start"),
+        kinds[..3],
+        ["agent/inbox/spliced", "turn/start", "agent/inbox/spliced"],
         "{kinds:?}"
     );
     assert_eq!(
@@ -909,7 +921,7 @@ async fn streams_a_turn_with_a_tool_call() {
     let events = kition_harness::log::SessionLog::read(&log, &format!("agent:{session_id}"))
         .unwrap_or_else(|error| panic!("{error}"));
     let kinds: Vec<&str> = events.iter().map(|event| event.body.kind()).collect();
-    assert_eq!(kinds.first(), Some(&"turn/start"), "{kinds:?}");
+    assert_eq!(kinds.first(), Some(&"agent/inbox/spliced"), "{kinds:?}");
     assert!(kinds.contains(&"tool/result"), "{kinds:?}");
     assert_eq!(kinds.last(), Some(&"turn/end"), "{kinds:?}");
     assert_session_events_api(&app, session_id).await;
@@ -1145,7 +1157,7 @@ async fn assert_session_events_api(app: &Router, session_id: i64) {
     let items = page["items"].as_array().cloned().unwrap_or_default();
     assert_eq!(
         items.first().map(|e| e["type"].clone()),
-        Some(json!("turn/start"))
+        Some(json!("agent/inbox/spliced"))
     );
     assert_eq!(
         items.last().map(|e| e["type"].clone()),
@@ -1291,7 +1303,9 @@ async fn approval_resolves_by_call_id_from_the_log() {
         ),
         "the decision lands before the resumed turn: {resumed:?}"
     );
-    assert_eq!(resumed[1]["type"], "turn/start");
+    assert_eq!(resumed[1]["type"], "agent/inbox/spliced");
+    assert_eq!(resumed[1]["inserted"][0]["source"]["kind"], "approval");
+    assert_eq!(resumed[2]["type"], "turn/start");
     assert_eq!(reply(&lines), "Done.");
     assert!(workspace.path().join("approved.txt").exists());
 

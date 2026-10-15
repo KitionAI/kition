@@ -30,7 +30,7 @@ function composer(count: number, saved: number, rest: AgentSessionEventsSessionE
   const list: AgentSessionEventsSessionEvent[] = [
     { seq: next(), at: seq, type: 'turn/start', turn: 1 },
     { seq: next(), at: seq, type: 'step/start', turn: 1, step: 1 },
-    { seq: next(), at: seq, type: 'user/message', content: [{ type: 'text', text: 'Foxes' }], source: { kind: 'user' } },
+    { seq: next(), at: seq, type: 'user/message', id: 'm1', content: [{ type: 'text', text: 'Foxes' }], source: { kind: 'user' } },
   ]
   for (let index = 0; index < saved; index += 1) {
     list.push(

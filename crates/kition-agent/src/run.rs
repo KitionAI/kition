@@ -292,6 +292,8 @@ pub struct Run {
     /// Who sent the turn's message, as the `user/message` source kind:
     /// `user`, `approval`, or `context-action`.
     pub source: &'static str,
+    /// The inbox id of the turn's message.
+    pub message_id: String,
 }
 
 impl Run {

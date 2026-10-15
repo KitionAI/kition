@@ -14,8 +14,8 @@ use serde::{Deserialize, Serialize};
 use crate::cancel::Cancel;
 use crate::derive::derive_messages_for;
 use crate::events::{
-    ContentBlock, EventBody, LlmFailure, LoggedCall, MessageSource, PresentedFile, RetryMode,
-    SessionEvent, TurnEndReason,
+    ContentBlock, EventBody, InboxTarget, LlmFailure, LoggedCall, MessageSource, PresentedFile,
+    QueuedMessage, RetryMode, SessionEvent, TurnEndReason,
 };
 use crate::history::{HistoryBudget, bound_history};
 use crate::llm::{HostedCall, Llm, LlmRequest, LlmSink, RetryInfo, StreamChunk};
@@ -171,6 +171,8 @@ pub struct TurnInput {
     pub user: Vec<ContentBlock>,
     /// Who sent `user`: logged on the turn's first `user/message`.
     pub source: MessageSource,
+    /// The inbox id of `user`, which the turn splices in and claims.
+    pub message_id: String,
     /// The permission preset of this turn, logged as `permission/preset` at
     /// step 1 when it differs from the newest logged one.
     pub preset: Option<String>,
@@ -227,18 +229,49 @@ pub fn append_live(
     Ok(event)
 }
 
+/// Opens turn `turn`. With a prompt, as DeepSeek Harness does: the prompt
+/// enters the inbox (`agent/inbox/spliced` with it inserted), `turn/start`,
+/// and the turn claims it (`agent/inbox/spliced` removing one entry); its
+/// `user/message` follows at step 1. Returns the appended events.
+pub fn open_turn(
+    log: &dyn SessionLog,
+    session: &str,
+    live: &LiveSink,
+    turn: u32,
+    message: Option<&QueuedMessage>,
+) -> Result<Vec<SessionEvent>, String> {
+    let splice =
+        |inserted: Vec<QueuedMessage>, removed_count: Option<u32>| EventBody::InboxSpliced {
+            target: InboxTarget::NextTurn,
+            start: 0,
+            inserted,
+            removed_count,
+        };
+    let mut bodies = vec![EventBody::TurnStart { turn }];
+    if let Some(message) = message {
+        bodies.insert(0, splice(vec![message.clone()], None));
+        bodies.push(splice(Vec::new(), Some(1)));
+    }
+    bodies
+        .into_iter()
+        .map(|body| append_live(log, session, live, body))
+        .collect()
+}
+
 /// Logs a turn that failed before it could run (its tools could not be
-/// assembled, say): `turn/start` and `turn/end {failed, error}`, live
-/// between `running` and `idle` like any turn.
+/// assembled, say): the turn opens with its prompt, if any, then
+/// `turn/end {failed, error}`, live between `running` and `idle` like any
+/// turn.
 pub fn fail_turn(
     log: &dyn SessionLog,
     session: &str,
     live: &LiveSink,
+    message: Option<&QueuedMessage>,
     error: &str,
 ) -> Result<(), String> {
     let turn = next_turn(&log.read(session)?);
     live(Live::Status { running: true });
-    let logged = append_live(log, session, live, EventBody::TurnStart { turn }).and_then(|_| {
+    let logged = open_turn(log, session, live, turn, message).and_then(|_| {
         append_live(
             log,
             session,
@@ -331,7 +364,19 @@ impl Driver {
         let mut events = self.log.read(&input.session)?;
         let turn = next_turn(&events);
         (input.live)(Live::Status { running: true });
-        let outcome = match self.append(&input, &mut events, EventBody::TurnStart { turn }) {
+        let message = (!input.user.is_empty()).then(|| QueuedMessage {
+            id: input.message_id.clone(),
+            content: input.user.clone(),
+            source: input.source.clone(),
+        });
+        let opened = open_turn(
+            self.log.as_ref(),
+            &input.session,
+            &input.live,
+            turn,
+            message.as_ref(),
+        );
+        let outcome = match opened.map(|opened| events.extend(opened)) {
             // dsh closes a turn with no new input without a step or a model call.
             Ok(_) if input.user.is_empty() => Ok(TurnEndReason::Completed),
             Ok(_) => self.steps(&input, &mut events, turn).await,
@@ -390,6 +435,7 @@ impl Driver {
                     input,
                     events,
                     EventBody::UserMessage {
+                        id: input.message_id.clone(),
                         content,
                         source: input.source.clone(),
                     },
@@ -502,6 +548,7 @@ impl Driver {
                     input,
                     events,
                     EventBody::UserMessage {
+                        id: format!("{}#{turn}.{step}.recovery", input.session),
                         content: contexts,
                         source: MessageSource::new("recovery"),
                     },
@@ -512,6 +559,7 @@ impl Driver {
                     input,
                     events,
                     EventBody::UserMessage {
+                        id: format!("{}#{turn}.{step}.tool-follow-up", input.session),
                         content: reply.follow_up,
                         source: MessageSource::new("tool-follow-up"),
                     },
@@ -872,6 +920,7 @@ mod tests {
             live: Arc::new(|_event: Live| {}),
             model: None,
             source: MessageSource::user(),
+            message_id: "m".into(),
             preset: None,
             stream_revision: Arc::default(),
         };

@@ -97,6 +97,7 @@ mod tests {
         vec![
             next(EventBody::TurnStart { turn: number }),
             next(EventBody::UserMessage {
+                id: String::new(),
                 content: vec![ContentBlock::text(format!("ask {text}"))],
                 source: crate::events::MessageSource::user(),
             }),
@@ -227,6 +228,7 @@ mod tests {
     #[test]
     fn older_turns_keep_client_input_not_runtime_context() {
         let from = |kind: &str, text: &str| EventBody::UserMessage {
+            id: String::new(),
             content: vec![ContentBlock::text(text)],
             source: crate::events::MessageSource::new(kind),
         };
