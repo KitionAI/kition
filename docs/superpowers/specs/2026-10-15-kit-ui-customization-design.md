@@ -296,10 +296,12 @@ One source, `themePresets.ts`, defines each preset's Kition shell variables
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Light (default) | light | `#ffffff` | `#fafaf9` | `#f6f5f4` | `#1a1a1a` | `#5d5b54` | `#e5e3df` | kit |
 | Dark | dark | `#1b1e23` | `#22262c` | `#15171b` | `#eceff1` | `#a9b0ba` | `#33373e` | kit |
-| Graphite | dark | `#323232` | `#2b2b2b` | `#252525` | `#e6e6e6` | `#a8a8a8` | `#454545` | kit |
+| Dark Gray (`graphite`) | dark | `#323232` | `#2b2b2b` | `#252525` | `#e6e6e6` | `#a8a8a8` | `#454545` | kit |
 | High Contrast | light | `#ffffff` | `#ffffff` | `#f0f0f0` | `#000000` | `#333333` | `#000000` | host (`#3a2bb8`) |
 
-Light and Dark are today's `:root` and `.dark` values. Settings › Display
+Light and Dark are today's `:root` and `.dark` values. Dark Gray is a neutral
+mid-dark gray like Photoshop's, with no color cast, for judging image color;
+its id is `graphite` and every locale names it plainly as a dark gray. Settings › Display
 replaces Light, Dark, Auto with a preset picker plus "Follow system", which
 switches between Light and Dark. There are no users to migrate: the old
 `general.theme` values map directly (`light` to Light, `dark` to Dark, `auto`
