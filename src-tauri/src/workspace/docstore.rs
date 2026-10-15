@@ -1,14 +1,17 @@
-//! The private store of Markdown document replicas under `.kition/docs/`.
+//! The private store of document replicas under `.kition/docs/`: Markdown
+//! documents', and those kit editors keep for their files (Kit UI protocol
+//! capability `replica`).
 //!
 //! `index.json` maps workspace paths to document ids, and each document has a
-//! folder with `meta.json` (what the renderer keeps about the replica) and
-//! `snapshot.bin` (the replica's bytes). The store is local to this machine:
+//! folder with `meta.json` (what the renderer keeps about the replica),
+//! `snapshot.bin` (the replica's bytes), and for a kit's replica `blobs.bin`
+//! (the blobs it references). The store is local to this machine:
 //! its own `.gitignore` keeps it out of the workspace's Git history, and
 //! deleting it loses only editing history, never document text.
 //!
 //! Every file is written atomically (temporary sibling and rename). A meta
-//! file records the hash of the snapshot it belongs to, so a reader never
-//! accepts a meta file and a snapshot from different writes; such a pair, left
+//! file records the hashes of the snapshot and blobs it belongs to, so a reader
+//! never accepts a meta file and a snapshot from different writes; such a pair, left
 //! only by a crash between the two renames, reads as no entry at all. Reads and
 //! writes of one document, and of the index, are serialised.
 
@@ -35,16 +38,24 @@ const STORE_DIR: &str = ".kition/docs";
 const INDEX_FILE: &str = "index.json";
 const META_FILE: &str = "meta.json";
 const SNAPSHOT_FILE: &str = "snapshot.bin";
+const BLOBS_FILE: &str = "blobs.bin";
 const GITIGNORE_FILE: &str = ".gitignore";
 const GITIGNORE: &str = "*\n!.gitignore\n";
 const STORE_FORMAT: u64 = 1;
 const MAX_DOC_ID_LEN: usize = 128;
 
-/// One stored replica: the renderer's meta object and the snapshot bytes.
+/// One stored replica: the renderer's meta object, the snapshot bytes, and
+/// the blobs a kit's replica references.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Entry {
     pub meta: Value,
     pub snapshot: Vec<u8>,
+    pub blobs: Option<Vec<u8>>,
+}
+
+/// The hash and size a meta file records for the file it belongs with.
+fn file_record(bytes: &[u8]) -> Value {
+    json!({ "sha256": sha256_hex(bytes), "size": bytes.len() })
 }
 
 /// The path-to-document index and the version a guarded write must name.
@@ -148,7 +159,24 @@ pub fn read_entry(root: &Path, locks: &GuardedWrites, doc_id: &str) -> io::Resul
         if hash != Some(sha256_hex(&snapshot).as_str()) || check_meta(doc_id, &meta).is_err() {
             return Ok(None);
         }
-        Ok(Some(Entry { meta, snapshot }))
+        let blobs = match stored.get("blobs").filter(|blobs| !blobs.is_null()) {
+            None => None,
+            Some(record) => {
+                let Some(blobs) = read_confined(root, &dir.join(BLOBS_FILE))? else {
+                    return Ok(None);
+                };
+                if record.get("sha256").and_then(Value::as_str) != Some(sha256_hex(&blobs).as_str())
+                {
+                    return Ok(None);
+                }
+                Some(blobs)
+            }
+        };
+        Ok(Some(Entry {
+            meta,
+            snapshot,
+            blobs,
+        }))
     })
 }
 
@@ -158,14 +186,18 @@ pub fn write_entry(
     doc_id: &str,
     meta: &Value,
     snapshot: &[u8],
+    blobs: Option<&[u8]>,
 ) -> io::Result<()> {
     let dir = entry_dir(root, doc_id)?;
     check_meta(doc_id, meta)?;
-    let stored = json!({
+    let mut stored = json!({
         "format": STORE_FORMAT,
         "meta": meta,
-        "snapshot": { "sha256": sha256_hex(snapshot), "size": snapshot.len() },
+        "snapshot": file_record(snapshot),
     });
+    if let Some(blobs) = blobs {
+        stored["blobs"] = file_record(blobs);
+    }
     let mut meta_bytes = serde_json::to_vec_pretty(&stored).map_err(io::Error::other)?;
     meta_bytes.push(b'\n');
     locks.exclusive(&dir, || {
@@ -173,11 +205,24 @@ pub fn write_entry(
         assert_safe(root, &dir, true)?;
         fs::create_dir_all(&dir)?;
         let snapshot_path = dir.join(SNAPSHOT_FILE);
+        let blobs_path = dir.join(BLOBS_FILE);
         let meta_path = dir.join(META_FILE);
         assert_safe(root, &snapshot_path, true)?;
+        assert_safe(root, &blobs_path, true)?;
         assert_safe(root, &meta_path, true)?;
         write_atomically(&snapshot_path, snapshot)?;
-        write_atomically(&meta_path, &meta_bytes)
+        if let Some(blobs) = blobs {
+            write_atomically(&blobs_path, blobs)?;
+        }
+        // The meta file goes last: it names the files of this write.
+        write_atomically(&meta_path, &meta_bytes)?;
+        if blobs.is_none() {
+            match fs::remove_file(&blobs_path) {
+                Err(error) if error.kind() != io::ErrorKind::NotFound => return Err(error),
+                _ => {}
+            }
+        }
+        Ok(())
     })
 }
 
@@ -266,7 +311,7 @@ fn prepare(root: &Path, request: &Request) -> io::Result<()> {
     check_expected_root(root, request)
 }
 
-/// `{ doc_id, expected_root? }` to `null` or `{ meta, snapshot_base64 }`.
+/// `{ doc_id, expected_root? }` to `null` or `{ meta, snapshot_base64, blobs_base64? }`.
 pub fn read_entry_request(
     root: &Path,
     locks: &GuardedWrites,
@@ -276,12 +321,17 @@ pub fn read_entry_request(
     Ok(match read_entry(root, locks, &request.str("doc_id"))? {
         None => Value::Null,
         Some(entry) => {
-            json!({ "meta": entry.meta, "snapshot_base64": BASE64.encode(entry.snapshot) })
+            let mut payload =
+                json!({ "meta": entry.meta, "snapshot_base64": BASE64.encode(entry.snapshot) });
+            if let Some(blobs) = entry.blobs {
+                payload["blobs_base64"] = Value::String(BASE64.encode(blobs));
+            }
+            payload
         }
     })
 }
 
-/// `{ doc_id, meta, snapshot_base64, expected_root? }`.
+/// `{ doc_id, meta, snapshot_base64, blobs_base64?, expected_root? }`.
 pub fn write_entry_request(
     root: &Path,
     locks: &GuardedWrites,
@@ -292,7 +342,25 @@ pub fn write_entry_request(
     let snapshot = BASE64
         .decode(request.str("snapshot_base64").trim())
         .map_err(|_| invalid("document store snapshot is not base64"))?;
-    write_entry(root, locks, &request.str("doc_id"), &meta, &snapshot)?;
+    let blobs = match request
+        .value("blobs_base64")
+        .filter(|blobs| !blobs.is_null())
+    {
+        None => None,
+        Some(blobs) => Some(
+            BASE64
+                .decode(blobs.as_str().unwrap_or_default().trim())
+                .map_err(|_| invalid("document store blobs are not base64"))?,
+        ),
+    };
+    write_entry(
+        root,
+        locks,
+        &request.str("doc_id"),
+        &meta,
+        &snapshot,
+        blobs.as_deref(),
+    )?;
     Ok(Value::Null)
 }
 
@@ -411,7 +479,7 @@ mod tests {
         let (_dir, root) = workspace();
         let locks = GuardedWrites::default();
         assert!(read_entry(&root, &locks, "../escape").is_err());
-        assert!(write_entry(&root, &locks, "../x", &meta("../x", "a.md"), b"s").is_err());
+        assert!(write_entry(&root, &locks, "../x", &meta("../x", "a.md"), b"s", None).is_err());
         assert!(delete_entry(&root, &locks, "a/b").is_err());
         assert!(!root.join(".kition").exists());
     }
@@ -422,18 +490,26 @@ mod tests {
         let locks = GuardedWrites::default();
         assert_eq!(ok(read_entry(&root, &locks, DOC)), None);
         let first = meta(DOC, "notes/a.md");
-        ok(write_entry(&root, &locks, DOC, &first, &[0, 1, 2, 255]));
+        ok(write_entry(
+            &root,
+            &locks,
+            DOC,
+            &first,
+            &[0, 1, 2, 255],
+            None,
+        ));
         let entry = ok(read_entry(&root, &locks, DOC));
         assert_eq!(
             entry,
             Some(Entry {
                 meta: first,
-                snapshot: vec![0, 1, 2, 255]
+                snapshot: vec![0, 1, 2, 255],
+                blobs: None,
             })
         );
 
         let second = meta(DOC, "notes/b.md");
-        ok(write_entry(&root, &locks, DOC, &second, b"second"));
+        ok(write_entry(&root, &locks, DOC, &second, b"second", None));
         let entry = ok(read_entry(&root, &locks, DOC));
         assert_eq!(
             entry.map(|entry| (entry.meta, entry.snapshot)),
@@ -452,10 +528,102 @@ mod tests {
     }
 
     #[test]
+    fn keeps_a_kit_replica_with_its_blobs() {
+        let (_dir, root) = workspace();
+        let locks = GuardedWrites::default();
+        let kit_meta =
+            json!({ "docId": DOC, "kit": "kit.photo", "path": "art/a.psd", "fileStamp": "v1" });
+        ok(write_entry(
+            &root,
+            &locks,
+            DOC,
+            &kit_meta,
+            b"snap",
+            Some(b"blobs"),
+        ));
+        let entry = ok(read_entry(&root, &locks, DOC));
+        assert_eq!(
+            entry,
+            Some(Entry {
+                meta: kit_meta.clone(),
+                snapshot: b"snap".to_vec(),
+                blobs: Some(b"blobs".to_vec()),
+            })
+        );
+        let folder = root.join(".kition/docs").join(DOC);
+        assert_eq!(
+            file_names(&folder),
+            vec![BLOBS_FILE, META_FILE, SNAPSHOT_FILE]
+        );
+
+        // Blobs from another write, or none where the meta names some, make no entry.
+        ok(fs::write(folder.join(BLOBS_FILE), b"other"));
+        assert_eq!(ok(read_entry(&root, &locks, DOC)), None);
+        ok(fs::remove_file(folder.join(BLOBS_FILE)));
+        assert_eq!(ok(read_entry(&root, &locks, DOC)), None);
+
+        // A write without blobs leaves none behind.
+        ok(write_entry(
+            &root,
+            &locks,
+            DOC,
+            &kit_meta,
+            b"snap",
+            Some(b"blobs"),
+        ));
+        ok(write_entry(
+            &root,
+            &locks,
+            DOC,
+            &meta(DOC, "a.md"),
+            b"text",
+            None,
+        ));
+        assert_eq!(file_names(&folder), vec![META_FILE, SNAPSHOT_FILE]);
+        assert_eq!(
+            ok(read_entry(&root, &locks, DOC)).and_then(|entry| entry.blobs),
+            None
+        );
+
+        let request = |value: Value| Request::new(Some(value));
+        ok(write_entry_request(
+            &root,
+            &locks,
+            &request(json!({
+                "doc_id": DOC,
+                "meta": kit_meta,
+                "snapshot_base64": BASE64.encode([1]),
+                "blobs_base64": BASE64.encode([2, 3]),
+            })),
+        ));
+        let read = ok(read_entry_request(
+            &root,
+            &locks,
+            &request(json!({ "doc_id": DOC })),
+        ));
+        assert_eq!(read["blobs_base64"], json!(BASE64.encode([2, 3])));
+        assert!(
+            write_entry_request(
+                &root,
+                &locks,
+                &request(json!({ "doc_id": DOC, "meta": meta(DOC, "a.md"), "snapshot_base64": "", "blobs_base64": "%%%" })),
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
     fn rejects_a_torn_or_foreign_entry() {
         let (_dir, root) = workspace();
         let locks = GuardedWrites::default();
-        ok(write_entry(&root, &locks, DOC, &meta(DOC, "a.md"), b"one"));
+        ok(write_entry(
+            &root,
+            &locks,
+            DOC,
+            &meta(DOC, "a.md"),
+            b"one",
+            None,
+        ));
         let folder = root.join(".kition/docs").join(DOC);
         // A crash between the two renames leaves a snapshot the meta does not describe.
         ok(fs::write(folder.join(SNAPSHOT_FILE), b"two"));
@@ -471,11 +639,12 @@ mod tests {
                 &locks,
                 DOC,
                 &meta("other", "a.md"),
-                b"x"
+                b"x",
+                None
             )),
             "document store meta names another document"
         );
-        assert!(write_entry(&root, &locks, DOC, &json!([]), b"x").is_err());
+        assert!(write_entry(&root, &locks, DOC, &json!([]), b"x", None).is_err());
     }
 
     #[test]
@@ -483,7 +652,14 @@ mod tests {
         let (_dir, root) = workspace();
         let locks = GuardedWrites::default();
         let id = "urn:uuid:1";
-        ok(write_entry(&root, &locks, id, &meta(id, "a.md"), b"s"));
+        ok(write_entry(
+            &root,
+            &locks,
+            id,
+            &meta(id, "a.md"),
+            b"s",
+            None,
+        ));
         assert!(root.join(".kition/docs/urn%3Auuid%3A1/meta.json").is_file());
         assert_eq!(
             ok(read_entry(&root, &locks, id)).map(|entry| entry.snapshot),
@@ -496,7 +672,14 @@ mod tests {
         let (_dir, root) = workspace();
         let locks = GuardedWrites::default();
         ok(delete_entry(&root, &locks, DOC));
-        ok(write_entry(&root, &locks, DOC, &meta(DOC, "a.md"), b"s"));
+        ok(write_entry(
+            &root,
+            &locks,
+            DOC,
+            &meta(DOC, "a.md"),
+            b"s",
+            None,
+        ));
         ok(delete_entry(&root, &locks, DOC));
         assert_eq!(ok(read_entry(&root, &locks, DOC)), None);
         assert!(!root.join(".kition/docs").join(DOC).exists());
@@ -508,13 +691,27 @@ mod tests {
         let (_dir, root) = workspace();
         let locks = GuardedWrites::default();
         let gitignore = root.join(".kition/docs/.gitignore");
-        ok(write_entry(&root, &locks, DOC, &meta(DOC, "a.md"), b"s"));
+        ok(write_entry(
+            &root,
+            &locks,
+            DOC,
+            &meta(DOC, "a.md"),
+            b"s",
+            None,
+        ));
         assert_eq!(ok(fs::read_to_string(&gitignore)), "*\n!.gitignore\n");
         ok(fs::write(&gitignore, "# kept by the user\n"));
         ok(write_index(&root, &locks, &BTreeMap::new(), None));
         assert_eq!(ok(fs::read_to_string(&gitignore)), "# kept by the user\n");
         ok(fs::remove_file(&gitignore));
-        ok(write_entry(&root, &locks, DOC, &meta(DOC, "a.md"), b"t"));
+        ok(write_entry(
+            &root,
+            &locks,
+            DOC,
+            &meta(DOC, "a.md"),
+            b"t",
+            None,
+        ));
         assert_eq!(ok(fs::read_to_string(&gitignore)), GITIGNORE);
     }
 
@@ -603,7 +800,7 @@ mod tests {
         ok(fs::create_dir_all(&outside));
         // A `.kition` that links out of the workspace is refused.
         ok(std::os::unix::fs::symlink(&outside, root.join(".kition")));
-        assert!(write_entry(&root, &locks, DOC, &meta(DOC, "a.md"), b"s").is_err());
+        assert!(write_entry(&root, &locks, DOC, &meta(DOC, "a.md"), b"s", None).is_err());
         assert!(write_index(&root, &locks, &BTreeMap::new(), None).is_err());
         assert!(read_index(&root, &locks).is_err());
         assert!(read_entry(&root, &locks, DOC).is_err());
@@ -612,14 +809,21 @@ mod tests {
         ok(fs::remove_file(root.join(".kition")));
 
         // So is an entry file that links out.
-        ok(write_entry(&root, &locks, DOC, &meta(DOC, "a.md"), b"s"));
+        ok(write_entry(
+            &root,
+            &locks,
+            DOC,
+            &meta(DOC, "a.md"),
+            b"s",
+            None,
+        ));
         let secret = outside.join("secret");
         ok(fs::write(&secret, b"secret"));
         let snapshot = root.join(".kition/docs").join(DOC).join(SNAPSHOT_FILE);
         ok(fs::remove_file(&snapshot));
         ok(std::os::unix::fs::symlink(&secret, &snapshot));
         assert!(read_entry(&root, &locks, DOC).is_err());
-        assert!(write_entry(&root, &locks, DOC, &meta(DOC, "a.md"), b"t").is_err());
+        assert!(write_entry(&root, &locks, DOC, &meta(DOC, "a.md"), b"t", None).is_err());
         assert_eq!(ok(fs::read(&secret)), b"secret");
     }
 
@@ -633,6 +837,7 @@ mod tests {
             DOC,
             &meta(DOC, "start.md"),
             b"start.md",
+            None,
         ));
         let workers: Vec<_> = (0..4)
             .map(|worker| {
@@ -647,6 +852,7 @@ mod tests {
                             DOC,
                             &meta(DOC, &path),
                             snapshot.as_bytes(),
+                            None,
                         ));
                         // Interleaved reads never see a meta from one write and a snapshot from another.
                         let entry = ok(read_entry(&root, &locks, DOC))

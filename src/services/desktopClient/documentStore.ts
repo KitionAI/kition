@@ -1,13 +1,13 @@
 /**
- * The private store of Markdown document replicas (`.kition/docs/` in the workspace): each document's meta and KDM
- * snapshot, and the index from workspace paths to document ids. The desktop shell keeps it on disk; without a desktop
- * bridge the browser preview keeps the same store in localStorage.
+ * The private store of document replicas (`.kition/docs/` in the workspace): each document's meta and KDM snapshot
+ * (and a kit replica's blobs), and the index from workspace paths to document ids. The desktop shell keeps it on
+ * disk; without a desktop bridge the browser preview keeps the same store in localStorage.
  */
-import { type DocumentIndexPayload, type DocumentStoreMeta, type DocumentStorePayload, getDesktopBridge } from './bridge'
+import { type DocumentIndexPayload, type DocumentStoreMeta, type DocumentStorePayload, type KitReplicaMeta, getDesktopBridge } from './bridge'
 import { normalizeWorkspaceDocumentPath } from './workspaceDocuments'
 import { uint8ArrayToBase64 } from './workspaceFiles'
 
-export type { DocumentStoreMeta } from './bridge'
+export type { DocumentStoreMeta, KitReplicaMeta } from './bridge'
 
 /** The error a guarded index write fails with when another writer changed the index since it was read. */
 export const DOCUMENT_INDEX_CONFLICT = 'DOCUMENT_INDEX_CONFLICT'
@@ -17,9 +17,13 @@ const browserIndexStorageKey = 'kition.workspace.document-store.index.v1'
 const browserEntryStoragePrefix = 'kition.workspace.document-store.entry.v1:'
 const DOCUMENT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$/
 
-export type DocumentStoreEntry = {
-  meta: DocumentStoreMeta
+type StoredMeta = DocumentStoreMeta | KitReplicaMeta
+
+/** A Markdown document's entry, or with `KitReplicaMeta` a kit replica's; readers check the meta they get. */
+export type DocumentStoreEntry<M extends StoredMeta = DocumentStoreMeta> = {
+  meta: M
   snapshot: Uint8Array
+  blobs?: Uint8Array
 }
 
 export type DocumentIndex = DocumentIndexPayload
@@ -41,7 +45,7 @@ function checkDocumentId(docId: string) {
   if (!isValidDocumentId(docId)) throw new Error('invalid document id')
 }
 
-function checkMeta(docId: string, meta: DocumentStoreMeta) {
+function checkMeta(docId: string, meta: StoredMeta) {
   if (!meta || typeof meta !== 'object' || meta.docId !== docId) throw new Error('document store meta names another document')
 }
 
@@ -64,9 +68,9 @@ function rootRequest(options?: DocumentStoreOptions) {
 }
 
 /** Decodes strict base64; throws when `text` is not base64. */
-function base64ToBytes(text: string): Uint8Array {
+function base64ToBytes(text: string, what = 'snapshot'): Uint8Array {
   if (typeof text !== 'string' || !/^[A-Za-z0-9+/]*={0,2}$/.test(text) || text.length % 4 !== 0) {
-    throw new Error('document store snapshot is not base64')
+    throw new Error(`document store ${what} is not base64`)
   }
   const binary = atob(text)
   const bytes = new Uint8Array(binary.length)
@@ -74,9 +78,11 @@ function base64ToBytes(text: string): Uint8Array {
   return bytes
 }
 
-function toEntry(payload: DocumentStorePayload | null | undefined): DocumentStoreEntry | null {
+function toEntry<M extends StoredMeta>(payload: DocumentStorePayload | null | undefined): DocumentStoreEntry<M> | null {
   if (!payload) return null
-  return { meta: payload.meta, snapshot: base64ToBytes(payload.snapshot_base64) }
+  const entry: DocumentStoreEntry<M> = { meta: payload.meta as M, snapshot: base64ToBytes(payload.snapshot_base64) }
+  if (typeof payload.blobs_base64 === 'string') entry.blobs = base64ToBytes(payload.blobs_base64, 'blobs')
+  return entry
 }
 
 // --- Browser fallback ---------------------------------------------------
@@ -103,7 +109,7 @@ function readJson(key: string): unknown {
 function readBrowserEntry(docId: string): DocumentStorePayload | null {
   const stored = readJson(`${browserEntryStoragePrefix}${docId}`) as Partial<DocumentStorePayload> | null
   if (!stored || typeof stored.snapshot_base64 !== 'string' || stored.meta?.docId !== docId) return null
-  return { meta: stored.meta, snapshot_base64: stored.snapshot_base64 }
+  return { meta: stored.meta, snapshot_base64: stored.snapshot_base64, ...(typeof stored.blobs_base64 === 'string' ? { blobs_base64: stored.blobs_base64 } : {}) }
 }
 
 function readBrowserIndex(): DocumentIndex {
@@ -130,26 +136,27 @@ function nextBrowserIndexVersion() {
 // --- API ----------------------------------------------------------------
 
 /** The stored replica of `docId`, or `null` when there is none (or it is damaged). */
-export async function readDocumentStore(docId: string, options?: DocumentStoreOptions): Promise<DocumentStoreEntry | null> {
+export async function readDocumentStore<M extends StoredMeta = DocumentStoreMeta>(docId: string, options?: DocumentStoreOptions): Promise<DocumentStoreEntry<M> | null> {
   checkDocumentId(docId)
   const bridge = getDesktopBridge()
   if (bridge?.ReadDocumentStore) {
-    return toEntry(await bridge.ReadDocumentStore({ doc_id: docId, ...rootRequest(options) }))
+    return toEntry<M>(await bridge.ReadDocumentStore({ doc_id: docId, ...rootRequest(options) }))
   }
   checkBrowserRoot(options)
   const stored = readBrowserEntry(docId)
   try {
-    return toEntry(stored)
+    return toEntry<M>(stored)
   } catch {
     return null
   }
 }
 
-/** Replaces the replica of `docId`; meta and snapshot land together or not at all. */
-export async function writeDocumentStore(docId: string, entry: DocumentStoreEntry, options?: DocumentStoreOptions): Promise<void> {
+/** Replaces the replica of `docId`; meta, snapshot, and blobs land together or not at all. */
+export async function writeDocumentStore<M extends StoredMeta = DocumentStoreMeta>(docId: string, entry: DocumentStoreEntry<M>, options?: DocumentStoreOptions): Promise<void> {
   checkDocumentId(docId)
   checkMeta(docId, entry.meta)
   const payload: DocumentStorePayload = { meta: entry.meta, snapshot_base64: uint8ArrayToBase64(entry.snapshot) }
+  if (entry.blobs) payload.blobs_base64 = uint8ArrayToBase64(entry.blobs)
   const bridge = getDesktopBridge()
   if (bridge?.WriteDocumentStore) {
     await bridge.WriteDocumentStore({ doc_id: docId, ...payload, ...rootRequest(options) })

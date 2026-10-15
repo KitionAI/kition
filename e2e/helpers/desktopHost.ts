@@ -307,12 +307,14 @@ export async function installDesktopHost(page: Page, options: DesktopHostOptions
     read_document_store: async ({ request }) => {
       checkRoot(request || {})
       const dir = entryDir(request?.doc_id)
-      const [metaBytes, snapshot] = await Promise.all([readIfPresent(path.join(dir, 'meta.json')), readIfPresent(path.join(dir, 'snapshot.bin'))])
+      const [metaBytes, snapshot, blobs] = await Promise.all(['meta.json', 'snapshot.bin', 'blobs.bin'].map((name) => readIfPresent(path.join(dir, name))))
       if (!metaBytes || !snapshot) return null
       try {
         const stored = JSON.parse(metaBytes.toString('utf8'))
         if (stored?.snapshot?.sha256 !== sha256(snapshot) || stored?.meta?.docId !== request?.doc_id) return null
-        return { meta: stored.meta, snapshot_base64: snapshot.toString('base64') }
+        if (!stored.blobs) return { meta: stored.meta, snapshot_base64: snapshot.toString('base64') }
+        if (!blobs || stored.blobs.sha256 !== sha256(blobs)) return null
+        return { meta: stored.meta, snapshot_base64: snapshot.toString('base64'), blobs_base64: blobs.toString('base64') }
       } catch {
         return null
       }
@@ -323,10 +325,13 @@ export async function installDesktopHost(page: Page, options: DesktopHostOptions
       const meta = request?.meta as { docId?: unknown } | undefined
       if (!meta || meta.docId !== request?.doc_id) throw new Error('document store meta names another document')
       const snapshot = Buffer.from(String(request?.snapshot_base64 ?? ''), 'base64')
+      const blobs = typeof request?.blobs_base64 === 'string' ? Buffer.from(request.blobs_base64, 'base64') : null
       await ensureStore()
       await fs.mkdir(dir, { recursive: true })
       await fs.writeFile(path.join(dir, 'snapshot.bin'), snapshot)
-      const stored = { format: 1, meta, snapshot: { sha256: sha256(snapshot), size: snapshot.length } }
+      if (blobs) await fs.writeFile(path.join(dir, 'blobs.bin'), blobs)
+      else await fs.rm(path.join(dir, 'blobs.bin'), { force: true })
+      const stored = { format: 1, meta, snapshot: { sha256: sha256(snapshot), size: snapshot.length }, ...(blobs ? { blobs: { sha256: sha256(blobs), size: blobs.length } } : {}) }
       await fs.writeFile(path.join(dir, 'meta.json'), `${JSON.stringify(stored, null, 2)}\n`)
       return null
     },

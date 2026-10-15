@@ -418,6 +418,22 @@ export function mergeFileIntoReplica(opened: Pick<OpenedDocument, 'replica' | 'r
   return opened.replica.transact(FILE_IMPORT_ORIGIN, (tx) => mergeExternalText(tx, opened.rootId, base, incoming, current))
 }
 
+// --- Other kinds of documents ----------------------------------------------
+
+/**
+ * The document id the index keeps for the file at `path`, recording `mint()`'s there when it has none: for replicas
+ * other editors keep in the store (a kit's, for a file that cannot carry one), whose identity then follows the
+ * file's renames and moves like a Markdown document's.
+ */
+export async function bindDocumentId(path: string, mint: () => string, options?: Options): Promise<string> {
+  let docId = ''
+  await updateIndex((entries) => {
+    docId = entries[path] ?? mint()
+    return withEntry(path, docId)(entries)
+  }, options)
+  return docId
+}
+
 // --- Identity across tree operations ----------------------------------------
 
 /**

@@ -219,14 +219,27 @@ export type DocumentStoreMeta = {
   style: { eol: string; bom: boolean; finalNewline: boolean }
 }
 
+/**
+ * What the store keeps about a replica a kit editor keeps for its file (Kit UI protocol capability `replica`): the
+ * stamp of the file it was saved with.
+ */
+export type KitReplicaMeta = {
+  docId: string
+  kit: string
+  path: string
+  fileStamp: string
+}
+
 export type DocumentStoreRequest = {
   expected_root?: string
   doc_id: string
 }
 
 export type DocumentStorePayload = {
-  meta: DocumentStoreMeta
+  meta: DocumentStoreMeta | KitReplicaMeta
   snapshot_base64: string
+  /** A kit replica's blobs (`blobs.bin`). */
+  blobs_base64?: string
 }
 
 export type DocumentStoreWriteRequest = DocumentStoreRequest & DocumentStorePayload

@@ -6,6 +6,7 @@ import {
   type DocumentIndex,
   type DocumentStoreEntry,
   type DocumentStoreMeta,
+  type KitReplicaMeta,
   deleteDocumentStore,
   isDocumentIndexConflict,
   isValidDocumentId,
@@ -114,6 +115,32 @@ describe('document store over the desktop bridge', () => {
     expect(isDocumentIndexConflict(failure)).toBe(true)
     expect(isDocumentIndexConflict(new Error('disk full'))).toBe(false)
     expect(isDocumentIndexConflict(DOCUMENT_INDEX_CONFLICT)).toBe(true)
+  })
+})
+
+describe('kit replicas in the document store', () => {
+  const kitMeta: KitReplicaMeta = { docId: DOC, kit: 'kit.photo', path: 'art/a.psd', fileStamp: 'v1' }
+
+  it('carries blobs over the desktop bridge', async () => {
+    const bridge = {
+      ReadDocumentStore: vi.fn().mockResolvedValue({ meta: kitMeta, snapshot_base64: 'AQ==', blobs_base64: 'AgM=' }),
+      WriteDocumentStore: vi.fn().mockResolvedValue(null),
+    }
+    window.kitionDesktop = bridge
+    await writeDocumentStore(DOC, { meta: kitMeta, snapshot: new Uint8Array([1]), blobs: new Uint8Array([2, 3]) })
+    expect(bridge.WriteDocumentStore).toHaveBeenCalledWith({ doc_id: DOC, meta: kitMeta, snapshot_base64: 'AQ==', blobs_base64: 'AgM=' })
+    const read = await readDocumentStore<KitReplicaMeta>(DOC)
+    expect(read?.meta.fileStamp).toBe('v1')
+    expect(Array.from(read?.blobs || [])).toEqual([2, 3])
+    bridge.ReadDocumentStore.mockResolvedValueOnce({ meta: kitMeta, snapshot_base64: 'AQ==', blobs_base64: '%%' })
+    await expect(readDocumentStore(DOC)).rejects.toThrow('blobs is not base64')
+  })
+
+  it('keeps blobs in local storage, and none for an entry written without', async () => {
+    await writeDocumentStore(DOC, { meta: kitMeta, snapshot: new Uint8Array([1]), blobs: new Uint8Array([2, 3]) })
+    expect(Array.from((await readDocumentStore<KitReplicaMeta>(DOC))?.blobs || [])).toEqual([2, 3])
+    await writeDocumentStore(DOC, entry([4]))
+    expect((await readDocumentStore(DOC))?.blobs).toBeUndefined()
   })
 })
 
