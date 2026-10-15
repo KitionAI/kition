@@ -57,7 +57,7 @@ export type InitializeParams = {
   locale: string
   /** The host's own shortcuts, as `Cmd+N`; the kit forwards them (`host/shortcut`). */
   shortcuts: string[]
-  /** Optional host methods this host serves: `agent`, `pick-file`. */
+  /** Optional host methods this host serves: `agent`, `pick-file`, `replica`. */
   capabilities: string[]
 }
 
@@ -66,6 +66,12 @@ export type InitializeResult = { kit: { id: string; version: string }; capabilit
 export type DocumentState = { dirty: boolean; revision: number; title: string }
 
 export type WriteMode = 'save' | 'export' | 'create'
+
+/**
+ * A document's replica as the host stores it (capability `replica`, protocol section 7): the KDM
+ * snapshot, the blobs it references, and the stamp of the file it was saved with.
+ */
+export type StoredReplica = { snapshot: ArrayBuffer; blobs: ArrayBuffer; fileStamp: string }
 
 /** Kit AI bridge records (standard A7 to A10), as Kition's runtime defines them. */
 export type AiStep = { command: string; params?: Record<string, unknown> }
@@ -80,6 +86,10 @@ export type HostToKit = {
   'ai/commands': [{ query: string }, Array<Record<string, unknown>>]
   'ai/run': [{ steps: AiStep[]; save: boolean }, AiRunResult]
   'ai/preview': [{ maxSize: number }, { png: string }]
+  'replica/version': [Record<string, never>, { version: ArrayBuffer }]
+  'replica/export': [{ since: ArrayBuffer }, { changes: ArrayBuffer; blobs: ArrayBuffer }]
+  /** `damage` is what went stale on screen, as the kit's engine reports it. */
+  'replica/import': [{ changes: ArrayBuffer; blobs: ArrayBuffer }, { damage: unknown }]
 }
 
 /** Notifications the host sends. */
@@ -97,6 +107,8 @@ export type KitToHost = {
   'host/write': [{ path: string; bytes: ArrayBuffer; mode: WriteMode; expected?: string | null }, { path: string; version: string }]
   'host/pick': [{ purpose: string; accept: string[] }, { path: string | null }]
   'host/openAgent': [{ prompt?: string }, Record<string, never>]
+  'host/replicaRead': [{ path: string }, StoredReplica | null]
+  'host/replicaWrite': [{ path: string } & StoredReplica, Record<string, never>]
 }
 
 /** Notifications the kit sends. */
@@ -104,6 +116,7 @@ export type KitNotifications = {
   'document/changed': DocumentState & { by: 'person' | 'agent' }
   'host/notify': { level: 'info' | 'success' | 'warning' | 'error'; title: string; description?: string }
   'host/shortcut': { key: string; code: string; meta: boolean; ctrl: boolean; shift: boolean; alt: boolean }
+  'replica/changed': { version: ArrayBuffer }
 }
 
 type Message = { jsonrpc: '2.0'; id?: string; method?: string; params?: unknown; result?: unknown; error?: { code: number; message: string; data?: unknown } }
@@ -192,7 +205,8 @@ export class KitPeer<
       try {
         const result = await handler(message.params as never)
         // Answers are copied: the answering side may still hold what it answered (a cached file).
-        this.post({ jsonrpc: '2.0', id: message.id, result: result ?? {} })
+        // `null` is an answer (`host/replicaRead` with nothing stored); only no value becomes `{}`.
+        this.post({ jsonrpc: '2.0', id: message.id, result: result === undefined ? {} : result })
       } catch (error) {
         const failure = error instanceof KitRpcError ? error : new KitRpcError(-32000, error instanceof Error ? error.message : String(error))
         this.post({ jsonrpc: '2.0', id: message.id, error: { code: failure.code, message: failure.message, data: failure.data } })

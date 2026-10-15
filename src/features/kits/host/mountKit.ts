@@ -18,10 +18,11 @@ import {
   type KitNotifications,
   type KitTheme,
   type KitToHost,
+  type StoredReplica,
 } from './protocol'
 
 export { KIT_UI_PROTOCOL, KitRpcError }
-export type { DocumentState, InitializeResult, KitDocumentInit, KitTheme }
+export type { DocumentState, InitializeResult, KitDocumentInit, KitTheme, StoredReplica }
 
 type Params<M extends keyof KitToHost> = KitToHost[M][0]
 type Result<M extends keyof KitToHost> = KitToHost[M][1] | Promise<KitToHost[M][1]>
@@ -33,6 +34,14 @@ export type KitHostHandlers = {
   write: (params: Params<'host/write'>) => Result<'host/write'>
   pick?: (params: Params<'host/pick'>) => Result<'host/pick'>
   openAgent?: (params: Params<'host/openAgent'>) => void | Promise<void>
+  /**
+   * The document's stored replica and its keeping (capability `replica`, with `replicaWrite`):
+   * `null` when none is stored. The kit decides whether it still belongs to the file.
+   */
+  replicaRead?: (params: Params<'host/replicaRead'>) => Result<'host/replicaRead'>
+  replicaWrite?: (params: Params<'host/replicaWrite'>) => void | Promise<void>
+  /** `replica/changed`: the replica's version after an edit, for collaboration. */
+  replicaChanged?: (params: KitNotifications['replica/changed']) => void
   /** `document/changed`: show the unsaved mark, tell the agent. */
   changed: (state: KitNotifications['document/changed']) => void
   notify?: (notice: KitNotifications['host/notify']) => void
@@ -71,6 +80,12 @@ export type KitConnection = {
     run: (steps: AiStep[], save: boolean) => Promise<AiRunResult>
     preview: (maxSize: number) => Promise<{ png: string }>
   }
+  /** The document's KDM replica, when the kit declares the `replica` capability. */
+  replica: {
+    version: () => Promise<ArrayBuffer>
+    exportChanges: (since: ArrayBuffer) => Promise<{ changes: ArrayBuffer; blobs: ArrayBuffer }>
+    importChanges: (changes: ArrayBuffer, blobs: ArrayBuffer) => Promise<{ damage: unknown }>
+  }
   close: () => void
 }
 
@@ -84,7 +99,8 @@ function unsupported(method: string): never {
  */
 export function mountKit(frame: HTMLIFrameElement, options: MountOptions): Promise<KitConnection> {
   const { handlers } = options
-  const capabilities = ['agent', 'pick-file'].filter((name) => (name === 'agent' ? handlers.openAgent : handlers.pick))
+  const served = { agent: handlers.openAgent, 'pick-file': handlers.pick, replica: handlers.replicaRead && handlers.replicaWrite }
+  const capabilities = Object.entries(served).filter(([, handler]) => handler).map(([name]) => name)
   const timeout = options.timeoutMs ?? 120_000
 
   /** One attempt: a channel to the kit document that announced itself as `id`. */
@@ -100,7 +116,15 @@ export function mountKit(frame: HTMLIFrameElement, options: MountOptions): Promi
       await handlers.openAgent(params)
       return {}
     })
+    const { replicaRead, replicaWrite } = handlers
+    peer.handle('host/replicaRead', (params) => (replicaRead && replicaWrite ? replicaRead(params) : unsupported('host/replicaRead')))
+    peer.handle('host/replicaWrite', async (params) => {
+      if (!replicaRead || !replicaWrite) unsupported('host/replicaWrite')
+      await replicaWrite(params)
+      return {}
+    })
     peer.on('document/changed', (state) => handlers.changed(state))
+    peer.on('replica/changed', (params) => handlers.replicaChanged?.(params))
     peer.on('host/notify', (notice) => handlers.notify?.(notice))
     peer.on('host/shortcut', (key) => handlers.shortcut?.(key))
     target.postMessage({ kitionKitUi: 1, protocol: KIT_UI_PROTOCOL, id }, options.origin, [channel.port2])
@@ -179,6 +203,11 @@ function connection(peer: HostPeer, info: { kit: KitConnection['kit']; capabilit
       commands: (query) => peer.request('ai/commands', { query }),
       run: (steps, save) => peer.request('ai/run', { steps, save }),
       preview: (maxSize) => peer.request('ai/preview', { maxSize }),
+    },
+    replica: {
+      version: async () => (await peer.request('replica/version', {})).version,
+      exportChanges: (since) => peer.request('replica/export', { since }),
+      importChanges: (changes, blobs) => peer.request('replica/import', { changes, blobs }),
     },
     close: () => peer.close(),
   }
