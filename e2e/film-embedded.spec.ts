@@ -1,24 +1,30 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { expect, test } from '@playwright/test'
-import { kitEngine, openInKitFrame } from './helpers/embeddedKit'
+import { expect, test, type Page } from '@playwright/test'
+import { kitEngine, openInKitFrame, openTreeFile } from './helpers/embeddedKit'
+import { dismissFirstRunActivation } from './helpers/onboarding'
 
 const CLIP = path.join(process.cwd(), 'e2e', 'fixtures', 'film', 'bars.mp4')
 
 type NodeFilmDocument = { save(): Uint8Array; execute(command: string, params: string): string; free(): void }
 const engine = kitEngine<{ FilmDocument: { create(name: string, width: number, height: number): NodeFilmDocument } }>('film', 'kition_film_sdk')
 
-/** films/Trailer.fcproj with clips/bars.mp4 on V1, made by the engine the page runs; Node lends the clip as Kition's worker does. */
-async function trailerFixture(clip: Buffer) {
+/**
+ * A project with `clipPath` (relative to the project's own file) on V1, made by the engine the
+ * page runs; Node lends the clip as Kition's worker does. Defaults to `films/Trailer.fcproj`'s
+ * own layout (the clip one folder up, at `clips/bars.mp4`); a project at the workspace root names
+ * it directly.
+ */
+async function trailerFixture(clip: Buffer, clipPath = '../clips/bars.mp4') {
   Object.assign(globalThis, {
     kitionHost: {
-      size: (file: string) => (file === '../clips/bars.mp4' ? clip.byteLength : 0),
-      readRange: (file: string, offset: number, length: number) => new Uint8Array(file === '../clips/bars.mp4' ? clip.subarray(offset, offset + length) : []),
+      size: (file: string) => (file === clipPath ? clip.byteLength : 0),
+      readRange: (file: string, offset: number, length: number) => new Uint8Array(file === clipPath ? clip.subarray(offset, offset + length) : []),
     },
   })
   const sdk = await engine.load()
   const doc = sdk.FilmDocument.create('Trailer.fcproj', 320, 180)
-  const imported = JSON.parse(doc.execute('file.import', JSON.stringify({ paths: ['../clips/bars.mp4'] }))) as { items: number[] }
+  const imported = JSON.parse(doc.execute('file.import', JSON.stringify({ paths: [clipPath] }))) as { items: number[] }
   doc.execute('timeline.place', JSON.stringify({ item: imported.items[0], track: 'V1', seconds: 0 }))
   const bytes = Buffer.from(doc.save())
   doc.free()
@@ -50,6 +56,61 @@ test('opens a video project in the Film kit’s own editor, edits it there, and 
     await kit.getByTestId('film-save').click()
     await expect(kit.getByTestId('film-unsaved')).toHaveCount(0)
     expect(saves.map((save) => save.path)).toContain('films/Trailer.fcproj')
+  } finally {
+    await host.dispose()
+  }
+})
+
+/** The replica version of the kit editor showing `path`, as hex (Kition's development test hook). */
+function replicaVersion(page: Page, path: string) {
+  return page.evaluate(async (wanted) => (window.__KITION_KIT_TEST__ ? window.__KITION_KIT_TEST__.replicaVersion(wanted) : ''), path)
+}
+
+test('keeps an .fcproj’s replica across a save and a reopen, and opens a file changed elsewhere plainly', async ({ page, baseURL }) => {
+  test.skip(!engine.built, 'the Film kit editor is not built into public/kits/film-ui')
+  test.setTimeout(180_000)
+  const clip = await fs.readFile(CLIP)
+  const name = 'Replica.fcproj'
+  // A flat name: the document tree's own folder-expand toggle (clicked again on each reopen)
+  // would otherwise collapse a folder a previous open already expanded.
+  const { host, kit } = await openInKitFrame(page, baseURL!, name, await trailerFixture(clip, 'bars.mp4'), { 'bars.mp4': clip }, { persist: true })
+  const reopen = async () => {
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await dismissFirstRunActivation(page)
+    return openTreeFile(page, name)
+  }
+  try {
+    await expect(kit.getByTestId('film-track-Video 1')).toContainText('bars.mp4', { timeout: 60_000 })
+    // Move the playhead off the clip's start before splitting: a split at 0 does nothing.
+    await kit.getByTestId('film-play').click()
+    await expect(kit.getByTestId('film-timecode')).not.toHaveText('00:00:00:00')
+    await kit.getByTestId('film-play').click()
+    await kit.getByTestId('film-split').click()
+    await expect(kit.getByTestId('film-track-Video 1').locator('[data-testid^="film-clip-"]')).toHaveCount(2)
+    await kit.getByTestId('film-save').click()
+    await expect(kit.getByTestId('film-unsaved')).toHaveCount(0, { timeout: 30_000 })
+
+    // The replica sits in the document store under the file's identity, with the saved file's stamp.
+    const store = path.join(host.root, '.kition', 'docs')
+    const readJson = async (file: string) => JSON.parse(await fs.readFile(path.join(store, file), 'utf8').catch(() => '{}'))
+    await expect.poll(async () => (await readJson('index.json')).entries?.[name] ?? null, { timeout: 15_000 }).not.toBeNull()
+    const docId = (await readJson('index.json')).entries[name] as string
+    await expect.poll(async () => (await readJson(`${docId}/meta.json`)).meta?.kit ?? null).toBe('kit.film')
+    const saved = await replicaVersion(page, name)
+    expect(saved).not.toBe('')
+
+    // Reopened, the project is the replica it was saved with: the split survives.
+    const reopened = await reopen()
+    await expect(reopened.getByTestId('film-track-Video 1').locator('[data-testid^="film-clip-"]')).toHaveCount(2, { timeout: 60_000 })
+    await expect.poll(() => replicaVersion(page, name).catch(() => ''), { timeout: 15_000 }).toBe(saved)
+    await expect(reopened.getByTestId('film-unsaved')).toHaveCount(0)
+
+    // A file changed elsewhere (a new stamp) opens plainly: what the file holds, a new replica.
+    await fs.writeFile(path.join(host.root, name), await trailerFixture(clip, 'bars.mp4'))
+    const changed = await reopen()
+    await expect(changed.getByTestId('film-track-Video 1').locator('[data-testid^="film-clip-"]')).toHaveCount(1, { timeout: 60_000 })
+    await expect.poll(() => replicaVersion(page, name).catch(() => ''), { timeout: 15_000 }).not.toBe('')
+    expect(await replicaVersion(page, name)).not.toBe(saved)
   } finally {
     await host.dispose()
   }
