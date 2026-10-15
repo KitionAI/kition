@@ -123,8 +123,10 @@ capabilities when it serves `host/customize`.
 
 ### Rules
 
-- **UI-C1** A hidden element is not drawn. A menu, ribbon group, ribbon tab,
-  or separator left with nothing visible is not drawn either.
+- **UI-C1** A hidden element is not drawn. A menu whose commands are all
+  hidden, a ribbon group with an id and nothing left to press, and a leading,
+  trailing, or doubled menu separator are not drawn either. A ribbon tab is not
+  drawn only when its own `tab:` id is hidden.
 - **UI-C2** A command the host hides or disables is refused on every path:
   menus, buttons, shortcuts, context menus, canvas tools, and `ai/run`
   (JSON-RPC `-32000`, `error.data.reason` `not-allowed`). `ai/commands` omits
