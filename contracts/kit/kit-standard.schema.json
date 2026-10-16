@@ -277,6 +277,16 @@
           "type": "string",
           "pattern": "^[^/][^:]*\\.html$",
           "description": "The embedded UI's HTML entry, relative to the package root."
+        },
+        "brand": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["light", "dark"],
+          "description": "The kit's brand color per color scheme (U5b): the editor's primary color unless the host keeps its own.",
+          "properties": {
+            "light": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+            "dark": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" }
+          }
         }
       },
       "allOf": [

@@ -31,8 +31,39 @@ export function isHello(data: unknown): data is KitUiHello {
   return kitUiMessage(data) && typeof data.hello === 'string'
 }
 
-/** CSS custom properties the kit applies to its root (protocol section 4). */
-export type KitTheme = { colorScheme: 'light' | 'dark'; tokens: Record<string, string> }
+/**
+ * CSS custom properties the kit applies to its root (protocol section 4). `brand` (section 9):
+ * `kit` (the default) lets a kit with a brand color use it for its primary tokens; `host` keeps
+ * the host's.
+ */
+export type KitTheme = { colorScheme: 'light' | 'dark'; tokens: Record<string, string>; brand?: 'kit' | 'host' }
+
+/** A button the host adds to the kit's editor (protocol section 9). */
+export type KitUiHostButton = {
+  /** The host's own name for it; `ui/action` reports it. */
+  id: string
+  /** `menu:<path>` (end of that menu), `group:<tab>/<group>` (end of that ribbon group), or `action`. */
+  place: string
+  /** The label per locale; `en-US` is the fallback. */
+  label: Record<string, string>
+  /** A `@kition/kit-ui` icon name, or a `data:image/…` URL. */
+  icon?: string
+  /** As `Cmd+Enter`. */
+  shortcut?: string
+  disabled?: boolean
+  pressed?: boolean
+}
+
+/** What the host hides, disables, and adds, and what the person hid (protocol section 9). */
+export type KitUiConfig = {
+  hide?: string[]
+  disable?: string[]
+  add?: KitUiHostButton[]
+  personal?: { hide?: string[] }
+}
+
+/** One element of a kit's editor, as `ui/elements` lists it. */
+export type KitUiElement = { id: string; kind: string; label: string; parent: string | null; hidden: boolean; disabled: boolean }
 
 export type KitDocumentInit = {
   path: string
@@ -57,8 +88,10 @@ export type InitializeParams = {
   locale: string
   /** The host's own shortcuts, as `Cmd+N`; the kit forwards them (`host/shortcut`). */
   shortcuts: string[]
-  /** Optional host methods this host serves: `agent`, `pick-file`, `replica`. */
+  /** Optional host methods this host serves: `agent`, `pick-file`, `replica`, `customize`. */
   capabilities: string[]
+  /** The UI configuration (section 9); absent means none. */
+  ui?: KitUiConfig
 }
 
 export type InitializeResult = { kit: { id: string; version: string }; capabilities: string[] }
@@ -86,10 +119,14 @@ export type HostToKit = {
   'ai/commands': [{ query: string }, Array<Record<string, unknown>>]
   'ai/run': [{ steps: AiStep[]; save: boolean }, AiRunResult]
   'ai/preview': [{ maxSize: number }, { png: string }]
+  /** The editor's elements and their state (section 9). */
+  'ui/elements': [Record<string, never>, KitUiElement[]]
   'replica/version': [Record<string, never>, { version: ArrayBuffer }]
   'replica/export': [{ since: ArrayBuffer }, { changes: ArrayBuffer; blobs: ArrayBuffer }]
   /** `damage` is what went stale on screen, as the kit's engine reports it. */
   'replica/import': [{ changes: ArrayBuffer; blobs: ArrayBuffer }, { damage: unknown }]
+  /** The replica's own id, when the kit's engine has one (minor version 1.3); `null` otherwise. */
+  'replica/info': [Record<string, never>, { docId: string | null }]
 }
 
 /** Notifications the host sends. */
@@ -98,6 +135,8 @@ export type HostNotifications = {
   'ui/theme': { theme: KitTheme }
   'ui/locale': { locale: string }
   'ui/focus': Record<string, never>
+  /** Replaces the UI configuration (section 9). */
+  'ui/configure': { ui: KitUiConfig }
 }
 
 /** Requests the kit sends. */
@@ -109,6 +148,8 @@ export type KitToHost = {
   'host/openAgent': [{ prompt?: string }, Record<string, never>]
   'host/replicaRead': [{ path: string }, StoredReplica | null]
   'host/replicaWrite': [{ path: string } & StoredReplica, Record<string, never>]
+  /** Keeps what the person hid (capability `customize`, section 9). */
+  'host/customize': [{ personal: { hide: string[] } }, Record<string, never>]
 }
 
 /** Notifications the kit sends. */
@@ -117,6 +158,8 @@ export type KitNotifications = {
   'host/notify': { level: 'info' | 'success' | 'warning' | 'error'; title: string; description?: string }
   'host/shortcut': { key: string; code: string; meta: boolean; ctrl: boolean; shift: boolean; alt: boolean }
   'replica/changed': { version: ArrayBuffer }
+  /** A host button was pressed (section 9). */
+  'ui/action': { id: string; document: { path: string; dirty: boolean; revision: number } }
 }
 
 type Message = { jsonrpc: '2.0'; id?: string; method?: string; params?: unknown; result?: unknown; error?: { code: number; message: string; data?: unknown } }

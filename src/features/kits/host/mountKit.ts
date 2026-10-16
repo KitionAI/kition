@@ -18,11 +18,13 @@ import {
   type KitNotifications,
   type KitTheme,
   type KitToHost,
+  type KitUiConfig,
+  type KitUiElement,
   type StoredReplica,
 } from './protocol'
 
 export { KIT_UI_PROTOCOL, KitRpcError }
-export type { DocumentState, InitializeResult, KitDocumentInit, KitTheme, StoredReplica }
+export type { DocumentState, InitializeResult, KitDocumentInit, KitTheme, KitUiConfig, KitUiElement, StoredReplica }
 
 type Params<M extends keyof KitToHost> = KitToHost[M][0]
 type Result<M extends keyof KitToHost> = KitToHost[M][1] | Promise<KitToHost[M][1]>
@@ -47,6 +49,10 @@ export type KitHostHandlers = {
   notify?: (notice: KitNotifications['host/notify']) => void
   /** A host shortcut pressed inside the kit (UI-K5). */
   shortcut?: (key: KitNotifications['host/shortcut']) => void
+  /** `host/customize`: keep the person's hides for this kit (capability `customize`, section 9). */
+  customize?: (params: Params<'host/customize'>) => void | Promise<void>
+  /** `ui/action`: one of the host's buttons was pressed. */
+  action?: (params: KitNotifications['ui/action']) => void
 }
 
 export type MountOptions = {
@@ -57,6 +63,8 @@ export type MountOptions = {
   theme: KitTheme
   locale: string
   shortcuts: string[]
+  /** The UI configuration (protocol section 9). */
+  ui?: KitUiConfig
   handlers: KitHostHandlers
   /** How long the kit may take to open the document. */
   timeoutMs?: number
@@ -74,6 +82,13 @@ export type KitConnection = {
   setTheme: (theme: KitTheme) => void
   setLocale: (locale: string) => void
   focus: () => void
+  /**
+   * Replaces the UI configuration (`ui/configure`). A host that mounts the kit again passes its
+   * latest configuration as the `ui` option.
+   */
+  configure: (ui: KitUiConfig) => void
+  /** The editor's elements (`ui/elements`). Rejects with -32601 when the kit did not declare its UI. */
+  elements: () => Promise<KitUiElement[]>
   ai: {
     inspect: () => Promise<Record<string, unknown>>
     commands: (query: string) => Promise<Array<Record<string, unknown>>>
@@ -85,6 +100,10 @@ export type KitConnection = {
     version: () => Promise<ArrayBuffer>
     exportChanges: (since: ArrayBuffer) => Promise<{ changes: ArrayBuffer; blobs: ArrayBuffer }>
     importChanges: (changes: ArrayBuffer, blobs: ArrayBuffer) => Promise<{ damage: unknown }>
+    /** The replica's own id (minor version 1.3), when the kit's engine has one; `null` otherwise. */
+    info: () => Promise<string | null>
+    /** Hears every `replica/changed` (the replica's version after an edit); answers an unsubscribe. */
+    onChanged: (listener: (version: ArrayBuffer) => void) => () => void
   }
   close: () => void
 }
@@ -99,7 +118,7 @@ function unsupported(method: string): never {
  */
 export function mountKit(frame: HTMLIFrameElement, options: MountOptions): Promise<KitConnection> {
   const { handlers } = options
-  const served = { agent: handlers.openAgent, 'pick-file': handlers.pick, replica: handlers.replicaRead && handlers.replicaWrite }
+  const served = { agent: handlers.openAgent, 'pick-file': handlers.pick, replica: handlers.replicaRead && handlers.replicaWrite, customize: handlers.customize }
   const capabilities = Object.entries(served).filter(([, handler]) => handler).map(([name]) => name)
   const timeout = options.timeoutMs ?? 120_000
 
@@ -123,16 +142,22 @@ export function mountKit(frame: HTMLIFrameElement, options: MountOptions): Promi
       await replicaWrite(params)
       return {}
     })
+    peer.handle('host/customize', async (params) => {
+      if (!handlers.customize) unsupported('host/customize')
+      await handlers.customize(params)
+      return {}
+    })
     peer.on('document/changed', (state) => handlers.changed(state))
     peer.on('replica/changed', (params) => handlers.replicaChanged?.(params))
     peer.on('host/notify', (notice) => handlers.notify?.(notice))
     peer.on('host/shortcut', (key) => handlers.shortcut?.(key))
+    peer.on('ui/action', (params) => handlers.action?.(params))
     target.postMessage({ kitionKitUi: 1, protocol: KIT_UI_PROTOCOL, id }, options.origin, [channel.port2])
     // Each attempt sends the document's bytes; the transfer leaves this copy intact for the next.
     const document = { ...options.document, bytes: options.document.bytes?.slice(0) }
     const initialized = peer.request(
       'ui/initialize',
-      { protocol: KIT_UI_PROTOCOL, host: options.host, document, theme: options.theme, locale: options.locale, shortcuts: options.shortcuts, capabilities },
+      { protocol: KIT_UI_PROTOCOL, host: options.host, document, theme: options.theme, locale: options.locale, shortcuts: options.shortcuts, capabilities, ui: options.ui },
       { transfer: true },
     )
     return { peer, initialized }
@@ -198,6 +223,8 @@ function connection(peer: HostPeer, info: { kit: KitConnection['kit']; capabilit
     setTheme: (theme) => peer.notify('ui/theme', { theme }),
     setLocale: (locale) => peer.notify('ui/locale', { locale }),
     focus: () => peer.notify('ui/focus', {}),
+    configure: (ui) => peer.notify('ui/configure', { ui }),
+    elements: () => peer.request('ui/elements', {}),
     ai: {
       inspect: () => peer.request('ai/inspect', {}),
       commands: (query) => peer.request('ai/commands', { query }),
@@ -208,6 +235,8 @@ function connection(peer: HostPeer, info: { kit: KitConnection['kit']; capabilit
       version: async () => (await peer.request('replica/version', {})).version,
       exportChanges: (since) => peer.request('replica/export', { since }),
       importChanges: (changes, blobs) => peer.request('replica/import', { changes, blobs }),
+      info: async () => (await peer.request('replica/info', {})).docId,
+      onChanged: (listener) => peer.on('replica/changed', (params) => listener(params.version)),
     },
     close: () => peer.close(),
   }

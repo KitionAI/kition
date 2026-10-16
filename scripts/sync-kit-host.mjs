@@ -2,8 +2,9 @@
 // Kition's copy of the Kit UI protocol's host side (kition-sdk packages/kit-protocol and
 // packages/kit-host), in src/features/kits/host/, of the standard's kit.json schema
 // (schemas/kit.schema.json), in contracts/kit/kit-standard.schema.json for the conformance suite,
-// and of the Kit Data Model (packages/kdm/src/*.ts), in src/lib/kdm/, and its Rust crate
-// (crates/kition-kdm), in crates/kition-kdm/. kition-sdk is private and
+// of the Kit Data Model (packages/kdm/src/*.ts), in src/lib/kdm/, and its Rust crate
+// (crates/kition-kdm), in crates/kition-kdm/, and of the sync client for kition-sync/1
+// (packages/sync/src/*.ts), in src/lib/sync/. kition-sdk is private and
 // Kition is public, so Kition carries the files instead of depending on the packages.
 //
 //   node scripts/sync-kit-host.mjs          copy them from ../kition-sdk (or KITION_SDK)
@@ -28,7 +29,7 @@ const files = [
 
 if (!fs.existsSync(path.join(sdk, 'packages/kit-host'))) {
   if (process.argv.includes('--check')) {
-    console.log(`SKIP kit host, kit.json schema, and KDM copies: no kition-sdk at ${sdk}`)
+    console.log(`SKIP kit host, kit.json schema, KDM, and sync client copies: no kition-sdk at ${sdk}`)
     process.exit(0)
   }
   console.error(`no kition-sdk at ${sdk}; set KITION_SDK`)
@@ -40,6 +41,13 @@ const kdmSource = 'packages/kdm/src'
 for (const name of fs.readdirSync(path.join(sdk, kdmSource)).filter((name) => name.endsWith('.ts')).sort()) {
   const source = `${kdmSource}/${name}`
   files.push({ source, out: `src/lib/kdm/${name}`, rewrite: (text) => header(source) + text })
+}
+// Every sync client (@kition/sync) source file, unchanged: its imports are relative, and it needs
+// nothing beyond Web Crypto and a WebSocket.
+const syncSource = 'packages/sync/src'
+for (const name of fs.readdirSync(path.join(sdk, syncSource)).filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts')).sort()) {
+  const source = `${syncSource}/${name}`
+  files.push({ source, out: `src/lib/sync/${name}`, rewrite: (text) => header(source) + text })
 }
 // The Rust KDM (crates/kition-kdm): its sources and tests, unchanged, so they run against this
 // workspace's dependency features (serde_json `preserve_order`), with a manifest written here.
@@ -88,6 +96,7 @@ ${dependencies}`
 // removed.
 const copyDirs = [
   { dir: 'src/lib/kdm', ext: '.ts' },
+  { dir: 'src/lib/sync', ext: '.ts' },
   { dir: `${rustKdm}/src`, ext: '.rs' },
   { dir: `${rustKdm}/tests`, ext: '.rs' },
   { dir: `${rustKdm}/tests/fixtures`, ext: '', all: true },
@@ -131,4 +140,4 @@ for (const file of files) {
   }
 }
 if (stale) process.exit(1)
-if (process.argv.includes('--check')) console.log('PASS kit host, kit.json schema, and KDM (TypeScript and Rust) copies match kition-sdk')
+if (process.argv.includes('--check')) console.log('PASS kit host, kit.json schema, KDM (TypeScript and Rust), and sync client copies match kition-sdk')

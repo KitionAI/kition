@@ -11,7 +11,8 @@
     "e2e/**/*.spec.ts",
     "e2e/helpers/**/*.ts",
     "src/features/kits/host/*.ts",
-    "src/lib/kdm/*.ts"
+    "src/lib/kdm/*.ts",
+    "src/lib/sync/*.ts"
   ],
   "project": [
     "src/**/*.{ts,tsx}",
