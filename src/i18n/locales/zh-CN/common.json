@@ -38,7 +38,9 @@
     "backToWorkspaceHint": "当前主视图",
     "openSettings": "打开设置",
     "openSettingsHint": "运行时与 Provider 配置",
-    "close": "关闭"
+    "close": "关闭",
+    "openShared": "打开共享文档",
+    "openSharedHint": "打开他人分享给你的协同编辑文档"
   },
   "viewport": {
     "tooNarrow": "视口过窄，编辑器和 Workflow 画布在此尺寸下可能无法完整使用，建议放大窗口至 480px 以上。"

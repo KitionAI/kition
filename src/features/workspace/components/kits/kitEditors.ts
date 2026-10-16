@@ -106,3 +106,9 @@ export function creatableKits() {
 export function kitEditorFor(format: WorkspaceDocumentFormat) {
   return KIT_EDITORS.find((entry) => entry.format === format)
 }
+
+/** The kit `kitId` as co-editing opens a document shared with this person: its engine, and its file extension. */
+export function sharedKitFor(kitId: string) {
+  const entry = creatableKits().find((candidate) => candidate.embedded.kitId === kitId)
+  return entry ? { engine: entry.engine, extension: entry.create.extension } : null
+}

@@ -38,7 +38,9 @@
     "backToWorkspaceHint": "Vista principal actual",
     "openSettings": "Abrir ajustes",
     "openSettingsHint": "Configuración de runtime y proveedor",
-    "close": "Cerrar"
+    "close": "Cerrar",
+    "openShared": "Abrir documento compartido",
+    "openSharedHint": "Abre un documento que alguien compartió contigo para coeditar"
   },
   "viewport": {
     "tooNarrow": "La ventana es demasiado estrecha. Es posible que el editor y el lienzo de Workflow no se puedan usar por completo en este tamaño. Amplía la ventana a al menos 480px."

@@ -702,5 +702,30 @@
   "pdfKit": {
     "unavailableTitle": "La edición de PDF no está disponible en esta versión",
     "unavailableBody": "Los PDF se abren en Kition cuando se incluye el motor de PDF."
+  },
+  "collab": {
+    "share": "Compartir para coedición",
+    "sharing": "Compartiendo…",
+    "sharedTitle": "Compartido para coedición",
+    "sharedDescription": "El enlace se ha copiado. Cualquier persona con Kition Pro que lo abra puede editar este documento contigo.",
+    "linkLabel": "Enlace para compartir",
+    "copyLink": "Copiar enlace",
+    "linkCopied": "Enlace copiado",
+    "close": "Cerrar",
+    "shareFailed": "No se pudo compartir este documento",
+    "openShared": "Abrir documento compartido",
+    "openSharedDescription": "Pega un enlace de coedición que alguien compartió contigo. El documento se abre en tu carpeta Shared.",
+    "linkPlaceholder": "Pega un enlace para compartir",
+    "open": "Abrir",
+    "cancel": "Cancelar",
+    "needsPro": "La coedición requiere Kition Pro y un servidor de sincronización.",
+    "unreachable": "No se puede contactar con el servidor de sincronización. Comprueba tu conexión e inténtalo de nuevo.",
+    "linkNotFound": "Este enlace no lleva a ningún documento compartido.",
+    "peers": "También editando: {{names}}",
+    "status": {
+      "online": "Coedición: conectado",
+      "connecting": "Coedición: conectando",
+      "offline": "Coedición: sin conexión. Tus cambios se sincronizarán al reconectar."
+    }
   }
 }

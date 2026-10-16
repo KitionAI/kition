@@ -38,7 +38,9 @@
     "backToWorkspaceHint": "Vue principale actuelle",
     "openSettings": "Ouvrir les paramètres",
     "openSettingsHint": "Configuration du runtime et du fournisseur",
-    "close": "Fermer"
+    "close": "Fermer",
+    "openShared": "Ouvrir un document partagé",
+    "openSharedHint": "Ouvrir un document que quelqu’un a partagé avec vous pour coédition"
   },
   "viewport": {
     "tooNarrow": "La fenêtre est trop étroite. L'éditeur et le canevas Workflow peuvent ne pas être pleinement utilisables à cette taille. Agrandissez la fenêtre à au moins 480px."

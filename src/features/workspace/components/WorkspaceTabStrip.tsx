@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { WorkspaceTabContextMenu, type WorkspaceTabContextMenuItem } from '@/features/workspace/components/WorkspaceTabContextMenu'
 import { getWorkspaceItemIcon, getWorkspaceItemIconColorClass, type WorkspaceTab } from '@/features/workspace/lib/workspace'
 import { KitIcon } from '@/components/KitIcon'
+import { canShareKitDocument, requestShareKitDocument, useCollabAvailable } from '@/features/collab/public'
 import { cn } from '@/lib/utils'
 
 export function WorkspaceTabStrip({
@@ -47,6 +48,7 @@ export function WorkspaceTabStrip({
   const measureTabRefs = useRef(new Map<string, HTMLDivElement>())
   const [visibleTabIds, setVisibleTabIds] = useState<string[]>(() => tabs.map((tab) => tab.id))
   const [overflowOpen, setOverflowOpen] = useState(false)
+  const collabAvailable = useCollabAvailable()
 
   useEffect(() => {
     let animationFrame = 0
@@ -240,6 +242,10 @@ export function WorkspaceTabStrip({
         disabled: !supportsCopyRef || !onCopyTabRef,
         onSelect: () => onCopyTabRef?.(tab),
       },
+      // Co-editing, only where it is set up and the tab's kit editor can share its document.
+      ...(collabAvailable && tab.type === 'file-viewer' && canShareKitDocument(tab.path)
+        ? [{ key: 'share', label: t('collab.share'), onSelect: () => requestShareKitDocument(tab.path) }]
+        : []),
     ]
   }
 
@@ -402,7 +408,7 @@ export function WorkspaceTabStrip({
           >
             <WorkspaceTabIcon tab={tab} />
             <span>{tab.title}</span>
-            <button type="button" className="document-tab-close" tabIndex={-1}>
+                <button type="button" className="document-tab-close" tabIndex={-1}>
               <X className="size-3" />
             </button>
           </div>

@@ -702,5 +702,30 @@
   "pdfKit": {
     "unavailableTitle": "此版本不支持编辑 PDF",
     "unavailableBody": "包含 PDF 引擎时，PDF 会在 Kition 中打开。"
+  },
+  "collab": {
+    "share": "共享以协同编辑",
+    "sharing": "正在共享…",
+    "sharedTitle": "已共享以协同编辑",
+    "sharedDescription": "链接已复制。拥有 Kition Pro 的人打开此链接后即可与你一起编辑此文档。",
+    "linkLabel": "共享链接",
+    "copyLink": "复制链接",
+    "linkCopied": "链接已复制",
+    "close": "关闭",
+    "shareFailed": "无法共享此文档",
+    "openShared": "打开共享文档",
+    "openSharedDescription": "粘贴他人分享给你的协同编辑链接。文档会在你的 Shared 文件夹中打开。",
+    "linkPlaceholder": "粘贴共享链接",
+    "open": "打开",
+    "cancel": "取消",
+    "needsPro": "协同编辑需要 Kition Pro 和同步服务器。",
+    "unreachable": "无法连接同步服务器。请检查网络连接后重试。",
+    "linkNotFound": "此链接没有指向任何共享文档。",
+    "peers": "也在编辑：{{names}}",
+    "status": {
+      "online": "协同编辑：已连接",
+      "connecting": "协同编辑：正在连接",
+      "offline": "协同编辑：离线。重新连接后会同步你的编辑。"
+    }
   }
 }

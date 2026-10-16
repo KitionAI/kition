@@ -38,7 +38,9 @@
     "backToWorkspaceHint": "Current main view",
     "openSettings": "Open settings",
     "openSettingsHint": "Runtime & provider settings",
-    "close": "Close"
+    "close": "Close",
+    "openShared": "Open shared document",
+    "openSharedHint": "Open a document someone shared with you for co-editing"
   },
   "viewport": {
     "tooNarrow": "The viewport is too narrow. The editor and Workflow canvas may not be fully usable at this size. Consider enlarging the window to at least 480px."

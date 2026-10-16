@@ -8,9 +8,12 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), [tabi
 export function CommandPalette({
   onClose,
   onOpenSettings,
+  onOpenShared,
 }: {
   onClose: () => void
   onOpenSettings: () => void
+  /** Opens a document someone shared for co-editing; absent when co-editing is off. */
+  onOpenShared?: () => void
 }) {
   const { t } = useTranslation('common')
   const actions = useMemo(
@@ -25,8 +28,17 @@ export function CommandPalette({
         action: 'settings',
         hint: t('commandPalette.openSettingsHint'),
       },
+      ...(onOpenShared
+        ? [
+            {
+              title: t('commandPalette.openShared'),
+              action: 'open-shared',
+              hint: t('commandPalette.openSharedHint'),
+            },
+          ]
+        : []),
     ],
-    [t],
+    [onOpenShared, t],
   )
   const [cursor, setCursor] = useState(0)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -35,6 +47,9 @@ export function CommandPalette({
   function open(action: string) {
     if (action === 'settings') {
       onOpenSettings()
+    }
+    if (action === 'open-shared') {
+      onOpenShared?.()
     }
     onClose()
   }

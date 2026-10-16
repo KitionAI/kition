@@ -14,7 +14,7 @@ export type KitEngineInfo = {
 }
 
 export type KitEngineRequest =
-  | { method: 'open'; manifest: KitSdkManifest; name: string; bytes: ArrayBuffer; lent: LentFiles | null }
+  | { method: 'open'; manifest: KitSdkManifest; name: string; bytes: ArrayBuffer; lent: LentFiles | null; replica?: { snapshot: ArrayBuffer; blobs: ArrayBuffer } | null }
   | { method: 'create'; manifest: KitSdkManifest; name: string; width: number; height: number; lent: LentFiles | null }
   | { method: 'execute'; command: string; params: Record<string, unknown> }
   | { method: 'render'; x: number; y: number; scale: number; width: number; height: number }
@@ -49,14 +49,17 @@ export class KitEngine {
   /**
    * Starts a worker and opens the file's bytes in it with the kit's SDK; the bytes move to the
    * worker. `lent` is where the document's other files (media) are read from, if anywhere.
+   * `replica` opens the document as that KDM replica (its snapshot and blobs move too); with
+   * empty `bytes`, the replica alone, for a file that does not exist yet.
    */
-  static async open(manifest: KitSdkManifest, name: string, bytes: ArrayBuffer, lent: LentFiles | null = null) {
+  static async open(manifest: KitSdkManifest, name: string, bytes: ArrayBuffer, lent: LentFiles | null = null, replica: { snapshot: ArrayBuffer; blobs: ArrayBuffer } | null = null) {
     const worker = new Worker(new URL('./kitEngine.worker.ts', import.meta.url), { type: 'module' })
     const engine = new KitEngine(worker, CLOSED_INFO)
     worker.onmessage = (event: MessageEvent<KitEngineResponse>) => engine.settle(event.data)
     worker.onerror = (event) => engine.fail(new Error(event.message || 'the kit engine stopped'))
     try {
-      engine.info = (await engine.call({ method: 'open', manifest, name, bytes, lent }, [bytes])) as KitEngineInfo
+      const transfer = replica ? [bytes, replica.snapshot, replica.blobs] : [bytes]
+      engine.info = (await engine.call({ method: 'open', manifest, name, bytes, lent, replica }, transfer)) as KitEngineInfo
       return engine
     } catch (error) {
       engine.dispose()

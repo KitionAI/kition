@@ -702,5 +702,30 @@
   "pdfKit": {
     "unavailableTitle": "PDF editing is not available in this build",
     "unavailableBody": "PDFs open in Kition when the PDF engine is included."
+  },
+  "collab": {
+    "share": "Share for co-editing",
+    "sharing": "Sharing…",
+    "sharedTitle": "Shared for co-editing",
+    "sharedDescription": "The link is copied. Anyone with Kition Pro who opens it can edit this document with you.",
+    "linkLabel": "Share link",
+    "copyLink": "Copy link",
+    "linkCopied": "Link copied",
+    "close": "Close",
+    "shareFailed": "Could not share this document",
+    "openShared": "Open shared document",
+    "openSharedDescription": "Paste a co-editing link someone shared with you. The document opens in your Shared folder.",
+    "linkPlaceholder": "Paste a share link",
+    "open": "Open",
+    "cancel": "Cancel",
+    "needsPro": "Co-editing needs Kition Pro and a sync server.",
+    "unreachable": "The sync server cannot be reached. Check your connection and try again.",
+    "linkNotFound": "This link does not lead to a shared document.",
+    "peers": "Also editing: {{names}}",
+    "status": {
+      "online": "Co-editing: connected",
+      "connecting": "Co-editing: connecting",
+      "offline": "Co-editing: offline. Your edits sync when you reconnect."
+    }
   }
 }

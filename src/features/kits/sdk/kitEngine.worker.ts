@@ -14,7 +14,7 @@ declare const self: DedicatedWorkerGlobalScope
 let doc: KitSdkDocument | null = null
 
 /** The shared contract's own methods, which `invoke` must not reach around. */
-const CONTRACT = new Set(['free', 'execute', 'save', 'markSaved', 'constructor', 'open', 'create'])
+const CONTRACT = new Set(['free', 'execute', 'save', 'markSaved', 'constructor', 'open', 'create', 'openWithReplica'])
 
 function info(open: KitSdkDocument): KitEngineInfo {
   const inspected = JSON.parse(open.inspect()) as Record<string, unknown>
@@ -42,7 +42,7 @@ async function handle(request: KitEngineRequest): Promise<{ value: unknown; tran
       const sdk = await loadKitSdk(request.manifest)
       lendFiles(request.lent)
       doc?.free()
-      doc = openKitSdkDocument(sdk, request.manifest, request.name, new Uint8Array(request.bytes))
+      doc = openKitSdkDocument(sdk, request.manifest, request.name, new Uint8Array(request.bytes), request.replica ? { snapshot: new Uint8Array(request.replica.snapshot), blobs: new Uint8Array(request.replica.blobs) } : null)
       return { value: info(doc) }
     }
     case 'create': {

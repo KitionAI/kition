@@ -25,7 +25,9 @@ import {
   openWorkspaceWindow,
 } from '@/services/desktop'
 import { restorePortalAccountSession } from '@/services/portalAccount'
-import { startCollab } from '@/features/collab/public'
+import { CollabDialogs, requestOpenSharedDocument, startCollab, useCollabAvailable } from '@/features/collab/public'
+import { sharedKitFor } from '@/features/workspace/components/kits/kitEditors'
+import { requestShowWorkspaceFile } from '@/features/workspace/lib/workspaceFileRequests'
 import { SearchService } from '@/features/search/service/searchService'
 import { attachEventBridges } from '@/features/search/service/events'
 import { scheduleSearchBoot } from '@/features/search/service/searchBootScheduler'
@@ -255,6 +257,7 @@ export function AppShell() {
 
   // Co-editing follows the open kit documents; it stays off without a sync server and a Kition Pro session.
   useEffect(() => startCollab(), [])
+  const collabAvailable = useCollabAvailable()
 
   const vaultRegistry = useWorkspaceVaults()
   const {
@@ -808,7 +811,7 @@ export function AppShell() {
       ) : null}
       {commandOpen ? (
         <Suspense fallback={null}>
-          <CommandPalette onClose={() => setCommandOpen(false)} onOpenSettings={() => openSettings('general')} />
+          <CommandPalette onClose={() => setCommandOpen(false)} onOpenSettings={() => openSettings('general')} onOpenShared={collabAvailable ? requestOpenSharedDocument : undefined} />
         </Suspense>
       ) : null}
       {paletteOpen ? (
@@ -822,6 +825,7 @@ export function AppShell() {
           />
         </Suspense>
       ) : null}
+      <CollabDialogs kitFor={sharedKitFor} onOpened={(path) => requestShowWorkspaceFile(path, true)} />
       <ConsoleCreditsExhaustedBanner />
       {/* Below the tab strip: a toast must never cover the tab chrome (docs/design.md). */}
       <Toaster position="top-center" offset={{ top: TOAST_TOP_OFFSET }} mobileOffset={{ top: TOAST_TOP_OFFSET }} richColors closeButton />

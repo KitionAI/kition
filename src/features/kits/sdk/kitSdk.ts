@@ -92,8 +92,13 @@ export function loadKitSdk(manifest: KitSdkManifest): Promise<KitSdkModule> {
   return module
 }
 
+/** A document's KDM replica to open it with: a snapshot (or a full change export) and its blobs. */
+export type KitSdkReplica = { snapshot: Uint8Array; blobs: Uint8Array }
+
 type KitSdkClass = {
   open?: (name: string, bytes: Uint8Array) => KitSdkDocument
+  /** Opens a document as a stored replica (engine contract 2); empty `bytes`: the replica alone. */
+  openWithReplica?: (name: string, bytes: Uint8Array, snapshot: Uint8Array, blobs: Uint8Array) => KitSdkDocument
   create?: (name: string, width: number, height: number) => KitSdkDocument
   contractVersion?: () => number
 }
@@ -106,9 +111,15 @@ function documentClassOf(module: KitSdkModule, manifest: KitSdkManifest) {
   return documentClass
 }
 
-/** Opens file bytes with a loaded SDK's document class. */
-export function openKitSdkDocument(module: KitSdkModule, manifest: KitSdkManifest, name: string, bytes: Uint8Array) {
-  return documentClassOf(module, manifest).open!(name, bytes)
+/**
+ * Opens file bytes with a loaded SDK's document class; with `replica`, as that replica (a kit
+ * without `openWithReplica` cannot, and fails).
+ */
+export function openKitSdkDocument(module: KitSdkModule, manifest: KitSdkManifest, name: string, bytes: Uint8Array, replica: KitSdkReplica | null = null) {
+  const documentClass = documentClassOf(module, manifest)
+  if (!replica) return documentClass.open!(name, bytes)
+  if (typeof documentClass.openWithReplica !== 'function') throw new Error(`${manifest.module} cannot open a replica`)
+  return documentClass.openWithReplica(name, bytes, replica.snapshot, replica.blobs)
 }
 
 /** A new, empty document of the SDK's own making (New image, New video project). */
