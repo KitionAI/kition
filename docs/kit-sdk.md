@@ -110,8 +110,8 @@ the headless kit and saves it. The tab notices the new version on disk
 
 ## 3. The SDK Contract (Kit Side)
 
-Each kit repository adds `crates/kition-<kit>-sdk` on top of the
-`kition-sdk` crate, modelled on `crates/kition-photo-sdk` in kit-photo:
+Each kit repository adds `bindings/wasm` (the `kition-<kit>-sdk` crate) on top of the
+`kition-sdk` crate, modelled on `bindings/wasm` in kition-photo:
 
 ```rust
 use kition_sdk::{KitCommand, KitDocument};

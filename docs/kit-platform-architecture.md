@@ -262,17 +262,18 @@ forks. Kition does not send pull requests upstream and expects to diverge.
 ### 7.3 Workspace layout
 
 ```text
-kit-photo/                       Kition's copy of the upstream repository
-  Cargo.toml                     upstream workspace + Kition members
-  crates/<upstream crates>       upstream code, edited only per section 7.2
-  crates/kition-kit-server/      Kit Protocol server over the engine command registry
-  crates/kition-surface/         embedded and window surface attachment
-  crates/kition-theme/           design tokens to egui visuals
-  apps/<upstream app>/           upstream desktop app, kept buildable
-  apps/kit-photo/                kit executable: app shell + protocol server
-  kit.json                       manifest template; version and checksums filled by CI
-  KITION_CHANGES.md              ledger of upstream file modifications
-  NOTICE, LICENSE-*              upstream attribution and licenses
+kition-<kit>/                    one kit repository, the same layout for every kit
+  crates/kdm/<name>              KDM model (collaboration entry point)
+  crates/engine/<name>           domain model, commands, editing logic
+  crates/formats/<name>          file import and export (psd, pptx, xlsx, dxf, ...)
+  crates/media/<name>            audio and video codecs and containers
+  crates/render/<name>           rendering, rasterising, printing
+  crates/support/<name>          geometry, color, fonts, text, test helpers
+  bindings/wasm/                 kition-<kit>-sdk: the in-page engine (KitDocument)
+  bindings/headless/             kit-<kit>: the agent's headless executable
+  web/                           the kit's editor (Kit UI protocol)
+  kit.json                       manifest (Kition Kit Standard)
+  NOTICE, LICENSE                Apache-2.0 and upstream attribution
 ```
 
 Keeping the upstream app buildable lets upstream tests keep running and makes
