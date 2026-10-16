@@ -1362,6 +1362,35 @@
     @apply inline-flex shrink-0 items-center text-primary;
   }
 
+  /* Co-editing on a shared document's tab: its connection, and the other people in it. */
+  .collab-tab-indicators {
+    @apply inline-flex shrink-0 items-center gap-1;
+  }
+
+  .collab-status {
+    @apply inline-block size-1.5 shrink-0 rounded-full bg-subtle-foreground;
+  }
+
+  .collab-status.is-online {
+    @apply bg-emerald-500;
+  }
+
+  .collab-status.is-connecting {
+    @apply bg-amber-500;
+  }
+
+  .collab-presence {
+    @apply inline-flex shrink-0 items-center -space-x-1;
+  }
+
+  .collab-presence-avatar {
+    @apply inline-flex size-4 items-center justify-center rounded-full text-[8px] font-semibold leading-none text-white ring-1 ring-background;
+  }
+
+  .collab-presence-more {
+    @apply pl-1.5 text-[10px] text-muted-foreground;
+  }
+
   .workspace-tab-context-menu {
     @apply fixed z-[200] min-w-[220px] overflow-hidden rounded-md border border-border bg-card py-1 text-sm text-foreground shadow-xl dark:border-border dark:bg-background dark:text-foreground;
   }

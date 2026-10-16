@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { WorkspaceTabContextMenu, type WorkspaceTabContextMenuItem } from '@/features/workspace/components/WorkspaceTabContextMenu'
 import { getWorkspaceItemIcon, getWorkspaceItemIconColorClass, type WorkspaceTab } from '@/features/workspace/lib/workspace'
 import { KitIcon } from '@/components/KitIcon'
-import { canShareKitDocument, requestShareKitDocument, useCollabAvailable } from '@/features/collab/public'
+import { canShareKitDocument, CollabTabIndicators, requestShareKitDocument, useCollabAvailable } from '@/features/collab/public'
 import { cn } from '@/lib/utils'
 
 export function WorkspaceTabStrip({
@@ -278,6 +278,7 @@ export function WorkspaceTabStrip({
       >
         <WorkspaceTabIcon tab={tab} />
         <span>{tab.title}</span>
+        {tab.type === 'file-viewer' ? <CollabTabIndicators path={tab.path} /> : null}
         <AgentChangedMark show={activeTabId !== tab.id && Boolean(isTabChangedByAgent?.(tab))} />
         <button
           type="button"
@@ -408,7 +409,8 @@ export function WorkspaceTabStrip({
           >
             <WorkspaceTabIcon tab={tab} />
             <span>{tab.title}</span>
-                <button type="button" className="document-tab-close" tabIndex={-1}>
+            {tab.type === 'file-viewer' ? <CollabTabIndicators path={tab.path} /> : null}
+            <button type="button" className="document-tab-close" tabIndex={-1}>
               <X className="size-3" />
             </button>
           </div>
