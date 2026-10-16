@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { expect, type Page, type Route } from '@playwright/test'
-import { installDesktopHost } from './desktopHost'
+import { installDesktopHost, type DesktopHostOptions } from './desktopHost'
 import { fulfillJson, mockLocalWorkspaceApi } from './mockApi'
 import { dismissFirstRunActivation } from './onboarding'
 
@@ -38,8 +38,13 @@ async function serveWorkspace(page: Page, root: string) {
  * Kition on a desktop workspace whose files kits read through the file server. Files Kition saves
  * through its file API are recorded in `saves`, and with `persist` also written to the workspace.
  */
-export async function openKitWorkspace(page: Page, baseURL: string, files: Record<string, Buffer> = {}, { persist = false } = {}) {
-  const host = await installDesktopHost(page)
+export async function openKitWorkspace(
+  page: Page,
+  baseURL: string,
+  files: Record<string, Buffer> = {},
+  { persist = false, desktop = {} as DesktopHostOptions, routes = async (_page: Page) => {} } = {},
+) {
+  const host = await installDesktopHost(page, desktop)
   for (const [name, content] of Object.entries(files)) {
     await fs.mkdir(path.dirname(path.join(host.root, name)), { recursive: true })
     await fs.writeFile(path.join(host.root, name), content)
@@ -54,6 +59,8 @@ export async function openKitWorkspace(page: Page, baseURL: string, files: Recor
     if (persist && target) await fs.writeFile(path.join(host.root, target), body)
     await fulfillJson(route, { code: 200, message: 'success', data: { path: target, bytes: body.length } })
   })
+  // A spec's own answers, over the mocks above.
+  await routes(page)
   await page.goto(new URL('/documents', baseURL).toString(), { waitUntil: 'domcontentloaded' })
   await dismissFirstRunActivation(page)
   return { host, saves }
@@ -73,7 +80,14 @@ export async function openTreeFile(page: Page, name: string) {
  * shows in a frame; answers the frame, and the files Kition saved through its file API (with
  * `persist`, also written to the workspace).
  */
-export async function openInKitFrame(page: Page, baseURL: string, name: string, bytes: Buffer, others: Record<string, Buffer> = {}, { persist = false } = {}) {
-  const { host, saves } = await openKitWorkspace(page, baseURL, { ...others, [name]: bytes }, { persist })
+export async function openInKitFrame(
+  page: Page,
+  baseURL: string,
+  name: string,
+  bytes: Buffer,
+  others: Record<string, Buffer> = {},
+  options: Parameters<typeof openKitWorkspace>[3] = {},
+) {
+  const { host, saves } = await openKitWorkspace(page, baseURL, { ...others, [name]: bytes }, options)
   return { host, saves, kit: await openTreeFile(page, name) }
 }
