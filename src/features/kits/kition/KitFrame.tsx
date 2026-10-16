@@ -6,6 +6,7 @@ import { notify } from '@/lib/notify'
 import { mountKit, type KitConnection, type KitTheme } from '../host/mountKit'
 import { KITION_KIT_HOST, readKitReplica, writeKitReplica } from './kitionHost'
 import { registerBridgeEditor, reportBridgeChange } from './kitBridge'
+import { registerKitConnection } from './kitConnections'
 import { registerKitTestFrame } from './kitTestBridge'
 import { pickWorkspaceFile } from './pickWorkspaceFile'
 
@@ -150,9 +151,11 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
           preview: async (maxSize) => (await mounted!.ai.preview(maxSize)).png,
         })
         const withdrawTest = registerKitTestFrame(path, mounted)
+        const withdrawConnection = registerKitConnection({ path, kitId: kit.kitId, connection: mounted })
         withdraw = () => {
           withdrawEditor()
           withdrawTest()
+          withdrawConnection()
         }
         setConnection(mounted)
       } catch (error) {

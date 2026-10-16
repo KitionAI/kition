@@ -25,6 +25,7 @@ import {
   openWorkspaceWindow,
 } from '@/services/desktop'
 import { restorePortalAccountSession } from '@/services/portalAccount'
+import { startCollab } from '@/features/collab/public'
 import { SearchService } from '@/features/search/service/searchService'
 import { attachEventBridges } from '@/features/search/service/events'
 import { scheduleSearchBoot } from '@/features/search/service/searchBootScheduler'
@@ -251,6 +252,9 @@ export function AppShell() {
     }
     void restorePortalAccountSession().catch(() => {})
   }, [])
+
+  // Co-editing follows the open kit documents; it stays off without a sync server and a Kition Pro session.
+  useEffect(() => startCollab(), [])
 
   const vaultRegistry = useWorkspaceVaults()
   const {

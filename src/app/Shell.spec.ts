@@ -26,6 +26,13 @@ vi.mock('@/services/portalAccount', () => ({
   restorePortalAccountSession: mocks.restorePortalAccountSession,
 }))
 
+vi.mock('@/features/collab/public', () => ({
+  CollabDialogs: () => null,
+  requestOpenSharedDocument: vi.fn(),
+  startCollab: () => () => undefined,
+  useCollabAvailable: () => false,
+}))
+
 vi.mock('@/services/desktop', () => ({
   getDesktopInfo: mocks.getDesktopInfo,
   getDesktopBackendStatus: mocks.getDesktopBackendStatus,
