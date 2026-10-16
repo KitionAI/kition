@@ -255,7 +255,7 @@ and side panels).
 - Web engines embed no Chinese face; kits that draw text export `addFont`
   (standard E9), and their editors ship Droid Sans Fallback from the
   `kition-fonts` checkout next to the kit (`web/scripts/build-engine.sh`).
-  Never Noto CJK or Source Han: the Craft apps' asset rules forbid them.
+  Never Noto CJK or Source Han: the kits' asset rules forbid them.
 
 ## 4b. Kit Packages And Releases
 
@@ -439,7 +439,7 @@ Exports (Film's MP4):
   H.264 encodes at about 5 times slower than real time in single-threaded
   WebAssembly.
 - Editing a file the kit does not own (an mp4) goes through a project: "Edit
-  in Film" on the video viewer makes `<clip>.fcproj` beside the clip
+  in Film" on the video viewer makes `<clip>.kitionfilm` beside the clip
   (`createKitFile` with a `prepare` step that imports it and builds a
   sequence from it) and opens it. The clip itself is never changed.
 
@@ -548,8 +548,8 @@ Slide and page kits (Slides):
   views (exact reductions of 1:1) do not render every slide again.
 - An engine that types into the one selected shape (PowerPoint) reports
   `wantsText` while one shape is selected; otherwise the host keeps the keys.
-- Engines built with craft-fonts need the checkout next to the kit
-  repository (`../craft-fonts`), or web builds have no fonts and text is
+- Engines built with kition-fonts need the checkout next to the kit
+  repository (`../kition-fonts`), or web builds have no fonts and text is
   invisible. The faces an editor hands to `addFont` come from
   `../kition-fonts` (`KITION_FONTS_DIR`), Kition's own font repository.
 
@@ -559,7 +559,7 @@ Text kits (Word):
   so every printable key and editing key reaches the engine, and command
   shortcuts (`Cmd+B`) reach the frame. Turn the engine's `Mod+` shortcuts into
   `Cmd+`.
-- Keep the session in a `RefCell` when laying out needs `&mut` (WordCraft
+- Keep the session in a `RefCell` when laying out needs `&mut` (Kition Word
   caches its layout), since `render` and `inspect` take `&self`. Never mark
   the document changed for a caret or selection move.
 - An engine that fills its whole output with paper (`render_region`) renders
@@ -567,7 +567,7 @@ Text kits (Word):
 
 Grid kits (Sheet):
 
-- An engine whose upstream draws with its UI toolkit (GridCraft's grid is
+- An engine whose upstream draws with its UI toolkit (Kition Sheet's grid is
   egui) needs its own painting in the SDK: port the toolkit drawing (cell
   fills, borders, text, alignment, number formats) into the SDK crate, with
   the faces the upstream web build uses, and say in `KITION_CHANGES.md` what is
@@ -580,7 +580,7 @@ Grid kits (Sheet):
 
 Tool-table kits (PDF):
 
-- An upstream whose agent surface is a JSON tool table (PdfCraft's
+- An upstream whose agent surface is a JSON tool table (Kition PDF's
   `automation`) can be the kit's command list: fill in the document argument,
   convert each JSON Schema to the standard's parameter schema (and check it
   with `kition_sdk::schema::validate`), and map undo and redo to `edit.undo`

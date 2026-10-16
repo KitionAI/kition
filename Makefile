@@ -78,7 +78,7 @@ $(SDK_BINARIES):
 kit-binaries: $(PHOTO_BINARY) $(SDK_BINARIES)
 
 kit-dev: $(addprefix public/kits/,$(addsuffix -ui/kit-ui.json,$(KIT_UIS))) $(PHOTO_BINARY) $(SDK_BINARIES)
-	@echo "Kition with Photo, Film, Vector, Effect, Design, CAD, Slides, Word, Sheet, and PDF: open a .psd, .fcproj, .vectorcraft, .ecproj, .designcraft, .dxf, .kislide, .pptx, .docx, .xlsx, or .pdf, or use the New menu."
+	@echo "Kition with Photo, Film, Vector, Effect, Design, CAD, Slides, Word, Sheet, and PDF: open a .psd, .kitionfilm, .kitionvector, .kitioneffect, .kitiondesign, .dxf, .kitionslide, .pptx, .docx, .xlsx, or .pdf, or use the New menu."
 	$(NO_PROXY_ENV) $(KIT_BINARY_ENV) pnpm dev
 
 kit-check: $(addprefix public/kits/,$(addsuffix -ui/kit-ui.json,$(KIT_UIS)))

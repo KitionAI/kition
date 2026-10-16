@@ -8,7 +8,7 @@ const engine = kitEngine<{ EffectDocument: { create(name: string, width: number,
 /** A real project made by the same engine the page runs: a 2-second composition with a fading solid. */
 async function introFixture() {
   const sdk = await engine.load()
-  const doc = sdk.EffectDocument.create('Intro.ecproj', 640, 360)
+  const doc = sdk.EffectDocument.create('Intro.kitioneffect', 640, 360)
   doc.execute('comp.settings', JSON.stringify({ duration: 2 }))
   doc.execute('layer.newSolid', JSON.stringify({ name: 'Red', color: '#ff0000' }))
   const layer = (JSON.parse(doc.inspect()) as { info: { layers: Array<{ id: number }> } }).info.layers[0].id
@@ -23,7 +23,7 @@ async function introFixture() {
 test('opens a motion project in the Effect kit’s own editor, animates it, and renders through Kition', async ({ page, baseURL, browserName }, testInfo) => {
   test.skip(!engine.built, 'the Effect kit editor is not built into public/kits/effect-ui')
   test.setTimeout(180_000)
-  const { host, saves, kit } = await openInKitFrame(page, baseURL!, 'Intro.ecproj', await introFixture())
+  const { host, saves, kit } = await openInKitFrame(page, baseURL!, 'Intro.kitioneffect', await introFixture())
   try {
     await expect(kit.getByTestId('effect-status')).toContainText('1 layers', { timeout: 60_000 })
     await expect(kit.getByTestId('effect-menu-Composition')).toHaveText('Composition')
@@ -45,7 +45,7 @@ test('opens a motion project in the Effect kit’s own editor, animates it, and 
 
     await kit.getByTestId('effect-save').click()
     await expect(kit.getByTestId('effect-unsaved')).toHaveCount(0)
-    expect(saves.map((save) => save.path)).toContain('Intro.ecproj')
+    expect(saves.map((save) => save.path)).toContain('Intro.kitioneffect')
     if (canReadBlobBodies(browserName)) expect(saves.find((save) => save.path === 'Intro.mp4')!.bytes.subarray(4, 8).toString()).toBe('ftyp')
   } finally {
     await host.dispose()

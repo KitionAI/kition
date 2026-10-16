@@ -254,7 +254,7 @@ describe('documentMentions', () => {
 
   it('points the agent at each kit\'s own tools for its files', () => {
     const active = buildAgentDocumentMentionPromptContext({
-      activeDocumentPath: 'Art/Logo.vectorcraft',
+      activeDocumentPath: 'Art/Logo.kitionvector',
       activeDocumentFormat: 'vector',
       referencedDocuments: [],
     })
@@ -264,8 +264,8 @@ describe('documentMentions', () => {
 
     const mentioned = buildAgentDocumentMentionPromptContext({
       referencedDocuments: [
-        { kind: 'file', path: 'Motion/Intro.ecproj', name: 'Intro.ecproj', title: 'Intro' },
-        { kind: 'file', path: 'Print/Flyer.designcraft', name: 'Flyer.designcraft', title: 'Flyer' },
+        { kind: 'file', path: 'Motion/Intro.kitioneffect', name: 'Intro.kitioneffect', title: 'Intro' },
+        { kind: 'file', path: 'Print/Flyer.kitiondesign', name: 'Flyer.kitiondesign', title: 'Flyer' },
       ],
     })
     expect(mentioned).toContain('Referenced motion graphics projects in this turn (open them in Kition Effect)')

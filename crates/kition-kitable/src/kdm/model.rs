@@ -670,18 +670,17 @@ pub fn create_records(
     let stored = stored_fields(tx, table)?;
     let records = Listing::read(tx, table, "records")?;
     let raw_of = |anchor: &ObjectId| records.raw_index(anchor).ok_or(KitableError::NotFound);
-    let mut index = match at {
+    let start = match at {
         None => records.raw.len(),
         Some(Anchor::Before(anchor)) => raw_of(anchor)?,
         Some(Anchor::After(anchor)) => raw_of(anchor)? + 1,
     };
     let mut ids = Vec::with_capacity(rows.len());
-    for row in rows {
+    for (index, row) in (start..).zip(rows) {
         let id = ObjectId::from_string(uuid::Uuid::new_v4().to_string());
         let values = registers(json!({ "createdAt": now, "createdBy": created_by }));
         tx.create_with_id(RECORD, &id, values)?;
         tx.list_insert(table, "records", index, &id)?;
-        index += 1;
         for (key, value) in row {
             if !value.is_null() && stored.contains(key.as_str()) {
                 tx.map_set(&id, "cells", key, value.clone())?;

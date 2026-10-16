@@ -22,37 +22,37 @@ struct Case {
 const CASES: &[Case] = &[
     Case {
         kit: "kit.vector",
-        fixture: "Drawing.vectorcraft",
+        fixture: "Drawing.kitionvector",
         command: "shape.ellipse",
         params: || json!({ "x": 100, "y": 20, "width": 60, "height": 60 }),
         file_command: (
             "document.save",
-            || json!({ "path": "elsewhere.vectorcraft" }),
+            || json!({ "path": "elsewhere.kitionvector" }),
         ),
     },
     Case {
         kit: "kit.effect",
-        fixture: "Motion.ecproj",
+        fixture: "Motion.kitioneffect",
         command: "layer.newSolid",
         params: || json!({ "name": "Blue", "color": "#0000ff", "width": 32, "height": 36 }),
-        file_command: ("file.saveAs", || json!({ "path": "elsewhere.ecproj" })),
+        file_command: ("file.saveAs", || json!({ "path": "elsewhere.kitioneffect" })),
     },
     Case {
         kit: "kit.design",
-        fixture: "Flyer.designcraft",
+        fixture: "Flyer.kitiondesign",
         command: "frame.create",
         params: || json!({ "rect": [300, 300, 400, 400], "content": "unassigned" }),
         file_command: (
             "file.saveACopy",
-            || json!({ "path": "elsewhere.designcraft" }),
+            || json!({ "path": "elsewhere.kitiondesign" }),
         ),
     },
     Case {
         kit: "kit.film",
-        fixture: "Edit.fcproj",
+        fixture: "Edit.kitionfilm",
         command: "file.newColorMatte",
         params: || json!({ "color": "#0000ff", "seconds": 1 }),
-        file_command: ("file.saveAs", || json!({ "path": "elsewhere.fcproj" })),
+        file_command: ("file.saveAs", || json!({ "path": "elsewhere.kitionfilm" })),
     },
     Case {
         kit: "kit.cad",
@@ -63,10 +63,10 @@ const CASES: &[Case] = &[
     },
     Case {
         kit: "kit.slide",
-        fixture: "Slides.kislide",
+        fixture: "Slides.kitionslide",
         command: "shape.insert",
         params: || json!({ "preset": "ellipse", "rect": [100, 100, 200, 120] }),
-        file_command: ("file.saveAs", || json!({ "path": "elsewhere.kislide" })),
+        file_command: ("file.saveAs", || json!({ "path": "elsewhere.kitionslide" })),
     },
     Case {
         kit: "kit.word",

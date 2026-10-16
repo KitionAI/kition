@@ -31,7 +31,7 @@
     "crate": "kition-film-sdk",
     "module": "kition_film_sdk",
     "class": "FilmDocument",
-    "name": "Edit.fcproj",
+    "name": "Edit.kitionfilm",
     "edit": [
       {
         "command": "file.newColorMatte",
@@ -55,7 +55,7 @@
     "crate": "kition-vector-sdk",
     "module": "kition_vector_sdk",
     "class": "VectorDocument",
-    "name": "Drawing.vectorcraft",
+    "name": "Drawing.kitionvector",
     "edit": {
       "command": "shape.rectangle",
       "params": {
@@ -71,7 +71,7 @@
     "crate": "kition-effect-sdk",
     "module": "kition_effect_sdk",
     "class": "EffectDocument",
-    "name": "Motion.ecproj",
+    "name": "Motion.kitioneffect",
     "edit": {
       "command": "layer.newSolid",
       "params": {
@@ -85,7 +85,7 @@
     "crate": "kition-design-sdk",
     "module": "kition_design_sdk",
     "class": "DesignDocument",
-    "name": "Flyer.designcraft",
+    "name": "Flyer.kitiondesign",
     "edit": [
       {
         "command": "frame.create",
@@ -132,7 +132,7 @@
     "crate": "kition-slide-sdk",
     "module": "kition_slide_sdk",
     "class": "SlideDocument",
-    "name": "Slides.kislide",
+    "name": "Slides.kitionslide",
     "edit": {
       "command": "shape.insert",
       "params": {

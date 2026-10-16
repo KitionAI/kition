@@ -487,11 +487,11 @@ txt
   4
 
 1001
-CADCRAFT
+KITION_CAD
 1000
 FONT
 1000
-CADCraft Stroke
+Kition CAD Stroke
   0
 ENDTAB
   0
@@ -559,7 +559,7 @@ AcDbSymbolTableRecord
 100
 AcDbRegAppTableRecord
   2
-CADCRAFT
+KITION_CAD
  70
 0
   0

@@ -27,7 +27,7 @@ async function loadSdk() {
 /** Real slides made by the same engine the page runs: a title slide, and a second slide with a square. */
 async function slidesFixture() {
   const sdk = await loadSdk()
-  const doc = sdk.SlideDocument.create('Launch.kislide', 960, 540)
+  const doc = sdk.SlideDocument.create('Launch.kitionslide', 960, 540)
   doc.execute('slide.new', '{}')
   doc.execute('shape.insert', JSON.stringify({ preset: 'rect', rect: [380, 170, 200, 200] }))
   doc.execute('slide.go', JSON.stringify({ index: 0 }))
@@ -41,7 +41,7 @@ type InspectedSlide = { shapes: Array<{ preset?: string; text?: string }> }
 /** The shapes on slide `index` of a saved slides file. */
 async function shapesIn(bytes: Buffer, index: number) {
   const sdk = await loadSdk()
-  const doc = sdk.SlideDocument.open('Saved.kislide', bytes)
+  const doc = sdk.SlideDocument.open('Saved.kitionslide', bytes)
   const slide = JSON.parse(doc.execute('slide.inspect', JSON.stringify({ index }))) as InspectedSlide
   doc.free()
   return slide.shapes
@@ -66,7 +66,7 @@ test('opens slides in the Slides kit’s own editor, edits it there, and saves i
   const host = await installDesktopHost(page)
   try {
     const fixture = await slidesFixture()
-    await fs.writeFile(path.join(host.root, 'Launch.kislide'), fixture)
+    await fs.writeFile(path.join(host.root, 'Launch.kitionslide'), fixture)
     await mockLocalWorkspaceApi(page)
     await serveWorkspace(page, host.root)
     const saves: Array<{ path: string | null; bytes: Buffer }> = []
@@ -113,10 +113,10 @@ test('opens slides in the Slides kit’s own editor, edits it there, and saves i
     // Save goes through Kition's file API (host/write).
     await kit.getByTestId('slides-save').click()
     await expect(kit.getByTestId('slides-unsaved')).toHaveCount(0)
-    expect(saves.map((save) => save.path)).toEqual(['Launch.kislide'])
+    expect(saves.map((save) => save.path)).toEqual(['Launch.kitionslide'])
     if (canReadBlobBodies(browserName)) {
       const sdk = await loadSdk()
-      const reopened = sdk.SlideDocument.open('Saved.kislide', saves[0].bytes)
+      const reopened = sdk.SlideDocument.open('Saved.kitionslide', saves[0].bytes)
       expect((JSON.parse(reopened.inspect()) as { slides: unknown[] }).slides).toHaveLength(3)
       reopened.free()
     }

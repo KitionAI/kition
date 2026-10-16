@@ -37,11 +37,11 @@ describe('kitBridge on the shared bridge stream', () => {
     const { registerBridgeEditor, reportBridgeChange } = await import('./kitBridge')
     const { runtimeBridge } = await import('@/services/runtimeBridge')
     const withdraw = registerBridgeEditor({
-      path: './art/a.vectorcraft',
+      path: './art/a.kitionvector',
       kitId: 'kit.vector',
       revision: () => 3,
       dirty: () => false,
-      inspect: () => ({ path: 'art/a.vectorcraft', summary: '', dirty: false, canUndo: false, canRedo: false, details: {} }),
+      inspect: () => ({ path: 'art/a.kitionvector', summary: '', dirty: false, canUndo: false, canRedo: false, details: {} }),
       commands: async () => [],
       run: async () => ({ completed: [], saved: false }),
       preview: async () => '',
@@ -53,11 +53,11 @@ describe('kitBridge on the shared bridge stream', () => {
     stream.emit({ method: 'bridge.ready', params: { session: 7 } })
     stream.emit({ id: 1, method: 'kit/documents', params: {} })
     stream.emit({ id: 2, method: 'document/read', params: { path: 'Notes/a.md' } })
-    stream.emit({ id: 3, method: 'kit/call', params: { path: 'other.vectorcraft', kit: 'kit.vector', tool: 'inspect', arguments: {} } })
-    reportBridgeChange({ path: '/art/a.vectorcraft', revision: 4, by: 'agent' })
+    stream.emit({ id: 3, method: 'kit/call', params: { path: 'other.kitionvector', kit: 'kit.vector', tool: 'inspect', arguments: {} } })
+    reportBridgeChange({ path: '/art/a.kitionvector', revision: 4, by: 'agent' })
     await settle()
     const byId = (id: number) => posted.find((entry) => entry.message.id === id)?.message
-    expect(byId(1)?.result).toEqual({ documents: [{ path: './art/a.vectorcraft', kit: 'kit.vector', dirty: false, revision: 3 }] })
+    expect(byId(1)?.result).toEqual({ documents: [{ path: './art/a.kitionvector', kit: 'kit.vector', dirty: false, revision: 3 }] })
     expect(byId(2)?.result).toEqual({ open: true, content: 'text' })
     expect(byId(3)?.error).toMatchObject({ message: expect.stringContaining('not open in a kit editor') })
     expect(posted.map((entry) => entry.message.method).filter(Boolean)).toEqual(['documents.open', 'kit.changed'])

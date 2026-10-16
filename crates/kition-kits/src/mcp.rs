@@ -189,14 +189,14 @@ mod tests {
     fn previews_become_images_and_failures_say_what_happened() {
         let ok = tool_result(Ok(tools::KitToolOutput {
             summary: "Opened".into(),
-            output: json!({ "path": "a.vectorcraft" }),
+            output: json!({ "path": "a.kitionvector" }),
             previews: vec![tools::Preview {
-                caption: "Preview of `a.vectorcraft`.".into(),
+                caption: "Preview of `a.kitionvector`.".into(),
                 png: vec![0x89, b'P', b'N', b'G'],
             }],
         }));
         assert_eq!(ok["isError"], false);
-        assert_eq!(ok["structuredContent"]["path"], "a.vectorcraft");
+        assert_eq!(ok["structuredContent"]["path"], "a.kitionvector");
         assert_eq!(
             ok["content"][2],
             json!({ "type": "image", "mimeType": "image/png", "data": "iVBORw==" })

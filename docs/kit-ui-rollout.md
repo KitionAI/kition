@@ -18,7 +18,7 @@ were removed. See `docs/kit-sdk.md` section 4 for how it works.
   `kition-pdf`, …) and are checked out next to Kition as `../kition-<kit>`.
 - Chinese text in the web editors uses Droid Sans Fallback (Apache-2.0) from
   `KitionAI/kition-fonts`, checked out as `../kition-fonts`, handed to each
-  engine's `addFont`. Noto CJK is Source Han renamed; the Craft apps' asset
+  engine's `addFont`. Noto CJK is Source Han renamed; the kits' asset
   rules forbid it, so no kit ships it. PDF also substitutes the face for
   Chinese fonts a PDF names but does not embed.
 

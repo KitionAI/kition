@@ -24,19 +24,19 @@ pub fn infer_format(path: &str) -> &'static str {
         ".html" | ".htm" => "html",
         ".png" | ".jpg" | ".jpeg" | ".gif" | ".webp" | ".svg" => "image",
         // Layered images, edited in the Photo kit.
-        ".psd" | ".psb" | ".pcraft" => "photo",
+        ".psd" | ".psb" | ".kitionphoto" => "photo",
         // Video projects, edited in the Film kit.
-        ".fcproj" => "film",
+        ".kitionfilm" => "film",
         // Vector drawings, edited in the Vector kit.
-        ".vectorcraft" | ".drawcraft" => "vector",
+        ".kitionvector" => "vector",
         // Motion-graphics projects, edited in the Effect kit.
-        ".ecproj" => "effect",
+        ".kitioneffect" => "effect",
         // Page layouts, edited in the Design kit.
-        ".designcraft" => "layout",
+        ".kitiondesign" => "layout",
         // CAD drawings, edited in the CAD kit.
         ".dxf" => "cad",
         // Slides, edited in the Slides kit (PowerPoint files too, as `pptx`).
-        ".kislide" => "slide",
+        ".kitionslide" => "slide",
         ".mp4" | ".mov" | ".webm" => "video",
         ".mp3" | ".wav" | ".m4a" => "audio",
         _ => "binary",
@@ -90,14 +90,13 @@ pub fn is_supported(path: &str) -> bool {
             "svg",
             "psd",
             "psb",
-            "pcraft",
-            "fcproj",
-            "vectorcraft",
-            "drawcraft",
-            "ecproj",
-            "designcraft",
+            "kitionphoto",
+            "kitionfilm",
+            "kitionvector",
+            "kitioneffect",
+            "kitiondesign",
             "dxf",
-            "kislide",
+            "kitionslide",
             "mp4",
             "mov",
             "webm",
@@ -120,20 +119,20 @@ mod tests {
         assert_eq!(infer_format("photo.JPEG"), "image");
         assert_eq!(infer_format("archive.zip"), "binary");
         assert_eq!(infer_format("art/Cover.PSD"), "photo");
-        assert_eq!(infer_format("films/Trailer.fcproj"), "film");
-        assert!(is_supported("films/Trailer.fcproj"));
-        assert_eq!(infer_format("art/Logo.vectorcraft"), "vector");
-        assert!(is_supported("art/Logo.vectorcraft"));
-        assert_eq!(infer_format("motion/Intro.ecproj"), "effect");
-        assert!(is_supported("motion/Intro.ecproj"));
-        assert_eq!(infer_format("print/Flyer.designcraft"), "layout");
-        assert!(is_supported("print/Flyer.designcraft"));
+        assert_eq!(infer_format("films/Trailer.kitionfilm"), "film");
+        assert!(is_supported("films/Trailer.kitionfilm"));
+        assert_eq!(infer_format("art/Logo.kitionvector"), "vector");
+        assert!(is_supported("art/Logo.kitionvector"));
+        assert_eq!(infer_format("motion/Intro.kitioneffect"), "effect");
+        assert!(is_supported("motion/Intro.kitioneffect"));
+        assert_eq!(infer_format("print/Flyer.kitiondesign"), "layout");
+        assert!(is_supported("print/Flyer.kitiondesign"));
         assert_eq!(infer_format("plans/Floor.DXF"), "cad");
         assert!(is_supported("plans/Floor.dxf"));
-        assert_eq!(infer_format("talks/Launch.kislide"), "slide");
-        assert!(is_supported("talks/Launch.kislide"));
+        assert_eq!(infer_format("talks/Launch.kitionslide"), "slide");
+        assert!(is_supported("talks/Launch.kitionslide"));
         assert!(is_supported("art/poster.psb"));
-        assert!(!is_text("art/poster.pcraft"));
+        assert!(!is_text("art/poster.kitionphoto"));
         assert_eq!(infer_format(".md"), "binary");
         assert!(is_editable("a/b.kiboard"));
         assert!(!is_editable("a/b.txt"));

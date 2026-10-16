@@ -113,8 +113,8 @@ async fn calls_a_real_kit_and_returns_its_preview() {
     let dir = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
     std::fs::create_dir_all(dir.path().join("art")).unwrap_or_else(|err| panic!("{err}"));
     std::fs::copy(
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/Drawing.vectorcraft"),
-        dir.path().join("art/Drawing.vectorcraft"),
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/Drawing.kitionvector"),
+        dir.path().join("art/Drawing.kitionvector"),
     )
     .unwrap_or_else(|err| panic!("{err}"));
     let kits = KitManager::new(Some(dir.path().to_path_buf()), vec![(kit, Some(binary))]);
@@ -143,12 +143,12 @@ async fn calls_a_real_kit_and_returns_its_preview() {
         false
     );
 
-    let (_, inspected) = post(&app, json!({ "jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": { "name": "vector_inspect", "arguments": { "path": "art/Drawing.vectorcraft" } } })).await;
+    let (_, inspected) = post(&app, json!({ "jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": { "name": "vector_inspect", "arguments": { "path": "art/Drawing.kitionvector" } } })).await;
     let result = &inspected["result"];
     assert_eq!(result["isError"], false, "{result}");
     assert_eq!(
         result["structuredContent"]["path"],
-        "art/Drawing.vectorcraft"
+        "art/Drawing.kitionvector"
     );
     let image = result["content"]
         .as_array()
@@ -157,7 +157,7 @@ async fn calls_a_real_kit_and_returns_its_preview() {
         .unwrap_or_default();
     assert_eq!(image["mimeType"], "image/png");
 
-    let (_, refused) = post(&app, json!({ "jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": { "name": "vector_inspect", "arguments": { "path": "../outside.vectorcraft" } } })).await;
+    let (_, refused) = post(&app, json!({ "jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": { "name": "vector_inspect", "arguments": { "path": "../outside.kitionvector" } } })).await;
     assert_eq!(refused["result"]["isError"], true);
     kits.shutdown().await;
 }

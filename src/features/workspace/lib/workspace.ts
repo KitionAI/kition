@@ -167,25 +167,25 @@ export function inferWorkspaceItemFormat(path: string, content?: string): Worksp
   if (/\.(png|jpe?g|gif|webp|svg)$/i.test(path)) {
     return 'image'
   }
-  if (/\.(psd|psb|pcraft)$/i.test(path)) {
+  if (/\.(psd|psb|kitionphoto)$/i.test(path)) {
     return 'photo'
   }
-  if (/\.fcproj$/i.test(path)) {
+  if (/\.kitionfilm$/i.test(path)) {
     return 'film'
   }
-  if (/\.(vectorcraft|drawcraft)$/i.test(path)) {
+  if (/\.kitionvector$/i.test(path)) {
     return 'vector'
   }
-  if (/\.ecproj$/i.test(path)) {
+  if (/\.kitioneffect$/i.test(path)) {
     return 'effect'
   }
-  if (/\.designcraft$/i.test(path)) {
+  if (/\.kitiondesign$/i.test(path)) {
     return 'layout'
   }
   if (/\.dxf$/i.test(path)) {
     return 'cad'
   }
-  if (/\.kislide$/i.test(path)) {
+  if (/\.kitionslide$/i.test(path)) {
     return 'slide'
   }
   if (/\.(mp4|mov|webm)$/i.test(path)) {

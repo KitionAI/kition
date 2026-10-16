@@ -18,6 +18,12 @@ out="$repo_root/public/kits/$kit-ui"
 command -v pnpm >/dev/null || { echo "pnpm is required" >&2; exit 1; }
 [[ -d "$web/node_modules" ]] || pnpm --dir "$web" install --frozen-lockfile
 export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$kit_repo/target}"
+# C code in the engine's dependencies (psm's assembly, through loro) needs a C compiler that can
+# target wasm32; Apple's clang cannot. Use Homebrew's LLVM when it is installed and none is set.
+llvm="${HOMEBREW_PREFIX:-/opt/homebrew}/opt/llvm/bin"
+if [[ -z "${CC_wasm32_unknown_unknown:-}" && -x "$llvm/clang" ]]; then
+  export CC_wasm32_unknown_unknown="$llvm/clang" AR_wasm32_unknown_unknown="$llvm/llvm-ar"
+fi
 if [[ "${2:-}" == "--ui-only" ]]; then
   compgen -G "$web/public/engine/*_bg.wasm" >/dev/null || { echo "build the engine before using --ui-only" >&2; exit 1; }
 else
@@ -29,6 +35,8 @@ mkdir -p "$out"
 # The editor and its engine; not the development host or its sample.
 cp -R "$web/dist/." "$out/"
 rm -rf "$out/dev.html" "$out/sample"
+# The kit's licence and notices travel with the package (Apache-2.0 section 4).
+cp "$kit_repo/LICENSE" "$kit_repo/NOTICE" "$out/"
 kit_id="$(node -e "console.log(JSON.parse(require('fs').readFileSync('$kit_repo/kit.json','utf8')).id)")"
 version="$(node -e "console.log(JSON.parse(require('fs').readFileSync('$kit_repo/kit.json','utf8')).version)")"
 commit="$(git -C "$kit_repo" rev-parse HEAD)"

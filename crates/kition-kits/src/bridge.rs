@@ -372,21 +372,21 @@ mod tests {
     async fn calls_reach_the_window_that_has_the_file_open() {
         let bridge = Arc::new(Bridge::default());
         assert!(
-            bridge.find("art/a.vectorcraft").await.is_none(),
+            bridge.find("art/a.kitionvector").await.is_none(),
             "no windows: headless"
         );
         renderer(&bridge, json!([]));
         let second = renderer(
             &bridge,
-            json!([{ "path": "/art/a.vectorcraft", "kit": "kit.vector", "dirty": false, "revision": 3 }]),
+            json!([{ "path": "/art/a.kitionvector", "kit": "kit.vector", "dirty": false, "revision": 3 }]),
         );
         let live = bridge
-            .find("./art/a.vectorcraft")
+            .find("./art/a.kitionvector")
             .await
             .unwrap_or_else(|| panic!("found"));
         assert_eq!(
             (live.session, live.revision, live.path.as_str()),
-            (second, 3, "art/a.vectorcraft")
+            (second, 3, "art/a.kitionvector")
         );
         let answer = bridge
             .call(&live, "run", json!({ "steps": [] }))
@@ -409,7 +409,7 @@ mod tests {
         let bridge = Arc::new(Bridge::default());
         let (session, rx) = bridge.connect();
         let live = LiveDocument {
-            path: "a.ecproj".into(),
+            path: "a.kitioneffect".into(),
             kit: "kit.effect".into(),
             dirty: false,
             revision: 1,
@@ -438,10 +438,10 @@ mod tests {
         let bridge = Arc::new(Bridge::default());
         let (session, _rx) = bridge.connect();
         bridge
-            .receive(session, &json!({ "jsonrpc": "2.0", "method": "kit.changed", "params": { "path": "a.designcraft", "revision": 7, "by": "agent" } }))
+            .receive(session, &json!({ "jsonrpc": "2.0", "method": "kit.changed", "params": { "path": "a.kitiondesign", "revision": 7, "by": "agent" } }))
             .unwrap_or_else(|err| panic!("{err}"));
         assert_eq!(
-            bridge.last_change("/a.designcraft"),
+            bridge.last_change("/a.kitiondesign"),
             Some((7, "agent".to_owned()))
         );
     }
