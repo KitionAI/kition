@@ -17,8 +17,10 @@ import {
   useSyncServer,
 } from './helpers/kitionPro'
 
-type NodeWordDocument = { save(): Uint8Array; execute(command: string, params: string): string; free(): void }
-const engine = kitEngine<{ WordDocument: { create(name: string, width: number, height: number): NodeWordDocument } }>('word', 'kition_word_sdk')
+type NodeWordDocument = { save(name?: string): Uint8Array; execute(command: string, params: string): string; free(): void }
+const engine = kitEngine<{
+  WordDocument: { create(name: string, width: number, height: number): NodeWordDocument; open(name: string, bytes: Uint8Array): NodeWordDocument }
+}>('word', 'kition_word_sdk')
 
 /** A letter made by the same engine the page runs: a title paragraph and a body paragraph. */
 async function letterFixture() {
@@ -146,6 +148,133 @@ test('co-edits a Word document between two windows: live, and merging edits made
     testInfo.annotations.push({ type: 'reconnect to converged', description: `${Date.now() - back} ms` })
     await pageA.screenshot({ path: testInfo.outputPath('alice.png') })
     await pageB.screenshot({ path: testInfo.outputPath('bob.png') })
+  } finally {
+    await alice.close()
+    await bob.close()
+    await server.stop()
+  }
+})
+
+/** A paragraph of a saved document: its text and, per character, whether it is bold and italic. */
+type SavedParagraph = { text: string; bold: boolean[]; italic: boolean[] }
+
+/** The paragraphs of a saved `.docx`, read by the same engine through its JSON form (runs count UTF-8 bytes). */
+async function savedParagraphs(docx: Buffer): Promise<SavedParagraph[]> {
+  const sdk = await engine.load()
+  const doc = sdk.WordDocument.open('Saved.docx', docx)
+  const json = JSON.parse(Buffer.from(doc.save('Saved.json')).toString('utf8')) as unknown
+  doc.free()
+  const out: SavedParagraph[] = []
+  const walk = (value: unknown) => {
+    if (Array.isArray(value)) return value.forEach(walk)
+    if (!value || typeof value !== 'object') return
+    const node = value as Record<string, unknown>
+    if (typeof node.text === 'string' && Array.isArray(node.runs)) {
+      const bytes = Buffer.from(node.text, 'utf8')
+      const bold: boolean[] = []
+      const italic: boolean[] = []
+      let at = 0
+      for (const run of node.runs as Array<{ len: number; props?: { bold?: boolean; italic?: boolean } }>) {
+        const chars = [...bytes.subarray(at, at + run.len).toString('utf8')].length
+        for (let i = 0; i < chars; i++) {
+          bold.push(run.props?.bold === true)
+          italic.push(run.props?.italic === true)
+        }
+        at += run.len
+      }
+      out.push({ text: node.text, bold, italic })
+      return
+    }
+    Object.values(node).forEach(walk)
+  }
+  walk((json as { body?: unknown }).body)
+  return out
+}
+
+/** Places the caret at the start of the document's last paragraph (the body paragraph). */
+async function caretAtBodyStart(page: Page, kit: FrameLocator) {
+  await kit.getByTestId('word-canvas-region').click({ position: { x: 20, y: 20 } })
+  await page.keyboard.press('Control+End')
+  await page.keyboard.press('Meta+ArrowDown')
+  await page.keyboard.press('Home')
+}
+
+/** Selects `count` characters of the body paragraph from character `from`, and presses `shortcut` (Mod+B, Mod+I). */
+async function formatBodyRange(page: Page, kit: FrameLocator, from: number, count: number, shortcut: string) {
+  await caretAtBodyStart(page, kit)
+  for (let i = 0; i < from; i++) await page.keyboard.press('ArrowRight')
+  for (let i = 0; i < count; i++) await page.keyboard.press('Shift+ArrowRight')
+  await page.keyboard.press(shortcut)
+}
+
+test('two windows typing and formatting one paragraph at once keep both texts and both formats', async ({ browser, baseURL }, testInfo) => {
+  test.skip(!engine.built, 'the Word kit editor is not built into public/kits/word-ui')
+  test.skip(!kitPackageHasReplicaInfo('word', 'kition_word_sdk'), 'the Word kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh word')
+  const unavailable = kitionProSkipReason()
+  test.skip(Boolean(unavailable), unavailable ?? '')
+  test.setTimeout(300_000)
+  const server = await startKitionPro(testInfo.outputPath('kition-pro'))
+  const alice = await browser.newContext()
+  const bob = await browser.newContext()
+  const bobNetwork = await syncNetwork(bob)
+  try {
+    const pageA = await alice.newPage()
+    await useSyncServer(pageA, server.url)
+    const a = await openInKitFrame(pageA, baseURL!, 'Field Notes.docx', await letterFixture(), {}, signedIn(DEV_PRINCIPALS.alice))
+    await expect(a.kit.getByTestId('word-status')).toHaveText('Page 1 of 1', { timeout: 60_000 })
+    const link = await shareFromTab(pageA, 'Field Notes')
+    await expect(status(pageA)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })
+    const pageB = await bob.newPage()
+    await useSyncServer(pageB, server.url)
+    await openKitWorkspace(pageB, baseURL!, {}, signedIn(DEV_PRINCIPALS.bob))
+    await openSharedLink(pageB, link)
+    const kitB = pageB.frameLocator('[data-testid="kit-frame-window"]')
+    await expect(kitB.getByTestId('word-status')).toHaveText('Page 1 of 1', { timeout: 60_000 })
+    await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })
+    const converged = async () =>
+      expect
+        .poll(async () => JSON.stringify(await replicaCounters(pageB, 'Shared/Field Notes.docx')), { timeout: 60_000 })
+        .toBe(JSON.stringify(await replicaCounters(pageA, 'Field Notes.docx')))
+    await converged()
+
+    // At once (Bob offline): Alice types at the body paragraph's start, Bob at its end.
+    await bobNetwork.setOnline(false)
+    await expect(status(pageB)).not.toHaveAttribute('data-state', 'online', { timeout: 30_000 })
+    await caretAtBodyStart(pageA, a.kit)
+    await pageA.keyboard.type('Alice: ')
+    await typeAtDocEnd(pageB, kitB, ' Bob.')
+    await settledVersion(pageA, 'Field Notes.docx')
+    await settledVersion(pageB, 'Shared/Field Notes.docx')
+    await bobNetwork.setOnline(true)
+    await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 60_000 })
+    await converged()
+
+    // "Alice: Auroras appear near the poles. Bob.": at once again, Alice bolds "Alice: Auroras"
+    // (0..14) and Bob italicises "Auroras appear" (7..21).
+    await bobNetwork.setOnline(false)
+    await expect(status(pageB)).not.toHaveAttribute('data-state', 'online', { timeout: 30_000 })
+    await formatBodyRange(pageA, a.kit, 0, 14, 'ControlOrMeta+b')
+    await formatBodyRange(pageB, kitB, 7, 14, 'ControlOrMeta+i')
+    await settledVersion(pageA, 'Field Notes.docx')
+    await settledVersion(pageB, 'Shared/Field Notes.docx')
+    await bobNetwork.setOnline(true)
+    await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 60_000 })
+    await converged()
+
+    // Alice saves: the paragraph holds both texts, and both formats where they overlap.
+    const saved = a.saves.length
+    await a.kit.getByTestId('word-save').click()
+    await expect.poll(() => a.saves.length, { timeout: 30_000 }).toBeGreaterThan(saved)
+    const paragraphs = await savedParagraphs(a.saves[a.saves.length - 1].bytes)
+    const body = paragraphs.find((p) => p.text.includes('Auroras'))
+    expect(body?.text).toBe('Alice: Auroras appear near the poles. Bob.')
+    expect([body?.bold[0], body?.italic[0]]).toEqual([true, false])
+    expect([body?.bold[10], body?.italic[10]]).toEqual([true, true])
+    expect([body?.bold[16], body?.italic[16]]).toEqual([false, true])
+    expect([body?.bold[25], body?.italic[25]]).toEqual([false, false])
+    expect(paragraphs.find((p) => p.text.includes('Field notes'))?.text).toBe('Field notes')
+    await pageA.screenshot({ path: testInfo.outputPath('alice-one-paragraph.png') })
+    await pageB.screenshot({ path: testInfo.outputPath('bob-one-paragraph.png') })
   } finally {
     await alice.close()
     await bob.close()
