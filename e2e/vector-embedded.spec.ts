@@ -1,5 +1,9 @@
-import { expect, test } from '@playwright/test'
-import { kitEngine, openInKitFrame } from './helpers/embeddedKit'
+import fs from 'node:fs/promises'
+import path from 'node:path'
+import { expect, test, type Page } from '@playwright/test'
+import { kitEngine, openInKitFrame, openTreeFile } from './helpers/embeddedKit'
+import { kitPackageHasReplicaInfo } from './helpers/kitionPro'
+import { dismissFirstRunActivation } from './helpers/onboarding'
 
 type NodeVectorDocument = { save(): Uint8Array; execute(command: string, params: string): string; free(): void }
 const engine = kitEngine<{ VectorDocument: { create(name: string, width: number, height: number): NodeVectorDocument } }>('vector', 'kition_vector_sdk')
@@ -44,6 +48,62 @@ test('opens a drawing in the Vector kit’s own editor, draws in it, and saves i
     await kit.getByTestId('vector-save').click()
     await expect(kit.getByTestId('vector-unsaved')).toHaveCount(0)
     expect(saves.map((save) => save.path)).toEqual(['Logo.kitionvector'])
+  } finally {
+    await host.dispose()
+  }
+})
+
+/** The replica version of the kit editor showing `path`, as hex (Kition's development test hook). */
+function replicaVersion(page: Page, path: string) {
+  return page.evaluate(async (wanted) => (window.__KITION_KIT_TEST__ ? window.__KITION_KIT_TEST__.replicaVersion(wanted) : ''), path)
+}
+
+test('keeps a drawing’s replica across a save and a reopen, and opens a file changed elsewhere plainly', async ({ page, baseURL }) => {
+  test.skip(!engine.built, 'the Vector kit editor is not built into public/kits/vector-ui')
+  test.skip(!kitPackageHasReplicaInfo('vector', 'kition_vector_sdk'), 'the Vector kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh vector')
+  test.setTimeout(180_000)
+  const name = 'Replica.kitionvector'
+  const { host, kit } = await openInKitFrame(page, baseURL!, name, await logoFixture(), {}, { persist: true })
+  const reopen = async () => {
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await dismissFirstRunActivation(page)
+    return openTreeFile(page, name)
+  }
+  try {
+    await expect(kit.getByTestId('vector-status')).toContainText('1 objects', { timeout: 60_000 })
+    // A second rectangle, drawn with the Rectangle tool.
+    await kit.getByTestId('vector-tool-rectangle').click()
+    const region = (await kit.getByTestId('vector-canvas-region').boundingBox())!
+    await page.mouse.move(region.x + region.width * 0.6, region.y + region.height * 0.6)
+    await page.mouse.down()
+    await page.mouse.move(region.x + region.width * 0.6 + 50, region.y + region.height * 0.6 + 40, { steps: 5 })
+    await page.mouse.up()
+    await expect(kit.getByTestId('vector-status')).toContainText('2 objects')
+    await kit.getByTestId('vector-save').click()
+    await expect(kit.getByTestId('vector-unsaved')).toHaveCount(0, { timeout: 30_000 })
+
+    // The replica sits in the document store under the file's identity, with the saved file's stamp.
+    const store = path.join(host.root, '.kition', 'docs')
+    const readJson = async (file: string) => JSON.parse(await fs.readFile(path.join(store, file), 'utf8').catch(() => '{}'))
+    await expect.poll(async () => (await readJson('index.json')).entries?.[name] ?? null, { timeout: 15_000 }).not.toBeNull()
+    const docId = (await readJson('index.json')).entries[name] as string
+    await expect.poll(async () => (await readJson(`${docId}/meta.json`)).meta?.kit ?? null).toBe('kit.vector')
+    expect(await fs.stat(path.join(store, docId, 'blobs.bin'))).toBeTruthy()
+    const saved = await replicaVersion(page, name)
+    expect(saved).not.toBe('')
+
+    // Reopened, the drawing is the replica it was saved with: the second rectangle survives.
+    const reopened = await reopen()
+    await expect(reopened.getByTestId('vector-status')).toContainText('2 objects', { timeout: 60_000 })
+    await expect.poll(() => replicaVersion(page, name).catch(() => ''), { timeout: 15_000 }).toBe(saved)
+    await expect(reopened.getByTestId('vector-unsaved')).toHaveCount(0)
+
+    // A file changed elsewhere (a new stamp) opens plainly: what the file holds, a new replica.
+    await fs.writeFile(path.join(host.root, name), await logoFixture())
+    const changed = await reopen()
+    await expect(changed.getByTestId('vector-status')).toContainText('1 objects', { timeout: 60_000 })
+    await expect.poll(() => replicaVersion(page, name).catch(() => ''), { timeout: 15_000 }).not.toBe('')
+    expect(await replicaVersion(page, name)).not.toBe(saved)
   } finally {
     await host.dispose()
   }
