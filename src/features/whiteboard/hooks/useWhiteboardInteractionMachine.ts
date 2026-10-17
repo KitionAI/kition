@@ -133,6 +133,9 @@ export function useWhiteboardInteractionMachine(input: {
     targetElementId?: string
   }) => {
     cancelInteraction()
+    // A view-only board (a co-edited board this person may only view) can be brushed and panned,
+    // but no gesture that would change it starts.
+    if (input.store.isReadOnly() && input.tool !== 'select' && input.tool !== 'hand') return false
     switch (input.tool) {
       case 'select': {
         const additive = Boolean(pointer.additive)
@@ -250,7 +253,7 @@ export function useWhiteboardInteractionMachine(input: {
     world: WhiteboardPoint,
     options: { additive?: boolean; duplicate?: boolean } = {},
   ) => {
-    if (input.tool !== 'select') return false
+    if (input.tool !== 'select' || input.store.isReadOnly()) return false
     const targetElementId = input.selectedElementIds.includes(elementId)
       ? elementId
       : resolveBoardSelectableElementId(input.elements, elementId)
@@ -330,6 +333,7 @@ export function useWhiteboardInteractionMachine(input: {
   }, [cancelInteraction, input])
 
   const beginResizePointer = useCallback((handle: WhiteboardResizeHandle) => {
+    if (input.store.isReadOnly()) return false
     const editableRootIds = input.selectedElements
       .filter((element) => !element.locked)
       .map((element) => element.id)
@@ -348,9 +352,10 @@ export function useWhiteboardInteractionMachine(input: {
       session: input.commands.beginElementUpdate('Resize elements'),
     })
     return true
-  }, [cancelInteraction, enterInteraction, input.commands, input.elements, input.selectedElements])
+  }, [cancelInteraction, enterInteraction, input.commands, input.elements, input.selectedElements, input.store])
 
   const beginRotatePointer = useCallback((world: WhiteboardPoint) => {
+    if (input.store.isReadOnly()) return false
     const editableRootIds = input.selectedElements
       .filter((element) => !element.locked)
       .map((element) => element.id)
@@ -372,7 +377,7 @@ export function useWhiteboardInteractionMachine(input: {
       startWorld: world,
     })
     return true
-  }, [cancelInteraction, enterInteraction, input.commands, input.elements, input.selectedElements])
+  }, [cancelInteraction, enterInteraction, input.commands, input.elements, input.selectedElements, input.store])
 
   const beginConnectorTerminalPointer = useCallback((
     connectorId: string,
@@ -382,7 +387,7 @@ export function useWhiteboardInteractionMachine(input: {
       WhiteboardElement,
       { kind: 'connector' }
     > => element.id === connectorId && element.kind === 'connector')
-    if (!connector || connector.locked || input.tool !== 'select') return false
+    if (!connector || connector.locked || input.tool !== 'select' || input.store.isReadOnly()) return false
     cancelInteraction()
     const preview = cloneBoardElement(connector) as Extract<
       WhiteboardElement,
@@ -391,7 +396,7 @@ export function useWhiteboardInteractionMachine(input: {
     enterInteraction({ type: 'editing-connector', connector: preview, terminal })
     setConnectorTerminalPreview(preview)
     return true
-  }, [cancelInteraction, enterInteraction, input.elements, input.tool])
+  }, [cancelInteraction, enterInteraction, input.elements, input.store, input.tool])
 
   const beginConnectionHandlePointer = useCallback((
     elementId: string,
@@ -401,6 +406,7 @@ export function useWhiteboardInteractionMachine(input: {
     const targetAnchor = getWhiteboardConnectionHandleAnchor(direction)
     if (
       input.tool !== 'select'
+      || input.store.isReadOnly()
       || input.selectedElementIds.length !== 1
       || input.selectedElementIds[0] !== elementId
       || element?.locked

@@ -301,7 +301,7 @@ export function useWhiteboardElementActions(input: {
   })), [input.commands])
 
   const beginErase = useCallback((elementId?: string) => {
-    if (input.tool !== 'eraser') return false
+    if (input.tool !== 'eraser' || input.store.isReadOnly()) return false
     if (!eraseMarkRef.current) eraseMarkRef.current = input.store.markHistory()
     if (elementId) eraseElement(elementId)
     return true

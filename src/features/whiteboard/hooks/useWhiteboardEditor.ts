@@ -244,6 +244,7 @@ export function useWhiteboardEditor() {
     dismissEditingText()
     if (tool === 'text') {
       cancelInteraction()
+      if (store.isReadOnly()) return
       beginNewTextEdit(
         input.world,
         getBoardFrameAtPoint(elements, input.world)?.id,
@@ -257,6 +258,7 @@ export function useWhiteboardEditor() {
     cancelInteraction,
     dismissEditingText,
     elements,
+    store,
     tool,
   ])
 

@@ -112,7 +112,7 @@ test('co-edits a board between two windows: live, and merging shapes drawn offli
     expect(live).toBeLessThan(1_000)
     await expect(pageB.locator(`[data-element-id="${drawn}"]`)).toBeVisible()
     // Bob's undo cannot take back Alice's shape: the merge is no undo step of his.
-    await pageB.getByTestId('whiteboard-svg-scene').click({ position: { x: 20, y: 20 } })
+    await pageB.getByTestId('whiteboard-svg-scene').click({ position: { x: 700, y: 150 } })
     await pageB.keyboard.press('ControlOrMeta+z')
     expect(await elementIds(pageB)).toContain(drawn)
 
@@ -171,6 +171,8 @@ test('a viewer of a shared board sees it change but cannot change it', async ({ 
     await pageB.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
     await pageB.mouse.down()
     await pageB.mouse.move(box.x + box.width / 2 + 80, box.y + box.height / 2 + 40, { steps: 6 })
+    // The drag never starts: mid-gesture the shape is where it was (it does not snap back at the end).
+    expect(await shape.boundingBox()).toEqual(box)
     await pageB.mouse.up()
     expect(await elementIds(pageB)).toContain(first)
     expect((await snapshot(pageB)).kdmVersion).toBe(version)

@@ -66,12 +66,15 @@ export function WhiteboardCanvas({
   canvasSize,
   controller,
   onSizeChange,
+  readOnly = false,
   title,
 }: {
   agentPreview?: WhiteboardAgentPreviewState['preview']
   canvasSize: WhiteboardPoint
   controller: WhiteboardEditorController
   onSizeChange: (size: WhiteboardPoint) => void
+  /** A board this person may only view: it can be selected and panned, nothing edits it. */
+  readOnly?: boolean
   title: string
 }) {
   const { t } = useTranslation('workspace')
@@ -180,7 +183,7 @@ export function WhiteboardCanvas({
   }
 
   function handleDoubleClick(event: ReactMouseEvent<SVGSVGElement>) {
-    if (controller.tool !== 'select') return
+    if (controller.tool !== 'select' || readOnly) return
     const target = event.target as Element
     if (
       target.closest('[data-element-id]')
@@ -204,6 +207,7 @@ export function WhiteboardCanvas({
   }
 
   function beginElementTextEdit(element: WhiteboardElement) {
+    if (readOnly) return
     const editableElement = element.kind === 'image'
       ? getEditableImageTextOverlay(controller.elements, element.id) || element
       : element
@@ -440,7 +444,8 @@ export function WhiteboardCanvas({
       && controller.tool === 'select'
       && controller.interactionState === 'idle'
       && !controller.editingText
-      && !quickControlNode.locked,
+      && !quickControlNode.locked
+      && !readOnly,
   )
   const interactionCursor = controller.interactionState === 'rotating'
     ? 'grabbing'
@@ -583,7 +588,7 @@ export function WhiteboardCanvas({
           ) : null}
           {controller.tool === 'select' && controller.selectedElements.length > 0 ? (
             <WhiteboardSelectionOverlay
-              allLocked={controller.allSelectedLocked}
+              allLocked={controller.allSelectedLocked || readOnly}
               elements={controller.selectedElements}
               moving={controller.interactionState === 'translating'}
               onConnectionHandlePointerDown={handleConnectionHandlePointerDown}

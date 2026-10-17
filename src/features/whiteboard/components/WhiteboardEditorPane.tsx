@@ -357,6 +357,7 @@ export function WhiteboardEditorPane({
         canvasSize={canvasSize}
         controller={controller}
         onSizeChange={handleSizeChange}
+        readOnly={readOnly}
         title={title}
       />
       <WhiteboardTopActions

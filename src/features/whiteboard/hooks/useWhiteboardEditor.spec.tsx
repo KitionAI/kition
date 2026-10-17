@@ -367,6 +367,46 @@ describe('useWhiteboardEditor', () => {
     expect(ref.current?.snapGuides).toEqual([])
   })
 
+  it('starts no edit gesture on a view-only board, but still selects, brushes, and pans', async () => {
+    const ref = await renderHook()
+    await replaceElements(ref, [
+      { id: 'rect-1', kind: 'rectangle', x: 10, y: 20, width: 100, height: 60 },
+    ])
+    await act(async () => ref.current?.store.setReadOnly(true))
+
+    await act(async () => ref.current?.selectElement('rect-1'))
+    expect(ref.current?.selectedElementIds).toEqual(['rect-1'])
+    expect(ref.current?.beginElementPointer('rect-1', { x: 20, y: 30 })).toBe(false)
+    expect(ref.current?.beginResizePointer('south-east')).toBe(false)
+    expect(ref.current?.beginRotatePointer({ x: 20, y: 30 })).toBe(false)
+    expect(ref.current?.interactionState).toBe('idle')
+    expect(ref.current?.isTransacting).toBe(false)
+
+    for (const tool of ['rectangle', 'note', 'pen', 'highlight', 'connector', 'text'] as const) {
+      await act(async () => ref.current?.setTool(tool))
+      await act(async () => ref.current?.beginCanvasPointer({ world: { x: 200, y: 200 }, screen: { x: 200, y: 200 } }))
+      expect(ref.current?.interactionState).toBe('idle')
+      expect(ref.current?.draft).toBeNull()
+      expect(ref.current?.editingText).toBeNull()
+    }
+    await act(async () => ref.current?.setTool('eraser'))
+    expect(ref.current?.beginErase('rect-1')).toBe(false)
+
+    await act(async () => ref.current?.setTool('hand'))
+    await act(async () => ref.current?.beginCanvasPointer({ world: { x: 0, y: 0 }, screen: { x: 0, y: 0 } }))
+    expect(ref.current?.interactionState).toBe('panning')
+    await act(async () => ref.current?.cancelInteraction())
+    await act(async () => ref.current?.setTool('select'))
+    await act(async () => {
+      ref.current?.beginCanvasPointer({ world: { x: 0, y: 0 }, screen: { x: 0, y: 0 } })
+      ref.current?.movePointer({ world: { x: 300, y: 300 }, screen: { x: 300, y: 300 } })
+      ref.current?.endPointer({ x: 300, y: 300 })
+    })
+    expect(ref.current?.selectedElementIds).toEqual(['rect-1'])
+    expect(ref.current?.elements).toEqual([expect.objectContaining({ id: 'rect-1', x: 10, y: 20 })])
+    expect(ref.current?.canUndo).toBe(false)
+  })
+
   it('locks selections, blocks transforms, and nudges unlocked elements', async () => {
     const ref = await renderHook()
     await replaceElements(ref, [
