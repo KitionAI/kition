@@ -56,6 +56,10 @@
       "label": "Réseau",
       "title": "Réseau"
     },
+    "collab": {
+      "label": "Coédition",
+      "title": "Coédition"
+    },
     "about": {
       "label": "À propos",
       "title": "À propos de Kition"
@@ -113,6 +117,39 @@
         "restartFailed": "Échec du redémarrage : {{message}}",
         "restarted": "Service en arrière-plan redémarré."
       }
+    }
+  },
+  "collab": {
+    "paneTitle": "Coédition",
+    "paneDescription": "Modifiez des documents partagés avec d’autres personnes via un serveur de synchronisation. La coédition nécessite un compte Kition Pro.",
+    "serverSection": "Serveur de synchronisation",
+    "serverUrlTitle": "URL du serveur de synchronisation",
+    "serverUrlDescription": "L’adresse WebSocket du serveur de synchronisation (wss://…). Laissez-la vide pour désactiver la coédition.",
+    "serverUrlPlaceholder": "wss://sync.example.com/v1/sync",
+    "save": "Enregistrer",
+    "statusTitle": "Connexion",
+    "status": {
+      "off": "Désactivée",
+      "offline": "Non connecté",
+      "connecting": "Connexion…",
+      "online": "Connecté"
+    },
+    "statusDescription": {
+      "off": "La coédition est désactivée : aucun serveur de synchronisation n’est défini.",
+      "offline": "Kition se connecte lorsqu’un document partagé est ouvert.",
+      "connecting": "Connexion au serveur de synchronisation.",
+      "online": "Les documents partagés se synchronisent avec les personnes qui les modifient."
+    },
+    "testTitle": "Tester la connexion",
+    "testDescription": "Se connecte une fois au serveur avec votre compte, puis se déconnecte.",
+    "test": "Tester la connexion",
+    "testResult": {
+      "ok": "Le serveur a répondu et la coédition fonctionne avec votre compte.",
+      "no-sync": "Le serveur a répondu, mais la coédition n’est pas disponible pour votre compte.",
+      "signed-out": "Connectez-vous à votre compte Kition pour coéditer.",
+      "unauthorized": "Le serveur ne reconnaît pas votre compte. Reconnectez-vous.",
+      "unreachable": "Le serveur est injoignable. Vérifiez l’adresse et votre connexion.",
+      "invalid": "Saisissez une adresse WebSocket commençant par ws:// ou wss://."
     }
   },
   "themeMode": {

@@ -27,13 +27,14 @@ describe('settings search', () => {
     expect(index.get('general')).toContain('language')
     expect(index.get('models')).toContain('openai')
     expect(index.get('connections')).toContain('email connections')
+    expect(index.get('collab')).toContain('sync server')
   })
 
   it('shows every section without a query and keeps About separate from the main list', () => {
     const visible = filterSettingsSections('', index, 'Advanced')
     expect(visible.main.map((section) => section.key)).toEqual(['general', 'account', 'models', 'connections', 'display', 'brand'])
     expect(visible.about?.key).toBe('about')
-    expect(visible.advanced.map((section) => section.key)).toEqual(['network', 'runtime', 'developer'])
+    expect(visible.advanced.map((section) => section.key)).toEqual(['network', 'collab', 'runtime', 'developer'])
   })
 
   it('filters by pane text and reveals every advanced section when the group label matches', () => {
@@ -43,7 +44,7 @@ describe('settings search', () => {
     expect(proxy.advanced.map((section) => section.key)).toEqual(['network'])
 
     const group = filterSettingsSections('qqgroup', index, 'Qqgroup')
-    expect(group.advanced.map((section) => section.key)).toEqual(['network', 'runtime', 'developer'])
+    expect(group.advanced.map((section) => section.key)).toEqual(['network', 'collab', 'runtime', 'developer'])
     expect(group.main).toEqual([])
   })
 })

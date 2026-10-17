@@ -56,6 +56,10 @@
       "label": "Rede",
       "title": "Rede"
     },
+    "collab": {
+      "label": "Coedição",
+      "title": "Coedição"
+    },
     "about": {
       "label": "Sobre",
       "title": "Sobre o Kition"
@@ -113,6 +117,39 @@
         "restartFailed": "Falha ao reiniciar: {{message}}",
         "restarted": "Serviço em segundo plano reiniciado."
       }
+    }
+  },
+  "collab": {
+    "paneTitle": "Coedição",
+    "paneDescription": "Edite documentos compartilhados com outras pessoas por meio de um servidor de sincronização. A coedição requer uma conta Kition Pro.",
+    "serverSection": "Servidor de sincronização",
+    "serverUrlTitle": "URL do servidor de sincronização",
+    "serverUrlDescription": "O endereço WebSocket do servidor de sincronização (wss://…). Deixe vazio para desativar a coedição.",
+    "serverUrlPlaceholder": "wss://sync.example.com/v1/sync",
+    "save": "Salvar",
+    "statusTitle": "Conexão",
+    "status": {
+      "off": "Desativada",
+      "offline": "Desconectado",
+      "connecting": "Conectando",
+      "online": "Conectado"
+    },
+    "statusDescription": {
+      "off": "A coedição está desativada: nenhum servidor de sincronização definido.",
+      "offline": "O Kition se conecta quando um documento compartilhado está aberto.",
+      "connecting": "Conectando ao servidor de sincronização.",
+      "online": "Os documentos compartilhados ficam sincronizados com quem os edita."
+    },
+    "testTitle": "Testar conexão",
+    "testDescription": "Conecta-se ao servidor uma vez com sua conta e depois desconecta.",
+    "test": "Testar conexão",
+    "testResult": {
+      "ok": "O servidor respondeu e a coedição funciona com sua conta.",
+      "no-sync": "O servidor respondeu, mas a coedição não está disponível para sua conta.",
+      "signed-out": "Entre na sua conta Kition para coeditar.",
+      "unauthorized": "O servidor não reconhece sua conta. Entre novamente.",
+      "unreachable": "Não foi possível acessar o servidor. Verifique o endereço e sua conexão.",
+      "invalid": "Informe um endereço WebSocket que comece com ws:// ou wss://."
     }
   },
   "themeMode": {

@@ -56,6 +56,10 @@
       "label": "Network",
       "title": "Network"
     },
+    "collab": {
+      "label": "Co-editing",
+      "title": "Co-editing"
+    },
     "about": {
       "label": "About",
       "title": "About Kition"
@@ -113,6 +117,39 @@
         "restartFailed": "Restart failed: {{message}}",
         "restarted": "Background service restarted."
       }
+    }
+  },
+  "collab": {
+    "paneTitle": "Co-editing",
+    "paneDescription": "Edit shared documents together with other people through a sync server. Co-editing needs a Kition Pro account.",
+    "serverSection": "Sync server",
+    "serverUrlTitle": "Sync server URL",
+    "serverUrlDescription": "The WebSocket address of the sync server (wss://…). Leave it empty to turn co-editing off.",
+    "serverUrlPlaceholder": "wss://sync.example.com/v1/sync",
+    "save": "Save",
+    "statusTitle": "Connection",
+    "status": {
+      "off": "Off",
+      "offline": "Not connected",
+      "connecting": "Connecting",
+      "online": "Connected"
+    },
+    "statusDescription": {
+      "off": "Co-editing is off: no sync server is set.",
+      "offline": "Kition connects when a shared document is open.",
+      "connecting": "Connecting to the sync server.",
+      "online": "Shared documents sync with the people editing them."
+    },
+    "testTitle": "Test connection",
+    "testDescription": "Connects to the server once with your account, then disconnects.",
+    "test": "Test connection",
+    "testResult": {
+      "ok": "The server answered and co-editing works with your account.",
+      "no-sync": "The server answered, but co-editing is not available for your account.",
+      "signed-out": "Sign in to your Kition account to co-edit.",
+      "unauthorized": "The server does not recognize your account. Sign in again.",
+      "unreachable": "The server cannot be reached. Check the address and your connection.",
+      "invalid": "Enter a WebSocket address that starts with ws:// or wss://."
     }
   },
   "themeMode": {

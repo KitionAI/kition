@@ -17,6 +17,7 @@ import { DisplaySettings } from '@/features/settings/sections/DisplaySettings'
 import { GeneralSettings } from '@/features/settings/sections/GeneralSettings'
 import { RuntimeSettings } from '@/features/settings/sections/RuntimeSettings'
 import { BrandSettings } from '@/features/settings/sections/BrandSettings'
+import { CollabSettings } from '@/features/settings/sections/CollabSettings'
 
 export type { SettingsSectionKey } from '@/features/settings/sections/sectionRegistry'
 
@@ -172,6 +173,7 @@ export function DesktopSettingsPage({ initialSection, onClose }: DesktopSettings
             {activeSection === 'display' ? <DisplaySettings /> : null}
             {activeSection === 'brand' ? <BrandSettings /> : null}
             {activeSection === 'network' ? <NetworkSettings /> : null}
+            {activeSection === 'collab' ? <CollabSettings /> : null}
             {activeSection === 'runtime' ? <RuntimeSettings /> : null}
             {activeSection === 'developer' ? <DeveloperSettings /> : null}
             {activeSection === 'about' ? <AboutSettings /> : null}

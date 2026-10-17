@@ -56,6 +56,10 @@
       "label": "Red",
       "title": "Red"
     },
+    "collab": {
+      "label": "Coedición",
+      "title": "Coedición"
+    },
     "about": {
       "label": "Acerca de",
       "title": "Acerca de Kition"
@@ -113,6 +117,39 @@
         "restartFailed": "El reinicio falló: {{message}}",
         "restarted": "Servicio en segundo plano reiniciado."
       }
+    }
+  },
+  "collab": {
+    "paneTitle": "Coedición",
+    "paneDescription": "Edita documentos compartidos con otras personas a través de un servidor de sincronización. La coedición requiere una cuenta de Kition Pro.",
+    "serverSection": "Servidor de sincronización",
+    "serverUrlTitle": "URL del servidor de sincronización",
+    "serverUrlDescription": "La dirección WebSocket del servidor de sincronización (wss://…). Déjala vacía para desactivar la coedición.",
+    "serverUrlPlaceholder": "wss://sync.example.com/v1/sync",
+    "save": "Guardar",
+    "statusTitle": "Conexión",
+    "status": {
+      "off": "Desactivada",
+      "offline": "Sin conexión",
+      "connecting": "Conectando",
+      "online": "Conectado"
+    },
+    "statusDescription": {
+      "off": "La coedición está desactivada: no hay servidor de sincronización.",
+      "offline": "Kition se conecta cuando hay un documento compartido abierto.",
+      "connecting": "Conectando con el servidor de sincronización.",
+      "online": "Los documentos compartidos se sincronizan con quienes los editan."
+    },
+    "testTitle": "Probar conexión",
+    "testDescription": "Se conecta una vez al servidor con tu cuenta y luego se desconecta.",
+    "test": "Probar conexión",
+    "testResult": {
+      "ok": "El servidor respondió y la coedición funciona con tu cuenta.",
+      "no-sync": "El servidor respondió, pero la coedición no está disponible para tu cuenta.",
+      "signed-out": "Inicia sesión en tu cuenta de Kition para coeditar.",
+      "unauthorized": "El servidor no reconoce tu cuenta. Vuelve a iniciar sesión.",
+      "unreachable": "No se puede contactar con el servidor. Comprueba la dirección y tu conexión.",
+      "invalid": "Introduce una dirección WebSocket que empiece por ws:// o wss://."
     }
   },
   "themeMode": {

@@ -56,6 +56,10 @@
       "label": "网络",
       "title": "网络"
     },
+    "collab": {
+      "label": "协同编辑",
+      "title": "协同编辑"
+    },
     "about": {
       "label": "关于",
       "title": "关于 Kition"
@@ -113,6 +117,39 @@
         "restartFailed": "重启失败：{{message}}",
         "restarted": "后台服务已重启。"
       }
+    }
+  },
+  "collab": {
+    "paneTitle": "协同编辑",
+    "paneDescription": "通过同步服务器与他人一起编辑共享文档。协同编辑需要 Kition Pro 账户。",
+    "serverSection": "同步服务器",
+    "serverUrlTitle": "同步服务器地址",
+    "serverUrlDescription": "同步服务器的 WebSocket 地址（wss://…）。留空即关闭协同编辑。",
+    "serverUrlPlaceholder": "wss://sync.example.com/v1/sync",
+    "save": "保存",
+    "statusTitle": "连接",
+    "status": {
+      "off": "已关闭",
+      "offline": "未连接",
+      "connecting": "正在连接",
+      "online": "已连接"
+    },
+    "statusDescription": {
+      "off": "协同编辑已关闭：未设置同步服务器。",
+      "offline": "打开共享文档时，Kition 会自动连接。",
+      "connecting": "正在连接同步服务器。",
+      "online": "共享文档会与其他编辑者保持同步。"
+    },
+    "testTitle": "测试连接",
+    "testDescription": "使用你的账户连接服务器一次，然后断开。",
+    "test": "测试连接",
+    "testResult": {
+      "ok": "服务器已响应，你的账户可以使用协同编辑。",
+      "no-sync": "服务器已响应，但你的账户无法使用协同编辑。",
+      "signed-out": "请登录 Kition 账户以使用协同编辑。",
+      "unauthorized": "服务器无法识别你的账户，请重新登录。",
+      "unreachable": "无法连接服务器。请检查地址和网络连接。",
+      "invalid": "请输入以 ws:// 或 wss:// 开头的 WebSocket 地址。"
     }
   },
   "themeMode": {
