@@ -88,7 +88,7 @@ async function liveTo(pageA: Page, pathA: string, pageB: Page, pathB: string, ba
   return Date.now() - start
 }
 
-test('co-edits a workbook between two windows: live, formulas that follow their rows, and merging edits made offline', async ({ browser, baseURL }, testInfo) => {
+test('co-edits a workbook between two windows: live, formulas that follow their rows, and merging edits made offline, in one cell too', async ({ browser, baseURL }, testInfo) => {
   test.skip(!engine.built, 'the Sheet kit editor is not built into public/kits/sheet-ui')
   test.skip(!kitPackageHasReplicaInfo('sheet', 'kition_sheet_sdk'), 'the Sheet kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh sheet')
   const unavailable = kitionProSkipReason()
@@ -143,20 +143,26 @@ test('co-edits a workbook between two windows: live, formulas that follow their 
     await expectCell(kitB, 'B3', '1300')
     await expectCell(kitB, 'B5', '=SUM(B3:B4)')
 
-    // Bob goes offline and points a formula at Food (row 4 for him); meanwhile Alice inserts
-    // another row above the rent, which moves Food to row 5.
+    // Bob goes offline, points a formula at Food (row 4 for him) and retypes Food's label at its
+    // start; meanwhile Alice inserts another row above the rent, which moves Food to row 5, and
+    // retypes the same label at its end.
     await bobNetwork.setOnline(false)
     await expect(status(pageB)).not.toHaveAttribute('data-state', 'online', { timeout: 30_000 })
     const offlineVersion = JSON.stringify(await replicaCounters(pageA, pathA))
     await enter(kitB, 'D1', '=B4')
     await expectCell(kitB, 'D1', '=B4')
+    await enter(kitB, 'A4', 'Weekly Food')
+    await expectCell(kitB, 'A4', 'Weekly Food')
     await insertRowAbove(a.kit, 2)
     await expectCell(a.kit, 'B6', '=SUM(B4:B5)')
+    await enter(a.kit, 'A5', 'Food and drink')
+    await expectCell(a.kit, 'A5', 'Food and drink')
     await expect.poll(async () => JSON.stringify(await replicaCounters(pageA, pathA))).not.toBe(offlineVersion)
     expect(JSON.stringify(await replicaCounters(pageB, pathB))).not.toBe(JSON.stringify(await replicaCounters(pageA, pathA)))
 
-    // Back online, both merge on their own: the same replica, both rows inserted, and Bob's
-    // formula still points at Food on both sides.
+    // Back online, both merge on their own: the same replica, both rows inserted, Bob's formula
+    // still points at Food on both sides, and the label keeps both people's typing (a cell's text
+    // merges by character, KDM text marks K5).
     await bobNetwork.setOnline(true)
     const back = Date.now()
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 60_000 })
@@ -164,7 +170,7 @@ test('co-edits a workbook between two windows: live, formulas that follow their 
     testInfo.annotations.push({ type: 'reconnect to converged', description: `${Date.now() - back} ms` })
     for (const kit of [a.kit, kitB]) {
       await expectCell(kit, 'D1', '=B5')
-      await expectCell(kit, 'A5', 'Food')
+      await expectCell(kit, 'A5', 'Weekly Food and drink')
       await expectCell(kit, 'B6', '=SUM(B4:B5)')
     }
     await pageA.screenshot({ path: testInfo.outputPath('alice.png') })
