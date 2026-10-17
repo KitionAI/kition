@@ -22,7 +22,7 @@ export function isDocumentReadOnly(path: string) {
 }
 
 /** Hears changes to the read-only documents; answers an unsubscribe. */
-export function subscribeReadOnlyDocuments(listener: () => void) {
+function subscribeReadOnlyDocuments(listener: () => void) {
   listeners.add(listener)
   return () => {
     listeners.delete(listener)

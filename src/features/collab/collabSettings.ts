@@ -30,11 +30,6 @@ export function syncServerUrl(): string {
   return (stored ?? DEFAULT_SYNC_SERVER_URL).trim()
 }
 
-/** The build's own sync server URL (empty: none). */
-export function defaultSyncServerUrl(): string {
-  return DEFAULT_SYNC_SERVER_URL
-}
-
 /**
  * Sets the sync server's WebSocket URL for this window (`kition.collab.serverUrl.v1`): empty turns
  * co-editing off, `null` goes back to the build's default. Relays restart under it.

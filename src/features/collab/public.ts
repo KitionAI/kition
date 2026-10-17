@@ -10,4 +10,4 @@ export { CollabDialogs, requestOpenSharedDocument, requestShareDocument, useColl
 export { CollabTabIndicators } from './CollabStatus'
 export { canShareDocument } from './shareActions'
 export { setSyncServerUrl, syncServerUrl, testSyncServer, type SyncServerTest } from './collabSettings'
-export { useCollabConnectionState, type CollabConnectionState } from './syncConnection'
+export { useCollabConnectionState } from './syncConnection'

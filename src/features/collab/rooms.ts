@@ -46,7 +46,7 @@ function readRooms(): Record<string, CollabRoom> {
 }
 
 /** Every shared document this person co-edits. */
-export function listRooms(): CollabRoom[] {
+function listRooms(): CollabRoom[] {
   return Object.values(readRooms()).filter((room): room is CollabRoom => Boolean(room) && typeof room.docId === 'string' && typeof room.shareLink === 'string')
 }
 
