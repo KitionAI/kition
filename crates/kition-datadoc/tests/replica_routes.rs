@@ -165,15 +165,30 @@ async fn replica(app: &Router, action: &str, body: Value) -> Value {
     response["data"].clone()
 }
 
-/// Validates `instance` against one self-contained `$defs` entry of
-/// `contracts/runtime/data-documents-replica.schema.json`.
+/// Validates `instance` against one `$defs` entry of
+/// `contracts/runtime/data-documents-replica.schema.json`; the transact contract it references
+/// (`importResponse.change`) is registered locally so nothing is fetched.
 fn check_contract(def: &str, instance: &Value) {
     let mut schema: Value = serde_json::from_str(include_str!(
         "../../../contracts/runtime/data-documents-replica.schema.json"
     ))
     .unwrap_or_else(|err| panic!("{err}"));
     schema["$ref"] = json!(format!("#/$defs/{def}"));
-    let validator = jsonschema::validator_for(&schema).unwrap_or_else(|err| panic!("{err}"));
+    let transact: Value = serde_json::from_str(include_str!(
+        "../../../contracts/runtime/data-documents-transact.schema.json"
+    ))
+    .unwrap_or_else(|err| panic!("{err}"));
+    let registry = jsonschema::Registry::new()
+        .add(
+            "https://kition.ai/contracts/runtime/data-documents-transact.schema.json",
+            jsonschema::Resource::from_contents(transact),
+        )
+        .and_then(jsonschema::RegistryBuilder::prepare)
+        .unwrap_or_else(|err| panic!("{err}"));
+    let validator = jsonschema::options()
+        .with_registry(&registry)
+        .build(&schema)
+        .unwrap_or_else(|err| panic!("{err}"));
     let errors: Vec<String> = validator
         .iter_errors(instance)
         .map(|error| format!("{error} at {}", error.instance_path()))
@@ -320,6 +335,16 @@ fn base64(bytes: &[u8]) -> String {
     base64::engine::general_purpose::STANDARD.encode(bytes)
 }
 
+/// The KDM version a `version` field encodes. The bytes are not canonical (two replicas holding
+/// the same changes may list peers in another order), so versions are compared decoded, as the
+/// relay compares them.
+fn version(field: &Value) -> kition_kdm::Version {
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(field.as_str().unwrap_or_default())
+        .unwrap_or_else(|err| panic!("{err}"));
+    kition_kdm::Version::decode(&bytes).unwrap_or_else(|err| panic!("{err}"))
+}
+
 #[tokio::test]
 async fn version_names_the_document_and_its_replica() {
     let f = fixture();
@@ -333,7 +358,7 @@ async fn version_names_the_document_and_its_replica() {
         here["docId"], there["docId"],
         "a copy is the same KDM document"
     );
-    assert_eq!(here["version"], there["version"]);
+    assert_eq!(version(&here["version"]), version(&there["version"]));
 
     let exported = replica(&f.app, "export", json!({ "path": HERE })).await;
     check_contract("exportResponse", &exported);
@@ -360,7 +385,10 @@ async fn two_files_exchanging_changes_converge() {
     assert!(here.contains(&(theirs, json!("From there"))), "{here:?}");
     let here_version = replica(&f.app, "version", json!({ "path": HERE })).await;
     let there_version = replica(&f.app, "version", json!({ "path": THERE })).await;
-    assert_eq!(here_version["version"], there_version["version"]);
+    assert_eq!(
+        version(&here_version["version"]),
+        version(&there_version["version"])
+    );
 }
 
 #[tokio::test]
@@ -410,7 +438,7 @@ async fn a_local_transaction_publishes_the_new_replica_version() {
     check_contract("replicaChanged", payload);
     assert_eq!(payload["documentPath"], HERE);
     let now = replica(&f.app, "version", json!({ "path": HERE })).await;
-    assert_eq!(payload["version"], now["version"]);
+    assert_eq!(version(&payload["version"]), version(&now["version"]));
     assert_eq!(payload["docId"], now["docId"]);
 
     // Reading the replica is no transaction.
@@ -502,7 +530,7 @@ async fn export_since_a_version_holds_only_newer_changes() {
         Some(1),
         "{imported}"
     );
-    assert_eq!(imported["version"], newer["version"]);
+    assert_eq!(version(&imported["version"]), version(&newer["version"]));
     assert_eq!(titles(&f, HERE).await, titles(&f, THERE).await);
 }
 
@@ -563,7 +591,7 @@ async fn create_makes_a_new_file_of_the_same_document() {
     check_contract("versionResponse", &created);
     assert_eq!(created["documentPath"], joined_path);
     assert_eq!(created["docId"], exported["docId"], "the same KDM document");
-    assert_eq!(created["version"], exported["version"]);
+    assert_eq!(version(&created["version"]), version(&exported["version"]));
     assert_ne!(created["documentId"], f.here_id, "its own data document");
     assert_eq!(titles(&f, joined_path).await, titles(&f, HERE).await);
     assert!(
@@ -585,7 +613,8 @@ async fn create_makes_a_new_file_of_the_same_document() {
                 .list_tables()
                 .unwrap_or_else(|err| panic!("{err}"))
                 .into_iter()
-                .find(|table| table.title == "Items" || table.name == "Items")
+                // The fixture names its table "Items"; the file stores that name as `items`.
+                .find(|table| table.name == "items")
                 .unwrap_or_else(|| panic!("no Items table"));
             let fields: Vec<String> = table
                 .fields
