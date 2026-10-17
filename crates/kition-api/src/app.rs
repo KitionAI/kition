@@ -228,7 +228,7 @@ pub(crate) fn datadoc_state(
 ) -> Option<kition_datadoc::DataDocState> {
     let workspace_dir = deps.workspace_dir.clone()?;
     let assets = AssetStore::new(&workspace_dir, Some(&deps.upload_dir)).ok()?;
-    Some(kition_datadoc::DataDocState {
+    let state = kition_datadoc::DataDocState {
         auth: deps.auth(),
         db: deps.db.clone(),
         workspace_dir,
@@ -239,7 +239,10 @@ pub(crate) fn datadoc_state(
         imports: kition_datadoc::ImportStore::default(),
         ai: Some(deps.ai.clone()),
         tables: deps.tables.clone(),
-    })
+    };
+    // Co-editing relays learn of every local table transaction from `table/replica-changed`.
+    state.publish_replica_changes();
+    Some(state)
 }
 
 fn absolute(path: &str) -> AppResult<PathBuf> {

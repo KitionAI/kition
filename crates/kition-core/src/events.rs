@@ -16,6 +16,12 @@ pub enum DomainEvent {
     /// carry it. `kition-kits` forwards it verbatim to the kit bridge stream as a `table/changed`
     /// notification.
     TableChanged(Value),
+    /// A `.kitable` file's KDM replica moved to a new version after a local transaction (any
+    /// origin but `import`): the `table/replica-changed` payload
+    /// (`contracts/runtime/data-documents-replica.schema.json`), built by `kition-datadoc`.
+    /// `kition-kits` forwards it verbatim to the kit bridge stream, so a co-editing relay knows
+    /// there are changes to export.
+    TableReplicaChanged(Value),
 }
 
 #[derive(Debug, Clone, PartialEq)]

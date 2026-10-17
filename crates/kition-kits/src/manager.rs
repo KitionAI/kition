@@ -496,10 +496,11 @@ impl KitManager {
     }
 
     /// Forwards every `DomainEvent::TableChanged` on `events` to the bridge stream as a
-    /// `table/changed` notification, for the life of the process (the task ends when `events`
-    /// is dropped and every sender with it). `kition-datadoc` publishes the event; this is how
-    /// it reaches the renderer windows that `useTableLiveChanges` (`src/features/table/hooks`)
-    /// subscribes from.
+    /// `table/changed` notification, and every `DomainEvent::TableReplicaChanged` as a
+    /// `table/replica-changed` one, for the life of the process (the task ends when `events`
+    /// is dropped and every sender with it). `kition-datadoc` publishes the events; this is how
+    /// they reach the renderer windows that `useTableLiveChanges` (`src/features/table/hooks`)
+    /// and the co-editing relay (`src/features/collab/tableReplica.ts`) subscribe from.
     pub fn forward_table_changes(&self, events: kition_core::events::EventBus) {
         let bridge = self.inner.bridge.clone();
         // Subscribed before spawning, so a `publish` right after this call is never missed
@@ -510,6 +511,9 @@ impl KitManager {
                 match events.recv().await {
                     Ok(kition_core::events::DomainEvent::TableChanged(payload)) => {
                         bridge.broadcast("table/changed", payload);
+                    }
+                    Ok(kition_core::events::DomainEvent::TableReplicaChanged(payload)) => {
+                        bridge.broadcast("table/replica-changed", payload);
                     }
                     Ok(_) => {}
                     Err(tokio::sync::broadcast::error::RecvError::Lagged(skipped)) => {
@@ -1205,6 +1209,30 @@ mod tests {
             .unwrap_or_else(|| panic!("the bridge stream closed"));
         assert_eq!(message["method"], "table/changed");
         assert_eq!(message["params"]["documentId"], "1");
+        assert_eq!(message["params"]["documentPath"], "a.kitable");
+    }
+
+    #[tokio::test]
+    async fn table_replica_changed_events_reach_a_connected_window() {
+        use kition_core::events::{DomainEvent, EventBus};
+
+        let manager = KitManager::new(None, Vec::new());
+        let (_session, mut rx) = manager.bridge().connect();
+        let _ = rx.recv().await; // bridge.ready
+
+        let events = EventBus::default();
+        manager.forward_table_changes(events.clone());
+        events.publish(DomainEvent::TableReplicaChanged(serde_json::json!({
+            "documentPath": "a.kitable",
+            "docId": "00000000-0000-0000-0000-000000000000",
+            "version": "",
+        })));
+
+        let message = tokio::time::timeout(std::time::Duration::from_secs(1), rx.recv())
+            .await
+            .unwrap_or_else(|_| panic!("the forwarder did not deliver in time"))
+            .unwrap_or_else(|| panic!("the bridge stream closed"));
+        assert_eq!(message["method"], "table/replica-changed");
         assert_eq!(message["params"]["documentPath"], "a.kitable");
     }
 }

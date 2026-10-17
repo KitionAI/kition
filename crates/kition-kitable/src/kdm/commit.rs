@@ -427,6 +427,48 @@ impl KitableFile {
         *self = fresh;
         Ok(MergeOutcome::Merged(change))
     }
+
+    /// This handle's replica version, the `since` a peer passes to
+    /// [`KitableFile::export_replica_changes`] to get only what it lacks.
+    pub fn replica_version(&self) -> Version {
+        self.replica.version()
+    }
+
+    /// The replica's changes a replica at `since` lacks; every change from [`Version::empty`].
+    pub fn export_replica_changes(&self, since: &Version) -> Result<Vec<u8>> {
+        Ok(self.replica.export_changes(since)?)
+    }
+
+    /// Merges changes another replica of this document exported (a co-editor's, relayed through
+    /// a sync room): imported with an `import` origin, so it is never an undo step and the undo
+    /// history of this handle's own edits survives it; then repaired, stored, and projected in
+    /// one SQL transaction like any other write. Changes already known change nothing (an empty
+    /// change). Changes of another document are refused ([`KitableError::Kdm`]).
+    pub fn import_replica_changes(&mut self, changes: &[u8]) -> Result<ReplicaImport> {
+        self.writable()?;
+        let import = Origin::new(OriginKind::Import, IMPORT_PRINCIPAL);
+        let previous = std::mem::replace(&mut self.origin, import.clone());
+        let written = self.write(&import.encode(), false, |replica| {
+            let changed = replica.import_changes(changes)?;
+            repair::run(replica, &changed)
+        });
+        self.origin = previous;
+        let (repaired, change) = written?;
+        Ok(ReplicaImport { change, repaired })
+    }
+}
+
+/// The principal of [`KitableFile::import_replica_changes`]'s `import` origin.
+pub const IMPORT_PRINCIPAL: &str = "sync";
+
+/// What [`KitableFile::import_replica_changes`] did.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ReplicaImport {
+    /// What the projection changed.
+    pub change: TableChange,
+    /// Whether the repair after the import wrote anything: changes of this replica's own that
+    /// the peers lack, so they must be exported to them like a local edit.
+    pub repaired: bool,
 }
 
 /// The body of one write, inside its SQL transaction, after the catch-up: `since` and `head`

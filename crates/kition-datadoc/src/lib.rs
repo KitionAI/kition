@@ -11,6 +11,7 @@ mod import_parse;
 mod import_write;
 pub mod index;
 mod records;
+mod replica;
 mod respond;
 mod scenario;
 mod source;
@@ -20,7 +21,7 @@ mod transact;
 mod view_config;
 pub mod workflow_api;
 
-pub use table_documents::{TableDocuments, TableHandle};
+pub use table_documents::{ReplicaChange, ReplicaListener, TableDocuments, TableHandle};
 
 pub use import_write::ImportStore;
 
@@ -105,6 +106,7 @@ pub fn router(state: DataDocState) -> Router {
         .merge(ai_field::routes())
         .merge(scenario::routes())
         .merge(transact::routes())
+        .merge(replica::routes())
         .merge(dashboards::routes())
         .layer(axum::extract::DefaultBodyLimit::max(
             import_write::MAX_SOURCE_BYTES + 1024 * 1024,

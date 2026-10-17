@@ -12,6 +12,12 @@
 //! `parking_lot::Mutex`, not `tokio::sync::Mutex::blocking_lock`: the latter panics outright if
 //! ever called from an async worker thread instead of inside `spawn_blocking`, where
 //! `parking_lot` just blocks that thread instead (slow, not fatal, if a caller gets it wrong).
+//!
+//! Co-editing relays a file's replica to a sync room, and learns what to send from
+//! [`TableDocuments::on_replica_changed`]: when a handle drops after its file's replica moved to a
+//! new version under any origin but `import` (a person's, the Agent's, a workflow's, a merge from
+//! disk), the listener is told the file and its new version. Imports are relayed changes coming
+//! in, so they are not reported back (but see [`TableHandle::report_replica_change`]).
 
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
@@ -19,10 +25,11 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use base64::Engine as _;
 use kition_core::{AppError, AppResult};
-use kition_kdm::{Origin, OriginKind};
+use kition_kdm::{DocId, Origin, OriginKind, Version};
 use kition_kitable::{KitableFile, MergeOutcome, TableChange};
-use parking_lot::{ArcMutexGuard, Mutex as FileMutex, RawMutex};
+use parking_lot::{ArcMutexGuard, Mutex as FileMutex, RawMutex, RwLock};
 
 /// How long an unused `.kitable` connection stays open after its last checkout.
 pub const IDLE_TIMEOUT: Duration = Duration::from_secs(600);
@@ -39,11 +46,24 @@ struct Entry {
     last_used: Instant,
 }
 
+/// A file's replica reached a new version: what [`TableDocuments::on_replica_changed`] hears.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReplicaChange {
+    /// The file's absolute path.
+    pub path: PathBuf,
+    pub doc_id: DocId,
+    pub version: Version,
+}
+
+/// Called with the lock on the file still held: it must not open a table itself.
+pub type ReplicaListener = Arc<dyn Fn(&ReplicaChange) + Send + Sync>;
+
 /// Every `.kitable` file the runtime has open, keyed by its absolute path. Cheap to clone: every
 /// clone shares the same files (`DataDocState`, which holds one, is itself cloned per request).
 #[derive(Default, Clone)]
 pub struct TableDocuments {
     open: Arc<std::sync::Mutex<HashMap<PathBuf, Entry>>>,
+    replica_listener: Arc<RwLock<Option<ReplicaListener>>>,
 }
 
 impl TableDocuments {
@@ -58,7 +78,8 @@ impl TableDocuments {
     ) -> AppResult<(TableHandle, Option<TableChange>)> {
         let absolute = std::path::absolute(path)?;
         let file = self.checkout_file(&absolute)?;
-        let mut handle = TableHandle::new(file, origin);
+        let listener = self.replica_listener.read().clone();
+        let mut handle = TableHandle::new(file, origin, absolute, listener);
         let merge = if handle.changed_on_disk() {
             match handle.reopen_merging().map_err(AppError::unhandled)? {
                 MergeOutcome::Unchanged => None,
@@ -95,6 +116,12 @@ impl TableDocuments {
         Ok(file)
     }
 
+    /// Tells `listener` about every replica version a handle leaves behind on drop, for every
+    /// clone of this manager; replaces the listener set before. See the module documentation.
+    pub fn on_replica_changed(&self, listener: impl Fn(&ReplicaChange) + Send + Sync + 'static) {
+        *self.replica_listener.write() = Some(Arc::new(listener));
+    }
+
     /// Drops the manager's own reference to every open file, for shutdown. A handle a caller
     /// still holds keeps its file open until that handle drops.
     pub fn close_all(&self) {
@@ -129,16 +156,43 @@ fn evict_idle(open: &mut HashMap<PathBuf, Entry>, max_age: Duration) {
 
 /// One checked-out `.kitable` file: the lock on its shared [`KitableFile`], already held, so
 /// this derefs straight to it. Sets the checkout's origin on construction, restores
-/// [`default_origin`] on drop.
+/// [`default_origin`] on drop, and reports a new replica version then (see the module
+/// documentation).
 pub struct TableHandle {
     guard: ArcMutexGuard<RawMutex, KitableFile>,
+    path: PathBuf,
+    /// The replica's version at checkout.
+    start: Version,
+    /// Whether a new version is reported on drop: the checkout's origin is not `import`, or
+    /// [`TableHandle::report_replica_change`] asked for it.
+    report: bool,
+    listener: Option<ReplicaListener>,
 }
 
 impl TableHandle {
-    fn new(file: Arc<FileMutex<KitableFile>>, origin: Origin) -> Self {
+    fn new(
+        file: Arc<FileMutex<KitableFile>>,
+        origin: Origin,
+        path: PathBuf,
+        listener: Option<ReplicaListener>,
+    ) -> Self {
         let mut guard = FileMutex::lock_arc(&file);
+        let report = origin.kind != OriginKind::Import;
         guard.set_origin(origin);
-        Self { guard }
+        let start = guard.replica_version();
+        Self {
+            guard,
+            path,
+            start,
+            report,
+            listener,
+        }
+    }
+
+    /// Reports this handle's new replica version on drop even though its origin is `import`:
+    /// for an import whose repair wrote changes of this replica's own, which the peers lack.
+    pub fn report_replica_change(&mut self) {
+        self.report = true;
     }
 
     /// No-op: a handle no longer owns the connection outright, so there is nothing for one
@@ -163,8 +217,50 @@ impl DerefMut for TableHandle {
 
 impl Drop for TableHandle {
     fn drop(&mut self) {
+        if self.report
+            && let Some(listener) = self.listener.take()
+        {
+            let version = self.guard.replica_version();
+            if version != self.start {
+                listener(&ReplicaChange {
+                    path: self.path.clone(),
+                    doc_id: self.guard.replica().doc_id(),
+                    version,
+                });
+            }
+        }
         self.guard.set_origin(default_origin());
     }
+}
+
+/// `bytes` as the standard base64 the replica routes and events carry.
+pub fn encode_bytes(bytes: &[u8]) -> String {
+    base64::engine::general_purpose::STANDARD.encode(bytes)
+}
+
+/// `path` relative to `workspace_dir`, with `/` separators, when it is inside it; else `path`
+/// as it is.
+pub fn workspace_relative(workspace_dir: &Path, path: &Path) -> String {
+    let root = std::path::absolute(workspace_dir).unwrap_or_else(|_| workspace_dir.to_path_buf());
+    match path.strip_prefix(&root) {
+        Ok(relative) => relative
+            .components()
+            .map(|component| component.as_os_str().to_string_lossy())
+            .collect::<Vec<_>>()
+            .join("/"),
+        Err(_) => path.to_string_lossy().into_owned(),
+    }
+}
+
+/// The `table/replica-changed` bridge event payload
+/// (`contracts/runtime/data-documents-replica.schema.json#/$defs/replicaChanged`): the file's
+/// workspace-relative `documentPath`, its KDM `docId`, and its new `version` (base64).
+pub fn replica_changed_event(workspace_dir: &Path, change: &ReplicaChange) -> serde_json::Value {
+    serde_json::json!({
+        "documentPath": workspace_relative(workspace_dir, &change.path),
+        "docId": change.doc_id.to_string(),
+        "version": encode_bytes(&change.version.encode()),
+    })
 }
 
 /// `Kition-Session: <uuid>` maps to `Origin::person("session:<uuid>")`; `Kition-Origin:

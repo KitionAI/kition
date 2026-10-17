@@ -106,6 +106,29 @@ impl DataDocState {
     }
 
     /// Creates the index row for an existing `.kitable` file under `root`.
+    /// The caller's document at the workspace-relative `raw_path` under `request_root` (the
+    /// runtime's workspace when blank), indexed from its file first if it is not yet.
+    pub(crate) fn document_by_path(
+        &self,
+        user_id: i64,
+        raw_path: &str,
+        request_root: &str,
+    ) -> AppResult<DataDocument> {
+        let path = default_document_path(raw_path, "");
+        if raw_path.trim().is_empty() {
+            return Err(AppError::bad_request("Data document path cannot be empty"));
+        }
+        let root = self.request_workspace_root(request_root);
+        let conn = self.db.conn()?;
+        let found = index::find_by_path(&conn, user_id, &root, &path)
+            .map_err(|_| AppError::internal("Failed to query data document"))?;
+        drop(conn);
+        match found {
+            Some(doc) => Ok(doc),
+            None => self.index_kitable_from_root(user_id, request_root, &root, &path),
+        }
+    }
+
     fn index_kitable_from_root(
         &self,
         user_id: i64,
@@ -417,21 +440,11 @@ async fn open_by_path(
     let user_id = user.id;
     let response = state
         .blocking(move |state| {
-            let raw_path = request.path.unwrap_or_default();
-            let path = default_document_path(&raw_path, "");
-            if raw_path.trim().is_empty() {
-                return Err(AppError::bad_request("Data document path cannot be empty"));
-            }
-            let request_root = request.workspace_root.unwrap_or_default();
-            let root = state.request_workspace_root(&request_root);
-            let conn = state.db.conn()?;
-            let found = index::find_by_path(&conn, user_id, &root, &path)
-                .map_err(|_| AppError::internal("Failed to query data document"))?;
-            drop(conn);
-            let doc = match found {
-                Some(doc) => doc,
-                None => state.index_kitable_from_root(user_id, &request_root, &root, &path)?,
-            };
+            let doc = state.document_by_path(
+                user_id,
+                &request.path.unwrap_or_default(),
+                &request.workspace_root.unwrap_or_default(),
+            )?;
             Ok(state.document_response(&doc, true))
         })
         .await?;
