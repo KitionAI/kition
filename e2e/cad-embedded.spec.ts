@@ -1,5 +1,9 @@
-import { expect, test } from '@playwright/test'
-import { kitEngine, openInKitFrame } from './helpers/embeddedKit'
+import fs from 'node:fs/promises'
+import path from 'node:path'
+import { expect, test, type Page } from '@playwright/test'
+import { kitEngine, openInKitFrame, openTreeFile } from './helpers/embeddedKit'
+import { kitPackageHasReplicaInfo } from './helpers/kitionPro'
+import { dismissFirstRunActivation } from './helpers/onboarding'
 import { canReadBlobBodies } from './helpers/requestBody'
 
 type NodeCadDocument = { save(): Uint8Array; execute(command: string, params: string): string; inspect(): string; free(): void }
@@ -58,6 +62,60 @@ test('opens a drawing in the CAD kit’s own editor, draws in it, and saves it t
     await expect(kit.getByTestId('cad-unsaved')).toHaveCount(0)
     expect(saves.map((save) => save.path)).toEqual(['Plan.dxf'])
     if (canReadBlobBodies(browserName)) expect(await entitiesOf(saves[0].bytes)).toBe(3)
+  } finally {
+    await host.dispose()
+  }
+})
+
+/** The replica version of the kit editor showing `path`, as hex (Kition's development test hook). */
+function replicaVersion(page: Page, path: string) {
+  return page.evaluate(async (wanted) => (window.__KITION_KIT_TEST__ ? window.__KITION_KIT_TEST__.replicaVersion(wanted) : ''), path)
+}
+
+test('keeps a CAD drawing’s replica across a save and a reopen, and opens a file changed elsewhere with what it holds', async ({ page, baseURL }) => {
+  test.skip(!engine.built, 'the CAD kit editor is not built into public/kits/cad-ui')
+  test.skip(!kitPackageHasReplicaInfo('cad', 'kition_cad_sdk'), 'the CAD kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh cad')
+  test.setTimeout(180_000)
+  const name = 'Replica.dxf'
+  const { host, kit } = await openInKitFrame(page, baseURL!, name, await planFixture(), {}, { persist: true })
+  const reopen = async () => {
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await dismissFirstRunActivation(page)
+    return openTreeFile(page, name)
+  }
+  try {
+    await expect(kit.getByTestId('cad-status')).toHaveText('1 objects', { timeout: 60_000 })
+    const line = kit.getByTestId('cad-command-line')
+    for (const text of ['line', '60,60', '200,120', '']) {
+      await line.fill(text)
+      await line.press('Enter')
+    }
+    await expect(kit.getByTestId('cad-status')).toHaveText('2 objects')
+    await kit.getByTestId('cad-save').click()
+    await expect(kit.getByTestId('cad-unsaved')).toHaveCount(0, { timeout: 30_000 })
+
+    // The replica sits in the document store under the file's identity, with the saved file's stamp.
+    const store = path.join(host.root, '.kition', 'docs')
+    const readJson = async (file: string) => JSON.parse(await fs.readFile(path.join(store, file), 'utf8').catch(() => '{}'))
+    await expect.poll(async () => (await readJson('index.json')).entries?.[name] ?? null, { timeout: 15_000 }).not.toBeNull()
+    const docId = (await readJson('index.json')).entries[name] as string
+    await expect.poll(async () => (await readJson(`${docId}/meta.json`)).meta?.kit ?? null).toBe('kit.cad')
+    const saved = await replicaVersion(page, name)
+    expect(saved).not.toBe('')
+
+    // Reopened, the drawing is the replica it was saved with: the line survives, the same version.
+    const reopened = await reopen()
+    await expect(reopened.getByTestId('cad-status')).toHaveText('2 objects', { timeout: 60_000 })
+    await expect.poll(() => replicaVersion(page, name).catch(() => ''), { timeout: 15_000 }).toBe(saved)
+    await expect(reopened.getByTestId('cad-unsaved')).toHaveCount(0)
+
+    // A file changed elsewhere (a new stamp) opens with what the file holds, on a replica version
+    // the saved one never was.
+    await fs.writeFile(path.join(host.root, name), await planFixture())
+    const changed = await reopen()
+    await expect(changed.getByTestId('cad-status')).toHaveText('1 objects', { timeout: 60_000 })
+    await expect.poll(() => replicaVersion(page, name).catch(() => ''), { timeout: 15_000 }).not.toBe('')
+    expect(await replicaVersion(page, name)).not.toBe(saved)
   } finally {
     await host.dispose()
   }
