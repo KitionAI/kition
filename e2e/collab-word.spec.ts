@@ -199,12 +199,17 @@ async function caretAtBodyStart(page: Page, kit: FrameLocator) {
   await page.keyboard.press('Home')
 }
 
-/** Selects `count` characters of the body paragraph from character `from`, and presses `shortcut` (Mod+B, Mod+I). */
-async function formatBodyRange(page: Page, kit: FrameLocator, from: number, count: number, shortcut: string) {
+/**
+ * Selects `count` characters of the body paragraph from character `from`, and presses Mod+`key`
+ * (B, I). Mod is the kit's command key for the platform the page reports (Playwright's desktop
+ * Chrome reports Windows on every host, so `ControlOrMeta`, which follows the host, would miss).
+ */
+async function formatBodyRange(page: Page, kit: FrameLocator, from: number, count: number, key: string) {
   await caretAtBodyStart(page, kit)
   for (let i = 0; i < from; i++) await page.keyboard.press('ArrowRight')
   for (let i = 0; i < count; i++) await page.keyboard.press('Shift+ArrowRight')
-  await page.keyboard.press(shortcut)
+  const mac = await kit.locator('body').evaluate(() => /Mac|iPhone|iPad/i.test(navigator.platform))
+  await page.keyboard.press(`${mac ? 'Meta' : 'Control'}+${key}`)
 }
 
 test('two windows typing and formatting one paragraph at once keep both texts and both formats', async ({ browser, baseURL }, testInfo) => {
@@ -253,8 +258,8 @@ test('two windows typing and formatting one paragraph at once keep both texts an
     // (0..14) and Bob italicises "Auroras appear" (7..21).
     await bobNetwork.setOnline(false)
     await expect(status(pageB)).not.toHaveAttribute('data-state', 'online', { timeout: 30_000 })
-    await formatBodyRange(pageA, a.kit, 0, 14, 'ControlOrMeta+b')
-    await formatBodyRange(pageB, kitB, 7, 14, 'ControlOrMeta+i')
+    await formatBodyRange(pageA, a.kit, 0, 14, 'b')
+    await formatBodyRange(pageB, kitB, 7, 14, 'i')
     await settledVersion(pageA, 'Field Notes.docx')
     await settledVersion(pageB, 'Shared/Field Notes.docx')
     await bobNetwork.setOnline(true)
