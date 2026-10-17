@@ -1,16 +1,21 @@
 /**
- * Starts a relay (`kitRelay.ts`) for every open kit document that can be co-edited: its kit
- * serves the `replica` capability, this window may co-edit (`collabConfigured`), and the
- * document has a room (`rooms.ts`, written by Share or Open shared document). Anything else is
- * left alone: no connection is made, nothing is sent.
+ * Starts a relay (`kitRelay.ts`) for every open document that can be co-edited
+ * (`collabDocuments.ts`: kit documents whose kit serves the `replica` capability, boards, Markdown
+ * documents, tables), when this window may co-edit (`collabConfigured`) and the document has a
+ * room (`rooms.ts`, written by Share or Open shared document). Anything else is left alone: no
+ * connection is made, nothing is sent, and no replica is touched.
+ *
+ * It also keeps the documents this person may only view (`viewer` rooms) read-only in every
+ * editor (`@/services/documentAccess`).
  */
-import { followKitConnections, type MountedKitDocument } from '@/features/kits/public'
 import type { Presence, SyncClient } from '@/lib/sync'
+import { setReadOnlyDocuments } from '@/services/documentAccess'
+import { followCollabDocuments, type CollabDocument, type CollabReplica } from './collabDocuments'
 import { loadCollabToken, onCollabSettingsChanged, syncServerUrl } from './collabSettings'
-import { setDocumentCollab, setDocumentPeers } from './collabStore'
+import { setDocumentCollab, setDocumentPeers, setDocumentRole } from './collabStore'
 import { startKitRelay, type KitRelay, type RelaySync } from './kitRelay'
 import type { ReplicaVersions } from './replicaVersions'
-import { fromHex, onRoomsChanged, readRoom, toHex, writeRoom } from './rooms'
+import { fromHex, onRoomsChanged, readRoom, toHex, updateRoom, viewerPaths, type CollabRoom } from './rooms'
 import { closeSyncClient, collabConfigured, syncClient } from './syncConnection'
 
 type CollabClient = RelaySync & Pick<SyncClient, 'setPresence' | 'onPresence' | 'principal'>
@@ -33,11 +38,22 @@ async function currentSettings() {
   return url ? `${url} ${(await loadCollabToken()) ?? ''}` : ''
 }
 
-function follow(document: MountedKitDocument, dependencies: CollabDependencies) {
-  const { connection, path } = document
-  if (!connection.capabilities.includes('replica')) return undefined
+/**
+ * The server `seq` to join `room` from: the one an earlier session saw, if the replica still holds
+ * the version it had then (a replica that lost changes since, say a file restored from a backup,
+ * catches up from the room's snapshot instead).
+ */
+async function resumeSeq(room: CollabRoom, replica: CollabReplica, versions: ReplicaVersions) {
+  if (!room.seen) return null
+  const version = new Uint8Array(await replica.version())
+  return versions.includes(version, fromHex(room.seen.version)) ? room.seen.seq : null
+}
+
+function follow(document: CollabDocument, dependencies: CollabDependencies) {
+  const { path } = document
   let stopped = false
   let starting = false
+  let replica: CollabReplica | null = null
   let docId: string | null = null
   let relay: KitRelay | null = null
   let stopPresence: (() => void) | null = null
@@ -53,30 +69,37 @@ function follow(document: MountedKitDocument, dependencies: CollabDependencies) 
     again = false
     try {
       if (!(await dependencies.configured()) || stopped) return
-      docId ??= await connection.replica.info().catch(() => null)
+      replica ??= await document.connect().catch(() => null)
+      if (stopped) return
+      docId ??= replica ? await replica.docId().catch(() => null) : null
       const room = docId ? readRoom(docId) : null
-      if (!docId || !room || stopped) return
+      if (!replica || !docId || !room || stopped) return
       const client = await dependencies.client()
       if (!client || stopped) return
       const versions = await dependencies.versions()
       if (stopped) return
+      const since = await resumeSeq(room, replica, versions).catch(() => null)
+      if (stopped) return
       const id = docId
       const showPeers = (peers: Presence[]) => setDocumentPeers(path, peers, client.principal?.id)
-      setDocumentCollab(path, { docId: id, peers: [] })
+      setDocumentCollab(path, { docId: id, peers: [], role: room.role })
       stopPresence = client.onPresence(id, showPeers)
       relay = startKitRelay({
         docId: id,
-        replica: connection.replica,
+        replica,
         sync: client,
         versions,
         lastSent: fromHex(room.lastSent),
-        onSent: (version) => {
-          const latest = readRoom(id)
-          if (latest) writeRoom({ ...latest, lastSent: toHex(version) }, { quiet: true })
-        },
-        onJoined: ({ presence }) => {
+        since,
+        onSent: (version) => updateRoom(id, { lastSent: toHex(version) }, { quiet: true }),
+        onSeen: ({ seq, version }) => updateRoom(id, { seen: { seq, version: toHex(version) } }, { quiet: true }),
+        onJoined: ({ presence, role }) => {
           showPeers(presence)
-          client.setPresence(id, { kit: document.kitId })
+          setDocumentRole(path, role)
+          // A role that changed (a viewer link opened, a member's role changed) is kept, and a
+          // viewer's document turns read-only.
+          if (readRoom(id)?.role !== role) updateRoom(id, { role })
+          client.setPresence(id, { kit: document.kit })
         },
         onError: (error) => console.warn('[collab] relay', error),
       })
@@ -94,17 +117,26 @@ function follow(document: MountedKitDocument, dependencies: CollabDependencies) 
     stopRooms()
     relay?.stop()
     stopPresence?.()
+    replica?.dispose()
     if (relay) setDocumentCollab(path, null)
   }
 }
 
+/** Makes the documents of `viewer` rooms read-only in their editors, now and as rooms change. */
+function followViewerDocuments() {
+  const publish = () => setReadOnlyDocuments(viewerPaths())
+  publish()
+  return onRoomsChanged(publish)
+}
+
 /**
- * Follows the open kit documents for co-editing until the answered stop. When the server URL or
- * the session changes, every relay stops and the connection closes, then they start again under
- * the new settings.
+ * Follows the open documents for co-editing until the answered stop. When the server URL or the
+ * session changes, every relay stops and the connection closes, then they start again under the
+ * new settings.
  */
 export function startCollab(dependencies: CollabDependencies = DEFAULT_DEPENDENCIES) {
-  let unfollow = followKitConnections((document) => follow(document, dependencies))
+  const stopViewers = followViewerDocuments()
+  let unfollow = followCollabDocuments((document) => follow(document, dependencies))
   let settings = currentSettings()
   const stopSettings = onCollabSettingsChanged(() => {
     void currentSettings().then(async (next) => {
@@ -113,11 +145,12 @@ export function startCollab(dependencies: CollabDependencies = DEFAULT_DEPENDENC
       settings = Promise.resolve(next)
       unfollow()
       if (dependencies === DEFAULT_DEPENDENCIES) closeSyncClient()
-      unfollow = followKitConnections((document) => follow(document, dependencies))
+      unfollow = followCollabDocuments((document) => follow(document, dependencies))
     })
   })
   return () => {
     stopSettings()
+    stopViewers()
     unfollow()
   }
 }

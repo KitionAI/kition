@@ -15,6 +15,7 @@ import {
   type BoardFileProblem,
 } from '@/features/whiteboard/kdm/boardKdmFile'
 import type { BoardStore } from '@/features/whiteboard/lib/boardStore'
+import { registerOpenBoard } from '@/features/whiteboard/lib/openBoards'
 import {
   listWorkspaceDocuments,
   readWorkspaceDocument,
@@ -104,6 +105,10 @@ class BoardDocumentSession {
   /** The unsaved edits were discarded: nothing is saved or retried any more. */
   private discarded = false
   private readonly cleanups: Array<() => void> = []
+  /** Withdraws the board from the open boards (`openBoards.ts`), while it is announced there. */
+  private withdrawOpen: (() => void) | null = null
+  /** The document id of the board announced there. */
+  private openDocId: string | null = null
 
   constructor(
     private readonly path: string,
@@ -135,9 +140,28 @@ class BoardDocumentSession {
     if (this.disposed) return
     const final = this.flush()
     this.disposed = true
+    this.setOpen(false)
     clearTimeout(this.retryTimer)
     for (const cleanup of this.cleanups.splice(0)) cleanup()
     final.catch((reason: unknown) => this.host.closedSaveFailed(reason))
+  }
+
+  /** Announces the board as open for editing (or withdraws it): co-editing follows it then. */
+  private setOpen(open: boolean) {
+    const docId = open && !this.disposed ? this.store.getReplica().docId : null
+    // Another board (a file replaced by a different one) is announced anew, under its own identity.
+    if (this.withdrawOpen && docId === this.openDocId) return
+    this.withdrawOpen?.()
+    this.withdrawOpen = null
+    this.openDocId = docId
+    if (!docId) return
+    this.withdrawOpen = registerOpenBoard({
+      path: this.path,
+      replica: () => this.store.getReplica(),
+      importChanges: (changes) => this.store.importChanges(changes),
+      subscribe: (listener) => this.store.subscribe(listener),
+      save: () => this.flush(),
+    })
   }
 
   /**
@@ -220,6 +244,7 @@ class BoardDocumentSession {
     } catch (reason) {
       if (this.disposed) return
       // Nothing to edit: an empty editable board here would never be saved.
+      this.setOpen(false)
       this.problem = 'read-failed'
       this.replica = null
       this.fileText = null
@@ -243,6 +268,7 @@ class BoardDocumentSession {
     this.fileText = text
     this.deferred = []
     if (decoded.kind === 'unsupported') {
+      this.setOpen(false)
       this.problem = decoded.reason
       this.replica = null
       this.fileVersion = null
@@ -254,6 +280,7 @@ class BoardDocumentSession {
     this.fileVersion = decoded.replica.version()
     this.setState({ status: 'ready', error: '', problem: null, saveRefused: null })
     this.changeStore(() => this.host.load(decoded.replica))
+    this.setOpen(true)
     // A repair while the store adopted the replica changed it: save that.
     if (this.isDirty()) this.schedule(SAVE_DELAY_MS)
   }

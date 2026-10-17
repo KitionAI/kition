@@ -16,6 +16,7 @@ import { registerOpenDocument } from './documentAgentBridge'
 import { addAgentReviewMarks, agentReviewHighlight, agentReviewMarks, mapAgentReviewMarks, type AgentReviewMarks } from './documentAgentReview'
 import { documentHistoryExtension, type DocumentHistory } from './documentHistory'
 import { applyTextEdits, diffText, mergeEdits } from './documentMerge'
+import { registerOpenMarkdownDocument } from './openDocumentSessions'
 import { DOCUMENT_BODY } from './documentSchema'
 import { mergeFileIntoReplica, openDocument, saveDocument, type OpenedDocument } from './documentStore'
 import { analyzeText, createDocumentReplica, documentBody, renderText } from './documentText'
@@ -157,6 +158,8 @@ export class DocumentSession {
   private applyingAgent = false
   private readonly reviewListeners = new Set<() => void>()
   private unregisterAgent: (() => void) | null = null
+  /** Withdraws the document from the open documents (`openDocumentSessions.ts`). */
+  private withdrawOpen: (() => void) | null = null
   readonly history: DocumentHistory = {
     undo: () => this.undo(),
     redo: () => this.redo(),
@@ -204,6 +207,7 @@ export class DocumentSession {
     this.cleanups.push(subscribeWorkspaceDocumentExternalChanges(this.onExternalChange))
     this.registerFlush()
     this.registerAgentAccess()
+    this.announceOpen()
     const beforeUnload = (event: BeforeUnloadEvent) => {
       if (!this.hasUnsavedChanges()) return
       event.preventDefault()
@@ -406,6 +410,15 @@ export class DocumentSession {
     this.pathValue = path
     if (this.unregisterFlush) this.registerFlush()
     if (this.unregisterAgent) this.registerAgentAccess()
+    if (this.withdrawOpen) this.announceOpen()
+  }
+
+  /**
+   * Imports changes another replica of this document made (a co-editor's): the editors show them
+   * like a merged file change, they are no undo step, and the session saves them to the file.
+   */
+  importRemoteChanges(changes: Uint8Array) {
+    this.requireOpened().replica.importChanges(changes)
   }
 
   /** Merges what the file holds now (after another writer changed it); local edits are kept. */
@@ -486,6 +499,7 @@ export class DocumentSession {
     for (const cleanup of this.cleanups.splice(0)) cleanup()
     this.unregisterFlush = null
     this.unregisterAgent = null
+    this.withdrawOpen = null
     this.textListeners.clear()
     this.stateListeners.clear()
     this.reviewListeners.clear()
@@ -536,6 +550,20 @@ export class DocumentSession {
     const unregister = registerWorkspaceEditSession(this.flush, this.pathValue, { discard: this.discard })
     this.unregisterFlush = unregister
     this.cleanups.push(unregister)
+  }
+
+  /** Announces the document as open for editing under its current path (co-editing follows it). */
+  private announceOpen() {
+    this.dropCleanup(this.withdrawOpen)
+    const withdraw = registerOpenMarkdownDocument({
+      path: this.pathValue,
+      replica: () => this.requireOpened().replica,
+      importChanges: (changes) => this.importRemoteChanges(changes),
+      subscribe: (listener) => this.subscribeText(listener),
+      save: () => this.flush(),
+    })
+    this.withdrawOpen = withdraw
+    this.cleanups.push(withdraw)
   }
 
   /** Lets the agent read and edit this document through the session (`documentAgentBridge`), under its current path. */

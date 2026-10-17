@@ -1,8 +1,9 @@
 /** Which open documents are co-edited right now, and who else is in each one: for the tab's indicators. */
 import { useSyncExternalStore } from 'react'
-import type { Presence } from '@/lib/sync'
+import type { Presence, Role } from '@/lib/sync'
 
-export type DocumentCollab = { docId: string; peers: Presence[] }
+/** A co-edited document: its room, the other people in it, and this person's role there. */
+export type DocumentCollab = { docId: string; peers: Presence[]; role?: Role }
 
 const documents = new Map<string, DocumentCollab>()
 const listeners = new Set<() => void>()
@@ -24,6 +25,14 @@ export function setDocumentPeers(path: string, peers: Presence[], self: string |
   if (!current) return
   const others = peers.filter((peer) => peer.principalId !== self)
   documents.set(path, { ...current, peers: others.filter((peer, index) => others.findIndex((other) => other.principalId === peer.principalId) === index) })
+  emit()
+}
+
+/** This person's role in the document's room, as the room answered it. */
+export function setDocumentRole(path: string, role: Role) {
+  const current = documents.get(path)
+  if (!current || current.role === role) return
+  documents.set(path, { ...current, role })
   emit()
 }
 

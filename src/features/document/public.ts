@@ -27,3 +27,4 @@ export const loadDocumentClipboard = () => import('./lib/documentClipboard')
 export const loadDocumentAgentReviewBar = () => import('./components/DocumentAgentReviewBar')
 /** Loads the Markdown document replica store (opening, saving, identity across renames); it carries the KDM. */
 export const loadDocumentStore = () => import('./kdm/documentStore')
+export { findOpenMarkdownDocument, followOpenMarkdownDocuments, type OpenMarkdownDocument } from './kdm/openDocumentSessions'
