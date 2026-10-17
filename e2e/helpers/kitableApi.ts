@@ -3,6 +3,7 @@ import type { Page } from '@playwright/test'
 import { fulfillJson } from './mockApi'
 import type { DataDocumentsTransactOp, DataDocumentsTransactTableChange } from '../../src/api/generated/data-documents-transact'
 import type { TableChangedParams } from '../../src/api/generated/table-changed'
+import type { DataDocumentsReplicaReplicaChanged } from '../../src/api/generated/data-documents-replica'
 
 /**
  * Mocks for the Kitable (Table kit) editor: the desktop shell bridge
@@ -417,10 +418,18 @@ function originFromRequestHeaders(headers: Record<string, string>) {
   return session ? `person:session:${session}` : 'unknown'
 }
 
+/**
+ * The mock's stand-in for the document's KDM replica (`/data-documents/replica/*`): opaque
+ * base64 a spec sets and reads; it does not merge anything. `version` and `changes` are what
+ * `replica/version` and `replica/export` answer; `imported` collects every `replica/import`.
+ */
+export type MockTableReplica = { docId: string; version: string; changes: string; imported: string[] }
+
 export async function mockKitableDataDocumentApi(page: Page) {
   const document: MockTableDocument = structuredClone(FIXTURE_DOCUMENT)
   const records: MockRecord[] = FIXTURE_RECORDS.items.map((item) => ({ ...item, values: { ...item.values } }))
   const counters = freshMockTableCounters()
+  const replica: MockTableReplica = { docId: '00000000-0000-4000-8000-000000000001', version: '', changes: '', imported: [] }
 
   function recordsResponse() {
     return { items: records, total: records.length, offset: 0, limit: 200 }
@@ -439,6 +448,17 @@ export async function mockKitableDataDocumentApi(page: Page) {
     const url = new URL(request.url())
     const path = url.pathname
     const method = request.method()
+
+    // POST /data-documents/replica/{version,export,import} → the opaque mock replica
+    const replicaMatch = path.match(/^\/api\/v1\/data-documents\/replica\/(version|export|import)$/)
+    if (method === 'POST' && replicaMatch) {
+      const body = (request.postDataJSON() ?? {}) as { path?: string; changes?: string }
+      const identity = { documentId: String(document.id), documentPath: body.path ?? document.path, docId: replica.docId, version: replica.version }
+      if (replicaMatch[1] === 'version') return fulfillJson(route, { code: 200, data: identity })
+      if (replicaMatch[1] === 'export') return fulfillJson(route, { code: 200, data: { ...identity, changes: replica.changes } })
+      replica.imported.push(body.changes ?? '')
+      return fulfillJson(route, { code: 200, data: { ...identity, change: emptyMockTableChange(String(document.id), 'import:sync') } })
+    }
 
     // POST /data-documents/open → resolve a path to the doc
     if (method === 'POST' && path === '/api/v1/data-documents/open') {
@@ -513,7 +533,7 @@ export async function mockKitableDataDocumentApi(page: Page) {
     return fulfillJson(route, { code: 200, data: {} })
   })
 
-  return { document, records }
+  return { document, records, replica }
 }
 
 type BridgeMessage = { jsonrpc: '2.0'; id?: number; method?: string; params?: Record<string, unknown> }
@@ -543,6 +563,12 @@ async function ensureKitBridgeStream(page: Page) {
   await page.route('**/v1/kits/bridge?**', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ code: 200, message: 'success', data: {} }) })
   })
+}
+
+/** Injects a `table/replica-changed` notification into the page's kit bridge stream. */
+export async function emitTableReplicaChanged(page: Page, params: DataDocumentsReplicaReplicaChanged) {
+  await ensureKitBridgeStream(page)
+  kitBridgeQueues.get(page)!.push({ jsonrpc: '2.0', method: 'table/replica-changed', params })
 }
 
 /** Injects a `table/changed` notification into the page's kit bridge stream. */

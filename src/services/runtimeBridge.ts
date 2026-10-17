@@ -1,4 +1,5 @@
 import { kitBridgeURL, postKitBridgeMessage } from '@/api/kits'
+import type { DataDocumentsReplicaReplicaChanged } from '@/api/generated/data-documents-replica'
 import type { TableChangedParams } from '@/api/generated/table-changed'
 
 /**
@@ -202,3 +203,48 @@ export const onTableChanged = tableChangedChannel.subscribe
  * unsubscribes.
  */
 export const onTableChangedResync = tableChangedChannel.onResync
+
+type TableReplicaChangedListener = (params: DataDocumentsReplicaReplicaChanged) => void
+
+function isTableReplicaChangedEvent(value: unknown): value is DataDocumentsReplicaReplicaChanged {
+  if (!value || typeof value !== 'object') return false
+  const event = value as Record<string, unknown>
+  return typeof event.documentPath === 'string' && typeof event.docId === 'string' && typeof event.version === 'string'
+}
+
+/**
+ * The `table/replica-changed` channel: a notification (no reply) the runtime sends after a local
+ * transaction (any origin but `import`) moves a `.kitable` file's KDM replica to a new version,
+ * for co-editing relays to export the new changes. Opens the shared stream only while at least
+ * one listener is subscribed. Exported for tests; `onTableReplicaChanged` below is the window's
+ * one instance, over the shared bridge stream.
+ */
+export function createTableReplicaChangedChannel(transport: BridgeTransport) {
+  const listeners = new Set<TableReplicaChangedListener>()
+  let close: (() => void) | null = null
+
+  const channel: BridgeChannel = {
+    handles: (method) => method === 'table/replica-changed',
+    handle(_method, params) {
+      if (!isTableReplicaChangedEvent(params)) {
+        console.warn('[runtimeBridge] dropped a malformed table/replica-changed event', params)
+        return
+      }
+      for (const listener of listeners) listener(params)
+    },
+  }
+
+  return function subscribe(listener: TableReplicaChangedListener) {
+    listeners.add(listener)
+    close ??= transport.open(channel)
+    return () => {
+      if (!listeners.delete(listener)) return
+      if (listeners.size) return
+      close?.()
+      close = null
+    }
+  }
+}
+
+/** Subscribes to this window's `table/replica-changed` notifications; returns the function that unsubscribes. */
+export const onTableReplicaChanged = createTableReplicaChangedChannel(runtimeBridge)

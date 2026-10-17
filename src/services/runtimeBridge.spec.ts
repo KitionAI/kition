@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createRuntimeBridge, createTableChangedChannel, type BridgeChannel, type BridgeConnection, type BridgeTransport } from './runtimeBridge'
+import { createRuntimeBridge, createTableChangedChannel, createTableReplicaChangedChannel, type BridgeChannel, type BridgeConnection, type BridgeTransport } from './runtimeBridge'
 
 function fakeConnection() {
   const posted: Array<{ session: number; message: Record<string, unknown> }> = []
@@ -246,5 +246,48 @@ describe('createTableChangedChannel', () => {
     unsubscribeResync()
     ready()
     expect(resync).not.toHaveBeenCalled()
+  })
+})
+
+describe('table/replica-changed channel', () => {
+  function fakeTransport() {
+    const state = { channel: null as BridgeChannel | null, opens: 0, closes: 0 }
+    const transport: BridgeTransport = {
+      open(channel) {
+        state.opens += 1
+        state.channel = channel
+        return () => {
+          state.closes += 1
+          state.channel = null
+        }
+      },
+      notify: () => undefined,
+    }
+    return { transport, state }
+  }
+
+  it('handles only table/replica-changed, and opens the stream while subscribed', () => {
+    const { transport, state } = fakeTransport()
+    const subscribe = createTableReplicaChangedChannel(transport)
+    const unsubscribe = subscribe(() => undefined)
+    expect(state.opens).toBe(1)
+    expect(state.channel?.handles('table/replica-changed')).toBe(true)
+    expect(state.channel?.handles('table/changed')).toBe(false)
+    unsubscribe()
+    expect(state.closes).toBe(1)
+  })
+
+  it('delivers well-formed events and drops malformed ones', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const { transport, state } = fakeTransport()
+    const listener = vi.fn()
+    createTableReplicaChangedChannel(transport)(listener)
+    const params = { documentPath: 'a.kitable', docId: 'd', version: 'AQ==' }
+    state.channel?.handle('table/replica-changed', params)
+    state.channel?.handle('table/replica-changed', { documentPath: 'a.kitable' })
+    expect(listener).toHaveBeenCalledTimes(1)
+    expect(listener).toHaveBeenCalledWith(params)
+    expect(warn).toHaveBeenCalledTimes(1)
+    warn.mockRestore()
   })
 })
