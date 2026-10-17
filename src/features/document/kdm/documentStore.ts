@@ -5,7 +5,7 @@
  * The `.md` file is the document; the store only adds editing history. So every store failure degrades to
  * importing the file again (a new identity, no history) and never blocks reading or writing the file.
  */
-import { Replica, type ObjectId, type Origin } from '@/lib/kdm'
+import { randomActor, Replica, type ObjectId, type Origin } from '@/lib/kdm'
 import {
   deleteDocumentStore,
   isDocumentIndexConflict,
@@ -416,6 +416,24 @@ export function mergeFileIntoReplica(opened: Pick<OpenedDocument, 'replica' | 'r
   if (base === incoming) return 'unchanged'
   const current = documentBody(opened.replica, opened.rootId)
   return opened.replica.transact(FILE_IMPORT_ORIGIN, (tx) => mergeExternalText(tx, opened.rootId, base, incoming, current))
+}
+
+// --- Shared documents --------------------------------------------------------
+
+/**
+ * Writes a new Markdown file at `path` (where there must be no file yet) from a document someone
+ * shared for co-editing: `bytes` (a KDM snapshot or a full change export) become the file's replica
+ * as they are, stored and indexed under `path`, so the file is that same document (its KDM id) and
+ * its session co-edits it. Answers the replica version the store holds.
+ */
+export async function createDocumentFromReplica(path: string, bytes: Uint8Array, options: { expectedRoot: string }): Promise<Uint8Array> {
+  const replica = Replica.load(documentSchema, bytes, randomActor())
+  const rootId = documentRootId(replica)
+  const { style } = analyzeText(documentBody(replica, rootId))
+  const meta = makeMeta(replica, path, '', null, style)
+  await saveDocument({ path, opened: { replica, rootId, meta, style }, expectedFileText: null, expectedRoot: options.expectedRoot })
+  await updateIndex(withEntry(path, replica.docId), options)
+  return replica.version().encode()
 }
 
 // --- Other kinds of documents ----------------------------------------------

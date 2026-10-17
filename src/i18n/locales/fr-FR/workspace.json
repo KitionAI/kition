@@ -726,6 +726,10 @@
       "online": "Coédition : connecté",
       "connecting": "Coédition : connexion…",
       "offline": "Coédition : hors ligne. Vos modifications seront synchronisées à la reconnexion."
-    }
+    },
+    "accessLabel": "Ce que permet le lien",
+    "accessEdit": "Peut modifier",
+    "accessView": "Peut consulter",
+    "viewOnly": "Lecture seule"
   }
 }

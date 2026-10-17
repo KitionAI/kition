@@ -4,8 +4,21 @@ import { useTranslation } from 'react-i18next'
 import { WorkspaceTabContextMenu, type WorkspaceTabContextMenuItem } from '@/features/workspace/components/WorkspaceTabContextMenu'
 import { getWorkspaceItemIcon, getWorkspaceItemIconColorClass, type WorkspaceTab } from '@/features/workspace/lib/workspace'
 import { KitIcon } from '@/components/KitIcon'
-import { canShareKitDocument, CollabTabIndicators, requestShareKitDocument, useCollabAvailable } from '@/features/collab/public'
+import { canShareDocument, CollabTabIndicators, requestShareDocument, useCollabAvailable } from '@/features/collab/public'
 import { cn } from '@/lib/utils'
+
+/** The workspace file a tab edits, for co-editing (kit documents, boards, Markdown documents, tables). */
+function collabTabPath(tab: WorkspaceTab): string | null {
+  if (tab.type === 'file-viewer' || tab.type === 'board' || tab.type === 'document') return tab.path
+  if (tab.type === 'table') return tab.kitablePath
+  return null
+}
+
+/** A tab's co-editing indicators, for a tab whose document can be co-edited. */
+function CollabIndicatorsFor({ tab }: { tab: WorkspaceTab }) {
+  const path = collabTabPath(tab)
+  return path ? <CollabTabIndicators path={path} /> : null
+}
 
 export function WorkspaceTabStrip({
   tabs,
@@ -192,6 +205,7 @@ export function WorkspaceTabStrip({
     const hasRight = index >= 0 && index < tabs.length - 1
     const hasOthers = tabs.length > 1
     const supportsCopyRef = tab.type === 'document' || tab.type === 'file-viewer'
+    const sharePath = collabTabPath(tab)
     return [
       {
         key: 'close',
@@ -242,9 +256,9 @@ export function WorkspaceTabStrip({
         disabled: !supportsCopyRef || !onCopyTabRef,
         onSelect: () => onCopyTabRef?.(tab),
       },
-      // Co-editing, only where it is set up and the tab's kit editor can share its document.
-      ...(collabAvailable && tab.type === 'file-viewer' && canShareKitDocument(tab.path)
-        ? [{ key: 'share', label: t('collab.share'), onSelect: () => requestShareKitDocument(tab.path) }]
+      // Co-editing, only where it is set up and the tab's editor can share its document.
+      ...(collabAvailable && sharePath && canShareDocument(sharePath)
+        ? [{ key: 'share', label: t('collab.share'), onSelect: () => requestShareDocument(sharePath) }]
         : []),
     ]
   }
@@ -278,7 +292,7 @@ export function WorkspaceTabStrip({
       >
         <WorkspaceTabIcon tab={tab} />
         <span>{tab.title}</span>
-        {tab.type === 'file-viewer' ? <CollabTabIndicators path={tab.path} /> : null}
+        <CollabIndicatorsFor tab={tab} />
         <AgentChangedMark show={activeTabId !== tab.id && Boolean(isTabChangedByAgent?.(tab))} />
         <button
           type="button"
@@ -409,7 +423,7 @@ export function WorkspaceTabStrip({
           >
             <WorkspaceTabIcon tab={tab} />
             <span>{tab.title}</span>
-            {tab.type === 'file-viewer' ? <CollabTabIndicators path={tab.path} /> : null}
+            <CollabIndicatorsFor tab={tab} />
             <button type="button" className="document-tab-close" tabIndex={-1}>
               <X className="size-3" />
             </button>

@@ -726,6 +726,10 @@
       "online": "协同编辑：已连接",
       "connecting": "协同编辑：正在连接",
       "offline": "协同编辑：离线。重新连接后会同步你的编辑。"
-    }
+    },
+    "accessLabel": "通过链接可进行的操作",
+    "accessEdit": "可编辑",
+    "accessView": "仅查看",
+    "viewOnly": "仅查看"
   }
 }

@@ -7,13 +7,13 @@ import { SyncRpcError } from '@/lib/sync'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/registry/ui/dialog'
 import { collabConfigured, CollabUnavailableError } from './syncConnection'
 import { onCollabSettingsChanged } from './collabSettings'
-import { openSharedDocument, shareKitDocument, type SharedKit } from './shareActions'
+import { openSharedDocument, shareDocument, shareViewOnlyLink, type SharedKit } from './shareActions'
 
 const SHARE_EVENT = 'kition:collab:share'
 const OPEN_SHARED_EVENT = 'kition:collab:open-shared'
 
-/** Asks the window's co-editing dialogs to share the kit document open at `path`. */
-export function requestShareKitDocument(path: string) {
+/** Asks the window's co-editing dialogs to share the document open at `path`. */
+export function requestShareDocument(path: string) {
   window.dispatchEvent(new CustomEvent(SHARE_EVENT, { detail: { path } }))
 }
 
@@ -65,7 +65,9 @@ async function copyText(text: string) {
 export function CollabDialogs({ kitFor, onOpened }: { kitFor: (kitId: string) => SharedKit | null; onOpened: (path: string) => void }) {
   const { t } = useTranslation('workspace')
   const errorText = useErrorText()
-  const [shared, setShared] = useState<{ link: string } | null>(null)
+  /** The shared document's room, its editing link, and the link shown (editing or view-only). */
+  const [shared, setShared] = useState<{ docId: string; editLink: string; viewLink: string | null; access: 'edit' | 'view'; busy: boolean } | null>(null)
+  const shownLink = shared ? (shared.access === 'view' ? shared.viewLink ?? '' : shared.editLink) : ''
   const [opening, setOpening] = useState<{ link: string; busy: boolean; error: string } | null>(null)
 
   useEffect(() => {
@@ -73,11 +75,11 @@ export function CollabDialogs({ kitFor, onOpened }: { kitFor: (kitId: string) =>
       const path = (event as CustomEvent<{ path?: string }>).detail?.path
       if (!path) return
       const toast = notify.loading(t('collab.sharing'))
-      void shareKitDocument(path).then(
-        async (link) => {
+      void shareDocument(path).then(
+        async ({ docId, shareLink }) => {
           notify.dismiss(toast)
-          await copyText(link)
-          setShared({ link })
+          await copyText(shareLink)
+          setShared({ docId, editLink: shareLink, viewLink: null, access: 'edit', busy: false })
         },
         (error: unknown) => {
           notify.dismiss(toast)
@@ -93,6 +95,27 @@ export function CollabDialogs({ kitFor, onOpened }: { kitFor: (kitId: string) =>
       window.removeEventListener(OPEN_SHARED_EVENT, onOpenShared)
     }
   }, [errorText, t])
+
+  /** Shows the editing link, or the view-only one (made on first use). */
+  const chooseAccess = (access: 'edit' | 'view') => {
+    if (!shared || shared.busy || shared.access === access) return
+    if (access === 'edit' || shared.viewLink) {
+      setShared({ ...shared, access })
+      return
+    }
+    const { docId } = shared
+    setShared({ ...shared, busy: true })
+    void shareViewOnlyLink(docId).then(
+      async (viewLink) => {
+        await copyText(viewLink)
+        setShared((current) => (current?.docId === docId ? { ...current, viewLink, access: 'view', busy: false } : current))
+      },
+      (error: unknown) => {
+        setShared((current) => (current?.docId === docId ? { ...current, busy: false } : current))
+        notify.error(t('collab.shareFailed'), { description: errorText(error) })
+      },
+    )
+  }
 
   const submit = () => {
     if (!opening?.link.trim() || opening.busy) return
@@ -115,8 +138,25 @@ export function CollabDialogs({ kitFor, onOpened }: { kitFor: (kitId: string) =>
             <DialogTitle>{t('collab.sharedTitle')}</DialogTitle>
             <DialogDescription>{t('collab.sharedDescription')}</DialogDescription>
           </DialogHeader>
-          <div className="px-5 py-4">
-            <Input readOnly value={shared?.link ?? ''} aria-label={t('collab.linkLabel')} data-testid="collab-share-link" onFocus={(event) => event.currentTarget.select()} />
+          <div className="space-y-3 px-5 py-4">
+            <div className="inline-flex gap-1 rounded-lg border border-border p-0.5" role="radiogroup" aria-label={t('collab.accessLabel')}>
+              {(['edit', 'view'] as const).map((access) => (
+                <Button
+                  key={access}
+                  type="button"
+                  size="sm"
+                  variant={shared?.access === access ? 'secondary' : 'ghost'}
+                  role="radio"
+                  aria-checked={shared?.access === access}
+                  disabled={shared?.busy}
+                  data-testid={`collab-share-access-${access}`}
+                  onClick={() => chooseAccess(access)}
+                >
+                  {t(access === 'edit' ? 'collab.accessEdit' : 'collab.accessView')}
+                </Button>
+              ))}
+            </div>
+            <Input readOnly value={shownLink} aria-label={t('collab.linkLabel')} data-testid="collab-share-link" onFocus={(event) => event.currentTarget.select()} />
           </div>
           <DialogFooter className="border-t px-5 py-4">
             <Button type="button" variant="outline" onClick={() => setShared(null)}>
@@ -125,7 +165,7 @@ export function CollabDialogs({ kitFor, onOpened }: { kitFor: (kitId: string) =>
             <Button
               type="button"
               onClick={() => {
-                if (shared) void copyText(shared.link).then((copied) => copied && notify.success(t('collab.linkCopied')))
+                if (shownLink) void copyText(shownLink).then((copied) => copied && notify.success(t('collab.linkCopied')))
               }}
             >
               {t('collab.copyLink')}

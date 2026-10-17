@@ -726,6 +726,10 @@
       "online": "Co-editing: connected",
       "connecting": "Co-editing: connecting",
       "offline": "Co-editing: offline. Your edits sync when you reconnect."
-    }
+    },
+    "accessLabel": "Who can do what with the link",
+    "accessEdit": "Can edit",
+    "accessView": "Can view",
+    "viewOnly": "View only"
   }
 }
