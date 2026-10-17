@@ -197,7 +197,7 @@ export async function mockAgentTurn(
     turn.event({ type: 'turn/start', turn: turnNumber })
     turn.nextStep()
     const kind = body.shell_approval ? 'approval' : body.hide_user_message ? 'context-action' : 'user'
-    turn.event({ type: 'user/message', content: [{ type: 'text', text: String(body.content ?? '') }], source: { kind } })
+    turn.event({ type: 'user/message', id: `message-${sessionId}-${turnNumber}`, content: [{ type: 'text', text: String(body.content ?? '') }], source: { kind } })
     await script(turn, request)
     await route.fulfill({ status: 200, contentType: 'application/x-ndjson', body: ndjson(turn.finish()) })
   })
