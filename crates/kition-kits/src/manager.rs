@@ -69,7 +69,11 @@ pub const KITS: &[KitDefinition] = &[
         name: "Kition Photo",
         binary_env: "KITION_KIT_PHOTO_BINARY",
         extensions: &["psd", "psb", "kitionphoto"],
-        creates: &[("psd", "psd"), ("psb", "psb"), ("kitionphoto", "kitionphoto")],
+        creates: &[
+            ("psd", "psd"),
+            ("psb", "psb"),
+            ("kitionphoto", "kitionphoto"),
+        ],
         embeds: true,
         exports: &[],
         agent: KitAgent {

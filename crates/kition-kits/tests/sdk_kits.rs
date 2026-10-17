@@ -35,7 +35,10 @@ const CASES: &[Case] = &[
         fixture: "Motion.kitioneffect",
         command: "layer.newSolid",
         params: || json!({ "name": "Blue", "color": "#0000ff", "width": 32, "height": 36 }),
-        file_command: ("file.saveAs", || json!({ "path": "elsewhere.kitioneffect" })),
+        file_command: (
+            "file.saveAs",
+            || json!({ "path": "elsewhere.kitioneffect" }),
+        ),
     },
     Case {
         kit: "kit.design",
