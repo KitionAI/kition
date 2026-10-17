@@ -81,8 +81,13 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
   const latest = useRef({ onOpenAgent, t })
   latest.current = { onOpenAgent, t }
   // A co-edited document this person may only view opens read-only; the kit is opened again
-  // when that becomes known after it opened (the role arrives with the room).
+  // when that becomes known after it opened (the role arrives with the room, or changes).
   const readOnly = useDocumentReadOnly(path)
+  // The read-only state the kit is open with: it follows `readOnly` once the open kit's replica
+  // has been taken (`carried`), so that no edit made before the change is lost when the kit is
+  // opened again from its file. The kit opened next imports it before anything relays it.
+  const [openedReadOnly, setOpenedReadOnly] = useState(readOnly)
+  const carried = useRef<{ changes: ArrayBuffer; blobs: ArrayBuffer } | null>(null)
   const src = `/kits/${kit.dir}/${kit.entry ?? 'index.html'}`
 
   useEffect(() => {
@@ -104,7 +109,7 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
           signal: abandon.signal,
           origin: window.location.origin,
           host: { name: 'Kition', version: __APP_VERSION__ },
-          document: { path, name: path.split('/').pop() ?? path, bytes, version: stamp, lend: lend ?? undefined, ...(readOnly ? { readOnly: true } : {}) },
+          document: { path, name: path.split('/').pop() ?? path, bytes, version: stamp, lend: lend ?? undefined, ...(openedReadOnly ? { readOnly: true } : {}) },
           theme: kitionTheme(),
           locale: i18n.language,
           shortcuts: HOST_SHORTCUTS,
@@ -116,7 +121,7 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
             },
             stamp: async ({ path: wanted }) => ({ version: await KITION_KIT_HOST.stamp(workspacePath(wanted)) }),
             write: async ({ path: wanted, bytes, mode }) => {
-              if (readOnly && mode === 'save') throw new Error(`${path} is open read-only`)
+              if (openedReadOnly && mode === 'save') throw new Error(`${path} is open read-only`)
               const target = mode === 'save' ? workspacePath(wanted) : await unusedPath(workspacePath(wanted))
               await writeKitFile(target, new Uint8Array(bytes))
               return { path: target, version: (await KITION_KIT_HOST.stamp(target)) ?? '' }
@@ -145,6 +150,16 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
           mounted.close()
           return
         }
+        // The edits of the kit this one replaces (opened again on a role change), unsaved ones too.
+        const carry = carried.current
+        if (carry && mounted.capabilities.includes('replica')) {
+          await mounted.replica.importChanges(carry.changes, carry.blobs)
+          if (closed) {
+            mounted.close()
+            return
+          }
+        }
+        carried.current = null
         const withdrawEditor = registerBridgeEditor({
           path,
           kitId: kit.kitId,
@@ -177,7 +192,24 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
       mounted?.close()
       setConnection(null)
     }
-  }, [i18n, kit.kitId, path, readOnly])
+  }, [i18n, kit.kitId, path, openedReadOnly])
+
+  useEffect(() => {
+    if (readOnly === openedReadOnly) return undefined
+    let cancelled = false
+    void (async () => {
+      if (connection?.capabilities.includes('replica')) {
+        carried.current = await connection.replica.exportChanges(new ArrayBuffer(0)).catch((error: unknown) => {
+          console.warn('[kit] could not keep the replica before opening the kit again', error)
+          return null
+        })
+      }
+      if (!cancelled) setOpenedReadOnly(readOnly)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [connection, openedReadOnly, readOnly])
 
   useEffect(() => {
     connection?.setLocale(i18n.language)
