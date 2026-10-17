@@ -8,6 +8,9 @@
 //! co-editor's edit. It is stored and projected in one SQL transaction like any write, then
 //! published as `table/changed` so open editors refresh. Every local transaction is reported as
 //! `table/replica-changed` by the shared handle itself (see [`DataDocState::publish_replica_changes`]).
+//!
+//! `create` makes a new file from another copy's full export (opening a shared table): the same
+//! KDM document, projected, indexed, with no undo steps.
 
 use axum::Router;
 use axum::extract::State;
@@ -18,12 +21,13 @@ use kition_core::events::DomainEvent;
 use kition_core::{AppError, AppResult};
 use kition_http::{CurrentUser, JsonBody, ok};
 use kition_kdm::{Origin, OriginKind, Version};
-use kition_kitable::{KitableError, TableChange};
+use kition_kitable::{KitableError, KitableFile, TableChange};
 use serde::Deserialize;
 use serde_json::{Value, json};
 
 use crate::DataDocState;
 use crate::index::DataDocument;
+use crate::source::{default_document_path, resolve_from_root};
 use crate::table_documents::{
     change_json, default_origin, encode_bytes, replica_changed_event, table_changed_event,
 };
@@ -33,6 +37,7 @@ pub fn routes() -> Router<DataDocState> {
         .route("/data-documents/replica/version", post(version))
         .route("/data-documents/replica/export", post(export))
         .route("/data-documents/replica/import", post(import))
+        .route("/data-documents/replica/create", post(create))
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -44,7 +49,7 @@ struct ReplicaRequest {
     /// `export`: the version the caller has (base64); blank exports every change.
     #[serde(default)]
     since: Option<String>,
-    /// `import`: the changes to import (base64).
+    /// `import`: the changes to import; `create`: the full export to create from (base64).
     #[serde(default)]
     changes: Option<String>,
 }
@@ -175,6 +180,47 @@ async fn import(
             )));
     }
     body["change"] = change_json(&doc.id.to_string(), &event_origin, &change);
+    Ok(ok(body))
+}
+
+async fn create(
+    State(state): State<DataDocState>,
+    user: CurrentUser,
+    JsonBody(request): JsonBody<ReplicaRequest>,
+) -> AppResult<Response> {
+    let user_id = user.id;
+    let body = state
+        .blocking(move |state| {
+            let changes = decode(request.changes.as_deref(), "changes")?;
+            if changes.is_empty() {
+                return Err(AppError::bad_request("changes must not be empty"));
+            }
+            let raw_path = request.path.unwrap_or_default();
+            if raw_path.trim().is_empty() {
+                return Err(AppError::bad_request("Data document path cannot be empty"));
+            }
+            let request_root = request.workspace_root.unwrap_or_default();
+            let root = state.request_workspace_root(&request_root);
+            let path = default_document_path(&raw_path, "");
+            let absolute = resolve_from_root(&root, &path)?;
+            match KitableFile::create_from_replica(&absolute, &changes) {
+                Ok(file) => file.close(),
+                Err(KitableError::Exists) => {
+                    return Err(AppError::conflict("A file already exists at this path"));
+                }
+                Err(KitableError::Kdm(message)) => return Err(AppError::bad_request(message)),
+                Err(err) => return Err(AppError::unhandled(err)),
+            }
+            state.tables.forget(&absolute);
+            let doc = state.document_by_path(user_id, &path, &request_root)?;
+            let file = state.open_document_as(&doc, default_origin())?;
+            Ok(identity(
+                &doc,
+                &file.replica().doc_id(),
+                &file.replica_version(),
+            ))
+        })
+        .await?;
     Ok(ok(body))
 }
 

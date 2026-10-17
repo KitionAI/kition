@@ -122,6 +122,21 @@ impl TableDocuments {
         *self.replica_listener.write() = Some(Arc::new(listener));
     }
 
+    /// Forgets the file at `path` unless a handle to it is held, so the next open reads whatever
+    /// file is there now (a new file made where an old one was deleted).
+    pub fn forget(&self, path: &Path) {
+        let Ok(absolute) = std::path::absolute(path) else {
+            return;
+        };
+        let mut open = self.lock();
+        if open
+            .get(&absolute)
+            .is_some_and(|entry| Arc::strong_count(&entry.file) == 1)
+        {
+            open.remove(&absolute);
+        }
+    }
+
     /// Drops the manager's own reference to every open file, for shutdown. A handle a caller
     /// still holds keeps its file open until that handle drops.
     pub fn close_all(&self) {

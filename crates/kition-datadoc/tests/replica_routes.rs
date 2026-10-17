@@ -204,6 +204,17 @@ async fn send(app: &Router, from: &str, to: &str) -> Value {
 }
 
 async fn create_record(f: &Fixture, document_id: &str, session: &str, title: &str) -> String {
+    create_record_in(f, document_id, f.table_id, session, title).await
+}
+
+/// [`create_record`] in the table `table_id` (integer ids are each file's own).
+async fn create_record_in(
+    f: &Fixture,
+    document_id: &str,
+    table_id: i64,
+    session: &str,
+    title: &str,
+) -> String {
     let (status, body) = call(
         &f.app,
         "POST",
@@ -212,7 +223,7 @@ async fn create_record(f: &Fixture, document_id: &str, session: &str, title: &st
         Some(json!({
             "ops": [{
                 "op": "records.create",
-                "tableId": f.table_id,
+                "tableId": table_id,
                 "at": null,
                 "records": [{ "title": title }],
             }],
@@ -244,15 +255,21 @@ async fn set_title(f: &Fixture, document_id: &str, session: &str, row_key: &str,
     assert_eq!(status, StatusCode::OK, "{body}");
 }
 
-/// Every record's row key and title in the document's file, sorted.
+/// Every record's row key and title in the document's file (its one table), sorted.
 async fn titles(f: &Fixture, path: &str) -> Vec<(String, Value)> {
     let tables = f.state.tables.clone();
     let absolute = f.state.workspace_dir.join(path);
-    let table_id = f.table_id;
     tokio::task::spawn_blocking(move || {
         let (file, _) = tables
             .open(&absolute, kition_kdm::Origin::system("test"))
             .unwrap_or_else(|err| panic!("{err}"));
+        // Integer ids are each file's own; every fixture file has the one table.
+        let table_id = file
+            .list_tables()
+            .unwrap_or_else(|err| panic!("{err}"))
+            .first()
+            .map(|table| table.id)
+            .unwrap_or_else(|| panic!("no table in {}", absolute.display()));
         let mut rows: Vec<(String, Value)> = file
             .list_records(table_id)
             .unwrap_or_else(|err| panic!("{err}"))
@@ -528,4 +545,103 @@ async fn bad_requests_are_refused() {
     )
     .await;
     assert_eq!(status, StatusCode::NOT_FOUND, "no such file");
+}
+
+#[tokio::test]
+async fn create_makes_a_new_file_of_the_same_document() {
+    let f = fixture();
+    let row = create_record(&f, &f.here_id, "here", "Shared row").await;
+    let exported = replica(&f.app, "export", json!({ "path": HERE })).await;
+
+    let joined_path = "Shared/Joined.kitable";
+    let created = replica(
+        &f.app,
+        "create",
+        json!({ "path": joined_path, "changes": exported["changes"] }),
+    )
+    .await;
+    check_contract("versionResponse", &created);
+    assert_eq!(created["documentPath"], joined_path);
+    assert_eq!(created["docId"], exported["docId"], "the same KDM document");
+    assert_eq!(created["version"], exported["version"]);
+    assert_ne!(created["documentId"], f.here_id, "its own data document");
+    assert_eq!(titles(&f, joined_path).await, titles(&f, HERE).await);
+    assert!(
+        titles(&f, joined_path)
+            .await
+            .contains(&(row, json!("Shared row")))
+    );
+
+    // Fields and views came along; nothing is an undo step.
+    let tables = f.state.tables.clone();
+    let here_abs = f.state.workspace_dir.join(HERE);
+    let joined_abs = f.state.workspace_dir.join(joined_path);
+    let joined_table_id = tokio::task::spawn_blocking(move || {
+        let schema = |path: &std::path::Path| {
+            let (file, _) = tables
+                .open(path, kition_kdm::Origin::system("test"))
+                .unwrap_or_else(|err| panic!("{err}"));
+            let table = file
+                .list_tables()
+                .unwrap_or_else(|err| panic!("{err}"))
+                .into_iter()
+                .find(|table| table.title == "Items" || table.name == "Items")
+                .unwrap_or_else(|| panic!("no Items table"));
+            let fields: Vec<String> = table
+                .fields
+                .iter()
+                .map(|field| field.title.clone())
+                .collect();
+            let views: Vec<String> = table.views.iter().map(|view| view.title.clone()).collect();
+            (fields, views, file.can_undo(), table.id)
+        };
+        let (here_fields, here_views, _, _) = schema(&here_abs);
+        let (joined_fields, joined_views, joined_undo, joined_table_id) = schema(&joined_abs);
+        assert_eq!(joined_fields, here_fields);
+        assert_eq!(joined_views, here_views);
+        assert!(!joined_undo);
+        joined_table_id
+    })
+    .await
+    .unwrap_or_else(|err| panic!("{err}"));
+
+    // From then on the two exchange changes like any two copies.
+    let theirs = create_record_in(
+        &f,
+        created["documentId"].as_str().unwrap_or_default(),
+        joined_table_id,
+        "joiner",
+        "From the joiner",
+    )
+    .await;
+    create_record(&f, &f.here_id, "here", "From here").await;
+    send(&f.app, joined_path, HERE).await;
+    send(&f.app, HERE, joined_path).await;
+    let here = titles(&f, HERE).await;
+    assert_eq!(here, titles(&f, joined_path).await);
+    assert!(
+        here.contains(&(theirs, json!("From the joiner"))),
+        "{here:?}"
+    );
+
+    // A path that exists is refused.
+    let (status, _) = call(
+        &f.app,
+        "POST",
+        "/data-documents/replica/create",
+        &[],
+        Some(json!({ "path": HERE, "changes": exported["changes"] })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CONFLICT);
+    let (status, _) = call(
+        &f.app,
+        "POST",
+        "/data-documents/replica/create",
+        &[],
+        Some(json!({ "path": "Bad.kitable", "changes": base64(b"not a kdm export") })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert!(!f.state.workspace_dir.join("Bad.kitable").exists());
 }

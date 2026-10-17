@@ -6,6 +6,7 @@
  */
 import request from './request'
 import type {
+  DataDocumentsReplicaCreateRequest,
   DataDocumentsReplicaExportRequest,
   DataDocumentsReplicaExportResponse,
   DataDocumentsReplicaImportRequest,
@@ -26,4 +27,9 @@ export function exportTableReplica(payload: DataDocumentsReplicaExportRequest) {
 
 export function importTableReplica(payload: DataDocumentsReplicaImportRequest) {
   return request.post<DataDocumentsReplicaImportResponse>('/v1/data-documents/replica/import', payload, OPTIONS)
+}
+
+/** Makes a new `.kitable` at `path` holding the document `changes` (a full export) is: same docId, no undo steps. */
+export function createTableFromReplica(payload: DataDocumentsReplicaCreateRequest) {
+  return request.post<DataDocumentsReplicaVersionResponse>('/v1/data-documents/replica/create', payload, OPTIONS)
 }

@@ -53,6 +53,21 @@ export type DataDocumentsReplicaImportRequest = {
   changes: DataDocumentsReplicaBytes
 }
 
+export type DataDocumentsReplicaCreateRequest = {
+  /**
+   * Workspace-relative path of the new .kitable file; nothing may exist there yet (409).
+   */
+  path: string
+  /**
+   * The workspace the path is in; the runtime's when blank.
+   */
+  workspace_root?: string
+  /**
+   * A full export (replica/export from nothing) of another copy of the document: the new file holds that same document (same docId), with no undo steps. The answer is a versionResponse.
+   */
+  changes: DataDocumentsReplicaBytes
+}
+
 export type DataDocumentsReplicaVersionResponse = {
   /**
    * The data document's id, as in table/changed.
@@ -116,6 +131,6 @@ export type DataDocumentsReplicaReplicaChanged = {
 }
 
 /**
- * A .kitable file's KDM replica for co-editing: POST /v1/data-documents/replica/version, POST /v1/data-documents/replica/export, and POST /v1/data-documents/replica/import, each naming the document by its workspace-relative path; and the table/replica-changed notification on the kit bridge stream (GET /v1/kits/bridge), sent after every local transaction (any origin but import) moves a file's replica to a new version. Bytes (versions and changes) are standard base64. An import has the origin import:sync: it is no undo step, it is stored and projected like any write, and it is published as table/changed (table-changed.schema.json) when it changed anything.
+ * A .kitable file's KDM replica for co-editing: POST /v1/data-documents/replica/version, POST /v1/data-documents/replica/export, POST /v1/data-documents/replica/import, and POST /v1/data-documents/replica/create (a new file from another copy's full export, answered like version), each naming the document by its workspace-relative path; and the table/replica-changed notification on the kit bridge stream (GET /v1/kits/bridge), sent after every local transaction (any origin but import) moves a file's replica to a new version. Bytes (versions and changes) are standard base64. An import has the origin import:sync: it is no undo step, it is stored and projected like any write, and it is published as table/changed (table-changed.schema.json) when it changed anything.
  */
 export type DataDocumentsReplicaContract = DataDocumentsReplicaVersionResponse

@@ -156,6 +156,52 @@ impl KitableFile {
         result
     }
 
+    /// Creates a new file whose replica is the document `changes` holds (a full export, or a
+    /// snapshot, of another replica: [`Replica::export_changes`] from [`Version::empty`]), under a
+    /// new actor: the same KDM document, so the two exchange changes from then on. The relational
+    /// tables are projected from it, the document's own `document_id` is its KDM id, and nothing
+    /// is an undo step. Appends `.kitable` when `path` has no extension; refuses
+    /// ([`KitableError::Exists`]) a path that exists, and bytes that are no KDM export of a table
+    /// document ([`KitableError::Kdm`]), leaving no file behind.
+    pub fn create_from_replica(path: &Path, changes: &[u8]) -> Result<Self> {
+        let mut path = path.to_path_buf();
+        if path.as_os_str().is_empty() {
+            return Err(KitableError::invalid("kitable path is required"));
+        }
+        if path.extension().is_none() {
+            path.set_extension("kitable");
+        }
+        // Checked before anything touches the disk: refused bytes must not leave a file.
+        let replica = Replica::load(schema(), changes, ActorId::random())?;
+        if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
+            std::fs::create_dir_all(parent)?;
+        }
+        if path.exists() {
+            return Err(KitableError::Exists);
+        }
+        let result = (|| {
+            let (mut conn, absolute) = open_sqlite(&path)?;
+            migrate_schema(&mut conn)?;
+            {
+                let tx = conn.transaction()?;
+                let now = now_millis();
+                set_meta(&tx, "document_id", &replica.doc_id().to_string())?;
+                set_meta(&tx, "created_at", &now.to_string())?;
+                set_meta(&tx, "updated_at", &now.to_string())?;
+                store::save_initial(&tx, &replica, now)?;
+                project::rebuild(&tx, &replica, now)?;
+                let position = store::stored_position(&tx)?;
+                store::set_projected_position(&tx, position)?;
+                tx.commit()?;
+            }
+            Self::attach(conn, absolute)
+        })();
+        if result.is_err() {
+            let _ = std::fs::remove_file(&path);
+        }
+        result
+    }
+
     /// Opens an existing file, migrating it to the current schema: a file from before the KDM
     /// gets its replica ([`migrate::upgrade`]), and a projection behind the stored replica is
     /// rebuilt.

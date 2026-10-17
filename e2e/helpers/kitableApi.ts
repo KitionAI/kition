@@ -421,15 +421,23 @@ function originFromRequestHeaders(headers: Record<string, string>) {
 /**
  * The mock's stand-in for the document's KDM replica (`/data-documents/replica/*`): opaque
  * base64 a spec sets and reads; it does not merge anything. `version` and `changes` are what
- * `replica/version` and `replica/export` answer; `imported` collects every `replica/import`.
+ * `replica/version` and `replica/export` answer; `imported` collects every `replica/import`, and
+ * `created` every `replica/create`.
  */
-export type MockTableReplica = { docId: string; version: string; changes: string; imported: string[] }
+export type MockTableReplica = {
+  docId: string
+  version: string
+  changes: string
+  imported: string[]
+  /** Every `replica/create`; answered like `replica/version`. */
+  created: Array<{ path: string; changes: string }>
+}
 
 export async function mockKitableDataDocumentApi(page: Page) {
   const document: MockTableDocument = structuredClone(FIXTURE_DOCUMENT)
   const records: MockRecord[] = FIXTURE_RECORDS.items.map((item) => ({ ...item, values: { ...item.values } }))
   const counters = freshMockTableCounters()
-  const replica: MockTableReplica = { docId: '00000000-0000-4000-8000-000000000001', version: '', changes: '', imported: [] }
+  const replica: MockTableReplica = { docId: '00000000-0000-4000-8000-000000000001', version: '', changes: '', imported: [], created: [] }
 
   function recordsResponse() {
     return { items: records, total: records.length, offset: 0, limit: 200 }
@@ -450,11 +458,15 @@ export async function mockKitableDataDocumentApi(page: Page) {
     const method = request.method()
 
     // POST /data-documents/replica/{version,export,import} → the opaque mock replica
-    const replicaMatch = path.match(/^\/api\/v1\/data-documents\/replica\/(version|export|import)$/)
+    const replicaMatch = path.match(/^\/api\/v1\/data-documents\/replica\/(version|export|import|create)$/)
     if (method === 'POST' && replicaMatch) {
       const body = (request.postDataJSON() ?? {}) as { path?: string; changes?: string }
       const identity = { documentId: String(document.id), documentPath: body.path ?? document.path, docId: replica.docId, version: replica.version }
       if (replicaMatch[1] === 'version') return fulfillJson(route, { code: 200, data: identity })
+      if (replicaMatch[1] === 'create') {
+        replica.created.push({ path: body.path ?? '', changes: body.changes ?? '' })
+        return fulfillJson(route, { code: 200, data: identity })
+      }
       if (replicaMatch[1] === 'export') return fulfillJson(route, { code: 200, data: { ...identity, changes: replica.changes } })
       replica.imported.push(body.changes ?? '')
       return fulfillJson(route, { code: 200, data: { ...identity, change: emptyMockTableChange(String(document.id), 'import:sync') } })
