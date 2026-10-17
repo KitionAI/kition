@@ -1,5 +1,9 @@
-import { expect, test } from '@playwright/test'
-import { kitEngine, openInKitFrame } from './helpers/embeddedKit'
+import fs from 'node:fs/promises'
+import path from 'node:path'
+import { expect, test, type Page } from '@playwright/test'
+import { kitEngine, openInKitFrame, openTreeFile } from './helpers/embeddedKit'
+import { kitPackageHasReplicaInfo } from './helpers/kitionPro'
+import { dismissFirstRunActivation } from './helpers/onboarding'
 import { canReadBlobBodies } from './helpers/requestBody'
 
 type NodeSheetDocument = { save(): Uint8Array; execute(command: string, params: string): string; free(): void }
@@ -65,6 +69,66 @@ test('opens a workbook in the Sheet kit’s own editor, edits it there, and save
       expect((await cellOf(saves[0].bytes, 'B2')).input).toBe('1300')
       expect((await cellOf(saves[0].bytes, 'B4')).value).toBe(1750)
     }
+  } finally {
+    await host.dispose()
+  }
+})
+
+/** The replica version of the kit editor showing `path`, as hex (Kition's development test hook). */
+function replicaVersion(page: Page, path: string) {
+  return page.evaluate(async (wanted) => (window.__KITION_KIT_TEST__ ? window.__KITION_KIT_TEST__.replicaVersion(wanted) : ''), path)
+}
+
+test('keeps a workbook’s replica across a save and a reopen, and opens a file changed elsewhere plainly', async ({ page, baseURL }) => {
+  test.skip(!engine.built, 'the Sheet kit editor is not built into public/kits/sheet-ui')
+  test.skip(!kitPackageHasReplicaInfo('sheet', 'kition_sheet_sdk'), 'the Sheet kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh sheet')
+  test.setTimeout(180_000)
+  const name = 'Replica.xlsx'
+  const { host, kit } = await openInKitFrame(page, baseURL!, name, await budgetFixture(), {}, { persist: true })
+  const reopen = async () => {
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await dismissFirstRunActivation(page)
+    return openTreeFile(page, name)
+  }
+  try {
+    await expect(kit.getByTestId('sheet-status')).toHaveText('Sheet1 · A1', { timeout: 60_000 })
+    // A second sheet and a new rent: changes both the file and the replica keep.
+    await kit.getByTestId('sheet-name-box').fill('B2')
+    await kit.getByTestId('sheet-name-box').press('Enter')
+    await kit.getByTestId('sheet-formula').fill('1300')
+    await kit.getByTestId('sheet-formula').press('Enter')
+    await kit.getByTestId('sheet-add').click()
+    await expect(kit.locator('[data-testid^="sheet-tab-"]')).toHaveCount(2)
+    await kit.getByTestId('sheet-save').click()
+    await expect(kit.getByTestId('sheet-unsaved')).toHaveCount(0, { timeout: 30_000 })
+
+    // The replica sits in the document store under the file's identity, with the saved file's stamp.
+    const store = path.join(host.root, '.kition', 'docs')
+    const readJson = async (file: string) => JSON.parse(await fs.readFile(path.join(store, file), 'utf8').catch(() => '{}'))
+    await expect.poll(async () => (await readJson('index.json')).entries?.[name] ?? null, { timeout: 15_000 }).not.toBeNull()
+    const docId = (await readJson('index.json')).entries[name] as string
+    await expect.poll(async () => (await readJson(`${docId}/meta.json`)).meta?.kit ?? null).toBe('kit.sheet')
+    expect(await fs.stat(path.join(store, docId, 'blobs.bin'))).toBeTruthy()
+    const saved = await replicaVersion(page, name)
+    expect(saved).not.toBe('')
+
+    // Reopened, the workbook is the replica it was saved with: the second sheet and the new rent
+    // survive, and opening records nothing (the file is what the replica saves).
+    const reopened = await reopen()
+    await expect(reopened.locator('[data-testid^="sheet-tab-"]')).toHaveCount(2, { timeout: 60_000 })
+    await expect.poll(() => replicaVersion(page, name).catch(() => ''), { timeout: 15_000 }).toBe(saved)
+    await expect(reopened.getByTestId('sheet-unsaved')).toHaveCount(0)
+    await reopened.getByTestId('sheet-tab-Sheet1').click()
+    await reopened.getByTestId('sheet-name-box').fill('B2')
+    await reopened.getByTestId('sheet-name-box').press('Enter')
+    await expect(reopened.getByTestId('sheet-formula')).toHaveValue('1300')
+
+    // A file changed elsewhere (a new stamp) opens plainly: what the file holds, a new replica.
+    await fs.writeFile(path.join(host.root, name), await budgetFixture())
+    const changed = await reopen()
+    await expect(changed.locator('[data-testid^="sheet-tab-"]')).toHaveCount(1, { timeout: 60_000 })
+    await expect.poll(() => replicaVersion(page, name).catch(() => ''), { timeout: 15_000 }).not.toBe('')
+    expect(await replicaVersion(page, name)).not.toBe(saved)
   } finally {
     await host.dispose()
   }
