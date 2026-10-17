@@ -4,6 +4,8 @@ import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { expect, test, type Page, type Route } from '@playwright/test'
 import { installDesktopHost } from './helpers/desktopHost'
+import { openInKitFrame, openTreeFile } from './helpers/embeddedKit'
+import { kitPackageHasReplicaInfo } from './helpers/kitionPro'
 import { fulfillJson, mockLocalWorkspaceApi } from './helpers/mockApi'
 import { dismissFirstRunActivation } from './helpers/onboarding'
 import { canReadBlobBodies } from './helpers/requestBody'
@@ -108,6 +110,59 @@ test('opens a Word document in the Word kit’s own editor, edits it there, and 
     await expect(kit.getByTestId('word-unsaved')).toHaveCount(0)
     expect(saves.map((save) => save.path)).toEqual(['Letter.docx'])
     if (canReadBlobBodies(browserName)) expect(await textOf(saves[0].bytes)).toContain('Bring a tripod.')
+  } finally {
+    await host.dispose()
+  }
+})
+
+/** The replica version of the kit editor showing `path`, as hex (Kition's development test hook). */
+function replicaVersion(page: Page, path: string) {
+  return page.evaluate(async (wanted) => (window.__KITION_KIT_TEST__ ? window.__KITION_KIT_TEST__.replicaVersion(wanted) : ''), path)
+}
+
+test('keeps a Word document’s replica across a save and a reopen, and opens a file changed elsewhere plainly', async ({ page, baseURL }) => {
+  test.skip(!existsSync(SDK_WASM) || !existsSync(UI_MARKER), 'the Word kit editor is not built into public/kits/word-ui')
+  test.skip(!kitPackageHasReplicaInfo('word', 'kition_word_sdk'), 'the Word kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh word')
+  test.setTimeout(180_000)
+  const name = 'Replica.docx'
+  const { host, kit } = await openInKitFrame(page, baseURL!, name, await letterFixture(), {}, { persist: true })
+  const reopen = async () => {
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await dismissFirstRunActivation(page)
+    return openTreeFile(page, name)
+  }
+  try {
+    await expect(kit.getByTestId('word-status')).toHaveText('Page 1 of 1', { timeout: 60_000 })
+    await kit.getByTestId('word-canvas-region').click({ position: { x: 20, y: 20 } })
+    await page.keyboard.press('Control+End')
+    await page.keyboard.press('Meta+ArrowDown')
+    await page.keyboard.type(' A line added before saving.')
+    await kit.getByTestId('word-save').click()
+    await expect(kit.getByTestId('word-unsaved')).toHaveCount(0, { timeout: 30_000 })
+
+    // The replica sits in the document store under the file's identity, with the saved file's stamp.
+    const store = path.join(host.root, '.kition', 'docs')
+    const readJson = async (file: string) => JSON.parse(await fs.readFile(path.join(store, file), 'utf8').catch(() => '{}'))
+    await expect.poll(async () => (await readJson('index.json')).entries?.[name] ?? null, { timeout: 15_000 }).not.toBeNull()
+    const docId = (await readJson('index.json')).entries[name] as string
+    await expect.poll(async () => (await readJson(`${docId}/meta.json`)).meta?.kit ?? null).toBe('kit.word')
+    expect(await fs.stat(path.join(store, docId, 'blobs.bin'))).toBeTruthy()
+    const saved = await replicaVersion(page, name)
+    expect(saved).not.toBe('')
+
+    // Reopened, the letter is the replica it was saved with: the same replica version.
+    const reopened = await reopen()
+    await expect(reopened.getByTestId('word-status')).toHaveText('Page 1 of 1', { timeout: 60_000 })
+    await expect.poll(() => replicaVersion(page, name).catch(() => ''), { timeout: 15_000 }).toBe(saved)
+    await expect(reopened.getByTestId('word-unsaved')).toHaveCount(0)
+
+    // A file changed elsewhere (a new stamp) still opens with its stored replica (the file wins
+    // where they disagree), recorded as a fresh change: a different version, never the old one.
+    await fs.writeFile(path.join(host.root, name), await letterFixture())
+    const changed = await reopen()
+    await expect(changed.getByTestId('word-status')).toHaveText('Page 1 of 1', { timeout: 60_000 })
+    await expect.poll(() => replicaVersion(page, name).catch(() => ''), { timeout: 15_000 }).not.toBe('')
+    expect(await replicaVersion(page, name)).not.toBe(saved)
   } finally {
     await host.dispose()
   }
