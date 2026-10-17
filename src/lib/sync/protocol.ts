@@ -70,6 +70,14 @@ export type RoomCreateResult = { shareLink: string }
 export type RoomOpenParams = { shareLink: string }
 export type RoomOpenResult = { docId: string; name: string; kit: string; role: Role }
 
+/**
+ * Mints another share link to a room the caller is a member of (protocol 1.4), granting `role`
+ * (`editor` or `viewer`, never more than the caller's own role): a view-only link, say, next to
+ * the editing link `room/create` answered.
+ */
+export type RoomLinkParams = { docId: string; role: Exclude<Role, 'owner'> }
+export type RoomLinkResult = { shareLink: string }
+
 /** Client to server, notification. */
 export type RoomLeaveParams = { docId: string }
 

@@ -24,6 +24,7 @@ export {
   type Role,
   type RoomCreateResult,
   type RoomJoinResult,
+  type RoomLinkResult,
   type RoomOpenResult,
   type ServerInfo,
   type SnapshotGetResult,

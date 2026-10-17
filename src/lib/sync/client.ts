@@ -20,6 +20,7 @@ import {
   type Role,
   type RoomCreateResult,
   type RoomJoinResult,
+  type RoomLinkResult,
   type RoomOpenResult,
   type SnapshotGetResult,
 } from './protocol'
@@ -196,6 +197,11 @@ export class SyncClient {
   /** Resolves `shareLink` to the room it points to; `join(result.docId, ...)` actually joins it. */
   openRoom(shareLink: string): Promise<RoomOpenResult> {
     return this.request('room/open', () => ({ shareLink }), (value) => value as RoomOpenResult)
+  }
+
+  /** Mints another share link to `docId`'s room granting `role` (protocol 1.4, `room/link`). */
+  createLink(docId: string, role: 'editor' | 'viewer'): Promise<RoomLinkResult> {
+    return this.request('room/link', () => ({ docId, role }), (value) => value as RoomLinkResult)
   }
 
   // -- connection lifecycle --------------------------------------------------------------------
