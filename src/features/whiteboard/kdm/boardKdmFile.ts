@@ -92,7 +92,8 @@ export function decodeBoardFile(text: string, actor: bigint): DecodedBoardFile {
     replica = Replica.load(boardSchema, bytes, actor)
   } catch (error) {
     if (!isRefusal(error)) throw error
-    const reason = error.reason === 'schema' && snapshotKit(bytes) === BOARD_KIT ? 'newer-version' : 'not-a-board'
+    const newer = error.reason === 'newer-schema' || error.reason === 'schema'
+    const reason = newer && snapshotKit(bytes) === BOARD_KIT ? 'newer-version' : 'not-a-board'
     return { kind: 'unsupported', reason }
   }
   if (replica.objectsOfType('Board').length === 0) return { kind: 'unsupported', reason: 'not-a-board' }
@@ -153,7 +154,7 @@ export function versionIncludes(version: Version, other: Version): boolean {
 
 /** KDM refusals of the bytes themselves; anything else (a reentrant call, an engine fault) is not. */
 function isRefusal(error: unknown): error is KdmError {
-  return error instanceof KdmError && (error.reason === 'encoding' || error.reason === 'schema' || error.reason === 'wrong-document')
+  return error instanceof KdmError && (error.reason === 'encoding' || error.reason === 'schema' || error.reason === 'newer-schema' || error.reason === 'wrong-document')
 }
 
 /**
