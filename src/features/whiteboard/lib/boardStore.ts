@@ -89,6 +89,8 @@ export class BoardStore {
   private recordsCache: readonly BoardRecord[] | null = null
   private elementsCache: readonly WhiteboardElement[] | null = null
   private readonly spatialIndex = new BoardSpatialIndex()
+  /** A board this person may only view (a co-edited board they are a viewer of): nothing commits. */
+  private readOnly = false
   private revision = 0
   private storeSnapshot: BoardStoreSnapshot = {
     revision: 0,
@@ -115,6 +117,18 @@ export class BoardStore {
   }
 
   readonly getSnapshot = () => this.storeSnapshot
+
+  /**
+   * Makes the board view-only (or editable again): a transaction then commits nothing (its live
+   * changes are reverted), and undo and redo do nothing. Merges still arrive.
+   */
+  setReadOnly(readOnly: boolean) {
+    this.readOnly = readOnly
+  }
+
+  isReadOnly() {
+    return this.readOnly
+  }
 
   /** The KDM document behind the view. Change it only through this store. */
   getReplica(): Replica {
@@ -373,6 +387,12 @@ export class BoardStore {
       if (this.refreshStaleView() || transaction.live) this.notify()
       return null
     }
+    if (this.readOnly) {
+      transaction.restoreBeforeRecords()
+      this.refreshStaleView()
+      this.notify()
+      return null
+    }
     const origin = transaction.source === 'agent'
       ? agent(LOCAL_AGENT, transaction.label)
       : person(LOCAL_PERSON, transaction.label)
@@ -462,6 +482,7 @@ export class BoardStore {
   }
 
   private step(direction: 'undo' | 'redo') {
+    if (this.readOnly) return null
     if (this.activeTransaction) this.activeTransaction.cancel()
     this.history.closeGroup()
     if (this.history.flushImports()) this.rebuildView({ repair: true })

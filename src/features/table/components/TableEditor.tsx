@@ -53,6 +53,7 @@ export function TableEditor({
   onOpenDocument,
   onAgentContextChange,
   onAgentOpenChange,
+  readOnly = false,
 }: {
   agentOpen?: boolean
   /**
@@ -84,6 +85,8 @@ export function TableEditor({
     onTableChanged?: () => Promise<void> | void
   }) => void
   onAgentOpenChange?: (open: boolean) => void
+  /** A co-edited table this person may only view: no cell, record, field, or view changes. */
+  readOnly?: boolean
 }) {
   const { t } = useTranslation('table')
   const importInputRef = useRef<HTMLInputElement | null>(null)
@@ -494,6 +497,13 @@ export function TableEditor({
     }
   }
 
+  /** `run`, or nothing at all for a table this person may only view. */
+  const viewOnly = <F extends (...args: never[]) => unknown>(run: F): F => (
+    readOnly ? ((() => undefined) as unknown as F) : run
+  )
+  const shownFields = readOnly ? fields.map((field) => ({ ...field, readonly: true })) : fields
+  const shownVisibleFields = readOnly ? visibleFields.map((field) => ({ ...field, readonly: true })) : visibleFields
+
   if (loading) {
     return (
       <div
@@ -528,7 +538,7 @@ export function TableEditor({
   }
 
   return (
-    <div className="data-inline-shell" data-testid="kitable-editor">
+    <div className="data-inline-shell" data-testid="kitable-editor" data-read-only={readOnly ? 'true' : undefined}>
       <input
         ref={importInputRef}
         type="file"
@@ -566,66 +576,66 @@ export function TableEditor({
           viewCreateOpen={viewCreateOpen}
           onToggleViewCreate={() => setViewCreateOpen((open) => !open)}
           onCloseViewCreate={() => setViewCreateOpen(false)}
-          onCreateView={(type) => void createView(type)}
-          onRenameView={(viewId, nextTitle) => void renameView(viewId, nextTitle)}
-          onDuplicateView={(viewId) => void duplicateView(viewId)}
-          onDeleteView={(viewId) => void deleteView(viewId)}
-          busy={busy || historyBusy}
+          onCreateView={viewOnly((type) => void createView(type))}
+          onRenameView={viewOnly((viewId, nextTitle) => void renameView(viewId, nextTitle))}
+          onDuplicateView={viewOnly((viewId) => void duplicateView(viewId))}
+          onDeleteView={viewOnly((viewId) => void deleteView(viewId))}
+          busy={busy || historyBusy || readOnly}
           fields={fields}
           hiddenFieldNames={hiddenFieldNames}
-          onResetHiddenFields={() => setHiddenFieldNames(new Set())}
-          onToggleFieldVisibility={(fieldName, checked) => {
+          onResetHiddenFields={viewOnly(() => setHiddenFieldNames(new Set()))}
+          onToggleFieldVisibility={viewOnly((fieldName, checked) => {
             setHiddenFieldNames((current) => {
               const next = new Set(current)
               if (checked) next.delete(fieldName)
               else next.add(fieldName)
               return next
             })
-          }}
-          onEditField={setEditingField}
-          onDuplicateField={columnActions.duplicateField}
-          onDeleteField={removeField}
-          onAddDefaultField={() => void addDefaultField()}
+          })}
+          onEditField={viewOnly(setEditingField)}
+          onDuplicateField={viewOnly(columnActions.duplicateField)}
+          onDeleteField={viewOnly(removeField)}
+          onAddDefaultField={viewOnly(() => void addDefaultField())}
           filterTree={filterTree}
-          onFilterTreeChange={setFilterTree}
+          onFilterTreeChange={viewOnly(setFilterTree)}
           sortItems={sortItems}
-          onSortItemsChange={setSortItems}
+          onSortItemsChange={viewOnly(setSortItems)}
           groupableFields={groupableFields}
           groupItems={groupItems}
-          onGroupItemsChange={setGroupItems}
+          onGroupItemsChange={viewOnly(setGroupItems)}
           viewMode={viewMode}
           coverFieldName={coverFieldName}
           coverField={coverField}
           coverFields={coverFields}
-          onCoverFieldNameChange={setCoverFieldName}
-          onResetCoverField={() => setCoverFieldName('')}
+          onCoverFieldNameChange={viewOnly(setCoverFieldName)}
+          onResetCoverField={viewOnly(() => setCoverFieldName(''))}
           rowHeightKey={rowHeightKey}
-          onRowHeightKeyChange={setRowHeightKey}
+          onRowHeightKeyChange={viewOnly(setRowHeightKey)}
           frozenColumnCount={frozenColumnCount}
-          onFrozenColumnCountChange={setFrozenColumnCount}
+          onFrozenColumnCountChange={viewOnly(setFrozenColumnCount)}
           toolbarPanel={toolbarPanel}
           onToolbarPanelChange={setToolbarPanel}
           newFieldTitle={newFieldTitle}
           newFieldType={newFieldType}
           onNewFieldTitleChange={setNewFieldTitle}
           onNewFieldTypeChange={setNewFieldType}
-          onAddField={() => {
+          onAddField={viewOnly(() => {
             void addField()
             setToolbarPanel(null)
-          }}
+          })}
           selectedRecordCount={selectedRecordIds.size}
-          onRemoveSelectedRecords={() => void removeSelectedRecords()}
-          onDuplicateSelectedRecords={() => void duplicateSelectedRecords()}
+          onRemoveSelectedRecords={viewOnly(() => void removeSelectedRecords())}
+          onDuplicateSelectedRecords={viewOnly(() => void duplicateSelectedRecords())}
           agentOpen={agentOpen}
           onToggleAgent={() => setAgentOpen((open) => !open)}
           agentDisabled={!document || !activeTable}
           query={query}
           onQueryChange={setQuery}
-          onAddRecord={() => void addRecord()}
+          onAddRecord={viewOnly(() => void addRecord())}
           canUndo={canUndo}
           canRedo={canRedo}
-          onUndo={() => void undo()}
-          onRedo={() => void redo()}
+          onUndo={viewOnly(() => void undo())}
+          onRedo={viewOnly(() => void redo())}
         />
 
         <TableEditorContent
@@ -633,8 +643,8 @@ export function TableEditor({
           tableId={activeTable.id}
           viewId={activeView.id}
           viewMode={viewMode}
-          fields={fields}
-          visibleFields={visibleFields}
+          fields={shownFields}
+          visibleFields={shownVisibleFields}
           groupField={groupField}
           groupedRecords={groupedRecords}
           groupPoints={groupPoints}
@@ -665,7 +675,7 @@ export function TableEditor({
           rowHeight={resolveGridRowHeight(rowHeightKey)}
           freezeColumnCount={frozenColumnCount}
           searchQuery={query}
-          onColumnFreeze={setFrozenColumnCount}
+          onColumnFreeze={viewOnly(setFrozenColumnCount)}
           draggingRecordId={kanbanDraggingRecordId}
           dragOverRecordId={kanbanDragOverRecordId}
           dragOverGroup={kanbanDragOverGroup}
@@ -673,14 +683,14 @@ export function TableEditor({
           onDragEnd={clearKanbanDrag}
           onDragOverRecord={setKanbanDragOverRecordId}
           onDragOverGroup={setKanbanDragOverGroup}
-          onMoveKanbanRecord={(recordId, group, targetRecordId) =>
+          onMoveKanbanRecord={viewOnly((recordId, group, targetRecordId) =>
             void moveKanbanRecord(recordId, group, targetRecordId)
-          }
-          onAddRecord={(initialValues) => void addRecord(initialValues)}
+          )}
+          onAddRecord={viewOnly((initialValues) => void addRecord(initialValues))}
           onOpenRecord={setSelectedRecord}
           onOpenDocument={onOpenDocument}
           onPreviewAttachments={openAttachmentPreview}
-          onSubmitForm={handleFormSubmit}
+          onSubmitForm={viewOnly(handleFormSubmit)}
           onLoadWindow={(window) => void loadRecords(window)}
           onToggleAllSelected={() =>
             toggleAllSelected(
@@ -692,22 +702,22 @@ export function TableEditor({
           onSelectCell={setSelectedGridCell}
           onOpenRecordContextMenu={openRecordContextMenu}
           onOpenColumnHeaderMenu={openColumnHeaderMenu}
-          onReorderField={(field, fromIndex, dropIndex) => {
+          onReorderField={viewOnly((field, fromIndex, dropIndex) => {
             void reorderField(field, fromIndex, dropIndex, visibleFields)
-          }}
-          onReorderRecords={(sourceRecordId, targetRecordId, position) =>
+          })}
+          onReorderRecords={viewOnly((sourceRecordId, targetRecordId, position) =>
             void reorderRecords(sourceRecordId, targetRecordId, position)
-          }
-          onRegenerate={(record, field) => void runAIField(record, field)}
-          onUpdateCell={(record, field, value) =>
+          )}
+          onRegenerate={viewOnly((record, field) => void runAIField(record, field))}
+          onUpdateCell={viewOnly((record, field, value) =>
             void updateCell(record, field, value)
-          }
-          onClearCells={(cells) => void clearCells(cells)}
-          onFillCells={(cells) => void fillCells(cells)}
-          onPaste={(event) => void pasteRecords(event)}
-          onOpenFieldCreator={() => void addDefaultField()}
-          onUndo={() => void undo()}
-          onRedo={() => void redo()}
+          )}
+          onClearCells={viewOnly((cells) => void clearCells(cells))}
+          onFillCells={viewOnly((cells) => void fillCells(cells))}
+          onPaste={viewOnly((event) => void pasteRecords(event))}
+          onOpenFieldCreator={viewOnly(() => void addDefaultField())}
+          onUndo={viewOnly(() => void undo())}
+          onRedo={viewOnly(() => void redo())}
         />
         <TableRecordContextMenu
           menu={
@@ -726,15 +736,15 @@ export function TableEditor({
               : null
           }
           onClose={closeRecordContextMenu}
-          onInsertRecords={(record, count, position) =>
+          onInsertRecords={viewOnly((record, count, position) =>
             insertRecordsNear(record, count, position)
-          }
-          onDuplicateRecord={duplicateRecord}
+          )}
+          onDuplicateRecord={viewOnly(duplicateRecord)}
           onCopyRecordURL={copyRecordURL}
           onOpenRecord={setSelectedRecord}
           onCopyRecordForChat={copyRecordValuesForChat}
-          onDeleteRecord={removeRecord}
-          onRegenerateAIField={(record, field) => void runAIField(record, field)}
+          onDeleteRecord={viewOnly(removeRecord)}
+          onRegenerateAIField={viewOnly((record, field) => void runAIField(record, field))}
           onStatus={setStatus}
         />
         <TableColumnHeaderMenu
@@ -750,18 +760,18 @@ export function TableEditor({
           }
           busy={busy}
           onClose={closeColumnHeaderMenu}
-          onEditField={setEditingField}
-          onDuplicateField={columnActions.duplicateField}
-          onRunAIBatch={handleColumnAIBatch}
+          onEditField={viewOnly(setEditingField)}
+          onDuplicateField={viewOnly(columnActions.duplicateField)}
+          onRunAIBatch={viewOnly(handleColumnAIBatch)}
           onDownloadAllFiles={columnActions.downloadAllFiles}
           onAddColumnToChat={columnActions.copyColumnValuesForChat}
-          onInsertField={columnActions.insertField}
-          onAddFilterForField={columnActions.addFilterForField}
-          onAddSortForField={columnActions.addSortForField}
-          onSetGroupField={columnActions.setGroupField}
-          onFreezeUpTo={columnActions.freezeUpToField}
-          onHideField={columnActions.hideField}
-          onDeleteField={removeField}
+          onInsertField={viewOnly(columnActions.insertField)}
+          onAddFilterForField={viewOnly(columnActions.addFilterForField)}
+          onAddSortForField={viewOnly(columnActions.addSortForField)}
+          onSetGroupField={viewOnly(columnActions.setGroupField)}
+          onFreezeUpTo={viewOnly(columnActions.freezeUpToField)}
+          onHideField={viewOnly(columnActions.hideField)}
+          onDeleteField={viewOnly(removeField)}
         />
         <TableEditorFooter
           gridTotalRows={gridTotalRows}
@@ -780,7 +790,7 @@ export function TableEditor({
           fields={fields}
           busy={busy}
           onClose={() => setEditingField(null)}
-          onSave={(updates) => saveField(editingField, updates)}
+          onSave={viewOnly((updates) => saveField(editingField, updates))}
         />
       ) : null}
 
@@ -795,7 +805,7 @@ export function TableEditor({
               records.find((record) => record.id === selectedRecord.id) ||
               selectedRecord
             }
-            fields={fields}
+            fields={shownFields}
             primaryField={primaryField}
             documentId={document.id}
             tableId={activeTable.id}
@@ -808,14 +818,14 @@ export function TableEditor({
             onPreviewAttachments={openAttachmentPreview}
             onOpenDocument={onOpenDocument}
             onClose={() => setSelectedRecord(null)}
-            onDelete={() => {
+            onDelete={viewOnly(() => {
               void removeRecord(selectedRecord.id)
               setSelectedRecord(null)
-            }}
-            onUpdate={(field, value) =>
+            })}
+            onUpdate={viewOnly((field, value) =>
               void updateCell(selectedRecord, field, value)
-            }
-            onReplaceLinks={async (field: DataField, rowKeys: string[]): Promise<LinkRef[] | null> => {
+            )}
+            onReplaceLinks={viewOnly(async (field: DataField, rowKeys: string[]): Promise<LinkRef[] | null> => {
               try {
                 const refs = await replaceRecordLinks(document.id, activeTable.id, selectedRecord.id, field.id, rowKeys)
                 setRecords((items) =>
@@ -833,7 +843,7 @@ export function TableEditor({
                 })
                 return null
               }
-            }}
+            })}
           />
         )
       })() : null}

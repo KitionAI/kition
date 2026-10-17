@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Loader2 } from 'lucide-react'
 import { writeKitFile } from '@/api/kits'
 import { notify } from '@/lib/notify'
+import { useDocumentReadOnly } from '@/services/documentAccess'
 import { mountKit, type KitConnection, type KitTheme } from '../host/mountKit'
 import { KITION_KIT_HOST, readKitReplica, writeKitReplica } from './kitionHost'
 import { registerBridgeEditor, reportBridgeChange } from './kitBridge'
@@ -79,6 +80,9 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
   const [failure, setFailure] = useState<string | null>(null)
   const latest = useRef({ onOpenAgent, t })
   latest.current = { onOpenAgent, t }
+  // A co-edited document this person may only view opens read-only; the kit is opened again
+  // when that becomes known after it opened (the role arrives with the room).
+  const readOnly = useDocumentReadOnly(path)
   const src = `/kits/${kit.dir}/${kit.entry ?? 'index.html'}`
 
   useEffect(() => {
@@ -100,7 +104,7 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
           signal: abandon.signal,
           origin: window.location.origin,
           host: { name: 'Kition', version: __APP_VERSION__ },
-          document: { path, name: path.split('/').pop() ?? path, bytes, version: stamp, lend: lend ?? undefined },
+          document: { path, name: path.split('/').pop() ?? path, bytes, version: stamp, lend: lend ?? undefined, ...(readOnly ? { readOnly: true } : {}) },
           theme: kitionTheme(),
           locale: i18n.language,
           shortcuts: HOST_SHORTCUTS,
@@ -112,6 +116,7 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
             },
             stamp: async ({ path: wanted }) => ({ version: await KITION_KIT_HOST.stamp(workspacePath(wanted)) }),
             write: async ({ path: wanted, bytes, mode }) => {
+              if (readOnly && mode === 'save') throw new Error(`${path} is open read-only`)
               const target = mode === 'save' ? workspacePath(wanted) : await unusedPath(workspacePath(wanted))
               await writeKitFile(target, new Uint8Array(bytes))
               return { path: target, version: (await KITION_KIT_HOST.stamp(target)) ?? '' }
@@ -172,7 +177,7 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
       mounted?.close()
       setConnection(null)
     }
-  }, [i18n, kit.kitId, path])
+  }, [i18n, kit.kitId, path, readOnly])
 
   useEffect(() => {
     connection?.setLocale(i18n.language)

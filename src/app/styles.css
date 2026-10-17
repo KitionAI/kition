@@ -1383,6 +1383,10 @@
     @apply inline-flex shrink-0 items-center -space-x-1;
   }
 
+  .collab-view-only {
+    @apply inline-flex shrink-0 items-center rounded border border-border px-1 text-[10px] leading-4 text-muted-foreground;
+  }
+
   .collab-presence-avatar {
     @apply inline-flex size-4 items-center justify-center rounded-full text-[8px] font-semibold leading-none text-white ring-1 ring-background;
   }

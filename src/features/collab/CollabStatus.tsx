@@ -12,6 +12,16 @@ function CollabStatus({ state }: { state: CollabConnectionState }) {
   return <span className={cn('collab-status', `is-${shown}`)} role="status" aria-label={label} title={label} data-testid="collab-status" data-state={shown} />
 }
 
+/** Shown on a shared document this person may only view. */
+function ViewOnlyBadge() {
+  const { t } = useTranslation('workspace')
+  return (
+    <span className="collab-view-only" data-testid="collab-view-only">
+      {t('collab.viewOnly')}
+    </span>
+  )
+}
+
 /** A tab's co-editing indicators: nothing for a document that is not shared. */
 export function CollabTabIndicators({ path }: { path: string }) {
   const collab = useDocumentCollab(path)
@@ -20,6 +30,7 @@ export function CollabTabIndicators({ path }: { path: string }) {
   return (
     <span className="collab-tab-indicators" data-testid="collab-tab-indicators">
       <CollabStatus state={state} />
+      {collab.role === 'viewer' ? <ViewOnlyBadge /> : null}
       <PresenceAvatars peers={collab.peers} />
     </span>
   )

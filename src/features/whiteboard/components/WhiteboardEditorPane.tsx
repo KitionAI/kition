@@ -43,6 +43,7 @@ import {
   readWhiteboardTestReplica,
 } from '@/features/whiteboard/testing/whiteboardTestBridge'
 import { useTranslation } from 'react-i18next'
+import { useDocumentReadOnly } from '@/services/documentAccess'
 
 import './whiteboard.css'
 
@@ -78,6 +79,11 @@ export function WhiteboardEditorPane({
     store: controller.store,
     replaceDocument: controller.replaceDocument,
   })
+  // A co-edited board this person may only view: the canvas shows it, nothing edits it.
+  const readOnly = useDocumentReadOnly(path)
+  useEffect(() => {
+    controller.store.setReadOnly(readOnly)
+  }, [controller.store, readOnly])
   const [canvasSize, setCanvasSize] = useState<WhiteboardPoint>({ x: 1200, y: 760 })
   const [agentScope, setAgentScope] = useState<WhiteboardAgentScope>('viewport')
   const [imageStudioOpen, setImageStudioOpen] = useState(false)
@@ -344,6 +350,7 @@ export function WhiteboardEditorPane({
       className="relative h-full min-h-0 w-full bg-background"
       data-testid="whiteboard-editor-pane"
       data-board-path={path}
+      data-read-only={readOnly ? 'true' : undefined}
     >
       <WhiteboardCanvas
         agentPreview={agentPatch.state.preview}
@@ -358,18 +365,22 @@ export function WhiteboardEditorPane({
         onOpenImageStudio={openImageStudio}
         title={title}
       />
-      <WhiteboardToolbar
-        controller={controller}
-        canvasSize={canvasSize}
-      />
-      <WhiteboardSelectionToolbar
-        agentAvailable={agentAvailable}
-        controller={controller}
-        onAskAgent={askAgentAboutSelection}
-        onOpenImageStudio={openImageStudio}
-      />
+      {readOnly ? null : (
+        <>
+          <WhiteboardToolbar
+            controller={controller}
+            canvasSize={canvasSize}
+          />
+          <WhiteboardSelectionToolbar
+            agentAvailable={agentAvailable}
+            controller={controller}
+            onAskAgent={askAgentAboutSelection}
+            onOpenImageStudio={openImageStudio}
+          />
+        </>
+      )}
       <WhiteboardMinimap canvasSize={canvasSize} controller={controller} />
-      <WhiteboardStylePanel controller={controller} />
+      {readOnly ? null : <WhiteboardStylePanel controller={controller} />}
       <WhiteboardAgentScopeControl
         available={agentAvailable}
         hasSelection={controller.hasSelection}

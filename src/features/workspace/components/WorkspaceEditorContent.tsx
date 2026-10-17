@@ -25,6 +25,7 @@ import type {
 } from '@/services/desktop'
 import type { WhiteboardAgentBridge } from '@/features/whiteboard/lib/whiteboardAgentBridge'
 import type { DesignAgentBridge } from '@/features/design/public'
+import { useDocumentReadOnly } from '@/services/documentAccess'
 import type { ImageStudioRequest, ImageStudioStartResult } from '@/features/media-generation/public'
 import type {
   WhiteboardImageGenerationRequest,
@@ -201,7 +202,7 @@ export function WorkspaceEditorContent({
   documentTitle,
   draftContent,
   hasActiveDocument,
-  editorLocked,
+  editorLocked: editorLockedByWorkspace,
   editorMode,
   editorPreviewHtml,
   documentRevisionSaving,
@@ -241,6 +242,9 @@ export function WorkspaceEditorContent({
   rootPath,
 }: WorkspaceEditorContentProps) {
   const { t } = useTranslation('workspace')
+  // A co-edited document this person may only view opens read-only, like a locked editor.
+  const viewOnly = useDocumentReadOnly(activeDocument?.path)
+  const editorLocked = editorLockedByWorkspace || viewOnly
   const { t: td } = useTranslation('document')
   const openGlobalWorkflow = onOpenGlobalWorkflow ?? openWorkflowDetail
   const handleMarkdownCursorChange = useCallback((snapshot: MarkdownCursorSnapshot) => {
