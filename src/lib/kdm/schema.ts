@@ -25,6 +25,19 @@ export interface FieldDef {
   /** The allowed values of an `enum` field. */
   values?: string[]
   optional?: boolean
+  /**
+   * The marks a `text` field takes (rich-text run properties), by key (rule M19). A field without
+   * marks reads as a plain string in the canonical state; one with marks reads as its runs.
+   */
+  marks?: Record<string, MarkDef>
+}
+
+/** How a mark grows when text is inserted at one of its ends. */
+export type Expand = 'after' | 'before' | 'both' | 'none'
+
+/** One mark a `text` field declares. */
+export interface MarkDef {
+  expand: Expand
 }
 
 export interface TypeDef {
@@ -40,6 +53,7 @@ export interface Schema {
   readonly types: Readonly<Record<string, TypeDef>>
 }
 
+const EXPANDS: readonly string[] = ['after', 'before', 'both', 'none']
 const KINDS: readonly string[] = ['string', 'number', 'integer', 'boolean', 'enum', 'json', 'blob', 'ref', 'text', 'list', 'tree', 'map']
 const CONTAINERS: readonly FieldKind[] = ['text', 'list', 'tree', 'map']
 const TAKES_OF: readonly FieldKind[] = ['ref', 'list', 'tree']
@@ -63,7 +77,7 @@ function onlyKeys(where: string, value: Record<string, unknown>, allowed: readon
 /** One field definition as written, checked for shape only. */
 function readField(where: string, raw: unknown): FieldDef {
   if (!isRecord(raw)) throw errors.schema(`${where}: a field definition is an object`)
-  onlyKeys(where, raw, ['kind', 'of', 'values', 'optional'])
+  onlyKeys(where, raw, ['kind', 'of', 'values', 'optional', 'marks'])
   if (typeof raw.kind !== 'string' || !KINDS.includes(raw.kind)) throw errors.schema(`${where}: unknown kind \`${String(raw.kind)}\``)
   const field: FieldDef = { kind: raw.kind as FieldKind }
   if (raw.of !== undefined && raw.of !== null) {
@@ -78,7 +92,44 @@ function readField(where: string, raw: unknown): FieldDef {
     if (typeof raw.optional !== 'boolean') throw errors.schema(`${where}: \`optional\` is a boolean`)
     field.optional = raw.optional
   }
+  if (raw.marks !== undefined) {
+    if (!isRecord(raw.marks)) throw errors.schema(`${where}: \`marks\` is an object of mark definitions`)
+    const marks: Record<string, MarkDef> = {}
+    for (const key of sortedKeys(raw.marks)) {
+      const mark = raw.marks[key]
+      if (!isRecord(mark)) throw errors.schema(`${where} mark \`${key}\`: a mark definition is an object`)
+      onlyKeys(`${where} mark \`${key}\``, mark, ['expand'])
+      if (typeof mark.expand !== 'string' || !EXPANDS.includes(mark.expand)) throw errors.schema(`${where} mark \`${key}\`: \`expand\` is after, before, both, or none`)
+      setKey(marks, key, { expand: mark.expand as Expand })
+    }
+    field.marks = marks
+  }
   return field
+}
+
+/** Why `key` cannot name a mark, or `null`: the engine reserves `:` in style keys, and a `__proto__` attribute is lost by reads. */
+function badMarkKey(key: string): string | null {
+  if (key === '') return 'a mark key is not empty'
+  if (key.startsWith('$')) return 'names starting with `$` are reserved'
+  if (key.includes(':')) return 'a mark key holds no `:`'
+  if (key === '__proto__') return '`__proto__` is not a mark key'
+  return null
+}
+
+/** Whether `def` is a `text` field that declares marks. */
+export const hasMarks = (def: FieldDef): boolean => def.kind === 'text' && def.marks !== undefined && Object.keys(def.marks).length > 0
+
+/** Every mark key the schema declares with its expand: each key has one expand in a schema. */
+export function markExpands(schema: Schema): Map<string, Expand> {
+  const out = new Map<string, Expand>()
+  for (const ty of sortedKeys(schema.types)) {
+    const fields = schema.types[ty].fields
+    for (const name of sortedKeys(fields)) {
+      const marks = fields[name].marks ?? {}
+      for (const key of sortedKeys(marks)) out.set(key, marks[key].expand)
+    }
+  }
+  return out
 }
 
 /** The schema as written, checked for shape only: what the Rust crate's deserialization accepts. */
@@ -107,6 +158,7 @@ function readSchema(raw: unknown): Schema {
 function checkSchema(schema: Schema): void {
   if (schema.kdm !== KDM_VERSION) throw errors.schema(`kdm ${schema.kdm} is not supported; this build reads ${KDM_VERSION}`)
   if (!Object.hasOwn(schema.types, schema.root)) throw errors.schema(`root type \`${schema.root}\` is not declared`)
+  const expands = new Map<string, Expand>()
   for (const ty of sortedKeys(schema.types)) {
     if (ty.startsWith('$')) throw errors.schema(`type \`${ty}\`: names starting with \`$\` are reserved`)
     const def = schema.types[ty]
@@ -120,6 +172,19 @@ function checkSchema(schema: Schema): void {
       if (takesOf) {
         if (field.of === undefined) throw errors.schema(`\`${ty}.${name}\` needs \`of\``)
         if (!Object.hasOwn(schema.types, field.of)) throw errors.schema(`\`${ty}.${name}\` refers to undeclared type \`${field.of}\``)
+      }
+      const marks = field.marks ?? {}
+      const keys = sortedKeys(marks)
+      if (keys.length > 0 && field.kind !== 'text') throw errors.schema(`\`${ty}.${name}\`: only text fields take \`marks\``)
+      for (const key of keys) {
+        const reason = badMarkKey(key)
+        if (reason !== null) throw errors.schema(`\`${ty}.${name}\` mark \`${key}\`: ${reason}`)
+        const expand = marks[key].expand
+        const other = expands.get(key)
+        if (other !== undefined && other !== expand) {
+          throw errors.schema(`\`${ty}.${name}\` mark \`${key}\` expands \`${expand}\`, but it is declared elsewhere expanding \`${other}\`; a mark key has one expand in a schema`)
+        }
+        expands.set(key, expand)
       }
     }
   }

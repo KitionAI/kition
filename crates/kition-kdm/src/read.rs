@@ -70,6 +70,18 @@ pub(crate) fn text(doc: &LoroDoc, schema: &Schema, id: &ObjectId, field: &str) -
     }
 }
 
+/// A text field's runs ([`crate::TextRun`]): one unmarked run for a field that declares no marks.
+pub(crate) fn text_runs(doc: &LoroDoc, schema: &Schema, id: &ObjectId, field: &str) -> Result<Vec<crate::TextRun>> {
+    let Some(found) = text(doc, schema, id, field)? else { return Ok(Vec::new()) };
+    let def = schema.field(&object_type(doc, id)?, field)?;
+    if def.has_marks() {
+        return Ok(crate::marks::runs(&found, def));
+    }
+    let mut out = Vec::new();
+    crate::marks::push_run(&mut out, found.to_string(), Default::default());
+    Ok(out)
+}
+
 pub(crate) fn list(doc: &LoroDoc, schema: &Schema, id: &ObjectId, field: &str) -> Result<Option<LoroMovableList>> {
     match container(doc, schema, id, field, FieldKind::List)? {
         Some(Container::MovableList(found)) => Ok(Some(found)),
@@ -188,6 +200,9 @@ pub(crate) fn object_json(doc: &LoroDoc, schema: &Schema, id: &ObjectId) -> Resu
     let Ok(def) = schema.type_def(&ty) else { return Ok(Value::Object(out)) };
     for (name, field) in &def.fields {
         let value = match field.kind {
+            FieldKind::Text if field.has_marks() => {
+                crate::marks::runs_json(&text(doc, schema, id, name)?.map(|text| crate::marks::runs(&text, field)).unwrap_or_default())
+            }
             FieldKind::Text => Value::String(text(doc, schema, id, name)?.map(|text| text.to_string()).unwrap_or_default()),
             FieldKind::List => {
                 let items = list(doc, schema, id, name)?.map(|list| list_items(&list)).transpose()?.unwrap_or_default();

@@ -21,6 +21,10 @@ export type Op =
   | { op: 'delete'; id: ObjectId }
   | { op: 'textInsert'; id: ObjectId; field: string; index: number; content: string }
   | { op: 'textDelete'; id: ObjectId; field: string; index: number; count: number }
+  /** Sets mark `key` to `value` over `start..end` (UTF-16 code units; never empty). */
+  | { op: 'textMark'; id: ObjectId; field: string; start: number; end: number; key: string; value: JsonValue }
+  /** Removes mark `key` from `start..end` (never empty). */
+  | { op: 'textUnmark'; id: ObjectId; field: string; start: number; end: number; key: string }
   | { op: 'listInsert'; id: ObjectId; field: string; index: number; item: ObjectId }
   | { op: 'listMove'; id: ObjectId; field: string; from: number; to: number }
   | { op: 'listRemove'; id: ObjectId; field: string; index: number }
@@ -71,6 +75,10 @@ function applyOne(doc: LoroDoc, schema: Schema, op: Op, created: Array<TreeID | 
       return engineContainer(doc, op.id, op.field, 'text').insert(op.index, op.content)
     case 'textDelete':
       return engineContainer(doc, op.id, op.field, 'text').delete(op.index, op.count)
+    case 'textMark':
+      return engineContainer(doc, op.id, op.field, 'text').mark({ start: op.start, end: op.end }, op.key, op.value)
+    case 'textUnmark':
+      return engineContainer(doc, op.id, op.field, 'text').unmark({ start: op.start, end: op.end }, op.key)
     case 'listInsert':
       return engineContainer(doc, op.id, op.field, 'list').insert(op.index, op.item)
     case 'listMove':

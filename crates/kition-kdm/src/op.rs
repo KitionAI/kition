@@ -48,6 +48,23 @@ pub(crate) enum Op<'a> {
         index: usize,
         count: usize,
     },
+    /// Sets mark `key` to `value` over `start..end` (Unicode scalar values; never empty).
+    TextMark {
+        id: ObjectId,
+        field: &'a str,
+        start: usize,
+        end: usize,
+        key: &'a str,
+        value: Value,
+    },
+    /// Removes mark `key` from `start..end` (never empty).
+    TextUnmark {
+        id: ObjectId,
+        field: &'a str,
+        start: usize,
+        end: usize,
+        key: &'a str,
+    },
     ListInsert {
         id: ObjectId,
         field: &'a str,
@@ -101,6 +118,8 @@ impl Op<'_> {
             | Self::Delete { id }
             | Self::TextInsert { id, .. }
             | Self::TextDelete { id, .. }
+            | Self::TextMark { id, .. }
+            | Self::TextUnmark { id, .. }
             | Self::ListInsert { id, .. }
             | Self::ListMove { id, .. }
             | Self::ListRemove { id, .. }
@@ -162,6 +181,8 @@ fn apply_one(doc: &LoroDoc, schema: &Schema, op: Op<'_>, nodes: &mut [Option<Tre
         Op::Delete { id } => doc.get_map(OBJECTS).delete(id.as_str()).map_err(engine)?,
         Op::TextInsert { id, field, index, content } => text(doc, &id, field)?.insert(index, &content).map_err(engine)?,
         Op::TextDelete { id, field, index, count } => text(doc, &id, field)?.delete(index, count).map_err(engine)?,
+        Op::TextMark { id, field, start, end, key, value } => text(doc, &id, field)?.mark(start..end, key, to_loro(value)).map_err(engine)?,
+        Op::TextUnmark { id, field, start, end, key } => text(doc, &id, field)?.unmark(start..end, key).map_err(engine)?,
         Op::ListInsert { id, field, index, item } => list(doc, &id, field)?.insert(index, item.as_str()).map_err(engine)?,
         Op::ListMove { id, field, from, to } => list(doc, &id, field)?.mov(from, to).map_err(engine)?,
         Op::ListRemove { id, field, index } => list(doc, &id, field)?.delete(index, 1).map_err(engine)?,

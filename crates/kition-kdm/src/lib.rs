@@ -12,6 +12,7 @@
 
 mod error;
 mod ids;
+mod marks;
 mod op;
 mod origin;
 mod overlay;
@@ -24,7 +25,8 @@ mod value;
 
 pub use error::{KdmError, Result};
 pub use ids::{ActorId, DocId, NodeRef, ObjectId};
+pub use marks::TextRun;
 pub use origin::{Origin, OriginKind};
 pub use replica::{Replica, TreeEntry, Version};
-pub use schema::{FieldDef, FieldKind, KDM_VERSION, Schema, TypeDef};
+pub use schema::{Expand, FieldDef, FieldKind, KDM_VERSION, MarkDef, Schema, TypeDef};
 pub use tx::Tx;

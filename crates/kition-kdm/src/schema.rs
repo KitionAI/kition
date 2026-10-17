@@ -56,6 +56,49 @@ pub struct FieldDef {
     pub values: Vec<String>,
     #[serde(default)]
     pub optional: bool,
+    /// The marks a `text` field takes (rich-text run properties), by key. A field without marks
+    /// reads as a plain string in the canonical state; one with marks reads as its runs.
+    #[serde(default)]
+    pub marks: BTreeMap<String, MarkDef>,
+}
+
+impl FieldDef {
+    /// Whether this is a `text` field that declares marks.
+    pub fn has_marks(&self) -> bool {
+        self.kind == FieldKind::Text && !self.marks.is_empty()
+    }
+}
+
+/// How a mark grows when text is inserted at one of its ends.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Expand {
+    /// Text typed right after the marked range takes the mark (bold, italic).
+    After,
+    /// Text typed right before the marked range takes the mark.
+    Before,
+    /// Text typed at either end takes the mark.
+    Both,
+    /// Text typed at either end does not take the mark (links, object anchors).
+    None,
+}
+
+impl Expand {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::After => "after",
+            Self::Before => "before",
+            Self::Both => "both",
+            Self::None => "none",
+        }
+    }
+}
+
+/// One mark a `text` field declares: `{ "expand": "after" | "before" | "both" | "none" }`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MarkDef {
+    pub expand: Expand,
 }
 
 #[derive(Clone, Debug, PartialEq, Deserialize)]
@@ -115,6 +158,7 @@ impl Schema {
         if !self.types.contains_key(&self.root) {
             return Err(KdmError::Schema(format!("root type `{}` is not declared", self.root)));
         }
+        let mut expands: BTreeMap<&str, Expand> = BTreeMap::new();
         for (ty, def) in &self.types {
             if ty.starts_with('$') {
                 return Err(KdmError::Schema(format!("type `{ty}`: names starting with `$` are reserved")));
@@ -141,9 +185,42 @@ impl Schema {
                     },
                     _ => {}
                 }
+                if !field.marks.is_empty() && field.kind != FieldKind::Text {
+                    return Err(KdmError::Schema(format!("`{ty}.{name}`: only text fields take `marks`")));
+                }
+                for (key, mark) in &field.marks {
+                    if let Some(reason) = bad_mark_key(key) {
+                        return Err(KdmError::Schema(format!("`{ty}.{name}` mark `{key}`: {reason}")));
+                    }
+                    match expands.get(key.as_str()) {
+                        Some(&other) if other != mark.expand => {
+                            return Err(KdmError::Schema(format!(
+                                "`{ty}.{name}` mark `{key}` expands `{}`, but it is declared elsewhere expanding `{}`; a mark key has one expand in a schema",
+                                mark.expand.as_str(),
+                                other.as_str()
+                            )));
+                        }
+                        _ => {
+                            expands.insert(key.as_str(), mark.expand);
+                        }
+                    }
+                }
             }
         }
         Ok(())
+    }
+
+    /// Every mark key the schema declares with its expand: each key has one expand in a schema.
+    pub fn mark_expands(&self) -> BTreeMap<&str, Expand> {
+        let mut out = BTreeMap::new();
+        for def in self.types.values() {
+            for field in def.fields.values() {
+                for (key, mark) in &field.marks {
+                    out.insert(key.as_str(), mark.expand);
+                }
+            }
+        }
+        out
     }
 
     pub fn type_def(&self, ty: &str) -> Result<&TypeDef> {
@@ -182,6 +259,22 @@ impl Schema {
             FieldKind::Text | FieldKind::List | FieldKind::Tree | FieldKind::Map => false,
         };
         if ok { Ok(()) } else { Err(invalid(format!("expects a {:?} value", def.kind).to_lowercase())) }
+    }
+}
+
+/// Why `key` cannot name a mark, or `None` when it can. The engine reserves `:` in style keys, and
+/// a `__proto__` attribute is lost by the TypeScript engine's reads.
+fn bad_mark_key(key: &str) -> Option<&'static str> {
+    if key.is_empty() {
+        Some("a mark key is not empty")
+    } else if key.starts_with('$') {
+        Some("names starting with `$` are reserved")
+    } else if key.contains(':') {
+        Some("a mark key holds no `:`")
+    } else if key == "__proto__" {
+        Some("`__proto__` is not a mark key")
+    } else {
+        None
     }
 }
 

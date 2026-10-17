@@ -1,0 +1,28 @@
+{
+  "kdm": 1,
+  "kit": "kit.marks",
+  "schemaVersion": 1,
+  "root": "Doc",
+  "types": {
+    "Doc": {
+      "fields": {
+        "paras": { "kind": "list", "of": "Para" }
+      }
+    },
+    "Para": {
+      "fields": {
+        "text": {
+          "kind": "text",
+          "marks": {
+            "bold": { "expand": "after" },
+            "italic": { "expand": "after" },
+            "link": { "expand": "none" },
+            "lead": { "expand": "before" },
+            "wide": { "expand": "both" }
+          }
+        },
+        "plain": { "kind": "text" }
+      }
+    }
+  }
+}

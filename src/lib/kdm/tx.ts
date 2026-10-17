@@ -220,6 +220,37 @@ export class Tx {
     return this.textState(id, field, false).text()
   }
 
+  /**
+   * Sets mark `key` to `value` over the code units `start..end` of a text field (rule M19). The
+   * field declares `key` in its schema `marks`; `value` is plain JSON and not `null` (remove a
+   * mark with `textUnmark`). An empty range changes nothing. Concurrent marks of one key over
+   * overlapping ranges resolve to one value per character; marks of different keys all apply.
+   */
+  textMark(id: ObjectId, field: string, start: number, end: number, key: string, value: unknown): void {
+    this.live()
+    checkField(id, field)
+    checkWhole('index', start)
+    checkWhole('index', end)
+    checkString('a mark key', key)
+    const ty = this.markKey(id, field, key)
+    if (value === null || value === undefined) throw errors.invalidValue(ty, field, `mark \`${key}\` takes a value; remove a mark with textUnmark`)
+    const stored = toJson(value, (reason) => errors.invalidValue(ty, field, `mark \`${key}\` ${reason}`))
+    if (!this.markRange(id, field, start, end)) return
+    this.ops.push({ op: 'textMark', id, field, start, end, key, value: stored })
+  }
+
+  /** Removes mark `key` from the code units `start..end` of a text field. Characters without the mark are left as they are; an empty range changes nothing. */
+  textUnmark(id: ObjectId, field: string, start: number, end: number, key: string): void {
+    this.live()
+    checkField(id, field)
+    checkWhole('index', start)
+    checkWhole('index', end)
+    checkString('a mark key', key)
+    this.markKey(id, field, key)
+    if (!this.markRange(id, field, start, end)) return
+    this.ops.push({ op: 'textUnmark', id, field, start, end, key })
+  }
+
   listInsert(id: ObjectId, field: string, index: number, item: ObjectId): void {
     this.live()
     checkField(id, field)
@@ -487,6 +518,23 @@ export class Tx {
     if (pending) return pending
     const committed = read.asContainer(this.stored(id, field, write), 'text', id, field)
     return new TextState(committed, committed?.length ?? 0)
+  }
+
+  /** Checks that `field` is a text field declaring mark `key`; answers the object's type. */
+  private markKey(id: ObjectId, field: string, key: string): string {
+    const { ty, def } = this.containerField(id, field, 'text')
+    if (!def.marks || !Object.hasOwn(def.marks, key)) throw errors.invalidValue(ty, field, `declares no mark \`${key}\``)
+    return ty
+  }
+
+  /** Checks a mark's range against the text including this transaction's edits; answers whether it holds any character. */
+  private markRange(id: ObjectId, field: string, start: number, end: number): boolean {
+    const text = this.textState(id, field, true)
+    if (end > text.len) throw errors.outOfRange(end, text.len)
+    if (start > end) throw errors.outOfRange(start, end)
+    if (text.splits(start)) throw splitError(start)
+    if (text.splits(end)) throw splitError(end)
+    return start < end
   }
 
   private listState(id: ObjectId, field: string): ListState {

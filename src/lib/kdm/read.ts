@@ -4,7 +4,8 @@ import { isContainer as isEngineContainer, LoroDoc, LoroMap, LoroMovableList, Lo
 import { canonical, compareKeys, setKey } from './canonical'
 import { errors, type KdmError } from './errors'
 import type { ObjectId } from './ids'
-import { fieldDef, isContainer, sortedKeys, type FieldKind, type Schema } from './schema'
+import { pushRun, runs, type TextRun } from './marks'
+import { fieldDef, hasMarks, isContainer, sortedKeys, type FieldKind, type Schema } from './schema'
 
 export const META = 'meta'
 export const OBJECTS = 'objects'
@@ -53,6 +54,17 @@ export function container<K extends ContainerKind>(doc: LoroDoc, schema: Schema,
   const ty = typeOf(map, id)
   if (fieldDef(schema, ty, field).kind !== kind) throw wrongKind(ty, field, kind)
   return asContainer(map.get(field), kind, id, field)
+}
+
+/** A text field's runs (`TextRun`): one unmarked run for a field that declares no marks. */
+export function textRuns(doc: LoroDoc, schema: Schema, id: ObjectId, field: string): TextRun[] {
+  const text = container(doc, schema, id, field, 'text')
+  if (!text) return []
+  const def = fieldDef(schema, objectType(doc, id), field)
+  if (hasMarks(def)) return runs(text, def)
+  const out: TextRun[] = []
+  pushRun(out, text.toString(), undefined)
+  return out
 }
 
 /** A register field's value in canonical form, or `null`. */
@@ -159,7 +171,10 @@ function objectJson(doc: LoroDoc, schema: Schema, id: ObjectId): Record<string, 
   for (const name of sortedKeys(fields)) {
     const kind = fields[name].kind
     let value: unknown
-    if (kind === 'text') value = container(doc, schema, id, name, 'text')?.toString() ?? ''
+    if (kind === 'text' && hasMarks(fields[name])) {
+      const text = container(doc, schema, id, name, 'text')
+      value = text ? runs(text, fields[name]) : []
+    } else if (kind === 'text') value = container(doc, schema, id, name, 'text')?.toString() ?? ''
     else if (kind === 'list') value = listItems(container(doc, schema, id, name, 'list')?.toArray() ?? [])
     else if (kind === 'tree') value = treeJson(container(doc, schema, id, name, 'tree')?.roots())
     else if (kind === 'map') {
@@ -228,7 +243,10 @@ export function stateJson(doc: LoroDoc, schema: Schema): unknown {
       switch (fields[name].kind) {
         case 'text':
           if (value !== undefined && typeof value !== 'string') throw wrong()
-          out[name] = value ?? ''
+          if (hasMarks(fields[name])) {
+            const text = value === undefined ? null : asContainer(objectMap(doc, id).get(name), 'text', id, name)
+            out[name] = text ? runs(text, fields[name]) : []
+          } else out[name] = value ?? ''
           break
         case 'list':
           if (value !== undefined && !Array.isArray(value)) throw wrong()

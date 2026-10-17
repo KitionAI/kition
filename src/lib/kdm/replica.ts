@@ -5,6 +5,7 @@ import { checkString } from './args'
 import { open, sameBytes, Version, wrap } from './envelope'
 import { errors, KdmError } from './errors'
 import { checkActor, committedNode, uuidFromBytes, uuidToBytes, type NodeRef, type ObjectId } from './ids'
+import { configure, type TextRun } from './marks'
 import { checkOrigin, encodeOrigin, system, type Origin } from './origin'
 import * as read from './read'
 import { KDM_VERSION, type Schema } from './schema'
@@ -23,8 +24,11 @@ const ROLLBACK = 'kdm-rollback'
 const SYSTEM: Origin['kind'] = 'system'
 const IMPORT: Origin['kind'] = 'import'
 
-/** A text change as the engine reports it, in UTF-16 code units. */
-export type TextDelta = { retain: number } | { insert: string } | { delete: number }
+/** A text change as the engine reports it, in UTF-16 code units; `attributes` are the marks it sets (`null`: removed). */
+export type TextDelta =
+  | { retain: number; attributes?: Record<string, unknown> }
+  | { insert: string; attributes?: Record<string, unknown> }
+  | { delete: number }
 
 /** One node of a tree field, as `Replica.tree` lists it. */
 export interface TreeEntry {
@@ -116,6 +120,7 @@ export class Replica {
     checkActor(actor)
     const doc = new LoroDoc()
     doc.setPeerId(actor)
+    configure(doc, schema)
     const { result, staged } = Tx.stage(doc, schema, build)
     const meta = doc.getMap(read.META)
     meta.set('docId', uuidFromBytes(idBytes))
@@ -145,6 +150,7 @@ export class Replica {
     checkActor(actor)
     const { docId, engine } = open(bytes)
     const doc = new LoroDoc()
+    configure(doc, schema)
     let status: ImportStatus
     try {
       status = doc.import(engine)
@@ -255,6 +261,17 @@ export class Replica {
   text(id: ObjectId, field: string): string {
     checkField(id, field)
     return read.container(this.doc, this.schema, id, field, 'text')?.toString() ?? ''
+  }
+
+  /**
+   * A text field as runs of characters with equal marks (rule M19), in order: adjacent runs differ
+   * in their marks, no run is empty, and only the field's declared marks appear. A field that
+   * declares no marks reads as one unmarked run (none when empty). Positions are counted in UTF-16
+   * code units (`insert.length`).
+   */
+  textDelta(id: ObjectId, field: string): TextRun[] {
+    checkField(id, field)
+    return read.textRuns(this.doc, this.schema, id, field)
   }
 
   /** The length of a text field in UTF-16 code units. */

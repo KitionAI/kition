@@ -10,7 +10,7 @@ use sha2::{Digest, Sha256};
 
 use crate::error::engine;
 use crate::read::{self, META, OBJECTS};
-use crate::{ActorId, DocId, KDM_VERSION, KdmError, NodeRef, ObjectId, Origin, OriginKind, Result, Schema, Tx};
+use crate::{ActorId, DocId, KDM_VERSION, KdmError, NodeRef, ObjectId, Origin, OriginKind, Result, Schema, TextRun, Tx};
 
 /// The origin given to the partial operations of a transaction the engine refused while applying
 /// it, and to their reversal, so the undo history never records either.
@@ -86,6 +86,7 @@ impl Replica {
     ) -> Result<(Self, R)> {
         let doc = LoroDoc::new();
         doc.set_peer_id(actor.get()).map_err(engine)?;
+        crate::marks::configure(&doc, &schema);
         let (value, staged) = {
             let mut tx = Tx::new(&doc, &schema);
             let value = build(&mut tx)?;
@@ -114,6 +115,7 @@ impl Replica {
     pub fn load(schema: Arc<Schema>, bytes: &[u8], actor: ActorId) -> Result<Self> {
         let (doc_id, bytes) = envelope::open(bytes)?;
         let doc = LoroDoc::new();
+        crate::marks::configure(&doc, &schema);
         let status = doc.import(bytes).map_err(|error| KdmError::Encoding(error.to_string()))?;
         let meta = |key: &str| match doc.get_map(META).get(key) {
             Some(ValueOrContainer::Value(value)) => value.to_json_value(),
@@ -233,6 +235,14 @@ impl Replica {
 
     pub fn text(&self, id: &ObjectId, field: &str) -> Result<String> {
         Ok(read::text(&self.doc, &self.schema, id, field)?.map(|text| text.to_string()).unwrap_or_default())
+    }
+
+    /// A text field as runs of characters with equal marks (rule M19), in order: adjacent runs
+    /// differ in their marks, no run is empty, and only the field's declared marks appear. A field
+    /// that declares no marks reads as one unmarked run (none when empty). Positions are counted
+    /// in Unicode scalar values (`insert.chars().count()`).
+    pub fn text_delta(&self, id: &ObjectId, field: &str) -> Result<Vec<TextRun>> {
+        read::text_runs(&self.doc, &self.schema, id, field)
     }
 
     pub fn list(&self, id: &ObjectId, field: &str) -> Result<Vec<ObjectId>> {

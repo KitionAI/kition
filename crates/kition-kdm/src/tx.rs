@@ -195,6 +195,43 @@ impl<'a> Tx<'a> {
         Ok(())
     }
 
+    /// Sets mark `key` to `value` over the characters `start..end` (Unicode scalar values) of a
+    /// text field (rule M19). The field declares `key` in its schema `marks`; `value` is plain
+    /// JSON and not `null` (remove a mark with [`Tx::text_unmark`]). An empty range changes
+    /// nothing. Concurrent marks of one key over overlapping ranges resolve to one value per
+    /// character; marks of different keys all apply.
+    pub fn text_mark(&mut self, id: &ObjectId, field: &str, start: usize, end: usize, key: &str, value: Value) -> Result<()> {
+        let (name, key) = self.mark_key(id, field, key)?;
+        if value.is_null() {
+            let (ty, _, _) = self.field(id, field)?;
+            return Err(KdmError::InvalidValue {
+                ty: ty.to_owned(),
+                field: name.to_owned(),
+                reason: format!("mark `{key}` takes a value; remove a mark with text_unmark"),
+            });
+        }
+        if let Some(reason) = crate::schema::unportable(&value) {
+            let (ty, _, _) = self.field(id, field)?;
+            return Err(KdmError::InvalidValue { ty: ty.to_owned(), field: name.to_owned(), reason: format!("mark `{key}` {reason}") });
+        }
+        if !self.mark_range(id, name, start, end)? {
+            return Ok(());
+        }
+        self.ops.push(Op::TextMark { id: id.clone(), field: name, start, end, key, value });
+        Ok(())
+    }
+
+    /// Removes mark `key` from the characters `start..end` of a text field. Characters without
+    /// the mark are left as they are; an empty range changes nothing.
+    pub fn text_unmark(&mut self, id: &ObjectId, field: &str, start: usize, end: usize, key: &str) -> Result<()> {
+        let (name, key) = self.mark_key(id, field, key)?;
+        if !self.mark_range(id, name, start, end)? {
+            return Ok(());
+        }
+        self.ops.push(Op::TextUnmark { id: id.clone(), field: name, start, end, key });
+        Ok(())
+    }
+
     pub fn list_insert(&mut self, id: &ObjectId, field: &str, index: usize, item: &ObjectId) -> Result<()> {
         let name = self.container_field(id, field, FieldKind::List)?;
         self.check_item(id, name, item)?;
@@ -470,6 +507,31 @@ impl<'a> Tx<'a> {
             Some(Container::Text(text)) => Ok(text.len_unicode()),
             Some(_) => Err(read::wrong_container(id, name)),
         }
+    }
+
+    /// The schema's names of a text field and of one of its declared mark keys.
+    fn mark_key(&self, id: &ObjectId, field: &str, key: &str) -> Result<(&'a str, &'a str)> {
+        let (ty, name, def) = self.field(id, field)?;
+        if def.kind != FieldKind::Text {
+            return Err(read::wrong_kind(ty, field, FieldKind::Text));
+        }
+        match def.marks.get_key_value(key) {
+            Some((key, _)) => Ok((name, key.as_str())),
+            None => Err(KdmError::InvalidValue { ty: ty.to_owned(), field: name.to_owned(), reason: format!("declares no mark `{key}`") }),
+        }
+    }
+
+    /// Checks a mark's range against the text's length including this transaction's edits;
+    /// answers whether the range holds any character.
+    fn mark_range(&self, id: &ObjectId, name: &'a str, start: usize, end: usize) -> Result<bool> {
+        let len = self.text_length(id, name, true)?;
+        if end > len {
+            return Err(KdmError::OutOfRange { index: end, len });
+        }
+        if start > end {
+            return Err(KdmError::OutOfRange { index: start, len: end });
+        }
+        Ok(start < end)
     }
 
     fn list_mut(&mut self, id: &ObjectId, name: &'a str) -> Result<&mut ListState> {
