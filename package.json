@@ -82,7 +82,7 @@
     "capture:readme:assets": "KITION_CAPTURE_README_ASSETS=1 playwright test --config tooling/playwright.config.ts e2e/readme-assets.spec.ts --workers=1 && magick docs/readme/documents.png -quality 88 -define webp:method=6 docs/readme/documents.webp && magick docs/readme/agent.png -quality 88 -define webp:method=6 docs/readme/agent.webp && magick docs/readme/whiteboards.png -quality 88 -define webp:method=6 docs/readme/whiteboards.webp && magick docs/readme/kition-overview.png -quality 88 -define webp:method=6 docs/readme/kition-overview.webp && magick docs/readme/design-studio.png -quality 88 -define webp:method=6 docs/readme/design-studio.webp && rm docs/readme/documents.png docs/readme/agent.png docs/readme/whiteboards.png docs/readme/design-studio.png",
     "test:table:e2e": "bash scripts/inspect-table-widget.sh",
     "test:kitable:e2e": "bash scripts/inspect-kitable.sh",
-    "test:collab:e2e": "playwright test --config tooling/playwright.config.ts e2e/collab-photo.spec.ts e2e/collab-film.spec.ts --workers=1",
+    "test:collab:e2e": "playwright test --config tooling/playwright.config.ts e2e/collab-photo.spec.ts e2e/collab-film.spec.ts e2e/collab-slide.spec.ts --workers=1",
     "test:scenario:e2e": "bash scripts/inspect-scenario.sh",
     "test:workflow:e2e": "bash scripts/inspect-workflow.sh",
     "test:workflow:ai-build:e2e": "playwright test --config tooling/playwright.config.ts e2e/workflow-real-ai-build.spec.ts --workers=1",

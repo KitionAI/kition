@@ -4,6 +4,8 @@ import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { expect, test, type Page, type Route } from '@playwright/test'
 import { installDesktopHost } from './helpers/desktopHost'
+import { openInKitFrame, openTreeFile } from './helpers/embeddedKit'
+import { kitPackageHasReplicaInfo } from './helpers/kitionPro'
 import { fulfillJson, mockLocalWorkspaceApi } from './helpers/mockApi'
 import { dismissFirstRunActivation } from './helpers/onboarding'
 import { canReadBlobBodies } from './helpers/requestBody'
@@ -120,6 +122,56 @@ test('opens slides in the Slides kit’s own editor, edits it there, and saves i
       expect((JSON.parse(reopened.inspect()) as { slides: unknown[] }).slides).toHaveLength(3)
       reopened.free()
     }
+  } finally {
+    await host.dispose()
+  }
+})
+
+/** The replica version of the kit editor showing `path`, as hex (Kition's development test hook). */
+function replicaVersion(page: Page, path: string) {
+  return page.evaluate(async (wanted) => (window.__KITION_KIT_TEST__ ? window.__KITION_KIT_TEST__.replicaVersion(wanted) : ''), path)
+}
+
+test('keeps a Slides deck’s replica across a save and a reopen, and opens a file changed elsewhere plainly', async ({ page, baseURL }) => {
+  test.skip(!existsSync(SDK_WASM) || !existsSync(UI_MARKER), 'the Slides kit editor is not built into public/kits/slide-ui')
+  test.skip(!kitPackageHasReplicaInfo('slide', 'kition_slide_sdk'), 'the Slides kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh slide')
+  test.setTimeout(180_000)
+  const name = 'Replica.kitionslide'
+  const { host, kit } = await openInKitFrame(page, baseURL!, name, await slidesFixture(), {}, { persist: true })
+  const reopen = async () => {
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await dismissFirstRunActivation(page)
+    return openTreeFile(page, name)
+  }
+  try {
+    await expect(kit.getByTestId('slides-status')).toHaveText('Slide 1 of 2', { timeout: 60_000 })
+    await kit.getByTestId('slides-add-slide').click()
+    await expect(kit.getByTestId('slides-status')).toHaveText(/of 3$/)
+    await kit.getByTestId('slides-save').click()
+    await expect(kit.getByTestId('slides-unsaved')).toHaveCount(0, { timeout: 30_000 })
+
+    // The replica sits in the document store under the file's identity, with the saved file's stamp.
+    const store = path.join(host.root, '.kition', 'docs')
+    const readJson = async (file: string) => JSON.parse(await fs.readFile(path.join(store, file), 'utf8').catch(() => '{}'))
+    await expect.poll(async () => (await readJson('index.json')).entries?.[name] ?? null, { timeout: 15_000 }).not.toBeNull()
+    const docId = (await readJson('index.json')).entries[name] as string
+    await expect.poll(async () => (await readJson(`${docId}/meta.json`)).meta?.kit ?? null).toBe('kit.slide')
+    expect(await fs.stat(path.join(store, docId, 'blobs.bin'))).toBeTruthy()
+    const saved = await replicaVersion(page, name)
+    expect(saved).not.toBe('')
+
+    // Reopened, the deck is the replica it was saved with: the third slide survives.
+    const reopened = await reopen()
+    await expect(reopened.getByTestId('slides-status')).toHaveText(/of 3$/, { timeout: 60_000 })
+    await expect.poll(() => replicaVersion(page, name).catch(() => ''), { timeout: 15_000 }).toBe(saved)
+    await expect(reopened.getByTestId('slides-unsaved')).toHaveCount(0)
+
+    // A file changed elsewhere (a new stamp) opens plainly: what the file holds, a new replica.
+    await fs.writeFile(path.join(host.root, name), await slidesFixture())
+    const changed = await reopen()
+    await expect(changed.getByTestId('slides-status')).toHaveText(/of 2$/, { timeout: 60_000 })
+    await expect.poll(() => replicaVersion(page, name).catch(() => ''), { timeout: 15_000 }).not.toBe('')
+    expect(await replicaVersion(page, name)).not.toBe(saved)
   } finally {
     await host.dispose()
   }
