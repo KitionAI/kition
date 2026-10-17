@@ -35,13 +35,13 @@
   },
   "film": {
     "repository": "KitionAI/kition-film",
-    "version": "0.3.0",
-    "tag": "package-v0.3.0",
-    "asset": "kition-film-0.3.0.tgz",
-    "size": 8493305,
-    "sha256": "68048061f9709989791cc57f8437568698d7ee684e1f0e1449247b7031c84172",
-    "commit": "b615afcde5e2b68b5769a0f68ba842db40ebd2b0",
-    "sdkCommit": "01d16593a61b61344155ec6991baa6650e1a7dc8",
+    "version": "0.3.1",
+    "tag": "package-v0.3.1",
+    "asset": "kition-film-0.3.1.tgz",
+    "size": 8499657,
+    "sha256": "f9e6ead18ce4dd39d6f2a70e7662cf6703e32f3b91c21bb0074db5b51724b4c5",
+    "commit": "3ac6c3b18912c1dc17305669c8731eb54cddc7ac",
+    "sdkCommit": "7ce684c19f6d42bbb9e799a4f34a73629b964cbf",
     "fontsCommit": "c536031480b1e6e97c2d5937b861953a0c0e0e67"
   },
   "pdf": {
@@ -57,13 +57,13 @@
   },
   "photo": {
     "repository": "KitionAI/kition-photo",
-    "version": "0.3.0",
-    "tag": "package-v0.3.0",
-    "asset": "kition-photo-0.3.0.tgz",
-    "size": 11726080,
-    "sha256": "6f4d027c4d2457d9e0a34d3294886a63e763456dba5fb3fb3f6b4f5fb49f620f",
-    "commit": "ad9a50e10d50b2b26039a0f127ff4f690e11b768",
-    "sdkCommit": "01d16593a61b61344155ec6991baa6650e1a7dc8",
+    "version": "0.3.1",
+    "tag": "package-v0.3.1",
+    "asset": "kition-photo-0.3.1.tgz",
+    "size": 11734170,
+    "sha256": "e90713af77c365a24ccaa366452ab37230d5b1f84cabd275ef556bdcfed4da9a",
+    "commit": "926bdaedd9488f4f9c8164a3816fdd5ace6f0168",
+    "sdkCommit": "7ce684c19f6d42bbb9e799a4f34a73629b964cbf",
     "fontsCommit": "c536031480b1e6e97c2d5937b861953a0c0e0e67"
   },
   "sheet": {
