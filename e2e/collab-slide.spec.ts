@@ -18,7 +18,9 @@ import {
 } from './helpers/kitionPro'
 
 type NodeSlideDocument = { save(): Uint8Array; execute(command: string, params: string): string; free(): void }
-const engine = kitEngine<{ SlideDocument: { create(name: string, width: number, height: number): NodeSlideDocument } }>('slide', 'kition_slide_sdk')
+const engine = kitEngine<{
+  SlideDocument: { create(name: string, width: number, height: number): NodeSlideDocument; open(name: string, bytes: Uint8Array): NodeSlideDocument }
+}>('slide', 'kition_slide_sdk')
 
 /** A deck made by the same engine the page runs: slide 1 is a full-slide text box, slide 2 a square. */
 async function deckFixture() {
@@ -141,6 +143,84 @@ test('co-edits a Slides deck between two windows: live, and merging edits made o
     await expect(kitB.getByTestId('slides-status')).toHaveText(/of 4$/)
     await pageA.screenshot({ path: testInfo.outputPath('alice.png') })
     await pageB.screenshot({ path: testInfo.outputPath('bob.png') })
+  } finally {
+    await alice.close()
+    await bob.close()
+    await server.stop()
+  }
+})
+
+/** The text of the first slide's text box in a saved deck, read by the same engine. */
+async function savedText(deck: Buffer) {
+  const sdk = await engine.load()
+  const doc = sdk.SlideDocument.open('Saved.kitionslide', deck)
+  doc.execute('slide.go', JSON.stringify({ index: 0 }))
+  doc.execute('edit.selectAll', '{}')
+  const { text } = JSON.parse(doc.execute('text.get', '{}')) as { text: string }
+  doc.free()
+  return text
+}
+
+/** Selects the lone shape on the current slide, starts editing its text (Enter: the caret at its
+ * end), presses `key` if given (Home: to the line's start), and types `text`. */
+async function typeInShapeText(page: Page, kit: FrameLocator, text: string, key?: string) {
+  const region = (await kit.getByTestId('slides-canvas-region').boundingBox())!
+  await page.mouse.click(region.x + region.width / 2, region.y + region.height / 2)
+  await expect(kit.locator('[data-testid="kit-text-sink"]')).toBeFocused({ timeout: 10_000 })
+  await page.keyboard.press('Enter')
+  if (key) await page.keyboard.press(key)
+  await page.keyboard.type(text)
+}
+
+test('two windows typing into one text box at once keep both texts', async ({ browser, baseURL }, testInfo) => {
+  test.skip(!engine.built, 'the Slides kit editor is not built into public/kits/slide-ui')
+  test.skip(!kitPackageHasReplicaInfo('slide', 'kition_slide_sdk'), 'the Slides kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh slide')
+  const unavailable = kitionProSkipReason()
+  test.skip(Boolean(unavailable), unavailable ?? '')
+  test.setTimeout(300_000)
+  const server = await startKitionPro(testInfo.outputPath('kition-pro'))
+  const alice = await browser.newContext()
+  const bob = await browser.newContext()
+  const bobNetwork = await syncNetwork(bob)
+  try {
+    const pageA = await alice.newPage()
+    await useSyncServer(pageA, server.url)
+    const a = await openInKitFrame(pageA, baseURL!, 'Keynote.kitionslide', await deckFixture(), {}, signedIn(DEV_PRINCIPALS.alice))
+    await expect(a.kit.getByTestId('slides-status')).toHaveText('Slide 1 of 2', { timeout: 60_000 })
+    const link = await shareFromTab(pageA, 'Keynote')
+    await expect(status(pageA)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })
+    const pageB = await bob.newPage()
+    await useSyncServer(pageB, server.url)
+    await openKitWorkspace(pageB, baseURL!, {}, signedIn(DEV_PRINCIPALS.bob))
+    await openSharedLink(pageB, link)
+    const kitB = pageB.frameLocator('[data-testid="kit-frame-window"]')
+    await expect(kitB.getByTestId('slides-status')).toHaveText('Slide 1 of 2', { timeout: 60_000 })
+    await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })
+    const converged = async () =>
+      expect
+        .poll(async () => JSON.stringify(await replicaCounters(pageB, 'Shared/Keynote.kitionslide')), { timeout: 60_000 })
+        .toBe(JSON.stringify(await replicaCounters(pageA, 'Keynote.kitionslide')))
+    await converged()
+
+    // At once (Bob offline): Alice types at the end of the "Hello" text box, Bob at its start.
+    await bobNetwork.setOnline(false)
+    await expect(status(pageB)).not.toHaveAttribute('data-state', 'online', { timeout: 30_000 })
+    await typeInShapeText(pageA, a.kit, ' from Alice')
+    await typeInShapeText(pageB, kitB, 'Bob says ', 'Home')
+    await settledVersion(pageA, 'Keynote.kitionslide')
+    await settledVersion(pageB, 'Shared/Keynote.kitionslide')
+    await bobNetwork.setOnline(true)
+    await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 60_000 })
+    await converged()
+
+    // Alice saves: the text box holds both texts.
+    await pageA.keyboard.press('Escape')
+    const saved = a.saves.length
+    await a.kit.getByTestId('slides-save').click()
+    await expect.poll(() => a.saves.length, { timeout: 30_000 }).toBeGreaterThan(saved)
+    expect(await savedText(a.saves[a.saves.length - 1].bytes)).toBe('Bob says Hello from Alice')
+    await pageA.screenshot({ path: testInfo.outputPath('alice-one-text-box.png') })
+    await pageB.screenshot({ path: testInfo.outputPath('bob-one-text-box.png') })
   } finally {
     await alice.close()
     await bob.close()
