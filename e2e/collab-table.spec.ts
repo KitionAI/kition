@@ -101,7 +101,7 @@ async function openTableWorkspace(page: Page, baseURL: string, token: string | n
 }
 
 /** Makes `Shared/<name>` in Bob's workspace when his app creates the shared table (the mock writes no file). */
-function createSharedTable(root: string, initial: () => { changes: string; version: string }) {
+function createSharedTable(root: () => string, initial: () => { changes: string; version: string }) {
   return async (page: Page, mock: Mock) => {
     await page.route('**/api/v1/data-documents/replica/create', async (route) => {
       const body = (route.request().postDataJSON() ?? {}) as { path?: string; changes?: string }

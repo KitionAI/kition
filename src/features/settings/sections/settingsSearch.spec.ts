@@ -8,6 +8,7 @@ const bundles: Record<string, Record<string, unknown>> = {
     language: { label: 'Language' },
     display: { zoom: 'Zoom level' },
     network: { proxy: 'HTTP proxy' },
+    collab: { server: { label: 'Sync server' } },
     runtime: { logs: 'Runtime logs' },
     developer: { analytics: 'Analytics inspector' },
     about: { version: 'Version' },
