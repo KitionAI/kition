@@ -184,7 +184,7 @@ export async function openTabMenu(page: Page, title: string, item: string) {
   return entry
 }
 
-/** Shares the kit document in the tab titled `title` (its tab menu), and answers the share link. */
+/** Shares the document in the tab titled `title` (its tab menu), and answers the share link. */
 export async function shareFromTab(page: Page, title: string) {
   await (await openTabMenu(page, title, 'Share for co-editing')).click()
   const field = page.getByTestId('collab-share-link')
@@ -193,6 +193,20 @@ export async function shareFromTab(page: Page, title: string) {
   await page.keyboard.press('Escape')
   await expect(field).toHaveCount(0)
   return link
+}
+
+/** Shares the document in the tab titled `title` and answers a view-only link to it (the dialog's Can view). */
+export async function shareViewOnlyFromTab(page: Page, title: string) {
+  await (await openTabMenu(page, title, 'Share for co-editing')).click()
+  const field = page.getByTestId('collab-share-link')
+  await field.waitFor({ timeout: 30_000 })
+  const editLink = await field.inputValue()
+  await page.getByTestId('collab-share-access-view').click()
+  await expect(field).not.toHaveValue(editLink, { timeout: 15_000 })
+  const link = await field.inputValue()
+  await page.keyboard.press('Escape')
+  await expect(field).toHaveCount(0)
+  return { editLink, viewLink: link }
 }
 
 /** Opens a share link from the command palette (Open shared document). */
