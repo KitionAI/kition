@@ -26,13 +26,24 @@ const engine = kitEngine<{
 async function deckFixture() {
   const sdk = await engine.load()
   const doc = sdk.SlideDocument.create('Keynote.kitionslide', 960, 540)
-  doc.execute('insert.textBox', JSON.stringify({ rect: [0, 0, 960, 540], text: 'Hello' }))
+  // The first slide's layout placeholders go: the text box is its lone shape, across the slide's
+  // middle, where a click selects it (else the empty title placeholder there takes the click).
+  doc.execute('edit.selectAll', '{}')
+  doc.execute('edit.delete', '{}')
+  doc.execute('insert.textBox', JSON.stringify({ rect: [0, 255, 960, 30], text: 'Hello' }))
   doc.execute('slide.new', '{}')
   doc.execute('shape.insert', JSON.stringify({ preset: 'rect', rect: [380, 170, 200, 200] }))
   doc.execute('slide.go', JSON.stringify({ index: 0 }))
   const bytes = Buffer.from(doc.save())
   doc.free()
   return bytes
+}
+
+/** 'same' once both windows' replicas are at the same version, else both versions. Both are read
+ * on every poll: after a reconnect each side is still taking the other's changes. */
+async function sameReplica(pageA: Page, pathA: string, pageB: Page, pathB: string) {
+  const [a, b] = await Promise.all([replicaCounters(pageA, pathA), replicaCounters(pageB, pathB)])
+  return JSON.stringify(a) === JSON.stringify(b) ? 'same' : `${JSON.stringify(a)} / ${JSON.stringify(b)}`
 }
 
 const status = (page: Page) => page.locator('.document-tab-list [data-testid="collab-status"]')
@@ -56,8 +67,8 @@ async function settledVersion(page: Page, path: string) {
   return previous as string
 }
 
-/** Selects the lone shape on the current slide (a click anywhere inside it) and types `text`, which
- * replaces its content (PowerPoint behaviour: typing on one selected shape replaces its text). */
+/** Clicks the lone text box on the current slide (a text box takes text on the first click: the
+ * caret goes where the click is) and types `text` there. */
 async function typeIntoShape(page: Page, kit: FrameLocator, text: string) {
   const region = (await kit.getByTestId('slides-canvas-region').boundingBox())!
   await page.mouse.click(region.x + region.width / 2, region.y + region.height / 2)
@@ -137,7 +148,7 @@ test('co-edits a Slides deck between two windows: live, and merging edits made o
     await bobNetwork.setOnline(true)
     const back = Date.now()
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 60_000 })
-    await expect.poll(async () => JSON.stringify(await replicaCounters(pageB, 'Shared/Keynote.kitionslide')), { timeout: 60_000 }).toBe(JSON.stringify(await replicaCounters(pageA, 'Keynote.kitionslide')))
+    await expect.poll(() => sameReplica(pageA, 'Keynote.kitionslide', pageB, 'Shared/Keynote.kitionslide'), { timeout: 60_000 }).toBe('same')
     testInfo.annotations.push({ type: 'reconnect to converged', description: `${Date.now() - back} ms` })
     await expect(a.kit.getByTestId('slides-status')).toHaveText(/of 4$/)
     await expect(kitB.getByTestId('slides-status')).toHaveText(/of 4$/)
@@ -161,14 +172,14 @@ async function savedText(deck: Buffer) {
   return text
 }
 
-/** Selects the lone shape on the current slide, starts editing its text (Enter: the caret at its
- * end), presses `key` if given (Home: to the line's start), and types `text`. */
-async function typeInShapeText(page: Page, kit: FrameLocator, text: string, key?: string) {
+/** Clicks the lone text box on the current slide, which puts the caret in its text at once (a text
+ * box takes text on the first click, as in PowerPoint; Enter would then break the line), moves the
+ * caret with `key` (End: the line's end, Home: its start), and types `text`. */
+async function typeInShapeText(page: Page, kit: FrameLocator, text: string, key: 'End' | 'Home' = 'End') {
   const region = (await kit.getByTestId('slides-canvas-region').boundingBox())!
   await page.mouse.click(region.x + region.width / 2, region.y + region.height / 2)
   await expect(kit.locator('[data-testid="kit-text-sink"]')).toBeFocused({ timeout: 10_000 })
-  await page.keyboard.press('Enter')
-  if (key) await page.keyboard.press(key)
+  await page.keyboard.press(key)
   await page.keyboard.type(text)
 }
 
@@ -197,9 +208,7 @@ test('two windows typing into one text box at once keep both texts', async ({ br
     await expect(kitB.getByTestId('slides-status')).toHaveText('Slide 1 of 2', { timeout: 60_000 })
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })
     const converged = async () =>
-      expect
-        .poll(async () => JSON.stringify(await replicaCounters(pageB, 'Shared/Keynote.kitionslide')), { timeout: 60_000 })
-        .toBe(JSON.stringify(await replicaCounters(pageA, 'Keynote.kitionslide')))
+      expect.poll(() => sameReplica(pageA, 'Keynote.kitionslide', pageB, 'Shared/Keynote.kitionslide'), { timeout: 60_000 }).toBe('same')
     await converged()
 
     // At once (Bob offline): Alice types at the end of the "Hello" text box, Bob at its start.
