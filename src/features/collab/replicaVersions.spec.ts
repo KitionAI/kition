@@ -34,6 +34,18 @@ describe('replica versions over real KDM exports', () => {
     a.transact(person('user:a'), (tx) => tx.set(note, 'image', hash))
     expect(blobHashCandidates(a.exportChanges(before))).toContain(hash)
   })
+
+  it('tells whether a version holds every change of another', () => {
+    const a = Replica.create(schema, newDocId(), 1n)
+    const note = a.transact(person('user:a'), (tx) => tx.create('Note', {}))
+    const b = Replica.load(schema, a.snapshot(), 2n)
+    const seen = a.version().encode()
+    b.transact(person('user:b'), (tx) => tx.textInsert(note, 'body', 0, 'later'))
+    expect(versions.includes(b.version().encode(), seen)).toBe(true)
+    expect(versions.includes(seen, b.version().encode())).toBe(false)
+    expect(versions.includes(seen, new Uint8Array())).toBe(true)
+    expect(versions.includes(new Uint8Array(), seen)).toBe(false)
+  })
 })
 
 describe('blob sections', () => {
