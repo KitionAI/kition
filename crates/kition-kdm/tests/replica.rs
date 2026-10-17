@@ -421,7 +421,8 @@ fn load_refuses_another_kdm_version_and_a_newer_schema() {
     assert!(matches!(Replica::load(schema(), &common::raw_snapshot(2, 1), ActorId::random()), Err(KdmError::Schema(_))));
     let newer = Replica::create(common::schema_v2(), DocId::new(), ActorId::from_u64(1).unwrap()).unwrap();
     let error = Replica::load(schema(), &newer.snapshot().unwrap(), ActorId::random()).err().unwrap();
-    assert!(matches!(&error, KdmError::Schema(message) if message.contains("schema version 2")), "{error:?}");
+    assert_eq!(error, KdmError::NewerSchema { found: 2, reads: 1 });
+    assert!(error.to_string().contains("schema version 2"), "{error}");
     assert!(Replica::load(common::schema_v2(), &replica().snapshot().unwrap(), ActorId::random()).is_ok());
 }
 

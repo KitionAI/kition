@@ -9,6 +9,7 @@ export type KdmErrorReason =
   | 'cycle'
   | 'out-of-range'
   | 'wrong-document'
+  | 'newer-schema'
   | 'encoding'
   | 'engine'
 
@@ -33,6 +34,9 @@ export const errors = {
   cycle: () => new KdmError('cycle', 'moving that node would create a cycle'),
   outOfRange: (index: number, len: number) => new KdmError('out-of-range', `index ${index} is out of range (length ${len})`),
   wrongDocument: (expected: string, found: string) => new KdmError('wrong-document', `the changes belong to document ${found}, not ${expected}`),
+  /** The document's minimum schema version (rule M20) is newer than the reader's schema. */
+  newerSchema: (found: number, reads: number) =>
+    new KdmError('newer-schema', `the document needs schema version ${found}; this kit reads schema versions up to ${reads}`),
   encoding: (message: string) => new KdmError('encoding', `encoding: ${message}`),
   engine: (message: string) => new KdmError('engine', `engine: ${message}`),
 }

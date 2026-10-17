@@ -11,6 +11,32 @@ export const META = 'meta'
 export const OBJECTS = 'objects'
 export const TYPE_KEY = '$type'
 export const NODE_OBJECT = 'object'
+/** The register a document's creation writes its schema version to; a raise rewrites it too. */
+export const SCHEMA_VERSION = 'schemaVersion'
+/**
+ * The root map whose keys are the schema versions transactions raised the document to (rule
+ * M20). Concurrent raises all keep their key, so the largest one wins whatever the register says.
+ * A root map, not one inside `meta`: replicas that each created a nested map concurrently would
+ * keep only one of them.
+ */
+export const SCHEMA_RAISES = 'schemaRaises'
+
+const isVersion = (value: unknown): value is number => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+
+/**
+ * The document's minimum schema version (rule M20): the largest of `meta.schemaVersion` and the
+ * keys of the `schemaRaises` map. `null` when `meta.schemaVersion` is not a non-negative integer.
+ */
+export function minSchemaVersion(doc: LoroDoc): number | null {
+  const created = doc.getMap(META).get(SCHEMA_VERSION)
+  if (!isVersion(created)) return null
+  let found = created
+  for (const key of doc.getMap(SCHEMA_RAISES).keys()) {
+    const version = Number(key)
+    if (isVersion(version) && String(version) === key && version > found) found = version
+  }
+  return found
+}
 
 /** The engine container class each container kind is stored as. */
 export const CONTAINER_CLASS = { text: LoroText, list: LoroMovableList, tree: LoroTree, map: LoroMap } as const
@@ -270,5 +296,10 @@ export function stateJson(doc: LoroDoc, schema: Schema): unknown {
       }
     }
   }
-  return { meta: canonical(isRecord(deep[META]) ? deep[META] : {}), objects }
+  // The raises are read as the minimum version they make, so `meta.schemaVersion` is the same on
+  // every replica whichever concurrent register write won.
+  const meta: Record<string, unknown> = isRecord(deep[META]) ? { ...deep[META] } : {}
+  const version = minSchemaVersion(doc)
+  if (version !== null) meta[SCHEMA_VERSION] = version
+  return { meta: canonical(meta), objects }
 }

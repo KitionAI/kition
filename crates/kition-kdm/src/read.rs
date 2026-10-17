@@ -11,6 +11,32 @@ pub(crate) const META: &str = "meta";
 pub(crate) const OBJECTS: &str = "objects";
 pub(crate) const TYPE_KEY: &str = "$type";
 pub(crate) const NODE_OBJECT: &str = "object";
+/// The register a document's creation writes its schema version to; a raise rewrites it too.
+pub(crate) const SCHEMA_VERSION: &str = "schemaVersion";
+/// The root map whose keys are the schema versions transactions raised the document to (rule
+/// M20). Concurrent raises all keep their key, so the largest one wins whatever the register says.
+/// A root map, not one inside `meta`: replicas that each created a nested map concurrently would
+/// keep only one of them.
+pub(crate) const SCHEMA_RAISES: &str = "schemaRaises";
+
+/// The document's minimum schema version (rule M20): the largest of `meta.schemaVersion` and the
+/// keys of `meta.schemaRaises`. `None` when `meta.schemaVersion` is not a non-negative integer.
+pub(crate) fn min_schema_version(doc: &LoroDoc) -> Option<u64> {
+    let meta = doc.get_map(META);
+    let created = match meta.get(SCHEMA_VERSION) {
+        Some(ValueOrContainer::Value(value)) => value.to_json_value().as_u64()?,
+        _ => return None,
+    };
+    let mut found = created;
+    doc.get_map(SCHEMA_RAISES).for_each(|key, _| {
+        if let Ok(version) = key.parse::<u64>()
+            && version.to_string() == key
+        {
+            found = found.max(version);
+        }
+    });
+    Some(found)
+}
 
 pub(crate) fn object_map(doc: &LoroDoc, id: &ObjectId) -> Result<LoroMap> {
     match doc.get_map(OBJECTS).get(id.as_str()) {
@@ -229,8 +255,17 @@ pub(crate) fn state_json(doc: &LoroDoc, schema: &Schema) -> Result<Value> {
     for id in object_ids(doc) {
         objects.insert(id.to_string(), object_json(doc, schema, &id)?);
     }
+    // The raises are read as the minimum version they make, so `meta.schemaVersion` is the same
+    // on every replica whichever concurrent register write won.
+    let mut meta = match doc.get_map(META).get_deep_value().to_json_value() {
+        Value::Object(meta) => meta,
+        _ => Map::new(),
+    };
+    if let Some(version) = min_schema_version(doc) {
+        meta.insert(SCHEMA_VERSION.to_owned(), Value::from(version));
+    }
     Ok(canonical(serde_json::json!({
-        "meta": doc.get_map(META).get_deep_value().to_json_value(),
+        "meta": Value::Object(meta),
         "objects": Value::Object(objects),
     })))
 }

@@ -32,6 +32,8 @@ let nextSerial = 1
 /** A successful transaction's operations, ready to apply. */
 export interface Staged {
   readonly empty: boolean
+  /** Whether the transaction raises the document's minimum schema version. */
+  readonly raisesSchema: boolean
   /**
    * Applies the operations without committing, calling `touched` with each changed object. On
    * success the transaction's node handles resolve. Throws the engine's refusal as a `KdmError`.
@@ -64,6 +66,8 @@ export class Tx {
   /** The ids of `created` by type, in creation order (deleted ones included). */
   private readonly createdByType = new Map<string, ObjectId[]>()
   private readonly nodes: NodeRef[] = []
+  /** The largest schema version this transaction raised the document to. */
+  private raised: number | null = null
   private ended = false
 
   private constructor(
@@ -86,8 +90,42 @@ export class Tx {
     const { ops, nodes } = tx
     return {
       result,
-      staged: { empty: ops.length === 0, apply: (target, applySchema, touched) => apply(target, applySchema, ops, nodes, touched) },
+      staged: {
+        empty: ops.length === 0,
+        raisesSchema: ops.some((op) => op.op === 'raiseSchema'),
+        apply: (target, applySchema, touched) => apply(target, applySchema, ops, nodes, touched),
+      },
     }
+  }
+
+  /**
+   * Raises the document's minimum schema version to `version` (rule M20): replicas whose schema is
+   * older then refuse to load the document or import its changes (`newer-schema`). A migration
+   * raises the version in the transaction that rewrites the document into the new form. Answers
+   * whether the version rose: raising to a version the document already has, or a lower one,
+   * changes nothing. Concurrent raises keep the largest.
+   *
+   * Only a `system` transaction raises the version, so it is never an undo step (`transact`
+   * refuses others as `invalid-value`). `version` is at most the transaction's schema version: a
+   * build cannot require a schema it does not read.
+   */
+  raiseSchemaVersion(version: number): boolean {
+    this.live()
+    if (!(typeof version === 'number' && Number.isInteger(version) && version >= 0)) {
+      throw errors.invalidValue('$meta', 'schemaVersion', 'cannot be raised to a value that is not a non-negative integer')
+    }
+    if (version > this.schema.schemaVersion) {
+      throw errors.invalidValue('$meta', 'schemaVersion', `cannot be raised to ${version}: this kit reads schema versions up to ${this.schema.schemaVersion}`)
+    }
+    if (version <= this.minSchemaVersion()) return false
+    this.raised = version
+    this.ops.push({ op: 'raiseSchema', version })
+    return true
+  }
+
+  /** The document's minimum schema version (rule M20), including this transaction's raises. */
+  minSchemaVersion(): number {
+    return Math.max(read.minSchemaVersion(this.doc) ?? 0, this.raised ?? 0)
   }
 
   /**

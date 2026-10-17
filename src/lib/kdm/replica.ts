@@ -79,7 +79,7 @@ function checkFunction(f: unknown): void {
 /** One copy of one document; the TypeScript twin of the Rust `Replica`. */
 export class Replica {
   private readonly docIdBytes: Uint8Array
-  private readonly undoManager: UndoManager
+  private undoManager: UndoManager
   private changed = new Set<ObjectId>()
   /** Set while a transaction's function runs: nothing else may change the document then. */
   private busy = false
@@ -92,14 +92,14 @@ export class Replica {
   private readonly pending = new Map<PeerID, number>()
 
   private constructor(
-    private readonly doc: LoroDoc,
+    private doc: LoroDoc,
     docIdBytes: Uint8Array,
     readonly schema: Schema,
     readonly actor: bigint,
   ) {
     this.docIdBytes = docIdBytes.slice()
     doc.setPeerId(actor)
-    this.undoManager = new UndoManager(doc, { mergeInterval: 0, excludeOriginPrefixes: [ROLLBACK, SYSTEM, IMPORT] })
+    this.undoManager = undoManagerOf(doc)
   }
 
   /** A new, empty document. Only one replica creates a document; others `load` it. */
@@ -121,12 +121,13 @@ export class Replica {
     const doc = new LoroDoc()
     doc.setPeerId(actor)
     configure(doc, schema)
-    const { result, staged } = Tx.stage(doc, schema, build)
+    // Written before `build` runs, so its transaction reads the document's schema version.
     const meta = doc.getMap(read.META)
     meta.set('docId', uuidFromBytes(idBytes))
     meta.set('kit', schema.kit)
-    meta.set('schemaVersion', schema.schemaVersion)
+    meta.set(read.SCHEMA_VERSION, schema.schemaVersion)
     meta.set('kdm', KDM_VERSION)
+    const { result, staged } = Tx.stage(doc, schema, build)
     // The new document is discarded on failure, so nothing needs reverting.
     try {
       staged.apply(doc, schema, () => undefined)
@@ -139,8 +140,9 @@ export class Replica {
 
   /**
    * Opens a snapshot (or a full change export) as a new writable replica of `actor`. Refuses
-   * (`schema`) a document of another kit, of another KDM version, or written under a newer version
-   * of the schema than `schema`; bytes that are not a KDM snapshot are `encoding` errors.
+   * (`schema`) a document of another kit or of another KDM version, and (`newer-schema`) one whose
+   * minimum schema version (rule M20) is newer than `schema`'s; bytes that are not a KDM snapshot
+   * are `encoding` errors.
    *
    * A snapshot holds the changes its replica applied, not those still pending on it (see
    * `hasPendingChanges`): the loaded replica has none pending, and fetches those changes again
@@ -167,10 +169,11 @@ export class Replica {
     if (kit !== schema.kit) throw errors.schema(`the document belongs to ${canonicalText(kit)}, not \`${schema.kit}\``)
     const kdm = meta('kdm')
     if (kdm !== KDM_VERSION) throw errors.schema(`the document uses kdm ${canonicalText(kdm)}; this build reads ${KDM_VERSION}`)
-    const version = meta('schemaVersion')
-    if (!(typeof version === 'number' && Number.isInteger(version) && version >= 0 && version <= schema.schemaVersion)) {
-      throw errors.schema(`the document has schema version ${canonicalText(version)}; this kit reads schema versions up to ${schema.schemaVersion}`)
+    const found = read.minSchemaVersion(doc)
+    if (found === null) {
+      throw errors.schema(`the document has schema version ${canonicalText(meta(read.SCHEMA_VERSION))}; this kit reads schema versions up to ${schema.schemaVersion}`)
     }
+    if (found > schema.schemaVersion) throw errors.newerSchema(found, schema.schemaVersion)
     // The envelope and the document must agree; anything else is corrupt or forged bytes.
     const stored = meta('docId')
     let storedBytes: Uint8Array | null = null
@@ -195,6 +198,15 @@ export class Replica {
   }
 
   /**
+   * The document's minimum schema version (rule M20): the version it was created with, or the
+   * largest one a transaction raised it to (`Tx.raiseSchemaVersion`). Never more than this
+   * replica's schema version: loads and imports refuse such documents.
+   */
+  minSchemaVersion(): number {
+    return read.minSchemaVersion(this.doc) ?? 0
+  }
+
+  /**
    * Runs `f` as one transaction: one commit, one undo step, one origin. Operations are staged while
    * `f` runs and applied only if it returns: if `f` throws, the document, its version, and its
    * exports are unchanged and the error propagates. `f` must be synchronous.
@@ -212,6 +224,9 @@ export class Replica {
     }
     const { result, staged } = stage
     if (staged.empty) return result
+    if (staged.raisesSchema && origin.kind !== SYSTEM) {
+      throw errors.invalidValue('$meta', 'schemaVersion', `is raised only in a \`system\` transaction, not \`${origin.kind}\``)
+    }
     const before = this.doc.frontiers()
     const touched = new Set<ObjectId>()
     try {
@@ -350,18 +365,34 @@ export class Replica {
    * Applies changes from another replica or from storage, in any order, any number of times.
    * Answers the objects whose state changed. Bytes that are not a KDM export are `encoding`
    * errors; changes of another document are `wrong-document` errors and change nothing.
+   *
+   * Changes that raise the document's minimum schema version (rule M20) above this replica's
+   * schema are `newer-schema` errors and change nothing: the state, the version, the exports, and
+   * the changes still pending are as before the import. The engine cannot check changes without
+   * applying them, so the replica is rebuilt from its history before the import; that clears its
+   * undo and redo history, and `subscribeText` listeners stop receiving changes. A build that
+   * meets this error is too old for the document: the host stops syncing and asks for an update.
    */
   importChanges(bytes: Uint8Array): Set<ObjectId> {
     this.idle()
     const { docId, engine } = open(bytes)
     if (!sameBytes(docId, this.docIdBytes)) throw errors.wrongDocument(this.docId, uuidFromBytes(docId))
+    const before = this.doc.oplogFrontiers()
+    let failure: unknown = null
     const { value: status, changed } = observeChanges(this.doc, () => {
       try {
         return this.doc.import(engine)
       } catch (error) {
-        throw errors.encoding(engineMessage(error))
+        failure = error
+        return null
       }
     })
+    const found = read.minSchemaVersion(this.doc)
+    if (found !== null && found > this.schema.schemaVersion) {
+      this.restore(before)
+      throw errors.newerSchema(found, this.schema.schemaVersion)
+    }
+    if (status === null) throw errors.encoding(engineMessage(failure))
     this.notePending(status)
     for (const id of changed) this.changed.add(id)
     this.reopenUndoGroup()
@@ -475,6 +506,26 @@ export class Replica {
     return canonicalText(this.stateJson())
   }
 
+  /**
+   * Replaces the document with its history up to `frontiers`, dropping every change applied since.
+   * Changes still pending stay recorded in `pending`: they are missing again, and a sync fetches
+   * them.
+   */
+  private restore(frontiers: Frontiers): void {
+    let doc: LoroDoc
+    try {
+      doc = this.doc.forkAt(frontiers)
+    } catch (error) {
+      throw errors.engine(engineMessage(error))
+    }
+    configure(doc, this.schema)
+    doc.setPeerId(this.actor)
+    this.undoManager.free()
+    this.doc = doc
+    this.undoManager = undoManagerOf(doc)
+    this.reopenUndoGroup()
+  }
+
   /** Records the changes an import left pending, and forgets those applied since. */
   private notePending(status: ImportStatus): void {
     for (const [peer, { end }] of status.pending ?? []) this.pending.set(peer, Math.max(end, this.pending.get(peer) ?? 0))
@@ -524,6 +575,9 @@ export class Replica {
 }
 
 type Frontiers = ReturnType<LoroDoc['frontiers']>
+
+/** The undo manager of a replica's document. */
+const undoManagerOf = (doc: LoroDoc): UndoManager => new UndoManager(doc, { mergeInterval: 0, excludeOriginPrefixes: [ROLLBACK, SYSTEM, IMPORT] })
 
 const sameFrontiers = (a: Frontiers, b: Frontiers): boolean => {
   const key = (frontiers: Frontiers) => frontiers.map((id) => `${id.counter}@${id.peer}`).sort().join(',')

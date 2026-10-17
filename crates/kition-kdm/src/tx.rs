@@ -46,6 +46,8 @@ pub struct Tx<'a> {
     ops: Vec<Op<'a>>,
     overlay: Overlay<'a>,
     nodes: Vec<Arc<PendingNode>>,
+    /// The largest schema version this transaction raised the document to.
+    raised: Option<u32>,
 }
 
 /// A successful transaction's operations, ready to apply.
@@ -57,6 +59,11 @@ pub(crate) struct Staged<'a> {
 impl Staged<'_> {
     pub(crate) fn is_empty(&self) -> bool {
         self.ops.is_empty()
+    }
+
+    /// Whether the transaction raises the document's minimum schema version.
+    pub(crate) fn raises_schema(&self) -> bool {
+        self.ops.iter().any(|op| matches!(op, Op::RaiseSchema { .. }))
     }
 
     /// Applies the operations without committing, calling `touched` with each changed object.
@@ -75,11 +82,41 @@ impl Staged<'_> {
 
 impl<'a> Tx<'a> {
     pub(crate) fn new(doc: &'a LoroDoc, schema: &'a Schema) -> Self {
-        Self { doc, schema, serial: NEXT_SERIAL.fetch_add(1, Ordering::Relaxed), ops: Vec::new(), overlay: Overlay::default(), nodes: Vec::new() }
+        Self { doc, schema, serial: NEXT_SERIAL.fetch_add(1, Ordering::Relaxed), ops: Vec::new(), overlay: Overlay::default(), nodes: Vec::new(), raised: None }
     }
 
     pub(crate) fn finish(self) -> Staged<'a> {
         Staged { ops: self.ops, nodes: self.nodes }
+    }
+
+    /// Raises the document's minimum schema version to `version` (rule M20): replicas whose
+    /// schema is older then refuse to load the document or import its changes
+    /// ([`KdmError::NewerSchema`]). A migration raises the version in the transaction that rewrites
+    /// the document into the new form. Answers whether the version rose: raising to a version the
+    /// document already has, or a lower one, changes nothing. Concurrent raises keep the largest.
+    ///
+    /// Only a `system` transaction raises the version, so it is never an undo step
+    /// ([`crate::Replica::transact`] refuses others with [`KdmError::InvalidValue`]). `version` is
+    /// at most the transaction's schema version: a build cannot require a schema it does not read.
+    pub fn raise_schema_version(&mut self, version: u32) -> Result<bool> {
+        if version > self.schema.schema_version {
+            return Err(KdmError::InvalidValue {
+                ty: "$meta".into(),
+                field: "schemaVersion".into(),
+                reason: format!("cannot be raised to {version}: this kit reads schema versions up to {}", self.schema.schema_version),
+            });
+        }
+        if u64::from(version) <= self.min_schema_version() {
+            return Ok(false);
+        }
+        self.raised = Some(version);
+        self.ops.push(Op::RaiseSchema { version });
+        Ok(true)
+    }
+
+    /// The document's minimum schema version (rule M20), including this transaction's raises.
+    pub fn min_schema_version(&self) -> u64 {
+        read::min_schema_version(self.doc).unwrap_or(0).max(self.raised.map_or(0, u64::from))
     }
 
     /// Creates an object of type `ty` with its register fields; container fields start empty.

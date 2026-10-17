@@ -11,7 +11,7 @@ use serde_json::{Map, Value};
 
 use crate::error::engine;
 use crate::overlay::NodeKey;
-use crate::read::{self, NODE_OBJECT, OBJECTS, TYPE_KEY};
+use crate::read::{self, META, NODE_OBJECT, OBJECTS, SCHEMA_RAISES, SCHEMA_VERSION, TYPE_KEY};
 use crate::value::to_loro;
 use crate::{FieldKind, KdmError, ObjectId, Result, Schema};
 
@@ -107,12 +107,17 @@ pub(crate) enum Op<'a> {
         node: NodeKey,
         parent: Option<NodeKey>,
     },
+    /// Raises the document's minimum schema version to `version` (rule M20); a no-op when it is
+    /// already at least `version` when applied.
+    RaiseSchema {
+        version: u32,
+    },
 }
 
 impl Op<'_> {
-    /// The object whose state the operation changes.
-    pub(crate) fn object(&self) -> &ObjectId {
-        match self {
+    /// The object whose state the operation changes; `None` for a change of the document's meta.
+    pub(crate) fn object(&self) -> Option<&ObjectId> {
+        Some(match self {
             Self::Create { id, .. }
             | Self::Set { id, .. }
             | Self::Delete { id }
@@ -127,7 +132,8 @@ impl Op<'_> {
             | Self::MapDelete { id, .. }
             | Self::TreeCreate { id, .. }
             | Self::TreeMove { id, .. } => id,
-        }
+            Self::RaiseSchema { .. } => return None,
+        })
     }
 }
 
@@ -137,7 +143,9 @@ pub(crate) fn apply(doc: &LoroDoc, schema: &Schema, ops: Vec<Op<'_>>, node_count
     let mut nodes: Vec<Option<TreeID>> = vec![None; node_count];
     for (index, op) in ops.into_iter().enumerate() {
         fail_if_forced(index)?;
-        touched(op.object());
+        if let Some(id) = op.object() {
+            touched(id);
+        }
         apply_one(doc, schema, op, &mut nodes)?;
     }
     Ok(nodes)
@@ -202,6 +210,16 @@ fn apply_one(doc: &LoroDoc, schema: &Schema, op: Op<'_>, nodes: &mut [Option<Tre
             let tree = tree(doc, &id, field)?;
             let parent = parent_id(nodes, parent)?;
             tree.mov(node_id(nodes, node)?, parent).map_err(engine)?;
+        }
+        Op::RaiseSchema { version } => {
+            if read::min_schema_version(doc).is_some_and(|current| current >= u64::from(version)) {
+                return Ok(());
+            }
+            let meta = doc.get_map(META);
+            // The register is what builds before rule M20 check; the map is what keeps the
+            // largest of concurrent raises.
+            meta.insert(SCHEMA_VERSION, i64::from(version)).map_err(engine)?;
+            doc.get_map(SCHEMA_RAISES).insert(&version.to_string(), true).map_err(engine)?;
         }
     }
     Ok(())

@@ -4,12 +4,14 @@ use std::mem;
 use std::sync::{Arc, Mutex};
 
 use loro::event::Diff;
-use loro::{Counter, ExportMode, Index, LoroDoc, LoroError, PeerID, ToJson, TreeID, TreeParentId, UndoManager, ValueOrContainer, VersionRange, VersionVector};
+use loro::{
+    Counter, ExportMode, Frontiers, Index, LoroDoc, LoroError, PeerID, ToJson, TreeID, TreeParentId, UndoManager, ValueOrContainer, VersionRange, VersionVector,
+};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 
 use crate::error::engine;
-use crate::read::{self, META, OBJECTS};
+use crate::read::{self, META, OBJECTS, SCHEMA_VERSION};
 use crate::{ActorId, DocId, KDM_VERSION, KdmError, NodeRef, ObjectId, Origin, OriginKind, Result, Schema, TextRun, Tx};
 
 /// The origin given to the partial operations of a transaction the engine refused while applying
@@ -87,16 +89,17 @@ impl Replica {
         let doc = LoroDoc::new();
         doc.set_peer_id(actor.get()).map_err(engine)?;
         crate::marks::configure(&doc, &schema);
+        // Written before `build` runs, so its transaction reads the document's schema version.
+        let meta = doc.get_map(META);
+        meta.insert("docId", doc_id.to_string()).map_err(engine)?;
+        meta.insert("kit", schema.kit.clone()).map_err(engine)?;
+        meta.insert(SCHEMA_VERSION, i64::from(schema.schema_version)).map_err(engine)?;
+        meta.insert("kdm", i64::from(KDM_VERSION)).map_err(engine)?;
         let (value, staged) = {
             let mut tx = Tx::new(&doc, &schema);
             let value = build(&mut tx)?;
             (value, tx.finish())
         };
-        let meta = doc.get_map(META);
-        meta.insert("docId", doc_id.to_string()).map_err(engine)?;
-        meta.insert("kit", schema.kit.clone()).map_err(engine)?;
-        meta.insert("schemaVersion", i64::from(schema.schema_version)).map_err(engine)?;
-        meta.insert("kdm", i64::from(KDM_VERSION)).map_err(engine)?;
         // The new document is discarded on failure, so nothing needs reverting.
         staged.apply(&doc, &schema, |_| {}).map_err(applying_failed)?;
         doc.set_next_commit_origin(origin.kind.as_str());
@@ -106,8 +109,9 @@ impl Replica {
     }
 
     /// Opens a snapshot (or a full change export) as a new writable replica of `actor`. Refuses
-    /// ([`KdmError::Schema`]) a document of another kit, of another KDM version, or written under
-    /// a newer version of the schema than `schema`.
+    /// ([`KdmError::Schema`]) a document of another kit or of another KDM version, and
+    /// ([`KdmError::NewerSchema`]) one whose minimum schema version (rule M20) is newer than
+    /// `schema`'s.
     ///
     /// A snapshot holds the changes its replica applied, not those still pending on it (see
     /// [`Replica::has_pending_changes`]): the loaded replica has none pending, and fetches those
@@ -132,12 +136,13 @@ impl Replica {
         if kdm.as_u64() != Some(u64::from(KDM_VERSION)) {
             return Err(KdmError::Schema(format!("the document uses kdm {kdm}; this build reads {KDM_VERSION}")));
         }
-        let version = meta("schemaVersion");
-        match version.as_u64() {
+        match read::min_schema_version(&doc) {
             Some(found) if found <= u64::from(schema.schema_version) => {}
-            _ => {
+            Some(found) => return Err(KdmError::NewerSchema { found, reads: schema.schema_version }),
+            None => {
                 return Err(KdmError::Schema(format!(
-                    "the document has schema version {version}; this kit reads schema versions up to {}",
+                    "the document has schema version {}; this kit reads schema versions up to {}",
+                    meta(SCHEMA_VERSION),
                     schema.schema_version
                 )));
             }
@@ -153,15 +158,7 @@ impl Replica {
 
     fn attach(doc: LoroDoc, doc_id: DocId, schema: Arc<Schema>, actor: ActorId) -> Result<Self> {
         doc.set_peer_id(actor.get()).map_err(engine)?;
-        let mut undo = UndoManager::new(&doc);
-        undo.set_merge_interval(0);
-        undo.add_exclude_origin_prefix(ROLLBACK);
-        // `system` transactions (repairs, migrations) are not undo steps: undo skips them like
-        // changes from another replica, and they survive the undo of earlier transactions.
-        undo.add_exclude_origin_prefix(OriginKind::System.as_str());
-        // `import` transactions (changes merged from a file edited elsewhere) are not undo steps
-        // either: a person's undo never reverts another tool's edit.
-        undo.add_exclude_origin_prefix(OriginKind::Import.as_str());
+        let undo = undo_manager(&doc);
         Ok(Self { doc, doc_id, schema, actor, undo, grouping: false, changed: BTreeSet::new(), pending: HashMap::new() })
     }
 
@@ -181,6 +178,13 @@ impl Replica {
         Version(self.doc.oplog_vv())
     }
 
+    /// The document's minimum schema version (rule M20): the version it was created with, or the
+    /// largest one a transaction raised it to ([`Tx::raise_schema_version`]). Never more than
+    /// this replica's schema version: loads and imports refuse such documents.
+    pub fn min_schema_version(&self) -> u32 {
+        read::min_schema_version(&self.doc).and_then(|found| u32::try_from(found).ok()).unwrap_or(0)
+    }
+
     /// Runs `f` as one transaction: one commit, one undo step, one origin. Operations are staged
     /// while `f` runs and applied only if it succeeds: if `f` fails, the document, its version,
     /// and its exports are unchanged and the error is returned.
@@ -193,6 +197,13 @@ impl Replica {
         };
         if staged.is_empty() {
             return Ok(value);
+        }
+        if staged.raises_schema() && origin.kind != OriginKind::System {
+            return Err(KdmError::InvalidValue {
+                ty: "$meta".into(),
+                field: "schemaVersion".into(),
+                reason: format!("is raised only in a `system` transaction, not `{}`", origin.kind.as_str()),
+            });
         }
         let before = self.doc.state_frontiers();
         let mut touched = BTreeSet::new();
@@ -298,18 +309,42 @@ impl Replica {
     /// Answers the objects whose state changed.
     /// Bytes that are not a KDM export are [`KdmError::Encoding`]; changes of another document are
     /// [`KdmError::WrongDocument`] and change nothing.
+    ///
+    /// Changes that raise the document's minimum schema version (rule M20) above this replica's
+    /// schema are [`KdmError::NewerSchema`] and change nothing: the state, the version, the
+    /// exports, and the changes still pending are as before the import. The engine cannot check
+    /// changes without applying them, so the replica is rebuilt from its history before the
+    /// import; that clears its undo and redo history.
     pub fn import_changes(&mut self, bytes: &[u8]) -> Result<BTreeSet<ObjectId>> {
         let (doc_id, bytes) = envelope::open(bytes)?;
         if doc_id != self.doc_id {
             return Err(KdmError::WrongDocument { expected: self.doc_id.to_string(), found: doc_id.to_string() });
         }
+        let before = self.doc.oplog_frontiers();
         let doc = &self.doc;
         let (imported, changed) = observe_changes(doc, || doc.import(bytes).map_err(|error| KdmError::Encoding(error.to_string())));
+        if let Some(found) = read::min_schema_version(&self.doc).filter(|found| *found > u64::from(self.schema.schema_version)) {
+            self.restore(&before)?;
+            return Err(KdmError::NewerSchema { found, reads: self.schema.schema_version });
+        }
         let status = imported?;
         self.note_pending(status.pending.as_ref());
         self.changed.extend(changed.iter().cloned());
         self.reopen_undo_group();
         Ok(changed)
+    }
+
+    /// Replaces the document with its history up to `frontiers`, dropping every change applied
+    /// since. Changes still pending stay recorded in `pending`: they are missing again, and a
+    /// sync fetches them.
+    fn restore(&mut self, frontiers: &Frontiers) -> Result<()> {
+        let doc = self.doc.fork_at(frontiers).map_err(engine)?;
+        crate::marks::configure(&doc, &self.schema);
+        doc.set_peer_id(self.actor.get()).map_err(engine)?;
+        self.undo = undo_manager(&doc);
+        self.doc = doc;
+        self.reopen_undo_group();
+        Ok(())
     }
 
     /// Whether this replica holds imported changes it could not apply yet, because they depend on
@@ -418,6 +453,20 @@ impl Replica {
         let digest = Sha256::digest(self.state_json()?.to_string().as_bytes());
         Ok(digest.iter().map(|byte| format!("{byte:02x}")).collect())
     }
+}
+
+/// The undo manager of a replica's document.
+fn undo_manager(doc: &LoroDoc) -> UndoManager {
+    let mut undo = UndoManager::new(doc);
+    undo.set_merge_interval(0);
+    undo.add_exclude_origin_prefix(ROLLBACK);
+    // `system` transactions (repairs, migrations) are not undo steps: undo skips them like
+    // changes from another replica, and they survive the undo of earlier transactions.
+    undo.add_exclude_origin_prefix(OriginKind::System.as_str());
+    // `import` transactions (changes merged from a file edited elsewhere) are not undo steps
+    // either: a person's undo never reverts another tool's edit.
+    undo.add_exclude_origin_prefix(OriginKind::Import.as_str());
+    undo
 }
 
 /// Runs `run` while observing which objects change. Change events are observed only during the

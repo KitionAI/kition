@@ -22,6 +22,10 @@ pub enum KdmError {
     /// Changes exported by another document: documents never merge.
     #[error("the changes belong to document {found}, not {expected}")]
     WrongDocument { expected: String, found: String },
+    /// The document's minimum schema version (rule M20) is newer than the reader's schema: a
+    /// document migrated by a newer build, which this build would misread.
+    #[error("the document needs schema version {found}; this kit reads schema versions up to {reads}")]
+    NewerSchema { found: u64, reads: u32 },
     #[error("encoding: {0}")]
     Encoding(String),
     #[error("engine: {0}")]

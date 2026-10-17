@@ -33,12 +33,14 @@ export type Op =
   /** Creates the transaction's `node`-th node. */
   | { op: 'treeCreate'; id: ObjectId; field: string; parent: NodeKey | null; object: ObjectId; node: number }
   | { op: 'treeMove'; id: ObjectId; field: string; node: NodeKey; parent: NodeKey | null }
+  /** Raises the document's minimum schema version (rule M20); a no-op when it is already at least `version` when applied. */
+  | { op: 'raiseSchema'; version: number }
 
 /** Applies validated operations in order and resolves the created nodes' handles. Does not commit. */
 export function apply(doc: LoroDoc, schema: Schema, ops: Op[], nodes: NodeRef[], touched: (id: ObjectId) => void): void {
   const created: Array<TreeID | undefined> = new Array(nodes.length)
   for (const op of ops) {
-    touched(op.id)
+    if (op.op !== 'raiseSchema') touched(op.id)
     try {
       applyOne(doc, schema, op, created)
     } catch (error) {
@@ -99,6 +101,15 @@ function applyOne(doc: LoroDoc, schema: Schema, op: Op, created: Array<TreeID | 
       const node = nodeId(created, op.node)
       if (node === undefined) throw errors.engine('a staged tree move has no node')
       return engineContainer(doc, op.id, op.field, 'tree').move(node, nodeId(created, op.parent))
+    }
+    case 'raiseSchema': {
+      const current = read.minSchemaVersion(doc)
+      if (current !== null && current >= op.version) return
+      // The register is what builds before rule M20 check; the map is what keeps the largest of
+      // concurrent raises.
+      doc.getMap(read.META).set(read.SCHEMA_VERSION, op.version)
+      doc.getMap(read.SCHEMA_RAISES).set(String(op.version), true)
+      return
     }
   }
 }
