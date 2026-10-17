@@ -14,6 +14,11 @@
  *   fetched (`blob/get`) before `replica/import`. `lastSent` then also includes the version the
  *   change reaches, so the import (which moves the replica's version too) is not sent back.
  *
+ * - **Position.** After the join's catch-up and after each pulled change, once every pulled change
+ *   is imported, the relay reports the server `seq` it now has everything up to with the replica's
+ *   version (`onSeen`); a later session whose replica still holds that version joins with
+ *   `since` set to it, pulling only what is new.
+ *
  * Everything runs one step at a time, in order. Imports are idempotent, so a change that arrives
  * twice (a reconnect's catch-up) is harmless.
  */
@@ -21,7 +26,7 @@ import type { ConnectionState, Presence, RoomJoinResult, SyncClient } from '@/li
 import { blobHashCandidates, decodeBlobSection, encodeBlobSection, type BlobEntry } from './blobSection'
 import type { ReplicaVersions } from './replicaVersions'
 
-/** The replica side: a mounted kit's `KitConnection.replica`. */
+/** The replica side: a mounted kit's `KitConnection.replica`, or a host editor's (`collabDocuments.ts`). */
 export type RelayReplica = {
   version: () => Promise<ArrayBuffer>
   exportChanges: (since: ArrayBuffer) => Promise<{ changes: ArrayBuffer; blobs: ArrayBuffer }>
@@ -41,6 +46,10 @@ export type KitRelayOptions = {
   lastSent?: Uint8Array
   /** The room took a push: `version` is what it now holds from here (to keep for next time). */
   onSent?: (version: Uint8Array) => void
+  /** The server `seq` to join the room from (an earlier session's `onSeen`); absent or `null`: from its snapshot. */
+  since?: number | null
+  /** The replica has every change of the room up to `seq`, and is at `version` (to keep for next time). */
+  onSeen?: (seen: { seq: number; version: Uint8Array }) => void
   /** Joined (or re-joined) the room: its presence and this person's role. */
   onJoined?: (result: { presence: Presence[]; role: RoomJoinResult['role'] }) => void
   onError?: (error: unknown) => void
@@ -136,16 +145,25 @@ export function startKitRelay(options: KitRelayOptions): KitRelay {
     }
   }
 
+  /** Reports `seq` as seen, unless a pulled change is still waiting for its blobs. */
+  async function seen(seq: number | undefined) {
+    if (seq === undefined || waiting.length || !options.onSeen) return
+    options.onSeen({ seq, version: bytes(await replica.version()) })
+  }
+
   async function join() {
-    const result = await sync.join(docId)
+    const result = await sync.join(docId, options.since ?? null)
     joined = true
     readOnly = result.role === 'viewer'
     options.onJoined?.({ presence: result.presence, role: result.role })
     for (const changes of result.changes) await importRemote(changes)
+    await seen(result.seq)
   }
 
   const unsubscribes = [
-    sync.onChanges(docId, (notice) => void run(async () => void (await importRemote(notice.changes)))),
+    sync.onChanges(docId, (notice) => void run(async () => {
+      if (await importRemote(notice.changes)) await seen(notice.seq)
+    })),
     replica.onChanged(() => void run(sendLocal)),
     sync.onState((state) => {
       if (state !== 'online') return

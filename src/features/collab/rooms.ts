@@ -17,6 +17,12 @@ export type CollabRoom = {
   lastSent?: string
   /** The workspace file the shared document was opened into here, if it came from a link. */
   path?: string
+  /**
+   * The last server `seq` this side had every change of the room up to, and the replica version
+   * (lowercase hex) it then had: a later session whose replica still holds that version joins
+   * the room from `seq`, pulling only what is new.
+   */
+  seen?: { seq: number; version: string }
 }
 
 const ROOMS_KEY = 'kition.collab.rooms.v1'
@@ -39,6 +45,16 @@ function readRooms(): Record<string, CollabRoom> {
   }
 }
 
+/** Every shared document this person co-edits. */
+export function listRooms(): CollabRoom[] {
+  return Object.values(readRooms()).filter((room): room is CollabRoom => Boolean(room) && typeof room.docId === 'string' && typeof room.shareLink === 'string')
+}
+
+/** The workspace files opened from links where this person may only view. */
+export function viewerPaths(): string[] {
+  return listRooms().flatMap((room) => (room.role === 'viewer' && room.path ? [room.path] : []))
+}
+
 export function readRoom(docId: string): CollabRoom | null {
   const room = readRooms()[docId]
   return room && room.docId === docId && typeof room.shareLink === 'string' ? room : null
@@ -50,6 +66,12 @@ export function writeRoom(room: CollabRoom, { quiet = false } = {}) {
   if (!store) return
   store.setItem(ROOMS_KEY, JSON.stringify({ ...readRooms(), [room.docId]: room }))
   if (!quiet) window.dispatchEvent(new CustomEvent(ROOMS_CHANGED_EVENT, { detail: { docId: room.docId } }))
+}
+
+/** Changes the record of `docId`, if there is one; `quiet` as for `writeRoom`. */
+export function updateRoom(docId: string, patch: Partial<Omit<CollabRoom, 'docId'>>, options: { quiet?: boolean } = {}) {
+  const room = readRoom(docId)
+  if (room) writeRoom({ ...room, ...patch }, options)
 }
 
 /** Hears a document becoming shared (or its record changing); answers an unsubscribe. */

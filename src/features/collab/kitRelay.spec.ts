@@ -76,6 +76,10 @@ const FAKE_VERSIONS: ReplicaVersions = {
   isEmpty: (changes) => parse<{ ops: Op[] }>(changes).ops.length === 0,
   merge: (a, b) => text([...new Set([...(a.length ? parse<string[]>(a) : []), ...(b.length ? parse<string[]>(b) : [])])].sort()),
   endOf: (changes) => text(parse<{ ops: Op[] }>(changes).ops.map((op) => op.id)),
+  includes: (version, other) => {
+    const held = new Set(version.length ? parse<string[]>(version) : [])
+    return (other.length ? parse<string[]>(other) : []).every((id) => held.has(id))
+  },
 }
 
 /** A sync server holding one room: its change log and the blob store. */
@@ -105,9 +109,14 @@ class FakeClient implements RelaySync {
 
   constructor(private readonly server: FakeServer) {}
 
-  async join(docId: string): Promise<RoomJoinResult> {
+  /** The `since` of every `join`, for tests to inspect. */
+  readonly joins: Array<number | null | undefined> = []
+
+  async join(docId: string, since?: number | null): Promise<RoomJoinResult> {
     if (this.state !== 'online') throw unavailable()
+    this.joins.push(since)
     this.joined.add(docId)
+    if (since !== undefined) this.lastSeq = since ?? 0
     const changes = this.server.log.slice(this.lastSeq)
     this.lastSeq = this.server.log.length
     return { changes, seq: this.lastSeq, more: false, presence: [], role: 'editor' }
@@ -253,6 +262,36 @@ describe('startKitRelay', () => {
     expect(a.replica.blobs.has(sha256(new TextEncoder().encode('an offline stroke')))).toBe(true)
     expect(b.replica.blobs.has(sha256(new TextEncoder().encode('a stroke meanwhile')))).toBe(true)
     expect(server.log.length).toBeLessThanOrEqual(4)
+  })
+
+  it('reports the seq it has everything up to, and a later session joins from it', async () => {
+    const { server, a, b, settle } = await setUp()
+    const seen: Array<{ seq: number; version: string[] }> = []
+    const c = { replica: new FakeReplica(SHARED), sync: server.client() }
+    const relay = startKitRelay({
+      docId: 'doc',
+      replica: c.replica,
+      sync: c.sync,
+      versions: FAKE_VERSIONS,
+      lastSent: text(['base']),
+      onSeen: ({ seq, version }) => seen.push({ seq, version: parse<string[]>(version) }),
+    })
+    a.replica.edit('a1')
+    b.replica.edit('b1')
+    await settle()
+    await relay.idle()
+    expect(seen.at(-1)).toEqual({ seq: 2, version: ['a1', 'b1', 'base'] })
+    relay.stop()
+
+    // Reopened at that version: the join asks only for what came after seq 2.
+    a.replica.edit('a2')
+    await settle()
+    const again = { replica: new FakeReplica([...SHARED, { id: 'a1', blob: null }, { id: 'b1', blob: null }]), sync: server.client() }
+    const resumed = startKitRelay({ docId: 'doc', replica: again.replica, sync: again.sync, versions: FAKE_VERSIONS, lastSent: text(['a1', 'b1', 'base']), since: 2 })
+    await resumed.idle()
+    expect(again.sync.joins).toEqual([2])
+    expect(again.replica.ids()).toEqual(['a1', 'a2', 'b1', 'base'])
+    resumed.stop()
   })
 
   it('stops relaying when stopped', async () => {

@@ -14,6 +14,8 @@ export type ReplicaVersions = {
   merge: (a: Uint8Array, b: Uint8Array) => Uint8Array
   /** The version `changes` reaches for each author it carries changes of; `null` if unreadable. */
   endOf: (changes: Uint8Array) => Uint8Array | null
+  /** Whether `version` holds every change `other` holds. */
+  includes: (version: Uint8Array, other: Uint8Array) => boolean
 }
 
 function counters(version: Uint8Array): Map<string, number> {
@@ -38,6 +40,15 @@ export const LORO_REPLICA_VERSIONS: ReplicaVersions = {
       return decodeImportBlobMeta(open(changes).engine, false).partialEndVersionVector.encode()
     } catch {
       return null
+    }
+  },
+  includes: (version, other) => {
+    try {
+      const held = counters(version)
+      for (const [peer, counter] of counters(other)) if ((held.get(peer) ?? 0) < counter) return false
+      return true
+    } catch {
+      return false
     }
   },
 }
