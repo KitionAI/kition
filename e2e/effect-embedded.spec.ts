@@ -1,5 +1,9 @@
-import { expect, test } from '@playwright/test'
-import { kitEngine, openInKitFrame } from './helpers/embeddedKit'
+import fs from 'node:fs/promises'
+import path from 'node:path'
+import { expect, test, type Page } from '@playwright/test'
+import { kitEngine, openInKitFrame, openTreeFile } from './helpers/embeddedKit'
+import { kitPackageHasReplicaInfo } from './helpers/kitionPro'
+import { dismissFirstRunActivation } from './helpers/onboarding'
 import { canReadBlobBodies } from './helpers/requestBody'
 
 type NodeEffectDocument = { save(): Uint8Array; execute(command: string, params: string): string; inspect(): string; free(): void }
@@ -47,6 +51,59 @@ test('opens a motion project in the Effect kit’s own editor, animates it, and 
     await expect(kit.getByTestId('effect-unsaved')).toHaveCount(0)
     expect(saves.map((save) => save.path)).toContain('Intro.kitioneffect')
     if (canReadBlobBodies(browserName)) expect(saves.find((save) => save.path === 'Intro.mp4')!.bytes.subarray(4, 8).toString()).toBe('ftyp')
+  } finally {
+    await host.dispose()
+  }
+})
+
+/** The replica version of the kit editor showing `path`, as hex (Kition's development test hook). */
+function replicaVersion(page: Page, path: string) {
+  return page.evaluate(async (wanted) => (window.__KITION_KIT_TEST__ ? window.__KITION_KIT_TEST__.replicaVersion(wanted) : ''), path)
+}
+
+test('keeps a motion project’s replica across a save and a reopen, and opens a file changed elsewhere plainly', async ({ page, baseURL }) => {
+  test.skip(!engine.built, 'the Effect kit editor is not built into public/kits/effect-ui')
+  test.skip(!kitPackageHasReplicaInfo('effect', 'kition_effect_sdk'), 'the Effect kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh effect')
+  test.setTimeout(180_000)
+  // A flat name: the document tree's own folder-expand toggle (clicked again on each reopen)
+  // would otherwise collapse a folder a previous open already expanded.
+  const name = 'Replica.kitioneffect'
+  const { host, kit } = await openInKitFrame(page, baseURL!, name, await introFixture(), {}, { persist: true })
+  const reopen = async () => {
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await dismissFirstRunActivation(page)
+    return openTreeFile(page, name)
+  }
+  try {
+    await expect(kit.getByTestId('effect-status')).toContainText('1 layers', { timeout: 60_000 })
+    // A new text layer, then save.
+    await kit.getByTestId('effect-new-layer').click()
+    await kit.getByTestId('effect-new-text').click()
+    await expect(kit.getByTestId('effect-status')).toContainText('2 layers')
+    await kit.getByTestId('effect-save').click()
+    await expect(kit.getByTestId('effect-unsaved')).toHaveCount(0, { timeout: 30_000 })
+
+    // The replica sits in the document store under the file's identity, with the saved file's stamp.
+    const store = path.join(host.root, '.kition', 'docs')
+    const readJson = async (file: string) => JSON.parse(await fs.readFile(path.join(store, file), 'utf8').catch(() => '{}'))
+    await expect.poll(async () => (await readJson('index.json')).entries?.[name] ?? null, { timeout: 15_000 }).not.toBeNull()
+    const docId = (await readJson('index.json')).entries[name] as string
+    await expect.poll(async () => (await readJson(`${docId}/meta.json`)).meta?.kit ?? null).toBe('kit.effect')
+    const saved = await replicaVersion(page, name)
+    expect(saved).not.toBe('')
+
+    // Reopened, the project is the replica it was saved with: the text layer survives.
+    const reopened = await reopen()
+    await expect(reopened.getByTestId('effect-status')).toContainText('2 layers', { timeout: 60_000 })
+    await expect.poll(() => replicaVersion(page, name).catch(() => ''), { timeout: 15_000 }).toBe(saved)
+    await expect(reopened.getByTestId('effect-unsaved')).toHaveCount(0)
+
+    // A file changed elsewhere (a new stamp) opens plainly: what the file holds, a new replica.
+    await fs.writeFile(path.join(host.root, name), await introFixture())
+    const changed = await reopen()
+    await expect(changed.getByTestId('effect-status')).toContainText('1 layers', { timeout: 60_000 })
+    await expect.poll(() => replicaVersion(page, name).catch(() => ''), { timeout: 15_000 }).not.toBe('')
+    expect(await replicaVersion(page, name)).not.toBe(saved)
   } finally {
     await host.dispose()
   }
