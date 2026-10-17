@@ -137,6 +137,16 @@ test('keeps a Word document’s replica across a save and a reopen, and opens a 
     await page.keyboard.press('Control+End')
     await page.keyboard.press('Meta+ArrowDown')
     await page.keyboard.type(' A line added before saving.')
+    // The kit applies the keys a moment after they are sent: save once its replica holds still,
+    // or keys applied after the save leave the letter unsaved again.
+    await expect(kit.getByTestId('word-unsaved')).toBeVisible()
+    let last = ''
+    await expect.poll(async () => {
+      const now = await replicaVersion(page, name)
+      const still = now !== '' && now === last
+      last = now
+      return still
+    }, { timeout: 15_000, intervals: [300] }).toBe(true)
     await kit.getByTestId('word-save').click()
     await expect(kit.getByTestId('word-unsaved')).toHaveCount(0, { timeout: 30_000 })
 
