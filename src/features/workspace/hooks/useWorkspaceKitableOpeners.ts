@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { KitableChildrenIndex } from '@/features/workspace/hooks/useKitableChildrenIndex'
@@ -111,21 +111,31 @@ export function useWorkspaceKitableOpeners({
   }, [openKitableWorkflow])
 
   // A container open that arrives before the index lists the file waits for
-  // the next completed refresh; one refresh is requested per path.
+  // the next completed refresh; one refresh is requested per path, and the
+  // open waits until that refresh has finished (a render in between still
+  // shows the index from before it, which would open the workflow view).
+  // The refresh in flight is a ref so callers holding an older callback see
+  // it too; the tick re-runs the pending open once it settles.
   const pendingKitableOpenPathRef = useRef('')
   const refreshedKitableOpenPathRef = useRef('')
+  const refreshingKitablePathRef = useRef('')
+  const [refreshSettled, setRefreshSettled] = useState(0)
   const { tablesByKitablePath, status, refresh } = kitableChildrenIndex
   const openKitableContainer = useCallback((kitablePath: string) => {
     const tables = [...(tablesByKitablePath[kitablePath] || [])].sort((left, right) => left.order - right.order)
     if (tables.length === 0) {
-      const waitingForCurrentRefresh = status === 'idle' || status === 'loading'
+      const waitingForCurrentRefresh = status === 'idle' || status === 'loading' || refreshingKitablePathRef.current === kitablePath
       const needsFreshLookup = status === 'done' && refreshedKitableOpenPathRef.current !== kitablePath
       if (waitingForCurrentRefresh || needsFreshLookup) {
         pendingKitableOpenPathRef.current = kitablePath
         setActiveResourcePath(kitablePath)
         if (needsFreshLookup) {
           refreshedKitableOpenPathRef.current = kitablePath
-          void refresh()
+          refreshingKitablePathRef.current = kitablePath
+          void refresh().catch(() => undefined).finally(() => {
+            if (refreshingKitablePathRef.current === kitablePath) refreshingKitablePathRef.current = ''
+            setRefreshSettled((tick) => tick + 1)
+          })
         }
         return
       }
@@ -148,7 +158,7 @@ export function useWorkspaceKitableOpeners({
     const pendingPath = pendingKitableOpenPathRef.current
     if (!pendingPath) return
     openKitableContainer(pendingPath)
-  }, [status, openKitableContainer])
+  }, [status, refreshSettled, openKitableContainer])
 
   return {
     openKitableTable,

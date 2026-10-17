@@ -91,11 +91,13 @@ test('co-edits a Markdown document between two windows: live, and merging text t
 
     // Back online: both have both edits, merged in place.
     await bobNetwork.setOnline(true)
+    const back = Date.now()
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 60_000 })
     for (const page of [pageA, pageB]) {
       await expect.poll(() => text(page), { timeout: 60_000 }).toContain('Launch notes (draft)')
       await expect.poll(() => text(page), { timeout: 60_000 }).toContain('Alice was here. Still here.')
     }
+    testInfo.annotations.push({ type: 'reconnect to converged', description: `${Date.now() - back} ms` })
     await expect.poll(() => fs.readFile(path.join(a.host.root, 'Notes.md'), 'utf8'), { timeout: 10_000 }).toContain('(draft)')
     await pageA.screenshot({ path: testInfo.outputPath('alice.png') })
     await pageB.screenshot({ path: testInfo.outputPath('bob.png') })
@@ -126,7 +128,8 @@ test('a viewer of a shared Markdown document reads it as it changes but cannot t
     await openSharedLink(pageB, viewLink)
     await expect(editor(pageB)).toContainText('First line.', { timeout: 30_000 })
     await expect(pageB.locator('.document-tab-list [data-testid="collab-view-only"]')).toBeVisible({ timeout: 15_000 })
-    await expect(editor(pageB)).toHaveAttribute('contenteditable', 'false', { timeout: 15_000 })
+    // The document editor's read-only mode is CodeMirror's: selectable, but it takes no input.
+    await expect(editor(pageB)).toHaveAttribute('aria-readonly', 'true', { timeout: 15_000 })
     const before = await text(pageB)
     await editor(pageB).locator('.cm-line', { hasText: 'First line.' }).first().click()
     await pageB.keyboard.type(' Bob tried.')

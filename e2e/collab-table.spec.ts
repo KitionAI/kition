@@ -92,6 +92,8 @@ async function openTableWorkspace(page: Page, baseURL: string, token: string | n
     routes: async (target) => {
       await session?.routes(target)
       mock = await mockKitableDataDocumentApi(target)
+      // The runtime lists the table file at its workspace path, so the tree opens its tables.
+      mock.document.path = Object.keys(files).find((name) => name.endsWith('.kitable')) ?? mock.document.path
       // Opens the kit bridge stream before the app connects, so notifications arrive at once.
       await emitTableReplicaChanged(target, { documentPath: '.none.kitable', docId: '', version: '' })
       await extraRoutes?.(target, mock)
@@ -109,6 +111,7 @@ function createSharedTable(root: () => string, initial: () => { changes: string;
       await fs.mkdir(path.dirname(target), { recursive: true })
       await fs.writeFile(target, DOC_MARKER)
       mock.replica.created.push({ path: body.path ?? '', changes: body.changes ?? '' })
+      mock.document.path = body.path ?? mock.document.path
       mock.replica.changes = body.changes ?? ''
       mock.replica.version = initial().version
       return fulfillJson(route, { code: 200, data: { documentId: '1', documentPath: body.path, docId: mock.replica.docId, version: mock.replica.version } })
@@ -175,10 +178,12 @@ test('co-edits a table between two windows: live, and merging edits made offline
 
     // Back online: each runtime got the other's edits, and the replicas agree.
     await bobNetwork.setOnline(true)
+    const back = Date.now()
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 60_000 })
     const everything = ['From Alice', 'From Alice meanwhile', 'From Bob offline']
     await expect.poll(() => importAndReadRows(pageA, a.mock.replica.imported), { timeout: 60_000 }).toEqual(everything)
     await expect.poll(() => importAndReadRows(pageB, b.mock.replica.imported), { timeout: 60_000 }).toEqual(everything)
+    testInfo.annotations.push({ type: 'reconnect to converged', description: `${Date.now() - back} ms` })
   } finally {
     await alice.close()
     await bob.close()

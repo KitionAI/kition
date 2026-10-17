@@ -126,9 +126,11 @@ test('co-edits a board between two windows: live, and merging shapes drawn offli
 
     // Back online: both boards have both shapes, at the same version.
     await bobNetwork.setOnline(true)
+    const back = Date.now()
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 60_000 })
     for (const page of [pageA, pageB]) await expect.poll(() => elementIds(page), { timeout: 60_000 }).toEqual(expect.arrayContaining([drawn, fromAlice, fromBob]))
     await expect.poll(async () => (await snapshot(pageB)).kdmVersion, { timeout: 30_000 }).toBe((await snapshot(pageA)).kdmVersion)
+    testInfo.annotations.push({ type: 'reconnect to converged', description: `${Date.now() - back} ms` })
     await pageA.screenshot({ path: testInfo.outputPath('alice.png') })
     await pageB.screenshot({ path: testInfo.outputPath('bob.png') })
   } finally {
