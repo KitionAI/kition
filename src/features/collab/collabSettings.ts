@@ -10,8 +10,19 @@ const SERVER_URL_KEY = 'kition.collab.serverUrl.v1'
 /** This window changed the server URL (`storage` events only reach other windows). */
 const SETTINGS_CHANGED_EVENT = 'kition:collab:settings-changed'
 
-/** Development builds talk to a local server (kition-pro's `--memory` mode); release builds to none. */
-const DEFAULT_SYNC_SERVER_URL = import.meta.env.DEV ? 'ws://127.0.0.1:18300/v1/sync' : ''
+/** The local server development builds talk to (kition-pro's `--memory` mode). */
+const LOCAL_SYNC_SERVER_URL = 'ws://127.0.0.1:18300/v1/sync'
+
+/**
+ * The build's default sync server: `VITE_KITION_SYNC_URL` at build time when set (empty: none),
+ * else the local server in development builds and none in release builds.
+ */
+export function defaultSyncServerUrl(env: { DEV: boolean; VITE_KITION_SYNC_URL?: string }): string {
+  if (env.VITE_KITION_SYNC_URL !== undefined) return env.VITE_KITION_SYNC_URL.trim()
+  return env.DEV ? LOCAL_SYNC_SERVER_URL : ''
+}
+
+const DEFAULT_SYNC_SERVER_URL = defaultSyncServerUrl(import.meta.env)
 
 function storage(): Storage | null {
   try {

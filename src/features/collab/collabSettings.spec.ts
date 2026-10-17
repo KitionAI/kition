@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { onCollabSettingsChanged, setSyncServerUrl, syncServerUrl, testSyncServer } from './collabSettings'
+import { defaultSyncServerUrl, onCollabSettingsChanged, setSyncServerUrl, syncServerUrl, testSyncServer } from './collabSettings'
 
 vi.mock('@/services/portalAccount', () => ({
   loadStoredPortalAccountSession: vi.fn(async () => null),
@@ -7,6 +7,19 @@ vi.mock('@/services/portalAccount', () => ({
 }))
 
 afterEach(() => localStorage.clear())
+
+describe('the build default sync server', () => {
+  it('is the local server in development builds and none in release builds', () => {
+    expect(defaultSyncServerUrl({ DEV: true })).toBe('ws://127.0.0.1:18300/v1/sync')
+    expect(defaultSyncServerUrl({ DEV: false })).toBe('')
+  })
+
+  it('takes VITE_KITION_SYNC_URL from the build when it is set, even empty', () => {
+    expect(defaultSyncServerUrl({ DEV: false, VITE_KITION_SYNC_URL: ' wss://sync.example.test/v1/sync ' })).toBe('wss://sync.example.test/v1/sync')
+    expect(defaultSyncServerUrl({ DEV: true, VITE_KITION_SYNC_URL: 'wss://sync.example.test/v1/sync' })).toBe('wss://sync.example.test/v1/sync')
+    expect(defaultSyncServerUrl({ DEV: true, VITE_KITION_SYNC_URL: '' })).toBe('')
+  })
+})
 
 describe('the sync server setting', () => {
   it('stores the URL, turns co-editing off when empty, and goes back to the default with null', () => {
