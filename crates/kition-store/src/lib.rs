@@ -48,7 +48,7 @@ impl ChangeListeners {
                 move |_: rusqlite::hooks::Action, _: &str, table: &str, _: i64| {
                     listeners.notify(table)
                 },
-            ));
+            ))?;
             Ok(())
         }
     }

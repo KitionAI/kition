@@ -54,14 +54,14 @@ parking_lot = { version = "0.12", features = ["arc_lock"] }
 pdf-extract = "0.12"
 quick-xml = "0.37"
 r2d2 = "0.8"
-r2d2_sqlite = "0.31"
+r2d2_sqlite = "0.32"
 rand = "0.9"
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 rustls-platform-verifier = "0.6"
 tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
 regex = "1"
 reqwest = { version = "0.12", default-features = false, features = ["json", "multipart", "rustls-tls", "stream"] }
-rusqlite = { version = "0.37", features = ["bundled", "hooks", "serde_json"] }
+rusqlite = { version = "0.38", features = ["bundled", "hooks", "serde_json", "serialize"] }
 sha2 = "0.10"
 tower-http = { version = "0.6", features = ["cors", "fs", "set-header"] }
 url = "2"
