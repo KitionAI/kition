@@ -4,7 +4,7 @@ import { canonicalText, compareKeys } from './canonical'
 import { checkString } from './args'
 import { open, sameBytes, Version, wrap } from './envelope'
 import { errors, KdmError } from './errors'
-import { checkActor, committedNode, uuidFromBytes, uuidToBytes, type NodeRef, type ObjectId } from './ids'
+import { checkActor, committedNode, uuidFromBytes, uuidToBytes, type NodeRef, type ObjectId, type TreeEntry } from './ids'
 import { configure, type TextRun } from './marks'
 import { checkOrigin, encodeOrigin, system, type Origin } from './origin'
 import * as read from './read'
@@ -29,15 +29,6 @@ export type TextDelta =
   | { retain: number; attributes?: Record<string, unknown> }
   | { insert: string; attributes?: Record<string, unknown> }
   | { delete: number }
-
-/** One node of a tree field, as `Replica.tree` lists it. */
-export interface TreeEntry {
-  node: NodeRef
-  /** The object the node names. */
-  object: ObjectId
-  /** `null` for a root. */
-  parent: NodeRef | null
-}
 
 /** An engine failure while applying operations that validation accepted. */
 const applyingFailed = (error: unknown): KdmError => errors.engine(`applying a validated transaction failed: ${error instanceof Error ? error.message : String(error)}`)

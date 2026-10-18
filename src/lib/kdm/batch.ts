@@ -12,7 +12,8 @@
 import { KdmError } from './errors'
 import type { NodeRef, ObjectId } from './ids'
 import { checkOrigin, type Origin } from './origin'
-import type { Replica, TreeEntry } from './replica'
+import type { TreeEntry } from './ids'
+import type { Replica } from './replica'
 import { fieldDef, hasMarks, sortedKeys, typeDef, type Schema } from './schema'
 import type { Tx } from './tx'
 

@@ -127,3 +127,12 @@ export function resolveNode(node: NodeRef, id: string): void {
   state.id = id
   Object.defineProperty(node, 'id', { value: id, enumerable: true, writable: false, configurable: false })
 }
+
+/** One node of a tree field, as `Replica.tree` and `Tx.tree` list it. */
+export interface TreeEntry {
+  node: NodeRef
+  /** The object the node names. */
+  object: ObjectId
+  /** `null` for a root. */
+  parent: NodeRef | null
+}
