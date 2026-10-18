@@ -91,6 +91,11 @@ test('keeps a CAD drawing’s replica across a save and a reopen, and opens a fi
       await line.press('Enter')
     }
     await expect(kit.getByTestId('cad-status')).toHaveText('2 objects')
+    // The empty line ends the command after the line is drawn: it still moves the engine's
+    // revision once the status shows the line. Kit UI's save reads the revision it saves at
+    // before the command lands, so a save clicked meanwhile keeps the unsaved mark: save once
+    // the command line is back at its prompt, as a person who finished the command does.
+    await expect(kit.getByTestId('cad-prompt')).toHaveText('Command:')
     await kit.getByTestId('cad-save').click()
     await expect(kit.getByTestId('cad-unsaved')).toHaveCount(0, { timeout: 30_000 })
 
