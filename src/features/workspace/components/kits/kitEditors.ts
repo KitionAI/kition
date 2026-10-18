@@ -87,7 +87,7 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
  */
 const TABLE_KIT = kit('table', 'TableDocument', { format: 'data', icon: 'table', preview: true })
 
-export const TABLE_KIT_DEV_FLAG = 'kition.dev.tableKit'
+const TABLE_KIT_DEV_FLAG = 'kition.dev.tableKit'
 
 /** The Table kit, when this development build opens `path` in it (`TABLE_KIT_DEV_FLAG`). */
 export function tableKitForDevelopment(path: string): KitEditorEntry | null {
