@@ -15,6 +15,7 @@ import type {
   CreateDataFieldPayload,
   CreateDataTablePayload,
   CreateDataViewPayload,
+  DataAttachment,
   DataDashboard,
   DataDocument,
   DataField,
@@ -117,6 +118,15 @@ export interface TableDataSource {
   dashboards: {
     list(params: DocumentParams): Promise<DataListResponse<DataDashboard>>
     upsert(params: DocumentParams & { dashboardId: string } & DataDashboard): Promise<DataDashboard>
+  }
+  /**
+   * Attachments held in the document as blobs (`kition-blob:<sha256>` URLs): `read` answers a
+   * blob's bytes, `put` stores a file's bytes and answers the attachment value naming them.
+   * Optional: without it, blob attachments show by name only and uploads need the host.
+   */
+  attachments?: {
+    read(params: DocumentParams & { hash: string }): Promise<{ data: Uint8Array; mimeType: string; name: string }>
+    put(params: TableParams & { file: File }): Promise<DataAttachment>
   }
   /** Calls `listener` for each change to `documentId` made elsewhere; returns the unsubscribe. */
   onChange(documentId: number, listener: (event: TableChangeEvent) => void): () => void

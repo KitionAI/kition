@@ -12,6 +12,7 @@ import type {
 } from '../../types/dataDocument'
 import { useTableDataSource } from '../ports/TableDataSource'
 import { useTableHost, useTableNotify } from '../ports/TableHost'
+import { TableBlobScope, useTableBlobDocument } from '../ports/TableBlobScope'
 import {
   DATA_TABLE_ACTION_EVENT,
   type TableActionEventDetail,
@@ -44,7 +45,7 @@ import { useTableHistory } from '../hooks/useTableHistory'
 import { useTableLiveChanges } from '../ports/useTableLiveChanges'
 import { useTableViewState } from '../hooks/useTableViewState'
 
-export function TableEditor({
+function TableEditorBody({
   agentOpen: controlledAgentOpen,
   aiCellPatches,
   documentPath,
@@ -279,6 +280,7 @@ export function TableEditor({
   }
 
   const documentId = document?.id ?? null
+  useTableBlobDocument(documentId)
   const onApplyHistoryChange = useCallback(() => refreshAgentChanges(), [
     activeTable?.id,
     activeTableId,
@@ -871,5 +873,20 @@ export function TableEditor({
         }
       />
     </div>
+  )
+}
+
+type TableEditorProps = Parameters<typeof TableEditorBody>[0]
+
+/**
+ * The table editor: the document at `documentPath`, from the data source and host its root
+ * provides. Attachments held in the document as blobs resolve and upload through
+ * `TableBlobScope`.
+ */
+export function TableEditor(props: TableEditorProps) {
+  return (
+    <TableBlobScope>
+      <TableEditorBody {...props} />
+    </TableBlobScope>
   )
 }

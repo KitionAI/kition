@@ -106,7 +106,16 @@ export interface TableHost {
    * asset, or a URL). Without it, only `http(s):`, `data:`, and `blob:` URLs are shown.
    */
   resolveFileURL?(url: string): string
-  /** Stores a file as an attachment of `tableId`. */
+  /**
+   * A URL the page can load for the blob `hash` of the document `documentId` (an attachment held
+   * in the file, `kition-blob:<sha256>`). Without it, the editor makes object URLs from the bytes
+   * the data source reads (`TableDataSource.attachments.read`).
+   */
+  resolveBlobURL?(params: { documentId: number; hash: string }): string
+  /**
+   * Stores a file as an attachment of `tableId`; answers the value an attachment cell holds for
+   * it. Without it, the data source's `attachments.put`, when it has one.
+   */
   uploadAttachment?(params: { documentId: number; tableId: number; file: File }): Promise<DataAttachment>
   copyImageToClipboard?(url: string): Promise<unknown>
   /** Saves text through a save dialog (CSV export). */

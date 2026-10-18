@@ -12,8 +12,9 @@
  * come from the server, and Kition makes the file `Shared/<name>` from them: a kit document with
  * the kit's engine in a worker (`writeKitFileFromReplica`: the replica opens with no file bytes,
  * is saved as the file's format, and the replica it saved with is stored under the new file's
- * stamp), a board, Markdown document, or table by its own editor's means, each as that same
- * replica, so its editor opens the file as it and the relay joins its room.
+ * stamp), a board, Markdown document, or table by its own editor's means (a table with the blobs
+ * its attachments name), each as that same replica, so its editor opens the file as it and the
+ * relay joins its room.
  */
 import { createTableFromReplica } from '@/api/dataDocumentsReplica'
 import { loadDocumentStore } from '@/features/document/public'
@@ -124,7 +125,7 @@ function fromBase64(text: string) {
  * Writes a shared document Kition edits itself (a board, a Markdown document, a table) as a new
  * file in `Shared/`: answers its path and the replica version it holds, or `null` for another kit.
  */
-async function writeHostFile(kit: string, name: string, snapshot: Uint8Array) {
+async function writeHostFile(client: SyncClient, kit: string, name: string, snapshot: Uint8Array) {
   if (kit === HOST_KITS.board) {
     const { path, root } = await sharedPath(name, 'kiboard')
     const { writeBoardFileFromReplica } = await loadBoardSharedFile()
@@ -137,7 +138,9 @@ async function writeHostFile(kit: string, name: string, snapshot: Uint8Array) {
   }
   if (kit === HOST_KITS.table) {
     const { path } = await sharedPath(name, 'kitable')
-    const created = await createTableFromReplica({ path, changes: base64(snapshot) })
+    // Attachments the table holds as blobs come from the server with the snapshot.
+    const blobs = await snapshotBlobs(client, snapshot)
+    const created = await createTableFromReplica({ path, changes: base64(snapshot), ...(blobs.length ? { blobs: base64(blobs) } : {}) })
     return { path, version: fromBase64(created.version) }
   }
   return null
@@ -161,7 +164,7 @@ export async function openSharedDocument(link: string, kitFor: (kitId: string) =
   const kit = kitFor(room.kit)
   if (!kit && !Object.values<string>(HOST_KITS).includes(room.kit)) throw new Error(`this build cannot open ${room.kit} documents`)
   const { snapshot, seq } = await client.snapshot(room.docId)
-  let written = await writeHostFile(room.kit, room.name, snapshot)
+  let written = await writeHostFile(client, room.kit, room.name, snapshot)
   if (!written && kit) {
     const blobs = await snapshotBlobs(client, snapshot)
     const { path } = await sharedPath(room.name, kit.extension)

@@ -22,6 +22,7 @@ import {
   openDataDocumentByPath,
   patchViewField,
   putDataDashboard,
+  readDataDocumentBlob,
   redoDataDocument,
   replaceRecordLinks,
   transactDataDocument,
@@ -30,6 +31,7 @@ import {
   updateDataRecord,
   updateDataTable,
   updateDataView,
+  uploadDataAttachment,
 } from '@/api/dataDocuments'
 import { windowSessionOrigin } from '@/api/windowSession'
 import { onTableChanged, onTableChangedResync } from '@/services/runtimeBridge'
@@ -94,6 +96,10 @@ export const httpTableDataSource: TableDataSource = {
   dashboards: {
     list: ({ documentId }) => listDataDashboards(documentId),
     upsert: ({ documentId, dashboardId, ...dashboard }) => putDataDashboard(documentId, { ...dashboard, id: dashboardId }),
+  },
+  attachments: {
+    read: ({ documentId, hash }) => readDataDocumentBlob(documentId, hash),
+    put: ({ documentId, tableId, file }) => uploadDataAttachment(documentId, tableId, file),
   },
   onChange(documentId, listener) {
     const expectedDocumentId = String(documentId)

@@ -30,6 +30,7 @@ export { createEmptyFilterCondition, createEmptyFilterGroup } from '../filter/ty
 export { countFilterConditions, evaluateFilterTree, filterTreeHasActiveCondition } from '../filter/evaluate'
 export type { FilterConjunction, FilterOperator } from '../../types/tableFilter'
 import type { FilterCondition, FilterGroup, FilterNode } from '../../types/tableFilter'
+import { blobHashOfURL } from './blobAttachments'
 export type DataInlineFilterCondition = FilterCondition
 export type DataInlineFilterGroup = FilterGroup
 export type DataInlineFilterNode = FilterNode
@@ -220,6 +221,9 @@ export function findImageLikeString(value: unknown): string {
   }
   if (value && typeof value === 'object') {
     const record = value as Record<string, unknown>
+    // A blob of the document: an image when its type says so.
+    const mime = typeof record.mimeType === 'string' ? record.mimeType : typeof record.type === 'string' ? record.type : ''
+    if (blobHashOfURL(record.url) && /^image\//i.test(mime)) return String(record.url).trim()
     for (const key of ['url', 'src', 'href', 'download_url', 'thumbnail', 'thumb']) {
       const result = findImageLikeString(record[key])
       if (result) return result

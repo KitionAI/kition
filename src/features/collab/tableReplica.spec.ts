@@ -38,7 +38,14 @@ describe('createTableRelayReplica', () => {
     expect(api.getTableReplicaVersion).toHaveBeenCalledWith({ path: 'a.kitable' })
   })
 
-  it('exports the changes since a version, with no blobs', async () => {
+  it('exports the blob section the runtime answers beside the changes', async () => {
+    api.exportTableReplica.mockResolvedValue({ documentId: '1', documentPath: 'a.kitable', docId: 'd', version: 'AQ==', changes: 'BAUG', blobs: 'BwgJ' })
+    const exported = await createTableRelayReplica('a.kitable').exportChanges(bytes(1))
+    expect(new Uint8Array(exported.changes)).toEqual(new Uint8Array([4, 5, 6]))
+    expect(new Uint8Array(exported.blobs)).toEqual(new Uint8Array([7, 8, 9]))
+  })
+
+  it('exports the changes since a version, with no blobs from a runtime that answers none', async () => {
     api.exportTableReplica.mockResolvedValue({ documentId: '1', documentPath: 'a.kitable', docId: 'd', version: 'AQ==', changes: 'BAUG' })
     const replica = createTableRelayReplica('a.kitable')
     const exported = await replica.exportChanges(bytes(9, 8))
@@ -53,12 +60,14 @@ describe('createTableRelayReplica', () => {
     expect(api.exportTableReplica).toHaveBeenCalledWith({ path: 'a.kitable', since: '' })
   })
 
-  it('imports changes as base64 and ignores blobs', async () => {
+  it('imports changes and their blobs as base64', async () => {
     const answer = { documentId: '1', documentPath: 'a.kitable', docId: 'd', version: 'AQ==', change: {} }
     api.importTableReplica.mockResolvedValue(answer)
     const replica = createTableRelayReplica('folder/a.kitable')
     await expect(replica.importChanges(bytes(255, 0, 7), bytes(1))).resolves.toBe(answer)
-    expect(api.importTableReplica).toHaveBeenCalledWith({ path: 'folder/a.kitable', changes: '/wAH' })
+    expect(api.importTableReplica).toHaveBeenCalledWith({ path: 'folder/a.kitable', changes: '/wAH', blobs: 'AQ==' })
+    await replica.importChanges(bytes(1), new ArrayBuffer(0))
+    expect(api.importTableReplica).toHaveBeenLastCalledWith({ path: 'folder/a.kitable', changes: 'AQ==' })
   })
 
   it('round-trips large byte strings', async () => {

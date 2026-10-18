@@ -1,3 +1,4 @@
+import { resolveApiURL } from '@/services/desktop'
 import request from './request'
 import type {
   BulkCopyRecordsPayload,
@@ -336,6 +337,25 @@ export function uploadDataAttachment(documentId: number, tableId: number, file: 
       headers: { 'Content-Type': 'multipart/form-data' },
     })
     .then(unwrapResponseData<DataAttachment>)
+}
+
+/**
+ * The URL of the blob `hash` of the document `documentId`: an attachment held in the `.kitable`
+ * file (`kition-blob:<sha256>`), served by the runtime.
+ */
+export function dataDocumentBlobURL(documentId: number, hash: string) {
+  return resolveApiURL(`/v1/data-documents/${documentId}/blobs/${encodeURIComponent(hash)}`)
+}
+
+/** The bytes of the blob `hash` of the document `documentId`, and their type. */
+export async function readDataDocumentBlob(documentId: number, hash: string) {
+  const response = await fetch(dataDocumentBlobURL(documentId, hash))
+  if (!response.ok) throw new Error(`The attachment could not be read (${response.status})`)
+  return {
+    data: new Uint8Array(await response.arrayBuffer()),
+    mimeType: response.headers.get('content-type') ?? '',
+    name: '',
+  }
 }
 
 export function inferDataDocumentSchema(payload: { title?: string; prompt: string }) {

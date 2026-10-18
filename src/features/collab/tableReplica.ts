@@ -4,9 +4,11 @@
  * (`src/api/dataDocumentsReplica.ts`), and `onChanged` follows the runtime's
  * `table/replica-changed` notifications for this file, sent after every local transaction.
  *
- * Tables carry no blobs (attachments stay workspace files referenced by path): exports answer an
- * empty blob section, and imports ignore theirs. An import has the origin `import`, so it is no
- * undo step, and the runtime publishes it as `table/changed`, which refreshes open editors.
+ * Attachments the file holds as blobs travel beside the changes: an export answers the blob
+ * section of the blobs its changes name (the relay uploads those the server lacks), and an
+ * import hands the runtime the blobs the relay fetched, stored before the changes. An import has
+ * the origin `import`, so it is no undo step, and the runtime publishes it as `table/changed`,
+ * which refreshes open editors.
  */
 import { exportTableReplica, getTableReplicaVersion, importTableReplica } from '@/api/dataDocumentsReplica'
 import { onTableReplicaChanged } from '@/services/runtimeBridge'
@@ -44,9 +46,13 @@ export function createTableRelayReplica(path: string): RelayReplica & { dispose:
     version: async () => fromBase64((await getTableReplicaVersion({ path: documentPath })).version),
     exportChanges: async (since) => {
       const exported = await exportTableReplica({ path: documentPath, since: toBase64(since) })
-      return { changes: fromBase64(exported.changes), blobs: new ArrayBuffer(0) }
+      return { changes: fromBase64(exported.changes), blobs: fromBase64(exported.blobs ?? '') }
     },
-    importChanges: (changes, _blobs) => importTableReplica({ path: documentPath, changes: toBase64(changes) }),
+    importChanges: (changes, blobs) => importTableReplica({
+      path: documentPath,
+      changes: toBase64(changes),
+      ...(blobs.byteLength ? { blobs: toBase64(blobs) } : {}),
+    }),
     onChanged(listener) {
       if (disposed) return () => undefined
       const unsubscribe = onTableReplicaChanged((params) => {

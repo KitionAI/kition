@@ -1,4 +1,4 @@
-import { runDataAIFieldBatch, runDataAIFieldCell, uploadDataAttachment } from '@/api/dataDocuments'
+import { dataDocumentBlobURL, runDataAIFieldBatch, runDataAIFieldCell, uploadDataAttachment } from '@/api/dataDocuments'
 import { getCurrentLocale } from '@/i18n'
 import { notify } from '@/lib/notify'
 import { copyImageToClipboard, resolvePublicFileURL, saveTextFile } from '@/services/desktop'
@@ -20,6 +20,7 @@ import {
  */
 export const kitionTableHost: TableHost = {
   resolveFileURL: (url) => resolvePublicFileURL(url),
+  resolveBlobURL: ({ documentId, hash }) => dataDocumentBlobURL(documentId, hash),
   uploadAttachment: ({ documentId, tableId, file }) => uploadDataAttachment(documentId, tableId, file),
   copyImageToClipboard: (url) => copyImageToClipboard(url),
   saveTextFile: (options) => saveTextFile(options),
