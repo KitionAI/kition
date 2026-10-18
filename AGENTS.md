@@ -85,7 +85,7 @@ covers the three GFM table widget row and column button regressions.
 - Push design fixes into shared tokens and shared primitives before page-local
   overrides.
 - Prefer shared styles in `src/app/styles.css` and shared controls in
-  `src/components/ui.tsx` when possible.
+  `packages/app-ui/src/index.tsx` when possible.
 - When reviewing screenshots, compare geometry, palette, hierarchy, and control
   emphasis against `docs/design.md`.
 

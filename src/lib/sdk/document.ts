@@ -145,8 +145,9 @@ export class ModelDocument<Root extends ModelObject = ModelObject, C extends Com
     this.alive()
     if (!this.supports(event as DocumentEventName)) return () => undefined
     const off = this.backend.on!(event as DocumentEventName, (value) => {
+      const call = listener as (value: unknown) => void
       try {
-        ;(listener as (value: unknown) => void)(value)
+        call(value)
       } catch (error) {
         console.error(`[kition-sdk] a ${event} listener failed`, error)
       }
