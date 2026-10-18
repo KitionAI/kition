@@ -97,6 +97,8 @@ struct Timings {
     paste_1000: Duration,
     undo_first: Duration,
     undo_later: Duration,
+    redo: Duration,
+    import: Duration,
     compact: Duration,
     rebuild: Duration,
 }
@@ -162,6 +164,35 @@ fn bench_size(dir: &Path, count: usize) -> Timings {
     let (done, _) = ok(file.undo());
     let undo_later = start.elapsed();
     assert!(done, "expected a second undo step at {count} records");
+    let start = Instant::now();
+    let (done, _) = ok(file.redo());
+    let redo = start.elapsed();
+    assert!(done, "expected a redo step at {count} records");
+
+    // Importing a peer's change: a second replica of the document (another copy of the file)
+    // edits one cell; this handle imports what it lacks, as a co-editing sync room relays it.
+    let peer_path = dir.join(format!("bench-{count}-peer.kitable"));
+    ok(std::fs::write(&peer_path, ok(file.to_bytes())));
+    let mut peer = ok(KitableFile::open(&peer_path));
+    peer.set_origin(Origin::person("peer"));
+    let before = file.replica_version();
+    ok(peer.transact(&[TableOp::CellsSet {
+        table_id,
+        records: vec![CellEdit {
+            row_key: row_keys[3].clone(),
+            values: one_cell("field_3", "from the peer"),
+        }],
+    }]));
+    let changes = ok(peer.export_replica_changes(&before));
+    peer.close();
+    let start = Instant::now();
+    let imported = ok(file.import_replica_changes(&changes));
+    let import = start.elapsed();
+    assert_eq!(
+        imported.change.records_upserted.len(),
+        1,
+        "expected the peer's record at {count} records"
+    );
 
     // Compaction and rebuild, directly on the stored replica (not through the manager).
     let now = kition_time::now_millis();
@@ -192,6 +223,8 @@ fn bench_size(dir: &Path, count: usize) -> Timings {
         paste_1000,
         undo_first,
         undo_later,
+        redo,
+        import,
         compact,
         rebuild,
     }
@@ -201,14 +234,25 @@ fn bench_size(dir: &Path, count: usize) -> Timings {
 #[ignore]
 fn kdm_bench() {
     let dir = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
-    let rows: Vec<Timings> = [10_000usize, 100_000usize]
+    // `KDM_BENCH_SIZES=10000,50000` measures other sizes.
+    let sizes: Vec<usize> = std::env::var("KDM_BENCH_SIZES")
+        .ok()
+        .map(|sizes| {
+            sizes
+                .split(',')
+                .filter_map(|size| size.trim().parse().ok())
+                .collect()
+        })
+        .filter(|sizes: &Vec<usize>| !sizes.is_empty())
+        .unwrap_or_else(|| vec![10_000, 100_000]);
+    let rows: Vec<Timings> = sizes
         .into_iter()
         .map(|size| bench_size(dir.path(), size))
         .collect();
 
     println!();
     println!(
-        "{:>9} | {:>10} | {:>14} | {:>9} | {:>10} | {:>11} | {:>11} | {:>9} | {:>9}",
+        "{:>9} | {:>10} | {:>14} | {:>9} | {:>10} | {:>11} | {:>11} | {:>11} | {:>11} | {:>9} | {:>9}",
         "records",
         "open",
         "open+migrate",
@@ -216,12 +260,14 @@ fn kdm_bench() {
         "1k-paste",
         "undo 1st",
         "undo 2nd",
+        "redo",
+        "import",
         "compact",
         "rebuild",
     );
     for t in &rows {
         println!(
-            "{:>9} | {:>10?} | {:>14?} | {:>9?} | {:>10?} | {:>11?} | {:>11?} | {:>9?} | {:>9?}",
+            "{:>9} | {:>10?} | {:>14?} | {:>9?} | {:>10?} | {:>11?} | {:>11?} | {:>11?} | {:>11?} | {:>9?} | {:>9?}",
             t.records,
             t.open,
             t.open_with_migration,
@@ -229,6 +275,8 @@ fn kdm_bench() {
             t.paste_1000,
             t.undo_first,
             t.undo_later,
+            t.redo,
+            t.import,
             t.compact,
             t.rebuild,
         );

@@ -2419,6 +2419,122 @@ fn random_operations_converge_on_three_replicas() {
     }
 }
 
+/// Random local writes, imports, undos, and redos on replicas that stay repaired (as a
+/// `KitableFile`'s replica does): after each, the incremental repair writes exactly what a full
+/// pass writes on a copy of the same state, and the index it carries stays usable.
+fn run_incremental_matches_full(seed: u64, count: usize, steps: usize) {
+    let (mut net, base, ids) = shared(count, seed);
+    write(replica(&mut net, 0), |tx| {
+        model::create_field(tx, &ids.table, &field("Rel", "link_to_record"))
+    });
+    ok(net.sync_all());
+    let mut rng = Rng::new(seed.wrapping_add(2000));
+    let mut indexes: Vec<repair::RepairIndex> =
+        (0..count).map(|_| repair::RepairIndex::default()).collect();
+    let mut repaired = 0;
+    for step in 0..steps {
+        let to = rng.below(count);
+        let start = replica(&mut net, to).version();
+        replica(&mut net, to).take_changed();
+        let before = ok(indexes[to].before(replica(&mut net, to)));
+        match rng.below(8) {
+            0..=3 => {
+                random_op(replica(&mut net, to), &mut rng, &base);
+            }
+            4 | 5 => {
+                let from = (to + 1 + rng.below(count - 1)) % count;
+                ok(net.deliver(from, to));
+            }
+            6 => {
+                ok(replica(&mut net, to).undo());
+            }
+            _ => {
+                ok(replica(&mut net, to).redo());
+            }
+        }
+        let target = replica(&mut net, to);
+        let changed = target.take_changed();
+        let mut full = ok(Replica::load(
+            schema(),
+            &ok(target.snapshot()),
+            ActorId::random(),
+        ));
+        let full_wrote = ok(repair::run(&mut full, &changed));
+        indexes[to].advance(&start, target, &changed);
+        let (wrote, _) = ok(repair::run_since(
+            target,
+            &changed,
+            &before,
+            &mut indexes[to],
+        ));
+        assert_eq!(
+            wrote, full_wrote,
+            "seed {seed}, step {step}: the incremental repair wrote as much as a full one"
+        );
+        assert_eq!(
+            ok(target.state_json()),
+            ok(full.state_json()),
+            "seed {seed}, step {step}: the incremental repair wrote what a full one wrote"
+        );
+        if wrote {
+            repaired += 1;
+        }
+    }
+    converge(&mut net);
+    assert!(
+        repaired >= 5,
+        "seed {seed}: only {repaired} steps needed a repair"
+    );
+}
+
+#[test]
+fn incremental_repair_follows_a_field_turned_single_target() {
+    let (mut net, _, ids) = shared(2, 9);
+    let link = write(replica(&mut net, 0), |tx| {
+        model::create_field(tx, &ids.table, &field("Owner", "link_to_record"))
+    });
+    let rows = records(
+        replica(&mut net, 0),
+        &ids.table,
+        vec![json!({}), json!({}), json!({})],
+    );
+    write(replica(&mut net, 0), |tx| {
+        model::replace_links(tx, &nth(&rows, 0), &link, &[nth(&rows, 1), nth(&rows, 2)])
+    });
+    ok(net.sync_all());
+    // Another replica makes the field single-target; this one only learns of the field's change.
+    ok(replica(&mut net, 1).transact(&person(), |tx| {
+        tx.set(&link, "options", json!({ "allow_multiple": false }))
+    }));
+    let mut index = repair::RepairIndex::default();
+    let start = replica(&mut net, 0).version();
+    replica(&mut net, 0).take_changed();
+    let before = ok(index.before(replica(&mut net, 0)));
+    ok(net.deliver(1, 0));
+    let target = replica(&mut net, 0);
+    let changed = target.take_changed();
+    assert!(changed.contains(&link));
+    assert_eq!(target.objects_of_type("Link").len(), 2);
+    index.advance(&start, target, &changed);
+    let (wrote, _) = ok(repair::run_since(target, &changed, &before, &mut index));
+    assert!(wrote);
+    assert_eq!(target.objects_of_type("Link").len(), 1);
+}
+
+#[test]
+fn incremental_repair_matches_a_full_pass_on_two_replicas() {
+    for seed in [31, 32, 33, 34] {
+        run_incremental_matches_full(seed, 2, 600);
+    }
+}
+
+#[test]
+fn incremental_repair_matches_a_full_pass_on_three_replicas() {
+    for seed in [41, 42, 43, 44] {
+        run_incremental_matches_full(seed, 3, 600);
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Repair cost on a large table. Run with `cargo test --release -- --ignored repair_cost`.
 

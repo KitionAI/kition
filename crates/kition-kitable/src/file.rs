@@ -9,10 +9,11 @@ use kition_time::{Millis, now_millis};
 use rusqlite::{Connection, OptionalExtension, params};
 use serde_json::Value;
 
+use crate::kdm::model::BASE;
 use crate::kdm::model::{self, BaseSpec};
 use crate::kdm::project::{self, TableChange};
-use crate::kdm::read::ModelView;
-use crate::kdm::{migrate, schema, store};
+use crate::kdm::repair::RepairIndex;
+use crate::kdm::{migrate, repair, schema, store};
 use crate::schema::{INDEXES, TABLES};
 use crate::{KitableError, Result};
 
@@ -64,6 +65,8 @@ pub struct KitableFile {
     /// The store's head as this handle last read or wrote it.
     pub(crate) head: store::Head,
     pub(crate) base: Option<ObjectId>,
+    /// The bases and links incremental repairs need, kept from write to write.
+    pub(crate) repair_index: repair::RepairIndex,
     /// The file's identity right after this handle's open or last own write.
     pub(crate) identity: Option<FileIdentity>,
     pub(crate) last_change: Option<TableChange>,
@@ -291,10 +294,12 @@ impl KitableFile {
             Ok(replica) => replica,
             Err(_) => Replica::create(schema(), DocId::new(), actor)?,
         };
-        let base = ModelView::new(&replica).base();
+        let bases = replica.objects_of_type(BASE);
+        let base = bases.first().cloned();
         Ok(Self {
             since: replica.version(),
             identity: FileIdentity::of(&path),
+            repair_index: RepairIndex::with_bases(&replica, bases),
             conn,
             path,
             replica,
@@ -310,10 +315,12 @@ impl KitableFile {
     /// Loads the stored replica and the store's head together (one read transaction).
     fn attach(conn: Connection, path: PathBuf) -> Result<Self> {
         let (head, replica) = load_consistent(&conn)?;
-        let base = ModelView::new(&replica).base();
+        let bases = replica.objects_of_type(BASE);
+        let base = bases.first().cloned();
         Ok(Self {
             since: replica.version(),
             identity: FileIdentity::of(&path),
+            repair_index: RepairIndex::with_bases(&replica, bases),
             conn,
             path,
             replica,

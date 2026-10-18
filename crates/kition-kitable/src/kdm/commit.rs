@@ -86,6 +86,7 @@ impl KitableFile {
     ) -> Result<(R, TableChange)> {
         let label = origin.encode();
         self.write(&label, false, |replica| model::transact(replica, origin, f))
+            .map(|(value, change, _)| (value, change))
     }
 
     /// The history label of this handle's writes: the principal, or nothing for `system` writes
@@ -98,12 +99,15 @@ impl KitableFile {
         }
     }
 
+    /// Runs `step` as one write (see the module documentation); with `repair_after`, what it
+    /// changed is repaired before it is stored. Answers the step's value, what the write
+    /// projected, and whether the repair wrote anything.
     fn write<R>(
         &mut self,
         label: &str,
         repair_after: bool,
         step: impl FnOnce(&mut Replica) -> Result<R>,
-    ) -> Result<(R, TableChange)> {
+    ) -> Result<(R, TableChange, bool)> {
         self.writable()?;
         if self.stale {
             self.reload()?;
@@ -117,6 +121,7 @@ impl KitableFile {
         let mut head = self.head.clone();
         let outcome = (|| {
             let tx = Transaction::new_unchecked(&self.conn, TransactionBehavior::Immediate)?;
+            let start = self.replica.version();
             if matches!(
                 catch_up(&tx, &mut self.replica, &mut since, &mut head)?,
                 CatchUp::Diverged
@@ -128,6 +133,8 @@ impl KitableFile {
             let written = write_in(
                 &tx,
                 &mut self.replica,
+                &mut self.repair_index,
+                &start,
                 &since,
                 &head,
                 label,
@@ -143,7 +150,7 @@ impl KitableFile {
             Ok(None) => Err(KitableError::invalid(
                 "the kitable file was replaced during the write; try again",
             )),
-            Ok(Some((value, change, written_head))) => {
+            Ok(Some((value, change, repaired, written_head))) => {
                 self.since = self.replica.version();
                 self.head = written_head;
                 self.identity = FileIdentity::of(&self.path);
@@ -155,7 +162,7 @@ impl KitableFile {
                     None => change,
                 };
                 self.last_change = Some(change.clone());
-                Ok((value, change))
+                Ok((value, change, repaired))
             }
             Err(err) => {
                 // The store holds `since` (the catch-up imported only stored changes); anything
@@ -234,7 +241,9 @@ impl KitableFile {
         let (head, replica) = file::load_consistent(&self.conn)?;
         self.head = head;
         self.since = replica.version();
-        self.base = ModelView::new(&replica).base();
+        let bases = replica.objects_of_type(model::BASE);
+        self.base = bases.first().cloned();
+        self.repair_index = repair::RepairIndex::with_bases(&replica, bases);
         self.replica = replica;
         self.stale = false;
         Ok(())
@@ -344,6 +353,7 @@ impl KitableFile {
         let label = self.origin.clone().with_label("undo").encode();
         // An undo can bring back what others changed meanwhile (a name since taken): repaired.
         self.write(&label, true, |replica| Ok(replica.undo()?))
+            .map(|(done, change, _)| (done, change))
     }
 
     /// Redoes the last undone step; `false` when there was none.
@@ -351,6 +361,7 @@ impl KitableFile {
         self.writable()?;
         let label = self.origin.clone().with_label("redo").encode();
         self.write(&label, true, |replica| Ok(replica.redo()?))
+            .map(|(done, change, _)| (done, change))
     }
 
     pub fn can_undo(&self) -> bool {
@@ -448,12 +459,12 @@ impl KitableFile {
         self.writable()?;
         let import = Origin::new(OriginKind::Import, IMPORT_PRINCIPAL);
         let previous = std::mem::replace(&mut self.origin, import.clone());
-        let written = self.write(&import.encode(), false, |replica| {
-            let changed = replica.import_changes(changes)?;
-            repair::run(replica, &changed)
+        let written = self.write(&import.encode(), true, |replica| {
+            replica.import_changes(changes)?;
+            Ok(())
         });
         self.origin = previous;
-        let (repaired, change) = written?;
+        let ((), change, repaired) = written?;
         Ok(ReplicaImport { change, repaired })
     }
 }
@@ -471,13 +482,20 @@ pub struct ReplicaImport {
     pub repaired: bool,
 }
 
-/// The body of one write, inside its SQL transaction, after the catch-up: `since` and `head`
-/// are what the store holds. Answers the step's value, what the projection changed, and the
+/// The body of one write, inside its SQL transaction, after the catch-up: `start` is the
+/// replica's version before the catch-up, `since` and `head` are what the store holds. Answers
+/// the step's value, what the projection changed, whether the repair wrote anything, and the
 /// store's head afterwards.
+///
+/// The repair after the step covers only what the step changed ([`repair::run_since`]): the state
+/// before it is repaired, since every stored write is (local model writes keep the rules, and
+/// imports, undo, and redo are repaired here).
 #[allow(clippy::too_many_arguments)]
 fn write_in<R>(
     conn: &Connection,
     replica: &mut Replica,
+    index: &mut repair::RepairIndex,
+    start: &Version,
     since: &Version,
     head: &store::Head,
     label: &str,
@@ -485,19 +503,29 @@ fn write_in<R>(
     now: i64,
     repair_after: bool,
     step: impl FnOnce(&mut Replica) -> Result<R>,
-) -> Result<(R, TableChange, store::Head)> {
+) -> Result<(R, TableChange, bool, store::Head)> {
     // Changes imported by the catch-up were projected by the handle that stored them; projecting
     // them again is harmless and keeps this write's change complete.
     let mut changed: BTreeSet<ObjectId> = replica.take_changed();
+    index.advance(start, replica, &changed);
+    let before = if repair_after {
+        Some(index.before(replica)?)
+    } else {
+        None
+    };
+    let stepped_from = replica.version();
     let value = step(replica)?;
     let stepped = replica.take_changed();
-    if repair_after {
-        repair::run(replica, &stepped)?;
+    index.advance(&stepped_from, replica, &stepped);
+    let mut repaired = false;
+    if let Some(before) = before {
+        let (wrote, fixed) = repair::run_since(replica, &stepped, &before, index)?;
+        repaired = wrote;
+        changed.extend(fixed);
     }
     changed.extend(stepped);
-    changed.extend(replica.take_changed());
     if since.includes(&replica.version()) && changed.is_empty() {
-        return Ok((value, TableChange::default(), head.clone()));
+        return Ok((value, TableChange::default(), repaired, head.clone()));
     }
     store::append(conn, replica, since, label, now)?;
     let change = project::project_changes(conn, replica, &changed, actor, now)?;
@@ -506,7 +534,7 @@ fn write_in<R>(
     }
     let stored = store::stored_position(conn)?;
     store::set_projected_position(conn, stored)?;
-    Ok((value, change, store::head(conn)?))
+    Ok((value, change, repaired, store::head(conn)?))
 }
 
 /// Imports what other handles stored since `head`, and moves `since` and `head` to the store's

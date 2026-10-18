@@ -263,18 +263,22 @@ to know its on-disk file moved out from under it regardless of who moved it.
 - **The first undo on a handle costs more than later ones.** Undo and redo exist only for the
   life of the `KitableFile` handle that made the edits (above) — but even within one handle's
   life, the first `undo()` call costs measurably more than the next one on the same handle (see
-  the benchmark below: at both 10k and 100k records, "undo 1st" takes roughly twice "undo 2nd"),
-  and, like every write, undo's cost otherwise scales with the document's size, not just with what
-  it changes. A long-lived handle (an editor window left open, a long agent run) pays this once;
-  a workload that opens a fresh handle per undo would pay it every time.
+  the benchmark below): the KDM engine's undo manager does work on its first undo that grows with
+  the document. A long-lived handle (an editor window left open, a long agent run) pays this once;
+  a workload that opens a fresh handle per undo would pay it every time. After it, undo, redo, and
+  importing a peer's changes cost what they change plus a read of the base's and tables' lists:
+  the repair after them (`kdm::repair::run_since`) covers only what the change touched, relying on
+  the state before it being repaired already, and keeps the document's bases and links in an
+  index carried from write to write instead of scanning every object.
 
 ## Benchmark
 
 `crates/kition-kitable/tests/kdm_bench.rs` is a manual, opt-in benchmark (`#[ignore]`), not a
 correctness test — like `documentKdm.bench.spec.ts` on the Markdown-document side. It measures
 open, a first open that also migrates a schema-3 file, one cell edit, a 1,000-cell paste, undo
-(first and a later call), compaction, and a full rebuild, at 10,000 and 100,000 records (10
-fields), and prints its numbers rather than enforcing them:
+(first and a later call), redo, importing one cell edit of a peer replica, compaction, and a full
+rebuild, at 10,000 and 100,000 records (10 fields; `KDM_BENCH_SIZES=10000,50000` picks other
+sizes), and prints its numbers rather than enforcing them:
 
 ```sh
 cargo test --release -p kition-kitable --test kdm_bench -- --ignored --nocapture
@@ -283,16 +287,16 @@ cargo test --release -p kition-kitable --test kdm_bench -- --ignored --nocapture
 Representative numbers from a development machine, release build (a shared or loaded machine will
 read higher; treat these as shape, not a guarantee):
 
-| records | open | open + migrate | edit | 1k-paste | undo 1st | undo 2nd | compact | rebuild |
-| ------- | ---- | -------------- | ---- | -------- | -------- | -------- | ------- | ------- |
-| 10,000 | ~70 ms | ~350 ms | ~25 ms | ~75 ms | ~480 ms | ~210 ms | ~80 ms | ~760 ms |
-| 100,000 | ~500 ms | ~3.9 s | ~235 ms | ~210 ms | ~3.5 s | ~2.9 s | ~250 ms | ~7.2 s |
+| records | open | open + migrate | edit | 1k-paste | undo 1st | undo 2nd | redo | import | compact | rebuild |
+| ------- | ---- | -------------- | ---- | -------- | -------- | -------- | ---- | ------ | ------- | ------- |
+| 10,000 | ~25 ms | ~310 ms | ~20 ms | ~50 ms | ~55 ms | ~8 ms | ~8 ms | ~8 ms | ~25 ms | ~560 ms |
+| 100,000 | ~490 ms | ~3.7 s | ~270 ms | ~230 ms | ~900 ms | ~120 ms | ~90 ms | ~85 ms | ~250 ms | ~6.6 s |
 
 Against this phase's budgets at 10k (open under 1.5 s, an edit under 16 ms, a 1,000-cell paste
 under 100 ms): open and the paste are comfortably inside budget; a single cell edit measured
-somewhat over the 16 ms budget on this machine. Undo, compaction, and rebuild scale with the
-document's total size rather than with the size of the change, which is the basis for the "first
-undo" limitation above and is worth keeping in mind for very large tables.
+somewhat over the 16 ms budget on this machine. Compaction and rebuild scale with the document's
+total size; so does the first undo on a handle (above). Before the incremental repair, every undo,
+redo, and import ran a full repair pass, about 0.9 s at 50,000 records on its own.
 
 ## Testing pointers
 
