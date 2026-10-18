@@ -59,7 +59,7 @@
     "build:perf": "pnpm run build && pnpm perf:budget",
     "build:desktop": "node src-tauri/scripts/build.mjs",
     "dist:desktop": "node src-tauri/scripts/build.mjs",
-    "check:desktop": "cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace",
+    "check:desktop": "cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace && bash scripts/check-wasm.sh",
     "release:github": "node scripts/release-github.mjs",
     "test:agent:unit": "vitest run --config tooling/vitest.config.ts src/features/agent/hooks/useTableAgentSession.spec.ts src/features/agent/lib/tableAgentShared.spec.ts src/features/workspace/lib/workspacePersistence.spec.ts",
     "test:agent:e2e": "playwright test --config tooling/playwright.config.ts e2e/table-agent-document-flow.spec.ts e2e/markdown-image-insertion.spec.ts --workers=1",
