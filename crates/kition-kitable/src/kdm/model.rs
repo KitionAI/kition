@@ -668,10 +668,18 @@ pub fn create_records(
 ) -> Result<Vec<ObjectId>> {
     require(tx, table, TABLE)?;
     let stored = stored_fields(tx, table)?;
-    let records = Listing::read(tx, table, "records")?;
-    let raw_of = |anchor: &ObjectId| records.raw_index(anchor).ok_or(KitableError::NotFound);
+    // As `Listing` reads it, without looking up every listed record: an anchor's raw index is its
+    // first entry, when the anchor exists.
+    let records = tx.list_items(table, "records")?;
+    let raw_of = |anchor: &ObjectId| {
+        records
+            .iter()
+            .position(|item| item == anchor)
+            .filter(|_| tx.exists(anchor))
+            .ok_or(KitableError::NotFound)
+    };
     let start = match at {
-        None => records.raw.len(),
+        None => records.len(),
         Some(Anchor::Before(anchor)) => raw_of(anchor)?,
         Some(Anchor::After(anchor)) => raw_of(anchor)? + 1,
     };
@@ -711,10 +719,17 @@ pub fn set_cells_many(
     edits: &[(ObjectId, Map<String, Value>)],
 ) -> Result<()> {
     require(tx, table, TABLE)?;
-    let records = Listing::read(tx, table, "records")?;
+    // The edited records the table lists and that exist (`Listing::contains`), without looking up
+    // every listed record.
+    let edited: HashSet<&ObjectId> = edits.iter().map(|(record, _)| record).collect();
+    let listed: HashSet<ObjectId> = tx
+        .list_items(table, "records")?
+        .into_iter()
+        .filter(|item| edited.contains(item))
+        .collect();
     let stored = stored_fields(tx, table)?;
     for (record, cells) in edits {
-        if !records.contains(record) {
+        if !listed.contains(record) || !tx.exists(record) {
             return Err(KitableError::NotFound);
         }
         for (key, value) in cells {
@@ -1026,11 +1041,6 @@ impl Listing {
 
     pub fn contains(&self, id: &ObjectId) -> bool {
         self.first.contains_key(id)
-    }
-
-    /// The raw index of a live item.
-    pub fn raw_index(&self, id: &ObjectId) -> Option<usize> {
-        self.first.get(id).copied()
     }
 
     /// The raw index at which an insert makes the new item the `position`-th live item (past

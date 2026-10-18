@@ -289,12 +289,12 @@ read higher; treat these as shape, not a guarantee):
 
 | records | open | open + migrate | edit | 1k-paste | undo 1st | undo 2nd | redo | import | compact | rebuild |
 | ------- | ---- | -------------- | ---- | -------- | -------- | -------- | ---- | ------ | ------- | ------- |
-| 10,000 | ~25 ms | ~310 ms | ~20 ms | ~50 ms | ~55 ms | ~8 ms | ~8 ms | ~8 ms | ~25 ms | ~560 ms |
-| 100,000 | ~490 ms | ~3.7 s | ~270 ms | ~230 ms | ~900 ms | ~120 ms | ~90 ms | ~85 ms | ~250 ms | ~6.6 s |
+| 10,000 | ~25 ms | ~310 ms | ~13 ms | ~48 ms | ~60 ms | ~10 ms | ~8 ms | ~10 ms | ~30 ms | ~460 ms |
+| 100,000 | ~570 ms | ~3.8 s | ~150 ms | ~95 ms | ~740 ms | ~110 ms | ~130 ms | ~90 ms | ~230 ms | ~7.2 s |
 
 Against this phase's budgets at 10k (open under 1.5 s, an edit under 16 ms, a 1,000-cell paste
-under 100 ms): open and the paste are comfortably inside budget; a single cell edit measured
-somewhat over the 16 ms budget on this machine. Compaction and rebuild scale with the document's
+under 100 ms): all three are inside budget. A cell edit and a paste read the table's list of
+records but look up only the records they write. Compaction and rebuild scale with the document's
 total size; so does the first undo on a handle (above). Before the incremental repair, every undo,
 redo, and import ran a full repair pass, about 0.9 s at 50,000 records on its own.
 
