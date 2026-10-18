@@ -43,16 +43,20 @@ async function slideTexts(bytes: Buffer, index: number) {
 async function openPalette(page: Page) {
   // Focus Kition itself (not the kit's frame, which keeps its own keys) and open the palette.
   // WebKit keeps keyboard focus in a frame whose element is blurred, so focus the page's body.
-  await page.evaluate(() => {
-    const focused = document.activeElement as HTMLElement | null
-    focused?.blur()
-    if (document.activeElement !== document.body) {
-      document.body.tabIndex = -1
-      document.body.focus()
-    }
-  })
-  await page.keyboard.press('ControlOrMeta+k')
-  await expect(page.getByTestId('command-palette')).toBeVisible()
+  // A kit editor that finishes loading can take the focus back into its frame, where Cmd+K is
+  // the kit's own; focus Kition and press again until the palette shows.
+  await expect(async () => {
+    await page.evaluate(() => {
+      const focused = document.activeElement as HTMLElement | null
+      focused?.blur()
+      if (document.activeElement !== document.body) {
+        document.body.tabIndex = -1
+        document.body.focus()
+      }
+    })
+    await page.keyboard.press('ControlOrMeta+k')
+    await expect(page.getByTestId('command-palette')).toBeVisible({ timeout: 2_000 })
+  }).toPass({ timeout: 20_000 })
 }
 
 async function runPaletteCommand(page: Page, key: string, screenshot?: string) {
