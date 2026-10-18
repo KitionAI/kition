@@ -1,3 +1,4 @@
+// Copied from kition-sdk packages/sync/src/blobSection.ts by scripts/sync-kit-host.mjs; change it there, not here.
 /**
  * The blobs a kit's replica exports alongside its changes (Kit UI protocol `replica/export`), and
  * how a receiving side finds the blobs a pushed change needs.

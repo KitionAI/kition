@@ -1,11 +1,13 @@
+// Copied from kition-sdk packages/sync/src/replicaVersions.ts by scripts/sync-kit-host.mjs; change it there, not here.
 /**
  * What the relay needs to know about KDM versions and change exports without a replica of its
  * own: whether an export carries anything, the version two versions together reach, and the
- * version a change export reaches. Loaded on demand (`loadReplicaVersions`), so a window that
- * never relays a document never loads the CRDT engine.
+ * version a change export reaches. Not exported from the package's index: a host loads it on
+ * demand (`@kition/sync/replicaVersions`), so a page that never relays a document never loads the
+ * CRDT engine.
  */
 import { decodeImportBlobMeta, VersionVector, type PeerID } from 'loro-crdt'
-import { open } from '@/lib/kdm/envelope'
+import { openEnvelope } from '../kdm'
 
 export type ReplicaVersions = {
   /** Whether `changes` (a KDM change export) carries no change at all. */
@@ -25,7 +27,7 @@ function counters(version: Uint8Array): Map<string, number> {
 export const LORO_REPLICA_VERSIONS: ReplicaVersions = {
   isEmpty: (changes) => {
     try {
-      return decodeImportBlobMeta(open(changes).engine, false).changeNum === 0
+      return decodeImportBlobMeta(openEnvelope(changes).engine, false).changeNum === 0
     } catch {
       return false
     }
@@ -37,7 +39,7 @@ export const LORO_REPLICA_VERSIONS: ReplicaVersions = {
   },
   endOf: (changes) => {
     try {
-      return decodeImportBlobMeta(open(changes).engine, false).partialEndVersionVector.encode()
+      return decodeImportBlobMeta(openEnvelope(changes).engine, false).partialEndVersionVector.encode()
     } catch {
       return null
     }

@@ -9,7 +9,7 @@ import { findOpenMarkdownDocument, followOpenMarkdownDocuments, type OpenMarkdow
 import { followKitConnections, mountedKitDocument, type MountedKitDocument } from '@/features/kits/public'
 import { findOpenTable, followOpenTables, type OpenTable } from '@/features/table/public'
 import { findOpenBoard, followOpenBoards, type OpenBoard } from '@/features/whiteboard/public'
-import type { RelayReplica } from './kitRelay'
+import type { RelayReplica } from '@/lib/sync'
 
 /** The kit ids of the documents Kition edits itself (their KDM schemas' `kit`). */
 export const HOST_KITS = { board: 'kit.board', document: 'kit.document', table: 'kit.table' } as const

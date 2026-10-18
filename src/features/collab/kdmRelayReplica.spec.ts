@@ -1,14 +1,13 @@
 import { describe, expect, it, vi } from 'vitest'
 import { person, Replica } from '@/lib/kdm'
-import type { ConnectionState, RoomJoinResult } from '@/lib/sync'
+import { startRelay, type ConnectionState, type RelaySync, type RoomJoinResult } from '@/lib/sync'
+import { LORO_REPLICA_VERSIONS } from '@/lib/sync/replicaVersions'
 import { createDocumentReplica, documentBody } from '@/features/document/kdm/documentText'
 import { DOCUMENT_BODY } from '@/features/document/kdm/documentSchema'
 import { BoardStore } from '@/features/whiteboard/lib/boardStore'
 import { createBoardElementRecord } from '@/features/whiteboard/lib/boardRecords'
 import { boardSchema } from '@/features/whiteboard/kdm/boardSchema'
 import { kdmRelayReplica, type KdmReplicaHost } from './kdmRelayReplica'
-import { startKitRelay, type RelaySync } from './kitRelay'
-import { LORO_REPLICA_VERSIONS } from './replicaVersions'
 
 const rect = (id: string, index: number, pageId: string) => ({
   ...createBoardElementRecord({ element: { id, kind: 'rectangle', x: index * 20, y: 0, width: 10, height: 10 }, index, pageId: '' }),
@@ -109,7 +108,7 @@ describe('kdmRelayReplica over an open board', () => {
   it('relays edits between two boards both ways', async () => {
     const { a, b } = boardPair()
     const room = new Room()
-    const relays = [a, b].map((store) => startKitRelay({ docId: store.getReplica().docId, replica: kdmRelayReplica(boardHost(store)), sync: new RoomClient(room), versions: LORO_REPLICA_VERSIONS }))
+    const relays = [a, b].map((store) => startRelay({ docId: store.getReplica().docId, replica: kdmRelayReplica(boardHost(store)), sync: new RoomClient(room), versions: LORO_REPLICA_VERSIONS }))
     const settle = async () => {
       for (let round = 0; round < 4; round += 1) await Promise.all(relays.map((relay) => relay.idle()))
     }

@@ -1,5 +1,5 @@
 /**
- * Starts a relay (`kitRelay.ts`) for every open document that can be co-edited
+ * Starts a relay (`startRelay`, `@/lib/sync`) for every open document that can be co-edited
  * (`collabDocuments.ts`: kit documents whose kit serves the `replica` capability, boards, Markdown
  * documents, tables), when this window may co-edit (`collabConfigured`) and the document has a
  * room (`rooms.ts`, written by Share or Open shared document). Anything else is left alone: no
@@ -8,13 +8,11 @@
  * It also keeps the documents this person may only view (`viewer` rooms) read-only in every
  * editor (`@/services/documentAccess`).
  */
-import type { Presence, SyncClient } from '@/lib/sync'
+import { startRelay, type Presence, type Relay, type RelaySync, type ReplicaVersions, type SyncClient } from '@/lib/sync'
 import { setReadOnlyDocuments } from '@/services/documentAccess'
 import { followCollabDocuments, type CollabDocument, type CollabReplica } from './collabDocuments'
 import { loadCollabToken, onCollabSettingsChanged, syncServerUrl } from './collabSettings'
 import { setDocumentCollab, setDocumentPeers, setDocumentRole } from './collabStore'
-import { startKitRelay, type KitRelay, type RelaySync } from './kitRelay'
-import type { ReplicaVersions } from './replicaVersions'
 import { fromHex, onRoomsChanged, readRoom, toHex, updateRoom, viewerPaths, type CollabRoom } from './rooms'
 import { closeSyncClient, collabConfigured, syncClient } from './syncConnection'
 
@@ -29,7 +27,7 @@ export type CollabDependencies = {
 const DEFAULT_DEPENDENCIES: CollabDependencies = {
   configured: collabConfigured,
   client: syncClient,
-  versions: async () => (await import('./replicaVersions')).LORO_REPLICA_VERSIONS,
+  versions: async () => (await import('@/lib/sync/replicaVersions')).LORO_REPLICA_VERSIONS,
 }
 
 /** The settings a connection depends on; without a server the session is not even read. */
@@ -55,7 +53,7 @@ function follow(document: CollabDocument, dependencies: CollabDependencies) {
   let starting = false
   let replica: CollabReplica | null = null
   let docId: string | null = null
-  let relay: KitRelay | null = null
+  let relay: Relay | null = null
   let stopPresence: (() => void) | null = null
 
   let again = false
@@ -84,7 +82,7 @@ function follow(document: CollabDocument, dependencies: CollabDependencies) {
       const showPeers = (peers: Presence[]) => setDocumentPeers(path, peers, client.principal?.id)
       setDocumentCollab(path, { docId: id, peers: [], role: room.role })
       stopPresence = client.onPresence(id, showPeers)
-      relay = startKitRelay({
+      relay = startRelay({
         docId: id,
         replica,
         sync: client,

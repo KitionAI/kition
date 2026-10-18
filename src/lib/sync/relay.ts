@@ -1,6 +1,7 @@
+// Copied from kition-sdk packages/sync/src/relay.ts by scripts/sync-kit-host.mjs; change it there, not here.
 /**
- * The relay between one open kit document's KDM replica (Kit UI protocol capability `replica`)
- * and its sync room (`kition-sync/1`): local edits go up as `changes/push`, other people's
+ * The relay between one open document's KDM replica (a kit's, through the Kit UI protocol
+ * capability `replica`, or a host editor's) and its sync room (`kition-sync/1`): local edits go up as `changes/push`, other people's
  * `changes/pull` come down as `replica/import`.
  *
  * - **Up.** On every `replica/changed` (and when the room is joined or the connection comes back)
@@ -22,11 +23,13 @@
  * Everything runs one step at a time, in order. Imports are idempotent, so a change that arrives
  * twice (a reconnect's catch-up) is harmless.
  */
-import type { ConnectionState, Presence, RoomJoinResult, SyncClient } from '@/lib/sync'
 import { blobHashCandidates, decodeBlobSection, encodeBlobSection, type BlobEntry } from './blobSection'
+import type { SyncClient } from './client'
+import type { Presence, RoomJoinResult } from './protocol'
 import type { ReplicaVersions } from './replicaVersions'
+import type { ConnectionState } from './transport'
 
-/** The replica side: a mounted kit's `KitConnection.replica`, or a host editor's (`collabDocuments.ts`). */
+/** The replica side: a mounted kit's `KitConnection.replica` (`@kition/kit-host`), or a host editor's. */
 export type RelayReplica = {
   version: () => Promise<ArrayBuffer>
   exportChanges: (since: ArrayBuffer) => Promise<{ changes: ArrayBuffer; blobs: ArrayBuffer }>
@@ -34,10 +37,10 @@ export type RelayReplica = {
   onChanged: (listener: (version: ArrayBuffer) => void) => () => void
 }
 
-/** The sync side: the window's `SyncClient`. */
+/** The sync side: the page's `SyncClient`. */
 export type RelaySync = Pick<SyncClient, 'join' | 'leave' | 'push' | 'onChanges' | 'onState' | 'blobs'> & { readonly state: ConnectionState }
 
-export type KitRelayOptions = {
+export type RelayOptions = {
   docId: string
   replica: RelayReplica
   sync: RelaySync
@@ -55,7 +58,7 @@ export type KitRelayOptions = {
   onError?: (error: unknown) => void
 }
 
-export type KitRelay = {
+export type Relay = {
   stop: () => void
   /** Settles once every step queued so far has run (for tests). */
   idle: () => Promise<void>
@@ -71,7 +74,7 @@ function buffer(view: Uint8Array): ArrayBuffer {
   return view.slice().buffer as ArrayBuffer
 }
 
-export function startKitRelay(options: KitRelayOptions): KitRelay {
+export function startRelay(options: RelayOptions): Relay {
   const { docId, replica, sync, versions } = options
   let lastSent = options.lastSent ?? new Uint8Array()
   /** Blobs both the server and this replica hold. */

@@ -1,5 +1,5 @@
 /**
- * A `.kitable` file's KDM replica as a co-editing `RelayReplica` (`kitRelay.ts`): the runtime
+ * A `.kitable` file's KDM replica as a co-editing `RelayReplica` (`@/lib/sync`): the runtime
  * holds the replica (the file's shared handle), so every call goes over the replica routes
  * (`src/api/dataDocumentsReplica.ts`), and `onChanged` follows the runtime's
  * `table/replica-changed` notifications for this file, sent after every local transaction.
@@ -10,7 +10,7 @@
  */
 import { exportTableReplica, getTableReplicaVersion, importTableReplica } from '@/api/dataDocumentsReplica'
 import { onTableReplicaChanged } from '@/services/runtimeBridge'
-import type { RelayReplica } from './kitRelay'
+import type { RelayReplica } from '@/lib/sync'
 
 /** Workspace-relative path in the runtime's form: `/` separators, no leading `./` or `/`. */
 function normalizePath(path: string) {

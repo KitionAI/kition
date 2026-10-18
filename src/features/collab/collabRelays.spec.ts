@@ -102,7 +102,7 @@ describe('startCollab for documents Kition edits itself', () => {
   }
 
   it('relays a shared board, joining from the seq an earlier session saw while the replica still holds it', async () => {
-    const { LORO_REPLICA_VERSIONS } = await import('./replicaVersions')
+    const { LORO_REPLICA_VERSIONS } = await import('@/lib/sync/replicaVersions')
     const { client, joins } = fakeClient()
     const deps: CollabDependencies = { configured: async () => true, client: async () => client as never, versions: async () => LORO_REPLICA_VERSIONS }
     const { store, withdraw } = await openBoard('Plan.kiboard')
@@ -116,7 +116,7 @@ describe('startCollab for documents Kition edits itself', () => {
   })
 
   it('joins from the snapshot when the replica no longer holds what was seen', async () => {
-    const { LORO_REPLICA_VERSIONS } = await import('./replicaVersions')
+    const { LORO_REPLICA_VERSIONS } = await import('@/lib/sync/replicaVersions')
     const { client, joins } = fakeClient()
     const deps: CollabDependencies = { configured: async () => true, client: async () => client as never, versions: async () => LORO_REPLICA_VERSIONS }
     const { store, withdraw } = await openBoard('Plan.kiboard')

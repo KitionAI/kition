@@ -1,5 +1,5 @@
 /**
- * The relay side (`RelayReplica`, `kitRelay.ts`) of a document whose KDM replica lives in this
+ * The relay side (`RelayReplica`, `@/lib/sync`) of a document whose KDM replica lives in this
  * page: an open board (`OpenBoard`) or Markdown document (`OpenMarkdownDocument`). Exports come
  * straight from the replica; imports go through the editor's own path for changes made elsewhere
  * (the one merges of the file take), so the editor shows them, they are no undo step for the
@@ -7,7 +7,7 @@
  * by path. Loaded only for a document that is relayed, as it carries the KDM.
  */
 import { Version, type Replica } from '@/lib/kdm'
-import type { RelayReplica } from './kitRelay'
+import type { RelayReplica } from '@/lib/sync'
 
 /** An editor holding a KDM replica in this page. */
 export type KdmReplicaHost = {

@@ -3,8 +3,8 @@
 // packages/kit-host), in src/features/kits/host/, of the standard's kit.json schema
 // (schemas/kit.schema.json), in contracts/kit/kit-standard.schema.json for the conformance suite,
 // of the Kit Data Model (packages/kdm/src/*.ts), in src/lib/kdm/, and its Rust crate
-// (crates/kition-kdm), in crates/kition-kdm/, and of the sync client for kition-sync/1
-// (packages/sync/src/*.ts), in src/lib/sync/. kition-sdk is private and
+// (crates/kition-kdm), in crates/kition-kdm/, and of the sync client for kition-sync/1 and its
+// replica relay (packages/sync/src/*.ts), in src/lib/sync/. kition-sdk is private and
 // Kition is public, so Kition carries the files instead of depending on the packages.
 //
 //   node scripts/sync-kit-host.mjs          copy them from ../kition-sdk (or KITION_SDK)
@@ -42,12 +42,13 @@ for (const name of fs.readdirSync(path.join(sdk, kdmSource)).filter((name) => na
   const source = `${kdmSource}/${name}`
   files.push({ source, out: `src/lib/kdm/${name}`, rewrite: (text) => header(source) + text })
 }
-// Every sync client (@kition/sync) source file, unchanged: its imports are relative, and it needs
-// nothing beyond Web Crypto and a WebSocket.
+// Every sync client (@kition/sync) source file, with the relay between a replica and its room:
+// its imports are relative but for the KDM's (`@kition/kdm`), which is the copy in src/lib/kdm/,
+// and it needs nothing beyond Web Crypto, a WebSocket, and `loro-crdt`.
 const syncSource = 'packages/sync/src'
 for (const name of fs.readdirSync(path.join(sdk, syncSource)).filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts')).sort()) {
   const source = `${syncSource}/${name}`
-  files.push({ source, out: `src/lib/sync/${name}`, rewrite: (text) => header(source) + text })
+  files.push({ source, out: `src/lib/sync/${name}`, rewrite: (text) => header(source) + text.replaceAll("from '@kition/kdm'", "from '../kdm'") })
 }
 // The Rust KDM (crates/kition-kdm): its sources and tests, unchanged, so they run against this
 // workspace's dependency features (serde_json `preserve_order`), with a manifest written here.
