@@ -3,6 +3,6 @@
  * never from internal modules (enforced by tooling/dependency-cruiser.cjs).
  */
 export type { KitableTemplateDefinition } from './templates/kitableTemplates'
-export { resolveAIConfigRuntimeModel } from './lib/tableEditorShared'
-export { useTableLiveChanges } from './hooks/useTableLiveChanges'
+export { resolveAIConfigRuntimeModel } from './host/aiRuntimeModel'
+export { KitionTableProviders } from './host/KitionTableProviders'
 export { findOpenTable, followOpenTables, type OpenTable } from './lib/openTables'

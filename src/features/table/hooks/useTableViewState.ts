@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
-import { updateDataView } from '@/api/dataDocuments'
+import { useTableDataSource } from '@/features/table/ports/TableDataSource'
 import type { DataDocument, DataTable, DataView } from '@/types/dataDocument'
 import { parseFilterTree } from '@/features/table/filter'
 import {
@@ -30,6 +30,7 @@ export function useTableViewState({
   setDocument,
   setActiveViewId,
 }: UseTableViewStateArgs) {
+  const dataSource = useTableDataSource()
   const [hiddenFieldNames, setHiddenFieldNames] = useState<Set<string>>(new Set())
   const [sortFieldName, setSortFieldName] = useState('')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
@@ -96,7 +97,7 @@ export function useTableViewState({
         row_height: rowHeightKey,
         frozen_column_count: frozenColumnCount,
       }
-      void updateDataView(documentId, tableId, viewId, { config }).then((updated) => {
+      void dataSource.views.update({ documentId, tableId, viewId, config }).then((updated) => {
         setDocument((current) => current ? {
           ...current,
           tables: current.tables?.map((table) => table.id === tableId ? {

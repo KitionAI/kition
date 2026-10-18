@@ -7,7 +7,7 @@ import {
   normalizeChoiceList,
 } from '@/features/table/lib/tableEditorShared';
 import { formatTableFieldValue } from '@/features/table/lib/dateFormatting';
-import { resolvePublicFileURL } from '@/services/desktop';
+import { resolveTableFileURL, useTableHost } from '@/features/table/ports/TableHost';
 import type { IGridColumn, ICellItem } from './interface';
 import { GridInnerIcon } from './managers';
 import { CellType } from './renderers';
@@ -92,6 +92,7 @@ export function buildCellForField(
   onPreviewAttachmentIndex?: (index: number) => void,
   onOpenDocument?: DocumentOpenHandler,
   onAddAttachment?: () => void,
+  resolveFileURL: (url: string) => string = (url) => resolveTableFileURL({}, url),
 ): ICell {
   const raw = record.values?.[field.name] ?? null;
   const display = displayValue(raw);
@@ -154,7 +155,7 @@ export function buildCellForField(
         : undefined;
       const data = attachments.map((item, index) => ({
         id: `${field.id}-${index}`,
-        url: resolvePublicFileURL(item.url),
+        url: resolveFileURL(item.url),
       }));
       return {
         type: CellType.Image,
@@ -363,6 +364,7 @@ export function useGridAdapter(args: IGridAdapterArgs) {
     onCellAIAction,
     onOpenDocument,
   } = args;
+  const host = useTableHost();
 
   const columns = useMemo<IGridColumn[]>(() => {
     return visibleFields.map((field) =>
@@ -386,9 +388,9 @@ export function useGridAdapter(args: IGridAdapterArgs) {
         field.type === 'attachment' && !field.readonly && onAddAttachment
           ? () => onAddAttachment(record, field)
           : undefined;
-      return buildCellForField(field, record, previewHook, onOpenDocument, addHook);
+      return buildCellForField(field, record, previewHook, onOpenDocument, addHook, (url) => resolveTableFileURL(host, url));
     },
-    [visibleFields, sortedAndFilteredRecords, onPreviewAttachment, onAddAttachment, onOpenDocument]
+    [visibleFields, sortedAndFilteredRecords, onPreviewAttachment, onAddAttachment, onOpenDocument, host]
   );
 
   const handleCellEdited = useCallback(

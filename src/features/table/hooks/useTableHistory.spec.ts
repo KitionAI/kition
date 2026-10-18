@@ -1,6 +1,7 @@
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { KitionTableProviders } from '@/features/table/host/KitionTableProviders'
 
 const apiMocks = vi.hoisted(() => ({
   getDataDocumentHistoryState: vi.fn(),
@@ -32,7 +33,7 @@ async function mountHistory(args: HistoryArgs) {
   document.body.appendChild(container)
   await act(async () => {
     root = createRoot(container!)
-    root.render(createElement(Harness, args))
+    root.render(createElement(KitionTableProviders, null, createElement(Harness, args)))
     await Promise.resolve()
   })
 }
@@ -43,7 +44,7 @@ async function rerenderHistory(args: HistoryArgs) {
     return null
   }
   await act(async () => {
-    root!.render(createElement(Harness, args))
+    root!.render(createElement(KitionTableProviders, null, createElement(Harness, args)))
     await Promise.resolve()
   })
 }

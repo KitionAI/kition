@@ -1,6 +1,7 @@
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { KitionTableProviders } from '@/features/table/host/KitionTableProviders'
 
 import type { DataField, DataRecord } from '@/types/dataDocument'
 
@@ -114,7 +115,7 @@ describe('GridView attachment picker', () => {
     root = createRoot(container)
 
     await act(async () => {
-      root?.render(createElement(GridView, {
+      root?.render(createElement(KitionTableProviders, null, createElement(GridView, {
         documentId: 1,
         tableId: 11,
         fields: [field],
@@ -157,7 +158,7 @@ describe('GridView attachment picker', () => {
         onOpenFieldCreator: vi.fn(),
         onUndo: vi.fn(),
         onRedo: vi.fn(),
-      }))
+      })))
     })
 
     const input = container.querySelector(
@@ -240,7 +241,7 @@ describe('GridView fill handle', () => {
     root = createRoot(container)
 
     await act(async () => {
-      root?.render(createElement(GridView, {
+      root?.render(createElement(KitionTableProviders, null, createElement(GridView, {
         documentId: 1,
         tableId: 11,
         fields: [titleField, readonlyField],
@@ -284,7 +285,7 @@ describe('GridView fill handle', () => {
         onOpenFieldCreator: vi.fn(),
         onUndo: vi.fn(),
         onRedo: vi.fn(),
-      }))
+      })))
     })
 
     // Selection covers row A (both columns); fill extends down to row C

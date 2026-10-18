@@ -29,6 +29,7 @@ import { FieldChoicesSection } from './fieldConfig/FieldChoicesSection'
 import { FieldFormulaSection } from './fieldConfig/FieldFormulaSection'
 import { FieldAdvancedSection } from './fieldConfig/FieldAdvancedSection'
 import { FieldAIConfigCard } from './fieldConfig/FieldAIConfigCard'
+import { useTableHost } from '@/features/table/ports/TableHost'
 import { FieldShowAsSection, type LongTextShowAs } from './fieldConfig/FieldShowAsSection'
 import { FieldDateFormatSection } from './fieldConfig/FieldDateFormatSection'
 import { getTableDateFormat } from '@/features/table/lib/dateFormatting'
@@ -84,6 +85,7 @@ export function FieldConfigPanel({
   onSave: (updates: FieldSaveUpdates) => void | Promise<void>
 }) {
   const { t } = useTranslation(['table', 'common'])
+  const { ai } = useTableHost()
   const [draft, setDraft] = useState<Draft>(() => draftFromField(field))
   const [originalSnapshot, setOriginalSnapshot] = useState<string>(() =>
     serializeDraft(draftFromField(field)),
@@ -236,7 +238,7 @@ export function FieldConfigPanel({
               />
             </>
           ) : null}
-          {supportsAI ? (
+          {supportsAI && ai ? (
             <>
               <hr className="border-border" />
               <FieldAIConfigCard

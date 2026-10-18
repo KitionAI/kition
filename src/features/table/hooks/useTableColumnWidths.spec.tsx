@@ -1,6 +1,7 @@
 import { act, createElement, useEffect } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { KitionTableProviders } from '@/features/table/host/KitionTableProviders'
 
 vi.mock('@/api/dataDocuments', () => ({
   listViewFields: vi.fn(),
@@ -29,7 +30,7 @@ function HookSurface() {
 async function mountAndSettle() {
   await act(async () => {
     root = createRoot(container)
-    root.render(createElement(HookSurface))
+    root.render(createElement(KitionTableProviders, null, createElement(HookSurface)))
     await Promise.resolve()
   })
   await act(async () => {

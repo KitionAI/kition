@@ -1,6 +1,7 @@
 import { act, createElement, useEffect } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { KitionTableProviders } from '@/features/table/host/KitionTableProviders'
 
 vi.mock('@/api/dataDocuments', () => ({
   getDataDocument: vi.fn(),
@@ -49,11 +50,11 @@ async function mountAndSettle(documentPath: string, pinnedTableId?: number) {
   let captured: ReturnType<typeof useTableEditorData> | null = null
   await act(async () => {
     root = createRoot(container)
-    root.render(createElement(HookSurface, {
+    root.render(createElement(KitionTableProviders, null, createElement(HookSurface, {
       documentPath,
       pinnedTableId,
       onResult: (r) => { captured = r },
-    }))
+    })))
     await Promise.resolve()
   })
   for (let i = 0; i < 16; i++) {

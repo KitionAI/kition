@@ -457,3 +457,21 @@ export type BulkCopyRecordsResult = {
   copied_count: number
   new_row_keys: string[]
 }
+
+/** POST .../records/{recordId}/fields/{fieldId}/ai/run: the record with the generated value. */
+export type RunDataAIFieldCellResponse = {
+  record: DataRecord
+  field: DataField
+  state?: Record<string, unknown>
+}
+
+/** POST .../fields/{fieldId}/ai/run: one AI field run over several records. */
+export type RunDataAIFieldBatchResponse = {
+  items: Array<{ record: DataRecord; state?: Record<string, unknown> }>
+  field: DataField
+  accepted: number
+  completed: number
+  failed: number
+  errors?: Array<{ record_id: number; message: string }>
+  limit: number
+}

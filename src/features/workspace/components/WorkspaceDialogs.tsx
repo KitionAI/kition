@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 
 import type { useDocumentExport } from '@/features/document/public'
 import { requestEmailSyncSetup } from '@/features/emailSync/public'
+import { KitionTableProviders } from '@/features/table/public'
 import type { useWorkspaceBoardCreation } from '@/features/workspace/hooks/useWorkspaceBoardCreation'
 import type { useWorkspaceCreateFlows } from '@/features/workspace/hooks/useWorkspaceCreateFlows'
 import type { useWorkspaceTemplateDialogs } from '@/features/workspace/hooks/useWorkspaceTemplateDialogs'
@@ -181,18 +182,20 @@ export function WorkspaceDialogs({
       />
       {createFlows.tableFileImportState ? (
         <Suspense fallback={null}>
-          <TableFileImportDialog
-            open
-            file={createFlows.tableFileImportState.file}
-            target={{ kind: 'new_document', folder: createFlows.tableFileImportState.folder }}
-            onOpenChange={(open) => {
-              if (!open) createFlows.closeTableFileImport()
-            }}
-            onCompleted={async (result) => {
-              await onTableFileImported(result.path)
-              notify.success(t('feedback.spreadsheetImported'))
-            }}
-          />
+          <KitionTableProviders>
+            <TableFileImportDialog
+              open
+              file={createFlows.tableFileImportState.file}
+              target={{ kind: 'new_document', folder: createFlows.tableFileImportState.folder }}
+              onOpenChange={(open) => {
+                if (!open) createFlows.closeTableFileImport()
+              }}
+              onCompleted={async (result) => {
+                await onTableFileImported(result.path)
+                notify.success(t('feedback.spreadsheetImported'))
+              }}
+            />
+          </KitionTableProviders>
         </Suspense>
       ) : null}
     </>

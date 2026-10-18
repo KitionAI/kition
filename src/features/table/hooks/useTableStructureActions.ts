@@ -1,23 +1,8 @@
 import type { Dispatch, RefObject, SetStateAction } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useConfirm } from '@/components/confirm'
-import {
-  createDataField,
-  createDataRecord,
-  createDataTable,
-  createDataView,
-  deleteDataField,
-  deleteDataTable,
-  deleteDataView,
-  exportDataTableCSV,
-  listViewFields,
-  patchViewField,
-  transactDataDocument,
-  updateDataField,
-  updateDataTable,
-  updateDataView,
-} from '@/api/dataDocuments'
-import { saveTextFile } from '@/services/desktop'
+import { useTableDataSource } from '@/features/table/ports/TableDataSource'
+import { useTableHost } from '@/features/table/ports/TableHost'
 import type {
   DataDocument,
   DataField,
@@ -90,6 +75,8 @@ export function useTableStructureActions({
   refreshHistoryState,
 }: UseTableStructureActionsArgs) {
   const confirm = useConfirm()
+  const dataSource = useTableDataSource()
+  const { saveTextFile } = useTableHost()
   const { t } = useTranslation('table')
   const { t: tw } = useTranslation('workspace')
 
@@ -120,7 +107,7 @@ export function useTableStructureActions({
     const nextTitle = nextTitleValue.trim()
     if (!nextTitle || nextTitle === currentTitle) return
     try {
-      const updatedTable = await updateDataTable(document.id, activeTable.id, { title: nextTitle })
+      const updatedTable = await dataSource.tables.update({ documentId: document.id, tableId: activeTable.id, title: nextTitle })
       setDocument((current) => current ? {
         ...current,
         tables: current.tables?.map((table) => (
@@ -140,14 +127,15 @@ export function useTableStructureActions({
     if (!document || !activeTable) return
     setBusy(true)
     try {
-      const created = await createDataTable(document.id, {
+      const created = await dataSource.tables.create({
+        documentId: document.id,
         title: `${activeTable.title} copy`,
         description: activeTable.description,
         fields: fields.map(makeDuplicateFieldSeed),
         views: tableViews.map(makeDuplicateViewSeed),
       })
       if (records.length) {
-        await Promise.all(records.map((record) => createDataRecord(document.id, created.id, record.values || {})))
+        await Promise.all(records.map((record) => dataSource.records.create({ documentId: document.id, tableId: created.id, values: record.values || {} })))
       }
       window.dispatchEvent(new CustomEvent('kition:data-document:table:create', {
         detail: { vaultPath: documentPath, tableId: created.id },
@@ -163,10 +151,10 @@ export function useTableStructureActions({
   }
 
   async function downloadActiveTableCSV() {
-    if (!document || !activeTable) return
+    if (!document || !activeTable || !saveTextFile) return
     setBusy(true)
     try {
-      const content = await exportDataTableCSV(document.id, activeTable.id)
+      const content = await dataSource.csv.export({ documentId: document.id, tableId: activeTable.id })
       await saveTextFile({
         dialogTitle: 'Download CSV',
         defaultFilename: `${document.title}-${activeTable.title}.csv`,
@@ -185,7 +173,7 @@ export function useTableStructureActions({
     if (!(await confirm({ message: `Delete table "${activeTable.title}"?`, variant: 'destructive' }))) return
     setBusy(true)
     try {
-      await deleteDataTable(document.id, activeTable.id)
+      await dataSource.tables.delete({ documentId: document.id, tableId: activeTable.id })
       window.dispatchEvent(new CustomEvent('kition:data-document:table:delete', {
         detail: { vaultPath: documentPath, tableId: activeTable.id },
       }))
@@ -243,7 +231,9 @@ export function useTableStructureActions({
     setBusy(true)
     setViewCreateOpen(false)
     try {
-      const view = await createDataView(document.id, activeTable.id, {
+      const view = await dataSource.views.create({
+        documentId: document.id,
+        tableId: activeTable.id,
         title: nextViewTitle(type, tableViews),
         type,
       })
@@ -272,7 +262,7 @@ export function useTableStructureActions({
     const nextTitle = nextTitleValue.trim()
     if (!view || !nextTitle || nextTitle === view.title) return
     try {
-      const updated = await updateDataView(document.id, activeTable.id, viewId, { title: nextTitle })
+      const updated = await dataSource.views.update({ documentId: document.id, tableId: activeTable.id, viewId, title: nextTitle })
       setDocument((current) => current ? {
         ...current,
         tables: current.tables?.map((table) => table.id === activeTable.id ? {
@@ -304,25 +294,25 @@ export function useTableStructureActions({
 
     setBusy(true)
     try {
-      const sourceFields = await listViewFields(document.id, activeTable.id, view.id)
+      const sourceFields = await dataSource.views.listFields({ documentId: document.id, tableId: activeTable.id, viewId: view.id })
         .catch(() => ({ items: [] }))
-      const created = await createDataView(document.id, activeTable.id, {
+      const created = await dataSource.views.create({
+        documentId: document.id,
+        tableId: activeTable.id,
         title: nextTitle,
         type: view.type,
         config: view.config ? structuredClone(view.config) : view.config,
       })
-      await Promise.allSettled(sourceFields.items.map((field) => patchViewField(
-        document.id,
-        activeTable.id,
-        created.id,
-        field.field_id,
-        {
-          visible: field.visible,
-          width: field.width,
-          position: field.position,
-          frozen: field.frozen,
-        },
-      )))
+      await Promise.allSettled(sourceFields.items.map((field) => dataSource.views.patchField({
+        documentId: document.id,
+        tableId: activeTable.id,
+        viewId: created.id,
+        fieldId: field.field_id,
+        visible: field.visible,
+        width: field.width,
+        position: field.position,
+        frozen: field.frozen,
+      })))
       setDocument((current) => current ? {
         ...current,
         tables: current.tables?.map((table) => table.id === activeTable.id ? {
@@ -357,7 +347,7 @@ export function useTableStructureActions({
 
     setBusy(true)
     try {
-      await deleteDataView(document.id, activeTable.id, view.id)
+      await dataSource.views.delete({ documentId: document.id, tableId: activeTable.id, viewId: view.id })
       const remainingViews = tableViews.filter((item) => item.id !== view.id)
       const nextView = remainingViews[Math.min(viewIndex, remainingViews.length - 1)] || remainingViews[0]
       setDocument((current) => current ? {
@@ -384,7 +374,9 @@ export function useTableStructureActions({
     if (!document || !activeTable || !newFieldTitle.trim()) return
     setBusy(true)
     try {
-      await createDataField(document.id, activeTable.id, {
+      await dataSource.fields.create({
+        documentId: document.id,
+        tableId: activeTable.id,
         title: newFieldTitle.trim(),
         type: newFieldType,
         required: false,
@@ -413,7 +405,9 @@ export function useTableStructureActions({
       while (existingTitles.has(title)) {
         title = `New property ${counter++}`
       }
-      await createDataField(document.id, activeTable.id, {
+      await dataSource.fields.create({
+        documentId: document.id,
+        tableId: activeTable.id,
         title,
         type: 'text',
         required: false,
@@ -436,7 +430,10 @@ export function useTableStructureActions({
   }) {
     if (!document || !activeTable) return
     try {
-      const updated = await updateDataField(document.id, activeTable.id, field.id, {
+      const updated = await dataSource.fields.update({
+        documentId: document.id,
+        tableId: activeTable.id,
+        fieldId: field.id,
         ...updates,
         required: false,
       })
@@ -479,12 +476,15 @@ export function useTableStructureActions({
     } : current)
 
     try {
-      await transactDataDocument(document.id, [{
-        op: 'fields.move',
-        tableId: activeTable.id,
-        fieldIds: [field.id],
-        toIndex,
-      }])
+      await dataSource.transact({
+        documentId: document.id,
+        ops: [{
+          op: 'fields.move',
+          tableId: activeTable.id,
+          fieldIds: [field.id],
+          toIndex,
+        }],
+      })
       refreshHistoryState?.()
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Failed to reorder field')
@@ -502,7 +502,7 @@ export function useTableStructureActions({
     if (!document || !activeTable || field.is_primary) return
     setBusy(true)
     try {
-      await deleteDataField(document.id, activeTable.id, field.id)
+      await dataSource.fields.delete({ documentId: document.id, tableId: activeTable.id, fieldId: field.id })
       setEditingField(null)
       await refreshDocument(activeTable.id)
       void loadRecords()

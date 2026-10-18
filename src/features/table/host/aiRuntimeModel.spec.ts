@@ -12,7 +12,7 @@ vi.mock('@/services/portalAccount', () => ({
   ensurePortalAccountSessionRestored: vi.fn(),
 }))
 
-import { resolveAIConfigRuntimeModel } from './tableEditorShared'
+import { resolveAIConfigRuntimeModel } from './aiRuntimeModel'
 
 const imageConfig: AttachmentAIConfig = {
   type: 'image_customization',

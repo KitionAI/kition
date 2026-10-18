@@ -1,6 +1,7 @@
 import { act, createElement, createRef } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { KitionTableProviders } from '@/features/table/host/KitionTableProviders'
 
 import type { DataDocument, DataField, DataTable, DataView } from '@/types/dataDocument'
 
@@ -92,7 +93,7 @@ function Harness({ overrides = {} }: { overrides?: Record<string, unknown> }) {
 async function mount(overrides: Record<string, unknown> = {}) {
   await act(async () => {
     root = createRoot(container)
-    root.render(createElement(Harness, { overrides }))
+    root.render(createElement(KitionTableProviders, null, createElement(Harness, { overrides })))
     await Promise.resolve()
   })
 }

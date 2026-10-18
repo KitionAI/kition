@@ -8,6 +8,7 @@ import {
   parseImageAspectRatio,
   readCellValue,
 } from './useGridAdapter'
+import { kitionTableHost } from '@/features/table/host/kitionTableHost'
 import { GridInnerIcon } from './managers'
 import { CellType } from './renderers'
 import type { IInnerCell } from './renderers'
@@ -196,6 +197,10 @@ describe('useGridAdapter — phase 2 field types', () => {
         makeRecord({
           name: [{ name: 'preview.png', url: '/uploads/preview.png' }],
         }),
+        undefined,
+        undefined,
+        undefined,
+        kitionTableHost.resolveFileURL,
       )
       expect(cell.type).toBe(CellType.Image)
       if (cell.type === CellType.Image) {
@@ -206,6 +211,22 @@ describe('useGridAdapter — phase 2 field types', () => {
       }
     } finally {
       window.kitionDesktop = previousBridge
+    }
+  })
+
+  it('shows only self-contained attachment URLs without a host to resolve the rest', () => {
+    const cell = buildCellForField(
+      makeField({ type: 'attachment' }),
+      makeRecord({
+        name: [
+          { name: 'preview.png', url: '/uploads/preview.png' },
+          { name: 'remote.png', url: 'https://example.com/remote.png' },
+        ],
+      }),
+    )
+    expect(cell.type).toBe(CellType.Image)
+    if (cell.type === CellType.Image) {
+      expect(cell.data.map((item) => item.url)).toEqual(['', 'https://example.com/remote.png'])
     }
   })
 

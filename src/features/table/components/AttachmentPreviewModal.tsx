@@ -19,19 +19,18 @@ import {
   ZoomOut,
 } from 'lucide-react'
 import type { DataAttachment } from '@/types/dataDocument'
-import { copyImageToClipboard, resolvePublicFileURL } from '@/services/desktop'
+import { resolveTableFileURL, useTableHost, useTableNotify, type TableHost } from '@/features/table/ports/TableHost'
 import { findImageLikeString } from '@/features/table/lib/tableEditorShared'
 import { cn } from '@/lib/utils'
-import { notify } from '@/lib/notify'
 
 const MIN_SCALE = 0.25
 const MAX_SCALE = 5
 const SCALE_STEP = 0.25
 
-function resolveAttachment(attachment: DataAttachment | null) {
+function resolveAttachment(host: TableHost, attachment: DataAttachment | null) {
   if (!attachment) return ''
   const raw = findImageLikeString(attachment)
-  return raw ? resolvePublicFileURL(raw) : ''
+  return raw ? resolveTableFileURL(host, raw) : ''
 }
 
 export function AttachmentPreviewModal({
@@ -48,6 +47,9 @@ export function AttachmentPreviewModal({
   onIndexChange: (index: number) => void
 }) {
   const { t } = useTranslation('table')
+  const host = useTableHost()
+  const notify = useTableNotify()
+  const copyImageToClipboard = host.copyImageToClipboard
   const total = items.length
   const safeIndex = total > 0 ? ((index % total) + total) % total : 0
   const active = total > 0 ? items[safeIndex] : null
@@ -159,7 +161,7 @@ export function AttachmentPreviewModal({
 
   if (!open || !active || typeof document === 'undefined') return null
 
-  const resolvedSrc = resolveAttachment(active)
+  const resolvedSrc = resolveAttachment(host, active)
   const title = active.name || t('attachment.title')
 
   function handleZoomIn() {
@@ -192,7 +194,7 @@ export function AttachmentPreviewModal({
   }
 
   async function handleCopyImage() {
-    if (!resolvedSrc) return
+    if (!resolvedSrc || !copyImageToClipboard) return
     setImageContextMenu(null)
     try {
       await copyImageToClipboard(resolvedSrc)
@@ -320,6 +322,7 @@ export function AttachmentPreviewModal({
                   onContextMenu={(event) => {
                     event.preventDefault()
                     event.stopPropagation()
+                    if (!copyImageToClipboard) return
                     setImageContextMenu({
                       x: Math.min(event.clientX, Math.max(8, window.innerWidth - 180)),
                       y: Math.min(event.clientY, Math.max(8, window.innerHeight - 56)),
@@ -442,7 +445,7 @@ export function AttachmentPreviewModal({
               data-testid="attachment-preview-footer"
             >
               {items.map((item, idx) => {
-                const thumbSrc = resolveAttachment(item)
+                const thumbSrc = resolveAttachment(host, item)
                 const isActive = idx === safeIndex
                 return (
                   <button

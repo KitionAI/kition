@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ModelCapability } from '@/types'
-import { loadMediaModelOptions, type MediaModelOption } from '@/services/mediaModels'
+import { useTableHost } from '@/features/table/ports/TableHost'
 
 type ModelPickerProps = {
   value: string | undefined
@@ -11,18 +11,23 @@ type ModelPickerProps = {
 
 export function ModelPicker({ value, capability, onChange }: ModelPickerProps) {
   const { t } = useTranslation('table')
-  const [options, setOptions] = useState<MediaModelOption[]>([])
+  const { ai } = useTableHost()
+  const [options, setOptions] = useState<Array<{ value: string; label: string }>>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
+    if (!ai) {
+      setLoading(false)
+      return undefined
+    }
     setLoading(true)
     setError(null)
-    loadMediaModelOptions(capability)
+    ai.loadModelOptions(capability)
       .then((items) => {
         if (cancelled) return
-        setOptions(items.filter((item) => item.source === 'desktop'))
+        setOptions(items)
       })
       .catch((err) => {
         if (cancelled) return
@@ -34,7 +39,7 @@ export function ModelPicker({ value, capability, onChange }: ModelPickerProps) {
     return () => {
       cancelled = true
     }
-  }, [capability, t])
+  }, [ai, capability, t])
 
   const knownValue = value && options.some((option) => option.value === value)
 

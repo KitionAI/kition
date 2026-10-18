@@ -24,8 +24,8 @@ const defaultDependencies: AttachmentHydrationDependencies = {
     })
     return new Response(bundledAssetArrayBuffer(bytes))
   },
-  updateRecord: updateDataRecord,
-  uploadAttachment: uploadDataAttachment,
+  updateRecord: (...args) => updateDataRecord(...args),
+  uploadAttachment: (...args) => uploadDataAttachment(...args),
 }
 
 export async function hydrateBundledAIFieldAttachments({

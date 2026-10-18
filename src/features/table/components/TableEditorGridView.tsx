@@ -34,8 +34,7 @@ import { useGridAdapter } from '@/features/table/grid/useGridAdapter'
 import { useTableColumnWidths } from '@/features/table/hooks/useTableColumnWidths'
 import { buildCellKey } from '@/features/table/store/aiCellGenerationStore'
 import { serializeTableSelection } from '@/features/table/lib/tableClipboard'
-import { uploadDataAttachment } from '@/api/dataDocuments'
-import { notify } from '@/lib/notify'
+import { useTableHost, useTableNotify } from '@/features/table/ports/TableHost'
 
 type GridViewProps = {
   documentId: number
@@ -137,6 +136,8 @@ export const GridView = forwardRef<IGridRef, GridViewProps>(function GridView(pr
     tableId,
     viewId,
   })
+  const { uploadAttachment } = useTableHost()
+  const notify = useTableNotify()
   const attachmentInputRef = useRef<HTMLInputElement | null>(null)
   const attachmentTargetRef = useRef<{ record: DataRecord; field: DataField } | null>(null)
   const attachmentUploadInProgressRef = useRef(false)
@@ -150,11 +151,11 @@ export const GridView = forwardRef<IGridRef, GridViewProps>(function GridView(pr
   const handleAttachmentFiles = useCallback(async (files: File[]) => {
     const target = attachmentTargetRef.current
     attachmentTargetRef.current = null
-    if (!target || !files.length || attachmentUploadInProgressRef.current) return
+    if (!target || !files.length || attachmentUploadInProgressRef.current || !uploadAttachment) return
     attachmentUploadInProgressRef.current = true
     try {
       const uploaded = await Promise.all(
-        files.map((file) => uploadDataAttachment(props.documentId, tableId, file)),
+        files.map((file) => uploadAttachment({ documentId: props.documentId, tableId, file })),
       )
       const current = normalizeAttachmentValue(target.record.values?.[target.field.name] ?? null)
       onUpdateCell(target.record, target.field, [...current, ...uploaded])
@@ -165,7 +166,7 @@ export const GridView = forwardRef<IGridRef, GridViewProps>(function GridView(pr
     } finally {
       attachmentUploadInProgressRef.current = false
     }
-  }, [onUpdateCell, props.documentId, t, tableId])
+  }, [notify, onUpdateCell, props.documentId, t, tableId, uploadAttachment])
 
   const adapter = useGridAdapter({
     visibleFields,
@@ -198,7 +199,7 @@ export const GridView = forwardRef<IGridRef, GridViewProps>(function GridView(pr
       const attachments = normalizeAttachmentValue(record.values?.[field.name] ?? null)
       if (attachments.length) onPreviewAttachments(attachments, index)
     },
-    onAddAttachment: openAttachmentPicker,
+    onAddAttachment: uploadAttachment ? openAttachmentPicker : undefined,
     onCellAIAction: onRegenerate ? (record, field) => onRegenerate(record, field) : undefined,
   })
 

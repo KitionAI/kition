@@ -1,6 +1,7 @@
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { KitionTableProviders } from '@/features/table/host/KitionTableProviders'
 
 import * as api from '@/api/dataDocuments'
 import * as desktopSettings from '@/services/desktopSettings'
@@ -39,7 +40,7 @@ async function mountRecordActions(args: RecordActionsArgs): Promise<RecordAction
   document.body.appendChild(hookContainer)
   await act(async () => {
     hookRoot = createRoot(hookContainer!)
-    hookRoot.render(createElement(Harness))
+    hookRoot.render(createElement(KitionTableProviders, null, createElement(Harness)))
     await Promise.resolve()
   })
   return ref.current!

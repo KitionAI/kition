@@ -10,8 +10,8 @@ import type {
   DataView,
   LinkRef,
 } from '@/types/dataDocument'
-import { replaceRecordLinks } from '@/api/dataDocuments'
-import { notify } from '@/lib/notify'
+import { useTableDataSource } from '@/features/table/ports/TableDataSource'
+import { useTableHost, useTableNotify } from '@/features/table/ports/TableHost'
 import {
   DATA_TABLE_ACTION_EVENT,
   type TableActionEventDetail,
@@ -41,7 +41,7 @@ import { useTableEditorData } from '../hooks/useTableEditorData'
 import { useTableEditorDerivedState } from '../hooks/useTableEditorDerivedState'
 import { useTableEditorUiState } from '../hooks/useTableEditorUiState'
 import { useTableHistory } from '../hooks/useTableHistory'
-import { useTableLiveChanges } from '../hooks/useTableLiveChanges'
+import { useTableLiveChanges } from '../ports/useTableLiveChanges'
 import { useTableViewState } from '../hooks/useTableViewState'
 
 export function TableEditor({
@@ -89,6 +89,9 @@ export function TableEditor({
   readOnly?: boolean
 }) {
   const { t } = useTranslation('table')
+  const dataSource = useTableDataSource()
+  const host = useTableHost()
+  const notify = useTableNotify()
   const importInputRef = useRef<HTMLInputElement | null>(null)
   const [importFile, setImportFile] = useState<File | null>(null)
   const {
@@ -344,7 +347,7 @@ export function TableEditor({
       return
     }
     notify.error(error, { id })
-  }, [error, documentId, activeTableId])
+  }, [error, documentId, activeTableId, notify])
   const {
     addField,
     addDefaultField,
@@ -539,16 +542,18 @@ export function TableEditor({
 
   return (
     <div className="data-inline-shell" data-testid="kitable-editor" data-read-only={readOnly ? 'true' : undefined}>
-      <input
-        ref={importInputRef}
-        type="file"
-        accept=".csv,.tsv,.xlsx,text/csv,text/tab-separated-values,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        className="hidden"
-        onChange={(event) => {
-          setImportFile(event.target.files?.[0] || null)
-          event.currentTarget.value = ''
-        }}
-      />
+      {host.fileImport ? (
+        <input
+          ref={importInputRef}
+          type="file"
+          accept=".csv,.tsv,.xlsx,text/csv,text/tab-separated-values,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          className="hidden"
+          onChange={(event) => {
+            setImportFile(event.target.files?.[0] || null)
+            event.currentTarget.value = ''
+          }}
+        />
+      ) : null}
       <TableFileImportDialog
         open={Boolean(importFile)}
         file={importFile}
@@ -708,7 +713,7 @@ export function TableEditor({
           onReorderRecords={viewOnly((sourceRecordId, targetRecordId, position) =>
             void reorderRecords(sourceRecordId, targetRecordId, position)
           )}
-          onRegenerate={viewOnly((record, field) => void runAIField(record, field))}
+          onRegenerate={host.ai ? viewOnly((record, field) => void runAIField(record, field)) : undefined}
           onUpdateCell={viewOnly((record, field, value) =>
             void updateCell(record, field, value)
           )}
@@ -827,7 +832,13 @@ export function TableEditor({
             )}
             onReplaceLinks={viewOnly(async (field: DataField, rowKeys: string[]): Promise<LinkRef[] | null> => {
               try {
-                const refs = await replaceRecordLinks(document.id, activeTable.id, selectedRecord.id, field.id, rowKeys)
+                const refs = await dataSource.links.replace({
+                  documentId: document.id,
+                  tableId: activeTable.id,
+                  recordId: selectedRecord.id,
+                  field_id: field.id,
+                  target_row_keys: rowKeys,
+                })
                 setRecords((items) =>
                   items.map((record) =>
                     record.id === selectedRecord.id

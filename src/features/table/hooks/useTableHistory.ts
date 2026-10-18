@@ -1,15 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  getDataDocumentHistoryState,
-  redoDataDocument,
-  undoDataDocument,
-  type TableChange,
-} from '@/api/dataDocuments'
+import { useTableDataSource, type TableChange } from '@/features/table/ports/TableDataSource'
 
 /**
- * Server-backed undo/redo for the table editor: the runtime owns the
- * history stack (one `transactDataDocument` call is one undo step), this
- * hook just calls `/undo`, `/redo`, and `/history-state` and tracks the
+ * Document-backed undo/redo for the table editor: the data source owns the
+ * history stack (one `transact` call is one undo step), this hook just calls
+ * its `undo`, `redo`, and `historyState` and tracks the
  * resulting enabled state for the toolbar. Replaces the removed
  * `useTableCellHistory`, which tracked cell edits locally.
  */
@@ -21,6 +16,7 @@ export function useTableHistory({
   /** Called with the server's `change` after a successful (non-no-op) undo or redo, so the caller can refetch what changed. */
   onApplyChange?: (change: TableChange) => void | Promise<void>
 }) {
+  const dataSource = useTableDataSource()
   const [canUndo, setCanUndo] = useState(false)
   const [canRedo, setCanRedo] = useState(false)
   const [historyBusy, setHistoryBusy] = useState(false)
@@ -33,7 +29,7 @@ export function useTableHistory({
       setCanRedo(false)
       return Promise.resolve()
     }
-    return getDataDocumentHistoryState(documentId)
+    return dataSource.historyState({ documentId })
       .then((state) => {
         setCanUndo(state.canUndo)
         setCanRedo(state.canRedo)
@@ -42,7 +38,7 @@ export function useTableHistory({
         // A transient failure here just leaves the previous enabled state;
         // the next action, undo/redo, or live event will refresh it again.
       })
-  }, [documentId])
+  }, [dataSource, documentId])
 
   useEffect(() => {
     void refreshHistoryState()
@@ -54,8 +50,8 @@ export function useTableHistory({
       setHistoryBusy(true)
       try {
         const result = direction === 'undo'
-          ? await undoDataDocument(documentId)
-          : await redoDataDocument(documentId)
+          ? await dataSource.undo({ documentId })
+          : await dataSource.redo({ documentId })
         if (result.done) {
           await onApplyChangeRef.current?.(result.change)
         }
@@ -65,7 +61,7 @@ export function useTableHistory({
         setHistoryBusy(false)
       }
     },
-    [documentId, refreshHistoryState],
+    [dataSource, documentId, refreshHistoryState],
   )
 
   const undo = useCallback(() => runHistoryStep('undo'), [runHistoryStep])

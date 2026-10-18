@@ -36,6 +36,8 @@ vi.mock('@/api/windowSession', () => ({
   windowSessionOrigin: () => 'person:session:this-window',
 }))
 
+import { httpTableDataSource } from '@/features/table/host/httpTableDataSource'
+import { TableDataSourceProvider } from './TableDataSource'
 import { useTableLiveChanges, type TableLiveChangeHandlers } from './useTableLiveChanges'
 
 function emit(overrides: Record<string, unknown> = {}) {
@@ -62,19 +64,23 @@ function emitResync() {
 let container: HTMLDivElement
 let root: Root | null = null
 
-function Harness({ documentId, handlers }: { documentId: number | string | null; handlers: TableLiveChangeHandlers }) {
+function Subscriber({ documentId, handlers }: { documentId: number | null; handlers: TableLiveChangeHandlers }) {
   useTableLiveChanges(documentId, handlers)
   return null
 }
 
-async function mount(documentId: number | string | null, handlers: TableLiveChangeHandlers) {
+function Harness(props: { documentId: number | null; handlers: TableLiveChangeHandlers }) {
+  return createElement(TableDataSourceProvider, { value: httpTableDataSource }, createElement(Subscriber, props))
+}
+
+async function mount(documentId: number | null, handlers: TableLiveChangeHandlers) {
   await act(async () => {
     root = createRoot(container)
     root.render(createElement(Harness, { documentId, handlers }))
   })
 }
 
-async function update(documentId: number | string | null, handlers: TableLiveChangeHandlers) {
+async function update(documentId: number | null, handlers: TableLiveChangeHandlers) {
   await act(async () => {
     root?.render(createElement(Harness, { documentId, handlers }))
   })

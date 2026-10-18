@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import { listViewFields, patchViewField } from '@/api/dataDocuments'
+import { useTableDataSource } from '@/features/table/ports/TableDataSource'
 import type { DataField } from '@/types/dataDocument'
 
 const MIN_COLUMN_WIDTH = 100
@@ -25,6 +25,7 @@ export function useTableColumnWidths({
   tableId: number
   viewId?: number | null
 }) {
+  const dataSource = useTableDataSource()
   const viewKey = viewId ? `${documentId}:${tableId}:${viewId}` : ''
   const [state, setState] = useState<ColumnWidthState>({ key: '', widths: {} })
   const persistTimersRef = useRef(new Map<string, number>())
@@ -38,7 +39,7 @@ export function useTableColumnWidths({
     let cancelled = false
     setState({ key: viewKey, widths: {} })
 
-    void listViewFields(documentId, tableId, viewId)
+    void dataSource.views.listFields({ documentId, tableId, viewId })
       .then((response) => {
         if (cancelled) return
         const loadedWidths = (Array.isArray(response.items) ? response.items : []).reduce(
@@ -61,7 +62,7 @@ export function useTableColumnWidths({
     return () => {
       cancelled = true
     }
-  }, [documentId, tableId, viewId, viewKey])
+  }, [dataSource, documentId, tableId, viewId, viewKey])
 
   const resizeColumn = useCallback((field: DataField, width: number) => {
     if (!viewId) return
@@ -81,14 +82,18 @@ export function useTableColumnWidths({
 
     const timer = window.setTimeout(() => {
       persistTimersRef.current.delete(persistKey)
-      void patchViewField(documentId, tableId, viewId, field.id, {
+      void dataSource.views.patchField({
+        documentId,
+        tableId,
+        viewId,
+        fieldId: field.id,
         width: normalizedWidth,
       }).catch(() => {
         // Keep the locally resized column usable; a later resize can retry persistence.
       })
     }, COLUMN_WIDTH_SAVE_DELAY_MS)
     persistTimersRef.current.set(persistKey, timer)
-  }, [documentId, tableId, viewId, viewKey])
+  }, [dataSource, documentId, tableId, viewId, viewKey])
 
   const columnWidths = useMemo(
     () => state.key === viewKey ? state.widths : EMPTY_COLUMN_WIDTHS,

@@ -11,29 +11,17 @@ import {
   type DataImportWriteMode,
 } from '@/api/dataImports'
 import { getDesktopBackendStatus } from '@/services/desktop'
-import type { DataTable } from '@/types/dataDocument'
 import {
   analyzeCsvImport,
   applyCsvFieldTypeOverrides,
   type CsvImportAnalysis,
 } from '@/features/table/lib/csvImport'
 import { importCsvIntoDataTable } from '@/features/table/lib/importCsvIntoDataTable'
+import type { PreparedTableFileImport, TableFileImportTarget } from '@/features/table/ports/TableHost'
 
 const SUPPORTED_TEXT_EXTENSIONS = /\.(?:csv|tsv)$/i
 const SUPPORTED_WORKBOOK_EXTENSIONS = /\.xlsx$/i
 const LEGACY_WORKBOOK_EXTENSION = /\.xls$/i
-
-export type TableFileImportTarget =
-  | { kind: 'existing_table'; documentId: number; table: DataTable }
-  | { kind: 'new_document'; path: string; tableTitle: string }
-
-export type PreparedTableFileImport = {
-  backend: 'runtime' | 'client'
-  file: File
-  preview: DataImportPreview
-  csvContent?: string
-  csvAnalysis?: CsvImportAnalysis
-}
 
 function csvAnalysisToPreview(file: File, analysis: CsvImportAnalysis): DataImportPreview {
   const format = file.name.toLocaleLowerCase().endsWith('.tsv') ? 'tsv' : 'csv'

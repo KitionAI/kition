@@ -25,17 +25,14 @@ vi.mock('recharts', () => {
   }
 })
 
-vi.mock('@/api/dashboards', () => ({
-  openDataDashboardByPath: vi.fn(),
-  updateDataDashboard: vi.fn(),
-}))
-
 vi.mock('@/api/dataDocuments', () => ({
+  listDataDashboards: vi.fn(),
   listDataRecords: vi.fn(),
+  openDataDocumentByPath: vi.fn(),
+  putDataDashboard: vi.fn(),
 }))
 
-import { listDataRecords } from '@/api/dataDocuments'
-import { openDataDashboardByPath } from '@/api/dashboards'
+import { listDataDashboards, listDataRecords, openDataDocumentByPath } from '@/api/dataDocuments'
 import { DashboardEditorPane } from './DashboardEditorPane'
 
 let container: HTMLDivElement
@@ -83,9 +80,11 @@ const dataDocument = {
 beforeEach(() => {
   container = documentNode()
   document.body.appendChild(container)
-  vi.mocked(openDataDashboardByPath).mockReset()
+  vi.mocked(openDataDocumentByPath).mockReset()
+  vi.mocked(listDataDashboards).mockReset()
   vi.mocked(listDataRecords).mockReset()
-  vi.mocked(openDataDashboardByPath).mockResolvedValue({ dashboard, document: dataDocument } as never)
+  vi.mocked(openDataDocumentByPath).mockResolvedValue(dataDocument as never)
+  vi.mocked(listDataDashboards).mockResolvedValue({ items: [dashboard], total: 1 } as never)
   vi.mocked(listDataRecords).mockResolvedValue({
     items: [
       { id: 1, values: { progress: 'Completed' } },
@@ -136,7 +135,7 @@ describe('DashboardEditorPane', () => {
     })
     for (let index = 0; index < 12; index += 1) {
       await act(async () => { await Promise.resolve() })
-      if (vi.mocked(openDataDashboardByPath).mock.calls.length === 1) break
+      if (vi.mocked(listDataRecords).mock.calls.length === 1) break
     }
 
     await act(async () => {
@@ -146,7 +145,8 @@ describe('DashboardEditorPane', () => {
       await Promise.resolve()
     })
 
-    expect(openDataDashboardByPath).toHaveBeenCalledTimes(2)
+    expect(openDataDocumentByPath).toHaveBeenCalledTimes(2)
+    expect(listDataRecords).toHaveBeenCalledWith(7, 11, { limit: 500, offset: 0 })
     expect(listDataRecords).toHaveBeenCalledTimes(2)
   })
 })

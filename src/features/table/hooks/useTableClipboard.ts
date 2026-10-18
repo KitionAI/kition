@@ -1,5 +1,6 @@
 import { useEffect, type ClipboardEvent as ReactClipboardEvent, type Dispatch, type SetStateAction } from 'react'
-import { createDataRecord, transactDataDocument, updateDataRecord, uploadDataAttachment, type TableOp } from '@/api/dataDocuments'
+import { useTableDataSource, type TableOp } from '@/features/table/ports/TableDataSource'
+import { useTableHost } from '@/features/table/ports/TableHost'
 import type { DataField, DataRecord, DataRecordValue } from '@/types/dataDocument'
 import {
   coerceValue,
@@ -42,6 +43,8 @@ export function useTableClipboard({
   reloadRecords,
   refreshHistoryState,
 }: UseTableClipboardArgs) {
+  const dataSource = useTableDataSource()
+  const { uploadAttachment } = useTableHost()
   function isEditablePasteTarget(target: EventTarget | null) {
     if (!(target instanceof HTMLElement)) return false
     if (target.closest('.data-inline-longtext-cell')) return true
@@ -65,20 +68,20 @@ export function useTableClipboard({
   }
 
   async function pasteAttachmentFiles(files: File[], target: EventTarget | null) {
-    if (!documentId || !tableId || !files.length) return
+    if (!documentId || !tableId || !files.length || !uploadAttachment) return
     const start = getPasteStart(target)
     const field = start?.fieldName ? visibleFields.find((item) => item.name === start.fieldName) : null
     if (!field || field.type !== 'attachment' || field.readonly) return
     const targetRecord = start.recordId ? records.find((record) => record.id === start.recordId) : null
     setBusy(true)
     try {
-      const uploaded = await Promise.all(files.map((file) => uploadDataAttachment(documentId, tableId, file)))
+      const uploaded = await Promise.all(files.map((file) => uploadAttachment({ documentId, tableId, file })))
       if (targetRecord) {
         const nextValue = [...normalizeAttachmentValue(targetRecord.values?.[field.name] ?? null), ...uploaded]
-        const updated = await updateDataRecord(documentId, tableId, targetRecord.id, { [field.name]: nextValue })
+        const updated = await dataSource.records.update({ documentId, tableId, recordId: targetRecord.id, values: { [field.name]: nextValue } })
         setRecords((items) => items.map((record) => record.id === updated.id ? updated : record))
       } else {
-        const created = await createDataRecord(documentId, tableId, { [field.name]: uploaded })
+        const created = await dataSource.records.create({ documentId, tableId, values: { [field.name]: uploaded } })
         setRecords((items) => [...items, created])
       }
       setStatus(`Added ${uploaded.length} attachment${uploaded.length === 1 ? '' : 's'}`)
@@ -127,7 +130,7 @@ export function useTableClipboard({
         ops.push({ op: 'records.create', tableId, at: null, records: newRows })
       }
 
-      await transactDataDocument(documentId, ops)
+      await dataSource.transact({ documentId, ops })
 
       if (writableUpdates.length) {
         const patchByRecordId = new Map(writableUpdates.map((item) => [item.record.id, item.values]))
@@ -158,7 +161,7 @@ export function useTableClipboard({
     if (files.length) {
       const start = getPasteStart(target)
       const field = start?.fieldName ? visibleFields.find((item) => item.name === start.fieldName) : null
-      if (field?.type === 'attachment' && !field.readonly) {
+      if (field?.type === 'attachment' && !field.readonly && uploadAttachment) {
         void pasteAttachmentFiles(files, target)
         return true
       }

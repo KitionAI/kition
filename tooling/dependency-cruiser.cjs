@@ -8,6 +8,22 @@
  * everywhere. Known violations live in tooling/dependency-cruiser.known.json
  * and are checked with --ignore-known so the count can only go down.
  */
+/**
+ * The Kition side of src/features/table and src/features/dashboard: the TableDataSource and
+ * TableHost implementations (host/), and what Kition builds around the editor (opening it in
+ * a tab, workspace creation from templates, file import into a new table, co-editing). Every
+ * other file there is the editor, which reaches its data and app services only through
+ * src/features/table/ports, so that it can run on another data source and host.
+ */
+const TABLE_HOST_SIDE = [
+  '^src/features/table/host/',
+  '^src/features/table/public\\.ts$',
+  '^src/features/table/templates/',
+  '^src/features/table/components/(TableEditorPane|KitableTemplateLibraryDialog)\\.tsx$',
+  '^src/features/table/lib/(tableCreation|openTables|importWorkspaceFileIntoDataTable|importCsvIntoDataTable|tableFileImport|templateAssets)\\.ts$',
+  '^src/features/dashboard/components/DashboardEditorPane\\.tsx$',
+]
+
 module.exports = {
   forbidden: [
     {
@@ -33,7 +49,8 @@ module.exports = {
       from: { path: '^src/features/([^/]+)/' },
       to: {
         path: '^src/features/([^/]+)/',
-        pathNot: ['^src/features/$1/', '^src/features/[^/]+/public\\.ts$'],
+        // The dashboard editor ships with the table editor and shares its data seam.
+        pathNot: ['^src/features/$1/', '^src/features/[^/]+/public\\.ts$', '^src/features/table/ports/'],
       },
     },
     {
@@ -43,6 +60,29 @@ module.exports = {
       severity: 'error',
       from: { path: '^src/features/kits/sdk/' },
       to: { path: '^src/', pathNot: '^src/features/kits/sdk/' },
+    },
+    {
+      name: 'table-editor-uses-data-source-and-host',
+      severity: 'error',
+      comment:
+        'The table editor reads and writes table data through useTableDataSource() and uses app services through useTableHost() (src/features/table/ports). Add what it needs to TableDataSource or TableHost, implement it in src/features/table/host, and keep runtime requests, services, and other features out of the editor.',
+      from: { path: '^src/features/(table|dashboard)/', pathNot: TABLE_HOST_SIDE },
+      to: {
+        path: [
+          '^src/api/(?!generated/|dataImports\\.ts$)',
+          '^src/services/',
+          '^src/lib/(notify|bundledAssets|openDocuments)',
+          '^src/features/(?!table/|dashboard/)',
+          ...TABLE_HOST_SIDE,
+        ],
+      },
+    },
+    {
+      name: 'table-editor-imports-only-types-from-data-imports',
+      severity: 'error',
+      comment: 'The table editor runs file imports through useTableHost().fileImport; it may only use the src/api/dataImports types.',
+      from: { path: '^src/features/(table|dashboard)/', pathNot: TABLE_HOST_SIDE },
+      to: { path: '^src/api/dataImports\\.ts$', dependencyTypesNot: ['type-only'] },
     },
     {
       name: 'shared-layers-do-not-import-features',

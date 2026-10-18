@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileText, Maximize2 } from 'lucide-react'
 import type { DataAttachment } from '@/types/dataDocument'
-import { resolvePublicFileURL } from '@/services/desktop'
+import { resolveTableFileURL, useTableHost } from '@/features/table/ports/TableHost'
 import { findImageLikeString } from '@/features/table/lib/tableEditorShared'
 import { cn } from '@/lib/utils'
 
@@ -18,6 +18,7 @@ export function AttachmentCell({
   className?: string
 }) {
   const { t } = useTranslation('table')
+  const host = useTableHost()
   const [hover, setHover] = useState(false)
   if (!attachments.length) {
     return null
@@ -50,7 +51,7 @@ export function AttachmentCell({
             >
               {imageSrc ? (
                 <img
-                  src={resolvePublicFileURL(imageSrc)}
+                  src={resolveTableFileURL(host, imageSrc)}
                   alt={attachment.name || t('attachment.imageAlt')}
                   loading="lazy"
                 />

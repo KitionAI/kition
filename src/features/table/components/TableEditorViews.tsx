@@ -4,7 +4,7 @@ import { GalleryHorizontalEnd, GripVertical, Plus } from 'lucide-react'
 import type { DataAttachment, DataField, DataRecord, DataRecordValue } from '@/types/dataDocument'
 import { Badge, Button } from '@/components/ui'
 import { coerceValue, displayValue, findImageLikeString, normalizeAttachmentValue } from '@/features/table/lib/tableEditorShared'
-import { resolvePublicFileURL } from '@/services/desktop'
+import { resolveTableFileURL, useTableHost } from '@/features/table/ports/TableHost'
 import { cn } from '@/lib/utils'
 
 import { DataCellDisplay, DataInlineCell } from './TableEditorCells'
@@ -258,6 +258,7 @@ export function GalleryView({
   onRegenerate?: (record: DataRecord, field: DataField) => void
 }) {
   const { t } = useTranslation('table')
+  const host = useTableHost()
   const previewFields = fields.filter((field) => field.id !== primaryField?.id && field.id !== coverField?.id).slice(0, 4)
   return (
     <div className="data-inline-gallery">
@@ -294,7 +295,7 @@ export function GalleryView({
                     }
                   }}
                 >
-                  <img src={resolvePublicFileURL(coverSrc)} alt={primaryField ? displayValue(record.values?.[primaryField.name] ?? null) || t('views.galleryCover') : t('views.galleryCover')} loading="lazy" />
+                  <img src={resolveTableFileURL(host, coverSrc)} alt={primaryField ? displayValue(record.values?.[primaryField.name] ?? null) || t('views.galleryCover') : t('views.galleryCover')} loading="lazy" />
                 </button>
               ) : <GalleryHorizontalEnd className="size-5" />}
             </div>

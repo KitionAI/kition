@@ -5,6 +5,7 @@ import { ArrowLeft, MessageSquare } from 'lucide-react'
 import { BuildProgressCard } from '@/features/agent/components/BuildProgressCard'
 import { RightDrawer } from '@/components/RightDrawer'
 import { TableEditor } from '@/features/table/components/TableEditor'
+import { KitionTableProviders } from '@/features/table/public'
 import type { DataRecordValue } from '@/types/dataDocument'
 import type {
   ScenarioBuildEvent,
@@ -177,11 +178,13 @@ function ScenarioBuildCentralContent({
     const numericBaseId = Number(baseId)
     if (Number.isFinite(numericBaseId) && numericBaseId > 0) {
       return (
-        <TableEditor
-          documentPath={`scenario:${baseId}`}
-          markerContent={JSON.stringify({ data_document_id: numericBaseId })}
-          aiCellPatches={aiCellPatches}
-        />
+        <KitionTableProviders>
+          <TableEditor
+            documentPath={`scenario:${baseId}`}
+            markerContent={JSON.stringify({ data_document_id: numericBaseId })}
+            aiCellPatches={aiCellPatches}
+          />
+        </KitionTableProviders>
       )
     }
   }

@@ -1,13 +1,11 @@
 import { useTranslation } from 'react-i18next'
 import type { DataField, DataRecord } from '@/types/dataDocument'
-import { requestDesignFromRecord } from '@/services/workspaceDesignActions'
 import {
   findImageLikeString,
   normalizeAttachmentValue,
   type RowDropPosition,
 } from '@/features/table/lib/tableEditorShared'
-import { copyImageToClipboard, resolvePublicFileURL } from '@/services/desktop'
-import { notify } from '@/lib/notify'
+import { resolveTableFileURL, useTableHost, useTableNotify } from '@/features/table/ports/TableHost'
 
 import { DataRecordContextMenu } from './TableEditorOverlays'
 
@@ -49,6 +47,9 @@ export function TableRecordContextMenu({
   onStatus: (message: string) => void
 }) {
   const { t } = useTranslation('table')
+  const host = useTableHost()
+  const notify = useTableNotify()
+  const { copyImageToClipboard, requestDesignFromRecord } = host
   if (!menu || !record) return null
 
   function closeAndRun(action: () => void | Promise<void>) {
@@ -68,9 +69,9 @@ export function TableRecordContextMenu({
     : ''
 
   async function copySelectedImage() {
-    if (!selectedImage) return
+    if (!selectedImage || !copyImageToClipboard) return
     try {
-      await copyImageToClipboard(resolvePublicFileURL(selectedImage))
+      await copyImageToClipboard(resolveTableFileURL(host, selectedImage))
       onStatus(t('recordMenu.imageCopied'))
     } catch (error) {
       notify.error(t('recordMenu.imageCopyFailed'), {
@@ -85,7 +86,7 @@ export function TableRecordContextMenu({
       position={menu}
       busy={busy}
       canInsert={canInsert}
-      canRegenerateAI={aiFields.length > 0}
+      canRegenerateAI={aiFields.length > 0 && Boolean(host.ai)}
       onClose={onClose}
       onInsertAbove={(count) =>
         closeAndRun(() => onInsertRecords(record, count, 'before'))
@@ -95,7 +96,7 @@ export function TableRecordContextMenu({
       }
       onDuplicate={() => closeAndRun(() => onDuplicateRecord(record))}
       onCopyURL={() => closeAndRun(() => onCopyRecordURL(record))}
-      onCopyImage={selectedImage ? () => closeAndRun(copySelectedImage) : undefined}
+      onCopyImage={selectedImage && copyImageToClipboard ? () => closeAndRun(copySelectedImage) : undefined}
       onHistory={() => {
         onClose()
         onStatus(t('recordMenu.historyUnavailable'))
@@ -106,7 +107,7 @@ export function TableRecordContextMenu({
         onStatus(t('recordMenu.commentsHint'))
       }}
       onAddToChat={() => closeAndRun(() => onCopyRecordForChat(record))}
-      onCreateDesign={() =>
+      onCreateDesign={requestDesignFromRecord ? () =>
         closeAndRun(() =>
           requestDesignFromRecord({
             title: t('recordMenu.designTitle', { id: record.auto_number ?? record.id }),
@@ -120,7 +121,7 @@ export function TableRecordContextMenu({
                 }
               : undefined,
           }),
-        )
+        ) : undefined
       }
       onRegenerateAI={() => {
         onClose()

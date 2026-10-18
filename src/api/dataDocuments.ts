@@ -18,6 +18,8 @@ import type {
   DataTable,
   DataView,
   GroupItem,
+  RunDataAIFieldBatchResponse,
+  RunDataAIFieldCellResponse,
   InferDataDocumentSchemaResponse,
   LinkRef,
   RecordHistoryResponse,
@@ -244,23 +246,13 @@ export function runDataAIFieldCell(
   options?: { signal?: AbortSignal },
 ) {
   return request
-    .post<{ record: DataRecord; field: DataField; state?: Record<string, unknown> } | { data?: { record: DataRecord; field: DataField; state?: Record<string, unknown> } }>(
+    .post<RunDataAIFieldCellResponse | { data?: RunDataAIFieldCellResponse }>(
       `/v1/data-documents/${documentId}/tables/${tableId}/records/${recordId}/fields/${fieldId}/ai/run`,
       payload,
       { signal: options?.signal },
     )
-    .then(unwrapResponseData<{ record: DataRecord; field: DataField; state?: Record<string, unknown> }>)
+    .then(unwrapResponseData<RunDataAIFieldCellResponse>)
     .then((result) => ({ ...result, field: normalizeField(result.field) }))
-}
-
-export type RunDataAIFieldBatchResponse = {
-  items: Array<{ record: DataRecord; state?: Record<string, unknown> }>
-  field: DataField
-  accepted: number
-  completed: number
-  failed: number
-  errors?: Array<{ record_id: number; message: string }>
-  limit: number
 }
 
 export function runDataAIFieldBatch(

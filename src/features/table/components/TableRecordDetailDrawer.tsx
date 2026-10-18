@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronUp, ClipboardList, Link as LinkIcon, Trash2 } from 'lucide-react'
 import type { DataAttachment, DataField, DataRecord, DataRecordValue, LinkRef, RecordHistoryEntry } from '@/types/dataDocument'
 import { Button } from '@/components/ui'
-import { listRecordHistory } from '@/api/dataDocuments'
+import { useTableDataSource } from '@/features/table/ports/TableDataSource'
 import { displayValue } from '@/features/table/lib/tableEditorShared'
 import { buildRecordDeepLink } from '@/features/table/lib/recordUrl'
 import { getCurrentLocale } from '@/i18n'
@@ -169,6 +169,7 @@ function RecordHistoryPanel({
   fields: DataField[]
 }) {
   const { t } = useTranslation('table')
+  const dataSource = useTableDataSource()
   const [entries, setEntries] = useState<RecordHistoryEntry[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -177,7 +178,7 @@ function RecordHistoryPanel({
     let cancelled = false
     setLoading(true)
     setError(null)
-    listRecordHistory(documentId, tableId, recordId, { limit: 50 })
+    dataSource.records.history({ documentId, tableId, recordId, limit: 50 })
       .then((response) => {
         if (cancelled) return
         setEntries(response.items || [])
@@ -192,7 +193,7 @@ function RecordHistoryPanel({
     return () => {
       cancelled = true
     }
-  }, [documentId, tableId, recordId])
+  }, [dataSource, documentId, tableId, recordId])
 
   const fieldById = new Map(fields.map((field) => [field.id, field] as const))
 

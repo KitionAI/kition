@@ -1,6 +1,7 @@
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { KitionTableProviders } from '@/features/table/host/KitionTableProviders'
 
 const apiMocks = vi.hoisted(() => ({
   createDataRecord: vi.fn(),
@@ -34,7 +35,7 @@ async function mountClipboard(args: ClipboardArgs): Promise<ClipboardActions> {
   document.body.appendChild(container)
   await act(async () => {
     root = createRoot(container!)
-    root.render(createElement(Harness))
+    root.render(createElement(KitionTableProviders, null, createElement(Harness)))
     await Promise.resolve()
   })
   return ref.current!

@@ -1,4 +1,4 @@
-import type { TableLiveChangeHandlers } from '@/features/table/hooks/useTableLiveChanges'
+import type { TableLiveChangeHandlers } from '@/features/table/ports/useTableLiveChanges'
 
 /**
  * Builds the `useTableLiveChanges` handlers for the table editor: wires

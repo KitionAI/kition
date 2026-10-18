@@ -5,7 +5,7 @@ import {
   type ImagePreviewState,
   type RecordContextMenuState,
 } from '@/features/table/lib/tableEditorShared'
-import { notify } from '@/lib/notify'
+import { useTableNotify } from '@/features/table/ports/TableHost'
 import { useTableRecordActions } from './useTableRecordActions'
 import { useTableStructureActions } from './useTableStructureActions'
 
@@ -71,6 +71,7 @@ export function useTableEditorActions({
   loadRecords,
   refreshHistoryState,
 }: UseTableEditorActionsArgs) {
+  const notify = useTableNotify()
   function setStatus(message: string) {
     notify.success(message)
   }

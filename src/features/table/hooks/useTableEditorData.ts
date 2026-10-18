@@ -1,10 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import {
-  getDataDocument,
-  listDataDocuments,
-  listDataRecords,
-  openDataDocumentByPath,
-} from '@/api/dataDocuments'
+import { useTableDataSource } from '@/features/table/ports/TableDataSource'
 import type { DataDocument, DataRecord } from '@/types/dataDocument'
 import { parseMarker, type DataRecordWindow } from '@/features/table/lib/tableEditorShared'
 
@@ -19,6 +14,7 @@ export function useTableEditorData({
   pinnedTableId?: number
   onRecordsLoaded?: () => void
 }) {
+  const dataSource = useTableDataSource()
   const pendingRecordWindowRef = useRef('')
   const [document, setDocument] = useState<DataDocument | null>(null)
   const [resolvedActiveTableId, setResolvedActiveTableId] = useState<number | null>(null)
@@ -37,16 +33,16 @@ export function useTableEditorData({
       let nextDocument: DataDocument | null = null
       if (markerId) {
         try {
-          nextDocument = await getDataDocument(markerId)
+          nextDocument = await dataSource.documents.get({ documentId: markerId })
         } catch {
           nextDocument = null
         }
       }
       if (!nextDocument) {
         try {
-          nextDocument = await openDataDocumentByPath({ path: documentPath })
+          nextDocument = await dataSource.documents.open({ path: documentPath })
         } catch {
-          const result = await listDataDocuments({ query: documentPath })
+          const result = await dataSource.documents.list({ query: documentPath })
           nextDocument = result.items.find((item) => item.path === documentPath) || null
         }
       }
@@ -70,7 +66,7 @@ export function useTableEditorData({
 
   async function refreshDocument(preferredTableId = resolvedActiveTableId, preferredViewId = resolvedActiveViewId) {
     if (!document) return
-    const nextDocument = await getDataDocument(document.id)
+    const nextDocument = await dataSource.documents.get({ documentId: document.id })
     setDocument(nextDocument)
     const tables = nextDocument?.tables ?? []
     const resolvedId = pinnedTableId != null
@@ -100,7 +96,7 @@ export function useTableEditorData({
     if (pendingRecordWindowRef.current === windowKey) return
     pendingRecordWindowRef.current = windowKey
     try {
-      const result = await listDataRecords(document.id, resolvedActiveTableId, window)
+      const result = await dataSource.records.list({ documentId: document.id, tableId: resolvedActiveTableId, ...window })
       setRecords(result.items)
       setRecordTotal(result.total)
       setRecordOffset(result.offset || 0)

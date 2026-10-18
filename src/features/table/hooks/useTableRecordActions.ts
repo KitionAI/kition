@@ -1,16 +1,7 @@
 import { type Dispatch, type SetStateAction } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  bulkCopyDataRecords,
-  bulkDeleteDataRecords,
-  createDataRecord,
-  deleteDataRecord,
-  runDataAIFieldBatch,
-  runDataAIFieldCell,
-  transactDataDocument,
-  updateDataRecord,
-  type TableOp,
-} from '@/api/dataDocuments'
+import { useTableDataSource, type TableOp } from '@/features/table/ports/TableDataSource'
+import { useTableHost } from '@/features/table/ports/TableHost'
 import type {
   DataDocument,
   DataField,
@@ -26,7 +17,6 @@ import {
   kanbanGroupToValue,
   reorderById,
   reorderByIdAtPosition,
-  resolveAIConfigRuntimeModel,
   type DataRecordWindow,
   type RecordContextMenuState,
   type RowDropPosition,
@@ -41,7 +31,6 @@ import {
   hasAIFieldPromptPlaceholders,
   materializeAIFieldPrompt,
 } from '@/features/table/lib/aiPromptInterpolation'
-import { hydrateBundledAIFieldAttachments } from '@/features/table/lib/aiAttachmentHydration'
 
 const NON_CLEARABLE_FIELD_TYPES = new Set<string>([
   'auto_number',
@@ -125,13 +114,19 @@ export function useTableRecordActions({
   refreshHistoryState,
 }: UseTableRecordActionsArgs) {
   const { t } = useTranslation('table')
+  const dataSource = useTableDataSource()
+  const { ai } = useTableHost()
   async function createRecordFromValues(
     values: Record<string, DataRecordValue>,
   ) {
     if (!document || !activeTable) return null
-    const record = await createDataRecord(document.id, activeTable.id, {
-      ...emptyRecordValues(fields),
-      ...values,
+    const record = await dataSource.records.create({
+      documentId: document.id,
+      tableId: activeTable.id,
+      values: {
+        ...emptyRecordValues(fields),
+        ...values,
+      },
     })
     setRecords((items) => [...items, record])
     window.dispatchEvent(new CustomEvent('kition:data-document:record:upsert', {
@@ -193,12 +188,12 @@ export function useTableRecordActions({
       : null
     setBusy(true)
     try {
-      await transactDataDocument(document.id, [{
+      await dataSource.transact({ documentId: document.id, ops: [{
         op: 'records.create',
         tableId: activeTable.id,
         at,
         records: Array.from({ length: safeCount }, () => valuesForRecord()),
-      }])
+      }] })
       // The transaction only returns the new row keys, not full records, so
       // refetch to pick up the created rows (and their server-assigned ids).
       await loadRecords()
@@ -281,8 +276,11 @@ export function useTableRecordActions({
         : current,
     )
     try {
-      await updateDataRecord(document.id, activeTable.id, record.id, {
-        [field.name]: nextValue,
+      await dataSource.records.update({
+        documentId: document.id,
+        tableId: activeTable.id,
+        recordId: record.id,
+        values: { [field.name]: nextValue },
       })
       window.dispatchEvent(new CustomEvent('kition:data-document:record:upsert', {
         detail: { vaultPath: document.path, tableId: activeTable.id, recordIds: [record.id] },
@@ -310,8 +308,8 @@ export function useTableRecordActions({
     config: NonNullable<DataField['ai_config']>,
     signal?: AbortSignal,
   ) {
-    if (!document || !activeTable) return record
-    const hydrated = await hydrateBundledAIFieldAttachments({
+    if (!document || !activeTable || !ai) return record
+    const hydrated = await ai.prepareRecord({
       documentId: document.id,
       tableId: activeTable.id,
       record,
@@ -326,7 +324,7 @@ export function useTableRecordActions({
   }
 
   async function executeAIField(record: DataRecord, field: DataField) {
-    if (!document || !activeTable) return
+    if (!document || !activeTable || !ai) return
     const config = normalizeAIConfig(field.ai_config)
     if (!config?.enabled) return
     const controller = new AbortController()
@@ -334,15 +332,15 @@ export function useTableRecordActions({
     aiCellStore.cancel(cellKey)
     aiCellStore.start(cellKey, config.type, controller)
     try {
-      const runtimeModel = await resolveAIConfigRuntimeModel(config)
+      const runtimeModel = await ai.resolveRuntimeModel(config)
       const preparedRecord = await prepareAIFieldRecord(record, config, controller.signal)
       const executionConfig = materializeAIFieldPrompt(config, preparedRecord, fields)
-      const result = await runDataAIFieldCell(
-        document.id,
-        activeTable.id,
-        record.id,
-        field.id,
+      const result = await ai.runCell(
         {
+          documentId: document.id,
+          tableId: activeTable.id,
+          recordId: record.id,
+          fieldId: field.id,
           action: executionConfig.type,
           config: executionConfig,
           force: true,
@@ -376,7 +374,7 @@ export function useTableRecordActions({
     recordIds: number[],
     scope: string,
   ) {
-    if (!document || !activeTable) return
+    if (!document || !activeTable || !ai) return
     const config = normalizeAIConfig(field.ai_config)
     if (!config?.enabled) return
     const ids = Array.from(
@@ -395,7 +393,7 @@ export function useTableRecordActions({
     }
     setStatus(`${field.title}: generating ${ids.length} record${ids.length === 1 ? '' : 's'}…`)
     try {
-      const runtimeModel = await resolveAIConfigRuntimeModel(config)
+      const runtimeModel = await ai.resolveRuntimeModel(config)
       if (hasAIFieldPromptPlaceholders(config)) {
         const generated = await mapWithConcurrency(ids, 3, async (recordId) => {
           const record = records.find((item) => item.id === recordId)
@@ -403,12 +401,12 @@ export function useTableRecordActions({
           try {
             const preparedRecord = await prepareAIFieldRecord(record, config, controller.signal)
             const executionConfig = materializeAIFieldPrompt(config, preparedRecord, fields)
-            const result = await runDataAIFieldCell(
-              document.id,
-              activeTable.id,
-              record.id,
-              field.id,
+            const result = await ai.runCell(
               {
+                documentId: document.id,
+                tableId: activeTable.id,
+                recordId: record.id,
+                fieldId: field.id,
                 action: executionConfig.type,
                 config: executionConfig,
                 force: true,
@@ -456,11 +454,11 @@ export function useTableRecordActions({
         if (!record) throw new Error('Record is not loaded')
         return prepareAIFieldRecord(record, config, controller.signal)
       })
-      const result = await runDataAIFieldBatch(
-        document.id,
-        activeTable.id,
-        field.id,
+      const result = await ai.runBatch(
         {
+          documentId: document.id,
+          tableId: activeTable.id,
+          fieldId: field.id,
           action: config.type,
           config,
           record_ids: ids,
@@ -546,11 +544,11 @@ export function useTableRecordActions({
 
     setBusy(true)
     try {
-      await transactDataDocument(docId, [{
+      await dataSource.transact({ documentId: docId, ops: [{
         op: 'cells.set',
         tableId: tableIdActive,
         records: updates.map((entry) => ({ rowKey: entry.rowKey, values: entry.values })),
-      }])
+      }] })
       const cleared = updates.reduce(
         (total, entry) => total + Object.keys(entry.values).length,
         0,
@@ -574,7 +572,7 @@ export function useTableRecordActions({
     if (!document || !activeTable) return
     setBusy(true)
     try {
-      await deleteDataRecord(document.id, activeTable.id, recordId)
+      await dataSource.records.delete({ documentId: document.id, tableId: activeTable.id, recordId })
       setRecords((items) => items.filter((item) => item.id !== recordId))
       setSelectedRecordIds((current) => {
         const next = new Set(current)
@@ -608,13 +606,15 @@ export function useTableRecordActions({
     setBusy(true)
     try {
       if (rowKeys.length > 1) {
-        await bulkDeleteDataRecords(document.id, activeTable.id, {
+        await dataSource.records.bulkDelete({
+          documentId: document.id,
+          tableId: activeTable.id,
           row_keys: rowKeys,
         })
       } else {
         await Promise.all(
           Array.from(idsSnapshot).map((recordId) =>
-            deleteDataRecord(document.id, activeTable.id, recordId),
+            dataSource.records.delete({ documentId: document.id, tableId: activeTable.id, recordId }),
           ),
         )
       }
@@ -642,7 +642,9 @@ export function useTableRecordActions({
     if (!rowKeys.length) return
     setBusy(true)
     try {
-      await bulkCopyDataRecords(document.id, activeTable.id, {
+      await dataSource.records.bulkCopy({
+        documentId: document.id,
+        tableId: activeTable.id,
         row_keys: rowKeys,
       })
       await loadRecords()
@@ -681,12 +683,12 @@ export function useTableRecordActions({
     const movedIndex = nextRecords.findIndex((item) => item.id === sourceRecordId)
     const beforeRowKey = nextRecords[movedIndex + 1]?.row_key ?? null
     try {
-      await transactDataDocument(document.id, [{
+      await dataSource.transact({ documentId: document.id, ops: [{
         op: 'records.move',
         tableId: activeTable.id,
         rowKeys: [sourceRecord.row_key],
         before: beforeRowKey,
-      }])
+      }] })
       refreshHistoryState?.()
     } catch (requestError) {
       setError(
@@ -743,7 +745,7 @@ export function useTableRecordActions({
     const movedIndex = nextRecords.findIndex((item) => item.id === recordId)
     const beforeRowKey = nextRecords[movedIndex + 1]?.row_key ?? null
     try {
-      await transactDataDocument(document.id, [
+      await dataSource.transact({ documentId: document.id, ops: [
         {
           op: 'cells.set',
           tableId: activeTable.id,
@@ -755,7 +757,7 @@ export function useTableRecordActions({
           rowKeys: [record.row_key],
           before: beforeRowKey,
         },
-      ])
+      ] })
       refreshHistoryState?.()
     } catch (requestError) {
       setError(
@@ -804,7 +806,7 @@ export function useTableRecordActions({
       })),
     }]
     try {
-      await transactDataDocument(document.id, ops)
+      await dataSource.transact({ documentId: document.id, ops })
       refreshHistoryState?.()
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Fill failed')

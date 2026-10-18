@@ -1,10 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  createDataField,
-  duplicateDataField,
-  updateDataField,
-} from '@/api/dataDocuments'
+import { useTableDataSource } from '@/features/table/ports/TableDataSource'
+import { resolveTableFileURL, useTableHost } from '@/features/table/ports/TableHost'
 import type {
   DataDocument,
   DataField,
@@ -20,7 +17,6 @@ import {
   type DataInlineSortItem,
   type ToolbarPanel,
 } from '@/features/table/lib/tableEditorShared'
-import { resolvePublicFileURL } from '@/services/desktop'
 
 type UseTableColumnHeaderActionsArgs = {
   document: DataDocument | null
@@ -65,13 +61,15 @@ export function useTableColumnHeaderActions({
   refreshHistoryState,
 }: UseTableColumnHeaderActionsArgs) {
   const { t } = useTranslation('table')
+  const dataSource = useTableDataSource()
+  const host = useTableHost()
   async function duplicateField(field: DataField) {
     if (!document || !activeTable) return
     setBusy(true)
     try {
-      const duplicated = await duplicateDataField(document.id, activeTable.id, field.id)
+      const duplicated = await dataSource.fields.duplicate({ documentId: document.id, tableId: activeTable.id, fieldId: field.id })
       const created = duplicated.required
-        ? await updateDataField(document.id, activeTable.id, duplicated.id, { required: false })
+        ? await dataSource.fields.update({ documentId: document.id, tableId: activeTable.id, fieldId: duplicated.id, required: false })
         : duplicated
       await refreshDocument(activeTable.id)
       setStatus(t('feedback.fieldDuplicated'))
@@ -89,7 +87,9 @@ export function useTableColumnHeaderActions({
     setBusy(true)
     try {
       const insertOrder = side === 'before' ? anchor.order : anchor.order + 1
-      const created = await createDataField(document.id, activeTable.id, {
+      const created = await dataSource.fields.create({
+        documentId: document.id,
+        tableId: activeTable.id,
         title: 'New field',
         type: 'text',
         required: false,
@@ -120,9 +120,10 @@ export function useTableColumnHeaderActions({
     for (const record of records) {
       const attachments = normalizeAttachmentValue(record.values?.[field.name])
       for (const attachment of attachments) {
-        if (!attachment.url) continue
+        const href = attachment.url ? resolveTableFileURL(host, attachment.url) : ''
+        if (!href) continue
         const anchor = window.document.createElement('a')
-        anchor.href = resolvePublicFileURL(attachment.url)
+        anchor.href = href
         anchor.download = attachment.name || ''
         anchor.rel = 'noreferrer'
         window.document.body.appendChild(anchor)

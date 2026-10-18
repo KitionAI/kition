@@ -1,6 +1,7 @@
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { KitionTableProviders } from '@/features/table/host/KitionTableProviders'
 
 ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -72,13 +73,13 @@ describe('TableFileImportDialog', () => {
 
     await act(async () => {
       root = createRoot(container)
-      root.render(createElement(TableFileImportDialog, {
+      root.render(createElement(KitionTableProviders, null, createElement(TableFileImportDialog, {
         file,
         onCompleted,
         onOpenChange,
         open: true,
         target: { kind: 'existing_table', documentId: 10, table: { id: 20, fields: [] } as never },
-      }))
+      })))
       await flushAsyncWork()
     })
 
@@ -135,13 +136,13 @@ describe('TableFileImportDialog', () => {
 
     await act(async () => {
       root = createRoot(container)
-      root.render(createElement(TableFileImportDialog, {
+      root.render(createElement(KitionTableProviders, null, createElement(TableFileImportDialog, {
         file: new File(['Owner\nalice\n'], 'issues.csv'),
         onCompleted: vi.fn(),
         onOpenChange: vi.fn(),
         open: true,
         target: { kind: 'new_document', folder: 'Imports' },
-      }))
+      })))
       await flushAsyncWork()
     })
 

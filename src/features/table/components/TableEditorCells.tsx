@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Check, ExternalLink, FileText, Heart, LoaderCircle, Plus, RefreshCcw, Star, ThumbsUp, Upload, User as UserIcon, X } from 'lucide-react'
-import { listLinkCandidates, uploadDataAttachment } from '@/api/dataDocuments'
-import { resolvePublicFileURL } from '@/services/desktop'
+import { useTableDataSource } from '@/features/table/ports/TableDataSource'
+import { resolveTableFileURL, useTableHost } from '@/features/table/ports/TableHost'
 import type { DataAttachment, DataField, DataRecordValue, LinkRef } from '@/types/dataDocument'
 import { Select } from '@/components/ui'
 import {
@@ -57,6 +57,7 @@ export function LinkFieldEditor({
   onReplace: (rowKeys: string[]) => Promise<LinkRef[] | null>
 }) {
   const { t } = useTranslation('table')
+  const dataSource = useTableDataSource()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [candidates, setCandidates] = useState<LinkRef[]>([])
@@ -68,7 +69,7 @@ export function LinkFieldEditor({
     if (!open) return
     let cancelled = false
     setLoading(true)
-    listLinkCandidates(documentId, tableId, field.id, query, 25)
+    dataSource.fields.linkCandidates({ documentId, tableId, fieldId: field.id, q: query, limit: 25 })
       .then((items) => {
         if (!cancelled) setCandidates(items)
       })
@@ -78,7 +79,7 @@ export function LinkFieldEditor({
     return () => {
       cancelled = true
     }
-  }, [open, query, documentId, tableId, field.id])
+  }, [open, query, dataSource, documentId, tableId, field.id])
 
   async function commit(nextRowKeys: string[]) {
     await onReplace(nextRowKeys)
@@ -280,6 +281,8 @@ export function DataInlineCell({
   onCommit: (value: DataRecordValue) => void
 }) {
   const { t } = useTranslation('table')
+  const host = useTableHost()
+  const uploadAttachment = host.uploadAttachment
   const [draft, setDraft] = useState(() => editableDraftValue(field, value))
   const [uploading, setUploading] = useState(false)
   const [localError, setLocalError] = useState('')
@@ -290,11 +293,11 @@ export function DataInlineCell({
   }, [field.type, value])
 
   async function appendFiles(files: File[]) {
-    if (!documentId || !tableId || field.readonly || !files.length) return
+    if (!documentId || !tableId || field.readonly || !files.length || !uploadAttachment) return
     setUploading(true)
     setLocalError('')
     try {
-      const uploaded = await Promise.all(files.map((file) => uploadDataAttachment(documentId, tableId, file)))
+      const uploaded = await Promise.all(files.map((file) => uploadAttachment({ documentId, tableId, file })))
       onCommit([...normalizeAttachmentValue(value), ...uploaded])
     } catch (requestError) {
       setLocalError(requestError instanceof Error ? requestError.message : t('cell.uploadFailed'))
@@ -359,7 +362,7 @@ export function DataInlineCell({
               >
                 {imageSrc ? (
                   <span className="data-inline-attachment-thumb-button">
-                    <img src={resolvePublicFileURL(imageSrc)} alt={attachment.name || t('attachment.imageAlt')} />
+                    <img src={resolveTableFileURL(host, imageSrc)} alt={attachment.name || t('attachment.imageAlt')} />
                   </span>
                 ) : <FileText className="size-3.5" />}
                 <span>{attachment.name || attachmentNameFromURL(attachment.url)}</span>
@@ -382,7 +385,7 @@ export function DataInlineCell({
           })}
           {!attachments.length ? <span className="data-inline-attachment-empty">{t('cell.pasteOrUpload')}</span> : null}
         </div>
-        {!field.readonly ? (
+        {!field.readonly && uploadAttachment ? (
           <>
             <button type="button" className="data-inline-attachment-add" disabled={uploading || !documentId || !tableId} onClick={() => fileInputRef.current?.click()}>
               {uploading ? <LoaderCircle className="size-3.5 animate-spin" /> : <Upload className="size-3.5" />}

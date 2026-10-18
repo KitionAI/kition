@@ -18,12 +18,10 @@ import {
   DialogTitle,
 } from '@/registry/ui/dialog'
 import {
-  cancelPreparedTableFileImport,
-  executePreparedTableFileImport,
-  prepareTableFileImport,
+  useTableHost,
   type PreparedTableFileImport,
   type TableFileImportTarget,
-} from '@/features/table/lib/tableFileImport'
+} from '@/features/table/ports/TableHost'
 
 const IMPORT_FIELD_TYPES: DataImportField['type'][] = [
   'text',
@@ -61,6 +59,7 @@ export function TableFileImportDialog({
   target: Extract<TableFileImportTarget, { kind: 'existing_table' }> | { kind: 'new_document'; folder?: string }
 }) {
   const { t } = useTranslation('table')
+  const { fileImport } = useTableHost()
   const [prepared, setPrepared] = useState<PreparedTableFileImport | null>(null)
   const [fieldTypes, setFieldTypes] = useState<DataImportField['type'][]>([])
   const [writeMode, setWriteMode] = useState<DataImportWriteMode>('append')
@@ -74,13 +73,13 @@ export function TableFileImportDialog({
   const targetFolder = target.kind === 'new_document' && 'folder' in target ? target.folder : ''
 
   useEffect(() => {
-    if (!open || !file) return
+    if (!open || !file || !fileImport) return
     let active = true
     setLoading(true)
     setPrepared(null)
     setJob(null)
     setError('')
-    void prepareTableFileImport(file, {
+    void fileImport.prepare(file, {
       requireRuntime: target.kind === 'new_document',
       sheet: selectedSheet || undefined,
     })
@@ -101,7 +100,7 @@ export function TableFileImportDialog({
     return () => {
       active = false
     }
-  }, [file, open, selectedSheet, t, target.kind])
+  }, [file, fileImport, open, selectedSheet, t, target.kind])
 
   useEffect(() => {
     if (!open || target.kind !== 'new_document') return
@@ -123,13 +122,13 @@ export function TableFileImportDialog({
   }, [job, running])
 
   async function handleImport() {
-    if (!prepared) return
+    if (!prepared || !fileImport) return
     setRunning(true)
     setError('')
     const controller = new AbortController()
     abortControllerRef.current = controller
     try {
-      const completed = await executePreparedTableFileImport({
+      const completed = await fileImport.execute({
         fieldTypes,
         onProgress: setJob,
         prepared,
@@ -157,7 +156,7 @@ export function TableFileImportDialog({
 
   async function handleCancel() {
     abortControllerRef.current?.abort()
-    await cancelPreparedTableFileImport(job?.id).catch(() => undefined)
+    await fileImport?.cancel(job?.id).catch(() => undefined)
     onOpenChange(false)
   }
 

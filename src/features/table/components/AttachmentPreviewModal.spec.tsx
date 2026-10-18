@@ -1,6 +1,7 @@
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { KitionTableProviders } from '@/features/table/host/KitionTableProviders'
 
 import type { DataAttachment } from '@/types/dataDocument'
 
@@ -34,7 +35,7 @@ async function mount(node: ReturnType<typeof createElement>) {
   document.body.appendChild(container)
   await act(async () => {
     root = createRoot(container)
-    root.render(node)
+    root.render(createElement(KitionTableProviders, null, node))
     await Promise.resolve()
   })
 }
@@ -414,15 +415,13 @@ describe('AttachmentPreviewModal', () => {
     ).toBe('150%')
     // Re-render at a different index (parent owns index state in production)
     await act(async () => {
-      root?.render(
-        createElement(AttachmentPreviewModal, {
+      root?.render(createElement(KitionTableProviders, null, createElement(AttachmentPreviewModal, {
           open: true,
           items: makeAttachments(2),
           index: 1,
           onClose: vi.fn(),
           onIndexChange,
-        }),
-      )
+        }),))
     })
     expect(
       document.querySelector('[data-testid="attachment-preview-zoom-percent"]')
