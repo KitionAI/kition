@@ -4073,6 +4073,13 @@
     right: calc(360px + max(1.25rem, env(safe-area-inset-right)));
   }
 
+  /* A kit's editor reaches to the right edge with its own panels (a layer list and its buttons)
+     and draws its own "Ask agent" in its menu bar, and the topbar keeps the Agent toggle; the
+     launcher would only cover the kit's controls, so it steps aside while a kit is in front. */
+  body:has(.kit-frame[data-active='true']) .agent-floating-launcher {
+    display: none;
+  }
+
   .agent-floating-launcher:hover {
     transform: translateY(-2px);
     filter: brightness(1.08);

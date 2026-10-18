@@ -25,6 +25,9 @@ test('opens an image in the Photo kit’s own editor, paints in it, and saves it
     await expect(kit.getByTestId('photo-status')).toContainText('2 layers', { timeout: 60_000 })
     await expect(kit.getByTestId('photo-menu-Image')).toHaveText('Image')
     await expect(page.getByTestId('kit-opening')).toHaveCount(0)
+    // Kition's floating Agent launcher steps aside for the kit, whose panels reach the right edge
+    // (it covered the Layers panel's buttons); the kit's own "Ask agent" opens the Agent.
+    await expect(page.getByTestId('agent-floating-launcher')).toBeHidden()
 
     // A brush stroke on the canvas, then a new layer from the Layers panel.
     const region = (await kit.getByTestId('photo-canvas-region').boundingBox())!

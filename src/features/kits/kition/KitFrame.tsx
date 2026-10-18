@@ -260,7 +260,7 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
   }, [active, connection, path])
 
   return (
-    <div className="relative h-full min-h-0" data-testid="kit-frame">
+    <div className="kit-frame relative h-full min-h-0" data-active={active ? 'true' : undefined} data-testid="kit-frame">
       {/* A kit page answers one handshake, so the kit opened again (read-only or not) gets a new page. */}
       <iframe key={`${openedReadOnly ? 'view' : 'edit'}-${reopened}`} ref={frame} src={src} title={path} className="size-full border-0" allow="fullscreen; clipboard-read; clipboard-write" data-testid="kit-frame-window" />
       {failure ? (
