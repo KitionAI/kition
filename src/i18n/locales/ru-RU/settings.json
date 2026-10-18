@@ -60,6 +60,10 @@
       "label": "Совместное редактирование",
       "title": "Совместное редактирование"
     },
+    "extensions": {
+      "label": "Расширения",
+      "title": "Расширения"
+    },
     "about": {
       "label": "О программе",
       "title": "О программе Kition"
@@ -675,6 +679,33 @@
       "actionInstall": "Перезапустить и установить",
       "actionRetry": "Повторить",
       "actionCheck": "Проверить обновления"
+    }
+  },
+  "extensions": {
+    "paneTitle": "Расширения",
+    "paneDescription": "Расширения добавляют команды в документы китов. Каждое работает в изоляции и только с объявленными разрешениями.",
+    "installSection": "Установка",
+    "installTitle": "Установить из рабочего пространства",
+    "installDescription": "Путь в рабочем пространстве к папке расширения, её extension.json или к её архиву .zip.",
+    "installPlaceholder": "extensions/title-case",
+    "install": "Установить",
+    "installed": "Расширение «{{name}}» установлено",
+    "installFailed": "Не удалось установить расширение",
+    "listSection": "Установленные",
+    "empty": "Расширения не установлены.",
+    "enabledLabel": "Включить «{{name}}»",
+    "remove": "Удалить",
+    "removeLabel": "Удалить «{{name}}»",
+    "version": "Версия {{version}}",
+    "kits": "Для {{kits}}",
+    "commandsLabel": "Команды",
+    "permissionsLabel": "Разрешения",
+    "permission": {
+      "modelRead": "Чтение документа",
+      "modelWrite": "Изменение документа",
+      "commandsRun": "Выполнение команд кита",
+      "network": "Подключение к {{origin}}",
+      "none": "Нет"
     }
   }
 }

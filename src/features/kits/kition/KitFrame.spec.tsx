@@ -68,6 +68,7 @@ vi.mock('./kitConnections', () => ({
     void document.connection.replica.exportChanges().then(({ changes }) => relayed.push(decode(changes).split(',').filter(Boolean)))
     return () => undefined
   }),
+  markKitDocumentShown: vi.fn(),
 }))
 
 import { setReadOnlyDocuments } from '@/services/documentAccess'

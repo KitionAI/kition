@@ -60,6 +60,10 @@
       "label": "Coédition",
       "title": "Coédition"
     },
+    "extensions": {
+      "label": "Extensions",
+      "title": "Extensions"
+    },
     "about": {
       "label": "À propos",
       "title": "À propos de Kition"
@@ -675,6 +679,33 @@
       "actionInstall": "Redémarrer et installer",
       "actionRetry": "Réessayer",
       "actionCheck": "Vérifier les mises à jour"
+    }
+  },
+  "extensions": {
+    "paneTitle": "Extensions",
+    "paneDescription": "Les extensions ajoutent des commandes aux documents des kits. Chacune s’exécute isolée, avec les seules permissions qu’elle déclare.",
+    "installSection": "Installer",
+    "installTitle": "Installer depuis l’espace de travail",
+    "installDescription": "Le chemin, dans l’espace de travail, d’un dossier d’extension, de son extension.json ou d’un .zip de celui-ci.",
+    "installPlaceholder": "extensions/title-case",
+    "install": "Installer",
+    "installed": "{{name}} installée",
+    "installFailed": "Impossible d’installer l’extension",
+    "listSection": "Installées",
+    "empty": "Aucune extension n’est installée.",
+    "enabledLabel": "Activer {{name}}",
+    "remove": "Supprimer",
+    "removeLabel": "Supprimer {{name}}",
+    "version": "Version {{version}}",
+    "kits": "Pour {{kits}}",
+    "commandsLabel": "Commandes",
+    "permissionsLabel": "Permissions",
+    "permission": {
+      "modelRead": "Lire le document",
+      "modelWrite": "Modifier le document",
+      "commandsRun": "Exécuter les commandes du kit",
+      "network": "Se connecter à {{origin}}",
+      "none": "Aucune"
     }
   }
 }

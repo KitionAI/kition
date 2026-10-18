@@ -251,6 +251,21 @@ and side panels).
   fails when they drift. The same script copies the standard's `kit.json`
   schema into `contracts/kit/kit-standard.schema.json`, which the conformance
   suite checks manifests against.
+- Extensions and scripts (`KitExtensions 1.0`) work on open kit documents
+  through the object model (`KitObjectModel 1.0`). `src/lib/sdk/` (the
+  object model, `@kition/sdk`) and `src/lib/extensions/` (the extension
+  host, `@kition/extensions`, with its built worker runtime) are copies made
+  by the same sync script, as is `public/extensions/sandbox.html`, the
+  sandbox page. Settings > Extensions installs an extension from a workspace
+  folder (with `extension.json` and one ES module) or a zip of it into the
+  app's own storage; its commands show in the command palette for the kit
+  document shown now, next to "Run script", which runs a workspace `.mjs`
+  file whose default export takes the same `ctx`. Each extension and script
+  runs in a worker inside a `sandbox="allow-scripts"` frame on an opaque
+  origin, reaches the network only at the origins it declares, and changes
+  the document only with `model.write`; a kit is offered to extensions when
+  `src/lib/sdk/kits/` registers its schema (Slides today).
+  `e2e/extensions.spec.ts` installs the example extension and runs it.
 - A kit's development host (`web/dev.html`, kition-sdk's `@kition/kit-dev-host`)
   runs the editor without Kition, with an in-memory workspace; it can lend a
   folder of linked media. It is also the reference for other hosts.

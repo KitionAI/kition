@@ -52,6 +52,7 @@ import {
   type OnboardingProviderChoice,
 } from '@/features/onboarding/onboardingState'
 import { ONBOARDING_WELCOME_PATH } from '@/features/onboarding/onboardingManifest'
+import { ExtensionDialogs, startInstalledExtensions } from '@/features/extensions/public'
 
 const CommandPalette = lazy(() =>
   import('@/app/components/CommandPalette').then((module) => ({ default: module.CommandPalette })),
@@ -227,6 +228,11 @@ export function AppShell() {
   const isNarrowShell = useMediaQuery('(max-width: 1023px)')
   const isTinyShell = useMediaQuery('(max-width: 479px)')
   const [sidebarDrawerOpen, setSidebarDrawerOpen] = useState(false)
+
+  // Installed, enabled extensions may activate when a kit document opens: start their host.
+  useEffect(() => {
+    void startInstalledExtensions()
+  }, [])
 
   useEffect(() => {
     if (!isNarrowShell && sidebarDrawerOpen) {
@@ -826,6 +832,7 @@ export function AppShell() {
         </Suspense>
       ) : null}
       <CollabDialogs kitFor={sharedKitFor} onOpened={(path) => requestShowWorkspaceFile(path, true)} />
+      <ExtensionDialogs />
       <ConsoleCreditsExhaustedBanner />
       {/* Below the tab strip: a toast must never cover the tab chrome (docs/design.md). */}
       <Toaster position="top-center" offset={{ top: TOAST_TOP_OFFSET }} mobileOffset={{ top: TOAST_TOP_OFFSET }} richColors closeButton />

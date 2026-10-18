@@ -60,6 +60,10 @@
       "label": "Co-editing",
       "title": "Co-editing"
     },
+    "extensions": {
+      "label": "Extensions",
+      "title": "Extensions"
+    },
     "about": {
       "label": "About",
       "title": "About Kition"
@@ -675,6 +679,33 @@
       "actionInstall": "Restart and install",
       "actionRetry": "Retry",
       "actionCheck": "Check for updates"
+    }
+  },
+  "extensions": {
+    "paneTitle": "Extensions",
+    "paneDescription": "Extensions add commands to kit documents. Each one runs sandboxed, with only the permissions it declares.",
+    "installSection": "Install",
+    "installTitle": "Install from the workspace",
+    "installDescription": "The workspace path of an extension folder, its extension.json, or a .zip of it.",
+    "installPlaceholder": "extensions/title-case",
+    "install": "Install",
+    "installed": "Installed {{name}}",
+    "installFailed": "Could not install the extension",
+    "listSection": "Installed",
+    "empty": "No extensions are installed.",
+    "enabledLabel": "Enable {{name}}",
+    "remove": "Remove",
+    "removeLabel": "Remove {{name}}",
+    "version": "Version {{version}}",
+    "kits": "For {{kits}}",
+    "commandsLabel": "Commands",
+    "permissionsLabel": "Permissions",
+    "permission": {
+      "modelRead": "Read the document",
+      "modelWrite": "Change the document",
+      "commandsRun": "Run kit commands",
+      "network": "Connect to {{origin}}",
+      "none": "None"
     }
   }
 }

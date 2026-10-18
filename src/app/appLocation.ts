@@ -25,6 +25,7 @@ const settingsSectionKeys: SettingsSectionKey[] = [
   'brand',
   'network',
   'collab',
+  'extensions',
   'runtime',
   'developer',
   'about',

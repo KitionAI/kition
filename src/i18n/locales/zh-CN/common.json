@@ -40,7 +40,10 @@
     "openSettingsHint": "运行时与 Provider 配置",
     "close": "关闭",
     "openShared": "打开共享文档",
-    "openSharedHint": "打开他人分享给你的协同编辑文档"
+    "openSharedHint": "打开他人分享给你的协同编辑文档",
+    "extensions": "扩展",
+    "runScript": "运行脚本…",
+    "runScriptHint": "对此文档运行工作区中的 .mjs 脚本"
   },
   "viewport": {
     "tooNarrow": "视口过窄，编辑器和 Workflow 画布在此尺寸下可能无法完整使用，建议放大窗口至 480px 以上。"
@@ -65,5 +68,20 @@
   "credits": {
     "exhaustedTitle": "Kition 额度已用完",
     "topUp": "充值额度"
+  },
+  "extensions": {
+    "commandFailed": "{{title}} 失败",
+    "runScript": {
+      "title": "运行脚本",
+      "description": "对 {{document}} 运行工作区中的 .mjs 脚本。脚本可以读取和修改文档并运行其命令，但无法访问网络。",
+      "pathLabel": "脚本在工作区中的路径",
+      "placeholder": "scripts/review.mjs",
+      "run": "运行",
+      "cancel": "取消",
+      "notAScript": "请选择 .mjs 文件",
+      "noDocument": "请先打开一个套件文档",
+      "done": "已运行 {{name}}",
+      "failed": "{{name}} 运行失败"
+    }
   }
 }

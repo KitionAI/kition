@@ -40,7 +40,10 @@
     "openSettingsHint": "Runtime & provider settings",
     "close": "Close",
     "openShared": "Open shared document",
-    "openSharedHint": "Open a document someone shared with you for co-editing"
+    "openSharedHint": "Open a document someone shared with you for co-editing",
+    "extensions": "Extensions",
+    "runScript": "Run script…",
+    "runScriptHint": "Run a workspace .mjs script on this document"
   },
   "viewport": {
     "tooNarrow": "The viewport is too narrow. The editor and Workflow canvas may not be fully usable at this size. Consider enlarging the window to at least 480px."
@@ -65,5 +68,20 @@
   "credits": {
     "exhaustedTitle": "Kition credits are exhausted",
     "topUp": "Top up credits"
+  },
+  "extensions": {
+    "commandFailed": "{{title}} failed",
+    "runScript": {
+      "title": "Run script",
+      "description": "Runs a workspace .mjs script on {{document}}. The script can read and change the document and run its commands; it cannot reach the network.",
+      "pathLabel": "Script path in the workspace",
+      "placeholder": "scripts/review.mjs",
+      "run": "Run",
+      "cancel": "Cancel",
+      "notAScript": "Choose a .mjs file",
+      "noDocument": "Open a kit document first",
+      "done": "Ran {{name}}",
+      "failed": "{{name}} failed"
+    }
   }
 }

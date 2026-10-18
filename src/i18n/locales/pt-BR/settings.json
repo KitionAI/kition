@@ -60,6 +60,10 @@
       "label": "Coedição",
       "title": "Coedição"
     },
+    "extensions": {
+      "label": "Extensões",
+      "title": "Extensões"
+    },
     "about": {
       "label": "Sobre",
       "title": "Sobre o Kition"
@@ -675,6 +679,33 @@
       "actionInstall": "Reiniciar e instalar",
       "actionRetry": "Tentar novamente",
       "actionCheck": "Verificar atualizações"
+    }
+  },
+  "extensions": {
+    "paneTitle": "Extensões",
+    "paneDescription": "As extensões adicionam comandos aos documentos dos kits. Cada uma é executada isolada, apenas com as permissões que declara.",
+    "installSection": "Instalar",
+    "installTitle": "Instalar a partir do espaço de trabalho",
+    "installDescription": "O caminho no espaço de trabalho de uma pasta de extensão, do seu extension.json ou de um .zip dela.",
+    "installPlaceholder": "extensions/title-case",
+    "install": "Instalar",
+    "installed": "{{name}} instalada",
+    "installFailed": "Não foi possível instalar a extensão",
+    "listSection": "Instaladas",
+    "empty": "Nenhuma extensão instalada.",
+    "enabledLabel": "Ativar {{name}}",
+    "remove": "Remover",
+    "removeLabel": "Remover {{name}}",
+    "version": "Versão {{version}}",
+    "kits": "Para {{kits}}",
+    "commandsLabel": "Comandos",
+    "permissionsLabel": "Permissões",
+    "permission": {
+      "modelRead": "Ler o documento",
+      "modelWrite": "Alterar o documento",
+      "commandsRun": "Executar comandos do kit",
+      "network": "Conectar-se a {{origin}}",
+      "none": "Nenhuma"
     }
   }
 }

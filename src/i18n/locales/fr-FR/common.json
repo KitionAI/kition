@@ -40,7 +40,10 @@
     "openSettingsHint": "Configuration du runtime et du fournisseur",
     "close": "Fermer",
     "openShared": "Ouvrir un document partagé",
-    "openSharedHint": "Ouvrir un document que quelqu’un a partagé avec vous pour coédition"
+    "openSharedHint": "Ouvrir un document que quelqu’un a partagé avec vous pour coédition",
+    "extensions": "Extensions",
+    "runScript": "Exécuter un script…",
+    "runScriptHint": "Exécute un script .mjs de l’espace de travail sur ce document"
   },
   "viewport": {
     "tooNarrow": "La fenêtre est trop étroite. L'éditeur et le canevas Workflow peuvent ne pas être pleinement utilisables à cette taille. Agrandissez la fenêtre à au moins 480px."
@@ -65,5 +68,20 @@
   "credits": {
     "exhaustedTitle": "Les crédits Kition sont épuisés",
     "topUp": "Recharger des crédits"
+  },
+  "extensions": {
+    "commandFailed": "{{title}} a échoué",
+    "runScript": {
+      "title": "Exécuter un script",
+      "description": "Exécute un script .mjs de l’espace de travail sur {{document}}. Le script peut lire et modifier le document et exécuter ses commandes ; il n’a pas accès au réseau.",
+      "pathLabel": "Chemin du script dans l’espace de travail",
+      "placeholder": "scripts/review.mjs",
+      "run": "Exécuter",
+      "cancel": "Annuler",
+      "notAScript": "Choisissez un fichier .mjs",
+      "noDocument": "Ouvrez d’abord un document de kit",
+      "done": "{{name}} exécuté",
+      "failed": "{{name}} a échoué"
+    }
   }
 }

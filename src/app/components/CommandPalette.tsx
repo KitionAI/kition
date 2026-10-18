@@ -2,6 +2,7 @@ import { Command, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui'
+import { useExtensionPaletteItems } from '@/features/extensions/public'
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
@@ -39,6 +40,23 @@ export function CommandPalette({
         : []),
     ],
     [onOpenShared, t],
+  )
+  // Commands of extensions for the kit document shown now, and Run script.
+  const extensionItems = useExtensionPaletteItems({ runScript: t('commandPalette.runScript'), runScriptHint: t('commandPalette.runScriptHint') })
+  const items = useMemo(
+    () => [
+      ...actions.map((item) => ({ key: item.action, title: item.title, hint: item.hint, group: 'navigation', run: () => open(item.action) })),
+      ...extensionItems.map((item) => ({
+        ...item,
+        group: 'extensions',
+        run: () => {
+          onClose()
+          item.run()
+        },
+      })),
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [actions, extensionItems],
   )
   const [cursor, setCursor] = useState(0)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -93,7 +111,7 @@ export function CommandPalette({
       }
       if (event.key === 'ArrowDown') {
         event.preventDefault()
-        setCursor((c) => Math.min(c + 1, actions.length - 1))
+        setCursor((c) => Math.min(c + 1, items.length - 1))
         return
       }
       if (event.key === 'ArrowUp') {
@@ -103,14 +121,13 @@ export function CommandPalette({
       }
       if (event.key === 'Enter') {
         event.preventDefault()
-        const item = actions[cursor]
-        if (item) open(item.action)
+        items[cursor]?.run()
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [actions, cursor, onClose])
+  }, [items, cursor, onClose])
 
   return (
     <div className="command-overlay" role="presentation" onClick={onClose}>
@@ -144,28 +161,37 @@ export function CommandPalette({
           </Button>
         </div>
         <div className="p-2">
-          <div className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {t('commandPalette.navigation')}
-          </div>
-          {actions.map((item, index) => (
-            <button
-              key={item.action}
-              data-testid="command-palette-row"
-              aria-selected={index === cursor}
-              className={
-                'flex w-full items-center justify-between rounded-md px-3 py-3 text-left hover:bg-muted' +
-                (index === cursor ? ' bg-muted' : '')
-              }
-              onMouseEnter={() => setCursor(index)}
-              onClick={() => open(item.action)}
-            >
-              <span>
-                <strong className="block text-sm">{item.title}</strong>
-                <small className="text-muted-foreground">{item.hint}</small>
-              </span>
-              <span className="text-xs text-muted-foreground">Enter</span>
-            </button>
-          ))}
+          {(['navigation', 'extensions'] as const).map((group) => {
+            const rows = items.map((item, index) => ({ item, index })).filter(({ item }) => item.group === group)
+            if (!rows.length) return null
+            return (
+              <div key={group} role="group" aria-label={t(`commandPalette.${group}`)} data-testid={`command-palette-group-${group}`}>
+                <div className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t(`commandPalette.${group}`)}
+                </div>
+                {rows.map(({ item, index }) => (
+                  <button
+                    key={item.key}
+                    data-testid="command-palette-row"
+                    data-command={item.key}
+                    aria-selected={index === cursor}
+                    className={
+                      'flex w-full items-center justify-between rounded-md px-3 py-3 text-left hover:bg-muted' +
+                      (index === cursor ? ' bg-muted' : '')
+                    }
+                    onMouseEnter={() => setCursor(index)}
+                    onClick={() => item.run()}
+                  >
+                    <span>
+                      <strong className="block text-sm">{item.title}</strong>
+                      <small className="text-muted-foreground">{item.hint}</small>
+                    </span>
+                    <span className="text-xs text-muted-foreground">Enter</span>
+                  </button>
+                ))}
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>

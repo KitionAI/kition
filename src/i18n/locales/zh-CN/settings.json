@@ -60,6 +60,10 @@
       "label": "协同编辑",
       "title": "协同编辑"
     },
+    "extensions": {
+      "label": "扩展",
+      "title": "扩展"
+    },
     "about": {
       "label": "关于",
       "title": "关于 Kition"
@@ -675,6 +679,33 @@
       "actionInstall": "重启并安装",
       "actionRetry": "重试",
       "actionCheck": "检查更新"
+    }
+  },
+  "extensions": {
+    "paneTitle": "扩展",
+    "paneDescription": "扩展为套件文档添加命令。每个扩展都在沙箱中运行，只拥有它声明的权限。",
+    "installSection": "安装",
+    "installTitle": "从工作区安装",
+    "installDescription": "扩展文件夹、其 extension.json 或其 .zip 压缩包在工作区中的路径。",
+    "installPlaceholder": "extensions/title-case",
+    "install": "安装",
+    "installed": "已安装 {{name}}",
+    "installFailed": "无法安装该扩展",
+    "listSection": "已安装",
+    "empty": "尚未安装任何扩展。",
+    "enabledLabel": "启用 {{name}}",
+    "remove": "移除",
+    "removeLabel": "移除 {{name}}",
+    "version": "版本 {{version}}",
+    "kits": "适用于 {{kits}}",
+    "commandsLabel": "命令",
+    "permissionsLabel": "权限",
+    "permission": {
+      "modelRead": "读取文档",
+      "modelWrite": "修改文档",
+      "commandsRun": "运行套件命令",
+      "network": "连接到 {{origin}}",
+      "none": "无"
     }
   }
 }
