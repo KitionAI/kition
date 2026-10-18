@@ -187,10 +187,15 @@ export default async function (ctx) {
   })
 }
 `
-  const { host, saves, kit } = await openInKitFrame(page, baseURL!, 'Review.kitionslide', await deckFixture(), {
-    ...(await exampleFiles('extensions/title-case')),
-    'scripts/retitle.mjs': Buffer.from(retitle),
-  })
+  // Saves reach the workspace, so the editor a role change opens again finds the saved replica.
+  const { host, saves, kit } = await openInKitFrame(
+    page,
+    baseURL!,
+    'Review.kitionslide',
+    await deckFixture(),
+    { ...(await exampleFiles('extensions/title-case')), 'scripts/retitle.mjs': Buffer.from(retitle) },
+    { persist: true },
+  )
   try {
     await expect(kit.getByTestId('slides-status')).toHaveText('Slide 1 of 2', { timeout: 60_000 })
     await expect(page.getByTestId('kit-opening')).toHaveCount(0)
@@ -241,6 +246,23 @@ export default async function (ctx) {
     await page.getByTestId('run-script-run').click()
     await expect(page.getByText('Ran retitle.mjs')).toBeVisible({ timeout: 30_000 })
     await expect(panel.locator('.item')).toHaveText(['2agenda for the review'], { timeout: 30_000 })
+
+    // A role change opens the editor again, read-only and then editable, with the unsaved edits
+    // (the saved file's replica, then the script's change): the panel opens again on each new
+    // editor by itself, lists its titles, and its button works on the editable one.
+    const title = '2agenda for the review'
+    for (const readOnly of [true, false]) {
+      const before = await aside.getAttribute('data-editor-opening')
+      await page.evaluate(({ path, readOnly }) => window.__KITION_KIT_TEST__!.setReadOnlyDocuments(readOnly ? [path] : []), { path: 'Review.kitionslide', readOnly })
+      await expect(aside).not.toHaveAttribute('data-editor-opening', before ?? '', { timeout: 60_000 })
+      await expect(aside).not.toHaveAttribute('data-editor-opening', '', { timeout: 60_000 })
+      await expect(aside).toHaveAttribute('data-status', 'open', { timeout: 60_000 })
+      await expect(panel.locator('.item')).toHaveText([title], { timeout: 30_000 })
+    }
+    await expect(kit.getByTestId('slides-status')).toHaveText('Slide 1 of 2', { timeout: 60_000 })
+    await panel.getByRole('button', { name: 'Title case' }).click()
+    await expect(panel.getByRole('status')).toHaveText('Title-cased 1 title', { timeout: 30_000 })
+    await expect(panel.locator('.item')).toHaveText(['2Agenda for the Review'])
 
     // Closed, it is gone from the layout.
     await page.getByTestId('extension-panel-close').click()

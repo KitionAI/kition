@@ -225,6 +225,57 @@ describe('ExtensionService', () => {
     expect(service.palettePanels()).toEqual([])
   })
 
+  it("tells when a document's editor opens again, and a panel opened on the new editor works", async () => {
+    const withPanel = { ...manifest(['model.read']), contributes: { commands: [], panels: [{ id: 'titles.panel', title: 'Title', entry: 'panel.html' }] } }
+    files.set('ext/titles/extension.json', JSON.stringify(withPanel))
+    files.set('ext/titles/panel.html', '<p id="title"></p>')
+    files.set(
+      'ext/titles/extension.mjs',
+      `export function activate(ctx) {
+        ctx.panels.register('titles.panel', (panel) => panel.onRequest(() => ctx.document.run(async (context) => {
+          context.root.load(['title'])
+          await context.sync()
+          return context.root.title
+        })))
+      }`,
+    )
+    const { service } = start()
+    await service.install('ext/titles')
+    const heard: Array<number | null> = []
+    const unsubscribe = service.subscribeDocuments(() => heard.push(service.documentOpening('Deck.test')))
+    expect(service.documentOpening('Deck.test')).toBeNull()
+
+    const first = mounted.listener!(fakeKitDocument('Deck.test')) as () => void
+    const opening = service.documentOpening('Deck.test')
+    expect(opening).not.toBeNull()
+    const firstChannel = new MessageChannel()
+    const firstPanel = new RpcPeer(firstChannel.port1)
+    await service.host.openPanel('Deck.test', 'com.example.titles', 'titles.panel', firstChannel.port2)
+    await expect(firstPanel.request('panel/request', null)).resolves.toBe('quarterly review')
+
+    // A role change: the editor closes and opens again, read-only. The old session has ended.
+    first()
+    expect(service.documentOpening('Deck.test')).toBeNull()
+    await expect(firstPanel.request('panel/request', null, 1_000)).rejects.toThrow()
+    const second = mounted.listener!(fakeKitDocument('Deck.test', true)) as () => void
+    const reopened = service.documentOpening('Deck.test')
+    expect(reopened).not.toBeNull()
+    expect(reopened).not.toBe(opening)
+    expect(heard).toEqual([opening, null, reopened])
+
+    const channel = new MessageChannel()
+    const panel = new RpcPeer(channel.port1)
+    try {
+      await service.host.openPanel('Deck.test', 'com.example.titles', 'titles.panel', channel.port2)
+      await expect(panel.request('panel/request', null)).resolves.toBe('quarterly review')
+    } finally {
+      panel.close()
+      firstPanel.close()
+      unsubscribe()
+      second()
+    }
+  })
+
   it('runs a workspace script against the kit document shown now', async () => {
     files.set('scripts/upper.mjs', `export default async function (ctx) {
       await ctx.document.run(async (context) => { context.root.title = 'From a script' })

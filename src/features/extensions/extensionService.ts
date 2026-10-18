@@ -39,6 +39,10 @@ export class ExtensionService {
   private snapshot: ExtensionsSnapshot = { ready: false, installed: [] }
   private listeners = new Set<() => void>()
   private stopFollowing: (() => void) | null = null
+  /** Each kit document offered to extensions now, by path: which offer it is (see `documentOpening`). */
+  private offered = new Map<string, number>()
+  private offers = 0
+  private documentListeners = new Set<() => void>()
   readonly ready: Promise<void>
 
   constructor(options: { sandbox?: SandboxFactory; notify?: (notice: ExtensionNotice) => void } = {}) {
@@ -61,13 +65,44 @@ export class ExtensionService {
 
   /** Every open kit editor, offered to extensions while it stays open. */
   private offer(document: MountedKitDocument) {
+    let close: () => void
     try {
       const port = portFromConnection(document.connection as unknown as ConnectionLike, { readOnly: () => document.readOnly ?? false })
-      return this.host.openDocument({ id: document.path, kitId: document.kitId, path: document.path, port })
+      close = this.host.openDocument({ id: document.path, kitId: document.kitId, path: document.path, port })
     } catch (error) {
       // A kit without the replica capability has no object model; extensions skip it.
       console.info('[extensions] not offering', document.path, message(error))
       return undefined
+    }
+    const offer = ++this.offers
+    this.offered.set(document.path, offer)
+    this.documentsChanged()
+    return () => {
+      close()
+      if (this.offered.get(document.path) !== offer) return
+      this.offered.delete(document.path)
+      this.documentsChanged()
+    }
+  }
+
+  private documentsChanged() {
+    for (const listener of [...this.documentListeners]) listener()
+  }
+
+  /**
+   * Which offer of the kit document at `path` extensions work on now, or `null` while no editor
+   * offers it. A new value means its editor opened again (a role change reopens it read-only or
+   * editable): panels open on the document reattach to it (`ExtensionPanel`).
+   */
+  documentOpening(path: string): number | null {
+    return this.offered.get(path) ?? null
+  }
+
+  /** Hears kit documents being offered to extensions and withdrawn; answers an unsubscribe. */
+  subscribeDocuments = (listener: () => void) => {
+    this.documentListeners.add(listener)
+    return () => {
+      this.documentListeners.delete(listener)
     }
   }
 
@@ -191,6 +226,7 @@ export class ExtensionService {
     this.stopFollowing?.()
     this.host.dispose()
     this.listeners.clear()
+    this.documentListeners.clear()
   }
 }
 

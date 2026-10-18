@@ -1,3 +1,4 @@
+import { setReadOnlyDocuments } from '@/services/documentAccess'
 import type { KitConnection } from '../host/mountKit'
 
 declare global {
@@ -6,6 +7,8 @@ declare global {
     __KITION_KIT_TEST__?: {
       /** The replica version (lowercase hex) of the kit editor showing `path`. */
       replicaVersion: (path: string) => Promise<string>
+      /** Makes these documents read-only, as a role change to viewer does (their editors open again). */
+      setReadOnlyDocuments: (paths: string[]) => void
     }
   }
 }
@@ -26,6 +29,7 @@ export function registerKitTestFrame(path: string, connection: KitConnection) {
       if (!frame) throw new Error(`${wanted} is not open in a kit editor`)
       return hex(await frame.replica.version())
     },
+    setReadOnlyDocuments,
   }
   return () => {
     if (frames.get(path) === connection) frames.delete(path)

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Loader2, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui'
@@ -9,10 +9,14 @@ import { loadExtensionService } from './serviceLoader'
 
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error))
 
+const hearNothing = () => () => undefined
+
 /**
  * A contributed panel beside a kit document's editor (docs/product-ui-style.md: a white side
  * panel with a hairline border): its title and extension, a close button, and the extension's
- * page in a sandboxed frame that talks to the extension's worker.
+ * page in a sandboxed frame that talks to the extension's worker. When the kit's editor opens
+ * again (a role change reopens it read-only or editable), the worker's session on the old editor
+ * has ended: the panel opens again on the new one by itself.
  */
 export default function ExtensionPanel({ path, open }: { path: string; open: OpenPanel }) {
   const { t } = useTranslation('common')
@@ -30,6 +34,9 @@ export default function ExtensionPanel({ path, open }: { path: string; open: Ope
     }
   }, [])
 
+  // Which editor of the document extensions work on now: `null` while it (re)opens.
+  const opening = useSyncExternalStore(service?.subscribeDocuments ?? hearNothing, () => service?.documentOpening(path) ?? null)
+
   // The panel closes when its extension is disabled or removed.
   useEffect(() => {
     if (!service) return undefined
@@ -43,9 +50,11 @@ export default function ExtensionPanel({ path, open }: { path: string; open: Ope
   useEffect(() => {
     const container = host.current
     if (!service || !container) return undefined
+    setState({ status: 'opening' })
+    // Waits for the document's editor; opens on each editor it gets (`opening` changes).
+    if (opening === null) return undefined
     let live = true
     let dispose: (() => void) | null = null
-    setState({ status: 'opening' })
     service
       .showPanel(path, open, container, { theme: kitionTheme().tokens, onNavigated: () => closeExtensionPanel(path) })
       .then((frame) => {
@@ -63,7 +72,7 @@ export default function ExtensionPanel({ path, open }: { path: string; open: Ope
       live = false
       dispose?.()
     }
-  }, [service, path, open])
+  }, [service, path, open, opening])
 
   const contributed = service?.host.panelsFor(path).find((panel) => panel.extension === open.extension && panel.id === open.panel)
   const title = contributed?.title ?? open.panel
@@ -72,6 +81,8 @@ export default function ExtensionPanel({ path, open }: { path: string; open: Ope
       className="flex h-full w-[320px] min-w-[240px] max-w-[45%] shrink-0 flex-col border-l border-border bg-background"
       aria-label={title}
       data-testid="extension-panel"
+      data-status={state.status}
+      data-editor-opening={opening ?? ''}
       data-extension={open.extension}
       data-panel={open.panel}
     >
