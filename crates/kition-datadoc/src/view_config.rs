@@ -1,22 +1,19 @@
-//! View configuration handlers: filter trees, sorts, groups, grid settings,
-//! per-view field layout, and bulk record operations.
+//! View configuration routes (filter trees, sorts, groups, grid settings, per-view field
+//! layout, and bulk record operations): adapters over `kition_table_api::view_config`.
 
 use axum::Router;
 use axum::extract::{Path, State};
 use axum::response::Response;
 use axum::routing::{get, patch, post};
-use kition_core::coerce::nullable;
-use kition_core::{AppError, AppResult};
+use kition_core::AppResult;
 use kition_http::{CurrentUser, JsonBody, ok};
-use kition_kitable::{
-    FilterRule, FilterTree, FilterTreeChild, KitableError, ViewFieldPatch, ViewPatch, ViewSort,
+use kition_table_api::view_config::{
+    self as api, BulkRequest, ConfigPatch, ItemsRequest, TreeRequest, ViewFieldRequest,
 };
-use serde::Deserialize;
-use serde_json::{Value, json};
 
-use crate::DataDocState;
 use crate::source::parse_id;
 use crate::table_documents::TableHandle;
+use crate::{DataDocState, api_error};
 
 pub fn routes() -> Router<DataDocState> {
     let view = "/data-documents/{documentId}/tables/{tableId}/views/{viewId}";
@@ -45,27 +42,6 @@ pub fn routes() -> Router<DataDocState> {
 
 type ViewPath = Path<(String, String, String)>;
 
-/// Not-found becomes `<Resource> not found`; anything else a 500.
-fn view_config_error(resource: &str) -> impl Fn(KitableError) -> AppError + '_ {
-    move |err| match err {
-        KitableError::NotFound => {
-            let title = resource
-                .split(' ')
-                .map(|word| {
-                    let mut chars = word.chars();
-                    chars
-                        .next()
-                        .map(|c| c.to_uppercase().collect::<String>() + chars.as_str())
-                        .unwrap_or_default()
-                })
-                .collect::<Vec<_>>()
-                .join(" ");
-            AppError::not_found(format!("{title} not found"))
-        }
-        _ => AppError::internal(format!("Failed to access {resource}")),
-    }
-}
-
 impl DataDocState {
     fn open_view(
         &self,
@@ -92,77 +68,6 @@ impl DataDocState {
     }
 }
 
-fn tree_response(tree: Option<&FilterTree>) -> Value {
-    let Some(tree) = tree else { return Value::Null };
-    let children: Vec<Value> = tree
-        .children
-        .iter()
-        .filter_map(|child| match (&child.group, &child.condition) {
-            (Some(group), _) => Some(json!({ "group": tree_response(Some(group)) })),
-            (None, Some(c)) => Some(json!({ "condition": { "field_id": c.field_id, "operator": c.operator, "value": c.value } })),
-            _ => None,
-        })
-        .collect();
-    json!({ "conjunction": tree.conjunction, "children": children })
-}
-
-#[derive(Debug, Default, Deserialize)]
-struct TreePayload {
-    #[serde(default, deserialize_with = "nullable")]
-    conjunction: String,
-    #[serde(default, deserialize_with = "nullable")]
-    children: Vec<ChildPayload>,
-}
-
-#[derive(Debug, Default, Deserialize)]
-struct ChildPayload {
-    #[serde(default)]
-    group: Option<TreePayload>,
-    #[serde(default)]
-    condition: Option<ConditionPayload>,
-}
-
-#[derive(Debug, Default, Deserialize)]
-struct ConditionPayload {
-    #[serde(default, deserialize_with = "nullable")]
-    field_id: i64,
-    #[serde(default, deserialize_with = "nullable")]
-    operator: String,
-    #[serde(default)]
-    value: Value,
-}
-
-#[derive(Debug, Default, Deserialize)]
-struct TreeRequest {
-    #[serde(default)]
-    tree: Option<TreePayload>,
-}
-
-fn payload_to_tree(payload: TreePayload) -> FilterTree {
-    FilterTree {
-        conjunction: payload.conjunction.trim().to_lowercase(),
-        children: payload
-            .children
-            .into_iter()
-            .filter_map(|child| match (child.group, child.condition) {
-                (Some(group), _) => Some(FilterTreeChild {
-                    group: Some(Box::new(payload_to_tree(group))),
-                    condition: None,
-                }),
-                (None, Some(c)) => Some(FilterTreeChild {
-                    group: None,
-                    condition: Some(FilterRule {
-                        field_id: c.field_id,
-                        operator: c.operator.trim().to_owned(),
-                        value: c.value,
-                    }),
-                }),
-                _ => None,
-            })
-            .collect(),
-    }
-}
-
 async fn get_filter_tree(
     State(state): State<DataDocState>,
     user: CurrentUser,
@@ -172,10 +77,7 @@ async fn get_filter_tree(
     let body = state
         .blocking(move |state| {
             let (file, view_id, _) = state.open_view(user_id, &d, &t, &v)?;
-            let tree = file
-                .load_filter_tree(view_id)
-                .map_err(view_config_error("filter tree"))?;
-            Ok(json!({ "tree": tree_response(tree.as_ref()) }))
+            api::get_filter_tree(&file, view_id).map_err(api_error)
         })
         .await?;
     Ok(ok(body))
@@ -191,37 +93,10 @@ async fn put_filter_tree(
     let body = state
         .blocking(move |state| {
             let (mut file, view_id, _) = state.open_view(user_id, &d, &t, &v)?;
-            let tree = request.tree.map(payload_to_tree);
-            file.save_filter_tree(view_id, tree.as_ref())
-                .map_err(|err| match err {
-                    KitableError::InvalidFilterTree(_) => AppError::bad_request(err.to_string()),
-                    other => view_config_error("filter tree")(other),
-                })?;
-            let reloaded = file
-                .load_filter_tree(view_id)
-                .map_err(view_config_error("filter tree"))?;
-            Ok(json!({ "tree": tree_response(reloaded.as_ref()) }))
+            api::put_filter_tree(&mut file, view_id, request).map_err(api_error)
         })
         .await?;
     Ok(ok(body))
-}
-
-#[derive(Debug, Default, Deserialize)]
-struct ItemsRequest {
-    #[serde(default, deserialize_with = "nullable")]
-    items: Vec<ItemPayload>,
-}
-
-#[derive(Debug, Default, Deserialize)]
-struct ItemPayload {
-    #[serde(default, deserialize_with = "nullable")]
-    field_id: i64,
-    #[serde(default, deserialize_with = "nullable")]
-    direction: String,
-}
-
-fn items_response(items: &[ViewSort]) -> Value {
-    json!({ "items": items.iter().map(|i| json!({ "field_id": i.field_id, "direction": i.direction })).collect::<Vec<_>>() })
 }
 
 async fn get_sorts(
@@ -233,11 +108,7 @@ async fn get_sorts(
     let body = state
         .blocking(move |state| {
             let (file, view_id, _) = state.open_view(user_id, &d, &t, &v)?;
-            Ok(items_response(
-                &file
-                    .list_view_sorts(view_id)
-                    .map_err(view_config_error("sorts"))?,
-            ))
+            api::get_sorts(&file, view_id).map_err(api_error)
         })
         .await?;
     Ok(ok(body))
@@ -253,17 +124,7 @@ async fn put_sorts(
     let body = state
         .blocking(move |state| {
             let (mut file, view_id, _) = state.open_view(user_id, &d, &t, &v)?;
-            let items: Vec<ViewSort> = request
-                .items
-                .into_iter()
-                .map(|i| ViewSort {
-                    field_id: i.field_id,
-                    direction: i.direction,
-                })
-                .collect();
-            file.replace_view_sorts(view_id, &items)
-                .map_err(view_config_error("sorts"))?;
-            Ok(items_response(&items))
+            api::put_sorts(&mut file, view_id, request).map_err(api_error)
         })
         .await?;
     Ok(ok(body))
@@ -278,11 +139,7 @@ async fn get_groups(
     let body = state
         .blocking(move |state| {
             let (file, view_id, _) = state.open_view(user_id, &d, &t, &v)?;
-            Ok(items_response(
-                &file
-                    .list_view_groups(view_id)
-                    .map_err(view_config_error("groups"))?,
-            ))
+            api::get_groups(&file, view_id).map_err(api_error)
         })
         .await?;
     Ok(ok(body))
@@ -298,30 +155,10 @@ async fn put_groups(
     let body = state
         .blocking(move |state| {
             let (mut file, view_id, _) = state.open_view(user_id, &d, &t, &v)?;
-            let items: Vec<ViewSort> = request
-                .items
-                .into_iter()
-                .map(|i| ViewSort {
-                    field_id: i.field_id,
-                    direction: i.direction,
-                })
-                .collect();
-            file.replace_view_groups(view_id, &items)
-                .map_err(view_config_error("groups"))?;
-            Ok(items_response(&items))
+            api::put_groups(&mut file, view_id, request).map_err(api_error)
         })
         .await?;
     Ok(ok(body))
-}
-
-#[derive(Debug, Default, Deserialize)]
-struct ConfigPatch {
-    #[serde(default)]
-    row_height: Option<String>,
-    #[serde(default)]
-    frozen_column_count: Option<i64>,
-    #[serde(default)]
-    search_query: Option<String>,
 }
 
 async fn patch_config(
@@ -334,44 +171,7 @@ async fn patch_config(
     let body = state
         .blocking(move |state| {
             let (mut file, view_id, table_id) = state.open_view(user_id, &d, &t, &v)?;
-            let table = file
-                .get_table(table_id)
-                .map_err(|_| AppError::not_found("Table does not exist"))?;
-            let view = table
-                .views
-                .iter()
-                .find(|view| view.id == view_id)
-                .ok_or_else(|| AppError::not_found("View does not exist"))?;
-            let mut config = view.config.clone();
-            let mut set_text = |key: &str, value: Option<String>| {
-                if let Some(value) = value {
-                    let value = value.trim().to_owned();
-                    if value.is_empty() {
-                        config.remove(key);
-                    } else {
-                        config.insert(key.to_owned(), Value::String(value));
-                    }
-                }
-            };
-            set_text("row_height", request.row_height);
-            set_text("search_query", request.search_query);
-            if let Some(count) = request.frozen_column_count {
-                if count < 0 {
-                    return Err(AppError::bad_request("frozen_column_count must be >= 0"));
-                }
-                config.insert("frozen_column_count".to_owned(), Value::from(count));
-            }
-            let updated = file
-                .update_view(
-                    table_id,
-                    view_id,
-                    &ViewPatch {
-                        config: Some(Value::Object(config)),
-                        ..ViewPatch::default()
-                    },
-                )
-                .map_err(view_config_error("view config"))?;
-            Ok(json!({ "config": updated.config }))
+            api::patch_config(&mut file, table_id, view_id, request).map_err(api_error)
         })
         .await?;
     Ok(ok(body))
@@ -386,25 +186,10 @@ async fn list_view_fields(
     let body = state
         .blocking(move |state| {
             let (file, view_id, _) = state.open_view(user_id, &d, &t, &v)?;
-            let items = file
-                .list_view_fields(view_id)
-                .map_err(view_config_error("view fields"))?;
-            Ok(json!({ "items": items }))
+            api::list_view_fields(&file, view_id).map_err(api_error)
         })
         .await?;
     Ok(ok(body))
-}
-
-#[derive(Debug, Default, Deserialize)]
-struct ViewFieldRequest {
-    #[serde(default)]
-    visible: Option<bool>,
-    #[serde(default)]
-    width: Option<i64>,
-    #[serde(default)]
-    position: Option<i64>,
-    #[serde(default)]
-    frozen: Option<bool>,
 }
 
 async fn patch_view_field(
@@ -418,27 +203,10 @@ async fn patch_view_field(
         .blocking(move |state| {
             let (mut file, view_id, _) = state.open_view(user_id, &d, &t, &v)?;
             let field_id = parse_id(&field_id)?;
-            let patch = ViewFieldPatch {
-                visible: request.visible,
-                width: request.width,
-                position: request.position,
-                frozen: request.frozen,
-            };
-            let field = file
-                .upsert_view_field(view_id, field_id, &patch)
-                .map_err(view_config_error("view field"))?;
-            Ok(serde_json::to_value(field)?)
+            api::patch_view_field(&mut file, view_id, field_id, request).map_err(api_error)
         })
         .await?;
     Ok(ok(body))
-}
-
-#[derive(Debug, Default, Deserialize)]
-struct BulkRequest {
-    #[serde(default, deserialize_with = "nullable")]
-    row_keys: Vec<String>,
-    #[serde(default, deserialize_with = "nullable")]
-    target_position: i64,
 }
 
 async fn bulk_delete(
@@ -451,10 +219,7 @@ async fn bulk_delete(
     let body = state
         .blocking(move |state| {
             let (mut file, table_id) = state.open_table(user_id, &d, &t)?;
-            let result = file
-                .bulk_delete_records(table_id, &request.row_keys)
-                .map_err(|err| AppError::bad_request(err.to_string()))?;
-            Ok(json!({ "deleted_count": result.deleted_count, "missing_keys": result.missing_keys }))
+            api::bulk_delete(&mut file, table_id, request).map_err(api_error)
         })
         .await?;
     Ok(ok(body))
@@ -470,10 +235,7 @@ async fn bulk_copy(
     let body = state
         .blocking(move |state| {
             let (mut file, table_id) = state.open_table(user_id, &d, &t)?;
-            let result = file
-                .bulk_copy_records(table_id, &request.row_keys, request.target_position)
-                .map_err(|err| AppError::bad_request(err.to_string()))?;
-            Ok(json!({ "copied_count": result.copied_count, "new_row_keys": result.new_row_keys }))
+            api::bulk_copy(&mut file, table_id, request).map_err(api_error)
         })
         .await?;
     Ok(ok(body))

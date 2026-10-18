@@ -1,4 +1,5 @@
-//! Record handlers, history, links, attachments, and CSV/Markdown transfer.
+//! Record routes (history, links, CSV/Markdown transfer: adapters over
+//! `kition_table_api::records`) and attachment uploads.
 
 use std::collections::HashMap;
 
@@ -11,12 +12,13 @@ use http::header;
 use kition_core::events::{DomainEvent, RecordCreated, RecordUpdated};
 use kition_core::{AppError, AppResult, now_millis};
 use kition_http::{CurrentUser, JsonBody, ok};
-use kition_kitable::{AttachmentSpec, HistoryEntry, KitableError, LinkRef};
-use serde::Deserialize;
-use serde_json::{Map, Value, json};
+use kition_kitable::AttachmentSpec;
+pub use kition_table_api::records::stringify_cell;
+use kition_table_api::records::{self as api, CsvRequest, LinkRequest, RecordRequest};
+use serde_json::json;
 
 use crate::source::{list_window, parse_id};
-use crate::{DataDocState, csvutil, respond};
+use crate::{DataDocState, api_error, respond};
 
 pub const MAX_ATTACHMENT_BYTES: usize = 50 << 20;
 
@@ -60,10 +62,6 @@ pub fn routes() -> Router<DataDocState> {
 
 type Params = HashMap<String, String>;
 
-fn bad(err: KitableError) -> AppError {
-    AppError::bad_request(err.to_string())
-}
-
 async fn list_records(
     State(state): State<DataDocState>,
     user: CurrentUser,
@@ -77,24 +75,10 @@ async fn list_records(
             let (limit, offset) = list_window(query.get("limit"), query.get("offset"));
             let table_id = parse_id(&table_id)?;
             let file = state.open_or_500(&doc)?;
-            let failed = |_| AppError::internal("Failed to query records");
-            let total = file.count_records(table_id).map_err(failed)?;
-            let records = file
-                .list_records_page(table_id, limit, offset)
-                .map_err(failed)?;
-            let items: Vec<Value> = records.iter().map(|r| respond::record(&doc, r)).collect();
-            Ok(json!({ "items": items, "total": total, "offset": offset, "limit": limit }))
+            api::list(&file, &doc.doc_ref(), table_id, limit, offset).map_err(api_error)
         })
         .await?;
     Ok(ok(body))
-}
-
-#[derive(Debug, Default, Deserialize)]
-struct RecordRequest {
-    #[serde(default)]
-    values: Option<Map<String, Value>>,
-    #[serde(default)]
-    order: Option<i64>,
 }
 
 async fn create_record(
@@ -109,9 +93,7 @@ async fn create_record(
             let doc = state.load_document(user_id, &document_id)?;
             let table_id = parse_id(&table_id)?;
             let mut file = state.open_or_500(&doc)?;
-            let record = file
-                .create_record(table_id, &request.values.unwrap_or_default())
-                .map_err(bad)?;
+            let record = api::create(&mut file, table_id, request).map_err(api_error)?;
             state
                 .events
                 .publish(DomainEvent::RecordCreated(RecordCreated {
@@ -141,15 +123,8 @@ async fn update_record(
             let table_id = parse_id(&table_id)?;
             let record_id = parse_id(&record_id)?;
             let mut file = state.open_or_500(&doc)?;
-            let previous = file.get_record(table_id, record_id).ok().map(|r| r.values);
-            let record = file
-                .update_record(
-                    table_id,
-                    record_id,
-                    &request.values.unwrap_or_default(),
-                    request.order,
-                )
-                .map_err(bad)?;
+            let (record, previous) =
+                api::update(&mut file, table_id, record_id, request).map_err(api_error)?;
             state
                 .events
                 .publish(DomainEvent::RecordUpdated(RecordUpdated {
@@ -173,25 +148,16 @@ async fn delete_record(
     Path((document_id, table_id, record_id)): Path<(String, String, String)>,
 ) -> AppResult<Response> {
     let user_id = user.id;
-    state
+    let body = state
         .blocking(move |state| {
             let doc = state.load_document(user_id, &document_id)?;
             let table_id = parse_id(&table_id)?;
             let record_id = parse_id(&record_id)?;
             let mut file = state.open_or_500(&doc)?;
-            file.delete_record(table_id, record_id)
-                .map_err(|_| AppError::not_found("Record does not exist"))
+            api::delete(&mut file, table_id, record_id).map_err(api_error)
         })
         .await?;
-    Ok(ok(json!({ "message": "Record deleted" })))
-}
-
-fn history_entry(entry: &HistoryEntry) -> Value {
-    json!({
-        "id": entry.id, "document_id": entry.document_id, "table_id": entry.table_id,
-        "record_id": entry.record_id, "field_id": entry.field_id, "action": entry.action,
-        "before": entry.before, "after": entry.after, "actor": entry.actor, "created_at": entry.created_at,
-    })
+    Ok(ok(body))
 }
 
 async fn record_history(
@@ -207,20 +173,11 @@ async fn record_history(
             let table_id = parse_id(&table_id)?;
             let record_id = parse_id(&record_id)?;
             let (limit, offset) = list_window(query.get("limit"), query.get("offset"));
-            let limit = if limit <= 0 { 100 } else { limit };
             let file = state.open_or_500(&doc)?;
-            let (entries, total) = file
-                .list_record_history(table_id, record_id, limit, offset)
-                .map_err(|_| AppError::internal("Failed to query record history"))?;
-            let items: Vec<Value> = entries.iter().map(history_entry).collect();
-            Ok(json!({ "items": items, "total": total, "limit": limit, "offset": offset }))
+            api::history(&file, table_id, record_id, limit, offset).map_err(api_error)
         })
         .await?;
     Ok(ok(body))
-}
-
-fn link_items(refs: &[LinkRef]) -> Value {
-    json!({ "items": refs.iter().map(|r| json!({ "row_key": r.row_key, "display": r.display })).collect::<Vec<_>>() })
 }
 
 async fn list_links(
@@ -235,36 +192,19 @@ async fn list_links(
             let doc = state.load_document(user_id, &document_id)?;
             let table_id = parse_id(&table_id)?;
             let record_id = parse_id(&record_id)?;
-            let field_id = query
-                .get("field_id")
-                .and_then(|v| v.parse::<i64>().ok())
-                .filter(|id| *id > 0)
-                .ok_or_else(|| AppError::bad_request("field_id is required"))?;
+            let field_id =
+                api::link_field_id(query.get("field_id").map(String::as_str)).map_err(api_error)?;
             let file = state.open_or_500(&doc)?;
-            let refs = file
-                .list_record_links(table_id, record_id, field_id)
-                .map_err(|_| AppError::internal("Failed to list record links"))?;
-            Ok(link_items(&refs))
+            api::list_links(&file, table_id, record_id, field_id).map_err(api_error)
         })
         .await?;
     Ok(ok(body))
 }
 
-#[derive(Debug, Default, Deserialize)]
-struct LinkRequest {
-    #[serde(default)]
-    field_id: Option<i64>,
-    #[serde(default)]
-    target_row_keys: Option<Vec<String>>,
-}
-
 fn parse_link_request(body: &[u8]) -> AppResult<LinkRequest> {
     let request: LinkRequest = kition_http::decode_object(body)
         .map_err(|_| AppError::bad_request("Invalid request body"))?;
-    if request.field_id.unwrap_or_default() <= 0 {
-        return Err(AppError::bad_request("field_id is required"));
-    }
-    Ok(request)
+    request.check().map_err(api_error)
 }
 
 async fn replace_links(
@@ -281,15 +221,7 @@ async fn replace_links(
             let record_id = parse_id(&record_id)?;
             let request = parse_link_request(&body)?;
             let mut file = state.open_or_500(&doc)?;
-            let refs = file
-                .replace_record_links(
-                    table_id,
-                    record_id,
-                    request.field_id.unwrap_or_default(),
-                    &request.target_row_keys.unwrap_or_default(),
-                )
-                .map_err(bad)?;
-            Ok(link_items(&refs))
+            api::replace_links(&mut file, table_id, record_id, request).map_err(api_error)
         })
         .await?;
     Ok(ok(body))
@@ -302,23 +234,17 @@ async fn delete_links(
     body: Bytes,
 ) -> AppResult<Response> {
     let user_id = user.id;
-    state
+    let body = state
         .blocking(move |state| {
             let doc = state.load_document(user_id, &document_id)?;
             let table_id = parse_id(&table_id)?;
             let record_id = parse_id(&record_id)?;
             let request = parse_link_request(&body)?;
             let mut file = state.open_or_500(&doc)?;
-            file.delete_record_links(
-                table_id,
-                record_id,
-                request.field_id.unwrap_or_default(),
-                &request.target_row_keys.unwrap_or_default(),
-            )
-            .map_err(|_| AppError::internal("Failed to delete record links"))
+            api::delete_links(&mut file, table_id, record_id, request).map_err(api_error)
         })
         .await?;
-    Ok(ok(json!({ "ok": true })))
+    Ok(ok(body))
 }
 
 async fn link_candidates(
@@ -332,20 +258,10 @@ async fn link_candidates(
         .blocking(move |state| {
             let doc = state.load_document(user_id, &document_id)?;
             let field_id = parse_id(&field_id)?;
-            let limit = query
-                .get("limit")
-                .and_then(|v| v.parse::<i64>().ok())
-                .filter(|l| *l > 0)
-                .unwrap_or(25);
+            let limit = api::candidate_limit(query.get("limit").map(String::as_str));
             let file = state.open_or_500(&doc)?;
-            let refs = file
-                .list_link_candidates(
-                    field_id,
-                    query.get("q").map(String::as_str).unwrap_or_default(),
-                    limit,
-                )
-                .map_err(|_| AppError::internal("Failed to list link candidates"))?;
-            Ok(link_items(&refs))
+            let search = query.get("q").map(String::as_str).unwrap_or_default();
+            api::link_candidates(&file, field_id, search, limit).map_err(api_error)
         })
         .await?;
     Ok(ok(body))
@@ -459,12 +375,6 @@ pub(crate) fn mime_guess_type(extension: &str) -> String {
     }
 }
 
-#[derive(Debug, Default, Deserialize)]
-struct CsvRequest {
-    #[serde(default)]
-    content: Option<String>,
-}
-
 async fn import_csv(
     State(state): State<DataDocState>,
     user: CurrentUser,
@@ -475,71 +385,13 @@ async fn import_csv(
     let body = state
         .blocking(move |state| {
             let doc = state.load_document(user_id, &document_id)?;
-            let rows = csvutil::read_all(&request.content.unwrap_or_default())
-                .filter(|rows| !rows.is_empty())
-                .ok_or_else(|| AppError::bad_request("Invalid CSV content"))?;
+            let rows = api::parse_csv(&request.content.unwrap_or_default()).map_err(api_error)?;
             let table_id = parse_id(&table_id)?;
             let mut file = state.open_or_500(&doc)?;
-            let table = file
-                .get_table(table_id)
-                .map_err(|_| AppError::not_found("Table does not exist"))?;
-            let headers = &rows[0];
-            let mut batch = Vec::with_capacity(rows.len().saturating_sub(1));
-            for row in &rows[1..] {
-                let mut values = Map::new();
-                for (index, header) in headers.iter().enumerate() {
-                    let Some(cell) = row.get(index) else { continue };
-                    if let Some(field) = table
-                        .fields
-                        .iter()
-                        .find(|f| &f.title == header || &f.name == header)
-                    {
-                        values.insert(field.name.clone(), Value::String(cell.clone()));
-                    }
-                }
-                batch.push(values);
-            }
-            // One transaction for the whole file.
-            let created = file
-                .create_records(table_id, &batch)
-                .map_err(|_| AppError::internal("Failed to import CSV"))?
-                .len();
-            Ok(json!({ "created": created }))
+            api::import_csv(&mut file, table_id, &rows).map_err(api_error)
         })
         .await?;
     Ok(ok(body))
-}
-
-/// Text form of a cell for CSV and Markdown exports.
-pub fn stringify_cell(value: &Value) -> String {
-    match value {
-        Value::Null => String::new(),
-        Value::String(text) => text.clone(),
-        Value::Array(items) => items
-            .iter()
-            .map(stringify_cell)
-            .collect::<Vec<_>>()
-            .join(", "),
-        Value::Object(map) => ["display", "name", "title", "url", "href", "row_key"]
-            .iter()
-            .find_map(|key| {
-                map.get(*key)
-                    .and_then(Value::as_str)
-                    .filter(|s| !s.is_empty())
-            })
-            .unwrap_or_default()
-            .to_owned(),
-        Value::Number(number) => match (number.as_i64(), number.as_f64()) {
-            (Some(int), _) => int.to_string(),
-            (None, Some(float)) => float.to_string(),
-            _ => number.to_string(),
-        },
-        Value::Bool(flag) => flag.to_string(),
-    }
-}
-
-fn escape_markdown_cell(value: &str) -> String {
-    value.replace('\n', "<br>").replace('|', "\\|")
 }
 
 async fn export_csv(
@@ -553,30 +405,7 @@ async fn export_csv(
             let doc = state.load_document(user_id, &document_id)?;
             let table_id = parse_id(&table_id)?;
             let file = state.open_or_500(&doc)?;
-            let table = file
-                .get_table(table_id)
-                .map_err(|_| AppError::not_found("Table does not exist"))?;
-            let records = file
-                .list_records(table_id)
-                .map_err(|_| AppError::internal("Failed to export CSV"))?;
-            let mut out = String::new();
-            csvutil::write_record(
-                &mut out,
-                &table
-                    .fields
-                    .iter()
-                    .map(|f| f.title.clone())
-                    .collect::<Vec<_>>(),
-            );
-            for record in &records {
-                let row: Vec<String> = table
-                    .fields
-                    .iter()
-                    .map(|f| stringify_cell(record.values.get(&f.name).unwrap_or(&Value::Null)))
-                    .collect();
-                csvutil::write_record(&mut out, &row);
-            }
-            Ok((table.name, out))
+            api::export_csv(&file, table_id).map_err(api_error)
         })
         .await?;
     let disposition = format!("attachment; filename={:?}", format!("{name}.csv"));
@@ -596,39 +425,15 @@ async fn export_markdown(
     Path((document_id, table_id)): Path<(String, String)>,
 ) -> AppResult<Response> {
     let user_id = user.id;
-    let content = state
+    let body = state
         .blocking(move |state| {
             let doc = state.load_document(user_id, &document_id)?;
             let table_id = parse_id(&table_id)?;
             let file = state.open_or_500(&doc)?;
-            let table = file
-                .get_table(table_id)
-                .map_err(|_| AppError::not_found("Table does not exist"))?;
-            let records = file
-                .list_records(table_id)
-                .map_err(|_| AppError::internal("Failed to export Markdown"))?;
-            let mut out = String::from("|");
-            for field in &table.fields {
-                out.push_str(&format!(" {} |", escape_markdown_cell(&field.title)));
-            }
-            out.push_str("\n|");
-            for _ in &table.fields {
-                out.push_str(" --- |");
-            }
-            out.push('\n');
-            for record in &records {
-                out.push('|');
-                for field in &table.fields {
-                    let cell =
-                        stringify_cell(record.values.get(&field.name).unwrap_or(&Value::Null));
-                    out.push_str(&format!(" {} |", escape_markdown_cell(&cell)));
-                }
-                out.push('\n');
-            }
-            Ok(out)
+            api::export_markdown(&file, table_id).map_err(api_error)
         })
         .await?;
-    Ok(ok(json!({ "content": content })))
+    Ok(ok(body))
 }
 
 #[cfg(test)]
@@ -642,17 +447,5 @@ mod tests {
         assert_eq!(safe_attachment_name(" "), "attachment");
         assert_eq!(safe_attachment_name("a\0b"), "ab");
         assert_eq!(safe_attachment_name(&"x".repeat(200)).chars().count(), 160);
-    }
-
-    #[test]
-    fn stringifies_cells() {
-        assert_eq!(
-            stringify_cell(&json!([1, "a", {"display": "D"}])),
-            "1, a, D"
-        );
-        assert_eq!(stringify_cell(&json!(2.5)), "2.5");
-        assert_eq!(stringify_cell(&json!({"x": 1})), "");
-        assert_eq!(stringify_cell(&json!(true)), "true");
-        assert_eq!(escape_markdown_cell("a|b\nc"), "a\\|b<br>c");
     }
 }

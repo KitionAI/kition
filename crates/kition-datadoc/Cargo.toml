@@ -17,13 +17,13 @@ kition-http = { workspace = true }
 kition-kdm = { workspace = true }
 kition-kitable = { workspace = true }
 kition-store = { workspace = true }
+kition-table-api = { workspace = true }
 kition-workspace = { workspace = true }
 
 axum = { workspace = true }
 base64 = { workspace = true }
 calamine = { workspace = true }
 chrono = { workspace = true }
-csv = { workspace = true }
 futures = { workspace = true }
 hex = { workspace = true }
 http = { workspace = true }

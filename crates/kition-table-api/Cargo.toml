@@ -1,0 +1,20 @@
+[package]
+name = "kition-table-api"
+description = "The table document request layer: the data-document API's records, fields, views, history, transactions, and dashboards as JSON in and JSON out over an open .kitable file, without a server (builds for wasm32)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+kition-kdm = { workspace = true }
+kition-kitable = { workspace = true }
+
+csv = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }

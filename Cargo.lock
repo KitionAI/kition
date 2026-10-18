@@ -3472,7 +3472,6 @@ dependencies = [
  "base64 0.22.1",
  "calamine",
  "chrono",
- "csv",
  "futures",
  "hex",
  "http",
@@ -3484,6 +3483,7 @@ dependencies = [
  "kition-kdm",
  "kition-kitable",
  "kition-store",
+ "kition-table-api",
  "kition-workspace",
  "parking_lot",
  "regex",
@@ -3735,6 +3735,18 @@ dependencies = [
  "tempfile",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "kition-table-api"
+version = "0.0.0"
+dependencies = [
+ "csv",
+ "kition-kdm",
+ "kition-kitable",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
 ]
 
 [[package]]

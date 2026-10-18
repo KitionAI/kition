@@ -1,72 +1,38 @@
 //! JSON shapes for documents, tables, fields, views, and records.
 
-use kition_kitable::{Field, KitableFile, Record, Table, View};
+use kition_kitable::{Field, KitableFile, Record};
+use kition_table_api::{DocRef, respond as api};
 use serde_json::{Value, json};
 
 use crate::DataDocState;
 use crate::index::DataDocument;
 
-pub fn field(doc: &DataDocument, field: &Field) -> Value {
-    json!({
-        "id": field.id, "user_id": doc.user_id, "document_id": doc.id, "table_id": field.table_id,
-        "name": field.name, "title": field.title, "type": field.field_type, "required": field.required,
-        "unique": field.unique, "readonly": field.readonly, "is_primary": field.is_primary, "order": field.order,
-        "options": field.options, "formula": field.formula, "ai_prompt": field.ai_prompt,
-        "meta": field.meta, "created_at": field.created_at, "updated_at": field.updated_at,
-    })
+impl DataDocument {
+    /// The document as the table API's responses name it.
+    pub(crate) fn doc_ref(&self) -> DocRef {
+        DocRef {
+            document_id: self.id,
+            user_id: self.user_id,
+        }
+    }
 }
 
-pub fn view(doc: &DataDocument, view: &View) -> Value {
-    json!({
-        "id": view.id, "user_id": doc.user_id, "document_id": doc.id, "table_id": view.table_id,
-        "title": view.title, "type": view.view_type, "order": view.order, "locked": view.locked,
-        "config": view.config, "created_at": view.created_at, "updated_at": view.updated_at,
-    })
+pub fn field(doc: &DataDocument, field: &Field) -> Value {
+    api::field(&doc.doc_ref(), field)
 }
 
 pub fn record(doc: &DataDocument, record: &Record) -> Value {
-    json!({
-        "id": record.id, "user_id": doc.user_id, "document_id": doc.id, "table_id": record.table_id,
-        "row_key": record.row_key, "order": record.order, "values": record.values,
-        "created_at": record.created_at, "updated_at": record.updated_at,
-    })
-}
-
-pub fn table(doc: &DataDocument, table: &Table, include_schema: bool) -> Value {
-    let mut value = json!({
-        "id": table.id, "user_id": doc.user_id, "document_id": doc.id, "name": table.name,
-        "title": table.title, "description": table.description, "order": table.order,
-        "primary_field_id": table.primary_field_id, "meta": table.meta,
-        "created_at": table.created_at, "updated_at": table.updated_at,
-    });
-    if include_schema {
-        value["fields"] = Value::Array(table.fields.iter().map(|f| field(doc, f)).collect());
-        value["views"] = Value::Array(table.views.iter().map(|v| view(doc, v)).collect());
-    }
-    value
+    api::record(&doc.doc_ref(), record)
 }
 
 pub fn tables_of(doc: &DataDocument, file: &KitableFile) -> Vec<Value> {
-    file.list_tables()
-        .unwrap_or_default()
-        .iter()
-        .map(|t| table(doc, t, true))
-        .collect()
+    api::tables_of(&doc.doc_ref(), file)
 }
 
 /// A dashboard, summarized for the workspace tree: `id`, `title`, and `order`
 /// (`KitableDashboardSummary` on the frontend), not its widgets or layout.
 pub fn dashboards_of(file: &KitableFile) -> Vec<Value> {
-    file.list_dashboards()
-        .unwrap_or_default()
-        .iter()
-        .map(|d| {
-            json!({
-                "id": d.id, "title": d.name,
-                "order": d.config.get("order").cloned().unwrap_or(json!(0)),
-            })
-        })
-        .collect()
+    api::dashboards_of(file)
 }
 
 impl DataDocState {

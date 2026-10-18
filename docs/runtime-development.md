@@ -29,6 +29,8 @@ runtime crates.
 | `kition-ai` | Model providers (OpenAI Responses and Anthropic Messages), streaming, retries, and image generation. |
 | `kition-agent` | Agent sessions, the streamed agent turn, its tools, the execution policy, and MCP servers. |
 | `kition-datadoc` / `kition-kitable` | Data documents, `.kitable` files, AI fields, and the scenario builder. |
+| `kition-table-api` | The table document requests (records, fields, views, history, transactions, dashboards) as JSON in and out over an open `.kitable` file; `kition-datadoc`'s routes are adapters over it. No server or async runtime, so it builds for `wasm32`. |
+| `kition-time` | Millisecond timestamps, without runtime dependencies (re-exported by `kition-core`). |
 | `kition-workflow` | Workflow definitions, triggers, runs, and the AI workflow builder. |
 | Other crates | Connections, email and form sync, desktop features, and workspace storage. |
 
@@ -39,7 +41,11 @@ pnpm check:desktop
 ```
 
 This runs `cargo fmt --check`, `cargo clippy --workspace --all-targets -D warnings`,
-and `cargo test --workspace`.
+`cargo test --workspace`, and `scripts/check-wasm.sh`: `cargo check --target
+wasm32-unknown-unknown` for `kition-kitable` and `kition-table-api`. That check needs the Rust
+target (`rustup target add wasm32-unknown-unknown`) and a C compiler that targets wasm32 for
+SQLite (Homebrew `llvm`, or `CC_wasm32_unknown_unknown` and `AR_wasm32_unknown_unknown`); without
+them it is skipped with a notice, and `KITION_REQUIRE_WASM_CHECK=1` makes that an error.
 
 ## Rules
 

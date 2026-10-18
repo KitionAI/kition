@@ -186,21 +186,12 @@ impl DataDocState {
 
 /// A positive integer path parameter.
 pub fn parse_id(value: &str) -> AppResult<i64> {
-    match value.parse::<i64>() {
-        Ok(id) if id > 0 => Ok(id),
-        _ => Err(AppError::bad_request("Invalid ID parameter")),
-    }
+    kition_table_api::parse_id(value).map_err(crate::api_error)
 }
 
 /// `limit` and `offset` query values: non-negative, limit capped at 5000.
 pub fn list_window(limit: Option<&String>, offset: Option<&String>) -> (i64, i64) {
-    let parse = |value: Option<&String>| {
-        value
-            .and_then(|v| v.trim().parse::<i64>().ok())
-            .unwrap_or(0)
-            .max(0)
-    };
-    (parse(limit).min(5000), parse(offset))
+    kition_table_api::list_window(limit.map(String::as_str), offset.map(String::as_str))
 }
 
 #[cfg(test)]
@@ -234,13 +225,5 @@ mod tests {
         }
         assert!(resolve_from_root("/ws", "a.md").is_err());
         assert!(resolve_from_root("/ws", ".").is_err());
-    }
-
-    #[test]
-    fn list_windows() {
-        let s = |v: &str| Some(v.to_owned());
-        assert_eq!(list_window(s("10").as_ref(), s("-3").as_ref()), (10, 0));
-        assert_eq!(list_window(s("9999").as_ref(), None), (5000, 0));
-        assert_eq!(list_window(s("x").as_ref(), s("4").as_ref()), (0, 4));
     }
 }

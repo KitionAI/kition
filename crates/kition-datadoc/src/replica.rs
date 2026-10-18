@@ -262,7 +262,7 @@ mod tests {
     #[test]
     fn imports_render_as_an_import_origin() {
         assert_eq!(
-            crate::table_documents::render_origin(&import_origin()),
+            kition_table_api::respond::render_origin(&import_origin()),
             "import:sync"
         );
     }

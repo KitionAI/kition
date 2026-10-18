@@ -4,7 +4,6 @@
 
 mod agent_api;
 mod ai_field;
-mod csvutil;
 mod dashboards;
 mod documents;
 mod import_parse;
@@ -35,6 +34,22 @@ use kition_core::{AppError, AppResult};
 use kition_http::AuthConfig;
 use kition_store::Db;
 use kition_workspace::AssetStore;
+
+/// The runtime's error for a table API error: the same status and message the routes answered
+/// before the request layer moved into `kition-table-api`.
+pub(crate) fn api_error(error: kition_table_api::ApiError) -> AppError {
+    use kition_table_api::ApiError;
+    match error {
+        ApiError::BadRequest(message) => AppError::bad_request(message),
+        ApiError::InvalidBody => AppError::localized_bad_request("common.bad_request"),
+        ApiError::NotFound(message) | ApiError::UnknownMethod(message) => {
+            AppError::not_found(message)
+        }
+        ApiError::Conflict(message) => AppError::conflict(message),
+        ApiError::Internal(message) => AppError::internal(message),
+        ApiError::Unhandled(detail) => AppError::unhandled(detail),
+    }
+}
 
 /// Detaches workflows from a deleted document so a new file at the same path
 /// does not inherit them.

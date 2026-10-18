@@ -7,17 +7,18 @@ use axum::Router;
 use axum::extract::{Path, State};
 use axum::response::Response;
 use axum::routing::get;
+use kition_core::AppResult;
 use kition_core::events::DomainEvent;
-use kition_core::{AppError, AppResult};
 use kition_http::{CurrentUser, JsonBody, ok};
 use kition_kdm::Origin;
-use kition_kitable::{Dashboard, TableChange};
-use serde_json::{Map, Value, json};
+use kition_kitable::TableChange;
+use kition_table_api::dashboards::{self as api, dashboard_from_request};
+use serde_json::{Map, Value};
 
-use crate::DataDocState;
 use crate::index::DataDocument;
 use crate::table_documents::{TableHandle, table_changed_event};
 use crate::transact::RequestOrigin;
+use crate::{DataDocState, api_error};
 
 pub fn routes() -> Router<DataDocState> {
     Router::new()
@@ -26,57 +27,6 @@ pub fn routes() -> Router<DataDocState> {
             "/data-documents/{documentId}/dashboards/{dashboardId}",
             axum::routing::put(upsert).delete(delete),
         )
-}
-
-/// A dashboard in the frontend's shape (`src/types/dataDocument.ts`'s `DataDashboard`): `title`
-/// is the KDM dashboard's `name`; `order`, `source_table_id`, and `layout` are its `config`;
-/// `widgets` is its widgets map, as an array (each widget already carries its own `id`).
-fn dashboard_json(dashboard: &Dashboard) -> Value {
-    let config = dashboard.config.as_object().cloned().unwrap_or_default();
-    let mut widgets: Vec<Value> = dashboard.widgets.values().cloned().collect();
-    widgets.sort_by(|a, b| {
-        let id = |v: &Value| {
-            v.get("id")
-                .and_then(Value::as_str)
-                .unwrap_or_default()
-                .to_owned()
-        };
-        id(a).cmp(&id(b))
-    });
-    json!({
-        "id": dashboard.id,
-        "title": dashboard.name,
-        "order": config.get("order").cloned().unwrap_or(json!(0)),
-        "source_table_id": config.get("source_table_id").cloned().unwrap_or(Value::Null),
-        "layout": config.get("layout").cloned().unwrap_or(json!([])),
-        "widgets": widgets,
-    })
-}
-
-/// The `name`, `config`, and widgets map a PUT body's `DataDashboard` splits into, the inverse
-/// of [`dashboard_json`].
-fn dashboard_from_request(body: &Map<String, Value>) -> (String, Value, Map<String, Value>) {
-    let title = body
-        .get("title")
-        .and_then(Value::as_str)
-        .unwrap_or_default()
-        .to_owned();
-    let config = json!({
-        "order": body.get("order").cloned().unwrap_or(json!(0)),
-        "source_table_id": body.get("source_table_id").cloned().unwrap_or(Value::Null),
-        "layout": body.get("layout").cloned().unwrap_or(json!([])),
-    });
-    let widgets: Map<String, Value> = body
-        .get("widgets")
-        .and_then(Value::as_array)
-        .into_iter()
-        .flatten()
-        .filter_map(|widget| {
-            let id = widget.get("id").and_then(Value::as_str)?.to_owned();
-            Some((id, widget.clone()))
-        })
-        .collect();
-    (title, config, widgets)
 }
 
 impl DataDocState {
@@ -150,13 +100,7 @@ async fn list(
         .blocking(move |state| {
             let doc = state.load_document(user_id, &document_id)?;
             let file = state.open_or_500(&doc)?;
-            let items: Vec<Value> = file
-                .list_dashboards()
-                .map_err(|err| AppError::internal(err.to_string()))?
-                .iter()
-                .map(dashboard_json)
-                .collect();
-            Ok(json!({ "items": items, "total": items.len() }))
+            api::list(&file).map_err(api_error)
         })
         .await?;
     Ok(ok(body))
@@ -171,19 +115,16 @@ async fn upsert(
 ) -> AppResult<Response> {
     let user_id = user.id;
     let event_origin = origin.clone();
-    let (doc, dashboard) = state
+    let (doc, body) = state
         .blocking(move |state| {
             let doc = state.load_document(user_id, &document_id)?;
             let mut file = state.open_or_500_as(&doc, origin.clone())?;
-            let (title, config, widgets) = dashboard_from_request(&request);
-            let dashboard = file
-                .upsert_dashboard(Some(&dashboard_id), &title, config, &widgets)
-                .map_err(|err| AppError::bad_request(err.to_string()))?;
-            Ok((doc, dashboard))
+            let body = api::upsert(&mut file, &dashboard_id, &request).map_err(api_error)?;
+            Ok((doc, body))
         })
         .await?;
     publish_dashboards_changed(&state, &doc, &event_origin);
-    Ok(ok(dashboard_json(&dashboard)))
+    Ok(ok(body))
 }
 
 async fn delete(
@@ -194,48 +135,14 @@ async fn delete(
 ) -> AppResult<Response> {
     let user_id = user.id;
     let event_origin = origin.clone();
-    let doc = state
+    let (doc, body) = state
         .blocking(move |state| {
             let doc = state.load_document(user_id, &document_id)?;
             let mut file = state.open_or_500_as(&doc, origin.clone())?;
-            file.delete_dashboard(&dashboard_id)
-                .map_err(|err| AppError::bad_request(err.to_string()))?;
-            Ok(doc)
+            let body = api::delete(&mut file, &dashboard_id).map_err(api_error)?;
+            Ok((doc, body))
         })
         .await?;
     publish_dashboards_changed(&state, &doc, &event_origin);
-    Ok(ok(json!({ "deleted": true })))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn dashboard_json_round_trips_through_the_request_shape() {
-        let dashboard = Dashboard {
-            id: "d1".into(),
-            name: "Overview".into(),
-            config: json!({ "order": 2, "source_table_id": 7, "layout": [{ "widget_id": "w1" }] }),
-            widgets: Map::from_iter([(
-                "w1".to_owned(),
-                json!({ "id": "w1", "title": "Count", "type": "metric" }),
-            )]),
-        };
-        let json = dashboard_json(&dashboard);
-        assert_eq!(json["id"], "d1");
-        assert_eq!(json["title"], "Overview");
-        assert_eq!(json["order"], 2);
-        assert_eq!(json["source_table_id"], 7);
-        assert_eq!(
-            json["widgets"],
-            json!([{ "id": "w1", "title": "Count", "type": "metric" }])
-        );
-
-        let body = json.as_object().cloned().unwrap_or_default();
-        let (title, config, widgets) = dashboard_from_request(&body);
-        assert_eq!(title, "Overview");
-        assert_eq!(config["source_table_id"], 7);
-        assert_eq!(widgets.get("w1"), dashboard.widgets.get("w1"));
-    }
+    Ok(ok(body))
 }

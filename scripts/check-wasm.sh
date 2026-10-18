@@ -10,7 +10,7 @@
 # compiler skips the check with a notice; KITION_REQUIRE_WASM_CHECK=1 makes that an error.
 set -euo pipefail
 repo_root="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
-crates=(kition-kitable)
+crates=(kition-kitable kition-table-api)
 
 skip() {
   echo "check-wasm: skipped: $1" >&2

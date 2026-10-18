@@ -291,39 +291,7 @@ pub fn origin_from_headers(session: Option<&str>, origin_header: Option<&str>) -
     Origin::person("session:unknown")
 }
 
-/// The `origin` string the transact/undo/redo/table-changed JSON carries: `person:session:<id>`
-/// for a window, `agent:<turnId>` for the agent, or just the label (for example `template`) for
-/// a system origin, matching `contracts/runtime/data-documents-transact.schema.json`.
-pub fn render_origin(origin: &Origin) -> String {
-    match origin.kind {
-        OriginKind::System => origin
-            .label
-            .clone()
-            .unwrap_or_else(|| origin.principal.clone()),
-        kind => format!("{}:{}", kind.as_str(), origin.principal),
-    }
-}
-
-/// A [`TableChange`] as the `change` field of the transact/undo/redo responses
-/// (`contracts/runtime/data-documents-transact.schema.json`): `documentId` and `origin` plus
-/// the change's own camelCase fields.
-pub fn change_json(document_id: &str, origin: &Origin, change: &TableChange) -> serde_json::Value {
-    // TableChange derives Serialize with rename_all = "camelCase" already; this just adds the
-    // two fields the manager knows and the replica does not.
-    let mut value = serde_json::to_value(change)
-        .unwrap_or_else(|_| serde_json::Value::Object(serde_json::Map::new()));
-    if let serde_json::Value::Object(map) = &mut value {
-        map.insert(
-            "documentId".to_owned(),
-            serde_json::Value::from(document_id),
-        );
-        map.insert(
-            "origin".to_owned(),
-            serde_json::Value::from(render_origin(origin)),
-        );
-    }
-    value
-}
+pub use kition_table_api::respond::change_json;
 
 /// The `table/changed` bridge event payload (`contracts/runtime/table-changed.schema.json`):
 /// [`change_json`] plus the document's workspace-relative `documentPath`.
@@ -473,44 +441,6 @@ mod tests {
         assert_eq!(
             origin_from_headers(None, None),
             Origin::person("session:unknown")
-        );
-    }
-
-    #[test]
-    fn origin_renders_as_the_contract_describes() {
-        assert_eq!(
-            render_origin(&Origin::person("session:abc")),
-            "person:session:abc"
-        );
-        assert_eq!(render_origin(&Origin::agent("turn-1")), "agent:turn-1");
-        assert_eq!(render_origin(&Origin::system("template")), "template");
-    }
-
-    #[test]
-    fn change_json_matches_the_contracts_table_change_shape() {
-        let change = TableChange {
-            tables: vec![1],
-            schema: vec![1],
-            views: vec![2],
-            records_upserted: vec![(1, "r1".into())],
-            records_deleted: vec![(1, "r2".into())],
-            records_reordered: vec![1],
-            dashboards: true,
-        };
-        let value = change_json("42", &Origin::person("session:abc"), &change);
-        assert_eq!(
-            value,
-            serde_json::json!({
-                "documentId": "42",
-                "origin": "person:session:abc",
-                "tables": [1],
-                "schema": [1],
-                "views": [2],
-                "recordsUpserted": [[1, "r1"]],
-                "recordsDeleted": [[1, "r2"]],
-                "recordsReordered": [1],
-                "dashboards": true,
-            })
         );
     }
 
