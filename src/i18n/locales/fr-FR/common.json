@@ -43,7 +43,8 @@
     "openSharedHint": "Ouvrir un document que quelqu’un a partagé avec vous pour coédition",
     "extensions": "Extensions",
     "runScript": "Exécuter un script…",
-    "runScriptHint": "Exécute un script .mjs de l’espace de travail sur ce document"
+    "runScriptHint": "Exécute un script .mjs de l’espace de travail sur ce document",
+    "shortcuts": "⌘K ouvre la palette ; dans un éditeur de kit, appuyez sur ⌘."
   },
   "viewport": {
     "tooNarrow": "La fenêtre est trop étroite. L'éditeur et le canevas Workflow peuvent ne pas être pleinement utilisables à cette taille. Agrandissez la fenêtre à au moins 480px."
@@ -82,6 +83,12 @@
       "noDocument": "Ouvrez d’abord un document de kit",
       "done": "{{name}} exécuté",
       "failed": "{{name}} a échoué"
+    },
+    "panel": {
+      "show": "Afficher le panneau : {{title}}",
+      "close": "Fermer le panneau",
+      "opening": "Ouverture du panneau…",
+      "failed": "Le panneau n’a pas pu s’ouvrir"
     }
   }
 }

@@ -144,8 +144,8 @@ export function CommandPalette({
           <span className="inline-flex items-center gap-1.5 rounded-md bg-accent px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-accent-foreground">
             <Command className="size-3" /> {t('commandPalette.badge')}
           </span>
-          <span className="text-[11px] text-muted-foreground">
-            ⌘P · {t('commandPalette.hint')}
+          <span className="text-[11px] text-muted-foreground" title={t('commandPalette.shortcuts')}>
+            ⌘K · ⌘. · {t('commandPalette.hint')}
           </span>
         </header>
         <div className="flex items-center gap-3 border-b px-4 py-3">

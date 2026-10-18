@@ -7,6 +7,8 @@ export type InstalledExtension = {
   manifest: ExtensionManifest
   /** Its entry module's source. */
   source: string
+  /** Its other files by package path (each panel's HTML); absent for extensions without panels. */
+  files?: Record<string, string>
   enabled: boolean
   installedAt: number
   /** The workspace path it was installed from. */

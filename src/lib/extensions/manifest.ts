@@ -19,8 +19,12 @@ export type Permission = 'model.read' | 'model.write' | 'commands.run' | `networ
 
 export type ExtensionCommand = { id: string; title: string; description?: string }
 
-/** A panel the extension draws (in the kit UI's extension slot); hosts may not show panels yet. */
-export type ExtensionPanel = { id: string; title: string; entry: string }
+/**
+ * A panel the extension draws next to the kit's editor: one self-contained HTML file of the
+ * package (`entry`), shown in a sandboxed frame that talks to the extension's worker. `kits`
+ * narrows the documents it is offered for to some of `activation.kits`.
+ */
+export type ExtensionPanel = { id: string; title: string; entry: string; kits?: string[] }
 
 export type ExtensionActivation = {
   /** The kits the extension applies to (`kit.slide`, …). */
@@ -61,6 +65,7 @@ const KIT_ID = /^kit\.[a-z0-9][a-z0-9-]*$/
 const FORMAT = /^[a-z0-9]+$/
 const SEMVER = /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$/
 const ENTRY = /^[\w-]+(\/[\w.-]+)*\.(mjs|js)$/
+const PANEL_ENTRY = /^[\w-]+(\/[\w.-]+)*\.html$/
 const HOST = /^(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/
 const LOOPBACK = new Set(['localhost', '127.0.0.1'])
 const KNOWN_PERMISSIONS = new Set(['model.read', 'model.write', 'commands.run'])
@@ -144,12 +149,21 @@ export function parseManifest(input: unknown): ExtensionManifest {
     }
     if (contributes.panels !== undefined) {
       if (!Array.isArray(contributes.panels)) problems.push('contributes.panels must be a list')
-      else
+      else {
+        const panels = new Set<string>()
+        const kits = isObject(activation) && Array.isArray(activation.kits) ? (activation.kits as unknown[]) : []
         for (const panel of contributes.panels as unknown[]) {
-          if (!isObject(panel) || typeof panel.id !== 'string' || !COMMAND_ID.test(panel.id) || !isText(panel.title, 80) || typeof panel.entry !== 'string' || !/^[\w-]+(\/[\w.-]+)*\.html$/.test(panel.entry)) {
+          if (!isObject(panel) || typeof panel.id !== 'string' || !COMMAND_ID.test(panel.id) || !isText(panel.title, 80) || typeof panel.entry !== 'string' || !PANEL_ENTRY.test(panel.entry) || panel.entry.split('/').some((part) => part === '..' || part === '.')) {
             problems.push('each panel needs a namespaced id, a title, and an .html entry inside the package')
+            continue
+          }
+          if (panels.has(panel.id)) problems.push(`panel ${panel.id} is contributed twice`)
+          panels.add(panel.id)
+          if (panel.kits !== undefined && (!Array.isArray(panel.kits) || !panel.kits.length || !panel.kits.every((kit) => typeof kit === 'string' && kits.includes(kit)))) {
+            problems.push(`panel ${panel.id}: kits must list some of activation.kits`)
           }
         }
+      }
     }
   }
 
@@ -181,4 +195,9 @@ export function appliesTo(manifest: ExtensionManifest, document: { kitId: string
   const formats = manifest.activation.formats
   if (!formats?.length || document.path === undefined) return true
   return formats.includes(formatOf(document.path))
+}
+
+/** Whether `panel` of `manifest` is offered for a document of `kitId` at `path`. */
+export function panelAppliesTo(manifest: ExtensionManifest, panel: ExtensionPanel, document: { kitId: string; path?: string }): boolean {
+  return appliesTo(manifest, document) && (!panel.kits?.length || panel.kits.includes(document.kitId))
 }

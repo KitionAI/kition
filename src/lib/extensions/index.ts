@@ -7,7 +7,7 @@
  * for `activate(ctx)`'s types.
  */
 export { checkBatch, permissionDenied, requirePermission } from './gate'
-export { ExtensionHost, SCRIPT_PERMISSIONS, type ContributedCommand, type ExtensionHostOptions, type ExtensionNotice, type ExtensionPackage, type HostDocument, type SandboxConnection, type SandboxFactory } from './host'
+export { ExtensionHost, SCRIPT_PERMISSIONS, type ContributedCommand, type ContributedPanel, type PanelContent, type PanelSession, type ExtensionHostOptions, type ExtensionNotice, type ExtensionPackage, type HostDocument, type SandboxConnection, type SandboxFactory } from './host'
 export {
   appliesTo,
   connectSources,
@@ -16,6 +16,7 @@ export {
   MANIFEST_VERSION,
   ManifestError,
   networkSources,
+  panelAppliesTo,
   parseManifest,
   type ExtensionActivation,
   type ExtensionCommand,
@@ -23,6 +24,6 @@ export {
   type ExtensionPanel,
   type Permission,
 } from './manifest'
-export { SANDBOX_TAG, type DocumentInfo, type HostToWorker, type Notice, type SandboxStart, type WorkerToHost } from './protocol'
+export { PANEL_TAG, SANDBOX_TAG, type DocumentInfo, type HostToWorker, type Notice, type PanelChannel, type PanelInfo, type PanelStart, type SandboxStart, type WorkerToHost } from './protocol'
 export { CHANNEL_TAG, ExtensionError, RpcPeer, type PortLike } from './rpc'
-export { iframeSandbox, type IframeSandboxOptions } from './sandbox'
+export { iframeSandbox, openPanelFrame, type IframeSandboxOptions, type PanelFrame, type PanelFrameOptions } from './sandbox'

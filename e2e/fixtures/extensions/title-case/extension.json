@@ -8,7 +8,8 @@
   "entry": "extension.mjs",
   "activation": { "kits": ["kit.slide"], "on": "command" },
   "contributes": {
-    "commands": [{ "id": "titleCase.apply", "title": "Title case slide titles", "description": "Capitalize the words of every slide title" }]
+    "commands": [{ "id": "titleCase.apply", "title": "Title case slide titles", "description": "Capitalize the words of every slide title" }],
+    "panels": [{ "id": "titleCase.titles", "title": "Slide titles", "entry": "panel.html" }]
   },
   "permissions": ["model.read", "model.write"]
 }

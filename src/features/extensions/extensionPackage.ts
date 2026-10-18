@@ -1,8 +1,11 @@
 import { parseManifest, type ExtensionManifest } from '@/lib/extensions'
 import { readZip } from './zip'
 
-/** An extension read from the workspace, checked, ready to install. */
-export type ReadExtension = { manifest: ExtensionManifest; source: string; from: string }
+/**
+ * An extension read from the workspace, checked, ready to install: its manifest, its entry's
+ * source, and its other files by package path (each panel's HTML).
+ */
+export type ReadExtension = { manifest: ExtensionManifest; source: string; files: Record<string, string>; from: string }
 
 /** Reads a workspace file's bytes. */
 export type ReadWorkspaceFile = (path: string) => Promise<ArrayBuffer>
@@ -10,6 +13,7 @@ export type ReadWorkspaceFile = (path: string) => Promise<ArrayBuffer>
 const MANIFEST = 'extension.json'
 const MAX_MANIFEST = 64 * 1024
 const MAX_ENTRY = 8 * 1024 * 1024
+const MAX_PANEL = 2 * 1024 * 1024
 
 const decoder = new TextDecoder('utf-8', { fatal: true })
 
@@ -36,7 +40,17 @@ export async function readExtensionFromWorkspace(path: string, read: ReadWorkspa
   const inFolder = (name: string) => (folder ? `${folder}/${name}` : name)
   const manifest = parseManifest(text(new Uint8Array(await read(inFolder(MANIFEST))), MANIFEST, MAX_MANIFEST))
   const source = text(new Uint8Array(await read(inFolder(manifest.entry))), manifest.entry, MAX_ENTRY)
-  return { manifest, source, from }
+  const files = await panelFiles(manifest, async (name) => new Uint8Array(await read(inFolder(name))))
+  return { manifest, source, files, from }
+}
+
+/** Each contributed panel's HTML entry, by package path. */
+async function panelFiles(manifest: ExtensionManifest, read: (name: string) => Promise<Uint8Array>) {
+  const files: Record<string, string> = {}
+  for (const panel of manifest.contributes.panels ?? []) {
+    if (!(panel.entry in files)) files[panel.entry] = text(await read(panel.entry), panel.entry, MAX_PANEL)
+  }
+  return files
 }
 
 async function readExtensionZip(archive: Uint8Array, from: string): Promise<ReadExtension> {
@@ -48,5 +62,10 @@ async function readExtensionZip(archive: Uint8Array, from: string): Promise<Read
   const manifest = parseManifest(text(await entries.get(manifestName)!.read(), MANIFEST, MAX_MANIFEST))
   const entry = entries.get(prefix + manifest.entry)
   if (!entry) throw new Error(`${from} has no ${manifest.entry}`)
-  return { manifest, source: text(await entry.read(), manifest.entry, MAX_ENTRY), from }
+  const files = await panelFiles(manifest, async (name) => {
+    const file = entries.get(prefix + name)
+    if (!file) throw new Error(`${from} has no ${name}`)
+    return file.read()
+  })
+  return { manifest, source: text(await entry.read(), manifest.entry, MAX_ENTRY), files, from }
 }

@@ -3,7 +3,7 @@ import { resolve } from 'node:path'
 import { deleteDB } from 'idb'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { MountedKitDocument } from '@/features/kits/public'
-import { SANDBOX_TAG, type ExtensionNotice, type SandboxFactory } from '@/lib/extensions'
+import { RpcPeer, SANDBOX_TAG, type ExtensionNotice, type SandboxFactory } from '@/lib/extensions'
 import { WORKER_RUNTIME } from '@/lib/extensions/generated/runtime'
 import { parseSchema, person, Replica, Version } from '@/lib/kdm'
 import { registerKit } from '@/lib/sdk'
@@ -185,6 +185,44 @@ describe('ExtensionService', () => {
     await second.remove('com.example.titles')
     expect(second.paletteCommands()).toEqual([])
     expect(await listInstalledExtensions()).toEqual([])
+  })
+
+  it("lists an extension's panels for the kit document shown now, keeps their HTML, and connects one to the extension", async () => {
+    const withPanel = { ...manifest(['model.read']), contributes: { commands: [], panels: [{ id: 'titles.panel', title: 'Title', entry: 'panel.html' }] } }
+    files.set('ext/titles/extension.json', JSON.stringify(withPanel))
+    files.set('ext/titles/panel.html', '<p id="title"></p>')
+    files.set(
+      'ext/titles/extension.mjs',
+      `export function activate(ctx) {
+        ctx.panels.register('titles.panel', (panel) => panel.onRequest(() => ctx.document.run(async (context) => {
+          context.root.load(['title'])
+          await context.sync()
+          return context.root.title
+        })))
+      }`,
+    )
+    mounted.active = fakeKitDocument('Deck.test')
+    const first = start().service
+    await first.install('ext/titles')
+    expect(first.palettePanels()).toEqual([expect.objectContaining({ id: 'titles.panel', title: 'Title', extension: 'com.example.titles', extensionName: 'Titles', documentPath: 'Deck.test' })])
+    expect(first.enabled('com.example.titles')).toBe(true)
+    first.dispose()
+
+    // Started again, from the app's storage: the panel's HTML came with it.
+    const { service } = start()
+    await service.ready
+    expect(service.host.panelContent('com.example.titles', 'titles.panel')).toMatchObject({ html: '<p id="title"></p>', connect: "'none'" })
+    const channel = new MessageChannel()
+    const panel = new RpcPeer(channel.port1)
+    try {
+      await service.host.openPanel('Deck.test', 'com.example.titles', 'titles.panel', channel.port2)
+      await expect(panel.request('panel/request', null)).resolves.toBe('quarterly review')
+    } finally {
+      panel.close()
+    }
+    await service.setEnabled('com.example.titles', false)
+    expect(service.enabled('com.example.titles')).toBe(false)
+    expect(service.palettePanels()).toEqual([])
   })
 
   it('runs a workspace script against the kit document shown now', async () => {

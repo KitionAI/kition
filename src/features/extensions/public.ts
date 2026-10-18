@@ -1,18 +1,21 @@
 /**
  * Extensions in Kition (`KitExtensions 1.0`): installed from the workspace into the app's own
- * storage, run sandboxed against open kit documents, with their commands in the command palette;
- * and workspace scripts run the same way. Everything here loads the extension host lazily, so a
- * window without extensions does not load it.
+ * storage, run sandboxed against open kit documents, with their commands in the command palette
+ * and their panels beside the kit's editor; and workspace scripts run the same way. Everything here
+ * loads the extension host lazily, so a window without extensions does not load it.
  */
+import i18next from 'i18next'
 import { createElement, lazy, Suspense, useEffect, useState } from 'react'
 import type { ExtensionService } from './extensionService'
 import type { InstalledExtension } from './extensionStore'
+import { openExtensionPanel, useOpenExtensionPanel } from './panelState'
 import { closeRunScriptDialog, openRunScriptDialog, useRunScriptDialogOpen } from './runScriptDialogState'
 import { loadExtensionService } from './serviceLoader'
 
 export type { InstalledExtension } from './extensionStore'
 
 const RunScriptDialog = lazy(() => import('./RunScriptDialog'))
+const ExtensionPanel = lazy(() => import('./ExtensionPanel'))
 
 /** What Settings > Extensions shows and does. */
 export type ExtensionsApi = {
@@ -50,6 +53,15 @@ export function ExtensionDialogs() {
   return open ? createElement(Suspense, { fallback: null }, createElement(RunScriptDialog, { onClose: closeRunScriptDialog })) : null
 }
 
+/**
+ * The extension panel open beside the kit document at `path`, if any (the palette opens one): a
+ * side panel to the right of the kit's editor.
+ */
+export function ExtensionPanelSlot({ path }: { path: string }) {
+  const open = useOpenExtensionPanel(path)
+  return open ? createElement(Suspense, { fallback: null }, createElement(ExtensionPanel, { path, open })) : null
+}
+
 /** Starts the extension host when an installed extension is enabled (so it can activate on open). */
 export async function startInstalledExtensions() {
   const { listInstalledExtensions } = await import('./extensionStore')
@@ -62,8 +74,8 @@ export async function startInstalledExtensions() {
 export type ExtensionPaletteItem = { key: string; title: string; hint: string; run: () => void }
 
 /**
- * The palette's extension entries for the kit document shown now: the commands enabled extensions
- * contribute to it, and Run script. Empty when no kit document is shown.
+ * The palette's extension entries for the kit document shown now: the commands and panels enabled
+ * extensions contribute to it, and Run script. Empty when no kit document is shown.
  */
 export function useExtensionPaletteItems(labels: { runScript: string; runScriptHint: string }): ExtensionPaletteItem[] {
   const [items, setItems] = useState<ExtensionPaletteItem[]>([])
@@ -78,7 +90,13 @@ export function useExtensionPaletteItems(labels: { runScript: string; runScriptH
         hint: command.description ?? command.extensionName,
         run: () => void service.runCommand(command),
       }))
-      setItems([...commands, { key: 'run-script', title: labels.runScript, hint: labels.runScriptHint, run: openRunScriptDialog }])
+      const panels = service.palettePanels().map((panel) => ({
+        key: `panel:${panel.extension}:${panel.id}`,
+        title: i18next.t('extensions.panel.show', { ns: 'common', title: panel.title }) as string,
+        hint: panel.extensionName,
+        run: () => openExtensionPanel(panel.documentPath, { extension: panel.extension, panel: panel.id }),
+      }))
+      setItems([...commands, ...panels, { key: 'run-script', title: labels.runScript, hint: labels.runScriptHint, run: openRunScriptDialog }])
     })
     return () => {
       live = false

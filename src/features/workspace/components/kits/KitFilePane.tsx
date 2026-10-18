@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { KitIcon } from '@/components/KitIcon'
+import { ExtensionPanelSlot } from '@/features/extensions/public'
 import { KitFrame } from '@/features/kits/public'
 import { kitAvailable, type KitEditorEntry, type KitEditorProps } from './kitEditors'
 
@@ -22,7 +23,17 @@ export function KitFilePane({ kit, preview, ...props }: KitEditorProps & { kit: 
   }, [kit])
 
   if (available == null) return null
-  if (available) return <KitFrame kit={kit.embedded} {...props} />
+  if (available) {
+    // An extension's panel, when one is open for this document, sits to the right of the editor.
+    return (
+      <div className="flex h-full min-h-0">
+        <div className="h-full min-w-0 flex-1">
+          <KitFrame kit={kit.embedded} {...props} />
+        </div>
+        <ExtensionPanelSlot path={props.path} />
+      </div>
+    )
+  }
   return kit.preview ? preview : <KitUnavailable kit={kit} />
 }
 

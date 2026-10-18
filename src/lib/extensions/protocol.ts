@@ -12,6 +12,23 @@ import type { ExtensionManifest } from './manifest'
 export const SANDBOX_TAG = 'kition-ext-sandbox/1'
 export type SandboxStart = { tag: typeof SANDBOX_TAG; type: 'start'; runtime: string; connect: string }
 
+/** The message the host posts to a panel page (`sandbox/panel.html`) with the panel's port. */
+export const PANEL_TAG = 'kition-ext-panel/1'
+export type PanelStart = {
+  tag: typeof PANEL_TAG
+  type: 'start'
+  /** The panel's HTML (its entry file). */
+  html: string
+  /** Its CSP `connect-src`: the extension's `network:` origins, or `'none'`. */
+  connect: string
+  /** CSS custom properties for the panel's root (the host's theme), as `--name: value`. */
+  theme?: Record<string, string>
+  info: PanelInfo
+}
+
+/** What a panel knows of itself (`kitionPanel.info` in the panel). */
+export type PanelInfo = { extension: string; panel: string; documentId: string; title: string; locale?: string }
+
 export type DocumentInfo = {
   documentId: string
   kitId: string
@@ -35,6 +52,17 @@ export type HostToWorker = {
   'script/run': { params: DocumentInfo; result: unknown }
   /** Notification: the document changed (`local`: the extension's own batch). */
   'document/changed': { params: { documentId: string; origin: 'local' | 'kit' }; result: never }
+  /** A panel opened on a document: its `MessagePort` comes with the request (`session` names it). */
+  'panel/open': { params: { documentId: string; panel: string; session: string }; result: null }
+  'panel/close': { params: { session: string }; result: null }
+}
+
+/** Between a panel and the extension's worker, over the panel's own channel. */
+export type PanelChannel = {
+  /** Panel to worker: what the panel asks; the worker's `onRequest` handler answers. */
+  'panel/request': { params: unknown; result: unknown }
+  /** Notification, worker to panel: `panel.post(message)`. */
+  'panel/message': { params: unknown; result: never }
 }
 
 /** Worker to host. */

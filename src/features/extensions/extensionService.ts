@@ -6,22 +6,27 @@
  */
 import i18next from 'i18next'
 import { activeKitDocument, followKitConnections, KITION_KIT_HOST, type MountedKitDocument } from '@/features/kits/public'
-import { ExtensionHost, iframeSandbox, type ContributedCommand, type ExtensionNotice, type SandboxFactory } from '@/lib/extensions'
+import { ExtensionHost, iframeSandbox, openPanelFrame, type ContributedCommand, type ContributedPanel, type ExtensionNotice, type PanelFrame, type SandboxFactory } from '@/lib/extensions'
 import { notify } from '@/lib/notify'
 import { portFromConnection, type ConnectionLike } from '@/lib/sdk'
 // Registers the kits whose documents extensions can work on (their object-model schemas).
-import '@/lib/sdk/kits/slide'
+import '@/lib/sdk/kits/index'
 import { deleteInstalledExtension, listInstalledExtensions, putInstalledExtension, type InstalledExtension } from './extensionStore'
 import { cleanWorkspacePath, readExtensionFromWorkspace } from './extensionPackage'
 import { announceExtensionService } from './serviceAnnouncement'
 
 /** Where Kition serves the sandbox page (public/extensions/sandbox.html). */
 export const SANDBOX_URL = '/extensions/sandbox.html'
+/** Where Kition serves the panel page (public/extensions/panel.html). */
+export const PANEL_URL = '/extensions/panel.html'
 
 export type ExtensionsSnapshot = { ready: boolean; installed: InstalledExtension[] }
 
 /** A command the palette offers for the kit document shown now. */
 export type PaletteExtensionCommand = ContributedCommand & { documentPath: string }
+
+/** A panel the palette offers for the kit document shown now. */
+export type PaletteExtensionPanel = ContributedPanel & { documentPath: string }
 
 const t = (key: string, options?: Record<string, unknown>) => i18next.t(key, { ns: 'common', ...options }) as string
 
@@ -68,7 +73,7 @@ export class ExtensionService {
 
   private loadQuietly(extension: InstalledExtension) {
     try {
-      this.host.load({ manifest: extension.manifest, source: extension.source })
+      this.host.load(packageOf(extension))
     } catch (error) {
       console.warn('[extensions] could not load', extension.id, error)
     }
@@ -92,8 +97,8 @@ export class ExtensionService {
   async install(path: string): Promise<InstalledExtension> {
     await this.ready
     const read = await readExtensionFromWorkspace(path, readWorkspaceFile)
-    const extension: InstalledExtension = { id: read.manifest.id, manifest: read.manifest, source: read.source, enabled: true, installedAt: Date.now(), from: read.from }
-    this.host.load({ manifest: extension.manifest, source: extension.source })
+    const extension: InstalledExtension = { id: read.manifest.id, manifest: read.manifest, source: read.source, files: read.files, enabled: true, installedAt: Date.now(), from: read.from }
+    this.host.load(packageOf(extension))
     await putInstalledExtension(extension)
     this.update({ ...this.snapshot, installed: [...this.snapshot.installed.filter((known) => known.id !== extension.id), extension] })
     return extension
@@ -104,7 +109,7 @@ export class ExtensionService {
     const extension = this.snapshot.installed.find((known) => known.id === id)
     if (!extension || extension.enabled === enabled) return
     const next = { ...extension, enabled }
-    if (enabled) this.host.load({ manifest: next.manifest, source: next.source })
+    if (enabled) this.host.load(packageOf(next))
     else this.host.unload(id)
     await putInstalledExtension(next)
     this.update({ ...this.snapshot, installed: this.snapshot.installed.map((known) => (known.id === id ? next : known)) })
@@ -127,6 +132,27 @@ export class ExtensionService {
     const document = activeKitDocument()
     if (!document) return []
     return this.host.commandsFor(document.path).map((command) => ({ ...command, documentPath: document.path }))
+  }
+
+  /** Panels enabled extensions contribute to the kit document shown now. */
+  palettePanels(): PaletteExtensionPanel[] {
+    const document = activeKitDocument()
+    if (!document) return []
+    return this.host.panelsFor(document.path).map((panel) => ({ ...panel, documentPath: document.path }))
+  }
+
+  /** Whether the extension is installed and enabled (its panels may stay open). */
+  enabled(id: string) {
+    return this.snapshot.installed.some((extension) => extension.id === id && extension.enabled)
+  }
+
+  /**
+   * Shows a contributed panel of the kit document at `documentPath` in `container`, sandboxed,
+   * with Kition's theme. Answers its frame; failures are the caller's to show.
+   */
+  async showPanel(documentPath: string, target: { extension: string; panel: string }, container: HTMLElement, options: { theme: Record<string, string>; onNavigated: () => void }): Promise<PanelFrame> {
+    await this.ready
+    return openPanelFrame(this.host, { documentId: documentPath, ...target }, { url: PANEL_URL, container, theme: options.theme, locale: i18next.language, onNavigated: options.onNavigated })
   }
 
   /** Runs a contributed command; failures are shown to the person. */
@@ -167,6 +193,8 @@ export class ExtensionService {
     this.listeners.clear()
   }
 }
+
+const packageOf = (extension: InstalledExtension) => ({ manifest: extension.manifest, source: extension.source, files: extension.files ?? {} })
 
 /** A script's answer, short enough for a notice. */
 function summary(result: unknown) {

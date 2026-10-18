@@ -7,7 +7,7 @@
 // replica relay (packages/sync/src/*.ts), in src/lib/sync/, of the object model's page side
 // (@kition/sdk, packages/sdk/src and its generated kits), in src/lib/sdk/, and of the extension
 // host (@kition/extensions, packages/extensions/src with its built worker runtime), in
-// src/lib/extensions/, with its sandbox page in public/extensions/sandbox.html. kition-sdk is
+// src/lib/extensions/, with its sandbox and panel pages in public/extensions/. kition-sdk is
 // private and Kition is public, so Kition carries the files instead of depending on the packages.
 //
 //   node scripts/sync-kit-host.mjs          copy them from ../kition-sdk (or KITION_SDK)
@@ -77,12 +77,18 @@ for (const name of extensionFiles) {
   files.push({
     source,
     out: `src/lib/extensions/${name}`,
-    rewrite: (text) => header(source) + text.replaceAll("from '@kition/kdm'", `from '${name.includes('/') ? '../../kdm' : '../kdm'}'`).replaceAll("from '@kition/sdk'", "from '../sdk'"),
+    rewrite: (text) =>
+      header(source) +
+      text
+        .replaceAll("from '@kition/kdm'", `from '${name.includes('/') ? '../../kdm' : '../kdm'}'`)
+        .replaceAll("from '@kition/sdk'", "from '../sdk'")
+        .replaceAll("import '@kition/sdk/kits'", "import '../sdk/kits/index'"),
   })
 }
 files.push({ source: 'packages/extensions/sandbox/sandbox.html', out: 'public/extensions/sandbox.html', binary: true })
+files.push({ source: 'packages/extensions/sandbox/panel.html', out: 'public/extensions/panel.html', binary: true })
 // The example extension, which the end-to-end tests install.
-for (const name of ['extension.json', 'extension.mjs']) {
+for (const name of ['extension.json', 'extension.mjs', 'panel.html']) {
   files.push({ source: `examples/extensions/title-case/${name}`, out: `e2e/fixtures/extensions/title-case/${name}`, binary: true })
 }
 // The Rust KDM (crates/kition-kdm): its sources and tests, unchanged, so they run against this

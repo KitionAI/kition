@@ -61,6 +61,24 @@ describe('readExtensionFromWorkspace', () => {
     await expect(readExtensionFromWorkspace('empty.zip', read)).rejects.toThrow(/has no extension\.json/)
   })
 
+  it("reads each panel's HTML, from a folder or a zip", async () => {
+    const withPanel = { ...manifest, contributes: { ...manifest.contributes, panels: [{ id: 'titles.panel', title: 'Titles', entry: 'panels/titles.html' }] } }
+    const { read } = workspace({
+      'titles/extension.json': JSON.stringify(withPanel),
+      'titles/extension.mjs': SOURCE,
+      'titles/panels/titles.html': '<p>Titles</p>',
+      'titles.zip': await makeZip({ 'titles/extension.json': JSON.stringify(withPanel), 'titles/extension.mjs': SOURCE, 'titles/panels/titles.html': '<p>Zipped</p>' }),
+      'broken.zip': await makeZip({ 'extension.json': JSON.stringify(withPanel), 'extension.mjs': SOURCE }),
+      'broken/extension.json': JSON.stringify(withPanel),
+      'broken/extension.mjs': SOURCE,
+    })
+    await expect(readExtensionFromWorkspace('titles', read)).resolves.toMatchObject({ files: { 'panels/titles.html': '<p>Titles</p>' } })
+    await expect(readExtensionFromWorkspace('titles.zip', read)).resolves.toMatchObject({ files: { 'panels/titles.html': '<p>Zipped</p>' } })
+    await expect(readExtensionFromWorkspace('broken.zip', read)).rejects.toThrow(/has no panels\/titles\.html/)
+    await expect(readExtensionFromWorkspace('broken', read)).rejects.toThrow(/could not read broken\/panels\/titles\.html/)
+    await expect(readExtensionFromWorkspace('extensions/none', workspace({ 'extensions/none/extension.json': JSON.stringify(manifest), 'extensions/none/extension.mjs': SOURCE }).read)).resolves.toMatchObject({ files: {} })
+  })
+
   it('refuses an invalid manifest before reading its code', async () => {
     const { read, reads } = workspace({ 'bad/extension.json': JSON.stringify({ ...manifest, permissions: ['files.read'] }), 'bad/extension.mjs': SOURCE })
     await expect(readExtensionFromWorkspace('bad', read)).rejects.toThrow(/unknown permission files\.read/)

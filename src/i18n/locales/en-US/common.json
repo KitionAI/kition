@@ -43,7 +43,8 @@
     "openSharedHint": "Open a document someone shared with you for co-editing",
     "extensions": "Extensions",
     "runScript": "Run script…",
-    "runScriptHint": "Run a workspace .mjs script on this document"
+    "runScriptHint": "Run a workspace .mjs script on this document",
+    "shortcuts": "⌘K opens the palette; inside a kit editor, press ⌘."
   },
   "viewport": {
     "tooNarrow": "The viewport is too narrow. The editor and Workflow canvas may not be fully usable at this size. Consider enlarging the window to at least 480px."
@@ -82,6 +83,12 @@
       "noDocument": "Open a kit document first",
       "done": "Ran {{name}}",
       "failed": "{{name}} failed"
+    },
+    "panel": {
+      "show": "Show panel: {{title}}",
+      "close": "Close panel",
+      "opening": "Opening panel…",
+      "failed": "The panel could not open"
     }
   }
 }

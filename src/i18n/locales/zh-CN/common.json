@@ -43,7 +43,8 @@
     "openSharedHint": "打开他人分享给你的协同编辑文档",
     "extensions": "扩展",
     "runScript": "运行脚本…",
-    "runScriptHint": "对此文档运行工作区中的 .mjs 脚本"
+    "runScriptHint": "对此文档运行工作区中的 .mjs 脚本",
+    "shortcuts": "⌘K 打开命令面板；在套件编辑器中请按 ⌘."
   },
   "viewport": {
     "tooNarrow": "视口过窄，编辑器和 Workflow 画布在此尺寸下可能无法完整使用，建议放大窗口至 480px 以上。"
@@ -82,6 +83,12 @@
       "noDocument": "请先打开一个套件文档",
       "done": "已运行 {{name}}",
       "failed": "{{name}} 运行失败"
+    },
+    "panel": {
+      "show": "显示面板：{{title}}",
+      "close": "关闭面板",
+      "opening": "正在打开面板…",
+      "failed": "无法打开面板"
     }
   }
 }

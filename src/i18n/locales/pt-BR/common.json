@@ -43,7 +43,8 @@
     "openSharedHint": "Abra um documento que alguém compartilhou com você para coedição",
     "extensions": "Extensões",
     "runScript": "Executar script…",
-    "runScriptHint": "Executa um script .mjs do espaço de trabalho neste documento"
+    "runScriptHint": "Executa um script .mjs do espaço de trabalho neste documento",
+    "shortcuts": "⌘K abre a paleta; dentro de um editor de kit, pressione ⌘."
   },
   "viewport": {
     "tooNarrow": "A janela é muito estreita. O editor e o canvas do Workflow podem não ser totalmente utilizáveis neste tamanho. Amplie a janela para pelo menos 480px."
@@ -82,6 +83,12 @@
       "noDocument": "Abra primeiro um documento de kit",
       "done": "{{name}} executado",
       "failed": "{{name}} falhou"
+    },
+    "panel": {
+      "show": "Mostrar painel: {{title}}",
+      "close": "Fechar painel",
+      "opening": "Abrindo painel…",
+      "failed": "Não foi possível abrir o painel"
     }
   }
 }

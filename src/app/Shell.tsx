@@ -611,6 +611,8 @@ export function AppShell() {
 
   useShortcut('Mod+Shift+F', openSearch)
   useShortcut('Mod+K', () => setCommandOpen(true))
+  // Inside a kit editor Cmd+K is the kit's own; the kit forwards Cmd+. (KitFrame's HOST_SHORTCUTS).
+  useShortcut('Mod+.', () => setCommandOpen(true))
   useShortcut('Mod+Shift+O', openVaultLauncherDialog)
 
   useEffect(() => {

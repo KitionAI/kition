@@ -1,7 +1,7 @@
 import type { KitCommand } from './kitSdk'
 
 /** Shortcuts Kition itself owns; a kit command never takes them. */
-const HOST_SHORTCUTS = new Set(['Cmd+N', 'Cmd+W', 'Cmd+O', 'Cmd+P', 'Cmd+Q', 'Cmd+,', 'Cmd+S', 'Cmd+Shift+S', 'Cmd+T'])
+const HOST_SHORTCUTS = new Set(['Cmd+N', 'Cmd+W', 'Cmd+O', 'Cmd+P', 'Cmd+Q', 'Cmd+,', 'Cmd+S', 'Cmd+Shift+S', 'Cmd+T', 'Cmd+.'])
 
 const CODES: Record<string, string> = {
   '[': 'BracketLeft',

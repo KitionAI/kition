@@ -10,6 +10,8 @@ type Opened = {
   imports: string[]
   closed: boolean
   write: (params: { path: string; bytes: ArrayBuffer; mode: 'save' | 'new' }) => Promise<unknown>
+  shortcuts: string[]
+  shortcut: (key: { key: string; code: string; meta: boolean; ctrl: boolean; shift: boolean; alt: boolean }) => void
 }
 
 const encode = (text: string) => new TextEncoder().encode(text).buffer as ArrayBuffer
@@ -19,8 +21,17 @@ const decode = (bytes: ArrayBuffer) => new TextDecoder().decode(bytes)
 const opened: Opened[] = []
 
 vi.mock('../host/mountKit', () => ({
-  mountKit: vi.fn(async (element: unknown, options: { document: { readOnly?: boolean }; handlers: { write: Opened['write'] } }) => {
-    const kit: Opened = { element, readOnly: Boolean(options.document.readOnly), replica: [], imports: [], closed: false, write: options.handlers.write }
+  mountKit: vi.fn(async (element: unknown, options: { document: { readOnly?: boolean }; shortcuts: string[]; handlers: { write: Opened['write']; shortcut: Opened['shortcut'] } }) => {
+    const kit: Opened = {
+      element,
+      readOnly: Boolean(options.document.readOnly),
+      replica: [],
+      imports: [],
+      closed: false,
+      write: options.handlers.write,
+      shortcuts: options.shortcuts,
+      shortcut: options.handlers.shortcut,
+    }
     opened.push(kit)
     return {
       capabilities: ['replica'],
@@ -111,6 +122,22 @@ afterEach(async () => {
 })
 
 describe('KitFrame', () => {
+  it("has the kit forward Kition's palette key, Cmd+., and keep Cmd+K for itself", async () => {
+    await mount()
+    expect(opened[0].shortcuts).toContain('Cmd+.')
+    expect(opened[0].shortcuts).not.toContain('Cmd+K')
+    const keys: Array<{ key: string; metaKey: boolean }> = []
+    const listen = (event: KeyboardEvent) => keys.push({ key: event.key, metaKey: event.metaKey })
+    window.addEventListener('keydown', listen)
+    try {
+      // A forwarded key reaches Kition's window as if pressed there (Shell opens the palette on Mod+.).
+      opened[0].shortcut({ key: '.', code: 'Period', meta: true, ctrl: false, shift: false, alt: false })
+    } finally {
+      window.removeEventListener('keydown', listen)
+    }
+    expect(keys).toEqual([{ key: '.', metaKey: true }])
+  })
+
   it('opens a document this person may only view read-only, and refuses to save it', async () => {
     setReadOnlyDocuments([PATH])
     await mount()

@@ -6,9 +6,9 @@
 
 /** What a `MessagePort` offers that the channel uses; fakes in tests offer the same. */
 export interface PortLike {
-  postMessage(message: unknown): void
+  postMessage(message: unknown, transfer?: Transferable[]): void
   // Bivariant, so a `MessagePort` (whose listener takes a `MessageEvent`) is one.
-  onmessage: { bivarianceHack(event: { data: unknown }): void }['bivarianceHack'] | null
+  onmessage: { bivarianceHack(event: { data: unknown; ports?: readonly MessagePort[] }): void }['bivarianceHack'] | null
   start?(): void
   close?(): void
 }
@@ -37,7 +37,8 @@ export class ExtensionError extends Error {
 
 type Message = { tag: typeof CHANNEL_TAG; id?: number; method?: string; params?: unknown; result?: unknown; error?: { code: string; message: string; data?: Record<string, unknown> } }
 
-export type Handler = (params: never) => unknown
+/** Answers a request or a notification; `ports` are the `MessagePort`s that came with it. */
+export type Handler = (params: never, ports: readonly MessagePort[]) => unknown
 
 const isMessage = (value: unknown): value is Message => typeof value === 'object' && value !== null && (value as Message).tag === CHANNEL_TAG
 
@@ -59,7 +60,7 @@ export class RpcPeer {
   private closed = false
 
   constructor(private readonly port: PortLike) {
-    port.onmessage = (event) => this.receive(event.data)
+    port.onmessage = (event) => this.receive(event.data, event.ports ?? [])
     port.start?.()
   }
 
@@ -69,7 +70,8 @@ export class RpcPeer {
     return this
   }
 
-  request<T = unknown>(method: string, params?: unknown, timeoutMs = 0): Promise<T> {
+  /** Asks `method`; `transfer` (a `MessagePort`, …) goes with the request. */
+  request<T = unknown>(method: string, params?: unknown, timeoutMs = 0, transfer?: Transferable[]): Promise<T> {
     if (this.closed) return Promise.reject(new ExtensionError('failed', 'the extension channel is closed'))
     const id = this.next++
     return new Promise<T>((resolve, reject) => {
@@ -90,7 +92,9 @@ export class RpcPeer {
           reject(new ExtensionError('failed', `${method} did not answer within ${timeoutMs} ms`))
         }, timeoutMs)
       }
-      this.port.postMessage({ tag: CHANNEL_TAG, id, method, params } satisfies Message)
+      const message = { tag: CHANNEL_TAG, id, method, params } satisfies Message
+      if (transfer?.length) this.port.postMessage(message, transfer)
+      else this.port.postMessage(message)
     })
   }
 
@@ -108,10 +112,10 @@ export class RpcPeer {
     this.pending.clear()
   }
 
-  private receive(data: unknown) {
+  private receive(data: unknown, ports: readonly MessagePort[]) {
     if (!isMessage(data) || this.closed) return
     if (data.method !== undefined) {
-      void this.answer(data)
+      void this.answer(data, ports)
       return
     }
     if (data.id === undefined) return
@@ -122,12 +126,12 @@ export class RpcPeer {
     else waiting.resolve(data.result)
   }
 
-  private async answer(message: Message) {
+  private async answer(message: Message, ports: readonly MessagePort[]) {
     const handler = this.handlers.get(message.method!)
     let reply: Message
     try {
       if (!handler) throw new ExtensionError('not-found', `${message.method} is not served here`)
-      const result = await handler(message.params as never)
+      const result = await handler(message.params as never, ports)
       reply = { tag: CHANNEL_TAG, id: message.id, result: result === undefined ? null : result }
     } catch (error) {
       reply = { tag: CHANNEL_TAG, id: message.id, error: wireError(error) }

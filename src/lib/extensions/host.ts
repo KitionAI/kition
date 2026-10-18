@@ -5,13 +5,18 @@
  */
 import { BatchError, type BatchRequest, type Origin } from '../kdm'
 import { kitDescriptor, openDocument, type KitCommandInfo, type ModelDocument, type ModelPort } from '../sdk'
+// Every generated kit's schema: extensions work on documents of any of them.
+import '../sdk/kits/index'
 import { checkBatch, requirePermission } from './gate'
-import { appliesTo, connectSources, hasPermission, parseManifest, type ExtensionCommand, type ExtensionManifest, type Permission } from './manifest'
+import { appliesTo, connectSources, hasPermission, panelAppliesTo, parseManifest, type ExtensionCommand, type ExtensionManifest, type ExtensionPanel, type Permission } from './manifest'
 import type { DocumentInfo, Notice } from './protocol'
 import { ExtensionError, RpcPeer, type PortLike } from './rpc'
 
-/** An installed extension: its manifest and its entry module's source. */
-export type ExtensionPackage = { manifest: ExtensionManifest | unknown; source: string }
+/**
+ * An installed extension: its manifest, its entry module's source, and its other files as text
+ * by package path (each panel's HTML entry).
+ */
+export type ExtensionPackage = { manifest: ExtensionManifest | unknown; source: string; files?: Record<string, string> }
 
 /** A started sandbox: the channel to its worker, and how to tear it down. */
 export type SandboxConnection = { port: PortLike; dispose: () => void }
@@ -50,12 +55,29 @@ export type ExtensionHostOptions = {
 /** A contributed command as a host lists it (palette, menus). */
 export type ContributedCommand = ExtensionCommand & { extension: string; extensionName: string }
 
+/** A contributed panel as a host lists it. */
+export type ContributedPanel = ExtensionPanel & { extension: string; extensionName: string }
+
+/** What a host needs to show a panel: its HTML and its `connect-src` (the extension's). */
+export type PanelContent = { html: string; connect: string; title: string }
+
+/** A panel open on a document; `close` ends it in the extension's worker. */
+export type PanelSession = { session: string; close: () => void }
+
 /** The permissions of a script run with `runScript`. */
 export const SCRIPT_PERMISSIONS: Permission[] = ['model.read', 'model.write', 'commands.run']
 
 type Activation = { commands: Set<string>; unsubscribe: () => void }
 type Running = { peer: RpcPeer; connection: SandboxConnection; activations: Map<string, Activation> }
-type Loaded = { manifest: ExtensionManifest; source: string; principal: string; running: Promise<Running> | null; activating: Map<string, Promise<Activation>> }
+type Loaded = {
+  manifest: ExtensionManifest
+  source: string
+  /** Each panel's HTML, by panel id. */
+  panels: Map<string, string>
+  principal: string
+  running: Promise<Running> | null
+  activating: Map<string, Promise<Activation>>
+}
 type OpenDocument = { document: HostDocument; model: Promise<ModelDocument> | null }
 
 const describeError = (error: unknown) => (error instanceof Error ? error.message : String(error))
@@ -64,6 +86,7 @@ export class ExtensionHost {
   private loaded = new Map<string, Loaded>()
   private documents = new Map<string, OpenDocument>()
   private scripts = 0
+  private panelSessions = 0
 
   constructor(private readonly options: ExtensionHostOptions) {}
 
@@ -71,8 +94,14 @@ export class ExtensionHost {
   load(pkg: ExtensionPackage): ExtensionManifest {
     const manifest = parseManifest(pkg.manifest)
     if (typeof pkg.source !== 'string' || !pkg.source.trim()) throw new ExtensionError('invalid', `${manifest.id} has no code in ${manifest.entry}`)
+    const panels = new Map<string, string>()
+    for (const panel of manifest.contributes.panels ?? []) {
+      const html = pkg.files?.[panel.entry]
+      if (typeof html !== 'string' || !html.trim()) throw new ExtensionError('invalid', `${manifest.id} has no ${panel.entry} for its panel ${panel.id}`)
+      panels.set(panel.id, html)
+    }
     this.unload(manifest.id)
-    this.loaded.set(manifest.id, { manifest, source: pkg.source, principal: `ext:${manifest.id}`, running: null, activating: new Map() })
+    this.loaded.set(manifest.id, { manifest, source: pkg.source, panels, principal: `ext:${manifest.id}`, running: null, activating: new Map() })
     for (const open of this.documents.values()) {
       if (manifest.activation.on === 'open' && appliesTo(manifest, open.document)) void this.activateReporting(manifest.id, open.document.id)
     }
@@ -119,6 +148,48 @@ export class ExtensionHost {
     return [...this.loaded.values()]
       .filter((loaded) => appliesTo(loaded.manifest, open.document))
       .flatMap((loaded) => loaded.manifest.contributes.commands.map((command) => ({ ...command, extension: loaded.manifest.id, extensionName: loaded.manifest.name })))
+  }
+
+  /** The panels loaded extensions contribute to a document, in load order. */
+  panelsFor(documentId: string): ContributedPanel[] {
+    const open = this.documents.get(documentId)
+    if (!open) return []
+    return [...this.loaded.values()].flatMap((loaded) =>
+      (loaded.manifest.contributes.panels ?? [])
+        .filter((panel) => panelAppliesTo(loaded.manifest, panel, open.document))
+        .map((panel) => ({ ...panel, extension: loaded.manifest.id, extensionName: loaded.manifest.name })),
+    )
+  }
+
+  /** A contributed panel's HTML and the network origins its frame may reach (the extension's). */
+  panelContent(extensionId: string, panelId: string): PanelContent {
+    const loaded = this.require(extensionId)
+    const panel = loaded.manifest.contributes.panels?.find((contributed) => contributed.id === panelId)
+    const html = loaded.panels.get(panelId)
+    if (!panel || html === undefined) throw new ExtensionError('not-found', `${extensionId} contributes no panel ${panelId}`)
+    return { html, connect: connectSources(loaded.manifest.permissions), title: panel.title }
+  }
+
+  /**
+   * Opens a contributed panel on a document: activates the extension there first when needed, then
+   * hands its worker `port`, the worker's end of the panel's channel (the panel's frame gets the
+   * other end). Answers the session; closing the document or the extension closes it too.
+   */
+  async openPanel(documentId: string, extensionId: string, panelId: string, port: MessagePort): Promise<PanelSession> {
+    const loaded = this.require(extensionId)
+    const panel = loaded.manifest.contributes.panels?.find((contributed) => contributed.id === panelId)
+    if (!panel) throw new ExtensionError('not-found', `${extensionId} contributes no panel ${panelId}`)
+    const open = this.documents.get(documentId)
+    if (!open) throw new ExtensionError('not-found', `no open document ${documentId}`)
+    if (!panelAppliesTo(loaded.manifest, panel, open.document)) throw new ExtensionError('invalid', `${extensionId}'s panel ${panelId} does not apply to ${open.document.kitId} documents`)
+    await this.activate(extensionId, documentId)
+    const running = await loaded.running!
+    const session = `panel-${++this.panelSessions}`
+    await running.peer.request('panel/open', { documentId, panel: panelId, session }, 20_000, [port])
+    return {
+      session,
+      close: () => void running.peer.request('panel/close', { session }, 5_000).catch(() => undefined),
+    }
   }
 
   /** Runs a contributed command on a document, activating its extension first when needed. */
@@ -183,7 +254,7 @@ export class ExtensionHost {
       contributes: { commands: [] },
       permissions,
     }
-    const loaded: Loaded = { manifest, source: script.source, principal: `script:${name}`, running: null, activating: new Map() }
+    const loaded: Loaded = { manifest, source: script.source, panels: new Map(), principal: `script:${name}`, running: null, activating: new Map() }
     try {
       const running = await this.start(loaded, 'script')
       const model = await this.model(documentId)

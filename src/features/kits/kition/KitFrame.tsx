@@ -4,43 +4,23 @@ import { Loader2 } from 'lucide-react'
 import { writeKitFile } from '@/api/kits'
 import { notify } from '@/lib/notify'
 import { useDocumentReadOnly } from '@/services/documentAccess'
-import { mountKit, type KitConnection, type KitTheme } from '../host/mountKit'
+import { mountKit, type KitConnection } from '../host/mountKit'
 import { KITION_KIT_HOST, readKitReplica, writeKitReplica } from './kitionHost'
 import { registerBridgeEditor, reportBridgeChange } from './kitBridge'
 import { markKitDocumentShown, registerKitConnection } from './kitConnections'
 import { registerKitTestFrame } from './kitTestBridge'
+import { kitionTheme } from './kitionTheme'
 import { pickWorkspaceFile } from './pickWorkspaceFile'
 
 /** An embedded kit UI in Kition: its package under `public/kits/<dir>/`. */
 export type EmbeddedKit = { kitId: string; dir: string; entry?: string }
 
-/** Kition's shortcuts the kit forwards (the kit saves itself with Cmd+S). */
-const HOST_SHORTCUTS = ['Cmd+N', 'Cmd+O', 'Cmd+W', 'Cmd+T', 'Cmd+,', 'Cmd+Q', 'Cmd+P']
-
-/** Kition's design tokens as the Kit UI protocol's theme (docs/design.md). */
-function kitionTheme(): KitTheme {
-  const sans = getComputedStyle(document.body).fontFamily
-  return {
-    colorScheme: 'light',
-    tokens: {
-      '--kit-font-sans': sans,
-      '--kit-font-mono': 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-      '--kit-surface': '#ffffff',
-      '--kit-surface-muted': '#fafaf9',
-      '--kit-canvas': '#f6f5f4',
-      '--kit-text': '#1a1a1a',
-      '--kit-text-muted': '#5d5b54',
-      '--kit-border': '#e5e3df',
-      '--kit-primary': '#5645d4',
-      '--kit-primary-text': '#ffffff',
-      '--kit-primary-soft': 'rgba(86, 69, 212, 0.1)',
-      '--kit-danger': '#e03131',
-      '--kit-radius-control': '8px',
-      '--kit-radius-card': '12px',
-      '--kit-shadow-card': '0 1px 2px rgba(15, 15, 15, 0.06), 0 4px 16px rgba(15, 15, 15, 0.06)',
-    },
-  }
-}
+/**
+ * Kition's shortcuts the kit forwards (the kit saves itself with Cmd+S). Cmd+K stays the kit's
+ * (Word, Slides, and Sheet insert links with it); Cmd+. opens Kition's command palette from
+ * inside a kit instead, a key no kit binds (kit-ui's RESERVED_SHORTCUTS).
+ */
+const HOST_SHORTCUTS = ['Cmd+N', 'Cmd+O', 'Cmd+W', 'Cmd+T', 'Cmd+,', 'Cmd+Q', 'Cmd+P', 'Cmd+.']
 
 /** A workspace-relative path the kit may name: no absolute paths, nothing above the root (UI-H2). */
 function workspacePath(path: string) {

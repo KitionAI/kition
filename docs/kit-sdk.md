@@ -228,7 +228,9 @@ and side panels).
   through the workspace file API, paths confined to the workspace, new files
   and exports under unused names (a rendered movie arrives as `host/write` in
   export mode), `host/pick` (the person chooses a file, which Kition copies
-  next to the document), Kition's shortcuts forwarded back, and the Kit AI
+  next to the document), Kition's shortcuts forwarded back (`HOST_SHORTCUTS`:
+  Cmd+. opens the command palette from inside a kit, whose own Cmd+K stays
+  the kit's), and the Kit AI
   bridge forwarded to the frame as `ai/*`. It mounts on the protocol's
   `ready` handshake, never the frame's `load` event, and abandons a mount its
   effect no longer needs.
@@ -255,17 +257,26 @@ and side panels).
   through the object model (`KitObjectModel 1.0`). `src/lib/sdk/` (the
   object model, `@kition/sdk`) and `src/lib/extensions/` (the extension
   host, `@kition/extensions`, with its built worker runtime) are copies made
-  by the same sync script, as is `public/extensions/sandbox.html`, the
-  sandbox page. Settings > Extensions installs an extension from a workspace
-  folder (with `extension.json` and one ES module) or a zip of it into the
-  app's own storage; its commands show in the command palette for the kit
+  by the same sync script, as are `public/extensions/sandbox.html` and
+  `public/extensions/panel.html`, the sandbox and panel pages. Settings >
+  Extensions installs an extension from a workspace folder (with
+  `extension.json`, one ES module, and its panels' HTML) or a zip of it into
+  the app's own storage; its commands show in the command palette for the kit
   document shown now, next to "Run script", which runs a workspace `.mjs`
   file whose default export takes the same `ctx`. Each extension and script
   runs in a worker inside a `sandbox="allow-scripts"` frame on an opaque
   origin, reaches the network only at the origins it declares, and changes
-  the document only with `model.write`; a kit is offered to extensions when
-  `src/lib/sdk/kits/` registers its schema (Slides today).
-  `e2e/extensions.spec.ts` installs the example extension and runs it.
+  the document only with `model.write`. An extension's panels show in the
+  palette too ("Show panel: …"); one opens as a side panel to the right of
+  the kit's editor (`ExtensionPanelSlot` in `KitFilePane`), in a visible
+  frame of the same kind with the extension's network origins, Kition's
+  theme tokens, and a channel to the extension's worker; Kition's
+  `frame-src` keeps it on its page. `src/lib/sdk/kits/` registers the schema
+  of every kit with an object model (Word, Slides, Sheet, Photo, Vector,
+  Effect, CAD, PDF), generated in kition-sdk from each kit's
+  `model/schema.json` at its pinned commit. `e2e/extensions.spec.ts`
+  installs the example extension, runs its command and its panel, and runs
+  scripts on Slides, Word, and Sheet documents.
 - A kit's development host (`web/dev.html`, kition-sdk's `@kition/kit-dev-host`)
   runs the editor without Kition, with an in-memory workspace; it can lend a
   folder of linked media. It is also the reference for other hosts.
