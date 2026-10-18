@@ -3690,6 +3690,7 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_json",
+ "sha2",
  "tempfile",
  "thiserror 2.0.21",
  "tracing",
@@ -3741,6 +3742,7 @@ dependencies = [
 name = "kition-table-api"
 version = "0.0.0"
 dependencies = [
+ "base64 0.22.1",
  "csv",
  "kition-kdm",
  "kition-kitable",

@@ -51,6 +51,10 @@ export type DataDocumentsReplicaImportRequest = {
    * Changes another replica of the same document exported; must not be empty.
    */
   changes: DataDocumentsReplicaBytes
+  /**
+   * A blob section of the blobs the changes name (what the export answered, or what the relay fetched); blank for none. Each blob must hash to its name (400).
+   */
+  blobs?: DataDocumentsReplicaBytes
 }
 
 export type DataDocumentsReplicaCreateRequest = {
@@ -66,6 +70,10 @@ export type DataDocumentsReplicaCreateRequest = {
    * A full export (replica/export from nothing) of another copy of the document: the new file holds that same document (same docId), with no undo steps. The answer is a versionResponse.
    */
   changes: DataDocumentsReplicaBytes
+  /**
+   * A blob section of the blobs the changes name; blank for none.
+   */
+  blobs?: DataDocumentsReplicaBytes
 }
 
 export type DataDocumentsReplicaVersionResponse = {
@@ -99,6 +107,10 @@ export type DataDocumentsReplicaExportResponse = {
    * The changes a replica at since lacks.
    */
   changes: DataDocumentsReplicaBytes
+  /**
+   * A blob section of the blobs this file holds that the changes name; blank when they name none.
+   */
+  blobs?: DataDocumentsReplicaBytes
 }
 
 export type DataDocumentsReplicaImportResponse = {
@@ -131,6 +143,6 @@ export type DataDocumentsReplicaReplicaChanged = {
 }
 
 /**
- * A .kitable file's KDM replica for co-editing: POST /v1/data-documents/replica/version, POST /v1/data-documents/replica/export, POST /v1/data-documents/replica/import, and POST /v1/data-documents/replica/create (a new file from another copy's full export, answered like version), each naming the document by its workspace-relative path; and the table/replica-changed notification on the kit bridge stream (GET /v1/kits/bridge), sent after every local transaction (any origin but import) moves a file's replica to a new version. Bytes (versions and changes) are standard base64. An import has the origin import:sync: it is no undo step, it is stored and projected like any write, and it is published as table/changed (table-changed.schema.json) when it changed anything.
+ * A .kitable file's KDM replica for co-editing: POST /v1/data-documents/replica/version, POST /v1/data-documents/replica/export, POST /v1/data-documents/replica/import, and POST /v1/data-documents/replica/create (a new file from another copy's full export, answered like version), each naming the document by its workspace-relative path; and the table/replica-changed notification on the kit bridge stream (GET /v1/kits/bridge), sent after every local transaction (any origin but import) moves a file's replica to a new version. Bytes (versions, changes, and blob sections) are standard base64. Attachments the file holds as blobs travel beside the changes as a blob section, (64-hex SHA-256 as ASCII, u64 little-endian length, bytes)*: an export answers the blobs its changes name, and an import or create stores the blobs it is given before the changes. An import has the origin import:sync: it is no undo step, it is stored and projected like any write, and it is published as table/changed (table-changed.schema.json) when it changed anything.
  */
 export type DataDocumentsReplicaContract = DataDocumentsReplicaVersionResponse

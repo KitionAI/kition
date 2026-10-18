@@ -4,6 +4,7 @@
 
 mod agent_api;
 mod ai_field;
+mod blob_attachments;
 mod dashboards;
 mod documents;
 mod import_parse;

@@ -2,8 +2,10 @@
 //!
 //! A `.kitable` file is a self-contained SQLite database holding one data
 //! document: its tables, fields, views, view configuration, records, record
-//! links, history, and attachments. Every timestamp is Unix milliseconds.
+//! links, history, and attachments (blobs held in the file, see [`blobs`]). Every timestamp is
+//! Unix milliseconds.
 
+pub mod blobs;
 mod bulk;
 mod computed;
 mod dashboards;
@@ -16,6 +18,7 @@ mod schema;
 mod source;
 mod view_config;
 
+pub use blobs::{Blob, BlobInfo};
 pub use bulk::{BulkCopyResult, BulkDeleteResult};
 pub use dashboards::Dashboard;
 pub use file::{CreateOptions, FORMAT, FORMAT_VERSION, Info, KitableFile, SCHEMA_VERSION};

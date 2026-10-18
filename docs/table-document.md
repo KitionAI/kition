@@ -87,6 +87,42 @@ the runtime always does both in one SQL transaction — append the replica's cha
 — so a crash or a failed write leaves the file exactly as it was, never the replica and the tables
 disagreeing (`kdm/commit.rs`, `kdm/project.rs`).
 
+### Attachments: blobs in the file
+
+An attachment cell holds a list of attachment values (`{ url, name, mimeType, sizeBytes, … }`). A
+value whose `url` is `kition-blob:<sha256>` names a blob the file itself holds
+(`crates/kition-kitable/src/blobs.rs`): the table `kition_blobs` (`hash`, `mime`, `name`, `size`,
+`bytes`), keyed by the lowercase hex SHA-256 of the bytes, made by the first blob a file stores.
+Blobs are file bookkeeping, not part of the KDM document: storing one is a plain SQL write and never
+an undo step, and nothing deletes one (undo may bring back a value that names it). A file with
+blobs needs nothing outside itself, so the Table kit shows and adds pictures in any application
+(`attachments.read`, `attachments.put` in `kition-table-api`).
+
+- **Uploads** (`POST .../tables/{tableId}/attachments`, the scenario builder's files) are stored as
+  blobs, not workspace files; `GET /v1/data-documents/{id}/blobs/{hash}` serves the bytes (images,
+  video, audio, PDF, and plain text in place; anything else downloads, with `nosniff` and a
+  sandboxing CSP). The editor resolves blob URLs through `TableHost.resolveBlobURL` (Kition: that
+  route), or else from object URLs of the bytes `TableDataSource.attachments.read` answers (the
+  kit), in `TableBlobScope`.
+- **Path attachments** (a `url` such as `/workspace-files/...`), which files from before blobs hold,
+  keep showing as they are. When Kition writes such a value again (a record create or update, a
+  `transact`, an AI field fill) and it names one of the workspace's content-addressed assets
+  (`.kition/assets/sha256/…`, bytes that hash to the name), the asset's bytes become a blob and the
+  value names it (`crates/kition-datadoc/src/blob_attachments.rs`). A value whose file is missing,
+  or that names any other workspace file (a co-editor could name any), stays exactly as it was;
+  the workspace file itself is never touched.
+- **Co-editing** carries blobs beside the changes that name them: the change holds the hash as
+  text, `replica/export` answers a blob section of the blobs its changes name, the relay uploads
+  those the sync server lacks and fetches the ones a pulled change names, and `replica/import` (and
+  `replica/create`, opening a shared table) stores them before the changes.
+- **Compatibility.** The schema version stays 4: the blob table is additive and only exists once a
+  blob is stored, so a file without blobs is byte for byte what older builds write, and older builds
+  open a file with blobs (they check only that the schema version is not newer), keep its blobs
+  through their writes, and show a blob attachment by its name without a picture. Their editor
+  keeps the value's `url`, which carries the hash, so nothing is lost when they edit the cell.
+  Nothing an older build reads changed meaning, so no version bump (which would make older builds
+  refuse such files outright) is needed.
+
 ## Projection and derived values
 
 `kdm/project.rs`'s `project_changes` takes the set of objects a transaction, an import, or a merge
@@ -188,8 +224,8 @@ interfaces in `packages/table-editor/src/table/ports/`, provided by React contex
   and `onChange` for changes made elsewhere. Kition's is `httpTableDataSource`
   (`src/features/table/host/`): the routes above and `table/changed`, without this window's own
   echoes.
-- `TableHost`: the app services the editor uses besides its data (attachment URLs and upload,
-  image copy, CSV save, toasts, file import, AI fields, design from a record). Every member is
+- `TableHost`: the app services the editor uses besides its data (attachment URLs, blob URLs, and
+  upload, image copy, CSV save, toasts, file import, AI fields, design from a record). Every member is
   optional; without one the editor hides what needs it. `locale()` sets the locale dates format
   with. Kition's is `kitionTableHost`.
 

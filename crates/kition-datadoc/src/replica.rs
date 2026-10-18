@@ -4,6 +4,11 @@
 //! like the other by-path routes, and open through the shared [`crate::TableDocuments`] handle.
 //! Bytes travel as standard base64 in the JSON bodies.
 //!
+//! Attachments the file holds as blobs travel beside the changes in a blob section
+//! (`kition_kitable::blobs`): an export answers the blobs its changes name, an import (and a
+//! `create`) stores the blobs it is given before the changes, so an imported attachment is
+//! never without its bytes.
+//!
 //! An import has an `import` origin: it is no undo step, so a person's undo never reverts a
 //! co-editor's edit. It is stored and projected in one SQL transaction like any write, then
 //! published as `table/changed` so open editors refresh. Every local transaction is reported as
@@ -21,7 +26,7 @@ use kition_core::events::DomainEvent;
 use kition_core::{AppError, AppResult};
 use kition_http::{CurrentUser, JsonBody, ok};
 use kition_kdm::{Origin, OriginKind, Version};
-use kition_kitable::{KitableError, KitableFile, TableChange};
+use kition_kitable::{KitableError, KitableFile, TableChange, blobs};
 use serde::Deserialize;
 use serde_json::{Value, json};
 
@@ -52,6 +57,9 @@ struct ReplicaRequest {
     /// `import`: the changes to import; `create`: the full export to create from (base64).
     #[serde(default)]
     changes: Option<String>,
+    /// `import` and `create`: a blob section (base64) of the blobs the changes need.
+    #[serde(default)]
+    blobs: Option<String>,
 }
 
 fn decode(value: Option<&str>, what: &str) -> AppResult<Vec<u8>> {
@@ -132,8 +140,12 @@ async fn export(
             )?;
             let file = state.open_document_as(&doc, default_origin())?;
             let changes = file.export_replica_changes(&since).map_err(refused)?;
+            let blobs = file
+                .blobs_for_changes(&changes)
+                .map_err(AppError::unhandled)?;
             let mut body = identity(&doc, &file.replica().doc_id(), &file.replica_version());
             body["changes"] = Value::from(encode_bytes(&changes));
+            body["blobs"] = Value::from(encode_bytes(&blobs));
             Ok(body)
         })
         .await?;
@@ -154,12 +166,14 @@ async fn import(
             if changes.is_empty() {
                 return Err(AppError::bad_request("changes must not be empty"));
             }
+            let blobs = decode(request.blobs.as_deref(), "blobs")?;
             let doc = state.document_by_path(
                 user_id,
                 request.path.as_deref().unwrap_or_default(),
                 request.workspace_root.as_deref().unwrap_or_default(),
             )?;
             let mut file = state.open_document_as(&doc, origin)?;
+            file.add_blob_section(&blobs).map_err(refused)?;
             let imported = file.import_replica_changes(&changes).map_err(refused)?;
             if imported.repaired {
                 // The repair wrote changes of this replica's own: the room must get them.
@@ -195,6 +209,15 @@ async fn create(
             if changes.is_empty() {
                 return Err(AppError::bad_request("changes must not be empty"));
             }
+            let blobs = decode(request.blobs.as_deref(), "blobs")?;
+            // Checked before anything touches the disk, like the changes.
+            let entries = blobs::decode_blob_section(&blobs).map_err(refused)?;
+            if entries
+                .iter()
+                .any(|(hash, bytes)| blobs::blob_hash(bytes) != *hash)
+            {
+                return Err(AppError::bad_request("a blob holds bytes of another hash"));
+            }
             let raw_path = request.path.unwrap_or_default();
             if raw_path.trim().is_empty() {
                 return Err(AppError::bad_request("Data document path cannot be empty"));
@@ -204,7 +227,12 @@ async fn create(
             let path = default_document_path(&raw_path, "");
             let absolute = resolve_from_root(&root, &path)?;
             match KitableFile::create_from_replica(&absolute, &changes) {
-                Ok(file) => file.close(),
+                Ok(mut file) => {
+                    if let Err(err) = file.add_blob_section(&blobs) {
+                        tracing::warn!(error = %err, "a shared table's blobs could not be stored");
+                    }
+                    file.close();
+                }
                 Err(KitableError::Exists) => {
                     return Err(AppError::conflict("A file already exists at this path"));
                 }

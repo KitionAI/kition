@@ -1,5 +1,6 @@
 //! Record routes (history, links, CSV/Markdown transfer: adapters over
-//! `kition_table_api::records`) and attachment uploads.
+//! `kition_table_api::records`), attachment uploads stored in the file as blobs, and the blobs'
+//! bytes (see [`crate::blob_attachments`]).
 
 use std::collections::HashMap;
 
@@ -12,10 +13,8 @@ use http::header;
 use kition_core::events::{DomainEvent, RecordCreated, RecordUpdated};
 use kition_core::{AppError, AppResult, now_millis};
 use kition_http::{CurrentUser, JsonBody, ok};
-use kition_kitable::AttachmentSpec;
 pub use kition_table_api::records::stringify_cell;
 use kition_table_api::records::{self as api, CsvRequest, LinkRequest, RecordRequest};
-use serde_json::json;
 
 use crate::source::{list_window, parse_id};
 use crate::{DataDocState, api_error, respond};
@@ -46,6 +45,7 @@ pub fn routes() -> Router<DataDocState> {
             "/data-documents/{documentId}/tables/{tableId}/attachments",
             post(upload_attachment),
         )
+        .route("/data-documents/{documentId}/blobs/{hash}", get(read_blob))
         .route(
             "/data-documents/{documentId}/tables/{tableId}/import/csv",
             post(import_csv),
@@ -93,6 +93,10 @@ async fn create_record(
             let doc = state.load_document(user_id, &document_id)?;
             let table_id = parse_id(&table_id)?;
             let mut file = state.open_or_500(&doc)?;
+            let mut request = request;
+            if let Some(values) = request.values.as_mut() {
+                state.import_path_attachments(&mut file, table_id, values);
+            }
             let record = api::create(&mut file, table_id, request).map_err(api_error)?;
             state
                 .events
@@ -123,6 +127,10 @@ async fn update_record(
             let table_id = parse_id(&table_id)?;
             let record_id = parse_id(&record_id)?;
             let mut file = state.open_or_500(&doc)?;
+            let mut request = request;
+            if let Some(values) = request.values.as_mut() {
+                state.import_path_attachments(&mut file, table_id, values);
+            }
             let (record, previous) =
                 api::update(&mut file, table_id, record_id, request).map_err(api_error)?;
             state
@@ -311,10 +319,7 @@ async fn upload_attachment(
         .blocking(move |state| {
             let doc = state.load_document(user_id, &document_id)?;
             let table_id = parse_id(&table_id)?;
-            let file = state.open_or_500(&doc)?;
-            file.get_table(table_id)
-                .map_err(|_| AppError::not_found("Table does not exist"))?;
-
+            let mut file = state.open_or_500(&doc)?;
             let original_name = safe_attachment_name(&file_name);
             let mut mime = content_type.trim().to_owned();
             if mime.is_empty() {
@@ -330,36 +335,65 @@ async fn upload_attachment(
             if mime.is_empty() {
                 mime = "application/octet-stream".to_owned();
             }
-            let asset = state
-                .assets
-                .save_bytes(&data, &original_name, &mime)
-                .map_err(|_| AppError::internal("Failed to save attachment"))?;
-            let response = json!({
-                "name": original_name,
-                "mimeType": mime,
-                "sizeBytes": asset.size_bytes,
-                "url": asset.url,
-                "assetId": asset.asset_id,
-                "sha256": asset.sha256,
-                "workspacePath": asset.workspace_path,
-            });
-            let register = || AppError::internal("Failed to register attachment");
-            let file_document_id = file.document_id().map_err(|_| register())?;
-            file.add_attachment(&AttachmentSpec {
-                document_id: file_document_id,
-                record_id: None,
-                field_id: None,
-                name: original_name.clone(),
-                path: asset.workspace_path.clone(),
-                mime_type: mime.clone(),
-                size: asset.size_bytes,
-                meta: response.clone(),
-            })
-            .map_err(|_| register())?;
-            Ok(response)
+            kition_table_api::attachments::put(&mut file, table_id, &data, &original_name, &mime)
+                .map_err(api_error)
         })
         .await?;
     Ok(ok(body))
+}
+
+/// MIME types a blob is served as in place; anything else downloads as bytes, so a stored page
+/// or script never runs on the runtime's origin.
+const INLINE_TYPES: &[&str] = &[
+    "image/",
+    "video/",
+    "audio/",
+    "application/pdf",
+    "text/plain",
+];
+
+/// `GET /data-documents/{documentId}/blobs/{hash}`: a blob's bytes, as an attachment's URL
+/// loads them. Blobs never change (the URL names their content), so they may be cached forever.
+async fn read_blob(
+    State(state): State<DataDocState>,
+    user: CurrentUser,
+    Path((document_id, hash)): Path<(String, String)>,
+) -> AppResult<Response> {
+    let user_id = user.id;
+    let blob = state
+        .blocking(move |state| {
+            let doc = state.load_document(user_id, &document_id)?;
+            let file = state.open_or_500(&doc)?;
+            file.blob(hash.trim())
+                .map_err(AppError::unhandled)?
+                .ok_or_else(|| AppError::not_found("Attachment does not exist"))
+        })
+        .await?;
+    let mime = blob.info.mime.to_ascii_lowercase();
+    let inline = INLINE_TYPES.iter().any(|kind| mime.starts_with(kind)) && mime != "image/svg+xml";
+    let content_type = if inline {
+        mime
+    } else {
+        "application/octet-stream".to_owned()
+    };
+    let disposition = if inline { "inline" } else { "attachment" };
+    Ok((
+        [
+            (header::CONTENT_TYPE, content_type),
+            (header::CONTENT_DISPOSITION, disposition.to_owned()),
+            (
+                header::CACHE_CONTROL,
+                "private, max-age=31536000, immutable".to_owned(),
+            ),
+            (header::X_CONTENT_TYPE_OPTIONS, "nosniff".to_owned()),
+            (
+                header::CONTENT_SECURITY_POLICY,
+                "sandbox; default-src 'none'".to_owned(),
+            ),
+        ],
+        blob.bytes,
+    )
+        .into_response())
 }
 
 pub(crate) fn mime_guess_type(extension: &str) -> String {

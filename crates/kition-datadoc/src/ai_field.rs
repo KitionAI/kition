@@ -15,6 +15,7 @@ use serde::Deserialize;
 use serde_json::{Map, Value, json};
 use sha2::{Digest, Sha256};
 
+use crate::blob_attachments::inline_blob_images;
 use crate::index::DataDocument;
 use crate::records::stringify_cell;
 use crate::source::parse_id;
@@ -25,7 +26,7 @@ const MAX_SOURCE_CHARS: usize = 8000;
 const MAX_OUTPUT_CHARS: usize = 20_000;
 const BATCH_MAX_ROWS: usize = 100;
 const MAX_IMAGES: usize = 4;
-const MAX_IMAGE_BYTES: u64 = 20 << 20;
+pub(crate) const MAX_IMAGE_BYTES: u64 = 20 << 20;
 const MAX_IMAGE_COUNT: i64 = 5;
 
 pub fn routes() -> Router<DataDocState> {
@@ -756,25 +757,25 @@ async fn fill(
     record_id: i64,
 ) -> Result<(Record, Value), String> {
     let doc = target.doc.clone();
-    let record = state
+    let source_name = target.source.as_ref().map(|source| source.name.clone());
+    let source_value = state
         .blocking(move |state| {
             let file = state.open_or_500(&doc)?;
-            file.get_record(table_id, record_id)
-                .map_err(|_| AppError::not_found("Record does not exist"))
+            let record = file
+                .get_record(table_id, record_id)
+                .map_err(|_| AppError::not_found("Record does not exist"))?;
+            let value = source_name
+                .and_then(|name| record.values.get(&name).cloned())
+                .unwrap_or(Value::Null);
+            Ok(inline_blob_images(&file, &value, MAX_IMAGE_BYTES))
         })
         .await
         .map_err(|error| error.to_string())?;
-    let (source_title, source_value) = match &target.source {
-        Some(source) => (
-            source.title.clone(),
-            record
-                .values
-                .get(&source.name)
-                .cloned()
-                .unwrap_or(Value::Null),
-        ),
-        None => (String::new(), Value::Null),
-    };
+    let source_title = target
+        .source
+        .as_ref()
+        .map(|source| source.title.clone())
+        .unwrap_or_default();
     let (output, cell_state) = state
         .generate(
             user_id,
@@ -792,6 +793,8 @@ async fn fill(
             let mut file = state.open_or_500_as(&doc, Origin::system("aifield"))?;
             let mut values = Map::new();
             values.insert(name, output);
+            // Generated images are stored in the file, like uploads.
+            state.import_path_attachments(&mut file, table_id, &mut values);
             file.update_record(table_id, record_id, &values, None)
                 .map_err(|error| AppError::bad_request(error.to_string()))
         })

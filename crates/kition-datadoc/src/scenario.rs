@@ -20,7 +20,8 @@ use serde_json::{Map, Value, json};
 use tokio::sync::mpsc;
 
 use crate::DataDocState;
-use crate::ai_field::parse_config;
+use crate::ai_field::{MAX_IMAGE_BYTES, parse_config};
+use crate::blob_attachments::inline_blob_images;
 use crate::index::{DataDocument, NewDocument};
 use crate::records::{MAX_ATTACHMENT_BYTES, mime_guess_type, safe_attachment_name};
 
@@ -465,9 +466,14 @@ async fn run(
     let base_name = plan.base_name.clone();
     let (doc, table, records) = state
         .blocking(move |state| {
-            let mut path = format!("{}.kitable", crate::source::default_document_path("", &base_name).trim_end_matches(".kitable"));
+            let mut path = format!(
+                "{}.kitable",
+                crate::source::default_document_path("", &base_name).trim_end_matches(".kitable")
+            );
             let mut counter = 2;
-            while crate::source::resolve_from_root(&state.workspace_root_string(), &path).is_ok_and(|p| p.exists()) {
+            while crate::source::resolve_from_root(&state.workspace_root_string(), &path)
+                .is_ok_and(|p| p.exists())
+            {
                 path = format!("{} {counter}.kitable", base_name.trim());
                 counter += 1;
             }
@@ -484,26 +490,40 @@ async fn run(
                 },
                 &[spec],
             )?;
-            let table = tables.into_iter().next().ok_or_else(|| AppError::internal("Failed to create table"))?;
-            let primary = table.fields.iter().find(|f| f.is_primary).map(|f| f.name.clone());
-            let attachment_fields: Vec<String> =
-                table.fields.iter().filter(|f| f.field_type == "attachment").map(|f| f.name.clone()).collect();
+            let table = tables
+                .into_iter()
+                .next()
+                .ok_or_else(|| AppError::internal("Failed to create table"))?;
+            let primary = table
+                .fields
+                .iter()
+                .find(|f| f.is_primary)
+                .map(|f| f.name.clone());
+            let attachment_fields: Vec<String> = table
+                .fields
+                .iter()
+                .filter(|f| f.field_type == "attachment")
+                .map(|f| f.name.clone())
+                .collect();
             let mut file = state.open_or_500_as(&doc, Origin::system("scenario"))?;
             let mut records = Vec::new();
             for upload in &uploads {
-                let asset = state.assets.save_bytes(&upload.data, &upload.name, &upload.mime)?;
+                // Stored in the file as a blob, like an attachment uploaded to a cell.
+                let blob = file
+                    .put_blob(&upload.data, &upload.mime, &upload.name)
+                    .map_err(|err| AppError::internal(err.to_string()))?;
                 let mut values = Map::new();
                 if let Some(primary) = &primary {
                     values.insert(primary.clone(), json!(upload.name));
                 }
-                let attachment = json!([{
-                    "url": asset.url, "name": upload.name, "mimeType": asset.mime_type, "sizeBytes": asset.size_bytes,
-                    "assetId": asset.asset_id, "sha256": asset.sha256, "workspacePath": asset.workspace_path,
-                }]);
+                let attachment =
+                    json!([kition_kitable::blobs::attachment_value(&blob, &upload.name)]);
                 for name in &attachment_fields {
                     values.insert(name.clone(), attachment.clone());
                 }
-                let record = file.create_record(table.id, &values).map_err(|err| AppError::internal(err.to_string()))?;
+                let record = file
+                    .create_record(table.id, &values)
+                    .map_err(|err| AppError::internal(err.to_string()))?;
                 state.publish_record_created(&doc, &record);
                 records.push(record);
             }
@@ -545,6 +565,7 @@ async fn run(
                 .and_then(|s| record.values.get(&s.name))
                 .cloned()
                 .unwrap_or(Value::Null);
+            let source_value = inline_images(state, &doc, source_value).await;
             let source_title = source.map(|s| s.title.clone()).unwrap_or_default();
             match state
                 .generate(
@@ -576,6 +597,18 @@ async fn run(
     Ok(())
 }
 
+/// A source cell with its image blobs as `data:` URLs, which the model reads.
+async fn inline_images(state: &DataDocState, doc: &DataDocument, value: Value) -> Value {
+    let (doc, fallback) = (doc.clone(), value.clone());
+    state
+        .blocking(move |state| {
+            let file = state.open_or_500(&doc)?;
+            Ok(inline_blob_images(&file, &value, MAX_IMAGE_BYTES))
+        })
+        .await
+        .unwrap_or(fallback)
+}
+
 async fn save_cell(
     state: &DataDocState,
     doc: &DataDocument,
@@ -590,6 +623,7 @@ async fn save_cell(
             let mut file = state.open_or_500_as(&doc, Origin::system("scenario"))?;
             let mut values = Map::new();
             values.insert(name, value);
+            state.import_path_attachments(&mut file, table_id, &mut values);
             file.update_record(table_id, record_id, &values, None)
                 .map(|_| ())
                 .map_err(|err| AppError::internal(err.to_string()))

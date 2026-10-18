@@ -1,9 +1,9 @@
 //! The table document request layer.
 //!
 //! The data-document API's document-scoped requests (tables, fields, views, view configuration,
-//! records, links, history, `transact`/`undo`/`redo`/`history-state`, dashboards, and CSV or
-//! Markdown transfer) as plain functions over an open [`KitableFile`]: JSON in, JSON out, no
-//! server, no async runtime. Kition's runtime routes (`kition-datadoc`) are thin adapters over
+//! records, links, history, `transact`/`undo`/`redo`/`history-state`, dashboards, CSV or
+//! Markdown transfer, and attachments held in the file as blobs) as plain functions over an
+//! open [`KitableFile`]: JSON in, JSON out, no server, no async runtime. Kition's runtime routes (`kition-datadoc`) are thin adapters over
 //! these functions, and a table kit answers the same requests through [`handle`], so both answer
 //! with the same JSON.
 //!
@@ -13,6 +13,7 @@
 //! (`tableId`, `recordId`, `fieldId`, `viewId`, `dashboardId`) next to the route's query values
 //! and body fields.
 
+pub mod attachments;
 mod coerce;
 pub mod csvutil;
 pub mod dashboards;

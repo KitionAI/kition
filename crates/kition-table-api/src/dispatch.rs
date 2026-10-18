@@ -5,8 +5,8 @@ use serde_json::{Map, Value};
 
 use crate::coerce::{list_window, parse_id};
 use crate::{
-    ApiError, ApiResult, DocRef, KitableFile, dashboards, records, respond, tables, transact,
-    view_config,
+    ApiError, ApiResult, DocRef, KitableFile, attachments, dashboards, records, respond, tables,
+    transact, view_config,
 };
 
 /// Every method [`handle`] answers, with the runtime route it mirrors (relative to
@@ -112,6 +112,8 @@ pub const METHODS: &[(&str, &str)] = &[
     ("dashboards.list", "GET /dashboards"),
     ("dashboards.upsert", "PUT /dashboards/{dashboardId}"),
     ("dashboards.delete", "DELETE /dashboards/{dashboardId}"),
+    ("attachments.put", "POST /tables/{tableId}/attachments"),
+    ("attachments.read", "GET /blobs/{hash}"),
 ];
 
 /// Answers one request against `file`, as the runtime route named in [`METHODS`] answers it
@@ -120,6 +122,9 @@ pub const METHODS: &[(&str, &str)] = &[
 /// its query values (`limit`, `offset`, `field_id`, `q`), and its body's fields.
 ///
 /// `csv.export` answers `{ "name", "content" }`, what the route sends as a file download.
+/// `attachments.put` takes the file's bytes as `data` (base64) next to `name` and `mimeType`,
+/// where the route takes a multipart upload; `attachments.read` answers the blob with its bytes
+/// as `data` (base64), where the route sends them as the response body.
 /// Writes act as the file's current origin ([`KitableFile::set_origin`]).
 pub fn handle(
     file: &mut KitableFile,
@@ -264,6 +269,11 @@ pub fn handle(
         "dashboards.list" => dashboards::list(file),
         "dashboards.upsert" => dashboards::upsert(file, &p.key("dashboardId"), params),
         "dashboards.delete" => dashboards::delete(file, &p.key("dashboardId")),
+        "attachments.put" => {
+            let request = p.body()?;
+            attachments::put_request(file, p.id("tableId")?, &request)
+        }
+        "attachments.read" => attachments::read(file, &p.key("hash")),
         other => Err(ApiError::UnknownMethod(other.to_owned())),
     }
 }

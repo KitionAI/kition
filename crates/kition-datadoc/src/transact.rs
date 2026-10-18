@@ -54,13 +54,14 @@ async fn transact(
     Path(document_id): Path<String>,
     JsonBody(request): JsonBody<TransactRequest>,
 ) -> AppResult<Response> {
-    let request = request.check().map_err(api_error)?;
+    let mut request = request.check().map_err(api_error)?;
     let user_id = user.id;
     let event_origin = origin.clone();
     let (doc, body, change) = state
         .blocking(move |state| {
             let doc = state.load_document(user_id, &document_id)?;
             let mut file = state.open_or_500_as(&doc, origin.clone())?;
+            state.import_path_attachments_in_ops(&mut file, &mut request.ops);
             let (body, change) =
                 api::transact(&mut file, &doc.doc_ref(), &request).map_err(api_error)?;
             Ok((doc, body, change))
