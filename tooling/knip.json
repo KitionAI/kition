@@ -12,7 +12,11 @@
     "e2e/helpers/**/*.ts",
     "src/features/kits/host/*.ts",
     "src/lib/kdm/*.ts",
-    "src/lib/sync/*.ts"
+    "src/lib/sync/*.ts",
+    "src/lib/sdk/*.ts",
+    "src/lib/sdk/kits/*.ts",
+    "src/lib/extensions/*.ts",
+    "src/lib/extensions/generated/*.ts"
   ],
   "project": [
     "src/**/*.{ts,tsx}",

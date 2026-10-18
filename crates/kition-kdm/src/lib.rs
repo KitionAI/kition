@@ -10,6 +10,7 @@
 
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::indexing_slicing)]
 
+pub mod batch;
 mod error;
 mod ids;
 mod marks;

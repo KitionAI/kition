@@ -20,11 +20,13 @@ import {
   type KitToHost,
   type KitUiConfig,
   type KitUiElement,
+  type ModelBatchParams,
+  type ModelBatchResult,
   type StoredReplica,
 } from './protocol'
 
 export { KIT_UI_PROTOCOL, KitRpcError }
-export type { DocumentState, InitializeResult, KitDocumentInit, KitTheme, KitUiConfig, KitUiElement, StoredReplica }
+export type { DocumentState, InitializeResult, KitDocumentInit, KitTheme, KitUiConfig, KitUiElement, ModelBatchParams, ModelBatchResult, StoredReplica }
 
 type Params<M extends keyof KitToHost> = KitToHost[M][0]
 type Result<M extends keyof KitToHost> = KitToHost[M][1] | Promise<KitToHost[M][1]>
@@ -104,6 +106,15 @@ export type KitConnection = {
     info: () => Promise<string | null>
     /** Hears every `replica/changed` (the replica's version after an edit); answers an unsubscribe. */
     onChanged: (listener: (version: ArrayBuffer) => void) => () => void
+  }
+  /**
+   * The object model answered by the kit itself, when it lists the `model` capability (section
+   * 7a): a batch is one undo step of the kit's own history. A refused batch rejects with a
+   * `KitRpcError` whose `data` is `{ code, index, message }`.
+   */
+  model: {
+    describe: (schema?: object) => Promise<Record<string, unknown>>
+    batch: (params: ModelBatchParams) => Promise<ModelBatchResult>
   }
   close: () => void
 }
@@ -237,6 +248,10 @@ function connection(peer: HostPeer, info: { kit: KitConnection['kit']; capabilit
       importChanges: (changes, blobs) => peer.request('replica/import', { changes, blobs }),
       info: async () => (await peer.request('replica/info', {})).docId,
       onChanged: (listener) => peer.on('replica/changed', (params) => listener(params.version)),
+    },
+    model: {
+      describe: (schema) => peer.request('model/describe', schema ? { schema } : {}),
+      batch: (params) => peer.request('model/batch', params),
     },
     close: () => peer.close(),
   }

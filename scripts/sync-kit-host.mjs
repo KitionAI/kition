@@ -4,8 +4,11 @@
 // (schemas/kit.schema.json), in contracts/kit/kit-standard.schema.json for the conformance suite,
 // of the Kit Data Model (packages/kdm/src/*.ts), in src/lib/kdm/, and its Rust crate
 // (crates/kition-kdm), in crates/kition-kdm/, and of the sync client for kition-sync/1 and its
-// replica relay (packages/sync/src/*.ts), in src/lib/sync/. kition-sdk is private and
-// Kition is public, so Kition carries the files instead of depending on the packages.
+// replica relay (packages/sync/src/*.ts), in src/lib/sync/, of the object model's page side
+// (@kition/sdk, packages/sdk/src and its generated kits), in src/lib/sdk/, and of the extension
+// host (@kition/extensions, packages/extensions/src with its built worker runtime), in
+// src/lib/extensions/, with its sandbox page in public/extensions/sandbox.html. kition-sdk is
+// private and Kition is public, so Kition carries the files instead of depending on the packages.
 //
 //   node scripts/sync-kit-host.mjs          copy them from ../kition-sdk (or KITION_SDK)
 //   node scripts/sync-kit-host.mjs --check  fail when the copy differs (skipped without kition-sdk)
@@ -27,9 +30,9 @@ const files = [
   { source: 'schemas/kit.schema.json', out: 'contracts/kit/kit-standard.schema.json', rewrite: (text) => text },
 ]
 
-if (!fs.existsSync(path.join(sdk, 'packages/kit-host'))) {
+if (!fs.existsSync(path.join(sdk, 'packages/kit-host')) || !fs.existsSync(path.join(sdk, 'packages/extensions'))) {
   if (process.argv.includes('--check')) {
-    console.log(`SKIP kit host, kit.json schema, KDM, and sync client copies: no kition-sdk at ${sdk}`)
+    console.log(`SKIP kit host, kit.json schema, KDM, sync client, object model, and extension host copies: no kition-sdk at ${sdk}`)
     process.exit(0)
   }
   console.error(`no kition-sdk at ${sdk}; set KITION_SDK`)
@@ -49,6 +52,38 @@ const syncSource = 'packages/sync/src'
 for (const name of fs.readdirSync(path.join(sdk, syncSource)).filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts')).sort()) {
   const source = `${syncSource}/${name}`
   files.push({ source, out: `src/lib/sync/${name}`, rewrite: (text) => header(source) + text.replaceAll("from '@kition/kdm'", "from '../kdm'") })
+}
+// The object model (@kition/sdk) as a page uses it: every source file but the Node-only ones,
+// with the KDM's imports pointing at the copy in src/lib/kdm/, and its generated kit typings.
+const sdkSource = 'packages/sdk/src'
+const nodeOnly = new Set(['node.ts', 'headless.ts'])
+for (const name of fs.readdirSync(path.join(sdk, sdkSource)).filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts') && !nodeOnly.has(name)).sort()) {
+  const source = `${sdkSource}/${name}`
+  files.push({ source, out: `src/lib/sdk/${name}`, rewrite: (text) => header(source) + text.replaceAll("from '@kition/kdm'", "from '../kdm'") })
+}
+for (const name of fs.readdirSync(path.join(sdk, 'packages/sdk/kits')).filter((name) => name.endsWith('.ts')).sort()) {
+  const source = `packages/sdk/kits/${name}`
+  files.push({ source, out: `src/lib/sdk/kits/${name}`, rewrite: (text) => header(source) + text.replaceAll("from '../src/", "from '../") })
+}
+// The extension host (@kition/extensions): its host-side sources and the built worker runtime
+// (the runtime's own sources are bundled into it), and the sandbox page it loads in a frame.
+const extensionsSource = 'packages/extensions/src'
+const extensionFiles = [
+  ...fs.readdirSync(path.join(sdk, extensionsSource)).filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts')).sort(),
+  'generated/runtime.ts',
+]
+for (const name of extensionFiles) {
+  const source = `${extensionsSource}/${name}`
+  files.push({
+    source,
+    out: `src/lib/extensions/${name}`,
+    rewrite: (text) => header(source) + text.replaceAll("from '@kition/kdm'", `from '${name.includes('/') ? '../../kdm' : '../kdm'}'`).replaceAll("from '@kition/sdk'", "from '../sdk'"),
+  })
+}
+files.push({ source: 'packages/extensions/sandbox/sandbox.html', out: 'public/extensions/sandbox.html', binary: true })
+// The example extension, which the end-to-end tests install.
+for (const name of ['extension.json', 'extension.mjs']) {
+  files.push({ source: `examples/extensions/title-case/${name}`, out: `e2e/fixtures/extensions/title-case/${name}`, binary: true })
 }
 // The Rust KDM (crates/kition-kdm): its sources and tests, unchanged, so they run against this
 // workspace's dependency features (serde_json `preserve_order`), with a manifest written here.
@@ -98,6 +133,10 @@ ${dependencies}`
 const copyDirs = [
   { dir: 'src/lib/kdm', ext: '.ts' },
   { dir: 'src/lib/sync', ext: '.ts' },
+  { dir: 'src/lib/sdk', ext: '.ts' },
+  { dir: 'src/lib/sdk/kits', ext: '.ts' },
+  { dir: 'src/lib/extensions', ext: '.ts' },
+  { dir: 'src/lib/extensions/generated', ext: '.ts' },
   { dir: `${rustKdm}/src`, ext: '.rs' },
   { dir: `${rustKdm}/tests`, ext: '.rs' },
   { dir: `${rustKdm}/tests/fixtures`, ext: '', all: true },
@@ -141,4 +180,4 @@ for (const file of files) {
   }
 }
 if (stale) process.exit(1)
-if (process.argv.includes('--check')) console.log('PASS kit host, kit.json schema, KDM (TypeScript and Rust), and sync client copies match kition-sdk')
+if (process.argv.includes('--check')) console.log('PASS kit host, kit.json schema, KDM (TypeScript and Rust), sync client, object model, and extension host copies match kition-sdk')

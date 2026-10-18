@@ -1,4 +1,22 @@
 // Copied from kition-sdk packages/kdm/src/index.ts by scripts/sync-kit-host.mjs; change it there, not here.
+export {
+  BatchError,
+  batchOrigin,
+  describeModel,
+  OBJECT_MODEL_CAPABILITY,
+  readField,
+  replicaTarget,
+  resolveValues,
+  rootId,
+  runBatch,
+  type BatchErrorCode,
+  type BatchLoad,
+  type BatchOp,
+  type BatchRequest,
+  type BatchResult,
+  type BatchTarget,
+  type LoadedObject,
+} from './batch'
 export { canonicalText } from './canonical'
 export { KdmError, type KdmErrorReason } from './errors'
 export { newDocId, newObjectId, NodeRef, randomActor, uuidFromBytes, uuidToBytes, uuidV7, type ObjectId } from './ids'

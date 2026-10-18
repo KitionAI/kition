@@ -1,0 +1,393 @@
+{
+  "$comment": "Object-model batches (KitObjectModel 1.0) run in order on one new document of test-schema.json, by kition-kdm (tests/batch.rs) and @kition/kdm (test/batch.test.ts). A step answers `result` or fails with `error` and changes nothing.",
+  "schema": "test-schema.json",
+  "docId": "01920000-0000-7000-8000-0000000000bb",
+  "steps": [
+    {
+      "request": {
+        "ops": [
+          {
+            "op": "create",
+            "type": "Page",
+            "id": "page1",
+            "fields": {
+              "title": "One"
+            },
+            "ref": "$p"
+          }
+        ],
+        "load": [
+          {
+            "target": "root",
+            "fields": [
+              "title",
+              "shapes"
+            ]
+          }
+        ]
+      },
+      "result": {
+        "refs": {
+          "$p": "page1"
+        },
+        "results": [
+          "page1"
+        ],
+        "loaded": [
+          {
+            "id": "page1",
+            "type": "Page",
+            "fields": {
+              "title": "One",
+              "shapes": []
+            }
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "origin": {
+          "kind": "agent",
+          "principal": "agent:test"
+        },
+        "ops": [
+          {
+            "op": "create",
+            "type": "Shape",
+            "in": "root.shapes",
+            "id": "s1",
+            "ref": "$a",
+            "fields": {
+              "kind": "rect",
+              "x": 1.5,
+              "y": 2.5
+            }
+          },
+          {
+            "op": "create",
+            "type": "Shape",
+            "in": "root.shapes",
+            "at": 0,
+            "id": "s2",
+            "ref": "$b",
+            "fields": {
+              "kind": "ellipse",
+              "x": 3.5,
+              "y": 4.5,
+              "fill": "#5645d4"
+            }
+          },
+          {
+            "op": "text.insert",
+            "target": "$a",
+            "field": "label",
+            "index": 0,
+            "text": "Hello"
+          },
+          {
+            "op": "text.insert",
+            "target": "$a",
+            "field": "label",
+            "index": 5,
+            "text": " world"
+          },
+          {
+            "op": "text.delete",
+            "target": "$a",
+            "field": "label",
+            "index": 0,
+            "count": 1
+          },
+          {
+            "op": "set",
+            "target": "$b",
+            "field": "transform",
+            "value": {
+              "other": "$a"
+            }
+          },
+          {
+            "op": "list.move",
+            "target": "root",
+            "field": "shapes",
+            "from": 0,
+            "to": 1
+          }
+        ],
+        "load": [
+          {
+            "target": "root",
+            "fields": [
+              "shapes"
+            ]
+          },
+          {
+            "target": "$a",
+            "fields": [
+              "label",
+              "x"
+            ]
+          },
+          {
+            "target": "s2",
+            "fields": [
+              "transform",
+              "fill"
+            ]
+          }
+        ]
+      },
+      "result": {
+        "refs": {
+          "$a": "s1",
+          "$b": "s2"
+        },
+        "results": [
+          "s1",
+          "s2",
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "loaded": [
+          {
+            "id": "page1",
+            "type": "Page",
+            "fields": {
+              "shapes": [
+                "s1",
+                "s2"
+              ]
+            }
+          },
+          {
+            "id": "s1",
+            "type": "Shape",
+            "fields": {
+              "label": "ello world",
+              "x": 1.5
+            }
+          },
+          {
+            "id": "s2",
+            "type": "Shape",
+            "fields": {
+              "transform": {
+                "other": "s1"
+              },
+              "fill": "#5645d4"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "ops": [
+          {
+            "op": "text.set",
+            "target": "s1",
+            "field": "label",
+            "text": "Done"
+          },
+          {
+            "op": "delete",
+            "target": "s2"
+          },
+          {
+            "op": "create",
+            "type": "Sheet",
+            "id": "sheet1",
+            "ref": "$s"
+          },
+          {
+            "op": "map.set",
+            "target": "$s",
+            "field": "cells",
+            "key": "A1",
+            "value": "42"
+          },
+          {
+            "op": "map.set",
+            "target": "$s",
+            "field": "cells",
+            "key": "B1",
+            "value": "x"
+          },
+          {
+            "op": "map.delete",
+            "target": "$s",
+            "field": "cells",
+            "key": "B1"
+          }
+        ],
+        "load": [
+          {
+            "target": "root",
+            "fields": [
+              "shapes"
+            ]
+          },
+          {
+            "target": "s1",
+            "fields": [
+              "label"
+            ]
+          },
+          {
+            "target": "sheet1"
+          }
+        ]
+      },
+      "result": {
+        "refs": {
+          "$s": "sheet1"
+        },
+        "results": [
+          null,
+          null,
+          "sheet1",
+          null,
+          null,
+          null
+        ],
+        "loaded": [
+          {
+            "id": "page1",
+            "type": "Page",
+            "fields": {
+              "shapes": [
+                "s1"
+              ]
+            }
+          },
+          {
+            "id": "s1",
+            "type": "Shape",
+            "fields": {
+              "label": "Done"
+            }
+          },
+          {
+            "id": "sheet1",
+            "type": "Sheet",
+            "fields": {
+              "cells": {
+                "A1": "42"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "ops": [
+          {
+            "op": "set",
+            "target": "s1",
+            "field": "x",
+            "value": "nope"
+          }
+        ]
+      },
+      "error": {
+        "code": "invalid-value",
+        "index": 0
+      }
+    },
+    {
+      "request": {
+        "ops": [
+          {
+            "op": "set",
+            "target": "s1",
+            "field": "x",
+            "value": 9.5
+          },
+          {
+            "op": "set",
+            "target": "$missing",
+            "field": "x",
+            "value": 1.5
+          }
+        ]
+      },
+      "error": {
+        "code": "not-found",
+        "index": 1
+      }
+    },
+    {
+      "request": {
+        "ops": [
+          {
+            "op": "frobnicate"
+          }
+        ]
+      },
+      "error": {
+        "code": "invalid-op",
+        "index": 0
+      }
+    },
+    {
+      "request": {
+        "ops": [
+          {
+            "op": "command",
+            "id": "page.tidy"
+          }
+        ]
+      },
+      "error": {
+        "code": "command-failed",
+        "index": 0
+      }
+    },
+    {
+      "request": {
+        "origin": {
+          "kind": "system",
+          "principal": "kdm"
+        },
+        "ops": []
+      },
+      "error": {
+        "code": "invalid-op",
+        "index": null
+      }
+    },
+    {
+      "request": {
+        "ops": [],
+        "load": [
+          {
+            "target": "s1",
+            "fields": [
+              "x",
+              "y"
+            ]
+          }
+        ]
+      },
+      "result": {
+        "refs": {},
+        "results": [],
+        "loaded": [
+          {
+            "id": "s1",
+            "type": "Shape",
+            "fields": {
+              "x": 1.5,
+              "y": 2.5
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

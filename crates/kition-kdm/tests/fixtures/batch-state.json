@@ -1,0 +1,1 @@
+{"meta":{"docId":"01920000-0000-7000-8000-0000000000bb","kdm":1,"kit":"kit.test","schemaVersion":1},"objects":{"page1":{"$type":"Page","outline":[],"shapes":["s1"],"title":"One"},"s1":{"$type":"Shape","fill":null,"image":null,"kind":"rect","label":"Done","transform":null,"x":1.5,"y":2.5},"sheet1":{"$type":"Sheet","cells":{"A1":"42"}}}}

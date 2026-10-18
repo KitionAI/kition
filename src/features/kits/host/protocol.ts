@@ -115,6 +115,17 @@ export type StoredReplica = { snapshot: ArrayBuffer; blobs: ArrayBuffer; fileSta
 export type AiStep = { command: string; params?: Record<string, unknown> }
 export type AiRunResult = { completed: Array<{ command: string; changed: boolean; result: unknown }>; saved: boolean }
 
+/**
+ * The object model's requests (capability `model`, section 7a; `KitObjectModel 1.0`). `schema` is
+ * the kit's KDM schema as the host knows it (`model/schema.json`): a kit whose engine does not
+ * describe its own schema runs the batch with it. A refused batch answers an error whose `data`
+ * is `ModelErrorData`.
+ */
+export type ModelBatchParams = { origin?: unknown; ops?: Array<Record<string, unknown>>; load?: Array<Record<string, unknown>>; schema?: object }
+/** `version` is the kit's replica version after the batch, when it has one. */
+export type ModelBatchResult = { refs: Record<string, string>; results: unknown[]; loaded: Array<{ id: string; type: string; fields: Record<string, unknown> }>; version?: ArrayBuffer | null }
+export type ModelErrorData = { code: 'invalid-op' | 'not-found' | 'invalid-value' | 'read-only' | 'command-failed'; index: number | null; message: string }
+
 /** Requests the host sends, with their params and results. */
 export type HostToKit = {
   'ui/initialize': [InitializeParams, InitializeResult]
@@ -132,6 +143,8 @@ export type HostToKit = {
   'replica/import': [{ changes: ArrayBuffer; blobs: ArrayBuffer }, { damage: unknown }]
   /** The replica's own id, when the kit's engine has one (minor version 1.3); `null` otherwise. */
   'replica/info': [Record<string, never>, { docId: string | null }]
+  'model/describe': [{ schema?: object }, Record<string, unknown>]
+  'model/batch': [ModelBatchParams, ModelBatchResult]
 }
 
 /** Notifications the host sends. */

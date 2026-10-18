@@ -1,0 +1,14 @@
+{
+  "kitExtensions": "1.0",
+  "id": "com.kition.examples.title-case",
+  "name": "Title case slide titles",
+  "version": "1.0.0",
+  "description": "Puts every slide title of a deck in title case.",
+  "publisher": "Kition examples",
+  "entry": "extension.mjs",
+  "activation": { "kits": ["kit.slide"], "on": "command" },
+  "contributes": {
+    "commands": [{ "id": "titleCase.apply", "title": "Title case slide titles", "description": "Capitalize the words of every slide title" }]
+  },
+  "permissions": ["model.read", "model.write"]
+}

@@ -14,8 +14,17 @@ module.exports = {
       name: 'no-circular',
       severity: 'error',
       comment: 'Import cycle. Move the shared piece into a leaf module (src/lib or <feature>/lib) that neither side re-imports.',
-      from: {},
+      from: { pathNot: '^src/lib/sdk/' },
       to: { circular: true },
+    },
+    {
+      // src/lib/sdk is copied verbatim from kition-sdk (scripts/sync-kit-host.mjs), where one of
+      // its modules imports a type from the module that imports it. Runtime cycles still fail.
+      name: 'no-circular-copied-sdk',
+      severity: 'error',
+      comment: 'Import cycle in the object model copy. Fix it in kition-sdk packages/sdk and sync again.',
+      from: { path: '^src/lib/sdk/' },
+      to: { circular: true, viaOnly: { dependencyTypesNot: ['type-only'] } },
     },
     {
       name: 'no-feature-internals',
