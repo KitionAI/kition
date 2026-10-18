@@ -3,6 +3,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { expect, test, type FrameLocator, type Page } from '@playwright/test'
 import { kitEngine, openInKitFrame, openKitWorkspace } from './helpers/embeddedKit'
+import { filmAddEdit, filmClips } from './helpers/film'
 import { DEV_PRINCIPALS, kitionProSkipReason, kitPackageHasReplicaInfo, openSharedLink, openTabMenu, recordWebSockets, replicaCounters, sameReplicas, shareFromTab, signedIn, startKitionPro, syncNetwork, useSyncServer } from './helpers/kitionPro'
 
 const CLIP = path.join(process.cwd(), 'e2e', 'fixtures', 'film', 'bars.mp4')
@@ -27,16 +28,19 @@ async function trailerFixture(clip: Buffer) {
   return bytes
 }
 
-const clips = (kit: FrameLocator) => kit.getByTestId('film-track-Video 1').locator('[data-testid^="film-clip-"]')
+const clips = filmClips
 const status = (page: Page) => page.locator('.document-tab-list [data-testid="collab-status"]')
 
-/** Cuts the clip on V1 at `at` (a fraction of the whole track's clips): moves the playhead there on the ruler, then Split. */
+/**
+ * Cuts the clip on V1 at `at` (a fraction of the whole track's clips): moves the playhead there on
+ * the time ruler, then Add Edit.
+ */
 async function cutAt(page: Page, kit: FrameLocator, at: number) {
   const first = (await clips(kit).first().boundingBox())!
   const last = (await clips(kit).last().boundingBox())!
   const ruler = (await kit.getByTestId('film-ruler').boundingBox())!
   await page.mouse.click(first.x + (last.x + last.width - first.x) * at, ruler.y + ruler.height / 2)
-  await kit.getByTestId('film-split').click()
+  await filmAddEdit(page, kit)
 }
 
 test('co-edits a Film project between two windows: live, and merging edits made offline', async ({ browser, baseURL }, testInfo) => {
@@ -74,7 +78,7 @@ test('co-edits a Film project between two windows: live, and merging edits made 
     // Alice cuts the clip: within a second Bob's timeline has both halves.
     const before = JSON.stringify(await replicaCounters(pageA, 'Trailer.kitionfilm'))
     await cutAt(pageA, a.kit, 0.5)
-    // From the Split click until Bob's replica holds everything Alice's does.
+    // From the Add Edit until Bob's replica holds everything Alice's does.
     const cut = Date.now()
     await expect.poll(async () => JSON.stringify(await replicaCounters(pageA, 'Trailer.kitionfilm')), { intervals: [10] }).not.toBe(before)
     const aliceVersion = JSON.stringify(await replicaCounters(pageA, 'Trailer.kitionfilm'))

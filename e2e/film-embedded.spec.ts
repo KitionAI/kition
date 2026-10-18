@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { expect, test, type Page } from '@playwright/test'
 import { kitEngine, openInKitFrame, openTreeFile } from './helpers/embeddedKit'
+import { filmAddEdit, filmClips, filmPlay } from './helpers/film'
 import { dismissFirstRunActivation } from './helpers/onboarding'
 
 const CLIP = path.join(process.cwd(), 'e2e', 'fixtures', 'film', 'bars.mp4')
@@ -41,12 +42,12 @@ test('opens a video project in the Film kit’s own editor, edits it there, and 
     await expect(kit.getByTestId('film-menu-Sequence')).toHaveText('Sequence')
     await expect(page.getByTestId('kit-opening')).toHaveCount(0)
 
-    // Play a moment, split at the playhead: the clip is lent from the workspace in ranges.
-    await kit.getByTestId('film-play').click()
+    // Play a moment, Add Edit at the playhead: the clip is lent from the workspace in ranges.
+    await filmPlay(kit).click()
     await expect(kit.getByTestId('film-timecode')).not.toHaveText('00:00:00:00')
-    await kit.getByTestId('film-play').click()
-    await kit.getByTestId('film-split').click()
-    await expect(kit.getByTestId('film-track-Video 1').locator('[data-testid^="film-clip-"]')).toHaveCount(2)
+    await filmPlay(kit).click()
+    await filmAddEdit(page, kit)
+    await expect(filmClips(kit)).toHaveCount(2)
     await expect(kit.getByTestId('film-unsaved')).toBeVisible()
     await page.screenshot({ path: testInfo.outputPath('film-embedded.png') })
 
@@ -81,12 +82,12 @@ test('keeps an .kitionfilm’s replica across a save and a reopen, and opens a f
   }
   try {
     await expect(kit.getByTestId('film-track-Video 1')).toContainText('bars.mp4', { timeout: 60_000 })
-    // Move the playhead off the clip's start before splitting: a split at 0 does nothing.
-    await kit.getByTestId('film-play').click()
+    // Move the playhead off the clip's start before the edit: an edit at 0 does nothing.
+    await filmPlay(kit).click()
     await expect(kit.getByTestId('film-timecode')).not.toHaveText('00:00:00:00')
-    await kit.getByTestId('film-play').click()
-    await kit.getByTestId('film-split').click()
-    await expect(kit.getByTestId('film-track-Video 1').locator('[data-testid^="film-clip-"]')).toHaveCount(2)
+    await filmPlay(kit).click()
+    await filmAddEdit(page, kit)
+    await expect(filmClips(kit)).toHaveCount(2)
     await kit.getByTestId('film-save').click()
     await expect(kit.getByTestId('film-unsaved')).toHaveCount(0, { timeout: 30_000 })
 
@@ -99,16 +100,16 @@ test('keeps an .kitionfilm’s replica across a save and a reopen, and opens a f
     const saved = await replicaVersion(page, name)
     expect(saved).not.toBe('')
 
-    // Reopened, the project is the replica it was saved with: the split survives.
+    // Reopened, the project is the replica it was saved with: the edit survives.
     const reopened = await reopen()
-    await expect(reopened.getByTestId('film-track-Video 1').locator('[data-testid^="film-clip-"]')).toHaveCount(2, { timeout: 60_000 })
+    await expect(filmClips(reopened)).toHaveCount(2, { timeout: 60_000 })
     await expect.poll(() => replicaVersion(page, name).catch(() => ''), { timeout: 15_000 }).toBe(saved)
     await expect(reopened.getByTestId('film-unsaved')).toHaveCount(0)
 
     // A file changed elsewhere (a new stamp) opens plainly: what the file holds, a new replica.
     await fs.writeFile(path.join(host.root, name), await trailerFixture(clip, 'bars.mp4'))
     const changed = await reopen()
-    await expect(changed.getByTestId('film-track-Video 1').locator('[data-testid^="film-clip-"]')).toHaveCount(1, { timeout: 60_000 })
+    await expect(filmClips(changed)).toHaveCount(1, { timeout: 60_000 })
     await expect.poll(() => replicaVersion(page, name).catch(() => ''), { timeout: 15_000 }).not.toBe('')
     expect(await replicaVersion(page, name)).not.toBe(saved)
   } finally {
