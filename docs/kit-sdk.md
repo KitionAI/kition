@@ -232,6 +232,12 @@ and side panels).
   bridge forwarded to the frame as `ai/*`. It mounts on the protocol's
   `ready` handshake, never the frame's `load` event, and abandons a mount its
   effect no longer needs.
+- A document this person may only view (a view-only share link, a `viewer`
+  role) opens with `document.readOnly`. kit-ui's engine worker then refuses
+  every edit (reason `read-only`) by its exported `READ_ONLY_RULES`, and the
+  editor shows View only instead of Undo, Redo, and Save; a kit's own panels
+  read it with `useReadOnly()`. When the role changes, `KitFrame` opens the
+  kit again in a new iframe, since a kit page answers one handshake.
 - `KIT_EDITORS` in `kits/kitEditors.ts` maps a format to its kit package.
   `KitFilePane` shows the package when its `kit-ui.json` is present. A
   development build without the package shows the file preview for formats

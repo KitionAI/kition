@@ -71,6 +71,11 @@ export type KitDocumentInit = {
   /** The file as it is now; absent when `create` asks for a new document. */
   bytes?: ArrayBuffer
   version?: string | null
+  /**
+   * The document is read-only for this session (a viewer): the kit refuses edits on every path
+   * with `error.data.reason` `read-only` and offers no Save. It is fixed for the session; a host
+   * that changes it opens the kit again (a new page).
+   */
   readOnly?: boolean
   create?: { width: number; height: number }
   /**

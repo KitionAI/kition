@@ -11,6 +11,7 @@ import {
   recordWebSockets,
   replicaCounters,
   shareFromTab,
+  shareViewOnlyFromTab,
   signedIn,
   startKitionPro,
   syncNetwork,
@@ -230,6 +231,87 @@ test('two windows typing into one text box at once keep both texts', async ({ br
     expect(await savedText(a.saves[a.saves.length - 1].bytes)).toBe('Bob says Hello from Alice')
     await pageA.screenshot({ path: testInfo.outputPath('alice-one-text-box.png') })
     await pageB.screenshot({ path: testInfo.outputPath('bob-one-text-box.png') })
+  } finally {
+    await alice.close()
+    await bob.close()
+    await server.stop()
+  }
+})
+
+test('a viewer of a shared Slides deck sees it change but cannot change it', async ({ browser, baseURL }, testInfo) => {
+  test.skip(!engine.built, 'the Slides kit editor is not built into public/kits/slide-ui')
+  test.skip(!kitPackageHasReplicaInfo('slide', 'kition_slide_sdk'), 'the Slides kit package predates replica/info (Kit UI 1.3); build it locally with scripts/build-kit-ui.sh slide')
+  const unavailable = kitionProSkipReason()
+  test.skip(Boolean(unavailable), unavailable ?? '')
+  test.setTimeout(300_000)
+  const server = await startKitionPro(testInfo.outputPath('kition-pro'))
+  const alice = await browser.newContext()
+  const bob = await browser.newContext()
+  try {
+    const pageA = await alice.newPage()
+    await useSyncServer(pageA, server.url)
+    const a = await openInKitFrame(pageA, baseURL!, 'Keynote.kitionslide', await deckFixture(), {}, signedIn(DEV_PRINCIPALS.alice))
+    await expect(a.kit.getByTestId('slides-status')).toHaveText('Slide 1 of 2', { timeout: 60_000 })
+    const { viewLink } = await shareViewOnlyFromTab(pageA, 'Keynote')
+    await expect(status(pageA)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })
+
+    // Bob opens the view-only link: the deck opens read-only, with no Save, Undo, or Redo.
+    const pageB = await bob.newPage()
+    await useSyncServer(pageB, server.url)
+    await openKitWorkspace(pageB, baseURL!, {}, signedIn(DEV_PRINCIPALS.bob))
+    await openSharedLink(pageB, viewLink)
+    const kitB = pageB.frameLocator('[data-testid="kit-frame-window"]')
+    await expect(kitB.getByTestId('slides-status')).toHaveText('Slide 1 of 2', { timeout: 60_000 })
+    await expect(pageB.locator('.document-tab-list [data-testid="collab-view-only"]')).toBeVisible({ timeout: 15_000 })
+    await expect(kitB.getByTestId('slides-view-only')).toBeVisible({ timeout: 15_000 })
+    await expect(kitB.getByTestId('slides-save')).toHaveCount(0)
+    await expect(kitB.getByTestId('slides-undo')).toHaveCount(0)
+    await expect(kitB.getByTestId('slides-cmd-slide.new')).toBeDisabled()
+    const bobPath = 'Shared/Keynote.kitionslide'
+    await expect.poll(async () => JSON.stringify(await replicaCounters(pageB, bobPath)), { timeout: 15_000 }).toBe(JSON.stringify(await replicaCounters(pageA, 'Keynote.kitionslide')))
+
+    // Alice edits the text box's text: Bob's canvas shows it.
+    const bobBeforeText = await canvas(kitB)
+    await typeIntoShape(pageA, a.kit, 'Launch day')
+    const aliceVersion = await settledVersion(pageA, 'Keynote.kitionslide')
+    await expect.poll(async () => JSON.stringify(await replicaCounters(pageB, bobPath)), { timeout: 10_000 }).toBe(aliceVersion)
+    await expect.poll(async () => (await canvas(kitB)).equals(bobBeforeText), { timeout: 5_000 }).toBe(false)
+
+    // Bob clicks the text box and types, presses New Slide's shortcut, and clicks the slide
+    // panel's add button: his screen and his replica stay as they were.
+    // What his canvas shows once Alice's edit has painted.
+    let shown = await canvas(kitB)
+    await expect
+      .poll(async () => {
+        const next = await canvas(kitB)
+        const same = next.equals(shown)
+        shown = next
+        return same
+      }, { timeout: 10_000, intervals: [200] })
+      .toBe(true)
+    const region = (await kitB.getByTestId('slides-canvas-region').boundingBox())!
+    await pageB.mouse.click(region.x + region.width / 2, region.y + region.height / 2)
+    await pageB.keyboard.type('Bob was here')
+    await pageB.keyboard.press('ControlOrMeta+Shift+N')
+    await pageB.waitForTimeout(500)
+    const after = await canvas(kitB)
+    expect(after.equals(shown)).toBe(true)
+    await kitB.getByTestId('slides-add-slide').click()
+    await pageB.waitForTimeout(1_000)
+    await expect(kitB.getByTestId('slides-status')).toHaveText('Slide 1 of 2')
+    expect(JSON.stringify(await replicaCounters(pageB, bobPath))).toBe(aliceVersion)
+    expect(JSON.stringify(await replicaCounters(pageA, 'Keynote.kitionslide'))).toBe(aliceVersion)
+
+    // Viewing still works: Bob moves to the next slide.
+    await kitB.getByTestId('slides-slide-1').click()
+    await expect(kitB.getByTestId('slides-status')).toHaveText('Slide 2 of 2')
+    expect(JSON.stringify(await replicaCounters(pageB, bobPath))).toBe(aliceVersion)
+
+    // Alice's next edit still reaches him.
+    await a.kit.getByTestId('slides-add-slide').click()
+    await expect(a.kit.getByTestId('slides-status')).toHaveText(/of 3$/)
+    await expect(kitB.getByTestId('slides-status')).toHaveText(/of 3$/, { timeout: 10_000 })
+    await pageB.screenshot({ path: testInfo.outputPath('bob-viewer.png') })
   } finally {
     await alice.close()
     await bob.close()
