@@ -2,21 +2,7 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { expect, test, type FrameLocator, type Page } from '@playwright/test'
 import { kitEngine, openInKitFrame, openKitWorkspace } from './helpers/embeddedKit'
-import {
-  DEV_PRINCIPALS,
-  kitionProSkipReason,
-  kitPackageHasReplicaInfo,
-  openSharedLink,
-  openTabMenu,
-  recordWebSockets,
-  replicaCounters,
-  shareFromTab,
-  shareViewOnlyFromTab,
-  signedIn,
-  startKitionPro,
-  syncNetwork,
-  useSyncServer,
-} from './helpers/kitionPro'
+import { DEV_PRINCIPALS, kitionProSkipReason, kitPackageHasReplicaInfo, openSharedLink, openTabMenu, recordWebSockets, replicaCounters, sameReplicas, shareFromTab, shareViewOnlyFromTab, signedIn, startKitionPro, syncNetwork, useSyncServer } from './helpers/kitionPro'
 
 type NodeSlideDocument = { save(): Uint8Array; execute(command: string, params: string): string; free(): void }
 const engine = kitEngine<{
@@ -40,12 +26,6 @@ async function deckFixture() {
   return bytes
 }
 
-/** 'same' once both windows' replicas are at the same version, else both versions. Both are read
- * on every poll: after a reconnect each side is still taking the other's changes. */
-async function sameReplica(pageA: Page, pathA: string, pageB: Page, pathB: string) {
-  const [a, b] = await Promise.all([replicaCounters(pageA, pathA), replicaCounters(pageB, pathB)])
-  return JSON.stringify(a) === JSON.stringify(b) ? 'same' : `${JSON.stringify(a)} / ${JSON.stringify(b)}`
-}
 
 const status = (page: Page) => page.locator('.document-tab-list [data-testid="collab-status"]')
 /** The kit's canvas as drawn. Kition's floating agent launcher sits over the canvas's corner and
@@ -112,7 +92,7 @@ test('co-edits a Slides deck between two windows: live, and merging edits made o
     expect(existsSync(path.join(b.host.root, 'Shared', 'Keynote.kitionslide'))).toBe(true)
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })
     await expect(pageA.locator('.document-tab-list [data-testid="collab-peer"]')).toHaveAttribute('data-peer', 'Bob', { timeout: 15_000 })
-    await expect.poll(async () => JSON.stringify(await replicaCounters(pageB, 'Shared/Keynote.kitionslide')), { timeout: 15_000 }).toBe(JSON.stringify(await replicaCounters(pageA, 'Keynote.kitionslide')))
+    await expect.poll(() => sameReplicas(pageA, 'Keynote.kitionslide', pageB, 'Shared/Keynote.kitionslide'), { timeout: 15_000 }).toBe('same')
 
     // Alice edits the text box's text: within a second Bob's canvas shows it.
     const bobBeforeText = await canvas(kitB)
@@ -155,7 +135,7 @@ test('co-edits a Slides deck between two windows: live, and merging edits made o
     await bobNetwork.setOnline(true)
     const back = Date.now()
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 60_000 })
-    await expect.poll(() => sameReplica(pageA, 'Keynote.kitionslide', pageB, 'Shared/Keynote.kitionslide'), { timeout: 60_000 }).toBe('same')
+    await expect.poll(() => sameReplicas(pageA, 'Keynote.kitionslide', pageB, 'Shared/Keynote.kitionslide'), { timeout: 60_000 }).toBe('same')
     testInfo.annotations.push({ type: 'reconnect to converged', description: `${Date.now() - back} ms` })
     await expect(a.kit.getByTestId('slides-status')).toHaveText(/of 4$/)
     await expect(kitB.getByTestId('slides-status')).toHaveText(/of 4$/)
@@ -215,7 +195,7 @@ test('two windows typing into one text box at once keep both texts', async ({ br
     await expect(kitB.getByTestId('slides-status')).toHaveText('Slide 1 of 2', { timeout: 60_000 })
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })
     const converged = async () =>
-      expect.poll(() => sameReplica(pageA, 'Keynote.kitionslide', pageB, 'Shared/Keynote.kitionslide'), { timeout: 60_000 }).toBe('same')
+      expect.poll(() => sameReplicas(pageA, 'Keynote.kitionslide', pageB, 'Shared/Keynote.kitionslide'), { timeout: 60_000 }).toBe('same')
     await converged()
 
     // At once (Bob offline): Alice types at the end of the "Hello" text box, Bob at its start.
@@ -274,7 +254,7 @@ test('a viewer of a shared Slides deck sees it change but cannot change it', asy
     await expect(kitB.getByTestId('slides-undo')).toHaveCount(0)
     await expect(kitB.getByTestId('slides-cmd-slide.new')).toBeDisabled()
     const bobPath = 'Shared/Keynote.kitionslide'
-    await expect.poll(async () => JSON.stringify(await replicaCounters(pageB, bobPath)), { timeout: 15_000 }).toBe(JSON.stringify(await replicaCounters(pageA, 'Keynote.kitionslide')))
+    await expect.poll(() => sameReplicas(pageA, 'Keynote.kitionslide', pageB, bobPath), { timeout: 15_000 }).toBe('same')
 
     // Alice edits the text box's text: Bob's canvas shows it.
     const bobBeforeText = await canvas(kitB)

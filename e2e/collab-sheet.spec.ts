@@ -10,6 +10,7 @@ import {
   openTabMenu,
   recordWebSockets,
   replicaCounters,
+  sameReplicas,
   shareFromTab,
   signedIn,
   startKitionPro,
@@ -119,7 +120,7 @@ test('co-edits a workbook between two windows: live, formulas that follow their 
     expect(existsSync(path.join(b.host.root, 'Shared', 'Budget.xlsx'))).toBe(true)
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })
     await expect(pageA.locator('.document-tab-list [data-testid="collab-peer"]')).toHaveAttribute('data-peer', 'Bob', { timeout: 15_000 })
-    await expect.poll(async () => JSON.stringify(await replicaCounters(pageB, pathB)), { timeout: 15_000 }).toBe(JSON.stringify(await replicaCounters(pageA, pathA)))
+    await expect.poll(() => sameReplicas(pageA, pathA, pageB, pathB), { timeout: 15_000 }).toBe('same')
 
     // Alice changes the rent: within a second Bob's replica has it, and his workbook shows it.
     const editBaseline = JSON.stringify(await replicaCounters(pageB, pathB))
@@ -166,7 +167,7 @@ test('co-edits a workbook between two windows: live, formulas that follow their 
     await bobNetwork.setOnline(true)
     const back = Date.now()
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 60_000 })
-    await expect.poll(async () => JSON.stringify(await replicaCounters(pageB, pathB)), { timeout: 60_000 }).toBe(JSON.stringify(await replicaCounters(pageA, pathA)))
+    await expect.poll(() => sameReplicas(pageA, pathA, pageB, pathB), { timeout: 60_000 }).toBe('same')
     testInfo.annotations.push({ type: 'reconnect to converged', description: `${Date.now() - back} ms` })
     for (const kit of [a.kit, kitB]) {
       await expectCell(kit, 'D1', '=B5')

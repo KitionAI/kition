@@ -3,20 +3,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { expect, test, type FrameLocator, type Page } from '@playwright/test'
 import { kitEngine, openInKitFrame, openKitWorkspace } from './helpers/embeddedKit'
-import {
-  DEV_PRINCIPALS,
-  kitionProSkipReason,
-  kitPackageHasReplicaInfo,
-  openSharedLink,
-  openTabMenu,
-  recordWebSockets,
-  replicaCounters,
-  shareFromTab,
-  signedIn,
-  startKitionPro,
-  syncNetwork,
-  useSyncServer,
-} from './helpers/kitionPro'
+import { DEV_PRINCIPALS, kitionProSkipReason, kitPackageHasReplicaInfo, openSharedLink, openTabMenu, recordWebSockets, replicaCounters, sameReplicas, shareFromTab, signedIn, startKitionPro, syncNetwork, useSyncServer } from './helpers/kitionPro'
 
 const CLIP = path.join(process.cwd(), 'e2e', 'fixtures', 'film', 'bars.mp4')
 
@@ -82,7 +69,7 @@ test('co-edits a Film project between two windows: live, and merging edits made 
     expect(existsSync(path.join(b.host.root, 'Shared', 'Trailer.kitionfilm'))).toBe(true)
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })
     await expect(pageA.locator('.document-tab-list [data-testid="collab-peer"]')).toHaveAttribute('data-peer', 'Bob', { timeout: 15_000 })
-    await expect.poll(async () => JSON.stringify(await replicaCounters(pageB, 'Shared/Trailer.kitionfilm')), { timeout: 15_000 }).toBe(JSON.stringify(await replicaCounters(pageA, 'Trailer.kitionfilm')))
+    await expect.poll(() => sameReplicas(pageA, 'Trailer.kitionfilm', pageB, 'Shared/Trailer.kitionfilm'), { timeout: 15_000 }).toBe('same')
 
     // Alice cuts the clip: within a second Bob's timeline has both halves.
     const before = JSON.stringify(await replicaCounters(pageA, 'Trailer.kitionfilm'))
@@ -111,7 +98,7 @@ test('co-edits a Film project between two windows: live, and merging edits made 
     await bobNetwork.setOnline(true)
     const back = Date.now()
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 60_000 })
-    await expect.poll(async () => JSON.stringify(await replicaCounters(pageB, 'Shared/Trailer.kitionfilm')), { timeout: 60_000 }).toBe(JSON.stringify(await replicaCounters(pageA, 'Trailer.kitionfilm')))
+    await expect.poll(() => sameReplicas(pageA, 'Trailer.kitionfilm', pageB, 'Shared/Trailer.kitionfilm'), { timeout: 60_000 }).toBe('same')
     testInfo.annotations.push({ type: 'reconnect to converged', description: `${Date.now() - back} ms` })
     await expect(clips(a.kit)).toHaveCount(4)
     await expect(clips(kitB)).toHaveCount(4)

@@ -2,20 +2,7 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { expect, test, type FrameLocator, type Page } from '@playwright/test'
 import { kitEngine, openInKitFrame, openKitWorkspace } from './helpers/embeddedKit'
-import {
-  DEV_PRINCIPALS,
-  kitionProSkipReason,
-  kitPackageHasReplicaInfo,
-  openSharedLink,
-  openTabMenu,
-  recordWebSockets,
-  replicaCounters,
-  shareFromTab,
-  signedIn,
-  startKitionPro,
-  syncNetwork,
-  useSyncServer,
-} from './helpers/kitionPro'
+import { DEV_PRINCIPALS, kitionProSkipReason, kitPackageHasReplicaInfo, openSharedLink, openTabMenu, recordWebSockets, replicaCounters, sameReplicas, shareFromTab, signedIn, startKitionPro, syncNetwork, useSyncServer } from './helpers/kitionPro'
 
 type NodeEffectDocument = { save(): Uint8Array; execute(command: string, params: string): string; free(): void }
 const engine = kitEngine<{ EffectDocument: { create(name: string, width: number, height: number): NodeEffectDocument } }>('effect', 'kition_effect_sdk')
@@ -86,7 +73,7 @@ test('co-edits a motion project between two windows: live, and merging edits mad
     expect(existsSync(path.join(b.host.root, 'Shared', 'Motion.kitioneffect'))).toBe(true)
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })
     await expect(pageA.locator('.document-tab-list [data-testid="collab-peer"]')).toHaveAttribute('data-peer', 'Bob', { timeout: 15_000 })
-    await expect.poll(async () => JSON.stringify(await replicaCounters(pageB, 'Shared/Motion.kitioneffect')), { timeout: 15_000 }).toBe(JSON.stringify(await replicaCounters(pageA, 'Motion.kitioneffect')))
+    await expect.poll(() => sameReplicas(pageA, 'Motion.kitioneffect', pageB, 'Shared/Motion.kitioneffect'), { timeout: 15_000 }).toBe('same')
     await expect(order(kitB)).toHaveText(['Blue', 'Red'])
 
     // Bob looks at Red's transform (his own selection, not Alice's).
@@ -135,7 +122,7 @@ test('co-edits a motion project between two windows: live, and merging edits mad
     await bobNetwork.setOnline(true)
     const back = Date.now()
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 60_000 })
-    await expect.poll(async () => JSON.stringify(await replicaCounters(pageB, 'Shared/Motion.kitioneffect')), { timeout: 60_000 }).toBe(JSON.stringify(await replicaCounters(pageA, 'Motion.kitioneffect')))
+    await expect.poll(() => sameReplicas(pageA, 'Motion.kitioneffect', pageB, 'Shared/Motion.kitioneffect'), { timeout: 60_000 }).toBe('same')
     testInfo.annotations.push({ type: 'reconnect to converged', description: `${Date.now() - back} ms` })
     await expect(row(a.kit, 'Blue').getByTestId('effect-key')).toHaveCount(1, { timeout: 5_000 })
     await expect(row(kitB, 'Red').getByTestId('effect-key')).toHaveCount(2)

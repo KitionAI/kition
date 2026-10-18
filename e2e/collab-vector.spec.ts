@@ -2,20 +2,7 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { expect, test, type FrameLocator, type Page } from '@playwright/test'
 import { kitEngine, openInKitFrame, openKitWorkspace } from './helpers/embeddedKit'
-import {
-  DEV_PRINCIPALS,
-  kitionProSkipReason,
-  kitPackageHasReplicaInfo,
-  openSharedLink,
-  openTabMenu,
-  recordWebSockets,
-  replicaCounters,
-  shareFromTab,
-  signedIn,
-  startKitionPro,
-  syncNetwork,
-  useSyncServer,
-} from './helpers/kitionPro'
+import { DEV_PRINCIPALS, kitionProSkipReason, kitPackageHasReplicaInfo, openSharedLink, openTabMenu, recordWebSockets, replicaCounters, sameReplicas, shareFromTab, signedIn, startKitionPro, syncNetwork, useSyncServer } from './helpers/kitionPro'
 
 type NodeVectorDocument = { save(): Uint8Array; execute(command: string, params: string): string; free(): void }
 const engine = kitEngine<{ VectorDocument: { create(name: string, width: number, height: number): NodeVectorDocument } }>('vector', 'kition_vector_sdk')
@@ -115,7 +102,7 @@ test('co-edits a Vector drawing between two windows: live, and merging edits mad
     expect(existsSync(path.join(b.host.root, 'Shared', 'Poster.kitionvector'))).toBe(true)
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })
     await expect(pageA.locator('.document-tab-list [data-testid="collab-peer"]')).toHaveAttribute('data-peer', 'Bob', { timeout: 15_000 })
-    await expect.poll(async () => JSON.stringify(await replicaCounters(pageB, 'Shared/Poster.kitionvector')), { timeout: 15_000 }).toBe(JSON.stringify(await replicaCounters(pageA, 'Poster.kitionvector')))
+    await expect.poll(() => sameReplicas(pageA, 'Poster.kitionvector', pageB, 'Shared/Poster.kitionvector'), { timeout: 15_000 }).toBe('same')
 
     // Alice moves the left rectangle: within a second Bob's replica has the move, and his canvas shows it.
     const bobBeforeMove = await canvas(kitB)
@@ -158,7 +145,7 @@ test('co-edits a Vector drawing between two windows: live, and merging edits mad
     await bobNetwork.setOnline(true)
     const back = Date.now()
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 60_000 })
-    await expect.poll(async () => JSON.stringify(await replicaCounters(pageB, 'Shared/Poster.kitionvector')), { timeout: 60_000 }).toBe(JSON.stringify(await replicaCounters(pageA, 'Poster.kitionvector')))
+    await expect.poll(() => sameReplicas(pageA, 'Poster.kitionvector', pageB, 'Shared/Poster.kitionvector'), { timeout: 60_000 }).toBe('same')
     testInfo.annotations.push({ type: 'reconnect to converged', description: `${Date.now() - back} ms` })
     await expect(a.kit.getByTestId('vector-status')).toContainText('4 objects')
     await expect(kitB.getByTestId('vector-status')).toContainText('4 objects')

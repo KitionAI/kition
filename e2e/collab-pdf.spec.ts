@@ -2,20 +2,7 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { expect, test, type FrameLocator, type Page } from '@playwright/test'
 import { kitEngine, openInKitFrame, openKitWorkspace } from './helpers/embeddedKit'
-import {
-  DEV_PRINCIPALS,
-  kitionProSkipReason,
-  kitPackageHasReplicaInfo,
-  openSharedLink,
-  openTabMenu,
-  recordWebSockets,
-  replicaCounters,
-  shareFromTab,
-  signedIn,
-  startKitionPro,
-  syncNetwork,
-  useSyncServer,
-} from './helpers/kitionPro'
+import { DEV_PRINCIPALS, kitionProSkipReason, kitPackageHasReplicaInfo, openSharedLink, openTabMenu, recordWebSockets, replicaCounters, sameReplicas, shareFromTab, signedIn, startKitionPro, syncNetwork, useSyncServer } from './helpers/kitionPro'
 
 type NodePdfDocument = { save(): Uint8Array; execute(command: string, params: string): string; free(): void }
 const engine = kitEngine<{ PdfDocument: { create(name: string, width: number, height: number): NodePdfDocument } }>('pdf', 'kition_pdf_sdk')
@@ -112,7 +99,7 @@ test('co-edits a PDF between two windows: a comment and a form fill live, and me
     expect(existsSync(path.join(b.host.root, 'Shared', 'Form.pdf'))).toBe(true)
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })
     await expect(pageA.locator('.document-tab-list [data-testid="collab-peer"]')).toHaveAttribute('data-peer', 'Bob', { timeout: 15_000 })
-    await expect.poll(() => counters(pageB, 'Shared/Form.pdf'), { timeout: 15_000 }).toBe(await counters(pageA, 'Form.pdf'))
+    await expect.poll(() => sameReplicas(pageA, 'Form.pdf', pageB, 'Shared/Form.pdf'), { timeout: 15_000 }).toBe('same')
 
     // Alice adds a comment: within a second Bob's replica has it, and his comments panel lists it.
     const commentBaseline = await counters(pageB, 'Shared/Form.pdf')
@@ -152,7 +139,7 @@ test('co-edits a PDF between two windows: a comment and a form fill live, and me
     await bobNetwork.setOnline(true)
     const back = Date.now()
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 60_000 })
-    await expect.poll(() => counters(pageB, 'Shared/Form.pdf'), { timeout: 60_000 }).toBe(await counters(pageA, 'Form.pdf'))
+    await expect.poll(() => sameReplicas(pageA, 'Form.pdf', pageB, 'Shared/Form.pdf'), { timeout: 60_000 }).toBe('same')
     testInfo.annotations.push({ type: 'reconnect to converged', description: `${Date.now() - back} ms` })
     await expect.poll(() => commentTexts(a.kit), { timeout: 10_000 }).toHaveLength(2)
     await expect.poll(() => nameValue(kitB), { timeout: 10_000 }).toBe('Alice')

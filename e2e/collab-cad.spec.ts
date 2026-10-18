@@ -2,20 +2,7 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { expect, test, type FrameLocator, type Page } from '@playwright/test'
 import { kitEngine, openInKitFrame, openKitWorkspace } from './helpers/embeddedKit'
-import {
-  DEV_PRINCIPALS,
-  kitionProSkipReason,
-  kitPackageHasReplicaInfo,
-  openSharedLink,
-  openTabMenu,
-  recordWebSockets,
-  replicaCounters,
-  shareFromTab,
-  signedIn,
-  startKitionPro,
-  syncNetwork,
-  useSyncServer,
-} from './helpers/kitionPro'
+import { DEV_PRINCIPALS, kitionProSkipReason, kitPackageHasReplicaInfo, openSharedLink, openTabMenu, recordWebSockets, replicaCounters, sameReplicas, shareFromTab, signedIn, startKitionPro, syncNetwork, useSyncServer } from './helpers/kitionPro'
 
 type NodeCadDocument = { save(): Uint8Array; execute(command: string, params: string): string; free(): void }
 const engine = kitEngine<{ CadDocument: { create(name: string, width: number, height: number): NodeCadDocument } }>('cad', 'kition_cad_sdk')
@@ -92,7 +79,7 @@ test('co-edits a CAD drawing between two windows: live, and merging edits made o
     expect(existsSync(path.join(b.host.root, 'Shared', 'Floor Plan.dxf'))).toBe(true)
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })
     await expect(pageA.locator('.document-tab-list [data-testid="collab-peer"]')).toHaveAttribute('data-peer', 'Bob', { timeout: 15_000 })
-    await expect.poll(async () => JSON.stringify(await replicaCounters(pageB, 'Shared/Floor Plan.dxf')), { timeout: 15_000 }).toBe(JSON.stringify(await replicaCounters(pageA, 'Floor Plan.dxf')))
+    await expect.poll(() => sameReplicas(pageA, 'Floor Plan.dxf', pageB, 'Shared/Floor Plan.dxf'), { timeout: 15_000 }).toBe('same')
 
     // Alice draws a line on the command line: within a second Bob's drawing has it.
     const lineBaseline = JSON.stringify(await replicaCounters(pageB, 'Shared/Floor Plan.dxf'))
@@ -136,7 +123,7 @@ test('co-edits a CAD drawing between two windows: live, and merging edits made o
     await bobNetwork.setOnline(true)
     const back = Date.now()
     await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 60_000 })
-    await expect.poll(async () => JSON.stringify(await replicaCounters(pageB, 'Shared/Floor Plan.dxf')), { timeout: 60_000 }).toBe(JSON.stringify(await replicaCounters(pageA, 'Floor Plan.dxf')))
+    await expect.poll(() => sameReplicas(pageA, 'Floor Plan.dxf', pageB, 'Shared/Floor Plan.dxf'), { timeout: 60_000 }).toBe('same')
     testInfo.annotations.push({ type: 'reconnect to converged', description: `${Date.now() - back} ms` })
     await expect(objects(a.kit)).toHaveText('5 objects')
     await expect(objects(kitB)).toHaveText('5 objects')

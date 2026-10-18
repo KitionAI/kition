@@ -169,6 +169,14 @@ export async function replicaCounters(page: Page, path: string): Promise<Record<
   return versionCounters(hex)
 }
 
+/** 'same' once both windows' replicas are at the same version, else both versions. Both are read
+ * on every poll: after a reconnect each side is still taking the other's changes, so a version read
+ * once from one side can be one the other side never reaches. */
+export async function sameReplicas(pageA: Page, pathA: string, pageB: Page, pathB: string) {
+  const [a, b] = await Promise.all([replicaCounters(pageA, pathA), replicaCounters(pageB, pathB)])
+  return JSON.stringify(a) === JSON.stringify(b) ? 'same' : `${JSON.stringify(a)} / ${JSON.stringify(b)}`
+}
+
 /**
  * Opens the menu of the tab titled `title` until `item` shows in it (a right-click right after
  * working in a kit's frame can go unanswered, and the share item shows once the tab's kit editor
