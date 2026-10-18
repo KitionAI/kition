@@ -126,34 +126,47 @@ impl KitableFile {
             return Err(KitableError::Exists);
         }
         let result = (|| {
-            let (mut conn, absolute) = open_sqlite(&path)?;
-            migrate_schema(&mut conn)?;
-            let (doc_id, spec) = initialize_document(&mut conn, &absolute, options)?;
-            let (replica, _) = Replica::create_with(
-                schema(),
-                doc_id,
-                ActorId::random(),
-                &Origin::system("create"),
-                |tx| {
-                    model::create_base(tx, &spec)
-                        .map_err(|err| kition_kdm::KdmError::Engine(err.to_string()))
-                },
-            )?;
-            {
-                let tx = conn.transaction()?;
-                let now = now_millis();
-                store::save_initial(&tx, &replica, now)?;
-                project::rebuild(&tx, &replica, now)?;
-                let position = store::stored_position(&tx)?;
-                store::set_projected_position(&tx, position)?;
-                tx.commit()?;
-            }
-            Self::attach(conn, absolute)
+            let (conn, absolute) = open_sqlite(&path)?;
+            Self::create_on(conn, absolute, options)
         })();
         if result.is_err() {
             let _ = std::fs::remove_file(&path);
         }
         result
+    }
+
+    /// Creates a new document held in memory, not in a file: [`KitableFile::path`] is empty, and
+    /// [`KitableFile::to_bytes`] answers what [`KitableFile::create`] would have written.
+    pub fn create_in_memory(options: &CreateOptions) -> Result<Self> {
+        let conn = Connection::open_in_memory()?;
+        conn.execute_batch("PRAGMA foreign_keys = ON;")?;
+        Self::create_on(conn, PathBuf::new(), options)
+    }
+
+    /// Writes a new document into the empty database `conn` (at `path`, empty in memory).
+    fn create_on(mut conn: Connection, path: PathBuf, options: &CreateOptions) -> Result<Self> {
+        migrate_schema(&mut conn)?;
+        let (doc_id, spec) = initialize_document(&mut conn, &path, options)?;
+        let (replica, _) = Replica::create_with(
+            schema(),
+            doc_id,
+            ActorId::random(),
+            &Origin::system("create"),
+            |tx| {
+                model::create_base(tx, &spec)
+                    .map_err(|err| kition_kdm::KdmError::Engine(err.to_string()))
+            },
+        )?;
+        {
+            let tx = conn.transaction()?;
+            let now = now_millis();
+            store::save_initial(&tx, &replica, now)?;
+            project::rebuild(&tx, &replica, now)?;
+            let position = store::stored_position(&tx)?;
+            store::set_projected_position(&tx, position)?;
+            tx.commit()?;
+        }
+        Self::attach(conn, path)
     }
 
     /// Creates a new file whose replica is the document `changes` holds (a full export, or a
@@ -215,8 +228,35 @@ impl KitableFile {
             return Err(KitableError::invalid("kitable path is required"));
         }
         std::fs::metadata(path)?;
-        let (mut conn, absolute) = open_sqlite(path)?;
+        let (conn, absolute) = open_sqlite(path)?;
         let cannot_write = conn.is_readonly(rusqlite::MAIN_DB)?;
+        Self::open_on(conn, absolute, cannot_write)
+    }
+
+    /// Opens a `.kitable` file's bytes (what [`KitableFile::to_bytes`] answers, or the file on
+    /// disk) as a document held in memory, exactly as [`KitableFile::open`] opens a file: a file
+    /// from before the KDM gets its replica, a projection behind the stored replica is rebuilt,
+    /// and a file that cannot be brought up to date opens read-only. Nothing is written
+    /// anywhere; [`KitableFile::path`] is empty.
+    pub fn open_bytes(bytes: &[u8]) -> Result<Self> {
+        if bytes.is_empty() {
+            return Err(KitableError::invalid("kitable bytes are empty"));
+        }
+        let mut conn = Connection::open_in_memory()?;
+        conn.deserialize_read_exact(rusqlite::MAIN_DB, bytes, bytes.len(), false)?;
+        conn.execute_batch("PRAGMA foreign_keys = ON;")?;
+        Self::open_on(conn, PathBuf::new(), false)
+    }
+
+    /// The whole database as the bytes of a `.kitable` file (`sqlite3_serialize`): what a host
+    /// that keeps documents in memory writes to its storage, and [`KitableFile::open_bytes`]
+    /// reads back.
+    pub fn to_bytes(&self) -> Result<Vec<u8>> {
+        Ok(self.conn.serialize(rusqlite::MAIN_DB)?.to_vec())
+    }
+
+    /// [`KitableFile::open`]'s steps once the database is connected.
+    fn open_on(mut conn: Connection, absolute: PathBuf, cannot_write: bool) -> Result<Self> {
         migrate_schema(&mut conn)?;
         validate(&conn)?;
         if !has_replica(&conn)? {

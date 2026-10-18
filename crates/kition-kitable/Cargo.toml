@@ -23,3 +23,7 @@ uuid = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }
+
+# Browsers have no OS randomness: ids draw theirs from `crypto.getRandomValues`.
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
+uuid = { workspace = true, features = ["js"] }
