@@ -1,6 +1,6 @@
 //! Per-record change history.
 
-use kition_core::Millis;
+use kition_time::Millis;
 use rusqlite::{Connection, Row, params};
 use serde::Serialize;
 use serde_json::Value;

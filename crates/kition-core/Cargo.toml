@@ -11,7 +11,7 @@ workspace = true
 
 [dependencies]
 axum = { workspace = true }
-chrono = { workspace = true }
+kition-time = { workspace = true }
 rusqlite = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

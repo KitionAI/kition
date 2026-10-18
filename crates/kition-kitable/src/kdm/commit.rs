@@ -19,8 +19,8 @@
 
 use std::collections::BTreeSet;
 
-use kition_core::now_millis;
 use kition_kdm::{ObjectId, Origin, OriginKind, Replica, Tx, Version};
+use kition_time::now_millis;
 use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior};
 
 use super::model;

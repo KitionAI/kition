@@ -3,8 +3,8 @@
 
 use std::collections::HashMap;
 
-use kition_core::now_millis;
 use kition_kdm::{ObjectId, Origin};
+use kition_time::now_millis;
 use rusqlite::{Connection, OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};

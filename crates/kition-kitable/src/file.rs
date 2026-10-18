@@ -3,9 +3,9 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use kition_core::time::parse_legacy;
-use kition_core::{Millis, now_millis};
 use kition_kdm::{ActorId, DocId, ObjectId, Origin, Replica, Version};
+use kition_time::parse_legacy;
+use kition_time::{Millis, now_millis};
 use rusqlite::{Connection, OptionalExtension, params};
 use serde_json::Value;
 

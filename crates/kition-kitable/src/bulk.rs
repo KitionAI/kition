@@ -1,7 +1,7 @@
 //! Bulk record operations addressed by row key.
 
-use kition_core::now_millis;
 use kition_kdm::ObjectId;
+use kition_time::now_millis;
 use rusqlite::types::Value as SqlValue;
 use rusqlite::{OptionalExtension, params, params_from_iter};
 use serde::Serialize;

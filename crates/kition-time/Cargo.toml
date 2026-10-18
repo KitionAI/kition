@@ -1,0 +1,18 @@
+[package]
+name = "kition-time"
+description = "Millisecond Unix timestamps: the clock and the legacy text layouts, with no runtime dependencies (builds for wasm32)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+chrono = { version = "0.4", default-features = false, features = ["std"] }
+
+# Browsers have no system clock through std: the time comes from `Date.now()`.
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
+js-sys = "0.3"

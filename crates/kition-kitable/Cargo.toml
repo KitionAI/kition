@@ -11,8 +11,8 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-kition-core = { workspace = true }
 kition-kdm = { workspace = true }
+kition-time = { workspace = true }
 
 rusqlite = { workspace = true }
 serde = { workspace = true }

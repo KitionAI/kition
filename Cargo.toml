@@ -11,6 +11,7 @@ publish = false
 
 [workspace.dependencies]
 kition-core = { path = "crates/kition-core" }
+kition-time = { path = "crates/kition-time" }
 kition-store = { path = "crates/kition-store" }
 kition-http = { path = "crates/kition-http" }
 kition-ai = { path = "crates/kition-ai" }

@@ -3451,7 +3451,7 @@ name = "kition-core"
 version = "0.0.0"
 dependencies = [
  "axum",
- "chrono",
+ "kition-time",
  "rusqlite",
  "serde",
  "serde_json",
@@ -3682,8 +3682,8 @@ dependencies = [
 name = "kition-kitable"
 version = "0.0.0"
 dependencies = [
- "kition-core",
  "kition-kdm",
+ "kition-time",
  "rusqlite",
  "serde",
  "serde_json",
@@ -3732,6 +3732,14 @@ dependencies = [
  "tempfile",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "kition-time"
+version = "0.0.0"
+dependencies = [
+ "chrono",
+ "js-sys",
 ]
 
 [[package]]

@@ -164,7 +164,7 @@ fn bench_size(dir: &Path, count: usize) -> Timings {
     assert!(done, "expected a second undo step at {count} records");
 
     // Compaction and rebuild, directly on the stored replica (not through the manager).
-    let now = kition_core::now_millis();
+    let now = kition_time::now_millis();
     let start = Instant::now();
     ok(store::compact(file.conn(), file.replica(), now));
     let compact = start.elapsed();

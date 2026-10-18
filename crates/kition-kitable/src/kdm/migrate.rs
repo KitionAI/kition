@@ -18,8 +18,8 @@ use std::collections::HashMap;
 use rusqlite::{Connection, OptionalExtension, params};
 use serde_json::{Map, Value, json};
 
-use kition_core::now_millis;
 use kition_kdm::{ActorId, DocId, KdmError, ObjectId, Origin, Replica, Tx};
+use kition_time::now_millis;
 
 use super::model::{self, RECORD, is_computed};
 use super::options::{self, IdKind};

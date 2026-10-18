@@ -1,7 +1,7 @@
 //! Tables, fields, views, records, and attachments.
 
-use kition_core::{Millis, now_millis};
 use kition_kdm::ObjectId;
+use kition_time::{Millis, now_millis};
 use rusqlite::{Connection, OptionalExtension, Row, params};
 use serde::Serialize;
 use serde_json::{Map, Value};
