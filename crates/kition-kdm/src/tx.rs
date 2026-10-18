@@ -1,5 +1,5 @@
 // Copied from kition-sdk crates/kition-kdm/src/tx.rs by scripts/sync-kit-host.mjs; change it there, not here.
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, OnceLock};
 
@@ -430,6 +430,70 @@ impl<'a> Tx<'a> {
         tree.parents.insert(node, parent);
         self.ops.push(Op::TreeMove { id: id.clone(), field: name, node, parent });
         Ok(())
+    }
+
+    /// The tree's nodes in pre-order as this transaction sees it: the document's nodes plus the
+    /// nodes it created, each node it created or moved last among its new siblings, as they will
+    /// be once it applies. A node that names no object is skipped with its subtree, as in
+    /// [`crate::Replica::tree`]. Reads the whole tree: O(nodes + this transaction's operations).
+    pub fn tree(&self, id: &ObjectId, field: &str) -> Result<Vec<crate::TreeEntry>> {
+        let name = self.container_field(id, field, FieldKind::Tree)?;
+        let committed = match self.stored(id, name, false)? {
+            None => None,
+            Some(Container::Tree(tree)) => Some(tree),
+            Some(_) => return Err(read::wrong_container(id, name)),
+        };
+        let mut children: HashMap<Option<NodeKey>, Vec<NodeKey>> = HashMap::new();
+        let mut parent_of: HashMap<NodeKey, Option<NodeKey>> = HashMap::new();
+        let mut objects: HashMap<NodeKey, Option<ObjectId>> = HashMap::new();
+        if let Some(tree) = &committed {
+            let mut stack = vec![(loro::TreeParentId::Root, None)];
+            while let Some((parent, key)) = stack.pop() {
+                for node in tree.children(parent).unwrap_or_default() {
+                    let child = NodeKey::Committed(node);
+                    children.entry(key).or_default().push(child);
+                    parent_of.insert(child, key);
+                    objects.insert(child, read::node_object(tree, node));
+                    stack.push((loro::TreeParentId::Node(node), Some(child)));
+                }
+            }
+        }
+        for op in &self.ops {
+            match op {
+                Op::TreeCreate { id: owner, field: of, parent, object, node } if owner == id && *of == name => {
+                    let child = NodeKey::Pending(*node);
+                    children.entry(*parent).or_default().push(child);
+                    parent_of.insert(child, *parent);
+                    objects.insert(child, Some(object.clone()));
+                }
+                Op::TreeMove { id: owner, field: of, node, parent } if owner == id && *of == name => {
+                    if let Some(old) = parent_of.insert(*node, *parent) {
+                        children.entry(old).or_default().retain(|child| child != node);
+                    }
+                    children.entry(*parent).or_default().push(*node);
+                }
+                _ => {}
+            }
+        }
+        let handle = |key: NodeKey| -> Result<NodeRef> {
+            match key {
+                NodeKey::Committed(node) => Ok(NodeRef::committed(node)),
+                NodeKey::Pending(index) => self
+                    .nodes
+                    .get(index)
+                    .map(|pending| NodeRef(NodeInner::Pending(Arc::clone(pending))))
+                    .ok_or_else(|| KdmError::Engine(format!("tree node {index} was not staged"))),
+            }
+        };
+        let mut out = Vec::new();
+        let mut stack: Vec<(NodeKey, Option<NodeRef>)> = children.get(&None).into_iter().flatten().rev().map(|key| (*key, None)).collect();
+        while let Some((key, parent)) = stack.pop() {
+            let Some(Some(object)) = objects.get(&key) else { continue };
+            let node = handle(key)?;
+            out.push(crate::TreeEntry { node: node.clone(), object: object.clone(), parent });
+            stack.extend(children.get(&Some(key)).into_iter().flatten().rev().map(|child| (*child, Some(node.clone()))));
+        }
+        Ok(out)
     }
 
     /// Checks an id the host chose for a new object of type `ty`.

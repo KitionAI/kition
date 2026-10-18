@@ -388,6 +388,286 @@
           }
         ]
       }
+    },
+    {
+      "request": {
+        "ops": [
+          {
+            "op": "create",
+            "type": "Shape",
+            "in": "root.outline",
+            "id": "t1",
+            "ref": "$t1",
+            "fields": {
+              "kind": "rect",
+              "x": 0.5,
+              "y": 0.5
+            }
+          },
+          {
+            "op": "create",
+            "type": "Shape",
+            "in": "root.outline",
+            "parent": "$t1",
+            "id": "t2",
+            "fields": {
+              "kind": "ellipse",
+              "x": 0.5,
+              "y": 0.5
+            }
+          },
+          {
+            "op": "create",
+            "type": "Shape",
+            "in": "root.outline",
+            "id": "t3",
+            "ref": "$t3",
+            "fields": {
+              "kind": "rect",
+              "x": 0.5,
+              "y": 0.5
+            }
+          },
+          {
+            "op": "tree.insert",
+            "target": "root",
+            "field": "outline",
+            "item": "s1",
+            "parent": "$t3"
+          },
+          {
+            "op": "tree.move",
+            "target": "root",
+            "field": "outline",
+            "item": "$t3",
+            "parent": "$t1"
+          }
+        ],
+        "load": [
+          {
+            "target": "root",
+            "fields": [
+              "outline"
+            ]
+          }
+        ]
+      },
+      "result": {
+        "refs": {
+          "$t1": "t1",
+          "$t3": "t3"
+        },
+        "results": [
+          "t1",
+          "t2",
+          "t3",
+          null,
+          null
+        ],
+        "loaded": [
+          {
+            "id": "page1",
+            "type": "Page",
+            "fields": {
+              "outline": [
+                {
+                  "object": "t1",
+                  "parent": null
+                },
+                {
+                  "object": "t2",
+                  "parent": "t1"
+                },
+                {
+                  "object": "t3",
+                  "parent": "t1"
+                },
+                {
+                  "object": "s1",
+                  "parent": "t3"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "ops": [
+          {
+            "op": "tree.move",
+            "target": "root",
+            "field": "outline",
+            "item": "t1",
+            "parent": "t3"
+          }
+        ]
+      },
+      "error": {
+        "code": "invalid-value",
+        "index": 0
+      }
+    },
+    {
+      "request": {
+        "ops": [
+          {
+            "op": "set",
+            "target": "t1",
+            "field": "x",
+            "value": 9.5
+          },
+          {
+            "op": "delete",
+            "target": "t3"
+          }
+        ]
+      },
+      "error": {
+        "code": "invalid-value",
+        "index": 1
+      }
+    },
+    {
+      "request": {
+        "ops": [
+          {
+            "op": "create",
+            "type": "Shape",
+            "in": "root.outline",
+            "at": 0,
+            "fields": {
+              "kind": "rect",
+              "x": 0.5,
+              "y": 0.5
+            }
+          }
+        ]
+      },
+      "error": {
+        "code": "invalid-op",
+        "index": 0
+      }
+    },
+    {
+      "request": {
+        "ops": [
+          {
+            "op": "tree.insert",
+            "target": "root",
+            "field": "outline",
+            "item": "s1"
+          }
+        ]
+      },
+      "error": {
+        "code": "invalid-value",
+        "index": 0
+      }
+    },
+    {
+      "request": {
+        "ops": [
+          {
+            "op": "tree.move",
+            "target": "root",
+            "field": "outline",
+            "item": "sheet1"
+          }
+        ]
+      },
+      "error": {
+        "code": "not-found",
+        "index": 0
+      }
+    },
+    {
+      "request": {
+        "ops": [
+          {
+            "op": "tree.insert",
+            "target": "root",
+            "field": "outline",
+            "item": "sheet1",
+            "parent": "nowhere"
+          }
+        ]
+      },
+      "error": {
+        "code": "not-found",
+        "index": 0
+      }
+    },
+    {
+      "request": {
+        "ops": [
+          {
+            "op": "tree.insert",
+            "target": "root",
+            "field": "outline",
+            "item": "sheet1"
+          }
+        ]
+      },
+      "error": {
+        "code": "invalid-value",
+        "index": 0
+      }
+    },
+    {
+      "request": {
+        "ops": [
+          {
+            "op": "tree.move",
+            "target": "root",
+            "field": "outline",
+            "item": "s1",
+            "parent": null
+          },
+          {
+            "op": "delete",
+            "target": "t3"
+          }
+        ],
+        "load": [
+          {
+            "target": "root",
+            "fields": [
+              "outline"
+            ]
+          }
+        ]
+      },
+      "result": {
+        "refs": {},
+        "results": [
+          null,
+          null
+        ],
+        "loaded": [
+          {
+            "id": "page1",
+            "type": "Page",
+            "fields": {
+              "outline": [
+                {
+                  "object": "t1",
+                  "parent": null
+                },
+                {
+                  "object": "t2",
+                  "parent": "t1"
+                },
+                {
+                  "object": "s1",
+                  "parent": null
+                }
+              ]
+            }
+          }
+        ]
+      }
     }
   ]
 }

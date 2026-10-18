@@ -1,6 +1,6 @@
 // Copied from kition-sdk packages/sdk/src/sources.ts by scripts/sync-kit-host.mjs; change it there, not here.
 import { encodeOrigin, type Origin } from '../kdm'
-import type { KitCommandInfo, ModelPort } from './port'
+import type { DocumentEventSource, KitCommandInfo, ModelPort } from './port'
 
 const isObject = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null
 
@@ -88,8 +88,10 @@ const isEngine = (value: unknown): value is EngineLike =>
 const parsed = (text: string): unknown => (text === '' ? null : JSON.parse(text))
 
 /** A kit engine in this process (Node, a worker): commands run as the batch's origin when it has `executeAs`. */
-export function portFromEngine(engine: EngineLike, kitId: string, options: { readOnly?: () => boolean; onChanged?: ModelPort['onChanged'] } = {}): ModelPort {
+export function portFromEngine(engine: EngineLike, kitId: string, options: { readOnly?: () => boolean; onChanged?: ModelPort['onChanged'] } & DocumentEventSource = {}): ModelPort {
   return {
+    events: options.events,
+    on: options.on,
     kitId,
     exportChanges: async (since) => engine.exportChanges(since),
     importChanges: async (changes) => {

@@ -148,6 +148,8 @@ const OPS: &[(&str, bool)] = &[
     ("list.remove", true),
     ("map.set", true),
     ("map.delete", true),
+    ("tree.insert", true),
+    ("tree.move", true),
     ("command", true),
 ];
 
@@ -351,12 +353,23 @@ fn apply(tx: &mut Tx<'_>, schema: &Schema, index: usize, op: &Value, refs: &mut 
             if let Some((owner, field)) = container {
                 let owner_type = tx.object_type(&owner).map_err(kdm)?;
                 let def = schema.field(&owner_type, &field).map_err(kdm)?;
-                if def.kind != FieldKind::List {
-                    return Err(BatchError::op(index, format!("`{owner_type}.{field}` is not a list; create objects in lists")));
+                match def.kind {
+                    FieldKind::List => {
+                        let len = tx.list_items(&owner, &field).map_err(kdm)?.len();
+                        let at = position(index, op.get("at"), len)?;
+                        tx.list_insert(&owner, &field, at, &id).map_err(kdm)?;
+                    }
+                    FieldKind::Tree => {
+                        if !matches!(op.get("at"), None | Some(Value::Null)) && op.get("at").and_then(Value::as_str) != Some("end") {
+                            return Err(BatchError::op(index, "`at` places items in lists; a tree adds a node last among its siblings"));
+                        }
+                        let parent = tree_parent(tx, refs, root, schema, index, op, &owner, &field)?;
+                        tx.tree_create(&owner, &field, parent.as_ref(), &id).map_err(kdm)?;
+                    }
+                    _ => return Err(BatchError::op(index, format!("`{owner_type}.{field}` is not a list or a tree; create objects in lists and trees"))),
                 }
-                let len = tx.list_items(&owner, &field).map_err(kdm)?.len();
-                let at = position(index, op.get("at"), len)?;
-                tx.list_insert(&owner, &field, at, &id).map_err(kdm)?;
+            } else if !matches!(op.get("parent"), None | Some(Value::Null)) {
+                return Err(BatchError::op(index, "`parent` places an object in a tree: give `in` too"));
             }
             if let Some(reference) = reference {
                 refs.insert(reference, id.clone());
@@ -387,7 +400,52 @@ fn apply(tx: &mut Tx<'_>, schema: &Schema, index: usize, op: &Value, refs: &mut 
                     }
                 }
             }
+            // A tree keeps the node of a deleted object (readers skip it), but not over live children.
+            for (owner_type, def) in &schema.types {
+                for (field, field_def) in &def.fields {
+                    if field_def.kind != FieldKind::Tree || field_def.of.as_deref().is_some_and(|of| of != ty) {
+                        continue;
+                    }
+                    for owner in tx.objects_of_type(owner_type) {
+                        let entries = tx.tree(&owner, field).map_err(kdm)?;
+                        let mine: Vec<&crate::NodeRef> = entries.iter().filter(|entry| entry.object == id).map(|entry| &entry.node).collect();
+                        if entries.iter().any(|entry| entry.parent.as_ref().is_some_and(|parent| mine.contains(&parent)) && tx.exists(&entry.object)) {
+                            return Err(BatchError::new(
+                                BatchErrorCode::InvalidValue,
+                                Some(index),
+                                format!("`{id}` has children in `{owner}.{field}`: delete or move them first"),
+                            ));
+                        }
+                    }
+                }
+            }
             tx.delete(&id).map_err(kdm)?;
+            Ok(Value::Null)
+        }
+        "tree.insert" => {
+            let id = target("target", refs, tx)?;
+            let field = str_field(index, op, "field")?;
+            let item = target("item", refs, tx)?;
+            if live_node(tx, &id, field, &item).map_err(kdm)?.is_some() {
+                return Err(BatchError::new(
+                    BatchErrorCode::InvalidValue,
+                    Some(index),
+                    format!("`{item}` is already in `{id}.{field}`: move it with tree.move"),
+                ));
+            }
+            let parent = tree_parent(tx, refs, root, schema, index, op, &id, field)?;
+            tx.tree_create(&id, field, parent.as_ref(), &item).map_err(kdm)?;
+            Ok(Value::Null)
+        }
+        "tree.move" => {
+            let id = target("target", refs, tx)?;
+            let field = str_field(index, op, "field")?;
+            let item = target("item", refs, tx)?;
+            let node = live_node(tx, &id, field, &item)
+                .map_err(kdm)?
+                .ok_or_else(|| BatchError::new(BatchErrorCode::NotFound, Some(index), format!("`{item}` is not in `{id}.{field}`")))?;
+            let parent = tree_parent(tx, refs, root, schema, index, op, &id, field)?;
+            tx.tree_move(&id, field, &node, parent.as_ref()).map_err(kdm)?;
             Ok(Value::Null)
         }
         "text.insert" => {
@@ -460,6 +518,49 @@ fn apply(tx: &mut Tx<'_>, schema: &Schema, index: usize, op: &Value, refs: &mut 
     }
 }
 
+/// The node of a tree field naming `object`, when `object` exists (the node of a deleted object
+/// is skipped, as readers skip it).
+fn live_node(tx: &Tx<'_>, id: &ObjectId, field: &str, object: &ObjectId) -> Result<Option<crate::NodeRef>, KdmError> {
+    if !tx.exists(object) {
+        return Ok(None);
+    }
+    Ok(tx.tree(id, field)?.into_iter().find(|entry| entry.object == *object).map(|entry| entry.node))
+}
+
+/// The node an operation's `parent` names in a tree (`None`: absent or `null`, a root).
+#[allow(clippy::too_many_arguments)]
+fn tree_parent(
+    tx: &Tx<'_>,
+    refs: &Refs,
+    root: &mut Option<ObjectId>,
+    schema: &Schema,
+    index: usize,
+    op: &Value,
+    id: &ObjectId,
+    field: &str,
+) -> Result<Option<crate::NodeRef>, BatchError> {
+    let text = match op.get("parent") {
+        None | Some(Value::Null) => return Ok(None),
+        Some(Value::String(text)) => text,
+        Some(_) => return Err(BatchError::op(index, "`parent` is an object or null")),
+    };
+    let parent = target_id(
+        text,
+        refs,
+        || {
+            if root.is_none() {
+                *root = tx.objects_of_type(&schema.root).into_iter().next();
+            }
+            root.clone()
+        },
+        Some(index),
+    )?;
+    live_node(tx, id, field, &parent)
+        .map_err(|error| BatchError::kdm(Some(index), error))?
+        .map(Some)
+        .ok_or_else(|| BatchError::new(BatchErrorCode::NotFound, Some(index), format!("the parent `{parent}` is not in `{id}.{field}`")))
+}
+
 /// One `load` entry: `{ target, fields? }` → `{ id, type, fields }`.
 fn load(replica: &Replica, entry: &Value, refs: &Refs) -> Result<Value, BatchError> {
     let text = entry.get("target").and_then(Value::as_str).ok_or_else(|| BatchError::new(BatchErrorCode::InvalidOp, None, "`target` is a string"))?;
@@ -494,7 +595,14 @@ pub fn read_field(replica: &Replica, id: &ObjectId, ty: &str, name: &str) -> Res
         FieldKind::List => Value::Array(replica.list(id, name).map_err(error)?.into_iter().map(|item| Value::String(item.to_string())).collect()),
         FieldKind::Map => Value::Object(replica.map_entries(id, name).map_err(error)?.into_iter().collect()),
         FieldKind::Tree => {
-            let entries = replica.tree(id, name).map_err(error)?;
+            // The nodes of deleted objects are skipped with their subtrees, as kits read them.
+            let mut entries: Vec<crate::TreeEntry> = Vec::new();
+            for entry in replica.tree(id, name).map_err(error)? {
+                let parent_kept = entry.parent.as_ref().is_none_or(|parent| entries.iter().any(|kept| kept.node == *parent));
+                if parent_kept && replica.exists(&entry.object) {
+                    entries.push(entry);
+                }
+            }
             let object_of = |node: &crate::NodeRef| entries.iter().find(|entry| entry.node == *node).map(|entry| Value::String(entry.object.to_string()));
             Value::Array(
                 entries

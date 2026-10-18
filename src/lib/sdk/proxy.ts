@@ -52,6 +52,32 @@ export interface ModelList<T extends ModelObject = ModelObject, F = Record<strin
   at(index: number): T
 }
 
+/** A node of a loaded tree field: an object and its parent (`null`: a root), in pre-order. */
+export interface ModelTreeNode<T extends ModelObject = ModelObject> {
+  readonly object: T
+  readonly parent: T | null
+}
+
+/**
+ * A tree field: objects of one type in a hierarchy, each node naming one object. A new node is
+ * the last child of its parent; deleting an object (`delete()`) leaves the tree with it, and is
+ * refused while it has children there.
+ */
+export interface ModelTree<T extends ModelObject = ModelObject, F = Record<string, unknown>> {
+  /** Queues a new object as the last child of `parent` (a root when omitted); answers its proxy. */
+  add(fields?: F, options?: { parent?: T | string | null }): T
+  /** Queues adding an existing object that is not in the tree yet. */
+  insert(item: T | string, options?: { parent?: T | string | null }): void
+  /** Queues moving an object, with its subtree, to be the last child of `parent` (`null`: a root). */
+  move(item: T | string, parent: T | string | null): void
+  /** Queues a read of the tree. */
+  load(): this
+  /** The nodes after `load()` + `sync()`, in pre-order (each parent before its children). */
+  readonly nodes: Array<ModelTreeNode<T>>
+  /** The children of `parent` (the roots when omitted), after `load()` + `sync()`. */
+  children(parent?: T | string | null): T[]
+}
+
 /** A text field. Positions count Unicode scalar values. */
 export interface ModelText {
   insert(index: number, text: string): void
@@ -233,7 +259,7 @@ export class RequestContext<Root extends ModelObject = ModelObject, C extends Co
         if (typeof prop === 'symbol' || prop in target) return Reflect.get(target, prop, receiver)
         const def = context.field(state, prop)
         if (!def) return undefined
-        if (def.kind === 'list' || def.kind === 'text' || def.kind === 'map') {
+        if (def.kind === 'list' || def.kind === 'text' || def.kind === 'map' || def.kind === 'tree') {
           let child = children.get(prop)
           if (!child) children.set(prop, (child = context.container(state, prop, def, proxy)))
           return child
@@ -306,6 +332,41 @@ export class RequestContext<Root extends ModelObject = ModelObject, C extends Co
         },
       }
       return list
+    }
+    if (def.kind === 'tree') {
+      const of = def.of ?? ''
+      const parentOf = (options?: { parent?: unknown }) => (options?.parent === undefined || options.parent === null ? {} : { parent: typeof options.parent === 'string' ? options.parent : wire(options.parent) })
+      const nodes = () => loaded() as Array<{ object: string; parent: string | null }>
+      const objectOf = (id: string, type: string) => context.object(id, type)
+      const tree: ModelTree = {
+        add(fields, options) {
+          const ref = `$${(context.refs += 1)}`
+          const created: ObjectState = { target: ref, type: of, id: null, fields: new Map() }
+          context.created.push(created)
+          context.push({ op: 'create', type: of, in: `${target()}.${field}`, ref, ...(fields ? { fields: wire(fields) } : {}), ...parentOf(options) })
+          return context.proxy(created)
+        },
+        insert(item, options) {
+          context.push({ op: 'tree.insert', target: target(), field, item: typeof item === 'string' ? item : wire(item), ...parentOf(options) })
+        },
+        move(item, parent) {
+          context.push({ op: 'tree.move', target: target(), field, item: typeof item === 'string' ? item : wire(item), parent: parent === null ? null : typeof parent === 'string' ? parent : wire(parent) })
+        },
+        load() {
+          owner.load([field])
+          return tree
+        },
+        get nodes() {
+          return nodes().map((node) => ({ object: objectOf(node.object, of), parent: node.parent === null ? null : objectOf(node.parent, of) }))
+        },
+        children(parent) {
+          const id = parent === undefined || parent === null ? null : typeof parent === 'string' ? parent : parent.id
+          return nodes()
+            .filter((node) => node.parent === id)
+            .map((node) => objectOf(node.object, of))
+        },
+      }
+      return tree
     }
     if (def.kind === 'text') {
       const text: ModelText = {

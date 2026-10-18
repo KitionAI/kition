@@ -9,6 +9,6 @@ export { exchangeBackend, ModelDocument, openDocument, type ChangedEvent, type M
 export { Exchange, type ModelDescription } from './exchange'
 export { kitModelBackend } from './kitModel'
 export { kitDescriptor, registerKit, type KitDescriptor } from './kits'
-export type { KitCommandInfo, KitModel, ModelPort } from './port'
-export { NotSyncedError, PropertyNotLoadedError, RequestContext, type CommandMap, type CommandResult, type ModelList, type ModelMap, type ModelObject, type ModelText } from './proxy'
+export type { ConflictEvent, DocumentEventName, DocumentEvents, DocumentEventSource, KitCommandInfo, KitModel, ModelPort, PresenceEvent, SavedEvent, SelectionEvent } from './port'
+export { NotSyncedError, PropertyNotLoadedError, RequestContext, type CommandMap, type CommandResult, type ModelList, type ModelMap, type ModelObject, type ModelText, type ModelTree, type ModelTreeNode } from './proxy'
 export { isModelPort, portFromConnection, portFromEngine, type ConnectionLike, type EngineLike } from './sources'

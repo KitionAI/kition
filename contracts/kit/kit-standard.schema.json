@@ -355,6 +355,15 @@
         },
         "protocol": {
           "const": "kition-kit/1"
+        },
+        "features": {
+          "type": "array",
+          "description": "Optional Kit Protocol features the executable serves, as kit.initialize lists them in capabilities.features (for example model.describe and model.batch, the object model).",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][A-Za-z0-9_]*(\\.[a-z][A-Za-z0-9_]*)+$"
+          }
         }
       }
     }

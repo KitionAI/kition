@@ -3,7 +3,7 @@ import type { BatchRequest, BatchResult, Origin, Schema } from '../kdm'
 import { Exchange, type ModelDescription } from './exchange'
 import { kitModelBackend } from './kitModel'
 import { kitDescriptor } from './kits'
-import type { KitCommandInfo, ModelPort } from './port'
+import type { DocumentEventName, DocumentEvents, DocumentEventSource, KitCommandInfo, ModelPort } from './port'
 import { RequestContext, type CommandMap, type ModelObject } from './proxy'
 import { isModelPort, portFromSource } from './sources'
 
@@ -24,7 +24,7 @@ export type OpenOptions = {
  * (the object model on the host's side), or a kit that serves the object model itself (a
  * headless kit executable over the Kit Protocol, `@kition/sdk/node`'s `launchHeadlessKit`).
  */
-export interface ModelBackend {
+export interface ModelBackend extends DocumentEventSource {
   readonly kitId: string
   readonly schema: Schema
   batch(request: BatchRequest): Promise<BatchResult>
@@ -46,6 +46,8 @@ export function exchangeBackend(exchange: Exchange): ModelBackend {
     commands: () => exchange.port.commands(),
     version: () => exchange.version()?.encode() ?? null,
     onChanged: exchange.port.onChanged?.bind(exchange.port),
+    events: exchange.port.events,
+    on: exchange.port.on?.bind(exchange.port),
   }
 }
 
@@ -53,6 +55,8 @@ export function exchangeBackend(exchange: Exchange): ModelBackend {
 export class ModelDocument<Root extends ModelObject = ModelObject, C extends CommandMap = CommandMap> {
   private listeners = new Set<(event: ChangedEvent) => void>()
   private unsubscribe: (() => void) | null = null
+  /** Unsubscribes of the source's other events this handle hears. */
+  private hearing = new Set<() => void>()
   private closed = false
 
   constructor(
@@ -116,11 +120,40 @@ export class ModelDocument<Root extends ModelObject = ModelObject, C extends Com
       (await this.batch({ ops: [{ op: 'command', id, ...(params === undefined ? {} : { params }) }] })).results[0],
   }
 
-  on(event: 'changed', listener: (event: ChangedEvent) => void): () => void {
-    if (event !== 'changed') throw new Error(`unknown event \`${event}\``)
-    this.listeners.add(listener)
+  /**
+   * Whether this document's source reports `event`: `changed` always; `saved`, `presence`,
+   * `conflict`, and `selection` when its host or kit does (an `@kition/embed` editor reports
+   * `saved` and `conflict`, and `presence` when it co-edits; a headless kit and a Node package
+   * document report `saved`).
+   */
+  supports(event: 'changed' | DocumentEventName): boolean {
+    return event === 'changed' || (typeof this.backend.on === 'function' && (this.backend.events ?? []).includes(event))
+  }
+
+  /** Hears an event; answers an unsubscribe. An event the source does not report (`supports`) is never heard. */
+  on(event: 'changed', listener: (event: ChangedEvent) => void): () => void
+  on<E extends DocumentEventName>(event: E, listener: (event: DocumentEvents[E]) => void): () => void
+  on(event: string, listener: (event: never) => void): () => void {
+    if (event === 'changed') {
+      const heard = listener as (event: ChangedEvent) => void
+      this.listeners.add(heard)
+      return () => {
+        this.listeners.delete(heard)
+      }
+    }
+    if (!EVENTS.includes(event as DocumentEventName)) throw new Error(`unknown event \`${event}\``)
+    this.alive()
+    if (!this.supports(event as DocumentEventName)) return () => undefined
+    const off = this.backend.on!(event as DocumentEventName, (value) => {
+      try {
+        ;(listener as (value: unknown) => void)(value)
+      } catch (error) {
+        console.error(`[kition-sdk] a ${event} listener failed`, error)
+      }
+    })
+    this.hearing.add(off)
     return () => {
-      this.listeners.delete(listener)
+      if (this.hearing.delete(off)) off()
     }
   }
 
@@ -130,6 +163,8 @@ export class ModelDocument<Root extends ModelObject = ModelObject, C extends Com
     this.unsubscribe?.()
     this.unsubscribe = null
     this.listeners.clear()
+    for (const off of this.hearing) off()
+    this.hearing.clear()
   }
 
   private alive() {
@@ -146,6 +181,8 @@ export class ModelDocument<Root extends ModelObject = ModelObject, C extends Com
     }
   }
 }
+
+const EVENTS: readonly DocumentEventName[] = ['saved', 'presence', 'conflict', 'selection']
 
 const sameBytes = (a: Uint8Array, b: Uint8Array) => a.byteLength === b.byteLength && a.every((byte, index) => byte === b[index])
 

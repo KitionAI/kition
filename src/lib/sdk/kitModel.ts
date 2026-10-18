@@ -62,6 +62,8 @@ export function kitModelBackend(port: ModelPort & { model: KitModel }, schema: S
       }),
     commands: () => port.commands(),
     version: () => version,
+    events: port.events,
+    on: port.on?.bind(port),
     onChanged: port.onChanged
       ? (listener) =>
           port.onChanged!((changed) => {

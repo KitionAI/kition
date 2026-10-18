@@ -10,9 +10,9 @@
  * scalar values (rule M18), converted here to the UTF-16 units of this implementation's `Tx`.
  */
 import { KdmError } from './errors'
-import type { ObjectId } from './ids'
+import type { NodeRef, ObjectId } from './ids'
 import { checkOrigin, type Origin } from './origin'
-import type { Replica } from './replica'
+import type { Replica, TreeEntry } from './replica'
 import { fieldDef, hasMarks, sortedKeys, typeDef, type Schema } from './schema'
 import type { Tx } from './tx'
 
@@ -64,7 +64,7 @@ export function replicaTarget(replica: Replica): BatchTarget {
   }
 }
 
-const WRITES = new Set(['create', 'set', 'delete', 'text.insert', 'text.delete', 'text.set', 'text.mark', 'text.unmark', 'list.insert', 'list.move', 'list.remove', 'map.set', 'map.delete', 'command'])
+const WRITES = new Set(['create', 'set', 'delete', 'text.insert', 'text.delete', 'text.set', 'text.mark', 'text.unmark', 'list.insert', 'list.move', 'list.remove', 'map.set', 'map.delete', 'tree.insert', 'tree.move', 'command'])
 
 /** The origin of a batch: `extension`/`script` when absent; only `person`, `agent`, and `extension`. */
 export function batchOrigin(value: unknown): Origin {
@@ -244,9 +244,13 @@ function apply(tx: Tx, schema: Schema, index: number, op: BatchOp, refs: Refs, r
         if (container) {
           const [owner, field] = container
           const ownerType = tx.objectType(owner)
-          if (fieldDef(schema, ownerType, field).kind !== 'list') throw new BatchError('invalid-op', index, `\`${ownerType}.${field}\` is not a list; create objects in lists`)
-          tx.listInsert(owner, field, position(index, op.at, tx.listItems(owner, field).length), id)
-        }
+          const kind = fieldDef(schema, ownerType, field).kind
+          if (kind === 'list') tx.listInsert(owner, field, position(index, op.at, tx.listItems(owner, field).length), id)
+          else if (kind === 'tree') {
+            if (op.at !== undefined && op.at !== null && op.at !== 'end') throw new BatchError('invalid-op', index, '`at` places items in lists; a tree adds a node last among its siblings')
+            tx.treeCreate(owner, field, treeParent(tx, refs, root, index, op, owner, field), id)
+          } else throw new BatchError('invalid-op', index, `\`${ownerType}.${field}\` is not a list or a tree; create objects in lists and trees`)
+        } else if (op.parent !== undefined && op.parent !== null) throw new BatchError('invalid-op', index, '`parent` places an object in a tree: give `in` too')
         if (typeof reference === 'string') refs.set(reference, id)
         return id
       }
@@ -268,7 +272,39 @@ function apply(tx: Tx, schema: Schema, index: number, op: BatchOp, refs: Refs, r
             }
           }
         }
+        // A tree keeps the node of a deleted object (readers skip it), but not over live children.
+        for (const ownerType of sortedKeys(schema.types)) {
+          const def = typeDef(schema, ownerType)
+          for (const field of sortedKeys(def.fields)) {
+            const fieldOf = def.fields[field]
+            if (fieldOf.kind !== 'tree' || (fieldOf.of !== undefined && fieldOf.of !== ty)) continue
+            for (const owner of tx.objectsOfType(ownerType)) {
+              const entries = tx.tree(owner, field)
+              const mine = entries.filter((entry) => entry.object === id).map((entry) => entry.node)
+              if (entries.some((entry) => entry.parent !== null && mine.some((node) => node.equals(entry.parent!)) && tx.exists(entry.object))) {
+                throw new BatchError('invalid-value', index, `\`${id}\` has children in \`${owner}.${field}\`: delete or move them first`)
+              }
+            }
+          }
+        }
         tx.delete(id)
+        return null
+      }
+      case 'tree.insert': {
+        const id = target('target')
+        const field = str(index, op, 'field')
+        const item = target('item')
+        if (liveNode(tx, id, field, item)) throw new BatchError('invalid-value', index, `\`${item}\` is already in \`${id}.${field}\`: move it with tree.move`)
+        tx.treeCreate(id, field, treeParent(tx, refs, root, index, op, id, field), item)
+        return null
+      }
+      case 'tree.move': {
+        const id = target('target')
+        const field = str(index, op, 'field')
+        const item = target('item')
+        const node = liveNode(tx, id, field, item)
+        if (!node) throw new BatchError('not-found', index, `\`${item}\` is not in \`${id}.${field}\``)
+        tx.treeMove(id, field, node, treeParent(tx, refs, root, index, op, id, field))
         return null
       }
       case 'text.insert': {
@@ -332,6 +368,22 @@ function apply(tx: Tx, schema: Schema, index: number, op: BatchOp, refs: Refs, r
   }
 }
 
+/** The node of a tree field naming `object`, when `object` exists (the node of a deleted object is skipped, as readers skip it). */
+function liveNode(tx: Tx, id: ObjectId, field: string, object: ObjectId): NodeRef | null {
+  if (!tx.exists(object)) return null
+  return tx.tree(id, field).find((entry) => entry.object === object)?.node ?? null
+}
+
+/** The node an operation's `parent` names in a tree (`null`: absent or `null`, a root). */
+function treeParent(tx: Tx, refs: Refs, root: () => ObjectId | null, index: number, op: BatchOp, id: ObjectId, field: string): NodeRef | null {
+  if (op.parent === undefined || op.parent === null) return null
+  if (typeof op.parent !== 'string') throw new BatchError('invalid-op', index, '`parent` is an object or null')
+  const parent = targetId(op.parent, refs, root, index)
+  const node = liveNode(tx, id, field, parent)
+  if (!node) throw new BatchError('not-found', index, `the parent \`${parent}\` is not in \`${id}.${field}\``)
+  return node
+}
+
 function load(replica: Replica, entry: unknown, refs: Refs): LoadedObject {
   if (!isRecord(entry) || typeof entry.target !== 'string') throw new BatchError('invalid-op', null, '`target` is a string')
   const id = targetId(entry.target, refs, () => rootId(replica), null)
@@ -360,7 +412,12 @@ export function readField(replica: Replica, id: ObjectId, ty: string, name: stri
     case 'map':
       return Object.fromEntries(replica.mapEntries(id, name))
     case 'tree': {
-      const entries = replica.tree(id, name)
+      // The nodes of deleted objects are skipped with their subtrees, as kits read them.
+      const entries: TreeEntry[] = []
+      for (const entry of replica.tree(id, name)) {
+        const parentKept = entry.parent === null || entries.some((kept) => kept.node.equals(entry.parent!))
+        if (parentKept && replica.exists(entry.object)) entries.push(entry)
+      }
       return entries.map((entry) => ({ object: entry.object, parent: entries.find((other) => entry.parent !== null && other.node.equals(entry.parent))?.object ?? null }))
     }
     default:

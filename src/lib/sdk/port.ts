@@ -14,12 +14,33 @@ export type KitCommandInfo = {
   enabled?: boolean
 }
 
+/** The document was written to its file or storage: the storage's new version, or the file it went to. */
+export type SavedEvent = { version: string | null; uri?: string }
+/** The people in the document's collaboration room, this person included, as the host knows them. */
+export type PresenceEvent = { peers: ReadonlyArray<Record<string, unknown>> }
+/** A save was refused because the file changed elsewhere since it was read: nothing was overwritten. */
+export type ConflictEvent = { message: string }
+/** The objects the person selected in the kit's editor, as KDM object ids. */
+export type SelectionEvent = { ids: string[] }
+
+/** The document events a source reports besides `changed`, and what each carries. */
+export type DocumentEvents = { saved: SavedEvent; presence: PresenceEvent; conflict: ConflictEvent; selection: SelectionEvent }
+export type DocumentEventName = keyof DocumentEvents
+
+/** The events a source reports: which (`events`), and how to hear one (`on`). */
+export interface DocumentEventSource {
+  /** The events of `DocumentEvents` this source reports; any other is never heard. */
+  readonly events?: readonly DocumentEventName[]
+  /** Hears one of `events`; answers an unsubscribe. */
+  on?<E extends DocumentEventName>(event: E, listener: (value: DocumentEvents[E]) => void): () => void
+}
+
 /**
  * A contract 2 document as the object model reaches it: the engine's change exchange and its
  * commands. Every kit editor (`KitConnection` with the `replica` capability), every kit engine
  * (`exportChanges`, `importChanges`, `executeAs`), and an `@kition/embed` editor give one.
  */
-export interface ModelPort {
+export interface ModelPort extends DocumentEventSource {
   readonly kitId: string
   /** The engine's changes since the encoded version `since`; empty bytes ask for every change. */
   exportChanges(since: Uint8Array): Promise<Uint8Array>

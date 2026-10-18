@@ -5,13 +5,14 @@
  * operations, and is buffered. `Replica.transact` applies the buffer only if the whole transaction
  * succeeds, because the engine cannot abort (its operations take effect as they are applied).
  */
-import { LoroMap, type LoroDoc } from 'loro-crdt'
+import { LoroMap, type LoroDoc, type LoroTreeNode } from 'loro-crdt'
 import { checkIndex as checkWhole, checkObjectIdSyntax, checkRecord, checkString } from './args'
 import { canonical, compareKeys, setKey } from './canonical'
 import { errors, KdmError } from './errors'
-import { newObjectId, nodeState, pendingNode, type NodeRef, type ObjectId } from './ids'
+import { committedNode, newObjectId, nodeState, pendingNode, type NodeRef, type ObjectId } from './ids'
 import { apply, type JsonFields, type Op } from './op'
-import { committedKey, ListState, pendingKey, TextState, TreeState, type NodeKey } from './overlay'
+import { committedKey, ListState, pendingIndex, pendingKey, TextState, treeId, TreeState, type NodeKey } from './overlay'
+import type { TreeEntry } from './replica'
 import * as read from './read'
 import { checkedValue, isContainer, sortedKeys, type FieldDef, type FieldKind, type Schema } from './schema'
 import { toJson, wellFormed } from './value'
@@ -454,6 +455,68 @@ export class Tx {
     if (parentKey !== null && tree.wouldCycle(nodeKey, parentKey)) throw errors.cycle()
     tree.parents.set(nodeKey, parentKey)
     this.ops.push({ op: 'treeMove', id, field, node: nodeKey, parent: parentKey })
+  }
+
+  /**
+   * The tree's nodes in pre-order as this transaction sees it: the document's nodes plus the nodes
+   * it created, each node it created or moved last among its new siblings, as they will be once it
+   * applies. A node that names no object is skipped with its subtree, as in `Replica.tree`. Reads
+   * the whole tree: O(nodes + this transaction's operations).
+   */
+  tree(id: ObjectId, field: string): TreeEntry[] {
+    this.live()
+    checkField(id, field)
+    this.containerField(id, field, 'tree')
+    const committed = read.asContainer(this.stored(id, field, false), 'tree', id, field)
+    type Key = NodeKey | null
+    const children = new Map<Key, NodeKey[]>()
+    const parentOf = new Map<NodeKey, Key>()
+    const objects = new Map<NodeKey, ObjectId | null>()
+    const add = (parent: Key, child: NodeKey) => {
+      const list = children.get(parent)
+      if (list) list.push(child)
+      else children.set(parent, [child])
+      parentOf.set(child, parent)
+    }
+    const visit = (nodes: LoroTreeNode[] | undefined, parent: Key) => {
+      for (const node of nodes ?? []) {
+        const key = committedKey(node.id)
+        add(parent, key)
+        objects.set(key, read.nodeObject(node))
+        visit(node.children(), key)
+      }
+    }
+    if (committed) visit(committed.roots(), null)
+    for (const op of this.ops) {
+      if (op.op === 'treeCreate' && op.id === id && op.field === field) {
+        const key = pendingKey(op.node)
+        add(op.parent, key)
+        objects.set(key, op.object)
+      } else if (op.op === 'treeMove' && op.id === id && op.field === field) {
+        const old = parentOf.get(op.node)
+        if (old !== undefined) children.set(old, (children.get(old) ?? []).filter((child) => child !== op.node))
+        add(op.parent, op.node)
+      }
+    }
+    const handle = (key: NodeKey): NodeRef => {
+      const index = pendingIndex(key)
+      if (index === null) return committedNode(treeId(key))
+      const node = this.nodes[index]
+      if (!node) throw errors.engine(`tree node ${index} was not staged`)
+      return node
+    }
+    const out: TreeEntry[] = []
+    const walk = (parent: Key, parentRef: NodeRef | null) => {
+      for (const key of children.get(parent) ?? []) {
+        const object = objects.get(key)
+        if (object === null || object === undefined) continue
+        const node = handle(key)
+        out.push({ node, object, parent: parentRef })
+        walk(key, node)
+      }
+    }
+    walk(null, null)
+    return out
   }
 
   /** Checks an id the host chose for a new object of type `ty`. */
