@@ -457,6 +457,52 @@ fn update_and_delete_schema() {
 }
 
 #[test]
+fn update_view_with_the_config_it_reads_writes_nothing() {
+    let dir = temp();
+    let (_, mut file) = create(dir.path(), "v.kitable");
+    let table = ok(file.create_table(&TableSpec {
+        fields: vec![primary("name")],
+        ..Default::default()
+    }));
+    let view = ok(file.create_view(table.id, &ViewSpec::default()));
+    assert_eq!(
+        view.config,
+        Map::new(),
+        "a view without a config reads as {{}}"
+    );
+    let version = file.replica_version();
+    let undoable = file.can_undo();
+
+    // What an editor that only opened the view sends back: what it read, or nothing.
+    for config in [json!({}), json!("{}"), json!(view.config.clone())] {
+        let same = ok(file.update_view(
+            table.id,
+            view.id,
+            &ViewPatch {
+                title: Some(view.title.clone()),
+                config: Some(config),
+                ..Default::default()
+            },
+        ));
+        assert_eq!(same.config, Map::new());
+        assert_eq!(file.replica_version(), version, "no change is written");
+        assert_eq!(file.can_undo(), undoable);
+    }
+
+    // A real change still writes.
+    let changed = ok(file.update_view(
+        table.id,
+        view.id,
+        &ViewPatch {
+            config: Some(json!({ "row_height": "tall" })),
+            ..Default::default()
+        },
+    ));
+    assert_eq!(changed.config, values(json!({ "row_height": "tall" })));
+    assert_ne!(file.replica_version(), version);
+}
+
+#[test]
 fn create_field_at_order_and_duplicate() {
     let dir = temp();
     let (_, mut file) = create(dir.path(), "f.kitable");

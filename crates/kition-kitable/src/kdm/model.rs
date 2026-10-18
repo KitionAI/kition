@@ -605,7 +605,13 @@ pub fn update_view(tx: &mut Tx<'_>, view: &ObjectId, patch: &ViewPatch) -> Resul
         set_if_changed(tx, view, "type", json!(requested))?;
     }
     if let Some(config) = &patch.config {
-        set_if_changed(tx, view, "config", decode_json(config)?)?;
+        let config = decode_json(config)?;
+        // A view without a config reads as `{}`: writing that back changes nothing.
+        let unchanged =
+            config.as_object().is_some_and(Map::is_empty) && tx.get(view, "config")?.is_null();
+        if !unchanged {
+            set_if_changed(tx, view, "config", config)?;
+        }
     }
     Ok(())
 }
