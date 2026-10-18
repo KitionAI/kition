@@ -282,9 +282,11 @@ test('a viewer of a shared Slides deck sees it change but cannot change it', asy
     const aliceVersion = await settledVersion(pageA, 'Keynote.kitionslide')
     await expect.poll(async () => JSON.stringify(await replicaCounters(pageB, bobPath)), { timeout: 10_000 }).toBe(aliceVersion)
     await expect.poll(async () => (await canvas(kitB)).equals(bobBeforeText), { timeout: 5_000 }).toBe(false)
+    // A viewer has nothing to save: Alice's edits never mark his deck unsaved.
+    await expect(kitB.getByTestId('slides-unsaved')).toHaveCount(0)
 
-    // Bob clicks the text box and types, presses New Slide's shortcut, and clicks the slide
-    // panel's add button: his screen and his replica stay as they were.
+    // Bob clicks the text box and types and presses New Slide's shortcut: his screen and his
+    // replica stay as they were. The slide panel's add button is disabled for him.
     // What his canvas shows once Alice's edit has painted.
     let shown = await canvas(kitB)
     await expect
@@ -302,7 +304,8 @@ test('a viewer of a shared Slides deck sees it change but cannot change it', asy
     await pageB.waitForTimeout(500)
     const after = await canvas(kitB)
     expect(after.equals(shown)).toBe(true)
-    await kitB.getByTestId('slides-add-slide').click()
+    await expect(kitB.getByTestId('slides-add-slide')).toBeDisabled()
+    await kitB.getByTestId('slides-add-slide').click({ force: true })
     await pageB.waitForTimeout(1_000)
     await expect(kitB.getByTestId('slides-status')).toHaveText('Slide 1 of 2')
     expect(JSON.stringify(await replicaCounters(pageB, bobPath))).toBe(aliceVersion)
