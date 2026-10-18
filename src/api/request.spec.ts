@@ -77,6 +77,17 @@ describe('request api client', () => {
     expect((formInit.headers as Record<string, string>)['Content-Type']).toBeUndefined()
   })
 
+  it('sends typed-array bodies as they are, not as JSON', async () => {
+    fetchMock.mockImplementation(() => jsonResponse({ code: 200, data: {} }))
+    const mod = await loadRequestModule()
+
+    const bytes = new Uint8Array([0x38, 0x42, 0x50, 0x53])
+    await mod.default.put('/v1/kits/files', bytes, { headers: { 'Content-Type': 'application/octet-stream' } })
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(init.body).toBe(bytes)
+    expect((init.headers as Record<string, string>)['Content-Type']).toBe('application/octet-stream')
+  })
+
   it('maps HTTP failures to a message and keeps the response on the error', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ detail: 'Table not found' }, { status: 404 }))
     const mod = await loadRequestModule()

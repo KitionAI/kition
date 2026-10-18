@@ -17,9 +17,14 @@ import type {
 
 export type { KitsBridgeChanged, KitsBridgeCommand, KitsBridgeDocument, KitsBridgeDocumentApplyParams, KitsBridgeDocumentApplyResult, KitsBridgeDocumentReadResult, KitsBridgeLiveDocument, KitsBridgeRunStep }
 
-/** Replaces a workspace file a kit edits with `bytes`; the in-page editors save through it. */
+/**
+ * Replaces a workspace file a kit edits with `bytes`; the in-page editors save through it. The
+ * bytes are the request body as they are: wrapping them in a Blob would copy a file of up to
+ * 2 GiB once more, and WebKit's network inspection (which the e2e specs read saves through)
+ * does not report a Blob body.
+ */
 export function writeKitFile(path: string, bytes: Uint8Array) {
-  return request.put('/v1/kits/files', new Blob([bytes as BlobPart], { type: 'application/octet-stream' }), {
+  return request.put('/v1/kits/files', bytes, {
     params: { path },
     headers: { 'Content-Type': 'application/octet-stream' },
     timeout: 10 * 60_000,

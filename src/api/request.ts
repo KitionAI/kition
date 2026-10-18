@@ -209,7 +209,7 @@ async function send<T>(method: string, url: string, dataArgument: unknown, confi
     }
     let body: BodyInit | undefined
     if (data !== undefined && data !== null) {
-        if (isFormData || typeof data === 'string' || data instanceof Blob || data instanceof ArrayBuffer) {
+        if (isFormData || typeof data === 'string' || data instanceof Blob || data instanceof ArrayBuffer || ArrayBuffer.isView(data)) {
             body = data as BodyInit
         } else {
             body = JSON.stringify(data)
