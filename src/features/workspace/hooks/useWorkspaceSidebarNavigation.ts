@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { tableKitForDevelopment } from '@/features/workspace/components/kits/kitEditors'
 import { routeKitableOpenPath } from '@/features/workspace/components/workspaceScreenTabRouting'
 import type { KitableChildrenIndex } from '@/features/workspace/hooks/useKitableChildrenIndex'
 import type { WorkspaceTab } from '@/features/workspace/lib/workspace'
@@ -65,7 +66,9 @@ export function useWorkspaceSidebarNavigation({
       return
     }
     if (lower.endsWith('.kitable')) {
-      openKitableContainer(path)
+      // Development only: the whole file as one document tab, which shows it in the Table kit.
+      if (tableKitForDevelopment(path)) void openDocument(path)
+      else openKitableContainer(path)
       return
     }
     if (routeKitableOpenPath(path, kitableChildrenIndex, upsertWorkspaceTab)) {

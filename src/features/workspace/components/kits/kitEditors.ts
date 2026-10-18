@@ -79,6 +79,26 @@ const KIT_EDITORS: readonly KitEditorEntry[] = [
   kit('pdf', 'PdfDocument', { format: 'pdf', icon: 'pdf', preview: true, create: { id: 'pdf', extension: 'pdf', baseName: 'Untitled PDF', size: { width: 612, height: 792 }, label: 'createMenu.format.pdf', group: 'office' } }),
 ]
 
+/**
+ * The Table kit (`kit.table`, `scripts/build-kit-ui.sh table`): Kition's own table engine and
+ * editor packaged as a kit for other applications. It is not in `KIT_EDITORS`: Kition opens
+ * `.kitable` files in its native table editor on the runtime. For parity checks, a development
+ * build opens them in the kit instead when `localStorage['kition.dev.tableKit']` is `'1'`.
+ */
+const TABLE_KIT = kit('table', 'TableDocument', { format: 'data', icon: 'table', preview: true })
+
+export const TABLE_KIT_DEV_FLAG = 'kition.dev.tableKit'
+
+/** The Table kit, when this development build opens `path` in it (`TABLE_KIT_DEV_FLAG`). */
+export function tableKitForDevelopment(path: string): KitEditorEntry | null {
+  if (!import.meta.env.DEV || !/\.kitable$/i.test(path)) return null
+  try {
+    return window.localStorage.getItem(TABLE_KIT_DEV_FLAG) === '1' ? TABLE_KIT : null
+  } catch {
+    return null
+  }
+}
+
 const availability = new Map<string, Promise<boolean>>()
 
 /**

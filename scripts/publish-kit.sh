@@ -9,8 +9,10 @@
 #
 # It runs on a developer machine, never in the kit repositories' CI. It builds pushed commits
 # only: clean clones of the kit, kition-sdk, and kition-fonts (origin/main, or KIT_REF, SDK_REF,
-# and FONTS_REF) side by side in a scratch folder, so local changes never reach a package. A
-# version is published once; bump `version` in the kit's kit.json to publish a change.
+# and FONTS_REF) side by side in a scratch folder, so local changes never reach a package; and of
+# Kition itself (origin/main, or KITION_REF) for a kit marked `kition` in kits/sdks.json, whose
+# engine and editor are Kition's own (the table kit). A version is published once; bump `version`
+# in the kit's kit.json to publish a change.
 set -euo pipefail
 kit="${1:?usage: scripts/publish-kit.sh <kit> [--dry-run]}"
 [[ -z "${2:-}" || "${2:-}" == "--dry-run" ]] || { echo "unknown option: $2" >&2; exit 2; }
@@ -49,9 +51,14 @@ mkdir -p "$scratch"
 kit_commit="$(clone "$kit_repo" "kition-$kit" "${KIT_REF:-origin/main}")"
 sdk_commit="$(clone "$sdk_repo" kition-sdk "${SDK_REF:-origin/main}")"
 fonts_commit="$(clone "$fonts_repo" kition-fonts "${FONTS_REF:-origin/main}")"
+kition_commit=""
+if [[ "$(node -p "require('$repo_root/kits/sdks.json')['$kit'].kition === true")" == "true" ]]; then
+  kition_commit="$(clone "$repo_root" kition "${KITION_REF:-origin/main}")"
+fi
 pnpm --dir "$scratch/kition-sdk" install --frozen-lockfile
-# The kit checkout's build cache, so only the kit's own crates compile again.
-CARGO_TARGET_DIR="$kit_repo/target" KIT_REPO="$scratch/kition-$kit" "$repo_root/scripts/build-kit-ui.sh" "$kit"
+# The kit checkout's build cache, so only the kit's own crates compile again. The engine's SQLite
+# needs a C compiler that targets wasm32 (build-kit-ui.sh uses Homebrew's LLVM when it is there).
+CARGO_TARGET_DIR="$kit_repo/target" KIT_REPO="$scratch/kition-$kit" KITION_DIR="$scratch/kition" "$repo_root/scripts/build-kit-ui.sh" "$kit"
 
 version="$(node -p "require('$scratch/kition-$kit/kit.json').version")"
 tag="package-v$version"
@@ -71,10 +78,10 @@ if gh release view "$tag" --repo "$repository" >/dev/null 2>&1; then
 fi
 gh release create "$tag" "$scratch/$asset" --repo "$repository" --target "$kit_commit" \
   --title "Kit package $version" \
-  --notes "The kit's package (editor and engine) for hosts of the Kit UI protocol. Built from $kit_commit with kition-sdk $sdk_commit and kition-fonts $fonts_commit."
+  --notes "The kit's package (editor and engine) for hosts of the Kit UI protocol. Built from $kit_commit with kition-sdk $sdk_commit and kition-fonts $fonts_commit${kition_commit:+ and Kition $kition_commit}."
 
-KIT="$kit" ENTRY="$(printf '{"repository":"%s","version":"%s","tag":"%s","asset":"%s","size":%s,"sha256":"%s","commit":"%s","sdkCommit":"%s","fontsCommit":"%s"}' \
-  "$repository" "$version" "$tag" "$asset" "$size" "$sha256" "$kit_commit" "$sdk_commit" "$fonts_commit")" \
+KIT="$kit" ENTRY="$(printf '{"repository":"%s","version":"%s","tag":"%s","asset":"%s","size":%s,"sha256":"%s","commit":"%s","sdkCommit":"%s","fontsCommit":"%s"%s}' \
+  "$repository" "$version" "$tag" "$asset" "$size" "$sha256" "$kit_commit" "$sdk_commit" "$fonts_commit" "${kition_commit:+,\"kitionCommit\":\"$kition_commit\"}")" \
   node -e "
 const fs = require('fs')
 const file = '$repo_root/kits/kits.lock.json'

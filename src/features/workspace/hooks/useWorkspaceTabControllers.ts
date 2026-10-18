@@ -8,6 +8,7 @@ import { notify } from '@/lib/notify'
 import { useShortcut } from '@/lib/useShortcut'
 import type { WorkspaceDocument, WorkspaceDocumentFormat } from '@/services/desktop'
 import { discardWorkspaceEditSessions, flushWorkspaceEditSessions } from '@/services/workspaceEditSessions'
+import { tableKitForDevelopment } from '@/features/workspace/components/kits/kitEditors'
 
 type UseWorkspaceTabControllersOptions = {
   workspaceTabs: WorkspaceTab[]
@@ -158,7 +159,8 @@ export function useWorkspaceTabControllers({
       openDesign(document.path)
       return
     }
-    if (format === 'data' && document.path.toLowerCase().endsWith('.kitable')) {
+    // A development build may show the whole file in the Table kit instead (`tableKitForDevelopment`).
+    if (format === 'data' && document.path.toLowerCase().endsWith('.kitable') && !tableKitForDevelopment(document.path)) {
       openKitableContainer(document.path)
       return
     }

@@ -6,7 +6,8 @@
 #   scripts/build-kit-ui.sh slide --ui-only  # reuse an already built, unchanged engine
 #
 # The kit repository defaults to a sibling checkout ../kition-<kit>; set KIT_REPO to use another
-# path. Its web/ app links kition-sdk's @kition/kit-ui from a sibling checkout too.
+# path. Its web/ app links kition-sdk's @kition/kit-ui from a sibling checkout too. A kit whose
+# editor is Kition's own (the table kit) builds it from this checkout, or KITION_DIR.
 set -euo pipefail
 kit="${1:?usage: scripts/build-kit-ui.sh <kit>, for example slide}"
 [[ -z "${2:-}" || "${2:-}" == "--ui-only" ]] || { echo "unknown option: $2" >&2; exit 2; }
@@ -18,6 +19,7 @@ out="$repo_root/public/kits/$kit-ui"
 command -v pnpm >/dev/null || { echo "pnpm is required" >&2; exit 1; }
 [[ -d "$web/node_modules" ]] || pnpm --dir "$web" install --frozen-lockfile
 export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$kit_repo/target}"
+export KITION_DIR="${KITION_DIR:-$repo_root}"
 # C code in the engine's dependencies (psm's assembly, through loro) needs a C compiler that can
 # target wasm32; Apple's clang cannot. Use Homebrew's LLVM when it is installed and none is set.
 llvm="${HOMEBREW_PREFIX:-/opt/homebrew}/opt/llvm/bin"

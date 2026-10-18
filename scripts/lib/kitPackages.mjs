@@ -30,11 +30,11 @@ export function kitPackageProblem(kitsDir, kit, pinned) {
 
 /**
  * Every difference between `kitsDir` and the lock, and every kit in kits/sdks.json the lock does
- * not pin; empty when every kit is there as pinned.
+ * not pin (except `optional` ones); empty when every kit is there as pinned.
  */
 export function kitPackageProblems(repoRoot, kitsDir) {
   const lock = readKitLock(repoRoot)
   const { $comment: _comment, ...registry } = JSON.parse(fs.readFileSync(path.join(repoRoot, 'kits', 'sdks.json'), 'utf8'))
-  const unpinned = Object.keys(registry).filter((kit) => !lock[kit]).map((kit) => `${kit}: not pinned in kits/kits.lock.json (scripts/publish-kit.sh ${kit})`)
+  const unpinned = Object.keys(registry).filter((kit) => !lock[kit] && registry[kit].optional !== true).map((kit) => `${kit}: not pinned in kits/kits.lock.json (scripts/publish-kit.sh ${kit})`)
   return [...unpinned, ...Object.entries(lock).map(([kit, pinned]) => kitPackageProblem(kitsDir, kit, pinned)).filter(Boolean)]
 }

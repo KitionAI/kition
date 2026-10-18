@@ -289,6 +289,23 @@ and side panels).
   `kition-fonts` checkout next to the kit (`web/scripts/build-engine.sh`).
   Never Noto CJK or Source Han: the kits' asset rules forbid them.
 
+### The Table kit
+
+`kit.table` (`KitionAI/kition-table`) packages Kition's own table document for
+other applications: its engine is `crates/kition-kitable` and
+`crates/kition-table-api` compiled to WebAssembly (SQLite included), and its
+editor is `packages/table-editor` over a data source on that engine. This is
+the one kit whose editor source lives in Kition: Table is a built-in document
+type whose editor Kition already owns, so the kit builds it from a Kition
+checkout (`kits/sdks.json` marks it `kition`, and `scripts/publish-kit.sh`
+clones Kition next to the kit). Kition itself keeps its native, runtime-backed
+table editor: the kit is not in `KIT_EDITORS`, and `kits/sdks.json` marks it
+`optional` (a build need not ship it). For parity checks, a development build
+opens `.kitable` files in the kit when `localStorage['kition.dev.tableKit']` is
+`'1'` and the package is built (`scripts/build-kit-ui.sh table`);
+`e2e/table-embedded.spec.ts` edits a table there, saves it, and reopens it
+natively.
+
 ## 4b. Kit Packages And Releases
 
 Kition ships every kit's package inside the app (decided 2026-10-15). All ten

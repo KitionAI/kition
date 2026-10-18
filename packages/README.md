@@ -27,8 +27,9 @@ Entries (the app imports only these; rule `app-uses-table-editor-entries`):
   dashboard creation and metadata, timestamps). It loads no editor UI.
 - `@kition/table-editor/TableEditor`, `/DashboardEditor`, `/TableFileImportDialog`.
 
-The editor's root needs a `TableDataSourceProvider` and may have a `TableHostProvider`; every
-`TableHost` member is optional, and a missing one hides what needs it. Kition's implementations
+The editor's root needs a `TableDataSourceProvider` and an `@kition/app-ui/confirm`
+`ConfirmProvider`, and may have a `TableHostProvider`; every `TableHost` member is optional, and a
+missing one hides what needs it. Kition's implementations
 and providers are in `src/features/table/host/` (`KitionTableProviders`). The runtime contract
 types the editor uses are generated into `src/generated/` by `pnpm run contracts:generate` and
 checked by `pnpm run check:contracts`.
