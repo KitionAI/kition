@@ -8,6 +8,7 @@ import { createElement, lazy, Suspense, useEffect, useState } from 'react'
 import type { ExtensionService } from './extensionService'
 import type { InstalledExtension } from './extensionStore'
 import { closeRunScriptDialog, openRunScriptDialog, useRunScriptDialogOpen } from './runScriptDialogState'
+import { loadExtensionService } from './serviceLoader'
 
 export type { InstalledExtension } from './extensionStore'
 
@@ -28,9 +29,8 @@ export function useExtensions(): ExtensionsApi | null {
   useEffect(() => {
     let live = true
     let unsubscribe = () => {}
-    void import('./extensionService').then(({ extensionService }) => {
+    void loadExtensionService().then((service) => {
       if (!live) return
-      const service = extensionService()
       const read = () =>
         setApi({ ...service.getSnapshot(), install: (path) => service.install(path), setEnabled: (id, enabled) => service.setEnabled(id, enabled), remove: (id) => service.remove(id) })
       unsubscribe = service.subscribe(read)
@@ -55,7 +55,7 @@ export async function startInstalledExtensions() {
   const { listInstalledExtensions } = await import('./extensionStore')
   const installed = await listInstalledExtensions().catch(() => [])
   if (!installed.some((extension) => extension.enabled)) return
-  ;(await import('./extensionService')).extensionService()
+  await loadExtensionService()
 }
 
 /** One command palette entry. */
@@ -69,8 +69,7 @@ export function useExtensionPaletteItems(labels: { runScript: string; runScriptH
   const [items, setItems] = useState<ExtensionPaletteItem[]>([])
   useEffect(() => {
     let live = true
-    void import('./extensionService').then(async ({ extensionService }) => {
-      const service = extensionService()
+    void loadExtensionService().then(async (service) => {
       await service.ready
       if (!live || !service.activeDocument()) return
       const commands = service.paletteCommands().map((command) => ({

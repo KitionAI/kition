@@ -4,7 +4,7 @@ import { Button, Input } from '@/components/ui'
 import { useExtensions, type ExtensionsApi, type InstalledExtension } from '@/features/extensions/public'
 import { SettingsPaneHeader, SettingsRow, SettingsSection } from '@/features/settings/primitives'
 import { useTranslation } from '@/i18n'
-import { networkSources, type ExtensionManifest } from '@/lib/extensions'
+import { networkSources, type ExtensionManifest } from '@/lib/extensions/manifest'
 import { notify } from '@/lib/notify'
 import { Switch } from '@/registry/ui/switch'
 

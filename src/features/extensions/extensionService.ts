@@ -13,6 +13,7 @@ import { portFromConnection, type ConnectionLike } from '@/lib/sdk'
 import '@/lib/sdk/kits/slide'
 import { deleteInstalledExtension, listInstalledExtensions, putInstalledExtension, type InstalledExtension } from './extensionStore'
 import { cleanWorkspacePath, readExtensionFromWorkspace } from './extensionPackage'
+import { announceExtensionService } from './serviceAnnouncement'
 
 /** Where Kition serves the sandbox page (public/extensions/sandbox.html). */
 export const SANDBOX_URL = '/extensions/sandbox.html'
@@ -185,3 +186,6 @@ export function extensionService(): ExtensionService {
   service ??= new ExtensionService()
   return service
 }
+
+// Last: the module has run to its end (see serviceLoader.ts).
+announceExtensionService(extensionService)
