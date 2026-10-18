@@ -48,7 +48,13 @@ async function sameReplica(pageA: Page, pathA: string, pageB: Page, pathB: strin
 }
 
 const status = (page: Page) => page.locator('.document-tab-list [data-testid="collab-status"]')
-const canvas = (kit: FrameLocator) => kit.getByTestId('slides-canvas-region').screenshot()
+/** The kit's canvas as drawn. Kition's floating agent launcher sits over the canvas's corner and
+ * idles with an animation, so it is masked: it is the host's, not the kit's. */
+const canvas = (kit: FrameLocator) =>
+  kit.getByTestId('slides-canvas-region').screenshot({
+    animations: 'disabled',
+    mask: [kit.owner().page().getByTestId('agent-floating-launcher')],
+  })
 
 /**
  * The replica version at `path` once it stops changing: typing streams one small transaction per
