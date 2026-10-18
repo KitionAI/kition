@@ -13,6 +13,69 @@ import {
   type SortDirection,
 } from '../lib/tableEditorShared'
 
+/** The view settings the editor holds as state, and persists as the view's config. */
+export type TableViewSettings = {
+  hiddenFieldNames: ReadonlySet<string>
+  filterFieldName: string
+  filterOperator: string
+  filterValue: string
+  filterTree: DataInlineFilterGroup | null
+  sortFieldName: string
+  sortDirection: SortDirection
+  sortItems: DataInlineSortItem[]
+  groupFieldName: string
+  groupItems: DataInlineGroupItem[]
+  coverFieldName: string
+  rowHeightKey: GridRowHeightKey
+  frozenColumnCount: number
+}
+
+/** The settings a view's stored config gives, with the editor's defaults for what it leaves out. */
+export function viewSettingsOf(view: DataView | null | undefined): TableViewSettings {
+  const config = readViewConfig(view)
+  return {
+    hiddenFieldNames: new Set(config.hidden_field_names || []),
+    filterFieldName: config.filter?.field_name || '',
+    filterOperator: config.filter?.operator || 'contains',
+    filterValue: config.filter?.value || '',
+    filterTree: parseFilterTree(config.filter_tree),
+    sortFieldName: config.sort?.field_name || '',
+    sortDirection: config.sort?.direction || 'asc',
+    sortItems: Array.isArray(config.sort_items) ? config.sort_items : [],
+    groupFieldName: config.group_field_name || '',
+    groupItems: Array.isArray(config.group_items) ? config.group_items : [],
+    coverFieldName: config.cover_field_name || '',
+    rowHeightKey: config.row_height || 'medium',
+    frozenColumnCount: typeof config.frozen_column_count === 'number' ? config.frozen_column_count : 1,
+  }
+}
+
+/** The config the editor persists for `settings`. */
+export function viewConfigOf(settings: TableViewSettings): DataInlineViewConfig {
+  return {
+    hidden_field_names: Array.from(settings.hiddenFieldNames),
+    filter: settings.filterFieldName ? { field_name: settings.filterFieldName, operator: settings.filterOperator, value: settings.filterValue } : undefined,
+    filter_tree: settings.filterTree && settings.filterTree.children.length > 0 ? settings.filterTree : undefined,
+    sort: settings.sortFieldName ? { field_name: settings.sortFieldName, direction: settings.sortDirection } : undefined,
+    sort_items: settings.sortItems.length ? settings.sortItems : undefined,
+    group_field_name: settings.groupFieldName || undefined,
+    group_items: settings.groupItems.length ? settings.groupItems : undefined,
+    cover_field_name: settings.coverFieldName || undefined,
+    row_height: settings.rowHeightKey,
+    frozen_column_count: settings.frozenColumnCount,
+  }
+}
+
+/**
+ * Whether `config` says what `view` already holds. Opening a view only reads it: its settings
+ * pass through state (as new objects) and come back as a config that differs from the stored one
+ * only in the defaults it spells out, which is no change to write. Writing it would make a
+ * document that was only opened unsaved, and add an undo step nobody took.
+ */
+export function viewConfigUnchanged(view: DataView, config: DataInlineViewConfig): boolean {
+  return JSON.stringify(viewConfigOf(viewSettingsOf(view))) === JSON.stringify(config)
+}
+
 type UseTableViewStateArgs = {
   document: DataDocument | null
   activeTable: DataTable | null
@@ -54,20 +117,20 @@ export function useTableViewState({
 
   useEffect(() => {
     if (activeView) skipNextViewConfigPersistRef.current = activeView.id
-    const config = readViewConfig(activeView)
-    setHiddenFieldNames(new Set(config.hidden_field_names || []))
-    setFilterFieldName(config.filter?.field_name || '')
-    setFilterOperator(config.filter?.operator || 'contains')
-    setFilterValue(config.filter?.value || '')
-    setFilterTree(parseFilterTree(config.filter_tree))
-    setSortFieldName(config.sort?.field_name || '')
-    setSortDirection(config.sort?.direction || 'asc')
-    setSortItems(Array.isArray(config.sort_items) ? config.sort_items : [])
-    setGroupFieldName(config.group_field_name || '')
-    setGroupItems(Array.isArray(config.group_items) ? config.group_items : [])
-    setCoverFieldName(config.cover_field_name || '')
-    setRowHeightKey(config.row_height || 'medium')
-    setFrozenColumnCount(typeof config.frozen_column_count === 'number' ? config.frozen_column_count : 1)
+    const settings = viewSettingsOf(activeView)
+    setHiddenFieldNames(new Set(settings.hiddenFieldNames))
+    setFilterFieldName(settings.filterFieldName)
+    setFilterOperator(settings.filterOperator)
+    setFilterValue(settings.filterValue)
+    setFilterTree(settings.filterTree)
+    setSortFieldName(settings.sortFieldName)
+    setSortDirection(settings.sortDirection)
+    setSortItems(settings.sortItems)
+    setGroupFieldName(settings.groupFieldName)
+    setGroupItems(settings.groupItems)
+    setCoverFieldName(settings.coverFieldName)
+    setRowHeightKey(settings.rowHeightKey)
+    setFrozenColumnCount(settings.frozenColumnCount)
     // Depends on the `activeView` object itself, not just its id: a live
     // `table/changed` event (another window editing the same view) or an
     // undo/redo replaces the document with a freshly fetched `activeView`
@@ -81,22 +144,26 @@ export function useTableViewState({
       skipNextViewConfigPersistRef.current = null
       return
     }
+    const config = viewConfigOf({
+      hiddenFieldNames,
+      filterFieldName,
+      filterOperator,
+      filterValue,
+      filterTree,
+      sortFieldName,
+      sortDirection,
+      sortItems,
+      groupFieldName,
+      groupItems,
+      coverFieldName,
+      rowHeightKey,
+      frozenColumnCount,
+    })
+    if (viewConfigUnchanged(activeView, config)) return
     const documentId = document.id
     const tableId = activeTable.id
     const viewId = activeView.id
     const timer = window.setTimeout(() => {
-      const config: DataInlineViewConfig = {
-        hidden_field_names: Array.from(hiddenFieldNames),
-        filter: filterFieldName ? { field_name: filterFieldName, operator: filterOperator, value: filterValue } : undefined,
-        filter_tree: filterTree && filterTree.children.length > 0 ? filterTree : undefined,
-        sort: sortFieldName ? { field_name: sortFieldName, direction: sortDirection } : undefined,
-        sort_items: sortItems.length ? sortItems : undefined,
-        group_field_name: groupFieldName || undefined,
-        group_items: groupItems.length ? groupItems : undefined,
-        cover_field_name: coverFieldName || undefined,
-        row_height: rowHeightKey,
-        frozen_column_count: frozenColumnCount,
-      }
       void dataSource.views.update({ documentId, tableId, viewId, config }).then((updated) => {
         setDocument((current) => current ? {
           ...current,
@@ -112,7 +179,7 @@ export function useTableViewState({
     return () => window.clearTimeout(timer)
   }, [
     activeTable?.id,
-    activeView?.id,
+    activeView,
     coverFieldName,
     document?.id,
     filterFieldName,
