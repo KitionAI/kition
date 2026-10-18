@@ -57,13 +57,13 @@
   },
   "photo": {
     "repository": "KitionAI/kition-photo",
-    "version": "0.4.0",
-    "tag": "package-v0.4.0",
-    "asset": "kition-photo-0.4.0.tgz",
-    "size": 11841488,
-    "sha256": "22e2fc016ef292e622b674e078256ed1ad1f5eef7f2293bc8995d1eddb20a612",
-    "commit": "040247de69dd615fcddb92207ef2f3dd15070744",
-    "sdkCommit": "6f5811774ce7c5f30a16a2f49eb201ac3ea69e39",
+    "version": "0.4.1",
+    "tag": "package-v0.4.1",
+    "asset": "kition-photo-0.4.1.tgz",
+    "size": 11844299,
+    "sha256": "9521e518db57e2b772a3710bac9b53648b56388b9377669a53f411c3fb88fb48",
+    "commit": "bdb0f0ddff616cc23f314b51991c43fc856cd553",
+    "sdkCommit": "df1b29e53881ac336b301f349a18f16803881d24",
     "fontsCommit": "c536031480b1e6e97c2d5937b861953a0c0e0e67"
   },
   "sheet": {
