@@ -35,13 +35,13 @@
   },
   "film": {
     "repository": "KitionAI/kition-film",
-    "version": "0.3.2",
-    "tag": "package-v0.3.2",
-    "asset": "kition-film-0.3.2.tgz",
-    "size": 8503361,
-    "sha256": "42d4b7dda8c32f89401a4baa07666ebd6cb7ccfea42aa3b47fd4b6ab1c8b94f0",
-    "commit": "c7aea21629410d9a009ad67f2b0feb8779422263",
-    "sdkCommit": "e8170e12ad681ce4b5a60386e0eb2a7d04656b1e",
+    "version": "0.4.0",
+    "tag": "package-v0.4.0",
+    "asset": "kition-film-0.4.0.tgz",
+    "size": 9851685,
+    "sha256": "4a1e6e79f94622da1d62e45447174cd46c3161cd0270e8f649af735109c6b08a",
+    "commit": "8c7e9a7e41e23d1a2690ecce0dff8d82d9aa1eec",
+    "sdkCommit": "54ad8d771f87d1a286f2e810f0cbdbefa3822559",
     "fontsCommit": "c536031480b1e6e97c2d5937b861953a0c0e0e67"
   },
   "pdf": {
