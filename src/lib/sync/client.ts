@@ -48,12 +48,15 @@ type PendingRequest = {
 type QueuedPush = { docId: string; changes: Uint8Array; resolve: (result: ChangesPushResult) => void; reject: (error: Error) => void }
 type ChangeNotice = { changes: Uint8Array; seq?: number; from?: string }
 
+/** A token, or what answers one: asked again on every connection attempt, so it can refresh. */
+export type SyncToken = string | (() => string | Promise<string>)
+
 const disconnected = () => new SyncRpcError(-32000, 'disconnected', { code: 'unavailable' })
 
 export class SyncClient {
   private readonly options: SyncClientOptions
   private url = ''
-  private token = ''
+  private token: SyncToken = ''
   private transport: SyncTransport | undefined
   private decoder = new Decoder()
   private nextId = 1
@@ -91,8 +94,11 @@ export class SyncClient {
     return () => this.stateListeners.delete(listener)
   }
 
-  /** Connects and performs `sync/hello`; resolves once the handshake succeeds. */
-  async connect(url: string, token: string): Promise<HelloResult> {
+  /**
+   * Connects and performs `sync/hello`; resolves once the handshake succeeds. A `token` function
+   * is called for every connection attempt (reconnects too), so a short-lived token is fresh.
+   */
+  async connect(url: string, token: SyncToken): Promise<HelloResult> {
     this.closed = false
     this.url = url
     this.token = token
@@ -227,9 +233,19 @@ export class SyncClient {
   }
 
   private async sendHello(): Promise<HelloResult> {
+    const transport = this.transport
+    let token: string
+    try {
+      token = typeof this.token === 'function' ? await this.token() : this.token
+    } catch (error) {
+      // No token now: drop this attempt, so the next one (with backoff) asks again.
+      if (this.transport === transport) transport?.close()
+      throw error
+    }
+    if (this.transport !== transport) throw disconnected()
     const result = await this.request<HelloResult>(
       'sync/hello',
-      () => ({ protocol: SYNC_PROTOCOL, token: this.token, client: this.options.client ?? { name: '@kition/sync', version: '0.1.0' }, capabilities: this.options.capabilities ?? [] }),
+      () => ({ protocol: SYNC_PROTOCOL, token, client: this.options.client ?? { name: '@kition/sync', version: '0.1.0' }, capabilities: this.options.capabilities ?? [] }),
       (value) => value as HelloResult,
     )
     this.hello = result

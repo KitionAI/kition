@@ -8,7 +8,7 @@
  * is in `@kition/sync/replicaVersions`, loaded on demand, since it loads the CRDT engine.
  */
 export { blobHashCandidates, decodeBlobSection, encodeBlobSection, type BlobEntry } from './blobSection'
-export { SyncClient, type SyncClientOptions } from './client'
+export { SyncClient, type SyncClientOptions, type SyncToken } from './client'
 export type { Bin, Frame } from './framing'
 export {
   SYNC_PROTOCOL,
