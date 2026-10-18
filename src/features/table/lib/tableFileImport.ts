@@ -15,9 +15,9 @@ import {
   analyzeCsvImport,
   applyCsvFieldTypeOverrides,
   type CsvImportAnalysis,
-} from '@/features/table/lib/csvImport'
+} from '@kition/table-editor'
 import { importCsvIntoDataTable } from '@/features/table/lib/importCsvIntoDataTable'
-import type { PreparedTableFileImport, TableFileImportTarget } from '@/features/table/ports/TableHost'
+import type { PreparedTableFileImport, TableFileImportTarget } from '@kition/table-editor'
 
 const SUPPORTED_TEXT_EXTENSIONS = /\.(?:csv|tsv)$/i
 const SUPPORTED_WORKBOOK_EXTENSIONS = /\.xlsx$/i

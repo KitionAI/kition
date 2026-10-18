@@ -1,4 +1,4 @@
-import type { DataField, DataTable } from '@/types/dataDocument'
+import type { DataField, DataTable } from '@kition/table-editor'
 
 import type { FormSyncField, FormSyncFieldType } from './api'
 

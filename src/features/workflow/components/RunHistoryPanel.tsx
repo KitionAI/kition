@@ -1,5 +1,5 @@
 import type { ApiTimestamp } from '@/types'
-import { toEpochMs } from '@/lib/timestamps'
+import { toEpochMs } from '@kition/table-editor'
 import { History as HistoryIcon, Pause, Play, RefreshCw, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'

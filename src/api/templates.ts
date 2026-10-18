@@ -1,5 +1,5 @@
 import request from './request'
-import type { DataDocument } from '@/types/dataDocument'
+import type { DataDocument } from '@kition/table-editor'
 
 export type TemplateResourceKind = 'app' | 'automation' | 'dashboard' | 'table'
 

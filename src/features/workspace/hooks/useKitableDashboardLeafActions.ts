@@ -4,7 +4,7 @@ import {
   deleteDataDashboardByPath,
   renameDataDashboardByPath,
 } from '@/api/dashboards'
-import { useConfirm } from '@/components/confirm'
+import { useConfirm } from '@kition/app-ui/confirm'
 import type { KitableChildrenIndex } from '@/features/workspace/hooks/useKitableChildrenIndex'
 import type { WorkspaceTreeNode } from '@/features/workspace/lib/workspace'
 import { parseKitableDashboardVirtualPath } from '@/features/workspace/lib/workspaceTree'

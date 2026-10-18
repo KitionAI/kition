@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AlertTriangle, Plus, RefreshCcw, Search } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { Button, Disclosure, Input, PasswordInput, Select } from '@/components/ui'
+import { cn } from '@kition/app-ui/utils'
+import { Button, Disclosure, Input, PasswordInput, Select } from '@kition/app-ui'
 import {
   type KitionAccountState,
   useKitionAccount,

@@ -1,45 +1,22 @@
 import request from './request'
-import type { DataFieldOptions } from '@/types/dataDocument'
 import type {
-  DataImportExecuteRequest,
-  DataImportField as GeneratedDataImportField,
-  DataImportFieldOverride as GeneratedDataImportFieldOverride,
-  DataImportFormat,
   DataImportJob,
-  DataImportPreviewResponse,
-  DataImportResult,
-  DataImportSheet,
-  DataImportSource,
-  DataImportTarget,
-  DataImportWarning,
-} from '@/api/generated'
+  DataImportPreview,
+  ExecuteDataImportPayload,
+} from '@kition/table-editor'
 
 export const TABLE_FILE_IMPORT_CAPABILITY = 'table_file_import_v1'
 export const TABLE_FILE_IMPORT_XLSX_CAPABILITY = 'table_file_import_xlsx_v1'
 export const TABLE_FILE_IMPORT_ASYNC_CAPABILITY = 'table_file_import_async_v1'
 
+// The import types live with the table editor, which shows the import dialog.
 export type {
-  DataImportFormat,
-  DataImportSheet,
-  DataImportSource,
-  DataImportTarget,
-  DataImportWarning,
-  DataImportResult,
+  DataImportField,
   DataImportJob,
-}
-export type DataImportWriteMode = DataImportExecuteRequest['write_mode']
-export type DataImportSchemaMode = DataImportExecuteRequest['schema_mode']
-export type DataImportJobStatus = DataImportJob['status']
-export type DataImportJobStage = DataImportJob['stage']
-export type DataImportPreview = DataImportPreviewResponse
-export type ExecuteDataImportPayload = DataImportExecuteRequest
-
-/**
- * The contract types `options` as an open object; the client narrows it to
- * the table field option shape it already understands.
- */
-export type DataImportField = Omit<GeneratedDataImportField, 'options'> & { options?: DataFieldOptions }
-export type DataImportFieldOverride = Omit<GeneratedDataImportFieldOverride, 'options'> & { options?: DataFieldOptions }
+  DataImportPreview,
+  DataImportWriteMode,
+  ExecuteDataImportPayload,
+} from '@kition/table-editor'
 
 export function previewDataImportFile(file: File, options?: { sheet?: string }) {
   const formData = new FormData()

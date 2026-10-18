@@ -149,7 +149,8 @@
     "groupDirection": "Направление группировки",
     "removeGroup": "Удалить группировку",
     "addAnotherGroup": "Добавить группировку",
-    "viewName": "Название вида"
+    "viewName": "Название вида",
+    "renameTablePrompt": "Переименовать"
   },
   "header": {
     "addView": "Добавить представление"

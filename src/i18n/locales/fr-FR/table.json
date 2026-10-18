@@ -149,7 +149,8 @@
     "groupDirection": "Sens du groupement",
     "removeGroup": "Supprimer le groupe",
     "addAnotherGroup": "Ajouter un autre groupe",
-    "viewName": "Nom de la vue"
+    "viewName": "Nom de la vue",
+    "renameTablePrompt": "Renommer"
   },
   "header": {
     "addView": "Ajouter une vue"

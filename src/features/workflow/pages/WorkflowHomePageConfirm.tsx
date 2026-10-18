@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/registry/ui/button'
+import { Button } from '@kition/app-ui/button'
 import {
   Dialog,
   DialogContent,
@@ -7,7 +7,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/registry/ui/dialog'
+} from '@kition/app-ui/dialog'
 
 /**
  * ConfirmDialog + ConfirmState — split out of WorkflowHomePage (WF-C1c).

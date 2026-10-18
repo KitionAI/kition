@@ -6,7 +6,7 @@ for (const change of ['width', 'height', 'pixelRatio', 'firstVisibleDraw'] as co
     await mockLocalWorkspaceApi(page)
     await page.goto('/')
     const pixels = await page.evaluate(async (change) => {
-      const base = '/src/features/table/grid/'
+      const base = '/packages/table-editor/src/table/grid/'
       const { drawGrid } = await import(/* @vite-ignore */ `${base}renderers/layout-renderer/layoutRenderer.ts`)
       const { CoordinateManager, CombinedSelection } = await import(/* @vite-ignore */ `${base}managers/index.ts`)
       const { lightGridTheme, DEFAULT_MOUSE_STATE, DEFAULT_SCROLL_STATE } = await import(/* @vite-ignore */ `${base}configs/index.ts`)

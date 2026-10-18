@@ -41,7 +41,7 @@ import {
 import { WhiteboardShapeBody } from './WhiteboardShapeBody'
 import { WhiteboardTextEditor } from './WhiteboardTextEditor'
 import type { WhiteboardAgentPreviewState } from '../hooks/useWhiteboardAgentPatch'
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 import { ContextActionMenu } from '@/components/ContextActionMenu'
 
 const SELECTION_LONG_PRESS_MS = 220

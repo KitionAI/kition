@@ -3,7 +3,7 @@ import { InlineError } from '@/components/states'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Button } from '@/components/ui'
+import { Button } from '@kition/app-ui'
 import type { WorkflowDefinition } from '@/api/workflows'
 import { WORKFLOW_CHANGED_EVENT, listWorkflowRuns, listWorkflows } from '@/api/workflows'
 import {

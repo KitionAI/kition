@@ -18,7 +18,7 @@ import {
 import {
   Dialog,
   DialogContent,
-} from '@/registry/ui/dialog'
+} from '@kition/app-ui/dialog'
 
 import {
   instantiateWhiteboardTemplate,

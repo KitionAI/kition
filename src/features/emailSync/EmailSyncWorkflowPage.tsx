@@ -12,8 +12,8 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { Button } from '@/components/ui'
-import { useConfirm } from '@/components/confirm'
+import { Button } from '@kition/app-ui'
+import { useConfirm } from '@kition/app-ui/confirm'
 import { getEmailProvider, resolveEmailProviderId } from '@/features/emailProviders/emailProviderCatalog'
 import { NodeCard } from '@/features/workflow/canvas/NodeCard'
 import { WorkflowCanvas } from '@/features/workflow/canvas/WorkflowCanvas'

@@ -1,8 +1,8 @@
 import { X } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Input, Textarea } from '@/components/ui'
-import { cn } from '@/lib/utils'
+import { Button, Input, Textarea } from '@kition/app-ui'
+import { cn } from '@kition/app-ui/utils'
 import type { AgentImageMode, AgentImageOptions } from '../hooks/useAgentImageMode'
 
 export function AgentImageSettings({ mode, busy }: { mode: AgentImageMode; busy: boolean }) {

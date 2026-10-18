@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Globe, Network, ShieldAlert } from 'lucide-react'
-import { Button, Input, PasswordInput, Select } from '@/components/ui'
+import { Button, Input, PasswordInput, Select } from '@kition/app-ui'
 import {
   SettingsPaneHeader,
   SettingsSection,
@@ -22,7 +22,7 @@ import {
   type DesktopProxyTestResult,
 } from '@/types/desktopProxy'
 import { notify } from '@/lib/notify/notify'
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 
 type FormState = DesktopProxyState & {
   /**

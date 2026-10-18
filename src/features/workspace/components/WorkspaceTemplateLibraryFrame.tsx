@@ -1,8 +1,8 @@
 import type { ComponentType, ReactNode } from 'react'
 import { ExternalLink, Search } from 'lucide-react'
 
-import { cn } from '@/lib/utils'
-import { DialogDescription, DialogTitle } from '@/registry/ui/dialog'
+import { cn } from '@kition/app-ui/utils'
+import { DialogDescription, DialogTitle } from '@kition/app-ui/dialog'
 
 export type WorkspaceTemplateCategoryItem<CategoryId extends string> = {
   id: CategoryId

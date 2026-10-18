@@ -1,6 +1,6 @@
 import { Check, Sparkles, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui'
+import { Button } from '@kition/app-ui'
 import type { DesignAgentPreviewState } from '../hooks/useDesignAgentPatch'
 
 export function DesignAgentPreviewControls({

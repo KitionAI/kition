@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import { ListChecks, Trash2 } from 'lucide-react'
 
-import { Button, Disclosure } from '@/components/ui'
+import { Button, Disclosure } from '@kition/app-ui'
 import {
   clearProductAnalyticsQueue,
   getProductAnalyticsQueue,

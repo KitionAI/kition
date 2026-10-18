@@ -6,9 +6,9 @@ import {
   listDataRecords,
   updateDataField,
 } from '@/api/dataDocuments'
-import { analyzeCsvImport, type CsvImportAnalysis } from '@/features/table/lib/csvImport'
+import { analyzeCsvImport, type CsvImportAnalysis } from '@kition/table-editor'
 import { DEFAULT_NEW_TABLE_FIELDS, DEFAULT_EMPTY_ROW_COUNT } from '@/features/table/lib/tableCreation'
-import type { DataField, DataRecord, DataTable } from '@/types/dataDocument'
+import type { DataField, DataRecord, DataTable } from '@kition/table-editor'
 
 const FAILED_CSV_IMPORT_MAX_RECORDS = 200
 

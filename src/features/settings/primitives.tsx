@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Check, Search } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui'
+import { cn } from '@kition/app-ui/utils'
+import { Button } from '@kition/app-ui'
 import { useTranslation } from '@/i18n'
 
 type SettingsPaneHeaderProps = {

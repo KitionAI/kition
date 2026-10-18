@@ -2,7 +2,7 @@ import { Plus, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Button } from '@/registry/ui/button'
+import { Button } from '@kition/app-ui/button'
 import {
   Dialog,
   DialogContent,
@@ -10,8 +10,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/registry/ui/dialog'
-import { Input } from '@/registry/ui/input'
+} from '@kition/app-ui/dialog'
+import { Input } from '@kition/app-ui/input'
 
 import { addSnippet, removeSnippet, useSnippets } from '../hooks/useSnippets'
 

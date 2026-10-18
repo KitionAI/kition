@@ -1,7 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { AlertTriangle } from 'lucide-react'
 
-import { Button } from '@/components/ui'
+import { Button } from '@kition/app-ui'
 import { useTranslation } from '@/i18n'
 
 export type AppErrorBoundaryScope = 'app' | 'pane'

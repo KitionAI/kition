@@ -18,14 +18,14 @@ import {
   Trash2,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 import { getCurrentLocale } from '@/i18n'
 import type {
   EditorMode,
   EditorTextStyle,
   EditorViewPreferences,
 } from '@/features/workspace/hooks/useWorkspaceChrome'
-import type { TableAction } from '@/features/table/lib/tableActions'
+import type { TableAction } from '@kition/table-editor'
 
 type EditorPreferenceKey = 'smallText' | 'fullWidth' | 'toc' | 'locked'
 

@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui'
+import { Button } from '@kition/app-ui'
 import {
   DEFAULT_CONSTRAINTS,
   DESIGN_FONT_FAMILIES,

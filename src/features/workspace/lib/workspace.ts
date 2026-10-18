@@ -1,5 +1,5 @@
 import type { ApiTimestamp } from '@/types'
-import { toEpochMs } from '@/lib/timestamps'
+import { toEpochMs } from '@kition/table-editor'
 import { FileImage, FileText, FileVideo2, Volume2 } from 'lucide-react'
 import type { ComponentType } from 'react'
 import { kitIconComponent, type KitIconId } from '@/components/KitIcon'

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import { useDialogFocus } from '@/lib/useDialogFocus'
-import { Button, Card, CardContent } from '@/components/ui'
+import { useDialogFocus } from '@kition/app-ui/hooks/useDialogFocus'
+import { Button, Card, CardContent } from '@kition/app-ui'
 import { listWorkspaceDocuments, type WorkspaceDocumentTreeItem } from '@/services/desktop'
 import {
   onboardingGuideFolderExists,

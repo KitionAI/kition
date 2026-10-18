@@ -1,9 +1,9 @@
 import { Save, Search } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { Button, Input, PasswordInput } from '@/components/ui'
+import { Button, Input, PasswordInput } from '@kition/app-ui'
 import { ConnectionsSettingsPanel } from '@/features/connections/ConnectionsSettingsPanel'
-import { useConfirm } from '@/components/confirm'
+import { useConfirm } from '@kition/app-ui/confirm'
 import { deleteConnection, type ConnectionView } from '@/api/connections'
 import { ProviderSwitch } from '@/features/emailSync/EmailSyncSettingsPanel'
 import {
@@ -12,7 +12,7 @@ import {
   type EmailSyncWorkflow,
 } from '@/api/emailSync'
 import { SettingsPaneHeader } from '@/features/settings/primitives'
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 import { getSecureValue, setSecureValue } from '@/services/desktop'
 import {
   emailProviderCatalog,

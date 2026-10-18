@@ -6,11 +6,11 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { KitionLogoMark } from '@/components/KitionLogoMark'
-import { Button, Card, CardContent, Input } from '@/components/ui'
+import { Button, Card, CardContent, Input } from '@kition/app-ui'
 import { SkeletonRows } from '@/components/states'
-import { useConfirm } from '@/components/confirm'
-import { useDismissableLayer } from '@/registry/hooks/use-on-click-outside'
-import { cn } from '@/lib/utils'
+import { useConfirm } from '@kition/app-ui/confirm'
+import { useDismissableLayer } from '@kition/app-ui/hooks/use-on-click-outside'
+import { cn } from '@kition/app-ui/utils'
 import type { VaultEntry } from '@/services/desktop'
 
 type WorkspaceLauncherScreenProps = {

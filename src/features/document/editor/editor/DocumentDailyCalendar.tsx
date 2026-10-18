@@ -8,8 +8,8 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/registry/ui/dialog'
-import { cn } from '@/lib/utils'
+} from '@kition/app-ui/dialog'
+import { cn } from '@kition/app-ui/utils'
 import { getCurrentLocale } from '@/i18n'
 
 import { dateString, ensureDailyNoteFor } from '../daily-note'

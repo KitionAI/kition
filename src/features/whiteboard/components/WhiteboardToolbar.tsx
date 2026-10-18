@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next'
 
 import type { WhiteboardEditorController } from '@/features/whiteboard/hooks/useWhiteboardEditor'
 import type { WhiteboardPoint, WhiteboardTool } from '@/features/whiteboard/lib/whiteboardTypes'
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 import { importWorkspaceImageFromFile } from '@/services/desktop'
 
 import {

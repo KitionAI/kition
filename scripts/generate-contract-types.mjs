@@ -2,7 +2,7 @@
 /**
  * Generate TypeScript types from the public runtime contracts.
  *
- *   node scripts/generate-contract-types.mjs          # write src/api/generated/*.ts
+ *   node scripts/generate-contract-types.mjs          # write src/api/generated/*.ts (and package copies)
  *   node scripts/generate-contract-types.mjs --check  # fail if committed output is stale
  *
  * One module per contracts/runtime/<name>.schema.json. Every `$defs` entry
@@ -24,6 +24,14 @@ import { fileURLToPath } from 'node:url'
 const repositoryDir = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const contractsDir = resolve(repositoryDir, 'contracts/runtime')
 const outputDir = resolve(repositoryDir, 'src/api/generated')
+// Packages under packages/ import nothing from src/, so they get their own copy of the contract
+// modules they use (and the ones those import).
+const packageOutputs = [
+  {
+    dir: resolve(repositoryDir, 'packages/table-editor/src/generated'),
+    stems: ['data-documents-transact', 'data-import', 'table-changed'],
+  },
+]
 const check = process.argv.includes('--check')
 
 function pascal(value) {
@@ -191,15 +199,28 @@ function generate() {
 
 const outputs = generate()
 
+function packageFiles(stems) {
+  return new Map(stems.map((stem) => [`${stem}.ts`, outputs.get(`${stem}.ts`)]))
+}
+
+const targets = [
+  { dir: outputDir, files: outputs },
+  ...packageOutputs.map(({ dir, stems }) => ({ dir, files: packageFiles(stems) })),
+]
+
 if (check) {
   const stale = []
-  for (const [name, content] of outputs) {
-    const target = resolve(outputDir, name)
-    if (!existsSync(target) || readFileSync(target, 'utf8') !== content) stale.push(name)
+  const extra = []
+  for (const { dir, files } of targets) {
+    const label = dir.slice(repositoryDir.length + 1)
+    for (const [name, content] of files) {
+      const target = resolve(dir, name)
+      if (!existsSync(target) || readFileSync(target, 'utf8') !== content) stale.push(`${label}/${name}`)
+    }
+    if (existsSync(dir)) {
+      extra.push(...readdirSync(dir).filter((name) => name.endsWith('.ts') && !files.has(name)).map((name) => `${label}/${name}`))
+    }
   }
-  const extra = existsSync(outputDir)
-    ? readdirSync(outputDir).filter((name) => name.endsWith('.ts') && !outputs.has(name))
-    : []
   if (stale.length > 0 || extra.length > 0) {
     if (stale.length > 0) console.error(`[contracts] stale generated files: ${stale.join(', ')}`)
     if (extra.length > 0) console.error(`[contracts] generated files without a contract: ${extra.join(', ')}`)
@@ -208,7 +229,9 @@ if (check) {
   }
   console.log(`[contracts] OK: ${outputs.size} generated files are current.`)
 } else {
-  mkdirSync(outputDir, { recursive: true })
-  for (const [name, content] of outputs) writeFileSync(resolve(outputDir, name), content)
-  console.log(`[contracts] wrote ${outputs.size} files to src/api/generated`)
+  for (const { dir, files } of targets) {
+    mkdirSync(dir, { recursive: true })
+    for (const [name, content] of files) writeFileSync(resolve(dir, name), content)
+  }
+  console.log(`[contracts] wrote ${outputs.size} files to src/api/generated and package copies`)
 }

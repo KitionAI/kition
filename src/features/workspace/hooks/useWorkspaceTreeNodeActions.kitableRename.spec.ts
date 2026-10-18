@@ -35,7 +35,7 @@ vi.mock('@/api/dataDocuments', () => ({
   renameDataDocumentByPath: vi.fn().mockResolvedValue({ renamed: true, count: 1 }),
 }))
 
-vi.mock('@/components/confirm', () => ({
+vi.mock('@kition/app-ui/confirm', () => ({
   useConfirm: () => async () => true,
 }))
 

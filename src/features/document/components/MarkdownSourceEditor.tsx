@@ -11,7 +11,7 @@ import {
   documentClipboardImagesFromFiles,
   importDocumentClipboardImages,
 } from '@/features/document/lib/documentImagePaste'
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 
 const basicSetup = {
   lineNumbers: false,

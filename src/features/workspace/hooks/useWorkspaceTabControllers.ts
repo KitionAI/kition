@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { useConfirm } from '@/components/confirm'
+import { useConfirm } from '@kition/app-ui/confirm'
 import type { WorkspaceTab } from '@/features/workspace/lib/workspace'
 import { getWorkspaceItemTitle, inferWorkspaceItemFormat } from '@/features/workspace/lib/workspace'
 import { notify } from '@/lib/notify'

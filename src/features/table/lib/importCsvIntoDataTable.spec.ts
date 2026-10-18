@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { DataField, DataRecord, DataTable } from '@/types/dataDocument'
+import type { DataField, DataRecord, DataTable } from '@kition/table-editor/types/dataDocument'
 
 const mocks = vi.hoisted(() => ({
   createDataField: vi.fn(),

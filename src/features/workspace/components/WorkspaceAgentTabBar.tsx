@@ -1,5 +1,5 @@
 import type { ApiTimestamp } from '@/types'
-import { toEpochMs } from '@/lib/timestamps'
+import { toEpochMs } from '@kition/table-editor'
 import { Bot, ChevronsRight, History, Plus, Search, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import type { AgentSession } from '@/api/agent'
 import { WorkspaceTabContextMenu, type WorkspaceTabContextMenuItem } from '@/features/workspace/components/WorkspaceTabContextMenu'
 import { formatWorkspaceTime } from '@/features/workspace/lib/workspace'
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 
 type SessionHistoryGroupKey = 'today' | 'week' | 'older'
 

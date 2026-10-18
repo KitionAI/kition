@@ -1,7 +1,7 @@
 import { FileUp, LoaderCircle, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Button, Input, Select } from '@/components/ui'
-import { cn } from '@/lib/utils'
+import { Button, Input, Select } from '@kition/app-ui'
+import { cn } from '@kition/app-ui/utils'
 import {
   documentExportFormats,
   documentExportMarginsOptions,

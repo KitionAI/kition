@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoaderCircle } from 'lucide-react'
 import type { ScenarioBuildEvent } from '@/features/scenario/types'
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 
 export interface BuildProgressCardProps {
   events: ScenarioBuildEvent[]

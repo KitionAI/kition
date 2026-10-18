@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { LoaderCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Button, Input } from '@/components/ui'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/registry/ui/dialog'
+import { Button, Input } from '@kition/app-ui'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@kition/app-ui/dialog'
 import type { ExtensionService } from './extensionService'
 import { loadExtensionService } from './serviceLoader'
 

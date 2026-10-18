@@ -17,7 +17,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SCANNED_SUFFIXES = {".ts", ".tsx", ".mjs", ".cjs", ".js", ".sh", ".py", ".css"}
-SCANNED_ROOTS = ("src/", "src-tauri/scripts/", "scripts/", "e2e/", "tooling/")
+SCANNED_ROOTS = ("src/", "packages/", "src-tauri/scripts/", "scripts/", "e2e/", "tooling/")
 BLANK_COMMENT_LINE = re.compile(r"^[ \t]+$")
 
 

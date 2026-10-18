@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { loadDesktopSettings } from '@/services/desktopSettings'
 import { ensurePortalAccountSessionRestored } from '@/services/portalAccount'
-import type { AttachmentAIConfig, TextAIConfig } from '@/types/aiConfig'
+import type { AttachmentAIConfig, TextAIConfig } from '@kition/table-editor/types/aiConfig'
 
 vi.mock('@/services/desktopSettings', () => ({
   loadDesktopSettings: vi.fn(),

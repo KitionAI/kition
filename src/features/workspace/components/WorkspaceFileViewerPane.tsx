@@ -12,7 +12,7 @@ import {
   getWorkspaceItemIconColorClass,
   getWorkspaceItemTitle,
 } from '@/features/workspace/lib/workspace'
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 import { notify } from '@/lib/notify'
 import { EditInFilmButton } from './film/EditInFilmButton'
 import { KitFilePane } from './kits/KitFilePane'

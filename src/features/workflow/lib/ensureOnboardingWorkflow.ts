@@ -9,7 +9,7 @@ import { createWorkflowFromTemplate } from '@/features/workflow/lib/createWorkfl
 import { fetchWorkflowTableSchema } from '@/features/workflow/lib/workflowTableSchema'
 import { getBuiltinTemplates } from '@/features/workflow/templates'
 import { getOnboardingWorkflowTemplate } from '@/features/workflow/templates/onboarding'
-import type { DataTableSeed } from '@/types/dataDocument'
+import type { DataTableSeed } from '@kition/table-editor'
 
 const LEGACY_CONTENT_MARKER_VERSION = 1
 const MARKER_VERSION = 2

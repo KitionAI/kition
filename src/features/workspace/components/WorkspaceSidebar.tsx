@@ -7,7 +7,7 @@ import type { DocumentCreateFormat } from '@/features/document/lib/documentCreat
 import type { WorkspaceImportEntry } from '@/features/workspace/hooks/useWorkspaceTreeCreateActions'
 import { handleDesktopChromeDoubleClick } from '@/lib/windowChrome'
 import { carriesFiles } from '@/lib/fileDropGuard'
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 
 export function WorkspaceSidebar({
   loading,

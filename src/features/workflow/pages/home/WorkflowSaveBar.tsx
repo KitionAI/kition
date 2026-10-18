@@ -1,7 +1,7 @@
 import { LoaderCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import { Button } from '@/components/ui'
+import { Button } from '@kition/app-ui'
 
 export type WorkflowSaveBarProps = {
   dirty: boolean

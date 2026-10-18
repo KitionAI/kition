@@ -1,6 +1,6 @@
 import { requestUseImageInDesign } from '@/services/workspaceDesignActions'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui'
+import { Button } from '@kition/app-ui'
 import { resolveAgentImageURL } from '@/services/workspaceFiles'
 import type { AgentImageArtifact } from '@/types/imageGeneration'
 import type { imageJobOf } from '../lib/agentImageJob'

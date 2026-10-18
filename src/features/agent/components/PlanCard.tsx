@@ -2,7 +2,7 @@ import { Check, Circle, LoaderCircle } from 'lucide-react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 
 type PlanStep = {
   step: string

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
-import { TableDataSourceProvider } from '@/features/table/ports/TableDataSource'
-import { TableHostProvider } from '@/features/table/ports/TableHost'
+import { TableDataSourceProvider } from '@kition/table-editor'
+import { TableHostProvider } from '@kition/table-editor'
 import { httpTableDataSource } from './httpTableDataSource'
 import { kitionTableHost } from './kitionTableHost'
 

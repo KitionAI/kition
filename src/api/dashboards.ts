@@ -4,8 +4,8 @@ import {
   openDataDocumentByPath,
   putDataDashboard,
 } from '@/api/dataDocuments'
-import { createStarterDataDashboard } from '@/features/dashboard/lib/dashboardCreation'
-import type { DataDashboard, DataDocument } from '@/types/dataDocument'
+import { createStarterDataDashboard } from '@kition/table-editor'
+import type { DataDashboard, DataDocument } from '@kition/table-editor'
 
 export async function createDataDashboardByPath(
   path: string,

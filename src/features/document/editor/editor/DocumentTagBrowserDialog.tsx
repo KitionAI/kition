@@ -2,14 +2,14 @@ import { Tag } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Input } from '@/registry/ui/input'
+import { Input } from '@kition/app-ui/input'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/registry/ui/dialog'
+} from '@kition/app-ui/dialog'
 import { readWorkspaceMarkdown, updateWorkspaceMarkdown } from '@/features/document/kdm/documentSessions'
 
 import { parseTags } from '../lib/tag-parser'

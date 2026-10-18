@@ -1,7 +1,7 @@
 import { LoaderCircle } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
-import { Button } from '@/components/ui'
+import { Button } from '@kition/app-ui'
 
 export function EmailSyncTriggerPanel({
   enabled,

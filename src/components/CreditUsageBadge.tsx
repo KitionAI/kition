@@ -1,7 +1,7 @@
 import type { ButtonHTMLAttributes, HTMLAttributes, MouseEvent } from 'react'
 import { AlertTriangle, Zap } from 'lucide-react'
 
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 
 type SharedAttrs = Pick<
   HTMLAttributes<HTMLElement>,

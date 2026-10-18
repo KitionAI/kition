@@ -2,7 +2,7 @@ import { MoreHorizontal } from 'lucide-react'
 import { type ComponentProps, type RefObject, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui'
+import { Button } from '@kition/app-ui'
 import {
   WorkspaceDocumentItemMenu,
   WorkspaceMarkdownItemMenu,
@@ -14,8 +14,8 @@ import type {
   EditorTextStyle,
   EditorViewPreferences,
 } from '@/features/workspace/hooks/useWorkspaceChrome'
-import type { TableAction } from '@/features/table/lib/tableActions'
-import { useDismissableLayer } from '@/registry/hooks/use-on-click-outside'
+import type { TableAction } from '@kition/table-editor'
+import { useDismissableLayer } from '@kition/app-ui/hooks/use-on-click-outside'
 
 export function WorkspaceTopbar({
   tabsPortal,

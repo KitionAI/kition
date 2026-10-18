@@ -149,7 +149,8 @@
     "groupDirection": "Direção do agrupamento",
     "removeGroup": "Remover agrupamento",
     "addAnotherGroup": "Adicionar outro agrupamento",
-    "viewName": "Nome da visualização"
+    "viewName": "Nome da visualização",
+    "renameTablePrompt": "Renomear"
   },
   "header": {
     "addView": "Adicionar visualização"

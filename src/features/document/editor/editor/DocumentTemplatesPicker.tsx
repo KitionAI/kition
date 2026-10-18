@@ -9,7 +9,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from '@/registry/ui/command'
+} from '@kition/app-ui/command'
 
 import { applyTemplate, listTemplates, type TemplateEntry } from '../vault/templates'
 

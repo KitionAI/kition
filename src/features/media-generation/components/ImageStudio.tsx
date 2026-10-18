@@ -34,7 +34,7 @@ import {
   type ImagePromptTextMode,
   type ImagePromptVariableValues,
 } from '@/features/media-generation/lib/imagePromptTemplates'
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 import { openExternalURL } from '@/services/desktop'
 import { resolveWorkspaceFileURL } from '@/services/workspaceFiles'
 

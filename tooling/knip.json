@@ -6,6 +6,7 @@
     "scripts/*.mjs",
     "tooling/*.{ts,js,cjs}",
     "src/**/*.spec.{ts,tsx}",
+    "packages/*/src/**/*.spec.{ts,tsx}",
     "src-tauri/scripts/**/*.spec.ts",
     "scripts/**/*.spec.ts",
     "e2e/**/*.spec.ts",
@@ -20,6 +21,7 @@
   ],
   "project": [
     "src/**/*.{ts,tsx}",
+    "packages/*/src/**/*.{ts,tsx}",
     "src-tauri/scripts/**/*.{mjs,ts}",
     "scripts/**/*.{mjs,ts}",
     "e2e/**/*.ts"
@@ -29,7 +31,8 @@
     "dist-desktop/**",
     "src-tauri/target/**",
     "test-results/**",
-    "src/api/generated/**"
+    "src/api/generated/**",
+    "packages/table-editor/src/generated/**"
   ],
   "ignoreDependencies": [
     "@tauri-apps/cli",

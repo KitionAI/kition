@@ -1,8 +1,8 @@
 import { Check, FileClock, FileText, LoaderCircle, MoreHorizontal, SlidersHorizontal, Trash2 } from 'lucide-react'
 import { useState } from 'react'
-import { Button } from '@/components/ui'
-import { cn } from '@/lib/utils'
-import { Popover, PopoverContent, PopoverTrigger } from '@/registry/ui/popover'
+import { Button } from '@kition/app-ui'
+import { cn } from '@kition/app-ui/utils'
+import { Popover, PopoverContent, PopoverTrigger } from '@kition/app-ui/popover'
 
 export type WorkflowDetailView = 'configuration' | 'history' | 'logs'
 

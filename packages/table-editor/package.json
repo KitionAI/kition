@@ -1,0 +1,14 @@
+{
+  "name": "@kition/table-editor",
+  "version": "0.0.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "Kition's table and dashboard editor, on the TableDataSource and TableHost seams",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./TableEditor": "./src/TableEditor.ts",
+    "./DashboardEditor": "./src/DashboardEditor.ts",
+    "./TableFileImportDialog": "./src/TableFileImportDialog.ts"
+  }
+}

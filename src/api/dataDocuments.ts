@@ -29,9 +29,9 @@ import type {
   ViewFieldsResponse,
   ViewGroupsResponse,
   ViewSortsResponse,
-} from '@/types/dataDocument'
+} from '@kition/table-editor'
 import type { RuntimeWritingModel } from '@/types'
-import { normalizeAIConfig, type AnyAIConfig } from '@/types/aiConfig'
+import { normalizeAIConfig, type AnyAIConfig } from '@kition/table-editor'
 import { statWorkspaceDocument } from '@/services/desktop'
 import type {
   DataDocumentsTransactHistoryStateResponse,

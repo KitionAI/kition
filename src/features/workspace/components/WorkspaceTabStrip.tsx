@@ -5,7 +5,7 @@ import { WorkspaceTabContextMenu, type WorkspaceTabContextMenuItem } from '@/fea
 import { getWorkspaceItemIcon, getWorkspaceItemIconColorClass, type WorkspaceTab } from '@/features/workspace/lib/workspace'
 import { KitIcon } from '@/components/KitIcon'
 import { canShareDocument, CollabTabIndicators, requestShareDocument, useCollabAvailable } from '@/features/collab/public'
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 
 /** The workspace file a tab edits, for co-editing (kit documents, boards, Markdown documents, tables). */
 function collabTabPath(tab: WorkspaceTab): string | null {

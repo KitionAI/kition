@@ -8,7 +8,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from '@/registry/ui/command'
+} from '@kition/app-ui/command'
 
 import { useBookmarks } from '@/features/document/editor/hooks/useBookmarks'
 import { usePinnedTabs } from '@/features/document/editor/hooks/usePinnedTabs'

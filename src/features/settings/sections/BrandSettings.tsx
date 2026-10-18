@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button } from '@/components/ui'
+import { Button } from '@kition/app-ui'
 import {
   SettingsActionBar,
   SettingsPaneHeader,

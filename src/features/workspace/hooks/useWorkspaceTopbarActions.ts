@@ -1,7 +1,7 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { DATA_TABLE_ACTION_EVENT, type TableAction } from '@/features/table/lib/tableActions'
+import { DATA_TABLE_ACTION_EVENT, type TableAction } from '@kition/table-editor'
 import type { EditorMode, EditorViewPreferences } from '@/features/workspace/hooks/useWorkspaceChrome'
 import { isDesktopRuntime, openWorkspaceFile, type WorkspaceDocument, type WorkspaceDocumentFormat } from '@/services/desktop'
 

@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ChevronRight } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 import { Menu, type MenuEntry, type MenuPosition } from './Menu'
 
 export interface MenuRendererProps {

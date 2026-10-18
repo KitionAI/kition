@@ -27,7 +27,7 @@ import {
 import { useEffect, useMemo, useState, type ComponentType } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Button } from '@/components/ui'
+import { Button } from '@kition/app-ui'
 import { loadTemplateContent, listTemplates, type TemplateEntry } from '@/features/document/editor/vault/templates'
 import type { DocumentCreationPreset } from '@/features/document/lib/documentCreation'
 import {
@@ -39,7 +39,7 @@ import {
   type DocumentTemplatePreview,
   type DocumentTemplateTone,
 } from '@/features/document/lib/documentTemplates'
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 import { resolveBundledAssetURL } from '@/lib/bundledAssets'
 import {
   WORKSPACE_TEMPLATE_LIBRARY_DIALOG_CLASSNAME,
@@ -48,7 +48,7 @@ import {
 import {
   Dialog,
   DialogContent,
-} from '@/registry/ui/dialog'
+} from '@kition/app-ui/dialog'
 
 type TemplateCategoryFilter = 'all' | 'workspace' | DocumentTemplateCategory
 

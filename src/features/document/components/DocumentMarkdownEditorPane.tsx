@@ -11,7 +11,7 @@ import { EditorSelection, Prec } from '@codemirror/state'
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { useConfirm } from '@/components/confirm'
+import { useConfirm } from '@kition/app-ui/confirm'
 import { useDesktopSettings } from '@/features/settings/hooks/useDesktopSettings'
 import { DocumentAgentSelectionToolbar } from '@/features/document/components/DocumentAgentSelectionToolbar'
 import { DocumentImagePreviewDialog } from '@/features/document/components/DocumentImagePreviewDialog'
@@ -76,7 +76,7 @@ import { useMarkdownLinkNavigation } from '@/features/document/hooks/useMarkdown
 import type { DocumentAskAgentRequest } from '@/features/document/lib/documentAgentActions'
 import type { MarkdownImageInsertionSnapshot } from '@/features/document/editor/editor/markdown-image-insertion'
 import { notify } from '@/lib/notify'
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 
 export type DocumentMarkdownEditorPaneProps = {
   /** The document text the editor edits (the session's replica). */

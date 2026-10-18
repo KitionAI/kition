@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 
 import type { DocumentAgentReview } from '@/features/document/kdm/documentSession'
 import { createDocumentRevisionComparison } from '@/features/document/lib/documentRevision'
-import { Button } from '@/registry/ui/button'
+import { Button } from '@kition/app-ui/button'
 
 type DocumentAgentReviewBarProps = {
   review: DocumentAgentReview

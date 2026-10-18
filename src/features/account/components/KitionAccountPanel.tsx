@@ -12,7 +12,7 @@ import {
 
 import { CreditUsageBadge } from '@/components/CreditUsageBadge'
 import { KitionLogoMark } from '@/components/KitionLogoMark'
-import { Button } from '@/components/ui'
+import { Button } from '@kition/app-ui'
 import { useKitionAccount } from '@/features/account/hooks/useKitionAccount'
 import { getKitionAccountLinks } from '@/features/account/lib/accountLinks'
 import {
@@ -25,7 +25,7 @@ import {
   type KitionAccountStatus,
 } from '@/features/account/lib/accountState'
 import { useTranslation } from '@/i18n'
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 import { openExternalURL } from '@/services/desktop'
 import {
   trackProductEvent,

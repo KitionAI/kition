@@ -10,7 +10,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from '@/registry/ui/command'
+} from '@kition/app-ui/command'
 
 const codePointText = (...values: number[]) => String.fromCodePoint(...values)
 const cjkStopwords = [

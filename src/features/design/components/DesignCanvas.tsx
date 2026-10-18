@@ -6,7 +6,7 @@ import {
 } from 'react'
 import { Maximize, Minus, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui'
+import { Button } from '@kition/app-ui'
 import type { Bounds, DesignDocument } from '../lib/designTypes'
 import type { DesignStore } from '../lib/designStore'
 import {

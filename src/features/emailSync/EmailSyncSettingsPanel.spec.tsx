@@ -20,7 +20,7 @@ vi.mock('@/api/dataDocuments', () => ({
   openDataDocumentByPath: vi.fn(),
 }))
 
-vi.mock('@/components/confirm', () => ({
+vi.mock('@kition/app-ui/confirm', () => ({
   useConfirm: () => vi.fn(async () => true),
 }))
 

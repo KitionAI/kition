@@ -14,8 +14,8 @@ import type {
   KitableTableSummary,
   KitableWorkflowSummary,
 } from '@/features/workspace/lib/workspaceTree'
-import { cn } from '@/lib/utils'
-import { useDismissableLayer } from '@/registry/hooks/use-on-click-outside'
+import { cn } from '@kition/app-ui/utils'
+import { useDismissableLayer } from '@kition/app-ui/hooks/use-on-click-outside'
 
 type WorkspaceKitableSidebarProps = {
   defaultCollapsed?: boolean

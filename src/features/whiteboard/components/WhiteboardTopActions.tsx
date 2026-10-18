@@ -36,7 +36,7 @@ import { useTranslation } from 'react-i18next'
 
 import type { WhiteboardEditorController } from '../hooks/useWhiteboardEditor'
 import type { WhiteboardPoint } from '../lib/whiteboardTypes'
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 import {
   ActionMenu,
   ActionMenuContent,
@@ -48,7 +48,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/registry/ui/popover'
+} from '@kition/app-ui/popover'
 import { WhiteboardTemplateGallery } from './WhiteboardTemplateGallery'
 
 export function WhiteboardTopActions({

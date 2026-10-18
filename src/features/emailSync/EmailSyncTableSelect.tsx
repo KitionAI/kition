@@ -1,7 +1,7 @@
 import { Check, ChevronDown, Table2 } from 'lucide-react'
 import { useState } from 'react'
 
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 import {
   Command,
   CommandEmpty,
@@ -9,8 +9,8 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from '@/registry/ui/command'
-import { Popover, PopoverContent, PopoverTrigger } from '@/registry/ui/popover'
+} from '@kition/app-ui/command'
+import { Popover, PopoverContent, PopoverTrigger } from '@kition/app-ui/popover'
 
 export type EmailSyncTableOption = {
   id: number

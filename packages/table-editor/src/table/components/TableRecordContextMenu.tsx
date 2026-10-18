@@ -1,0 +1,135 @@
+import { useTranslation } from 'react-i18next'
+import type { DataField, DataRecord } from '../../types/dataDocument'
+import {
+  findImageLikeString,
+  normalizeAttachmentValue,
+  type RowDropPosition,
+} from '../lib/tableEditorShared'
+import { resolveTableFileURL, useTableHost, useTableNotify } from '../ports/TableHost'
+
+import { DataRecordContextMenu } from './TableEditorOverlays'
+
+export function TableRecordContextMenu({
+  menu,
+  record,
+  busy,
+  canInsert,
+  fields,
+  selectedFieldName,
+  onClose,
+  onInsertRecords,
+  onDuplicateRecord,
+  onCopyRecordURL,
+  onOpenRecord,
+  onCopyRecordForChat,
+  onDeleteRecord,
+  onRegenerateAIField,
+  onStatus,
+}: {
+  menu: { x: number; y: number } | null
+  record: DataRecord | null
+  busy: boolean
+  canInsert: boolean
+  fields: DataField[]
+  selectedFieldName?: string | null
+  onClose: () => void
+  onInsertRecords: (
+    record: DataRecord,
+    count: number,
+    position: RowDropPosition,
+  ) => void | Promise<void>
+  onDuplicateRecord: (record: DataRecord) => void | Promise<void>
+  onCopyRecordURL: (record: DataRecord) => void | Promise<void>
+  onOpenRecord: (record: DataRecord) => void
+  onCopyRecordForChat: (record: DataRecord) => void | Promise<void>
+  onDeleteRecord: (recordId: number) => void | Promise<void>
+  onRegenerateAIField: (record: DataRecord, field: DataField) => void
+  onStatus: (message: string) => void
+}) {
+  const { t } = useTranslation('table')
+  const host = useTableHost()
+  const notify = useTableNotify()
+  const { copyImageToClipboard, requestDesignFromRecord } = host
+  if (!menu || !record) return null
+
+  function closeAndRun(action: () => void | Promise<void>) {
+    onClose()
+    void action()
+  }
+
+  const aiFields = fields.filter((field) => field.ai_config?.enabled)
+  const attachmentField = fields.find((field) => field.type === 'attachment')
+  const selectedField = selectedFieldName
+    ? fields.find((field) => field.name === selectedFieldName)
+    : null
+  const selectedImage = selectedField?.type === 'attachment'
+    ? normalizeAttachmentValue(record.values?.[selectedField.name] ?? null)
+      .map((attachment) => findImageLikeString(attachment))
+      .find(Boolean) || ''
+    : ''
+
+  async function copySelectedImage() {
+    if (!selectedImage || !copyImageToClipboard) return
+    try {
+      await copyImageToClipboard(resolveTableFileURL(host, selectedImage))
+      onStatus(t('recordMenu.imageCopied'))
+    } catch (error) {
+      notify.error(t('recordMenu.imageCopyFailed'), {
+        description: error instanceof Error ? error.message : String(error),
+      })
+    }
+  }
+
+  return (
+    <DataRecordContextMenu
+      record={record}
+      position={menu}
+      busy={busy}
+      canInsert={canInsert}
+      canRegenerateAI={aiFields.length > 0 && Boolean(host.ai)}
+      onClose={onClose}
+      onInsertAbove={(count) =>
+        closeAndRun(() => onInsertRecords(record, count, 'before'))
+      }
+      onInsertBelow={(count) =>
+        closeAndRun(() => onInsertRecords(record, count, 'after'))
+      }
+      onDuplicate={() => closeAndRun(() => onDuplicateRecord(record))}
+      onCopyURL={() => closeAndRun(() => onCopyRecordURL(record))}
+      onCopyImage={selectedImage && copyImageToClipboard ? () => closeAndRun(copySelectedImage) : undefined}
+      onHistory={() => {
+        onClose()
+        onStatus(t('recordMenu.historyUnavailable'))
+      }}
+      onComment={() => {
+        onClose()
+        onOpenRecord(record)
+        onStatus(t('recordMenu.commentsHint'))
+      }}
+      onAddToChat={() => closeAndRun(() => onCopyRecordForChat(record))}
+      onCreateDesign={requestDesignFromRecord ? () =>
+        closeAndRun(() =>
+          requestDesignFromRecord({
+            title: t('recordMenu.designTitle', { id: record.auto_number ?? record.id }),
+            fields: record.values ?? {},
+            record: attachmentField
+              ? {
+                  documentId: record.document_id,
+                  tableId: record.table_id,
+                  recordId: record.id,
+                  field: attachmentField.name,
+                }
+              : undefined,
+          }),
+        ) : undefined
+      }
+      onRegenerateAI={() => {
+        onClose()
+        for (const field of aiFields) {
+          onRegenerateAIField(record, field)
+        }
+      }}
+      onDelete={() => closeAndRun(() => onDeleteRecord(record.id))}
+    />
+  )
+}

@@ -24,7 +24,11 @@
     "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@kition/app-ui": ["packages/app-ui/src/index.tsx"],
+      "@kition/app-ui/*": ["packages/app-ui/src/*"],
+      "@kition/table-editor": ["packages/table-editor/src/index.ts"],
+      "@kition/table-editor/*": ["packages/table-editor/src/*"]
     }
   },
   "include": [
@@ -49,14 +53,9 @@
     "src/i18n/**/*.json",
     "src/utils/**/*.ts",
     "src/utils/**/*.tsx",
-    "src/registry/components/**/*.ts",
-    "src/registry/components/**/*.tsx",
-    "src/registry/hooks/**/*.ts",
-    "src/registry/hooks/**/*.tsx",
-    "src/registry/lib/**/*.ts",
-    "src/registry/lib/**/*.tsx",
-    "src/registry/ui/**/*.ts",
-    "src/registry/ui/**/*.tsx"
+    "packages/*/src/**/*.ts",
+    "packages/*/src/**/*.tsx",
+    "packages/*/src/**/*.json"
   ],
   "references": [{ "path": "./tooling/tsconfig.node.json" }]
 }

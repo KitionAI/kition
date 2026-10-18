@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
-import { useDialogFocus } from '@/lib/useDialogFocus'
-import { Button } from '@/components/ui'
+import { useDialogFocus } from '@kition/app-ui/hooks/useDialogFocus'
+import { Button } from '@kition/app-ui'
 import { useTranslation } from '@/i18n'
 
 type Props = {

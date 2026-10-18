@@ -9,9 +9,14 @@ export default defineConfig({
   root: repositoryDir,
   plugins: [react()],
   resolve: {
-    alias: {
-      '@': resolve(repositoryDir, 'src'),
-    },
+    alias: [
+      { find: '@', replacement: resolve(repositoryDir, 'src') },
+      // The packages under packages/ are imported by path alias, not installed (packages/README.md).
+      { find: /^@kition\/app-ui$/, replacement: resolve(repositoryDir, 'packages/app-ui/src/index.tsx') },
+      { find: /^@kition\/app-ui\//, replacement: `${resolve(repositoryDir, 'packages/app-ui/src')}/` },
+      { find: /^@kition\/table-editor$/, replacement: resolve(repositoryDir, 'packages/table-editor/src/index.ts') },
+      { find: /^@kition\/table-editor\//, replacement: `${resolve(repositoryDir, 'packages/table-editor/src')}/` },
+    ],
   },
   test: {
     environment: 'jsdom',
@@ -21,17 +26,18 @@ export default defineConfig({
     testTimeout: 10_000,
     minWorkers: 1,
     maxWorkers: 4,
-    include: ['src/**/*.spec.ts', 'src/**/*.spec.tsx', 'src-tauri/scripts/**/*.spec.ts', 'scripts/**/*.spec.ts'],
+    include: ['src/**/*.spec.ts', 'src/**/*.spec.tsx', 'packages/*/src/**/*.spec.ts', 'packages/*/src/**/*.spec.tsx', 'src-tauri/scripts/**/*.spec.ts', 'scripts/**/*.spec.ts'],
     exclude: ['e2e/**', 'playwright-report/**', 'test-results/**'],
     // Coverage floors for the areas that hold user data and editor state.
     // Values are the measurement from 2026-09-27 rounded down; raise them as
     // tests land, never lower them. `pnpm run test:coverage` enforces them.
     coverage: {
       provider: 'v8',
-      include: ['src/features/table/**', 'src/features/document/hooks/**', 'src/services/**'],
+      include: ['packages/table-editor/src/**', 'src/features/table/**', 'src/features/document/hooks/**', 'src/services/**'],
       exclude: ['**/*.spec.ts', '**/*.spec.tsx', '**/*.d.ts'],
       reporter: ['text-summary'],
       thresholds: {
+        'packages/table-editor/src/**': { statements: 28, branches: 23, functions: 29, lines: 28 },
         'src/features/table/**': { statements: 28, branches: 23, functions: 29, lines: 28 },
         'src/features/document/hooks/**': { statements: 34, branches: 29, functions: 43, lines: 34 },
         'src/services/**': { statements: 64, branches: 58, functions: 68, lines: 66 },

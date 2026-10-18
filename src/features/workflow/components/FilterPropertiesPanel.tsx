@@ -1,7 +1,7 @@
 import { Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import { Button } from '@/components/ui'
+import { Button } from '@kition/app-ui'
 import { DrawerField, DrawerSection } from '@/features/workflow/drawer/PropertiesDrawer'
 
 /**

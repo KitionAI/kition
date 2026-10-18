@@ -6,7 +6,7 @@
 import type { buildAgentTurnContext } from '@/features/agent/public'
 import type { WorkspaceTab } from '@/features/workspace/lib/workspace'
 import { deriveAgentPaneContext, resolveAgentActiveDocument } from '@/features/workspace/lib/agentPaneContext'
-import type { DataDocument, DataTable } from '@/types/dataDocument'
+import type { DataDocument, DataTable } from '@kition/table-editor'
 
 export type WorkspaceAgentTurnUpdateInput = {
   activeWorkspaceTab: WorkspaceTab | null | undefined

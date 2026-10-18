@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui'
+import { Button } from '@kition/app-ui'
 import { openExternalURL } from '@/services/desktop'
 import { downloadUpdate, installUpdate } from '@/services/desktopUpdates'
 import { dismissVersion, isVersionDismissed } from './dismissedVersion'

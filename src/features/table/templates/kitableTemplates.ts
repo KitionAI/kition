@@ -5,8 +5,8 @@ import type {
   DataFieldSeed,
   DataRecordValue,
   DataViewSeed,
-} from '@/types/dataDocument'
-import type { AnyAIConfig } from '@/types/aiConfig'
+} from '@kition/table-editor'
+import type { AnyAIConfig } from '@kition/table-editor'
 import type { FormSyncTemplateSetup } from '@/features/formSync/templateSetup'
 import { createBatchProductDesignerTemplate } from './batchProductDesignerTemplate'
 import { getOperationalKitableTemplates } from './kitableOperationalTemplates'

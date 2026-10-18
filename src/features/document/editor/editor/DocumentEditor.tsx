@@ -6,7 +6,7 @@ import { EditorView } from '@codemirror/view'
 import CodeMirror, { type ReactCodeMirrorRef } from '@uiw/react-codemirror'
 import { forwardRef, useMemo } from 'react'
 
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 import type { DocumentAgentActionRequest } from '@/features/document/lib/documentAgentActions'
 
 import type { DocumentTextSource } from '@/features/document/kdm/documentTextSource'

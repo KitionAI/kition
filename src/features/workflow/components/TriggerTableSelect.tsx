@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Check, ChevronDown } from 'lucide-react'
 
-import { Popover, PopoverContent, PopoverTrigger } from '@/registry/ui/popover'
-import { cn } from '@/lib/utils'
+import { Popover, PopoverContent, PopoverTrigger } from '@kition/app-ui/popover'
+import { cn } from '@kition/app-ui/utils'
 
 export type TriggerTableOption = {
   tableId: string

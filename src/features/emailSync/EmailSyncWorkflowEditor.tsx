@@ -1,7 +1,7 @@
 import { ArrowLeft, Mail } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 
-import { Button, Input, PasswordInput } from '@/components/ui'
+import { Button, Input, PasswordInput } from '@kition/app-ui'
 import {
   emailProviderCatalog,
   getEmailProvider,

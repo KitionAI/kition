@@ -1,6 +1,6 @@
 import { LoaderCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Button, Input } from '@/components/ui'
+import { Button, Input } from '@kition/app-ui'
 import {
   Dialog,
   DialogContent,
@@ -8,7 +8,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/registry/ui/dialog'
+} from '@kition/app-ui/dialog'
 
 export function WorkspaceFolderCreateDialog({
   open,

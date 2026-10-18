@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui'
+import { Button } from '@kition/app-ui'
 import type { DesignSaveStatus } from '../lib/designSession'
 import type { DesignExportPresets } from '../lib/designExportPresets'
 import type { DesignExportFormat } from '../hooks/useDesignFileActions'

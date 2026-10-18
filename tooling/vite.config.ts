@@ -56,6 +56,11 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: [
       { find: '@', replacement: resolve(repositoryDir, 'src') },
+      // The packages under packages/ are imported by path alias, not installed (packages/README.md).
+      { find: /^@kition\/app-ui$/, replacement: resolve(repositoryDir, 'packages/app-ui/src/index.tsx') },
+      { find: /^@kition\/app-ui\//, replacement: `${resolve(repositoryDir, 'packages/app-ui/src')}/` },
+      { find: /^@kition\/table-editor$/, replacement: resolve(repositoryDir, 'packages/table-editor/src/index.ts') },
+      { find: /^@kition\/table-editor\//, replacement: `${resolve(repositoryDir, 'packages/table-editor/src')}/` },
       // loro-crdt's default browser entry downloads and compiles its WebAssembly synchronously on
       // the page's thread. Its bundler entry imports the WebAssembly instead, which
       // vite-plugin-wasm fetches and instantiates asynchronously, in development and in builds

@@ -20,7 +20,7 @@ type MockedTableEditorProps = {
   }>
 }
 const tableEditorRenders: MockedTableEditorProps[] = []
-vi.mock('@/features/table/components/TableEditor', () => ({
+vi.mock('@kition/table-editor/table/components/TableEditor', () => ({
   TableEditor: (props: MockedTableEditorProps) => {
     tableEditorRenders.push({
       documentPath: props.documentPath,

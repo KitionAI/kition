@@ -2,7 +2,7 @@ import { Star, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { useBookmarks, useBookmarksActions } from '@/features/document/editor/hooks/useBookmarks'
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 
 function lastSegment(p: string): string {
   const idx = p.lastIndexOf('/')

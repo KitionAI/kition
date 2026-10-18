@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { openDataDocumentByPath } from '@/api/dataDocuments'
 import { resolveAgentDataTableTarget } from '@/features/workspace/lib/agentPaneContext'
 import type { WorkspaceTab } from '@/features/workspace/lib/workspace'
-import type { DataDocument, DataTable } from '@/types/dataDocument'
+import type { DataDocument, DataTable } from '@kition/table-editor'
 
 export type WorkspaceTableAgentContext = {
   activeDocument: DataDocument | null

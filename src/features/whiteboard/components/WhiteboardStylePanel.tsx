@@ -16,7 +16,7 @@ import type {
   WhiteboardDashStyle,
   WhiteboardFillStyle,
 } from '../lib/whiteboardTypes'
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 
 const FILL_ICONS = {
   none: Ban,

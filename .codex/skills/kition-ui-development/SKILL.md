@@ -38,7 +38,7 @@ Use this skill for frontend changes in the Kition client repository.
 - Keep document rich editor panes and markdown split panes inside `src/features/document/components`.
 - Move editor chrome presentation into workspace feature components instead of growing page-level JSX inline.
 - Keep desktop settings subscription and synchronization hooks inside `src/features/settings/hooks`.
-- Keep table creation and table-only commands inside `src/features/table`.
+- Keep the table editor and table-only commands inside `packages/table-editor`, and table creation and the Kition table host inside `src/features/table`.
 - Keep table editor pane wrappers inside `src/features/table/components`.
 - Use `Workspace*` names for editor shell and navigation concerns.
 - Use `Document*` names for rich-text document flows.
@@ -52,7 +52,7 @@ Use this skill for frontend changes in the Kition client repository.
 - Prefer workspace hooks for tree loading, create/delete/move flows, and root switching instead of rebuilding worktree behavior inline in `Shell.tsx`.
 - Prefer workspace hooks for topbar actions such as editor mode switching, import/export entrypoints, and item-menu commands instead of rebuilding them inline in `Shell.tsx`.
 - Remove dead wrappers, dead pages, duplicated helpers, and stale imports during refactors.
-- Treat `src/registry` as editor-integration code, not a default place for app business logic.
+- Treat `packages/app-ui` as generic UI primitives, not a place for app business logic.
 
 ## Validation
 

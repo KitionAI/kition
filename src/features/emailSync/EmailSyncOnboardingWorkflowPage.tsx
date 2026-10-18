@@ -1,7 +1,7 @@
 import { Mail, Settings2 } from 'lucide-react'
 import { useState } from 'react'
 
-import { Button } from '@/components/ui'
+import { Button } from '@kition/app-ui'
 import { NodeCard } from '@/features/workflow/canvas/NodeCard'
 import { WorkflowCanvas } from '@/features/workflow/canvas/WorkflowCanvas'
 import { PropertiesDrawer } from '@/features/workflow/drawer/PropertiesDrawer'

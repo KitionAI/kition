@@ -149,7 +149,8 @@
     "groupDirection": "分组方向",
     "removeGroup": "移除分组",
     "addAnotherGroup": "添加分组",
-    "viewName": "视图名称"
+    "viewName": "视图名称",
+    "renameTablePrompt": "重命名"
   },
   "header": {
     "addView": "添加视图"

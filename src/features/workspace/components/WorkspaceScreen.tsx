@@ -22,7 +22,7 @@ import { useDocumentExport } from '@/features/document/hooks/useDocumentExport'
 import { useWorkspaceDocumentSession } from '@/features/document/hooks/useWorkspaceDocumentSession'
 import type { SettingsSectionKey } from '@/features/settings/DesktopSettingsPage'
 import { useDesktopSettings } from '@/features/settings/hooks/useDesktopSettings'
-import type { DataDocument } from '@/types/dataDocument'
+import type { DataDocument } from '@kition/table-editor'
 import { WorkspaceEditorFrame, type WorkspaceKitableSidebarActions } from '@/features/workspace/components/WorkspaceEditorFrame'
 import { FORM_SYNC_CHANGED_EVENT } from '@/features/formSync/api'
 import { WorkspaceAgentChrome } from '@/features/workspace/components/WorkspaceAgentChrome'
@@ -71,7 +71,7 @@ import { resolveAgentActiveDocument } from '@/features/workspace/lib/agentPaneCo
 import { resolveActiveKitablePath, resolveKitableSidebarMode } from '@/features/workspace/lib/activeKitable'
 import { buildWorkspaceAgentTurnUpdate } from '@/features/workspace/lib/agentTurnUpdate'
 import { notify } from '@/lib/notify'
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 import { isDesktopRuntime, type WorkspaceDocument, type WorkspaceDocumentFormat } from '@/services/desktop'
 
 const WorkflowRoute = lazy(() =>

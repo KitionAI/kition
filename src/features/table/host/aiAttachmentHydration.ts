@@ -4,12 +4,12 @@ import {
 } from '@/api/dataDocuments'
 import { resolvePublicFileURL } from '@/services/desktop'
 import { bundledAssetArrayBuffer, readBundledAssetBytes } from '@/lib/bundledAssets'
-import type { AnyAIConfig } from '@/types/aiConfig'
+import type { AnyAIConfig } from '@kition/table-editor'
 import type {
   DataAttachment,
   DataField,
   DataRecord,
-} from '@/types/dataDocument'
+} from '@kition/table-editor'
 
 type AttachmentHydrationDependencies = {
   fetchAsset: typeof fetch

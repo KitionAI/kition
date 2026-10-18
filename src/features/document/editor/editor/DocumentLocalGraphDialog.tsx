@@ -7,7 +7,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/registry/ui/dialog'
+} from '@kition/app-ui/dialog'
 import { readWorkspaceDocument } from '@/services/desktop'
 
 import { parseWikilinks } from '../lib/wikilink-parser'

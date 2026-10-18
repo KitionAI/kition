@@ -8,8 +8,8 @@ import {
   type DocumentRevisionDisplayLine,
   type PendingDocumentRevision,
 } from '@/features/document/lib/documentRevision'
-import { Button } from '@/registry/ui/button'
-import { cn } from '@/lib/utils'
+import { Button } from '@kition/app-ui/button'
+import { cn } from '@kition/app-ui/utils'
 import { DocumentRevisionComparison } from './DocumentRevisionComparison'
 
 type DocumentRevisionReviewProps = {

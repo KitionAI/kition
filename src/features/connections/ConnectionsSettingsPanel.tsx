@@ -2,8 +2,8 @@ import { LoaderCircle, Mail, Plus, RefreshCw, Trash2, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Button, Disclosure, Input, PasswordInput } from '@/components/ui'
-import { useConfirm } from '@/components/confirm'
+import { Button, Disclosure, Input, PasswordInput } from '@kition/app-ui'
+import { useConfirm } from '@kition/app-ui/confirm'
 import {
   emailProviderCatalog,
   getEmailProvider,

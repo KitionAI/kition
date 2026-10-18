@@ -2,7 +2,7 @@ import { ChevronLeft, LoaderCircle, Play, Plus, RefreshCw, Save, X } from 'lucid
 import { useTranslation } from 'react-i18next'
 
 import type { WorkflowDefinition } from '@/api/workflows'
-import { Button } from '@/components/ui'
+import { Button } from '@kition/app-ui'
 import { SampleRowPicker } from '@/features/workflow/components/SampleRowPicker'
 import { WorkflowStatusToggle } from '@/features/workflow/components/WorkflowStatusToggle'
 import { parseIdAsNumber } from '@/features/workflow/lib/workflowDraft'

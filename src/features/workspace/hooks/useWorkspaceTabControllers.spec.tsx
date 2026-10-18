@@ -2,7 +2,7 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { ConfirmOpts } from '@/components/confirm'
+import type { ConfirmOpts } from '@kition/app-ui/confirm'
 import enWorkspace from '@/i18n/locales/en-US/workspace.json'
 import type { WorkspaceTab } from '@/features/workspace/lib/workspace'
 import { notify } from '@/lib/notify'
@@ -14,7 +14,7 @@ vi.mock('@/lib/notify', () => ({
 }))
 
 const confirm = vi.fn<(opts: ConfirmOpts | string) => Promise<boolean>>()
-vi.mock('@/components/confirm', () => ({
+vi.mock('@kition/app-ui/confirm', () => ({
   useConfirm: () => confirm,
 }))
 

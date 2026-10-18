@@ -1,6 +1,6 @@
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 import { handleDesktopChromeDoubleClick } from '@/lib/windowChrome'
 
 export function WorkspaceLayout({

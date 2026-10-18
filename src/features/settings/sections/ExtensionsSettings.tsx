@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { LoaderCircle, Puzzle, Trash2 } from 'lucide-react'
-import { Button, Input } from '@/components/ui'
+import { Button, Input } from '@kition/app-ui'
 import { useExtensions, type ExtensionsApi, type InstalledExtension } from '@/features/extensions/public'
 import { SettingsPaneHeader, SettingsRow, SettingsSection } from '@/features/settings/primitives'
 import { useTranslation } from '@/i18n'
 import { networkSources, type ExtensionManifest } from '@/lib/extensions/manifest'
 import { notify } from '@/lib/notify'
-import { Switch } from '@/registry/ui/switch'
+import { Switch } from '@kition/app-ui/switch'
 
 /**
  * Settings > Extensions: install an extension from the workspace (a folder, its extension.json,

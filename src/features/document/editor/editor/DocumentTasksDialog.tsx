@@ -8,8 +8,8 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/registry/ui/dialog'
-import { cn } from '@/lib/utils'
+} from '@kition/app-ui/dialog'
+import { cn } from '@kition/app-ui/utils'
 import { readWorkspaceDocument } from '@/services/desktop'
 
 import { loadVaultMarkdownFiles } from '../vault/vault-files'

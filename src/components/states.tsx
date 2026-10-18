@@ -6,8 +6,8 @@
  */
 import type { HTMLAttributes, ReactNode } from 'react'
 
-import { Button } from '@/components/ui'
-import { cn } from '@/lib/utils'
+import { Button } from '@kition/app-ui'
+import { cn } from '@kition/app-ui/utils'
 
 /** A neutral placeholder block; size it with width and height classes. */
 export function Skeleton({ className, ...props }: HTMLAttributes<HTMLDivElement>) {

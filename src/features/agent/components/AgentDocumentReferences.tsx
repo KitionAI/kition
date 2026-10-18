@@ -1,6 +1,6 @@
 import { ChevronDown, FileText, Folder, X } from 'lucide-react'
 
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 
 export type AgentDocumentReference = {
   path: string

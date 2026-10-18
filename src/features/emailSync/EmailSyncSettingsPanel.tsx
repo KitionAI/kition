@@ -10,8 +10,8 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 
-import { useConfirm } from '@/components/confirm'
-import { Button, Disclosure, Input, PasswordInput } from '@/components/ui'
+import { useConfirm } from '@kition/app-ui/confirm'
+import { Button, Disclosure, Input, PasswordInput } from '@kition/app-ui'
 import {
   getEmailProvider,
   resolveEmailProviderId,

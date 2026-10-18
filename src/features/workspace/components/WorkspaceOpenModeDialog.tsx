@@ -1,7 +1,7 @@
 import { AppWindow, ArrowRightLeft, LoaderCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import { Button } from '@/components/ui'
+import { Button } from '@kition/app-ui'
 import {
   Dialog,
   DialogContent,
@@ -9,7 +9,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/registry/ui/dialog'
+} from '@kition/app-ui/dialog'
 
 type WorkspaceOpenModeDialogProps = {
   open: boolean

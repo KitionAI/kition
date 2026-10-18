@@ -2,7 +2,7 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { deleteDataTable, updateDataTable } from '@/api/dataDocuments'
-import { useConfirm } from '@/components/confirm'
+import { useConfirm } from '@kition/app-ui/confirm'
 import type { KitableChildrenIndex } from '@/features/workspace/hooks/useKitableChildrenIndex'
 import type { WorkspaceTreeNode } from '@/features/workspace/lib/workspace'
 import { parseKitableTableVirtualPath } from '@/features/workspace/lib/workspaceTree'

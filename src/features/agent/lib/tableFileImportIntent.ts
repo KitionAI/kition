@@ -1,4 +1,4 @@
-import type { CsvFieldInference } from '@/features/table/lib/csvImport'
+import type { CsvFieldInference } from '@kition/table-editor'
 
 const HAN_IMPORT = String.fromCodePoint(0x5bfc, 0x5165)
 const HAN_WRITE_IN = String.fromCodePoint(0x5199, 0x5165)

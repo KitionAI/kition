@@ -8,7 +8,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/registry/ui/dialog'
+} from '@kition/app-ui/dialog'
 import { notify } from '@/lib/notify'
 import { readWorkspaceMarkdown, writeWorkspaceMarkdown } from '@/features/document/kdm/documentSessions'
 

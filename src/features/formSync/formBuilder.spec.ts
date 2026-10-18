@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import type { DataTable } from '@/types/dataDocument'
+import type { DataTable } from '@kition/table-editor/types/dataDocument'
 
 import { buildInitialFormFields, uniqueFieldKey } from './formBuilder'
 

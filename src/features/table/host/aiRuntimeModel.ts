@@ -1,5 +1,5 @@
 import type { RuntimeWritingModel } from '@/types'
-import { isAttachmentAIConfig, type AnyAIConfig } from '@/types/aiConfig'
+import { isAttachmentAIConfig, type AnyAIConfig } from '@kition/table-editor'
 import type { DesktopProviderKind } from '@/types/desktopSettings'
 import { loadDesktopSettings } from '@/services/desktopSettings'
 import {

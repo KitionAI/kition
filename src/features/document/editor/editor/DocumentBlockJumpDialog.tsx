@@ -10,7 +10,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from '@/registry/ui/command'
+} from '@kition/app-ui/command'
 
 type BlockEntry = {
   id: string

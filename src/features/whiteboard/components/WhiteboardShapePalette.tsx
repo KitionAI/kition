@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 
 import { WHITEBOARD_PALETTE_SHAPE_TYPES } from '../lib/boardElementDefinitions'
 import type { WhiteboardShapeType } from '../lib/whiteboardTypes'
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 
 import { WhiteboardShapeBody } from './WhiteboardShapeBody'
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button } from '@/components/ui'
+import { Button } from '@kition/app-ui'
 import { loadDocumentClipboard } from '@/features/document/public'
 import { SettingsSection } from '@/features/settings/primitives'
 import { useTranslation } from '@/i18n'

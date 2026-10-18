@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import type { AnyAIConfig } from '@/types/aiConfig'
-import type { DataField, DataRecord } from '@/types/dataDocument'
+import type { AnyAIConfig } from '@kition/table-editor/types/aiConfig'
+import type { DataField, DataRecord } from '@kition/table-editor/types/dataDocument'
 
 import { hydrateBundledAIFieldAttachments } from './aiAttachmentHydration'
 

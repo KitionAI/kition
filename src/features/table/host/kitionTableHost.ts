@@ -1,9 +1,10 @@
 import { runDataAIFieldBatch, runDataAIFieldCell, uploadDataAttachment } from '@/api/dataDocuments'
+import { getCurrentLocale } from '@/i18n'
 import { notify } from '@/lib/notify'
 import { copyImageToClipboard, resolvePublicFileURL, saveTextFile } from '@/services/desktop'
 import { loadMediaModelOptions } from '@/services/mediaModels'
 import { requestDesignFromRecord } from '@/services/workspaceDesignActions'
-import type { TableHost } from '@/features/table/ports/TableHost'
+import type { TableHost } from '@kition/table-editor'
 import { hydrateBundledAIFieldAttachments } from './aiAttachmentHydration'
 import { resolveAIConfigRuntimeModel } from './aiRuntimeModel'
 import {
@@ -12,20 +13,28 @@ import {
   prepareTableFileImport,
 } from '@/features/table/lib/tableFileImport'
 
-/** Kition's app services for the table editor: the desktop runtime, its settings and models, and the workspace. */
+/**
+ * Kition's app services for the table editor: the desktop runtime, its settings and models, and the
+ * workspace. Members call the services when used, not when this module loads, so a test that mocks
+ * one of those modules without them can still import the providers.
+ */
 export const kitionTableHost: TableHost = {
-  resolveFileURL: resolvePublicFileURL,
+  resolveFileURL: (url) => resolvePublicFileURL(url),
   uploadAttachment: ({ documentId, tableId, file }) => uploadDataAttachment(documentId, tableId, file),
-  copyImageToClipboard,
-  saveTextFile,
-  notify,
+  copyImageToClipboard: (url) => copyImageToClipboard(url),
+  saveTextFile: (options) => saveTextFile(options),
+  notify: {
+    success: (message, options) => notify.success(message, options),
+    error: (message, options) => notify.error(message, options),
+    dismiss: (id) => notify.dismiss(id),
+  },
   fileImport: {
-    prepare: prepareTableFileImport,
-    execute: executePreparedTableFileImport,
-    cancel: cancelPreparedTableFileImport,
+    prepare: (file, options) => prepareTableFileImport(file, options),
+    execute: (options) => executePreparedTableFileImport(options),
+    cancel: (jobId) => cancelPreparedTableFileImport(jobId),
   },
   ai: {
-    resolveRuntimeModel: resolveAIConfigRuntimeModel,
+    resolveRuntimeModel: (config) => resolveAIConfigRuntimeModel(config),
     prepareRecord: (params) => hydrateBundledAIFieldAttachments(params),
     runCell: ({ documentId, tableId, recordId, fieldId, ...payload }, options) => (
       runDataAIFieldCell(documentId, tableId, recordId, fieldId, payload, options)
@@ -37,5 +46,6 @@ export const kitionTableHost: TableHost = {
       (await loadMediaModelOptions(capability)).filter((item) => item.source === 'desktop')
     ),
   },
-  requestDesignFromRecord,
+  requestDesignFromRecord: (request) => requestDesignFromRecord(request),
+  locale: () => getCurrentLocale(),
 }

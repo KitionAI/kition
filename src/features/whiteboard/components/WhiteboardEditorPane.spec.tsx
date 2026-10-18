@@ -8,7 +8,7 @@ import {
   readWorkspaceDocument,
   writeWorkspaceDocument,
 } from '@/services/desktop'
-import { ConfirmProvider } from '@/components/confirm'
+import { ConfirmProvider } from '@kition/app-ui/confirm'
 import { newDocId, Replica, system } from '@/lib/kdm'
 import { createBoardFromRecords, encodeBoardFile } from '../kdm/boardKdmFile'
 import { boardSchema } from '../kdm/boardSchema'

@@ -6,7 +6,7 @@ import type { KitableChildrenIndex } from '@/features/workspace/hooks/useKitable
 import type { KitableSidebarMode } from '@/features/workspace/lib/activeKitable'
 import type { WorkspaceTab, WorkspaceTreeNode } from '@/features/workspace/lib/workspace'
 import { buildKitableTableVirtualPath } from '@/features/workspace/lib/workspaceTree'
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 
 /** What the container sidebar can do inside the active .kitable; each takes the container path. */
 export type WorkspaceKitableSidebarActions = {

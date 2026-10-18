@@ -4,7 +4,7 @@ import type { ComponentProps } from 'react'
 import { lazy, Suspense, useCallback, useEffect, useMemo, type ReactNode } from 'react'
 import { BookOpen } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/registry/ui/button'
+import { Button } from '@kition/app-ui/button'
 import { AppErrorBoundary } from '@/components/AppErrorBoundary'
 import { PaneErrorTrigger } from '@/features/workspace/testing/paneErrorTrigger'
 import type {
@@ -18,7 +18,7 @@ import { WorkspaceDocumentInlineTitle } from '@/features/workspace/components/Wo
 import { WorkspaceEmptyState } from '@/features/workspace/components/WorkspaceEmptyState'
 import { openWorkflowDetail } from '@/features/workflow/lib/openWorkflowRoute'
 import type { WorkspaceTab } from '@/features/workspace/lib/workspace'
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 import type {
   WorkspaceDocument,
   WorkspaceDocumentFormat,

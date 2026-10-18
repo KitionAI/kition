@@ -4,7 +4,7 @@ import { loadBoardFile } from '@/features/whiteboard/public'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { renameDataDocumentByPath } from '@/api/dataDocuments'
-import { useConfirm } from '@/components/confirm'
+import { useConfirm } from '@kition/app-ui/confirm'
 import { getDocumentParentPath } from '@/features/document/lib/documentCreation'
 import {
   syncDocumentFileDeleted,

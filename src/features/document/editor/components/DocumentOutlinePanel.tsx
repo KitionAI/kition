@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 
 export type OutlineHeading = {
   level: number

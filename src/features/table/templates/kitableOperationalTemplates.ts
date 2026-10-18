@@ -1,4 +1,4 @@
-import type { DataRecordValue, DataViewSeed } from '@/types/dataDocument'
+import type { DataRecordValue, DataViewSeed } from '@kition/table-editor'
 
 import type {
   KitableTemplateCategory,

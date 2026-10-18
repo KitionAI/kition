@@ -15,7 +15,10 @@ src/
   services/     Runtime integration, desktop helpers, side-effect services
   lib/          Shared low-level utilities
   types/        Shared TypeScript types
-  registry/     Shared UI primitives (vendor-style snippets) reused across features
+
+packages/
+  app-ui/        @kition/app-ui: shared UI primitives (buttons, dialogs, popovers, form controls, `cn`)
+  table-editor/  @kition/table-editor: the table and dashboard editor (packages/README.md)
 ```
 
 Editor workspace layout should follow a consistent chrome:
@@ -44,7 +47,7 @@ Current feature split:
 
 - `src/features/agent`: AI chat, agent execution timeline, model selection, and agent-only interaction flows
 - `src/features/document`: rich-text document editing and document workspace flows, with Markdown files on a KDM-backed document model (see [document-model.md](document-model.md))
-- `src/features/table`: structured table editing and table-specific panels, with `.kitable` files on a KDM-backed document model (see [table-document.md](table-document.md))
+- `src/features/table` and `packages/table-editor`: structured table editing and table-specific panels, with `.kitable` files on a KDM-backed document model (see [table-document.md](table-document.md))
 - `src/features/whiteboard`: the Whiteboard editor and its KDM-backed document model (see [whiteboard-document.md](whiteboard-document.md))
 - `src/features/workspace`: editor chrome, workspace navigation, tabs, tree, and media navigation
 - `src/features/settings`: desktop settings surfaces
@@ -86,15 +89,14 @@ Examples:
 - Keep document draft parsing and stored-content transforms inside `src/features/document/lib`.
 - Keep active document session state, draft cache, and autosave hooks inside `src/features/document`.
 - Keep document rich editor panes and markdown split panes inside `src/features/document/components`.
-- Keep table creation, table editor behavior, and table-only commands inside `src/features/table`.
-- Keep table editor pane wrappers inside `src/features/table/components`.
+- Keep table editor behavior and table-only commands inside `packages/table-editor`, and table creation, the Kition host, and the editor pane wrappers inside `src/features/table`.
 - Keep Agent-specific config, timeline formatting, and chat UI inside `src/features/agent`.
 - Keep Agent session state, streaming lifecycle, and model-selection hooks inside `src/features/agent`.
 - Keep desktop settings subscription and synchronization hooks inside `src/features/settings/hooks`.
 - Let `src/app/Shell.tsx` stay focused on route-level shell chrome, modal routing, and app-wide entry concerns.
 - Let workspace screen components own editor-page composition, portal consumption, and feature orchestration.
 - Do not place new Agent presentation logic back into `src/app/Shell.tsx`.
-- Keep `src/registry` focused on editor integration. Do not place app-level business UI there unless the change is truly editor-registry specific.
+- Keep `packages/app-ui` to generic primitives. Do not place app-level business UI there.
 
 ## Size And Split Rules
 
@@ -106,16 +108,16 @@ Examples:
 Transition note:
 
 - `src/app/Shell.tsx` remains a transition file. Do not keep expanding it inline. New behavior should be added through extracted subcomponents or feature utilities.
-- `src/features/table/components/TableEditor.tsx` is a container. Keep it focused on view composition, local UI state wiring, and feature orchestration.
+- `packages/table-editor/src/table/components/TableEditor.tsx` is a container. Keep it focused on view composition, local UI state wiring, and feature orchestration.
 - `Shell.tsx` should trend toward orchestration only: routing, workspace state, persistence, and cross-feature coordination.
 - `TableEditor.tsx` should trend toward orchestration only: derived view state, panel assembly, and event routing.
-- Put table document loading and record window loading inside `src/features/table/hooks/useTableEditorData.ts`.
-- Keep `src/features/table/hooks/useTableEditorActions.ts` as a thin composition hook.
-- Put table view config state, active-view config hydration, and view config persistence inside `src/features/table/hooks/useTableViewState.ts`.
-- Put table title, field, view, CSV, and table-level command actions inside `src/features/table/hooks/useTableStructureActions.ts`.
-- Put record mutations, row ordering, kanban moves, and AI field execution inside `src/features/table/hooks/useTableRecordActions.ts`.
-- Put table selection state, context-menu state, preview state, and kanban drag UI state inside `src/features/table/hooks/useTableEditorUiState.ts`.
-- Put table filter/sort/group/grid footer summaries and other pure derived editor state inside `src/features/table/hooks/useTableEditorDerivedState.ts`.
+- Put table document loading and record window loading inside `packages/table-editor/src/table/hooks/useTableEditorData.ts`.
+- Keep `packages/table-editor/src/table/hooks/useTableEditorActions.ts` as a thin composition hook.
+- Put table view config state, active-view config hydration, and view config persistence inside `packages/table-editor/src/table/hooks/useTableViewState.ts`.
+- Put table title, field, view, CSV, and table-level command actions inside `packages/table-editor/src/table/hooks/useTableStructureActions.ts`.
+- Put record mutations, row ordering, kanban moves, and AI field execution inside `packages/table-editor/src/table/hooks/useTableRecordActions.ts`.
+- Put table selection state, context-menu state, preview state, and kanban drag UI state inside `packages/table-editor/src/table/hooks/useTableEditorUiState.ts`.
+- Put table filter/sort/group/grid footer summaries and other pure derived editor state inside `packages/table-editor/src/table/hooks/useTableEditorDerivedState.ts`.
 - If `TableEditor.tsx` needs new behavior, prefer a feature hook or sibling component before adding more inline helper functions.
 - Keep `TableEditor.tsx` as a composition root only. View-mode switching, footer status blocks, and record context-menu behavior should live in sibling components.
 - Keep `TableEditorToolbar.tsx` as a composition root only. Title/view navigation and property/action controls should live in sibling toolbar subcomponents.
@@ -125,7 +127,7 @@ Transition note:
 - Workspace tree, gallery, tab strip, topbar, and sidebar should continue living under `src/features/workspace`.
 - Document export and rich-text editor logic should continue living under `src/features/document`.
 - Agent is a primary product capability. Prefer moving Agent work into `src/features/agent` even when the shell currently owns the surrounding workspace state.
-- Table-scoped Agent panels may stay under `src/features/table/components` as presentation wrappers, but session state, streaming logic, model resolution, and timeline formatting belong in `src/features/agent`.
+- Table-scoped Agent panels may stay under `packages/table-editor/src/table/components` as presentation wrappers, but session state, streaming logic, model resolution, and timeline formatting belong in `src/features/agent`.
 - Prefer feature hooks or feature libs over new inline helper clusters inside `Shell.tsx`.
 - Prefer a workspace hook for tab state instead of re-implementing tab open/close/activate logic inside `Shell.tsx`.
 - Prefer workspace hooks for tree loading, create/delete/move flows, and root switching instead of rebuilding worktree behavior inline in `Shell.tsx`.
@@ -143,7 +145,7 @@ Transition note:
 
 - Remove dead pages, dead wrapper files, and duplicated utilities when found.
 - Avoid one-line indirection files unless they provide a stable public boundary with real value.
-- Reuse `src/lib/utils.ts` for shared `cn`-style helpers instead of duplicating them.
+- Reuse `cn` from `@kition/app-ui/utils` instead of duplicating it.
 
 ## Implementation Workflow
 

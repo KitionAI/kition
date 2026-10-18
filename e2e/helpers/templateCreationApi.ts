@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import type { CreateDataDocumentPayload, DataDocument, DataRecord, ViewFieldLayout } from '../../src/types/dataDocument'
+import type { CreateDataDocumentPayload, DataDocument, DataRecord, ViewFieldLayout } from '@kition/table-editor'
 import { fulfillJson } from './mockApi'
 
 export async function mockTemplateCreationApi(page: Page) {

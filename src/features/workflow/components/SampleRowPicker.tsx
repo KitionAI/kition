@@ -2,9 +2,9 @@ import { ChevronDown, RefreshCw, Search } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Popover, PopoverContent, PopoverTrigger } from '@/registry/ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@kition/app-ui/popover'
 import { listDataRecords } from '@/api/dataDocuments'
-import type { DataRecord } from '@/types/dataDocument'
+import type { DataRecord } from '@kition/table-editor'
 
 /**
  * SampleRowPicker — the UI half of WF-U3.

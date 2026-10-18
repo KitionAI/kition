@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Loader2, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui'
+import { Button } from '@kition/app-ui'
 import { kitionTheme } from '@/features/kits/public'
 import type { ExtensionService } from './extensionService'
 import { closeExtensionPanel, type OpenPanel } from './panelState'

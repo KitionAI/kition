@@ -35,8 +35,8 @@ import {
 import { type ReactNode, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Button } from '@/registry/ui/button'
-import { cn } from '@/lib/utils'
+import { Button } from '@kition/app-ui/button'
+import { cn } from '@kition/app-ui/utils'
 
 import {
   insertCallout,

@@ -11,7 +11,7 @@ export default {
       '../src/app/**/*.{ts,tsx}',
       '../src/components/**/*.{ts,tsx}',
       '../src/features/**/*.{ts,tsx}',
-      '../src/registry/**/*.{ts,tsx}',
+      '../packages/*/src/**/*.{ts,tsx}',
     ],
   },
   theme: {

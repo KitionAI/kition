@@ -24,7 +24,7 @@ const WhiteboardTemplateLibraryDialog = lazy(() =>
   import('@/features/whiteboard/components/WhiteboardTemplateLibraryDialog').then((module) => ({ default: module.WhiteboardTemplateLibraryDialog })),
 )
 const TableFileImportDialog = lazy(() =>
-  import('@/features/table/components/TableFileImportDialog').then((module) => ({ default: module.TableFileImportDialog })),
+  import('@kition/table-editor/TableFileImportDialog').then((module) => ({ default: module.TableFileImportDialog })),
 )
 const WorkspaceFolderCreateDialog = lazy(() =>
   import('@/features/workspace/components/WorkspaceFolderCreateDialog').then((module) => ({ default: module.WorkspaceFolderCreateDialog })),

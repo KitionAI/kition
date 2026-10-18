@@ -25,8 +25,8 @@ import {
   parseKitableWorkflowVirtualPath,
   parseKitableTableVirtualPath,
 } from '@/features/workspace/lib/workspaceTree'
-import { cn } from '@/lib/utils'
-import { useDismissableLayer } from '@/registry/hooks/use-on-click-outside'
+import { cn } from '@kition/app-ui/utils'
+import { useDismissableLayer } from '@kition/app-ui/hooks/use-on-click-outside'
 
 type WorkspaceTreeDropIndicator = { path: string; position: WorkspaceTreeDropPosition }
 

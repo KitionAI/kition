@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { DataAttachment } from '@/types/dataDocument'
+import type { DataAttachment } from '@kition/table-editor/types/dataDocument'
 import { designMarkdownLink, sendDesignToTable, type DesignHandoffApi } from './designHandoff'
 
 const ref = { documentId: 3, tableId: 9, recordId: 41, field: 'Designs' }

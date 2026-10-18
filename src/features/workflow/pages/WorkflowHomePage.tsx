@@ -14,7 +14,7 @@ import {
 } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui'
+import { Button } from '@kition/app-ui'
 import { ConnectionModal, formFromConnection } from '@/features/connections/ConnectionsSettingsPanel'
 import { listChannels, listConnections, type ChannelSchema, type ConnectionView } from '@/api/connections'
 import {
@@ -100,7 +100,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/registry/ui/dialog'
+} from '@kition/app-ui/dialog'
 
 import { WorkflowCanvas } from '@/features/workflow/canvas/WorkflowCanvas'
 import { WorkflowDetailTopbar, WorkflowIndexTopbar } from '@/features/workflow/pages/home/WorkflowHomeTopbar'

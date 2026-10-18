@@ -10,14 +10,14 @@ import {
   ActionMenuSeparator,
   ActionMenuTrigger,
 } from '@/components/ActionMenu'
-import { Button } from '@/registry/ui/button'
+import { Button } from '@kition/app-ui/button'
 import type { DocumentAgentAction } from '@/features/document/lib/documentAgentActions'
 import {
   TRANSLATION_LANGUAGES,
   translationLanguageEndonym,
   type TranslationLanguage,
 } from '@/features/document/lib/documentTranslation'
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 
 type DocumentAgentSelectionToolbarProps = {
   onAction: (action: DocumentAgentAction) => void

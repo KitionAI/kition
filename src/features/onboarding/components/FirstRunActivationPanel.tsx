@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { Cloud, FolderCheck, KeyRound, Laptop, LoaderCircle } from 'lucide-react'
 
-import { Button } from '@/components/ui'
+import { Button } from '@kition/app-ui'
 import { useKitionAccount } from '@/features/account/hooks/useKitionAccount'
 import { isKitionAccountSessionUsable } from '@/features/account/lib/accountState'
 import { useTranslation } from '@/i18n'

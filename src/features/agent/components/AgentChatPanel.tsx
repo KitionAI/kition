@@ -19,7 +19,7 @@ import { isKitionAccountUsable } from '@/features/account/lib/accountState'
 import type { AgentMentionableDocument } from '@/features/agent/lib/documentMentions'
 import { type AgentPaneContext, emptyStateForPane } from '@/features/agent/lib/paneEmptyState'
 import type { AgentModelOption } from '@/features/agent/lib/agentConfig'
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 
 type AgentChatPanelProps = {
   session: AgentSession

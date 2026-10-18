@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getDesktopInfo, openRuntimePath, type DesktopInfo } from '@/services/desktop'
-import { Button } from '@/components/ui'
+import { Button } from '@kition/app-ui'
 import { SettingsPaneHeader, SettingsSection, SettingsRow } from '@/features/settings/primitives'
 import { useTranslation } from '@/i18n'
 import { FolderOpen } from 'lucide-react'

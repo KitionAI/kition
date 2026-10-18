@@ -1,6 +1,6 @@
 [
-  "src/features/dashboard/components/DashboardEditor.tsx|text|Dashboard unavailable",
-  "src/features/dashboard/components/DashboardEditor.tsx|text|Loading dashboard",
+  "packages/table-editor/src/dashboard/components/DashboardEditor.tsx|text|Dashboard unavailable",
+  "packages/table-editor/src/dashboard/components/DashboardEditor.tsx|text|Loading dashboard",
   "src/features/emailProviders/EmailProvidersPane.tsx|aria-label|Email providers",
   "src/features/emailProviders/EmailProvidersPane.tsx|aria-label|Search email providers",
   "src/features/emailProviders/EmailProvidersPane.tsx|text|Account credentials",

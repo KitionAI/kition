@@ -1,7 +1,7 @@
 import { ArrowUp, Paperclip, Settings } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 
 import type { ScenarioDraftAttachment } from '@/features/scenario/types'
 

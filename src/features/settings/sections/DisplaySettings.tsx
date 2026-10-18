@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { applyDesktopAppearance, applyDesktopDisplay, createDefaultDesktopDisplaySettings, createDefaultDesktopSettings, loadDesktopSettings, saveDesktopSettings } from '@/services/desktopSettings'
 import type { DesktopDisplaySettings, DesktopSettingsState, DesktopThemeMode } from '@/types/desktopSettings'
-import { Button, Input, Select } from '@/components/ui'
+import { Button, Input, Select } from '@kition/app-ui'
 import { SettingsPaneHeader, SettingsSection, SettingsRow, SettingsActionBar } from '@/features/settings/primitives'
 import { isPristine } from '@/features/settings/dirty'
 import { useTranslation } from '@/i18n'
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 import { RotateCcw } from 'lucide-react'
 import { preserveLiveThemePreview } from '@/features/settings/sections/themePreview'
 

@@ -1,4 +1,4 @@
-import type { DataAttachment } from '@/types/dataDocument'
+import type { DataAttachment } from '@kition/table-editor'
 import { PORTABLE_WORKSPACE_STORAGE_CAPABILITY } from '@/types/workspaceStorage'
 
 export type PersistedAttachmentStorageKind =

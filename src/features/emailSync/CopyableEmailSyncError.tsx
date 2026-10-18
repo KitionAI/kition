@@ -1,8 +1,8 @@
 import { Check, Copy } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
-import { Button } from '@/components/ui'
-import { cn } from '@/lib/utils'
+import { Button } from '@kition/app-ui'
+import { cn } from '@kition/app-ui/utils'
 
 export function CopyableEmailSyncError({
   message,

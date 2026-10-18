@@ -33,7 +33,7 @@ import {
 } from '@/api/dataDocuments'
 import { windowSessionOrigin } from '@/api/windowSession'
 import { onTableChanged, onTableChangedResync } from '@/services/runtimeBridge'
-import type { TableDataSource } from '@/features/table/ports/TableDataSource'
+import type { TableDataSource } from '@kition/table-editor'
 
 /**
  * Kition's table data: the runtime's `/v1/data-documents` routes over HTTP, and its

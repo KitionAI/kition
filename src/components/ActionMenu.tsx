@@ -1,7 +1,7 @@
 import { DropdownMenu as DropdownMenuPrimitive } from 'radix-ui'
 import type { ComponentProps } from 'react'
 
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 
 export const ActionMenu = DropdownMenuPrimitive.Root
 export const ActionMenuTrigger = DropdownMenuPrimitive.Trigger

@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { LoaderCircle } from 'lucide-react'
-import { Button, Input } from '@/components/ui'
+import { Button, Input } from '@kition/app-ui'
 import { setSyncServerUrl, syncServerUrl, testSyncServer, useCollabConnectionState, type SyncServerTest } from '@/features/collab/public'
 import { SettingsPaneHeader, SettingsRow, SettingsSection } from '@/features/settings/primitives'
 import { useTranslation } from '@/i18n'
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 
 /**
  * Co-editing: the sync server this window connects to (empty: co-editing is off), whether it is

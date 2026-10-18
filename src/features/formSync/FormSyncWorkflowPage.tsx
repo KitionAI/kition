@@ -15,10 +15,10 @@ import {
 } from 'lucide-react'
 
 import { getDataDocument } from '@/api/dataDocuments'
-import { Button } from '@/registry/ui/button'
-import { Input } from '@/registry/ui/input'
-import { Switch } from '@/registry/ui/switch'
-import type { DataField, DataTable } from '@/types/dataDocument'
+import { Button } from '@kition/app-ui/button'
+import { Input } from '@kition/app-ui/input'
+import { Switch } from '@kition/app-ui/switch'
+import type { DataField, DataTable } from '@kition/table-editor'
 
 import {
   getFormSyncWorkflow,

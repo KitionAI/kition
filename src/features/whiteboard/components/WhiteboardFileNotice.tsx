@@ -1,8 +1,8 @@
 import { FileWarning } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import { useConfirm } from '@/components/confirm'
-import { Button } from '@/components/ui'
+import { useConfirm } from '@kition/app-ui/confirm'
+import { Button } from '@kition/app-ui'
 import type { BoardDocumentProblem, BoardSaveRefusal } from '@/features/whiteboard/hooks/useBoardDocument'
 
 /** The `workspace` message explaining each reason a `.kiboard` file cannot be opened or saved. */

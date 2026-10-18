@@ -20,7 +20,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from '@/registry/ui/command'
+} from '@kition/app-ui/command'
 
 import { isSpellcheckOn, setSpellcheck } from './extensions/spellcheck'
 

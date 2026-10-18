@@ -1,9 +1,9 @@
 import { memo, useEffect } from 'react'
-import { TableEditor } from '@/features/table/components/TableEditor'
+import { TableEditor } from '@kition/table-editor/TableEditor'
 import { registerOpenTable } from '@/features/table/lib/openTables'
 import { KitionTableProviders } from '@/features/table/host/KitionTableProviders'
 import { useDocumentReadOnly } from '@/services/documentAccess'
-import type { DataDocument, DataTable } from '@/types/dataDocument'
+import type { DataDocument, DataTable } from '@kition/table-editor'
 
 export const TableEditorPane = memo(function TableEditorPane({
   agentOpen,

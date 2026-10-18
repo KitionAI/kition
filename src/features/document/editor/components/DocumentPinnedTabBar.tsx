@@ -1,7 +1,7 @@
 import { Pin, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 
 import { unpinTab, usePinnedTabs } from '../hooks/usePinnedTabs'
 

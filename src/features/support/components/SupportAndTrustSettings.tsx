@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ClipboardCheck, LifeBuoy, MessageSquareText, Scale, ShieldCheck } from 'lucide-react'
 
-import { Button } from '@/components/ui'
+import { Button } from '@kition/app-ui'
 import { useKitionAccount } from '@/features/account/hooks/useKitionAccount'
 import { KITION_PRIVACY_URL, KITION_SUPPORT_URL, KITION_TERMS_URL } from '@/features/account/lib/accountLinks'
 import { FeedbackForm } from '@/features/support/components/FeedbackForm'

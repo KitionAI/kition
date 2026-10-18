@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { AlertTriangle, ExternalLink, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import { Button } from '@/components/ui'
+import { Button } from '@kition/app-ui'
 import { openExternalURL } from '@/services/desktop'
 import {
   type ConsoleCreditsExhaustedDetail,

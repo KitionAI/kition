@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { CheckCircle2, LoaderCircle, MessageSquareText } from 'lucide-react'
 
-import { Button, Card, Input, Textarea } from '@/components/ui'
+import { Button, Card, Input, Textarea } from '@kition/app-ui'
 import { useTranslation } from '@/i18n'
 import { submitFeedbackReport } from '@/services/desktop'
 

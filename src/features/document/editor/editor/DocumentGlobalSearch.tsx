@@ -8,7 +8,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from '@/registry/ui/command'
+} from '@kition/app-ui/command'
 
 import { vaultClient, type VaultTreeItem } from '@/features/document/editor/vault/vault-client'
 import { readWorkspaceDocument } from '@/services/desktop'

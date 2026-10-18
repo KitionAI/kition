@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 
 import { deleteWorkflow, patchWorkflow } from '@/api/workflows'
 import { deleteFormSyncWorkflow, updateFormSyncWorkflow } from '@/features/formSync/api'
-import { useConfirm } from '@/components/confirm'
+import { useConfirm } from '@kition/app-ui/confirm'
 import type { KitableChildrenIndex } from '@/features/workspace/hooks/useKitableChildrenIndex'
 import type { WorkspaceTreeNode } from '@/features/workspace/lib/workspace'
 import { parseKitableWorkflowVirtualPath } from '@/features/workspace/lib/workspaceTree'

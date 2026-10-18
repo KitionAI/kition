@@ -1,4 +1,4 @@
-import type { DataDocument } from '@/types/dataDocument'
+import type { DataDocument } from '@kition/table-editor'
 
 import type { FormSyncWorkflow } from './api'
 

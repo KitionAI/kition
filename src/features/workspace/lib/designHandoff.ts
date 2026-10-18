@@ -3,7 +3,7 @@
  * becomes a Markdown link in a document or an attachment on the table record
  * the design came from. API access is injected so the flows stay testable.
  */
-import type { DataAttachment, DataRecordValue } from '@/types/dataDocument'
+import type { DataAttachment, DataRecordValue } from '@kition/table-editor'
 import type { DesignRecordRef } from '@/types/designStart'
 
 export type DesignHandoffApi = {

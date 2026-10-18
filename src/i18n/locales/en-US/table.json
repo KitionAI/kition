@@ -149,7 +149,8 @@
     "groupDirection": "Group direction",
     "removeGroup": "Remove group",
     "addAnotherGroup": "Add another group",
-    "viewName": "View name"
+    "viewName": "View name",
+    "renameTablePrompt": "Rename"
   },
   "header": {
     "addView": "Add view"

@@ -9,9 +9,9 @@ import {
   updateDataView,
 } from '@/api/dataDocuments'
 import { instantiateTemplatePackage } from '@/api/templates'
-import { materializeDashboardSeeds } from '@/features/dashboard/lib/dashboardMetadata'
+import { materializeDashboardSeeds } from '@kition/table-editor'
 import type { KitableTemplateDefinition } from '@/features/table/templates/kitableTemplates'
-import type { DataFieldSeed, DataViewSeed } from '@/types/dataDocument'
+import type { DataFieldSeed, DataViewSeed } from '@kition/table-editor'
 import {
   collectKitableTemplateAssetIds,
   loadKitableTemplateAssetManifest,

@@ -2,7 +2,7 @@ import { Inbox, LoaderCircle, Plus, Sparkles, Table2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Button } from '@/components/ui'
+import { Button } from '@kition/app-ui'
 import { WorkflowLauncherTemplateCard } from '@/features/workflow/components/launcher/WorkflowLauncherTemplateCard'
 import {
   getBuiltinTemplates,
@@ -16,7 +16,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/registry/ui/dialog'
+} from '@kition/app-ui/dialog'
 
 export type WorkspaceWorkflowCreateModeChoice =
   | { kind: 'template'; template: WorkflowTemplate; context: WorkflowRouteContext | null }

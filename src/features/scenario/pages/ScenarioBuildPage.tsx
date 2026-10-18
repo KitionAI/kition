@@ -4,9 +4,9 @@ import { ArrowLeft, MessageSquare } from 'lucide-react'
 
 import { BuildProgressCard } from '@/features/agent/components/BuildProgressCard'
 import { RightDrawer } from '@/components/RightDrawer'
-import { TableEditor } from '@/features/table/components/TableEditor'
+import { TableEditor } from '@kition/table-editor/TableEditor'
 import { KitionTableProviders } from '@/features/table/public'
-import type { DataRecordValue } from '@/types/dataDocument'
+import type { DataRecordValue } from '@kition/table-editor'
 import type {
   ScenarioBuildEvent,
   ScenarioBuildStatus,

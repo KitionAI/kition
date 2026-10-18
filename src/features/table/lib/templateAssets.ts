@@ -2,7 +2,7 @@ import type {
   KitableTemplateAssetReference,
   KitableTemplateRecordValue,
 } from '@/features/table/templates/kitableTemplates'
-import type { DataAttachment, DataRecordValue } from '@/types/dataDocument'
+import type { DataAttachment, DataRecordValue } from '@kition/table-editor'
 import { readBundledAssetText } from '@/lib/bundledAssets'
 
 export type KitableTemplateAssetManifestItem = {

@@ -4,7 +4,7 @@ import type { DesktopSettingsState } from '@/types/desktopSettings'
 import { ProductAnalyticsInspector } from '@/features/analytics/public'
 import { SettingsPaneHeader, SettingsSection, SettingsRow, SettingsActionBar } from '@/features/settings/primitives'
 import { useTranslation } from '@/i18n'
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 import { ClipboardInspector } from './ClipboardInspector'
 
 export function DeveloperSettings() {

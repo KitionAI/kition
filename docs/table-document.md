@@ -172,14 +172,15 @@ A successful `transact`/`undo`/`redo` both answers its `TableChange` to the call
 as a `table/changed` notification on the kit bridge stream (`GET /v1/kits/bridge`,
 `contracts/runtime/table-changed.schema.json`), so every other open window picks up the same
 change; a window ignores the echo of its own request by comparing `origin` to its own session.
-`useTableLiveChanges` (`src/features/table/ports/`), `useTableHistory`
-(`src/features/table/hooks/`), and `tableLiveChangeDispatch.ts` are the editor's side of this: a
+`useTableLiveChanges` (`packages/table-editor/src/table/ports/`), `useTableHistory`
+(`packages/table-editor/src/table/hooks/`), and `tableLiveChangeDispatch.ts` are the editor's side of this: a
 `table/changed` naming the table it has open triggers a records refetch (or a schema/view refetch,
 or a dashboards refetch, depending on what changed), and undo/redo are server calls, not a
 client-side history stack.
 
-The editor (table and dashboard) reaches all of this only through two interfaces in
-`src/features/table/ports/`, provided by React context at its root:
+The editor (table and dashboard) lives in the `@kition/table-editor` package
+(`packages/table-editor/`, see `packages/README.md`) and reaches all of this only through two
+interfaces in `packages/table-editor/src/table/ports/`, provided by React context at its root:
 
 - `TableDataSource`: the document requests, named and shaped as `kition-table-api`'s `METHODS`
   (`records.list`, `fields.create`, `transact`, `undo`, `historyState`, `dashboards.upsert`, …;
@@ -189,12 +190,15 @@ The editor (table and dashboard) reaches all of this only through two interfaces
   echoes.
 - `TableHost`: the app services the editor uses besides its data (attachment URLs and upload,
   image copy, CSV save, toasts, file import, AI fields, design from a record). Every member is
-  optional; without one the editor hides what needs it. Kition's is `kitionTableHost`.
+  optional; without one the editor hides what needs it. `locale()` sets the locale dates format
+  with. Kition's is `kitionTableHost`.
 
 `KitionTableProviders` gives the editor both (`TableEditorPane`, `DashboardEditorPane`, the scenario
-build page, the workspace's file import dialog). The `table-editor-uses-data-source-and-host` rule
-in `tooling/dependency-cruiser.cjs` keeps the editor off runtime requests, app services, and other
-features; it lists the host-side files of `src/features/table`.
+build page, the workspace's file import dialog). `src/features/table` keeps only Kition's side:
+`host/`, opening the editor in a tab, table creation from templates, and file import into a new
+table. The `packages-import-nothing-from-the-app` rule in `tooling/dependency-cruiser.cjs` keeps
+the package off everything in `src/`, and `app-uses-table-editor-entries` keeps the app on the
+package's entries.
 
 A workflow or form-sync write (`create_record_for_workflow`/`update_record_for_workflow`,
 `crates/kition-datadoc/src/workflow_api.rs`) publishes `table/changed` too, alongside the

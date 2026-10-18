@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 
 import { useRecentFiles } from '@/features/document/editor/hooks/useRecentFiles'
 import { getCurrentLocale } from '@/i18n'
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 
 function lastSegment(p: string): string {
   const idx = p.lastIndexOf('/')

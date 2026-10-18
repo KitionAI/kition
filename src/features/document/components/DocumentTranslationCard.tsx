@@ -12,7 +12,7 @@ import {
   type TranslationLanguage,
 } from '@/features/document/lib/documentTranslation'
 import { notify } from '@/lib/notify'
-import { Button } from '@/registry/ui/button'
+import { Button } from '@kition/app-ui/button'
 
 export type DocumentTranslationCardProps = {
   /** Tooltip element the editor created; the card renders into it. */

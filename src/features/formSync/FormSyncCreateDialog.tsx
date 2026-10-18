@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { FileInput } from 'lucide-react'
 
 import { getDataDocument } from '@/api/dataDocuments'
-import { Button } from '@/registry/ui/button'
+import { Button } from '@kition/app-ui/button'
 import {
   Dialog,
   DialogContent,
@@ -10,9 +10,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/registry/ui/dialog'
-import { Input } from '@/registry/ui/input'
-import type { DataDocument, DataTable } from '@/types/dataDocument'
+} from '@kition/app-ui/dialog'
+import { Input } from '@kition/app-ui/input'
+import type { DataDocument, DataTable } from '@kition/table-editor'
 
 import { createFormSyncWorkflow, type FormSyncWorkflow } from './api'
 import { buildInitialFormFields, findTargetTable } from './formBuilder'

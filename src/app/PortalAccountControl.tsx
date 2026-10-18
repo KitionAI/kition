@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useDialogFocus } from '@/lib/useDialogFocus'
+import { useDialogFocus } from '@kition/app-ui/hooks/useDialogFocus'
 import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 

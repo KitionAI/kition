@@ -16,7 +16,7 @@ import {
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Button } from '@/components/ui'
+import { Button } from '@kition/app-ui'
 import {
   getBuiltinKitableTemplates,
   type KitableTemplateCategory,
@@ -29,7 +29,7 @@ import {
   loadKitableTemplateAssetManifest,
   type KitableTemplateAssetManifestItem,
 } from '@/features/table/lib/templateAssets'
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 import { resolveBundledAssetURL } from '@/lib/bundledAssets'
 import {
   WORKSPACE_TEMPLATE_LIBRARY_DIALOG_CLASSNAME,
@@ -40,7 +40,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogTitle,
-} from '@/registry/ui/dialog'
+} from '@kition/app-ui/dialog'
 
 type KitableTemplateLibraryDialogProps = {
   open: boolean

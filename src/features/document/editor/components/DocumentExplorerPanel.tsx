@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { vaultClient, type VaultTreeItem } from '@/features/document/editor/vault/vault-client'
-import { cn } from '@/lib/utils'
+import { cn } from '@kition/app-ui/utils'
 
 export type DocumentExplorerPanelProps = {
   currentPath?: string
