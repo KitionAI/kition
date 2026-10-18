@@ -3,6 +3,8 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 type Opened = {
+  /** The frame the kit was mounted in: a kit page answers one handshake, so each open needs its own. */
+  element: unknown
   readOnly: boolean
   replica: string[]
   imports: string[]
@@ -17,8 +19,8 @@ const decode = (bytes: ArrayBuffer) => new TextDecoder().decode(bytes)
 const opened: Opened[] = []
 
 vi.mock('../host/mountKit', () => ({
-  mountKit: vi.fn(async (_element: unknown, options: { document: { readOnly?: boolean }; handlers: { write: Opened['write'] } }) => {
-    const kit: Opened = { readOnly: Boolean(options.document.readOnly), replica: [], imports: [], closed: false, write: options.handlers.write }
+  mountKit: vi.fn(async (element: unknown, options: { document: { readOnly?: boolean }; handlers: { write: Opened['write'] } }) => {
+    const kit: Opened = { element, readOnly: Boolean(options.document.readOnly), replica: [], imports: [], closed: false, write: options.handlers.write }
     opened.push(kit)
     return {
       capabilities: ['replica'],
@@ -127,6 +129,10 @@ describe('KitFrame', () => {
 
     expect(opened.map((kit) => kit.readOnly)).toEqual([false, true])
     expect(opened[0].closed).toBe(true)
+    // The kit opened again is a new page in a new frame; the old frame is gone.
+    expect(opened[1].element).not.toBe(opened[0].element)
+    expect((opened[0].element as HTMLElement).isConnected).toBe(false)
+    expect(container.querySelectorAll('iframe')).toHaveLength(1)
     expect(opened[1].replica).toEqual(['edit-1', 'edit-2'])
     // The kit opened again had the edits before co-editing was offered it.
     expect(relayed.at(-1)).toEqual(['edit-1', 'edit-2'])
@@ -140,6 +146,7 @@ describe('KitFrame', () => {
     await act(async () => setReadOnlyDocuments([]))
     await settle()
     expect(opened.map((kit) => kit.readOnly)).toEqual([true, false])
+    expect(opened[1].element).not.toBe(opened[0].element)
     expect(opened[1].replica).toEqual(['from-the-room'])
   })
 })
