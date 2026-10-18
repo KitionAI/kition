@@ -19,7 +19,7 @@ on kition-sdk's `@kition/kit-ui`, in the kit repository's `web/`) draws the
 menus, panels, and canvas around it, and Kition shows that editor in an
 iframe over the Kit UI protocol (section 4). The kit's engine and editor form
 one **kit package**, which needs nothing from Kition, so other applications
-can embed the same package with `@kition/kit-host`. Kition ships every kit's
+can embed the same package (section 4b). Kition ships every kit's
 package inside the app; there is no install step.
 
 The kit's native executable still exists, but only `headless`: the runtime
@@ -265,8 +265,12 @@ executable with brotli, so the installer and the installed app grow by about
 that much, and every app update downloads it again.
 
 A kit package is also the kit's SDK deliverable: the same `.tgz` is what
-another application embeds with `@kition/kit-host`. Kition consumes it the way
-any other host would, so it never builds kits in its release.
+another application embeds. A web page embeds it with kition-sdk's
+`@kition/embed` (`KitionEmbed.mount`, capability set `KitEmbed 1.0`; see
+kition-sdk's `docs/embed.md`): the page serves the extracted package from an
+origin of its own, keeps documents in its own storage, and may co-edit them
+through a sync server. Kition consumes the package the way any other host
+would, through `@kition/kit-host`, so it never builds kits in its release.
 
 - **Publishing** runs on a developer machine, never in the private kit
   repositories' CI (their Actions minutes are limited):
