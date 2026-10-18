@@ -36,6 +36,35 @@ function documentPath(wanted: string, path: string) {
   return checked
 }
 
+/**
+ * The replica of a kit closed to be opened again (a role change), unsaved edits included: its
+ * whole history as a change export from nothing, which also opens as a snapshot. `open` says how
+ * the next kit opens: from the file as usual (`file`), the carried changes then imported only into
+ * an earlier state of this same replica, or from the carried replica alone (`replica`), which
+ * opens as saved: its edits show, but the kit does not count them as unsaved.
+ */
+type Carried = { changes: ArrayBuffer; blobs: ArrayBuffer; open: 'file' | 'replica' }
+
+/** A document id as the two sides may spell it: lowercase hex, no hyphens. */
+const docIdKey = (docId: string) => docId.replace(/-/g, '').toLowerCase()
+
+/**
+ * Whether the kit `opened` holds an earlier state of the carried replica: the same document, and
+ * no change the carried one lacks. Only then do the carried changes continue it. A kit that opened
+ * another replica (none was saved with the file, or the file won over the saved one and was
+ * recorded onto it as new objects) would take them as more objects: slides twice over.
+ */
+async function continuesCarried(carried: Carried, opened: KitConnection) {
+  const [{ openEnvelope, uuidFromBytes }, { LORO_REPLICA_VERSIONS: versions }] = await Promise.all([import('@/lib/kdm'), import('@/lib/sync/replicaVersions')])
+  const changes = new Uint8Array(carried.changes)
+  const reached = versions.endOf(changes)
+  const version = new Uint8Array(await opened.replica.version())
+  // Every opened replica holds at least the change that created its document.
+  if (!reached || !version.length || !versions.includes(reached, version)) return false
+  const docId = await opened.replica.info().catch(() => null)
+  return !docId || docIdKey(docId) === docIdKey(uuidFromBytes(openEnvelope(changes).docId))
+}
+
 /** A file name not taken yet: `name.ext`, then `name 2.ext`, … (exports and new files, H5). */
 async function unusedPath(path: string) {
   if ((await KITION_KIT_HOST.stamp(path)) == null) return path
@@ -65,9 +94,11 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
   const readOnly = useDocumentReadOnly(path)
   // The read-only state the kit is open with: it follows `readOnly` once the open kit's replica
   // has been taken (`carried`), so that no edit made before the change is lost when the kit is
-  // opened again from its file. The kit opened next imports it before anything relays it.
+  // opened again. The kit opened next takes it (see `Carried`) before anything relays it.
   const [openedReadOnly, setOpenedReadOnly] = useState(readOnly)
-  const carried = useRef<{ changes: ArrayBuffer; blobs: ArrayBuffer } | null>(null)
+  const carried = useRef<Carried | null>(null)
+  // Counts the kits opened again from the carried replica, each in a new page (see `Carried`).
+  const [reopened, setReopened] = useState(0)
   const src = `/kits/${kit.dir}/${kit.entry ?? 'index.html'}`
 
   useEffect(() => {
@@ -84,12 +115,19 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
       try {
         const { bytes, stamp } = await KITION_KIT_HOST.read(path)
         if (closed) return
+        // Opened again from the carried replica, the kit gets no file bytes, so that the replica
+        // alone is the document (as when a shared document's file is made), and reads the
+        // replica as the one saved with the file as it is now.
+        const carry = carried.current
+        const fileStamp = carry?.open === 'replica' ? (stamp ?? (await KITION_KIT_HOST.stamp(path))) : null
+        if (closed) return
+        let fromCarried = carry && fileStamp ? { snapshot: carry.changes, blobs: carry.blobs, fileStamp } : null
         const lend = KITION_KIT_HOST.lend?.(path) ?? undefined
         mounted = await mountKit(element, {
           signal: abandon.signal,
           origin: window.location.origin,
           host: { name: 'Kition', version: __APP_VERSION__ },
-          document: { path, name: path.split('/').pop() ?? path, bytes, version: stamp, lend: lend ?? undefined, ...(openedReadOnly ? { readOnly: true } : {}) },
+          document: { path, name: path.split('/').pop() ?? path, bytes: fromCarried ? new ArrayBuffer(0) : bytes, version: stamp, lend: lend ?? undefined, ...(openedReadOnly ? { readOnly: true } : {}) },
           theme: kitionTheme(),
           locale: i18n.language,
           shortcuts: HOST_SHORTCUTS,
@@ -108,7 +146,12 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
             },
             pick: async ({ accept }) => ({ path: await pickWorkspaceFile(path, accept) }),
             // The replica the kit keeps next to its file (a PSD's), in the document store.
-            replicaRead: ({ path: wanted }) => readKitReplica(documentPath(wanted, path), kit.kitId),
+            replicaRead: async ({ path: wanted }) => {
+              const checked = documentPath(wanted, path)
+              const replica = fromCarried
+              fromCarried = null
+              return replica ?? readKitReplica(checked, kit.kitId)
+            },
             replicaWrite: ({ path: wanted, ...replica }) => writeKitReplica(documentPath(wanted, path), kit.kitId, replica),
             openAgent: latest.current.onOpenAgent ? () => latest.current.onOpenAgent?.() : undefined,
             changed: (next) => {
@@ -130,15 +173,29 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
           mounted.close()
           return
         }
-        // The edits of the kit this one replaces (opened again on a role change), unsaved ones too.
-        const carry = carried.current
-        if (carry && mounted.capabilities.includes('replica')) {
+        // The edits of the kit this one replaces (opened again on a role change), unsaved ones too,
+        // imported only into an earlier state of the same replica. A kit that opened another one
+        // is opened again, in a new page, from the carried replica.
+        if (carry?.open === 'file' && mounted.capabilities.includes('replica')) {
+          const continues = await continuesCarried(carry, mounted).catch(() => false)
+          if (closed) {
+            mounted.close()
+            return
+          }
+          if (!continues) {
+            mounted.close()
+            mounted = null
+            carried.current = { ...carry, open: 'replica' }
+            setReopened((count) => count + 1)
+            return
+          }
           await mounted.replica.importChanges(carry.changes, carry.blobs)
           if (closed) {
             mounted.close()
             return
           }
         }
+        if (carry?.open === 'replica' && !fileStamp) console.warn('[kit] could not open the kit again with its edits: the file has no stamp')
         carried.current = null
         const withdrawEditor = registerBridgeEditor({
           path,
@@ -172,17 +229,18 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
       mounted?.close()
       setConnection(null)
     }
-  }, [i18n, kit.kitId, path, openedReadOnly])
+  }, [i18n, kit.kitId, path, openedReadOnly, reopened])
 
   useEffect(() => {
     if (readOnly === openedReadOnly) return undefined
     let cancelled = false
     void (async () => {
       if (connection?.capabilities.includes('replica')) {
-        carried.current = await connection.replica.exportChanges(new ArrayBuffer(0)).catch((error: unknown) => {
+        const exported = await connection.replica.exportChanges(new ArrayBuffer(0)).catch((error: unknown) => {
           console.warn('[kit] could not keep the replica before opening the kit again', error)
           return null
         })
+        carried.current = exported ? { ...exported, open: 'file' } : null
       }
       if (!cancelled) setOpenedReadOnly(readOnly)
     })()
@@ -204,7 +262,7 @@ export function KitFrame({ kit, path, active, onOpenAgent }: { kit: EmbeddedKit;
   return (
     <div className="relative h-full min-h-0" data-testid="kit-frame">
       {/* A kit page answers one handshake, so the kit opened again (read-only or not) gets a new page. */}
-      <iframe key={openedReadOnly ? 'view' : 'edit'} ref={frame} src={src} title={path} className="size-full border-0" allow="fullscreen; clipboard-read; clipboard-write" data-testid="kit-frame-window" />
+      <iframe key={`${openedReadOnly ? 'view' : 'edit'}-${reopened}`} ref={frame} src={src} title={path} className="size-full border-0" allow="fullscreen; clipboard-read; clipboard-write" data-testid="kit-frame-window" />
       {failure ? (
         <div className="absolute inset-0 flex items-center justify-center bg-background p-8" role="alert">
           <div className="max-w-md rounded-xl border border-border bg-background p-6 text-center">
