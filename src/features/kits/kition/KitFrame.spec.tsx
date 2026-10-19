@@ -253,7 +253,9 @@ describe('KitFrame', () => {
     expect((opened[0].element as HTMLElement).isConnected).toBe(false)
     expect(container.querySelectorAll('iframe')).toHaveLength(1)
     // It opened the saved replica, an earlier state of the same one, and took the edits on it.
-    expect(opened[1].imports).toBe(1)
+    // Importing the carried changes loads the replica engine first, which can take longer than
+    // settle()'s rounds on a busy machine: wait for the import itself.
+    await vi.waitFor(() => expect(opened[1].imports).toBe(1), { timeout: 10_000 })
     expect(opened[1].titles()).toEqual(['Title', 'Agenda', 'Budget', 'Plan'])
     // The kit opened again had the edits before co-editing was offered it.
     expect(relayed.at(-1)).toEqual(['Title', 'Agenda', 'Budget', 'Plan'])
