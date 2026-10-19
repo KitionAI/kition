@@ -4,6 +4,8 @@ import type { KitConnection } from '@/features/kits/public'
 import { registerKitConnection } from '@/features/kits/kition/kitConnections'
 import { isDocumentReadOnly } from '@/services/documentAccess'
 import { documentCommentAccess } from '@/services/documentComments'
+import { presencePeers, setLocalPresence } from '@/services/documentPresence'
+import { documentSchemaNotice } from '@/services/documentSchema'
 import { startCollab, type CollabDependencies } from './collabRelays'
 import { readRoom, toHex, writeRoom } from './rooms'
 import * as tableReplica from './tableReplica'
@@ -195,6 +197,69 @@ describe('startCollab for documents Kition edits itself', () => {
     noteAgentEdit('Shared/Agent.kiboard', 20)
     expect(client.setPresence).toHaveBeenCalledTimes(2)
     await vi.waitFor(() => expect(client.setPresence).toHaveBeenLastCalledWith(docId, joined))
+  })
+
+  it('shares what the person selected in presence, and tells the editor what the others share', async () => {
+    const { LORO_REPLICA_VERSIONS } = await import('@/lib/sync/replicaVersions')
+    const { client, joins } = fakeClient()
+    const heard: Array<(peers: unknown[]) => void> = []
+    client.onPresence = vi.fn((_docId: string, listener: (peers: unknown[]) => void) => {
+      heard.push(listener)
+      return () => undefined
+    }) as never
+    const deps: CollabDependencies = { configured: async () => true, client: async () => client as never, versions: async () => LORO_REPLICA_VERSIONS }
+    const path = 'Shared/Selection.kiboard'
+    const { store, withdraw } = await openBoard(path)
+    const docId = store.getReplica().docId
+    writeRoom({ docId, shareLink: 'https://example.test/s/5', name: 'Selection.kiboard', kit: 'kit.board', role: 'viewer', path })
+    cleanups.push(startCollab(deps), withdraw)
+    await vi.waitFor(() => expect(joins).toHaveLength(1))
+    await vi.waitFor(() => expect(client.setPresence).toHaveBeenCalledTimes(1))
+    expect(client.setPresence).toHaveBeenLastCalledWith(docId, { kit: 'kit.board' })
+
+    // A viewer shares what it selected too: where it looks, never an edit.
+    setLocalPresence(path, { selection: ['shape-1'], caret: { object: 'note-1', field: 'text', offset: 2 } })
+    expect(client.setPresence).toHaveBeenLastCalledWith(docId, { kit: 'kit.board', selection: ['shape-1'], caret: { object: 'note-1', field: 'text', offset: 2 } })
+
+    heard[0]([
+      { principalId: 'u:me', name: 'Me', color: '#111111', state: { kit: 'kit.board', selection: ['shape-1'] } },
+      { principalId: 'u:alice', name: 'Alice', color: '#e5484d', state: { kit: 'kit.board', selection: ['shape-2', 7], caret: { object: 'x', field: 'text', offset: -1 } } },
+      { principalId: 'u:bob', name: 'Bob', color: '#3e63dd', state: null },
+    ])
+    expect(presencePeers(path)).toEqual([
+      { principal: 'u:alice', name: 'Alice', color: '#e5484d', selection: ['shape-2'] },
+      { principal: 'u:bob', name: 'Bob', color: '#3e63dd', selection: [] },
+    ])
+    setLocalPresence(path, null)
+  })
+
+  it('keeps a document a newer kit migrated read-only, and never keeps the room position past the refused change', async () => {
+    const { LORO_REPLICA_VERSIONS } = await import('@/lib/sync/replicaVersions')
+    const { client, joins } = fakeClient()
+    client.join = vi.fn(async (docId: string, since?: number | null) => {
+      joins.push({ docId, since })
+      return { changes: [new Uint8Array([1, 2, 3])], seq: 5, more: false, presence: [], role: 'editor' as const }
+    }) as never
+    const pulled: Array<(notice: { changes: Uint8Array; seq: number }) => void> = []
+    client.onChanges = vi.fn((_docId: string, listener: (notice: { changes: Uint8Array; seq: number }) => void) => {
+      pulled.push(listener)
+      return () => undefined
+    }) as never
+    const deps: CollabDependencies = { configured: async () => true, client: async () => client as never, versions: async () => LORO_REPLICA_VERSIONS }
+    const { connection, replica } = kitConnection(['ai', 'replica'])
+    replica.importChanges.mockRejectedValueOnce(new Error('presentation replica: the document needs schema version 4; this kit reads schema versions up to 3'))
+    writeRoom({ docId: 'doc-1', shareLink: 'https://example.test/s/6', name: 'Deck.kitionslide', kit: 'kit.slide', role: 'editor', path: 'Shared/Deck.kitionslide' })
+    cleanups.push(startCollab(deps), registerKitConnection({ path: 'Shared/Deck.kitionslide', kitId: 'kit.slide', connection }))
+    await vi.waitFor(() => expect(replica.importChanges).toHaveBeenCalled())
+    await vi.waitFor(() => expect(isDocumentReadOnly('Shared/Deck.kitionslide')).toBe(true))
+    expect(documentSchemaNotice('Shared/Deck.kitionslide')).toEqual({ kit: 'kit.slide', needs: 4, reads: 3, blocked: true })
+    // A later change the replica takes (it waits on the refused one) does not move the position on:
+    // the refused change is pulled again once the kit can read it.
+    pulled[0]({ changes: new Uint8Array([4, 5, 6]), seq: 7 })
+    await vi.waitFor(() => expect(replica.importChanges).toHaveBeenCalledTimes(2))
+    await flush()
+    expect(readRoom('doc-1')?.seen).toBeUndefined()
+    expect(readRoom('doc-1')?.role).toBe('editor')
   })
 
   it('never touches a table replica without a sync server and a Kition Pro session', async () => {

@@ -792,5 +792,19 @@
     "revokeLink": "Révoquer ce lien",
     "linkRevoked": "Lien révoqué. Il n’ouvre plus ce document.",
     "newLink": "Créer un lien"
+  },
+  "documentSchema": {
+    "label": "Avis de version plus récente",
+    "title": "Ce document a été modifié avec une version plus récente de {{kit}}. Mettez à jour pour continuer à le modifier.",
+    "blockedHint": "D’ici là, il est en lecture seule ici, tel que vous l’avez vu en dernier. Rien n’est perdu : la copie partagée conserve toutes les modifications.",
+    "newerHint": "D’ici là, ce que cette version ne connaît pas reste tel quel et ne peut pas être modifié ici.",
+    "versions": "Ce Kition inclut {{kit}} {{version}}, qui lit les documents jusqu’à la version {{reads}} ; celui-ci nécessite la version {{needs}}.",
+    "versionsNoKit": "Ce Kition lit les documents jusqu’à la version {{reads}} ; celui-ci nécessite la version {{needs}}.",
+    "check": "Rechercher des mises à jour",
+    "install": "Installer la mise à jour",
+    "updateAvailable": "Kition {{version}} est disponible.",
+    "upToDate": "Kition est à jour : la version plus récente de {{kit}} n’est pas encore publiée pour lui.",
+    "updateElsewhere": "Mettez Kition à jour vers sa dernière version pour continuer à modifier.",
+    "updateFailed": "Impossible de rechercher des mises à jour : {{message}}"
   }
 }

@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Loader2 } from 'lucide-react'
 import { writeKitFile } from '@/api/kits'
+import { DocumentSchemaBanner } from '@/components/DocumentSchemaBanner'
 import { notify } from '@/lib/notify'
 import { useDocumentReadOnly } from '@/services/documentAccess'
 import { documentCommentAccess } from '@/services/documentComments'
+import { useDocumentSchemaNotice } from '@/services/documentSchema'
 import { mountKit, type KitConnection, type ModelBatchParams } from '../host/mountKit'
 import { KITION_CAPABILITY_SETS } from './capabilitySets'
 import { kitCollabHandlers } from './kitLeases'
@@ -116,6 +118,28 @@ function kitCommentAccess(path: string, readOnly: boolean) {
  */
 export type KitPreview = { snapshot: ArrayBuffer; blobs: ArrayBuffer }
 
+/**
+ * The version of the kit's package this Kition ships (its `kit-ui.json`), once `wanted`: for the
+ * notice of a document a newer kit edited.
+ */
+function useKitPackageVersion(dir: string, wanted: boolean) {
+  const [version, setVersion] = useState<string | null>(null)
+  useEffect(() => {
+    if (!wanted) return undefined
+    let cancelled = false
+    void fetch(`/kits/${dir}/kit-ui.json`, { cache: 'no-store' })
+      .then(async (response) => (response.ok ? ((await response.json()) as { version?: unknown }) : null))
+      .then((marker) => {
+        if (!cancelled && typeof marker?.version === 'string') setVersion(marker.version)
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [dir, wanted])
+  return version
+}
+
 export function KitFrame({ kit, path, active, onOpenAgent, preview }: { kit: EmbeddedKit; path: string; active: boolean; onOpenAgent?: () => void; preview?: KitPreview }) {
   const { t, i18n } = useTranslation('workspace')
   const frame = useRef<HTMLIFrameElement>(null)
@@ -135,6 +159,11 @@ export function KitFrame({ kit, path, active, onOpenAgent, preview }: { kit: Emb
   // Counts the kits opened again from the carried replica, each in a new page (see `Carried`).
   const [reopened, setReopened] = useState(0)
   const src = `/kits/${kit.dir}/${kit.entry ?? 'index.html'}`
+  // A co-edited document a newer kit edited (Kit Standard 2.0 rules M5a and M20): its notice names
+  // the kit and the version this Kition ships.
+  const schemaNotice = useDocumentSchemaNotice(preview ? undefined : path)
+  const kitVersion = useKitPackageVersion(kit.dir, Boolean(schemaNotice))
+  const kitName = t(`${kit.kitId.replace(/^kit\./, '')}Kit`, { defaultValue: kit.kitId })
 
   useEffect(() => {
     const element = frame.current
@@ -320,6 +349,7 @@ export function KitFrame({ kit, path, active, onOpenAgent, preview }: { kit: Emb
 
   return (
     <div className="kit-frame relative flex h-full min-h-0 flex-col" data-active={active ? 'true' : undefined} data-testid={preview ? 'kit-frame-preview' : 'kit-frame'}>
+      {preview ? null : <DocumentSchemaBanner path={path} kitName={kitName} kitVersion={kitVersion} />}
       <KitDraftControls connection={connection} kitId={kit.kitId} path={path} active={active} />
       {/* A kit page answers one handshake, so the kit opened again (read-only or not) gets a new page. */}
       <iframe key={`${openedReadOnly ? 'view' : 'edit'}-${reopened}`} ref={frame} src={src} title={path} className="min-h-0 w-full flex-1 border-0" allow="fullscreen; clipboard-read; clipboard-write" data-testid="kit-frame-window" />

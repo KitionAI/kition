@@ -22,6 +22,11 @@ export type CollabReplica = RelayReplica & {
   save: () => Promise<void>
   /** Ends what the replica side follows; called when the relay stops. */
   dispose: () => void
+  /**
+   * The schema version the replica reads, and the newest one its changes were written under (Kit
+   * Standard 2.0 rule M5a; `null` when none records one), for a replica that can tell them.
+   */
+  schema?: () => { reads: number; newestAuthor: number | null }
 }
 
 export type CollabDocument = {
@@ -59,7 +64,13 @@ function pageDocument(open: OpenBoard | OpenMarkdownDocument, kit: string): Coll
     kit,
     connect: async () => {
       const { kdmRelayReplica } = await import('./kdmRelayReplica')
-      return { ...kdmRelayReplica(open), docId: async () => open.replica().docId, save: open.save, dispose: () => undefined }
+      return {
+        ...kdmRelayReplica(open),
+        docId: async () => open.replica().docId,
+        save: open.save,
+        dispose: () => undefined,
+        schema: () => ({ reads: open.replica().schema.schemaVersion, newestAuthor: open.replica().authorSchemaVersion() }),
+      }
     },
   }
 }

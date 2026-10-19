@@ -792,5 +792,19 @@
     "revokeLink": "撤销此链接",
     "linkRevoked": "链接已撤销，它将无法再打开此文档。",
     "newLink": "创建链接"
+  },
+  "documentSchema": {
+    "label": "新版本提示",
+    "title": "此文档已由更新版本的 {{kit}} 编辑。请更新以继续编辑。",
+    "blockedHint": "在此之前，它在这里为只读，保持你上次看到的样子。不会丢失任何内容：共享副本保留了所有更改。",
+    "newerHint": "在此之前，此版本无法识别的内容会保持原样，且无法在这里编辑。",
+    "versions": "此 Kition 附带 {{kit}} {{version}}，可读取最高版本 {{reads}} 的文档；此文档需要版本 {{needs}}。",
+    "versionsNoKit": "此 Kition 可读取最高版本 {{reads}} 的文档；此文档需要版本 {{needs}}。",
+    "check": "检查更新",
+    "install": "安装更新",
+    "updateAvailable": "Kition {{version}} 已可用。",
+    "upToDate": "Kition 已是最新版本：更新版本的 {{kit}} 尚未为其发布。",
+    "updateElsewhere": "请将 Kition 更新到最新版本以继续编辑。",
+    "updateFailed": "无法检查更新：{{message}}"
   }
 }

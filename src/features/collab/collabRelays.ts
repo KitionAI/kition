@@ -14,16 +14,28 @@
  * The agent is a collaborator (architecture section 13): while it edits a relayed document through
  * the Kit AI bridge (`@/services/agentPresence`), this person's presence state carries it as
  * `agent: { name, origin: 'agent' }`, and every viewer shows it as a peer of its own.
+ *
+ * What the person shares from the document's editor (Kit UI protocol section 7e: the objects they
+ * selected, their caret, what they look at; `@/services/documentPresence`) goes in their presence
+ * state as `{ kit, selection, caret?, viewport? }`, a viewer's too, and the editor hears what the
+ * other people in the room share.
+ *
+ * A change a newer kit made (Kit Standard 2.0 rules M5a and M20, `./schemaWatch`) shows a notice;
+ * one the kit refuses keeps the document read-only until the kit is updated, and the room position
+ * is not kept past it, so the change is pulled again then.
  */
 import { DocumentLeases, SyncRpcError, leaseHolder, startRelay, type Lease, type Presence, type Relay, type RelaySync, type ReplicaVersions, type SyncClient } from '@/lib/sync'
 import { DocumentLeaseRefused, setDocumentLeaseProvider, type DocumentLease, type DocumentLeaseProvider } from '@/services/documentLeases'
 import { AGENT_PRESENCE, agentEditing, onAgentEditing } from '@/services/agentPresence'
 import { setReadOnlyDocuments } from '@/services/documentAccess'
 import { setSharedCommentAccess } from '@/services/documentComments'
+import { localPresence, onLocalPresence, setPresencePeers, type PeerPresence, type SharedPresence } from '@/services/documentPresence'
+import { documentSchemaNotice, onDocumentSchemaNotices, schemaBlockedPaths, setDocumentSchemaNotice } from '@/services/documentSchema'
 import { followCollabDocuments, type CollabDocument, type CollabReplica } from './collabDocuments'
 import { loadCollabToken, onCollabSettingsChanged, syncServerUrl } from './collabSettings'
 import { setDocumentCollab, setDocumentPeers, setDocumentRole } from './collabStore'
 import { deleteRoom, fromHex, onRoomsChanged, readOnlyPaths, readRoom, toHex, updateRoom, type CollabRoom } from './rooms'
+import { watchSchema } from './schemaWatch'
 import { closeSyncClient, collabConfigured, syncClient } from './syncConnection'
 
 type CollabClient = RelaySync & Pick<SyncClient, 'setPresence' | 'onPresence' | 'principal'> & Partial<Pick<SyncClient, 'leases' | 'onAccess'>>
@@ -82,6 +94,33 @@ function leaseProvider(leases: DocumentLeases): DocumentLeaseProvider & { dispos
   }
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value)
+
+/** What a peer's presence state shares (Kit UI protocol section 7e), checked: the state is the peer's own. */
+function sharedPresence(state: unknown): SharedPresence {
+  if (!isRecord(state)) return { selection: [] }
+  const selection = Array.isArray(state.selection) ? state.selection.filter((id): id is string => typeof id === 'string').slice(0, 256) : []
+  const caret = isRecord(state.caret) && typeof state.caret.object === 'string' && typeof state.caret.field === 'string' && Number.isInteger(state.caret.offset) && (state.caret.offset as number) >= 0
+    ? { object: state.caret.object, field: state.caret.field, offset: state.caret.offset as number }
+    : null
+  return { selection, ...(caret ? { caret } : {}), ...(isRecord(state.viewport) ? { viewport: state.viewport } : {}) }
+}
+
+/** The other people in the room and what each shares; this person's own sessions are left out. */
+function presencePeersOf(peers: Presence[], self: string | undefined): PeerPresence[] {
+  return peers.filter((peer) => peer.principalId !== self).map((peer) => ({ principal: peer.principalId, name: peer.name, color: peer.color, ...sharedPresence(peer.state) }))
+}
+
+/** This person's presence state in the room: the kit, what they share from the editor, and the agent editing for them. */
+function presenceState(kit: string, path: string) {
+  const local = localPresence(path)
+  return {
+    kit,
+    ...(local ? { selection: local.selection, ...(local.caret ? { caret: local.caret } : {}), ...(local.viewport ? { viewport: local.viewport } : {}) } : {}),
+    ...(agentEditing(path) ? { agent: AGENT_PRESENCE } : {}),
+  }
+}
+
 function follow(document: CollabDocument, dependencies: CollabDependencies) {
   const { path } = document
   let stopped = false
@@ -94,6 +133,7 @@ function follow(document: CollabDocument, dependencies: CollabDependencies) {
   /** Publishes this person's presence again, now with or without the agent; set once joined. */
   let publishPresence: (() => void) | null = null
   const stopAgent = onAgentEditing(path, () => publishPresence?.())
+  const stopLocal = onLocalPresence(path, () => publishPresence?.())
 
   let again = false
   const start = async (): Promise<void> => {
@@ -118,7 +158,10 @@ function follow(document: CollabDocument, dependencies: CollabDependencies) {
       const since = await resumeSeq(room, replica, versions).catch(() => null)
       if (stopped) return
       const id = docId
-      const showPeers = (peers: Presence[]) => setDocumentPeers(path, peers, client.principal?.id)
+      const showPeers = (peers: Presence[]) => {
+        setDocumentPeers(path, peers, client.principal?.id)
+        setPresencePeers(path, presencePeersOf(peers, client.principal?.id))
+      }
       setDocumentCollab(path, { docId: id, peers: [], role: room.role })
       stopPresence = client.onPresence(id, showPeers)
       if (client.leases) {
@@ -131,13 +174,18 @@ function follow(document: CollabDocument, dependencies: CollabDependencies) {
       }
       relay = startRelay({
         docId: id,
-        replica,
+        // A refused change (a newer kit migrated the document) is pulled again from the room's
+        // snapshot once the kit is updated: the position kept for a later session goes.
+        replica: watchSchema(path, document.kit, replica, { onBlocked: () => updateRoom(id, { seen: undefined }, { quiet: true }) }),
         sync: client,
         versions,
         lastSent: fromHex(room.lastSent),
         since,
         onSent: (version) => updateRoom(id, { lastSent: toHex(version) }, { quiet: true }),
-        onSeen: ({ seq, version }) => updateRoom(id, { seen: { seq, version: toHex(version) } }, { quiet: true }),
+        onSeen: ({ seq, version }) => {
+          if (documentSchemaNotice(path)?.blocked) return
+          updateRoom(id, { seen: { seq, version: toHex(version) } }, { quiet: true })
+        },
         onJoined: ({ presence, role }) => {
           showPeers(presence)
           setDocumentRole(path, role)
@@ -145,7 +193,7 @@ function follow(document: CollabDocument, dependencies: CollabDependencies) {
           // A role that changed (a viewer link opened, a member's role changed) is kept, and a
           // viewer's document turns read-only.
           if (readRoom(id)?.role !== role) updateRoom(id, { role })
-          publishPresence = () => client.setPresence(id, agentEditing(path) ? { kit: document.kit, agent: AGENT_PRESENCE } : { kit: document.kit })
+          publishPresence = () => client.setPresence(id, presenceState(document.kit, path))
           publishPresence()
         },
         onAccess: (role) => {
@@ -158,6 +206,8 @@ function follow(document: CollabDocument, dependencies: CollabDependencies) {
           // Removed from the room: the document stays here as a local copy.
           publishPresence = null
           setSharedCommentAccess(path, null)
+          setPresencePeers(path, [])
+          setDocumentSchemaNotice(path, null)
           stopLeases?.()
           stopLeases = null
           stopPresence?.()
@@ -182,6 +232,7 @@ function follow(document: CollabDocument, dependencies: CollabDependencies) {
     stopped = true
     publishPresence = null
     stopAgent()
+    stopLocal()
     stopRooms()
     // Leases first, while the room is still joined.
     stopLeases?.()
@@ -190,14 +241,24 @@ function follow(document: CollabDocument, dependencies: CollabDependencies) {
     replica?.dispose()
     if (relay) setDocumentCollab(path, null)
     setSharedCommentAccess(path, null)
+    setPresencePeers(path, [])
+    setDocumentSchemaNotice(path, null)
   }
 }
 
-/** Makes the documents of `viewer` rooms read-only in their editors, now and as rooms change. */
+/**
+ * Makes the documents of `viewer` rooms, and those whose kit refused a newer kit's changes,
+ * read-only in their editors, now and as rooms and notices change.
+ */
 function followViewerDocuments() {
-  const publish = () => setReadOnlyDocuments(readOnlyPaths())
+  const publish = () => setReadOnlyDocuments([...readOnlyPaths(), ...schemaBlockedPaths()])
   publish()
-  return onRoomsChanged(publish)
+  const stopRooms = onRoomsChanged(publish)
+  const stopNotices = onDocumentSchemaNotices(publish)
+  return () => {
+    stopRooms()
+    stopNotices()
+  }
 }
 
 /**
