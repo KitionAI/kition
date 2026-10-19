@@ -30,6 +30,11 @@ export interface FieldDef {
    * marks reads as a plain string in the canonical state; one with marks reads as its runs.
    */
   marks?: Record<string, MarkDef>
+  /**
+   * Content the kit keeps verbatim but does not model (rule OM8): the object model reads the
+   * field and never writes it. The kit's own transactions and commands still do.
+   */
+  readOnly?: boolean
 }
 
 /** How a mark grows when text is inserted at one of its ends. */
@@ -42,6 +47,28 @@ export interface MarkDef {
 
 export interface TypeDef {
   fields: Record<string, FieldDef>
+  /** Every object of the type is read-only through the object model (rule OM8). */
+  readOnly?: boolean
+  /** The objects whose enum `field` holds one of `values` are read-only through the object model (rule OM8). */
+  readOnlyWhen?: ReadOnlyWhen
+}
+
+/** `{ field: <an enum field of the type>, values }`: the objects holding one of the values are read-only. */
+export interface ReadOnlyWhen {
+  field: string
+  values: string[]
+}
+
+/**
+ * Whether the object model may not write an object of type `def` (rule OM8). `field` answers a
+ * register's value (for `readOnlyWhen`).
+ */
+export function objectReadOnly(def: TypeDef, field: (name: string) => unknown): boolean {
+  if (def.readOnly) return true
+  const when = def.readOnlyWhen
+  if (when === undefined) return false
+  const value = field(when.field)
+  return typeof value === 'string' && when.values.includes(value)
 }
 
 /** A kit's document schema (`model/schema.json` in its package). Built by `parseSchema`, which checks it. */
@@ -77,7 +104,7 @@ function onlyKeys(where: string, value: Record<string, unknown>, allowed: readon
 /** One field definition as written, checked for shape only. */
 function readField(where: string, raw: unknown): FieldDef {
   if (!isRecord(raw)) throw errors.schema(`${where}: a field definition is an object`)
-  onlyKeys(where, raw, ['kind', 'of', 'values', 'optional', 'marks'])
+  onlyKeys(where, raw, ['kind', 'of', 'values', 'optional', 'marks', 'readOnly'])
   if (typeof raw.kind !== 'string' || !KINDS.includes(raw.kind)) throw errors.schema(`${where}: unknown kind \`${String(raw.kind)}\``)
   const field: FieldDef = { kind: raw.kind as FieldKind }
   if (raw.of !== undefined && raw.of !== null) {
@@ -103,6 +130,10 @@ function readField(where: string, raw: unknown): FieldDef {
       setKey(marks, key, { expand: mark.expand as Expand })
     }
     field.marks = marks
+  }
+  if (raw.readOnly !== undefined) {
+    if (typeof raw.readOnly !== 'boolean') throw errors.schema(`${where}: \`readOnly\` is a boolean`)
+    if (raw.readOnly) field.readOnly = true
   }
   return field
 }
@@ -145,11 +176,24 @@ function readSchema(raw: unknown): Schema {
   for (const ty of sortedKeys(raw.types)) {
     const def = raw.types[ty]
     if (!isRecord(def)) throw errors.schema(`type \`${ty}\` is an object`)
-    onlyKeys(`type \`${ty}\``, def, ['fields'])
+    onlyKeys(`type \`${ty}\``, def, ['fields', 'readOnly', 'readOnlyWhen'])
     if (!isRecord(def.fields)) throw errors.schema(`type \`${ty}\` needs \`fields\``)
     const fields: Record<string, FieldDef> = {}
     for (const name of sortedKeys(def.fields)) setKey(fields, name, readField(`\`${ty}.${name}\``, def.fields[name]))
-    setKey(types, ty, { fields })
+    const out: TypeDef = { fields }
+    if (def.readOnly !== undefined) {
+      if (typeof def.readOnly !== 'boolean') throw errors.schema(`type \`${ty}\`: \`readOnly\` is a boolean`)
+      if (def.readOnly) out.readOnly = true
+    }
+    if (def.readOnlyWhen !== undefined && def.readOnlyWhen !== null) {
+      const when = def.readOnlyWhen
+      if (!isRecord(when)) throw errors.schema(`type \`${ty}\`: \`readOnlyWhen\` is { field, values }`)
+      onlyKeys(`type \`${ty}\` readOnlyWhen`, when, ['field', 'values'])
+      if (typeof when.field !== 'string') throw errors.schema(`type \`${ty}\`: \`readOnlyWhen.field\` is a field name`)
+      if (!Array.isArray(when.values) || !when.values.every((value) => typeof value === 'string')) throw errors.schema(`type \`${ty}\`: \`readOnlyWhen.values\` is a list of strings`)
+      out.readOnlyWhen = { field: when.field, values: [...when.values] }
+    }
+    setKey(types, ty, out)
   }
   return { kdm: raw.kdm, kit: raw.kit, schemaVersion: raw.schemaVersion, root: raw.root, types }
 }
@@ -162,6 +206,16 @@ function checkSchema(schema: Schema): void {
   for (const ty of sortedKeys(schema.types)) {
     if (ty.startsWith('$')) throw errors.schema(`type \`${ty}\`: names starting with \`$\` are reserved`)
     const def = schema.types[ty]
+    const when = def.readOnlyWhen
+    if (when !== undefined) {
+      if (def.readOnly) throw errors.schema(`type \`${ty}\`: \`readOnly\` and \`readOnlyWhen\` exclude each other`)
+      if (!Object.hasOwn(def.fields, when.field)) throw errors.schema(`type \`${ty}\`: \`readOnlyWhen\` names undeclared field \`${when.field}\``)
+      const field = def.fields[when.field]
+      if (field.kind !== 'enum') throw errors.schema(`type \`${ty}\`: \`readOnlyWhen\` names \`${when.field}\`, which is not an enum`)
+      if (when.values.length === 0) throw errors.schema(`type \`${ty}\`: \`readOnlyWhen\` needs \`values\``)
+      const stray = when.values.find((value) => !(field.values ?? []).includes(value))
+      if (stray !== undefined) throw errors.schema(`type \`${ty}\`: \`readOnlyWhen\` value \`${stray}\` is not a value of \`${ty}.${when.field}\``)
+    }
     for (const name of sortedKeys(def.fields)) {
       const field = def.fields[name]
       if (name.startsWith('$')) throw errors.schema(`\`${ty}.${name}\`: names starting with \`$\` are reserved`)

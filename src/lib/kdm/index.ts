@@ -44,7 +44,7 @@ export { agent, decodeOrigin, encodeOrigin, person, system, type Origin, type Or
 export { open as openEnvelope, Version } from './envelope'
 export type { TextRun } from './marks'
 export { Replica, type TextDelta } from './replica'
-export { checkValue, fieldDef, hasMarks, isContainer, KDM_VERSION, parseSchema, typeDef, type Expand, type FieldDef, type FieldKind, type MarkDef, type Schema, type TypeDef } from './schema'
+export { checkValue, fieldDef, hasMarks, isContainer, KDM_VERSION, objectReadOnly, parseSchema, typeDef, type Expand, type FieldDef, type FieldKind, type MarkDef, type ReadOnlyWhen, type Schema, type TypeDef } from './schema'
 export { Network, Rng } from './testing'
 export { Tx } from './tx'
 export type { JsonValue } from './value'

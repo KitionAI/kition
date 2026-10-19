@@ -6,7 +6,7 @@
 use std::sync::Arc;
 
 use kition_kdm::batch::{self, BatchError, BatchErrorCode, BatchTarget, ReplicaTarget};
-use kition_kdm::{ActorId, DocId, Origin, Replica, Schema, Tx};
+use kition_kdm::{ActorId, DocId, ObjectId, Origin, Replica, Schema, Tx};
 use serde_json::{Value, json};
 
 mod common;
@@ -150,4 +150,103 @@ fn describe_lists_types_and_the_root() {
     assert_eq!(described["types"]["Page"]["fields"]["shapes"], json!({ "kind": "list", "of": "Shape" }));
     assert_eq!(described["types"]["Shape"]["fields"]["fill"], json!({ "kind": "string", "optional": true }));
     assert_eq!(described["types"]["Shape"]["fields"]["kind"], json!({ "kind": "enum", "values": ["rect", "ellipse"] }));
+}
+
+/// Writes `seed` from `fixtures/read-only.json` with the KDM's own transactions, as a kit's
+/// import does: the object model cannot write read-only content.
+fn seed_read_only(replica: &mut Replica, seed: &Value) {
+    replica
+        .transact(&Origin::person("user:test"), |tx| {
+            for entry in seed.as_array().unwrap() {
+                let split = |path: &str| {
+                    let (owner, field) = path.split_once('.').unwrap();
+                    (ObjectId::from_string(owner), field.to_owned())
+                };
+                if let Some(path) = entry["text"].as_str() {
+                    let (owner, field) = split(path);
+                    tx.text_insert(&owner, &field, 0, entry["value"].as_str().unwrap())?;
+                } else if let Some(path) = entry["map"].as_str() {
+                    let (owner, field) = split(path);
+                    tx.map_set(&owner, &field, entry["key"].as_str().unwrap(), entry["value"].clone())?;
+                } else {
+                    let id = ObjectId::from_string(entry["id"].as_str().unwrap());
+                    tx.create_with_id(entry["type"].as_str().unwrap(), &id, entry["fields"].as_object().cloned().unwrap_or_default())?;
+                    if let Some(path) = entry["in"].as_str() {
+                        let (owner, field) = split(path);
+                        let len = tx.list_items(&owner, &field)?.len();
+                        tx.list_insert(&owner, &field, len, &id)?;
+                    }
+                }
+            }
+            Ok(())
+        })
+        .unwrap();
+}
+
+#[test]
+fn read_only_content_answers_the_shared_fixtures() {
+    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/read-only.json");
+    let mut fixture: Value = serde_json::from_str(include_str!("fixtures/read-only.json")).unwrap();
+    let schema = Arc::new(Schema::parse(include_str!("fixtures/read-only-schema.json")).unwrap());
+    let mut replica = Replica::create(schema, DocId::parse(fixture["docId"].as_str().unwrap()).unwrap(), ActorId::from_u64(1).unwrap()).unwrap();
+    seed_read_only(&mut replica, &fixture["seed"]);
+    let write = std::env::var_os("KDM_WRITE_FIXTURE").is_some();
+    for (index, step) in fixture["steps"].as_array_mut().unwrap().iter_mut().enumerate() {
+        let before = replica.state_hash().unwrap();
+        let answer = batch::run(&mut ReplicaTarget(&mut replica), &step["request"]);
+        if step.get("error").is_some() {
+            let error = answer.unwrap_err();
+            assert_eq!(error.code.as_str(), step["error"]["code"], "step {index}: {error}");
+            assert_eq!(json!(error.index), step["error"]["index"], "step {index}: {error}");
+            assert_eq!(replica.state_hash().unwrap(), before, "step {index} failed but changed the document");
+        } else if write {
+            step["result"] = answer.unwrap();
+        } else {
+            assert_eq!(answer.unwrap(), step["result"], "step {index}");
+        }
+    }
+    if write {
+        std::fs::write(path, format!("{}\n", serde_json::to_string_pretty(&fixture).unwrap())).unwrap();
+    }
+    for case in fixture["invalidSchemas"].as_array().unwrap() {
+        let error = Schema::parse(&case["schema"].to_string());
+        assert!(matches!(error, Err(kition_kdm::KdmError::Schema(_))), "{}: {error:?}", case["why"]);
+    }
+}
+
+#[test]
+fn describe_names_read_only_types_and_fields() {
+    let schema = Arc::new(Schema::parse(include_str!("fixtures/read-only-schema.json")).unwrap());
+    let replica = Replica::create(schema, DocId::parse("01920000-0000-7000-8000-0000000000bc").unwrap(), ActorId::from_u64(1).unwrap()).unwrap();
+    let described = batch::describe(&replica);
+    assert_eq!(described["types"]["Kept"]["readOnly"], true);
+    assert_eq!(described["types"]["Item"]["readOnlyWhen"], json!({ "field": "kind", "values": ["opaque"] }));
+    assert!(described["types"]["Item"].get("readOnly").is_none());
+    assert_eq!(described["types"]["Deck"]["fields"]["raw"], json!({ "kind": "json", "optional": true, "readOnly": true }));
+    assert!(described["types"]["Deck"]["fields"]["title"].get("readOnly").is_none());
+}
+
+#[test]
+fn a_document_reads_the_same_with_or_without_read_only_marks() {
+    // The marks are the object model's alone: a replica written under the marked schema loads
+    // under the same schema without them, and back (no schema version change is needed).
+    let marked = include_str!("fixtures/read-only-schema.json");
+    let mut plain: Value = serde_json::from_str(marked).unwrap();
+    for def in plain["types"].as_object_mut().unwrap().values_mut() {
+        let def = def.as_object_mut().unwrap();
+        def.remove("readOnly");
+        def.remove("readOnlyWhen");
+        for field in def["fields"].as_object_mut().unwrap().values_mut() {
+            field.as_object_mut().unwrap().remove("readOnly");
+        }
+    }
+    let marked = Arc::new(Schema::parse(marked).unwrap());
+    let plain = Arc::new(Schema::parse(&plain.to_string()).unwrap());
+    let fixture: Value = serde_json::from_str(include_str!("fixtures/read-only.json")).unwrap();
+    let mut replica = Replica::create(marked.clone(), DocId::parse("01920000-0000-7000-8000-0000000000bc").unwrap(), ActorId::from_u64(1).unwrap()).unwrap();
+    seed_read_only(&mut replica, &fixture["seed"]);
+    let reloaded = Replica::load(plain, &replica.snapshot().unwrap(), ActorId::from_u64(2).unwrap()).unwrap();
+    assert_eq!(reloaded.state_json().unwrap(), replica.state_json().unwrap());
+    let back = Replica::load(marked, &reloaded.snapshot().unwrap(), ActorId::from_u64(3).unwrap()).unwrap();
+    assert_eq!(back.state_json().unwrap(), replica.state_json().unwrap());
 }

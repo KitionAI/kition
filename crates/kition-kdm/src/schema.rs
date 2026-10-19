@@ -60,6 +60,10 @@ pub struct FieldDef {
     /// reads as a plain string in the canonical state; one with marks reads as its runs.
     #[serde(default)]
     pub marks: BTreeMap<String, MarkDef>,
+    /// Content the kit keeps verbatim but does not model (rule OM8): the object model reads the
+    /// field and never writes it. The kit's own transactions and commands still do.
+    #[serde(default, rename = "readOnly")]
+    pub read_only: bool,
 }
 
 impl FieldDef {
@@ -105,6 +109,36 @@ pub struct MarkDef {
 #[serde(deny_unknown_fields)]
 pub struct TypeDef {
     pub fields: BTreeMap<String, FieldDef>,
+    /// Every object of the type is read-only through the object model (rule OM8): content the
+    /// kit preserves without modelling it.
+    #[serde(default, rename = "readOnly")]
+    pub read_only: bool,
+    /// The objects of the type whose enum field holds one of `values` are read-only through the
+    /// object model (rule OM8), such as a shape of kind `opaque`.
+    #[serde(default, rename = "readOnlyWhen")]
+    pub read_only_when: Option<ReadOnlyWhen>,
+}
+
+/// `{ "field": "<an enum field of the type>", "values": [...] }`: the objects holding one of the
+/// values in the field are read-only through the object model.
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ReadOnlyWhen {
+    pub field: String,
+    pub values: Vec<String>,
+}
+
+impl TypeDef {
+    /// Whether the object model may write an object of this type whose fields read `field`.
+    /// `field` answers a register's value (for [`ReadOnlyWhen`]).
+    pub fn object_read_only(&self, field: impl FnOnce(&str) -> Option<Value>) -> bool {
+        if self.read_only {
+            return true;
+        }
+        self.read_only_when
+            .as_ref()
+            .is_some_and(|when| field(&when.field).as_ref().and_then(Value::as_str).is_some_and(|value| when.values.iter().any(|kept| kept == value)))
+    }
 }
 
 /// A kit's document schema (`model/schema.json` in its package). Built only by [`Schema::parse`]
@@ -162,6 +196,23 @@ impl Schema {
         for (ty, def) in &self.types {
             if ty.starts_with('$') {
                 return Err(KdmError::Schema(format!("type `{ty}`: names starting with `$` are reserved")));
+            }
+            if let Some(when) = &def.read_only_when {
+                if def.read_only {
+                    return Err(KdmError::Schema(format!("type `{ty}`: `readOnly` and `readOnlyWhen` exclude each other")));
+                }
+                let Some(field) = def.fields.get(&when.field) else {
+                    return Err(KdmError::Schema(format!("type `{ty}`: `readOnlyWhen` names undeclared field `{}`", when.field)));
+                };
+                if field.kind != FieldKind::Enum {
+                    return Err(KdmError::Schema(format!("type `{ty}`: `readOnlyWhen` names `{}`, which is not an enum", when.field)));
+                }
+                if when.values.is_empty() {
+                    return Err(KdmError::Schema(format!("type `{ty}`: `readOnlyWhen` needs `values`")));
+                }
+                if let Some(value) = when.values.iter().find(|value| !field.values.contains(value)) {
+                    return Err(KdmError::Schema(format!("type `{ty}`: `readOnlyWhen` value `{value}` is not a value of `{ty}.{}`", when.field)));
+                }
             }
             for (name, field) in &def.fields {
                 if name.starts_with('$') {

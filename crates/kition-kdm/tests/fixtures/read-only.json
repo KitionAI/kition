@@ -1,0 +1,787 @@
+{
+  "$comment": "Read-only content (rule OM8) in object-model batches, run in order on one document of read-only-schema.json by kition-kdm (tests/batch.rs) and @kition/kdm (test/batch.test.ts). `seed` is written with the KDM's own transactions first, as a kit's import would. A step answers `result` or fails with `error` and changes nothing.",
+  "docId": "01920000-0000-7000-8000-0000000000bc",
+  "invalidSchemas": [
+    {
+      "schema": {
+        "kdm": 1,
+        "kit": "k",
+        "root": "A",
+        "schemaVersion": 1,
+        "types": {
+          "A": {
+            "fields": {
+              "kind": {
+                "kind": "enum",
+                "values": [
+                  "a",
+                  "b"
+                ]
+              },
+              "s": {
+                "kind": "string"
+              }
+            },
+            "readOnly": true,
+            "readOnlyWhen": {
+              "field": "kind",
+              "values": [
+                "a"
+              ]
+            }
+          }
+        }
+      },
+      "why": "readOnly and readOnlyWhen together"
+    },
+    {
+      "schema": {
+        "kdm": 1,
+        "kit": "k",
+        "root": "A",
+        "schemaVersion": 1,
+        "types": {
+          "A": {
+            "fields": {
+              "kind": {
+                "kind": "enum",
+                "values": [
+                  "a",
+                  "b"
+                ]
+              },
+              "s": {
+                "kind": "string"
+              }
+            },
+            "readOnlyWhen": {
+              "field": "nope",
+              "values": [
+                "a"
+              ]
+            }
+          }
+        }
+      },
+      "why": "readOnlyWhen names an undeclared field"
+    },
+    {
+      "schema": {
+        "kdm": 1,
+        "kit": "k",
+        "root": "A",
+        "schemaVersion": 1,
+        "types": {
+          "A": {
+            "fields": {
+              "kind": {
+                "kind": "enum",
+                "values": [
+                  "a",
+                  "b"
+                ]
+              },
+              "s": {
+                "kind": "string"
+              }
+            },
+            "readOnlyWhen": {
+              "field": "s",
+              "values": [
+                "a"
+              ]
+            }
+          }
+        }
+      },
+      "why": "readOnlyWhen names a field that is not an enum"
+    },
+    {
+      "schema": {
+        "kdm": 1,
+        "kit": "k",
+        "root": "A",
+        "schemaVersion": 1,
+        "types": {
+          "A": {
+            "fields": {
+              "kind": {
+                "kind": "enum",
+                "values": [
+                  "a",
+                  "b"
+                ]
+              },
+              "s": {
+                "kind": "string"
+              }
+            },
+            "readOnlyWhen": {
+              "field": "kind",
+              "values": []
+            }
+          }
+        }
+      },
+      "why": "readOnlyWhen without values"
+    },
+    {
+      "schema": {
+        "kdm": 1,
+        "kit": "k",
+        "root": "A",
+        "schemaVersion": 1,
+        "types": {
+          "A": {
+            "fields": {
+              "kind": {
+                "kind": "enum",
+                "values": [
+                  "a",
+                  "b"
+                ]
+              },
+              "s": {
+                "kind": "string"
+              }
+            },
+            "readOnlyWhen": {
+              "field": "kind",
+              "values": [
+                "c"
+              ]
+            }
+          }
+        }
+      },
+      "why": "readOnlyWhen with a value the enum lacks"
+    },
+    {
+      "schema": {
+        "kdm": 1,
+        "kit": "k",
+        "root": "A",
+        "schemaVersion": 1,
+        "types": {
+          "A": {
+            "fields": {
+              "kind": {
+                "kind": "enum",
+                "values": [
+                  "a",
+                  "b"
+                ]
+              },
+              "s": {
+                "kind": "string"
+              }
+            },
+            "readOnlyWhen": {
+              "also": 1,
+              "field": "kind",
+              "values": [
+                "a"
+              ]
+            }
+          }
+        }
+      },
+      "why": "readOnlyWhen with an unknown key"
+    },
+    {
+      "schema": {
+        "kdm": 1,
+        "kit": "k",
+        "root": "A",
+        "schemaVersion": 1,
+        "types": {
+          "A": {
+            "fields": {
+              "kind": {
+                "kind": "enum",
+                "values": [
+                  "a",
+                  "b"
+                ]
+              },
+              "s": {
+                "kind": "string"
+              }
+            },
+            "readOnlyWhen": {
+              "values": [
+                "a"
+              ]
+            }
+          }
+        }
+      },
+      "why": "readOnlyWhen without field"
+    },
+    {
+      "schema": {
+        "kdm": 1,
+        "kit": "k",
+        "root": "A",
+        "schemaVersion": 1,
+        "types": {
+          "A": {
+            "fields": {
+              "kind": {
+                "kind": "enum",
+                "values": [
+                  "a",
+                  "b"
+                ]
+              },
+              "s": {
+                "kind": "string"
+              }
+            },
+            "readOnly": "yes"
+          }
+        }
+      },
+      "why": "a type readOnly that is not a boolean"
+    },
+    {
+      "schema": {
+        "kdm": 1,
+        "kit": "k",
+        "root": "A",
+        "schemaVersion": 1,
+        "types": {
+          "A": {
+            "fields": {
+              "s": {
+                "kind": "string",
+                "readOnly": 1
+              }
+            }
+          }
+        }
+      },
+      "why": "a field readOnly that is not a boolean"
+    }
+  ],
+  "schema": "read-only-schema.json",
+  "seed": [
+    {
+      "fields": {
+        "raw": {
+          "ext": "<p:extLst/>"
+        },
+        "title": "Deck"
+      },
+      "id": "deck",
+      "type": "Deck"
+    },
+    {
+      "fields": {
+        "kind": "opaque",
+        "name": "Object"
+      },
+      "id": "op1",
+      "in": "deck.items",
+      "type": "Item"
+    },
+    {
+      "fields": {
+        "kind": "shape"
+      },
+      "id": "child",
+      "in": "op1.children",
+      "type": "Item"
+    },
+    {
+      "fields": {
+        "xml": "<x/>"
+      },
+      "id": "k1",
+      "in": "deck.kept",
+      "type": "Kept"
+    },
+    {
+      "text": "deck.notes",
+      "value": "kept notes"
+    },
+    {
+      "text": "op1.label",
+      "value": "OLE"
+    },
+    {
+      "key": "A1",
+      "map": "deck.cells",
+      "value": "kept"
+    }
+  ],
+  "steps": [
+    {
+      "request": {
+        "load": [
+          {
+            "target": "root"
+          },
+          {
+            "target": "op1"
+          },
+          {
+            "target": "k1"
+          }
+        ]
+      },
+      "result": {
+        "loaded": [
+          {
+            "fields": {
+              "cells": {
+                "A1": "kept"
+              },
+              "items": [
+                "op1"
+              ],
+              "kept": [
+                "k1"
+              ],
+              "notes": "kept notes",
+              "raw": {
+                "ext": "<p:extLst/>"
+              },
+              "title": "Deck"
+            },
+            "id": "deck",
+            "type": "Deck"
+          },
+          {
+            "fields": {
+              "children": [
+                "child"
+              ],
+              "kind": "opaque",
+              "label": "OLE",
+              "name": "Object"
+            },
+            "id": "op1",
+            "type": "Item"
+          },
+          {
+            "fields": {
+              "xml": "<x/>"
+            },
+            "id": "k1",
+            "type": "Kept"
+          }
+        ],
+        "refs": {},
+        "results": []
+      }
+    },
+    {
+      "error": {
+        "code": "read-only",
+        "index": 0
+      },
+      "request": {
+        "ops": [
+          {
+            "field": "name",
+            "op": "set",
+            "target": "op1",
+            "value": "Renamed"
+          }
+        ]
+      }
+    },
+    {
+      "error": {
+        "code": "read-only",
+        "index": 0
+      },
+      "request": {
+        "ops": [
+          {
+            "field": "label",
+            "index": 0,
+            "op": "text.insert",
+            "target": "op1",
+            "text": "x"
+          }
+        ]
+      }
+    },
+    {
+      "error": {
+        "code": "read-only",
+        "index": 0
+      },
+      "request": {
+        "ops": [
+          {
+            "field": "label",
+            "op": "text.set",
+            "target": "op1",
+            "text": "x"
+          }
+        ]
+      }
+    },
+    {
+      "error": {
+        "code": "read-only",
+        "index": 0
+      },
+      "request": {
+        "ops": [
+          {
+            "op": "delete",
+            "target": "op1"
+          }
+        ]
+      }
+    },
+    {
+      "error": {
+        "code": "read-only",
+        "index": 0
+      },
+      "request": {
+        "ops": [
+          {
+            "field": "children",
+            "index": 0,
+            "op": "list.remove",
+            "target": "op1"
+          }
+        ]
+      }
+    },
+    {
+      "error": {
+        "code": "read-only",
+        "index": 0
+      },
+      "request": {
+        "ops": [
+          {
+            "fields": {
+              "kind": "shape"
+            },
+            "in": "op1.children",
+            "op": "create",
+            "type": "Item"
+          }
+        ]
+      }
+    },
+    {
+      "error": {
+        "code": "read-only",
+        "index": 0
+      },
+      "request": {
+        "ops": [
+          {
+            "field": "xml",
+            "op": "set",
+            "target": "k1",
+            "value": "<y/>"
+          }
+        ]
+      }
+    },
+    {
+      "error": {
+        "code": "read-only",
+        "index": 0
+      },
+      "request": {
+        "ops": [
+          {
+            "op": "delete",
+            "target": "k1"
+          }
+        ]
+      }
+    },
+    {
+      "error": {
+        "code": "read-only",
+        "index": 0
+      },
+      "request": {
+        "ops": [
+          {
+            "op": "delete",
+            "target": "child"
+          }
+        ]
+      }
+    },
+    {
+      "error": {
+        "code": "read-only",
+        "index": 1
+      },
+      "request": {
+        "ops": [
+          {
+            "field": "title",
+            "op": "set",
+            "target": "root",
+            "value": "Kept"
+          },
+          {
+            "field": "raw",
+            "op": "set",
+            "target": "root",
+            "value": {
+              "x": 1
+            }
+          }
+        ]
+      }
+    },
+    {
+      "error": {
+        "code": "read-only",
+        "index": 0
+      },
+      "request": {
+        "ops": [
+          {
+            "field": "notes",
+            "index": 0,
+            "op": "text.insert",
+            "target": "root",
+            "text": "x"
+          }
+        ]
+      }
+    },
+    {
+      "error": {
+        "code": "read-only",
+        "index": 0
+      },
+      "request": {
+        "ops": [
+          {
+            "field": "cells",
+            "key": "A1",
+            "op": "map.set",
+            "target": "root",
+            "value": 1
+          }
+        ]
+      }
+    },
+    {
+      "error": {
+        "code": "read-only",
+        "index": 0
+      },
+      "request": {
+        "ops": [
+          {
+            "fields": {
+              "xml": "<z/>"
+            },
+            "in": "root.kept",
+            "op": "create",
+            "type": "Kept"
+          }
+        ]
+      }
+    },
+    {
+      "error": {
+        "code": "read-only",
+        "index": 0
+      },
+      "request": {
+        "ops": [
+          {
+            "fields": {
+              "kind": "opaque"
+            },
+            "in": "root.items",
+            "op": "create",
+            "type": "Item"
+          }
+        ]
+      }
+    },
+    {
+      "error": {
+        "code": "read-only",
+        "index": 0
+      },
+      "request": {
+        "ops": [
+          {
+            "field": "kind",
+            "op": "set",
+            "target": "child",
+            "value": "opaque"
+          }
+        ]
+      }
+    },
+    {
+      "error": {
+        "code": "read-only",
+        "index": 0
+      },
+      "request": {
+        "ops": [
+          {
+            "field": "label",
+            "index": 0,
+            "op": "text.delete",
+            "target": "op1"
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "load": [
+          {
+            "fields": [
+              "title",
+              "items",
+              "raw"
+            ],
+            "target": "root"
+          },
+          {
+            "target": "child"
+          }
+        ],
+        "ops": [
+          {
+            "field": "name",
+            "op": "set",
+            "target": "child",
+            "value": "Inner"
+          },
+          {
+            "field": "label",
+            "index": 0,
+            "op": "text.insert",
+            "target": "child",
+            "text": "Hi"
+          },
+          {
+            "fields": {
+              "kind": "shape",
+              "name": "New"
+            },
+            "id": "s2",
+            "in": "root.items",
+            "op": "create",
+            "ref": "$s",
+            "type": "Item"
+          },
+          {
+            "field": "items",
+            "from": 0,
+            "op": "list.move",
+            "target": "root",
+            "to": 1
+          },
+          {
+            "field": "title",
+            "op": "set",
+            "target": "root",
+            "value": "Deck B"
+          },
+          {
+            "field": "kind",
+            "op": "set",
+            "target": "$s",
+            "value": "shape"
+          }
+        ],
+        "origin": {
+          "kind": "agent",
+          "principal": "agent:test"
+        }
+      },
+      "result": {
+        "loaded": [
+          {
+            "fields": {
+              "items": [
+                "s2",
+                "op1"
+              ],
+              "raw": {
+                "ext": "<p:extLst/>"
+              },
+              "title": "Deck B"
+            },
+            "id": "deck",
+            "type": "Deck"
+          },
+          {
+            "fields": {
+              "children": [],
+              "kind": "shape",
+              "label": "Hi",
+              "name": "Inner"
+            },
+            "id": "child",
+            "type": "Item"
+          }
+        ],
+        "refs": {
+          "$s": "s2"
+        },
+        "results": [
+          null,
+          null,
+          "s2",
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    {
+      "request": {
+        "load": [
+          {
+            "fields": [
+              "items"
+            ],
+            "target": "root"
+          }
+        ],
+        "ops": [
+          {
+            "op": "delete",
+            "target": "s2"
+          }
+        ]
+      },
+      "result": {
+        "loaded": [
+          {
+            "fields": {
+              "items": [
+                "op1"
+              ]
+            },
+            "id": "deck",
+            "type": "Deck"
+          }
+        ],
+        "refs": {},
+        "results": [
+          null
+        ]
+      }
+    }
+  ]
+}

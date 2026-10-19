@@ -14,7 +14,7 @@ import type { NodeRef, ObjectId } from './ids'
 import { checkOrigin, type Origin } from './origin'
 import type { TreeEntry } from './ids'
 import type { Replica } from './replica'
-import { fieldDef, hasMarks, sortedKeys, typeDef, type Schema } from './schema'
+import { fieldDef, hasMarks, objectReadOnly, sortedKeys, typeDef, type Schema } from './schema'
 import type { Tx } from './tx'
 
 export const OBJECT_MODEL_CAPABILITY = 'KitObjectModel 1.0'
@@ -220,6 +220,43 @@ export async function runBatch(target: BatchTarget, request: BatchRequest): Prom
   return { refs: Object.fromEntries(refs), results, loaded }
 }
 
+/**
+ * Refuses (`read-only`) a write to `id`, or to its `field`, that the schema keeps from the object
+ * model (rule OM8). An unknown object or field is left to the operation, which reports it.
+ */
+function guard(tx: Tx, schema: Schema, index: number, id: ObjectId, field: string | null): void {
+  let ty: string
+  try {
+    ty = tx.objectType(id)
+  } catch {
+    return
+  }
+  if (!Object.hasOwn(schema.types, ty)) return
+  const def = schema.types[ty]
+  const read = (name: string): unknown => {
+    try {
+      return tx.get(id, name)
+    } catch {
+      return undefined
+    }
+  }
+  if (objectReadOnly(def, read)) throw new BatchError('read-only', index, `\`${id}\` is a read-only \`${ty}\`: the kit keeps it as it is`)
+  if (field !== null && Object.hasOwn(def.fields, field) && def.fields[field].readOnly) {
+    throw new BatchError('read-only', index, `\`${ty}.${field}\` is read-only: the kit keeps it as it is`)
+  }
+}
+
+/** Refuses (`read-only`) a new object of type `ty` that would be read-only, or that gives a read-only field a value (rule OM8). */
+function guardNew(schema: Schema, index: number, ty: string, fields: Record<string, unknown>): void {
+  if (!Object.hasOwn(schema.types, ty)) return
+  const def = schema.types[ty]
+  if (objectReadOnly(def, (name) => (Object.hasOwn(fields, name) ? fields[name] : undefined))) {
+    throw new BatchError('read-only', index, `a new \`${ty}\` would be read-only: only the kit makes one`)
+  }
+  const name = sortedKeys(fields).find((name) => fields[name] !== null && fields[name] !== undefined && Object.hasOwn(def.fields, name) && def.fields[name].readOnly)
+  if (name !== undefined) throw new BatchError('read-only', index, `\`${ty}.${name}\` is read-only: the kit keeps it as it is`)
+}
+
 function apply(tx: Tx, schema: Schema, index: number, op: BatchOp, refs: Refs, root: () => ObjectId | null): unknown {
   const name = opName(index, op)
   const target = (key: string) => targetId(op[key], refs, root, index)
@@ -241,11 +278,13 @@ function apply(tx: Tx, schema: Schema, index: number, op: BatchOp, refs: Refs, r
           container = [targetId(path.slice(0, dot), refs, root, index), path.slice(dot + 1)]
         }
         if (op.id !== undefined && op.id !== null && typeof op.id !== 'string') throw new BatchError('invalid-op', index, '`id` is a string')
+        guardNew(schema, index, ty, fields)
         const id = tx.create(ty, fields, typeof op.id === 'string' ? { id: op.id } : undefined)
         if (container) {
           const [owner, field] = container
           const ownerType = tx.objectType(owner)
           const kind = fieldDef(schema, ownerType, field).kind
+          guard(tx, schema, index, owner, field)
           if (kind === 'list') tx.listInsert(owner, field, position(index, op.at, tx.listItems(owner, field).length), id)
           else if (kind === 'tree') {
             if (op.at !== undefined && op.at !== null && op.at !== 'end') throw new BatchError('invalid-op', index, '`at` places items in lists; a tree adds a node last among its siblings')
@@ -255,12 +294,39 @@ function apply(tx: Tx, schema: Schema, index: number, op: BatchOp, refs: Refs, r
         if (typeof reference === 'string') refs.set(reference, id)
         return id
       }
-      case 'set':
-        tx.set(target('target'), str(index, op, 'field'), op.value === undefined ? null : resolveValues(op.value, refs))
+      case 'set': {
+        const id = target('target')
+        const field = str(index, op, 'field')
+        const value = op.value === undefined ? null : resolveValues(op.value, refs)
+        guard(tx, schema, index, id, field)
+        // A value that would make the object read-only is the kit's to write.
+        let ty: string | null = null
+        try {
+          ty = tx.objectType(id)
+        } catch {
+          ty = null
+        }
+        if (ty !== null && Object.hasOwn(schema.types, ty)) {
+          const def = schema.types[ty]
+          const read = (name: string): unknown => {
+            if (name === field) return value
+            try {
+              return tx.get(id, name)
+            } catch {
+              return undefined
+            }
+          }
+          if (def.readOnlyWhen?.field === field && objectReadOnly(def, read)) {
+            throw new BatchError('read-only', index, `\`${ty}.${field}\` would make \`${id}\` read-only: only the kit does`)
+          }
+        }
+        tx.set(id, field, value)
         return null
+      }
       case 'delete': {
         const id = target('target')
         const ty = tx.objectType(id)
+        guard(tx, schema, index, id, null)
         // Drop the object from every list holding it, so no list keeps a dangling entry.
         for (const ownerType of sortedKeys(schema.types)) {
           const def = typeDef(schema, ownerType)
@@ -269,6 +335,7 @@ function apply(tx: Tx, schema: Schema, index: number, op: BatchOp, refs: Refs, r
             if (fieldOf.kind !== 'list' || fieldOf.of !== ty) continue
             for (const owner of tx.objectsOfType(ownerType)) {
               const items = tx.listItems(owner, field)
+              if (items.includes(id)) guard(tx, schema, index, owner, field)
               for (let at = items.length - 1; at >= 0; at -= 1) if (items[at] === id) tx.listRemove(owner, field, at)
             }
           }
@@ -294,6 +361,7 @@ function apply(tx: Tx, schema: Schema, index: number, op: BatchOp, refs: Refs, r
       case 'tree.insert': {
         const id = target('target')
         const field = str(index, op, 'field')
+        guard(tx, schema, index, id, field)
         const item = target('item')
         if (liveNode(tx, id, field, item)) throw new BatchError('invalid-value', index, `\`${item}\` is already in \`${id}.${field}\`: move it with tree.move`)
         tx.treeCreate(id, field, treeParent(tx, refs, root, index, op, id, field), item)
@@ -302,6 +370,7 @@ function apply(tx: Tx, schema: Schema, index: number, op: BatchOp, refs: Refs, r
       case 'tree.move': {
         const id = target('target')
         const field = str(index, op, 'field')
+        guard(tx, schema, index, id, field)
         const item = target('item')
         const node = liveNode(tx, id, field, item)
         if (!node) throw new BatchError('not-found', index, `\`${item}\` is not in \`${id}.${field}\``)
@@ -311,12 +380,14 @@ function apply(tx: Tx, schema: Schema, index: number, op: BatchOp, refs: Refs, r
       case 'text.insert': {
         const id = target('target')
         const field = str(index, op, 'field')
+        guard(tx, schema, index, id, field)
         tx.textInsert(id, field, utf16(tx.text(id, field), whole(index, op, 'index')), str(index, op, 'text'))
         return null
       }
       case 'text.delete': {
         const id = target('target')
         const field = str(index, op, 'field')
+        guard(tx, schema, index, id, field)
         const text = tx.text(id, field)
         const from = whole(index, op, 'index')
         const start = utf16(text, from)
@@ -326,6 +397,7 @@ function apply(tx: Tx, schema: Schema, index: number, op: BatchOp, refs: Refs, r
       case 'text.set': {
         const id = target('target')
         const field = str(index, op, 'field')
+        guard(tx, schema, index, id, field)
         const text = str(index, op, 'text')
         const len = tx.textLength(id, field)
         if (len > 0) tx.textDelete(id, field, 0, len)
@@ -336,6 +408,7 @@ function apply(tx: Tx, schema: Schema, index: number, op: BatchOp, refs: Refs, r
       case 'text.unmark': {
         const id = target('target')
         const field = str(index, op, 'field')
+        guard(tx, schema, index, id, field)
         const text = tx.text(id, field)
         const start = utf16(text, whole(index, op, 'start'))
         const end = utf16(text, whole(index, op, 'end'))
@@ -346,21 +419,23 @@ function apply(tx: Tx, schema: Schema, index: number, op: BatchOp, refs: Refs, r
       case 'list.insert': {
         const id = target('target')
         const field = str(index, op, 'field')
+        guard(tx, schema, index, id, field)
         tx.listInsert(id, field, position(index, op.index, tx.listItems(id, field).length), target('item'))
         return null
       }
       case 'list.move':
-        tx.listMove(target('target'), str(index, op, 'field'), whole(index, op, 'from'), whole(index, op, 'to'))
-        return null
       case 'list.remove':
-        tx.listRemove(target('target'), str(index, op, 'field'), whole(index, op, 'index'))
-        return null
       case 'map.set':
-        tx.mapSet(target('target'), str(index, op, 'field'), str(index, op, 'key'), op.value === undefined ? null : resolveValues(op.value, refs))
+      case 'map.delete': {
+        const id = target('target')
+        const field = str(index, op, 'field')
+        guard(tx, schema, index, id, field)
+        if (name === 'list.move') tx.listMove(id, field, whole(index, op, 'from'), whole(index, op, 'to'))
+        else if (name === 'list.remove') tx.listRemove(id, field, whole(index, op, 'index'))
+        else if (name === 'map.set') tx.mapSet(id, field, str(index, op, 'key'), op.value === undefined ? null : resolveValues(op.value, refs))
+        else tx.mapDelete(id, field, str(index, op, 'key'))
         return null
-      case 'map.delete':
-        tx.mapDelete(target('target'), str(index, op, 'field'), str(index, op, 'key'))
-        return null
+      }
       default:
         throw new BatchError('invalid-op', index, `\`${name}\` is not a model operation`)
     }
@@ -429,7 +504,7 @@ export function readField(replica: Replica, id: ObjectId, ty: string, name: stri
 /** The schema as `model/describe` answers it, without the commands (the kit adds them). */
 export function describeModel(replica: Replica) {
   const schema = replica.schema
-  const types: Record<string, { fields: Record<string, Record<string, unknown>> }> = {}
+  const types: Record<string, { fields: Record<string, Record<string, unknown>>; readOnly?: true; readOnlyWhen?: { field: string; values: string[] } }> = {}
   for (const ty of sortedKeys(schema.types)) {
     const fields: Record<string, Record<string, unknown>> = {}
     for (const [name, field] of Object.entries(schema.types[ty].fields)) {
@@ -438,9 +513,14 @@ export function describeModel(replica: Replica) {
       if (field.values?.length) out.values = field.values
       if (field.optional) out.optional = true
       if (field.marks && Object.keys(field.marks).length > 0) out.marks = sortedKeys(field.marks)
+      if (field.readOnly) out.readOnly = true
       fields[name] = out
     }
-    types[ty] = { fields }
+    const def = schema.types[ty]
+    const out: { fields: Record<string, Record<string, unknown>>; readOnly?: true; readOnlyWhen?: { field: string; values: string[] } } = { fields }
+    if (def.readOnly) out.readOnly = true
+    if (def.readOnlyWhen) out.readOnlyWhen = { field: def.readOnlyWhen.field, values: [...def.readOnlyWhen.values] }
+    types[ty] = out
   }
   return { capability: OBJECT_MODEL_CAPABILITY, kit: schema.kit, schemaVersion: schema.schemaVersion, root: schema.root, rootId: rootId(replica), types }
 }

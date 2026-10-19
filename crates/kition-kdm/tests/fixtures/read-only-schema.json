@@ -1,0 +1,33 @@
+{
+  "kdm": 1,
+  "kit": "kit.test.readonly",
+  "schemaVersion": 1,
+  "root": "Deck",
+  "types": {
+    "Deck": {
+      "fields": {
+        "title": { "kind": "string" },
+        "raw": { "kind": "json", "optional": true, "readOnly": true },
+        "notes": { "kind": "text", "readOnly": true },
+        "cells": { "kind": "map", "readOnly": true },
+        "items": { "kind": "list", "of": "Item" },
+        "kept": { "kind": "list", "of": "Kept" }
+      }
+    },
+    "Item": {
+      "readOnlyWhen": { "field": "kind", "values": ["opaque"] },
+      "fields": {
+        "kind": { "kind": "enum", "values": ["shape", "opaque"] },
+        "name": { "kind": "string", "optional": true },
+        "label": { "kind": "text" },
+        "children": { "kind": "list", "of": "Item" }
+      }
+    },
+    "Kept": {
+      "readOnly": true,
+      "fields": {
+        "xml": { "kind": "string" }
+      }
+    }
+  }
+}

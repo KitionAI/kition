@@ -28,7 +28,8 @@ pub enum BatchErrorCode {
     NotFound,
     /// The KDM refused a value, a field, or an index.
     InvalidValue,
-    /// The document is read-only and the batch writes.
+    /// The document is read-only and the batch writes, or an operation writes an object or a
+    /// field the schema marks read-only (rule OM8).
     ReadOnly,
     /// A command failed.
     CommandFailed,
@@ -296,6 +297,36 @@ fn position(index: usize, value: Option<&Value>, len: usize) -> Result<usize, Ba
     }
 }
 
+/// Refuses (`read-only`) a write to `id`, or to its `field`, that the schema keeps from the
+/// object model (rule OM8): a read-only type, an object its `readOnlyWhen` names, or a read-only
+/// field. An unknown object or field is left to the operation, which reports it.
+fn guard(tx: &Tx<'_>, schema: &Schema, index: usize, id: &ObjectId, field: Option<&str>) -> Result<(), BatchError> {
+    let Ok(ty) = tx.object_type(id) else { return Ok(()) };
+    let Ok(def) = schema.type_def(&ty) else { return Ok(()) };
+    if def.object_read_only(|name| tx.get(id, name).ok()) {
+        return Err(BatchError::new(BatchErrorCode::ReadOnly, Some(index), format!("`{id}` is a read-only `{ty}`: the kit keeps it as it is")));
+    }
+    if let Some(field) = field
+        && def.fields.get(field).is_some_and(|def| def.read_only)
+    {
+        return Err(BatchError::new(BatchErrorCode::ReadOnly, Some(index), format!("`{ty}.{field}` is read-only: the kit keeps it as it is")));
+    }
+    Ok(())
+}
+
+/// Refuses (`read-only`) a new object of type `ty` with `fields` that would be read-only, or
+/// that gives a read-only field a value (rule OM8).
+fn guard_new(schema: &Schema, index: usize, ty: &str, fields: &Map<String, Value>) -> Result<(), BatchError> {
+    let Ok(def) = schema.type_def(ty) else { return Ok(()) };
+    if def.object_read_only(|name| fields.get(name).cloned()) {
+        return Err(BatchError::new(BatchErrorCode::ReadOnly, Some(index), format!("a new `{ty}` would be read-only: only the kit makes one")));
+    }
+    if let Some((name, _)) = fields.iter().find(|(name, value)| !value.is_null() && def.fields.get(name.as_str()).is_some_and(|def| def.read_only)) {
+        return Err(BatchError::new(BatchErrorCode::ReadOnly, Some(index), format!("`{ty}.{name}` is read-only: the kit keeps it as it is")));
+    }
+    Ok(())
+}
+
 fn apply(tx: &mut Tx<'_>, schema: &Schema, index: usize, op: &Value, refs: &mut Refs, root: &mut Option<ObjectId>) -> Result<Value, BatchError> {
     let kdm = |error: KdmError| BatchError::kdm(Some(index), error);
     let mut target = |key: &str, refs: &Refs, tx: &Tx<'_>| -> Result<ObjectId, BatchError> {
@@ -345,6 +376,7 @@ fn apply(tx: &mut Tx<'_>, schema: &Schema, index: usize, op: &Value, refs: &mut 
                 }
                 Some(_) => return Err(BatchError::op(index, "`in` is \"<target>.<field>\"")),
             };
+            guard_new(schema, index, ty, &fields)?;
             let id = match op.get("id") {
                 None | Some(Value::Null) => tx.create(ty, fields).map_err(kdm)?,
                 Some(Value::String(id)) => tx.create_with_id(ty, &ObjectId::from_string(id.clone()), fields).map_err(kdm)?,
@@ -353,6 +385,7 @@ fn apply(tx: &mut Tx<'_>, schema: &Schema, index: usize, op: &Value, refs: &mut 
             if let Some((owner, field)) = container {
                 let owner_type = tx.object_type(&owner).map_err(kdm)?;
                 let def = schema.field(&owner_type, &field).map_err(kdm)?;
+                guard(tx, schema, index, &owner, Some(&field))?;
                 match def.kind {
                     FieldKind::List => {
                         let len = tx.list_items(&owner, &field).map_err(kdm)?.len();
@@ -380,12 +413,22 @@ fn apply(tx: &mut Tx<'_>, schema: &Schema, index: usize, op: &Value, refs: &mut 
             let id = target("target", refs, tx)?;
             let field = str_field(index, op, "field")?;
             let value = op.get("value").map_or(Value::Null, |value| resolve_values(value, refs));
+            guard(tx, schema, index, &id, Some(field))?;
+            // A value that would make the object read-only is the kit's to write.
+            if let Ok(ty) = tx.object_type(&id)
+                && let Ok(def) = schema.type_def(&ty)
+                && def.read_only_when.as_ref().is_some_and(|when| when.field == field)
+                && def.object_read_only(|name| if name == field { Some(value.clone()) } else { tx.get(&id, name).ok() })
+            {
+                return Err(BatchError::new(BatchErrorCode::ReadOnly, Some(index), format!("`{ty}.{field}` would make `{id}` read-only: only the kit does")));
+            }
             tx.set(&id, field, value).map_err(kdm)?;
             Ok(Value::Null)
         }
         "delete" => {
             let id = target("target", refs, tx)?;
             let ty = tx.object_type(&id).map_err(kdm)?;
+            guard(tx, schema, index, &id, None)?;
             // Drop the object from every list holding it, so no list keeps a dangling entry.
             for (owner_type, def) in &schema.types {
                 for (field, field_def) in &def.fields {
@@ -394,6 +437,9 @@ fn apply(tx: &mut Tx<'_>, schema: &Schema, index: usize, op: &Value, refs: &mut 
                     }
                     for owner in tx.objects_of_type(owner_type) {
                         let items = tx.list_items(&owner, field).map_err(kdm)?;
+                        if items.contains(&id) {
+                            guard(tx, schema, index, &owner, Some(field))?;
+                        }
                         for at in items.iter().enumerate().filter(|(_, item)| **item == id).map(|(at, _)| at).rev().collect::<Vec<_>>() {
                             tx.list_remove(&owner, field, at).map_err(kdm)?;
                         }
@@ -425,6 +471,7 @@ fn apply(tx: &mut Tx<'_>, schema: &Schema, index: usize, op: &Value, refs: &mut 
         "tree.insert" => {
             let id = target("target", refs, tx)?;
             let field = str_field(index, op, "field")?;
+            guard(tx, schema, index, &id, Some(field))?;
             let item = target("item", refs, tx)?;
             if live_node(tx, &id, field, &item).map_err(kdm)?.is_some() {
                 return Err(BatchError::new(
@@ -440,6 +487,7 @@ fn apply(tx: &mut Tx<'_>, schema: &Schema, index: usize, op: &Value, refs: &mut 
         "tree.move" => {
             let id = target("target", refs, tx)?;
             let field = str_field(index, op, "field")?;
+            guard(tx, schema, index, &id, Some(field))?;
             let item = target("item", refs, tx)?;
             let node = live_node(tx, &id, field, &item)
                 .map_err(kdm)?
@@ -450,17 +498,22 @@ fn apply(tx: &mut Tx<'_>, schema: &Schema, index: usize, op: &Value, refs: &mut 
         }
         "text.insert" => {
             let id = target("target", refs, tx)?;
-            tx.text_insert(&id, str_field(index, op, "field")?, usize_field(index, op, "index")?, str_field(index, op, "text")?).map_err(kdm)?;
+            let field = str_field(index, op, "field")?;
+            guard(tx, schema, index, &id, Some(field))?;
+            tx.text_insert(&id, field, usize_field(index, op, "index")?, str_field(index, op, "text")?).map_err(kdm)?;
             Ok(Value::Null)
         }
         "text.delete" => {
             let id = target("target", refs, tx)?;
-            tx.text_delete(&id, str_field(index, op, "field")?, usize_field(index, op, "index")?, usize_field(index, op, "count")?).map_err(kdm)?;
+            let field = str_field(index, op, "field")?;
+            guard(tx, schema, index, &id, Some(field))?;
+            tx.text_delete(&id, field, usize_field(index, op, "index")?, usize_field(index, op, "count")?).map_err(kdm)?;
             Ok(Value::Null)
         }
         "text.set" => {
             let id = target("target", refs, tx)?;
             let field = str_field(index, op, "field")?;
+            guard(tx, schema, index, &id, Some(field))?;
             let text = str_field(index, op, "text")?;
             let len = tx.text_len(&id, field).map_err(kdm)?;
             if len > 0 {
@@ -474,6 +527,7 @@ fn apply(tx: &mut Tx<'_>, schema: &Schema, index: usize, op: &Value, refs: &mut 
         "text.mark" | "text.unmark" => {
             let id = target("target", refs, tx)?;
             let field = str_field(index, op, "field")?;
+            guard(tx, schema, index, &id, Some(field))?;
             let (start, end) = (usize_field(index, op, "start")?, usize_field(index, op, "end")?);
             let key = str_field(index, op, "key")?;
             if name == "text.mark" {
@@ -487,6 +541,7 @@ fn apply(tx: &mut Tx<'_>, schema: &Schema, index: usize, op: &Value, refs: &mut 
         "list.insert" => {
             let id = target("target", refs, tx)?;
             let field = str_field(index, op, "field")?;
+            guard(tx, schema, index, &id, Some(field))?;
             let item = target("item", refs, tx)?;
             let len = tx.list_items(&id, field).map_err(kdm)?.len();
             let at = position(index, op.get("index"), len)?;
@@ -495,23 +550,31 @@ fn apply(tx: &mut Tx<'_>, schema: &Schema, index: usize, op: &Value, refs: &mut 
         }
         "list.move" => {
             let id = target("target", refs, tx)?;
-            tx.list_move(&id, str_field(index, op, "field")?, usize_field(index, op, "from")?, usize_field(index, op, "to")?).map_err(kdm)?;
+            let field = str_field(index, op, "field")?;
+            guard(tx, schema, index, &id, Some(field))?;
+            tx.list_move(&id, field, usize_field(index, op, "from")?, usize_field(index, op, "to")?).map_err(kdm)?;
             Ok(Value::Null)
         }
         "list.remove" => {
             let id = target("target", refs, tx)?;
-            tx.list_remove(&id, str_field(index, op, "field")?, usize_field(index, op, "index")?).map_err(kdm)?;
+            let field = str_field(index, op, "field")?;
+            guard(tx, schema, index, &id, Some(field))?;
+            tx.list_remove(&id, field, usize_field(index, op, "index")?).map_err(kdm)?;
             Ok(Value::Null)
         }
         "map.set" => {
             let id = target("target", refs, tx)?;
+            let field = str_field(index, op, "field")?;
+            guard(tx, schema, index, &id, Some(field))?;
             let value = op.get("value").map_or(Value::Null, |value| resolve_values(value, refs));
-            tx.map_set(&id, str_field(index, op, "field")?, str_field(index, op, "key")?, value).map_err(kdm)?;
+            tx.map_set(&id, field, str_field(index, op, "key")?, value).map_err(kdm)?;
             Ok(Value::Null)
         }
         "map.delete" => {
             let id = target("target", refs, tx)?;
-            tx.map_delete(&id, str_field(index, op, "field")?, str_field(index, op, "key")?).map_err(kdm)?;
+            let field = str_field(index, op, "field")?;
+            guard(tx, schema, index, &id, Some(field))?;
+            tx.map_delete(&id, field, str_field(index, op, "key")?).map_err(kdm)?;
             Ok(Value::Null)
         }
         other => Err(BatchError::op(index, format!("`{other}` is not a model operation"))),
@@ -658,10 +721,21 @@ pub fn describe(replica: &Replica) -> Value {
                     if !field.marks.is_empty() {
                         out.insert("marks".into(), json!(field.marks.keys().collect::<Vec<_>>()));
                     }
+                    if field.read_only {
+                        out.insert("readOnly".into(), Value::Bool(true));
+                    }
                     (name.clone(), Value::Object(out))
                 })
                 .collect();
-            (ty.clone(), json!({ "fields": fields }))
+            let mut out = Map::new();
+            out.insert("fields".into(), Value::Object(fields));
+            if def.read_only {
+                out.insert("readOnly".into(), Value::Bool(true));
+            }
+            if let Some(when) = &def.read_only_when {
+                out.insert("readOnlyWhen".into(), json!({ "field": when.field, "values": when.values }));
+            }
+            (ty.clone(), Value::Object(out))
         })
         .collect();
     json!({
