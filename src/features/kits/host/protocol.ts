@@ -65,6 +65,9 @@ export type KitUiConfig = {
 /** One element of a kit's editor, as `ui/elements` lists it. */
 export type KitUiElement = { id: string; kind: string; label: string; parent: string | null; hidden: boolean; disabled: boolean }
 
+/** `KitDocumentInit.comments`: who comments in this session, and how. */
+export type KitCommentAccess = { me: string | null; name?: string; canComment: boolean; othersReadOnly: boolean }
+
 export type KitDocumentInit = {
   path: string
   name: string
@@ -77,6 +80,13 @@ export type KitDocumentInit = {
    * that changes it opens the kit again (a new page).
    */
   readOnly?: boolean
+  /**
+   * Who comments and how (minor version 1.6; Kit Standard 2.0 rule M23): the person's principal
+   * id (`null` when unknown) and display name, whether they may write comments (a commenter's
+   * document is `readOnly` for its content yet takes comments), and whether threads others opened
+   * are read-only history (the document is not co-edited now).
+   */
+  comments?: KitCommentAccess
   create?: { width: number; height: number }
   /**
    * Lent files (standard E5): a same-origin URL of the workspace root that serves ranged reads,
