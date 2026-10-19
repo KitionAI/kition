@@ -11,7 +11,7 @@ export const SYNC_PROTOCOL = 'kition-sync/1'
 export type Role = 'owner' | 'editor' | 'viewer'
 
 /** `error.data.code` (never the JSON-RPC `code`/`message`, which are for logs and people). */
-export type ErrorCode = 'unauthorized' | 'forbidden' | 'not-found' | 'conflict' | 'invalid' | 'unavailable'
+export type ErrorCode = 'unauthorized' | 'forbidden' | 'not-found' | 'conflict' | 'invalid' | 'unavailable' | 'rate-limited'
 
 export type ClientInfo = { name: string; version: string }
 export type ServerInfo = { name: string; version: string }
@@ -33,7 +33,11 @@ export type HelloResult = { server: ServerInfo; principal: Principal; capabiliti
  * repeats `room/join` with `since` set to it; when `more` is `false`, `seq` is the room's latest.
  */
 export type RoomJoinParams = { docId: string; since: number | null; limit?: number }
-export type RoomJoinResult = { changes: Uint8Array[]; seq: number; more: boolean; presence: Presence[]; role: Role }
+/**
+ * `snapshot` (protocol 1.5): `since` was older than the history the server keeps change by change,
+ * so `changes[0]` is a snapshot of the document (imported like any change set) and the rest follow it.
+ */
+export type RoomJoinResult = { changes: Uint8Array[]; seq: number; more: boolean; presence: Presence[]; role: Role; snapshot?: boolean }
 
 export type ChangesPushParams = { docId: string; changes: Uint8Array }
 export type ChangesPushResult = { seq: number }
@@ -47,13 +51,18 @@ export type PresenceSetParams = { docId: string; state: unknown }
 /** Server to client, notification: replaces the room's peer list. */
 export type PresenceUpdateParams = { docId: string; peers: Presence[] }
 
-export type BlobHasParams = { hashes: string[] }
+/**
+ * Blobs are scoped to documents (protocol 1.5): `blob/put` records that `docId` references the
+ * blob, and `blob/has`/`blob/get` answer only blobs `docId` references, for a principal that may
+ * read its room. A blob another document references is `missing` here until this one uploads it.
+ */
+export type BlobHasParams = { docId: string; hashes: string[] }
 export type BlobHasResult = { missing: string[] }
 
-export type BlobPutParams = { hash: string; mime: string; data: Uint8Array }
+export type BlobPutParams = { docId: string; hash: string; mime: string; data: Uint8Array }
 export type BlobPutResult = Record<string, never>
 
-export type BlobGetParams = { hash: string }
+export type BlobGetParams = { docId: string; hash: string }
 export type BlobGetResult = { data: Uint8Array; mime: string }
 
 export type SnapshotGetParams = { docId: string }
@@ -80,6 +89,43 @@ export type RoomLinkResult = { shareLink: string }
 
 /** Client to server, notification. */
 export type RoomLeaveParams = { docId: string }
+
+/** `history/list` (protocol 1.5): checkpoints newest first, before `before` (omitted: the latest). */
+export type HistoryListParams = { docId: string; before?: number; limit?: number }
+/**
+ * A point the document's history can be read at or restored to: a run of changes one principal
+ * pushed (`kind: 'changes'`, `firstSeq`..`seq`), or a snapshot older history was compacted into.
+ * `time` is milliseconds since the Unix epoch.
+ */
+export type Checkpoint = { seq: number; firstSeq: number; time: number; principalId: string | null; changes: number; kind: 'changes' | 'snapshot' }
+/** `more`: older checkpoints remain; ask again with `before` set to the last one's `firstSeq`. */
+export type HistoryListResult = { checkpoints: Checkpoint[]; more: boolean }
+
+/** `history/get` (protocol 1.5): the document as of `seq` (or the nearest snapshot before it, which `seq` names). */
+export type HistoryGetParams = { docId: string; seq: number }
+export type HistoryGetResult = { snapshot: Uint8Array; seq: number }
+
+/**
+ * `history/restore` (protocol 1.5): an owner or editor of a joined room restores the document as of
+ * `seq` as one new change, which every member, the caller too, receives as `changes/pull`. `seq` is
+ * that change's (`null`: the document was already in that state); `restored` is the state's `seq`.
+ */
+export type HistoryRestoreParams = { docId: string; seq: number }
+export type HistoryRestoreResult = { seq: number | null; restored: number }
+
+/**
+ * A lease on one scope of a room (protocol 1.5, section 8): who holds it, the holder's session
+ * (opaque; it tells a client its own leases from others'), and `ttl`, the milliseconds it had left
+ * when sent (informational: a lease ends only when `lease/changed` drops it).
+ */
+export type Lease = { scope: string; principalId: string; name: string; session: string; ttl: number }
+
+/** `lease/acquire`: `ttl` in milliseconds (omitted: the server's default, 30 000; a server clamps it). */
+export type LeaseAcquireParams = { docId: string; scope: string; ttl?: number }
+export type LeaseAcquireResult = { lease: Lease }
+export type LeaseReleaseParams = { docId: string; scope: string }
+/** Server to client, notification: replaces the room's lease list. */
+export type LeaseChangedParams = { docId: string; leases: Lease[] }
 
 /** A JSON-RPC error; `data.code` is an [[ErrorCode]] for every error this protocol itself defines. */
 export class SyncRpcError extends Error {

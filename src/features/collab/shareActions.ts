@@ -34,11 +34,12 @@ export function canShareDocument(path: string) {
   return Boolean(findCollabDocument(path))
 }
 
-async function uploadBlobs(client: SyncClient, entries: BlobEntry[]) {
+/** Uploads a document's blobs for its room (blobs belong to the documents that upload them). */
+async function uploadBlobs(client: SyncClient, docId: string, entries: BlobEntry[]) {
   if (!entries.length) return
-  const { missing } = await client.blobs.has(entries.map((entry) => entry.hash))
+  const { missing } = await client.blobs.has(docId, entries.map((entry) => entry.hash))
   const absent = new Set(missing)
-  for (const entry of entries) if (absent.has(entry.hash)) await client.blobs.put(entry.data, 'application/octet-stream')
+  for (const entry of entries) if (absent.has(entry.hash)) await client.blobs.put(docId, entry.data, 'application/octet-stream')
 }
 
 /** What sharing answers: the room's editing link, and its id (for a view-only link). */
@@ -59,7 +60,7 @@ export async function shareDocument(path: string): Promise<SharedDocument> {
     const existing = readRoom(docId)
     if (existing) return { docId, shareLink: existing.shareLink }
     const exported = await replica.exportChanges(new ArrayBuffer(0))
-    await uploadBlobs(client, decodeBlobSection(new Uint8Array(exported.blobs)))
+    await uploadBlobs(client, docId, decodeBlobSection(new Uint8Array(exported.blobs)))
     const name = path.split('/').filter(Boolean).pop() || path
     const { shareLink } = await client.createRoom(docId, new Uint8Array(exported.changes), name, document.kit)
     writeRoom({ docId, shareLink, name, kit: document.kit, role: 'owner', lastSent: toHex(version) })
@@ -100,14 +101,14 @@ async function sharedPath(name: string, extension: string) {
   throw new Error(`no free name for ${name} in ${SHARED_FOLDER}`)
 }
 
-/** The blobs a replica snapshot references that the server holds. */
-async function snapshotBlobs(client: SyncClient, snapshot: Uint8Array) {
+/** The blobs a replica snapshot of `docId` references that its room holds. */
+async function snapshotBlobs(client: SyncClient, docId: string, snapshot: Uint8Array) {
   const candidates = blobHashCandidates(snapshot)
   if (!candidates.length) return new Uint8Array()
-  const { missing } = await client.blobs.has(candidates)
+  const { missing } = await client.blobs.has(docId, candidates)
   const absent = new Set(missing)
   const entries: BlobEntry[] = []
-  for (const hash of candidates) if (!absent.has(hash)) entries.push({ hash, data: (await client.blobs.get(hash)).data })
+  for (const hash of candidates) if (!absent.has(hash)) entries.push({ hash, data: (await client.blobs.get(docId, hash)).data })
   return encodeBlobSection(entries)
 }
 
@@ -125,7 +126,7 @@ function fromBase64(text: string) {
  * Writes a shared document Kition edits itself (a board, a Markdown document, a table) as a new
  * file in `Shared/`: answers its path and the replica version it holds, or `null` for another kit.
  */
-async function writeHostFile(client: SyncClient, kit: string, name: string, snapshot: Uint8Array) {
+async function writeHostFile(client: SyncClient, docId: string, kit: string, name: string, snapshot: Uint8Array) {
   if (kit === HOST_KITS.board) {
     const { path, root } = await sharedPath(name, 'kiboard')
     const { writeBoardFileFromReplica } = await loadBoardSharedFile()
@@ -139,7 +140,7 @@ async function writeHostFile(client: SyncClient, kit: string, name: string, snap
   if (kit === HOST_KITS.table) {
     const { path } = await sharedPath(name, 'kitable')
     // Attachments the table holds as blobs come from the server with the snapshot.
-    const blobs = await snapshotBlobs(client, snapshot)
+    const blobs = await snapshotBlobs(client, docId, snapshot)
     const created = await createTableFromReplica({ path, changes: base64(snapshot), ...(blobs.length ? { blobs: base64(blobs) } : {}) })
     return { path, version: fromBase64(created.version) }
   }
@@ -164,9 +165,9 @@ export async function openSharedDocument(link: string, kitFor: (kitId: string) =
   const kit = kitFor(room.kit)
   if (!kit && !Object.values<string>(HOST_KITS).includes(room.kit)) throw new Error(`this build cannot open ${room.kit} documents`)
   const { snapshot, seq } = await client.snapshot(room.docId)
-  let written = await writeHostFile(client, room.kit, room.name, snapshot)
+  let written = await writeHostFile(client, room.docId, room.kit, room.name, snapshot)
   if (!written && kit) {
-    const blobs = await snapshotBlobs(client, snapshot)
+    const blobs = await snapshotBlobs(client, room.docId, snapshot)
     const { path } = await sharedPath(room.name, kit.extension)
     const { version } = await writeKitFileFromReplica(kit.engine, path, { snapshot, blobs })
     written = { path, version }

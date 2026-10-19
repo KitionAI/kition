@@ -16,11 +16,17 @@ export {
   type BlobGetResult,
   type BlobHasResult,
   type ChangesPullParams,
+  type Checkpoint,
   type ChangesPushResult,
   type ClientInfo,
   type ErrorCode,
   type HelloParams,
   type HelloResult,
+  type HistoryGetResult,
+  type HistoryListResult,
+  type HistoryRestoreResult,
+  type Lease,
+  type LeaseChangedParams,
   type Presence,
   type PresenceUpdateParams,
   type Principal,
@@ -32,6 +38,7 @@ export {
   type ServerInfo,
   type SnapshotGetResult,
 } from './protocol'
+export { DocumentLeases, SyncLeases, leaseHolder, scopesCollide, type LeaseHold } from './leases'
 export { startRelay, type Relay, type RelayOptions, type RelayReplica, type RelaySync } from './relay'
 export type { ReplicaVersions } from './replicaVersions'
 export type { ConnectionState, SyncTransport, TransportFactory } from './transport'

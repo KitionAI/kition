@@ -94,9 +94,9 @@ export function startRelay(options: RelayOptions): Relay {
   async function upload(entries: BlobEntry[]) {
     const fresh = entries.filter((entry) => !known.has(entry.hash))
     if (!fresh.length) return
-    const { missing } = await sync.blobs.has(fresh.map((entry) => entry.hash))
+    const { missing } = await sync.blobs.has(docId, fresh.map((entry) => entry.hash))
     const absent = new Set(missing)
-    for (const entry of fresh) if (absent.has(entry.hash)) await sync.blobs.put(entry.data, BLOB_MIME)
+    for (const entry of fresh) if (absent.has(entry.hash)) await sync.blobs.put(docId, entry.data, BLOB_MIME)
     for (const entry of fresh) known.add(entry.hash)
   }
 
@@ -124,10 +124,10 @@ export function startRelay(options: RelayOptions): Relay {
     if (wanted.length) {
       let fetched: BlobEntry[]
       try {
-        const { missing } = await sync.blobs.has(wanted)
+        const { missing } = await sync.blobs.has(docId, wanted)
         const absent = new Set(missing)
         fetched = []
-        for (const hash of wanted) if (!absent.has(hash)) fetched.push({ hash, data: (await sync.blobs.get(hash)).data })
+        for (const hash of wanted) if (!absent.has(hash)) fetched.push({ hash, data: (await sync.blobs.get(docId, hash)).data })
       } catch {
         waiting.push(changes)
         return false

@@ -8,6 +8,7 @@
 import { backoffDelay } from './backoff'
 import { Decoder, Outgoing, readBin, readBins } from './framing'
 import { sha256Hex } from './hash'
+import { SyncLeases } from './leases'
 import {
   SYNC_PROTOCOL,
   SyncRpcError,
@@ -16,6 +17,9 @@ import {
   type ChangesPushResult,
   type ClientInfo,
   type HelloResult,
+  type HistoryGetResult,
+  type HistoryListResult,
+  type HistoryRestoreResult,
   type Presence,
   type Role,
   type RoomCreateResult,
@@ -129,6 +133,7 @@ export class SyncClient {
   async join(docId: string, since?: number | null): Promise<RoomJoinResult> {
     let nextSince = since === undefined ? this.lastSeq.get(docId) ?? null : since
     const changes: Uint8Array[] = []
+    let snapshot = false
     let page: RoomJoinResult
     do {
       page = await this.request<RoomJoinResult>('room/join', () => ({ docId, since: nextSince }), (value, bins) => ({
@@ -137,11 +142,13 @@ export class SyncClient {
         more: value.more as boolean,
         presence: value.presence as Presence[],
         role: value.role as Role,
+        ...(value.snapshot === true ? { snapshot: true } : {}),
       }))
+      if (page.snapshot) snapshot = true
       changes.push(...page.changes)
       nextSince = page.seq
     } while (page.more)
-    const result: RoomJoinResult = { ...page, changes }
+    const result: RoomJoinResult = { ...page, changes, ...(snapshot ? { snapshot } : {}) }
     this.joined.add(docId)
     this.bumpSeq(docId, result.seq)
     return result
@@ -149,6 +156,7 @@ export class SyncClient {
 
   leave(docId: string): void {
     this.joined.delete(docId)
+    this.leases.left(docId)
     this.sendNotification('room/leave', () => ({ docId }))
   }
 
@@ -172,17 +180,31 @@ export class SyncClient {
     return this.subscribe(this.presenceListeners, docId, listener)
   }
 
-  readonly blobs = {
-    has: (hashes: string[]): Promise<BlobHasResult> => this.request('blob/has', () => ({ hashes }), (value) => value as BlobHasResult),
+  /** Blobs, scoped to the document whose room uses them (protocol 1.5). */
+  /**
+   * Leases for coordinated objects (protocol 1.5, `lease/*`): `acquire`, `release`, `hold` (kept
+   * renewed), the rooms' lease lists (`list`, `onChanged`), and `mine`. `available` is false while
+   * offline or against a server that does not list the `leases` capability.
+   */
+  readonly leases: SyncLeases = new SyncLeases({
+    request: (method, params) => this.request(method, () => params, (value) => value),
+    available: () => this.connectionState === 'online' && (this.hello?.capabilities ?? []).includes('leases'),
+    // Field initializers run before the constructor sets `options`: read them when used.
+    setTimeout: (run, ms) => (this.options.setTimeout ?? ((next: () => void, wait: number) => setTimeout(next, wait)))(run, ms),
+    clearTimeout: (handle) => (this.options.clearTimeout ?? ((value: unknown) => clearTimeout(value as number)))(handle),
+  })
 
-    put: async (data: Uint8Array, mime: string): Promise<{ hash: string }> => {
+  readonly blobs = {
+    has: (docId: string, hashes: string[]): Promise<BlobHasResult> => this.request('blob/has', () => ({ docId, hashes }), (value) => value as BlobHasResult),
+
+    put: async (docId: string, data: Uint8Array, mime: string): Promise<{ hash: string }> => {
       const hash = await sha256Hex(data)
-      await this.request('blob/put', (out) => ({ hash, mime, data: out.bin(data) }), () => ({}))
+      await this.request('blob/put', (out) => ({ docId, hash, mime, data: out.bin(data) }), () => ({}))
       return { hash }
     },
 
-    get: async (hash: string): Promise<BlobGetResult> => {
-      const result = await this.request<BlobGetResult>('blob/get', () => ({ hash }), (value, bins) => ({
+    get: async (docId: string, hash: string): Promise<BlobGetResult> => {
+      const result = await this.request<BlobGetResult>('blob/get', () => ({ docId, hash }), (value, bins) => ({
         data: readBin(value.data, bins),
         mime: value.mime as string,
       }))
@@ -208,6 +230,24 @@ export class SyncClient {
   /** Mints another share link to `docId`'s room granting `role` (protocol 1.4, `room/link`). */
   createLink(docId: string, role: 'editor' | 'viewer'): Promise<RoomLinkResult> {
     return this.request('room/link', () => ({ docId, role }), (value) => value as RoomLinkResult)
+  }
+
+  /** The room's history checkpoints, newest first (protocol 1.5, `history/list`). */
+  history(docId: string, options: { before?: number; limit?: number } = {}): Promise<HistoryListResult> {
+    return this.request('history/list', () => ({ docId, ...options }), (value) => value as HistoryListResult)
+  }
+
+  /** The document as of `seq` (protocol 1.5, `history/get`). */
+  historyAt(docId: string, seq: number): Promise<HistoryGetResult> {
+    return this.request('history/get', () => ({ docId, seq }), (value, bins) => ({ snapshot: readBin(value.snapshot, bins), seq: value.seq as number }))
+  }
+
+  /**
+   * Restores the joined room's document as of `seq` as one new change (protocol 1.5,
+   * `history/restore`); the change arrives as `changes/pull` like anyone else's.
+   */
+  restore(docId: string, seq: number): Promise<HistoryRestoreResult> {
+    return this.request('history/restore', () => ({ docId, seq }), (value) => value as HistoryRestoreResult)
   }
 
   // -- connection lifecycle --------------------------------------------------------------------
@@ -283,6 +323,7 @@ export class SyncClient {
     if (this.closed) return
     this.readyForPushes = false
     this.setState('offline')
+    this.leases.disconnected()
     // In-flight pushes go back to the front of the queue, in their original order, so a
     // reconnect resends them instead of losing them; their own promise stays pending.
     const inFlightPushes: QueuedPush[] = []
@@ -414,6 +455,10 @@ export class SyncClient {
       const seq = params.seq as number
       this.bumpSeq(docId, seq)
       this.emitChanges(docId, { changes: readBin(params.changes, bins), seq, from: params.from as string })
+      return
+    }
+    if (method === 'lease/changed') {
+      this.leases.receive(params)
       return
     }
     if (method === 'presence/update') {

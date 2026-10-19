@@ -65,7 +65,7 @@ class RoomClient implements RelaySync {
   }
 
   readonly blobs = {
-    has: async (hashes: string[]) => ({ missing: hashes }),
+    has: async (_docId: string, hashes: string[]) => ({ missing: hashes }),
     put: async () => ({ hash: '' }),
     get: async (): Promise<{ data: Uint8Array; mime: string }> => {
       throw new Error('no blobs')
